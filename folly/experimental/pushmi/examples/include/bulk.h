@@ -23,7 +23,7 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
     return [func, sb, se, driver, initFunc, selector](auto in){
       return make_single_sender(
         [in, func, sb, se, driver, initFunc, selector](auto out) mutable {
-          submit(in, make_single(std::move(out),
+          submit(in, make_receiver(std::move(out),
               [func, sb, se, driver, initFunc, selector](auto& out, auto input) {
                 driver(initFunc, selector, std::move(input), func, sb, se, std::move(out));
               }

@@ -1,7 +1,11 @@
 add_library(catch STATIC catch.cpp)
+
 target_include_directories(catch PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/../external/Catch2/single_include>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/Catch2>)
+
+target_link_libraries(catch
+    pushmi)
 
 include(../external/Catch2/contrib/Catch.cmake)
 

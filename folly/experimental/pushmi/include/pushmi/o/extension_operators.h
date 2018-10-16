@@ -9,15 +9,12 @@
 #include <tuple>
 #include "../piping.h"
 #include "../boosters.h"
-#include "../single.h"
-#include "../sender.h"
+#include "../receiver.h"
+#include "../flow_receiver.h"
 #include "../single_sender.h"
-#include "../many.h"
 #include "../many_sender.h"
 #include "../time_single_sender.h"
-#include "../flow_single.h"
 #include "../flow_single_sender.h"
-#include "../flow_many.h"
 #include "../flow_many_sender.h"
 #include "../detail/if_constexpr.h"
 #include "../detail/functional.h"
@@ -53,15 +50,13 @@ namespace detail {
 template <class Cardinality, bool IsFlow = false>
 struct make_receiver;
 template <>
-struct make_receiver<is_none<>> : construct_deduced<none> {};
+struct make_receiver<is_single<>> : construct_deduced<receiver> {};
 template <>
-struct make_receiver<is_single<>> : construct_deduced<single> {};
+struct make_receiver<is_many<>> : construct_deduced<receiver> {};
 template <>
-struct make_receiver<is_many<>> : construct_deduced<many> {};
+struct make_receiver<is_single<>, true> : construct_deduced<flow_receiver> {};
 template <>
-struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
-template <>
-struct make_receiver<is_many<>, true> : construct_deduced<flow_many> {};
+struct make_receiver<is_many<>, true> : construct_deduced<flow_receiver> {};
 
 template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
@@ -74,13 +69,13 @@ struct receiver_from_impl {
   PUSHMI_TEMPLATE (class... Ts, class... Fns,
     class This = std::enable_if_t<sizeof...(Fns) != 0, receiver_from_impl>)
     (requires And<SemiMovable<Fns>...> &&
-      Invocable<MakeReceiver, std::tuple<Ts...>> &&
-      Invocable<This, pushmi::invoke_result_t<MakeReceiver, std::tuple<Ts...>>, Fns...>)
+      Invocable<MakeReceiver, Ts...> &&
+      Invocable<This, pushmi::invoke_result_t<MakeReceiver, Ts...>, Fns...>)
   auto operator()(std::tuple<Ts...> args, Fns...fns) const {
     return This()(This()(std::move(args)), std::move(fns)...);
   }
   PUSHMI_TEMPLATE(class Out, class...Fns)
-    (requires Receiver<Out, Cardinality> && And<SemiMovable<Fns>...>)
+    (requires Receiver<Out> && And<SemiMovable<Fns>...>)
   auto operator()(Out out, Fns... fns) const {
     return MakeReceiver()(std::move(out), std::move(fns)...);
   }
@@ -89,14 +84,14 @@ struct receiver_from_impl {
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
 using receiver_from_fn =
     receiver_from_impl<
-        property_set_index_t<properties_t<In>, is_silent<>>,
+        property_set_index_t<properties_t<In>, is_single<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
 
 template <class In, class FN>
 struct submit_transform_out_1 {
   FN fn_;
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>)
+    (requires Receiver<Out> && Invocable<FN, Out> && SenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
   void operator()(In& in, Out out) const {
     ::pushmi::submit(in, fn_(std::move(out)));
   }
@@ -104,10 +99,10 @@ struct submit_transform_out_1 {
 template <class In, class FN>
 struct submit_transform_out_2 {
   FN fn_;
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Receiver<Out>)
-  void operator()(In& in, TP tp, Out out) const {
-    ::pushmi::submit(in, tp, fn_(std::move(out)));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Receiver<Out> && Invocable<FN, Out> && ConstrainedSenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
+  void operator()(In& in, CV cv, Out out) const {
+    ::pushmi::submit(in, cv, fn_(std::move(out)));
   }
 };
 template <class In, class SDSF>
@@ -122,43 +117,41 @@ struct submit_transform_out_3 {
 template <class In, class TSDSF>
 struct submit_transform_out_4 {
   TSDSF tsdsf_;
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Receiver<Out> && Invocable<const TSDSF&, In&, TP, Out>)
-  void operator()(In& in, TP tp, Out out) const {
-    tsdsf_(in, tp, std::move(out));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Receiver<Out> && Invocable<const TSDSF&, In&, CV, Out>)
+  void operator()(In& in, CV cv, Out out) const {
+    tsdsf_(in, cv, std::move(out));
   }
 };
 
 PUSHMI_TEMPLATE(class In, class FN)
   (requires Sender<In> && SemiMovable<FN>
-    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
+    PUSHMI_BROKEN_SUBSUMPTION(&& not ConstrainedSender<In>))
 auto submit_transform_out(FN fn) {
   return on_submit(submit_transform_out_1<In, FN>{std::move(fn)});
 }
 
 PUSHMI_TEMPLATE(class In, class FN)
-  (requires TimeSender<In> && SemiMovable<FN>)
+  (requires ConstrainedSender<In> && SemiMovable<FN>)
 auto submit_transform_out(FN fn){
-  return on_submit(submit_transform_out_2<In, FN>{std::move(fn)});
+  return submit_transform_out_2<In, FN>{std::move(fn)};
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
   (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>
-    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
+    PUSHMI_BROKEN_SUBSUMPTION(&& not ConstrainedSender<In>))
 auto submit_transform_out(SDSF sdsf, TSDSF) {
-  return on_submit(submit_transform_out_3<In, SDSF>{std::move(sdsf)});
+  return submit_transform_out_3<In, SDSF>{std::move(sdsf)};
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
-  (requires TimeSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+  (requires ConstrainedSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
 auto submit_transform_out(SDSF, TSDSF tsdsf) {
-  return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
+  return submit_transform_out_4<In, TSDSF>{std::move(tsdsf)};
 }
 
 template <class Cardinality, bool IsConstrained = false, bool IsTime = false, bool IsFlow = false>
 struct make_sender;
-template <>
-struct make_sender<is_none<>> : construct_deduced<sender> {};
 template <>
 struct make_sender<is_single<>> : construct_deduced<single_sender> {};
 template <>
@@ -178,7 +171,7 @@ PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   auto operator()(In in, FN&&... fn) const {
     using MakeSender =
         make_sender<
-            property_set_index_t<properties_t<In>, is_silent<>>,
+            property_set_index_t<properties_t<In>, is_single<>>,
             property_query_v<properties_t<In>, is_constrained<>>,
             property_query_v<properties_t<In>, is_time<>>,
             property_query_v<properties_t<In>, is_flow<>>>;
@@ -194,10 +187,10 @@ PUSHMI_TEMPLATE(
     bool TimeSingleSenderRequires)
   (requires Sender<In> && Receiver<Out>)
 constexpr bool sender_requires_from() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out>) (
     return TimeSingleSenderRequires;
   ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out, is_single<>>) (
+    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
       return SingleSenderRequires;
     ) else (
       PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
@@ -210,19 +203,19 @@ constexpr bool sender_requires_from() {
 
 struct set_value_fn {
 private:
-  template <class V>
+  template <class... VN>
   struct impl {
-    V v_;
+    std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out, is_single<>>)
+      (requires ReceiveValue<Out, VN...>)
     void operator()(Out out) {
-      ::pushmi::set_value(out, std::move(v_));
+      ::pushmi::apply(::pushmi::set_value, std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(vn_)));
     }
   };
 public:
-  template <class V>
-  auto operator()(V&& v) const {
-    return impl<std::decay_t<V>>{(V&&) v};
+  template <class... VN>
+  auto operator()(VN&&... vn) const {
+    return impl<std::decay_t<VN>...>{(VN&&) vn...};
   }
 };
 
@@ -232,7 +225,7 @@ private:
   struct impl {
     E e_;
     PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out, E>)
+      (requires ReceiveError<Out, E>)
     void operator()(Out out) {
       ::pushmi::set_error(out, std::move(e_));
     }
@@ -257,24 +250,6 @@ private:
 public:
   auto operator()() const {
     return impl{};
-  }
-};
-
-struct set_next_fn {
-private:
-  template <class V>
-  struct impl {
-    V v_;
-    PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out, is_many<>>)
-    void operator()(Out out) {
-      ::pushmi::set_next(out, std::move(v_));
-    }
-  };
-public:
-  template <class V>
-  auto operator()(V&& v) const {
-    return impl<std::decay_t<V>>{(V&&) v};
   }
 };
 
@@ -383,7 +358,6 @@ namespace extension_operators {
 PUSHMI_INLINE_VAR constexpr detail::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr detail::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr detail::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr detail::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};

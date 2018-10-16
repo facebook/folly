@@ -26,15 +26,10 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(S& s, E e) noexcept(noexcept(s.error(std::move(e)))) {
   s.error(std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>().value(std::declval<V&&>())))
-void set_value(S& s, V&& v) noexcept(noexcept(s.value((V&&) v))) {
-  s.value((V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>().next(std::declval<V&&>())))
-void set_next(S& s, V&& v) noexcept(noexcept(s.next((V&&) v))) {
-  s.next((V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires (std::declval<S&>().value(std::declval<VN&&>()...)))
+void set_value(S& s, VN&&... vn) noexcept(noexcept(s.value((VN&&) vn...))) {
+  s.value((VN&&) vn...);
 }
 
 PUSHMI_TEMPLATE (class S, class Up)
@@ -50,7 +45,9 @@ auto executor(SD& sd) noexcept(noexcept(sd.executor())) {
 }
 
 PUSHMI_TEMPLATE (class SD, class Out)
-  (requires requires (std::declval<SD&>().submit(std::declval<Out>())))
+  (requires requires (
+    std::declval<SD&>().submit(std::declval<Out>())
+  ))
 void submit(SD& sd, Out out) noexcept(noexcept(sd.submit(std::move(out)))) {
   sd.submit(std::move(out));
 }
@@ -64,7 +61,7 @@ auto top(SD& sd) noexcept(noexcept(sd.top())) {
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>().submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>().top()),
+        std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -86,15 +83,10 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(S& s, E e) noexcept(noexcept(s->error(std::move(e)))) {
   s->error(std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>()->value(std::declval<V&&>())))
-void set_value(S& s, V&& v) noexcept(noexcept(s->value((V&&) v))) {
-  s->value((V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>()->next(std::declval<V&&>())))
-void set_next(S& s, V&& v) noexcept(noexcept(s->next((V&&) v))) {
-  s->next((V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires (std::declval<S&>()->value(std::declval<VN&&>()...)))
+void set_value(S& s, VN&&... vn) noexcept(noexcept(s->value((VN&&) vn...))) {
+  s->value((VN&&) vn...);
 }
 
 PUSHMI_TEMPLATE (class S, class Up)
@@ -124,7 +116,7 @@ auto top(SD& sd) noexcept(noexcept(sd->top())) {
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>()->submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>()->top()),
+        std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -136,26 +128,25 @@ void submit(SD& sd, TP tp, Out out)
 // add support for std::promise externally
 //
 
+// std::promise does not support the done signal.
+// either set_value or set_error must be called
 template <class T>
-void set_done(std::promise<T>& p) noexcept(
-    noexcept(p.set_exception(std::make_exception_ptr(0)))) {
-  p.set_exception(std::make_exception_ptr(
-      std::logic_error("std::promise does not support done.")));
-}
-inline void set_done(std::promise<void>& p) noexcept(noexcept(p.set_value())) {
-  p.set_value();
-}
+void set_done(std::promise<T>& p) noexcept {}
+
 template <class T>
-void set_error(std::promise<T>& s, std::exception_ptr e) noexcept {
-  s.set_exception(std::move(e));
+void set_error(std::promise<T>& p, std::exception_ptr e) noexcept {
+  p.set_exception(std::move(e));
 }
 template <class T, class E>
-void set_error(std::promise<T>& s, E e) noexcept {
-  s.set_exception(std::make_exception_ptr(std::move(e)));
+void set_error(std::promise<T>& p, E e) noexcept {
+  p.set_exception(std::make_exception_ptr(std::move(e)));
 }
 template <class T>
-void set_value(std::promise<T>& s, T t) {
-  s.set_value(std::move(t));
+void set_value(std::promise<T>& p, T t) noexcept(noexcept(p.set_value(std::move(t)))) {
+  p.set_value(std::move(t));
+}
+inline void set_value(std::promise<void>& p) noexcept(noexcept(p.set_value())) {
+  p.set_value();
 }
 
 //
@@ -173,17 +164,11 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(std::reference_wrapper<S> s, E e) noexcept {
   set_error(s.get(), std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires ( set_value(std::declval<S&>(), std::declval<V&&>()) ))
-void set_value(std::reference_wrapper<S> s, V&& v) noexcept(
-  noexcept(set_value(s.get(), (V&&) v))) {
-  set_value(s.get(), (V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires ( set_next(std::declval<S&>(), std::declval<V&&>()) ))
-void set_next(std::reference_wrapper<S> s, V&& v) noexcept(
-  noexcept(set_next(s.get(), (V&&) v))) {
-  set_next(s.get(), (V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires ( set_value(std::declval<S&>(), std::declval<VN&&>()...) ))
+void set_value(std::reference_wrapper<S> s, VN&&... vn) noexcept(
+  noexcept(set_value(s.get(), (VN&&) vn...))) {
+  set_value(s.get(), (VN&&) vn...);
 }
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires ( set_starting(std::declval<S&>(), std::declval<Up&&>()) ))
@@ -202,6 +187,7 @@ void submit(std::reference_wrapper<SD> sd, Out out) noexcept(
   noexcept(submit(sd.get(), std::move(out)))) {
   submit(sd.get(), std::move(out));
 }
+
 PUSHMI_TEMPLATE (class SD)
   (requires requires ( top(std::declval<SD&>()) ))
 auto top(std::reference_wrapper<SD> sd) noexcept(noexcept(top(sd.get()))) {
@@ -248,30 +234,15 @@ struct set_error_fn {
   }
 };
 struct set_value_fn {
-  PUSHMI_TEMPLATE (class S, class V)
+  PUSHMI_TEMPLATE (class S, class... VN)
     (requires requires (
-      set_value(std::declval<S&>(), std::declval<V&&>()),
+      set_value(std::declval<S&>(), std::declval<VN&&>()...),
       set_error(std::declval<S&>(), std::current_exception())
     ))
-  void operator()(S&& s, V&& v) const
-      noexcept(noexcept(set_value(s, (V&&) v))) {
+  void operator()(S&& s, VN&&... vn) const
+      noexcept(noexcept(set_value(s, (VN&&) vn...))) {
     try {
-      set_value(s, (V&&) v);
-    } catch (...) {
-      set_error(s, std::current_exception());
-    }
-  }
-};
-struct set_next_fn {
-  PUSHMI_TEMPLATE (class S, class V)
-    (requires requires (
-      set_next(std::declval<S&>(), std::declval<V&&>()),
-      set_error(std::declval<S&>(), std::current_exception())
-    ))
-  void operator()(S&& s, V&& v) const
-      noexcept(noexcept(set_next(s, (V&&) v))) {
-    try {
-      set_next(s, (V&&) v);
+      set_value(s, (VN&&) vn...);
     } catch (...) {
       set_error(s, std::current_exception());
     }
@@ -314,6 +285,15 @@ struct do_submit_fn {
     submit(s, std::move(out));
   }
 
+  PUSHMI_TEMPLATE (class SD, class Out)
+    (requires requires (
+      submit(std::declval<SD&>(), top(std::declval<SD&>()), std::declval<Out>())
+    ))
+  void operator()(SD&& s, Out out) const
+      noexcept(noexcept(submit(s, top(s), std::move(out)))) {
+    submit(s, top(s), std::move(out));
+  }
+
   PUSHMI_TEMPLATE (class SD, class TP, class Out)
     (requires requires (
       submit(
@@ -342,7 +322,6 @@ struct get_top_fn {
 PUSHMI_INLINE_VAR constexpr __adl::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr __adl::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr __adl::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr __adl::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
@@ -351,11 +330,11 @@ PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
 
 template <class T>
 struct property_set_traits<std::promise<T>> {
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
 };
 template <>
 struct property_set_traits<std::promise<void>> {
-  using properties = property_set<is_receiver<>, is_none<>>;
+  using properties = property_set<is_receiver<>>;
 };
 
 } // namespace pushmi

@@ -6,7 +6,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../single.h"
+#include "../receiver.h"
 #include "submit.h"
 #include "extension_operators.h"
 #include "via.h"
@@ -16,7 +16,9 @@ namespace pushmi {
 template<typename In>
 struct send_via {
     In in;
-    template<class... AN>
+    PUSHMI_TEMPLATE(class... AN)
+      (requires Invocable<decltype(::pushmi::operators::via), AN...> &&
+      Invocable<invoke_result_t<decltype(::pushmi::operators::via), AN...>, In>)
     auto via(AN&&... an) {
         return in | ::pushmi::operators::via((AN&&) an...);
     }

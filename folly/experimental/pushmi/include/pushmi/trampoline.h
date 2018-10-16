@@ -38,11 +38,11 @@ class trampoline;
 template <class E = std::exception_ptr>
 class delegator : _pipeable_sender_ {
  public:
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   delegator executor() { return {}; }
   PUSHMI_TEMPLATE (class SingleReceiver)
-    (requires Receiver<remove_cvref_t<SingleReceiver>, is_single<>>)
+    (requires ReceiveValue<remove_cvref_t<SingleReceiver>, any_executor_ref<E>>)
   void submit(SingleReceiver&& what) {
     trampoline<E>::submit(
         ownordelegate, std::forward<SingleReceiver>(what));
@@ -52,10 +52,11 @@ class delegator : _pipeable_sender_ {
 template <class E = std::exception_ptr>
 class nester : _pipeable_sender_ {
  public:
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   nester executor() { return {}; }
-  template <class SingleReceiver>
+  PUSHMI_TEMPLATE (class SingleReceiver)
+    (requires ReceiveValue<remove_cvref_t<SingleReceiver>, any_executor_ref<E>>)
   void submit(SingleReceiver&& what) {
     trampoline<E>::submit(ownornest, std::forward<SingleReceiver>(what));
   }
@@ -66,7 +67,7 @@ class trampoline {
  private:
   using error_type = std::decay_t<E>;
   using work_type =
-     any_single<any_executor_ref<error_type>, error_type>;
+     any_receiver<error_type, any_executor_ref<error_type>>;
   using queue_type = std::deque<work_type>;
   using pending_type = std::tuple<int, queue_type, bool>;
 
@@ -121,6 +122,7 @@ class trampoline {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
           ::pushmi::set_value(awhat, that);
+          ::pushmi::set_done(awhat);
         }
       } catch(...) {
         --depth(*owner());
@@ -179,6 +181,7 @@ class trampoline {
       while (go) {
         repeat(pending_store) = false;
         ::pushmi::set_value(awhat, that);
+        ::pushmi::set_done(awhat);
         go = repeat(pending_store);
       }
     } else {
@@ -193,8 +196,8 @@ class trampoline {
     while (!pending(pending_store).empty()) {
       auto what = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
-      any_executor_ref<error_type> anythis{that};
-      ::pushmi::set_value(what, anythis);
+      ::pushmi::set_value(what, any_executor_ref<error_type>{that});
+      ::pushmi::set_done(what);
     }
   }
 };

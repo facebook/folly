@@ -4,13 +4,13 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "single.h"
+#include "receiver.h"
 #include "executor.h"
 #include "inline.h"
 
 namespace pushmi {
 
-template <class V, class E, class CV>
+template <class E, class CV, class... VN>
 class any_constrained_single_sender {
   union data {
     void* pobj_ = nullptr;
@@ -25,11 +25,11 @@ class any_constrained_single_sender {
     static void s_op(data&, data*) {}
     static CV s_top(data&) { return CV{}; }
     static any_constrained_executor<E, CV> s_executor(data&) { return {}; }
-    static void s_submit(data&, CV, single<V, E>) {}
+    static void s_submit(data&, CV, any_receiver<E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     CV (*top_)(data&) = vtable::s_top;
     any_constrained_executor<E, CV> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, CV, single<V, E>) = vtable::s_submit;
+    void (*submit_)(data&, CV, any_receiver<E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -48,7 +48,7 @@ class any_constrained_single_sender {
       static any_constrained_executor<E, CV> executor(data& src) {
         return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, CV at, single<V, E> out) {
+      static void submit(data& src, CV at, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>(src.pobj_),
             std::move(at),
@@ -75,7 +75,7 @@ class any_constrained_single_sender {
       static any_constrained_executor<E, CV> executor(data& src) {
         return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, CV cv, single<V, E> out) {
+      static void submit(data& src, CV cv, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(cv),
@@ -100,7 +100,7 @@ class any_constrained_single_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<V, E>>)
+    (requires ConstrainedSenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>)
   explicit any_constrained_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
   : any_constrained_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {
   }
@@ -118,15 +118,15 @@ class any_constrained_single_sender {
   any_constrained_executor<E, CV> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(CV at, single<V, E> out) {
+  void submit(CV at, any_receiver<E, VN...> out) {
     vptr_->submit_(data_, std::move(at), std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E, class CV>
-constexpr typename any_constrained_single_sender<V, E, CV>::vtable const
-    any_constrained_single_sender<V, E, CV>::noop_;
+template <class E, class CV, class... VN>
+constexpr typename any_constrained_single_sender<E, CV, VN...>::vtable const
+    any_constrained_single_sender<E, CV, VN...>::noop_;
 
 template<class SF, class ZF, class EXF>
   // (requires Invocable<ZF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
@@ -151,7 +151,7 @@ class constrained_single_sender<SF, ZF, EXF> {
   }
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class CV, class Out)
-    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+    (requires Regular<CV> && Receiver<Out> &&
       Invocable<SF&, CV, Out>)
   void submit(CV cv, Out out) {
     sf_(std::move(cv), std::move(out));
@@ -184,7 +184,7 @@ class constrained_single_sender<Data, DSF, DZF, DEXF> {
   }
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class CV, class Out)
-    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+    (requires Regular<CV> && Receiver<Out> &&
       Invocable<DSF&, Data&, CV, Out>)
   void submit(CV cv, Out out) {
     sf_(data_, std::move(cv), std::move(out));
@@ -276,14 +276,5 @@ constrained_single_sender(Data, DSF, DEXF, DZF) -> constrained_single_sender<Dat
 template<>
 struct construct_deduced<constrained_single_sender>
   : make_constrained_single_sender_fn {};
-
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     class CV = std::chrono::system_clock::time_point,
-//     ConstrainedSenderTo<single<V, E>, is_single<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return constrained_single_sender<V, E>{std::move(w)};
-// }
 
 } // namespace pushmi

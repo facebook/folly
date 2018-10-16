@@ -23,10 +23,6 @@ struct property_set;
 
 // trait & tag types
 template<class...TN>
-struct is_silent;
-template<class...TN>
-struct is_none;
-template<class...TN>
 struct is_single;
 template<class...TN>
 struct is_many;
@@ -40,24 +36,39 @@ struct is_receiver;
 template<class...TN>
 struct is_sender;
 
+template<class... TN>
+struct is_executor;
+
 template<class...TN>
 struct is_time;
 template<class...TN>
 struct is_constrained;
 
+template<class... TN>
+struct is_always_blocking;
+
+template<class... TN>
+struct is_never_blocking;
+
+template<class... TN>
+struct is_maybe_blocking;
+
+template<class... TN>
+struct is_fifo_sequence;
+
+template<class... TN>
+struct is_concurrent_sequence;
+
 // implementation types
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class none;
+class receiver;
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class flow_receiver;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class sender;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class single;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class many;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_sender;
@@ -72,33 +83,56 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class time_single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_single;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_single_sender;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_many;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_many_sender;
 
-
-template<
-  class V,
-  class E = std::exception_ptr>
-class any_single_sender;
-
-template<
-  class V,
+template <
   class E = std::exception_ptr,
-  class C = std::ptrdiff_t>
+  class... VN>
+class any_receiver;
+
+template <
+  class PE=std::exception_ptr,
+  class PV=std::ptrdiff_t,
+  class E=PE,
+  class... VN>
+class any_flow_receiver;
+
+template<
+  class E = std::exception_ptr,
+  class... VN>
+struct any_single_sender;
+
+template<
+  class E = std::exception_ptr,
+  class... VN>
+struct any_many_sender;
+
+template <
+  class PE=std::exception_ptr,
+  class E=PE,
+  class... VN>
+class any_flow_single_sender;
+
+template <
+  class PE=std::exception_ptr,
+  class PV=std::ptrdiff_t,
+  class E=PE,
+  class... VN>
+class any_flow_many_sender;
+
+template<
+  class E = std::exception_ptr,
+  class C = std::ptrdiff_t,
+  class... VN>
 struct any_constrained_single_sender;
 
 template<
-  class V,
   class E = std::exception_ptr,
-  class TP = std::chrono::system_clock::time_point>
+  class TP = std::chrono::system_clock::time_point,
+  class... VN>
 class any_time_single_sender;
 
 template<

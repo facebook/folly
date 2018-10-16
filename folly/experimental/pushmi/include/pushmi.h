@@ -180,7 +180,7 @@ struct select<false> {
 
 // disable buggy compatibility warning about "requires" and "concept" being
 // C++20 keywords.
-#if defined(__clang__)
+#if defined(__clang__) && not defined(__APPLE__)
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN \
     _Pragma("GCC diagnostic push") \
     _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"") \
@@ -190,7 +190,17 @@ struct select<false> {
     /**/
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END \
     _Pragma("GCC diagnostic pop")
+#elif defined(__clang__) && defined(__APPLE__)
+#define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN \
+    _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"") \
+    _Pragma("GCC diagnostic ignored \"-Wpragmas\"") \
+    _Pragma("GCC diagnostic ignored \"-Wfloat-equal\"") \
+    /**/
+#define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END \
+    _Pragma("GCC diagnostic pop")
 #else
+
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END
 // #pragma GCC diagnostic push
@@ -1123,10 +1133,6 @@ struct property_set;
 
 // trait & tag types
 template<class...TN>
-struct is_silent;
-template<class...TN>
-struct is_none;
-template<class...TN>
 struct is_single;
 template<class...TN>
 struct is_many;
@@ -1140,24 +1146,39 @@ struct is_receiver;
 template<class...TN>
 struct is_sender;
 
+template<class... TN>
+struct is_executor;
+
 template<class...TN>
 struct is_time;
 template<class...TN>
 struct is_constrained;
 
+template<class... TN>
+struct is_always_blocking;
+
+template<class... TN>
+struct is_never_blocking;
+
+template<class... TN>
+struct is_maybe_blocking;
+
+template<class... TN>
+struct is_fifo_sequence;
+
+template<class... TN>
+struct is_concurrent_sequence;
+
 // implementation types
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class none;
+class receiver;
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class flow_receiver;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class sender;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class single;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class many;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_sender;
@@ -1172,33 +1193,56 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class time_single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_single;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_single_sender;
-
-template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_many;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_many_sender;
 
-
-template<
-  class V,
-  class E = std::exception_ptr>
-class any_single_sender;
-
-template<
-  class V,
+template <
   class E = std::exception_ptr,
-  class C = std::ptrdiff_t>
+  class... VN>
+class any_receiver;
+
+template <
+  class PE=std::exception_ptr,
+  class PV=std::ptrdiff_t,
+  class E=PE,
+  class... VN>
+class any_flow_receiver;
+
+template<
+  class E = std::exception_ptr,
+  class... VN>
+struct any_single_sender;
+
+template<
+  class E = std::exception_ptr,
+  class... VN>
+struct any_many_sender;
+
+template <
+  class PE=std::exception_ptr,
+  class E=PE,
+  class... VN>
+class any_flow_single_sender;
+
+template <
+  class PE=std::exception_ptr,
+  class PV=std::ptrdiff_t,
+  class E=PE,
+  class... VN>
+class any_flow_many_sender;
+
+template<
+  class E = std::exception_ptr,
+  class C = std::ptrdiff_t,
+  class... VN>
 struct any_constrained_single_sender;
 
 template<
-  class V,
   class E = std::exception_ptr,
-  class TP = std::chrono::system_clock::time_point>
+  class TP = std::chrono::system_clock::time_point,
+  class... VN>
 class any_time_single_sender;
 
 template<
@@ -1560,15 +1604,10 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(S& s, E e) noexcept(noexcept(s.error(std::move(e)))) {
   s.error(std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>().value(std::declval<V&&>())))
-void set_value(S& s, V&& v) noexcept(noexcept(s.value((V&&) v))) {
-  s.value((V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>().next(std::declval<V&&>())))
-void set_next(S& s, V&& v) noexcept(noexcept(s.next((V&&) v))) {
-  s.next((V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires (std::declval<S&>().value(std::declval<VN&&>()...)))
+void set_value(S& s, VN&&... vn) noexcept(noexcept(s.value((VN&&) vn...))) {
+  s.value((VN&&) vn...);
 }
 
 PUSHMI_TEMPLATE (class S, class Up)
@@ -1584,7 +1623,9 @@ auto executor(SD& sd) noexcept(noexcept(sd.executor())) {
 }
 
 PUSHMI_TEMPLATE (class SD, class Out)
-  (requires requires (std::declval<SD&>().submit(std::declval<Out>())))
+  (requires requires (
+    std::declval<SD&>().submit(std::declval<Out>())
+  ))
 void submit(SD& sd, Out out) noexcept(noexcept(sd.submit(std::move(out)))) {
   sd.submit(std::move(out));
 }
@@ -1598,7 +1639,7 @@ auto top(SD& sd) noexcept(noexcept(sd.top())) {
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>().submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>().top()),
+        std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -1620,15 +1661,10 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(S& s, E e) noexcept(noexcept(s->error(std::move(e)))) {
   s->error(std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>()->value(std::declval<V&&>())))
-void set_value(S& s, V&& v) noexcept(noexcept(s->value((V&&) v))) {
-  s->value((V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires (std::declval<S&>()->next(std::declval<V&&>())))
-void set_next(S& s, V&& v) noexcept(noexcept(s->next((V&&) v))) {
-  s->next((V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires (std::declval<S&>()->value(std::declval<VN&&>()...)))
+void set_value(S& s, VN&&... vn) noexcept(noexcept(s->value((VN&&) vn...))) {
+  s->value((VN&&) vn...);
 }
 
 PUSHMI_TEMPLATE (class S, class Up)
@@ -1658,7 +1694,7 @@ auto top(SD& sd) noexcept(noexcept(sd->top())) {
 PUSHMI_TEMPLATE (class SD, class TP, class Out)
   (requires requires (
     std::declval<SD&>()->submit(
-        std::declval<TP(&)(TP)>()(std::declval<SD&>()->top()),
+        std::declval<TP(&)(TP)>()(top(std::declval<SD&>())),
         std::declval<Out>())
   ))
 void submit(SD& sd, TP tp, Out out)
@@ -1670,26 +1706,25 @@ void submit(SD& sd, TP tp, Out out)
 // add support for std::promise externally
 //
 
+// std::promise does not support the done signal.
+// either set_value or set_error must be called
 template <class T>
-void set_done(std::promise<T>& p) noexcept(
-    noexcept(p.set_exception(std::make_exception_ptr(0)))) {
-  p.set_exception(std::make_exception_ptr(
-      std::logic_error("std::promise does not support done.")));
-}
-inline void set_done(std::promise<void>& p) noexcept(noexcept(p.set_value())) {
-  p.set_value();
-}
+void set_done(std::promise<T>& p) noexcept {}
+
 template <class T>
-void set_error(std::promise<T>& s, std::exception_ptr e) noexcept {
-  s.set_exception(std::move(e));
+void set_error(std::promise<T>& p, std::exception_ptr e) noexcept {
+  p.set_exception(std::move(e));
 }
 template <class T, class E>
-void set_error(std::promise<T>& s, E e) noexcept {
-  s.set_exception(std::make_exception_ptr(std::move(e)));
+void set_error(std::promise<T>& p, E e) noexcept {
+  p.set_exception(std::make_exception_ptr(std::move(e)));
 }
 template <class T>
-void set_value(std::promise<T>& s, T t) {
-  s.set_value(std::move(t));
+void set_value(std::promise<T>& p, T t) noexcept(noexcept(p.set_value(std::move(t)))) {
+  p.set_value(std::move(t));
+}
+inline void set_value(std::promise<void>& p) noexcept(noexcept(p.set_value())) {
+  p.set_value();
 }
 
 //
@@ -1707,17 +1742,11 @@ PUSHMI_TEMPLATE (class S, class E)
 void set_error(std::reference_wrapper<S> s, E e) noexcept {
   set_error(s.get(), std::move(e));
 }
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires ( set_value(std::declval<S&>(), std::declval<V&&>()) ))
-void set_value(std::reference_wrapper<S> s, V&& v) noexcept(
-  noexcept(set_value(s.get(), (V&&) v))) {
-  set_value(s.get(), (V&&) v);
-}
-PUSHMI_TEMPLATE (class S, class V)
-  (requires requires ( set_next(std::declval<S&>(), std::declval<V&&>()) ))
-void set_next(std::reference_wrapper<S> s, V&& v) noexcept(
-  noexcept(set_next(s.get(), (V&&) v))) {
-  set_next(s.get(), (V&&) v);
+PUSHMI_TEMPLATE (class S, class... VN)
+  (requires requires ( set_value(std::declval<S&>(), std::declval<VN&&>()...) ))
+void set_value(std::reference_wrapper<S> s, VN&&... vn) noexcept(
+  noexcept(set_value(s.get(), (VN&&) vn...))) {
+  set_value(s.get(), (VN&&) vn...);
 }
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires ( set_starting(std::declval<S&>(), std::declval<Up&&>()) ))
@@ -1736,6 +1765,7 @@ void submit(std::reference_wrapper<SD> sd, Out out) noexcept(
   noexcept(submit(sd.get(), std::move(out)))) {
   submit(sd.get(), std::move(out));
 }
+
 PUSHMI_TEMPLATE (class SD)
   (requires requires ( top(std::declval<SD&>()) ))
 auto top(std::reference_wrapper<SD> sd) noexcept(noexcept(top(sd.get()))) {
@@ -1782,30 +1812,15 @@ struct set_error_fn {
   }
 };
 struct set_value_fn {
-  PUSHMI_TEMPLATE (class S, class V)
+  PUSHMI_TEMPLATE (class S, class... VN)
     (requires requires (
-      set_value(std::declval<S&>(), std::declval<V&&>()),
+      set_value(std::declval<S&>(), std::declval<VN&&>()...),
       set_error(std::declval<S&>(), std::current_exception())
     ))
-  void operator()(S&& s, V&& v) const
-      noexcept(noexcept(set_value(s, (V&&) v))) {
+  void operator()(S&& s, VN&&... vn) const
+      noexcept(noexcept(set_value(s, (VN&&) vn...))) {
     try {
-      set_value(s, (V&&) v);
-    } catch (...) {
-      set_error(s, std::current_exception());
-    }
-  }
-};
-struct set_next_fn {
-  PUSHMI_TEMPLATE (class S, class V)
-    (requires requires (
-      set_next(std::declval<S&>(), std::declval<V&&>()),
-      set_error(std::declval<S&>(), std::current_exception())
-    ))
-  void operator()(S&& s, V&& v) const
-      noexcept(noexcept(set_next(s, (V&&) v))) {
-    try {
-      set_next(s, (V&&) v);
+      set_value(s, (VN&&) vn...);
     } catch (...) {
       set_error(s, std::current_exception());
     }
@@ -1848,6 +1863,15 @@ struct do_submit_fn {
     submit(s, std::move(out));
   }
 
+  PUSHMI_TEMPLATE (class SD, class Out)
+    (requires requires (
+      submit(std::declval<SD&>(), top(std::declval<SD&>()), std::declval<Out>())
+    ))
+  void operator()(SD&& s, Out out) const
+      noexcept(noexcept(submit(s, top(s), std::move(out)))) {
+    submit(s, top(s), std::move(out));
+  }
+
   PUSHMI_TEMPLATE (class SD, class TP, class Out)
     (requires requires (
       submit(
@@ -1876,7 +1900,6 @@ struct get_top_fn {
 PUSHMI_INLINE_VAR constexpr __adl::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr __adl::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr __adl::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr __adl::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
@@ -1885,11 +1908,11 @@ PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
 
 template <class T>
 struct property_set_traits<std::promise<T>> {
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
 };
 template <>
 struct property_set_traits<std::promise<void>> {
-  using properties = property_set<is_receiver<>, is_none<>>;
+  using properties = property_set<is_receiver<>>;
 };
 
 } // namespace pushmi
@@ -2067,6 +2090,32 @@ template<class PS, class... ExpectedN>
 PUSHMI_INLINE_VAR constexpr bool property_query_v =
   property_query<PS, ExpectedN...>::value;
 
+
+// query for categories on types with properties.
+
+namespace detail {
+template<class CIn, class POut>
+std::true_type category_query_fn(property_set_element<POut, CIn>*);
+template<class C>
+std::false_type category_query_fn(void*);
+
+template<class PS, class... ExpectedN>
+struct category_query_impl : bool_<
+  and_v<decltype(category_query_fn<ExpectedN>(
+      (properties_t<PS>*)nullptr))::value...>> {};
+} //namespace detail
+
+template<class PS, class... ExpectedN>
+struct category_query
+  : std::conditional_t<
+      Properties<PS> && not Or<Property<ExpectedN>...>,
+      detail::category_query_impl<PS, ExpectedN...>,
+      std::false_type> {};
+
+template<class PS, class... ExpectedN>
+PUSHMI_INLINE_VAR constexpr bool category_query_v =
+  category_query<PS, ExpectedN...>::value;
+
 } // namespace pushmi
 // clang-format off
 //#pragma once
@@ -2087,6 +2136,17 @@ namespace pushmi {
 
 struct cardinality_category {};
 
+// Trait
+template<class PS>
+struct has_cardinality : category_query<PS, cardinality_category> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool has_cardinality_v = has_cardinality<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept Cardinality,
+    has_cardinality_v<PS>
+);
+
 // flow affects both sender and receiver
 
 struct flow_category {};
@@ -2103,47 +2163,20 @@ struct executor_category {};
 
 // time and constrained are mutually exclusive refinements of sender (time is a special case of constrained and may be folded in later)
 
+// blocking affects senders
 
-// Silent trait and tag
-template<class... TN>
-struct is_silent;
-// Tag
-template<>
-struct is_silent<> { using property_category = cardinality_category; };
-// Trait
-template<class PS>
-struct is_silent<PS> : property_query<PS, is_silent<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_silent_v = is_silent<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept Silent,
-    is_silent_v<PS>
-);
+struct blocking_category {};
 
-// None trait and tag
-template<class... TN>
-struct is_none;
-// Tag
-template<>
-struct is_none<> : is_silent<> {};
-// Trait
-template<class PS>
-struct is_none<PS> : property_query<PS, is_none<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_none_v = is_none<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept None,
-    Silent<PS> && is_none_v<PS>
-);
+// sequence affects senders
+
+struct sequence_category {};
 
 // Single trait and tag
 template<class... TN>
 struct is_single;
 // Tag
 template<>
-struct is_single<> : is_none<> {};
+struct is_single<> { using property_category = cardinality_category; };
 // Trait
 template<class PS>
 struct is_single<PS> : property_query<PS, is_single<>> {};
@@ -2152,7 +2185,7 @@ PUSHMI_INLINE_VAR constexpr bool is_single_v = is_single<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Single,
-    None<PS> && is_single_v<PS>
+    is_single_v<PS>
 );
 
 // Many trait and tag
@@ -2160,7 +2193,7 @@ template<class... TN>
 struct is_many;
 // Tag
 template<>
-struct is_many<> : is_none<> {}; // many::value() does not terminate, so it is not a refinement of single
+struct is_many<> { using property_category = cardinality_category; }; // many::value() does not terminate, so it is not a refinement of single
 // Trait
 template<class PS>
 struct is_many<PS> : property_query<PS, is_many<>> {};
@@ -2169,7 +2202,7 @@ PUSHMI_INLINE_VAR constexpr bool is_many_v = is_many<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Many,
-    None<PS> && is_many_v<PS>
+    is_many_v<PS>
 );
 
 // Flow trait and tag
@@ -2274,57 +2307,127 @@ PUSHMI_CONCEPT_DEF(
     is_time_v<PS> && is_constrained_v<PS> && is_sender_v<PS>
 );
 
+// AlwaysBlocking trait and tag
+template<class... TN>
+struct is_always_blocking;
+// Tag
+template<>
+struct is_always_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_always_blocking<PS> : property_query<PS, is_always_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_always_blocking_v = is_always_blocking<PS>::value;
 PUSHMI_CONCEPT_DEF(
-  template (class S, class... PropertyN)
-  (concept Receiver)(S, PropertyN...),
-    requires (S& s) (
-      ::pushmi::set_done(s)
+  template (class PS)
+  concept AlwaysBlocking,
+    is_always_blocking_v<PS> && is_sender_v<PS>
+);
+
+// NeverBlocking trait and tag
+template<class... TN>
+struct is_never_blocking;
+// Tag
+template<>
+struct is_never_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_never_blocking<PS> : property_query<PS, is_never_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_never_blocking_v = is_never_blocking<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept NeverBlocking,
+    is_never_blocking_v<PS> && is_sender_v<PS>
+);
+
+// MaybeBlocking trait and tag
+template<class... TN>
+struct is_maybe_blocking;
+// Tag
+template<>
+struct is_maybe_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_maybe_blocking<PS> : property_query<PS, is_maybe_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_maybe_blocking_v = is_maybe_blocking<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept MaybeBlocking,
+    is_maybe_blocking_v<PS> && is_sender_v<PS>
+);
+
+// FifoSequence trait and tag
+template<class... TN>
+struct is_fifo_sequence;
+// Tag
+template<>
+struct is_fifo_sequence<> { using property_category = sequence_category; };
+// Trait
+template<class PS>
+struct is_fifo_sequence<PS> : property_query<PS, is_fifo_sequence<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_fifo_sequence_v = is_fifo_sequence<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept FifoSequence,
+    is_fifo_sequence_v<PS> && is_sender_v<PS>
+);
+
+// ConcurrentSequence trait and tag
+template<class... TN>
+struct is_concurrent_sequence;
+// Tag
+template<>
+struct is_concurrent_sequence<> { using property_category = sequence_category; };
+// Trait
+template<class PS>
+struct is_concurrent_sequence<PS> : property_query<PS, is_concurrent_sequence<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_concurrent_sequence_v = is_concurrent_sequence<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept ConcurrentSequence,
+    is_concurrent_sequence_v<PS> && is_sender_v<PS>
+);
+
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class... PropertyN)
+  (concept Receiver)(R, PropertyN...),
+    requires (R& r) (
+      ::pushmi::set_done(r),
+      ::pushmi::set_error(r, std::exception_ptr{})
     ) &&
-    SemiMovable<S> &&
-    property_query_v<S, PropertyN...> &&
-    is_receiver_v<S> &&
-    !is_sender_v<S>
+    SemiMovable<R> &&
+    property_query_v<R, PropertyN...> &&
+    is_receiver_v<R> &&
+    !is_sender_v<R>
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (class N, class E = std::exception_ptr)
-  (concept NoneReceiver)(N, E),
-    requires(N& n, E&& e) (
-      ::pushmi::set_error(n, (E &&) e)
+  template (class R, class... VN)
+  (concept ReceiveValue)(R, VN...),
+    requires(R& r) (
+      ::pushmi::set_value(r, std::declval<VN &&>()...)
     ) &&
-    Receiver<N> &&
-    None<N> &&
+    Receiver<R> &&
+    // GCC w/-fconcepts ICE on SemiMovable<VN>...
+    True<> // And<SemiMovable<VN>...>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class E = std::exception_ptr)
+  (concept ReceiveError)(R, E),
+    requires(R& r, E&& e) (
+      ::pushmi::set_error(r, (E &&) e)
+    ) &&
+    Receiver<R> &&
     SemiMovable<E>
 );
 
-PUSHMI_CONCEPT_DEF(
-  template (class S, class T, class E = std::exception_ptr)
-  (concept SingleReceiver)(S, T, E),
-    requires(S& s, T&& t) (
-      ::pushmi::set_value(s, (T &&) t) // Semantics: called exactly once.
-    ) &&
-    NoneReceiver<S, E> &&
-    SemiMovable<T> &&
-    SemiMovable<E> &&
-    Single<S>
-);
 
-PUSHMI_CONCEPT_DEF(
-  template (class S, class T, class E = std::exception_ptr)
-  (concept ManyReceiver)(S, T, E),
-    requires(S& s, T&& t) (
-      ::pushmi::set_next(s, (T &&) t) // Semantics: called 0-N times.
-    ) &&
-    NoneReceiver<S, E> &&
-    SemiMovable<T> &&
-    SemiMovable<E> &&
-    Many<S>
-);
-
-
-// silent does not really make sense, but cannot test for
-// None without the error type, use is_none<> to strengthen
-// requirements
 PUSHMI_CONCEPT_DEF(
   template (class D, class... PropertyN)
   (concept Sender)(D, PropertyN...),
@@ -2333,7 +2436,7 @@ PUSHMI_CONCEPT_DEF(
       requires_<Executor<decltype(::pushmi::executor(d))>>
     ) &&
     SemiMovable<D> &&
-    None<D> &&
+    Cardinality<D> &&
     property_query_v<D, PropertyN...> &&
     is_sender_v<D> &&
     !is_receiver_v<D>
@@ -2367,47 +2470,26 @@ PUSHMI_CONCEPT_DEF(
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (
-    class N,
-    class Up,
-    class PE = std::exception_ptr,
-    class E = PE)
-  (concept FlowNoneReceiver)(N, Up, PE, E),
-    requires(N& n, Up&& up) (
-      ::pushmi::set_starting(n, (Up &&) up)
+  template (class R, class... VN)
+  (concept FlowReceiveValue)(R, VN...),
+    Flow<R> &&
+    ReceiveValue<R, VN...>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class E = std::exception_ptr)
+  (concept FlowReceiveError)(R, E),
+    Flow<R> &&
+    ReceiveError<R, E>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class Up)
+  (concept FlowUpTo)(R, Up),
+    requires(R& r, Up&& up) (
+      ::pushmi::set_starting(r, (Up &&) up)
     ) &&
-    FlowReceiver<N> &&
-    Receiver<Up> &&
-    SemiMovable<PE> &&
-    SemiMovable<E> &&
-    NoneReceiver<Up, PE> &&
-    NoneReceiver<N, E>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (
-      class S,
-      class Up,
-      class T,
-      class PE = std::exception_ptr,
-      class E = PE)
-  (concept FlowSingleReceiver)(S, Up, T, PE, E),
-    SingleReceiver<S, T, E> &&
-    FlowNoneReceiver<S, Up, PE, E>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (
-      class S,
-      class Up,
-      class T,
-      class PT = std::ptrdiff_t,
-      class PE = std::exception_ptr,
-      class E = PE)
-  (concept FlowManyReceiver)(S, Up, T, PT, PE, E),
-    ManyReceiver<S, T, E> &&
-    ManyReceiver<Up, PT, PE> &&
-    FlowNoneReceiver<S, Up, PE, E>
+    Flow<R>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -2444,8 +2526,7 @@ PUSHMI_CONCEPT_DEF(
     ) &&
     Sender<D> &&
     property_query_v<D, PropertyN...> &&
-    Constrained<D> &&
-    None<D>
+    Constrained<D>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -2521,19 +2602,10 @@ template<template <class...> class T>
 struct construct_deduced;
 
 template<>
-struct construct_deduced<none>;
+struct construct_deduced<receiver>;
 
 template<>
-struct construct_deduced<single>;
-
-template<>
-struct construct_deduced<many>;
-
-template<>
-struct construct_deduced<flow_single>;
-
-template<>
-struct construct_deduced<flow_many>;
+struct construct_deduced<flow_receiver>;
 
 template<>
 struct construct_deduced<sender>;
@@ -2560,7 +2632,9 @@ template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 
 struct ignoreVF {
-  void operator()(detail::any) {}
+  PUSHMI_TEMPLATE(class... VN)
+    (requires And<ConvertibleTo<VN&&, detail::any>...>)
+  void operator()(VN&&...) {}
 };
 
 struct abortEF {
@@ -2601,18 +2675,18 @@ struct priorityZeroF {
 };
 
 struct passDVF {
-  PUSHMI_TEMPLATE(class V, class Data)
+  PUSHMI_TEMPLATE(class Data, class... VN)
     (requires requires (
-      ::pushmi::set_value(std::declval<Data&>(), std::declval<V>())
+      ::pushmi::set_value(std::declval<Data&>(), std::declval<VN>()...)
     ) && Receiver<Data>)
-  void operator()(Data& out, V&& v) const {
-    ::pushmi::set_value(out, (V&&) v);
+  void operator()(Data& out, VN&&... vn) const {
+    ::pushmi::set_value(out, (VN&&) vn...);
   }
 };
 
 struct passDEF {
   PUSHMI_TEMPLATE(class E, class Data)
-    (requires NoneReceiver<Data, E>)
+    (requires ReceiveError<Data, E>)
   void operator()(Data& out, E e) const noexcept {
     ::pushmi::set_error(out, e);
   }
@@ -2623,16 +2697,6 @@ struct passDDF {
     (requires Receiver<Data>)
   void operator()(Data& out) const {
     ::pushmi::set_done(out);
-  }
-};
-
-struct passDNXF {
-  PUSHMI_TEMPLATE(class V, class Data)
-    (requires requires (
-      ::pushmi::set_next(std::declval<Data&>(), std::declval<V>())
-    ) && Receiver<Data>)
-  void operator()(Data& out, V&& v) const {
-    ::pushmi::set_next(out, (V&&) v);
   }
 };
 
@@ -2784,17 +2848,6 @@ auto on_done(Fn fn) -> on_done_fn<Fn> {
 }
 
 template <class... Fns>
-struct on_next_fn : overload_fn<Fns...> {
-  constexpr on_next_fn() = default;
-  using overload_fn<Fns...>::overload_fn;
-};
-
-template <class... Fns>
-auto on_next(Fns... fns) -> on_next_fn<Fns...> {
-  return on_next_fn<Fns...>{std::move(fns)...};
-}
-
-template <class... Fns>
 struct on_starting_fn : overload_fn<Fns...> {
   constexpr on_starting_fn() = default;
   using overload_fn<Fns...>::overload_fn;
@@ -2880,329 +2933,13 @@ PUSHMI_INLINE_VAR constexpr struct pipe_fn {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//#include <future>
 //#include "boosters.h"
 
 namespace pushmi {
 
-template <class E>
-class none<E> {
-  bool done_ = false;
-  union data {
-    void* pobj_ = nullptr;
-    char buffer_[sizeof(std::promise<int>)]; // can hold a std::promise in-situ
-  } data_{};
-  template <class Wrapped>
-  static constexpr bool insitu() {
-    return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible<Wrapped>::value;
-  }
-  struct vtable {
-    static void s_op(data&, data*) {}
-    static void s_done(data&) {}
-    static void s_error(data&, E) noexcept { std::terminate(); };
-    void (*op_)(data&, data*) = vtable::s_op;
-    void (*done_)(data&) = vtable::s_done;
-    void (*error_)(data&, E) noexcept = vtable::s_error;
-  };
-  static constexpr vtable const noop_ {};
-  vtable  const* vptr_ = &noop_;
-  template <class Wrapped>
-  none(Wrapped obj, std::false_type) : none() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
-      }
-      static void error(data& src, E e) noexcept {
-          ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
-      }
-    };
-    static const vtable vtable_v{s::op, s::done, s::error};
-    data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ = &vtable_v;
-  }
-  template <class Wrapped>
-  none(Wrapped obj, std::true_type) noexcept : none() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          new (dst->buffer_)
-              Wrapped(std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
-      }
-      static void error(data& src, E e) noexcept {::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
-      }
-    };
-    static const vtable vtbl{s::op, s::done, s::error};
-    new (data_.buffer_) Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, none>::value, U>;
-public:
-  using properties = property_set<is_receiver<>, is_none<>>;
-
-  none() = default;
-  none(none&& that) noexcept : none() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires NoneReceiver<wrapped_t<Wrapped>, E>)
-  explicit none(Wrapped obj) noexcept(insitu<Wrapped>())
-    : none{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~none() {
-    vptr_->op_(data_, nullptr);
-  }
-  none& operator=(none&& that) noexcept {
-    this->~none();
-    new ((void*)this) none(std::move(that));
-    return *this;
-  }
-  void error(E e) noexcept {
-    if (done_) {return;}
-    done_ = true;
-    vptr_->error_(data_, std::move(e));
-  }
-  void done() {
-    if (done_) {return;}
-    done_ = true;
-    vptr_->done_(data_);
-  }
-};
-
-// Class static definitions:
-template <class E>
-constexpr typename none<E>::vtable const none<E>::noop_;
-
-template <class EF, class DF>
-#if __cpp_concepts
-  requires Invocable<DF&>
-#endif
-class none<EF, DF> {
-  static_assert(
-    !detail::is_v<EF, on_value_fn>,
-    "the first parameter is the error implementation, but on_value{} was passed");
-  static_assert(
-    !detail::is_v<EF, single>,
-    "the first parameter is the error implementation, but a single<> was passed");
-  bool done_ = false;
-  EF ef_;
-  DF df_;
-
-public:
-  using properties = property_set<is_receiver<>, is_none<>>;
-
-  none() = default;
-  constexpr explicit none(EF ef)
-      : none(std::move(ef), DF{}) {}
-  constexpr explicit none(DF df)
-      : none(EF{}, std::move(df)) {}
-  constexpr none(EF ef, DF df)
-      : done_(false), ef_(std::move(ef)), df_(std::move(df)) {}
-
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<EF&, E>)
-  void error(E e) noexcept {
-    static_assert(
-        noexcept(ef_(std::move(e))),
-        "error function must be noexcept");
-    if (!done_) {
-      done_ = true;
-      ef_(std::move(e));
-    }
-  }
-  void done() {
-    if (!done_) {
-      done_ = true;
-      df_();
-    }
-  }
-};
-
-template <PUSHMI_TYPE_CONSTRAINT(Receiver<is_none<>>) Data, class DEF, class DDF>
-#if __cpp_concepts
-  requires Invocable<DDF&, Data&>
-#endif
-class none<Data, DEF, DDF> {
-  bool done_ = false;
-  Data data_;
-  DEF ef_;
-  DDF df_;
-  static_assert(
-    !detail::is_v<DEF, on_value_fn>,
-    "the second parameter is the error implementation, but on_value{} was passed");
-  static_assert(
-    !detail::is_v<Data, single>,
-    "none should not be used to wrap a single<>");
-public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_none<>>>;
-
-  constexpr explicit none(Data d) : none(std::move(d), DEF{}, DDF{}) {}
-  constexpr none(Data d, DDF df)
-      : done_(false), data_(std::move(d)), ef_(), df_(std::move(df)) {}
-  constexpr none(Data d, DEF ef, DDF df = DDF{})
-      : done_(false), data_(std::move(d)), ef_(std::move(ef)),
-        df_(std::move(df)) {}
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<DEF&, Data&, E>)
-  void error(E e) noexcept {
-    static_assert(
-        noexcept(ef_(data_, std::move(e))), "error function must be noexcept");
-    if (!done_) {
-      done_ = true;
-      ef_(data_, std::move(e));
-    }
-  }
-  void done() {
-    if (!done_) {
-      done_ = true;
-      df_(data_);
-    }
-  }
-};
-
-template <>
-class none<>
-    : public none<abortEF, ignoreDF> {
-};
-
-////////////////////////////////////////////////////////////////////////////////
-// make_flow_single
-PUSHMI_INLINE_VAR constexpr struct make_none_fn {
-  inline auto operator()() const {
-    return none<>{};
-  }
-  PUSHMI_TEMPLATE(class EF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF> PUSHMI_AND not lazy::Invocable<EF&>)))
-  auto operator()(EF ef) const {
-    return none<EF, ignoreDF>{std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-  auto operator()(DF df) const {
-    return none<abortEF, DF>{std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-  auto operator()(EF ef, DF df) const {
-    return none<EF, DF>{std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>))
-  auto operator()(Data d) const {
-    return none<Data, passDEF, passDDF>{std::move(d)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DEF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>
-      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-  auto operator()(Data d, DEF ef) const {
-    return none<Data, DEF, passDDF>{std::move(d), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
-      lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DDF df) const {
-    return none<Data, passDEF, DDF>{std::move(d), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
-      lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DEF ef, DDF df) const {
-    return none<Data, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
-  }
-} const make_none {};
-
-////////////////////////////////////////////////////////////////////////////////
-// deduction guides
-#if __cpp_deduction_guides >= 201703
-none() -> none<>;
-
-PUSHMI_TEMPLATE(class EF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF> PUSHMI_AND not lazy::Invocable<EF&>)))
-none(EF) -> none<EF, ignoreDF>;
-
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-none(DF) -> none<abortEF, DF>;
-
-PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-none(EF, DF) -> none<EF, DF>;
-
-PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>))
-none(Data) -> none<Data, passDEF, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class DEF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-none(Data, DEF) -> none<Data, DEF, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
-    lazy::Invocable<DDF&, Data&>))
-none(Data, DDF) -> none<Data, passDEF, DDF>;
-
-PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_none<>> PUSHMI_AND not lazy::Receiver<Data, is_single<>> PUSHMI_AND
-    lazy::Invocable<DDF&, Data&>))
-none(Data, DEF, DDF) -> none<Data, DEF, DDF>;
-#endif
-
-template <class E = std::exception_ptr>
-using any_none = none<E>;
-
-template<>
-struct construct_deduced<none> : make_none_fn {};
-
-// // this is ambiguous because NoneReceiver and SingleReceiver only constrain the done() method.
-// // template <class E = std::exception_ptr, NoneReceiver<E> Wrapped>
-// // auto erase_cast(Wrapped w) {
-// //   return none<erase_cast_t, E>{std::move(w)};
-// // }
-// template <class E = std::exception_ptr, class... TN>
-// auto erase_cast(none<TN...> w) {
-//   return none<E>{std::move(w)};
-// }
-// template <class E = std::exception_ptr>
-// auto erase_cast(std::promise<void> w) {
-//   return none<E>{std::move(w)};
-// }
-
-PUSHMI_TEMPLATE (class Out)
-  (requires SenderTo<Out, std::promise<void>, is_none<>>)
-std::future<void> future_from(Out out) {
-  std::promise<void> p;
-  auto result = p.get_future();
-  submit(out, std::move(p));
-  return result;
-}
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include <future>
-//#include "none.h"
-
-namespace pushmi {
-
-template <class V, class E>
-class single<V, E> {
+template <class E, class... VN>
+class any_receiver {
   bool done_ = false;
   union data {
     void* pobj_ = nullptr;
@@ -3217,30 +2954,28 @@ class single<V, E> {
     static void s_op(data&, data*) {}
     static void s_done(data&) {}
     static void s_error(data&, E) noexcept { std::terminate(); }
-    static void s_rvalue(data&, V&&) {}
-    static void s_lvalue(data&, V&) {}
+    static void s_value(data&, VN...) {}
     void (*op_)(data&, data*) = vtable::s_op;
     void (*done_)(data&) = vtable::s_done;
     void (*error_)(data&, E) noexcept = vtable::s_error;
-    void (*rvalue_)(data&, V&&) = vtable::s_rvalue;
-    void (*lvalue_)(data&, V&) = vtable::s_lvalue;
+    void (*value_)(data&, VN...) = vtable::s_value;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, single>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_receiver>::value, U>;
   template <class Wrapped>
   static void check() {
-    static_assert(Invocable<decltype(::pushmi::set_value), Wrapped, V>,
-      "Wrapped single must support values of type V");
-    static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, std::exception_ptr>,
-      "Wrapped single must support std::exception_ptr and be noexcept");
+    static_assert(ReceiveValue<Wrapped, VN...>,
+      "Wrapped receiver must support values of type VN...");
+    static_assert(ReceiveError<Wrapped, std::exception_ptr>,
+      "Wrapped receiver must support std::exception_ptr and be noexcept");
     static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
-      "Wrapped single must support E and be noexcept");
+      "Wrapped receiver must support E and be noexcept");
   }
   template<class Wrapped>
-  single(Wrapped obj, std::false_type) : single() {
+  any_receiver(Wrapped obj, std::false_type) : any_receiver() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -3253,19 +2988,16 @@ class single<V, E> {
       static void error(data& src, E e) noexcept {
         ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
       }
-      static void rvalue(data& src, V&& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
-      }
-      static void lvalue(data& src, V& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), v);
+      static void value(data& src, VN... vn) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
       }
     };
-    static const vtable vtbl{s::op, s::done, s::error, s::rvalue, s::lvalue};
+    static const vtable vtbl{s::op, s::done, s::error, s::value};
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
   template<class Wrapped>
-  single(Wrapped obj, std::true_type) noexcept : single() {
+  any_receiver(Wrapped obj, std::true_type) noexcept : any_receiver() {
     struct s {
       static void op(data& src, data* dst) {
           if (dst)
@@ -3281,53 +3013,40 @@ class single<V, E> {
           *static_cast<Wrapped*>((void*)src.buffer_),
           std::move(e));
       }
-      static void rvalue(data& src, V&& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
-      }
-      static void lvalue(data& src, V& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), v);
+      static void value(data& src, VN... vn) {
+        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
       }
     };
-    static const vtable vtbl{s::op, s::done, s::error, s::rvalue, s::lvalue};
+    static const vtable vtbl{s::op, s::done, s::error, s::value};
     new ((void*)data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
 public:
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
 
-  single() = default;
-  single(single&& that) noexcept : single() {
+  any_receiver() = default;
+  any_receiver(any_receiver&& that) noexcept : any_receiver() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires SingleReceiver<wrapped_t<Wrapped>, V, E>)
-  explicit single(Wrapped obj) noexcept(insitu<Wrapped>())
-    : single{std::move(obj), bool_<insitu<Wrapped>()>{}} {
+    (requires ReceiveValue<wrapped_t<Wrapped>, VN...> && ReceiveError<Wrapped, E>)
+  explicit any_receiver(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_receiver{std::move(obj), bool_<insitu<Wrapped>()>{}} {
     check<Wrapped>();
   }
-  ~single() {
+  ~any_receiver() {
     vptr_->op_(data_, nullptr);
   }
-  single& operator=(single&& that) noexcept {
-    this->~single();
-    new ((void*)this) single(std::move(that));
+  any_receiver& operator=(any_receiver&& that) noexcept {
+    this->~any_receiver();
+    new ((void*)this) any_receiver(std::move(that));
     return *this;
   }
-  PUSHMI_TEMPLATE (class T)
-    (requires ConvertibleTo<T&&, V&&>)
-  void value(T&& t) {
+  void value(VN&&... vn) {
     if (!done_) {
-      done_ = true;
-      vptr_->rvalue_(data_, (T&&) t);
-    }
-  }
-  PUSHMI_TEMPLATE (class T)
-    (requires ConvertibleTo<T&, V&>)
-  void value(T& t) {
-    if (!done_) {
-      done_ = true;
-      vptr_->lvalue_(data_, t);
+      // done_ = true;
+      vptr_->value_(data_, (VN&&) vn...);
     }
   }
   void error(E e) noexcept {
@@ -3345,14 +3064,14 @@ public:
 };
 
 // Class static definitions:
-template <class V, class E>
-constexpr typename single<V, E>::vtable const single<V, E>::noop_;
+template <class E, class... VN>
+constexpr typename any_receiver<E, VN...>::vtable const any_receiver<E, VN...>::noop_;
 
 template <class VF, class EF, class DF>
 #if __cpp_concepts
   requires Invocable<DF&>
 #endif
-class single<VF, EF, DF> {
+class receiver<VF, EF, DF> {
   bool done_ = false;
   VF vf_;
   EF ef_;
@@ -3367,24 +3086,25 @@ class single<VF, EF, DF> {
   static_assert(NothrowInvocable<EF&, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
  public:
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
 
-  single() = default;
-  constexpr explicit single(VF vf) : single(std::move(vf), EF{}, DF{}) {}
-  constexpr explicit single(EF ef) : single(VF{}, std::move(ef), DF{}) {}
-  constexpr explicit single(DF df) : single(VF{}, EF{}, std::move(df)) {}
-  constexpr single(EF ef, DF df)
-      : done_(false), vf_(), ef_(std::move(ef)), df_(std::move(df)) {}
-  constexpr single(VF vf, EF ef, DF df = DF{})
+  receiver() = default;
+  constexpr explicit receiver(VF vf) : receiver(std::move(vf), EF{}, DF{}) {}
+  constexpr explicit receiver(EF ef) : receiver(VF{}, std::move(ef), DF{}) {}
+  constexpr explicit receiver(DF df) : receiver(VF{}, EF{}, std::move(df)) {}
+  constexpr receiver(EF ef, DF df)
+      : done_(false), vf_(), ef_(std::move(ef)), df_(std::move(df))
+  {}
+  constexpr receiver(VF vf, EF ef, DF df = DF{})
       : done_(false), vf_(std::move(vf)), ef_(std::move(ef)), df_(std::move(df))
   {}
 
-  PUSHMI_TEMPLATE (class V)
-    (requires Invocable<VF&, V>)
-  void value(V&& v) {
+  PUSHMI_TEMPLATE (class... VN)
+    (requires Invocable<VF&, VN...>)
+  void value(VN&&... vn) {
     if (done_) {return;}
-    done_ = true;
-    vf_((V&&) v);
+    // done_ = true;
+    vf_((VN&&) vn...);
   }
   PUSHMI_TEMPLATE (class E)
     (requires Invocable<EF&, E>)
@@ -3407,7 +3127,7 @@ template <PUSHMI_TYPE_CONSTRAINT(Receiver) Data, class DVF, class DEF, class DDF
 #if __cpp_concepts
   requires Invocable<DDF&, Data&>
 #endif
-class single<Data, DVF, DEF, DDF> {
+class receiver<Data, DVF, DEF, DDF> {
   bool done_ = false;
   Data data_;
   DVF vf_;
@@ -3420,27 +3140,31 @@ class single<Data, DVF, DEF, DDF> {
   static_assert(
       !detail::is_v<DEF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
+  static_assert(Invocable<DEF, Data&, std::exception_ptr>,
+      "error function must support std::exception_ptr");
   static_assert(NothrowInvocable<DEF, Data&, std::exception_ptr>,
-      "error function must be noexcept and support std::exception_ptr");
+      "error function must be noexcept");
 
  public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_single<>>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>>>;
 
-  constexpr explicit single(Data d)
-      : single(std::move(d), DVF{}, DEF{}, DDF{}) {}
-  constexpr single(Data d, DDF df)
+  constexpr explicit receiver(Data d)
+      : receiver(std::move(d), DVF{}, DEF{}, DDF{}) {}
+  constexpr receiver(Data d, DDF df)
       : done_(false), data_(std::move(d)), vf_(), ef_(), df_(df) {}
-  constexpr single(Data d, DEF ef, DDF df = DDF{})
+  constexpr receiver(Data d, DEF ef, DDF df = DDF{})
       : done_(false), data_(std::move(d)), vf_(), ef_(ef), df_(df) {}
-  constexpr single(Data d, DVF vf, DEF ef = DEF{}, DDF df = DDF{})
+  constexpr receiver(Data d, DVF vf, DEF ef = DEF{}, DDF df = DDF{})
       : done_(false), data_(std::move(d)), vf_(vf), ef_(ef), df_(df) {}
 
-  PUSHMI_TEMPLATE(class V)
-    (requires Invocable<DVF&, Data&, V>)
-  void value(V&& v) {
+  Data& data() { return data_; }
+
+  PUSHMI_TEMPLATE(class... VN)
+    (requires Invocable<DVF&, Data&, VN...>)
+  void value(VN&&... vn) {
     if (!done_) {
-      done_ = true;
-      vf_(data_, (V&&) v);
+      // done_ = true;
+      vf_(data_, (VN&&) vn...);
     }
   }
   PUSHMI_TEMPLATE(class E)
@@ -3462,160 +3186,214 @@ class single<Data, DVF, DEF, DDF> {
 };
 
 template <>
-class single<>
-    : public single<ignoreVF, abortEF, ignoreDF> {
+class receiver<>
+    : public receiver<ignoreVF, abortEF, ignoreDF> {
 public:
-  single() = default;
+  receiver() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_single
-PUSHMI_INLINE_VAR constexpr struct make_single_fn {
+// make_receiver
+PUSHMI_INLINE_VAR constexpr struct make_receiver_fn {
   inline auto operator()() const {
-    return single<>{};
+    return receiver<>{};
   }
   PUSHMI_TEMPLATE(class VF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
+    (requires PUSHMI_EXP(
+      lazy::True<>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
   auto operator()(VF vf) const {
-    return single<VF, abortEF, ignoreDF>{std::move(vf)};
+    return receiver<VF, abortEF, ignoreDF>{std::move(vf)};
   }
   template <class... EFN>
   auto operator()(on_error_fn<EFN...> ef) const {
-    return single<ignoreVF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
+    return receiver<ignoreVF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
   }
-  PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-  auto operator()(DF df) const {
-    return single<ignoreVF, abortEF, DF>{std::move(df)};
+  template <class... DFN>
+  auto operator()(on_done_fn<DFN...> df) const {
+    return receiver<ignoreVF, abortEF, on_done_fn<DFN...>>{std::move(df)};
   }
   PUSHMI_TEMPLATE(class VF, class EF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
+    (requires PUSHMI_EXP(
+      lazy::True<>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<VF> PUSHMI_AND
+        not lazy::Invocable<EF&>)))
   auto operator()(VF vf, EF ef) const {
-    return single<VF, EF, ignoreDF>{std::move(vf), std::move(ef)};
+    return receiver<VF, EF, ignoreDF>{std::move(vf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Invocable<DF&>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
   auto operator()(EF ef, DF df) const {
-    return single<ignoreVF, EF, DF>{std::move(ef), std::move(df)};
+    return receiver<ignoreVF, EF, DF>{std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class VF, class EF, class DF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Invocable<DF&>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
   auto operator()(VF vf, EF ef, DF df) const {
-    return single<VF, EF, DF>{std::move(vf), std::move(ef), std::move(df)};
+    return receiver<VF, EF, DF>{std::move(vf), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>>))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
   auto operator()(Data d) const {
-    return single<Data, passDVF, passDEF, passDDF>{std::move(d)};
+    return receiver<Data, passDVF, passDEF, passDDF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
   auto operator()(Data d, DVF vf) const {
-    return single<Data, DVF, passDEF, passDDF>{std::move(d), std::move(vf)};
+    return receiver<Data, DVF, passDEF, passDDF>{std::move(d), std::move(vf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>>))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
-    return single<Data, passDVF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(ef)};
+    return receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(ef)};
   }
-  PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DDF df) const {
-    return single<Data, passDVF, passDEF, DDF>{std::move(d), std::move(df)};
+  PUSHMI_TEMPLATE(class Data, class... DDFN)
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
+  auto operator()(Data d, on_done_fn<DDFN...> df) const {
+    return receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>>{std::move(d), std::move(df)};
   }
-  PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-  auto operator()(Data d, DVF vf, DEF ef) const {
-    return single<Data, DVF, DEF, passDDF>{std::move(d), std::move(vf), std::move(ef)};
+  PUSHMI_TEMPLATE(class Data, class DVF, class... DEFN)
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
+  auto operator()(Data d, DVF vf, on_error_fn<DEFN...> ef) const {
+    return receiver<Data, DVF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(vf), std::move(ef)};
   }
-  PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DEF ef, DDF df) const {
-    return single<Data, passDVF, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
+  PUSHMI_TEMPLATE(class Data, class DEF, class... DDFN)
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
+  auto operator()(Data d, DEF ef, on_done_fn<DDFN...> df) const {
+    return receiver<Data, passDVF, DEF, on_done_fn<DDFN...>>{std::move(d), std::move(ef), std::move(df)};
   }
   PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DVF vf, DEF ef, DDF df) const {
-    return single<Data, DVF, DEF, DDF>{std::move(d), std::move(vf), std::move(ef), std::move(df)};
+    return receiver<Data, DVF, DEF, DDF>{std::move(d), std::move(vf), std::move(ef), std::move(df)};
   }
-} const make_single {};
+} const make_receiver {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-single() -> single<>;
+receiver() -> receiver<>;
 
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
-single(VF) -> single<VF, abortEF, ignoreDF>;
+  (requires PUSHMI_EXP(
+    True<>
+    // lazy::Callable<VF>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+receiver(VF) -> receiver<VF, abortEF, ignoreDF>;
 
 template <class... EFN>
-single(on_error_fn<EFN...>) -> single<ignoreVF, on_error_fn<EFN...>, ignoreDF>;
+receiver(on_error_fn<EFN...>) -> receiver<ignoreVF, on_error_fn<EFN...>, ignoreDF>;
 
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-single(DF) -> single<ignoreVF, abortEF, DF>;
+template <class... DFN>
+receiver(on_done_fn<DFN...>) -> receiver<ignoreVF, abortEF, on_done_fn<DFN...>>;
 
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
-single(VF, EF) -> single<VF, EF, ignoreDF>;
+  (requires PUSHMI_EXP(
+    lazy::True<>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<VF> PUSHMI_AND
+      not lazy::Invocable<EF&>)))
+receiver(VF, EF) -> receiver<VF, EF, ignoreDF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-single(EF, DF) -> single<ignoreVF, EF, DF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Invocable<DF&>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
+receiver(EF, DF) -> receiver<ignoreVF, EF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
-single(VF, EF, DF) -> single<VF, EF, DF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Invocable<DF&>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+receiver(VF, EF, DF) -> receiver<VF, EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>>))
-single(Data d) -> single<Data, passDVF, passDEF, passDDF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+receiver(Data d) -> receiver<Data, passDVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
-single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+receiver(Data d, DVF vf) -> receiver<Data, DVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>>))
-single(Data d, on_error_fn<DEFN...>) ->
-    single<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+receiver(Data d, on_error_fn<DEFN...>) ->
+    receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
 
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-single(Data d, DDF) -> single<Data, passDVF, passDEF, DDF>;
+PUSHMI_TEMPLATE(class Data, class... DDFN)
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+receiver(Data d, on_done_fn<DDFN...>) ->
+    receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>>;
 
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-single(Data d, DVF vf, DEF ef) -> single<Data, DVF, DEF, passDDF>;
+PUSHMI_TEMPLATE(class Data, class DVF, class... DEFN)
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+receiver(Data d, DVF vf, on_error_fn<DEFN...> ef) -> receiver<Data, DVF, on_error_fn<DEFN...>, passDDF>;
 
-PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-single(Data d, DEF, DDF) -> single<Data, passDVF, DEF, DDF>;
+PUSHMI_TEMPLATE(class Data, class DEF, class... DDFN)
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
+receiver(Data d, DEF, on_done_fn<DDFN...>) -> receiver<Data, passDVF, DEF, on_done_fn<DDFN...>>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_single<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
+receiver(Data d, DVF vf, DEF ef, DDF df) -> receiver<Data, DVF, DEF, DDF>;
 #endif
 
-template <class V, class E = std::exception_ptr>
-using any_single = single<V, E>;
-
 template<>
-struct construct_deduced<single> : make_single_fn {};
+struct construct_deduced<receiver> : make_receiver_fn {};
 
-// template <class V, class E = std::exception_ptr, class Wrapped>
-//     requires SingleReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>
-// auto erase_cast(Wrapped w) {
-//   return single<V, E>{std::move(w)};
-// }
-
-PUSHMI_TEMPLATE (class T, class Out)
-  (requires SenderTo<Out, std::promise<T>, is_none<>>)
-std::future<T> future_from(Out singleSender) {
+PUSHMI_TEMPLATE (class T, class In)
+  (requires SenderTo<In, std::promise<T>, is_single<>>)
+std::future<T> future_from(In in) {
   std::promise<T> p;
   auto result = p.get_future();
-  submit(singleSender, std::move(p));
+  submit(in, std::move(p));
+  return result;
+}
+PUSHMI_TEMPLATE (class In)
+  (requires SenderTo<In, std::promise<void>, is_single<>>)
+std::future<void> future_from(In in) {
+  std::promise<void> p;
+  auto result = p.get_future();
+  submit(in, std::move(p));
   return result;
 }
 
@@ -3626,15 +3404,17 @@ std::future<T> future_from(Out singleSender) {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "single.h"
+//#include "receiver.h"
 
 namespace pushmi {
 
-template <class V, class PE, class E>
-class flow_single<V, PE, E> {
+template <class PE, class PV, class E, class... VN>
+class any_flow_receiver {
+  bool done_ = false;
+  bool started_ = false;
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(std::promise<int>)]; // can hold a std::promise in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -3645,18 +3425,18 @@ class flow_single<V, PE, E> {
     static void s_op(data&, data*) {}
     static void s_done(data&) {}
     static void s_error(data&, E) noexcept { std::terminate(); }
-    static void s_value(data&, V) {}
-    static void s_starting(data&, any_none<PE>) {}
+    static void s_value(data&, VN...) {}
+    static void s_starting(data&, any_receiver<PE, PV>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     void (*done_)(data&) = vtable::s_done;
     void (*error_)(data&, E) noexcept = vtable::s_error;
-    void (*value_)(data&, V) = vtable::s_value;
-    void (*starting_)(data&, any_none<PE>) = vtable::s_starting;
+    void (*value_)(data&, VN...) = vtable::s_value;
+    void (*starting_)(data&, any_receiver<PE, PV>) = vtable::s_starting;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  flow_single(Wrapped obj, std::false_type) : flow_single() {
+  any_flow_receiver(Wrapped obj, std::false_type) : any_flow_receiver() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -3669,10 +3449,10 @@ class flow_single<V, PE, E> {
       static void error(data& src, E e) noexcept {
         ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
       }
-      static void value(data& src, V v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(v));
+      static void value(data& src, VN... vn) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
       }
-      static void starting(data& src, any_none<PE> up) {
+      static void starting(data& src, any_receiver<PE, PV> up) {
         ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
       }
     };
@@ -3681,7 +3461,7 @@ class flow_single<V, PE, E> {
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  flow_single(Wrapped obj, std::true_type) noexcept : flow_single() {
+  any_flow_receiver(Wrapped obj, std::true_type) noexcept : any_flow_receiver() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -3696,11 +3476,11 @@ class flow_single<V, PE, E> {
           *static_cast<Wrapped*>((void*)src.buffer_),
           std::move(e));
       }
-      static void value(data& src, V v) {
+      static void value(data& src, VN... vn) {
         ::pushmi::set_value(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(v));
+            *static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
       }
-      static void starting(data& src, any_none<PE> up) {
+      static void starting(data& src, any_receiver<PE, PV> up) {
         ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
       }
     };
@@ -3710,59 +3490,73 @@ class flow_single<V, PE, E> {
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, flow_single>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_flow_receiver>::value, U>;
 public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_single<>>;
+  using properties = property_set<is_receiver<>, is_flow<>>;
 
-  flow_single() = default;
-  flow_single(flow_single&& that) noexcept : flow_single() {
+  any_flow_receiver() = default;
+  any_flow_receiver(any_flow_receiver&& that) noexcept : any_flow_receiver() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires FlowSingleReceiver<wrapped_t<Wrapped>, any_none<PE>, V, PE, E>)
-  explicit flow_single(Wrapped obj) noexcept(insitu<Wrapped>())
-    : flow_single{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~flow_single() {
+    (requires FlowUpTo<wrapped_t<Wrapped>, any_receiver<PE, PV>> &&
+      ReceiveValue<wrapped_t<Wrapped>, VN...> &&
+      ReceiveError<wrapped_t<Wrapped>, E>)
+  explicit any_flow_receiver(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_flow_receiver{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~any_flow_receiver() {
     vptr_->op_(data_, nullptr);
   }
-  flow_single& operator=(flow_single&& that) noexcept {
-    this->~flow_single();
-    new ((void*)this) flow_single(std::move(that));
+  any_flow_receiver& operator=(any_flow_receiver&& that) noexcept {
+    this->~any_flow_receiver();
+    new ((void*)this) any_flow_receiver(std::move(that));
     return *this;
   }
-  void value(V v) {
-    vptr_->value_(data_, std::move(v));
+  void value(VN... vn) {
+    if (!started_) {std::abort();}
+    if (done_){ return; }
+    vptr_->value_(data_, std::move(vn)...);
   }
   void error(E e) noexcept {
+    if (!started_) {std::abort();}
+    if (done_){ return; }
+    done_ = true;
     vptr_->error_(data_, std::move(e));
   }
   void done() {
+    if (!started_) {std::abort();}
+    if (done_){ return; }
+    done_ = true;
     vptr_->done_(data_);
   }
 
-  void starting(any_none<PE> up) {
+  void starting(any_receiver<PE, PV> up) {
+    if (started_) {std::abort();}
+    started_ = true;
     vptr_->starting_(data_, std::move(up));
   }
 };
 
 // Class static definitions:
-template <class V, class PE, class E>
-constexpr typename flow_single<V, PE, E>::vtable const
-  flow_single<V, PE, E>::noop_;
+template <class PE, class PV, class E, class... VN>
+constexpr typename any_flow_receiver<PE, PV, E, VN...>::vtable const
+  any_flow_receiver<PE, PV, E, VN...>::noop_;
 
 template <class VF, class EF, class DF, class StrtF>
 #if __cpp_concepts
   requires Invocable<DF&>
 #endif
-class flow_single<VF, EF, DF, StrtF> {
-  VF vf_;
+class flow_receiver<VF, EF, DF, StrtF> {
+  bool done_ = false;
+  bool started_ = false;
+  VF nf_;
   EF ef_;
   DF df_;
   StrtF strtf_;
 
  public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_single<>>;
+  using properties = property_set<is_receiver<>, is_flow<>>;
 
   static_assert(
       !detail::is_v<VF, on_error_fn>,
@@ -3771,904 +3565,17 @@ class flow_single<VF, EF, DF, StrtF> {
       !detail::is_v<EF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
 
-  flow_single() = default;
-  constexpr explicit flow_single(VF vf)
-      : flow_single(std::move(vf), EF{}, DF{}) {}
-  constexpr explicit flow_single(EF ef)
-      : flow_single(VF{}, std::move(ef), DF{}) {}
-  constexpr explicit flow_single(DF df)
-      : flow_single(VF{}, EF{}, std::move(df)) {}
-  constexpr flow_single(EF ef, DF df)
-      : vf_(), ef_(std::move(ef)), df_(std::move(df)) {}
-  constexpr flow_single(
-      VF vf,
-      EF ef,
-      DF df = DF{},
-      StrtF strtf = StrtF{})
-      : vf_(std::move(vf)),
-        ef_(std::move(ef)),
-        df_(std::move(df)),
-        strtf_(std::move(strtf)) {}
-  PUSHMI_TEMPLATE (class V)
-    (requires Invocable<VF&, V>)
-  void value(V v) {
-    vf_(v);
-  }
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<EF&, E>)
-  void error(E e) noexcept {
-    static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
-    ef_(std::move(e));
-  }
-  void done() {
-    df_();
-  }
-  PUSHMI_TEMPLATE(class Up)
-    (requires Receiver<Up, is_none<>> && Invocable<StrtF&, Up&&>)
-  void starting(Up&& up) {
-    strtf_( (Up &&) up);
-  }
-};
-
-template<
-    PUSHMI_TYPE_CONSTRAINT(Receiver) Data,
-    class DVF,
-    class DEF,
-    class DDF,
-    class DStrtF>
-#if __cpp_concepts
-  requires Invocable<DDF&, Data&>
-#endif
-class flow_single<Data, DVF, DEF, DDF, DStrtF> {
-  Data data_;
-  DVF vf_;
-  DEF ef_;
-  DDF df_;
-  DStrtF strtf_;
-
- public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_flow<>, is_single<>>>;
-
-  static_assert(
-      !detail::is_v<DVF, on_error_fn>,
-      "the first parameter is the value implementation, but on_error{} was passed");
-  static_assert(
-      !detail::is_v<DEF, on_value_fn>,
-      "the second parameter is the error implementation, but on_value{} was passed");
-
-  constexpr explicit flow_single(Data d)
-      : flow_single(std::move(d), DVF{}, DEF{}, DDF{}) {}
-  constexpr flow_single(Data d, DDF df)
-      : data_(std::move(d)), vf_(), ef_(), df_(df) {}
-  constexpr flow_single(Data d, DEF ef, DDF df = DDF{})
-      : data_(std::move(d)), vf_(), ef_(ef), df_(df) {}
-  constexpr flow_single(
-      Data d,
-      DVF vf,
-      DEF ef = DEF{},
-      DDF df = DDF{},
-      DStrtF strtf = DStrtF{})
-      : data_(std::move(d)),
-        vf_(vf),
-        ef_(ef),
-        df_(df),
-        strtf_(std::move(strtf)) {}
-  PUSHMI_TEMPLATE (class V)
-    (requires Invocable<DVF&, Data&, V>)
-  void value(V v) {
-    vf_(data_, v);
-  }
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<DEF&, Data&, E>)
-  void error(E e) noexcept {
-    static_assert(
-        NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
-    ef_(data_, e);
-  }
-  void done() {
-    df_(data_);
-  }
-  PUSHMI_TEMPLATE (class Up)
-    (requires Invocable<DStrtF&, Data&, Up&&>)
-  void starting(Up&& up) {
-    strtf_(data_, (Up &&) up);
-  }
-};
-
-template <>
-class flow_single<>
-    : public flow_single<ignoreVF, abortEF, ignoreDF, ignoreStrtF> {
-};
-
-// TODO winnow down the number of make_flow_single overloads and deduction
-// guides here, as was done for make_single.
-
-////////////////////////////////////////////////////////////////////////////////
-// make_flow_single
-PUSHMI_INLINE_VAR constexpr struct make_flow_single_fn {
-  inline auto operator()() const {
-    return flow_single<>{};
-  }
-  PUSHMI_TEMPLATE (class VF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
-  auto operator()(VF vf) const {
-    return flow_single<VF, abortEF, ignoreDF, ignoreStrtF>{
-      std::move(vf)};
-  }
-  template <class... EFN>
-  auto operator()(on_error_fn<EFN...> ef) const {
-    return flow_single<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>{
-      std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-  auto operator()(DF df) const {
-    return flow_single<ignoreVF, abortEF, DF, ignoreStrtF>{std::move(df)};
-  }
-  PUSHMI_TEMPLATE (class VF, class EF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
-  auto operator()(VF vf, EF ef) const {
-    return flow_single<VF, EF, ignoreDF, ignoreStrtF>{std::move(vf),
-      std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-  auto operator()(EF ef, DF df) const {
-    return flow_single<ignoreVF, EF, DF, ignoreStrtF>{std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE (class VF, class EF, class DF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
-  auto operator()(VF vf, EF ef, DF df) const {
-    return flow_single<VF, EF, DF, ignoreStrtF>{std::move(vf),
-      std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE (class VF, class EF, class DF, class StrtF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
-  auto operator()(VF vf, EF ef, DF df, StrtF strtf) const {
-    return flow_single<VF, EF, DF, StrtF>{std::move(vf), std::move(ef),
-      std::move(df), std::move(strtf)};
-  }
-  PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data>))
-  auto operator()(Data d) const {
-    return flow_single<Data, passDVF, passDEF, passDDF, passDStrtF>{
-        std::move(d)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DVF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
-  auto operator()(Data d, DVF vf) const {
-    return flow_single<Data, DVF, passDEF, passDDF, passDStrtF>{
-      std::move(d), std::move(vf)};
-  }
-  PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(lazy::Receiver<Data>))
-  auto operator()(Data d, on_error_fn<DEFN...> ef) const {
-    return flow_single<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>{
-      std::move(d), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DDF df) const {
-    return flow_single<Data, passDVF, passDEF, DDF, passDStrtF>{
-      std::move(d), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-  auto operator()(Data d, DVF vf, DEF ef) const {
-    return flow_single<Data, DVF, DEF, passDDF, passDStrtF>{std::move(d), std::move(vf), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DEF ef, DDF df) const {
-    return flow_single<Data, passDVF, DEF, DDF, passDStrtF>{
-      std::move(d), std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DVF vf, DEF ef, DDF df) const {
-    return flow_single<Data, DVF, DEF, DDF, passDStrtF>{std::move(d),
-      std::move(vf), std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DVF vf, DEF ef, DDF df, DStrtF strtf) const {
-    return flow_single<Data, DVF, DEF, DDF, DStrtF>{std::move(d),
-      std::move(vf), std::move(ef), std::move(df), std::move(strtf)};
-  }
-} const make_flow_single {};
-
-////////////////////////////////////////////////////////////////////////////////
-// deduction guides
-#if __cpp_deduction_guides >= 201703
-flow_single() -> flow_single<>;
-
-PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<VF&>)))
-flow_single(VF) ->
-  flow_single<VF, abortEF, ignoreDF, ignoreStrtF>;
-
-template <class... EFN>
-flow_single(on_error_fn<EFN...>) ->
-  flow_single<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>;
-
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-flow_single(DF) ->
-  flow_single<ignoreVF, abortEF, DF, ignoreStrtF>;
-
-PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF> PUSHMI_AND not lazy::Invocable<EF&>)))
-flow_single(VF, EF) ->
-  flow_single<VF, EF, ignoreDF, ignoreStrtF>;
-
-PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-flow_single(EF, DF) ->
-  flow_single<ignoreVF, EF, DF, ignoreStrtF>;
-
-PUSHMI_TEMPLATE(class VF, class EF, class DF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
-flow_single(VF, EF, DF) ->
-  flow_single<VF, EF, DF, ignoreStrtF>;
-
-PUSHMI_TEMPLATE(class VF, class EF, class DF, class StrtF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
-flow_single(VF, EF, DF, StrtF) ->
-  flow_single<VF, EF, DF, StrtF>;
-
-PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data>))
-flow_single(Data d) ->
-  flow_single<Data, passDVF, passDEF, passDDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DVF&, Data&>)))
-flow_single(Data d, DVF vf) ->
-  flow_single<Data, DVF, passDEF, passDDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(lazy::Receiver<Data>))
-flow_single(Data d, on_error_fn<DEFN...>) ->
-  flow_single<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_single(Data d, DDF) ->
-    flow_single<Data, passDVF, passDEF, DDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-flow_single(Data d, DVF vf, DEF ef) ->
-  flow_single<Data, DVF, DEF, passDDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_single(Data d, DEF, DDF) ->
-  flow_single<Data, passDVF, DEF, DDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_single(Data d, DVF vf, DEF ef, DDF df) ->
-  flow_single<Data, DVF, DEF, DDF, passDStrtF>;
-
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&> ))
-flow_single(Data d, DVF vf, DEF ef, DDF df, DStrtF strtf) ->
-  flow_single<Data, DVF, DEF, DDF, DStrtF>;
-#endif
-
-template <class V, class PE = std::exception_ptr, class E = PE>
-using any_flow_single = flow_single<V, PE, E>;
-
-template<>
-struct construct_deduced<flow_single> : make_flow_single_fn {};
-
-// template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
-//     requires FlowSingleReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, none> &&
-//     !detail::is_v<Wrapped, std::promise>
-//     auto erase_cast(Wrapped w) {
-//   return flow_single<V, PE, E>{std::move(w)};
-// }
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include <future>
-//#include "none.h"
-
-namespace pushmi {
-
-template <class V, class E>
-class many<V, E> {
-  bool done_ = false;
-  union data {
-    void* pobj_ = nullptr;
-    char buffer_[sizeof(std::promise<int>)]; // can hold a std::promise in-situ
-  } data_{};
-  template <class Wrapped>
-  static constexpr bool insitu() noexcept {
-    return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible<Wrapped>::value;
-  }
-  struct vtable {
-    static void s_op(data&, data*) {}
-    static void s_done(data&) {}
-    static void s_error(data&, E) noexcept { std::terminate(); }
-    static void s_rnext(data&, V&&) {}
-    static void s_lnext(data&, V&) {}
-    void (*op_)(data&, data*) = vtable::s_op;
-    void (*done_)(data&) = vtable::s_done;
-    void (*error_)(data&, E) noexcept = vtable::s_error;
-    void (*rnext_)(data&, V&&) = vtable::s_rnext;
-    void (*lnext_)(data&, V&) = vtable::s_lnext;
-  };
-  static constexpr vtable const noop_ {};
-  vtable const* vptr_ = &noop_;
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, many>::value, U>;
-  template <class Wrapped>
-  static void check() {
-    static_assert(Invocable<decltype(::pushmi::set_next), Wrapped, V>,
-      "Wrapped many must support nexts of type V");
-    static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, std::exception_ptr>,
-      "Wrapped many must support std::exception_ptr and be noexcept");
-    static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
-      "Wrapped many must support E and be noexcept");
-  }
-  template<class Wrapped>
-  many(Wrapped obj, std::false_type) : many() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
-      }
-      static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
-      }
-      static void rnext(data& src, V&& v) {
-        ::pushmi::set_next(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
-      }
-      static void lnext(data& src, V& v) {
-        ::pushmi::set_next(*static_cast<Wrapped*>(src.pobj_), v);
-      }
-    };
-    static const vtable vtbl{s::op, s::done, s::error, s::rnext, s::lnext};
-    data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template<class Wrapped>
-  many(Wrapped obj, std::true_type) noexcept : many() {
-    struct s {
-      static void op(data& src, data* dst) {
-          if (dst)
-            new (dst->buffer_) Wrapped(
-                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
-      }
-      static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
-      }
-      static void rnext(data& src, V&& v) {
-        ::pushmi::set_next(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
-      }
-      static void lnext(data& src, V& v) {
-        ::pushmi::set_next(*static_cast<Wrapped*>((void*)src.buffer_), v);
-      }
-    };
-    static const vtable vtbl{s::op, s::done, s::error, s::rnext, s::lnext};
-    new ((void*)data_.buffer_) Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-public:
-  using properties = property_set<is_receiver<>, is_many<>>;
-
-  many() = default;
-  many(many&& that) noexcept : many() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires ManyReceiver<wrapped_t<Wrapped>, V, E>)
-  explicit many(Wrapped obj) noexcept(insitu<Wrapped>())
-    : many{std::move(obj), bool_<insitu<Wrapped>()>{}} {
-    check<Wrapped>();
-  }
-  ~many() {
-    vptr_->op_(data_, nullptr);
-  }
-  many& operator=(many&& that) noexcept {
-    this->~many();
-    new ((void*)this) many(std::move(that));
-    return *this;
-  }
-  PUSHMI_TEMPLATE (class T)
-    (requires ConvertibleTo<T&&, V&&>)
-  void next(T&& t) {
-    if (!done_) {
-      vptr_->rnext_(data_, (T&&) t);
-    }
-  }
-  PUSHMI_TEMPLATE (class T)
-    (requires ConvertibleTo<T&, V&>)
-  void next(T& t) {
-    if (!done_) {
-      vptr_->lnext_(data_, t);
-    }
-  }
-  void error(E e) noexcept {
-    if (!done_) {
-      done_ = true;
-      vptr_->error_(data_, std::move(e));
-    }
-  }
-  void done() {
-    if (!done_) {
-      done_ = true;
-      vptr_->done_(data_);
-    }
-  }
-};
-
-// Class static definitions:
-template <class V, class E>
-constexpr typename many<V, E>::vtable const many<V, E>::noop_;
-
-template <class NF, class EF, class DF>
-#if __cpp_concepts
-  requires Invocable<DF&>
-#endif
-class many<NF, EF, DF> {
-  bool done_ = false;
-  NF nf_;
-  EF ef_;
-  DF df_;
-
-  static_assert(
-      !detail::is_v<NF, on_error_fn>,
-      "the first parameter is the next implementation, but on_error{} was passed");
-  static_assert(
-      !detail::is_v<EF, on_next_fn>,
-      "the second parameter is the error implementation, but on_next{} was passed");
-  static_assert(NothrowInvocable<EF&, std::exception_ptr>,
-      "error function must be noexcept and support std::exception_ptr");
- public:
-  using properties = property_set<is_receiver<>, is_many<>>;
-
-  many() = default;
-  constexpr explicit many(NF nf) : many(std::move(nf), EF{}, DF{}) {}
-  constexpr explicit many(EF ef) : many(NF{}, std::move(ef), DF{}) {}
-  constexpr explicit many(DF df) : many(NF{}, EF{}, std::move(df)) {}
-  constexpr many(EF ef, DF df)
-      : done_(false), nf_(), ef_(std::move(ef)), df_(std::move(df)) {}
-  constexpr many(NF nf, EF ef, DF df = DF{})
-      : done_(false), nf_(std::move(nf)), ef_(std::move(ef)), df_(std::move(df))
-  {}
-
-  PUSHMI_TEMPLATE (class V)
-    (requires Invocable<NF&, V>)
-  void next(V&& v) {
-    if (done_) {return;}
-    nf_((V&&) v);
-  }
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<EF&, E>)
-  void error(E e) noexcept {
-    static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
-    if (!done_) {
-      done_ = true;
-      ef_(std::move(e));
-    }
-  }
-  void done() {
-    if (!done_) {
-      done_ = true;
-      df_();
-    }
-  }
-};
-
-template <PUSHMI_TYPE_CONSTRAINT(Receiver) Data, class DNF, class DEF, class DDF>
-#if __cpp_concepts
-  requires Invocable<DDF&, Data&>
-#endif
-class many<Data, DNF, DEF, DDF> {
-  bool done_ = false;
-  Data data_;
-  DNF nf_;
-  DEF ef_;
-  DDF df_;
-
-  static_assert(
-      !detail::is_v<DNF, on_error_fn>,
-      "the first parameter is the next implementation, but on_error{} was passed");
-  static_assert(
-      !detail::is_v<DEF, on_next_fn>,
-      "the second parameter is the error implementation, but on_next{} was passed");
-  static_assert(NothrowInvocable<DEF, Data&, std::exception_ptr>,
-      "error function must be noexcept and support std::exception_ptr");
-
- public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_many<>>>;
-
-  constexpr explicit many(Data d)
-      : many(std::move(d), DNF{}, DEF{}, DDF{}) {}
-  constexpr many(Data d, DDF df)
-      : done_(false), data_(std::move(d)), nf_(), ef_(), df_(df) {}
-  constexpr many(Data d, DEF ef, DDF df = DDF{})
-      : done_(false), data_(std::move(d)), nf_(), ef_(ef), df_(df) {}
-  constexpr many(Data d, DNF nf, DEF ef = DEF{}, DDF df = DDF{})
-      : done_(false), data_(std::move(d)), nf_(nf), ef_(ef), df_(df) {}
-
-  Data& data() {return data_;}
-  PUSHMI_TEMPLATE(class V)
-    (requires Invocable<DNF&, Data&, V>)
-  void next(V&& v) {
-    if (!done_) {
-      nf_(data_, (V&&) v);
-    }
-  }
-  PUSHMI_TEMPLATE(class E)
-    (requires Invocable<DEF&, Data&, E>)
-  void error(E e) noexcept {
-    static_assert(
-        NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
-    if (!done_) {
-      done_ = true;
-      ef_(data_, std::move(e));
-    }
-  }
-  void done() {
-    if (!done_) {
-      done_ = true;
-      df_(data_);
-    }
-  }
-};
-
-template <>
-class many<>
-    : public many<ignoreNF, abortEF, ignoreDF> {
-public:
-  many() = default;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-// make_many
-PUSHMI_INLINE_VAR constexpr struct make_many_fn {
-  inline auto operator()() const {
-    return many<>{};
-  }
-  PUSHMI_TEMPLATE(class NF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
-  auto operator()(NF nf) const {
-    return many<NF, abortEF, ignoreDF>{std::move(nf)};
-  }
-  template <class... EFN>
-  auto operator()(on_error_fn<EFN...> ef) const {
-    return many<ignoreNF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-  auto operator()(DF df) const {
-    return many<ignoreNF, abortEF, DF>{std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class NF, class EF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
-  auto operator()(NF nf, EF ef) const {
-    return many<NF, EF, ignoreDF>{std::move(nf), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-  auto operator()(EF ef, DF df) const {
-    return many<ignoreNF, EF, DF>{std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class NF, class EF, class DF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-  auto operator()(NF nf, EF ef, DF df) const {
-    return many<NF, EF, DF>{std::move(nf), std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>>))
-  auto operator()(Data d) const {
-    return many<Data, passDNXF, passDEF, passDDF>{std::move(d)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DNF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
-  auto operator()(Data d, DNF nf) const {
-    return many<Data, DNF, passDEF, passDDF>{std::move(d), std::move(nf)};
-  }
-  PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>>))
-  auto operator()(Data d, on_error_fn<DEFN...> ef) const {
-    return many<Data, passDNXF, on_error_fn<DEFN...>, passDDF>{std::move(d), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DDF df) const {
-    return many<Data, passDNXF, passDEF, DDF>{std::move(d), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-  auto operator()(Data d, DNF nf, DEF ef) const {
-    return many<Data, DNF, DEF, passDDF>{std::move(d), std::move(nf), std::move(ef)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DEF ef, DDF df) const {
-    return many<Data, passDNXF, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DNF nf, DEF ef, DDF df) const {
-    return many<Data, DNF, DEF, DDF>{std::move(d), std::move(nf), std::move(ef), std::move(df)};
-  }
-} const make_many {};
-
-////////////////////////////////////////////////////////////////////////////////
-// deduction guides
-#if __cpp_deduction_guides >= 201703
-many() -> many<>;
-
-PUSHMI_TEMPLATE(class NF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
-many(NF) -> many<NF, abortEF, ignoreDF>;
-
-template <class... EFN>
-many(on_error_fn<EFN...>) -> many<ignoreNF, on_error_fn<EFN...>, ignoreDF>;
-
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-many(DF) -> many<ignoreNF, abortEF, DF>;
-
-PUSHMI_TEMPLATE(class NF, class EF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
-many(NF, EF) -> many<NF, EF, ignoreDF>;
-
-PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-many(EF, DF) -> many<ignoreNF, EF, DF>;
-
-PUSHMI_TEMPLATE(class NF, class EF, class DF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-many(NF, EF, DF) -> many<NF, EF, DF>;
-
-PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>>))
-many(Data d) -> many<Data, passDNXF, passDEF, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class DNF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
-many(Data d, DNF nf) -> many<Data, DNF, passDEF, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>>))
-many(Data d, on_error_fn<DEFN...>) ->
-    many<Data, passDNXF, on_error_fn<DEFN...>, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-many(Data d, DDF) -> many<Data, passDNXF, passDEF, DDF>;
-
-PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-many(Data d, DNF nf, DEF ef) -> many<Data, DNF, DEF, passDDF>;
-
-PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-many(Data d, DEF, DDF) -> many<Data, passDNXF, DEF, DDF>;
-
-PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data, is_many<>> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-many(Data d, DNF nf, DEF ef, DDF df) -> many<Data, DNF, DEF, DDF>;
-#endif
-
-template <class V, class E = std::exception_ptr>
-using any_many = many<V, E>;
-
-template<>
-struct construct_deduced<many> : make_many_fn {};
-
-// template <class V, class E = std::exception_ptr, class Wrapped>
-//     requires ManyReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>
-// auto erase_cast(Wrapped w) {
-//   return many<V, E>{std::move(w)};
-// }
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include "many.h"
-
-
-namespace pushmi {
-namespace detail {
-struct erase_receiver_t {};
-} // namespace detail
-
-template <class V, class PV, class PE, class E>
-class flow_many<detail::erase_receiver_t, V, PV, PE, E> {
-  bool done_ = false;
-  bool started_ = false;
-  union data {
-    void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold V in-situ
-  } data_{};
-  template <class Wrapped>
-  static constexpr bool insitu() {
-    return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible<Wrapped>::value;
-  }
-  struct vtable {
-    static void s_op(data&, data*) {}
-    static void s_done(data&) {}
-    static void s_error(data&, E) noexcept { std::terminate(); }
-    static void s_next(data&, V) {}
-    static void s_starting(data&, any_many<PV, PE>) {}
-    void (*op_)(data&, data*) = vtable::s_op;
-    void (*done_)(data&) = vtable::s_done;
-    void (*error_)(data&, E) noexcept = vtable::s_error;
-    void (*next_)(data&, V) = vtable::s_next;
-    void (*starting_)(data&, any_many<PV, PE>) = vtable::s_starting;
-  };
-  static constexpr vtable const noop_ {};
-  vtable const* vptr_ = &noop_;
-  template <class Wrapped>
-  flow_many(Wrapped obj, std::false_type) : flow_many() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
-      }
-      static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
-      }
-      static void next(data& src, V v) {
-        ::pushmi::set_next(*static_cast<Wrapped*>(src.pobj_), std::move(v));
-      }
-      static void starting(data& src, any_many<PV, PE> up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
-      }
-    };
-    static const vtable vtbl{s::op, s::done, s::error, s::next, s::starting};
-    data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template <class Wrapped>
-  flow_many(Wrapped obj, std::true_type) noexcept : flow_many() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          new (dst->buffer_) Wrapped(
-              std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-      }
-      static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
-      }
-      static void error(data& src, E e) noexcept {::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
-      }
-      static void next(data& src, V v) {
-        ::pushmi::set_next(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(v));
-      }
-      static void starting(data& src, any_many<PV, PE> up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
-      }
-    };
-    static const vtable vtbl{s::op, s::done, s::error, s::next, s::starting};
-    new (data_.buffer_) Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, flow_many>::value, U>;
-public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_many<>>;
-
-  flow_many() = default;
-  flow_many(flow_many&& that) noexcept : flow_many() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires FlowManyReceiver<wrapped_t<Wrapped>, any_many<PV, PE>, V, PV, PE, E>)
-  explicit flow_many(Wrapped obj) noexcept(insitu<Wrapped>())
-    : flow_many{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~flow_many() {
-    vptr_->op_(data_, nullptr);
-  }
-  flow_many& operator=(flow_many&& that) noexcept {
-    this->~flow_many();
-    new ((void*)this) flow_many(std::move(that));
-    return *this;
-  }
-  void next(V v) {
-    if (!started_) {std::abort();}
-    if (done_){ return; }
-    vptr_->next_(data_, std::move(v));
-  }
-  void error(E e) noexcept {
-    if (!started_) {std::abort();}
-    if (done_){ return; }
-    done_ = true;
-    vptr_->error_(data_, std::move(e));
-  }
-  void done() {
-    if (!started_) {std::abort();}
-    if (done_){ return; }
-    done_ = true;
-    vptr_->done_(data_);
-  }
-
-  void starting(any_many<PE> up) {
-    if (started_) {std::abort();}
-    started_ = true;
-    vptr_->starting_(data_, std::move(up));
-  }
-};
-
-// Class static definitions:
-template <class V, class PV, class PE, class E>
-constexpr typename flow_many<detail::erase_receiver_t, V, PV, PE, E>::vtable const
-  flow_many<detail::erase_receiver_t, V, PV, PE, E>::noop_;
-
-template <class NF, class EF, class DF, class StrtF>
-#if __cpp_concepts
-  requires Invocable<DF&>
-#endif
-class flow_many<NF, EF, DF, StrtF> {
-  bool done_ = false;
-  bool started_ = false;
-  NF nf_;
-  EF ef_;
-  DF df_;
-  StrtF strtf_;
-
- public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_many<>>;
-
-  static_assert(
-      !detail::is_v<NF, on_error_fn>,
-      "the first parameter is the next implementation, but on_error{} was passed");
-  static_assert(
-      !detail::is_v<EF, on_next_fn>,
-      "the second parameter is the error implementation, but on_next{} was passed");
-
-  flow_many() = default;
-  constexpr explicit flow_many(NF nf)
-      : flow_many(std::move(nf), EF{}, DF{}) {}
-  constexpr explicit flow_many(EF ef)
-      : flow_many(NF{}, std::move(ef), DF{}) {}
-  constexpr explicit flow_many(DF df)
-      : flow_many(NF{}, EF{}, std::move(df)) {}
-  constexpr flow_many(EF ef, DF df)
+  flow_receiver() = default;
+  constexpr explicit flow_receiver(VF nf)
+      : flow_receiver(std::move(nf), EF{}, DF{}) {}
+  constexpr explicit flow_receiver(EF ef)
+      : flow_receiver(VF{}, std::move(ef), DF{}) {}
+  constexpr explicit flow_receiver(DF df)
+      : flow_receiver(VF{}, EF{}, std::move(df)) {}
+  constexpr flow_receiver(EF ef, DF df)
       : nf_(), ef_(std::move(ef)), df_(std::move(df)) {}
-  constexpr flow_many(
-      NF nf,
+  constexpr flow_receiver(
+      VF nf,
       EF ef,
       DF df = DF{},
       StrtF strtf = StrtF{})
@@ -4677,8 +3584,8 @@ class flow_many<NF, EF, DF, StrtF> {
         df_(std::move(df)),
         strtf_(std::move(strtf)) {}
   PUSHMI_TEMPLATE (class V)
-    (requires Invocable<NF&, V>)
-  void next(V&& v) {
+    (requires Invocable<VF&, V>)
+  void value(V&& v) {
     if (!started_) {std::abort();}
     if (done_){ return; }
     nf_((V&&) v);
@@ -4709,41 +3616,41 @@ class flow_many<NF, EF, DF, StrtF> {
 
 template<
     PUSHMI_TYPE_CONSTRAINT(Receiver) Data,
-    class DNF,
+    class DVF,
     class DEF,
     class DDF,
     class DStrtF>
 #if __cpp_concepts
   requires Invocable<DDF&, Data&>
 #endif
-class flow_many<Data, DNF, DEF, DDF, DStrtF> {
+class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
   bool done_ = false;
   bool started_ = false;
   Data data_;
-  DNF nf_;
+  DVF nf_;
   DEF ef_;
   DDF df_;
   DStrtF strtf_;
 
  public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_flow<>, is_many<>>>;
+  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>, is_flow<>>>;
 
   static_assert(
-      !detail::is_v<DNF, on_error_fn>,
-      "the first parameter is the next implementation, but on_error{} was passed");
+      !detail::is_v<DVF, on_error_fn>,
+      "the first parameter is the value implementation, but on_error{} was passed");
   static_assert(
-      !detail::is_v<DEF, on_next_fn>,
-      "the second parameter is the error implementation, but on_next{} was passed");
+      !detail::is_v<DEF, on_value_fn>,
+      "the second parameter is the error implementation, but on_value{} was passed");
 
-  constexpr explicit flow_many(Data d)
-      : flow_many(std::move(d), DNF{}, DEF{}, DDF{}) {}
-  constexpr flow_many(Data d, DDF df)
+  constexpr explicit flow_receiver(Data d)
+      : flow_receiver(std::move(d), DVF{}, DEF{}, DDF{}) {}
+  constexpr flow_receiver(Data d, DDF df)
       : data_(std::move(d)), nf_(), ef_(), df_(df) {}
-  constexpr flow_many(Data d, DEF ef, DDF df = DDF{})
+  constexpr flow_receiver(Data d, DEF ef, DDF df = DDF{})
       : data_(std::move(d)), nf_(), ef_(ef), df_(df) {}
-  constexpr flow_many(
+  constexpr flow_receiver(
       Data d,
-      DNF nf,
+      DVF nf,
       DEF ef = DEF{},
       DDF df = DDF{},
       DStrtF strtf = DStrtF{})
@@ -4752,9 +3659,13 @@ class flow_many<Data, DNF, DEF, DDF, DStrtF> {
         ef_(ef),
         df_(df),
         strtf_(std::move(strtf)) {}
+
+
+  Data& data() { return data_; }
+
   PUSHMI_TEMPLATE (class V)
-    (requires Invocable<DNF&, Data&, V>)
-  void next(V&& v) {
+    (requires Invocable<DVF&, Data&, V>)
+  void value(V&& v) {
     if (!started_) {std::abort();}
     if (done_){ return; }
     nf_(data_, (V&&) v);
@@ -4785,199 +3696,261 @@ class flow_many<Data, DNF, DEF, DDF, DStrtF> {
 };
 
 template <>
-class flow_many<>
-    : public flow_many<ignoreNF, abortEF, ignoreDF, ignoreStrtF> {
+class flow_receiver<>
+    : public flow_receiver<ignoreVF, abortEF, ignoreDF, ignoreStrtF> {
 };
 
-// TODO winnow down the number of make_flow_many overloads and deduction
+// TODO winnow down the number of make_flow_receiver overloads and deduction
 // guides here, as was done for make_many.
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_flow_many
-PUSHMI_INLINE_VAR constexpr struct make_flow_many_fn {
+// make_flow_receiver
+PUSHMI_INLINE_VAR constexpr struct make_flow_receiver_fn {
   inline auto operator()() const {
-    return flow_many<>{};
+    return flow_receiver<>{};
   }
-  PUSHMI_TEMPLATE (class NF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
-  auto operator()(NF nf) const {
-    return flow_many<NF, abortEF, ignoreDF, ignoreStrtF>{
+  PUSHMI_TEMPLATE (class VF)
+    (requires PUSHMI_EXP(
+      lazy::True<>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<VF>)))
+  auto operator()(VF nf) const {
+    return flow_receiver<VF, abortEF, ignoreDF, ignoreStrtF>{
       std::move(nf)};
   }
   template <class... EFN>
   auto operator()(on_error_fn<EFN...> ef) const {
-    return flow_many<ignoreNF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>{
+    return flow_receiver<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>{
       std::move(ef)};
   }
-  PUSHMI_TEMPLATE(class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-  auto operator()(DF df) const {
-    return flow_many<ignoreNF, abortEF, DF, ignoreStrtF>{std::move(df)};
+  template <class... DFN>
+  auto operator()(on_done_fn<DFN...> df) const {
+    return flow_receiver<ignoreVF, abortEF, on_done_fn<DFN...>, ignoreStrtF>{
+      std::move(df)};
   }
-  PUSHMI_TEMPLATE (class NF, class EF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
-  auto operator()(NF nf, EF ef) const {
-    return flow_many<NF, EF, ignoreDF, ignoreStrtF>{std::move(nf),
+  PUSHMI_TEMPLATE (class VF, class EF)
+    (requires PUSHMI_EXP(
+      lazy::True<>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<VF> PUSHMI_AND
+        not lazy::Invocable<EF&>)))
+  auto operator()(VF nf, EF ef) const {
+    return flow_receiver<VF, EF, ignoreDF, ignoreStrtF>{std::move(nf),
       std::move(ef)};
   }
   PUSHMI_TEMPLATE(class EF, class DF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Invocable<DF&>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<EF>)))
   auto operator()(EF ef, DF df) const {
-    return flow_many<ignoreNF, EF, DF, ignoreStrtF>{std::move(ef), std::move(df)};
+    return flow_receiver<ignoreVF, EF, DF, ignoreStrtF>{std::move(ef), std::move(df)};
   }
-  PUSHMI_TEMPLATE (class NF, class EF, class DF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-  auto operator()(NF nf, EF ef, DF df) const {
-    return flow_many<NF, EF, DF, ignoreStrtF>{std::move(nf),
+  PUSHMI_TEMPLATE (class VF, class EF, class DF)
+    (requires PUSHMI_EXP(
+      lazy::Invocable<DF&>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<VF>)))
+  auto operator()(VF nf, EF ef, DF df) const {
+    return flow_receiver<VF, EF, DF, ignoreStrtF>{std::move(nf),
       std::move(ef), std::move(df)};
   }
-  PUSHMI_TEMPLATE (class NF, class EF, class DF, class StrtF)
-    (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-  auto operator()(NF nf, EF ef, DF df, StrtF strtf) const {
-    return flow_many<NF, EF, DF, StrtF>{std::move(nf), std::move(ef),
+  PUSHMI_TEMPLATE (class VF, class EF, class DF, class StrtF)
+    (requires PUSHMI_EXP(
+      lazy::Invocable<DF&>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Receiver<VF>)))
+  auto operator()(VF nf, EF ef, DF df, StrtF strtf) const {
+    return flow_receiver<VF, EF, DF, StrtF>{std::move(nf), std::move(ef),
       std::move(df), std::move(strtf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data>))
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
   auto operator()(Data d) const {
-    return flow_many<Data, passDNXF, passDEF, passDDF, passDStrtF>{
+    return flow_receiver<Data, passDVF, passDEF, passDDF, passDStrtF>{
         std::move(d)};
   }
-  PUSHMI_TEMPLATE(class Data, class DNF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
-  auto operator()(Data d, DNF nf) const {
-    return flow_many<Data, DNF, passDEF, passDDF, passDStrtF>{
+  PUSHMI_TEMPLATE(class Data, class DVF)
+    (requires PUSHMI_EXP(
+      lazy::True<> PUSHMI_AND
+      lazy::Receiver<Data>))
+  auto operator()(Data d, DVF nf) const {
+    return flow_receiver<Data, DVF, passDEF, passDDF, passDStrtF>{
       std::move(d), std::move(nf)};
   }
   PUSHMI_TEMPLATE(class Data, class... DEFN)
-    (requires PUSHMI_EXP(lazy::Receiver<Data>))
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data>))
   auto operator()(Data d, on_error_fn<DEFN...> ef) const {
-    return flow_many<Data, passDNXF, on_error_fn<DEFN...>, passDDF, passDStrtF>{
+    return flow_receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>{
       std::move(d), std::move(ef)};
   }
-  PUSHMI_TEMPLATE(class Data, class DDF)
-    (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DDF df) const {
-    return flow_many<Data, passDNXF, passDEF, DDF, passDStrtF>{
+  PUSHMI_TEMPLATE(class Data, class... DDFN)
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data>))
+  auto operator()(Data d, on_done_fn<DDFN...> df) const {
+    return flow_receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>, passDStrtF>{
       std::move(d), std::move(df)};
   }
-  PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-  auto operator()(Data d, DNF nf, DEF ef) const {
-    return flow_many<Data, DNF, DEF, passDDF, passDStrtF>{std::move(d), std::move(nf), std::move(ef)};
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+        not lazy::Invocable<DEF&, Data&>)))
+  auto operator()(Data d, DVF nf, DEF ef) const {
+    return flow_receiver<Data, DVF, DEF, passDDF, passDStrtF>{std::move(d), std::move(nf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
   auto operator()(Data d, DEF ef, DDF df) const {
-    return flow_many<Data, passDNXF, DEF, DDF, passDStrtF>{
+    return flow_receiver<Data, passDVF, DEF, DDF, passDStrtF>{
       std::move(d), std::move(ef), std::move(df)};
   }
-  PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DNF nf, DEF ef, DDF df) const {
-    return flow_many<Data, DNF, DEF, DDF, passDStrtF>{std::move(d),
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
+  auto operator()(Data d, DVF nf, DEF ef, DDF df) const {
+    return flow_receiver<Data, DVF, DEF, DDF, passDStrtF>{std::move(d),
       std::move(nf), std::move(ef), std::move(df)};
   }
-  PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF, class DStrtF)
-    (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-  auto operator()(Data d, DNF nf, DEF ef, DDF df, DStrtF strtf) const {
-    return flow_many<Data, DNF, DEF, DDF, DStrtF>{std::move(d),
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
+    (requires PUSHMI_EXP(
+      lazy::Receiver<Data> PUSHMI_AND
+      lazy::Invocable<DDF&, Data&>))
+  auto operator()(Data d, DVF nf, DEF ef, DDF df, DStrtF strtf) const {
+    return flow_receiver<Data, DVF, DEF, DDF, DStrtF>{std::move(d),
       std::move(nf), std::move(ef), std::move(df), std::move(strtf)};
   }
-} const make_flow_many {};
+} const make_flow_receiver {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-flow_many() -> flow_many<>;
+flow_receiver() -> flow_receiver<>;
 
-PUSHMI_TEMPLATE(class NF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<NF&>)))
-flow_many(NF) ->
-  flow_many<NF, abortEF, ignoreDF, ignoreStrtF>;
+PUSHMI_TEMPLATE(class VF)
+  (requires PUSHMI_EXP(
+    lazy::True<>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<VF>)))
+flow_receiver(VF) ->
+  flow_receiver<VF, abortEF, ignoreDF, ignoreStrtF>;
 
 template <class... EFN>
-flow_many(on_error_fn<EFN...>) ->
-  flow_many<ignoreNF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>;
+flow_receiver(on_error_fn<EFN...>) ->
+  flow_receiver<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStrtF>;
 
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<DF>)))
-flow_many(DF) ->
-  flow_many<ignoreNF, abortEF, DF, ignoreStrtF>;
+template <class... DFN>
+flow_receiver(on_done_fn<DFN...>) ->
+  flow_receiver<ignoreVF, abortEF, on_done_fn<DFN...>, ignoreStrtF>;
 
-PUSHMI_TEMPLATE(class NF, class EF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF> PUSHMI_AND not lazy::Invocable<EF&>)))
-flow_many(NF, EF) ->
-  flow_many<NF, EF, ignoreDF, ignoreStrtF>;
+PUSHMI_TEMPLATE(class VF, class EF)
+  (requires PUSHMI_EXP(
+    lazy::True<>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<VF> PUSHMI_AND
+      not lazy::Invocable<EF&>)))
+flow_receiver(VF, EF) ->
+  flow_receiver<VF, EF, ignoreDF, ignoreStrtF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<EF>)))
-flow_many(EF, DF) ->
-  flow_many<ignoreNF, EF, DF, ignoreStrtF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Invocable<DF&>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<EF>)))
+flow_receiver(EF, DF) ->
+  flow_receiver<ignoreVF, EF, DF, ignoreStrtF>;
 
-PUSHMI_TEMPLATE(class NF, class EF, class DF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-flow_many(NF, EF, DF) ->
-  flow_many<NF, EF, DF, ignoreStrtF>;
+PUSHMI_TEMPLATE(class VF, class EF, class DF)
+  (requires PUSHMI_EXP(
+    lazy::Invocable<DF&>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<VF>)))
+flow_receiver(VF, EF, DF) ->
+  flow_receiver<VF, EF, DF, ignoreStrtF>;
 
-PUSHMI_TEMPLATE(class NF, class EF, class DF, class StrtF)
-  (requires PUSHMI_EXP(lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<NF>)))
-flow_many(NF, EF, DF, StrtF) ->
-  flow_many<NF, EF, DF, StrtF>;
+PUSHMI_TEMPLATE(class VF, class EF, class DF, class StrtF)
+  (requires PUSHMI_EXP(
+    lazy::Invocable<DF&>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Receiver<VF>)))
+flow_receiver(VF, EF, DF, StrtF) ->
+  flow_receiver<VF, EF, DF, StrtF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data>))
-flow_many(Data d) ->
-  flow_many<Data, passDNXF, passDEF, passDDF, passDStrtF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+flow_receiver(Data d) ->
+  flow_receiver<Data, passDVF, passDEF, passDDF, passDStrtF>;
 
-PUSHMI_TEMPLATE(class Data, class DNF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DNF&, Data&>)))
-flow_many(Data d, DNF nf) ->
-  flow_many<Data, DNF, passDEF, passDDF, passDStrtF>;
+PUSHMI_TEMPLATE(class Data, class DVF)
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data>))
+flow_receiver(Data d, DVF nf) ->
+  flow_receiver<Data, DVF, passDEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires PUSHMI_EXP(lazy::Receiver<Data>))
-flow_many(Data d, on_error_fn<DEFN...>) ->
-  flow_many<Data, passDNXF, on_error_fn<DEFN...>, passDDF, passDStrtF>;
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data>))
+flow_receiver(Data d, on_error_fn<DEFN...>) ->
+  flow_receiver<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStrtF>;
+
+PUSHMI_TEMPLATE(class Data, class... DDFN)
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data>))
+flow_receiver(Data d, on_done_fn<DDFN...>) ->
+  flow_receiver<Data, passDVF, passDEF, on_done_fn<DDFN...>, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(lazy::True<> PUSHMI_AND lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_many(Data d, DDF) ->
-    flow_many<Data, passDNXF, passDEF, DDF, passDStrtF>;
+  (requires PUSHMI_EXP(
+    lazy::True<> PUSHMI_AND
+    lazy::Receiver<Data> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
+flow_receiver(Data d, DDF) ->
+    flow_receiver<Data, passDVF, passDEF, DDF, passDStrtF>;
 
-PUSHMI_TEMPLATE(class Data, class DNF, class DEF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Invocable<DEF&, Data&>)))
-flow_many(Data d, DNF nf, DEF ef) ->
-  flow_many<Data, DNF, DEF, passDDF, passDStrtF>;
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND
+      not lazy::Invocable<DEF&, Data&>)))
+flow_receiver(Data d, DVF nf, DEF ef) ->
+  flow_receiver<Data, DVF, DEF, passDDF, passDStrtF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_many(Data d, DEF, DDF) ->
-  flow_many<Data, passDNXF, DEF, DDF, passDStrtF>;
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
+flow_receiver(Data d, DEF, DDF) ->
+  flow_receiver<Data, passDVF, DEF, DDF, passDStrtF>;
 
-PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&>))
-flow_many(Data d, DNF nf, DEF ef, DDF df) ->
-  flow_many<Data, DNF, DEF, DDF, passDStrtF>;
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&>))
+flow_receiver(Data d, DVF nf, DEF ef, DDF df) ->
+  flow_receiver<Data, DVF, DEF, DDF, passDStrtF>;
 
-PUSHMI_TEMPLATE(class Data, class DNF, class DEF, class DDF, class DStrtF)
-  (requires PUSHMI_EXP(lazy::Receiver<Data> PUSHMI_AND lazy::Flow<Data> PUSHMI_AND lazy::Invocable<DDF&, Data&> ))
-flow_many(Data d, DNF nf, DEF ef, DDF df, DStrtF strtf) ->
-  flow_many<Data, DNF, DEF, DDF, DStrtF>;
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStrtF)
+  (requires PUSHMI_EXP(
+    lazy::Receiver<Data> PUSHMI_AND
+    lazy::Invocable<DDF&, Data&> ))
+flow_receiver(Data d, DVF nf, DEF ef, DDF df, DStrtF strtf) ->
+  flow_receiver<Data, DVF, DEF, DDF, DStrtF>;
 #endif
 
-template <class V, class PV = std::ptrdiff_t, class PE = std::exception_ptr, class E = PE>
-using any_flow_many = flow_many<detail::erase_receiver_t, V, PV, PE, E>;
-
 template<>
-struct construct_deduced<flow_many> : make_flow_many_fn {};
+struct construct_deduced<flow_receiver> : make_flow_receiver_fn {};
 
-// template <class V, class PE = std::exception_ptr, class E = PE, class Wrapped>
-//     requires FlowManyReceiver<Wrapped, V, PE, E> && !detail::is_v<Wrapped, many> &&
-//     !detail::is_v<Wrapped, std::promise>
-//     auto erase_cast(Wrapped w) {
-//   return flow_many<V, PE, E>{std::move(w)};
-// }
 
 } // namespace pushmi
 //#pragma once
@@ -4988,7 +3961,7 @@ struct construct_deduced<flow_many> : make_flow_many_fn {};
 
 //#include <chrono>
 //#include <functional>
-//#include "single.h"
+//#include "receiver.h"
 
 namespace pushmi {
 namespace detail {
@@ -5022,23 +3995,23 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires Sender<wrapped_t<Wrapped>, is_executor<>, is_single<>>)
-    // (requires SenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, This>>)
   any_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, single<T,E>)
+    // This can't be a requirement because it asks if submit(w, any_receiver<E,T>)
     // is well-formed (where T is an alias for any_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with SingleReceiver<any_receiver<E,T>, T'&, E'>, that
+    // will ask whether value(any_receiver<E,T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      SenderTo<Wrapped, single<This, E>>,
+      SenderTo<Wrapped, any_receiver<E,This>>,
       "Expecting to be passed a Sender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
       static void submit(void* pobj, void* s) {
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::submit};
@@ -5049,9 +4022,9 @@ public:
   template<class SingleReceiver>
   void submit(SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_executor_ref<E>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, &s);
   }
 };
@@ -5089,7 +4062,7 @@ any_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E>
 using any_executor_base =
-  any_single_sender<any_executor_ref<E>, E>;
+  any_single_sender<E, any_executor_ref<E>>;
 
 template<class T, class E>
 using not_any_executor =
@@ -5101,6 +4074,7 @@ using not_any_executor =
 template <class E>
 struct any_executor : detail::any_executor_base<E> {
   constexpr any_executor() = default;
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
   using detail::any_executor_base<E>::any_executor_base;
 };
 
@@ -5117,7 +4091,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires SenderTo<
       detail::not_any_executor<Wrapped, E>,
-      single<any_executor_ref<E>, E>>)
+      any_receiver<E, any_executor_ref<E>>>)
 auto make_any_executor(Wrapped w) -> any_executor<E> {
   return any_executor<E>{std::move(w)};
 }
@@ -5134,10 +4108,10 @@ PUSHMI_TEMPLATE(class Wrapped)
       detail::not_any_executor<
           Wrapped,
           std::exception_ptr>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_executor_ref<
-              std::exception_ptr>,
-          std::exception_ptr>>)
+              std::exception_ptr>>>)
 any_executor(Wrapped) ->
     any_executor<
         std::exception_ptr>;
@@ -5171,16 +4145,16 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires ConstrainedSender<wrapped_t<Wrapped>, is_single<>>)
-    // (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires ConstrainedSenderTo<wrapped_t<Wrapped>, any_receiver<E,This>>)
   any_constrained_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, top(w), single<T,E>)
+    // This can't be a requirement because it asks if submit(w, top(w), any_receiver<E,T>)
     // is well-formed (where T is an alias for any_constrained_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with ReceiveValue<any_receiver<E,T>, T'&>, that
+    // will ask whether value(any_receiver<E,T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      ConstrainedSenderTo<Wrapped, single<This, E>>,
+      ConstrainedSenderTo<Wrapped, any_receiver<E,This>>,
       "Expecting to be passed a ConstrainedSender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
@@ -5191,7 +4165,7 @@ public:
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
           cv,
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::top, s::submit};
@@ -5205,9 +4179,9 @@ public:
   template<class SingleReceiver>
   void submit(CV cv, SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_constrained_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_constrained_executor_ref<E, TP>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, cv, &s);
   }
 };
@@ -5248,7 +4222,7 @@ any_constrained_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E, class CV>
 using any_constrained_executor_base =
-  any_constrained_single_sender<any_constrained_executor_ref<E, CV>, E, CV>;
+  any_constrained_single_sender<E, CV, any_constrained_executor_ref<E, CV>>;
 
 template<class T, class E, class CV>
 using not_any_constrained_executor =
@@ -5278,7 +4252,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires ConstrainedSenderTo<
       detail::not_any_constrained_executor<Wrapped, E, constraint_t<Wrapped>>,
-      single<any_constrained_executor_ref<E, constraint_t<Wrapped>>, E>>)
+      any_receiver<E, any_constrained_executor_ref<E, constraint_t<Wrapped>>>>)
 auto make_any_constrained_executor(Wrapped w) -> any_constrained_executor<E, constraint_t<Wrapped>> {
   return any_constrained_executor<E, constraint_t<Wrapped>>{std::move(w)};
 }
@@ -5297,11 +4271,11 @@ PUSHMI_TEMPLATE(class Wrapped)
           Wrapped,
           std::exception_ptr,
           constraint_t<Wrapped>>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_constrained_executor_ref<
               std::exception_ptr,
-              constraint_t<Wrapped>>,
-          std::exception_ptr>>)
+              constraint_t<Wrapped>>>>)
 any_constrained_executor(Wrapped) ->
     any_constrained_executor<
         std::exception_ptr,
@@ -5335,16 +4309,16 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires TimeSender<wrapped_t<Wrapped>, is_single<>>)
-    // (requires TimeSenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires TimeSenderTo<wrapped_t<Wrapped>, receiver<E, This>>)
   any_time_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, now(w), single<T,E>)
+    // This can't be a requirement because it asks if submit(w, now(w), any_receiver<E, T>)
     // is well-formed (where T is an alias for any_time_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with ReceiverValue<any_receiver<E, T>, T'&>, that
+    // will ask whether value(any_receiver<E, T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      TimeSenderTo<Wrapped, single<This, E>>,
+      TimeSenderTo<Wrapped, any_receiver<E, This>>,
       "Expecting to be passed a TimeSender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
@@ -5355,7 +4329,7 @@ public:
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
           tp,
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::now, s::submit};
@@ -5369,9 +4343,9 @@ public:
   template<class SingleReceiver>
   void submit(TP tp, SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_time_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_time_executor_ref<E, TP>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, tp, &s);
   }
 };
@@ -5412,7 +4386,7 @@ any_time_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E, class TP>
 using any_time_executor_base =
-  any_time_single_sender<any_time_executor_ref<E, TP>, E, TP>;
+  any_time_single_sender<E, TP, any_time_executor_ref<E, TP>>;
 
 template<class T, class E, class TP>
 using not_any_time_executor =
@@ -5442,7 +4416,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires TimeSenderTo<
       detail::not_any_time_executor<Wrapped, E, time_point_t<Wrapped>>,
-      single<any_time_executor_ref<E, time_point_t<Wrapped>>, E>>)
+      any_receiver<E, any_time_executor_ref<E, time_point_t<Wrapped>>>>)
 auto make_any_time_executor(Wrapped w) -> any_time_executor<E, time_point_t<Wrapped>> {
   return any_time_executor<E, time_point_t<Wrapped>>{std::move(w)};
 }
@@ -5461,11 +4435,11 @@ PUSHMI_TEMPLATE(class Wrapped)
           Wrapped,
           std::exception_ptr,
           time_point_t<Wrapped>>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_time_executor_ref<
               std::exception_ptr,
-              time_point_t<Wrapped>>,
-          std::exception_ptr>>)
+              time_point_t<Wrapped>>>>)
 any_time_executor(Wrapped) ->
     any_time_executor<
         std::exception_ptr,
@@ -5485,16 +4459,17 @@ namespace pushmi {
 
 class inline_constrained_executor_t {
   public:
-    using properties = property_set<is_constrained<>, is_executor<>, is_single<>>;
+    using properties = property_set<is_constrained<>, is_executor<>, is_always_blocking<>, is_fifo_sequence<>, is_single<>>;
 
     std::ptrdiff_t top() {
       return 0;
     }
     auto executor() { return *this; }
     PUSHMI_TEMPLATE(class CV, class Out)
-      (requires Regular<CV> && Receiver<Out, is_single<>>)
+      (requires Regular<CV> && Receiver<Out>)
     void submit(CV, Out out) {
-      ::pushmi::set_value(std::move(out), *this);
+      ::pushmi::set_value(out, *this);
+      ::pushmi::set_done(out);
     }
 };
 
@@ -5510,17 +4485,18 @@ inline inline_constrained_executor_t inline_constrained_executor() {
 
 class inline_time_executor_t {
   public:
-    using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+    using properties = property_set<is_time<>, is_executor<>, is_always_blocking<>, is_fifo_sequence<>, is_single<>>;
 
     auto top() {
       return std::chrono::system_clock::now();
     }
     auto executor() { return *this; }
     PUSHMI_TEMPLATE(class TP, class Out)
-      (requires Regular<TP> && Receiver<Out, is_single<>>)
+      (requires Regular<TP> && Receiver<Out>)
     void submit(TP tp, Out out) {
       std::this_thread::sleep_until(tp);
-      ::pushmi::set_value(std::move(out), *this);
+      ::pushmi::set_value(out, *this);
+      ::pushmi::set_done(out);
     }
 };
 
@@ -5536,13 +4512,14 @@ inline inline_time_executor_t inline_time_executor() {
 
 class inline_executor_t {
   public:
-    using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+    using properties = property_set<is_sender<>, is_executor<>, is_always_blocking<>, is_fifo_sequence<>, is_single<>>;
 
     auto executor() { return *this; }
     PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out, is_single<>>)
+      (requires Receiver<Out>)
     void submit(Out out) {
-      ::pushmi::set_value(std::move(out), *this);
+      ::pushmi::set_value(out, *this);
+      ::pushmi::set_done(out);
     }
 };
 
@@ -5597,11 +4574,11 @@ class trampoline;
 template <class E = std::exception_ptr>
 class delegator : _pipeable_sender_ {
  public:
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   delegator executor() { return {}; }
   PUSHMI_TEMPLATE (class SingleReceiver)
-    (requires Receiver<remove_cvref_t<SingleReceiver>, is_single<>>)
+    (requires ReceiveValue<remove_cvref_t<SingleReceiver>, any_executor_ref<E>>)
   void submit(SingleReceiver&& what) {
     trampoline<E>::submit(
         ownordelegate, std::forward<SingleReceiver>(what));
@@ -5611,10 +4588,11 @@ class delegator : _pipeable_sender_ {
 template <class E = std::exception_ptr>
 class nester : _pipeable_sender_ {
  public:
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   nester executor() { return {}; }
-  template <class SingleReceiver>
+  PUSHMI_TEMPLATE (class SingleReceiver)
+    (requires ReceiveValue<remove_cvref_t<SingleReceiver>, any_executor_ref<E>>)
   void submit(SingleReceiver&& what) {
     trampoline<E>::submit(ownornest, std::forward<SingleReceiver>(what));
   }
@@ -5625,7 +4603,7 @@ class trampoline {
  private:
   using error_type = std::decay_t<E>;
   using work_type =
-     any_single<any_executor_ref<error_type>, error_type>;
+     any_receiver<error_type, any_executor_ref<error_type>>;
   using queue_type = std::deque<work_type>;
   using pending_type = std::tuple<int, queue_type, bool>;
 
@@ -5680,6 +4658,7 @@ class trampoline {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
           ::pushmi::set_value(awhat, that);
+          ::pushmi::set_done(awhat);
         }
       } catch(...) {
         --depth(*owner());
@@ -5738,6 +4717,7 @@ class trampoline {
       while (go) {
         repeat(pending_store) = false;
         ::pushmi::set_value(awhat, that);
+        ::pushmi::set_done(awhat);
         go = repeat(pending_store);
       }
     } else {
@@ -5752,8 +4732,8 @@ class trampoline {
     while (!pending(pending_store).empty()) {
       auto what = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
-      any_executor_ref<error_type> anythis{that};
-      ::pushmi::set_value(what, anythis);
+      ::pushmi::set_value(what, any_executor_ref<error_type>{that});
+      ::pushmi::set_done(what);
     }
   }
 };
@@ -5819,7 +4799,7 @@ namespace pushmi {
 //
 
 struct new_thread_executor {
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_never_blocking<>, is_concurrent_sequence<>, is_single<>>;
 
   new_thread_executor executor() { return {}; }
   PUSHMI_TEMPLATE(class Out)
@@ -5845,13 +4825,243 @@ inline new_thread_executor new_thread() {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "single.h"
+//#include "single_sender.h"
+//#include "executor.h"
+
+//#include <queue>
+
+namespace pushmi {
+
+template<class E, class Executor>
+class strand_executor;
+
+template<class E, class Executor>
+struct strand_queue_receiver;
+
+template<class E>
+class strand_item
+{
+public:
+
+  strand_item(any_receiver<E, any_executor_ref<E>> out) :
+    what(std::move(out)) {}
+
+  any_receiver<E, any_executor_ref<E>> what;
+};
+template<class E, class TP>
+bool operator<(const strand_item<E>& l, const strand_item<E>& r) {
+  return l.when < r.when;
+}
+template<class E, class TP>
+bool operator>(const strand_item<E>& l, const strand_item<E>& r) {
+  return l.when > r.when;
+}
+template<class E, class TP>
+bool operator==(const strand_item<E>& l, const strand_item<E>& r) {
+  return l.when == r.when;
+}
+template<class E, class TP>
+bool operator!=(const strand_item<E>& l, const strand_item<E>& r) {
+  return !(l == r);
+}
+template<class E, class TP>
+bool operator<=(const strand_item<E>& l, const strand_item<E>& r) {
+  return !(l > r);
+}
+template<class E, class TP>
+bool operator>=(const strand_item<E>& l, const strand_item<E>& r) {
+  return !(l < r);
+}
+
+template<class E>
+class strand_queue_base : public std::enable_shared_from_this<strand_queue_base<E>>{
+public:
+  std::mutex lock_;
+  size_t remaining_ = 0;
+  std::queue<strand_item<E>> items_;
+
+  virtual ~strand_queue_base() {}
+
+  strand_item<E>& front() {
+    // :(
+    return const_cast<strand_item<E>&>(this->items_.front());
+  }
+
+  virtual void dispatch()=0;
+};
+
+template<class E, class Executor>
+class strand_queue : public strand_queue_base<E> {
+public:
+  ~strand_queue() {
+  }
+  strand_queue(Executor ex) :
+    ex_(std::move(ex)) {}
+  Executor ex_;
+
+  void dispatch() override;
+
+  auto shared_from_that() {
+    return std::static_pointer_cast<
+            strand_queue<E, Executor>>(
+              this->shared_from_this());
+  }
+
+  template<class Exec>
+  void value(Exec&&) {
+    //
+    // pull ready items from the queue in order.
+
+    std::unique_lock<std::mutex> guard{this->lock_};
+
+    // only allow one at a time
+    if (this->remaining_ > 0) { return; }
+    // skip when empty
+    if (this->items_.empty()) { return; }
+
+    // do not allow recursive queueing to block this executor
+    this->remaining_ = this->items_.size();
+
+    auto that = shared_from_that();
+    auto subEx = strand_executor<E, Executor>{that};
+
+    while (!this->items_.empty() && --this->remaining_ >= 0) {
+      auto item{std::move(this->front())};
+      this->items_.pop();
+      guard.unlock();
+      ::pushmi::set_value(item.what, any_executor_ref<E>{subEx});
+      ::pushmi::set_done(item.what);
+      guard.lock();
+    }
+  }
+  template<class AE>
+  void error(AE e) noexcept {
+    std::unique_lock<std::mutex> guard{this->lock_};
+
+    this->remaining_ = 0;
+
+    while (!this->items_.empty()) {
+      auto what{std::move(this->front().what)};
+      this->items_.pop();
+      guard.unlock();
+      ::pushmi::set_error(what, detail::as_const(e));
+      guard.lock();
+    }
+  }
+  void done() {
+    std::unique_lock<std::mutex> guard{this->lock_};
+
+    // only allow one at a time
+    if (this->remaining_ > 0) { return; }
+    // skip when empty
+    if (this->items_.empty()) { return; }
+
+    auto that = shared_from_that();
+    ::pushmi::submit(ex_, strand_queue_receiver<E, Executor>{that});
+  }
+};
+
+template<class E, class Executor>
+struct strand_queue_receiver : std::shared_ptr<strand_queue<E, Executor>> {
+  ~strand_queue_receiver() {
+  }
+  explicit strand_queue_receiver(std::shared_ptr<strand_queue<E, Executor>> that) :
+    std::shared_ptr<strand_queue<E, Executor>>(that)
+    {}
+  using properties = property_set<is_receiver<>>;
+};
+
+template<class E, class Executor>
+void strand_queue<E, Executor>::dispatch() {
+  ::pushmi::submit(ex_,
+    strand_queue_receiver<E, Executor>{
+      shared_from_that()});
+}
+
+//
+// strand is used to build a fifo single_executor from a concurrent single_executor.
+//
+
+template<class E, class Executor>
+class strand_executor {
+  std::shared_ptr<strand_queue<E, Executor>> queue_;
+public:
+  using properties = property_set<is_sender<>, is_executor<>, property_set_index_t<properties_t<Executor>, is_never_blocking<>>, is_fifo_sequence<>, is_single<>>;
+
+  strand_executor(
+    std::shared_ptr<strand_queue<E, Executor>> queue) :
+    queue_(std::move(queue)) {}
+
+  auto executor() { return *this; }
+
+  PUSHMI_TEMPLATE(class Out)
+    (requires ReceiveValue<Out, any_executor_ref<E>> && ReceiveError<Out, E>)
+  void submit(Out out) {
+    // queue for later
+    std::unique_lock<std::mutex> guard{queue_->lock_};
+    queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
+    if (queue_->remaining_ == 0) {
+      // noone is minding the shop, send a worker
+      ::pushmi::submit(queue_->ex_, strand_queue_receiver<E, Executor>{queue_});
+    }
+  }
+};
+
+//
+// the strand executor factory produces a new fifo ordered queue each time that it is called.
+//
+
+template<class E, class ExecutorFactory>
+class strand_executor_factory_fn {
+  ExecutorFactory ef_;
+public:
+  explicit strand_executor_factory_fn(ExecutorFactory ef) : ef_(std::move(ef)) {}
+  auto operator()() const {
+    auto ex = ef_();
+    auto queue = std::make_shared<strand_queue<E, decltype(ex)>>(
+      std::move(ex));
+    return strand_executor<E, decltype(ex)>{queue};
+  }
+};
+
+template<class Exec>
+class same_executor_factory_fn {
+  Exec ex_;
+public:
+  explicit same_executor_factory_fn(Exec ex) : ex_(std::move(ex)) {}
+  auto operator()() const {
+    return ex_;
+  }
+};
+
+PUSHMI_TEMPLATE(class E = std::exception_ptr, class ExecutorFactory)
+  (requires Invocable<ExecutorFactory&> &&
+    Executor<invoke_result_t<ExecutorFactory&>> &&
+    ConcurrentSequence<invoke_result_t<ExecutorFactory&>>)
+auto strands(ExecutorFactory ef) {
+  return strand_executor_factory_fn<E, ExecutorFactory>{std::move(ef)};
+}
+PUSHMI_TEMPLATE(class E = std::exception_ptr, class Exec)
+  (requires Executor<Exec> &&
+    ConcurrentSequence<Exec>)
+auto strands(Exec ex) {
+  return strand_executor_factory_fn<E, same_executor_factory_fn<Exec>>{same_executor_factory_fn<Exec>{std::move(ex)}};
+}
+
+} // namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "receiver.h"
 //#include "executor.h"
 //#include "inline.h"
 
 namespace pushmi {
 
-template <class V, class E, class CV>
+template <class E, class CV, class... VN>
 class any_constrained_single_sender {
   union data {
     void* pobj_ = nullptr;
@@ -5866,11 +5076,11 @@ class any_constrained_single_sender {
     static void s_op(data&, data*) {}
     static CV s_top(data&) { return CV{}; }
     static any_constrained_executor<E, CV> s_executor(data&) { return {}; }
-    static void s_submit(data&, CV, single<V, E>) {}
+    static void s_submit(data&, CV, any_receiver<E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     CV (*top_)(data&) = vtable::s_top;
     any_constrained_executor<E, CV> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, CV, single<V, E>) = vtable::s_submit;
+    void (*submit_)(data&, CV, any_receiver<E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -5889,7 +5099,7 @@ class any_constrained_single_sender {
       static any_constrained_executor<E, CV> executor(data& src) {
         return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, CV at, single<V, E> out) {
+      static void submit(data& src, CV at, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>(src.pobj_),
             std::move(at),
@@ -5916,7 +5126,7 @@ class any_constrained_single_sender {
       static any_constrained_executor<E, CV> executor(data& src) {
         return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, CV cv, single<V, E> out) {
+      static void submit(data& src, CV cv, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(cv),
@@ -5941,7 +5151,7 @@ class any_constrained_single_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<V, E>>)
+    (requires ConstrainedSenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>)
   explicit any_constrained_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
   : any_constrained_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {
   }
@@ -5959,15 +5169,15 @@ class any_constrained_single_sender {
   any_constrained_executor<E, CV> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(CV at, single<V, E> out) {
+  void submit(CV at, any_receiver<E, VN...> out) {
     vptr_->submit_(data_, std::move(at), std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E, class CV>
-constexpr typename any_constrained_single_sender<V, E, CV>::vtable const
-    any_constrained_single_sender<V, E, CV>::noop_;
+template <class E, class CV, class... VN>
+constexpr typename any_constrained_single_sender<E, CV, VN...>::vtable const
+    any_constrained_single_sender<E, CV, VN...>::noop_;
 
 template<class SF, class ZF, class EXF>
   // (requires Invocable<ZF&> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
@@ -5992,7 +5202,7 @@ class constrained_single_sender<SF, ZF, EXF> {
   }
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class CV, class Out)
-    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+    (requires Regular<CV> && Receiver<Out> &&
       Invocable<SF&, CV, Out>)
   void submit(CV cv, Out out) {
     sf_(std::move(cv), std::move(out));
@@ -6025,7 +5235,7 @@ class constrained_single_sender<Data, DSF, DZF, DEXF> {
   }
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class CV, class Out)
-    (requires Regular<CV> && Receiver<Out, is_single<>> &&
+    (requires Regular<CV> && Receiver<Out> &&
       Invocable<DSF&, Data&, CV, Out>)
   void submit(CV cv, Out out) {
     sf_(data_, std::move(cv), std::move(out));
@@ -6118,15 +5328,6 @@ template<>
 struct construct_deduced<constrained_single_sender>
   : make_constrained_single_sender_fn {};
 
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     class CV = std::chrono::system_clock::time_point,
-//     ConstrainedSenderTo<single<V, E>, is_single<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return constrained_single_sender<V, E>{std::move(w)};
-// }
-
 } // namespace pushmi
 //#pragma once
 // Copyright (c) 2018-present, Facebook, Inc.
@@ -6134,7 +5335,7 @@ struct construct_deduced<constrained_single_sender>
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "single.h"
+//#include "receiver.h"
 //#include "executor.h"
 //#include "inline.h"
 //#include "constrained_single_sender.h"
@@ -6142,20 +5343,20 @@ struct construct_deduced<constrained_single_sender>
 namespace pushmi {
 
 
-template <class V, class E, class TP>
-class any_time_single_sender : public any_constrained_single_sender<V, E, TP> {
+template <class E, class TP, class... VN>
+class any_time_single_sender : public any_constrained_single_sender<E, TP, VN...> {
 public:
   using properties = property_set<is_time<>, is_single<>>;
   constexpr any_time_single_sender() = default;
   template<class T>
   constexpr explicit any_time_single_sender(T t)
-      : any_constrained_single_sender<V, E, TP>(std::move(t)) {}
+      : any_constrained_single_sender<E, TP, VN...>(std::move(t)) {}
   template<class T0, class T1, class... TN>
   constexpr any_time_single_sender(T0 t0, T1 t1, TN... tn)
-      : any_constrained_single_sender<V, E, TP>(std::move(t0), std::move(t1), std::move(tn)...) {}
+      : any_constrained_single_sender<E, TP, VN...>(std::move(t0), std::move(t1), std::move(tn)...) {}
 
   any_time_executor<E, TP> executor() {
-    return any_time_executor<E, TP>{any_constrained_single_sender<V, E, TP>::executor()};
+    return any_time_executor<E, TP>{any_constrained_single_sender<E, TP, VN...>::executor()};
   }
 
 };
@@ -6302,11 +5503,11 @@ class time_heap_item
 public:
   using time_point = std::decay_t<TP>;
 
-  time_heap_item(time_point at, any_single<any_time_executor_ref<E, TP>, E> out) :
+  time_heap_item(time_point at, any_receiver<E, any_time_executor_ref<E, TP>> out) :
     when(std::move(at)), what(std::move(out)) {}
 
   time_point when;
-  any_single<any_time_executor_ref<E, TP>, E> what;
+  any_receiver<E, any_time_executor_ref<E, TP>> what;
 };
 template<class E, class TP>
 bool operator<(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
@@ -6394,18 +5595,19 @@ public:
     }
 
     if (this->heap_.empty()) { return; }
-    auto subEx = time_source_executor<E, TP, NF, Executor>{s, shared_from_that()};
+    auto that = shared_from_that();
+    auto subEx = time_source_executor<E, TP, NF, Executor>{s, that};
     while (!this->heap_.empty() && this->heap_.top().when <= start) {
       auto item{std::move(this->top())};
       this->heap_.pop();
       guard.unlock();
       std::this_thread::sleep_until(item.when);
-      ::pushmi::set_value(item.what, subEx);
+      ::pushmi::set_value(item.what, any_time_executor_ref<E, TP>{subEx});
+      ::pushmi::set_done(item.what);
       guard.lock();
       // allows set_value to queue nested items
       --s->items_;
     }
-    this->dispatching_ = false;
 
     if (this->heap_.empty()) {
       // if this is empty, tell worker to check for the done condition.
@@ -6424,15 +5626,6 @@ public:
           } catch(...) {
             // we already have an error, ignore this one.
           }
-        }
-      } else {
-        // add back to pending_ to get the remaining items dispatched
-        s->pending_.push_back(this->shared_from_this());
-        this->pending_ = true;
-        if (this->heap_.top().when <= s->earliest_) {
-          // this is the earliest, tell worker to reset earliest_
-          ++s->dirty_;
-          s->wake_.notify_one();
         }
       }
     }
@@ -6458,22 +5651,21 @@ public:
   }
   void done() {
     auto s = source_.lock();
-    auto done = false;
     std::unique_lock<std::mutex> guard{s->lock_};
 
     if (!this->dispatching_ || this->pending_) {
       std::abort();
     }
-
-    while (!this->heap_.empty()) {
-      auto what{std::move(this->top().what)};
-      this->heap_.pop();
-      --s->items_;
-      guard.unlock();
-      ::pushmi::set_done(what);
-      guard.lock();
-    }
     this->dispatching_ = false;
+
+    // add back to pending_ to get the remaining items dispatched
+    s->pending_.push_back(this->shared_from_this());
+    this->pending_ = true;
+    if (this->heap_.top().when <= s->earliest_) {
+      // this is the earliest, tell worker to reset earliest_
+      ++s->dirty_;
+      s->wake_.notify_one();
+    }
   }
 };
 
@@ -6485,7 +5677,7 @@ struct time_source_queue_receiver : std::shared_ptr<time_source_queue<E, TP, NF,
     std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
     source_(that->source_.lock()) {
     }
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
   std::shared_ptr<time_source_shared<E, TP>> source_;
 };
 
@@ -6681,7 +5873,7 @@ class time_source_executor {
   std::shared_ptr<time_source_shared<E, time_point>> source_;
   std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue_;
 public:
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_time<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   time_source_executor(
     std::shared_ptr<time_source_shared<E, time_point>> source,
@@ -6692,10 +5884,10 @@ public:
   auto executor() { return *this; }
 
   PUSHMI_TEMPLATE(class TPA, class Out)
-    (requires Regular<TPA> && Receiver<Out, is_single<>>)
+    (requires Regular<TPA> && ReceiveValue<Out, any_time_executor_ref<E, TP>> && ReceiveError<Out, E>)
   void submit(TPA tp, Out out) {
     // queue for later
-    source_->insert(queue_, time_heap_item<E, TP>{tp, any_single<any_time_executor_ref<E, TP>, E>{std::move(out)}});
+    source_->insert(queue_, time_heap_item<E, TP>{tp, any_receiver<E, any_time_executor_ref<E, TP>>{std::move(out)}});
   }
 };
 
@@ -6754,7 +5946,7 @@ public:
   };
 
   PUSHMI_TEMPLATE(class NF, class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>> && NeverBlocking<invoke_result_t<ExecutorFactory&>>)
   auto make(NF nf, ExecutorFactory ef) {
     return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{source_, std::move(nf), std::move(ef)};
   }
@@ -6770,261 +5962,17 @@ public:
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "none.h"
-//#include "executor.h"
-//#include "trampoline.h"
-
-namespace pushmi {
-namespace detail {
-struct erase_sender_t {};
-} // namespace detail
-
-template <class E>
-class sender<detail::erase_sender_t, E> {
-  union data {
-    void* pobj_ = nullptr;
-    char buffer_[sizeof(std::promise<void>)]; // can hold a void promise in-situ
-  } data_{};
-  template <class Wrapped>
-  static constexpr bool insitu() {
-    return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible<Wrapped>::value;
-  }
-  struct vtable {
-    static void s_op(data&, data*) {}
-    static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, any_none<E>) {}
-    void (*op_)(data&, data*) = vtable::s_op;
-    any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, any_none<E>) = vtable::s_submit;
-  };
-  static constexpr vtable const noop_ {};
-  vtable const* vptr_ = &noop_;
-  template <class Wrapped>
-  sender(Wrapped obj, std::false_type) : sender() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      }
-      static any_executor<E> executor(data& src) {
-        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
-      }
-      static void submit(data& src, any_none<E> out) {
-        ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
-      }
-    };
-    static const vtable vtbl{s::op, s::executor, s::submit};
-    data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template <class Wrapped>
-  sender(Wrapped obj, std::true_type) noexcept : sender() {
-    struct s {
-      static void op(data& src, data* dst) {
-        if (dst)
-          new (dst->buffer_) Wrapped(
-              std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-      }
-      static any_executor<E> executor(data& src) {
-        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
-      }
-      static void submit(data& src, any_none<E> out) {
-        ::pushmi::submit(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
-      }
-    };
-    static const vtable vtbl{s::op, s::executor, s::submit};
-    new (data_.buffer_) Wrapped(std::move(obj));
-    vptr_ = &vtbl;
-  }
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, sender>::value, U>;
- public:
-  using properties = property_set<is_sender<>, is_none<>>;
-
-  sender() = default;
-  sender(sender&& that) noexcept : sender() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>)
-  explicit sender(Wrapped obj) noexcept(insitu<Wrapped>())
-    : sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~sender() {
-    vptr_->op_(data_, nullptr);
-  }
-  sender& operator=(sender&& that) noexcept {
-    this->~sender();
-    new ((void*)this) sender(std::move(that));
-    return *this;
-  }
-  any_executor<E> executor() {
-    return vptr_->executor_(data_);
-  }
-  void submit(any_none<E> out) {
-    vptr_->submit_(data_, std::move(out));
-  }
-};
-
-// Class static definitions:
-template <class E>
-constexpr typename sender<detail::erase_sender_t, E>::vtable const
-    sender<detail::erase_sender_t, E>::noop_;
-
-template <class SF, class EXF>
-class sender<SF, EXF> {
-  SF sf_;
-  EXF exf_;
-
- public:
-  using properties = property_set<is_sender<>, is_none<>>;
-
-  constexpr sender() = default;
-  constexpr explicit sender(SF sf) : sf_(std::move(sf)) {}
-  constexpr sender(SF sf, EXF exf) : sf_(std::move(sf)), exf_(std::move(exf)) {}
-
-  auto executor() { return exf_(); }
-  PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_none<>> && Invocable<SF&, Out>)
-  void submit(Out out) {
-    sf_(std::move(out));
-  }
-};
-
-template <PUSHMI_TYPE_CONSTRAINT(Sender<is_none<>>) Data, class DSF, class DEXF>
-class sender<Data, DSF, DEXF> {
-  Data data_;
-  DSF sf_;
-  DEXF exf_;
-    static_assert(Sender<Data, is_none<>>, "The Data template parameter "
-    "must satisfy the Sender concept.");
-
- public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_sender<>, is_none<>>>;
-
-  constexpr sender() = default;
-  constexpr explicit sender(Data data)
-      : data_(std::move(data)) {}
-  constexpr sender(Data data, DSF sf)
-      : data_(std::move(data)), sf_(std::move(sf)) {}
-  constexpr sender(Data data, DSF sf, DEXF exf)
-      : data_(std::move(data)), sf_(std::move(sf)), exf_(std::move(exf)) {}
-
-  auto executor() { return exf_(data_); }
-  PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_none<>> && Invocable<DSF&, Data&, Out>)
-  void submit(Out out) {
-    sf_(data_, std::move(out));
-  }
-};
-
-template <>
-class sender<>
-    : public sender<ignoreSF, trampolineEXF> {
-public:
-  sender() = default;
-};
-
-////////////////////////////////////////////////////////////////////////////////
-// make_sender
-PUSHMI_INLINE_VAR constexpr struct make_sender_fn {
-  inline auto operator()() const {
-    return sender<ignoreSF, trampolineEXF>{};
-  }
-  PUSHMI_TEMPLATE(class SF)
-    (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-  auto operator()(SF sf) const {
-    return sender<SF, trampolineEXF>{std::move(sf)};
-  }
-  PUSHMI_TEMPLATE(class SF, class EXF)
-    (requires True<> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-  auto operator()(SF sf, EXF exf) const {
-    return sender<SF, EXF>{std::move(sf), std::move(exf)};
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires Sender<Wrapped, is_none<>>)
-  auto operator()(Wrapped w) const {
-    return sender<detail::erase_sender_t, std::exception_ptr>{std::move(w)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires Sender<Data, is_none<>>)
-  auto operator()(Data data, DSF sf) const {
-    return sender<Data, DSF, passDEXF>{std::move(data), std::move(sf)};
-  }
-  PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-    (requires Sender<Data, is_none<>>)
-  auto operator()(Data data, DSF sf, DEXF exf) const {
-    return sender<Data, DSF, DEXF>{std::move(data), std::move(sf), std::move(exf)};
-  }
-} const make_sender {};
-
-////////////////////////////////////////////////////////////////////////////////
-// deduction guides
-#if __cpp_deduction_guides >= 201703
-sender() -> sender<ignoreSF, trampolineEXF>;
-
-PUSHMI_TEMPLATE(class SF)
-  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-sender(SF) -> sender<SF, trampolineEXF>;
-
-PUSHMI_TEMPLATE(class SF, class EXF)
-  (requires True<> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-sender(SF, EXF) -> sender<SF, EXF>;
-
-PUSHMI_TEMPLATE(class Wrapped)
-  (requires Sender<Wrapped, is_none<>>)
-sender(Wrapped) ->
-    sender<detail::erase_sender_t, std::exception_ptr>;
-
-PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_none<>>)
-sender(Data, DSF) -> sender<Data, DSF, passDEXF>;
-
-PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-  (requires Sender<Data, is_none<>>)
-sender(Data, DSF, DEXF) -> sender<Data, DSF, DEXF>;
-#endif
-
-template <class E = std::exception_ptr>
-using any_sender = sender<detail::erase_sender_t, E>;
-
-template<>
-struct construct_deduced<sender> : make_sender_fn {};
-
-// template <SenderTo<any_none<std::exception_ptr>, is_none<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return sender<detail::erase_sender_t, std::exception_ptr>{std::move(w)};
-// }
-//
-// template <class E, SenderTo<any_none<E>, is_none<>> Wrapped>
-//   requires Same<is_none<>, properties_t<Wrapped>>
-// auto erase_cast(Wrapped w) {
-//   return sender<detail::erase_sender_t, E>{std::move(w)};
-// }
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include "single.h"
+//#include "receiver.h"
 //#include "executor.h"
 //#include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class E>
+template <class E, class... VN>
 class any_single_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -7034,10 +5982,10 @@ class any_single_sender {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, single<V, E>) {}
+    static void s_submit(data&, any_receiver<E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, single<V, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_receiver<E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -7052,7 +6000,7 @@ class any_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, single<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -7073,7 +6021,7 @@ class any_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, single<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
       }
@@ -7096,7 +6044,7 @@ class any_single_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>)
+    (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>)
   explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_single_sender() {
@@ -7108,17 +6056,17 @@ class any_single_sender {
     return *this;
   }
   any_executor<E> executor() {
-    vptr_->executor_(data_);
+    return vptr_->executor_(data_);
   }
-  void submit(single<V, E> out) {
+  void submit(any_receiver<E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E>
-constexpr typename any_single_sender<V, E>::vtable const
-  any_single_sender<V, E>::noop_;
+template <class E, class... VN>
+constexpr typename any_single_sender<E, VN...>::vtable const
+  any_single_sender<E, VN...>::noop_;
 
 template <class SF, class EXF>
 class single_sender<SF, EXF> {
@@ -7136,7 +6084,7 @@ class single_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>> PUSHMI_AND lazy::Invocable<SF&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>))
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -7161,7 +6109,7 @@ class single_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -7237,14 +6185,6 @@ single_sender(Data, DSF, DEXF) -> single_sender<Data, DSF, DEXF>;
 template<>
 struct construct_deduced<single_sender> : make_single_sender_fn {};
 
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     SenderTo<single<V, E>, is_single<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return single_sender<V, E>{std::move(w)};
-// }
-
 } // namespace pushmi
 //#pragma once
 // Copyright (c) 2018-present, Facebook, Inc.
@@ -7252,17 +6192,17 @@ struct construct_deduced<single_sender> : make_single_sender_fn {};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "flow_single.h"
+//#include "flow_receiver.h"
 //#include "executor.h"
 //#include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class PE = std::exception_ptr, class E = PE>
+template <class PE, class E, class... VN>
 class any_flow_single_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -7272,10 +6212,10 @@ class any_flow_single_sender {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, flow_single<V, PE, E>) {}
+    static void s_submit(data&, any_flow_receiver<PE, std::ptrdiff_t, E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, flow_single<V, PE, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_flow_receiver<PE, std::ptrdiff_t, E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -7290,7 +6230,7 @@ class any_flow_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, flow_single<V, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -7311,7 +6251,7 @@ class any_flow_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, flow_single<V, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(out));
@@ -7348,15 +6288,15 @@ class any_flow_single_sender {
   any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(flow_single<V, PE, E> out) {
+  void submit(any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class PE, class E>
-constexpr typename any_flow_single_sender<V, PE, E>::vtable const
-    any_flow_single_sender<V, PE, E>::noop_;
+template <class PE, class E, class... VN>
+constexpr typename any_flow_single_sender<PE, E, VN...>::vtable const
+    any_flow_single_sender<PE, E, VN...>::noop_;
 
 template <class SF, class EXF>
 class flow_single_sender<SF, EXF> {
@@ -7374,7 +6314,7 @@ class flow_single_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_single<>, is_flow<>> && Invocable<SF&, Out>)
+    (requires Receiver<Out> && Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -7399,7 +6339,7 @@ class flow_single_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>, is_flow<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -7476,11 +6416,6 @@ template<>
 struct construct_deduced<flow_single_sender>
   : make_flow_single_sender_fn {};
 
-// // TODO constrain me
-// template <class V, class E = std::exception_ptr, Sender Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return flow_single_sender<V, E>{std::move(w)};
-// }
 
 } // namespace pushmi
 //#pragma once
@@ -7489,17 +6424,17 @@ struct construct_deduced<flow_single_sender>
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "many.h"
+//#include "receiver.h"
 //#include "executor.h"
 //#include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class E = std::exception_ptr>
+template <class E, class... VN>
 class any_many_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -7509,10 +6444,10 @@ class any_many_sender {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, many<V, E>) {}
+    static void s_submit(data&, any_receiver<E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, many<V, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_receiver<E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -7527,7 +6462,7 @@ class any_many_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, many<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -7548,7 +6483,7 @@ class any_many_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, many<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
       }
@@ -7571,7 +6506,7 @@ class any_many_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, many<V, E>, is_many<>>)
+    (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>, is_many<>>)
   explicit any_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_many_sender() {
@@ -7585,15 +6520,15 @@ class any_many_sender {
   any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(many<V, E> out) {
+  void submit(any_receiver<E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E>
-constexpr typename any_many_sender<V, E>::vtable const
-  any_many_sender<V, E>::noop_;
+template <class E, class... VN>
+constexpr typename any_many_sender<E, VN...>::vtable const
+  any_many_sender<E, VN...>::noop_;
 
 template <class SF, class EXF>
 class many_sender<SF, EXF> {
@@ -7611,7 +6546,7 @@ class many_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_many<>> PUSHMI_AND lazy::Invocable<SF&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>))
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -7636,7 +6571,7 @@ class many_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_many<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -7712,13 +6647,6 @@ many_sender(Data, DSF, DEXF) -> many_sender<Data, DSF, DEXF>;
 template<>
 struct construct_deduced<many_sender> : make_many_sender_fn {};
 
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     SenderTo<many<V, E>, is_many<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return many_sender<V, E>{std::move(w)};
-// }
 
 } // namespace pushmi
 //#pragma once
@@ -7727,17 +6655,17 @@ struct construct_deduced<many_sender> : make_many_sender_fn {};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "flow_many.h"
+//#include "flow_receiver.h"
 //#include "executor.h"
 //#include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class PV, class PE, class E>
-class flow_many_sender<V, PV, PE, E> {
+template <class PE, class PV, class E, class... VN>
+class any_flow_many_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -7747,15 +6675,15 @@ class flow_many_sender<V, PV, PE, E> {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, any_flow_many<V, PV, PE, E>) {}
+    static void s_submit(data&, any_flow_receiver<PE, PV, E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, any_flow_many<V, PV, PE, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_flow_receiver<PE, PV, E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  flow_many_sender(Wrapped obj, std::false_type) : flow_many_sender() {
+  any_flow_many_sender(Wrapped obj, std::false_type) : any_flow_many_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -7765,7 +6693,7 @@ class flow_many_sender<V, PV, PE, E> {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, any_flow_many<V, PV, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, PV, E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -7774,8 +6702,8 @@ class flow_many_sender<V, PV, PE, E> {
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  flow_many_sender(Wrapped obj, std::true_type) noexcept
-    : flow_many_sender() {
+  any_flow_many_sender(Wrapped obj, std::true_type) noexcept
+    : any_flow_many_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -7786,7 +6714,7 @@ class flow_many_sender<V, PV, PE, E> {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, any_flow_many<V, PV, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, PV, E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(out));
@@ -7798,40 +6726,40 @@ class flow_many_sender<V, PV, PE, E> {
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, flow_many_sender>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_flow_many_sender>::value, U>;
  public:
   using properties = property_set<is_sender<>, is_flow<>, is_many<>>;
 
-  flow_many_sender() = default;
-  flow_many_sender(flow_many_sender&& that) noexcept
-      : flow_many_sender() {
+  any_flow_many_sender() = default;
+  any_flow_many_sender(any_flow_many_sender&& that) noexcept
+      : any_flow_many_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
     (requires FlowSender<wrapped_t<Wrapped>, is_many<>>)
-  explicit flow_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
-    : flow_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~flow_many_sender() {
+  explicit any_flow_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_flow_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~any_flow_many_sender() {
     vptr_->op_(data_, nullptr);
   }
-  flow_many_sender& operator=(flow_many_sender&& that) noexcept {
-    this->~flow_many_sender();
-    new ((void*)this) flow_many_sender(std::move(that));
+  any_flow_many_sender& operator=(any_flow_many_sender&& that) noexcept {
+    this->~any_flow_many_sender();
+    new ((void*)this) any_flow_many_sender(std::move(that));
     return *this;
   }
   any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(any_flow_many<V, PV, PE, E> out) {
+  void submit(any_flow_receiver<PE, PV, E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class PV, class PE, class E>
-constexpr typename flow_many_sender<V, PV, PE, E>::vtable const
-    flow_many_sender<V, PV, PE, E>::noop_;
+template <class PE, class PV, class E, class... VN>
+constexpr typename any_flow_many_sender<PE, PV, E, VN...>::vtable const
+    any_flow_many_sender<PE, PV, E, VN...>::noop_;
 
 template <class SF, class EXF>
 class flow_many_sender<SF, EXF> {
@@ -7849,7 +6777,7 @@ class flow_many_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_many<>, is_flow<>> && Invocable<SF&, Out>)
+    (requires FlowReceiver<Out> && Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -7874,7 +6802,7 @@ class flow_many_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_many<>, is_flow<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::FlowReceiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -7947,9 +6875,6 @@ PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
 flow_many_sender(Data, DSF, DEXF) -> flow_many_sender<Data, DSF, DEXF>;
 #endif
 
-template <class V, class PV = std::ptrdiff_t, class PE = std::exception_ptr, class E = PE>
-using any_flow_many_sender = flow_many_sender<V, PV, PE, E>;
-
 template<>
 struct construct_deduced<flow_many_sender>
   : make_flow_many_sender_fn {};
@@ -7972,15 +6897,12 @@ struct construct_deduced<flow_many_sender>
 //#include <tuple>
 //#include "../piping.h"
 //#include "../boosters.h"
-//#include "../single.h"
-//#include "../sender.h"
+//#include "../receiver.h"
+//#include "../flow_receiver.h"
 //#include "../single_sender.h"
-//#include "../many.h"
 //#include "../many_sender.h"
 //#include "../time_single_sender.h"
-//#include "../flow_single.h"
 //#include "../flow_single_sender.h"
-//#include "../flow_many.h"
 //#include "../flow_many_sender.h"
 //#include "../detail/if_constexpr.h"
 //#include "../detail/functional.h"
@@ -8016,15 +6938,13 @@ namespace detail {
 template <class Cardinality, bool IsFlow = false>
 struct make_receiver;
 template <>
-struct make_receiver<is_none<>> : construct_deduced<none> {};
+struct make_receiver<is_single<>> : construct_deduced<receiver> {};
 template <>
-struct make_receiver<is_single<>> : construct_deduced<single> {};
+struct make_receiver<is_many<>> : construct_deduced<receiver> {};
 template <>
-struct make_receiver<is_many<>> : construct_deduced<many> {};
+struct make_receiver<is_single<>, true> : construct_deduced<flow_receiver> {};
 template <>
-struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
-template <>
-struct make_receiver<is_many<>, true> : construct_deduced<flow_many> {};
+struct make_receiver<is_many<>, true> : construct_deduced<flow_receiver> {};
 
 template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
@@ -8037,13 +6957,13 @@ struct receiver_from_impl {
   PUSHMI_TEMPLATE (class... Ts, class... Fns,
     class This = std::enable_if_t<sizeof...(Fns) != 0, receiver_from_impl>)
     (requires And<SemiMovable<Fns>...> &&
-      Invocable<MakeReceiver, std::tuple<Ts...>> &&
-      Invocable<This, pushmi::invoke_result_t<MakeReceiver, std::tuple<Ts...>>, Fns...>)
+      Invocable<MakeReceiver, Ts...> &&
+      Invocable<This, pushmi::invoke_result_t<MakeReceiver, Ts...>, Fns...>)
   auto operator()(std::tuple<Ts...> args, Fns...fns) const {
     return This()(This()(std::move(args)), std::move(fns)...);
   }
   PUSHMI_TEMPLATE(class Out, class...Fns)
-    (requires Receiver<Out, Cardinality> && And<SemiMovable<Fns>...>)
+    (requires Receiver<Out> && And<SemiMovable<Fns>...>)
   auto operator()(Out out, Fns... fns) const {
     return MakeReceiver()(std::move(out), std::move(fns)...);
   }
@@ -8052,14 +6972,14 @@ struct receiver_from_impl {
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
 using receiver_from_fn =
     receiver_from_impl<
-        property_set_index_t<properties_t<In>, is_silent<>>,
+        property_set_index_t<properties_t<In>, is_single<>>,
         property_query_v<properties_t<In>, is_flow<>>>;
 
 template <class In, class FN>
 struct submit_transform_out_1 {
   FN fn_;
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>)
+    (requires Receiver<Out> && Invocable<FN, Out> && SenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
   void operator()(In& in, Out out) const {
     ::pushmi::submit(in, fn_(std::move(out)));
   }
@@ -8067,10 +6987,10 @@ struct submit_transform_out_1 {
 template <class In, class FN>
 struct submit_transform_out_2 {
   FN fn_;
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Receiver<Out>)
-  void operator()(In& in, TP tp, Out out) const {
-    ::pushmi::submit(in, tp, fn_(std::move(out)));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Receiver<Out> && Invocable<FN, Out> && ConstrainedSenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
+  void operator()(In& in, CV cv, Out out) const {
+    ::pushmi::submit(in, cv, fn_(std::move(out)));
   }
 };
 template <class In, class SDSF>
@@ -8085,43 +7005,41 @@ struct submit_transform_out_3 {
 template <class In, class TSDSF>
 struct submit_transform_out_4 {
   TSDSF tsdsf_;
-  PUSHMI_TEMPLATE(class TP, class Out)
-    (requires Receiver<Out> && Invocable<const TSDSF&, In&, TP, Out>)
-  void operator()(In& in, TP tp, Out out) const {
-    tsdsf_(in, tp, std::move(out));
+  PUSHMI_TEMPLATE(class CV, class Out)
+    (requires Receiver<Out> && Invocable<const TSDSF&, In&, CV, Out>)
+  void operator()(In& in, CV cv, Out out) const {
+    tsdsf_(in, cv, std::move(out));
   }
 };
 
 PUSHMI_TEMPLATE(class In, class FN)
   (requires Sender<In> && SemiMovable<FN>
-    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
+    PUSHMI_BROKEN_SUBSUMPTION(&& not ConstrainedSender<In>))
 auto submit_transform_out(FN fn) {
   return on_submit(submit_transform_out_1<In, FN>{std::move(fn)});
 }
 
 PUSHMI_TEMPLATE(class In, class FN)
-  (requires TimeSender<In> && SemiMovable<FN>)
+  (requires ConstrainedSender<In> && SemiMovable<FN>)
 auto submit_transform_out(FN fn){
-  return on_submit(submit_transform_out_2<In, FN>{std::move(fn)});
+  return submit_transform_out_2<In, FN>{std::move(fn)};
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
   (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>
-    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
+    PUSHMI_BROKEN_SUBSUMPTION(&& not ConstrainedSender<In>))
 auto submit_transform_out(SDSF sdsf, TSDSF) {
-  return on_submit(submit_transform_out_3<In, SDSF>{std::move(sdsf)});
+  return submit_transform_out_3<In, SDSF>{std::move(sdsf)};
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
-  (requires TimeSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+  (requires ConstrainedSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
 auto submit_transform_out(SDSF, TSDSF tsdsf) {
-  return on_submit(submit_transform_out_4<In, TSDSF>{std::move(tsdsf)});
+  return submit_transform_out_4<In, TSDSF>{std::move(tsdsf)};
 }
 
 template <class Cardinality, bool IsConstrained = false, bool IsTime = false, bool IsFlow = false>
 struct make_sender;
-template <>
-struct make_sender<is_none<>> : construct_deduced<sender> {};
 template <>
 struct make_sender<is_single<>> : construct_deduced<single_sender> {};
 template <>
@@ -8141,7 +7059,7 @@ PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   auto operator()(In in, FN&&... fn) const {
     using MakeSender =
         make_sender<
-            property_set_index_t<properties_t<In>, is_silent<>>,
+            property_set_index_t<properties_t<In>, is_single<>>,
             property_query_v<properties_t<In>, is_constrained<>>,
             property_query_v<properties_t<In>, is_time<>>,
             property_query_v<properties_t<In>, is_flow<>>>;
@@ -8157,10 +7075,10 @@ PUSHMI_TEMPLATE(
     bool TimeSingleSenderRequires)
   (requires Sender<In> && Receiver<Out>)
 constexpr bool sender_requires_from() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out>) (
     return TimeSingleSenderRequires;
   ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out, is_single<>>) (
+    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
       return SingleSenderRequires;
     ) else (
       PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
@@ -8173,19 +7091,19 @@ constexpr bool sender_requires_from() {
 
 struct set_value_fn {
 private:
-  template <class V>
+  template <class... VN>
   struct impl {
-    V v_;
+    std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out, is_single<>>)
+      (requires ReceiveValue<Out, VN...>)
     void operator()(Out out) {
-      ::pushmi::set_value(out, std::move(v_));
+      ::pushmi::apply(::pushmi::set_value, std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(vn_)));
     }
   };
 public:
-  template <class V>
-  auto operator()(V&& v) const {
-    return impl<std::decay_t<V>>{(V&&) v};
+  template <class... VN>
+  auto operator()(VN&&... vn) const {
+    return impl<std::decay_t<VN>...>{(VN&&) vn...};
   }
 };
 
@@ -8195,7 +7113,7 @@ private:
   struct impl {
     E e_;
     PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out, E>)
+      (requires ReceiveError<Out, E>)
     void operator()(Out out) {
       ::pushmi::set_error(out, std::move(e_));
     }
@@ -8220,24 +7138,6 @@ private:
 public:
   auto operator()() const {
     return impl{};
-  }
-};
-
-struct set_next_fn {
-private:
-  template <class V>
-  struct impl {
-    V v_;
-    PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out, is_many<>>)
-    void operator()(Out out) {
-      ::pushmi::set_next(out, std::move(v_));
-    }
-  };
-public:
-  template <class V>
-  auto operator()(V&& v) const {
-    return impl<std::decay_t<V>>{(V&&) v};
   }
 };
 
@@ -8346,7 +7246,6 @@ namespace extension_operators {
 PUSHMI_INLINE_VAR constexpr detail::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr detail::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr detail::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr detail::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::executor_fn executor{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
@@ -8379,19 +7278,19 @@ template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class ...AN>
 using receiver_type_t =
     pushmi::invoke_result_t<
         pushmi::detail::make_receiver<
-          property_set_index_t<properties_t<In>, is_silent<>>,
+          property_set_index_t<properties_t<In>, is_single<>>,
           property_query_v<properties_t<In>, is_flow<>>>,
         AN...>;
 
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
   (concept AutoSenderTo)(In, AN...),
-    SenderTo<In, receiver_type_t<In, AN...>>
+    Sender<In> && SenderTo<In, receiver_type_t<In, AN...>>
 );
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
   (concept AutoConstrainedSenderTo)(In, AN...),
-    ConstrainedSenderTo<In, receiver_type_t<In, AN...>> && not Time<In>
+    ConstrainedSenderTo<In, receiver_type_t<In, AN...>>
 );
 PUSHMI_CONCEPT_DEF(
   template (class In, class ... AN)
@@ -8409,24 +7308,13 @@ private:
   struct fn {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoSenderTo<In, AN...>)
+      (requires
+        submit_detail::AutoSenderTo<In, AN...> &&
+        Invocable<::pushmi::detail::receiver_from_fn<In>&, std::tuple<AN...>>
+      )
     In operator()(In in) {
       auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
-      return in;
-    }
-    PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
-    In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
-      ::pushmi::submit(in, ::pushmi::top(in), std::move(out));
-      return in;
-    }
-    PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
-    In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
-      ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
       return in;
     }
   };
@@ -8496,7 +7384,7 @@ private:
   template<class Out>
   struct nested_receiver_impl;
   PUSHMI_TEMPLATE (class Exec)
-    (requires Sender<Exec> && Executor<Exec>)
+    (requires Sender<Exec> && Executor<Exec> )
   struct nested_executor_impl {
     nested_executor_impl(lock_state* state, Exec ex) :
       state_(state),
@@ -8504,12 +7392,28 @@ private:
     lock_state* state_;
     Exec ex_;
 
+    template<class U>
+    using test_for_this = nested_executor_impl<U>;
+
+    PUSHMI_TEMPLATE (class Ex)
+      (requires Sender<Ex> && Executor<Ex> && detail::is_v<Ex, test_for_this>)
+    static auto make(lock_state*, Ex ex) {
+      return ex;
+    }
+    PUSHMI_TEMPLATE (class Ex)
+      (requires Sender<Ex> && Executor<Ex> && not detail::is_v<Ex, test_for_this>)
+    static auto make(lock_state* state, Ex ex) {
+      return nested_executor_impl<Ex>{state, ex};
+    }
+
     using properties = properties_t<Exec>;
 
-    auto executor() { return ::pushmi::executor(ex_); }
+    auto executor() {
+      return make(state_, ::pushmi::executor(ex_));
+    }
 
-    PUSHMI_TEMPLATE (class CV, class Out)
-      (requires Receiver<Out> && Constrained<Exec>)
+    PUSHMI_TEMPLATE (class... ZN)
+      (requires Constrained<Exec>)
     auto top() { return ::pushmi::top(ex_); }
 
     PUSHMI_TEMPLATE (class CV, class Out)
@@ -8539,16 +7443,9 @@ private:
     template<class V>
     void value(V&& v) {
       std::exception_ptr e;
-      try{
-        using executor_t = remove_cvref_t<V>;
-        auto n = nested_executor_impl<executor_t>{state_, (V&&) v};
-        ::pushmi::set_value(out_, any_executor_ref<>{n});
-      }
-      catch(...) {e = std::current_exception();}
-      if(--state_->nested == 0) {
-        state_->signaled.notify_all();
-      }
-      if (e) {std::rethrow_exception(e);}
+      using executor_t = remove_cvref_t<V>;
+      auto n = nested_executor_impl<executor_t>::make(state_, (V&&) v);
+      ::pushmi::set_value(out_, any_executor_ref<>{n});
     }
     template<class E>
     void error(E&& e) noexcept {
@@ -8573,40 +7470,34 @@ private:
     PUSHMI_TEMPLATE (class Exec)
       (requires Executor<Exec>)
     auto operator()(lock_state* state, Exec ex) const {
-      return nested_executor_impl<Exec>{state, std::move(ex)};
+      return nested_executor_impl<Exec>::make(state, std::move(ex));
     }
   };
   struct on_value_impl {
     lock_state* state_;
     PUSHMI_TEMPLATE (class Out, class Value)
-      (requires Receiver<Out, is_single<>>)
+      (requires Executor<std::decay_t<Value>> &&
+        ReceiveValue<Out,
+          pushmi::invoke_result_t<nested_executor_impl_fn, lock_state*, std::decay_t<Value>>>)
     void operator()(Out out, Value&& v) const {
-      using V = remove_cvref_t<Value>;
       ++state_->nested;
-      PUSHMI_IF_CONSTEXPR( ((bool)Executor<V>) (
-        id(::pushmi::set_value)(out, id(nested_executor_impl_fn{})(state_, id((Value&&) v)));
-      ) else (
-        id(::pushmi::set_value)(out, id((Value&&) v));
-      ))
-      std::unique_lock<std::mutex> guard{state_->lock};
-      state_->done = true;
+      ::pushmi::set_value(out, nested_executor_impl_fn{}(state_, (Value&&) v));
       if (--state_->nested == 0){
+        std::unique_lock<std::mutex> guard{state_->lock};
         state_->signaled.notify_all();
       }
     }
-  };
-  struct on_next_impl {
-    PUSHMI_TEMPLATE (class Out, class Value)
-      (requires Receiver<Out, is_many<>>)
-    void operator()(Out out, Value&& v) const {
-      using V = remove_cvref_t<Value>;
-      ::pushmi::set_next(out, (Value&&) v);
+    PUSHMI_TEMPLATE (class Out, class... VN)
+      (requires True<> && ReceiveValue<Out, VN...> &&
+        not (sizeof...(VN) == 1 && And<Executor<std::decay_t<VN>>...>) )
+    void operator()(Out out, VN&&... vn) const {
+      ::pushmi::set_value(out, (VN&&) vn...);
     }
   };
   struct on_error_impl {
     lock_state* state_;
     PUSHMI_TEMPLATE(class Out, class E)
-      (requires NoneReceiver<Out, E>)
+      (requires ReceiveError<Out, E>)
     void operator()(Out out, E e) const noexcept {
       ::pushmi::set_error(out, std::move(e));
       std::unique_lock<std::mutex> guard{state_->lock};
@@ -8625,20 +7516,26 @@ private:
       state_->signaled.notify_all();
     }
   };
-  template <bool IsConstrainedSender, bool IsTimeSender, class In>
+
+  template <class In>
+  struct receiver_impl {
+    PUSHMI_TEMPLATE(class... AN)
+      (requires Sender<In>)
+    auto operator()(lock_state* state, std::tuple<AN...> args) const {
+      return ::pushmi::detail::receiver_from_fn<In>()(
+        std::move(args),
+        on_value_impl{state},
+        on_error_impl{state},
+        on_done_impl{state}
+      );
+    }
+  };
+  template <class In>
   struct submit_impl {
     PUSHMI_TEMPLATE(class Out)
-      (requires Receiver<Out>)
+      (requires Receiver<Out> && SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
-      PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
-        id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
-      ) else (
-        PUSHMI_IF_CONSTEXPR( (IsConstrainedSender) (
-          id(::pushmi::submit)(in, id(::pushmi::top)(in), std::move(out));
-        ) else (
-          id(::pushmi::submit)(in, std::move(out));
-        ))
-      ))
+      ::pushmi::submit(in, std::move(out));
     }
   };
   // TODO - only move, move-only types..
@@ -8648,50 +7545,22 @@ private:
   struct fn {
     std::tuple<AN...> args_;
 
-    template <bool IsConstrainedSender, bool IsTimeSender, class In>
-    In impl_(In in) {
+    PUSHMI_TEMPLATE(class In)
+      (requires Sender<In> &&
+        Invocable<submit_impl<In>&, In&, pushmi::invoke_result_t<receiver_impl<In>, lock_state*, std::tuple<AN...>&&>> &&
+        not AlwaysBlocking<In>)
+    In operator()(In in) {
       lock_state state{};
 
-      auto submit = submit_impl<IsConstrainedSender, IsTimeSender, In>{};
-      PUSHMI_IF_CONSTEXPR( ((bool)Many<In>) (
-        auto out{::pushmi::detail::receiver_from_fn<In>()(
-          std::move(args_),
-          on_next(on_next_impl{}),
-          on_error(on_error_impl{&state}),
-          on_done(on_done_impl{&state})
-        )};
-        submit(in, std::move(out));
-      ) else (
-        auto out{::pushmi::detail::receiver_from_fn<In>()(
-          std::move(args_),
-          on_value(on_value_impl{&state}),
-          on_error(on_error_impl{&state}),
-          on_done(on_done_impl{&state})
-        )};
-        submit(in, std::move(out));
-      ))
+      auto make = receiver_impl<In>{};
+      auto submit = submit_impl<In>{};
+      submit(in, make(&state, std::move(args_)));
 
       std::unique_lock<std::mutex> guard{state.lock};
       state.signaled.wait(guard, [&]{
         return state.done && state.nested.load() == 0;
       });
       return in;
-    }
-
-    PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoSenderTo<In, AN...>)
-    In operator()(In in) {
-      return this->impl_<false, false>(std::move(in));
-    }
-    PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoConstrainedSenderTo<In, AN...>)
-    In operator()(In in) {
-      return this->impl_<true, false>(std::move(in));
-    }
-    PUSHMI_TEMPLATE(class In)
-      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
-    In operator()(In in) {
-      return this->impl_<true, true>(std::move(in));
     }
   };
 public:
@@ -8706,10 +7575,11 @@ struct get_fn {
 private:
   struct on_value_impl {
     pushmi::detail::opt<T>* result_;
-    void operator()(T t) const { *result_ = std::move(t); }
+    template<class... TN>
+    void operator()(TN&&... tn) const { *result_ = T{(TN&&) tn...}; }
   };
   struct on_error_impl {
-    std::exception_ptr* ep_;
+    pushmi::detail::opt<std::exception_ptr>* ep_;
     template <class E>
     void operator()(E e) const noexcept { *ep_ = std::make_exception_ptr(e); }
     void operator()(std::exception_ptr ep) const noexcept { *ep_ = ep; }
@@ -8720,17 +7590,16 @@ public:
     (requires Sender<In>)
   T operator()(In in) const {
     pushmi::detail::opt<T> result_;
-    std::exception_ptr ep_;
-    auto out = make_single(
-      on_value(on_value_impl{&result_}),
-      on_error(on_error_impl{&ep_})
+    pushmi::detail::opt<std::exception_ptr> ep_;
+    auto out = ::pushmi::make_receiver(
+      on_value_impl{&result_},
+      on_error_impl{&ep_}
     );
     using Out = decltype(out);
-    static_assert(SenderTo<In, Out, is_single<>> ||
-        TimeSenderTo<In, Out, is_single<>>,
+    static_assert(SenderTo<In, Out>,
         "'In' does not deliver value compatible with 'T' to 'Out'");
-    blocking_submit_fn{}(std::move(out))(in);
-    if (!!ep_) { std::rethrow_exception(ep_); }
+    std::conditional_t<AlwaysBlocking<In>, submit_fn, blocking_submit_fn>{}(std::move(out))(std::move(in));
+    if (!!ep_) { std::rethrow_exception(*ep_); }
     return std::move(*result_);
   }
 };
@@ -8764,32 +7633,33 @@ namespace pushmi {
 template<class... TN>
 struct subject;
 
-template<class T, class PS>
-struct subject<T, PS> {
+template<class PS, class... TN>
+struct subject<PS, TN...> {
 
-  using properties = property_set_insert_t<property_set<is_sender<>, is_single<>>, property_set<property_set_index_t<PS, is_silent<>>>>;
+  using properties = property_set_insert_t<property_set<is_sender<>, is_single<>>, property_set<property_set_index_t<PS, is_single<>>>>;
 
   struct subject_shared {
+    using receiver_t = any_receiver<std::exception_ptr, TN...>;
     bool done_ = false;
-    pushmi::detail::opt<T> t_;
+    pushmi::detail::opt<std::tuple<std::decay_t<TN>...>> t_;
     std::exception_ptr ep_;
-    std::vector<any_single<T>> receivers_;
+    std::vector<receiver_t> receivers_;
     std::mutex lock_;
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
     void submit(Out out) {
       std::unique_lock<std::mutex> guard(lock_);
       if (ep_) {::pushmi::set_error(out, ep_); return;}
-      if (!!t_) {::pushmi::set_value(out, (const T&)t_); return;}
+      if (!!t_) {auto args = *t_; ::pushmi::apply(::pushmi::set_value, std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(args))); return;}
       if (done_) {::pushmi::set_done(out); return;}
-      receivers_.push_back(any_single<T>{out});
+      receivers_.push_back(receiver_t{out});
     }
-    PUSHMI_TEMPLATE(class V)
-      (requires SemiMovable<V>)
-    void value(V&& v) {
+    PUSHMI_TEMPLATE(class... VN)
+      (requires And<SemiMovable<VN>...>)
+    void value(VN&&... vn) {
       std::unique_lock<std::mutex> guard(lock_);
-      t_ = detail::as_const(v);
-      for (auto& out : receivers_) {::pushmi::set_value(out, (V&&) v);}
+      for (auto& out : receivers_) {::pushmi::apply(::pushmi::set_value, std::tuple<decltype(out), std::decay_t<TN>...>{out, detail::as_const(vn)...});}
+      t_ = std::make_tuple((VN&&) vn...);
       receivers_.clear();
     }
     PUSHMI_TEMPLATE(class E)
@@ -8808,17 +7678,16 @@ struct subject<T, PS> {
     }
   };
 
-  // need a template overload of none/sender and the rest that stores a 'ptr' with its own lifetime management
   struct subject_receiver {
 
-    using properties = property_set_insert_t<property_set<is_receiver<>, is_single<>>, property_set<property_set_index_t<PS, is_silent<>>>>;
+    using properties = property_set<is_receiver<>>;
 
     std::shared_ptr<subject_shared> s;
 
-    PUSHMI_TEMPLATE(class V)
-      (requires SemiMovable<V>)
-    void value(V&& v) {
-      s->value((V&&) v);
+    PUSHMI_TEMPLATE(class... VN)
+      (requires And<SemiMovable<VN>...>)
+    void value(VN&&... vn) {
+      s->value((VN&&) vn...);
     }
     PUSHMI_TEMPLATE(class E)
       (requires SemiMovable<E>)
@@ -8867,20 +7736,20 @@ private:
     using properties = property_set_insert_t<properties_t<Out>, property_set<is_flow<>>>;
     std::function<void(ptrdiff_t)> pull;
     template<class V>
-    void next(V&& v) {
-      ::pushmi::set_next(static_cast<Out&>(*this), (V&&) v);
+    void value(V&& v) {
+      ::pushmi::set_value(static_cast<Out&>(*this), (V&&) v);
       pull(1);
     }
     PUSHMI_TEMPLATE(class Up)
-      (requires ManyReceiver<Up, std::ptrdiff_t>)
+      (requires Receiver<Up>)
     void starting(Up up){
       pull = [up = std::move(up)](std::ptrdiff_t requested) mutable {
-        ::pushmi::set_next(up, requested);
+        ::pushmi::set_value(up, requested);
       };
       pull(1);
     }
     PUSHMI_TEMPLATE(class Up)
-      (requires None<Up> && not Many<Up>)
+      (requires ReceiveValue<Up>)
     void starting(Up up){}
   };
   template <class... AN>
@@ -8889,17 +7758,17 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In> && Flow<In> && Many<In>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_silent<>>>>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_single<>>>>()(std::move(args_))};
       using Out = decltype(out);
       ::pushmi::submit(in, ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
-      (requires Sender<In> && Time<In> && Flow<In> && Many<In>)
+      (requires Sender<In> && Constrained<In> && Flow<In> && Many<In>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_silent<>>>>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_single<>>>>()(std::move(args_))};
       using Out = decltype(out);
-      ::pushmi::submit(in, ::pushmi::now(in), ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
+      ::pushmi::submit(in, ::pushmi::top(in), ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
       return in;
     }
   };
@@ -8925,37 +7794,33 @@ PUSHMI_INLINE_VAR constexpr detail::for_each_fn for_each{};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../sender.h"
-//#include "../single_sender.h"
 //#include "../detail/functional.h"
+//#include "submit.h"
+//#include "extension_operators.h"
 
 namespace pushmi {
 namespace detail {
-  template <class V>
+  struct single_empty_sender_base : single_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_single<>, is_always_blocking<>, is_fifo_sequence<>>;
+  };
+  template <class... VN>
   struct single_empty_impl {
     PUSHMI_TEMPLATE(class Out)
-      (requires SingleReceiver<Out, V>)
-    void operator()(Out out) {
-      ::pushmi::set_done(out);
-    }
-  };
-  struct empty_impl {
-    PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out>)
-    void operator()(Out out) {
+      (requires ReceiveValue<Out, VN...>)
+    void operator()(single_empty_sender_base&, Out out) {
       ::pushmi::set_done(out);
     }
   };
 }
 
 namespace operators {
-template <class V>
+template <class... VN>
 auto empty() {
-  return make_single_sender(detail::single_empty_impl<V>{});
+  return make_single_sender(detail::single_empty_sender_base{}, detail::single_empty_impl<VN...>{});
 }
 
 inline auto empty() {
-  return make_sender(detail::empty_impl{});
+  return make_single_sender(detail::single_empty_sender_base{}, detail::single_empty_impl<>{});
 }
 
 } // namespace operators
@@ -8986,16 +7851,19 @@ namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct from_fn {
 private:
+  struct sender_base : many_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_many<>, is_always_blocking<>, is_fifo_sequence<>>;
+  };
   template <class I, class S>
   struct out_impl {
     I begin_;
     S end_;
     PUSHMI_TEMPLATE(class Out)
-      (requires ManyReceiver<Out, typename std::iterator_traits<I>::value_type>)
-    void operator()(Out out) const {
+      (requires ReceiveValue<Out, typename std::iterator_traits<I>::value_type>)
+    void operator()(sender_base&, Out out) const {
       auto c = begin_;
       for (; c != end_; ++c) {
-        ::pushmi::set_next(out, *c);
+        ::pushmi::set_value(out, *c);
       }
       ::pushmi::set_done(out);
     }
@@ -9007,7 +7875,7 @@ public:
           typename std::iterator_traits<I>::iterator_category,
           std::forward_iterator_tag>)
   auto operator()(I begin, S end) const {
-    return make_many_sender(out_impl<I, S>{begin, end});
+    return make_many_sender(sender_base{}, out_impl<I, S>{begin, end});
   }
 
   PUSHMI_TEMPLATE(class R)
@@ -9034,24 +7902,24 @@ struct flow_from_producer {
 
 template<class Producer>
 struct flow_from_up {
-  using properties = properties_t<many<>>;
+  using properties = properties_t<receiver<>>;
 
   explicit flow_from_up(std::shared_ptr<Producer> p) : p(std::move(p)) {}
   std::shared_ptr<Producer> p;
 
-  void next(ptrdiff_t requested) {
+  void value(ptrdiff_t requested) {
     if (requested < 1) {return;}
     // submit work to exec
     ::pushmi::submit(p->exec,
-      make_single([p = p, requested](auto) {
+      make_receiver([p = p, requested](auto) {
         auto remaining = requested;
         // this loop is structured to work when there is re-entrancy
-        // out.next in the loop may call up.next. to handle this the
+        // out.value in the loop may call up.value. to handle this the
         // state of p->c must be captured and the remaining and p->c
-        // must be changed before out.next is called.
+        // must be changed before out.value is called.
         while (remaining-- > 0 && !p->stop && p->c != p->end) {
           auto i = (p->c)++;
-          ::pushmi::set_next(p->out, ::pushmi::detail::as_const(*i));
+          ::pushmi::set_value(p->out, ::pushmi::detail::as_const(*i));
         }
         if (p->c == p->end) {
           ::pushmi::set_done(p->out);
@@ -9063,7 +7931,7 @@ struct flow_from_up {
   void error(E e) noexcept {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      make_single([p = p](auto) {
+      make_receiver([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
   }
@@ -9071,7 +7939,7 @@ struct flow_from_up {
   void done() {
     p->stop.store(true);
     ::pushmi::submit(p->exec,
-      make_single([p = p](auto) {
+      make_receiver([p = p](auto) {
         ::pushmi::set_done(p->out);
       }));
   }
@@ -9085,15 +7953,15 @@ private:
     S end_;
     mutable Exec exec_;
     PUSHMI_TEMPLATE(class Out)
-      (requires ManyReceiver<Out, typename std::iterator_traits<I>::value_type>)
+      (requires ReceiveValue<Out, typename std::iterator_traits<I>::value_type>)
     void operator()(Out out) const {
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(begin_, end_, std::move(out), exec_, false);
 
       ::pushmi::submit(exec_,
-        make_single([p](auto exec) {
+        make_receiver([p](auto exec) {
           // pass reference for cancellation.
-          ::pushmi::set_starting(p->out, make_many(flow_from_up<Producer>{p}));
+          ::pushmi::set_starting(p->out, make_receiver(flow_from_up<Producer>{p}));
         }));
     }
   };
@@ -9151,20 +8019,24 @@ namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct just_fn {
 private:
-  template <class V>
+  struct sender_base : single_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_single<>, is_always_blocking<>, is_fifo_sequence<>>;
+  };
+  template <class... VN>
   struct impl {
-    V v_;
+    std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE (class Out)
-      (requires SingleReceiver<Out, V>)
-    void operator()(Out out) {
-      ::pushmi::set_value(out, std::move(v_));
+      (requires ReceiveValue<Out, VN...>)
+    void operator()(sender_base&, Out out) {
+      ::pushmi::apply(::pushmi::set_value, std::tuple_cat(std::tuple<Out&>{out}, std::move(vn_)));
+      ::pushmi::set_done(std::move(out));
     }
   };
 public:
-  PUSHMI_TEMPLATE(class V)
-    (requires SemiMovable<V>)
-  auto operator()(V v) const {
-    return make_single_sender(impl<V>{std::move(v)});
+  PUSHMI_TEMPLATE(class... VN)
+    (requires And<SemiMovable<VN>...>)
+  auto operator()(VN... vn) const {
+    return make_single_sender(sender_base{}, impl<VN...>{std::tuple<VN...>{std::move(vn)...}});
   }
 } just {};
 } // namespace operators
@@ -9178,27 +8050,20 @@ public:
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../sender.h"
 //#include "submit.h"
 //#include "extension_operators.h"
 
 namespace pushmi {
 namespace detail {
-  template <class E>
-  struct error_impl {
-    E e_;
-    PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out, E>)
-    void operator()(Out out) {
-      ::pushmi::set_error(out, std::move(e_));
-    }
+  struct single_error_sender_base : single_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_single<>, is_always_blocking<>, is_fifo_sequence<>>;
   };
-  template <class V, class E>
+  template <class E, class... VN>
   struct single_error_impl {
     E e_;
     PUSHMI_TEMPLATE(class Out)
-      (requires SingleReceiver<Out, V, E>)
-    void operator()(Out out) {
+      (requires ReceiveError<Out, E> && ReceiveValue<Out, VN...>)
+    void operator()(single_error_sender_base&, Out out) {
       ::pushmi::set_error(out, std::move(e_));
     }
   };
@@ -9206,16 +8071,10 @@ namespace detail {
 
 namespace operators {
 
-PUSHMI_TEMPLATE(class E)
-  (requires SemiMovable<E>)
+PUSHMI_TEMPLATE(class... VN, class E)
+  (requires And<SemiMovable<VN>...> && SemiMovable<E>)
 auto error(E e) {
-  return make_sender(detail::error_impl<E>{std::move(e)});
-}
-
-PUSHMI_TEMPLATE(class V, class E)
-  (requires SemiMovable<V> && SemiMovable<E>)
-auto error(E e) {
-  return make_single_sender(detail::single_error_impl<V, E>{std::move(e)});
+  return make_single_sender(detail::single_error_sender_base{}, detail::single_error_impl<E, VN...>{std::move(e)});
 }
 
 } // namespace operators
@@ -9228,7 +8087,7 @@ auto error(E e) {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../single.h"
+//#include "../receiver.h"
 //#include "../single_sender.h"
 //#include "submit.h"
 //#include "extension_operators.h"
@@ -9242,22 +8101,21 @@ private:
   template <class F>
   struct impl {
     F f_;
-    PUSHMI_TEMPLATE(class Out)
+    PUSHMI_TEMPLATE(class Data, class Out)
       (requires Receiver<Out>)
-    void operator()(Out out) {
+    void operator()(Data&, Out out) {
       auto sender = f_();
-      PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<decltype(sender)>) (
-        ::pushmi::submit(sender, ::pushmi::now(id(sender)), std::move(out));
-      ) else (
-        ::pushmi::submit(sender, std::move(out));
-      ));
+      ::pushmi::submit(sender, std::move(out));
     }
   };
 public:
   PUSHMI_TEMPLATE(class F)
     (requires Invocable<F&>)
   auto operator()(F f) const {
-    return make_single_sender(impl<F>{std::move(f)});
+    struct sender_base : single_sender<> {
+      using properties = properties_t<invoke_result_t<F&>>;
+    };
+    return make_single_sender(sender_base{}, impl<F>{std::move(f)});
   }
 } defer {};
 
@@ -9296,7 +8154,7 @@ private:
     void operator()(In& in, Out out) const {
       auto exec = ef_();
       ::pushmi::submit(exec,
-        ::pushmi::make_single(on_value_impl<In, Out>{in, std::move(out)})
+        ::pushmi::make_receiver(on_value_impl<In, Out>{in, std::move(out)})
       );
     }
   };
@@ -9317,7 +8175,7 @@ private:
     void operator()(In& in, TP at, Out out) const {
       auto exec = ef_();
       ::pushmi::submit(exec, at,
-        ::pushmi::make_single(
+        ::pushmi::make_receiver(
           time_on_value_impl<In, TP, Out>{in, at, std::move(out)}
         )
       );
@@ -9354,143 +8212,6 @@ PUSHMI_INLINE_VAR constexpr detail::on_fn on{};
 
 } // namespace operators
 
-#if 0
-namespace detail {
-
-template <class ExecutorFactory>
-class fsdon {
-  using executor_factory_type = std::decay_t<ExecutorFactory>;
-
-  executor_factory_type factory_;
-
-  template <class In>
-  class start_on {
-    using in_type = std::decay_t<In>;
-
-    executor_factory_type factory_;
-    in_type in_;
-
-    template <class Out, class Executor>
-    class out_on {
-      using out_type = std::decay_t<Out>;
-      using exec_type = std::decay_t<Executor>;
-
-      template <class Producer>
-      struct producer_proxy {
-        RefWrapper<Producer> up_;
-        std::shared_ptr<std::atomic_bool> stopped_;
-        exec_type exec_;
-
-        producer_proxy(
-            RefWrapper<Producer> p,
-            std::shared_ptr<std::atomic_bool> stopped,
-            exec_type exec)
-            : up_(std::move(p)),
-              stopped_(std::move(stopped)),
-              exec_(std::move(exec)) {}
-
-        template <class V>
-        void value(V v) {
-          auto up = wrap_ref(up_.get());
-          exec_ |
-              execute([up = std::move(up),
-                       v = std::move(v),
-                       stopped = std::move(stopped_)](auto) mutable {
-                if (*stopped) {
-                  return;
-                }
-                up.get().value(std::move(v));
-              });
-        }
-
-        template <class E>
-        void error(E e) {
-          auto up = wrap_ref(up_.get());
-          exec_ |
-              execute([up = std::move(up),
-                       e = std::move(e),
-                       stopped = std::move(stopped_)](auto) mutable {
-                if (*stopped) {
-                  return;
-                }
-                up.get().error(std::move(e));
-              });
-        }
-      };
-
-      bool done_;
-      std::shared_ptr<std::atomic_bool> stopped_;
-      out_type out_;
-      exec_type exec_;
-      AnyNone<> upProxy_;
-
-     public:
-      out_on(out_type out, exec_type exec)
-          : done_(false),
-            stopped_(std::make_shared<std::atomic_bool>(false)),
-            out_(std::move(out)),
-            exec_(std::move(exec)),
-            upProxy_() {}
-
-      template <class T>
-      void value(T t) {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        out_.value(std::move(t));
-      }
-
-      template <class E>
-      void error(E e) {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        out_.error(std::move(e));
-      }
-
-      template <class Producer>
-      void starting(RefWrapper<Producer> up) {
-        upProxy_ =
-            producer_proxy<Producer>{std::move(up), stopped_, std::move(exec_)};
-        out_.starting(wrap_ref(upProxy_));
-      }
-    };
-
-   public:
-    start_on(executor_factory_type&& ef, in_type&& in)
-        : factory_(std::move(ef)), in_(std::move(in)) {}
-
-    template <class Out>
-    auto then(Out out) {
-      auto exec = factory_();
-      auto myout = out_on<Out, decltype(exec)>{std::move(out), exec};
-      exec | execute([in = in_, myout = std::move(myout)](auto) mutable {
-        in.then(std::move(myout));
-      });
-    }
-  };
-
- public:
-  explicit fsdon(executor_factory_type&& ef) : factory_(std::move(ef)) {}
-
-  template <class In>
-  auto operator()(In in) {
-    return start_on<In>{std::move(factory_), std::move(in)};
-  }
-};
-
-} // namespace detail
-
-namespace fsd {
-template <class ExecutorFactory>
-auto on(ExecutorFactory factory) {
-  return detail::fsdon<ExecutorFactory>{std::move(factory)};
-}
-} // namespace fsd
-#endif
-
 } // namespace pushmi
 // clang-format off
 // clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
@@ -9502,9 +8223,6 @@ auto on(ExecutorFactory factory) {
 
 //#include <cassert>
 //#include "extension_operators.h"
-//#include "../sender.h"
-//#include "../single_sender.h"
-//#include "../time_single_sender.h"
 
 namespace pushmi {
 
@@ -9519,26 +8237,18 @@ struct tap_ {
   // side effect has no effect on the properties.
   using properties = properties_t<Out>;
 
-  PUSHMI_TEMPLATE(class V, class UV = std::remove_reference_t<V>)
+  PUSHMI_TEMPLATE(class... VN)
     (requires
-      SingleReceiver<SideEffects, const UV> &&
-      SingleReceiver<Out, UV>)
-  void value(V&& v) {
-    ::pushmi::set_value(sideEffects, as_const(v));
-    ::pushmi::set_value(out, (V&&) v);
-  }
-  PUSHMI_TEMPLATE(class V, class UV = std::remove_reference_t<V>)
-    (requires
-      ManyReceiver<SideEffects, const UV> &&
-      ManyReceiver<Out, UV>)
-  void next(V&& v) {
-    ::pushmi::set_next(sideEffects, as_const(v));
-    ::pushmi::set_next(out, (V&&) v);
+      ReceiveValue<SideEffects, const std::remove_reference_t<VN>...> &&
+      ReceiveValue<Out, std::remove_reference_t<VN>...>)
+  void value(VN&&... vn) {
+    ::pushmi::set_value(sideEffects, as_const(vn)...);
+    ::pushmi::set_value(out, (VN&&) vn...);
   }
   PUSHMI_TEMPLATE(class E)
     (requires
-      NoneReceiver<SideEffects, const E> &&
-      NoneReceiver<Out, E>)
+      ReceiveError<SideEffects, const E> &&
+      ReceiveError<Out, E>)
   void error(E e) noexcept {
     ::pushmi::set_error(sideEffects, as_const(e));
     ::pushmi::set_error(out, std::move(e));
@@ -9561,34 +8271,17 @@ struct tap_ {
 PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
   PUSHMI_TEMPLATE(class SideEffects, class Out)
     (requires Receiver<SideEffects> && Receiver<Out> &&
-      Receiver<tap_<SideEffects, Out>, property_set_index_t<properties_t<Out>, is_silent<>>>)
+      Receiver<tap_<SideEffects, Out>>)
   auto operator()(SideEffects se, Out out) const {
     return tap_<SideEffects, Out>{std::move(se), std::move(out)};
   }
 } const make_tap {};
 
-#if __NVCC__
-#define PUSHMI_STATIC_ASSERT(...)
-#elif __cpp_if_constexpr >= 201606
-#define PUSHMI_STATIC_ASSERT static_assert
-#else
-#define PUSHMI_STATIC_ASSERT detail::do_assert
-inline void do_assert(bool condition, char const*) {
-  assert(condition);
-}
-#endif
-
 struct tap_fn {
 private:
-  template <class In, class SideEffects>
+  PUSHMI_TEMPLATE (class In, class SideEffects)
+    (requires Sender<In> && Receiver<SideEffects>)
   static auto impl(In in, SideEffects sideEffects) {
-    // PUSHMI_STATIC_ASSERT(
-    //   ::pushmi::detail::sender_requires_from<In, SideEffects,
-    //     SenderTo<In, SideEffects, is_none<>>,
-    //     SenderTo<In, SideEffects, is_single<>>,
-    //     TimeSenderTo<In, SideEffects, is_single<>> >(),
-    //     "'In' is not deliverable to 'SideEffects'");
-
     return ::pushmi::detail::sender_from(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
@@ -9608,27 +8301,17 @@ private:
         ::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
     }
   };
-  template <class In, class SideEffects>
+  PUSHMI_TEMPLATE (class In, class SideEffects)
+    (requires Sender<In> && Receiver<SideEffects>)
   struct out_impl {
     SideEffects sideEffects_;
     PUSHMI_TEMPLATE (class Out)
-      (requires Receiver<Out>)
+      (requires Receiver<Out> && SenderTo<In, Out> &&
+        SenderTo<In, decltype(::pushmi::detail::receiver_from_fn<In>()(
+            detail::make_tap(std::declval<SideEffects>(), std::declval<Out>())))>)
     auto operator()(Out out) const {
-      // PUSHMI_STATIC_ASSERT(
-      //   ::pushmi::detail::sender_requires_from<In, SideEffects,
-      //     SenderTo<In, Out, is_none<>>,
-      //     SenderTo<In, Out, is_single<>>,
-      //     TimeSenderTo<In, Out, is_single<>> >(),
-      //     "'In' is not deliverable to 'Out'");
       auto gang{::pushmi::detail::receiver_from_fn<In>()(
           detail::make_tap(sideEffects_, std::move(out)))};
-      using Gang = decltype(gang);
-      // PUSHMI_STATIC_ASSERT(
-      //   ::pushmi::detail::sender_requires_from<In, SideEffects,
-      //     SenderTo<In, Gang>,
-      //     SenderTo<In, Gang, is_single<>>,
-      //     TimeSenderTo<In, Gang, is_single<>> >(),
-      //     "'In' is not deliverable to 'Out' & 'SideEffects'");
       return gang;
     }
   };
@@ -9654,8 +8337,8 @@ PUSHMI_INLINE_VAR constexpr detail::tap_fn tap{};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../single.h"
-//#include "../many.h"
+//#include "../receiver.h"
+//#include "../flow_receiver.h"
 //#include "submit.h"
 //#include "extension_operators.h"
 
@@ -9672,18 +8355,24 @@ struct transform_on<F, is_single<>> {
   transform_on() = default;
   constexpr explicit transform_on(F f)
     : f_(std::move(f)) {}
+  struct value_fn {
+    F f_;
+    value_fn() = default;
+    constexpr explicit value_fn(F f)
+      : f_(std::move(f)) {}
+    template<class Out, class V0, class... VN>
+    auto operator()(Out& out, V0&& v0, VN&&... vn) {
+      using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
+      static_assert(::pushmi::SemiMovable<Result>,
+        "none of the functions supplied to transform can convert this value");
+      static_assert(::pushmi::ReceiveValue<Out, Result>,
+        "Result of value transform cannot be delivered to Out");
+      ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
+    }
+  };
   template<class Out>
   auto operator()(Out out) const {
-    return make_single(std::move(out), on_value(*this));
-  }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
-    static_assert(::pushmi::SemiMovable<Result>,
-      "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::SingleReceiver<Out, Result>,
-      "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_value(out, f_((V&&) v));
+    return ::pushmi::make_receiver(std::move(out), value_fn{f_});
   }
 };
 
@@ -9697,14 +8386,14 @@ struct transform_on<F, is_single<>, true> {
   auto operator()(Out out) const {
     return make_flow_single(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::Flow<Out> && ::pushmi::Single<Out>,
+    static_assert(::pushmi::Flow<Out> && ::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_value(out, f_((V&&) v));
+      ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -9716,16 +8405,16 @@ struct transform_on<F, is_many<>> {
     : f_(std::move(f)) {}
   template<class Out>
   auto operator()(Out out) const {
-    return make_many(std::move(out), on_next(*this));
+    return ::pushmi::make_receiver(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::ManyReceiver<Out, Result>,
+    static_assert(::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_next(out, f_((V&&) v));
+    ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -9737,16 +8426,16 @@ struct transform_on<F, is_many<>, true> {
     : f_(std::move(f)) {}
   template<class Out>
   auto operator()(Out out) const {
-    return make_flow_many(std::move(out), on_next(*this));
+    return make_flow_receiver(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::Flow<Out> && ::pushmi::Many<Out>,
+    static_assert(::pushmi::Flow<Out> && ::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_next(out, f_((V&&) v));
+    ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -9758,7 +8447,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
+      using Cardinality = property_set_index_t<properties_t<In>, is_single<>>;
       return ::pushmi::detail::sender_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
@@ -9799,20 +8488,19 @@ namespace detail {
 
 struct filter_fn {
 private:
-  template <class Predicate>
+  template <class In, class Predicate>
   struct on_value_impl {
     Predicate p_;
-    template <class Out, class V>
-    void operator()(Out& out, V&& v) const {
-      if (p_(as_const(v))) {
-        ::pushmi::set_value(out, (V&&) v);
-      } else {
-        ::pushmi::set_done(out);
+    PUSHMI_TEMPLATE(class Out, class... VN)
+      (requires Receiver<Out>)
+    void operator()(Out& out, VN&&... vn) const {
+      if (p_(as_const(vn)...)) {
+        ::pushmi::set_value(out, (VN&&) vn...);
       }
     }
   };
   template <class In, class Predicate>
-  struct out_impl {
+  struct submit_impl {
     Predicate p_;
     PUSHMI_TEMPLATE(class Out)
       (requires Receiver<Out>)
@@ -9820,19 +8508,19 @@ private:
       return ::pushmi::detail::receiver_from_fn<In>()(
         std::move(out),
         // copy 'p' to allow multiple calls to submit
-        ::pushmi::on_value(on_value_impl<Predicate>{p_})
+        on_value_impl<In, Predicate>{p_}
       );
     }
   };
   template <class Predicate>
-  struct in_impl {
+  struct adapt_impl {
     Predicate p_;
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In>)
     auto operator()(In in) const {
       return ::pushmi::detail::sender_from(
         std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(out_impl<In, Predicate>{p_})
+        ::pushmi::detail::submit_transform_out<In>(submit_impl<In, Predicate>{p_})
       );
     }
   };
@@ -9840,7 +8528,7 @@ public:
   PUSHMI_TEMPLATE(class Predicate)
     (requires SemiMovable<Predicate>)
   auto operator()(Predicate p) const {
-    return in_impl<Predicate>{std::move(p)};
+    return adapt_impl<Predicate>{std::move(p)};
   }
 };
 
@@ -9869,7 +8557,8 @@ private:
   template <class ErrorSelector>
   struct on_error_impl {
     ErrorSelector es_;
-    template <class Out, class E>
+    PUSHMI_TEMPLATE (class Out, class E)
+      (requires Receiver<Out> && Invocable<const ErrorSelector&, E> && SenderTo<pushmi::invoke_result_t<ErrorSelector&, E>, Out>)
     void operator()(Out& out, E&& e) const noexcept {
       static_assert(::pushmi::NothrowInvocable<const ErrorSelector&, E>,
         "switch_on_error - error selector function must be noexcept");
@@ -9933,12 +8622,22 @@ namespace pushmi {
 
 namespace detail {
 
-template<class Executor, class Out>
-struct via_fn_data : public Out {
+template<class Executor>
+struct via_fn_base {
   Executor exec;
+  bool done;
+  explicit via_fn_base(Executor ex) : exec(std::move(ex)), done(false) {}
+  via_fn_base& via_fn_base_ref() {return *this;}
+};
+template<class Executor, class Out>
+struct via_fn_data : public Out, public via_fn_base<Executor> {
 
   via_fn_data(Out out, Executor exec) :
-    Out(std::move(out)), exec(std::move(exec)) {}
+    Out(std::move(out)), via_fn_base<Executor>(std::move(exec)) {}
+
+  using typename Out::properties;
+  using Out::error;
+  using Out::done;
 };
 
 template<class Out, class Executor>
@@ -9960,9 +8659,10 @@ private:
     };
     template <class Data, class V>
     void operator()(Data& data, V&& v) const {
+      if (data.via_fn_base_ref().done) {return;}
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl<std::decay_t<V>>{(V&&) v, std::move(static_cast<Out&>(data))}
         )
       );
@@ -9974,15 +8674,17 @@ private:
     struct impl {
       E e_;
       Out out_;
-      void operator()(any) {
+      void operator()(any) noexcept {
         ::pushmi::set_error(out_, std::move(e_));
       }
     };
     template <class Data, class E>
     void operator()(Data& data, E e) const noexcept {
+      if (data.via_fn_base_ref().done) {return;}
+      data.via_fn_base_ref().done = true;
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl<E>{std::move(e), std::move(static_cast<Out&>(data))}
         )
       );
@@ -9998,9 +8700,11 @@ private:
     };
     template <class Data>
     void operator()(Data& data) const {
+      if (data.via_fn_base_ref().done) {return;}
+      data.via_fn_base_ref().done = true;
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl{std::move(static_cast<Out&>(data))}
         )
       );
@@ -10023,9 +8727,9 @@ private:
       auto exec = ef_();
       return ::pushmi::detail::receiver_from_fn<In>()(
         make_via_fn_data(std::move(out), std::move(exec)),
-        ::pushmi::on_value(on_value_impl<Out>{}),
-        ::pushmi::on_error(on_error_impl<Out>{}),
-        ::pushmi::on_done(on_done_impl<Out>{})
+        on_value_impl<Out>{},
+        on_error_impl<Out>{},
+        on_done_impl<Out>{}
       );
     }
   };
@@ -10046,7 +8750,9 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
+    (requires Invocable<ExecutorFactory&> &&
+      Executor<invoke_result_t<ExecutorFactory&>> &&
+      FifoSequence<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }
@@ -10067,7 +8773,7 @@ PUSHMI_INLINE_VAR constexpr detail::via_fn via{};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../single.h"
+//#include "../receiver.h"
 //#include "submit.h"
 //#include "extension_operators.h"
 //#include "via.h"
@@ -10077,7 +8783,9 @@ namespace pushmi {
 template<typename In>
 struct send_via {
     In in;
-    template<class... AN>
+    PUSHMI_TEMPLATE(class... AN)
+      (requires Invocable<decltype(::pushmi::operators::via), AN...> &&
+      Invocable<invoke_result_t<decltype(::pushmi::operators::via), AN...>, In>)
     auto via(AN&&... an) {
         return in | ::pushmi::operators::via((AN&&) an...);
     }
@@ -10129,7 +8837,7 @@ auto via_cast(send_via<In> ss) {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../single.h"
+//#include "../receiver.h"
 //#include "submit.h"
 //#include "extension_operators.h"
 
@@ -10139,19 +8847,15 @@ namespace pushmi {
 
 namespace detail {
 
-template<class T>
+template<class... TN>
 struct share_fn {
 private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      subject<T, properties_t<In>> sub;
-      PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<In>) (
-        ::pushmi::submit(in, ::pushmi::now(id(in)), sub.receiver());
-      ) else (
-        ::pushmi::submit(id(in), sub.receiver());
-      ));
+      subject<properties_t<In>, TN...> sub;
+      ::pushmi::submit(in, sub.receiver());
       return sub;
     }
   };
@@ -10165,8 +8869,8 @@ public:
 
 namespace operators {
 
-template<class T>
-PUSHMI_INLINE_VAR constexpr detail::share_fn<T> share{};
+template<class... TN>
+PUSHMI_INLINE_VAR constexpr detail::share_fn<TN...> share{};
 
 } // namespace operators
 

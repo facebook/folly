@@ -20,20 +20,20 @@ private:
     using properties = property_set_insert_t<properties_t<Out>, property_set<is_flow<>>>;
     std::function<void(ptrdiff_t)> pull;
     template<class V>
-    void next(V&& v) {
-      ::pushmi::set_next(static_cast<Out&>(*this), (V&&) v);
+    void value(V&& v) {
+      ::pushmi::set_value(static_cast<Out&>(*this), (V&&) v);
       pull(1);
     }
     PUSHMI_TEMPLATE(class Up)
-      (requires ManyReceiver<Up, std::ptrdiff_t>)
+      (requires Receiver<Up>)
     void starting(Up up){
       pull = [up = std::move(up)](std::ptrdiff_t requested) mutable {
-        ::pushmi::set_next(up, requested);
+        ::pushmi::set_value(up, requested);
       };
       pull(1);
     }
     PUSHMI_TEMPLATE(class Up)
-      (requires None<Up> && not Many<Up>)
+      (requires ReceiveValue<Up>)
     void starting(Up up){}
   };
   template <class... AN>
@@ -42,17 +42,17 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In> && Flow<In> && Many<In>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_silent<>>>>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_single<>>>>()(std::move(args_))};
       using Out = decltype(out);
       ::pushmi::submit(in, ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
       return in;
     }
     PUSHMI_TEMPLATE(class In)
-      (requires Sender<In> && Time<In> && Flow<In> && Many<In>)
+      (requires Sender<In> && Constrained<In> && Flow<In> && Many<In>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_silent<>>>>()(std::move(args_))};
+      auto out{::pushmi::detail::receiver_from_fn<subset<is_sender<>, property_set_index_t<properties_t<In>, is_single<>>>>()(std::move(args_))};
       using Out = decltype(out);
-      ::pushmi::submit(in, ::pushmi::now(in), ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
+      ::pushmi::submit(in, ::pushmi::top(in), ::pushmi::detail::receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
       return in;
     }
   };

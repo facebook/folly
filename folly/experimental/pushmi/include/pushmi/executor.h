@@ -6,7 +6,7 @@
 
 #include <chrono>
 #include <functional>
-#include "single.h"
+#include "receiver.h"
 
 namespace pushmi {
 namespace detail {
@@ -40,23 +40,23 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires Sender<wrapped_t<Wrapped>, is_executor<>, is_single<>>)
-    // (requires SenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, This>>)
   any_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, single<T,E>)
+    // This can't be a requirement because it asks if submit(w, any_receiver<E,T>)
     // is well-formed (where T is an alias for any_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with SingleReceiver<any_receiver<E,T>, T'&, E'>, that
+    // will ask whether value(any_receiver<E,T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      SenderTo<Wrapped, single<This, E>>,
+      SenderTo<Wrapped, any_receiver<E,This>>,
       "Expecting to be passed a Sender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
       static void submit(void* pobj, void* s) {
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::submit};
@@ -67,9 +67,9 @@ public:
   template<class SingleReceiver>
   void submit(SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_executor_ref<E>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, &s);
   }
 };
@@ -107,7 +107,7 @@ any_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E>
 using any_executor_base =
-  any_single_sender<any_executor_ref<E>, E>;
+  any_single_sender<E, any_executor_ref<E>>;
 
 template<class T, class E>
 using not_any_executor =
@@ -119,6 +119,7 @@ using not_any_executor =
 template <class E>
 struct any_executor : detail::any_executor_base<E> {
   constexpr any_executor() = default;
+  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
   using detail::any_executor_base<E>::any_executor_base;
 };
 
@@ -135,7 +136,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires SenderTo<
       detail::not_any_executor<Wrapped, E>,
-      single<any_executor_ref<E>, E>>)
+      any_receiver<E, any_executor_ref<E>>>)
 auto make_any_executor(Wrapped w) -> any_executor<E> {
   return any_executor<E>{std::move(w)};
 }
@@ -152,10 +153,10 @@ PUSHMI_TEMPLATE(class Wrapped)
       detail::not_any_executor<
           Wrapped,
           std::exception_ptr>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_executor_ref<
-              std::exception_ptr>,
-          std::exception_ptr>>)
+              std::exception_ptr>>>)
 any_executor(Wrapped) ->
     any_executor<
         std::exception_ptr>;
@@ -189,16 +190,16 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires ConstrainedSender<wrapped_t<Wrapped>, is_single<>>)
-    // (requires ConstrainedSenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires ConstrainedSenderTo<wrapped_t<Wrapped>, any_receiver<E,This>>)
   any_constrained_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, top(w), single<T,E>)
+    // This can't be a requirement because it asks if submit(w, top(w), any_receiver<E,T>)
     // is well-formed (where T is an alias for any_constrained_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with ReceiveValue<any_receiver<E,T>, T'&>, that
+    // will ask whether value(any_receiver<E,T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      ConstrainedSenderTo<Wrapped, single<This, E>>,
+      ConstrainedSenderTo<Wrapped, any_receiver<E,This>>,
       "Expecting to be passed a ConstrainedSender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
@@ -209,7 +210,7 @@ public:
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
           cv,
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::top, s::submit};
@@ -223,9 +224,9 @@ public:
   template<class SingleReceiver>
   void submit(CV cv, SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_constrained_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_constrained_executor_ref<E, TP>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, cv, &s);
   }
 };
@@ -266,7 +267,7 @@ any_constrained_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E, class CV>
 using any_constrained_executor_base =
-  any_constrained_single_sender<any_constrained_executor_ref<E, CV>, E, CV>;
+  any_constrained_single_sender<E, CV, any_constrained_executor_ref<E, CV>>;
 
 template<class T, class E, class CV>
 using not_any_constrained_executor =
@@ -296,7 +297,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires ConstrainedSenderTo<
       detail::not_any_constrained_executor<Wrapped, E, constraint_t<Wrapped>>,
-      single<any_constrained_executor_ref<E, constraint_t<Wrapped>>, E>>)
+      any_receiver<E, any_constrained_executor_ref<E, constraint_t<Wrapped>>>>)
 auto make_any_constrained_executor(Wrapped w) -> any_constrained_executor<E, constraint_t<Wrapped>> {
   return any_constrained_executor<E, constraint_t<Wrapped>>{std::move(w)};
 }
@@ -315,11 +316,11 @@ PUSHMI_TEMPLATE(class Wrapped)
           Wrapped,
           std::exception_ptr,
           constraint_t<Wrapped>>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_constrained_executor_ref<
               std::exception_ptr,
-              constraint_t<Wrapped>>,
-          std::exception_ptr>>)
+              constraint_t<Wrapped>>>>)
 any_constrained_executor(Wrapped) ->
     any_constrained_executor<
         std::exception_ptr,
@@ -353,16 +354,16 @@ public:
 
   PUSHMI_TEMPLATE (class Wrapped)
     (requires TimeSender<wrapped_t<Wrapped>, is_single<>>)
-    // (requires TimeSenderTo<wrapped_t<Wrapped>, single<This, E>>)
+    // (requires TimeSenderTo<wrapped_t<Wrapped>, receiver<E, This>>)
   any_time_executor_ref(Wrapped& w) {
-    // This can't be a requirement because it asks if submit(w, now(w), single<T,E>)
+    // This can't be a requirement because it asks if submit(w, now(w), any_receiver<E, T>)
     // is well-formed (where T is an alias for any_time_executor_ref). If w
-    // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
-    // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
+    // has a submit that is constrained with ReceiverValue<any_receiver<E, T>, T'&>, that
+    // will ask whether value(any_receiver<E, T>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
     static_assert(
-      TimeSenderTo<Wrapped, single<This, E>>,
+      TimeSenderTo<Wrapped, any_receiver<E, This>>,
       "Expecting to be passed a TimeSender that can send to a SingleReceiver"
       " that accpets a value of type This and an error of type E");
     struct s {
@@ -373,7 +374,7 @@ public:
         return ::pushmi::submit(
           *static_cast<Wrapped*>(pobj),
           tp,
-          std::move(*static_cast<single<This, E>*>(s)));
+          std::move(*static_cast<any_receiver<E,This>*>(s)));
       }
     };
     static const vtable vtbl{s::now, s::submit};
@@ -387,9 +388,9 @@ public:
   template<class SingleReceiver>
   void submit(TP tp, SingleReceiver&& sa) {
     // static_assert(
-    //   ConvertibleTo<SingleReceiver, any_single<This, E>>,
-    //   "requires any_single<any_time_executor_ref<E, TP>, E>");
-    any_single<This, E> s{(SingleReceiver&&) sa};
+    //   ConvertibleTo<SingleReceiver, any_receiver<E, This>>,
+    //   "requires any_receiver<E, any_time_executor_ref<E, TP>>");
+    any_receiver<E, This> s{(SingleReceiver&&) sa};
     vptr_->submit_(pobj_, tp, &s);
   }
 };
@@ -430,7 +431,7 @@ any_time_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E, class TP>
 using any_time_executor_base =
-  any_time_single_sender<any_time_executor_ref<E, TP>, E, TP>;
+  any_time_single_sender<E, TP, any_time_executor_ref<E, TP>>;
 
 template<class T, class E, class TP>
 using not_any_time_executor =
@@ -460,7 +461,7 @@ PUSHMI_TEMPLATE(
     class Wrapped)
   (requires TimeSenderTo<
       detail::not_any_time_executor<Wrapped, E, time_point_t<Wrapped>>,
-      single<any_time_executor_ref<E, time_point_t<Wrapped>>, E>>)
+      any_receiver<E, any_time_executor_ref<E, time_point_t<Wrapped>>>>)
 auto make_any_time_executor(Wrapped w) -> any_time_executor<E, time_point_t<Wrapped>> {
   return any_time_executor<E, time_point_t<Wrapped>>{std::move(w)};
 }
@@ -479,11 +480,11 @@ PUSHMI_TEMPLATE(class Wrapped)
           Wrapped,
           std::exception_ptr,
           time_point_t<Wrapped>>,
-      single<
+      any_receiver<
+          std::exception_ptr,
           any_time_executor_ref<
               std::exception_ptr,
-              time_point_t<Wrapped>>,
-          std::exception_ptr>>)
+              time_point_t<Wrapped>>>>)
 any_time_executor(Wrapped) ->
     any_time_executor<
         std::exception_ptr,

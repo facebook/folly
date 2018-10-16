@@ -12,7 +12,6 @@ using namespace std::literals;
 #include "pushmi/o/on.h"
 #include "pushmi/o/transform.h"
 #include "pushmi/o/tap.h"
-#include "pushmi/o/via.h"
 #include "pushmi/o/submit.h"
 #include "pushmi/o/extension_operators.h"
 
@@ -28,15 +27,17 @@ SCENARIO( "empty can be used with tap and submit", "[empty][sender]" ) {
     auto e = op::empty();
     using E = decltype(e);
 
-    REQUIRE( v::SenderTo<E, v::any_none<>, v::is_none<>> );
+    REQUIRE( v::SenderTo<E, v::any_receiver<>, v::is_single<>> );
 
     WHEN( "tap and submit are applied" ) {
       int signals = 0;
       e |
         op::tap(
+          [&](){ signals += 100; },
           [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; }) |
         op::submit(
+          [&](){ signals += 100; },
           [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
@@ -45,7 +46,7 @@ SCENARIO( "empty can be used with tap and submit", "[empty][sender]" ) {
       }
 
       WHEN( "future_from is applied" ) {
-        v::future_from(e).get();
+        REQUIRE_THROWS_AS(v::future_from(e).get(), std::future_error);
 
         THEN( "future_from(e) returns std::future<void>" ) {
           REQUIRE( std::is_same<std::future<void>, decltype(v::future_from(e))>::value );
@@ -58,7 +59,7 @@ SCENARIO( "empty can be used with tap and submit", "[empty][sender]" ) {
     auto e = op::empty<int>();
     using E = decltype(e);
 
-    REQUIRE( v::SenderTo<E, v::any_single<int>, v::is_single<>> );
+    REQUIRE( v::SenderTo<E, v::any_receiver<std::exception_ptr, int>, v::is_single<>> );
 
     WHEN( "tap and submit are applied" ) {
 
@@ -86,7 +87,7 @@ SCENARIO( "just() can be used with transform and submit", "[just][sender]" ) {
     auto j = op::just(20);
     using J = decltype(j);
 
-    REQUIRE( v::SenderTo<J, v::any_single<int>, v::is_single<>> );
+    REQUIRE( v::SenderTo<J, v::any_receiver<std::exception_ptr, int>, v::is_single<>> );
 
     WHEN( "transform and submit are applied" ) {
       int signals = 0;
@@ -102,8 +103,8 @@ SCENARIO( "just() can be used with transform and submit", "[just][sender]" ) {
           [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
-      THEN( "the transform signal is recorded twice, the value signal once and the result is correct" ) {
-        REQUIRE( signals == 20100 );
+      THEN( "the transform signal is recorded twice, the value and done signals once and the result is correct" ) {
+        REQUIRE( signals == 20110 );
         REQUIRE( value == 42 );
       }
     }
@@ -126,7 +127,7 @@ SCENARIO( "from() can be used with transform and submit", "[from][sender]" ) {
     auto m = op::from(arr);
     using M = decltype(m);
 
-    REQUIRE( v::SenderTo<M, v::any_many<int>, v::is_many<>> );
+    REQUIRE( v::SenderTo<M, v::any_receiver<std::exception_ptr, int>, v::is_many<>> );
 
     WHEN( "transform and submit are applied" ) {
       int signals = 0;

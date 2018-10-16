@@ -18,28 +18,29 @@ auto concat =
   [](auto in){
     return mi::make_single_sender(
       [in](auto out) mutable {
-        ::pushmi::submit(in, mi::make_single(out,
+        ::pushmi::submit(in, mi::make_receiver(out,
         [](auto out, auto v){
-          ::pushmi::submit(v, mi::any_single<T, E>(out));
+          ::pushmi::submit(v, mi::any_receiver<E, T>(out));
         }));
       });
   };
 
 int main()
 {
+  auto stop_abort = mi::on_error([](auto) noexcept {});
   // support all error value types
 
   op::error(std::exception_ptr{}) |
-    op::submit();
+    op::submit(stop_abort);
 
   op::error(std::errc::argument_list_too_long) |
-    op::submit();
+    op::submit(stop_abort);
 
 // transform an error
 
   op::error(std::errc::argument_list_too_long) |
     op::switch_on_error([](auto e) noexcept { return op::error(std::exception_ptr{}); }) |
-    op::submit();
+    op::submit(stop_abort);
 
 // use default value if an error occurs
 
@@ -63,7 +64,7 @@ int main()
 
   op::just(42) |
     op::transform([](auto v) {
-      using r_t = mi::any_single_sender<int>;
+      using r_t = mi::any_single_sender<std::exception_ptr, int>;
       if (v < 40) {
         return r_t{op::error<int>(std::exception_ptr{})};
       } else {

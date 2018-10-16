@@ -17,6 +17,7 @@ using namespace std::literals;
 
 #include "pushmi/new_thread.h"
 #include "pushmi/time_source.h"
+#include "pushmi/strand.h"
 
 using namespace pushmi::aliases;
 
@@ -57,8 +58,8 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
           [&](auto e) noexcept {  signals += 1000; },
           [&](){ signals += 10; });
 
-      THEN( "the value signal is recorded once and the signal did not drift much" ) {
-        REQUIRE( signals == 100 );
+      THEN( "the value and done signals are recorded once and the value signal did not drift much" ) {
+        REQUIRE( signals == 110 );
         auto delay = std::chrono::duration_cast<std::chrono::milliseconds>((signaled - start)).count();
         INFO("The delay is " << ::Catch::Detail::stringify(delay));
         REQUIRE( delay < 1000 );
@@ -105,7 +106,7 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
     WHEN( "now is called" ) {
       bool done = false;
       tnt | ep::now();
-      tnt | op::blocking_submit([&](auto nt) {
+      tnt | op::blocking_submit([&](auto tnt) {
         tnt | ep::now();
         done = true;
       });
@@ -125,8 +126,8 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
           [&](auto e) noexcept {  signals += 1000; },
           [&](){ signals += 10; });
 
-      THEN( "the value signal is recorded once" ) {
-        REQUIRE( signals == 100 );
+      THEN( "the value and done signals are recorded once" ) {
+        REQUIRE( signals == 110 );
       }
     }
 
@@ -170,13 +171,14 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
       std::vector<std::string> values;
       auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
+        ::pushmi::set_done(out);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       sender | op::on([&](){return nt;}) |
-          op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
+        op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
       }
@@ -186,12 +188,13 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
       std::vector<std::string> values;
       auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
+        ::pushmi::set_done(out);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
-      sender | op::via([&](){return nt;}) |
+      sender | op::via(mi::strands(nt)) |
           op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});

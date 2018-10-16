@@ -6,8 +6,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../single.h"
-#include "../many.h"
+#include "../receiver.h"
+#include "../flow_receiver.h"
 #include "submit.h"
 #include "extension_operators.h"
 
@@ -24,18 +24,24 @@ struct transform_on<F, is_single<>> {
   transform_on() = default;
   constexpr explicit transform_on(F f)
     : f_(std::move(f)) {}
+  struct value_fn {
+    F f_;
+    value_fn() = default;
+    constexpr explicit value_fn(F f)
+      : f_(std::move(f)) {}
+    template<class Out, class V0, class... VN>
+    auto operator()(Out& out, V0&& v0, VN&&... vn) {
+      using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
+      static_assert(::pushmi::SemiMovable<Result>,
+        "none of the functions supplied to transform can convert this value");
+      static_assert(::pushmi::ReceiveValue<Out, Result>,
+        "Result of value transform cannot be delivered to Out");
+      ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
+    }
+  };
   template<class Out>
   auto operator()(Out out) const {
-    return make_single(std::move(out), on_value(*this));
-  }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
-    static_assert(::pushmi::SemiMovable<Result>,
-      "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::SingleReceiver<Out, Result>,
-      "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_value(out, f_((V&&) v));
+    return ::pushmi::make_receiver(std::move(out), value_fn{f_});
   }
 };
 
@@ -49,14 +55,14 @@ struct transform_on<F, is_single<>, true> {
   auto operator()(Out out) const {
     return make_flow_single(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::Flow<Out> && ::pushmi::Single<Out>,
+    static_assert(::pushmi::Flow<Out> && ::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_value(out, f_((V&&) v));
+      ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -68,16 +74,16 @@ struct transform_on<F, is_many<>> {
     : f_(std::move(f)) {}
   template<class Out>
   auto operator()(Out out) const {
-    return make_many(std::move(out), on_next(*this));
+    return ::pushmi::make_receiver(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::ManyReceiver<Out, Result>,
+    static_assert(::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_next(out, f_((V&&) v));
+    ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -89,16 +95,16 @@ struct transform_on<F, is_many<>, true> {
     : f_(std::move(f)) {}
   template<class Out>
   auto operator()(Out out) const {
-    return make_flow_many(std::move(out), on_next(*this));
+    return make_flow_receiver(std::move(out), on_value(*this));
   }
-  template<class Out, class V>
-  auto operator()(Out& out, V&& v) {
-    using Result = decltype(f_((V&&) v));
+  template<class Out, class V0, class... VN>
+  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+    using Result = ::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
-    static_assert(::pushmi::Flow<Out> && ::pushmi::Many<Out>,
+    static_assert(::pushmi::Flow<Out> && ::pushmi::ReceiveValue<Out, Result>,
       "Result of value transform cannot be delivered to Out");
-    ::pushmi::set_next(out, f_((V&&) v));
+    ::pushmi::set_value(out, f_((V0&&) v0, (VN&&) vn...));
   }
 };
 
@@ -110,7 +116,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
+      using Cardinality = property_set_index_t<properties_t<In>, is_single<>>;
       return ::pushmi::detail::sender_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(

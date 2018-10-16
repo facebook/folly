@@ -4,7 +4,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "single.h"
+#include "receiver.h"
 #include "executor.h"
 #include "inline.h"
 #include "constrained_single_sender.h"
@@ -12,20 +12,20 @@
 namespace pushmi {
 
 
-template <class V, class E, class TP>
-class any_time_single_sender : public any_constrained_single_sender<V, E, TP> {
+template <class E, class TP, class... VN>
+class any_time_single_sender : public any_constrained_single_sender<E, TP, VN...> {
 public:
   using properties = property_set<is_time<>, is_single<>>;
   constexpr any_time_single_sender() = default;
   template<class T>
   constexpr explicit any_time_single_sender(T t)
-      : any_constrained_single_sender<V, E, TP>(std::move(t)) {}
+      : any_constrained_single_sender<E, TP, VN...>(std::move(t)) {}
   template<class T0, class T1, class... TN>
   constexpr any_time_single_sender(T0 t0, T1 t1, TN... tn)
-      : any_constrained_single_sender<V, E, TP>(std::move(t0), std::move(t1), std::move(tn)...) {}
+      : any_constrained_single_sender<E, TP, VN...>(std::move(t0), std::move(t1), std::move(tn)...) {}
 
   any_time_executor<E, TP> executor() {
-    return any_time_executor<E, TP>{any_constrained_single_sender<V, E, TP>::executor()};
+    return any_time_executor<E, TP>{any_constrained_single_sender<E, TP, VN...>::executor()};
   }
 
 };

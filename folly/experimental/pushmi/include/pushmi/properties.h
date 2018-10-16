@@ -172,4 +172,30 @@ template<class PS, class... ExpectedN>
 PUSHMI_INLINE_VAR constexpr bool property_query_v =
   property_query<PS, ExpectedN...>::value;
 
+
+// query for categories on types with properties.
+
+namespace detail {
+template<class CIn, class POut>
+std::true_type category_query_fn(property_set_element<POut, CIn>*);
+template<class C>
+std::false_type category_query_fn(void*);
+
+template<class PS, class... ExpectedN>
+struct category_query_impl : bool_<
+  and_v<decltype(category_query_fn<ExpectedN>(
+      (properties_t<PS>*)nullptr))::value...>> {};
+} //namespace detail
+
+template<class PS, class... ExpectedN>
+struct category_query
+  : std::conditional_t<
+      Properties<PS> && not Or<Property<ExpectedN>...>,
+      detail::category_query_impl<PS, ExpectedN...>,
+      std::false_type> {};
+
+template<class PS, class... ExpectedN>
+PUSHMI_INLINE_VAR constexpr bool category_query_v =
+  category_query<PS, ExpectedN...>::value;
+
 } // namespace pushmi

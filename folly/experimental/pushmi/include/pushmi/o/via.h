@@ -12,12 +12,22 @@ namespace pushmi {
 
 namespace detail {
 
-template<class Executor, class Out>
-struct via_fn_data : public Out {
+template<class Executor>
+struct via_fn_base {
   Executor exec;
+  bool done;
+  explicit via_fn_base(Executor ex) : exec(std::move(ex)), done(false) {}
+  via_fn_base& via_fn_base_ref() {return *this;}
+};
+template<class Executor, class Out>
+struct via_fn_data : public Out, public via_fn_base<Executor> {
 
   via_fn_data(Out out, Executor exec) :
-    Out(std::move(out)), exec(std::move(exec)) {}
+    Out(std::move(out)), via_fn_base<Executor>(std::move(exec)) {}
+
+  using typename Out::properties;
+  using Out::error;
+  using Out::done;
 };
 
 template<class Out, class Executor>
@@ -39,9 +49,10 @@ private:
     };
     template <class Data, class V>
     void operator()(Data& data, V&& v) const {
+      if (data.via_fn_base_ref().done) {return;}
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl<std::decay_t<V>>{(V&&) v, std::move(static_cast<Out&>(data))}
         )
       );
@@ -53,15 +64,17 @@ private:
     struct impl {
       E e_;
       Out out_;
-      void operator()(any) {
+      void operator()(any) noexcept {
         ::pushmi::set_error(out_, std::move(e_));
       }
     };
     template <class Data, class E>
     void operator()(Data& data, E e) const noexcept {
+      if (data.via_fn_base_ref().done) {return;}
+      data.via_fn_base_ref().done = true;
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl<E>{std::move(e), std::move(static_cast<Out&>(data))}
         )
       );
@@ -77,9 +90,11 @@ private:
     };
     template <class Data>
     void operator()(Data& data) const {
+      if (data.via_fn_base_ref().done) {return;}
+      data.via_fn_base_ref().done = true;
       ::pushmi::submit(
-        data.exec,
-        ::pushmi::make_single(
+        data.via_fn_base_ref().exec,
+        ::pushmi::make_receiver(
           impl{std::move(static_cast<Out&>(data))}
         )
       );
@@ -102,9 +117,9 @@ private:
       auto exec = ef_();
       return ::pushmi::detail::receiver_from_fn<In>()(
         make_via_fn_data(std::move(out), std::move(exec)),
-        ::pushmi::on_value(on_value_impl<Out>{}),
-        ::pushmi::on_error(on_error_impl<Out>{}),
-        ::pushmi::on_done(on_done_impl<Out>{})
+        on_value_impl<Out>{},
+        on_error_impl<Out>{},
+        on_done_impl<Out>{}
       );
     }
   };
@@ -125,7 +140,9 @@ private:
   };
 public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
+    (requires Invocable<ExecutorFactory&> &&
+      Executor<invoke_result_t<ExecutorFactory&>> &&
+      FifoSequence<invoke_result_t<ExecutorFactory&>>)
   auto operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }

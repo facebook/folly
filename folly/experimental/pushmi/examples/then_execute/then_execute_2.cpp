@@ -13,8 +13,7 @@
 
 #include <pool.h>
 
-#include <pushmi/sender.h>
-#include <pushmi/single_sender.h>
+#include <pushmi/strand.h>
 #include <pushmi/o/just.h>
 #include <pushmi/o/via.h>
 #include <pushmi/o/transform.h>
@@ -75,7 +74,7 @@ namespace p1055 {
 
 template<class Executor, class Function, class Future>
 auto then_execute(Executor&& e, Function&& f, Future&& pred) {
-    return pred | op::via([e](){return e;}) | op::transform([f](auto v){return f(v);});
+    return pred | op::via(mi::strands(e)) | op::transform([f](auto v){return f(v);});
 }
 
 
@@ -96,7 +95,9 @@ int main()
 
   p1055::then_execute(p.executor(), [](int v){return v*2;}, op::just(21)) | op::get<int>;
 
+  sp.stop();
   sp.wait();
+  p.stop();
   p.wait();
 
   std::cout << "OK" << std::endl;

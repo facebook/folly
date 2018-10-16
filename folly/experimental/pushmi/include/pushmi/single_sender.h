@@ -4,17 +4,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "single.h"
+#include "receiver.h"
 #include "executor.h"
 #include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class E>
+template <class E, class... VN>
 class any_single_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -24,10 +24,10 @@ class any_single_sender {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, single<V, E>) {}
+    static void s_submit(data&, any_receiver<E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, single<V, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_receiver<E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -42,7 +42,7 @@ class any_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, single<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -63,7 +63,7 @@ class any_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, single<V, E> out) {
+      static void submit(data& src, any_receiver<E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
       }
@@ -86,7 +86,7 @@ class any_single_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>)
+    (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>)
   explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_single_sender() {
@@ -98,17 +98,17 @@ class any_single_sender {
     return *this;
   }
   any_executor<E> executor() {
-    vptr_->executor_(data_);
+    return vptr_->executor_(data_);
   }
-  void submit(single<V, E> out) {
+  void submit(any_receiver<E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class E>
-constexpr typename any_single_sender<V, E>::vtable const
-  any_single_sender<V, E>::noop_;
+template <class E, class... VN>
+constexpr typename any_single_sender<E, VN...>::vtable const
+  any_single_sender<E, VN...>::noop_;
 
 template <class SF, class EXF>
 class single_sender<SF, EXF> {
@@ -126,7 +126,7 @@ class single_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>> PUSHMI_AND lazy::Invocable<SF&, Out>))
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>))
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -151,7 +151,7 @@ class single_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -226,13 +226,5 @@ single_sender(Data, DSF, DEXF) -> single_sender<Data, DSF, DEXF>;
 
 template<>
 struct construct_deduced<single_sender> : make_single_sender_fn {};
-
-// template <
-//     class V,
-//     class E = std::exception_ptr,
-//     SenderTo<single<V, E>, is_single<>> Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return single_sender<V, E>{std::move(w)};
-// }
 
 } // namespace pushmi

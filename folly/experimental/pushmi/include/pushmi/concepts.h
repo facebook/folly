@@ -17,6 +17,17 @@ namespace pushmi {
 
 struct cardinality_category {};
 
+// Trait
+template<class PS>
+struct has_cardinality : category_query<PS, cardinality_category> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool has_cardinality_v = has_cardinality<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept Cardinality,
+    has_cardinality_v<PS>
+);
+
 // flow affects both sender and receiver
 
 struct flow_category {};
@@ -33,47 +44,20 @@ struct executor_category {};
 
 // time and constrained are mutually exclusive refinements of sender (time is a special case of constrained and may be folded in later)
 
+// blocking affects senders
 
-// Silent trait and tag
-template<class... TN>
-struct is_silent;
-// Tag
-template<>
-struct is_silent<> { using property_category = cardinality_category; };
-// Trait
-template<class PS>
-struct is_silent<PS> : property_query<PS, is_silent<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_silent_v = is_silent<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept Silent,
-    is_silent_v<PS>
-);
+struct blocking_category {};
 
-// None trait and tag
-template<class... TN>
-struct is_none;
-// Tag
-template<>
-struct is_none<> : is_silent<> {};
-// Trait
-template<class PS>
-struct is_none<PS> : property_query<PS, is_none<>> {};
-template<class PS>
-PUSHMI_INLINE_VAR constexpr bool is_none_v = is_none<PS>::value;
-PUSHMI_CONCEPT_DEF(
-  template (class PS)
-  concept None,
-    Silent<PS> && is_none_v<PS>
-);
+// sequence affects senders
+
+struct sequence_category {};
 
 // Single trait and tag
 template<class... TN>
 struct is_single;
 // Tag
 template<>
-struct is_single<> : is_none<> {};
+struct is_single<> { using property_category = cardinality_category; };
 // Trait
 template<class PS>
 struct is_single<PS> : property_query<PS, is_single<>> {};
@@ -82,7 +66,7 @@ PUSHMI_INLINE_VAR constexpr bool is_single_v = is_single<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Single,
-    None<PS> && is_single_v<PS>
+    is_single_v<PS>
 );
 
 // Many trait and tag
@@ -90,7 +74,7 @@ template<class... TN>
 struct is_many;
 // Tag
 template<>
-struct is_many<> : is_none<> {}; // many::value() does not terminate, so it is not a refinement of single
+struct is_many<> { using property_category = cardinality_category; }; // many::value() does not terminate, so it is not a refinement of single
 // Trait
 template<class PS>
 struct is_many<PS> : property_query<PS, is_many<>> {};
@@ -99,7 +83,7 @@ PUSHMI_INLINE_VAR constexpr bool is_many_v = is_many<PS>::value;
 PUSHMI_CONCEPT_DEF(
   template (class PS)
   concept Many,
-    None<PS> && is_many_v<PS>
+    is_many_v<PS>
 );
 
 // Flow trait and tag
@@ -204,57 +188,127 @@ PUSHMI_CONCEPT_DEF(
     is_time_v<PS> && is_constrained_v<PS> && is_sender_v<PS>
 );
 
+// AlwaysBlocking trait and tag
+template<class... TN>
+struct is_always_blocking;
+// Tag
+template<>
+struct is_always_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_always_blocking<PS> : property_query<PS, is_always_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_always_blocking_v = is_always_blocking<PS>::value;
 PUSHMI_CONCEPT_DEF(
-  template (class S, class... PropertyN)
-  (concept Receiver)(S, PropertyN...),
-    requires (S& s) (
-      ::pushmi::set_done(s)
+  template (class PS)
+  concept AlwaysBlocking,
+    is_always_blocking_v<PS> && is_sender_v<PS>
+);
+
+// NeverBlocking trait and tag
+template<class... TN>
+struct is_never_blocking;
+// Tag
+template<>
+struct is_never_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_never_blocking<PS> : property_query<PS, is_never_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_never_blocking_v = is_never_blocking<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept NeverBlocking,
+    is_never_blocking_v<PS> && is_sender_v<PS>
+);
+
+// MaybeBlocking trait and tag
+template<class... TN>
+struct is_maybe_blocking;
+// Tag
+template<>
+struct is_maybe_blocking<> { using property_category = blocking_category; };
+// Trait
+template<class PS>
+struct is_maybe_blocking<PS> : property_query<PS, is_maybe_blocking<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_maybe_blocking_v = is_maybe_blocking<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept MaybeBlocking,
+    is_maybe_blocking_v<PS> && is_sender_v<PS>
+);
+
+// FifoSequence trait and tag
+template<class... TN>
+struct is_fifo_sequence;
+// Tag
+template<>
+struct is_fifo_sequence<> { using property_category = sequence_category; };
+// Trait
+template<class PS>
+struct is_fifo_sequence<PS> : property_query<PS, is_fifo_sequence<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_fifo_sequence_v = is_fifo_sequence<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept FifoSequence,
+    is_fifo_sequence_v<PS> && is_sender_v<PS>
+);
+
+// ConcurrentSequence trait and tag
+template<class... TN>
+struct is_concurrent_sequence;
+// Tag
+template<>
+struct is_concurrent_sequence<> { using property_category = sequence_category; };
+// Trait
+template<class PS>
+struct is_concurrent_sequence<PS> : property_query<PS, is_concurrent_sequence<>> {};
+template<class PS>
+PUSHMI_INLINE_VAR constexpr bool is_concurrent_sequence_v = is_concurrent_sequence<PS>::value;
+PUSHMI_CONCEPT_DEF(
+  template (class PS)
+  concept ConcurrentSequence,
+    is_concurrent_sequence_v<PS> && is_sender_v<PS>
+);
+
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class... PropertyN)
+  (concept Receiver)(R, PropertyN...),
+    requires (R& r) (
+      ::pushmi::set_done(r),
+      ::pushmi::set_error(r, std::exception_ptr{})
     ) &&
-    SemiMovable<S> &&
-    property_query_v<S, PropertyN...> &&
-    is_receiver_v<S> &&
-    !is_sender_v<S>
+    SemiMovable<R> &&
+    property_query_v<R, PropertyN...> &&
+    is_receiver_v<R> &&
+    !is_sender_v<R>
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (class N, class E = std::exception_ptr)
-  (concept NoneReceiver)(N, E),
-    requires(N& n, E&& e) (
-      ::pushmi::set_error(n, (E &&) e)
+  template (class R, class... VN)
+  (concept ReceiveValue)(R, VN...),
+    requires(R& r) (
+      ::pushmi::set_value(r, std::declval<VN &&>()...)
     ) &&
-    Receiver<N> &&
-    None<N> &&
+    Receiver<R> &&
+    // GCC w/-fconcepts ICE on SemiMovable<VN>...
+    True<> // And<SemiMovable<VN>...>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class E = std::exception_ptr)
+  (concept ReceiveError)(R, E),
+    requires(R& r, E&& e) (
+      ::pushmi::set_error(r, (E &&) e)
+    ) &&
+    Receiver<R> &&
     SemiMovable<E>
 );
 
-PUSHMI_CONCEPT_DEF(
-  template (class S, class T, class E = std::exception_ptr)
-  (concept SingleReceiver)(S, T, E),
-    requires(S& s, T&& t) (
-      ::pushmi::set_value(s, (T &&) t) // Semantics: called exactly once.
-    ) &&
-    NoneReceiver<S, E> &&
-    SemiMovable<T> &&
-    SemiMovable<E> &&
-    Single<S>
-);
 
-PUSHMI_CONCEPT_DEF(
-  template (class S, class T, class E = std::exception_ptr)
-  (concept ManyReceiver)(S, T, E),
-    requires(S& s, T&& t) (
-      ::pushmi::set_next(s, (T &&) t) // Semantics: called 0-N times.
-    ) &&
-    NoneReceiver<S, E> &&
-    SemiMovable<T> &&
-    SemiMovable<E> &&
-    Many<S>
-);
-
-
-// silent does not really make sense, but cannot test for
-// None without the error type, use is_none<> to strengthen
-// requirements
 PUSHMI_CONCEPT_DEF(
   template (class D, class... PropertyN)
   (concept Sender)(D, PropertyN...),
@@ -263,7 +317,7 @@ PUSHMI_CONCEPT_DEF(
       requires_<Executor<decltype(::pushmi::executor(d))>>
     ) &&
     SemiMovable<D> &&
-    None<D> &&
+    Cardinality<D> &&
     property_query_v<D, PropertyN...> &&
     is_sender_v<D> &&
     !is_receiver_v<D>
@@ -297,47 +351,26 @@ PUSHMI_CONCEPT_DEF(
 );
 
 PUSHMI_CONCEPT_DEF(
-  template (
-    class N,
-    class Up,
-    class PE = std::exception_ptr,
-    class E = PE)
-  (concept FlowNoneReceiver)(N, Up, PE, E),
-    requires(N& n, Up&& up) (
-      ::pushmi::set_starting(n, (Up &&) up)
+  template (class R, class... VN)
+  (concept FlowReceiveValue)(R, VN...),
+    Flow<R> &&
+    ReceiveValue<R, VN...>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class E = std::exception_ptr)
+  (concept FlowReceiveError)(R, E),
+    Flow<R> &&
+    ReceiveError<R, E>
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class R, class Up)
+  (concept FlowUpTo)(R, Up),
+    requires(R& r, Up&& up) (
+      ::pushmi::set_starting(r, (Up &&) up)
     ) &&
-    FlowReceiver<N> &&
-    Receiver<Up> &&
-    SemiMovable<PE> &&
-    SemiMovable<E> &&
-    NoneReceiver<Up, PE> &&
-    NoneReceiver<N, E>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (
-      class S,
-      class Up,
-      class T,
-      class PE = std::exception_ptr,
-      class E = PE)
-  (concept FlowSingleReceiver)(S, Up, T, PE, E),
-    SingleReceiver<S, T, E> &&
-    FlowNoneReceiver<S, Up, PE, E>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (
-      class S,
-      class Up,
-      class T,
-      class PT = std::ptrdiff_t,
-      class PE = std::exception_ptr,
-      class E = PE)
-  (concept FlowManyReceiver)(S, Up, T, PT, PE, E),
-    ManyReceiver<S, T, E> &&
-    ManyReceiver<Up, PT, PE> &&
-    FlowNoneReceiver<S, Up, PE, E>
+    Flow<R>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -374,8 +407,7 @@ PUSHMI_CONCEPT_DEF(
     ) &&
     Sender<D> &&
     property_query_v<D, PropertyN...> &&
-    Constrained<D> &&
-    None<D>
+    Constrained<D>
 );
 
 PUSHMI_CONCEPT_DEF(

@@ -6,37 +6,33 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../sender.h"
-#include "../single_sender.h"
 #include "../detail/functional.h"
+#include "submit.h"
+#include "extension_operators.h"
 
 namespace pushmi {
 namespace detail {
-  template <class V>
+  struct single_empty_sender_base : single_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_single<>, is_always_blocking<>, is_fifo_sequence<>>;
+  };
+  template <class... VN>
   struct single_empty_impl {
     PUSHMI_TEMPLATE(class Out)
-      (requires SingleReceiver<Out, V>)
-    void operator()(Out out) {
-      ::pushmi::set_done(out);
-    }
-  };
-  struct empty_impl {
-    PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out>)
-    void operator()(Out out) {
+      (requires ReceiveValue<Out, VN...>)
+    void operator()(single_empty_sender_base&, Out out) {
       ::pushmi::set_done(out);
     }
   };
 }
 
 namespace operators {
-template <class V>
+template <class... VN>
 auto empty() {
-  return make_single_sender(detail::single_empty_impl<V>{});
+  return make_single_sender(detail::single_empty_sender_base{}, detail::single_empty_impl<VN...>{});
 }
 
 inline auto empty() {
-  return make_sender(detail::empty_impl{});
+  return make_single_sender(detail::single_empty_sender_base{}, detail::single_empty_impl<>{});
 }
 
 } // namespace operators

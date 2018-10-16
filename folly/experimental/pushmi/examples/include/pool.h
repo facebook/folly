@@ -25,7 +25,7 @@ namespace execution = std::experimental::execution;
 
 template<class Executor>
 struct pool_executor {
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_never_blocking<>, is_concurrent_sequence<>, is_single<>>;
 
   using e_t = Executor;
   e_t e;

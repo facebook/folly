@@ -33,9 +33,9 @@ auto concat =
   [](auto in){
     return mi::make_single_sender(
       [in](auto out) mutable {
-        ::pushmi::submit(in, mi::make_single(out,
+        ::pushmi::submit(in, mi::make_receiver(out,
         [](auto out, auto v){
-          ::pushmi::submit(v, mi::any_single<T, E>(out));
+          ::pushmi::submit(v, mi::any_receiver<E, T>(out));
         }));
       });
   };
@@ -54,9 +54,9 @@ int main()
     op::just(42) |
       op::transform([](int i) {
         if (i < 42) {
-          return mi::any_single_sender<std::string>{op::empty<std::string>()};
+          return mi::any_single_sender<std::exception_ptr, std::string>{op::empty<std::string>()};
         }
-        return mi::any_single_sender<std::string>{op::just(std::to_string(i))};
+        return mi::any_single_sender<std::exception_ptr, std::string>{op::just(std::to_string(i))};
       }) |
       concat<std::string> |
       op::submit(println);

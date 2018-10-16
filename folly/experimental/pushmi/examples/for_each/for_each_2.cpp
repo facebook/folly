@@ -78,7 +78,7 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
             stepDone(shared_state);
           });
         } catch(...) {
-          e | op::submit([out = std::move(out), ep = std::current_exception()]() mutable {
+          e | op::submit([out = std::move(out), ep = std::current_exception()](auto) mutable {
             mi::set_error(out, ep);
           });
         }
@@ -99,5 +99,6 @@ int main()
 
   std::cout << "OK" << std::endl;
 
+  p.stop();
   p.wait();
 }

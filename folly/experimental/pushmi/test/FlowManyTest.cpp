@@ -34,20 +34,20 @@ SCENARIO("flow many immediate cancellation", "[flowmany][flow][sender]") {
     auto f = mi::MAKE(flow_many_sender)([&](auto out) {
 
       using Out = decltype(out);
-      struct Data : mi::many<> {
+      struct Data : mi::receiver<> {
         explicit Data(Out out) : out(std::move(out)), stop(false) {}
         Out out;
         bool stop;
       };
 
-      auto up = mi::MAKE(many)(
+      auto up = mi::MAKE(receiver)(
           Data{std::move(out)},
           [&](auto& data, auto requested) {
             signals += 1000000;
             if (requested < 1) {return;}
             // check boolean to select signal
             if (!data.stop) {
-              ::mi::set_next(data.out, 42);
+              ::mi::set_value(data.out, 42);
             }
             ::mi::set_done(data.out);
           },
@@ -68,8 +68,8 @@ SCENARIO("flow many immediate cancellation", "[flowmany][flow][sender]") {
 
     WHEN("submit is applied and cancels the producer") {
       f |
-          op::submit(mi::MAKE(flow_many)(
-              mi::on_next([&](int) { signals += 100; }),
+          op::submit(mi::MAKE(flow_receiver)(
+              mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
               // immediately stop producer
@@ -86,18 +86,18 @@ SCENARIO("flow many immediate cancellation", "[flowmany][flow][sender]") {
 
     WHEN("submit is applied and cancels the producer late") {
       f |
-          op::submit(mi::MAKE(flow_many)(
-              mi::on_next([&](int) { signals += 100; }),
+          op::submit(mi::MAKE(flow_receiver)(
+              mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                ::mi::set_next(up, 1);
+                ::mi::set_value(up, 1);
               })));
 
       THEN(
-          "the starting, up.next, next and done signals are each recorded once") {
+          "the starting, up.value, value and done signals are each recorded once") {
         REQUIRE(signals == 1000111);
       }
     }
@@ -128,12 +128,12 @@ SCENARIO("flow many cancellation new thread", "[flowmany][flow][sender]") {
       };
       auto p = std::make_shared<producer>(std::move(out), tnt, false);
 
-      struct Data : mi::many<> {
+      struct Data : mi::receiver<> {
         explicit Data(std::shared_ptr<producer> p) : p(std::move(p)) {}
         std::shared_ptr<producer> p;
       };
 
-      auto up = mi::MAKE(many)(
+      auto up = mi::MAKE(receiver)(
           Data{p},
           [&at, &signals](auto& data, auto requested) {
             signals += 1000000;
@@ -145,7 +145,7 @@ SCENARIO("flow many cancellation new thread", "[flowmany][flow][sender]") {
                     [p = data.p](auto)  {
                       // check boolean to select signal
                       if (!p->stop) {
-                        ::mi::set_next(p->out, 42);
+                        ::mi::set_value(p->out, 42);
                       }
                       ::mi::set_done(p->out);
                     });
@@ -176,13 +176,13 @@ SCENARIO("flow many cancellation new thread", "[flowmany][flow][sender]") {
       {
       f |
           op::blocking_submit(
-              mi::on_next([&](int) { signals += 100; }),
+              mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
               // stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                mi::set_next(up, 1);
+                mi::set_value(up, 1);
                 tcncl |
                     op::submit_at(
                         at - 100ms, [up = std::move(up)](auto) mutable {
@@ -204,13 +204,13 @@ SCENARIO("flow many cancellation new thread", "[flowmany][flow][sender]") {
       {
       f |
           op::blocking_submit(
-              mi::on_next([&](int) { signals += 100; }),
+              mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
-                mi::set_next(up, 1);
+                mi::set_value(up, 1);
                 tcncl |
                     op::submit_at(
                         at + 100ms, [up = std::move(up)](auto) mutable {
@@ -240,13 +240,13 @@ SCENARIO("flow many cancellation new thread", "[flowmany][flow][sender]") {
         {
         f |
             op::blocking_submit(
-                mi::on_next([&](int) { signals += 100; }),
+                mi::on_value([&](int) { signals += 100; }),
                 mi::on_error([&](auto) noexcept { signals += 1000; }),
                 mi::on_done([&]() { signals += 1; }),
                 // stop producer at the same time that it is scheduled to run
                 mi::on_starting([&](auto up) {
                   signals += 10;
-                  mi::set_next(up, 1);
+                  mi::set_value(up, 1);
                   tcncl | op::submit_at(at, [up = std::move(up)](auto) mutable {
                     ::mi::set_done(up);
                   });
@@ -292,7 +292,7 @@ SCENARIO("flow many from", "[flow][sender][for_each]") {
 
     WHEN("for_each is applied") {
       int actual = 0;
-      f | op::for_each(mi::MAKE(many)([&](int){++actual;}));
+      f | op::for_each(mi::MAKE(receiver)([&](int){++actual;}));
 
       THEN("all the values are sent once") {
         REQUIRE(actual == 5);

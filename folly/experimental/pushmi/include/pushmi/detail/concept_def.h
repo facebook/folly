@@ -13,7 +13,7 @@
 
 // disable buggy compatibility warning about "requires" and "concept" being
 // C++20 keywords.
-#if defined(__clang__)
+#if defined(__clang__) && not defined(__APPLE__)
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN \
     _Pragma("GCC diagnostic push") \
     _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"") \
@@ -23,7 +23,17 @@
     /**/
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END \
     _Pragma("GCC diagnostic pop")
+#elif defined(__clang__) && defined(__APPLE__)
+#define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN \
+    _Pragma("GCC diagnostic push") \
+    _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"") \
+    _Pragma("GCC diagnostic ignored \"-Wpragmas\"") \
+    _Pragma("GCC diagnostic ignored \"-Wfloat-equal\"") \
+    /**/
+#define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END \
+    _Pragma("GCC diagnostic pop")
 #else
+
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_END
 // #pragma GCC diagnostic push

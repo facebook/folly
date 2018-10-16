@@ -4,17 +4,17 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "flow_single.h"
+#include "flow_receiver.h"
 #include "executor.h"
 #include "trampoline.h"
 
 namespace pushmi {
 
-template <class V, class PE = std::exception_ptr, class E = PE>
+template <class PE, class E, class... VN>
 class any_flow_single_sender {
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(V)]; // can hold a V in-situ
+    char buffer_[sizeof(std::tuple<VN...>)]; // can hold a V in-situ
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -24,10 +24,10 @@ class any_flow_single_sender {
   struct vtable {
     static void s_op(data&, data*) {}
     static any_executor<E> s_executor(data&) { return {}; }
-    static void s_submit(data&, flow_single<V, PE, E>) {}
+    static void s_submit(data&, any_flow_receiver<PE, std::ptrdiff_t, E, VN...>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     any_executor<E> (*executor_)(data&) = vtable::s_executor;
-    void (*submit_)(data&, flow_single<V, PE, E>) = vtable::s_submit;
+    void (*submit_)(data&, any_flow_receiver<PE, std::ptrdiff_t, E, VN...>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -42,7 +42,7 @@ class any_flow_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
-      static void submit(data& src, flow_single<V, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
         ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
@@ -63,7 +63,7 @@ class any_flow_single_sender {
       static any_executor<E> executor(data& src) {
         return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static void submit(data& src, flow_single<V, PE, E> out) {
+      static void submit(data& src, any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
         ::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(out));
@@ -100,15 +100,15 @@ class any_flow_single_sender {
   any_executor<E> executor() {
     return vptr_->executor_(data_);
   }
-  void submit(flow_single<V, PE, E> out) {
+  void submit(any_flow_receiver<PE, std::ptrdiff_t, E, VN...> out) {
     vptr_->submit_(data_, std::move(out));
   }
 };
 
 // Class static definitions:
-template <class V, class PE, class E>
-constexpr typename any_flow_single_sender<V, PE, E>::vtable const
-    any_flow_single_sender<V, PE, E>::noop_;
+template <class PE, class E, class... VN>
+constexpr typename any_flow_single_sender<PE, E, VN...>::vtable const
+    any_flow_single_sender<PE, E, VN...>::noop_;
 
 template <class SF, class EXF>
 class flow_single_sender<SF, EXF> {
@@ -126,7 +126,7 @@ class flow_single_sender<SF, EXF> {
 
   auto executor() { return exf_(); }
   PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out, is_single<>, is_flow<>> && Invocable<SF&, Out>)
+    (requires Receiver<Out> && Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -151,7 +151,7 @@ class flow_single_sender<Data, DSF, DEXF> {
 
   auto executor() { return exf_(data_); }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>, is_flow<>> PUSHMI_AND
+    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
   void submit(Out out) {
     sf_(data_, std::move(out));
@@ -228,10 +228,5 @@ template<>
 struct construct_deduced<flow_single_sender>
   : make_flow_single_sender_fn {};
 
-// // TODO constrain me
-// template <class V, class E = std::exception_ptr, Sender Wrapped>
-// auto erase_cast(Wrapped w) {
-//   return flow_single_sender<V, E>{std::move(w)};
-// }
 
 } // namespace pushmi

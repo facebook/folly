@@ -6,27 +6,20 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../sender.h"
 #include "submit.h"
 #include "extension_operators.h"
 
 namespace pushmi {
 namespace detail {
-  template <class E>
-  struct error_impl {
-    E e_;
-    PUSHMI_TEMPLATE(class Out)
-      (requires NoneReceiver<Out, E>)
-    void operator()(Out out) {
-      ::pushmi::set_error(out, std::move(e_));
-    }
+  struct single_error_sender_base : single_sender<ignoreSF, inlineEXF> {
+    using properties = property_set<is_sender<>, is_single<>, is_always_blocking<>, is_fifo_sequence<>>;
   };
-  template <class V, class E>
+  template <class E, class... VN>
   struct single_error_impl {
     E e_;
     PUSHMI_TEMPLATE(class Out)
-      (requires SingleReceiver<Out, V, E>)
-    void operator()(Out out) {
+      (requires ReceiveError<Out, E> && ReceiveValue<Out, VN...>)
+    void operator()(single_error_sender_base&, Out out) {
       ::pushmi::set_error(out, std::move(e_));
     }
   };
@@ -34,16 +27,10 @@ namespace detail {
 
 namespace operators {
 
-PUSHMI_TEMPLATE(class E)
-  (requires SemiMovable<E>)
+PUSHMI_TEMPLATE(class... VN, class E)
+  (requires And<SemiMovable<VN>...> && SemiMovable<E>)
 auto error(E e) {
-  return make_sender(detail::error_impl<E>{std::move(e)});
-}
-
-PUSHMI_TEMPLATE(class V, class E)
-  (requires SemiMovable<V> && SemiMovable<E>)
-auto error(E e) {
-  return make_single_sender(detail::single_error_impl<V, E>{std::move(e)});
+  return make_single_sender(detail::single_error_sender_base{}, detail::single_error_impl<E, VN...>{std::move(e)});
 }
 
 } // namespace operators

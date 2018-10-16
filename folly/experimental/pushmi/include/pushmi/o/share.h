@@ -6,7 +6,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../single.h"
+#include "../receiver.h"
 #include "submit.h"
 #include "extension_operators.h"
 
@@ -16,19 +16,15 @@ namespace pushmi {
 
 namespace detail {
 
-template<class T>
+template<class... TN>
 struct share_fn {
 private:
   struct impl {
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      subject<T, properties_t<In>> sub;
-      PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<In>) (
-        ::pushmi::submit(in, ::pushmi::now(id(in)), sub.receiver());
-      ) else (
-        ::pushmi::submit(id(in), sub.receiver());
-      ));
+      subject<properties_t<In>, TN...> sub;
+      ::pushmi::submit(in, sub.receiver());
       return sub;
     }
   };
@@ -42,8 +38,8 @@ public:
 
 namespace operators {
 
-template<class T>
-PUSHMI_INLINE_VAR constexpr detail::share_fn<T> share{};
+template<class... TN>
+PUSHMI_INLINE_VAR constexpr detail::share_fn<TN...> share{};
 
 } // namespace operators
 

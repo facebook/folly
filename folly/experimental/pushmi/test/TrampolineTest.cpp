@@ -50,8 +50,8 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
           [&](auto e) noexcept { signals += 1000; },
           [&](){ signals += 10; });
 
-      THEN( "the value signal is recorded once" ) {
-        REQUIRE( signals == 100 );
+      THEN( "the value and done signals are each recorded once" ) {
+        REQUIRE( signals == 110 );
       }
     }
 
@@ -93,6 +93,7 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
       std::vector<std::string> values;
       auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
+        ::pushmi::set_done(out);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
@@ -113,6 +114,7 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
       std::vector<std::string> values;
       auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
+        ::pushmi::set_done(out);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());

@@ -13,7 +13,7 @@ namespace pushmi {
 //
 
 struct new_thread_executor {
-  using properties = property_set<is_sender<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_sender<>, is_executor<>, is_never_blocking<>, is_concurrent_sequence<>, is_single<>>;
 
   new_thread_executor executor() { return {}; }
   PUSHMI_TEMPLATE(class Out)

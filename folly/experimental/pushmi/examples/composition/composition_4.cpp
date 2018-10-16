@@ -5,6 +5,8 @@
 
 #include <pool.h>
 
+#include <pushmi/strand.h>
+
 #include <pushmi/o/request_via.h>
 
 #include <pushmi/o/tap.h>
@@ -28,7 +30,7 @@ int main()
   auto io = ioPool.executor();
   auto cpu = cpuPool.executor();
 
-  io_operation(io).via([cpu]{ return cpu; }) |
+  io_operation(io).via(mi::strands(cpu)) |
     op::tap([](int v){ printf("cpu pool processing, %d\n", v); }) |
     op::submit();
 

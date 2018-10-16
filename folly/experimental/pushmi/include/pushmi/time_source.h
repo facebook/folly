@@ -27,11 +27,11 @@ class time_heap_item
 public:
   using time_point = std::decay_t<TP>;
 
-  time_heap_item(time_point at, any_single<any_time_executor_ref<E, TP>, E> out) :
+  time_heap_item(time_point at, any_receiver<E, any_time_executor_ref<E, TP>> out) :
     when(std::move(at)), what(std::move(out)) {}
 
   time_point when;
-  any_single<any_time_executor_ref<E, TP>, E> what;
+  any_receiver<E, any_time_executor_ref<E, TP>> what;
 };
 template<class E, class TP>
 bool operator<(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
@@ -119,18 +119,19 @@ public:
     }
 
     if (this->heap_.empty()) { return; }
-    auto subEx = time_source_executor<E, TP, NF, Executor>{s, shared_from_that()};
+    auto that = shared_from_that();
+    auto subEx = time_source_executor<E, TP, NF, Executor>{s, that};
     while (!this->heap_.empty() && this->heap_.top().when <= start) {
       auto item{std::move(this->top())};
       this->heap_.pop();
       guard.unlock();
       std::this_thread::sleep_until(item.when);
-      ::pushmi::set_value(item.what, subEx);
+      ::pushmi::set_value(item.what, any_time_executor_ref<E, TP>{subEx});
+      ::pushmi::set_done(item.what);
       guard.lock();
       // allows set_value to queue nested items
       --s->items_;
     }
-    this->dispatching_ = false;
 
     if (this->heap_.empty()) {
       // if this is empty, tell worker to check for the done condition.
@@ -149,15 +150,6 @@ public:
           } catch(...) {
             // we already have an error, ignore this one.
           }
-        }
-      } else {
-        // add back to pending_ to get the remaining items dispatched
-        s->pending_.push_back(this->shared_from_this());
-        this->pending_ = true;
-        if (this->heap_.top().when <= s->earliest_) {
-          // this is the earliest, tell worker to reset earliest_
-          ++s->dirty_;
-          s->wake_.notify_one();
         }
       }
     }
@@ -183,22 +175,21 @@ public:
   }
   void done() {
     auto s = source_.lock();
-    auto done = false;
     std::unique_lock<std::mutex> guard{s->lock_};
 
     if (!this->dispatching_ || this->pending_) {
       std::abort();
     }
-
-    while (!this->heap_.empty()) {
-      auto what{std::move(this->top().what)};
-      this->heap_.pop();
-      --s->items_;
-      guard.unlock();
-      ::pushmi::set_done(what);
-      guard.lock();
-    }
     this->dispatching_ = false;
+
+    // add back to pending_ to get the remaining items dispatched
+    s->pending_.push_back(this->shared_from_this());
+    this->pending_ = true;
+    if (this->heap_.top().when <= s->earliest_) {
+      // this is the earliest, tell worker to reset earliest_
+      ++s->dirty_;
+      s->wake_.notify_one();
+    }
   }
 };
 
@@ -210,7 +201,7 @@ struct time_source_queue_receiver : std::shared_ptr<time_source_queue<E, TP, NF,
     std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
     source_(that->source_.lock()) {
     }
-  using properties = property_set<is_receiver<>, is_single<>>;
+  using properties = property_set<is_receiver<>>;
   std::shared_ptr<time_source_shared<E, TP>> source_;
 };
 
@@ -406,7 +397,7 @@ class time_source_executor {
   std::shared_ptr<time_source_shared<E, time_point>> source_;
   std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue_;
 public:
-  using properties = property_set<is_time<>, is_executor<>, is_single<>>;
+  using properties = property_set<is_time<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
 
   time_source_executor(
     std::shared_ptr<time_source_shared<E, time_point>> source,
@@ -417,10 +408,10 @@ public:
   auto executor() { return *this; }
 
   PUSHMI_TEMPLATE(class TPA, class Out)
-    (requires Regular<TPA> && Receiver<Out, is_single<>>)
+    (requires Regular<TPA> && ReceiveValue<Out, any_time_executor_ref<E, TP>> && ReceiveError<Out, E>)
   void submit(TPA tp, Out out) {
     // queue for later
-    source_->insert(queue_, time_heap_item<E, TP>{tp, any_single<any_time_executor_ref<E, TP>, E>{std::move(out)}});
+    source_->insert(queue_, time_heap_item<E, TP>{tp, any_receiver<E, any_time_executor_ref<E, TP>>{std::move(out)}});
   }
 };
 
@@ -479,7 +470,7 @@ public:
   };
 
   PUSHMI_TEMPLATE(class NF, class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>>)
+    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>> && NeverBlocking<invoke_result_t<ExecutorFactory&>>)
   auto make(NF nf, ExecutorFactory ef) {
     return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{source_, std::move(nf), std::move(ef)};
   }

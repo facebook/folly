@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.7)
 
 project(pushmi-project CXX)
 
+#
+
 option(PUSHMI_USE_CONCEPTS_EMULATION "Use C++14 Concepts Emulation" ON)
 option(PUSHMI_USE_CPP_2A "Use C++2a with concepts emulation" OFF)
 option(PUSHMI_USE_CPP_17 "Use C++17 with concepts emulation" OFF)
@@ -35,16 +37,22 @@ if (PUSHMI_USE_CPP_17)
 message("Using c++17!")
 target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-std=c++17>
+    $<$<CXX_COMPILER_ID:AppleClang>:-std=c++17>
+    $<$<CXX_COMPILER_ID:Clang>:-std=c++17>
     )
 elseif (PUSHMI_USE_CPP_2A)
 message("Using c++2a!")
 target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-std=c++2a>
+    $<$<CXX_COMPILER_ID:AppleClang>:-std=c++2a>
+    $<$<CXX_COMPILER_ID:Clang>:-std=c++2a>
     )
 else()
 message("Using c++14!")
 target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-std=c++14>
+    $<$<CXX_COMPILER_ID:AppleClang>:-std=c++14>
+    $<$<CXX_COMPILER_ID:Clang>:-std=c++14>
     )
 endif()
 
@@ -66,7 +74,14 @@ target_compile_options(pushmi INTERFACE
 endif(PUSHMI_USE_CONCEPTS_EMULATION)
 
 target_compile_options(pushmi INTERFACE
-    $<$<CXX_COMPILER_ID:GNU>:-ftemplate-backtrace-limit=0>)
+    $<$<CXX_COMPILER_ID:GNU>:-ftemplate-backtrace-limit=0>
+    $<$<CXX_COMPILER_ID:Clang>:-ftemplate-backtrace-limit=0>
+    $<$<CXX_COMPILER_ID:AppleClang>:-ftemplate-backtrace-limit=0>)
+
+target_compile_options(pushmi INTERFACE
+    $<$<CXX_COMPILER_ID:Clang>:-stdlib=libc++>
+    $<$<CXX_COMPILER_ID:AppleClang>:-stdlib=libc++>)
+
 if (PUSHMI_CONCEPTS)
     target_compile_options(pushmi INTERFACE $<$<CXX_COMPILER_ID:GNU>:-fconcepts>)
 endif ()

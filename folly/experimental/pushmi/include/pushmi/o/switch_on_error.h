@@ -16,7 +16,8 @@ private:
   template <class ErrorSelector>
   struct on_error_impl {
     ErrorSelector es_;
-    template <class Out, class E>
+    PUSHMI_TEMPLATE (class Out, class E)
+      (requires Receiver<Out> && Invocable<const ErrorSelector&, E> && SenderTo<pushmi::invoke_result_t<ErrorSelector&, E>, Out>)
     void operator()(Out& out, E&& e) const noexcept {
       static_assert(::pushmi::NothrowInvocable<const ErrorSelector&, E>,
         "switch_on_error - error selector function must be noexcept");
