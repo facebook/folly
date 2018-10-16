@@ -5393,6 +5393,7 @@ private:
     template <bool IsTimeSender, class In>
     In impl_(In in) {
       bool done = false;
+      std::mutex lock;
       std::condition_variable signaled;
       auto out{::pushmi::detail::out_from_fn<In>()(
         std::move(args_),
@@ -5408,6 +5409,7 @@ private:
             ) else (
               ::pushmi::set_value(out, id((V&&) v));
             ))
+            std::unique_lock<std::mutex> guard{lock};
             done = true;
             signaled.notify_all();
           }
@@ -5415,6 +5417,7 @@ private:
         on_error(constrain(pushmi::lazy::NoneReceiver<_1, _2>,
           [&](auto out, auto e) noexcept {
             ::pushmi::set_error(out, std::move(e));
+            std::unique_lock<std::mutex> guard{lock};
             done = true;
             signaled.notify_all();
           }
@@ -5422,6 +5425,7 @@ private:
         on_done(constrain(pushmi::lazy::Receiver<_1>,
           [&](auto out){
             ::pushmi::set_done(out);
+            std::unique_lock<std::mutex> guard{lock};
             done = true;
             signaled.notify_all();
           }
@@ -5432,7 +5436,6 @@ private:
       ) else (
         id(::pushmi::submit)(in, std::move(out));
       ))
-      std::mutex lock;
       std::unique_lock<std::mutex> guard{lock};
       signaled.wait(guard, [&]{
         return done;

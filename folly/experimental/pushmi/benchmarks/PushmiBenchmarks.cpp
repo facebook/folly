@@ -22,80 +22,78 @@ struct countdownsingle {
   template <class ExecutorRef>
   void operator()(ExecutorRef exec) {
     if (--*counter > 0) {
-      exec | op::submit(*this);
+      exec | op::submit(mi::single{*this});
     }
   }
 };
 
+struct inline_executor {
+    using properties = mi::property_set<mi::is_sender<>, mi::is_single<>>;
+    template<class Out>
+    void submit(Out out) {
+      ::mi::set_value(out, *this);
+    }
+};
+
+
 #define concept Concept
 #include <nonius/nonius.h++>
 
-NONIUS_BENCHMARK("trampoline virtual derecursion 10,000", [](nonius::chronometer meter){
+NONIUS_BENCHMARK("inline 10", [](nonius::chronometer meter){
   int counter = 0;
-  auto tr = mi::trampoline();
-  using TR = decltype(tr);
-  std::function<void(mi::any_time_executor_ref<> exec)> recurse;
-  recurse = [&](mi::any_time_executor_ref<> tr) {
-    if (--counter <= 0)
-      return;
-    tr | op::submit(recurse);
-  };
+  auto ie = inline_executor{};
+  using IE = decltype(ie);
+  countdownsingle single{counter};
   meter.measure([&]{
-    counter = 10'000;
-    return tr | op::submit([&](auto exec) { recurse(exec); });
+    counter = 10;
+    ie | op::submit(mi::single{single});
+    return counter;
   });
 })
 
-NONIUS_BENCHMARK("trampoline static derecursion 10,000", [](nonius::chronometer meter){
+NONIUS_BENCHMARK("trampoline static derecursion 10", [](nonius::chronometer meter){
   int counter = 0;
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   countdownsingle single{counter};
   meter.measure([&]{
-    counter = 10'000;
-    return tr | op::submit(single);
+    counter = 10;
+    tr | op::submit(single);
+    return counter;
   });
 })
 
-NONIUS_BENCHMARK("new thread 10 blocking_submits", [](nonius::chronometer meter){
-  auto nt = mi::new_thread();
-  using NT = decltype(nt);
+NONIUS_BENCHMARK("trampoline virtual derecursion 10", [](nonius::chronometer meter){
+  int counter = 0;
+  auto tr = mi::trampoline();
+  using TR = decltype(tr);
+  std::function<void(mi::any_time_executor_ref<> exec)> recurse{countdownsingle{counter}};
   meter.measure([&]{
-    return nt |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::transform([](auto nt){
-        return v::now(nt);
-      }) |
-      op::get<std::chrono::system_clock::time_point>;
+    counter = 10;
+    tr | op::submit([&](auto exec) { recurse(exec); });
+    return counter;
   });
 })
 
-NONIUS_BENCHMARK("pool 10 blocking_submits", [](nonius::chronometer meter){
+NONIUS_BENCHMARK("pool 1 blocking_submit 10", [](nonius::chronometer meter){
   mi::pool pl{std::max(1u,std::thread::hardware_concurrency())};
   auto pe = pl.executor();
   using PE = decltype(pe);
+  int counter = 0;
+  countdownsingle single{counter};
   meter.measure([&]{
-    return pe |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::blocking_submit() |
-      op::transform([](auto pe){
-        return mi::now(pe);
-      }) |
-      op::get<std::chrono::system_clock::time_point>;
+    counter = 10;
+    return pe | op::blocking_submit(single);
+  });
+})
+
+NONIUS_BENCHMARK("new thread blocking_submit 10", [](nonius::chronometer meter){
+  auto nt = mi::new_thread();
+  using NT = decltype(nt);
+  int counter = 0;
+  countdownsingle single{counter};
+  meter.measure([&]{
+    counter = 10;
+    return nt | op::blocking_submit(single);
   });
 })
