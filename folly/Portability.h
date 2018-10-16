@@ -106,7 +106,13 @@ constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 
 namespace folly {
 
-#if FOLLY_SANITIZE_ADDRESS
+/**
+ * folly::kIsSanitizeAddress reports if folly was compiled with ASAN
+ * enabled.  Note that for compilation units outside of folly that include
+ * folly/Portability.h, the value of kIsSanitizeAddress may be different
+ * from whether or not the current compilation unit is being compiled with ASAN.
+ */
+#if FOLLY_ASAN_ENABLED
 constexpr bool kIsSanitizeAddress = true;
 #else
 constexpr bool kIsSanitizeAddress = false;

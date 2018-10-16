@@ -241,3 +241,6 @@ if (FOLLY_HAVE_LIBGFLAGS)
     set(FOLLY_GFLAGS_NAMESPACE google)
   endif()
 endif()
+
+# We currently don't support enabling ASAN in CMake-based builds
+set(FOLLY_ASAN_ENABLED OFF)

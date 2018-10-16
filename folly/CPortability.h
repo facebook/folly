@@ -59,8 +59,18 @@
 #define FOLLY_HAS_FEATURE(...) 0
 #endif
 
-/* Define a convenience macro to test when address sanitizer is being used
- * across the different compilers (e.g. clang, gcc) */
+/* FOLLY_SANITIZE_ADDRESS is defined to 1 if the current compilation unit
+ * is being compiled with ASAN enabled.
+ *
+ * Beware when using this macro in a header file: this macro may change values
+ * across compilation units if some libraries are built with ASAN enabled
+ * and some built with ASAN disabled.  For instance, this may occur, if folly
+ * itself was compiled without ASAN but a downstream project that uses folly is
+ * compiling with ASAN enabled.
+ *
+ * Use FOLLY_ASAN_ENABLED (defined in folly-config.h) to check if folly itself
+ * was compiled with ASAN enabled.
+ */
 #if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
 #define FOLLY_SANITIZE_ADDRESS 1
 #endif
