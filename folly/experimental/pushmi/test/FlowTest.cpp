@@ -273,6 +273,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
     });
 
     WHEN("submit is applied and cancels the producer early") {
+      {
       f |
           op::blocking_submit(
               mi::on_value([&](int) { signals += 100; }),
@@ -287,6 +288,10 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                           ::mi::set_done(up);
                         });
               }));
+      }
+
+      // make sure that the completion signal arrives
+      std::this_thread::sleep_for(100ms);
 
       THEN(
           "the starting, up.done and out.done signals are each recorded once") {
@@ -295,6 +300,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
     }
 
     WHEN("submit is applied and cancels the producer late") {
+      {
       f |
           op::blocking_submit(
               mi::on_value([&](int) { signals += 100; }),
@@ -309,6 +315,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                           ::mi::set_done(up);
                         });
               }));
+      }
 
       std::this_thread::sleep_for(100ms);
 
@@ -328,6 +335,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
         signals = 0;
         // set completion time to be in 100ms
         at = nt.now() + 100ms;
+        {
         f |
             op::blocking_submit(
                 mi::on_value([&](int) { signals += 100; }),
@@ -340,6 +348,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                     ::mi::set_done(up);
                   });
                 }));
+        }
 
         // make sure any cancellation signal has completed
         std::this_thread::sleep_for(10ms);
