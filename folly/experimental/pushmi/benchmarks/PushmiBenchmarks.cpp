@@ -22,7 +22,7 @@ struct countdownsingle {
   template <class ExecutorRef>
   void operator()(ExecutorRef exec) {
     if (--*counter > 0) {
-      exec | op::submit(mi::single{*this});
+      exec | op::submit(mi::make_single(*this));
     }
   }
 };
@@ -46,7 +46,7 @@ NONIUS_BENCHMARK("inline 10", [](nonius::chronometer meter){
   countdownsingle single{counter};
   meter.measure([&]{
     counter = 10;
-    ie | op::submit(mi::single{single});
+    ie | op::submit(mi::make_single(single));
     return counter;
   });
 })
@@ -75,7 +75,7 @@ NONIUS_BENCHMARK("trampoline virtual derecursion 10", [](nonius::chronometer met
   });
 })
 
-NONIUS_BENCHMARK("pool 1 blocking_submit 10", [](nonius::chronometer meter){
+NONIUS_BENCHMARK("pool{1} blocking_submit 10", [](nonius::chronometer meter){
   mi::pool pl{std::max(1u,std::thread::hardware_concurrency())};
   auto pe = pl.executor();
   using PE = decltype(pe);
@@ -83,7 +83,8 @@ NONIUS_BENCHMARK("pool 1 blocking_submit 10", [](nonius::chronometer meter){
   countdownsingle single{counter};
   meter.measure([&]{
     counter = 10;
-    return pe | op::blocking_submit(single);
+    pe | op::blocking_submit(single);
+    return counter;
   });
 })
 
@@ -94,6 +95,7 @@ NONIUS_BENCHMARK("new thread blocking_submit 10", [](nonius::chronometer meter){
   countdownsingle single{counter};
   meter.measure([&]{
     counter = 10;
-    return nt | op::blocking_submit(single);
+    nt | op::blocking_submit(single);
+    return counter;
   });
 })
