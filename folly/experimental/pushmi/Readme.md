@@ -3,7 +3,7 @@
 
 This library is counterpart to [P1055 - *A Modest Executor Proposal*](http://wg21.link/p1055r0).
 
-*pushmi* is a header-only library that uses CMake to build, requires GCC trunk to build and has dependencies on catch2 for testing purposes.
+*pushmi* is a header-only library that uses git submodules for dependencies (`git clone --recursive`), uses CMake to build, requires compliant C++14 compiler to build and has dependencies on meta and catch2 and some other libraries for testing and examples.
 
 *pushmi* is an implementation for prototyping how Futures, Executors can be defined with shared Concepts. These Concepts can be implemented over and over again to solve different problems and make different tradeoffs. User implementations of the Concepts are first-class citizens due to the attention to composition. Composition also enables each implementation of the Concepts to focus on one concern and then be composed to build more complex solutions.
 
@@ -49,7 +49,6 @@ construct a sink type that accepts any error type (and aborts on error)
 
 ```cpp
 none<> n;
-archetype_none an; // this is a using alias for none<>
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
@@ -70,27 +69,25 @@ auto n3 = none{[](std::exception_ptr){}};
 construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing none. The state must be a None, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto n0 = none{archetype_none{}};
+auto n0 = none{none{}};
 
-auto n1 = none{archetype_none{}, on_done{
-    [](archetype_none& out, std::exception_ptr ep){out | set_done();}}};
+auto n1 = none{none{}, on_done{
+    [](none& out, std::exception_ptr ep){out | set_done();}}};
 
 // these are quite dangerous as they suppress errors
-auto n2 = none{archetype_none{},
-  [](archetype_none& out, std::exception_ptr ep){out | set_done();},
-  [](archetype_none&){out | set_done();}};
-auto n3 = none{archetype_none{}, on_error{
-  [](archetype_none& out, std::exception_ptr ep){out | set_done();},
-  [](archetype_none& out, auto e){out | set_done();}}};
+auto n2 = none{none{},
+  [](none<>& out, std::exception_ptr ep){out | set_done();},
+  [](none<>&){out | set_done();}};
+auto n3 = none{none{}, on_error{
+  [](none<>& out, std::exception_ptr ep){out | set_done();},
+  [](none<>& out, auto e){out | set_done();}}};
 ```
 
 construct a type-erased type for a particular E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto n0 = none<>{archetype_none{}};
-auto n1 = none<std::exception_ptr>{archetype_none{}};
-auto n2 = erase_cast<>(archetype_none{});
-auto n3 = erase_cast<std::exception_ptr>(archetype_none{});
+auto n0 = any_none{none{}};
+auto n1 = any_none<std::exception_ptr>{none{}};
 ```
 
 ## `single`
@@ -101,7 +98,6 @@ construct a sink type that accepts any value or error type (and aborts on error)
 
 ```cpp
 single<> s;
-archetype_single as; // this is a using alias for single<>
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
@@ -127,35 +123,33 @@ auto s6 = single{on_error{[](std::exception_ptr){}}};
 construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing single. The state must be a Single, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto s0 = single{archetype_single{}};
+auto s0 = single{single{}};
 
-auto s1 = single{archetype_single{}, on_done{
-    [](archetype_single& out, std::exception_ptr ep){out | set_done();}}};
+auto s1 = single{single{}, on_done{
+    [](single<>& out, std::exception_ptr ep){out | set_done();}}};
 
-auto s2 = single{archetype_single{},
-  [](archetype_single& out, auto v){out | set_value(v);};
-auto s3 = single{archetype_single{}, on_value{
-  [](archetype_single& out, int v){out | set_value(v);},
-  [](archetype_single& out, auto v){out | set_value(v);}}};
+auto s2 = single{single{},
+  [](single<>& out, auto v){out | set_value(v);};
+auto s3 = single{single{}, on_value{
+  [](single<>& out, int v){out | set_value(v);},
+  [](single<>& out, auto v){out | set_value(v);}}};
 
 // these are quite dangerous as they suppress errors
-auto s4 = single{archetype_single{},
+auto s4 = single{single{},
   [](){}
-  [](archetype_single& out, std::exception_ptr ep){out | set_done();},
-  [](archetype_single&){out | set_done();}};
-auto s5 = single{archetype_single{}, on_error{
-  [](archetype_single& out, std::exception_ptr ep){out | set_done();},
-  [](archetype_single& out, auto e){out | set_done();}}};
+  [](single<>& out, std::exception_ptr ep){out | set_done();},
+  [](single<>&){out | set_done();}};
+auto s5 = single{single{}, on_error{
+  [](single<>& out, std::exception_ptr ep){out | set_done();},
+  [](single<>& out, auto e){out | set_done();}}};
 
 ```
 
 construct a type-erased type for a particular T & E (each of which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto s0 = single<int>{archetype_single{}};
-auto s1 = single<int, std::exception_ptr>{archetype_single{}};
-auto s2 = erase_cast<int>(archetype_single{});
-auto s3 = erase_cast<int, std::exception_ptr>(archetype_single{});
+auto s0 = single<int>{single{}};
+auto s1 = single<int, std::exception_ptr>{single{}};
 ```
 
 ## `deferred`
@@ -166,7 +160,6 @@ construct a producer of nothing, aka `never()`
 
 ```cpp
 deferred<> d;
-archetype_deferred ad; // this is a using alias for deferred<>
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
@@ -174,30 +167,28 @@ construct new type using one or more lambdas, or with designated initializers, u
 ```cpp
 auto d0 = deferred{on_submit{[](auto out){}}};
 auto d1 = deferred{[](auto out){}};
-auto d2 = deferred{on_submit{[](archetype_none out){}, [](auto out){}}};
+auto d2 = deferred{on_submit{[](none<> out){}, [](auto out){}}};
 
 ```
 
 construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing deferred. The state must be a NoneSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto d0 = deferred{archetype_deferred{}};
+auto d0 = deferred{deferred{}};
 
-auto d1 = deferred{archetype_deferred{}, on_submit{
-    [](archetype_deferred& in, auto out){in | submit(out);}}};
+auto d1 = deferred{deferred{}, on_submit{
+    [](deferred<>& in, auto out){in | submit(out);}}};
 
-auto d2 = deferred{archetype_deferred{},
-    [](archetype_deferred& in, auto out){in | submit(out);}};
+auto d2 = deferred{deferred{},
+    [](deferred<>& in, auto out){in | submit(out);}};
 
 ```
 
 construct a type-erased type for a particular E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto d0 = deferred<>{archetype_deferred{}};
-auto d1 = deferred<std::exception_ptr>{archetype_deferred{}};
-auto d2 = erase_cast<>(archetype_deferred{});
-auto d3 = erase_cast<std::exception_ptr>(archetype_deferred{});
+auto d0 = deferred<>{deferred{}};
+auto d1 = deferred<std::exception_ptr>{deferred{}};
 ```
 
 ## `single_deferred`
@@ -208,7 +199,6 @@ construct a producer of nothing, aka `never()`
 
 ```cpp
 single_deferred<> sd;
-archetype_single_deferred asd; // this is a using alias for deferred<>
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
@@ -216,30 +206,28 @@ construct new type using one or more lambdas, or with designated initializers, u
 ```cpp
 auto sd0 = single_deferred{on_submit{[](auto out){}}};
 auto sd1 = single_deferred{[](auto out){}};
-auto sd2 = single_deferred{on_submit{[](archetype_single out){}, [](auto out){}}};
+auto sd2 = single_deferred{on_submit{[](single<> out){}, [](auto out){}}};
 
 ```
 
 construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing single_deferred. The state must be a SingleSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto sd0 = single_deferred{archetype_single_deferred{}};
+auto sd0 = single_deferred{single_deferred{}};
 
-auto sd1 = single_deferred{archetype_single_deferred{}, on_submit{
-    [](archetype_single_deferred& in, auto out){in | submit(out);}}};
+auto sd1 = single_deferred{single_deferred{}, on_submit{
+    [](single_deferred<>& in, auto out){in | submit(out);}}};
 
-auto sd2 = single_deferred{archetype_single_deferred{},
-    [](archetype_single_deferred& in, auto out){in | submit(out);}};
+auto sd2 = single_deferred{single_deferred{},
+    [](single_deferred<>& in, auto out){in | submit(out);}};
 
 ```
 
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto sd0 = single_deferred<int>{archetype_single_deferred{}};
-auto sd1 = single_deferred<int, std::exception_ptr>{archetype_single_deferred{}};
-auto sd2 = erase_cast<int>(archetype_single_deferred{});
-auto sd3 = erase_cast<int, std::exception_ptr>(archetype_single_deferred{});
+auto sd0 = single_deferred<int>{single_deferred{}};
+auto sd1 = single_deferred<int, std::exception_ptr>{single_deferred{}};
 ```
 
 ## `time_single_deferred`
@@ -250,7 +238,6 @@ construct a producer of nothing, aka `never()`
 
 ```cpp
 time_single_deferred<> tsd;
-archetype_time_single_deferred atsd; // this is a using alias for deferred<>
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
@@ -258,30 +245,28 @@ construct new type using one or more lambdas, or with designated initializers, u
 ```cpp
 auto tsd0 = time_single_deferred{on_submit{[](auto at, auto out){}}};
 auto tsd1 = time_single_deferred{[](auto at, auto out){}};
-auto tsd2 = time_single_deferred{on_submit{[](auto at, archetype_single out){}, [](auto at, auto out){}}};
+auto tsd2 = time_single_deferred{on_submit{[](auto at, single<> out){}, [](auto at, auto out){}}};
 
 ```
 
 construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing time_single_deferred. The state must be a SingleSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto tsd0 = time_single_deferred{archetype_single_deferred{}};
+auto tsd0 = time_single_deferred{single_deferred{}};
 
-auto tsd1 = time_single_deferred{archetype_single_deferred{}, on_submit{
-    [](archetype_single_deferred& in, auto at, auto out){in | submit(at, out);}}};
+auto tsd1 = time_single_deferred{single_deferred{}, on_submit{
+    [](time_single_deferred<>& in, auto at, auto out){in | submit(at, out);}}};
 
-auto tsd2 = time_single_deferred{archetype_single_deferred{},
-    [](archetype_single_deferred& in, auto at, auto out){in | submit(at, out);}};
+auto tsd2 = time_single_deferred{single_deferred{},
+    [](time_single_deferred<>& in, auto at, auto out){in | submit(at, out);}};
 
 ```
 
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto tsd0 = time_single_deferred<int>{archetype_time_single_deferred{}};
-auto tsd1 = time_single_deferred<int, std::exception_ptr>{archetype_time_single_deferred{}};
-auto tsd2 = erase_cast<int>(archetype_time_single_deferred{});
-auto tsd3 = erase_cast<int, std::exception_ptr>(archetype_time_single_deferred{});
+auto tsd0 = time_single_deferred<int>{time_single_deferred{}};
+auto tsd1 = time_single_deferred<int, std::exception_ptr>{time_single_deferred{}};
 ```
 
 ## put it all together with some algorithms
@@ -302,13 +287,13 @@ nt | blocking_submit([](auto nt){
 ```cpp
 auto fortyTwo = just(42) |
   transform([](auto v){ return std::to_string(v); }) |
-  on(new_thread()) |
-  via(new_thread()) |
+  on(new_thread) |
+  via(new_thread) |
   get<std::string>();
 
 just(42) |
     transform([](auto v){ return std::to_string(v); }) |
-    on(new_thread()) |
-    via(new_thread()) |
+    on(new_thread) |
+    via(new_thread) |
     blocking_submit([](std::string>){});
 ```
