@@ -509,6 +509,12 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return zeroCopyBufId_;
   }
 
+  size_t getZeroCopyReenableThreshold() const {
+    return zeroCopyReenableThreshold_;
+  }
+
+  void setZeroCopyReenableThreshold(size_t threshold);
+
   void write(
       WriteCallback* callback,
       const void* buf,
@@ -1268,6 +1274,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool trackEor_{false};
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
+  // zerocopy reenable logic
+  size_t zeroCopyReenableThreshold_{0};
+  size_t zeroCopyReenableCounter_{0};
 
   // subclasses may cache these on first call to get
   mutable std::unique_ptr<const AsyncTransportCertificate> peerCertData_{

@@ -24,6 +24,6 @@ static auto constexpr kMaxLoops = 20;
 static auto constexpr kBufferSize = 4096;
 
 TEST(ZeroCopyTest, zero_copy_in_progress) {
-  ZeroCopyTest test(kMaxLoops, true, kBufferSize);
+  ZeroCopyTest test(1, kMaxLoops, true, kBufferSize);
   CHECK(test.run());
 }
