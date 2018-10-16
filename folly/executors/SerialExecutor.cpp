@@ -48,9 +48,10 @@ bool SerialExecutor::keepAliveAcquire() {
 }
 
 void SerialExecutor::keepAliveRelease() {
-  auto keepAliveCounter = --keepAliveCounter_;
-  DCHECK(keepAliveCounter >= 0);
-  if (!keepAliveCounter) {
+  auto keepAliveCounter =
+      keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
+  DCHECK(keepAliveCounter > 0);
+  if (keepAliveCounter == 1) {
     delete this;
   }
 }
