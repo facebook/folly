@@ -25,13 +25,13 @@ class flow_single<V, PE, E> {
     static void s_error(data&, E) noexcept { std::terminate(); }
     static void s_value(data&, V) {}
     static void s_stopping(data&) noexcept {}
-    static void s_starting(data&, any_none<PE>&) {}
+    static void s_starting(data&, any_none<PE>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     void (*done_)(data&) = vtable::s_done;
     void (*error_)(data&, E) noexcept = vtable::s_error;
     void (*value_)(data&, V) = vtable::s_value;
     void (*stopping_)(data&) noexcept = vtable::s_stopping;
-    void (*starting_)(data&, any_none<PE>&) = vtable::s_starting;
+    void (*starting_)(data&, any_none<PE>) = vtable::s_starting;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -55,8 +55,8 @@ class flow_single<V, PE, E> {
       static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>(src.pobj_));
       }
-      static void starting(data& src, any_none<PE>& up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), up);
+      static void starting(data& src, any_none<PE> up) {
+        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::stopping, s::starting};
@@ -86,8 +86,8 @@ class flow_single<V, PE, E> {
       static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static void starting(data& src, any_none<PE>& up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), up);
+      static void starting(data& src, any_none<PE> up) {
+        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::stopping, s::starting};
@@ -130,8 +130,8 @@ public:
   void stopping() noexcept {
     vptr_->stopping_(data_);
   }
-  void starting(any_none<PE>& up) {
-    vptr_->starting_(data_, up);
+  void starting(any_none<PE> up) {
+    vptr_->starting_(data_, std::move(up));
   }
 };
 
@@ -199,9 +199,9 @@ class flow_single<VF, EF, DF, StpF, StrtF> {
     stpf_();
   }
   PUSHMI_TEMPLATE(class Up)
-    (requires Receiver<Up, is_none<>> && Invocable<StrtF&, Up&>)
-  void starting(Up& up) {
-    strtf_(up);
+    (requires Receiver<Up, is_none<>> && Invocable<StrtF&, Up&&>)
+  void starting(Up&& up) {
+    strtf_( (Up &&) up);
   }
 };
 
@@ -271,9 +271,9 @@ class flow_single<Data, DVF, DEF, DDF, DStpF, DStrtF> {
     stpf_(data_);
   }
   PUSHMI_TEMPLATE (class Up)
-    (requires Invocable<DStrtF&, Data&, Up&>)
-  void starting(Up& up) {
-    strtf_(data_, up);
+    (requires Invocable<DStrtF&, Data&, Up&&>)
+  void starting(Up&& up) {
+    strtf_(data_, (Up &&) up);
   }
 };
 

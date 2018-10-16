@@ -62,7 +62,7 @@ struct ignoreStpF {
 
 struct ignoreStrtF {
   template <class Up>
-  void operator()(Up&) {}
+  void operator()(Up&&) {}
 };
 
 
@@ -114,10 +114,10 @@ struct passDStpF {
 struct passDStrtF {
   PUSHMI_TEMPLATE(class Up, class Data)
     (requires requires (
-      ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up&>())
+      ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up>())
     ) && Receiver<Data>)
-  void operator()(Data& out, Up& up) const {
-    ::pushmi::set_starting(out, up);
+  void operator()(Data& out, Up up) const {
+    ::pushmi::set_starting(out, std::move(up));
   }
 };
 

@@ -33,9 +33,9 @@ void set_stopping(S& s) noexcept(noexcept(s.stopping())) {
   s.stopping();
 }
 PUSHMI_TEMPLATE (class S, class Up)
-  (requires requires (std::declval<S&>().starting(std::declval<Up&>())))
-void set_starting(S& s, Up& up) noexcept(noexcept(s.starting(up))) {
-  s.starting(up);
+  (requires requires (std::declval<S&>().starting(std::declval<Up>())))
+void set_starting(S& s, Up up) noexcept(noexcept(s.starting(std::move(up)))) {
+  s.starting(std::move(up));
 }
 
 PUSHMI_TEMPLATE (class SD, class Out)
@@ -107,10 +107,10 @@ void set_stopping(std::reference_wrapper<S> s) noexcept(
   set_stopping(s.get());
 }
 PUSHMI_TEMPLATE (class S, class Up)
-  (requires requires ( set_starting(std::declval<S&>(), std::declval<Up&>()) ))
-void set_starting(std::reference_wrapper<S> s, Up& up) noexcept(
-  noexcept(set_starting(s.get(), up))) {
-  set_starting(s.get(), up);
+  (requires requires ( set_starting(std::declval<S&>(), std::declval<Up>()) ))
+void set_starting(std::reference_wrapper<S> s, Up up) noexcept(
+  noexcept(set_starting(s.get(), std::move(up)))) {
+  set_starting(s.get(), std::move(up));
 }
 PUSHMI_TEMPLATE (class SD, class Out)
   (requires requires ( submit(std::declval<SD&>(), std::declval<Out>()) ))
@@ -188,13 +188,13 @@ struct set_stopping_fn {
 struct set_starting_fn {
   PUSHMI_TEMPLATE (class S, class Up)
     (requires requires (
-      set_starting(std::declval<S&>(), std::declval<Up&>()),
+      set_starting(std::declval<S&>(), std::declval<Up>()),
       set_error(std::declval<S&>(), std::current_exception())
     ))
-  void operator()(S&& s, Up& up) const
-      noexcept(noexcept(set_starting(s, up))) {
+  void operator()(S&& s, Up up) const
+      noexcept(noexcept(set_starting(s, std::move(up)))) {
     try {
-      set_starting(s, up);
+      set_starting(s, std::move(up));
     } catch (...) {
       set_error(s, std::current_exception());
     }

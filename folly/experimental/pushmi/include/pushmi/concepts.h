@@ -228,13 +228,13 @@ PUSHMI_CONCEPT_DEF(
 
 
 // silent does not really make sense, but cannot test for
-// None without the error type, use is_none<> to strengthen 
+// None without the error type, use is_none<> to strengthen
 // requirements
 PUSHMI_CONCEPT_DEF(
   template (class D, class... PropertyN)
   (concept Sender)(D, PropertyN...),
     SemiMovable<D> &&
-    None<D> && 
+    None<D> &&
     property_query_v<D, PropertyN...> &&
     is_sender_v<D>
 );
@@ -266,19 +266,19 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
   template (
-    class N, 
-    class Up, 
+    class N,
+    class Up,
     class PE = std::exception_ptr,
     class E = PE)
   (concept FlowNoneReceiver)(N, Up, PE, E),
-    requires(N& n, Up& up) (
-      ::pushmi::set_starting(n, up)
+    requires(N& n, Up&& up) (
+      ::pushmi::set_starting(n, (Up &&) up)
     ) &&
-    FlowReceiver<N> && 
+    FlowReceiver<N> &&
     Receiver<Up> &&
     SemiMovable<PE> &&
     SemiMovable<E> &&
-    NoneReceiver<Up, PE> && 
+    NoneReceiver<Up, PE> &&
     NoneReceiver<N, E>
 );
 
@@ -290,7 +290,7 @@ PUSHMI_CONCEPT_DEF(
       class PE = std::exception_ptr,
       class E = PE)
   (concept FlowSingleReceiver)(S, Up, T, PE, E),
-    SingleReceiver<S, T, E> && 
+    SingleReceiver<S, T, E> &&
     FlowNoneReceiver<S, Up, PE, E>
 );
 
@@ -302,7 +302,7 @@ PUSHMI_CONCEPT_DEF(
       class PE = std::exception_ptr,
       class E = PE)
   (concept FlowManyReceiver)(S, Up, T, PE, E),
-    ManyReceiver<S, T, E> && 
+    ManyReceiver<S, T, E> &&
     FlowSingleReceiver<S, Up, T, PE, E>
 );
 
@@ -332,9 +332,9 @@ PUSHMI_CONCEPT_DEF(
       ::pushmi::now(d),
       requires_<Regular<decltype(::pushmi::now(d))>>
     ) &&
-    Sender<D> && 
+    Sender<D> &&
     property_query_v<D, PropertyN...> &&
-    Time<D> && 
+    Time<D> &&
     None<D>
 );
 
@@ -344,7 +344,7 @@ PUSHMI_CONCEPT_DEF(
     requires(D& d, S&& s) (
       ::pushmi::submit(d, ::pushmi::now(d), (S &&) s)
     ) &&
-    TimeSender<D> && 
+    TimeSender<D> &&
     property_query_v<D, PropertyN...> &&
     Receiver<S>
 );

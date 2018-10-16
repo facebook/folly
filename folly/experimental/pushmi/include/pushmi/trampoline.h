@@ -225,6 +225,9 @@ class trampoline {
       auto item = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
       auto& when = std::get<0>(item);
+      if (when > trampoline<E>::now()) {
+        std::this_thread::sleep_until(when);
+      }
       auto& what = std::get<1>(item);
       any_time_executor_ref<error_type, time_point> anythis{that};
       ::pushmi::set_value(what, anythis);

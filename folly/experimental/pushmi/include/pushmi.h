@@ -1330,9 +1330,9 @@ void set_stopping(S& s) noexcept(noexcept(s.stopping())) {
   s.stopping();
 }
 PUSHMI_TEMPLATE (class S, class Up)
-  (requires requires (std::declval<S&>().starting(std::declval<Up&>())))
-void set_starting(S& s, Up& up) noexcept(noexcept(s.starting(up))) {
-  s.starting(up);
+  (requires requires (std::declval<S&>().starting(std::declval<Up>())))
+void set_starting(S& s, Up up) noexcept(noexcept(s.starting(std::move(up)))) {
+  s.starting(std::move(up));
 }
 
 PUSHMI_TEMPLATE (class SD, class Out)
@@ -1404,10 +1404,10 @@ void set_stopping(std::reference_wrapper<S> s) noexcept(
   set_stopping(s.get());
 }
 PUSHMI_TEMPLATE (class S, class Up)
-  (requires requires ( set_starting(std::declval<S&>(), std::declval<Up&>()) ))
-void set_starting(std::reference_wrapper<S> s, Up& up) noexcept(
-  noexcept(set_starting(s.get(), up))) {
-  set_starting(s.get(), up);
+  (requires requires ( set_starting(std::declval<S&>(), std::declval<Up>()) ))
+void set_starting(std::reference_wrapper<S> s, Up up) noexcept(
+  noexcept(set_starting(s.get(), std::move(up)))) {
+  set_starting(s.get(), std::move(up));
 }
 PUSHMI_TEMPLATE (class SD, class Out)
   (requires requires ( submit(std::declval<SD&>(), std::declval<Out>()) ))
@@ -1485,13 +1485,13 @@ struct set_stopping_fn {
 struct set_starting_fn {
   PUSHMI_TEMPLATE (class S, class Up)
     (requires requires (
-      set_starting(std::declval<S&>(), std::declval<Up&>()),
+      set_starting(std::declval<S&>(), std::declval<Up>()),
       set_error(std::declval<S&>(), std::current_exception())
     ))
-  void operator()(S&& s, Up& up) const
-      noexcept(noexcept(set_starting(s, up))) {
+  void operator()(S&& s, Up up) const
+      noexcept(noexcept(set_starting(s, std::move(up)))) {
     try {
-      set_starting(s, up);
+      set_starting(s, std::move(up));
     } catch (...) {
       set_error(s, std::current_exception());
     }
@@ -1961,13 +1961,13 @@ PUSHMI_CONCEPT_DEF(
 
 
 // silent does not really make sense, but cannot test for
-// None without the error type, use is_none<> to strengthen 
+// None without the error type, use is_none<> to strengthen
 // requirements
 PUSHMI_CONCEPT_DEF(
   template (class D, class... PropertyN)
   (concept Sender)(D, PropertyN...),
     SemiMovable<D> &&
-    None<D> && 
+    None<D> &&
     property_query_v<D, PropertyN...> &&
     is_sender_v<D>
 );
@@ -1999,19 +1999,19 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
   template (
-    class N, 
-    class Up, 
+    class N,
+    class Up,
     class PE = std::exception_ptr,
     class E = PE)
   (concept FlowNoneReceiver)(N, Up, PE, E),
-    requires(N& n, Up& up) (
-      ::pushmi::set_starting(n, up)
+    requires(N& n, Up&& up) (
+      ::pushmi::set_starting(n, (Up &&) up)
     ) &&
-    FlowReceiver<N> && 
+    FlowReceiver<N> &&
     Receiver<Up> &&
     SemiMovable<PE> &&
     SemiMovable<E> &&
-    NoneReceiver<Up, PE> && 
+    NoneReceiver<Up, PE> &&
     NoneReceiver<N, E>
 );
 
@@ -2023,7 +2023,7 @@ PUSHMI_CONCEPT_DEF(
       class PE = std::exception_ptr,
       class E = PE)
   (concept FlowSingleReceiver)(S, Up, T, PE, E),
-    SingleReceiver<S, T, E> && 
+    SingleReceiver<S, T, E> &&
     FlowNoneReceiver<S, Up, PE, E>
 );
 
@@ -2035,7 +2035,7 @@ PUSHMI_CONCEPT_DEF(
       class PE = std::exception_ptr,
       class E = PE)
   (concept FlowManyReceiver)(S, Up, T, PE, E),
-    ManyReceiver<S, T, E> && 
+    ManyReceiver<S, T, E> &&
     FlowSingleReceiver<S, Up, T, PE, E>
 );
 
@@ -2065,9 +2065,9 @@ PUSHMI_CONCEPT_DEF(
       ::pushmi::now(d),
       requires_<Regular<decltype(::pushmi::now(d))>>
     ) &&
-    Sender<D> && 
+    Sender<D> &&
     property_query_v<D, PropertyN...> &&
-    Time<D> && 
+    Time<D> &&
     None<D>
 );
 
@@ -2077,7 +2077,7 @@ PUSHMI_CONCEPT_DEF(
     requires(D& d, S&& s) (
       ::pushmi::submit(d, ::pushmi::now(d), (S &&) s)
     ) &&
-    TimeSender<D> && 
+    TimeSender<D> &&
     property_query_v<D, PropertyN...> &&
     Receiver<S>
 );
@@ -2188,7 +2188,7 @@ struct ignoreStpF {
 
 struct ignoreStrtF {
   template <class Up>
-  void operator()(Up&) {}
+  void operator()(Up&&) {}
 };
 
 
@@ -2240,10 +2240,10 @@ struct passDStpF {
 struct passDStrtF {
   PUSHMI_TEMPLATE(class Up, class Data)
     (requires requires (
-      ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up&>())
+      ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up>())
     ) && Receiver<Data>)
-  void operator()(Data& out, Up& up) const {
-    ::pushmi::set_starting(out, up);
+  void operator()(Data& out, Up up) const {
+    ::pushmi::set_starting(out, std::move(up));
   }
 };
 
@@ -4045,13 +4045,13 @@ class flow_single<V, PE, E> {
     static void s_error(data&, E) noexcept { std::terminate(); }
     static void s_value(data&, V) {}
     static void s_stopping(data&) noexcept {}
-    static void s_starting(data&, any_none<PE>&) {}
+    static void s_starting(data&, any_none<PE>) {}
     void (*op_)(data&, data*) = vtable::s_op;
     void (*done_)(data&) = vtable::s_done;
     void (*error_)(data&, E) noexcept = vtable::s_error;
     void (*value_)(data&, V) = vtable::s_value;
     void (*stopping_)(data&) noexcept = vtable::s_stopping;
-    void (*starting_)(data&, any_none<PE>&) = vtable::s_starting;
+    void (*starting_)(data&, any_none<PE>) = vtable::s_starting;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -4075,8 +4075,8 @@ class flow_single<V, PE, E> {
       static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>(src.pobj_));
       }
-      static void starting(data& src, any_none<PE>& up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), up);
+      static void starting(data& src, any_none<PE> up) {
+        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::stopping, s::starting};
@@ -4106,8 +4106,8 @@ class flow_single<V, PE, E> {
       static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static void starting(data& src, any_none<PE>& up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), up);
+      static void starting(data& src, any_none<PE> up) {
+        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::stopping, s::starting};
@@ -4150,8 +4150,8 @@ public:
   void stopping() noexcept {
     vptr_->stopping_(data_);
   }
-  void starting(any_none<PE>& up) {
-    vptr_->starting_(data_, up);
+  void starting(any_none<PE> up) {
+    vptr_->starting_(data_, std::move(up));
   }
 };
 
@@ -4219,9 +4219,9 @@ class flow_single<VF, EF, DF, StpF, StrtF> {
     stpf_();
   }
   PUSHMI_TEMPLATE(class Up)
-    (requires Receiver<Up, is_none<>> && Invocable<StrtF&, Up&>)
-  void starting(Up& up) {
-    strtf_(up);
+    (requires Receiver<Up, is_none<>> && Invocable<StrtF&, Up&&>)
+  void starting(Up&& up) {
+    strtf_( (Up &&) up);
   }
 };
 
@@ -4291,9 +4291,9 @@ class flow_single<Data, DVF, DEF, DDF, DStpF, DStrtF> {
     stpf_(data_);
   }
   PUSHMI_TEMPLATE (class Up)
-    (requires Invocable<DStrtF&, Data&, Up&>)
-  void starting(Up& up) {
-    strtf_(data_, up);
+    (requires Invocable<DStrtF&, Data&, Up&&>)
+  void starting(Up&& up) {
+    strtf_(data_, (Up &&) up);
   }
 };
 
@@ -4936,6 +4936,9 @@ class trampoline {
       auto item = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
       auto& when = std::get<0>(item);
+      if (when > trampoline<E>::now()) {
+        std::this_thread::sleep_until(when);
+      }
       auto& what = std::get<1>(item);
       any_time_executor_ref<error_type, time_point> anythis{that};
       ::pushmi::set_value(what, anythis);
