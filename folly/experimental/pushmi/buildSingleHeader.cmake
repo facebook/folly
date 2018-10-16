@@ -27,6 +27,7 @@ set(header_files
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/detail/functional.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/detail/opt.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/forwards.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/entangle.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/extension_points.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/properties.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/concepts.h"
