@@ -30,9 +30,9 @@ struct __pool_submit {
   PUSHMI_TEMPLATE(class TP, class Out)
     (requires Regular<TP> && Receiver<Out>)
   void operator()(TP at, Out out) const {
-    e.execute([e = e, at = std::move(at), out = std::move(out)]() mutable {
-      auto tr = trampoline();
-      ::pushmi::submit(tr, std::move(at), std::move(out));
+    e.execute([e = make_time_single_sender(*this), at = std::move(at), out = std::move(out)]() mutable {
+      std::this_thread::sleep_until(at);
+      ::pushmi::set_value(out, e);
     });
   }
 };

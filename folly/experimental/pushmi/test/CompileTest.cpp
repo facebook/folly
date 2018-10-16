@@ -382,3 +382,88 @@ void flow_single_sender_test(){
 
   auto any0 = pushmi::any_flow_single_sender<int>(in0);
 }
+
+void flow_many_test() {
+  auto out0 = pushmi::MAKE(flow_many)();
+  auto out1 = pushmi::MAKE(flow_many)(pushmi::ignoreVF{});
+  auto out2 = pushmi::MAKE(flow_many)(pushmi::ignoreVF{}, pushmi::abortEF{});
+  auto out3 =
+      pushmi::MAKE(flow_many)(
+        pushmi::ignoreVF{},
+        pushmi::abortEF{},
+        pushmi::ignoreDF{});
+  auto out4 = pushmi::MAKE(flow_many)([](auto v) { v.get(); });
+  auto out5 = pushmi::MAKE(flow_many)(
+      pushmi::on_value([](auto v) { v.get(); }, [](int v) {}),
+      pushmi::on_error(
+        [](std::exception_ptr e) noexcept{},
+        [](auto e) noexcept { e.get(); }
+      ));
+  auto out6 = pushmi::MAKE(flow_many)(
+      pushmi::on_error(
+        [](std::exception_ptr e) noexcept {},
+        [](auto e) noexcept{ e.get(); }
+      ));
+  auto out7 = pushmi::MAKE(flow_many)(
+      pushmi::on_done([]() {  }));
+
+  auto out8 =
+      pushmi::MAKE(flow_many)(
+        pushmi::ignoreVF{},
+        pushmi::abortEF{},
+        pushmi::ignoreDF{},
+        pushmi::ignoreStrtF{});
+
+  using Out0 = decltype(out0);
+
+  auto proxy0 = pushmi::MAKE(flow_many)(out0);
+  auto proxy1 = pushmi::MAKE(flow_many)(out0, pushmi::passDVF{});
+  auto proxy2 = pushmi::MAKE(flow_many)(out0, pushmi::passDVF{}, pushmi::passDEF{});
+  auto proxy3 = pushmi::MAKE(flow_many)(
+      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy4 = pushmi::MAKE(flow_many)(out0, [](auto d, auto v) {
+    pushmi::set_value(d, v.get());
+  });
+  auto proxy5 = pushmi::MAKE(flow_many)(
+      out0,
+      pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int v) {}),
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
+  auto proxy6 = pushmi::MAKE(flow_many)(
+      out0,
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
+  auto proxy7 = pushmi::MAKE(flow_many)(
+      out0,
+      pushmi::on_done([](Out0&) { }));
+
+  auto proxy8 = pushmi::MAKE(flow_many)(out0,
+    pushmi::passDVF{},
+    pushmi::passDEF{},
+    pushmi::passDDF{});
+
+  auto any2 = pushmi::any_flow_many<int>(out0);
+  auto any3 = pushmi::any_flow_many<int>(proxy0);
+}
+
+void flow_many_sender_test(){
+  auto in0 = pushmi::MAKE(flow_many_sender)();
+  auto in1 = pushmi::MAKE(flow_many_sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(flow_many_sender)([&](auto out){
+    in0.submit(pushmi::MAKE(flow_many)(std::move(out),
+      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
+    ));
+  });
+
+  auto out0 = pushmi::MAKE(flow_many)();
+  auto out1 = pushmi::MAKE(flow_many)(out0, pushmi::on_value([](auto d, int v){
+    pushmi::set_value(d, v);
+  }));
+  in3.submit(out1);
+
+  auto any0 = pushmi::any_flow_many_sender<int>(in0);
+}

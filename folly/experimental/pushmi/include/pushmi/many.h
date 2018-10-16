@@ -240,6 +240,7 @@ class many<Data, DNF, DEF, DDF> {
   constexpr many(Data d, DNF nf, DEF ef = DEF{}, DDF df = DDF{})
       : done_(false), data_(std::move(d)), nf_(nf), ef_(ef), df_(df) {}
 
+  Data& data() {return data_;}
   PUSHMI_TEMPLATE(class V)
     (requires Invocable<DNF&, Data&, V>)
   void next(V&& v) {

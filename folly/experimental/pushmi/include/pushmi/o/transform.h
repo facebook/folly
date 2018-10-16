@@ -15,7 +15,7 @@ namespace pushmi {
 
 namespace detail {
 
-template<class F, class Tag>
+template<class F, class Tag, bool IsFlow = false>
 struct transform_on;
 
 template<class F>
@@ -34,6 +34,27 @@ struct transform_on<F, is_single<>> {
     static_assert(::pushmi::SemiMovable<Result>,
       "none of the functions supplied to transform can convert this value");
     static_assert(::pushmi::SingleReceiver<Out, Result>,
+      "Result of value transform cannot be delivered to Out");
+    ::pushmi::set_value(out, f_((V&&) v));
+  }
+};
+
+template<class F>
+struct transform_on<F, is_single<>, true> {
+  F f_;
+  transform_on() = default;
+  constexpr explicit transform_on(F f)
+    : f_(std::move(f)) {}
+  template<class Out>
+  auto operator()(Out out) const {
+    return make_flow_single(std::move(out), on_value(*this));
+  }
+  template<class Out, class V>
+  auto operator()(Out& out, V&& v) {
+    using Result = decltype(f_((V&&) v));
+    static_assert(::pushmi::SemiMovable<Result>,
+      "none of the functions supplied to transform can convert this value");
+    static_assert(::pushmi::Flow<Out> && ::pushmi::Single<Out>,
       "Result of value transform cannot be delivered to Out");
     ::pushmi::set_value(out, f_((V&&) v));
   }
@@ -60,6 +81,27 @@ struct transform_on<F, is_many<>> {
   }
 };
 
+template<class F>
+struct transform_on<F, is_many<>, true> {
+  F f_;
+  transform_on() = default;
+  constexpr explicit transform_on(F f)
+    : f_(std::move(f)) {}
+  template<class Out>
+  auto operator()(Out out) const {
+    return make_flow_many(std::move(out), on_next(*this));
+  }
+  template<class Out, class V>
+  auto operator()(Out& out, V&& v) {
+    using Result = decltype(f_((V&&) v));
+    static_assert(::pushmi::SemiMovable<Result>,
+      "none of the functions supplied to transform can convert this value");
+    static_assert(::pushmi::Flow<Out> && ::pushmi::Many<Out>,
+      "Result of value transform cannot be delivered to Out");
+    ::pushmi::set_next(out, f_((V&&) v));
+  }
+};
+
 struct transform_fn {
 private:
   template <class F>
@@ -73,7 +115,7 @@ private:
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           // copy 'f_' to allow multiple calls to connect to multiple 'in'
-          transform_on<F, Cardinality>{f_}
+          transform_on<F, Cardinality, property_query_v<properties_t<In>, is_flow<>>>{f_}
         )
       );
     }

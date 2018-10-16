@@ -299,10 +299,10 @@ PUSHMI_CONCEPT_DEF(
       class S,
       class Up,
       class T,
-      class PT,
+      class PT = std::ptrdiff_t,
       class PE = std::exception_ptr,
       class E = PE)
-  (concept FlowManyReceiver)(S, Up, T, PE, E),
+  (concept FlowManyReceiver)(S, Up, T, PT, PE, E),
     ManyReceiver<S, T, E> &&
     ManyReceiver<Up, PT, PE> &&
     FlowNoneReceiver<S, Up, PE, E>

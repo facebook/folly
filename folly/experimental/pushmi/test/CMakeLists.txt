@@ -12,6 +12,10 @@ add_executable(FlowTest FlowTest.cpp)
 target_link_libraries(FlowTest pushmi catch Threads::Threads)
 catch_discover_tests(FlowTest)
 
+add_executable(FlowManyTest FlowManyTest.cpp)
+target_link_libraries(FlowManyTest pushmi catch Threads::Threads)
+catch_discover_tests(FlowManyTest)
+
 add_executable(CompileTest CompileTest.cpp)
 target_link_libraries(CompileTest pushmi catch Threads::Threads)
 # catch_discover_tests(CompileTest)
@@ -34,7 +38,8 @@ add_executable(PushmiTest PushmiTest.cpp
   CompileTest.cpp
   TrampolineTest.cpp
   NewThreadTest.cpp
-  FlowTest.cpp)
+  FlowTest.cpp
+  FlowManyTest.cpp)
 
 target_link_libraries(PushmiTest pushmi catch Threads::Threads)
 catch_discover_tests(PushmiTest)

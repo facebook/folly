@@ -242,10 +242,6 @@ struct shared_entangled : std::shared_ptr<T> {
     std::shared_ptr<T>(p, std::addressof(t)), dual(std::addressof(d)), lock(std::addressof(l)){
   }
   shared_entangled() = delete;
-  shared_entangled(const shared_entangled&) = delete;
-  shared_entangled& operator=(const shared_entangled&) = delete;
-  shared_entangled(shared_entangled&&) = default;
-  shared_entangled& operator=(shared_entangled&&) = default;
 };
 
 template <class First, class Second>
@@ -279,10 +275,6 @@ struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
     this->second = this->e.dual;
   }
   locked_shared_entangled_pair() = delete;
-  locked_shared_entangled_pair(const locked_shared_entangled_pair&) = delete;
-  locked_shared_entangled_pair& operator=(const locked_shared_entangled_pair&) = delete;
-  locked_shared_entangled_pair(locked_shared_entangled_pair&&) = default;
-  locked_shared_entangled_pair& operator=(locked_shared_entangled_pair&&) = default;
 };
 
 

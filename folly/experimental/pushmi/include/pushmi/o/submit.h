@@ -142,6 +142,14 @@ private:
       state_->signaled.notify_all();
     }
   };
+  struct on_next_impl {
+    PUSHMI_TEMPLATE (class Out, class Value)
+      (requires Receiver<Out, is_many<>>)
+    void operator()(Out out, Value&& v) const {
+      using V = remove_cvref_t<Value>;
+      ::pushmi::set_next(out, (Value&&) v);
+    }
+  };
   struct on_error_impl {
     lock_state* state_;
     PUSHMI_TEMPLATE(class Out, class E)
@@ -164,6 +172,18 @@ private:
       state_->signaled.notify_all();
     }
   };
+  template <bool IsTimeSender, class In>
+  struct submit_impl {
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void operator()(In& in, Out out) const {
+      PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
+        id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
+      ) else (
+        id(::pushmi::submit)(in, std::move(out));
+      ))
+    }
+  };
   // TODO - only move, move-only types..
   // if out can be copied, then submit can be called multiple
   // times..
@@ -174,17 +194,26 @@ private:
     template <bool IsTimeSender, class In>
     In impl_(In in) {
       lock_state state{};
-      auto out{::pushmi::detail::receiver_from_fn<In>()(
-        std::move(args_),
-        on_value(on_value_impl{&state}),
-        on_error(on_error_impl{&state}),
-        on_done(on_done_impl{&state})
-      )};
-      PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
-        id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
+
+      auto submit = submit_impl<IsTimeSender, In>{};
+      PUSHMI_IF_CONSTEXPR( ((bool)Many<In>) (
+        auto out{::pushmi::detail::receiver_from_fn<In>()(
+          std::move(args_),
+          on_next(on_next_impl{}),
+          on_error(on_error_impl{&state}),
+          on_done(on_done_impl{&state})
+        )};
+        submit(in, std::move(out));
       ) else (
-        id(::pushmi::submit)(in, std::move(out));
+        auto out{::pushmi::detail::receiver_from_fn<In>()(
+          std::move(args_),
+          on_value(on_value_impl{&state}),
+          on_error(on_error_impl{&state}),
+          on_done(on_done_impl{&state})
+        )};
+        submit(in, std::move(out));
       ))
+
       std::unique_lock<std::mutex> guard{state.lock};
       state.signaled.wait(guard, [&]{
         return state.done;

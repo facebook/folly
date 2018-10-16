@@ -17,6 +17,8 @@
 #include "../time_single_sender.h"
 #include "../flow_single.h"
 #include "../flow_single_sender.h"
+#include "../flow_many.h"
+#include "../flow_many_sender.h"
 #include "../detail/if_constexpr.h"
 #include "../detail/functional.h"
 
@@ -58,6 +60,8 @@ template <>
 struct make_receiver<is_many<>> : construct_deduced<many> {};
 template <>
 struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
+template <>
+struct make_receiver<is_many<>, true> : construct_deduced<flow_many> {};
 
 template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
@@ -161,6 +165,8 @@ template <>
 struct make_sender<is_many<>> : construct_deduced<many_sender> {};
 template <>
 struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_sender> {};
+template <>
+struct make_sender<is_many<>, false, true> : construct_deduced<flow_many_sender> {};
 template <>
 struct make_sender<is_single<>, true, false> : construct_deduced<time_single_sender> {};
 

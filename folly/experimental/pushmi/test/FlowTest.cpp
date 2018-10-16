@@ -204,15 +204,6 @@ SCENARIO("flow single cancellation trampoline", "[flow][sender]") {
   }
 }
 
-// copies the value of the atomic during move. requires external Synchronization
-// to make the copy safe. entangle() provides the needed external
-// Synchronization
-template <class T>
-struct moving_atomic : std::atomic<T> {
-  using std::atomic<T>::atomic;
-  moving_atomic(moving_atomic&& o) : std::atomic<T>(o.load()) {}
-};
-
 SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
