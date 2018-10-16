@@ -11,72 +11,52 @@
 namespace pushmi {
 
 namespace detail {
-
-template<class TP>
-struct any_time_executor_ref_vtable {
-  TP (*now_)(void*);
-  void (*submit_)(void*, TP, void*);
-};
-
-template <class E, class TP, class Other, class Wrapped>
-auto any_time_executor_ref_vtable_v() {
-  static constexpr any_time_executor_ref_vtable<TP> const vtable_v {
-    +[](void* pobj) { return ::pushmi::now(*static_cast<Wrapped*>(pobj)); },
-    +[](void* pobj, TP tp, void* s) {
-      return ::pushmi::submit(
-        *static_cast<Wrapped*>(pobj),
-        tp,
-        std::move(*static_cast<single<Other, E>*>(s)));
-    }
-  };
-  return &vtable_v;
-};
-
-} // namespace detail
-
-template<class E, class TP, int i>
-struct any_time_executor_ref {
+template<class E, class TP>
+struct any_time_executor_ref_base {
 private:
-  // use two instances to resolve recurive type definition.
-  using This = any_time_executor_ref<E, TP, i>;
-  using Other = any_time_executor_ref<E, TP, i == 0 ? 1 : 0>;
+  friend any_time_executor_ref<E, TP, 0>;
+  friend any_time_executor_ref<E, TP, 1>;
+  using Other = any_time_executor_ref<E, TP, 1>;
 
+  void* pobj_;
+  struct vtable {
+    TP (*now_)(void*);
+    void (*submit_)(void*, TP, void*);
+  } const *vptr_;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<
-      !std::is_same_v<U, This> &&
-      !std::is_same_v<U, Other>, U>;
-  void* pobj_;
-  detail::any_time_executor_ref_vtable<TP> const *vptr_;
+    std::enable_if_t<!std::is_base_of<any_time_executor_ref_base, U>::value, U>;
 public:
-  using sender_category = single_tag;
+  using properties = property_set<is_time<>, is_single<>>;
 
-  any_time_executor_ref() = delete;
+  any_time_executor_ref_base() = delete;
+  any_time_executor_ref_base(const any_time_executor_ref_base&) = default;
 
-  template<int n>
-  any_time_executor_ref(any_time_executor_ref<E, TP, n>&& o) :
-    pobj_(o.pobj_), vptr_(o.vptr_) {
-    o.pobj_ = nullptr;
-    o.vptr_ = nullptr;
-  };
-  template<int n>
-  any_time_executor_ref(const any_time_executor_ref<E, TP, n>& o) :
-    pobj_(o.pobj_), vptr_(o.vptr_) {};
-
-  template <class Wrapped, TimeSender<single_tag> W = wrapped_t<Wrapped>>
-    // requires TimeSenderTo<W, single<Other, E>>
-  any_time_executor_ref(Wrapped& w) {
+  PUSHMI_TEMPLATE (class Wrapped)
+    (requires TimeSender<wrapped_t<Wrapped>, is_single<>>)
+    // (requires TimeSenderTo<wrapped_t<Wrapped>, single<Other, E>>)
+  any_time_executor_ref_base(Wrapped& w) {
     // This can't be a requirement because it asks if submit(w, now(w), single<T,E>)
     // is well-formed (where T is an alias for any_time_executor_ref). If w
     // has a submit that is constrained with SingleReceiver<single<T, E>, T'&, E'>, that
     // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
-   static_assert(TimeSenderTo<W, single<Other, E>>);
-   if constexpr((bool)TimeSenderTo<W, single<Other, E>>) {
-      pobj_ = std::addressof(w);
-      vptr_ = detail::any_time_executor_ref_vtable_v<E, TP, Other, Wrapped>();
-   }
+    static_assert(TimeSenderTo<Wrapped, single<Other, E>>);
+    struct s {
+      static TP now(void* pobj) {
+        return ::pushmi::now(*static_cast<Wrapped*>(pobj));
+      }
+      static void submit(void* pobj, TP tp, void* s) {
+        return ::pushmi::submit(
+          *static_cast<Wrapped*>(pobj),
+          tp,
+          std::move(*static_cast<single<Other, E>*>(s)));
+      }
+    };
+    static const vtable vtbl{s::now, s::submit};
+    pobj_ = std::addressof(w);
+    vptr_ = &vtbl;
   }
   std::chrono::system_clock::time_point now() {
     return vptr_->now_(pobj_);
@@ -90,14 +70,45 @@ public:
     vptr_->submit_(pobj_, tp, &s);
   }
 };
+} // namespace detail
 
-using archtype_any_time_executor_ref = any_time_executor_ref<std::exception_ptr, std::chrono::system_clock::time_point, 0>;
+template<class E, class TP, int i>
+struct any_time_executor_ref : detail::any_time_executor_ref_base<E, TP> {
+  using detail::any_time_executor_ref_base<E, TP>::any_time_executor_ref_base;
+  any_time_executor_ref(const detail::any_time_executor_ref_base<E, TP>& o)
+    : detail::any_time_executor_ref_base<E, TP>(o) {}
+};
 
-template <class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point>
-any_time_executor_ref()->any_time_executor_ref<E, TP, 0>;
+////////////////////////////////////////////////////////////////////////////////
+// make_any_time_executor_ref
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point>
+auto make_any_time_executor_ref() -> any_time_executor_ref<E, TP> {
+  return any_time_executor_ref<E, TP, 0>{};
+}
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point,
+    class Wrapped>
+auto make_any_time_executor_ref(Wrapped w) -> any_time_executor_ref<E, TP> {
+  return any_time_executor_ref<E, TP, 0>{std::move(w)};
+}
 
-template <class Wrapped, class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point>
-any_time_executor_ref(Wrapped)->any_time_executor_ref<E, TP, 0>;
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_time_executor_ref() ->
+    any_time_executor_ref<
+        std::exception_ptr,
+        std::chrono::system_clock::time_point>;
+
+template <class Wrapped>
+any_time_executor_ref(Wrapped) ->
+    any_time_executor_ref<
+        std::exception_ptr,
+        std::chrono::system_clock::time_point>;
+#endif
 
 template<class E, class TP>
 struct any_time_executor :
@@ -107,10 +118,36 @@ struct any_time_executor :
     any_time_single_deferred;
 };
 
-template <class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point>
-any_time_executor()->any_time_executor<E, TP>;
+////////////////////////////////////////////////////////////////////////////////
+// make_any_time_executor
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point>
+auto make_any_time_executor() -> any_time_executor<E, TP> {
+  return any_time_executor<E, TP>{};
+}
 
-template <class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point, class Wrapped>
-any_time_executor(Wrapped)->any_time_executor<E, TP>;
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point,
+    class Wrapped>
+auto make_any_time_executor(Wrapped w) -> any_time_executor<E, TP> {
+  return any_time_executor<E, TP>{std::move(w)};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
+any_time_executor() ->
+    any_time_executor<
+        std::exception_ptr,
+        std::chrono::system_clock::time_point>;
+
+template <class Wrapped>
+any_time_executor(Wrapped) ->
+    any_time_executor<
+        std::exception_ptr, 
+        std::chrono::system_clock::time_point>;
+#endif
 
 } // namespace pushmi

@@ -20,13 +20,14 @@ using namespace std::literals;
 
 using namespace pushmi::aliases;
 
+
 SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
 
   GIVEN( "An empty deferred" ) {
     auto e = op::empty();
     using E = decltype(e);
 
-    REQUIRE( v::SenderTo<E, v::any_none<>, v::none_tag> );
+    REQUIRE( v::SenderTo<E, v::any_none<>, v::is_none<>> );
 
     WHEN( "tap and submit are applied" ) {
       int signals = 0;
@@ -46,7 +47,7 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
         v::future_from(e).get();
 
         THEN( "future_from(e) returns std::future<void>" ) {
-          REQUIRE( std::is_same_v<std::future<void>, decltype(v::future_from(e))> );
+          REQUIRE( std::is_same<std::future<void>, decltype(v::future_from(e))>::value );
         }
       }
     }
@@ -56,9 +57,10 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
     auto e = op::empty<int>();
     using E = decltype(e);
 
-    REQUIRE( v::SenderTo<E, v::any_single<int>, v::single_tag> );
+    REQUIRE( v::SenderTo<E, v::any_single<int>, v::is_single<>> );
 
     WHEN( "tap and submit are applied" ) {
+      
       int signals = 0;
       e |
         op::tap(
@@ -83,7 +85,7 @@ SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
     auto j = op::just(20);
     using J = decltype(j);
 
-    REQUIRE( v::SenderTo<J, v::any_single<int>, v::single_tag> );
+    REQUIRE( v::SenderTo<J, v::any_single<int>, v::is_single<>> );
 
     WHEN( "transform and submit are applied" ) {
       int signals = 0;
@@ -110,7 +112,7 @@ SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
 
       THEN( "the value signal is recorded once and the result is correct" ) {
         REQUIRE( twenty == 20 );
-        REQUIRE( std::is_same_v<std::future<int>, decltype(v::future_from<int>(j))> );
+        REQUIRE( std::is_same<std::future<int>, decltype(v::future_from<int>(j))>::value );
       }
     }
   }

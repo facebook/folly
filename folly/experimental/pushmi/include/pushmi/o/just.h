@@ -6,18 +6,22 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../single.h"
+#include "../single_deferred.h"
 
 namespace pushmi {
 
 namespace operators {
 
-template <class V>
+PUSHMI_TEMPLATE(class V)
+  (requires SemiMovable<V>)
 auto just(V v) {
-  return single_deferred{[v = std::move(v)]<class Out>(
-      Out out) mutable PUSHMI_VOID_LAMBDA_REQUIRES(SingleReceiver<Out, V>){
-      ::pushmi::set_value(out, std::move(v));
-  }};
+  return make_single_deferred(
+    constrain(lazy::SingleReceiver<_1, V>,
+      [v = std::move(v)](auto out) mutable {
+        ::pushmi::set_value(out, std::move(v));
+      }
+    )
+  );
 }
 
 } // namespace operators

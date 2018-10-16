@@ -83,13 +83,13 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
       auto push = [&](int time) {
         return v::on_value([&, time](auto) { times.push_back(std::to_string(time)); });
       };
-      tr | op::submit(v::on_value{[push](auto tr) {
+      tr | op::submit(v::on_value([push](auto tr) {
         tr |
             op::submit_after(40ms, push(40)) |
             op::submit_after(10ms, push(10)) |
             op::submit_after(20ms, push(20)) |
             op::submit_after(10ms, push(11));
-      }});
+      }));
 
       THEN( "the items were pushed in time order not insertion order" ) {
         REQUIRE( times == std::vector<std::string>{"10", "11", "20", "40"});
@@ -111,8 +111,8 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
 
     WHEN( "virtual derecursion is triggered" ) {
       int counter = 100'000;
-      std::function<void(pushmi::archtype_any_time_executor_ref exec)> recurse;
-      recurse = [&](pushmi::archtype_any_time_executor_ref tr) {
+      std::function<void(pushmi::any_time_executor_ref<> exec)> recurse;
+      recurse = [&](pushmi::any_time_executor_ref<> tr) {
         if (--counter <= 0)
           return;
         tr | op::submit(recurse);
@@ -135,7 +135,7 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
 
     WHEN( "used with on" ) {
       std::vector<std::string> values;
-      auto deferred = pushmi::single_deferred([](auto out) {
+      auto deferred = pushmi::make_single_deferred([](auto out) {
         ::pushmi::set_value(out, 2.0);
         // ignored
         ::pushmi::set_value(out, 1);
@@ -143,7 +143,7 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       deferred | op::on([&](){return tr;}) |
-          op::submit(v::on_value{[&](auto v) { values.push_back(std::to_string(v)); }});
+          op::submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
       }
@@ -151,7 +151,7 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
 
     WHEN( "used with via" ) {
       std::vector<std::string> values;
-      auto deferred = pushmi::single_deferred([](auto out) {
+      auto deferred = pushmi::make_single_deferred([](auto out) {
         ::pushmi::set_value(out, 2.0);
         // ignored
         ::pushmi::set_value(out, 1);
@@ -159,7 +159,7 @@ SCENARIO( "trampoline executor", "[trampoline][deferred]" ) {
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       deferred | op::via([&](){return tr;}) |
-          op::submit(v::on_value{[&](auto v) { values.push_back(std::to_string(v)); }});
+          op::submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
       }

@@ -4,6 +4,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+#include <algorithm>
 #include <chrono>
 #include <deque>
 #include <thread>
@@ -17,10 +18,8 @@ constexpr const recurse_t recurse{};
 
 namespace detail {
 
-struct ownordelegate_t {};
-constexpr const ownordelegate_t ownordelegate{};
-struct ownornest_t {};
-constexpr const ownornest_t ownornest{};
+PUSHMI_INLINE_VAR constexpr struct ownordelegate_t {} const ownordelegate {};
+PUSHMI_INLINE_VAR constexpr struct ownornest_t {} const ownornest {};
 
 class trampoline_id {
   std::thread::id threadid;
@@ -33,6 +32,45 @@ class trampoline_id {
 };
 
 template <class E = std::exception_ptr>
+class trampoline;
+
+template <class E = std::exception_ptr>
+class delegator {
+  using time_point = typename trampoline<E>::time_point;
+
+ public:
+  using properties = property_set<is_time<>, is_single<>>;
+
+  time_point now() {
+    return trampoline<E>::now();
+  }
+
+  PUSHMI_TEMPLATE (class SingleReceiver)
+    (requires Receiver<remove_cvref_t<SingleReceiver>, is_single<>>)
+  void submit(time_point when, SingleReceiver&& what) {
+    trampoline<E>::submit(
+        ownordelegate, when, std::forward<SingleReceiver>(what));
+  }
+};
+
+template <class E = std::exception_ptr>
+class nester {
+  using time_point = typename trampoline<E>::time_point;
+
+ public:
+  using properties = property_set<is_time<>, is_single<>>;
+
+  time_point now() {
+    return trampoline<E>::now();
+  }
+
+  template <class SingleReceiver>
+  void submit(time_point when, SingleReceiver&& what) {
+    trampoline<E>::submit(ownornest, when, std::forward<SingleReceiver>(what));
+  }
+};
+
+template <class E>
 class trampoline {
  public:
   using time_point = std::chrono::system_clock::time_point;
@@ -82,171 +120,115 @@ class trampoline {
     next(*owner()) = awhen;
   }
 
-  template <class SingleReceiver>
-    requires !Same<SingleReceiver, recurse_t>
-  static void submit(ownordelegate_t, time_point awhen, SingleReceiver awhat);
+  PUSHMI_TEMPLATE (class SingleReceiver)
+    (requires not Same<SingleReceiver, recurse_t>)
+  static void submit(ownordelegate_t, time_point awhen, SingleReceiver awhat) {
+    delegator<E> that;
 
-  template <class SingleReceiver>
-    requires !Same<SingleReceiver, recurse_t>
-  static void submit(ownornest_t, time_point awhen, SingleReceiver awhat);
-};
+    if (is_owned()) {
+      // thread already owned
 
-template <class E = std::exception_ptr>
-class delegator {
-  using time_point = typename trampoline<E>::time_point;
+      // poor mans scope guard
+      try {
+        if (++depth(*owner()) > 100 || awhen > trampoline<E>::now()) {
+          // defer work to owner
+          pending(*owner()).push_back(
+              std::make_tuple(awhen, work_type{std::move(awhat)}));
+        } else {
+          // dynamic recursion - optimization to balance queueing and
+          // stack usage and value interleaving on the same thread.
+          ::pushmi::set_value(awhat, that);
+        }
+      } catch(...) {
+        --depth(*owner());
+        throw;
+      }
+      --depth(*owner());
+      return;
+    }
 
- public:
-  using sender_category = single_tag;
+    // take over the thread
 
-  time_point now() {
-    return trampoline<E>::now();
-  }
-
-  template <class SingleReceiver>
-    requires Receiver<std::remove_cvref_t<SingleReceiver>, single_tag>
-  void submit(time_point when, SingleReceiver&& what) {
-    trampoline<E>::submit(
-        ownordelegate, when, std::forward<SingleReceiver>(what));
-  }
-};
-
-template <class E = std::exception_ptr>
-class nester {
-  using time_point = typename trampoline<E>::time_point;
-
- public:
-  using sender_category = single_tag;
-
-  time_point now() {
-    return trampoline<E>::now();
-  }
-
-  template <class SingleReceiver>
-  void submit(time_point when, SingleReceiver&& what) {
-    trampoline<E>::submit(ownornest, when, std::forward<SingleReceiver>(what));
-  }
-};
-
-template <class E>
-template <class SingleReceiver>
-  requires !Same<SingleReceiver, recurse_t>
-// static
-void trampoline<E>::submit(
-    ownordelegate_t,
-    time_point awhen,
-    SingleReceiver awhat) {
-
-  delegator<E> that;
-
-  if (is_owned()) {
-    // thread already owned
-
+    pending_type pending_store;
+    owner() = &pending_store;
+    depth(pending_store) = 0;
     // poor mans scope guard
     try {
-      if (++depth(*owner()) > 100 || awhen > trampoline<E>::now()) {
-        // defer work to owner
-        pending(*owner()).push_back(
-            std::make_tuple(awhen, work_type{std::move(awhat)}));
-      } else {
-        // dynamic recursion - optimization to balance queueing and
-        // stack usage and value interleaving on the same thread.
-        ::pushmi::set_value(awhat, that);
+      trampoline<E>::submit(ownornest, awhen, std::move(awhat));
+    } catch(...) {
+
+      // ignore exceptions while delivering the exception
+      try {
+        ::pushmi::set_error(awhat, std::current_exception());
+        for (auto& item : pending(pending_store)) {
+          auto& what = std::get<1>(item);
+          ::pushmi::set_error(what, std::current_exception());
+        }
+      } catch (...) {
       }
-    } catch(...){
-      --depth(*owner());
+      pending(pending_store).clear();
+
+      if(!is_owned()) { std::abort(); }
+      if(!pending(pending_store).empty()) { std::abort(); }
+      owner() = nullptr;
       throw;
     }
-    --depth(*owner());
-    return;
-  }
-
-  // take over the thread
-
-  pending_type pending_store;
-  owner() = &pending_store;
-  depth(pending_store) = 0;
-  // poor mans scope guard
-  try {
-    trampoline<E>::submit(ownornest, awhen, std::move(awhat));
-  } catch(...) {
-
-    // ignore exceptions while delivering the exception
-    try {
-      ::pushmi::set_error(awhat, std::current_exception());
-      for (auto& item : pending(pending_store)) {
-        auto& what = std::get<1>(item);
-        ::pushmi::set_error(what, std::current_exception());
-      }
-    } catch (...) {
-    }
-    pending(pending_store).clear();
-
     if(!is_owned()) { std::abort(); }
     if(!pending(pending_store).empty()) { std::abort(); }
     owner() = nullptr;
-    throw;
   }
-  if(!is_owned()) { std::abort(); }
-  if(!pending(pending_store).empty()) { std::abort(); }
-  owner() = nullptr;
-}
 
-template <class E>
-template <class SingleReceiver>
-  requires !Same<SingleReceiver, recurse_t>
-// static
-void trampoline<E>::submit(
-    ownornest_t,
-    time_point awhen,
-    SingleReceiver awhat) {
-
+  PUSHMI_TEMPLATE (class SingleReceiver)
+    (requires not Same<SingleReceiver, recurse_t>)
+  static void submit(ownornest_t, time_point awhen, SingleReceiver awhat) {
     delegator<E> that;
 
-  if (!is_owned()) {
-    trampoline<E>::submit(ownordelegate, awhen, std::move(awhat));
-    return;
-  }
-
-  auto& pending_store = *owner();
-
-  // static recursion - tail call optimization
-  if (pending(pending_store).empty()) {
-    auto when = awhen;
-    while (when != time_point{}) {
-      if (when > trampoline<E>::now()) {
-        std::this_thread::sleep_until(when);
-      }
-      next(pending_store) = time_point{};
-      ::pushmi::set_value(awhat, that);
-      when = next(pending_store);
+    if (!is_owned()) {
+      trampoline<E>::submit(ownordelegate, awhen, std::move(awhat));
+      return;
     }
-  } else {
-    // ensure work is sorted by time
-    pending(pending_store)
-        .push_back(std::make_tuple(awhen, work_type{std::move(awhat)}));
-  }
 
-  if (pending(pending_store).empty()) {
-    return;
-  }
+    auto& pending_store = *owner();
 
-  while (!pending(pending_store).empty()) {
-    std::stable_sort(
-        pending(pending_store).begin(),
-        pending(pending_store).end(),
-        [](auto& lhs, auto& rhs) {
-          auto& lwhen = std::get<0>(lhs);
-          auto& rwhen = std::get<0>(rhs);
-          return lwhen < rwhen;
-        });
-    auto item = std::move(pending(pending_store).front());
-    pending(pending_store).pop_front();
-    auto& when = std::get<0>(item);
-    auto& what = std::get<1>(item);
-    any_time_executor_ref<error_type, time_point> anythis{that};
-    ::pushmi::set_value(what, anythis);
+    // static recursion - tail call optimization
+    if (pending(pending_store).empty()) {
+      auto when = awhen;
+      while (when != time_point{}) {
+        if (when > trampoline<E>::now()) {
+          std::this_thread::sleep_until(when);
+        }
+        next(pending_store) = time_point{};
+        ::pushmi::set_value(awhat, that);
+        when = next(pending_store);
+      }
+    } else {
+      // ensure work is sorted by time
+      pending(pending_store)
+          .push_back(std::make_tuple(awhen, work_type{std::move(awhat)}));
+    }
+
+    if (pending(pending_store).empty()) {
+      return;
+    }
+
+    while (!pending(pending_store).empty()) {
+      std::stable_sort(
+          pending(pending_store).begin(),
+          pending(pending_store).end(),
+          [](auto& lhs, auto& rhs) {
+            auto& lwhen = std::get<0>(lhs);
+            auto& rwhen = std::get<0>(rhs);
+            return lwhen < rwhen;
+          });
+      auto item = std::move(pending(pending_store).front());
+      pending(pending_store).pop_front();
+      auto& when = std::get<0>(item);
+      auto& what = std::get<1>(item);
+      any_time_executor_ref<error_type, time_point> anythis{that};
+      ::pushmi::set_value(what, anythis);
+    }
   }
-}
+};
 
 } // namespace detail
 
@@ -272,8 +254,8 @@ inline detail::nester<E> nested_trampoline() {
 
 namespace detail {
 
-template <class E>
-  requires TimeSenderTo<delegator<E>, recurse_t>
+PUSHMI_TEMPLATE (class E)
+  (requires TimeSenderTo<delegator<E>, recurse_t>)
 decltype(auto) repeat(delegator<E>& exec) {
   ::pushmi::submit(exec, ::pushmi::now(exec), recurse);
 }

@@ -20,44 +20,63 @@ class deferred<detail::erase_deferred_t, E> {
   template <class Wrapped>
   static constexpr bool insitu() {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible_v<Wrapped>;
+        std::is_nothrow_move_constructible<Wrapped>::value;
   }
   struct vtable {
-    void (*op_)(data&, data*) = +[](data&, data*) {};
-    void (*submit_)(data&, any_none<E>) = +[](data&, any_none<E>) {};
-    static constexpr vtable const noop_ = {};
+    static void s_op(data&, data*) {}
+    static void s_submit(data&, any_none<E>) {}
+    void (*op_)(data&, data*) = s_op;
+    void (*submit_)(data&, any_none<E>) = s_submit;
+    static constexpr vtable const noop_{};
   } const* vptr_ = &vtable::noop_;
-  template <class Wrapped, bool = insitu<Wrapped>()>
-  static constexpr vtable const vtable_v = {
-      +[](data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      },
-      +[](data& src, any_none<E> out) {
-        ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
-      }
-  };
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same_v<U, deferred>, U>;
+    std::enable_if_t<!std::is_same<U, deferred>::value, U>;
  public:
-  using sender_category = none_tag;
+  using properties = property_set<is_sender<>, is_none<>>;
 
   deferred() = default;
   deferred(deferred&& that) noexcept : deferred() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
-  template <class Wrapped>
-      requires SenderTo<wrapped_t<Wrapped>, any_none<E>, none_tag>
-  explicit deferred(Wrapped obj)
-      : deferred() {
-    if constexpr (insitu<Wrapped>())
-      new (data_.buffer_) Wrapped(std::move(obj));
-    else
-      data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ = &vtable_v<Wrapped>;
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>
+      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
+  explicit deferred(Wrapped obj) : deferred() {
+    struct s {
+      static void op(data& src, data* dst) {
+        if (dst)
+          dst->pobj_ = std::exchange(src.pobj_, nullptr);
+        delete static_cast<Wrapped const*>(src.pobj_);
+      }
+      static void submit(data& src, any_none<E> out) {
+        ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
+      }
+    };
+    static const vtable vtbl{s::op, s::submit};
+    data_.pobj_ = new Wrapped(std::move(obj));
+    vptr_ = &vtbl;
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>
+      && insitu<Wrapped>())
+  explicit deferred(Wrapped obj) noexcept : deferred() {
+    struct s {
+      static void op(data& src, data* dst) {
+        if (dst)
+          new (dst->buffer_) Wrapped(
+              std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
+        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
+      }
+      static void submit(data& src, any_none<E> out) {
+        ::pushmi::submit(
+            *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
+      }
+    };
+    static const vtable vtbl{s::op, s::submit};
+    new (data_.buffer_) Wrapped(std::move(obj));
+    vptr_ = &vtbl;
   }
   ~deferred() {
     vptr_->op_(data_, nullptr);
@@ -76,49 +95,32 @@ class deferred<detail::erase_deferred_t, E> {
 template <class E>
 constexpr typename deferred<detail::erase_deferred_t, E>::vtable const
     deferred<detail::erase_deferred_t, E>::vtable::noop_;
-template <class E>
-template <class Wrapped, bool Big>
-constexpr typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::vtable_v;
-template <class E>
-template <class Wrapped>
-constexpr typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::vtable_v<Wrapped, true> = {
-        +[](data& src, data* dst) {
-          if (dst)
-            new (dst->buffer_) Wrapped(
-                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-        },
-        +[](data& src, any_none<E> out) {
-          ::pushmi::submit(
-              *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
-        }
-    };
 
 template <class SF>
 class deferred<SF> {
-  SF sf_;
+  SF sf_{};
 
  public:
-  using sender_category = none_tag;
+  using properties = property_set<is_sender<>, is_none<>>;
 
   constexpr deferred() = default;
   constexpr explicit deferred(SF sf) : sf_(std::move(sf)) {}
-  template <Receiver<none_tag> Out>
-    requires Invocable<SF&, Out>
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out, is_none<>> && Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
   }
 };
 
-template <Sender<none_tag> Data, class DSF>
+template <PUSHMI_TYPE_CONSTRAINT(Sender<is_none<>>) Data, class DSF>
 class deferred<Data, DSF> {
-  Data data_;
-  DSF sf_;
+  Data data_{};
+  DSF sf_{};
+  static_assert(Sender<Data, is_none<>>, "The Data template parameter "
+    "must satisfy the Sender concept.");
 
  public:
-  using sender_category = none_tag;
+  using properties = property_set<is_sender<>, is_none<>>;
 
   constexpr deferred() = default;
   constexpr explicit deferred(Data data)
@@ -126,35 +128,62 @@ class deferred<Data, DSF> {
   constexpr deferred(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
-  template <Receiver<none_tag> Out>
-    requires Invocable<DSF&, Data&, Out>
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out, is_none<>> && Invocable<DSF&, Data&, Out>)
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// make_deferred
+inline auto make_deferred() -> deferred<ignoreSF> {
+  return deferred<ignoreSF>{};
+}
+template <class SF>
+auto make_deferred(SF sf) -> deferred<SF> {
+  return deferred<SF>{std::move(sf)};
+}
+PUSHMI_TEMPLATE(class Wrapped)
+  (requires Sender<Wrapped, is_none<>>)
+auto make_deferred(Wrapped w) ->
+    deferred<detail::erase_deferred_t, std::exception_ptr> {
+  return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
+}
+PUSHMI_TEMPLATE(class Data, class DSF)
+  (requires Sender<Data, is_none<>>)
+auto make_deferred(Data data, DSF sf) -> deferred<Data, DSF> {
+  return deferred<Data, DSF>{std::move(data), std::move(sf)};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
 deferred() -> deferred<ignoreSF>;
 
 template <class SF>
 deferred(SF) -> deferred<SF>;
 
-template <Sender<none_tag> Wrapped>
+PUSHMI_TEMPLATE(class Wrapped)
+  (requires Sender<Wrapped, is_none<>>)
 deferred(Wrapped) ->
     deferred<detail::erase_deferred_t, std::exception_ptr>;
 
-template <Sender<none_tag> Data, class DSF>
+PUSHMI_TEMPLATE(class Data, class DSF)
+  (requires Sender<Data, is_none<>>)
 deferred(Data, DSF) -> deferred<Data, DSF>;
+#endif
 
 template <class E = std::exception_ptr>
 using any_deferred = deferred<detail::erase_deferred_t, E>;
 
-// template <SenderTo<any_none<std::exception_ptr>, none_tag> Wrapped>
+// template <SenderTo<any_none<std::exception_ptr>, is_none<>> Wrapped>
 // auto erase_cast(Wrapped w) {
 //   return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
 // }
 //
-// template <class E, SenderTo<any_none<E>, none_tag> Wrapped>
-//   requires Same<none_tag, sender_category_t<Wrapped>>
+// template <class E, SenderTo<any_none<E>, is_none<>> Wrapped>
+//   requires Same<is_none<>, properties_t<Wrapped>>
 // auto erase_cast(Wrapped w) {
 //   return deferred<detail::erase_deferred_t, E>{std::move(w)};
 // }

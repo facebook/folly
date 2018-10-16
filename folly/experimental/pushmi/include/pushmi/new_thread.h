@@ -13,22 +13,20 @@ namespace pushmi {
 //
 
 struct __new_thread_submit {
-  template<Regular TP, Receiver Out>
-  void operator()(TP at, Out out) const;
+  PUSHMI_TEMPLATE(class TP, class Out)
+    (requires Regular<TP> && Receiver<Out>)
+  void operator()(TP at, Out out) const {
+    std::thread t{[at = std::move(at), out = std::move(out)]() mutable {
+      auto tr = trampoline();
+      ::pushmi::submit(tr, std::move(at), std::move(out));
+    }};
+    // pass ownership of thread to out
+    t.detach();
+  }
 };
 
-template<Regular TP, Receiver Out>
-void __new_thread_submit::operator()(TP at, Out out) const {
-  std::thread t{[at = std::move(at), out = std::move(out)]() mutable {
-    auto tr = trampoline();
-    ::pushmi::submit(tr, std::move(at), std::move(out));
-  }};
-  // pass ownership of thread to out
-  t.detach();
-}
-
 inline auto new_thread() {
-  return time_single_deferred{__new_thread_submit{}};
+  return make_time_single_deferred(__new_thread_submit{});
 }
 
 }

@@ -7,28 +7,33 @@
 // LICENSE file in the root directory of this source tree.
 
 #include <functional>
-#include "../single.h"
+#include "../time_single_deferred.h"
 #include "../boosters.h"
 #include "extension_operators.h"
 #include "../trampoline.h"
+#include "../detail/opt.h"
+#include "../detail/if_constexpr.h"
 
 namespace pushmi {
-
-namespace operators {
-
 namespace detail {
-
-template <Sender In, class ...AN>
+namespace submit_detail {
+template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class ...AN>
 using receiver_type_t =
-    std::invoke_result_t<
-        pushmi::detail::make_receiver<sender_category_t<In>>,
+    pushmi::invoke_result_t<
+        pushmi::detail::make_receiver<property_set_index_t<properties_t<In>, is_silent<>>>,
         AN...>;
 
-template <class In, class ... AN>
-concept bool AutoSenderTo = SenderTo<In, receiver_type_t<In, AN...>>;
-
-template <class In, class ... AN>
-concept bool AutoTimeSenderTo = TimeSenderTo<In, receiver_type_t<In, AN...>>;
+PUSHMI_CONCEPT_DEF(
+  template (class In, class ... AN)
+  (concept AutoSenderTo)(In, AN...),
+    SenderTo<In, receiver_type_t<In, AN...>>
+);
+PUSHMI_CONCEPT_DEF(
+  template (class In, class ... AN)
+  (concept AutoTimeSenderTo)(In, AN...),
+    TimeSenderTo<In, receiver_type_t<In, AN...>>
+);
+} // namespace submit_detail
 
 struct submit_fn {
 private:
@@ -38,13 +43,15 @@ private:
   template <class... AN>
   struct fn {
     std::tuple<AN...> args_;
-    template <AutoSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
       auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(out));
       return in;
     }
-    template <AutoTimeSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
       auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
@@ -60,11 +67,12 @@ public:
 
 struct submit_at_fn {
 private:
-  template <Regular TP, class... AN>
+  template <class TP, class...AN>
   struct fn {
     TP at_;
     std::tuple<AN...> args_;
-    template <AutoTimeSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
       auto out{::pushmi::detail::out_from_fn<In>()(std::move(args_))};
       ::pushmi::submit(in, std::move(at_), std::move(out));
@@ -72,7 +80,8 @@ private:
     }
   };
 public:
-  template <Regular TP, class... AN>
+  PUSHMI_TEMPLATE(class TP, class...AN)
+    (requires Regular<TP>)
   auto operator()(TP at, AN... an) const {
     return submit_at_fn::fn<TP, AN...>{std::move(at), {(AN&&) an...}};
   }
@@ -80,11 +89,12 @@ public:
 
 struct submit_after_fn {
 private:
-  template <Regular D, class... AN>
+  template <class D, class... AN>
   struct fn {
     D after_;
     std::tuple<AN...> args_;
-    template <AutoTimeSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
@@ -96,7 +106,8 @@ private:
     }
   };
 public:
-  template <Regular D, class... AN>
+  PUSHMI_TEMPLATE(class D, class...AN)
+    (requires Regular<D>)
   auto operator()(D after, AN... an) const {
     return submit_after_fn::fn<D, AN...>{std::move(after), {(AN&&) an...}};
   }
@@ -117,48 +128,57 @@ private:
       std::condition_variable signaled;
       auto out{::pushmi::detail::out_from_fn<In>()(
         std::move(args_),
-        on_value{[&]<class Out, class V>(Out out, V&& v){
-          if constexpr ((bool)TimeSender<std::remove_cvref_t<V>>) {
-            // to keep the blocking semantics, make sure that the
-            // nested submits block here to prevent a spurious
-            // completion signal
-            auto nest = ::pushmi::nested_trampoline();
-            ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
-          } else {
-            ::pushmi::set_value(out, (V&&) v);
+        on_value(constrain(pushmi::lazy::Receiver<_1, is_single<>>,
+          [&](auto out, auto&& v) {
+            using V = remove_cvref_t<decltype(v)>;
+            PUSHMI_IF_CONSTEXPR( ((bool)Time<V>) (
+              // to keep the blocking semantics, make sure that the
+              // nested submits block here to prevent a spurious
+              // completion signal
+              auto nest = ::pushmi::nested_trampoline();
+              ::pushmi::submit(nest, ::pushmi::now(nest), std::move(out));
+            ) else (
+              ::pushmi::set_value(out, id((V&&) v));
+            ))
+            done = true;
+            signaled.notify_all();
           }
-          done = true;
-          signaled.notify_all();
-        }},
-        on_error{[&](auto out, auto e) noexcept {
-          ::pushmi::set_error(out, std::move(e));
-          done = true;
-          signaled.notify_all();
-        }},
-        on_done{[&](auto out){
-          ::pushmi::set_done(out);
-          done = true;
-          signaled.notify_all();
-        }}
+        )),
+        on_error(constrain(pushmi::lazy::NoneReceiver<_1, _2>,
+          [&](auto out, auto e) noexcept {
+            ::pushmi::set_error(out, std::move(e));
+            done = true;
+            signaled.notify_all();
+          }
+        )),
+        on_done(constrain(pushmi::lazy::Receiver<_1>,
+          [&](auto out){
+            ::pushmi::set_done(out);
+            done = true;
+            signaled.notify_all();
+          }
+        ))
       )};
-      if constexpr (IsTimeSender) {
-        ::pushmi::submit(in, ::pushmi::now(in), std::move(out));
-      } else {
-        ::pushmi::submit(in, std::move(out));
-      }
+      PUSHMI_IF_CONSTEXPR( (IsTimeSender) (
+        id(::pushmi::submit)(in, id(::pushmi::now)(in), std::move(out));
+      ) else (
+        id(::pushmi::submit)(in, std::move(out));
+      ))
       std::mutex lock;
       std::unique_lock<std::mutex> guard{lock};
-      signaled.wait(guard, [&](){
+      signaled.wait(guard, [&]{
         return done;
       });
       return in;
     }
 
-    template <AutoSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
       return this->impl_<false>(std::move(in));
     }
-    template <AutoTimeSenderTo<AN...> In>
+    PUSHMI_TEMPLATE(class In)
+      (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
       return this->impl_<true>(std::move(in));
     }
@@ -173,19 +193,20 @@ public:
 template <class T>
 struct get_fn {
   // TODO constrain this better
-  template <Sender In>
+  PUSHMI_TEMPLATE (class In)
+    (requires Sender<In>)
   T operator()(In in) const {
-    std::optional<T> result_;
+    pushmi::detail::opt<T> result_;
     std::exception_ptr ep_;
-    auto out = single{
-      on_value{[&](T t){ result_ = std::move(t); }},
-      on_error{
+    auto out = make_single(
+      on_value([&](T t){ result_ = std::move(t); }),
+      on_error(
         [&](auto e) noexcept { ep_ = std::make_exception_ptr(e); },
-        [&](std::exception_ptr ep) noexcept { ep_ = ep; }}
-    };
+        [&](std::exception_ptr ep) noexcept { ep_ = ep; })
+    );
     using Out = decltype(out);
-    static_assert(SenderTo<In, Out, single_tag> ||
-        TimeSenderTo<In, Out, single_tag>,
+    static_assert(SenderTo<In, Out, is_single<>> ||
+        TimeSenderTo<In, Out, is_single<>>,
         "'In' does not deliver value compatible with 'T' to 'Out'");
     blocking_submit_fn{}(std::move(out))(in);
     if (!!ep_) { std::rethrow_exception(ep_); }
@@ -195,13 +216,13 @@ struct get_fn {
 
 } // namespace detail
 
-inline constexpr detail::submit_fn submit{};
-inline constexpr detail::submit_at_fn submit_at{};
-inline constexpr detail::submit_after_fn submit_after{};
-inline constexpr detail::blocking_submit_fn blocking_submit{};
+namespace operators {
+PUSHMI_INLINE_VAR constexpr detail::submit_fn submit{};
+PUSHMI_INLINE_VAR constexpr detail::submit_at_fn submit_at{};
+PUSHMI_INLINE_VAR constexpr detail::submit_after_fn submit_after{};
+PUSHMI_INLINE_VAR constexpr detail::blocking_submit_fn blocking_submit{};
 template <class T>
-inline constexpr detail::get_fn<T> get{};
-
+PUSHMI_INLINE_VAR constexpr detail::get_fn<T> get{};
 } // namespace operators
 
 } // namespace pushmi

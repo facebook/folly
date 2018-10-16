@@ -19,45 +19,97 @@ class single<V, E> {
   template <class Wrapped>
   static constexpr bool insitu() {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
-        std::is_nothrow_move_constructible_v<Wrapped>;
+        std::is_nothrow_move_constructible<Wrapped>::value;
   }
   struct vtable {
-    void (*op_)(data&, data*) = +[](data&, data*) {};
-    void (*done_)(data&) = +[](data&) {};
-    void (*error_)(data&, E) noexcept = +[](data&, E) noexcept {
-      std::terminate();
-    };
-    void (*rvalue_)(data&, V&&) = +[](data&, V&&) {};
-    void (*lvalue_)(data&, V&) = +[](data&, V&) {};
+    static void s_op(data&, data*) {}
+    static void s_done(data&) {}
+    static void s_error(data&, E) noexcept { std::terminate(); }
+    static void s_rvalue(data&, V&&) {}
+    static void s_lvalue(data&, V&) {}
+    void (*op_)(data&, data*) = s_op;
+    void (*done_)(data&) = s_done;
+    void (*error_)(data&, E) noexcept = s_error;
+    void (*rvalue_)(data&, V&&) = s_rvalue;
+    void (*lvalue_)(data&, V&) = s_lvalue;
     static constexpr vtable const noop_ = {};
   } const* vptr_ = &vtable::noop_;
-  template <class Wrapped>
-  static constexpr vtable vtable_v() noexcept;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same_v<U, single>, U>;
-public:
-  using receiver_category = single_tag;
-
-  single() = default;
-  single(single&& that) noexcept : single() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
+    std::enable_if_t<!std::is_same<U, single>::value, U>;
   template <class Wrapped>
-   requires SingleReceiver<wrapped_t<Wrapped>, V, E>
-  explicit single(Wrapped obj) : single() {
+  static void check() {
     static_assert(Invocable<decltype(::pushmi::set_value), Wrapped, V>,
       "Wrapped single must support values of type V");
     static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, std::exception_ptr>,
       "Wrapped single must support std::exception_ptr and be noexcept");
     static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
       "Wrapped single must support E and be noexcept");
-    if constexpr (insitu<Wrapped>())
-      new ((void*)data_.buffer_) Wrapped(std::move(obj));
-    else
-      data_.pobj_ = new Wrapped(std::move(obj));
-    static constexpr auto vtbl = vtable_v<Wrapped>();
+  }
+public:
+  using properties = property_set<is_receiver<>, is_single<>>;
+
+  single() = default;
+  single(single&& that) noexcept : single() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SingleReceiver<wrapped_t<Wrapped>, V, E>
+      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
+  explicit single(Wrapped obj) : single() {
+    check<Wrapped>();
+    struct s {
+      static void op(data& src, data* dst) {
+        if (dst)
+          dst->pobj_ = std::exchange(src.pobj_, nullptr);
+        delete static_cast<Wrapped const*>(src.pobj_);
+      }
+      static void done(data& src) {
+        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
+      }
+      static void error(data& src, E e) noexcept {
+        ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
+      }
+      static void rvalue(data& src, V&& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
+      }
+      static void lvalue(data& src, V& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), v);
+      }
+    };
+    static const vtable vtbl{s::op, s::done, s::error, s::rvalue, s::lvalue};
+    data_.pobj_ = new Wrapped(std::move(obj));
+    vptr_ = &vtbl;
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SingleReceiver<wrapped_t<Wrapped>, V, E> && insitu<Wrapped>())
+  explicit single(Wrapped obj) noexcept : single() {
+    check<Wrapped>();
+    struct s {
+      static void op(data& src, data* dst) {
+          if (dst)
+            new (dst->buffer_) Wrapped(
+                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
+          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
+      }
+      static void done(data& src) {
+        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
+      }
+      static void error(data& src, E e) noexcept {
+        ::pushmi::set_error(
+          *static_cast<Wrapped*>((void*)src.buffer_),
+          std::move(e));
+      }
+      static void rvalue(data& src, V&& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
+      }
+      static void lvalue(data& src, V& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), v);
+      }
+    };
+    static const vtable vtbl{s::op, s::done, s::error, s::rvalue, s::lvalue};
+    new ((void*)data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
   ~single() {
@@ -68,16 +120,16 @@ public:
     new ((void*)this) single(std::move(that));
     return *this;
   }
-  template<class T>
-  requires ConvertibleTo<T&&, V&&>
+  PUSHMI_TEMPLATE (class T)
+    (requires ConvertibleTo<T&&, V&&>)
   void value(T&& t) {
     if (!done_) {
       done_ = true;
       vptr_->rvalue_(data_, (T&&) t);
     }
   }
-  template<class T>
-  requires ConvertibleTo<T&, V&>
+  PUSHMI_TEMPLATE (class T)
+    (requires ConvertibleTo<T&, V&>)
   void value(T& t) {
     if (!done_) {
       done_ = true;
@@ -101,54 +153,11 @@ public:
 // Class static definitions:
 template <class V, class E>
 constexpr typename single<V, E>::vtable const single<V, E>::vtable::noop_;
-template <class V, class E>
-template <class Wrapped>
-constexpr typename single<V, E>::vtable single<V, E>::vtable_v() noexcept {
-  if constexpr (insitu<Wrapped>())
-    return {
-      +[](data& src, data* dst) {
-          if (dst)
-            new (dst->buffer_) Wrapped(
-                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-      },
-      +[](data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
-      },
-      +[](data& src, E e) noexcept {
-        ::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
-      },
-      +[](data& src, V&& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
-      },
-      +[](data& src, V& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), v);
-      }
-    };
-  else
-    return {
-      +[](data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      },
-      +[](data& src) { ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_)); },
-      +[](data& src, E e) noexcept {
-          ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
-      },
-      +[](data& src, V&& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
-      },
-      +[](data& src, V& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), v);
-      }
-    };
-}
 
 template <class VF, class EF, class DF>
+#if __cpp_concepts
   requires Invocable<DF&>
+#endif
 class single<VF, EF, DF> {
   bool done_ = false;
   VF vf_{};
@@ -156,16 +165,16 @@ class single<VF, EF, DF> {
   DF df_{};
 
   static_assert(
-      !detail::is_v<VF, on_error>,
+      !detail::is_v<VF, on_error_fn>,
       "the first parameter is the value implementation, but on_error{} was passed");
   static_assert(
-      !detail::is_v<EF, on_value>,
+      !detail::is_v<EF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
   static_assert(NothrowInvocable<EF, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using receiver_category = single_tag;
+  using properties = property_set<is_receiver<>, is_single<>>;
 
   single() = default;
   constexpr explicit single(VF vf) : single(std::move(vf), EF{}, DF{}) {}
@@ -177,15 +186,15 @@ class single<VF, EF, DF> {
       : done_(false), vf_(std::move(vf)), ef_(std::move(ef)), df_(std::move(df))
   {}
 
-  template <class V>
-  requires Invocable<VF&, V>
+  PUSHMI_TEMPLATE (class V)
+    (requires Invocable<VF&, V>)
   void value(V&& v) {
     if (done_) {return;}
     done_ = true;
     vf_((V&&) v);
   }
-  template <class E>
-  requires Invocable<EF&, E>
+  PUSHMI_TEMPLATE (class E)
+    (requires Invocable<EF&, E>)
   void error(E e) noexcept {
     static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
     if (!done_) {
@@ -201,8 +210,11 @@ class single<VF, EF, DF> {
   }
 };
 
-template <Receiver Data, class DVF, class DEF, class DDF>
-requires Invocable<DDF&, Data&> class single<Data, DVF, DEF, DDF> {
+template <PUSHMI_TYPE_CONSTRAINT(Receiver) Data, class DVF, class DEF, class DDF>
+#if __cpp_concepts
+  requires Invocable<DDF&, Data&>
+#endif
+class single<Data, DVF, DEF, DDF> {
   bool done_ = false;
   Data data_{};
   DVF vf_{};
@@ -210,16 +222,16 @@ requires Invocable<DDF&, Data&> class single<Data, DVF, DEF, DDF> {
   DDF df_{};
 
   static_assert(
-      !detail::is_v<DVF, on_error>,
+      !detail::is_v<DVF, on_error_fn>,
       "the first parameter is the value implementation, but on_error{} was passed");
   static_assert(
-      !detail::is_v<DEF, on_value>,
+      !detail::is_v<DEF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
   static_assert(NothrowInvocable<DEF, Data&, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using receiver_category = single_tag;
+  using properties = property_set<is_receiver<>, is_single<>>;
 
   constexpr explicit single(Data d)
       : single(std::move(d), DVF{}, DEF{}, DDF{}) {}
@@ -230,16 +242,16 @@ requires Invocable<DDF&, Data&> class single<Data, DVF, DEF, DDF> {
   constexpr single(Data d, DVF vf, DEF ef = DEF{}, DDF df = DDF{})
       : done_(false), data_(std::move(d)), vf_(vf), ef_(ef), df_(df) {}
 
-  template <class V>
-  requires Invocable<DVF&, Data&, V>
+  PUSHMI_TEMPLATE(class V)
+    (requires Invocable<DVF&, Data&, V>)
   void value(V&& v) {
     if (!done_) {
       done_ = true;
       vf_(data_, (V&&) v);
     }
   }
-  template <class E>
-  requires Invocable<DEF&, Data&, E>
+  PUSHMI_TEMPLATE(class E)
+    (requires Invocable<DEF&, Data&, E>)
   void error(E e) noexcept {
     static_assert(
         NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
@@ -259,57 +271,149 @@ requires Invocable<DDF&, Data&> class single<Data, DVF, DEF, DDF> {
 template <>
 class single<>
     : public single<ignoreVF, abortEF, ignoreDF> {
+public:
+  single() = default;
 };
 
+////////////////////////////////////////////////////////////////////////////////
+// make_single
+inline auto make_single() -> single<> {
+  return {};
+}
+PUSHMI_TEMPLATE(class VF)
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<VF&>))
+auto make_single(VF vf) -> single<VF, abortEF, ignoreDF> {
+  return single<VF, abortEF, ignoreDF>{std::move(vf)};
+}
+template <class... EFN>
+auto make_single(on_error_fn<EFN...> ef) -> single<ignoreVF, on_error_fn<EFN...>, ignoreDF> {
+  return single<ignoreVF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
+}
+PUSHMI_TEMPLATE(class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<DF>))
+auto make_single(DF df) -> single<ignoreVF, abortEF, DF> {
+  return single<ignoreVF, abortEF, DF>{std::move(df)};
+}
+PUSHMI_TEMPLATE(class VF, class EF)
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<EF&>))
+auto make_single(VF vf, EF ef) -> single<VF, EF, ignoreDF> {
+  return {std::move(vf), std::move(ef)};
+}
+PUSHMI_TEMPLATE(class EF, class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<EF>))
+auto make_single(EF ef, DF df) -> single<ignoreVF, EF, DF> {
+  return {std::move(ef), std::move(df)};
+}
+PUSHMI_TEMPLATE(class VF, class EF, class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<VF>))
+auto make_single(VF vf, EF ef, DF df) -> single<VF, EF, DF> {
+  return {std::move(vf), std::move(ef), std::move(df)};
+}
+PUSHMI_TEMPLATE(class Data)
+  (requires lazy::Receiver<Data, is_single<>>)
+auto make_single(Data d) -> single<Data, passDVF, passDEF, passDDF> {
+  return single<Data, passDVF, passDEF, passDDF>{std::move(d)};
+}
+PUSHMI_TEMPLATE(class Data, class DVF)
+  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DVF&, Data&>))
+auto make_single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF> {
+  return {std::move(d), std::move(vf)};
+}
+PUSHMI_TEMPLATE(class Data, class... DEFN)
+  (requires lazy::Receiver<Data, is_single<>>)
+auto make_single(Data d, on_error_fn<DEFN...> ef) ->
+    single<Data, passDVF, on_error_fn<DEFN...>, passDDF> {
+  return {std::move(d), std::move(ef)};
+}
+PUSHMI_TEMPLATE(class Data, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+auto make_single(Data d, DDF df) -> single<Data, passDVF, passDEF, DDF> {
+  return {std::move(d), std::move(df)};
+}
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
+  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DEF&, Data&>))
+auto make_single(Data d, DVF vf, DEF ef) -> single<Data, DVF, DEF, passDDF> {
+  return {std::move(d), std::move(vf), std::move(ef)};
+}
+PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+auto make_single(Data d, DEF ef, DDF df) -> single<Data, passDVF, DEF, DDF> {
+  return {std::move(d), std::move(ef), std::move(df)};
+}
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+auto make_single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF> {
+  return {std::move(d), std::move(vf), std::move(ef), std::move(df)};
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// deduction guides
+#if __cpp_deduction_guides >= 201703
 single() -> single<>;
 
-template <class VF>
+PUSHMI_TEMPLATE(class VF)
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<VF&>))
 single(VF) -> single<VF, abortEF, ignoreDF>;
 
 template <class... EFN>
-single(on_error<EFN...>) -> single<ignoreVF, on_error<EFN...>, ignoreDF>;
+single(on_error_fn<EFN...>) -> single<ignoreVF, on_error_fn<EFN...>, ignoreDF>;
 
-template <class DF>
-  requires Invocable<DF&>
+PUSHMI_TEMPLATE(class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<DF>))
 single(DF) -> single<ignoreVF, abortEF, DF>;
 
-template <class VF, class EF>
+PUSHMI_TEMPLATE(class VF, class EF)
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<EF&>))
 single(VF, EF) -> single<VF, EF, ignoreDF>;
 
-template <class EF, class DF>
-  requires Invocable<DF&>
+PUSHMI_TEMPLATE(class EF, class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<EF>))
 single(EF, DF) -> single<ignoreVF, EF, DF>;
 
-template <class VF, class EF, class DF>
-  requires Invocable<DF&>
+PUSHMI_TEMPLATE(class VF, class EF, class DF)
+  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<VF>))
 single(VF, EF, DF) -> single<VF, EF, DF>;
 
-template <Receiver<single_tag> Data>
+PUSHMI_TEMPLATE(class Data)
+  (requires lazy::Receiver<Data, is_single<>>)
 single(Data d) -> single<Data, passDVF, passDEF, passDDF>;
 
-template <Receiver<single_tag> Data, class DVF>
+PUSHMI_TEMPLATE(class Data, class DVF)
+  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DVF&, Data&>))
 single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF>;
 
-template <Receiver<single_tag> Data, class... DEFN>
-single(Data d, on_error<DEFN...>) ->
-    single<Data, passDVF, on_error<DEFN...>, passDDF>;
+PUSHMI_TEMPLATE(class Data, class... DEFN)
+  (requires lazy::Receiver<Data, is_single<>>)
+single(Data d, on_error_fn<DEFN...>) ->
+    single<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
 
-template <Receiver<single_tag> Data, class DDF>
-  requires Invocable<DDF&, Data&>
+PUSHMI_TEMPLATE(class Data, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
 single(Data d, DDF) -> single<Data, passDVF, passDEF, DDF>;
 
-template <Receiver<single_tag> Data, class DVF, class DEF>
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
+  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DEF&, Data&>))
 single(Data d, DVF vf, DEF ef) -> single<Data, DVF, DEF, passDDF>;
 
-template <Receiver<single_tag> Data, class DEF, class DDF>
-  requires Invocable<DDF&, Data&>
+PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
 single(Data d, DEF, DDF) -> single<Data, passDVF, DEF, DDF>;
 
-template <Receiver<single_tag> Data, class DVF, class DEF, class DDF>
+PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
+  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
 single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF>;
+#endif
 
 template <class V, class E = std::exception_ptr>
 using any_single = single<V, E>;
+
+template<>
+struct construct_deduced<single> {
+  template<class... AN>
+  auto operator()(AN&&... an) const -> decltype(pushmi::make_single((AN&&) an...)) {
+    return pushmi::make_single((AN&&) an...);
+  }
+};
 
 // template <class V, class E = std::exception_ptr, class Wrapped>
 //     requires SingleReceiver<Wrapped, V, E> && !detail::is_v<Wrapped, none>
@@ -317,7 +421,8 @@ using any_single = single<V, E>;
 //   return single<V, E>{std::move(w)};
 // }
 
-template<class T, SenderTo<std::promise<T>, single_tag> Out>
+PUSHMI_TEMPLATE (class T, class Out)
+  (requires SenderTo<Out, std::promise<T>, is_none<>>)
 std::future<T> future_from(Out singleSender) {
   std::promise<T> p;
   auto result = p.get_future();
