@@ -20,6 +20,7 @@
 #include <folly/experimental/observer/detail/Core.h>
 #include <folly/experimental/observer/detail/GraphCycleDetector.h>
 #include <folly/futures/Future.h>
+#include <folly/synchronization/SanitizeThread.h>
 
 namespace folly {
 namespace observer_detail {
@@ -84,16 +85,22 @@ class ObserverManager {
     // work will be the one that unlocks it. To avoid noise with TSAN,
     // annotate that the thread has released the mutex, and then annotate
     // the async thread as acquiring the mutex.
-    FOLLY_ANNOTATE_RWLOCK_RELEASED(
-        &instance->versionMutex_, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotate_rwlock_released(
+        &instance->versionMutex_,
+        annotate_rwlock_level::rdlock,
+        __FILE__,
+        __LINE__);
 
     instance->scheduleCurrent([core = std::move(core),
                                instancePtr = instance.get(),
                                rh = std::move(rh),
                                force]() {
       // Make TSAN know that the current thread owns the read lock now.
-      FOLLY_ANNOTATE_RWLOCK_ACQUIRED(
-          &instancePtr->versionMutex_, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+      annotate_rwlock_acquired(
+          &instancePtr->versionMutex_,
+          annotate_rwlock_level::rdlock,
+          __FILE__,
+          __LINE__);
 
       core->refresh(instancePtr->version_, force);
     });

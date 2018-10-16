@@ -30,6 +30,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/SysResource.h>
+#include <folly/synchronization/SanitizeThread.h>
 
 // SharedMutex is a reader-writer lock.  It is small, very fast, scalable
 // on multi-core, and suitable for use when readers or writers may block.
@@ -259,8 +260,7 @@ struct SharedMutexToken {
 
 namespace detail {
 // Returns a guard that gives permission for the current thread to
-// call FOLLY_ANNOTATE_RWLOCK_CREATE and adjust the annotation bits
-// in the SharedMutex at ptr.
+// annotate, and adjust the annotation bits in, the SharedMutex at ptr.
 std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr);
 } // namespace detail
 
@@ -325,13 +325,13 @@ class SharedMutexImpl {
   void lock() {
     WaitForever ctx;
     (void)lockExclusiveImpl(kHasSolo, ctx);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateAcquired(annotate_rwlock_level::wrlock);
   }
 
   bool try_lock() {
     WaitNever ctx;
     auto result = lockExclusiveImpl(kHasSolo, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::wrlock);
     return result;
   }
 
@@ -339,7 +339,7 @@ class SharedMutexImpl {
   bool try_lock_for(const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
     auto result = lockExclusiveImpl(kHasSolo, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::wrlock);
     return result;
   }
 
@@ -348,12 +348,12 @@ class SharedMutexImpl {
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
     auto result = lockExclusiveImpl(kHasSolo, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::wrlock);
     return result;
   }
 
   void unlock() {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateReleased(annotate_rwlock_level::wrlock);
     // It is possible that we have a left-over kWaitingNotS if the last
     // unlock_shared() that let our matching lock() complete finished
     // releasing before lock()'s futexWait went to sleep.  Clean it up now
@@ -367,26 +367,26 @@ class SharedMutexImpl {
   void lock_shared() {
     WaitForever ctx;
     (void)lockSharedImpl(nullptr, ctx);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateAcquired(annotate_rwlock_level::rdlock);
   }
 
   void lock_shared(Token& token) {
     WaitForever ctx;
     (void)lockSharedImpl(&token, ctx);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateAcquired(annotate_rwlock_level::rdlock);
   }
 
   bool try_lock_shared() {
     WaitNever ctx;
     auto result = lockSharedImpl(nullptr, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
   bool try_lock_shared(Token& token) {
     WaitNever ctx;
     auto result = lockSharedImpl(&token, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -394,7 +394,7 @@ class SharedMutexImpl {
   bool try_lock_shared_for(const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
     auto result = lockSharedImpl(nullptr, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -404,7 +404,7 @@ class SharedMutexImpl {
       Token& token) {
     WaitForDuration<Rep, Period> ctx(duration);
     auto result = lockSharedImpl(&token, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -413,7 +413,7 @@ class SharedMutexImpl {
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
     auto result = lockSharedImpl(nullptr, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -423,12 +423,12 @@ class SharedMutexImpl {
       Token& token) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
     auto result = lockSharedImpl(&token, ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
   void unlock_shared() {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateReleased(annotate_rwlock_level::rdlock);
 
     auto state = state_.load(std::memory_order_acquire);
 
@@ -447,7 +447,7 @@ class SharedMutexImpl {
   }
 
   void unlock_shared(Token& token) {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateReleased(annotate_rwlock_level::rdlock);
 
     assert(
         token.type_ == Token::Type::INLINE_SHARED ||
@@ -463,8 +463,8 @@ class SharedMutexImpl {
   }
 
   void unlock_and_lock_shared() {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateReleased(annotate_rwlock_level::wrlock);
+    annotateAcquired(annotate_rwlock_level::rdlock);
     // We can't use state_ -=, because we need to clear 2 bits (1 of which
     // has an uncertain initial state) and set 1 other.  We might as well
     // clear the relevant wake bits at the same time.  Note that since S
@@ -491,13 +491,13 @@ class SharedMutexImpl {
     WaitForever ctx;
     (void)lockUpgradeImpl(ctx);
     // For TSAN: treat upgrade locks as equivalent to read locks
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateAcquired(annotate_rwlock_level::rdlock);
   }
 
   bool try_lock_upgrade() {
     WaitNever ctx;
     auto result = lockUpgradeImpl(ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -506,7 +506,7 @@ class SharedMutexImpl {
       const std::chrono::duration<Rep, Period>& duration) {
     WaitForDuration<Rep, Period> ctx(duration);
     auto result = lockUpgradeImpl(ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
@@ -515,12 +515,12 @@ class SharedMutexImpl {
       const std::chrono::time_point<Clock, Duration>& absDeadline) {
     WaitUntilDeadline<Clock, Duration> ctx{absDeadline};
     auto result = lockUpgradeImpl(ctx);
-    annotateTryAcquired(result, FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateTryAcquired(result, annotate_rwlock_level::rdlock);
     return result;
   }
 
   void unlock_upgrade() {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateReleased(annotate_rwlock_level::rdlock);
     auto state = (state_ -= kHasU);
     assert((state & (kWaitingNotS | kHasSolo)) == 0);
     wakeRegisteredWaiters(state, kWaitingE | kWaitingU);
@@ -530,8 +530,8 @@ class SharedMutexImpl {
     // no waiting necessary, so waitMask is empty
     WaitForever ctx;
     (void)lockExclusiveImpl(0, ctx);
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
+    annotateReleased(annotate_rwlock_level::rdlock);
+    annotateAcquired(annotate_rwlock_level::wrlock);
   }
 
   void unlock_upgrade_and_lock_shared() {
@@ -548,8 +548,8 @@ class SharedMutexImpl {
   }
 
   void unlock_and_lock_upgrade() {
-    annotateReleased(FOLLY_ANNOTATE_RWLOCK_WRLOCK);
-    annotateAcquired(FOLLY_ANNOTATE_RWLOCK_RDLOCK);
+    annotateReleased(annotate_rwlock_level::wrlock);
+    annotateAcquired(annotate_rwlock_level::rdlock);
     // We can't use state_ -=, because we need to clear 2 bits (1 of
     // which has an uncertain initial state) and set 1 other.  We might
     // as well clear the relevant wake bits at the same time.
@@ -676,8 +676,9 @@ class SharedMutexImpl {
       // check again
       if ((state_.load() & kAnnotationCreated) == 0) {
         state_.fetch_or(kAnnotationCreated);
-        FOLLY_ANNOTATE_BENIGN_RACE_SIZED(&state_, sizeof(state_), "init TSAN");
-        FOLLY_ANNOTATE_RWLOCK_CREATE(this);
+        annotate_benign_race_sized(
+            &state_, sizeof(state_), "init TSAN", __FILE__, __LINE__);
+        annotate_rwlock_create(this, __FILE__, __LINE__);
       }
     }
   }
@@ -685,30 +686,28 @@ class SharedMutexImpl {
   void annotateDestroy() {
     if (AnnotateForThreadSanitizer) {
       annotateLazyCreate();
-      FOLLY_ANNOTATE_RWLOCK_DESTROY(this);
+      annotate_rwlock_destroy(this, __FILE__, __LINE__);
     }
   }
 
-  void annotateAcquired(long w) {
+  void annotateAcquired(annotate_rwlock_level w) {
     if (AnnotateForThreadSanitizer) {
       annotateLazyCreate();
-      FOLLY_ANNOTATE_RWLOCK_ACQUIRED(this, w);
+      annotate_rwlock_acquired(this, w, __FILE__, __LINE__);
     }
   }
 
-  void annotateTryAcquired(bool result, long w) {
+  void annotateTryAcquired(bool result, annotate_rwlock_level w) {
     if (AnnotateForThreadSanitizer) {
       annotateLazyCreate();
-      if (result) {
-        FOLLY_ANNOTATE_RWLOCK_ACQUIRED(this, w);
-      }
+      annotate_rwlock_try_acquired(this, w, result, __FILE__, __LINE__);
     }
   }
 
-  void annotateReleased(long w) {
+  void annotateReleased(annotate_rwlock_level w) {
     if (AnnotateForThreadSanitizer) {
       assert((state_.load() & kAnnotationCreated) != 0);
-      FOLLY_ANNOTATE_RWLOCK_RELEASED(this, w);
+      annotate_rwlock_released(this, w, __FILE__, __LINE__);
     }
   }
 
@@ -726,9 +725,8 @@ class SharedMutexImpl {
   static constexpr uint32_t kIncrHasS = 1 << 11;
   static constexpr uint32_t kHasS = ~(kIncrHasS - 1);
 
-  // Set if it a call to FOLLY_ANNOTATE_RWLOCK_CREATE has been
-  // completed for this instance.  That annotation call (and setting
-  // this bit afterward) must be guarded by one of the mutexes in
+  // Set if annotation has been completed for this instance.  That annotation
+  // (and setting this bit afterward) must be guarded by one of the mutexes in
   // annotationCreationGuards.
   static constexpr uint32_t kAnnotationCreated = 1 << 10;
 
