@@ -920,7 +920,7 @@ PUSHMI_CONCEPT_DEF(
     Semiregular<T> && EqualityComparable<T>
 );
 
-#if __cpp_lib_invoke >= 201411
+#if 0 //__cpp_lib_invoke >= 201411
 using std::invoke;
 #else
 PUSHMI_TEMPLATE (class F, class...As)
@@ -5080,47 +5080,53 @@ struct out_from_fn {
 };
 
 PUSHMI_TEMPLATE(class In, class FN)
-  (requires Sender<In> && SemiMovable<FN>)
+  (requires Sender<In> && SemiMovable<FN>
+    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
 auto submit_transform_out(FN fn){
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
-    return on_submit(
-      constrain(lazy::Receiver<_3>,
-        [fn = std::move(fn)](In& in, auto tp, auto out) {
-          ::pushmi::submit(in, tp, fn(std::move(out)));
-        }
-      )
-    );
-  ) else (
-    return on_submit(
-      constrain(lazy::Receiver<_2>,
-        [fn = std::move(fn)](In& in, auto out) {
-          ::pushmi::submit(in, fn(std::move(out)));
-        }
-      )
-    );
-  ))
+  return on_submit(
+    constrain(lazy::Receiver<_2>,
+      [fn = std::move(fn)](In& in, auto out) {
+        ::pushmi::submit(in, fn(std::move(out)));
+      }
+    )
+  );
+}
+
+PUSHMI_TEMPLATE(class In, class FN)
+  (requires TimeSender<In> && SemiMovable<FN>)
+auto submit_transform_out(FN fn){
+  return on_submit(
+    constrain(lazy::Receiver<_3>,
+      [fn = std::move(fn)](In& in, auto tp, auto out) {
+        ::pushmi::submit(in, tp, fn(std::move(out)));
+      }
+    )
+  );
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
-  (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+  (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>
+    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
 auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
-    return on_submit(
-      constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
-        [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
-          tsdsf(in, tp, std::move(out));
-        }
-      )
-    );
-  ) else (
-    return on_submit(
-      constrain(lazy::Receiver<_2> && lazy::Invocable<SDSF&, In&, _2>,
-        [sdsf = std::move(sdsf)](In& in, auto out) {
-          sdsf(in, std::move(out));
-        }
-      )
-    );
-  ))
+  return on_submit(
+    constrain(lazy::Receiver<_2> && lazy::Invocable<SDSF&, In&, _2>,
+      [sdsf = std::move(sdsf)](In& in, auto out) {
+        sdsf(in, std::move(out));
+      }
+    )
+  );
+}
+
+PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
+  (requires TimeSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
+  return on_submit(
+    constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
+      [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
+        tsdsf(in, tp, std::move(out));
+      }
+    )
+  );
 }
 
 PUSHMI_TEMPLATE(class In, class Out)
@@ -6020,6 +6026,10 @@ PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
 } const make_tap {};
 
 struct tap_fn {
+private:
+  template <class In, class SideEffects>
+  static auto impl(In, SideEffects);
+public:
   template <class... AN>
   auto operator()(AN... an) const;
 };
@@ -6040,43 +6050,46 @@ auto tap_fn::operator()(AN... an) const {
   return constrain(lazy::Sender<_1>,
     [args = std::tuple<AN...>{std::move(an)...}](auto in) mutable {
       using In = decltype(in);
-      auto sideEffects{::pushmi::detail::out_from_fn<In>()(std::move(args))};
-      using SideEffects = decltype(sideEffects);
-
-      PUSHMI_STATIC_ASSERT(
-        ::pushmi::detail::deferred_requires_from<In, SideEffects,
-          SenderTo<In, SideEffects, is_none<>>,
-          SenderTo<In, SideEffects, is_single<>>,
-          TimeSenderTo<In, SideEffects, is_single<>> >(),
-          "'In' is not deliverable to 'SideEffects'");
-
-      return ::pushmi::detail::deferred_from<In, SideEffects>(
+      return tap_fn::impl(
         std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::Receiver<_1>,
-            [sideEffects_ = std::move(sideEffects)](auto out) {
-              using Out = decltype(out);
-              PUSHMI_STATIC_ASSERT(
-                ::pushmi::detail::deferred_requires_from<In, SideEffects,
-                  SenderTo<In, Out, is_none<>>,
-                  SenderTo<In, Out, is_single<>>,
-                  TimeSenderTo<In, Out, is_single<>> >(),
-                  "'In' is not deliverable to 'Out'");
-              auto gang{::pushmi::detail::out_from_fn<In>()(
-                  detail::make_tap(sideEffects_, std::move(out)))};
-              using Gang = decltype(gang);
-              PUSHMI_STATIC_ASSERT(
-                ::pushmi::detail::deferred_requires_from<In, SideEffects,
-                  SenderTo<In, Gang>,
-                  SenderTo<In, Gang, is_single<>>,
-                  TimeSenderTo<In, Gang, is_single<>> >(),
-                  "'In' is not deliverable to 'Out' & 'SideEffects'");
-              return gang;
-            }
-          )
-        )
-      );
-    }
+        ::pushmi::detail::out_from_fn<In>()(std::move(args)));
+    });
+}
+
+template <class In, class SideEffects>
+auto tap_fn::impl(In in, SideEffects sideEffects) {
+  PUSHMI_STATIC_ASSERT(
+    ::pushmi::detail::deferred_requires_from<In, SideEffects,
+      SenderTo<In, SideEffects, is_none<>>,
+      SenderTo<In, SideEffects, is_single<>>,
+      TimeSenderTo<In, SideEffects, is_single<>> >(),
+      "'In' is not deliverable to 'SideEffects'");
+
+  return ::pushmi::detail::deferred_from<In, SideEffects>(
+    std::move(in),
+    ::pushmi::detail::submit_transform_out<In>(
+      constrain(lazy::Receiver<_1>,
+        [sideEffects_ = std::move(sideEffects)](auto out) {
+          using Out = decltype(out);
+          PUSHMI_STATIC_ASSERT(
+            ::pushmi::detail::deferred_requires_from<In, SideEffects,
+              SenderTo<In, Out, is_none<>>,
+              SenderTo<In, Out, is_single<>>,
+              TimeSenderTo<In, Out, is_single<>> >(),
+              "'In' is not deliverable to 'Out'");
+          auto gang{::pushmi::detail::out_from_fn<In>()(
+              detail::make_tap(sideEffects_, std::move(out)))};
+          using Gang = decltype(gang);
+          PUSHMI_STATIC_ASSERT(
+            ::pushmi::detail::deferred_requires_from<In, SideEffects,
+              SenderTo<In, Gang>,
+              SenderTo<In, Gang, is_single<>>,
+              TimeSenderTo<In, Gang, is_single<>> >(),
+              "'In' is not deliverable to 'Out' & 'SideEffects'");
+          return gang;
+        }
+      )
+    )
   );
 }
 

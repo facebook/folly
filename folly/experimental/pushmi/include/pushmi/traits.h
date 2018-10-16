@@ -192,7 +192,7 @@ PUSHMI_CONCEPT_DEF(
     Semiregular<T> && EqualityComparable<T>
 );
 
-#if __cpp_lib_invoke >= 201411
+#if 0 //__cpp_lib_invoke >= 201411
 using std::invoke;
 #else
 PUSHMI_TEMPLATE (class F, class...As)

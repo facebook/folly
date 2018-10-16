@@ -81,47 +81,53 @@ struct out_from_fn {
 };
 
 PUSHMI_TEMPLATE(class In, class FN)
-  (requires Sender<In> && SemiMovable<FN>)
+  (requires Sender<In> && SemiMovable<FN>
+    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
 auto submit_transform_out(FN fn){
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
-    return on_submit(
-      constrain(lazy::Receiver<_3>,
-        [fn = std::move(fn)](In& in, auto tp, auto out) {
-          ::pushmi::submit(in, tp, fn(std::move(out)));
-        }
-      )
-    );
-  ) else (
-    return on_submit(
-      constrain(lazy::Receiver<_2>,
-        [fn = std::move(fn)](In& in, auto out) {
-          ::pushmi::submit(in, fn(std::move(out)));
-        }
-      )
-    );
-  ))
+  return on_submit(
+    constrain(lazy::Receiver<_2>,
+      [fn = std::move(fn)](In& in, auto out) {
+        ::pushmi::submit(in, fn(std::move(out)));
+      }
+    )
+  );
+}
+
+PUSHMI_TEMPLATE(class In, class FN)
+  (requires TimeSender<In> && SemiMovable<FN>)
+auto submit_transform_out(FN fn){
+  return on_submit(
+    constrain(lazy::Receiver<_3>,
+      [fn = std::move(fn)](In& in, auto tp, auto out) {
+        ::pushmi::submit(in, tp, fn(std::move(out)));
+      }
+    )
+  );
 }
 
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
-  (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+  (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>
+    PUSHMI_BROKEN_SUBSUMPTION(&& not TimeSender<In>))
 auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
-    return on_submit(
-      constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
-        [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
-          tsdsf(in, tp, std::move(out));
-        }
-      )
-    );
-  ) else (
-    return on_submit(
-      constrain(lazy::Receiver<_2> && lazy::Invocable<SDSF&, In&, _2>,
-        [sdsf = std::move(sdsf)](In& in, auto out) {
-          sdsf(in, std::move(out));
-        }
-      )
-    );
-  ))
+  return on_submit(
+    constrain(lazy::Receiver<_2> && lazy::Invocable<SDSF&, In&, _2>,
+      [sdsf = std::move(sdsf)](In& in, auto out) {
+        sdsf(in, std::move(out));
+      }
+    )
+  );
+}
+
+PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
+  (requires TimeSender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
+auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
+  return on_submit(
+    constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
+      [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
+        tsdsf(in, tp, std::move(out));
+      }
+    )
+  );
 }
 
 PUSHMI_TEMPLATE(class In, class Out)
