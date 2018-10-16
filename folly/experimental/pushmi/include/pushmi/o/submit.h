@@ -22,10 +22,7 @@ using receiver_type_t =
     pushmi::invoke_result_t<
         pushmi::detail::make_receiver<
           property_set_index_t<properties_t<In>, is_silent<>>,
-          std::conditional_t<
-            property_query_v<properties_t<In>, is_flow<>>,
-            is_flow<>,
-            void>>,
+          property_query_v<properties_t<In>, is_flow<>>>,
         AN...>;
 
 PUSHMI_CONCEPT_DEF(

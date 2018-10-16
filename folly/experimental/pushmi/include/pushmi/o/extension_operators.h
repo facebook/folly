@@ -48,29 +48,27 @@ constexpr decltype(auto) apply(F&& f, Tuple&& t) {
 
 namespace detail {
 
-template <class... TagN>
+template <class Cardinality, bool IsFlow = false>
 struct make_receiver;
 template <>
-struct make_receiver<is_none<>, void> : construct_deduced<none> {};
+struct make_receiver<is_none<>> : construct_deduced<none> {};
 template <>
-struct make_receiver<is_single<>, void> : construct_deduced<single> {};
+struct make_receiver<is_single<>> : construct_deduced<single> {};
 template <>
-struct make_receiver<is_many<>, void> : construct_deduced<many> {};
+struct make_receiver<is_many<>> : construct_deduced<many> {};
 template <>
-struct make_receiver<is_single<>, is_flow<>> : construct_deduced<flow_single> {};
+struct make_receiver<is_single<>, true> : construct_deduced<flow_single> {};
 
-template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
-struct out_from_fn {
-  using Cardinality = property_set_index_t<properties_t<In>, is_silent<>>;
-  using Flow = std::conditional_t<property_query_v<properties_t<In>, is_flow<>>, is_flow<>, void>;
-  using Make = make_receiver<Cardinality, Flow>;
+template <class Cardinality, bool IsFlow>
+struct out_from_impl {
+  using Make = make_receiver<Cardinality, IsFlow>;
   PUSHMI_TEMPLATE (class... Ts)
    (requires Invocable<Make, Ts...>)
   auto operator()(std::tuple<Ts...> args) const {
     return pushmi::apply(Make(), std::move(args));
   }
   PUSHMI_TEMPLATE (class... Ts, class... Fns,
-    class This = std::enable_if_t<sizeof...(Fns) != 0, out_from_fn>)
+    class This = std::enable_if_t<sizeof...(Fns) != 0, out_from_impl>)
     (requires And<SemiMovable<Fns>...> &&
       Invocable<Make, std::tuple<Ts...>> &&
       Invocable<This, pushmi::invoke_result_t<Make, std::tuple<Ts...>>, Fns...>)
@@ -83,6 +81,12 @@ struct out_from_fn {
     return Make()(std::move(out), std::move(fns)...);
   }
 };
+
+template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
+using out_from_fn =
+    out_from_impl<
+        property_set_index_t<properties_t<In>, is_silent<>>,
+        property_query_v<properties_t<In>, is_flow<>>>;
 
 template <class In, class FN>
 struct submit_transform_out_1 {
