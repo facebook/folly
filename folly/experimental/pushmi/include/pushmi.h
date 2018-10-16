@@ -1205,43 +1205,40 @@ namespace detail {
 
 namespace pushmi {
 
-#if 0
 
-template <class T, class Dual>
-struct entangled {
-  T t;
-  entangled<Dual, T>* dual;
-
-  ~entangled() {
-    if (!!dual) {
-      dual->dual = nullptr;
-    }
-  }
-  explicit entangled(T t) : t(std::move(t)), dual(nullptr) {}
-  entangled(entangled&& o) : t(std::move(o.t)), dual(o.dual) {
-    o.dual = nullptr;
-    if (!!dual) {
-      dual->dual = this;
-    }
-  }
-
-  entangled() = delete;
-  entangled(const entangled&) = delete;
-  entangled& operator=(const entangled&) = delete;
-  entangled& operator=(entangled&&) = delete;
-
-  Dual* lockPointerToDual() {
-    if (!!dual) {
-      return std::addressof(dual->t);
-    }
-    return nullptr;
-  }
-
-  void unlockPointerToDual() {
-  }
-};
-
-#else
+// template <class T, class Dual>
+// struct entangled {
+//   T t;
+//   entangled<Dual, T>* dual;
+//
+//   ~entangled() {
+//     if (!!dual) {
+//       dual->dual = nullptr;
+//     }
+//   }
+//   explicit entangled(T t) : t(std::move(t)), dual(nullptr) {}
+//   entangled(entangled&& o) : t(std::move(o.t)), dual(o.dual) {
+//     o.dual = nullptr;
+//     if (!!dual) {
+//       dual->dual = this;
+//     }
+//   }
+//
+//   entangled() = delete;
+//   entangled(const entangled&) = delete;
+//   entangled& operator=(const entangled&) = delete;
+//   entangled& operator=(entangled&&) = delete;
+//
+//   Dual* lockPointerToDual() {
+//     if (!!dual) {
+//       return std::addressof(dual->t);
+//     }
+//     return nullptr;
+//   }
+//
+//   void unlockPointerToDual() {
+//   }
+// };
 
 // This class can be used to keep a pair of values with pointers to each other
 // in sync, even when both objects are allowed to move. Ordinarily you'd do this
@@ -1284,7 +1281,7 @@ struct entangled {
     // have to hold *both* locks to write any of either entangled object's
     // metadata, but need only one to read it.
     int expected = kUnlocked;
-    if (!stateMachine.compare_exchange_weak(expected, kLocked)) {
+    if (!stateMachine.compare_exchange_weak(expected, kLocked, std::memory_order_seq_cst, std::memory_order_relaxed)) {
       return false;
     }
     // Having *either* object local-locked protects the data in both objects.
@@ -1293,7 +1290,7 @@ struct entangled {
       return true;
     }
     expected = kUnlocked;
-    if (dual->stateMachine.compare_exchange_strong(expected, kLocked)) {
+    if (dual->stateMachine.compare_exchange_strong(expected, kLocked, std::memory_order_seq_cst)) {
       return true;
     }
     // We got here, and so hit the race; we're deadlocked if we stick to
@@ -1305,15 +1302,15 @@ struct entangled {
     if ((uintptr_t)this < (uintptr_t)dual) {
       // I get to win the race. I'll acquire the locks, but have to make sure
       // my memory stays valid until the other thread acknowledges its loss.
-      while (stateMachine.load() != kLockedAndLossAcknowledged) {
+      while (stateMachine.load(std::memory_order_relaxed) != kLockedAndLossAcknowledged) {
         // Spin.
       }
-      stateMachine.store(kLocked);
+      stateMachine.store(kLocked, std::memory_order_relaxed);
       return true;
     } else {
       // I lose the race, but have to coordinate with the winning thread, so
       // that it knows that I'm not about to try to touch it's data
-      dual->stateMachine.store(kLockedAndLossAcknowledged);
+      dual->stateMachine.store(kLockedAndLossAcknowledged, std::memory_order_relaxed);
       return false;
     }
   }
@@ -1336,9 +1333,9 @@ struct entangled {
     // other object so long as its locked. Going in the other order could let
     // another thread incorrectly think we're going down the deadlock-avoidance
     // path in tryLock().
-    stateMachine.store(kUnlocked);
+    stateMachine.store(kUnlocked, std::memory_order_release);
     if (dual != nullptr) {
-      dual->stateMachine.store(kUnlocked);
+      dual->stateMachine.store(kUnlocked, std::memory_order_release);
     }
   }
 
@@ -1392,17 +1389,98 @@ struct entangled {
     unlockBoth();
   }
 };
-#endif
+
+template <class First, class Second>
+using entangled_pair = std::pair<entangled<First, Second>, entangled<Second, First>>;
 
 template <class First, class Second>
 auto entangle(First f, Second s)
-    -> std::pair<entangled<First, Second>, entangled<Second, First>> {
+    -> entangled_pair<First, Second> {
   entangled<First, Second> ef(std::move(f));
   entangled<Second, First> es(std::move(s));
   ef.dual = std::addressof(es);
   es.dual = std::addressof(ef);
   return {std::move(ef), std::move(es)};
 }
+
+template <class T, class Dual>
+struct locked_entangled_pair : std::pair<T*, Dual*> {
+  entangled<T, Dual>* e;
+  ~locked_entangled_pair(){if (!!e) {e->unlockBoth();}}
+  explicit locked_entangled_pair(entangled<T, Dual>& e) : e(std::addressof(e)){
+    this->e->lockBoth();
+    this->first = std::addressof(this->e->t);
+    this->second = !!this->e->dual ? std::addressof(this->e->dual->t) : nullptr;
+  }
+  locked_entangled_pair() = delete;
+  locked_entangled_pair(const locked_entangled_pair&) = delete;
+  locked_entangled_pair& operator=(const locked_entangled_pair&) = delete;
+  locked_entangled_pair(locked_entangled_pair&& o) : std::pair<T*, Dual*>(o), e(o.e) {o.e = nullptr;};
+  locked_entangled_pair& operator=(locked_entangled_pair&& o){
+    static_cast<std::pair<T*, Dual*>&>(*this) = static_cast<std::pair<T*, Dual*>&&>(o);
+    e = o.e;
+    o.e = nullptr;
+    return *this;
+  }
+};
+
+template <class T, class Dual>
+locked_entangled_pair<T, Dual> lock_both(entangled<T, Dual>& e){
+  return locked_entangled_pair<T, Dual>{e};
+}
+
+template <class T, class Dual>
+struct shared_entangled : std::shared_ptr<T> {
+  Dual* dual;
+
+  template<class P>
+  explicit shared_entangled(std::shared_ptr<P>& p, T& t, Dual& d) : std::shared_ptr<T>(p, std::addressof(t)), dual(std::addressof(d)){
+  }
+  shared_entangled() = delete;
+  shared_entangled(const shared_entangled&) = delete;
+  shared_entangled& operator=(const shared_entangled&) = delete;
+  shared_entangled(shared_entangled&&) = default;
+  shared_entangled& operator=(shared_entangled&&) = default;
+};
+
+template <class First, class Second>
+using shared_entangled_pair = std::pair<shared_entangled<First, Second>, shared_entangled<Second, First>>;
+
+template <class First, class Second>
+auto shared_entangle(First f, Second s)
+    -> shared_entangled_pair<First, Second> {
+  auto p = std::make_shared<std::pair<First, Second>>(std::move(f), std::move(s));
+  shared_entangled<First, Second> ef(p, p->first, p->second);
+  shared_entangled<Second, First> es(p, p->second, p->first);
+  return {std::move(ef), std::move(es)};
+}
+
+template <class T, class Dual>
+struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
+  shared_entangled<T, Dual> e;
+  explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e) : e(std::move(e)){
+    this->first = this->e.get();
+    this->second = this->e.dual;
+  }
+  locked_shared_entangled_pair() = delete;
+  locked_shared_entangled_pair(const locked_shared_entangled_pair&) = delete;
+  locked_shared_entangled_pair& operator=(const locked_shared_entangled_pair&) = delete;
+  locked_shared_entangled_pair(locked_shared_entangled_pair&&) = default;
+  locked_shared_entangled_pair& operator=(locked_shared_entangled_pair&&) = default;
+};
+
+
+template <class T, class Dual>
+locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e){
+  return locked_shared_entangled_pair<T, Dual>{e};
+}
+
+// external synchronization required for move and delete
+template<class T>
+struct moving_atomic : std::atomic<T> {
+  using std::atomic<T>::atomic;
+  moving_atomic(moving_atomic&& o) : std::atomic<T>(o.load()) {}
+};
 
 } // namespace pushmi
 //#pragma once
@@ -1441,8 +1519,8 @@ void set_next(S& s, V&& v) noexcept(noexcept(s.next((V&&) v))) {
 
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires (std::declval<S&>().starting(std::declval<Up>())))
-void set_starting(S& s, Up up) noexcept(noexcept(s.starting(std::move(up)))) {
-  s.starting(std::move(up));
+void set_starting(S& s, Up&& up) noexcept(noexcept(s.starting((Up&&) up))) {
+  s.starting((Up&&) up);
 }
 
 PUSHMI_TEMPLATE (class SD, class Out)
@@ -1515,9 +1593,9 @@ void set_next(std::reference_wrapper<S> s, V&& v) noexcept(
 }
 PUSHMI_TEMPLATE (class S, class Up)
   (requires requires ( set_starting(std::declval<S&>(), std::declval<Up>()) ))
-void set_starting(std::reference_wrapper<S> s, Up up) noexcept(
-  noexcept(set_starting(s.get(), std::move(up)))) {
-  set_starting(s.get(), std::move(up));
+void set_starting(std::reference_wrapper<S> s, Up&& up) noexcept(
+  noexcept(set_starting(s.get(), (Up&&) up))) {
+  set_starting(s.get(), (Up&&) up);
 }
 PUSHMI_TEMPLATE (class SD, class Out)
   (requires requires ( submit(std::declval<SD&>(), std::declval<Out>()) ))
@@ -1604,10 +1682,10 @@ struct set_starting_fn {
       set_starting(std::declval<S&>(), std::declval<Up>()),
       set_error(std::declval<S&>(), std::current_exception())
     ))
-  void operator()(S&& s, Up up) const
-      noexcept(noexcept(set_starting(s, std::move(up)))) {
+  void operator()(S&& s, Up&& up) const
+      noexcept(noexcept(set_starting(s, (Up&&) up))) {
     try {
-      set_starting(s, std::move(up));
+      set_starting(s, (Up&&) up);
     } catch (...) {
       set_error(s, std::current_exception());
     }
@@ -2361,8 +2439,8 @@ struct passDStrtF {
     (requires requires (
       ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up>())
     ) && Receiver<Data>)
-  void operator()(Data& out, Up up) const {
-    ::pushmi::set_starting(out, std::move(up));
+  void operator()(Data& out, Up&& up) const {
+    ::pushmi::set_starting(out, (Up&&) up);
   }
 };
 

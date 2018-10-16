@@ -18,6 +18,8 @@
 
 using namespace pushmi::aliases;
 
+struct inline_executor_none;
+
 template<class R>
 struct countdown {
   countdown(int& c)
@@ -41,6 +43,15 @@ using countdownsingle = countdown<mi::make_single_fn>;
 using countdownflowsingle = countdown<mi::make_flow_single_fn>;
 using countdownmany = countdown<mi::make_many_fn>;
 
+struct countdownnone {
+  countdownnone(int& c)
+      : counter(&c) {}
+
+  int* counter;
+
+  void operator()() const;
+};
+
 struct inline_executor {
     using properties = mi::property_set<mi::is_sender<>, mi::is_single<>>;
     template<class Out>
@@ -49,21 +60,29 @@ struct inline_executor {
     }
 };
 
+struct inline_executor_none {
+    using properties = mi::property_set<mi::is_sender<>, mi::is_none<>>;
+    template<class Out>
+    void submit(Out out) {
+      ::mi::set_done(out);
+    }
+};
+
+void countdownnone::operator()() const {
+  if (--*counter > 0) {
+    inline_executor_none{} | op::submit(mi::make_none(*this));
+  }
+}
+
+template<class CancellationFactory>
 struct inline_executor_flow_single {
+    CancellationFactory cf;
+
     using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_single<>>;
     template<class Out>
     void submit(Out out) {
 
-      // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& e) {
-        auto stop = e.lockPointerToDual();
-        if (!!stop) {
-          *stop = true;
-        }
-        e.unlockPointerToDual();
-      };
-      auto tokens = mi::entangle(stop, set_stop);
+      auto tokens = cf();
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -73,22 +92,64 @@ struct inline_executor_flow_single {
       auto up = mi::MAKE(none)(
           Data{std::move(tokens.second)},
           [](auto& data, auto e) noexcept {
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           },
           [](auto& data) {
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           });
 
     // pass reference for cancellation.
     ::mi::set_starting(out, std::move(up));
 
-    if (!tokens.first.t) {
+    auto both = lock_both(tokens.first);
+    if (!!both.first && !*(both.first)) {
       ::mi::set_value(out, *this);
     } else {
       // cancellation is not an error
       ::mi::set_done(out);
     }
   }
+};
+
+struct shared_cancellation_factory{
+  auto operator()(){
+    // boolean cancellation
+    mi::moving_atomic<bool> stop = false;
+    auto set_stop = [](auto& stop) {
+      if (!!stop) {
+        stop->store(true);
+      }
+    };
+    return mi::shared_entangle(std::move(stop), set_stop);
+  }
+};
+using inline_executor_flow_single_shared = inline_executor_flow_single<shared_cancellation_factory>;
+
+struct entangled_cancellation_factory{
+  auto operator()(){
+    // boolean cancellation
+    mi::moving_atomic<bool> stop = false;
+    auto set_stop = [](auto& stop) {
+      if (!!stop) {
+        stop->store(true);
+      }
+    };
+    return mi::entangle(std::move(stop), set_stop);
+  }
+};
+using inline_executor_flow_single_entangled = inline_executor_flow_single<entangled_cancellation_factory>;
+
+struct inline_executor_flow_single_ignore {
+    using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_single<>>;
+    template<class Out>
+    void submit(Out out) {
+      // pass reference for cancellation.
+      ::mi::set_starting(out, mi::none<>{});
+
+      ::mi::set_value(out, *this);
+    }
 };
 
 struct inline_executor_many {
@@ -104,6 +165,18 @@ struct inline_executor_many {
 #define concept Concept
 #include <nonius/nonius.h++>
 
+NONIUS_BENCHMARK("inline 10 none", [](nonius::chronometer meter){
+  int counter = 0;
+  auto ie = inline_executor_none{};
+  using IE = decltype(ie);
+  countdownnone none{counter};
+  meter.measure([&]{
+    counter = 10;
+    ie | op::submit(mi::make_none(none));
+    return counter;
+  });
+})
+
 NONIUS_BENCHMARK("inline 10 single", [](nonius::chronometer meter){
   int counter = 0;
   auto ie = inline_executor{};
@@ -116,18 +189,6 @@ NONIUS_BENCHMARK("inline 10 single", [](nonius::chronometer meter){
   });
 })
 
-NONIUS_BENCHMARK("inline 10 flow_single", [](nonius::chronometer meter){
-  int counter = 0;
-  auto ie = inline_executor_flow_single{};
-  using IE = decltype(ie);
-  countdownflowsingle flowsingle{counter};
-  meter.measure([&]{
-    counter = 10;
-    ie | op::submit(mi::make_flow_single(on_value(flowsingle)));
-    return counter;
-  });
-})
-
 NONIUS_BENCHMARK("inline 10 many", [](nonius::chronometer meter){
   int counter = 0;
   auto ie = inline_executor_many{};
@@ -136,6 +197,42 @@ NONIUS_BENCHMARK("inline 10 many", [](nonius::chronometer meter){
   meter.measure([&]{
     counter = 10;
     ie | op::submit(mi::make_many(many));
+    return counter;
+  });
+})
+
+NONIUS_BENCHMARK("inline 10 flow_single shared", [](nonius::chronometer meter){
+  int counter = 0;
+  auto ie = inline_executor_flow_single_shared{};
+  using IE = decltype(ie);
+  countdownflowsingle flowsingle{counter};
+  meter.measure([&]{
+    counter = 10;
+    ie | op::submit(mi::make_flow_single(flowsingle));
+    return counter;
+  });
+})
+
+NONIUS_BENCHMARK("inline 10 flow_single entangle", [](nonius::chronometer meter){
+  int counter = 0;
+  auto ie = inline_executor_flow_single_entangled{};
+  using IE = decltype(ie);
+  countdownflowsingle flowsingle{counter};
+  meter.measure([&]{
+    counter = 10;
+    ie | op::submit(mi::make_flow_single(flowsingle));
+    return counter;
+  });
+})
+
+NONIUS_BENCHMARK("inline 10 flow_single ignore cancellation", [](nonius::chronometer meter){
+  int counter = 0;
+  auto ie = inline_executor_flow_single_ignore{};
+  using IE = decltype(ie);
+  countdownflowsingle flowsingle{counter};
+  meter.measure([&]{
+    counter = 10;
+    ie | op::submit(mi::make_flow_single(flowsingle));
     return counter;
   });
 })

@@ -117,8 +117,8 @@ struct passDStrtF {
     (requires requires (
       ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up>())
     ) && Receiver<Data>)
-  void operator()(Data& out, Up up) const {
-    ::pushmi::set_starting(out, std::move(up));
+  void operator()(Data& out, Up&& up) const {
+    ::pushmi::set_starting(out, (Up&&) up);
   }
 };
 

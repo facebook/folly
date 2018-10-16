@@ -28,15 +28,13 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& e) {
-        auto stop = e.lockPointerToDual();
+      mi::moving_atomic<bool> stop = false;
+      auto set_stop = [](auto& stop) {
         if (!!stop) {
-          *stop = true;
+          stop->store(true);
         }
-        e.unlockPointerToDual();
       };
-      auto tokens = mi::entangle(stop, set_stop);
+      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -47,18 +45,21 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
             signals += 100000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           },
           [&](auto& data) {
             signals += 10000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           });
 
       // pass reference for cancellation.
       ::mi::set_starting(out, std::move(up));
 
       // check boolean to select signal
-      if (!tokens.first.t) {
+      auto both = lock_both(tokens.first);
+      if (!!both.first && !*(both.first)) {
         ::mi::set_value(out, 42);
       } else {
         // cancellation is not an error
@@ -109,15 +110,13 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& e) {
-        auto stop = e.lockPointerToDual();
+      mi::moving_atomic<bool> stop = false;
+      auto set_stop = [](auto& stop) {
         if (!!stop) {
-          *stop = true;
+          stop->store(true);
         }
-        e.unlockPointerToDual();
       };
-      auto tokens = mi::entangle(stop, set_stop);
+      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -128,11 +127,13 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
             signals += 100000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           },
           [&](auto& data) {
             signals += 10000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           });
 
       tr |
@@ -149,7 +150,8 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
                     [out = std::move(out),
                      stoppee = std::move(stoppee)](auto) mutable {
                       // check boolean to select signal
-                      if (!stoppee.t) {
+                      auto both = lock_both(stoppee);
+                      if (!!both.first && !*(both.first)) {
                         ::mi::set_value(out, 42);
                       } else {
                         // cancellation is not an error
@@ -211,7 +213,7 @@ struct moving_atomic : std::atomic<T> {
   moving_atomic(moving_atomic&& o) : std::atomic<T>(o.load()) {}
 };
 
-SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
+SCENARIO("flow single shared cancellation new thread", "[flow][deferred]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
   std::atomic<int> signals{0};
@@ -220,15 +222,13 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      moving_atomic<bool> stop = false;
-      auto set_stop = [](auto& e) {
-        auto stop = e.lockPointerToDual();
+      mi::moving_atomic<bool> stop = false;
+      auto set_stop = [](auto& stop) {
         if (!!stop) {
           stop->store(true);
         }
-        e.unlockPointerToDual();
       };
-      auto tokens = mi::entangle(std::move(stop), std::move(set_stop));
+      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -239,11 +239,13 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
             signals += 100000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           },
           [&](auto& data) {
             signals += 10000;
-            data.stopper.t(data.stopper);
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
           });
 
       // make all the signals come from the same thread
@@ -262,7 +264,178 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                     [stoppee = std::move(stoppee),
                      out = std::move(out)](auto) mutable {
                       // check boolean to select signal
-                      if (!stoppee.t.load()) {
+                      auto both = lock_both(stoppee);
+                      if (!!both.first && !*(both.first)) {
+                        ::mi::set_value(out, 42);
+                      } else {
+                        // cancellation is not an error
+                        ::mi::set_done(out);
+                      }
+                    });
+          });
+    });
+
+    WHEN("submit is applied and cancels the producer early") {
+      {
+      f |
+          op::blocking_submit(
+              mi::on_value([&](int) { signals += 100; }),
+              mi::on_error([&](auto) noexcept { signals += 1000; }),
+              mi::on_done([&]() { signals += 1; }),
+              // stop producer before it is scheduled to run
+              mi::on_starting([&](auto up) {
+                signals += 10;
+                nt |
+                    op::submit_at(
+                        at - 50ms, [up = std::move(up)](auto) mutable {
+                          ::mi::set_done(up);
+                        });
+              }));
+      }
+
+      // make sure that the completion signal arrives
+      std::this_thread::sleep_for(100ms);
+
+      THEN(
+          "the starting, up.done and out.done signals are each recorded once") {
+        REQUIRE(signals == 10011);
+      }
+    }
+
+    WHEN("submit is applied and cancels the producer late") {
+      {
+      f |
+          op::blocking_submit(
+              mi::on_value([&](int) { signals += 100; }),
+              mi::on_error([&](auto) noexcept { signals += 1000; }),
+              mi::on_done([&]() { signals += 1; }),
+              // do not stop producer before it is scheduled to run
+              mi::on_starting([&](auto up) {
+                signals += 10;
+                nt |
+                    op::submit_at(
+                        at + 50ms, [up = std::move(up)](auto) mutable {
+                          ::mi::set_done(up);
+                        });
+              }));
+      }
+
+      std::this_thread::sleep_for(100ms);
+
+      THEN(
+          "the starting, up.done and out.value signals are each recorded once") {
+        REQUIRE(signals == 10110);
+      }
+    }
+
+    WHEN("submit is applied and cancels the producer at the same time") {
+      // count known results
+      int total = 0;
+      int cancellostrace = 0; // 10110
+      int cancelled = 0; // 10011
+
+      for (;;) {
+        signals = 0;
+        // set completion time to be in 100ms
+        at = nt.now() + 100ms;
+        {
+        f |
+            op::blocking_submit(
+                mi::on_value([&](int) { signals += 100; }),
+                mi::on_error([&](auto) noexcept { signals += 1000; }),
+                mi::on_done([&]() { signals += 1; }),
+                // stop producer at the same time that it is scheduled to run
+                mi::on_starting([&](auto up) {
+                  signals += 10;
+                  nt | op::submit_at(at, [up = std::move(up)](auto) mutable {
+                    ::mi::set_done(up);
+                  });
+                }));
+        }
+
+        // make sure any cancellation signal has completed
+        std::this_thread::sleep_for(10ms);
+
+        // accumulate known signals
+        ++total;
+        cancellostrace += signals == 10110;
+        cancelled += signals == 10011;
+
+        if (total != cancellostrace + cancelled) {
+          // display the unrecognized signals recorded
+          REQUIRE(signals == -1);
+        }
+        if (total >= 100) {
+          // too long, abort and show the signals distribution
+          WARN(
+              "total " << total << ", cancel-lost-race " << cancellostrace
+                       << ", cancelled " << cancelled);
+          break;
+        }
+        if (cancellostrace > 4 && cancelled > 4) {
+          // yay all known outcomes were observed!
+          break;
+        }
+        // try again
+        continue;
+      }
+    }
+  }
+}
+
+SCENARIO("flow single entangled cancellation new thread", "[flow][deferred]") {
+  auto nt = mi::new_thread();
+  using NT = decltype(nt);
+  std::atomic<int> signals{0};
+  auto at = nt.now() + 200ms;
+
+  GIVEN("A flow single deferred") {
+    auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
+      // boolean cancellation
+      mi::moving_atomic<bool> stop = false;
+      auto set_stop = [](auto& stop) {
+        if (!!stop) {
+          stop->store(true);
+        }
+      };
+      auto tokens = mi::entangle(std::move(stop), set_stop);
+
+      using Stopper = decltype(tokens.second);
+      struct Data : mi::none<> {
+        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        Stopper stopper;
+      };
+      auto up = mi::MAKE(none)(
+          Data{std::move(tokens.second)},
+          [&](auto& data, auto e) noexcept {
+            signals += 100000;
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          },
+          [&](auto& data) {
+            signals += 10000;
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          });
+
+      // make all the signals come from the same thread
+      nt |
+          op::submit([stoppee = std::move(tokens.first),
+                      up = std::move(up),
+                      out = std::move(out),
+                      at](auto nt) mutable {
+            // pass reference for cancellation.
+            ::mi::set_starting(out, std::move(up));
+
+            // submit work to happen later
+            nt |
+                op::submit_at(
+                    at,
+                    [stoppee = std::move(stoppee),
+                     out = std::move(out)](auto) mutable {
+                      // check boolean to select signal
+                      auto both = lock_both(stoppee);
+                      if (!!both.first && !*(both.first)) {
                         ::mi::set_value(out, 42);
                       } else {
                         // cancellation is not an error
