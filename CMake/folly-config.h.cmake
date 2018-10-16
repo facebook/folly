@@ -36,6 +36,7 @@
 #cmakedefine FOLLY_HAVE_LIBGLOG 1
 
 #cmakedefine FOLLY_USE_JEMALLOC 1
+#cmakedefine FOLLY_USE_LIBSTDCPP 1
 
 #if __has_include(<features.h>)
 #include <features.h>
