@@ -161,14 +161,16 @@ struct property_query_impl :
   meta::and_c<decltype(property_query_fn<ExpectedN>((properties_t<PS>*)nullptr))::value...> {};
 } //namespace detail
 
-template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
+//template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
+template<class PS, class... ExpectedN>
 struct property_query
   : meta::if_c<
       Properties<PS> && And<Property<ExpectedN>...>,
       detail::property_query_impl<PS, ExpectedN...>,
       std::false_type> {};
 
-template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
+//template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
+template<class PS, class... ExpectedN>
 PUSHMI_INLINE_VAR constexpr bool property_query_v = property_query<PS, ExpectedN...>::value;
 
 } // namespace pushmi

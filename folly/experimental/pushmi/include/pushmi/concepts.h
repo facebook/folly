@@ -350,9 +350,9 @@ PUSHMI_CONCEPT_DEF(
 );
 
 template <class D>
-using time_point_t =
-  std::enable_if_t<TimeSender<D>, decltype(::pushmi::now(std::declval<D&>()))>;
-
+PUSHMI_PP_CONSTRAINED_USING(
+  TimeSender<D>,
+  time_point_t =, decltype(::pushmi::now(std::declval<D&>())));
 
 // this is a more general form where the constraint could be time or priority
 // enum or any other ordering constraint value-type.
@@ -386,9 +386,8 @@ PUSHMI_CONCEPT_DEF(
 );
 
 template <class D>
-using constraint_t =
-  std::enable_if_t<
-    ConstrainedSender<D>,
-    decltype(::pushmi::top(std::declval<D&>()))>;
+PUSHMI_PP_CONSTRAINED_USING(
+  ConstrainedSender<D>,
+  constraint_t =, decltype(::pushmi::top(std::declval<D&>())));
 
 } // namespace pushmi

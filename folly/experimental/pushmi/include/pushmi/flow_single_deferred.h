@@ -26,22 +26,8 @@ class flow_single_deferred<V, PE, E> {
     void (*submit_)(data&, flow_single<V, PE, E>) = s_submit;
     static constexpr vtable const noop_ {};
   } const* vptr_ = &vtable::noop_;
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, flow_single_deferred>::value, U>;
- public:
-  using properties = property_set<is_sender<>, is_flow<>, is_single<>>;
-
-  flow_single_deferred() = default;
-  flow_single_deferred(flow_single_deferred&& that) noexcept
-      : flow_single_deferred() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>, is_single<>>
-      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
-  explicit flow_single_deferred(Wrapped obj) : flow_single_deferred() {
+  template <class Wrapped>
+  flow_single_deferred(Wrapped obj, std::false_type) : flow_single_deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -56,9 +42,9 @@ class flow_single_deferred<V, PE, E> {
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>, is_single<>> && insitu<Wrapped>())
-  explicit flow_single_deferred(Wrapped obj) noexcept : flow_single_deferred() {
+  template <class Wrapped>
+  flow_single_deferred(Wrapped obj, std::true_type) noexcept
+    : flow_single_deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -76,6 +62,22 @@ class flow_single_deferred<V, PE, E> {
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
+  template <class T, class U = std::decay_t<T>>
+  using wrapped_t =
+    std::enable_if_t<!std::is_same<U, flow_single_deferred>::value, U>;
+ public:
+  using properties = property_set<is_sender<>, is_flow<>, is_single<>>;
+
+  flow_single_deferred() = default;
+  flow_single_deferred(flow_single_deferred&& that) noexcept
+      : flow_single_deferred() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+  PUSHMI_TEMPLATE (class Wrapped)
+    (requires FlowSender<wrapped_t<Wrapped>, is_single<>>)
+  explicit flow_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
+    : flow_single_deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
   ~flow_single_deferred() {
     vptr_->op_(data_, nullptr);
   }

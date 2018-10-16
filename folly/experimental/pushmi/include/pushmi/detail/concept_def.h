@@ -185,33 +185,32 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 //                 t = (U &&) u,
 //                 ::pushmi::concepts::requires_<Same<decltype(t = (U &&) u), T>>
 //             ) &&
-//             std::is_lvalue_reference<T>{}
+//             std::is_lvalue_reference_v<T>
 //     );
 #define PUSHMI_CONCEPT_DEF(DECL, ...)                                          \
     PUSHMI_PP_EVAL(                                                            \
         PUSHMI_PP_DECL_DEF,                                                    \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_DECL_, DECL),                              \
-        __VA_ARGS__,                                                           \
-        PUSHMI_PP_EAT)                                                         \
+        __VA_ARGS__)                                                           \
     /**/
-#define PUSHMI_PP_DECL_DEF_NAME(...) __VA_ARGS__,
-#define PUSHMI_PP_DECL_DEF(TPARAM, NAME, REQUIRES, ...)                        \
+#define PUSHMI_PP_DECL_DEF_NAME(...)                                           \
+    __VA_ARGS__,                                                               \
+    /**/
+#define PUSHMI_PP_DECL_DEF(TPARAM, NAME, ...)                                  \
     PUSHMI_PP_CAT(PUSHMI_PP_DECL_DEF_, PUSHMI_PP_IS_PAREN(NAME))(              \
         TPARAM,                                                                \
         NAME,                                                                  \
-        REQUIRES,                                                              \
         __VA_ARGS__)                                                           \
     /**/
 // The defn is of the form:
 //   template(class A, class B = void, class... Rest)
 //   (concept Name)(A, B, Rest...),
 //      // requirements...
-#define PUSHMI_PP_DECL_DEF_1(TPARAM, NAME, REQUIRES, ...)                      \
+#define PUSHMI_PP_DECL_DEF_1(TPARAM, NAME, ...)                                \
     PUSHMI_PP_EVAL4(                                                           \
         PUSHMI_PP_DECL_DEF_IMPL,                                               \
         TPARAM,                                                                \
         PUSHMI_PP_DECL_DEF_NAME NAME,                                          \
-        REQUIRES,                                                              \
         __VA_ARGS__)                                                           \
     /**/
 // The defn is of the form:
@@ -219,12 +218,11 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 //   concept Name,
 //      // requirements...
 // Compute the template arguments (A, B) from the template introducer.
-#define PUSHMI_PP_DECL_DEF_0(TPARAM, NAME, REQUIRES, ...)                      \
+#define PUSHMI_PP_DECL_DEF_0(TPARAM, NAME, ...)                                \
     PUSHMI_PP_DECL_DEF_IMPL(                                                   \
         TPARAM,                                                                \
         NAME,                                                                  \
         (PUSHMI_PP_CAT(PUSHMI_PP_AUX_, TPARAM)),                               \
-        REQUIRES,                                                              \
         __VA_ARGS__)                                                           \
     /**/
 // Expand the template definition into a struct and template alias like:
@@ -240,17 +238,83 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 //    };
 //    template<class A, class B>
 //    inline constexpr bool Name = NameConcept::is_satisfied_by<A, B>(0);
-#define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, REQUIRES, ...)             \
+#if __cpp_concepts
+// No requires expression
+#define PUSHMI_PP_DEF_IMPL_0(...)                                              \
+    __VA_ARGS__                                                                \
+    /**/
+// Requires expression
+#define PUSHMI_PP_DEF_IMPL_1(...)                                              \
+    PUSHMI_PP_CAT(PUSHMI_PP_DEF_IMPL_1_, __VA_ARGS__)                          \
+    /**/
+#define PUSHMI_PP_DEF_IMPL_1_requires                                          \
+    requires PUSHMI_PP_DEF_IMPL_1_REQUIRES                                     \
+    /**/
+#define PUSHMI_PP_DEF_IMPL_1_REQUIRES(...)                                     \
+    (__VA_ARGS__) PUSHMI_PP_DEF_IMPL_1_REQUIRES_BODY                           \
+    /**/
+#define PUSHMI_PP_DEF_IMPL_1_REQUIRES_BODY(...)                                \
+    { __VA_ARGS__; }                                                           \
+    /**/
+#define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                       \
+    inline namespace pushmi_concept_eager {                                    \
+        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
+        concept bool PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) = PUSHMI_PP_EVAL2(    \
+            PUSHMI_PP_DEF_IMPL(__VA_ARGS__),                                   \
+            __VA_ARGS__);                                                      \
+    }                                                                          \
+    namespace defer = pushmi_concept_eager;                                    \
+    namespace lazy {                                                           \
+        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
+        struct PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept) {   \
+            using Concept =                                                    \
+                PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept);   \
+            explicit constexpr operator bool() const noexcept {                \
+                return (bool) defer::PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME)<      \
+                    PUSHMI_PP_EXPAND ARGS>;                                    \
+            }                                                                  \
+            constexpr auto operator!() const noexcept {                        \
+                return ::pushmi::concepts::detail::Not<Concept>{};             \
+            }                                                                  \
+            template <class That>                                              \
+            constexpr auto operator&&(That) const noexcept {                   \
+                return ::pushmi::concepts::detail::And<Concept, That>{};       \
+            }                                                                  \
+        };                                                                     \
+        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
+        PUSHMI_INLINE_VAR constexpr auto PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) = \
+            PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept)        \
+                <PUSHMI_PP_EXPAND ARGS>{};                                     \
+    }                                                                          \
+    /**/
+#else
+// No requires expression:
+#define PUSHMI_PP_DEF_IMPL_0(...)                                              \
+    () -> std::enable_if_t<bool(__VA_ARGS__), int>                             \
+    /**/
+// Requires expression:
+#define PUSHMI_PP_DEF_IMPL_1(...)                                              \
+    PUSHMI_PP_CAT(PUSHMI_PP_DEF_IMPL_1_, __VA_ARGS__) ), int>                  \
+    /**/
+#define PUSHMI_PP_DEF_IMPL_1_requires                                          \
+    PUSHMI_PP_DEF_IMPL_1_REQUIRES                                              \
+    /**/
+#define PUSHMI_PP_DEF_IMPL_1_REQUIRES(...)                                     \
+    (__VA_ARGS__) -> std::enable_if_t<bool(                                    \
+        ::pushmi::concepts::detail::requires_  PUSHMI_PP_DEF_REQUIRES_BODY     \
+    /**/
+ #define PUSHMI_PP_DEF_REQUIRES_BODY(...)                                      \
+    <decltype(__VA_ARGS__, void())>()                                          \
+    /**/
+#define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                       \
     struct PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept) {       \
         using Concept =                                                        \
             PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept);       \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                    \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
         static auto _concept_requires_ PUSHMI_PP_EVAL2(                        \
-            PUSHMI_PP_DEF_WRAP,                                                \
-            PUSHMI_PP_CAT(PUSHMI_PP_DEF_, REQUIRES),                           \
-            REQUIRES,                                                          \
-            (__VA_ARGS__))(~) int>;                                            \
+            PUSHMI_PP_DEF_IMPL(__VA_ARGS__),                                   \
+            __VA_ARGS__);                                                      \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                      \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
         struct _is_satisfied_by_ {                                             \
@@ -282,8 +346,18 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
             PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept)        \
                 ::_is_satisfied_by_<PUSHMI_PP_EXPAND ARGS>{};                  \
     }                                                                          \
+    namespace defer = lazy;                                                    \
     /**/
+#endif
 
+#define PUSHMI_PP_REQUIRES_PROBE_requires                                      \
+    PUSHMI_PP_PROBE(~)                                                         \
+    /**/
+#define PUSHMI_PP_DEF_IMPL(REQUIRES, ...)                                      \
+    PUSHMI_PP_CAT(                                                             \
+        PUSHMI_PP_DEF_IMPL_,                                                   \
+        PUSHMI_PP_CHECK(PUSHMI_PP_CAT(PUSHMI_PP_REQUIRES_PROBE_, REQUIRES)))   \
+    /**/
 #define PUSHMI_PP_DEF_DECL_template(...)                                       \
     template(__VA_ARGS__),                                                     \
     /**/
@@ -297,7 +371,6 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_DEF_bool
 #define PUSHMI_PP_DEF_size_t
 #define PUSHMI_PP_DEF_unsigned
-#define PUSHMI_PP_DEF_requires ~,
 #define PUSHMI_PP_AUX_template(...)                                            \
     PUSHMI_PP_CAT2(                                                            \
         PUSHMI_PP_TPARAM_,                                                     \
@@ -314,63 +387,95 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_TPARAM_5(_1, ...)                                            \
     PUSHMI_PP_CAT2(PUSHMI_PP_DEF_, _1), PUSHMI_PP_TPARAM_4(__VA_ARGS__)
 
-#define PUSHMI_PP_DEF_WRAP(X, Y, ...)                                          \
-    PUSHMI_PP_EVAL3(                                                           \
-        PUSHMI_PP_CAT(PUSHMI_PP_DEF_WRAP_, PUSHMI_PP_COUNT(__VA_ARGS__)),      \
-        X,                                                                     \
-        Y,                                                                     \
-        __VA_ARGS__)                                                           \
+////////////////////////////////////////////////////////////////////////////////
+// PUSHMI_TEMPLATE
+// Usage:
+//   PUSHMI_TEMPLATE (class A, class B)
+//     (requires Concept1<A> && Concept2<B>)
+//   void foo(A a, B b)
+//   {}
+// or
+//   PUSHMI_TEMPLATE (class A, class B)
+//     (requires requires (expr1, expr2, expr3) && Concept1<A> && Concept2<B>)
+//   void foo(A a, B b)
+//   {}
+#if __cpp_concepts
+#define PUSHMI_TEMPLATE(...)                                                   \
+    template<__VA_ARGS__> PUSHMI_TEMPLATE_AUX_                                 \
     /**/
-
+#define PUSHMI_TEMPLATE_AUX_(...)                                              \
+    PUSHMI_TEMPLATE_AUX_4(PUSHMI_PP_CAT(PUSHMI_TEMPLATE_AUX_3_, __VA_ARGS__))  \
+    /**/
+#define PUSHMI_TEMPLATE_AUX_3_requires
+#define PUSHMI_TEMPLATE_AUX_4(...)                                             \
+    PUSHMI_TEMPLATE_AUX_5(__VA_ARGS__)(__VA_ARGS__)                            \
+    /**/
+#define PUSHMI_TEMPLATE_AUX_5(REQUIRES, ...)                                   \
+    PUSHMI_PP_CAT(                                                             \
+        PUSHMI_TEMPLATE_AUX_5_,                                                \
+        PUSHMI_PP_CHECK(PUSHMI_PP_CAT(PUSHMI_PP_REQUIRES_PROBE_, REQUIRES)))   \
+    /**/
 // No requires expression:
-#define PUSHMI_PP_DEF_WRAP_1(_, HEAD, TAIL)                                    \
-    () -> std::enable_if_t<HEAD, PUSHMI_PP_EXPAND TAIL                         \
+#define PUSHMI_TEMPLATE_AUX_5_0(...)                                           \
+    requires __VA_ARGS__                                                       \
     /**/
-// Requires expression:
-#define PUSHMI_PP_DEF_WRAP_2(_a, HEAD, _b, TAIL)                               \
-    PUSHMI_PP_CAT(PUSHMI_PP_DEF_REQUIRES_, PUSHMI_PP_IS_PAREN(HEAD)) HEAD,     \
-    PUSHMI_PP_EXPAND TAIL                                                      \
+// Requires expression
+#define PUSHMI_TEMPLATE_AUX_5_1(...)                                           \
+    PUSHMI_PP_CAT(PUSHMI_TEMPLATE_AUX_6_, __VA_ARGS__)                         \
     /**/
-// Requires expression without a requirement parameter list:
-#define PUSHMI_PP_DEF_REQUIRES_0                                               \
-    () -> decltype(::pushmi::concepts::detail::requires_                       \
-        PUSHMI_PP_DEF_REQUIRES_EXPRS                                           \
-    /**/
-// Requires expression with a requirement parameter list:
-#define PUSHMI_PP_DEF_REQUIRES_1(...)                                          \
-    (__VA_ARGS__) -> std::enable_if_t<::pushmi::concepts::detail::requires_    \
-        PUSHMI_PP_DEF_REQUIRES_EXPRS                                           \
-    /**/
-
-#define  PUSHMI_PP_DEF_REQUIRES_EXPRS(...) \
-    <decltype(__VA_ARGS__, void())>()\
-    /**/
-
-#define PUSHMI_TYPE_CONSTRAINT(X) class
-
+#define PUSHMI_TEMPLATE_AUX_6_requires(...)\
+    requires requires { __VA_ARGS__; }
+#else
 #define PUSHMI_TEMPLATE(...)                                                   \
     template<__VA_ARGS__ PUSHMI_TEMPLATE_AUX_
 #define PUSHMI_TEMPLATE_AUX_(...) ,                                            \
-    int (*PUSHMI_PP_CAT(_pushmi_concept_unique_, __LINE__))[PUSHMI_COUNTER] = nullptr,                  \
-    std::enable_if_t<PUSHMI_PP_CAT(_pushmi_concept_unique_, __LINE__) ||                                \
-        bool(PUSHMI_TEMPLATE_AUX_4(PUSHMI_PP_CAT(PUSHMI_TEMPLATE_AUX_3_, __VA_ARGS__))), int> = 0>
+    int (*PUSHMI_PP_CAT(_pushmi_concept_unique_, __LINE__))[                   \
+        PUSHMI_COUNTER] = nullptr,                                             \
+    std::enable_if_t<PUSHMI_PP_CAT(_pushmi_concept_unique_, __LINE__) ||       \
+        bool(PUSHMI_TEMPLATE_AUX_4(PUSHMI_PP_CAT(                              \
+            PUSHMI_TEMPLATE_AUX_3_, __VA_ARGS__))), int> = 0>                  \
+    /**/
 #define PUSHMI_TEMPLATE_AUX_3_requires
-#define PUSHMI_TEMPLATE_AUX_4(...) \
-    PUSHMI_PP_EVAL(\
-        PUSHMI_PP_CAT,\
-        PUSHMI_TEMPLATE_AUX_5_, \
-        PUSHMI_PP_IS_EQUAL(\
-            PUSHMI_PP_EVAL2(PUSHMI_PP_COUNT, PUSHMI_PP_CAT2(PUSHMI_TEMPLATE_AUX_5_, __VA_ARGS__)),\
-            PUSHMI_PP_EVAL2(PUSHMI_PP_COUNT, __VA_ARGS__)))(__VA_ARGS__)
-#define PUSHMI_TEMPLATE_AUX_5_requires ~,
-#define PUSHMI_TEMPLATE_AUX_5_0(...) \
-    PUSHMI_PP_CAT(PUSHMI_TEMPLATE_AUX_6_, __VA_ARGS__)
-#define PUSHMI_TEMPLATE_AUX_5_1(...) \
-    __VA_ARGS__
-#define PUSHMI_TEMPLATE_AUX_6_requires(...)\
-    ::pushmi::concepts::detail::requires_<decltype(__VA_ARGS__)>()
+#define PUSHMI_TEMPLATE_AUX_4(...)                                             \
+    PUSHMI_TEMPLATE_AUX_5(__VA_ARGS__)(__VA_ARGS__)                            \
+    /**/
+#define PUSHMI_TEMPLATE_AUX_5(REQUIRES, ...)                                   \
+    PUSHMI_PP_CAT(                                                             \
+        PUSHMI_TEMPLATE_AUX_5_,                                                \
+        PUSHMI_PP_CHECK(PUSHMI_PP_CAT(PUSHMI_PP_REQUIRES_PROBE_, REQUIRES)))   \
+    /**/
+// No requires expression:
+#define PUSHMI_TEMPLATE_AUX_5_0(...)                                           \
+    __VA_ARGS__                                                                \
+    /**/
+#define PUSHMI_TEMPLATE_AUX_5_1(...)                                           \
+    PUSHMI_PP_CAT(PUSHMI_TEMPLATE_AUX_6_, __VA_ARGS__)                         \
+    /**/
+#define PUSHMI_TEMPLATE_AUX_6_requires(...)                                    \
+    ::pushmi::concepts::detail::requires_<decltype(__VA_ARGS__)>()             \
+    /**/
+#endif
 
+
+#if __cpp_concepts
+#define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__ // BUGBUG
+#define PUSHMI_TYPE_CONSTRAINT(...) __VA_ARGS__
+#else
 #define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__
+#define PUSHMI_TYPE_CONSTRAINT(...) class
+#endif
+
+
+#if __cpp_concepts
+#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, TYPE)                      \
+    requires REQUIRES                                                          \
+  using NAME TYPE;                                                             \
+  /**/
+#else
+#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, TYPE)                      \
+  using NAME std::enable_if_t<bool(REQUIRES), TYPE>;                           \
+  /**/
+#endif
 
 namespace pushmi {
 namespace concepts {

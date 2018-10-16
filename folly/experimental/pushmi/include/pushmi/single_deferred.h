@@ -26,22 +26,8 @@ class any_single_deferred {
     void (*submit_)(data&, single<V, E>) = s_submit;
     static constexpr vtable const noop_ {};
   } const* vptr_ = &vtable::noop_;
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_single_deferred>::value, U>;
- public:
-  using properties = property_set<is_sender<>, is_single<>>;
-
-  any_single_deferred() = default;
-  any_single_deferred(any_single_deferred&& that) noexcept : any_single_deferred() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>
-      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
-  explicit any_single_deferred(Wrapped obj) : any_single_deferred() {
+  template <class Wrapped>
+  any_single_deferred(Wrapped obj, std::false_type) : any_single_deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -56,10 +42,9 @@ class any_single_deferred {
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>
-      && insitu<Wrapped>())
-  explicit any_single_deferred(Wrapped obj) noexcept : any_single_deferred() {
+  template <class Wrapped>
+  any_single_deferred(Wrapped obj, std::true_type) noexcept
+      : any_single_deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -76,6 +61,23 @@ class any_single_deferred {
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
+  template <class T, class U = std::decay_t<T>>
+  using wrapped_t =
+    std::enable_if_t<!std::is_same<U, any_single_deferred>::value, U>;
+ public:
+  using properties = property_set<is_sender<>, is_single<>>;
+
+  any_single_deferred() = default;
+  any_single_deferred(any_single_deferred&& that) noexcept
+      : any_single_deferred() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>)
+  explicit any_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_single_deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
   ~any_single_deferred() {
     vptr_->op_(data_, nullptr);
   }
@@ -106,7 +108,7 @@ class single_deferred<SF> {
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires lazy::Receiver<Out, is_single<>> && lazy::Invocable<SF&, Out>)
+    (requires defer::Receiver<Out, is_single<>> && defer::Invocable<SF&, Out>)
   void submit(Out out) {
     sf_(std::move(out));
   }
@@ -127,7 +129,8 @@ class single_deferred_2 {
   constexpr single_deferred_2(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
-    (requires lazy::Receiver<Out, is_single<>> && lazy::Invocable<DSF&, Data&, Out>)
+    (requires defer::Receiver<Out, is_single<>> &&
+        defer::Invocable<DSF&, Data&, Out>)
   void submit(Out out) {
     sf_(data_, std::move(out));
   }
@@ -136,7 +139,7 @@ class single_deferred_2 {
 template <class A, class B>
 using single_deferred_base =
   meta::if_c<
-    Sender<A, is_single<>>,
+    (bool)Sender<A, is_single<>>,
     single_deferred_2<A, B>,
     any_single_deferred<A, B>>;
 } // namespace detail

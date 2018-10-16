@@ -34,21 +34,8 @@ class flow_single<V, PE, E> {
     void (*starting_)(data&, any_none<PE>&) = s_starting;
     static constexpr vtable const noop_ {};
   } const* vptr_ = &vtable::noop_;
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, flow_single>::value, U>;
-public:
-  using properties = property_set<is_receiver<>, is_flow<>, is_single<>>;
-
-  flow_single() = default;
-  flow_single(flow_single&& that) noexcept : flow_single() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires FlowSingleReceiver<wrapped_t<Wrapped>, any_none<PE>, V, PE, E>
-      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
-  explicit flow_single(Wrapped obj) : flow_single() {
+  template <class Wrapped>
+  flow_single(Wrapped obj, std::false_type) : flow_single() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -75,10 +62,8 @@ public:
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires FlowSingleReceiver<wrapped_t<Wrapped>, any_none<PE>, V, PE, E>
-      && insitu<Wrapped>())
-  explicit flow_single(Wrapped obj) noexcept : flow_single() {
+  template <class Wrapped>
+  flow_single(Wrapped obj, std::true_type) noexcept : flow_single() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -108,6 +93,21 @@ public:
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
+  template <class T, class U = std::decay_t<T>>
+  using wrapped_t =
+    std::enable_if_t<!std::is_same<U, flow_single>::value, U>;
+public:
+  using properties = property_set<is_receiver<>, is_flow<>, is_single<>>;
+
+  flow_single() = default;
+  flow_single(flow_single&& that) noexcept : flow_single() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires FlowSingleReceiver<wrapped_t<Wrapped>, any_none<PE>, V, PE, E>)
+  explicit flow_single(Wrapped obj) noexcept(insitu<Wrapped>())
+    : flow_single{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
   ~flow_single() {
     vptr_->op_(data_, nullptr);
   }

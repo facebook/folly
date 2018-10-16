@@ -17,7 +17,7 @@ class single<V, E> {
     char buffer_[sizeof(std::promise<int>)]; // can hold a std::promise in-situ
   } data_{};
   template <class Wrapped>
-  static constexpr bool insitu() {
+  static constexpr bool insitu() noexcept {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
         std::is_nothrow_move_constructible<Wrapped>::value;
   }
@@ -46,19 +46,8 @@ class single<V, E> {
     static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
       "Wrapped single must support E and be noexcept");
   }
-public:
-  using properties = property_set<is_receiver<>, is_single<>>;
-
-  single() = default;
-  single(single&& that) noexcept : single() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SingleReceiver<wrapped_t<Wrapped>, V, E>
-      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
-  explicit single(Wrapped obj) : single() {
-    check<Wrapped>();
+  template<class Wrapped>
+  single(Wrapped obj, std::false_type) : single() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -82,10 +71,8 @@ public:
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SingleReceiver<wrapped_t<Wrapped>, V, E> && insitu<Wrapped>())
-  explicit single(Wrapped obj) noexcept : single() {
-    check<Wrapped>();
+  template<class Wrapped>
+  single(Wrapped obj, std::true_type) noexcept : single() {
     struct s {
       static void op(data& src, data* dst) {
           if (dst)
@@ -111,6 +98,20 @@ public:
     static const vtable vtbl{s::op, s::done, s::error, s::rvalue, s::lvalue};
     new ((void*)data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
+  }
+public:
+  using properties = property_set<is_receiver<>, is_single<>>;
+
+  single() = default;
+  single(single&& that) noexcept : single() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SingleReceiver<wrapped_t<Wrapped>, V, E>)
+  explicit single(Wrapped obj) noexcept(insitu<Wrapped>())
+    : single{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {
+    check<Wrapped>();
   }
   ~single() {
     vptr_->op_(data_, nullptr);
@@ -281,7 +282,7 @@ inline auto make_single() -> single<> {
   return {};
 }
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<VF&>))
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<VF&>))
 auto make_single(VF vf) -> single<VF, abortEF, ignoreDF> {
   return single<VF, abortEF, ignoreDF>{std::move(vf)};
 }
@@ -290,58 +291,58 @@ auto make_single(on_error_fn<EFN...> ef) -> single<ignoreVF, on_error_fn<EFN...>
   return single<ignoreVF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
 }
 PUSHMI_TEMPLATE(class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<DF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
 auto make_single(DF df) -> single<ignoreVF, abortEF, DF> {
   return single<ignoreVF, abortEF, DF>{std::move(df)};
 }
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<EF&>))
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<EF&>))
 auto make_single(VF vf, EF ef) -> single<VF, EF, ignoreDF> {
   return {std::move(vf), std::move(ef)};
 }
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<EF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
 auto make_single(EF ef, DF df) -> single<ignoreVF, EF, DF> {
   return {std::move(ef), std::move(df)};
 }
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<VF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF>))
 auto make_single(VF vf, EF ef, DF df) -> single<VF, EF, DF> {
   return {std::move(vf), std::move(ef), std::move(df)};
 }
 PUSHMI_TEMPLATE(class Data)
-  (requires lazy::Receiver<Data, is_single<>>)
+  (requires defer::Receiver<Data, is_single<>>)
 auto make_single(Data d) -> single<Data, passDVF, passDEF, passDDF> {
   return single<Data, passDVF, passDEF, passDDF>{std::move(d)};
 }
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DVF&, Data&>))
+  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
 auto make_single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF> {
   return {std::move(d), std::move(vf)};
 }
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires lazy::Receiver<Data, is_single<>>)
+  (requires defer::Receiver<Data, is_single<>>)
 auto make_single(Data d, on_error_fn<DEFN...> ef) ->
     single<Data, passDVF, on_error_fn<DEFN...>, passDDF> {
   return {std::move(d), std::move(ef)};
 }
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 auto make_single(Data d, DDF df) -> single<Data, passDVF, passDEF, DDF> {
   return {std::move(d), std::move(df)};
 }
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DEF&, Data&>))
+  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DEF&, Data&>))
 auto make_single(Data d, DVF vf, DEF ef) -> single<Data, DVF, DEF, passDDF> {
   return {std::move(d), std::move(vf), std::move(ef)};
 }
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 auto make_single(Data d, DEF ef, DDF df) -> single<Data, passDVF, DEF, DDF> {
   return {std::move(d), std::move(ef), std::move(df)};
 }
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 auto make_single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF> {
   return {std::move(d), std::move(vf), std::move(ef), std::move(df)};
 }
@@ -352,55 +353,55 @@ auto make_single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF> 
 single() -> single<>;
 
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<VF&>))
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<VF&>))
 single(VF) -> single<VF, abortEF, ignoreDF>;
 
 template <class... EFN>
 single(on_error_fn<EFN...>) -> single<ignoreVF, on_error_fn<EFN...>, ignoreDF>;
 
 PUSHMI_TEMPLATE(class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<DF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
 single(DF) -> single<ignoreVF, abortEF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not lazy::Receiver<VF> && not lazy::Invocable<EF&>))
+  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<EF&>))
 single(VF, EF) -> single<VF, EF, ignoreDF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<EF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
 single(EF, DF) -> single<ignoreVF, EF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
-  (requires lazy::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Receiver<VF>))
+  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF>))
 single(VF, EF, DF) -> single<VF, EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires lazy::Receiver<Data, is_single<>>)
+  (requires defer::Receiver<Data, is_single<>>)
 single(Data d) -> single<Data, passDVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DVF&, Data&>))
+  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
 single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires lazy::Receiver<Data, is_single<>>)
+  (requires defer::Receiver<Data, is_single<>>)
 single(Data d, on_error_fn<DEFN...>) ->
     single<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 single(Data d, DDF) -> single<Data, passDVF, passDEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires lazy::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not lazy::Invocable<DEF&, Data&>))
+  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DEF&, Data&>))
 single(Data d, DVF vf, DEF ef) -> single<Data, DVF, DEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 single(Data d, DEF, DDF) -> single<Data, passDVF, DEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires lazy::Receiver<Data, is_single<>> && lazy::Invocable<DDF&, Data&>)
+  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF>;
 #endif
 

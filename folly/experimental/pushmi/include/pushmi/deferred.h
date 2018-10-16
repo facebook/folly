@@ -29,21 +29,8 @@ class deferred<detail::erase_deferred_t, E> {
     void (*submit_)(data&, any_none<E>) = s_submit;
     static constexpr vtable const noop_{};
   } const* vptr_ = &vtable::noop_;
-  template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, deferred>::value, U>;
- public:
-  using properties = property_set<is_sender<>, is_none<>>;
-
-  deferred() = default;
-  deferred(deferred&& that) noexcept : deferred() {
-    that.vptr_->op_(that.data_, &data_);
-    std::swap(that.vptr_, vptr_);
-  }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>
-      PUSHMI_BROKEN_SUBSUMPTION(&& !insitu<Wrapped>()))
-  explicit deferred(Wrapped obj) : deferred() {
+  template <class Wrapped>
+  deferred(Wrapped obj, std::false_type) : deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -58,10 +45,8 @@ class deferred<detail::erase_deferred_t, E> {
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  PUSHMI_TEMPLATE(class Wrapped)
-    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>
-      && insitu<Wrapped>())
-  explicit deferred(Wrapped obj) noexcept : deferred() {
+  template <class Wrapped>
+  deferred(Wrapped obj, std::true_type) noexcept : deferred() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -78,6 +63,21 @@ class deferred<detail::erase_deferred_t, E> {
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
+  template <class T, class U = std::decay_t<T>>
+  using wrapped_t =
+    std::enable_if_t<!std::is_same<U, deferred>::value, U>;
+ public:
+  using properties = property_set<is_sender<>, is_none<>>;
+
+  deferred() = default;
+  deferred(deferred&& that) noexcept : deferred() {
+    that.vptr_->op_(that.data_, &data_);
+    std::swap(that.vptr_, vptr_);
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>)
+  explicit deferred(Wrapped obj) noexcept(insitu<Wrapped>())
+    : deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
   ~deferred() {
     vptr_->op_(data_, nullptr);
   }
