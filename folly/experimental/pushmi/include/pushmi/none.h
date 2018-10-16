@@ -28,7 +28,7 @@ class none<E> {
     void (*done_)(data&) = s_done;
     void (*error_)(data&, E) noexcept = s_error;
   };
-  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  static constexpr vtable const noop_ {};
   vtable  const* vptr_ = &noop_;
   template <class Wrapped>
   none(Wrapped obj, std::false_type) : none() {
@@ -107,7 +107,7 @@ public:
 
 // Class static definitions:
 template <class E>
-PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename none<E>::vtable const none<E>::noop_);
+constexpr typename none<E>::vtable const none<E>::noop_;
 
 template <class EF, class DF>
 #if __cpp_concepts

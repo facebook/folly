@@ -33,7 +33,7 @@ class single<V, E> {
     void (*rvalue_)(data&, V&&) = s_rvalue;
     void (*lvalue_)(data&, V&) = s_lvalue;
   };
-  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
@@ -154,7 +154,7 @@ public:
 
 // Class static definitions:
 template <class V, class E>
-PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename single<V, E>::vtable const single<V, E>::noop_);
+constexpr typename single<V, E>::vtable const single<V, E>::noop_;
 
 template <class VF, class EF, class DF>
 #if __cpp_concepts

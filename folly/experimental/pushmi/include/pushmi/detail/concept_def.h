@@ -37,17 +37,6 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #endif
 
 #ifdef __clang__
-#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__ = {}
-#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__
-#elif defined(__GNUC__) && __GNUC__ >= 8
-#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__ = {}
-#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  constexpr __VA_ARGS__
-#else
-#define PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(...)  __VA_ARGS__
-#define PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(...)  __VA_ARGS__ {}
-#endif
-
-#ifdef __clang__
 #define PUSHMI_PP_IS_SAME(...) __is_same(__VA_ARGS__)
 #elif defined(__GNUC__) && __GNUC__ >= 6 && !defined(__NVCC__)
 #define PUSHMI_PP_IS_SAME(...) __is_same_as(__VA_ARGS__)
