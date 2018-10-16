@@ -1,11 +1,11 @@
 # Pushmi
-## from None to Many
+## pushing values around
 
 This library is counterpart to [P1055 - *A Modest Executor Proposal*](http://wg21.link/p1055r0).
 
 *pushmi* is a header-only library that uses git submodules for dependencies (`git clone --recursive`), uses CMake to build, requires compliant C++14 compiler to build and has dependencies on meta and catch2 and some other libraries for testing and examples.
 
-[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/g/KbtUAr)
+[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/z/vCUK0M)
 
 *pushmi* is an implementation for prototyping how Futures, Executors can be defined with shared Concepts. These Concepts can be implemented over and over again to solve different problems and make different tradeoffs. User implementations of the Concepts are first-class citizens due to the attention to composition. Composition also enables each implementation of the Concepts to focus on one concern and then be composed to build more complex solutions.
 
@@ -46,154 +46,66 @@ f.get();
 
 it is this convolution that creates the race between the producer and consumer that requires expensive internal state to resolve.
 
-## `none`
+## `receiver`
 
-The `none` type in the library provides simple ways to construct new implementations of the None concept.
-
-construct a sink type that accepts any error type (and aborts on error)
-
-```cpp
-none<> n;
-```
-
-construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
-
-```cpp
-// provide done
-auto n0 = none{on_done{[](){}}};
-
-// these are quite dangerous as they suppress errors
-
-// provide error
-auto n1 = none{[](std::exception_ptr){}, [](){}};
-auto n2 = none{on_error{[](std::exception_ptr){}, [](auto){}}};
-auto n3 = none{[](std::exception_ptr){}};
-
-```
-
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing none. The state must be a None, but can be a super-set with additional state for this filter.
-
-```cpp
-auto n0 = none{none{}};
-
-auto n1 = none{none{}, on_done{
-    [](none& out, std::exception_ptr ep){out | set_done();}}};
-
-// these are quite dangerous as they suppress errors
-auto n2 = none{none{},
-  [](none<>& out, std::exception_ptr ep){out | set_done();},
-  [](none<>&){out | set_done();}};
-auto n3 = none{none{}, on_error{
-  [](none<>& out, std::exception_ptr ep){out | set_done();},
-  [](none<>& out, auto e){out | set_done();}}};
-```
-
-construct a type-erased type for a particular E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
-
-```cpp
-auto n0 = any_none{none{}};
-auto n1 = any_none<std::exception_ptr>{none{}};
-```
-
-## `single`
-
-The `single` type in the library provides simple ways to construct new implementations of the Single concept.
+The `receiver` type in the library provides simple ways to construct new implementations of the Receiver concept.
 
 construct a sink type that accepts any value or error type (and aborts on error)
 
 ```cpp
-single<> s;
+receiver<> s;
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
 
 ```cpp
 // provide done
-auto s0 = single{on_done{[](){}}};
+auto s0 = receiver{on_done{[](){}}};
 
 // provide value
-auto s1 = single{[](auto v){}};
-auto s2 = single{on_value{[](int){}, [](auto v){}}};
+auto s1 = receiver{[](auto v){}};
+auto s2 = receiver{on_value{[](int){}, [](auto v){}}};
 
 // these are quite dangerous as they suppress errors
 
 // provide error
-auto s3 = single{[](auto v){}, [](std::exception_ptr){}, [](){}};
-auto s4 = single{on_error{[](std::exception_ptr){}}, on_done{[](){}}};
-auto s5 = single{on_error{[](std::exception_ptr){}, [](auto){}}};
-auto s6 = single{on_error{[](std::exception_ptr){}}};
+auto s3 = receiver{[](auto v){}, [](std::exception_ptr){}, [](){}};
+auto s4 = receiver{on_error{[](std::exception_ptr){}}, on_done{[](){}}};
+auto s5 = receiver{on_error{[](std::exception_ptr){}, [](auto){}}};
+auto s6 = receiver{on_error{[](std::exception_ptr){}}};
 
 ```
 
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing single. The state must be a Single, but can be a super-set with additional state for this filter.
+construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing receiver. The state must be a Receiver, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto s0 = single{single{}};
+auto s0 = receiver{receiver{}};
 
-auto s1 = single{single{}, on_done{
-    [](single<>& out, std::exception_ptr ep){out | set_done();}}};
+auto s1 = receiver{receiver{}, on_done{
+    [](receiver<>& out, std::exception_ptr ep){out | set_done();}}};
 
-auto s2 = single{single{},
-  [](single<>& out, auto v){out | set_value(v);};
-auto s3 = single{single{}, on_value{
-  [](single<>& out, int v){out | set_value(v);},
-  [](single<>& out, auto v){out | set_value(v);}}};
+auto s2 = receiver{receiver{},
+  [](receiver<>& out, auto v){out | set_value(v);};
+auto s3 = receiver{receiver{}, on_value{
+  [](receiver<>& out, int v){out | set_value(v);},
+  [](receiver<>& out, auto v){out | set_value(v);}}};
 
 // these are quite dangerous as they suppress errors
-auto s4 = single{single{},
+auto s4 = receiver{receiver{},
   [](){}
-  [](single<>& out, std::exception_ptr ep){out | set_done();},
-  [](single<>&){out | set_done();}};
-auto s5 = single{single{}, on_error{
-  [](single<>& out, std::exception_ptr ep){out | set_done();},
-  [](single<>& out, auto e){out | set_done();}}};
+  [](receiver<>& out, std::exception_ptr ep){out | set_done();},
+  [](receiver<>&){out | set_done();}};
+auto s5 = receiver{receiver{}, on_error{
+  [](receiver<>& out, std::exception_ptr ep){out | set_done();},
+  [](receiver<>& out, auto e){out | set_done();}}};
 
 ```
 
 construct a type-erased type for a particular T & E (each of which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto s0 = single<int>{single{}};
-auto s1 = single<int, std::exception_ptr>{single{}};
-```
-
-## `sender`
-
-The `sender` type in the library provides simple ways to construct new implementations of the NoneSender concept.
-
-construct a producer of nothing, aka `never()`
-
-```cpp
-sender<> d;
-```
-
-construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
-
-```cpp
-auto d0 = sender{on_submit{[](auto out){}}};
-auto d1 = sender{[](auto out){}};
-auto d2 = sender{on_submit{[](none<> out){}, [](auto out){}}};
-
-```
-
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing sender. The state must be a NoneSender, but can be a super-set with additional state for this filter.
-
-```cpp
-auto d0 = sender{sender{}};
-
-auto d1 = sender{sender{}, on_submit{
-    [](sender<>& in, auto out){in | submit(out);}}};
-
-auto d2 = sender{sender{},
-    [](sender<>& in, auto out){in | submit(out);}};
-
-```
-
-construct a type-erased type for a particular E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
-
-```cpp
-auto d0 = sender<>{sender{}};
-auto d1 = sender<std::exception_ptr>{sender{}};
+auto s0 = any_receiver<std::exception_ptr, int>{receiver{}};
+auto s1 = any_receiver<std::exception_ptr, int>{receiver{}};
 ```
 
 ## `single_sender`
@@ -211,7 +123,7 @@ construct new type using one or more lambdas, or with designated initializers, u
 ```cpp
 auto sd0 = single_sender{on_submit{[](auto out){}}};
 auto sd1 = single_sender{[](auto out){}};
-auto sd2 = single_sender{on_submit{[](single<> out){}, [](auto out){}}};
+auto sd2 = single_sender{on_submit{[](receiver<> out){}, [](auto out){}}};
 
 ```
 
@@ -231,8 +143,8 @@ auto sd2 = single_sender{single_sender{},
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto sd0 = single_sender<int>{single_sender{}};
-auto sd1 = single_sender<int, std::exception_ptr>{single_sender{}};
+auto sd0 = any_single_sender<std::exception_ptr, int>{single_sender{}};
+auto sd1 = any_single_sender<std::exception_ptr, int>{single_sender{}};
 ```
 
 ## `time_single_sender`
@@ -250,7 +162,7 @@ construct new type using one or more lambdas, or with designated initializers, u
 ```cpp
 auto tsd0 = time_single_sender{on_submit{[](auto at, auto out){}}};
 auto tsd1 = time_single_sender{[](auto at, auto out){}};
-auto tsd2 = time_single_sender{on_submit{[](auto at, single<> out){}, [](auto at, auto out){}}};
+auto tsd2 = time_single_sender{on_submit{[](auto at, receiver<> out){}, [](auto at, auto out){}}};
 
 ```
 
@@ -270,13 +182,13 @@ auto tsd2 = time_single_sender{single_sender{},
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto tsd0 = time_single_sender<int>{time_single_sender{}};
-auto tsd1 = time_single_sender<int, std::exception_ptr>{time_single_sender{}};
+auto tsd0 = any_time_single_sender<std::exception_ptr, std::system_clock::time_point, int>{time_single_sender{}};
+auto tsd1 = any_time_single_sender<std::exception_ptr, std::system_clock::time_point, int>{time_single_sender{}};
 ```
 
 ## put it all together with some algorithms
 
-[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/g/KbtUAr)
+[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/z/vCUK0M)
 
 ### Executor
 
@@ -284,8 +196,8 @@ auto tsd1 = time_single_sender<int, std::exception_ptr>{time_single_sender{}};
 auto nt = new_thread();
 nt | blocking_submit([](auto nt){
   nt |
-    transform([](auto nt){ return 42; }) | submit_after(20ms, [](int){}) |
-    transform([](int fortyTwo){ return "42"s; }) | submit_after(40ms, [](std::string){});
+    transform([](auto nt){ return 42; }) | submit([](int){}) |
+    transform([](int fortyTwo){ return "42"s; }) | submit([](std::string){});
 });
 ```
 
@@ -307,22 +219,22 @@ just(42) |
 
 ### Many
 
-[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/g/zW7vPP)
+[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/z/woVAi9)
 
 ```cpp
 auto values = std::array<int, 5>{4, 20, 7, 3, 8};
 
-auto f = op::from(values) | 
+auto f = op::from(values) |
     op::submit([&](int){});
 ```
 
 ### FlowMany
 
-[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/g/zW7vPP)
+[![godbolt](https://img.shields.io/badge/godbolt-master-brightgreen.svg?style=flat-square)](https://godbolt.org/z/woVAi9)
 
 ```cpp
 auto values = std::array<int, 5>{4, 20, 7, 3, 8};
 
-auto f = op::flow_from(values) | 
+auto f = op::flow_from(values) |
     op::for_each([&](int){});
 ```
