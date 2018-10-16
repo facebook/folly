@@ -51,6 +51,7 @@ set(header_files
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/on.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/tap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/transform.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/filter.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/via.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/request_via.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/share.h"

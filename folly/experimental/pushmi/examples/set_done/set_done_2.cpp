@@ -1,0 +1,64 @@
+#include <vector>
+#include <algorithm>
+#include <cassert>
+#include <iostream>
+
+#include <pushmi/o/just.h>
+#include <pushmi/o/tap.h>
+#include <pushmi/o/filter.h>
+#include <pushmi/o/transform.h>
+#include <pushmi/o/empty.h>
+
+using namespace pushmi::aliases;
+
+const bool setting_exists = false;
+
+auto get_setting() {
+  return mi::make_single_deferred(
+    [](auto out){
+      if(setting_exists) {
+        op::just(42) | op::submit(out);
+      } else {
+        op::empty<int>() | op::submit(out);
+      }
+    }
+  );
+}
+
+auto println = [](auto v){std::cout << v << std::endl;};
+
+// concat not yet implemented
+auto concat =
+  [](auto in){
+    return mi::make_single_deferred(
+      [in](auto out) mutable {
+        ::pushmi::submit(in, mi::make_single(out,
+        [](auto out, auto v){
+          // ::pushmi::submit(v, out);
+        }));
+      });
+  };
+
+int main()
+{
+  get_setting() |
+    op::transform([](int i){ return std::to_string(i); }) |
+    op::submit(println);
+
+  op::just(42) |
+    op::filter([](int i){ return i < 42; }) |
+    op::transform([](int i){ return std::to_string(i); }) |
+    op::submit(println);
+
+    op::just(42) |
+      op::transform([](int i) {
+        if (i < 42) {
+          return mi::any_single_deferred<std::string>{op::empty<std::string>()};
+        }
+        return mi::any_single_deferred<std::string>{op::just(std::to_string(i))};
+      }) |
+      concat |
+      op::submit(println);
+
+  std::cout << "OK" << std::endl;
+}
