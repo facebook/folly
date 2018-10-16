@@ -84,7 +84,7 @@ public:
 template <class E>
 constexpr typename none<E>::vtable const none<E>::vtable::noop_;
 template <class E>
-template <class Wrapped, bool Big>
+template <class Wrapped, bool InSitu>
 constexpr typename none<E>::vtable const none<E>::vtable_v;
 template <class E>
 template <class Wrapped>

@@ -9,77 +9,6 @@
 
 namespace pushmi {
 
-namespace detail {
-
-template<class data, class V, class E>
-struct single_vtable {
-  void (*op_)(data&, data*) = +[](data&, data*) {};
-  void (*done_)(data&) = +[](data&) {};
-  void (*error_)(data&, E) noexcept = +[](data&, E) noexcept {
-    std::terminate();
-  };
-  void (*rvalue_)(data&, V&&) = +[](data&, V&&) {};
-  void (*lvalue_)(data&, V&) = +[](data&, V&) {};
-  static constexpr single_vtable const noop_ = {};
-};
-
-template <class data, class V, class E, class Wrapped, bool insitu>
-struct single_vtable_v;
-
-template <class data, class V, class E, class Wrapped>
-struct single_vtable_v<data, V, E, Wrapped, false> {
-  static constexpr single_vtable<data, V, E> const vtable_v = {
-      +[](data& src, data* dst) {
-        if (dst)
-          dst->pobj_ = std::exchange(src.pobj_, nullptr);
-        delete static_cast<Wrapped const*>(src.pobj_);
-      },
-      +[](data& src) { ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_)); },
-      +[](data& src, E e) noexcept {
-          ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
-      },
-      +[](data& src, V&& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
-      },
-      +[](data& src, V& v) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), v);
-      }
-  };
-};
-
-template <class data, class V, class E, class Wrapped>
-struct single_vtable_v<data, V, E, Wrapped, true> {
-  static constexpr single_vtable<data, V, E> const vtable_v = {
-    +[](data& src, data* dst) {
-       if (dst)
-         new (dst->buffer_) Wrapped(
-             std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-       static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
-    },
-    +[](data& src) {
-      ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
-    },
-    +[](data& src, E e) noexcept {
-      ::pushmi::set_error(
-        *static_cast<Wrapped*>((void*)src.buffer_),
-        std::move(e));
-    },
-    +[](data& src, V&& v) {
-      ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
-    },
-    +[](data& src, V& v) {
-      ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), v);
-    }
-  };
-};
-
-// Class static definitions:
-
-template<class data, class V, class E>
-constexpr single_vtable<data, V, E> const single_vtable<data, V, E>::noop_;
-
-} // namespace detail
-
 template <class V, class E>
 class single<V, E> {
   bool done_ = false;
@@ -92,9 +21,18 @@ class single<V, E> {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
         std::is_nothrow_move_constructible_v<Wrapped>;
   }
-  using vtable = detail::single_vtable<data, V, E>;
-  vtable const* vptr_ = &vtable::noop_;
-
+  struct vtable {
+    void (*op_)(data&, data*) = +[](data&, data*) {};
+    void (*done_)(data&) = +[](data&) {};
+    void (*error_)(data&, E) noexcept = +[](data&, E) noexcept {
+      std::terminate();
+    };
+    void (*rvalue_)(data&, V&&) = +[](data&, V&&) {};
+    void (*lvalue_)(data&, V&) = +[](data&, V&) {};
+    static constexpr vtable const noop_ = {};
+  } const* vptr_ = &vtable::noop_;
+  template <class Wrapped>
+  static constexpr vtable vtable_v() noexcept;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
     std::enable_if_t<!std::is_same_v<U, single>, U>;
@@ -116,11 +54,11 @@ public:
     static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
       "Wrapped single must support E and be noexcept");
     if constexpr (insitu<Wrapped>())
-      new (data_.buffer_) Wrapped(std::move(obj));
+      new ((void*)data_.buffer_) Wrapped(std::move(obj));
     else
       data_.pobj_ = new Wrapped(std::move(obj));
-    vptr_ =
-      &detail::single_vtable_v<data, V, E, Wrapped, insitu<Wrapped>()>::vtable_v;
+    static constexpr auto vtbl = vtable_v<Wrapped>();
+    vptr_ = &vtbl;
   }
   ~single() {
     vptr_->op_(data_, nullptr);
@@ -160,6 +98,54 @@ public:
   }
 };
 
+// Class static definitions:
+template <class V, class E>
+constexpr typename single<V, E>::vtable const single<V, E>::vtable::noop_;
+template <class V, class E>
+template <class Wrapped>
+constexpr typename single<V, E>::vtable single<V, E>::vtable_v() noexcept {
+  if constexpr (insitu<Wrapped>())
+    return {
+      +[](data& src, data* dst) {
+          if (dst)
+            new (dst->buffer_) Wrapped(
+                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
+          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
+      },
+      +[](data& src) {
+        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
+      },
+      +[](data& src, E e) noexcept {
+        ::pushmi::set_error(
+          *static_cast<Wrapped*>((void*)src.buffer_),
+          std::move(e));
+      },
+      +[](data& src, V&& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), (V&&) v);
+      },
+      +[](data& src, V& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), v);
+      }
+    };
+  else
+    return {
+      +[](data& src, data* dst) {
+        if (dst)
+          dst->pobj_ = std::exchange(src.pobj_, nullptr);
+        delete static_cast<Wrapped const*>(src.pobj_);
+      },
+      +[](data& src) { ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_)); },
+      +[](data& src, E e) noexcept {
+          ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
+      },
+      +[](data& src, V&& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), (V&&) v);
+      },
+      +[](data& src, V& v) {
+        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), v);
+      }
+    };
+}
 
 template <class VF, class EF, class DF>
   requires Invocable<DF&>
