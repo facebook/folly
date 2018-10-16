@@ -197,7 +197,9 @@ TEST(Coro, CurrentExecutor) {
 
 coro::Task<void> taskTimedWait() {
   auto fastFuture =
-      futures::sleep(std::chrono::milliseconds{50}).then([] { return 42; });
+      futures::sleep(std::chrono::milliseconds{50}).thenValue([](Unit) {
+        return 42;
+      });
   auto fastResult = co_await coro::timed_wait(
       std::move(fastFuture), std::chrono::milliseconds{100});
   EXPECT_TRUE(fastResult);
@@ -207,16 +209,19 @@ coro::Task<void> taskTimedWait() {
     ExpectedException() : std::runtime_error("ExpectedException") {}
   };
 
-  auto throwingFuture = futures::sleep(std::chrono::milliseconds{50}).then([] {
-    throw ExpectedException();
-  });
+  auto throwingFuture =
+      futures::sleep(std::chrono::milliseconds{50}).thenValue([](Unit) {
+        throw ExpectedException();
+      });
   EXPECT_THROW(
       (void)co_await coro::timed_wait(
           std::move(throwingFuture), std::chrono::milliseconds{100}),
       ExpectedException);
 
   auto slowFuture =
-      futures::sleep(std::chrono::milliseconds{200}).then([] { return 42; });
+      futures::sleep(std::chrono::milliseconds{200}).thenValue([](Unit) {
+        return 42;
+      });
   auto slowResult = co_await coro::timed_wait(
       std::move(slowFuture), std::chrono::milliseconds{100});
   EXPECT_FALSE(slowResult);
