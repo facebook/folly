@@ -9,6 +9,9 @@ This library is counterpart to [P1055 - *A Modest Executor Proposal*](http://wg2
 
 *pushmi* is an implementation for prototyping how Futures, Executors can be defined with shared Concepts. These Concepts can be implemented over and over again to solve different problems and make different tradeoffs. User implementations of the Concepts are first-class citizens due to the attention to composition. Composition also enables each implementation of the Concepts to focus on one concern and then be composed to build more complex solutions.
 
+## Build status
+Travis-CI: [![Travis Build Status](https://travis-ci.org/facebookresearch/pushmi.svg?branch=master)](https://travis-ci.org/facebookresearch/pushmi)
+
 ## Callbacks
 
 *Callbacks* are very familiar though they take many forms. It is precisely the multiplicity of forms that make Callbacks difficult to compose.
