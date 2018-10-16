@@ -26,9 +26,9 @@ class any_time_single_deferred {
     static void s_op(data&, data*) {}
     static TP s_now(data&) { return TP{}; }
     static void s_submit(data&, TP, single<V, E>) {}
-    void (*op_)(data&, data*) = s_op;
-    TP (*now_)(data&) = s_now;
-    void (*submit_)(data&, TP, single<V, E>) = s_submit;
+    void (*op_)(data&, data*) = vtable::s_op;
+    TP (*now_)(data&) = vtable::s_now;
+    void (*submit_)(data&, TP, single<V, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -191,31 +191,31 @@ struct time_single_deferred<A, B, C>
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_time_single_deferred
-inline auto make_time_single_deferred() ->
-    time_single_deferred<ignoreSF, systemNowF> {
-  return {};
-}
-template <class SF>
-auto make_time_single_deferred(SF sf) -> time_single_deferred<SF, systemNowF> {
-  return time_single_deferred<SF, systemNowF>{std::move(sf)};
-}
-PUSHMI_TEMPLATE (class SF, class NF)
-  (requires Invocable<NF&>)
-auto make_time_single_deferred(SF sf, NF nf) -> time_single_deferred<SF, NF> {
-  return {std::move(sf), std::move(nf)};
-}
-PUSHMI_TEMPLATE (class Data, class DSF)
-  (requires TimeSender<Data, is_single<>>)
-auto make_time_single_deferred(Data d, DSF sf) ->
-    time_single_deferred<Data, DSF, passDNF> {
-  return {std::move(d), std::move(sf)};
-}
-PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
-  (requires TimeSender<Data, is_single<>> && Invocable<DNF&, Data&>)
-auto make_time_single_deferred(Data d, DSF sf, DNF nf) ->
-    time_single_deferred<Data, DSF, DNF> {
-  return {std::move(d), std::move(sf), std::move(nf)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_time_single_deferred_fn {
+  inline auto operator()() const  {
+    return time_single_deferred<ignoreSF, systemNowF>{};
+  }
+  template <class SF>
+  auto operator()(SF sf) const {
+    return time_single_deferred<SF, systemNowF>{std::move(sf)};
+  }
+  PUSHMI_TEMPLATE (class SF, class NF)
+    (requires Invocable<NF&>)
+  auto operator()(SF sf, NF nf) const {
+    return time_single_deferred<SF, NF>{std::move(sf), std::move(nf)};
+  }
+  PUSHMI_TEMPLATE (class Data, class DSF)
+    (requires TimeSender<Data, is_single<>>)
+  auto operator()(Data d, DSF sf) const {
+    return time_single_deferred<Data, DSF, passDNF>{std::move(d), std::move(sf)};
+  }
+  PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
+    (requires TimeSender<Data, is_single<>> && Invocable<DNF&, Data&>)
+  auto operator()(Data d, DSF sf, DNF nf) const  {
+    return time_single_deferred<Data, DSF, DNF>{std::move(d), std::move(sf),
+      std::move(nf)};
+  }
+} const make_time_single_deferred {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

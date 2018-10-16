@@ -25,8 +25,8 @@ class deferred<detail::erase_deferred_t, E> {
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_submit(data&, any_none<E>) {}
-    void (*op_)(data&, data*) = s_op;
-    void (*submit_)(data&, any_none<E>) = s_submit;
+    void (*op_)(data&, data*) = vtable::s_op;
+    void (*submit_)(data&, any_none<E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -138,24 +138,25 @@ class deferred<Data, DSF> {
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_deferred
-inline auto make_deferred() -> deferred<ignoreSF> {
-  return deferred<ignoreSF>{};
-}
-template <class SF>
-auto make_deferred(SF sf) -> deferred<SF> {
-  return deferred<SF>{std::move(sf)};
-}
-PUSHMI_TEMPLATE(class Wrapped)
-  (requires Sender<Wrapped, is_none<>>)
-auto make_deferred(Wrapped w) ->
-    deferred<detail::erase_deferred_t, std::exception_ptr> {
-  return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
-}
-PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_none<>>)
-auto make_deferred(Data data, DSF sf) -> deferred<Data, DSF> {
-  return deferred<Data, DSF>{std::move(data), std::move(sf)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_deferred_fn {
+  inline auto operator()() const {
+    return deferred<ignoreSF>{};
+  }
+  template <class SF>
+  auto operator()(SF sf) const {
+    return deferred<SF>{std::move(sf)};
+  }
+  PUSHMI_TEMPLATE(class Wrapped)
+    (requires Sender<Wrapped, is_none<>>)
+  auto operator()(Wrapped w) const {
+    return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DSF)
+    (requires Sender<Data, is_none<>>)
+  auto operator()(Data data, DSF sf) const {
+    return deferred<Data, DSF>{std::move(data), std::move(sf)};
+  }
+} const make_deferred {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

@@ -79,14 +79,16 @@ struct id_fn {
   /**/
 
 #define PUSHMI_IF_CONSTEXPR_THEN_(...) \
-  ([&](auto id)->decltype(auto){__VA_ARGS__})) PUSHMI_COMMA \
+  ([&](auto id)mutable->decltype(auto){__VA_ARGS__})) PUSHMI_COMMA \
   /**/
 
 #define PUSHMI_IF_CONSTEXPR_ELSE_(A, B) \
   A ->* PUSHMI_IF_CONSTEXPR_ ## B \
   /**/
 
-#define PUSHMI_IF_CONSTEXPR_else(...) ([&](auto id)->decltype(auto){__VA_ARGS__});
+#define PUSHMI_IF_CONSTEXPR_else(...) \
+  ([&](auto id)mutable->decltype(auto){__VA_ARGS__});\
+  /**/
 
 namespace pushmi {
 namespace detail {

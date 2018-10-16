@@ -12,6 +12,7 @@
 #include <utility>
 
 #include "concepts.h"
+#include "traits.h"
 
 namespace pushmi {
 
@@ -162,6 +163,7 @@ struct overload_fn<Fn> : Fn {
       : Fn(std::move(fn)) {}
   using Fn::operator();
 };
+#if !defined(__GNUC__) || __GNUC__ >= 8
 template <class Fn, class... Fns>
 struct overload_fn<Fn, Fns...> : Fn, overload_fn<Fns...> {
   constexpr overload_fn() = default;
@@ -170,6 +172,33 @@ struct overload_fn<Fn, Fns...> : Fn, overload_fn<Fns...> {
   using Fn::operator();
   using overload_fn<Fns...>::operator();
 };
+#else
+template <class Fn, class... Fns>
+struct overload_fn<Fn, Fns...> {
+private:
+  std::pair<Fn, overload_fn<Fns...>> fns_;
+  template <bool B>
+  using _which_t = std::conditional_t<B, Fn, overload_fn<Fns...>>;
+public:
+  constexpr overload_fn() = default;
+  constexpr overload_fn(Fn fn, Fns... fns)
+      : fns_{std::move(fn), overload_fn<Fns...>{std::move(fns)...}} {}
+  PUSHMI_TEMPLATE (class... Args)
+    (requires defer::Invocable<Fn&, Args...> ||
+      defer::Invocable<overload_fn<Fns...>&, Args...>)
+  decltype(auto) operator()(Args &&... args) PUSHMI_NOEXCEPT_AUTO(
+      std::declval<_which_t<Invocable<Fn&, Args...>>&>()(std::declval<Args>()...)) {
+    return std::get<!Invocable<Fn&, Args...>>(fns_)((Args &&) args...);
+  }
+  PUSHMI_TEMPLATE (class... Args)
+    (requires defer::Invocable<const Fn&, Args...> ||
+      defer::Invocable<const overload_fn<Fns...>&, Args...>)
+  decltype(auto) operator()(Args &&... args) const PUSHMI_NOEXCEPT_AUTO(
+      std::declval<const _which_t<Invocable<const Fn&, Args...>>&>()(std::declval<Args>()...)) {
+    return std::get<!Invocable<const Fn&, Args...>>(fns_)((Args &&) args...);
+  }
+};
+#endif
 #endif
 
 template <class... Fns>

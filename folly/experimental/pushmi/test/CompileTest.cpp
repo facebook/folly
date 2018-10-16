@@ -17,8 +17,9 @@ void none_test() {
   auto out2 = pushmi::MAKE(none)(pushmi::abortEF{}, pushmi::ignoreDF{});
   auto out3 = pushmi::MAKE(none)([](auto e) noexcept{ e.get(); });
   auto out5 = pushmi::MAKE(none)(
-      pushmi::on_error([](auto e)noexcept {
-        e.get(); }, [](std::exception_ptr e) noexcept{}
+      pushmi::on_error(
+        [](std::exception_ptr e) noexcept {},
+        [](auto e) noexcept { e.get(); }
       ));
   auto out6 = pushmi::MAKE(none)(
       pushmi::on_done([]() {  }));
@@ -34,8 +35,10 @@ void none_test() {
   });
   auto proxy5 = pushmi::MAKE(none)(
       out0,
-      pushmi::on_error([](Out0&, auto e) noexcept{ e.get(); },
-                       [](Out0&, std::exception_ptr e) noexcept{}));
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept{},
+        [](Out0&, auto e) noexcept{ e.get(); }
+      ));
   auto proxy6 = pushmi::MAKE(none)(
       out0,
       pushmi::on_done([](Out0&) { }));
@@ -84,12 +87,14 @@ void single_test() {
   auto out5 = pushmi::MAKE(single)(
       pushmi::on_value([](auto v) { v.get(); }, [](int v) {}),
       pushmi::on_error(
-        [](auto e)noexcept { e.get(); },
-        [](std::exception_ptr e) noexcept{}));
+        [](std::exception_ptr e) noexcept {},
+        [](auto e)noexcept { e.get(); }
+      ));
   auto out6 = pushmi::MAKE(single)(
       pushmi::on_error(
-        [](auto e) noexcept{ e.get(); },
-        [](std::exception_ptr e) noexcept{}));
+        [](std::exception_ptr e) noexcept {},
+        [](auto e) noexcept { e.get(); }
+      ));
   auto out7 = pushmi::MAKE(single)(
       pushmi::on_done([]() {  }));
 
@@ -106,12 +111,16 @@ void single_test() {
   auto proxy5 = pushmi::MAKE(single)(
       out0,
       pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int v) {}),
-      pushmi::on_error([](Out0&, auto e) noexcept { e.get(); },
-                       [](Out0&, std::exception_ptr e) noexcept {}));
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
   auto proxy6 = pushmi::MAKE(single)(
       out0,
-      pushmi::on_error([](Out0&, auto e) noexcept { e.get(); },
-                       [](Out0&, std::exception_ptr e) noexcept {}));
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
   auto proxy7 = pushmi::MAKE(single)(
       out0,
       pushmi::on_done([](Out0&) { }));
@@ -232,12 +241,14 @@ void flow_single_test() {
   auto out5 = pushmi::MAKE(flow_single)(
       pushmi::on_value([](auto v) { v.get(); }, [](int v) {}),
       pushmi::on_error(
-        [](auto e)noexcept { e.get(); },
-        [](std::exception_ptr e) noexcept{}));
+        [](std::exception_ptr e) noexcept{},
+        [](auto e) noexcept { e.get(); }
+      ));
   auto out6 = pushmi::MAKE(flow_single)(
       pushmi::on_error(
-        [](auto e) noexcept{ e.get(); },
-        [](std::exception_ptr e) noexcept{}));
+        [](std::exception_ptr e) noexcept {},
+        [](auto e) noexcept{ e.get(); }
+      ));
   auto out7 = pushmi::MAKE(flow_single)(
       pushmi::on_done([]() {  }));
 
@@ -268,12 +279,16 @@ void flow_single_test() {
   auto proxy5 = pushmi::MAKE(flow_single)(
       out0,
       pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int v) {}),
-      pushmi::on_error([](Out0&, auto e) noexcept { e.get(); },
-                       [](Out0&, std::exception_ptr e) noexcept {}));
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
   auto proxy6 = pushmi::MAKE(flow_single)(
       out0,
-      pushmi::on_error([](Out0&, auto e) noexcept { e.get(); },
-                       [](Out0&, std::exception_ptr e) noexcept {}));
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
   auto proxy7 = pushmi::MAKE(flow_single)(
       out0,
       pushmi::on_done([](Out0&) { }));

@@ -47,12 +47,14 @@ struct tap_ {
   }
 };
 
-PUSHMI_TEMPLATE(class SideEffects, class Out)
-  (requires Receiver<SideEffects> && Receiver<Out> &&
-    Receiver<tap_<SideEffects, Out>, property_set_index_t<properties_t<Out>, is_silent<>>>)
-auto make_tap(SideEffects se, Out out) -> tap_<SideEffects, Out> {
-  return {std::move(se), std::move(out)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
+  PUSHMI_TEMPLATE(class SideEffects, class Out)
+    (requires Receiver<SideEffects> && Receiver<Out> &&
+      Receiver<tap_<SideEffects, Out>, property_set_index_t<properties_t<Out>, is_silent<>>>)
+  auto operator()(SideEffects se, Out out) const {
+    return tap_<SideEffects, Out>{std::move(se), std::move(out)};
+  }
+} const make_tap {};
 
 struct tap_fn {
   template <class... AN>
@@ -89,7 +91,7 @@ auto tap_fn::operator()(AN... an) const {
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(
           constrain(lazy::Receiver<_1>,
-            [sideEffects = std::move(sideEffects)](auto out) {
+            [sideEffects_ = std::move(sideEffects)](auto out) {
               using Out = decltype(out);
               PUSHMI_STATIC_ASSERT(
                 ::pushmi::detail::deferred_requires_from<In, SideEffects,
@@ -98,7 +100,7 @@ auto tap_fn::operator()(AN... an) const {
                   TimeSenderTo<In, Out, is_single<>> >(),
                   "'In' is not deliverable to 'Out'");
               auto gang{::pushmi::detail::out_from_fn<In>()(
-                  detail::make_tap(sideEffects, std::move(out)))};
+                  detail::make_tap(sideEffects_, std::move(out)))};
               using Gang = decltype(gang);
               PUSHMI_STATIC_ASSERT(
                 ::pushmi::detail::deferred_requires_from<In, SideEffects,

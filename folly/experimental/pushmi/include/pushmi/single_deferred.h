@@ -22,8 +22,8 @@ class any_single_deferred {
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_submit(data&, single<V, E>) {}
-    void (*op_)(data&, data*) = s_op;
-    void (*submit_)(data&, single<V, E>) = s_submit;
+    void (*op_)(data&, data*) = vtable::s_op;
+    void (*submit_)(data&, single<V, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -154,24 +154,26 @@ struct single_deferred<A, B>
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_single_deferred
-inline auto make_single_deferred() -> single_deferred<ignoreSF> {
-  return {};
-}
-PUSHMI_TEMPLATE(class SF)
-  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-auto make_single_deferred(SF sf) -> single_deferred<SF> {
-  return single_deferred<SF>{std::move(sf)};
-}
-PUSHMI_TEMPLATE(class Data)
-  (requires True<> && Sender<Data, is_single<>>)
-auto make_single_deferred(Data d) -> single_deferred<Data, passDSF> {
-  return single_deferred<Data, passDSF>{std::move(d)};
-}
-PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_single<>>)
-auto make_single_deferred(Data d, DSF sf) -> single_deferred<Data, DSF> {
-  return {std::move(d), std::move(sf)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_single_deferred_fn {
+  inline auto operator()() const {
+    return single_deferred<ignoreSF>{};
+  }
+  PUSHMI_TEMPLATE(class SF)
+    (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
+  auto operator()(SF sf) const {
+    return single_deferred<SF>{std::move(sf)};
+  }
+  PUSHMI_TEMPLATE(class Data)
+    (requires True<> && Sender<Data, is_single<>>)
+  auto operator()(Data d) const {
+    return single_deferred<Data, passDSF>{std::move(d)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DSF)
+    (requires Sender<Data, is_single<>>)
+  auto operator()(Data d, DSF sf) const {
+    return single_deferred<Data, DSF>{std::move(d), std::move(sf)};
+  }
+} const make_single_deferred {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

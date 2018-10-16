@@ -22,8 +22,8 @@ class flow_single_deferred<V, PE, E> {
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_submit(data&, flow_single<V, PE, E>) {}
-    void (*op_)(data&, data*) = s_op;
-    void (*submit_)(data&, flow_single<V, PE, E>) = s_submit;
+    void (*op_)(data&, data*) = vtable::s_op;
+    void (*submit_)(data&, flow_single<V, PE, E>) = vtable::s_submit;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -117,13 +117,15 @@ class flow_single_deferred<SF> {
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_flow_single_deferred
-inline auto make_flow_single_deferred() -> flow_single_deferred<ignoreSF> {
-  return flow_single_deferred<ignoreSF>{};
-}
-template <class SF>
-auto make_flow_single_deferred(SF sf) -> flow_single_deferred<SF> {
-  return flow_single_deferred<SF>(std::move(sf));
-}
+PUSHMI_INLINE_VAR constexpr struct make_flow_single_deferred_fn {
+  inline auto operator()() const {
+    return flow_single_deferred<ignoreSF>{};
+  }
+  template <class SF>
+  auto operator()(SF sf) const {
+    return flow_single_deferred<SF>(std::move(sf));
+  }
+} const make_flow_single_deferred {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

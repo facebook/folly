@@ -9,6 +9,15 @@
 
 #include "detail/concept_def.h"
 
+#define PUSHMI_NOEXCEPT_AUTO(...) \
+  noexcept(noexcept(static_cast<decltype((__VA_ARGS__))>(__VA_ARGS__)))\
+  /**/
+#define PUSHMI_NOEXCEPT_RETURN(...) \
+  PUSHMI_NOEXCEPT_AUTO(__VA_ARGS__) {\
+    return (__VA_ARGS__);\
+  }\
+  /**/
+
 namespace pushmi {
 #if __cpp_fold_expressions >= 201603
 template <bool...Bs>

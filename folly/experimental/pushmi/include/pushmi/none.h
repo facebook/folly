@@ -24,9 +24,9 @@ class none<E> {
     static void s_op(data&, data*) {}
     static void s_done(data&) {}
     static void s_error(data&, E) noexcept { std::terminate(); };
-    void (*op_)(data&, data*) = s_op;
-    void (*done_)(data&) = s_done;
-    void (*error_)(data&, E) noexcept = s_error;
+    void (*op_)(data&, data*) = vtable::s_op;
+    void (*done_)(data&) = vtable::s_done;
+    void (*error_)(data&, E) noexcept = vtable::s_error;
   };
   static constexpr vtable const noop_ {};
   vtable  const* vptr_ = &noop_;
@@ -203,47 +203,49 @@ class none<>
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_flow_single
-inline auto make_none() -> none<> {
-  return {};
-}
-PUSHMI_TEMPLATE(class EF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF> PUSHMI_AND not defer::Invocable<EF&>)))
-auto make_none(EF ef) -> none<EF, ignoreDF> {
-  return none<EF, ignoreDF>{std::move(ef)};
-}
-PUSHMI_TEMPLATE(class DF)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
-auto make_none(DF df) -> none<abortEF, DF> {
-  return none<abortEF, DF>{std::move(df)};
-}
-PUSHMI_TEMPLATE(class EF, class DF)
-  (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
-auto make_none(EF ef, DF df) -> none<EF, DF> {
-  return {std::move(ef), std::move(df)};
-}
-PUSHMI_TEMPLATE(class Data)
-  (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>))
-auto make_none(Data d) -> none<Data, passDEF, passDDF> {
-  return none<Data, passDEF, passDDF>{std::move(d)};
-}
-PUSHMI_TEMPLATE(class Data, class DEF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
-auto make_none(Data d, DEF ef) -> none<Data, DEF, passDDF> {
-  return {std::move(d), std::move(ef)};
-}
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-    defer::Invocable<DDF&, Data&>))
-auto make_none(Data d, DDF df) -> none<Data, passDEF, DDF> {
-  return {std::move(d), std::move(df)};
-}
-PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
-  (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
-    defer::Invocable<DDF&, Data&>))
-auto make_none(Data d, DEF ef, DDF df) -> none<Data, DEF, DDF> {
-  return {std::move(d), std::move(ef), std::move(df)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_none_fn {
+  inline auto operator()() const {
+    return none<>{};
+  }
+  PUSHMI_TEMPLATE(class EF)
+    (requires PUSHMI_EXP(defer::True<> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF> PUSHMI_AND not defer::Invocable<EF&>)))
+  auto operator()(EF ef) const {
+    return none<EF, ignoreDF>{std::move(ef)};
+  }
+  PUSHMI_TEMPLATE(class DF)
+    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<DF>)))
+  auto operator()(DF df) const {
+    return none<abortEF, DF>{std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class EF, class DF)
+    (requires PUSHMI_EXP(defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Receiver<EF>)))
+  auto operator()(EF ef, DF df) const {
+    return none<EF, DF>{std::move(ef), std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class Data)
+    (requires PUSHMI_EXP(defer::True<> PUSHMI_AND defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>))
+  auto operator()(Data d) const {
+    return none<Data, passDEF, passDDF>{std::move(d)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DEF)
+    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>>
+      PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not defer::Invocable<DEF&, Data&>)))
+  auto operator()(Data d, DEF ef) const {
+    return none<Data, DEF, passDDF>{std::move(d), std::move(ef)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DDF)
+    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
+      defer::Invocable<DDF&, Data&>))
+  auto operator()(Data d, DDF df) const {
+    return none<Data, passDEF, DDF>{std::move(d), std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DEF, class DDF)
+    (requires PUSHMI_EXP(defer::Receiver<Data, is_none<>> PUSHMI_AND not defer::Receiver<Data, is_single<>> PUSHMI_AND
+      defer::Invocable<DDF&, Data&>))
+  auto operator()(Data d, DEF ef, DDF df) const {
+    return none<Data, DEF, DDF>{std::move(d), std::move(ef), std::move(df)};
+  }
+} const make_none {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

@@ -10,6 +10,9 @@
 #include "../piping.h"
 #include "../boosters.h"
 #include "../single.h"
+#include "../deferred.h"
+#include "../single_deferred.h"
+#include "../time_single_deferred.h"
 #include "../detail/if_constexpr.h"
 #include "../detail/functional.h"
 
@@ -75,7 +78,7 @@ struct out_from_fn {
 PUSHMI_TEMPLATE(class In, class FN)
   (requires Sender<In> && SemiMovable<FN>)
 auto submit_transform_out(FN fn){
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool)TimeSender<In>) (
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
     return on_submit(
       constrain(lazy::Receiver<_3>,
         [fn = std::move(fn)](In& in, auto tp, auto out) {
@@ -97,7 +100,7 @@ auto submit_transform_out(FN fn){
 PUSHMI_TEMPLATE(class In, class SDSF, class TSDSF)
   (requires Sender<In> && SemiMovable<SDSF> && SemiMovable<TSDSF>)
 auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool)TimeSender<In>) (
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSender<In>) (
     return on_submit(
       constrain(lazy::Receiver<_3> && lazy::Invocable<TSDSF&, In&, _2, _3>,
         [tsdsf = std::move(tsdsf)](In& in, auto tp, auto out) {
@@ -116,17 +119,17 @@ auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
   ))
 }
 
-PUSHMI_TEMPLATE(class In, class Out, class... FN)
+PUSHMI_TEMPLATE(class In, class Out)
   (requires Sender<In> && Receiver<Out>)
-auto deferred_from(FN&&... fn) {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool)TimeSenderTo<In, Out, is_single<>>) (
-    return make_time_single_deferred((FN&&) fn...);
+auto deferred_from_maker() {
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
+    return make_time_single_deferred;
   ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out, is_single<>>) (
-      return make_single_deferred((FN&&) fn...);
+    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out, is_single<>>) (
+      return make_single_deferred;
     ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out>) (
-        return make_deferred((FN&&) fn...);
+      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
+        return make_deferred;
       ) else (
       ))
     ))
@@ -135,19 +138,14 @@ auto deferred_from(FN&&... fn) {
 
 PUSHMI_TEMPLATE(class In, class Out, class... FN)
   (requires Sender<In> && Receiver<Out>)
+auto deferred_from(FN&&... fn) {
+  return deferred_from_maker<In, Out>()((FN&&) fn...);
+}
+
+PUSHMI_TEMPLATE(class In, class Out, class... FN)
+  (requires Sender<In> && Receiver<Out>)
 auto deferred_from(In in, FN&&... fn) {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool)TimeSenderTo<In, Out, is_single<>>) (
-    return make_time_single_deferred(id(std::move(in)), (FN&&) fn...);
-  ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out, is_single<>>) (
-      return make_single_deferred(id(std::move(in)), (FN&&) fn...);
-    ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out>) (
-        return make_deferred(id(std::move(in)), (FN&&) fn...);
-      ) else (
-      ))
-    ))
-  ))
+  return deferred_from_maker<In, Out>()(std::move(in), (FN&&) fn...);
 }
 
 PUSHMI_TEMPLATE(
@@ -158,13 +156,13 @@ PUSHMI_TEMPLATE(
     bool TimeSingleSenderRequires)
   (requires Sender<In> && Receiver<Out>)
 constexpr bool deferred_requires_from() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool)TimeSenderTo<In, Out, is_single<>>) (
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
     return TimeSingleSenderRequires;
   ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out, is_single<>>) (
+    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out, is_single<>>) (
       return SingleSenderRequires;
     ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool)SenderTo<In, Out>) (
+      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
         return SenderRequires;
       ) else (
       ))

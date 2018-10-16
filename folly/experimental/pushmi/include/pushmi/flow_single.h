@@ -26,12 +26,12 @@ class flow_single<V, PE, E> {
     static void s_value(data&, V) {}
     static void s_stopping(data&) noexcept {}
     static void s_starting(data&, any_none<PE>&) {}
-    void (*op_)(data&, data*) = s_op;
-    void (*done_)(data&) = s_done;
-    void (*error_)(data&, E) noexcept = s_error;
-    void (*value_)(data&, V) = s_value;
-    void (*stopping_)(data&) noexcept = s_stopping;
-    void (*starting_)(data&, any_none<PE>&) = s_starting;
+    void (*op_)(data&, data*) = vtable::s_op;
+    void (*done_)(data&) = vtable::s_done;
+    void (*error_)(data&, E) noexcept = vtable::s_error;
+    void (*value_)(data&, V) = vtable::s_value;
+    void (*stopping_)(data&) noexcept = vtable::s_stopping;
+    void (*starting_)(data&, any_none<PE>&) = vtable::s_starting;
   };
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
@@ -287,154 +287,120 @@ class flow_single<>
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_flow_single
-inline auto make_flow_single() -> flow_single<> {
-  return flow_single<>{};
-}
-PUSHMI_TEMPLATE (class VF)
-  (requires not Receiver<VF> && !detail::is_v<VF, on_error_fn> &&
-    !detail::is_v<VF, on_done_fn>)
-auto make_flow_single(VF vf)
-         -> flow_single<VF, abortEF, ignoreDF, ignoreStpF, ignoreStrtF> {
-  return flow_single<VF, abortEF, ignoreDF, ignoreStpF, ignoreStrtF>{std::move(vf)};
-}
-template <class... EFN>
-auto make_flow_single(on_error_fn<EFN...> ef)
-    -> flow_single<
-        ignoreVF,
-        on_error_fn<EFN...>,
-        ignoreDF,
-        ignoreStpF,
-        ignoreStrtF> {
-  return flow_single<
-        ignoreVF,
-        on_error_fn<EFN...>,
-        ignoreDF,
-        ignoreStpF,
-        ignoreStrtF>{std::move(ef)};
-}
-template <class DF>
-auto make_flow_single(on_done_fn<DF> df)
-    -> flow_single<ignoreVF, abortEF, on_done_fn<DF>, ignoreStpF, ignoreStrtF> {
-  return flow_single<ignoreVF, abortEF, on_done_fn<DF>, ignoreStpF, ignoreStrtF>{
-      std::move(df)};
-}
-PUSHMI_TEMPLATE (class V, class PE, class E, class Wrapped)
-  (requires FlowSingleReceiver<Wrapped, V, PE, E> &&
-    !detail::is_v<Wrapped, none>)
-auto make_flow_single(Wrapped w) -> flow_single<V, PE, E> {
-  return flow_single<V, PE, E>{std::move(w)};
-}
-PUSHMI_TEMPLATE (class VF, class EF)
-  (requires not Receiver<VF> && !detail::is_v<VF, on_error_fn> &&
-    !detail::is_v<VF, on_done_fn> && !detail::is_v<EF, on_value_fn> &&
-    !detail::is_v<EF, on_done_fn>)
-auto make_flow_single(VF vf, EF ef)
-         -> flow_single<VF, EF, ignoreDF, ignoreStpF, ignoreStrtF> {
-  return {std::move(vf), std::move(ef)};
-}
-template <class... EFN, class DF>
-auto make_flow_single(on_error_fn<EFN...> ef, on_done_fn<DF> df)
-    -> flow_single<
-        ignoreVF,
-        on_error_fn<EFN...>,
-        on_done_fn<DF>,
-        ignoreStpF,
-        ignoreStrtF> {
-  return {std::move(ef), std::move(df)};
-}
-PUSHMI_TEMPLATE (class VF, class EF, class DF)
-  (requires Invocable<DF&>)
-auto make_flow_single(VF vf, EF ef, DF df)
-    -> flow_single<VF, EF, DF, ignoreStpF, ignoreStrtF> {
-  return {std::move(vf), std::move(ef), std::move(df)};
-}
-PUSHMI_TEMPLATE (class VF, class EF, class DF, class StpF)
-  (requires Invocable<DF&>&& Invocable<StpF&>)
-auto make_flow_single(VF vf, EF ef, DF df, StpF stpf)
-    -> flow_single<VF, EF, DF, StpF, ignoreStrtF> {
-  return {std::move(vf), std::move(ef), std::move(df), std::move(stpf)};
-}
-PUSHMI_TEMPLATE (class VF, class EF, class DF, class StpF, class StrtF)
-  (requires Invocable<DF&>&& Invocable<StpF&>)
-auto make_flow_single(VF vf, EF ef, DF df, StpF stpf, StrtF strtf)
-    -> flow_single<VF, EF, DF, StpF, StrtF> {
-  return {std::move(vf), std::move(ef), std::move(df), std::move(stpf), std::move(strtf)};
-}
-PUSHMI_TEMPLATE(class Data)
-  (requires Receiver<Data>)
-auto make_flow_single(Data d)
-    -> flow_single<Data, passDVF, passDEF, passDDF, passDStpF, passDStrtF> {
-  return flow_single<Data, passDVF, passDEF, passDDF, passDStpF, passDStrtF>{
-      std::move(d)};
-}
-PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires Receiver<Data> && !detail::is_v<DVF, on_error_fn> &&
-    !detail::is_v<DVF, on_done_fn>)
-auto make_flow_single(Data d, DVF vf)
-         -> flow_single<Data, DVF, passDEF, passDDF, passDStpF, passDStrtF> {
-  return {std::move(d), std::move(vf)};
-}
-PUSHMI_TEMPLATE(class Data, class... DEFN)
-  (requires Receiver<Data>)
-auto make_flow_single(Data d, on_error_fn<DEFN...> ef)
-    -> flow_single<
-        Data,
-        passDVF,
-        on_error_fn<DEFN...>,
-        passDDF,
-        passDStpF,
-        passDStrtF> {
-  return {std::move(d), std::move(ef)};
-}
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
-  (requires Receiver<Data> && !detail::is_v<DVF, on_error_fn> &&
-    !detail::is_v<DVF, on_done_fn> && !detail::is_v<DEF, on_done_fn>)
-auto make_flow_single(Data d, DVF vf, DEF ef)
-         -> flow_single<Data, DVF, DEF, passDDF, passDStpF, passDStrtF> {
-  return {std::move(d), std::move(vf), std::move(ef)};
-}
-PUSHMI_TEMPLATE(class Data, class... DEFN, class DDF)
-  (requires Receiver<Data>)
-auto make_flow_single(Data d, on_error_fn<DEFN...> ef, on_done_fn<DDF> df)
-    -> flow_single<
-        Data,
-        passDVF,
-        on_error_fn<DEFN...>,
-        on_done_fn<DDF>,
-        passDStpF,
-        passDStrtF> {
-  return {std::move(d), std::move(ef), std::move(df)};
-}
-PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires Receiver<Data>)
-auto make_flow_single(Data d, on_done_fn<DDF> df)
-    -> flow_single<Data, passDVF, passDEF, on_done_fn<DDF>, passDStpF, passDStrtF> {
-  return {std::move(d), std::move(df)};
-}
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
-  (requires Receiver<Data> && Invocable<DDF&, Data&>)
-auto make_flow_single(Data d, DVF vf, DEF ef, DDF df)
-    -> flow_single<Data, DVF, DEF, DDF, passDStpF, passDStrtF> {
-  return {std::move(d), std::move(vf), std::move(ef), std::move(df)};
-}
-PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStpF)
-  (requires Receiver<Data> && Invocable<DDF&, Data&>&& Invocable<DStpF&, Data&>)
-auto make_flow_single(Data d, DVF vf, DEF ef, DDF df, DStpF stpf)
-    -> flow_single<Data, DVF, DEF, DDF, DStpF, passDStrtF> {
-  return {std::move(d), std::move(vf), std::move(ef), std::move(df), std::move(stpf)};
-}
-PUSHMI_TEMPLATE(
-    class Data,
-    class DVF,
-    class DEF,
-    class DDF,
-    class DStpF,
-    class DStrtF)
-  (requires Receiver<Data> && Invocable<DDF&, Data&> && Invocable<DStpF&, Data&>)
-auto make_flow_single(Data d, DVF vf, DEF ef, DDF df, DStpF stpf, DStrtF strtf)
-    -> flow_single<Data, DVF, DEF, DDF, DStpF, DStrtF> {
-  return {std::move(d), std::move(vf), std::move(ef), std::move(df), std::move(stpf), std::move(strtf)};
-}
+PUSHMI_INLINE_VAR constexpr struct make_flow_single_fn {
+  inline auto operator()() const {
+    return flow_single<>{};
+  }
+  PUSHMI_TEMPLATE (class VF)
+    (requires not Receiver<VF> && !detail::is_v<VF, on_error_fn> &&
+      !detail::is_v<VF, on_done_fn>)
+  auto operator()(VF vf) const {
+    return flow_single<VF, abortEF, ignoreDF, ignoreStpF, ignoreStrtF>{
+      std::move(vf)};
+  }
+  template <class... EFN>
+  auto operator()(on_error_fn<EFN...> ef) const {
+    return flow_single<ignoreVF, on_error_fn<EFN...>, ignoreDF, ignoreStpF, ignoreStrtF>{
+      std::move(ef)};
+  }
+  template <class DF>
+  auto operator()(on_done_fn<DF> df) const {
+    return flow_single<ignoreVF, abortEF, on_done_fn<DF>, ignoreStpF, ignoreStrtF>{
+        std::move(df)};
+  }
+  PUSHMI_TEMPLATE (class V, class PE, class E, class Wrapped)
+    (requires FlowSingleReceiver<Wrapped, V, PE, E> &&
+      !detail::is_v<Wrapped, none>)
+  auto operator()(Wrapped w) const {
+    return flow_single<V, PE, E>{std::move(w)};
+  }
+  PUSHMI_TEMPLATE (class VF, class EF)
+    (requires not Receiver<VF> && !detail::is_v<VF, on_error_fn> &&
+      !detail::is_v<VF, on_done_fn> && !detail::is_v<EF, on_value_fn> &&
+      !detail::is_v<EF, on_done_fn>)
+  auto operator()(VF vf, EF ef) const {
+    return flow_single<VF, EF, ignoreDF, ignoreStpF, ignoreStrtF>{std::move(vf),
+      std::move(ef)};
+  }
+  template <class... EFN, class DF>
+  auto operator()(on_error_fn<EFN...> ef, on_done_fn<DF> df) const {
+    return flow_single<ignoreVF, on_error_fn<EFN...>, on_done_fn<DF>, ignoreStpF, ignoreStrtF>{
+      std::move(ef), std::move(df)};
+  }
+  PUSHMI_TEMPLATE (class VF, class EF, class DF)
+    (requires Invocable<DF&>)
+  auto operator()(VF vf, EF ef, DF df) const {
+    return flow_single<VF, EF, DF, ignoreStpF, ignoreStrtF>{std::move(vf),
+      std::move(ef), std::move(df)};
+  }
+  PUSHMI_TEMPLATE (class VF, class EF, class DF, class StpF)
+    (requires Invocable<DF&> && Invocable<StpF&>)
+  auto operator()(VF vf, EF ef, DF df, StpF stpf) const {
+    return flow_single<VF, EF, DF, StpF, ignoreStrtF>{std::move(vf),
+      std::move(ef), std::move(df), std::move(stpf)};
+  }
+  PUSHMI_TEMPLATE (class VF, class EF, class DF, class StpF, class StrtF)
+    (requires Invocable<DF&> && Invocable<StpF&>)
+  auto operator()(VF vf, EF ef, DF df, StpF stpf, StrtF strtf) const {
+    return flow_single<VF, EF, DF, StpF, StrtF>{std::move(vf), std::move(ef),
+      std::move(df), std::move(stpf), std::move(strtf)};
+  }
+  PUSHMI_TEMPLATE(class Data)
+    (requires Receiver<Data>)
+  auto operator()(Data d) const {
+    return flow_single<Data, passDVF, passDEF, passDDF, passDStpF, passDStrtF>{
+        std::move(d)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DVF)
+    (requires Receiver<Data> && !detail::is_v<DVF, on_error_fn> &&
+      !detail::is_v<DVF, on_done_fn>)
+  auto operator()(Data d, DVF vf) const {
+    return flow_single<Data, DVF, passDEF, passDDF, passDStpF, passDStrtF>{
+      std::move(d), std::move(vf)};
+  }
+  PUSHMI_TEMPLATE(class Data, class... DEFN)
+    (requires Receiver<Data>)
+  auto operator()(Data d, on_error_fn<DEFN...> ef) const {
+    return flow_single<Data, passDVF, on_error_fn<DEFN...>, passDDF, passDStpF, passDStrtF>{
+      std::move(d), std::move(ef)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF)
+    (requires Receiver<Data> && !detail::is_v<DVF, on_error_fn> &&
+      !detail::is_v<DVF, on_done_fn> && !detail::is_v<DEF, on_done_fn>)
+  auto operator()(Data d, DVF vf, DEF ef) const {
+    return flow_single<Data, DVF, DEF, passDDF, passDStpF, passDStrtF>{std::move(d), std::move(vf), std::move(ef)};
+  }
+  PUSHMI_TEMPLATE(class Data, class... DEFN, class DDF)
+    (requires Receiver<Data>)
+  auto operator()(Data d, on_error_fn<DEFN...> ef, on_done_fn<DDF> df) const {
+    return flow_single<Data, passDVF, on_error_fn<DEFN...>, on_done_fn<DDF>, passDStpF, passDStrtF>{
+      std::move(d), std::move(ef), std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DDF)
+    (requires Receiver<Data>)
+  auto operator()(Data d, on_done_fn<DDF> df) const {
+    return flow_single<Data, passDVF, passDEF, on_done_fn<DDF>, passDStpF, passDStrtF>{
+      std::move(d), std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF)
+    (requires Receiver<Data> && Invocable<DDF&, Data&>)
+  auto operator()(Data d, DVF vf, DEF ef, DDF df) const {
+    return flow_single<Data, DVF, DEF, DDF, passDStpF, passDStrtF>{std::move(d),
+      std::move(vf), std::move(ef), std::move(df)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStpF)
+    (requires Receiver<Data> && Invocable<DDF&, Data&> && Invocable<DStpF&, Data&>)
+  auto operator()(Data d, DVF vf, DEF ef, DDF df, DStpF stpf) const {
+    return flow_single<Data, DVF, DEF, DDF, DStpF, passDStrtF>{std::move(d),
+      std::move(vf), std::move(ef), std::move(df), std::move(stpf)};
+  }
+  PUSHMI_TEMPLATE(class Data, class DVF, class DEF, class DDF, class DStpF, class DStrtF)
+    (requires Receiver<Data> && Invocable<DDF&, Data&> && Invocable<DStpF&, Data&>)
+  auto operator()(Data d, DVF vf, DEF ef, DDF df, DStpF stpf, DStrtF strtf) const {
+    return flow_single<Data, DVF, DEF, DDF, DStpF, DStrtF>{std::move(d),
+      std::move(vf), std::move(ef), std::move(df), std::move(stpf), std::move(strtf)};
+  }
+} const make_flow_single {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides

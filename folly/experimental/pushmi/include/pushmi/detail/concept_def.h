@@ -7,6 +7,10 @@
 
 #include <type_traits>
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
 // disable buggy compatibility warning about "requires" and "concept" being
 // C++20 keywords.
 #if defined(__clang__)
@@ -210,12 +214,21 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
             explicit constexpr operator bool() const noexcept {                \
                 return (bool) defer::NAME<PUSHMI_PP_EXPAND ARGS>;              \
             }                                                                  \
+            template <class PMThis = Concept, bool PMB>                        \
+              requires PMB == (bool)PMThis{}                                   \
+            constexpr operator std::integral_constant<bool, PMB>() const noexcept {\
+                return {};                                                     \
+            }                                                                  \
             constexpr auto operator!() const noexcept {                        \
                 return ::pushmi::concepts::detail::Not<Concept>{};             \
             }                                                                  \
             template <class That>                                              \
             constexpr auto operator&&(That) const noexcept {                   \
                 return ::pushmi::concepts::detail::And<Concept, That>{};       \
+            }                                                                  \
+            template <class That>                                              \
+            constexpr auto operator||(That) const noexcept {                   \
+                return ::pushmi::concepts::detail::Or<Concept, That>{};        \
             }                                                                  \
         };                                                                     \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
@@ -255,11 +268,17 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         struct Eval {                                                          \
             template <class C_ = Concept>                                      \
             static constexpr decltype(                                         \
-                !&C_::template Requires_<PUSHMI_PP_EXPAND ARGS>)               \
+                ::pushmi::concepts::detail::gcc_bugs(                          \
+                    &C_::template Requires_<PUSHMI_PP_EXPAND ARGS>))           \
             impl(int) noexcept { return true; }                                \
             static constexpr bool impl(long) noexcept { return false; }        \
             explicit constexpr operator bool() const noexcept {                \
                 return Eval::impl(0);                                          \
+            }                                                                  \
+            template <class PMThis = Concept, bool PMB,                        \
+              class = std::enable_if_t<PMB == (bool) PMThis{}>>                \
+            constexpr operator std::integral_constant<bool, PMB>() const noexcept {\
+                return {};                                                     \
             }                                                                  \
             constexpr auto operator!() const noexcept {                        \
                 return ::pushmi::concepts::detail::Not<Eval>{};                \
@@ -267,6 +286,10 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
             template <class That>                                              \
             constexpr auto operator&&(That) const noexcept {                   \
                 return ::pushmi::concepts::detail::And<Eval, That>{};          \
+            }                                                                  \
+            template <class That>                                              \
+            constexpr auto operator||(That) const noexcept {                   \
+                return ::pushmi::concepts::detail::Or<Eval, That>{};           \
             }                                                                  \
         };                                                                     \
     };                                                                         \
@@ -421,16 +444,27 @@ using bool_ = std::integral_constant<bool, B>;
 
 namespace concepts {
 namespace detail {
+bool gcc_bugs(...);
+
 template <class>
 inline constexpr bool requires_() {
   return true;
 }
+
 template <class T, class U>
 struct And;
+template <class T, class U>
+struct Or;
+
 template <class T>
 struct Not {
     explicit constexpr operator bool() const noexcept {
         return !(bool) T{};
+    }
+    PUSHMI_TEMPLATE (class This = Not, bool B)
+        (requires B == (bool) This{})
+    constexpr operator std::integral_constant<bool, B>() const noexcept {
+        return {};
     }
     constexpr auto operator!() const noexcept {
         return T{};
@@ -439,23 +473,57 @@ struct Not {
     constexpr auto operator&&(That) const noexcept {
         return And<Not, That>{};
     }
+    template <class That>
+    constexpr auto operator||(That) const noexcept {
+        return Or<Not, That>{};
+    }
 };
+
 template <class T, class U>
 struct And {
-    static constexpr bool impl(std::false_type) noexcept { return false; }
-    static constexpr bool impl(std::true_type) noexcept { return (bool) U{}; }
     explicit constexpr operator bool() const noexcept {
-        return And::impl(bool_<(bool) T{}>{});
+        return (bool) std::conditional_t<(bool) T{}, U, std::false_type>{};
+    }
+    PUSHMI_TEMPLATE (class This = And, bool B)
+        (requires B == (bool) This{})
+    constexpr operator std::integral_constant<bool, B>() const noexcept {
+        return {};
     }
     constexpr auto operator!() const noexcept {
         return Not<And>{};
     }
     template <class That>
     constexpr auto operator&&(That) const noexcept {
-        return detail::And<And, That>{};
+        return And<And, That>{};
+    }
+    template <class That>
+    constexpr auto operator||(That) const noexcept {
+        return Or<And, That>{};
     }
 };
 
+template <class T, class U>
+struct Or {
+    explicit constexpr operator bool() const noexcept {
+        return (bool) std::conditional_t<(bool) T{}, std::true_type, U>{};
+    }
+    PUSHMI_TEMPLATE (class This = Or, bool B)
+        (requires B == (bool) This{})
+    constexpr operator std::integral_constant<bool, B>() const noexcept {
+        return {};
+    }
+    constexpr auto operator!() const noexcept {
+        return Not<Or>{};
+    }
+    template <class That>
+    constexpr auto operator&&(That) const noexcept {
+        return And<Or, That>{};
+    }
+    template <class That>
+    constexpr auto operator||(That) const noexcept {
+        return Or<Or, That>{};
+    }
+};
 } // namespace detail
 } // namespace concepts
 
