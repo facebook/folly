@@ -9,6 +9,8 @@
 #include <pushmi/o/just.h>
 #include <pushmi/o/tap.h>
 
+// https://godbolt.org/g/rVLMTu
+
 using namespace pushmi::aliases;
 
 // three models of submission deferral
