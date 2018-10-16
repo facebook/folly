@@ -7,50 +7,51 @@
 #include <functional>
 #include <type_traits>
 
-#include <meta/meta.hpp>
-
 #include "detail/concept_def.h"
 
 namespace pushmi {
-namespace detail {
-  template <bool...>
-  struct bools;
-}
-
 #if __cpp_fold_expressions >= 201603
 template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool all_true_v = (Bs &&...);
-#else
-template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool all_true_v =
-  std::is_same<detail::bools<Bs..., true>, detail::bools<true, Bs...>>::value;
-#endif
+PUSHMI_INLINE_VAR constexpr bool and_v = (Bs &&...);
 
-#if __cpp_fold_expressions >= 201603
 template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool any_true_v = (Bs ||...);
-#else
-template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool any_true_v =
-  !std::is_same<detail::bools<Bs..., false>, detail::bools<false, Bs...>>::value;
-#endif
+PUSHMI_INLINE_VAR constexpr bool or_v = (Bs ||...);
 
-#if __cpp_fold_expressions >= 201603
 template <int...Is>
 PUSHMI_INLINE_VAR constexpr int sum_v = (Is +...);
 #else
-template <std::size_t N>
-constexpr int sum_impl(int const (&rgi)[N], int i = 0, int state = 0) noexcept {
-  return i == N ? state : sum_impl(rgi, i+1, state + rgi[i]);
-}
-template <int... Is>
-constexpr int sum_impl() noexcept {
-  using RGI = int[sizeof...(Is)];
-  return sum_impl(RGI{Is...});
-}
+namespace detail {
+  template <bool...>
+  struct bools;
+
+  template <std::size_t N>
+  constexpr int sum_impl(int const (&rgi)[N], int i = 0, int state = 0) noexcept {
+    return i == N ? state : sum_impl(rgi, i+1, state + rgi[i]);
+  }
+  template <int... Is>
+  constexpr int sum_impl() noexcept {
+    using RGI = int[sizeof...(Is)];
+    return sum_impl(RGI{Is...});
+  }
+} // namespace detail
+
+template <bool...Bs>
+PUSHMI_INLINE_VAR constexpr bool and_v =
+  PUSHMI_PP_IS_SAME(detail::bools<Bs..., true>, detail::bools<true, Bs...>);
+
+template <bool...Bs>
+PUSHMI_INLINE_VAR constexpr bool or_v =
+  !PUSHMI_PP_IS_SAME(detail::bools<Bs..., false>, detail::bools<false, Bs...>);
+
 template <int...Is>
-PUSHMI_INLINE_VAR constexpr int sum_v = sum_impl<Is...>();
+PUSHMI_INLINE_VAR constexpr int sum_v = detail::sum_impl<Is...>();
 #endif
+
+template <class...>
+struct typelist;
+
+template <class...>
+using void_t = void;
 
 template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
@@ -78,13 +79,13 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (bool...Bs)
   (concept And)(Bs...),
-    all_true_v<Bs...>
+    and_v<Bs...>
 );
 
 PUSHMI_CONCEPT_DEF(
   template (bool...Bs)
   (concept Or)(Bs...),
-    any_true_v<Bs...>
+    or_v<Bs...>
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -180,7 +181,6 @@ PUSHMI_CONCEPT_DEF(
 
 #if __cpp_lib_invoke >= 201411
 using std::invoke;
-using std::invoke_result;
 using std::invoke_result_t;
 #else
 PUSHMI_TEMPLATE (class F, class...As)
@@ -202,8 +202,6 @@ decltype(auto) invoke(F f, As&&...as)
 template <class F, class...As>
 using invoke_result_t =
   decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
-template <class F, class...As>
-struct invoke_result : meta::defer<invoke_result_t, F, As...> {};
 #endif
 
 PUSHMI_CONCEPT_DEF(

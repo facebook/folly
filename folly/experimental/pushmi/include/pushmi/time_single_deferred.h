@@ -94,7 +94,7 @@ class any_time_single_deferred {
   PUSHMI_TEMPLATE (class Wrapped)
     (requires TimeSenderTo<wrapped_t<Wrapped>, single<V, E>>)
   explicit any_time_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-  : any_time_single_deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {
+  : any_time_single_deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {
   }
   ~any_time_single_deferred() {
     vptr_->op_(data_, nullptr);
@@ -175,7 +175,7 @@ class time_single_deferred_2 {
 
 template <class A, class B, class C>
 using time_single_deferred_base =
-  meta::if_c<
+  std::conditional_t<
     (bool)TimeSender<A, is_single<>>,
     time_single_deferred_2<A, B, C>,
     any_time_single_deferred<A, B, C>>;

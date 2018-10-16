@@ -37,11 +37,11 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #endif
 
 #ifdef __clang__
-#define PUSHMI_PP_IS_SAME(A, B) __is_same(A, B)
+#define PUSHMI_PP_IS_SAME(...) __is_same(__VA_ARGS__)
 #elif defined(__GNUC__) && __GNUC__ >= 6
-#define PUSHMI_PP_IS_SAME(A, B) __is_same_as(A, B)
+#define PUSHMI_PP_IS_SAME(...) __is_same_as(__VA_ARGS__)
 #else
-#define PUSHMI_PP_IS_SAME(A, B) std::is_same<A, B>::value
+#define PUSHMI_PP_IS_SAME(...) std::is_same<__VA_ARGS__>::value
 #endif
 
 #if __COUNTER__ != __COUNTER__
@@ -478,6 +478,10 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #endif
 
 namespace pushmi {
+
+template <bool B>
+using bool_ = std::integral_constant<bool, B>;
+
 namespace concepts {
 namespace detail {
 template <class>
@@ -504,7 +508,7 @@ struct And {
     static constexpr bool impl(std::false_type) noexcept { return false; }
     static constexpr bool impl(std::true_type) noexcept { return (bool) U{}; }
     explicit constexpr operator bool() const noexcept {
-        return And::impl(std::integral_constant<bool, (bool) T{}>{});
+        return And::impl(bool_<(bool) T{}>{});
     }
     constexpr auto operator!() const noexcept {
         return Not<And>{};

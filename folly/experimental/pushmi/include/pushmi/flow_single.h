@@ -107,7 +107,7 @@ public:
   PUSHMI_TEMPLATE(class Wrapped)
     (requires FlowSingleReceiver<wrapped_t<Wrapped>, any_none<PE>, V, PE, E>)
   explicit flow_single(Wrapped obj) noexcept(insitu<Wrapped>())
-    : flow_single{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
+    : flow_single{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~flow_single() {
     vptr_->op_(data_, nullptr);
   }

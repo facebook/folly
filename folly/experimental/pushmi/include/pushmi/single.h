@@ -110,7 +110,7 @@ public:
   PUSHMI_TEMPLATE(class Wrapped)
     (requires SingleReceiver<wrapped_t<Wrapped>, V, E>)
   explicit single(Wrapped obj) noexcept(insitu<Wrapped>())
-    : single{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {
+    : single{std::move(obj), bool_<insitu<Wrapped>()>{}} {
     check<Wrapped>();
   }
   ~single() {

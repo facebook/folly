@@ -77,7 +77,7 @@ class flow_single_deferred<V, PE, E> {
   PUSHMI_TEMPLATE (class Wrapped)
     (requires FlowSender<wrapped_t<Wrapped>, is_single<>>)
   explicit flow_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-    : flow_single_deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
+    : flow_single_deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~flow_single_deferred() {
     vptr_->op_(data_, nullptr);
   }

@@ -77,7 +77,7 @@ class deferred<detail::erase_deferred_t, E> {
   PUSHMI_TEMPLATE(class Wrapped)
     (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>)
   explicit deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-    : deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
+    : deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~deferred() {
     vptr_->op_(data_, nullptr);
   }

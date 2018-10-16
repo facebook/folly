@@ -21,9 +21,6 @@ endfunction()
 set(header_files
     # keep in inclusion order
 
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/meta/include/meta/meta_fwd.hpp"
-    "${CMAKE_CURRENT_SOURCE_DIR}/external/meta/include/meta/meta.hpp"
-
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/detail/if_constexpr.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/detail/concept_def.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/traits.h"

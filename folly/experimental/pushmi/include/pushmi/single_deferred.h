@@ -77,7 +77,7 @@ class any_single_deferred {
   PUSHMI_TEMPLATE(class Wrapped)
     (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>)
   explicit any_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-    : any_single_deferred{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
+    : any_single_deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_single_deferred() {
     vptr_->op_(data_, nullptr);
   }
@@ -138,7 +138,7 @@ class single_deferred_2 {
 
 template <class A, class B>
 using single_deferred_base =
-  meta::if_c<
+  std::conditional_t<
     (bool)Sender<A, is_single<>>,
     single_deferred_2<A, B>,
     any_single_deferred<A, B>>;

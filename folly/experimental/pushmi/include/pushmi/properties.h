@@ -42,14 +42,14 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class T, class... Set)
   (concept FoundExactlyOnce)(T, Set...),
-    sum_v<(std::is_same<T, Set>::value ? 1 : 0)...> == 1
+    sum_v<(PUSHMI_PP_IS_SAME(T, Set) ? 1 : 0)...> == 1
 );
 
 PUSHMI_CONCEPT_DEF(
   template (class... PropertyN)
   (concept UniqueCategory)(PropertyN...),
-    all_true_v<FoundExactlyOnce<property_category_t<PropertyN>,
-                                property_category_t<PropertyN>...>...> &&
+    And<FoundExactlyOnce<property_category_t<PropertyN>,
+                         property_category_t<PropertyN>...>...> &&
     And<Property<PropertyN>...>
 );
 
@@ -60,7 +60,7 @@ struct property_set_element {};
 
 template<class... PropertyN>
 struct property_set : detail::property_set_element<PropertyN>... {
-  static_assert(all_true_v<Property<PropertyN>...>, "property_set only supports types that match the Property concept");
+  static_assert(and_v<Property<PropertyN>...>, "property_set only supports types that match the Property concept");
   static_assert(UniqueCategory<PropertyN...>, "property_set has multiple properties from the same category");
   using properties = property_set;
 };
@@ -109,12 +109,11 @@ PUSHMI_CONCEPT_DEF(
 
 // find property in the specified set that matches the category of the property specified.
 namespace detail {
-
 template <class PIn, class POut>
 POut __property_set_index_fn(property_set_element<POut, property_category_t<PIn>>);
 
 template <class PIn, class POut, class...Ps>
-meta::apply<meta::quote<property_set>, meta::replace<meta::list<Ps...>, POut, PIn>>
+property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, PIn), POut, Ps>...>
 __property_set_insert_fn(property_set<Ps...>, property_set_element<POut, property_category_t<PIn>>);
 
 template <class PIn, class...Ps>
@@ -124,6 +123,15 @@ template <class PS, class P>
 using property_set_insert_one_t =
   decltype(detail::__property_set_insert_fn<P>(PS{}, PS{}));
 
+template <class PS0, class>
+struct property_set_insert {
+  using type = PS0;
+};
+
+template <class PS0, class P, class... P1>
+struct property_set_insert<PS0, property_set<P, P1...>>
+  : property_set_insert<property_set_insert_one_t<PS0, P>, property_set<P1...>>
+{};
 } // namespace detail
 
 template <class PS, class P>
@@ -138,14 +146,9 @@ using property_from_category_t =
 
 template <class PS0, class PS1>
 using property_set_insert_t =
-  std::enable_if_t<
+  typename std::enable_if_t<
     PropertySet<PS0> && PropertySet<PS1>,
-    meta::apply<
-      meta::quote<property_set>,
-      meta::fold<
-        meta::apply<meta::quote<meta::list>, PS1>,
-        PS0,
-        meta::quote<detail::property_set_insert_one_t>>>>;
+    detail::property_set_insert<PS0, PS1>>::type;
 
 // query for properties on types with properties.
 
@@ -157,20 +160,20 @@ template<class PIn>
 std::false_type property_query_fn(void*);
 
 template<class PS, class... ExpectedN>
-struct property_query_impl :
-  meta::and_c<decltype(property_query_fn<ExpectedN>((properties_t<PS>*)nullptr))::value...> {};
+struct property_query_impl : bool_<
+  and_v<decltype(property_query_fn<ExpectedN>(
+      (properties_t<PS>*)nullptr))::value...>> {};
 } //namespace detail
 
-//template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
 template<class PS, class... ExpectedN>
 struct property_query
-  : meta::if_c<
+  : std::conditional_t<
       Properties<PS> && And<Property<ExpectedN>...>,
       detail::property_query_impl<PS, ExpectedN...>,
       std::false_type> {};
 
-//template<PUSHMI_TYPE_CONSTRAINT(Properties) PS, PUSHMI_TYPE_CONSTRAINT(Property)... ExpectedN>
 template<class PS, class... ExpectedN>
-PUSHMI_INLINE_VAR constexpr bool property_query_v = property_query<PS, ExpectedN...>::value;
+PUSHMI_INLINE_VAR constexpr bool property_query_v =
+  property_query<PS, ExpectedN...>::value;
 
 } // namespace pushmi

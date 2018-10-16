@@ -9,13 +9,11 @@ add_library(pushmi INTERFACE)
 
 target_include_directories(pushmi INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/meta/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/executors-impl/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/futures-impl/future-executor-interaction/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/networking-ts-impl/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/Catch2/single_include>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/meta>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/executors>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/futures>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/net>
@@ -32,9 +30,6 @@ add_dependencies(pushmi buildSingleHeader)
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/include/
     DESTINATION include)
-install(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/external/meta/include/
-    DESTINATION include/meta)
 install(
     DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/external/executors-impl/include/
     DESTINATION include/executors)

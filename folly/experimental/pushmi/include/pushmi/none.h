@@ -83,7 +83,7 @@ public:
   PUSHMI_TEMPLATE(class Wrapped)
     (requires NoneReceiver<wrapped_t<Wrapped>, E>)
   explicit none(Wrapped obj) noexcept(insitu<Wrapped>())
-    : none{std::move(obj), meta::bool_<insitu<Wrapped>()>{}} {}
+    : none{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~none() {
     vptr_->op_(data_, nullptr);
   }

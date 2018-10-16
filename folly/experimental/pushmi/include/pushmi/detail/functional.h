@@ -8,8 +8,6 @@
 
 #include <functional>
 
-#include <meta/meta.hpp>
-
 #include "../traits.h"
 #include "../forwards.h"
 
@@ -19,22 +17,43 @@ namespace detail {
 
 struct placeholder;
 
+#if (defined(__clang__) || defined(__GNUC__)) &&\
+  __has_builtin(__type_pack_element)
+#define PUSHMI_TYPE_PACK_ELEMENT(...) \
+  __type_pack_element<__VA_ARGS__>
+#else
+template <std::size_t I, class... Args>
+struct type_pack_element {
+};
+template <std::size_t I, class A, class... Args>
+struct type_pack_element<I, A, Args...> : type_pack_element<I - 1, Args...> {
+};
+template <class A, class... Args>
+struct type_pack_element<0, A, Args...> {
+  using type = A;
+};
+#define PUSHMI_TYPE_PACK_ELEMENT(...) \
+  typename type_pack_element<__VA_ARGS__>::type
+#endif
+
 template <class T, class Args, class = void>
 struct substitute {
   using type = T;
 };
-template <std::size_t I, class Args>
-struct substitute<placeholder[I], Args>
-  : meta::lazy::let<
-      meta::defer<std::decay_t, meta::lazy::at<Args, meta::size_t<I-1>>>> {
+template <std::size_t I, class... Args>
+struct substitute<placeholder[I], typelist<Args...>,
+    void_t<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)>>
+  : std::decay<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)> {
 };
-template <std::size_t I, class Args>
-struct substitute<placeholder(&&)[I], Args>
-  : meta::lazy::at<Args, meta::size_t<I-1>> {
+template <std::size_t I, class... Args>
+struct substitute<placeholder(&&)[I], typelist<Args...>,
+    void_t<PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...)>> {
+  using type = PUSHMI_TYPE_PACK_ELEMENT(I-1, Args...);
 };
 template <template <class...> class R, class... Ts, class Args>
-struct substitute<R<Ts...>, Args, meta::void_<R<meta::_t<substitute<Ts, Args>>...>>> {
-  using type = R<meta::_t<substitute<Ts, Args>>...>;
+struct substitute<R<Ts...>, Args,
+    void_t<R<typename substitute<Ts, Args>::type...>>> {
+  using type = R<typename substitute<Ts, Args>::type...>;
 };
 
 template <class Fn, class Requirements>
@@ -44,14 +63,16 @@ struct constrained_fn : Fn {
 
   PUSHMI_TEMPLATE (class... Ts)
     (requires Invocable<Fn&, Ts...> &&
-      (bool)meta::_t<substitute<Requirements, meta::list<Ts...>>>{})
-  decltype(auto) operator()(Ts&&... ts) noexcept(noexcept(std::declval<Fn&>()((Ts&&) ts...))) {
+      (bool)typename substitute<Requirements, typelist<Ts...>>::type{})
+  decltype(auto) operator()(Ts&&... ts)
+      noexcept(noexcept(std::declval<Fn&>()((Ts&&) ts...))) {
     return static_cast<Fn&>(*this)((Ts&&) ts...);
   }
   PUSHMI_TEMPLATE (class... Ts)
     (requires Invocable<const Fn&, Ts...> &&
-      (bool)meta::_t<substitute<Requirements, meta::list<Ts...>>>{})
-  decltype(auto) operator()(Ts&&... ts) const noexcept(noexcept(std::declval<const Fn&>()((Ts&&) ts...))) {
+      (bool)typename substitute<Requirements, typelist<Ts...>>::type{})
+  decltype(auto) operator()(Ts&&... ts) const
+      noexcept(noexcept(std::declval<const Fn&>()((Ts&&) ts...))) {
     return static_cast<const Fn&>(*this)((Ts&&) ts...);
   }
 };
