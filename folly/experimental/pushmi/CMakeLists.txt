@@ -16,15 +16,13 @@ target_include_directories(pushmi INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/executors-impl/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/futures-impl/future-executor-interaction/include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/networking-ts-impl/include>
-    $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/Catch2/single_include>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/external/nonius/include>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/executors>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/futures>
     $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/net>
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/Catch2>
-    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/nonius>)
-
+    $<INSTALL_INTERFACE:$<INSTALL_PREFIX>/include/nonius>
+)
 
 if (PUSHMI_USE_CONCEPTS_EMULATION)
 
@@ -65,7 +63,6 @@ target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-fconcepts>)
 
 endif(PUSHMI_USE_CONCEPTS_EMULATION)
-
 
 target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-ftemplate-backtrace-limit=0>)
