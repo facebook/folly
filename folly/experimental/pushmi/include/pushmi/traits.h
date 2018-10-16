@@ -57,11 +57,15 @@ template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
 PUSHMI_CONCEPT_DEF(
+  template(class... Args)
+  (concept True)(Args...),
+    true
+);
+
+PUSHMI_CONCEPT_DEF(
   template(class T, template<class...> class C, class... Args)
   (concept Valid)(T, C, Args...),
-    requires () (
-      typename_<C<T, Args...>>
-    )
+    True< C<T, Args...> >
 );
 
 PUSHMI_CONCEPT_DEF(

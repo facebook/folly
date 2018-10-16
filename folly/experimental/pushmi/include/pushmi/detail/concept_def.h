@@ -458,7 +458,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 
 
 #if __cpp_concepts
-#define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__ // BUGBUG
+#define PUSHMI_BROKEN_SUBSUMPTION(...)
 #define PUSHMI_TYPE_CONSTRAINT(...) __VA_ARGS__
 #else
 #define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__
@@ -467,13 +467,13 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 
 
 #if __cpp_concepts
-#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, TYPE)                      \
+#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, ...)                       \
     requires REQUIRES                                                          \
-  using NAME TYPE;                                                             \
+  using NAME __VA_ARGS__;                                                      \
   /**/
 #else
-#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, TYPE)                      \
-  using NAME std::enable_if_t<bool(REQUIRES), TYPE>;                           \
+#define PUSHMI_PP_CONSTRAINED_USING(REQUIRES, NAME, ...)                       \
+  using NAME std::enable_if_t<bool(REQUIRES), __VA_ARGS__>;                    \
   /**/
 #endif
 
@@ -520,8 +520,7 @@ struct And {
 };
 } // namespace detail
 } // namespace concepts
-template <class T>
-PUSHMI_INLINE_VAR constexpr bool typename_ = true;
+
 template <class T>
 constexpr bool implicitly_convertible_to(T) {
   return true;

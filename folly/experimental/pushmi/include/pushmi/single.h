@@ -282,7 +282,7 @@ inline auto make_single() -> single<> {
   return {};
 }
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<VF&>))
+  (requires defer::True<> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF> && not defer::Invocable<VF&>))
 auto make_single(VF vf) -> single<VF, abortEF, ignoreDF> {
   return single<VF, abortEF, ignoreDF>{std::move(vf)};
 }
@@ -291,17 +291,17 @@ auto make_single(on_error_fn<EFN...> ef) -> single<ignoreVF, on_error_fn<EFN...>
   return single<ignoreVF, on_error_fn<EFN...>, ignoreDF>{std::move(ef)};
 }
 PUSHMI_TEMPLATE(class DF)
-  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
+  (requires defer::True<> && defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
 auto make_single(DF df) -> single<ignoreVF, abortEF, DF> {
   return single<ignoreVF, abortEF, DF>{std::move(df)};
 }
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<EF&>))
+  (requires defer::True<> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF> && not defer::Invocable<EF&>))
 auto make_single(VF vf, EF ef) -> single<VF, EF, ignoreDF> {
   return {std::move(vf), std::move(ef)};
 }
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
+  (requires defer::True<> && defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
 auto make_single(EF ef, DF df) -> single<ignoreVF, EF, DF> {
   return {std::move(ef), std::move(df)};
 }
@@ -311,12 +311,12 @@ auto make_single(VF vf, EF ef, DF df) -> single<VF, EF, DF> {
   return {std::move(vf), std::move(ef), std::move(df)};
 }
 PUSHMI_TEMPLATE(class Data)
-  (requires defer::Receiver<Data, is_single<>>)
+  (requires defer::True<> && defer::Receiver<Data, is_single<>>)
 auto make_single(Data d) -> single<Data, passDVF, passDEF, passDDF> {
   return single<Data, passDVF, passDEF, passDDF>{std::move(d)};
 }
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
+  (requires defer::True<> && defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
 auto make_single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF> {
   return {std::move(d), std::move(vf)};
 }
@@ -327,7 +327,7 @@ auto make_single(Data d, on_error_fn<DEFN...> ef) ->
   return {std::move(d), std::move(ef)};
 }
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
+  (requires defer::True<> && defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 auto make_single(Data d, DDF df) -> single<Data, passDVF, passDEF, DDF> {
   return {std::move(d), std::move(df)};
 }
@@ -353,22 +353,22 @@ auto make_single(Data d, DVF vf, DEF ef, DDF df) -> single<Data, DVF, DEF, DDF> 
 single() -> single<>;
 
 PUSHMI_TEMPLATE(class VF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<VF&>))
+  (requires defer::True<> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF> && not defer::Invocable<VF&>))
 single(VF) -> single<VF, abortEF, ignoreDF>;
 
 template <class... EFN>
 single(on_error_fn<EFN...>) -> single<ignoreVF, on_error_fn<EFN...>, ignoreDF>;
 
 PUSHMI_TEMPLATE(class DF)
-  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
+  (requires defer::True<> && defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<DF>))
 single(DF) -> single<ignoreVF, abortEF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not defer::Receiver<VF> && not defer::Invocable<EF&>))
+  (requires defer::True<> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<VF> && not defer::Invocable<EF&>))
 single(VF, EF) -> single<VF, EF, ignoreDF>;
 
 PUSHMI_TEMPLATE(class EF, class DF)
-  (requires defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
+  (requires defer::True<> && defer::Invocable<DF&> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Receiver<EF>))
 single(EF, DF) -> single<ignoreVF, EF, DF>;
 
 PUSHMI_TEMPLATE(class VF, class EF, class DF)
@@ -376,11 +376,11 @@ PUSHMI_TEMPLATE(class VF, class EF, class DF)
 single(VF, EF, DF) -> single<VF, EF, DF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires defer::Receiver<Data, is_single<>>)
+  (requires defer::True<> && defer::Receiver<Data, is_single<>>)
 single(Data d) -> single<Data, passDVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF)
-  (requires defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
+  (requires defer::True<> && defer::Receiver<Data, is_single<>> PUSHMI_BROKEN_SUBSUMPTION(&& not defer::Invocable<DVF&, Data&>))
 single(Data d, DVF vf) -> single<Data, DVF, passDEF, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class... DEFN)
@@ -389,7 +389,7 @@ single(Data d, on_error_fn<DEFN...>) ->
     single<Data, passDVF, on_error_fn<DEFN...>, passDDF>;
 
 PUSHMI_TEMPLATE(class Data, class DDF)
-  (requires defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
+  (requires defer::True<> && defer::Receiver<Data, is_single<>> && defer::Invocable<DDF&, Data&>)
 single(Data d, DDF) -> single<Data, passDVF, passDEF, DDF>;
 
 PUSHMI_TEMPLATE(class Data, class DVF, class DEF)

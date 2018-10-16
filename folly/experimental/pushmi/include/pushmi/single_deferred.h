@@ -157,12 +157,12 @@ inline auto make_single_deferred() -> single_deferred<ignoreSF> {
   return {};
 }
 PUSHMI_TEMPLATE(class SF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not Sender<SF>))
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
 auto make_single_deferred(SF sf) -> single_deferred<SF> {
   return single_deferred<SF>{std::move(sf)};
 }
 PUSHMI_TEMPLATE(class Data)
-  (requires Sender<Data, is_single<>>)
+  (requires True<> && Sender<Data, is_single<>>)
 auto make_single_deferred(Data d) -> single_deferred<Data, passDSF> {
   return single_deferred<Data, passDSF>{std::move(d)};
 }
@@ -178,11 +178,11 @@ auto make_single_deferred(Data d, DSF sf) -> single_deferred<Data, DSF> {
 single_deferred() -> single_deferred<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)
-  (requires PUSHMI_BROKEN_SUBSUMPTION(not Sender<SF>))
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
 single_deferred(SF) -> single_deferred<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires Sender<Data, is_single<>>)
+  (requires True<> && Sender<Data, is_single<>>)
 single_deferred(Data) -> single_deferred<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
