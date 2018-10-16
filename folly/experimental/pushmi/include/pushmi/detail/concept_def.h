@@ -71,8 +71,6 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 
 #define PUSHMI_PP_EVAL(X, ...) X(__VA_ARGS__)
 #define PUSHMI_PP_EVAL2(X, ...) X(__VA_ARGS__)
-#define PUSHMI_PP_EVAL3(X, ...) X(__VA_ARGS__)
-#define PUSHMI_PP_EVAL4(X, ...) X(__VA_ARGS__)
 
 #define PUSHMI_PP_EXPAND(...) __VA_ARGS__
 #define PUSHMI_PP_EAT(...)
@@ -95,74 +93,9 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
     N                                                                          \
     /**/
 
-#define PUSHMI_PP_IS_EQUAL(X,Y) \
-    PUSHMI_PP_CHECK(PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_IS_EQUAL_, X), Y))
-#define PUSHMI_PP_IS_EQUAL_00 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_11 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_22 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_33 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_44 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_55 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_66 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_77 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_88 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_99 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1010 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1111 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1212 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1313 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1414 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1515 PUSHMI_PP_PROBE(~)
-#define PUSHMI_PP_IS_EQUAL_1616 PUSHMI_PP_PROBE(~)
-
-#define PUSHMI_PP_NOT(X) PUSHMI_PP_CAT(PUSHMI_PP_NOT_, X)
-#define PUSHMI_PP_NOT_0 1
-#define PUSHMI_PP_NOT_1 0
-
 #define PUSHMI_PP_IIF(BIT) PUSHMI_PP_CAT_(PUSHMI_PP_IIF_, BIT)
 #define PUSHMI_PP_IIF_0(TRUE, ...) __VA_ARGS__
 #define PUSHMI_PP_IIF_1(TRUE, ...) TRUE
-#define PUSHMI_PP_FIRST(X, ...) X
-#define PUSHMI_PP_SECOND(X, ...) __VA_ARGS__
-
-#define PUSHMI_PP_OR(X,Y) \
-    PUSHMI_PP_NOT(PUSHMI_PP_CHECK(PUSHMI_PP_CAT(                               \
-        PUSHMI_PP_CAT(PUSHMI_PP_NOR_, X), Y)))
-#define PUSHMI_PP_NOR_00 PUSHMI_PP_PROBE(~)
-
-#if PUSHMI_CXX_VA_OPT
-
-#define PUSHMI_PP_IS_EMPTY_NON_FUNCTION(...) \
-    PUSHMI_PP_CHECK(__VA_OPT__(, 0), 1)
-
-#else // RANGES_VA_OPT
-
-#define PUSHMI_PP_SPLIT(i, ...)                                                \
-    PUSHMI_PP_CAT_(PUSHMI_PP_SPLIT_, i)(__VA_ARGS__)                           \
-    /**/
-#define PUSHMI_PP_SPLIT_0(a, ...) a
-#define PUSHMI_PP_SPLIT_1(a, ...) __VA_ARGS__
-
-#define PUSHMI_PP_IS_VARIADIC(...)                                             \
-    PUSHMI_PP_SPLIT(                                                           \
-        0,                                                                     \
-        PUSHMI_PP_CAT(                                                         \
-            PUSHMI_PP_IS_VARIADIC_R_,                                          \
-            PUSHMI_PP_IS_VARIADIC_C __VA_ARGS__))                              \
-    /**/
-#define PUSHMI_PP_IS_VARIADIC_C(...) 1
-#define PUSHMI_PP_IS_VARIADIC_R_1 1,
-#define PUSHMI_PP_IS_VARIADIC_R_PUSHMI_PP_IS_VARIADIC_C 0,
-
-// emptiness detection macro...
-
-#define PUSHMI_PP_IS_EMPTY_NON_FUNCTION(...)                                   \
-    PUSHMI_PP_IIF(PUSHMI_PP_IS_VARIADIC(__VA_ARGS__))                          \
-    (0, PUSHMI_PP_IS_VARIADIC(PUSHMI_PP_IS_EMPTY_NON_FUNCTION_C __VA_ARGS__()))\
-    /**/
-#define PUSHMI_PP_IS_EMPTY_NON_FUNCTION_C() ()
-
-#endif // PUSHMI_PP_VA_OPT
 
 #define PUSHMI_PP_EMPTY()
 #define PUSHMI_PP_COMMA() ,
@@ -194,7 +127,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         __VA_ARGS__)                                                           \
     /**/
 #define PUSHMI_PP_DECL_DEF_NAME(...)                                           \
-    __VA_ARGS__,                                                               \
+    PUSHMI_PP_CAT(PUSHMI_PP_DEF_, __VA_ARGS__),                                \
     /**/
 #define PUSHMI_PP_DECL_DEF(TPARAM, NAME, ...)                                  \
     PUSHMI_PP_CAT(PUSHMI_PP_DECL_DEF_, PUSHMI_PP_IS_PAREN(NAME))(              \
@@ -207,7 +140,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 //   (concept Name)(A, B, Rest...),
 //      // requirements...
 #define PUSHMI_PP_DECL_DEF_1(TPARAM, NAME, ...)                                \
-    PUSHMI_PP_EVAL4(                                                           \
+    PUSHMI_PP_EVAL2(                                                           \
         PUSHMI_PP_DECL_DEF_IMPL,                                               \
         TPARAM,                                                                \
         PUSHMI_PP_DECL_DEF_NAME NAME,                                          \
@@ -221,18 +154,18 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_DECL_DEF_0(TPARAM, NAME, ...)                                \
     PUSHMI_PP_DECL_DEF_IMPL(                                                   \
         TPARAM,                                                                \
-        NAME,                                                                  \
+        PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME),                                   \
         (PUSHMI_PP_CAT(PUSHMI_PP_AUX_, TPARAM)),                               \
         __VA_ARGS__)                                                           \
     /**/
 // Expand the template definition into a struct and template alias like:
 //    struct NameConcept {
 //      template<class A, class B>
-//      static auto _concept_requires_(/* args (optional)*/) ->
+//      static auto Requires_(/* args (optional)*/) ->
 //          decltype(/*requirements...*/);
 //      template<class A, class B>
 //      static constexpr auto is_satisfied_by(int) ->
-//          decltype(bool(&_concept_requires_<A,B>)) { return true; }
+//          decltype(bool(&Requires_<A,B>)) { return true; }
 //      template<class A, class B>
 //      static constexpr bool is_satisfied_by(long) { return false; }
 //    };
@@ -257,21 +190,17 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
     { __VA_ARGS__; }                                                           \
     /**/
 #define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                       \
-    inline namespace pushmi_concept_eager {                                    \
+    inline namespace _eager_ {                                                 \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        concept bool PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) = PUSHMI_PP_EVAL2(    \
-            PUSHMI_PP_DEF_IMPL(__VA_ARGS__),                                   \
-            __VA_ARGS__);                                                      \
+        concept bool NAME = PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__);      \
     }                                                                          \
-    namespace defer = pushmi_concept_eager;                                    \
+    namespace defer = _eager_;                                                 \
     namespace lazy {                                                           \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        struct PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept) {   \
-            using Concept =                                                    \
-                PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept);   \
+        struct PUSHMI_PP_CAT(NAME, Concept) {                                  \
+            using Concept = PUSHMI_PP_CAT(NAME, Concept);                      \
             explicit constexpr operator bool() const noexcept {                \
-                return (bool) defer::PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME)<      \
-                    PUSHMI_PP_EXPAND ARGS>;                                    \
+                return (bool) defer::NAME<PUSHMI_PP_EXPAND ARGS>;              \
             }                                                                  \
             constexpr auto operator!() const noexcept {                        \
                 return ::pushmi::concepts::detail::Not<Concept>{};             \
@@ -282,9 +211,8 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
             }                                                                  \
         };                                                                     \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        PUSHMI_INLINE_VAR constexpr auto PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) = \
-            PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept)        \
-                <PUSHMI_PP_EXPAND ARGS>{};                                     \
+        PUSHMI_INLINE_VAR constexpr auto NAME =                                \
+            PUSHMI_PP_CAT(NAME, Concept)<PUSHMI_PP_EXPAND ARGS>{};             \
     }                                                                          \
     /**/
 #else
@@ -307,44 +235,38 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
     <decltype(__VA_ARGS__, void())>()                                          \
     /**/
 #define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                       \
-    struct PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept) {       \
-        using Concept =                                                        \
-            PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept);       \
+    struct PUSHMI_PP_CAT(NAME, Concept) {                                      \
+        using Concept = PUSHMI_PP_CAT(NAME, Concept);                          \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                    \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        static auto _concept_requires_ PUSHMI_PP_EVAL2(                        \
-            PUSHMI_PP_DEF_IMPL(__VA_ARGS__),                                   \
-            __VA_ARGS__);                                                      \
+        static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__);    \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                      \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        struct _is_satisfied_by_ {                                             \
+        struct Eval {                                                          \
             template <class C_ = Concept>                                      \
             static constexpr decltype(                                         \
-                !&C_::template _concept_requires_<PUSHMI_PP_EXPAND ARGS>)      \
+                !&C_::template Requires_<PUSHMI_PP_EXPAND ARGS>)               \
             impl(int) noexcept { return true; }                                \
             static constexpr bool impl(long) noexcept { return false; }        \
             explicit constexpr operator bool() const noexcept {                \
-                return _is_satisfied_by_::impl(0);                             \
+                return Eval::impl(0);                                          \
             }                                                                  \
             constexpr auto operator!() const noexcept {                        \
-                return ::pushmi::concepts::detail::Not<_is_satisfied_by_>{};   \
+                return ::pushmi::concepts::detail::Not<Eval>{};                \
             }                                                                  \
             template <class That>                                              \
             constexpr auto operator&&(That) const noexcept {                   \
-                return ::pushmi::concepts::detail::And<                        \
-                    _is_satisfied_by_, That>{};                                \
+                return ::pushmi::concepts::detail::And<Eval, That>{};          \
             }                                                                  \
         };                                                                     \
     };                                                                         \
     PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                      \
-    PUSHMI_INLINE_VAR constexpr bool PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) =     \
-        (bool)PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept)      \
-            ::_is_satisfied_by_<PUSHMI_PP_EXPAND ARGS>{};                      \
+    PUSHMI_INLINE_VAR constexpr bool NAME =                                    \
+        (bool)PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{};     \
     namespace lazy {                                                           \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        PUSHMI_INLINE_VAR constexpr auto PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME) = \
-            PUSHMI_PP_CAT(PUSHMI_PP_CAT(PUSHMI_PP_DEF_, NAME), Concept)        \
-                ::_is_satisfied_by_<PUSHMI_PP_EXPAND ARGS>{};                  \
+        PUSHMI_INLINE_VAR constexpr auto NAME =                                \
+            PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{};       \
     }                                                                          \
     namespace defer = lazy;                                                    \
     /**/
