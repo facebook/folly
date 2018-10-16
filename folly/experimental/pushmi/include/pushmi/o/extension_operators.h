@@ -12,6 +12,8 @@
 #include "../single.h"
 #include "../deferred.h"
 #include "../single_deferred.h"
+#include "../many.h"
+#include "../many_deferred.h"
 #include "../time_single_deferred.h"
 #include "../flow_single.h"
 #include "../flow_single_deferred.h"
@@ -52,6 +54,8 @@ template <>
 struct make_receiver<is_none<>, void> : construct_deduced<none> {};
 template <>
 struct make_receiver<is_single<>, void> : construct_deduced<single> {};
+template <>
+struct make_receiver<is_many<>, void> : construct_deduced<many> {};
 template <>
 struct make_receiver<is_single<>, is_flow<>> : construct_deduced<flow_single> {};
 
@@ -130,18 +134,23 @@ auto submit_transform_out(SDSF sdsf, TSDSF tsdsf) {
   );
 }
 
-PUSHMI_TEMPLATE(class In, class Out)
-  (requires Sender<In> && Receiver<Out>)
+PUSHMI_TEMPLATE(class In)
+  (requires Sender<In>)
 auto deferred_from_maker() {
-  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
-    return make_time_single_deferred;
+  PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_flow<>, is_single<>>) (
+    return make_flow_single_deferred;
   ) else (
-    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out, is_single<>>) (
-      return make_single_deferred;
+    PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_time<>, is_single<>>) (
+      return make_time_single_deferred;
     ) else (
-      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) SenderTo<In, Out>) (
-        return make_deferred;
+      PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_single<>>) (
+        return make_single_deferred;
       ) else (
+        PUSHMI_IF_CONSTEXPR_RETURN( ((bool) Sender<In, is_many<>>) (
+          return make_many_deferred;
+        ) else (
+          return make_deferred;
+        ))
       ))
     ))
   ))
@@ -150,13 +159,25 @@ auto deferred_from_maker() {
 PUSHMI_TEMPLATE(class In, class Out, class... FN)
   (requires Sender<In> && Receiver<Out>)
 auto deferred_from(FN&&... fn) {
-  return deferred_from_maker<In, Out>()((FN&&) fn...);
+  return deferred_from_maker<In>()((FN&&) fn...);
 }
 
 PUSHMI_TEMPLATE(class In, class Out, class... FN)
   (requires Sender<In> && Receiver<Out>)
 auto deferred_from(In in, FN&&... fn) {
-  return deferred_from_maker<In, Out>()(std::move(in), (FN&&) fn...);
+  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
+}
+
+PUSHMI_TEMPLATE(class In, class... FN)
+  (requires Sender<In>)
+auto deferred_from(FN&&... fn) {
+  return deferred_from_maker<In>()((FN&&) fn...);
+}
+
+PUSHMI_TEMPLATE(class In, class... FN)
+  (requires Sender<In>)
+auto deferred_from(In in, FN&&... fn) {
+  return deferred_from_maker<In>()(std::move(in), (FN&&) fn...);
 }
 
 PUSHMI_TEMPLATE(
@@ -214,6 +235,17 @@ struct set_done_fn {
   }
 };
 
+struct set_next_fn {
+  template<class V>
+  auto operator()(V&& v) const {
+    return constrain(lazy::Receiver<_1, is_many<>>,
+        [v = (V&&) v](auto out) mutable {
+          ::pushmi::set_next(out, (V&&) v);
+        }
+    );
+  }
+};
+
 struct set_starting_fn {
   PUSHMI_TEMPLATE(class Up)
     (requires Receiver<Up>)
@@ -264,6 +296,7 @@ namespace extension_operators {
 PUSHMI_INLINE_VAR constexpr detail::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr detail::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr detail::set_value_fn set_value{};
+PUSHMI_INLINE_VAR constexpr detail::set_next_fn set_next{};
 PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn now{};

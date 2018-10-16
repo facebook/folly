@@ -35,6 +35,9 @@ template<>
 struct construct_deduced<single>;
 
 template<>
+struct construct_deduced<many>;
+
+template<>
 struct construct_deduced<flow_single>;
 
 template <template <class...> class T, class... AN>

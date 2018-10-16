@@ -137,6 +137,58 @@ void single_test() {
   auto any3 = pushmi::any_single<int>(proxy0);
 }
 
+void many_test() {
+  auto out0 = pushmi::MAKE(many)();
+  auto out1 = pushmi::MAKE(many)(pushmi::ignoreNF{});
+  auto out2 = pushmi::MAKE(many)(pushmi::ignoreNF{}, pushmi::abortEF{});
+  auto out3 =
+      pushmi::MAKE(many)(pushmi::ignoreNF{}, pushmi::abortEF{}, pushmi::ignoreDF{});
+  auto out4 = pushmi::MAKE(many)([](auto v) { v.get(); });
+  auto out5 = pushmi::MAKE(many)(
+      pushmi::on_next([](auto v) { v.get(); }, [](int v) {}),
+      pushmi::on_error(
+        [](std::exception_ptr e) noexcept {},
+        [](auto e)noexcept { e.get(); }
+      ));
+  auto out6 = pushmi::MAKE(many)(
+      pushmi::on_error(
+        [](std::exception_ptr e) noexcept {},
+        [](auto e) noexcept { e.get(); }
+      ));
+  auto out7 = pushmi::MAKE(many)(
+      pushmi::on_done([]() {  }));
+
+  using Out0 = decltype(out0);
+
+  auto proxy0 = pushmi::MAKE(many)(out0);
+  auto proxy1 = pushmi::MAKE(many)(out0, pushmi::passDNXF{});
+  auto proxy2 = pushmi::MAKE(many)(out0, pushmi::passDNXF{}, pushmi::passDEF{});
+  auto proxy3 = pushmi::MAKE(many)(
+      out0, pushmi::passDNXF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy4 = pushmi::MAKE(many)(out0, [](auto d, auto v) {
+    pushmi::set_next(d, v.get());
+  });
+  auto proxy5 = pushmi::MAKE(many)(
+      out0,
+      pushmi::on_next([](Out0&, auto v) { v.get(); }, [](Out0&, int v) {}),
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
+  auto proxy6 = pushmi::MAKE(many)(
+      out0,
+      pushmi::on_error(
+        [](Out0&, std::exception_ptr e) noexcept {},
+        [](Out0&, auto e) noexcept { e.get(); }
+      ));
+  auto proxy7 = pushmi::MAKE(many)(
+      out0,
+      pushmi::on_done([](Out0&) { }));
+
+  auto any0 = pushmi::any_many<int>(out0);
+  auto any1 = pushmi::any_many<int>(proxy0);
+}
+
 void single_deferred_test(){
   auto in0 = pushmi::MAKE(single_deferred)();
   auto in1 = pushmi::MAKE(single_deferred)(pushmi::ignoreSF{});
@@ -157,6 +209,24 @@ void single_deferred_test(){
   in3.submit(out1);
 
   auto any0 = pushmi::any_single_deferred<int>(in0);
+}
+
+void many_deferred_test(){
+  auto in0 = pushmi::MAKE(many_deferred)();
+  auto in1 = pushmi::MAKE(many_deferred)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(many_deferred)([&](auto out){
+    in0.submit(pushmi::MAKE(many)(std::move(out),
+      pushmi::on_next([](auto d, int v){ pushmi::set_next(d, v); })
+    ));
+  });
+
+  auto out0 = pushmi::MAKE(many)();
+  auto out1 = pushmi::MAKE(many)(out0, pushmi::on_next([](auto d, int v){
+    pushmi::set_next(d, v);
+  }));
+  in3.submit(out1);
+
+  auto any0 = pushmi::any_many_deferred<int>(in0);
 }
 
 void time_single_deferred_test(){

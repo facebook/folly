@@ -7,6 +7,7 @@ using namespace std::literals;
 
 #include "pushmi/flow_single_deferred.h"
 #include "pushmi/o/empty.h"
+#include "pushmi/o/from.h"
 #include "pushmi/o/just.h"
 #include "pushmi/o/on.h"
 #include "pushmi/o/transform.h"
@@ -115,5 +116,37 @@ SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
         REQUIRE( std::is_same<std::future<int>, decltype(v::future_from<int>(j))>::value );
       }
     }
+  }
+}
+
+SCENARIO( "from() can be used with transform and submit", "[from][deferred]" ) {
+
+  GIVEN( "A from int many_deferred" ) {
+    int arr[] = {0, 9, 99};
+    auto m = op::from(arr);
+    using M = decltype(m);
+
+    REQUIRE( v::SenderTo<M, v::any_many<int>, v::is_many<>> );
+
+    WHEN( "transform and submit are applied" ) {
+      int signals = 0;
+      int value = 0;
+      m |
+        op::transform(
+          [&](int v){ signals += 10000; return v + 1; },
+          [&](auto v){ std:abort(); return v; }) |
+        op::transform(
+          [&](int v){ signals += 10000; return v * 2; }) |
+        op::submit(
+          [&](auto v){ value += v; signals += 100; },
+          [&](auto e) noexcept { signals += 1000; },
+          [&](){ signals += 10; });
+
+      THEN( "the transform signal is recorded twice, the value signal once and the result is correct" ) {
+        REQUIRE( signals == 60310 );
+        REQUIRE( value == 222 );
+      }
+    }
+
   }
 }

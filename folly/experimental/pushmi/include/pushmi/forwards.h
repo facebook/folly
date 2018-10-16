@@ -57,7 +57,13 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class many;
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_deferred;
+
+template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
+class many_deferred;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class time_single_deferred;
