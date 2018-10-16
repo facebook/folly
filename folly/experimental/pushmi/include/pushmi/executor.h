@@ -42,7 +42,10 @@ public:
     // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
-    static_assert(TimeSenderTo<Wrapped, single<Other, E>>, "any_time_executor_ref passed an invalid time_executor");
+    static_assert(
+      TimeSenderTo<Wrapped, single<Other, E>>,
+      "Expecting to be passed a TimeSender that can send to a SingleReceiver"
+      " that accpets a value of type Other and an error of type E");
     struct s {
       static TP now(void* pobj) {
         return ::pushmi::now(*static_cast<Wrapped*>(pobj));

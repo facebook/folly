@@ -32,8 +32,9 @@ class flow_single<V, PE, E> {
     void (*value_)(data&, V) = s_value;
     void (*stopping_)(data&) noexcept = s_stopping;
     void (*starting_)(data&, any_none<PE>&) = s_starting;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   flow_single(Wrapped obj, std::false_type) : flow_single() {
     struct s {
@@ -51,10 +52,10 @@ class flow_single<V, PE, E> {
       static void value(data& src, V v) {
         ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(v));
       }
-      static void stopping(data& src) {
+      static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>(src.pobj_));
       }
-      static void stopping(data& src, any_none<PE>& up) {
+      static void starting(data& src, any_none<PE>& up) {
         ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), up);
       }
     };
@@ -137,7 +138,7 @@ public:
 // Class static definitions:
 template <class V, class PE, class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename flow_single<V, PE, E>::vtable const
-    flow_single<V, PE, E>::vtable::noop_);
+    flow_single<V, PE, E>::noop_);
 
 template <class VF, class EF, class DF, class StpF, class StrtF>
 #if __cpp_concepts

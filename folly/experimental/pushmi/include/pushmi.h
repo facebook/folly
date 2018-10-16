@@ -422,7 +422,9 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         using Concept = PUSHMI_PP_CAT(NAME, Concept);                          \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                    \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__);    \
+        static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__) {   \
+            return 0;                                                          \
+        }                                                                      \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                      \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
         struct Eval {                                                          \
@@ -654,8 +656,14 @@ template <class T>
 constexpr bool implicitly_convertible_to(T) {
   return true;
 }
+#ifdef __clang__
 template <bool B>
-PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, bool> requires_ = true;
+std::enable_if_t<B> requires_()
+{}
+#else
+template <bool B>
+PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, int> requires_ = 0;
+#endif
 } // namespace pushmi
 
 PUSHMI_PP_IGNORE_CXX2A_COMPAT_END
@@ -732,7 +740,7 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class T, template<class...> class Trait, class... Args)
   (concept Satisfies)(T, Trait, Args...),
-    bool(Trait<T>::type::value)
+    static_cast<bool>(Trait<T>::type::value)
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -859,9 +867,9 @@ decltype(auto) invoke(F&& f, As&&...as)
 PUSHMI_TEMPLATE (class F, class...As)
   (requires requires (
     std::mem_fn(std::declval<F>())(std::declval<As>()...)
-  ))
+  ) && std::is_member_pointer<F>::value)
 decltype(auto) invoke(F f, As&&...as)
-    noexcept(noexcept(std::mem_fn(f)((As&&) as...))) {
+    noexcept(noexcept(std::declval<decltype(std::mem_fn(f))>()((As&&) as...))) {
   return std::mem_fn(f)((As&&) as...);
 }
 template <class F, class...As>
@@ -872,16 +880,16 @@ using invoke_result_t =
 PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)
   (concept Invocable)(F, Args...),
-    requires(F&& f, Args&&... args) (
-      pushmi::invoke((F &&) f, (Args &&) args...)
+    requires(F&& f) (
+      pushmi::invoke((F &&) f, std::declval<Args>()...)
     )
 );
 
 PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)
   (concept NothrowInvocable)(F, Args...),
-    requires(F&& f, Args&&... args) (
-      requires_<noexcept(pushmi::invoke((F &&) f, (Args &&) args...))>
+    requires(F&& f) (
+      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
     ) &&
     Invocable<F, Args...>
 );
@@ -2095,7 +2103,7 @@ struct ignoreVF {
 
 struct abortEF {
   template <class E>
-  void operator()(E) noexcept {
+  void operator()(E &&) noexcept {
     std::abort();
   }
 };
@@ -2362,8 +2370,9 @@ class none<E> {
     void (*op_)(data&, data*) = s_op;
     void (*done_)(data&) = s_done;
     void (*error_)(data&, E) noexcept = s_error;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_ );
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable  const* vptr_ = &noop_;
   template <class Wrapped>
   none(Wrapped obj, std::false_type) : none() {
     struct s {
@@ -2441,14 +2450,19 @@ public:
 
 // Class static definitions:
 template <class E>
-PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT( typename none<E>::vtable const none<E>::vtable::noop_);
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename none<E>::vtable const none<E>::noop_);
 
 template <class EF, class DF>
 #if __cpp_concepts
   requires Invocable<DF&>
 #endif
 class none<EF, DF> {
-  static_assert(!detail::is_v<EF, on_value_fn> && !detail::is_v<EF, single>, "none was passed an invalid Error Function");
+  static_assert(
+    !detail::is_v<EF, on_value_fn>,
+    "the first parameter is the error implementation, but on_value{} was passed");
+  static_assert(
+    !detail::is_v<EF, single>,
+    "the first parameter is the error implementation, but a single<> was passed");
   bool done_ = false;
   EF ef_;
   DF df_;
@@ -2492,8 +2506,12 @@ class none<Data, DEF, DDF> {
   Data data_;
   DEF ef_;
   DDF df_;
-  static_assert(!detail::is_v<DEF, on_value_fn>, "none was passed an invalid Error Function");
-  static_assert(!detail::is_v<Data, single>, "none was passed an invalid Data");
+  static_assert(
+    !detail::is_v<DEF, on_value_fn>,
+    "the second parameter is the error implementation, but on_value{} was passed");
+  static_assert(
+    !detail::is_v<Data, single>,
+    "none should not be used to wrap a single<>");
 public:
   using properties = property_set<is_receiver<>, is_none<>>;
 
@@ -2671,8 +2689,9 @@ class deferred<detail::erase_deferred_t, E> {
     static void s_submit(data&, any_none<E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, any_none<E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   deferred(Wrapped obj, std::false_type) : deferred() {
     struct s {
@@ -2738,7 +2757,7 @@ class deferred<detail::erase_deferred_t, E> {
 // Class static definitions:
 template <class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::vtable::noop_);
+    deferred<detail::erase_deferred_t, E>::noop_);
 
 template <class SF>
 class deferred<SF> {
@@ -2867,8 +2886,9 @@ class single<V, E> {
     void (*error_)(data&, E) noexcept = s_error;
     void (*rvalue_)(data&, V&&) = s_rvalue;
     void (*lvalue_)(data&, V&) = s_lvalue;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, single>::value, U>;
@@ -2988,7 +3008,7 @@ public:
 
 // Class static definitions:
 template <class V, class E>
-PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT( typename single<V, E>::vtable const single<V, E>::vtable::noop_);
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename single<V, E>::vtable const single<V, E>::noop_);
 
 template <class VF, class EF, class DF>
 #if __cpp_concepts
@@ -3006,9 +3026,9 @@ class single<VF, EF, DF> {
   static_assert(
       !detail::is_v<EF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
-  static_assert(NothrowInvocable<EF, std::exception_ptr>,
+  static_assert(NothrowInvocable<EF&, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
-
+  using V = decltype(pushmi::invoke(std::declval<EF&>(), std::current_exception()));
  public:
   using properties = property_set<is_receiver<>, is_single<>>;
 
@@ -3293,8 +3313,9 @@ class any_single_deferred {
     static void s_submit(data&, single<V, E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, single<V, E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   any_single_deferred(Wrapped obj, std::false_type) : any_single_deferred() {
     struct s {
@@ -3363,7 +3384,7 @@ class any_single_deferred {
 // Class static definitions:
 template <class V, class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename any_single_deferred<V, E>::vtable const
-    any_single_deferred<V, E>::vtable::noop_);
+    any_single_deferred<V, E>::noop_);
 
 template <class SF>
 class single_deferred<SF> {
@@ -3499,8 +3520,9 @@ class any_time_single_deferred {
     void (*op_)(data&, data*) = s_op;
     TP (*now_)(data&) = s_now;
     void (*submit_)(data&, TP, single<V, E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   any_time_single_deferred(Wrapped obj, std::false_type)
     : any_time_single_deferred() {
@@ -3585,7 +3607,7 @@ class any_time_single_deferred {
 // Class static definitions:
 template <class V, class E, class TP>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename any_time_single_deferred<V, E, TP>::vtable const
-    any_time_single_deferred<V, E, TP>::vtable::noop_);
+    any_time_single_deferred<V, E, TP>::noop_);
 
 template <class SF, class NF>
 #if __cpp_concepts
@@ -3761,7 +3783,10 @@ public:
     // will ask whether value(single<T,E>, T'&) is well-formed. And *that* will
     // ask whether T'& is convertible to T. That brings us right back to this
     // constructor. Constraint recursion!
-    static_assert(TimeSenderTo<Wrapped, single<Other, E>>, "any_time_executor_ref passed an invalid time_executor");
+    static_assert(
+      TimeSenderTo<Wrapped, single<Other, E>>,
+      "Expecting to be passed a TimeSender that can send to a SingleReceiver"
+      " that accpets a value of type Other and an error of type E");
     struct s {
       static TP now(void* pobj) {
         return ::pushmi::now(*static_cast<Wrapped*>(pobj));
@@ -3904,8 +3929,9 @@ class flow_single<V, PE, E> {
     void (*value_)(data&, V) = s_value;
     void (*stopping_)(data&) noexcept = s_stopping;
     void (*starting_)(data&, any_none<PE>&) = s_starting;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   flow_single(Wrapped obj, std::false_type) : flow_single() {
     struct s {
@@ -3923,10 +3949,10 @@ class flow_single<V, PE, E> {
       static void value(data& src, V v) {
         ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(v));
       }
-      static void stopping(data& src) {
+      static void stopping(data& src) noexcept {
         ::pushmi::set_stopping(*static_cast<Wrapped*>(src.pobj_));
       }
-      static void stopping(data& src, any_none<PE>& up) {
+      static void starting(data& src, any_none<PE>& up) {
         ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), up);
       }
     };
@@ -4009,7 +4035,7 @@ public:
 // Class static definitions:
 template <class V, class PE, class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename flow_single<V, PE, E>::vtable const
-    flow_single<V, PE, E>::vtable::noop_);
+    flow_single<V, PE, E>::noop_);
 
 template <class VF, class EF, class DF, class StpF, class StrtF>
 #if __cpp_concepts
@@ -4470,8 +4496,9 @@ class flow_single_deferred<V, PE, E> {
     static void s_submit(data&, flow_single<V, PE, E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, flow_single<V, PE, E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   flow_single_deferred(Wrapped obj, std::false_type) : flow_single_deferred() {
     struct s {
@@ -4540,7 +4567,7 @@ class flow_single_deferred<V, PE, E> {
 // Class static definitions:
 template <class V, class PE, class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename flow_single_deferred<V, PE, E>::vtable const
-    flow_single_deferred<V, PE, E>::vtable::noop_);
+    flow_single_deferred<V, PE, E>::noop_);
 
 template <class SF>
 class flow_single_deferred<SF> {

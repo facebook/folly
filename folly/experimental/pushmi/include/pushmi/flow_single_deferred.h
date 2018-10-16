@@ -24,8 +24,9 @@ class flow_single_deferred<V, PE, E> {
     static void s_submit(data&, flow_single<V, PE, E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, flow_single<V, PE, E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   flow_single_deferred(Wrapped obj, std::false_type) : flow_single_deferred() {
     struct s {
@@ -94,7 +95,7 @@ class flow_single_deferred<V, PE, E> {
 // Class static definitions:
 template <class V, class PE, class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename flow_single_deferred<V, PE, E>::vtable const
-    flow_single_deferred<V, PE, E>::vtable::noop_);
+    flow_single_deferred<V, PE, E>::noop_);
 
 template <class SF>
 class flow_single_deferred<SF> {

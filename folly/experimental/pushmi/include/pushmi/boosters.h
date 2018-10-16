@@ -43,7 +43,7 @@ struct ignoreVF {
 
 struct abortEF {
   template <class E>
-  void operator()(E) noexcept {
+  void operator()(E &&) noexcept {
     std::abort();
   }
 };

@@ -21,7 +21,7 @@ target_include_directories(pushmi INTERFACE
 target_compile_features(pushmi INTERFACE cxx_std_14)
 target_compile_options(pushmi INTERFACE
     #$<$<CXX_COMPILER_ID:GNU>:-std=c++2a>
-    $<$<CXX_COMPILER_ID:GNU>:-fconcepts>
+    #$<$<CXX_COMPILER_ID:GNU>:-fconcepts>
     $<$<CXX_COMPILER_ID:GNU>:-ftemplate-backtrace-limit=0>)
 
 add_custom_target(buildSingleHeader COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/buildSingleHeader.cmake WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})

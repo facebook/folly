@@ -27,8 +27,9 @@ class deferred<detail::erase_deferred_t, E> {
     static void s_submit(data&, any_none<E>) {}
     void (*op_)(data&, data*) = s_op;
     void (*submit_)(data&, any_none<E>) = s_submit;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class Wrapped>
   deferred(Wrapped obj, std::false_type) : deferred() {
     struct s {
@@ -94,7 +95,7 @@ class deferred<detail::erase_deferred_t, E> {
 // Class static definitions:
 template <class E>
 PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::vtable::noop_);
+    deferred<detail::erase_deferred_t, E>::noop_);
 
 template <class SF>
 class deferred<SF> {

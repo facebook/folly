@@ -9,14 +9,14 @@
 using namespace pushmi::aliases;
 
 auto inline_bulk_target() {
-  return []<class IF, class RS, class Input, class F, class ShapeBegin, class ShapeEnd, class Out>(
-      IF init,
-      RS selector,
-      Input input,
-      F&& func,
-      ShapeBegin sb,
-      ShapeEnd se,
-      Out out) {
+  return [](
+      auto init,
+      auto selector,
+      auto input,
+      auto&& func,
+      auto sb,
+      auto se,
+      auto out) {
         try {
           auto acc = init(input);
           for (decltype(sb) idx{sb}; idx != se; ++idx){

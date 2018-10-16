@@ -258,7 +258,9 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
         using Concept = PUSHMI_PP_CAT(NAME, Concept);                          \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                    \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
-        static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__);    \
+        static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__)(__VA_ARGS__) {   \
+            return 0;                                                          \
+        }                                                                      \
         PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                      \
         PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                  \
         struct Eval {                                                          \
@@ -490,8 +492,14 @@ template <class T>
 constexpr bool implicitly_convertible_to(T) {
   return true;
 }
+#ifdef __clang__
 template <bool B>
-PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, bool> requires_ = true;
+std::enable_if_t<B> requires_()
+{}
+#else
+template <bool B>
+PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, int> requires_ = 0;
+#endif
 } // namespace pushmi
 
 PUSHMI_PP_IGNORE_CXX2A_COMPAT_END

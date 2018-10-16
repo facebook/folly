@@ -10,14 +10,20 @@ using namespace pushmi::aliases;
 
 template<class Executor, class Allocator = std::allocator<char>>
 auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
-  return [e, a]<class IF, class RS, class Input, class F, class ShapeBegin, class ShapeEnd, class Out>(
-      IF init,
-      RS selector,
-      Input input,
-      F&& func,
-      ShapeBegin sb,
-      ShapeEnd se,
-      Out out) {
+  return [e, a](
+      auto init,
+      auto selector,
+      auto input,
+      auto&& func,
+      auto sb,
+      auto se,
+      auto out) {
+        using RS = decltype(selector);
+        using F = std::conditional_t<
+          std::is_lvalue_reference<decltype(func)>::value,
+          decltype(func),
+          typename std::remove_reference<decltype(func)>::type>;
+        using Out = decltype(out);
         try {
           typename std::allocator_traits<Allocator>::template rebind_alloc<char> allocState(a);
           auto shared_state = std::allocate_shared<

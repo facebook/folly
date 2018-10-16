@@ -32,8 +32,9 @@ class single<V, E> {
     void (*error_)(data&, E) noexcept = s_error;
     void (*rvalue_)(data&, V&&) = s_rvalue;
     void (*lvalue_)(data&, V&) = s_lvalue;
-    PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
-  } const* vptr_ = &vtable::noop_;
+  };
+  PUSHMI_DECLARE_CONSTEXPR_IN_CLASS_INIT(static vtable const noop_);
+  vtable const* vptr_ = &noop_;
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, single>::value, U>;
@@ -153,7 +154,7 @@ public:
 
 // Class static definitions:
 template <class V, class E>
-PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT( typename single<V, E>::vtable const single<V, E>::vtable::noop_);
+PUSHMI_DEFINE_CONSTEXPR_IN_CLASS_INIT(typename single<V, E>::vtable const single<V, E>::noop_);
 
 template <class VF, class EF, class DF>
 #if __cpp_concepts
@@ -171,9 +172,8 @@ class single<VF, EF, DF> {
   static_assert(
       !detail::is_v<EF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
-  static_assert(NothrowInvocable<EF, std::exception_ptr>,
+  static_assert(NothrowInvocable<EF&, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
-
  public:
   using properties = property_set<is_receiver<>, is_single<>>;
 
