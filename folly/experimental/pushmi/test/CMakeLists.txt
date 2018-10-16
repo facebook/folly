@@ -11,3 +11,6 @@ target_link_libraries(PushmiTest
   pushmi
   Threads::Threads
 )
+
+include(../external/Catch2/contrib/Catch.cmake)
+catch_discover_tests(PushmiTest)
