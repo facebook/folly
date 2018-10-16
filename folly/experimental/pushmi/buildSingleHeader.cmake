@@ -18,7 +18,7 @@ function(BuildSingleHeader HeaderName)
     file(WRITE ${CMAKE_CURRENT_SOURCE_DIR}/include/${HeaderName}.h "${incls}")
 endfunction()
 
-set(header_files 
+set(header_files
     # keep in inclusion order
 
     "${CMAKE_CURRENT_SOURCE_DIR}/external/meta/include/meta/meta_fwd.hpp"
@@ -45,14 +45,18 @@ set(header_files
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/flow_single_deferred.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/trampoline.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/new_thread.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/empty.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/extension_operators.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/just.h"
-    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/on.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/submit.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/subject.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/empty.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/just.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/defer.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/on.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/tap.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/transform.h"
     "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/via.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/request_via.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/include/pushmi/o/share.h"
 )
 
 BuildSingleHeader("pushmi" ${header_files})

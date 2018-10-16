@@ -24,6 +24,7 @@
 #include <future>
 #include <tuple>
 #include <deque>
+#include <vector>
 
 #if __cpp_lib_optional >= 201606
 #include <optional>

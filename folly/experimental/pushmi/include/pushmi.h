@@ -24,6 +24,7 @@
 #include <future>
 #include <tuple>
 #include <deque>
+#include <vector>
 
 #if __cpp_lib_optional >= 201606
 #include <optional>
@@ -8311,43 +8312,6 @@ inline auto new_thread() {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include <meta/meta.hpp>
-
-//#include "../deferred.h"
-//#include "../single_deferred.h"
-//#include "../detail/functional.h"
-
-namespace pushmi {
-
-namespace operators {
-
-template <class V>
-auto empty() {
-  return make_single_deferred(
-    constrain(lazy::SingleReceiver<_1, V>, [](auto out) mutable {
-      ::pushmi::set_done(out);
-    })
-  );
-}
-
-inline auto empty() {
-  return make_deferred(
-    constrain(lazy::NoneReceiver<_1>, [](auto out) mutable {
-      ::pushmi::set_done(out);
-    })
-  );
-}
-
-} // namespace operators
-} // namespace pushmi
-// clang-format off
-// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 //#include <tuple>
 //#include "../piping.h"
 //#include "../boosters.h"
@@ -8624,237 +8588,6 @@ PUSHMI_INLINE_VAR constexpr detail::now_fn top{};
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-//#include "../single_deferred.h"
-//#include "submit.h"
-//#include "extension_operators.h"
-
-namespace pushmi {
-
-namespace operators {
-
-PUSHMI_TEMPLATE(class V)
-  (requires SemiMovable<V>)
-auto just(V v) {
-  return make_single_deferred(
-    constrain(lazy::SingleReceiver<_1, V>,
-      [v = std::move(v)](auto out) mutable {
-        ::pushmi::set_value(out, std::move(v));
-      }
-    )
-  );
-}
-
-} // namespace operators
-
-} // namespace pushmi
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
-//#include "../piping.h"
-//#include "../executor.h"
-//#include "extension_operators.h"
-
-namespace pushmi {
-
-namespace detail {
-
-struct on_fn {
-  PUSHMI_TEMPLATE(class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&>)
-  auto operator()(ExecutorFactory ef) const {
-    return constrain(lazy::Sender<_1>, [ef = std::move(ef)](auto in) {
-      using In = decltype(in);
-      return ::pushmi::detail::deferred_from<In, single<>>(
-        std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
-          constrain(lazy::SenderTo<In, _2>, [ef](In& in, auto out) {
-            auto exec = ef();
-            ::pushmi::submit(exec, ::pushmi::now(exec),
-              ::pushmi::make_single([in = in, out = std::move(out)](auto) mutable {
-                ::pushmi::submit(in, std::move(out));
-              })
-            );
-          }),
-          constrain(lazy::TimeSenderTo<In, _3>, [ef](In& in, auto at, auto out) {
-            auto exec = ef();
-            ::pushmi::submit(exec, at,
-              ::pushmi::on_value([in = in, at, out = std::move(out)](auto) mutable {
-                ::pushmi::submit(in, at, std::move(out));
-              })
-            );
-          })
-        )
-      );
-    });
-  }
-};
-
-} // namespace detail
-
-namespace operators {
-
-PUSHMI_INLINE_VAR constexpr detail::on_fn on{};
-
-} // namespace operators
-
-#if 0
-namespace detail {
-
-template <class ExecutorFactory>
-class fsdon {
-  using executor_factory_type = std::decay_t<ExecutorFactory>;
-
-  executor_factory_type factory_;
-
-  template <class In>
-  class start_on {
-    using in_type = std::decay_t<In>;
-
-    executor_factory_type factory_;
-    in_type in_;
-
-    template <class Out, class Executor>
-    class out_on {
-      using out_type = std::decay_t<Out>;
-      using exec_type = std::decay_t<Executor>;
-
-      template <class Producer>
-      struct producer_proxy {
-        RefWrapper<Producer> up_;
-        std::shared_ptr<std::atomic_bool> stopped_;
-        exec_type exec_;
-
-        producer_proxy(
-            RefWrapper<Producer> p,
-            std::shared_ptr<std::atomic_bool> stopped,
-            exec_type exec)
-            : up_(std::move(p)),
-              stopped_(std::move(stopped)),
-              exec_(std::move(exec)) {}
-
-        template <class V>
-        void value(V v) {
-          auto up = wrap_ref(up_.get());
-          exec_ |
-              execute([up = std::move(up),
-                       v = std::move(v),
-                       stopped = std::move(stopped_)](auto) mutable {
-                if (*stopped) {
-                  return;
-                }
-                up.get().value(std::move(v));
-              });
-        }
-
-        template <class E>
-        void error(E e) {
-          auto up = wrap_ref(up_.get());
-          exec_ |
-              execute([up = std::move(up),
-                       e = std::move(e),
-                       stopped = std::move(stopped_)](auto) mutable {
-                if (*stopped) {
-                  return;
-                }
-                up.get().error(std::move(e));
-              });
-        }
-      };
-
-      bool done_;
-      std::shared_ptr<std::atomic_bool> stopped_;
-      out_type out_;
-      exec_type exec_;
-      AnyNone<> upProxy_;
-
-     public:
-      out_on(out_type out, exec_type exec)
-          : done_(false),
-            stopped_(std::make_shared<std::atomic_bool>(false)),
-            out_(std::move(out)),
-            exec_(std::move(exec)),
-            upProxy_() {}
-
-      template <class T>
-      void value(T t) {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        out_.value(std::move(t));
-      }
-
-      template <class E>
-      void error(E e) {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        out_.error(std::move(e));
-      }
-
-      void stopping() {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        *stopped_ = true;
-        out_.stopping();
-      }
-
-      template <class Producer>
-      void starting(RefWrapper<Producer> up) {
-        upProxy_ =
-            producer_proxy<Producer>{std::move(up), stopped_, std::move(exec_)};
-        out_.starting(wrap_ref(upProxy_));
-      }
-    };
-
-   public:
-    start_on(executor_factory_type&& ef, in_type&& in)
-        : factory_(std::move(ef)), in_(std::move(in)) {}
-
-    template <class Out>
-    auto then(Out out) {
-      auto exec = factory_();
-      auto myout = out_on<Out, decltype(exec)>{std::move(out), exec};
-      exec | execute([in = in_, myout = std::move(myout)](auto) mutable {
-        in.then(std::move(myout));
-      });
-    }
-  };
-
- public:
-  explicit fsdon(executor_factory_type&& ef) : factory_(std::move(ef)) {}
-
-  template <class In>
-  auto operator()(In in) {
-    return start_on<In>{std::move(factory_), std::move(in)};
-  }
-};
-
-} // namespace detail
-
-namespace fsd {
-template <class ExecutorFactory>
-auto on(ExecutorFactory factory) {
-  return detail::fsdon<ExecutorFactory>{std::move(factory)};
-}
-} // namespace fsd
-#endif
-
-} // namespace pushmi
-// clang-format off
-// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
-//#pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
-
 //#include <functional>
 //#include "../time_single_deferred.h"
 //#include "../boosters.h"
@@ -9073,6 +8806,413 @@ PUSHMI_INLINE_VAR constexpr detail::blocking_submit_fn blocking_submit{};
 template <class T>
 PUSHMI_INLINE_VAR constexpr detail::get_fn<T> get{};
 } // namespace operators
+
+} // namespace pushmi
+//#pragma once
+
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include <vector>
+
+//#include <pushmi/time_single_deferred.h>
+
+namespace pushmi {
+
+template<class... TN>
+struct subject;
+
+template<class T, class PS>
+struct subject<T, PS> {
+
+  using properties = property_set_insert_t<property_set<is_sender<>, is_single<>>, PS>;
+
+  struct subject_shared {
+    bool done_ = false;
+    pushmi::detail::opt<T> t_;
+    std::exception_ptr ep_;
+    std::vector<any_single<T>> receivers_;
+    std::mutex lock_;
+    PUSHMI_TEMPLATE(class Out)
+      (requires Receiver<Out>)
+    void submit(Out out) {
+      std::unique_lock<std::mutex> guard(lock_);
+      if (ep_) {::pushmi::set_error(out, ep_); return;}
+      if (!!t_) {::pushmi::set_value(out, (const T&)t_); return;}
+      if (done_) {::pushmi::set_done(out); return;}
+      receivers_.push_back(any_single<T>{out});
+    }
+    PUSHMI_TEMPLATE(class V)
+      (requires SemiMovable<V>)
+    void value(V&& v) {
+      std::unique_lock<std::mutex> guard(lock_);
+      t_ = detail::as_const(v);
+      for (auto& out : receivers_) {::pushmi::set_value(out, (V&&) v);}
+      receivers_.clear();
+    }
+    PUSHMI_TEMPLATE(class E)
+      (requires SemiMovable<E>)
+    void error(E e) noexcept {
+      std::unique_lock<std::mutex> guard(lock_);
+      ep_ = e;
+      for (auto& out : receivers_) {::pushmi::set_error(out, std::move(e));}
+      receivers_.clear();
+    }
+    void done() {
+      std::unique_lock<std::mutex> guard(lock_);
+      done_ = true;
+      for (auto& out : receivers_) {::pushmi::set_done(out);}
+      receivers_.clear();
+    }
+  };
+
+  // need a template overload of none/deferred and the rest that stores a 'ptr' with its own lifetime management
+  struct subject_receiver {
+
+    using properties = property_set_insert_t<property_set<is_receiver<>, is_single<>>, PS>;
+
+    std::shared_ptr<subject_shared> s;
+
+    PUSHMI_TEMPLATE(class V)
+      (requires SemiMovable<V>)
+    void value(V&& v) {
+      s->value((V&&) v);
+    }
+    PUSHMI_TEMPLATE(class E)
+      (requires SemiMovable<E>)
+    void error(E e) noexcept {
+      s->error(std::move(e));
+    }
+    void done() {
+      s->done();
+    }
+  };
+
+  std::shared_ptr<subject_shared> s = std::make_shared<subject_shared>();
+
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out>)
+  void submit(Out out) {
+    s->submit(std::move(out));
+  }
+
+  auto receiver() {
+    return detail::out_from_fn<subject>{}(subject_receiver{s});
+  }
+};
+
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include <meta/meta.hpp>
+
+//#include "../deferred.h"
+//#include "../single_deferred.h"
+//#include "../detail/functional.h"
+
+namespace pushmi {
+
+namespace operators {
+
+template <class V>
+auto empty() {
+  return make_single_deferred(
+    constrain(lazy::SingleReceiver<_1, V>, [](auto out) mutable {
+      ::pushmi::set_done(out);
+    })
+  );
+}
+
+inline auto empty() {
+  return make_deferred(
+    constrain(lazy::NoneReceiver<_1>, [](auto out) mutable {
+      ::pushmi::set_done(out);
+    })
+  );
+}
+
+} // namespace operators
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../single_deferred.h"
+//#include "submit.h"
+//#include "extension_operators.h"
+
+namespace pushmi {
+
+namespace operators {
+
+PUSHMI_TEMPLATE(class V)
+  (requires SemiMovable<V>)
+auto just(V v) {
+  return make_single_deferred(
+    constrain(lazy::SingleReceiver<_1, V>,
+      [v = std::move(v)](auto out) mutable {
+        ::pushmi::set_value(out, std::move(v));
+      }
+    )
+  );
+}
+
+} // namespace operators
+
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../single.h"
+//#include "submit.h"
+//#include "extension_operators.h"
+
+#if __cpp_deduction_guides >= 201703
+#define MAKE(x) x MAKE_
+#define MAKE_(...) {__VA_ARGS__}
+#else
+#define MAKE(x) make_ ## x
+#endif
+
+namespace pushmi {
+
+namespace operators {
+
+PUSHMI_TEMPLATE(class F)
+  (requires Invocable<F>)
+auto defer(F f) {
+  return MAKE(single_deferred)(
+    constrain(lazy::Receiver<_1>,
+      [f = std::move(f)](auto out) mutable {
+        auto sender = f();
+        PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<decltype(sender)>) (
+          ::pushmi::submit(sender, ::pushmi::now(id(sender)), std::move(out));
+        ) else (
+          ::pushmi::submit(sender, std::move(out));
+        ));
+      }
+    )
+  );
+}
+
+} // namespace operators
+
+} // namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../piping.h"
+//#include "../executor.h"
+//#include "extension_operators.h"
+
+namespace pushmi {
+
+namespace detail {
+
+struct on_fn {
+  PUSHMI_TEMPLATE(class ExecutorFactory)
+    (requires Invocable<ExecutorFactory&>)
+  auto operator()(ExecutorFactory ef) const {
+    return constrain(lazy::Sender<_1>, [ef = std::move(ef)](auto in) {
+      using In = decltype(in);
+      return ::pushmi::detail::deferred_from<In, single<>>(
+        std::move(in),
+        ::pushmi::detail::submit_transform_out<In>(
+          constrain(lazy::SenderTo<In, _2>, [ef](In& in, auto out) {
+            auto exec = ef();
+            ::pushmi::submit(exec, ::pushmi::now(exec),
+              ::pushmi::make_single([in = in, out = std::move(out)](auto) mutable {
+                ::pushmi::submit(in, std::move(out));
+              })
+            );
+          }),
+          constrain(lazy::TimeSenderTo<In, _3>, [ef](In& in, auto at, auto out) {
+            auto exec = ef();
+            ::pushmi::submit(exec, at,
+              ::pushmi::on_value([in = in, at, out = std::move(out)](auto) mutable {
+                ::pushmi::submit(in, at, std::move(out));
+              })
+            );
+          })
+        )
+      );
+    });
+  }
+};
+
+} // namespace detail
+
+namespace operators {
+
+PUSHMI_INLINE_VAR constexpr detail::on_fn on{};
+
+} // namespace operators
+
+#if 0
+namespace detail {
+
+template <class ExecutorFactory>
+class fsdon {
+  using executor_factory_type = std::decay_t<ExecutorFactory>;
+
+  executor_factory_type factory_;
+
+  template <class In>
+  class start_on {
+    using in_type = std::decay_t<In>;
+
+    executor_factory_type factory_;
+    in_type in_;
+
+    template <class Out, class Executor>
+    class out_on {
+      using out_type = std::decay_t<Out>;
+      using exec_type = std::decay_t<Executor>;
+
+      template <class Producer>
+      struct producer_proxy {
+        RefWrapper<Producer> up_;
+        std::shared_ptr<std::atomic_bool> stopped_;
+        exec_type exec_;
+
+        producer_proxy(
+            RefWrapper<Producer> p,
+            std::shared_ptr<std::atomic_bool> stopped,
+            exec_type exec)
+            : up_(std::move(p)),
+              stopped_(std::move(stopped)),
+              exec_(std::move(exec)) {}
+
+        template <class V>
+        void value(V v) {
+          auto up = wrap_ref(up_.get());
+          exec_ |
+              execute([up = std::move(up),
+                       v = std::move(v),
+                       stopped = std::move(stopped_)](auto) mutable {
+                if (*stopped) {
+                  return;
+                }
+                up.get().value(std::move(v));
+              });
+        }
+
+        template <class E>
+        void error(E e) {
+          auto up = wrap_ref(up_.get());
+          exec_ |
+              execute([up = std::move(up),
+                       e = std::move(e),
+                       stopped = std::move(stopped_)](auto) mutable {
+                if (*stopped) {
+                  return;
+                }
+                up.get().error(std::move(e));
+              });
+        }
+      };
+
+      bool done_;
+      std::shared_ptr<std::atomic_bool> stopped_;
+      out_type out_;
+      exec_type exec_;
+      AnyNone<> upProxy_;
+
+     public:
+      out_on(out_type out, exec_type exec)
+          : done_(false),
+            stopped_(std::make_shared<std::atomic_bool>(false)),
+            out_(std::move(out)),
+            exec_(std::move(exec)),
+            upProxy_() {}
+
+      template <class T>
+      void value(T t) {
+        if (done_) {
+          return;
+        }
+        done_ = true;
+        out_.value(std::move(t));
+      }
+
+      template <class E>
+      void error(E e) {
+        if (done_) {
+          return;
+        }
+        done_ = true;
+        out_.error(std::move(e));
+      }
+
+      void stopping() {
+        if (done_) {
+          return;
+        }
+        done_ = true;
+        *stopped_ = true;
+        out_.stopping();
+      }
+
+      template <class Producer>
+      void starting(RefWrapper<Producer> up) {
+        upProxy_ =
+            producer_proxy<Producer>{std::move(up), stopped_, std::move(exec_)};
+        out_.starting(wrap_ref(upProxy_));
+      }
+    };
+
+   public:
+    start_on(executor_factory_type&& ef, in_type&& in)
+        : factory_(std::move(ef)), in_(std::move(in)) {}
+
+    template <class Out>
+    auto then(Out out) {
+      auto exec = factory_();
+      auto myout = out_on<Out, decltype(exec)>{std::move(out), exec};
+      exec | execute([in = in_, myout = std::move(myout)](auto) mutable {
+        in.then(std::move(myout));
+      });
+    }
+  };
+
+ public:
+  explicit fsdon(executor_factory_type&& ef) : factory_(std::move(ef)) {}
+
+  template <class In>
+  auto operator()(In in) {
+    return start_on<In>{std::move(factory_), std::move(in)};
+  }
+};
+
+} // namespace detail
+
+namespace fsd {
+template <class ExecutorFactory>
+auto on(ExecutorFactory factory) {
+  return detail::fsdon<ExecutorFactory>{std::move(factory)};
+}
+} // namespace fsd
+#endif
 
 } // namespace pushmi
 // clang-format off
@@ -9506,6 +9646,112 @@ auto via(ExecutorFactory factory) {
 
 } // namespace fsd
 #endif
+
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../single.h"
+//#include "submit.h"
+//#include "extension_operators.h"
+//#include "via.h"
+
+namespace pushmi {
+
+namespace detail {
+
+struct request_via_fn {
+  template<typename In>
+  struct semisender {
+      In in;
+      template<class... AN>
+      auto via(AN&&... an) {
+          return in | ::pushmi::operators::via((AN&&) an...);
+      }
+  };
+  auto operator()() const;
+};
+
+auto request_via_fn::operator()() const {
+  return constrain(lazy::Sender<_1>, [](auto in) {
+    using In = decltype(in);
+    return semisender<In>{in};
+  });
+}
+
+} // namespace detail
+
+namespace operators {
+
+PUSHMI_INLINE_VAR constexpr detail::request_via_fn request_via{};
+
+} // namespace operators
+
+PUSHMI_TEMPLATE(class To, class In)
+  (requires Same<To, is_sender<>> && Sender<_1>)
+auto via_cast(In in) {
+  return in;
+}
+
+PUSHMI_TEMPLATE(class To, class In)
+  (requires Same<To, is_sender<>>)
+auto via_cast(detail::request_via_fn::semisender<In> ss) {
+  return ss.in;
+}
+
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../single.h"
+//#include "submit.h"
+//#include "extension_operators.h"
+
+//#include "../subject.h"
+
+namespace pushmi {
+
+namespace detail {
+
+template<class T>
+struct share_fn {
+  auto operator()() const;
+};
+
+template<class T>
+auto share_fn<T>::operator()() const {
+  return constrain(lazy::Sender<_1>, [](auto in) {
+    using In = decltype(in);
+    subject<T, properties_t<In>> sub;
+
+    PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<In>) (
+      ::pushmi::submit(in, ::pushmi::now(id(in)), sub.receiver());
+    ) else (
+      ::pushmi::submit(id(in), sub.receiver());
+    ));
+
+    return sub;
+  });
+}
+
+} // namespace detail
+
+namespace operators {
+
+template<class T>
+PUSHMI_INLINE_VAR constexpr detail::share_fn<T> share{};
+
+} // namespace operators
 
 } // namespace pushmi
 
