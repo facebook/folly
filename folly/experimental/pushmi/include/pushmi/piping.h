@@ -6,13 +6,13 @@
 
 #include "traits.h"
 
+namespace pushmi {
+
 PUSHMI_TEMPLATE (class In, class Op)
-  (requires pushmi::Invocable<Op&, In>)
+  (requires defer::Sender<std::decay_t<In>> && defer::Invocable<Op&, In>)
 decltype(auto) operator|(In&& in, Op op) {
   return op((In&&) in);
 }
-
-namespace pushmi {
 
 PUSHMI_INLINE_VAR constexpr struct pipe_fn {
 #if __cpp_fold_expressions >= 201603

@@ -16,6 +16,8 @@ namespace pushmi {
 struct recurse_t {};
 constexpr const recurse_t recurse{};
 
+struct _pipeable_sender_ {};
+
 namespace detail {
 
 PUSHMI_INLINE_VAR constexpr struct ownordelegate_t {} const ownordelegate {};
@@ -35,7 +37,7 @@ template <class E = std::exception_ptr>
 class trampoline;
 
 template <class E = std::exception_ptr>
-class delegator {
+class delegator : _pipeable_sender_ {
   using time_point = typename trampoline<E>::time_point;
 
  public:
@@ -54,7 +56,7 @@ class delegator {
 };
 
 template <class E = std::exception_ptr>
-class nester {
+class nester : _pipeable_sender_ {
   using time_point = typename trampoline<E>::time_point;
 
  public:

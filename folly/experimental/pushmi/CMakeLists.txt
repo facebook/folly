@@ -69,8 +69,13 @@ endif(PUSHMI_USE_CONCEPTS_EMULATION)
 
 target_compile_options(pushmi INTERFACE
     $<$<CXX_COMPILER_ID:GNU>:-ftemplate-backtrace-limit=0>)
+if (PUSHMI_CONCEPTS)
+    target_compile_options(pushmi INTERFACE $<$<CXX_COMPILER_ID:GNU>:-fconcepts>)
+endif ()
 
-add_custom_target(buildSingleHeader COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/buildSingleHeader.cmake WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
+add_custom_target(buildSingleHeader
+    COMMAND ${CMAKE_COMMAND} -P ${CMAKE_CURRENT_SOURCE_DIR}/buildSingleHeader.cmake
+    WORKING_DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR})
 add_dependencies(pushmi buildSingleHeader)
 
 install(

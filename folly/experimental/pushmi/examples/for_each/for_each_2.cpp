@@ -35,8 +35,8 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
               std::atomic<decltype(init(input))>, // accumulation
               std::atomic<std::size_t>, // pending
               std::atomic<std::size_t> // exception count (protects assignment to first exception)
-            >>(allocState, std::exception_ptr{}, std::move(out), std::move(selector), std::move(func), init(std::move(input)), 1, 0);
-          e | op::submit([e, sb, se, shared_state](auto ){
+            >>(allocState, std::exception_ptr{}, std::move(out), std::move(selector), (decltype(func) &&) func, init(std::move(input)), 1, 0);
+          e | op::submit([e, sb, se, shared_state](auto){
             auto stepDone = [](auto shared_state){
               // pending
               if (--std::get<5>(*shared_state) == 0) {

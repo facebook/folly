@@ -194,7 +194,6 @@ PUSHMI_CONCEPT_DEF(
 
 #if __cpp_lib_invoke >= 201411
 using std::invoke;
-using std::invoke_result_t;
 #else
 PUSHMI_TEMPLATE (class F, class...As)
   (requires requires (
@@ -212,10 +211,10 @@ decltype(auto) invoke(F f, As&&...as)
     noexcept(noexcept(std::declval<decltype(std::mem_fn(f))>()((As&&) as...))) {
   return std::mem_fn(f)((As&&) as...);
 }
+#endif
 template <class F, class...As>
 using invoke_result_t =
   decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
-#endif
 
 PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)

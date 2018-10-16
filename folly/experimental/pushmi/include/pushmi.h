@@ -2411,13 +2411,13 @@ auto on_submit(Fns... fns) -> on_submit_fn<Fns...> {
 
 //#include "traits.h"
 
+namespace pushmi {
+
 PUSHMI_TEMPLATE (class In, class Op)
-  (requires pushmi::Invocable<Op&, In>)
+  (requires defer::Sender<std::decay_t<In>> && defer::Invocable<Op&, In>)
 decltype(auto) operator|(In&& in, Op op) {
   return op((In&&) in);
 }
-
-namespace pushmi {
 
 PUSHMI_INLINE_VAR constexpr struct pipe_fn {
 #if __cpp_fold_expressions >= 201603
@@ -4704,6 +4704,8 @@ namespace pushmi {
 struct recurse_t {};
 constexpr const recurse_t recurse{};
 
+struct _pipeable_sender_ {};
+
 namespace detail {
 
 PUSHMI_INLINE_VAR constexpr struct ownordelegate_t {} const ownordelegate {};
@@ -4723,7 +4725,7 @@ template <class E = std::exception_ptr>
 class trampoline;
 
 template <class E = std::exception_ptr>
-class delegator {
+class delegator : _pipeable_sender_ {
   using time_point = typename trampoline<E>::time_point;
 
  public:
@@ -4742,7 +4744,7 @@ class delegator {
 };
 
 template <class E = std::exception_ptr>
-class nester {
+class nester : _pipeable_sender_ {
   using time_point = typename trampoline<E>::time_point;
 
  public:
