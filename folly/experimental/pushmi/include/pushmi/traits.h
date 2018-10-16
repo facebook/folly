@@ -77,7 +77,7 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class T, class U)
   concept Same,
-    __is_same_as(T, U) && __is_same_as(U, T)
+    PUSHMI_PP_IS_SAME(T, U) && PUSHMI_PP_IS_SAME(U, T)
 );
 
 PUSHMI_CONCEPT_DEF(
