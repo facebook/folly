@@ -147,15 +147,6 @@ class fsdon {
         out_.error(std::move(e));
       }
 
-      void stopping() {
-        if (done_) {
-          return;
-        }
-        done_ = true;
-        *stopped_ = true;
-        out_.stopping();
-      }
-
       template <class Producer>
       void starting(RefWrapper<Producer> up) {
         upProxy_ =

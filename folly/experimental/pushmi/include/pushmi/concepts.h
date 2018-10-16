@@ -256,9 +256,6 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class S, class... PropertyN)
   (concept FlowReceiver)(S, PropertyN...),
-    requires(S& s) (
-      ::pushmi::set_stopping(s)
-    ) &&
     Receiver<S> &&
     property_query_v<S, PropertyN...> &&
     Flow<S>

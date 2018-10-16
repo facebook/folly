@@ -183,24 +183,6 @@ class fsdvia {
         });
       }
 
-      void stopping() {
-        if (done_) {
-          return;
-        }
-        if (!upProxy_) {
-          std::abort();
-        }
-        done_ = true;
-        if (!shared_->stopped_.exchange(true)) {
-          exec_ |
-              // must keep out and upProxy alive until out is notified that it
-              // is unsafe
-              execute([shared = shared_](auto) mutable {
-                shared->out_.stopping();
-              });
-        }
-      }
-
       template <class Producer>
       void starting(RefWrapper<Producer> up) {
         if (!!upProxy_) {

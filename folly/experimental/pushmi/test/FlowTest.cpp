@@ -46,11 +46,11 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
       auto up = mi::MAKE(none)(
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
-            signals += 1000000;
+            signals += 100000;
             data.stopper.t(data.stopper);
           },
           [&](auto& data) {
-            signals += 100000;
+            signals += 10000;
             data.stopper.t(data.stopper);
           });
 
@@ -64,9 +64,6 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
         // cancellation is not an error
         ::mi::set_done(out);
       }
-      // I want to get rid of this signal it makes usage harder and
-      // messes up r-value qualifing done, error and value.
-      ::mi::set_stopping(out);
     });
 
     WHEN("submit is applied and cancels the producer") {
@@ -75,7 +72,6 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // immediately stop producer
               mi::on_starting([&](auto up) {
                 signals += 10;
@@ -83,8 +79,8 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
               }));
 
       THEN(
-          "the starting, up.done, out.done and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 110011);
+          "the starting, up.done and out.done signals are each recorded once") {
+        REQUIRE(signals == 10011);
       }
     }
 
@@ -94,13 +90,12 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) { signals += 10; }));
 
       THEN(
-          "the starting, out.value and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 10110);
+          "the starting and out.value signals are each recorded once") {
+        REQUIRE(signals == 110);
       }
     }
   }
@@ -132,11 +127,11 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
       auto up = mi::MAKE(none)(
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
-            signals += 1000000;
+            signals += 100000;
             data.stopper.t(data.stopper);
           },
           [&](auto& data) {
-            signals += 100000;
+            signals += 10000;
             data.stopper.t(data.stopper);
           });
 
@@ -160,9 +155,6 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
                         // cancellation is not an error
                         ::mi::set_done(out);
                       }
-                      // I want to get rid of this signal it makes usage harder
-                      // and messes up r-value qualifing done, error and value.
-                      ::mi::set_stopping(out);
                     });
           });
     });
@@ -173,7 +165,6 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
@@ -183,8 +174,8 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
               }));
 
       THEN(
-          "the starting, up.done, out.done and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 110011);
+          "the starting, up.done and out.done signals are each recorded once") {
+        REQUIRE(signals == 10011);
       }
     }
 
@@ -194,7 +185,6 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
@@ -205,8 +195,8 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
               }));
 
       THEN(
-          "the starting, up.done, out.value and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 110110);
+          "the starting, up.done and out.value signals are each recorded once") {
+        REQUIRE(signals == 10110);
       }
     }
   }
@@ -248,11 +238,11 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
       auto up = mi::MAKE(none)(
           Data{std::move(tokens.second)},
           [&](auto& data, auto e) noexcept {
-            signals += 1000000;
+            signals += 100000;
             data.stopper.t(data.stopper);
           },
           [&](auto& data) {
-            signals += 100000;
+            signals += 10000;
             data.stopper.t(data.stopper);
           });
 
@@ -278,9 +268,6 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                         // cancellation is not an error
                         ::mi::set_done(out);
                       }
-                      // I want to get rid of this signal it makes usage harder
-                      // and messes up r-value qualifing done, error and value.
-                      ::mi::set_stopping(out);
                     });
           });
     });
@@ -291,7 +278,6 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
@@ -303,8 +289,8 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
               }));
 
       THEN(
-          "the starting, up.done, out.done and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 110011);
+          "the starting, up.done and out.done signals are each recorded once") {
+        REQUIRE(signals == 10011);
       }
     }
 
@@ -314,7 +300,6 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
               mi::on_value([&](int) { signals += 100; }),
               mi::on_error([&](auto) noexcept { signals += 1000; }),
               mi::on_done([&]() { signals += 1; }),
-              mi::on_stopping([&]() { signals += 10000; }),
               // do not stop producer before it is scheduled to run
               mi::on_starting([&](auto up) {
                 signals += 10;
@@ -328,16 +313,16 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
       std::this_thread::sleep_for(100ms);
 
       THEN(
-          "the starting, up.done, out.value and out.stopping signals are each recorded once") {
-        REQUIRE(signals == 110110);
+          "the starting, up.done and out.value signals are each recorded once") {
+        REQUIRE(signals == 10110);
       }
     }
 
     WHEN("submit is applied and cancels the producer at the same time") {
       // count known results
       int total = 0;
-      int cancellostrace = 0; // 110110
-      int cancelled = 0; // 110011
+      int cancellostrace = 0; // 10110
+      int cancelled = 0; // 10011
 
       for (;;) {
         signals = 0;
@@ -348,7 +333,6 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                 mi::on_value([&](int) { signals += 100; }),
                 mi::on_error([&](auto) noexcept { signals += 1000; }),
                 mi::on_done([&]() { signals += 1; }),
-                mi::on_stopping([&]() { signals += 10000; }),
                 // stop producer at the same time that it is scheduled to run
                 mi::on_starting([&](auto up) {
                   signals += 10;
@@ -362,8 +346,8 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
 
         // accumulate known signals
         ++total;
-        cancellostrace += signals == 110110;
-        cancelled += signals == 110011;
+        cancellostrace += signals == 10110;
+        cancelled += signals == 10011;
 
         if (total != cancellostrace + cancelled) {
           // display the unrecognized signals recorded
@@ -376,7 +360,7 @@ SCENARIO("flow single cancellation new thread", "[flow][deferred]") {
                        << ", cancelled " << cancelled);
           break;
         }
-        if (!!cancellostrace && !!cancelled) {
+        if (cancellostrace > 4 && cancelled > 4) {
           // yay all known outcomes were observed!
           break;
         }

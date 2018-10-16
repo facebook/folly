@@ -56,10 +56,6 @@ struct ignoreDF {
   void operator()() {}
 };
 
-struct ignoreStpF {
-  void operator()() {}
-};
-
 struct ignoreStrtF {
   template <class Up>
   void operator()(Up&&) {}
@@ -100,14 +96,6 @@ struct passDDF {
     (requires Receiver<Data>)
   void operator()(Data& out) const {
     ::pushmi::set_done(out);
-  }
-};
-
-struct passDStpF {
-  PUSHMI_TEMPLATE(class Data)
-    (requires Receiver<Data>)
-  void operator()(Data& out) const {
-    ::pushmi::set_stopping(out);
   }
 };
 
@@ -241,18 +229,6 @@ struct on_done_fn : Fn {
 template <class Fn>
 auto on_done(Fn fn) -> on_done_fn<Fn> {
   return on_done_fn<Fn>{std::move(fn)};
-}
-
-template <class Fn>
-struct on_stopping_fn : Fn {
-  constexpr on_stopping_fn() = default;
-  constexpr explicit on_stopping_fn(Fn fn) : Fn(std::move(fn)) {}
-  using Fn::operator();
-};
-
-template <class Fn>
-auto on_stopping(Fn fn) -> on_stopping_fn<Fn> {
-  return on_stopping_fn<Fn>{std::move(fn)};
 }
 
 template <class... Fns>

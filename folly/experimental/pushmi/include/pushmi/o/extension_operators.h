@@ -214,16 +214,6 @@ struct set_done_fn {
   }
 };
 
-struct set_stopping_fn {
-  auto operator()() const {
-    return constrain(lazy::Receiver<_1>,
-      [](auto out) {
-        ::pushmi::set_stopping(out);
-      }
-    );
-  }
-};
-
 struct set_starting_fn {
   PUSHMI_TEMPLATE(class Up)
     (requires Receiver<Up>)
@@ -274,7 +264,6 @@ namespace extension_operators {
 PUSHMI_INLINE_VAR constexpr detail::set_done_fn set_done{};
 PUSHMI_INLINE_VAR constexpr detail::set_error_fn set_error{};
 PUSHMI_INLINE_VAR constexpr detail::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr detail::set_stopping_fn set_stopping{};
 PUSHMI_INLINE_VAR constexpr detail::set_starting_fn set_starting{};
 PUSHMI_INLINE_VAR constexpr detail::do_submit_fn submit{};
 PUSHMI_INLINE_VAR constexpr detail::now_fn now{};

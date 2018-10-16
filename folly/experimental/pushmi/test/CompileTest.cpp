@@ -257,13 +257,6 @@ void flow_single_test() {
         pushmi::ignoreVF{},
         pushmi::abortEF{},
         pushmi::ignoreDF{},
-        pushmi::ignoreStpF{});
-  auto out9 =
-      pushmi::MAKE(flow_single)(
-        pushmi::ignoreVF{},
-        pushmi::abortEF{},
-        pushmi::ignoreDF{},
-        pushmi::ignoreStpF{},
         pushmi::ignoreStrtF{});
 
   using Out0 = decltype(out0);
@@ -297,11 +290,6 @@ void flow_single_test() {
     pushmi::passDVF{},
     pushmi::passDEF{},
     pushmi::passDDF{});
-  auto proxy9 = pushmi::MAKE(flow_single)(out0,
-    pushmi::passDVF{},
-    pushmi::passDEF{},
-    pushmi::passDDF{},
-    pushmi::passDStpF{});
 
   auto any2 = pushmi::any_flow_single<int>(out0);
   auto any3 = pushmi::any_flow_single<int>(proxy0);
