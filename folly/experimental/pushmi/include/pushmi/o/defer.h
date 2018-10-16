@@ -7,7 +7,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #include "../single.h"
-#include "../single_deferred.h"
+#include "../single_sender.h"
 #include "submit.h"
 #include "extension_operators.h"
 
@@ -35,7 +35,7 @@ public:
   PUSHMI_TEMPLATE(class F)
     (requires Invocable<F&>)
   auto operator()(F f) const {
-    return make_single_deferred(impl<F>{std::move(f)});
+    return make_single_sender(impl<F>{std::move(f)});
   }
 } defer {};
 

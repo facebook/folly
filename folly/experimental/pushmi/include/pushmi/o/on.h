@@ -63,7 +63,7 @@ private:
     PUSHMI_TEMPLATE (class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from(
+      return ::pushmi::detail::sender_from(
         std::move(in),
         detail::submit_transform_out<In>(
           out_impl<In, ExecutorFactory>{ef_},

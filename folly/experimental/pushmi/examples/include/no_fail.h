@@ -4,7 +4,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <pushmi/single_deferred.h>
+#include <pushmi/single_sender.h>
 #include <pushmi/o/submit.h>
 
 namespace pushmi {
@@ -33,7 +33,7 @@ private:
     PUSHMI_TEMPLATE(class In)
       (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::deferred_from(
+      return ::pushmi::detail::sender_from(
         std::move(in),
         ::pushmi::detail::submit_transform_out<In>(out_impl<In>{})
       );

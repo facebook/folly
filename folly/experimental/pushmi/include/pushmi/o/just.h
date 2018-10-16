@@ -6,7 +6,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../single_deferred.h"
+#include "../single_sender.h"
 #include "submit.h"
 #include "extension_operators.h"
 
@@ -29,7 +29,7 @@ public:
   PUSHMI_TEMPLATE(class V)
     (requires SemiMovable<V>)
   auto operator()(V v) const {
-    return make_single_deferred(impl<V>{std::move(v)});
+    return make_single_sender(impl<V>{std::move(v)});
   }
 } just {};
 } // namespace operators

@@ -14,7 +14,7 @@ using namespace pushmi::aliases;
 const bool setting_exists = false;
 
 auto get_setting() {
-  return mi::make_single_deferred(
+  return mi::make_single_sender(
     [](auto out){
       if(setting_exists) {
         op::just(42) | op::submit(out);
@@ -31,7 +31,7 @@ auto println = [](auto v){std::cout << v << std::endl;};
 template<class T, class E = std::exception_ptr>
 auto concat =
   [](auto in){
-    return mi::make_single_deferred(
+    return mi::make_single_sender(
       [in](auto out) mutable {
         ::pushmi::submit(in, mi::make_single(out,
         [](auto out, auto v){
@@ -54,9 +54,9 @@ int main()
     op::just(42) |
       op::transform([](int i) {
         if (i < 42) {
-          return mi::any_single_deferred<std::string>{op::empty<std::string>()};
+          return mi::any_single_sender<std::string>{op::empty<std::string>()};
         }
-        return mi::any_single_deferred<std::string>{op::just(std::to_string(i))};
+        return mi::any_single_sender<std::string>{op::just(std::to_string(i))};
       }) |
       concat<std::string> |
       op::submit(println);

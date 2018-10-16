@@ -5,7 +5,7 @@
 #include <chrono>
 using namespace std::literals;
 
-#include "pushmi/flow_single_deferred.h"
+#include "pushmi/flow_single_sender.h"
 #include "pushmi/o/empty.h"
 #include "pushmi/o/from.h"
 #include "pushmi/o/just.h"
@@ -22,9 +22,9 @@ using namespace std::literals;
 using namespace pushmi::aliases;
 
 
-SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
+SCENARIO( "empty can be used with tap and submit", "[empty][sender]" ) {
 
-  GIVEN( "An empty deferred" ) {
+  GIVEN( "An empty sender" ) {
     auto e = op::empty();
     using E = decltype(e);
 
@@ -54,7 +54,7 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
     }
   }
 
-  GIVEN( "An empty int single_deferred" ) {
+  GIVEN( "An empty int single_sender" ) {
     auto e = op::empty<int>();
     using E = decltype(e);
 
@@ -80,9 +80,9 @@ SCENARIO( "empty can be used with tap and submit", "[empty][deferred]" ) {
   }
 }
 
-SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
+SCENARIO( "just() can be used with transform and submit", "[just][sender]" ) {
 
-  GIVEN( "A just int single_deferred" ) {
+  GIVEN( "A just int single_sender" ) {
     auto j = op::just(20);
     using J = decltype(j);
 
@@ -119,9 +119,9 @@ SCENARIO( "just() can be used with transform and submit", "[just][deferred]" ) {
   }
 }
 
-SCENARIO( "from() can be used with transform and submit", "[from][deferred]" ) {
+SCENARIO( "from() can be used with transform and submit", "[from][sender]" ) {
 
-  GIVEN( "A from int many_deferred" ) {
+  GIVEN( "A from int many_sender" ) {
     int arr[] = {0, 9, 99};
     auto m = op::from(arr);
     using M = decltype(m);

@@ -6,8 +6,8 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../deferred.h"
-#include "../single_deferred.h"
+#include "../sender.h"
+#include "../single_sender.h"
 #include "../detail/functional.h"
 
 namespace pushmi {
@@ -32,11 +32,11 @@ namespace detail {
 namespace operators {
 template <class V>
 auto empty() {
-  return make_single_deferred(detail::single_empty_impl<V>{});
+  return make_single_sender(detail::single_empty_impl<V>{});
 }
 
 inline auto empty() {
-  return make_deferred(detail::empty_impl{});
+  return make_sender(detail::empty_impl{});
 }
 
 } // namespace operators

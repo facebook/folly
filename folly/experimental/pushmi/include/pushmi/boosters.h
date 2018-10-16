@@ -42,19 +42,19 @@ template<>
 struct construct_deduced<flow_single>;
 
 template<>
-struct construct_deduced<deferred>;
+struct construct_deduced<sender>;
 
 template<>
-struct construct_deduced<single_deferred>;
+struct construct_deduced<single_sender>;
 
 template<>
-struct construct_deduced<many_deferred>;
+struct construct_deduced<many_sender>;
 
 template<>
-struct construct_deduced<flow_single_deferred>;
+struct construct_deduced<flow_single_sender>;
 
 template<>
-struct construct_deduced<time_single_deferred>;
+struct construct_deduced<time_single_sender>;
 
 template <template <class...> class T, class... AN>
 using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;

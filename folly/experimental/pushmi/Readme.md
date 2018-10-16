@@ -157,121 +157,121 @@ auto s0 = single<int>{single{}};
 auto s1 = single<int, std::exception_ptr>{single{}};
 ```
 
-## `deferred`
+## `sender`
 
-The `deferred` type in the library provides simple ways to construct new implementations of the NoneSender concept.
+The `sender` type in the library provides simple ways to construct new implementations of the NoneSender concept.
 
 construct a producer of nothing, aka `never()`
 
 ```cpp
-deferred<> d;
+sender<> d;
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
 
 ```cpp
-auto d0 = deferred{on_submit{[](auto out){}}};
-auto d1 = deferred{[](auto out){}};
-auto d2 = deferred{on_submit{[](none<> out){}, [](auto out){}}};
+auto d0 = sender{on_submit{[](auto out){}}};
+auto d1 = sender{[](auto out){}};
+auto d2 = sender{on_submit{[](none<> out){}, [](auto out){}}};
 
 ```
 
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing deferred. The state must be a NoneSender, but can be a super-set with additional state for this filter.
+construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing sender. The state must be a NoneSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto d0 = deferred{deferred{}};
+auto d0 = sender{sender{}};
 
-auto d1 = deferred{deferred{}, on_submit{
-    [](deferred<>& in, auto out){in | submit(out);}}};
+auto d1 = sender{sender{}, on_submit{
+    [](sender<>& in, auto out){in | submit(out);}}};
 
-auto d2 = deferred{deferred{},
-    [](deferred<>& in, auto out){in | submit(out);}};
+auto d2 = sender{sender{},
+    [](sender<>& in, auto out){in | submit(out);}};
 
 ```
 
 construct a type-erased type for a particular E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto d0 = deferred<>{deferred{}};
-auto d1 = deferred<std::exception_ptr>{deferred{}};
+auto d0 = sender<>{sender{}};
+auto d1 = sender<std::exception_ptr>{sender{}};
 ```
 
-## `single_deferred`
+## `single_sender`
 
-The `single_deferred` type in the library provides simple ways to construct new implementations of the SingleSender concept.
+The `single_sender` type in the library provides simple ways to construct new implementations of the SingleSender concept.
 
 construct a producer of nothing, aka `never()`
 
 ```cpp
-single_deferred<> sd;
+single_sender<> sd;
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
 
 ```cpp
-auto sd0 = single_deferred{on_submit{[](auto out){}}};
-auto sd1 = single_deferred{[](auto out){}};
-auto sd2 = single_deferred{on_submit{[](single<> out){}, [](auto out){}}};
+auto sd0 = single_sender{on_submit{[](auto out){}}};
+auto sd1 = single_sender{[](auto out){}};
+auto sd2 = single_sender{on_submit{[](single<> out){}, [](auto out){}}};
 
 ```
 
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing single_deferred. The state must be a SingleSender, but can be a super-set with additional state for this filter.
+construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing single_sender. The state must be a SingleSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto sd0 = single_deferred{single_deferred{}};
+auto sd0 = single_sender{single_sender{}};
 
-auto sd1 = single_deferred{single_deferred{}, on_submit{
-    [](single_deferred<>& in, auto out){in | submit(out);}}};
+auto sd1 = single_sender{single_sender{}, on_submit{
+    [](single_sender<>& in, auto out){in | submit(out);}}};
 
-auto sd2 = single_deferred{single_deferred{},
-    [](single_deferred<>& in, auto out){in | submit(out);}};
+auto sd2 = single_sender{single_sender{},
+    [](single_sender<>& in, auto out){in | submit(out);}};
 
 ```
 
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto sd0 = single_deferred<int>{single_deferred{}};
-auto sd1 = single_deferred<int, std::exception_ptr>{single_deferred{}};
+auto sd0 = single_sender<int>{single_sender{}};
+auto sd1 = single_sender<int, std::exception_ptr>{single_sender{}};
 ```
 
-## `time_single_deferred`
+## `time_single_sender`
 
-The `time_single_deferred` type in the library provides simple ways to construct new implementations of the TimeSingleSender concept.
+The `time_single_sender` type in the library provides simple ways to construct new implementations of the TimeSingleSender concept.
 
 construct a producer of nothing, aka `never()`
 
 ```cpp
-time_single_deferred<> tsd;
+time_single_sender<> tsd;
 ```
 
 construct new type using one or more lambdas, or with designated initializers, use multiple lambdas to build overload sets
 
 ```cpp
-auto tsd0 = time_single_deferred{on_submit{[](auto at, auto out){}}};
-auto tsd1 = time_single_deferred{[](auto at, auto out){}};
-auto tsd2 = time_single_deferred{on_submit{[](auto at, single<> out){}, [](auto at, auto out){}}};
+auto tsd0 = time_single_sender{on_submit{[](auto at, auto out){}}};
+auto tsd1 = time_single_sender{[](auto at, auto out){}};
+auto tsd2 = time_single_sender{on_submit{[](auto at, single<> out){}, [](auto at, auto out){}}};
 
 ```
 
-construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing time_single_deferred. The state must be a SingleSender, but can be a super-set with additional state for this filter.
+construct a new type with shared state across the lambdas. very useful for building a filter on top of an existing time_single_sender. The state must be a SingleSender, but can be a super-set with additional state for this filter.
 
 ```cpp
-auto tsd0 = time_single_deferred{single_deferred{}};
+auto tsd0 = time_single_sender{single_sender{}};
 
-auto tsd1 = time_single_deferred{single_deferred{}, on_submit{
-    [](time_single_deferred<>& in, auto at, auto out){in | submit(at, out);}}};
+auto tsd1 = time_single_sender{single_sender{}, on_submit{
+    [](time_single_sender<>& in, auto at, auto out){in | submit(at, out);}}};
 
-auto tsd2 = time_single_deferred{single_deferred{},
-    [](time_single_deferred<>& in, auto at, auto out){in | submit(at, out);}};
+auto tsd2 = time_single_sender{single_sender{},
+    [](time_single_sender<>& in, auto at, auto out){in | submit(at, out);}};
 
 ```
 
 construct a type-erased type for a particular T & E (which could be a std::variant of supported types). I have a plan to provide operators to collapse values and errors to variant or tuple and then expand from variant or tuple back to their constituent values/errors.
 
 ```cpp
-auto tsd0 = time_single_deferred<int>{time_single_deferred{}};
-auto tsd1 = time_single_deferred<int, std::exception_ptr>{time_single_deferred{}};
+auto tsd0 = time_single_sender<int>{time_single_sender{}};
+auto tsd1 = time_single_sender<int, std::exception_ptr>{time_single_sender{}};
 ```
 
 ## put it all together with some algorithms

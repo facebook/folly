@@ -5,7 +5,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <pushmi/single_deferred.h>
+#include <pushmi/single_sender.h>
 
 namespace pushmi {
 
@@ -21,7 +21,7 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
       IF&& initFunc,
       RS&& selector) const {
     return [func, sb, se, driver, initFunc, selector](auto in){
-      return make_single_deferred(
+      return make_single_sender(
         [in, func, sb, se, driver, initFunc, selector](auto out) mutable {
           submit(in, make_single(std::move(out),
               [func, sb, se, driver, initFunc, selector](auto& out, auto input) {

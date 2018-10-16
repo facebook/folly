@@ -10,13 +10,13 @@
 #include "../piping.h"
 #include "../boosters.h"
 #include "../single.h"
-#include "../deferred.h"
-#include "../single_deferred.h"
+#include "../sender.h"
+#include "../single_sender.h"
 #include "../many.h"
-#include "../many_deferred.h"
-#include "../time_single_deferred.h"
+#include "../many_sender.h"
+#include "../time_single_sender.h"
 #include "../flow_single.h"
-#include "../flow_single_deferred.h"
+#include "../flow_single_sender.h"
 #include "../detail/if_constexpr.h"
 #include "../detail/functional.h"
 
@@ -154,17 +154,17 @@ auto submit_transform_out(SDSF, TSDSF tsdsf) {
 template <class Cardinality, bool IsTime = false, bool IsFlow = false>
 struct make_sender;
 template <>
-struct make_sender<is_none<>> : construct_deduced<deferred> {};
+struct make_sender<is_none<>> : construct_deduced<sender> {};
 template <>
-struct make_sender<is_single<>> : construct_deduced<single_deferred> {};
+struct make_sender<is_single<>> : construct_deduced<single_sender> {};
 template <>
-struct make_sender<is_many<>> : construct_deduced<many_deferred> {};
+struct make_sender<is_many<>> : construct_deduced<many_sender> {};
 template <>
-struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_deferred> {};
+struct make_sender<is_single<>, false, true> : construct_deduced<flow_single_sender> {};
 template <>
-struct make_sender<is_single<>, true, false> : construct_deduced<time_single_deferred> {};
+struct make_sender<is_single<>, true, false> : construct_deduced<time_single_sender> {};
 
-PUSHMI_INLINE_VAR constexpr struct deferred_from_fn {
+PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   PUSHMI_TEMPLATE(class In, class... FN)
     (requires Sender<In>)
   auto operator()(In in, FN&&... fn) const {
@@ -175,7 +175,7 @@ PUSHMI_INLINE_VAR constexpr struct deferred_from_fn {
             property_query_v<properties_t<In>, is_flow<>>>;
     return MakeSender{}(std::move(in), (FN&&) fn...);
   }
-} const deferred_from {};
+} const sender_from {};
 
 PUSHMI_TEMPLATE(
     class In,
@@ -184,7 +184,7 @@ PUSHMI_TEMPLATE(
     bool SingleSenderRequires,
     bool TimeSingleSenderRequires)
   (requires Sender<In> && Receiver<Out>)
-constexpr bool deferred_requires_from() {
+constexpr bool sender_requires_from() {
   PUSHMI_IF_CONSTEXPR_RETURN( ((bool) TimeSenderTo<In, Out, is_single<>>) (
     return TimeSingleSenderRequires;
   ) else (

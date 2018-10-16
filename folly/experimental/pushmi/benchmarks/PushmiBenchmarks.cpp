@@ -11,7 +11,7 @@
 
 #include "pushmi/none.h"
 #include "pushmi/flow_single.h"
-#include "pushmi/flow_single_deferred.h"
+#include "pushmi/flow_single_sender.h"
 #include "pushmi/entangle.h"
 
 #include "pool.h"

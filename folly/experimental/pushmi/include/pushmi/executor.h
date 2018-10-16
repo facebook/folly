@@ -6,7 +6,7 @@
 
 #include <chrono>
 #include <functional>
-#include "time_single_deferred.h"
+#include "time_single_sender.h"
 
 namespace pushmi {
 namespace detail {
@@ -113,7 +113,7 @@ any_time_executor_ref(Wrapped&) ->
 namespace detail {
 template<class E, class TP>
 using any_time_executor_base =
-  any_time_single_deferred<any_time_executor_ref<E, TP>, E, TP>;
+  any_time_single_sender<any_time_executor_ref<E, TP>, E, TP>;
 
 template<class T, class E, class TP>
 using not_any_time_executor =

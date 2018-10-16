@@ -7,7 +7,7 @@
 
 #include <vector>
 
-#include <pushmi/time_single_deferred.h>
+#include <pushmi/time_single_sender.h>
 
 namespace pushmi {
 
@@ -58,7 +58,7 @@ struct subject<T, PS> {
     }
   };
 
-  // need a template overload of none/deferred and the rest that stores a 'ptr' with its own lifetime management
+  // need a template overload of none/sender and the rest that stores a 'ptr' with its own lifetime management
   struct subject_receiver {
 
     using properties = property_set_insert_t<property_set<is_receiver<>, is_single<>>, PS>;

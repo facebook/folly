@@ -5,7 +5,7 @@
 #include <chrono>
 using namespace std::literals;
 
-#include "pushmi/flow_single_deferred.h"
+#include "pushmi/flow_single_sender.h"
 #include "pushmi/o/empty.h"
 #include "pushmi/o/just.h"
 #include "pushmi/o/on.h"
@@ -34,9 +34,9 @@ struct countdownsingle {
   }
 };
 
-SCENARIO( "new_thread executor", "[new_thread][deferred]" ) {
+SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
 
-  GIVEN( "A new_thread time_single_deferred" ) {
+  GIVEN( "A new_thread time_single_sender" ) {
     auto nt = v::new_thread();
     using NT = decltype(nt);
 
@@ -140,14 +140,14 @@ SCENARIO( "new_thread executor", "[new_thread][deferred]" ) {
 
     WHEN( "used with on" ) {
       std::vector<std::string> values;
-      auto deferred = pushmi::make_single_deferred([](auto out) {
+      auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
-      deferred | op::on([&](){return nt;}) |
+      sender | op::on([&](){return nt;}) |
           op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});
@@ -156,14 +156,14 @@ SCENARIO( "new_thread executor", "[new_thread][deferred]" ) {
 
     WHEN( "used with via" ) {
       std::vector<std::string> values;
-      auto deferred = pushmi::make_single_deferred([](auto out) {
+      auto sender = pushmi::make_single_sender([](auto out) {
         ::pushmi::set_value(out, 2.0);
         // ignored
         ::pushmi::set_value(out, 1);
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
         ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
-      deferred | op::via([&](){return nt;}) |
+      sender | op::via([&](){return nt;}) |
           op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
       THEN( "only the first item was pushed" ) {
         REQUIRE(values == std::vector<std::string>{"2.000000"});

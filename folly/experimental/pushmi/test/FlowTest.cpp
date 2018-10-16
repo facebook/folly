@@ -5,7 +5,7 @@
 #include <chrono>
 using namespace std::literals;
 
-#include "pushmi/flow_single_deferred.h"
+#include "pushmi/flow_single_sender.h"
 #include "pushmi/o/submit.h"
 
 #include "pushmi/entangle.h"
@@ -22,11 +22,11 @@ using namespace pushmi::aliases;
 #define MAKE(x) make_##x
 #endif
 
-SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
+SCENARIO("flow single immediate cancellation", "[flow][sender]") {
   int signals = 0;
 
-  GIVEN("A flow single deferred") {
-    auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
+  GIVEN("A flow single sender") {
+    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
       auto set_stop = [](auto& stop) {
@@ -102,13 +102,13 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
   }
 }
 
-SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
+SCENARIO("flow single cancellation trampoline", "[flow][sender]") {
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   int signals = 0;
 
-  GIVEN("A flow single deferred") {
-    auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
+  GIVEN("A flow single sender") {
+    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
       auto set_stop = [](auto& stop) {
@@ -213,14 +213,14 @@ struct moving_atomic : std::atomic<T> {
   moving_atomic(moving_atomic&& o) : std::atomic<T>(o.load()) {}
 };
 
-SCENARIO("flow single shared cancellation new thread", "[flow][deferred]") {
+SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
   std::atomic<int> signals{0};
   auto at = nt.now() + 200ms;
 
-  GIVEN("A flow single deferred") {
-    auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
+  GIVEN("A flow single sender") {
+    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
       auto set_stop = [](auto& stop) {
@@ -383,14 +383,14 @@ SCENARIO("flow single shared cancellation new thread", "[flow][deferred]") {
   }
 }
 
-SCENARIO("flow single entangled cancellation new thread", "[flow][deferred]") {
+SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
   std::atomic<int> signals{0};
   auto at = nt.now() + 200ms;
 
-  GIVEN("A flow single deferred") {
-    auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
+  GIVEN("A flow single sender") {
+    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
       auto set_stop = [](auto& stop) {

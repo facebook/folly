@@ -8,9 +8,9 @@
 
 #include <cassert>
 #include "extension_operators.h"
-#include "../deferred.h"
-#include "../single_deferred.h"
-#include "../time_single_deferred.h"
+#include "../sender.h"
+#include "../single_sender.h"
+#include "../time_single_sender.h"
 
 namespace pushmi {
 
@@ -72,13 +72,13 @@ private:
   template <class In, class SideEffects>
   static auto impl(In in, SideEffects sideEffects) {
     PUSHMI_STATIC_ASSERT(
-      ::pushmi::detail::deferred_requires_from<In, SideEffects,
+      ::pushmi::detail::sender_requires_from<In, SideEffects,
         SenderTo<In, SideEffects, is_none<>>,
         SenderTo<In, SideEffects, is_single<>>,
         TimeSenderTo<In, SideEffects, is_single<>> >(),
         "'In' is not deliverable to 'SideEffects'");
 
-    return ::pushmi::detail::deferred_from(
+    return ::pushmi::detail::sender_from(
       std::move(in),
       ::pushmi::detail::submit_transform_out<In>(
         out_impl<In, SideEffects>{std::move(sideEffects)}
@@ -104,7 +104,7 @@ private:
       (requires Receiver<Out>)
     auto operator()(Out out) const {
       PUSHMI_STATIC_ASSERT(
-        ::pushmi::detail::deferred_requires_from<In, SideEffects,
+        ::pushmi::detail::sender_requires_from<In, SideEffects,
           SenderTo<In, Out, is_none<>>,
           SenderTo<In, Out, is_single<>>,
           TimeSenderTo<In, Out, is_single<>> >(),
@@ -113,7 +113,7 @@ private:
           detail::make_tap(sideEffects_, std::move(out)))};
       using Gang = decltype(gang);
       PUSHMI_STATIC_ASSERT(
-        ::pushmi::detail::deferred_requires_from<In, SideEffects,
+        ::pushmi::detail::sender_requires_from<In, SideEffects,
           SenderTo<In, Gang>,
           SenderTo<In, Gang, is_single<>>,
           TimeSenderTo<In, Gang, is_single<>> >(),

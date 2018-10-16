@@ -9,7 +9,7 @@
 namespace pushmi {
 
 template <class V, class E = std::exception_ptr>
-class any_single_deferred {
+class any_single_sender {
   union data {
     void* pobj_ = nullptr;
     char buffer_[sizeof(V)]; // can hold a V in-situ
@@ -28,7 +28,7 @@ class any_single_deferred {
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_single_deferred(Wrapped obj, std::false_type) : any_single_deferred() {
+  any_single_sender(Wrapped obj, std::false_type) : any_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -44,8 +44,8 @@ class any_single_deferred {
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_single_deferred(Wrapped obj, std::true_type) noexcept
-      : any_single_deferred() {
+  any_single_sender(Wrapped obj, std::true_type) noexcept
+      : any_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -64,27 +64,27 @@ class any_single_deferred {
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_single_deferred>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_single_sender>::value, U>;
  public:
   using properties = property_set<is_sender<>, is_single<>>;
 
-  any_single_deferred() = default;
-  any_single_deferred(any_single_deferred&& that) noexcept
-      : any_single_deferred() {
+  any_single_sender() = default;
+  any_single_sender(any_single_sender&& that) noexcept
+      : any_single_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
     (requires SenderTo<wrapped_t<Wrapped>, single<V, E>, is_single<>>)
-  explicit any_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-    : any_single_deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~any_single_deferred() {
+  explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~any_single_sender() {
     vptr_->op_(data_, nullptr);
   }
-  any_single_deferred& operator=(any_single_deferred&& that) noexcept {
-    this->~any_single_deferred();
-    new ((void*)this) any_single_deferred(std::move(that));
+  any_single_sender& operator=(any_single_sender&& that) noexcept {
+    this->~any_single_sender();
+    new ((void*)this) any_single_sender(std::move(that));
     return *this;
   }
   void submit(single<V, E> out) {
@@ -94,18 +94,18 @@ class any_single_deferred {
 
 // Class static definitions:
 template <class V, class E>
-constexpr typename any_single_deferred<V, E>::vtable const
-  any_single_deferred<V, E>::noop_;
+constexpr typename any_single_sender<V, E>::vtable const
+  any_single_sender<V, E>::noop_;
 
 template <class SF>
-class single_deferred<SF> {
+class single_sender<SF> {
   SF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_single<>>;
 
-  constexpr single_deferred() = default;
-  constexpr explicit single_deferred(SF sf)
+  constexpr single_sender() = default;
+  constexpr explicit single_sender(SF sf)
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
@@ -117,17 +117,17 @@ class single_deferred<SF> {
 
 namespace detail {
 template <PUSHMI_TYPE_CONSTRAINT(Sender<is_single<>>) Data, class DSF>
-class single_deferred_2 {
+class single_sender_2 {
   Data data_;
   DSF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_single<>>;
 
-  constexpr single_deferred_2() = default;
-  constexpr explicit single_deferred_2(Data data)
+  constexpr single_sender_2() = default;
+  constexpr explicit single_sender_2(Data data)
       : data_(std::move(data)) {}
-  constexpr single_deferred_2(Data data, DSF sf)
+  constexpr single_sender_2(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
     (requires PUSHMI_EXP(lazy::Receiver<Out, is_single<>> PUSHMI_AND
@@ -138,70 +138,70 @@ class single_deferred_2 {
 };
 
 template <class A, class B>
-using single_deferred_base =
+using single_sender_base =
   std::conditional_t<
     (bool)Sender<A, is_single<>>,
-    single_deferred_2<A, B>,
-    any_single_deferred<A, B>>;
+    single_sender_2<A, B>,
+    any_single_sender<A, B>>;
 } // namespace detail
 
 template <class A, class B>
-struct single_deferred<A, B>
-  : detail::single_deferred_base<A, B> {
-  constexpr single_deferred() = default;
-  using detail::single_deferred_base<A, B>::single_deferred_base;
+struct single_sender<A, B>
+  : detail::single_sender_base<A, B> {
+  constexpr single_sender() = default;
+  using detail::single_sender_base<A, B>::single_sender_base;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_single_deferred
-PUSHMI_INLINE_VAR constexpr struct make_single_deferred_fn {
+// make_single_sender
+PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
   inline auto operator()() const {
-    return single_deferred<ignoreSF>{};
+    return single_sender<ignoreSF>{};
   }
   PUSHMI_TEMPLATE(class SF)
     (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
   auto operator()(SF sf) const {
-    return single_deferred<SF>{std::move(sf)};
+    return single_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
     (requires True<> && Sender<Data, is_single<>>)
   auto operator()(Data d) const {
-    return single_deferred<Data, passDSF>{std::move(d)};
+    return single_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
     (requires Sender<Data, is_single<>>)
   auto operator()(Data d, DSF sf) const {
-    return single_deferred<Data, DSF>{std::move(d), std::move(sf)};
+    return single_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
-} const make_single_deferred {};
+} const make_single_sender {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-single_deferred() -> single_deferred<ignoreSF>;
+single_sender() -> single_sender<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-single_deferred(SF) -> single_deferred<SF>;
+single_sender(SF) -> single_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
   (requires True<> && Sender<Data, is_single<>>)
-single_deferred(Data) -> single_deferred<Data, passDSF>;
+single_sender(Data) -> single_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Sender<Data, is_single<>>)
-single_deferred(Data, DSF) -> single_deferred<Data, DSF>;
+single_sender(Data, DSF) -> single_sender<Data, DSF>;
 #endif
 
 template<>
-struct construct_deduced<single_deferred> : make_single_deferred_fn {};
+struct construct_deduced<single_sender> : make_single_sender_fn {};
 
 // template <
 //     class V,
 //     class E = std::exception_ptr,
 //     SenderTo<single<V, E>, is_single<>> Wrapped>
 // auto erase_cast(Wrapped w) {
-//   return single_deferred<V, E>{std::move(w)};
+//   return single_sender<V, E>{std::move(w)};
 // }
 
 } // namespace pushmi

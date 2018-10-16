@@ -26,7 +26,7 @@ struct __new_thread_submit {
 };
 
 inline auto new_thread() {
-  return make_time_single_deferred(__new_thread_submit{});
+  return make_time_single_sender(__new_thread_submit{});
 }
 
 }

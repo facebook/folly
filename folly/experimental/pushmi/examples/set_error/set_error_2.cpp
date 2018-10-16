@@ -16,7 +16,7 @@ using namespace pushmi::aliases;
 template<class T, class E = std::exception_ptr>
 auto concat =
   [](auto in){
-    return mi::make_single_deferred(
+    return mi::make_single_sender(
       [in](auto out) mutable {
         ::pushmi::submit(in, mi::make_single(out,
         [](auto out, auto v){
@@ -63,7 +63,7 @@ int main()
 
   op::just(42) |
     op::transform([](auto v) {
-      using r_t = mi::any_single_deferred<int>;
+      using r_t = mi::any_single_sender<int>;
       if (v < 40) {
         return r_t{op::error<int>(std::exception_ptr{})};
       } else {

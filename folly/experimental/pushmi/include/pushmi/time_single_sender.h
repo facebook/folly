@@ -12,7 +12,7 @@ template <
     class V,
     class E = std::exception_ptr,
     class TP = std::chrono::system_clock::time_point>
-class any_time_single_deferred {
+class any_time_single_sender {
   union data {
     void* pobj_ = nullptr;
     char buffer_[sizeof(std::promise<int>)]; // can hold a V in-situ
@@ -33,8 +33,8 @@ class any_time_single_deferred {
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_time_single_deferred(Wrapped obj, std::false_type)
-    : any_time_single_deferred() {
+  any_time_single_sender(Wrapped obj, std::false_type)
+    : any_time_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -56,8 +56,8 @@ class any_time_single_deferred {
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_time_single_deferred(Wrapped obj, std::true_type) noexcept
-    : any_time_single_deferred() {
+  any_time_single_sender(Wrapped obj, std::true_type) noexcept
+    : any_time_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -81,28 +81,28 @@ class any_time_single_deferred {
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_time_single_deferred>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_time_single_sender>::value, U>;
 
  public:
   using properties = property_set<is_time<>, is_single<>>;
 
-  any_time_single_deferred() = default;
-  any_time_single_deferred(any_time_single_deferred&& that) noexcept
-      : any_time_single_deferred() {
+  any_time_single_sender() = default;
+  any_time_single_sender(any_time_single_sender&& that) noexcept
+      : any_time_single_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
     (requires TimeSenderTo<wrapped_t<Wrapped>, single<V, E>>)
-  explicit any_time_single_deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-  : any_time_single_deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {
+  explicit any_time_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+  : any_time_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {
   }
-  ~any_time_single_deferred() {
+  ~any_time_single_sender() {
     vptr_->op_(data_, nullptr);
   }
-  any_time_single_deferred& operator=(any_time_single_deferred&& that) noexcept {
-    this->~any_time_single_deferred();
-    new ((void*)this) any_time_single_deferred(std::move(that));
+  any_time_single_sender& operator=(any_time_single_sender&& that) noexcept {
+    this->~any_time_single_sender();
+    new ((void*)this) any_time_single_sender(std::move(that));
     return *this;
   }
   TP now() {
@@ -115,24 +115,24 @@ class any_time_single_deferred {
 
 // Class static definitions:
 template <class V, class E, class TP>
-constexpr typename any_time_single_deferred<V, E, TP>::vtable const
-    any_time_single_deferred<V, E, TP>::noop_;
+constexpr typename any_time_single_sender<V, E, TP>::vtable const
+    any_time_single_sender<V, E, TP>::noop_;
 
 template <class SF, class NF>
 #if __cpp_concepts
   requires Invocable<NF&>
 #endif
-class time_single_deferred<SF, NF> {
+class time_single_sender<SF, NF> {
   SF sf_;
   NF nf_;
 
  public:
   using properties = property_set<is_time<>, is_single<>>;
 
-  constexpr time_single_deferred() = default;
-  constexpr explicit time_single_deferred(SF sf)
+  constexpr time_single_sender() = default;
+  constexpr explicit time_single_sender(SF sf)
       : sf_(std::move(sf)) {}
-  constexpr time_single_deferred(SF sf, NF nf)
+  constexpr time_single_sender(SF sf, NF nf)
       : sf_(std::move(sf)), nf_(std::move(nf)) {}
   auto now() {
     return nf_();
@@ -150,7 +150,7 @@ template <PUSHMI_TYPE_CONSTRAINT(TimeSender<is_single<>>) Data, class DSF, class
 #if __cpp_concepts
   requires Invocable<DNF&, Data&>
 #endif
-class time_single_deferred_2 {
+class time_single_sender_2 {
   Data data_;
   DSF sf_;
   DNF nf_;
@@ -158,10 +158,10 @@ class time_single_deferred_2 {
  public:
   using properties = property_set<is_time<>, is_single<>>;
 
-  constexpr time_single_deferred_2() = default;
-  constexpr explicit time_single_deferred_2(Data data)
+  constexpr time_single_sender_2() = default;
+  constexpr explicit time_single_sender_2(Data data)
       : data_(std::move(data)) {}
-  constexpr time_single_deferred_2(Data data, DSF sf, DNF nf = DNF{})
+  constexpr time_single_sender_2(Data data, DSF sf, DNF nf = DNF{})
       : data_(std::move(data)), sf_(std::move(sf)), nf_(std::move(nf)) {}
   auto now() {
     return nf_(data_);
@@ -175,72 +175,72 @@ class time_single_deferred_2 {
 };
 
 template <class A, class B, class C>
-using time_single_deferred_base =
+using time_single_sender_base =
   std::conditional_t<
     (bool)TimeSender<A, is_single<>>,
-    time_single_deferred_2<A, B, C>,
-    any_time_single_deferred<A, B, C>>;
+    time_single_sender_2<A, B, C>,
+    any_time_single_sender<A, B, C>>;
 } // namespace detail
 
 template <class A, class B, class C>
-struct time_single_deferred<A, B, C>
-  : detail::time_single_deferred_base<A, B, C> {
-  constexpr time_single_deferred() = default;
-  using detail::time_single_deferred_base<A, B, C>::time_single_deferred_base;
+struct time_single_sender<A, B, C>
+  : detail::time_single_sender_base<A, B, C> {
+  constexpr time_single_sender() = default;
+  using detail::time_single_sender_base<A, B, C>::time_single_sender_base;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_time_single_deferred
-PUSHMI_INLINE_VAR constexpr struct make_time_single_deferred_fn {
+// make_time_single_sender
+PUSHMI_INLINE_VAR constexpr struct make_time_single_sender_fn {
   inline auto operator()() const  {
-    return time_single_deferred<ignoreSF, systemNowF>{};
+    return time_single_sender<ignoreSF, systemNowF>{};
   }
   template <class SF>
   auto operator()(SF sf) const {
-    return time_single_deferred<SF, systemNowF>{std::move(sf)};
+    return time_single_sender<SF, systemNowF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE (class SF, class NF)
     (requires Invocable<NF&>)
   auto operator()(SF sf, NF nf) const {
-    return time_single_deferred<SF, NF>{std::move(sf), std::move(nf)};
+    return time_single_sender<SF, NF>{std::move(sf), std::move(nf)};
   }
   PUSHMI_TEMPLATE (class Data, class DSF)
     (requires TimeSender<Data, is_single<>>)
   auto operator()(Data d, DSF sf) const {
-    return time_single_deferred<Data, DSF, passDNF>{std::move(d), std::move(sf)};
+    return time_single_sender<Data, DSF, passDNF>{std::move(d), std::move(sf)};
   }
   PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
     (requires TimeSender<Data, is_single<>> && Invocable<DNF&, Data&>)
   auto operator()(Data d, DSF sf, DNF nf) const  {
-    return time_single_deferred<Data, DSF, DNF>{std::move(d), std::move(sf),
+    return time_single_sender<Data, DSF, DNF>{std::move(d), std::move(sf),
       std::move(nf)};
   }
-} const make_time_single_deferred {};
+} const make_time_single_sender {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-time_single_deferred() -> time_single_deferred<ignoreSF, systemNowF>;
+time_single_sender() -> time_single_sender<ignoreSF, systemNowF>;
 
 template <class SF>
-time_single_deferred(SF) -> time_single_deferred<SF, systemNowF>;
+time_single_sender(SF) -> time_single_sender<SF, systemNowF>;
 
 PUSHMI_TEMPLATE (class SF, class NF)
   (requires Invocable<NF&>)
-time_single_deferred(SF, NF) -> time_single_deferred<SF, NF>;
+time_single_sender(SF, NF) -> time_single_sender<SF, NF>;
 
 PUSHMI_TEMPLATE (class Data, class DSF)
   (requires TimeSender<Data, is_single<>>)
-time_single_deferred(Data, DSF) -> time_single_deferred<Data, DSF, passDNF>;
+time_single_sender(Data, DSF) -> time_single_sender<Data, DSF, passDNF>;
 
 PUSHMI_TEMPLATE (class Data, class DSF, class DNF)
   (requires TimeSender<Data, is_single<>> && Invocable<DNF&, Data&>)
-time_single_deferred(Data, DSF, DNF) -> time_single_deferred<Data, DSF, DNF>;
+time_single_sender(Data, DSF, DNF) -> time_single_sender<Data, DSF, DNF>;
 #endif
 
 template<>
-struct construct_deduced<time_single_deferred>
-  : make_time_single_deferred_fn {};
+struct construct_deduced<time_single_sender>
+  : make_time_single_sender_fn {};
 
 // template <
 //     class V,
@@ -248,7 +248,7 @@ struct construct_deduced<time_single_deferred>
 //     class TP = std::chrono::system_clock::time_point,
 //     TimeSenderTo<single<V, E>, is_single<>> Wrapped>
 // auto erase_cast(Wrapped w) {
-//   return time_single_deferred<V, E>{std::move(w)};
+//   return time_single_sender<V, E>{std::move(w)};
 // }
 
 } // namespace pushmi

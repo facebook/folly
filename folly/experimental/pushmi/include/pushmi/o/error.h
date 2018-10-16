@@ -6,7 +6,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../deferred.h"
+#include "../sender.h"
 #include "submit.h"
 #include "extension_operators.h"
 
@@ -37,13 +37,13 @@ namespace operators {
 PUSHMI_TEMPLATE(class E)
   (requires SemiMovable<E>)
 auto error(E e) {
-  return make_deferred(detail::error_impl<E>{std::move(e)});
+  return make_sender(detail::error_impl<E>{std::move(e)});
 }
 
 PUSHMI_TEMPLATE(class V, class E)
   (requires SemiMovable<V> && SemiMovable<E>)
 auto error(E e) {
-  return make_single_deferred(detail::single_error_impl<V, E>{std::move(e)});
+  return make_single_sender(detail::single_error_impl<V, E>{std::move(e)});
 }
 
 } // namespace operators

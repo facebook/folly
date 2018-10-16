@@ -4,7 +4,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include "../many_deferred.h"
+#include "../many_sender.h"
 #include "extension_operators.h"
 #include "submit.h"
 
@@ -43,7 +43,7 @@ public:
           typename std::iterator_traits<I>::iterator_category,
           std::forward_iterator_tag>)
   auto operator()(I begin, S end) const {
-    return make_many_deferred(out_impl<I, S>{begin, end});
+    return make_many_sender(out_impl<I, S>{begin, end});
   }
 
   PUSHMI_TEMPLATE(class R)

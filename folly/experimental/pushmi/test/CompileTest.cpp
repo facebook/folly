@@ -55,10 +55,10 @@ void none_test() {
   auto any3 = pushmi::any_none<>(proxy0);
 }
 
-void deferred_test(){
-  auto in0 = pushmi::MAKE(deferred)();
-  auto in1 = pushmi::MAKE(deferred)(pushmi::ignoreSF{});
-  auto in3 = pushmi::MAKE(deferred)([&](auto out){
+void sender_test(){
+  auto in0 = pushmi::MAKE(sender)();
+  auto in1 = pushmi::MAKE(sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(sender)([&](auto out){
     in0.submit(pushmi::MAKE(none)(std::move(out), [](auto d, auto e) noexcept {
       pushmi::set_error(d, e);
     }));
@@ -74,7 +74,7 @@ void deferred_test(){
   out1.error(std::exception_ptr{});
   in3.submit(out1);
 
-  auto any0 = pushmi::any_deferred<>(in0);
+  auto any0 = pushmi::any_sender<>(in0);
 }
 
 void single_test() {
@@ -189,10 +189,10 @@ void many_test() {
   auto any1 = pushmi::any_many<int>(proxy0);
 }
 
-void single_deferred_test(){
-  auto in0 = pushmi::MAKE(single_deferred)();
-  auto in1 = pushmi::MAKE(single_deferred)(pushmi::ignoreSF{});
-  auto in3 = pushmi::MAKE(single_deferred)([&](auto out){
+void single_sender_test(){
+  auto in0 = pushmi::MAKE(single_sender)();
+  auto in1 = pushmi::MAKE(single_sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(single_sender)([&](auto out){
     in0.submit(pushmi::MAKE(single)(std::move(out),
       pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
     ));
@@ -208,13 +208,13 @@ void single_deferred_test(){
   }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_single_deferred<int>(in0);
+  auto any0 = pushmi::any_single_sender<int>(in0);
 }
 
-void many_deferred_test(){
-  auto in0 = pushmi::MAKE(many_deferred)();
-  auto in1 = pushmi::MAKE(many_deferred)(pushmi::ignoreSF{});
-  auto in3 = pushmi::MAKE(many_deferred)([&](auto out){
+void many_sender_test(){
+  auto in0 = pushmi::MAKE(many_sender)();
+  auto in1 = pushmi::MAKE(many_sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(many_sender)([&](auto out){
     in0.submit(pushmi::MAKE(many)(std::move(out),
       pushmi::on_next([](auto d, int v){ pushmi::set_next(d, v); })
     ));
@@ -226,18 +226,18 @@ void many_deferred_test(){
   }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_many_deferred<int>(in0);
+  auto any0 = pushmi::any_many_sender<int>(in0);
 }
 
-void time_single_deferred_test(){
-  auto in0 = pushmi::MAKE(time_single_deferred)();
-  auto in1 = pushmi::MAKE(time_single_deferred)(pushmi::ignoreSF{});
-  auto in3 = pushmi::MAKE(time_single_deferred)([&](auto tp, auto out){
+void time_single_sender_test(){
+  auto in0 = pushmi::MAKE(time_single_sender)();
+  auto in1 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(time_single_sender)([&](auto tp, auto out){
     in0.submit(tp, pushmi::MAKE(single)(std::move(out),
       pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
     ));
   });
-  auto in4 = pushmi::MAKE(time_single_deferred)(pushmi::ignoreSF{}, pushmi::systemNowF{});
+  auto in4 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::systemNowF{});
 
   std::promise<int> p0;
   auto promise0 = pushmi::MAKE(single)(std::move(p0));
@@ -249,7 +249,7 @@ void time_single_deferred_test(){
   }));
   in3.submit(in0.now(), out1);
 
-  auto any0 = pushmi::any_time_single_deferred<int>(in0);
+  auto any0 = pushmi::any_time_single_sender<int>(in0);
 
   in3 | op::submit();
   in3 | op::submit_at(in3.now() + 1s);
@@ -365,10 +365,10 @@ void flow_single_test() {
   auto any3 = pushmi::any_flow_single<int>(proxy0);
 }
 
-void flow_single_deferred_test(){
-  auto in0 = pushmi::MAKE(flow_single_deferred)();
-  auto in1 = pushmi::MAKE(flow_single_deferred)(pushmi::ignoreSF{});
-  auto in3 = pushmi::MAKE(flow_single_deferred)([&](auto out){
+void flow_single_sender_test(){
+  auto in0 = pushmi::MAKE(flow_single_sender)();
+  auto in1 = pushmi::MAKE(flow_single_sender)(pushmi::ignoreSF{});
+  auto in3 = pushmi::MAKE(flow_single_sender)([&](auto out){
     in0.submit(pushmi::MAKE(flow_single)(std::move(out),
       pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
     ));
@@ -380,5 +380,5 @@ void flow_single_deferred_test(){
   }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_flow_single_deferred<int>(in0);
+  auto any0 = pushmi::any_flow_single_sender<int>(in0);
 }

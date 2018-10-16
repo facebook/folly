@@ -9,7 +9,7 @@
 #include <deque>
 #include <thread>
 #include "executor.h"
-#include "time_single_deferred.h"
+#include "time_single_sender.h"
 
 namespace pushmi {
 

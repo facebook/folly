@@ -8,11 +8,11 @@
 
 namespace pushmi {
 namespace detail {
-struct erase_deferred_t {};
+struct erase_sender_t {};
 } // namespace detail
 
 template <class E>
-class deferred<detail::erase_deferred_t, E> {
+class sender<detail::erase_sender_t, E> {
   union data {
     void* pobj_ = nullptr;
     char buffer_[sizeof(std::promise<void>)]; // can hold a void promise in-situ
@@ -31,7 +31,7 @@ class deferred<detail::erase_deferred_t, E> {
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  deferred(Wrapped obj, std::false_type) : deferred() {
+  sender(Wrapped obj, std::false_type) : sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -47,7 +47,7 @@ class deferred<detail::erase_deferred_t, E> {
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  deferred(Wrapped obj, std::true_type) noexcept : deferred() {
+  sender(Wrapped obj, std::true_type) noexcept : sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -66,25 +66,25 @@ class deferred<detail::erase_deferred_t, E> {
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, deferred>::value, U>;
+    std::enable_if_t<!std::is_same<U, sender>::value, U>;
  public:
   using properties = property_set<is_sender<>, is_none<>>;
 
-  deferred() = default;
-  deferred(deferred&& that) noexcept : deferred() {
+  sender() = default;
+  sender(sender&& that) noexcept : sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE(class Wrapped)
     (requires SenderTo<wrapped_t<Wrapped>, any_none<E>, is_none<>>)
-  explicit deferred(Wrapped obj) noexcept(insitu<Wrapped>())
-    : deferred{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~deferred() {
+  explicit sender(Wrapped obj) noexcept(insitu<Wrapped>())
+    : sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~sender() {
     vptr_->op_(data_, nullptr);
   }
-  deferred& operator=(deferred&& that) noexcept {
-    this->~deferred();
-    new ((void*)this) deferred(std::move(that));
+  sender& operator=(sender&& that) noexcept {
+    this->~sender();
+    new ((void*)this) sender(std::move(that));
     return *this;
   }
   void submit(any_none<E> out) {
@@ -94,18 +94,18 @@ class deferred<detail::erase_deferred_t, E> {
 
 // Class static definitions:
 template <class E>
-constexpr typename deferred<detail::erase_deferred_t, E>::vtable const
-    deferred<detail::erase_deferred_t, E>::noop_;
+constexpr typename sender<detail::erase_sender_t, E>::vtable const
+    sender<detail::erase_sender_t, E>::noop_;
 
 template <class SF>
-class deferred<SF> {
+class sender<SF> {
   SF sf_;
 
  public:
   using properties = property_set<is_sender<>, is_none<>>;
 
-  constexpr deferred() = default;
-  constexpr explicit deferred(SF sf) : sf_(std::move(sf)) {}
+  constexpr sender() = default;
+  constexpr explicit sender(SF sf) : sf_(std::move(sf)) {}
   PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out, is_none<>> && Invocable<SF&, Out>)
   void submit(Out out) {
@@ -114,7 +114,7 @@ class deferred<SF> {
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender<is_none<>>) Data, class DSF>
-class deferred<Data, DSF> {
+class sender<Data, DSF> {
   Data data_;
   DSF sf_;
   static_assert(Sender<Data, is_none<>>, "The Data template parameter "
@@ -123,10 +123,10 @@ class deferred<Data, DSF> {
  public:
   using properties = property_set<is_sender<>, is_none<>>;
 
-  constexpr deferred() = default;
-  constexpr explicit deferred(Data data)
+  constexpr sender() = default;
+  constexpr explicit sender(Data data)
       : data_(std::move(data)) {}
-  constexpr deferred(Data data, DSF sf)
+  constexpr sender(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
@@ -137,60 +137,60 @@ class deferred<Data, DSF> {
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_deferred
-PUSHMI_INLINE_VAR constexpr struct make_deferred_fn {
+// make_sender
+PUSHMI_INLINE_VAR constexpr struct make_sender_fn {
   inline auto operator()() const {
-    return deferred<ignoreSF>{};
+    return sender<ignoreSF>{};
   }
   template <class SF>
   auto operator()(SF sf) const {
-    return deferred<SF>{std::move(sf)};
+    return sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Wrapped)
     (requires Sender<Wrapped, is_none<>>)
   auto operator()(Wrapped w) const {
-    return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
+    return sender<detail::erase_sender_t, std::exception_ptr>{std::move(w)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
     (requires Sender<Data, is_none<>>)
   auto operator()(Data data, DSF sf) const {
-    return deferred<Data, DSF>{std::move(data), std::move(sf)};
+    return sender<Data, DSF>{std::move(data), std::move(sf)};
   }
-} const make_deferred {};
+} const make_sender {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-deferred() -> deferred<ignoreSF>;
+sender() -> sender<ignoreSF>;
 
 template <class SF>
-deferred(SF) -> deferred<SF>;
+sender(SF) -> sender<SF>;
 
 PUSHMI_TEMPLATE(class Wrapped)
   (requires Sender<Wrapped, is_none<>>)
-deferred(Wrapped) ->
-    deferred<detail::erase_deferred_t, std::exception_ptr>;
+sender(Wrapped) ->
+    sender<detail::erase_sender_t, std::exception_ptr>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Sender<Data, is_none<>>)
-deferred(Data, DSF) -> deferred<Data, DSF>;
+sender(Data, DSF) -> sender<Data, DSF>;
 #endif
 
 template <class E = std::exception_ptr>
-using any_deferred = deferred<detail::erase_deferred_t, E>;
+using any_sender = sender<detail::erase_sender_t, E>;
 
 template<>
-struct construct_deduced<deferred> : make_deferred_fn {};
+struct construct_deduced<sender> : make_sender_fn {};
 
 // template <SenderTo<any_none<std::exception_ptr>, is_none<>> Wrapped>
 // auto erase_cast(Wrapped w) {
-//   return deferred<detail::erase_deferred_t, std::exception_ptr>{std::move(w)};
+//   return sender<detail::erase_sender_t, std::exception_ptr>{std::move(w)};
 // }
 //
 // template <class E, SenderTo<any_none<E>, is_none<>> Wrapped>
 //   requires Same<is_none<>, properties_t<Wrapped>>
 // auto erase_cast(Wrapped w) {
-//   return deferred<detail::erase_deferred_t, E>{std::move(w)};
+//   return sender<detail::erase_sender_t, E>{std::move(w)};
 // }
 
 } // namespace pushmi

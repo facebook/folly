@@ -51,7 +51,7 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class none;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class deferred;
+class sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single;
@@ -60,19 +60,19 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class many;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class single_deferred;
+class single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class many_deferred;
+class many_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class time_single_deferred;
+class time_single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_single;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_single_deferred;
+class flow_single_sender;
 
 template<
   class E = std::exception_ptr,

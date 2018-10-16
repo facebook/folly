@@ -13,8 +13,8 @@
 
 #include <pool.h>
 
-#include <pushmi/deferred.h>
-#include <pushmi/single_deferred.h>
+#include <pushmi/sender.h>
+#include <pushmi/single_sender.h>
 #include <pushmi/o/just.h>
 #include <pushmi/o/via.h>
 #include <pushmi/o/transform.h>

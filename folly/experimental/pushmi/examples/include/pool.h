@@ -45,7 +45,7 @@ public:
 
   inline auto executor() {
     auto exec = execution::require(p.executor(), execution::never_blocking, execution::oneway);
-    return MAKE(time_single_deferred)(__pool_submit<decltype(exec)>{exec});
+    return MAKE(time_single_sender)(__pool_submit<decltype(exec)>{exec});
   }
 
   inline void stop() {p.stop();}
