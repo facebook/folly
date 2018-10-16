@@ -235,9 +235,11 @@ locked_entangled_pair<T, Dual> lock_both(entangled<T, Dual>& e){
 template <class T, class Dual>
 struct shared_entangled : std::shared_ptr<T> {
   Dual* dual;
+  std::mutex* lock;
 
   template<class P>
-  explicit shared_entangled(std::shared_ptr<P>& p, T& t, Dual& d) : std::shared_ptr<T>(p, std::addressof(t)), dual(std::addressof(d)){
+  explicit shared_entangled(std::shared_ptr<P>& p, T& t, Dual& d, std::mutex& l) :
+    std::shared_ptr<T>(p, std::addressof(t)), dual(std::addressof(d)), lock(std::addressof(l)){
   }
   shared_entangled() = delete;
   shared_entangled(const shared_entangled&) = delete;
@@ -252,16 +254,27 @@ using shared_entangled_pair = std::pair<shared_entangled<First, Second>, shared_
 template <class First, class Second>
 auto shared_entangle(First f, Second s)
     -> shared_entangled_pair<First, Second> {
-  auto p = std::make_shared<std::pair<First, Second>>(std::move(f), std::move(s));
-  shared_entangled<First, Second> ef(p, p->first, p->second);
-  shared_entangled<Second, First> es(p, p->second, p->first);
+  struct storage {
+    storage(First&& f, Second&& s) : p((First&&) f, (Second&&) s) {}
+    std::tuple<First, Second> p;
+    std::mutex lock;
+  };
+  auto p = std::make_shared<storage>(std::move(f), std::move(s));
+  shared_entangled<First, Second> ef(p, std::get<0>(p->p), std::get<1>(p->p), p->lock);
+  shared_entangled<Second, First> es(p, std::get<1>(p->p), std::get<0>(p->p), p->lock);
   return {std::move(ef), std::move(es)};
 }
 
 template <class T, class Dual>
 struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
   shared_entangled<T, Dual> e;
+  ~locked_shared_entangled_pair() {
+    if (!!e && !!e.lock) {
+      e.lock->unlock();
+    }
+  }
   explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e) : e(std::move(e)){
+    this->e.lock->lock();
     this->first = this->e.get();
     this->second = this->e.dual;
   }
@@ -277,12 +290,5 @@ template <class T, class Dual>
 locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e){
   return locked_shared_entangled_pair<T, Dual>{e};
 }
-
-// external synchronization required for move and delete
-template<class T>
-struct moving_atomic : std::atomic<T> {
-  using std::atomic<T>::atomic;
-  moving_atomic(moving_atomic&& o) : std::atomic<T>(o.load()) {}
-};
 
 } // namespace pushmi

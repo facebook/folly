@@ -116,13 +116,13 @@ struct inline_executor_flow_single {
 struct shared_cancellation_factory{
   auto operator()(){
     // boolean cancellation
-    mi::moving_atomic<bool> stop = false;
+    bool stop = false;
     auto set_stop = [](auto& stop) {
       if (!!stop) {
-        stop->store(true);
+        *stop = true;
       }
     };
-    return mi::shared_entangle(std::move(stop), set_stop);
+    return mi::shared_entangle(stop, set_stop);
   }
 };
 using inline_executor_flow_single_shared = inline_executor_flow_single<shared_cancellation_factory>;
@@ -130,13 +130,13 @@ using inline_executor_flow_single_shared = inline_executor_flow_single<shared_ca
 struct entangled_cancellation_factory{
   auto operator()(){
     // boolean cancellation
-    mi::moving_atomic<bool> stop = false;
+    bool stop = false;
     auto set_stop = [](auto& stop) {
       if (!!stop) {
-        stop->store(true);
+        *stop = true;
       }
     };
-    return mi::entangle(std::move(stop), set_stop);
+    return mi::entangle(stop, set_stop);
   }
 };
 using inline_executor_flow_single_entangled = inline_executor_flow_single<entangled_cancellation_factory>;

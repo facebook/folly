@@ -28,13 +28,13 @@ SCENARIO("flow single immediate cancellation", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      mi::moving_atomic<bool> stop = false;
+      bool stop = false;
       auto set_stop = [](auto& stop) {
         if (!!stop) {
-          stop->store(true);
+          *stop = true;
         }
       };
-      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
+      auto tokens = mi::shared_entangle(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -110,13 +110,13 @@ SCENARIO("flow single cancellation trampoline", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      mi::moving_atomic<bool> stop = false;
+      bool stop = false;
       auto set_stop = [](auto& stop) {
         if (!!stop) {
-          stop->store(true);
+          *stop = true;
         }
       };
-      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
+      auto tokens = mi::shared_entangle(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -222,13 +222,13 @@ SCENARIO("flow single shared cancellation new thread", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      mi::moving_atomic<bool> stop = false;
+      bool stop = false;
       auto set_stop = [](auto& stop) {
         if (!!stop) {
-          stop->store(true);
+          *stop = true;
         }
       };
-      auto tokens = mi::shared_entangle(std::move(stop), set_stop);
+      auto tokens = mi::shared_entangle(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
@@ -392,13 +392,13 @@ SCENARIO("flow single entangled cancellation new thread", "[flow][deferred]") {
   GIVEN("A flow single deferred") {
     auto f = mi::MAKE(flow_single_deferred)([&](auto out) {
       // boolean cancellation
-      mi::moving_atomic<bool> stop = false;
+      bool stop = false;
       auto set_stop = [](auto& stop) {
         if (!!stop) {
-          stop->store(true);
+          *stop = true;
         }
       };
-      auto tokens = mi::entangle(std::move(stop), set_stop);
+      auto tokens = mi::entangle(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::none<> {
