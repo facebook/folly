@@ -6,10 +6,10 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <pushmi/single.h>
-#include <pushmi/o/submit.h>
-#include <pushmi/o/extension_operators.h>
-#include <pushmi/o/via.h>
+#include "../single.h"
+#include "submit.h"
+#include "extension_operators.h"
+#include "via.h"
 
 namespace pushmi {
 
@@ -38,7 +38,7 @@ auto request_via_fn::operator()() const {
 
 namespace operators {
 
-PUSHMI_INLINE_VAR constexpr detail::request_via_fn request_via{}; 
+PUSHMI_INLINE_VAR constexpr detail::request_via_fn request_via{};
 
 } // namespace operators
 

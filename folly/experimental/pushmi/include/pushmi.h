@@ -8625,6 +8625,8 @@ PUSHMI_INLINE_VAR constexpr detail::now_fn top{};
 // LICENSE file in the root directory of this source tree.
 
 //#include "../single_deferred.h"
+//#include "submit.h"
+//#include "extension_operators.h"
 
 namespace pushmi {
 

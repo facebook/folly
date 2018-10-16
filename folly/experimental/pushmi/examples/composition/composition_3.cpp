@@ -3,22 +3,22 @@
 #include <cassert>
 #include <iostream>
 
-#include <defer.h>
-#include <share.h>
+#include <pushmi/o/defer.h>
+#include <pushmi/o/share.h>
 
 #include <pushmi/o/just.h>
 #include <pushmi/o/tap.h>
 
 using namespace pushmi::aliases;
 
-// three models of submission deferral 
-//  (none of these use an executor, they are all running 
+// three models of submission deferral
+//  (none of these use an executor, they are all running
 //  synchronously on the main thread)
 
 // this constructs eagerly and submits just() lazily
 auto defer_execution() {
   printf("construct just\n");
-  return op::just(42) | 
+  return op::just(42) |
     op::tap([](int v){ printf("just - %d\n", v); });
 }
 
@@ -36,7 +36,7 @@ auto eager_execution() {
 
 int main()
 {
-  
+
   printf("\ncall defer_execution\n");
   auto de = defer_execution();
   printf("submit defer_execution\n");
@@ -67,6 +67,3 @@ int main()
   std::cout << "OK" << std::endl;
 // OK
 }
-
-
-

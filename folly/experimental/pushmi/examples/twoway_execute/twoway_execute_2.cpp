@@ -12,9 +12,6 @@
 
 #include <pool.h>
 
-#include <request_via.h>
-#include <share.h>
-
 #include <pushmi/deferred.h>
 #include <pushmi/single_deferred.h>
 #include <pushmi/o/transform.h>
@@ -22,8 +19,8 @@
 using namespace pushmi::aliases;
 
 namespace p1054 {
-// A promise refers to a promise and is associated with a future, 
-// either through type-erasure or through construction of an 
+// A promise refers to a promise and is associated with a future,
+// either through type-erasure or through construction of an
 // underlying promise with an overload of make_promise_contract().
 
 // make_promise_contract() cannot be written to produce a lazy future.

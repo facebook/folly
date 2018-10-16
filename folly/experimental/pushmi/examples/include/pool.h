@@ -10,6 +10,13 @@
 #include <pushmi/executor.h>
 #include <pushmi/trampoline.h>
 
+#if __cpp_deduction_guides >= 201703
+#define MAKE(x) x MAKE_
+#define MAKE_(...) {__VA_ARGS__}
+#else
+#define MAKE(x) make_ ## x
+#endif
+
 namespace pushmi {
 
 using std::experimental::static_thread_pool;
@@ -38,7 +45,7 @@ public:
 
   inline auto executor() {
     auto exec = execution::require(p.executor(), execution::never_blocking, execution::oneway);
-    return make_time_single_deferred(__pool_submit<decltype(exec)>{exec});
+    return MAKE(time_single_deferred)(__pool_submit<decltype(exec)>{exec});
   }
 
   inline void stop() {p.stop();}

@@ -6,9 +6,16 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <pushmi/single.h>
-#include <pushmi/o/submit.h>
-#include <pushmi/o/extension_operators.h>
+#include "../single.h"
+#include "submit.h"
+#include "extension_operators.h"
+
+#if __cpp_deduction_guides >= 201703
+#define MAKE(x) x MAKE_
+#define MAKE_(...) {__VA_ARGS__}
+#else
+#define MAKE(x) make_ ## x
+#endif
 
 namespace pushmi {
 
@@ -17,8 +24,8 @@ namespace operators {
 PUSHMI_TEMPLATE(class F)
   (requires Invocable<F>)
 auto defer(F f) {
-  return make_single_deferred(
-    constrain(lazy::Receiver<_1>, 
+  return MAKE(single_deferred)(
+    constrain(lazy::Receiver<_1>,
       [f = std::move(f)](auto out) mutable {
         auto sender = f();
         PUSHMI_IF_CONSTEXPR( ((bool)TimeSender<decltype(sender)>) (
