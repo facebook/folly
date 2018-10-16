@@ -17,8 +17,11 @@ namespace detail {
 
 struct placeholder;
 
-#if (defined(__clang__) || defined(__GNUC__)) &&\
-  __has_builtin(__type_pack_element)
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
+#if __has_builtin(__type_pack_element)
 #define PUSHMI_TYPE_PACK_ELEMENT(...) \
   __type_pack_element<__VA_ARGS__>
 #else
