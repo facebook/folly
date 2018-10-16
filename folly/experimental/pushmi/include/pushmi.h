@@ -3927,21 +3927,19 @@ struct any_time_executor_ref : detail::any_time_executor_ref_base<E, TP> {
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_any_time_executor_ref
-PUSHMI_INLINE_VAR constexpr struct make_any_time_executor_ref_fn {
-  template <
-      class E = std::exception_ptr,
-      class TP = std::chrono::system_clock::time_point>
-  auto operator()() const {
-    return any_time_executor_ref<E, TP, 0>{};
-  }
-  template <
-      class E = std::exception_ptr,
-      class TP = std::chrono::system_clock::time_point,
-      class Wrapped>
-  auto operator()(Wrapped w) const {
-    return any_time_executor_ref<E, TP, 0>{std::move(w)};
-  }
-} const make_any_time_executor_ref {};
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point>
+auto make_any_time_executor_ref() -> any_time_executor_ref<E, TP> {
+  return any_time_executor_ref<E, TP, 0>{};
+}
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point,
+    class Wrapped>
+auto make_any_time_executor_ref(Wrapped w) -> any_time_executor_ref<E, TP> {
+  return any_time_executor_ref<E, TP, 0>{std::move(w)};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
@@ -3968,21 +3966,20 @@ struct any_time_executor :
 
 ////////////////////////////////////////////////////////////////////////////////
 // make_any_time_executor
-PUSHMI_INLINE_VAR constexpr struct make_any_time_executor_fn {
-  template <
-      class E = std::exception_ptr,
-      class TP = std::chrono::system_clock::time_point>
-  auto operator()() const {
-    return any_time_executor<E, TP>{};
-  }
-  template <
-      class E = std::exception_ptr,
-      class TP = std::chrono::system_clock::time_point,
-      class Wrapped>
-  auto operator()(Wrapped w) const {
-    return any_time_executor<E, TP>{std::move(w)};
-  }
-} const make_any_time_executor {};
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point>
+auto make_any_time_executor() -> any_time_executor<E, TP> {
+  return any_time_executor<E, TP>{};
+}
+
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point,
+    class Wrapped>
+auto make_any_time_executor(Wrapped w) -> any_time_executor<E, TP> {
+  return any_time_executor<E, TP>{std::move(w)};
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
