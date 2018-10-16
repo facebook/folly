@@ -28,13 +28,14 @@ auto get_setting() {
 auto println = [](auto v){std::cout << v << std::endl;};
 
 // concat not yet implemented
+template<class T, class E = std::exception_ptr>
 auto concat =
   [](auto in){
     return mi::make_single_deferred(
       [in](auto out) mutable {
         ::pushmi::submit(in, mi::make_single(out,
         [](auto out, auto v){
-          // ::pushmi::submit(v, out);
+          ::pushmi::submit(v, mi::any_single<T, E>(out));
         }));
       });
   };
@@ -57,7 +58,7 @@ int main()
         }
         return mi::any_single_deferred<std::string>{op::just(std::to_string(i))};
       }) |
-      concat |
+      concat<std::string> |
       op::submit(println);
 
   std::cout << "OK" << std::endl;

@@ -5667,6 +5667,49 @@ auto just(V v) {
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
+//#include "../deferred.h"
+//#include "submit.h"
+//#include "extension_operators.h"
+
+namespace pushmi {
+
+namespace operators {
+
+PUSHMI_TEMPLATE(class E)
+  (requires SemiMovable<E>)
+auto error(E e) {
+  return make_deferred(
+    constrain(lazy::NoneReceiver<_1, E>,
+      [e = std::move(e)](auto out) mutable {
+        ::pushmi::set_error(out, std::move(e));
+      }
+    )
+  );
+}
+
+PUSHMI_TEMPLATE(class V, class E)
+  (requires SemiMovable<V> && SemiMovable<E>)
+auto error(E e) {
+  return make_single_deferred(
+    constrain(lazy::SingleReceiver<_1, V, E>,
+      [e = std::move(e)](auto out) mutable {
+        ::pushmi::set_error(out, std::move(e));
+      }
+    )
+  );
+}
+
+} // namespace operators
+
+} // namespace pushmi
+// clang-format off
+// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
 //#include "../single.h"
 //#include "../single_deferred.h"
 //#include "submit.h"
@@ -6155,6 +6198,54 @@ struct filter_fn {
 
 namespace operators {
 PUSHMI_INLINE_VAR constexpr detail::filter_fn filter{};
+} // namespace operators
+
+} // namespace pushmi
+//#pragma once
+// Copyright (c) 2018-present, Facebook, Inc.
+//
+// This source code is licensed under the MIT license found in the
+// LICENSE file in the root directory of this source tree.
+
+//#include "../piping.h"
+//#include "extension_operators.h"
+
+namespace pushmi {
+
+namespace detail {
+
+struct switch_on_error_fn {
+  PUSHMI_TEMPLATE(class ErrorSelector)
+    (requires SemiMovable<ErrorSelector>)
+  auto operator()(ErrorSelector es) const {
+    return constrain(lazy::Sender<_1>, [es = std::move(es)](auto in) {
+      using In = decltype(in);
+      return ::pushmi::detail::deferred_from<In, single<>>(
+        std::move(in),
+        ::pushmi::detail::submit_transform_out<In>(
+          constrain(lazy::Receiver<_1>, [es](auto out) {
+            using Out = decltype(out);
+            return ::pushmi::detail::out_from_fn<In>()(
+              std::move(out),
+              // copy 'es' to allow multiple calls to submit
+              ::pushmi::on_error([es](auto& out, auto&& e) noexcept {
+                static_assert(::pushmi::NothrowInvocable<ErrorSelector, decltype(e)>,
+                  "switch_on_error - error selector function must be noexcept");
+                auto next = es(std::move(e));
+                ::pushmi::submit(next, std::move(out));
+              })
+            );
+          })
+        )
+      );
+    });
+  }
+};
+
+} // namespace detail
+
+namespace operators {
+PUSHMI_INLINE_VAR constexpr detail::switch_on_error_fn switch_on_error{};
 } // namespace operators
 
 } // namespace pushmi
