@@ -11,22 +11,41 @@
 
 namespace pushmi {
 
-template<class ExecutionPolicy, class ForwardIt, class T, class BinaryOp>
-T reduce(
-  ExecutionPolicy&& policy,
-  ForwardIt begin, 
-  ForwardIt end, 
-  T init, 
-  BinaryOp binary_op){
-    return operators::just(std::move(init)) | 
-      operators::bulk(
-        [binary_op](auto& acc, auto cursor){ acc = binary_op(acc, *cursor); }, 
-        begin,
-        end, 
-        policy, 
-        [](auto&& args){ return args; }, 
-        [](auto&& acc){ return acc; }) |
-      operators::get<T>;
+PUSHMI_INLINE_VAR constexpr struct reduce_fn {
+private:
+  template <class BinaryOp>
+  struct fn {
+    BinaryOp binary_op_;
+    template <class Acc, class Cursor>
+    void operator()(Acc& acc, Cursor cursor) const {
+      acc = binary_op_(acc, *cursor);
     }
+  };
+  struct identity {
+    template <class T>
+    auto operator()(T&& t) const {
+      return (T&&) t;
+    }
+  };
+public:
+  template<class ExecutionPolicy, class ForwardIt, class T, class BinaryOp>
+  T operator()(
+    ExecutionPolicy&& policy,
+    ForwardIt begin,
+    ForwardIt end,
+    T init,
+    BinaryOp binary_op) const {
+      return operators::just(std::move(init)) |
+        operators::bulk(
+          fn<BinaryOp>{binary_op},
+          begin,
+          end,
+          policy,
+          identity{},
+          identity{}
+        ) |
+        operators::get<T>;
+    }
+} reduce {};
 
 } // namespace pushmi

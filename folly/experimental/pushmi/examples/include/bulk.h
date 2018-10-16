@@ -7,35 +7,31 @@
 
 #include <pushmi/single_deferred.h>
 
-#if __cpp_deduction_guides >= 201703
-#define MAKE(x) x MAKE_
-#define MAKE_(...) {__VA_ARGS__}
-#else
-#define MAKE(x) make_ ## x
-#endif
-
 namespace pushmi {
 
 namespace operators {
 
-template<class F, class ShapeBegin, class ShapeEnd, class Target, class IF, class RS>
-auto bulk(
-    F&& func,
-    ShapeBegin sb,
-    ShapeEnd se,
-    Target&& driver,
-    IF&& initFunc,
-    RS&& selector) {
-      return [func, sb, se, driver, initFunc, selector](auto in){
-          return MAKE(single_deferred)([in, func, sb, se, driver, initFunc, selector](auto out) mutable {
-              submit(in, MAKE(single)(std::move(out),
-                  [func, sb, se, driver, initFunc, selector](auto& out, auto input){
-                      driver(initFunc, selector, std::move(input), func, sb, se, std::move(out));
-                  }
-              ));
-          });
-      };
+PUSHMI_INLINE_VAR constexpr struct bulk_fn {
+  template<class F, class ShapeBegin, class ShapeEnd, class Target, class IF, class RS>
+  auto operator()(
+      F&& func,
+      ShapeBegin sb,
+      ShapeEnd se,
+      Target&& driver,
+      IF&& initFunc,
+      RS&& selector) const {
+    return [func, sb, se, driver, initFunc, selector](auto in){
+      return make_single_deferred(
+        [in, func, sb, se, driver, initFunc, selector](auto out) mutable {
+          submit(in, make_single(std::move(out),
+              [func, sb, se, driver, initFunc, selector](auto& out, auto input) {
+                driver(initFunc, selector, std::move(input), func, sb, se, std::move(out));
+              }
+          ));
+        });
+    };
   }
+} bulk {};
 
 } // namespace operators
 

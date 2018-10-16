@@ -13,6 +13,11 @@ namespace detail {
 
 struct no_fail_fn {
 private:
+  struct on_error_impl {
+    void operator()(any, any) noexcept {
+      std::abort();
+    }
+  };
   template <class In>
   struct out_impl {
     PUSHMI_TEMPLATE(class Out)
@@ -20,9 +25,7 @@ private:
     auto operator()(Out out) const {
       return ::pushmi::detail::out_from_fn<In>()(
         std::move(out),
-        ::pushmi::on_error([](auto&, auto&&) noexcept {
-          std::abort();
-        })
+        ::pushmi::on_error(on_error_impl{})
       );
     }
   };
