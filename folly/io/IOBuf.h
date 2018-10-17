@@ -1093,8 +1093,23 @@ class IOBuf {
    * Returns ByteRange that points to the data IOBuf stores.
    */
   ByteRange coalesce() {
+    const std::size_t newHeadroom = headroom();
+    const std::size_t newTailroom = prev()->tailroom();
+    return coalesceWithHeadroomTailroom(newHeadroom, newTailroom);
+  }
+
+  /**
+   * This is similar to the coalesce() method, except this allows to set a
+   * headroom and tailroom after coalescing.
+   *
+   * Returns ByteRange that points to the data IOBuf stores.
+   */
+  ByteRange coalesceWithHeadroomTailroom(
+      std::size_t newHeadroom,
+      std::size_t newTailroom) {
     if (isChained()) {
-      coalesceSlow();
+      coalesceAndReallocate(
+          newHeadroom, computeChainDataLength(), this, newTailroom);
     }
     return ByteRange(data_, length_);
   }
@@ -1170,10 +1185,26 @@ class IOBuf {
   std::unique_ptr<IOBuf> cloneCoalesced() const;
 
   /**
+   * This is similar to the cloneCoalesced() method, except this allows to set a
+   * headroom and tailroom for the new IOBuf.
+   */
+  std::unique_ptr<IOBuf> cloneCoalescedWithHeadroomTailroom(
+      std::size_t newHeadroom,
+      std::size_t newTailroom) const;
+
+  /**
    * Similar to cloneCoalesced(). But returns IOBuf by value rather than
    * heap-allocating it.
    */
   IOBuf cloneCoalescedAsValue() const;
+
+  /**
+   * This is similar to the cloneCoalescedAsValue() method, except this allows
+   * to set a headroom and tailroom for the new IOBuf.
+   */
+  IOBuf cloneCoalescedAsValueWithHeadroomTailroom(
+      std::size_t newHeadroom,
+      std::size_t newTailroom) const;
 
   /**
    * Similar to Clone(). But use other as the head node. Other nodes in the
