@@ -1,4 +1,3 @@
-#include "catch.hpp"
 
 #include <array>
 
@@ -7,17 +6,19 @@
 #include <chrono>
 using namespace std::literals;
 
-#include "pushmi/flow_many_sender.h"
-#include "pushmi/o/submit.h"
-#include "pushmi/o/from.h"
-#include "pushmi/o/for_each.h"
+#include <folly/experimental/pushmi/flow_many_sender.h>
+#include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/o/from.h>
+#include <folly/experimental/pushmi/o/for_each.h>
 
-#include "pushmi/entangle.h"
-#include "pushmi/new_thread.h"
-#include "pushmi/time_source.h"
-#include "pushmi/trampoline.h"
+#include <folly/experimental/pushmi/entangle.h>
+#include <folly/experimental/pushmi/new_thread.h>
+#include <folly/experimental/pushmi/time_source.h>
+#include <folly/experimental/pushmi/trampoline.h>
 
 using namespace pushmi::aliases;
+
+#if 0
 
 #if __cpp_deduction_guides >= 201703
 #define MAKE(x) x MAKE_
@@ -300,3 +301,4 @@ SCENARIO("flow many from", "[flow][sender][for_each]") {
     }
   }
 }
+#endif

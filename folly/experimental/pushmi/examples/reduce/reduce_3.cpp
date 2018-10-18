@@ -4,7 +4,7 @@
 #include <iostream>
 #include <exception>
 
-#include <reduce.h>
+#include <folly/experimental/pushmi/examples/reduce.h>
 
 using namespace pushmi::aliases;
 

@@ -3,12 +3,12 @@
 #include <cassert>
 #include <iostream>
 
-#include <pushmi/o/just.h>
-#include <pushmi/o/error.h>
-#include <pushmi/o/empty.h>
-#include <pushmi/o/transform.h>
-#include <pushmi/o/switch_on_error.h>
-#include <no_fail.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/error.h>
+#include <folly/experimental/pushmi/o/empty.h>
+#include <folly/experimental/pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/switch_on_error.h>
+#include <folly/experimental/pushmi/examples/no_fail.h>
 
 using namespace pushmi::aliases;
 
@@ -39,19 +39,19 @@ int main()
 // transform an error
 
   op::error(std::errc::argument_list_too_long) |
-    op::switch_on_error([](auto e) noexcept { return op::error(std::exception_ptr{}); }) |
+    op::switch_on_error([](auto) noexcept { return op::error(std::exception_ptr{}); }) |
     op::submit(stop_abort);
 
 // use default value if an error occurs
 
   op::just(42) |
-    op::switch_on_error([](auto e) noexcept { return op::just(0); }) |
+    op::switch_on_error([](auto) noexcept { return op::just(0); }) |
     op::submit();
 
 // suppress if an error occurs
 
   op::error(std::errc::argument_list_too_long) |
-    op::switch_on_error([](auto e) noexcept { return op::empty(); }) |
+    op::switch_on_error([](auto) noexcept { return op::empty(); }) |
     op::submit();
 
 // abort if an error occurs

@@ -5,8 +5,8 @@
 #include <iostream>
 #include <exception>
 
-#include <pool.h>
-#include <reduce.h>
+#include <folly/experimental/pushmi/examples/pool.h>
+#include <folly/experimental/pushmi/examples/reduce.h>
 
 using namespace pushmi::aliases;
 

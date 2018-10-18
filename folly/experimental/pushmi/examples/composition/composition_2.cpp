@@ -3,11 +3,11 @@
 #include <cassert>
 #include <iostream>
 
-#include <pool.h>
+#include <folly/experimental/pushmi/examples/pool.h>
 
-#include <pushmi/o/transform.h>
-#include <pushmi/o/via.h>
-#include <pushmi/strand.h>
+#include <folly/experimental/pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/via.h>
+#include <folly/experimental/pushmi/strand.h>
 
 using namespace pushmi::aliases;
 

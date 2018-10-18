@@ -1,25 +1,25 @@
-#include "catch.hpp"
 
 #include <type_traits>
 
 #include <chrono>
 using namespace std::literals;
 
-#include "pushmi/flow_single_sender.h"
-#include "pushmi/o/empty.h"
-#include "pushmi/o/just.h"
-#include "pushmi/o/on.h"
-#include "pushmi/o/transform.h"
-#include "pushmi/o/tap.h"
-#include "pushmi/o/via.h"
-#include "pushmi/o/submit.h"
-#include "pushmi/o/extension_operators.h"
+#include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/o/empty.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/on.h>
+#include <folly/experimental/pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/via.h>
+#include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/o/extension_operators.h>
 
-#include "pushmi/inline.h"
-#include "pushmi/trampoline.h"
+#include <folly/experimental/pushmi/inline.h>
+#include <folly/experimental/pushmi/trampoline.h>
 
 using namespace pushmi::aliases;
 
+#if 0
 struct countdownsingle {
   countdownsingle(int& c)
       : counter(&c) {}
@@ -132,3 +132,4 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
     }
   }
 }
+#endif

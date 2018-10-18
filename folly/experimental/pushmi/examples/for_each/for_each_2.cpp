@@ -3,8 +3,8 @@
 #include <cassert>
 #include <iostream>
 
-#include <pool.h>
-#include <for_each.h>
+#include <folly/experimental/pushmi/examples/pool.h>
+#include <folly/experimental/pushmi/examples/for_each.h>
 
 using namespace pushmi::aliases;
 

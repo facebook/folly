@@ -10,9 +10,9 @@
 #include <functional>
 #include <futures.h>
 
-#include <pool.h>
+#include <folly/experimental/pushmi/examples/pool.h>
 
-#include <pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/transform.h>
 
 using namespace pushmi::aliases;
 

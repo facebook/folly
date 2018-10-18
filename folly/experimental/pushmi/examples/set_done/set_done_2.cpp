@@ -3,11 +3,11 @@
 #include <cassert>
 #include <iostream>
 
-#include <pushmi/o/just.h>
-#include <pushmi/o/tap.h>
-#include <pushmi/o/filter.h>
-#include <pushmi/o/transform.h>
-#include <pushmi/o/empty.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/filter.h>
+#include <folly/experimental/pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/empty.h>
 
 using namespace pushmi::aliases;
 

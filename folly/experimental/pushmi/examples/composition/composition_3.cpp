@@ -3,11 +3,11 @@
 #include <cassert>
 #include <iostream>
 
-#include <pushmi/o/defer.h>
-#include <pushmi/o/share.h>
+#include <folly/experimental/pushmi/o/defer.h>
+#include <folly/experimental/pushmi/o/share.h>
 
-#include <pushmi/o/just.h>
-#include <pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/tap.h>
 
 // https://godbolt.org/g/rVLMTu
 
