@@ -1,31 +1,44 @@
-
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 #include <vector>
 
-#include <folly/experimental/pushmi/o/just.h>
 #include <folly/experimental/pushmi/o/defer.h>
-#include <folly/experimental/pushmi/o/on.h>
-#include <folly/experimental/pushmi/o/transform.h>
-#include <folly/experimental/pushmi/o/tap.h>
-#include <folly/experimental/pushmi/o/via.h>
-#include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/o/from.h>
 #include <folly/experimental/pushmi/o/for_each.h>
+#include <folly/experimental/pushmi/o/from.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/on.h>
+#include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/transform.h>
+#include <folly/experimental/pushmi/o/via.h>
 
-#include <folly/experimental/pushmi/trampoline.h>
 #include <folly/experimental/pushmi/new_thread.h>
 #include <folly/experimental/pushmi/time_source.h>
+#include <folly/experimental/pushmi/trampoline.h>
 
-#include <folly/experimental/pushmi/receiver.h>
 #include <folly/experimental/pushmi/entangle.h>
+#include <folly/experimental/pushmi/receiver.h>
 
 #include <folly/experimental/pushmi/pool.h>
 
 using namespace pushmi::aliases;
 
-template<class R>
+template <class R>
 struct countdown {
-  explicit countdown(std::atomic<int>& c)
-      : counter(&c) {}
+  explicit countdown(std::atomic<int>& c) : counter(&c) {}
 
   using properties = mi::properties_t<decltype(R{}())>;
 
@@ -34,21 +47,25 @@ struct countdown {
   template <class ExecutorRef>
   void value(ExecutorRef exec);
   template <class E>
-  void error(E e) {std::abort();}
+  void error(E e) {
+    std::abort();
+  }
   void done() {}
-  PUSHMI_TEMPLATE (class Up)
-    (requires mi::Invocable<decltype(mi::set_value), Up, std::ptrdiff_t>)
-  void starting(Up up) {
+  PUSHMI_TEMPLATE(class Up)
+  (requires mi::Invocable<
+      decltype(mi::set_value),
+      Up,
+      std::ptrdiff_t>)void starting(Up up) {
     mi::set_value(up, 1);
   }
-  PUSHMI_TEMPLATE (class Up)
-    (requires mi::True<> && mi::Invocable<decltype(mi::set_value), Up>)
-  void starting(Up up) volatile {
+  PUSHMI_TEMPLATE(class Up)
+  (requires mi::True<>&& mi::
+       Invocable<decltype(mi::set_value), Up>)void starting(Up up) volatile {
     mi::set_value(up);
   }
 };
 
-template<class R>
+template <class R>
 template <class ExecutorRef>
 void countdown<R>::value(ExecutorRef exec) {
   if (--*counter >= 0) {
@@ -62,54 +79,74 @@ using countdownmany = countdown<decltype(mi::make_receiver)>;
 using countdownflowmany = countdown<decltype(mi::make_flow_receiver)>;
 
 struct inline_time_executor {
-    using properties = mi::property_set<mi::is_time<>, mi::is_executor<>, mi::is_fifo_sequence<>, mi::is_always_blocking<>, mi::is_single<>>;
+  using properties = mi::property_set<
+      mi::is_time<>,
+      mi::is_executor<>,
+      mi::is_fifo_sequence<>,
+      mi::is_always_blocking<>,
+      mi::is_single<>>;
 
-    std::chrono::system_clock::time_point top() { return std::chrono::system_clock::now(); }
-    auto executor() { return *this; }
-    template<class Out>
-    void submit(std::chrono::system_clock::time_point at, Out out) {
-      std::this_thread::sleep_until(at);
-      ::mi::set_value(out, *this);
-    }
+  std::chrono::system_clock::time_point top() {
+    return std::chrono::system_clock::now();
+  }
+  auto executor() {
+    return *this;
+  }
+  template <class Out>
+  void submit(std::chrono::system_clock::time_point at, Out out) {
+    std::this_thread::sleep_until(at);
+    ::mi::set_value(out, *this);
+  }
 };
 
 struct inline_executor {
-    using properties = mi::property_set<mi::is_sender<>, mi::is_fifo_sequence<>, mi::is_always_blocking<>, mi::is_single<>>;
-    auto executor() { return inline_time_executor{}; }
-    template<class Out>
-    void submit(Out out) {
-      ::mi::set_value(out, *this);
-    }
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_fifo_sequence<>,
+      mi::is_always_blocking<>,
+      mi::is_single<>>;
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
+  void submit(Out out) {
+    ::mi::set_value(out, *this);
+  }
 };
 
-template<class CancellationFactory>
+template <class CancellationFactory>
 struct inline_executor_flow_single {
-    CancellationFactory cf;
+  CancellationFactory cf;
 
-    using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_fifo_sequence<>, mi::is_maybe_blocking<>, mi::is_single<>>;
-    auto executor() { return inline_time_executor{}; }
-    template<class Out>
-    void submit(Out out) {
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_flow<>,
+      mi::is_fifo_sequence<>,
+      mi::is_maybe_blocking<>,
+      mi::is_single<>>;
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
+  void submit(Out out) {
+    auto tokens = cf();
 
-      auto tokens = cf();
-
-      using Stopper = decltype(tokens.second);
-      struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
-        Stopper stopper;
-      };
-      auto up = mi::MAKE(receiver)(
-          Data{std::move(tokens.second)},
-          [](auto& data) {
-          },
-          [](auto& data, auto e) noexcept {
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          },
-          [](auto& data) {
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          });
+    using Stopper = decltype(tokens.second);
+    struct Data : mi::receiver<> {
+      explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+      Stopper stopper;
+    };
+    auto up = mi::MAKE(receiver)(
+        Data{std::move(tokens.second)},
+        [](auto& data) {},
+        [](auto& data, auto e) noexcept {
+          auto both = lock_both(data.stopper);
+          (*(both.first))(both.second);
+        },
+        [](auto& data) {
+          auto both = lock_both(data.stopper);
+          (*(both.first))(both.second);
+        });
 
     // pass reference for cancellation.
     ::mi::set_starting(out, std::move(up));
@@ -124,8 +161,8 @@ struct inline_executor_flow_single {
   }
 };
 
-struct shared_cancellation_factory{
-  auto operator()(){
+struct shared_cancellation_factory {
+  auto operator()() {
     // boolean cancellation
     bool stop = false;
     auto set_stop = [](auto& stop) {
@@ -136,10 +173,11 @@ struct shared_cancellation_factory{
     return mi::shared_entangle(stop, set_stop);
   }
 };
-using inline_executor_flow_single_shared = inline_executor_flow_single<shared_cancellation_factory>;
+using inline_executor_flow_single_shared =
+    inline_executor_flow_single<shared_cancellation_factory>;
 
-struct entangled_cancellation_factory{
-  auto operator()(){
+struct entangled_cancellation_factory {
+  auto operator()() {
     // boolean cancellation
     bool stop = false;
     auto set_stop = [](auto& stop) {
@@ -150,34 +188,46 @@ struct entangled_cancellation_factory{
     return mi::entangle(stop, set_stop);
   }
 };
-using inline_executor_flow_single_entangled = inline_executor_flow_single<entangled_cancellation_factory>;
+using inline_executor_flow_single_entangled =
+    inline_executor_flow_single<entangled_cancellation_factory>;
 
 struct inline_executor_flow_single_ignore {
-    using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_fifo_sequence<>, mi::is_maybe_blocking<>, mi::is_single<>>;
-    auto executor() { return inline_time_executor{}; }
-    template<class Out>
-    void submit(Out out) {
-      // pass reference for cancellation.
-      ::mi::set_starting(out, mi::receiver<>{});
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_flow<>,
+      mi::is_fifo_sequence<>,
+      mi::is_maybe_blocking<>,
+      mi::is_single<>>;
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
+  void submit(Out out) {
+    // pass reference for cancellation.
+    ::mi::set_starting(out, mi::receiver<>{});
 
-      ::mi::set_value(out, *this);
-    }
+    ::mi::set_value(out, *this);
+  }
 };
 
 struct inline_executor_flow_many {
-  inline_executor_flow_many()
-    : counter(nullptr) {}
-  inline_executor_flow_many(std::atomic<int>& c)
-      : counter(&c) {}
+  inline_executor_flow_many() : counter(nullptr) {}
+  inline_executor_flow_many(std::atomic<int>& c) : counter(&c) {}
 
   std::atomic<int>* counter;
 
-  using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_fifo_sequence<>, mi::is_maybe_blocking<>, mi::is_many<>>;
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_flow<>,
+      mi::is_fifo_sequence<>,
+      mi::is_maybe_blocking<>,
+      mi::is_many<>>;
 
-  auto executor() { return inline_time_executor{}; }
-  template<class Out>
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
   void submit(Out out) {
-
     // boolean cancellation
     struct producer {
       producer(Out out, bool s) : out(std::move(out)), stop(s) {}
@@ -194,10 +244,16 @@ struct inline_executor_flow_many {
     auto up = mi::MAKE(receiver)(
         Data{p},
         [counter = this->counter](auto& data, auto requested) {
-          if (requested < 1) {return;}
+          if (requested < 1) {
+            return;
+          }
           // this is re-entrant
-          while (!data.p->stop && --requested >= 0 && (!counter || --*counter >= 0)) {
-            ::mi::set_value(data.p->out, !!counter ? inline_executor_flow_many{*counter} : inline_executor_flow_many{});
+          while (!data.p->stop && --requested >= 0 &&
+                 (!counter || --*counter >= 0)) {
+            ::mi::set_value(
+                data.p->out,
+                !!counter ? inline_executor_flow_many{*counter}
+                          : inline_executor_flow_many{});
           }
           if (!counter || *counter == 0) {
             ::mi::set_done(data.p->out);
@@ -218,29 +274,41 @@ struct inline_executor_flow_many {
 };
 
 struct inline_executor_flow_many_ignore {
-    using properties = mi::property_set<mi::is_sender<>, mi::is_flow<>, mi::is_fifo_sequence<>, mi::is_always_blocking<>, mi::is_many<>>;
-    auto executor() { return inline_time_executor{}; }
-    template<class Out>
-    void submit(Out out) {
-      // pass reference for cancellation.
-      ::mi::set_starting(out, mi::receiver<>{});
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_flow<>,
+      mi::is_fifo_sequence<>,
+      mi::is_always_blocking<>,
+      mi::is_many<>>;
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
+  void submit(Out out) {
+    // pass reference for cancellation.
+    ::mi::set_starting(out, mi::receiver<>{});
 
-      ::mi::set_value(out, *this);
+    ::mi::set_value(out, *this);
 
-      ::mi::set_done(out);
-    }
+    ::mi::set_done(out);
+  }
 };
 
 struct inline_executor_many {
-    using properties = mi::property_set<mi::is_sender<>, mi::is_fifo_sequence<>, mi::is_always_blocking<>, mi::is_many<>>;
-    auto executor() { return inline_time_executor{}; }
-    template<class Out>
-    void submit(Out out) {
-      ::mi::set_value(out, *this);
-      ::mi::set_done(out);
-    }
+  using properties = mi::property_set<
+      mi::is_sender<>,
+      mi::is_fifo_sequence<>,
+      mi::is_always_blocking<>,
+      mi::is_many<>>;
+  auto executor() {
+    return inline_time_executor{};
+  }
+  template <class Out>
+  void submit(Out out) {
+    ::mi::set_value(out, *this);
+    ::mi::set_done(out);
+  }
 };
-
 
 #define concept Concept
 #include <nonius/nonius.h++>

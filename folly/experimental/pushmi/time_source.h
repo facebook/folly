@@ -1,11 +1,22 @@
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include <folly/experimental/pushmi/time_single_sender.h>
 #include <folly/experimental/pushmi/executor.h>
+#include <folly/experimental/pushmi/time_single_sender.h>
 
 #include <queue>
 
@@ -15,56 +26,70 @@
 
 namespace pushmi {
 
-template<class E, class TP>
+template <class E, class TP>
 class time_source_shared;
 
-template<class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Executor>
 class time_source_executor;
 
-template<class E, class TP>
-class time_heap_item
-{
-public:
+template <class E, class TP>
+class time_heap_item {
+ public:
   using time_point = std::decay_t<TP>;
 
-  time_heap_item(time_point at, any_receiver<E, any_time_executor_ref<E, TP>> out) :
-    when(std::move(at)), what(std::move(out)) {}
+  time_heap_item(
+      time_point at,
+      any_receiver<E, any_time_executor_ref<E, TP>> out)
+      : when(std::move(at)), what(std::move(out)) {}
 
   time_point when;
   any_receiver<E, any_time_executor_ref<E, TP>> what;
 };
-template<class E, class TP>
+template <class E, class TP>
 bool operator<(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
   return l.when < r.when;
 }
-template<class E, class TP>
+template <class E, class TP>
 bool operator>(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
   return l.when > r.when;
 }
-template<class E, class TP>
-bool operator==(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+template <class E, class TP>
+bool operator==(
+    const time_heap_item<E, TP>& l,
+    const time_heap_item<E, TP>& r) {
   return l.when == r.when;
 }
-template<class E, class TP>
-bool operator!=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+template <class E, class TP>
+bool operator!=(
+    const time_heap_item<E, TP>& l,
+    const time_heap_item<E, TP>& r) {
   return !(l == r);
 }
-template<class E, class TP>
-bool operator<=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+template <class E, class TP>
+bool operator<=(
+    const time_heap_item<E, TP>& l,
+    const time_heap_item<E, TP>& r) {
   return !(l > r);
 }
-template<class E, class TP>
-bool operator>=(const time_heap_item<E, TP>& l, const time_heap_item<E, TP>& r) {
+template <class E, class TP>
+bool operator>=(
+    const time_heap_item<E, TP>& l,
+    const time_heap_item<E, TP>& r) {
   return !(l < r);
 }
 
-template<class E, class TP>
-class time_source_queue_base : public std::enable_shared_from_this<time_source_queue_base<E, TP>>{
-public:
+template <class E, class TP>
+class time_source_queue_base
+    : public std::enable_shared_from_this<time_source_queue_base<E, TP>> {
+ public:
   using time_point = std::decay_t<TP>;
   bool dispatching_ = false;
   bool pending_ = false;
-  std::priority_queue<time_heap_item<E, TP>, std::vector<time_heap_item<E, TP>>, std::greater<>> heap_;
+  std::priority_queue<
+      time_heap_item<E, TP>,
+      std::vector<time_heap_item<E, TP>>,
+      std::greater<>>
+      heap_;
 
   virtual ~time_source_queue_base() {}
 
@@ -73,17 +98,19 @@ public:
     return const_cast<time_heap_item<E, TP>&>(this->heap_.top());
   }
 
-  virtual void dispatch()=0;
+  virtual void dispatch() = 0;
 };
 
-template<class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Executor>
 class time_source_queue : public time_source_queue_base<E, TP> {
-public:
+ public:
   using time_point = std::decay_t<TP>;
-  ~time_source_queue() {
-  }
-  time_source_queue(std::weak_ptr<time_source_shared<E, time_point>> source, NF nf, Executor ex) :
-    source_(std::move(source)), nf_(std::move(nf)), ex_(std::move(ex)) {}
+  ~time_source_queue() {}
+  time_source_queue(
+      std::weak_ptr<time_source_shared<E, time_point>> source,
+      NF nf,
+      Executor ex)
+      : source_(std::move(source)), nf_(std::move(nf)), ex_(std::move(ex)) {}
   std::weak_ptr<time_source_shared<E, time_point>> source_;
   NF nf_;
   Executor ex_;
@@ -91,12 +118,11 @@ public:
   void dispatch() override;
 
   auto shared_from_that() {
-    return std::static_pointer_cast<
-            time_source_queue<E, TP, NF, Executor>>(
-              this->shared_from_this());
+    return std::static_pointer_cast<time_source_queue<E, TP, NF, Executor>>(
+        this->shared_from_this());
   }
 
-  template<class Exec>
+  template <class Exec>
   void value(Exec&&) {
     auto s = source_.lock();
 
@@ -118,7 +144,9 @@ public:
       std::abort();
     }
 
-    if (this->heap_.empty()) { return; }
+    if (this->heap_.empty()) {
+      return;
+    }
     auto that = shared_from_that();
     auto subEx = time_source_executor<E, TP, NF, Executor>{s, that};
     while (!this->heap_.empty() && this->heap_.top().when <= start) {
@@ -139,7 +167,7 @@ public:
       s->wake_.notify_one();
     } else {
       if (!!s->error_) {
-        while(!this->heap_.empty()) {
+        while (!this->heap_.empty()) {
           try {
             auto what{std::move(this->top().what)};
             this->heap_.pop();
@@ -147,14 +175,14 @@ public:
             guard.unlock();
             ::pushmi::set_error(what, *s->error_);
             guard.lock();
-          } catch(...) {
+          } catch (...) {
             // we already have an error, ignore this one.
           }
         }
       }
     }
   }
-  template<class AE>
+  template <class AE>
   void error(AE e) noexcept {
     auto s = source_.lock();
     std::unique_lock<std::mutex> guard{s->lock_};
@@ -193,53 +221,57 @@ public:
   }
 };
 
-template<class E, class TP, class NF, class Executor>
-struct time_source_queue_receiver : std::shared_ptr<time_source_queue<E, TP, NF, Executor>> {
-  ~time_source_queue_receiver() {
-  }
-  explicit time_source_queue_receiver(std::shared_ptr<time_source_queue<E, TP, NF, Executor>> that) :
-    std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
-    source_(that->source_.lock()) {
-    }
+template <class E, class TP, class NF, class Executor>
+struct time_source_queue_receiver
+    : std::shared_ptr<time_source_queue<E, TP, NF, Executor>> {
+  ~time_source_queue_receiver() {}
+  explicit time_source_queue_receiver(
+      std::shared_ptr<time_source_queue<E, TP, NF, Executor>> that)
+      : std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
+        source_(that->source_.lock()) {}
   using properties = property_set<is_receiver<>>;
   std::shared_ptr<time_source_shared<E, TP>> source_;
 };
 
-template<class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Executor>
 void time_source_queue<E, TP, NF, Executor>::dispatch() {
-  ::pushmi::submit(ex_,
-    time_source_queue_receiver<E, TP, NF, Executor>{
-      shared_from_that()});
+  ::pushmi::submit(
+      ex_, time_source_queue_receiver<E, TP, NF, Executor>{shared_from_that()});
 }
 
-template<class E, class TP>
+template <class E, class TP>
 class time_queue_dispatch_pred_fn {
-public:
-  bool operator()(std::shared_ptr<time_source_queue_base<E, TP>>& q){
+ public:
+  bool operator()(std::shared_ptr<time_source_queue_base<E, TP>>& q) {
     return !q->heap_.empty();
   }
 };
 
-template<class E, class TP>
+template <class E, class TP>
 class time_item_process_pred_fn {
-public:
+ public:
   using time_point = std::decay_t<TP>;
   const time_point* start_;
   time_point* earliest_;
-  bool operator()(const std::shared_ptr<time_source_queue_base<E, TP>>& q){
+  bool operator()(const std::shared_ptr<time_source_queue_base<E, TP>>& q) {
     // ready for dispatch if it has a ready item
-    bool ready = !q->dispatching_ && !q->heap_.empty() && q->heap_.top().when <= *start_;
+    bool ready =
+        !q->dispatching_ && !q->heap_.empty() && q->heap_.top().when <= *start_;
     q->dispatching_ = ready;
     q->pending_ = !ready && !q->heap_.empty();
-    // ready queues are ignored, they will update earliest_ after they have processed the ready items
-    *earliest_ = !ready && !q->heap_.empty() ? min(*earliest_, q->heap_.top().when) : *earliest_;
+    // ready queues are ignored, they will update earliest_ after they have
+    // processed the ready items
+    *earliest_ = !ready && !q->heap_.empty()
+        ? min(*earliest_, q->heap_.top().when)
+        : *earliest_;
     return q->pending_;
   }
 };
 
-template<class E, class TP>
-class time_source_shared_base : public std::enable_shared_from_this<time_source_shared_base<E, TP>> {
-public:
+template <class E, class TP>
+class time_source_shared_base
+    : public std::enable_shared_from_this<time_source_shared_base<E, TP>> {
+ public:
   using time_point = std::decay_t<TP>;
   std::mutex lock_;
   std::condition_variable wake_;
@@ -252,27 +284,30 @@ public:
   detail::opt<E> error_;
   std::deque<std::shared_ptr<time_source_queue_base<E, TP>>> pending_;
 
-  time_source_shared_base() :
-    earliest_(std::chrono::system_clock::now() + std::chrono::hours(24)),
-    done_(false),
-    joined_(false),
-    dirty_(0),
-    items_(0) {}
+  time_source_shared_base()
+      : earliest_(std::chrono::system_clock::now() + std::chrono::hours(24)),
+        done_(false),
+        joined_(false),
+        dirty_(0),
+        items_(0) {}
 };
 
-template<class E, class TP>
+template <class E, class TP>
 class time_source_shared : public time_source_shared_base<E, TP> {
-public:
+ public:
   std::thread t_;
-  // this is safe to reuse as long as there is only one thread in the time_source_shared
+  // this is safe to reuse as long as there is only one thread in the
+  // time_source_shared
   std::vector<std::shared_ptr<time_source_queue_base<E, TP>>> ready_;
 
   ~time_source_shared() {
-    // not allowed to be discarded without joining and completing all queued items
-    if (t_.joinable() || this->items_ != 0) { std::abort(); }
+    // not allowed to be discarded without joining and completing all queued
+    // items
+    if (t_.joinable() || this->items_ != 0) {
+      std::abort();
+    }
   }
-  time_source_shared() {
-  }
+  time_source_shared() {}
 
   static void start(std::shared_ptr<time_source_shared<E, TP>> that) {
     that->t_ = std::thread{&time_source_shared<E, TP>::worker, that};
@@ -292,15 +327,11 @@ public:
 
       // once done_, keep going until empty
       while (!that->done_ || that->items_ > 0) {
-
         // wait for something to do
-        that->wake_.wait_until(
-          guard,
-          that->earliest_,
-          [&](){
-            return that->dirty_ != 0 ||
+        that->wake_.wait_until(guard, that->earliest_, [&]() {
+          return that->dirty_ != 0 ||
               std::chrono::system_clock::now() >= that->earliest_;
-          });
+        });
         that->dirty_ = 0;
 
         //
@@ -310,18 +341,26 @@ public:
         auto earliest = start + std::chrono::hours(24);
         auto process = time_item_process_pred_fn<E, TP>{&start, &earliest};
 
-        auto process_begin = std::partition(that->pending_.begin(), that->pending_.end(), process);
+        auto process_begin = std::partition(
+            that->pending_.begin(), that->pending_.end(), process);
         that->earliest_ = earliest;
 
         // copy out the queues that have ready items so that the lock
         // is not held during dispatch
 
-        std::copy_if(process_begin, that->pending_.end(), std::back_inserter(that->ready_), time_queue_dispatch_pred_fn<E, TP>{});
+        std::copy_if(
+            process_begin,
+            that->pending_.end(),
+            std::back_inserter(that->ready_),
+            time_queue_dispatch_pred_fn<E, TP>{});
 
         // remove processed queues from pending queue.
         that->pending_.erase(process_begin, that->pending_.end());
 
-        // printf("d %lu, %lu, %d, %ld\n", that->pending_.size(), that->ready_.size(), that->items_, std::chrono::duration_cast<std::chrono::milliseconds>(earliest - start).count());
+        // printf("d %lu, %lu, %d, %ld\n", that->pending_.size(),
+        // that->ready_.size(), that->items_,
+        // std::chrono::duration_cast<std::chrono::milliseconds>(earliest -
+        // start).count());
 
         // dispatch to queues with ready items
         guard.unlock();
@@ -332,7 +371,7 @@ public:
         that->ready_.clear();
       }
       that->joined_ = true;
-    } catch(...) {
+    } catch (...) {
       //
       // block any more items from being enqueued, all new items will be sent
       // this error on the same context that calls submit
@@ -343,8 +382,8 @@ public:
       // creates a dependency that std::exception_ptr must be ConvertibleTo E
       // TODO: break this dependency rather than enforce it with concepts
       that->error_ = std::current_exception();
-      for(auto& q : that->pending_) {
-        while(!q->heap_.empty()) {
+      for (auto& q : that->pending_) {
+        while (!q->heap_.empty()) {
           try {
             auto what{std::move(q->top().what)};
             q->heap_.pop();
@@ -352,7 +391,7 @@ public:
             guard.unlock();
             ::pushmi::set_error(what, *that->error_);
             guard.lock();
-          } catch(...) {
+          } catch (...) {
             // we already have an error, ignore this one.
           }
         }
@@ -360,13 +399,21 @@ public:
     }
   }
 
-  void insert(std::shared_ptr<time_source_queue_base<E, TP>> queue, time_heap_item<E, TP> item){
+  void insert(
+      std::shared_ptr<time_source_queue_base<E, TP>> queue,
+      time_heap_item<E, TP> item) {
     std::unique_lock<std::mutex> guard{this->lock_};
 
     // deliver error_ and return
-    if (!!this->error_) {::pushmi::set_error(item.what, *this->error_); return; }
-    // once join() is called, new work queued to the executor is not safe unless it is nested in an existing item.
-    if (!!this->joined_) { std::abort(); };
+    if (!!this->error_) {
+      ::pushmi::set_error(item.what, *this->error_);
+      return;
+    }
+    // once join() is called, new work queued to the executor is not safe unless
+    // it is nested in an existing item.
+    if (!!this->joined_) {
+      std::abort();
+    };
 
     queue->heap_.push(std::move(item));
     ++this->items_;
@@ -383,96 +430,120 @@ public:
       this->wake_.notify_one();
     }
   }
-
 };
 
 //
-// the time executor will directly call the executor when the work is due now.
-// the time executor will queue the work to the time ordered heap when the work is due in the future.
+// the time executor will queue the work to the time ordered heap.
 //
 
-template<class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Executor>
 class time_source_executor {
   using time_point = std::decay_t<TP>;
   std::shared_ptr<time_source_shared<E, time_point>> source_;
   std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue_;
-public:
-  using properties = property_set<is_time<>, is_executor<>, is_maybe_blocking<>, is_fifo_sequence<>, is_single<>>;
+
+ public:
+  using properties = property_set<
+      is_time<>,
+      is_executor<>,
+      is_maybe_blocking<>,
+      is_fifo_sequence<>,
+      is_single<>>;
 
   time_source_executor(
-    std::shared_ptr<time_source_shared<E, time_point>> source,
-    std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue) :
-    source_(std::move(source)), queue_(std::move(queue)) {}
+      std::shared_ptr<time_source_shared<E, time_point>> source,
+      std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue)
+      : source_(std::move(source)), queue_(std::move(queue)) {}
 
-  auto top() { return queue_->nf_(); }
-  auto executor() { return *this; }
+  auto top() {
+    return queue_->nf_();
+  }
+  auto executor() {
+    return *this;
+  }
 
   PUSHMI_TEMPLATE(class TPA, class Out)
-    (requires Regular<TPA> && ReceiveValue<Out, any_time_executor_ref<E, TP>> && ReceiveError<Out, E>)
+  (requires Regular<TPA>&& ReceiveValue<Out, any_time_executor_ref<E, TP>>&&
+       ReceiveError<Out, E>)
   void submit(TPA tp, Out out) {
     // queue for later
-    source_->insert(queue_, time_heap_item<E, TP>{tp, any_receiver<E, any_time_executor_ref<E, TP>>{std::move(out)}});
+    source_->insert(
+        queue_,
+        time_heap_item<E, TP>{
+            tp, any_receiver<E, any_time_executor_ref<E, TP>>{std::move(out)}});
   }
 };
 
 //
-// the time executor factory produces a new time ordered queue each time that it is called.
+// the time executor factory produces a new time ordered queue each time that it
+// is called.
 //
 
-template<class E, class TP, class NF, class ExecutorFactory>
+template <class E, class TP, class NF, class ExecutorFactory>
 class time_source_executor_factory_fn {
   using time_point = std::decay_t<TP>;
   std::shared_ptr<time_source_shared<E, time_point>> source_;
   NF nf_;
   ExecutorFactory ef_;
-public:
+
+ public:
   time_source_executor_factory_fn(
-    std::shared_ptr<time_source_shared<E, time_point>> source,
-    NF nf,
-    ExecutorFactory ef
-  ) : source_(std::move(source)), nf_(std::move(nf)), ef_(std::move(ef)) {}
-  auto operator()(){
+      std::shared_ptr<time_source_shared<E, time_point>> source,
+      NF nf,
+      ExecutorFactory ef)
+      : source_(std::move(source)), nf_(std::move(nf)), ef_(std::move(ef)) {}
+  auto operator()() {
     auto ex = ef_();
-    auto queue = std::make_shared<time_source_queue<E, time_point, NF, decltype(ex)>>(
-      source_,
-      nf_,
-      std::move(ex));
-    return time_source_executor<E, time_point, NF, decltype(ex)>{source_, queue};
+    auto queue =
+        std::make_shared<time_source_queue<E, time_point, NF, decltype(ex)>>(
+            source_, nf_, std::move(ex));
+    return time_source_executor<E, time_point, NF, decltype(ex)>{source_,
+                                                                 queue};
   }
 };
 
 //
 // each time_source is an independent source of timed events
 //
-// a time_source is a time_single_executor factory, it is not an executor itself.
+// a time_source is a time_single_executor factory, it is not an executor
+// itself.
 //
 // each time_source has a single thread that is shared across all the
-// time executors it produces. the thread is used to wait for the next time event.
-// when a time event is ready the thread will use the executor passed into make()
-// to callback on the receiver passed to the time executor submit()
+// time executors it produces. the thread is used to wait for the next time
+// event. when a time event is ready the thread will use the executor passed
+// into make() to callback on the receiver passed to the time executor submit()
 //
-// passing an executor to time_source.make() will create a time executor factory.
-// the time executor factory is a function that will return a time executor when
-// called with no arguments.
+// passing an executor to time_source.make() will create a time executor
+// factory. the time executor factory is a function that will return a time
+// executor when called with no arguments.
 //
 //
 //
 
-template<class E = std::exception_ptr, class TP = std::chrono::system_clock::time_point>
+template <
+    class E = std::exception_ptr,
+    class TP = std::chrono::system_clock::time_point>
 class time_source {
-public:
+ public:
   using time_point = std::decay_t<TP>;
-private:
+
+ private:
   std::shared_ptr<time_source_shared<E, time_point>> source_;
-public:
-  time_source() : source_(std::make_shared<time_source_shared<E, time_point>>()) {
+
+ public:
+  time_source()
+      : source_(std::make_shared<time_source_shared<E, time_point>>()) {
     source_->start(source_);
   }
 
   PUSHMI_TEMPLATE(class NF, class ExecutorFactory)
-    (requires Invocable<ExecutorFactory&> && Executor<invoke_result_t<ExecutorFactory&>> && NeverBlocking<invoke_result_t<ExecutorFactory&>>)
+  (requires Invocable<ExecutorFactory&>&&
+       Executor<invoke_result_t<ExecutorFactory&>>&&
+           NeverBlocking<invoke_result_t<
+               ExecutorFactory&>>)
   auto make(NF nf, ExecutorFactory ef) {
-    return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{source_, std::move(nf), std::move(ef)};
+    return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{
+        source_, std::move(nf), std::move(ef)};
   }
 
   void join() {

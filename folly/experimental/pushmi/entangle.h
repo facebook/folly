@@ -1,13 +1,23 @@
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <folly/experimental/pushmi/forwards.h>
 
 namespace pushmi {
-
 
 // template <class T, class Dual>
 // struct entangled {
@@ -84,7 +94,11 @@ struct entangled {
     // have to hold *both* locks to write any of either entangled object's
     // metadata, but need only one to read it.
     int expected = kUnlocked;
-    if (!stateMachine.compare_exchange_weak(expected, kLocked, std::memory_order_seq_cst, std::memory_order_relaxed)) {
+    if (!stateMachine.compare_exchange_weak(
+            expected,
+            kLocked,
+            std::memory_order_seq_cst,
+            std::memory_order_relaxed)) {
       return false;
     }
     // Having *either* object local-locked protects the data in both objects.
@@ -93,7 +107,8 @@ struct entangled {
       return true;
     }
     expected = kUnlocked;
-    if (dual->stateMachine.compare_exchange_strong(expected, kLocked, std::memory_order_seq_cst)) {
+    if (dual->stateMachine.compare_exchange_strong(
+            expected, kLocked, std::memory_order_seq_cst)) {
       return true;
     }
     // We got here, and so hit the race; we're deadlocked if we stick to
@@ -105,7 +120,8 @@ struct entangled {
     if ((uintptr_t)this < (uintptr_t)dual) {
       // I get to win the race. I'll acquire the locks, but have to make sure
       // my memory stays valid until the other thread acknowledges its loss.
-      while (stateMachine.load(std::memory_order_relaxed) != kLockedAndLossAcknowledged) {
+      while (stateMachine.load(std::memory_order_relaxed) !=
+             kLockedAndLossAcknowledged) {
         // Spin.
       }
       stateMachine.store(kLocked, std::memory_order_relaxed);
@@ -113,7 +129,8 @@ struct entangled {
     } else {
       // I lose the race, but have to coordinate with the winning thread, so
       // that it knows that I'm not about to try to touch it's data
-      dual->stateMachine.store(kLockedAndLossAcknowledged, std::memory_order_relaxed);
+      dual->stateMachine.store(
+          kLockedAndLossAcknowledged, std::memory_order_relaxed);
       return false;
     }
   }
@@ -194,11 +211,11 @@ struct entangled {
 };
 
 template <class First, class Second>
-using entangled_pair = std::pair<entangled<First, Second>, entangled<Second, First>>;
+using entangled_pair =
+    std::pair<entangled<First, Second>, entangled<Second, First>>;
 
 template <class First, class Second>
-auto entangle(First f, Second s)
-    -> entangled_pair<First, Second> {
+auto entangle(First f, Second s) -> entangled_pair<First, Second> {
   entangled<First, Second> ef(std::move(f));
   entangled<Second, First> es(std::move(s));
   ef.dual = std::addressof(es);
@@ -209,8 +226,12 @@ auto entangle(First f, Second s)
 template <class T, class Dual>
 struct locked_entangled_pair : std::pair<T*, Dual*> {
   entangled<T, Dual>* e;
-  ~locked_entangled_pair(){if (!!e) {e->unlockBoth();}}
-  explicit locked_entangled_pair(entangled<T, Dual>& e) : e(std::addressof(e)){
+  ~locked_entangled_pair() {
+    if (!!e) {
+      e->unlockBoth();
+    }
+  }
+  explicit locked_entangled_pair(entangled<T, Dual>& e) : e(std::addressof(e)) {
     this->e->lockBoth();
     this->first = std::addressof(this->e->t);
     this->second = !!this->e->dual ? std::addressof(this->e->dual->t) : nullptr;
@@ -218,9 +239,13 @@ struct locked_entangled_pair : std::pair<T*, Dual*> {
   locked_entangled_pair() = delete;
   locked_entangled_pair(const locked_entangled_pair&) = delete;
   locked_entangled_pair& operator=(const locked_entangled_pair&) = delete;
-  locked_entangled_pair(locked_entangled_pair&& o) : std::pair<T*, Dual*>(o), e(o.e) {o.e = nullptr;}
-  locked_entangled_pair& operator=(locked_entangled_pair&& o){
-    static_cast<std::pair<T*, Dual*>&>(*this) = static_cast<std::pair<T*, Dual*>&&>(o);
+  locked_entangled_pair(locked_entangled_pair&& o)
+      : std::pair<T*, Dual*>(o), e(o.e) {
+    o.e = nullptr;
+  }
+  locked_entangled_pair& operator=(locked_entangled_pair&& o) {
+    static_cast<std::pair<T*, Dual*>&>(*this) =
+        static_cast<std::pair<T*, Dual*>&&>(o);
     e = o.e;
     o.e = nullptr;
     return *this;
@@ -228,7 +253,7 @@ struct locked_entangled_pair : std::pair<T*, Dual*> {
 };
 
 template <class T, class Dual>
-locked_entangled_pair<T, Dual> lock_both(entangled<T, Dual>& e){
+locked_entangled_pair<T, Dual> lock_both(entangled<T, Dual>& e) {
   return locked_entangled_pair<T, Dual>{e};
 }
 
@@ -237,27 +262,31 @@ struct shared_entangled : std::shared_ptr<T> {
   Dual* dual;
   std::mutex* lock;
 
-  template<class P>
-  explicit shared_entangled(std::shared_ptr<P>& p, T& t, Dual& d, std::mutex& l) :
-    std::shared_ptr<T>(p, std::addressof(t)), dual(std::addressof(d)), lock(std::addressof(l)){
-  }
+  template <class P>
+  explicit shared_entangled(std::shared_ptr<P>& p, T& t, Dual& d, std::mutex& l)
+      : std::shared_ptr<T>(p, std::addressof(t)),
+        dual(std::addressof(d)),
+        lock(std::addressof(l)) {}
   shared_entangled() = delete;
 };
 
 template <class First, class Second>
-using shared_entangled_pair = std::pair<shared_entangled<First, Second>, shared_entangled<Second, First>>;
+using shared_entangled_pair =
+    std::pair<shared_entangled<First, Second>, shared_entangled<Second, First>>;
 
 template <class First, class Second>
 auto shared_entangle(First f, Second s)
     -> shared_entangled_pair<First, Second> {
   struct storage {
-    storage(First&& f, Second&& s) : p((First&&) f, (Second&&) s) {}
+    storage(First&& f, Second&& s) : p((First &&) f, (Second &&) s) {}
     std::tuple<First, Second> p;
     std::mutex lock;
   };
   auto p = std::make_shared<storage>(std::move(f), std::move(s));
-  shared_entangled<First, Second> ef(p, std::get<0>(p->p), std::get<1>(p->p), p->lock);
-  shared_entangled<Second, First> es(p, std::get<1>(p->p), std::get<0>(p->p), p->lock);
+  shared_entangled<First, Second> ef(
+      p, std::get<0>(p->p), std::get<1>(p->p), p->lock);
+  shared_entangled<Second, First> es(
+      p, std::get<1>(p->p), std::get<0>(p->p), p->lock);
   return {std::move(ef), std::move(es)};
 }
 
@@ -269,7 +298,8 @@ struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
       e.lock->unlock();
     }
   }
-  explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e) : e(std::move(e)){
+  explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e)
+      : e(std::move(e)) {
     this->e.lock->lock();
     this->first = this->e.get();
     this->second = this->e.dual;
@@ -277,9 +307,8 @@ struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
   locked_shared_entangled_pair() = delete;
 };
 
-
 template <class T, class Dual>
-locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e){
+locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e) {
   return locked_shared_entangled_pair<T, Dual>{e};
 }
 

@@ -1,10 +1,19 @@
-// clang-format off
-// clang format does not support the '<>' in the lambda syntax yet.. []<>()->{}
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #if __cpp_lib_optional >= 201606
 #include <optional> // @manual
@@ -16,18 +25,18 @@ namespace detail {
 #if __cpp_lib_optional >= 201606
 template <class T>
 struct opt : private std::optional<T> {
-   opt() = default;
-   opt& operator=(T&& t) {
-     this->std::optional<T>::operator=(std::move(t));
-     return *this;
-   }
-   using std::optional<T>::operator*;
-   using std::optional<T>::operator bool;
+  opt() = default;
+  opt& operator=(T&& t) {
+    this->std::optional<T>::operator=(std::move(t));
+    return *this;
+  }
+  using std::optional<T>::operator*;
+  using std::optional<T>::operator bool;
 };
 #else
 template <class T>
 struct opt {
-private:
+ private:
   bool empty_ = true;
   std::aligned_union_t<0, T> data_;
   T* ptr() {
@@ -42,40 +51,43 @@ private:
       empty_ = true;
     }
   }
-public:
+
+ public:
   opt() = default;
   opt(T&& t) noexcept(std::is_nothrow_move_constructible<T>::value) {
-    ::new(ptr()) T(std::move(t));
+    ::new (ptr()) T(std::move(t));
     empty_ = false;
   }
   opt(const T& t) {
-    ::new(ptr()) T(t);
+    ::new (ptr()) T(t);
     empty_ = false;
   }
   opt(opt&& that) noexcept(std::is_nothrow_move_constructible<T>::value) {
     if (that) {
-      ::new(ptr()) T(std::move(*that));
+      ::new (ptr()) T(std::move(*that));
       empty_ = false;
       that.reset();
     }
   }
   opt(const opt& that) {
     if (that) {
-      ::new(ptr()) T(*that);
+      ::new (ptr()) T(*that);
       empty_ = false;
     }
   }
-  ~opt() { reset(); }
-  opt& operator=(opt&& that)
-    noexcept(std::is_nothrow_move_constructible<T>::value &&
-             std::is_nothrow_move_assignable<T>::value) {
+  ~opt() {
+    reset();
+  }
+  opt& operator=(opt&& that) noexcept(
+      std::is_nothrow_move_constructible<T>::value&&
+          std::is_nothrow_move_assignable<T>::value) {
     if (*this && that) {
       **this = std::move(*that);
       that.reset();
     } else if (*this) {
       reset();
     } else if (that) {
-      ::new(ptr()) T(std::move(*that));
+      ::new (ptr()) T(std::move(*that));
       empty_ = false;
     }
     return *this;
@@ -86,17 +98,18 @@ public:
     } else if (*this) {
       reset();
     } else if (that) {
-      ::new(ptr()) T(*that);
+      ::new (ptr()) T(*that);
       empty_ = false;
     }
     return *this;
   }
-  opt& operator=(T&& t) noexcept(std::is_nothrow_move_constructible<T>::value &&
-                                 std::is_nothrow_move_assignable<T>::value) {
+  opt& operator=(T&& t) noexcept(
+      std::is_nothrow_move_constructible<T>::value&&
+          std::is_nothrow_move_assignable<T>::value) {
     if (*this)
       **this = std::move(t);
     else {
-      ::new(ptr()) T(std::move(t));
+      ::new (ptr()) T(std::move(t));
       empty_ = false;
     }
     return *this;
@@ -105,7 +118,7 @@ public:
     if (*this)
       **this = t;
     else {
-      ::new(ptr()) T(t);
+      ::new (ptr()) T(t);
       empty_ = false;
     }
     return *this;

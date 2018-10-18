@@ -1,11 +1,22 @@
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
-#include <future>
 #include <folly/experimental/pushmi/boosters.h>
+#include <future>
 
 namespace pushmi {
 
@@ -24,28 +35,32 @@ class any_receiver {
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_done(data&) {}
-    static void s_error(data&, E) noexcept { std::terminate(); }
+    static void s_error(data&, E) noexcept {
+      std::terminate();
+    }
     static void s_value(data&, VN...) {}
     void (*op_)(data&, data*) = vtable::s_op;
     void (*done_)(data&) = vtable::s_done;
     void (*error_)(data&, E) noexcept = vtable::s_error;
     void (*value_)(data&, VN...) = vtable::s_value;
   };
-  static constexpr vtable const noop_ {};
+  static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
   template <class T, class U = std::decay_t<T>>
-  using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_receiver>::value, U>;
+  using wrapped_t = std::enable_if_t<!std::is_same<U, any_receiver>::value, U>;
   template <class Wrapped>
   static void check() {
-    static_assert(ReceiveValue<Wrapped, VN...>,
-      "Wrapped receiver must support values of type VN...");
-    static_assert(ReceiveError<Wrapped, std::exception_ptr>,
-      "Wrapped receiver must support std::exception_ptr and be noexcept");
-    static_assert(NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
-      "Wrapped receiver must support E and be noexcept");
+    static_assert(
+        ReceiveValue<Wrapped, VN...>,
+        "Wrapped receiver must support values of type VN...");
+    static_assert(
+        ReceiveError<Wrapped, std::exception_ptr>,
+        "Wrapped receiver must support std::exception_ptr and be noexcept");
+    static_assert(
+        NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
+        "Wrapped receiver must support E and be noexcept");
   }
-  template<class Wrapped>
+  template <class Wrapped>
   any_receiver(Wrapped obj, std::false_type) : any_receiver() {
     struct s {
       static void op(data& src, data* dst) {
@@ -60,39 +75,41 @@ class any_receiver {
         ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
+        ::pushmi::set_value(
+            *static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value};
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-  template<class Wrapped>
+  template <class Wrapped>
   any_receiver(Wrapped obj, std::true_type) noexcept : any_receiver() {
     struct s {
       static void op(data& src, data* dst) {
-          if (dst)
-            new (dst->buffer_) Wrapped(
-                std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-          static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
+        if (dst)
+          new (dst->buffer_)
+              Wrapped(std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
+        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static void done(data& src) {
         ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
       }
       static void error(data& src, E e) noexcept {
         ::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
+            *static_cast<Wrapped*>((void*)src.buffer_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(*static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
+        ::pushmi::set_value(
+            *static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value};
     new ((void*)data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
-public:
+
+ public:
   using properties = property_set<is_receiver<>>;
 
   any_receiver() = default;
@@ -101,9 +118,11 @@ public:
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE(class Wrapped)
-    (requires ReceiveValue<wrapped_t<Wrapped>, VN...> && ReceiveError<Wrapped, E>)
+  (requires ReceiveValue<wrapped_t<Wrapped>, VN...>&& ReceiveError<
+      Wrapped,
+      E>)
   explicit any_receiver(Wrapped obj) noexcept(insitu<Wrapped>())
-    : any_receiver{std::move(obj), bool_<insitu<Wrapped>()>{}} {
+      : any_receiver{std::move(obj), bool_<insitu<Wrapped>()>{}} {
     check<Wrapped>();
   }
   ~any_receiver() {
@@ -117,7 +136,7 @@ public:
   void value(VN&&... vn) {
     if (!done_) {
       // done_ = true;
-      vptr_->value_(data_, (VN&&) vn...);
+      vptr_->value_(data_, (VN &&) vn...);
     }
   }
   void error(E e) noexcept {
@@ -136,11 +155,12 @@ public:
 
 // Class static definitions:
 template <class E, class... VN>
-constexpr typename any_receiver<E, VN...>::vtable const any_receiver<E, VN...>::noop_;
+constexpr
+    typename any_receiver<E, VN...>::vtable const any_receiver<E, VN...>::noop_;
 
 template <class VF, class EF, class DF>
 #if __cpp_concepts
-  requires Invocable<DF&>
+requires Invocable<DF&>
 #endif
 class receiver<VF, EF, DF> {
   bool done_ = false;
@@ -154,8 +174,10 @@ class receiver<VF, EF, DF> {
   static_assert(
       !detail::is_v<EF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
-  static_assert(NothrowInvocable<EF&, std::exception_ptr>,
+  static_assert(
+      NothrowInvocable<EF&, std::exception_ptr>,
       "error function must be noexcept and support std::exception_ptr");
+
  public:
   using properties = property_set<is_receiver<>>;
 
@@ -164,21 +186,24 @@ class receiver<VF, EF, DF> {
   constexpr explicit receiver(EF ef) : receiver(VF{}, std::move(ef), DF{}) {}
   constexpr explicit receiver(DF df) : receiver(VF{}, EF{}, std::move(df)) {}
   constexpr receiver(EF ef, DF df)
-      : done_(false), vf_(), ef_(std::move(ef)), df_(std::move(df))
-  {}
+      : done_(false), vf_(), ef_(std::move(ef)), df_(std::move(df)) {}
   constexpr receiver(VF vf, EF ef, DF df = DF{})
-      : done_(false), vf_(std::move(vf)), ef_(std::move(ef)), df_(std::move(df))
-  {}
+      : done_(false),
+        vf_(std::move(vf)),
+        ef_(std::move(ef)),
+        df_(std::move(df)) {}
 
-  PUSHMI_TEMPLATE (class... VN)
-    (requires Invocable<VF&, VN...>)
+  PUSHMI_TEMPLATE(class... VN)
+  (requires Invocable<VF&, VN...>)
   void value(VN&&... vn) {
-    if (done_) {return;}
+    if (done_) {
+      return;
+    }
     // done_ = true;
-    vf_((VN&&) vn...);
+    vf_((VN &&) vn...);
   }
-  PUSHMI_TEMPLATE (class E)
-    (requires Invocable<EF&, E>)
+  PUSHMI_TEMPLATE(class E)
+  (requires Invocable<EF&, E>)
   void error(E e) noexcept {
     static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
     if (!done_) {
@@ -194,9 +219,13 @@ class receiver<VF, EF, DF> {
   }
 };
 
-template <PUSHMI_TYPE_CONSTRAINT(Receiver) Data, class DVF, class DEF, class DDF>
+template <
+    PUSHMI_TYPE_CONSTRAINT(Receiver) Data,
+    class DVF,
+    class DEF,
+    class DDF>
 #if __cpp_concepts
-  requires Invocable<DDF&, Data&>
+requires Invocable<DDF&, Data&>
 #endif
 class receiver<Data, DVF, DEF, DDF> {
   bool done_ = false;
@@ -211,13 +240,16 @@ class receiver<Data, DVF, DEF, DDF> {
   static_assert(
       !detail::is_v<DEF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
-  static_assert(Invocable<DEF, Data&, std::exception_ptr>,
+  static_assert(
+      Invocable<DEF, Data&, std::exception_ptr>,
       "error function must support std::exception_ptr");
-  static_assert(NothrowInvocable<DEF, Data&, std::exception_ptr>,
+  static_assert(
+      NothrowInvocable<DEF, Data&, std::exception_ptr>,
       "error function must be noexcept");
 
  public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_receiver<>>>;
+  using properties =
+      property_set_insert_t<properties_t<Data>, property_set<is_receiver<>>>;
 
   constexpr explicit receiver(Data d)
       : receiver(std::move(d), DVF{}, DEF{}, DDF{}) {}
@@ -228,18 +260,20 @@ class receiver<Data, DVF, DEF, DDF> {
   constexpr receiver(Data d, DVF vf, DEF ef = DEF{}, DDF df = DDF{})
       : done_(false), data_(std::move(d)), vf_(vf), ef_(ef), df_(df) {}
 
-  Data& data() { return data_; }
+  Data& data() {
+    return data_;
+  }
 
   PUSHMI_TEMPLATE(class... VN)
-    (requires Invocable<DVF&, Data&, VN...>)
+  (requires Invocable<DVF&, Data&, VN...>)
   void value(VN&&... vn) {
     if (!done_) {
       // done_ = true;
-      vf_(data_, (VN&&) vn...);
+      vf_(data_, (VN &&) vn...);
     }
   }
   PUSHMI_TEMPLATE(class E)
-    (requires Invocable<DEF&, Data&, E>)
+  (requires Invocable<DEF&, Data&, E>)
   void error(E e) noexcept {
     static_assert(
         NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
@@ -257,9 +291,8 @@ class receiver<Data, DVF, DEF, DDF> {
 };
 
 template <>
-class receiver<>
-    : public receiver<ignoreVF, abortEF, ignoreDF> {
-public:
+class receiver<> : public receiver<ignoreVF, abortEF, ignoreDF> {
+ public:
   receiver() = default;
 };
 

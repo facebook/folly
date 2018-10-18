@@ -1,9 +1,19 @@
-// clang-format off
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <type_traits>
 
@@ -401,7 +411,8 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #else
 #define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__
 #define PUSHMI_TYPE_CONSTRAINT(...) class
-// bool() is used to prevent 'error: pasting "PUSHMI_PP_REQUIRES_PROBE_" and "::" does not give a valid preprocessing token'
+// bool() is used to prevent 'error: pasting "PUSHMI_PP_REQUIRES_PROBE_" and
+// "::" does not give a valid preprocessing token'
 #define PUSHMI_EXP(...) bool(::pushmi::expAnd(__VA_ARGS__))
 #define PUSHMI_AND ,
 #endif
@@ -439,91 +450,91 @@ struct Or;
 
 template <class T>
 struct Not {
-    explicit constexpr operator bool() const noexcept {
-        return !(bool) T{};
-    }
-    PUSHMI_TEMPLATE (class This = Not, bool B)
-        (requires B == (bool) This{})
-    constexpr operator std::integral_constant<bool, B>() const noexcept {
-        return {};
-    }
-    constexpr auto operator!() const noexcept {
-        return T{};
-    }
-    template <class That>
-    constexpr auto operator&&(That) const noexcept {
-        return And<Not, That>{};
-    }
-    template <class That>
-    constexpr auto operator||(That) const noexcept {
-        return Or<Not, That>{};
-    }
+  explicit constexpr operator bool() const noexcept {
+    return !(bool)T{};
+  }
+  PUSHMI_TEMPLATE(class This = Not, bool B)
+  (requires B == (bool)This{}) constexpr
+  operator std::integral_constant<bool, B>() const noexcept {
+    return {};
+  }
+  constexpr auto operator!() const noexcept {
+    return T{};
+  }
+  template <class That>
+  constexpr auto operator&&(That) const noexcept {
+    return And<Not, That>{};
+  }
+  template <class That>
+  constexpr auto operator||(That) const noexcept {
+    return Or<Not, That>{};
+  }
 };
 
 template <class T, class U>
 struct And {
-    explicit constexpr operator bool() const noexcept {
-        return (bool) std::conditional_t<(bool) T{}, U, std::false_type>{};
-    }
-    PUSHMI_TEMPLATE (class This = And, bool B)
-        (requires B == (bool) This{})
-    constexpr operator std::integral_constant<bool, B>() const noexcept {
-        return {};
-    }
-    constexpr auto operator!() const noexcept {
-        return Not<And>{};
-    }
-    template <class That>
-    constexpr auto operator&&(That) const noexcept {
-        return And<And, That>{};
-    }
-    template <class That>
-    constexpr auto operator||(That) const noexcept {
-        return Or<And, That>{};
-    }
+  explicit constexpr operator bool() const noexcept {
+    return (bool)std::conditional_t<(bool)T{}, U, std::false_type>{};
+  }
+  PUSHMI_TEMPLATE(class This = And, bool B)
+  (requires B == (bool)This{}) constexpr
+  operator std::integral_constant<bool, B>() const noexcept {
+    return {};
+  }
+  constexpr auto operator!() const noexcept {
+    return Not<And>{};
+  }
+  template <class That>
+  constexpr auto operator&&(That) const noexcept {
+    return And<And, That>{};
+  }
+  template <class That>
+  constexpr auto operator||(That) const noexcept {
+    return Or<And, That>{};
+  }
 };
 
 template <class T, class U>
 struct Or {
-    explicit constexpr operator bool() const noexcept {
-        return (bool) std::conditional_t<(bool) T{}, std::true_type, U>{};
-    }
-    PUSHMI_TEMPLATE (class This = Or, bool B)
-        (requires B == (bool) This{})
-    constexpr operator std::integral_constant<bool, B>() const noexcept {
-        return {};
-    }
-    constexpr auto operator!() const noexcept {
-        return Not<Or>{};
-    }
-    template <class That>
-    constexpr auto operator&&(That) const noexcept {
-        return And<Or, That>{};
-    }
-    template <class That>
-    constexpr auto operator||(That) const noexcept {
-        return Or<Or, That>{};
-    }
+  explicit constexpr operator bool() const noexcept {
+    return (bool)std::conditional_t<(bool)T{}, std::true_type, U>{};
+  }
+  PUSHMI_TEMPLATE(class This = Or, bool B)
+  (requires B == (bool)This{}) constexpr
+  operator std::integral_constant<bool, B>() const noexcept {
+    return {};
+  }
+  constexpr auto operator!() const noexcept {
+    return Not<Or>{};
+  }
+  template <class That>
+  constexpr auto operator&&(That) const noexcept {
+    return And<Or, That>{};
+  }
+  template <class That>
+  constexpr auto operator||(That) const noexcept {
+    return Or<Or, That>{};
+  }
 };
 } // namespace detail
 } // namespace concepts
 
 namespace isolated {
 
-template<class T0>
+template <class T0>
 constexpr auto expAnd(T0&& t0) {
-  return (T0&&)t0;
+  return (T0 &&) t0;
 }
-template<class T0, class... TN>
+template <class T0, class... TN>
 constexpr auto expAnd(T0&&, TN&&... tn) {
-  return concepts::detail::And<T0, decltype(isolated::expAnd((TN&&)tn...))>{};
+  return concepts::detail::And<T0, decltype(isolated::expAnd((TN &&) tn...))>{};
 }
 
-}
+} // namespace isolated
 
-template<class... TN>
+template <class... TN>
 constexpr auto expAnd(TN&&... tn) {
-  return isolated::expAnd((TN&&)tn...);
+  return isolated::expAnd((TN &&) tn...);
 }
 
 template <class T>
@@ -532,8 +543,7 @@ constexpr bool implicitly_convertible_to(T) {
 }
 #ifdef __clang__
 template <bool B>
-std::enable_if_t<B> requires_()
-{}
+std::enable_if_t<B> requires_() {}
 #else
 template <bool B>
 PUSHMI_INLINE_VAR constexpr std::enable_if_t<B, int> requires_ = 0;

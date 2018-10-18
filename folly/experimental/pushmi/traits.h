@@ -1,8 +1,19 @@
 #pragma once
-// Copyright (c) 2018-present, Facebook, Inc.
-//
-// This source code is licensed under the MIT license found in the
-// LICENSE file in the root directory of this source tree.
+/*
+ * Copyright 2018-present Facebook, Inc.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
 
 #include <functional>
 #include <type_traits>
@@ -20,39 +31,42 @@
 
 namespace pushmi {
 #if __cpp_fold_expressions >= 201603
-template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool and_v = (Bs &&...);
+template <bool... Bs>
+PUSHMI_INLINE_VAR constexpr bool and_v = (Bs && ...);
 
-template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool or_v = (Bs ||...);
+template <bool... Bs>
+PUSHMI_INLINE_VAR constexpr bool or_v = (Bs || ...);
 
-template <int...Is>
-PUSHMI_INLINE_VAR constexpr int sum_v = (Is +...);
+template <int... Is>
+PUSHMI_INLINE_VAR constexpr int sum_v = (Is + ...);
 #else
 namespace detail {
-  template <bool...>
-  struct bools;
 
-  template <std::size_t N>
-  constexpr int sum_impl(int const (&rgi)[N], int i = 0, int state = 0) noexcept {
-    return i == N ? state : sum_impl(rgi, i+1, state + rgi[i]);
-  }
-  template <int... Is>
-  constexpr int sum_impl() noexcept {
-    using RGI = int[sizeof...(Is)];
-    return sum_impl(RGI{Is...});
-  }
+template <bool...>
+struct bools;
+
+template <std::size_t N>
+constexpr int sum_impl(int const (&rgi)[N], int i = 0, int state = 0) noexcept {
+  return i == N ? state : sum_impl(rgi, i + 1, state + rgi[i]);
+}
+template <int... Is>
+constexpr int sum_impl() noexcept {
+  using RGI = int[sizeof...(Is)];
+  return sum_impl(RGI{Is...});
+}
+
 } // namespace detail
 
-template <bool...Bs>
+template <bool... Bs>
 PUSHMI_INLINE_VAR constexpr bool and_v =
-  PUSHMI_PP_IS_SAME(detail::bools<Bs..., true>, detail::bools<true, Bs...>);
+    PUSHMI_PP_IS_SAME(detail::bools<Bs..., true>, detail::bools<true, Bs...>);
 
-template <bool...Bs>
-PUSHMI_INLINE_VAR constexpr bool or_v =
-  !PUSHMI_PP_IS_SAME(detail::bools<Bs..., false>, detail::bools<false, Bs...>);
+template <bool... Bs>
+PUSHMI_INLINE_VAR constexpr bool or_v = !PUSHMI_PP_IS_SAME(
+    detail::bools<Bs..., false>,
+    detail::bools<false, Bs...>);
 
-template <int...Is>
+template <int... Is>
 PUSHMI_INLINE_VAR constexpr int sum_v = detail::sum_impl<Is...>();
 #endif
 
@@ -212,7 +226,7 @@ PUSHMI_INLINE_VAR constexpr struct as_const_fn {
   constexpr const T& operator()(T& t) const noexcept {
     return t;
   }
-} const as_const {};
+} const as_const{};
 
 } // namespace detail
 
