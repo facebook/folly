@@ -295,8 +295,4 @@ function(apply_folly_compile_options_to_target THETARGET)
   endif()
 endfunction()
 
-target_link_libraries(folly_deps
-  INTERFACE
-    Iphlpapi.lib
-    Ws2_32.lib
-)
+list(APPEND FOLLY_LINK_LIBRARIES Iphlpapi.lib Ws2_32.lib)
