@@ -870,6 +870,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       co_return co_await std::forward<Awaitable>(awaitable);
     }(std::forward<Awaitable>(awaitable));
   }
+
+  // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
+  // directly awaited within a folly::coro::Task coroutine.
+  friend Future<T> co_viaIfAsync(
+      folly::Executor* executor,
+      SemiFuture<T>&& future) noexcept {
+    return std::move(future).via(executor);
+  }
+
 #endif
 
  private:
@@ -1910,6 +1919,18 @@ class Future : private futures::detail::FutureBase<T> {
   SemiFuture<T> semi() && {
     return SemiFuture<T>{std::move(*this)};
   }
+
+#if FOLLY_HAS_COROUTINES
+
+  // Overload needed to customise behaviour of awaiting a Future<T>
+  // inside a folly::coro::Task coroutine.
+  friend Future<T> co_viaIfAsync(
+      folly::Executor* executor,
+      Future<T>&& future) noexcept {
+    return std::move(future).via(executor);
+  }
+
+#endif
 
  protected:
   friend class Promise<T>;
