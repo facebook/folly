@@ -3143,7 +3143,8 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   ASSERT_FALSE(socket->isClosedByPeer());
 
   // Check for the timestamp notifications.
-  ASSERT_EQ(errMsgCB.exception_.type_, folly::AsyncSocketException::UNKNOWN);
+  ASSERT_EQ(
+      errMsgCB.exception_.getType(), folly::AsyncSocketException::UNKNOWN);
   ASSERT_GT(errMsgCB.gotByteSeq_, 0);
   ASSERT_GT(errMsgCB.gotTimestamp_, 0);
   ASSERT_EQ(

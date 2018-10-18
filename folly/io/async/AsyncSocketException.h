@@ -52,12 +52,6 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
         type_(type),
         errno_(errnoCopy) {}
 
-  /** Error code */
-  AsyncSocketExceptionType type_;
-
-  /** A copy of the errno. */
-  int errno_;
-
   AsyncSocketExceptionType getType() const noexcept {
     return type_;
   }
@@ -76,6 +70,12 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
       AsyncSocketExceptionType type,
       const std::string& message,
       int errnoCopy);
+
+  /** Error code */
+  AsyncSocketExceptionType type_;
+
+  /** A copy of the errno. */
+  int errno_;
 };
 
 } // namespace folly

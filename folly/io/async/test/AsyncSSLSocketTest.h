@@ -177,9 +177,9 @@ class ExpectWriteErrorCallback : public WriteCallbackBase {
   ~ExpectWriteErrorCallback() override {
     EXPECT_EQ(STATE_FAILED, state);
     EXPECT_EQ(
-        exception.type_,
+        exception.getType(),
         AsyncSocketException::AsyncSocketExceptionType::NETWORK_ERROR);
-    EXPECT_EQ(exception.errno_, 22);
+    EXPECT_EQ(exception.getErrno(), 22);
     // Suppress the assert in  ~WriteCallbackBase()
     state = STATE_SUCCEEDED;
   }
