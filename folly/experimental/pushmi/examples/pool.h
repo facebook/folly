@@ -5,7 +5,7 @@
 // This source code is licensed under the MIT license found in the
 // LICENSE file in the root directory of this source tree.
 
-#include <folly/experimental/thread_pool>
+#include <experimental/thread_pool> // @manual
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/trampoline.h>

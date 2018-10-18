@@ -7,7 +7,7 @@
 // LICENSE file in the root directory of this source tree.
 
 #if __cpp_lib_optional >= 201606
-#include <optional>
+#include <optional> // @manual
 #endif
 #include <type_traits>
 
