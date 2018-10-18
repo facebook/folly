@@ -61,7 +61,7 @@ class DelayedDestructionBase : private boost::noncopyable {
    */
   class DestructorGuard {
    public:
-    explicit DestructorGuard(DelayedDestructionBase* dd = nullptr) : dd_(dd) {
+    explicit DestructorGuard(DelayedDestructionBase* dd) : dd_(dd) {
       if (dd_ != nullptr) {
         ++dd_->guardCount_;
         assert(dd_->guardCount_ > 0); // check for wrapping
