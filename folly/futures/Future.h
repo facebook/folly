@@ -258,6 +258,9 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func);
 
+  template <class F>
+  void setCallback_(F&& func, std::shared_ptr<folly::RequestContext> context);
+
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
   ///
@@ -2037,14 +2040,18 @@ class FutureAwaitable {
   }
 
   T await_resume() {
-    return std::move(future_).value();
+    return std::move(result_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable { h.resume(); });
+    future_.setCallback_([this, h](Try<T>&& result) mutable {
+      result_ = std::move(result);
+      h.resume();
+    });
   }
 
  private:
+  folly::Try<T> result_;
   folly::Future<T> future_;
 };
 

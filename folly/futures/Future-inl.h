@@ -266,8 +266,16 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(F&& func) {
+  setCallback_(std::forward<F>(func), RequestContext::saveContext());
+}
+
+template <class T>
+template <class F>
+void FutureBase<T>::setCallback_(
+    F&& func,
+    std::shared_ptr<folly::RequestContext> context) {
   throwIfContinued();
-  getCore().setCallback(std::forward<F>(func));
+  getCore().setCallback(std::forward<F>(func), std::move(context));
 }
 
 template <class T>
@@ -415,9 +423,17 @@ FutureBase<T>::thenImplementation(F&& func, R) {
         auto statePromise = state.stealPromise();
         auto tf3 =
             chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
-        tf3.setCallback_([p2 = std::move(statePromise)](Try<B>&& b) mutable {
-          p2.setTry(std::move(b));
-        });
+        if (std::is_same<T, B>::value && statePromise.getCore().hasCallback()) {
+          tf3.core_->setExecutor(statePromise.core_->getExecutor());
+          auto callbackAndContext = statePromise.getCore().stealCallback();
+          tf3.setCallback_(
+              std::move(callbackAndContext.first),
+              std::move(callbackAndContext.second));
+        } else {
+          tf3.setCallback_([p2 = std::move(statePromise)](Try<B>&& b) mutable {
+            p2.setTry(std::move(b));
+          });
+        }
       }
     }
   });
@@ -2086,13 +2102,18 @@ SemiFuture<T>& SemiFuture<T>::wait() & {
   if (auto deferredExecutor = getDeferredExecutor()) {
     // Make sure that the last callback in the future chain will be run on the
     // WaitExecutor.
-    setCallback_([](auto&&) {});
+    Promise<T> promise;
+    auto ret = promise.getSemiFuture();
+    setCallback_(
+        [p = std::move(promise)](auto&& r) mutable { p.setTry(std::move(r)); });
     auto waitExecutor = futures::detail::WaitExecutor::create();
     deferredExecutor->setExecutor(waitExecutor.copy());
-    while (!isReady()) {
+    while (!ret.isReady()) {
       waitExecutor->drive();
     }
     waitExecutor->detach();
+    this->detach();
+    *this = std::move(ret);
   } else {
     futures::detail::waitImpl(*this);
   }
@@ -2109,16 +2130,21 @@ SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
   if (auto deferredExecutor = getDeferredExecutor()) {
     // Make sure that the last callback in the future chain will be run on the
     // WaitExecutor.
-    setCallback_([](auto&&) {});
+    Promise<T> promise;
+    auto ret = promise.getSemiFuture();
+    setCallback_(
+        [p = std::move(promise)](auto&& r) mutable { p.setTry(std::move(r)); });
     auto waitExecutor = futures::detail::WaitExecutor::create();
     auto deadline = futures::detail::WaitExecutor::Clock::now() + dur;
     deferredExecutor->setExecutor(waitExecutor.copy());
-    while (!isReady()) {
+    while (!ret.isReady()) {
       if (!waitExecutor->driveUntil(deadline)) {
         break;
       }
     }
     waitExecutor->detach();
+    this->detach();
+    *this = std::move(ret);
   } else {
     futures::detail::waitImpl(*this, dur);
   }

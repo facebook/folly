@@ -19,6 +19,7 @@
 #include <folly/Memory.h>
 #include <folly/Unit.h>
 #include <folly/dynamic.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -1600,4 +1601,24 @@ TEST(Future, makePromiseContract) {
   e.drain();
   ASSERT_TRUE(c.second.isReady());
   EXPECT_EQ(4, std::move(c.second).get());
+}
+
+Future<int> call(int depth) {
+  return makeFuture(depth == 0 ? 42 : 0);
+}
+
+Future<int> recursion(Executor* executor, int depth) {
+  return call(depth).then(executor, [=](int result) {
+    if (result) {
+      return folly::makeFuture(result);
+    }
+
+    return recursion(executor, depth - 1);
+  });
+}
+
+TEST(Future, ThenRecursion) {
+  ManualExecutor executor;
+
+  EXPECT_EQ(42, recursion(&executor, 100000).getVia(&executor));
 }
