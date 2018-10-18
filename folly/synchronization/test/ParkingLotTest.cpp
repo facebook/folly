@@ -104,6 +104,9 @@ class WaitableMutex : public std::mutex {
 WaitableMutex::Lot WaitableMutex::lot;
 
 TEST(ParkingLot, WaitableMutexTest) {
+  if (kIsSanitizeThread) {
+    return;
+  }
   std::atomic<bool> go{false};
   WaitableMutex mu;
   std::thread t([&]() {
