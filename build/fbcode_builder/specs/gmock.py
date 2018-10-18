@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 
 def fbcode_builder_spec(builder):
+    builder.add_option('google/googletest:git_hash', 'release-1.8.1')
     builder.add_option(
         'google/googletest:cmake_defines',
         {'BUILD_GTEST': 'ON'}

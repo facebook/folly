@@ -21,8 +21,7 @@
 
 #include <sstream>
 
-#if defined(MADV_HUGEPAGE) && defined(FOLLY_HAVE_LIBJEMALLOC) && !FOLLY_SANITIZE
-
+#if defined(MADV_HUGEPAGE) && defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
 #include <jemalloc/jemalloc.h>
 #if (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1

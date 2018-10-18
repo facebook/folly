@@ -31,6 +31,9 @@
 #define FOLLY_SDT_NOTE_NAME           "stapsdt"
 #define FOLLY_SDT_NOTE_TYPE           3
 
+// Semaphore variables are put in this section
+#define FOLLY_SDT_SEMAPHORE_SECTION   ".probes"
+
 // Size of address depending on platform.
 #ifdef __LP64__
 #define FOLLY_SDT_ASM_ADDR            .8byte
@@ -94,7 +97,8 @@
 
 #define FOLLY_SDT_DEFINE_SEMAPHORE(provider, name)                             \
   extern "C" {                                                                 \
-    volatile unsigned short FOLLY_SDT_SEMAPHORE(provider, name) = 0;           \
+    volatile unsigned short FOLLY_SDT_SEMAPHORE(provider, name)                \
+    __attribute__((section(FOLLY_SDT_SEMAPHORE_SECTION), used)) = 0;           \
   }
 
 #define FOLLY_SDT_DECLARE_SEMAPHORE(provider, name)                            \

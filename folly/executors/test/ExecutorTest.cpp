@@ -255,7 +255,8 @@ TEST(Executor, Runnable) {
 
 TEST(Executor, ThrowableThen) {
   InlineExecutor x;
-  auto f = Future<Unit>().then([]() { throw std::runtime_error("Faildog"); });
+  auto f = Future<Unit>().thenValue(
+      [](auto&&) { throw std::runtime_error("Faildog"); });
 
   /*
   auto f = Future<Unit>().via(&x).then([](){
@@ -295,7 +296,7 @@ TEST(Executor, DoNothingExecutor) {
   DoNothingExecutor x;
 
   // Submit future callback to DoNothingExecutor
-  auto f = folly::via(&x).then([] { return 42; });
+  auto f = folly::via(&x).thenValue([](auto&&) { return 42; });
 
   // Callback function is stored in DoNothingExecutor, but not executed.
   EXPECT_FALSE(f.isReady());

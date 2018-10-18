@@ -49,17 +49,11 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     message(FATAL_ERROR "Folly requires a 64bit target architecture.")
   endif()
 
-  if (MSVC_VERSION GREATER_EQUAL 1910 AND MSVC_VERSION LESS 1920)
-    set(MSVC_IS_2015 OFF)
-    set(MSVC_IS_2017 ON)
-  elseif (MSVC_VERSION EQUAL 1900)
-    set(MSVC_IS_2015 ON)
-    set(MSVC_IS_2017 OFF)
-  else()
+  if (MSVC_VERSION LESS 1900)
     message(
       FATAL_ERROR
       "This build script only supports building Folly on 64-bit Windows with "
-      "Visual Studio 2015 or Visual Studio 2017. "
+      "at least Visual Studio 2017. "
       "MSVC version '${MSVC_VERSION}' is not supported."
     )
   endif()
@@ -73,7 +67,13 @@ set(
 )
 
 include(GNUInstallDirs)
-include(folly-deps) # Find the required packages
+
+set(CMAKE_THREAD_PREFER_PTHREAD ON)
+set(THREADS_PREFER_PTHREAD_FLAG ON)
+find_package(Threads REQUIRED)
+set(FOLLY_HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
+list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
+list(APPEND FOLLY_LINK_LIBRARIES Threads::Threads)
 
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   include(FollyCompilerMSVC)
@@ -82,6 +82,7 @@ else()
 endif()
 include(FollyFunctions)
 
+include(folly-deps) # Find the required packages
 include(FollyConfigChecks)
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/CMake/folly-config.h.cmake
@@ -105,6 +106,7 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
     "^${FOLLY_DIR}/experimental/exception_tracer/"
     "^${FOLLY_DIR}/experimental/hazptr/bench/"
     "^${FOLLY_DIR}/experimental/hazptr/example/"
+    "^${FOLLY_DIR}/experimental/pushmi/"
     "^${FOLLY_DIR}/futures/exercises/"
     "^${FOLLY_DIR}/logging/example/"
     "^${FOLLY_DIR}/(.*/)?test/"
@@ -308,6 +310,7 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/experimental/test/CodingTestUtils.cpp
     ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
     ${FOLLY_DIR}/logging/test/ConfigHelpers.h
     ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
@@ -649,8 +652,7 @@ if (BUILD_TESTS)
       #TEST file_lock_test SOURCES FileLockTest.cpp
       TEST file_util_test HANGING
         SOURCES FileUtilTest.cpp
-      # Linux is apparently unhappy about this.. Should probably figure out why.
-      #TEST fingerprint_test SOURCES FingerprintTest.cpp
+      TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
       TEST format_test SOURCES FormatTest.cpp
       TEST function_test BROKEN

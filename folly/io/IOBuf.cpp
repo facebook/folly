@@ -536,6 +536,13 @@ unique_ptr<IOBuf> IOBuf::cloneCoalesced() const {
   return std::make_unique<IOBuf>(cloneCoalescedAsValue());
 }
 
+unique_ptr<IOBuf> IOBuf::cloneCoalescedWithHeadroomTailroom(
+    std::size_t newHeadroom,
+    std::size_t newTailroom) const {
+  return std::make_unique<IOBuf>(
+      cloneCoalescedAsValueWithHeadroomTailroom(newHeadroom, newTailroom));
+}
+
 IOBuf IOBuf::cloneAsValue() const {
   auto tmp = cloneOneAsValue();
 
@@ -561,13 +568,19 @@ IOBuf IOBuf::cloneOneAsValue() const {
 }
 
 IOBuf IOBuf::cloneCoalescedAsValue() const {
+  const std::size_t newHeadroom = headroom();
+  const std::size_t newTailroom = prev()->tailroom();
+  return cloneCoalescedAsValueWithHeadroomTailroom(newHeadroom, newTailroom);
+}
+
+IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
+    std::size_t newHeadroom,
+    std::size_t newTailroom) const {
   if (!isChained()) {
     return cloneOneAsValue();
   }
   // Coalesce into newBuf
   const std::size_t newLength = computeChainDataLength();
-  const std::size_t newHeadroom = headroom();
-  const std::size_t newTailroom = prev()->tailroom();
   const std::size_t newCapacity = newLength + newHeadroom + newTailroom;
   IOBuf newBuf{CREATE, newCapacity};
   newBuf.advance(newHeadroom);

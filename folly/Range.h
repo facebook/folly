@@ -37,6 +37,10 @@
 #include <string>
 #include <type_traits>
 
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view> // @manual
+#endif
+
 #include <folly/CpuId.h>
 #include <folly/Likely.h>
 #include <folly/Traits.h>
@@ -474,6 +478,37 @@ class Range {
     return detail::value_before(e_);
   }
 
+ private:
+  // It would be nice to be able to implicit convert to any target type
+  // T for which either an (Iter, Iter) or (Iter, size_type) noexcept
+  // constructor was available, and explicitly convert to any target
+  // type for which those signatures were available but not noexcept.
+  // The problem is that this creates ambiguity when there is also a
+  // T constructor that takes a type U that is implicitly convertible
+  // from Range.
+  //
+  // To avoid ambiguity, we need to avoid having explicit operator T
+  // and implicit operator U coexist when T is constructible from U.
+  // U cannot be deduced when searching for operator T (and C++ won't
+  // perform an existential search for it), so we must limit the implicit
+  // target types to a finite set that we can enumerate.
+  //
+  // At the moment the set of implicit target types consists of just
+  // std::string_view (when it is available).
+#if FOLLY_HAS_STRING_VIEW
+  using StringViewType =
+      std::basic_string_view<std::remove_const_t<value_type>>;
+
+  template <typename Target>
+  using IsConstructibleViaStringView = StrictConjunction<
+      std::is_constructible<StringViewType, Iter const&, size_type>,
+      std::is_constructible<Target, StringViewType>>;
+#else
+  template <typename Target>
+  using IsConstructibleViaStringView = std::false_type;
+#endif
+
+ public:
   /// explicit operator conversion to any compatible type
   ///
   /// A compatible type is one which is constructible with an iterator and a
@@ -484,7 +519,8 @@ class Range {
   template <
       typename Tgt,
       std::enable_if_t<
-          std::is_constructible<Tgt, Iter const&, size_type>::value,
+          std::is_constructible<Tgt, Iter const&, size_type>::value &&
+              !IsConstructibleViaStringView<Tgt>::value,
           int> = 0>
   constexpr explicit operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
@@ -494,12 +530,28 @@ class Range {
       typename Tgt,
       std::enable_if_t<
           !std::is_constructible<Tgt, Iter const&, size_type>::value &&
-              std::is_constructible<Tgt, Iter const&, Iter const&>::value,
+              std::is_constructible<Tgt, Iter const&, Iter const&>::value &&
+              !IsConstructibleViaStringView<Tgt>::value,
           int> = 0>
   constexpr explicit operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, Iter const&>::value) {
     return Tgt(b_, e_);
   }
+
+#if FOLLY_HAS_STRING_VIEW
+  /// implicit operator conversion to std::string_view
+  template <
+      typename Tgt,
+      std::enable_if_t<
+          std::is_same<Tgt, StringViewType>::value &&
+              std::is_constructible<StringViewType, Iter const&, size_type>::
+                  value,
+          int> = 0>
+  constexpr operator Tgt() const noexcept(
+      std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
+    return Tgt(b_, walk_size());
+  }
+#endif
 
   /// explicit non-operator conversion to any compatible type
   ///

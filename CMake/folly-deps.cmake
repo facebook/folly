@@ -2,13 +2,6 @@ include(CheckCXXSourceCompiles)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
-set(CMAKE_THREAD_PREFER_PTHREAD ON)
-set(THREADS_PREFER_PTHREAD_FLAG ON)
-find_package(Threads REQUIRED)
-set(FOLLY_HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
-list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
-list(APPEND FOLLY_LINK_LIBRARIES Threads::Threads)
-
 find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
@@ -151,10 +144,71 @@ if (FOLLY_HAVE_ELF_H AND FOLLY_HAVE_BACKTRACE AND LIBDWARF_FOUND)
 endif()
 message(STATUS "Setting FOLLY_USE_SYMBOLIZER: ${FOLLY_USE_SYMBOLIZER}")
 
+# Using clang with libstdc++ requires explicitly linking against libatomic
+check_cxx_source_compiles("
+  #include <atomic>
+  int main(int argc, char** argv) {
+    struct Test { int val; };
+    std::atomic<Test> s;
+    return static_cast<int>(s.is_lock_free());
+  }"
+  FOLLY_CPP_ATOMIC_BUILTIN
+)
+if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
+  list(APPEND CMAKE_REQUIRED_LIBRARIES atomic)
+  list(APPEND FOLLY_LINK_LIBRARIES atomic)
+  check_cxx_source_compiles("
+    #include <atomic>
+    int main(int argc, char** argv) {
+      struct Test { int val; };
+      std::atomic<Test> s2;
+      return static_cast<int>(s2.is_lock_free());
+    }"
+    FOLLY_CPP_ATOMIC_WITH_LIBATOMIC
+  )
+  if (NOT FOLLY_CPP_ATOMIC_WITH_LIBATOMIC)
+    message(
+      FATAL_ERROR "unable to link C++ std::atomic code: you may need \
+      to install GNU libatomic"
+    )
+  endif()
+endif()
+
+option(
+  FOLLY_ASAN_ENABLED
+  "Build folly with Address Sanitizer enabled."
+  OFF
+)
+if (FOLLY_ASAN_ENABLED)
+  if ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU)
+    set(FOLLY_ASAN_ENABLED ON)
+    set(FOLLY_ASAN_FLAGS -fsanitize=address,undefined)
+    list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
+    # All of the functions in folly/detail/Sse.cpp are intended to be compiled
+    # with ASAN disabled.  They are marked with attributes to disable the
+    # sanitizer, but even so, gcc fails to compile them for some reason when
+    # sanitization is enabled on the compile line.
+    set_source_files_properties(
+      "${CMAKE_SOURCE_DIR}/folly/detail/Sse.cpp"
+      PROPERTIES COMPILE_FLAGS -fno-sanitize=address,undefined
+    )
+  elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES Clang)
+    set(FOLLY_ASAN_ENABLED ON)
+    set(
+      FOLLY_ASAN_FLAGS
+      -fno-common
+      -fsanitize=address,undefined,integer,nullability
+      -fno-sanitize=unsigned-integer-overflow
+    )
+    list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
+  endif()
+endif()
+
 add_library(folly_deps INTERFACE)
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
 target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
 target_link_libraries(folly_deps INTERFACE
   ${FOLLY_LINK_LIBRARIES}
   ${FOLLY_SHINY_DEPENDENCIES}
+  ${FOLLY_ASAN_FLAGS}
 )

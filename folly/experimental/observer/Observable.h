@@ -20,6 +20,11 @@
 namespace folly {
 namespace observer {
 
+namespace detail {
+template <typename Observable, typename Traits>
+class ObserverCreatorContext;
+}
+
 template <typename Observable>
 struct ObservableTraits {
   using element_type =
@@ -50,7 +55,7 @@ class ObserverCreator {
   Observer<T> getObserver() &&;
 
  private:
-  class Context;
+  using Context = detail::ObserverCreatorContext<Observable, Traits>;
 
   std::shared_ptr<Context> context_;
 };

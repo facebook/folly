@@ -898,12 +898,25 @@ bool AsyncSocket::setZeroCopy(bool enable) {
   return false;
 }
 
+void AsyncSocket::setZeroCopyReenableThreshold(size_t threshold) {
+  zeroCopyReenableThreshold_ = threshold;
+}
+
 bool AsyncSocket::isZeroCopyRequest(WriteFlags flags) {
   return (zeroCopyEnabled_ && isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY));
 }
 
 void AsyncSocket::adjustZeroCopyFlags(folly::WriteFlags& flags) {
   if (!zeroCopyEnabled_) {
+    // if the zeroCopyReenableCounter_ is > 0
+    // we try to dec and if we reach 0
+    // we set zeroCopyEnabled_ to true
+    if (zeroCopyReenableCounter_) {
+      if (0 == --zeroCopyReenableCounter_) {
+        zeroCopyEnabled_ = true;
+        return;
+      }
+    }
     flags = unSet(flags, folly::WriteFlags::WRITE_MSG_ZEROCOPY);
   }
 }
@@ -953,9 +966,8 @@ bool AsyncSocket::containsZeroCopyBuf(folly::IOBuf* ptr) {
 
 bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  if (zeroCopyEnabled_ &&
-      ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
-       (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR))) {
+  if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
+      (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
     const struct sock_extended_err* serr =
         reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
     return (
@@ -2403,6 +2415,15 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
 
   auto writeResult = sendSocketMessage(fd_, &msg, msg_flags);
   auto totalWritten = writeResult.writeReturn;
+  if (totalWritten < 0 && zeroCopyEnabled_ && errno == ENOBUFS) {
+    // workaround for running with zerocopy enabled but without a big enough
+    // memlock value - see ulimit -l
+    zeroCopyEnabled_ = false;
+    zeroCopyReenableCounter_ = zeroCopyReenableThreshold_;
+    msg_flags = sendMsgParamCallback_->getFlags(flags, zeroCopyEnabled_);
+    writeResult = sendSocketMessage(fd_, &msg, msg_flags);
+    totalWritten = writeResult.writeReturn;
+  }
   if (totalWritten < 0) {
     bool tryAgain = (errno == EAGAIN);
 #ifdef __APPLE__
@@ -2412,13 +2433,6 @@ AsyncSocket::WriteResult AsyncSocket::performWrite(
     // this bug is fixed.
     tryAgain |= (errno == ENOTCONN);
 #endif
-
-    // workaround for running with zerocopy enabled but without a proper
-    // memlock value - see ulimit -l
-    if (zeroCopyEnabled_ && (errno == ENOBUFS)) {
-      tryAgain = true;
-      zeroCopyEnabled_ = false;
-    }
 
     if (!writeResult.exception && tryAgain) {
       // TCP buffer is full; we can't write any more data right now.
@@ -2783,6 +2797,11 @@ void AsyncSocket::doClose() {
     ::close(fd_);
   }
   fd_ = -1;
+
+  // we also want to clear the zerocopy maps
+  // if the fd has been closed
+  idZeroCopyBufPtrMap_.clear();
+  idZeroCopyBufInfoMap_.clear();
 }
 
 std::ostream& operator<<(

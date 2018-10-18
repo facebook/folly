@@ -38,13 +38,13 @@ TEST_F(JsonPointerTest, ValidPointers) {
 
 TEST_F(JsonPointerTest, InvalidPointers) {
   EXPECT_EQ(
-      json_pointer::parse_error::INVALID_FIRST_CHARACTER,
+      json_pointer::parse_error::invalid_first_character,
       json_pointer::try_parse("a").error());
   EXPECT_EQ(
-      json_pointer::parse_error::INVALID_ESCAPE_SEQUENCE,
+      json_pointer::parse_error::invalid_escape_sequence,
       json_pointer::try_parse("/~").error());
   EXPECT_EQ(
-      json_pointer::parse_error::INVALID_ESCAPE_SEQUENCE,
+      json_pointer::parse_error::invalid_escape_sequence,
       json_pointer::try_parse("/~x").error());
 }
 

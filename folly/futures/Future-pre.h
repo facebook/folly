@@ -88,10 +88,15 @@ struct ArgType<> {
   typedef void FirstArg;
 };
 
-template <bool isTry, typename F, typename... Args>
+template <bool isTry_, typename F, typename... Args>
 struct argResult {
+  using Function = F;
   using ArgList = ArgType<Args...>;
   using Result = invoke_result_t<F, Args...>;
+  using ArgsSize = index_constant<sizeof...(Args)>;
+  static constexpr bool isTry() {
+    return isTry_;
+  }
 };
 
 template <typename T, typename F>

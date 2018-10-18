@@ -375,6 +375,30 @@ TEST(AccessSpreader, Simple) {
   }
 }
 
+TEST(AccessSpreader, SimpleCached) {
+  for (size_t s = 1; s < 200; ++s) {
+    EXPECT_LT(AccessSpreader<>::cachedCurrent(s), s);
+  }
+}
+
+TEST(AccessSpreader, ConcurrentAccessCached) {
+  std::vector<std::thread> threads;
+  for (size_t i = 0; i < 4; ++i) {
+    threads.emplace_back([]() {
+      for (size_t s : {16, 32, 64}) {
+        for (size_t j = 1; j < 200; ++j) {
+          EXPECT_LT(AccessSpreader<>::cachedCurrent(s), s);
+          EXPECT_LT(AccessSpreader<>::cachedCurrent(s), s);
+        }
+        std::this_thread::yield();
+      }
+    });
+  }
+  for (auto& thread : threads) {
+    thread.join();
+  }
+}
+
 #ifdef FOLLY_TLS
 #define DECLARE_SPREADER_TAG(tag, locality, func)      \
   namespace {                                          \
@@ -391,6 +415,7 @@ TEST(AccessSpreader, Simple) {
   Getcpu::Func AccessSpreader<tag>::pickGetcpuFunc() { \
     return func;                                       \
   }                                                    \
+  template struct AccessSpreader<tag>;                 \
   }
 
 DECLARE_SPREADER_TAG(ManualTag, CacheLocality::uniform(16), testingGetcpu)

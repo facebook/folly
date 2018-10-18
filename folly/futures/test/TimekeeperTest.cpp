@@ -109,8 +109,10 @@ TEST(Timekeeper, semiFutureWithinHandlesNullTimekeeperSingleton) {
 
 TEST(Timekeeper, futureDelayed) {
   auto t1 = now();
-  auto dur =
-      makeFuture().delayed(one_ms).then([=] { return now() - t1; }).get();
+  auto dur = makeFuture()
+                 .delayed(one_ms)
+                 .thenValue([=](auto&&) { return now() - t1; })
+                 .get();
 
   EXPECT_GE(dur, one_ms);
 }
@@ -120,7 +122,7 @@ TEST(Timekeeper, semiFutureDelayed) {
   auto dur = makeSemiFuture()
                  .delayed(one_ms)
                  .toUnsafeFuture()
-                 .then([=] { return now() - t1; })
+                 .thenValue([=](auto&&) { return now() - t1; })
                  .get();
 
   EXPECT_GE(dur, one_ms);
@@ -128,8 +130,10 @@ TEST(Timekeeper, semiFutureDelayed) {
 
 TEST(Timekeeper, futureDelayedUnsafe) {
   auto t1 = now();
-  auto dur =
-      makeFuture().delayedUnsafe(one_ms).then([=] { return now() - t1; }).get();
+  auto dur = makeFuture()
+                 .delayedUnsafe(one_ms)
+                 .thenValue([=](auto&&) { return now() - t1; })
+                 .get();
 
   EXPECT_GE(dur, one_ms);
 }
@@ -149,7 +153,7 @@ TEST(Timekeeper, futureDelayedStickyExecutor) {
     std::thread::id task_thread_id{};
     auto dur = makeFuture()
                    .delayed(one_ms, &tk)
-                   .then([=, &task_thread_id] {
+                   .thenValue([=, &task_thread_id](auto&&) {
                      task_thread_id = std::this_thread::get_id();
                      return now() - t1;
                    })
@@ -176,11 +180,11 @@ TEST(Timekeeper, futureDelayedStickyExecutor) {
     }};
     auto dur = makeSemiFuture()
                    .via(&me)
-                   .then([&first_task_thread_id] {
+                   .thenValue([&first_task_thread_id](auto&&) {
                      first_task_thread_id = std::this_thread::get_id();
                    })
                    .delayed(one_ms)
-                   .then([=, &second_task_thread_id] {
+                   .thenValue([=, &second_task_thread_id](auto&&) {
                      second_task_thread_id = std::this_thread::get_id();
                      return now() - t1;
                    })
@@ -320,7 +324,8 @@ TEST(Timekeeper, interruptDoesntCrash) {
 
 TEST(Timekeeper, chainedInterruptTest) {
   bool test = false;
-  auto f = futures::sleep(milliseconds(100)).then([&]() { test = true; });
+  auto f =
+      futures::sleep(milliseconds(100)).thenValue([&](auto&&) { test = true; });
   f.cancel();
   f.wait();
   EXPECT_FALSE(test);
@@ -368,7 +373,7 @@ TEST(Timekeeper, executor) {
 
   Promise<Unit> p;
   ExecutorTester tester;
-  auto f = p.getFuture().via(&tester).within(one_ms).then([&]() {});
+  auto f = p.getFuture().via(&tester).within(one_ms).thenValue([&](auto&&) {});
   p.setValue();
   f.wait();
   EXPECT_EQ(2, tester.count);

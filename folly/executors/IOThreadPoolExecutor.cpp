@@ -19,6 +19,12 @@
 #include <glog/logging.h>
 
 #include <folly/detail/MemoryIdler.h>
+#include <folly/portability/GFlags.h>
+
+DEFINE_bool(
+    dynamic_iothreadpoolexecutor,
+    true,
+    "IOThreadPoolExecutor will dynamically create threads");
 
 namespace folly {
 
@@ -66,7 +72,11 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory,
     EventBaseManager* ebm,
     bool waitForAll)
-    : ThreadPoolExecutor(numThreads, 0, std::move(threadFactory), waitForAll),
+    : ThreadPoolExecutor(
+          numThreads,
+          FLAGS_dynamic_iothreadpoolexecutor ? 0 : numThreads,
+          std::move(threadFactory),
+          waitForAll),
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);

@@ -67,7 +67,7 @@ TEST(SelfDestruct, throwingInlineExecutor) {
   auto* p = new Promise<int>();
   auto future = p->getFuture()
                     .via(&executor)
-                    .then([p]() -> int {
+                    .thenValue([p](auto &&) -> int {
                       delete p;
                       throw ThrowingExecutorError("callback throws");
                     })

@@ -303,15 +303,25 @@ class fbstring_core_model {
  * allocated right before the character array.
  *
  * The discriminator between these three strategies sits in two
- * bits of the rightmost char of the storage. If neither is set, then the
- * string is small (and its length sits in the lower-order bits on
- * little-endian or the high-order bits on big-endian of that
- * rightmost character). If the MSb is set, the string is medium width.
- * If the second MSb is set, then the string is large. On little-endian,
- * these 2 bits are the 2 MSbs of MediumLarge::capacity_, while on
- * big-endian, these 2 bits are the 2 LSbs. This keeps both little-endian
- * and big-endian fbstring_core equivalent with merely different ops used
- * to extract capacity/category.
+ * bits of the rightmost char of the storage:
+ * - If neither is set, then the string is small. Its length is represented by
+ *   the lower-order bits on little-endian or the high-order bits on big-endian
+ *   of that rightmost character. The value of these six bits is
+ *   `maxSmallSize - size`, so this quantity must be subtracted from
+ *   `maxSmallSize` to compute the `size` of the string (see `smallSize()`).
+ *   This scheme ensures that when `size == `maxSmallSize`, the last byte in the
+ *   storage is \0. This way, storage will be a null-terminated sequence of
+ *   bytes, even if all 23 bytes of data are used on a 64-bit architecture.
+ *   This enables `c_str()` and `data()` to simply return a pointer to the
+ *   storage.
+ *
+ * - If the MSb is set, the string is medium width.
+ *
+ * - If the second MSb is set, then the string is large. On little-endian,
+ *   these 2 bits are the 2 MSbs of MediumLarge::capacity_, while on
+ *   big-endian, these 2 bits are the 2 LSbs. This keeps both little-endian
+ *   and big-endian fbstring_core equivalent with merely different ops used
+ *   to extract capacity/category.
  */
 template <class Char>
 class fbstring_core {

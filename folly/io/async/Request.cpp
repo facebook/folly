@@ -239,8 +239,10 @@ std::shared_ptr<RequestContext> RequestContext::setContext(
   auto curCtx = staticCtx;
   if (newCtx && curCtx) {
     // Only call set/unset for all request data that differs
-    auto newLock = newCtx->state_.rlock();
-    auto curLock = curCtx->state_.rlock();
+    auto ret = folly::acquireLocked(
+        as_const(newCtx->state_), as_const(curCtx->state_));
+    auto& newLock = std::get<0>(ret);
+    auto& curLock = std::get<1>(ret);
     auto& newData = newLock->callbackData_;
     auto& curData = curLock->callbackData_;
     exec_set_difference(
@@ -271,8 +273,9 @@ RequestContext::setShallowCopyContext() {
   auto child = std::make_shared<RequestContext>();
 
   if (parent) {
-    auto parentLock = parent->state_.rlock();
-    auto childLock = child->state_.wlock();
+    auto ret = folly::acquireLocked(as_const(parent->state_), child->state_);
+    auto& parentLock = std::get<0>(ret);
+    auto& childLock = std::get<1>(ret);
     childLock->callbackData_ = parentLock->callbackData_;
     childLock->requestData_.reserve(parentLock->requestData_.size());
     for (const auto& entry : parentLock->requestData_) {

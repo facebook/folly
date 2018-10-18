@@ -24,7 +24,7 @@ using namespace folly;
 
 TEST(When, predicateFalse) {
   int i = 0;
-  auto thunk = [&] { return makeFuture().then([&] { i += 1; }); };
+  auto thunk = [&] { return makeFuture().thenValue([&](auto&&) { i += 1; }); };
 
   // false
   auto f1 = folly::when(false, thunk);
@@ -34,7 +34,7 @@ TEST(When, predicateFalse) {
 
 TEST(When, predicateTrue) {
   int i = 0;
-  auto thunk = [&] { return makeFuture().then([&] { i += 1; }); };
+  auto thunk = [&] { return makeFuture().thenValue([&](auto&&) { i += 1; }); };
 
   // true
   auto f2 = folly::when(true, thunk);

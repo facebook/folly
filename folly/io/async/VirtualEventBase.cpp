@@ -37,13 +37,15 @@ void VirtualEventBase::destroyImpl() {
 
       clearCobTimeouts();
 
-      onDestructionCallbacks_.withWLock([&](LoopCallbackList& callbacks) {
-        while (!callbacks.empty()) {
-          auto& callback = callbacks.front();
-          callbacks.pop_front();
-          callback.runLoopCallback();
-        }
-      });
+      // To avoid potential deadlock, do not hold the mutex while invoking
+      // user-supplied callbacks.
+      LoopCallbackList callbacks;
+      onDestructionCallbacks_.swap(callbacks);
+      while (!callbacks.empty()) {
+        auto& callback = callbacks.front();
+        callbacks.pop_front();
+        callback.runLoopCallback();
+      }
     }
 
     destroyPromise_.set_value();

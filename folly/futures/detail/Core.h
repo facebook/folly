@@ -112,17 +112,19 @@ static_assert(sizeof(SpinLock) == 1, "missized");
 /// The FSM to manage the primary producer-to-consumer info-flow has these
 ///   allowed (atomic) transitions:
 ///
-///   +-------------------------------------------------------------+
-///   |                    ---> OnlyResult -----                    |
-///   |                  /                       \                  |
-///   |               (setResult())             (setCallback())     |
-///   |                /                           \                |
-///   |   Start ----->                               ------> Done   |
-///   |                \                           /                |
-///   |               (setCallback())           (setResult())       |
-///   |                  \                       /                  |
-///   |                    ---> OnlyCallback ---                    |
-///   +-------------------------------------------------------------+
+///   +----------------------------------------------------------------+
+///   |                       ---> OnlyResult -----                    |
+///   |                     /                       \                  |
+///   |                  (setResult())             (setCallback())     |
+///   |                   /                           \                |
+///   |   ---> Start --->                               ------> Done   |
+///   |    \              \                           /                |
+///   |     \            (setCallback())           (setResult())       |
+///   |      \              \                       /                  |
+///   |       \               ---> OnlyCallback ---                    |
+///   |        \                         /                             |
+///   |          <-- (stealCallback()) -                               |
+///   +----------------------------------------------------------------+
 ///
 /// States and the corresponding producer-to-consumer data status & ownership:
 ///
@@ -141,6 +143,8 @@ static_assert(sizeof(SpinLock) == 1, "missized");
 ///   point forward only the producer thread can safely access that callback
 ///   (see `setResult()` and `doCallback()` where the producer thread can both
 ///   read and modify the callback).
+///   Alternatively producer thread can also steal the callback (see
+///   `stealCallback()`).
 /// - Done: callback can be safely accessed only within `doCallback()`, which
 ///   gets called on exactly one thread exactly once just after the transition
 ///   to Done. The future object will have determined whether that callback
@@ -183,6 +187,9 @@ class Core final {
       "void futures are not supported. Use Unit instead.");
 
  public:
+  using Result = Try<T>;
+  using Callback = folly::Function<void(Result&&)>;
+
   /// State will be Start
   static Core* make() {
     return new Core();
@@ -272,12 +279,12 @@ class Core final {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   template <typename F>
-  void setCallback(F&& func) {
+  void setCallback(F&& func, std::shared_ptr<folly::RequestContext> context) {
     DCHECK(!hasCallback());
 
     // construct callback_ first; if that fails, context_ will not leak
     ::new (&callback_) Callback(std::forward<F>(func));
-    ::new (&context_) Context(RequestContext::saveContext());
+    ::new (&context_) Context(std::move(context));
 
     auto state = state_.load(std::memory_order_acquire);
     while (true) {
@@ -302,6 +309,24 @@ class Core final {
           terminate_with<std::logic_error>("setCallback unexpected state");
       }
     }
+  }
+
+  /// Call only from producer thread.
+  /// Call only once - else undefined behavior.
+  ///
+  /// See FSM graph for allowed transitions.
+  ///
+  /// Call only if hasCallback() == true && hasResult() == false
+  /// This can not be called concurrently with setResult().
+  ///
+  /// Extracts callback from the Core and transitions it back into Start state.
+  std::pair<Callback, std::shared_ptr<folly::RequestContext>> stealCallback() {
+    DCHECK(state_.load(std::memory_order_relaxed) == State::OnlyCallback);
+    auto ret = std::make_pair(std::move(callback_), std::move(context_));
+    context_.~Context();
+    callback_.~Callback();
+    state_.store(State::Start, std::memory_order_relaxed);
+    return ret;
   }
 
   /// Call only from producer thread.
@@ -569,8 +594,6 @@ class Core final {
     }
   }
 
-  using Result = Try<T>;
-  using Callback = folly::Function<void(Result&&)>;
   using Context = std::shared_ptr<RequestContext>;
 
   union {

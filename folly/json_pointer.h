@@ -35,8 +35,8 @@ namespace folly {
 class json_pointer {
  public:
   enum class parse_error {
-    INVALID_FIRST_CHARACTER,
-    INVALID_ESCAPE_SEQUENCE,
+    invalid_first_character,
+    invalid_escape_sequence,
   };
 
   class parse_exception : public std::runtime_error {

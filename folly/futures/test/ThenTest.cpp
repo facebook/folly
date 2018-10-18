@@ -179,7 +179,7 @@ TEST(Then, constValue) {
 TEST(Then, objectAliveDuringImmediateNoParamContinuation) {
   auto f = makeFuture<CountedWidget>(23);
   auto called = false;
-  std::move(f).then([&] {
+  std::move(f).thenValue([&](auto&&) {
     EXPECT_EQ(CountedWidget::instances_.size(), 1u);
     EXPECT_EQ(CountedWidget::instances_[0]->v_, 23);
     called = true;
@@ -190,7 +190,7 @@ TEST(Then, objectAliveDuringImmediateNoParamContinuation) {
 TEST(Then, objectAliveDuringDeferredNoParamContinuation) {
   auto p = Promise<CountedWidget>{};
   bool called = false;
-  p.getFuture().then([&] {
+  p.getFuture().thenValue([&](auto&&) {
     EXPECT_EQ(CountedWidget::instances_.size(), 1u);
     EXPECT_EQ(CountedWidget::instances_[0]->v_, 23);
     called = true;

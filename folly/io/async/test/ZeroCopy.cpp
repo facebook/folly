@@ -19,14 +19,24 @@
 namespace folly {
 
 // ZeroCopyTest
-ZeroCopyTest::ZeroCopyTest(int numLoops, bool zeroCopy, size_t bufferSize)
-    : numLoops_(numLoops),
+ZeroCopyTest::ZeroCopyTest(
+    size_t numClients,
+    int numLoops,
+    bool zeroCopy,
+    size_t bufferSize)
+    : numClients_(numClients),
+      counter_(numClients),
+      numLoops_(numLoops),
       zeroCopy_(zeroCopy),
       bufferSize_(bufferSize),
-      client_(
-          new ZeroCopyTestAsyncSocket(&evb_, numLoops_, bufferSize_, zeroCopy)),
       listenSock_(new folly::AsyncServerSocket(&evb_)),
       server_(&evb_, numLoops_, bufferSize_, zeroCopy) {
+  clients_.reserve(numClients_);
+
+  for (size_t i = 0; i < numClients_; i++) {
+    clients_.emplace_back(std::make_unique<ZeroCopyTestAsyncSocket>(
+        &counter_, &evb_, numLoops_, bufferSize_, zeroCopy));
+  }
   if (listenSock_) {
     server_.addCallbackToServerSocket(*listenSock_);
   }
@@ -40,13 +50,19 @@ bool ZeroCopyTest::run() {
       listenSock_->listen(10);
       listenSock_->startAccepting();
 
-      connectOne();
+      connectAll();
     }
   });
 
   evb_.loopForever();
 
-  return !client_->isZeroCopyWriteInProgress();
+  for (auto& client : clients_) {
+    if (client->isZeroCopyWriteInProgress()) {
+      return false;
+    }
+  }
+
+  return true;
 }
 
 } // namespace folly

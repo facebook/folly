@@ -539,10 +539,17 @@ class SingletonVault {
       detail::SingletonHolderBase*,
       detail::TypeDescriptorHasher>
       SingletonMap;
-  Synchronized<SingletonMap> singletons_;
-  Synchronized<std::unordered_set<detail::SingletonHolderBase*>>
+
+  // Use SharedMutexSuppressTSAN to suppress noisy lock inversions when building
+  // with TSAN. If TSAN is not enabled, SharedMutexSuppressTSAN is equivalent
+  // to a normal SharedMutex.
+  Synchronized<SingletonMap, SharedMutexSuppressTSAN> singletons_;
+  Synchronized<
+      std::unordered_set<detail::SingletonHolderBase*>,
+      SharedMutexSuppressTSAN>
       eagerInitSingletons_;
-  Synchronized<std::vector<detail::TypeDescriptor>> creationOrder_;
+  Synchronized<std::vector<detail::TypeDescriptor>, SharedMutexSuppressTSAN>
+      creationOrder_;
 
   // Using SharedMutexReadPriority is important here, because we want to make
   // sure we don't block nested singleton creation happening concurrently with

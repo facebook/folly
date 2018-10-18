@@ -132,7 +132,7 @@ TEST_F(ViaFixture, threadHops) {
 TEST_F(ViaFixture, chainVias) {
   auto westThreadId = std::this_thread::get_id();
   auto f = via(eastExecutor.get())
-               .then([=]() {
+               .thenValue([=](auto&&) {
                  EXPECT_NE(std::this_thread::get_id(), westThreadId);
                  return 1;
                })
@@ -224,14 +224,15 @@ struct PriorityExecutor : public Executor {
 
 TEST(Via, priority) {
   PriorityExecutor exe;
-  via(&exe, -1).then([] {});
-  via(&exe, 0).then([] {});
-  via(&exe, 1).then([] {});
-  via(&exe, 42).then([] {}); // overflow should go to max priority
-  via(&exe, -42).then([] {}); // underflow should go to min priority
-  via(&exe).then([] {}); // default to mid priority
-  via(&exe, Executor::LO_PRI).then([] {});
-  via(&exe, Executor::HI_PRI).then([] {});
+  via(&exe, -1).thenValue([](auto&&) {});
+  via(&exe, 0).thenValue([](auto&&) {});
+  via(&exe, 1).thenValue([](auto&&) {});
+  via(&exe, 42).thenValue([](auto&&) {}); // overflow should go to max priority
+  via(&exe, -42).thenValue(
+      [](auto&&) {}); // underflow should go to min priority
+  via(&exe).thenValue([](auto&&) {}); // default to mid priority
+  via(&exe, Executor::LO_PRI).thenValue([](auto&&) {});
+  via(&exe, Executor::HI_PRI).thenValue([](auto&&) {});
   EXPECT_EQ(3, exe.count0);
   EXPECT_EQ(2, exe.count1);
   EXPECT_EQ(3, exe.count2);
@@ -261,7 +262,7 @@ TEST_F(ViaFixture, chainX3) {
                      return std::string("hello");
                    },
                    [&] { count++; })
-               .then([&]() {
+               .thenValue([&](auto&&) {
                  EXPECT_EQ(std::this_thread::get_id(), westThreadId);
                  return makeFuture(42);
                });
@@ -272,9 +273,10 @@ TEST_F(ViaFixture, chainX3) {
 TEST(Via, then2) {
   ManualExecutor x1, x2;
   bool a = false, b = false, c = false;
-  via(&x1).then([&] { a = true; }).then(&x2, [&] { b = true; }).then([&] {
-    c = true;
-  });
+  via(&x1)
+      .thenValue([&](auto&&) { a = true; })
+      .then(&x2, [&](auto&&) { b = true; })
+      .thenValue([&](auto&&) { c = true; });
 
   EXPECT_FALSE(a);
   EXPECT_FALSE(b);
@@ -349,7 +351,9 @@ class ThreadExecutor : public Executor {
 TEST(Via, viaThenGetWasRacy) {
   ThreadExecutor x;
   std::unique_ptr<int> val =
-      folly::via(&x).then([] { return std::make_unique<int>(42); }).get();
+      folly::via(&x)
+          .thenValue([](auto&&) { return std::make_unique<int>(42); })
+          .get();
   ASSERT_TRUE(!!val);
   EXPECT_EQ(42, *val);
 }
@@ -392,7 +396,7 @@ TEST(Via, getVia) {
   {
     // non-void
     ManualExecutor x;
-    auto f = via(&x).then([] { return true; });
+    auto f = via(&x).thenValue([](auto&&) { return true; });
     EXPECT_TRUE(f.getVia(&x));
   }
 
@@ -422,7 +426,7 @@ TEST(Via, getTryVia) {
   {
     // non-void
     ManualExecutor x;
-    auto f = via(&x).then([] { return 23; });
+    auto f = via(&x).thenValue([](auto&&) { return 23; });
     EXPECT_FALSE(f.isReady());
     EXPECT_EQ(23, f.getTryVia(&x).value());
   }
@@ -506,8 +510,8 @@ TEST(Via, viaDummyExecutorFutureSetValueFirst) {
   auto captured_promise_future = captured_promise.getFuture();
 
   DummyDrivableExecutor x;
-  auto future = makeFuture().via(&x).then(
-      [c = std::move(captured_promise)] { return 42; });
+  auto future = makeFuture().via(&x).thenValue(
+      [c = std::move(captured_promise)](auto&&) { return 42; });
 
   EXPECT_THROW(std::move(future).get(std::chrono::seconds(5)), BrokenPromise);
   EXPECT_THROW(
@@ -525,8 +529,8 @@ TEST(Via, viaDummyExecutorFutureSetCallbackFirst) {
 
   DummyDrivableExecutor x;
   Promise<Unit> trigger;
-  auto future = trigger.getFuture().via(&x).then(
-      [c = std::move(captured_promise)] { return 42; });
+  auto future = trigger.getFuture().via(&x).thenValue(
+      [c = std::move(captured_promise)](auto&&) { return 42; });
   trigger.setValue();
 
   EXPECT_THROW(std::move(future).get(std::chrono::seconds(5)), BrokenPromise);
@@ -547,8 +551,8 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
   Optional<Future<int>> future;
   {
     ManualExecutor x;
-    future = makeFuture().via(&x).then(
-        [c = std::move(captured_promise)] { return 42; });
+    future = makeFuture().via(&x).thenValue(
+        [c = std::move(captured_promise)](auto&&) { return 42; });
     x.clear();
   }
 
@@ -571,8 +575,8 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
   {
     ManualExecutor x;
     Promise<Unit> trigger;
-    future = trigger.getFuture().via(&x).then(
-        [c = std::move(captured_promise)] { return 42; });
+    future = trigger.getFuture().via(&x).thenValue(
+        [c = std::move(captured_promise)](auto&&) { return 42; });
     trigger.setValue();
     x.clear();
   }
@@ -629,7 +633,7 @@ TEST(ViaFunc, isSticky) {
   auto f = via(&x, [&] { count++; });
   x.run();
 
-  std::move(f).then([&] { count++; });
+  std::move(f).thenValue([&](auto&&) { count++; });
   EXPECT_EQ(1, count);
   x.run();
   EXPECT_EQ(2, count);
@@ -649,5 +653,9 @@ TEST(ViaFunc, valueKeepAlive) {
 
 TEST(ViaFunc, thenValueKeepAlive) {
   ManualExecutor x;
-  EXPECT_EQ(42, via(getKeepAliveToken(&x)).then([] { return 42; }).getVia(&x));
+  EXPECT_EQ(
+      42,
+      via(getKeepAliveToken(&x))
+          .thenValue([](auto&&) { return 42; })
+          .getVia(&x));
 }

@@ -61,7 +61,7 @@ class DelayedDestructionBase : private boost::noncopyable {
    */
   class DestructorGuard {
    public:
-    explicit DestructorGuard(DelayedDestructionBase* dd = nullptr) : dd_(dd) {
+    explicit DestructorGuard(DelayedDestructionBase* dd) : dd_(dd) {
       if (dd_ != nullptr) {
         ++dd_->guardCount_;
         assert(dd_->guardCount_ > 0); // check for wrapping
@@ -70,9 +70,8 @@ class DelayedDestructionBase : private boost::noncopyable {
 
     DestructorGuard(const DestructorGuard& dg) : DestructorGuard(dg.dd_) {}
 
-    DestructorGuard(DestructorGuard&& dg) noexcept : dd_(dg.dd_) {
-      dg.dd_ = nullptr;
-    }
+    DestructorGuard(DestructorGuard&& dg) noexcept
+        : dd_(std::exchange(dg.dd_, nullptr)) {}
 
     DestructorGuard& operator=(DestructorGuard dg) noexcept {
       std::swap(dd_, dg.dd_);

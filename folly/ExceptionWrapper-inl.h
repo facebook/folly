@@ -468,6 +468,15 @@ inline bool exception_wrapper::is_compatible_with() const noexcept {
   onNoExceptionError(__func__);
 }
 
+template <class Ex>
+[[noreturn]] inline void exception_wrapper::throw_with_nested(Ex&& ex) const {
+  try {
+    throw_exception();
+  } catch (...) {
+    std::throw_with_nested(std::forward<Ex>(ex));
+  }
+}
+
 template <class CatchFn, bool IsConst>
 struct exception_wrapper::ExceptionTypeOf {
   using type = arg_type<_t<std::decay<CatchFn>>>;

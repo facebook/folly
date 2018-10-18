@@ -258,6 +258,9 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func);
 
+  template <class F>
+  void setCallback_(F&& func, std::shared_ptr<folly::RequestContext> context);
+
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
   ///
@@ -425,15 +428,15 @@ class FutureBase {
 
   // Variant: returns a value
   // e.g. f.thenTry([](Try<T> t){ return t.value(); });
-  template <typename F, typename R, bool isTry, typename... Args>
+  template <typename F, typename R>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, R);
 
   // Variant: returns a Future
   // e.g. f.thenTry([](Try<T> t){ return makeFuture<T>(t); });
-  template <typename F, typename R, bool isTry, typename... Args>
+  template <typename F, typename R>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, futures::detail::argResult<isTry, F, Args...>);
+  thenImplementation(F&& func, R);
 
   template <typename E>
   SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
@@ -867,6 +870,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       co_return co_await std::forward<Awaitable>(awaitable);
     }(std::forward<Awaitable>(awaitable));
   }
+
+  // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
+  // directly awaited within a folly::coro::Task coroutine.
+  friend Future<T> co_viaIfAsync(
+      folly::Executor* executor,
+      SemiFuture<T>&& future) noexcept {
+    return std::move(future).via(executor);
+  }
+
 #endif
 
  private:
@@ -1173,8 +1185,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
   then(F&& func) && {
-    return this->template thenImplementation<F, R>(
-        std::forward<F>(func), typename R::Arg());
+    return this->thenImplementation(std::forward<F>(func), R{});
   }
 
   // clang-format off
@@ -1239,16 +1250,26 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  template <class Arg, class... Args>
-  auto then(Executor* x, Arg&& arg, Args&&... args) && {
+  template <class Arg>
+  auto then(Executor* x, Arg&& arg) && {
     auto oldX = this->getExecutor();
     this->setExecutor(x);
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
+    // TODO(T29171940): thenImplementation here is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, Arg&&>;
     return std::move(*this)
-        .then(std::forward<Arg>(arg), std::forward<Args>(args)...)
+        .thenImplementation(std::forward<Arg>(arg), R{})
         .via(oldX);
-    FOLLY_POP_WARNING
+  }
+
+  template <class R, class Caller, class... Args>
+  auto then(Executor* x, R (Caller::*func)(Args...), Caller* instance) && {
+    auto oldX = this->getExecutor();
+    this->setExecutor(x);
+
+    return std::move(*this).then(func, instance).via(oldX);
   }
 
   template <class Arg, class... Args>
@@ -1810,8 +1831,13 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback, class... Callbacks>
   auto thenMulti(Callback&& fn, Callbacks&&... fns) && {
     // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
+
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
     return std::move(*this)
-        .then(std::forward<Callback>(fn))
+        .thenImplementation(std::forward<Callback>(fn), R{})
         .thenMulti(std::forward<Callbacks>(fns)...);
   }
 
@@ -1829,7 +1855,12 @@ class Future : private futures::detail::FutureBase<T> {
   template <class Callback>
   auto thenMulti(Callback&& fn) && {
     // thenMulti with one callback is just a then
-    return std::move(*this).then(std::forward<Callback>(fn));
+
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
+    return std::move(*this).thenImplementation(std::forward<Callback>(fn), R{});
   }
 
   template <class Callback>
@@ -1862,8 +1893,12 @@ class Future : private futures::detail::FutureBase<T> {
     // via(x).then(a).thenMulti(b, ...).via(oldX)
     auto oldX = this->getExecutor();
     this->setExecutor(x);
+    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
+    // as then used to be but that is better than keeping then in the public
+    // API.
+    using R = futures::detail::callableResult<T, decltype(fn)>;
     return std::move(*this)
-        .then(std::forward<Callback>(fn))
+        .thenImplementation(std::forward<Callback>(fn), R{})
         .thenMulti(std::forward<Callbacks>(fns)...)
         .via(oldX);
   }
@@ -1884,6 +1919,18 @@ class Future : private futures::detail::FutureBase<T> {
   SemiFuture<T> semi() && {
     return SemiFuture<T>{std::move(*this)};
   }
+
+#if FOLLY_HAS_COROUTINES
+
+  // Overload needed to customise behaviour of awaiting a Future<T>
+  // inside a folly::coro::Task coroutine.
+  friend Future<T> co_viaIfAsync(
+      folly::Executor* executor,
+      Future<T>&& future) noexcept {
+    return std::move(future).via(executor);
+  }
+
+#endif
 
  protected:
   friend class Promise<T>;
@@ -2014,14 +2061,18 @@ class FutureAwaitable {
   }
 
   T await_resume() {
-    return std::move(future_).value();
+    return std::move(result_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable { h.resume(); });
+    future_.setCallback_([this, h](Try<T>&& result) mutable {
+      result_ = std::move(result);
+      h.resume();
+    });
   }
 
  private:
+  folly::Try<T> result_;
   folly::Future<T> future_;
 };
 

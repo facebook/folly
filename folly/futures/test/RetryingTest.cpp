@@ -106,16 +106,18 @@ TEST(RetryingTest, policy_throws) {
 
 TEST(RetryingTest, policy_future) {
   atomic<size_t> sleeps{0};
-  auto r = futures::retrying(
-               [&](size_t n, const exception_wrapper&) {
-                 return n < 3 ? makeFuture(++sleeps).then([] { return true; })
-                              : makeFuture(false);
-               },
-               [](size_t n) {
-                 return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
-                              : makeFuture(n);
-               })
-               .wait();
+  auto r =
+      futures::retrying(
+          [&](size_t n, const exception_wrapper&) {
+            return n < 3
+                ? makeFuture(++sleeps).thenValue([](auto&&) { return true; })
+                : makeFuture(false);
+          },
+          [](size_t n) {
+            return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
+                         : makeFuture(n);
+          })
+          .wait();
   EXPECT_EQ(2, r.value());
   EXPECT_EQ(2, sleeps);
 }
@@ -209,7 +211,7 @@ TEST(RetryingTest, large_retries) {
   // size of implicit promise is at least the size of the return.
   using LargeReturn = array<uint64_t, 16000>;
   auto func = [&executor](size_t retryNum) -> Future<LargeReturn> {
-    return via(&executor).then([retryNum] {
+    return via(&executor).thenValue([retryNum](auto&&) {
       return retryNum < 10000
           ? makeFuture<LargeReturn>(
                 make_exception_wrapper<std::runtime_error>("keep trying"))
@@ -221,7 +223,7 @@ TEST(RetryingTest, large_retries) {
   for (auto idx = 0; idx < 40; ++idx) {
     futures.emplace_back(futures::retrying(
         [&executor](size_t, const exception_wrapper&) {
-          return via(&executor).then([] { return true; });
+          return via(&executor).thenValue([](auto&&) { return true; });
         },
         func));
   }

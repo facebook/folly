@@ -21,9 +21,9 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/Try.h>
-#include <folly/experimental/coro/AwaitWrapper.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Utils.h>
+#include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -85,43 +85,15 @@ class Promise : public PromiseBase<T> {
     return {};
   }
 
-  // Don't allow awaiting lvalues of these types.
-  template <typename U>
-  void await_transform(folly::SemiFuture<U>& future) = delete;
-  template <typename U>
-  void await_transform(folly::Future<U>& future) = delete;
-  template <typename U>
-  void await_transform(Future<U>& future) = delete;
-  template <typename U>
-  void await_transform(Task<U>& task) = delete;
-
   template <typename U>
   auto await_transform(Task<U>&& task) {
     return std::move(task).viaInline(executor_);
   }
 
-  template <typename U>
-  decltype(auto) await_transform(folly::SemiFuture<U>&& future) {
-    return future.via(executor_);
-  }
-
-  template <typename U>
-  decltype(auto) await_transform(folly::Future<U>&& future) {
-    return future.via(executor_);
-  }
-
-  template <typename U>
-  auto await_transform(Future<U>&& future) {
-    if (future.promise_->executor_ == executor_) {
-      return createAwaitWrapper(std::move(future));
-    }
-
-    return createAwaitWrapper(std::move(future), executor_);
-  }
-
-  template <typename U>
-  auto await_transform(U&& awaitable) {
-    return createAwaitWrapper(std::forward<U>(awaitable), executor_);
+  template <typename Awaitable>
+  decltype(auto) await_transform(Awaitable&& awaitable) {
+    using folly::coro::co_viaIfAsync;
+    return co_viaIfAsync(executor_, std::forward<Awaitable>(awaitable));
   }
 
   auto await_transform(getCurrentExecutor) {

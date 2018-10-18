@@ -429,10 +429,8 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
   cerr << "SocketWithDelay test completed" << endl;
 }
 
-using NextProtocolTypePair =
-    std::pair<SSLContext::NextProtocolType, SSLContext::NextProtocolType>;
-
-class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
+#if FOLLY_OPENSSL_HAS_ALPN
+class NextProtocolTest : public Test {
   // For matching protos
  public:
   void SetUp() override {
@@ -452,8 +450,8 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
-    client = std::make_unique<NpnClient>(std::move(clientSock));
-    server = std::make_unique<NpnServer>(std::move(serverSock));
+    client = std::make_unique<AlpnClient>(std::move(clientSock));
+    server = std::make_unique<AlpnServer>(std::move(serverSock));
 
     eventBase.loop();
   }
@@ -477,26 +475,6 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
     EXPECT_EQ(server->nextProto, nullptr);
   }
 
-  void expectProtocolType() {
-    expectHandshakeSuccess();
-    if (GetParam().first == SSLContext::NextProtocolType::ANY &&
-        GetParam().second == SSLContext::NextProtocolType::ANY) {
-      EXPECT_EQ(client->protocolType, server->protocolType);
-    } else if (
-        GetParam().first == SSLContext::NextProtocolType::ANY ||
-        GetParam().second == SSLContext::NextProtocolType::ANY) {
-      // Well not much we can say
-    } else {
-      expectProtocolType(GetParam());
-    }
-  }
-
-  void expectProtocolType(NextProtocolTypePair expected) {
-    expectHandshakeSuccess();
-    EXPECT_EQ(client->protocolType, expected.first);
-    EXPECT_EQ(server->protocolType, expected.second);
-  }
-
   void expectHandshakeSuccess() {
     EXPECT_FALSE(client->except.hasValue())
         << "client handshake error: " << client->except->what();
@@ -515,131 +493,45 @@ class NextProtocolTest : public testing::TestWithParam<NextProtocolTypePair> {
   std::shared_ptr<SSLContext> clientCtx{std::make_shared<SSLContext>()};
   std::shared_ptr<SSLContext> serverCtx{std::make_shared<SSLContext>()};
   int fds[2];
-  std::unique_ptr<NpnClient> client;
-  std::unique_ptr<NpnServer> server;
+  std::unique_ptr<AlpnClient> client;
+  std::unique_ptr<AlpnServer> server;
 };
 
-class NextProtocolTLSExtTest : public NextProtocolTest {
-  // For extended TLS protos
-};
-
-class NextProtocolNPNOnlyTest : public NextProtocolTest {
-  // For mismatching protos
-};
-
-class NextProtocolMismatchTest : public NextProtocolTest {
-  // For mismatching protos
-};
-
-TEST_P(NextProtocolTest, NpnTestOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
+TEST_F(NextProtocolTest, AlpnTestOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
 
   connect();
 
   expectProtocol("baz");
-  expectProtocolType();
 }
 
-TEST_P(NextProtocolTest, NpnTestUnset) {
+TEST_F(NextProtocolTest, AlpnTestUnset) {
   // Identical to above test, except that we want unset NPN before
   // looping.
-  clientCtx->setAdvertisedNextProtocols({"blub", "baz"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
+  clientCtx->setAdvertisedNextProtocols({"blub", "baz"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
 
   connect(true /* unset */);
 
-  // if alpn negotiation fails, type will appear as npn
   expectNoProtocol();
-  EXPECT_EQ(client->protocolType, server->protocolType);
 }
 
-TEST_P(NextProtocolMismatchTest, NpnAlpnTestNoOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"foo"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
+TEST_F(NextProtocolTest, AlpnTestNoOverlap) {
+  clientCtx->setAdvertisedNextProtocols({"blub"});
+  serverCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
   connect();
 
   expectNoProtocol();
-  expectProtocolType(
-      {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
 }
 
-TEST_P(NextProtocolTest, NpnTestNoOverlap) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-  connect();
-
-  if (GetParam().first == SSLContext::NextProtocolType::ALPN ||
-      GetParam().second == SSLContext::NextProtocolType::ALPN) {
-    // This is arguably incorrect behavior since RFC7301 states an ALPN protocol
-    // mismatch should result in a fatal alert, but this is the current behavior
-    // on all OpenSSL versions/variants, and we want to know if it changes.
-    expectNoProtocol();
-  } else if (
-      GetParam().first == SSLContext::NextProtocolType::ANY &&
-      GetParam().second == SSLContext::NextProtocolType::ANY) {
-#if FOLLY_OPENSSL_IS_110
-    // OpenSSL 1.1.0 sends a fatal alert on mismatch, which is probably the
-    // correct behavior per RFC7301
-    expectHandshakeError();
-#else
-    // Behavior varies for other OpenSSL versions.
-    expectHandshakeSuccess();
-    if (client->nextProtoLength == 0) {
-      // BoringSSL and OpenSSL 1.0.2 before 1.0.2h
-      expectNoProtocol();
-    } else {
-      // OpenSSL 1.0.2h+
-      expectProtocol("blub");
-      expectProtocolType({SSLContext::NextProtocolType::NPN,
-                          SSLContext::NextProtocolType::NPN});
-    }
-#endif
-  } else {
-    expectProtocol("blub");
-    expectProtocolType(
-        {SSLContext::NextProtocolType::NPN, SSLContext::NextProtocolType::NPN});
-  }
-}
-
-TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterHit) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickPony);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
-  connect();
-
-  expectProtocol("ponies");
-  expectProtocolType();
-}
-
-TEST_P(NextProtocolNPNOnlyTest, NpnTestClientProtoFilterMiss) {
-  clientCtx->setAdvertisedNextProtocols({"blub"}, GetParam().first);
-  clientCtx->setClientProtocolFilterCallback(clientProtoFilterPickNone);
-  serverCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().second);
-
-  connect();
-
-  expectProtocol("blub");
-  expectProtocolType();
-}
-
-TEST_P(NextProtocolTest, RandomizedNpnTest) {
+TEST_F(NextProtocolTest, RandomizedAlpnTest) {
   // Probability that this test will fail is 2^-64, which could be considered
   // as negligible.
   const int kTries = 64;
 
-  clientCtx->setAdvertisedNextProtocols(
-      {"foo", "bar", "baz"}, GetParam().first);
-  serverCtx->setRandomizedAdvertisedNextProtocols(
-      {{1, {"foo"}}, {1, {"bar"}}}, GetParam().second);
+  clientCtx->setAdvertisedNextProtocols({"foo", "bar", "baz"});
+  serverCtx->setRandomizedAdvertisedNextProtocols({{1, {"foo"}}, {1, {"bar"}}});
 
   std::set<string> selectedProtocols;
   for (int i = 0; i < kTries; ++i) {
@@ -652,59 +544,10 @@ TEST_P(NextProtocolTest, RandomizedNpnTest) {
         0);
     string selected((const char*)client->nextProto, client->nextProtoLength);
     selectedProtocols.insert(selected);
-    expectProtocolType();
+    expectHandshakeSuccess();
   }
   EXPECT_EQ(selectedProtocols.size(), 2);
 }
-
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::NPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::ANY),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ANY,
-            SSLContext::NextProtocolType::ANY)));
-
-#if FOLLY_OPENSSL_HAS_ALPN
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolTLSExtTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ALPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::ANY),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ANY,
-            SSLContext::NextProtocolType::ALPN)));
-#endif
-
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolNPNOnlyTest,
-    ::testing::Values(NextProtocolTypePair(
-        SSLContext::NextProtocolType::NPN,
-        SSLContext::NextProtocolType::NPN)));
-
-#if FOLLY_OPENSSL_HAS_ALPN
-INSTANTIATE_TEST_CASE_P(
-    AsyncSSLSocketTest,
-    NextProtocolMismatchTest,
-    ::testing::Values(
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::NPN,
-            SSLContext::NextProtocolType::ALPN),
-        NextProtocolTypePair(
-            SSLContext::NextProtocolType::ALPN,
-            SSLContext::NextProtocolType::NPN)));
 #endif
 
 #ifndef OPENSSL_NO_TLSEXT
@@ -1653,6 +1496,7 @@ static void makeNonBlockingPipe(int pipefds[2]) {
 // Custom RSA private key encryption method
 static int kRSAExIndex = -1;
 static int kRSAEvbExIndex = -1;
+static int kRSASocketExIndex = -1;
 static constexpr StringPiece kEngineId = "AsyncSSLSocketTest";
 
 static int customRsaPrivEnc(
@@ -1668,6 +1512,9 @@ static int customRsaPrivEnc(
 
   RSA* actualRSA = reinterpret_cast<RSA*>(RSA_get_ex_data(rsa, kRSAExIndex));
   CHECK(actualRSA);
+
+  AsyncSSLSocket* socket = reinterpret_cast<AsyncSSLSocket*>(
+      RSA_get_ex_data(rsa, kRSASocketExIndex));
 
   ASYNC_JOB* job = ASYNC_get_current_job();
   if (job == nullptr) {
@@ -1692,8 +1539,13 @@ static int customRsaPrivEnc(
                                      to = to,
                                      padding = padding,
                                      actualRSA = actualRSA,
-                                     writer = asyncPipeWriter.get()]() {
+                                     writer = std::move(asyncPipeWriter),
+                                     socket = socket]() {
     LOG(INFO) << "Running job";
+    if (socket) {
+      LOG(INFO) << "Got a socket passed in, closing it...";
+      socket->closeNow();
+    }
     *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
         flen, from, to, actualRSA, padding);
     LOG(INFO) << "Finished job, writing to pipe";
@@ -1791,8 +1643,11 @@ setupCustomRSA(const char* certPath, const char* keyPath, EventBase* jobEvb) {
 
   kRSAExIndex = RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   kRSAEvbExIndex = RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  kRSASocketExIndex =
+      RSA_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
   CHECK_NE(kRSAExIndex, -1);
   CHECK_NE(kRSAEvbExIndex, -1);
+  CHECK_NE(kRSASocketExIndex, -1);
   RSA_set_ex_data(dummyrsa, kRSAExIndex, actualrsa);
   RSA_set_ex_data(dummyrsa, kRSAEvbExIndex, jobEvb);
 
@@ -1871,6 +1726,47 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
   AsyncSSLSocket::UniquePtr serverSock(
       new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), false, false);
+  SSLHandshakeServer server(std::move(serverSock), false, false);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(server.handshakeError_);
+  EXPECT_TRUE(client.handshakeError_);
+  ASYNC_cleanup_thread();
+}
+
+TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
+  ASYNC_init_thread(1, 1);
+  EventBase eventBase;
+  ScopedEventBaseThread jobEvbThread;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
+
+  auto rsaPointers =
+      setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
+  CHECK(rsaPointers->dummyrsa);
+  // up-refs dummyrsa
+  SSL_CTX_use_RSAPrivateKey(serverCtx->getSSLCtx(), rsaPointers->dummyrsa);
+  SSL_CTX_set_mode(serverCtx->getSSLCtx(), SSL_MODE_ASYNC);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  RSA_set_ex_data(rsaPointers->dummyrsa, kRSASocketExIndex, serverSock.get());
 
   SSLHandshakeClient client(std::move(clientSock), false, false);
   SSLHandshakeServer server(std::move(serverSock), false, false);
@@ -2052,6 +1948,146 @@ TEST(AsyncSSLSocketTest, ConnectUnencryptedTest) {
   socket->write(nullptr, buf.data(), buf.size());
 
   socket->close();
+}
+
+/**
+ * Test acceptrunner in various situations
+ */
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerBasic) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  serverCtx->sslAcceptRunner(std::make_unique<SSLAcceptEvbRunner>(&eventBase));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
+  EXPECT_LE(0, client.handshakeTime.count());
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_FALSE(server.handshakeError_);
+  EXPECT_LE(0, server.handshakeTime.count());
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptError) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptErrorRunner>(&eventBase));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  EXPECT_FALSE(client.handshakeSuccess_);
+  EXPECT_TRUE(client.handshakeError_);
+  EXPECT_FALSE(server.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeError_);
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptClose) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptCloseRunner>(&eventBase, serverSock.get()));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  EXPECT_FALSE(client.handshakeSuccess_);
+  EXPECT_TRUE(client.handshakeError_);
+  EXPECT_FALSE(server.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeError_);
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptDestroy) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  int fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptDestroyRunner>(&eventBase, &server));
+
+  eventBase.loop();
+
+  EXPECT_FALSE(client.handshakeSuccess_);
+  EXPECT_TRUE(client.handshakeError_);
+  EXPECT_FALSE(server.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeError_);
 }
 
 TEST(AsyncSSLSocketTest, ConnResetErrorString) {

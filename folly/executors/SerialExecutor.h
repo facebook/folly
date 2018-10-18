@@ -19,8 +19,8 @@
 #include <atomic>
 #include <memory>
 #include <mutex>
-#include <queue>
 
+#include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 
@@ -111,9 +111,12 @@ class SerialExecutor : public SequencedExecutor {
   void run();
 
   KeepAlive<Executor> parent_;
-  std::mutex mutex_;
-  std::size_t scheduled_{0};
-  std::queue<Func> queue_;
+  std::atomic<std::size_t> scheduled_{0};
+  /**
+   * Unbounded multi producer single consumer queue where consumers don't block
+   * on dequeue.
+   */
+  folly::UnboundedQueue<Func, false, true, false> queue_;
 
   std::atomic<ssize_t> keepAliveCounter_{1};
 };

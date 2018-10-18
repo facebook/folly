@@ -19,7 +19,6 @@
 #include <cstddef>
 
 #include <folly/portability/Config.h>
-
 #include <folly/CPortability.h>
 
 // Unaligned loads and stores
@@ -107,7 +106,13 @@ constexpr bool kIsArchPPC64 = FOLLY_PPC64 == 1;
 
 namespace folly {
 
-#if FOLLY_SANITIZE_ADDRESS
+/**
+ * folly::kIsSanitizeAddress reports if folly was compiled with ASAN
+ * enabled.  Note that for compilation units outside of folly that include
+ * folly/Portability.h, the value of kIsSanitizeAddress may be different
+ * from whether or not the current compilation unit is being compiled with ASAN.
+ */
+#if FOLLY_ASAN_ENABLED
 constexpr bool kIsSanitizeAddress = true;
 #else
 constexpr bool kIsSanitizeAddress = false;
@@ -438,7 +443,11 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR
 #else
+#if __ICC
+#define FOLLY_STORAGE_CONSTEXPR
+#else
 #define FOLLY_STORAGE_CONSTEXPR constexpr
+#endif
 #if FOLLY_USE_CPP14_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR constexpr
 #else
@@ -476,3 +485,20 @@ constexpr auto kCpplibVer = 0;
 #else
 #define FOLLY_HAS_EXCEPTIONS 1 // default assumption for unknown platforms
 #endif
+
+// feature test __cpp_lib_string_view is defined in <string>, which is
+// too heavy to include here.  MSVC __has_include support arrived later
+// than string_view, so we need an alternate case for it.
+#ifdef __has_include
+#if __has_include(<string_view>) && __cplusplus >= 201703L
+#define FOLLY_HAS_STRING_VIEW 1
+#else
+#define FOLLY_HAS_STRING_VIEW 0
+#endif
+#else // __has_include
+#if _MSC_VER >= 1910 && (_MSVC_LANG > 201402 || __cplusplus > 201402)
+#define FOLLY_HAS_STRING_VIEW 1
+#else
+#define FOLLY_HAS_STRING_VIEW 0
+#endif
+#endif // __has_include

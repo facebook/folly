@@ -28,6 +28,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/test/TestUtils.h>
 
 using namespace folly;
 using namespace folly::test;
@@ -78,6 +79,7 @@ void runBasicTest() {
 TEST(SharedMutex, basic) {
   runBasicTest<SharedMutexReadPriority>();
   runBasicTest<SharedMutexWritePriority>();
+  runBasicTest<SharedMutexSuppressTSAN>();
 }
 
 template <typename Lock>
@@ -145,6 +147,7 @@ void runBasicHoldersTest() {
 TEST(SharedMutex, basic_holders) {
   runBasicHoldersTest<SharedMutexReadPriority>();
   runBasicHoldersTest<SharedMutexWritePriority>();
+  runBasicHoldersTest<SharedMutexSuppressTSAN>();
 }
 
 template <typename Lock>
@@ -164,8 +167,12 @@ void runManyReadLocksTestWithTokens() {
 }
 
 TEST(SharedMutex, many_read_locks_with_tokens) {
+  // This test fails in an assertion in the TSAN library because there are too
+  // many mutexes
+  SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithTokens<SharedMutexWritePriority>();
+  runManyReadLocksTestWithTokens<SharedMutexSuppressTSAN>();
 }
 
 template <typename Lock>
@@ -183,8 +190,12 @@ void runManyReadLocksTestWithoutTokens() {
 }
 
 TEST(SharedMutex, many_read_locks_without_tokens) {
+  // This test fails in an assertion in the TSAN library because there are too
+  // many mutexes
+  SKIP_IF(folly::kIsSanitizeThread);
   runManyReadLocksTestWithoutTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexWritePriority>();
+  runManyReadLocksTestWithoutTokens<SharedMutexSuppressTSAN>();
 }
 
 template <typename Lock>
@@ -214,6 +225,7 @@ void runTimeoutInPastTest() {
 TEST(SharedMutex, timeout_in_past) {
   runTimeoutInPastTest<SharedMutexReadPriority>();
   runTimeoutInPastTest<SharedMutexWritePriority>();
+  runTimeoutInPastTest<SharedMutexSuppressTSAN>();
 }
 
 template <class Func>
@@ -300,6 +312,7 @@ void runFailingTryTimeoutTest() {
 TEST(SharedMutex, failing_try_timeout) {
   runFailingTryTimeoutTest<SharedMutexReadPriority>();
   runFailingTryTimeoutTest<SharedMutexWritePriority>();
+  runFailingTryTimeoutTest<SharedMutexSuppressTSAN>();
 }
 
 template <typename Lock>
@@ -336,6 +349,7 @@ void runBasicUpgradeTest() {
 TEST(SharedMutex, basic_upgrade_tests) {
   runBasicUpgradeTest<SharedMutexReadPriority>();
   runBasicUpgradeTest<SharedMutexWritePriority>();
+  runBasicUpgradeTest<SharedMutexSuppressTSAN>();
 }
 
 TEST(SharedMutex, read_has_prio) {
@@ -1071,17 +1085,26 @@ TEST(SharedMutex, deterministic_lost_wakeup_write_prio) {
   }
 }
 
+// In TSAN, tests run a lot slower. To avoid test timeouts, adjust the number
+// of repetitions we need for tests.
+static std::size_t adjustReps(std::size_t reps) {
+  if (folly::kIsSanitizeThread) {
+    return reps / 10;
+  }
+  return reps;
+}
+
 TEST(SharedMutex, mixed_mostly_write_read_prio) {
   for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexReadPriority, TokenLocker>(
-        50000, 300, 0.9, false);
+        adjustReps(50000), adjustReps(300), 0.9, false);
   }
 }
 
 TEST(SharedMutex, mixed_mostly_write_write_prio) {
   for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 5); ++pass) {
     runMixed<atomic, SharedMutexWritePriority, TokenLocker>(
-        50000, 300, 0.9, false);
+        adjustReps(50000), adjustReps(300), 0.9, false);
   }
 }
 
@@ -1093,6 +1116,8 @@ TEST(SharedMutex, deterministic_all_ops_read_prio) {
 }
 
 TEST(SharedMutex, deterministic_all_ops_write_prio) {
+  // This test fails in TSAN because of noisy lock ordering inversions.
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 5; ++pass) {
     DSched sched(DSched::uniform(pass));
     runAllAndValidate<DSharedMutexWritePriority, DeterministicAtomic>(1000, 8);
@@ -1106,6 +1131,8 @@ TEST(SharedMutex, all_ops_read_prio) {
 }
 
 TEST(SharedMutex, all_ops_write_prio) {
+  // This test fails in TSAN because of noisy lock ordering inversions.
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 5; ++pass) {
     runAllAndValidate<SharedMutexWritePriority, atomic>(100000, 32);
   }
@@ -1227,6 +1254,9 @@ static void runRemoteUnlock(
 }
 
 TEST(SharedMutex, deterministic_remote_write_prio) {
+  // This test fails in an assertion in the TSAN library because there are too
+  // many mutexes
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     DSched sched(DSched::uniform(pass));
     runRemoteUnlock<DSharedMutexWritePriority, DeterministicAtomic>(
@@ -1243,12 +1273,18 @@ TEST(SharedMutex, deterministic_remote_read_prio) {
 }
 
 TEST(SharedMutex, remote_write_prio) {
+  // This test fails in an assertion in the TSAN library because there are too
+  // many mutexes
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 10; ++pass) {
     runRemoteUnlock<SharedMutexWritePriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
 }
 
 TEST(SharedMutex, remote_read_prio) {
+  // This test fails in an assertion in the TSAN library because there are too
+  // many mutexes
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < (folly::kIsSanitizeAddress ? 1 : 100); ++pass) {
     runRemoteUnlock<SharedMutexReadPriority, atomic>(100000, 0.1, 0.1, 5, 5);
   }
@@ -1343,6 +1379,9 @@ static void pthrd_rwlock_ping_pong(size_t n, size_t scale, size_t burnCount) {
 }
 
 TEST(SharedMutex, deterministic_ping_pong_write_prio) {
+  // This test fails in TSAN because some mutexes are lock_shared() in one
+  // thread and unlock_shared() in a different thread.
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     DSched sched(DSched::uniform(pass));
     runPingPong<DSharedMutexWritePriority, DeterministicAtomic>(500, 0);
@@ -1357,6 +1396,9 @@ TEST(SharedMutex, deterministic_ping_pong_read_prio) {
 }
 
 TEST(SharedMutex, ping_pong_write_prio) {
+  // This test fails in TSAN because some mutexes are lock_shared() in one
+  // thread and unlock_shared() in a different thread.
+  SKIP_IF(folly::kIsSanitizeThread);
   for (int pass = 0; pass < 1; ++pass) {
     runPingPong<SharedMutexWritePriority, atomic>(50000, 0);
   }

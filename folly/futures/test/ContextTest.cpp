@@ -44,7 +44,7 @@ TEST(Context, basic) {
 
   // Start a future
   Promise<Unit> p;
-  auto future = p.getFuture().then([&] {
+  auto future = p.getFuture().thenValue([&](auto&&) {
     // Check that the context followed the future
     EXPECT_TRUE(RequestContext::get() != nullptr);
     auto a =

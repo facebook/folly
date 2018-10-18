@@ -19,8 +19,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Werror
       -Wall
       -Wno-deprecated
-      -Wdeprecated-declarations
-      -Wno-error=deprecated-declarations
+      -Wno-deprecated-declarations
       -Wno-sign-compare
       -Wno-unused
       -Wunused-label

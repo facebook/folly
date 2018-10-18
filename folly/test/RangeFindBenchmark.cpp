@@ -40,7 +40,6 @@ void initStr(int len) {
   vstr.clear();
   vstrp.clear();
 
-  cout << "string length " << len << ':' << endl;
   str.reserve(len + 1);
   str.append(len, 'a');
   str.append(1, 'b');

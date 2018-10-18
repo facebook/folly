@@ -77,6 +77,101 @@ inline void aligned_free(void* aligned_ptr) {
 
 #endif
 
+namespace detail {
+template <typename Alloc, size_t kAlign, bool kAllocate>
+void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
+  static_assert((kAlign & (kAlign - 1)) == 0, "Align must be a power of 2");
+
+  using AllocTraits = std::allocator_traits<Alloc>;
+  using T = typename AllocTraits::value_type;
+
+  constexpr bool kCanBypass = std::is_same<Alloc, std::allocator<T>>::value;
+
+  // BaseType is a type that gives us as much alignment as we need if
+  // we can get it naturally, otherwise it is aligned as max_align_t.
+  // kBaseAlign is both the alignment and size of this type.
+  constexpr size_t kBaseAlign = constexpr_min(kAlign, alignof(max_align_t));
+  using BaseType = std::aligned_storage_t<kBaseAlign, kBaseAlign>;
+  using BaseAllocTraits =
+      typename AllocTraits::template rebind_traits<BaseType>;
+  using BaseAlloc = typename BaseAllocTraits::allocator_type;
+  static_assert(
+      sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign, "");
+
+#if __cpp_sized_deallocation
+  if (kCanBypass && kAlign == kBaseAlign) {
+    // until std::allocator uses sized deallocation, it is worth the
+    // effort to bypass it when we are able
+    if (kAllocate) {
+      raw = ::operator new(n * sizeof(T));
+    } else {
+      ::operator delete(raw, n * sizeof(T));
+    }
+    return;
+  }
+#endif
+
+  if (kCanBypass && kAlign > kBaseAlign) {
+    // allocating as BaseType isn't sufficient to get alignment, but
+    // since we can bypass Alloc we can use something like posix_memalign
+    if (kAllocate) {
+      raw = aligned_malloc(n * sizeof(T), kAlign);
+    } else {
+      aligned_free(raw);
+    }
+    return;
+  }
+
+  // we're not allowed to bypass Alloc, or we don't want to
+  BaseAlloc a(alloc);
+
+  // allocation size is counted in sizeof(BaseType)
+  size_t quanta = (n * sizeof(T) + kBaseAlign - 1) / sizeof(BaseType);
+  if (kAlign <= kBaseAlign) {
+    // rebinding Alloc to BaseType is sufficient to get us the alignment
+    // we want, happy path
+    if (kAllocate) {
+      raw = static_cast<void*>(
+          std::addressof(*BaseAllocTraits::allocate(a, quanta)));
+    } else {
+      BaseAllocTraits::deallocate(
+          a,
+          std::pointer_traits<typename BaseAllocTraits::pointer>::pointer_to(
+              *static_cast<BaseType*>(raw)),
+          quanta);
+    }
+    return;
+  }
+
+  // Overaligned and custom allocator, our only option is to
+  // overallocate and store a delta to the actual allocation just
+  // before the returned ptr.
+  //
+  // If we give ourselves kAlign extra bytes, then since
+  // sizeof(BaseType) divides kAlign we can meet alignment while
+  // getting a prefix of one BaseType.  If we happen to get a
+  // kAlign-aligned block, then we can return a pointer to underlying
+  // + kAlign, otherwise there will be at least kBaseAlign bytes in
+  // the unused prefix of the first kAlign-aligned block.
+  if (kAllocate) {
+    char* base = reinterpret_cast<char*>(std::addressof(
+        *BaseAllocTraits::allocate(a, quanta + kAlign / sizeof(BaseType))));
+    size_t byteDelta =
+        kAlign - (reinterpret_cast<uintptr_t>(base) & (kAlign - 1));
+    raw = static_cast<void*>(base + byteDelta);
+    static_cast<size_t*>(raw)[-1] = byteDelta;
+  } else {
+    size_t byteDelta = static_cast<size_t*>(raw)[-1];
+    char* base = static_cast<char*>(raw) - byteDelta;
+    BaseAllocTraits::deallocate(
+        a,
+        std::pointer_traits<typename BaseAllocTraits::pointer>::pointer_to(
+            *reinterpret_cast<BaseType*>(base)),
+        quanta + kAlign / sizeof(BaseType));
+  }
+}
+} // namespace detail
+
 // Works like std::allocator_traits<Alloc>::allocate, but handles
 // over-aligned types.  Feel free to manually specify any power of two as
 // the Align template arg.  Must be matched with deallocateOverAligned.
@@ -88,49 +183,12 @@ template <
 typename std::allocator_traits<Alloc>::pointer allocateOverAligned(
     Alloc const& alloc,
     size_t n) {
-  static_assert((kAlign & (kAlign - 1)) == 0, "Align must be a power of 2");
-
-  using AllocTraits = std::allocator_traits<Alloc>;
-  using T = typename AllocTraits::value_type;
-
-  constexpr size_t kBaseAlign = constexpr_min(kAlign, alignof(max_align_t));
-  using BaseType = std::aligned_storage_t<kBaseAlign, kBaseAlign>;
-  using BaseAllocTraits =
-      typename AllocTraits::template rebind_traits<BaseType>;
-  using BaseAlloc = typename BaseAllocTraits::allocator_type;
-  static_assert(
-      sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign, "");
-
-  void* rv;
-  if (kAlign > kBaseAlign && std::is_same<Alloc, std::allocator<T>>::value) {
-    // allocating as BaseType isn't sufficient, but it is safe to bypass
-    // std::allocator
-    rv = aligned_malloc(n * sizeof(T), kAlign);
-  } else {
-    BaseAlloc a(alloc);
-    size_t quanta = (n * sizeof(T) + kBaseAlign - 1) / kBaseAlign;
-    if (kAlign <= kBaseAlign) {
-      // not actually over-aligned, happy path
-      rv = static_cast<void*>(
-          std::addressof(*BaseAllocTraits::allocate(a, quanta)));
-    } else {
-      static_assert(kAlign == kBaseAlign || kBaseAlign >= sizeof(size_t), "");
-
-      // if we give ourselves kAlign extra bytes, then since kBaseAlign
-      // divides kAlign we can meet alignment while getting a prefix of
-      // one kBaseAlign.  We wouldn't be over-aligned unless kBaseAlign
-      // was already as big as possible, so this is enough space to store
-      // a size_t.
-      char* base = reinterpret_cast<char*>(std::addressof(
-          *BaseAllocTraits::allocate(a, quanta + kAlign / kBaseAlign)));
-      size_t delta =
-          kAlign - (reinterpret_cast<uintptr_t>(base) & (kAlign - 1));
-      rv = static_cast<void*>(base + delta);
-      static_cast<size_t*>(rv)[-1] = delta;
-    }
-  }
-  return std::pointer_traits<typename AllocTraits::pointer>::pointer_to(
-      *static_cast<T*>(rv));
+  void* raw = nullptr;
+  detail::rawOverAlignedImpl<Alloc, kAlign, true>(alloc, n, raw);
+  return std::pointer_traits<typename std::allocator_traits<Alloc>::pointer>::
+      pointer_to(
+          *static_cast<typename std::allocator_traits<Alloc>::value_type*>(
+              raw));
 }
 
 template <
@@ -140,36 +198,8 @@ void deallocateOverAligned(
     Alloc const& alloc,
     typename std::allocator_traits<Alloc>::pointer ptr,
     size_t n) {
-  static_assert((kAlign & (kAlign - 1)) == 0, "Align must be a power of 2");
-
-  using AllocTraits = std::allocator_traits<Alloc>;
-  using T = typename AllocTraits::value_type;
-
-  constexpr size_t kBaseAlign = constexpr_min(kAlign, alignof(max_align_t));
-  using BaseType = std::aligned_storage_t<kBaseAlign, kBaseAlign>;
-  using BaseAllocTraits =
-      typename AllocTraits::template rebind_traits<BaseType>;
-  using BaseAlloc = typename BaseAllocTraits::allocator_type;
-  static_assert(
-      sizeof(BaseType) == kBaseAlign && alignof(BaseType) == kBaseAlign, "");
-
   void* raw = static_cast<void*>(std::addressof(*ptr));
-  if (kAlign > kBaseAlign && std::is_same<Alloc, std::allocator<T>>::value) {
-    aligned_free(raw);
-  } else {
-    BaseAlloc a(alloc);
-    size_t quanta = (n * sizeof(T) + kBaseAlign - 1) / kBaseAlign;
-    if (kAlign > kBaseAlign) {
-      size_t delta = static_cast<size_t*>(raw)[-1];
-      raw = static_cast<void*>(static_cast<char*>(raw) - delta);
-      quanta += kAlign / kBaseAlign;
-    }
-    BaseAllocTraits::deallocate(
-        a,
-        std::pointer_traits<typename BaseAllocTraits::pointer>::pointer_to(
-            *static_cast<BaseType*>(raw)),
-        quanta);
-  }
+  detail::rawOverAlignedImpl<Alloc, kAlign, false>(alloc, n, raw);
 }
 
 template <
