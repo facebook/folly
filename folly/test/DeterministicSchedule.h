@@ -224,18 +224,16 @@ class DeterministicSchedule : boost::noncopyable {
  */
 template <typename T, typename Schedule = DeterministicSchedule>
 struct DeterministicAtomicImpl {
-  std::atomic<T> data;
-
   DeterministicAtomicImpl() = default;
   ~DeterministicAtomicImpl() = default;
   DeterministicAtomicImpl(DeterministicAtomicImpl<T> const&) = delete;
   DeterministicAtomicImpl<T>& operator=(DeterministicAtomicImpl<T> const&) =
       delete;
 
-  constexpr /* implicit */ DeterministicAtomicImpl(T v) noexcept : data(v) {}
+  constexpr /* implicit */ DeterministicAtomicImpl(T v) noexcept : data_(v) {}
 
   bool is_lock_free() const noexcept {
-    return data.is_lock_free();
+    return data_.is_lock_free();
   }
 
   bool compare_exchange_strong(
@@ -252,7 +250,7 @@ struct DeterministicAtomicImpl {
       std::memory_order failure) noexcept {
     Schedule::beforeSharedAccess();
     auto orig = v0;
-    bool rv = data.compare_exchange_strong(v0, v1, success, failure);
+    bool rv = data_.compare_exchange_strong(v0, v1, success, failure);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".compare_exchange_strong(" << std::hex << orig << ", "
              << std::hex << v1 << ") -> " << rv << "," << std::hex << v0);
@@ -274,7 +272,7 @@ struct DeterministicAtomicImpl {
       std::memory_order failure) noexcept {
     Schedule::beforeSharedAccess();
     auto orig = v0;
-    bool rv = data.compare_exchange_weak(v0, v1, success, failure);
+    bool rv = data_.compare_exchange_weak(v0, v1, success, failure);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".compare_exchange_weak(" << std::hex << orig << ", "
              << std::hex << v1 << ") -> " << rv << "," << std::hex << v0);
@@ -284,7 +282,7 @@ struct DeterministicAtomicImpl {
 
   T exchange(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.exchange(v, mo);
+    T rv = data_.exchange(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".exchange(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -293,7 +291,7 @@ struct DeterministicAtomicImpl {
 
   /* implicit */ operator T() const noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.operator T();
+    T rv = data_.operator T();
     FOLLY_TEST_DSCHED_VLOG(this << "() -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -301,7 +299,7 @@ struct DeterministicAtomicImpl {
 
   T load(std::memory_order mo = std::memory_order_seq_cst) const noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.load(mo);
+    T rv = data_.load(mo);
     FOLLY_TEST_DSCHED_VLOG(this << ".load() -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -309,7 +307,7 @@ struct DeterministicAtomicImpl {
 
   T operator=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data = v);
+    T rv = (data_ = v);
     FOLLY_TEST_DSCHED_VLOG(this << " = " << std::hex << v);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -317,14 +315,14 @@ struct DeterministicAtomicImpl {
 
   void store(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    data.store(v, mo);
+    data_.store(v, mo);
     FOLLY_TEST_DSCHED_VLOG(this << ".store(" << std::hex << v << ")");
     Schedule::afterSharedAccess(true);
   }
 
   T operator++() noexcept {
     Schedule::beforeSharedAccess();
-    T rv = ++data;
+    T rv = ++data_;
     FOLLY_TEST_DSCHED_VLOG(this << " pre++ -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -332,7 +330,7 @@ struct DeterministicAtomicImpl {
 
   T operator++(int /* postDummy */) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data++;
+    T rv = data_++;
     FOLLY_TEST_DSCHED_VLOG(this << " post++ -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -340,7 +338,7 @@ struct DeterministicAtomicImpl {
 
   T operator--() noexcept {
     Schedule::beforeSharedAccess();
-    T rv = --data;
+    T rv = --data_;
     FOLLY_TEST_DSCHED_VLOG(this << " pre-- -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -348,7 +346,7 @@ struct DeterministicAtomicImpl {
 
   T operator--(int /* postDummy */) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data--;
+    T rv = data_--;
     FOLLY_TEST_DSCHED_VLOG(this << " post-- -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
     return rv;
@@ -356,7 +354,7 @@ struct DeterministicAtomicImpl {
 
   T operator+=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data += v);
+    T rv = (data_ += v);
     FOLLY_TEST_DSCHED_VLOG(
         this << " += " << std::hex << v << " -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -365,7 +363,7 @@ struct DeterministicAtomicImpl {
 
   T fetch_add(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.fetch_add(v, mo);
+    T rv = data_.fetch_add(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_add(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -374,7 +372,7 @@ struct DeterministicAtomicImpl {
 
   T operator-=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data -= v);
+    T rv = (data_ -= v);
     FOLLY_TEST_DSCHED_VLOG(
         this << " -= " << std::hex << v << " -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -383,7 +381,7 @@ struct DeterministicAtomicImpl {
 
   T fetch_sub(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.fetch_sub(v, mo);
+    T rv = data_.fetch_sub(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_sub(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -392,7 +390,7 @@ struct DeterministicAtomicImpl {
 
   T operator&=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data &= v);
+    T rv = (data_ &= v);
     FOLLY_TEST_DSCHED_VLOG(
         this << " &= " << std::hex << v << " -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -401,7 +399,7 @@ struct DeterministicAtomicImpl {
 
   T fetch_and(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.fetch_and(v, mo);
+    T rv = data_.fetch_and(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_and(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -410,7 +408,7 @@ struct DeterministicAtomicImpl {
 
   T operator|=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data |= v);
+    T rv = (data_ |= v);
     FOLLY_TEST_DSCHED_VLOG(
         this << " |= " << std::hex << v << " -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -419,7 +417,7 @@ struct DeterministicAtomicImpl {
 
   T fetch_or(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.fetch_or(v, mo);
+    T rv = data_.fetch_or(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_or(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -428,7 +426,7 @@ struct DeterministicAtomicImpl {
 
   T operator^=(T v) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = (data ^= v);
+    T rv = (data_ ^= v);
     FOLLY_TEST_DSCHED_VLOG(
         this << " ^= " << std::hex << v << " -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -437,7 +435,7 @@ struct DeterministicAtomicImpl {
 
   T fetch_xor(T v, std::memory_order mo = std::memory_order_seq_cst) noexcept {
     Schedule::beforeSharedAccess();
-    T rv = data.fetch_xor(v, mo);
+    T rv = data_.fetch_xor(v, mo);
     FOLLY_TEST_DSCHED_VLOG(
         this << ".fetch_xor(" << std::hex << v << ") -> " << std::hex << rv);
     Schedule::afterSharedAccess(true);
@@ -446,8 +444,11 @@ struct DeterministicAtomicImpl {
 
   /** Read the value of the atomic variable without context switching */
   T load_direct() const noexcept {
-    return data.load(std::memory_order_relaxed);
+    return data_.load(std::memory_order_relaxed);
   }
+
+ private:
+  std::atomic<T> data_;
 };
 
 template <typename T>
