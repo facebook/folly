@@ -50,8 +50,11 @@
 #define FOLLY_SDT_ASM_STRING(x)       FOLLY_SDT_ASM_1(.asciz FOLLY_SDT_S(x))
 
 // Helper to determine the size of an argument.
-#define FOLLY_SDT_ISARRAY(x)  (__builtin_classify_type(x) == 14)
-#define FOLLY_SDT_ARGSIZE(x)  (FOLLY_SDT_ISARRAY(x) ? sizeof(void*) : sizeof(x))
+#define FOLLY_SDT_IS_ARRAY_POINTER(x)  ((__builtin_classify_type(x) == 14) ||  \
+                                        (__builtin_classify_type(x) == 5))
+#define FOLLY_SDT_ARGSIZE(x)  (FOLLY_SDT_IS_ARRAY_POINTER(x)                   \
+                               ? sizeof(void*)                                 \
+                               : sizeof(x))
 
 // Format of each probe arguments as operand.
 // Size of the arugment tagged with FOLLY_SDT_Sn, with "n" constraint.
