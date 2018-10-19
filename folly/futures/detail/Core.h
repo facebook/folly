@@ -117,13 +117,13 @@ static_assert(sizeof(SpinLock) == 1, "missized");
 ///   |                     /                       \                  |
 ///   |                  (setResult())             (setCallback())     |
 ///   |                   /                           \                |
-///   |   ---> Start --->                               ------> Done   |
-///   |    \              \                           /                |
-///   |     \            (setCallback())           (setResult())       |
-///   |      \              \                       /                  |
-///   |       \               ---> OnlyCallback ---                    |
-///   |        \                         /                             |
-///   |          <-- (stealCallback()) -                               |
+///   |   Start --------->                              ------> Done   |
+///   |      \            \                           /                |
+///   |       \          (setCallback())           (setResult())       |
+///   |        \            \                       /                  |
+///   |         \             ---> OnlyCallback ---                    |
+///   |          \                        /                            |
+///   |            <- (stealCallback()) -                              |
 ///   +----------------------------------------------------------------+
 ///
 /// States and the corresponding producer-to-consumer data status & ownership:
