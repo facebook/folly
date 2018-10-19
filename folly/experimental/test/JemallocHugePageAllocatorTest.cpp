@@ -24,11 +24,19 @@
 
 using jha = folly::JemallocHugePageAllocator;
 
+static constexpr int kb(int kilos) {
+  return kilos * 1024;
+}
+
+static constexpr int mb(int megs) {
+  return kb(megs * 1024);
+}
+
 TEST(JemallocHugePageAllocatorTest, Basic) {
   EXPECT_FALSE(jha::initialized());
 
   // Allocation should work even if uninitialized
-  auto ptr = jha::allocate(1024);
+  auto ptr = jha::allocate(kb(1));
   EXPECT_NE(nullptr, ptr);
   jha::deallocate(ptr);
 
@@ -37,7 +45,7 @@ TEST(JemallocHugePageAllocatorTest, Basic) {
     EXPECT_NE(0, jha::freeSpace());
   }
 
-  ptr = jha::allocate(1024);
+  ptr = jha::allocate(kb(1));
   EXPECT_NE(nullptr, ptr);
 
   if (initialized) {
@@ -58,7 +66,7 @@ TEST(JemallocHugePageAllocatorTest, Basic) {
 
 TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   // Allocate before init - will not use huge pages
-  void* ptr0 = jha::allocate(3 * 1024 * 512);
+  void* ptr0 = jha::allocate(kb(1));
 
   // One 2MB huge page
   bool initialized = jha::init(1);
@@ -67,7 +75,7 @@ TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   }
 
   // This fits
-  void* ptr1 = jha::allocate(3 * 1024 * 512);
+  void* ptr1 = jha::allocate(mb(1) + kb(512));
   EXPECT_NE(nullptr, ptr1);
 
   if (initialized) {
@@ -75,7 +83,7 @@ TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   }
 
   // This is too large to fit
-  void* ptr2 = jha::allocate(4 * 1024 * 1024);
+  void* ptr2 = jha::allocate(mb(1));
   EXPECT_NE(nullptr, ptr2);
 
   EXPECT_FALSE(jha::addressInArena(ptr2));
@@ -83,31 +91,146 @@ TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   // Free and reuse huge page area
   jha::deallocate(ptr2);
   jha::deallocate(ptr0);
-  ptr2 = jha::allocate(1024 * 1024);
+  ptr2 = jha::allocate(mb(1));
 
   // No memory in the huge page arena was freed - ptr0 was allocated
   // before init and ptr2 didn't fit
   EXPECT_FALSE(jha::addressInArena(ptr2));
 
   jha::deallocate(ptr1);
-  ptr1 = jha::allocate(3 * 1024 * 512);
-  EXPECT_NE(nullptr, ptr1);
+  void* ptr3 = jha::allocate(mb(1) + kb(512));
+  EXPECT_NE(nullptr, ptr3);
 
   if (initialized) {
-    EXPECT_TRUE(jha::addressInArena(ptr1));
+    EXPECT_EQ(ptr1, ptr3);
+    EXPECT_TRUE(jha::addressInArena(ptr3));
   }
 
   // Just using free works equally well
-  free(ptr1);
-  ptr1 = jha::allocate(3 * 1024 * 512);
-  EXPECT_NE(nullptr, ptr1);
+  free(ptr3);
+  ptr3 = jha::allocate(mb(1) + kb(512));
+  EXPECT_NE(nullptr, ptr3);
 
   if (initialized) {
-    EXPECT_TRUE(jha::addressInArena(ptr1));
+    EXPECT_TRUE(jha::addressInArena(ptr3));
   }
 
+  jha::deallocate(ptr2);
+  jha::deallocate(ptr3);
+}
+
+TEST(JemallocHugePageAllocatorTest, MemoryUsageTest) {
+  bool initialized = jha::init(80);
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(160));
+  }
+
+  struct c32 {
+    char val[32];
+  };
+  using Vec32 = std::vector<c32, folly::CxxHugePageAllocator<c32>>;
+  Vec32 vec32;
+  for (int i = 0; i < 10; i++) {
+    vec32.push_back({});
+  }
+  void* ptr1 = jha::allocate(32);
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(158));
+  }
+  struct c320 {
+    char val[320];
+  };
+  using Vec320 = std::vector<c320, folly::CxxHugePageAllocator<c320>>;
+  Vec320 vec320;
+  for (int i = 0; i < 10; i++) {
+    vec320.push_back({});
+  }
+  void* ptr2 = jha::allocate(320);
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(158));
+  }
+
+  // Helper to ensure all allocations are freed at the end
+  auto deleter = [](void* data) { jha::deallocate(data); };
+  std::vector<std::unique_ptr<void, decltype(deleter)>> ptr_vec;
+  auto alloc = [&ptr_vec, &deleter](size_t size) {
+    ptr_vec.emplace_back(jha::allocate(size), deleter);
+  };
+
+  for (int i = 0; i < 10; i++) {
+    alloc(kb(1));
+  }
+  void* ptr3 = jha::allocate(kb(1));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(158));
+  }
+  for (int i = 0; i < 10; i++) {
+    alloc(kb(4));
+  }
+  void* ptr4 = jha::allocate(kb(4));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(158));
+  }
+  for (int i = 0; i < 10; i++) {
+    alloc(kb(10));
+  }
+  void* ptr5 = jha::allocate(kb(10));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(158));
+  }
+  alloc(kb(512));
+  alloc(mb(1));
+  void* ptr6 = jha::allocate(mb(1));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(156));
+  }
+  alloc(mb(2));
+  alloc(mb(4));
+  void* ptr7 = jha::allocate(mb(4));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(146));
+  }
+  alloc(kb(512));
+  alloc(kb(512));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), 145);
+  }
+  void* ptr8 = jha::allocate(mb(64));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(80));
+  }
+  alloc(mb(64));
+  if (initialized) {
+    EXPECT_GE(jha::freeSpace(), mb(16));
+  }
+  alloc(mb(256));
+  alloc(mb(256));
+  alloc(mb(256));
+
+  // Now free a bunch of objects and then reallocate
+  // the same size objects again.
+  // This should not result in usage of free space.
+  size_t free = jha::freeSpace();
   jha::deallocate(ptr1);
   jha::deallocate(ptr2);
+  jha::deallocate(ptr3);
+  jha::deallocate(ptr4);
+  jha::deallocate(ptr5);
+  jha::deallocate(ptr6);
+  jha::deallocate(ptr7);
+  jha::deallocate(ptr8);
+  alloc(32);
+  alloc(320);
+  alloc(kb(1));
+  alloc(kb(4));
+  alloc(kb(10));
+  alloc(mb(1));
+  alloc(mb(4));
+  alloc(mb(64));
+
+  if (initialized) {
+    EXPECT_EQ(free, jha::freeSpace());
+  }
 }
 
 TEST(JemallocHugePageAllocatorTest, STLAllocator) {

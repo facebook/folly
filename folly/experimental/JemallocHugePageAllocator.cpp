@@ -94,7 +94,7 @@ class HugePageArena {
   extent_hooks_t extentHooks_;
 };
 
-constexpr int kHugePageSize = 2 * 1024 * 1024;
+constexpr size_t kHugePageSize = 2 * 1024 * 1024;
 
 // Singleton arena instance
 static HugePageArena arena;
@@ -146,12 +146,13 @@ void* HugePageArena::allocHook(
     bool* zero,
     bool* commit,
     unsigned arena_ind) {
-  VLOG(1) << "Extent request of size " << size;
   DCHECK((size & (size - 1)) == 0);
   void* res = nullptr;
   if (new_addr == nullptr) {
     res = arena.reserve(size, alignment);
   }
+  LOG(INFO) << "Extent request of size " << size << " alignment " << alignment
+            << " = " << res << " (" << arena.freeSpace() << " bytes free)";
   if (res == nullptr) {
     LOG_IF(WARNING, new_addr != nullptr) << "Explicit address not supported";
     res = arena.originalAlloc_(
@@ -160,6 +161,7 @@ void* HugePageArena::allocHook(
     if (*zero) {
       bzero(res, size);
     }
+    *commit = true;
   }
   return res;
 }
@@ -168,9 +170,6 @@ int HugePageArena::init(int nr_pages) {
   DCHECK(start_ == 0);
   DCHECK(usingJEMalloc());
 
-  // Allocate one extra page for jemalloc's internal use
-  nr_pages++;
-
   unsigned arena_index;
   size_t len = sizeof(arena_index);
   if (auto ret = mallctl("arenas.create", &arena_index, &len, nullptr, 0)) {
@@ -178,12 +177,40 @@ int HugePageArena::init(int nr_pages) {
     return 0;
   }
 
-  std::ostringstream key;
-  key << "arena." << arena_index << ".extent_hooks";
+  // Set grow retained limit to stop jemalloc from
+  // forever increasing the requested size after failed allocations.
+  // Normally jemalloc asks for maps of increasing size in order to avoid
+  // hitting the limit of allowed mmaps per process.
+  // Since this arena is backed by a single mmap and is using huge pages,
+  // this is not a concern here.
+  // TODO: Support growth of the huge page arena.
+  size_t mib[3];
+  size_t miblen = sizeof(mib) / sizeof(size_t);
+  std::ostringstream rtl_key;
+  rtl_key << "arena." << arena_index << ".retain_grow_limit";
+  if (auto ret = mallctlnametomib(rtl_key.str().c_str(), mib, &miblen)) {
+    print_error(ret, "Unable to read growth limit");
+    return 0;
+  }
+  size_t grow_retained_limit = kHugePageSize;
+  mib[1] = arena_index;
+  if (auto ret = mallctlbymib(
+          mib,
+          miblen,
+          nullptr,
+          nullptr,
+          &grow_retained_limit,
+          sizeof(grow_retained_limit))) {
+    print_error(ret, "Unable to set growth limit");
+    return 0;
+  }
+
+  std::ostringstream hooks_key;
+  hooks_key << "arena." << arena_index << ".extent_hooks";
   extent_hooks_t* hooks;
   len = sizeof(hooks);
   // Read the existing hooks
-  if (auto ret = mallctl(key.str().c_str(), &hooks, &len, nullptr, 0)) {
+  if (auto ret = mallctl(hooks_key.str().c_str(), &hooks, &len, nullptr, 0)) {
     print_error(ret, "Unable to get the hooks");
     return 0;
   }
@@ -194,7 +221,11 @@ int HugePageArena::init(int nr_pages) {
   extentHooks_.alloc = &allocHook;
   extent_hooks_t* new_hooks = &extentHooks_;
   if (auto ret = mallctl(
-          key.str().c_str(), nullptr, nullptr, &new_hooks, sizeof(new_hooks))) {
+          hooks_key.str().c_str(),
+          nullptr,
+          nullptr,
+          &new_hooks,
+          sizeof(new_hooks))) {
     print_error(ret, "Unable to set the hooks");
     return 0;
   }
