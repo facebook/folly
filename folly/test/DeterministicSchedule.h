@@ -222,7 +222,10 @@ class DeterministicSchedule : boost::noncopyable {
  * DeterministicAtomic<T> is a drop-in replacement std::atomic<T> that
  * cooperates with DeterministicSchedule.
  */
-template <typename T, typename Schedule = DeterministicSchedule>
+template <
+    typename T,
+    typename Schedule = DeterministicSchedule,
+    template <typename> class Atom = std::atomic>
 struct DeterministicAtomicImpl {
   DeterministicAtomicImpl() = default;
   ~DeterministicAtomicImpl() = default;
@@ -448,7 +451,7 @@ struct DeterministicAtomicImpl {
   }
 
  private:
-  std::atomic<T> data_;
+  Atom<T> data_;
 };
 
 template <typename T>
