@@ -543,9 +543,10 @@ class Range {
   template <
       typename Tgt,
       std::enable_if_t<
-          std::is_same<Tgt, StringViewType>::value &&
-              std::is_constructible<StringViewType, Iter const&, size_type>::
-                  value,
+          StrictConjunction<
+              std::is_same<Tgt, StringViewType>,
+              std::is_constructible<StringViewType, Iter const&, size_type>>::
+              value,
           int> = 0>
   constexpr operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
