@@ -1805,14 +1805,24 @@ auto window(size_t times, F func, size_t n)
 template <class Collection, class F, class ItT, class Result>
 std::vector<Future<Result>>
 window(Executor* executor, Collection input, F func, size_t n) {
+  return window(
+      getKeepAliveToken(executor), std::move(input), std::move(func), n);
+}
+
+template <class Collection, class F, class ItT, class Result>
+std::vector<Future<Result>>
+window(Executor::KeepAlive<> executor, Collection input, F func, size_t n) {
   struct WindowContext {
-    WindowContext(Executor* executor_, Collection&& input_, F&& func_)
-        : executor(executor_),
+    WindowContext(
+        Executor::KeepAlive<> executor_,
+        Collection&& input_,
+        F&& func_)
+        : executor(std::move(executor_)),
           input(std::move(input_)),
           promises(input.size()),
           func(std::move(func_)) {}
     std::atomic<size_t> i{0};
-    Executor* executor;
+    Executor::KeepAlive<> executor;
     Collection input;
     std::vector<Promise<Result>> promises;
     F func;
@@ -1823,12 +1833,12 @@ window(Executor* executor, Collection input, F func, size_t n) {
         auto fut = makeSemiFutureWith(
             [&] { return ctx->func(std::move(ctx->input[i])); });
         fut.setCallback_([ctx = std::move(ctx), i](Try<Result>&& t) mutable {
-          const auto executor_ = ctx->executor;
-          executor_->add([ctx = std::move(ctx), i, t = std::move(t)]() mutable {
-            ctx->promises[i].setTry(std::move(t));
-            // Chain another future onto this one
-            spawn(std::move(ctx));
-          });
+          ctx->executor->add(
+              [ctx = std::move(ctx), i, t = std::move(t)]() mutable {
+                ctx->promises[i].setTry(std::move(t));
+                // Chain another future onto this one
+                spawn(std::move(ctx));
+              });
         });
       }
     }
@@ -1837,7 +1847,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
   auto max = std::min(n, input.size());
 
   auto ctx = std::make_shared<WindowContext>(
-      executor, std::move(input), std::move(func));
+      executor.copy(), std::move(input), std::move(func));
 
   // Start the first n Futures
   for (size_t i = 0; i < max; ++i) {
@@ -1847,7 +1857,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
   std::vector<Future<Result>> futures;
   futures.reserve(ctx->promises.size());
   for (auto& promise : ctx->promises) {
-    futures.emplace_back(promise.getSemiFuture().via(executor));
+    futures.emplace_back(promise.getSemiFuture().via(executor.copy()));
   }
 
   return futures;
