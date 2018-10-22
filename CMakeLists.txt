@@ -104,8 +104,6 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
     "^${FOLLY_DIR}/build/"
     "^${FOLLY_DIR}/experimental/exception_tracer/"
-    "^${FOLLY_DIR}/experimental/hazptr/bench/"
-    "^${FOLLY_DIR}/experimental/hazptr/example/"
     "^${FOLLY_DIR}/experimental/pushmi/"
     "^${FOLLY_DIR}/futures/exercises/"
     "^${FOLLY_DIR}/logging/example/"
