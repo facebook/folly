@@ -52,7 +52,7 @@
  *   auto gen = from(names);
  *
  * Generators are composed by building new generators out of old ones through
- * the use of operators. These are reminicent of shell pipelines, and afford
+ * the use of operators. These are reminiscent of shell pipelines, and afford
  * similar composition. Lambda functions are used liberally to describe how to
  * handle individual values:
  *
