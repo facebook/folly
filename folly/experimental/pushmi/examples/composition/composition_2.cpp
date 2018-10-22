@@ -24,7 +24,7 @@
 #include <folly/experimental/pushmi/o/via.h>
 #include <folly/experimental/pushmi/strand.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 struct f_t {};
 f_t f() {

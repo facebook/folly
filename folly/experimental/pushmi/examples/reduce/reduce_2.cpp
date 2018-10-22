@@ -23,7 +23,7 @@
 #include <folly/experimental/pushmi/examples/pool.h>
 #include <folly/experimental/pushmi/examples/reduce.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 template <class Executor, class Allocator = std::allocator<char>>
 auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {

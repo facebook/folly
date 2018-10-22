@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <algorithm>
@@ -21,6 +21,7 @@
 #include <deque>
 #include <thread>
 
+namespace folly {
 namespace pushmi {
 
 struct recurse_t {};
@@ -152,8 +153,8 @@ class trampoline {
         } else {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
-          ::pushmi::set_value(awhat, that);
-          ::pushmi::set_done(awhat);
+          set_value(awhat, that);
+          set_done(awhat);
         }
       } catch (...) {
         --depth(*owner());
@@ -175,9 +176,9 @@ class trampoline {
     } catch (...) {
       // ignore exceptions while delivering the exception
       try {
-        ::pushmi::set_error(awhat, std::current_exception());
+        set_error(awhat, std::current_exception());
         for (auto& what : pending(pending_store)) {
-          ::pushmi::set_error(what, std::current_exception());
+          set_error(what, std::current_exception());
         }
       } catch (...) {
       }
@@ -220,8 +221,8 @@ class trampoline {
       bool go = true;
       while (go) {
         repeat(pending_store) = false;
-        ::pushmi::set_value(awhat, that);
-        ::pushmi::set_done(awhat);
+        set_value(awhat, that);
+        set_done(awhat);
         go = repeat(pending_store);
       }
     } else {
@@ -235,8 +236,8 @@ class trampoline {
     while (!pending(pending_store).empty()) {
       auto what = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
-      ::pushmi::set_value(what, any_executor_ref<error_type>{that});
-      ::pushmi::set_done(what);
+      set_value(what, any_executor_ref<error_type>{that});
+      set_done(what);
     }
   }
 };
@@ -277,7 +278,7 @@ namespace detail {
 PUSHMI_TEMPLATE(class E)
 (requires SenderTo<delegator<E>, recurse_t>)
 decltype(auto) repeat(delegator<E>& exec) {
-  ::pushmi::submit(exec, recurse);
+  submit(exec, recurse);
 }
 template <class AnyExec>
 [[noreturn]] void repeat(AnyExec&) {
@@ -291,3 +292,4 @@ inline auto repeat() {
 }
 
 } // namespace pushmi
+} // namespace folly

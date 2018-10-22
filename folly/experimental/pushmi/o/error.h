@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 struct single_error_sender_base : single_sender<ignoreSF, inlineEXF> {
@@ -35,7 +36,7 @@ struct single_error_impl {
   void operator()(
       single_error_sender_base&,
       Out out) {
-    ::pushmi::set_error(out, std::move(e_));
+    set_error(out, std::move(e_));
   }
 };
 } // namespace detail
@@ -52,3 +53,4 @@ auto error(E e) {
 
 } // namespace operators
 } // namespace pushmi
+} // namespace folly

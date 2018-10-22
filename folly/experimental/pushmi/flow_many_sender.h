@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/flow_receiver.h>
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class PE, class PV, class E, class... VN>
@@ -51,10 +52,12 @@ class any_flow_many_sender {
         delete static_cast<Wrapped const*>(src.pobj_);
       }
       static any_executor<E> executor(data& src) {
-        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+        return any_executor<E>{
+            ::folly::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, any_flow_receiver<PE, PV, E, VN...> out) {
-        ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
+        ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
     static const vtable vtbl{s::op, s::executor, s::submit};
@@ -72,12 +75,12 @@ class any_flow_many_sender {
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static any_executor<E> executor(data& src) {
-        return any_executor<E>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+        return any_executor<E>{::folly::pushmi::executor(
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, any_flow_receiver<PE, PV, E, VN...> out) {
-        ::pushmi::submit(
-            *static_cast<Wrapped*>((void*)src.buffer_),
-            std::move(out));
+        ::folly::pushmi::submit(
+            *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
       }
     };
     static const vtable vtbl{s::op, s::executor, s::submit};
@@ -246,3 +249,4 @@ struct construct_deduced<flow_many_sender>
 // }
 
 } // namespace pushmi
+} // namespace folly

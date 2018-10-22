@@ -32,7 +32,7 @@ using namespace std::literals;
 #include <folly/experimental/pushmi/inline.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 #if 0
 struct countdownsingle {
@@ -82,8 +82,8 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
 
     WHEN( "virtual derecursion is triggered" ) {
       int counter = 100'000;
-      std::function<void(pushmi::any_executor_ref<> exec)> recurse;
-      recurse = [&](pushmi::any_executor_ref<> tr) {
+      std::function<void(::folly::pushmi::any_executor_ref<> exec)> recurse;
+      recurse = [&](::folly::pushmi::any_executor_ref<> tr) {
         if (--counter <= 0)
           return;
         tr | op::submit(recurse);
@@ -106,13 +106,13 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
 
     WHEN( "used with on" ) {
       std::vector<std::string> values;
-      auto sender = pushmi::make_single_sender([](auto out) {
-        ::pushmi::set_value(out, 2.0);
-        ::pushmi::set_done(out);
+      auto sender = ::folly::pushmi::make_single_sender([](auto out) {
+        ::folly::pushmi::set_value(out, 2.0);
+        ::folly::pushmi::set_done(out);
         // ignored
-        ::pushmi::set_value(out, 1);
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
+        ::folly::pushmi::set_value(out, 1);
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       auto inlineon = sender | op::on([&](){return mi::inline_executor();});
       inlineon |
@@ -127,13 +127,13 @@ SCENARIO( "trampoline executor", "[trampoline][sender]" ) {
 
     WHEN( "used with via" ) {
       std::vector<std::string> values;
-      auto sender = pushmi::make_single_sender([](auto out) {
-        ::pushmi::set_value(out, 2.0);
-        ::pushmi::set_done(out);
+      auto sender = ::folly::pushmi::make_single_sender([](auto out) {
+        ::folly::pushmi::set_value(out, 2.0);
+        ::folly::pushmi::set_done(out);
         // ignored
-        ::pushmi::set_value(out, 1);
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
+        ::folly::pushmi::set_value(out, 1);
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       auto inlinevia = sender | op::via([&](){return mi::inline_executor();});
       inlinevia |

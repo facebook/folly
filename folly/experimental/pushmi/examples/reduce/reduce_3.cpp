@@ -21,7 +21,7 @@
 
 #include <folly/experimental/pushmi/examples/reduce.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 auto inline_bulk_target() {
   return [](auto init,

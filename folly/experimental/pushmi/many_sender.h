@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/receiver.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class... VN>
@@ -54,10 +55,11 @@ class any_many_sender {
       }
       static any_executor<E> executor(data& src) {
         return any_executor<E>{
-            ::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+            ::folly::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, any_receiver<E, VN...> out) {
-        ::pushmi::submit(*static_cast<Wrapped*>(src.pobj_), std::move(out));
+        ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(src.pobj_), std::move(out));
       }
     };
     static const vtable vtbl{s::op, s::executor, s::submit};
@@ -74,11 +76,11 @@ class any_many_sender {
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static any_executor<E> executor(data& src) {
-        return any_executor<E>{
-            ::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+        return any_executor<E>{::folly::pushmi::executor(
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, any_receiver<E, VN...> out) {
-        ::pushmi::submit(
+        ::folly::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_), std::move(out));
       }
     };
@@ -250,3 +252,4 @@ template<>
 struct construct_deduced<many_sender> : make_many_sender_fn {};
 
 } // namespace pushmi
+} // namespace folly

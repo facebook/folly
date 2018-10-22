@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/piping.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -30,7 +31,7 @@ struct on_fn {
     In in_;
     Out out_;
     void operator()(any) {
-      ::pushmi::submit(in_, std::move(out_));
+      submit(in_, std::move(out_));
     }
   };
   template <class In, class ExecutorFactory>
@@ -40,9 +41,10 @@ struct on_fn {
     (requires SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
       auto exec = ef_();
-      ::pushmi::submit(
+      submit(
           exec,
-          ::pushmi::make_receiver(on_value_impl<In, Out>{in, std::move(out)}));
+          ::folly::pushmi::make_receiver(
+              on_value_impl<In, Out>{in, std::move(out)}));
     }
   };
   template <class In, class TP, class Out>
@@ -51,7 +53,7 @@ struct on_fn {
     TP at_;
     Out out_;
     void operator()(any) {
-      ::pushmi::submit(in_, at_, std::move(out_));
+      submit(in_, at_, std::move(out_));
     }
   };
   template <class In, class ExecutorFactory>
@@ -61,10 +63,10 @@ struct on_fn {
     (requires TimeSenderTo<In, Out>)
     void operator()(In& in, TP at, Out out) const {
       auto exec = ef_();
-      ::pushmi::submit(
+      submit(
           exec,
           at,
-          ::pushmi::make_receiver(
+          ::folly::pushmi::make_receiver(
               time_on_value_impl<In, TP, Out>{in, at, std::move(out)}));
     }
   };
@@ -74,7 +76,7 @@ struct on_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::sender_from(
+      return ::folly::pushmi::detail::sender_from(
           std::move(in),
           detail::submit_transform_out<In>(
               out_impl<In, ExecutorFactory>{ef_},
@@ -100,3 +102,4 @@ PUSHMI_INLINE_VAR constexpr detail::on_fn on{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/detail/functional.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 struct single_empty_sender_base : single_sender<ignoreSF, inlineEXF> {
@@ -35,7 +36,7 @@ struct single_empty_impl {
   void operator()(
       single_empty_sender_base&,
       Out out) {
-    ::pushmi::set_done(out);
+    set_done(out);
   }
 };
 } // namespace detail
@@ -54,3 +55,4 @@ inline auto empty() {
 
 } // namespace operators
 } // namespace pushmi
+} // namespace folly

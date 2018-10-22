@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/flow_many_sender.h>
 #include <folly/experimental/pushmi/many_sender.h>
@@ -21,6 +21,7 @@
 #include <folly/experimental/pushmi/o/submit.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
+namespace folly {
 namespace pushmi {
 
 PUSHMI_CONCEPT_DEF(
@@ -52,9 +53,9 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
     void operator()(sender_base&, Out out) const {
       auto c = begin_;
       for (; c != end_; ++c) {
-        ::pushmi::set_value(out, *c);
+        set_value(out, *c);
       }
-      ::pushmi::set_done(out);
+      set_done(out);
     }
   };
 
@@ -101,35 +102,32 @@ struct flow_from_up {
       return;
     }
     // submit work to exec
-    ::pushmi::submit(p->exec, make_receiver([p = p, requested](auto) {
-                       auto remaining = requested;
-                       // this loop is structured to work when there is
-                       // re-entrancy out.value in the loop may call up.value.
-                       // to handle this the state of p->c must be captured and
-                       // the remaining and p->c must be changed before
-                       // out.value is called.
-                       while (remaining-- > 0 && !p->stop && p->c != p->end) {
-                         auto i = (p->c)++;
-                         ::pushmi::set_value(
-                             p->out, ::pushmi::detail::as_const(*i));
-                       }
-                       if (p->c == p->end) {
-                         ::pushmi::set_done(p->out);
-                       }
-                     }));
+    submit(p->exec, make_receiver([p = p, requested](auto) {
+             auto remaining = requested;
+             // this loop is structured to work when there is
+             // re-entrancy out.value in the loop may call up.value.
+             // to handle this the state of p->c must be captured and
+             // the remaining and p->c must be changed before
+             // out.value is called.
+             while (remaining-- > 0 && !p->stop && p->c != p->end) {
+               auto i = (p->c)++;
+               set_value(p->out, ::folly::pushmi::detail::as_const(*i));
+             }
+             if (p->c == p->end) {
+               set_done(p->out);
+             }
+           }));
   }
 
   template <class E>
   void error(E) noexcept {
     p->stop.store(true);
-    ::pushmi::submit(
-        p->exec, make_receiver([p = p](auto) { ::pushmi::set_done(p->out); }));
+    submit(p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
   }
 
   void done() {
     p->stop.store(true);
-    ::pushmi::submit(
-        p->exec, make_receiver([p = p](auto) { ::pushmi::set_done(p->out); }));
+    submit(p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
   }
 };
 
@@ -149,11 +147,10 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), exec_, false);
 
-      ::pushmi::submit(exec_, make_receiver([p](auto) {
-                         // pass reference for cancellation.
-                         ::pushmi::set_starting(
-                             p->out, make_receiver(flow_from_up<Producer>{p}));
-                       }));
+      submit(exec_, make_receiver([p](auto) {
+               // pass reference for cancellation.
+               set_starting(p->out, make_receiver(flow_from_up<Producer>{p}));
+             }));
     }
   };
 
@@ -192,3 +189,4 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

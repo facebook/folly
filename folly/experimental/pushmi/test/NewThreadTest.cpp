@@ -33,7 +33,7 @@ using namespace std::literals;
 #include <folly/experimental/pushmi/time_source.h>
 #include <folly/experimental/pushmi/strand.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 #if 0
 struct countdownsingle {
@@ -160,8 +160,8 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
 
     WHEN( "virtual derecursion is triggered" ) {
       int counter = 100'000;
-      std::function<void(pushmi::any_executor_ref<> exec)> recurse;
-      recurse = [&](pushmi::any_executor_ref<> nt) {
+      std::function<void(::folly::pushmi::any_executor_ref<> exec)> recurse;
+      recurse = [&](::folly::pushmi::any_executor_ref<> nt) {
         if (--counter <= 0)
           return;
         nt | op::submit(recurse);
@@ -184,13 +184,13 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
 
     WHEN( "used with on" ) {
       std::vector<std::string> values;
-      auto sender = pushmi::make_single_sender([](auto out) {
-        ::pushmi::set_value(out, 2.0);
-        ::pushmi::set_done(out);
+      auto sender = ::folly::pushmi::make_single_sender([](auto out) {
+        ::folly::pushmi::set_value(out, 2.0);
+        ::folly::pushmi::set_done(out);
         // ignored
-        ::pushmi::set_value(out, 1);
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
+        ::folly::pushmi::set_value(out, 1);
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       sender | op::on([&](){return nt;}) |
         op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));
@@ -201,13 +201,13 @@ SCENARIO( "new_thread executor", "[new_thread][sender]" ) {
 
     WHEN( "used with via" ) {
       std::vector<std::string> values;
-      auto sender = pushmi::make_single_sender([](auto out) {
-        ::pushmi::set_value(out, 2.0);
-        ::pushmi::set_done(out);
+      auto sender = ::folly::pushmi::make_single_sender([](auto out) {
+        ::folly::pushmi::set_value(out, 2.0);
+        ::folly::pushmi::set_done(out);
         // ignored
-        ::pushmi::set_value(out, 1);
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
-        ::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
+        ::folly::pushmi::set_value(out, 1);
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
+        ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
       });
       sender | op::via(mi::strands(nt)) |
           op::blocking_submit(v::on_value([&](auto v) { values.push_back(std::to_string(v)); }));

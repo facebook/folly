@@ -31,7 +31,7 @@ using namespace std::literals;
 #include <folly/experimental/pushmi/time_source.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 #if 0
 

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/time_single_sender.h>
@@ -24,6 +24,7 @@
 // time_source is used to build a time_single_executor from a single_executor.
 //
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class TP>
@@ -154,8 +155,8 @@ class time_source_queue : public time_source_queue_base<E, TP> {
       this->heap_.pop();
       guard.unlock();
       std::this_thread::sleep_until(item.when);
-      ::pushmi::set_value(item.what, any_time_executor_ref<E, TP>{subEx});
-      ::pushmi::set_done(item.what);
+      set_value(item.what, any_time_executor_ref<E, TP>{subEx});
+      set_done(item.what);
       guard.lock();
       // allows set_value to queue nested items
       --s->items_;
@@ -173,7 +174,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
             this->heap_.pop();
             --s->items_;
             guard.unlock();
-            ::pushmi::set_error(what, *s->error_);
+            set_error(what, *s->error_);
             guard.lock();
           } catch (...) {
             // we already have an error, ignore this one.
@@ -196,7 +197,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
       this->heap_.pop();
       --s->items_;
       guard.unlock();
-      ::pushmi::set_error(what, detail::as_const(e));
+      set_error(what, detail::as_const(e));
       guard.lock();
     }
     this->dispatching_ = false;
@@ -235,7 +236,7 @@ struct time_source_queue_receiver
 
 template <class E, class TP, class NF, class Executor>
 void time_source_queue<E, TP, NF, Executor>::dispatch() {
-  ::pushmi::submit(
+  submit(
       ex_, time_source_queue_receiver<E, TP, NF, Executor>{shared_from_that()});
 }
 
@@ -389,7 +390,7 @@ class time_source_shared : public time_source_shared_base<E, TP> {
             q->heap_.pop();
             --that->items_;
             guard.unlock();
-            ::pushmi::set_error(what, *that->error_);
+            set_error(what, *that->error_);
             guard.lock();
           } catch (...) {
             // we already have an error, ignore this one.
@@ -406,7 +407,7 @@ class time_source_shared : public time_source_shared_base<E, TP> {
 
     // deliver error_ and return
     if (!!this->error_) {
-      ::pushmi::set_error(item.what, *this->error_);
+      set_error(item.what, *this->error_);
       return;
     }
     // once join() is called, new work queued to the executor is not safe unless
@@ -551,3 +552,4 @@ class time_source {
   }
 };
 } // namespace pushmi
+} // namespace folly

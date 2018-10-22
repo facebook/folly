@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <vector>
 
 #include <folly/experimental/pushmi/time_single_sender.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class... TN>
@@ -34,7 +35,7 @@ struct subject<PS, TN...> {
   struct subject_shared {
     using receiver_t = any_receiver<std::exception_ptr, TN...>;
     bool done_ = false;
-    pushmi::detail::opt<std::tuple<std::decay_t<TN>...>> t_;
+    ::folly::pushmi::detail::opt<std::tuple<std::decay_t<TN>...>> t_;
     std::exception_ptr ep_;
     std::vector<receiver_t> receivers_;
     std::mutex lock_;
@@ -43,18 +44,18 @@ struct subject<PS, TN...> {
     void submit(Out out) {
       std::unique_lock<std::mutex> guard(lock_);
       if (ep_) {
-        ::pushmi::set_error(out, ep_);
+        set_error(out, ep_);
         return;
       }
       if (!!t_) {
         auto args = *t_;
-        ::pushmi::apply(
-            ::pushmi::set_value,
+        ::folly::pushmi::apply(
+            ::folly::pushmi::set_value,
             std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(args)));
         return;
       }
       if (done_) {
-        ::pushmi::set_done(out);
+        set_done(out);
         return;
       }
       receivers_.push_back(receiver_t{out});
@@ -64,8 +65,8 @@ struct subject<PS, TN...> {
     void value(VN&&... vn) {
       std::unique_lock<std::mutex> guard(lock_);
       for (auto& out : receivers_) {
-        ::pushmi::apply(
-            ::pushmi::set_value,
+        ::folly::pushmi::apply(
+            ::folly::pushmi::set_value,
             std::tuple<decltype(out), std::decay_t<TN>...>{
                 out, detail::as_const(vn)...});
       }
@@ -78,7 +79,7 @@ struct subject<PS, TN...> {
       std::unique_lock<std::mutex> guard(lock_);
       ep_ = e;
       for (auto& out : receivers_) {
-        ::pushmi::set_error(out, std::move(e));
+        set_error(out, std::move(e));
       }
       receivers_.clear();
     }
@@ -86,7 +87,7 @@ struct subject<PS, TN...> {
       std::unique_lock<std::mutex> guard(lock_);
       done_ = true;
       for (auto& out : receivers_) {
-        ::pushmi::set_done(out);
+        set_done(out);
       }
       receivers_.clear();
     }
@@ -129,3 +130,4 @@ struct subject<PS, TN...> {
 };
 
 } // namespace pushmi
+} // namespace folly

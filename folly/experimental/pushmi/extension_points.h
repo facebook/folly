@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <future>
 #include <functional>
@@ -22,6 +22,7 @@
 #include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/traits.h>
 
+namespace folly {
 namespace pushmi {
 namespace __adl {
 
@@ -376,3 +377,4 @@ struct property_set_traits<std::promise<void>> {
 };
 
 } // namespace pushmi
+} // namespace folly

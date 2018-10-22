@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
@@ -21,6 +21,7 @@
 
 #include <folly/experimental/pushmi/subject.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -33,7 +34,7 @@ struct share_fn {
     (requires Sender<In>)
     auto operator()(In in) const {
       subject<properties_t<In>, TN...> sub;
-      ::pushmi::submit(in, sub.receiver());
+      submit(in, sub.receiver());
       return sub;
     }
   };
@@ -54,3 +55,4 @@ PUSHMI_INLINE_VAR constexpr detail::share_fn<TN...> share{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

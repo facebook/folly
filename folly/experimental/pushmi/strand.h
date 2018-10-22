@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/single_sender.h>
 
 #include <queue>
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class Executor>
@@ -119,8 +120,8 @@ class strand_queue : public strand_queue_base<E> {
       auto item{std::move(this->front())};
       this->items_.pop();
       guard.unlock();
-      ::pushmi::set_value(item.what, any_executor_ref<E>{subEx});
-      ::pushmi::set_done(item.what);
+      set_value(item.what, any_executor_ref<E>{subEx});
+      set_done(item.what);
       guard.lock();
     }
   }
@@ -134,7 +135,7 @@ class strand_queue : public strand_queue_base<E> {
       auto what{std::move(this->front().what)};
       this->items_.pop();
       guard.unlock();
-      ::pushmi::set_error(what, detail::as_const(e));
+      set_error(what, detail::as_const(e));
       guard.lock();
     }
   }
@@ -151,7 +152,7 @@ class strand_queue : public strand_queue_base<E> {
     }
 
     auto that = shared_from_that();
-    ::pushmi::submit(ex_, strand_queue_receiver<E, Executor>{that});
+    submit(ex_, strand_queue_receiver<E, Executor>{that});
   }
 };
 
@@ -166,7 +167,7 @@ struct strand_queue_receiver : std::shared_ptr<strand_queue<E, Executor>> {
 
 template <class E, class Executor>
 void strand_queue<E, Executor>::dispatch() {
-  ::pushmi::submit(ex_, strand_queue_receiver<E, Executor>{shared_from_that()});
+  submit(ex_, strand_queue_receiver<E, Executor>{shared_from_that()});
 }
 
 //
@@ -202,7 +203,7 @@ class strand_executor {
     queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
     if (queue_->remaining_ == 0) {
       // noone is minding the shop, send a worker
-      ::pushmi::submit(queue_->ex_, strand_queue_receiver<E, Executor>{queue_});
+      submit(queue_->ex_, strand_queue_receiver<E, Executor>{queue_});
     }
   }
 };
@@ -252,3 +253,4 @@ auto strands(Exec ex) {
 }
 
 } // namespace pushmi
+} // namespace folly

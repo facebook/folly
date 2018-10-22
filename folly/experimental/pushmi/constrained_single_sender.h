@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/receiver.h>
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/inline.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class CV, class... VN>
@@ -54,16 +55,15 @@ class any_constrained_single_sender {
         delete static_cast<Wrapped const*>(src.pobj_);
       }
       static CV top(data& src) {
-        return ::pushmi::top(*static_cast<Wrapped*>(src.pobj_));
+        return ::folly::pushmi::top(*static_cast<Wrapped*>(src.pobj_));
       }
       static any_constrained_executor<E, CV> executor(data& src) {
-        return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>(src.pobj_))};
+        return any_constrained_executor<E, CV>{
+            executor(*static_cast<Wrapped*>(src.pobj_))};
       }
       static void submit(data& src, CV at, any_receiver<E, VN...> out) {
-        ::pushmi::submit(
-            *static_cast<Wrapped*>(src.pobj_),
-            std::move(at),
-            std::move(out));
+        ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(src.pobj_), std::move(at), std::move(out));
       }
     };
     static const vtable vtbl{s::op, s::top, s::executor, s::submit};
@@ -81,13 +81,14 @@ class any_constrained_single_sender {
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static CV top(data& src) {
-        return ::pushmi::top(*static_cast<Wrapped*>((void*)src.buffer_));
+        return ::folly::pushmi::top(*static_cast<Wrapped*>((void*)src.buffer_));
       }
       static any_constrained_executor<E, CV> executor(data& src) {
-        return any_constrained_executor<E, CV>{::pushmi::executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+        return any_constrained_executor<E, CV>{
+            executor(*static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, CV cv, any_receiver<E, VN...> out) {
-        ::pushmi::submit(
+        ::folly::pushmi::submit(
             *static_cast<Wrapped*>((void*)src.buffer_),
             std::move(cv),
             std::move(out));
@@ -289,3 +290,4 @@ struct construct_deduced<constrained_single_sender>
   : make_constrained_single_sender_fn {};
 
 } // namespace pushmi
+} // namespace folly

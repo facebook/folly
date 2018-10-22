@@ -25,15 +25,15 @@
 #include <folly/experimental/pushmi/o/switch_on_error.h>
 #include <folly/experimental/pushmi/o/transform.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 // concat not yet implemented
 template <class T, class E = std::exception_ptr>
 auto concat = [](auto in) {
   return mi::make_single_sender([in](auto out) mutable {
-    ::pushmi::submit(in, mi::make_receiver(out, [](auto out, auto v) {
-                       ::pushmi::submit(v, mi::any_receiver<E, T>(out));
-                     }));
+    mi::submit(in, mi::make_receiver(out, [](auto out, auto v) {
+                 mi::submit(v, mi::any_receiver<E, T>(out));
+               }));
   });
 };
 

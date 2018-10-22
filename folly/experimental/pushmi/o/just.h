@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
 #include <folly/experimental/pushmi/single_sender.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace operators {
@@ -38,10 +39,10 @@ PUSHMI_INLINE_VAR constexpr struct just_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<Out, VN...>)
     void operator()(sender_base&, Out out) {
-      ::pushmi::apply(
-          ::pushmi::set_value,
+      ::folly::pushmi::apply(
+          ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out&>{out}, std::move(vn_)));
-      ::pushmi::set_done(std::move(out));
+      set_done(std::move(out));
     }
   };
 
@@ -56,3 +57,4 @@ PUSHMI_INLINE_VAR constexpr struct just_fn {
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

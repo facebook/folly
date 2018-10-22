@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/boosters.h>
 #include <folly/experimental/pushmi/detail/if_constexpr.h>
@@ -23,6 +23,7 @@
 #include <folly/experimental/pushmi/trampoline.h>
 #include <functional>
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 namespace submit_detail {
@@ -55,8 +56,9 @@ struct submit_fn {
     PUSHMI_TEMPLATE(class In)
     (requires submit_detail::AutoSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
-      ::pushmi::submit(in, std::move(out));
+      auto out{
+          ::folly::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
+      submit(in, std::move(out));
       return in;
     }
   };
@@ -77,8 +79,9 @@ struct submit_at_fn {
     PUSHMI_TEMPLATE(class In)
     (requires submit_detail::AutoTimeSenderTo<In, AN...>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
-      ::pushmi::submit(in, std::move(at_), std::move(out));
+      auto out{
+          ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      submit(in, std::move(at_), std::move(out));
       return in;
     }
   };
@@ -103,9 +106,10 @@ struct submit_after_fn {
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
       // times..
-      auto out{::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
-      auto at = ::pushmi::now(in) + std::move(after_);
-      ::pushmi::submit(in, std::move(at), std::move(out));
+      auto out{
+          ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
+      auto at = ::folly::pushmi::now(in) + std::move(after_);
+      submit(in, std::move(at), std::move(out));
       return in;
     }
   };
@@ -155,28 +159,27 @@ struct blocking_submit_fn {
     using properties = properties_t<Exec>;
 
     auto executor() {
-      return make(state_, ::pushmi::executor(ex_));
+      return make(state_, executor(ex_));
     }
 
     PUSHMI_TEMPLATE(class... ZN)
     (requires Constrained<Exec>)
     auto top() {
-      return ::pushmi::top(ex_);
+      return ::folly::pushmi::top(ex_);
     }
 
     PUSHMI_TEMPLATE(class CV, class Out)
     (requires Receiver<Out>&& Constrained<Exec>)
     void submit(CV cv, Out out) {
       ++state_->nested;
-      ::pushmi::submit(
-          ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
+      submit(ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
     }
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out> && not Constrained<Exec>)
     void submit(Out out) {
       ++state_->nested;
-      ::pushmi::submit(ex_, nested_receiver_impl<Out>{state_, std::move(out)});
+      submit(ex_, nested_receiver_impl<Out>{state_, std::move(out)});
     }
   };
   template <class Out>
@@ -193,11 +196,11 @@ struct blocking_submit_fn {
       std::exception_ptr e;
       using executor_t = remove_cvref_t<V>;
       auto n = nested_executor_impl<executor_t>::make(state_, (V &&) v);
-      ::pushmi::set_value(out_, any_executor_ref<>{n});
+      set_value(out_, any_executor_ref<>{n});
     }
     template <class E>
     void error(E&& e) noexcept {
-      ::pushmi::set_error(out_, (E &&) e);
+      set_error(out_, (E &&) e);
       if (--state_->nested == 0) {
         state_->signaled.notify_all();
       }
@@ -205,7 +208,7 @@ struct blocking_submit_fn {
     void done() {
       std::exception_ptr e;
       try {
-        ::pushmi::set_done(out_);
+        set_done(out_);
       } catch (...) {
         e = std::current_exception();
       }
@@ -229,13 +232,13 @@ struct blocking_submit_fn {
     PUSHMI_TEMPLATE(class Out, class Value)
     (requires Executor<std::decay_t<Value>>&& ReceiveValue<
         Out,
-        pushmi::invoke_result_t<
+        ::folly::pushmi::invoke_result_t<
             nested_executor_impl_fn,
             lock_state*,
             std::decay_t<Value>>>)
     void operator()(Out out, Value&& v) const {
       ++state_->nested;
-      ::pushmi::set_value(out, nested_executor_impl_fn{}(state_, (Value &&) v));
+      set_value(out, nested_executor_impl_fn{}(state_, (Value &&) v));
       if (--state_->nested == 0) {
         std::unique_lock<std::mutex> guard{state_->lock};
         state_->signaled.notify_all();
@@ -245,7 +248,7 @@ struct blocking_submit_fn {
     (requires True<>&& ReceiveValue<Out, VN...> &&
      not(sizeof...(VN) == 1 && And<Executor<std::decay_t<VN>>...>))
     void operator()(Out out, VN&&... vn) const {
-      ::pushmi::set_value(out, (VN &&) vn...);
+      set_value(out, (VN &&) vn...);
     }
   };
   struct on_error_impl {
@@ -253,7 +256,7 @@ struct blocking_submit_fn {
     PUSHMI_TEMPLATE(class Out, class E)
     (requires ReceiveError<Out, E>)
     void operator()(Out out, E e) const noexcept {
-      ::pushmi::set_error(out, std::move(e));
+      set_error(out, std::move(e));
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
       state_->signaled.notify_all();
@@ -264,7 +267,7 @@ struct blocking_submit_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
     void operator()(Out out) const {
-      ::pushmi::set_done(out);
+      set_done(out);
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
       state_->signaled.notify_all();
@@ -278,7 +281,7 @@ struct blocking_submit_fn {
     auto operator()(
         lock_state* state,
         std::tuple<AN...> args) const {
-      return ::pushmi::detail::receiver_from_fn<In>()(
+      return ::folly::pushmi::detail::receiver_from_fn<In>()(
           std::move(args),
           on_value_impl{state},
           on_error_impl{state},
@@ -290,7 +293,7 @@ struct blocking_submit_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>&& SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
-      ::pushmi::submit(in, std::move(out));
+      submit(in, std::move(out));
     }
   };
   // TODO - only move, move-only types..
@@ -304,7 +307,7 @@ struct blocking_submit_fn {
     (requires Sender<In>&& Invocable<
          submit_impl<In>&,
          In&,
-         pushmi::invoke_result_t<
+         ::folly::pushmi::invoke_result_t<
              receiver_impl<In>,
              lock_state*,
              std::tuple<AN...>&&>> &&
@@ -334,14 +337,14 @@ template <class T>
 struct get_fn {
  private:
   struct on_value_impl {
-    pushmi::detail::opt<T>* result_;
+    ::folly::pushmi::detail::opt<T>* result_;
     template <class... TN>
     void operator()(TN&&... tn) const {
       *result_ = T{(TN &&) tn...};
     }
   };
   struct on_error_impl {
-    pushmi::detail::opt<std::exception_ptr>* ep_;
+    ::folly::pushmi::detail::opt<std::exception_ptr>* ep_;
     template <class E>
     void operator()(E e) const noexcept {
       *ep_ = std::make_exception_ptr(e);
@@ -356,10 +359,10 @@ struct get_fn {
   PUSHMI_TEMPLATE(class In)
   (requires Sender<In>)
   T operator()(In in) const {
-    pushmi::detail::opt<T> result_;
-    pushmi::detail::opt<std::exception_ptr> ep_;
-    auto out =
-        ::pushmi::make_receiver(on_value_impl{&result_}, on_error_impl{&ep_});
+    ::folly::pushmi::detail::opt<T> result_;
+    ::folly::pushmi::detail::opt<std::exception_ptr> ep_;
+    auto out = ::folly::pushmi::make_receiver(
+        on_value_impl{&result_}, on_error_impl{&ep_});
     using Out = decltype(out);
     static_assert(
         SenderTo<In, Out>,
@@ -385,3 +388,4 @@ PUSHMI_INLINE_VAR constexpr detail::get_fn<T> get{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

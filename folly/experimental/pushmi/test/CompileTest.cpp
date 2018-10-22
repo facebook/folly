@@ -13,352 +13,345 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/o/empty.h>
+#include <folly/experimental/pushmi/o/extension_operators.h>
+#include <folly/experimental/pushmi/o/from.h>
+#include <folly/experimental/pushmi/o/just.h>
+#include <folly/experimental/pushmi/o/on.h>
 #include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/transform.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 using namespace std::literals;
 
 #if __cpp_deduction_guides >= 201703
 #define MAKE(x) x MAKE_
-#define MAKE_(...) {__VA_ARGS__}
+#define MAKE_(...) \
+  { __VA_ARGS__ }
 #else
-#define MAKE(x) make_ ## x
+#define MAKE(x) make_##x
 #endif
 
-
 void receiver_0_test() {
-  auto out0 = pushmi::MAKE(receiver)();
+  auto out0 = mi::MAKE(receiver)();
   static_assert(mi::Receiver<decltype(out0)>, "out0 not a receiver");
-  auto out1 = pushmi::MAKE(receiver)(pushmi::ignoreVF{});
+  auto out1 = mi::MAKE(receiver)(mi::ignoreVF{});
   static_assert(mi::Receiver<decltype(out1)>, "out1 not a receiver");
-  auto out2 = pushmi::MAKE(receiver)(pushmi::ignoreVF{}, pushmi::abortEF{});
+  auto out2 = mi::MAKE(receiver)(mi::ignoreVF{}, mi::abortEF{});
   static_assert(mi::Receiver<decltype(out2)>, "out2 not a receiver");
-  auto out3 = pushmi::MAKE(receiver)(pushmi::ignoreVF{}, pushmi::abortEF{}, pushmi::ignoreDF{});
+  auto out3 = mi::MAKE(receiver)(mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{});
   static_assert(mi::Receiver<decltype(out3)>, "out3 not a receiver");
-  auto out4 = pushmi::MAKE(receiver)([](auto e) noexcept{ e.get(); });
+  auto out4 = mi::MAKE(receiver)([](auto e) noexcept { e.get(); });
   static_assert(mi::Receiver<decltype(out4)>, "out4 not a receiver");
-  auto out5 = pushmi::MAKE(receiver)(
-      pushmi::on_value(
-        []() { }
-      ));
+  auto out5 = mi::MAKE(receiver)(mi::on_value([]() {}));
   static_assert(mi::Receiver<decltype(out5)>, "out5 not a receiver");
-  auto out6 = pushmi::MAKE(receiver)(
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e) noexcept { e.get(); }
-      ));
+  auto out6 = mi::MAKE(receiver)(mi::on_error(
+      [](std::exception_ptr) noexcept {}, [](auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(out6)>, "out6 not a receiver");
-  auto out7 = pushmi::MAKE(receiver)(
-      pushmi::on_done([]() {  }));
+  auto out7 = mi::MAKE(receiver)(mi::on_done([]() {}));
   static_assert(mi::Receiver<decltype(out7)>, "out7 not a receiver");
 
   using Out0 = decltype(out0);
 
-  auto proxy0 = pushmi::MAKE(receiver)(out0);
+  auto proxy0 = mi::MAKE(receiver)(out0);
   static_assert(mi::Receiver<decltype(proxy0)>, "proxy0 not a receiver");
-  auto proxy1 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{});
+  auto proxy1 = mi::MAKE(receiver)(out0, mi::passDVF{});
   static_assert(mi::Receiver<decltype(proxy1)>, "proxy1 not a receiver");
-  auto proxy2 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{}, pushmi::on_error(pushmi::passDEF{}));
+  auto proxy2 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::on_error(mi::passDEF{}));
   static_assert(mi::Receiver<decltype(proxy2)>, "proxy2 not a receiver");
-  auto proxy3 = pushmi::MAKE(receiver)(
-      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy3 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy3)>, "proxy3 not a receiver");
-  auto proxy4 = pushmi::MAKE(receiver)(out0, [](Out0&){}, pushmi::on_error([](Out0& d, auto e)noexcept {
-    d.error(e);
-  }));
+  auto proxy4 =
+      mi::MAKE(receiver)(out0, [](Out0&) {}, mi::on_error([
+                         ](Out0 & d, auto e) noexcept { d.error(e); }));
   static_assert(mi::Receiver<decltype(proxy4)>, "proxy4 not a receiver");
-  auto proxy5 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_value(
-        [](Out0&) { }
-      ));
+  auto proxy5 = mi::MAKE(receiver)(out0, mi::on_value([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy5)>, "proxy5 not a receiver");
-  auto proxy6 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept{},
-        [](Out0&, auto e) noexcept{ e.get(); }
-      ));
+  auto proxy6 = mi::MAKE(receiver)(
+      out0, mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy6)>, "proxy6 not a receiver");
-  auto proxy7 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_done([](Out0&) { }));
+  auto proxy7 = mi::MAKE(receiver)(out0, mi::on_done([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy7)>, "proxy7 not a receiver");
 
   std::promise<void> p0;
-  auto promise0 = pushmi::MAKE(receiver)(std::move(p0));
+  auto promise0 = mi::MAKE(receiver)(std::move(p0));
   promise0.done();
 
   std::promise<void> p1;
 
-  auto any0 = pushmi::any_receiver<>(std::move(p1));
-  auto any1 = pushmi::any_receiver<>(std::move(promise0));
-  auto any2 = pushmi::any_receiver<>(out0);
-  auto any3 = pushmi::any_receiver<>(proxy0);
+  auto any0 = mi::any_receiver<>(std::move(p1));
+  auto any1 = mi::any_receiver<>(std::move(promise0));
+  auto any2 = mi::any_receiver<>(out0);
+  auto any3 = mi::any_receiver<>(proxy0);
 }
 
-void receiver_1_test(){
-  auto out0 = pushmi::MAKE(receiver)();
+void receiver_1_test() {
+  auto out0 = mi::MAKE(receiver)();
   static_assert(mi::Receiver<decltype(out0)>, "out0 not a receiver");
-  auto out1 = pushmi::MAKE(receiver)(pushmi::ignoreVF{});
+  auto out1 = mi::MAKE(receiver)(mi::ignoreVF{});
   static_assert(mi::Receiver<decltype(out1)>, "out1 not a receiver");
-  auto out2 = pushmi::MAKE(receiver)(pushmi::ignoreVF{}, pushmi::abortEF{});
+  auto out2 = mi::MAKE(receiver)(mi::ignoreVF{}, mi::abortEF{});
   static_assert(mi::Receiver<decltype(out2)>, "out2 not a receiver");
-  auto out3 =
-      pushmi::MAKE(receiver)(pushmi::ignoreVF{}, pushmi::abortEF{}, pushmi::ignoreDF{});
+  auto out3 = mi::MAKE(receiver)(mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{});
   static_assert(mi::Receiver<decltype(out3)>, "out3 not a receiver");
-  auto out4 = pushmi::MAKE(receiver)([](auto v) { v.get(); });
+  auto out4 = mi::MAKE(receiver)([](auto v) { v.get(); });
   static_assert(mi::Receiver<decltype(out4)>, "out4 not a receiver");
-  auto out5 = pushmi::MAKE(receiver)(
-      pushmi::on_value([](auto v) { v.get(); }, [](int) {}),
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e)noexcept { e.get(); }
-      ));
+  auto out5 = mi::MAKE(receiver)(
+      mi::on_value([](auto v) { v.get(); }, [](int) {}),
+      mi::on_error([](std::exception_ptr) noexcept {}, [](auto e) noexcept {
+        e.get();
+      }));
   static_assert(mi::Receiver<decltype(out5)>, "out5 not a receiver");
-  auto out6 = pushmi::MAKE(receiver)(
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e) noexcept { e.get(); }
-      ));
+  auto out6 = mi::MAKE(receiver)(mi::on_error(
+      [](std::exception_ptr) noexcept {}, [](auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(out6)>, "out6 not a receiver");
-  auto out7 = pushmi::MAKE(receiver)(
-      pushmi::on_done([]() {  }));
+  auto out7 = mi::MAKE(receiver)(mi::on_done([]() {}));
   static_assert(mi::Receiver<decltype(out7)>, "out7 not a receiver");
 
   using Out0 = decltype(out0);
 
-  auto proxy0 = pushmi::MAKE(receiver)(out0);
+  auto proxy0 = mi::MAKE(receiver)(out0);
   static_assert(mi::Receiver<decltype(proxy0)>, "proxy0 not a receiver");
-  auto proxy1 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{});
+  auto proxy1 = mi::MAKE(receiver)(out0, mi::passDVF{});
   static_assert(mi::Receiver<decltype(proxy1)>, "proxy1 not a receiver");
-  auto proxy2 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{}, pushmi::on_error(pushmi::passDEF{}));
+  auto proxy2 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::on_error(mi::passDEF{}));
   static_assert(mi::Receiver<decltype(proxy2)>, "proxy2 not a receiver");
-  auto proxy3 = pushmi::MAKE(receiver)(
-      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy3 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy3)>, "proxy3 not a receiver");
-  auto proxy4 = pushmi::MAKE(receiver)(out0, [](auto d, auto v) {
-    pushmi::set_value(d, v.get());
-  });
+  auto proxy4 = mi::MAKE(receiver)(
+      out0, [](auto d, auto v) { mi::set_value(d, v.get()); });
   static_assert(mi::Receiver<decltype(proxy4)>, "proxy4 not a receiver");
-  auto proxy5 = pushmi::MAKE(receiver)(
+  auto proxy5 = mi::MAKE(receiver)(
       out0,
-      pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+      mi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
+      mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy5)>, "proxy5 not a receiver");
-  auto proxy6 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+  auto proxy6 = mi::MAKE(receiver)(
+      out0, mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy6)>, "proxy6 not a receiver");
-  auto proxy7 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_done([](Out0&) { }));
+  auto proxy7 = mi::MAKE(receiver)(out0, mi::on_done([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy7)>, "proxy7 not a receiver");
 
   std::promise<int> p0;
-  auto promise0 = pushmi::MAKE(receiver)(std::move(p0));
+  auto promise0 = mi::MAKE(receiver)(std::move(p0));
   promise0.value(0);
 
   std::promise<int> p1;
 
-  auto any0 = pushmi::any_receiver<std::exception_ptr, int>(std::move(p1));
-  auto any1 = pushmi::any_receiver<std::exception_ptr, int>(std::move(promise0));
-  auto any2 = pushmi::any_receiver<std::exception_ptr, int>(out0);
-  auto any3 = pushmi::any_receiver<std::exception_ptr, int>(proxy0);
+  auto any0 = mi::any_receiver<std::exception_ptr, int>(std::move(p1));
+  auto any1 = mi::any_receiver<std::exception_ptr, int>(std::move(promise0));
+  auto any2 = mi::any_receiver<std::exception_ptr, int>(out0);
+  auto any3 = mi::any_receiver<std::exception_ptr, int>(proxy0);
 }
 
 void receiver_n_test() {
-  auto out0 = pushmi::MAKE(receiver)();
+  auto out0 = mi::MAKE(receiver)();
   static_assert(mi::Receiver<decltype(out0)>, "out0 not a receiver");
-  auto out1 = pushmi::MAKE(receiver)(pushmi::ignoreNF{});
+  auto out1 = mi::MAKE(receiver)(mi::ignoreNF{});
   static_assert(mi::Receiver<decltype(out1)>, "out1 not a receiver");
-  auto out2 = pushmi::MAKE(receiver)(pushmi::ignoreNF{}, pushmi::abortEF{});
+  auto out2 = mi::MAKE(receiver)(mi::ignoreNF{}, mi::abortEF{});
   static_assert(mi::Receiver<decltype(out2)>, "out2 not a receiver");
-  auto out3 =
-      pushmi::MAKE(receiver)(pushmi::ignoreNF{}, pushmi::abortEF{}, pushmi::ignoreDF{});
+  auto out3 = mi::MAKE(receiver)(mi::ignoreNF{}, mi::abortEF{}, mi::ignoreDF{});
   static_assert(mi::Receiver<decltype(out3)>, "out3 not a receiver");
-  auto out4 = pushmi::MAKE(receiver)([](auto v) { v.get(); });
+  auto out4 = mi::MAKE(receiver)([](auto v) { v.get(); });
   static_assert(mi::Receiver<decltype(out4)>, "out4 not a receiver");
-  auto out5 = pushmi::MAKE(receiver)(
-      pushmi::on_value([](auto v) { v.get(); }, [](int) {}),
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e)noexcept { e.get(); }
-      ));
+  auto out5 = mi::MAKE(receiver)(
+      mi::on_value([](auto v) { v.get(); }, [](int) {}),
+      mi::on_error([](std::exception_ptr) noexcept {}, [](auto e) noexcept {
+        e.get();
+      }));
   static_assert(mi::Receiver<decltype(out5)>, "out5 not a receiver");
-  auto out6 = pushmi::MAKE(receiver)(
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e) noexcept { e.get(); }
-      ));
+  auto out6 = mi::MAKE(receiver)(mi::on_error(
+      [](std::exception_ptr) noexcept {}, [](auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(out6)>, "out6 not a receiver");
-  auto out7 = pushmi::MAKE(receiver)(
-      pushmi::on_done([]() {  }));
+  auto out7 = mi::MAKE(receiver)(mi::on_done([]() {}));
   static_assert(mi::Receiver<decltype(out7)>, "out7 not a receiver");
 
   using Out0 = decltype(out0);
 
-  auto proxy0 = pushmi::MAKE(receiver)(out0);
+  auto proxy0 = mi::MAKE(receiver)(out0);
   static_assert(mi::Receiver<decltype(proxy0)>, "proxy0 not a receiver");
-  auto proxy1 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{});
+  auto proxy1 = mi::MAKE(receiver)(out0, mi::passDVF{});
   static_assert(mi::Receiver<decltype(proxy1)>, "proxy1 not a receiver");
-  auto proxy2 = pushmi::MAKE(receiver)(out0, pushmi::passDVF{}, pushmi::on_error(pushmi::passDEF{}));
+  auto proxy2 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::on_error(mi::passDEF{}));
   static_assert(mi::Receiver<decltype(proxy2)>, "proxy2 not a receiver");
-  auto proxy3 = pushmi::MAKE(receiver)(
-      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy3 =
+      mi::MAKE(receiver)(out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy3)>, "proxy3 not a receiver");
-  auto proxy4 = pushmi::MAKE(receiver)(out0, [](auto d, auto v) {
-    pushmi::set_value(d, v.get());
-  });
+  auto proxy4 = mi::MAKE(receiver)(
+      out0, [](auto d, auto v) { mi::set_value(d, v.get()); });
   static_assert(mi::Receiver<decltype(proxy4)>, "proxy4 not a receiver");
-  auto proxy5 = pushmi::MAKE(receiver)(
+  auto proxy5 = mi::MAKE(receiver)(
       out0,
-      pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+      mi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
+      mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy5)>, "proxy5 not a receiver");
-  auto proxy6 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+  auto proxy6 = mi::MAKE(receiver)(
+      out0, mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy6)>, "proxy6 not a receiver");
-  auto proxy7 = pushmi::MAKE(receiver)(
-      out0,
-      pushmi::on_done([](Out0&) { }));
+  auto proxy7 = mi::MAKE(receiver)(out0, mi::on_done([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy7)>, "proxy7 not a receiver");
 
-  auto any0 = pushmi::any_receiver<std::exception_ptr, int>(out0);
-  auto any1 = pushmi::any_receiver<std::exception_ptr, int>(proxy0);
+  auto any0 = mi::any_receiver<std::exception_ptr, int>(out0);
+  auto any1 = mi::any_receiver<std::exception_ptr, int>(proxy0);
 }
 
-void single_sender_test(){
-  auto in0 = pushmi::MAKE(single_sender)();
+void single_sender_test() {
+  auto in0 = mi::MAKE(single_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(single_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(single_sender)(pushmi::ignoreSF{}, pushmi::trampolineEXF{});
+  auto in2 = mi::MAKE(single_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(single_sender)([&](auto out){
-    in0.submit(pushmi::MAKE(receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::trampoline(); });
+  auto in3 = mi::MAKE(single_sender)(
+      [&](auto out) {
+        in0.submit(mi::MAKE(receiver)(
+            std::move(out),
+            mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
+      },
+      []() { return mi::trampoline(); });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
 
   std::promise<int> p0;
-  auto promise0 = pushmi::MAKE(receiver)(std::move(p0));
+  auto promise0 = mi::MAKE(receiver)(std::move(p0));
   in0 | ep::submit(std::move(promise0));
 
-  auto out0 = pushmi::MAKE(receiver)();
-  auto out1 = pushmi::MAKE(receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(receiver)();
+  auto out1 = mi::MAKE(receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_single_sender<std::exception_ptr, int>(in0);
+  auto any0 = mi::any_single_sender<std::exception_ptr, int>(in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 }
 
-void many_sender_test(){
-  auto in0 = pushmi::MAKE(many_sender)();
+void many_sender_test() {
+  auto in0 = mi::MAKE(many_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(many_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(many_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(many_sender)(pushmi::ignoreSF{}, pushmi::trampolineEXF{});
+  auto in2 = mi::MAKE(many_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(many_sender)([&](auto out){
-    in0.submit(pushmi::MAKE(receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::trampoline(); });
+  auto in3 = mi::MAKE(many_sender)(
+      [&](auto out) {
+        in0.submit(mi::MAKE(receiver)(
+            std::move(out),
+            mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
+      },
+      []() { return mi::trampoline(); });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
 
-  auto out0 = pushmi::MAKE(receiver)();
-  auto out1 = pushmi::MAKE(receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(receiver)();
+  auto out1 = mi::MAKE(receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_many_sender<std::exception_ptr, int>(in0);
+  auto any0 = mi::any_many_sender<std::exception_ptr, int>(in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 }
 
-void constrained_single_sender_test(){
-  auto in0 = pushmi::MAKE(constrained_single_sender)();
+void constrained_single_sender_test() {
+  auto in0 = mi::MAKE(constrained_single_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(constrained_single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{}, pushmi::inlineConstrainedEXF{}, pushmi::priorityZeroF{});
+  auto in2 = mi::MAKE(constrained_single_sender)(
+      mi::ignoreSF{}, mi::inlineConstrainedEXF{}, mi::priorityZeroF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(constrained_single_sender)([&](auto c, auto out){
-    in0.submit(c, pushmi::MAKE(receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::inline_constrained_executor(); }, [](){ return 0; });
+  auto in3 = mi::MAKE(constrained_single_sender)(
+      [&](auto c, auto out) {
+        in0.submit(
+            c,
+            mi::MAKE(receiver)(std::move(out), mi::on_value([](auto d, int v) {
+                                 mi::set_value(d, v);
+                               })));
+      },
+      []() { return mi::inline_constrained_executor(); },
+      []() { return 0; });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
-  auto in4 = pushmi::MAKE(constrained_single_sender)(pushmi::ignoreSF{}, pushmi::inlineConstrainedEXF{});
+  auto in4 = mi::MAKE(constrained_single_sender)(
+      mi::ignoreSF{}, mi::inlineConstrainedEXF{});
   static_assert(mi::Sender<decltype(in4)>, "in4 not a sender");
 
   std::promise<int> p0;
-  auto promise0 = pushmi::MAKE(receiver)(std::move(p0));
+  auto promise0 = mi::MAKE(receiver)(std::move(p0));
   in0.submit(in0.top(), std::move(promise0));
 
-  auto out0 = pushmi::MAKE(receiver)();
-  auto out1 = pushmi::MAKE(receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(receiver)();
+  auto out1 = mi::MAKE(receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(in0.top(), out1);
 
-  auto any0 = pushmi::any_constrained_single_sender<std::exception_ptr, std::ptrdiff_t, int>(in0);
+  auto any0 = mi::
+      any_constrained_single_sender<std::exception_ptr, std::ptrdiff_t, int>(
+          in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 
   in3 | op::submit();
   in3 | op::blocking_submit();
 }
 
-void time_single_sender_test(){
-  auto in0 = pushmi::MAKE(time_single_sender)();
+void time_single_sender_test() {
+  auto in0 = mi::MAKE(time_single_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(time_single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::inlineTimeEXF{}, pushmi::systemNowF{});
+  auto in2 = mi::MAKE(time_single_sender)(
+      mi::ignoreSF{}, mi::inlineTimeEXF{}, mi::systemNowF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(time_single_sender)([&](auto tp, auto out){
-    in0.submit(tp, pushmi::MAKE(receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::inline_time_executor(); }, [](){ return std::chrono::system_clock::now(); });
+  auto in3 = mi::MAKE(time_single_sender)(
+      [&](auto tp, auto out) {
+        in0.submit(
+            tp,
+            mi::MAKE(receiver)(std::move(out), mi::on_value([](auto d, int v) {
+                                 mi::set_value(d, v);
+                               })));
+      },
+      []() { return mi::inline_time_executor(); },
+      []() { return std::chrono::system_clock::now(); });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
-  auto in4 = pushmi::MAKE(time_single_sender)(pushmi::ignoreSF{}, pushmi::inlineTimeEXF{});
+  auto in4 = mi::MAKE(time_single_sender)(mi::ignoreSF{}, mi::inlineTimeEXF{});
   static_assert(mi::Sender<decltype(in4)>, "in4 not a sender");
 
   std::promise<int> p0;
-  auto promise0 = pushmi::MAKE(receiver)(std::move(p0));
+  auto promise0 = mi::MAKE(receiver)(std::move(p0));
   in0.submit(in0.top(), std::move(promise0));
 
-  auto out0 = pushmi::MAKE(receiver)();
-  auto out1 = pushmi::MAKE(receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(receiver)();
+  auto out1 = mi::MAKE(receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(in0.top(), out1);
 
-  auto any0 = pushmi::any_time_single_sender<std::exception_ptr, std::chrono::system_clock::time_point, int>(in0);
+  auto any0 = mi::any_time_single_sender<
+      std::exception_ptr,
+      std::chrono::system_clock::time_point,
+      int>(in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 
   in3 | op::submit();
   in3 | op::blocking_submit();
@@ -367,221 +360,205 @@ void time_single_sender_test(){
 }
 
 void flow_receiver_1_test() {
-  auto out0 = pushmi::MAKE(flow_receiver)();
+  auto out0 = mi::MAKE(flow_receiver)();
   static_assert(mi::Receiver<decltype(out0)>, "out0 not a receiver");
-  auto out1 = pushmi::MAKE(flow_receiver)(pushmi::ignoreVF{});
+  auto out1 = mi::MAKE(flow_receiver)(mi::ignoreVF{});
   static_assert(mi::Receiver<decltype(out1)>, "out1 not a receiver");
-  auto out2 = pushmi::MAKE(flow_receiver)(pushmi::ignoreVF{}, pushmi::abortEF{});
+  auto out2 = mi::MAKE(flow_receiver)(mi::ignoreVF{}, mi::abortEF{});
   static_assert(mi::Receiver<decltype(out2)>, "out2 not a receiver");
   auto out3 =
-      pushmi::MAKE(flow_receiver)(
-        pushmi::ignoreVF{},
-        pushmi::abortEF{},
-        pushmi::ignoreDF{});
+      mi::MAKE(flow_receiver)(mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{});
   static_assert(mi::Receiver<decltype(out3)>, "out3 not a receiver");
-  auto out4 = pushmi::MAKE(flow_receiver)([](auto v) { v.get(); });
+  auto out4 = mi::MAKE(flow_receiver)([](auto v) { v.get(); });
   static_assert(mi::Receiver<decltype(out4)>, "out4 not a receiver");
-  auto out5 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_value([](auto v) { v.get(); }, [](int) {}),
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept{},
-        [](auto e) noexcept { e.get(); }
-      ));
+  auto out5 = mi::MAKE(flow_receiver)(
+      mi::on_value([](auto v) { v.get(); }, [](int) {}),
+      mi::on_error([](std::exception_ptr) noexcept {}, [](auto e) noexcept {
+        e.get();
+      }));
   static_assert(mi::Receiver<decltype(out5)>, "out5 not a receiver");
-  auto out6 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e) noexcept{ e.get(); }
-      ));
+  auto out6 = mi::MAKE(flow_receiver)(mi::on_error(
+      [](std::exception_ptr) noexcept {}, [](auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(out6)>, "out6 not a receiver");
-  auto out7 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_done([]() {  }));
+  auto out7 = mi::MAKE(flow_receiver)(mi::on_done([]() {}));
   static_assert(mi::Receiver<decltype(out7)>, "out7 not a receiver");
 
-  auto out8 =
-      pushmi::MAKE(flow_receiver)(
-        pushmi::ignoreVF{},
-        pushmi::abortEF{},
-        pushmi::ignoreDF{},
-        pushmi::ignoreStrtF{});
+  auto out8 = mi::MAKE(flow_receiver)(
+      mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{}, mi::ignoreStrtF{});
   static_assert(mi::Receiver<decltype(out8)>, "out8 not a receiver");
 
   using Out0 = decltype(out0);
 
-  auto proxy0 = pushmi::MAKE(flow_receiver)(out0);
+  auto proxy0 = mi::MAKE(flow_receiver)(out0);
   static_assert(mi::Receiver<decltype(proxy0)>, "proxy0 not a receiver");
-  auto proxy1 = pushmi::MAKE(flow_receiver)(out0, pushmi::passDVF{});
+  auto proxy1 = mi::MAKE(flow_receiver)(out0, mi::passDVF{});
   static_assert(mi::Receiver<decltype(proxy1)>, "proxy1 not a receiver");
-  auto proxy2 = pushmi::MAKE(flow_receiver)(out0, pushmi::passDVF{}, pushmi::passDEF{});
+  auto proxy2 = mi::MAKE(flow_receiver)(out0, mi::passDVF{}, mi::passDEF{});
   static_assert(mi::Receiver<decltype(proxy2)>, "proxy2 not a receiver");
-  auto proxy3 = pushmi::MAKE(flow_receiver)(
-      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy3 = mi::MAKE(flow_receiver)(
+      out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy3)>, "proxy3 not a receiver");
-  auto proxy4 = pushmi::MAKE(flow_receiver)(out0, [](auto d, auto v) {
-    pushmi::set_value(d, v.get());
-  });
+  auto proxy4 = mi::MAKE(flow_receiver)(
+      out0, [](auto d, auto v) { mi::set_value(d, v.get()); });
   static_assert(mi::Receiver<decltype(proxy4)>, "proxy4 not a receiver");
-  auto proxy5 = pushmi::MAKE(flow_receiver)(
+  auto proxy5 = mi::MAKE(flow_receiver)(
       out0,
-      pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+      mi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
+      mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy5)>, "proxy5 not a receiver");
-  auto proxy6 = pushmi::MAKE(flow_receiver)(
-      out0,
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+  auto proxy6 = mi::MAKE(flow_receiver)(
+      out0, mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy6)>, "proxy6 not a receiver");
-  auto proxy7 = pushmi::MAKE(flow_receiver)(
-      out0,
-      pushmi::on_done([](Out0&) { }));
+  auto proxy7 = mi::MAKE(flow_receiver)(out0, mi::on_done([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy7)>, "proxy7 not a receiver");
 
-  auto proxy8 = pushmi::MAKE(flow_receiver)(out0,
-    pushmi::passDVF{},
-    pushmi::passDEF{},
-    pushmi::passDDF{});
+  auto proxy8 = mi::MAKE(flow_receiver)(
+      out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy8)>, "proxy8 not a receiver");
 
-  auto any2 = pushmi::any_flow_receiver<std::exception_ptr, std::ptrdiff_t, std::exception_ptr, int>(out0);
-  auto any3 = pushmi::any_flow_receiver<std::exception_ptr, std::ptrdiff_t, std::exception_ptr, int>(proxy0);
+  auto any2 = mi::any_flow_receiver<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(out0);
+  auto any3 = mi::any_flow_receiver<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(proxy0);
 }
 
 void flow_receiver_n_test() {
-  auto out0 = pushmi::MAKE(flow_receiver)();
+  auto out0 = mi::MAKE(flow_receiver)();
   static_assert(mi::Receiver<decltype(out0)>, "out0 not a receiver");
-  auto out1 = pushmi::MAKE(flow_receiver)(pushmi::ignoreVF{});
+  auto out1 = mi::MAKE(flow_receiver)(mi::ignoreVF{});
   static_assert(mi::Receiver<decltype(out1)>, "out1 not a receiver");
-  auto out2 = pushmi::MAKE(flow_receiver)(pushmi::ignoreVF{}, pushmi::abortEF{});
+  auto out2 = mi::MAKE(flow_receiver)(mi::ignoreVF{}, mi::abortEF{});
   static_assert(mi::Receiver<decltype(out2)>, "out2 not a receiver");
   auto out3 =
-      pushmi::MAKE(flow_receiver)(
-        pushmi::ignoreVF{},
-        pushmi::abortEF{},
-        pushmi::ignoreDF{});
+      mi::MAKE(flow_receiver)(mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{});
   static_assert(mi::Receiver<decltype(out3)>, "out3 not a receiver");
-  auto out4 = pushmi::MAKE(flow_receiver)([](auto v) { v.get(); });
+  auto out4 = mi::MAKE(flow_receiver)([](auto v) { v.get(); });
   static_assert(mi::Receiver<decltype(out4)>, "out4 not a receiver");
-  auto out5 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_value([](auto v) { v.get(); }, [](int) {}),
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept{},
-        [](auto e) noexcept { e.get(); }
-      ));
+  auto out5 = mi::MAKE(flow_receiver)(
+      mi::on_value([](auto v) { v.get(); }, [](int) {}),
+      mi::on_error([](std::exception_ptr) noexcept {}, [](auto e) noexcept {
+        e.get();
+      }));
   static_assert(mi::Receiver<decltype(out5)>, "out5 not a receiver");
-  auto out6 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_error(
-        [](std::exception_ptr) noexcept {},
-        [](auto e) noexcept{ e.get(); }
-      ));
+  auto out6 = mi::MAKE(flow_receiver)(mi::on_error(
+      [](std::exception_ptr) noexcept {}, [](auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(out6)>, "out6 not a receiver");
-  auto out7 = pushmi::MAKE(flow_receiver)(
-      pushmi::on_done([]() {  }));
+  auto out7 = mi::MAKE(flow_receiver)(mi::on_done([]() {}));
   static_assert(mi::Receiver<decltype(out7)>, "out7 not a receiver");
 
-  auto out8 =
-      pushmi::MAKE(flow_receiver)(
-        pushmi::ignoreVF{},
-        pushmi::abortEF{},
-        pushmi::ignoreDF{},
-        pushmi::ignoreStrtF{});
+  auto out8 = mi::MAKE(flow_receiver)(
+      mi::ignoreVF{}, mi::abortEF{}, mi::ignoreDF{}, mi::ignoreStrtF{});
   static_assert(mi::Receiver<decltype(out8)>, "out8 not a receiver");
 
   using Out0 = decltype(out0);
 
-  auto proxy0 = pushmi::MAKE(flow_receiver)(out0);
+  auto proxy0 = mi::MAKE(flow_receiver)(out0);
   static_assert(mi::Receiver<decltype(proxy0)>, "proxy0 not a receiver");
-  auto proxy1 = pushmi::MAKE(flow_receiver)(out0, pushmi::passDVF{});
+  auto proxy1 = mi::MAKE(flow_receiver)(out0, mi::passDVF{});
   static_assert(mi::Receiver<decltype(proxy1)>, "proxy1 not a receiver");
-  auto proxy2 = pushmi::MAKE(flow_receiver)(out0, pushmi::passDVF{}, pushmi::passDEF{});
+  auto proxy2 = mi::MAKE(flow_receiver)(out0, mi::passDVF{}, mi::passDEF{});
   static_assert(mi::Receiver<decltype(proxy2)>, "proxy2 not a receiver");
-  auto proxy3 = pushmi::MAKE(flow_receiver)(
-      out0, pushmi::passDVF{}, pushmi::passDEF{}, pushmi::passDDF{});
+  auto proxy3 = mi::MAKE(flow_receiver)(
+      out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy3)>, "proxy3 not a receiver");
-  auto proxy4 = pushmi::MAKE(flow_receiver)(out0, [](auto d, auto v) {
-    pushmi::set_value(d, v.get());
-  });
+  auto proxy4 = mi::MAKE(flow_receiver)(
+      out0, [](auto d, auto v) { mi::set_value(d, v.get()); });
   static_assert(mi::Receiver<decltype(proxy4)>, "proxy4 not a receiver");
-  auto proxy5 = pushmi::MAKE(flow_receiver)(
+  auto proxy5 = mi::MAKE(flow_receiver)(
       out0,
-      pushmi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+      mi::on_value([](Out0&, auto v) { v.get(); }, [](Out0&, int) {}),
+      mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy5)>, "proxy5 not a receiver");
-  auto proxy6 = pushmi::MAKE(flow_receiver)(
-      out0,
-      pushmi::on_error(
-        [](Out0&, std::exception_ptr) noexcept {},
-        [](Out0&, auto e) noexcept { e.get(); }
-      ));
+  auto proxy6 = mi::MAKE(flow_receiver)(
+      out0, mi::on_error([](Out0&, std::exception_ptr) noexcept {}, [
+      ](Out0&, auto e) noexcept { e.get(); }));
   static_assert(mi::Receiver<decltype(proxy6)>, "proxy6 not a receiver");
-  auto proxy7 = pushmi::MAKE(flow_receiver)(
-      out0,
-      pushmi::on_done([](Out0&) { }));
+  auto proxy7 = mi::MAKE(flow_receiver)(out0, mi::on_done([](Out0&) {}));
   static_assert(mi::Receiver<decltype(proxy7)>, "proxy7 not a receiver");
 
-  auto proxy8 = pushmi::MAKE(flow_receiver)(out0,
-    pushmi::passDVF{},
-    pushmi::passDEF{},
-    pushmi::passDDF{});
+  auto proxy8 = mi::MAKE(flow_receiver)(
+      out0, mi::passDVF{}, mi::passDEF{}, mi::passDDF{});
   static_assert(mi::Receiver<decltype(proxy8)>, "proxy8 not a receiver");
 
-  auto any2 = pushmi::any_flow_receiver<std::exception_ptr, std::ptrdiff_t, std::exception_ptr, int>(out0);
-  auto any3 = pushmi::any_flow_receiver<std::exception_ptr, std::ptrdiff_t, std::exception_ptr, int>(proxy0);
+  auto any2 = mi::any_flow_receiver<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(out0);
+  auto any3 = mi::any_flow_receiver<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(proxy0);
 }
 
-void flow_single_sender_test(){
-  auto in0 = pushmi::MAKE(flow_single_sender)();
+void flow_single_sender_test() {
+  auto in0 = mi::MAKE(flow_single_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(flow_single_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(flow_single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(flow_single_sender)(pushmi::ignoreSF{}, pushmi::trampolineEXF{});
+  auto in2 = mi::MAKE(flow_single_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(flow_single_sender)([&](auto out){
-    in0.submit(pushmi::MAKE(flow_receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::trampoline(); });
+  auto in3 = mi::MAKE(flow_single_sender)(
+      [&](auto out) {
+        in0.submit(mi::MAKE(flow_receiver)(
+            std::move(out),
+            mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
+      },
+      []() { return mi::trampoline(); });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
 
-  auto out0 = pushmi::MAKE(flow_receiver)();
-  auto out1 = pushmi::MAKE(flow_receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(flow_receiver)();
+  auto out1 = mi::MAKE(flow_receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_flow_single_sender<std::exception_ptr, std::exception_ptr, int>(in0);
+  auto any0 =
+      mi::any_flow_single_sender<std::exception_ptr, std::exception_ptr, int>(
+          in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 }
 
-void flow_many_sender_test(){
-  auto in0 = pushmi::MAKE(flow_many_sender)();
+void flow_many_sender_test() {
+  auto in0 = mi::MAKE(flow_many_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = pushmi::MAKE(flow_many_sender)(pushmi::ignoreSF{});
+  auto in1 = mi::MAKE(flow_many_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = pushmi::MAKE(flow_many_sender)(pushmi::ignoreSF{}, pushmi::trampolineEXF{});
+  auto in2 = mi::MAKE(flow_many_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = pushmi::MAKE(flow_many_sender)([&](auto out){
-    in0.submit(pushmi::MAKE(flow_receiver)(std::move(out),
-      pushmi::on_value([](auto d, int v){ pushmi::set_value(d, v); })
-    ));
-  }, [](){ return pushmi::trampoline(); });
+  auto in3 = mi::MAKE(flow_many_sender)(
+      [&](auto out) {
+        in0.submit(mi::MAKE(flow_receiver)(
+            std::move(out),
+            mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
+      },
+      []() { return mi::trampoline(); });
   static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
 
-  auto out0 = pushmi::MAKE(flow_receiver)();
-  auto out1 = pushmi::MAKE(flow_receiver)(out0, pushmi::on_value([](auto d, int v){
-    pushmi::set_value(d, v);
-  }));
+  auto out0 = mi::MAKE(flow_receiver)();
+  auto out1 = mi::MAKE(flow_receiver)(
+      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in3.submit(out1);
 
-  auto any0 = pushmi::any_flow_many_sender<std::exception_ptr, std::ptrdiff_t, std::exception_ptr, int>(in0);
+  auto any0 = mi::any_flow_many_sender<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(in0);
 
-  static_assert(pushmi::Executor<pushmi::executor_t<decltype(in0)>>, "sender has invalid executor");
+  static_assert(
+      mi::Executor<mi::executor_t<decltype(in0)>>,
+      "sender has invalid executor");
 }

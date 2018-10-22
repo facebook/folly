@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/submit.h>
 #include <folly/experimental/pushmi/single_sender.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -33,16 +34,16 @@ struct no_fail_fn {
   struct out_impl {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)auto operator()(Out out) const {
-      return ::pushmi::detail::receiver_from_fn<In>()(
-          std::move(out), ::pushmi::on_error(on_error_impl{}));
+      return ::folly::pushmi::detail::receiver_from_fn<In>()(
+          std::move(out), ::folly::pushmi::on_error(on_error_impl{}));
     }
   };
   struct in_impl {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)auto operator()(In in) const {
-      return ::pushmi::detail::sender_from(
+      return ::folly::pushmi::detail::sender_from(
           std::move(in),
-          ::pushmi::detail::submit_transform_out<In>(out_impl<In>{}));
+          ::folly::pushmi::detail::submit_transform_out<In>(out_impl<In>{}));
     }
   };
 
@@ -59,3 +60,4 @@ PUSHMI_INLINE_VAR constexpr detail::no_fail_fn no_fail{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

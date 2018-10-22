@@ -21,18 +21,18 @@ using namespace std::literals;
 
 #include <folly/experimental/pushmi/flow_single_sender.h>
 #include <folly/experimental/pushmi/o/empty.h>
+#include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/from.h>
 #include <folly/experimental/pushmi/o/just.h>
 #include <folly/experimental/pushmi/o/on.h>
-#include <folly/experimental/pushmi/o/transform.h>
-#include <folly/experimental/pushmi/o/tap.h>
 #include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/o/extension_operators.h>
+#include <folly/experimental/pushmi/o/tap.h>
+#include <folly/experimental/pushmi/o/transform.h>
 
 #include <folly/experimental/pushmi/trampoline.h>
 #include <folly/experimental/pushmi/new_thread.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 #if 0
 SCENARIO( "empty can be used with tap and submit", "[empty][sender]" ) {

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <experimental/thread_pool> // @manual
 
@@ -29,6 +29,7 @@
 #define MAKE(x) make_##x
 #endif
 
+namespace folly {
 namespace pushmi {
 
 using std::experimental::static_thread_pool;
@@ -50,10 +51,10 @@ struct pool_executor {
     return *this;
   }
   PUSHMI_TEMPLATE(class Out)
-  (requires Receiver<Out>)void submit(Out out) const {
-    e.execute([e = *this, out = std::move(out)]() mutable {
-      ::pushmi::set_value(out, e);
-    });
+  (requires Receiver<Out>)
+  void submit(Out out) const {
+    e.execute(
+        [e = *this, out = std::move(out)]() mutable { set_value(out, e); });
   }
 };
 
@@ -78,3 +79,4 @@ class pool {
 };
 
 } // namespace pushmi
+} // namespace folly
