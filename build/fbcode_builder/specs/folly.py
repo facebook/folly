@@ -8,6 +8,12 @@ from __future__ import unicode_literals
 def fbcode_builder_spec(builder):
     return {
         'steps': [
-            builder.fb_github_cmake_install('folly/folly'),
+            # on macOS the filesystem is typically case insensitive.
+            # We need to ensure that the CWD is not the folly source
+            # dir when we build, otherwise the system will decide
+            # that `folly/String.h` is the file it wants when including
+            # `string.h` and the build will fail.
+            builder.github_project_workdir('facebook/folly', '_build'),
+            builder.cmake_install('facebook/folly'),
         ],
     }
