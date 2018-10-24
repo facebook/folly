@@ -44,7 +44,7 @@ class RequestToken {
   friend struct std::hash<folly::RequestToken>;
 
  private:
-  static Synchronized<std::unordered_map<std::string, uint32_t>>& getCache();
+  static Synchronized<F14FastMap<std::string, uint32_t>>& getCache();
 
   uint32_t token_;
 };
