@@ -36,6 +36,7 @@
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Traits.h>
 #include <experimental/coroutine>
 #endif
 
@@ -863,13 +864,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
    private:
     folly::Promise<T> promise_;
   };
-
-  template <typename Awaitable>
-  static SemiFuture fromAwaitable(Awaitable&& awaitable) {
-    return [](Awaitable awaitable) -> SemiFuture {
-      co_return co_await std::forward<Awaitable>(awaitable);
-    }(std::forward<Awaitable>(awaitable));
-  }
 
   // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
   // directly awaited within a folly::coro::Task coroutine.
@@ -2083,6 +2077,31 @@ inline detail::FutureAwaitable<T>
 /* implicit */ operator co_await(Future<T>&& future) noexcept {
   return detail::FutureAwaitable<T>(std::move(future));
 }
+
+namespace coro {
+
+/// Convert an awaitable type into a SemiFuture that can then be consumed by
+/// APIs that use folly::Future/SemiFuture.
+///
+/// This will eagerly start execution of 'co_await awaitable' and will make
+/// the eventual result available via the returned SemiFuture.
+template <typename Awaitable>
+inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
+    !std::is_void<folly::coro::await_result_t<Awaitable>>::value,
+    SemiFuture<await_result_t<Awaitable>>> {
+  co_return co_await static_cast<Awaitable&&>(awaitable);
+}
+
+template <typename Awaitable>
+inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
+    std::is_void<folly::coro::await_result_t<Awaitable>>::value,
+    SemiFuture<Unit>> {
+  co_await static_cast<Awaitable&&>(awaitable);
+  co_return Unit{};
+}
+
+} // namespace coro
+
 } // namespace folly
 #endif
 

@@ -59,20 +59,6 @@ class AwaitableReady<void> {
   void await_resume() noexcept {}
 };
 
-struct getCurrentExecutor {};
-
-struct yield {
-  bool await_ready() {
-    return false;
-  }
-
-  void await_suspend(std::experimental::coroutine_handle<> ch) {
-    ch();
-  }
-
-  void await_resume() {}
-};
-
 template <typename Awaitable>
 class TimedWaitAwaitable {
  public:

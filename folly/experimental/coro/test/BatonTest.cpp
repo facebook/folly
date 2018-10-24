@@ -19,8 +19,6 @@
 
 #include <folly/executors/InlineExecutor.h>
 #include <folly/experimental/coro/Baton.h>
-#include <folly/experimental/coro/Future.h>
-#include <folly/experimental/coro/Promise.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
@@ -58,8 +56,7 @@ TEST(Baton, AwaitBaton) {
   CHECK(!reachedBeforeAwait);
   CHECK(!reachedAfterAwait);
 
-  auto& executor = InlineExecutor::instance();
-  coro::Future<void> f = via(&executor, std::move(t));
+  auto f = std::move(t).scheduleOn(&InlineExecutor::instance()).start();
 
   CHECK(reachedBeforeAwait);
   CHECK(!reachedAfterAwait);

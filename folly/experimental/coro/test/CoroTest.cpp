@@ -21,7 +21,8 @@
 #include <folly/Chrono.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Future.h>
+#include <folly/experimental/coro/Task.h>
+#include <folly/experimental/coro/Utils.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -33,24 +34,24 @@ coro::Task<int> task42() {
 
 TEST(Coro, Basic) {
   ManualExecutor executor;
-  auto future = via(&executor, task42());
+  auto future = task42().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
   executor.drive();
 
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(42, folly::coro::blockingWait(std::move(future)));
+  EXPECT_EQ(42, std::move(future).get());
 }
 
 TEST(Coro, BasicFuture) {
   ManualExecutor executor;
 
-  auto future = via(&executor, task42()).toFuture();
+  auto future = task42().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
-  EXPECT_EQ(42, future.getVia(&executor));
+  EXPECT_EQ(42, std::move(future).via(&executor).getVia(&executor));
 }
 
 coro::Task<void> taskVoid() {
@@ -60,7 +61,7 @@ coro::Task<void> taskVoid() {
 
 TEST(Coro, Basic2) {
   ManualExecutor executor;
-  auto future = via(&executor, taskVoid());
+  auto future = taskVoid().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -69,30 +70,28 @@ TEST(Coro, Basic2) {
   EXPECT_TRUE(future.isReady());
 }
 
-coro::Task<void> taskSleep() {
-  (void)co_await futures::sleep(std::chrono::seconds{1});
-  co_return;
-}
-
 TEST(Coro, TaskOfMoveOnly) {
   auto f = []() -> coro::Task<std::unique_ptr<int>> {
     co_return std::make_unique<int>(123);
   };
 
-  auto p = coro::blockingWait(f().scheduleVia(&InlineExecutor::instance()));
+  auto p = coro::blockingWait(f().scheduleOn(&InlineExecutor::instance()));
   EXPECT_TRUE(p);
   EXPECT_EQ(123, *p);
+}
+
+coro::Task<void> taskSleep() {
+  (void)co_await futures::sleep(std::chrono::seconds{1});
+  co_return;
 }
 
 TEST(Coro, Sleep) {
   ScopedEventBaseThread evbThread;
 
   auto startTime = std::chrono::steady_clock::now();
-  auto future = via(evbThread.getEventBase(), taskSleep());
+  auto task = taskSleep().scheduleOn(evbThread.getEventBase());
 
-  EXPECT_FALSE(future.isReady());
-
-  coro::blockingWait(std::move(future));
+  coro::blockingWait(std::move(task));
 
   // The total time should be roughly 1 second. Some builds, especially
   // optimized ones, may result in slightly less than 1 second, so we perform
@@ -109,19 +108,19 @@ coro::Task<int> taskException() {
 
 TEST(Coro, Throw) {
   ManualExecutor executor;
-  auto future = via(&executor, taskException());
+  auto future = taskException().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
   executor.drive();
 
   EXPECT_TRUE(future.isReady());
-  EXPECT_THROW(coro::blockingWait(std::move(future)), std::runtime_error);
+  EXPECT_THROW(std::move(future).get(), std::runtime_error);
 }
 
 TEST(Coro, FutureThrow) {
   ManualExecutor executor;
-  auto future = via(&executor, taskException()).toFuture();
+  auto future = taskException().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -143,10 +142,16 @@ coro::Task<int> taskRecursion(int depth) {
 
 TEST(Coro, LargeStack) {
   ScopedEventBaseThread evbThread;
-  auto future = via(evbThread.getEventBase(), taskRecursion(5000));
+  auto task = taskRecursion(5000).scheduleOn(evbThread.getEventBase());
 
-  EXPECT_EQ(5000, coro::blockingWait(std::move(future)));
+  EXPECT_EQ(5000, coro::blockingWait(std::move(task)));
 }
+
+#if defined(__clang__)
+#define FOLLY_CORO_DONT_OPTIMISE_ON_CLANG __attribute__((optnone))
+#else
+#define FOLLY_CORO_DONT_OPTIMISE_ON_CLANG
+#endif
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
   EXPECT_EQ(threadId, std::this_thread::get_id());
@@ -155,12 +160,18 @@ coro::Task<void> taskThreadNested(std::thread::id threadId) {
   co_return;
 }
 
-coro::Task<int> taskThread() {
+coro::Task<int> taskThread() FOLLY_CORO_DONT_OPTIMISE_ON_CLANG {
   auto threadId = std::this_thread::get_id();
 
+  // BUG: Under @mode/clang-opt builds this object is placed on the coroutine
+  // frame and the code for the constructor assumes that it is allocated on
+  // a 16-byte boundary. However, when placed in the coroutine frame it can
+  // end up at a location that is not 16-byte aligned. This causes a SIGSEGV
+  // when performing a store to members that uses SSE instructions.
   folly::ScopedEventBaseThread evbThread;
-  co_await via(
-      evbThread.getEventBase(), taskThreadNested(evbThread.getThreadId()));
+
+  co_await taskThreadNested(evbThread.getThreadId())
+      .scheduleOn(evbThread.getEventBase());
 
   EXPECT_EQ(threadId, std::this_thread::get_id());
 
@@ -169,30 +180,21 @@ coro::Task<int> taskThread() {
 
 TEST(Coro, NestedThreads) {
   ScopedEventBaseThread evbThread;
-  auto future = via(evbThread.getEventBase(), taskThread());
-
-  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
+  auto task = taskThread().scheduleOn(evbThread.getEventBase());
+  EXPECT_EQ(42, coro::blockingWait(std::move(task)));
 }
 
-coro::Task<int> taskYield(Executor* executor) {
+coro::Task<int> taskGetCurrentExecutor(Executor* executor) {
   auto currentExecutor = co_await coro::getCurrentExecutor();
   EXPECT_EQ(executor, currentExecutor);
-
-  auto future = via(currentExecutor, task42());
-  EXPECT_FALSE(future.isReady());
-
-  co_await coro::yield();
-
-  EXPECT_TRUE(future.isReady());
-  co_return co_await std::move(future);
+  co_return co_await task42().scheduleOn(currentExecutor);
 }
 
 TEST(Coro, CurrentExecutor) {
   ScopedEventBaseThread evbThread;
-  auto future =
-      via(evbThread.getEventBase(), taskYield(evbThread.getEventBase()));
-
-  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
+  auto task = taskGetCurrentExecutor(evbThread.getEventBase())
+                  .scheduleOn(evbThread.getEventBase());
+  EXPECT_EQ(42, coro::blockingWait(std::move(task)));
 }
 
 coro::Task<void> taskTimedWait() {
@@ -231,7 +233,8 @@ coro::Task<void> taskTimedWait() {
 
 TEST(Coro, TimedWait) {
   ManualExecutor executor;
-  via(&executor, taskTimedWait()).toFuture().getVia(&executor);
+  taskTimedWait().scheduleOn(&executor).start().via(&executor).getVia(
+      &executor);
 }
 
 template <int value>
@@ -263,7 +266,11 @@ TEST(Coro, AwaitableWithOperator) {
   ManualExecutor executor;
   EXPECT_EQ(
       42,
-      via(&executor, taskAwaitableWithOperator()).toFuture().getVia(&executor));
+      taskAwaitableWithOperator()
+          .scheduleOn(&executor)
+          .start()
+          .via(&executor)
+          .getVia(&executor));
 }
 
 struct AwaitableWithMemberOperator {
@@ -284,8 +291,10 @@ TEST(Coro, AwaitableWithMemberOperator) {
   ManualExecutor executor;
   EXPECT_EQ(
       42,
-      via(&executor, taskAwaitableWithMemberOperator())
-          .toFuture()
+      taskAwaitableWithMemberOperator()
+          .scheduleOn(&executor)
+          .start()
+          .via(&executor)
           .getVia(&executor));
 }
 
@@ -297,7 +306,7 @@ coro::Task<int> taskBaton(fibers::Baton& baton) {
 TEST(Coro, Baton) {
   ManualExecutor executor;
   fibers::Baton baton;
-  auto future = via(&executor, taskBaton(baton));
+  auto future = taskBaton(baton).scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
@@ -309,7 +318,7 @@ TEST(Coro, Baton) {
   executor.run();
 
   EXPECT_TRUE(future.isReady());
-  EXPECT_EQ(42, coro::blockingWait(std::move(future)));
+  EXPECT_EQ(42, std::move(future).get());
 }
 
 #endif
