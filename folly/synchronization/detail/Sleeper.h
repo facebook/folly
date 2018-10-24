@@ -42,9 +42,9 @@ class Sleeper {
   uint32_t spinCount;
 
  public:
-  Sleeper() : spinCount(0) {}
+  Sleeper() noexcept : spinCount(0) {}
 
-  static void sleep() {
+  static void sleep() noexcept {
     /*
      * Always sleep 0.5ms, assuming this will make the kernel put
      * us down for whatever its minimum timer resolution is (in
@@ -54,7 +54,7 @@ class Sleeper {
     nanosleep(&ts, nullptr);
   }
 
-  void wait() {
+  void wait() noexcept {
     if (spinCount < kMaxActiveSpin) {
       ++spinCount;
       asm_volatile_pause();
