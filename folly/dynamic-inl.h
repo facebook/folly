@@ -249,11 +249,13 @@ inline dynamic::ObjectMaker dynamic::object(dynamic a, dynamic b) {
 struct dynamic::item_iterator : detail::IteratorAdaptor<
                                     dynamic::item_iterator,
                                     dynamic::ObjectImpl::iterator,
-                                    std::pair<dynamic const, dynamic>> {
+                                    std::pair<dynamic const, dynamic>,
+                                    std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::item_iterator,
       dynamic::ObjectImpl::iterator,
-      std::pair<dynamic const, dynamic>>;
+      std::pair<dynamic const, dynamic>,
+      std::forward_iterator_tag>;
   /* implicit */ item_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
@@ -262,11 +264,13 @@ struct dynamic::item_iterator : detail::IteratorAdaptor<
 struct dynamic::value_iterator : detail::IteratorAdaptor<
                                      dynamic::value_iterator,
                                      dynamic::ObjectImpl::iterator,
-                                     dynamic> {
+                                     dynamic,
+                                     std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::value_iterator,
       dynamic::ObjectImpl::iterator,
-      dynamic>;
+      dynamic,
+      std::forward_iterator_tag>;
   /* implicit */ value_iterator(dynamic::ObjectImpl::iterator b) : Super(b) {}
 
   using object_type = dynamic::ObjectImpl;
@@ -280,11 +284,13 @@ struct dynamic::const_item_iterator
     : detail::IteratorAdaptor<
           dynamic::const_item_iterator,
           dynamic::ObjectImpl::const_iterator,
-          std::pair<dynamic const, dynamic> const> {
+          std::pair<dynamic const, dynamic> const,
+          std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::const_item_iterator,
       dynamic::ObjectImpl::const_iterator,
-      std::pair<dynamic const, dynamic> const>;
+      std::pair<dynamic const, dynamic> const,
+      std::forward_iterator_tag>;
   /* implicit */ const_item_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
   /* implicit */ const_item_iterator(const_item_iterator const& i)
@@ -297,11 +303,13 @@ struct dynamic::const_item_iterator
 struct dynamic::const_key_iterator : detail::IteratorAdaptor<
                                          dynamic::const_key_iterator,
                                          dynamic::ObjectImpl::const_iterator,
-                                         dynamic const> {
+                                         dynamic const,
+                                         std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::const_key_iterator,
       dynamic::ObjectImpl::const_iterator,
-      dynamic const>;
+      dynamic const,
+      std::forward_iterator_tag>;
   /* implicit */ const_key_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
 
@@ -315,11 +323,13 @@ struct dynamic::const_key_iterator : detail::IteratorAdaptor<
 struct dynamic::const_value_iterator : detail::IteratorAdaptor<
                                            dynamic::const_value_iterator,
                                            dynamic::ObjectImpl::const_iterator,
-                                           dynamic const> {
+                                           dynamic const,
+                                           std::forward_iterator_tag> {
   using Super = detail::IteratorAdaptor<
       dynamic::const_value_iterator,
       dynamic::ObjectImpl::const_iterator,
-      dynamic const>;
+      dynamic const,
+      std::forward_iterator_tag>;
   /* implicit */ const_value_iterator(dynamic::ObjectImpl::const_iterator b)
       : Super(b) {}
   /* implicit */ const_value_iterator(value_iterator i) : Super(i.base()) {}
