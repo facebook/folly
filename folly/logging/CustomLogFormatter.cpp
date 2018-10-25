@@ -41,7 +41,7 @@ StringPiece getGlogLevelName(LogLevel level) {
 }
 
 StringPiece getResetSequence(LogLevel level) {
-  if (level >= LogLevel::INFO && level < LogLevel::WARN) {
+  if (level < LogLevel::INFO || level >= LogLevel::WARN) {
     return "\033[0m";
   } else {
     return "";
