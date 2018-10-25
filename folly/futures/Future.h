@@ -1178,9 +1178,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
-  then(F&& func) && {
-    return this->thenImplementation(std::forward<F>(func), R{});
-  }
+  then(F&& func) && = delete;
 
   // clang-format off
   template <typename F, typename R = futures::detail::callableResult<T, F>>
