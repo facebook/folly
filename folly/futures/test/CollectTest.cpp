@@ -343,6 +343,8 @@ TEST(Collect, collectAny) {
 }
 
 TEST(Collect, collectAnyWithoutException) {
+  auto& executor = folly::InlineExecutor::instance();
+
   {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
@@ -351,7 +353,7 @@ TEST(Collect, collectAnyWithoutException) {
       futures.push_back(p.getFuture());
     }
 
-    auto onef = collectAnyWithoutException(futures);
+    auto onef = collectAnyWithoutException(futures).via(&executor);
 
     /* futures were moved in, so these are invalid now */
     EXPECT_FALSE(onef.isReady());
@@ -372,7 +374,7 @@ TEST(Collect, collectAnyWithoutException) {
       futures.push_back(p.getFuture());
     }
 
-    auto onef = collectAnyWithoutException(futures);
+    auto onef = collectAnyWithoutException(futures).via(&executor);
 
     EXPECT_FALSE(onef.isReady());
 
@@ -396,7 +398,7 @@ TEST(Collect, collectAnyWithoutException) {
       futures.push_back(p.getFuture());
     }
 
-    auto onef = collectAnyWithoutException(futures);
+    auto onef = collectAnyWithoutException(futures).via(&executor);
 
     EXPECT_FALSE(onef.isReady());
     for (int i = 0; i < 9; ++i) {
