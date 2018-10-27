@@ -37,18 +37,6 @@
 #ifndef MALLOCX_ZERO
 #define MALLOCX_ZERO (static_cast<int>(0x40))
 #endif
-#ifndef MALLOCX_ARENA
-#define MALLOCX_ARENA(_) (static_cast<int>(0))
-#endif
-#ifndef MALLOCX_LG_ALIGN
-#define MALLOCX_LG_ALIGN(_) (static_cast<int>(0))
-#endif
-#ifndef MALLCTL_ARENAS_ALL
-#define MALLCTL_ARENAS_ALL (static_cast<int>(0))
-#endif
-#ifndef MALLOCX_TCACHE_NONE
-#define MALLOCX_TCACHE_NONE (static_cast<int>(0))
-#endif
 #endif
 
 // If using fbstring from libstdc++ (see comment in FBString.h), then
