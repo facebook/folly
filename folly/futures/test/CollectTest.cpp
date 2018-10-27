@@ -410,6 +410,28 @@ TEST(Collect, collectAnyWithoutException) {
     EXPECT_TRUE(onef.isReady());
     EXPECT_TRUE(onef.hasException());
   }
+
+  // Deferred work
+  {
+    std::vector<Promise<int>> promises(10);
+
+    auto onef = [&] {
+      std::vector<SemiFuture<int>> futures;
+
+      for (auto& p : promises) {
+        futures.push_back(
+            p.getSemiFuture().deferValue([](auto v) { return v; }));
+      }
+      return collectAnyWithoutException(futures);
+    }();
+
+    /* futures were moved in, so these are invalid now */
+
+    promises[7].setValue(42);
+    auto idx_fut = std::move(onef).get();
+    EXPECT_EQ(7, idx_fut.first);
+    EXPECT_EQ(42, idx_fut.second);
+  }
 }
 
 TEST(Collect, alreadyCompleted) {

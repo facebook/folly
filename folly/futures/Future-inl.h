@@ -1670,6 +1670,10 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
     size_t nTotal;
   };
 
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
+
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
     first->setCallback_([i, ctx](Try<T>&& t) {
@@ -1683,7 +1687,17 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
       }
     });
   }
-  return ctx->p.getSemiFuture();
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 // collectN (iterator)
