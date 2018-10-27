@@ -31,11 +31,13 @@ const char* kTestCertWithoutSan = "folly/io/async/test/certs/tests-cert.pem";
 const char* kTestCa = "folly/io/async/test/certs/ca-cert.pem";
 
 // Test key
-// -----BEGIN EC PRIVATE KEY-----
-// MHcCAQEEIBskFwVZ9miFN+SKCFZPe9WEuFGmP+fsecLUnsTN6bOcoAoGCCqGSM49
-// AwEHoUQDQgAE7/f4YYOYunAM/VkmjDYDg3AWUgyyTIraWmmQZsnu0bYNV/lLLfNz
-// CtHggxGSwEtEe40nNb9C8wQmHUvb7VBBlw==
-// -----END EC PRIVATE KEY-----
+const std::string kTestKey = folly::stripLeftMargin(R"(
+  ----BEGIN EC PRIVATE KEY-----
+  MHcCAQEEIBskFwVZ9miFN+SKCFZPe9WEuFGmP+fsecLUnsTN6bOcoAoGCCqGSM49
+  AwEHoUQDQgAE7/f4YYOYunAM/VkmjDYDg3AWUgyyTIraWmmQZsnu0bYNV/lLLfNz
+  CtHggxGSwEtEe40nNb9C8wQmHUvb7VBBlw==
+  -----END EC PRIVATE KEY-----
+)");
 const std::string kTestCertWithSan = folly::stripLeftMargin(R"(
   -----BEGIN CERTIFICATE-----
   MIIDXDCCAkSgAwIBAgIBAjANBgkqhkiG9w0BAQsFADBQMQswCQYDVQQGEwJVUzEL
@@ -155,6 +157,28 @@ static folly::ssl::X509UniquePtr readCertFromData(
       PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
 }
 
+// Validate the certs parsed from kTestCertBundle buffer.
+static void validateTestCertBundle(
+    const std::vector<folly::ssl::X509UniquePtr>& certs) {
+  EXPECT_EQ(certs.size(), 3);
+  for (auto i : folly::enumerate(certs)) {
+    auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(**i);
+    EXPECT_TRUE(identity);
+    EXPECT_EQ(*identity, folly::sformat("test cert {}", i.index + 1));
+  }
+}
+
+// Validate parsed cert from kTestCertWithSan.
+static void validateTestCertWithSAN(X509* x509) {
+  ASSERT_NE(nullptr, x509);
+  auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
+  EXPECT_EQ("127.0.0.1", identity.value());
+  auto altNames = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
+  EXPECT_EQ(2, altNames.size());
+  EXPECT_EQ("anotherexample.com", altNames[0]);
+  EXPECT_EQ("*.thirdexample.com", altNames[1]);
+}
+
 TEST_F(OpenSSLCertUtilsTest, TestX509CN) {
   auto x509 = readCertFromFile(kTestCertWithoutSan);
   EXPECT_NE(x509, nullptr);
@@ -166,13 +190,7 @@ TEST_F(OpenSSLCertUtilsTest, TestX509CN) {
 
 TEST_F(OpenSSLCertUtilsTest, TestX509Sans) {
   auto x509 = readCertFromData(kTestCertWithSan);
-  EXPECT_NE(x509, nullptr);
-  auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
-  EXPECT_EQ(identity.value(), "127.0.0.1");
-  auto altNames = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
-  EXPECT_EQ(altNames.size(), 2);
-  EXPECT_EQ(altNames[0], "anotherexample.com");
-  EXPECT_EQ(altNames[1], "*.thirdexample.com");
+  validateTestCertWithSAN(x509.get());
 }
 
 TEST_F(OpenSSLCertUtilsTest, TestX509IssuerAndSubject) {
@@ -251,11 +269,20 @@ TEST_F(OpenSSLCertUtilsTest, TestDerDecodeTooShort) {
 TEST_F(OpenSSLCertUtilsTest, TestReadCertsFromBuffer) {
   auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
       StringPiece(kTestCertBundle));
-  EXPECT_EQ(certs.size(), 3);
-  for (auto i : folly::enumerate(certs)) {
-    auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(**i);
-    EXPECT_TRUE(identity);
-    EXPECT_EQ(*identity, folly::sformat("test cert {}", i.index + 1));
+  validateTestCertBundle(certs);
+}
+
+// readCertsFromBuffer() should manage to read certs from a buffer that contain
+// both cert and private key.
+TEST_F(OpenSSLCertUtilsTest, TestReadCertsFromMixedBuffer) {
+  std::vector<std::string> bufs(
+      {folly::to<std::string>(kTestCertWithSan, "\n\n", kTestKey, "\n"),
+       folly::to<std::string>(kTestKey, "\n\n", kTestCertWithSan, "\n")});
+  for (auto& buf : bufs) {
+    auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+        folly::StringPiece(buf));
+    ASSERT_EQ(1, certs.size());
+    validateTestCertWithSAN(certs.front().get());
   }
 }
 
@@ -284,4 +311,34 @@ TEST_F(OpenSSLCertUtilsTest, TestX509Store) {
   EXPECT_EQ(rc, 1);
   rc = X509_verify_cert(ctx.get());
   EXPECT_EQ(rc, 1);
+}
+
+TEST_F(OpenSSLCertUtilsTest, TestProcessMalformedCertBuf) {
+  std::string badCert =
+      "-----BEGIN CERTIFICATE-----\n"
+      "yo\n"
+      "-----END CERTIFICATE-----\n";
+
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+          folly::StringPiece(badCert)),
+      std::runtime_error);
+
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::readStoreFromBuffer(
+          folly::StringPiece(badCert)),
+      std::runtime_error);
+
+  std::string bufWithBadCert =
+      folly::to<std::string>(badCert, "\n", kTestCertBundle);
+
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+          folly::StringPiece(bufWithBadCert)),
+      std::runtime_error);
+
+  EXPECT_THROW(
+      folly::ssl::OpenSSLCertUtils::readStoreFromBuffer(
+          folly::StringPiece(bufWithBadCert)),
+      std::runtime_error);
 }
