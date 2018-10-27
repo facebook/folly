@@ -86,7 +86,7 @@ constexpr typename std::decay<T>::type copy(T&& value) noexcept(
  *
  * Like C++17's std::as_const. See http://wg21.link/p0007
  */
-#if __cpp_lib_as_const || _MSC_VER
+#if __cpp_lib_as_const || _LIBCPP_STD_VER > 14 || _MSC_VER
 
 /* using override */ using std::as_const;
 
