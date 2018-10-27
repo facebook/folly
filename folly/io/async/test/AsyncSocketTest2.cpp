@@ -1156,8 +1156,8 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   TestServer server(false, kSockBufSize);
 
   AsyncSocket::OptionMap options{
-      {{SOL_SOCKET, SO_SNDBUF}, kSockBufSize},
-      {{SOL_SOCKET, SO_RCVBUF}, kSockBufSize},
+      {{SOL_SOCKET, SO_SNDBUF}, int(kSockBufSize)},
+      {{SOL_SOCKET, SO_RCVBUF}, int(kSockBufSize)},
       {{IPPROTO_TCP, TCP_NODELAY}, 1},
   };
 
