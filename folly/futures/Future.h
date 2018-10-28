@@ -2053,18 +2053,17 @@ class FutureAwaitable {
   }
 
   T await_resume() {
-    return std::move(result_).value();
+    return std::move(future_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([this, h](Try<T>&& result) mutable {
-      result_ = std::move(result);
+    future_.setCallback_([h](Try<T>&&) mutable {
+      // Don't std::move() so the try is left in the future for await_resume()
       h.resume();
     });
   }
 
  private:
-  folly::Try<T> result_;
   folly::Future<T> future_;
 };
 
