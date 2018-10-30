@@ -130,9 +130,19 @@ class Optional {
 
   template <typename... Args>
   FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
-      std::is_nothrow_constructible<Value, Args...>::value) {
-    construct(std::forward<Args>(args)...);
-  }
+      std::is_nothrow_constructible<Value, Args...>::value)
+      : Optional{PrivateConstructor{}, std::forward<Args>(args)...} {}
+
+  template <typename U, typename... Args>
+  FOLLY_CPP14_CONSTEXPR explicit Optional(
+      in_place_t,
+      std::initializer_list<U> il,
+      Args&&... args) noexcept(std::
+                                   is_nothrow_constructible<
+                                       Value,
+                                       std::initializer_list<U>,
+                                       Args...>::value)
+      : Optional{PrivateConstructor{}, il, std::forward<Args>(args)...} {}
 
   // Used only when an Optional is used with coroutines on MSVC
   /* implicit */ Optional(const detail::OptionalPromiseReturn<Value>& p)
@@ -315,6 +325,30 @@ class Optional {
   }
 
  private:
+  template <class T>
+  friend constexpr Optional<_t<std::decay<T>>> make_optional(T&&);
+  template <class T, class... Args>
+  friend constexpr Optional<T> make_optional(Args&&... args);
+  template <class T, class U, class... As>
+  friend constexpr Optional<T> make_optional(std::initializer_list<U>, As&&...);
+
+  /**
+   * Construct the optional in place, this is duplicated as a non-explicit
+   * constructor to allow returning values that are non-movable from
+   * make_optional using list initialization.
+   *
+   * Until C++17, at which point this will become unnecessary because of
+   * specified prvalue elision.
+   */
+  struct PrivateConstructor {
+    explicit PrivateConstructor() = default;
+  };
+  template <typename... Args>
+  FOLLY_CPP14_CONSTEXPR Optional(PrivateConstructor, Args&&... args) noexcept(
+      std::is_constructible<Value, Args&&...>::value) {
+    construct(std::forward<Args>(args)...);
+  }
+
   void require_value() const {
     if (!storage_.hasValue) {
       throw_exception<OptionalEmptyException>();
@@ -392,9 +426,25 @@ void swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
   a.swap(b);
 }
 
-template <class T, class Opt = Optional<typename std::decay<T>::type>>
-constexpr Opt make_optional(T&& v) {
-  return Opt(std::forward<T>(v));
+template <class T>
+constexpr Optional<_t<std::decay<T>>> make_optional(T&& v) {
+  using PrivateConstructor =
+      typename folly::Optional<_t<std::decay<T>>>::PrivateConstructor;
+  return {PrivateConstructor{}, std::forward<T>(v)};
+}
+
+template <class T, class... Args>
+constexpr folly::Optional<T> make_optional(Args&&... args) {
+  using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;
+  return {PrivateConstructor{}, std::forward<Args>(args)...};
+}
+
+template <class T, class U, class... Args>
+constexpr folly::Optional<T> make_optional(
+    std::initializer_list<U> il,
+    Args&&... args) {
+  using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;
+  return {PrivateConstructor{}, il, std::forward<Args>(args)...};
 }
 
 ///////////////////////////////////////////////////////////////////////////////

@@ -20,9 +20,11 @@
 #include <folly/portability/GTest.h>
 
 #include <algorithm>
+#include <initializer_list>
 #include <iomanip>
 #include <memory>
 #include <string>
+#include <tuple>
 #include <type_traits>
 #include <unordered_map>
 #include <vector>
@@ -571,6 +573,36 @@ TEST(Optional, Pointee) {
   EXPECT_FALSE(get_pointer(x));
 }
 
+namespace {
+class ConstructibleWithArgsOnly {
+ public:
+  explicit ConstructibleWithArgsOnly(int, double) {}
+
+  ConstructibleWithArgsOnly() = delete;
+  ConstructibleWithArgsOnly(const ConstructibleWithArgsOnly&) = delete;
+  ConstructibleWithArgsOnly(ConstructibleWithArgsOnly&&) = delete;
+  ConstructibleWithArgsOnly& operator=(const ConstructibleWithArgsOnly&) =
+      delete;
+  ConstructibleWithArgsOnly& operator=(ConstructibleWithArgsOnly&&) = delete;
+};
+
+class ConstructibleWithInitializerListAndArgsOnly {
+ public:
+  ConstructibleWithInitializerListAndArgsOnly(std::initializer_list<int>, int) {
+  }
+
+  ConstructibleWithInitializerListAndArgsOnly() = delete;
+  ConstructibleWithInitializerListAndArgsOnly(
+      const ConstructibleWithInitializerListAndArgsOnly&) = delete;
+  ConstructibleWithInitializerListAndArgsOnly(
+      ConstructibleWithInitializerListAndArgsOnly&&) = delete;
+  ConstructibleWithInitializerListAndArgsOnly& operator=(
+      const ConstructibleWithInitializerListAndArgsOnly&) = delete;
+  ConstructibleWithInitializerListAndArgsOnly& operator=(
+      ConstructibleWithInitializerListAndArgsOnly&&) = delete;
+};
+} // namespace
+
 TEST(Optional, MakeOptional) {
   // const L-value version
   const std::string s("abc");
@@ -604,6 +636,34 @@ TEST(Optional, MakeOptional) {
   EXPECT_TRUE(pInt.get() == nullptr);
   ASSERT_TRUE(optIntPtr.hasValue());
   EXPECT_EQ(**optIntPtr, 3);
+
+  // variadic version
+  {
+    auto&& optional = make_optional<ConstructibleWithArgsOnly>(int{}, double{});
+    std::ignore = optional;
+  }
+  {
+    using Type = ConstructibleWithInitializerListAndArgsOnly;
+    auto&& optional = make_optional<Type>({int{}}, double{});
+    std::ignore = optional;
+  }
+}
+
+TEST(Optional, InitializerListConstruct) {
+  using Type = ConstructibleWithInitializerListAndArgsOnly;
+  auto&& optional = Optional<Type>{in_place, {int{}}, double{}};
+  std::ignore = optional;
+}
+
+TEST(Optional, TestDisambiguationMakeOptionalVariants) {
+  {
+    auto optional = make_optional<int>(1);
+    std::ignore = optional;
+  }
+  {
+    auto optional = make_optional(1);
+    std::ignore = optional;
+  }
 }
 
 TEST(Optional, SelfAssignment) {
