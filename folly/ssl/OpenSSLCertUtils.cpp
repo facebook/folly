@@ -214,6 +214,7 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
     throw std::runtime_error("failed to create BIO");
   }
   std::vector<X509UniquePtr> certs;
+  ERR_clear_error();
   while (true) {
     X509UniquePtr x509(PEM_read_bio_X509(b.get(), nullptr, nullptr, nullptr));
     if (x509) {

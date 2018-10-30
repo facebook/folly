@@ -286,6 +286,14 @@ TEST_F(OpenSSLCertUtilsTest, TestReadCertsFromMixedBuffer) {
   }
 }
 
+TEST_F(OpenSSLCertUtilsTest, TestReadCertsWithErrorInStack) {
+  SSLerr(SSL_F_SSL3_READ_BYTES, SSL_R_SSL_HANDSHAKE_FAILURE);
+
+  auto certs = folly::ssl::OpenSSLCertUtils::readCertsFromBuffer(
+      StringPiece(kTestCertBundle));
+  validateTestCertBundle(certs);
+}
+
 TEST_F(OpenSSLCertUtilsTest, TestX509Digest) {
   auto x509 = readCertFromFile(kTestCertWithoutSan);
   EXPECT_NE(x509, nullptr);
