@@ -798,4 +798,14 @@ TEST(Optional, ConstMember) {
   EXPECT_EQ(sum, 3);
 }
 
+TEST(Optional, NoneMatchesNullopt) {
+  auto op = make_optional<int>(10);
+  op = {};
+  EXPECT_FALSE(op.has_value());
+
+  op = make_optional<int>(20);
+  op = none;
+  EXPECT_FALSE(op.has_value());
+}
+
 } // namespace folly

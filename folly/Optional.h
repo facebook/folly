@@ -71,15 +71,19 @@ template <class Value>
 class Optional;
 
 namespace detail {
-struct NoneHelper {};
-
 template <class Value>
 struct OptionalPromiseReturn;
 } // namespace detail
 
-typedef int detail::NoneHelper::*None;
+struct None {
+  /**
+   * DEPRECATED: use folly::none
+   */
+  None() {}
 
-const None none = {};
+  explicit constexpr None(int) {}
+};
+constexpr None none = None{0};
 
 class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
  public:
@@ -127,6 +131,16 @@ class Optional {
       std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
   }
+
+  /**
+   * DEPRECATED: use folly::none
+   */
+  template <typename Null = std::nullptr_t>
+  FOLLY_CPP14_CONSTEXPR /* implicit */
+  Optional(typename std::enable_if<
+           !std::is_pointer<Value>::value &&
+               std::is_same<Null, std::nullptr_t>::value,
+           Null>::type) noexcept {}
 
   template <typename... Args>
   FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
@@ -204,6 +218,18 @@ class Optional {
   Optional& operator=(const Optional& other) noexcept(
       std::is_nothrow_copy_assignable<Value>::value) {
     assign(other);
+    return *this;
+  }
+
+  /**
+   * DEPRECATED: use folly::none
+   */
+  template <typename Null = std::nullptr_t>
+  Optional& operator=(typename std::enable_if<
+                      !std::is_pointer<Value>::value &&
+                          std::is_same<Null, std::nullptr_t>::value,
+                      Null>::type) noexcept {
+    reset();
     return *this;
   }
 
