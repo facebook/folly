@@ -1603,14 +1603,14 @@ TEST(Future, makePromiseContract) {
   EXPECT_EQ(4, std::move(c.second).get());
 }
 
-Future<int> call(int depth) {
-  return makeFuture(depth == 0 ? 42 : 0);
+Future<bool> call(int depth, Executor* executor) {
+  return makeFuture().then(executor, [=] { return depth == 0; });
 }
 
 Future<int> recursion(Executor* executor, int depth) {
-  return call(depth).then(executor, [=](int result) {
+  return call(depth, executor).thenValue([=](auto result) {
     if (result) {
-      return folly::makeFuture(result);
+      return folly::makeFuture(42);
     }
 
     return recursion(executor, depth - 1);

@@ -423,7 +423,7 @@ FutureBase<T>::thenImplementation(F&& func, R) {
         auto statePromise = state.stealPromise();
         auto tf3 =
             chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
-        if (std::is_same<T, B>::value && statePromise.getCore().hasCallback()) {
+        if (statePromise.getCore().hasCallback()) {
           tf3.core_->setExecutor(statePromise.core_->getExecutor());
           auto callbackAndContext = statePromise.getCore().stealCallback();
           tf3.setCallback_(
