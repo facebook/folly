@@ -1160,7 +1160,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// thenTry or thenError rather than then and onError as they avoid ambiguity
   /// when using polymorphic lambdas.
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenValue instead")]] typename std::enable_if<
+  [[deprecated("ERROR: use thenValue instead")]] typename std::enable_if<
       !is_invocable<F>::value && is_invocable<F, T&&>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1168,7 +1168,7 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenTry instead")]] typename std::enable_if<
+  [[deprecated("ERROR: use thenTry instead")]] typename std::enable_if<
       !is_invocable<F, T&&>::value && !is_invocable<F>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1176,7 +1176,8 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
+  [[deprecated(
+      "ERROR: use thenValue with auto&& or folly::Unit parameter instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
   then(F&& func) && = delete;
 
