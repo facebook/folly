@@ -23,6 +23,7 @@
 #include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/Unit.h>
+#include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Table.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Align.h>

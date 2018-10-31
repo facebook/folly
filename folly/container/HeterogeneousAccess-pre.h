@@ -16,19 +16,18 @@
 
 #pragma once
 
-#include <memory>
-
-#include <folly/container/HeterogeneousAccess-pre.h>
-
 namespace folly {
-namespace f14 {
-template <typename T>
-using DefaultHasher = HeterogeneousAccessHash<T>;
 
-template <typename T>
-using DefaultKeyEqual = HeterogeneousAccessEqualTo<T>;
+template <typename T, typename Enable = void>
+struct HeterogeneousAccessEqualTo;
 
-template <typename T>
-using DefaultAlloc = std::allocator<T>;
-} // namespace f14
+template <typename T, typename Enable = void>
+struct HeterogeneousAccessHash;
+
+template <typename CharT>
+struct TransparentStringEqualTo;
+
+template <typename CharT>
+struct TransparentStringHash;
+
 } // namespace folly

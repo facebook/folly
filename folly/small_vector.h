@@ -427,6 +427,7 @@ class small_vector : public detail::small_vector_base<
   typedef value_type* iterator;
   typedef value_type* pointer;
   typedef value_type const* const_iterator;
+  typedef value_type const* const_pointer;
   typedef std::ptrdiff_t difference_type;
 
   typedef std::reverse_iterator<iterator> reverse_iterator;

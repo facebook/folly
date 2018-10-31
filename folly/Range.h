@@ -599,7 +599,6 @@ class Range {
     return const_range_type(*this);
   }
 
-  // Works only for Range<const char*> and Range<char*>
   int compare(const const_range_type& o) const {
     const size_type tsize = this->size();
     const size_type osize = o.size();
@@ -1491,10 +1490,16 @@ struct hasher;
 template <class T>
 struct hasher<
     folly::Range<T*>,
-    typename std::enable_if<std::is_pod<T>::value, void>::type> {
+    std::enable_if_t<std::is_integral<T>::value, void>> {
   using folly_is_avalanching = std::true_type;
 
   size_t operator()(folly::Range<T*> r) const {
+    // std::is_integral<T> is too restrictive, but is sufficient to
+    // guarantee we can just hash all of the underlying bytes to get a
+    // suitable hash of T.  Something like absl::is_uniquely_represented<T>
+    // would be better.  std::is_pod is not enough, because POD types
+    // can contain pointers and padding.  Also, floating point numbers
+    // may be == without being bit-identical.
     return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
   }
 };

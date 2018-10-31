@@ -1099,6 +1099,7 @@ TEST(F14ValueSet, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14ValueSet<std::string>>();
 }
 
 TEST(F14NodeSet, heterogeneousInsert) {
@@ -1110,6 +1111,7 @@ TEST(F14NodeSet, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14NodeSet<std::string>>();
 }
 
 TEST(F14VectorSet, heterogeneousInsert) {
@@ -1121,6 +1123,7 @@ TEST(F14VectorSet, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14VectorSet<std::string>>();
 }
 
 TEST(F14FastSet, heterogeneousInsert) {
@@ -1132,6 +1135,7 @@ TEST(F14FastSet, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14FastSet<std::string>>();
 }
 
 namespace {
