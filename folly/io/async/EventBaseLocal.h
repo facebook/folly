@@ -102,7 +102,7 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
   }
 
   template <typename Func>
-  T& getOrCreateFn(EventBase& evb, Func& fn) {
+  T& getOrCreateFn(EventBase& evb, Func fn) {
     // If this looks like it's copy/pasted from above, that's because it is.
     // gcc has a bug (fixed in 4.9) that doesn't allow capturing variadic
     // params in a lambda.
