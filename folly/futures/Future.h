@@ -847,7 +847,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       promise_.setValue(value);
     }
 
-    void return_value(T& value) {
+    void return_value(T&& value) {
       promise_.setValue(std::move(value));
     }
 

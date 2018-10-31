@@ -321,8 +321,9 @@ TEST(Coro, Baton) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
-coro::Task<int> taskFuture(int value) {
-  co_return co_await folly::makeFuture<int>(std::move(value));
+template <class Type>
+coro::Task<Type> taskFuture(Type value) {
+  co_return co_await folly::makeFuture<Type>(std::move(value));
 }
 
 TEST(Coro, FulfilledFuture) {
@@ -331,5 +332,15 @@ TEST(Coro, FulfilledFuture) {
       taskFuture(42).scheduleOn(&executor).start().via(&executor).getVia(
           &executor);
   EXPECT_EQ(42, value);
+}
+
+TEST(Coro, MoveOnlyReturn) {
+  ManualExecutor executor;
+  auto value = taskFuture(std::make_unique<int>(42))
+                   .scheduleOn(&executor)
+                   .start()
+                   .via(&executor)
+                   .getVia(&executor);
+  EXPECT_EQ(42, *value);
 }
 #endif
