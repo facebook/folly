@@ -174,19 +174,23 @@
 #endif
 #endif
 
+#ifndef FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS
+#define FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS FOLLY_ATTR_WEAK
+#endif
+
 // These functions are defined by the TSAN runtime library and enable
 // annotating mutexes for TSAN.
-extern "C" FOLLY_ATTR_WEAK void
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void
 AnnotateRWLockCreate(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void
 AnnotateRWLockCreateStatic(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void
 AnnotateRWLockDestroy(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void
 AnnotateRWLockAcquired(const char* f, int l, const volatile void* addr, long w);
-extern "C" FOLLY_ATTR_WEAK void
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void
 AnnotateRWLockReleased(const char* f, int l, const volatile void* addr, long w);
-extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
+extern "C" FOLLY_ATTR_FOR_SANITIZE_THREAD_HOOKS void AnnotateBenignRaceSized(
     const char* f,
     int l,
     const volatile void* addr,
