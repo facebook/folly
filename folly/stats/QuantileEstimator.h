@@ -16,8 +16,7 @@
 
 #pragma once
 
-#include <folly/stats/TDigest.h>
-#include <folly/stats/detail/BufferedStat.h>
+#include <folly/stats/detail/BufferedStatTDigest.h>
 
 namespace folly {
 
