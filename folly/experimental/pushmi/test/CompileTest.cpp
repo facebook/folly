@@ -25,6 +25,11 @@
 
 using namespace folly::pushmi::aliases;
 
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
+
+using namespace testing;
+
 using namespace std::literals;
 
 #if __cpp_deduction_guides >= 201703
@@ -562,3 +567,5 @@ void flow_many_sender_test() {
       mi::Executor<mi::executor_t<decltype(in0)>>,
       "sender has invalid executor");
 }
+
+TEST(CompileTest, Test) {}

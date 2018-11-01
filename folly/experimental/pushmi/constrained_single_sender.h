@@ -84,8 +84,8 @@ class any_constrained_single_sender {
         return ::folly::pushmi::top(*static_cast<Wrapped*>((void*)src.buffer_));
       }
       static any_constrained_executor<E, CV> executor(data& src) {
-        return any_constrained_executor<E, CV>{
-            executor(*static_cast<Wrapped*>((void*)src.buffer_))};
+        return any_constrained_executor<E, CV>{::folly::pushmi::executor(
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
       static void submit(data& src, CV cv, any_receiver<E, VN...> out) {
         ::folly::pushmi::submit(

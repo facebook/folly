@@ -29,7 +29,10 @@ using namespace std::literals;
 
 using namespace folly::pushmi::aliases;
 
-#if 0
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
+
+using namespace testing;
 
 #if __cpp_deduction_guides >= 201703
 #define MAKE(x) x MAKE_
@@ -39,11 +42,10 @@ using namespace folly::pushmi::aliases;
 #define MAKE(x) make_##x
 #endif
 
-SCENARIO("flow single immediate cancellation", "[flow][sender]") {
-  int signals = 0;
-
-  GIVEN("A flow single sender") {
-    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
+class ImmediateFlowSingleSender : public Test {
+ protected:
+  auto make_producer() {
+    return mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
       auto set_stop = [](auto& stop) {
@@ -60,13 +62,13 @@ SCENARIO("flow single immediate cancellation", "[flow][sender]") {
       };
       auto up = mi::MAKE(receiver)(
           Data{std::move(tokens.second)},
-          [&](auto& data, auto e) noexcept {
-            signals += 100000;
+          [&](auto& data, auto) noexcept {
+            signals_ += 100000;
             auto both = lock_both(data.stopper);
             (*(both.first))(both.second);
           },
           mi::on_done([&](auto& data) {
-            signals += 10000;
+            signals_ += 10000;
             auto both = lock_both(data.stopper);
             (*(both.first))(both.second);
           }));
@@ -83,391 +85,272 @@ SCENARIO("flow single immediate cancellation", "[flow][sender]") {
         ::mi::set_done(out);
       }
     });
+  }
 
-    WHEN("submit is applied and cancels the producer") {
-      f |
-          op::submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // immediately stop producer
-              mi::on_starting([&](auto up) {
-                signals += 10;
+  template <class F>
+  auto make_consumer(F f) {
+    return mi::MAKE(flow_receiver)(
+        mi::on_value([&](int) { signals_ += 100; }),
+        mi::on_error([&](auto) noexcept { signals_ += 1000; }),
+        mi::on_done([&]() { signals_ += 1; }),
+        mi::on_starting([&, f](auto up) {
+          signals_ += 10;
+          f(std::move(up));
+        }));
+  }
+
+  int signals_{0};
+};
+
+TEST_F(ImmediateFlowSingleSender, EarlyCancellation) {
+  make_producer() | op::submit(make_consumer([](auto up) {
+    // immediately stop producer
+    ::mi::set_done(up);
+  }));
+
+  EXPECT_THAT(signals_, Eq(10011))
+      << "expected that the starting, up.done and out.done signals are each recorded once";
+}
+
+TEST_F(ImmediateFlowSingleSender, LateCancellation) {
+  make_producer() | op::submit(make_consumer([](auto) {
+    // do not stop producer before it is scheduled to run
+  }));
+
+  EXPECT_THAT(signals_, Eq(110))
+      << "expected that the starting and out.value signals are each recorded once";
+}
+
+using NT = decltype(mi::new_thread());
+
+inline auto make_time(mi::time_source<>& t, NT& ex) {
+  return t.make(mi::systemNowF{}, [ex]() { return ex; })();
+}
+
+class ConcurrentFlowSingleSender : public Test {
+ protected:
+  using TNT = mi::invoke_result_t<decltype(make_time), mi::time_source<>&, NT&>;
+
+  void reset() {
+    at_ = mi::now(tnt_) + 100ms;
+    signals_ = 0;
+    terminal_ = 0;
+    cancel_ = 0;
+  }
+
+  void join() {
+    timeproduce_.join();
+    timecancel_.join();
+  }
+
+  template <class MakeTokens>
+  void cancellation_test(
+      std::chrono::system_clock::time_point at,
+      MakeTokens make_tokens) {
+    auto f = mi::MAKE(flow_single_sender)([&, make_tokens](auto out) {
+      // boolean cancellation
+      bool stop = false;
+      auto set_stop = [](auto& stop) {
+        if (!!stop) {
+          *stop = true;
+        }
+      };
+      auto tokens = make_tokens(stop, set_stop);
+
+      using Stopper = decltype(tokens.second);
+      struct Data : mi::receiver<> {
+        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        Stopper stopper;
+      };
+      auto up = mi::MAKE(receiver)(
+          Data{std::move(tokens.second)},
+          [&](auto& data, auto) noexcept {
+            signals_ += 100000;
+            ++cancel_;
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          },
+          mi::on_done([&](auto& data) {
+            signals_ += 10000;
+            ++cancel_;
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          }));
+
+      // make all the signals come from the same thread
+      tnt_ |
+          op::submit([&,
+                      stoppee = std::move(tokens.first),
+                      up_not_a_shadow_howtoeven = std::move(up),
+                      out = std::move(out)](auto tnt) mutable {
+            // pass reference for cancellation.
+            ::mi::set_starting(out, std::move(up_not_a_shadow_howtoeven));
+
+            // submit work to happen later
+            tnt |
+                op::submit_at(
+                    at_,
+                    [stoppee = std::move(stoppee),
+                     out = std::move(out)](auto) mutable {
+                      // check boolean to select signal
+                      auto both = lock_both(stoppee);
+                      if (!!both.first && !*(both.first)) {
+                        ::mi::set_value(out, 42);
+                        ::mi::set_done(out);
+                      } else {
+                        // cancellation is not an error
+                        ::mi::set_done(out);
+                      }
+                    });
+          });
+    });
+
+    f |
+        op::submit(
+            mi::on_value([&](int) { signals_ += 100; }),
+            mi::on_error([&](auto) noexcept {
+              signals_ += 1000;
+              ++terminal_;
+            }),
+            mi::on_done([&]() {
+              signals_ += 1;
+              ++terminal_;
+            }),
+            // stop producer before it is scheduled to run
+            mi::on_starting([&, at](auto up) {
+              signals_ += 10;
+              tcncl_ | op::submit_at(at, [up = std::move(up)](auto) mutable {
                 ::mi::set_done(up);
-              }));
+              });
+            }));
 
-      THEN(
-          "the starting, up.done and out.done signals are each recorded once") {
-        REQUIRE(signals == 10011);
-      }
-    }
-
-    WHEN("submit is applied and cancels the producer late") {
-      f |
-          op::submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // do not stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) { signals += 10; }));
-
-      THEN(
-          "the starting and out.value signals are each recorded once") {
-        REQUIRE(signals == 110);
-      }
+    while (terminal_ == 0 || cancel_ == 0) {
+      std::this_thread::yield();
     }
   }
+
+  NT ntproduce_{mi::new_thread()};
+  mi::time_source<> timeproduce_{};
+  TNT tnt_{make_time(timeproduce_, ntproduce_)};
+
+  NT ntcancel_{mi::new_thread()};
+  mi::time_source<> timecancel_{};
+  TNT tcncl_{make_time(timecancel_, ntcancel_)};
+
+  std::atomic<int> signals_{0};
+  std::atomic<int> terminal_{0};
+  std::atomic<int> cancel_{0};
+  std::chrono::system_clock::time_point at_{mi::now(tnt_) + 100ms};
+};
+
+TEST_F(ConcurrentFlowSingleSender, EarlySharedCancellation) {
+  cancellation_test(at_ - 50ms, [](auto& stop, auto& set_stop) {
+    return mi::shared_entangle(stop, set_stop);
+  });
+
+  join();
+
+  EXPECT_THAT(signals_, Eq(10011));
 }
 
-SCENARIO("flow single shared cancellation new thread", "[flow][sender]") {
-  auto nt = mi::new_thread();
-  using NT = decltype(nt);
-  auto time = mi::time_source<>{};
-  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
-  auto tcncl = time.make(mi::systemNowF{}, [nt](){ return nt; })();
-  std::atomic<int> signals{0};
-  auto at = mi::now(tnt) + 200ms;
+TEST_F(ConcurrentFlowSingleSender, LateSharedCancellation) {
+  cancellation_test(at_ + 50ms, [](auto& stop, auto& set_stop) {
+    return mi::shared_entangle(stop, set_stop);
+  });
 
-  GIVEN("A flow single sender") {
-    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
-      // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& stop) {
-        if (!!stop) {
-          *stop = true;
-        }
-      };
-      auto tokens = mi::shared_entangle(stop, set_stop);
+  join();
 
-      using Stopper = decltype(tokens.second);
-      struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
-        Stopper stopper;
-      };
-      auto up = mi::MAKE(receiver)(
-          Data{std::move(tokens.second)},
-          [&](auto& data, auto e) noexcept {
-            signals += 100000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          },
-          mi::on_done([&](auto& data) {
-            signals += 10000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          }));
+  EXPECT_THAT(signals_, Eq(10111))
+      << "expected that the starting, up.done, out.value and out.done signals are each recorded once";
+}
 
-      // make all the signals come from the same thread
-      tnt |
-          op::submit([stoppee = std::move(tokens.first),
-                      up = std::move(up),
-                      out = std::move(out),
-                      at](auto tnt) mutable {
-            // pass reference for cancellation.
-            ::mi::set_starting(out, std::move(up));
+TEST_F(ConcurrentFlowSingleSender, RacingSharedCancellation) {
+  int total = 0;
+  int cancellostrace = 0; // 10111
+  int cancelled = 0; // 10011
 
-            // submit work to happen later
-            tnt |
-                op::submit_at(
-                    at,
-                    [stoppee = std::move(stoppee),
-                     out = std::move(out)](auto) mutable {
-                      // check boolean to select signal
-                      auto both = lock_both(stoppee);
-                      if (!!both.first && !*(both.first)) {
-                        ::mi::set_value(out, 42);
-                        ::mi::set_done(out);
-                      } else {
-                        // cancellation is not an error
-                        ::mi::set_done(out);
-                      }
-                    });
-          });
+  for (;;) {
+    reset();
+    cancellation_test(at_, [](auto& stop, auto& set_stop) {
+      return mi::shared_entangle(stop, set_stop);
     });
 
-    WHEN("submit is applied and cancels the producer early") {
-      {
-      f |
-          op::blocking_submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tcncl |
-                    op::submit_at(
-                        at - 50ms, [up = std::move(up)](auto) mutable {
-                          ::mi::set_done(up);
-                        });
-              }));
-      }
+    // accumulate known signals
+    ++total;
+    cancellostrace += signals_ == 10111;
+    cancelled += signals_ == 10011;
 
-      // make sure that the completion signal arrives
-      std::this_thread::sleep_for(100ms);
+    EXPECT_THAT(total, Eq(cancellostrace + cancelled))
+        << signals_ << " <- this set of signals is unrecognized";
 
-      THEN(
-          "the starting, up.done and out.done signals are each recorded once") {
-        REQUIRE(signals == 10011);
-      }
+    ASSERT_THAT(total, Lt(100))
+        // too long, show the signals distribution
+        << "total " << total << ", cancel-lost-race " << cancellostrace
+        << ", cancelled " << cancelled;
+
+    if (cancellostrace > 4 && cancelled > 4) {
+      // yay all known outcomes were observed!
+      break;
     }
-
-    WHEN("submit is applied and cancels the producer late") {
-      {
-      f |
-          op::blocking_submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // do not stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tcncl |
-                    op::submit_at(
-                        at + 50ms, [up = std::move(up)](auto) mutable {
-                          ::mi::set_done(up);
-                        });
-              }));
-      }
-
-      std::this_thread::sleep_for(100ms);
-
-      THEN(
-          "the starting, up.done, out.value and out.done signals are each recorded once") {
-        REQUIRE(signals == 10111);
-      }
-    }
-
-    WHEN("submit is applied and cancels the producer at the same time") {
-      // count known results
-      int total = 0;
-      int cancellostrace = 0; // 10111
-      int cancelled = 0; // 10011
-
-      for (;;) {
-        signals = 0;
-        // set completion time to be in 100ms
-        at = mi::now(tnt) + 100ms;
-        {
-        f |
-            op::blocking_submit(
-                mi::on_value([&](int) { signals += 100; }),
-                mi::on_error([&](auto) noexcept { signals += 1000; }),
-                mi::on_done([&]() { signals += 1; }),
-                // stop producer at the same time that it is scheduled to run
-                mi::on_starting([&](auto up) {
-                  signals += 10;
-                  tcncl | op::submit_at(at, [up = std::move(up)](auto) mutable {
-                    ::mi::set_done(up);
-                  });
-                }));
-        }
-
-        // make sure any cancellation signal has completed
-        std::this_thread::sleep_for(100ms);
-
-        // accumulate known signals
-        ++total;
-        cancellostrace += signals == 10111;
-        cancelled += signals == 10011;
-
-        if (total != cancellostrace + cancelled) {
-          // display the unrecognized signals recorded
-          REQUIRE(signals == -1);
-        }
-        if (total >= 100) {
-          // too long, abort and show the signals distribution
-          WARN(
-              "total " << total << ", cancel-lost-race " << cancellostrace
-                       << ", cancelled " << cancelled);
-          break;
-        }
-        if (cancellostrace > 4 && cancelled > 4) {
-          // yay all known outcomes were observed!
-          break;
-        }
-        // try again
-        continue;
-      }
-    }
-
-    time.join();
+    // try again
+    continue;
   }
+
+  join();
 }
 
-SCENARIO("flow single entangled cancellation new thread", "[flow][sender]") {
-  auto nt = mi::new_thread();
-  using NT = decltype(nt);
-  auto time = mi::time_source<>{};
-  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
-  auto tcncl = time.make(mi::systemNowF{}, [nt](){ return nt; })();
-  std::atomic<int> signals{0};
-  auto at = mi::now(tnt) + 200ms;
+TEST_F(ConcurrentFlowSingleSender, EarlyEntangledCancellation) {
+  cancellation_test(at_ - 50ms, [](auto& stop, auto& set_stop) {
+    return mi::entangle(stop, set_stop);
+  });
 
-  GIVEN("A flow single sender") {
-    auto f = mi::MAKE(flow_single_sender)([&](auto out) {
-      // boolean cancellation
-      bool stop = false;
-      auto set_stop = [](auto& stop) {
-        if (!!stop) {
-          *stop = true;
-        }
-      };
-      auto tokens = mi::entangle(stop, set_stop);
+  join();
 
-      using Stopper = decltype(tokens.second);
-      struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
-        Stopper stopper;
-      };
-      auto up = mi::MAKE(receiver)(
-          Data{std::move(tokens.second)},
-          [&](auto& data, auto e) noexcept {
-            signals += 100000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          },
-          mi::on_done([&](auto& data) {
-            signals += 10000;
-            auto both = lock_both(data.stopper);
-            (*(both.first))(both.second);
-          }));
+  EXPECT_THAT(signals_, Eq(10011));
+}
 
-      // make all the signals come from the same thread
-      tnt |
-          op::submit([stoppee = std::move(tokens.first),
-                      up = std::move(up),
-                      out = std::move(out),
-                      at](auto tnt) mutable {
-            // pass reference for cancellation.
-            ::mi::set_starting(out, std::move(up));
+TEST_F(ConcurrentFlowSingleSender, LateEntangledCancellation) {
+  cancellation_test(at_ + 50ms, [](auto& stop, auto& set_stop) {
+    return mi::entangle(stop, set_stop);
+  });
 
-            // submit work to happen later
-            tnt |
-                op::submit_at(
-                    at,
-                    [stoppee = std::move(stoppee),
-                     out = std::move(out)](auto) mutable {
-                      // check boolean to select signal
-                      auto both = lock_both(stoppee);
-                      if (!!both.first && !*(both.first)) {
-                        ::mi::set_value(out, 42);
-                        ::mi::set_done(out);
-                      } else {
-                        // cancellation is not an error
-                        ::mi::set_done(out);
-                      }
-                    });
-          });
+  join();
+
+  EXPECT_THAT(signals_, Eq(10111))
+      << "expected that the starting, up.done, out.value and out.done signals are each recorded once";
+}
+
+TEST_F(ConcurrentFlowSingleSender, RacingEntangledCancellation) {
+  int total = 0;
+  int cancellostrace = 0; // 10111
+  int cancelled = 0; // 10011
+
+  for (;;) {
+    reset();
+    cancellation_test(at_, [](auto& stop, auto& set_stop) {
+      return mi::entangle(stop, set_stop);
     });
 
-    WHEN("submit is applied and cancels the producer early") {
-      {
-      f |
-          op::blocking_submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tcncl |
-                    op::submit_at(
-                        at - 50ms, [up = std::move(up)](auto) mutable {
-                          ::mi::set_done(up);
-                        });
-              }));
-      }
+    // accumulate known signals
+    ++total;
+    cancellostrace += signals_ == 10111;
+    cancelled += signals_ == 10011;
 
-      // make sure that the completion signal arrives
-      std::this_thread::sleep_for(100ms);
+    EXPECT_THAT(total, Eq(cancellostrace + cancelled))
+        << signals_ << " <- this set of signals is unrecognized";
 
-      THEN(
-          "the starting, up.done and out.done signals are each recorded once") {
-        REQUIRE(signals == 10011);
-      }
+    ASSERT_THAT(total, Lt(100))
+        // too long, show the signals distribution
+        << "total " << total << ", cancel-lost-race " << cancellostrace
+        << ", cancelled " << cancelled;
+
+    if (cancellostrace > 4 && cancelled > 4) {
+      // yay all known outcomes were observed!
+      break;
     }
-
-    WHEN("submit is applied and cancels the producer late") {
-      {
-      f |
-          op::blocking_submit(
-              mi::on_value([&](int) { signals += 100; }),
-              mi::on_error([&](auto) noexcept { signals += 1000; }),
-              mi::on_done([&]() { signals += 1; }),
-              // do not stop producer before it is scheduled to run
-              mi::on_starting([&](auto up) {
-                signals += 10;
-                tcncl |
-                    op::submit_at(
-                        at + 50ms, [up = std::move(up)](auto) mutable {
-                          ::mi::set_done(up);
-                        });
-              }));
-      }
-
-      std::this_thread::sleep_for(100ms);
-
-      THEN(
-          "the starting, up.done, out.value and out.done signals are each recorded once") {
-        REQUIRE(signals == 10111);
-      }
-    }
-
-    WHEN("submit is applied and cancels the producer at the same time") {
-      // count known results
-      int total = 0;
-      int cancellostrace = 0; // 10111
-      int cancelled = 0; // 10011
-
-      for (;;) {
-        signals = 0;
-        // set completion time to be in 100ms
-        at = mi::now(tnt) + 100ms;
-        {
-        f |
-            op::blocking_submit(
-                mi::on_value([&](int) { signals += 100; }),
-                mi::on_error([&](auto) noexcept { signals += 1000; }),
-                mi::on_done([&]() { signals += 1; }),
-                // stop producer at the same time that it is scheduled to run
-                mi::on_starting([&](auto up) {
-                  signals += 10;
-                  tcncl | op::submit_at(at, [up = std::move(up)](auto) mutable {
-                    ::mi::set_done(up);
-                  });
-                }));
-        }
-
-        // make sure any cancellation signal has completed
-        std::this_thread::sleep_for(200ms);
-
-        // accumulate known signals
-        ++total;
-        cancellostrace += signals == 10111;
-        cancelled += signals == 10011;
-
-        if (total != cancellostrace + cancelled) {
-          // display the unrecognized signals recorded
-          REQUIRE(signals == -1);
-        }
-        if (total >= 100) {
-          // too long, abort and show the signals distribution
-          WARN(
-              "total " << total << ", cancel-lost-race " << cancellostrace
-                       << ", cancelled " << cancelled);
-          break;
-        }
-        if (cancellostrace > 4 && cancelled > 4) {
-          // yay all known outcomes were observed!
-          break;
-        }
-        // try again
-        continue;
-      }
-    }
-
-    time.join();
+    // try again
+    continue;
   }
+
+  join();
 }
-#endif

@@ -203,7 +203,8 @@ class strand_executor {
     queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
     if (queue_->remaining_ == 0) {
       // noone is minding the shop, send a worker
-      submit(queue_->ex_, strand_queue_receiver<E, Executor>{queue_});
+      ::folly::pushmi::submit(
+          queue_->ex_, strand_queue_receiver<E, Executor>{queue_});
     }
   }
 };

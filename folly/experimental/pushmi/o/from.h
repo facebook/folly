@@ -102,32 +102,35 @@ struct flow_from_up {
       return;
     }
     // submit work to exec
-    submit(p->exec, make_receiver([p = p, requested](auto) {
-             auto remaining = requested;
-             // this loop is structured to work when there is
-             // re-entrancy out.value in the loop may call up.value.
-             // to handle this the state of p->c must be captured and
-             // the remaining and p->c must be changed before
-             // out.value is called.
-             while (remaining-- > 0 && !p->stop && p->c != p->end) {
-               auto i = (p->c)++;
-               set_value(p->out, ::folly::pushmi::detail::as_const(*i));
-             }
-             if (p->c == p->end) {
-               set_done(p->out);
-             }
-           }));
+    ::folly::pushmi::submit(
+        p->exec, make_receiver([p = p, requested](auto) {
+          auto remaining = requested;
+          // this loop is structured to work when there is
+          // re-entrancy out.value in the loop may call up.value.
+          // to handle this the state of p->c must be captured and
+          // the remaining and p->c must be changed before
+          // out.value is called.
+          while (remaining-- > 0 && !p->stop && p->c != p->end) {
+            auto i = (p->c)++;
+            set_value(p->out, ::folly::pushmi::detail::as_const(*i));
+          }
+          if (p->c == p->end) {
+            set_done(p->out);
+          }
+        }));
   }
 
   template <class E>
   void error(E) noexcept {
     p->stop.store(true);
-    submit(p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
+    ::folly::pushmi::submit(
+        p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
   }
 
   void done() {
     p->stop.store(true);
-    submit(p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
+    ::folly::pushmi::submit(
+        p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
   }
 };
 
@@ -147,10 +150,11 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), exec_, false);
 
-      submit(exec_, make_receiver([p](auto) {
-               // pass reference for cancellation.
-               set_starting(p->out, make_receiver(flow_from_up<Producer>{p}));
-             }));
+      ::folly::pushmi::submit(
+          exec_, make_receiver([p](auto) {
+            // pass reference for cancellation.
+            set_starting(p->out, make_receiver(flow_from_up<Producer>{p}));
+          }));
     }
   };
 

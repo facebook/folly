@@ -58,7 +58,7 @@ struct submit_fn {
     In operator()(In in) {
       auto out{
           ::folly::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
-      submit(in, std::move(out));
+      ::folly::pushmi::submit(in, std::move(out));
       return in;
     }
   };
@@ -81,7 +81,7 @@ struct submit_at_fn {
     In operator()(In in) {
       auto out{
           ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
-      submit(in, std::move(at_), std::move(out));
+      ::folly::pushmi::submit(in, std::move(at_), std::move(out));
       return in;
     }
   };
@@ -90,7 +90,8 @@ struct submit_at_fn {
   PUSHMI_TEMPLATE(class TP, class... AN)
   (requires Regular<TP>)
   auto operator()(TP at, AN... an) const {
-    return submit_at_fn::fn<TP, AN...>{std::move(at), {(AN &&) an...}};
+    return submit_at_fn::fn<TP, AN...>{std::move(at),
+                                       std::tuple<AN...>{(AN &&) an...}};
   }
 };
 
@@ -109,7 +110,7 @@ struct submit_after_fn {
       auto out{
           ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       auto at = ::folly::pushmi::now(in) + std::move(after_);
-      submit(in, std::move(at), std::move(out));
+      ::folly::pushmi::submit(in, std::move(at), std::move(out));
       return in;
     }
   };
@@ -118,7 +119,8 @@ struct submit_after_fn {
   PUSHMI_TEMPLATE(class D, class... AN)
   (requires Regular<D>)
   auto operator()(D after, AN... an) const {
-    return submit_after_fn::fn<D, AN...>{std::move(after), {(AN &&) an...}};
+    return submit_after_fn::fn<D, AN...>{std::move(after),
+                                         std::tuple<AN...>{(AN &&) an...}};
   }
 };
 
@@ -159,7 +161,7 @@ struct blocking_submit_fn {
     using properties = properties_t<Exec>;
 
     auto executor() {
-      return make(state_, executor(ex_));
+      return make(state_, ::folly::pushmi::executor(ex_));
     }
 
     PUSHMI_TEMPLATE(class... ZN)
@@ -172,14 +174,16 @@ struct blocking_submit_fn {
     (requires Receiver<Out>&& Constrained<Exec>)
     void submit(CV cv, Out out) {
       ++state_->nested;
-      submit(ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
+      ::folly::pushmi::submit(
+          ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
     }
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out> && not Constrained<Exec>)
     void submit(Out out) {
       ++state_->nested;
-      submit(ex_, nested_receiver_impl<Out>{state_, std::move(out)});
+      ::folly::pushmi::submit(
+          ex_, nested_receiver_impl<Out>{state_, std::move(out)});
     }
   };
   template <class Out>
@@ -293,7 +297,7 @@ struct blocking_submit_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>&& SenderTo<In, Out>)
     void operator()(In& in, Out out) const {
-      submit(in, std::move(out));
+      ::folly::pushmi::submit(in, std::move(out));
     }
   };
   // TODO - only move, move-only types..

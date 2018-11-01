@@ -166,7 +166,7 @@ struct entangled {
   entangled& operator=(entangled&&) = delete;
 
   explicit entangled(T t)
-      : t(std::move(t)), dual(nullptr), stateMachine(kUnlocked) {}
+      : stateMachine(kUnlocked), t(std::move(t)), dual(nullptr) {}
   entangled(entangled&& other)
       : stateMachine((other.lockBoth(), kLocked)),
         t(std::move(other.t)),
