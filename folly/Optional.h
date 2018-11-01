@@ -76,14 +76,15 @@ struct OptionalPromiseReturn;
 } // namespace detail
 
 struct None {
-  /**
-   * DEPRECATED: use folly::none
-   */
-  None() {}
+  enum class _secret { _token };
 
-  explicit constexpr None(int) {}
+  /**
+   * No default constructor to support both `op = {}` and `op = none`
+   * as syntax for clearing an Optional, just like std::nullopt_t.
+   */
+  explicit constexpr None(_secret) {}
 };
-constexpr None none = None{0};
+constexpr None none{None::_secret::_token};
 
 class FOLLY_EXPORT OptionalEmptyException : public std::runtime_error {
  public:
