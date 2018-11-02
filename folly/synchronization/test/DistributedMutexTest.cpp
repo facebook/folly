@@ -672,7 +672,7 @@ TEST(DistributedMutex, StressTryLockWithConcurrentLocksSixtyFourThreads) {
 
 TEST(DistributedMutex, DeterministicTryLockWithLocksTwoThreads) {
   auto iterations = numIterationsDeterministicTest(2);
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(2, iterations);
+  stressTryLockWithConcurrentLocks(2, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -682,7 +682,7 @@ TEST(DistributedMutex, DeterministicTryLockWithLocksTwoThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockWithFourThreads) {
   auto iterations = numIterationsDeterministicTest(4);
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(4, iterations);
+  stressTryLockWithConcurrentLocks(4, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -692,7 +692,7 @@ TEST(DistributedMutex, DeterministicTryLockWithFourThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockWithLocksEightThreads) {
   auto iterations = numIterationsDeterministicTest(8);
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(8, iterations);
+  stressTryLockWithConcurrentLocks(8, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -702,7 +702,7 @@ TEST(DistributedMutex, DeterministicTryLockWithLocksEightThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockWithLocksSixteenThreads) {
   auto iterations = numIterationsDeterministicTest(16);
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(16, iterations);
+  stressTryLockWithConcurrentLocks(16, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -712,7 +712,7 @@ TEST(DistributedMutex, DeterministicTryLockWithLocksSixteenThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockWithLocksThirtyTwoThreads) {
   auto iterations = numIterationsDeterministicTest(32);
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(32, iterations);
+  stressTryLockWithConcurrentLocks(32, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -721,7 +721,7 @@ TEST(DistributedMutex, DeterministicTryLockWithLocksThirtyTwoThreads) {
   }
 }
 TEST(DistributedMutex, DeterministicTryLockWithLocksSixtyFourThreads) {
-  stressTryLockWithConcurrentLocks<test::DeterministicAtomic>(64, 5);
+  stressTryLockWithConcurrentLocks(64, 5);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -776,7 +776,7 @@ TEST(DistributedMutex, StressTryLockSixtyFourThreads) {
 
 TEST(DistributedMutex, DeterministicTryLockTwoThreads) {
   auto iterations = numIterationsDeterministicTest(2);
-  concurrentTryLocks<test::DeterministicAtomic>(2, iterations);
+  concurrentTryLocks(2, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -786,7 +786,7 @@ TEST(DistributedMutex, DeterministicTryLockTwoThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockFourThreads) {
   auto iterations = numIterationsDeterministicTest(4);
-  concurrentTryLocks<test::DeterministicAtomic>(4, iterations);
+  concurrentTryLocks(4, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -796,7 +796,7 @@ TEST(DistributedMutex, DeterministicTryLockFourThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockEightThreads) {
   auto iterations = numIterationsDeterministicTest(8);
-  concurrentTryLocks<test::DeterministicAtomic>(8, iterations);
+  concurrentTryLocks(8, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -806,7 +806,7 @@ TEST(DistributedMutex, DeterministicTryLockEightThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockSixteenThreads) {
   auto iterations = numIterationsDeterministicTest(16);
-  concurrentTryLocks<test::DeterministicAtomic>(16, iterations);
+  concurrentTryLocks(16, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -816,7 +816,7 @@ TEST(DistributedMutex, DeterministicTryLockSixteenThreads) {
 }
 TEST(DistributedMutex, DeterministicTryLockThirtyTwoThreads) {
   auto iterations = numIterationsDeterministicTest(32);
-  concurrentTryLocks<test::DeterministicAtomic>(32, iterations);
+  concurrentTryLocks(32, iterations);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
@@ -825,7 +825,7 @@ TEST(DistributedMutex, DeterministicTryLockThirtyTwoThreads) {
   }
 }
 TEST(DistributedMutex, DeterministicTryLockSixtyFourThreads) {
-  concurrentTryLocks<test::DeterministicAtomic>(64, 5);
+  concurrentTryLocks(64, 5);
 
   for (auto pass = 0; pass < 3; ++pass) {
     auto&& schedule = DSched{DSched::uniform(pass)};
