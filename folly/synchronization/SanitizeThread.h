@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/CPortability.h>
 #include <folly/Portability.h>
 
 namespace folly {
@@ -27,21 +26,49 @@ enum class annotate_rwlock_level : long {
 };
 
 namespace detail {
-FOLLY_ALWAYS_INLINE static void annotate_ignore(...) {}
-} // namespace detail
 
-#if _MSC_VER
-#define FOLLY_DETAIL_ANNOTATE(name, ...) detail::annotate_ignore(__VA_ARGS__)
-#else
-#define FOLLY_DETAIL_ANNOTATE(name, ...) Annotate##name(__VA_ARGS__)
-#endif
+void annotate_rwlock_create_impl(
+    void const volatile* const addr,
+    char const* const f,
+    int const l);
+
+void annotate_rwlock_create_static_impl(
+    void const volatile* const addr,
+    char const* const f,
+    int const l);
+
+void annotate_rwlock_destroy_impl(
+    void const volatile* const addr,
+    char const* const f,
+    int const l);
+
+void annotate_rwlock_acquired_impl(
+    void const volatile* const addr,
+    annotate_rwlock_level const w,
+    char const* const f,
+    int const l);
+
+void annotate_rwlock_released_impl(
+    void const volatile* const addr,
+    annotate_rwlock_level const w,
+    char const* const f,
+    int const l);
+
+void annotate_benign_race_sized_impl(
+    const volatile void* addr,
+    long size,
+    const char* desc,
+    const char* f,
+    int l);
+
+} // namespace detail
 
 FOLLY_ALWAYS_INLINE static void annotate_rwlock_create(
     void const volatile* const addr,
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(RWLockCreate, f, l, addr);
+    detail::annotate_rwlock_create_impl(addr, f, l);
   }
 }
 
@@ -50,7 +77,7 @@ FOLLY_ALWAYS_INLINE static void annotate_rwlock_create_static(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(RWLockCreateStatic, f, l, addr);
+    detail::annotate_rwlock_create_static_impl(addr, f, l);
   }
 }
 
@@ -59,7 +86,7 @@ FOLLY_ALWAYS_INLINE static void annotate_rwlock_destroy(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(RWLockDestroy, f, l, addr);
+    detail::annotate_rwlock_destroy_impl(addr, f, l);
   }
 }
 
@@ -69,7 +96,7 @@ FOLLY_ALWAYS_INLINE static void annotate_rwlock_acquired(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(RWLockAcquired, f, l, addr, static_cast<long>(w));
+    detail::annotate_rwlock_acquired_impl(addr, w, f, l);
   }
 }
 
@@ -90,7 +117,7 @@ FOLLY_ALWAYS_INLINE static void annotate_rwlock_released(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(RWLockReleased, f, l, addr, static_cast<long>(w));
+    detail::annotate_rwlock_released_impl(addr, w, f, l);
   }
 }
 
@@ -101,10 +128,8 @@ FOLLY_ALWAYS_INLINE static void annotate_benign_race_sized(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    FOLLY_DETAIL_ANNOTATE(BenignRaceSized, f, l, addr, size, desc);
+    detail::annotate_benign_race_sized_impl(addr, size, desc, f, l);
   }
 }
-
-#undef FOLLY_DETAIL_ANNOTATE
 
 } // namespace folly
