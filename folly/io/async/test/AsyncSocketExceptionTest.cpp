@@ -13,15 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <array>
 
 #include <folly/io/async/AsyncSocketException.h>
+
+#include <array>
+
+#include <folly/Conv.h>
 #include <folly/io/async/SSLContext.h>
 #include <folly/io/async/ssl/SSLErrors.h>
-#include <folly/ssl/Init.h>
-
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/Init.h>
 
 using namespace testing;
 
@@ -42,14 +44,15 @@ TEST(AsyncSocketException, SimpleTest) {
   AsyncSocketException ex2(
       AsyncSocketException::AsyncSocketExceptionType::BAD_ARGS,
       "test exception 2",
-      111 /*ECONNREFUSED*/);
+      ECONNREFUSED);
 
   EXPECT_EQ(
       AsyncSocketException::AsyncSocketExceptionType::BAD_ARGS, ex2.getType());
-  EXPECT_EQ(111, ex2.getErrno());
+  EXPECT_EQ(ECONNREFUSED, ex2.getErrno());
   EXPECT_EQ(
       "AsyncSocketException: test exception 2, type = Invalid arguments, "
-      "errno = 111 (Connection refused)",
+      "errno = " +
+          to<std::string>(ECONNREFUSED) + " (Connection refused)",
       std::string(ex2.what()));
 }
 
