@@ -47,9 +47,9 @@ void do_nothing(...) {}
 } // namespace
 
 #if _MSC_VER
-#define CALL_HOOK(name, ...) do_nothing(__VA_ARGS__)
+#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) do_nothing(__VA_ARGS__)
 #else
-#define CALL_HOOK(name, ...) name(__VA_ARGS__)
+#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) name(__VA_ARGS__)
 #endif
 
 namespace folly {
@@ -60,7 +60,7 @@ void annotate_rwlock_create_impl(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateRWLockCreate, f, l, addr);
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreate, f, l, addr);
   }
 }
 
@@ -69,7 +69,7 @@ void annotate_rwlock_create_static_impl(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateRWLockCreateStatic, f, l, addr);
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockCreateStatic, f, l, addr);
   }
 }
 
@@ -78,7 +78,7 @@ void annotate_rwlock_destroy_impl(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateRWLockDestroy, f, l, addr);
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(AnnotateRWLockDestroy, f, l, addr);
   }
 }
 
@@ -88,7 +88,8 @@ void annotate_rwlock_acquired_impl(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateRWLockAcquired, f, l, addr, static_cast<long>(w));
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(
+        AnnotateRWLockAcquired, f, l, addr, static_cast<long>(w));
   }
 }
 
@@ -109,7 +110,8 @@ void annotate_rwlock_released_impl(
     char const* const f,
     int const l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateRWLockReleased, f, l, addr, static_cast<long>(w));
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(
+        AnnotateRWLockReleased, f, l, addr, static_cast<long>(w));
   }
 }
 
@@ -120,7 +122,8 @@ void annotate_benign_race_sized_impl(
     const char* f,
     int l) {
   if (kIsSanitizeThread) {
-    CALL_HOOK(AnnotateBenignRaceSized, f, l, addr, size, desc);
+    FOLLY_SANITIZE_THREAD_CALL_HOOK(
+        AnnotateBenignRaceSized, f, l, addr, size, desc);
   }
 }
 } // namespace detail
