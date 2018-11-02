@@ -26,14 +26,9 @@
 
 #include <fcntl.h>
 
+#include <folly/net/detail/SocketFileDescriptorMap.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Windows.h>
-
-// Including ntdef.h requires building as a driver, but all we want
-// is a status code, but we need NTSTATUS defined for that. Luckily
-// bcrypt.h also defines NTSTATUS, so we'll use that one instead.
-#include <bcrypt.h> // @manual
-#include <ntstatus.h> // @manual
 
 // Generic wrapper for the p* family of functions.
 template <class F, class... Args>
@@ -73,47 +68,7 @@ int chdir(const char* path) {
 
 int close(int fh) {
   if (folly::portability::sockets::is_fh_socket(fh)) {
-    SOCKET h = (SOCKET)_get_osfhandle(fh);
-
-    // If we were to just call _close on the descriptor, it would
-    // close the HANDLE, but it wouldn't free any of the resources
-    // associated to the SOCKET, and we can't call _close after
-    // calling closesocket, because closesocket has already closed
-    // the HANDLE, and _close would attempt to close the HANDLE
-    // again, resulting in a double free.
-    // We can however protect the HANDLE from actually being closed
-    // long enough to close the file descriptor, then close the
-    // socket itself.
-    constexpr DWORD protectFlag = HANDLE_FLAG_PROTECT_FROM_CLOSE;
-    DWORD handleFlags = 0;
-    if (!GetHandleInformation((HANDLE)h, &handleFlags)) {
-      return -1;
-    }
-    if (!SetHandleInformation((HANDLE)h, protectFlag, protectFlag)) {
-      return -1;
-    }
-    int c = 0;
-    __try {
-      // We expect this to fail. It still closes the file descriptor though.
-      c = _close(fh);
-      // We just have to catch the SEH exception that gets thrown when we do
-      // this with a debugger attached -_-....
-    } __except (
-        GetExceptionCode() == STATUS_HANDLE_NOT_CLOSABLE
-            ? EXCEPTION_CONTINUE_EXECUTION
-            : EXCEPTION_CONTINUE_SEARCH) {
-      // We told it to continue execution, so there's nothing here would
-      // be run anyways.
-    }
-    // We're at the core, we don't get the luxery of SCOPE_EXIT because
-    // of circular dependencies.
-    if (!SetHandleInformation((HANDLE)h, protectFlag, handleFlags)) {
-      return -1;
-    }
-    if (c != -1) {
-      return -1;
-    }
-    return closesocket(h);
+    return netops::detail::SocketFileDescriptorMap::close(fh);
   }
   return _close(fh);
 }

@@ -18,6 +18,7 @@
 
 #include <ostream>
 
+#include <folly/net/detail/SocketFileDescriptorMap.h>
 #include <folly/portability/Windows.h>
 
 namespace folly {
@@ -39,6 +40,15 @@ struct NetworkSocket {
 
   constexpr NetworkSocket() : data(invalid_handle_value) {}
   constexpr explicit NetworkSocket(native_handle_type d) : data(d) {}
+
+  static NetworkSocket fromFd(int fd) {
+    return NetworkSocket(
+        netops::detail::SocketFileDescriptorMap::fdToSocket(fd));
+  }
+
+  int toFd() const {
+    return netops::detail::SocketFileDescriptorMap::socketToFd(data);
+  }
 
   friend constexpr bool operator==(
       const NetworkSocket& a,

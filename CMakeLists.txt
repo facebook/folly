@@ -585,6 +585,9 @@ if (BUILD_TESTS)
         SOURCES ThreadCachedArenaTest.cpp
       TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
 
+    DIRECTORY net/detail/test/
+      TEST socket_file_descriptor_map_test SOURCES SocketFileDescriptorMapTest.cpp
+
     DIRECTORY portability/test/
       TEST constexpr_test SOURCES ConstexprTest.cpp
       TEST libgen-test SOURCES LibgenTest.cpp

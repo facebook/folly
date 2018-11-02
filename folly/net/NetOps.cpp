@@ -22,6 +22,7 @@
 #include <cstddef>
 
 #include <folly/Portability.h>
+#include <folly/net/detail/SocketFileDescriptorMap.h>
 
 #if _WIN32
 #include <event2/util.h> // @manual
@@ -84,6 +85,10 @@ int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen) {
     }
   }
   return wrapSocketFunction<int>(::bind, s, name, namelen);
+}
+
+int close(NetworkSocket s) {
+  return netops::detail::SocketFileDescriptorMap::close(s.data);
 }
 
 int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen) {

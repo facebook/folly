@@ -25,6 +25,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/net/NetworkSocket.h>
+#include <folly/net/detail/SocketFileDescriptorMap.h>
 
 namespace folly {
 namespace portability {
@@ -50,24 +51,11 @@ bool is_fh_socket(int fh) {
 }
 
 SOCKET fd_to_socket(int fd) {
-  if (fd == -1) {
-    return INVALID_SOCKET;
-  }
-  // We do this in a roundabout way to allow us to compile even if
-  // we're doing a bit of trickery to ensure that things aren't
-  // being implicitly converted to a SOCKET by temporarily
-  // adjusting the windows headers to define SOCKET as a
-  // structure.
-  static_assert(sizeof(HANDLE) == sizeof(SOCKET), "Handle size mismatch.");
-  HANDLE tmp = (HANDLE)_get_osfhandle(fd);
-  return *(SOCKET*)&tmp;
+  return netops::detail::SocketFileDescriptorMap::fdToSocket(fd);
 }
 
 int socket_to_fd(SOCKET s) {
-  if (s == INVALID_SOCKET) {
-    return -1;
-  }
-  return _open_osfhandle((intptr_t)s, O_RDWR | O_BINARY);
+  return netops::detail::SocketFileDescriptorMap::socketToFd(s);
 }
 
 template <class R, class F, class... Args>

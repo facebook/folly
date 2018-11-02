@@ -133,6 +133,7 @@ struct PollDescriptor {
 
 NetworkSocket accept(NetworkSocket s, sockaddr* addr, socklen_t* addrlen);
 int bind(NetworkSocket s, const sockaddr* name, socklen_t namelen);
+int close(NetworkSocket s);
 int connect(NetworkSocket s, const sockaddr* name, socklen_t namelen);
 int getpeername(NetworkSocket s, sockaddr* name, socklen_t* namelen);
 int getsockname(NetworkSocket s, sockaddr* name, socklen_t* namelen);
