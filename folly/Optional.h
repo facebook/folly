@@ -204,6 +204,11 @@ class Optional {
     }
   }
 
+  Optional& operator=(None) noexcept {
+    reset();
+    return *this;
+  }
+
   template <class Arg>
   Optional& operator=(Arg&& arg) {
     assign(std::forward<Arg>(arg));
