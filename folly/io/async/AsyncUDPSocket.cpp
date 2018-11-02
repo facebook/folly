@@ -148,8 +148,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // bind to the address
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (netops::bind(socket, saddr, address.getActualSize()) != 0) {
+  auto& saddr = reinterpret_cast<sockaddr&>(addrStorage);
+  if (netops::bind(socket, &saddr, address.getActualSize()) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "failed to bind the async udp socket for:" + address.describe(),
