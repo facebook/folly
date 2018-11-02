@@ -23,7 +23,7 @@ list(APPEND FOLLY_INCLUDE_DIRECTORIES ${DOUBLE_CONVERSION_INCLUDE_DIR})
 
 set(FOLLY_HAVE_LIBGFLAGS OFF)
 find_package(GFlags CONFIG QUIET)
-if (gflags_FOUND)
+if (GFlags_FOUND)
   message(STATUS "Found gflags from package config")
   set(FOLLY_HAVE_LIBGFLAGS ON)
   if (TARGET gflags-shared)
