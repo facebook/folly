@@ -24,6 +24,7 @@
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
 namespace folly {
@@ -325,6 +326,7 @@ class SocketAddress {
    * Raises std::system_error on error.
    */
   void setFromPeerAddress(int socket);
+  void setFromPeerAddress(NetworkSocket socket);
 
   /**
    * Initialize this SocketAddress from a socket's local address.
@@ -332,6 +334,7 @@ class SocketAddress {
    * Raises std::system_error on error.
    */
   void setFromLocalAddress(int socket);
+  void setFromLocalAddress(NetworkSocket socket);
 
   /**
    * Initialize this folly::SocketAddress from a struct sockaddr.
@@ -580,7 +583,9 @@ class SocketAddress {
   struct addrinfo* getAddrInfo(const char* host, const char* port, int flags);
   void setFromAddrInfo(const struct addrinfo* results);
   void setFromLocalAddr(const struct addrinfo* results);
-  void setFromSocket(int socket, int (*fn)(int, struct sockaddr*, socklen_t*));
+  void setFromSocket(
+      NetworkSocket socket,
+      int (*fn)(NetworkSocket, struct sockaddr*, socklen_t*));
   std::string getIpString(int flags) const;
   void getIpString(char* buf, size_t buflen, int flags) const;
 
