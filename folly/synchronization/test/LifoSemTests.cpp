@@ -34,6 +34,13 @@ typedef DeterministicSchedule DSched;
 
 LIFOSEM_DECLARE_POOL(DeterministicAtomic, 100000)
 
+class LifoSemTest : public testing::Test {
+ private:
+  // pre-init the pool to avoid deadlock when using DeterministicAtomic
+  using Node = detail::LifoSemRawNode<DeterministicAtomic>;
+  Node::Pool& pool_{Node::pool()};
+};
+
 TEST(LifoSem, basic) {
   LifoSem sem;
   EXPECT_FALSE(sem.tryWait());
@@ -75,7 +82,7 @@ TEST(LifoSem, multi) {
             << " post/wait pairs, " << blocks << " blocked";
 }
 
-TEST(LifoSem, pingpong) {
+TEST_F(LifoSemTest, pingpong) {
   DSched sched(DSched::uniform(0));
 
   const int iters = 100;
@@ -104,7 +111,7 @@ TEST(LifoSem, pingpong) {
   }
 }
 
-TEST(LifoSem, mutex) {
+TEST_F(LifoSemTest, mutex) {
   DSched sched(DSched::uniform(0));
 
   const int iters = 100;
@@ -128,7 +135,7 @@ TEST(LifoSem, mutex) {
   }
 }
 
-TEST(LifoSem, no_blocking) {
+TEST_F(LifoSemTest, no_blocking) {
   long seed = folly::randomNumberSeed() % 10000;
   LOG(INFO) << "seed=" << seed;
   DSched sched(DSched::uniform(seed));
@@ -157,7 +164,7 @@ TEST(LifoSem, no_blocking) {
   }
 }
 
-TEST(LifoSem, one_way) {
+TEST_F(LifoSemTest, one_way) {
   long seed = folly::randomNumberSeed() % 10000;
   LOG(INFO) << "seed=" << seed;
   DSched sched(DSched::uniformSubset(seed, 1, 6));
@@ -179,7 +186,7 @@ TEST(LifoSem, one_way) {
   }
 }
 
-TEST(LifoSem, shutdown_race) {
+TEST_F(LifoSemTest, shutdown_race) {
   long seed = folly::randomNumberSeed() % 10000;
   LOG(INFO) << "seed=" << seed;
 
@@ -217,7 +224,7 @@ TEST(LifoSem, shutdown_race) {
   EXPECT_TRUE(shutdownLost);
 }
 
-TEST(LifoSem, shutdown_multi) {
+TEST_F(LifoSemTest, shutdown_multi) {
   DSched sched(DSched::uniform(0));
 
   for (int pass = 0; pass < 10; ++pass) {
@@ -248,7 +255,7 @@ TEST(LifoSem, multi_try_wait_simple) {
   ASSERT_EQ(5, n);
 }
 
-TEST(LifoSem, multi_try_wait) {
+TEST_F(LifoSemTest, multi_try_wait) {
   long seed = folly::randomNumberSeed() % 10000;
   LOG(INFO) << "seed=" << seed;
   DSched sched(DSched::uniform(seed));
@@ -286,7 +293,7 @@ TEST(LifoSem, multi_try_wait) {
   ASSERT_EQ(NPOSTS, consumed);
 }
 
-TEST(LifoSem, timeout) {
+TEST_F(LifoSemTest, timeout) {
   long seed = folly::randomNumberSeed() % 10000;
   LOG(INFO) << "seed=" << seed;
   DSched sched(DSched::uniform(seed));
