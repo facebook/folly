@@ -22,8 +22,8 @@
 
 namespace folly {
 
-EventHandler::EventHandler(EventBase* eventBase, int fd) {
-  folly_event_set(&event_, fd, 0, &EventHandler::libeventCallback, this);
+EventHandler::EventHandler(EventBase* eventBase, NetworkSocket fd) {
+  folly_event_set(&event_, fd.toFd(), 0, &EventHandler::libeventCallback, this);
   if (eventBase != nullptr) {
     setEventBase(eventBase);
   } else {
@@ -121,17 +121,17 @@ void EventHandler::detachEventBase() {
   event_.ev_base = nullptr;
 }
 
-void EventHandler::changeHandlerFD(int fd) {
+void EventHandler::changeHandlerFD(NetworkSocket fd) {
   ensureNotRegistered(__func__);
   // event_set() resets event_base.ev_base, so manually restore it afterwards
   struct event_base* evb = event_.ev_base;
-  folly_event_set(&event_, fd, 0, &EventHandler::libeventCallback, this);
+  folly_event_set(&event_, fd.toFd(), 0, &EventHandler::libeventCallback, this);
   event_.ev_base = evb; // don't use event_base_set(), since evb may be nullptr
 }
 
-void EventHandler::initHandler(EventBase* eventBase, int fd) {
+void EventHandler::initHandler(EventBase* eventBase, NetworkSocket fd) {
   ensureNotRegistered(__func__);
-  folly_event_set(&event_, fd, 0, &EventHandler::libeventCallback, this);
+  folly_event_set(&event_, fd.toFd(), 0, &EventHandler::libeventCallback, this);
   setEventBase(eventBase);
 }
 
