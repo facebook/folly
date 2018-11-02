@@ -1608,12 +1608,14 @@ Future<bool> call(int depth, Executor* executor) {
 }
 
 Future<int> recursion(Executor* executor, int depth) {
-  return call(depth, executor).thenValue([=](auto result) {
-    if (result) {
-      return folly::makeFuture(42);
-    }
+  return makeFuture().thenValue([=](auto) {
+    return call(depth, executor).thenValue([=](auto result) {
+      if (result) {
+        return folly::makeFuture(42);
+      }
 
-    return recursion(executor, depth - 1);
+      return recursion(executor, depth - 1);
+    });
   });
 }
 

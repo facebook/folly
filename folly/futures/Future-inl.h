@@ -266,16 +266,8 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(F&& func) {
-  setCallback_(std::forward<F>(func), RequestContext::saveContext());
-}
-
-template <class T>
-template <class F>
-void FutureBase<T>::setCallback_(
-    F&& func,
-    std::shared_ptr<folly::RequestContext> context) {
   throwIfContinued();
-  getCore().setCallback(std::forward<F>(func), std::move(context));
+  getCore().setCallback(std::forward<F>(func), RequestContext::saveContext());
 }
 
 template <class T>
@@ -423,17 +415,8 @@ FutureBase<T>::thenImplementation(F&& func, R) {
         auto statePromise = state.stealPromise();
         auto tf3 =
             chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
-        if (statePromise.getCore().hasCallback()) {
-          tf3.core_->setExecutor(statePromise.core_->getExecutor());
-          auto callbackAndContext = statePromise.getCore().stealCallback();
-          tf3.setCallback_(
-              std::move(callbackAndContext.first),
-              std::move(callbackAndContext.second));
-        } else {
-          tf3.setCallback_([p2 = std::move(statePromise)](Try<B>&& b) mutable {
-            p2.setTry(std::move(b));
-          });
-        }
+        std::exchange(statePromise.core_, nullptr)
+            ->setProxy(std::exchange(tf3.core_, nullptr));
       }
     }
   });
