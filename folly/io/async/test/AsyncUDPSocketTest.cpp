@@ -458,7 +458,9 @@ class TestAsyncUDPSocket : public AsyncUDPSocket {
  public:
   explicit TestAsyncUDPSocket(EventBase* evb) : AsyncUDPSocket(evb) {}
 
-  MOCK_METHOD3(sendmsg, ssize_t(int, const struct msghdr*, int));
+  MOCK_METHOD3(
+      sendmsg,
+      ssize_t(folly::NetworkSocket, const struct msghdr*, int));
 };
 
 class MockErrMessageCallback : public AsyncUDPSocket::ErrMessageCallback {

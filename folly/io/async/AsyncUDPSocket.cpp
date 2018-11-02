@@ -38,29 +38,30 @@ AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
     : EventHandler(CHECK_NOTNULL(evb)),
       readCallback_(nullptr),
       eventBase_(evb),
-      fd_(-1) {
+      fd_() {
   evb->dcheckIsInEventBaseThread();
 }
 
 AsyncUDPSocket::~AsyncUDPSocket() {
-  if (fd_ != -1) {
+  if (fd_ != NetworkSocket()) {
     close();
   }
 }
 
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  int socket = fsp::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
-  if (socket == -1) {
+  NetworkSocket socket =
+      netops::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
+  if (socket == NetworkSocket()) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "error creating async udp socket",
         errno);
   }
 
-  auto g = folly::makeGuard([&] { ::close(socket); });
+  auto g = folly::makeGuard([&] { netops::close(socket); });
 
   // put the socket in non-blocking mode
-  int ret = fcntl(socket, F_SETFL, O_NONBLOCK);
+  int ret = netops::set_socket_non_blocking(socket);
   if (ret != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
@@ -71,8 +72,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   if (reuseAddr_) {
     // put the socket in reuse mode
     int value = 1;
-    if (setsockopt(socket, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) !=
-        0) {
+    if (netops::setsockopt(
+            socket, SOL_SOCKET, SO_REUSEADDR, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to put socket in reuse mode",
@@ -83,8 +84,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   if (reusePort_) {
     // put the socket in port reuse mode
     int value = 1;
-    if (setsockopt(socket, SOL_SOCKET, SO_REUSEPORT, &value, sizeof(value)) !=
-        0) {
+    if (netops::setsockopt(
+            socket, SOL_SOCKET, SO_REUSEPORT, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to put socket in reuse_port mode",
@@ -97,8 +98,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
     // Set busy_poll time in microseconds on the socket.
     // It sets how long socket will be in busy_poll mode when no event occurs.
     int value = busyPollUs_;
-    if (setsockopt(socket, SOL_SOCKET, SO_BUSY_POLL, &value, sizeof(value)) !=
-        0) {
+    if (netops::setsockopt(
+            socket, SOL_SOCKET, SO_BUSY_POLL, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to set SO_BUSY_POLL on the socket",
@@ -113,7 +114,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   if (rcvBuf_ > 0) {
     // Set the size of the buffer for the received messages in rx_queues.
     int value = rcvBuf_;
-    if (setsockopt(socket, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) != 0) {
+    if (netops::setsockopt(
+            socket, SOL_SOCKET, SO_RCVBUF, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to set SO_RCVBUF on the socket",
@@ -124,7 +126,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   if (sndBuf_ > 0) {
     // Set the size of the buffer for the sent messages in tx_queues.
     int value = rcvBuf_;
-    if (setsockopt(socket, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) != 0) {
+    if (netops::setsockopt(
+            socket, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to set SO_SNDBUF on the socket",
@@ -135,7 +138,8 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (address.getFamily() == AF_INET6) {
     int flag = 1;
-    if (setsockopt(socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
+    if (netops::setsockopt(
+            socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN, "Failed to set IPV6_V6ONLY", errno);
     }
@@ -145,7 +149,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
-  if (fsp::bind(socket, saddr, address.getActualSize()) != 0) {
+  if (netops::bind(socket, saddr, address.getActualSize()) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
         "failed to bind the async udp socket for:" + address.describe(),
@@ -173,7 +177,7 @@ void AsyncUDPSocket::dontFragment(bool df) {
     defined(IP_PMTUDISC_WANT)
   if (address().getFamily() == AF_INET) {
     int v4 = df ? IP_PMTUDISC_DO : IP_PMTUDISC_WANT;
-    if (fsp::setsockopt(fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
+    if (netops::setsockopt(fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "Failed to set DF with IP_MTU_DISCOVER",
@@ -185,7 +189,7 @@ void AsyncUDPSocket::dontFragment(bool df) {
     defined(IPV6_PMTUDISC_WANT)
   if (address().getFamily() == AF_INET6) {
     int v6 = df ? IPV6_PMTUDISC_DO : IPV6_PMTUDISC_WANT;
-    if (fsp::setsockopt(
+    if (netops::setsockopt(
             fd_, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &v6, sizeof(v6))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
@@ -202,14 +206,14 @@ void AsyncUDPSocket::setErrMessageCallback(
   int err = (errMessageCallback_ != nullptr);
 #if defined(IP_RECVERR)
   if (address().getFamily() == AF_INET &&
-      fsp::setsockopt(fd_, IPPROTO_IP, IP_RECVERR, &err, sizeof(err))) {
+      netops::setsockopt(fd_, IPPROTO_IP, IP_RECVERR, &err, sizeof(err))) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IP_RECVERR", errno);
   }
 #endif
 #if defined(IPV6_RECVERR)
   if (address().getFamily() == AF_INET6 &&
-      fsp::setsockopt(fd_, IPPROTO_IPV6, IPV6_RECVERR, &err, sizeof(err))) {
+      netops::setsockopt(fd_, IPPROTO_IPV6, IPV6_RECVERR, &err, sizeof(err))) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IPV6_RECVERR", errno);
   }
@@ -217,8 +221,8 @@ void AsyncUDPSocket::setErrMessageCallback(
   (void)err;
 }
 
-void AsyncUDPSocket::setFD(int fd, FDOwnership ownership) {
-  CHECK_EQ(-1, fd_) << "Already bound to another FD";
+void AsyncUDPSocket::setFD(NetworkSocket fd, FDOwnership ownership) {
+  CHECK_EQ(NetworkSocket(), fd_) << "Already bound to another FD";
 
   fd_ = fd;
   ownership_ = ownership;
@@ -258,7 +262,7 @@ ssize_t AsyncUDPSocket::writev(
     const struct iovec* vec,
     size_t iovec_len,
     int gso) {
-  CHECK_NE(-1, fd_) << "Socket not yet bound";
+  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
 
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
@@ -302,7 +306,8 @@ ssize_t AsyncUDPSocket::writev(
 }
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
   CHECK(!readCallback_) << "Another read callback already installed";
-  CHECK_NE(-1, fd_) << "UDP server socket not yet bind to an address";
+  CHECK_NE(NetworkSocket(), fd_)
+      << "UDP server socket not yet bind to an address";
 
   readCallback_ = CHECK_NOTNULL(cob);
   if (!updateRegistration()) {
@@ -334,11 +339,11 @@ void AsyncUDPSocket::close() {
   // Unregister any events we are registered for
   unregisterHandler();
 
-  if (fd_ != -1 && ownership_ == FDOwnership::OWNS) {
-    ::close(fd_);
+  if (fd_ != NetworkSocket() && ownership_ == FDOwnership::OWNS) {
+    netops::close(fd_);
   }
 
-  fd_ = -1;
+  fd_ = NetworkSocket();
 }
 
 void AsyncUDPSocket::handlerReady(uint16_t events) noexcept {
@@ -370,8 +375,8 @@ size_t AsyncUDPSocket::handleErrMessages() noexcept {
 
   int ret;
   size_t num = 0;
-  while (fd_ != -1) {
-    ret = recvmsg(fd_, &msg, MSG_ERRQUEUE);
+  while (fd_ != NetworkSocket()) {
+    ret = netops::recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
 
     if (ret < 0) {
@@ -393,7 +398,7 @@ size_t AsyncUDPSocket::handleErrMessages() noexcept {
          cmsg = CMSG_NXTHDR(&msg, cmsg)) {
       ++num;
       errMessageCallback_->errMessage(*cmsg);
-      if (fd_ == -1) {
+      if (fd_ == NetworkSocket()) {
         // once the socket is closed there is no use for more read errors.
         return num;
       }
@@ -414,10 +419,10 @@ void AsyncUDPSocket::failErrMessageRead(const AsyncSocketException& ex) {
 }
 
 int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
-  CHECK_NE(-1, fd_) << "Socket not yet bound";
+  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  return fsp::connect(
+  return netops::connect(
       fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
 }
 
@@ -429,7 +434,7 @@ void AsyncUDPSocket::handleRead() noexcept {
     return;
   }
 
-  if (fd_ == -1) {
+  if (fd_ == NetworkSocket()) {
     // The socket may have been closed by the error callbacks.
     return;
   }
@@ -454,7 +459,8 @@ void AsyncUDPSocket::handleRead() noexcept {
   struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
-  ssize_t bytesRead = recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  ssize_t bytesRead =
+      netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 
@@ -500,7 +506,7 @@ bool AsyncUDPSocket::updateRegistration() noexcept {
 
 bool AsyncUDPSocket::setGSO(int val) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  int ret = ::setsockopt(fd_, SOL_UDP, UDP_SEGMENT, &val, sizeof(val));
+  int ret = netops::setsockopt(fd_, SOL_UDP, UDP_SEGMENT, &val, sizeof(val));
 
   gso_ = ret ? -1 : val;
 
@@ -517,7 +523,7 @@ int AsyncUDPSocket::getGSO() {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     int gso = -1;
     socklen_t optlen = sizeof(gso);
-    if (!::getsockopt(fd_, SOL_UDP, UDP_SEGMENT, &gso, &optlen)) {
+    if (!netops::getsockopt(fd_, SOL_UDP, UDP_SEGMENT, &gso, &optlen)) {
       gso_ = gso;
     } else {
       gso_ = -1;
