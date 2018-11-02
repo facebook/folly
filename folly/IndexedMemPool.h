@@ -168,6 +168,10 @@ struct IndexedMemPool : boost::noncopyable {
     LocalListLimit = LocalListLimit_,
   };
 
+  static_assert(
+      std::is_nothrow_default_constructible<Atom<uint32_t>>::value,
+      "Atom must be nothrow default constructible");
+
   // these are public because clients may need to reason about the number
   // of bits required to hold indices from a pool, given its capacity
 
@@ -206,12 +210,22 @@ struct IndexedMemPool : boost::noncopyable {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
     }
+    for (size_t i = 1; i < actualCapacity_ + 1; i++) {
+      // Atom is enforced above to be nothrow-default-constructible
+      new (&slots_[i].localNext) Atom<uint32_t>();
+      new (&slots_[i].globalNext) Atom<uint32_t>();
+    }
   }
 
   /// Destroys all of the contained elements
   ~IndexedMemPool() {
+    using A = Atom<uint32_t>;
     for (uint32_t i = maxAllocatedIndex(); i > 0; --i) {
       Traits::cleanup(&slots_[i].elem);
+    }
+    for (size_t i = 1; i < actualCapacity_ + 1; i++) {
+      slots_[i].localNext.~A();
+      slots_[i].globalNext.~A();
     }
     munmap(slots_, mmapLength_);
   }
