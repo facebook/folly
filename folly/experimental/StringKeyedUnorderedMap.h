@@ -23,21 +23,15 @@ namespace folly {
 
 template <
     class Mapped,
-    class Hash = hasher<StringPiece>,
-    class Eq = std::equal_to<StringPiece>,
+    class Hash = f14::DefaultHasher<std::string>,
+    class Eq = f14::DefaultKeyEqual<std::string>,
     class Alloc = f14::DefaultAlloc<std::pair<std::string const, Mapped>>>
-struct StringKeyedUnorderedMap : public F14NodeMap<
-                                     std::string,
-                                     Mapped,
-                                     transparent<Hash>,
-                                     transparent<Eq>,
-                                     Alloc> {
-  using Super = F14NodeMap<
-      std::string,
-      Mapped,
-      transparent<Hash>,
-      transparent<Eq>,
-      Alloc>;
+struct StringKeyedUnorderedMap
+    : public F14NodeMap<std::string, Mapped, Hash, Eq, Alloc> {
+  using Super = F14NodeMap<std::string, Mapped, Hash, Eq, Alloc>;
+
+  using require_transparent_hash = typename Hash::is_transparent;
+  using require_transparent_eq = typename Eq::is_transparent;
 
  public:
   using Super::Super;
