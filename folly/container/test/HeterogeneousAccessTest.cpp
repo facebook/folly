@@ -19,6 +19,7 @@
 #include <set>
 #include <vector>
 
+#include <folly/FBString.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -81,6 +82,8 @@ TEST(HeterogeneousAccess, transparentIsSelected) {
   checkTransparent<std::u16string_view>();
   checkTransparent<std::u32string_view>();
 #endif
+
+  checkTransparent<fbstring>();
 
   checkTransparent<StringPiece>();
   checkTransparent<MutableStringPiece>();
@@ -210,6 +213,7 @@ TEST(HeterogeneousAccess, transparentMatches) {
   runTestMatches<std::wstring>(L"abcd");
   runTestMatches<std::u16string>(u"abcd");
   runTestMatches<std::u32string>(U"abcd");
+  runTestMatches<fbstring>("abcd");
   runTestMatches<std::vector<int>>({1, 2, 3, 4});
 
   static_assert(
