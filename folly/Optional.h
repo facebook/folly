@@ -227,18 +227,6 @@ class Optional {
     return *this;
   }
 
-  /**
-   * DEPRECATED: use folly::none
-   */
-  template <typename Null = std::nullptr_t>
-  Optional& operator=(typename std::enable_if<
-                      !std::is_pointer<Value>::value &&
-                          std::is_same<Null, std::nullptr_t>::value,
-                      Null>::type) noexcept {
-    reset();
-    return *this;
-  }
-
   template <class... Args>
   Value& emplace(Args&&... args) {
     clear();
