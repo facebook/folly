@@ -400,26 +400,26 @@ FutureBase<T>::thenImplementation(F&& func, R) {
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), std::forward<F>(func))](
-                         Try<T>&& t) mutable {
-    if (!R::Arg::isTry() && t.hasException()) {
-      state.setException(std::move(t.exception()));
-    } else {
-      // Ensure that if function returned a SemiFuture we correctly chain
-      // potential deferral.
-      auto tf2 = detail_msvc_15_7_workaround::tryInvoke(R{}, state, t);
-      if (tf2.hasException()) {
-        state.setException(std::move(tf2.exception()));
-      } else {
-        auto statePromise = state.stealPromise();
-        auto tf3 =
-            chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
-        std::exchange(statePromise.core_, nullptr)
-            ->setProxy(std::exchange(tf3.core_, nullptr));
-      }
-    }
-  });
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
+        if (!R::Arg::isTry() && t.hasException()) {
+          state.setException(std::move(t.exception()));
+        } else {
+          // Ensure that if function returned a SemiFuture we correctly chain
+          // potential deferral.
+          auto tf2 = detail_msvc_15_7_workaround::tryInvoke(R{}, state, t);
+          if (tf2.hasException()) {
+            state.setException(std::move(tf2.exception()));
+          } else {
+            auto statePromise = state.stealPromise();
+            auto tf3 = chainExecutor(
+                statePromise.core_->getExecutor(), *std::move(tf2));
+            std::exchange(statePromise.core_, nullptr)
+                ->setProxy(std::exchange(tf3.core_, nullptr));
+          }
+        }
+      });
 
   return f;
 }
