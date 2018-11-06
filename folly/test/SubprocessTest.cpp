@@ -17,6 +17,7 @@
 #include <folly/Subprocess.h>
 
 #include <sys/types.h>
+#include <chrono>
 
 #include <boost/container/flat_set.hpp>
 #include <glog/logging.h>
@@ -36,6 +37,7 @@
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 using namespace folly;
+using namespace std::chrono_literals;
 
 TEST(SimpleSubprocessTest, ExitsSuccessfully) {
   Subprocess proc(std::vector<std::string>{"/bin/true"});
@@ -108,19 +110,23 @@ TEST(SimpleSubprocessTest, DefaultConstructor) {
   EXPECT_EQ(0, proc.wait().exitStatus());
 }
 
-#define EXPECT_SPAWN_ERROR(err, errMsg, cmd, ...)                      \
-  do {                                                                 \
-    try {                                                              \
-      Subprocess proc(std::vector<std::string>{(cmd), ##__VA_ARGS__}); \
-      ADD_FAILURE() << "expected an error when running " << (cmd);     \
-    } catch (const SubprocessSpawnError& ex) {                         \
-      EXPECT_EQ((err), ex.errnoValue());                               \
-      if (StringPiece(ex.what()).find(errMsg) == StringPiece::npos) {  \
-        ADD_FAILURE() << "failed to find \"" << (errMsg)               \
-                      << "\" in exception: \"" << ex.what() << "\"";   \
-      }                                                                \
-    }                                                                  \
+#define EXPECT_SPAWN_OPT_ERROR(err, errMsg, options, cmd, ...)        \
+  do {                                                                \
+    try {                                                             \
+      Subprocess proc(                                                \
+          std::vector<std::string>{(cmd), ##__VA_ARGS__}, (options)); \
+      ADD_FAILURE() << "expected an error when running " << (cmd);    \
+    } catch (const SubprocessSpawnError& ex) {                        \
+      EXPECT_EQ((err), ex.errnoValue());                              \
+      if (StringPiece(ex.what()).find(errMsg) == StringPiece::npos) { \
+        ADD_FAILURE() << "failed to find \"" << (errMsg)              \
+                      << "\" in exception: \"" << ex.what() << "\"";  \
+      }                                                               \
+    }                                                                 \
   } while (0)
+
+#define EXPECT_SPAWN_ERROR(err, errMsg, cmd, ...) \
+  EXPECT_SPAWN_OPT_ERROR(err, errMsg, Subprocess::Options(), cmd, ##__VA_ARGS__)
 
 TEST(SimpleSubprocessTest, ExecFails) {
   EXPECT_SPAWN_ERROR(
@@ -228,6 +234,32 @@ TEST(SimpleSubprocessTest, FdLeakTest) {
       EXPECT_EQ(ENOENT, ex.errnoValue());
     }
   });
+}
+
+TEST(SimpleSubprocessTest, Detach) {
+  auto start = std::chrono::steady_clock::now();
+  {
+    Subprocess proc(
+        std::vector<std::string>{"/bin/sleep", "10"},
+        Subprocess::Options().detach());
+    EXPECT_EQ(-1, proc.pid());
+  }
+  auto end = std::chrono::steady_clock::now();
+  // We should be able to create and destroy the Subprocess object quickly,
+  // without waiting for the sleep process to finish.  This should usually
+  // happen in a matter of milliseconds, but we allow up to 5 seconds just to
+  // provide lots of leeway on heavily loaded continuous build machines.
+  EXPECT_LE(end - start, 5s);
+}
+
+TEST(SimpleSubprocessTest, DetachExecFails) {
+  // Errors executing the process should be propagated from the grandchild
+  // process back to the original parent process.
+  EXPECT_SPAWN_OPT_ERROR(
+      ENOENT,
+      "failed to execute /no/such/file:",
+      Subprocess::Options().detach(),
+      "/no/such/file");
 }
 
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {

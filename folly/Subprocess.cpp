@@ -308,6 +308,12 @@ void Subprocess::spawn(
   // calling exec()
   readChildErrorPipe(errFds[0], executable);
 
+  // If we spawned a detached child, wait on the intermediate child process.
+  // It always exits immediately.
+  if (options.detach_) {
+    wait();
+  }
+
   // We have fully succeeded now, so release the guard on pipes_
   pipesGuard.dismiss();
 }
@@ -425,15 +431,45 @@ void Subprocess::spawnInternal(
 #ifdef __linux__
   if (options.cloneFlags_) {
     pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
-    checkUnixError(pid, errno, "clone");
   } else {
 #endif
-    pid = vfork();
-    checkUnixError(pid, errno, "vfork");
+    if (options.detach_) {
+      // If we are detaching we must use fork() instead of vfork() for the first
+      // fork, since we aren't going to simply call exec() in the child.
+      pid = fork();
+    } else {
+      pid = vfork();
+    }
 #ifdef __linux__
   }
 #endif
+  checkUnixError(pid, errno, "failed to fork");
   if (pid == 0) {
+    // Fork a second time if detach_ was requested.
+    // This must be done before signals are restored in prepareChild()
+    if (options.detach_) {
+#ifdef __linux__
+      if (options.cloneFlags_) {
+        pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
+      } else {
+#endif
+        pid = vfork();
+#ifdef __linux__
+      }
+#endif
+      if (pid == -1) {
+        // Inform our parent process of the error so it can throw in the parent.
+        childError(errFd, kChildFailure, errno);
+      } else if (pid != 0) {
+        // We are the intermediate process.  Exit immediately.
+        // Our child will still inform the original parent of success/failure
+        // through errFd.  The pid of the grandchild process never gets
+        // propagated back up to the original parent.  In the future we could
+        // potentially send it back using errFd if we needed to.
+        _exit(0);
+      }
+    }
+
     int errnoValue = prepareChild(options, &oldSignals, childDir);
     if (errnoValue != 0) {
       childError(errFd, kChildFailure, errnoValue);
