@@ -189,7 +189,7 @@ if (FOLLY_ASAN_ENABLED)
     # sanitizer, but even so, gcc fails to compile them for some reason when
     # sanitization is enabled on the compile line.
     set_source_files_properties(
-      "${CMAKE_SOURCE_DIR}/folly/detail/Sse.cpp"
+      "${PROJECT_SOURCE_DIR}/folly/detail/Sse.cpp"
       PROPERTIES COMPILE_FLAGS -fno-sanitize=address,undefined
     )
   elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES Clang)
