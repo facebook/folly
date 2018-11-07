@@ -24,7 +24,8 @@ using namespace folly::detail;
 using namespace folly;
 
 namespace {
-struct IntArrayIterator : IteratorFacade<IntArrayIterator, int const> {
+struct IntArrayIterator
+    : IteratorFacade<IntArrayIterator, int const, std::forward_iterator_tag> {
   explicit IntArrayIterator(int const* a) : a_(a) {}
   void increment() {
     ++a_;
@@ -68,8 +69,16 @@ TEST(IteratorsTest, SimpleIteratorFacade) {
 
 namespace {
 // Simple iterator adaptor: wraps an int pointer.
-struct IntPointerIter : IteratorAdaptor<IntPointerIter, int const*, int const> {
-  using Super = IteratorAdaptor<IntPointerIter, int const*, int const>;
+struct IntPointerIter : IteratorAdaptor<
+                            IntPointerIter,
+                            int const*,
+                            int const,
+                            std::forward_iterator_tag> {
+  using Super = IteratorAdaptor<
+      IntPointerIter,
+      int const*,
+      int const,
+      std::forward_iterator_tag>;
   explicit IntPointerIter(int const* ptr) : Super(ptr) {}
 };
 } // namespace
@@ -104,20 +113,32 @@ TEST(IteratorsTest, IterAdaptorWithPointer) {
 namespace {
 // More complex case: wrap a map iterator, but these provide either the key or
 // value.
-struct IntMapKeyIter
-    : IteratorAdaptor<IntMapKeyIter, std::map<int, int>::iterator, int const> {
-  using Super =
-      IteratorAdaptor<IntMapKeyIter, std::map<int, int>::iterator, int const>;
+struct IntMapKeyIter : IteratorAdaptor<
+                           IntMapKeyIter,
+                           std::map<int, int>::iterator,
+                           int const,
+                           std::forward_iterator_tag> {
+  using Super = IteratorAdaptor<
+      IntMapKeyIter,
+      std::map<int, int>::iterator,
+      int const,
+      std::forward_iterator_tag>;
   explicit IntMapKeyIter(std::map<int, int>::iterator iter) : Super(iter) {}
   int const& dereference() const {
     return base()->first;
   }
 };
 
-struct IntMapValueIter
-    : IteratorAdaptor<IntMapValueIter, std::map<int, int>::iterator, int> {
-  using Super =
-      IteratorAdaptor<IntMapValueIter, std::map<int, int>::iterator, int>;
+struct IntMapValueIter : IteratorAdaptor<
+                             IntMapValueIter,
+                             std::map<int, int>::iterator,
+                             int,
+                             std::forward_iterator_tag> {
+  using Super = IteratorAdaptor<
+      IntMapValueIter,
+      std::map<int, int>::iterator,
+      int,
+      std::forward_iterator_tag>;
   explicit IntMapValueIter(std::map<int, int>::iterator iter) : Super(iter) {}
   int& dereference() const {
     return base()->second;
@@ -160,11 +181,13 @@ namespace {
 struct IntMapValueIterConst : IteratorAdaptor<
                                   IntMapValueIterConst,
                                   std::map<int, int>::const_iterator,
-                                  int const> {
+                                  int const,
+                                  std::forward_iterator_tag> {
   using Super = IteratorAdaptor<
       IntMapValueIterConst,
       std::map<int, int>::const_iterator,
-      int const>;
+      int const,
+      std::forward_iterator_tag>;
   explicit IntMapValueIterConst(std::map<int, int>::const_iterator iter)
       : Super(iter) {}
   /* implicit */ IntMapValueIterConst(IntMapValueIter const& rhs)

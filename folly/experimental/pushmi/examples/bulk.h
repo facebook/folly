@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/single_sender.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace operators {
@@ -62,3 +63,4 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

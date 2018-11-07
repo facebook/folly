@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 
 #include <folly/io/async/EventUtil.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Event.h>
 
 namespace folly {
@@ -61,7 +62,11 @@ class EventHandler : private boost::noncopyable {
    *                   descriptor must be set separately using initHandler() or
    *                   changeHandlerFD() before the handler can be registered.
    */
-  explicit EventHandler(EventBase* eventBase = nullptr, int fd = -1);
+  explicit EventHandler(EventBase* eventBase, int fd)
+      : EventHandler(eventBase, NetworkSocket::fromFd(fd)) {}
+  explicit EventHandler(
+      EventBase* eventBase = nullptr,
+      NetworkSocket fd = NetworkSocket());
 
   /**
    * EventHandler destructor.
@@ -135,7 +140,11 @@ class EventHandler : private boost::noncopyable {
    *
    * This may only be called when the handler is not currently registered.
    */
-  void changeHandlerFD(int fd);
+  void changeHandlerFD(int fd) {
+    changeHandlerFD(NetworkSocket::fromFd(fd));
+  }
+
+  void changeHandlerFD(NetworkSocket fd);
 
   /**
    * Attach the handler to a EventBase, and change the file descriptor.
@@ -144,7 +153,11 @@ class EventHandler : private boost::noncopyable {
    * a EventBase.  This is primarily intended to be used to initialize
    * EventHandler objects created using the default constructor.
    */
-  void initHandler(EventBase* eventBase, int fd);
+  void initHandler(EventBase* eventBase, int fd) {
+    initHandler(eventBase, NetworkSocket::fromFd(fd));
+  }
+
+  void initHandler(EventBase* eventBase, NetworkSocket fd);
 
   /**
    * Return the set of events that we're currently registered for.

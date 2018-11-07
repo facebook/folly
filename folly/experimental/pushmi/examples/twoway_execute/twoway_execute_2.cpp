@@ -29,7 +29,7 @@
 
 #include <folly/experimental/pushmi/o/transform.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 namespace p1054 {
 // A promise refers to a promise and is associated with a future,

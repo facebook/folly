@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 
 // Usage:
@@ -83,6 +83,7 @@
 
 #define PUSHMI_STRIP(...) __VA_ARGS__
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 struct id_fn {
@@ -94,14 +95,16 @@ struct id_fn {
     return (T&&) t;
   }
 };
-}
-}
+} // namespace detail
+} // namespace pushmi
+} // namespace folly
 
 #if __cpp_if_constexpr >= 201606
 
-#define PUSHMI_IF_CONSTEXPR(LIST)\
-  if constexpr (::pushmi::detail::id_fn id = {}) {} \
-  else if constexpr PUSHMI_EVAL(PUSHMI_IF_CONSTEXPR_ELSE_, PUSHMI_IF_CONSTEXPR_IF_ LIST)
+#define PUSHMI_IF_CONSTEXPR(LIST)                         \
+  if constexpr (::folly::pushmi::detail::id_fn id = {}) { \
+  } else if constexpr                                     \
+  PUSHMI_EVAL(PUSHMI_IF_CONSTEXPR_ELSE_, PUSHMI_IF_CONSTEXPR_IF_ LIST)
 
 #define PUSHMI_IF_CONSTEXPR_RETURN(LIST)\
   PUSHMI_PP_IGNORE_SHADOW_BEGIN \
@@ -133,8 +136,8 @@ struct id_fn {
   return PUSHMI_EVAL(PUSHMI_IF_CONSTEXPR_ELSE_, PUSHMI_IF_CONSTEXPR_IF_ LIST)\
   /**/
 
-#define PUSHMI_IF_CONSTEXPR_IF_(...) \
-  (::pushmi::detail::select<bool(__VA_ARGS__)>() ->* PUSHMI_IF_CONSTEXPR_THEN_ \
+#define PUSHMI_IF_CONSTEXPR_IF_(...)                                                  \
+  (::folly::pushmi::detail::select<bool(__VA_ARGS__)>() ->* PUSHMI_IF_CONSTEXPR_THEN_ \
   /**/
 
 #define PUSHMI_IF_CONSTEXPR_THEN_(...) \
@@ -149,6 +152,7 @@ struct id_fn {
   ([&](PUSHMI_MAYBE_UNUSED auto id)mutable->decltype(auto){__VA_ARGS__});\
   /**/
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 
@@ -168,12 +172,12 @@ struct select {
   };
   template <class T>
   constexpr auto operator->*(T&& t)
-      -> eat_return<decltype(t(::pushmi::detail::id_fn{}))> {
-    return {t(::pushmi::detail::id_fn{})};
+      -> eat_return<decltype(t(::folly::pushmi::detail::id_fn{}))> {
+    return {t(::folly::pushmi::detail::id_fn{})};
   }
   template <class T>
   constexpr auto operator->*(T&& t) const -> eat {
-    return t(::pushmi::detail::id_fn{}), void(), eat{};
+    return t(::folly::pushmi::detail::id_fn{}), void(), eat{};
   }
 };
 
@@ -182,7 +186,7 @@ struct select<false> {
   struct eat {
     template <class T>
     constexpr auto operator->*(T&& t) -> decltype(auto) {
-      return t(::pushmi::detail::id_fn{});
+      return t(::folly::pushmi::detail::id_fn{});
     }
   };
   template <class T>
@@ -192,4 +196,5 @@ struct select<false> {
 };
 } // namespace detail
 } // namespace pushmi
+} // namespace folly
 #endif

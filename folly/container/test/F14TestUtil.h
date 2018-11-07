@@ -279,7 +279,7 @@ struct Tracked {
 
 template <int Tag>
 struct TransparentTrackedHash {
-  using is_transparent = std::true_type;
+  using is_transparent = void;
 
   size_t operator()(Tracked<Tag> const& tracked) const {
     return tracked.val_ ^ Tag;
@@ -291,7 +291,7 @@ struct TransparentTrackedHash {
 
 template <int Tag>
 struct TransparentTrackedEqual {
-  using is_transparent = std::true_type;
+  using is_transparent = void;
 
   uint64_t unwrap(Tracked<Tag> const& v) const {
     return v.val_;

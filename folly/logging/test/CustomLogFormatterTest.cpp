@@ -52,11 +52,12 @@ std::string formatMsg(
     StringPiece filename,
     StringPiece functionName,
     unsigned int lineNumber,
+    bool colored = false,
     // Default timestamp: 2017-04-17 13:45:56.123456 UTC
     uint64_t timestampNS = 1492436756123456789ULL) {
   LoggerDB db{LoggerDB::TESTING};
   auto* category = db.getCategory("test");
-  CustomLogFormatter formatter{formatString, false};
+  CustomLogFormatter formatter{formatString, colored};
 
   std::chrono::system_clock::time_point logTimePoint{
       std::chrono::duration_cast<std::chrono::system_clock::duration>(
@@ -196,6 +197,110 @@ TEST(CustomLogFormatter, singleNewline) {
           "foo.txt",
           "testFunction",
           123));
+}
+
+TEST(CustomLogFormatter, coloring) {
+  auto tid = getOSThreadID();
+  std::map<std::string, std::string> formatMap{
+      {"tid", folly::to<std::string>(tid)}};
+
+  { // Logging a DBG9 message should log in grey color (\033[1;30m) and should
+    // call reset color at the end of the message (\033[0m)
+    auto expected = folly::svformat(
+        "\033[1;30mV0417 13:45:56.123456 {tid:>5s} foo.txt:123] DBG9\033[0m\n",
+        formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::DBG9,
+            "DBG9",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
+  { // Logging an INFO message when coloring enabled is displayed as regular
+    // message. i.e. no color or reset sequence
+    auto expected = folly::svformat(
+        "I0417 13:45:56.123456 {tid:>5s} foo.txt:123] INFO\n", formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::INFO,
+            "INFO",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
+  { // Logging a WARN message should log in yellow color (\033[33m) and should
+    // call reset color at the end of the message (\033[0m)
+    auto expected = folly::svformat(
+        "\033[33mW0417 13:45:56.123456 {tid:>5s} foo.txt:123] WARN\033[0m\n",
+        formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::WARN,
+            "WARN",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
+  { // Logging a ERR message should log in red color (\033[31m) and should
+    // call reset color at the end of the message (\033[0m)
+    auto expected = folly::svformat(
+        "\033[31mE0417 13:45:56.123456 {tid:>5s} foo.txt:123] ERR\033[0m\n",
+        formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::ERR,
+            "ERR",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
+  { // Logging a CRITICAL message should log bold in red background (\033[1;41m)
+    // and should call reset color at the end of the message (\033[0m)
+    auto expected = folly::svformat(
+        "\033[1;41mC0417 13:45:56.123456 {tid:>5s} foo.txt:123] "
+        "CRITICAL\033[0m\n",
+        formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::CRITICAL,
+            "CRITICAL",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
+  { // Logging a FATAL message should log bold in red background (\033[1;41m)
+    // and should call reset color at the end of the message (\033[0m)
+    auto expected = folly::svformat(
+        "\033[1;41mF0417 13:45:56.123456 {tid:>5s} foo.txt:123] "
+        "FATAL\033[0m\n",
+        formatMap);
+    EXPECT_EQ(
+        expected,
+        formatMsg(
+            kGlogFormatString,
+            LogLevel::FATAL,
+            "FATAL",
+            "foo.txt",
+            "testFunction",
+            123,
+            true));
+  }
 }
 
 TEST(CustomLogFormatter, unprintableChars) {

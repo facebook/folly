@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <chrono>
 #include <cstdint>
@@ -23,9 +23,10 @@
 #include <utility>
 
 #include <folly/experimental/pushmi/concepts.h>
-#include <folly/experimental/pushmi/traits.h>
 #include <folly/experimental/pushmi/detail/functional.h>
+#include <folly/experimental/pushmi/traits.h>
 
+namespace folly {
 namespace pushmi {
 
 template<class T>
@@ -65,7 +66,8 @@ template<>
 struct construct_deduced<flow_many_sender>;
 
 template <template <class...> class T, class... AN>
-using deduced_type_t = pushmi::invoke_result_t<construct_deduced<T>, AN...>;
+using deduced_type_t =
+    ::folly::pushmi::invoke_result_t<construct_deduced<T>, AN...>;
 
 struct ignoreVF {
   PUSHMI_TEMPLATE(class... VN)
@@ -114,10 +116,10 @@ struct priorityZeroF {
 struct passDVF {
   PUSHMI_TEMPLATE(class Data, class... VN)
     (requires requires (
-      ::pushmi::set_value(std::declval<Data&>(), std::declval<VN>()...)
+      set_value(std::declval<Data&>(), std::declval<VN>()...)
     ) && Receiver<Data>)
   void operator()(Data& out, VN&&... vn) const {
-    ::pushmi::set_value(out, (VN&&) vn...);
+    set_value(out, (VN&&) vn...);
   }
 };
 
@@ -125,7 +127,7 @@ struct passDEF {
   PUSHMI_TEMPLATE(class E, class Data)
     (requires ReceiveError<Data, E>)
   void operator()(Data& out, E e) const noexcept {
-    ::pushmi::set_error(out, e);
+    set_error(out, e);
   }
 };
 
@@ -133,17 +135,17 @@ struct passDDF {
   PUSHMI_TEMPLATE(class Data)
     (requires Receiver<Data>)
   void operator()(Data& out) const {
-    ::pushmi::set_done(out);
+    set_done(out);
   }
 };
 
 struct passDStrtF {
   PUSHMI_TEMPLATE(class Up, class Data)
     (requires requires (
-      ::pushmi::set_starting(std::declval<Data&>(), std::declval<Up>())
+      set_starting(std::declval<Data&>(), std::declval<Up>())
     ) && Receiver<Data>)
   void operator()(Data& out, Up&& up) const {
-    ::pushmi::set_starting(out, (Up&&) up);
+    set_starting(out, (Up&&) up);
   }
 };
 
@@ -151,18 +153,18 @@ struct passDEXF {
   PUSHMI_TEMPLATE(class Data)
     (requires Sender<Data>)
   auto operator()(Data& in) const noexcept {
-    return ::pushmi::executor(in);
+    return executor(in);
   }
 };
 
 struct passDSF {
   template <class Data, class Out>
   void operator()(Data& in, Out out) {
-    ::pushmi::submit(in, std::move(out));
+    submit(in, std::move(out));
   }
   template <class Data, class TP, class Out>
   void operator()(Data& in, TP at, Out out) {
-    ::pushmi::submit(in, std::move(at), std::move(out));
+    submit(in, std::move(at), std::move(out));
   }
 };
 
@@ -170,7 +172,7 @@ struct passDNF {
   PUSHMI_TEMPLATE(class Data)
     (requires TimeSender<Data>)
   auto operator()(Data& in) const noexcept {
-    return ::pushmi::now(in);
+    return ::folly::pushmi::now(in);
   }
 };
 
@@ -178,7 +180,7 @@ struct passDZF {
   PUSHMI_TEMPLATE(class Data)
     (requires ConstrainedSender<Data>)
   auto operator()(Data& in) const noexcept {
-    return ::pushmi::top(in);
+    return ::folly::pushmi::top(in);
   }
 };
 
@@ -329,3 +331,4 @@ auto on_now(Fn fn) -> on_now_fn<Fn> {
 }
 
 } // namespace pushmi
+} // namespace folly

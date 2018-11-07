@@ -1455,6 +1455,7 @@ TEST(F14ValueMap, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14ValueMap<std::string, std::string>>();
 }
 
 TEST(F14NodeMap, heterogeneousInsert) {
@@ -1468,6 +1469,7 @@ TEST(F14NodeMap, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14NodeMap<std::string, std::string>>();
 }
 
 TEST(F14VectorMap, heterogeneousInsert) {
@@ -1481,6 +1483,7 @@ TEST(F14VectorMap, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14VectorMap<std::string, std::string>>();
 }
 
 TEST(F14FastMap, heterogeneousInsert) {
@@ -1494,6 +1497,7 @@ TEST(F14FastMap, heterogeneousInsert) {
       std::string,
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14FastMap<std::string, std::string>>();
 }
 
 ///////////////////////////////////

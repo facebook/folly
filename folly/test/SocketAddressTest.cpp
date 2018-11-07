@@ -604,7 +604,6 @@ TEST(SocketAddress, Unix) {
     EXPECT_EQ(copy, addr);
   }
 
-#if __GXX_EXPERIMENTAL_CXX0X__
   {
     SocketAddress copy;
     {
@@ -636,7 +635,6 @@ TEST(SocketAddress, Unix) {
     EXPECT_EQ(other, addr);
     EXPECT_EQ(other.getPath(), addr.getPath());
   }
-#endif
 }
 
 TEST(SocketAddress, AnonymousUnix) {

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/forwards.h>
 
+namespace folly {
 namespace pushmi {
 
 // template <class T, class Dual>
@@ -165,7 +166,7 @@ struct entangled {
   entangled& operator=(entangled&&) = delete;
 
   explicit entangled(T t)
-      : t(std::move(t)), dual(nullptr), stateMachine(kUnlocked) {}
+      : stateMachine(kUnlocked), t(std::move(t)), dual(nullptr) {}
   entangled(entangled&& other)
       : stateMachine((other.lockBoth(), kLocked)),
         t(std::move(other.t)),
@@ -313,3 +314,4 @@ locked_shared_entangled_pair<T, Dual> lock_both(shared_entangled<T, Dual>& e) {
 }
 
 } // namespace pushmi
+} // namespace folly

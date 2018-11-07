@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <functional>
 #include <type_traits>
@@ -29,6 +29,7 @@
   }\
   /**/
 
+namespace folly {
 namespace pushmi {
 #if __cpp_fold_expressions >= 201603
 template <bool... Bs>
@@ -231,3 +232,4 @@ PUSHMI_INLINE_VAR constexpr struct as_const_fn {
 } // namespace detail
 
 } // namespace pushmi
+} // namespace folly

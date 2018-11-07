@@ -31,7 +31,6 @@
 
 #include <folly/io/async/test/BlockingSocket.h>
 
-#include <dlfcn.h>
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -41,6 +40,10 @@
 #include <list>
 #include <set>
 #include <thread>
+
+#ifdef __linux__
+#include <dlfcn.h>
+#endif
 
 #if FOLLY_OPENSSL_IS_110
 #include <openssl/async.h>

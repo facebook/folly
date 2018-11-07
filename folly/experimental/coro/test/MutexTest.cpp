@@ -23,9 +23,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
-#include <folly/experimental/coro/Future.h>
 #include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Promise.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/portability/GTest.h>
@@ -75,11 +73,11 @@ TEST(Mutex, LockAsync) {
 
   auto& inlineExecutor = InlineExecutor::instance();
 
-  auto f1 = makeTask(b1).scheduleVia(&inlineExecutor);
+  auto f1 = makeTask(b1).scheduleOn(&inlineExecutor).start();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleVia(&inlineExecutor);
+  auto f2 = makeTask(b2).scheduleOn(&inlineExecutor).start();
   CHECK_EQ(1, value);
 
   // This will resume f1 coroutine and let it release the
@@ -112,11 +110,11 @@ TEST(Mutex, ScopedLockAsync) {
 
   auto& inlineExecutor = InlineExecutor::instance();
 
-  auto f1 = makeTask(b1).scheduleVia(&inlineExecutor);
+  auto f1 = makeTask(b1).scheduleOn(&inlineExecutor).start();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleVia(&inlineExecutor);
+  auto f2 = makeTask(b2).scheduleOn(&inlineExecutor).start();
   CHECK_EQ(1, value);
 
   // This will resume f1 coroutine and let it release the
@@ -147,13 +145,13 @@ TEST(Mutex, ThreadSafety) {
     }
   };
 
-  auto f1 = makeTask().scheduleVia(&threadPool);
-  auto f2 = makeTask().scheduleVia(&threadPool);
-  auto f3 = makeTask().scheduleVia(&threadPool);
+  auto f1 = makeTask().scheduleOn(&threadPool).start();
+  auto f2 = makeTask().scheduleOn(&threadPool).start();
+  auto f3 = makeTask().scheduleOn(&threadPool).start();
 
-  coro::blockingWait(std::move(f1));
-  coro::blockingWait(std::move(f2));
-  coro::blockingWait(std::move(f3));
+  std::move(f1).get();
+  std::move(f2).get();
+  std::move(f3).get();
 
   CHECK_EQ(30'000, value);
 }

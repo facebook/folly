@@ -326,7 +326,7 @@ detail::FutexResult futexWaitImpl(
       "futexWait(" << futex << ", " << std::hex << expected << ", .., "
                    << std::hex << waitMask << ") beginning..");
   futexLock.lock();
-  if (futex->data == expected) {
+  if (futex->load_direct() == expected) {
     auto& queue = futexQueues[futex];
     queue.emplace_back(waitMask, &awoken);
     auto ours = queue.end();

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/boosters.h>
+#include <folly/experimental/pushmi/concepts.h>
+#include <folly/experimental/pushmi/detail/concept_def.h>
+#include <folly/experimental/pushmi/detail/functional.h>
+#include <folly/experimental/pushmi/extension_points.h>
+#include <folly/experimental/pushmi/forwards.h>
+#include <folly/experimental/pushmi/properties.h>
+#include <folly/experimental/pushmi/traits.h>
 #include <future>
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class... VN>
@@ -57,7 +65,7 @@ class any_receiver {
         ReceiveError<Wrapped, std::exception_ptr>,
         "Wrapped receiver must support std::exception_ptr and be noexcept");
     static_assert(
-        NothrowInvocable<decltype(::pushmi::set_error), Wrapped, E>,
+        NothrowInvocable<decltype(::folly::pushmi::set_error), Wrapped, E>,
         "Wrapped receiver must support E and be noexcept");
   }
   template <class Wrapped>
@@ -69,14 +77,13 @@ class any_receiver {
         delete static_cast<Wrapped const*>(src.pobj_);
       }
       static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
+        set_done(*static_cast<Wrapped*>(src.pobj_));
       }
       static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
+        set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(
-            *static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
+        set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value};
@@ -93,15 +100,13 @@ class any_receiver {
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
+        set_done(*static_cast<Wrapped*>((void*)src.buffer_));
       }
       static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(e));
+        set_error(*static_cast<Wrapped*>((void*)src.buffer_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
+        set_value(*static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value};
@@ -508,3 +513,4 @@ std::future<void> future_from(In in) {
 }
 
 } // namespace pushmi
+} // namespace folly

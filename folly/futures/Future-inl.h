@@ -266,16 +266,8 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 template <class T>
 template <class F>
 void FutureBase<T>::setCallback_(F&& func) {
-  setCallback_(std::forward<F>(func), RequestContext::saveContext());
-}
-
-template <class T>
-template <class F>
-void FutureBase<T>::setCallback_(
-    F&& func,
-    std::shared_ptr<folly::RequestContext> context) {
   throwIfContinued();
-  getCore().setCallback(std::forward<F>(func), std::move(context));
+  getCore().setCallback(std::forward<F>(func), RequestContext::saveContext());
 }
 
 template <class T>
@@ -408,35 +400,26 @@ FutureBase<T>::thenImplementation(F&& func, R) {
   auto f = Future<B>(sf.core_);
   sf.core_ = nullptr;
 
-  this->setCallback_([state = futures::detail::makeCoreCallbackState(
-                          std::move(p), std::forward<F>(func))](
-                         Try<T>&& t) mutable {
-    if (!R::Arg::isTry() && t.hasException()) {
-      state.setException(std::move(t.exception()));
-    } else {
-      // Ensure that if function returned a SemiFuture we correctly chain
-      // potential deferral.
-      auto tf2 = detail_msvc_15_7_workaround::tryInvoke(R{}, state, t);
-      if (tf2.hasException()) {
-        state.setException(std::move(tf2.exception()));
-      } else {
-        auto statePromise = state.stealPromise();
-        auto tf3 =
-            chainExecutor(statePromise.core_->getExecutor(), *std::move(tf2));
-        if (std::is_same<T, B>::value && statePromise.getCore().hasCallback()) {
-          tf3.core_->setExecutor(statePromise.core_->getExecutor());
-          auto callbackAndContext = statePromise.getCore().stealCallback();
-          tf3.setCallback_(
-              std::move(callbackAndContext.first),
-              std::move(callbackAndContext.second));
+  this->setCallback_(
+      [state = futures::detail::makeCoreCallbackState(
+           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
+        if (!R::Arg::isTry() && t.hasException()) {
+          state.setException(std::move(t.exception()));
         } else {
-          tf3.setCallback_([p2 = std::move(statePromise)](Try<B>&& b) mutable {
-            p2.setTry(std::move(b));
-          });
+          // Ensure that if function returned a SemiFuture we correctly chain
+          // potential deferral.
+          auto tf2 = detail_msvc_15_7_workaround::tryInvoke(R{}, state, t);
+          if (tf2.hasException()) {
+            state.setException(std::move(tf2.exception()));
+          } else {
+            auto statePromise = state.stealPromise();
+            auto tf3 = chainExecutor(
+                statePromise.core_->getExecutor(), *std::move(tf2));
+            std::exchange(statePromise.core_, nullptr)
+                ->setProxy(std::exchange(tf3.core_, nullptr));
+          }
         }
-      }
-    }
-  });
+      });
 
   return f;
 }
@@ -1218,7 +1201,7 @@ Future<T>::onError(F&& func) && {
 template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) && {
-  return std::move(*this).then(
+  return std::move(*this).thenTry(
       [funcw = std::forward<F>(func)](Try<T>&& t) mutable {
         std::forward<F>(funcw)();
         return makeFuture(std::move(t));
@@ -1654,9 +1637,8 @@ collectAny(InputIterator first, InputIterator last) {
 
 // collectAnyWithoutException (iterator)
 
-// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<std::pair<
+SemiFuture<std::pair<
     size_t,
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collectAnyWithoutException(InputIterator first, InputIterator last) {
@@ -1671,6 +1653,10 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
     size_t nTotal;
   };
 
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
+
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
   for (size_t i = 0; first != last; ++first, ++i) {
     first->setCallback_([i, ctx](Try<T>&& t) {
@@ -1684,7 +1670,17 @@ collectAnyWithoutException(InputIterator first, InputIterator last) {
       }
     });
   }
-  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 // collectN (iterator)
@@ -1805,14 +1801,24 @@ auto window(size_t times, F func, size_t n)
 template <class Collection, class F, class ItT, class Result>
 std::vector<Future<Result>>
 window(Executor* executor, Collection input, F func, size_t n) {
+  return window(
+      getKeepAliveToken(executor), std::move(input), std::move(func), n);
+}
+
+template <class Collection, class F, class ItT, class Result>
+std::vector<Future<Result>>
+window(Executor::KeepAlive<> executor, Collection input, F func, size_t n) {
   struct WindowContext {
-    WindowContext(Executor* executor_, Collection&& input_, F&& func_)
-        : executor(executor_),
+    WindowContext(
+        Executor::KeepAlive<> executor_,
+        Collection&& input_,
+        F&& func_)
+        : executor(std::move(executor_)),
           input(std::move(input_)),
           promises(input.size()),
           func(std::move(func_)) {}
     std::atomic<size_t> i{0};
-    Executor* executor;
+    Executor::KeepAlive<> executor;
     Collection input;
     std::vector<Promise<Result>> promises;
     F func;
@@ -1823,12 +1829,12 @@ window(Executor* executor, Collection input, F func, size_t n) {
         auto fut = makeSemiFutureWith(
             [&] { return ctx->func(std::move(ctx->input[i])); });
         fut.setCallback_([ctx = std::move(ctx), i](Try<Result>&& t) mutable {
-          const auto executor_ = ctx->executor;
-          executor_->add([ctx = std::move(ctx), i, t = std::move(t)]() mutable {
-            ctx->promises[i].setTry(std::move(t));
-            // Chain another future onto this one
-            spawn(std::move(ctx));
-          });
+          ctx->executor->add(
+              [ctx = std::move(ctx), i, t = std::move(t)]() mutable {
+                ctx->promises[i].setTry(std::move(t));
+                // Chain another future onto this one
+                spawn(std::move(ctx));
+              });
         });
       }
     }
@@ -1837,7 +1843,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
   auto max = std::min(n, input.size());
 
   auto ctx = std::make_shared<WindowContext>(
-      executor, std::move(input), std::move(func));
+      executor.copy(), std::move(input), std::move(func));
 
   // Start the first n Futures
   for (size_t i = 0; i < max; ++i) {
@@ -1847,7 +1853,7 @@ window(Executor* executor, Collection input, F func, size_t n) {
   std::vector<Future<Result>> futures;
   futures.reserve(ctx->promises.size());
   for (auto& promise : ctx->promises) {
-    futures.emplace_back(promise.getSemiFuture().via(executor));
+    futures.emplace_back(promise.getSemiFuture().via(executor.copy()));
   }
 
   return futures;

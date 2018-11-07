@@ -168,17 +168,18 @@ struct coarse_steady_clock {
   using time_point = std::chrono::time_point<coarse_steady_clock, duration>;
   constexpr static bool is_steady = true;
 
-  static time_point now() {
+  static time_point now() noexcept {
 #ifndef CLOCK_MONOTONIC_COARSE
     return time_point(std::chrono::duration_cast<duration>(
         std::chrono::steady_clock::now().time_since_epoch()));
 #else
     timespec ts;
     auto ret = clock_gettime(CLOCK_MONOTONIC_COARSE, &ts);
-    if (ret != 0) {
+    if (kIsDebug && (ret != 0)) {
       throw_exception<std::runtime_error>(
           "Error using CLOCK_MONOTONIC_COARSE.");
     }
+
     return time_point(std::chrono::duration_cast<duration>(
         std::chrono::seconds(ts.tv_sec) +
         std::chrono::nanoseconds(ts.tv_nsec)));

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/receiver.h>
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/inline.h>
 #include <folly/experimental/pushmi/constrained_single_sender.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class E, class TP, class... VN>
@@ -172,4 +173,5 @@ template<>
 struct construct_deduced<time_single_sender>
   : make_time_single_sender_fn {};
 
-} //namespace pushmi
+} // namespace pushmi
+} // namespace folly

@@ -34,7 +34,7 @@
 
 #include <folly/experimental/pushmi/pool.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 template <class R>
 struct countdown {
@@ -496,7 +496,8 @@ NONIUS_BENCHMARK("trampoline virtual derecursion 1'000", [](nonius::chronometer 
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   auto single = countdownsingle{counter};
-  std::function<void(mi::any_executor_ref<>)> recurse{[&](auto exec){::pushmi::set_value(single, exec);}};
+  std::function<void(mi::any_executor_ref<>)> recurse{
+      [&](auto exec) { ::folly::pushmi::set_value(single, exec); }};
   meter.measure([&]{
     counter.store(1'000);
     tr | op::submit([&](auto exec) { recurse(exec); });

@@ -27,7 +27,7 @@
 #include <folly/experimental/pushmi/o/tap.h>
 #include <folly/experimental/pushmi/o/transform.h>
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 template <class Io>
 auto io_operation(Io io) {

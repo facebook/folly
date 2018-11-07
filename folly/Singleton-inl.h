@@ -53,6 +53,8 @@ void SingletonHolder<T>::registerSingleton(CreateFunc c, TeardownFunc t) {
      * Singleton<int> a([] { return new int(3); });
      * Singleton<int> b([] { return new int(4); });
      *
+     * Adding tags should fix this (see documentation in the header).
+     *
      */
     singletonWarnDoubleRegistrationAndAbort(type());
   }

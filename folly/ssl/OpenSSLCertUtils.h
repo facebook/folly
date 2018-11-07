@@ -63,24 +63,27 @@ class OpenSSLCertUtils {
   static folly::Optional<std::string> toString(X509& x509);
 
   /**
-   * Decodes the DER representation of an X509 certificate.
+   * Decode the DER representation of an X509 certificate.
    *
    * Throws on error (if a valid certificate can't be decoded).
    */
   static X509UniquePtr derDecode(ByteRange);
 
   /**
-   * DER encodes an X509 certificate.
+   * Encode an X509 certificate in DER format.
    *
    * Throws on error.
    */
   static std::unique_ptr<IOBuf> derEncode(X509&);
 
   /**
-   * Reads certificates from memory and returns them as a vector of X509
-   * pointers.
+   * Read certificates from memory and returns them as a vector of X509
+   * pointers. Throw if there is any malformed cert or memory allocation
+   * problem.
+   * @param range Buffer to parse.
+   * @return A vector of X509 objects.
    */
-  static std::vector<X509UniquePtr> readCertsFromBuffer(ByteRange);
+  static std::vector<X509UniquePtr> readCertsFromBuffer(ByteRange range);
 
   /**
    * Return the output of the X509_digest for chosen message-digest algo
@@ -91,10 +94,20 @@ class OpenSSLCertUtils {
   static std::array<uint8_t, SHA256_DIGEST_LENGTH> getDigestSha256(X509& x509);
 
   /**
-   * Reads a store from a file (or buffer).  Throws on error.
+   * Read a store from a file. Throw if unable to read the file, memory
+   * allocation fails, or any cert can't be parsed or added to the store.
+   * @param caFile Path to the CA file.
+   * @return A X509 store that contains certs in the CA file.
    */
   static X509StoreUniquePtr readStoreFromFile(std::string caFile);
-  static X509StoreUniquePtr readStoreFromBuffer(ByteRange);
+
+  /**
+   * Read a store from a PEM buffer. Throw if memory allocation fails, or
+   * any cert can't be parsed or added to the store.
+   * @param range A buffer containing certs in PEM format.
+   * @return A X509 store that contains certs in the CA file.
+   */
+  static X509StoreUniquePtr readStoreFromBuffer(ByteRange range);
 
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);

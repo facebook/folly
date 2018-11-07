@@ -314,6 +314,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     m_.cont_.swap(container);
   }
 
+  sorted_vector_set& operator=(std::initializer_list<value_type> ilist) {
+    clear();
+    insert(ilist.begin(), ilist.end());
+    return *this;
+  }
+
   key_compare key_comp() const {
     return m_;
   }
@@ -690,6 +696,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
       : m_(value_compare(comp), container.get_allocator()) {
     assert(std::is_sorted(container.begin(), container.end(), value_comp()));
     m_.cont_.swap(container);
+  }
+
+  sorted_vector_map& operator=(std::initializer_list<value_type> ilist) {
+    clear();
+    insert(ilist.begin(), ilist.end());
+    return *this;
   }
 
   key_compare key_comp() const {

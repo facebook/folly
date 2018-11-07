@@ -38,8 +38,23 @@
 
 namespace folly {
 
+/// allocateBytes and deallocateBytes work like a checkedMalloc/free pair,
+/// but take advantage of sized deletion when available
+inline void* allocateBytes(size_t n) {
+  return ::operator new(n);
+}
+
+inline void deallocateBytes(void* p, size_t n) {
+#if __cpp_sized_deallocation
+  return ::operator delete(p, n);
+#else
+  (void)n;
+  return ::operator delete(p);
+#endif
+}
+
 #if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || \
-    (defined(__ANDROID__) && (__ANDROID_API__ > 15)) ||   \
+    (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||   \
     (defined(__APPLE__) &&                                \
      (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 ||    \
       __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0))

@@ -445,8 +445,18 @@ void printResultComparison(
   separator('=');
 }
 
+void checkRunMode() {
+  if (folly::kIsDebug || folly::kIsSanitize) {
+    std::cerr << "WARNING: Benchmark running "
+              << (folly::kIsDebug ? "in DEBUG mode" : "with SANITIZERS")
+              << std::endl;
+  }
+}
+
 void runBenchmarks() {
   CHECK(!benchmarks().empty());
+
+  checkRunMode();
 
   vector<detail::BenchmarkResult> results;
   results.reserve(benchmarks().size() - 1);
@@ -490,6 +500,8 @@ void runBenchmarks() {
   } else {
     printer.separator('=');
   }
+
+  checkRunMode();
 }
 
 } // namespace folly

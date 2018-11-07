@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/extension_points.h>
 #include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/properties.h>
 
+namespace folly {
 namespace pushmi {
 
 // traits & tags
@@ -285,14 +286,14 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
     template(class R, class... PropertyN)(concept Receiver)(R, PropertyN...),
     requires(R& r)(
-        ::pushmi::set_done(r),
-        ::pushmi::set_error(r, std::exception_ptr{})) &&
+        set_done(r),
+        set_error(r, std::exception_ptr{})) &&
         SemiMovable<R> && property_query_v<R, PropertyN...> &&
         is_receiver_v<R> && !is_sender_v<R>);
 
 PUSHMI_CONCEPT_DEF(
     template(class R, class... VN)(concept ReceiveValue)(R, VN...),
-    requires(R& r)(::pushmi::set_value(r, std::declval<VN&&>()...)) &&
+    requires(R& r)(set_value(r, std::declval<VN&&>()...)) &&
         Receiver<R> &&
         // GCC w/-fconcepts ICE on SemiMovable<VN>...
         True<> // And<SemiMovable<VN>...>
@@ -300,28 +301,28 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
     template(class R, class E = std::exception_ptr)(concept ReceiveError)(R, E),
-    requires(R& r, E&& e)(::pushmi::set_error(r, (E &&) e)) && Receiver<R> &&
+    requires(R& r, E&& e)(set_error(r, (E &&) e)) && Receiver<R> &&
         SemiMovable<E>);
 
 PUSHMI_CONCEPT_DEF(
     template(class D, class... PropertyN)(concept Sender)(D, PropertyN...),
     requires(D& d)(
-        ::pushmi::executor(d),
-        requires_<Executor<decltype(::pushmi::executor(d))>>) &&
+        executor(d),
+        requires_<Executor<decltype(executor(d))>>) &&
         SemiMovable<D> && Cardinality<D> && property_query_v<D, PropertyN...> &&
         is_sender_v<D> && !is_receiver_v<D>);
 
 PUSHMI_CONCEPT_DEF(
     template(class D, class S, class... PropertyN)(
         concept SenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s)(::pushmi::submit(d, (S &&) s)) && Sender<D> &&
+    requires(D& d, S&& s)(submit(d, (S &&) s)) && Sender<D> &&
         Receiver<S> && property_query_v<D, PropertyN...>);
 
 template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
     Sender<D>,
     executor_t =,
-    decltype(::pushmi::executor(std::declval<D&>())));
+    decltype(executor(std::declval<D&>())));
 
 // add concepts to support cancellation
 //
@@ -342,7 +343,7 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
     template(class R, class Up)(concept FlowUpTo)(R, Up),
-    requires(R& r, Up&& up)(::pushmi::set_starting(r, (Up &&) up)) && Flow<R>);
+    requires(R& r, Up&& up)(set_starting(r, (Up &&) up)) && Flow<R>);
 
 PUSHMI_CONCEPT_DEF(
     template(class S, class... PropertyN)(concept FlowSender)(S, PropertyN...),
@@ -366,14 +367,14 @@ PUSHMI_CONCEPT_DEF(
     template(class D, class... PropertyN)(
         concept ConstrainedSender)(D, PropertyN...),
     requires(D& d)(
-        ::pushmi::top(d),
-        requires_<Regular<decltype(::pushmi::top(d))>>) &&
+        top(d),
+        requires_<Regular<decltype(top(d))>>) &&
         Sender<D> && property_query_v<D, PropertyN...> && Constrained<D>);
 
 PUSHMI_CONCEPT_DEF(
     template(class D, class S, class... PropertyN)(
         concept ConstrainedSenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s)(::pushmi::submit(d, ::pushmi::top(d), (S &&) s)) &&
+    requires(D& d, S&& s)(submit(d, top(d), (S &&) s)) &&
         ConstrainedSender<D> && property_query_v<D, PropertyN...> &&
         Receiver<S>);
 
@@ -381,14 +382,14 @@ template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
     ConstrainedSender<D>,
     constraint_t =,
-    decltype(::pushmi::top(std::declval<D&>())));
+    decltype(top(std::declval<D&>())));
 
 PUSHMI_CONCEPT_DEF(
     template(class D, class... PropertyN)(concept TimeSender)(D, PropertyN...),
     requires(D& d)(
-        ::pushmi::now(d),
+        now(d),
         requires_<
-            Regular<decltype(::pushmi::now(d) + std::chrono::seconds(1))>>) &&
+            Regular<decltype(now(d) + std::chrono::seconds(1))>>) &&
         ConstrainedSender<D, PropertyN...> && Time<D>);
 
 PUSHMI_CONCEPT_DEF(
@@ -400,6 +401,7 @@ template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
     TimeSender<D>,
     time_point_t =,
-    decltype(::pushmi::now(std::declval<D&>())));
+    decltype(now(std::declval<D&>())));
 
 } // namespace pushmi
+} // namespace folly

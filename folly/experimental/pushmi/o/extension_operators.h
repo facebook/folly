@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,20 +13,27 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/boosters.h>
+#include <folly/experimental/pushmi/concepts.h>
 #include <folly/experimental/pushmi/detail/functional.h>
 #include <folly/experimental/pushmi/detail/if_constexpr.h>
+#include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/flow_many_sender.h>
 #include <folly/experimental/pushmi/flow_receiver.h>
 #include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/many_sender.h>
 #include <folly/experimental/pushmi/piping.h>
+#include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/receiver.h>
 #include <folly/experimental/pushmi/single_sender.h>
 #include <folly/experimental/pushmi/time_single_sender.h>
+#include <folly/experimental/pushmi/traits.h>
 #include <tuple>
 
+namespace folly {
 namespace pushmi {
 
 #if __cpp_lib_apply >= 201603
@@ -35,14 +41,12 @@ using std::apply;
 #else
 namespace detail {
 PUSHMI_TEMPLATE(class F, class Tuple, std::size_t... Is)
-(requires requires(pushmi::invoke(
+(requires requires(::folly::pushmi::invoke(
     std::declval<F>(),
     std::get<Is>(std::declval<Tuple>())...)))
 constexpr decltype(auto) apply_impl(
-    F&& f,
-    Tuple&& t,
-    std::index_sequence<Is...>) {
-  return pushmi::invoke((F &&) f, std::get<Is>((Tuple &&) t)...);
+  F&& f, Tuple&& t, std::index_sequence<Is...>) {
+  return ::folly::pushmi::invoke((F &&) f, std::get<Is>((Tuple &&) t)...);
 }
 template <class Tuple_, class Tuple = std::remove_reference_t<Tuple_>>
 using tupidxs = std::make_index_sequence<std::tuple_size<Tuple>::value>;
@@ -75,12 +79,12 @@ template <class Cardinality, bool IsFlow>
 struct receiver_from_impl {
   using MakeReceiver = make_receiver<Cardinality, IsFlow>;
   template <class... AN>
-  using receiver_type = pushmi::invoke_result_t<MakeReceiver&, AN...>;
+  using receiver_type = ::folly::pushmi::invoke_result_t<MakeReceiver&, AN...>;
   PUSHMI_TEMPLATE(class... Ts)
   (requires Invocable<MakeReceiver, Ts...>)
   auto operator()(
       std::tuple<Ts...> args) const {
-    return pushmi::apply(MakeReceiver(), std::move(args));
+    return ::folly::pushmi::apply(MakeReceiver(), std::move(args));
   }
   PUSHMI_TEMPLATE(
       class... Ts,
@@ -89,7 +93,7 @@ struct receiver_from_impl {
   (requires And<SemiMovable<Fns>...>&& Invocable<MakeReceiver, Ts...>&&
        Invocable<
            This,
-           pushmi::invoke_result_t<MakeReceiver, Ts...>,
+           ::folly::pushmi::invoke_result_t<MakeReceiver, Ts...>,
            Fns...>)
   auto operator()(std::tuple<Ts...> args, Fns... fns) const {
     return This()(This()(std::move(args)), std::move(fns)...);
@@ -117,9 +121,9 @@ struct submit_transform_out_1 {
   FN fn_;
   PUSHMI_TEMPLATE(class Out)
   (requires Receiver<Out>&& Invocable<FN, Out>&&
-       SenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
+       SenderTo<In, ::folly::pushmi::invoke_result_t<const FN&, Out>>)
   void operator()(In& in, Out out) const {
-    ::pushmi::submit(in, fn_(std::move(out)));
+    submit(in, fn_(std::move(out)));
   }
 };
 template <class In, class FN>
@@ -127,9 +131,9 @@ struct submit_transform_out_2 {
   FN fn_;
   PUSHMI_TEMPLATE(class CV, class Out)
   (requires Receiver<Out>&& Invocable<FN, Out>&&
-       ConstrainedSenderTo<In, pushmi::invoke_result_t<const FN&, Out>>)
+       ConstrainedSenderTo<In, ::folly::pushmi::invoke_result_t<const FN&, Out>>)
   void operator()(In& in, CV cv, Out out) const {
-    ::pushmi::submit(in, cv, fn_(std::move(out)));
+    submit(in, cv, fn_(std::move(out)));
   }
 };
 template <class In, class SDSF>
@@ -247,8 +251,8 @@ struct set_value_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<Out, VN...>)
     void operator()(Out out) {
-      ::pushmi::apply(
-          ::pushmi::set_value,
+      ::folly::pushmi::apply(
+          ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(vn_)));
     }
   };
@@ -268,7 +272,7 @@ struct set_error_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveError<Out, E>)
     void operator()(Out out) {
-      ::pushmi::set_error(out, std::move(e_));
+      set_error(out, std::move(e_));
     }
   };
 
@@ -286,7 +290,7 @@ struct set_done_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
     void operator()(Out out) {
-      ::pushmi::set_done(out);
+      set_done(out);
     }
   };
 
@@ -304,7 +308,7 @@ struct set_starting_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
     void operator()(Out out) {
-      ::pushmi::set_starting(out, std::move(up_));
+      set_starting(out, std::move(up_));
     }
   };
 
@@ -322,7 +326,7 @@ struct executor_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)
     auto operator()(In& in) const {
-      return ::pushmi::executor(in);
+      return executor(in);
     }
   };
 
@@ -340,7 +344,7 @@ struct do_submit_fn {
     PUSHMI_TEMPLATE(class In)
     (requires SenderTo<In, Out>)
     void operator()(In& in) {
-      ::pushmi::submit(in, std::move(out_));
+      submit(in, std::move(out_));
     }
   };
   template <class TP, class Out>
@@ -350,7 +354,7 @@ struct do_submit_fn {
     PUSHMI_TEMPLATE(class In)
     (requires TimeSenderTo<In, Out>)
     void operator()(In& in) {
-      ::pushmi::submit(in, std::move(tp_), std::move(out_));
+      submit(in, std::move(tp_), std::move(out_));
     }
   };
 
@@ -373,7 +377,7 @@ struct top_fn {
     PUSHMI_TEMPLATE(class In)
     (requires ConstrainedSender<In>)
     auto operator()(In& in) const {
-      return ::pushmi::top(in);
+      return ::folly::pushmi::top(in);
     }
   };
 
@@ -389,7 +393,7 @@ struct now_fn {
     PUSHMI_TEMPLATE(class In)
     (requires TimeSender<In>)
     auto operator()(In& in) const {
-      return ::pushmi::now(in);
+      return ::folly::pushmi::now(in);
     }
   };
 
@@ -415,3 +419,4 @@ PUSHMI_INLINE_VAR constexpr detail::top_fn top{};
 } // namespace extension_operators
 
 } // namespace pushmi
+} // namespace folly

@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/trampoline.h>
 
+namespace folly {
 namespace pushmi {
 
 // very poor perf example executor.
@@ -38,8 +39,8 @@ struct new_thread_executor {
   (requires Receiver<Out>)
   void submit(Out out) {
     std::thread t{[out = std::move(out)]() mutable {
-      auto tr = ::pushmi::trampoline();
-      ::pushmi::submit(tr, std::move(out));
+      auto tr = ::folly::pushmi::trampoline();
+      ::folly::pushmi::submit(tr, std::move(out));
     }};
     // pass ownership of thread to out
     t.detach();
@@ -51,3 +52,4 @@ inline new_thread_executor new_thread() {
 }
 
 } // namespace pushmi
+} // namespace folly

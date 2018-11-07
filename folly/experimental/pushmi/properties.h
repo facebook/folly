@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/traits.h>
 
+namespace folly {
 namespace pushmi {
 
 // property_set implements a map of category-type to property-type.
@@ -199,3 +200,4 @@ PUSHMI_INLINE_VAR constexpr bool category_query_v =
     category_query<PS, ExpectedN...>::value;
 
 } // namespace pushmi
+} // namespace folly

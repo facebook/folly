@@ -407,6 +407,23 @@ class Subprocess {
     }
 
     /**
+     * Detach the spawned process, to allow destroying the Subprocess object
+     * without waiting for the child process to finish.
+     *
+     * This causes the code to fork twice before executing the command.
+     * The intermediate child process will exit immediately, causing the process
+     * running the executable to be reparented to init (pid 1).
+     *
+     * Subprocess objects created with detach() enabled will already be in an
+     * "EXITED" state when the constructor returns.  The caller should not call
+     * wait() or poll() on the Subprocess, and pid() will return -1.
+     */
+    Options& detach() {
+      detach_ = true;
+      return *this;
+    }
+
+    /**
      * *** READ THIS WHOLE DOCBLOCK BEFORE USING ***
      *
      * Run this callback in the child after the fork, just before the
@@ -471,11 +488,12 @@ class Subprocess {
     FdMap fdActions_;
     bool closeOtherFds_{false};
     bool usePath_{false};
+    bool processGroupLeader_{false};
+    bool detach_{false};
     std::string childDir_; // "" keeps the parent's working directory
 #if __linux__
     int parentDeathSignal_{0};
 #endif
-    bool processGroupLeader_{false};
     DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback_{
         nullptr};
 #if __linux__

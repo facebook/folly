@@ -1,5 +1,5 @@
 /*
- * Copyright 2016-present Facebook, Inc.
+ * Copyright 2018-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,19 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#pragma once
 
-#include <glog/logging.h>
+#include <folly/stats/detail/BufferedStatTDigest.h>
+#include <folly/stats/detail/BufferedStat-defs.h>
 
-#ifdef HAZPTR_DEBUG
-#define HAZPTR_DEBUG_ HAZPTR_DEBUG
-#else
-#define HAZPTR_DEBUG_ false
-#endif
+namespace folly {
+namespace detail {
 
-#define HAZPTR_DEBUG_PRINT(...)                      \
-  do {                                               \
-    if (HAZPTR_DEBUG_) {                             \
-      VLOG(2) << __func__ << " --- " << __VA_ARGS__; \
-    }                                                \
-  } while (false)
+template class BufferedStat<TDigest, std::chrono::steady_clock>;
+
+} // namespace detail
+} // namespace folly

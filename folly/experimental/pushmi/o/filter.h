@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/piping.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -31,7 +32,7 @@ struct filter_fn {
     (requires Receiver<Out>)
     void operator()(Out& out, VN&&... vn) const {
       if (p_(as_const(vn)...)) {
-        ::pushmi::set_value(out, (VN &&) vn...);
+        set_value(out, (VN &&) vn...);
       }
     }
   };
@@ -41,7 +42,7 @@ struct filter_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>)
     auto operator()(Out out) const {
-      return ::pushmi::detail::receiver_from_fn<In>()(
+      return ::folly::pushmi::detail::receiver_from_fn<In>()(
           std::move(out),
           // copy 'p' to allow multiple calls to submit
           on_value_impl<In, Predicate>{p_});
@@ -53,9 +54,9 @@ struct filter_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::sender_from(
+      return ::folly::pushmi::detail::sender_from(
           std::move(in),
-          ::pushmi::detail::submit_transform_out<In>(
+          ::folly::pushmi::detail::submit_transform_out<In>(
               submit_impl<In, Predicate>{p_}));
     }
   };
@@ -75,3 +76,4 @@ PUSHMI_INLINE_VAR constexpr detail::filter_fn filter{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

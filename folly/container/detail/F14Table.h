@@ -44,6 +44,7 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Builtins.h>
 
+#include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Defaults.h>
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 

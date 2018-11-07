@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <functional>
 
 #include <folly/experimental/pushmi/detail/concept_def.h>
 
+namespace folly {
 namespace pushmi {
 
 PUSHMI_INLINE_VAR constexpr struct invoke_fn {
@@ -43,13 +44,13 @@ PUSHMI_INLINE_VAR constexpr struct invoke_fn {
 
 template <class F, class... As>
 using invoke_result_t =
-    decltype(pushmi::invoke(std::declval<F>(), std::declval<As>()...));
+    decltype(folly::pushmi::invoke(std::declval<F>(), std::declval<As>()...));
 
 PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)
   (concept Invocable)(F, Args...),
     requires(F&& f) (
-      pushmi::invoke((F &&) f, std::declval<Args>()...)
+      ::folly::pushmi::invoke((F &&) f, std::declval<Args>()...)
     )
 );
 
@@ -57,9 +58,10 @@ PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)
   (concept NothrowInvocable)(F, Args...),
     requires(F&& f) (
-      requires_<noexcept(pushmi::invoke((F &&) f, std::declval<Args>()...))>
+      requires_<noexcept(::folly::pushmi::invoke((F &&) f, std::declval<Args>()...))>
     ) &&
     Invocable<F, Args...>
 );
 
 } // namespace pushmi
+} // namespace folly

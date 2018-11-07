@@ -375,7 +375,7 @@ auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
  * excpetions, the last exception will be returned as a result.
  */
 template <class InputIterator>
-Future<std::pair<
+SemiFuture<std::pair<
     size_t,
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collectAnyWithoutException(InputIterator first, InputIterator last);
@@ -430,6 +430,15 @@ template <
     class Result = typename invoke_result_t<F, ItT&&>::value_type>
 std::vector<Future<Result>>
 window(Executor* executor, Collection input, F func, size_t n);
+
+template <
+    class Collection,
+    class F,
+    class ItT = typename std::iterator_traits<
+        typename Collection::iterator>::value_type,
+    class Result = typename invoke_result_t<F, ItT&&>::value_type>
+std::vector<Future<Result>>
+window(Executor::KeepAlive<> executor, Collection input, F func, size_t n);
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::

@@ -26,7 +26,7 @@
 
 // https://godbolt.org/g/rVLMTu
 
-using namespace pushmi::aliases;
+using namespace folly::pushmi::aliases;
 
 // three models of submission deferral
 //  (none of these use an executor, they are all running

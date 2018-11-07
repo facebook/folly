@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/traits.h>
 
+namespace folly {
 namespace pushmi {
 
 PUSHMI_TEMPLATE(class In, class Op)
@@ -45,3 +46,4 @@ PUSHMI_INLINE_VAR constexpr struct pipe_fn {
 } const pipe{};
 
 } // namespace pushmi
+} // namespace folly

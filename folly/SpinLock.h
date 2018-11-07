@@ -43,16 +43,16 @@ namespace folly {
 
 class SpinLock {
  public:
-  FOLLY_ALWAYS_INLINE SpinLock() {
+  FOLLY_ALWAYS_INLINE SpinLock() noexcept {
     lock_.init();
   }
-  FOLLY_ALWAYS_INLINE void lock() const {
+  FOLLY_ALWAYS_INLINE void lock() const noexcept {
     lock_.lock();
   }
-  FOLLY_ALWAYS_INLINE void unlock() const {
+  FOLLY_ALWAYS_INLINE void unlock() const noexcept {
     lock_.unlock();
   }
-  FOLLY_ALWAYS_INLINE bool try_lock() const {
+  FOLLY_ALWAYS_INLINE bool try_lock() const noexcept {
     return lock_.try_lock();
   }
 
@@ -63,7 +63,9 @@ class SpinLock {
 template <typename LOCK>
 class SpinLockGuardImpl : private boost::noncopyable {
  public:
-  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) : lock_(lock) {
+  FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) noexcept(
+      noexcept(lock.lock()))
+      : lock_(lock) {
     lock_.lock();
   }
   FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {

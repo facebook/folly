@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <cassert>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -37,27 +38,27 @@ struct tap_ {
            Out,
            std::remove_reference_t<VN>...>)
   void value(VN&&... vn) {
-    ::pushmi::set_value(sideEffects, as_const(vn)...);
-    ::pushmi::set_value(out, (VN &&) vn...);
+    set_value(sideEffects, as_const(vn)...);
+    set_value(out, (VN &&) vn...);
   }
   PUSHMI_TEMPLATE(class E)
   (requires ReceiveError<SideEffects, const E>&&
        ReceiveError<Out, E>)
   void error(E e) noexcept {
-    ::pushmi::set_error(sideEffects, as_const(e));
-    ::pushmi::set_error(out, std::move(e));
+    set_error(sideEffects, as_const(e));
+    set_error(out, std::move(e));
   }
   void done() {
-    ::pushmi::set_done(sideEffects);
-    ::pushmi::set_done(out);
+    set_done(sideEffects);
+    set_done(out);
   }
   PUSHMI_TEMPLATE(class Up, class UUp = std::remove_reference_t<Up>)
   (requires FlowReceiver<SideEffects>&& FlowReceiver<Out>)
   void starting(
       Up&& up) {
     // up is not made const because sideEffects is allowed to call methods on up
-    ::pushmi::set_starting(sideEffects, up);
-    ::pushmi::set_starting(out, (Up &&) up);
+    set_starting(sideEffects, up);
+    set_starting(out, (Up &&) up);
   }
 };
 
@@ -77,9 +78,9 @@ struct tap_fn {
   static auto impl(
       In in,
       SideEffects sideEffects) {
-    return ::pushmi::detail::sender_from(
+    return ::folly::pushmi::detail::sender_from(
         std::move(in),
-        ::pushmi::detail::submit_transform_out<In>(
+        ::folly::pushmi::detail::submit_transform_out<In>(
             out_impl<In, SideEffects>{std::move(sideEffects)}));
   }
 
@@ -91,7 +92,7 @@ struct tap_fn {
     auto operator()(In in) {
       return tap_fn::impl(
           std::move(in),
-          ::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
+          ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
     }
   };
   PUSHMI_TEMPLATE(class In, class SideEffects)
@@ -101,11 +102,12 @@ struct tap_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>&& SenderTo<In, Out>&& SenderTo<
         In,
-        decltype(::pushmi::detail::receiver_from_fn<In>()(detail::make_tap(
-            std::declval<SideEffects>(),
-            std::declval<Out>())))>)
+        decltype(
+            ::folly::pushmi::detail::receiver_from_fn<In>()(detail::make_tap(
+                std::declval<SideEffects>(),
+                std::declval<Out>())))>)
     auto operator()(Out out) const {
-      auto gang{::pushmi::detail::receiver_from_fn<In>()(
+      auto gang{::folly::pushmi::detail::receiver_from_fn<In>()(
           detail::make_tap(sideEffects_, std::move(out)))};
       return gang;
     }
@@ -125,3 +127,4 @@ PUSHMI_INLINE_VAR constexpr detail::tap_fn tap{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

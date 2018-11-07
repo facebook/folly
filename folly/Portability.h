@@ -18,8 +18,8 @@
 
 #include <cstddef>
 
-#include <folly/portability/Config.h>
 #include <folly/CPortability.h>
+#include <folly/portability/Config.h>
 
 // Unaligned loads and stores
 namespace folly {

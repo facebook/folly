@@ -50,8 +50,11 @@
 #define FOLLY_SDT_ASM_STRING(x)       FOLLY_SDT_ASM_1(.asciz FOLLY_SDT_S(x))
 
 // Helper to determine the size of an argument.
-#define FOLLY_SDT_ISARRAY(x)  (__builtin_classify_type(x) == 14)
-#define FOLLY_SDT_ARGSIZE(x)  (FOLLY_SDT_ISARRAY(x) ? sizeof(void*) : sizeof(x))
+#define FOLLY_SDT_IS_ARRAY_POINTER(x)  ((__builtin_classify_type(x) == 14) ||  \
+                                        (__builtin_classify_type(x) == 5))
+#define FOLLY_SDT_ARGSIZE(x)  (FOLLY_SDT_IS_ARRAY_POINTER(x)                   \
+                               ? sizeof(void*)                                 \
+                               : sizeof(x))
 
 // Format of each probe arguments as operand.
 // Size of the arugment tagged with FOLLY_SDT_Sn, with "n" constraint.
@@ -77,6 +80,8 @@
   FOLLY_SDT_OPERANDS_6(_1, _2, _3, _4, _5, _6), FOLLY_SDT_ARG(7, _7)
 #define FOLLY_SDT_OPERANDS_8(_1, _2, _3, _4, _5, _6, _7, _8)                   \
   FOLLY_SDT_OPERANDS_7(_1, _2, _3, _4, _5, _6, _7), FOLLY_SDT_ARG(8, _8)
+#define FOLLY_SDT_OPERANDS_9(_1, _2, _3, _4, _5, _6, _7, _8, _9)               \
+  FOLLY_SDT_OPERANDS_8(_1, _2, _3, _4, _5, _6, _7, _8), FOLLY_SDT_ARG(9, _9)
 
 // Templates to reference the arguments from operands in note section.
 #define FOLLY_SDT_ARGFMT(no)        %n[FOLLY_SDT_S##no]@%[FOLLY_SDT_A##no]
@@ -89,6 +94,7 @@
 #define FOLLY_SDT_ARG_TEMPLATE_6    FOLLY_SDT_ARG_TEMPLATE_5 FOLLY_SDT_ARGFMT(6)
 #define FOLLY_SDT_ARG_TEMPLATE_7    FOLLY_SDT_ARG_TEMPLATE_6 FOLLY_SDT_ARGFMT(7)
 #define FOLLY_SDT_ARG_TEMPLATE_8    FOLLY_SDT_ARG_TEMPLATE_7 FOLLY_SDT_ARGFMT(8)
+#define FOLLY_SDT_ARG_TEMPLATE_9    FOLLY_SDT_ARG_TEMPLATE_8 FOLLY_SDT_ARGFMT(9)
 
 // Semaphore define, declare and probe note format
 
@@ -136,8 +142,8 @@
     )                                                                          \
 
 // Helper Macros to handle variadic arguments.
-#define FOLLY_SDT_NARG_(_0, _1, _2, _3, _4, _5, _6, _7, _8, N, ...) N
+#define FOLLY_SDT_NARG_(_0, _1, _2, _3, _4, _5, _6, _7, _8, _9, N, ...) N
 #define FOLLY_SDT_NARG(...)                                                    \
-  FOLLY_SDT_NARG_(__VA_ARGS__, 8, 7, 6, 5, 4, 3, 2, 1, 0)
+  FOLLY_SDT_NARG_(__VA_ARGS__, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0)
 #define FOLLY_SDT_PROBE_N(provider, name, has_semaphore, N, ...)               \
   FOLLY_SDT_PROBE(provider, name, has_semaphore, N, (__VA_ARGS__))

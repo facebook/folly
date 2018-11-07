@@ -16,17 +16,15 @@
 
 #pragma once
 
-#include <folly/Range.h>
 #include <folly/container/F14Set.h>
 
 namespace folly {
 
 template <
-    class Hash = hasher<StringPiece>,
-    class Eq = std::equal_to<StringPiece>,
+    class Hash = f14::DefaultHasher<std::string>,
+    class Eq = f14::DefaultKeyEqual<std::string>,
     class Alloc = f14::DefaultAlloc<std::string>>
-using BasicStringKeyedUnorderedSet =
-    F14NodeSet<std::string, transparent<Hash>, transparent<Eq>, Alloc>;
+using BasicStringKeyedUnorderedSet = F14NodeSet<std::string, Hash, Eq, Alloc>;
 
 using StringKeyedUnorderedSet = BasicStringKeyedUnorderedSet<>;
 

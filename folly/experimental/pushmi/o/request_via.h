@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,23 +13,26 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
 #include <folly/experimental/pushmi/o/via.h>
 #include <folly/experimental/pushmi/receiver.h>
 
+namespace folly {
 namespace pushmi {
 
 template <typename In>
 struct send_via {
   In in;
   PUSHMI_TEMPLATE(class... AN)
-  (requires Invocable<decltype(::pushmi::operators::via), AN...>&& Invocable<
-      invoke_result_t<decltype(::pushmi::operators::via), AN...>,
-      In>)
+  (requires Invocable<decltype(::folly::pushmi::operators::via), AN...>&&
+       Invocable<
+           invoke_result_t<decltype(::folly::pushmi::operators::via), AN...>,
+           In>)
   auto via(AN&&... an) {
-    return in | ::pushmi::operators::via((AN &&) an...);
+    return in | ::folly::pushmi::operators::via((AN &&) an...);
   }
 };
 
@@ -73,3 +75,4 @@ auto via_cast(send_via<In> ss) {
 }
 
 } // namespace pushmi
+} // namespace folly

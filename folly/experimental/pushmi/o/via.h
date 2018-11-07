@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/piping.h>
 
+namespace folly {
 namespace pushmi {
 
 namespace detail {
@@ -56,7 +57,7 @@ struct via_fn {
       V v_;
       Out out_;
       void operator()(any) {
-        ::pushmi::set_value(out_, std::move(v_));
+        set_value(out_, std::move(v_));
       }
     };
     template <class Data, class V>
@@ -64,9 +65,9 @@ struct via_fn {
       if (data.via_fn_base_ref().done) {
         return;
       }
-      ::pushmi::submit(
+      submit(
           data.via_fn_base_ref().exec,
-          ::pushmi::make_receiver(impl<std::decay_t<V>>{
+          ::folly::pushmi::make_receiver(impl<std::decay_t<V>>{
               (V &&) v, std::move(static_cast<Out&>(data))}));
     }
   };
@@ -77,7 +78,7 @@ struct via_fn {
       E e_;
       Out out_;
       void operator()(any) noexcept {
-        ::pushmi::set_error(out_, std::move(e_));
+        set_error(out_, std::move(e_));
       }
     };
     template <class Data, class E>
@@ -86,9 +87,9 @@ struct via_fn {
         return;
       }
       data.via_fn_base_ref().done = true;
-      ::pushmi::submit(
+      submit(
           data.via_fn_base_ref().exec,
-          ::pushmi::make_receiver(
+          ::folly::pushmi::make_receiver(
               impl<E>{std::move(e), std::move(static_cast<Out&>(data))}));
     }
   };
@@ -97,7 +98,7 @@ struct via_fn {
     struct impl {
       Out out_;
       void operator()(any) {
-        ::pushmi::set_done(out_);
+        set_done(out_);
       }
     };
     template <class Data>
@@ -106,9 +107,10 @@ struct via_fn {
         return;
       }
       data.via_fn_base_ref().done = true;
-      ::pushmi::submit(
+      submit(
           data.via_fn_base_ref().exec,
-          ::pushmi::make_receiver(impl{std::move(static_cast<Out&>(data))}));
+          ::folly::pushmi::make_receiver(
+              impl{std::move(static_cast<Out&>(data))}));
     }
   };
   template <class In, class ExecutorFactory>
@@ -126,7 +128,7 @@ struct via_fn {
     (requires Receiver<Out>)
     auto operator()(Out out) const {
       auto exec = ef_();
-      return ::pushmi::detail::receiver_from_fn<In>()(
+      return ::folly::pushmi::detail::receiver_from_fn<In>()(
           make_via_fn_data(std::move(out), std::move(exec)),
           on_value_impl<Out>{},
           on_error_impl<Out>{},
@@ -139,11 +141,12 @@ struct via_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)
     auto operator()(In in) const {
-      return ::pushmi::detail::sender_from(
+      return ::folly::pushmi::detail::sender_from(
           std::move(in),
-          ::pushmi::detail::submit_transform_out<In>(
+          ::folly::pushmi::detail::submit_transform_out<In>(
               out_impl<In, ExecutorFactory>{ef_}),
-          ::pushmi::on_executor(executor_impl<In, ExecutorFactory>{ef_}));
+          ::folly::pushmi::on_executor(
+              executor_impl<In, ExecutorFactory>{ef_}));
     }
   };
 
@@ -164,3 +167,4 @@ PUSHMI_INLINE_VAR constexpr detail::via_fn via{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

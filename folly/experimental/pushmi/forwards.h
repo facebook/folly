@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/traits.h>
 #include <chrono>
 #include <exception>
 
+namespace folly {
 namespace pushmi {
 
 // property_set
@@ -156,10 +157,10 @@ struct any_time_executor_ref;
 namespace operators {}
 namespace extension_operators {}
 namespace aliases {
-namespace v = ::pushmi;
-namespace mi = ::pushmi;
-namespace op = ::pushmi::operators;
-namespace ep = ::pushmi::extension_operators;
+namespace v = ::folly::pushmi;
+namespace mi = ::folly::pushmi;
+namespace op = ::folly::pushmi::operators;
+namespace ep = ::folly::pushmi::extension_operators;
 } // namespace aliases
 
 namespace detail {
@@ -170,3 +171,4 @@ struct any {
 } // namespace detail
 
 } // namespace pushmi
+} // namespace folly

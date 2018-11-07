@@ -27,7 +27,7 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
 
   MOCK_CONST_METHOD0(address, const SocketAddress&());
   MOCK_METHOD1(bind, void(const SocketAddress&));
-  MOCK_METHOD2(setFD, void(int, AsyncUDPSocket::FDOwnership));
+  MOCK_METHOD2(setFD, void(NetworkSocket, AsyncUDPSocket::FDOwnership));
   MOCK_METHOD2(
       write,
       ssize_t(const SocketAddress&, const std::unique_ptr<IOBuf>&));

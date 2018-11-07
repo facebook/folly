@@ -36,6 +36,7 @@
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Traits.h>
 #include <experimental/coroutine>
 #endif
 
@@ -846,7 +847,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       promise_.setValue(value);
     }
 
-    void return_value(T& value) {
+    void return_value(T&& value) {
       promise_.setValue(std::move(value));
     }
 
@@ -863,13 +864,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
    private:
     folly::Promise<T> promise_;
   };
-
-  template <typename Awaitable>
-  static SemiFuture fromAwaitable(Awaitable&& awaitable) {
-    return [](Awaitable awaitable) -> SemiFuture {
-      co_return co_await std::forward<Awaitable>(awaitable);
-    }(std::forward<Awaitable>(awaitable));
-  }
 
   // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
   // directly awaited within a folly::coro::Task coroutine.
@@ -1166,7 +1160,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// thenTry or thenError rather than then and onError as they avoid ambiguity
   /// when using polymorphic lambdas.
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenValue instead")]] typename std::enable_if<
+  [[deprecated("ERROR: use thenValue instead")]] typename std::enable_if<
       !is_invocable<F>::value && is_invocable<F, T&&>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1174,7 +1168,7 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenTry instead")]] typename std::enable_if<
+  [[deprecated("ERROR: use thenTry instead")]] typename std::enable_if<
       !is_invocable<F, T&&>::value && !is_invocable<F>::value,
       typename R::Return>::type
   then(F&& func) && {
@@ -1182,11 +1176,10 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("use thenValue(auto&&) or thenValue(folly::Unit) instead")]]
+  [[deprecated(
+      "ERROR: use thenValue with auto&& or folly::Unit parameter instead")]]
   typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
-  then(F&& func) && {
-    return this->thenImplementation(std::forward<F>(func), R{});
-  }
+  then(F&& func) && = delete;
 
   // clang-format off
   template <typename F, typename R = futures::detail::callableResult<T, F>>
@@ -2061,18 +2054,17 @@ class FutureAwaitable {
   }
 
   T await_resume() {
-    return std::move(result_).value();
+    return std::move(future_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([this, h](Try<T>&& result) mutable {
-      result_ = std::move(result);
+    future_.setCallback_([h](Try<T>&&) mutable {
+      // Don't std::move() so the try is left in the future for await_resume()
       h.resume();
     });
   }
 
  private:
-  folly::Try<T> result_;
   folly::Future<T> future_;
 };
 
@@ -2083,6 +2075,31 @@ inline detail::FutureAwaitable<T>
 /* implicit */ operator co_await(Future<T>&& future) noexcept {
   return detail::FutureAwaitable<T>(std::move(future));
 }
+
+namespace coro {
+
+/// Convert an awaitable type into a SemiFuture that can then be consumed by
+/// APIs that use folly::Future/SemiFuture.
+///
+/// This will eagerly start execution of 'co_await awaitable' and will make
+/// the eventual result available via the returned SemiFuture.
+template <typename Awaitable>
+inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
+    !std::is_void<folly::coro::await_result_t<Awaitable>>::value,
+    SemiFuture<await_result_t<Awaitable>>> {
+  co_return co_await static_cast<Awaitable&&>(awaitable);
+}
+
+template <typename Awaitable>
+inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
+    std::is_void<folly::coro::await_result_t<Awaitable>>::value,
+    SemiFuture<Unit>> {
+  co_await static_cast<Awaitable&&>(awaitable);
+  co_return Unit{};
+}
+
+} // namespace coro
+
 } // namespace folly
 #endif
 

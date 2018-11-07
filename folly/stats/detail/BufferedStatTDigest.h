@@ -1,5 +1,5 @@
 /*
- * Copyright 2017-present Facebook, Inc.
+ * Copyright 2018-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -14,19 +14,15 @@
  * limitations under the License.
  */
 
-#define HAZPTR_AMB true
-#define HAZPTR_TC true
-#define HAZPTR_PRIV true
-#define HAZPTR_ENABLE_TLS true
+#pragma once
 
-#include <folly/experimental/hazptr/bench/HazptrBench.h>
-#include <folly/portability/GFlags.h>
-#include <folly/portability/GTest.h>
+#include <folly/stats/TDigest.h>
+#include <folly/stats/detail/BufferedStat.h>
 
-using namespace folly::hazptr;
+namespace folly {
+namespace detail {
 
-int main(int argc, char** argv) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  benches("   amb -    tc");
-}
+extern template class BufferedStat<TDigest, std::chrono::steady_clock>;
+
+} // namespace detail
+} // namespace folly

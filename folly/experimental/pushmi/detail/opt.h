@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,12 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #if __cpp_lib_optional >= 201606
 #include <optional> // @manual
 #endif
 #include <type_traits>
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 #if __cpp_lib_optional >= 201606
@@ -137,3 +138,4 @@ struct opt {
 
 } // namespace detail
 } // namespace pushmi
+} // namespace folly

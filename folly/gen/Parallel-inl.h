@@ -15,7 +15,7 @@
  */
 
 #ifndef FOLLY_GEN_PARALLEL_H_
-#error This file may only be included from folly/gen/ParallelGen.h
+#error This file may only be included from folly/gen/Parallel.h
 #endif
 
 #include <folly/MPMCQueue.h>

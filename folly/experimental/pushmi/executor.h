@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,11 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <chrono>
 #include <functional>
-#include <folly/experimental/pushmi/receiver.h>
 
+#include <folly/experimental/pushmi/concepts.h>
+#include <folly/experimental/pushmi/extension_points.h>
+#include <folly/experimental/pushmi/forwards.h>
+#include <folly/experimental/pushmi/receiver.h>
+#include <folly/experimental/pushmi/traits.h>
+
+namespace folly {
 namespace pushmi {
 namespace detail {
 template <class T, template <class...> class C>
@@ -65,9 +71,9 @@ public:
       " that accpets a value of type This and an error of type E");
     struct s {
       static void submit(void* pobj, void* s) {
-        return ::pushmi::submit(
-          *static_cast<Wrapped*>(pobj),
-          std::move(*static_cast<any_receiver<E,This>*>(s)));
+        return ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(pobj),
+            std::move(*static_cast<any_receiver<E, This>*>(s)));
       }
     };
     static const vtable vtbl{s::submit};
@@ -215,13 +221,13 @@ public:
       " that accpets a value of type This and an error of type E");
     struct s {
       static CV top(void* pobj) {
-        return ::pushmi::top(*static_cast<Wrapped*>(pobj));
+        return ::folly::pushmi::top(*static_cast<Wrapped*>(pobj));
       }
       static void submit(void* pobj, CV cv, void* s) {
-        return ::pushmi::submit(
-          *static_cast<Wrapped*>(pobj),
-          cv,
-          std::move(*static_cast<any_receiver<E,This>*>(s)));
+        return ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(pobj),
+            cv,
+            std::move(*static_cast<any_receiver<E, This>*>(s)));
       }
     };
     static const vtable vtbl{s::top, s::submit};
@@ -379,13 +385,13 @@ public:
       " that accpets a value of type This and an error of type E");
     struct s {
       static TP now(void* pobj) {
-        return ::pushmi::now(*static_cast<Wrapped*>(pobj));
+        return ::folly::pushmi::now(*static_cast<Wrapped*>(pobj));
       }
       static void submit(void* pobj, TP tp, void* s) {
-        return ::pushmi::submit(
-          *static_cast<Wrapped*>(pobj),
-          tp,
-          std::move(*static_cast<any_receiver<E,This>*>(s)));
+        return ::folly::pushmi::submit(
+            *static_cast<Wrapped*>(pobj),
+            tp,
+            std::move(*static_cast<any_receiver<E, This>*>(s)));
       }
     };
     static const vtable vtbl{s::now, s::submit};
@@ -503,3 +509,4 @@ any_time_executor(Wrapped) ->
 #endif
 
 } // namespace pushmi
+} // namespace folly

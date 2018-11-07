@@ -15,63 +15,351 @@
  */
 #pragma once
 
+#include <experimental/coroutine>
+#include <type_traits>
+
 #include <glog/logging.h>
 
 #include <folly/Executor.h>
+#include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
+#include <folly/Try.h>
+#include <folly/experimental/coro/Traits.h>
+#include <folly/experimental/coro/Utils.h>
+#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/futures/Future.h>
 
 namespace folly {
 namespace coro {
 
-template <typename T>
-class Promise;
+struct getCurrentExecutor {};
 
-template <typename T>
-class Future;
+template <typename T = void>
+class Task;
 
-/*
- * Represents allocated, but not-started coroutine, which is not yet assigned to
- * any executor.
- */
-template <typename T>
-class Task {
+template <typename T = void>
+class TaskWithExecutor;
+
+namespace detail {
+
+class TaskPromiseBase {
+  class FinalAwaiter {
+   public:
+    bool await_ready() noexcept {
+      return false;
+    }
+
+    template <typename Promise>
+    std::experimental::coroutine_handle<> await_suspend(
+        std::experimental::coroutine_handle<Promise> coro) noexcept {
+      TaskPromiseBase& promise = coro.promise();
+      return promise.continuation_;
+    }
+
+    void await_resume() noexcept {}
+  };
+
+  friend class FinalAwaiter;
+
+ protected:
+  TaskPromiseBase() noexcept : executor_(nullptr) {}
+
  public:
-  using promise_type = Promise<T>;
-
-  Task(const Task&) = delete;
-  Task(Task&& other) : promise_(other.promise_) {
-    other.promise_ = nullptr;
+  std::experimental::suspend_always initial_suspend() noexcept {
+    return {};
   }
 
-  ~Task() {
-    DCHECK(!promise_);
+  FinalAwaiter final_suspend() noexcept {
+    return {};
   }
 
-  Future<T> scheduleVia(folly::Executor* executor) && {
-    promise_->executor_ = executor;
-    promise_->executor_->add([promise = promise_] { promise->start(); });
-    return {*std::exchange(promise_, nullptr)};
+  template <typename U>
+  auto await_transform(Task<U>&& t) noexcept;
+
+  template <typename Awaitable>
+  auto await_transform(Awaitable&& awaitable) noexcept {
+    using folly::coro::co_viaIfAsync;
+    return co_viaIfAsync(executor_, static_cast<Awaitable&&>(awaitable));
+  }
+
+  auto await_transform(folly::coro::getCurrentExecutor) noexcept {
+    return AwaitableReady<folly::Executor*>{executor_};
   }
 
  private:
-  template <typename U>
-  friend class Promise;
+  template <typename T>
+  friend class folly::coro::TaskWithExecutor;
 
-  Future<T> viaInline(folly::Executor* executor) && {
-    promise_->executor_ = executor;
-    promise_->start();
-    return {*std::exchange(promise_, nullptr)};
-  }
+  template <typename T>
+  friend class folly::coro::Task;
 
-  Task(promise_type& promise) : promise_(&promise) {}
-
-  Promise<T>* promise_;
+  std::experimental::coroutine_handle<> continuation_;
+  folly::Executor* executor_;
 };
 
-} // namespace coro
+template <typename T>
+class TaskPromise : public TaskPromiseBase {
+ public:
+  TaskPromise() noexcept = default;
+
+  Task<T> get_return_object() noexcept;
+
+  void unhandled_exception() noexcept {
+    result_.emplaceException(
+        exception_wrapper::from_exception_ptr(std::current_exception()));
+  }
+
+  template <typename U>
+  void return_value(U&& value) {
+    static_assert(
+        std::is_convertible<U&&, T>::value,
+        "cannot convert return value to type T");
+    result_.emplace(static_cast<U&&>(value));
+  }
+
+  T getResult() {
+    return static_cast<T&&>(std::move(result_).value());
+  }
+
+ private:
+  using StorageType = std::conditional_t<
+      std::is_reference<T>::value,
+      std::reference_wrapper<std::remove_reference_t<T>>,
+      T>;
+
+  Try<StorageType> result_;
+};
+
+template <>
+class TaskPromise<void> : public TaskPromiseBase {
+ public:
+  TaskPromise() noexcept = default;
+
+  Task<void> get_return_object() noexcept;
+
+  void unhandled_exception() noexcept {
+    result_.emplaceException(
+        exception_wrapper::from_exception_ptr(std::current_exception()));
+  }
+
+  void return_void() noexcept {}
+
+  void getResult() {
+    return std::move(result_).value();
+  }
+
+ private:
+  Try<void> result_;
+};
+
+} // namespace detail
+
+/// Represents an allocated but not yet started coroutine that has already
+/// been bound to an executor.
+///
+/// This task, when co_awaited, will launch the task on the bound executor
+/// and will resume the awaiting coroutine on the bound executor when it
+/// completes.
+template <typename T>
+class FOLLY_NODISCARD TaskWithExecutor {
+  using handle_t = std::experimental::coroutine_handle<detail::TaskPromise<T>>;
+
+ public:
+  ~TaskWithExecutor() {
+    if (coro_) {
+      coro_.destroy();
+    }
+  }
+
+  TaskWithExecutor(TaskWithExecutor&& t) noexcept
+      : coro_(std::exchange(t.coro_, {})) {}
+
+  TaskWithExecutor& operator=(TaskWithExecutor t) noexcept {
+    swap(t);
+    return *this;
+  }
+
+  folly::Executor* executor() const noexcept {
+    return coro_.promise().executor_;
+  }
+
+  void swap(TaskWithExecutor& t) noexcept {
+    std::swap(coro_, t.coro_);
+  }
+
+  // Start execution of this task eagerly and return a folly::SemiFuture<T>
+  // that will complete with the result.
+  auto start() && {
+    return folly::coro::toSemiFuture(std::move(*this));
+  }
+
+  class Awaiter {
+   public:
+    explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
+
+    ~Awaiter() {
+      if (coro_) {
+        coro_.destroy();
+      }
+    }
+
+    bool await_ready() const {
+      return false;
+    }
+
+    void await_suspend(
+        std::experimental::coroutine_handle<> continuation) noexcept {
+      auto& promise = coro_.promise();
+      DCHECK(!promise.continuation_);
+      DCHECK(promise.executor_ != nullptr);
+
+      promise.continuation_ = continuation;
+      promise.executor_->add(coro_);
+    }
+
+    decltype(auto) await_resume() {
+      // Eagerly destroy the coroutine-frame once we have retrieved the result.
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return coro_.promise().getResult();
+    }
+
+   private:
+    handle_t coro_;
+  };
+
+  Awaiter operator co_await() && noexcept {
+    return Awaiter{std::exchange(coro_, {})};
+  }
+
+ private:
+  friend class Task<T>;
+
+  explicit TaskWithExecutor(handle_t coro) noexcept : coro_(coro) {}
+
+  handle_t coro_;
+};
+
+/// Represents an allocated, but not-started coroutine, which is not yet
+/// been bound to an executor.
+///
+/// You can only co_await a Task from within another Task, in which case it
+/// is implicitly bound to the same executor as the parent Task.
+///
+/// Alternatively, you can explicitly provide an executor by calling the
+/// task.scheduleOn(executor) method, which will return a new not-yet-started
+/// TaskWithExecutor that can be co_awaited anywhere and that will automatically
+/// schedule the coroutine to start executing on the bound executor when it
+/// is co_awaited.
+///
+/// Within the body of a Task's coroutine, it will ensure that it always
+/// executes on the bound executor by implicitly transforming every
+/// 'co_await expr' expression into
+/// `co_await co_viaIfAsync(boundExecutor, expr)' to ensure that the coroutine
+/// always resumes on the executor.
+template <typename T>
+class FOLLY_NODISCARD Task {
+ public:
+  using promise_type = detail::TaskPromise<T>;
+
+ private:
+  using handle_t = std::experimental::coroutine_handle<promise_type>;
+
+ public:
+  Task(const Task& t) = delete;
+
+  Task(Task&& t) noexcept : coro_(std::exchange(t.coro_, {})) {}
+
+  ~Task() {
+    if (coro_) {
+      coro_.destroy();
+    }
+  }
+
+  Task& operator=(Task t) noexcept {
+    swap(t);
+    return *this;
+  }
+
+  void swap(Task& t) noexcept {
+    std::swap(coro_, t.coro_);
+  }
+
+  /// Specify the executor that this task should execute on.
+  ///
+  /// Returns a new task that when co_awaited will launch execution of this
+  /// task on the specified executor.
+  FOLLY_NODISCARD
+  TaskWithExecutor<T> scheduleOn(Executor* executor) && noexcept {
+    coro_.promise().executor_ = executor;
+    return TaskWithExecutor<T>{std::exchange(coro_, {})};
+  }
+
+ private:
+  friend class detail::TaskPromiseBase;
+  friend class detail::TaskPromise<T>;
+
+  Task(handle_t coro) noexcept : coro_(coro) {}
+
+  handle_t coro_;
+};
 
 template <typename T>
-coro::Future<T> via(folly::Executor* executor, coro::Task<T>&& task) {
-  return std::move(task).scheduleVia(executor);
+auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
+  class Awaiter {
+    using handle_t =
+        std::experimental::coroutine_handle<detail::TaskPromise<T>>;
+
+   public:
+    explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
+
+    Awaiter(Awaiter&& other) noexcept : coro_(std::exchange(other.coro_, {})) {}
+
+    Awaiter(const Awaiter&) = delete;
+
+    ~Awaiter() {
+      if (coro_) {
+        coro_.destroy();
+      }
+    }
+
+    bool await_ready() noexcept {
+      return false;
+    }
+
+    handle_t await_suspend(
+        std::experimental::coroutine_handle<> continuation) noexcept {
+      coro_.promise().continuation_ = continuation;
+      return coro_;
+    }
+
+    decltype(auto) await_resume() {
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return coro_.promise().getResult();
+    }
+
+   private:
+    handle_t coro_;
+  };
+
+  t.coro_.promise().executor_ = executor_;
+  return Awaiter{std::exchange(t.coro_, {})};
 }
 
+template <typename T>
+Task<T> detail::TaskPromise<T>::get_return_object() noexcept {
+  return Task<T>{
+      std::experimental::coroutine_handle<detail::TaskPromise<T>>::from_promise(
+          *this)};
+}
+
+inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
+  return Task<void>{std::experimental::coroutine_handle<
+      detail::TaskPromise<void>>::from_promise(*this)};
+}
+
+} // namespace coro
 } // namespace folly

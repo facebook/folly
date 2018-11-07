@@ -969,6 +969,10 @@ TEST(Split, fixed_convert) {
   EXPECT_TRUE(folly::split<false>(':', "a:13:14.7:b", a, b, std::ignore));
   EXPECT_EQ("a", a);
   EXPECT_EQ(13, b);
+
+  EXPECT_FALSE(folly::split<false>(':', "a:13", std::ignore, b, std::ignore));
+  EXPECT_TRUE(folly::split<false>(':', ":13:", std::ignore, b, std::ignore));
+  EXPECT_EQ(13, b);
 }
 
 namespace my {

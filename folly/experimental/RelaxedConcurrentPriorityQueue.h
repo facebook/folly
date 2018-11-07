@@ -391,7 +391,7 @@ class RelaxedConcurrentPriorityQueue {
     uint32_t size = 1 << (tmp_btm + 1);
     MoundElement* new_level = new MoundElement[size]; // MM
     levels_[tmp_btm + 1] = new_level;
-    bottom_.store(tmp_btm + 1, std::memory_order_acq_rel);
+    bottom_.store(tmp_btm + 1, std::memory_order_release);
     guard_.store(0, std::memory_order_release);
   }
 
@@ -880,7 +880,7 @@ class RelaxedConcurrentPriorityQueue {
       head = head->next;
     }
     if (num > 0) {
-      top_loc_.store(num - 1, std::memory_order_acq_rel);
+      top_loc_.store(num - 1, std::memory_order_release);
     }
     setTreeNode(pos, head);
     return rsize - num;

@@ -173,22 +173,3 @@
 #define FOLLY_MICROSOFT_ABI_VER _MSC_VER
 #endif
 #endif
-
-// These functions are defined by the TSAN runtime library and enable
-// annotating mutexes for TSAN.
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockCreate(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockCreateStatic(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockDestroy(const char* f, int l, const volatile void* addr);
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockAcquired(const char* f, int l, const volatile void* addr, long w);
-extern "C" FOLLY_ATTR_WEAK void
-AnnotateRWLockReleased(const char* f, int l, const volatile void* addr, long w);
-extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
-    const char* f,
-    int l,
-    const volatile void* addr,
-    long size,
-    const char* desc);

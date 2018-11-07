@@ -23,6 +23,14 @@
 namespace folly {
 namespace ssl {
 
+namespace {
+std::string getOpenSSLErrorString(unsigned long err) {
+  std::array<char, 256> errBuff;
+  ERR_error_string_n(err, errBuff.data(), errBuff.size());
+  return std::string(errBuff.data());
+}
+} // namespace
+
 Optional<std::string> OpenSSLCertUtils::getCommonName(X509& x509) {
   auto subject = X509_get_subject_name(&x509);
   if (!subject) {
@@ -206,15 +214,26 @@ std::vector<X509UniquePtr> OpenSSLCertUtils::readCertsFromBuffer(
     throw std::runtime_error("failed to create BIO");
   }
   std::vector<X509UniquePtr> certs;
+  ERR_clear_error();
   while (true) {
     X509UniquePtr x509(PEM_read_bio_X509(b.get(), nullptr, nullptr, nullptr));
-    if (!x509) {
-      ERR_clear_error();
+    if (x509) {
+      certs.push_back(std::move(x509));
+      continue;
+    }
+    auto err = ERR_get_error();
+    ERR_clear_error();
+    if (BIO_eof(b.get()) && ERR_GET_LIB(err) == ERR_LIB_PEM &&
+        ERR_GET_REASON(err) == PEM_R_NO_START_LINE) {
+      // Reach end of buffer.
       break;
     }
-    certs.push_back(std::move(x509));
+    throw std::runtime_error(folly::to<std::string>(
+        "Unable to parse cert ",
+        certs.size(),
+        ": ",
+        getOpenSSLErrorString(err)));
   }
-
   return certs;
 }
 
@@ -248,8 +267,7 @@ X509StoreUniquePtr OpenSSLCertUtils::readStoreFromFile(std::string caFile) {
     throw std::runtime_error(
         folly::to<std::string>("Could not read store file: ", caFile));
   }
-  auto certRange = folly::ByteRange(folly::StringPiece(certData));
-  return readStoreFromBuffer(std::move(certRange));
+  return readStoreFromBuffer(folly::StringPiece(certData));
 }
 
 X509StoreUniquePtr OpenSSLCertUtils::readStoreFromBuffer(ByteRange certRange) {
@@ -261,11 +279,9 @@ X509StoreUniquePtr OpenSSLCertUtils::readStoreFromBuffer(ByteRange certRange) {
       auto err = ERR_get_error();
       if (ERR_GET_LIB(err) != ERR_LIB_X509 ||
           ERR_GET_REASON(err) != X509_R_CERT_ALREADY_IN_HASH_TABLE) {
-        std::array<char, 256> errBuff;
-        ERR_error_string_n(err, errBuff.data(), errBuff.size());
         throw std::runtime_error(folly::to<std::string>(
             "Could not insert CA certificate into store: ",
-            std::string(errBuff.data())));
+            getOpenSSLErrorString(err)));
       }
     }
   }

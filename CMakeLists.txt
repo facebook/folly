@@ -104,8 +104,6 @@ REMOVE_MATCHES_FROM_LISTS(files hfiles
   MATCHES
     "^${FOLLY_DIR}/build/"
     "^${FOLLY_DIR}/experimental/exception_tracer/"
-    "^${FOLLY_DIR}/experimental/hazptr/bench/"
-    "^${FOLLY_DIR}/experimental/hazptr/example/"
     "^${FOLLY_DIR}/experimental/pushmi/"
     "^${FOLLY_DIR}/futures/exercises/"
     "^${FOLLY_DIR}/logging/example/"
@@ -201,9 +199,13 @@ include(GenPkgConfig)
 gen_pkgconfig_vars(FOLLY_PKGCONFIG folly_deps)
 
 target_include_directories(folly_deps
+  BEFORE
   INTERFACE
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>
     $<BUILD_INTERFACE:${CMAKE_CURRENT_BINARY_DIR}>
+)
+target_include_directories(folly_deps
+  INTERFACE
     $<INSTALL_INTERFACE:include>
 )
 
@@ -582,6 +584,9 @@ if (BUILD_TESTS)
       TEST thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
       TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
+
+    DIRECTORY net/detail/test/
+      TEST socket_file_descriptor_map_test SOURCES SocketFileDescriptorMapTest.cpp
 
     DIRECTORY portability/test/
       TEST constexpr_test SOURCES ConstexprTest.cpp

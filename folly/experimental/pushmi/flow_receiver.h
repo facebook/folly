@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,9 +13,11 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/receiver.h>
 
+namespace folly {
 namespace pushmi {
 
 template <class PE, class PV, class E, class... VN>
@@ -55,16 +56,16 @@ class any_flow_receiver {
         delete static_cast<Wrapped const*>(src.pobj_);
       }
       static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>(src.pobj_));
+        set_done(*static_cast<Wrapped*>(src.pobj_));
       }
       static void error(data& src, E e) noexcept {
-        ::pushmi::set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
+        set_error(*static_cast<Wrapped*>(src.pobj_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
+        set_value(*static_cast<Wrapped*>(src.pobj_), std::move(vn)...);
       }
       static void starting(data& src, any_receiver<PE, PV> up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
+        set_starting(*static_cast<Wrapped*>(src.pobj_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::starting};
@@ -81,18 +82,16 @@ class any_flow_receiver {
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
       static void done(data& src) {
-        ::pushmi::set_done(*static_cast<Wrapped*>((void*)src.buffer_));
+        set_done(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static void error(data& src, E e) noexcept {::pushmi::set_error(
-          *static_cast<Wrapped*>((void*)src.buffer_),
-          std::move(e));
+      static void error(data& src, E e) noexcept {
+        set_error(*static_cast<Wrapped*>((void*)src.buffer_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        ::pushmi::set_value(
-            *static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
+        set_value(*static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
       }
       static void starting(data& src, any_receiver<PE, PV> up) {
-        ::pushmi::set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
+        set_starting(*static_cast<Wrapped*>((void*)src.buffer_), std::move(up));
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value, s::starting};
@@ -571,3 +570,4 @@ struct construct_deduced<flow_receiver> : make_flow_receiver_fn {};
 
 
 } // namespace pushmi
+} // namespace folly

@@ -69,8 +69,7 @@ TEST(EventBaseLocalTest, getOrCreate) {
   folly::EventBase evb2;
   EXPECT_EQ(ints.getOrCreate(evb2, 5), 5);
   ints.erase(evb2);
-  auto creator = []() { return new int(4); };
-  EXPECT_EQ(ints.getOrCreateFn(evb2, creator), 4);
+  EXPECT_EQ(4, ints.getOrCreateFn(evb2, []() { return new int(4); }));
 }
 
 using IntPtr = std::unique_ptr<int>;

@@ -69,15 +69,15 @@ struct MicroSpinLock {
 
   // Initialize this MSL.  It is unnecessary to call this if you
   // zero-initialize the MicroSpinLock.
-  void init() {
+  void init() noexcept {
     payload()->store(FREE);
   }
 
-  bool try_lock() {
+  bool try_lock() noexcept {
     return cas(FREE, LOCKED);
   }
 
-  void lock() {
+  void lock() noexcept {
     detail::Sleeper sleeper;
     while (!try_lock()) {
       do {
@@ -87,17 +87,17 @@ struct MicroSpinLock {
     assert(payload()->load() == LOCKED);
   }
 
-  void unlock() {
+  void unlock() noexcept {
     assert(payload()->load() == LOCKED);
     payload()->store(FREE, std::memory_order_release);
   }
 
  private:
-  std::atomic<uint8_t>* payload() {
+  std::atomic<uint8_t>* payload() noexcept {
     return reinterpret_cast<std::atomic<uint8_t>*>(&this->lock_);
   }
 
-  bool cas(uint8_t compare, uint8_t newVal) {
+  bool cas(uint8_t compare, uint8_t newVal) noexcept {
     return std::atomic_compare_exchange_strong_explicit(
         payload(),
         &compare,
@@ -123,15 +123,15 @@ static_assert(
 
 template <class T, size_t N>
 struct alignas(max_align_v) SpinLockArray {
-  T& operator[](size_t i) {
+  T& operator[](size_t i) noexcept {
     return data_[i].lock;
   }
 
-  const T& operator[](size_t i) const {
+  const T& operator[](size_t i) const noexcept {
     return data_[i].lock;
   }
 
-  constexpr size_t size() const {
+  constexpr size_t size() const noexcept {
     return N;
   }
 

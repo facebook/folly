@@ -57,10 +57,8 @@ std::string RequestToken::getDebugString() const {
   throw std::logic_error("Could not find debug string in RequestToken");
 }
 
-Synchronized<std::unordered_map<std::string, uint32_t>>&
-RequestToken::getCache() {
-  static Indestructible<Synchronized<std::unordered_map<std::string, uint32_t>>>
-      cache;
+Synchronized<F14FastMap<std::string, uint32_t>>& RequestToken::getCache() {
+  static Indestructible<Synchronized<F14FastMap<std::string, uint32_t>>> cache;
   return *cache;
 }
 

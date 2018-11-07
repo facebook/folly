@@ -1620,4 +1620,16 @@ TEST(StringPiece, StringViewConversion) {
   TrickierTarget tt3(deqRange);
   EXPECT_EQ(tt3.which, 1);
 }
+
+namespace {
+
+// Range with non-pod value type should not cause compile errors.
+class NonPOD {
+ public:
+  NonPOD() {}
+};
+void test_func(Range<const NonPOD*>) {}
+
+} // anonymous namespace
+
 #endif

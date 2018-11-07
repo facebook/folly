@@ -884,13 +884,20 @@ void wide_cas_test() {
   hazptr_cleanup<Atom>();
 }
 
+class HazptrPreInitTest : public testing::Test {
+ private:
+  // pre-init to avoid deadlock when using DeterministicAtomic
+  hazptr_domain<DeterministicAtomic>& defaultDomainHelper_{
+      folly::hazptr_default_domain_helper<DeterministicAtomic>::get()};
+};
+
 // Tests
 
 TEST(HazptrTest, basic_objects) {
   basic_objects_test();
 }
 
-TEST(HazptrTest, dsched_basic_objects) {
+TEST_F(HazptrPreInitTest, dsched_basic_objects) {
   DSched sched(DSched::uniform(0));
   basic_objects_test<DeterministicAtomic>();
 }
@@ -899,7 +906,7 @@ TEST(HazptrTest, copy_and_move) {
   copy_and_move_test();
 }
 
-TEST(HazptrTest, dsched_copy_and_move) {
+TEST_F(HazptrPreInitTest, dsched_copy_and_move) {
   DSched sched(DSched::uniform(0));
   copy_and_move_test<DeterministicAtomic>();
 }
@@ -908,7 +915,7 @@ TEST(HazptrTest, basic_holders) {
   basic_holders_test();
 }
 
-TEST(HazptrTest, dsched_basic_holders) {
+TEST_F(HazptrPreInitTest, dsched_basic_holders) {
   DSched sched(DSched::uniform(0));
   basic_holders_test<DeterministicAtomic>();
 }
@@ -917,7 +924,7 @@ TEST(HazptrTest, basic_protection) {
   basic_protection_test();
 }
 
-TEST(HazptrTest, dsched_basic_protection) {
+TEST_F(HazptrPreInitTest, dsched_basic_protection) {
   DSched sched(DSched::uniform(0));
   basic_protection_test<DeterministicAtomic>();
 }
@@ -926,7 +933,7 @@ TEST(HazptrTest, virtual) {
   virtual_test();
 }
 
-TEST(HazptrTest, dsched_virtual) {
+TEST_F(HazptrPreInitTest, dsched_virtual) {
   DSched sched(DSched::uniform(0));
   virtual_test<DeterministicAtomic>();
 }
@@ -939,7 +946,7 @@ TEST(HazptrTest, destruction) {
   destruction_test(default_hazptr_domain<std::atomic>());
 }
 
-TEST(HazptrTest, dsched_destruction) {
+TEST_F(HazptrPreInitTest, dsched_destruction) {
   DSched sched(DSched::uniform(0));
   {
     hazptr_domain<DeterministicAtomic> myDomain0;
@@ -953,7 +960,7 @@ TEST(HazptrTest, move) {
   move_test();
 }
 
-TEST(HazptrTest, dsched_move) {
+TEST_F(HazptrPreInitTest, dsched_move) {
   DSched sched(DSched::uniform(0));
   move_test<DeterministicAtomic>();
 }
@@ -962,7 +969,7 @@ TEST(HazptrTest, array) {
   array_test();
 }
 
-TEST(HazptrTest, dsched_array) {
+TEST_F(HazptrPreInitTest, dsched_array) {
   DSched sched(DSched::uniform(0));
   array_test<DeterministicAtomic>();
 }
@@ -971,7 +978,7 @@ TEST(HazptrTest, array_dtor_full_tc) {
   array_dtor_full_tc_test();
 }
 
-TEST(HazptrTest, dsched_array_dtor_full_tc) {
+TEST_F(HazptrPreInitTest, dsched_array_dtor_full_tc) {
   DSched sched(DSched::uniform(0));
   array_dtor_full_tc_test<DeterministicAtomic>();
 }
@@ -980,7 +987,7 @@ TEST(HazptrTest, local) {
   local_test();
 }
 
-TEST(HazptrTest, dsched_local) {
+TEST_F(HazptrPreInitTest, dsched_local) {
   DSched sched(DSched::uniform(0));
   local_test<DeterministicAtomic>();
 }
@@ -989,7 +996,7 @@ TEST(HazptrTest, linked_mutable) {
   linked_test<true>();
 }
 
-TEST(HazptrTest, dsched_linked_mutable) {
+TEST_F(HazptrPreInitTest, dsched_linked_mutable) {
   DSched sched(DSched::uniform(0));
   linked_test<true, DeterministicAtomic>();
 }
@@ -998,7 +1005,7 @@ TEST(HazptrTest, linked_immutable) {
   linked_test<false>();
 }
 
-TEST(HazptrTest, dsched_linked_immutable) {
+TEST_F(HazptrPreInitTest, dsched_linked_immutable) {
   DSched sched(DSched::uniform(0));
   linked_test<false, DeterministicAtomic>();
 }
@@ -1007,7 +1014,7 @@ TEST(HazptrTest, mt_linked_mutable) {
   mt_linked_test<true>();
 }
 
-TEST(HazptrTest, dsched_mt_linked_mutable) {
+TEST_F(HazptrPreInitTest, dsched_mt_linked_mutable) {
   DSched sched(DSched::uniform(0));
   mt_linked_test<true, DeterministicAtomic>();
 }
@@ -1016,7 +1023,7 @@ TEST(HazptrTest, mt_linked_immutable) {
   mt_linked_test<false>();
 }
 
-TEST(HazptrTest, dsched_mt_linked_immutable) {
+TEST_F(HazptrPreInitTest, dsched_mt_linked_immutable) {
   DSched sched(DSched::uniform(0));
   mt_linked_test<false, DeterministicAtomic>();
 }
@@ -1025,7 +1032,7 @@ TEST(HazptrTest, auto_retire) {
   auto_retire_test();
 }
 
-TEST(HazptrTest, dsched_auto_retire) {
+TEST_F(HazptrPreInitTest, dsched_auto_retire) {
   DSched sched(DSched::uniform(0));
   auto_retire_test<DeterministicAtomic>();
 }
@@ -1034,7 +1041,7 @@ TEST(HazptrTest, free_function_retire) {
   free_function_retire_test();
 }
 
-TEST(HazptrTest, dsched_free_function_retire) {
+TEST_F(HazptrPreInitTest, dsched_free_function_retire) {
   DSched sched(DSched::uniform(0));
   free_function_retire_test<DeterministicAtomic>();
 }
@@ -1043,7 +1050,7 @@ TEST(HazptrTest, cleanup) {
   cleanup_test();
 }
 
-TEST(HazptrTest, dsched_cleanup) {
+TEST_F(HazptrPreInitTest, dsched_cleanup) {
   DSched sched(DSched::uniform(0));
   cleanup_test<DeterministicAtomic>();
 }
@@ -1052,7 +1059,7 @@ TEST(HazptrTest, priv_dtor) {
   priv_dtor_test();
 }
 
-TEST(HazptrTest, dsched_priv_dtor) {
+TEST_F(HazptrPreInitTest, dsched_priv_dtor) {
   DSched sched(DSched::uniform(0));
   priv_dtor_test<DeterministicAtomic>();
 }
@@ -1061,7 +1068,7 @@ TEST(HazptrTest, lifo) {
   lifo_test();
 }
 
-TEST(HazptrTest, dsched_lifo) {
+TEST_F(HazptrPreInitTest, dsched_lifo) {
   DSched sched(DSched::uniform(0));
   lifo_test<DeterministicAtomic>();
 }
@@ -1070,7 +1077,7 @@ TEST(HazptrTest, swmr) {
   swmr_test();
 }
 
-TEST(HazptrTest, dsched_swmr) {
+TEST_F(HazptrPreInitTest, dsched_swmr) {
   DSched sched(DSched::uniform(0));
   swmr_test<DeterministicAtomic>();
 }
@@ -1079,7 +1086,7 @@ TEST(HazptrTest, wide_cas) {
   wide_cas_test();
 }
 
-TEST(HazptrTest, dsched_wide_cas) {
+TEST_F(HazptrPreInitTest, dsched_wide_cas) {
   DSched sched(DSched::uniform(0));
   wide_cas_test<DeterministicAtomic>();
 }

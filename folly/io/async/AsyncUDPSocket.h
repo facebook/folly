@@ -25,6 +25,8 @@
 #include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 
 namespace folly {
 
@@ -108,7 +110,7 @@ class AsyncUDPSocket : public EventHandler {
    * Returns the address server is listening on
    */
   virtual const folly::SocketAddress& address() const {
-    CHECK_NE(-1, fd_) << "Server not yet bound to an address";
+    CHECK_NE(NetworkSocket(), fd_) << "Server not yet bound to an address";
     return localAddress_;
   }
 
@@ -126,7 +128,10 @@ class AsyncUDPSocket : public EventHandler {
    * FDOwnership::SHARED. In case FD is shared, it will not be `close`d in
    * destructor.
    */
-  virtual void setFD(int fd, FDOwnership ownership);
+  void setFD(int fd, FDOwnership ownership) {
+    setFD(NetworkSocket::fromFd(fd), ownership);
+  }
+  virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -183,8 +188,8 @@ class AsyncUDPSocket : public EventHandler {
    * Get internal FD used by this socket
    */
   virtual int getFD() const {
-    CHECK_NE(-1, fd_) << "Need to bind before getting FD out";
-    return fd_;
+    CHECK_NE(NetworkSocket(), fd_) << "Need to bind before getting FD out";
+    return fd_.toFd();
   }
 
   /**
@@ -265,7 +270,7 @@ class AsyncUDPSocket : public EventHandler {
   virtual int connect(const folly::SocketAddress& address);
 
   virtual bool isBound() const {
-    return fd_ != -1;
+    return fd_ != NetworkSocket();
   }
 
   virtual void detachEventBase();
@@ -279,8 +284,9 @@ class AsyncUDPSocket : public EventHandler {
   bool setGSO(int val);
 
  protected:
-  virtual ssize_t sendmsg(int socket, const struct msghdr* message, int flags) {
-    return ::sendmsg(socket, message, flags);
+  virtual ssize_t
+  sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
+    return netops::sendmsg(socket, message, flags);
   }
 
   size_t handleErrMessages() noexcept;
@@ -303,7 +309,7 @@ class AsyncUDPSocket : public EventHandler {
   EventBase* eventBase_;
   folly::SocketAddress localAddress_;
 
-  int fd_;
+  NetworkSocket fd_;
   FDOwnership ownership_;
 
   // Temp space to receive client address

@@ -33,6 +33,8 @@
 #include <folly/Exception.h>
 #include <folly/Format.h>
 #include <folly/hash/Hash.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 
 namespace {
 
@@ -241,11 +243,19 @@ void SocketAddress::setFromPath(StringPiece path) {
 }
 
 void SocketAddress::setFromPeerAddress(int socket) {
-  setFromSocket(socket, getpeername);
+  setFromPeerAddress(NetworkSocket::fromFd(socket));
+}
+
+void SocketAddress::setFromPeerAddress(NetworkSocket socket) {
+  setFromSocket(socket, netops::getpeername);
 }
 
 void SocketAddress::setFromLocalAddress(int socket) {
-  setFromSocket(socket, getsockname);
+  setFromLocalAddress(NetworkSocket::fromFd(socket));
+}
+
+void SocketAddress::setFromLocalAddress(NetworkSocket socket) {
+  setFromSocket(socket, netops::getsockname);
 }
 
 void SocketAddress::setFromSockaddr(const struct sockaddr* address) {
@@ -645,8 +655,8 @@ void SocketAddress::setFromLocalAddr(const struct addrinfo* info) {
 }
 
 void SocketAddress::setFromSocket(
-    int socket,
-    int (*fn)(int, struct sockaddr*, socklen_t*)) {
+    NetworkSocket socket,
+    int (*fn)(NetworkSocket, struct sockaddr*, socklen_t*)) {
   // Try to put the address into a local storage buffer.
   sockaddr_storage tmp_sock;
   socklen_t addrLen = sizeof(tmp_sock);

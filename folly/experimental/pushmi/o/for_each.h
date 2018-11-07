@@ -1,4 +1,3 @@
-#pragma once
 /*
  * Copyright 2018-present Facebook, Inc.
  *
@@ -14,10 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#pragma once
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
 
+namespace folly {
 namespace pushmi {
 namespace detail {
 
@@ -33,16 +34,27 @@ struct for_each_fn {
     using properties =
         property_set_insert_t<properties_t<Out>, property_set<is_flow<>>>;
     std::function<void(std::ptrdiff_t)> pull;
-    template <class V>
-    void value(V&& v) {
-      ::pushmi::set_value(static_cast<Out&>(*this), (V &&) v);
+    template <class... VN>
+    void value(VN&&... vn) {
+      ::folly::pushmi::set_value(static_cast<Out&>(*this), (VN &&) vn...);
       pull(1);
     }
+    template <class E>
+    void error(E&& e) {
+      // break circular reference
+      pull = nullptr;
+      ::folly::pushmi::set_error(static_cast<Out&>(*this), (E &&) e);
+    }
+    void done() {
+      // break circular reference
+      pull = nullptr;
+      ::folly::pushmi::set_done(static_cast<Out&>(*this));
+    }
     PUSHMI_TEMPLATE(class Up)
-    (requires Receiver<Up>)
+    (requires Receiver<Up> && ReceiveValue<Up, std::ptrdiff_t>)
     void starting(Up up) {
       pull = [up = std::move(up)](std::ptrdiff_t requested) mutable {
-        ::pushmi::set_value(up, requested);
+        ::folly::pushmi::set_value(up, requested);
       };
       pull(1);
     }
@@ -56,29 +68,14 @@ struct for_each_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>&& Flow<In>&& Many<In>)
     In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<
+      auto out{::folly::pushmi::detail::receiver_from_fn<subset<
           is_sender<>,
           property_set_index_t<properties_t<In>, is_single<>>>>()(
           std::move(args_))};
       using Out = decltype(out);
-      ::pushmi::submit(
+      ::folly::pushmi::submit(
           in,
-          ::pushmi::detail::receiver_from_fn<In>()(
-              Pull<In, Out>{std::move(out)}));
-      return in;
-    }
-    PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>&& Constrained<In>&& Flow<In>&& Many<In>)
-    In operator()(In in) {
-      auto out{::pushmi::detail::receiver_from_fn<subset<
-          is_sender<>,
-          property_set_index_t<properties_t<In>, is_single<>>>>()(
-          std::move(args_))};
-      using Out = decltype(out);
-      ::pushmi::submit(
-          in,
-          ::pushmi::top(in),
-          ::pushmi::detail::receiver_from_fn<In>()(
+          ::folly::pushmi::detail::receiver_from_fn<In>()(
               Pull<In, Out>{std::move(out)}));
       return in;
     }
@@ -87,7 +84,7 @@ struct for_each_fn {
  public:
   template <class... AN>
   auto operator()(AN&&... an) const {
-    return for_each_fn::fn<AN...>{{(AN &&) an...}};
+    return for_each_fn::fn<AN...>{std::tuple<AN...>{(AN &&) an...}};
   }
 };
 
@@ -98,3 +95,4 @@ PUSHMI_INLINE_VAR constexpr detail::for_each_fn for_each{};
 } // namespace operators
 
 } // namespace pushmi
+} // namespace folly

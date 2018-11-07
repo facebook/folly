@@ -25,6 +25,7 @@
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
@@ -38,7 +39,9 @@ namespace folly {
  * semantics of underlying system calls.
  */
 int openNoInt(const char* name, int flags, mode_t mode = 0666);
+// Two overloads, as we may be closing either a file or a socket.
 int closeNoInt(int fd);
+int closeNoInt(NetworkSocket fd);
 int dupNoInt(int fd);
 int dup2NoInt(int oldfd, int newfd);
 int fsyncNoInt(int fd);
@@ -46,7 +49,10 @@ int fdatasyncNoInt(int fd);
 int ftruncateNoInt(int fd, off_t len);
 int truncateNoInt(const char* path, off_t len);
 int flockNoInt(int fd, int operation);
-int shutdownNoInt(int fd, int how);
+int shutdownNoInt(NetworkSocket fd, int how);
+inline int shutdownNoInt(int fd, int how) {
+  return shutdownNoInt(NetworkSocket::fromFd(fd), how);
+}
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);
