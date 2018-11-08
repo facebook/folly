@@ -27,6 +27,7 @@
 #include <folly/portability/Sockets.h>
 #include <folly/test/SocketAddressTestHelper.h>
 
+using folly::NetworkSocket;
 using folly::SocketAddress;
 using folly::SocketAddressTestHelper;
 using folly::test::TemporaryDirectory;
@@ -34,7 +35,7 @@ using std::cerr;
 using std::endl;
 using std::string;
 
-namespace fsp = folly::portability::sockets;
+namespace netops = folly::netops;
 
 TEST(SocketAddress, Size) {
   SocketAddress addr;
@@ -684,14 +685,16 @@ void testSetFromSocket(
     SocketAddress* serverPeerAddrRet,
     SocketAddress* clientAddrRet,
     SocketAddress* clientPeerAddrRet) {
-  int listenSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
-  REQUIRE_ERRNO(listenSock > 0, "failed to create listen socket");
+  auto listenSock = netops::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  REQUIRE_ERRNO(
+      listenSock != NetworkSocket(), "failed to create listen socket");
   sockaddr_storage laddr;
   serverBindAddr->getAddress(&laddr);
   socklen_t laddrLen = serverBindAddr->getActualSize();
-  int rc = bind(listenSock, reinterpret_cast<sockaddr*>(&laddr), laddrLen);
+  int rc =
+      netops::bind(listenSock, reinterpret_cast<sockaddr*>(&laddr), laddrLen);
   REQUIRE_ERRNO(rc == 0, "failed to bind to server socket");
-  rc = listen(listenSock, 10);
+  rc = netops::listen(listenSock, 10);
   REQUIRE_ERRNO(rc == 0, "failed to listen");
 
   listenAddrRet->setFromLocalAddress(listenSock);
@@ -702,13 +705,14 @@ void testSetFromSocket(
 
   // Note that we use the family from serverBindAddr here, since we allow
   // clientBindAddr to be nullptr.
-  int clientSock = fsp::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
-  REQUIRE_ERRNO(clientSock > 0, "failed to create client socket");
+  auto clientSock = netops::socket(serverBindAddr->getFamily(), SOCK_STREAM, 0);
+  REQUIRE_ERRNO(
+      clientSock != NetworkSocket(), "failed to create client socket");
   if (clientBindAddr != nullptr) {
     sockaddr_storage clientAddr;
     clientBindAddr->getAddress(&clientAddr);
 
-    rc = bind(
+    rc = netops::bind(
         clientSock,
         reinterpret_cast<sockaddr*>(&clientAddr),
         clientBindAddr->getActualSize());
@@ -717,7 +721,7 @@ void testSetFromSocket(
 
   sockaddr_storage listenAddr;
   listenAddrRet->getAddress(&listenAddr);
-  rc = connect(
+  rc = netops::connect(
       clientSock,
       reinterpret_cast<sockaddr*>(&listenAddr),
       listenAddrRet->getActualSize());
@@ -725,9 +729,9 @@ void testSetFromSocket(
 
   sockaddr_storage acceptAddr;
   socklen_t acceptAddrLen = sizeof(acceptAddr);
-  int serverSock = accept(
+  auto serverSock = netops::accept(
       listenSock, reinterpret_cast<sockaddr*>(&acceptAddr), &acceptAddrLen);
-  REQUIRE_ERRNO(serverSock > 0, "failed to accept");
+  REQUIRE_ERRNO(serverSock != NetworkSocket(), "failed to accept");
   acceptAddrRet->setFromSockaddr(
       reinterpret_cast<sockaddr*>(&acceptAddr), acceptAddrLen);
 
@@ -736,9 +740,9 @@ void testSetFromSocket(
   clientAddrRet->setFromLocalAddress(clientSock);
   clientPeerAddrRet->setFromPeerAddress(clientSock);
 
-  close(clientSock);
-  close(serverSock);
-  close(listenSock);
+  netops::close(clientSock);
+  netops::close(serverSock);
+  netops::close(listenSock);
 }
 
 TEST(SocketAddress, SetFromSocketIPv4) {
