@@ -68,7 +68,9 @@ void SerialExecutor::addWithPriority(Func func, int8_t priority) {
 }
 
 void SerialExecutor::run() {
-  if (scheduled_.fetch_add(1, std::memory_order_relaxed) > 0) {
+  // We want scheduled_ to guard side-effects of completed tasks, so we can't
+  // use std::memory_order_relaxed here.
+  if (scheduled_.fetch_add(1, std::memory_order_acquire) > 0) {
     return;
   }
 
@@ -86,7 +88,9 @@ void SerialExecutor::run() {
                     "object";
     }
 
-  } while (scheduled_.fetch_sub(1, std::memory_order_relaxed) > 1);
+    // We want scheduled_ to guard side-effects of completed tasks, so we can't
+    // use std::memory_order_relaxed here.
+  } while (scheduled_.fetch_sub(1, std::memory_order_release) > 1);
 }
 
 } // namespace folly
