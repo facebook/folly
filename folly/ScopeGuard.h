@@ -181,7 +181,7 @@ using ScopeGuardImplDecay = ScopeGuardImpl<typename std::decay<F>::type, INE>;
  *     http://www.codeproject.com/KB/cpp/scope_guard.aspx
  */
 template <typename F>
-detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
+FOLLY_NODISCARD detail::ScopeGuardImplDecay<F, true> makeGuard(F&& f) noexcept(
     noexcept(detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f)))) {
   return detail::ScopeGuardImplDecay<F, true>(static_cast<F&&>(f));
 }

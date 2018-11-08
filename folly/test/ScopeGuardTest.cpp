@@ -132,7 +132,8 @@ TEST(ScopeGuard, DifferentWaysToBind) {
 
 TEST(ScopeGuard, GuardException) {
   EXPECT_DEATH(
-      makeGuard([] { throw std::runtime_error("dtors should never throw!"); }),
+      (void)makeGuard(
+          [] { throw std::runtime_error("dtors should never throw!"); }),
       "dtors should never throw!");
 }
 
@@ -326,6 +327,6 @@ TEST(ScopeGuard, TEST_THROWING_CLEANUP_ACTION) {
   };
   int scopeExitExecuted = 0;
   ThrowingCleanupAction onExit(scopeExitExecuted);
-  EXPECT_THROW(makeGuard(onExit), std::runtime_error);
+  EXPECT_THROW((void)makeGuard(onExit), std::runtime_error);
   EXPECT_EQ(scopeExitExecuted, 1);
 }
