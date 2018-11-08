@@ -210,10 +210,18 @@ struct IndexedMemPool : boost::noncopyable {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
     }
-    for (size_t i = 1; i < actualCapacity_ + 1; i++) {
-      // Atom is enforced above to be nothrow-default-constructible
-      new (&slots_[i].localNext) Atom<uint32_t>();
-      new (&slots_[i].globalNext) Atom<uint32_t>();
+    // Atom is expected to be std::atomic, which is trivially
+    // constructible, so we can avoid explicitly initializing the
+    // slots which would cause the whole mapped area to be paged in.
+    //
+    // TODO: Switch to is_trivially_constructible once support
+    // for GCC 4.9 is dropped for this file.
+    if /* constexpr */ (!std::is_trivial<Atom<uint32_t>>::value) {
+      for (size_t i = 1; i < actualCapacity_ + 1; i++) {
+        // Atom is enforced above to be nothrow-default-constructible
+        new (&slots_[i].localNext) Atom<uint32_t>;
+        new (&slots_[i].globalNext) Atom<uint32_t>;
+      }
     }
   }
 
