@@ -29,6 +29,9 @@ namespace folly {
  *
  * If `sizeof(T) <= alignof(T)` then the inner `T` will be entirely within one
  * false sharing range (AKA cache line).
+ *
+ * CachelinePadded may add padding both before and after the value. Consider
+ * whether alignas(folly::hardware_destructive_interference_size) suffices.
  */
 template <typename T>
 class CachelinePadded {
