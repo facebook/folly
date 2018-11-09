@@ -1826,13 +1826,15 @@ window(Executor::KeepAlive<> executor, Collection input, F func, size_t n) {
     static void spawn(std::shared_ptr<WindowContext> ctx) {
       size_t i = ctx->i.fetch_add(1, std::memory_order_relaxed);
       if (i < ctx->input.size()) {
-        makeSemiFutureWith([&] { return ctx->func(std::move(ctx->input[i])); })
-            .via(ctx->executor.get())
-            .setCallback_([ctx = std::move(ctx), i](Try<Result>&& t) mutable {
-              ctx->promises[i].setTry(std::move(t));
-              // Chain another future onto this one
-              spawn(std::move(ctx));
-            });
+        auto fut = makeSemiFutureWith(
+                       [&] { return ctx->func(std::move(ctx->input[i])); })
+                       .via(ctx->executor.get());
+
+        fut.setCallback_([ctx = std::move(ctx), i](Try<Result>&& t) mutable {
+          ctx->promises[i].setTry(std::move(t));
+          // Chain another future onto this one
+          spawn(std::move(ctx));
+        });
       }
     }
   };
