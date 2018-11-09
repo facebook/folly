@@ -1510,6 +1510,9 @@ class IOBuf {
 struct IOBufHash {
   size_t operator()(const IOBuf& buf) const noexcept;
   size_t operator()(const std::unique_ptr<IOBuf>& buf) const noexcept {
+    return operator()(buf.get());
+  }
+  size_t operator()(const IOBuf* buf) const noexcept {
     return buf ? (*this)(*buf) : 0;
   }
 };
@@ -1524,6 +1527,9 @@ struct IOBufCompare {
   ordering operator()(
       const std::unique_ptr<IOBuf>& a,
       const std::unique_ptr<IOBuf>& b) const {
+    return operator()(a.get(), b.get());
+  }
+  ordering operator()(const IOBuf* a, const IOBuf* b) const {
     // clang-format off
     return
         !a && !b ? ordering::eq :

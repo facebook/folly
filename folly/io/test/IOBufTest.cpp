@@ -1120,40 +1120,54 @@ TEST(IOBuf, HashAndEqual) {
 
   EXPECT_TRUE(eq(*empty, *empty));
   EXPECT_TRUE(eq(empty, empty));
+  EXPECT_TRUE(eq(empty.get(), empty.get()));
 
   EXPECT_FALSE(eq(nullptr, empty));
   EXPECT_FALSE(eq(empty, nullptr));
+  EXPECT_FALSE(eq(empty.get(), nullptr));
 
   EXPECT_EQ(hash(*empty), hash(empty));
+  EXPECT_EQ(hash(*empty), hash(empty.get()));
   EXPECT_NE(0, hash(empty));
+  EXPECT_NE(0, hash(empty.get()));
 
   auto a = fromStr("hello");
 
   EXPECT_TRUE(eq(*a, *a));
   EXPECT_TRUE(eq(a, a));
+  EXPECT_TRUE(eq(a.get(), a.get()));
 
   EXPECT_FALSE(eq(nullptr, a));
   EXPECT_FALSE(eq(a, nullptr));
+  EXPECT_FALSE(eq(a.get(), nullptr));
 
   EXPECT_EQ(hash(*a), hash(a));
+  EXPECT_EQ(hash(*a), hash(a.get()));
   EXPECT_NE(0, hash(a));
+  EXPECT_NE(0, hash(a.get()));
 
   auto b = fromStr("hello");
 
   EXPECT_TRUE(eq(*a, *b));
   EXPECT_TRUE(eq(a, b));
+  EXPECT_TRUE(eq(a.get(), b.get()));
 
   EXPECT_EQ(hash(a), hash(b));
+  EXPECT_EQ(hash(a.get()), hash(b.get()));
 
   auto c = fromStr("hellow");
 
   EXPECT_FALSE(eq(a, c));
+  EXPECT_FALSE(eq(a.get(), c.get()));
   EXPECT_NE(hash(a), hash(c));
+  EXPECT_NE(hash(a.get()), hash(c.get()));
 
   auto d = fromStr("world");
 
   EXPECT_FALSE(eq(a, d));
+  EXPECT_FALSE(eq(a.get(), d.get()));
   EXPECT_NE(hash(a), hash(d));
+  EXPECT_NE(hash(a.get()), hash(d.get()));
 
   auto e = fromStr("helloworld");
   auto f = fromStr("hello");
@@ -1161,7 +1175,9 @@ TEST(IOBuf, HashAndEqual) {
   f->prependChain(fromStr("rld"));
 
   EXPECT_TRUE(eq(e, f));
+  EXPECT_TRUE(eq(e.get(), f.get()));
   EXPECT_EQ(hash(e), hash(f));
+  EXPECT_EQ(hash(e.get()), hash(f.get()));
 }
 
 TEST(IOBuf, IOBufCompare) {
