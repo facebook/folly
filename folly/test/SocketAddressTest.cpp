@@ -640,8 +640,8 @@ TEST(SocketAddress, Unix) {
 
 TEST(SocketAddress, AnonymousUnix) {
   // Create a unix socket pair, and get the addresses.
-  int fds[2];
-  int rc = socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
+  NetworkSocket fds[2];
+  int rc = netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fds);
   EXPECT_EQ(rc, 0);
 
   SocketAddress addr0;
@@ -652,8 +652,8 @@ TEST(SocketAddress, AnonymousUnix) {
   peer0.setFromPeerAddress(fds[0]);
   addr1.setFromLocalAddress(fds[1]);
   peer1.setFromPeerAddress(fds[1]);
-  close(fds[0]);
-  close(fds[1]);
+  netops::close(fds[0]);
+  netops::close(fds[1]);
 
   EXPECT_EQ(addr0.describe(), "<anonymous unix address>");
   EXPECT_EQ(addr1.describe(), "<anonymous unix address>");
