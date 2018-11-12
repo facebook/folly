@@ -2229,7 +2229,9 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
       EventBase* evb)
       : AsyncSocket(evb), AsyncSSLSocket(sslCtx, evb) {}
 
-  MOCK_METHOD3(tfoSendMsg, ssize_t(int fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD3(
+      tfoSendMsg,
+      ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 #if defined __linux__
@@ -2372,10 +2374,10 @@ MockAsyncTFOSSLSocket::UniquePtr setupSocketWithFallback(
 
   EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
       .Times(cardinality)
-      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+      .WillOnce(Invoke([&](NetworkSocket fd, struct msghdr*, int) {
         sockaddr_storage addr;
         auto len = address.getAddress(&addr);
-        return connect(fd, (const struct sockaddr*)&addr, len);
+        return netops::connect(fd, (const struct sockaddr*)&addr, len);
       }));
   return socket;
 }

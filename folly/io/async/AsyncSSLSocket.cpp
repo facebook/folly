@@ -326,7 +326,7 @@ void AsyncSSLSocket::init() {
 
 void AsyncSSLSocket::closeNow() {
   // Close the SSL connection.
-  if (ssl_ != nullptr && fd_ != -1) {
+  if (ssl_ != nullptr && fd_ != NetworkSocket()) {
     int rc = SSL_shutdown(ssl_.get());
     if (rc == 0) {
       rc = SSL_shutdown(ssl_.get());

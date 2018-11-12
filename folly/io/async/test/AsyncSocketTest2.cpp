@@ -2585,7 +2585,9 @@ class MockAsyncTFOSocket : public AsyncSocket {
 
   explicit MockAsyncTFOSocket(EventBase* evb) : AsyncSocket(evb) {}
 
-  MOCK_METHOD3(tfoSendMsg, ssize_t(int fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD3(
+      tfoSendMsg,
+      ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 TEST(AsyncSocketTest, TestTFOUnsupported) {
@@ -2646,10 +2648,10 @@ TEST(AsyncSocketTest, ConnectRefusedDelayedTFO) {
   // Hopefully this fails
   folly::SocketAddress fakeAddr("127.0.0.1", 65535);
   EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
-      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+      .WillOnce(Invoke([&](NetworkSocket fd, struct msghdr*, int) {
         sockaddr_storage addr;
         auto len = fakeAddr.getAddress(&addr);
-        int ret = connect(fd, (const struct sockaddr*)&addr, len);
+        auto ret = netops::connect(fd, (const struct sockaddr*)&addr, len);
         LOG(INFO) << "connecting the socket " << fd << " : " << ret << " : "
                   << errno;
         return ret;
@@ -2735,10 +2737,10 @@ TEST(AsyncSocketTest, TestTFOFallbackToConnect) {
   socket->setReadCB(&rcb);
 
   EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
-      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+      .WillOnce(Invoke([&](NetworkSocket fd, struct msghdr*, int) {
         sockaddr_storage addr;
         auto len = server.getAddress().getAddress(&addr);
-        return connect(fd, (const struct sockaddr*)&addr, len);
+        return netops::connect(fd, (const struct sockaddr*)&addr, len);
       }));
   WriteCallback write;
   auto sendBuf = IOBuf::copyBuffer("hey");
@@ -2800,10 +2802,10 @@ TEST(AsyncSocketTest, TestTFOFallbackTimeout) {
   socket->setReadCB(&rcb);
 
   EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
-      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+      .WillOnce(Invoke([&](NetworkSocket fd, struct msghdr*, int) {
         sockaddr_storage addr2;
         auto len = addr.getAddress(&addr2);
-        return connect(fd, (const struct sockaddr*)&addr2, len);
+        return netops::connect(fd, (const struct sockaddr*)&addr2, len);
       }));
   WriteCallback write;
   socket->writeChain(&write, IOBuf::copyBuffer("hey"));
