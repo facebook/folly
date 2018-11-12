@@ -221,6 +221,18 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       EventBase* evb,
       int fd,
       bool server = true,
+      bool deferSecurityNegotiation = false)
+      : AsyncSSLSocket(
+            ctx,
+            evb,
+            NetworkSocket::fromFd(fd),
+            server,
+            deferSecurityNegotiation) {}
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      NetworkSocket fd,
+      bool server = true,
       bool deferSecurityNegotiation = false);
 
   /**
@@ -239,12 +251,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static std::shared_ptr<AsyncSSLSocket> newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
-      int fd,
+      NetworkSocket fd,
       bool server = true,
       bool deferSecurityNegotiation = false) {
     return std::shared_ptr<AsyncSSLSocket>(
         new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation),
         Destructor());
+  }
+
+  static std::shared_ptr<AsyncSSLSocket> newSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      bool server = true,
+      bool deferSecurityNegotiation = false) {
+    return newSocket(
+        ctx, evb, NetworkSocket::fromFd(fd), server, deferSecurityNegotiation);
   }
 
   /**
@@ -287,9 +309,21 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   AsyncSSLSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
-      int fd,
+      NetworkSocket fd,
       const std::string& serverName,
       bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      const std::string& serverName,
+      bool deferSecurityNegotiation = false)
+      : AsyncSSLSocket(
+            ctx,
+            evb,
+            NetworkSocket::fromFd(fd),
+            serverName,
+            deferSecurityNegotiation) {}
 
   static std::shared_ptr<AsyncSSLSocket> newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,

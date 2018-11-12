@@ -239,7 +239,7 @@ AsyncSSLSocket::AsyncSSLSocket(
 AsyncSSLSocket::AsyncSSLSocket(
     const shared_ptr<SSLContext>& ctx,
     EventBase* evb,
-    int fd,
+    NetworkSocket fd,
     bool server,
     bool deferSecurityNegotiation)
     : AsyncSocket(evb, fd),
@@ -300,7 +300,7 @@ AsyncSSLSocket::AsyncSSLSocket(
 AsyncSSLSocket::AsyncSSLSocket(
     const shared_ptr<SSLContext>& ctx,
     EventBase* evb,
-    int fd,
+    NetworkSocket fd,
     const std::string& serverName,
     bool deferSecurityNegotiation)
     : AsyncSSLSocket(ctx, evb, fd, false, deferSecurityNegotiation) {
