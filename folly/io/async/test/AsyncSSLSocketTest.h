@@ -776,7 +776,7 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
   }
 };
 
-void getfds(int fds[2]);
+void getfds(NetworkSocket fds[2]);
 
 void getctx(
     std::shared_ptr<folly::SSLContext> clientCtx,
