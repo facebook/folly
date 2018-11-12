@@ -25,11 +25,10 @@ namespace folly {
 namespace pushmi {
 
 PUSHMI_CONCEPT_DEF(
-    template(class R)
-    concept Range,
-      requires(R&& r)(
-        implicitly_convertible_to<bool>(std::begin(r) == std::end(r)))
-);
+    template(class R) //
+    concept Range, //
+    requires(R&& r)( //
+        implicitly_convertible_to<bool>(std::begin(r) == std::end(r))));
 
 namespace operators {
 
@@ -49,8 +48,9 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out,
-        typename std::iterator_traits<I>::value_type>)
-    void operator()(sender_base&, Out out) const {
+        typename std::iterator_traits<I>::value_type>) //
+        void
+        operator()(sender_base&, Out out) const {
       auto c = begin_;
       for (; c != end_; ++c) {
         set_value(out, *c);
@@ -63,14 +63,16 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
   PUSHMI_TEMPLATE(class I, class S)
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
-      std::forward_iterator_tag>)
-  auto operator()(I begin, S end) const {
+      std::forward_iterator_tag>) //
+      auto
+      operator()(I begin, S end) const {
     return make_many_sender(sender_base{}, out_impl<I, S>{begin, end});
   }
 
   PUSHMI_TEMPLATE(class R)
-  (requires Range<R>)
-  auto operator()(R&& range) const {
+  (requires Range<R>) //
+      auto
+      operator()(R&& range) const {
     return (*this)(std::begin(range), std::end(range));
   }
 } from{};
@@ -144,8 +146,9 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out,
-        typename std::iterator_traits<I>::value_type>)
-    void operator()(Out out) const {
+        typename std::iterator_traits<I>::value_type>) //
+        void
+        operator()(Out out) const {
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), exec_, false);
@@ -162,30 +165,32 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
   PUSHMI_TEMPLATE(class I, class S)
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
-      std::forward_iterator_tag>)
-  auto operator()(I begin, S end) const {
+      std::forward_iterator_tag>) //
+      auto
+      operator()(I begin, S end) const {
     return (*this)(begin, end, trampoline());
   }
 
   PUSHMI_TEMPLATE(class R)
-  (requires Range<R>)
-  auto operator()(R&& range) const {
+  (requires Range<R>) //
+      auto
+      operator()(R&& range) const {
     return (*this)(std::begin(range), std::end(range), trampoline());
   }
 
   PUSHMI_TEMPLATE(class I, class S, class Exec)
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
-      std::forward_iterator_tag>&& Sender<Exec, is_single<>, is_executor<>>)
-  auto operator()(I begin, S end, Exec exec) const {
+      std::forward_iterator_tag>&& Sender<Exec, is_single<>, is_executor<>>) //
+      auto
+      operator()(I begin, S end, Exec exec) const {
     return make_flow_many_sender(out_impl<I, S, Exec>{begin, end, exec});
   }
 
   PUSHMI_TEMPLATE(class R, class Exec)
-  (requires Range<R>&& Sender<Exec, is_single<>, is_executor<>>)
-  auto operator()(
-      R&& range,
-      Exec exec) const {
+  (requires Range<R>&& Sender<Exec, is_single<>, is_executor<>>) //
+      auto
+      operator()(R&& range, Exec exec) const {
     return (*this)(std::begin(range), std::end(range), exec);
   }
 } flow_from{};

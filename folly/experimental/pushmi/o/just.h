@@ -37,8 +37,9 @@ PUSHMI_INLINE_VAR constexpr struct just_fn {
   struct impl {
     std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE(class Out)
-    (requires ReceiveValue<Out, VN...>)
-    void operator()(sender_base&, Out out) {
+    (requires ReceiveValue<Out, VN...>) //
+        void
+        operator()(sender_base&, Out out) {
       ::folly::pushmi::apply(
           ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out&>{out}, std::move(vn_)));
@@ -48,8 +49,9 @@ PUSHMI_INLINE_VAR constexpr struct just_fn {
 
  public:
   PUSHMI_TEMPLATE(class... VN)
-  (requires And<SemiMovable<VN>...>)
-  auto operator()(VN... vn) const {
+  (requires And<SemiMovable<VN>...>) //
+      auto
+      operator()(VN... vn) const {
     return make_single_sender(
         sender_base{}, impl<VN...>{std::tuple<VN...>{std::move(vn)...}});
   }

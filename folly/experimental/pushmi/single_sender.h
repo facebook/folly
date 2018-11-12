@@ -107,8 +107,8 @@ class any_single_sender {
       wrapped_t<Wrapped>,
       any_receiver<
           E,
-          VN...>>)explicit any_single_sender(Wrapped
-                                                 obj) noexcept(insitu<Wrapped>())
+          VN...>>) //
+      explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
       : any_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_single_sender() {
     vptr_->op_(data_, nullptr);
@@ -148,9 +148,9 @@ class single_sender<SF, EXF> {
     return exf_();
   }
   PUSHMI_TEMPLATE(class Out)
-  (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
-                           lazy::Invocable<SF&, Out>))
-  void submit(Out out) {
+  (requires PUSHMI_EXP(
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>)) //
+      void submit(Out out) {
     sf_(std::move(out));
   }
 };
@@ -181,9 +181,8 @@ class single_sender<Data, DSF, DEXF> {
   }
   PUSHMI_TEMPLATE(class Out)
   (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND
-          lazy::Invocable<DSF&, Data&, Out>))
-  void submit(Out out) {
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&, Data&, Out>)) //
+      void submit(Out out) {
     sf_(data_, std::move(out));
   }
 };
@@ -201,29 +200,34 @@ PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
     return single_sender<ignoreSF, trampolineEXF>{};
   }
   PUSHMI_TEMPLATE(class SF)
-  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>))
-  auto operator()(SF sf) const {
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
+      auto
+      operator()(SF sf) const {
     return single_sender<SF, trampolineEXF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class SF, class EXF)
   (requires True<>&& Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(
-      &&not Sender<SF>))
-  auto operator()(SF sf, EXF exf) const {
+      &&not Sender<SF>)) //
+      auto
+      operator()(SF sf, EXF exf) const {
     return single_sender<SF, EXF>{std::move(sf), std::move(exf)};
   }
   PUSHMI_TEMPLATE(class Data)
-  (requires True<>&& Sender<Data, is_single<>>)
-  auto operator()(Data d) const {
+  (requires True<>&& Sender<Data, is_single<>>) //
+      auto
+      operator()(Data d) const {
     return single_sender<Data, passDSF, passDEXF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires Sender<Data, is_single<>>)
-  auto operator()(Data d, DSF sf) const {
+  (requires Sender<Data, is_single<>>) //
+      auto
+      operator()(Data d, DSF sf) const {
     return single_sender<Data, DSF, passDEXF>{std::move(d), std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-  (requires Sender<Data, is_single<>>&& Invocable<DEXF&, Data&>)
-  auto operator()(Data d, DSF sf, DEXF exf) const {
+  (requires Sender<Data, is_single<>>&& Invocable<DEXF&, Data&>) //
+      auto
+      operator()(Data d, DSF sf, DEXF exf) const {
     return single_sender<Data, DSF, DEXF>{
         std::move(d), std::move(sf), std::move(exf)};
   }
@@ -232,31 +236,36 @@ PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-single_sender() -> single_sender<ignoreSF, trampolineEXF>;
+single_sender()->single_sender<ignoreSF, trampolineEXF>;
 
 PUSHMI_TEMPLATE(class SF)
-  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-single_sender(SF) -> single_sender<SF, trampolineEXF>;
+(requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
+    single_sender(SF)
+        ->single_sender<SF, trampolineEXF>;
 
 PUSHMI_TEMPLATE(class SF, class EXF)
-  (requires True<> && Invocable<EXF&>
-    PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-single_sender(SF, EXF) -> single_sender<SF, EXF>;
+(requires True<>&& Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(
+    &&not Sender<SF>)) //
+    single_sender(SF, EXF)
+        ->single_sender<SF, EXF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && Sender<Data, is_single<>>)
-single_sender(Data) -> single_sender<Data, passDSF, passDEXF>;
+(requires True<>&& Sender<Data, is_single<>>) //
+    single_sender(Data)
+        ->single_sender<Data, passDSF, passDEXF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_single<>>)
-single_sender(Data, DSF) -> single_sender<Data, DSF, passDEXF>;
+(requires Sender<Data, is_single<>>) //
+    single_sender(Data, DSF)
+        ->single_sender<Data, DSF, passDEXF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-  (requires Sender<Data, is_single<>> && Invocable<DEXF&, Data&>)
-single_sender(Data, DSF, DEXF) -> single_sender<Data, DSF, DEXF>;
+(requires Sender<Data, is_single<>>&& Invocable<DEXF&, Data&>) //
+    single_sender(Data, DSF, DEXF)
+        ->single_sender<Data, DSF, DEXF>;
 #endif
 
-template<>
+template <>
 struct construct_deduced<single_sender> : make_single_sender_fn {};
 
 } // namespace pushmi

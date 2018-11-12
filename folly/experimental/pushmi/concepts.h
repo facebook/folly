@@ -34,7 +34,8 @@ struct has_cardinality : category_query<PS, cardinality_category> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool has_cardinality_v = has_cardinality<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept Cardinality,
+    template(class PS) //
+    concept Cardinality, //
     has_cardinality_v<PS>);
 
 // flow affects both sender and receiver
@@ -75,7 +76,10 @@ template <class PS>
 struct is_single<PS> : property_query<PS, is_single<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_single_v = is_single<PS>::value;
-PUSHMI_CONCEPT_DEF(template(class PS) concept Single, is_single_v<PS>);
+PUSHMI_CONCEPT_DEF(
+    template(class PS) //
+    concept Single, //
+    is_single_v<PS>);
 
 // Many trait and tag
 template <class... TN>
@@ -90,7 +94,10 @@ template <class PS>
 struct is_many<PS> : property_query<PS, is_many<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_many_v = is_many<PS>::value;
-PUSHMI_CONCEPT_DEF(template(class PS) concept Many, is_many_v<PS>);
+PUSHMI_CONCEPT_DEF(
+    template(class PS) //
+    concept Many, //
+    is_many_v<PS>);
 
 // Flow trait and tag
 template <class... TN>
@@ -105,7 +112,10 @@ template <class PS>
 struct is_flow<PS> : property_query<PS, is_flow<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_flow_v = is_flow<PS>::value;
-PUSHMI_CONCEPT_DEF(template(class PS) concept Flow, is_flow_v<PS>);
+PUSHMI_CONCEPT_DEF(
+    template(class PS) //
+    concept Flow, //
+    is_flow_v<PS>);
 
 // Receiver trait and tag
 template <class... TN>
@@ -159,7 +169,8 @@ struct is_executor<PS> : property_query<PS, is_executor<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_executor_v = is_executor<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept Executor,
+    template(class PS) //
+    concept Executor, //
     is_executor_v<PS>&& is_sender_v<PS>&& is_single_v<PS>);
 
 // Constrained trait and tag
@@ -174,7 +185,8 @@ struct is_constrained<PS> : property_query<PS, is_constrained<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_constrained_v = is_constrained<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept Constrained,
+    template(class PS) //
+    concept Constrained, //
     is_constrained_v<PS>&& is_sender_v<PS>);
 
 // Time trait and tag
@@ -189,7 +201,8 @@ struct is_time<PS> : property_query<PS, is_time<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_time_v = is_time<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept Time,
+    template(class PS) //
+    concept Time, //
     is_time_v<PS>&& is_constrained_v<PS>&& is_sender_v<PS>);
 
 // AlwaysBlocking trait and tag
@@ -207,7 +220,8 @@ template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_always_blocking_v =
     is_always_blocking<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept AlwaysBlocking,
+    template(class PS) //
+    concept AlwaysBlocking, //
     is_always_blocking_v<PS>&& is_sender_v<PS>);
 
 // NeverBlocking trait and tag
@@ -225,7 +239,8 @@ template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_never_blocking_v =
     is_never_blocking<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept NeverBlocking,
+    template(class PS) //
+    concept NeverBlocking, //
     is_never_blocking_v<PS>&& is_sender_v<PS>);
 
 // MaybeBlocking trait and tag
@@ -243,7 +258,8 @@ template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_maybe_blocking_v =
     is_maybe_blocking<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept MaybeBlocking,
+    template(class PS) //
+    concept MaybeBlocking, //
     is_maybe_blocking_v<PS>&& is_sender_v<PS>);
 
 // FifoSequence trait and tag
@@ -261,7 +277,8 @@ template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_fifo_sequence_v =
     is_fifo_sequence<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept FifoSequence,
+    template(class PS) //
+    concept FifoSequence, //
     is_fifo_sequence_v<PS>&& is_sender_v<PS>);
 
 // ConcurrentSequence trait and tag
@@ -280,43 +297,51 @@ template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_concurrent_sequence_v =
     is_concurrent_sequence<PS>::value;
 PUSHMI_CONCEPT_DEF(
-    template(class PS) concept ConcurrentSequence,
+    template(class PS) //
+    concept ConcurrentSequence, //
     is_concurrent_sequence_v<PS>&& is_sender_v<PS>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class... PropertyN)(concept Receiver)(R, PropertyN...),
-    requires(R& r)(
+    template(class R, class... PropertyN) //
+    (concept Receiver)(R, PropertyN...), //
+    requires(R& r)( //
         set_done(r),
         set_error(r, std::exception_ptr{})) &&
         SemiMovable<R> && property_query_v<R, PropertyN...> &&
         is_receiver_v<R> && !is_sender_v<R>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class... VN)(concept ReceiveValue)(R, VN...),
-    requires(R& r)(set_value(r, std::declval<VN&&>()...)) &&
+    template(class R, class... VN) //
+    (concept ReceiveValue)(R, VN...), //
+    requires(R& r)( //
+        set_value(r, std::declval<VN&&>()...)) &&
         Receiver<R> &&
         // GCC w/-fconcepts ICE on SemiMovable<VN>...
         True<> // And<SemiMovable<VN>...>
 );
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class E = std::exception_ptr)(concept ReceiveError)(R, E),
-    requires(R& r, E&& e)(set_error(r, (E &&) e)) && Receiver<R> &&
-        SemiMovable<E>);
+    template(class R, class E = std::exception_ptr) //
+    (concept ReceiveError)(R, E), //
+    requires(R& r, E&& e)( //
+        set_error(r, (E &&) e)) &&
+        Receiver<R> && SemiMovable<E>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class... PropertyN)(concept Sender)(D, PropertyN...),
-    requires(D& d)(
+    template(class D, class... PropertyN) //
+    (concept Sender)(D, PropertyN...), //
+    requires(D& d)( //
         executor(d),
         requires_<Executor<decltype(executor(d))>>) &&
         SemiMovable<D> && Cardinality<D> && property_query_v<D, PropertyN...> &&
         is_sender_v<D> && !is_receiver_v<D>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class S, class... PropertyN)(
-        concept SenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s)(submit(d, (S &&) s)) && Sender<D> &&
-        Receiver<S> && property_query_v<D, PropertyN...>);
+    template(class D, class S, class... PropertyN) //
+    (concept SenderTo)(D, S, PropertyN...), //
+    requires(D& d, S&& s)( //
+        submit(d, (S &&) s)) &&
+        Sender<D> && Receiver<S> && property_query_v<D, PropertyN...>);
 
 template <class D>
 PUSHMI_PP_CONSTRAINED_USING(
@@ -328,30 +353,35 @@ PUSHMI_PP_CONSTRAINED_USING(
 //
 
 PUSHMI_CONCEPT_DEF(
-    template(class S, class... PropertyN)(
-        concept FlowReceiver)(S, PropertyN...),
+    template(class S, class... PropertyN) //
+    (concept FlowReceiver)(S, PropertyN...), //
     Receiver<S>&& property_query_v<S, PropertyN...>&& Flow<S>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class... VN)(concept FlowReceiveValue)(R, VN...),
+    template(class R, class... VN) //
+    (concept FlowReceiveValue)(R, VN...), //
     Flow<R>&& ReceiveValue<R, VN...>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class E = std::exception_ptr)(
-        concept FlowReceiveError)(R, E),
+    template(class R, class E = std::exception_ptr) //
+    (concept FlowReceiveError)(R, E), //
     Flow<R>&& ReceiveError<R, E>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class Up)(concept FlowUpTo)(R, Up),
-    requires(R& r, Up&& up)(set_starting(r, (Up &&) up)) && Flow<R>);
+    template(class R, class Up) //
+    (concept FlowUpTo)(R, Up), //
+    requires(R& r, Up&& up)( //
+        set_starting(r, (Up &&) up)) &&
+        Flow<R>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class S, class... PropertyN)(concept FlowSender)(S, PropertyN...),
+    template(class S, class... PropertyN) //
+    (concept FlowSender)(S, PropertyN...), //
     Sender<S>&& property_query_v<S, PropertyN...>&& Flow<S>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class S, class... PropertyN)(
-        concept FlowSenderTo)(D, S, PropertyN...),
+    template(class D, class S, class... PropertyN) //
+    (concept FlowSenderTo)(D, S, PropertyN...), //
     FlowSender<D>&& property_query_v<D, PropertyN...>&& FlowReceiver<S>);
 
 // add concepts for constraints
@@ -364,17 +394,18 @@ PUSHMI_CONCEPT_DEF(
 //
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class... PropertyN)(
-        concept ConstrainedSender)(D, PropertyN...),
-    requires(D& d)(
+    template(class D, class... PropertyN) //
+    (concept ConstrainedSender)(D, PropertyN...), //
+    requires(D& d)( //
         top(d),
         requires_<Regular<decltype(top(d))>>) &&
         Sender<D> && property_query_v<D, PropertyN...> && Constrained<D>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class S, class... PropertyN)(
-        concept ConstrainedSenderTo)(D, S, PropertyN...),
-    requires(D& d, S&& s)(submit(d, top(d), (S &&) s)) &&
+    template(class D, class S, class... PropertyN) //
+    (concept ConstrainedSenderTo)(D, S, PropertyN...), //
+    requires(D& d, S&& s)( //
+        submit(d, top(d), (S &&) s)) &&
         ConstrainedSender<D> && property_query_v<D, PropertyN...> &&
         Receiver<S>);
 
@@ -385,16 +416,16 @@ PUSHMI_PP_CONSTRAINED_USING(
     decltype(top(std::declval<D&>())));
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class... PropertyN)(concept TimeSender)(D, PropertyN...),
-    requires(D& d)(
+    template(class D, class... PropertyN) //
+    (concept TimeSender)(D, PropertyN...), //
+    requires(D& d)( //
         now(d),
-        requires_<
-            Regular<decltype(now(d) + std::chrono::seconds(1))>>) &&
+        requires_<Regular<decltype(now(d) + std::chrono::seconds(1))>>) &&
         ConstrainedSender<D, PropertyN...> && Time<D>);
 
 PUSHMI_CONCEPT_DEF(
-    template(class D, class S, class... PropertyN)(
-        concept TimeSenderTo)(D, S, PropertyN...),
+    template(class D, class S, class... PropertyN) //
+    (concept TimeSenderTo)(D, S, PropertyN...), //
     ConstrainedSenderTo<D, S, PropertyN...>&& TimeSender<D>);
 
 template <class D>

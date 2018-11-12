@@ -196,8 +196,7 @@ class strand_executor {
 
   PUSHMI_TEMPLATE(class Out)
   (requires ReceiveValue<Out, any_executor_ref<E>>&&
-       ReceiveError<Out, E>)
-  void submit(Out out) {
+       ReceiveError<Out, E>)void submit(Out out) {
     // queue for later
     std::unique_lock<std::mutex> guard{queue_->lock_};
     queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
@@ -241,14 +240,14 @@ class same_executor_factory_fn {
 
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class ExecutorFactory)
 (requires Invocable<ExecutorFactory&>&&
-     Executor<invoke_result_t<ExecutorFactory&>>&& ConcurrentSequence<
-         invoke_result_t<ExecutorFactory&>>)
-auto strands(ExecutorFactory ef) {
+     Executor<invoke_result_t<ExecutorFactory&>>&&
+         ConcurrentSequence<invoke_result_t<ExecutorFactory&>>) //
+    auto strands(ExecutorFactory ef) {
   return strand_executor_factory_fn<E, ExecutorFactory>{std::move(ef)};
 }
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Exec)
-(requires Executor<Exec>&& ConcurrentSequence<Exec>)
-auto strands(Exec ex) {
+(requires Executor<Exec>&& ConcurrentSequence<Exec>) //
+    auto strands(Exec ex) {
   return strand_executor_factory_fn<E, same_executor_factory_fn<Exec>>{
       same_executor_factory_fn<Exec>{std::move(ex)}};
 }

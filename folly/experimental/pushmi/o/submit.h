@@ -29,20 +29,17 @@ namespace detail {
 namespace submit_detail {
 
 PUSHMI_CONCEPT_DEF(
-    template(class In, class... AN)(
-    concept AutoSenderTo)(In, AN...),
-      Sender<In>&& SenderTo<In, receiver_type_t<In, AN...>>
-);
+    template(class In, class... AN) //
+    (concept AutoSenderTo)(In, AN...), //
+    Sender<In>&& SenderTo<In, receiver_type_t<In, AN...>>);
 PUSHMI_CONCEPT_DEF(
-    template(class In, class... AN)(
-    concept AutoConstrainedSenderTo)(In, AN...),
-      ConstrainedSenderTo<In, receiver_type_t<In, AN...>>
-);
+    template(class In, class... AN) //
+    (concept AutoConstrainedSenderTo)(In, AN...), //
+    ConstrainedSenderTo<In, receiver_type_t<In, AN...>>);
 PUSHMI_CONCEPT_DEF(
-    template(class In, class... AN)(
-    concept AutoTimeSenderTo)(In, AN...),
-      TimeSenderTo<In, receiver_type_t<In, AN...>>
-);
+    template(class In, class... AN) //
+    (concept AutoTimeSenderTo)(In, AN...), //
+    TimeSenderTo<In, receiver_type_t<In, AN...>>);
 } // namespace submit_detail
 
 struct submit_fn {
@@ -54,8 +51,9 @@ struct submit_fn {
   struct fn {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires submit_detail::AutoSenderTo<In, AN...>)
-    In operator()(In in) {
+    (requires submit_detail::AutoSenderTo<In, AN...>) //
+        In
+        operator()(In in) {
       auto out{
           ::folly::pushmi::detail::receiver_from_fn<In>{}(std::move(args_))};
       ::folly::pushmi::submit(in, std::move(out));
@@ -77,8 +75,9 @@ struct submit_at_fn {
     TP at_;
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires submit_detail::AutoTimeSenderTo<In, AN...>)
-    In operator()(In in) {
+    (requires submit_detail::AutoTimeSenderTo<In, AN...>) //
+        In
+        operator()(In in) {
       auto out{
           ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_))};
       ::folly::pushmi::submit(in, std::move(at_), std::move(out));
@@ -88,8 +87,9 @@ struct submit_at_fn {
 
  public:
   PUSHMI_TEMPLATE(class TP, class... AN)
-  (requires Regular<TP>)
-  auto operator()(TP at, AN... an) const {
+  (requires Regular<TP>) //
+      auto
+      operator()(TP at, AN... an) const {
     return submit_at_fn::fn<TP, AN...>{std::move(at),
                                        std::tuple<AN...>{(AN &&) an...}};
   }
@@ -102,8 +102,9 @@ struct submit_after_fn {
     D after_;
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires submit_detail::AutoTimeSenderTo<In, AN...>)
-    In operator()(In in) {
+    (requires submit_detail::AutoTimeSenderTo<In, AN...>) //
+        In
+        operator()(In in) {
       // TODO - only move, move-only types..
       // if out can be copied, then submit can be called multiple
       // times..
@@ -117,8 +118,9 @@ struct submit_after_fn {
 
  public:
   PUSHMI_TEMPLATE(class D, class... AN)
-  (requires Regular<D>)
-  auto operator()(D after, AN... an) const {
+  (requires Regular<D>) //
+      auto
+      operator()(D after, AN... an) const {
     return submit_after_fn::fn<D, AN...>{std::move(after),
                                          std::tuple<AN...>{(AN &&) an...}};
   }
@@ -135,8 +137,8 @@ struct blocking_submit_fn {
   template <class Out>
   struct nested_receiver_impl;
   PUSHMI_TEMPLATE(class Exec)
-  (requires Sender<Exec>&& Executor<Exec>)
-  struct nested_executor_impl {
+  (requires Sender<Exec>&& Executor<Exec>) //
+      struct nested_executor_impl {
     nested_executor_impl(lock_state* state, Exec ex)
         : state_(state), ex_(std::move(ex)) {}
     lock_state* state_;
@@ -146,15 +148,14 @@ struct blocking_submit_fn {
     using test_for_this = nested_executor_impl<U>;
 
     PUSHMI_TEMPLATE(class Ex)
-    (requires Sender<Ex>&& Executor<Ex>&&
-         detail::is_v<Ex, test_for_this>)
-    static auto make(lock_state*, Ex ex) {
+    (requires Sender<Ex>&& Executor<Ex>&& detail::is_v<Ex, test_for_this>) //
+        static auto make(lock_state*, Ex ex) {
       return ex;
     }
     PUSHMI_TEMPLATE(class Ex)
     (requires Sender<Ex>&& Executor<Ex> &&
-     not detail::is_v<Ex, test_for_this>)
-    static auto make(lock_state* state, Ex ex) {
+     not detail::is_v<Ex, test_for_this>) //
+        static auto make(lock_state* state, Ex ex) {
       return nested_executor_impl<Ex>{state, ex};
     }
 
@@ -165,22 +166,22 @@ struct blocking_submit_fn {
     }
 
     PUSHMI_TEMPLATE(class... ZN)
-    (requires Constrained<Exec>)
-    auto top() {
+    (requires Constrained<Exec>) //
+        auto top() {
       return ::folly::pushmi::top(ex_);
     }
 
     PUSHMI_TEMPLATE(class CV, class Out)
-    (requires Receiver<Out>&& Constrained<Exec>)
-    void submit(CV cv, Out out) {
+    (requires Receiver<Out>&& Constrained<Exec>) //
+        void submit(CV cv, Out out) {
       ++state_->nested;
       ::folly::pushmi::submit(
           ex_, cv, nested_receiver_impl<Out>{state_, std::move(out)});
     }
 
     PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out> && not Constrained<Exec>)
-    void submit(Out out) {
+    (requires Receiver<Out> && not Constrained<Exec>) //
+        void submit(Out out) {
       ++state_->nested;
       ::folly::pushmi::submit(
           ex_, nested_receiver_impl<Out>{state_, std::move(out)});
@@ -226,8 +227,9 @@ struct blocking_submit_fn {
   };
   struct nested_executor_impl_fn {
     PUSHMI_TEMPLATE(class Exec)
-    (requires Executor<Exec>)
-    auto operator()(lock_state* state, Exec ex) const {
+    (requires Executor<Exec>) //
+        auto
+        operator()(lock_state* state, Exec ex) const {
       return nested_executor_impl<Exec>::make(state, std::move(ex));
     }
   };
@@ -239,8 +241,9 @@ struct blocking_submit_fn {
         ::folly::pushmi::invoke_result_t<
             nested_executor_impl_fn,
             lock_state*,
-            std::decay_t<Value>>>)
-    void operator()(Out out, Value&& v) const {
+            std::decay_t<Value>>>) //
+        void
+        operator()(Out out, Value&& v) const {
       ++state_->nested;
       set_value(out, nested_executor_impl_fn{}(state_, (Value &&) v));
       if (--state_->nested == 0) {
@@ -250,16 +253,18 @@ struct blocking_submit_fn {
     }
     PUSHMI_TEMPLATE(class Out, class... VN)
     (requires True<>&& ReceiveValue<Out, VN...> &&
-     not(sizeof...(VN) == 1 && And<Executor<std::decay_t<VN>>...>))
-    void operator()(Out out, VN&&... vn) const {
+     not(sizeof...(VN) == 1 && And<Executor<std::decay_t<VN>>...>)) //
+        void
+        operator()(Out out, VN&&... vn) const {
       set_value(out, (VN &&) vn...);
     }
   };
   struct on_error_impl {
     lock_state* state_;
     PUSHMI_TEMPLATE(class Out, class E)
-    (requires ReceiveError<Out, E>)
-    void operator()(Out out, E e) const noexcept {
+    (requires ReceiveError<Out, E>) //
+        void
+        operator()(Out out, E e) const noexcept {
       set_error(out, std::move(e));
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
@@ -269,8 +274,9 @@ struct blocking_submit_fn {
   struct on_done_impl {
     lock_state* state_;
     PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>)
-    void operator()(Out out) const {
+    (requires Receiver<Out>) //
+        void
+        operator()(Out out) const {
       set_done(out);
       std::unique_lock<std::mutex> guard{state_->lock};
       state_->done = true;
@@ -281,10 +287,9 @@ struct blocking_submit_fn {
   template <class In>
   struct receiver_impl {
     PUSHMI_TEMPLATE(class... AN)
-    (requires Sender<In>)
-    auto operator()(
-        lock_state* state,
-        std::tuple<AN...> args) const {
+    (requires Sender<In>) //
+        auto
+        operator()(lock_state* state, std::tuple<AN...> args) const {
       return ::folly::pushmi::detail::receiver_from_fn<In>()(
           std::move(args),
           on_value_impl{state},
@@ -295,8 +300,9 @@ struct blocking_submit_fn {
   template <class In>
   struct submit_impl {
     PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>&& SenderTo<In, Out>)
-    void operator()(In& in, Out out) const {
+    (requires Receiver<Out>&& SenderTo<In, Out>) //
+        void
+        operator()(In& in, Out out) const {
       ::folly::pushmi::submit(in, std::move(out));
     }
   };
@@ -315,8 +321,9 @@ struct blocking_submit_fn {
              receiver_impl<In>,
              lock_state*,
              std::tuple<AN...>&&>> &&
-     not AlwaysBlocking<In>)
-    In operator()(In in) {
+     not AlwaysBlocking<In>) //
+        In
+        operator()(In in) {
       lock_state state{};
 
       auto make = receiver_impl<In>{};
@@ -361,8 +368,9 @@ struct get_fn {
  public:
   // TODO constrain this better
   PUSHMI_TEMPLATE(class In)
-  (requires Sender<In>)
-  T operator()(In in) const {
+  (requires Sender<In>) //
+      T
+      operator()(In in) const {
     ::folly::pushmi::detail::opt<T> result_;
     ::folly::pushmi::detail::opt<std::exception_ptr> ep_;
     auto out = ::folly::pushmi::make_receiver(
