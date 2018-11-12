@@ -66,7 +66,8 @@ void readRandomDevice(void* data, size_t size) {
   static int randomFd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
   PCHECK(randomFd >= 0);
   auto bytesRead = readFull(randomFd, data, size);
-  PCHECK(bytesRead >= 0 && size_t(bytesRead) == size);
+  PCHECK(bytesRead >= 0);
+  CHECK_EQ(size_t(bytesRead), size);
 #endif
 }
 
