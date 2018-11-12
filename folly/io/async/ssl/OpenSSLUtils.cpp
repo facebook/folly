@@ -301,15 +301,14 @@ int OpenSSLUtils::getBioFd(BIO* b, int* fd) {
 #endif
 }
 
-void OpenSSLUtils::setBioFd(BIO* b, int fd, int flags) {
+void OpenSSLUtils::setBioFd(BIO* b, NetworkSocket fd, int flags) {
 #ifdef _WIN32
-  SOCKET socket = portability::sockets::fd_to_socket(fd);
   // Internally OpenSSL uses this as an int for reasons completely
   // beyond any form of sanity, so we do the cast ourselves to avoid
   // the warnings that would be generated.
-  int sock = int(socket);
+  int sock = int(fd.data);
 #else
-  int sock = fd;
+  int sock = fd.toFd();
 #endif
   BIO_set_fd(b, sock, flags);
 }
