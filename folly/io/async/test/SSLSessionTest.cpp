@@ -16,6 +16,8 @@
 
 #include <folly/ssl/SSLSession.h>
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 
@@ -27,19 +29,14 @@ using folly::ssl::SSLSession;
 
 namespace folly {
 
-void getfds(int fds[2]) {
-  if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
-    LOG(ERROR) << "failed to create socketpair: " << errnoStr(errno);
+void getfds(NetworkSocket fds[2]) {
+  if (netops::socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
+    FAIL() << "failed to create socketpair: " << errnoStr(errno);
   }
   for (int idx = 0; idx < 2; ++idx) {
-    int flags = fcntl(fds[idx], F_GETFL, 0);
-    if (flags == -1) {
-      LOG(ERROR) << "failed to get flags for socket " << idx << ": "
-                 << errnoStr(errno);
-    }
-    if (fcntl(fds[idx], F_SETFL, flags | O_NONBLOCK) != 0) {
-      LOG(ERROR) << "failed to put socket " << idx
-                 << " in non-blocking mode: " << errnoStr(errno);
+    if (netops::set_socket_non_blocking(fds[idx]) != 0) {
+      FAIL() << "failed to put socket " << idx
+             << " in non-blocking mode: " << errnoStr(errno);
     }
   }
 }
@@ -85,7 +82,7 @@ TEST_F(SSLSessionTest, BasicTest) {
   std::unique_ptr<SSLSession> sess;
 
   {
-    int fds[2];
+    NetworkSocket fds[2];
     getfds(fds);
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
@@ -104,7 +101,7 @@ TEST_F(SSLSessionTest, BasicTest) {
   }
 
   {
-    int fds[2];
+    NetworkSocket fds[2];
     getfds(fds);
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
@@ -125,7 +122,7 @@ TEST_F(SSLSessionTest, SerializeDeserializeTest) {
   std::string sessiondata;
 
   {
-    int fds[2];
+    NetworkSocket fds[2];
     getfds(fds);
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
@@ -146,7 +143,7 @@ TEST_F(SSLSessionTest, SerializeDeserializeTest) {
   }
 
   {
-    int fds[2];
+    NetworkSocket fds[2];
     getfds(fds);
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
@@ -168,7 +165,7 @@ TEST_F(SSLSessionTest, SerializeDeserializeTest) {
 }
 
 TEST_F(SSLSessionTest, GetSessionID) {
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   AsyncSSLSocket::UniquePtr clientSock(
       new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
