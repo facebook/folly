@@ -24,6 +24,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Conv.h>
+#include <folly/portability/Atomic.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysTime.h>
 
