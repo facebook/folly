@@ -325,7 +325,6 @@ class SocketAddress {
    *
    * Raises std::system_error on error.
    */
-  void setFromPeerAddress(int socket);
   void setFromPeerAddress(NetworkSocket socket);
 
   /**
@@ -333,7 +332,6 @@ class SocketAddress {
    *
    * Raises std::system_error on error.
    */
-  void setFromLocalAddress(int socket);
   void setFromLocalAddress(NetworkSocket socket);
 
   /**

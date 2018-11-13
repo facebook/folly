@@ -242,16 +242,8 @@ void SocketAddress::setFromPath(StringPiece path) {
   }
 }
 
-void SocketAddress::setFromPeerAddress(int socket) {
-  setFromPeerAddress(NetworkSocket::fromFd(socket));
-}
-
 void SocketAddress::setFromPeerAddress(NetworkSocket socket) {
   setFromSocket(socket, netops::getpeername);
-}
-
-void SocketAddress::setFromLocalAddress(int socket) {
-  setFromLocalAddress(NetworkSocket::fromFd(socket));
 }
 
 void SocketAddress::setFromLocalAddress(NetworkSocket socket) {
