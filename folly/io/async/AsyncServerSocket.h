@@ -25,6 +25,8 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/io/async/NotificationQueue.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
 #include <limits.h>
@@ -85,6 +87,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     virtual void onConnectionAccepted(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
+    void onConnectionAccepted(
+        const NetworkSocket socket,
+        const SocketAddress& addr) noexcept {
+      onConnectionAccepted(socket.toFd(), addr);
+    }
 
     /**
      * onConnectionAcceptError() is called when an error occurred accepting
@@ -99,6 +106,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     virtual void onConnectionDropped(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
+    void onConnectionDropped(
+        const NetworkSocket socket,
+        const SocketAddress& addr) noexcept {
+      onConnectionDropped(socket.toFd(), addr);
+    }
 
     /**
      * onConnectionEnqueuedForAcceptorCallback() is called when the
@@ -107,6 +119,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     virtual void onConnectionEnqueuedForAcceptorCallback(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
+    void onConnectionEnqueuedForAcceptorCallback(
+        const NetworkSocket socket,
+        const SocketAddress& addr) noexcept {
+      onConnectionEnqueuedForAcceptorCallback(socket.toFd(), addr);
+    }
 
     /**
      * onConnectionDequeuedByAcceptorCallback() is called when the
@@ -115,6 +132,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     virtual void onConnectionDequeuedByAcceptorCallback(
         const int socket,
         const SocketAddress& addr) noexcept = 0;
+    void onConnectionDequeuedByAcceptorCallback(
+        const NetworkSocket socket,
+        const SocketAddress& addr) noexcept {
+      onConnectionDequeuedByAcceptorCallback(socket.toFd(), addr);
+    }
 
     /**
      * onBackoffStarted is called when the socket has successfully started
@@ -158,6 +180,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     virtual void connectionAccepted(
         int fd,
         const SocketAddress& clientAddr) noexcept = 0;
+    void connectionAccepted(
+        NetworkSocket fd,
+        const SocketAddress& clientAddr) noexcept {
+      connectionAccepted(fd.toFd(), clientAddr);
+    }
 
     /**
      * acceptError() is called if an error occurs while accepting.
@@ -292,8 +319,21 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * On error a TTransportException will be thrown and the caller will retain
    * ownership of the file descriptor.
    */
-  void useExistingSocket(int fd);
-  void useExistingSockets(const std::vector<int>& fds);
+  void useExistingSocket(int fd) {
+    useExistingSocket(NetworkSocket::fromFd(fd));
+  }
+  void useExistingSocket(NetworkSocket fd);
+  void useExistingSockets(const std::vector<int>& fds) {
+    // This isn't a big enough perf impact to matter, as it's only really used
+    // for long-lived servers :)
+    std::vector<NetworkSocket> socks;
+    socks.reserve(fds.size());
+    for (size_t i = 0; i < fds.size(); ++i) {
+      socks.push_back(NetworkSocket::fromFd(fds[i]));
+    }
+    useExistingSockets(socks);
+  }
+  void useExistingSockets(const std::vector<NetworkSocket>& fds);
 
   /**
    * Return the underlying file descriptor
@@ -301,7 +341,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   std::vector<int> getSockets() const {
     std::vector<int> sockets;
     for (auto& handler : sockets_) {
-      sockets.push_back(handler.socket_);
+      sockets.push_back(handler.socket_.toFd());
     }
     return sockets;
   }
@@ -317,7 +357,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     if (sockets_.size() == 0) {
       return -1;
     } else {
-      return sockets_[0].socket_;
+      return sockets_[0].socket_.toFd();
     }
   }
 
@@ -627,12 +667,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     keepAliveEnabled_ = enabled;
 
     for (auto& handler : sockets_) {
-      if (handler.socket_ < 0) {
+      if (handler.socket_ == NetworkSocket()) {
         continue;
       }
 
       int val = (enabled) ? 1 : 0;
-      if (setsockopt(
+      if (netops::setsockopt(
               handler.socket_, SOL_SOCKET, SO_KEEPALIVE, &val, sizeof(val)) !=
           0) {
         LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: %s"
@@ -656,12 +696,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     reusePortEnabled_ = enabled;
 
     for (auto& handler : sockets_) {
-      if (handler.socket_ < 0) {
+      if (handler.socket_ == NetworkSocket()) {
         continue;
       }
 
       int val = (enabled) ? 1 : 0;
-      if (setsockopt(
+      if (netops::setsockopt(
               handler.socket_, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) !=
           0) {
         LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
@@ -743,7 +783,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   struct QueueMessage {
     MessageType type;
-    int fd;
+    NetworkSocket fd;
     int err;
     SocketAddress address;
     std::string msg;
@@ -800,13 +840,18 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   class BackoffTimeout;
 
-  virtual void
-  handlerReady(uint16_t events, int socket, sa_family_t family) noexcept;
+  virtual void handlerReady(
+      uint16_t events,
+      NetworkSocket socket,
+      sa_family_t family) noexcept;
 
-  int createSocket(int family);
-  void setupSocket(int fd, int family);
-  void bindSocket(int fd, const SocketAddress& address, bool isExistingSocket);
-  void dispatchSocket(int socket, SocketAddress&& address);
+  NetworkSocket createSocket(int family);
+  void setupSocket(NetworkSocket fd, int family);
+  void bindSocket(
+      NetworkSocket fd,
+      const SocketAddress& address,
+      bool isExistingSocket);
+  void dispatchSocket(NetworkSocket socket, SocketAddress&& address);
   void dispatchError(const char* msg, int errnoValue);
   void enterBackoff();
   void backoffTimeoutExpired();
@@ -825,7 +870,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   struct ServerEventHandler : public EventHandler {
     ServerEventHandler(
         EventBase* eventBase,
-        int socket,
+        NetworkSocket socket,
         AsyncServerSocket* parent,
         sa_family_t addressFamily)
         : EventHandler(eventBase, socket),
@@ -861,14 +906,14 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     }
 
     EventBase* eventBase_;
-    int socket_;
+    NetworkSocket socket_;
     AsyncServerSocket* parent_;
     sa_family_t addressFamily_;
   };
 
   EventBase* eventBase_;
   std::vector<ServerEventHandler> sockets_;
-  std::vector<int> pendingCloseSockets_;
+  std::vector<NetworkSocket> pendingCloseSockets_;
   bool accepting_;
   uint32_t maxAcceptAtOnce_;
   uint32_t maxNumMsgsInQueue_;
