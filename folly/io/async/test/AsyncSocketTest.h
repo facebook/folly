@@ -17,6 +17,8 @@
 
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/test/BlockingSocket.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
 #include <memory>
@@ -268,16 +270,16 @@ class TestServer {
  public:
   // Create a TestServer.
   // This immediately starts listening on an ephemeral port.
-  explicit TestServer(bool enableTFO = false, int bufSize = -1) : fd_(-1) {
+  explicit TestServer(bool enableTFO = false, int bufSize = -1) : fd_() {
     namespace fsp = folly::portability::sockets;
-    fd_ = fsp::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
-    if (fd_ < 0) {
+    fd_ = folly::netops::socket(PF_INET, SOCK_STREAM, IPPROTO_TCP);
+    if (fd_ == folly::NetworkSocket()) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
           "failed to create test server socket",
           errno);
     }
-    if (fcntl(fd_, F_SETFL, O_NONBLOCK) != 0) {
+    if (folly::netops::set_socket_non_blocking(fd_) != 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
           "failed to put test server socket in "
@@ -309,18 +311,20 @@ class TestServer {
     };
 
     if (bufSize > 0) {
-      setsockopt(fd_, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
-      setsockopt(fd_, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
+      folly::netops::setsockopt(
+          fd_, SOL_SOCKET, SO_SNDBUF, &bufSize, sizeof(bufSize));
+      folly::netops::setsockopt(
+          fd_, SOL_SOCKET, SO_RCVBUF, &bufSize, sizeof(bufSize));
     }
 
-    if (bind(fd_, res->ai_addr, res->ai_addrlen)) {
+    if (folly::netops::bind(fd_, res->ai_addr, res->ai_addrlen)) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
           "failed to bind to async server socket for port 10",
           errno);
     }
 
-    if (listen(fd_, 10) != 0) {
+    if (folly::netops::listen(fd_, 10) != 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
           "failed to listen on test server socket",
@@ -334,8 +338,8 @@ class TestServer {
   }
 
   ~TestServer() {
-    if (fd_ != -1) {
-      close(fd_);
+    if (fd_ != folly::NetworkSocket()) {
+      folly::netops::close(fd_);
     }
   }
 
@@ -344,12 +348,11 @@ class TestServer {
     return address_;
   }
 
-  int acceptFD(int timeout = 50) {
-    namespace fsp = folly::portability::sockets;
-    struct pollfd pfd;
+  folly::NetworkSocket acceptFD(int timeout = 50) {
+    folly::netops::PollDescriptor pfd;
     pfd.fd = fd_;
     pfd.events = POLLIN;
-    int ret = poll(&pfd, 1, timeout);
+    int ret = folly::netops::poll(&pfd, 1, timeout);
     if (ret == 0) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
@@ -361,8 +364,8 @@ class TestServer {
           errno);
     }
 
-    int acceptedFd = fsp::accept(fd_, nullptr, nullptr);
-    if (acceptedFd < 0) {
+    auto acceptedFd = folly::netops::accept(fd_, nullptr, nullptr);
+    if (acceptedFd == folly::NetworkSocket()) {
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::INTERNAL_ERROR,
           "test server accept() failed",
@@ -373,14 +376,14 @@ class TestServer {
   }
 
   std::shared_ptr<BlockingSocket> accept(int timeout = 50) {
-    int fd = acceptFD(timeout);
+    auto fd = acceptFD(timeout);
     return std::make_shared<BlockingSocket>(fd);
   }
 
   std::shared_ptr<folly::AsyncSocket> acceptAsync(
       folly::EventBase* evb,
       int timeout = 50) {
-    int fd = acceptFD(timeout);
+    auto fd = acceptFD(timeout);
     return folly::AsyncSocket::newSocket(evb, fd);
   }
 
@@ -401,6 +404,6 @@ class TestServer {
   }
 
  private:
-  int fd_;
+  folly::NetworkSocket fd_;
   folly::SocketAddress address_;
 };
