@@ -53,8 +53,6 @@ using namespace folly;
 using namespace folly::test;
 using namespace testing;
 
-namespace fsp = folly::portability::sockets;
-
 class DelayedWrite : public AsyncTimeout {
  public:
   DelayedWrite(
@@ -1672,7 +1670,7 @@ TEST(AsyncSocketTest, ServerAcceptOptions) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -1695,17 +1693,18 @@ TEST(AsyncSocketTest, ServerAcceptOptions) {
       acceptCallback.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
   ASSERT_EQ(
       acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
-  int fd = acceptCallback.getEvents()->at(1).fd;
+  auto fd = acceptCallback.getEvents()->at(1).fd;
 
   // The accepted connection should already be in non-blocking mode
-  int flags = fcntl(fd, F_GETFL, 0);
+  int flags = fcntl(fd.toFd(), F_GETFL, 0);
   ASSERT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
 
 #ifndef TCP_NOPUSH
   // The accepted connection should already have TCP_NODELAY set
   int value;
   socklen_t valueLength = sizeof(value);
-  int rc = getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
+  int rc =
+      netops::getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 1);
 #endif
@@ -1740,24 +1739,24 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   // called.
   int cb2Count = 0;
   cb1.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         std::shared_ptr<AsyncSocket> sock2(AsyncSocket::newSocket(
             &eventBase, serverAddress)); // cb2: -cb3 -cb5
       });
   cb3.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {});
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {});
   cb4.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         std::shared_ptr<AsyncSocket> sock3(
             AsyncSocket::newSocket(&eventBase, serverAddress)); // cb4
       });
   cb5.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         std::shared_ptr<AsyncSocket> sock5(
             AsyncSocket::newSocket(&eventBase, serverAddress)); // cb7: -cb7
       });
   cb2.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         if (cb2Count == 0) {
           serverSocket->removeAcceptCallback(&cb3, nullptr);
           serverSocket->removeAcceptCallback(&cb5, nullptr);
@@ -1768,7 +1767,7 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
   // and destroy the server socket the second time it is called
   int cb6Count = 0;
   cb6.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         if (cb6Count == 0) {
           serverSocket->removeAcceptCallback(&cb4, nullptr);
           std::shared_ptr<AsyncSocket> sock6(
@@ -1785,7 +1784,7 @@ TEST(AsyncSocketTest, RemoveAcceptCallback) {
       });
   // Have callback 7 remove itself
   cb7.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&cb7, nullptr);
       });
 
@@ -1874,7 +1873,7 @@ TEST(AsyncSocketTest, OtherThreadAcceptCallback) {
     thread_id = std::this_thread::get_id();
   });
   cb1.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         ASSERT_EQ(thread_id, std::this_thread::get_id());
         serverSocket->removeAcceptCallback(&cb1, &eventBase);
       });
@@ -1915,7 +1914,7 @@ void serverSocketSanityTest(AsyncServerSocket* serverSocket) {
   // Add a callback to accept one connection then stop accepting
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, eventBase);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -1995,8 +1994,8 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // Test creating a socket, and letting AsyncServerSocket bind and listen
   {
     // Manually create a socket
-    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    ASSERT_GE(fd, 0);
+    auto fd = netops::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT_NE(fd, NetworkSocket());
 
     // Create a server socket
     AsyncServerSocket::UniquePtr serverSocket(
@@ -2016,15 +2015,17 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // then letting AsyncServerSocket listen
   {
     // Manually create a socket
-    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    ASSERT_GE(fd, 0);
+    auto fd = netops::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT_NE(fd, NetworkSocket());
     // bind
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = 0;
     addr.sin_addr.s_addr = INADDR_ANY;
     ASSERT_EQ(
-        bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)), 0);
+        netops::bind(
+            fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)),
+        0);
     // Look up the address that we bound to
     folly::SocketAddress boundAddress;
     boundAddress.setFromLocalAddress(fd);
@@ -2048,20 +2049,22 @@ TEST(AsyncSocketTest, ServerExistingSocket) {
   // then giving it to AsyncServerSocket
   {
     // Manually create a socket
-    int fd = fsp::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-    ASSERT_GE(fd, 0);
+    auto fd = netops::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+    ASSERT_NE(fd, NetworkSocket());
     // bind
     struct sockaddr_in addr;
     addr.sin_family = AF_INET;
     addr.sin_port = 0;
     addr.sin_addr.s_addr = INADDR_ANY;
     ASSERT_EQ(
-        bind(fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)), 0);
+        netops::bind(
+            fd, reinterpret_cast<struct sockaddr*>(&addr), sizeof(addr)),
+        0);
     // Look up the address that we bound to
     folly::SocketAddress boundAddress;
     boundAddress.setFromLocalAddress(fd);
     // listen
-    ASSERT_EQ(listen(fd, 16), 0);
+    ASSERT_EQ(netops::listen(fd, 16), 0);
 
     // Create a server socket
     AsyncServerSocket::UniquePtr serverSocket(
@@ -2094,7 +2097,7 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -2117,10 +2120,10 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
       acceptCallback.getEvents()->at(1).type, TestAcceptCallback::TYPE_ACCEPT);
   ASSERT_EQ(
       acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
-  int fd = acceptCallback.getEvents()->at(1).fd;
+  auto fd = acceptCallback.getEvents()->at(1).fd;
 
   // The accepted connection should already be in non-blocking mode
-  int flags = fcntl(fd, F_GETFL, 0);
+  int flags = fcntl(fd.toFd(), F_GETFL, 0);
   ASSERT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
 }
 
@@ -2140,7 +2143,7 @@ TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -2183,7 +2186,7 @@ TEST(AsyncSocketTest, CallbackInPrimaryEventBase) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -2235,7 +2238,7 @@ TEST(AsyncSocketTest, CallbackInSecondaryEventBase) {
   TestAcceptCallback acceptCallback;
   ScopedEventBaseThread cobThread("ioworker_test");
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const SocketAddress& /* addr */) {
         eventBase.runInEventBaseThread([&] {
           serverSocket->removeAcceptCallback(&acceptCallback, nullptr);
         });
@@ -2291,7 +2294,7 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
   folly::ScopedEventBaseThread cobThread("ioworker_test");
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         count++;
         eventBase.runInEventBaseThreadAndWait([&] {
           ASSERT_EQ(4 - count, serverSocket->getNumPendingMessagesInQueue());
@@ -3257,18 +3260,18 @@ TEST(AsyncSocketTest, SendMessageFlags) {
 }
 
 TEST(AsyncSocketTest, SendMessageAncillaryData) {
-  int fds[2];
-  EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, fds), 0);
+  NetworkSocket fds[2];
+  EXPECT_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fds), 0);
 
   // "Client" socket
-  int cfd = fds[0];
-  ASSERT_NE(cfd, -1);
+  auto cfd = fds[0];
+  ASSERT_NE(cfd, NetworkSocket());
 
   // "Server" socket
-  int sfd = fds[1];
-  ASSERT_NE(sfd, -1);
+  auto sfd = fds[1];
+  ASSERT_NE(sfd, NetworkSocket());
   SCOPE_EXIT {
-    close(sfd);
+    netops::close(sfd);
   };
 
   // Instantiate AsyncSocket object for the connected socket
@@ -3330,7 +3333,7 @@ TEST(AsyncSocketTest, SendMessageAncillaryData) {
   iov.iov_len = sizeof(r_data);
 
   // Receive data
-  ASSERT_NE(recvmsg(sfd, &msgh, 0), -1) << "recvmsg failed: " << errno;
+  ASSERT_NE(netops::recvmsg(sfd, &msgh, 0), -1) << "recvmsg failed: " << errno;
 
   // Validate the received message
   ASSERT_EQ(r_u.cmh.cmsg_len, CMSG_LEN(sizeof(int)));
@@ -3370,16 +3373,16 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   //
   // Feel free to remove this test if UDS supports MSG_ERRQUEUE in the future.
 
-  int fd[2];
-  EXPECT_EQ(socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
-  ASSERT_NE(fd[0], -1);
-  ASSERT_NE(fd[1], -1);
+  NetworkSocket fd[2];
+  EXPECT_EQ(netops::socketpair(AF_UNIX, SOCK_STREAM, 0, fd), 0);
+  ASSERT_NE(fd[0], NetworkSocket());
+  ASSERT_NE(fd[1], NetworkSocket());
   SCOPE_EXIT {
-    close(fd[1]);
+    netops::close(fd[1]);
   };
 
-  EXPECT_EQ(fcntl(fd[0], F_SETFL, O_NONBLOCK), 0);
-  EXPECT_EQ(fcntl(fd[1], F_SETFL, O_NONBLOCK), 0);
+  EXPECT_EQ(netops::set_socket_non_blocking(fd[0]), 0);
+  EXPECT_EQ(netops::set_socket_non_blocking(fd[1]), 0);
 
   EventBase evb;
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb, fd[0]);
@@ -3412,7 +3415,7 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   iov.iov_len = sizeof(recv_data);
 
   // there is no data, recvmsg should fail
-  EXPECT_EQ(recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
+  EXPECT_EQ(netops::recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
   EXPECT_TRUE(errno == EAGAIN || errno == EWOULDBLOCK);
 
   // provide some application data, error queue should be empty if it exists
@@ -3421,7 +3424,7 @@ TEST(AsyncSocketTest, UnixDomainSocketErrMessageCB) {
   WriteCallback wcb;
   socket->write(&wcb, &test_data, sizeof(test_data));
   recv_data = 0;
-  ASSERT_NE(recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
+  ASSERT_NE(netops::recvmsg(fd[1], &msgh, MSG_ERRQUEUE), -1);
   ASSERT_EQ(recv_data, test_data);
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 }
@@ -3446,7 +3449,7 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -3476,11 +3479,12 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
 
   // Verify if the connection is accepted and if the accepted socket has
   // setsockopt on the TOS for the same value that was on the client socket
-  int fd = acceptCallback.getEvents()->at(1).fd;
-  ASSERT_GE(fd, 0);
+  auto fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_NE(fd, NetworkSocket());
   int value;
   socklen_t valueLength = sizeof(value);
-  int rc = getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &value, &valueLength);
+  int rc =
+      netops::getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &value, &valueLength);
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 0x2c);
 }
@@ -3505,7 +3509,7 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   // Add a callback to accept one connection then stop the loop
   TestAcceptCallback acceptCallback;
   acceptCallback.setConnectionAcceptedFn(
-      [&](int /* fd */, const folly::SocketAddress& /* addr */) {
+      [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         serverSocket->removeAcceptCallback(&acceptCallback, &eventBase);
       });
   acceptCallback.setAcceptErrorFn([&](const std::exception& /* ex */) {
@@ -3535,11 +3539,11 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
 
   // Verify if the connection is accepted and if the accepted socket has
   // setsockopt on the TOS for the same value that was on the client socket
-  int fd = acceptCallback.getEvents()->at(1).fd;
-  ASSERT_GE(fd, 0);
+  auto fd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_NE(fd, NetworkSocket());
   int value;
   socklen_t valueLength = sizeof(value);
-  int rc = getsockopt(fd, IPPROTO_IP, IP_TOS, &value, &valueLength);
+  int rc = netops::getsockopt(fd, IPPROTO_IP, IP_TOS, &value, &valueLength);
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 0x2c);
 }

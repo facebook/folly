@@ -143,15 +143,14 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
  public:
   enum EventType { TYPE_START, TYPE_ACCEPT, TYPE_ERROR, TYPE_STOP };
   struct EventInfo {
-    EventInfo(int fd_, const folly::SocketAddress& addr)
+    EventInfo(folly::NetworkSocket fd_, const folly::SocketAddress& addr)
         : type(TYPE_ACCEPT), fd(fd_), address(addr), errorMsg() {}
     explicit EventInfo(const std::string& msg)
-        : type(TYPE_ERROR), fd(-1), address(), errorMsg(msg) {}
-    explicit EventInfo(EventType et)
-        : type(et), fd(-1), address(), errorMsg() {}
+        : type(TYPE_ERROR), fd(), address(), errorMsg(msg) {}
+    explicit EventInfo(EventType et) : type(et), fd(), address(), errorMsg() {}
 
     EventType type;
-    int fd; // valid for TYPE_ACCEPT
+    folly::NetworkSocket fd; // valid for TYPE_ACCEPT
     folly::SocketAddress address; // valid for TYPE_ACCEPT
     std::string errorMsg; // valid for TYPE_ERROR
   };
@@ -168,7 +167,8 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
   }
 
   void setConnectionAcceptedFn(
-      const std::function<void(int, const folly::SocketAddress&)>& fn) {
+      const std::function<void(NetworkSocket, const folly::SocketAddress&)>&
+          fn) {
     connectionAcceptedFn_ = fn;
   }
   void setAcceptErrorFn(const std::function<void(const std::exception&)>& fn) {
@@ -184,10 +184,10 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
   void connectionAccepted(
       int fd,
       const folly::SocketAddress& clientAddr) noexcept override {
-    events_.emplace_back(fd, clientAddr);
+    events_.emplace_back(NetworkSocket::fromFd(fd), clientAddr);
 
     if (connectionAcceptedFn_) {
-      connectionAcceptedFn_(fd, clientAddr);
+      connectionAcceptedFn_(NetworkSocket::fromFd(fd), clientAddr);
     }
   }
   void acceptError(const std::exception& ex) noexcept override {
@@ -213,7 +213,8 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
   }
 
  private:
-  std::function<void(int, const folly::SocketAddress&)> connectionAcceptedFn_;
+  std::function<void(NetworkSocket, const folly::SocketAddress&)>
+      connectionAcceptedFn_;
   std::function<void(const std::exception&)> acceptErrorFn_;
   std::function<void()> acceptStartedFn_;
   std::function<void()> acceptStoppedFn_;
