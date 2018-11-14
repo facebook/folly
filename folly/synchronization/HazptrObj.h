@@ -16,9 +16,11 @@
 #pragma once
 
 #include <folly/synchronization/Hazptr-fwd.h>
+#include <folly/synchronization/detail/HazptrUtils.h>
 
 #include <folly/CPortability.h>
 #include <folly/Portability.h>
+#include <folly/concurrency/CacheLocality.h>
 
 #include <glog/logging.h>
 
@@ -34,7 +36,48 @@ namespace folly {
 /**
  *  hazptr_obj
  *
- *  Object protected by hazard pointers.
+ *  Private base class for objects protected by hazard pointers.
+ *
+ *  Data members:
+ *  - next_: link to next object in private singly linked lists.
+ *  - reclaim_: reclamation function for this object.
+ *  - batch_tag_: A pointer to a batch (a linked list where the object
+ *    is to be pushed when retired). It can also be used as a tag (see
+ *    below). See details below.
+ *
+ *  Batches, Tags, Tagged Objects, and Untagged Objects:
+ *
+ *  - Batches: Batches (instances of hazptr_obj_batch) are sets of
+ *    retired hazptr_obj-s. Batches are used to keep related objects
+ *    together instead of being spread across thread local structures
+ *    and/or mixed with unrelated objects.
+ *
+ *  - Tags: A tag is a unique identifier used for fast identification
+ *    of related objects. Tags are implemented as addresses of
+ *    batches, with the lowest bit set (to save the space of separate
+ *    batch and tag data members and to differentiate from batches of
+ *    untagged objects.
+ *
+ *  - Tagged objects: Objects are tagged for fast identification. The
+ *    primary use case is for guaranteeing the destruction of all
+ *    objects with a certain tag (e.g., the destruction of all Key and
+ *    Value objects that were part of a Folly ConcurrentHashMap
+ *    instance). Member function set_batch_tag makes an object tagged.
+ *
+ *  - Untagged objects: Objects that do not need to be identified
+ *    separately from unrelated objects are not tagged (to keep tagged
+ *    objects uncluttered). Untagged objects may or may not be
+ *    associated with batches. An example of untagged objects
+ *    associated with batches are Segment-s of Folly UnboundedQueue.
+ *    Although such objects do not need to be tagged, keeping them in
+ *    batches helps avoid cases of a few missing objects delaying the
+ *    reclamation of large numbers of link-counted objects. Objects
+ *    are untagged either by default or after calling
+ *    set_batch_no_tag.
+ *
+ *  - Thread Safety: Member functions set_batch_tag and
+ *    set_batch_no_tag are not thread-safe. Thread safety must be
+ *    ensured by the calling thread.
  */
 template <template <typename> class Atom>
 class hazptr_obj {
@@ -50,20 +93,29 @@ class hazptr_obj {
   friend class hazptr_obj_list;
   template <template <typename> class>
   friend class hazptr_priv;
+  friend class hazptr_detail::linked_list<hazptr_obj<Atom>>;
+  friend class hazptr_detail::shared_head_only_list<hazptr_obj<Atom>, Atom>;
+  friend class hazptr_detail::shared_head_tail_list<hazptr_obj<Atom>, Atom>;
+
+  static constexpr uintptr_t kTagBit = 1u;
 
   ReclaimFnPtr reclaim_;
   hazptr_obj<Atom>* next_;
+  uintptr_t batch_tag_;
 
  public:
   /** Constructors */
   /* All constructors set next_ to this in order to catch misuse bugs
-      such as double retire. */
+     such as double retire. By default, objects are untagged and not
+     associated with a batch. */
 
-  hazptr_obj() noexcept : next_(this) {}
+  hazptr_obj() noexcept : next_(this), batch_tag_(0) {}
 
-  hazptr_obj(const hazptr_obj<Atom>&) noexcept : next_(this) {}
+  hazptr_obj(const hazptr_obj<Atom>& o) noexcept
+      : next_(this), batch_tag_(o.batch_tag_) {}
 
-  hazptr_obj(hazptr_obj<Atom>&&) noexcept : next_(this) {}
+  hazptr_obj(hazptr_obj<Atom>&& o) noexcept
+      : next_(this), batch_tag_(o.batch_tag_) {}
 
   /** Copy operator */
   hazptr_obj<Atom>& operator=(const hazptr_obj<Atom>&) noexcept {
@@ -75,12 +127,35 @@ class hazptr_obj {
     return *this;
   }
 
+  /** batch_tag */
+  uintptr_t batch_tag() {
+    return batch_tag_;
+  }
+
+  /** batch */
+  hazptr_obj_batch<Atom>* batch() {
+    uintptr_t btag = batch_tag_;
+    btag -= btag & kTagBit;
+    return reinterpret_cast<hazptr_obj_batch<Atom>*>(btag);
+  }
+
+  /** set_batch_tag: Set batch and make object tagged. */
+  void set_batch_tag(hazptr_obj_batch<Atom>* batch) {
+    batch_tag_ = reinterpret_cast<uintptr_t>(batch) + kTagBit;
+  }
+
+  /** set_batch_no_tag: Set batch and make object untagged.  */
+  void set_batch_no_tag(hazptr_obj_batch<Atom>* batch) {
+    batch_tag_ = reinterpret_cast<uintptr_t>(batch);
+  }
+
  private:
   friend class hazptr_domain<Atom>;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_refcounted;
+  friend class hazptr_obj_batch<Atom>;
   friend class hazptr_priv<Atom>;
 
   hazptr_obj<Atom>* next() const noexcept {
@@ -129,40 +204,40 @@ class hazptr_obj {
  */
 template <template <typename> class Atom>
 class hazptr_obj_list {
-  hazptr_obj<Atom>* head_;
-  hazptr_obj<Atom>* tail_;
+  using Obj = hazptr_obj<Atom>;
+  using List = hazptr_detail::linked_list<Obj>;
+
+  List l_;
   int count_;
 
  public:
-  hazptr_obj_list() noexcept : head_(nullptr), tail_(nullptr), count_(0) {}
+  hazptr_obj_list() noexcept : l_(nullptr, nullptr), count_(0) {}
 
-  explicit hazptr_obj_list(hazptr_obj<Atom>* obj) noexcept
-      : head_(obj), tail_(obj), count_(1) {}
-
-  explicit hazptr_obj_list(
-      hazptr_obj<Atom>* head,
-      hazptr_obj<Atom>* tail,
-      int count) noexcept
-      : head_(head), tail_(tail), count_(count) {}
-
-  hazptr_obj<Atom>* head() {
-    return head_;
+  explicit hazptr_obj_list(Obj* obj) noexcept : l_(obj, obj), count_(1) {
+    obj->set_next(nullptr);
   }
 
-  hazptr_obj<Atom>* tail() {
-    return tail_;
+  explicit hazptr_obj_list(Obj* head, Obj* tail, int count) noexcept
+      : l_(head, tail), count_(count) {}
+
+  Obj* head() const noexcept {
+    return l_.head();
   }
 
-  int count() {
+  Obj* tail() const noexcept {
+    return l_.tail();
+  }
+
+  int count() const noexcept {
     return count_;
   }
 
-  void push(hazptr_obj<Atom>* obj) {
-    obj->set_next(head_);
-    head_ = obj;
-    if (tail_ == nullptr) {
-      tail_ = obj;
-    }
+  bool empty() const noexcept {
+    return head() == nullptr;
+  }
+
+  void push(Obj* obj) {
+    l_.push(obj);
     ++count_;
   }
 
@@ -170,22 +245,211 @@ class hazptr_obj_list {
     if (l.count() == 0) {
       return;
     }
-    if (count() == 0) {
-      head_ = l.head();
-    } else {
-      tail_->set_next(l.head());
-    }
-    tail_ = l.tail();
+    l_.splice(l.l_);
     count_ += l.count();
     l.clear();
   }
 
   void clear() {
-    head_ = nullptr;
-    tail_ = nullptr;
+    l_.clear();
     count_ = 0;
   }
 }; // hazptr_obj_list
+
+/**
+ *  hazptr_obj_batch
+ *
+ *  List of retired objects. For objects to be retred to a batch,
+ *  either of the hazptr_obj member functions set_batch_tag or
+ *  set_batch_no_tag needs to be called before the object is retired.
+ *
+ *  See description of hazptr_obj for notes on batches, tags, and
+ *  tageed and untagged objects.
+ */
+template <template <typename> class Atom>
+class hazptr_obj_batch {
+  using Obj = hazptr_obj<Atom>;
+  using List = hazptr_detail::linked_list<Obj>;
+  using SharedList = hazptr_detail::shared_head_tail_list<Obj, Atom>;
+
+  static constexpr int kThreshold = 20;
+
+  SharedList l_;
+  Atom<int> count_;
+  bool active_;
+
+ public:
+  /** Constructor */
+  hazptr_obj_batch() noexcept : l_(), count_(0), active_(true) {}
+
+  /** Not copyable or moveable */
+  hazptr_obj_batch(const hazptr_obj_batch& o) = delete;
+  hazptr_obj_batch(hazptr_obj_batch&& o) = delete;
+  hazptr_obj_batch& operator=(const hazptr_obj_batch&& o) = delete;
+  hazptr_obj_batch& operator=(hazptr_obj_batch&& o) = delete;
+
+  /** Destructor */
+  ~hazptr_obj_batch() {
+    DCHECK(!active_);
+    DCHECK(l_.empty());
+  }
+
+  /** shutdown */
+  void shutdown_and_reclaim() {
+    DCHECK(active_);
+    active_ = false;
+    if (!l_.empty()) {
+      List l = l_.pop_all();
+      clear_count();
+      Obj* obj = l.head();
+      reclaim_list(obj);
+    }
+  }
+
+ private:
+  template <typename, template <typename> class, typename>
+  friend class hazptr_obj_base;
+  template <typename, template <typename> class, typename>
+  friend class hazptr_obj_base_linked;
+
+  int count() const noexcept {
+    return count_.load(std::memory_order_acquire);
+  }
+
+  void clear_count() noexcept {
+    count_.store(0, std::memory_order_release);
+  }
+
+  void inc_count() noexcept {
+    count_.fetch_add(1, std::memory_order_release);
+  }
+
+  bool cas_count(int& expected, int newval) noexcept {
+    return count_.compare_exchange_weak(
+        expected, newval, std::memory_order_acq_rel, std::memory_order_acquire);
+  }
+
+  /** push_obj */
+  void push_obj(
+      Obj* obj,
+      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
+    if (active_) {
+      l_.push(obj);
+      inc_count();
+      check_threshold_push(domain);
+    } else {
+      obj->set_next(nullptr);
+      reclaim_list(obj);
+    }
+  }
+
+  /** reclaim_list */
+  void reclaim_list(hazptr_obj<Atom>* obj) {
+    while (obj) {
+      hazptr_obj_list<Atom> children;
+      while (obj) {
+        Obj* next = obj->next();
+        (*(obj->reclaim()))(obj, children);
+        obj = next;
+      }
+      obj = children.head();
+    }
+  }
+
+  /** check_threshold_push */
+  void check_threshold_push(hazptr_domain<Atom>& domain) {
+    auto c = count();
+    while (c >= kThreshold) {
+      if (cas_count(c, 0)) {
+        List ll = l_.pop_all();
+        if (kIsDebug) {
+          Obj* p = ll.head();
+          for (int i = 1; p; ++i, p = p->next()) {
+            DCHECK_EQ(reinterpret_cast<uintptr_t>(p) & 7, 0) << p << " " << i;
+          }
+        }
+        hazptr_obj_list<Atom> l(ll.head(), ll.tail(), c);
+        hazptr_domain_push_list<Atom>(l, domain);
+        return;
+      }
+    }
+  }
+}; // hazptr_obj_batch
+
+/**
+ *  hazptr_obj_retired_list
+ *
+ *  Used for maintaining lists of retired objects in domain
+ *  structure. Locked operations are used for lists of tagged
+ *  objects. Unlocked operations are used for the untagged list.
+ */
+/** hazptr_obj_retired_list */
+template <template <typename> class Atom>
+class hazptr_obj_retired_list {
+  using Obj = hazptr_obj<Atom>;
+  using List = hazptr_detail::linked_list<Obj>;
+  using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
+
+  alignas(hardware_destructive_interference_size) RetiredList retired_;
+  Atom<int> count_;
+
+ public:
+  static constexpr bool kAlsoLock = RetiredList::kAlsoLock;
+  static constexpr bool kDontLock = RetiredList::kDontLock;
+  static constexpr bool kMayBeLocked = RetiredList::kMayBeLocked;
+  static constexpr bool kMayNotBeLocked = RetiredList::kMayNotBeLocked;
+
+ public:
+  hazptr_obj_retired_list() noexcept : count_(0) {}
+
+  void push(hazptr_obj_list<Atom>& l, bool may_be_locked) noexcept {
+    List ll(l.head(), l.tail());
+    retired_.push(ll, may_be_locked);
+    add_count(l.count());
+  }
+
+  void push_unlock(hazptr_obj_list<Atom>& l) noexcept {
+    List ll(l.head(), l.tail());
+    retired_.push_unlock(ll);
+    add_count(l.count());
+  }
+
+  int count() const noexcept {
+    return count_.load(std::memory_order_acquire);
+  }
+
+  bool empty() {
+    return retired_.empty();
+  }
+
+  bool check_threshold_try_zero_count(int thresh) {
+    auto oldval = count();
+    while (oldval >= thresh) {
+      if (cas_count(oldval, 0)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  Obj* pop_all(bool lock) {
+    return retired_.pop_all(lock);
+  }
+
+  bool check_lock() {
+    return retired_.check_lock();
+  }
+
+ private:
+  void add_count(int val) {
+    count_.fetch_add(val, std::memory_order_release);
+  }
+
+  bool cas_count(int& expected, int newval) {
+    return count_.compare_exchange_weak(
+        expected, newval, std::memory_order_acq_rel, std::memory_order_acquire);
+  }
+}; // hazptr_obj_retired_list
 
 /**
  *  hazptr_deleter
@@ -231,7 +495,12 @@ class hazptr_obj_base : public hazptr_obj<Atom>, public hazptr_deleter<T, D> {
       hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
     pre_retire(std::move(deleter));
     set_reclaim();
-    this->push_to_retired(domain); // defined in hazptr_obj
+    auto batch = this->batch();
+    if (batch) {
+      batch->push_obj(this, domain);
+    } else {
+      this->push_to_retired(domain); // defined in hazptr_obj
+    }
   }
 
   void retire(hazptr_domain<Atom>& domain) {
