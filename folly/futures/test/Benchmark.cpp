@@ -363,8 +363,8 @@ void complexBenchmark() {
   collect(fsGen<T>());
   collectAll(fsGen<T>());
   collectAny(fsGen<T>());
-  futures::map(fsGen<T>(), [](const T& t) { return t; });
-  futures::map(fsGen<T>(), [](const T& t) { return makeFuture(T(t)); });
+  futures::mapValue(fsGen<T>(), [](const T& t) { return t; });
+  futures::mapValue(fsGen<T>(), [](const T& t) { return makeFuture(T(t)); });
 }
 
 BENCHMARK_DRAW_LINE();

@@ -55,9 +55,25 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
+    class Tag =
+        std::enable_if_t<is_invocable<F, typename ItT::value_type&&>::value>,
     class Result = typename decltype(
-        std::declval<ItT>().then(std::declval<F>()))::value_type>
-std::vector<Future<Result>> map(It first, It last, F func);
+        std::declval<ItT>().thenValue(std::declval<F>()))::value_type>
+std::vector<Future<Result>> mapValue(It first, It last, F func);
+
+/**
+ * Set func as the callback for each input Future and return a vector of
+ * Futures containing the results in the input order.
+ */
+template <
+    class It,
+    class F,
+    class ItT = typename std::iterator_traits<It>::value_type,
+    class Tag =
+        std::enable_if_t<!is_invocable<F, typename ItT::value_type&&>::value>,
+    class Result = typename decltype(
+        std::declval<ItT>().thenTry(std::declval<F>()))::value_type>
+std::vector<Future<Result>> mapTry(It first, It last, F func, int = 0);
 
 /**
  * Set func as the callback for each input Future and return a vector of
@@ -68,22 +84,56 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Result = typename decltype(std::move(std::declval<ItT>())
-                                         .via(std::declval<Executor*>())
-                                         .then(std::declval<F>()))::value_type>
-std::vector<Future<Result>> map(Executor& exec, It first, It last, F func);
+    class Tag =
+        std::enable_if_t<is_invocable<F, typename ItT::value_type&&>::value>,
+    class Result =
+        typename decltype(std::move(std::declval<ItT>())
+                              .via(std::declval<Executor*>())
+                              .thenValue(std::declval<F>()))::value_type>
+std::vector<Future<Result>> mapValue(Executor& exec, It first, It last, F func);
+
+/**
+ * Set func as the callback for each input Future and return a vector of
+ * Futures containing the results in the input order and completing on
+ * exec.
+ */
+template <
+    class It,
+    class F,
+    class ItT = typename std::iterator_traits<It>::value_type,
+    class Tag =
+        std::enable_if_t<!is_invocable<F, typename ItT::value_type&&>::value>,
+    class Result =
+        typename decltype(std::move(std::declval<ItT>())
+                              .via(std::declval<Executor*>())
+                              .thenTry(std::declval<F>()))::value_type>
+std::vector<Future<Result>>
+mapTry(Executor& exec, It first, It last, F func, int = 0);
 
 // Sugar for the most common case
 template <class Collection, class F>
-auto map(Collection&& c, F&& func) -> decltype(map(c.begin(), c.end(), func)) {
-  return map(c.begin(), c.end(), std::forward<F>(func));
+auto mapValue(Collection&& c, F&& func)
+    -> decltype(mapValue(c.begin(), c.end(), func)) {
+  return mapValue(c.begin(), c.end(), std::forward<F>(func));
+}
+
+template <class Collection, class F>
+auto mapTry(Collection&& c, F&& func)
+    -> decltype(mapTry(c.begin(), c.end(), func)) {
+  return mapTry(c.begin(), c.end(), std::forward<F>(func));
 }
 
 // Sugar for the most common case
 template <class Collection, class F>
-auto map(Executor& exec, Collection&& c, F&& func)
-    -> decltype(map(exec, c.begin(), c.end(), func)) {
-  return map(exec, c.begin(), c.end(), std::forward<F>(func));
+auto mapValue(Executor& exec, Collection&& c, F&& func)
+    -> decltype(mapValue(exec, c.begin(), c.end(), func)) {
+  return mapValue(exec, c.begin(), c.end(), std::forward<F>(func));
+}
+
+template <class Collection, class F>
+auto mapTry(Executor& exec, Collection&& c, F&& func)
+    -> decltype(mapTry(exec, c.begin(), c.end(), func)) {
+  return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
 }
 
 } // namespace futures

@@ -2354,28 +2354,44 @@ Future<Unit> times(const int n, F&& thunk) {
 }
 
 namespace futures {
-template <class It, class F, class ItT, class Result>
-std::vector<Future<Result>> map(It first, It last, F func) {
+template <class It, class F, class ItT, class Tag, class Result>
+std::vector<Future<Result>> mapValue(It first, It last, F func) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-    results.push_back(std::move(*it).then(func));
-    FOLLY_POP_WARNING
+    results.push_back(std::move(*it).thenValue(func));
   }
   return results;
 }
 
-template <class It, class F, class ItT, class Result>
-std::vector<Future<Result>> map(Executor& exec, It first, It last, F func) {
+template <class It, class F, class ItT, class Tag, class Result>
+std::vector<Future<Result>> mapTry(It first, It last, F func, int) {
   std::vector<Future<Result>> results;
   results.reserve(std::distance(first, last));
   for (auto it = first; it != last; it++) {
-    FOLLY_PUSH_WARNING
-    FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-    results.push_back(std::move(*it).via(&exec).then(func));
-    FOLLY_POP_WARNING
+    results.push_back(std::move(*it).thenTry(func));
+  }
+  return results;
+}
+
+template <class It, class F, class ItT, class Tag, class Result>
+std::vector<Future<Result>>
+mapValue(Executor& exec, It first, It last, F func) {
+  std::vector<Future<Result>> results;
+  results.reserve(std::distance(first, last));
+  for (auto it = first; it != last; it++) {
+    results.push_back(std::move(*it).via(&exec).thenValue(func));
+  }
+  return results;
+}
+
+template <class It, class F, class ItT, class Tag, class Result>
+std::vector<Future<Result>>
+mapTry(Executor& exec, It first, It last, F func, int) {
+  std::vector<Future<Result>> results;
+  results.reserve(std::distance(first, last));
+  for (auto it = first; it != last; it++) {
+    results.push_back(std::move(*it).via(&exec).thenTry(func));
   }
   return results;
 }
