@@ -496,8 +496,11 @@ class Range {
   // At the moment the set of implicit target types consists of just
   // std::string_view (when it is available).
 #if FOLLY_HAS_STRING_VIEW
-  using StringViewType =
-      std::basic_string_view<std::remove_const_t<value_type>>;
+  struct NotStringView {};
+  using StringViewType = std::conditional_t<
+      std::is_pod<std::remove_const_t<value_type>>::value,
+      std::basic_string_view<std::remove_const_t<value_type>>,
+      NotStringView>;
 
   template <typename Target>
   using IsConstructibleViaStringView = StrictConjunction<
