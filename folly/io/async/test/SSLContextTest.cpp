@@ -137,4 +137,31 @@ TEST_F(SSLContextTest, TestLoadCertKey) {
     tmpCtx.loadCertKeyPairFromFiles(certPath, keyPath);
   }
 }
+
+TEST_F(SSLContextTest, TestLoadCertificateChain) {
+  constexpr auto kCertChainPath = "folly/io/async/test/certs/client_chain.pem";
+  std::unique_ptr<SSLContext> ctx;
+  STACK_OF(X509) * stack;
+  SSL_CTX* sctx;
+
+  std::string contents;
+  EXPECT_TRUE(folly::readFile(kCertChainPath, contents));
+
+  ctx = std::make_unique<SSLContext>();
+  ctx->loadCertificate(kCertChainPath, "PEM");
+  stack = nullptr;
+  sctx = ctx->getSSLCtx();
+  SSL_CTX_get0_chain_certs(sctx, &stack);
+  ASSERT_NE(stack, nullptr);
+  EXPECT_EQ(1, sk_X509_num(stack));
+
+  ctx = std::make_unique<SSLContext>();
+  ctx->loadCertificateFromBufferPEM(contents);
+  stack = nullptr;
+  sctx = ctx->getSSLCtx();
+  SSL_CTX_get0_chain_certs(sctx, &stack);
+  ASSERT_NE(stack, nullptr);
+  EXPECT_EQ(1, sk_X509_num(stack));
+}
+
 } // namespace folly
