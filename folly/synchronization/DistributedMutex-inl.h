@@ -20,6 +20,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Utility.h>
+#include <folly/chrono/Hardware.h>
 #include <folly/detail/Futex.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/Asm.h>
@@ -188,7 +189,7 @@ class Waiter {
  * https://c9x.me/x86/html/file_module_x86_id_278.html
  */
 inline std::chrono::nanoseconds time() {
-  return std::chrono::nanoseconds{asm_rdtsc()};
+  return std::chrono::nanoseconds{hardware_timestamp()};
 }
 
 /**

@@ -18,30 +18,26 @@
 
 #include <folly/Portability.h>
 
+#include <chrono>
 #include <cstdint>
 
-#ifdef _MSC_VER
-#include <intrin.h>
+#if _MSC_VER
+extern "C" std::uint64_t __rdtsc();
+#pragma intrinsic(__rdtsc)
 #endif
 
 namespace folly {
-inline void asm_volatile_memory() {
-#if defined(__clang__) || defined(__GNUC__)
-  asm volatile("" : : : "memory");
-#elif defined(_MSC_VER)
-  ::_ReadWriteBarrier();
+
+inline std::uint64_t hardware_timestamp() {
+#if _MSC_VER
+  return __rdtsc();
+#elif __GNUC__ && (__i386__ || FOLLY_X64)
+  return __builtin_ia32_rdtsc();
+#else
+  // use steady_clock::now() as an approximation for the timestamp counter on
+  // non-x86 systems
+  return std::chrono::steady_clock::now().time_since_epoch().count();
 #endif
 }
 
-inline void asm_volatile_pause() {
-#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
-  ::_mm_pause();
-#elif defined(__i386__) || FOLLY_X64
-  asm volatile("pause");
-#elif FOLLY_AARCH64 || defined(__arm__)
-  asm volatile("yield");
-#elif FOLLY_PPC64
-  asm volatile("or 27,27,27");
-#endif
-}
 } // namespace folly
