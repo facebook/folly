@@ -21,7 +21,7 @@
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
-#include <folly/container/HeterogeneousAccess-pre.h>
+#include <folly/container/HeterogeneousAccess-fwd.h>
 #include <folly/hash/Hash.h>
 
 namespace folly {
