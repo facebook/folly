@@ -95,7 +95,11 @@ void* mmap(void* addr, size_t length, int prot, int flags, int fd, off_t off) {
     return MAP_FAILED;
   }
   // No private copy on write.
-  if ((flags & MAP_PRIVATE) == MAP_PRIVATE && fd != -1) {
+  // If the map isn't writable, we can let it go through as
+  // whether changes to the underlying file are reflected in the map
+  // is defined to be unspecified by the standard.
+  if ((flags & MAP_PRIVATE) == MAP_PRIVATE &&
+      (prot & PROT_WRITE) == PROT_WRITE && fd != -1) {
     return MAP_FAILED;
   }
   // Map isn't anon, must be file backed.
