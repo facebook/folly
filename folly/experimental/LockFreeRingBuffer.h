@@ -104,7 +104,8 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Perform a single write of an object of type T.
   /// Writes can block iff a previous writer has not yet completed a write
   /// for the same slot (before the most recent wrap-around).
-  void write(T& value) noexcept {
+  template <typename V = T>
+  void write(V& value) noexcept {
     uint64_t ticket = ticket_.fetch_add(1);
     slots_[idx(ticket)].write(turn(ticket), value);
   }
@@ -113,7 +114,8 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Writes can block iff a previous writer has not yet completed a write
   /// for the same slot (before the most recent wrap-around).
   /// Returns a Cursor pointing to the just-written T.
-  Cursor writeAndGetCursor(T& value) noexcept {
+  template <typename V = T>
+  Cursor writeAndGetCursor(V& value) noexcept {
     uint64_t ticket = ticket_.fetch_add(1);
     slots_[idx(ticket)].write(turn(ticket), value);
     return Cursor(ticket);
@@ -123,7 +125,8 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Returns true if the read succeeded, false otherwise. If the return
   /// value is false, dest is to be considered partially read and in an
   /// inconsistent state. Readers are advised to discard it.
-  bool tryRead(T& dest, const Cursor& cursor) noexcept {
+  template <typename V = T>
+  bool tryRead(V& dest, const Cursor& cursor) noexcept {
     return slots_[idx(cursor.ticket)].tryRead(dest, turn(cursor.ticket));
   }
 
@@ -131,7 +134,8 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Returns true if the read succeeded, false otherwise. If the return
   /// value is false, dest is to be considered partially read and in an
   /// inconsistent state. Readers are advised to discard it.
-  bool waitAndTryRead(T& dest, const Cursor& cursor) noexcept {
+  template <typename V = T>
+  bool waitAndTryRead(V& dest, const Cursor& cursor) noexcept {
     return slots_[idx(cursor.ticket)].waitAndTryRead(dest, turn(cursor.ticket));
   }
 
@@ -180,10 +184,20 @@ class LockFreeRingBuffer : boost::noncopyable {
 namespace detail {
 template <typename T, template <typename> class Atom>
 class RingBufferSlot {
+  void copy(T& dest, T& src) {
+    memcpy(&dest, &src, sizeof(T));
+  }
+
+  template <typename V>
+  void copy(V& dest, T& src) {
+    dest = src;
+  }
+
  public:
   explicit RingBufferSlot() noexcept : sequencer_(), data() {}
 
-  void write(const uint32_t turn, T& value) noexcept {
+  template <typename V = T>
+  void write(const uint32_t turn, V& value) noexcept {
     Atom<uint32_t> cutoff(0);
     sequencer_.waitForTurn(turn * 2, cutoff, false);
 
@@ -195,25 +209,27 @@ class RingBufferSlot {
     // At (turn + 1) * 2
   }
 
-  bool waitAndTryRead(T& dest, uint32_t turn) noexcept {
+  template <typename V = T>
+  bool waitAndTryRead(V& dest, uint32_t turn) noexcept {
     uint32_t desired_turn = (turn + 1) * 2;
     Atom<uint32_t> cutoff(0);
     if (sequencer_.tryWaitForTurn(desired_turn, cutoff, false) !=
         TurnSequencer<Atom>::TryWaitResult::SUCCESS) {
       return false;
     }
-    memcpy(&dest, &data, sizeof(T));
+    copy(dest, data);
 
     // if it's still the same turn, we read the value successfully
     return sequencer_.isTurn(desired_turn);
   }
 
-  bool tryRead(T& dest, uint32_t turn) noexcept {
+  template <typename V = T>
+  bool tryRead(V& dest, uint32_t turn) noexcept {
     // The write that started at turn 0 ended at turn 2
     if (!sequencer_.isTurn((turn + 1) * 2)) {
       return false;
     }
-    memcpy(&dest, &data, sizeof(T));
+    copy(dest, data);
 
     // if it's still the same turn, we read the value successfully
     return sequencer_.isTurn((turn + 1) * 2);

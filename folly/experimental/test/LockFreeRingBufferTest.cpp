@@ -253,4 +253,46 @@ TEST(LockFreeRingBuffer, moveBackwardsCanFail) {
   EXPECT_FALSE(cursor.moveBackward()); // moving back does nothing
 }
 
+TEST(LockFreeRingBuffer, writeReadDifferentType) {
+  struct FixedBuffer {
+    char data_[1024];
+
+    FixedBuffer() noexcept {
+      data_[0] = '\0';
+    }
+
+    FixedBuffer& operator=(std::string&& data) {
+      strncpy(data_, data.c_str(), sizeof(data_) - 1);
+
+      return (*this);
+    }
+  };
+
+  struct StringBuffer {
+    char data_[1024];
+
+    StringBuffer() noexcept {
+      data_[0] = '\0';
+    }
+
+    StringBuffer& operator=(FixedBuffer& data) {
+      strncpy(data_, data.data_, sizeof(data_) - 1);
+
+      return (*this);
+    }
+  };
+
+  std::string str("Test");
+
+  const int capacity = 3;
+  LockFreeRingBuffer<FixedBuffer> rb(capacity);
+  rb.write(str);
+
+  auto cursor = rb.currentTail();
+  StringBuffer result;
+  EXPECT_TRUE(rb.tryRead(result, cursor));
+
+  EXPECT_EQ(str, result.data_);
+}
+
 } // namespace folly
