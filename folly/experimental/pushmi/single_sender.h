@@ -144,7 +144,9 @@ class single_sender<SF, EXF> {
   constexpr single_sender(SF sf, EXF exf)
       : sf_(std::move(sf)), exf_(std::move(exf)) {}
 
-  auto executor() {
+  // TODO(T36778706): Workaround issues with `auto` as a method return type in
+  // modular builds in older versions of clang.
+  invoke_result_t<EXF&> executor() {
     return exf_();
   }
   PUSHMI_TEMPLATE(class Out)
