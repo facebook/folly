@@ -17,8 +17,11 @@
 
 #include <vector>
 
+#include <folly/experimental/pushmi/concepts.h>
 #include <folly/experimental/pushmi/time_single_sender.h>
 #include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/detail/opt.h>
+#include <folly/experimental/pushmi/o/extension_operators.h>
 
 namespace folly {
 namespace pushmi {

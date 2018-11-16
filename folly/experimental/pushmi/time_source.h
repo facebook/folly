@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/experimental/pushmi/detail/opt.h>
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/time_single_sender.h>
 
