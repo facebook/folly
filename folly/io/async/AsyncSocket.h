@@ -1154,9 +1154,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   AsyncSocket::WriteResult
   sendSocketMessage(NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
-  ssize_t tfoSendMsg(int fd, struct msghdr* msg, int msg_flags) {
-    return tfoSendMsg(NetworkSocket::fromFd(fd), msg, msg_flags);
-  }
   virtual ssize_t
   tfoSendMsg(NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
