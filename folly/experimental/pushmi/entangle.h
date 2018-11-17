@@ -15,6 +15,10 @@
  */
 #pragma once
 
+#include <atomic>
+#include <memory>
+#include <mutex>
+
 #include <folly/experimental/pushmi/forwards.h>
 
 namespace folly {

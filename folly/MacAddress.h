@@ -18,6 +18,7 @@
 
 #include <iosfwd>
 
+#include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/lang/Bits.h>
 

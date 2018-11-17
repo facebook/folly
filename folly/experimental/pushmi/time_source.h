@@ -19,6 +19,7 @@
 #include <folly/experimental/pushmi/executor.h>
 #include <folly/experimental/pushmi/time_single_sender.h>
 
+#include <algorithm>
 #include <queue>
 
 //
