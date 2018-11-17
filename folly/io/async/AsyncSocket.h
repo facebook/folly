@@ -1008,9 +1008,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   class IoHandler : public EventHandler {
    public:
     IoHandler(AsyncSocket* socket, EventBase* eventBase)
-        : EventHandler(eventBase, -1), socket_(socket) {}
-    IoHandler(AsyncSocket* socket, EventBase* eventBase, int fd)
-        : IoHandler(socket, eventBase, NetworkSocket::fromFd(fd)) {}
+        : EventHandler(eventBase, NetworkSocket()), socket_(socket) {}
     IoHandler(AsyncSocket* socket, EventBase* eventBase, NetworkSocket fd)
         : EventHandler(eventBase, fd), socket_(socket) {}
 
