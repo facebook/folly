@@ -1148,10 +1148,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param msg_flags Flags to pass to sendmsg
    */
   AsyncSocket::WriteResult
-  sendSocketMessage(int fd, struct msghdr* msg, int msg_flags) {
-    return sendSocketMessage(NetworkSocket::fromFd(fd), msg, msg_flags);
-  }
-  AsyncSocket::WriteResult
   sendSocketMessage(NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
   virtual ssize_t
