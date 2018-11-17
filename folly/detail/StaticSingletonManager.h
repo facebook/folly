@@ -71,14 +71,18 @@ FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal(F&& creator) {
   return StaticSingletonManager::create<T, Tag>(static_cast<F&&>(creator));
 }
 
+// TODO(T36779215): A bug in the gcc-5-glibc-2.23 llvm-fb/clang doesn't like
+// passing this as a lambda (e.g. P60328775).
+namespace {
+template <typename T>
+T* singleton_global_cons() {
+  return new T();
+}
+} // namespace
+
 template <typename T, typename Tag>
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal() {
-  struct construct {
-    T* operator()() const {
-      return new T();
-    }
-  };
-  return createGlobal<T, Tag>(construct{});
+  return createGlobal<T, Tag>(&singleton_global_cons<T>);
 }
 
 } // namespace detail
