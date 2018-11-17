@@ -124,7 +124,7 @@ class OpenSSLUtils {
   static int getBioShouldRetryWrite(int ret);
   static void setBioAppData(BIO* b, void* ptr);
   static void* getBioAppData(BIO* b);
-  static int getBioFd(BIO* b, int* fd);
+  static NetworkSocket getBioFd(BIO* b);
   static void setBioFd(BIO* b, NetworkSocket fd, int flags);
   static void setBioFd(BIO* b, int fd, int flags) {
     setBioFd(b, NetworkSocket::fromFd(fd), flags);

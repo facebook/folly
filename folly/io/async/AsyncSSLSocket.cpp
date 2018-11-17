@@ -1737,8 +1737,8 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
     tsslSock->getSendMsgParamsCB()->getAncillaryData(flags, msg.msg_control);
   }
 
-  auto result = tsslSock->sendSocketMessage(
-      OpenSSLUtils::getBioFd(b, nullptr), &msg, msg_flags);
+  auto result =
+      tsslSock->sendSocketMessage(OpenSSLUtils::getBioFd(b), &msg, msg_flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {
@@ -1771,7 +1771,7 @@ int AsyncSSLSocket::bioRead(BIO* b, char* out, int outl) {
     sslSock->preReceivedData_ = queue.move();
     return static_cast<int>(len);
   } else {
-    auto result = int(recv(OpenSSLUtils::getBioFd(b, nullptr), out, outl, 0));
+    auto result = int(netops::recv(OpenSSLUtils::getBioFd(b), out, outl, 0));
     if (result <= 0 && OpenSSLUtils::getBioShouldRetryWrite(result)) {
       BIO_set_retry_read(b);
     }

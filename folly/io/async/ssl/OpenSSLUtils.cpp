@@ -289,15 +289,12 @@ void* OpenSSLUtils::getBioAppData(BIO* b) {
 #endif
 }
 
-int OpenSSLUtils::getBioFd(BIO* b, int* fd) {
+NetworkSocket OpenSSLUtils::getBioFd(BIO* b) {
+  auto ret = BIO_get_fd(b, nullptr);
 #ifdef _WIN32
-  int ret = portability::sockets::socket_to_fd((SOCKET)BIO_get_fd(b, fd));
-  if (fd != nullptr) {
-    *fd = ret;
-  }
-  return ret;
+  return NetworkSocket((SOCKET)ret);
 #else
-  return BIO_get_fd(b, fd);
+  return NetworkSocket(ret);
 #endif
 }
 
