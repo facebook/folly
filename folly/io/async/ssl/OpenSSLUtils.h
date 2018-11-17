@@ -126,9 +126,6 @@ class OpenSSLUtils {
   static void* getBioAppData(BIO* b);
   static NetworkSocket getBioFd(BIO* b);
   static void setBioFd(BIO* b, NetworkSocket fd, int flags);
-  static void setBioFd(BIO* b, int fd, int flags) {
-    setBioFd(b, NetworkSocket::fromFd(fd), flags);
-  }
 };
 
 } // namespace ssl
