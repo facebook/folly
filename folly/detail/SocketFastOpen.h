@@ -35,24 +35,15 @@ namespace detail {
  * send with TFO data.
  */
 ssize_t tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags);
-inline ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
-  return tfo_sendmsg(NetworkSocket::fromFd(sockfd), msg, flags);
-}
 
 /**
  * Enable TFO on a listening socket.
  */
 int tfo_enable(NetworkSocket sockfd, size_t max_queue_size);
-inline int tfo_enable(int sockfd, size_t max_queue_size) {
-  return tfo_enable(NetworkSocket::fromFd(sockfd), max_queue_size);
-}
 
 /**
  * Check if TFO succeeded in being used.
  */
 bool tfo_succeeded(NetworkSocket sockfd);
-inline bool tfo_succeeded(int sockfd) {
-  return tfo_succeeded(NetworkSocket::fromFd(sockfd));
-}
 } // namespace detail
 } // namespace folly
