@@ -48,11 +48,8 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/detail/Sleeper.h>
-
-#if !FOLLY_X64 && !FOLLY_AARCH64 && !FOLLY_PPC64
-#error "PicoSpinLock.h is currently x64, aarch64 and ppc64 only."
-#endif
 
 namespace folly {
 
@@ -134,93 +131,11 @@ struct PicoSpinLock {
    * got it.
    */
   bool try_lock() const {
-    bool ret = false;
-
-#if defined(FOLLY_SANITIZE_THREAD)
-    // TODO: Might be able to fully move to std::atomic when gcc emits lock btr:
-    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=49244
-    ret =
-        !(reinterpret_cast<std::atomic<UIntType>*>(&lock_)->fetch_or(
-              kLockBitMask_, std::memory_order_acquire) &
-          kLockBitMask_);
-#elif _MSC_VER
-    switch (sizeof(IntType)) {
-      case 2:
-        // There is no _interlockedbittestandset16 for some reason :(
-        ret = _InterlockedOr16((volatile short*)&lock_, (short)kLockBitMask_) &
-            kLockBitMask_;
-        break;
-      case 4:
-        ret = _interlockedbittestandset((volatile long*)&lock_, Bit);
-        break;
-      case 8:
-        ret = _interlockedbittestandset64((volatile long long*)&lock_, Bit);
-        break;
-    }
-#elif FOLLY_X64
-#define FB_DOBTS(size)                                 \
-  asm volatile("lock; bts" #size " %1, (%2); setnc %0" \
-               : "=r"(ret)                             \
-               : "i"(Bit), "r"(&lock_)                 \
-               : "memory", "flags")
-
-    switch (sizeof(IntType)) {
-      case 2:
-        FB_DOBTS(w);
-        break;
-      case 4:
-        FB_DOBTS(l);
-        break;
-      case 8:
-        FB_DOBTS(q);
-        break;
-    }
-
-#undef FB_DOBTS
-#elif FOLLY_AARCH64
-    using SIntType = typename std::make_signed<UIntType>::type;
-    auto const lock = reinterpret_cast<SIntType*>(&lock_);
-    auto const mask = static_cast<SIntType>(kLockBitMask_);
-    return !(mask & __atomic_fetch_or(lock, mask, __ATOMIC_ACQUIRE));
-#elif FOLLY_PPC64
-#define FB_DOBTS(size)                        \
-  asm volatile(                               \
-      "\teieio\n"                             \
-      "\tl" #size                             \
-      "arx 14,0,%[lockPtr]\n"                 \
-      "\tli 15,1\n"                           \
-      "\tsldi 15,15,%[bit]\n"                 \
-      "\tand. 16,15,14\n"                     \
-      "\tbne 0f\n"                            \
-      "\tor 14,14,15\n"                       \
-      "\tst" #size                            \
-      "cx. 14,0,%[lockPtr]\n"                 \
-      "\tbne 0f\n"                            \
-      "\tori %[output],%[output],1\n"         \
-      "\tisync\n"                             \
-      "0:\n"                                  \
-      : [output] "+r"(ret)                    \
-      : [lockPtr] "r"(&lock_), [bit] "i"(Bit) \
-      : "cr0", "memory", "r14", "r15", "r16")
-
-    switch (sizeof(IntType)) {
-      case 2:
-        FB_DOBTS(h);
-        break;
-      case 4:
-        FB_DOBTS(w);
-        break;
-      case 8:
-        FB_DOBTS(d);
-        break;
-    }
-
-#undef FB_DOBTS
-#else
-#error "x86 aarch64 ppc64 only"
-#endif
-
-    return ret;
+    auto previous = atomic_fetch_set(
+        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
+        Bit,
+        std::memory_order_acquire);
+    return !previous;
   }
 
   /*
@@ -238,79 +153,11 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
-#ifdef _MSC_VER
-    switch (sizeof(IntType)) {
-      case 2:
-        // There is no _interlockedbittestandreset16 for some reason :(
-        _InterlockedAnd16((volatile short*)&lock_, (short)~kLockBitMask_);
-        break;
-      case 4:
-        _interlockedbittestandreset((volatile long*)&lock_, Bit);
-        break;
-      case 8:
-        _interlockedbittestandreset64((volatile long long*)&lock_, Bit);
-        break;
-    }
-#elif FOLLY_X64
-#define FB_DOBTR(size)                       \
-  asm volatile("lock; btr" #size " %0, (%1)" \
-               :                             \
-               : "i"(Bit), "r"(&lock_)       \
-               : "memory", "flags")
-
-    // Reads and writes can not be reordered wrt locked instructions,
-    // so we don't need a memory fence here.
-    switch (sizeof(IntType)) {
-      case 2:
-        FB_DOBTR(w);
-        break;
-      case 4:
-        FB_DOBTR(l);
-        break;
-      case 8:
-        FB_DOBTR(q);
-        break;
-    }
-
-#undef FB_DOBTR
-#elif FOLLY_AARCH64
-    using SIntType = typename std::make_signed<UIntType>::type;
-    auto const lock = reinterpret_cast<SIntType*>(&lock_);
-    auto const mask = static_cast<SIntType>(kLockBitMask_);
-    __atomic_fetch_and(lock, ~mask, __ATOMIC_RELEASE);
-#elif FOLLY_PPC64
-#define FB_DOBTR(size)                        \
-  asm volatile(                               \
-      "\teieio\n"                             \
-      "0:  l" #size                           \
-      "arx 14,0,%[lockPtr]\n"                 \
-      "\tli 15,1\n"                           \
-      "\tsldi 15,15,%[bit]\n"                 \
-      "\txor 14,14,15\n"                      \
-      "\tst" #size                            \
-      "cx. 14,0,%[lockPtr]\n"                 \
-      "\tbne 0b\n"                            \
-      "\tisync\n"                             \
-      :                                       \
-      : [lockPtr] "r"(&lock_), [bit] "i"(Bit) \
-      : "cr0", "memory", "r14", "r15")
-
-    switch (sizeof(IntType)) {
-      case 2:
-        FB_DOBTR(h);
-        break;
-      case 4:
-        FB_DOBTR(w);
-        break;
-      case 8:
-        FB_DOBTR(d);
-        break;
-    }
-
-#undef FB_DOBTR
-#else
-#error "x64 aarch64 ppc64 only"
-#endif
+    auto previous = atomic_fetch_reset(
+        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
+        Bit,
+        std::memory_order_release);
+    DCHECK(previous);
   }
 };
 
