@@ -27,7 +27,7 @@ TEST(Ensure, basic) {
   auto cob = [&] { count++; };
   auto f = makeFuture(42)
                .ensure(cob)
-               .then([](int) { throw std::runtime_error("ensure"); })
+               .thenValue([](int) { throw std::runtime_error("ensure"); })
                .ensure(cob);
 
   EXPECT_THROW(std::move(f).get(), std::runtime_error);

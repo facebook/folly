@@ -47,7 +47,7 @@ TEST(BarrierTest, Simple) {
   for (uint32_t i = 0; i < numThreads; ++i) {
     threads.emplace_back([&]() {
       barrier.wait()
-          .then([&](bool v) {
+          .thenValue([&](bool v) {
             std::unique_lock<std::mutex> lock(mutex);
             b1TrueSeen += uint32_t(v);
             if (++b1Passed == numThreads) {
@@ -55,7 +55,7 @@ TEST(BarrierTest, Simple) {
             }
             return barrier.wait();
           })
-          .then([&](bool v) {
+          .thenValue([&](bool v) {
             std::unique_lock<std::mutex> lock(mutex);
             b2TrueSeen += uint32_t(v);
             if (++b2Passed == numThreads) {

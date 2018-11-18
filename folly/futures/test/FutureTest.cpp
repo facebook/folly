@@ -241,7 +241,7 @@ TEST(Future, hasPreconditionValid) {
   DOIT(f.value());
   DOIT(f.poll());
   DOIT(std::move(f).then());
-  DOIT(std::move(f).then([](auto&&) {}));
+  DOIT(std::move(f).thenValue([](auto&&) {}));
 
 #undef DOIT
 }
@@ -945,11 +945,11 @@ TEST(Future, then) {
           .then([](const Try<std::string> t) {
             return makeFuture(t.value() + ";6");
           })
-          .then([](std::string&& s) { return makeFuture(s + ";7"); })
-          .then([](const std::string&& s) { return makeFuture(s + ";8"); })
-          .then([](const std::string& s) { return makeFuture(s + ";9"); })
-          .then([](std::string s) { return makeFuture(s + ";10"); })
-          .then([](const std::string s) { return makeFuture(s + ";11"); });
+          .thenValue([](std::string&& s) { return makeFuture(s + ";7"); })
+          .thenValue([](const std::string&& s) { return makeFuture(s + ";8"); })
+          .thenValue([](const std::string& s) { return makeFuture(s + ";9"); })
+          .thenValue([](std::string s) { return makeFuture(s + ";10"); })
+          .thenValue([](const std::string s) { return makeFuture(s + ";11"); });
   EXPECT_EQ(f.value(), "1;2;3;4;5;6;7;8;9;10;11");
 }
 
@@ -1020,14 +1020,14 @@ TEST(Future, thenTry) {
 
 TEST(Future, thenValue) {
   bool flag = false;
-  makeFuture<int>(42).then([&](int i) {
+  makeFuture<int>(42).thenValue([&](int i) {
     EXPECT_EQ(42, i);
     flag = true;
   });
   EXPECT_TRUE(flag);
   flag = false;
 
-  makeFuture<int>(42).then([](int i) { return i; }).then([&](int i) {
+  makeFuture<int>(42).thenValue([](int i) { return i; }).thenValue([&](int i) {
     flag = true;
     EXPECT_EQ(42, i);
   });
@@ -1048,7 +1048,7 @@ TEST(Future, thenValue) {
 TEST(Future, thenValueFuture) {
   bool flag = false;
   makeFuture<int>(42)
-      .then([](int i) { return makeFuture<int>(std::move(i)); })
+      .thenValue([](int i) { return makeFuture<int>(std::move(i)); })
       .then([&](Try<int>&& t) {
         flag = true;
         EXPECT_EQ(42, t.value());
@@ -1085,10 +1085,9 @@ TEST(Future, thenFunction) {
                .then(doWorkStatic)
                .then(Worker::doWorkStatic)
                .then(&Worker::doWork, &w)
-               .then(doWorkStaticValue)
                .thenValue(doWorkStaticValue);
 
-  EXPECT_EQ(f.value(), "start;static;class-static;class;value;value");
+  EXPECT_EQ(f.value(), "start;static;class-static;class;value");
 }
 
 static Future<std::string> doWorkStaticFuture(Try<std::string>&& t) {
@@ -1116,12 +1115,7 @@ TEST(Future, thenFunctionFuture) {
 TEST(Future, thenStdFunction) {
   {
     std::function<int(folly::Unit)> fn = [](folly::Unit) { return 42; };
-    auto f = makeFuture().then(std::move(fn));
-    EXPECT_EQ(f.value(), 42);
-  }
-  {
-    std::function<int(int)> fn = [](int i) { return i + 23; };
-    auto f = makeFuture(19).then(std::move(fn));
+    auto f = makeFuture().thenValue(std::move(fn));
     EXPECT_EQ(f.value(), 42);
   }
   {
@@ -1137,7 +1131,7 @@ TEST(Future, thenStdFunction) {
   {
     bool flag = false;
     std::function<void(folly::Unit)> fn = [&flag](folly::Unit) { flag = true; };
-    auto f = makeFuture().then(std::move(fn));
+    auto f = makeFuture().thenValue(std::move(fn));
     EXPECT_TRUE(f.isReady());
     EXPECT_TRUE(flag);
   }
@@ -1408,7 +1402,7 @@ TEST(Future, thenDynamic) {
   // sure that we call the then lambda with folly::dynamic and not
   // Try<folly::dynamic> because that then fails to compile
   Promise<folly::dynamic> p;
-  Future<folly::dynamic> f = p.getFuture().then(
+  Future<folly::dynamic> f = p.getFuture().thenValue(
       [](const folly::dynamic& d) { return folly::dynamic(d.asInt() + 3); });
   p.setValue(2);
   EXPECT_EQ(std::move(f).get(), 5);
@@ -1509,9 +1503,9 @@ TEST(Future, invokeCallbackReturningValueAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
-  EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
-  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
+  EXPECT_EQ(101, makeFuture<int>(100).thenValue(foo).value());
+  EXPECT_EQ(202, makeFuture<int>(200).thenValue(cfoo).value());
+  EXPECT_EQ(303, makeFuture<int>(300).thenValue(Foo()).value());
 }
 
 TEST(Future, invokeCallbackReturningFutureAsRvalue) {
@@ -1533,10 +1527,6 @@ TEST(Future, invokeCallbackReturningFutureAsRvalue) {
   // The continuation will be forward-constructed - copied if given as & and
   // moved if given as && - everywhere construction is required.
   // The continuation will be invoked with the same cvref as it is passed.
-  EXPECT_EQ(101, makeFuture<int>(100).then(foo).value());
-  EXPECT_EQ(202, makeFuture<int>(200).then(cfoo).value());
-  EXPECT_EQ(303, makeFuture<int>(300).then(Foo()).value());
-
   EXPECT_EQ(101, makeFuture<int>(100).thenValue(foo).value());
   EXPECT_EQ(202, makeFuture<int>(200).thenValue(cfoo).value());
   EXPECT_EQ(303, makeFuture<int>(300).thenValue(Foo()).value());
@@ -1594,7 +1584,7 @@ TEST(Future, makePromiseContract) {
 
   ManualExecutor e;
   auto c = makePromiseContract<int>(&e);
-  c.second = std::move(c.second).then([](int _) { return _ + 1; });
+  c.second = std::move(c.second).thenValue([](int _) { return _ + 1; });
   EXPECT_FALSE(c.second.isReady());
   c.first.setValue(3);
   EXPECT_FALSE(c.second.isReady());

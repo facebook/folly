@@ -391,7 +391,7 @@ TEST(SemiFuture, MakeFutureFromSemiFuture) {
   Promise<int> p;
   std::atomic<int> result{0};
   auto f = p.getSemiFuture();
-  auto future = std::move(f).via(&e).then([&](int value) {
+  auto future = std::move(f).via(&e).thenValue([&](int value) {
     result = value;
     return value;
   });
@@ -410,7 +410,7 @@ TEST(SemiFuture, MakeFutureFromSemiFutureReturnFuture) {
   Promise<int> p;
   int result{0};
   auto f = p.getSemiFuture();
-  auto future = std::move(f).via(&e).then([&](int value) {
+  auto future = std::move(f).via(&e).thenValue([&](int value) {
     result = value;
     return folly::makeFuture(std::move(value));
   });
@@ -431,11 +431,11 @@ TEST(SemiFuture, MakeFutureFromSemiFutureReturnSemiFuture) {
   auto f = p.getSemiFuture();
   auto future = std::move(f)
                     .via(&e)
-                    .then([&](int value) {
+                    .thenValue([&](int value) {
                       result = value;
                       return folly::makeSemiFuture(std::move(value));
                     })
-                    .then([&](int value) {
+                    .thenValue([&](int value) {
                       return folly::makeSemiFuture(std::move(value));
                     });
   e.loopOnce();
@@ -454,7 +454,7 @@ TEST(SemiFuture, MakeFutureFromSemiFutureLValue) {
   Promise<int> p;
   std::atomic<int> result{0};
   auto f = p.getSemiFuture();
-  auto future = std::move(f).via(&e).then([&](int value) {
+  auto future = std::move(f).via(&e).thenValue([&](int value) {
     result = value;
     return value;
   });
@@ -675,7 +675,7 @@ TEST(SemiFuture, ChainingDefertoThenWithValue) {
     return a;
   });
   // Run "F" here inline in a task running on the eventbase
-  auto tf = std::move(sf).via(&e2).then([&](int a) { result = a; });
+  auto tf = std::move(sf).via(&e2).thenValue([&](int a) { result = a; });
   p.setValue(7);
   tf.getVia(&e2);
   ASSERT_EQ(innerResult, 7);
@@ -710,7 +710,8 @@ TEST(SemiFuture, DeferWithinContinuation) {
   Promise<int> p;
   Promise<int> p2;
   auto f = p.getSemiFuture().via(&e2);
-  auto resultF = std::move(f).then([&, p3 = std::move(p2)](int outer) mutable {
+  auto resultF = std::move(f).thenValue([&, p3 = std::move(p2)](
+                                            int outer) mutable {
     result = outer;
     return makeSemiFuture<int>(std::move(outer))
         .deferValue([&, p4 = std::move(p3)](int inner) mutable {
@@ -953,8 +954,8 @@ TEST(SemiFuture, semiFutureWithinCtxCleanedUpWhenTaskFinishedInTime) {
     promise.getSemiFuture()
         .within(longEnough)
         .toUnsafeFuture()
-        .then([&target](
-                  folly::Try<std::shared_ptr<int>>&& callbackInput) mutable {
+        .thenTry([&target](
+                     folly::Try<std::shared_ptr<int>>&& callbackInput) mutable {
           target = callbackInput.value();
         });
     promise.setValue(input);
@@ -968,7 +969,7 @@ TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
   Promise<std::shared_ptr<int>> promise;
   auto veryShort = std::chrono::milliseconds(1);
 
-  promise.getSemiFuture().within(veryShort).toUnsafeFuture().then(
+  promise.getSemiFuture().within(veryShort).toUnsafeFuture().thenTry(
       [](folly::Try<std::shared_ptr<int>>&& callbackInput) {
         // Timeout is fired. Verify callbackInput is not referenced
         EXPECT_EQ(0, callbackInput.value().use_count());

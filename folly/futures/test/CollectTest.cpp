@@ -87,7 +87,7 @@ TEST(Collect, collectAll) {
     EXPECT_TRUE(results[3].hasException());
   }
 
-  // check that futures are ready in then()
+  // check that futures are ready in thenValue()
   {
     std::vector<Promise<Unit>> promises(10);
     std::vector<Future<Unit>> futures;
@@ -96,7 +96,7 @@ TEST(Collect, collectAll) {
       futures.push_back(p.getFuture());
     }
 
-    auto allf = collectAllSemiFuture(futures).toUnsafeFuture().then(
+    auto allf = collectAllSemiFuture(futures).toUnsafeFuture().thenTry(
         [](Try<std::vector<Try<Unit>>>&& ts) {
           for (auto& f : ts.value()) {
             f.value();
@@ -325,7 +325,7 @@ TEST(Collect, collectAny) {
     EXPECT_TRUE(anyf.value().second.hasException());
   }
 
-  // then()
+  // thenValue()
   {
     std::vector<Promise<int>> promises(10);
     std::vector<Future<int>> futures;
@@ -334,7 +334,7 @@ TEST(Collect, collectAny) {
       futures.push_back(p.getFuture());
     }
 
-    auto anyf = collectAny(futures).then(
+    auto anyf = collectAny(futures).thenValue(
         [](std::pair<size_t, Try<int>> p) { EXPECT_EQ(42, p.second.value()); });
 
     promises[3].setValue(42);
@@ -441,7 +441,7 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture());
     }
 
-    collectAllSemiFuture(fs).toUnsafeFuture().then(
+    collectAllSemiFuture(fs).toUnsafeFuture().thenValue(
         [&](std::vector<Try<Unit>> ts) { EXPECT_EQ(fs.size(), ts.size()); });
   }
   {
@@ -450,7 +450,7 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture(i));
     }
 
-    collectAny(fs).then([&](std::pair<size_t, Try<int>> p) {
+    collectAny(fs).thenValue([&](std::pair<size_t, Try<int>> p) {
       EXPECT_EQ(p.first, p.second.value());
     });
   }
@@ -596,7 +596,7 @@ TEST(Collect, collectN) {
   size_t n = 3;
   collectN(futures, n)
       .via(&InlineExecutor::instance())
-      .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+      .thenValue([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
         flag = true;
         EXPECT_EQ(n, v.size());
         for (auto& tt : v) {
@@ -624,7 +624,7 @@ TEST(Collect, collectNParallel) {
   size_t n = 90;
   collectN(futures, n)
       .via(&InlineExecutor::instance())
-      .then([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
+      .thenValue([&](std::vector<std::pair<size_t, Try<Unit>>> v) {
         flag = true;
         EXPECT_EQ(n, v.size());
         for (auto& tt : v) {
@@ -687,7 +687,7 @@ TEST(Collect, collectAllVariadic) {
   bool flag = false;
   collectAllSemiFuture(std::move(fb), std::move(fi))
       .toUnsafeFuture()
-      .then([&](std::tuple<Try<bool>, Try<int>> tup) {
+      .thenValue([&](std::tuple<Try<bool>, Try<int>> tup) {
         flag = true;
         EXPECT_TRUE(std::get<0>(tup).hasValue());
         EXPECT_EQ(std::get<0>(tup).value(), true);
@@ -706,7 +706,7 @@ TEST(Collect, collectAllVariadicReferences) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collectAllSemiFuture(fb, fi).toUnsafeFuture().then(
+  collectAllSemiFuture(fb, fi).toUnsafeFuture().thenValue(
       [&](std::tuple<Try<bool>, Try<int>> tup) {
         flag = true;
         EXPECT_TRUE(std::get<0>(tup).hasValue());
@@ -728,7 +728,7 @@ TEST(Collect, collectAllVariadicWithException) {
   bool flag = false;
   collectAllSemiFuture(std::move(fb), std::move(fi))
       .toUnsafeFuture()
-      .then([&](std::tuple<Try<bool>, Try<int>> tup) {
+      .thenValue([&](std::tuple<Try<bool>, Try<int>> tup) {
         flag = true;
         EXPECT_TRUE(std::get<0>(tup).hasValue());
         EXPECT_EQ(std::get<0>(tup).value(), true);
@@ -747,11 +747,12 @@ TEST(Collect, collectVariadic) {
   Future<bool> fb = pb.getFuture();
   Future<int> fi = pi.getFuture();
   bool flag = false;
-  collect(std::move(fb), std::move(fi)).then([&](std::tuple<bool, int> tup) {
-    flag = true;
-    EXPECT_EQ(std::get<0>(tup), true);
-    EXPECT_EQ(std::get<1>(tup), 42);
-  });
+  collect(std::move(fb), std::move(fi))
+      .thenValue([&](std::tuple<bool, int> tup) {
+        flag = true;
+        EXPECT_EQ(std::get<0>(tup), true);
+        EXPECT_EQ(std::get<1>(tup), 42);
+      });
   pb.setValue(true);
   EXPECT_FALSE(flag);
   pi.setValue(42);
