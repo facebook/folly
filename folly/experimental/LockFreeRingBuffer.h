@@ -104,7 +104,7 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Perform a single write of an object of type T.
   /// Writes can block iff a previous writer has not yet completed a write
   /// for the same slot (before the most recent wrap-around).
-  template <typename V = T>
+  template <typename V>
   void write(V& value) noexcept {
     uint64_t ticket = ticket_.fetch_add(1);
     slots_[idx(ticket)].write(turn(ticket), value);
@@ -114,7 +114,7 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Writes can block iff a previous writer has not yet completed a write
   /// for the same slot (before the most recent wrap-around).
   /// Returns a Cursor pointing to the just-written T.
-  template <typename V = T>
+  template <typename V>
   Cursor writeAndGetCursor(V& value) noexcept {
     uint64_t ticket = ticket_.fetch_add(1);
     slots_[idx(ticket)].write(turn(ticket), value);
@@ -125,7 +125,7 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Returns true if the read succeeded, false otherwise. If the return
   /// value is false, dest is to be considered partially read and in an
   /// inconsistent state. Readers are advised to discard it.
-  template <typename V = T>
+  template <typename V>
   bool tryRead(V& dest, const Cursor& cursor) noexcept {
     return slots_[idx(cursor.ticket)].tryRead(dest, turn(cursor.ticket));
   }
@@ -134,7 +134,7 @@ class LockFreeRingBuffer : boost::noncopyable {
   /// Returns true if the read succeeded, false otherwise. If the return
   /// value is false, dest is to be considered partially read and in an
   /// inconsistent state. Readers are advised to discard it.
-  template <typename V = T>
+  template <typename V>
   bool waitAndTryRead(V& dest, const Cursor& cursor) noexcept {
     return slots_[idx(cursor.ticket)].waitAndTryRead(dest, turn(cursor.ticket));
   }
@@ -196,7 +196,7 @@ class RingBufferSlot {
  public:
   explicit RingBufferSlot() noexcept : sequencer_(), data() {}
 
-  template <typename V = T>
+  template <typename V>
   void write(const uint32_t turn, V& value) noexcept {
     Atom<uint32_t> cutoff(0);
     sequencer_.waitForTurn(turn * 2, cutoff, false);
@@ -209,7 +209,7 @@ class RingBufferSlot {
     // At (turn + 1) * 2
   }
 
-  template <typename V = T>
+  template <typename V>
   bool waitAndTryRead(V& dest, uint32_t turn) noexcept {
     uint32_t desired_turn = (turn + 1) * 2;
     Atom<uint32_t> cutoff(0);
@@ -223,7 +223,7 @@ class RingBufferSlot {
     return sequencer_.isTurn(desired_turn);
   }
 
-  template <typename V = T>
+  template <typename V>
   bool tryRead(V& dest, uint32_t turn) noexcept {
     // The write that started at turn 0 ended at turn 2
     if (!sequencer_.isTurn((turn + 1) * 2)) {
