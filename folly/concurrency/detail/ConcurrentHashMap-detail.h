@@ -130,21 +130,18 @@ class NodeT : public hazptr_obj_base_linked<
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
-  explicit NodeT(NodeT* other) : item_(other->item_) {
-    this->set_deleter( // defined in hazptr_obj
-        concurrenthashmap::HazptrDeleter<Allocator>());
-    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+  explicit NodeT(hazptr_obj_batch<Atom>* batch, NodeT* other)
+      : item_(other->item_) {
+    init(batch);
   }
 
   template <typename Arg, typename... Args>
-  NodeT(Arg&& k, Args&&... args)
+  NodeT(hazptr_obj_batch<Atom>* batch, Arg&& k, Args&&... args)
       : item_(
             std::piecewise_construct,
             std::forward<Arg>(k),
             std::forward<Args>(args)...) {
-    this->set_deleter( // defined in hazptr_obj
-        concurrenthashmap::HazptrDeleter<Allocator>());
-    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+    init(batch);
   }
 
   void release() {
@@ -168,6 +165,14 @@ class NodeT : public hazptr_obj_base_linked<
   Atom<NodeT*> next_{nullptr};
 
  private:
+  void init(hazptr_obj_batch<Atom>* batch) {
+    DCHECK(batch);
+    this->set_deleter( // defined in hazptr_obj
+        concurrenthashmap::HazptrDeleter<Allocator>());
+    this->set_batch_tag(batch); // defined in hazptr_obj
+    this->acquire_link_safe(); // defined in hazptr_obj_base_linked
+  }
+
   ValueHolder<KeyType, ValueType, Allocator> item_;
 };
 
@@ -227,14 +232,16 @@ class alignas(64) ConcurrentHashMapSegment {
   ConcurrentHashMapSegment(
       size_t initial_buckets,
       float load_factor,
-      size_t max_size)
-      : load_factor_(load_factor), max_size_(max_size) {
+      size_t max_size,
+      hazptr_obj_batch<Atom>* batch)
+      : load_factor_(load_factor), max_size_(max_size), batch_(batch) {
+    DCHECK(batch);
     initial_buckets = folly::nextPowTwo(initial_buckets);
     DCHECK(
         max_size_ == 0 ||
         (isPowTwo(max_size_) &&
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
-    auto buckets = Buckets::create(initial_buckets);
+    auto buckets = Buckets::create(initial_buckets, batch);
     buckets_.store(buckets, std::memory_order_release);
     load_factor_nodes_ = initial_buckets * load_factor_;
     bucket_count_.store(initial_buckets, std::memory_order_relaxed);
@@ -264,7 +271,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool insert(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -307,7 +314,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool insert_or_assign(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -325,7 +332,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool assign(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -347,7 +354,7 @@ class alignas(64) ConcurrentHashMapSegment {
       const ValueType& expected,
       Value&& desired) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(std::forward<Key>(k), std::forward<Value>(desired));
+    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(desired));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -409,7 +416,7 @@ class alignas(64) ConcurrentHashMapSegment {
         } else {
           if (!cur) {
             cur = (Node*)Allocator().allocate(sizeof(Node));
-            new (cur) Node(std::forward<Args>(args)...);
+            new (cur) Node(batch_, std::forward<Args>(args)...);
           }
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
@@ -456,7 +463,7 @@ class alignas(64) ConcurrentHashMapSegment {
       // OR DOES_NOT_EXIST, but only in the try_emplace case
       DCHECK(type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST);
       cur = (Node*)Allocator().allocate(sizeof(Node));
-      new (cur) Node(std::forward<Args>(args)...);
+      new (cur) Node(batch_, std::forward<Args>(args)...);
     }
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
@@ -467,7 +474,7 @@ class alignas(64) ConcurrentHashMapSegment {
   // Must hold lock.
   void rehash(size_t bucket_count) {
     auto buckets = buckets_.load(std::memory_order_relaxed);
-    auto newbuckets = Buckets::create(bucket_count);
+    auto newbuckets = Buckets::create(bucket_count, batch_);
 
     load_factor_nodes_ = bucket_count * load_factor_;
 
@@ -505,7 +512,7 @@ class alignas(64) ConcurrentHashMapSegment {
       for (; node != lastrun;
            node = node->next_.load(std::memory_order_relaxed)) {
         auto newnode = (Node*)Allocator().allocate(sizeof(Node));
-        new (newnode) Node(node);
+        new (newnode) Node(batch_, node);
         auto k = getIdx(bucket_count, HashFn()(node->getItem().first));
         auto prevhead = &newbuckets->buckets_[k]();
         newnode->next_.store(prevhead->load(std::memory_order_relaxed));
@@ -614,7 +621,7 @@ class alignas(64) ConcurrentHashMapSegment {
   void clear() {
     size_t bcount = bucket_count_.load(std::memory_order_relaxed);
     Buckets* buckets;
-    auto newbuckets = Buckets::create(bcount);
+    auto newbuckets = Buckets::create(bcount, batch_);
     {
       std::lock_guard<Mutex> g(m_);
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -657,10 +664,11 @@ class alignas(64) ConcurrentHashMapSegment {
     ~Buckets() {}
 
    public:
-    static Buckets* create(size_t count) {
+    static Buckets* create(size_t count, hazptr_obj_batch<Atom>* batch) {
       auto buf =
           Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
       auto buckets = new (buf) Buckets();
+      buckets->set_batch_tag(batch); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
         new (&buckets->buckets_[i]) BucketRoot;
       }
@@ -818,6 +826,7 @@ class alignas(64) ConcurrentHashMapSegment {
   alignas(64) Atom<Buckets*> buckets_{nullptr};
   std::atomic<uint64_t> seqlock_{0};
   Atom<size_t> bucket_count_;
+  hazptr_obj_batch<Atom>* batch_;
 };
 } // namespace detail
 } // namespace folly

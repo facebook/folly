@@ -134,6 +134,8 @@ class ConcurrentHashMap {
           std::memory_order_relaxed);
       o.segments_[i].store(nullptr, std::memory_order_relaxed);
     }
+    batch_.store(o.batch(), std::memory_order_relaxed);
+    o.batch_.store(nullptr, std::memory_order_relaxed);
   }
 
   ConcurrentHashMap& operator=(ConcurrentHashMap&& o) {
@@ -150,14 +152,12 @@ class ConcurrentHashMap {
     }
     size_ = o.size_;
     max_size_ = o.max_size_;
+    batch_shutdown_cleanup();
+    batch_.store(o.batch(), std::memory_order_relaxed);
+    o.batch_.store(nullptr, std::memory_order_relaxed);
     return *this;
   }
 
-  /* Note that some objects stored in ConcurrentHashMap may outlive the
-   * ConcurrentHashMap's destructor, if you need immediate cleanup, call
-   * hazptr_cleanup(), which guarantees all objects are destructed after
-   * it completes.
-   */
   ~ConcurrentHashMap() {
     for (uint64_t i = 0; i < NumShards; i++) {
       auto seg = segments_[i].load(std::memory_order_relaxed);
@@ -166,6 +166,7 @@ class ConcurrentHashMap {
         Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
       }
     }
+    batch_shutdown_cleanup();
   }
 
   bool empty() const noexcept {
@@ -245,7 +246,7 @@ class ConcurrentHashMap {
   std::pair<ConstIterator, bool> emplace(Args&&... args) {
     using Node = typename SegmentT::Node;
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(std::forward<Args>(args)...);
+    new (node) Node(ensureBatch(), std::forward<Args>(args)...);
     auto segment = pickSegment(node->getItem().first);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
@@ -493,9 +494,10 @@ class ConcurrentHashMap {
   SegmentT* ensureSegment(uint64_t i) const {
     SegmentT* seg = segments_[i].load(std::memory_order_acquire);
     if (!seg) {
+      auto b = ensureBatch();
       SegmentT* newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
       newseg = new (newseg)
-          SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits);
+          SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits, b);
       if (!segments_[i].compare_exchange_strong(seg, newseg)) {
         // seg is updated with new value, delete ours.
         newseg->~SegmentT();
@@ -507,9 +509,40 @@ class ConcurrentHashMap {
     return seg;
   }
 
+  hazptr_obj_batch<Atom>* batch() const noexcept {
+    return batch_.load(std::memory_order_acquire);
+  }
+
+  hazptr_obj_batch<Atom>* ensureBatch() const {
+    auto b = batch();
+    if (!b) {
+      auto storage = Allocator().allocate(sizeof(hazptr_obj_batch<Atom>));
+      auto newbatch = new (storage) hazptr_obj_batch<Atom>();
+      if (batch_.compare_exchange_strong(b, newbatch)) {
+        b = newbatch;
+      } else {
+        newbatch->shutdown_and_reclaim();
+        newbatch->~hazptr_obj_batch<Atom>();
+        Allocator().deallocate(storage, sizeof(hazptr_obj_batch<Atom>));
+      }
+    }
+    return b;
+  }
+
+  void batch_shutdown_cleanup() {
+    auto b = batch();
+    if (b) {
+      b->shutdown_and_reclaim();
+      hazptr_cleanup_batch_tag(b);
+      b->~hazptr_obj_batch<Atom>();
+      Allocator().deallocate((uint8_t*)b, sizeof(hazptr_obj_batch<Atom>));
+    }
+  }
+
   mutable Atom<SegmentT*> segments_[NumShards];
   size_t size_{0};
   size_t max_size_{0};
+  mutable Atom<hazptr_obj_batch<Atom>*> batch_{nullptr};
 };
 
 } // namespace folly

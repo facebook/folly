@@ -301,8 +301,8 @@ class shared_head_only_list {
 
   Node* pop_all_lock() noexcept {
     folly::detail::Sleeper s;
-    auto oldval = head();
     while (true) {
+      auto oldval = head();
       auto lockbit = oldval & kLockBit;
       if (lockbit == kUnlocked) {
         auto newval = reinterpret_cast<uintptr_t>(nullptr) + kLockBit;
