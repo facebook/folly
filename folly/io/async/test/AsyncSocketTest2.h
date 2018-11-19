@@ -35,7 +35,7 @@ class TestConnectionEventCallback
     : public AsyncServerSocket::ConnectionEventCallback {
  public:
   void onConnectionAccepted(
-      const int /* socket */,
+      const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionAccepted_++;
@@ -47,21 +47,21 @@ class TestConnectionEventCallback
   }
 
   void onConnectionDropped(
-      const int /* socket */,
+      const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDropped_++;
   }
 
   void onConnectionEnqueuedForAcceptorCallback(
-      const int /* socket */,
+      const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionEnqueuedForAcceptCallback_++;
   }
 
   void onConnectionDequeuedByAcceptorCallback(
-      const int /* socket */,
+      const NetworkSocket /* socket */,
       const SocketAddress& /* addr */) noexcept override {
     folly::RWSpinLock::WriteHolder holder(spinLock_);
     connectionDequeuedByAcceptCallback_++;

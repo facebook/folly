@@ -85,13 +85,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      * is accepted using the system accept()/accept4() APIs.
      */
     virtual void onConnectionAccepted(
-        const int socket,
-        const SocketAddress& addr) noexcept = 0;
-    void onConnectionAccepted(
         const NetworkSocket socket,
-        const SocketAddress& addr) noexcept {
-      onConnectionAccepted(socket.toFd(), addr);
-    }
+        const SocketAddress& addr) noexcept = 0;
 
     /**
      * onConnectionAcceptError() is called when an error occurred accepting
@@ -104,39 +99,24 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      * probably because of some error encountered.
      */
     virtual void onConnectionDropped(
-        const int socket,
-        const SocketAddress& addr) noexcept = 0;
-    void onConnectionDropped(
         const NetworkSocket socket,
-        const SocketAddress& addr) noexcept {
-      onConnectionDropped(socket.toFd(), addr);
-    }
+        const SocketAddress& addr) noexcept = 0;
 
     /**
      * onConnectionEnqueuedForAcceptorCallback() is called when the
      * connection is successfully enqueued for an AcceptCallback to pick up.
      */
     virtual void onConnectionEnqueuedForAcceptorCallback(
-        const int socket,
-        const SocketAddress& addr) noexcept = 0;
-    void onConnectionEnqueuedForAcceptorCallback(
         const NetworkSocket socket,
-        const SocketAddress& addr) noexcept {
-      onConnectionEnqueuedForAcceptorCallback(socket.toFd(), addr);
-    }
+        const SocketAddress& addr) noexcept = 0;
 
     /**
      * onConnectionDequeuedByAcceptorCallback() is called when the
      * connection is successfully dequeued by an AcceptCallback.
      */
     virtual void onConnectionDequeuedByAcceptorCallback(
-        const int socket,
-        const SocketAddress& addr) noexcept = 0;
-    void onConnectionDequeuedByAcceptorCallback(
         const NetworkSocket socket,
-        const SocketAddress& addr) noexcept {
-      onConnectionDequeuedByAcceptorCallback(socket.toFd(), addr);
-    }
+        const SocketAddress& addr) noexcept = 0;
 
     /**
      * onBackoffStarted is called when the socket has successfully started
