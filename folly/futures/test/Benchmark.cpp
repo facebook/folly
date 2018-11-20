@@ -340,11 +340,11 @@ template <class T>
 Future<T> fGen() {
   Promise<T> p;
   auto f = p.getFuture()
-               .then([](T&& t) { return std::move(t); })
-               .then([](T&& t) { return makeFuture(std::move(t)); })
+               .thenValue([](T&& t) { return std::move(t); })
+               .thenValue([](T&& t) { return makeFuture(std::move(t)); })
                .via(&exe)
-               .then([](T&& t) { return std::move(t); })
-               .then([](T&& t) { return makeFuture(std::move(t)); });
+               .thenValue([](T&& t) { return std::move(t); })
+               .thenValue([](T&& t) { return makeFuture(std::move(t)); });
   p.setValue(T());
   return f;
 }
