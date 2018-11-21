@@ -19,35 +19,6 @@
 namespace folly {
 
 template <class T>
-SharedPromise<T>::SharedPromise(SharedPromise<T>&& other) noexcept {
-  *this = std::move(other);
-}
-
-template <class T>
-SharedPromise<T>& SharedPromise<T>::operator=(
-    SharedPromise<T>&& other) noexcept {
-  if (this == &other) {
-    return *this;
-  }
-
-  // std::lock will perform deadlock avoidance, in case
-  // Thread A: p1 = std::move(p2)
-  // Thread B: p2 = std::move(p1)
-  // race each other
-  std::lock(mutex_, other.mutex_);
-  std::lock_guard<std::mutex> g1(mutex_, std::adopt_lock);
-  std::lock_guard<std::mutex> g2(other.mutex_, std::adopt_lock);
-
-  std::swap(size_, other.size_);
-  std::swap(hasValue_, other.hasValue_);
-  std::swap(try_, other.try_);
-  std::swap(interruptHandler_, other.interruptHandler_);
-  std::swap(promises_, other.promises_);
-
-  return *this;
-}
-
-template <class T>
 size_t SharedPromise<T>::size() {
   std::lock_guard<std::mutex> g(mutex_);
   return size_;

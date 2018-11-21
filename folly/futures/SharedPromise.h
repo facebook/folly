@@ -40,17 +40,6 @@ namespace folly {
 template <class T>
 class SharedPromise {
  public:
-  SharedPromise() = default;
-  ~SharedPromise() = default;
-
-  // not copyable
-  SharedPromise(SharedPromise const&) = delete;
-  SharedPromise& operator=(SharedPromise const&) = delete;
-
-  // movable
-  SharedPromise(SharedPromise<T>&&) noexcept;
-  SharedPromise& operator=(SharedPromise<T>&&) noexcept;
-
   /**
    * Return a Future tied to the shared core state. Unlike Promise::getFuture,
    * this can be called an unlimited number of times per SharedPromise.
@@ -111,7 +100,16 @@ class SharedPromise {
   bool isFulfilled();
 
  private:
-  std::mutex mutex_;
+  // this allows SharedPromise move-ctor/move-assign to be defaulted
+  struct Mutex : std::mutex {
+    Mutex() = default;
+    Mutex(Mutex&&) noexcept {}
+    Mutex& operator=(Mutex&&) noexcept {
+      return *this;
+    }
+  };
+
+  Mutex mutex_;
   size_t size_{0};
   bool hasValue_{false};
   Try<T> try_;
