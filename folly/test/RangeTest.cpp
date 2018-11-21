@@ -1633,3 +1633,10 @@ void test_func(Range<const NonPOD*>) {}
 } // anonymous namespace
 
 #endif
+
+namespace {
+// Nested class should not cause compile errors due to incomplete parent
+class Parent {
+  struct Nested : Range<const Parent*> {};
+};
+} // namespace

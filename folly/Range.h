@@ -497,15 +497,21 @@ class Range {
   // std::string_view (when it is available).
 #if FOLLY_HAS_STRING_VIEW
   struct NotStringView {};
-  using StringViewType = std::conditional_t<
-      std::is_pod<std::remove_const_t<value_type>>::value,
-      std::basic_string_view<std::remove_const_t<value_type>>,
-      NotStringView>;
+  template <typename ValueType>
+  struct StringViewType
+      : std::conditional<
+            std::is_pod<std::remove_const_t<ValueType>>::value,
+            std::basic_string_view<std::remove_const_t<ValueType>>,
+            NotStringView> {};
 
   template <typename Target>
-  using IsConstructibleViaStringView = StrictConjunction<
-      std::is_constructible<StringViewType, Iter const&, size_type>,
-      std::is_constructible<Target, StringViewType>>;
+  struct IsConstructibleViaStringView
+      : Conjunction<
+            std::is_constructible<
+                _t<StringViewType<value_type>>,
+                Iter const&,
+                size_type>,
+            std::is_constructible<Target, _t<StringViewType<value_type>>>> {};
 #else
   template <typename Target>
   using IsConstructibleViaStringView = std::false_type;
@@ -545,11 +551,14 @@ class Range {
   /// implicit operator conversion to std::string_view
   template <
       typename Tgt,
+      typename ValueType = value_type,
       std::enable_if_t<
           StrictConjunction<
-              std::is_same<Tgt, StringViewType>,
-              std::is_constructible<StringViewType, Iter const&, size_type>>::
-              value,
+              std::is_same<Tgt, _t<StringViewType<ValueType>>>,
+              std::is_constructible<
+                  _t<StringViewType<ValueType>>,
+                  Iter const&,
+                  size_type>>::value,
           int> = 0>
   constexpr operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
