@@ -361,3 +361,20 @@ int makeObserverRecursion(int n) {
 TEST(Observer, NestedMakeObserver) {
   EXPECT_EQ(32, makeObserverRecursion(32));
 }
+
+TEST(Observer, WaitForAllUpdates) {
+  folly::observer::SimpleObservable<int> observable{42};
+
+  auto observer = makeObserver([o = observable.getObserver()] {
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+
+    return **o;
+  });
+
+  EXPECT_EQ(42, **observer);
+
+  observable.setValue(43);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(43, **observer);
+}
