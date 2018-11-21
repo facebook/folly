@@ -20,10 +20,6 @@
 #include <folly/folly-config.h>
 #endif
 
-#ifdef FOLLY_PLATFORM_CONFIG
-#include FOLLY_PLATFORM_CONFIG
-#endif
-
 #if __has_include(<features.h>)
 #include <features.h> // @manual
 #endif
