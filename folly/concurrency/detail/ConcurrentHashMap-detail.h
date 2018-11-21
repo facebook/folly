@@ -673,7 +673,8 @@ class alignas(64) ConcurrentHashMapSegment {
       auto buf =
           Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
       auto buckets = new (buf) Buckets();
-      buckets->set_batch_tag(batch); // defined in hazptr_obj
+      DCHECK(batch);
+      // buckets->set_batch_tag(batch); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
         new (&buckets->buckets_[i]) BucketRoot;
       }
