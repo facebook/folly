@@ -46,6 +46,7 @@
 #cmakedefine FOLLY_HAVE_PREADV 1
 #cmakedefine FOLLY_HAVE_PWRITEV 1
 #cmakedefine FOLLY_HAVE_CLOCK_GETTIME 1
+#cmakedefine FOLLY_HAVE_PIPE2 1
 #cmakedefine FOLLY_HAVE_OPENSSL_ASN1_TIME_DIFF 1
 
 #cmakedefine FOLLY_HAVE_IFUNC 1
