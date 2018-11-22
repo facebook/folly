@@ -377,4 +377,6 @@ TEST(Observer, WaitForAllUpdates) {
   folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(43, **observer);
+
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 }

@@ -118,11 +118,9 @@ class ObserverManager::NextQueue {
 
         std::vector<Core::Ptr> cores;
         {
-          auto queueCore = queueCoreWeak.lock();
-          if (!queueCore) {
-            continue;
+          if (auto queueCore = queueCoreWeak.lock()) {
+            cores.emplace_back(std::move(queueCore));
           }
-          cores.emplace_back(std::move(queueCore));
         }
 
         {
