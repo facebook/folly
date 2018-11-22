@@ -109,10 +109,29 @@ class SharedPromise {
     }
   };
 
+  template <typename V>
+  struct Defaulted {
+    using Noexcept = StrictConjunction<
+        std::is_nothrow_default_constructible<V>,
+        std::is_nothrow_move_constructible<V>,
+        std::is_nothrow_move_assignable<V>>;
+    V value{V()};
+    Defaulted() = default;
+    Defaulted(Defaulted&& that) noexcept(Noexcept::value)
+        : value(std::exchange(that.value, V())) {}
+    Defaulted& operator=(Defaulted&& that) noexcept(Noexcept::value) {
+      value = std::exchange(that.value, V());
+      return *this;
+    }
+  };
+
+  bool hasResult() {
+    return try_.value.hasValue() || try_.value.hasException();
+  }
+
   Mutex mutex_;
-  size_t size_{0};
-  bool hasValue_{false};
-  Try<T> try_;
+  Defaulted<size_t> size_;
+  Defaulted<Try<T>> try_;
   std::vector<Promise<T>> promises_;
   std::function<void(exception_wrapper const&)> interruptHandler_;
 };

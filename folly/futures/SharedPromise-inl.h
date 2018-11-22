@@ -21,15 +21,15 @@ namespace folly {
 template <class T>
 size_t SharedPromise<T>::size() {
   std::lock_guard<std::mutex> g(mutex_);
-  return size_;
+  return size_.value;
 }
 
 template <class T>
 SemiFuture<T> SharedPromise<T>::getSemiFuture() {
   std::lock_guard<std::mutex> g(mutex_);
-  size_++;
-  if (hasValue_) {
-    return makeFuture<T>(Try<T>(try_));
+  size_.value++;
+  if (hasResult()) {
+    return makeFuture<T>(Try<T>(try_.value));
   } else {
     promises_.emplace_back();
     if (interruptHandler_) {
@@ -60,7 +60,7 @@ template <class T>
 void SharedPromise<T>::setInterruptHandler(
     std::function<void(exception_wrapper const&)> fn) {
   std::lock_guard<std::mutex> g(mutex_);
-  if (hasValue_) {
+  if (hasResult()) {
     return;
   }
   interruptHandler_ = fn;
@@ -87,23 +87,22 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
 
   {
     std::lock_guard<std::mutex> g(mutex_);
-    if (hasValue_) {
+    if (hasResult()) {
       throw_exception<PromiseAlreadySatisfied>();
     }
-    hasValue_ = true;
-    try_ = std::move(t);
+    try_.value = std::move(t);
     promises.swap(promises_);
   }
 
   for (auto& p : promises) {
-    p.setTry(Try<T>(try_));
+    p.setTry(Try<T>(try_.value));
   }
 }
 
 template <class T>
 bool SharedPromise<T>::isFulfilled() {
   std::lock_guard<std::mutex> g(mutex_);
-  return hasValue_;
+  return hasResult();
 }
 
 } // namespace folly

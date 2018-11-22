@@ -114,7 +114,9 @@ TEST(SharedPromise, moveMove) {
   auto f1 = p.getFuture();
   auto f2 = p.getFuture();
   auto p2 = std::move(p);
+  EXPECT_EQ(2, p2.size());
   p = std::move(p2);
+  EXPECT_EQ(0, p2.size());
   p.setValue(std::make_shared<int>(1));
 }
 
@@ -133,6 +135,7 @@ TEST(SharedPromise, isFulfilled) {
   EXPECT_TRUE(p2.isFulfilled());
   p = std::move(p2);
   EXPECT_TRUE(p.isFulfilled());
+  EXPECT_FALSE(p2.isFulfilled());
 }
 
 TEST(SharedPromise, interruptHandler) {
