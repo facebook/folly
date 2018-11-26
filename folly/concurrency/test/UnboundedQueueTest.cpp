@@ -19,6 +19,7 @@
 #include <folly/ProducerConsumerQueue.h>
 #include <folly/portability/GTest.h>
 
+#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
 
 #include <atomic>
@@ -161,18 +162,16 @@ inline uint64_t run_once(
     const ProdFunc& prodFn,
     const ConsFunc& consFn,
     const EndFunc& endFn) {
-  std::atomic<bool> start{false};
-  std::atomic<int> ready{0};
+  boost::barrier barrier(1 + nprod + ncons);
 
   /* producers */
   std::vector<std::thread> prodThr(nprod);
   for (int tid = 0; tid < nprod; ++tid) {
     prodThr[tid] = std::thread([&, tid] {
-      ++ready;
-      while (!start.load()) {
-        /* spin */;
-      }
+      barrier.wait(); // A - wait for thread start
+      barrier.wait(); // B - init the work
       prodFn(tid);
+      barrier.wait(); // C - join the work
     });
   }
 
@@ -180,22 +179,23 @@ inline uint64_t run_once(
   std::vector<std::thread> consThr(ncons);
   for (int tid = 0; tid < ncons; ++tid) {
     consThr[tid] = std::thread([&, tid] {
-      ++ready;
-      while (!start.load()) {
-        /* spin */;
-      }
+      barrier.wait(); // A - wait for thread start
+      barrier.wait(); // B - init the work
       consFn(tid);
+      barrier.wait(); // C - join the work
     });
   }
 
-  /* wait for all producers and consumers to be ready */
-  while (ready.load() < (nprod + ncons)) {
-    /* spin */;
-  }
+  barrier.wait(); // A - wait for thread start
 
   /* begin time measurement */
-  auto tbegin = std::chrono::steady_clock::now();
-  start.store(true);
+  auto const tbegin = std::chrono::steady_clock::now();
+
+  barrier.wait(); // B - init the work
+  barrier.wait(); // C - join the work
+
+  /* end time measurement */
+  auto const tend = std::chrono::steady_clock::now();
 
   /* wait for completion */
   for (int i = 0; i < nprod; ++i) {
@@ -205,11 +205,9 @@ inline uint64_t run_once(
     consThr[i].join();
   }
 
-  /* end time measurement */
-  auto tend = std::chrono::steady_clock::now();
   endFn();
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin)
-      .count();
+  auto const dur = tend - tbegin;
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(dur).count();
 }
 
 template <bool SingleProducer, bool SingleConsumer, bool MayBlock>
