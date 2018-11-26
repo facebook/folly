@@ -29,15 +29,13 @@ namespace detail {
 
 #if FOLLY_SSE_PREREQ(2, 0)
 
-FOLLY_DISABLE_ADDRESS_SANITIZER __m128i
-_mm_loadu_si128_noasan(__m128i const* const p);
+__m128i _mm_loadu_si128_noasan(__m128i const* const p);
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN __m128i
 _mm_loadu_si128_unchecked(__m128i const* const p) {
   return kIsSanitizeAddress ? _mm_loadu_si128_noasan(p) : _mm_loadu_si128(p);
 }
 
-FOLLY_DISABLE_ADDRESS_SANITIZER __m128i
-_mm_load_si128_noasan(__m128i const* const p);
+__m128i _mm_load_si128_noasan(__m128i const* const p);
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN __m128i
 _mm_load_si128_unchecked(__m128i const* const p) {
   return kIsSanitizeAddress ? _mm_load_si128_noasan(p) : _mm_load_si128(p);
