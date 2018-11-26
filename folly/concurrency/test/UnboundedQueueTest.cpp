@@ -268,10 +268,9 @@ void enq_deq_test(const int nprod, const int ncons) {
   };
 
   auto endfn = [&] {
-    uint64_t expected = ops;
-    expected *= ops - 1;
-    expected /= 2;
-    ASSERT_EQ(sum.load(), expected);
+    uint64_t expected = (ops) * (ops - 1) / 2;
+    uint64_t actual = sum.load();
+    ASSERT_EQ(expected, actual);
   };
   run_once(nprod, ncons, prod, cons, endfn);
 }
@@ -368,7 +367,7 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
             /* keep trying */;
           }
         } else {
-          ASSERT_TRUE(Op == 2 || Op == 5);
+          DCHECK(Op == 2 || Op == 5);
           q.dequeue(v);
         }
         if (nprod == 1 && ncons == 1) {
@@ -379,10 +378,9 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
       sum.fetch_add(mysum);
     };
     auto endfn = [&] {
-      uint64_t expected = ops;
-      expected *= ops - 1;
-      expected /= 2;
-      ASSERT_EQ(sum.load(), expected);
+      uint64_t expected = (ops) * (ops - 1) / 2;
+      uint64_t actual = sum.load();
+      DCHECK_EQ(expected, actual);
     };
     return run_once(nprod, ncons, prod, cons, endfn);
   };
