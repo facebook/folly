@@ -317,9 +317,12 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   uint64_t max = 0;
   uint64_t sum = 0;
 
+  std::vector<uint64_t> durs(reps);
+
   repFn(); // sometimes first run is outlier
   for (int r = 0; r < reps; ++r) {
     uint64_t dur = repFn();
+    durs[r] = dur;
     sum += dur;
     min = std::min(min, dur);
     max = std::max(max, dur);
@@ -334,9 +337,16 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   const std::string unit = " ns";
   uint64_t avg = sum / reps;
   uint64_t res = min;
+  uint64_t varsum = 0;
+  for (auto r = 0; r < reps; ++r) {
+    auto term = int64_t(reps * durs[r]) - int64_t(sum);
+    varsum += term * term;
+  }
+  uint64_t dev = uint64_t(std::sqrt(varsum) * std::pow(reps, -1.5));
   std::cout << name;
   std::cout << "   " << std::setw(4) << max / ops << unit;
   std::cout << "   " << std::setw(4) << avg / ops << unit;
+  std::cout << "   " << std::setw(4) << dev / ops << unit;
   std::cout << "   " << std::setw(4) << res / ops << unit;
   std::cout << std::endl;
   return res;
@@ -466,14 +476,15 @@ struct IntArray {
 };
 
 void dottedLine() {
-  std::cout << ".............................................................."
-            << std::endl;
+  std::cout
+      << "........................................................................"
+      << std::endl;
 }
 
 template <typename T>
 void type_benches(const int np, const int nc, const std::string& name) {
-  std::cout << name
-            << "===========================================" << std::endl;
+  std::cout << name << "====================================================="
+            << std::endl;
   if (np == 1 && nc == 1) {
     bench<USPSC, T, 0>(1, 1, "Unbounded SPSC try   spin only  ");
     bench<USPSC, T, 1>(1, 1, "Unbounded SPSC timed spin only  ");
@@ -515,14 +526,15 @@ void type_benches(const int np, const int nc, const std::string& name) {
   bench<FMPMC, T, 3>(np, nc, "folly::MPMC  read               ");
   bench<FMPMC, T, 4>(np, nc, "folly::MPMC  tryReadUntil       ");
   bench<FMPMC, T, 5>(np, nc, "folly::MPMC  blockingRead       ");
-  std::cout << "=============================================================="
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
 }
 
 void benches(const int np, const int nc) {
   std::cout << "====================== " << std::setw(2) << np << " prod"
             << "  " << std::setw(2) << nc << " cons"
-            << " ======================" << std::endl;
+            << " ================================" << std::endl;
   type_benches<uint32_t>(np, nc, "=== uint32_t ======");
   // Benchmarks for other element sizes can be added as follows:
   //   type_benches<IntArray<4>>(np, nc, "=== IntArray<4> ===");
@@ -532,8 +544,9 @@ TEST(UnboundedQueue, bench) {
   if (!FLAGS_bench) {
     return;
   }
-  std::cout << "=============================================================="
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
   std::cout << std::setw(2) << FLAGS_reps << " reps of " << std::setw(8)
             << FLAGS_ops << " handoffs\n";
   dottedLine();
@@ -542,10 +555,12 @@ TEST(UnboundedQueue, bench) {
   std::cout << "Using capacity " << FLAGS_capacity
             << " for folly::ProducerConsumerQueue and\n"
             << "folly::MPMCQueue\n";
-  std::cout << "=============================================================="
-            << std::endl;
-  std::cout << "Test name                         Max time  Avg time  Min time"
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
+  std::cout
+      << "Test name                         Max time  Avg time  Dev time  Min time"
+      << std::endl;
 
   for (int nc : {1, 2, 4, 8, 16, 32}) {
     int np = 1;
