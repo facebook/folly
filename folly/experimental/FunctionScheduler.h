@@ -75,7 +75,7 @@ class FunctionScheduler {
    * If isPoisson is true, then use std::poisson_distribution to pick the
    * interval between each invocation of the function.
    *
-   * If isPoisson os false, then always use fixed the interval specified to
+   * If isPoisson is false, then always use the fixed interval specified to
    * addFunction().
    */
   struct LatencyDistribution {
