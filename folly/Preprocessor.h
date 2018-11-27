@@ -18,6 +18,8 @@
 
 #pragma once
 
+#include <folly/CPortability.h>
+
 /**
  * Necessarily evil preprocessor-related amenities.
  */
@@ -87,7 +89,16 @@
 #define FB_CONCATENATE_IMPL(s1, s2) s1##s2
 #define FB_CONCATENATE(s1, s2) FB_CONCATENATE_IMPL(s1, s2)
 #ifdef __COUNTER__
+// Modular builds build each module with its own preprocessor state, meaning
+// `__COUNTER__` no longer provides a unique number across a TU.  Instead of
+// calling back to just `__LINE__`, use a mix of `__COUNTER__` and `__LINE__`
+// to try provide as much uniqueness as possible.
+#if FOLLY_HAS_FEATURE(modules)
+#define FB_ANONYMOUS_VARIABLE(str) \
+  FB_CONCATENATE(FB_CONCATENATE(FB_CONCATENATE(str, __COUNTER__), _), __LINE__)
+#else
 #define FB_ANONYMOUS_VARIABLE(str) FB_CONCATENATE(str, __COUNTER__)
+#endif
 #else
 #define FB_ANONYMOUS_VARIABLE(str) FB_CONCATENATE(str, __LINE__)
 #endif
