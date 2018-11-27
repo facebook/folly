@@ -231,6 +231,8 @@ class UnboundedQueue {
   static_assert(LgSegmentSize < 32, "LgSegmentSize must be < 32");
   static_assert(LgAlign < 16, "LgAlign must be < 16");
 
+  using Sem = folly::SaturatingSemaphore<MayBlock, Atom>;
+
   struct Consumer {
     Atom<Segment*> head;
     Atom<Ticket> ticket;
@@ -754,7 +756,7 @@ class UnboundedQueue {
    *  Entry
    */
   class Entry {
-    folly::SaturatingSemaphore<MayBlock, Atom> flag_;
+    Sem flag_;
     typename std::aligned_storage<sizeof(T), alignof(T)>::type item_;
 
    public:
@@ -780,11 +782,11 @@ class UnboundedQueue {
     }
 
     template <typename Clock, typename Duration>
-    FOLLY_ALWAYS_INLINE bool tryWaitUntil(
+    FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool tryWaitUntil(
         const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
       // wait-options from benchmarks on contended queues:
-      auto const opt =
-          flag_.wait_options().spin_max(std::chrono::microseconds(10));
+      static constexpr auto const opt =
+          Sem::wait_options().spin_max(std::chrono::microseconds(10));
       return flag_.try_wait_until(deadline, opt);
     }
 
