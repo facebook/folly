@@ -124,25 +124,25 @@ public:
     return *this;
   }
   void value(VN... vn) {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     vptr_->value_(data_, std::move(vn)...);
   }
   void error(E e) noexcept {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     vptr_->error_(data_, std::move(e));
   }
   void done() {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     vptr_->done_(data_);
   }
 
   void starting(any_receiver<PE, PV> up) {
-    if (started_) {std::abort();}
+    if (started_) {std::terminate();}
     started_ = true;
     vptr_->starting_(data_, std::move(up));
   }
@@ -196,7 +196,7 @@ class flow_receiver<VF, EF, DF, StrtF> {
   PUSHMI_TEMPLATE (class V)
     (requires Invocable<VF&, V>)
   void value(V&& v) {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     nf_((V&&) v);
   }
@@ -204,13 +204,13 @@ class flow_receiver<VF, EF, DF, StrtF> {
     (requires Invocable<EF&, E>)
   void error(E e) noexcept {
     static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     ef_(std::move(e));
   }
   void done() {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     df_();
@@ -218,7 +218,7 @@ class flow_receiver<VF, EF, DF, StrtF> {
   PUSHMI_TEMPLATE(class Up)
     (requires Invocable<StrtF&, Up&&>)
   void starting(Up&& up) {
-    if (started_) {std::abort();}
+    if (started_) {std::terminate();}
     started_ = true;
     strtf_( (Up &&) up);
   }
@@ -276,7 +276,7 @@ class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
   PUSHMI_TEMPLATE (class V)
     (requires Invocable<DVF&, Data&, V>)
   void value(V&& v) {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     nf_(data_, (V&&) v);
   }
@@ -285,13 +285,13 @@ class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
   void error(E&& e) noexcept {
     static_assert(
         NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     ef_(data_, (E&&) e);
   }
   void done() {
-    if (!started_) {std::abort();}
+    if (!started_) {std::terminate();}
     if (done_){ return; }
     done_ = true;
     df_(data_);
@@ -299,7 +299,7 @@ class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
   PUSHMI_TEMPLATE (class Up)
     (requires Invocable<DStrtF&, Data&, Up&&>)
   void starting(Up&& up) {
-    if (started_) {std::abort();}
+    if (started_) {std::terminate();}
     started_ = true;
     strtf_(data_, (Up &&) up);
   }

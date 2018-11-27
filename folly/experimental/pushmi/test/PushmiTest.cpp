@@ -125,7 +125,7 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
             return v + 1;
           },
           [&](auto v) {
-            std::abort();
+            std::terminate();
             return v;
           }) |
       op::transform([&](int v) {
@@ -175,7 +175,7 @@ TEST(FromIntManySender, TransformAndSubmit) {
             return v + 1;
           },
           [&](auto v) {
-            std::abort();
+            std::terminate();
             return v;
           }) |
       op::transform([&](int v) {

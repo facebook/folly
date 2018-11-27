@@ -131,7 +131,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
 
     if (s->t_.get_id() == std::this_thread::get_id()) {
       // Executor is not allowed to use the time_source thread
-      std::abort();
+      std::terminate();
     }
 
     //
@@ -144,7 +144,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
     std::unique_lock<std::mutex> guard{s->lock_};
 
     if (!this->dispatching_ || this->pending_) {
-      std::abort();
+      std::terminate();
     }
 
     if (this->heap_.empty()) {
@@ -191,7 +191,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
     std::unique_lock<std::mutex> guard{s->lock_};
 
     if (!this->dispatching_ || this->pending_) {
-      std::abort();
+      std::terminate();
     }
 
     while (!this->heap_.empty()) {
@@ -209,7 +209,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
     std::unique_lock<std::mutex> guard{s->lock_};
 
     if (!this->dispatching_ || this->pending_) {
-      std::abort();
+      std::terminate();
     }
     this->dispatching_ = false;
 
@@ -307,7 +307,7 @@ class time_source_shared : public time_source_shared_base<E, TP> {
     // not allowed to be discarded without joining and completing all queued
     // items
     if (t_.joinable() || this->items_ != 0) {
-      std::abort();
+      std::terminate();
     }
   }
   time_source_shared() {}
@@ -415,7 +415,7 @@ class time_source_shared : public time_source_shared_base<E, TP> {
     // once join() is called, new work queued to the executor is not safe unless
     // it is nested in an existing item.
     if (!!this->joined_) {
-      std::abort();
+      std::terminate();
     };
 
     queue->heap_.push(std::move(item));

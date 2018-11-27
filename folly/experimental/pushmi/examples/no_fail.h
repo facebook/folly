@@ -27,7 +27,7 @@ struct no_fail_fn {
  private:
   struct on_error_impl {
     [[noreturn]] void operator()(any, any) noexcept {
-      std::abort();
+      std::terminate();
     }
   };
   template <class In>
