@@ -81,6 +81,7 @@ namespace folly {
 ///
 ///   Consumer operations:
 ///     void dequeue(T&);
+///     T dequeue();
 ///         Extracts an element from the front of the queue. Waits
 ///         until an element is available if needed.
 ///     bool try_dequeue(T&);
@@ -271,6 +272,12 @@ class UnboundedQueue {
   /** dequeue */
   FOLLY_ALWAYS_INLINE void dequeue(T& item) noexcept {
     dequeueImpl(item);
+  }
+
+  FOLLY_ALWAYS_INLINE T dequeue() noexcept {
+    T item;
+    dequeueImpl(item);
+    return item;
   }
 
   /** try_dequeue */
