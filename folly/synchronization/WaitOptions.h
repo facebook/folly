@@ -55,10 +55,10 @@ class WaitOptions {
         std::chrono::microseconds(2);
   };
 
-  std::chrono::nanoseconds spin_max() const {
+  constexpr std::chrono::nanoseconds spin_max() const {
     return spin_max_;
   }
-  WaitOptions& spin_max(std::chrono::nanoseconds dur) {
+  constexpr WaitOptions& spin_max(std::chrono::nanoseconds dur) {
     spin_max_ = dur;
     return *this;
   }
