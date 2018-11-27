@@ -105,6 +105,13 @@
 #define FOLLY_SANITIZE_THREAD 1
 #endif
 
+#if FOLLY_SANITIZE_THREAD
+#define FOLLY_DISABLE_THREAD_SANITIZER \
+  __attribute__((no_sanitize_thread, noinline))
+#else
+#define FOLLY_DISABLE_THREAD_SANITIZER
+#endif
+
 /**
  * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
  * being used
@@ -119,6 +126,10 @@
 #else
 #define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
 #endif // FOLLY_SANITIZE
+
+#define FOLLY_DISABLE_SANITIZERS                                 \
+  FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_THREAD_SANITIZER \
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("undefined")
 
 /**
  * Macro for marking functions as having public visibility.
