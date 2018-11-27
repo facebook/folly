@@ -42,6 +42,90 @@ using USPMC = folly::USPMCQueue<T, MayBlock>;
 template <typename T, bool MayBlock>
 using UMPMC = folly::UMPMCQueue<T, MayBlock>;
 
+// check functions for inspecting inlined native code
+
+FOLLY_ATTR_WEAK void noop(folly::Optional<int>&&) {}
+
+extern "C" void check_uspsc_mayblock_dequeue_ref(
+    USPSC<int, true>& queue,
+    int& item) {
+  queue.dequeue(item);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_ref(
+    USPSC<int, true>& queue,
+    int& item) {
+  return queue.try_dequeue(item);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_for_ref(
+    USPSC<int, true>& queue,
+    int& item,
+    std::chrono::milliseconds const& timeout) {
+  return queue.try_dequeue_for(item, timeout);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_until_ref(
+    USPSC<int, true>& queue,
+    int& item,
+    std::chrono::steady_clock::time_point const& deadline) {
+  return queue.try_dequeue_until(item, deadline);
+}
+
+extern "C" int check_uspsc_mayblock_dequeue_ret(USPSC<int, true>& queue) {
+  return queue.dequeue();
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_ret(USPSC<int, true>& queue) {
+  noop(queue.try_dequeue());
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_for_ret(
+    USPSC<int, true>& queue,
+    std::chrono::milliseconds const& timeout) {
+  noop(queue.try_dequeue_for(timeout));
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_until_ret(
+    USPSC<int, true>& queue,
+    std::chrono::steady_clock::time_point const& deadline) {
+  noop(queue.try_dequeue_until(deadline));
+}
+
+extern "C" void check_umpmc_mayblock_dequeue_ref(
+    UMPMC<int, true>& queue,
+    int& item) {
+  queue.dequeue(item);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_ref(
+    UMPMC<int, true>& queue,
+    int& item) {
+  return queue.try_dequeue(item);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_for_ref(
+    UMPMC<int, true>& queue,
+    int& item,
+    std::chrono::milliseconds const& timeout) {
+  return queue.try_dequeue_for(item, timeout);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_until_ref(
+    UMPMC<int, true>& queue,
+    int& item,
+    std::chrono::steady_clock::time_point const& deadline) {
+  return queue.try_dequeue_until(item, deadline);
+}
+
+extern "C" int check_umpmc_mayblock_dequeue_ret(UMPMC<int, true>& queue) {
+  return queue.dequeue();
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_ret(UMPMC<int, true>& queue) {
+  noop(queue.try_dequeue());
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_for_ret(
+    UMPMC<int, true>& queue,
+    std::chrono::milliseconds const& timeout) {
+  noop(queue.try_dequeue_for(timeout));
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_until_ret(
+    UMPMC<int, true>& queue,
+    std::chrono::steady_clock::time_point const& deadline) {
+  noop(queue.try_dequeue_until(deadline));
+}
+
 template <template <typename, bool> class Q, bool MayBlock>
 void basic_test() {
   Q<int, MayBlock> q;
