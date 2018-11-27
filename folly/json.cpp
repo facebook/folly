@@ -216,19 +216,24 @@ struct Input {
     return range_.begin();
   }
 
-  // Parse ahead for as long as the supplied predicate is satisfied,
-  // returning a range of what was skipped.
   template <class Predicate>
-  StringPiece skipWhile(const Predicate& p) {
-    std::size_t skipped = 0;
+  size_t skipChars(const Predicate& p, size_t skipped = 0) {
     for (; skipped < range_.size(); ++skipped) {
       if (!p(range_[skipped])) {
-        break;
+        return skipped;
       }
       if (range_[skipped] == '\n') {
         ++lineNum_;
       }
     }
+    return skipped;
+  }
+
+  // Parse ahead for as long as the supplied predicate is satisfied,
+  // returning a range of what was skipped.
+  template <class Predicate>
+  StringPiece skipWhile(const Predicate& p) {
+    std::size_t skipped = skipChars(p);
     auto ret = range_.subpiece(0, skipped);
     range_.advance(skipped);
     storeCurrent();
@@ -249,7 +254,19 @@ struct Input {
   }
 
   void skipWhitespace() {
-    range_ = folly::skipWhitespace(range_);
+    std::size_t endOfWhiteSpaces = 0;
+    auto isOddSpace = [](char c) {
+      return c == '\n' || c == '\t' || c == '\r';
+    };
+    auto isSpace = [](char c) { return c == ' '; };
+    while (true) {
+      auto endOfSpaces = skipChars(isSpace, endOfWhiteSpaces);
+      endOfWhiteSpaces = skipChars(isOddSpace, endOfSpaces);
+      if (endOfSpaces == endOfWhiteSpaces) {
+        break;
+      }
+    }
+    range_.advance(endOfWhiteSpaces);
     storeCurrent();
   }
 
