@@ -2489,11 +2489,16 @@ bool AsyncSocket::updateEventRegistration() {
   VLOG(5) << "AsyncSocket::updateEventRegistration(this=" << this
           << ", fd=" << fd_ << ", evb=" << eventBase_ << ", state=" << state_
           << ", events=" << std::hex << eventFlags_;
-  eventBase_->dcheckIsInEventBaseThread();
   if (eventFlags_ == EventHandler::NONE) {
+    if (ioHandler_.isHandlerRegistered()) {
+      DCHECK(eventBase_ != nullptr);
+      eventBase_->dcheckIsInEventBaseThread();
+    }
     ioHandler_.unregisterHandler();
     return true;
   }
+
+  eventBase_->dcheckIsInEventBaseThread();
 
   // Always register for persistent events, so we don't have to re-register
   // after being called back.
