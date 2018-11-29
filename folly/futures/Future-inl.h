@@ -1093,12 +1093,13 @@ Future<T> Future<T>::thenError(F&& func) && {
   // Forward to onError but ensure that returned future carries the executor
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
+  auto* ePtr = this->getExecutor();
+  auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
   return std::move(*this)
       .onError([func = std::forward<F>(func)](ExceptionType& ex) mutable {
         return std::forward<F>(func)(ex);
       })
-      .via(e ? e : &InlineExecutor::instance());
+      .via(std::move(e));
 }
 
 template <class T>
@@ -1107,13 +1108,14 @@ Future<T> Future<T>::thenError(F&& func) && {
   // Forward to onError but ensure that returned future carries the executor
   // Allow for applying to future with null executor while this is still
   // possible.
-  auto* e = this->getExecutor();
+  auto* ePtr = this->getExecutor();
+  auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
   return std::move(*this)
       .onError([func = std::forward<F>(func)](
                    folly::exception_wrapper&& ex) mutable {
         return std::forward<F>(func)(std::move(ex));
       })
-      .via(e ? e : &InlineExecutor::instance());
+      .via(std::move(e));
 }
 
 template <class T>
