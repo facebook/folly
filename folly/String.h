@@ -27,7 +27,6 @@
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
 #include <folly/FBString.h>
-#include <folly/FBVector.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
@@ -423,11 +422,14 @@ void split(
     std::vector<OutputType>& out,
     const bool ignoreEmpty = false);
 
+template <class T, class Allocator>
+class fbvector;
+
 template <class Delim, class String, class OutputType>
 void split(
     const Delim& delimiter,
     const String& input,
-    folly::fbvector<OutputType>& out,
+    folly::fbvector<OutputType, std::allocator<OutputType>>& out,
     const bool ignoreEmpty = false);
 
 template <

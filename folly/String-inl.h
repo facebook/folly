@@ -395,7 +395,7 @@ template <class Delim, class String, class OutputType>
 void split(
     const Delim& delimiter,
     const String& input,
-    fbvector<OutputType>& out,
+    fbvector<OutputType, std::allocator<OutputType>>& out,
     bool ignoreEmpty) {
   detail::internalSplit<OutputType>(
       detail::prepareDelim(delimiter),
