@@ -255,8 +255,10 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::reverse_iterator reverse_iterator;
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
+  sorted_vector_set() : m_(Compare(), Allocator()) {}
+
   explicit sorted_vector_set(
-      const Compare& comp = Compare(),
+      const Compare& comp,
       const Allocator& alloc = Allocator())
       : m_(comp, alloc) {}
 
@@ -381,7 +383,12 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   std::pair<iterator, bool> insert(const value_type& value) {
-    return insert(std::move(value_type(value)));
+    iterator it = lower_bound(value);
+    if (it == end() || value_comp()(value, *it)) {
+      it = get_growth_policy().increase_capacity(m_.cont_, it);
+      return std::make_pair(m_.cont_.insert(it, value), true);
+    }
+    return std::make_pair(it, false);
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
@@ -405,6 +412,26 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
+  }
+
+  void insert(std::initializer_list<value_type> ilist) {
+    insert(ilist.begin(), ilist.end());
+  }
+
+  // emplace isn't better than insert for sorted_vector_set, but aids
+  // compatibility
+  template <typename... Args>
+  std::pair<iterator, bool> emplace(Args&&... args) {
+    value_type v(std::forward<Args>(args)...);
+    return insert(std::move(v));
+  }
+
+  std::pair<iterator, bool> emplace(const value_type& value) {
+    return insert(value);
+  }
+
+  std::pair<iterator, bool> emplace(value_type&& value) {
+    return insert(std::move(value));
   }
 
   size_type erase(const key_type& key) {
@@ -641,8 +668,10 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::reverse_iterator reverse_iterator;
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
+  sorted_vector_map() : m_(value_compare(Compare()), Allocator()) {}
+
   explicit sorted_vector_map(
-      const Compare& comp = Compare(),
+      const Compare& comp,
       const Allocator& alloc = Allocator())
       : m_(value_compare(comp), alloc) {}
 
@@ -765,7 +794,12 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   std::pair<iterator, bool> insert(const value_type& value) {
-    return insert(std::move(value_type(value)));
+    iterator it = lower_bound(value.first);
+    if (it == end() || value_comp()(value, *it)) {
+      it = get_growth_policy().increase_capacity(m_.cont_, it);
+      return std::make_pair(m_.cont_.insert(it, value), true);
+    }
+    return std::make_pair(it, false);
   }
 
   std::pair<iterator, bool> insert(value_type&& value) {
@@ -789,6 +823,10 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   template <class InputIterator>
   void insert(InputIterator first, InputIterator last) {
     detail::bulk_insert(*this, m_.cont_, first, last);
+  }
+
+  void insert(std::initializer_list<value_type> ilist) {
+    insert(ilist.begin(), ilist.end());
   }
 
   size_type erase(const key_type& key) {
