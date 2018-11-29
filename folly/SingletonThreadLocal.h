@@ -132,9 +132,8 @@ class SingletonThreadLocal {
 
   SingletonThreadLocal() = delete;
 
-  FOLLY_EXPORT FOLLY_NOINLINE static WrapperTL& getWrapperTL() {
-    static auto& entry = *detail::createGlobal<WrapperTL, Tag>();
-    return entry;
+  FOLLY_ALWAYS_INLINE static WrapperTL& getWrapperTL() {
+    return *detail::createGlobal<WrapperTL, Tag>();
   }
 
   FOLLY_NOINLINE static Wrapper& getWrapper() {

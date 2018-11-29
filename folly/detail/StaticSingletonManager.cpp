@@ -27,16 +27,24 @@ namespace {
 
 class StaticSingletonManagerImpl {
  public:
-  void* create(std::type_info const& key, void* (*make)()) {
-    auto& e = entry(key);
-    std::lock_guard<std::mutex> lock(e.mutex);
-    return e.ptr ? e.ptr : (e.ptr = make());
+  using Make = void*();
+  using Cache = std::atomic<void*>;
+
+  void* create(std::type_info const& key, Make& make, Cache& cache) {
+    auto const ptr = entry(key).get(make);
+    cache.store(ptr, std::memory_order_release);
+    return ptr;
   }
 
  private:
   struct Entry {
     void* ptr{};
     std::mutex mutex;
+
+    void* get(Make& make) {
+      std::lock_guard<std::mutex> lock(mutex);
+      return ptr ? ptr : (ptr = make());
+    }
   };
 
   Entry& entry(std::type_info const& key) {
@@ -51,10 +59,13 @@ class StaticSingletonManagerImpl {
 
 } // namespace
 
-void* StaticSingletonManager::create_(Key const& key, Make* make) {
+void* StaticSingletonManager::create_(
+    Key const& key,
+    Make& make,
+    Cache& cache) {
   // This Leaky Meyers Singleton must always live in the .cpp file.
   static auto& instance = *new StaticSingletonManagerImpl();
-  return instance.create(key, make);
+  return instance.create(key, make, cache);
 }
 
 } // namespace detail

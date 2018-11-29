@@ -16,9 +16,11 @@
 
 #pragma once
 
+#include <atomic>
 #include <typeinfo>
 
 #include <folly/CPortability.h>
+#include <folly/Likely.h>
 
 namespace folly {
 namespace detail {
@@ -30,9 +32,12 @@ namespace detail {
 class StaticSingletonManager {
  public:
   template <typename T, typename Tag>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static T* create() {
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T* create() {
+    static Cache cache;
     auto const& key = typeid(TypePair<T, Tag>);
-    return static_cast<T*>(create_(key, &Creator<T>::create));
+    auto const v = cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
+    return static_cast<T*>(p);
   }
 
  private:
@@ -41,15 +46,14 @@ class StaticSingletonManager {
 
   using Key = std::type_info;
   using Make = void*();
+  using Cache = std::atomic<void*>;
 
   template <typename T>
-  struct Creator {
-    static void* create() {
-      return new T();
-    }
-  };
+  static void* make() {
+    return new T();
+  }
 
-  FOLLY_NOINLINE static void* create_(Key const& key, Make* make);
+  FOLLY_NOINLINE static void* create_(Key const& key, Make& make, Cache& cache);
 };
 
 template <typename T, typename Tag>

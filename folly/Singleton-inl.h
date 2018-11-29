@@ -27,9 +27,7 @@ SingletonHolder<T>& SingletonHolder<T>::singleton() {
               {typeid(T), typeid(Tag)},
               *SingletonVault::singleton<VaultTag>()) {}
   };
-  /* library-local */ static auto entry =
-      createGlobal<SingletonHolderImpl, void>();
-  return *entry;
+  return *createGlobal<SingletonHolderImpl, void>();
 }
 
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(

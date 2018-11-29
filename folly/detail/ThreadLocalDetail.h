@@ -428,9 +428,7 @@ struct StaticMeta final : StaticMetaBase {
   static StaticMeta<Tag, AccessMode>& instance() {
     // Leak it on exit, there's only one per process and we don't have to
     // worry about synchronization with exiting threads.
-    /* library-local */ static auto instance =
-        detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
-    return *instance;
+    return *detail::createGlobal<StaticMeta<Tag, AccessMode>, void>();
   }
 
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static ElementWrapper& get(EntryID* ent) {

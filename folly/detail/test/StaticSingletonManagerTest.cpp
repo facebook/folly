@@ -21,6 +21,10 @@
 namespace folly {
 namespace detail {
 
+extern "C" int* check() {
+  return createGlobal<int, void>();
+}
+
 struct StaticSingletonManagerTest : public testing::Test {};
 
 template <typename T>

@@ -93,7 +93,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     pthread_key_t pthreadKey_;
   };
 
-  static auto instance = detail::createGlobal<PthreadKey, void>();
+  auto instance = detail::createGlobal<PthreadKey, void>();
 
   ThreadEntryList* threadEntryList =
       static_cast<ThreadEntryList*>(pthread_getspecific(instance->get()));

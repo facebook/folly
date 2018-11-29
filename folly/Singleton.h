@@ -500,17 +500,14 @@ class SingletonVault {
   // tests only.
   template <typename VaultTag = detail::DefaultTag>
   static SingletonVault* singleton() {
-    /* library-local */ static auto vault =
-        detail::createGlobal<SingletonVault, VaultTag>();
-    return vault;
+    return detail::createGlobal<SingletonVault, VaultTag>();
   }
 
   typedef std::string (*StackTraceGetterPtr)();
 
   static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
-    /* library-local */ static auto stackTraceGetterPtr = detail::
-        createGlobal<std::atomic<StackTraceGetterPtr>, SingletonVault>();
-    return *stackTraceGetterPtr;
+    struct Result : std::atomic<StackTraceGetterPtr> {};
+    return *detail::createGlobal<Result, void>();
   }
 
   void setType(Type type) {
@@ -746,8 +743,7 @@ class LeakySingleton {
   };
 
   static Entry& entryInstance() {
-    /* library-local */ static auto entry = detail::createGlobal<Entry, Tag>();
-    return *entry;
+    return *detail::createGlobal<Entry, Tag>();
   }
 
   static T& instance() {
