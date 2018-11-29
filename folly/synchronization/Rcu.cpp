@@ -21,6 +21,6 @@ namespace folly {
 
 FOLLY_STATIC_CTOR_PRIORITY_MAX folly::Indestructible<rcu_domain<RcuTag>*>
     rcu_default_domain_(
-        folly::detail::createGlobal<rcu_domain<RcuTag>, RcuTag>());
+        &folly::detail::createGlobal<rcu_domain<RcuTag>, RcuTag>());
 
 } // namespace folly

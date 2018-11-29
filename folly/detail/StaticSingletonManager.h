@@ -32,12 +32,12 @@ namespace detail {
 class StaticSingletonManager {
  public:
   template <typename T, typename Tag>
-  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T* create() {
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
     static Cache cache;
     auto const& key = typeid(TypePair<T, Tag>);
     auto const v = cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
-    return static_cast<T*>(p);
+    return *static_cast<T*>(p);
   }
 
  private:
@@ -57,7 +57,7 @@ class StaticSingletonManager {
 };
 
 template <typename T, typename Tag>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal() {
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T& createGlobal() {
   return StaticSingletonManager::create<T, Tag>();
 }
 

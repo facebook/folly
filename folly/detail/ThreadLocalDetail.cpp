@@ -93,14 +93,14 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
     pthread_key_t pthreadKey_;
   };
 
-  auto instance = detail::createGlobal<PthreadKey, void>();
+  auto& instance = detail::createGlobal<PthreadKey, void>();
 
   ThreadEntryList* threadEntryList =
-      static_cast<ThreadEntryList*>(pthread_getspecific(instance->get()));
+      static_cast<ThreadEntryList*>(pthread_getspecific(instance.get()));
 
   if (UNLIKELY(!threadEntryList)) {
     threadEntryList = new ThreadEntryList();
-    int ret = pthread_setspecific(instance->get(), threadEntryList);
+    int ret = pthread_setspecific(instance.get(), threadEntryList);
     checkPosixError(ret, "pthread_setspecific failed");
   }
 

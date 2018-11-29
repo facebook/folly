@@ -27,7 +27,7 @@ SingletonHolder<T>& SingletonHolder<T>::singleton() {
               {typeid(T), typeid(Tag)},
               *SingletonVault::singleton<VaultTag>()) {}
   };
-  return *createGlobal<SingletonHolderImpl, void>();
+  return createGlobal<SingletonHolderImpl, void>();
 }
 
 [[noreturn]] void singletonWarnDoubleRegistrationAndAbort(

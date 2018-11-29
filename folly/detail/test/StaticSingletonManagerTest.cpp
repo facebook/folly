@@ -22,7 +22,7 @@ namespace folly {
 namespace detail {
 
 extern "C" int* check() {
-  return createGlobal<int, void>();
+  return &createGlobal<int, void>();
 }
 
 struct StaticSingletonManagerTest : public testing::Test {};
@@ -36,19 +36,16 @@ using Int = std::integral_constant<int, I>;
 TEST_F(StaticSingletonManagerTest, example) {
   using T = std::integral_constant<int, 3>;
 
-  auto i = createGlobal<T, Tag<char>>();
-  ASSERT_NE(nullptr, i);
-  EXPECT_EQ(T::value, *i);
+  auto& i = createGlobal<T, Tag<char>>();
+  EXPECT_EQ(T::value, i);
 
-  auto j = createGlobal<T, Tag<char>>();
-  ASSERT_NE(nullptr, j);
-  EXPECT_EQ(i, j);
-  EXPECT_EQ(T::value, *j);
+  auto& j = createGlobal<T, Tag<char>>();
+  EXPECT_EQ(&i, &j);
+  EXPECT_EQ(T::value, j);
 
-  auto k = createGlobal<T, Tag<char*>>();
-  ASSERT_NE(nullptr, k);
-  EXPECT_NE(i, k);
-  EXPECT_EQ(T::value, *k);
+  auto& k = createGlobal<T, Tag<char*>>();
+  EXPECT_NE(&i, &k);
+  EXPECT_EQ(T::value, k);
 }
 
 } // namespace detail
