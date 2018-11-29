@@ -503,13 +503,6 @@ class SingletonVault {
     return &detail::createGlobal<SingletonVault, VaultTag>();
   }
 
-  typedef std::string (*StackTraceGetterPtr)();
-
-  static std::atomic<StackTraceGetterPtr>& stackTraceGetter() {
-    struct Result : std::atomic<StackTraceGetterPtr> {};
-    return detail::createGlobal<Result, void>();
-  }
-
   void setType(Type type) {
     type_ = type;
   }
