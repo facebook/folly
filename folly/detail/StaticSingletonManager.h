@@ -29,10 +29,10 @@ namespace detail {
 // dynamically.
 class StaticSingletonManager {
  public:
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static T* create(
-      F&& creator) {
-    return static_cast<T*>(create_<T, Tag>(creator));
+  template <typename T, typename Tag>
+  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static T* create() {
+    auto const& key = typeid(TypePair<T, Tag>);
+    return static_cast<T*>(create_(key, &Creator<T>::create));
   }
 
  private:
@@ -40,49 +40,21 @@ class StaticSingletonManager {
   struct TypePair {};
 
   using Key = std::type_info;
-  using Make = void*(void*);
+  using Make = void*();
 
-  template <typename F>
+  template <typename T>
   struct Creator {
-    static void* create(void* f) {
-      return static_cast<void*>((*static_cast<F*>(f))());
+    static void* create() {
+      return new T();
     }
   };
 
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static void* create_(
-      F& creator) {
-    auto const& key = typeid(TypePair<T, Tag>);
-    return create_(key, &Creator<F>::create, &creator);
-  }
-
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static void* create_(
-      F const& creator) {
-    auto const& key = typeid(TypePair<T, Tag>);
-    return create_(key, &Creator<F const>::create, const_cast<F*>(&creator));
-  }
-
-  FOLLY_NOINLINE static void* create_(Key const& key, Make* make, void* ctx);
+  FOLLY_NOINLINE static void* create_(Key const& key, Make* make);
 };
-
-template <typename T, typename Tag, typename F>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal(F&& creator) {
-  return StaticSingletonManager::create<T, Tag>(static_cast<F&&>(creator));
-}
-
-// TODO(T36779215): A bug in the gcc-5-glibc-2.23 llvm-fb/clang doesn't like
-// passing this as a lambda (e.g. P60328775).
-namespace {
-template <typename T>
-T* singleton_global_cons() {
-  return new T();
-}
-} // namespace
 
 template <typename T, typename Tag>
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal() {
-  return createGlobal<T, Tag>(&singleton_global_cons<T>);
+  return StaticSingletonManager::create<T, Tag>();
 }
 
 } // namespace detail

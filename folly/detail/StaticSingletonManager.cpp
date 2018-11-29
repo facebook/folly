@@ -27,10 +27,10 @@ namespace {
 
 class StaticSingletonManagerImpl {
  public:
-  void* create(std::type_info const& key, void* (*make)(void*), void* ctx) {
+  void* create(std::type_info const& key, void* (*make)()) {
     auto& e = entry(key);
     std::lock_guard<std::mutex> lock(e.mutex);
-    return e.ptr ? e.ptr : (e.ptr = make(ctx));
+    return e.ptr ? e.ptr : (e.ptr = make());
   }
 
  private:
@@ -51,10 +51,10 @@ class StaticSingletonManagerImpl {
 
 } // namespace
 
-void* StaticSingletonManager::create_(Key const& key, Make* make, void* ctx) {
+void* StaticSingletonManager::create_(Key const& key, Make* make) {
   // This Leaky Meyers Singleton must always live in the .cpp file.
   static auto& instance = *new StaticSingletonManagerImpl();
-  return instance.create(key, make, ctx);
+  return instance.create(key, make);
 }
 
 } // namespace detail

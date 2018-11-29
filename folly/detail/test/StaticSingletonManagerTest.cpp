@@ -26,23 +26,25 @@ struct StaticSingletonManagerTest : public testing::Test {};
 template <typename T>
 struct Tag {};
 
-TEST_F(StaticSingletonManagerTest, example) {
-  auto make3 = [n = 3] { return new int(n); };
-  auto i = createGlobal<int, Tag<char>>(make3);
-  ASSERT_NE(nullptr, i);
-  EXPECT_EQ(3, *i);
+template <int I>
+using Int = std::integral_constant<int, I>;
 
-  auto const make4 = [n = 4] { return new int(n); };
-  auto j = createGlobal<int, Tag<char>>(make4);
+TEST_F(StaticSingletonManagerTest, example) {
+  using T = std::integral_constant<int, 3>;
+
+  auto i = createGlobal<T, Tag<char>>();
+  ASSERT_NE(nullptr, i);
+  EXPECT_EQ(T::value, *i);
+
+  auto j = createGlobal<T, Tag<char>>();
   ASSERT_NE(nullptr, j);
   EXPECT_EQ(i, j);
-  EXPECT_EQ(3, *j);
+  EXPECT_EQ(T::value, *j);
 
-  auto make5 = [n = 5] { return new int(n); };
-  auto k = createGlobal<int, Tag<char*>>(std::move(make5));
+  auto k = createGlobal<T, Tag<char*>>();
   ASSERT_NE(nullptr, k);
   EXPECT_NE(i, k);
-  EXPECT_EQ(5, *k);
+  EXPECT_EQ(T::value, *k);
 }
 
 } // namespace detail
