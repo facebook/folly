@@ -64,7 +64,35 @@ TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   EXPECT_EQ(threads.size(), fooDeletedCount);
 }
 
-TEST(SingletonThreadLocalTest, MoveConstructibleMake) {
+TEST(SingletonThreadLocalTest, DefaultMakeMoveConstructible) {
+  struct Foo {
+    int a = 4;
+    Foo() = default;
+    Foo(Foo&&) = default;
+    Foo& operator=(Foo&&) = default;
+  };
+  using Real = detail::DefaultMake<Foo>::type;
+  EXPECT_TRUE((std::is_same<Real, Foo>::value));
+  struct Tag {};
+  auto& single = SingletonThreadLocal<Foo, Tag>::get();
+  EXPECT_EQ(4, single.a);
+}
+
+TEST(SingletonThreadLocalTest, DefaultMakeNotMoveConstructible) {
+  struct Foo {
+    int a = 4;
+    Foo() = default;
+    Foo(Foo&&) = delete;
+    Foo& operator=(Foo&&) = delete;
+  };
+  using Real = detail::DefaultMake<Foo>::type;
+  EXPECT_TRUE(((__cplusplus >= 201703ULL) == std::is_same<Real, Foo>::value));
+  struct Tag {};
+  auto& single = SingletonThreadLocal<Foo, Tag>::get();
+  EXPECT_EQ(4, single.a);
+}
+
+TEST(SingletonThreadLocalTest, SameTypeMake) {
   struct Foo {
     int a, b;
     Foo(int a_, int b_) : a(a_), b(b_) {}
@@ -81,21 +109,23 @@ TEST(SingletonThreadLocalTest, MoveConstructibleMake) {
   EXPECT_EQ(4, single.b);
 }
 
-TEST(SingletonThreadLocalTest, NotMoveConstructibleMake) {
+TEST(SingletonThreadLocalTest, ReferenceConvertibleTypeMake) {
   struct Foo {
-    int a, b;
-    Foo(int a_, int b_) : a(a_), b(b_) {}
-    Foo(Foo&&) = delete;
-    Foo& operator=(Foo&&) = delete;
+    int b = 3;
   };
+  struct A {
+    int a = 2;
+  };
+  struct C {
+    int c = 4;
+  };
+  struct Bar : A, Foo, C {};
   struct Tag {};
-  struct Make {
-    Foo* operator()(unsigned char (&buf)[sizeof(Foo)]) const {
-      return new (buf) Foo(3, 4);
-    }
-  };
-  auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
-  EXPECT_EQ(4, single.b);
+  using Make = detail::DefaultMake<Bar>;
+  auto& foo = SingletonThreadLocal<Foo, Tag, Make>::get();
+  EXPECT_EQ(3, foo.b);
+  auto& bar = static_cast<Bar&>(foo);
+  EXPECT_EQ(2, bar.a);
 }
 
 TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {

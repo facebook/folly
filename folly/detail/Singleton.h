@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <type_traits>
+
+#include <folly/Traits.h>
+
 namespace folly {
 namespace detail {
 
@@ -23,10 +27,28 @@ struct DefaultTag {};
 
 template <typename T>
 struct DefaultMake {
-  // Required form until C++17, which permits returning objects of types which
-  // are neither copy-constructible nor move-constructible.
-  T* operator()(unsigned char (&buf)[sizeof(T)]) const {
-    return new (buf) T();
+  struct Heap {
+    std::unique_ptr<T> ptr{std::make_unique<T>()};
+    /* implicit */ operator T&() {
+      return *ptr;
+    }
+  };
+
+  using is_returnable = StrictDisjunction<
+      bool_constant<__cplusplus >= 201703ULL>,
+      std::is_copy_constructible<T>,
+      std::is_move_constructible<T>>;
+  using type = std::conditional_t<is_returnable::value, T, Heap>;
+
+  T make(std::true_type) const {
+    return T();
+  }
+  Heap make(std::false_type) const {
+    return Heap();
+  }
+
+  type operator()() const {
+    return make(is_returnable{});
   }
 };
 

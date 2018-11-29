@@ -95,36 +95,22 @@ class SingletonThreadLocal {
       boost::intrusive::list<Node, boost::intrusive::constant_time_size<false>>;
 
   struct Wrapper {
-    template <typename S>
-    using MakeRet = is_invocable_r<S, Make>;
+    using Object = invoke_result_t<Make>;
+    static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
     // keep as first field, to save 1 instr in the fast path
-    union {
-      alignas(alignof(T)) unsigned char storage[sizeof(T)];
-      T object;
-    };
+    Object object{Make{}()};
     List caches;
 
     /* implicit */ operator T&() {
       return object;
     }
 
-    // normal make types
-    template <typename S = T, _t<std::enable_if<MakeRet<S>::value, int>> = 0>
-    Wrapper() {
-      (void)new (storage) S(Make{}());
-    }
-    // default and special make types for non-move-constructible T, until C++17
-    template <typename S = T, _t<std::enable_if<!MakeRet<S>::value, int>> = 0>
-    Wrapper() {
-      (void)Make{}(storage);
-    }
     ~Wrapper() {
       for (auto& node : caches) {
         node.clear();
       }
       caches.clear();
-      object.~T();
     }
   };
 
