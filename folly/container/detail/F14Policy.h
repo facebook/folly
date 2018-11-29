@@ -1201,7 +1201,10 @@ class VectorContainerPolicy : public BasePolicy<
 
     auto origSrc = src;
     if (valueIsTriviallyCopyable()) {
-      std::memcpy(static_cast<void*>(dst), src, n * sizeof(Value));
+      std::memcpy(
+          static_cast<void*>(dst),
+          static_cast<void const*>(src),
+          n * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < n; ++i, ++src, ++dst) {
         // TODO(T31574848): clean up assume-s used to optimize placement new
@@ -1227,7 +1230,10 @@ class VectorContainerPolicy : public BasePolicy<
     Value* dst = std::addressof(values_[0]);
 
     if (valueIsTriviallyCopyable()) {
-      std::memcpy(dst, src, size * sizeof(Value));
+      std::memcpy(
+          static_cast<void*>(dst),
+          static_cast<void const*>(src),
+          size * sizeof(Value));
     } else {
       for (std::size_t i = 0; i < size; ++i, ++src, ++dst) {
         try {
