@@ -51,6 +51,77 @@ namespace test {
 using AuxAct = std::function<void(bool)>;
 using AuxChk = std::function<void(uint64_t)>;
 
+struct DSchedThreadId {
+  unsigned val;
+  explicit constexpr DSchedThreadId() : val(0) {}
+  explicit constexpr DSchedThreadId(unsigned v) : val(v) {}
+  unsigned operator=(unsigned v) {
+    return val = v;
+  }
+};
+
+class DSchedTimestamp {
+ public:
+  constexpr explicit DSchedTimestamp() : val_(0) {}
+  DSchedTimestamp advance() {
+    return DSchedTimestamp(++val_);
+  }
+  bool atLeastAsRecentAs(const DSchedTimestamp& other) const {
+    return val_ >= other.val_;
+  }
+  void sync(const DSchedTimestamp& other) {
+    val_ = std::max(val_, other.val_);
+  }
+  bool initialized() const {
+    return val_ > 0;
+  }
+  static constexpr DSchedTimestamp initial() {
+    return DSchedTimestamp(1);
+  }
+
+ protected:
+  constexpr explicit DSchedTimestamp(size_t v) : val_(v) {}
+
+ private:
+  size_t val_;
+};
+
+class ThreadTimestamps {
+ public:
+  void sync(const ThreadTimestamps& src);
+  DSchedTimestamp advance(DSchedThreadId tid);
+
+  void setIfNotPresent(DSchedThreadId tid, DSchedTimestamp ts);
+  void clear();
+  bool atLeastAsRecentAs(DSchedThreadId tid, DSchedTimestamp ts) const;
+  bool atLeastAsRecentAsAny(const ThreadTimestamps& src) const;
+
+ private:
+  std::vector<DSchedTimestamp> timestamps_;
+};
+
+struct ThreadInfo {
+  ThreadInfo() = delete;
+  explicit ThreadInfo(DSchedThreadId tid) {
+    acqRelOrder_.setIfNotPresent(tid, DSchedTimestamp::initial());
+  }
+  ThreadTimestamps acqRelOrder_;
+  ThreadTimestamps acqFenceOrder_;
+  ThreadTimestamps relFenceOrder_;
+};
+
+class ThreadSyncVar {
+ public:
+  ThreadSyncVar() = default;
+
+  void acquire();
+  void release();
+  void acq_rel();
+
+ private:
+  ThreadTimestamps order_;
+};
+
 /**
  * DeterministicSchedule coordinates the inter-thread communication of a
  * set of threads under test, so that despite concurrency the execution is
@@ -122,6 +193,7 @@ class DeterministicSchedule : boost::noncopyable {
   template <typename Func, typename... Args>
   static inline std::thread thread(Func&& func, Args&&... args) {
     // TODO: maybe future versions of gcc will allow forwarding to thread
+    atomic_thread_fence(std::memory_order_seq_cst);
     auto sched = tls_sched;
     auto sem = sched ? sched->beforeThreadCreate() : nullptr;
     auto child = std::thread(
@@ -191,10 +263,23 @@ class DeterministicSchedule : boost::noncopyable {
   /** Add sem back into sems_ */
   static void reschedule(sem_t* sem);
 
+  static bool isActive() {
+    return tls_sched != nullptr;
+  }
+
+  static DSchedThreadId getThreadId() {
+    assert(tls_sched != nullptr);
+    return tls_threadId;
+  }
+
+  static ThreadInfo& getCurrentThreadInfo();
+
+  static void atomic_thread_fence(std::memory_order mo);
+
  private:
   static FOLLY_TLS sem_t* tls_sem;
   static FOLLY_TLS DeterministicSchedule* tls_sched;
-  static FOLLY_TLS unsigned tls_threadId;
+  static FOLLY_TLS DSchedThreadId tls_threadId;
   static thread_local AuxAct tls_aux_act;
   static AuxChk aux_chk;
 
@@ -202,6 +287,10 @@ class DeterministicSchedule : boost::noncopyable {
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
   std::unordered_map<std::thread::id, sem_t*> joins_;
+
+  std::vector<ThreadInfo> threadInfoMap_;
+  ThreadTimestamps seqCstFenceOrder_;
+
   unsigned nextThreadId_;
   /* step_ keeps count of shared accesses that correspond to user
    * synchronization steps (atomic accesses for now).
@@ -496,6 +585,7 @@ void atomic_notify_all(const DeterministicAtomic<Integer>*) {}
 struct DeterministicMutex {
   std::mutex m;
   std::queue<sem_t*> waiters_;
+  ThreadSyncVar syncVar_;
 
   DeterministicMutex() = default;
   ~DeterministicMutex() = default;
@@ -514,12 +604,18 @@ struct DeterministicMutex {
       // Wait to be scheduled by unlock
       DeterministicSchedule::beforeSharedAccess();
     }
+    if (DeterministicSchedule::isActive()) {
+      syncVar_.acquire();
+    }
     DeterministicSchedule::afterSharedAccess();
   }
 
   bool try_lock() {
     DeterministicSchedule::beforeSharedAccess();
     bool rv = m.try_lock();
+    if (rv && DeterministicSchedule::isActive()) {
+      syncVar_.acquire();
+    }
     FOLLY_TEST_DSCHED_VLOG(this << ".try_lock() -> " << rv);
     DeterministicSchedule::afterSharedAccess();
     return rv;
@@ -527,8 +623,11 @@ struct DeterministicMutex {
 
   void unlock() {
     FOLLY_TEST_DSCHED_VLOG(this << ".unlock()");
-    m.unlock();
     DeterministicSchedule::beforeSharedAccess();
+    m.unlock();
+    if (DeterministicSchedule::isActive()) {
+      syncVar_.release();
+    }
     if (!waiters_.empty()) {
       sem_t* sem = waiters_.front();
       DeterministicSchedule::reschedule(sem);

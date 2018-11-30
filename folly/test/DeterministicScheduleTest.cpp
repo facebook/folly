@@ -367,6 +367,53 @@ TEST(DeterministicSchedule, global_invariants) {
   }
 }
 
+struct DSchedTimestampTest : public DSchedTimestamp {
+  explicit DSchedTimestampTest(size_t v) : DSchedTimestamp(v) {}
+};
+
+TEST(DeterministicSchedule, thread_timestamps) {
+  ThreadTimestamps tss;
+  DSchedThreadId tid0(0);
+  DSchedThreadId tid1(1);
+
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid0, DSchedTimestampTest(1)));
+
+  tss.setIfNotPresent(tid0, DSchedTimestampTest(1));
+  ASSERT_TRUE(tss.atLeastAsRecentAs(tid0, DSchedTimestampTest(1)));
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid0, DSchedTimestampTest(2)));
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid1, DSchedTimestampTest(1)));
+
+  tss.setIfNotPresent(tid0, DSchedTimestampTest(2));
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid0, DSchedTimestampTest(2)));
+
+  auto ts = tss.advance(tid0);
+  ASSERT_TRUE(ts.atLeastAsRecentAs(DSchedTimestampTest(2)));
+  ASSERT_FALSE(ts.atLeastAsRecentAs(DSchedTimestampTest(3)));
+  ASSERT_TRUE(tss.atLeastAsRecentAs(tid0, DSchedTimestampTest(2)));
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid1, DSchedTimestampTest(1)));
+
+  ThreadTimestamps tss2;
+  tss2.setIfNotPresent(tid1, DSchedTimestampTest(3));
+  ASSERT_FALSE(tss2.atLeastAsRecentAs(tid1, DSchedTimestampTest(4)));
+  ASSERT_TRUE(tss2.atLeastAsRecentAs(tid1, DSchedTimestampTest(3)));
+
+  ASSERT_FALSE(tss.atLeastAsRecentAsAny(tss2));
+  tss.sync(tss2);
+  ASSERT_TRUE(tss.atLeastAsRecentAs(tid1, DSchedTimestampTest(3)));
+  ASSERT_FALSE(tss.atLeastAsRecentAs(tid1, DSchedTimestampTest(4)));
+
+  ThreadTimestamps tss3;
+  tss3.setIfNotPresent(tid1, DSchedTimestampTest(4));
+  ASSERT_TRUE(tss3.atLeastAsRecentAsAny(tss2));
+  ASSERT_FALSE(tss2.atLeastAsRecentAsAny(tss3));
+
+  ThreadTimestamps tss4, tss5;
+  tss4.setIfNotPresent(DSchedThreadId(10), DSchedTimestampTest(5));
+  tss5.setIfNotPresent(DSchedThreadId(11), DSchedTimestampTest(5));
+  ASSERT_FALSE(tss4.atLeastAsRecentAsAny(tss5));
+  ASSERT_FALSE(tss5.atLeastAsRecentAsAny(tss4));
+}
+
 int main(int argc, char** argv) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);
