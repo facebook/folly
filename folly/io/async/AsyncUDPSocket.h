@@ -315,7 +315,7 @@ class AsyncUDPSocket : public EventHandler {
   // Temp space to receive client address
   folly::SocketAddress clientAddress_;
 
-  bool reuseAddr_{true};
+  bool reuseAddr_{false};
   bool reusePort_{false};
   int rcvBuf_{0};
   int sndBuf_{0};
