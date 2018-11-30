@@ -16,6 +16,9 @@
 
 #include <folly/container/detail/F14Table.h>
 
+#include <atomic>
+#include <chrono>
+
 namespace folly {
 namespace f14 {
 namespace detail {
@@ -32,7 +35,26 @@ EmptyTagVectorType kEmptyTagVector = {};
 #endif
 
 FOLLY_F14_TLS_IF_ASAN std::size_t asanPendingSafeInserts = 0;
-FOLLY_F14_TLS_IF_ASAN std::size_t asanRehashState = 0;
+
+std::size_t tlsMinstdRand(std::size_t n) {
+  FOLLY_SAFE_DCHECK(n > 0, "");
+
+#if defined(FOLLY_TLS) && (!defined(NDEBUG) || FOLLY_ASAN_ENABLED)
+  static FOLLY_TLS uint32_t state = 0;
+#else
+  static std::atomic<uint32_t> state{0};
+#endif
+  uint32_t s = state;
+  if (s == 0) {
+    uint64_t seed = static_cast<uint64_t>(
+        std::chrono::steady_clock::now().time_since_epoch().count());
+    s = hash::twang_32from64(seed);
+  }
+
+  s = static_cast<uint32_t>((s * uint64_t{48271}) % uint64_t{2147483647});
+  state = s;
+  return std::size_t{s} % n;
+}
 
 } // namespace detail
 } // namespace f14

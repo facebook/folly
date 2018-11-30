@@ -77,6 +77,10 @@
 
 #endif
 
+#ifndef FOLLY_F14_PERTURB_INSERTION_ORDER
+#define FOLLY_F14_PERTURB_INSERTION_ORDER folly::kIsDebug
+#endif
+
 namespace folly {
 
 struct F14TableStats {
@@ -327,7 +331,8 @@ using EmptyTagVectorType = std::aligned_storage_t<
 extern EmptyTagVectorType kEmptyTagVector;
 
 extern FOLLY_F14_TLS_IF_ASAN std::size_t asanPendingSafeInserts;
-extern FOLLY_F14_TLS_IF_ASAN std::size_t asanRehashState;
+
+std::size_t tlsMinstdRand(std::size_t n);
 
 template <unsigned BitCount>
 struct FullMask {
@@ -2006,13 +2011,13 @@ class F14Table : public Policy {
     success = true;
   }
 
-  void asanOnReserve(std::size_t capacity) {
+  FOLLY_ALWAYS_INLINE void asanOnReserve(std::size_t capacity) {
     if (kIsSanitizeAddress && capacity > size()) {
       asanPendingSafeInserts += capacity - size();
     }
   }
 
-  bool asanShouldAddExtraRehash() {
+  FOLLY_ALWAYS_INLINE bool asanShouldAddExtraRehash() {
     if (!kIsSanitizeAddress) {
       return false;
     } else if (asanPendingSafeInserts > 0) {
@@ -2021,9 +2026,7 @@ class F14Table : public Policy {
     } else if (size() <= 1) {
       return size() > 0;
     } else {
-      constexpr std::size_t kBigPrime = 4294967291U;
-      auto s = (asanRehashState += kBigPrime);
-      return (s % size()) == 0;
+      return tlsMinstdRand(size()) == 0;
     }
   }
 
@@ -2033,7 +2036,7 @@ class F14Table : public Policy {
     rehashImpl(cc, bc, cc, bc);
   }
 
-  void asanOnInsert() {
+  FOLLY_ALWAYS_INLINE void asanOnInsert() {
     // When running under ASAN, we add a spurious rehash with 1/size()
     // probability before every insert.  This means that finding reference
     // stability problems for F14Value and F14Vector is much more likely.
@@ -2043,9 +2046,23 @@ class F14Table : public Policy {
     //
     // One way to fix this is to call map.reserve(N) before such a
     // sequence, where N is the number of keys that might be inserted
-    // within the section that retains references.
+    // within the section that retains references plus the existing size.
     if (asanShouldAddExtraRehash()) {
       asanExtraRehash();
+    }
+  }
+
+  FOLLY_ALWAYS_INLINE void perturbInsertOrder(
+      ChunkPtr chunk,
+      std::size_t& itemIndex) {
+    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
+    constexpr bool perturb = FOLLY_F14_PERTURB_INSERTION_ORDER;
+    if (perturb) {
+      std::size_t e = chunkMask_ == 0 ? bucket_count() : Chunk::kCapacity;
+      std::size_t i = itemIndex + tlsMinstdRand(e - itemIndex);
+      if (!chunk->occupied(i)) {
+        itemIndex = i;
+      }
     }
   }
 
@@ -2108,7 +2125,8 @@ class F14Table : public Policy {
       chunk->adjustHostedOverflowCount(Chunk::kIncrHostedOverflowCount);
     }
     std::size_t itemIndex = firstEmpty.index();
-    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
+
+    perturbInsertOrder(chunk, itemIndex);
 
     chunk->setTag(itemIndex, hp.second);
     ItemIter iter{chunk, itemIndex};

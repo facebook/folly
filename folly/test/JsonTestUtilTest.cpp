@@ -31,6 +31,18 @@ TEST(CompareJson, Simple) {
   EXPECT_FALSE(compareJson(json1, json3));
 }
 
+TEST(CompareJson, Nested) {
+  constexpr StringPiece json1 = R"({"a": "{\"A\": 1, \"B\": 2}", "b": 2})";
+  LOG(INFO) << json1 << "\n";
+  constexpr StringPiece json2 = R"({"b": 2, "a": "{\"B\": 2, \"A\": 1}"})";
+  EXPECT_FALSE(compareJsonWithNestedJson(json1, json2, 0));
+  EXPECT_TRUE(compareJsonWithNestedJson(json1, json2, 1));
+
+  constexpr StringPiece json3 = R"({"b": 2, "a": "{\"B\": 3, \"A\": 1}"})";
+  EXPECT_FALSE(compareJsonWithNestedJson(json1, json3, 0));
+  EXPECT_FALSE(compareJsonWithNestedJson(json1, json3, 1));
+}
+
 TEST(CompareJson, Malformed) {
   constexpr StringPiece json1 = R"({"a": 1, "b": 2})";
   constexpr StringPiece json2 = R"({"b": 2, "a": 1)";
@@ -70,4 +82,11 @@ TEST(CompareJsonWithTolerance, Simple) {
 
   FOLLY_EXPECT_JSON_NEAR(
       R"({"a": 1, "b": 2})", R"({"b": 2.01, "a": 1.05})", 0.1);
+}
+
+TEST(JsonEqMock, Simple) {
+  EXPECT_THAT(StringPiece{"1"}, JsonEq<StringPiece>("1"));
+  EXPECT_THAT(std::string{"1"}, JsonEq<std::string>("1"));
+  EXPECT_THAT(std::string{"1"}, JsonEq<std::string const&>("1"));
+  EXPECT_THAT(std::string{"^J1"}, JsonEq<std::string const&>("1", "^J"));
 }

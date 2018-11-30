@@ -16,22 +16,44 @@
 
 #pragma once
 
+#include <iostream>
+#include <string>
+
 #include <folly/Range.h>
 #include <folly/dynamic.h>
+#include <folly/portability/GMock.h>
 
 namespace folly {
 
 /**
  * Compares two JSON strings and returns whether they represent the
- * same document (thus ignoring things like object ordering or
- * multiple representations of the same number).
+ * same document (thus ignoring things like object ordering or multiple
+ * representations of the same number).
  *
- * This is implemented by deserializing both strings into dynamic, so
- * it is not efficient and it is meant to only be used in tests.
+ * This is implemented by deserializing both strings into dynamic, so it
+ * is not efficient and it is meant to only be used in tests.
  *
  * It will throw an exception if any of the inputs is invalid.
  */
 bool compareJson(StringPiece json1, StringPiece json2);
+
+/**
+ * Like compareJson, but if strNestingDepth > 0 then contained strings that
+ * are valid JSON will be compared using compareJsonWithNestedJson(str1,
+ * str2, strNestingDepth - 1).
+ */
+bool compareJsonWithNestedJson(
+    StringPiece json1,
+    StringPiece json2,
+    unsigned strNestingDepth);
+
+/**
+ * Like compareJson, but with dynamic instances.
+ */
+bool compareDynamicWithNestedJson(
+    dynamic const& obj1,
+    dynamic const& obj2,
+    unsigned strNestingDepth);
 
 /**
  * Like compareJson, but allows for the given tolerance when comparing
@@ -59,6 +81,57 @@ bool compareDynamicWithTolerance(
     const dynamic& obj2,
     double tolerance);
 
+namespace detail {
+template <typename T>
+class JsonEqMatcher : public ::testing::MatcherInterface<T> {
+ public:
+  explicit JsonEqMatcher(std::string expected, std::string prefixBeforeJson)
+      : expected_(std::move(expected)),
+        prefixBeforeJson_(std::move(prefixBeforeJson)) {}
+
+  virtual bool MatchAndExplain(
+      T const& actual,
+      ::testing::MatchResultListener* /*listener*/) const override {
+    StringPiece sp{actual};
+    if (!sp.startsWith(prefixBeforeJson_)) {
+      return false;
+    }
+    return compareJson(sp.subpiece(prefixBeforeJson_.size()), expected_);
+  }
+
+  virtual void DescribeTo(::std::ostream* os) const override {
+    *os << "JSON is equivalent to " << expected_;
+    if (prefixBeforeJson_.size() > 0) {
+      *os << " after removing prefix '" << prefixBeforeJson_ << "'";
+    }
+  }
+
+  virtual void DescribeNegationTo(::std::ostream* os) const override {
+    *os << "JSON is not equivalent to " << expected_;
+    if (prefixBeforeJson_.size() > 0) {
+      *os << " after removing prefix '" << prefixBeforeJson_ << "'";
+    }
+  }
+
+ private:
+  std::string expected_;
+  std::string prefixBeforeJson_;
+};
+} // namespace detail
+
+/**
+ * GMock matcher that uses compareJson, expecting exactly a type T as an
+ * argument. Popular choices for T are std::string const&, StringPiece, and
+ * std::string. prefixBeforeJson should not be present in expected.
+ */
+template <typename T>
+::testing::Matcher<T> JsonEq(
+    std::string expected,
+    std::string prefixBeforeJson = "") {
+  return ::testing::MakeMatcher(new detail::JsonEqMatcher<T>(
+      std::move(expected), std::move(prefixBeforeJson)));
+}
+
 } // namespace folly
 
 /**
@@ -67,6 +140,9 @@ bool compareDynamicWithTolerance(
  */
 #define FOLLY_EXPECT_JSON_EQ(json1, json2) \
   EXPECT_PRED2(::folly::compareJson, json1, json2)
+
+#define FOLLY_EXPECT_JSON_WITH_NESTED_JSON_EQ(json1, json2) \
+  EXPECT_PRED3(::folly::compareJsonWithNestedJson, json1, json2, 1)
 
 #define FOLLY_EXPECT_JSON_NEAR(json1, json2, tolerance) \
   EXPECT_PRED3(::folly::compareJsonWithTolerance, json1, json2, tolerance)

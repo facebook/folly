@@ -1566,6 +1566,33 @@ TEST(F14FastMap, disabledDoubleTransparent) {
   EXPECT_TRUE(map.find(C{20}) == map.end());
 }
 
+TEST(F14ValueMap, randomInsertOrder) {
+  if (kIsDebug) {
+    std::string prev;
+    bool diffFound = false;
+    for (int tries = 0; tries < 100; ++tries) {
+      F14ValueMap<char, char> m;
+      for (char x = '0'; x <= '9'; ++x) {
+        m[x] = x;
+      }
+      std::string s;
+      for (auto&& e : m) {
+        s.push_back(e.first);
+      }
+      LOG(INFO) << s << "\n";
+      if (prev.empty()) {
+        prev = s;
+        continue;
+      }
+      if (prev != s) {
+        diffFound = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(diffFound) << "no randomness found in insert order";
+  }
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
