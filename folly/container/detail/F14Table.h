@@ -231,7 +231,11 @@ struct EligibleForHeterogeneousFind<
     Hasher,
     KeyEqual,
     ArgKey,
-    void_t<typename Hasher::is_transparent, typename KeyEqual::is_transparent>>
+    void_t<
+        typename Hasher::is_transparent,
+        typename KeyEqual::is_transparent,
+        invoke_result_t<Hasher, ArgKey const&>,
+        invoke_result_t<KeyEqual, ArgKey const&, TableKey const&>>>
     : std::true_type {};
 
 template <
