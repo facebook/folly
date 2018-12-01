@@ -14,12 +14,18 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 #include <thread>
 #include <unordered_set>
 #include <vector>
 
 #include <folly/SingletonThreadLocal.h>
+#include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -179,3 +185,16 @@ TEST(SingletonThreadLocalTest, Reused) {
     EXPECT_EQ(i == 0u ? "hello" : "", data);
   }
 }
+
+#ifndef _WIN32
+TEST(SingletonThreadLocalDeathTest, Overload) {
+  auto exe = fs::executable_path();
+  auto lib = exe.parent_path() / "singleton_thread_local_overload.so";
+  auto message = stripLeftMargin(R"MESSAGE(
+    Overloaded folly::SingletonThreadLocal<int, DeathTag, ...> with differing trailing arguments:
+      folly::SingletonThreadLocal<int, DeathTag, Make1, DeathTag>
+      folly::SingletonThreadLocal<int, DeathTag, Make2, DeathTag>
+  )MESSAGE");
+  EXPECT_DEATH(dlopen(lib.string().c_str(), RTLD_LAZY), message);
+}
+#endif

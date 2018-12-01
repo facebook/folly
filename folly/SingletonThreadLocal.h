@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <typeinfo>
+
 #include <boost/intrusive/list.hpp>
 
 #include <folly/ScopeGuard.h>
@@ -24,6 +26,35 @@
 #include <folly/functional/Invoke.h>
 
 namespace folly {
+
+namespace detail {
+
+class SingletonThreadLocalBase {
+ public:
+  class UniqueBase {
+   public:
+    using Ptr = std::type_info const*;
+    using Ref = std::type_info const&;
+    struct Value {
+      bool init;
+      Ptr make;
+      Ptr tltag;
+    };
+
+    template <typename T, typename Tag, typename Make, typename TLTag>
+    explicit UniqueBase(TypeTuple<T, Tag, Make, TLTag>)
+        : UniqueBase(
+              typeid(T),
+              typeid(Tag),
+              typeid(Make),
+              typeid(TLTag),
+              detail::createGlobal<Value, TypeTuple<T, Tag, UniqueBase>>()) {}
+
+    UniqueBase(Ref type, Ref tag, Ref make, Ref tltag, Value& value);
+  };
+};
+
+} // namespace detail
 
 /// SingletonThreadLocal
 ///
@@ -65,8 +96,13 @@ template <
         std::is_same<Tag, detail::DefaultTag>::value,
         void,
         Tag>>>
-class SingletonThreadLocal {
+class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
  private:
+  struct Unique final : UniqueBase {
+    Unique() : UniqueBase(detail::TypeTuple<T, Tag, Make, TLTag>{}) {}
+  };
+  static Unique unique;
+
   struct Wrapper;
 
   using NodeBase = boost::intrusive::list_base_hook<
@@ -128,6 +164,7 @@ class SingletonThreadLocal {
 
 #ifdef FOLLY_TLS
   FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
+    (void)unique; // force the object not to be thrown out as unused
     static thread_local Wrapper** check = &cache;
     CHECK_EQ(check, &cache) << "inline function static thread_local merging";
     static thread_local bool stale;
@@ -151,6 +188,10 @@ class SingletonThreadLocal {
     return getWrapperTL().accessAllThreads();
   }
 };
+
+template <typename T, typename Tag, typename Make, typename TLTag>
+typename SingletonThreadLocal<T, Tag, Make, TLTag>::Unique
+    SingletonThreadLocal<T, Tag, Make, TLTag>::unique;
 
 } // namespace folly
 

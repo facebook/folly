@@ -52,5 +52,8 @@ struct DefaultMake {
   }
 };
 
+template <typename...>
+struct TypeTuple {};
+
 } // namespace detail
 } // namespace folly

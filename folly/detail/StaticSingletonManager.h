@@ -21,6 +21,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
+#include <folly/detail/Singleton.h>
 
 namespace folly {
 namespace detail {
@@ -34,16 +35,13 @@ class StaticSingletonManager {
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
     static Cache cache;
-    auto const& key = typeid(TypePair<T, Tag>);
+    auto const& key = typeid(TypeTuple<T, Tag>);
     auto const v = cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
     return *static_cast<T*>(p);
   }
 
  private:
-  template <typename A, typename B>
-  struct TypePair {};
-
   using Key = std::type_info;
   using Make = void*();
   using Cache = std::atomic<void*>;
