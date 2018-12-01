@@ -265,6 +265,15 @@ constexpr auto kIsDebug = true;
 #endif
 } // namespace folly
 
+// Exceptions
+namespace folly {
+#if FOLLY_HAS_EXCEPTIONS
+constexpr auto kHasExceptions = true;
+#else
+constexpr auto kHasExceptions = false;
+#endif
+} // namespace folly
+
 // Endianness
 namespace folly {
 #ifdef _MSC_VER

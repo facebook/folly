@@ -320,7 +320,7 @@ struct FunctionTraits<ReturnType(Args...)> {
   }
 
   static ReturnType uninitCall(Data&, Args&&...) {
-    throw std::bad_function_call();
+    throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) {
@@ -366,7 +366,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
   }
 
   static ReturnType uninitCall(Data&, Args&&...) {
-    throw std::bad_function_call();
+    throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) const {
@@ -458,7 +458,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
   }
 
   static ReturnType uninitCall(Data&, Args&&...) noexcept {
-    throw std::bad_function_call();
+    throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) const noexcept {
@@ -897,7 +897,7 @@ class FunctionRef<ReturnType(Args...)> final {
   using Call = ReturnType (*)(void*, Args&&...);
 
   static ReturnType uninitCall(void*, Args&&...) {
-    throw std::bad_function_call();
+    throw_exception<std::bad_function_call>();
   }
 
   template <typename Fun>

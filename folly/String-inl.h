@@ -99,7 +99,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
     ++p;
     if (p == str.end()) { // backslash at end of string
       if (strict) {
-        throw std::invalid_argument("incomplete escape sequence");
+        throw_exception<std::invalid_argument>("incomplete escape sequence");
       }
       out.push_back('\\');
       last = p;
@@ -119,7 +119,8 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       ++p;
       if (p == str.end()) { // \x at end of string
         if (strict) {
-          throw std::invalid_argument("incomplete hex escape sequence");
+          throw_exception<std::invalid_argument>(
+              "incomplete hex escape sequence");
         }
         out.append("\\x");
         last = p;
@@ -137,7 +138,7 @@ void cUnescape(StringPiece str, String& out, bool strict) {
       last = p;
     } else if (e == 'I') { // invalid
       if (strict) {
-        throw std::invalid_argument("invalid escape sequence");
+        throw_exception<std::invalid_argument>("invalid escape sequence");
       }
       out.push_back('\\');
       out.push_back(*p);
@@ -209,12 +210,14 @@ void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
     switch (c) {
       case '%': {
         if (UNLIKELY(std::distance(p, str.end()) < 3)) {
-          throw std::invalid_argument("incomplete percent encode sequence");
+          throw_exception<std::invalid_argument>(
+              "incomplete percent encode sequence");
         }
         auto h1 = detail::hexTable[static_cast<unsigned char>(p[1])];
         auto h2 = detail::hexTable[static_cast<unsigned char>(p[2])];
         if (UNLIKELY(h1 == 16 || h2 == 16)) {
-          throw std::invalid_argument("invalid percent encode sequence");
+          throw_exception<std::invalid_argument>(
+              "invalid percent encode sequence");
         }
         out.append(&*last, size_t(p - last));
         out.push_back((h1 << 4) | h2);

@@ -26,6 +26,7 @@
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/Utility.h>
+#include <folly/lang/Exception.h>
 #include <folly/lang/UncaughtExceptions.h>
 
 namespace folly {
@@ -120,12 +121,9 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
 
   void execute() noexcept(InvokeNoexcept) {
     if (InvokeNoexcept) {
-      try {
-        function_();
-      } catch (...) {
-        warnAboutToCrash();
-        std::terminate();
-      }
+      using R = decltype(function_());
+      auto catcher = []() -> R { warnAboutToCrash(), std::terminate(); };
+      catch_exception(function_, catcher);
     } else {
       function_();
     }

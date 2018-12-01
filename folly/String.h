@@ -260,7 +260,7 @@ OutputString hexlify(ByteRange input) {
   OutputString output;
   if (!hexlify(input, output)) {
     // hexlify() currently always returns true, so this can't really happen
-    throw std::runtime_error("hexlify failed");
+    throw_exception<std::runtime_error>("hexlify failed");
   }
   return output;
 }
@@ -283,7 +283,7 @@ OutputString unhexlify(StringPiece input) {
   if (!unhexlify(input, output)) {
     // unhexlify() fails if the input has non-hexidecimal characters,
     // or if it doesn't consist of a whole number of bytes
-    throw std::domain_error("unhexlify() called with non-hex input");
+    throw_exception<std::domain_error>("unhexlify() called with non-hex input");
   }
   return output;
 }

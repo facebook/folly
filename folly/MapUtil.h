@@ -76,7 +76,7 @@ const typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw E(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
 }
 
 template <
@@ -91,7 +91,7 @@ typename Map::mapped_type& get_or_throw(
   if (pos != map.end()) {
     return pos->second;
   }
-  throw E(folly::to<std::string>(exceptionStrPrefix, key));
+  throw_exception<E>(folly::to<std::string>(exceptionStrPrefix, key));
 }
 
 /**
