@@ -307,6 +307,7 @@ if (BUILD_TESTS)
 
   add_library(folly_test_support
     ${FOLLY_DIR}/test/common/TestMain.cpp
+    ${FOLLY_DIR}/test/FBVectorTestUtil.cpp
     ${FOLLY_DIR}/test/DeterministicSchedule.cpp
     ${FOLLY_DIR}/test/DeterministicSchedule.h
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp

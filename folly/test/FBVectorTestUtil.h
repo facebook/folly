@@ -17,7 +17,10 @@
 //
 // Author: andrei.alexandrescu@fb.com
 
+#include <list>
+
 #include <boost/random/mersenne_twister.hpp>
+#include <boost/random/uniform_int.hpp>
 
 #include <folly/Benchmark.h>
 #include <folly/FBString.h>
@@ -30,7 +33,7 @@ namespace detail {
 
 auto static const seed = randomNumberSeed();
 typedef boost::random::mt19937 RandomT;
-static RandomT rng(seed);
+extern RandomT rng;
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
@@ -54,36 +57,19 @@ void Num2String(String& str, Integral /* n */) {
   str.resize(strlen(str.c_str()));
 }
 
-std::list<char> RandomList(unsigned int maxSize) {
-  std::list<char> lst(random(0u, maxSize));
-  std::list<char>::iterator i = lst.begin();
-  for (; i != lst.end(); ++i) {
-    *i = random('a', 'z');
-  }
-  return lst;
-}
+std::list<char> RandomList(unsigned int maxSize);
 
 template <class T>
 T randomObject();
 
 template <>
-int randomObject<int>() {
-  return random(0, 1024);
-}
+int randomObject<int>();
 
 template <>
-std::string randomObject<std::string>() {
-  std::string result;
-  randomString(&result);
-  return result;
-}
+std::string randomObject<std::string>();
 
 template <>
-folly::fbstring randomObject<folly::fbstring>() {
-  folly::fbstring result;
-  randomString(&result);
-  return result;
-}
+folly::fbstring randomObject<folly::fbstring>();
 
 #define CONCAT(A, B) CONCAT_HELPER(A, B)
 #define CONCAT_HELPER(A, B) A##B
