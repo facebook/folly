@@ -1567,7 +1567,7 @@ TEST(F14FastMap, disabledDoubleTransparent) {
 }
 
 TEST(F14ValueMap, randomInsertOrder) {
-  if (kIsDebug) {
+  if (FOLLY_F14_PERTURB_INSERTION_ORDER) {
     std::string prev;
     bool diffFound = false;
     for (int tries = 0; tries < 100; ++tries) {
