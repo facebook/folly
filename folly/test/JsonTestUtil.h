@@ -21,7 +21,6 @@
 
 #include <folly/Range.h>
 #include <folly/dynamic.h>
-#include <folly/portability/GMock.h>
 
 namespace folly {
 
@@ -80,57 +79,6 @@ bool compareDynamicWithTolerance(
     const dynamic& obj1,
     const dynamic& obj2,
     double tolerance);
-
-namespace detail {
-template <typename T>
-class JsonEqMatcher : public ::testing::MatcherInterface<T> {
- public:
-  explicit JsonEqMatcher(std::string expected, std::string prefixBeforeJson)
-      : expected_(std::move(expected)),
-        prefixBeforeJson_(std::move(prefixBeforeJson)) {}
-
-  virtual bool MatchAndExplain(
-      T const& actual,
-      ::testing::MatchResultListener* /*listener*/) const override {
-    StringPiece sp{actual};
-    if (!sp.startsWith(prefixBeforeJson_)) {
-      return false;
-    }
-    return compareJson(sp.subpiece(prefixBeforeJson_.size()), expected_);
-  }
-
-  virtual void DescribeTo(::std::ostream* os) const override {
-    *os << "JSON is equivalent to " << expected_;
-    if (prefixBeforeJson_.size() > 0) {
-      *os << " after removing prefix '" << prefixBeforeJson_ << "'";
-    }
-  }
-
-  virtual void DescribeNegationTo(::std::ostream* os) const override {
-    *os << "JSON is not equivalent to " << expected_;
-    if (prefixBeforeJson_.size() > 0) {
-      *os << " after removing prefix '" << prefixBeforeJson_ << "'";
-    }
-  }
-
- private:
-  std::string expected_;
-  std::string prefixBeforeJson_;
-};
-} // namespace detail
-
-/**
- * GMock matcher that uses compareJson, expecting exactly a type T as an
- * argument. Popular choices for T are std::string const&, StringPiece, and
- * std::string. prefixBeforeJson should not be present in expected.
- */
-template <typename T>
-::testing::Matcher<T> JsonEq(
-    std::string expected,
-    std::string prefixBeforeJson = "") {
-  return ::testing::MakeMatcher(new detail::JsonEqMatcher<T>(
-      std::move(expected), std::move(prefixBeforeJson)));
-}
 
 } // namespace folly
 

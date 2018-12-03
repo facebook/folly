@@ -16,7 +16,9 @@
 
 #include <stdexcept>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/JsonMockUtil.h>
 #include <folly/test/JsonTestUtil.h>
 
 using namespace folly;
