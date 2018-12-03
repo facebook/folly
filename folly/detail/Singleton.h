@@ -40,15 +40,8 @@ struct DefaultMake {
       std::is_move_constructible<T>>;
   using type = std::conditional_t<is_returnable::value, T, Heap>;
 
-  T make(std::true_type) const {
-    return T();
-  }
-  Heap make(std::false_type) const {
-    return Heap();
-  }
-
   type operator()() const {
-    return make(is_returnable{});
+    return type();
   }
 };
 
