@@ -78,9 +78,7 @@
 #endif
 
 #ifndef FOLLY_F14_PERTURB_INSERTION_ORDER
-// TODO(T34636025) reenable perturbation
-//#define FOLLY_F14_PERTURB_INSERTION_ORDER folly::kIsDebug
-#define FOLLY_F14_PERTURB_INSERTION_ORDER false
+#define FOLLY_F14_PERTURB_INSERTION_ORDER folly::kIsDebug
 #endif
 
 namespace folly {
