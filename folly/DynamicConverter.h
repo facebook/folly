@@ -28,6 +28,7 @@
 #include <folly/Optional.h>
 #include <folly/Traits.h>
 #include <folly/dynamic.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 template <typename T>
@@ -110,7 +111,7 @@ struct Dereferencer {
   static inline void derefToCache(
       Optional<T>* /* mem */,
       const dynamic::const_item_iterator& /* it */) {
-    throw TypeError("array", dynamic::Type::OBJECT);
+    throw_exception<TypeError>("array", dynamic::Type::OBJECT);
   }
 
   static inline void derefToCache(
@@ -249,7 +250,7 @@ struct DynamicConverter<std::pair<F, S>> {
       auto it = d.items().begin();
       return std::make_pair(convertTo<F>(it->first), convertTo<S>(it->second));
     } else {
-      throw TypeError("array (size 2) or object (size 1)", d.type());
+      throw_exception<TypeError>("array (size 2) or object (size 1)", d.type());
     }
   }
 };
@@ -271,7 +272,7 @@ struct DynamicConverter<
           dynamicconverter_detail::conversionIterator<C>(d.items().begin()),
           dynamicconverter_detail::conversionIterator<C>(d.items().end()));
     } else {
-      throw TypeError("object or array", d.type());
+      throw_exception<TypeError>("object or array", d.type());
     }
   }
 };
@@ -295,7 +296,7 @@ struct DynamicConverter<
           dynamicconverter_detail::conversionIterator<C>(d.items().begin()),
           dynamicconverter_detail::conversionIterator<C>(d.items().end()));
     } else {
-      throw TypeError("object or array", d.type());
+      throw_exception<TypeError>("object or array", d.type());
     }
     return ret;
   }
