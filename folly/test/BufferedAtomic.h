@@ -334,7 +334,7 @@ struct BufferedAtomic {
     // Static destructors that outlive DSched instance may load atomics
     if (!DeterministicSchedule::isActive()) {
       auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
-      assert(prev == std::thread::id() || prev == std::this_thread::get_id());
+      CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
       return getBuf().loadDirect();
     }
     ThreadInfo& threadInfo = DeterministicSchedule::getCurrentThreadInfo();
@@ -346,7 +346,7 @@ struct BufferedAtomic {
     // Static destructors that outlive DSched instance may store to atomics
     if (!DeterministicSchedule::isActive()) {
       auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
-      assert(prev == std::thread::id() || prev == std::this_thread::get_id());
+      CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
       getBuf().storeDirect(val);
       return;
     }
