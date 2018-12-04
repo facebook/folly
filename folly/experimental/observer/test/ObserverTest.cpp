@@ -380,3 +380,31 @@ TEST(Observer, WaitForAllUpdates) {
 
   folly::observer_detail::ObserverManager::waitForAllUpdates();
 }
+
+TEST(Observer, IgnoreUpdates) {
+  int callbackCalled = 0;
+  folly::observer::SimpleObservable<int> observable(42);
+  auto observer =
+      folly::observer::makeObserver([even = std::make_shared<bool>(true),
+                                     odd = std::make_shared<bool>(false),
+                                     observer = observable.getObserver()] {
+        if (**observer % 2 == 0) {
+          return even;
+        }
+        return odd;
+      });
+  auto callbackHandle = observer.addCallback([&](auto) { ++callbackCalled; });
+  EXPECT_EQ(1, callbackCalled);
+
+  observable.setValue(43);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(2, callbackCalled);
+
+  observable.setValue(45);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(2, callbackCalled);
+
+  observable.setValue(46);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(3, callbackCalled);
+}
