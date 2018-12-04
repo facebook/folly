@@ -97,11 +97,16 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
     socket_ = std::make_shared<AsyncUDPSocket>(evb_);
     socket_->setReusePort(reusePort_);
+    socket_->setReuseAddr(reuseAddr_);
     socket_->bind(addy);
   }
 
   void setReusePort(bool reusePort) {
     reusePort_ = reusePort;
+  }
+
+  void setReuseAddr(bool reuseAddr) {
+    reuseAddr_ = reuseAddr;
   }
 
   folly::SocketAddress address() const {
@@ -247,6 +252,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   folly::IOBufQueue buf_;
 
   bool reusePort_{false};
+  bool reuseAddr_{false};
 };
 
 } // namespace folly
