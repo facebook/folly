@@ -49,7 +49,7 @@ inline fbstring exceptionStr(std::exception_ptr ep) {
   if (!kHasExceptions) {
     return "Exception (catch unavailable)";
   }
-  catch_exception(
+  return catch_exception(
       [&]() -> fbstring {
         return catch_exception<std::exception const&>(
             [&]() -> fbstring {
