@@ -322,6 +322,9 @@ struct SingletonHolder : public SingletonHolderBase {
   void destroyInstance() override;
 
  private:
+  template <typename Tag, typename VaultTag>
+  struct Impl;
+
   SingletonHolder(TypeDescriptor type, SingletonVault& vault);
 
   enum class SingletonHolderState {
