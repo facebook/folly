@@ -223,6 +223,19 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s2, s);
 }
 
+TEST(StringPiece, CustomAllocator) {
+  using Alloc = AlignedSysAllocator<char>;
+  Alloc const alloc{32};
+  char const* const text = "foo bar baz";
+  std::basic_string<char, std::char_traits<char>, Alloc> str{text, alloc};
+  EXPECT_EQ("foo", StringPiece(str).subpiece(0, 3));
+  EXPECT_EQ("bar", StringPiece(str, 4).subpiece(0, 3));
+  EXPECT_EQ("baz", StringPiece(str, 8, 3));
+  StringPiece piece;
+  piece.reset(str);
+  EXPECT_EQ("foo", piece.subpiece(0, 3));
+}
+
 template <class T>
 void expectLT(const T& a, const T& b) {
   EXPECT_TRUE(a < b);
