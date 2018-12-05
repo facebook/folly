@@ -24,9 +24,9 @@
  * - EXPECT_THROW_ERRNO(), ASSERT_THROW_ERRNO()
  * - AreWithinSecs()
  *
- * Additionally, it includes a PrintTo() function for StringPiece.
- * Including this file in your tests will ensure that StringPiece is printed
- * nicely when used in EXPECT_EQ() or EXPECT_NE() checks.
+ * It also imports PrintTo() functions for StringPiece, FixedString and
+ * FBString. Including this file in your tests will ensure that they are printed
+ * as strings by googletest - for example in failing EXPECT_EQ() checks.
  */
 
 #include <chrono>
@@ -36,6 +36,8 @@
 
 #include <folly/Conv.h>
 #include <folly/ExceptionString.h>
+#include <folly/FBString.h>
+#include <folly/FixedString.h>
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
@@ -264,16 +266,41 @@ CheckResult checkThrowRegex(
 } // namespace detail
 } // namespace test
 
-// Define a PrintTo() function for StringPiece, so that gtest checks
-// will print it as a string.  Without this gtest identifies StringPiece as a
-// container type, and therefore tries printing its elements individually,
-// despite the fact that there is an ostream operator<<() defined for
-// StringPiece.
-inline void PrintTo(StringPiece sp, ::std::ostream* os) {
-  // gtest's PrintToString() function will quote the string and escape internal
-  // quotes and non-printable characters, the same way gtest does for the
-  // standard string types.
-  *os << ::testing::PrintToString(sp.str());
+// Define PrintTo() functions for StringPiece/FixedString/fbstring, so that
+// gtest checks will print them as strings.  Without these gtest identifies them
+// as container types, and therefore tries printing the elements individually,
+// despite the fact that there is an ostream operator<<() defined for each of
+// them.
+//
+// gtest's PrintToString() function is used to quote the string and escape
+// internal quotes and non-printable characters, the same way gtest does for the
+// string types it directly supports.
+inline void PrintTo(StringPiece const& stringPiece, std::ostream* out) {
+  *out << ::testing::PrintToString(stringPiece.str());
 }
 
+inline void PrintTo(
+    Range<wchar_t const*> const& stringPiece,
+    std::ostream* out) {
+  *out << ::testing::PrintToString(
+      std::wstring(stringPiece.begin(), stringPiece.size()));
+}
+
+template <typename CharT, size_t N>
+void PrintTo(
+    BasicFixedString<CharT, N> const& someFixedString,
+    std::ostream* out) {
+  *out << ::testing::PrintToString(someFixedString.toStdString());
+}
+
+template <typename CharT, class Storage>
+void PrintTo(
+    basic_fbstring<
+        CharT,
+        std::char_traits<CharT>,
+        std::allocator<CharT>,
+        Storage> const& someFbString,
+    std::ostream* out) {
+  *out << ::testing::PrintToString(someFbString.toStdString());
+}
 } // namespace folly
