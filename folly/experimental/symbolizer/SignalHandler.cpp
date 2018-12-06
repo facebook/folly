@@ -86,12 +86,14 @@ void FatalSignalCallbackRegistry::run() {
   }
 }
 
+std::atomic<FatalSignalCallbackRegistry*> gFatalSignalCallbackRegistry{};
+
 static FatalSignalCallbackRegistry* getFatalSignalCallbackRegistry() {
   // Leak it so we don't have to worry about destruction order
-  static FatalSignalCallbackRegistry* gFatalSignalCallbackRegistry =
+  static FatalSignalCallbackRegistry* fatalSignalCallbackRegistry =
       new FatalSignalCallbackRegistry();
 
-  return gFatalSignalCallbackRegistry;
+  return fatalSignalCallbackRegistry;
 }
 
 struct {
@@ -421,7 +423,10 @@ void innerSignalHandler(int signum, siginfo_t* info, void* /* uctx */) {
   gStackTracePrinter->printStackTrace(true); // with symbolization
 
   // Run user callbacks
-  getFatalSignalCallbackRegistry()->run();
+  auto callbacks = gFatalSignalCallbackRegistry.load(std::memory_order_acquire);
+  if (callbacks) {
+    callbacks->run();
+  }
 }
 
 void signalHandler(int signum, siginfo_t* info, void* uctx) {
@@ -477,7 +482,8 @@ void installFatalSignalHandler() {
 
   // make sure gFatalSignalCallbackRegistry is created before we
   // install the fatal signal handler
-  getFatalSignalCallbackRegistry();
+  gFatalSignalCallbackRegistry.store(
+      getFatalSignalCallbackRegistry(), std::memory_order_release);
 
   // If a small sigaltstack is enabled (ex. Rust stdlib might use sigaltstack
   // to set a small stack), the default SafeStackTracePrinter would likely
