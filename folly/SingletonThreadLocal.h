@@ -22,6 +22,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
+#include <folly/detail/Iterators.h>
 #include <folly/detail/Singleton.h>
 #include <folly/functional/Invoke.h>
 
@@ -183,9 +184,52 @@ class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
 #endif
   }
 
+  class Accessor {
+   private:
+    using Inner = typename WrapperTL::Accessor;
+    using IteratorBase = typename Inner::Iterator;
+    using IteratorTag = std::bidirectional_iterator_tag;
+
+    Inner inner_;
+
+    explicit Accessor(Inner inner) noexcept : inner_(std::move(inner)) {}
+
+   public:
+    friend class SingletonThreadLocal<T, Tag, Make, TLTag>;
+
+    class Iterator
+        : public detail::
+              IteratorAdaptor<Iterator, IteratorBase, T, IteratorTag> {
+     private:
+      using Super =
+          detail::IteratorAdaptor<Iterator, IteratorBase, T, IteratorTag>;
+      using Super::Super;
+
+     public:
+      friend class Accessor;
+
+      T& dereference() const {
+        return const_cast<Iterator*>(this)->base()->object;
+      }
+    };
+
+    Accessor(const Accessor&) = delete;
+    Accessor& operator=(const Accessor&) = delete;
+    Accessor(Accessor&&) = default;
+    Accessor& operator=(Accessor&&) = default;
+
+    Iterator begin() const {
+      return Iterator(inner_.begin());
+    }
+
+    Iterator end() const {
+      return Iterator(inner_.end());
+    }
+  };
+
   // Must use a unique Tag, takes a lock that is one per Tag
-  static typename WrapperTL::Accessor accessAllThreads() {
-    return getWrapperTL().accessAllThreads();
+  static Accessor accessAllThreads() {
+    return Accessor(getWrapperTL().accessAllThreads());
   }
 };
 

@@ -22,6 +22,8 @@
 #include <unordered_set>
 #include <vector>
 
+#include <boost/thread/barrier.hpp>
+
 #include <folly/SingletonThreadLocal.h>
 #include <folly/String.h>
 #include <folly/Synchronized.h>
@@ -183,6 +185,42 @@ TEST(SingletonThreadLocalTest, Reused) {
       data = "hello";
     }
     EXPECT_EQ(i == 0u ? "hello" : "", data);
+  }
+}
+
+TEST(SingletonThreadLocalTest, AccessAllThreads) {
+  struct Tag {};
+  struct Obj {
+    size_t value;
+  };
+  using STL = SingletonThreadLocal<Obj, Tag>;
+  constexpr size_t n_threads = 4;
+  boost::barrier barrier{n_threads + 1};
+  std::vector<std::thread> threads{n_threads};
+
+  // setup
+  std::atomic<size_t> count{0};
+  for (auto& thread : threads) {
+    thread = std::thread([&] {
+      STL::get().value = ++count;
+      barrier.wait();
+      barrier.wait();
+    });
+  }
+  barrier.wait();
+  EXPECT_EQ(n_threads, count) << "sanity";
+
+  // expectations
+  size_t sum = 0;
+  for (auto& obj : STL::accessAllThreads()) { // explicitly auto
+    sum += obj.value;
+  }
+  EXPECT_EQ((n_threads * (n_threads + 1) / 2), sum);
+
+  // cleanup
+  barrier.wait();
+  for (auto& thread : threads) {
+    thread.join();
   }
 }
 
