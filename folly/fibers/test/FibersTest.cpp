@@ -1317,7 +1317,7 @@ TEST(FiberManager, RequestContext) {
         });
   }
   {
-    folly::RequestContext::setContext(nullptr);
+    folly::RequestContextScopeGuard rctx;
     fm.addTask([&]() {
       folly::RequestContextScopeGuard rctx;
       auto rcontext4 = folly::RequestContext::get();

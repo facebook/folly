@@ -54,7 +54,7 @@ TEST(Context, basic) {
   });
 
   // Clear the context
-  RequestContext::setContext(nullptr);
+  folly::RequestContextScopeGuard rctx2;
 
   EXPECT_EQ(nullptr, RequestContext::get()->getContextData("test"));
 
