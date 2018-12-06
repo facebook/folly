@@ -463,7 +463,7 @@ struct AtomicUnorderedInsertMap {
   void zeroFillSlots() {
     using folly::detail::GivesZeroFilledMemory;
     if (!GivesZeroFilledMemory<Allocator>::value) {
-      memset(slots_, 0, mmapRequested_);
+      memset(static_cast<void*>(slots_), 0, mmapRequested_);
     }
   }
 };

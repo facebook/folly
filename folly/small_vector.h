@@ -250,7 +250,10 @@ struct IntegralSizePolicy<SizeType, true>
   template <class T>
   typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
-    std::memmove(out, first, (last - first) * sizeof *first);
+    std::memmove(
+        static_cast<void*>(out),
+        static_cast<void const*>(first),
+        (last - first) * sizeof *first);
   }
 
   /*
