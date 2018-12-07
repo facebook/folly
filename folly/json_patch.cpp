@@ -16,6 +16,8 @@
 
 #include <folly/json_patch.h>
 
+#include <folly/container/Enumerate.h>
+
 namespace {
 using folly::StringPiece;
 // JSON patch operation names
@@ -150,6 +152,172 @@ Expected<json_patch, json_patch::parse_error> json_patch::try_parse(
 
 std::vector<json_patch::patch_operation> const& json_patch::ops() const {
   return ops_;
+}
+
+namespace {
+// clang-format off
+Expected<Unit, json_patch::patch_application_error_code>
+// clang-format on
+do_remove(dynamic::resolved_json_pointer<dynamic>& ptr) {
+  using error_code = json_patch::patch_application_error_code;
+
+  if (!ptr.hasValue()) {
+    return folly::makeUnexpected(error_code::path_not_found);
+  }
+
+  auto parent = ptr->parent;
+
+  if (!parent) {
+    return folly::makeUnexpected(error_code::other);
+  }
+
+  if (parent->isObject()) {
+    parent->erase(ptr->parent_key);
+    return unit;
+  }
+
+  if (parent->isArray()) {
+    parent->erase(parent->begin() + ptr->parent_index);
+    return unit;
+  }
+
+  return folly::makeUnexpected(error_code::other);
+}
+
+// clang-format off
+Expected<Unit, json_patch::patch_application_error_code>
+// clang-format on
+do_add(
+    dynamic::resolved_json_pointer<dynamic>& ptr,
+    const dynamic& value,
+    const std::string& last_token) {
+  using app_err_code = json_patch::patch_application_error_code;
+  using res_err_code = dynamic::json_pointer_resolution_error_code;
+
+  // element found: see if parent is object or array
+  if (ptr.hasValue()) {
+    // root element, or key in object - replace (per RFC)
+    if (ptr->parent == nullptr || ptr->parent->isObject()) {
+      *ptr->value = value;
+    }
+    // valid index in array: insert at index and shift right
+    if (ptr->parent && ptr->parent->isArray()) {
+      ptr->parent->insert(ptr->parent->begin() + ptr->parent_index, value);
+    }
+  } else {
+    // see if we can add value, based on pointer resolution state
+    switch (ptr.error().error_code) {
+      // key not found. can only happen in object - add new key-value
+      case res_err_code::key_not_found: {
+        DCHECK(ptr.error().context->isObject());
+        ptr.error().context->insert(last_token, value);
+        break;
+      }
+      // special '-' index in array - do append operation
+      case res_err_code::append_requested: {
+        DCHECK(ptr.error().context->isArray());
+        ptr.error().context->push_back(value);
+        break;
+      }
+      default:
+        return folly::makeUnexpected(app_err_code::other);
+    }
+  }
+  return unit;
+}
+} // namespace
+
+// clang-format off
+Expected<Unit, json_patch::patch_application_error>
+// clang-format on
+json_patch::apply(dynamic& obj) {
+  using op_code = patch_operation_code;
+  using error_code = patch_application_error_code;
+  using error = patch_application_error;
+
+  for (auto&& it : enumerate(ops_)) {
+    auto const index = it.index;
+    auto const& op = *it;
+    auto resolved_path = obj.try_get_ptr(op.path);
+
+    switch (op.op_code) {
+      case op_code::test:
+        if (!resolved_path.hasValue()) {
+          return folly::makeUnexpected(
+              error{error_code::path_not_found, index});
+        }
+        if (*resolved_path->value != *op.value) {
+          return folly::makeUnexpected(error{error_code::test_failed, index});
+        }
+        break;
+      case op_code::remove: {
+        auto ret = do_remove(resolved_path);
+        if (ret.hasError()) {
+          return makeUnexpected(error{ret.error(), index});
+        }
+        break;
+      }
+      case op_code::add: {
+        DCHECK(op.value.hasValue());
+        auto ret = do_add(resolved_path, *op.value, op.path.tokens().back());
+        if (ret.hasError()) {
+          return makeUnexpected(error{ret.error(), index});
+        }
+        break;
+      }
+      case op_code::replace: {
+        if (resolved_path.hasValue()) {
+          *resolved_path->value = *op.value;
+        } else {
+          return folly::makeUnexpected(
+              error{error_code::path_not_found, index});
+        }
+        break;
+      }
+      case op_code::move: {
+        DCHECK(op.from.hasValue());
+        auto resolved_from = obj.try_get_ptr(*op.from);
+        if (!resolved_from.hasValue()) {
+          return makeUnexpected(error{error_code::from_not_found, index});
+        }
+        {
+          auto ret = do_add(
+              resolved_path, *resolved_from->value, op.path.tokens().back());
+          if (ret.hasError()) {
+            return makeUnexpected(error{ret.error(), index});
+          }
+        }
+        {
+          auto ret = do_remove(resolved_from);
+          if (ret.hasError()) {
+            return makeUnexpected(error{ret.error(), index});
+          }
+        }
+        break;
+      }
+      case op_code::copy: {
+        DCHECK(op.from.hasValue());
+        auto const resolved_from = obj.try_get_ptr(*op.from);
+        if (!resolved_from.hasValue()) {
+          return makeUnexpected(error{error_code::from_not_found, index});
+        }
+        {
+          DCHECK(!op.path.tokens().empty());
+          auto ret = do_add(
+              resolved_path, *resolved_from->value, op.path.tokens().back());
+          if (ret.hasError()) {
+            return makeUnexpected(error{ret.error(), index});
+          }
+        }
+        break;
+      }
+      case op_code::invalid: {
+        DCHECK(false);
+        return makeUnexpected(error{error_code::other, index});
+      }
+    }
+  }
+  return unit;
 }
 
 } // namespace folly
