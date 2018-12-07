@@ -370,6 +370,10 @@ struct dynamic : private boost::operators<dynamic> {
           std::is_convertible<K, dynamic>::value,
       T>;
 
+  template <typename K, typename T>
+  using IfNotIterator =
+      std::enable_if_t<!std::is_convertible<K, iterator>::value, T>;
+
  public:
   /*
    * You can iterate over the keys, values, or items (std::pair of key and
@@ -553,7 +557,16 @@ struct dynamic : private boost::operators<dynamic> {
    * Invalidates iterators.
    */
   template <class K, class V>
-  void insert(K&&, V&& val);
+  IfNotIterator<K, void> insert(K&&, V&& val);
+
+  /*
+   * Inserts the supplied value into array, or throw if not array
+   * Shifts existing values in the array to the right
+   *
+   * Invalidates iterators.
+   */
+  template <class T>
+  iterator insert(const_iterator pos, T&& value);
 
   /*
    * These functions merge two folly dynamic objects.

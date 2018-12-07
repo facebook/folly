@@ -175,6 +175,27 @@ TEST(Dynamic, ObjectBasics) {
   EXPECT_EQ(mergeObj1, combinedPreferObj1);
 }
 
+TEST(Dynamic, ArrayInsertErase) {
+  auto arr = dynamic::array(1, 2, 3, 4, 5, 6);
+
+  arr.erase(arr.begin() + 3);
+  EXPECT_EQ(5, arr[3].asInt());
+
+  arr.insert(arr.begin() + 3, 4);
+  EXPECT_EQ(4, arr[3].asInt());
+  EXPECT_EQ(5, arr[4].asInt());
+
+  auto x = dynamic::array(55, 66);
+  arr.insert(arr.begin() + 4, std::move(x));
+  EXPECT_EQ(55, arr[4][0].asInt());
+  EXPECT_EQ(66, arr[4][1].asInt());
+  EXPECT_EQ(5, arr[5].asInt());
+
+  dynamic obj = dynamic::object;
+  obj.insert(3, 4);
+  EXPECT_EQ(4, obj[3].asInt());
+}
+
 namespace {
 
 struct StaticStrings {

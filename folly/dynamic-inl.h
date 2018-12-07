@@ -850,9 +850,15 @@ inline std::size_t dynamic::count(StringPiece key) const {
 }
 
 template <class K, class V>
-inline void dynamic::insert(K&& key, V&& val) {
+inline dynamic::IfNotIterator<K, void> dynamic::insert(K&& key, V&& val) {
   auto& obj = get<ObjectImpl>();
   obj[std::forward<K>(key)] = std::forward<V>(val);
+}
+
+template <class T>
+inline dynamic::iterator dynamic::insert(const_iterator pos, T&& value) {
+  auto& arr = get<Array>();
+  return arr.insert(pos, std::forward<T>(value));
 }
 
 inline void dynamic::update(const dynamic& mergeObj) {
