@@ -1051,6 +1051,8 @@ TEST(Dynamic, MergeDiffNestedObjects) {
 using folly::json_pointer;
 
 TEST(Dynamic, JSONPointer) {
+  using err_code = folly::dynamic::json_pointer_resolution_error_code;
+
   dynamic target = dynamic::object;
   dynamic ary = dynamic::array("bar", "baz", dynamic::array("bletch", "xyzzy"));
   target["foo"] = ary;
@@ -1093,22 +1095,114 @@ TEST(Dynamic, JSONPointer) {
   // allow '-' to index in objects
   EXPECT_EQ("y", target.get_ptr(json_pointer::parse("/-/x"))->getString());
 
-  // invalid JSON pointers formatting when accessing array
-  EXPECT_THROW(
-      target.get_ptr(json_pointer::parse("/foo/01")), std::invalid_argument);
+  // validate parent pointer functionality
+
+  {
+    auto const resolved_value =
+        target.try_get_ptr(json_pointer::parse("")).value();
+    EXPECT_EQ(nullptr, resolved_value.parent);
+  }
+
+  {
+    auto parent_json_ptr = json_pointer::parse("/xyz");
+    auto json_ptr = json_pointer::parse("/xyz/def");
+
+    auto const parent = target.get_ptr(parent_json_ptr);
+    auto const resolved_value = target.try_get_ptr(json_ptr);
+
+    EXPECT_EQ(parent, resolved_value.value().parent);
+    EXPECT_TRUE(parent->isObject());
+    EXPECT_EQ("def", resolved_value.value().parent_key);
+  }
+
+  {
+    auto parent_json_ptr = json_pointer::parse("/foo");
+    auto json_ptr = json_pointer::parse("/foo/1");
+
+    auto const parent = target.get_ptr(parent_json_ptr);
+    auto const resolved_value = target.try_get_ptr(json_ptr);
+
+    EXPECT_EQ(parent, resolved_value.value().parent);
+    EXPECT_TRUE(parent->isArray());
+    EXPECT_EQ(1, resolved_value.value().parent_index);
+  }
+
+  //
+  // invalid pointer resolution cases
+  //
+
+  // invalid index formatting when accessing array
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foo/01")).error();
+    EXPECT_EQ(err_code::index_has_leading_zero, err.error_code);
+    EXPECT_EQ(1, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo")), err.context);
+    EXPECT_THROW(
+        target.get_ptr(json_pointer::parse("/foo/01")), std::invalid_argument);
+  }
 
   // non-existent keys/indexes
-  EXPECT_EQ(nullptr, ary.get_ptr(json_pointer::parse("/3")));
-  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/unknown_key")));
-  // intermediate key not found
-  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foox/test")));
-  // Intermediate key is '-'
-  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-/key")));
+  {
+    auto err = ary.try_get_ptr(json_pointer::parse("/3")).error();
+    EXPECT_EQ(err_code::index_out_of_bounds, err.error_code);
+    EXPECT_EQ(0, err.index);
+    EXPECT_EQ(ary.get_ptr(json_pointer::parse("")), err.context);
+    EXPECT_EQ(nullptr, ary.get_ptr(json_pointer::parse("/3")));
+  }
 
-  // invalid path in object (key in array)
-  EXPECT_THROW(
-      target.get_ptr(json_pointer::parse("/foo/1/bar")), folly::TypeError);
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/unknown_key")).error();
+    EXPECT_EQ(err_code::key_not_found, err.error_code);
+    EXPECT_EQ(0, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("")), err.context);
+    EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/unknown_key")));
+  }
+
+  // fail to resolve index inside string
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foo/0/0")).error();
+    EXPECT_EQ(err_code::element_not_object_or_array, err.error_code);
+    EXPECT_EQ(2, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo/0")), err.context);
+    EXPECT_THROW(
+        target.get_ptr(json_pointer::parse("/foo/0/0")), folly::TypeError);
+  }
+
+  // intermediate key not found
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foox/test")).error();
+    EXPECT_EQ(err_code::key_not_found, err.error_code);
+    EXPECT_EQ(0, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("")), err.context);
+    EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foox/test")));
+  }
+
+  // Intermediate key is '-' in _array_
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foo/-/key")).error();
+    EXPECT_EQ(err_code::json_pointer_out_of_bounds, err.error_code);
+    EXPECT_EQ(2, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo")), err.context);
+    EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-/key")));
+  }
+
+  // invalid path in object (non-numeric index in array)
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foo/2/bar")).error();
+    EXPECT_EQ(err_code::index_not_numeric, err.error_code);
+    EXPECT_EQ(2, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo/2")), err.context);
+    EXPECT_THROW(
+        target.get_ptr(json_pointer::parse("/foo/2/bar")),
+        std::invalid_argument);
+  }
 
   // Allow "-" index in the array
-  EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-")));
+  {
+    auto err = target.try_get_ptr(json_pointer::parse("/foo/-")).error();
+    EXPECT_EQ(err_code::append_requested, err.error_code);
+    EXPECT_EQ(1, err.index);
+    EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo")), err.context);
+    EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-")));
+  }
 }

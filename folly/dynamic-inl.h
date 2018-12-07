@@ -783,6 +783,27 @@ inline dynamic* dynamic::get_ptr(StringPiece idx) & {
   return const_cast<dynamic*>(const_cast<dynamic const*>(this)->get_ptr(idx));
 }
 
+// clang-format off
+inline
+dynamic::resolved_json_pointer<dynamic>
+dynamic::try_get_ptr(json_pointer const& jsonPtr) & {
+  auto ret = const_cast<dynamic const*>(this)->try_get_ptr(jsonPtr);
+  if (ret.hasValue()) {
+    return json_pointer_resolved_value<dynamic>{
+        const_cast<dynamic*>(ret.value().parent),
+        const_cast<dynamic*>(ret.value().value),
+        ret.value().parent_key, ret.value().parent_index};
+  } else {
+    return makeUnexpected(
+        json_pointer_resolution_error<dynamic>{
+            ret.error().error_code,
+            ret.error().index,
+            const_cast<dynamic*>(ret.error().context)}
+        );
+  }
+}
+// clang-format on
+
 inline dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) & {
   return const_cast<dynamic*>(
       const_cast<dynamic const*>(this)->get_ptr(jsonPtr));
