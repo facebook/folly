@@ -250,7 +250,7 @@ inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
  * construction.
  *
  * Further standard conforming compilers *strongly* favor an
- * std::initalizer_list overload for construction if one exists.  The
+ * std::initializer_list overload for construction if one exists.  The
  * following is a simple tag used to disambiguate construction with
  * initializer lists and regular uniform initialization.
  *
