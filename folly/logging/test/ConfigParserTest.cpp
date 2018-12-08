@@ -358,6 +358,16 @@ TEST(LogConfig, parseJsonErrors) {
       LogConfigParseError,
       "JSON config input must be an object");
   EXPECT_THROW_RE(
+      parseLogConfigJson(
+          "{\n\"N\":\"X\",\n\"id\":\"1\",\n\"T\",:[\n\"A\",\n\"B\",\n]\n}\n"),
+      std::runtime_error,
+      "json parse error on line 3 near");
+  EXPECT_THROW_RE(
+      parseLogConfigJson(
+          "{\n\"N\":\"X\",\n\"id\":\"1\",\n\"T\":[\n\"A\",\n\"B\",\n\n}\n"),
+      std::runtime_error,
+      "json parse error on line 7 near");
+  EXPECT_THROW_RE(
       parseLogConfigJson(""), std::runtime_error, "json parse error");
   EXPECT_THROW_RE(
       parseLogConfigJson("{"), std::runtime_error, "json parse error");
