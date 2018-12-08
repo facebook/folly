@@ -579,6 +579,28 @@ bool EventBase::runInEventBaseThread(Func fn) {
   return true;
 }
 
+bool EventBase::runInEventBaseThreadAlwaysEnqueue(Func fn) {
+  // Send the message.
+  // It will be received by the FunctionRunner in the EventBase's thread.
+
+  // We try not to schedule nullptr callbacks
+  if (!fn) {
+    LOG(ERROR) << "EventBase " << this
+               << ": Scheduling nullptr callbacks is not allowed";
+    return false;
+  }
+
+  try {
+    queue_->putMessage(std::move(fn));
+  } catch (const std::exception& ex) {
+    LOG(ERROR) << "EventBase " << this << ": failed to schedule function "
+               << "for EventBase thread: " << ex.what();
+    return false;
+  }
+
+  return true;
+}
+
 bool EventBase::runInEventBaseThreadAndWait(Func fn) {
   if (inRunningEventBaseThread()) {
     LOG(ERROR) << "EventBase " << this << ": Waiting in the event loop is not "

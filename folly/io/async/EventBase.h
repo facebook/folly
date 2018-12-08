@@ -425,6 +425,55 @@ class EventBase : private boost::noncopyable,
    */
   bool runInEventBaseThread(Func fn);
 
+  /**
+   * Run the specified function in the EventBase's thread.
+   *
+   * This method is thread-safe, and may be called from another thread.
+   *
+   * If runInEventBaseThreadAlwaysEnqueue() is called when the EventBase loop is
+   * not running, the function call will be delayed until the next time the loop
+   * is started.
+   *
+   * If runInEventBaseThreadAlwaysEnqueue() returns true the function has
+   * successfully been scheduled to run in the loop thread.  However, if the
+   * loop is terminated (and never later restarted) before it has a chance to
+   * run the requested function, the function will be run upon the EventBase's
+   * destruction.
+   *
+   * If two calls to runInEventBaseThreadAlwaysEnqueue() are made from the same
+   * thread, the functions will always be run in the order that they were
+   * scheduled. Ordering between functions scheduled from separate threads is
+   * not guaranteed. If a call is made from the EventBase thread, the function
+   * will not be executed inline and will be queued to the same queue as if the
+   * call would have been made from a different thread
+   *
+   * @param fn  The function to run.  The function must not throw any
+   *     exceptions.
+   * @param arg An argument to pass to the function.
+   *
+   * @return Returns true if the function was successfully scheduled, or false
+   *         if there was an error scheduling the function.
+   */
+  template <typename T>
+  bool runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg);
+
+  /**
+   * Run the specified function in the EventBase's thread
+   *
+   * This version of runInEventBaseThreadAlwaysEnqueue() takes a folly::Function
+   * object. Note that this may be less efficient than the version that takes a
+   * plain function pointer and void* argument, if moving the function is
+   * expensive (e.g., if it wraps a lambda which captures some values with
+   * expensive move constructors).
+   *
+   * If the loop is terminated (and never later restarted) before it has a
+   * chance to run the requested function, the function will be run upon the
+   * EventBase's destruction.
+   *
+   * The function must not throw any exceptions.
+   */
+  bool runInEventBaseThreadAlwaysEnqueue(Func fn);
+
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
@@ -793,6 +842,11 @@ class EventBase : private boost::noncopyable,
 template <typename T>
 bool EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) {
   return runInEventBaseThread([=] { fn(arg); });
+}
+
+template <typename T>
+bool EventBase::runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg) {
+  return runInEventBaseThreadAlwaysEnqueue([=] { fn(arg); });
 }
 
 template <typename T>

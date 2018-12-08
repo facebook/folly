@@ -1559,6 +1559,56 @@ TEST(EventBaseTest, LoopTermination) {
   close(pipeFds[0]);
 }
 
+TEST(EventBaseTest, CallbackOrderTest) {
+  size_t num = 0;
+  EventBase evb;
+
+  evb.runInEventBaseThread([&]() {
+    std::thread t([&]() {
+      evb.runInEventBaseThread([&]() {
+        num++;
+        EXPECT_EQ(num, 2);
+      });
+    });
+    t.join();
+
+    // this callback will run first
+    // even if it is scheduled after the first one
+    evb.runInEventBaseThread([&]() {
+      num++;
+      EXPECT_EQ(num, 1);
+    });
+  });
+
+  evb.loop();
+  EXPECT_EQ(num, 2);
+}
+
+TEST(EventBaseTest, AlwaysEnqueueCallbackOrderTest) {
+  size_t num = 0;
+  EventBase evb;
+
+  evb.runInEventBaseThread([&]() {
+    std::thread t([&]() {
+      evb.runInEventBaseThreadAlwaysEnqueue([&]() {
+        num++;
+        EXPECT_EQ(num, 1);
+      });
+    });
+    t.join();
+
+    // this callback will run second
+    // since it was enqueued after the first one
+    evb.runInEventBaseThreadAlwaysEnqueue([&]() {
+      num++;
+      EXPECT_EQ(num, 2);
+    });
+  });
+
+  evb.loop();
+  EXPECT_EQ(num, 2);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Tests for latency calculations
 ///////////////////////////////////////////////////////////////////////////
