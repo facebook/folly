@@ -141,11 +141,21 @@ sudo apt-get install \
 
 In the folly directory, run:
 ```
-  mkdir _build && cd _build
+  mkdir _build
   cmake ..
   make -j $(nproc)
   make install
 ```
+
+If you receive an error like:
+
+> CMake Error at cmake_install.cmake:41 (file):
+> file INSTALL cannot copy file
+> "/home/[yourname]/[folly-version]/folly/libfolly.a" to
+> "/usr/local/lib/libfolly.a".
+
+then you [need to use `sudo make install`](https://askubuntu.com/a/954877)
+as the last step instead of just `make install`.
 
 #### OS X (Homebrew)
 
