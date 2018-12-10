@@ -396,6 +396,11 @@ template <typename T>
 std::unordered_map<const BufferedAtomic<T>*, RecordBuffer<T>>
     BufferedAtomic<T>::bufs =
         std::unordered_map<const BufferedAtomic<T>*, RecordBuffer<T>>();
+
+template <typename T>
+using BufferedDeterministicAtomic =
+    DeterministicAtomicImpl<T, DeterministicSchedule, BufferedAtomic>;
+
 } // namespace test
 
 } // namespace folly
