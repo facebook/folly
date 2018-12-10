@@ -91,9 +91,7 @@ TEST(DeterministicSchedule, buggyAdd) {
         } while (true);
       }); // thread lambda
     } // for t
-    for (auto& t : threads) {
-      DeterministicSchedule::join(t);
-    }
+    DeterministicSchedule::joinAll(threads);
     if (!bug) {
       EXPECT_EQ(test.load(), baseline.load());
     } else {
