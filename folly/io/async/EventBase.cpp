@@ -378,16 +378,18 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
 
-    // If the event loop indicate that there were no more events, and
-    // we also didn't have any loop callbacks to run, there is nothing left to
-    // do.
-    if (res != 0 && !ranLoopCallbacks) {
+    // Event loop indicated that there were no more events (NotificationQueue
+    // was registered as an internal event and there were no other registered
+    // events).
+    if (res != 0) {
       // Since Notification Queue is marked 'internal' some events may not have
       // run.  Run them manually if so, and continue looping.
       //
       if (getNotificationQueueSize() > 0) {
         fnRunner_->handlerReady(0);
-      } else {
+      } else if (!ranLoopCallbacks) {
+        // If there were no more events and we also didn't have any loop
+        // callbacks to run, there is nothing left to do.
         break;
       }
     }
