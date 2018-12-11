@@ -606,6 +606,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     return getAppBytesReceived();
   }
 
+  size_t getAppBytesBuffered() const override {
+    return totalAppBytesScheduledForWrite_ - appBytesWritten_;
+  }
+  size_t getRawBytesBuffered() const override {
+    return getAppBytesBuffered();
+  }
+
   std::chrono::nanoseconds getConnectTime() const {
     return connectEndTime_ - connectStartTime_;
   }
@@ -1100,23 +1107,25 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * and queue up any leftover data to send when the socket can
    * handle writes again.
    *
-   * @param callback The callback to invoke when the write is completed.
-   * @param vec      Array of buffers to write; this method will make a
-   *                 copy of the vector (but not the buffers themselves)
-   *                 if the write has to be completed asynchronously.
-   * @param count    Number of elements in vec.
-   * @param buf      The IOBuf that manages the buffers referenced by
-   *                 vec, or a pointer to nullptr if the buffers are not
-   *                 associated with an IOBuf.  Note that ownership of
-   *                 the IOBuf is transferred here; upon completion of
-   *                 the write, the AsyncSocket deletes the IOBuf.
-   * @param flags    Set of write flags.
+   * @param callback    The callback to invoke when the write is completed.
+   * @param vec         Array of buffers to write; this method will make a
+   *                    copy of the vector (but not the buffers themselves)
+   *                    if the write has to be completed asynchronously.
+   * @param count       Number of elements in vec.
+   * @param buf         The IOBuf that manages the buffers referenced by
+   *                    vec, or a pointer to nullptr if the buffers are not
+   *                    associated with an IOBuf.  Note that ownership of
+   *                    the IOBuf is transferred here; upon completion of
+   *                    the write, the AsyncSocket deletes the IOBuf.
+   * @param totalBytes  The total number of bytes to be written.
+   * @param flags       Set of write flags.
    */
   void writeImpl(
       WriteCallback* callback,
       const iovec* vec,
       size_t count,
       std::unique_ptr<folly::IOBuf>&& buf,
+      size_t totalBytes,
       WriteFlags flags = WriteFlags::NONE);
 
   /**
@@ -1263,6 +1272,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   std::weak_ptr<ShutdownSocketSet> wShutdownSocketSet_;
   size_t appBytesReceived_; ///< Num of bytes received from socket
   size_t appBytesWritten_; ///< Num of bytes written to socket
+  // The total num of bytes passed to AsyncSocket's write functions. It doesn't
+  // include failed writes, but it does include buffered writes.
+  size_t totalAppBytesScheduledForWrite_;
 
   // Pre-received data, to be returned to read callback before any data from the
   // socket.

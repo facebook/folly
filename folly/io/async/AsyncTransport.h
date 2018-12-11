@@ -434,10 +434,34 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   virtual size_t getAppBytesReceived() const = 0;
   virtual size_t getRawBytesReceived() const = 0;
 
+  /**
+   * Calculates the total number of bytes that are currently buffered in the
+   * transport to be written later.
+   */
+  virtual size_t getAppBytesBuffered() const {
+    return 0;
+  }
+  virtual size_t getRawBytesBuffered() const {
+    return 0;
+  }
+
+  /**
+   * Callback class to signal changes in the transport's internal buffers.
+   */
   class BufferCallback {
    public:
-    virtual ~BufferCallback() {}
+    virtual ~BufferCallback() = default;
+
+    /**
+     * onEgressBuffered() will be invoked when there's a partial write and it
+     * is necessary to buffer the remaining data.
+     */
     virtual void onEgressBuffered() = 0;
+
+    /**
+     * onEgressBufferCleared() will be invoked when whatever was buffered is
+     * written, or when it errors out.
+     */
     virtual void onEgressBufferCleared() = 0;
   };
 

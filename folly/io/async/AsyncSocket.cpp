@@ -358,6 +358,7 @@ void AsyncSocket::init() {
   wShutdownSocketSet_.reset();
   appBytesWritten_ = 0;
   appBytesReceived_ = 0;
+  totalAppBytesScheduledForWrite_ = 0;
   sendMsgParamCallback_ = &defaultSendMsgParamsCallback;
 }
 
@@ -1008,7 +1009,7 @@ void AsyncSocket::write(
   iovec op;
   op.iov_base = const_cast<void*>(buf);
   op.iov_len = bytes;
-  writeImpl(callback, &op, 1, unique_ptr<IOBuf>(), flags);
+  writeImpl(callback, &op, 1, unique_ptr<IOBuf>(), bytes, flags);
 }
 
 void AsyncSocket::writev(
@@ -1016,7 +1017,11 @@ void AsyncSocket::writev(
     const iovec* vec,
     size_t count,
     WriteFlags flags) {
-  writeImpl(callback, vec, count, unique_ptr<IOBuf>(), flags);
+  size_t totalBytes = 0;
+  for (size_t i = 0; i < count; ++i) {
+    totalBytes += vec[i].iov_len;
+  }
+  writeImpl(callback, vec, count, unique_ptr<IOBuf>(), totalBytes, flags);
 }
 
 void AsyncSocket::writeChain(
@@ -1048,8 +1053,9 @@ void AsyncSocket::writeChainImpl(
     size_t count,
     unique_ptr<IOBuf>&& buf,
     WriteFlags flags) {
-  size_t veclen = buf->fillIov(vec, count);
-  writeImpl(callback, vec, veclen, std::move(buf), flags);
+  auto res = buf->fillIov(vec, count);
+  writeImpl(
+      callback, vec, res.numIovecs, std::move(buf), res.totalLength, flags);
 }
 
 void AsyncSocket::writeImpl(
@@ -1057,6 +1063,7 @@ void AsyncSocket::writeImpl(
     const iovec* vec,
     size_t count,
     unique_ptr<IOBuf>&& buf,
+    size_t totalBytes,
     WriteFlags flags) {
   VLOG(6) << "AsyncSocket::writev() this=" << this << ", fd=" << fd_
           << ", callback=" << callback << ", count=" << count
@@ -1064,6 +1071,8 @@ void AsyncSocket::writeImpl(
   DestructorGuard dg(this);
   unique_ptr<IOBuf> ioBuf(std::move(buf));
   eventBase_->dcheckIsInEventBaseThread();
+
+  totalAppBytesScheduledForWrite_ += totalBytes;
 
   if (shutdownFlags_ & (SHUT_WRITE | SHUT_WRITE_PENDING)) {
     // No new writes may be performed after the write side of the socket has
@@ -1118,9 +1127,6 @@ void AsyncSocket::writeImpl(
         if (bytesWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(ioBuf.get());
         }
-        if (bufferCallback_) {
-          bufferCallback_->onEgressBuffered();
-        }
       }
       if (!connecting()) {
         // Writes might put the socket back into connecting state
@@ -1161,6 +1167,10 @@ void AsyncSocket::writeImpl(
   } else {
     writeReqTail_->append(req);
     writeReqTail_ = req;
+  }
+
+  if (bufferCallback_) {
+    bufferCallback_->onEgressBuffered();
   }
 
   // Register for write events if are established and not currently
@@ -2117,10 +2127,10 @@ void AsyncSocket::handleWrite() noexcept {
       // We'll continue around the loop, trying to write another request
     } else {
       // Partial write.
+      writeReqHead_->consume();
       if (bufferCallback_) {
         bufferCallback_->onEgressBuffered();
       }
-      writeReqHead_->consume();
       // Stop after a partial write; it's highly likely that a subsequent write
       // attempt will just return EAGAIN.
       //
@@ -2684,6 +2694,9 @@ void AsyncSocket::failAllWrites(const AsyncSocketException& ex) {
     }
     req->destroy();
   }
+
+  // All pending writes have failed - reset totalAppBytesScheduledForWrite_
+  totalAppBytesScheduledForWrite_ = appBytesWritten_;
 }
 
 void AsyncSocket::invalidState(ConnectCallback* callback) {

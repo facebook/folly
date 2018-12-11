@@ -2337,7 +2337,7 @@ TEST(AsyncSocketTest, BufferTest) {
   char buf[100 * 1024];
   memset(buf, 'c', sizeof(buf));
   WriteCallback wcb;
-  BufferCallback bcb;
+  BufferCallback bcb(socket.get(), sizeof(buf));
   socket->setBufferCallback(&bcb);
   socket->write(&wcb, buf, sizeof(buf), WriteFlags::NONE);
 
@@ -2355,6 +2355,46 @@ TEST(AsyncSocketTest, BufferTest) {
   ASSERT_FALSE(socket->isClosedByPeer());
 }
 
+TEST(AsyncSocketTest, BufferTestChain) {
+  TestServer server;
+
+  EventBase evb;
+  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 30, option);
+
+  char buf1[100 * 1024];
+  memset(buf1, 'c', sizeof(buf1));
+  char buf2[100 * 1024];
+  memset(buf2, 'f', sizeof(buf2));
+
+  auto buf = folly::IOBuf::copyBuffer(buf1, sizeof(buf1));
+  buf->appendChain(folly::IOBuf::copyBuffer(buf2, sizeof(buf2)));
+  ASSERT_EQ(sizeof(buf1) + sizeof(buf2), buf->computeChainDataLength());
+
+  BufferCallback bcb(socket.get(), buf->computeChainDataLength());
+  socket->setBufferCallback(&bcb);
+
+  WriteCallback wcb;
+  socket->writeChain(&wcb, buf->clone(), WriteFlags::NONE);
+
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+  ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+
+  ASSERT_TRUE(bcb.hasBuffered());
+  ASSERT_TRUE(bcb.hasBufferCleared());
+
+  socket->close();
+  buf->coalesce();
+  server.verifyConnection(
+      reinterpret_cast<const char*>(buf->data()), buf->length());
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
+}
+
 TEST(AsyncSocketTest, BufferCallbackKill) {
   TestServer server;
   EventBase evb;
@@ -2366,7 +2406,7 @@ TEST(AsyncSocketTest, BufferCallbackKill) {
 
   char buf[100 * 1024];
   memset(buf, 'c', sizeof(buf));
-  BufferCallback bcb;
+  BufferCallback bcb(socket.get(), sizeof(buf));
   socket->setBufferCallback(&bcb);
   WriteCallback wcb;
   wcb.successCallback = [&] {
