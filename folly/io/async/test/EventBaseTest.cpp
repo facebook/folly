@@ -27,6 +27,7 @@
 #include <folly/futures/Promise.h>
 
 #include <atomic>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -2041,4 +2042,37 @@ TEST(EventBaseTest, CancelLoopCallbackRequestContextTest) {
   EXPECT_EQ(rctx_weak_ptr.expired(), true);
 
   EXPECT_EQ(defaultCtx, RequestContext::get());
+}
+
+TEST(EventBaseTest, TestStarvation) {
+  EventBase evb;
+  std::promise<void> stopRequested;
+  std::promise<void> stopScheduled;
+  bool stopping{false};
+  std::thread t{[&] {
+    stopRequested.get_future().get();
+    evb.add([&]() { stopping = true; });
+    stopScheduled.set_value();
+  }};
+
+  size_t num{0};
+  std::function<void()> fn;
+  fn = [&]() {
+    if (stopping || num >= 2000) {
+      return;
+    }
+
+    if (++num == 1000) {
+      stopRequested.set_value();
+      stopScheduled.get_future().get();
+    }
+
+    evb.add(fn);
+  };
+
+  evb.add(fn);
+  evb.loop();
+
+  EXPECT_EQ(1000, num);
+  t.join();
 }

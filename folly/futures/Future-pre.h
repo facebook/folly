@@ -27,7 +27,7 @@ class SemiFuture;
 
 template <typename T>
 struct isSemiFuture : std::false_type {
-  using Inner = typename lift_unit<T>::type;
+  using Inner = lift_unit_t<T>;
 };
 
 template <typename T>
@@ -37,7 +37,7 @@ struct isSemiFuture<SemiFuture<T>> : std::true_type {
 
 template <typename T>
 struct isFuture : std::false_type {
-  using Inner = typename lift_unit<T>::type;
+  using Inner = lift_unit_t<T>;
 };
 
 template <typename T>
@@ -47,7 +47,7 @@ struct isFuture<Future<T>> : std::true_type {
 
 template <typename T>
 struct isFutureOrSemiFuture : std::false_type {
-  using Inner = typename lift_unit<T>::type;
+  using Inner = lift_unit_t<T>;
   using Return = Inner;
 };
 

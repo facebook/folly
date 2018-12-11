@@ -1163,9 +1163,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated("ERROR: use thenValue instead")]] typename std::enable_if<
       !is_invocable<F>::value && is_invocable<F, T&&>::value,
       typename R::Return>::type
-  then(F&& func) && {
-    return std::move(*this).thenValue(std::forward<F>(func));
-  }
+  then(F&& func) && = delete;
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("ERROR: use thenTry instead")]] typename std::enable_if<

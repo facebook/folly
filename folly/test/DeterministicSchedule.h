@@ -224,6 +224,15 @@ class DeterministicSchedule : boost::noncopyable {
   /** Calls child.join() as part of a deterministic schedule. */
   static void join(std::thread& child);
 
+  /** Waits for each thread in children to reach the end of their
+   * thread function without allowing them to fully terminate. Then,
+   * allow one child at a time to fully terminate and join each one.
+   * This functionality is important to protect shared access that can
+   * take place after beforeThreadExit() has already been invoked,
+   * for example when executing thread local destructors.
+   */
+  static void joinAll(std::vector<std::thread>& children);
+
   /** Calls sem_post(sem) as part of a deterministic schedule. */
   static void post(sem_t* sem);
 
@@ -260,6 +269,13 @@ class DeterministicSchedule : boost::noncopyable {
   /** Remove the current thread's semaphore from sems_ */
   static sem_t* descheduleCurrentThread();
 
+  /** Returns true if the current thread has already completed
+   * the thread function, for example if the thread is executing
+   * thread local destructors. */
+  static bool isCurrentThreadExiting() {
+    return tls_exiting;
+  }
+
   /** Add sem back into sems_ */
   static void reschedule(sem_t* sem);
 
@@ -279,6 +295,7 @@ class DeterministicSchedule : boost::noncopyable {
  private:
   static FOLLY_TLS sem_t* tls_sem;
   static FOLLY_TLS DeterministicSchedule* tls_sched;
+  static FOLLY_TLS bool tls_exiting;
   static FOLLY_TLS DSchedThreadId tls_threadId;
   static thread_local AuxAct tls_aux_act;
   static AuxChk aux_chk;
@@ -287,6 +304,7 @@ class DeterministicSchedule : boost::noncopyable {
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
   std::unordered_map<std::thread::id, sem_t*> joins_;
+  std::unordered_map<std::thread::id, sem_t*> exitingSems_;
 
   std::vector<ThreadInfo> threadInfoMap_;
   ThreadTimestamps seqCstFenceOrder_;
@@ -303,6 +321,7 @@ class DeterministicSchedule : boost::noncopyable {
   sem_t* beforeThreadCreate();
   void afterThreadCreate(sem_t*);
   void beforeThreadExit();
+  void waitForBeforeThreadExit(std::thread& child);
   /** Calls user-defined auxiliary function (if any) */
   void callAux(bool);
 };

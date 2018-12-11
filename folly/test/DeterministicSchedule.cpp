@@ -32,6 +32,7 @@ namespace test {
 
 FOLLY_TLS sem_t* DeterministicSchedule::tls_sem;
 FOLLY_TLS DeterministicSchedule* DeterministicSchedule::tls_sched;
+FOLLY_TLS bool DeterministicSchedule::tls_exiting;
 FOLLY_TLS DSchedThreadId DeterministicSchedule::tls_threadId;
 thread_local AuxAct DeterministicSchedule::tls_aux_act;
 AuxChk DeterministicSchedule::aux_chk;
@@ -125,6 +126,7 @@ DeterministicSchedule::DeterministicSchedule(
   assert(tls_sched == nullptr);
   assert(tls_aux_act == nullptr);
 
+  tls_exiting = false;
   tls_sem = new sem_t;
   sem_init(tls_sem, 0, 1);
   sems_.push_back(tls_sem);
@@ -287,6 +289,7 @@ sem_t* DeterministicSchedule::beforeThreadCreate() {
 void DeterministicSchedule::afterThreadCreate(sem_t* sem) {
   assert(tls_sem == nullptr);
   assert(tls_sched == nullptr);
+  tls_exiting = false;
   tls_sem = sem;
   tls_sched = this;
   bool started = false;
@@ -317,32 +320,64 @@ void DeterministicSchedule::beforeThreadExit() {
   active_.erase(std::this_thread::get_id());
   if (sems_.size() > 0) {
     FOLLY_TEST_DSCHED_VLOG("exiting");
+    /* Wait here so that parent thread can control when the thread
+     * enters the thread local destructors. */
+    exitingSems_[std::this_thread::get_id()] = tls_sem;
     afterSharedAccess();
+    sem_wait(tls_sem);
   }
+  tls_sched = nullptr;
+  tls_aux_act = nullptr;
+  tls_exiting = true;
   sem_destroy(tls_sem);
   delete tls_sem;
   tls_sem = nullptr;
-  tls_sched = nullptr;
-  tls_aux_act = nullptr;
+}
+
+void DeterministicSchedule::waitForBeforeThreadExit(std::thread& child) {
+  assert(tls_sched == this);
+  beforeSharedAccess();
+  assert(tls_sched->joins_.count(child.get_id()) == 0);
+  if (tls_sched->active_.count(child.get_id())) {
+    sem_t* sem = descheduleCurrentThread();
+    tls_sched->joins_.insert({child.get_id(), sem});
+    afterSharedAccess();
+    // Wait to be scheduled by exiting child thread
+    beforeSharedAccess();
+    assert(!tls_sched->active_.count(child.get_id()));
+  }
+  afterSharedAccess();
+}
+
+void DeterministicSchedule::joinAll(std::vector<std::thread>& children) {
+  auto sched = tls_sched;
+  if (sched) {
+    // Wait until all children are about to exit
+    for (auto& child : children) {
+      sched->waitForBeforeThreadExit(child);
+    }
+  }
+  atomic_thread_fence(std::memory_order_seq_cst);
+  /* Let each child thread proceed one at a time to protect
+   * shared access during thread local destructors.*/
+  for (auto& child : children) {
+    if (sched) {
+      sem_post(sched->exitingSems_[child.get_id()]);
+    }
+    child.join();
+  }
 }
 
 void DeterministicSchedule::join(std::thread& child) {
   auto sched = tls_sched;
   if (sched) {
-    beforeSharedAccess();
-    assert(sched->joins_.count(child.get_id()) == 0);
-    if (sched->active_.count(child.get_id())) {
-      sem_t* sem = descheduleCurrentThread();
-      sched->joins_.insert({child.get_id(), sem});
-      afterSharedAccess();
-      // Wait to be scheduled by exiting child thread
-      beforeSharedAccess();
-      assert(!sched->active_.count(child.get_id()));
-    }
-    afterSharedAccess();
+    sched->waitForBeforeThreadExit(child);
   }
   atomic_thread_fence(std::memory_order_seq_cst);
   FOLLY_TEST_DSCHED_VLOG("joined " << std::hex << child.get_id());
+  if (sched) {
+    sem_post(sched->exitingSems_[child.get_id()]);
+  }
   child.join();
 }
 

@@ -65,9 +65,9 @@ class FutureExecutor : public ExecutorImpl {
   template <typename F>
   typename std::enable_if<
       !folly::isFuture<invoke_result_t<F>>::value,
-      folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type>>::type
+      folly::Future<folly::lift_unit_t<invoke_result_t<F>>>>::type
   addFuture(F func) {
-    using T = typename folly::lift_unit<invoke_result_t<F>>::type;
+    using T = folly::lift_unit_t<invoke_result_t<F>>;
     folly::Promise<T> promise;
     auto future = promise.getFuture();
     ExecutorImpl::add(

@@ -333,8 +333,10 @@ struct BufferedAtomic {
   T doLoad(std::memory_order mo, bool rmw = false) const {
     // Static destructors that outlive DSched instance may load atomics
     if (!DeterministicSchedule::isActive()) {
-      auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
-      CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
+      if (!DeterministicSchedule::isCurrentThreadExiting()) {
+        auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
+        CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
+      }
       return getBuf().loadDirect();
     }
     ThreadInfo& threadInfo = DeterministicSchedule::getCurrentThreadInfo();
@@ -345,8 +347,10 @@ struct BufferedAtomic {
   void doStore(T val, std::memory_order mo, bool rmw = false) {
     // Static destructors that outlive DSched instance may store to atomics
     if (!DeterministicSchedule::isActive()) {
-      auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
-      CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
+      if (!DeterministicSchedule::isCurrentThreadExiting()) {
+        auto prev = prevUnguardedAccess.exchange(std::this_thread::get_id());
+        CHECK(prev == std::thread::id() || prev == std::this_thread::get_id());
+      }
       getBuf().storeDirect(val);
       return;
     }
@@ -396,6 +400,11 @@ template <typename T>
 std::unordered_map<const BufferedAtomic<T>*, RecordBuffer<T>>
     BufferedAtomic<T>::bufs =
         std::unordered_map<const BufferedAtomic<T>*, RecordBuffer<T>>();
+
+template <typename T>
+using BufferedDeterministicAtomic =
+    DeterministicAtomicImpl<T, DeterministicSchedule, BufferedAtomic>;
+
 } // namespace test
 
 } // namespace folly

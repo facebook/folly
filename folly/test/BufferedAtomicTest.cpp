@@ -204,16 +204,3 @@ TEST(BufferedAtomic, single_thread_unguarded_access) {
   ASSERT_EQ(1, x.load());
 }
 
-TEST(BufferedAtomic, multiple_thread_unguarded_access) {
-  DSched* sched = new DSched(DSched::uniform(0));
-  DeterministicAtomicImpl<int, DeterministicSchedule, BufferedAtomic> x(0);
-  delete sched;
-
-  // simulate static construction/destruction or access to shared
-  // DeterministicAtomic in pthread_setspecific callbacks after
-  // DeterministicSchedule::beforeThreadAccess() has been run.
-  ASSERT_EQ(0, x.load());
-  auto t = std::thread(
-      [&]() { ASSERT_DEATH(x.store(1), "prev == std::thread::id()"); });
-  t.join();
-}
