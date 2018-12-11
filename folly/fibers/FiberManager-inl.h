@@ -38,6 +38,22 @@ auto FiberManager::addTaskFuture(F&& func)
 }
 
 template <typename F>
+auto FiberManager::addTaskEagerFuture(F&& func)
+    -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>> {
+  using T = invoke_result_t<F>;
+  using FutureT = typename folly::lift_unit<T>::type;
+
+  folly::Promise<FutureT> p;
+  auto f = p.getFuture();
+  addTaskFinallyEager(
+      [func = std::forward<F>(func)]() mutable { return func(); },
+      [p = std::move(p)](folly::Try<T>&& t) mutable {
+        p.setTry(std::move(t));
+      });
+  return f;
+}
+
+template <typename F>
 auto FiberManager::addTaskRemoteFuture(F&& func)
     -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>> {
   folly::Promise<folly::lift_unit_t<invoke_result_t<F>>> p;
