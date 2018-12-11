@@ -25,10 +25,10 @@ using folly::symbolizer::ElfFile;
 // signatures here to prevent name mangling
 uint64_t kIntegerValue = 1234567890UL;
 const char* kStringValue = "coconuts";
-
+const char* const kDefaultElf = "/proc/self/exe";
 class ElfTest : public ::testing::Test {
  protected:
-  ElfFile elfFile_{"/proc/self/exe"};
+  ElfFile elfFile_{kDefaultElf};
 };
 
 TEST_F(ElfTest, IntegerValue) {
@@ -75,4 +75,18 @@ TEST_F(ElfTest, NonElfScript) {
   auto res = elfFile.openNoThrow(tmpFile.path().c_str(), true, &msg);
   EXPECT_EQ(ElfFile::kInvalidElfFile, res);
   EXPECT_STREQ("invalid ELF magic", msg);
+}
+
+TEST_F(ElfTest, FailToOpenLargeFilename) {
+  // ElfFile used to segfault if it failed to open large filenames
+  folly::test::TemporaryDirectory tmpDir;
+  auto elfFile = std::make_unique<ElfFile>(); // on the heap so asan can see it
+  auto const largeNonExistingName = (tmpDir.path() / std::string(1000, 'x'));
+  ASSERT_EQ(
+      ElfFile::kSystemError,
+      elfFile->openNoThrow(largeNonExistingName.c_str()));
+  ASSERT_EQ(
+      ElfFile::kSystemError,
+      elfFile->openNoThrow(largeNonExistingName.c_str()));
+  EXPECT_EQ(ElfFile::kSuccess, elfFile->openNoThrow(kDefaultElf));
 }

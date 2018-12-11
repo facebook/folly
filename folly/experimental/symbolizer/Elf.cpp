@@ -65,6 +65,10 @@ int ElfFile::openNoThrow(
     bool readOnly,
     const char** msg) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
+  // Always close fd and unmap in case of failure along the way to avoid
+  // check failure above if we leave fd != -1 and the object is recycled
+  // like it is inside SignalSafeElfCache
+  auto guard = makeGuard([&] { reset(); });
   strncat(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
@@ -73,10 +77,6 @@ int ElfFile::openNoThrow(
     }
     return kSystemError;
   }
-  // Always close fd and unmap in case of failure along the way to avoid
-  // check failure above if we leave fd != -1 and the object is recycled
-  // like it is inside SignalSafeElfCache
-  auto guard = makeGuard([&] { reset(); });
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
