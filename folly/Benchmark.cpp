@@ -381,8 +381,10 @@ void benchmarkResultsFromDynamic(
     const dynamic& d,
     vector<detail::BenchmarkResult>& results) {
   for (auto& datum : d) {
-    results.push_back(
-        {datum[0].asString(), datum[1].asString(), datum[2].asDouble(), {}});
+    results.push_back({datum[0].asString(),
+                       datum[1].asString(),
+                       datum[2].asDouble(),
+                       UserCounters{}});
   }
 }
 

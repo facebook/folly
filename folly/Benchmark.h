@@ -187,7 +187,7 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
     auto end = std::chrono::high_resolution_clock::now();
     // CORE MEASUREMENT ENDS
     return detail::TimeIterData{
-        (end - start) - BenchmarkSuspender::timeSpent, niter, {}};
+        (end - start) - BenchmarkSuspender::timeSpent, niter, UserCounters{}};
   };
 
   detail::addBenchmarkImpl(file, name, detail::BenchmarkFun(execute), false);
