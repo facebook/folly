@@ -139,9 +139,9 @@ sudo apt-get install \
     libdwarf-dev
 ```
 
-In the folly directory, run:
+In the folly directory (e.g. the checkout root or the archive unpack root), run:
 ```
-  mkdir _build
+  mkdir _build && cd _build
   cmake ..
   make -j $(nproc)
   make install # with either sudo or DESTDIR as necessary
