@@ -24,6 +24,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/Optional.h>
+#include <folly/Traits.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/lang/Align.h>
 #include <folly/synchronization/Hazptr.h>
@@ -757,7 +758,7 @@ class UnboundedQueue {
    */
   class Entry {
     Sem flag_;
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type item_;
+    aligned_storage_for_t<T> item_;
 
    public:
     template <typename Arg>

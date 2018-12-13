@@ -1127,9 +1127,7 @@ class small_vector : public detail::small_vector_base<
     }
   } FOLLY_SV_PACK_ATTR;
 
-  typedef typename std::aligned_storage<
-      sizeof(value_type) * MaxInline,
-      alignof(value_type)>::type InlineStorageDataType;
+  typedef aligned_storage_for_t<value_type[MaxInline]> InlineStorageDataType;
 
   typedef typename std::conditional<
       sizeof(value_type) * MaxInline != 0,

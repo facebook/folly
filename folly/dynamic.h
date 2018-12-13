@@ -779,9 +779,7 @@ struct dynamic : private boost::operators<dynamic> {
      * incomplete type right now).  (Note that in contrast we know it
      * is ok to do this with fbvector because we own it.)
      */
-    std::aligned_storage<
-        sizeof(F14NodeMap<int, int>),
-        alignof(F14NodeMap<int, int>)>::type objectBuffer;
+    aligned_storage_for_t<F14NodeMap<int, int>> objectBuffer;
   } u_;
 };
 

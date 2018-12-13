@@ -1439,7 +1439,7 @@ struct SingleElementQueue {
 
  private:
   /// Storage for a T constructed with placement new
-  typename std::aligned_storage<sizeof(T), alignof(T)>::type contents_;
+  aligned_storage_for_t<T> contents_;
 
   /// Even turns are pushes, odd turns are pops
   TurnSequencer<Atom> sequencer_;

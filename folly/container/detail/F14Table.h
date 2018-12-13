@@ -560,10 +560,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   // increases nor decreases.
   uint8_t outboundOverflowCount_;
 
-  std::array<
-      std::aligned_storage_t<sizeof(Item), alignof(Item)>,
-      kAllocatedCapacity>
-      rawItems_;
+  std::array<aligned_storage_for_t<Item>, kAllocatedCapacity> rawItems_;
 
   static F14Chunk* emptyInstance() {
     auto raw = reinterpret_cast<char*>(&kEmptyTagVector);

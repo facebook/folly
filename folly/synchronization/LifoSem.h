@@ -26,6 +26,7 @@
 #include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
+#include <folly/Traits.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
@@ -121,7 +122,7 @@ namespace detail {
 /// a large static IndexedMemPool of nodes, instead of per-type pools
 template <template <typename> class Atom>
 struct LifoSemRawNode {
-  std::aligned_storage<sizeof(void*), alignof(void*)>::type raw;
+  aligned_storage_for_t<void*> raw;
 
   /// The IndexedMemPool index of the next node in this chain, or 0
   /// if none.  This will be set to uint32_t(-1) if the node is being

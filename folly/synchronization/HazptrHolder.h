@@ -15,6 +15,8 @@
  */
 #pragma once
 
+#include <folly/Traits.h>
+
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrDomain.h>
 #include <folly/synchronization/HazptrRec.h>
@@ -194,9 +196,7 @@ FOLLY_ALWAYS_INLINE void swap(
  *  Type used by hazptr_array and hazptr_local.
  */
 template <template <typename> class Atom>
-using aligned_hazptr_holder = typename std::aligned_storage<
-    sizeof(hazptr_holder<Atom>),
-    alignof(hazptr_holder<Atom>)>::type;
+using aligned_hazptr_holder = aligned_storage_for_t<hazptr_holder<Atom>>;
 
 /**
  *  hazptr_array
