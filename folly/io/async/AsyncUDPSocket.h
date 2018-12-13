@@ -128,9 +128,6 @@ class AsyncUDPSocket : public EventHandler {
    * FDOwnership::SHARED. In case FD is shared, it will not be `close`d in
    * destructor.
    */
-  void setFD(int fd, FDOwnership ownership) {
-    setFD(NetworkSocket::fromFd(fd), ownership);
-  }
   virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
   /**

@@ -25,6 +25,17 @@
 using namespace folly;
 using namespace std;
 
+BENCHMARK_COUNTERS(insertVectorBeginWithCounter, counters, n) {
+  vector<int> v;
+  for (size_t i = 0; i < n; i++) {
+    v.insert(v.begin(), 42);
+  }
+  BENCHMARK_SUSPEND {
+    counters["foo"] = v.size();
+    counters["bar"] = v.size() * 2;
+  }
+}
+
 void fun() {
   static double x = 1;
   ++x;

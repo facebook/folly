@@ -183,13 +183,25 @@ class ReadCallback : public folly::AsyncTransportWrapper::ReadCallback {
 
 class BufferCallback : public folly::AsyncTransport::BufferCallback {
  public:
-  BufferCallback() : buffered_(false), bufferCleared_(false) {}
+  BufferCallback(folly::AsyncSocket* socket, size_t expectedBytes)
+      : socket_(socket),
+        expectedBytes_(expectedBytes),
+        buffered_(false),
+        bufferCleared_(false) {}
 
   void onEgressBuffered() override {
+    size_t bytesWritten = socket_->getAppBytesWritten();
+    size_t bytesBuffered = socket_->getAppBytesBuffered();
+    CHECK_GT(bytesBuffered, 0);
+    CHECK_EQ(expectedBytes_, bytesWritten + bytesBuffered);
     buffered_ = true;
   }
 
   void onEgressBufferCleared() override {
+    size_t bytesWritten = socket_->getAppBytesWritten();
+    size_t bytesBuffered = socket_->getAppBytesBuffered();
+    CHECK_EQ(0, bytesBuffered);
+    CHECK_EQ(expectedBytes_, bytesWritten);
     bufferCleared_ = true;
   }
 
@@ -202,6 +214,8 @@ class BufferCallback : public folly::AsyncTransport::BufferCallback {
   }
 
  private:
+  folly::AsyncSocket* socket_{nullptr};
+  size_t expectedBytes_{0};
   bool buffered_{false};
   bool bufferCleared_{false};
 };

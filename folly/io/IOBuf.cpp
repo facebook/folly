@@ -1069,22 +1069,24 @@ std::unique_ptr<IOBuf> IOBuf::takeOwnershipIov(
   return result;
 }
 
-size_t IOBuf::fillIov(struct iovec* iov, size_t len) const {
+IOBuf::FillIovResult IOBuf::fillIov(struct iovec* iov, size_t len) const {
   IOBuf const* p = this;
   size_t i = 0;
+  size_t totalBytes = 0;
   while (i < len) {
     // some code can get confused by empty iovs, so skip them
     if (p->length() > 0) {
       iov[i].iov_base = const_cast<uint8_t*>(p->data());
       iov[i].iov_len = p->length();
+      totalBytes += p->length();
       i++;
     }
     p = p->next();
     if (p == this) {
-      return i;
+      return {i, totalBytes};
     }
   }
-  return 0;
+  return {0, 0};
 }
 
 size_t IOBufHash::operator()(const IOBuf& buf) const noexcept {

@@ -1500,3 +1500,53 @@ TEST(IOBuf, CloneCoalescedSingle) {
   EXPECT_EQ(b->data(), c->data());
   EXPECT_EQ(b->length(), c->length());
 }
+
+TEST(IOBuf, fillIov) {
+  auto buf = IOBuf::create(4096);
+  append(buf, "hello");
+  auto buf2 = IOBuf::create(4096);
+  append(buf2, "goodbye");
+  auto buf3 = IOBuf::create(4096);
+  append(buf3, "hello again");
+
+  buf2->appendChain(std::move(buf3));
+  buf->appendChain(std::move(buf2));
+
+  constexpr size_t iovCount = 3;
+  struct iovec vec[iovCount];
+  auto res = buf->fillIov(vec, iovCount);
+
+  EXPECT_EQ(iovCount, res.numIovecs);
+  EXPECT_EQ(23, res.totalLength);
+  EXPECT_EQ(
+      "hello",
+      std::string(
+          reinterpret_cast<const char*>(vec[0].iov_base), vec[0].iov_len));
+  EXPECT_EQ(
+      "goodbye",
+      std::string(
+          reinterpret_cast<const char*>(vec[1].iov_base), vec[1].iov_len));
+  EXPECT_EQ(
+      "hello again",
+      std::string(
+          reinterpret_cast<const char*>(vec[2].iov_base), vec[2].iov_len));
+}
+
+TEST(IOBuf, fillIov2) {
+  auto buf = IOBuf::create(4096);
+  append(buf, "hello");
+  auto buf2 = IOBuf::create(4096);
+  append(buf2, "goodbye");
+  auto buf3 = IOBuf::create(4096);
+  append(buf2, "hello again");
+
+  buf2->appendChain(std::move(buf3));
+  buf->appendChain(std::move(buf2));
+
+  constexpr size_t iovCount = 2;
+  struct iovec vec[iovCount];
+  auto res = buf->fillIov(vec, iovCount);
+
+  EXPECT_EQ(0, res.numIovecs);
+  EXPECT_EQ(0, res.totalLength);
+}

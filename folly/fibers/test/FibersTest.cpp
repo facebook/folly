@@ -2259,3 +2259,87 @@ TEST(FiberManager, highWaterMarkViaRecordCurrentPosition) {
   };
   std::thread(f).join();
 }
+
+TEST(FiberManager, addTaskEager) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  bool eagerTaskStarted{false};
+  bool eagerTaskDone{false};
+  bool firstTaskDone{false};
+
+  fm.addTask([&] { firstTaskDone = true; });
+
+  fm.addTaskEager([&] {
+    EXPECT_FALSE(firstTaskDone);
+    eagerTaskStarted = true;
+    fm.yield();
+    EXPECT_TRUE(firstTaskDone);
+    eagerTaskDone = true;
+  });
+
+  EXPECT_TRUE(eagerTaskStarted);
+
+  evb.loop();
+
+  EXPECT_TRUE(eagerTaskDone);
+  EXPECT_TRUE(firstTaskDone);
+}
+
+TEST(FiberManager, addTaskEagerFuture) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  bool eagerTaskStarted{false};
+  bool eagerTaskDone{false};
+
+  EXPECT_TRUE(fm.addTaskEagerFuture([&] {}).isReady());
+
+  auto f = fm.addTaskEagerFuture([&] {
+    eagerTaskStarted = true;
+    fm.yield();
+    eagerTaskDone = true;
+  });
+
+  EXPECT_TRUE(eagerTaskStarted);
+
+  evb.loop();
+
+  EXPECT_TRUE(f.isReady());
+
+  EXPECT_TRUE(eagerTaskDone);
+}
+
+TEST(FiberManager, addTaskEagerNested) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  bool eagerTaskStarted{false};
+  bool eagerTaskDone{false};
+  bool firstTaskDone{false};
+  bool secondTaskDone{false};
+
+  fm.addTask([&] {
+    fm.addTaskEager([&] {
+      EXPECT_FALSE(firstTaskDone);
+      EXPECT_FALSE(secondTaskDone);
+      fm.runInMainContext([&] { eagerTaskStarted = true; });
+      fm.yield();
+      EXPECT_TRUE(firstTaskDone);
+      EXPECT_TRUE(secondTaskDone);
+      eagerTaskDone = true;
+    });
+    EXPECT_TRUE(eagerTaskStarted);
+    firstTaskDone = true;
+  });
+
+  fm.addTask([&] {
+    EXPECT_TRUE(firstTaskDone);
+    secondTaskDone = true;
+  });
+
+  evb.loop();
+
+  EXPECT_TRUE(eagerTaskDone);
+  EXPECT_TRUE(secondTaskDone);
+}
