@@ -1095,11 +1095,15 @@ Future<T> Future<T>::thenError(F&& func) && {
   // possible.
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
+
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   return std::move(*this)
       .onError([func = std::forward<F>(func)](ExceptionType& ex) mutable {
         return std::forward<F>(func)(ex);
       })
       .via(std::move(e));
+  FOLLY_POP_WARNING
 }
 
 template <class T>
@@ -1110,12 +1114,16 @@ Future<T> Future<T>::thenError(F&& func) && {
   // possible.
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
+
+  FOLLY_PUSH_WARNING
+  FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
   return std::move(*this)
       .onError([func = std::forward<F>(func)](
                    folly::exception_wrapper&& ex) mutable {
         return std::forward<F>(func)(std::move(ex));
       })
       .via(std::move(e));
+  FOLLY_POP_WARNING
 }
 
 template <class T>
