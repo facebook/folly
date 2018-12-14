@@ -292,6 +292,18 @@ template <
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
 using SafeResultOf = decltype(static_cast<To>(std::declval<From>()));
 
+template <typename F, typename R, typename... A>
+class FunctionTraitsSharedProxy {
+  std::shared_ptr<Function<F>> sp_;
+
+ public:
+  explicit FunctionTraitsSharedProxy(Function<F>&& func)
+      : sp_(std::make_shared<Function<F>>(std::move(func))) {}
+  R operator()(A&&... args) const {
+    return (*sp_)(static_cast<A&&>(args)...);
+  }
+};
+
 template <typename FunctionType>
 struct FunctionTraits;
 
@@ -328,16 +340,8 @@ struct FunctionTraits<ReturnType(Args...)> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  class SharedProxy {
-    std::shared_ptr<Function<NonConstSignature>> sp_;
-
-   public:
-    explicit SharedProxy(Function<NonConstSignature>&& func)
-        : sp_(std::make_shared<Function<NonConstSignature>>(std::move(func))) {}
-    ReturnType operator()(Args&&... args) const {
-      return (*sp_)(static_cast<Args&&>(args)...);
-    }
-  };
+  using SharedProxy =
+      FunctionTraitsSharedProxy<NonConstSignature, ReturnType, Args...>;
 };
 
 template <typename ReturnType, typename... Args>
@@ -374,16 +378,8 @@ struct FunctionTraits<ReturnType(Args...) const> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  class SharedProxy {
-    std::shared_ptr<Function<ConstSignature>> sp_;
-
-   public:
-    explicit SharedProxy(Function<ConstSignature>&& func)
-        : sp_(std::make_shared<Function<ConstSignature>>(std::move(func))) {}
-    ReturnType operator()(Args&&... args) const {
-      return (*sp_)(static_cast<Args&&>(args)...);
-    }
-  };
+  using SharedProxy =
+      FunctionTraitsSharedProxy<ConstSignature, ReturnType, Args...>;
 };
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
@@ -420,16 +416,8 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  class SharedProxy {
-    std::shared_ptr<Function<NonConstSignature>> sp_;
-
-   public:
-    explicit SharedProxy(Function<NonConstSignature>&& func)
-        : sp_(std::make_shared<Function<NonConstSignature>>(std::move(func))) {}
-    ReturnType operator()(Args&&... args) const {
-      return (*sp_)(static_cast<Args&&>(args)...);
-    }
-  };
+  using SharedProxy =
+      FunctionTraitsSharedProxy<NonConstSignature, ReturnType, Args...>;
 };
 
 template <typename ReturnType, typename... Args>
@@ -466,16 +454,8 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
     return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
-  class SharedProxy {
-    std::shared_ptr<Function<ConstSignature>> sp_;
-
-   public:
-    explicit SharedProxy(Function<ConstSignature>&& func)
-        : sp_(std::make_shared<Function<ConstSignature>>(std::move(func))) {}
-    ReturnType operator()(Args&&... args) const {
-      return (*sp_)(static_cast<Args&&>(args)...);
-    }
-  };
+  using SharedProxy =
+      FunctionTraitsSharedProxy<ConstSignature, ReturnType, Args...>;
 };
 #endif
 
