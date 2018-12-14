@@ -47,9 +47,6 @@ class ShutdownSocketSet : private boost::noncopyable {
    * properly) and not by calling close() on the file descriptor.
    */
   void add(NetworkSocket fd);
-  void add(int fd) {
-    add(NetworkSocket::fromFd(fd));
-  }
 
   /**
    * Remove a socket from the list of sockets managed by ShutdownSocketSet.
@@ -58,18 +55,12 @@ class ShutdownSocketSet : private boost::noncopyable {
    * being shutdown().
    */
   void remove(NetworkSocket fd);
-  void remove(int fd) {
-    remove(NetworkSocket::fromFd(fd));
-  }
 
   /**
    * Close a socket managed by ShutdownSocketSet. Returns the same return code
    * as ::close() (and sets errno accordingly).
    */
   int close(NetworkSocket fd);
-  int close(int fd) {
-    return close(NetworkSocket::fromFd(fd));
-  }
 
   /**
    * Shut down a socket. If abortive is true, we perform an abortive
@@ -81,9 +72,6 @@ class ShutdownSocketSet : private boost::noncopyable {
    * operation, just call ::shutdown() on the socket.
    */
   void shutdown(NetworkSocket fd, bool abortive = false);
-  void shutdown(int fd, bool abortive = false) {
-    shutdown(NetworkSocket::fromFd(fd), abortive);
-  }
 
   /**
    * Immediate shutdown of all connections. This is a hard-hitting hammer;
