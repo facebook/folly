@@ -153,10 +153,6 @@ class EventHandler : private boost::noncopyable {
    * a EventBase.  This is primarily intended to be used to initialize
    * EventHandler objects created using the default constructor.
    */
-  void initHandler(EventBase* eventBase, int fd) {
-    initHandler(eventBase, NetworkSocket::fromFd(fd));
-  }
-
   void initHandler(EventBase* eventBase, NetworkSocket fd);
 
   /**
