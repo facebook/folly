@@ -394,7 +394,7 @@ int AsyncSocket::detachFd() {
   closeNow();
   // Update the EventHandler to stop using this fd.
   // This can only be done after closeNow() unregisters the handler.
-  ioHandler_.changeHandlerFD(-1);
+  ioHandler_.changeHandlerFD(folly::NetworkSocket::fromFd(-1));
   return fd.toFd();
 }
 
