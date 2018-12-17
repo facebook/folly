@@ -736,9 +736,9 @@ struct Synchronized : public SynchronizedBase<
   /**
    * Copies datum to a given target.
    */
-  void copy(T* target) const {
+  void copyInto(T& target) const {
     ConstLockedPtr guard(this);
-    *target = datum_;
+    target = datum_;
   }
 
   /**

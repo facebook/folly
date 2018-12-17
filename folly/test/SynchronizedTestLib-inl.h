@@ -864,7 +864,7 @@ void testConstCopy() {
 
   std::vector<int> result;
 
-  v.copy(&result);
+  v.copyInto(result);
   EXPECT_EQ(input, result);
 
   result = v.copy();
