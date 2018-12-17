@@ -232,7 +232,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
  *
  * This class provides all the functionality provided by the SynchronizedBase
  * specialization for shared mutexes and a ulock() method that returns an
- * upgradable lock RAII proxy
+ * upgrade lock RAII proxy
  */
 template <class Subclass>
 class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
@@ -1444,8 +1444,8 @@ class LockedPtr : public LockedPtrBase<
   }
 
   /***************************************************************************
-   * Upgradable lock methods.
-   * These are disabled via SFINAE when the mutex is not upgradable
+   * Upgrade lock methods.
+   * These are disabled via SFINAE when the mutex is not an upgrade mutex.
    **************************************************************************/
   /**
    * Move the locked ptr from an upgrade state to an exclusive state.  The

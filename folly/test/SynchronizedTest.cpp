@@ -375,7 +375,7 @@ TEST_F(SynchronizedLockTest, TestCopyConstructibleValues) {
       std::is_copy_assignable<folly::Synchronized<CopyConstructible>>::value);
 }
 
-TEST_F(SynchronizedLockTest, UpgradableLocking) {
+TEST_F(SynchronizedLockTest, UpgradeLocking) {
   folly::Synchronized<int, FakeAllPowerfulAssertingMutex> sync;
 
   // sanity assert
@@ -456,7 +456,7 @@ TEST_F(SynchronizedLockTest, UpgradableLocking) {
       FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UNLOCKED);
 }
 
-TEST_F(SynchronizedLockTest, UpgradableLockingWithULock) {
+TEST_F(SynchronizedLockTest, UpgradeLockingWithULock) {
   folly::Synchronized<int, FakeAllPowerfulAssertingMutex> sync;
 
   // sanity assert
