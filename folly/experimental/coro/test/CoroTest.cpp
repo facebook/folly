@@ -343,4 +343,23 @@ TEST(Coro, MoveOnlyReturn) {
                    .getVia(&executor);
   EXPECT_EQ(42, *value);
 }
+
+TEST(Coro, lambda) {
+  ManualExecutor executor;
+  Promise<folly::Unit> p;
+  auto coroFuture =
+      coro::lambda([f = p.getSemiFuture()]() mutable -> coro::Task<void> {
+        (void)co_await std::move(f);
+        co_return;
+      })
+          .scheduleOn(&executor)
+          .start();
+  executor.run();
+  EXPECT_FALSE(coroFuture.isReady());
+
+  p.setValue(folly::unit);
+
+  executor.run();
+  EXPECT_TRUE(coroFuture.isReady());
+}
 #endif

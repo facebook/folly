@@ -155,5 +155,14 @@ TimedWaitAwaitable<std::decay_t<Awaitable>> timed_wait(
       std::forward<Awaitable>(awaitable), duration);
 }
 
+/// This helper method is a safe way to instantiate a coroutine using a
+/// coroutine lambda. It provides a guarantee that the lambda will always
+/// outlive the coroutine which it returned.
+/// Otherwise, using any lambda captures in the coroutine body is not safe.
+template <typename Lambda>
+std::result_of_t<Lambda()> lambda(Lambda f) {
+  co_return co_await f();
+}
+
 } // namespace coro
 } // namespace folly
