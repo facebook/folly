@@ -1063,3 +1063,10 @@ TEST(SemiFuture, DeferWithNestedSemiFuture) {
   EXPECT_GE(
       std::chrono::steady_clock::now() - start, std::chrono::milliseconds{300});
 }
+
+TEST(SemiFuture, DeferWithExecutor) {
+  ManualExecutor executor;
+  auto sf = makeSemiFuture().defer(
+      [&](Executor* e, Try<Unit>) { EXPECT_EQ(&executor, e); });
+  std::move(sf).via(&executor).getVia(&executor);
+}

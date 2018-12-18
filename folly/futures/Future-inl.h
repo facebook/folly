@@ -522,6 +522,11 @@ class DeferredExecutor final : public Executor {
     executor_->add(std::exchange(func_, nullptr));
   }
 
+  Executor* getExecutor() const {
+    assert(executor_.get());
+    return executor_.get();
+  }
+
   void setExecutor(folly::Executor::KeepAlive<> executor) {
     if (nestedExecutors_) {
       auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
@@ -893,6 +898,23 @@ SemiFuture<T>::defer(F&& func) && {
   // nullify it
   sf.setExecutor(deferredExecutor);
   return sf;
+}
+
+template <class T>
+template <typename F>
+SemiFuture<
+    typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+SemiFuture<T>::defer(F&& func) && {
+  DeferredExecutor* deferredExecutor = getDeferredExecutor();
+  if (!deferredExecutor) {
+    auto newDeferredExecutor = DeferredExecutor::create();
+    deferredExecutor = newDeferredExecutor.get();
+    this->setExecutor(std::move(newDeferredExecutor));
+  }
+  return std::move(*this).defer(
+      [deferredExecutor, f = std::forward<F>(func)](Try<T>&& t) mutable {
+        return f(deferredExecutor->getExecutor(), std::move(t));
+      });
 }
 
 template <class T>

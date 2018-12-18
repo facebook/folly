@@ -697,6 +697,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
   defer(F&& func) &&;
 
+  template <typename F>
+  SemiFuture<
+      typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+  defer(F&& func) &&;
+
   template <typename R, typename... Args>
   auto defer(R (&func)(Args...)) && {
     return std::move(*this).defer(&func);
