@@ -296,6 +296,13 @@ class FOLLY_NODISCARD Task {
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
+  SemiFuture<folly::lift_unit_t<T>> semi() && {
+    return makeSemiFuture().defer(
+        [task = std::move(*this)](Executor* executor, Try<Unit>&&) mutable {
+          return std::move(task).scheduleOn(executor).start();
+        });
+  }
+
  private:
   friend class detail::TaskPromiseBase;
   friend class detail::TaskPromise<T>;

@@ -32,12 +32,29 @@ coro::Task<int> task42() {
   co_return 42;
 }
 
+SemiFuture<int> semifuture_task42() {
+  return task42().semi();
+}
+
 TEST(Coro, Basic) {
   ManualExecutor executor;
   auto future = task42().scheduleOn(&executor).start();
 
   EXPECT_FALSE(future.isReady());
 
+  executor.drive();
+
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, std::move(future).get());
+}
+
+TEST(Coro, BasicSemiFuture) {
+  ManualExecutor executor;
+  auto future = semifuture_task42().via(&executor);
+
+  EXPECT_FALSE(future.isReady());
+
+  executor.drive();
   executor.drive();
 
   EXPECT_TRUE(future.isReady());
