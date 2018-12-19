@@ -215,7 +215,8 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
     int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
         SOF_TIMESTAMPING_SOFTWARE;
     AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
-    int ret = tstampingOpt.apply(socket_->getFd(), flags);
+    int ret = tstampingOpt.apply(
+        folly::NetworkSocket::fromFd(socket_->getFd()), flags);
     EXPECT_EQ(ret, 0);
   }
 

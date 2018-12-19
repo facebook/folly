@@ -3106,7 +3106,9 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
       SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_OPT_CMSG |
       SOF_TIMESTAMPING_TX_SCHED;
   AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
-  EXPECT_EQ(tstampingOpt.apply(socket->getFd(), flags), 0);
+  EXPECT_EQ(
+      tstampingOpt.apply(folly::NetworkSocket::fromFd(socket->getFd()), flags),
+      0);
 
   // write()
   std::vector<uint8_t> wbuf(128, 'a');
