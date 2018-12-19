@@ -44,10 +44,11 @@ bool Semaphore::signalSlow() {
 void Semaphore::signal() {
   auto oldVal = tokens_.load(std::memory_order_acquire);
   do {
-    if (oldVal == 0) {
+    while (oldVal == 0) {
       if (signalSlow()) {
-        break;
+        return;
       }
+      oldVal = tokens_.load(std::memory_order_acquire);
     }
   } while (!tokens_.compare_exchange_weak(
       oldVal,
@@ -80,12 +81,13 @@ bool Semaphore::waitSlow() {
 void Semaphore::wait() {
   auto oldVal = tokens_.load(std::memory_order_acquire);
   do {
-    if (oldVal == 0) {
+    while (oldVal == 0) {
       // If waitSlow fails it is because the token is non-zero by the time
       // the lock is taken, so we can just continue round the loop
       if (waitSlow()) {
-        break;
+        return;
       }
+      oldVal = tokens_.load(std::memory_order_acquire);
     }
   } while (!tokens_.compare_exchange_weak(
       oldVal,

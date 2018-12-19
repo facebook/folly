@@ -1555,54 +1555,58 @@ TEST(FiberManager, semaphore) {
   static constexpr size_t kTasks = 10;
   static constexpr size_t kIterations = 10000;
   static constexpr size_t kNumTokens = 10;
+  static constexpr size_t kNumThreads = 16;
 
   Semaphore sem(kNumTokens);
-  int counterA = 0;
-  int counterB = 0;
 
-  auto task = [&sem](int& counter, folly::fibers::Baton& baton) {
-    FiberManager manager(std::make_unique<EventBaseLoopController>());
-    folly::EventBase evb;
-    dynamic_cast<EventBaseLoopController&>(manager.loopController())
-        .attachEventBase(evb);
+  struct Worker {
+    explicit Worker(Semaphore& s) : sem(s), t([&] { run(); }) {}
 
-    {
-      std::shared_ptr<folly::EventBase> completionCounter(
-          &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
+    void run() {
+      FiberManager manager(std::make_unique<EventBaseLoopController>());
+      folly::EventBase evb;
+      dynamic_cast<EventBaseLoopController&>(manager.loopController())
+          .attachEventBase(evb);
 
-      for (size_t i = 0; i < kTasks; ++i) {
-        manager.addTask([&, completionCounter]() {
-          for (size_t j = 0; j < kIterations; ++j) {
-            sem.wait();
-            ++counter;
-            sem.signal();
-            --counter;
+      {
+        std::shared_ptr<folly::EventBase> completionCounter(
+            &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
 
-            EXPECT_LT(counter, kNumTokens);
-            EXPECT_GE(counter, 0);
-          }
-        });
+        for (size_t i = 0; i < kTasks; ++i) {
+          manager.addTask([&, completionCounter]() {
+            for (size_t j = 0; j < kIterations; ++j) {
+              sem.wait();
+              ++counter;
+              sem.signal();
+              --counter;
+
+              EXPECT_LT(counter, kNumTokens);
+              EXPECT_GE(counter, 0);
+            }
+          });
+        }
       }
-
-      baton.wait();
+      evb.loopForever();
     }
-    evb.loopForever();
+
+    Semaphore& sem;
+    int counter{0};
+    std::thread t;
   };
 
-  folly::fibers::Baton batonA;
-  folly::fibers::Baton batonB;
-  std::thread threadA([&] { task(counterA, batonA); });
-  std::thread threadB([&] { task(counterB, batonB); });
+  std::vector<Worker> workers;
+  workers.reserve(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    workers.emplace_back(sem);
+  }
 
-  batonA.post();
-  batonB.post();
-  threadA.join();
-  threadB.join();
+  for (auto& worker : workers) {
+    worker.t.join();
+  }
 
-  EXPECT_LT(counterA, kNumTokens);
-  EXPECT_LT(counterB, kNumTokens);
-  EXPECT_GE(counterA, 0);
-  EXPECT_GE(counterB, 0);
+  for (auto& worker : workers) {
+    EXPECT_EQ(0, worker.counter);
+  }
 }
 
 template <typename ExecutorT>
