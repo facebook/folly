@@ -23,6 +23,7 @@
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Utils.h>
+#include <folly/fibers/Semaphore.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -378,5 +379,62 @@ TEST(Coro, lambda) {
 
   executor.run();
   EXPECT_TRUE(coroFuture.isReady());
+}
+
+TEST(Coro, Semaphore) {
+  static constexpr size_t kTasks = 10;
+  static constexpr size_t kIterations = 10000;
+  static constexpr size_t kNumTokens = 10;
+  static constexpr size_t kNumThreads = 16;
+
+  fibers::Semaphore sem(kNumTokens);
+
+  struct Worker {
+    explicit Worker(fibers::Semaphore& s) : sem(s), t([&] { run(); }) {}
+
+    void run() {
+      folly::EventBase evb;
+
+      {
+        std::shared_ptr<folly::EventBase> completionCounter(
+            &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
+
+        for (size_t i = 0; i < kTasks; ++i) {
+          coro::lambda([&, completionCounter]() -> coro::Task<void> {
+            for (size_t j = 0; j < kIterations; ++j) {
+              co_await sem.co_wait();
+              ++counter;
+              sem.signal();
+              --counter;
+
+              EXPECT_LT(counter, kNumTokens);
+              EXPECT_GE(counter, 0);
+            }
+          })
+              .scheduleOn(&evb)
+              .start();
+        }
+      }
+      evb.loopForever();
+    }
+
+    fibers::Semaphore& sem;
+    int counter{0};
+    std::thread t;
+  };
+
+  std::vector<Worker> workers;
+  workers.reserve(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    workers.emplace_back(sem);
+  }
+
+  for (auto& worker : workers) {
+    worker.t.join();
+  }
+
+  for (auto& worker : workers) {
+    EXPECT_EQ(0, worker.counter);
+  }
 }
 #endif
