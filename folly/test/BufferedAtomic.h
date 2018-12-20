@@ -405,6 +405,19 @@ template <typename T>
 using BufferedDeterministicAtomic =
     DeterministicAtomicImpl<T, DeterministicSchedule, BufferedAtomic>;
 
+/* Futex extensions for DeterministicSchedule based Futexes */
+int futexWakeImpl(
+    const folly::detail::Futex<test::BufferedDeterministicAtomic>* futex,
+    int count,
+    uint32_t wakeMask);
+
+folly::detail::FutexResult futexWaitImpl(
+    const folly::detail::Futex<test::BufferedDeterministicAtomic>* futex,
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTime,
+    std::chrono::steady_clock::time_point const* absSteadyTime,
+    uint32_t waitMask);
+
 } // namespace test
 
 } // namespace folly

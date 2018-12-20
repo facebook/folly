@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 #include <atomic>
 #include <functional>
+#include <list>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -576,6 +577,126 @@ detail::FutexResult futexWaitImpl(
     std::chrono::system_clock::time_point const* absSystemTime,
     std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
+
+/* Generic futex extensions to allow sharing between DeterministicAtomic and
+ * BufferedDeterministicAtomic.*/
+template <template <typename> class Atom>
+int deterministicFutexWakeImpl(
+    const detail::Futex<Atom>* futex,
+    std::mutex& futexLock,
+    std::unordered_map<
+        const detail::Futex<Atom>*,
+        std::list<std::pair<uint32_t, bool*>>>& futexQueues,
+    int count,
+    uint32_t wakeMask) {
+  using namespace test;
+  using namespace std::chrono;
+
+  int rv = 0;
+  DeterministicSchedule::beforeSharedAccess();
+  futexLock.lock();
+  if (futexQueues.count(futex) > 0) {
+    auto& queue = futexQueues[futex];
+    auto iter = queue.begin();
+    while (iter != queue.end() && rv < count) {
+      auto cur = iter++;
+      if ((cur->first & wakeMask) != 0) {
+        *(cur->second) = true;
+        rv++;
+        queue.erase(cur);
+      }
+    }
+    if (queue.empty()) {
+      futexQueues.erase(futex);
+    }
+  }
+  futexLock.unlock();
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWake(" << futex << ", " << count << ", " << std::hex << wakeMask
+                   << ") -> " << rv);
+  DeterministicSchedule::afterSharedAccess();
+  return rv;
+}
+
+template <template <typename> class Atom>
+detail::FutexResult deterministicFutexWaitImpl(
+    const detail::Futex<Atom>* futex,
+    std::mutex& futexLock,
+    std::unordered_map<
+        const detail::Futex<Atom>*,
+        std::list<std::pair<uint32_t, bool*>>>& futexQueues,
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTimeout,
+    std::chrono::steady_clock::time_point const* absSteadyTimeout,
+    uint32_t waitMask) {
+  using namespace test;
+  using namespace std::chrono;
+  using namespace folly::detail;
+
+  bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
+  bool awoken = false;
+  FutexResult result = FutexResult::AWOKEN;
+
+  DeterministicSchedule::beforeSharedAccess();
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWait(" << futex << ", " << std::hex << expected << ", .., "
+                   << std::hex << waitMask << ") beginning..");
+  futexLock.lock();
+  // load_direct avoids deadlock on inner call to beforeSharedAccess
+  if (futex->load_direct() == expected) {
+    auto& queue = futexQueues[futex];
+    queue.emplace_back(waitMask, &awoken);
+    auto ours = queue.end();
+    ours--;
+    while (!awoken) {
+      futexLock.unlock();
+      DeterministicSchedule::afterSharedAccess();
+      DeterministicSchedule::beforeSharedAccess();
+      futexLock.lock();
+
+      // Simulate spurious wake-ups, timeouts each time with
+      // a 10% probability if we haven't been woken up already
+      if (!awoken && hasTimeout &&
+          DeterministicSchedule::getRandNumber(100) < 10) {
+        assert(futexQueues.count(futex) != 0 && &futexQueues[futex] == &queue);
+        queue.erase(ours);
+        if (queue.empty()) {
+          futexQueues.erase(futex);
+        }
+        // Simulate ETIMEDOUT 90% of the time and other failures
+        // remaining time
+        result = DeterministicSchedule::getRandNumber(100) >= 10
+            ? FutexResult::TIMEDOUT
+            : FutexResult::INTERRUPTED;
+        break;
+      }
+    }
+  } else {
+    result = FutexResult::VALUE_CHANGED;
+  }
+  futexLock.unlock();
+
+  char const* resultStr = "?";
+  switch (result) {
+    case FutexResult::AWOKEN:
+      resultStr = "AWOKEN";
+      break;
+    case FutexResult::TIMEDOUT:
+      resultStr = "TIMEDOUT";
+      break;
+    case FutexResult::INTERRUPTED:
+      resultStr = "INTERRUPTED";
+      break;
+    case FutexResult::VALUE_CHANGED:
+      resultStr = "VALUE_CHANGED";
+      break;
+  }
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWait(" << futex << ", " << std::hex << expected << ", .., "
+                   << std::hex << waitMask << ") -> " << resultStr);
+  DeterministicSchedule::afterSharedAccess();
+  return result;
+}
 
 /**
  * Implementations of the atomic_wait API for DeterministicAtomic, these are
