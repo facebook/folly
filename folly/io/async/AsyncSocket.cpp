@@ -1041,9 +1041,8 @@ void AsyncSocket::writeChain(
 
     writeChainImpl(callback, vec, count, std::move(buf), flags);
   } else {
-    iovec* vec = new iovec[count];
-    writeChainImpl(callback, vec, count, std::move(buf), flags);
-    delete[] vec;
+    std::unique_ptr<iovec[]> vec(new iovec[count]);
+    writeChainImpl(callback, vec.get(), count, std::move(buf), flags);
   }
 }
 
