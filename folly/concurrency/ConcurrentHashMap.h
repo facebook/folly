@@ -454,13 +454,13 @@ class ConcurrentHashMap {
     explicit ConstIterator(uint64_t shards) : it_(nullptr), segment_(shards) {}
 
     void next() {
-      while (it_ == parent_->ensureSegment(segment_)->cend() &&
-             segment_ < parent_->NumShards) {
+      while (segment_ < parent_->NumShards &&
+             it_ == parent_->ensureSegment(segment_)->cend()) {
         SegmentT* seg{nullptr};
         while (!seg) {
           segment_++;
-          seg = parent_->segments_[segment_].load(std::memory_order_acquire);
           if (segment_ < parent_->NumShards) {
+            seg = parent_->segments_[segment_].load(std::memory_order_acquire);
             if (!seg) {
               continue;
             }
