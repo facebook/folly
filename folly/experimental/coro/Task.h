@@ -368,5 +368,45 @@ inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
       detail::TaskPromise<void>>::from_promise(*this)};
 }
 
+namespace detail {
+template <typename T>
+struct is_task : std::false_type {};
+template <typename T>
+struct is_task<Task<T>> : std::true_type {};
+
+template <typename F, typename... A, typename F_, typename... A_>
+invoke_result_t<F, A...> co_invoke_(F_ f, A_... a) {
+  co_return co_await folly::invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+}
+} // namespace detail
+
+/// co_invoke
+///
+/// This utility function is a safe way to instantiate a coroutine using a
+/// coroutine callable. It guarantees that the callable and the arguments
+/// outlive the coroutine which invocation returns. Otherwise, the callable
+/// and the arguments are not safe to be used within the coroutine body.
+///
+/// For example, if the callable is a lambda with captures, the captures would
+/// not otherwise be safe to use in the coroutine body without using co_invoke.
+///
+/// Models std::invoke for any callable object which returns Task<_>.
+///
+/// Like std::invoke in that the callable is invoked with the cvref-qual with
+/// which it is passed to co_invoke and the arguments are passed with the cvref-
+/// quals with which they were passed to co_invoke.
+///
+/// Different from std::invoke in that the callable and all arguments are decay-
+/// copied and held for the lifetime of the coroutine, whereas std::invoke never
+/// never constructs anything from the callable or the arguments.
+template <typename F, typename... A>
+std::enable_if_t<
+    detail::is_task<invoke_result_t<F, A...>>::value,
+    invoke_result_t<F, A...>>
+co_invoke(F&& f, A&&... a) {
+  return detail::co_invoke_<F, A...>(
+      static_cast<F&&>(f), static_cast<A&&>(a)...);
+}
+
 } // namespace coro
 } // namespace folly

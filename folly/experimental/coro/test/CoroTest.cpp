@@ -362,11 +362,11 @@ TEST(Coro, MoveOnlyReturn) {
   EXPECT_EQ(42, *value);
 }
 
-TEST(Coro, lambda) {
+TEST(Coro, co_invoke) {
   ManualExecutor executor;
   Promise<folly::Unit> p;
   auto coroFuture =
-      coro::lambda([f = p.getSemiFuture()]() mutable -> coro::Task<void> {
+      coro::co_invoke([f = p.getSemiFuture()]() mutable -> coro::Task<void> {
         (void)co_await std::move(f);
         co_return;
       })
@@ -400,7 +400,7 @@ TEST(Coro, Semaphore) {
             &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
 
         for (size_t i = 0; i < kTasks; ++i) {
-          coro::lambda([&, completionCounter]() -> coro::Task<void> {
+          coro::co_invoke([&, completionCounter]() -> coro::Task<void> {
             for (size_t j = 0; j < kIterations; ++j) {
               co_await sem.co_wait();
               ++counter;
