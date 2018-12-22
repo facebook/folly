@@ -715,7 +715,6 @@ if (BUILD_TESTS)
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
-      TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
       TEST small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
@@ -732,6 +731,18 @@ if (BUILD_TESTS)
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
   )
+
+  get_target_property(pic folly POSITION_INDEPENDENT_CODE)
+  if (pic)
+    add_library(singleton_thread_local_overload
+      SHARED ${FOLLY_DIR}/test/SingletonThreadLocalTestOverload.cpp)
+    apply_folly_compile_options_to_target(singleton_thread_local_overload)
+    set_target_properties(singleton_thread_local_overload PROPERTIES PREFIX "")
+    target_link_libraries(singleton_thread_local_overload PRIVATE folly)
+    folly_define_tests(
+      DIRECTORY test/
+        TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp)
+  endif()
 endif()
 
 add_subdirectory(folly)
