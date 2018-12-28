@@ -1566,15 +1566,22 @@ TEST(F14FastMap, disabledDoubleTransparent) {
   EXPECT_TRUE(map.find(C{20}) == map.end());
 }
 
-TEST(F14ValueMap, randomInsertOrder) {
+template <typename M>
+void runRandomInsertOrderTest() {
   if (FOLLY_F14_PERTURB_INSERTION_ORDER) {
     std::string prev;
     bool diffFound = false;
     for (int tries = 0; tries < 100; ++tries) {
-      F14ValueMap<char, char> m;
-      for (char x = '0'; x <= '9'; ++x) {
-        m[x] = x;
+      M m;
+      for (char x = '0'; x <= '7'; ++x) {
+        m.try_emplace(x);
       }
+      m.reserve(10);
+      auto it = m.try_emplace('8').first;
+      auto addr = &*it;
+      m.try_emplace('9');
+      EXPECT_TRUE(it == m.find('8'));
+      EXPECT_TRUE(addr = &*m.find('8'));
       std::string s;
       for (auto&& e : m) {
         s.push_back(e.first);
@@ -1591,6 +1598,12 @@ TEST(F14ValueMap, randomInsertOrder) {
     }
     EXPECT_TRUE(diffFound) << "no randomness found in insert order";
   }
+}
+
+TEST(F14Map, randomInsertOrder) {
+  runRandomInsertOrderTest<F14ValueMap<char, char>>();
+  runRandomInsertOrderTest<F14FastMap<char, char>>();
+  runRandomInsertOrderTest<F14FastMap<char, std::string>>();
 }
 
 ///////////////////////////////////

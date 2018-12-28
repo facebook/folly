@@ -576,9 +576,8 @@ class ValueContainerPolicy : public BasePolicy<
     return std::move(item);
   }
 
-  template <typename... Args>
-  void
-  constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
+  template <typename Table, typename... Args>
+  void constructValueAtItem(Table&&, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
     // GCC < 6 doesn't use the fact that itemAddr came from a reference
     // to avoid a null-check in the placement new.  folly::assume-ing it
@@ -825,9 +824,8 @@ class NodeContainerPolicy
     return std::move(*item);
   }
 
-  template <typename... Args>
-  void
-  constructValueAtItem(std::size_t /*size*/, Item* itemAddr, Args&&... args) {
+  template <typename Table, typename... Args>
+  void constructValueAtItem(Table&&, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(itemAddr != nullptr);
@@ -898,7 +896,8 @@ template <
     typename MappedTypeOrVoid,
     typename HasherOrVoid,
     typename KeyEqualOrVoid,
-    typename AllocOrVoid>
+    typename AllocOrVoid,
+    typename EligibleForPerturbedInsertionOrder>
 class VectorContainerPolicy;
 
 template <typename ValuePtr>
@@ -963,7 +962,13 @@ class VectorContainerIterator : public BaseIter<ValuePtr, uint32_t> {
     return current_ - lowest_;
   }
 
-  template <typename K, typename M, typename H, typename E, typename A>
+  template <
+      typename K,
+      typename M,
+      typename H,
+      typename E,
+      typename A,
+      typename P>
   friend class VectorContainerPolicy;
 
   template <typename P>
@@ -979,7 +984,8 @@ template <
     typename MappedTypeOrVoid,
     typename HasherOrVoid,
     typename KeyEqualOrVoid,
-    typename AllocOrVoid>
+    typename AllocOrVoid,
+    typename EligibleForPerturbedInsertionOrder>
 class VectorContainerPolicy : public BasePolicy<
                                   Key,
                                   MappedTypeOrVoid,
@@ -1157,22 +1163,52 @@ class VectorContainerPolicy : public BasePolicy<
     return std::move(values_[item]);
   }
 
+  template <typename Table>
   void constructValueAtItem(
-      std::size_t /*size*/,
+      Table&&,
       Item* itemAddr,
       VectorContainerIndexSearch arg) {
     *itemAddr = arg.index_;
   }
 
-  template <typename... Args>
-  void constructValueAtItem(std::size_t size, Item* itemAddr, Args&&... args) {
+  template <typename Table, typename... Args>
+  void constructValueAtItem(Table&& table, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
+    std::size_t size = table.size();
     FOLLY_SAFE_DCHECK(size < std::numeric_limits<InternalSizeType>::max(), "");
     *itemAddr = static_cast<InternalSizeType>(size);
     auto dst = std::addressof(values_[size]);
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(dst != nullptr);
     AllocTraits::construct(a, dst, std::forward<Args>(args)...);
+
+    constexpr bool perturb = FOLLY_F14_PERTURB_INSERTION_ORDER;
+    if (EligibleForPerturbedInsertionOrder::value && perturb &&
+        !tlsPendingSafeInserts()) {
+      // Pick a random victim. We have to do this post-construction
+      // because the item and tag are already set in the table before
+      // calling constructValueAtItem, so if there is a tag collision
+      // find may evaluate values_[size] during the search.
+      auto i = tlsMinstdRand(size + 1);
+      if (i != size) {
+        auto& lhsItem = *itemAddr;
+        auto rhsIter = table.find(
+            VectorContainerIndexSearch{static_cast<InternalSizeType>(i)});
+        FOLLY_SAFE_DCHECK(!rhsIter.atEnd(), "");
+        auto& rhsItem = rhsIter.item();
+        FOLLY_SAFE_DCHECK(lhsItem == size, "");
+        FOLLY_SAFE_DCHECK(rhsItem == i, "");
+
+        aligned_storage_for_t<Value> tmp;
+        Value* tmpValue = static_cast<Value*>(static_cast<void*>(&tmp));
+        transfer(a, std::addressof(values_[i]), tmpValue, 1);
+        transfer(
+            a, std::addressof(values_[size]), std::addressof(values_[i]), 1);
+        transfer(a, tmpValue, std::addressof(values_[size]), 1);
+        lhsItem = i;
+        rhsItem = size;
+      }
+    }
   }
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
@@ -1461,31 +1497,37 @@ class VectorContainerPolicy : public BasePolicy<
 };
 
 template <
-    template <typename, typename, typename, typename, typename> class Policy,
+    template <typename, typename, typename, typename, typename, typename...>
+    class Policy,
     typename Key,
     typename Mapped,
     typename Hasher,
     typename KeyEqual,
-    typename Alloc>
+    typename Alloc,
+    typename... Args>
 using MapPolicyWithDefaults = Policy<
     Key,
     Mapped,
     VoidDefault<Hasher, DefaultHasher<Key>>,
     VoidDefault<KeyEqual, DefaultKeyEqual<Key>>,
-    VoidDefault<Alloc, DefaultAlloc<std::pair<Key const, Mapped>>>>;
+    VoidDefault<Alloc, DefaultAlloc<std::pair<Key const, Mapped>>>,
+    Args...>;
 
 template <
-    template <typename, typename, typename, typename, typename> class Policy,
+    template <typename, typename, typename, typename, typename, typename...>
+    class Policy,
     typename Key,
     typename Hasher,
     typename KeyEqual,
-    typename Alloc>
+    typename Alloc,
+    typename... Args>
 using SetPolicyWithDefaults = Policy<
     Key,
     void,
     VoidDefault<Hasher, DefaultHasher<Key>>,
     VoidDefault<KeyEqual, DefaultKeyEqual<Key>>,
-    VoidDefault<Alloc, DefaultAlloc<Key>>>;
+    VoidDefault<Alloc, DefaultAlloc<Key>>,
+    Args...>;
 
 } // namespace detail
 } // namespace f14

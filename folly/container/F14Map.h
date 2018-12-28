@@ -1106,14 +1106,16 @@ template <
     typename Mapped,
     typename Hasher,
     typename KeyEqual,
-    typename Alloc>
+    typename Alloc,
+    typename EligibleForPerturbedInsertionOrder>
 class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
                              VectorContainerPolicy,
                              Key,
                              Mapped,
                              Hasher,
                              KeyEqual,
-                             Alloc>> {
+                             Alloc,
+                             EligibleForPerturbedInsertionOrder>> {
  protected:
   using Policy = MapPolicyWithDefaults<
       VectorContainerPolicy,
@@ -1121,7 +1123,8 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
       Mapped,
       Hasher,
       KeyEqual,
-      Alloc>;
+      Alloc,
+      EligibleForPerturbedInsertionOrder>;
 
  private:
   using Super = F14BasicMap<Policy>;
@@ -1257,11 +1260,15 @@ template <
     typename Hasher,
     typename KeyEqual,
     typename Alloc>
-class F14VectorMap
-    : public f14::detail::
-          F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc> {
-  using Super =
-      f14::detail::F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc>;
+class F14VectorMap : public f14::detail::F14VectorMapImpl<
+                         Key,
+                         Mapped,
+                         Hasher,
+                         KeyEqual,
+                         Alloc,
+                         std::false_type> {
+  using Super = f14::detail::
+      F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc, std::false_type>;
 
  public:
   using typename Super::const_iterator;
@@ -1366,15 +1373,26 @@ template <
     typename Hasher,
     typename KeyEqual,
     typename Alloc>
-class F14FastMap
-    : public std::conditional_t<
-          sizeof(std::pair<Key const, Mapped>) < 24,
-          F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
-          f14::detail::F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc>> {
+class F14FastMap : public std::conditional_t<
+                       sizeof(std::pair<Key const, Mapped>) < 24,
+                       F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
+                       f14::detail::F14VectorMapImpl<
+                           Key,
+                           Mapped,
+                           Hasher,
+                           KeyEqual,
+                           Alloc,
+                           std::true_type>> {
   using Super = std::conditional_t<
       sizeof(std::pair<Key const, Mapped>) < 24,
       F14ValueMap<Key, Mapped, Hasher, KeyEqual, Alloc>,
-      f14::detail::F14VectorMapImpl<Key, Mapped, Hasher, KeyEqual, Alloc>>;
+      f14::detail::F14VectorMapImpl<
+          Key,
+          Mapped,
+          Hasher,
+          KeyEqual,
+          Alloc,
+          std::true_type>>;
 
  public:
   using typename Super::value_type;

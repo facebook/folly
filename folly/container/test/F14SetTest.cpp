@@ -1243,6 +1243,42 @@ TEST(F14ValueSet, valueSize) {
   RunAllValueSizeTests<F14ValueSet, 32>{}();
 }
 
+template <typename S, typename F>
+void runRandomInsertOrderTest(F&& func) {
+  if (FOLLY_F14_PERTURB_INSERTION_ORDER) {
+    std::string prev;
+    bool diffFound = false;
+    for (int tries = 0; tries < 100; ++tries) {
+      S set;
+      for (char x = '0'; x <= '9'; ++x) {
+        set.emplace(func(x));
+      }
+      std::string s;
+      for (auto&& e : set) {
+        s += e;
+      }
+      LOG(INFO) << s << "\n";
+      if (prev.empty()) {
+        prev = s;
+        continue;
+      }
+      if (prev != s) {
+        diffFound = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(diffFound) << "no randomness found in insert order";
+  }
+}
+
+TEST(F14Set, randomInsertOrder) {
+  runRandomInsertOrderTest<F14ValueSet<char>>([](char x) { return x; });
+  runRandomInsertOrderTest<F14FastSet<char>>([](char x) { return x; });
+  runRandomInsertOrderTest<F14FastSet<std::string>>([](char x) {
+    return std::string{std::size_t{1}, x};
+  });
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////

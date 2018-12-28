@@ -853,20 +853,27 @@ bool operator!=(
 
 namespace f14 {
 namespace detail {
-template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
+template <
+    typename Key,
+    typename Hasher,
+    typename KeyEqual,
+    typename Alloc,
+    typename EligibleForPerturbedInsertionOrder>
 class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
                              VectorContainerPolicy,
                              Key,
                              Hasher,
                              KeyEqual,
-                             Alloc>> {
+                             Alloc,
+                             EligibleForPerturbedInsertionOrder>> {
  protected:
   using Policy = SetPolicyWithDefaults<
       VectorContainerPolicy,
       Key,
       Hasher,
       KeyEqual,
-      Alloc>;
+      Alloc,
+      EligibleForPerturbedInsertionOrder>;
 
  private:
   using Super = F14BasicSet<Policy>;
@@ -1012,8 +1019,10 @@ class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
 
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14VectorSet
-    : public f14::detail::F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc> {
-  using Super = f14::detail::F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc>;
+    : public f14::detail::
+          F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc, std::false_type> {
+  using Super = f14::detail::
+      F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc, std::false_type>;
 
  public:
   using typename Super::const_iterator;
@@ -1116,11 +1125,13 @@ class F14FastSet
     : public std::conditional_t<
           sizeof(Key) < 24,
           F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
-          f14::detail::F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc>> {
+          f14::detail::
+              F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc, std::true_type>> {
   using Super = std::conditional_t<
       sizeof(Key) < 24,
       F14ValueSet<Key, Hasher, KeyEqual, Alloc>,
-      f14::detail::F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc>>;
+      f14::detail::
+          F14VectorSetImpl<Key, Hasher, KeyEqual, Alloc, std::true_type>>;
 
  public:
   using typename Super::value_type;

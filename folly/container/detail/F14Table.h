@@ -135,6 +135,9 @@ struct F14LinkCheck<getF14IntrinsicsMode()> {
   static void check() noexcept;
 };
 
+bool tlsPendingSafeInserts(std::ptrdiff_t delta = 0);
+std::size_t tlsMinstdRand(std::size_t n);
+
 #if defined(_LIBCPP_VERSION)
 
 template <typename K, typename V, typename H>
@@ -329,10 +332,6 @@ using EmptyTagVectorType = std::aligned_storage_t<
     alignof(max_align_t)>;
 
 extern EmptyTagVectorType kEmptyTagVector;
-
-extern FOLLY_F14_TLS_IF_ASAN std::size_t asanPendingSafeInserts;
-
-std::size_t tlsMinstdRand(std::size_t n);
 
 template <unsigned BitCount>
 struct FullMask {
@@ -1596,7 +1595,7 @@ class F14Table : public Policy {
   void insertAtBlank(ItemIter pos, HashPair hp, Args&&... args) {
     try {
       auto dst = pos.itemAddr();
-      this->constructValueAtItem(size(), dst, std::forward<Args>(args)...);
+      this->constructValueAtItem(*this, dst, std::forward<Args>(args)...);
     } catch (...) {
       eraseBlank(pos, hp);
       throw;
@@ -2008,32 +2007,24 @@ class F14Table : public Policy {
     success = true;
   }
 
-  FOLLY_ALWAYS_INLINE void asanOnReserve(std::size_t capacity) {
-    if (kIsSanitizeAddress && capacity > size()) {
-      asanPendingSafeInserts += capacity - size();
+  // Randomization to help expose bugs when running tests in debug or
+  // sanitizer builds
+
+  FOLLY_ALWAYS_INLINE void debugModeOnReserve(std::size_t capacity) {
+    if (kIsSanitizeAddress || kIsDebug) {
+      if (capacity > size()) {
+        tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(capacity - size()));
+      }
     }
   }
 
-  FOLLY_ALWAYS_INLINE bool asanShouldAddExtraRehash() {
-    if (!kIsSanitizeAddress) {
-      return false;
-    } else if (asanPendingSafeInserts > 0) {
-      --asanPendingSafeInserts;
-      return false;
-    } else if (size() <= 1) {
-      return size() > 0;
-    } else {
-      return tlsMinstdRand(size()) == 0;
-    }
-  }
-
-  void asanExtraRehash() {
+  void debugModeSpuriousRehash() {
     auto cc = chunkMask_ + 1;
     auto bc = bucket_count();
     rehashImpl(cc, bc, cc, bc);
   }
 
-  FOLLY_ALWAYS_INLINE void asanOnInsert() {
+  FOLLY_ALWAYS_INLINE void debugModeBeforeInsert() {
     // When running under ASAN, we add a spurious rehash with 1/size()
     // probability before every insert.  This means that finding reference
     // stability problems for F14Value and F14Vector is much more likely.
@@ -2044,17 +2035,24 @@ class F14Table : public Policy {
     // One way to fix this is to call map.reserve(N) before such a
     // sequence, where N is the number of keys that might be inserted
     // within the section that retains references plus the existing size.
-    if (asanShouldAddExtraRehash()) {
-      asanExtraRehash();
+    if (kIsSanitizeAddress && !tlsPendingSafeInserts() && size() > 0 &&
+        tlsMinstdRand(size()) == 0) {
+      debugModeSpuriousRehash();
     }
   }
 
-  FOLLY_ALWAYS_INLINE void perturbInsertOrder(
+  FOLLY_ALWAYS_INLINE void debugModeAfterInsert() {
+    if (kIsSanitizeAddress || kIsDebug) {
+      tlsPendingSafeInserts(-1);
+    }
+  }
+
+  FOLLY_ALWAYS_INLINE void debugModePerturbSlotInsertOrder(
       ChunkPtr chunk,
       std::size_t& itemIndex) {
     FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
-    constexpr bool perturb = FOLLY_F14_PERTURB_INSERTION_ORDER;
-    if (perturb) {
+    constexpr bool perturbSlot = FOLLY_F14_PERTURB_INSERTION_ORDER;
+    if (perturbSlot && !tlsPendingSafeInserts()) {
       std::size_t e = chunkMask_ == 0 ? bucket_count() : Chunk::kCapacity;
       std::size_t i = itemIndex + tlsMinstdRand(e - itemIndex);
       if (!chunk->occupied(i)) {
@@ -2073,7 +2071,7 @@ class F14Table : public Policy {
   void reserve(std::size_t capacity) {
     // We want to support the pattern
     //   map.reserve(2); auto& r1 = map[k1]; auto& r2 = map[k2];
-    asanOnReserve(capacity);
+    debugModeOnReserve(capacity);
     reserveImpl(
         std::max<std::size_t>(capacity, size()),
         chunkMask_ + 1,
@@ -2103,7 +2101,7 @@ class F14Table : public Policy {
       }
     }
 
-    asanOnInsert();
+    debugModeBeforeInsert();
 
     reserveForInsert();
 
@@ -2123,13 +2121,16 @@ class F14Table : public Policy {
     }
     std::size_t itemIndex = firstEmpty.index();
 
-    perturbInsertOrder(chunk, itemIndex);
+    debugModePerturbSlotInsertOrder(chunk, itemIndex);
 
     chunk->setTag(itemIndex, hp.second);
     ItemIter iter{chunk, itemIndex};
 
     // insertAtBlank will clear the tag if the constructor throws
     insertAtBlank(iter, hp, std::forward<Args>(args)...);
+
+    debugModeAfterInsert();
+
     return std::make_pair(iter, true);
   }
 
@@ -2447,4 +2448,14 @@ class F14Table : public Policy {
 
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
+namespace f14 {
+namespace test {
+inline void disableInsertOrderRandomization() {
+  if (kIsSanitizeAddress || kIsDebug) {
+    detail::tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(
+        (std::numeric_limits<std::size_t>::max)() / 2));
+  }
+}
+} // namespace test
+} // namespace f14
 } // namespace folly
