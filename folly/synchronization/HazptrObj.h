@@ -181,6 +181,15 @@ class hazptr_obj {
     }
   }
 
+  void push_obj(hazptr_domain<Atom>& domain) {
+    auto b = batch();
+    if (b) {
+      b->push_obj(this, domain);
+    } else {
+      push_to_retired(domain);
+    }
+  }
+
   void push_to_retired(hazptr_domain<Atom>& domain) {
 #if FOLLY_HAZPTR_THR_LOCAL
     if (&domain == &default_hazptr_domain<Atom>() && !domain.shutdown_) {
@@ -230,6 +239,10 @@ class hazptr_obj_list {
 
   int count() const noexcept {
     return count_;
+  }
+
+  void set_count(int val) {
+    count_ = val;
   }
 
   bool empty() const noexcept {
@@ -307,10 +320,7 @@ class hazptr_obj_batch {
   }
 
  private:
-  template <typename, template <typename> class, typename>
-  friend class hazptr_obj_base;
-  template <typename, template <typename> class, typename>
-  friend class hazptr_obj_base_linked;
+  friend class hazptr_obj<Atom>;
 
   int count() const noexcept {
     return count_.load(std::memory_order_acquire);
@@ -411,7 +421,10 @@ class hazptr_obj_retired_list {
   void push_unlock(hazptr_obj_list<Atom>& l) noexcept {
     List ll(l.head(), l.tail());
     retired_.push_unlock(ll);
-    add_count(l.count());
+    auto count = l.count();
+    if (count) {
+      add_count(count);
+    }
   }
 
   int count() const noexcept {
@@ -495,12 +508,7 @@ class hazptr_obj_base : public hazptr_obj<Atom>, public hazptr_deleter<T, D> {
       hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
     pre_retire(std::move(deleter));
     set_reclaim();
-    auto batch = this->batch();
-    if (batch) {
-      batch->push_obj(this, domain);
-    } else {
-      this->push_to_retired(domain); // defined in hazptr_obj
-    }
+    this->push_obj(domain); // defined in hazptr_obj
   }
 
   void retire(hazptr_domain<Atom>& domain) {

@@ -25,7 +25,6 @@
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 #include <atomic>
-#include <functional>
 #include <unordered_set> // for hash set in bulk_reclaim
 
 ///
@@ -48,6 +47,59 @@ constexpr int hazptr_domain_rcount_threshold() {
  *  A domain manages a set of hazard pointers and a set of retired objects.
  *
  *  Most user code need not specify any domains.
+ *
+ *  Notes on destruction order, tagged objects, locking and deadlock
+ *  avoidance:
+ *  - Tagged objects support reclamation order guarantees. A call to
+ *    cleanup_batch_tag(tag) guarantees that all objects with the
+ *    specified tag are reclaimed before the function returns.
+ *  - Due to the strict order, access to the set of tagged objects
+ *    needs synchronization and care must be taken to avoid deadlock.
+ *  - There are two types of reclamation operations to consider:
+ *   - Type A: A Type A reclamation operation is triggered by meeting
+ *     some threshold. Reclaimed objects may have different
+ *     tags. Hazard pointers are checked and only unprotected objects
+ *     are reclaimed. This type is expected to be expensive but
+ *     infrequent and the cost is amortized over a large number of
+ *     reclaimed objects. This type is needed to guarantee an upper
+ *     bound on unreclaimed reclaimable objects.
+ *   - Type B: A Type B reclamation operation is triggered by a call
+ *     to the function cleanup_batch_tag for a specific tag. All
+ *     objects with the specified tag must be reclaimed
+ *     unconditionally before returning from such a function
+ *     call. Hazard pointers are not checked. This type of reclamation
+ *     operation is expected to be inexpensive and may be invoked more
+ *     frequently than Type A.
+ *  - Tagged retired objects are kept in a single list in the domain
+ *    structure, named tagged_.
+ *  - Both Type A and Type B of reclamation pop all the objects in
+ *    tagged_ and sort them into two sets of reclaimable and
+ *    unreclaimable objects. The objects in the reclaimable set are
+ *    reclaimed and the objects in the unreclaimable set are pushed
+ *    back in tagged_.
+ *  - The tagged_ list is locked between popping all objects and
+ *    pushing back unreclaimable objects, in order to guarantee that
+ *    Type B operations do not miss any objects that match the
+ *    specified tag.
+ *  - A Type A operation cannot release the lock on the tagged_ list
+ *    before reclaiming reclaimable objects, to prevent concurrent
+ *    Type B operations from returning before the reclamation of
+ *    objects with matching tags.
+ *  - A Type B operation can release the lock on tagged_ before
+ *    reclaiming objects because the set of reclaimable objects by
+ *    Type B operations are disjoint.
+ *  - The lock on the tagged_ list is re-entrant, to prevent deadlock
+ *    when reclamation in a Type A operation requires a Type B
+ *    reclamation operation to complete.
+ *  - The implementation allows only one pattern of re-entrance: An
+ *    inner Type B inside an outer Type A.
+ *  - An inner Type B operation must have access and ability to modify
+ *    the outer Type A operation's set of reclaimable objects and
+ *    their children objects in order not to miss objects that match
+ *    the specified tag. Hence, Type A operations use data members,
+ *    unprotected_ and children_, to keep track of these objects
+ *    between reclamation steps and to provide inner Type B operations
+ *    access to these objects.
  */
 template <template <typename> class Atom>
 class hazptr_domain {
@@ -59,12 +111,7 @@ class hazptr_domain {
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
-  static constexpr uint8_t kLogNumTaggedLists = 6;
-  static constexpr uint16_t kNumTaggedLists = 1 << kLogNumTaggedLists;
-  static constexpr uint16_t kTaggedListIDMask = kNumTaggedLists - 1;
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
-
-  static_assert(kNumTaggedLists <= 1024, "Too many tagged lists.");
 
   Atom<hazptr_rec<Atom>*> hazptrs_{nullptr};
   Atom<hazptr_obj<Atom>*> retired_{nullptr};
@@ -78,7 +125,9 @@ class hazptr_domain {
   bool shutdown_{false};
 
   RetiredList untagged_;
-  RetiredList tagged_[kNumTaggedLists];
+  RetiredList tagged_;
+  Obj* unprotected_; // List of unprotected objects being reclaimed
+  ObjList children_; // Children of unprotected objects being reclaimed
 
  public:
   /** Constructor */
@@ -89,9 +138,7 @@ class hazptr_domain {
     shutdown_ = true;
     reclaim_all_objects();
     free_hazptr_recs();
-    for (uint16_t i = 0; i < kNumTaggedLists; ++i) {
-      DCHECK(tagged_[i].empty());
-    }
+    DCHECK(tagged_.empty());
   }
 
   hazptr_domain(const hazptr_domain&) = delete;
@@ -125,14 +172,35 @@ class hazptr_domain {
   /** cleanup_batch_tag */
   void cleanup_batch_tag(const hazptr_obj_batch<Atom>* batch) noexcept {
     auto tag = reinterpret_cast<uintptr_t>(batch) + kTagBit;
-    RetiredList& rlist = tagged_[hash_tag(tag)];
+    auto obj = tagged_.pop_all(RetiredList::kAlsoLock);
     ObjList match, nomatch;
-    auto obj = rlist.pop_all(RetiredList::kAlsoLock);
-    list_match_condition(
-        obj, match, nomatch, [tag](Obj* o) { return o->batch_tag() == tag; });
-    rlist.push_unlock(nomatch);
+    list_match_tag(tag, obj, match, nomatch);
+    if (unprotected_) { // There must be ongoing do_reclamation
+      ObjList match2, nomatch2;
+      list_match_tag(tag, unprotected_, match2, nomatch2);
+      match.splice(match2);
+      unprotected_ = nomatch2.head();
+    }
+    if (children_.head()) {
+      ObjList match2, nomatch2;
+      list_match_tag(tag, children_.head(), match2, nomatch2);
+      match.splice(match2);
+      children_ = std::move(nomatch2);
+    }
+    auto count = nomatch.count();
+    nomatch.set_count(0);
+    tagged_.push_unlock(nomatch);
     obj = match.head();
     reclaim_list_transitive(obj);
+    if (count >= threshold()) {
+      check_threshold_and_reclaim(tagged_, RetiredList::kAlsoLock);
+    }
+  }
+
+  void
+  list_match_tag(uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
+    list_match_condition(
+        obj, match, nomatch, [tag](Obj* o) { return o->batch_tag() == tag; });
   }
 
  private:
@@ -188,7 +256,7 @@ class hazptr_domain {
     }
     uintptr_t btag = l.head()->batch_tag();
     bool tagged = ((btag & kTagBit) == kTagBit);
-    RetiredList& rlist = tagged ? tagged_[hash_tag(btag)] : untagged_;
+    RetiredList& rlist = tagged ? tagged_ : untagged_;
     /*** Full fence ***/ asymmetricLightBarrier();
     /* Only tagged lists need to be locked because tagging is used to
      * guarantee the identification of all objects with a specific
@@ -198,11 +266,6 @@ class hazptr_domain {
         tagged ? RetiredList::kMayBeLocked : RetiredList::kMayNotBeLocked;
     rlist.push(l, lock);
     check_threshold_and_reclaim(rlist, lock);
-  }
-
-  uint16_t hash_tag(uintptr_t tag) {
-    size_t h = std::hash<uintptr_t>{}(tag);
-    return h & kTaggedListIDMask;
   }
 
   /** threshold */
@@ -234,14 +297,18 @@ class hazptr_domain {
     list_match_condition(obj, match, nomatch, [&](Obj* o) {
       return hs.count(o->raw_ptr()) > 0;
     });
-    /* Reclaim unmatched objects */
-    hazptr_obj_list<Atom> children;
-    reclaim_list(nomatch.head(), children);
-    match.splice(children);
-    /* Push back matched and children of unmatched objects */
+    /* Reclaim unprotected objects and push back protected objects and
+       children of reclaimed objects */
     if (lock) {
+      unprotected_ = nomatch.head();
+      DCHECK(children_.empty());
+      reclaim_unprotected_safe();
+      match.splice(children_);
       rlist.push_unlock(match);
     } else {
+      ObjList children;
+      reclaim_unprotected_unsafe(nomatch.head(), children);
+      match.splice(children);
       rlist.push(match, false);
     }
   }
@@ -279,8 +346,26 @@ class hazptr_domain {
     }
   }
 
-  /** reclaim_list */
-  void reclaim_list(Obj* head, ObjList& children) {
+  /** reclaim_unprotected_safe */
+  void reclaim_unprotected_safe() {
+    while (unprotected_) {
+      auto obj = unprotected_;
+      unprotected_ = obj->next();
+      (*(obj->reclaim()))(obj, children_);
+    }
+  }
+
+  /** reclaim_unprotected_unsafe */
+  void reclaim_unprotected_unsafe(Obj* obj, ObjList& children) {
+    while (obj) {
+      auto next = obj->next();
+      (*(obj->reclaim()))(obj, children);
+      obj = next;
+    }
+  }
+
+  /** reclaim_unconditional */
+  void reclaim_unconditional(Obj* head, ObjList& children) {
     while (head) {
       auto next = head->next();
       (*(head->reclaim()))(head, children);
@@ -318,7 +403,7 @@ class hazptr_domain {
   void reclaim_list_transitive(Obj* head) {
     while (head) {
       ObjList children;
-      reclaim_list(head, children);
+      reclaim_unconditional(head, children);
       head = children.head();
     }
   }

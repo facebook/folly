@@ -240,14 +240,7 @@ class hazptr_obj_base_linked : public hazptr_obj_linked<Atom>,
     this->pre_retire_check(); // defined in hazptr_obj
     set_reclaim();
     auto& domain = default_hazptr_domain<Atom>();
-    auto btag = this->batch_tag();
-    if (btag == 0u) {
-      this->push_to_retired(domain); // defined in hazptr_obj
-    } else {
-      btag -= btag & 1u;
-      auto batch = reinterpret_cast<hazptr_obj_batch<Atom>*>(btag);
-      batch->push_obj(this, domain);
-    }
+    this->push_obj(domain); // defined in hazptr_obj
   }
 
   /* unlink: Retire object if last link is released. */

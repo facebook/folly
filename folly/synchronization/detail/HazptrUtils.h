@@ -21,6 +21,7 @@
 #include <glog/logging.h>
 
 #include <atomic>
+#include <thread>
 
 /// Linked list class templates used in the hazard pointer library:
 /// - linked_list: Sequential linked list that uses a pre-existing
@@ -209,10 +210,14 @@ class shared_head_tail_list {
  *  following are valid combinations:
  *  - push(kMayBeLocked), pop_all(kAlsoLock), push_unlock
  *  - push(kMayNotBeLocked), pop_all(kDontLock)
+ *
+ *  Locking is reentrant to prevent self deadlock.
  */
 template <typename Node, template <typename> class Atom = std::atomic>
 class shared_head_only_list {
   Atom<uintptr_t> head_{0}; // lowest bit is a lock for pop all
+  Atom<std::thread::id> owner_{std::thread::id()};
+  int reentrance_{0};
 
   static constexpr uintptr_t kLockBit = 1u;
   static constexpr uintptr_t kUnlocked = 0u;
@@ -252,17 +257,33 @@ class shared_head_only_list {
   }
 
   void push_unlock(linked_list<Node>& l) noexcept {
-    auto oldval = head();
-    DCHECK_EQ(oldval & kLockBit, kLockBit); // Should be already locked
-    auto ptrval = oldval - kLockBit;
-    auto ptr = reinterpret_cast<Node*>(ptrval);
-    auto t = l.tail();
-    if (t) {
-      t->set_next(ptr); // Node must support set_next
+    DCHECK_EQ(owner(), std::this_thread::get_id());
+    uintptr_t lockbit;
+    if (reentrance_ > 0) {
+      DCHECK_EQ(reentrance_, 1);
+      --reentrance_;
+      lockbit = kLockBit;
+    } else {
+      clear_owner();
+      lockbit = kUnlocked;
     }
-    auto newval =
-        (t == nullptr) ? ptrval : reinterpret_cast<uintptr_t>(l.head());
-    set_head(newval);
+    DCHECK_EQ(reentrance_, 0);
+    while (true) {
+      auto oldval = head();
+      DCHECK_EQ(oldval & kLockBit, kLockBit); // Should be already locked
+      auto ptrval = oldval - kLockBit;
+      auto ptr = reinterpret_cast<Node*>(ptrval);
+      auto t = l.tail();
+      if (t) {
+        t->set_next(ptr); // Node must support set_next
+      }
+      auto newval =
+          (t == nullptr) ? ptrval : reinterpret_cast<uintptr_t>(l.head());
+      newval += lockbit;
+      if (cas_head(oldval, newval)) {
+        break;
+      }
+    }
   }
 
   bool check_lock() const noexcept {
@@ -278,10 +299,6 @@ class shared_head_only_list {
     return head_.load(std::memory_order_acquire);
   }
 
-  void set_head(uintptr_t val) noexcept {
-    head_.store(val, std::memory_order_release);
-  }
-
   uintptr_t exchange_head() noexcept {
     auto newval = reinterpret_cast<uintptr_t>(nullptr);
     auto oldval = head_.exchange(newval, std::memory_order_acq_rel);
@@ -291,6 +308,19 @@ class shared_head_only_list {
   bool cas_head(uintptr_t& oldval, uintptr_t newval) noexcept {
     return head_.compare_exchange_weak(
         oldval, newval, std::memory_order_acq_rel, std::memory_order_acquire);
+  }
+
+  std::thread::id owner() {
+    return owner_.load(std::memory_order_relaxed);
+  }
+
+  void set_owner() {
+    DCHECK(owner() == std::thread::id());
+    owner_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+  }
+
+  void clear_owner() {
+    owner_.store(std::thread::id(), std::memory_order_relaxed);
   }
 
   Node* pop_all_no_lock() noexcept {
@@ -304,10 +334,18 @@ class shared_head_only_list {
     while (true) {
       auto oldval = head();
       auto lockbit = oldval & kLockBit;
-      if (lockbit == kUnlocked) {
+      std::thread::id tid = std::this_thread::get_id();
+      if (lockbit == kUnlocked || owner() == tid) {
         auto newval = reinterpret_cast<uintptr_t>(nullptr) + kLockBit;
         if (cas_head(oldval, newval)) {
-          return reinterpret_cast<Node*>(oldval);
+          DCHECK_EQ(reentrance_, 0);
+          if (lockbit == kUnlocked) {
+            set_owner();
+          } else {
+            ++reentrance_;
+          }
+          auto ptrval = oldval - lockbit;
+          return reinterpret_cast<Node*>(ptrval);
         }
       }
       s.sleep();
