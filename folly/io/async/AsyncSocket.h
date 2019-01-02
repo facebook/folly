@@ -375,9 +375,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     int apply(NetworkSocket fd, int val) const {
       return netops::setsockopt(fd, level, optname, &val, sizeof(val));
     }
-    int apply(int fd, int val) const {
-      return apply(NetworkSocket::fromFd(fd), val);
-    }
     int level;
     int optname;
   };
