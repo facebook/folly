@@ -851,6 +851,60 @@ void batch_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
+void recursive_destruction_test() {
+  struct Foo : public hazptr_obj_base<Foo, Atom> {
+    hazptr_obj_batch<Atom> batch_;
+    Foo* foo_{nullptr};
+    explicit Foo(hazptr_obj_batch<Atom>* b) {
+      this->set_batch_tag(b);
+      c_.inc_ctors();
+    }
+    ~Foo() {
+      set(nullptr);
+      batch_.shutdown_and_reclaim();
+      hazptr_cleanup_batch_tag<Atom>(&batch_);
+      c_.inc_dtors();
+    }
+    void set(Foo* foo) {
+      if (foo_) {
+        foo_->retire();
+      }
+      foo_ = foo;
+    }
+    hazptr_obj_batch<Atom>* batch() {
+      return &batch_;
+    }
+  };
+
+  int num1 = 101;
+  int num2 = 42;
+  int nthr = FLAGS_num_threads;
+  c_.clear();
+  std::vector<std::thread> threads(nthr);
+  for (int tid = 0; tid < nthr; ++tid) {
+    threads[tid] = DSched::thread([&, tid]() {
+      hazptr_obj_batch<Atom> b0;
+      Foo* foo0 = new Foo(&b0);
+      for (int i = tid; i < num1; i += nthr) {
+        Foo* foo1 = new Foo(foo0->batch());
+        foo0->set(foo1);
+        for (int j = 0; j < num2; ++j) {
+          foo1->set(new Foo(foo1->batch()));
+        }
+      }
+      foo0->retire();
+      b0.shutdown_and_reclaim();
+    });
+  }
+  for (auto& t : threads) {
+    DSched::join(t);
+  }
+  int total = nthr + num1 + num1 * num2;
+  ASSERT_EQ(c_.ctors(), total);
+  ASSERT_EQ(c_.dtors(), total);
+}
+
+template <template <typename> class Atom = std::atomic>
 void lifo_test() {
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     Atom<int> sum{0};
@@ -1112,6 +1166,14 @@ TEST(HazptrTest, batch) {
 TEST(HazptrTest, dsched_batch) {
   DSched sched(DSched::uniform(0));
   batch_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, recursive_destruction) {
+  recursive_destruction_test();
+}
+
+TEST(HazptrTest, dsched_recursive_destruction) {
+  recursive_destruction_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, lifo) {
