@@ -541,16 +541,21 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   static constexpr unsigned kAllocatedCapacity =
       kCapacity + (sizeof(Item) == 16 ? 1 : 0);
 
+  // If kCapacity == 12 then we get 16 bits of capacityScale by using
+  // tag 12 and 13, otherwise we only get 4 bits of control_
+  static constexpr std::size_t kCapacityScaleBits = kCapacity == 12 ? 16 : 4;
+  static constexpr std::size_t kCapacityScaleShift = kCapacityScaleBits - 4;
+
   static constexpr MaskType kFullMask = FullMask<kCapacity>::value;
 
   // Non-empty tags have their top bit set.  tags_ array might be bigger
   // than kCapacity to keep alignment of first item.
   std::array<uint8_t, 14> tags_;
 
-  // Bits 0..3 record the actual capacity of the chunk if this is chunk
-  // zero, or hold 0000 for other chunks.  Bits 4-7 are a 4-bit counter
-  // of the number of values in this chunk that were placed because they
-  // overflowed their desired chunk (hostedOverflowCount).
+  // Bits 0..3 of chunk 0 record the scaling factor between the number of
+  // chunks and the max size without rehash.  Bits 4-7 in any chunk are a
+  // 4-bit counter of the number of values in this chunk that were placed
+  // because they overflowed their desired chunk (hostedOverflowCount).
   uint8_t control_;
 
   // The number of values that would have been placed into this chunk if
@@ -609,19 +614,35 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
   bool eof() const {
-    return (control_ & 0xf) != 0;
+    return capacityScale() != 0;
   }
 
-  std::size_t chunk0Capacity() const {
-    return control_ & 0xf;
+  std::size_t capacityScale() const {
+    if (kCapacityScaleBits == 4) {
+      return control_ & 0xf;
+    } else {
+      uint16_t v;
+      std::memcpy(&v, &tags_[12], 2);
+      return v;
+    }
   }
 
-  void markEof(std::size_t c0c) {
+  void setCapacityScale(std::size_t scale) {
     FOLLY_SAFE_DCHECK(
-        this != emptyInstance() && control_ == 0 && c0c > 0 && c0c <= 0xf &&
-            c0c <= kCapacity,
+        this != emptyInstance() && scale > 0 &&
+            scale < (std::size_t{1} << kCapacityScaleBits),
         "");
-    control_ = static_cast<uint8_t>(c0c);
+    if (kCapacityScaleBits == 4) {
+      control_ = (control_ & ~0xf) | static_cast<uint8_t>(scale);
+    } else {
+      uint16_t v = static_cast<uint16_t>(scale);
+      std::memcpy(&tags_[12], &v, 2);
+    }
+  }
+
+  void markEof(std::size_t scale) {
+    folly::assume(control_ == 0);
+    setCapacityScale(scale);
   }
 
   unsigned outboundOverflowCount() const {
@@ -1099,6 +1120,7 @@ class F14Table : public Policy {
   using KeyEqual = typename Policy::KeyEqual;
 
   using Policy::kAllocIsAlwaysEqual;
+  using Policy::kContinuousCapacity;
   using Policy::kDefaultConstructIsNoexcept;
   using Policy::kEnableItemIteration;
   using Policy::kSwapIsNoexcept;
@@ -1350,13 +1372,81 @@ class F14Table : public Policy {
 
   //////// memory management helpers
 
+  static std::size_t computeCapacity(
+      std::size_t chunkCount,
+      std::size_t scale) {
+    FOLLY_SAFE_DCHECK(!(chunkCount > 1 && scale == 0), "");
+    FOLLY_SAFE_DCHECK(
+        scale < (std::size_t{1} << Chunk::kCapacityScaleBits), "");
+    FOLLY_SAFE_DCHECK((chunkCount & (chunkCount - 1)) == 0, "");
+    return (((chunkCount - 1) >> Chunk::kCapacityScaleShift) + 1) * scale;
+  }
+
+  std::pair<std::size_t, std::size_t> computeChunkCountAndScale(
+      std::size_t desiredCapacity,
+      bool continuousSingleChunkCapacity,
+      bool continuousMultiChunkCapacity) const {
+    if (desiredCapacity <= Chunk::kCapacity) {
+      // we can go to 100% capacity in a single chunk with no problem
+      if (!continuousSingleChunkCapacity) {
+        if (desiredCapacity <= 2) {
+          desiredCapacity = 2;
+        } else if (desiredCapacity <= 6) {
+          desiredCapacity = 6;
+        } else {
+          desiredCapacity = Chunk::kCapacity;
+        }
+      }
+      auto rv = std::make_pair(std::size_t{1}, desiredCapacity);
+      FOLLY_SAFE_DCHECK(
+          computeCapacity(rv.first, rv.second) == desiredCapacity, "");
+      return rv;
+    } else {
+      std::size_t minChunks =
+          (desiredCapacity - 1) / Chunk::kDesiredCapacity + 1;
+      std::size_t chunkPow = findLastSet(minChunks - 1);
+      if (chunkPow == 8 * sizeof(std::size_t)) {
+        throw_exception<std::bad_alloc>();
+      }
+
+      std::size_t chunkCount = std::size_t{1} << chunkPow;
+
+      // Let cc * scale be the actual capacity.
+      // cc = ((chunkCount - 1) >> kCapacityScaleShift) + 1.
+      // If chunkPow >= kCapacityScaleShift, then cc = chunkCount >>
+      // kCapacityScaleShift = 1 << (chunkPow - kCapacityScaleShift),
+      // otherwise it equals 1 = 1 << 0.  Let cc = 1 << ss.
+      std::size_t ss = chunkPow >= Chunk::kCapacityScaleShift
+          ? chunkPow - Chunk::kCapacityScaleShift
+          : 0;
+
+      std::size_t scale;
+      if (continuousMultiChunkCapacity) {
+        // (1 << ss) * scale >= desiredCapacity
+        scale = ((desiredCapacity - 1) >> ss) + 1;
+      } else {
+        // (1 << ss) * scale == chunkCount * kDesiredCapacity
+        scale = Chunk::kDesiredCapacity << (chunkPow - ss);
+      }
+
+      std::size_t actualCapacity = computeCapacity(chunkCount, scale);
+      FOLLY_SAFE_DCHECK(actualCapacity >= desiredCapacity, "");
+      if (actualCapacity > max_size()) {
+        throw_exception<std::bad_alloc>();
+      }
+
+      return std::make_pair(chunkCount, scale);
+    }
+  }
+
   static std::size_t chunkAllocSize(
       std::size_t chunkCount,
-      std::size_t maxSizeWithoutRehash) {
+      std::size_t capacityScale) {
+    FOLLY_SAFE_DCHECK(chunkCount > 0, "");
+    FOLLY_SAFE_DCHECK(!(chunkCount > 1 && capacityScale == 0), "");
     if (chunkCount == 1) {
-      FOLLY_SAFE_DCHECK((maxSizeWithoutRehash % 2) == 0, "");
       static_assert(offsetof(Chunk, rawItems_) == 16, "");
-      return 16 + sizeof(Item) * maxSizeWithoutRehash;
+      return 16 + sizeof(Item) * computeCapacity(1, capacityScale);
     } else {
       return sizeof(Chunk) * chunkCount;
     }
@@ -1365,14 +1455,22 @@ class F14Table : public Policy {
   ChunkPtr initializeChunks(
       BytePtr raw,
       std::size_t chunkCount,
-      std::size_t maxSizeWithoutRehash) {
+      std::size_t capacityScale) {
     static_assert(std::is_trivial<Chunk>::value, "F14Chunk should be POD");
     auto chunks = static_cast<Chunk*>(static_cast<void*>(&*raw));
     for (std::size_t i = 0; i < chunkCount; ++i) {
       chunks[i].clear();
     }
-    chunks[0].markEof(chunkCount == 1 ? maxSizeWithoutRehash : 1);
+    chunks[0].markEof(capacityScale);
     return std::pointer_traits<ChunkPtr>::pointer_to(*chunks);
+  }
+
+  std::size_t itemCount() const noexcept {
+    if (chunkMask_ == 0) {
+      return computeCapacity(1, chunks_->capacityScale());
+    } else {
+      return (chunkMask_ + 1) * Chunk::kCapacity;
+    }
   }
 
  public:
@@ -1401,14 +1499,7 @@ class F14Table : public Policy {
   }
 
   std::size_t bucket_count() const noexcept {
-    // bucket_count is just a synthetic construct for the outside world
-    // so that size, bucket_count, load_factor, and max_load_factor are
-    // all self-consistent.  The only one of those that is real is size().
-    if (chunkMask_ != 0) {
-      return (chunkMask_ + 1) * Chunk::kDesiredCapacity;
-    } else {
-      return chunks_->chunk0Capacity();
-    }
+    return computeCapacity(chunkMask_ + 1, chunks_->capacityScale());
   }
 
   std::size_t max_bucket_count() const noexcept {
@@ -1662,9 +1753,13 @@ class F14Table : public Policy {
     // in the Policy API.
 
     if (is_trivially_copyable<Item>::value && !this->destroyItemOnClear() &&
-        bucket_count() == src.bucket_count()) {
+        itemCount() == src.itemCount()) {
+      FOLLY_SAFE_DCHECK(chunkMask_ == src.chunkMask_, "");
+
+      auto scale = chunks_->capacityScale();
+
       // most happy path
-      auto n = chunkAllocSize(chunkMask_ + 1, bucket_count());
+      auto n = chunkAllocSize(chunkMask_ + 1, scale);
       std::memcpy(&chunks_[0], &src.chunks_[0], n);
       sizeAndPackedBegin_.size_ = src.size();
       if (kEnableItemIteration) {
@@ -1673,6 +1768,10 @@ class F14Table : public Policy {
             ItemIter{chunks_ + (srcBegin.chunk() - src.chunks_),
                      srcBegin.index()}
                 .pack();
+      }
+      if (kContinuousCapacity) {
+        // capacityScale might not match even if itemCount matches
+        chunks_->setCapacityScale(scale);
       }
     } else {
       std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
@@ -1815,12 +1914,23 @@ class F14Table : public Policy {
 
   template <typename T>
   FOLLY_NOINLINE void buildFromF14Table(T&& src) {
-    FOLLY_SAFE_DCHECK(size() == 0, "");
+    FOLLY_SAFE_DCHECK(bucket_count() == 0, "");
     if (src.size() == 0) {
       return;
     }
 
-    reserveForInsert(src.size());
+    // Use the source's capacity, unless it is oversized.
+    auto upperLimit = computeChunkCountAndScale(src.size(), false, false);
+    auto ccas =
+        std::make_pair(src.chunkMask_ + 1, src.chunks_->capacityScale());
+    FOLLY_SAFE_DCHECK(
+        ccas.first >= upperLimit.first,
+        "rounded chunk count can't be bigger than actual");
+    if (ccas.first > upperLimit.first || ccas.second > upperLimit.second) {
+      ccas = upperLimit;
+    }
+    rehashImpl(0, 1, 0, ccas.first, ccas.second);
+
     try {
       if (chunkMask_ == src.chunkMask_) {
         directBuildFrom(std::forward<T>(src));
@@ -1834,60 +1944,95 @@ class F14Table : public Policy {
     }
   }
 
-  FOLLY_NOINLINE void reserveImpl(
-      std::size_t capacity,
-      std::size_t origChunkCount,
-      std::size_t origMaxSizeWithoutRehash) {
-    FOLLY_SAFE_DCHECK(capacity >= size(), "");
-
-    // compute new size
-    std::size_t const kInitialCapacity = 2;
-    std::size_t const kHalfChunkCapacity =
-        (Chunk::kDesiredCapacity / 2) & ~std::size_t{1};
-    std::size_t newMaxSizeWithoutRehash;
-    std::size_t newChunkCount;
-    if (capacity <= kHalfChunkCapacity) {
-      newChunkCount = 1;
-      newMaxSizeWithoutRehash =
-          (capacity < kInitialCapacity) ? kInitialCapacity : kHalfChunkCapacity;
-    } else {
-      newChunkCount = nextPowTwo((capacity - 1) / Chunk::kDesiredCapacity + 1);
-      newMaxSizeWithoutRehash = newChunkCount * Chunk::kDesiredCapacity;
-
-      constexpr std::size_t kMaxChunksWithoutCapacityOverflow =
-          (std::numeric_limits<std::size_t>::max)() / Chunk::kDesiredCapacity;
-
-      if (newChunkCount > kMaxChunksWithoutCapacityOverflow ||
-          newMaxSizeWithoutRehash > max_size()) {
-        throw_exception<std::bad_alloc>();
-      }
+  void reserveImpl(std::size_t desiredCapacity) {
+    desiredCapacity = std::max<std::size_t>(desiredCapacity, size());
+    if (desiredCapacity == 0) {
+      reset();
+      return;
     }
 
-    if (origMaxSizeWithoutRehash != newMaxSizeWithoutRehash) {
+    auto origChunkCount = chunkMask_ + 1;
+    auto origCapacityScale = chunks_->capacityScale();
+    auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
+
+    // This came from an explicit reserve() or rehash() call, so there's
+    // a good chance the capacity is exactly right.  To avoid O(n^2)
+    // behavior, we don't do rehashes that decrease the size by less
+    // than 1/8, and if we have a requested increase of less than 1/8 we
+    // instead go to the next power of two.
+
+    if (desiredCapacity <= origCapacity &&
+        desiredCapacity >= origCapacity - origCapacity / 8) {
+      return;
+    }
+    bool attemptExact =
+        !(desiredCapacity > origCapacity &&
+          desiredCapacity < origCapacity + origCapacity / 8);
+
+    std::size_t newChunkCount;
+    std::size_t newCapacityScale;
+    std::tie(newChunkCount, newCapacityScale) = computeChunkCountAndScale(
+        desiredCapacity, attemptExact, kContinuousCapacity && attemptExact);
+    auto newCapacity = computeCapacity(newChunkCount, newCapacityScale);
+
+    if (origCapacity != newCapacity) {
       rehashImpl(
+          size(),
           origChunkCount,
-          origMaxSizeWithoutRehash,
+          origCapacityScale,
           newChunkCount,
-          newMaxSizeWithoutRehash);
+          newCapacityScale);
     }
   }
 
-  void rehashImpl(
+  FOLLY_NOINLINE void reserveForInsertImpl(
+      std::size_t capacityMinusOne,
       std::size_t origChunkCount,
-      std::size_t origMaxSizeWithoutRehash,
+      std::size_t origCapacityScale,
+      std::size_t origCapacity) {
+    FOLLY_SAFE_DCHECK(capacityMinusOne >= size(), "");
+    std::size_t capacity = capacityMinusOne + 1;
+
+    // we want to grow by between 2^0.5 and 2^1.5 ending at a "good"
+    // size, so we grow by 2^0.5 and then round up
+
+    // 1.01101_2 = 1.40625
+    std::size_t minGrowth = origCapacity + (origCapacity >> 2) +
+        (origCapacity >> 3) + (origCapacity >> 5);
+    capacity = std::max<std::size_t>(capacity, minGrowth);
+
+    std::size_t newChunkCount;
+    std::size_t newCapacityScale;
+    std::tie(newChunkCount, newCapacityScale) =
+        computeChunkCountAndScale(capacity, false, false);
+
+    FOLLY_SAFE_DCHECK(
+        computeCapacity(newChunkCount, newCapacityScale) > origCapacity, "");
+
+    rehashImpl(
+        size(),
+        origChunkCount,
+        origCapacityScale,
+        newChunkCount,
+        newCapacityScale);
+  }
+
+  void rehashImpl(
+      std::size_t origSize,
+      std::size_t origChunkCount,
+      std::size_t origCapacityScale,
       std::size_t newChunkCount,
-      std::size_t newMaxSizeWithoutRehash) {
+      std::size_t newCapacityScale) {
     auto origChunks = chunks_;
+    auto origCapacity = computeCapacity(origChunkCount, origCapacityScale);
+    auto origAllocSize = chunkAllocSize(origChunkCount, origCapacityScale);
+    auto newCapacity = computeCapacity(newChunkCount, newCapacityScale);
+    auto newAllocSize = chunkAllocSize(newChunkCount, newCapacityScale);
 
     BytePtr rawAllocation;
     auto undoState = this->beforeRehash(
-        size(),
-        origMaxSizeWithoutRehash,
-        newMaxSizeWithoutRehash,
-        chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash),
-        rawAllocation);
-    chunks_ =
-        initializeChunks(rawAllocation, newChunkCount, newMaxSizeWithoutRehash);
+        origSize, origCapacity, newCapacity, newAllocSize, rawAllocation);
+    chunks_ = initializeChunks(rawAllocation, newChunkCount, newCapacityScale);
 
     FOLLY_SAFE_DCHECK(
         newChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
@@ -1899,16 +2044,14 @@ class F14Table : public Policy {
       BytePtr finishedRawAllocation = nullptr;
       std::size_t finishedAllocSize = 0;
       if (LIKELY(success)) {
-        if (origMaxSizeWithoutRehash > 0) {
+        if (origCapacity > 0) {
           finishedRawAllocation = std::pointer_traits<BytePtr>::pointer_to(
               *static_cast<uint8_t*>(static_cast<void*>(&*origChunks)));
-          finishedAllocSize =
-              chunkAllocSize(origChunkCount, origMaxSizeWithoutRehash);
+          finishedAllocSize = origAllocSize;
         }
       } else {
         finishedRawAllocation = rawAllocation;
-        finishedAllocSize =
-            chunkAllocSize(newChunkCount, newMaxSizeWithoutRehash);
+        finishedAllocSize = newAllocSize;
         chunks_ = origChunks;
         FOLLY_SAFE_DCHECK(
             origChunkCount < std::numeric_limits<InternalSizeType>::max(), "");
@@ -1919,14 +2062,14 @@ class F14Table : public Policy {
       this->afterRehash(
           std::move(undoState),
           success,
-          size(),
-          origMaxSizeWithoutRehash,
-          newMaxSizeWithoutRehash,
+          origSize,
+          origCapacity,
+          newCapacity,
           finishedRawAllocation,
           finishedAllocSize);
     };
 
-    if (size() == 0) {
+    if (origSize == 0) {
       // nothing to do
     } else if (origChunkCount == 1 && newChunkCount == 1) {
       // no mask, no chunk scan, no hash computation, no probing
@@ -1934,7 +2077,7 @@ class F14Table : public Policy {
       auto dstChunk = chunks_;
       std::size_t srcI = 0;
       std::size_t dstI = 0;
-      while (dstI < size()) {
+      while (dstI < origSize) {
         if (LIKELY(srcChunk->occupied(srcI))) {
           dstChunk->setTag(dstI, srcChunk->tag(srcI));
           this->moveItemDuringRehash(
@@ -1971,7 +2114,7 @@ class F14Table : public Policy {
       };
 
       auto srcChunk = origChunks + origChunkCount - 1;
-      std::size_t remaining = size();
+      std::size_t remaining = origSize;
       while (remaining > 0) {
         auto iter = srcChunk->occupiedIter();
         if (prefetchBeforeRehash()) {
@@ -2020,8 +2163,8 @@ class F14Table : public Policy {
 
   void debugModeSpuriousRehash() {
     auto cc = chunkMask_ + 1;
-    auto bc = bucket_count();
-    rehashImpl(cc, bc, cc, bc);
+    auto ss = chunks_->capacityScale();
+    rehashImpl(size(), cc, ss, cc, ss);
   }
 
   FOLLY_ALWAYS_INLINE void debugModeBeforeInsert() {
@@ -2070,20 +2213,21 @@ class F14Table : public Policy {
 
   void reserve(std::size_t capacity) {
     // We want to support the pattern
-    //   map.reserve(2); auto& r1 = map[k1]; auto& r2 = map[k2];
+    //   map.reserve(map.size() + 2); auto& r1 = map[k1]; auto& r2 = map[k2];
     debugModeOnReserve(capacity);
-    reserveImpl(
-        std::max<std::size_t>(capacity, size()),
-        chunkMask_ + 1,
-        bucket_count());
+    reserveImpl(capacity);
   }
 
   // Returns true iff a rehash was performed
   void reserveForInsert(size_t incoming = 1) {
-    auto capacity = size() + incoming;
-    auto bc = bucket_count();
-    if (capacity - 1 >= bc) {
-      reserveImpl(capacity, chunkMask_ + 1, bc);
+    FOLLY_SAFE_DCHECK(incoming > 0, "");
+
+    auto needed = size() + incoming;
+    auto chunkCount = chunkMask_ + 1;
+    auto scale = chunks_->capacityScale();
+    auto existing = computeCapacity(chunkCount, scale);
+    if (needed - 1 >= existing) {
+      reserveForInsertImpl(needed - 1, chunkCount, scale, existing);
     }
   }
 
@@ -2173,11 +2317,11 @@ class F14Table : public Policy {
         // It's okay to do this in a separate loop because we only do it
         // when the chunk count is small.  That avoids a branch when we
         // are promoting a clear to a reset for a large table.
-        auto c0c = chunks_[0].chunk0Capacity();
+        auto scale = chunks_[0].capacityScale();
         for (std::size_t ci = 0; ci <= chunkMask_; ++ci) {
           chunks_[ci].clear();
         }
-        chunks_[0].markEof(c0c);
+        chunks_[0].markEof(scale);
       }
       if (kEnableItemIteration) {
         sizeAndPackedBegin_.packedBegin() = ItemIter{}.pack();
@@ -2188,7 +2332,8 @@ class F14Table : public Policy {
     if (willReset) {
       BytePtr rawAllocation = std::pointer_traits<BytePtr>::pointer_to(
           *static_cast<uint8_t*>(static_cast<void*>(&*chunks_)));
-      std::size_t rawSize = chunkAllocSize(chunkMask_ + 1, bucket_count());
+      std::size_t rawSize =
+          chunkAllocSize(chunkMask_ + 1, chunks_->capacityScale());
 
       chunks_ = Chunk::emptyInstance();
       chunkMask_ = 0;
@@ -2253,7 +2398,7 @@ class F14Table : public Policy {
       auto bc = bucket_count();
       reset();
       try {
-        reserveImpl(bc, 0, 0);
+        reserveImpl(bc);
       } catch (std::bad_alloc const&) {
         // ASAN mode only, keep going
       }
@@ -2287,11 +2432,11 @@ class F14Table : public Policy {
   // be called with a zero allocationCount.
   template <typename V>
   void visitAllocationClasses(V&& visitor) const {
-    auto bc = bucket_count();
+    auto scale = chunks_->capacityScale();
     this->visitPolicyAllocationClasses(
-        (bc == 0 ? 0 : chunkAllocSize(chunkMask_ + 1, bc)),
+        scale == 0 ? 0 : chunkAllocSize(chunkMask_ + 1, scale),
         size(),
-        bc,
+        bucket_count(),
         visitor);
   }
 

@@ -404,7 +404,11 @@ class F14BasicSet {
   FOLLY_ALWAYS_INLINE void
   bulkInsert(InputIt first, InputIt last, bool autoReserve) {
     if (autoReserve) {
-      table_.reserveForInsert(std::distance(first, last));
+      auto n = std::distance(first, last);
+      if (n == 0) {
+        return;
+      }
+      table_.reserveForInsert(n);
     }
     while (first != last) {
       insert(*first);
@@ -898,6 +902,11 @@ class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
   F14VectorSetImpl() = default;
 
   using Super::Super;
+
+  F14VectorSetImpl& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   iterator begin() {
     return cbegin();

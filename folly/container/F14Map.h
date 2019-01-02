@@ -465,7 +465,11 @@ class F14BasicMap {
   FOLLY_ALWAYS_INLINE void
   bulkInsert(InputIt first, InputIt last, bool autoReserve) {
     if (autoReserve) {
-      table_.reserveForInsert(std::distance(first, last));
+      auto n = std::distance(first, last);
+      if (n == 0) {
+        return;
+      }
+      table_.reserveForInsert(n);
     }
     while (first != last) {
       insert(*first);
@@ -1154,6 +1158,11 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
 
   // inherit constructors
   using Super::Super;
+
+  F14VectorMapImpl& operator=(std::initializer_list<value_type> ilist) {
+    Super::operator=(ilist);
+    return *this;
+  }
 
   iterator begin() {
     return this->table_.linearBegin(this->size());

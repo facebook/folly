@@ -197,6 +197,10 @@ struct BasePolicy
 
   using MappedOrBool = std::conditional_t<kIsMap, Mapped, bool>;
 
+  // if true, bucket_count() after reserve(n) will be as close as possible
+  // to n for multi-chunk tables
+  static constexpr bool kContinuousCapacity = false;
+
   //////// methods
 
   BasePolicy(Hasher const& hasher, KeyEqual const& keyEqual, Alloc const& alloc)
@@ -1020,6 +1024,8 @@ class VectorContainerPolicy : public BasePolicy<
  public:
   static constexpr bool kEnableItemIteration = false;
 
+  static constexpr bool kContinuousCapacity = true;
+
   using InternalSizeType = Item;
 
   using ConstIter =
@@ -1318,11 +1324,11 @@ class VectorContainerPolicy : public BasePolicy<
  private:
   // Returns the byte offset of the first Value in a unified allocation
   // that first holds prefixBytes of data, where prefixBytes comes from
-  // Chunk storage and hence must be at least 8-byte aligned (sub-Chunk
-  // allocations always have an even capacity and sizeof(Item) == 4).
+  // Chunk storage and may be only 4-byte aligned due to sub-chunk
+  // allocation.
   static std::size_t valuesOffset(std::size_t prefixBytes) {
-    FOLLY_SAFE_DCHECK((prefixBytes % 8) == 0, "");
-    if (alignof(Value) > 8) {
+    FOLLY_SAFE_DCHECK((prefixBytes % alignof(Item)) == 0, "");
+    if (alignof(Value) > alignof(Item)) {
       prefixBytes = -(-prefixBytes & ~(alignof(Value) - 1));
     }
     FOLLY_SAFE_DCHECK((prefixBytes % alignof(Value)) == 0, "");

@@ -50,7 +50,6 @@ TEST(F14Map, customSwap) {
   testCustomSwap<folly::F14FastMap>();
 }
 
-namespace {
 template <
     template <typename, typename, typename, typename, typename> class TMap,
     typename K,
@@ -116,7 +115,6 @@ void runAllocatedMemorySizeTests() {
   runAllocatedMemorySizeTest<folly::F14VectorMap, K, V>();
   runAllocatedMemorySizeTest<folly::F14FastMap, K, V>();
 }
-} // namespace
 
 TEST(F14Map, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<bool, bool>();
@@ -126,6 +124,86 @@ TEST(F14Map, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<std::string, int>();
   runAllocatedMemorySizeTests<std::string, std::string>();
   runAllocatedMemorySizeTests<folly::fbstring, long>();
+}
+
+template <typename M>
+void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
+  using K = typename M::key_type;
+  for (std::size_t n = minSize; n <= maxSize; ++n) {
+    M m1;
+    m1.reserve(n);
+    auto cap = m1.bucket_count();
+    double ratio = cap * 1.0 / n;
+    // worst case scenario is that rehash just occurred and capacityScale
+    // is 5*2^12
+    EXPECT_TRUE(ratio < 1 + 1.0 / (5 << 12))
+        << ratio << ", " << cap << ", " << n;
+    m1.try_emplace(0);
+    M m2;
+    m2 = m1;
+    EXPECT_LE(m2.bucket_count(), 2);
+    for (K i = 1; i < n; ++i) {
+      m1.try_emplace(i);
+    }
+    EXPECT_EQ(m1.bucket_count(), cap);
+    M m3 = m1;
+    EXPECT_EQ(m3.bucket_count(), cap);
+    for (K i = n; i <= cap; ++i) {
+      m1.try_emplace(i);
+    }
+    EXPECT_GT(m1.bucket_count(), cap);
+    EXPECT_LE(m1.bucket_count(), 3 * cap);
+
+    M m4;
+    for (K i = 0; i < n; ++i) {
+      m4.try_emplace(i);
+    }
+    // reserve(0) works like shrink_to_fit.  Note that tight fit (1/8
+    // waste bound) only applies for vector policy or single-chunk, which
+    // might not apply to m1.  m3 should already have been optimally sized.
+    m1.reserve(0);
+    m3.reserve(0);
+    m4.reserve(0);
+    EXPECT_GT(m1.load_factor(), 0.5);
+    EXPECT_GE(m3.load_factor(), 0.875);
+    EXPECT_EQ(m3.bucket_count(), cap);
+    EXPECT_GE(m4.load_factor(), 0.875);
+  }
+}
+
+TEST(F14Map, continuousCapacitySmall) {
+  runContinuousCapacityTest<folly::F14NodeMap<std::size_t, std::string>>(1, 14);
+  runContinuousCapacityTest<folly::F14ValueMap<std::size_t, std::string>>(
+      1, 14);
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1, 100);
+  runContinuousCapacityTest<folly::F14FastMap<std::size_t, std::string>>(
+      1, 100);
+}
+
+TEST(F14Map, continuousCapacityBig0) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 - 1, 1000000 - 1);
+}
+
+TEST(F14Map, continuousCapacityBig1) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000, 1000000);
+}
+
+TEST(F14Map, continuousCapacityBig2) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 + 1, 1000000 + 1);
+}
+
+TEST(F14Map, continuousCapacityBig3) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 + 2, 1000000 + 2);
+}
+
+TEST(F14Map, continuousCapacityF12) {
+  runContinuousCapacityTest<folly::F14VectorMap<uint16_t, uint16_t>>(
+      0xfff0, 0xfffe);
 }
 
 template <typename M>
@@ -208,6 +286,17 @@ void runSimple() {
   T h;
 
   EXPECT_EQ(h.size(), 0);
+  h.reserve(0);
+  std::vector<std::pair<std::string const, std::string>> v(
+      {{"abc", "first"}, {"abc", "second"}});
+  h.insert(v.begin(), v.begin());
+  EXPECT_EQ(h.size(), 0);
+  EXPECT_EQ(h.bucket_count(), 0);
+  h.insert(v.begin(), v.end());
+  EXPECT_EQ(h.size(), 1);
+  EXPECT_EQ(h["abc"], s("first"));
+  h = T{};
+  EXPECT_EQ(h.bucket_count(), 0);
 
   h.insert(std::make_pair(s("abc"), s("ABC")));
   EXPECT_TRUE(h.find(s("def")) == h.end());

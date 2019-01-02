@@ -201,6 +201,15 @@ void runSimple() {
   T h;
 
   EXPECT_EQ(h.size(), 0);
+  h.reserve(0);
+  std::vector<std::string> v({"abc", "abc"});
+  h.insert(v.begin(), v.begin());
+  EXPECT_EQ(h.size(), 0);
+  EXPECT_EQ(h.bucket_count(), 0);
+  h.insert(v.begin(), v.end());
+  EXPECT_EQ(h.size(), 1);
+  h = T{};
+  EXPECT_EQ(h.bucket_count(), 0);
 
   h.insert(s("abc"));
   EXPECT_TRUE(h.find(s("def")) == h.end());
