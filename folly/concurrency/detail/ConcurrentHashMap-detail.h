@@ -169,12 +169,7 @@ class NodeT : public hazptr_obj_base_linked<
     DCHECK(batch);
     this->set_deleter( // defined in hazptr_obj
         concurrenthashmap::HazptrDeleter<Allocator>());
-    /* Note: Temporarily commenting out the next line to disable the
-     * use of hazptr_obj_batch until higher-level users adapt to the
-     * destruction order guarantee of completing the destruction of
-     * keys and values by the completion of the destructor of the
-     * associated ConcurrentHashMap. */
-    // this->set_batch_tag(batch); // defined in hazptr_obj
+    this->set_batch_tag(batch); // defined in hazptr_obj
     this->acquire_link_safe(); // defined in hazptr_obj_base_linked
   }
 
@@ -674,7 +669,7 @@ class alignas(64) ConcurrentHashMapSegment {
           Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
       auto buckets = new (buf) Buckets();
       DCHECK(batch);
-      // buckets->set_batch_tag(batch); // defined in hazptr_obj
+      buckets->set_batch_tag(batch); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
         new (&buckets->buckets_[i]) BucketRoot;
       }
