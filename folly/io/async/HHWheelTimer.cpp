@@ -148,11 +148,17 @@ void HHWheelTimer::scheduleTimeout(
   callback->setScheduled(this, timeout);
   auto nextTick = calcNextTick();
 
-  // It's possible that the wheel timeout is already scheduled for earlier
-  // tick, but it didn't run yet. In such case, we must use the lowest of them
-  // to avoid using the wrong slot.
+  // There are three possible scenarios:
+  //   - we are currently inside of HHWheelTimer::timeoutExpired. In this case,
+  //     we need to use its lastTick_ as a base for computations
+  //   - HHWheelTimer tick timeout is already scheduled. In this case,
+  //     we need to use its scheduled tick as a base.
+  //   - none of the above are true. In this case, it's safe to use the nextTick
+  //     as a base.
   int64_t baseTick = nextTick;
-  if (isScheduled()) {
+  if (processingCallbacksGuard_) {
+    baseTick = std::min(lastTick_, nextTick);
+  } else if (isScheduled()) {
     baseTick = std::min(expireTick_, nextTick);
   }
   scheduleTimeoutImpl(callback, timeout, baseTick, nextTick);
@@ -245,7 +251,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
       return;
     }
   }
-  scheduleNextTimeout(calcNextTick());
+  scheduleNextTimeout(lastTick_);
 }
 
 size_t HHWheelTimer::cancelAll() {
@@ -319,16 +325,7 @@ size_t HHWheelTimer::cancelTimeoutsFromList(CallbackList& timeouts) {
 }
 
 int64_t HHWheelTimer::calcNextTick() {
-  auto intervals = (getCurTime() - startTime_) / interval_;
-  // Slow eventbases will have skew between the actual time and the
-  // callback time.  To avoid racing the next scheduleNextTimeout()
-  // call, always schedule new timeouts against the actual
-  // timeoutExpired() time.
-  if (!processingCallbacksGuard_) {
-    return intervals;
-  } else {
-    return lastTick_;
-  }
+  return (getCurTime() - startTime_) / interval_;
 }
 
 } // namespace folly
