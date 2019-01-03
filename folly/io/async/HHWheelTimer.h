@@ -298,6 +298,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
   std::chrono::steady_clock::time_point startTime_;
 
   int64_t calcNextTick();
+  int64_t calcNextTick(std::chrono::steady_clock::time_point curTime);
 
   /**
    * Schedule a given timeout by putting it into the appropriate bucket of the

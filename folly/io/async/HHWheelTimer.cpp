@@ -177,11 +177,12 @@ void HHWheelTimer::scheduleTimeout(Callback* callback) {
 bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
   CallbackList cbs;
   cbs.swap(buckets_[bucket][tick]);
+  auto now = getCurTime();
+  auto nextTick = calcNextTick(now);
   while (!cbs.empty()) {
     auto* cb = &cbs.front();
     cbs.pop_front();
-    scheduleTimeoutImpl(
-        cb, cb->getTimeRemaining(getCurTime()), expireTick_, calcNextTick());
+    scheduleTimeoutImpl(cb, cb->getTimeRemaining(now), expireTick_, nextTick);
   }
 
   // If tick is zero, timeoutExpired will cascade the next bucket.
@@ -321,7 +322,12 @@ size_t HHWheelTimer::cancelTimeoutsFromList(CallbackList& timeouts) {
 }
 
 int64_t HHWheelTimer::calcNextTick() {
-  return (getCurTime() - startTime_) / interval_;
+  return calcNextTick(getCurTime());
+}
+
+int64_t HHWheelTimer::calcNextTick(
+    std::chrono::steady_clock::time_point curTime) {
+  return (curTime - startTime_) / interval_;
 }
 
 } // namespace folly
