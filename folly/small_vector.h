@@ -48,6 +48,7 @@
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
@@ -113,7 +114,18 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   T* end = first - 1; // Past the end going backwards.
   T* out = realLast - 1;
   T* in = lastConstructed - 1;
-  try {
+  {
+    auto rollback = makeGuard([&] {
+      // We want to make sure the same stuff is uninitialized memory
+      // if we exit via an exception (this is to make sure we provide
+      // the basic exception safety guarantee for insert functions).
+      if (out < lastConstructed) {
+        out = lastConstructed - 1;
+      }
+      for (auto it = out + 1; it != realLast; ++it) {
+        it->~T();
+      }
+    });
     for (; in != end && out >= lastConstructed; --in, --out) {
       new (out) T(std::move(*in));
     }
@@ -123,17 +135,7 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
     for (; out >= lastConstructed; --out) {
       new (out) T();
     }
-  } catch (...) {
-    // We want to make sure the same stuff is uninitialized memory
-    // if we exit via an exception (this is to make sure we provide
-    // the basic exception safety guarantee for insert functions).
-    if (out < lastConstructed) {
-      out = lastConstructed - 1;
-    }
-    for (auto it = out + 1; it != realLast; ++it) {
-      it->~T();
-    }
-    throw;
+    rollback.dismiss();
   }
 }
 
@@ -155,16 +157,17 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
 template <class T, class Function>
 void populateMemForward(T* mem, std::size_t n, Function const& op) {
   std::size_t idx = 0;
-  try {
+  {
+    auto rollback = makeGuard([&] {
+      for (std::size_t i = 0; i < idx; ++i) {
+        mem[i].~T();
+      }
+    });
     for (size_t i = 0; i < n; ++i) {
       op(&mem[idx]);
       ++idx;
     }
-  } catch (...) {
-    for (std::size_t i = 0; i < idx; ++i) {
-      mem[i].~T();
-    }
-    throw;
+    rollback.dismiss();
   }
 }
 
@@ -229,20 +232,21 @@ struct IntegralSizePolicy<SizeType, true>
   typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        // Even for callers trying to give the strong guarantee
+        // (e.g. push_back) it's ok to assume here that we don't have to
+        // move things back and that it was a copy constructor that
+        // threw: if someone throws from a move constructor the effects
+        // are unspecified.
+        for (std::size_t i = 0; i < idx; ++i) {
+          out[i].~T();
+        }
+      });
       for (; first != last; ++first, ++idx) {
         new (&out[idx]) T(std::move(*first));
       }
-    } catch (...) {
-      // Even for callers trying to give the strong guarantee
-      // (e.g. push_back) it's ok to assume here that we don't have to
-      // move things back and that it was a copy constructor that
-      // threw: if someone throws from a move constructor the effects
-      // are unspecified.
-      for (std::size_t i = 0; i < idx; ++i) {
-        out[i].~T();
-      }
-      throw;
+      rollback.dismiss();
     }
   }
 
@@ -273,22 +277,24 @@ struct IntegralSizePolicy<SizeType, true>
     // We have to support the strong exception guarantee for emplace_back().
     emplaceFunc(out + pos);
     // move old elements to the left of the new one
-    try {
+    {
+      auto rollback = makeGuard([&] { //
+        out[pos].~T();
+      });
       this->moveToUninitialized(begin, begin + pos, out);
-    } catch (...) {
-      out[pos].~T();
-      throw;
+      rollback.dismiss();
     }
     // move old elements to the right of the new one
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        for (SizeType i = 0; i <= pos; ++i) {
+          out[i].~T();
+        }
+      });
       if (begin + pos < end) {
         this->moveToUninitialized(begin + pos, end, out + pos + 1);
       }
-    } catch (...) {
-      for (SizeType i = 0; i <= pos; ++i) {
-        out[i].~T();
-      }
-      throw;
+      rollback.dismiss();
     }
   }
 };
@@ -444,13 +450,14 @@ class small_vector : public detail::small_vector_base<
   small_vector(small_vector const& o) {
     auto n = o.size();
     makeSize(n);
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        if (this->isExtern()) {
+          u.freeHeap();
+        }
+      });
       std::uninitialized_copy(o.begin(), o.end(), begin());
-    } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
-      throw;
+      rollback.dismiss();
     }
     this->setSize(n);
   }
@@ -612,19 +619,20 @@ class small_vector : public detail::small_vector_base<
 
       size_type i = oldSmall.size();
       const size_type ci = i;
-      try {
+      {
+        auto rollback = makeGuard([&] {
+          oldSmall.setSize(i);
+          for (; i < oldLarge.size(); ++i) {
+            oldLarge[i].~value_type();
+          }
+          oldLarge.setSize(ci);
+        });
         for (; i < oldLarge.size(); ++i) {
           auto addr = oldSmall.begin() + i;
           new (addr) value_type(std::move(oldLarge[i]));
           oldLarge[i].~value_type();
         }
-      } catch (...) {
-        oldSmall.setSize(i);
-        for (; i < oldLarge.size(); ++i) {
-          oldLarge[i].~value_type();
-        }
-        oldLarge.setSize(ci);
-        throw;
+        rollback.dismiss();
       }
       oldSmall.setSize(i);
       oldLarge.setSize(ci);
@@ -640,22 +648,23 @@ class small_vector : public detail::small_vector_base<
 
     auto buff = oldExtern.u.buffer();
     size_type i = 0;
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        for (size_type kill = 0; kill < i; ++kill) {
+          buff[kill].~value_type();
+        }
+        for (; i < oldIntern.size(); ++i) {
+          oldIntern[i].~value_type();
+        }
+        oldIntern.setSize(0);
+        oldExtern.u.pdata_.heap_ = oldExternHeap;
+        oldExtern.setCapacity(oldExternCapacity);
+      });
       for (; i < oldIntern.size(); ++i) {
         new (&buff[i]) value_type(std::move(oldIntern[i]));
         oldIntern[i].~value_type();
       }
-    } catch (...) {
-      for (size_type kill = 0; kill < i; ++kill) {
-        buff[kill].~value_type();
-      }
-      for (; i < oldIntern.size(); ++i) {
-        oldIntern[i].~value_type();
-      }
-      oldIntern.setSize(0);
-      oldExtern.u.pdata_.heap_ = oldExternHeap;
-      oldExtern.setCapacity(oldExternCapacity);
-      throw;
+      rollback.dismiss();
     }
     oldIntern.u.pdata_.heap_ = oldExternHeap;
     this->swapSizePolicy(o);
@@ -955,14 +964,15 @@ class small_vector : public detail::small_vector_base<
     auto distance = std::distance(first, last);
     makeSize(distance);
     this->setSize(distance);
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        if (this->isExtern()) {
+          u.freeHeap();
+        }
+      });
       detail::populateMemForward(
           data(), distance, [&](void* p) { new (p) value_type(*first++); });
-    } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
-      throw;
+      rollback.dismiss();
     }
   }
 
@@ -970,13 +980,14 @@ class small_vector : public detail::small_vector_base<
   void doConstruct(size_type n, InitFunc&& func) {
     makeSize(n);
     this->setSize(n);
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        if (this->isExtern()) {
+          u.freeHeap();
+        }
+      });
       detail::populateMemForward(data(), n, std::forward<InitFunc>(func));
-    } catch (...) {
-      if (this->isExtern()) {
-        u.freeHeap();
-      }
-      throw;
+      rollback.dismiss();
     }
   }
 
@@ -1021,7 +1032,7 @@ class small_vector : public detail::small_vector_base<
       EmplaceFunc&& emplaceFunc,
       size_type pos) {
     if (newSize > max_size()) {
-      throw std::length_error("max_size exceeded in small_vector");
+      throw_exception<std::length_error>("max_size exceeded in small_vector");
     }
     if (newSize <= capacity()) {
       assert(!insert);
@@ -1057,7 +1068,10 @@ class small_vector : public detail::small_vector_base<
         heapifyCapacity ? detail::shiftPointer(newh, kHeapifyCapacitySize)
                         : newh);
 
-    try {
+    {
+      auto rollback = makeGuard([&] { //
+        free(newh);
+      });
       if (insert) {
         // move and insert the new element
         this->moveToUninitializedEmplace(
@@ -1066,9 +1080,7 @@ class small_vector : public detail::small_vector_base<
         // move without inserting new element
         this->moveToUninitialized(begin(), end(), newp);
       }
-    } catch (...) {
-      free(newh);
-      throw;
+      rollback.dismiss();
     }
     for (auto& val : *this) {
       val.~value_type();
