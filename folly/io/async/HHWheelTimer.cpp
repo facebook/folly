@@ -210,6 +210,14 @@ void HHWheelTimer::timeoutExpired() noexcept {
   while (lastTick_ < nextTick) {
     int idx = lastTick_ & WHEEL_MASK;
 
+    if (idx == 0) {
+      // Cascade timers
+      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
+          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
+        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
+      }
+    }
+
     auto bi = makeBitIterator(bitmap_.begin());
     *(bi + idx) = false;
 
@@ -219,14 +227,6 @@ void HHWheelTimer::timeoutExpired() noexcept {
       auto* cb = &cbs->front();
       cbs->pop_front();
       timeoutsToRunNow_.push_back(*cb);
-    }
-
-    if (idx == 0) {
-      // Cascade timers
-      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
-          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
-        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
-      }
     }
   }
 
