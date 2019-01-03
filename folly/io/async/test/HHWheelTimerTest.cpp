@@ -475,3 +475,23 @@ TEST_F(HHWheelTimerTest, GetTimeRemaining) {
   ASSERT_EQ(t.count(), 0);
   T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }
+
+TEST_F(HHWheelTimerTest, prematureTimeout) {
+  StackWheelTimer t(&eventBase, milliseconds(10));
+  TestTimeout t1;
+  TestTimeout t2;
+  // Schedule the timeout for the nextTick of timer
+  t.scheduleTimeout(&t1, std::chrono::milliseconds(1));
+  // Make sure that time is past that tick.
+  ::usleep(10000);
+  // Schedule the timeout for the +255 tick, due to sleep above it will overlap
+  // with what would be ran on the next timeoutExpired of the timer.
+  auto timeout = std::chrono::milliseconds(2555);
+  t.scheduleTimeout(&t2, std::chrono::milliseconds(2555));
+  auto start = std::chrono::steady_clock::now();
+  eventBase.loop();
+  ASSERT_EQ(t2.timestamps.size(), 1);
+  auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+      t2.timestamps[0].getTime() - start);
+  EXPECT_GE(elapsedMs.count(), timeout.count());
+}

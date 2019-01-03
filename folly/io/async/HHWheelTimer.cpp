@@ -105,9 +105,10 @@ HHWheelTimer::~HHWheelTimer() {
 void HHWheelTimer::scheduleTimeoutImpl(
     Callback* callback,
     std::chrono::milliseconds timeout,
+    int64_t nextTickToProcess,
     int64_t nextTick) {
   int64_t due = timeToWheelTicks(timeout) + nextTick;
-  int64_t diff = due - nextTick;
+  int64_t diff = due - nextTickToProcess;
   CallbackList* list;
 
   auto bi = makeBitIterator(bitmap_.begin());
@@ -128,7 +129,7 @@ void HHWheelTimer::scheduleTimeoutImpl(
     /* in largest slot */
     if (diff > LARGEST_SLOT) {
       diff = LARGEST_SLOT;
-      due = diff + nextTick;
+      due = diff + nextTickToProcess;
     }
     list = &buckets_[3][(due >> 3 * WHEEL_BITS) & WHEEL_MASK];
   }
@@ -140,14 +141,21 @@ void HHWheelTimer::scheduleTimeout(
     std::chrono::milliseconds timeout) {
   // Cancel the callback if it happens to be scheduled already.
   callback->cancelTimeout();
-
   callback->requestContext_ = RequestContext::saveContext();
 
   count_++;
 
   callback->setScheduled(this, timeout);
   auto nextTick = calcNextTick();
-  scheduleTimeoutImpl(callback, timeout, nextTick);
+
+  // It's possible that the wheel timeout is already scheduled for earlier
+  // tick, but it didn't run yet. In such case, we must use the lowest of them
+  // to avoid using the wrong slot.
+  int64_t baseTick = nextTick;
+  if (isScheduled()) {
+    baseTick = std::min(expireTick_, nextTick);
+  }
+  scheduleTimeoutImpl(callback, timeout, baseTick, nextTick);
 
   /* If we're calling callbacks, timer will be reset after all
    * callbacks are called.
@@ -169,7 +177,8 @@ bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
   while (!cbs.empty()) {
     auto* cb = &cbs.front();
     cbs.pop_front();
-    scheduleTimeoutImpl(cb, cb->getTimeRemaining(getCurTime()), calcNextTick());
+    scheduleTimeoutImpl(
+        cb, cb->getTimeRemaining(getCurTime()), lastTick_, calcNextTick());
   }
 
   // If tick is zero, timeoutExpired will cascade the next bucket.
