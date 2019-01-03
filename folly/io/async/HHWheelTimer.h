@@ -209,9 +209,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * before scheduling the new timeout.
    */
   void scheduleTimeout(Callback* callback, std::chrono::milliseconds timeout);
-  void scheduleTimeoutImpl(
-      Callback* callback,
-      std::chrono::milliseconds timeout);
 
   /**
    * Schedule the specified Callback to be invoked after the
@@ -303,7 +300,11 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   int64_t calcNextTick();
 
-  void scheduleNextTimeout();
+  void scheduleTimeoutImpl(
+      Callback* callback,
+      std::chrono::milliseconds timeout,
+      int64_t nextTick);
+  void scheduleNextTimeout(int64_t nextTick);
 
   size_t cancelTimeoutsFromList(CallbackList& timeouts);
 

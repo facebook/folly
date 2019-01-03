@@ -104,8 +104,8 @@ HHWheelTimer::~HHWheelTimer() {
 
 void HHWheelTimer::scheduleTimeoutImpl(
     Callback* callback,
-    std::chrono::milliseconds timeout) {
-  auto nextTick = calcNextTick();
+    std::chrono::milliseconds timeout,
+    int64_t nextTick) {
   int64_t due = timeToWheelTicks(timeout) + nextTick;
   int64_t diff = due - nextTick;
   CallbackList* list;
@@ -146,13 +146,14 @@ void HHWheelTimer::scheduleTimeout(
   count_++;
 
   callback->setScheduled(this, timeout);
-  scheduleTimeoutImpl(callback, timeout);
+  auto nextTick = calcNextTick();
+  scheduleTimeoutImpl(callback, timeout, nextTick);
 
   /* If we're calling callbacks, timer will be reset after all
    * callbacks are called.
    */
   if (!processingCallbacksGuard_) {
-    scheduleNextTimeout();
+    scheduleNextTimeout(nextTick);
   }
 }
 
@@ -168,7 +169,7 @@ bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
   while (!cbs.empty()) {
     auto* cb = &cbs.front();
     cbs.pop_front();
-    scheduleTimeoutImpl(cb, cb->getTimeRemaining(getCurTime()));
+    scheduleTimeoutImpl(cb, cb->getTimeRemaining(getCurTime()), calcNextTick());
   }
 
   // If tick is zero, timeoutExpired will cascade the next bucket.
@@ -235,7 +236,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
       return;
     }
   }
-  scheduleNextTimeout();
+  scheduleNextTimeout(calcNextTick());
 }
 
 size_t HHWheelTimer::cancelAll() {
@@ -272,8 +273,7 @@ size_t HHWheelTimer::cancelAll() {
   return count;
 }
 
-void HHWheelTimer::scheduleNextTimeout() {
-  auto nextTick = calcNextTick();
+void HHWheelTimer::scheduleNextTimeout(int64_t nextTick) {
   int64_t tick = 1;
 
   if (nextTick & WHEEL_MASK) {
