@@ -305,8 +305,13 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   void scheduleNextTimeout();
 
+  size_t cancelTimeoutsFromList(CallbackList& timeouts);
+
   bool* processingCallbacksGuard_;
-  CallbackList timeouts; // Timeouts queued to run
+  // Timeouts that we're about to run. They're already extracted from their
+  // corresponding buckets, so we need this list for the `cancelAll` to be able
+  // to cancel them.
+  CallbackList timeoutsToRunNow_;
 
   std::chrono::steady_clock::time_point getCurTime() {
     return std::chrono::steady_clock::now();

@@ -99,12 +99,6 @@ HHWheelTimer::~HHWheelTimer() {
       *processingCallbacksGuard_ = true;
     }
   });
-  while (!timeouts.empty()) {
-    auto* cb = &timeouts.front();
-    timeouts.pop_front();
-    cb->cancelTimeout();
-    cb->callbackCanceled();
-  }
   cancelAll();
 }
 
@@ -214,7 +208,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
     while (!cbs->empty()) {
       auto* cb = &cbs->front();
       cbs->pop_front();
-      timeouts.push_back(*cb);
+      timeoutsToRunNow_.push_back(*cb);
     }
 
     if (idx == 0) {
@@ -226,9 +220,9 @@ void HHWheelTimer::timeoutExpired() noexcept {
     }
   }
 
-  while (!timeouts.empty()) {
-    auto* cb = &timeouts.front();
-    timeouts.pop_front();
+  while (!timeoutsToRunNow_.empty()) {
+    auto* cb = &timeoutsToRunNow_.front();
+    timeoutsToRunNow_.pop_front();
     count_--;
     cb->wheel_ = nullptr;
     cb->expiration_ = {};
@@ -266,13 +260,13 @@ size_t HHWheelTimer::cancelAll() {
     }
 
     for (size_t i = 0; i < countBuckets; ++i) {
-      auto& bucket = buckets[i];
-      while (!bucket.empty()) {
-        auto& cb = bucket.front();
-        cb.cancelTimeout();
-        cb.callbackCanceled();
-      }
+      cancelTimeoutsFromList(buckets[i]);
     }
+    // Swap the list to prevent potential recursion if cancelAll is called by
+    // one of the callbacks.
+    CallbackList timeoutsToRunNow;
+    timeoutsToRunNow.swap(timeoutsToRunNow_);
+    count += cancelTimeoutsFromList(timeoutsToRunNow);
   }
 
   return count;
@@ -302,6 +296,17 @@ void HHWheelTimer::scheduleNextTimeout() {
   } else {
     this->AsyncTimeout::cancelTimeout();
   }
+}
+
+size_t HHWheelTimer::cancelTimeoutsFromList(CallbackList& timeouts) {
+  size_t count = 0;
+  while (!timeouts.empty()) {
+    ++count;
+    auto& cb = timeouts.front();
+    cb.cancelTimeout();
+    cb.callbackCanceled();
+  }
+  return count;
 }
 
 int64_t HHWheelTimer::calcNextTick() {

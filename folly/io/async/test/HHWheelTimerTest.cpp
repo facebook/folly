@@ -399,10 +399,19 @@ TEST_F(HHWheelTimerTest, lambdaThrows) {
 
 TEST_F(HHWheelTimerTest, cancelAll) {
   StackWheelTimer t(&eventBase, milliseconds(1));
-  TestTimeout tt;
-  t.scheduleTimeout(&tt, std::chrono::minutes(1));
-  EXPECT_EQ(1, t.cancelAll());
-  EXPECT_EQ(1, tt.canceledTimestamps.size());
+  TestTimeout t1;
+  TestTimeout t2;
+  t.scheduleTimeout(&t1, std::chrono::milliseconds(1));
+  t.scheduleTimeout(&t2, std::chrono::milliseconds(1));
+  size_t canceled = 0;
+  t1.fn = [&] { canceled += t.cancelAll(); };
+  t2.fn = [&] { canceled += t.cancelAll(); };
+  // Sleep 20ms to ensure both timeouts will fire in a single event (in case
+  // they ended up in different slots)
+  ::usleep(20000);
+  eventBase.loop();
+  EXPECT_EQ(1, t1.canceledTimestamps.size() + t2.canceledTimestamps.size());
+  EXPECT_EQ(1, canceled);
 }
 
 TEST_F(HHWheelTimerTest, IntrusivePtr) {
