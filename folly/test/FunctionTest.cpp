@@ -23,6 +23,7 @@
 #include <folly/portability/GTest.h>
 
 using folly::Function;
+using folly::FunctionRef;
 
 namespace {
 int func_int_int_add_25(int x) {
@@ -261,6 +262,56 @@ TEST(Function, Emptiness_T) {
   EXPECT_EQ(nullptr, i);
   EXPECT_FALSE(i);
   EXPECT_THROW(i(107), std::bad_function_call);
+
+  struct CastableToBool {
+    bool val;
+    /* implicit */ CastableToBool(bool b) : val(b) {}
+    explicit operator bool() {
+      return val;
+    }
+  };
+  // models std::function
+  struct NullptrTestableInSitu {
+    int res;
+    explicit NullptrTestableInSitu(std::nullptr_t) : res(1) {}
+    explicit NullptrTestableInSitu(int i) : res(i) {}
+    CastableToBool operator==(std::nullptr_t) const {
+      return res % 3 != 1;
+    }
+    int operator()(int in) const {
+      return res * in;
+    }
+  };
+  struct NullptrTestableOnHeap : NullptrTestableInSitu {
+    unsigned char data[1024 - sizeof(NullptrTestableInSitu)];
+    using NullptrTestableInSitu::NullptrTestableInSitu;
+  };
+  Function<int(int)> j(NullptrTestableInSitu(2));
+  EXPECT_EQ(j, nullptr);
+  EXPECT_EQ(nullptr, j);
+  EXPECT_FALSE(j);
+  EXPECT_THROW(j(107), std::bad_function_call);
+  Function<int(int)> k(NullptrTestableInSitu(4));
+  EXPECT_NE(k, nullptr);
+  EXPECT_NE(nullptr, k);
+  EXPECT_TRUE(k);
+  EXPECT_EQ(428, k(107));
+  Function<int(int)> l(NullptrTestableOnHeap(2));
+  EXPECT_EQ(l, nullptr);
+  EXPECT_EQ(nullptr, l);
+  EXPECT_FALSE(l);
+  EXPECT_THROW(l(107), std::bad_function_call);
+  Function<int(int)> m(NullptrTestableOnHeap(4));
+  EXPECT_NE(m, nullptr);
+  EXPECT_NE(nullptr, m);
+  EXPECT_TRUE(m);
+  EXPECT_EQ(428, m(107));
+
+  auto noopfun = [] {};
+  EXPECT_EQ(nullptr, FunctionRef<void()>(nullptr));
+  EXPECT_NE(nullptr, FunctionRef<void()>(noopfun));
+  EXPECT_EQ(FunctionRef<void()>(nullptr), nullptr);
+  EXPECT_NE(FunctionRef<void()>(noopfun), nullptr);
 }
 
 // TEST =====================================================================

@@ -273,13 +273,26 @@ using EnableIfNotFunction =
 
 struct CoerceTag {};
 
+template <typename, typename T>
+struct IsFunctionNullptrTestable : std::false_type {};
+
 template <typename T>
-bool isNullPtrFn(T* p) {
-  return p == nullptr;
+struct IsFunctionNullptrTestable<
+    void_t<decltype(
+        static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr))>,
+    T> : std::true_type {};
+
+template <typename T>
+constexpr std::enable_if_t< //
+    !IsFunctionNullptrTestable<void, T>::value,
+    std::false_type>
+isEmptyFunction(T const&) {
+  return {};
 }
 template <typename T>
-std::false_type isNullPtrFn(T&&) {
-  return {};
+constexpr std::enable_if_t<IsFunctionNullptrTestable<void, T>::value, bool>
+isEmptyFunction(T const& t) {
+  return static_cast<bool>(t == nullptr);
 }
 
 template <typename F, typename... Args>
@@ -297,10 +310,33 @@ class FunctionTraitsSharedProxy {
   std::shared_ptr<Function<F>> sp_;
 
  public:
+  explicit FunctionTraitsSharedProxy(std::nullptr_t) noexcept {}
   explicit FunctionTraitsSharedProxy(Function<F>&& func)
       : sp_(std::make_shared<Function<F>>(std::move(func))) {}
   R operator()(A&&... args) const {
     return (*sp_)(static_cast<A&&>(args)...);
+  }
+
+  friend bool operator==(
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy,
+      std::nullptr_t) noexcept {
+    return proxy.sp_ == nullptr;
+  }
+  friend bool operator!=(
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy,
+      std::nullptr_t) noexcept {
+    return proxy.sp_ != nullptr;
+  }
+
+  friend bool operator==(
+      std::nullptr_t,
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy) noexcept {
+    return proxy.sp_ == nullptr;
+  }
+  friend bool operator!=(
+      std::nullptr_t,
+      FunctionTraitsSharedProxy<F, R, A...> const& proxy) noexcept {
+    return proxy.sp_ != nullptr;
   }
 };
 
@@ -532,7 +568,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   template <typename Fun>
   Function(Fun&& fun, SmallTag) noexcept {
     using FunT = typename std::decay<Fun>::type;
-    if (!detail::function::isNullPtrFn(fun)) {
+    if (!detail::function::isEmptyFunction(fun)) {
       ::new (static_cast<void*>(&data_.tiny)) FunT(static_cast<Fun&&>(fun));
       call_ = &Traits::template callSmall<FunT>;
       exec_ = &detail::function::execSmall<FunT>;
@@ -542,9 +578,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   template <typename Fun>
   Function(Fun&& fun, HeapTag) {
     using FunT = typename std::decay<Fun>::type;
-    data_.big = new FunT(static_cast<Fun&&>(fun));
-    call_ = &Traits::template callBig<FunT>;
-    exec_ = &detail::function::execBig<FunT>;
+    if (!detail::function::isEmptyFunction(fun)) {
+      data_.big = new FunT(static_cast<Fun&&>(fun));
+      call_ = &Traits::template callBig<FunT>;
+      exec_ = &detail::function::execBig<FunT>;
+    }
   }
 
   template <typename Signature>
@@ -897,7 +935,14 @@ class FunctionRef<ReturnType(Args...)> final {
    *
    * Invoking it will throw std::bad_function_call.
    */
-  FunctionRef() = default;
+  constexpr FunctionRef() = default;
+
+  /**
+   * Like default constructor. Constructs an empty FunctionRef.
+   *
+   * Invoking it will throw std::bad_function_call.
+   */
+  constexpr explicit FunctionRef(std::nullptr_t) noexcept {}
 
   /**
    * Construct a FunctionRef from a reference to a callable object.
@@ -922,8 +967,30 @@ class FunctionRef<ReturnType(Args...)> final {
     return call_(object_, static_cast<Args&&>(args)...);
   }
 
-  constexpr explicit operator bool() const {
+  constexpr explicit operator bool() const noexcept {
     return object_;
+  }
+
+  constexpr friend bool operator==(
+      FunctionRef<ReturnType(Args...)> ref,
+      std::nullptr_t) noexcept {
+    return ref.object_ == nullptr;
+  }
+  constexpr friend bool operator!=(
+      FunctionRef<ReturnType(Args...)> ref,
+      std::nullptr_t) noexcept {
+    return ref.object_ != nullptr;
+  }
+
+  constexpr friend bool operator==(
+      std::nullptr_t,
+      FunctionRef<ReturnType(Args...)> ref) noexcept {
+    return ref.object_ == nullptr;
+  }
+  constexpr friend bool operator!=(
+      std::nullptr_t,
+      FunctionRef<ReturnType(Args...)> ref) noexcept {
+    return ref.object_ != nullptr;
   }
 };
 
