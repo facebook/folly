@@ -83,7 +83,6 @@ HHWheelTimer::HHWheelTimer(
     : AsyncTimeout(timeoutMananger, internal),
       interval_(intervalMS),
       defaultTimeout_(defaultTimeoutMS),
-      lastTick_(1),
       expireTick_(1),
       count_(0),
       startTime_(getCurTime()),
@@ -150,15 +149,13 @@ void HHWheelTimer::scheduleTimeout(
 
   // There are three possible scenarios:
   //   - we are currently inside of HHWheelTimer::timeoutExpired. In this case,
-  //     we need to use its lastTick_ as a base for computations
+  //     we need to use its last tick as a base for computations
   //   - HHWheelTimer tick timeout is already scheduled. In this case,
   //     we need to use its scheduled tick as a base.
   //   - none of the above are true. In this case, it's safe to use the nextTick
   //     as a base.
   int64_t baseTick = nextTick;
-  if (processingCallbacksGuard_) {
-    baseTick = std::min(lastTick_, nextTick);
-  } else if (isScheduled()) {
+  if (processingCallbacksGuard_ || isScheduled()) {
     baseTick = std::min(expireTick_, nextTick);
   }
   scheduleTimeoutImpl(callback, timeout, baseTick, nextTick);
@@ -184,7 +181,7 @@ bool HHWheelTimer::cascadeTimers(int bucket, int tick) {
     auto* cb = &cbs.front();
     cbs.pop_front();
     scheduleTimeoutImpl(
-        cb, cb->getTimeRemaining(getCurTime()), lastTick_, calcNextTick());
+        cb, cb->getTimeRemaining(getCurTime()), expireTick_, calcNextTick());
   }
 
   // If tick is zero, timeoutExpired will cascade the next bucket.
@@ -212,22 +209,21 @@ void HHWheelTimer::timeoutExpired() noexcept {
   // timeoutExpired() can only be invoked directly from the event base loop.
   // It should never be invoked recursively.
   //
-  lastTick_ = expireTick_;
-  while (lastTick_ < nextTick) {
-    int idx = lastTick_ & WHEEL_MASK;
+  while (expireTick_ < nextTick) {
+    int idx = expireTick_ & WHEEL_MASK;
 
     if (idx == 0) {
       // Cascade timers
-      if (cascadeTimers(1, (lastTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
-          cascadeTimers(2, (lastTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
-        cascadeTimers(3, (lastTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
+      if (cascadeTimers(1, (expireTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
+          cascadeTimers(2, (expireTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
+        cascadeTimers(3, (expireTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
       }
     }
 
     auto bi = makeBitIterator(bitmap_.begin());
     *(bi + idx) = false;
 
-    lastTick_++;
+    expireTick_++;
     CallbackList* cbs = &buckets_[0][idx];
     while (!cbs->empty()) {
       auto* cb = &cbs->front();
@@ -251,7 +247,7 @@ void HHWheelTimer::timeoutExpired() noexcept {
       return;
     }
   }
-  scheduleNextTimeout(lastTick_);
+  scheduleNextTimeout(expireTick_);
 }
 
 size_t HHWheelTimer::cancelAll() {
