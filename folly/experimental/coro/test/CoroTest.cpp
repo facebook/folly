@@ -203,9 +203,9 @@ TEST(Coro, NestedThreads) {
 }
 
 coro::Task<int> taskGetCurrentExecutor(Executor* executor) {
-  auto currentExecutor = co_await coro::getCurrentExecutor();
-  EXPECT_EQ(executor, currentExecutor);
-  co_return co_await task42().scheduleOn(currentExecutor);
+  auto current = co_await coro::co_current_executor;
+  EXPECT_EQ(executor, current);
+  co_return co_await task42().scheduleOn(current);
 }
 
 TEST(Coro, CurrentExecutor) {

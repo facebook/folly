@@ -32,7 +32,16 @@
 namespace folly {
 namespace coro {
 
-struct getCurrentExecutor {};
+namespace detail {
+struct co_current_executor_ {
+  enum class secret_ { token_ };
+  explicit constexpr co_current_executor_(secret_) {}
+};
+} // namespace detail
+
+using co_current_executor_t = detail::co_current_executor_;
+constexpr co_current_executor_t co_current_executor{
+    co_current_executor_t::secret_::token_};
 
 template <typename T = void>
 class Task;
@@ -82,7 +91,7 @@ class TaskPromiseBase {
     return co_viaIfAsync(executor_, static_cast<Awaitable&&>(awaitable));
   }
 
-  auto await_transform(folly::coro::getCurrentExecutor) noexcept {
+  auto await_transform(co_current_executor_t) noexcept {
     return AwaitableReady<folly::Executor*>{executor_};
   }
 
