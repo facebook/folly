@@ -23,6 +23,7 @@
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 template <template <typename, typename, typename, typename, typename>
           class TMap>
@@ -128,6 +129,10 @@ TEST(F14Map, getAllocatedMemorySize) {
 
 template <typename M>
 void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
+  SKIP_IF(
+      folly::f14::detail::getF14IntrinsicsMode() ==
+      folly::f14::detail::F14IntrinsicsMode::None);
+
   using K = typename M::key_type;
   for (std::size_t n = minSize; n <= maxSize; ++n) {
     M m1;
@@ -138,25 +143,25 @@ void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
     // is 5*2^12
     EXPECT_TRUE(ratio < 1 + 1.0 / (5 << 12))
         << ratio << ", " << cap << ", " << n;
-    m1.try_emplace(0);
+    m1[0];
     M m2;
     m2 = m1;
     EXPECT_LE(m2.bucket_count(), 2);
     for (K i = 1; i < n; ++i) {
-      m1.try_emplace(i);
+      m1[i];
     }
     EXPECT_EQ(m1.bucket_count(), cap);
     M m3 = m1;
     EXPECT_EQ(m3.bucket_count(), cap);
     for (K i = n; i <= cap; ++i) {
-      m1.try_emplace(i);
+      m1[i];
     }
     EXPECT_GT(m1.bucket_count(), cap);
     EXPECT_LE(m1.bucket_count(), 3 * cap);
 
     M m4;
     for (K i = 0; i < n; ++i) {
-      m4.try_emplace(i);
+      m4[i];
     }
     // reserve(0) works like shrink_to_fit.  Note that tight fit (1/8
     // waste bound) only applies for vector policy or single-chunk, which
