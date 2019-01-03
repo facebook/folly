@@ -437,4 +437,5 @@ TEST(Coro, Semaphore) {
     EXPECT_EQ(0, worker.counter);
   }
 }
+
 #endif
