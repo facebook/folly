@@ -323,10 +323,9 @@ class FOLLY_NODISCARD Task {
 
 template <typename T>
 auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
-  class Awaiter {
-    using handle_t =
-        std::experimental::coroutine_handle<detail::TaskPromise<T>>;
+  using handle_t = std::experimental::coroutine_handle<detail::TaskPromise<T>>;
 
+  class Awaiter {
    public:
     explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
 
