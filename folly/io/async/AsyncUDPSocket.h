@@ -139,6 +139,17 @@ class AsyncUDPSocket : public EventHandler {
       const std::unique_ptr<folly::IOBuf>& buf);
 
   /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * bufs is an array of std::unique_ptr<folly::IOBuf>
+   * of size num
+   */
+  virtual int writem(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t num);
+
+  /**
    * Send the data in buffer to destination. Returns the return code from
    * ::sendmsg.
    *  gso is the generic segmentation offload value
@@ -285,6 +296,29 @@ class AsyncUDPSocket : public EventHandler {
   sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
     return netops::sendmsg(socket, message, flags);
   }
+
+  virtual int sendmmsg(
+      NetworkSocket socket,
+      struct mmsghdr* msgvec,
+      unsigned int vlen,
+      int flags) {
+    return netops::sendmmsg(socket, msgvec, vlen, flags);
+  }
+
+  void fillMsgVec(
+      sockaddr_storage* addr,
+      socklen_t addr_len,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec,
+      struct iovec* iov,
+      size_t iov_count);
+
+  virtual int writeImpl(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec);
 
   size_t handleErrMessages() noexcept;
 

@@ -366,6 +366,33 @@ ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags) {
 #endif
 }
 
+int sendmmsg(
+    NetworkSocket socket,
+    mmsghdr* msgvec,
+    unsigned int vlen,
+    int flags) {
+#if FOLLY_HAVE_SENDMMSG
+  return wrapSocketFunction<int>(::sendmmsg, socket, msgvec, vlen, flags);
+#else
+  // implement via sendmsg
+  for (unsigned int i = 0; i < vlen; i++) {
+    ssize_t ret = sendmsg(socket, &msgvec[i].msg_hdr, flags);
+    // in case of an error
+    // we return the number of msgs sent if > 0
+    // or an error if no msg was sent
+    if (ret < 0) {
+      if (i) {
+        return static_cast<int>(i);
+      }
+
+      return static_cast<int>(ret);
+    }
+  }
+
+  return static_cast<int>(vlen);
+#endif
+}
+
 ssize_t sendto(
     NetworkSocket s,
     const void* buf,

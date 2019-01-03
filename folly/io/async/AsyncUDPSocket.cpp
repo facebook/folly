@@ -22,12 +22,19 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
+#include <boost/preprocessor/control/if.hpp>
 #include <errno.h>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.
 #ifndef SO_REUSEPORT
 #define SO_REUSEPORT 15
+#endif
+
+#if FOLLY_HAVE_VLA
+#define FOLLY_HAVE_VLA_01 1
+#else
+#define FOLLY_HAVE_VLA_01 0
 #endif
 
 namespace fsp = folly::portability::sockets;
@@ -304,6 +311,108 @@ ssize_t AsyncUDPSocket::writev(
     size_t iovec_len) {
   return writev(address, vec, iovec_len, 0);
 }
+
+/**
+ * Send the data in buffers to destination. Returns the return code from
+ * ::sendmmsg.
+ */
+int AsyncUDPSocket::writem(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>* bufs,
+    size_t count) {
+  int ret;
+  constexpr size_t kSmallSizeMax = 8;
+  if (count <= kSmallSizeMax) {
+    // suppress "warning: variable length array 'vec' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    mmsghdr vec[BOOST_PP_IF(FOLLY_HAVE_VLA_01, count, kSmallSizeMax)];
+    FOLLY_POP_WARNING
+    ret = writeImpl(address, bufs, count, vec);
+  } else {
+    std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
+    ret = writeImpl(address, bufs, count, vec.get());
+  }
+
+  return ret;
+}
+
+void AsyncUDPSocket::fillMsgVec(
+    sockaddr_storage* addr,
+    socklen_t addr_len,
+    const std::unique_ptr<folly::IOBuf>* bufs,
+    size_t count,
+    struct mmsghdr* msgvec,
+    struct iovec* iov,
+    size_t iov_count) {
+  size_t remaining = iov_count;
+
+  size_t iov_pos = 0;
+  for (size_t i = 0; i < count; i++) {
+    // we can use remaining here to avoid calling countChainElements() again
+    size_t iovec_len = bufs[i]->fillIov(&iov[iov_pos], remaining).numIovecs;
+    remaining -= iovec_len;
+    auto& msg = msgvec[i].msg_hdr;
+    msg.msg_name = reinterpret_cast<void*>(addr);
+    msg.msg_namelen = addr_len;
+    msg.msg_iov = &iov[iov_pos];
+    msg.msg_iovlen = iovec_len;
+    msg.msg_control = nullptr;
+    msg.msg_controllen = 0;
+    msg.msg_flags = 0;
+
+    msgvec[i].msg_len = 0;
+
+    iov_pos += iovec_len;
+  }
+}
+
+int AsyncUDPSocket::writeImpl(
+    const folly::SocketAddress& address,
+    const std::unique_ptr<folly::IOBuf>* bufs,
+    size_t count,
+    struct mmsghdr* msgvec) {
+  sockaddr_storage addrStorage;
+  address.getAddress(&addrStorage);
+
+  size_t iov_count = 0;
+  for (size_t i = 0; i < count; i++) {
+    iov_count += bufs[i]->countChainElements();
+  }
+
+  int ret;
+  constexpr size_t kSmallSizeMax = 16;
+  if (iov_count <= kSmallSizeMax) {
+    // suppress "warning: variable length array 'vec' is used [-Wvla]"
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wvla")
+    iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
+    FOLLY_POP_WARNING
+    fillMsgVec(
+        &addrStorage,
+        address.getActualSize(),
+        bufs,
+        count,
+        msgvec,
+        iov,
+        iov_count);
+    ret = sendmmsg(fd_, msgvec, count, 0);
+  } else {
+    std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
+    fillMsgVec(
+        &addrStorage,
+        address.getActualSize(),
+        bufs,
+        count,
+        msgvec,
+        iov.get(),
+        iov_count);
+    ret = sendmmsg(fd_, msgvec, count, 0);
+  }
+
+  return ret;
+}
+
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
   CHECK(!readCallback_) << "Another read callback already installed";
   CHECK_NE(NetworkSocket(), fd_)

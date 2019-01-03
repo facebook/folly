@@ -71,6 +71,15 @@
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif
 
+#if (!__linux__) || (defined(__ANDROID__) && (__ANDROID_API__ < 21))
+struct mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
+};
+#else
+#define FOLLY_HAVE_SENDMMSG 1
+#endif
+
 #else
 #include <WS2tcpip.h> // @manual
 
@@ -96,6 +105,11 @@ struct msghdr {
   void* msg_control;
   size_t msg_controllen;
   int msg_flags;
+};
+
+struct mmsghdr {
+  struct msghdr msg_hdr;
+  unsigned int msg_len;
 };
 
 struct sockaddr_un {
@@ -164,6 +178,11 @@ ssize_t sendto(
     const sockaddr* to,
     socklen_t tolen);
 ssize_t sendmsg(NetworkSocket socket, const msghdr* message, int flags);
+int sendmmsg(
+    NetworkSocket socket,
+    mmsghdr* msgvec,
+    unsigned int vlen,
+    int flags);
 int setsockopt(
     NetworkSocket s,
     int level,
