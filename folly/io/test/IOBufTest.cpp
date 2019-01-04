@@ -165,6 +165,33 @@ TEST(IOBuf, TakeOwnership) {
   EXPECT_EQ(1, deleteCount);
 }
 
+TEST(IOBuf, GetUserData) {
+  {
+    const uint32_t size = 1234;
+    uint8_t data[size];
+    unique_ptr<IOBuf> buf1(IOBuf::wrapBuffer(data, size));
+    EXPECT_EQ(buf1->getUserData(), nullptr);
+  }
+
+  {
+    size_t val = 0;
+    uint32_t size = 4321;
+    uint8_t* data = static_cast<uint8_t*>(malloc(size));
+    unique_ptr<IOBuf> buf2(IOBuf::takeOwnership(
+        data,
+        size,
+        [](void* buf, void* userData) {
+          EXPECT_EQ(*static_cast<size_t*>(userData), 400);
+          free(buf);
+        },
+        &val));
+    EXPECT_EQ(buf2->getUserData(), &val);
+    val = 200;
+    EXPECT_EQ(*static_cast<size_t*>(buf2->getUserData()), 200);
+    val = 400;
+  }
+}
+
 TEST(IOBuf, WrapBuffer) {
   const uint32_t size1 = 1234;
   uint8_t buf1[size1];

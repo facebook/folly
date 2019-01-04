@@ -913,6 +913,17 @@ class IOBuf {
   }
 
   /**
+   *
+   * Returns the SharedInfo::userData if sharedInfo()
+   * is not nullptr, nullptr otherwise
+   *
+   **/
+  void* getUserData() const {
+    SharedInfo* info = sharedInfo();
+    return info ? info->userData : nullptr;
+  }
+
+  /**
    * Return true if all IOBufs in this chain are managed by the usual
    * refcounting mechanism (and so the lifetime of the underlying memory
    * can be extended by clone()).
