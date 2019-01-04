@@ -834,41 +834,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   Future<T> toUnsafeFuture() &&;
 
 #if FOLLY_HAS_COROUTINES
-  class promise_type {
-   public:
-    SemiFuture get_return_object() {
-      return promise_.getSemiFuture();
-    }
-
-    std::experimental::suspend_never initial_suspend() {
-      return {};
-    }
-
-    std::experimental::suspend_never final_suspend() {
-      return {};
-    }
-
-    void return_value(const T& value) {
-      promise_.setValue(value);
-    }
-
-    void return_value(T&& value) {
-      promise_.setValue(std::move(value));
-    }
-
-    void unhandled_exception() {
-      try {
-        std::rethrow_exception(std::current_exception());
-      } catch (std::exception& e) {
-        promise_.setException(exception_wrapper(std::current_exception(), e));
-      } catch (...) {
-        promise_.setException(exception_wrapper(std::current_exception()));
-      }
-    }
-
-   private:
-    folly::Promise<T> promise_;
-  };
 
   // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
   // directly awaited within a folly::coro::Task coroutine.
@@ -2084,30 +2049,6 @@ inline detail::FutureAwaitable<T>
 /* implicit */ operator co_await(Future<T>&& future) noexcept {
   return detail::FutureAwaitable<T>(std::move(future));
 }
-
-namespace coro {
-
-/// Convert an awaitable type into a SemiFuture that can then be consumed by
-/// APIs that use folly::Future/SemiFuture.
-///
-/// This will eagerly start execution of 'co_await awaitable' and will make
-/// the eventual result available via the returned SemiFuture.
-template <typename Awaitable>
-inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
-    !std::is_void<folly::coro::await_result_t<Awaitable>>::value,
-    SemiFuture<await_result_t<Awaitable>>> {
-  co_return co_await static_cast<Awaitable&&>(awaitable);
-}
-
-template <typename Awaitable>
-inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
-    std::is_void<folly::coro::await_result_t<Awaitable>>::value,
-    SemiFuture<Unit>> {
-  co_await static_cast<Awaitable&&>(awaitable);
-  co_return Unit{};
-}
-
-} // namespace coro
 
 } // namespace folly
 #endif

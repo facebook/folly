@@ -229,6 +229,41 @@ inline InlineTask<void> InlineTaskPromise<void>::get_return_object() noexcept {
       InlineTaskPromise<void>>::from_promise(*this)};
 }
 
+/// InlineTaskDetached is a coroutine-return type where the coroutine is
+/// launched in the current execution context when it is created and the
+/// task's continuation is launched inline in the execution context that the
+/// task completed on.
+///
+/// This task type is primarily intended as a building block for certain
+/// coroutine operators. It is not intended for general use in application
+/// code or in library interfaces exposed to library code as it can easily be
+/// abused to accidentally run logic on the wrong execution context.
+///
+/// For this reason, the InlineTaskDetached type has been placed inside the
+/// folly::coro::detail namespace to discourage general usage.
+struct InlineTaskDetached {
+  class promise_type {
+   public:
+    InlineTaskDetached get_return_object() {
+      return {};
+    }
+
+    std::experimental::suspend_never initial_suspend() {
+      return {};
+    }
+
+    std::experimental::suspend_never final_suspend() {
+      return {};
+    }
+
+    void return_void() {}
+
+    [[noreturn]] void unhandled_exception() {
+      std::terminate();
+    }
+  };
+};
+
 } // namespace detail
 } // namespace coro
 } // namespace folly

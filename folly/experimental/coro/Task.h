@@ -27,6 +27,7 @@
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/futures/Future.h>
 
 namespace folly {
@@ -126,8 +127,8 @@ class TaskPromise : public TaskPromiseBase {
     result_.emplace(static_cast<U&&>(value));
   }
 
-  T getResult() {
-    return static_cast<T&&>(std::move(result_).value());
+  Try<T>& result() {
+    return result_;
   }
 
  private:
@@ -153,8 +154,8 @@ class TaskPromise<void> : public TaskPromiseBase {
 
   void return_void() noexcept {}
 
-  void getResult() {
-    return std::move(result_).value();
+  Try<void>& result() {
+    return result_;
   }
 
  private:
@@ -199,9 +200,24 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // Start execution of this task eagerly and return a folly::SemiFuture<T>
   // that will complete with the result.
   auto start() && {
-    return folly::coro::toSemiFuture(std::move(*this));
+    Promise<lift_unit_t<T>> p;
+    auto sf = p.getSemiFuture();
+
+    [](Promise<lift_unit_t<T>> p,
+       TaskWithExecutor task) -> detail::InlineTaskDetached {
+      try {
+        p.setTry(co_await std::move(task).co_awaitTry());
+      } catch (const std::exception& e) {
+        p.setException(exception_wrapper(std::current_exception(), e));
+      } catch (...) {
+        p.setException(exception_wrapper(std::current_exception()));
+      }
+    }(std::move(p), std::move(*this));
+
+    return sf;
   }
 
+  template <typename ResultCreator>
   class Awaiter {
    public:
     explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
@@ -231,15 +247,32 @@ class FOLLY_NODISCARD TaskWithExecutor {
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();
       };
-      return coro_.promise().getResult();
+      ResultCreator resultCreator;
+      return resultCreator(std::move(coro_.promise().result()));
     }
 
    private:
     handle_t coro_;
   };
 
-  Awaiter operator co_await() && noexcept {
-    return Awaiter{std::exchange(coro_, {})};
+  struct ValueCreator {
+    T operator()(Try<T>&& t) {
+      return std::move(t).value();
+    }
+  };
+
+  struct TryCreator {
+    Try<T> operator()(Try<T>&& t) {
+      return std::move(t);
+    }
+  };
+
+  auto operator co_await() && noexcept {
+    return Awaiter<ValueCreator>{std::exchange(coro_, {})};
+  }
+
+  auto co_awaitTry() && noexcept {
+    return Awaiter<TryCreator>{std::exchange(coro_, {})};
   }
 
  private:
@@ -349,11 +382,11 @@ auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
       return coro_;
     }
 
-    decltype(auto) await_resume() {
+    T await_resume() {
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();
       };
-      return coro_.promise().getResult();
+      return std::move(coro_.promise().result()).value();
     }
 
    private:
