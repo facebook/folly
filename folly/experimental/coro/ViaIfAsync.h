@@ -20,6 +20,7 @@
 
 #include <folly/Executor.h>
 #include <folly/experimental/coro/Traits.h>
+#include <folly/io/async/Request.h>
 
 #include <glog/logging.h>
 
@@ -56,7 +57,14 @@ class ViaCoroutine {
             std::experimental::coroutine_handle<promise_type> coro) noexcept {
           // Schedule resumption of the coroutine on the executor.
           auto& promise = coro.promise();
-          promise.executor_->add(promise.continuation_);
+          if (!promise.context_) {
+            promise.context_ = RequestContext::saveContext();
+          }
+
+          promise.executor_->add([&promise]() noexcept {
+            RequestContextScopeGuard contextScope{std::move(promise.context_)};
+            promise.continuation_.resume();
+          });
         }
         void await_resume() noexcept {}
       };
@@ -76,9 +84,14 @@ class ViaCoroutine {
       continuation_ = continuation;
     }
 
+    void setContext(std::shared_ptr<RequestContext> context) noexcept {
+      context_ = std::move(context);
+    }
+
    private:
     folly::Executor* executor_;
     std::experimental::coroutine_handle<> continuation_;
+    std::shared_ptr<RequestContext> context_;
   };
 
   ViaCoroutine(ViaCoroutine&& other) noexcept
@@ -105,6 +118,12 @@ class ViaCoroutine {
     } else {
       return continuation;
     }
+  }
+
+  std::experimental::coroutine_handle<> getWrappedCoroutineWithSavedContext(
+      std::experimental::coroutine_handle<> continuation) noexcept {
+    coro_.promise().setContext(RequestContext::saveContext());
+    return getWrappedCoroutine(continuation);
   }
 
   void destroy() {
@@ -135,6 +154,10 @@ class ViaCoroutine {
 
 template <typename Awaiter>
 class ViaIfAsyncAwaiter {
+  using await_suspend_result_t =
+      decltype(std::declval<Awaiter&>().await_suspend(
+          std::declval<std::experimental::coroutine_handle<>>()));
+
  public:
   static_assert(
       folly::coro::is_awaiter_v<Awaiter>,
@@ -154,14 +177,60 @@ class ViaIfAsyncAwaiter {
 
   bool await_ready() noexcept(
       noexcept(std::declval<Awaiter&>().await_ready())) {
+    DCHECK(true);
     return awaiter_.await_ready();
   }
 
+  // NOTE: We are using a heuristic here to determine when is the correct
+  // time to capture the RequestContext. We want to capture the context just
+  // before the coroutine suspends and execution is returned to the executor.
+  //
+  // In cases where we are awaiting another coroutine and symmetrically
+  // transferring execution to another coroutine we are not yet returning
+  // execution to the executor so we want to defer capturing the context until
+  // the ViaCoroutine is resumed and suspends in final_suspend() before
+  // scheduling the resumption on the executor.
+  //
+  // In cases where the awaitable may suspend without transferring execution
+  // to another coroutine and will therefore return back to the executor we
+  // want to capture the execution context before calling into the wrapped
+  // awaitable's await_suspend() method (since it's await_suspend() method
+  // might schedule resumption on another thread and could resume and destroy
+  // the ViaCoroutine before the await_suspend() method returns).
+  //
+  // The heuristic is that if await_suspend() returns a coroutine_handle
+  // then we assume it's the first case. Otherwise if await_suspend() returns
+  // void/bool then we assume it's the second case.
+  //
+  // This heuristic isn't perfect since a coroutine_handle-returning
+  // await_suspend() method could return noop_coroutine() in which case we
+  // could fail to capture the current context. Awaitable types that do this
+  // would need to provide a custom implementation of co_viaIfAsync() that
+  // correctly captures the RequestContext to get correct behaviour in this
+  // case.
+
+  template <
+      typename Result = await_suspend_result_t,
+      std::enable_if_t<
+          folly::coro::detail::_is_coroutine_handle<Result>::value,
+          int> = 0>
   auto
   await_suspend(std::experimental::coroutine_handle<> continuation) noexcept(
-      noexcept(std::declval<Awaiter&>().await_suspend(continuation))) {
+      noexcept(awaiter_.await_suspend(continuation))) -> Result {
     return awaiter_.await_suspend(
         viaCoroutine_.getWrappedCoroutine(continuation));
+  }
+
+  template <
+      typename Result = await_suspend_result_t,
+      std::enable_if_t<
+          !folly::coro::detail::_is_coroutine_handle<Result>::value,
+          int> = 0>
+  auto
+  await_suspend(std::experimental::coroutine_handle<> continuation) noexcept(
+      noexcept(awaiter_.await_suspend(continuation))) -> Result {
+    return awaiter_.await_suspend(
+        viaCoroutine_.getWrappedCoroutineWithSavedContext(continuation));
   }
 
   decltype(auto) await_resume() noexcept(

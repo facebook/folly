@@ -29,6 +29,7 @@
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/futures/Future.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 namespace coro {
@@ -239,7 +240,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
       DCHECK(promise.executor_ != nullptr);
 
       promise.continuation_ = continuation;
-      promise.executor_->add(coro_);
+      promise.executor_->add(
+          [coro = coro_, ctx = RequestContext::saveContext()]() mutable {
+            RequestContextScopeGuard contextScope{std::move(ctx)};
+            coro.resume();
+          });
     }
 
     decltype(auto) await_resume() {
@@ -300,6 +305,11 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// 'co_await expr' expression into
 /// `co_await co_viaIfAsync(boundExecutor, expr)' to ensure that the coroutine
 /// always resumes on the executor.
+///
+/// The Task coroutine is RequestContext-aware and will capture the
+/// current RequestContext at the time the coroutine function is called and
+/// will save/restore the current RequestContext whenever the coroutine
+/// suspends and resumes at a co_await expression.
 template <typename T>
 class FOLLY_NODISCARD Task {
  public:
@@ -393,7 +403,9 @@ auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
     handle_t coro_;
   };
 
+  // Child task inherits the awaiting task's executor
   t.coro_.promise().executor_ = executor_;
+
   return Awaiter{std::exchange(t.coro_, {})};
 }
 

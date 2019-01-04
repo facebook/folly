@@ -18,7 +18,6 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/portability/GTest.h>
@@ -206,7 +205,7 @@ struct MyException : std::exception {};
 
 TEST(InlineTask, ExceptionsPropagateFromVoidTask) {
   auto f = []() -> InlineTask<void> {
-    co_await folly::coro::Baton{true};
+    co_await std::experimental::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
@@ -214,7 +213,7 @@ TEST(InlineTask, ExceptionsPropagateFromVoidTask) {
 
 TEST(InlineTask, ExceptionsPropagateFromValueTask) {
   auto f = []() -> InlineTask<int> {
-    co_await folly::coro::Baton{true};
+    co_await std::experimental::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
@@ -222,7 +221,7 @@ TEST(InlineTask, ExceptionsPropagateFromValueTask) {
 
 TEST(InlineTask, ExceptionsPropagateFromRefTask) {
   auto f = []() -> InlineTask<int&> {
-    co_await folly::coro::Baton{true};
+    co_await std::experimental::suspend_never{};
     throw MyException{};
   };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
