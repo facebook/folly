@@ -87,18 +87,30 @@ BENCHMARK_RELATIVE(cloneCoalescedBenchmark, iters) {
   }
 }
 
+BENCHMARK(takeOwnershipBenchmark, iters) {
+  size_t data = 0;
+  while (iters--) {
+    std::unique_ptr<IOBuf> buf(IOBuf::takeOwnership(
+        &data,
+        sizeof(data),
+        [](void* /*unused*/, void* /*unused*/) {},
+        nullptr));
+  }
+}
+
 /**
  * ============================================================================
  * folly/io/test/IOBufBenchmark.cpp                relative  time/iter  iters/s
  * ============================================================================
- * cloneOneBenchmark                                           49.03ns   20.39M
- * cloneOneIntoBenchmark                                       26.36ns   37.93M
- * cloneBenchmark                                              49.43ns   20.23M
- * cloneIntoBenchmark                                          30.03ns   33.30M
- * moveBenchmark                                               15.35ns   65.14M
- * copyBenchmark                                               33.63ns   29.73M
- * cloneCoalescedBaseline                                     344.33ns    2.90M
- * cloneCoalescedBenchmark                          605.62%    56.86ns   17.59M
+ * cloneOneBenchmark                                           39.97ns   25.02M
+ * cloneOneIntoBenchmark                                       21.33ns   46.88M
+ * cloneBenchmark                                              33.80ns   29.59M
+ * cloneIntoBenchmark                                          21.81ns   45.86M
+ * moveBenchmark                                                9.26ns  108.03M
+ * copyBenchmark                                               27.10ns   36.91M
+ * cloneCoalescedBaseline                                     305.29ns    3.28M
+ * cloneCoalescedBenchmark                          676.51%    45.13ns   22.16M
+ * takeOwnershipBenchmark                                      43.04ns   23.23M
  * ============================================================================
  */
 
