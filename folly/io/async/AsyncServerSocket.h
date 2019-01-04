@@ -326,18 +326,30 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     return sockets;
   }
 
+  std::vector<NetworkSocket> getNetworkSockets() const {
+    std::vector<NetworkSocket> sockets;
+    for (auto& handler : sockets_) {
+      sockets.push_back(handler.socket_);
+    }
+    return sockets;
+  }
+
   /**
    * Backwards compatible getSocket, warns if > 1 socket
    */
   int getSocket() const {
+    return getNetworkSocket().toFd();
+  }
+
+  NetworkSocket getNetworkSocket() const {
     if (sockets_.size() > 1) {
       VLOG(2) << "Warning: getSocket can return multiple fds, "
               << "but getSockets was not called, so only returning the first";
     }
     if (sockets_.size() == 0) {
-      return -1;
+      return NetworkSocket();
     } else {
-      return sockets_[0].socket_.toFd();
+      return sockets_[0].socket_;
     }
   }
 

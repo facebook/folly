@@ -379,7 +379,7 @@ void AsyncSocket::destroy() {
   DelayedDestruction::destroy();
 }
 
-int AsyncSocket::detachFd() {
+NetworkSocket AsyncSocket::detachNetworkSocket() {
   VLOG(6) << "AsyncSocket::detachFd(this=" << this << ", fd=" << fd_
           << ", evb=" << eventBase_ << ", state=" << state_
           << ", events=" << std::hex << eventFlags_ << ")";
@@ -395,7 +395,7 @@ int AsyncSocket::detachFd() {
   // Update the EventHandler to stop using this fd.
   // This can only be done after closeNow() unregisters the handler.
   ioHandler_.changeHandlerFD(NetworkSocket());
-  return fd.toFd();
+  return fd;
 }
 
 const folly::SocketAddress& AsyncSocket::anyAddress() {
