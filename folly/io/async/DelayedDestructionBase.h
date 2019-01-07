@@ -24,9 +24,6 @@
 #include <type_traits>
 #include <utility>
 
-#include <boost/noncopyable.hpp>
-#include <glog/logging.h>
-
 namespace folly {
 
 /**
@@ -46,8 +43,11 @@ namespace folly {
  * DelayedDestructionBase does not perform any locking.  It is intended to be
  * used only from a single thread.
  */
-class DelayedDestructionBase : private boost::noncopyable {
+class DelayedDestructionBase {
  public:
+  DelayedDestructionBase(const DelayedDestructionBase&) = delete;
+  DelayedDestructionBase& operator=(const DelayedDestructionBase&) = delete;
+
   virtual ~DelayedDestructionBase() = default;
 
   /**

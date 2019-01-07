@@ -25,7 +25,6 @@
 
 #include <chrono>
 #include <cstddef>
-#include <list>
 #include <memory>
 
 namespace folly {
