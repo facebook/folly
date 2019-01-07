@@ -553,10 +553,18 @@ class alignas(64) ConcurrentHashMapSegment {
 
   // Listed separately because we need a prev pointer.
   size_type erase(const key_type& key) {
-    return erase_internal(key, nullptr);
+    return erase_internal(key, nullptr, [](const ValueType&) { return true; });
   }
 
-  size_type erase_internal(const key_type& key, Iterator* iter) {
+  size_type erase_if_equal(const key_type& key, const ValueType& expected) {
+    return erase_internal(key, nullptr, [&expected](const ValueType& v) {
+      return v == expected;
+    });
+  }
+
+  template <typename MatchFunc>
+  size_type
+  erase_internal(const key_type& key, Iterator* iter, MatchFunc match) {
     Node* node{nullptr};
     auto h = HashFn()(key);
     {
@@ -570,6 +578,9 @@ class alignas(64) ConcurrentHashMapSegment {
       Node* prev = nullptr;
       while (node) {
         if (KeyEqual()(key, node->getItem().first)) {
+          if (!match(node->getItem().second)) {
+            return 0;
+          }
           auto next = node->next_.load(std::memory_order_relaxed);
           if (next) {
             next->acquire_link(); // defined in hazptr_obj_base_linked
@@ -613,7 +624,7 @@ class alignas(64) ConcurrentHashMapSegment {
   // This is a small departure from standard stl containers: erase may
   // throw if hash or key_eq functions throw.
   void erase(Iterator& res, Iterator& pos) {
-    erase_internal(pos->first, &res);
+    erase_internal(pos->first, &res, [](const ValueType&) { return true; });
     // Invalidate the iterator.
     pos = cend();
   }

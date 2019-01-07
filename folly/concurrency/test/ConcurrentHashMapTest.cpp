@@ -50,6 +50,9 @@ TEST(ConcurrentHashMap, MapTest) {
   EXPECT_TRUE(foomap.insert_or_assign(2, 0).second);
   EXPECT_TRUE(foomap.assign_if_equal(2, 0, 3));
   EXPECT_TRUE(foomap.insert(3, 0).second);
+  EXPECT_FALSE(foomap.erase_if_equal(3, 1));
+  EXPECT_TRUE(foomap.erase_if_equal(3, 0));
+  EXPECT_TRUE(foomap.insert(3, 0).second);
   EXPECT_NE(foomap.find(1), foomap.cend());
   EXPECT_NE(foomap.find(2), foomap.cend());
   EXPECT_EQ(foomap.find(2)->second, 3);
@@ -268,6 +271,16 @@ TEST(ConcurrentHashMap, EraseTest) {
   foomap.erase(f1);
 }
 
+TEST(ConcurrentHashMap, EraseIfEqualTest) {
+  ConcurrentHashMap<uint64_t, uint64_t> foomap(3);
+  foomap.insert(1, 0);
+  EXPECT_FALSE(foomap.erase_if_equal(1, 1));
+  auto f1 = foomap.find(1);
+  EXPECT_EQ(0, f1->second);
+  EXPECT_TRUE(foomap.erase_if_equal(1, 0));
+  EXPECT_EQ(foomap.find(1), foomap.cend());
+}
+
 TEST(ConcurrentHashMap, CopyIterator) {
   ConcurrentHashMap<int, int> map;
   map.insert(0, 0);
@@ -388,7 +401,11 @@ TEST(ConcurrentHashMap, EraseStressTest) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         auto res = m.insert(k, k).second;
         if (res) {
-          res = m.erase(k);
+          if (i % 2 == 0) {
+            res = m.erase(k);
+          } else {
+            res = m.erase_if_equal(k, k);
+          }
           if (!res) {
             printf("Faulre to erase thread %i val %li\n", t, k);
             exit(0);
@@ -450,7 +467,11 @@ TEST(ConcurrentHashMap, IterateStressTest) {
         unsigned long k = folly::hash::jenkins_rev_mix32((i + offset));
         auto res = m.insert(k, k).second;
         if (res) {
-          res = m.erase(k);
+          if (i % 2 == 0) {
+            res = m.erase(k);
+          } else {
+            res = m.erase_if_equal(k, k);
+          }
           if (!res) {
             printf("Faulre to erase thread %i val %li\n", t, k);
             exit(0);

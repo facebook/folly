@@ -348,6 +348,16 @@ class ConcurrentHashMap {
     return res;
   }
 
+  // Erase if and only if key k is equal to expected
+  size_type erase_if_equal(const key_type& k, const ValueType& expected) {
+    auto segment = pickSegment(k);
+    auto seg = segments_[segment].load(std::memory_order_acquire);
+    if (!seg) {
+      return 0;
+    }
+    return seg->erase_if_equal(k, expected);
+  }
+
   // NOT noexcept, initializes new shard segments vs.
   void clear() {
     for (uint64_t i = 0; i < NumShards; i++) {
