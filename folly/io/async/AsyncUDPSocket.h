@@ -212,7 +212,7 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   /**
-   * Set SO_REUSEADDR flag on the socket. Default is ON.
+   * Set SO_REUSEADDR flag on the socket. Default is OFF.
    */
   virtual void setReuseAddr(bool reuseAddr) {
     reuseAddr_ = reuseAddr;
