@@ -400,6 +400,12 @@ struct LifoSemBase {
     // first set the shutdown bit
     auto h = head_->load(std::memory_order_acquire);
     while (!h.isShutdown()) {
+      if (h.isLocked()) {
+        std::this_thread::yield();
+        h = head_->load(std::memory_order_acquire);
+        continue;
+      }
+
       if (head_->compare_exchange_strong(h, h.withShutdown())) {
         // success
         h = h.withShutdown();
