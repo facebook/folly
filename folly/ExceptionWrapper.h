@@ -52,7 +52,7 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 namespace folly {
 
 #define FOLLY_REQUIRES_DEF(...) \
-  _t<std::enable_if<static_cast<bool>(__VA_ARGS__), long>>
+  std::enable_if_t<static_cast<bool>(__VA_ARGS__), long>
 
 #define FOLLY_REQUIRES(...) FOLLY_REQUIRES_DEF(__VA_ARGS__) = __LINE__
 

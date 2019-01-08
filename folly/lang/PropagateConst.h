@@ -69,39 +69,39 @@ class propagate_const {
 
   template <
       typename OtherPointer,
-      _t<std::enable_if<
+      std::enable_if_t<
           std::is_constructible<Pointer, OtherPointer&&>::value &&
               !std::is_convertible<OtherPointer&&, Pointer>::value,
-          int>> = 0>
+          int> = 0>
   constexpr explicit propagate_const(propagate_const<OtherPointer>&& other)
       : pointer_(static_cast<OtherPointer&&>(other.pointer_)) {}
 
   template <
       typename OtherPointer,
-      _t<std::enable_if<
+      std::enable_if_t<
           std::is_constructible<Pointer, OtherPointer&&>::value &&
               std::is_convertible<OtherPointer&&, Pointer>::value,
-          int>> = 0>
+          int> = 0>
   constexpr propagate_const(propagate_const<OtherPointer>&& other)
       : pointer_(static_cast<OtherPointer&&>(other.pointer_)) {}
 
   template <
       typename OtherPointer,
-      _t<std::enable_if<
+      std::enable_if_t<
           !detail::is_decay_propagate_const<OtherPointer>::value &&
               std::is_constructible<Pointer, OtherPointer&&>::value &&
               !std::is_convertible<OtherPointer&&, Pointer>::value,
-          int>> = 0>
+          int> = 0>
   constexpr explicit propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
   template <
       typename OtherPointer,
-      _t<std::enable_if<
+      std::enable_if_t<
           !detail::is_decay_propagate_const<OtherPointer>::value &&
               std::is_constructible<Pointer, OtherPointer&&>::value &&
               std::is_convertible<OtherPointer&&, Pointer>::value,
-          int>> = 0>
+          int> = 0>
   constexpr propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
@@ -119,9 +119,9 @@ class propagate_const {
 
   template <
       typename OtherPointer,
-      typename = _t<std::enable_if<
+      typename = std::enable_if_t<
           !detail::is_decay_propagate_const<OtherPointer>::value &&
-          std::is_convertible<OtherPointer&&, Pointer>::value>>>
+          std::is_convertible<OtherPointer&&, Pointer>::value>>
   FOLLY_CPP14_CONSTEXPR propagate_const& operator=(OtherPointer&& other) {
     pointer_ = static_cast<OtherPointer&&>(other);
     return *this;
@@ -164,18 +164,18 @@ class propagate_const {
 
   template <
       typename OtherPointer = Pointer,
-      typename = _t<std::enable_if<
+      typename = std::enable_if_t<
           std::is_pointer<OtherPointer>::value ||
-          std::is_convertible<OtherPointer, element_type*>::value>>>
+          std::is_convertible<OtherPointer, element_type*>::value>>
   FOLLY_CPP14_CONSTEXPR operator element_type*() {
     return get();
   }
 
   template <
       typename OtherPointer = Pointer,
-      typename = _t<std::enable_if<
+      typename = std::enable_if_t<
           std::is_pointer<OtherPointer>::value ||
-          std::is_convertible<OtherPointer, element_type const*>::value>>>
+          std::is_convertible<OtherPointer, element_type const*>::value>>
   constexpr operator element_type const*() const {
     return get();
   }
