@@ -76,7 +76,13 @@ struct ApplyInvoke : private detail::apply_tuple::adl::ApplyInvoke {
 
 //////////////////////////////////////////////////////////////////////
 
-#if __cpp_lib_apply >= 201603
+//  libc++ v3.9 has std::apply
+//  android ndk r15c libc++ claims to be v3.9 but is missing std::apply
+#if __cpp_lib_apply >= 201603 ||                   \
+    (((__ANDROID__ && _LIBCPP_VERSION > 3900) ||   \
+      (!__ANDROID__ && _LIBCPP_VERSION > 3800)) && \
+     _LIBCPP_STD_VER > 14) ||                      \
+    (_MSC_VER && _HAS_CXX17)
 
 /* using override */ using std::apply;
 
