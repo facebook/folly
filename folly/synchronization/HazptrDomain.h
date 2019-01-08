@@ -21,7 +21,6 @@
 #include <folly/synchronization/HazptrThrLocal.h>
 
 #include <folly/Portability.h>
-#include <folly/Singleton.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 #include <atomic>
