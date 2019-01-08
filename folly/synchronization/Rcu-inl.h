@@ -50,16 +50,16 @@ rcu_domain<Tag>::~rcu_domain() {
 }
 
 template <typename Tag>
-rcu_token rcu_domain<Tag>::lock_shared() {
+rcu_token<Tag> rcu_domain<Tag>::lock_shared() {
   auto idx = version_.load(std::memory_order_acquire);
   idx &= 1;
   counters_.increment(idx);
 
-  return idx;
+  return rcu_token<Tag>(idx);
 }
 
 template <typename Tag>
-void rcu_domain<Tag>::unlock_shared(rcu_token&& token) {
+void rcu_domain<Tag>::unlock_shared(rcu_token<Tag>&& token) {
   DCHECK(0 == token.epoch_ || 1 == token.epoch_);
   counters_.decrement(token.epoch_);
 }
