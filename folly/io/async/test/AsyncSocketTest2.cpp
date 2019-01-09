@@ -1970,7 +1970,7 @@ TEST(AsyncSocketTest, DestroyCloseTest) {
   WriteCallback wcb;
 
   // Let the reads and writes run to completion
-  int fd = acceptedSocket->getFd();
+  int fd = acceptedSocket->getNetworkSocket().toFd();
 
   acceptedSocket->write(&wcb, simpleBuf, simpleBufLength);
   socket.reset();
@@ -3077,7 +3077,7 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
 
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
-  LOG(INFO) << "Client socket fd=" << socket->getFd();
+  LOG(INFO) << "Client socket fd=" << socket->getNetworkSocket().toFd();
 
   // Let the socket
   evb.loop();

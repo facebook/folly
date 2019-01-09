@@ -216,12 +216,13 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
         SOF_TIMESTAMPING_SOFTWARE;
     AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
     int ret = tstampingOpt.apply(
-        folly::NetworkSocket::fromFd(socket_->getFd()), flags);
+        folly::NetworkSocket::fromFd(socket_->getNetworkSocket().toFd()),
+        flags);
     EXPECT_EQ(ret, 0);
   }
 
   void checkForTimestampNotifications() noexcept {
-    int fd = socket_->getFd();
+    int fd = socket_->getNetworkSocket().toFd();
     std::vector<char> ctrl(1024, 0);
     unsigned char data;
     struct msghdr msg;
@@ -429,7 +430,7 @@ class WriteErrorCallback : public ReadCallback {
     currentBuffer.length = len;
 
     // close the socket before writing to trigger writeError().
-    ::close(socket_->getFd());
+    ::close(socket_->getNetworkSocket().toFd());
 
     wcb_->setSocket(socket_);
 
@@ -583,7 +584,7 @@ class SSLServerAcceptCallbackDelay : public SSLServerAcceptCallback {
     auto sock = std::static_pointer_cast<AsyncSSLSocket>(s);
 
     std::cerr << "SSLServerAcceptCallbackDelay::connAccepted" << std::endl;
-    int fd = sock->getFd();
+    int fd = sock->getNetworkSocket().toFd();
 
 #ifndef TCP_NOPUSH
     {
