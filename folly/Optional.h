@@ -134,14 +134,23 @@ class Optional {
   }
 
   /**
-   * DEPRECATED: use folly::none
+   * Explicitly disallow converting nullptr to non-pointer
+   * types. Optional used to support initialization from nullptr as if
+   * it were folly::none. Without this constructor,
+   * folly::Optional<bool> could be constructed from nullptr,
+   * producing {false} instead of {}. This would be a change in
+   * behavior from the old code, so explicitly disallow it. Note that
+   * std::optional<bool> can be constructed from nullptr, also
+   * producing {false}.
+   *
+   * This constructor is temporary and should be removed when all call
+   * sites are fixed.
    */
   template <typename Null = std::nullptr_t>
-  FOLLY_CPP14_CONSTEXPR /* implicit */
+  /* implicit */
   Optional(typename std::enable_if<
-           !std::is_pointer<Value>::value &&
-               std::is_same<Null, std::nullptr_t>::value,
-           Null>::type) noexcept {}
+           std::is_convertible<Null, Value>::value,
+           Null>::type) noexcept = delete;
 
   template <typename... Args>
   FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
