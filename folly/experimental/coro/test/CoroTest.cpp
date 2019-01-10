@@ -165,12 +165,6 @@ TEST(Coro, LargeStack) {
   EXPECT_EQ(5000, coro::blockingWait(std::move(task)));
 }
 
-#if defined(__clang__)
-#define FOLLY_CORO_DONT_OPTIMISE_ON_CLANG __attribute__((optnone))
-#else
-#define FOLLY_CORO_DONT_OPTIMISE_ON_CLANG
-#endif
-
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
   EXPECT_EQ(threadId, std::this_thread::get_id());
   (void)co_await futures::sleep(std::chrono::seconds{1});
@@ -178,7 +172,7 @@ coro::Task<void> taskThreadNested(std::thread::id threadId) {
   co_return;
 }
 
-coro::Task<int> taskThread() FOLLY_CORO_DONT_OPTIMISE_ON_CLANG {
+coro::Task<int> taskThread() {
   auto threadId = std::this_thread::get_id();
 
   // BUG: Under @mode/clang-opt builds this object is placed on the coroutine
