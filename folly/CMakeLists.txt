@@ -15,7 +15,7 @@ install(
 add_subdirectory(experimental/exception_tracer)
 
 get_target_property(pic folly POSITION_INDEPENDENT_CODE)
-if (pic)
+if (pic AND CYTHON_FOUND AND PYTHONINTERP_FOUND)
   # Create tree of symbolic links in structure required for successful
   # compliation by Cython.
   #   - must be in path named same as extension
