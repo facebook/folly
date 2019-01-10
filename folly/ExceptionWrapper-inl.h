@@ -343,7 +343,7 @@ inline exception_wrapper::exception_wrapper(
 namespace exception_wrapper_detail {
 template <class Ex>
 Ex&& dont_slice(Ex&& ex) {
-  assert(typeid(ex) == typeid(_t<std::decay<Ex>>) ||
+  assert(typeid(ex) == typeid(std::decay_t<Ex>) ||
        !"Dynamic and static exception types don't match. Exception would "
         "be sliced when storing in exception_wrapper.");
   return std::forward<Ex>(ex);
@@ -479,12 +479,12 @@ template <class Ex>
 
 template <class CatchFn, bool IsConst>
 struct exception_wrapper::ExceptionTypeOf {
-  using type = arg_type<_t<std::decay<CatchFn>>>;
+  using type = arg_type<std::decay_t<CatchFn>>;
   static_assert(
       std::is_reference<type>::value,
       "Always catch exceptions by reference.");
   static_assert(
-      !IsConst || std::is_const<_t<std::remove_reference<type>>>::value,
+      !IsConst || std::is_const<std::remove_reference_t<type>>::value,
       "handle() or with_exception() called on a const exception_wrapper "
       "and asked to catch a non-const exception. Handler will never fire. "
       "Catch exception by const reference to fix this.");
@@ -550,7 +550,7 @@ struct exception_wrapper::HandleStdExceptReduce {
     return
         [th = std::forward<ThrowFn>(th), &ca](auto&& continuation) -> StdEx* {
           if (auto e = const_cast<StdEx*>(th(continuation))) {
-            if (auto e2 = dynamic_cast<_t<std::add_pointer<Ex>>>(e)) {
+            if (auto e2 = dynamic_cast<std::add_pointer_t<Ex>>(e)) {
               ca(*e2);
             } else {
               return e;

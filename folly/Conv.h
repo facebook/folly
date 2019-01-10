@@ -1216,8 +1216,8 @@ typename std::enable_if<
     Expected<Tgt, ConversionCode>>::type
 convertTo(const Src& value) noexcept {
   if /* constexpr */ (
-      folly::_t<std::make_unsigned<Tgt>>(std::numeric_limits<Tgt>::max()) <
-      folly::_t<std::make_unsigned<Src>>(std::numeric_limits<Src>::max())) {
+      std::make_unsigned_t<Tgt>(std::numeric_limits<Tgt>::max()) <
+      std::make_unsigned_t<Src>(std::numeric_limits<Src>::max())) {
     if (greater_than<Tgt, std::numeric_limits<Tgt>::max()>(value)) {
       return makeUnexpected(ConversionCode::ARITH_POSITIVE_OVERFLOW);
     }

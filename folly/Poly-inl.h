@@ -52,7 +52,7 @@ inline PolyVal<I>::PolyVal(T&& t) {
       "This Poly<> requires copyability, and the source object is not "
       "copyable");
   // The static and dynamic types should match; otherwise, this will slice.
-  assert(typeid(t) == typeid(_t<std::decay<T>>) ||
+  assert(typeid(t) == typeid(std::decay_t<T>) ||
        !"Dynamic and static exception types don't match. Object would "
         "be sliced when storing in Poly.");
   if (inSitu<U>()) {

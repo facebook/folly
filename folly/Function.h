@@ -353,7 +353,7 @@ struct FunctionTraits<ReturnType(Args...)> {
 
   template <typename F>
   using ResultOf =
-      SafeResultOf<CallableResult<_t<std::decay<F>>&, Args...>, ReturnType>;
+      SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) {
@@ -390,7 +390,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
 
   template <typename F>
   using ResultOf = SafeResultOf<
-      CallableResult<const _t<std::decay<F>>&, Args...>,
+      CallableResult<const std::decay_t<F>&, Args...>,
       ReturnType>;
 
   template <typename Fun>
@@ -429,7 +429,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
 
   template <typename F>
   using ResultOf =
-      SafeResultOf<CallableResult<_t<std::decay<F>>&, Args...>, ReturnType>;
+      SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
   static ReturnType callSmall(Data& p, Args&&... args) noexcept {
@@ -466,7 +466,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 
   template <typename F>
   using ResultOf = SafeResultOf<
-      CallableResult<const _t<std::decay<F>>&, Args...>,
+      CallableResult<const std::decay_t<F>&, Args...>,
       ReturnType>;
 
   template <typename Fun>
@@ -920,7 +920,7 @@ class FunctionRef<ReturnType(Args...)> final {
 
   template <typename Fun>
   static ReturnType call(void* object, Args&&... args) {
-    using Pointer = _t<std::add_pointer<Fun>>;
+    using Pointer = std::add_pointer_t<Fun>;
     return static_cast<ReturnType>(invoke(
         static_cast<Fun&&>(*static_cast<Pointer>(object)),
         static_cast<Args&&>(args)...));
@@ -951,7 +951,7 @@ class FunctionRef<ReturnType(Args...)> final {
       typename Fun,
       typename std::enable_if<
           Conjunction<
-              Negation<std::is_same<FunctionRef, _t<std::decay<Fun>>>>,
+              Negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
               is_invocable_r<ReturnType, Fun&&, Args&&...>>::value,
           int>::type = 0>
   constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept
