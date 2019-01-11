@@ -51,12 +51,12 @@ HHWheelTimer::Callback::~Callback() {
 
 void HHWheelTimer::Callback::setScheduled(
     HHWheelTimer* wheel,
-    std::chrono::milliseconds timeout) {
+    std::chrono::steady_clock::time_point deadline) {
   assert(wheel_ == nullptr);
   assert(expiration_ == decltype(expiration_){});
 
   wheel_ = wheel;
-  expiration_ = std::chrono::steady_clock::now() + timeout;
+  expiration_ = deadline;
 }
 
 void HHWheelTimer::Callback::cancelTimeoutImpl() {
@@ -143,8 +143,9 @@ void HHWheelTimer::scheduleTimeout(
 
   count_++;
 
-  callback->setScheduled(this, timeout);
-  auto nextTick = calcNextTick();
+  auto now = getCurTime();
+  auto nextTick = calcNextTick(now);
+  callback->setScheduled(this, now + timeout);
 
   // There are three possible scenarios:
   //   - we are currently inside of HHWheelTimer::timeoutExpired. In this case,

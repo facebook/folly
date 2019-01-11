@@ -123,7 +123,9 @@ class HHWheelTimer : private folly::AsyncTimeout,
           expiration_ - now);
     }
 
-    void setScheduled(HHWheelTimer* wheel, std::chrono::milliseconds);
+    void setScheduled(
+        HHWheelTimer* wheel,
+        std::chrono::steady_clock::time_point deadline);
     void cancelTimeoutImpl();
 
     HHWheelTimer* wheel_{nullptr};
