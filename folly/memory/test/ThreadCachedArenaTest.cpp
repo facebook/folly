@@ -52,7 +52,8 @@ class ArenaTester {
 
 void ArenaTester::allocate(size_t count, size_t maxSize) {
   // Allocate chunks of memory of random sizes
-  std::mt19937 rnd;
+  std::random_device rd{};
+  std::mt19937 rnd{rd()};
   std::uniform_int_distribution<uint32_t> sizeDist(1, maxSize - 1);
   areas_.clear();
   areas_.reserve(count);
@@ -64,9 +65,7 @@ void ArenaTester::allocate(size_t count, size_t maxSize) {
 
   // Fill each area with a different value, to prove that they don't overlap
   // Fill in random order.
-  std::random_shuffle(areas_.begin(), areas_.end(), [&rnd](ptrdiff_t n) {
-    return std::uniform_int_distribution<uint32_t>(0, n - 1)(rnd);
-  });
+  std::shuffle(areas_.begin(), areas_.end(), rnd);
 
   for (auto& p : areas_) {
     std::fill(p.second.begin(), p.second.end(), p.first);
