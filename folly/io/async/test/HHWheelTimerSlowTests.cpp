@@ -54,13 +54,6 @@ class TestTimeout : public HHWheelTimer::Callback {
   std::function<void()> fn;
 };
 
-class TestTimeoutDelayed : public TestTimeout {
- protected:
-  std::chrono::steady_clock::time_point getCurTime() override {
-    return std::chrono::steady_clock::now() - milliseconds(5);
-  }
-};
-
 struct HHWheelTimerTest : public ::testing::Test {
   EventBase eventBase;
 };

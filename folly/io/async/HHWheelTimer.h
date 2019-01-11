@@ -105,20 +105,11 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
     /**
      * Get the time remaining until this timeout expires. Return 0 if this
-     * timeout is not scheduled or expired. Otherwise, return expiration time
-     * minus getCurTime().
+     * timeout is not scheduled or expired. Otherwise, return expiration
+     * time minus current time.
      */
     std::chrono::milliseconds getTimeRemaining() {
-      return getTimeRemaining(getCurTime());
-    }
-
-   protected:
-    /**
-     * Don't override this unless you're doing a test. This is mainly here so
-     * that we can override it to simulate lag in steady_clock.
-     */
-    virtual std::chrono::steady_clock::time_point getCurTime() {
-      return std::chrono::steady_clock::now();
+      return getTimeRemaining(std::chrono::steady_clock::now());
     }
 
    private:

@@ -56,8 +56,7 @@ void HHWheelTimer::Callback::setScheduled(
   assert(expiration_ == decltype(expiration_){});
 
   wheel_ = wheel;
-
-  expiration_ = getCurTime() + timeout;
+  expiration_ = std::chrono::steady_clock::now() + timeout;
 }
 
 void HHWheelTimer::Callback::cancelTimeoutImpl() {

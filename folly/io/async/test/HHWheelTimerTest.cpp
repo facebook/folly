@@ -51,13 +51,6 @@ class TestTimeout : public HHWheelTimer::Callback {
   std::function<void()> fn;
 };
 
-class TestTimeoutDelayed : public TestTimeout {
- protected:
-  std::chrono::steady_clock::time_point getCurTime() override {
-    return std::chrono::steady_clock::now() - milliseconds(5);
-  }
-};
-
 struct HHWheelTimerTest : public ::testing::Test {
   EventBase eventBase;
 };
@@ -105,12 +98,13 @@ TEST_F(HHWheelTimerTest, FireOnce) {
 TEST_F(HHWheelTimerTest, TestSchedulingWithinCallback) {
   HHWheelTimer& t = eventBase.timer();
 
-  TestTimeout t1;
-  // Delayed to simulate the steady_clock counter lagging
-  TestTimeoutDelayed t2;
+  TestTimeout t1, t2;
 
   t.scheduleTimeout(&t1, milliseconds(500));
-  t1.fn = [&] { t.scheduleTimeout(&t2, milliseconds(1)); };
+  t1.fn = [&] {
+    t.scheduleTimeout(&t2, milliseconds(1));
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+  };
   // If t is in an inconsistent state, detachEventBase should fail.
   t2.fn = [&] { t.detachEventBase(); };
 
