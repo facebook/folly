@@ -128,6 +128,56 @@ BENCHMARK(FiberManagerAllocateLargeChunk, iters) {
   }
 }
 
+void runTimeoutsBenchmark(std::vector<size_t> timeouts) {
+  constexpr size_t kNumIters = 100000;
+  constexpr size_t kNumFibers = 100;
+
+  size_t iter = 0;
+  std::vector<folly::fibers::Baton> batons(kNumFibers);
+
+  FiberManager manager(std::make_unique<EventBaseLoopController>());
+
+  folly::EventBase evb(false /* enableTimeMeasurement */);
+  dynamic_cast<EventBaseLoopController&>(manager.loopController())
+      .attachEventBase(evb);
+
+  for (size_t i = 0; i < kNumFibers; ++i) {
+    manager.addTask([i, &iter, &timeouts, &batons] {
+      while (iter < kNumIters) {
+        auto tmo = timeouts[iter++ % timeouts.size()];
+        batons[i].timed_wait(std::chrono::milliseconds(tmo));
+        batons[i].reset();
+      }
+    });
+  }
+
+  while (iter < kNumIters) {
+    evb.loopOnce();
+    for (auto& b : batons) {
+      b.post();
+    }
+  }
+  evb.loopOnce();
+}
+
+BENCHMARK(FiberManagerCancelledTimeouts_Single_300) {
+  runTimeoutsBenchmark({300});
+}
+
+BENCHMARK(FiberManagerCancelledTimeouts_Five) {
+  runTimeoutsBenchmark({300, 350, 500, 1000, 2000});
+}
+
+BENCHMARK(FiberManagerCancelledTimeouts_TenThousand) {
+  constexpr size_t kNumTimeouts = 10000;
+
+  std::vector<size_t> tmos(kNumTimeouts);
+  for (size_t i = 0; i < kNumTimeouts; ++i) {
+    tmos[i] = 200 + 50 * i;
+  }
+  runTimeoutsBenchmark(std::move(tmos));
+}
+
 int main(int argc, char** argv) {
   folly::init(&argc, &argv, true);
 
