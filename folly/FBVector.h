@@ -214,13 +214,14 @@ class fbvector {
 
  private:
   static constexpr bool should_pass_by_value =
-      is_trivially_copyable<T>::value &&
+      std::is_trivially_copyable<T>::value &&
       sizeof(T) <= 16; // don't force large structures to be passed by value
   typedef typename std::conditional<should_pass_by_value, T, const T&>::type VT;
   typedef typename std::conditional<should_pass_by_value, T, T&&>::type MT;
 
   static constexpr bool usingStdAllocator =
       std::is_same<Allocator, std::allocator<T>>::value;
+
   typedef bool_constant<
       usingStdAllocator || A::propagate_on_container_move_assignment::value>
       moveIsSwap;
@@ -499,7 +500,7 @@ class fbvector {
   template <typename It>
   void D_uninitialized_copy_a(T* dest, It first, It last) {
     if (usingStdAllocator) {
-      if (folly::is_trivially_copyable<T>::value) {
+      if (std::is_trivially_copyable<T>::value) {
         S_uninitialized_copy_bits(dest, first, last);
       } else {
         S_uninitialized_copy(dest, first, last);
@@ -583,7 +584,7 @@ class fbvector {
   }
 
   static const T* S_copy_n(T* dest, const T* first, size_type n) {
-    if (is_trivially_copyable<T>::value) {
+    if (std::is_trivially_copyable<T>::value) {
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return first + n;
     } else {
@@ -593,7 +594,7 @@ class fbvector {
 
   static std::move_iterator<T*>
   S_copy_n(T* dest, std::move_iterator<T*> mIt, size_type n) {
-    if (is_trivially_copyable<T>::value) {
+    if (std::is_trivially_copyable<T>::value) {
       T* first = mIt.base();
       std::memcpy((void*)dest, (void*)first, n * sizeof(T));
       return std::make_move_iterator(first + n);

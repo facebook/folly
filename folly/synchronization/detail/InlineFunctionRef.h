@@ -83,7 +83,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   // This requires that the we pass in a type that is not ref-qualified.
   template <typename Func>
   using ConstructMode = std::conditional_t<
-      folly::is_trivially_copyable<Func>{} &&
+      std::is_trivially_copyable<Func>{} &&
           (sizeof(Func) <= sizeof(Storage)) &&
           (alignof(Func) <= alignof(Storage)),
       InSituTag,
@@ -173,7 +173,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
     //       modifications.
     static_assert(alignof(Value) <= alignof(Storage), "");
     static_assert(is_invocable<const std::decay_t<Func>, Args&&...>{}, "");
-    static_assert(folly::is_trivially_copyable<Value>{}, "");
+    static_assert(std::is_trivially_copyable<Value>{}, "");
 
     new (&storage_) Value{func};
     call_ = &callInline<Value>;

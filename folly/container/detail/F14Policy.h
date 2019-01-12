@@ -1056,7 +1056,7 @@ class VectorContainerPolicy : public BasePolicy<
   static constexpr bool valueIsTriviallyCopyable() {
     return AllocatorHasDefaultObjectConstruct<Alloc, Value, Value>::value &&
         AllocatorHasDefaultObjectDestroy<Alloc, Value>::value &&
-        is_trivially_copyable<Value>::value;
+        std::is_trivially_copyable<Value>::value;
   }
 
  public:

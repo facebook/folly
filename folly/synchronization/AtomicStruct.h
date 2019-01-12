@@ -59,7 +59,7 @@ class AtomicStruct {
   static_assert(alignof(T) <= alignof(Raw), "underlying type is under-aligned");
   static_assert(sizeof(T) <= sizeof(Raw), "underlying type is under-sized");
   static_assert(
-      std::is_trivial<T>::value || is_trivially_copyable<T>::value,
+      std::is_trivial<T>::value || std::is_trivially_copyable<T>::value,
       "target type must be trivially copyable");
 
   Atom<Raw> data;

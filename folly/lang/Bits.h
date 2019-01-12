@@ -74,7 +74,7 @@ template <
     typename From,
     std::enable_if_t<
         sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
-            is_trivially_copyable<From>::value,
+            std::is_trivially_copyable<From>::value,
         int> = 0>
 To bit_cast(const From& src) noexcept {
   To to;

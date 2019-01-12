@@ -666,23 +666,19 @@ struct WithConstructor {
   WithConstructor();
 };
 
-// libstdc++ with GCC 4.x doesn't have std::is_trivially_copyable
-#if (defined(__clang__) && !defined(_LIBCPP_VERSION)) || \
-    !(defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5)
 TEST(Expected, TriviallyCopyable) {
   // These could all be static_asserts but EXPECT_* give much nicer output on
   // failure.
-  EXPECT_TRUE((is_trivially_copyable<Expected<int, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<char*, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<NoDestructor, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<WithDestructor, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<NoConstructor, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<std::string, E>>::value));
-  EXPECT_FALSE((is_trivially_copyable<Expected<int, std::string>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<WithConstructor, E>>::value));
-  EXPECT_TRUE((is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<int, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<char*, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<NoDestructor, E>>::value));
+  EXPECT_FALSE((std::is_trivially_copyable<Expected<WithDestructor, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<NoConstructor, E>>::value));
+  EXPECT_FALSE((std::is_trivially_copyable<Expected<std::string, E>>::value));
+  EXPECT_FALSE((std::is_trivially_copyable<Expected<int, std::string>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<WithConstructor, E>>::value));
+  EXPECT_TRUE((std::is_trivially_copyable<Expected<Expected<int, E>, E>>::value));
 }
-#endif
 
 TEST(Expected, Then) {
   // Lifting

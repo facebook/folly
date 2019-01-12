@@ -1747,7 +1747,7 @@ class F14Table : public Policy {
     // partial failure should not occur.  Sorry for the subtle invariants
     // in the Policy API.
 
-    if (is_trivially_copyable<Item>::value && !this->destroyItemOnClear() &&
+    if (std::is_trivially_copyable<Item>::value && !this->destroyItemOnClear() &&
         itemCount() == src.itemCount()) {
       FOLLY_SAFE_DCHECK(chunkMask_ == src.chunkMask_, "");
 

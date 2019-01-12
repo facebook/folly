@@ -60,7 +60,7 @@ class LockFreeRingBuffer {
       "Element type must be nothrow default constructible");
 
   static_assert(
-      folly::is_trivially_copyable<T>::value,
+      std::is_trivially_copyable<T>::value,
       "Element type must be trivially copyable");
 
  public:
