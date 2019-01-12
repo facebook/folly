@@ -44,43 +44,66 @@ TEST_F(SingletonRelaxedCounterTest, Basic) {
 TEST_F(SingletonRelaxedCounterTest, MultithreadCorrectness) {
   static constexpr size_t const kPerThreadIncrements = 1000000;
   static constexpr size_t const kNumThreads = 24;
+  static constexpr size_t const kNumCounters = 6;
+  static constexpr size_t const kNumIters = 2;
 
-  std::vector<std::thread> threads(kNumThreads);
+  std::atomic<bool> stop{false};
+  std::vector<std::thread> counters(kNumCounters);
 
-  boost::barrier barrier{kNumThreads + 1};
-
-  for (auto& thread : threads) {
-    thread = std::thread([&] {
-      barrier.wait(); // A
-      barrier.wait(); // B
-      for (size_t i = 0; i < kPerThreadIncrements; ++i) {
-        Counter::add(1);
+  for (auto& counter : counters) {
+    counter = std::thread([&] {
+      while (!stop.load(std::memory_order_relaxed)) {
+        std::this_thread::yield();
+        Counter::count();
       }
-      barrier.wait(); // C
-      barrier.wait(); // D
-      for (size_t i = 0; i < kPerThreadIncrements; ++i) {
-        Counter::sub(1);
-      }
-      barrier.wait(); // E
-      barrier.wait(); // F
     });
   }
 
-  barrier.wait(); // A
-  EXPECT_EQ(0, Counter::count());
+  for (size_t j = 0; j < kNumIters; ++j) {
+    std::vector<std::thread> threads(kNumThreads);
 
-  barrier.wait(); // B
-  barrier.wait(); // C
-  EXPECT_EQ(kPerThreadIncrements * kNumThreads, Counter::count());
+    boost::barrier barrier{kNumThreads + 1};
 
-  barrier.wait(); // D
-  barrier.wait(); // E
-  EXPECT_EQ(0, Counter::count());
+    for (auto& thread : threads) {
+      thread = std::thread([&] {
+        barrier.wait(); // A
+        barrier.wait(); // B
+        for (size_t i = 0; i < kPerThreadIncrements; ++i) {
+          Counter::add(1);
+        }
+        barrier.wait(); // C
+        barrier.wait(); // D
+        for (size_t i = 0; i < kPerThreadIncrements; ++i) {
+          Counter::sub(1);
+        }
+        barrier.wait(); // E
+        barrier.wait(); // F
+      });
+    }
 
-  barrier.wait(); // F
+    barrier.wait(); // A
+    EXPECT_EQ(0, Counter::count());
 
-  for (auto& thread : threads) {
-    thread.join();
+    barrier.wait(); // B
+    barrier.wait(); // C
+    EXPECT_EQ(kPerThreadIncrements * kNumThreads, Counter::count());
+
+    barrier.wait(); // D
+    barrier.wait(); // E
+    EXPECT_EQ(0, Counter::count());
+
+    barrier.wait(); // F
+
+    for (auto& thread : threads) {
+      thread.join();
+    }
   }
+
+  stop.store(true, std::memory_order_relaxed);
+  for (auto& counter : counters) {
+    counter.join();
+  }
+
+  Counter::count();
 }
 } // namespace folly

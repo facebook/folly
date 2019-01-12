@@ -132,6 +132,7 @@ class SingletonRelaxedCounter {
           global.fallback.fetch_add(current, std::memory_order_relaxed);
         }
       }
+      tracking->lifetimes.erase(this);
     }
 
     void track(CounterAndCache& state) {
