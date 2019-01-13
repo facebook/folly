@@ -308,7 +308,7 @@ typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
  * Look at the Ranges-v3 views and you'll probably find an easier way to build
  * the view you want but the equivalent is roughly:
  *
- *    for (auto& element : make_iterator_range(begin, end))
+ *    for (auto& element : make_subrange(begin, end))
  */
 #define FOR_EACH_RANGE(i, begin, end)          \
   for (auto i = (true ? (begin) : (end));      \
@@ -319,7 +319,7 @@ typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
  * Look at the Ranges-v3 views and you'll probably find an easier way to build
  * the view you want but the equivalent is roughly:
  *
- *    for (auto& element : make_iterator_range(begin, end) | view::reverse)
+ *    for (auto& element : make_subrange(begin, end) | view::reverse)
  */
 #define FOR_EACH_RANGE_R(i, begin, end) \
   for (auto i = (false ? (begin) : (end)); ::folly::detail::downTo(i, (begin));)
