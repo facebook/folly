@@ -239,6 +239,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef T key_type;
   typedef Compare key_compare;
   typedef Compare value_compare;
+  typedef Allocator allocator_type;
 
   typedef typename Container::pointer pointer;
   typedef typename Container::reference reference;
@@ -647,6 +648,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef Value mapped_type;
   typedef typename Container::value_type value_type;
   typedef Compare key_compare;
+  typedef Allocator allocator_type;
 
   struct value_compare : private Compare {
     bool operator()(const value_type& a, const value_type& b) const {
