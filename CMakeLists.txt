@@ -434,6 +434,9 @@ if (BUILD_TESTS)
       #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
+    DIRECTORY external/farmhash/test/
+      TEST farmhash_test SOURCES farmhash_test.cpp
+
     DIRECTORY logging/test/
       TEST async_file_writer_test SOURCES AsyncFileWriterTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
@@ -516,6 +519,7 @@ if (BUILD_TESTS)
 
     DIRECTORY hash/test/
       TEST checksum_test SOURCES ChecksumTest.cpp
+      TEST farm_hash_test SOURCES FarmHashTest.cpp
       TEST hash_test WINDOWS_DISABLED
         SOURCES HashTest.cpp
       TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp

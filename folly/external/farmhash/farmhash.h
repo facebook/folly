@@ -40,8 +40,9 @@
 // of a+b is easily derived from the hashes of a and b.  This property
 // doesn't hold for any hash functions in this file.
 
-#ifndef FARM_HASH_H_
-#define FARM_HASH_H_
+// clang-format off
+
+#pragma once
 
 #include <assert.h>
 #include <stdint.h>
@@ -49,13 +50,15 @@
 #include <string.h>   // for memcpy and memset
 #include <utility>
 
-#ifndef NAMESPACE_FOR_HASH_FUNCTIONS
-#define NAMESPACE_FOR_HASH_FUNCTIONS util
-#endif
+#include <folly/portability/Config.h>
 
-namespace NAMESPACE_FOR_HASH_FUNCTIONS {
+namespace folly {
+namespace external {
+namespace farmhash {
 
-#if defined(FARMHASH_UINT128_T_DEFINED)
+#if FOLLY_HAVE_INT128_T
+using uint128_t = unsigned __int128;
+
 inline uint64_t Uint128Low64(const uint128_t x) {
   return static_cast<uint64_t>(x);
 }
@@ -175,8 +178,6 @@ inline uint64_t Fingerprint(uint64_t x) {
   return b;
 }
 
-#ifndef FARMHASH_NO_CXX_STRING
-
 // Convenience functions to hash or fingerprint C++ strings.
 // These require that Str::data() return a pointer to the first char
 // (as a const char*) and that Str::length() return the string's length;
@@ -283,8 +284,77 @@ inline uint128_t Fingerprint128(const Str& s) {
   return Fingerprint128(s.data(), s.length());
 }
 
-#endif
+//// internal variants
 
-}  // namespace NAMESPACE_FOR_HASH_FUNCTIONS
+namespace test {
+extern bool returnZeroIfMisconfigured;
+}
 
-#endif  // FARM_HASH_H_
+namespace farmhashna {
+uint64_t Hash64(const char* s, size_t len);
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+uint64_t
+Hash64WithSeeds(const char* s, size_t len, uint64_t seed0, uint64_t seed1);
+} // namespace farmhashna
+namespace farmhashuo {
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+uint64_t Hash64(const char* s, size_t len);
+} // namespace farmhashuo
+namespace farmhashxo {
+uint64_t Hash64(const char* s, size_t len);
+uint64_t
+Hash64WithSeeds(const char* s, size_t len, uint64_t seed0, uint64_t seed1);
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+} // namespace farmhashxo
+namespace farmhashte {
+uint64_t Hash64(const char* s, size_t len);
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+uint64_t Hash64(const char* s, size_t len);
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+uint64_t
+Hash64WithSeeds(const char* s, size_t len, uint64_t seed0, uint64_t seed1);
+} // namespace farmhashte
+namespace farmhashnt {
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+} // namespace farmhashnt
+namespace farmhashmk {
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+} // namespace farmhashmk
+namespace farmhashsu {
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+} // namespace farmhashsu
+namespace farmhashsa {
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+} // namespace farmhashsa
+namespace farmhashcc {
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+uint128_t CityHash128WithSeed(const char* s, size_t len, uint128_t seed);
+uint128_t Fingerprint128(const char* s, size_t len);
+uint32_t Hash32(const char* s, size_t len);
+uint32_t Hash32WithSeed(const char* s, size_t len, uint32_t seed);
+uint64_t Hash64(const char* s, size_t len);
+size_t Hash(const char* s, size_t len);
+uint64_t Hash64WithSeed(const char* s, size_t len, uint64_t seed);
+uint64_t
+Hash64WithSeeds(const char* s, size_t len, uint64_t seed0, uint64_t seed1);
+uint128_t Hash128(const char* s, size_t len);
+uint128_t Hash128WithSeed(const char* s, size_t len, uint128_t seed);
+uint32_t Fingerprint32(const char* s, size_t len);
+uint64_t Fingerprint64(const char* s, size_t len);
+uint128_t Fingerprint128(const char* s, size_t len);
+} // namespace farmhashcc
+
+} // namespace farmhash
+} // namespace external
+} // namespace folly
