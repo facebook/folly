@@ -119,6 +119,15 @@ TEST(Coro, Sleep) {
       chrono::round<std::chrono::seconds>(totalTime), std::chrono::seconds{1});
 }
 
+TEST(Coro, ExecutorKeepAlive) {
+  auto future = [] {
+    ScopedEventBaseThread evbThread;
+
+    return taskSleep().scheduleOn(evbThread.getEventBase()).start();
+  }();
+  EXPECT_TRUE(future.isReady());
+}
+
 coro::Task<int> taskException() {
   throw std::runtime_error("Test exception");
   co_return 42;
