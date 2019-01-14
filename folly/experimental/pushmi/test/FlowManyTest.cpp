@@ -291,7 +291,7 @@ TEST_F(ConcurrentFlowManySender, RacingCancellation) {
 }
 
 TEST(FlowManySender, From) {
-  auto v = std::array<int, 5>{0, 1, 2, 3, 4};
+  auto v = std::array<int, 5>{{0, 1, 2, 3, 4}};
   auto f = op::flow_from(v);
 
   int actual = 0;

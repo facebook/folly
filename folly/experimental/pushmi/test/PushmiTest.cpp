@@ -157,7 +157,7 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
 }
 
 TEST(FromIntManySender, TransformAndSubmit) {
-  std::array<int, 3> arr{0, 9, 99};
+  std::array<int, 3> arr{{0, 9, 99}};
   auto m = op::from(arr);
   using M = decltype(m);
 
