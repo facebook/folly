@@ -342,6 +342,7 @@ TEST(ConcurrentHashMap, UpdateStressTest) {
   }
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
+  threads.reserve(num_threads);
   for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
@@ -394,6 +395,7 @@ TEST(ConcurrentHashMap, EraseStressTest) {
   }
   std::vector<std::thread> threads;
   unsigned int num_threads = 32;
+  threads.reserve(num_threads);
   for (uint32_t t = 0; t < num_threads; t++) {
     threads.push_back(lib::thread([&, t]() {
       int offset = (iters * t / num_threads);
