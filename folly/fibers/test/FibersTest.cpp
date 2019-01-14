@@ -1319,7 +1319,7 @@ TEST(FiberManager, RequestContext) {
   {
     folly::RequestContextScopeGuard rctx;
     fm.addTask([&]() {
-      folly::RequestContextScopeGuard rctx;
+      folly::RequestContextScopeGuard rctx2;
       auto rcontext4 = folly::RequestContext::get();
       baton4.wait();
       EXPECT_EQ(rcontext4, folly::RequestContext::get());
