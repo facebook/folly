@@ -1777,7 +1777,7 @@ STL_TEST("23.2.1 Table 96.10-11", copyConstruction, is_copy_constructible, a) {
       << "only a shallow copy was made";
 
   if (false) {
-    Vector(ca2);
+    Vector ca2(ca);
     Vector u2 = ca2;
   }
 }
