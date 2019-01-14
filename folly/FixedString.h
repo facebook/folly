@@ -1458,11 +1458,12 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t pos,
       std::size_t count = npos) noexcept(false) {
     using A = const Char[1];
+    constexpr A a{Char(0)};
     return replace(
         pos,
         detail::fixedstring::checkOverflowOrNpos(
             count, size_ - detail::fixedstring::checkOverflow(pos, size_)),
-        A{Char(0)},
+        a,
         0u);
   }
 
