@@ -225,29 +225,6 @@ PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   }
 } const sender_from{};
 
-PUSHMI_TEMPLATE(
-    class In,
-    class Out,
-    bool SenderRequires,
-    bool SingleSenderRequires,
-    bool TimeSingleSenderRequires)
-(requires Sender<In>&& Receiver<Out>) //
-    constexpr bool sender_requires_from() {
-  PUSHMI_IF_CONSTEXPR_RETURN(((bool)TimeSenderTo<In, Out>)( //
-      return TimeSingleSenderRequires; //
-      ) else( //
-      PUSHMI_IF_CONSTEXPR_RETURN(((bool)SenderTo<In, Out>)( //
-          return SingleSenderRequires; //
-          ) else( //
-          PUSHMI_IF_CONSTEXPR_RETURN(((bool)SenderTo<In, Out>)( //
-              return SenderRequires; //
-              ) else( //
-
-              )) //
-          )) //
-      ))
-}
-
 struct set_value_fn {
  private:
   template <class... VN>
