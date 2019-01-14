@@ -35,8 +35,8 @@ struct via_fn_base {
 };
 template <class Executor, class Out>
 struct via_fn_data : public Out, public via_fn_base<Executor> {
-  via_fn_data(Out out, Executor exec)
-      : Out(std::move(out)), via_fn_base<Executor>(std::move(exec)) {}
+  via_fn_data(Out out, Executor ex)
+      : Out(std::move(out)), via_fn_base<Executor>(std::move(ex)) {}
 
   using Out::done;
   using Out::error;

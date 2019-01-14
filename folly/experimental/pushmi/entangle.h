@@ -169,8 +169,8 @@ struct entangled {
   entangled& operator=(const entangled&) = delete;
   entangled& operator=(entangled&&) = delete;
 
-  explicit entangled(T t)
-      : stateMachine(kUnlocked), t(std::move(t)), dual(nullptr) {}
+  explicit entangled(T t_)
+      : stateMachine(kUnlocked), t(std::move(t_)), dual(nullptr) {}
   entangled(entangled&& other)
       : stateMachine((other.lockBoth(), kLocked)),
         t(std::move(other.t)),
@@ -236,7 +236,7 @@ struct locked_entangled_pair : std::pair<T*, Dual*> {
       e->unlockBoth();
     }
   }
-  explicit locked_entangled_pair(entangled<T, Dual>& e) : e(std::addressof(e)) {
+  explicit locked_entangled_pair(entangled<T, Dual>& e_) : e(std::addressof(e_)) {
     this->e->lockBoth();
     this->first = std::addressof(this->e->t);
     this->second = !!this->e->dual ? std::addressof(this->e->dual->t) : nullptr;
@@ -303,8 +303,8 @@ struct locked_shared_entangled_pair : std::pair<T*, Dual*> {
       e.lock->unlock();
     }
   }
-  explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e)
-      : e(std::move(e)) {
+  explicit locked_shared_entangled_pair(shared_entangled<T, Dual>& e_)
+      : e(std::move(e_)) {
     this->e.lock->lock();
     this->first = this->e.get();
     this->second = this->e.dual;

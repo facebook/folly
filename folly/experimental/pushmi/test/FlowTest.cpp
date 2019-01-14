@@ -65,7 +65,7 @@ class ImmediateFlowSingleSender : public Test {
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        explicit Data(Stopper stopper_) : stopper(std::move(stopper_)) {}
         Stopper stopper;
       };
       auto up = mi::MAKE(receiver)(
@@ -165,7 +165,7 @@ class ConcurrentFlowSingleSender : public Test {
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        explicit Data(Stopper stopper_) : stopper(std::move(stopper_)) {}
         Stopper stopper;
       };
       auto up = mi::MAKE(receiver)(

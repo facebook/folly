@@ -52,7 +52,7 @@ class ImmediateFlowManySender : public Test {
     return mi::MAKE(flow_many_sender)([&](auto out) {
       using Out = decltype(out);
       struct Data : mi::receiver<> {
-        explicit Data(Out out) : out(std::move(out)), stop(false) {}
+        explicit Data(Out out_) : out(std::move(out_)), stop(false) {}
         Out out;
         bool stop;
       };
@@ -149,8 +149,8 @@ class ConcurrentFlowManySender : public Test {
 
       // boolean cancellation
       struct producer {
-        producer(Out out, TNT tnt, bool s)
-            : out(std::move(out)), tnt(std::move(tnt)), stop(s) {}
+        producer(Out out_, TNT tnt_, bool s)
+            : out(std::move(out_)), tnt(std::move(tnt_)), stop(s) {}
         Out out;
         TNT tnt;
         std::atomic<bool> stop;
@@ -158,7 +158,7 @@ class ConcurrentFlowManySender : public Test {
       auto p = std::make_shared<producer>(std::move(out), tnt_, false);
 
       struct Data : mi::receiver<> {
-        explicit Data(std::shared_ptr<producer> p) : p(std::move(p)) {}
+        explicit Data(std::shared_ptr<producer> p_) : p(std::move(p_)) {}
         std::shared_ptr<producer> p;
       };
 

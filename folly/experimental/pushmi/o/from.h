@@ -79,11 +79,11 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
 
 template <class I, class S, class Out, class Exec>
 struct flow_from_producer {
-  flow_from_producer(I begin, S end, Out out, Exec exec, bool s)
+  flow_from_producer(I begin, S end_, Out out_, Exec exec_, bool s)
       : c(begin),
-        end(end),
-        out(std::move(out)),
-        exec(std::move(exec)),
+        end(end_),
+        out(std::move(out_)),
+        exec(std::move(exec_)),
         stop(s) {}
   I c;
   S end;
@@ -96,7 +96,7 @@ template <class Producer>
 struct flow_from_up {
   using properties = properties_t<receiver<>>;
 
-  explicit flow_from_up(std::shared_ptr<Producer> p) : p(std::move(p)) {}
+  explicit flow_from_up(std::shared_ptr<Producer> p_) : p(std::move(p_)) {}
   std::shared_ptr<Producer> p;
 
   void value(std::ptrdiff_t requested) {

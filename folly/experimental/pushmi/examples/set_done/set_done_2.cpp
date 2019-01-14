@@ -44,8 +44,8 @@ auto println = [](auto v) { std::cout << v << std::endl; };
 template <class T, class E = std::exception_ptr>
 auto concat = [](auto in) {
   return mi::make_single_sender([in](auto out) mutable {
-    mi::submit(in, mi::make_receiver(out, [](auto out, auto v) {
-                 mi::submit(v, mi::any_receiver<E, T>(out));
+    mi::submit(in, mi::make_receiver(out, [](auto out_, auto v) {
+                 mi::submit(v, mi::any_receiver<E, T>(out_));
                }));
   });
 };
