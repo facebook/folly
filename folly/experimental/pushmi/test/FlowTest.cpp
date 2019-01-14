@@ -26,6 +26,7 @@ using namespace std::literals;
 #include <folly/experimental/pushmi/new_thread.h>
 #include <folly/experimental/pushmi/time_source.h>
 #include <folly/experimental/pushmi/trampoline.h>
+#include <folly/functional/Invoke.h>
 
 using namespace folly::pushmi::aliases;
 
@@ -42,17 +43,24 @@ using namespace testing;
 #define MAKE(x) make_##x
 #endif
 
+namespace {
+struct set_stop_type {
+  template <typename Stop>
+  void operator()(Stop& stop) const {
+    if (!!stop) {
+      *stop = true;
+    }
+  }
+};
+} // namespace
+
 class ImmediateFlowSingleSender : public Test {
  protected:
   auto make_producer() {
     return mi::MAKE(flow_single_sender)([&](auto out) {
       // boolean cancellation
       bool stop = false;
-      auto set_stop = [](auto& stop) {
-        if (!!stop) {
-          *stop = true;
-        }
-      };
+      auto set_stop = set_stop_type{};
       auto tokens = mi::shared_entangle(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
@@ -147,15 +155,13 @@ class ConcurrentFlowSingleSender : public Test {
   void cancellation_test(
       std::chrono::system_clock::time_point at,
       MakeTokens make_tokens) {
+    using tokens_type =
+        folly::invoke_result_t<MakeTokens&, bool&, set_stop_type&>;
     auto f = mi::MAKE(flow_single_sender)([&, make_tokens](auto out) {
       // boolean cancellation
       bool stop = false;
-      auto set_stop = [](auto& stop) {
-        if (!!stop) {
-          *stop = true;
-        }
-      };
-      auto tokens = make_tokens(stop, set_stop);
+      auto set_stop = set_stop_type{};
+      tokens_type tokens = make_tokens(stop, set_stop);
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::receiver<> {
