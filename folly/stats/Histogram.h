@@ -16,12 +16,14 @@
 
 #pragma once
 
+#include <cmath>
 #include <cstddef>
 #include <cstdint>
 #include <limits>
 #include <ostream>
 #include <stdexcept>
 #include <string>
+#include <type_traits>
 #include <vector>
 
 #include <folly/CPortability.h>
@@ -221,6 +223,12 @@ class HistogramBuckets {
   }
 
  private:
+  template <typename V>
+  bool less(const V& lhs, const V& rhs) const {
+    using nl = std::numeric_limits<V>;
+    return lhs < rhs && (nl::is_integer || rhs - lhs > nl::epsilon());
+  }
+
   ValueType bucketSize_;
   ValueType min_;
   ValueType max_;
