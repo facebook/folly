@@ -404,7 +404,7 @@ auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
   };
 
   // Child task inherits the awaiting task's executor
-  t.coro_.promise().executor_ = executor_.copy();
+  t.coro_.promise().executor_ = executor_.copyDummy();
 
   return Awaiter{std::exchange(t.coro_, {})};
 }

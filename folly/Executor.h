@@ -114,6 +114,13 @@ class Executor {
       return getKeepAliveToken(get());
     }
 
+    // Creates a dummy copy of this KeepAlive token, which doesn't increment
+    // the ref-count. Should only be used if this KeepAlive token is known to
+    // outlive such dummy copy.
+    KeepAlive copyDummy() const {
+      return KeepAlive(get(), true);
+    }
+
    private:
     static constexpr intptr_t kDummyFlag = 1;
     static constexpr intptr_t kExecutorMask = ~kDummyFlag;

@@ -128,6 +128,40 @@ TEST(Coro, ExecutorKeepAlive) {
   EXPECT_TRUE(future.isReady());
 }
 
+struct CountingExecutor : public ManualExecutor {
+  bool keepAliveAcquire() override {
+    ++keepAliveCounter;
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    --keepAliveCounter;
+  }
+
+  size_t keepAliveCounter{0};
+};
+
+coro::Task<void> executorRec(int depth) {
+  if (depth == 0) {
+    co_return;
+  }
+
+  auto executor =
+      dynamic_cast<CountingExecutor*>(co_await coro::co_current_executor);
+  DCHECK(executor);
+
+  // Note, extra keep-alives are being kept by the Futures.
+  EXPECT_EQ(3, executor->keepAliveCounter);
+
+  co_await executorRec(depth - 1);
+}
+
+TEST(Coro, ExecutorKeepAliveDummy) {
+  CountingExecutor executor;
+  executorRec(42).scheduleOn(&executor).start().via(&executor).getVia(
+      &executor);
+}
+
 coro::Task<int> taskException() {
   throw std::runtime_error("Test exception");
   co_return 42;
