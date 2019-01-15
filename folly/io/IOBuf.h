@@ -924,6 +924,16 @@ class IOBuf {
   }
 
   /**
+   *
+   * Returns free function if sharedInfo() is not nullputr, nullptr otherwise
+   *
+   **/
+  FreeFunction getFreeFn() const {
+    SharedInfo* info = sharedInfo();
+    return info ? info->freeFn : nullptr;
+  }
+
+  /**
    * Return true if all IOBufs in this chain are managed by the usual
    * refcounting mechanism (and so the lifetime of the underlying memory
    * can be extended by clone()).

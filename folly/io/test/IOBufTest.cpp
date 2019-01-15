@@ -192,6 +192,22 @@ TEST(IOBuf, GetUserData) {
   }
 }
 
+TEST(IOBuf, GetFreeFn) {
+  const uint32_t size = 4576;
+  uint8_t* data = static_cast<uint8_t*>(malloc(size));
+  folly::IOBuf::FreeFunction someFreeFn = [](void* buf, void* userData) {
+    EXPECT_EQ(buf, userData);
+    free(userData);
+  };
+
+  unique_ptr<IOBuf> someBuf(IOBuf::wrapBuffer(data, size));
+  unique_ptr<IOBuf> someOtherBuf(
+      IOBuf::takeOwnership(data, size, someFreeFn, data));
+
+  EXPECT_EQ(someBuf->getFreeFn(), nullptr);
+  EXPECT_EQ(someOtherBuf->getFreeFn(), someFreeFn);
+}
+
 TEST(IOBuf, WrapBuffer) {
   const uint32_t size1 = 1234;
   uint8_t buf1[size1];
