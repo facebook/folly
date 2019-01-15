@@ -15,7 +15,8 @@ Options.fast_fail = True
 ext = Extension("folly.executor",
                 sources=['folly/executor.pyx'],
    include_dirs=[os.getcwd()+"/..", os.getcwd()],
-   libraries=['folly', 'glog', 'double-conversion', 'iberty'])
+   libraries=['folly_pic', 'glog', 'double-conversion', 'iberty'],
+   library_dirs=[os.getcwd()+"/../.."])
 
 setup(name="folly",
       version='0.0.1',

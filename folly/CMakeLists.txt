@@ -35,6 +35,7 @@ if (CYTHON_FOUND AND PYTHONINTERP_FOUND)
 
   add_custom_target(folly_python_bindings ALL
     COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py build_ext -f
+    DEPENDS folly_pic
     WORKING_DIRECTORY ${_cybld})
 
   # Install Folly Python Bindings

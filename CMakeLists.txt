@@ -224,6 +224,14 @@ add_library(folly
 )
 apply_folly_compile_options_to_target(folly)
 
+add_library(folly_pic
+  ${files} ${hfiles}
+  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
+)
+apply_folly_compile_options_to_target(folly_pic)
+set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+
+
 target_link_libraries(folly PUBLIC folly_deps)
 
 install(TARGETS folly folly_deps
