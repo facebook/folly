@@ -93,7 +93,8 @@ template <
     class Value,
     class SkipValue = size_t,
     size_t kSkipQuantum = 0, // 0 = disabled
-    size_t kForwardQuantum = 0> // 0 = disabled
+    size_t kForwardQuantum = 0, // 0 = disabled
+    bool kUpperFirst = false>
 struct EliasFanoEncoderV2 {
   static_assert(
       std::is_integral<Value>::value && std::is_unsigned<Value>::value,
@@ -224,9 +225,14 @@ template <
     class Value,
     class SkipValue,
     size_t kSkipQuantum,
-    size_t kForwardQuantum>
-struct EliasFanoEncoderV2<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
-    Layout {
+    size_t kForwardQuantum,
+    bool kUpperFirst>
+struct EliasFanoEncoderV2<
+    Value,
+    SkipValue,
+    kSkipQuantum,
+    kForwardQuantum,
+    kUpperFirst>::Layout {
   static Layout fromUpperBoundAndSize(size_t upperBound, size_t size) {
     // numLowerBits can be at most 56 because of detail::writeBits56.
     const uint8_t numLowerBits =
@@ -301,8 +307,13 @@ struct EliasFanoEncoderV2<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
 
     result.skipPointers = advance(skipPointers);
     result.forwardPointers = advance(forwardPointers);
-    result.lower = advance(lower);
-    result.upper = advance(upper);
+    if /* constexpr */ (kUpperFirst) {
+      result.upper = advance(upper);
+      result.lower = advance(lower);
+    } else {
+      result.lower = advance(lower);
+      result.upper = advance(upper);
+    }
 
     return result;
   }
