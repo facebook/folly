@@ -223,12 +223,7 @@ class HistogramBuckets {
   }
 
  private:
-  template <typename V>
-  bool less(const V& lhs, const V& rhs) const {
-    using nl = std::numeric_limits<V>;
-    return lhs < rhs && (nl::is_integer || rhs - lhs > nl::epsilon());
-  }
-
+  static constexpr bool kIsExact = std::numeric_limits<ValueType>::is_exact;
   ValueType bucketSize_;
   ValueType min_;
   ValueType max_;
