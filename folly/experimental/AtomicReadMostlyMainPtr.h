@@ -144,7 +144,8 @@ class AtomicReadMostlyMainPtr {
     auto index = curMainPtrIndex_.load(std::memory_order_relaxed);
     ReadMostlyMainPtr<T>& oldMain = mainPtrs_[index];
     ReadMostlyMainPtr<T>& newMain = mainPtrs_[1 - index];
-    // From the entry invariant, there's no readers accessing newMain right now.
+    DCHECK(newMain.get() == nullptr)
+        << "Invariant should ensure that at most one version is non-null";
     newMain.reset(std::move(ptr));
     // If order is acq_rel, it should degrade to just release, since this is a
     // store rather than an RMW. (Of course, this is such a slow method that we
