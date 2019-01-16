@@ -44,7 +44,7 @@ struct is_propagate_const : std::false_type {};
 template <typename Pointer>
 struct is_propagate_const<propagate_const<Pointer>> : std::true_type {};
 template <typename T>
-using is_decay_propagate_const = is_propagate_const<_t<std::decay<T>>>;
+using is_decay_propagate_const = is_propagate_const<std::decay_t<T>>;
 
 namespace propagate_const_adl {
 using std::swap;
@@ -61,7 +61,7 @@ template <typename Pointer>
 class propagate_const {
  public:
   using element_type =
-      _t<std::remove_reference<decltype(*std::declval<Pointer&>())>>;
+      std::remove_reference_t<decltype(*std::declval<Pointer&>())>;
 
   constexpr propagate_const() = default;
   FOLLY_CPP14_CONSTEXPR propagate_const(propagate_const&&) = default;
@@ -110,8 +110,8 @@ class propagate_const {
 
   template <
       typename OtherPointer,
-      typename = _t<
-          std::enable_if<std::is_convertible<OtherPointer&&, Pointer>::value>>>
+      typename =
+          std::enable_if_t<std::is_convertible<OtherPointer&&, Pointer>::value>>
   FOLLY_CPP14_CONSTEXPR propagate_const& operator=(
       propagate_const<OtherPointer>&& other) {
     pointer_ = static_cast<OtherPointer&&>(other.pointer_);

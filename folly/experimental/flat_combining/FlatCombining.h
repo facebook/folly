@@ -201,7 +201,7 @@ class FlatCombining {
       static_assert(
           std::is_nothrow_constructible<
               folly::Function<void()>,
-              _t<std::decay<Func>>>::value,
+              std::decay_t<Func>>::value,
           "Try using a smaller function object that can fit in folly::Function "
           "without allocation, or use the custom interface of requestFC() to "
           "manage the requested function's arguments and results explicitly "

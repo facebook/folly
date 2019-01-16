@@ -93,10 +93,8 @@ template <
     typename T,
     typename Tag = detail::DefaultTag,
     typename Make = detail::DefaultMake<T>,
-    typename TLTag = _t<std::conditional<
-        std::is_same<Tag, detail::DefaultTag>::value,
-        void,
-        Tag>>>
+    typename TLTag = std::
+        conditional_t<std::is_same<Tag, detail::DefaultTag>::value, void, Tag>>
 class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
  private:
   struct Unique final : UniqueBase {

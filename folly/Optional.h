@@ -355,7 +355,7 @@ class Optional {
 
  private:
   template <class T>
-  friend constexpr Optional<_t<std::decay<T>>> make_optional(T&&);
+  friend constexpr Optional<std::decay_t<T>> make_optional(T&&);
   template <class T, class... Args>
   friend constexpr Optional<T> make_optional(Args&&... args);
   template <class T, class U, class... As>
@@ -456,9 +456,9 @@ void swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
 }
 
 template <class T>
-constexpr Optional<_t<std::decay<T>>> make_optional(T&& v) {
+constexpr Optional<std::decay_t<T>> make_optional(T&& v) {
   using PrivateConstructor =
-      typename folly::Optional<_t<std::decay<T>>>::PrivateConstructor;
+      typename folly::Optional<std::decay_t<T>>::PrivateConstructor;
   return {PrivateConstructor{}, std::forward<T>(v)};
 }
 

@@ -481,8 +481,8 @@ class Histogram {
 
  private:
   template <typename S, typename = std::enable_if_t<std::is_integral<S>::value>>
-  static constexpr _t<std::make_unsigned<S>> to_unsigned(S s) {
-    return static_cast<_t<std::make_unsigned<S>>>(s);
+  static constexpr std::make_unsigned_t<S> to_unsigned(S s) {
+    return static_cast<std::make_unsigned_t<S>>(s);
   }
   template <
       typename S,

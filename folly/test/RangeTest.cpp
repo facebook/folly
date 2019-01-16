@@ -1107,7 +1107,7 @@ void testRangeFunc(C&& x, size_t n) {
   const auto& cx = x;
   // type, conversion checks
   using R1Iter =
-      _t<std::conditional<_t<std::is_reference<C>>::value, int*, int const*>>;
+      std::conditional_t<_t<std::is_reference<C>>::value, int*, int const*>;
   Range<R1Iter> r1 = range(std::forward<C>(x));
   Range<const int*> r2 = range(std::forward<C>(x));
   Range<const int*> r3 = range(cx);

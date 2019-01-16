@@ -1265,8 +1265,9 @@ struct ComparableAsStringPiece {
  * operator== through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator==(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator==(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
 }
 
@@ -1274,8 +1275,9 @@ operator==(const T& lhs, const U& rhs) {
  * operator!= through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator!=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator!=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) != StringPiece(rhs);
 }
 
@@ -1283,8 +1285,9 @@ operator!=(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator<(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) < StringPiece(rhs);
 }
 
@@ -1292,8 +1295,9 @@ operator<(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator>(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) > StringPiece(rhs);
 }
 
@@ -1301,8 +1305,9 @@ operator>(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator<=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) <= StringPiece(rhs);
 }
 
@@ -1310,8 +1315,9 @@ operator<=(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator>=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
 
