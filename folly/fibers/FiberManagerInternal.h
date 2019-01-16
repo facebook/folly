@@ -31,13 +31,14 @@
 #include <folly/Likely.h>
 #include <folly/Try.h>
 #include <folly/functional/Invoke.h>
+#include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/GuardPageAllocator.h>
-#include <folly/fibers/TimeoutController.h>
+#include <folly/fibers/LoopController.h>
 #include <folly/fibers/traits.h>
 
 namespace folly {
@@ -49,8 +50,6 @@ namespace fibers {
 
 class Baton;
 class Fiber;
-class LoopController;
-class TimeoutController;
 
 template <typename T>
 class LocalType {};
@@ -513,14 +512,17 @@ class FiberManager : public ::folly::Executor {
 
   ssize_t remoteCount_{0};
 
-  std::shared_ptr<TimeoutController> timeoutManager_;
-
-  struct FibersPoolResizer {
+  class FibersPoolResizer final : private HHWheelTimer::Callback {
+   public:
     explicit FibersPoolResizer(FiberManager& fm) : fiberManager_(fm) {}
-    void operator()();
+    void run();
 
    private:
     FiberManager& fiberManager_;
+    void timeoutExpired() noexcept {
+      run();
+    }
+    void callbackCanceled() noexcept {}
   };
 
   FibersPoolResizer fibersPoolResizer_;

@@ -47,11 +47,10 @@ void Baton::wait() {
 }
 
 void Baton::wait(TimeoutHandler& timeoutHandler) {
-  auto timeoutFunc = [this, &timeoutHandler] {
+  auto timeoutFunc = [this] {
     if (!try_wait()) {
       postHelper(TIMEOUT);
     }
-    timeoutHandler.timeoutPtr_ = 0;
   };
   timeoutHandler.timeoutFunc_ = std::ref(timeoutFunc);
   timeoutHandler.fiberManager_ = FiberManager::getFiberManagerUnsafe();
@@ -110,7 +109,7 @@ bool Baton::spinWaitForEarlyPost() {
   return false;
 }
 
-bool Baton::timedWaitThread(TimeoutController::Duration timeout) {
+bool Baton::timedWaitThread(std::chrono::milliseconds timeout) {
   if (spinWaitForEarlyPost()) {
     assert(waiter_.load(std::memory_order_acquire) == POSTED);
     return true;
@@ -121,7 +120,7 @@ bool Baton::timedWaitThread(TimeoutController::Duration timeout) {
   if (LIKELY(
           waiter == NO_WAITER &&
           waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
-    auto deadline = TimeoutController::Clock::now() + timeout;
+    auto deadline = std::chrono::steady_clock::now() + timeout;
     do {
       auto* futex = &futex_.futex;
       const auto wait_rv =
@@ -189,22 +188,14 @@ void Baton::reset() {
   waiter_.store(NO_WAITER, std::memory_order_relaxed);
 }
 
-void Baton::TimeoutHandler::scheduleTimeout(
-    TimeoutController::Duration timeout) {
+void Baton::TimeoutHandler::scheduleTimeout(std::chrono::milliseconds timeout) {
   assert(fiberManager_ != nullptr);
   assert(timeoutFunc_ != nullptr);
-  assert(timeoutPtr_ == 0);
 
   if (timeout.count() > 0) {
-    timeoutPtr_ =
-        fiberManager_->timeoutManager_->registerTimeout(timeoutFunc_, timeout);
+    fiberManager_->loopController_->timer().scheduleTimeout(this, timeout);
   }
 }
 
-void Baton::TimeoutHandler::cancelTimeout() {
-  if (timeoutPtr_) {
-    fiberManager_->timeoutManager_->cancel(timeoutPtr_);
-  }
-}
 } // namespace fibers
 } // namespace folly

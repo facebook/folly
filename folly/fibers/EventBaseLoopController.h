@@ -71,7 +71,7 @@ class EventBaseLoopController : public LoopController {
   void schedule() override;
   void runLoop() override;
   void scheduleThreadSafe() override;
-  void timedSchedule(std::function<void()> func, TimePoint time) override;
+  HHWheelTimer& timer() override;
 
   friend class FiberManager;
 };

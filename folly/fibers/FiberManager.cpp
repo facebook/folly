@@ -105,7 +105,7 @@ Fiber* FiberManager::getFiber() {
   Fiber* fiber = nullptr;
 
   if (options_.fibersPoolResizePeriodMs > 0 && !fibersPoolResizerScheduled_) {
-    fibersPoolResizer_();
+    fibersPoolResizer_.run();
     fibersPoolResizerScheduled_ = true;
   }
 
@@ -181,10 +181,10 @@ void FiberManager::doFibersPoolResizing() {
   maxFibersActiveLastPeriod_ = fibersActive_;
 }
 
-void FiberManager::FibersPoolResizer::operator()() {
+void FiberManager::FibersPoolResizer::run() {
   fiberManager_.doFibersPoolResizing();
-  fiberManager_.timeoutManager_->registerTimeout(
-      *this,
+  fiberManager_.loopController_->timer().scheduleTimeout(
+      this,
       std::chrono::milliseconds(
           fiberManager_.options_.fibersPoolResizePeriodMs));
 }

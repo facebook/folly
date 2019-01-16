@@ -58,9 +58,7 @@ inline void ExecutorLoopController::scheduleThreadSafe() {
       });
 }
 
-inline void ExecutorLoopController::timedSchedule(
-    std::function<void()>,
-    TimePoint) {
+inline HHWheelTimer& ExecutorLoopController::timer() {
   throw std::logic_error("Time schedule isn't supported by asyncio executor");
 }
 

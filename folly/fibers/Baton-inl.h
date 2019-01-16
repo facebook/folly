@@ -76,31 +76,22 @@ bool Baton::try_wait_for(
     const std::chrono::duration<Rep, Period>& timeout,
     F&& mainContextFunc) {
   auto fm = FiberManager::getFiberManagerUnsafe();
+  auto timeoutMs =
+      std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
 
   if (!fm || !fm->activeFiber_) {
     mainContextFunc();
-    return timedWaitThread(timeout);
+    return timedWaitThread(timeoutMs);
   }
 
-  auto& baton = *this;
-  bool canceled = false;
-  auto timeoutFunc = [&baton, &canceled]() mutable {
-    baton.postHelper(TIMEOUT);
-    canceled = true;
-  };
+  auto timeoutFunc = [this]() mutable { this->postHelper(TIMEOUT); };
+  TimeoutHandler handler;
+  handler.timeoutFunc_ = std::ref(timeoutFunc);
 
-  auto id =
-      fm->timeoutManager_->registerTimeout(std::ref(timeoutFunc), timeout);
-
+  fm->loopController_->timer().scheduleTimeout(&handler, timeoutMs);
   waitFiber(*fm, static_cast<F&&>(mainContextFunc));
 
-  auto posted = waiter_ == POSTED;
-
-  if (!canceled) {
-    fm->timeoutManager_->cancel(id);
-  }
-
-  return posted;
+  return waiter_ == POSTED;
 }
 
 template <typename Clock, typename Duration, typename F>

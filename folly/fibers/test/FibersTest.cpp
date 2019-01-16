@@ -42,41 +42,31 @@ using folly::Try;
 
 TEST(FiberManager, batonTimedWaitTimeout) {
   bool taskAdded = false;
-  size_t iterations = 0;
 
   FiberManager manager(std::make_unique<SimpleLoopController>());
   auto& loopController =
       dynamic_cast<SimpleLoopController&>(manager.loopController());
-
-  auto now = SimpleLoopController::Clock::now();
-  loopController.setTimeFunc([&] { return now; });
+  std::chrono::steady_clock::time_point start;
 
   auto loopFunc = [&]() {
     if (!taskAdded) {
       manager.addTask([&]() {
         Baton baton;
 
-        auto res = baton.try_wait_for(std::chrono::milliseconds(230));
+        start = std::chrono::steady_clock::now();
+        constexpr auto kTimeout = std::chrono::milliseconds(230);
+        auto res = baton.try_wait_for(kTimeout);
+        auto elapsedMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start);
 
         EXPECT_FALSE(res);
-        EXPECT_EQ(5, iterations);
-
-        loopController.stop();
-      });
-      manager.addTask([&]() {
-        Baton baton;
-
-        auto res = baton.try_wait_for(std::chrono::milliseconds(130));
-
-        EXPECT_FALSE(res);
-        EXPECT_EQ(3, iterations);
+        EXPECT_LE(kTimeout, elapsedMs);
 
         loopController.stop();
       });
       taskAdded = true;
     } else {
-      now += std::chrono::milliseconds(50);
-      iterations++;
+      std::this_thread::sleep_for(std::chrono::milliseconds(50));
     }
   };
 

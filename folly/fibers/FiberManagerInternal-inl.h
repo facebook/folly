@@ -591,7 +591,6 @@ FiberManager::FiberManager(
                       << "context '" << context << "'";
         }
       }),
-      timeoutManager_(std::make_shared<TimeoutController>(*loopController_)),
       fibersPoolResizer_(*this),
       localType_(typeid(LocalT)) {
   loopController_->setFiberManager(this);
