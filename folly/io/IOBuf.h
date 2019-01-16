@@ -1375,7 +1375,9 @@ class IOBuf {
 
   struct SharedInfo {
     SharedInfo();
-    SharedInfo(FreeFunction fn, void* arg);
+    SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
+
+    static void releaseStorage(SharedInfo* info);
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.
@@ -1383,6 +1385,7 @@ class IOBuf {
     void* userData;
     std::atomic<uint32_t> refcount;
     bool externallyShared{false};
+    bool useHeapFullStorage{false};
   };
   // Helper structs for use by operator new and delete
   struct HeapPrefix;

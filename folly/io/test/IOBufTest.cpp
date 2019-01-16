@@ -163,6 +163,14 @@ TEST(IOBuf, TakeOwnership) {
     EXPECT_EQ(0, deleteCount);
   }
   EXPECT_EQ(1, deleteCount);
+  {
+    uint32_t size = 2;
+    uint8_t* buf = static_cast<uint8_t*>(malloc(size));
+    buf[0] = 'A';
+    unique_ptr<IOBuf> iobuf(IOBuf::takeOwnership(buf, size, 1));
+    fbstring str = iobuf->moveToFbString();
+    EXPECT_EQ(str, "A");
+  }
 }
 
 TEST(IOBuf, GetUserData) {

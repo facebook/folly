@@ -102,15 +102,15 @@ BENCHMARK(takeOwnershipBenchmark, iters) {
  * ============================================================================
  * folly/io/test/IOBufBenchmark.cpp                relative  time/iter  iters/s
  * ============================================================================
- * cloneOneBenchmark                                           39.97ns   25.02M
- * cloneOneIntoBenchmark                                       21.33ns   46.88M
- * cloneBenchmark                                              33.80ns   29.59M
- * cloneIntoBenchmark                                          21.81ns   45.86M
- * moveBenchmark                                                9.26ns  108.03M
- * copyBenchmark                                               27.10ns   36.91M
- * cloneCoalescedBaseline                                     305.29ns    3.28M
- * cloneCoalescedBenchmark                          676.51%    45.13ns   22.16M
- * takeOwnershipBenchmark                                      43.04ns   23.23M
+ * cloneOneBenchmark                                           35.52ns   28.15M
+ * cloneOneIntoBenchmark                                       21.60ns   46.29M
+ * cloneBenchmark                                              34.91ns   28.65M
+ * cloneIntoBenchmark                                          22.78ns   43.91M
+ * moveBenchmark                                               10.20ns   98.06M
+ * copyBenchmark                                               27.31ns   36.62M
+ * cloneCoalescedBaseline                                     307.72ns    3.25M
+ * cloneCoalescedBenchmark                          633.34%    48.59ns   20.58M
+ * takeOwnershipBenchmark                                     32.32ns   30.94M
  * ============================================================================
  */
 

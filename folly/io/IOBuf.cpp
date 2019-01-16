@@ -44,6 +44,8 @@ enum : uint16_t {
   kIOBufInUse = 0x01,
   // This memory segment contains buffer data that is still in use
   kDataInUse = 0x02,
+  // This memory segment contains a SharedInfo that is still in use
+  kSharedInfoInUse = 0x04,
 };
 
 enum : std::size_t {
@@ -117,17 +119,28 @@ struct IOBuf::HeapFullStorage {
   folly::max_align_t align;
 };
 
-IOBuf::SharedInfo::SharedInfo() : freeFn(nullptr), userData(nullptr) {
+IOBuf::SharedInfo::SharedInfo()
+    : freeFn(nullptr), userData(nullptr), useHeapFullStorage(false) {
   // Use relaxed memory ordering here.  Since we are creating a new SharedInfo,
   // no other threads should be referring to it yet.
   refcount.store(1, std::memory_order_relaxed);
 }
 
-IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg)
-    : freeFn(fn), userData(arg) {
+IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg, bool hfs)
+    : freeFn(fn), userData(arg), useHeapFullStorage(hfs) {
   // Use relaxed memory ordering here.  Since we are creating a new SharedInfo,
   // no other threads should be referring to it yet.
   refcount.store(1, std::memory_order_relaxed);
+}
+
+void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) {
+  if (info->useHeapFullStorage) {
+    auto* storageAddr =
+        reinterpret_cast<uint8_t*>(info) - offsetof(HeapFullStorage, shared);
+    auto* storage = reinterpret_cast<HeapFullStorage*>(storageAddr);
+    info->~SharedInfo();
+    IOBuf::releaseStorage(&storage->hs, kSharedInfoInUse);
+  }
 }
 
 void* IOBuf::operator new(size_t size) {
@@ -317,19 +330,27 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     FreeFunction freeFn,
     void* userData,
     bool freeOnError) {
+  HeapFullStorage* storage = nullptr;
   try {
-    // TODO: We could allocate the IOBuf object and SharedInfo all in a single
-    // memory allocation.  We could use the existing HeapStorage class, and
-    // define a new kSharedInfoInUse flag.  We could change our code to call
-    // releaseStorage(kFlagFreeSharedInfo) when this kFlagFreeSharedInfo,
-    // rather than directly calling delete.
-    //
-    // Note that we always pass freeOnError as false to the constructor.
-    // If the constructor throws we'll handle it below.  (We have to handle
-    // allocation failures from std::make_unique too.)
-    return std::make_unique<IOBuf>(
-        TAKE_OWNERSHIP, buf, capacity, length, freeFn, userData, false);
+    size_t requiredStorage = sizeof(HeapFullStorage);
+    size_t mallocSize = goodMallocSize(requiredStorage);
+    storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
+
+    new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kSharedInfoInUse);
+    new (&storage->shared)
+        SharedInfo(freeFn, userData, true /*useHeapFullStorage*/);
+
+    return unique_ptr<IOBuf>(new (&storage->hs.buf) IOBuf(
+        InternalConstructor(),
+        packFlagsAndSharedInfo(0, &storage->shared),
+        static_cast<uint8_t*>(buf),
+        capacity,
+        static_cast<uint8_t*>(buf),
+        length));
   } catch (...) {
+    if (storage) {
+      free(storage);
+    }
     takeOwnershipError(freeOnError, buf, freeFn, userData);
     throw;
   }
@@ -787,6 +808,10 @@ void IOBuf::decrementRefcount() {
     return;
   }
 
+  // save the useHeapFullStorage flag here since
+  // freeExtBuffer can delete the sharedInfo()
+  bool useHeapFullStorage = info->useHeapFullStorage;
+
   // We were the last user.  Free the buffer
   freeExtBuffer();
 
@@ -801,7 +826,11 @@ void IOBuf::decrementRefcount() {
   // SharedInfo object.)  However, handling this specially with a flag seems
   // like it shouldn't be problematic.
   if (flags() & kFlagFreeSharedInfo) {
-    delete sharedInfo();
+    delete info;
+  } else {
+    if (useHeapFullStorage) {
+      SharedInfo::releaseStorage(info);
+    }
   }
 }
 
@@ -843,6 +872,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
   // If we have a buffer allocated with malloc and we just need more tailroom,
   // try to use realloc()/xallocx() to grow the buffer in place.
   SharedInfo* info = sharedInfo();
+  bool useHeapFullStorage = info && info->useHeapFullStorage;
   if (info && (info->freeFn == nullptr) && length_ != 0 &&
       oldHeadroom >= minHeadroom) {
     size_t headSlack = oldHeadroom - minHeadroom;
@@ -897,6 +927,10 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
 
   if (flags() & kFlagFreeSharedInfo) {
     delete sharedInfo();
+  } else {
+    if (useHeapFullStorage) {
+      SharedInfo::releaseStorage(sharedInfo());
+    }
   }
 
   setFlagsAndSharedInfo(0, info);
@@ -966,6 +1000,9 @@ void IOBuf::initExtBuffer(
 }
 
 fbstring IOBuf::moveToFbString() {
+  // we need to save useHeapFullStorage since
+  // sharedInfo() may not be valid after fbstring str
+  bool useHeapFullStorage = false;
   // malloc-allocated buffers are just fine, everything else needs
   // to be turned into one.
   if (!sharedInfo() || // user owned, not ours to give up
@@ -977,6 +1014,10 @@ fbstring IOBuf::moveToFbString() {
     // We might as well get rid of all head and tailroom if we're going
     // to reallocate; we need 1 byte for NUL terminator.
     coalesceAndReallocate(0, computeChainDataLength(), this, 1);
+  } else {
+    // if we do not call coalesceAndReallocate
+    // we might need to call SharedInfo::releaseStorage()
+    useHeapFullStorage = sharedInfo() && sharedInfo()->useHeapFullStorage;
   }
 
   // Ensure NUL terminated
@@ -989,6 +1030,10 @@ fbstring IOBuf::moveToFbString() {
 
   if (flags() & kFlagFreeSharedInfo) {
     delete sharedInfo();
+  } else {
+    if (useHeapFullStorage) {
+      SharedInfo::releaseStorage(sharedInfo());
+    }
   }
 
   // Reset to a state where we can be deleted cleanly
