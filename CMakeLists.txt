@@ -218,19 +218,25 @@ target_compile_definitions(folly_base
   PUBLIC
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
-add_library(folly_pic
-  $<TARGET_PROPERTY:folly_base,SOURCES>
-)
-apply_folly_compile_options_to_target(folly_pic)
-target_include_directories(folly_pic
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
-)
-target_compile_definitions(folly_pic
-  PUBLIC
-    $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
-)
-set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+
+option(PYTHON_EXTENSIONS "Build Python Bindings for Folly, requires Cython" OFF)
+if (${PYTHON_EXTENSIONS})
+  # Compile folly such that it can be linked in to a shared library
+  # required for linking to python extensions
+  add_library(folly_pic
+    $<TARGET_PROPERTY:folly_base,SOURCES>
+  )
+  apply_folly_compile_options_to_target(folly_pic)
+  target_include_directories(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
+  )
+  target_compile_definitions(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
+  )
+  set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+endif (${PYTHON_EXTENSIONS})
 
 add_library(folly
   $<TARGET_OBJECTS:folly_base>

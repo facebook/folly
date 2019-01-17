@@ -14,7 +14,7 @@ install(
 
 add_subdirectory(experimental/exception_tracer)
 
-if (CYTHON_FOUND AND PYTHONINTERP_FOUND)
+if (${PYTHON_EXTENSIONS})
   # Create tree of symbolic links in structure required for successful
   # compliation by Cython.
   #   - must be in path named same as extension
@@ -44,4 +44,4 @@ if (CYTHON_FOUND AND PYTHONINTERP_FOUND)
     execute_process(COMMAND
     python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install \${PYROOT}
     WORKING_DIRECTORY ${_cybld})")
-endif ()
+endif (${PYTHON_EXTENSIONS})
