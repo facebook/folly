@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <boost/type_traits/has_less.hpp>
+
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 
@@ -208,21 +210,6 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
 namespace folly {
 namespace detail {
 
-// Boost 1.48 lacks has_less, we emulate a subset of it here.
-template <typename T, typename U>
-class HasLess {
-  struct BiggerThanChar {
-    char unused[2];
-  };
-  template <typename C, typename D>
-  static char test(decltype(C() < D())*);
-  template <typename, typename>
-  static BiggerThanChar test(...);
-
- public:
-  enum { value = sizeof(test<T, U>(nullptr)) == 1 };
-};
-
 /**
  * notThereYet helps the FOR_EACH_RANGE macro by opportunistically
  * using "<" instead of "!=" whenever available when checking for loop
@@ -235,7 +222,7 @@ class HasLess {
  * because of a bug in Boost 1.46: The filesystem::path::iterator
  * defines operator< (via boost::iterator_facade), but that in turn
  * uses distance_to which is undefined for that particular
- * iterator. So HasLess (defined above) identifies
+ * iterator. So boost::has_less identifies
  * boost::filesystem::path as properly comparable with <, but in fact
  * attempting to do so will yield a compile-time error.
  *
@@ -246,13 +233,13 @@ class HasLess {
 #if 0
 
 template <class T, class U>
-typename std::enable_if<HasLess<T, U>::value, bool>::type
+typename std::enable_if<boost::has_less<T, U>::value, bool>::type
 notThereYet(T& iter, const U& end) {
   return iter < end;
 }
 
 template <class T, class U>
-typename std::enable_if<!HasLess<T, U>::value, bool>::type
+typename std::enable_if<!boost::has_less<T, U>::value, bool>::type
 notThereYet(T& iter, const U& end) {
   return iter != end;
 }
@@ -284,14 +271,14 @@ notThereYet(T& iter, const U& end) {
  * FOR_EACH_RANGE_R macro.
  */
 template <class T, class U>
-typename std::enable_if<HasLess<U, T>::value, bool>::type downTo(
+typename std::enable_if<boost::has_less<U, T>::value, bool>::type downTo(
     T& iter,
     const U& begin) {
   return begin < iter--;
 }
 
 template <class T, class U>
-typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
+typename std::enable_if<!boost::has_less<U, T>::value, bool>::type downTo(
     T& iter,
     const U& begin) {
   if (iter == begin) {
