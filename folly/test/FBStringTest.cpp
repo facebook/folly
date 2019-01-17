@@ -476,13 +476,11 @@ void clause11_21_4_6_4(String& test) {
   EXPECT_EQ(res - test.begin(), pos);
   std::list<char> lst(RandomList(maxString));
   pos = random(0, test.size());
-  // Uncomment below to see a bug in gcc
-  /*res = */ test.insert(test.begin() + pos, lst.begin(), lst.end());
+  res =  test.insert(test.begin() + pos, lst.begin(), lst.end());
   // insert from initializer_list
   initializer_list<typename String::value_type> il{'a', 'b', 'c'};
   pos = random(0, test.size());
-  // Uncomment below to see a bug in gcc
-  /*res = */ test.insert(test.begin() + pos, il);
+  res =  test.insert(test.begin() + pos, il);
 
   // Test with actual input iterators
   stringstream ss;
