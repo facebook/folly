@@ -218,19 +218,24 @@ target_compile_definitions(folly_base
   PUBLIC
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
+add_library(folly_pic
+  $<TARGET_PROPERTY:folly_base,SOURCES>
+)
+apply_folly_compile_options_to_target(folly_pic)
+target_include_directories(folly_pic
+  PUBLIC
+    $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
+)
+target_compile_definitions(folly_pic
+  PUBLIC
+    $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
+)
+set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
 
 add_library(folly
   $<TARGET_OBJECTS:folly_base>
 )
 apply_folly_compile_options_to_target(folly)
-
-add_library(folly_pic
-  ${files} ${hfiles}
-  ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
-)
-apply_folly_compile_options_to_target(folly_pic)
-set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
-
 
 target_link_libraries(folly PUBLIC folly_deps)
 
