@@ -18,8 +18,7 @@
 #include <folly/io/TypedIOBuf.h>
 
 #include <cstddef>
-
-#include <boost/random.hpp>
+#include <random>
 
 #include <folly/Range.h>
 #include <folly/memory/Malloc.h>
@@ -305,18 +304,18 @@ TEST(IOBuf, CreateCombined) {
   testSwap(false);
 }
 
-void fillBuf(uint8_t* buf, uint32_t length, boost::mt19937& gen) {
+void fillBuf(uint8_t* buf, uint32_t length, std::mt19937& gen) {
   for (uint32_t n = 0; n < length; ++n) {
     buf[n] = static_cast<uint8_t>(gen() & 0xff);
   }
 }
 
-void fillBuf(IOBuf* buf, boost::mt19937& gen) {
+void fillBuf(IOBuf* buf, std::mt19937& gen) {
   buf->unshare();
   fillBuf(buf->writableData(), buf->length(), gen);
 }
 
-void checkBuf(const uint8_t* buf, uint32_t length, boost::mt19937& gen) {
+void checkBuf(const uint8_t* buf, uint32_t length, std::mt19937& gen) {
   // Rather than using EXPECT_EQ() to check each character,
   // count the number of differences and the first character that differs.
   // This way on error we'll report just that information, rather than tons of
@@ -347,15 +346,15 @@ void checkBuf(const uint8_t* buf, uint32_t length, boost::mt19937& gen) {
   }
 }
 
-void checkBuf(IOBuf* buf, boost::mt19937& gen) {
+void checkBuf(IOBuf* buf, std::mt19937& gen) {
   checkBuf(buf->data(), buf->length(), gen);
 }
 
-void checkBuf(ByteRange buf, boost::mt19937& gen) {
+void checkBuf(ByteRange buf, std::mt19937& gen) {
   checkBuf(buf.data(), buf.size(), gen);
 }
 
-void checkChain(IOBuf* buf, boost::mt19937& gen) {
+void checkChain(IOBuf* buf, std::mt19937& gen) {
   IOBuf* current = buf;
   do {
     checkBuf(current->data(), current->length(), gen);
@@ -365,7 +364,7 @@ void checkChain(IOBuf* buf, boost::mt19937& gen) {
 
 TEST(IOBuf, Chaining) {
   uint32_t fillSeed = 0x12345678;
-  boost::mt19937 gen(fillSeed);
+  std::mt19937 gen(fillSeed);
 
   // An IOBuf with external storage
   uint32_t headroom = 123;
@@ -654,7 +653,7 @@ void testFreeFn(void* buffer, void* ptr) {
 
 TEST(IOBuf, Reserve) {
   uint32_t fillSeed = 0x23456789;
-  boost::mt19937 gen(fillSeed);
+  std::mt19937 gen(fillSeed);
 
   // Reserve does nothing if empty and doesn't have to grow the buffer
   {
@@ -996,7 +995,7 @@ INSTANTIATE_TEST_CASE_P(
 
 TEST(IOBuf, getIov) {
   uint32_t fillSeed = 0xdeadbeef;
-  boost::mt19937 gen(fillSeed);
+  std::mt19937 gen(fillSeed);
 
   size_t len = 4096;
   size_t count = 32;
@@ -1514,7 +1513,7 @@ TEST(IOBuf, CloneCoalescedChain) {
   auto b = IOBuf::createChain(1000, 100);
   b->advance(10);
   const uint32_t fillSeed = 0x12345678;
-  boost::mt19937 gen(fillSeed);
+  std::mt19937 gen(fillSeed);
   {
     auto c = b.get();
     std::size_t length = c->tailroom();
@@ -1540,7 +1539,7 @@ TEST(IOBuf, CloneCoalescedSingle) {
   b->advance(10);
   b->append(900);
   const uint32_t fillSeed = 0x12345678;
-  boost::mt19937 gen(fillSeed);
+  std::mt19937 gen(fillSeed);
   fillBuf(b.get(), gen);
 
   auto c = b->cloneCoalesced();

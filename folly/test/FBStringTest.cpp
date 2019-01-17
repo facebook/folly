@@ -23,10 +23,10 @@
 #include <cstdlib>
 #include <iomanip>
 #include <list>
+#include <random>
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
-#include <boost/random.hpp>
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
@@ -42,14 +42,14 @@ using namespace folly;
 namespace {
 
 static const int seed = folly::randomNumberSeed();
-typedef boost::mt19937 RandomT;
+using RandomT = std::mt19937;
 static RandomT rng(seed);
 static const size_t maxString = 100;
 static const bool avoidAliasing = true;
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
-  boost::uniform_int<> range(low, up);
+  std::uniform_int_distribution<> range(low, up);
   return range(rng);
 }
 

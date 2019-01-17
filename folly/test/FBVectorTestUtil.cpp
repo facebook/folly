@@ -19,8 +19,6 @@
 #include <list>
 #include <string>
 
-#include <boost/random/mersenne_twister.hpp>
-
 #include <folly/FBString.h>
 #include <folly/Random.h>
 
