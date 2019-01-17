@@ -33,8 +33,13 @@ if (${PYTHON_EXTENSIONS})
     COMMAND ${CMAKE_COMMAND} -E create_symlink ${CMAKE_CURRENT_SOURCE_DIR}/python/${_src} "${_cybld}/folly/${_src}")
   endforeach()
 
+  # Tell setup.py where to find includes and libfolly_pic.a
+  set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
+  set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
+  set(libs "-L${CMAKE_BINARY_DIR}")
+
   add_custom_target(folly_python_bindings ALL
-    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py build_ext -f
+    COMMAND python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py build_ext -f ${incs} ${libs}
     DEPENDS folly_pic
     WORKING_DIRECTORY ${_cybld})
 

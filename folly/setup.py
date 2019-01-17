@@ -14,15 +14,12 @@ Options.fast_fail = True
 
 ext = Extension("folly.executor",
                 sources=['folly/executor.pyx'],
-   include_dirs=[os.getcwd()+"/../..",os.getcwd()+"/..", os.getcwd()],
-   libraries=['folly_pic', 'glog', 'double-conversion', 'iberty'],
-   library_dirs=[os.getcwd()+"/../.."])
+                libraries=['folly_pic', 'glog', 'double-conversion', 'iberty'])
 
 setup(name="folly",
       version='0.0.1',
       packages=['folly'],
       package_data={ "": ['*.pxd', '*.h'] },
-      language="c++",
       zip_safe=False,
       ext_modules = cythonize([ext],
                               compiler_directives={'language_level': 3,}))
