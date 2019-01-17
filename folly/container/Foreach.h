@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <boost/type_traits/has_less.hpp>
+
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 
@@ -230,54 +232,19 @@ class HasLess {
  * 10, 5) execute zero iterations instead of looping virtually
  * forever. At the same time, some iterator types define "!=" but not
  * "<". The notThereYet function will dispatch differently for those.
- *
- * Below is the correct implementation of notThereYet. It is disabled
- * because of a bug in Boost 1.46: The filesystem::path::iterator
- * defines operator< (via boost::iterator_facade), but that in turn
- * uses distance_to which is undefined for that particular
- * iterator. So HasLess (defined above) identifies
- * boost::filesystem::path as properly comparable with <, but in fact
- * attempting to do so will yield a compile-time error.
- *
- * The else branch (active) contains a conservative
- * implementation.
  */
 
-#if 0
-
 template <class T, class U>
-typename std::enable_if<HasLess<T, U>::value, bool>::type
+typename std::enable_if_t<boost::has_less<T, U>::value, bool>
 notThereYet(T& iter, const U& end) {
   return iter < end;
 }
 
 template <class T, class U>
-typename std::enable_if<!HasLess<T, U>::value, bool>::type
+typename std::enable_if_t<!boost::has_less<T, U>::value, bool>
 notThereYet(T& iter, const U& end) {
   return iter != end;
 }
-
-#else
-
-template <class T, class U>
-typename std::enable_if<
-    (std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
-        (std::is_pointer<T>::value && std::is_pointer<U>::value),
-    bool>::type
-notThereYet(T& iter, const U& end) {
-  return iter < end;
-}
-
-template <class T, class U>
-typename std::enable_if<
-    !((std::is_arithmetic<T>::value && std::is_arithmetic<U>::value) ||
-      (std::is_pointer<T>::value && std::is_pointer<U>::value)),
-    bool>::type
-notThereYet(T& iter, const U& end) {
-  return iter != end;
-}
-
-#endif
 
 /**
  * downTo is similar to notThereYet, but in reverse - it helps the
