@@ -53,7 +53,11 @@ class Tearable {
       is_trivially_copyable<T>::value,
       "Tearable types must be trivially copyable.");
 
-  Tearable() = default;
+  Tearable() noexcept {
+    for (std::size_t i = 0; i < kNumDataWords; ++i) {
+      std::atomic_init(&data_[i], RawWord{});
+    }
+  }
 
   Tearable(const T& val) : Tearable() {
     store(val);
@@ -87,15 +91,10 @@ class Tearable {
     // trailing data word in write(), for instance).
     unsigned char data alignas(void*)[sizeof(void*)];
   };
-  // Because std::atomic_init is declared but undefined in libstdc++-v4.9.2:
-  // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=64658.
-  struct AtomicWord : std::atomic<RawWord> {
-    AtomicWord() noexcept : std::atomic<RawWord>{RawWord{}} {}
-  };
   const static std::size_t kNumDataWords =
       (sizeof(T) + sizeof(RawWord) - 1) / sizeof(RawWord);
 
-  AtomicWord data_[kNumDataWords];
+  std::atomic<RawWord> data_[kNumDataWords];
 };
 
 } // namespace folly
