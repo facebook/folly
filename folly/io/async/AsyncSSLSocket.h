@@ -1000,6 +1000,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionIDResumed_{false};
   // This can be called for OpenSSL 1.1.0 async operation finishes
   std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
+  // Whether this socket is currently waiting on SSL_accept
+  bool waitingOnAccept_{false};
 };
 
 } // namespace folly

@@ -326,7 +326,7 @@ void AsyncSSLSocket::init() {
 
 void AsyncSSLSocket::closeNow() {
   // Close the SSL connection.
-  if (ssl_ != nullptr && fd_ != NetworkSocket()) {
+  if (ssl_ != nullptr && fd_ != NetworkSocket() && !waitingOnAccept_) {
     int rc = SSL_shutdown(ssl_.get());
     if (rc == 0) {
       rc = SSL_shutdown(ssl_.get());
@@ -1148,8 +1148,14 @@ void AsyncSSLSocket::handleAccept() noexcept {
       EventHandler::NONE, EventHandler::READ | EventHandler::WRITE);
   DelayedDestruction::DestructorGuard dg(this);
   ctx_->sslAcceptRunner()->run(
-      [this, dg]() { return SSL_accept(ssl_.get()); },
-      [this, dg](int ret) { handleReturnFromSSLAccept(ret); });
+      [this, dg]() {
+        waitingOnAccept_ = true;
+        return SSL_accept(ssl_.get());
+      },
+      [this, dg](int ret) {
+        waitingOnAccept_ = false;
+        handleReturnFromSSLAccept(ret);
+      });
 }
 
 void AsyncSSLSocket::handleReturnFromSSLAccept(int ret) {

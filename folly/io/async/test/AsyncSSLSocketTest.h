@@ -20,6 +20,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/fibers/FiberManagerMap.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -1530,4 +1531,19 @@ class SSLAcceptDestroyRunner : public SSLAcceptEvbRunner {
   SSLHandshakeBase* sslBase_;
 };
 
+class SSLAcceptFiberRunner : public SSLAcceptEvbRunner {
+ public:
+  explicit SSLAcceptFiberRunner(EventBase* evb) : SSLAcceptEvbRunner(evb) {}
+  ~SSLAcceptFiberRunner() override = default;
+
+  void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const override {
+    auto& fiberManager = folly::fibers::getFiberManager(*evb_);
+    fiberManager.addTaskFinally(
+        std::move(acceptFunc),
+        [finally = std::move(finallyFunc)](folly::Try<int>&& res) mutable {
+          finally(res.value());
+        });
+  }
+};
 } // namespace folly

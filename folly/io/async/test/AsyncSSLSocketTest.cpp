@@ -2089,6 +2089,95 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptDestroy) {
   EXPECT_TRUE(server.handshakeError_);
 }
 
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiber) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptFiberRunner>(&eventBase));
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_FALSE(server.handshakeError_);
+}
+
+static int newCloseCb(SSL* ssl, SSL_SESSION*) {
+  AsyncSSLSocket::getFromSSL(ssl)->closeNow();
+  return 1;
+}
+
+#if FOLLY_OPENSSL_IS_110
+static SSL_SESSION* getCloseCb(SSL* ssl, const unsigned char*, int, int*) {
+#else
+static SSL_SESSION* getCloseCb(SSL* ssl, unsigned char*, int, int*) {
+#endif
+  AsyncSSLSocket::getFromSSL(ssl)->closeNow();
+  return nullptr;
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  SSL_CTX_set_session_cache_mode(
+      serverCtx->getSSLCtx(),
+      SSL_SESS_CACHE_NO_INTERNAL | SSL_SESS_CACHE_SERVER);
+  SSL_CTX_sess_set_new_cb(serverCtx->getSSLCtx(), &newCloseCb);
+  SSL_CTX_sess_set_get_cb(serverCtx->getSSLCtx(), &getCloseCb);
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptFiberRunner>(&eventBase));
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("AES128-SHA256");
+  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->setOptions(SSL_OP_NO_TICKET);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  // As close() is called during session callbacks, client sees it as a
+  // successful connection
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
+  EXPECT_FALSE(server.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeError_);
+}
+
 TEST(AsyncSSLSocketTest, ConnResetErrorString) {
   // Start listening on a local port
   WriteCallbackBase writeCallback;
