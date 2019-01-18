@@ -106,4 +106,50 @@ TEST_F(SingletonRelaxedCounterTest, MultithreadCorrectness) {
 
   Counter::count();
 }
+
+TEST_F(SingletonRelaxedCounterTest, Countable) {
+  struct Object : SingletonRelaxedCountable<Object> {
+    std::shared_ptr<int> contained;
+  };
+  using Access = SingletonRelaxedCountableAccess<Object>;
+
+  EXPECT_EQ(0, Access::count());
+
+  {
+    Object a;
+    EXPECT_EQ(1, Access::count());
+  }
+  EXPECT_EQ(0, Access::count());
+
+  {
+    Object a;
+    Object b(a);
+    EXPECT_EQ(2, Access::count());
+  }
+  EXPECT_EQ(0, Access::count());
+
+  {
+    Object a;
+    Object b(std::move(a));
+    EXPECT_EQ(2, Access::count());
+  }
+  EXPECT_EQ(0, Access::count());
+
+  {
+    Object a;
+    Object b;
+    b = a;
+    EXPECT_EQ(2, Access::count());
+  }
+  EXPECT_EQ(0, Access::count());
+
+  {
+    Object a;
+    Object b;
+    b = std::move(a);
+    EXPECT_EQ(2, Access::count());
+  }
+  EXPECT_EQ(0, Access::count());
+}
+
 } // namespace folly

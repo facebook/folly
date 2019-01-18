@@ -184,4 +184,58 @@ class SingletonRelaxedCounter {
   }
 };
 
+template <typename Counted>
+class SingletonRelaxedCountableAccess;
+
+//  SingletonRelaxedCountable
+//
+//  A CRTP base class for making the instances of a type within a process be
+//  globally counted. The running counter is a relaxed counter.
+//
+//  To avoid adding any new names from the base class to the counted type, the
+//  count is exposed via a separate type SingletonRelaxedCountableAccess.
+//
+//  This type is a convenience interface around SingletonRelaxedCounter.
+template <typename Counted>
+class SingletonRelaxedCountable {
+ public:
+  SingletonRelaxedCountable() {
+    static_assert(
+        std::is_base_of<SingletonRelaxedCountable, Counted>::value, "non-crtp");
+    Counter::add(1);
+  }
+  ~SingletonRelaxedCountable() {
+    static_assert(
+        std::is_base_of<SingletonRelaxedCountable, Counted>::value, "non-crtp");
+    Counter::sub(1);
+  }
+
+  SingletonRelaxedCountable(const SingletonRelaxedCountable&)
+      : SingletonRelaxedCountable() {}
+  SingletonRelaxedCountable(SingletonRelaxedCountable&&)
+      : SingletonRelaxedCountable() {}
+
+  SingletonRelaxedCountable& operator=(const SingletonRelaxedCountable&) =
+      default;
+  SingletonRelaxedCountable& operator=(SingletonRelaxedCountable&&) = default;
+
+ private:
+  friend class SingletonRelaxedCountableAccess<Counted>;
+
+  struct Tag;
+  using Counter = SingletonRelaxedCounter<size_t, Tag>;
+};
+
+//  SingletonRelaxedCountableAccess
+//
+//  Provides access to the running count of instances of a type using the CRTP
+//  base class SingletonRelaxedCountable.
+template <typename Counted>
+class SingletonRelaxedCountableAccess {
+ public:
+  static size_t count() {
+    return SingletonRelaxedCountable<Counted>::Counter::count();
+  }
+};
+
 } // namespace folly
