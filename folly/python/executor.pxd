@@ -1,3 +1,5 @@
+# distutils: language = c++
+
 from libcpp.memory cimport unique_ptr
 from folly cimport cFollyExecutor
 

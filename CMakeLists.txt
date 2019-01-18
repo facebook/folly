@@ -117,6 +117,7 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
   ${FOLLY_DIR}/python/fibers.cpp
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
+  ${FOLLY_DIR}/cybld/folly/executor.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
@@ -217,6 +218,25 @@ target_compile_definitions(folly_base
   PUBLIC
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
+
+option(PYTHON_EXTENSIONS "Build Python Bindings for Folly, requires Cython" OFF)
+if (PYTHON_EXTENSIONS)
+  # Compile folly such that it can be linked in to a shared library
+  # required for linking to python extensions
+  add_library(folly_pic
+    $<TARGET_PROPERTY:folly_base,SOURCES>
+  )
+  apply_folly_compile_options_to_target(folly_pic)
+  target_include_directories(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
+  )
+  target_compile_definitions(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
+  )
+  set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+endif ()
 
 add_library(folly
   $<TARGET_OBJECTS:folly_base>
