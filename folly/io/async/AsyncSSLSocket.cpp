@@ -1694,6 +1694,12 @@ void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int ret) {
   if (sslSocket->handshakeComplete_ && (where & SSL_CB_HANDSHAKE_START)) {
     sslSocket->renegotiateAttempted_ = true;
   }
+  if (sslSocket->handshakeComplete_ && (where & SSL_CB_WRITE_ALERT)) {
+    const char *desc = SSL_alert_desc_string(ret);
+    if (desc && strcmp(desc, "NR") == 0) {
+      sslSocket->renegotiateAttempted_ = true;
+    }
+  }
   if (where & SSL_CB_READ_ALERT) {
     const char* type = SSL_alert_type_string(ret);
     if (type) {
