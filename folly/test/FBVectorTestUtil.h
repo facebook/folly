@@ -18,9 +18,7 @@
 // Author: andrei.alexandrescu@fb.com
 
 #include <list>
-
-#include <boost/random/mersenne_twister.hpp>
-#include <boost/random/uniform_int.hpp>
+#include <random>
 
 #include <folly/Benchmark.h>
 #include <folly/FBString.h>
@@ -32,12 +30,12 @@ namespace test {
 namespace detail {
 
 auto static const seed = randomNumberSeed();
-typedef boost::random::mt19937 RandomT;
+using RandomT = std::mt19937;
 extern RandomT rng;
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
-  boost::uniform_int<> range(low, up);
+  std::uniform_int_distribution<> range(low, up);
   return range(rng);
 }
 
