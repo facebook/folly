@@ -23,6 +23,7 @@
 #include <boost/intrusive/list.hpp>
 #include <glog/logging.h>
 
+#include <array>
 #include <chrono>
 #include <cstddef>
 #include <memory>
@@ -278,7 +279,7 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   typedef Callback::List CallbackList;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
-  std::vector<std::size_t> bitmap_;
+  std::array<std::size_t, (WHEEL_SIZE / sizeof(std::size_t)) / 8> bitmap_;
 
   int64_t timeToWheelTicks(std::chrono::milliseconds t) {
     return t.count() / interval_.count();

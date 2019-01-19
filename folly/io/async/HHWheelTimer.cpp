@@ -86,7 +86,7 @@ HHWheelTimer::HHWheelTimer(
       count_(0),
       startTime_(getCurTime()),
       processingCallbacksGuard_(nullptr) {
-  bitmap_.resize((WHEEL_SIZE / sizeof(std::size_t)) / 8, 0);
+  bitmap_.fill(0);
 }
 
 HHWheelTimer::~HHWheelTimer() {
