@@ -204,11 +204,10 @@ void basicNThreads(int numThreads, int iterations = FLAGS_stress_factor) {
   auto&& function = [&](auto id) {
     return [&, id] {
       for (auto j = 0; j < iterations; ++j) {
-        auto state = mutex.lock();
+        auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
         result.push_back(id);
         EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
-        mutex.unlock(std::move(state));
       }
     };
   };

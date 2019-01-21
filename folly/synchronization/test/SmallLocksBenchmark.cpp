@@ -50,20 +50,12 @@ static void burn(size_t n) {
 }
 
 namespace {
-
 template <typename Mutex>
 std::unique_lock<Mutex> lock(Mutex& mutex) {
   return std::unique_lock<Mutex>{mutex};
 }
 template <typename Mutex, typename Other>
 void unlock(Mutex&, Other) {}
-auto lock(folly::DistributedMutex& mutex) {
-  return mutex.lock();
-}
-template <typename State>
-void unlock(folly::DistributedMutex& mutex, State state) {
-  mutex.unlock(std::move(state));
-}
 
 struct SimpleBarrier {
   explicit SimpleBarrier(int count) : count_(count) {}
