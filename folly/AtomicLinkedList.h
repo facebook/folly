@@ -67,9 +67,10 @@ class AtomicLinkedList {
   template <typename F>
   void sweep(F&& func) {
     list_.sweep([&](Wrapper* wrapperPtr) mutable {
-      std::unique_ptr<Wrapper> wrapper(wrapperPtr);
-
-      func(std::move(wrapper->data));
+      if (nullptr != wrapperPtr) {
+        std::unique_ptr<Wrapper> wrapper(wrapperPtr);
+        func(std::move(wrapper->data));
+      } else /* do nothing */;
     });
   }
 
@@ -89,9 +90,10 @@ class AtomicLinkedList {
   template <typename F>
   void reverseSweep(F&& func) {
     list_.reverseSweep([&](Wrapper* wrapperPtr) mutable {
-      std::unique_ptr<Wrapper> wrapper(wrapperPtr);
-
-      func(std::move(wrapper->data));
+      if (nullptr != wrapperPtr) {
+        std::unique_ptr<Wrapper> wrapper(wrapperPtr);
+        func(std::move(wrapper->data));
+      } else /* do nothing */;
     });
   }
 
