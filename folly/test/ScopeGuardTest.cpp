@@ -18,8 +18,10 @@
 
 #include <glog/logging.h>
 
+#include <condition_variable>
 #include <functional>
 #include <stdexcept>
+#include <thread>
 
 #include <folly/portability/GTest.h>
 
@@ -291,6 +293,30 @@ void testScopeFailAndScopeSuccess(ErrorBehavior error, bool expectFail) {
 
   EXPECT_EQ(expectFail, scopeFailExecuted);
   EXPECT_EQ(!expectFail, scopeSuccessExecuted);
+}
+
+TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
+  bool catchExecuted = false;
+  bool failExecuted = false;
+
+  try {
+    SCOPE_FAIL {
+      failExecuted = true;
+    };
+
+    std::exception_ptr ep;
+    try {
+      throw std::runtime_error("test");
+    } catch (...) {
+      ep = std::current_exception();
+    }
+    std::rethrow_exception(ep);
+  } catch (const std::exception& ex) {
+    catchExecuted = true;
+  }
+
+  EXPECT_TRUE(catchExecuted);
+  EXPECT_TRUE(failExecuted);
 }
 
 TEST(ScopeGuard, TEST_SCOPE_FAIL_AND_SCOPE_SUCCESS) {
