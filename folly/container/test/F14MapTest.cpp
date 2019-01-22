@@ -328,6 +328,32 @@ void runSimple() {
 }
 
 template <typename T>
+void runEraseWhileIterating() {
+  constexpr int kNumElements = 1000;
+
+  // mul and kNumElements should be relatively prime
+  for (int mul : {1, 3, 17, 137, kNumElements - 1}) {
+    for (int interval : {1, 3, 5, kNumElements / 2}) {
+      T h;
+      for (auto i = 0; i < kNumElements; ++i) {
+        EXPECT_TRUE(h.emplace((i * mul) % kNumElements, i).second);
+      }
+
+      int sum = 0;
+      for (auto it = h.begin(); it != h.end();) {
+        sum += it->second;
+        if (it->first % interval == 0) {
+          it = h.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      EXPECT_EQ(kNumElements * (kNumElements - 1) / 2, sum);
+    }
+  }
+}
+
+template <typename T>
 void runRehash() {
   unsigned n = 10000;
   T h;
@@ -676,6 +702,18 @@ TEST(F14VectorMap, reverse_iterator) {
     prevSize = newSize;
     newSize *= 10;
   }
+}
+
+TEST(F14ValueMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14ValueMap<int, int>>();
+}
+
+TEST(F14NodeMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14NodeMap<int, int>>();
+}
+
+TEST(F14VectorMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14VectorMap<int, int>>();
 }
 
 TEST(F14ValueMap, rehash) {
