@@ -36,6 +36,7 @@ folly::SemiFuture<int> task42() {
 folly::SemiFuture<int> taskSlow43() {
   return folly::futures::sleep(std::chrono::seconds{1})
       .semi()
+      .deferValue([](auto) { return task42(); })
       .deferValue([](auto value) { return value + 1; });
 }
 
@@ -91,7 +92,7 @@ void runCoroutine1() {
 }
 
 void runCoroutine2() {
-  folly::SemiFuture<folly::Unit> f = 
+  folly::SemiFuture<folly::Unit> f =
     checkArg(42).scheduleOn(folly::getCPUExecutor().get()).start();
 }
 ```
@@ -106,7 +107,7 @@ folly::coro::Task<int> task42Slow() {
   // This doesn't suspend the coroutine, just extracts the Executor*
   folly::Executor* startExecutor = co_await folly::coro::co_current_executor;
   co_await folly::futures::sleep(std::chrono::seconds{1});
-  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor; 
+  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor;
   CHECK_EQ(startExecutor, resumeExecutor);
 }
 ```
