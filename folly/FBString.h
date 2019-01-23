@@ -1238,6 +1238,8 @@ class basic_fbstring {
     return assign(s);
   }
 
+  basic_fbstring& operator=(value_type c);
+
   // This actually goes directly against the C++ spec, but the
   // value_type overload is dangerous, so we're explicitly deleting
   // any overloads of operator= that could implicitly convert to
@@ -1251,11 +1253,16 @@ class basic_fbstring {
   // look for basic_fbstring::basic_fbstring, which is just plain wrong.
   template <typename TP>
   typename std::enable_if<
-      std::is_same<
-          typename std::decay<TP>::type,
-          typename folly::basic_fbstring<E, T, A, Storage>::value_type>::value,
+      std::is_convertible<
+          TP,
+          typename folly::basic_fbstring<E, T, A, Storage>::value_type>::
+              value &&
+          !std::is_same<
+              typename std::decay<TP>::type,
+              typename folly::basic_fbstring<E, T, A, Storage>::value_type>::
+              value,
       basic_fbstring<E, T, A, Storage>&>::type
-  operator=(TP c);
+  operator=(TP c) = delete;
 
   basic_fbstring& operator=(std::initializer_list<value_type> il) {
     return assign(il.begin(), il.end());
@@ -1911,13 +1918,8 @@ inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::operator=(
 }
 
 template <typename E, class T, class A, class S>
-template <typename TP>
-inline typename std::enable_if<
-    std::is_same<
-        typename std::decay<TP>::type,
-        typename folly::basic_fbstring<E, T, A, S>::value_type>::value,
-    basic_fbstring<E, T, A, S>&>::type
-basic_fbstring<E, T, A, S>::operator=(TP c) {
+inline basic_fbstring<E, T, A, S>& basic_fbstring<E, T, A, S>::operator=(
+    value_type c) {
   Invariant checker(*this);
 
   if (empty()) {
