@@ -766,15 +766,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return minWriteSize_;
   }
 
-  void setReadCB(ReadCallback* callback) override;
-
-  /**
-   * Tries to enable the buffer movable experimental feature in openssl.
-   * This is not guaranteed to succeed in case openssl does not have
-   * the experimental feature built in.
-   */
-  void setBufferMovableEnabled(bool enabled);
-
   const AsyncTransportCertificate* getPeerCertificate() const override;
   const AsyncTransportCertificate* getSelfCertificate() const override;
 
@@ -855,7 +846,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   // Inherit event notification methods from AsyncSocket except
   // the following.
-  void prepareReadBuffer(void** buf, size_t* buflen) override;
   void handleRead() noexcept override;
   void handleWrite() noexcept override;
   void handleAccept() noexcept;
@@ -982,7 +972,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   bool parseClientHello_{false};
   bool cacheAddrOnFailure_{false};
-  bool bufferMovableEnabled_{false};
   bool certCacheHit_{false};
   std::unique_ptr<ssl::ClientHelloInfo> clientHelloInfo_;
   std::vector<std::pair<char, StringPiece>> alertsReceived_;
