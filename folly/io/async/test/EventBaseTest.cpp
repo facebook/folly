@@ -2076,3 +2076,55 @@ TEST(EventBaseTest, TestStarvation) {
   EXPECT_EQ(1000, num);
   t.join();
 }
+
+TEST(EventBaseTest, RunOnDestructionBasic) {
+  bool ranOnDestruction = false;
+  {
+    EventBase evb;
+    evb.runOnDestruction([&ranOnDestruction] { ranOnDestruction = true; });
+  }
+  EXPECT_TRUE(ranOnDestruction);
+}
+
+TEST(EventBaseTest, RunOnDestructionCancelled) {
+  struct Callback : EventBase::OnDestructionCallback {
+    bool ranOnDestruction{false};
+
+    void onEventBaseDestruction() noexcept final {
+      ranOnDestruction = true;
+    }
+  };
+
+  auto cb = std::make_unique<Callback>();
+  {
+    EventBase evb;
+    evb.runOnDestruction(*cb);
+    EXPECT_TRUE(cb->cancel());
+  }
+  EXPECT_FALSE(cb->ranOnDestruction);
+  EXPECT_FALSE(cb->cancel());
+}
+
+TEST(EventBaseTest, RunOnDestructionAfterHandleDestroyed) {
+  EventBase evb;
+  {
+    bool ranOnDestruction = false;
+    auto* cb = new EventBase::FunctionOnDestructionCallback(
+        [&ranOnDestruction] { ranOnDestruction = true; });
+    evb.runOnDestruction(*cb);
+    EXPECT_TRUE(cb->cancel());
+    delete cb;
+  }
+}
+
+TEST(EventBaseTest, RunOnDestructionAddCallbackWithinCallback) {
+  size_t callbacksCalled = 0;
+  {
+    EventBase evb;
+    evb.runOnDestruction([&] {
+      ++callbacksCalled;
+      evb.runOnDestruction([&] { ++callbacksCalled; });
+    });
+  }
+  EXPECT_EQ(2, callbacksCalled);
+}

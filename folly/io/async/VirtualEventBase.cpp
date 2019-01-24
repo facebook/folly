@@ -37,14 +37,16 @@ void VirtualEventBase::destroyImpl() {
 
       clearCobTimeouts();
 
-      // To avoid potential deadlock, do not hold the mutex while invoking
-      // user-supplied callbacks.
-      LoopCallbackList callbacks;
-      onDestructionCallbacks_.swap(callbacks);
-      while (!callbacks.empty()) {
-        auto& callback = callbacks.front();
-        callbacks.pop_front();
-        callback.runLoopCallback();
+      while (!onDestructionCallbacks_.rlock()->empty()) {
+        // To avoid potential deadlock, do not hold the mutex while invoking
+        // user-supplied callbacks.
+        EventBase::OnDestructionCallback::List callbacks;
+        onDestructionCallbacks_.swap(callbacks);
+        while (!callbacks.empty()) {
+          auto& callback = callbacks.front();
+          callbacks.pop_front();
+          callback.runCallback();
+        }
       }
     }
 
@@ -62,10 +64,19 @@ VirtualEventBase::~VirtualEventBase() {
   destroy().get();
 }
 
-void VirtualEventBase::runOnDestruction(EventBase::LoopCallback* callback) {
-  onDestructionCallbacks_.withWLock([&](LoopCallbackList& callbacks) {
-    callback->cancelLoopCallback();
-    callbacks.push_back(*callback);
-  });
+void VirtualEventBase::runOnDestruction(
+    EventBase::OnDestructionCallback& callback) {
+  callback.schedule(
+      [this](auto& cb) { onDestructionCallbacks_.wlock()->push_back(cb); },
+      [this](auto& cb) {
+        onDestructionCallbacks_.withWLock(
+            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+      });
 }
+
+void VirtualEventBase::runOnDestruction(Func f) {
+  auto* callback = new EventBase::FunctionOnDestructionCallback(std::move(f));
+  runOnDestruction(*callback);
+}
+
 } // namespace folly

@@ -18,6 +18,7 @@
 #include <memory>
 #include <unordered_map>
 
+#include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 
@@ -27,14 +28,7 @@ namespace fibers {
 namespace {
 
 template <typename EventBaseT>
-class EventBaseOnDestructionCallback : public EventBase::LoopCallback {
- public:
-  explicit EventBaseOnDestructionCallback(EventBaseT& evb) : evb_(evb) {}
-  void runLoopCallback() noexcept override;
-
- private:
-  EventBaseT& evb_;
-};
+Function<void()> makeOnEventBaseDestructionCallback(EventBaseT& evb);
 
 template <typename EventBaseT>
 class GlobalCache {
@@ -65,8 +59,7 @@ class GlobalCache {
     if (!fmPtrRef) {
       auto loopController = std::make_unique<EventBaseLoopController>();
       loopController->attachEventBase(evb);
-      evb.runOnDestruction(new EventBaseOnDestructionCallback<EventBaseT>(evb));
-
+      evb.runOnDestruction(makeOnEventBaseDestructionCallback(evb));
       fmPtrRef =
           std::make_unique<FiberManager>(std::move(loopController), opts);
     }
@@ -170,12 +163,12 @@ class ThreadLocalCache {
 };
 
 template <typename EventBaseT>
-void EventBaseOnDestructionCallback<EventBaseT>::runLoopCallback() noexcept {
-  auto fm = GlobalCache<EventBaseT>::erase(evb_);
-  DCHECK(fm.get() != nullptr);
-  ThreadLocalCache<EventBaseT>::erase(evb_);
-
-  delete this;
+Function<void()> makeOnEventBaseDestructionCallback(EventBaseT& evb) {
+  return [&evb] {
+    auto fm = GlobalCache<EventBaseT>::erase(evb);
+    DCHECK(fm.get() != nullptr);
+    ThreadLocalCache<EventBaseT>::erase(evb);
+  };
 }
 
 } // namespace

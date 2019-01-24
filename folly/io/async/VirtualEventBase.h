@@ -19,6 +19,7 @@
 #include <future>
 
 #include <folly/Executor.h>
+#include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/synchronization/Baton.h>
@@ -60,7 +61,8 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
    * Note: this will be called from the loop of the EventBase, backing this
    * VirtualEventBase
    */
-  void runOnDestruction(EventBase::LoopCallback* callback);
+  void runOnDestruction(EventBase::OnDestructionCallback& callback);
+  void runOnDestruction(Func f);
 
   /**
    * VirtualEventBase destructor blocks until all tasks scheduled through its
@@ -169,6 +171,6 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
   KeepAlive<VirtualEventBase> loopKeepAlive_{
       makeKeepAlive<VirtualEventBase>(this)};
 
-  folly::Synchronized<LoopCallbackList> onDestructionCallbacks_;
+  Synchronized<EventBase::OnDestructionCallback::List> onDestructionCallbacks_;
 };
 } // namespace folly

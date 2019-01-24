@@ -22,7 +22,6 @@
 #include <functional>
 #include <list>
 #include <memory>
-#include <mutex>
 #include <queue>
 #include <set>
 #include <stack>
@@ -37,6 +36,7 @@
 #include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Synchronized.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ScheduledExecutor.h>
@@ -202,6 +202,79 @@ class EventBase : private boost::noncopyable,
     Func function_;
   };
 
+  // Base class for user callbacks to be run during EventBase destruction. As
+  // with LoopCallback, users may inherit from this class and provide a concrete
+  // implementation of onEventBaseDestruction(). (Alternatively, users may use
+  // the convenience method EventBase::runOnDestruction(Function<void()> f) to
+  // schedule a function f to be run on EventBase destruction.)
+  //
+  // The only thread-safety guarantees of OnDestructionCallback are as follows:
+  //   - Users may call runOnDestruction() from any thread, provided the caller
+  //     is the only user of the callback, i.e., the callback is not already
+  //     scheduled and there are no concurrent calls to schedule or cancel the
+  //     callback.
+  //   - Users may safely cancel() from any thread. Multiple calls to cancel()
+  //     may execute concurrently. The only caveat is that it is not safe to
+  //     call cancel() within the onEventBaseDestruction() callback.
+  class OnDestructionCallback {
+   public:
+    OnDestructionCallback() = default;
+    OnDestructionCallback(OnDestructionCallback&&) = default;
+    OnDestructionCallback& operator=(OnDestructionCallback&&) = default;
+    virtual ~OnDestructionCallback();
+
+    // Attempt to cancel the callback. If the callback is running or has already
+    // finished running, cancellation will fail. If the callback is running when
+    // cancel() is called, cancel() will block until the callback completes.
+    bool cancel();
+
+    // Callback to be invoked during ~EventBase()
+    virtual void onEventBaseDestruction() noexcept = 0;
+
+   private:
+    boost::intrusive::list_member_hook<
+        boost::intrusive::link_mode<boost::intrusive::normal_link>>
+        listHook_;
+    Function<void(OnDestructionCallback&)> eraser_;
+    Synchronized<bool> scheduled_{in_place, false};
+
+    using List = boost::intrusive::list<
+        OnDestructionCallback,
+        boost::intrusive::member_hook<
+            OnDestructionCallback,
+            decltype(listHook_),
+            &OnDestructionCallback::listHook_>>;
+
+    void schedule(
+        FunctionRef<void(OnDestructionCallback&)> linker,
+        Function<void(OnDestructionCallback&)> eraser);
+
+    friend class EventBase;
+    friend class VirtualEventBase;
+
+   protected:
+    virtual void runCallback() noexcept;
+  };
+
+  class FunctionOnDestructionCallback : public OnDestructionCallback {
+   public:
+    explicit FunctionOnDestructionCallback(Function<void()> f)
+        : f_(std::move(f)) {}
+
+    void onEventBaseDestruction() noexcept final {
+      f_();
+    }
+
+   protected:
+    void runCallback() noexcept override {
+      OnDestructionCallback::runCallback();
+      delete this;
+    }
+
+   private:
+    Function<void()> f_;
+  };
+
   /**
    * Create a new EventBase object.
    *
@@ -364,13 +437,19 @@ class EventBase : private boost::noncopyable,
    * Adds the given callback to a queue of things run before destruction
    * of current EventBase.
    *
-   * This allows users of EventBase that run in it, but don't control it,
-   * to be notified before EventBase gets destructed.
+   * This allows users of EventBase that run in it, but don't control it, to be
+   * notified before EventBase gets destructed.
    *
    * Note: will be called from the thread that invoked EventBase destructor,
    *       before the final run of loop callbacks.
    */
-  void runOnDestruction(LoopCallback* callback);
+  void runOnDestruction(OnDestructionCallback& callback);
+
+  /**
+   * Convenience function that allows users to pass in a Function<void()> to be
+   * run on EventBase destruction.
+   */
+  void runOnDestruction(Func f);
 
   /**
    * Adds a callback that will run immediately *before* the event loop.
@@ -757,7 +836,7 @@ class EventBase : private boost::noncopyable,
 
   LoopCallbackList loopCallbacks_;
   LoopCallbackList runBeforeLoopCallbacks_;
-  LoopCallbackList onDestructionCallbacks_;
+  Synchronized<OnDestructionCallback::List> onDestructionCallbacks_;
 
   // This will be null most of the time, but point to currentCallbacks
   // if we are in the middle of running loop callbacks, such that
@@ -822,9 +901,6 @@ class EventBase : private boost::noncopyable,
 
   // Name of the thread running this EventBase
   std::string name_;
-
-  // allow runOnDestruction() to be called from any threads
-  std::mutex onDestructionCallbacksMutex_;
 
   // see EventBaseLocal
   friend class detail::EventBaseLocalBase;
