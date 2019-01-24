@@ -254,7 +254,6 @@ TEST_F(HHWheelTimerTest, DestroyTimeoutSet) {
 /*
  * Test an event scheduled before the last event fires on time
  */
-
 TEST_F(HHWheelTimerTest, SlowFast) {
   StackWheelTimer t(&eventBase, milliseconds(1));
 
@@ -276,9 +275,8 @@ TEST_F(HHWheelTimerTest, SlowFast) {
   ASSERT_EQ(t2.timestamps.size(), 1);
   ASSERT_EQ(t.count(), 0);
 
-  // Check that the timeout was delayed by sleep
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(10), milliseconds(1));
-  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5), milliseconds(1));
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(10));
+  T_CHECK_TIMEOUT(start, t2.timestamps[0], milliseconds(5));
 }
 
 TEST_F(HHWheelTimerTest, ReschedTest) {
@@ -307,8 +305,8 @@ TEST_F(HHWheelTimerTest, ReschedTest) {
   ASSERT_EQ(t2.timestamps.size(), 1);
   ASSERT_EQ(t.count(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128), milliseconds(1));
-  T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(255), milliseconds(1));
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128));
+  T_CHECK_TIMEOUT(start2, t2.timestamps[0], milliseconds(255));
 }
 
 TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
@@ -335,7 +333,7 @@ TEST_F(HHWheelTimerTest, DeleteWheelInTimeout) {
   ASSERT_EQ(t1.timestamps.size(), 1);
   ASSERT_EQ(t2.timestamps.size(), 0);
 
-  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128), milliseconds(1));
+  T_CHECK_TIMEOUT(start, t1.timestamps[0], milliseconds(128));
 }
 
 /*

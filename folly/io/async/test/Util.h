@@ -35,11 +35,14 @@
  * @param expectedMS            The timeout duration, in milliseconds
  * @param tolerance             The tolerance, in milliseconds.
  */
-#define T_CHECK_TIMEOUT(start, end, expectedMS, ...)             \
-  if (!::folly::checkTimeout(                                    \
-          (start), (end), (expectedMS), false, ##__VA_ARGS__)) { \
-    SKIP() << "T_CHECK_TIMEOUT lapsed";                          \
-  }
+#define T_CHECK_TIMEOUT(start, end, expectedMS, ...)                           \
+  EXPECT_TRUE(::folly::checkTimeout(                                           \
+      (start), (end), (expectedMS), false, ##__VA_ARGS__))                     \
+      << "Timeout violates constraints, expectedMs = " << (expectedMS).count() \
+      << ", elapsed wall time ms = "                                           \
+      << std::chrono::duration_cast<std::chrono::milliseconds>(                \
+             (end).getTime() - (start).getTime())                              \
+             .count();
 
 /**
  * Verify that an event took less than a specified amount of time.
@@ -48,7 +51,10 @@
  * than the allowed time.
  */
 #define T_CHECK_TIME_LT(start, end, expectedMS, ...)            \
-  if (!::folly::checkTimeout(                                   \
-          (start), (end), (expectedMS), true, ##__VA_ARGS__)) { \
-    SKIP() << "T_CHECK_TIMEOUT_LT lapsed";                      \
-  }
+  EXPECT_TRUE(::folly::checkTimeout(                            \
+      (start), (end), (expectedMS), true, ##__VA_ARGS__))       \
+      << "Interval violates constraints, expectedMs = "         \
+      << (expectedMS).count() << ", elapsed wall time ms = "    \
+      << std::chrono::duration_cast<std::chrono::milliseconds>( \
+             (end).getTime() - (start).getTime())               \
+             .count();
