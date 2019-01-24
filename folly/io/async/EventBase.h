@@ -671,8 +671,6 @@ class EventBase : private boost::noncopyable,
 
   /// Implements the Executor interface
   void add(Cob fn) override {
-    // runInEventBaseThread() takes a const&,
-    // so no point in doing std::move here.
     runInEventBaseThread(std::move(fn));
   }
 
