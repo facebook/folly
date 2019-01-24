@@ -297,4 +297,18 @@ TEST(Task, RequestContextSideEffectsArePreserved) {
   EXPECT_FALSE(t.hasException());
 }
 
+TEST(Task, FutureTailCall) {
+  folly::ManualExecutor executor;
+  EXPECT_EQ(
+      42,
+      folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
+        co_return co_await folly::makeSemiFuture().deferValue(
+            [](auto) { return folly::makeSemiFuture(42); });
+      })
+          .scheduleOn(&executor)
+          .start()
+          .via(&executor)
+          .getVia(&executor));
+}
+
 #endif

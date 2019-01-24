@@ -2024,22 +2024,23 @@ class FutureAwaitable {
       : future_(std::move(future)) {}
 
   bool await_ready() const {
-    return future_.isReady();
+    return false;
   }
 
   T await_resume() {
-    return std::move(future_).value();
+    return std::move(result_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable {
-      // Don't std::move() so the try is left in the future for await_resume()
+    future_.setCallback_([this, h](Try<T>&& result) mutable {
+      result_ = std::move(result);
       h.resume();
     });
   }
 
  private:
   folly::Future<T> future_;
+  folly::Try<T> result_;
 };
 
 } // namespace detail
