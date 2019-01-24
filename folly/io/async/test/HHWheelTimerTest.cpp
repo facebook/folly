@@ -487,3 +487,15 @@ TEST_F(HHWheelTimerTest, prematureTimeout) {
       t2.timestamps[0].getTime() - start);
   EXPECT_GE(elapsedMs.count(), timeout.count());
 }
+
+TEST_F(HHWheelTimerTest, Level1) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  TestTimeout tt;
+  // Schedule the timeout for the tick in a next epoch.
+  t.scheduleTimeout(&tt, std::chrono::milliseconds(500));
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+  ASSERT_EQ(tt.timestamps.size(), 1);
+  T_CHECK_TIMEOUT(start, end, milliseconds(500));
+}

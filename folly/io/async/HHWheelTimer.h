@@ -293,23 +293,41 @@ class HHWheelTimer : private folly::AsyncTimeout,
   int64_t calcNextTick();
   int64_t calcNextTick(std::chrono::steady_clock::time_point curTime);
 
+  static bool inSameEpoch(int64_t tickA, int64_t tickB) {
+    return (tickA >> WHEEL_BITS) == (tickB >> WHEEL_BITS);
+  }
+
   /**
    * Schedule a given timeout by putting it into the appropriate bucket of the
    * wheel.
    *
    * @param callback           Callback to fire after `timeout`
-   * @param timeout            Interval after which the `callback` should be
-   *                           fired.
+   * @param dueTick            Tick at which the timer is due.
    * @param nextTickToProcess  next tick that was not processed by the timer
    *                           yet. Can be less than nextTick if we're lagging.
-   * @nextTick                 next tick based on the actual time
+   * @param nextTick           next tick based on the actual time
    */
   void scheduleTimeoutImpl(
       Callback* callback,
-      std::chrono::milliseconds timeout,
+      int64_t dueTick,
       int64_t nextTickToProcess,
       int64_t nextTick);
+
+  /**
+   * Compute next required wheel tick to fire and schedule the timeout for that
+   * tick.
+   *
+   * @param nextTick  next tick based on the actual time
+   */
   void scheduleNextTimeout(int64_t nextTick);
+
+  /**
+   * Schedule next wheel timeout in a fixed number of wheel ticks.
+   *
+   * @param nextTick  next tick based on the actual time
+   * @param ticks     number of ticks in which the timer should fire
+   */
+  void scheduleNextTimeout(int64_t nextTick, int64_t ticks);
 
   size_t cancelTimeoutsFromList(CallbackList& timeouts);
 
