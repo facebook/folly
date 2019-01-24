@@ -127,6 +127,8 @@ class hazptr_domain {
   RetiredList tagged_;
   Obj* unprotected_; // List of unprotected objects being reclaimed
   ObjList children_; // Children of unprotected objects being reclaimed
+  Atom<uint64_t> tagged_sync_time_{0};
+  Atom<uint64_t> untagged_sync_time_{0};
 
  public:
   /** Constructor */
@@ -192,7 +194,8 @@ class hazptr_domain {
     obj = match.head();
     reclaim_list_transitive(obj);
     if (count >= threshold()) {
-      check_threshold_and_reclaim(tagged_, RetiredList::kAlsoLock);
+      check_threshold_and_reclaim(
+          tagged_, RetiredList::kAlsoLock, tagged_sync_time_);
     }
   }
 
@@ -256,6 +259,8 @@ class hazptr_domain {
     uintptr_t btag = l.head()->batch_tag();
     bool tagged = ((btag & kTagBit) == kTagBit);
     RetiredList& rlist = tagged ? tagged_ : untagged_;
+    Atom<uint64_t>& sync_time =
+        tagged ? tagged_sync_time_ : untagged_sync_time_;
     /*** Full fence ***/ asymmetricLightBarrier();
     /* Only tagged lists need to be locked because tagging is used to
      * guarantee the identification of all objects with a specific
@@ -264,7 +269,7 @@ class hazptr_domain {
     bool lock =
         tagged ? RetiredList::kMayBeLocked : RetiredList::kMayNotBeLocked;
     rlist.push(l, lock);
-    check_threshold_and_reclaim(rlist, lock);
+    check_threshold_and_reclaim(rlist, lock, sync_time);
   }
 
   /** threshold */
@@ -274,10 +279,22 @@ class hazptr_domain {
   }
 
   /** check_threshold_and_reclaim */
-  void check_threshold_and_reclaim(RetiredList& rlist, bool lock) {
+  void check_threshold_and_reclaim(
+      RetiredList& rlist,
+      bool lock,
+      Atom<uint64_t>& sync_time) {
     if (!(lock && rlist.check_lock()) &&
-        rlist.check_threshold_try_zero_count(threshold())) {
+        (rlist.check_threshold_try_zero_count(threshold()) ||
+         check_sync_time(sync_time))) {
       do_reclamation(rlist, lock);
+    }
+  }
+
+  /** check_sync_time_and_reclaim **/
+  void check_sync_time_and_reclaim() {
+    if (!tagged_.check_lock() && check_sync_time()) {
+      do_reclamation(tagged_, RetiredList::kAlsoLock);
+      do_reclamation(untagged_, RetiredList::kDontLock);
     }
   }
 
@@ -517,14 +534,21 @@ class hazptr_domain {
     return done;
   }
 
-  bool try_timed_cleanup() {
+  bool check_sync_time(Atom<uint64_t>& sync_time) {
     uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
                         std::chrono::steady_clock::now().time_since_epoch())
                         .count();
-    auto prevtime = sync_time_.load(std::memory_order_relaxed);
+    auto prevtime = sync_time.load(std::memory_order_relaxed);
     if (time < prevtime ||
-        !sync_time_.compare_exchange_strong(
+        !sync_time.compare_exchange_strong(
             prevtime, time + kSyncTimePeriod, std::memory_order_relaxed)) {
+      return false;
+    }
+    return true;
+  }
+
+  bool try_timed_cleanup() {
+    if (!check_sync_time(sync_time_)) {
       return false;
     }
     relaxed_cleanup(); // calling regular cleanup may self deadlock
