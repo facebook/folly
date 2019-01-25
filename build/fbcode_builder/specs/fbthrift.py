@@ -21,7 +21,7 @@ def fbcode_builder_spec(builder):
         ShellQuoted('$(git describe --abbrev=0 --tags)')
     )
     builder.add_option(
-        'rsocket/rsocket-cpp/yarpl/build:cmake_defines', {'BUILD_TESTS': 'OFF'}
+        'rsocket/rsocket-cpp/build:cmake_defines', {'BUILD_TESTS': 'OFF'}
     )
     builder.add_option('krb5/krb5:git_hash', 'krb5-1.16.1-final')
     return {
@@ -33,12 +33,12 @@ def fbcode_builder_spec(builder):
             builder.github_project_workdir('krb5/krb5', 'src'),
             builder.autoconf_install('krb5/krb5'),
             builder.github_project_workdir(
-                'rsocket/rsocket-cpp', 'yarpl/build'
+                'rsocket/rsocket-cpp', 'build'
             ),
-            builder.step('configuration for yarpl', [
-                builder.cmake_configure('rsocket/rsocket-cpp/yarpl/build'),
+            builder.step('configuration for rsocket', [
+                builder.cmake_configure('rsocket/rsocket-cpp/build'),
             ]),
-            builder.cmake_install('rsocket/rsocket-cpp/yarpl'),
+            builder.cmake_install('rsocket/rsocket-cpp'),
             builder.fb_github_cmake_install('fbthrift/thrift'),
         ],
     }
