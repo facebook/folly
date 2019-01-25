@@ -19,6 +19,7 @@
 #include <unordered_map>
 
 #include <folly/Function.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
 
@@ -52,14 +53,21 @@ class GlobalCache {
   }
 
   FiberManager& getImpl(EventBaseT& evb, const FiberManager::Options& opts) {
+    bool constructed = false;
+    SCOPE_EXIT {
+      if (constructed) {
+        evb.runOnDestruction(makeOnEventBaseDestructionCallback(evb));
+      }
+    };
+
     std::lock_guard<std::mutex> lg(mutex_);
 
     auto& fmPtrRef = map_[&evb];
 
     if (!fmPtrRef) {
+      constructed = true;
       auto loopController = std::make_unique<EventBaseLoopController>();
       loopController->attachEventBase(evb);
-      evb.runOnDestruction(makeOnEventBaseDestructionCallback(evb));
       fmPtrRef =
           std::make_unique<FiberManager>(std::move(loopController), opts);
     }
