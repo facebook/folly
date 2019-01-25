@@ -2023,7 +2023,11 @@ class FutureAwaitable {
   explicit FutureAwaitable(folly::Future<T>&& future) noexcept
       : future_(std::move(future)) {}
 
-  bool await_ready() const {
+  bool await_ready() {
+    if (future_.isReady()) {
+      result_ = std::move(future_.getTry());
+      return true;
+    }
     return false;
   }
 
