@@ -204,18 +204,26 @@ class FOLLY_NODISCARD TaskWithExecutor {
     Promise<lift_unit_t<T>> p;
     auto sf = p.getSemiFuture();
 
-    [](Promise<lift_unit_t<T>> p,
-       TaskWithExecutor task) -> detail::InlineTaskDetached {
-      try {
-        p.setTry(co_await std::move(task).co_awaitTry());
-      } catch (const std::exception& e) {
-        p.setException(exception_wrapper(std::current_exception(), e));
-      } catch (...) {
-        p.setException(exception_wrapper(std::current_exception()));
-      }
-    }(std::move(p), std::move(*this));
+    std::move(*this).start([promise = std::move(p)](Try<T>&& result) mutable {
+      promise.setTry(std::move(result));
+    });
 
     return sf;
+  }
+
+  // Start execution of this task eagerly and call the callback when complete.
+  template <typename F>
+  void start(F&& tryCallback) && {
+    [](TaskWithExecutor task,
+       std::decay_t<F> cb) -> detail::InlineTaskDetached {
+      try {
+        cb(co_await std::move(task).co_awaitTry());
+      } catch (const std::exception& e) {
+        cb(Try<T>(exception_wrapper(std::current_exception(), e)));
+      } catch (...) {
+        cb(Try<T>(exception_wrapper(std::current_exception())));
+      }
+    }(std::move(*this), std::forward<F>(tryCallback));
   }
 
   template <typename ResultCreator>
