@@ -1248,18 +1248,15 @@ class basic_fbstring {
   // otherwise MSVC 2017 will aggressively pre-resolve value_type to
   // traits_type::char_type, which won't compare as equal when determining
   // which overload the implementation is referring to.
-  // Also note that MSVC 2015 Update 3 requires us to explicitly specify the
-  // namespace in-which to search for basic_fbstring, otherwise it tries to
-  // look for basic_fbstring::basic_fbstring, which is just plain wrong.
   template <typename TP>
   typename std::enable_if<
       std::is_convertible<
           TP,
-          typename folly::basic_fbstring<E, T, A, Storage>::value_type>::
+          typename basic_fbstring<E, T, A, Storage>::value_type>::
               value &&
           !std::is_same<
               typename std::decay<TP>::type,
-              typename folly::basic_fbstring<E, T, A, Storage>::value_type>::
+              typename basic_fbstring<E, T, A, Storage>::value_type>::
               value,
       basic_fbstring<E, T, A, Storage>&>::type
   operator=(TP c) = delete;

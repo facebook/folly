@@ -462,7 +462,7 @@ constexpr auto kCpplibVer = 0;
 //    extern int const num;
 //    FOLLY_STORAGE_CONSTEXPR int const num = 3;
 //
-//  True for MSVC 2015 and MSVC 2017.
+//  True as of MSVC 2017.
 #if _MSC_VER
 #define FOLLY_STORAGE_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR

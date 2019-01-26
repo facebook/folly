@@ -27,14 +27,7 @@ struct __cxa_eh_globals;
 // declared in cxxabi.h from libstdc++-v3
 extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
 } // namespace __cxxabiv1
-#elif defined(_MSC_VER) && (_MSC_VER >= 1400) && \
-    (_MSC_VER < 1900) // MSVC++ 8.0 or greater
-#define FOLLY_EXCEPTION_COUNT_USE_GETPTD
-// forward declaration (originally defined in mtdll.h from MSVCRT)
-struct _tiddata;
-extern "C" _tiddata* _getptd(); // declared in mtdll.h from MSVCRT
-#elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || \
-    (defined(_MSC_VER) && (_MSC_VER >= 1900)) // MSVC++ 2015
+#elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || defined(_MSC_VER)
 #define FOLLY_EXCEPTION_COUNT_USE_STD
 #else
 // Raise an error when trying to use this on unsupported platforms.

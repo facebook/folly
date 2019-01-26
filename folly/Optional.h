@@ -412,17 +412,10 @@ class Optional {
     };
     bool hasValue;
 
-    FOLLY_PUSH_WARNING
-    // These are both informational warnings, but they trigger rare
-    // enough that we've left them enabled. Needed as long as MSVC
-    // 2015 is supported.
-    FOLLY_MSVC_DISABLE_WARNING(4587) // constructor of .value is not called
-    FOLLY_MSVC_DISABLE_WARNING(4588) // destructor of .value is not called
     StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() {
       clear();
     }
-    FOLLY_POP_WARNING
 
     void clear() {
       if (hasValue) {
