@@ -287,7 +287,7 @@ class FBCodeBuilder(object):
         ))
 
     def parallel_make(self, make_vars=None):
-        return self.run(ShellQuoted('make -j {n} {vars}').format(
+        return self.run(ShellQuoted('make -j {n} VERBOSE=1 {vars}').format(
             n=self.option('make_parallelism'),
             vars=self._make_vars(make_vars),
         ))
@@ -295,7 +295,7 @@ class FBCodeBuilder(object):
     def make_and_install(self, make_vars=None):
         return [
             self.parallel_make(make_vars),
-            self.run(ShellQuoted('make install {vars}').format(
+            self.run(ShellQuoted('make install VERBOSE=1 {vars}').format(
                 vars=self._make_vars(make_vars),
             )),
         ]
