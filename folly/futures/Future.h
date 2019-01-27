@@ -1323,7 +1323,16 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   template <class ExceptionType, class F>
-  Future<T> thenError(F&& func) &&;
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
 
   template <class ExceptionType, class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
@@ -1355,7 +1364,16 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   template <class F>
-  Future<T> thenError(F&& func) &&;
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
+
+  template <class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
 
   template <class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
