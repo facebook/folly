@@ -1252,12 +1252,10 @@ class basic_fbstring {
   typename std::enable_if<
       std::is_convertible<
           TP,
-          typename basic_fbstring<E, T, A, Storage>::value_type>::
-              value &&
+          typename basic_fbstring<E, T, A, Storage>::value_type>::value &&
           !std::is_same<
               typename std::decay<TP>::type,
-              typename basic_fbstring<E, T, A, Storage>::value_type>::
-              value,
+              typename basic_fbstring<E, T, A, Storage>::value_type>::value,
       basic_fbstring<E, T, A, Storage>&>::type
   operator=(TP c) = delete;
 
