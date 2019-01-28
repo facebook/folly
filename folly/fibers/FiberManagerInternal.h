@@ -31,13 +31,14 @@
 #include <folly/Likely.h>
 #include <folly/Try.h>
 #include <folly/functional/Invoke.h>
+#include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/Request.h>
 
 #include <folly/experimental/ExecutionObserver.h>
 #include <folly/fibers/BoostContextCompatibility.h>
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/GuardPageAllocator.h>
-#include <folly/fibers/TimeoutController.h>
+#include <folly/fibers/LoopController.h>
 #include <folly/fibers/traits.h>
 
 namespace folly {
@@ -49,8 +50,6 @@ namespace fibers {
 
 class Baton;
 class Fiber;
-class LoopController;
-class TimeoutController;
 
 template <typename T>
 class LocalType {};
@@ -214,7 +213,32 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskFuture(F&& func)
-      -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type>;
+      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
+
+  /**
+   * Add a new task to be executed. Must be called from FiberManager's thread.
+   * The new task is run eagerly. addTaskEager will return only once the new
+   * task reaches its first suspension point or is completed.
+   *
+   * @param func Task functor; must have a signature of `void func()`.
+   *             The object will be destroyed once task execution is complete.
+   */
+  template <typename F>
+  void addTaskEager(F&& func);
+
+  /**
+   * Add a new task to be executed and return a future that will be set on
+   * return from func. Must be called from FiberManager's thread.
+   * The new task is run eagerly. addTaskEager will return only once the new
+   * task reaches its first suspension point or is completed.
+   *
+   * @param func Task functor; must have a signature of `void func()`.
+   *             The object will be destroyed once task execution is complete.
+   */
+  template <typename F>
+  auto addTaskEagerFuture(F&& func)
+      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
+
   /**
    * Add a new task to be executed. Safe to call from other threads.
    *
@@ -233,7 +257,7 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F>
   auto addTaskRemoteFuture(F&& func)
-      -> folly::Future<typename folly::lift_unit<invoke_result_t<F>>::type>;
+      -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
 
   // Executor interface calls addTaskRemote
   void add(folly::Func f) override {
@@ -251,6 +275,20 @@ class FiberManager : public ::folly::Executor {
    */
   template <typename F, typename G>
   void addTaskFinally(F&& func, G&& finally);
+
+  /**
+   * Add a new task. When the task is complete, execute finally(Try<Result>&&)
+   * on the main context.
+   * The new task is run eagerly. addTaskEager will return only once the new
+   * task reaches its first suspension point or is completed.
+   *
+   * @param func Task functor; must have a signature of `T func()` for some T.
+   * @param finally Finally functor; must have a signature of
+   *                `void finally(Try<T>&&)` and will be passed
+   *                the result of func() (including the exception if occurred).
+   */
+  template <typename F, typename G>
+  void addTaskFinallyEager(F&& func, G&& finally);
 
   /**
    * If called from a fiber, immediately switches to the FiberManager's context
@@ -335,7 +373,7 @@ class FiberManager : public ::folly::Executor {
    * not include fibers or tasks scheduled remotely).
    */
   size_t runQueueSize() const {
-    return readyFibers_.size() + yieldedFibers_.size();
+    return readyFibers_.size() + (yieldedFibers_ ? yieldedFibers_->size() : 0);
   }
 
   static FiberManager& getFiberManager();
@@ -364,8 +402,19 @@ class FiberManager : public ::folly::Executor {
     AtomicIntrusiveLinkedListHook<RemoteTask> nextRemoteTask;
   };
 
+  template <typename F>
+  Fiber* createTask(F&& func);
+
+  template <typename F, typename G>
+  Fiber* createTaskFinally(F&& func, G&& finally);
+
+  void runEagerFiber(Fiber* fiber);
+
   void activateFiber(Fiber* fiber);
   void deactivateFiber(Fiber* fiber);
+
+  template <typename LoopFunc>
+  void runFibersHelper(LoopFunc&& loopFunc);
 
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
   typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>
@@ -379,8 +428,8 @@ class FiberManager : public ::folly::Executor {
   Fiber* currentFiber_{nullptr};
 
   FiberTailQueue readyFibers_; /**< queue of fibers ready to be executed */
-  FiberTailQueue yieldedFibers_; /**< queue of fibers which have yielded
-                                      execution */
+  FiberTailQueue* yieldedFibers_{nullptr}; /**< queue of fibers which have
+                                      yielded execution */
   FiberTailQueue fibersPool_; /**< pool of uninitialized Fiber objects */
 
   GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
@@ -463,14 +512,17 @@ class FiberManager : public ::folly::Executor {
 
   ssize_t remoteCount_{0};
 
-  std::shared_ptr<TimeoutController> timeoutManager_;
-
-  struct FibersPoolResizer {
+  class FibersPoolResizer final : private HHWheelTimer::Callback {
+   public:
     explicit FibersPoolResizer(FiberManager& fm) : fiberManager_(fm) {}
-    void operator()();
+    void run();
 
    private:
     FiberManager& fiberManager_;
+    void timeoutExpired() noexcept {
+      run();
+    }
+    void callbackCanceled() noexcept {}
   };
 
   FibersPoolResizer fibersPoolResizer_;
@@ -530,6 +582,11 @@ inline void addTask(F&& func) {
   return FiberManager::getFiberManager().addTask(std::forward<F>(func));
 }
 
+template <typename F>
+inline void addTaskEager(F&& func) {
+  return FiberManager::getFiberManager().addTaskEager(std::forward<F>(func));
+}
+
 /**
  * Add a new task. When the task is complete, execute finally(Try<Result>&&)
  * on the main context.
@@ -544,6 +601,12 @@ inline void addTask(F&& func) {
 template <typename F, typename G>
 inline void addTaskFinally(F&& func, G&& finally) {
   return FiberManager::getFiberManager().addTaskFinally(
+      std::forward<F>(func), std::forward<G>(finally));
+}
+
+template <typename F, typename G>
+inline void addTaskFinallyEager(F&& func, G&& finally) {
+  return FiberManager::getFiberManager().addTaskFinallyEager(
       std::forward<F>(func), std::forward<G>(finally));
 }
 

@@ -24,6 +24,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/Optional.h>
+#include <folly/Traits.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/lang/Align.h>
 #include <folly/synchronization/Hazptr.h>
@@ -81,6 +82,7 @@ namespace folly {
 ///
 ///   Consumer operations:
 ///     void dequeue(T&);
+///     T dequeue();
 ///         Extracts an element from the front of the queue. Waits
 ///         until an element is available if needed.
 ///     bool try_dequeue(T&);
@@ -230,10 +232,15 @@ class UnboundedQueue {
   static_assert(LgSegmentSize < 32, "LgSegmentSize must be < 32");
   static_assert(LgAlign < 16, "LgAlign must be < 16");
 
+  using Sem = folly::SaturatingSemaphore<MayBlock, Atom>;
+
   struct Consumer {
     Atom<Segment*> head;
     Atom<Ticket> ticket;
-    explicit Consumer(Segment* s) : head(s), ticket(0) {}
+    hazptr_obj_batch<Atom> batch;
+    explicit Consumer(Segment* s) : head(s), ticket(0) {
+      s->set_batch_no_tag(&batch); // defined in hazptr_obj
+    }
   };
   struct Producer {
     Atom<Segment*> tail;
@@ -252,6 +259,7 @@ class UnboundedQueue {
   /** destructor */
   ~UnboundedQueue() {
     cleanUpRemainingItems();
+    c_.batch.shutdown_and_reclaim();
     reclaimRemainingSegments();
   }
 
@@ -267,6 +275,12 @@ class UnboundedQueue {
   /** dequeue */
   FOLLY_ALWAYS_INLINE void dequeue(T& item) noexcept {
     dequeueImpl(item);
+  }
+
+  FOLLY_ALWAYS_INLINE T dequeue() noexcept {
+    T item;
+    dequeueImpl(item);
+    return item;
   }
 
   /** try_dequeue */
@@ -547,6 +561,7 @@ class UnboundedQueue {
   Segment* allocNextSegment(Segment* s) {
     auto t = s->minTicket() + SegmentSize;
     Segment* next = new Segment(t);
+    next->set_batch_no_tag(&c_.batch); // defined in hazptr_obj
     next->acquire_ref_safe(); // defined in hazptr_obj_base_linked
     if (!s->casNextSegment(next)) {
       delete next;
@@ -742,8 +757,8 @@ class UnboundedQueue {
    *  Entry
    */
   class Entry {
-    folly::SaturatingSemaphore<MayBlock, Atom> flag_;
-    typename std::aligned_storage<sizeof(T), alignof(T)>::type item_;
+    Sem flag_;
+    aligned_storage_for_t<T> item_;
 
    public:
     template <typename Arg>
@@ -768,11 +783,11 @@ class UnboundedQueue {
     }
 
     template <typename Clock, typename Duration>
-    FOLLY_ALWAYS_INLINE bool tryWaitUntil(
+    FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool tryWaitUntil(
         const std::chrono::time_point<Clock, Duration>& deadline) noexcept {
       // wait-options from benchmarks on contended queues:
-      auto const opt =
-          flag_.wait_options().spin_max(std::chrono::microseconds(10));
+      static constexpr auto const opt =
+          Sem::wait_options().spin_max(std::chrono::microseconds(10));
       return flag_.try_wait_until(deadline, opt);
     }
 

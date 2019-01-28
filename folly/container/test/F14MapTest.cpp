@@ -50,7 +50,6 @@ TEST(F14Map, customSwap) {
   testCustomSwap<folly::F14FastMap>();
 }
 
-namespace {
 template <
     template <typename, typename, typename, typename, typename> class TMap,
     typename K,
@@ -116,7 +115,6 @@ void runAllocatedMemorySizeTests() {
   runAllocatedMemorySizeTest<folly::F14VectorMap, K, V>();
   runAllocatedMemorySizeTest<folly::F14FastMap, K, V>();
 }
-} // namespace
 
 TEST(F14Map, getAllocatedMemorySize) {
   runAllocatedMemorySizeTests<bool, bool>();
@@ -208,6 +206,17 @@ void runSimple() {
   T h;
 
   EXPECT_EQ(h.size(), 0);
+  h.reserve(0);
+  std::vector<std::pair<std::string const, std::string>> v(
+      {{"abc", "first"}, {"abc", "second"}});
+  h.insert(v.begin(), v.begin());
+  EXPECT_EQ(h.size(), 0);
+  EXPECT_EQ(h.bucket_count(), 0);
+  h.insert(v.begin(), v.end());
+  EXPECT_EQ(h.size(), 1);
+  EXPECT_EQ(h["abc"], s("first"));
+  h = T{};
+  EXPECT_EQ(h.bucket_count(), 0);
 
   h.insert(std::make_pair(s("abc"), s("ABC")));
   EXPECT_TRUE(h.find(s("def")) == h.end());
@@ -316,6 +325,32 @@ void runSimple() {
   F14TableStats::compute(h7);
   F14TableStats::compute(h8);
   F14TableStats::compute(h9);
+}
+
+template <typename T>
+void runEraseWhileIterating() {
+  constexpr int kNumElements = 1000;
+
+  // mul and kNumElements should be relatively prime
+  for (int mul : {1, 3, 17, 137, kNumElements - 1}) {
+    for (int interval : {1, 3, 5, kNumElements / 2}) {
+      T h;
+      for (auto i = 0; i < kNumElements; ++i) {
+        EXPECT_TRUE(h.emplace((i * mul) % kNumElements, i).second);
+      }
+
+      int sum = 0;
+      for (auto it = h.begin(); it != h.end();) {
+        sum += it->second;
+        if (it->first % interval == 0) {
+          it = h.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      EXPECT_EQ(kNumElements * (kNumElements - 1) / 2, sum);
+    }
+  }
 }
 
 template <typename T>
@@ -667,6 +702,18 @@ TEST(F14VectorMap, reverse_iterator) {
     prevSize = newSize;
     newSize *= 10;
   }
+}
+
+TEST(F14ValueMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14ValueMap<int, int>>();
+}
+
+TEST(F14NodeMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14NodeMap<int, int>>();
+}
+
+TEST(F14VectorMap, eraseWhileIterating) {
+  runEraseWhileIterating<F14VectorMap<int, int>>();
 }
 
 TEST(F14ValueMap, rehash) {
@@ -1498,6 +1545,192 @@ TEST(F14FastMap, heterogeneousInsert) {
       transparent<hasher<StringPiece>>,
       transparent<DefaultKeyEqual<StringPiece>>>>();
   runHeterogeneousInsertStringTest<F14FastMap<std::string, std::string>>();
+}
+
+namespace {
+
+// std::is_convertible is not transitive :( Problem scenario: B<T> is
+// implicitly convertible to A, so hasher that takes A can be used as a
+// transparent hasher for a map with key of type B<T>. C is implicitly
+// convertible to any B<T>, but we have to disable heterogeneous find
+// for C.  There is no way to infer the T of the intermediate type so C
+// can't be used to explicitly construct A.
+
+struct A {
+  int value;
+
+  bool operator==(A const& rhs) const {
+    return value == rhs.value;
+  }
+  bool operator!=(A const& rhs) const {
+    return !(*this == rhs);
+  }
+};
+
+struct AHasher {
+  std::size_t operator()(A const& v) const {
+    return v.value;
+  }
+};
+
+template <typename T>
+struct B {
+  int value;
+
+  explicit B(int v) : value(v) {}
+
+  /* implicit */ B(A const& v) : value(v.value) {}
+
+  /* implicit */ operator A() const {
+    return A{value};
+  }
+};
+
+struct C {
+  int value;
+
+  template <typename T>
+  /* implicit */ operator B<T>() const {
+    return B<T>{value};
+  }
+};
+} // namespace
+
+TEST(F14FastMap, disabledDoubleTransparent) {
+  static_assert(std::is_convertible<B<char>, A>::value, "");
+  static_assert(std::is_convertible<C, B<char>>::value, "");
+  static_assert(!std::is_convertible<C, A>::value, "");
+
+  F14FastMap<
+      B<char>,
+      int,
+      folly::transparent<AHasher>,
+      folly::transparent<std::equal_to<A>>>
+      map;
+  map[A{10}] = 10;
+
+  EXPECT_TRUE(map.find(C{10}) != map.end());
+  EXPECT_TRUE(map.find(C{20}) == map.end());
+}
+
+template <typename M>
+void runRandomInsertOrderTest() {
+  if (FOLLY_F14_PERTURB_INSERTION_ORDER) {
+    std::string prev;
+    bool diffFound = false;
+    for (int tries = 0; tries < 100; ++tries) {
+      M m;
+      for (char x = '0'; x <= '7'; ++x) {
+        m.try_emplace(x);
+      }
+      m.reserve(10);
+      auto it = m.try_emplace('8').first;
+      auto addr = &*it;
+      m.try_emplace('9');
+      EXPECT_TRUE(it == m.find('8'));
+      EXPECT_TRUE(addr = &*m.find('8'));
+      std::string s;
+      for (auto&& e : m) {
+        s.push_back(e.first);
+      }
+      LOG(INFO) << s << "\n";
+      if (prev.empty()) {
+        prev = s;
+        continue;
+      }
+      if (prev != s) {
+        diffFound = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(diffFound) << "no randomness found in insert order";
+  }
+}
+
+TEST(F14Map, randomInsertOrder) {
+  runRandomInsertOrderTest<F14ValueMap<char, char>>();
+  runRandomInsertOrderTest<F14FastMap<char, char>>();
+  runRandomInsertOrderTest<F14FastMap<char, std::string>>();
+}
+
+template <typename M>
+void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
+  using K = typename M::key_type;
+  for (std::size_t n = minSize; n <= maxSize; ++n) {
+    M m1;
+    m1.reserve(n);
+    auto cap = m1.bucket_count();
+    double ratio = cap * 1.0 / n;
+    // worst case scenario is that rehash just occurred and capacityScale
+    // is 5*2^12
+    EXPECT_TRUE(ratio < 1 + 1.0 / (5 << 12))
+        << ratio << ", " << cap << ", " << n;
+    m1[0];
+    M m2;
+    m2 = m1;
+    EXPECT_LE(m2.bucket_count(), 2);
+    for (K i = 1; i < n; ++i) {
+      m1[i];
+    }
+    EXPECT_EQ(m1.bucket_count(), cap);
+    M m3 = m1;
+    EXPECT_EQ(m3.bucket_count(), cap);
+    for (K i = n; i <= cap; ++i) {
+      m1[i];
+    }
+    EXPECT_GT(m1.bucket_count(), cap);
+    EXPECT_LE(m1.bucket_count(), 3 * cap);
+
+    M m4;
+    for (K i = 0; i < n; ++i) {
+      m4[i];
+    }
+    // reserve(0) works like shrink_to_fit.  Note that tight fit (1/8
+    // waste bound) only applies for vector policy or single-chunk, which
+    // might not apply to m1.  m3 should already have been optimally sized.
+    m1.reserve(0);
+    m3.reserve(0);
+    m4.reserve(0);
+    EXPECT_GT(m1.load_factor(), 0.5);
+    EXPECT_GE(m3.load_factor(), 0.875);
+    EXPECT_EQ(m3.bucket_count(), cap);
+    EXPECT_GE(m4.load_factor(), 0.875);
+  }
+}
+
+TEST(F14Map, continuousCapacitySmall) {
+  runContinuousCapacityTest<folly::F14NodeMap<std::size_t, std::string>>(1, 14);
+  runContinuousCapacityTest<folly::F14ValueMap<std::size_t, std::string>>(
+      1, 14);
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1, 100);
+  runContinuousCapacityTest<folly::F14FastMap<std::size_t, std::string>>(
+      1, 100);
+}
+
+TEST(F14Map, continuousCapacityBig0) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 - 1, 1000000 - 1);
+}
+
+TEST(F14Map, continuousCapacityBig1) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000, 1000000);
+}
+
+TEST(F14Map, continuousCapacityBig2) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 + 1, 1000000 + 1);
+}
+
+TEST(F14Map, continuousCapacityBig3) {
+  runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
+      1000000 + 2, 1000000 + 2);
+}
+
+TEST(F14Map, continuousCapacityF12) {
+  runContinuousCapacityTest<folly::F14VectorMap<uint16_t, uint16_t>>(
+      0xfff0, 0xfffe);
 }
 
 ///////////////////////////////////

@@ -134,6 +134,8 @@ class ObserverManager {
     core->refresh(instance->version_, false);
   }
 
+  static void waitForAllUpdates();
+
   class DependencyRecorder {
    public:
     using DependencySet = std::unordered_set<Core::Ptr>;

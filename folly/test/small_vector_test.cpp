@@ -895,15 +895,15 @@ TEST(small_vector, InputIterator) {
 }
 
 TEST(small_vector, NoCopyCtor) {
-  struct Test {
-    Test() = default;
-    Test(const Test&) = delete;
-    Test(Test&&) = default;
+  struct Tester {
+    Tester() = default;
+    Tester(const Tester&) = delete;
+    Tester(Tester&&) = default;
 
     int field = 42;
   };
 
-  small_vector<Test> test(10);
+  small_vector<Tester> test(10);
   ASSERT_EQ(test.size(), 10);
   for (const auto& element : test) {
     EXPECT_EQ(element.field, 42);

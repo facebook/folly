@@ -22,9 +22,8 @@
 #include <cstdlib>
 #include <fstream>
 #include <list>
+#include <random>
 #include <sstream>
-
-#include <boost/random.hpp>
 
 #include <folly/Benchmark.h>
 #include <folly/Random.h>
@@ -35,12 +34,12 @@ using namespace std;
 using namespace folly;
 
 static const int seed = folly::randomNumberSeed();
-typedef boost::mt19937 RandomT;
+using RandomT = std::mt19937;
 static RandomT rng(seed);
 
 template <class Integral1, class Integral2>
 Integral2 random(Integral1 low, Integral2 up) {
-  boost::uniform_int<> range(low, up);
+  std::uniform_int_distribution<> range(low, up);
   return range(rng);
 }
 

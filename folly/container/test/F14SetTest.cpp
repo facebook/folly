@@ -201,6 +201,15 @@ void runSimple() {
   T h;
 
   EXPECT_EQ(h.size(), 0);
+  h.reserve(0);
+  std::vector<std::string> v({"abc", "abc"});
+  h.insert(v.begin(), v.begin());
+  EXPECT_EQ(h.size(), 0);
+  EXPECT_EQ(h.bucket_count(), 0);
+  h.insert(v.begin(), v.end());
+  EXPECT_EQ(h.size(), 1);
+  h = T{};
+  EXPECT_EQ(h.bucket_count(), 0);
 
   h.insert(s("abc"));
   EXPECT_TRUE(h.find(s("def")) == h.end());
@@ -301,6 +310,32 @@ void runSimple() {
   F14TableStats::compute(h6);
   F14TableStats::compute(h7);
   F14TableStats::compute(h8);
+}
+
+template <typename T>
+void runEraseWhileIterating() {
+  constexpr int kNumElements = 1000;
+
+  // mul and kNumElements should be relatively prime
+  for (int mul : {1, 3, 17, 137, kNumElements - 1}) {
+    for (int interval : {1, 3, 5, kNumElements / 2}) {
+      T h;
+      for (auto i = 0; i < kNumElements; ++i) {
+        EXPECT_TRUE(h.emplace((i * mul) % kNumElements).second);
+      }
+
+      int sum = 0;
+      for (auto it = h.begin(); it != h.end();) {
+        sum += *it;
+        if (*it % interval == 0) {
+          it = h.erase(it);
+        } else {
+          ++it;
+        }
+      }
+      EXPECT_EQ(kNumElements * (kNumElements - 1) / 2, sum);
+    }
+  }
 }
 
 template <typename T>
@@ -591,6 +626,18 @@ TEST(F14VectorMap, reverse_iterator) {
     prevSize = newSize;
     newSize *= 10;
   }
+}
+
+TEST(F14ValueSet, eraseWhileIterating) {
+  runEraseWhileIterating<F14ValueSet<int>>();
+}
+
+TEST(F14NodeSet, eraseWhileIterating) {
+  runEraseWhileIterating<F14NodeSet<int>>();
+}
+
+TEST(F14VectorSet, eraseWhileIterating) {
+  runEraseWhileIterating<F14VectorSet<int>>();
 }
 
 TEST(F14ValueSet, rehash) {
@@ -1139,6 +1186,71 @@ TEST(F14FastSet, heterogeneousInsert) {
 }
 
 namespace {
+
+// std::is_convertible is not transitive :( Problem scenario: B<T> is
+// implicitly convertible to A, so hasher that takes A can be used as a
+// transparent hasher for a map with key of type B<T>. C is implicitly
+// convertible to any B<T>, but we have to disable heterogeneous find
+// for C.  There is no way to infer the T of the intermediate type so C
+// can't be used to explicitly construct A.
+
+struct A {
+  int value;
+
+  bool operator==(A const& rhs) const {
+    return value == rhs.value;
+  }
+  bool operator!=(A const& rhs) const {
+    return !(*this == rhs);
+  }
+};
+
+struct AHasher {
+  std::size_t operator()(A const& v) const {
+    return v.value;
+  }
+};
+
+template <typename T>
+struct B {
+  int value;
+
+  explicit B(int v) : value(v) {}
+
+  /* implicit */ B(A const& v) : value(v.value) {}
+
+  /* implicit */ operator A() const {
+    return A{value};
+  }
+};
+
+struct C {
+  int value;
+
+  template <typename T>
+  /* implicit */ operator B<T>() const {
+    return B<T>{value};
+  }
+};
+} // namespace
+
+TEST(F14FastSet, disabledDoubleTransparent) {
+  static_assert(std::is_convertible<B<char>, A>::value, "");
+  static_assert(std::is_convertible<C, B<char>>::value, "");
+  static_assert(!std::is_convertible<C, A>::value, "");
+
+  F14FastSet<
+      B<char>,
+      folly::transparent<AHasher>,
+      folly::transparent<std::equal_to<A>>>
+      set;
+  set.emplace(A{10});
+
+  EXPECT_TRUE(set.find(C{10}) != set.end());
+  EXPECT_TRUE(set.find(C{20}) == set.end());
+}
+
+namespace {
 struct CharArrayHasher {
   template <std::size_t N>
   std::size_t operator()(std::array<char, N> const& value) const {
@@ -1176,6 +1288,42 @@ struct RunAllValueSizeTests<S, 0> {
 
 TEST(F14ValueSet, valueSize) {
   RunAllValueSizeTests<F14ValueSet, 32>{}();
+}
+
+template <typename S, typename F>
+void runRandomInsertOrderTest(F&& func) {
+  if (FOLLY_F14_PERTURB_INSERTION_ORDER) {
+    std::string prev;
+    bool diffFound = false;
+    for (int tries = 0; tries < 100; ++tries) {
+      S set;
+      for (char x = '0'; x <= '9'; ++x) {
+        set.emplace(func(x));
+      }
+      std::string s;
+      for (auto&& e : set) {
+        s += e;
+      }
+      LOG(INFO) << s << "\n";
+      if (prev.empty()) {
+        prev = s;
+        continue;
+      }
+      if (prev != s) {
+        diffFound = true;
+        break;
+      }
+    }
+    EXPECT_TRUE(diffFound) << "no randomness found in insert order";
+  }
+}
+
+TEST(F14Set, randomInsertOrder) {
+  runRandomInsertOrderTest<F14ValueSet<char>>([](char x) { return x; });
+  runRandomInsertOrderTest<F14FastSet<char>>([](char x) { return x; });
+  runRandomInsertOrderTest<F14FastSet<std::string>>([](char x) {
+    return std::string{std::size_t{1}, x};
+  });
 }
 
 ///////////////////////////////////

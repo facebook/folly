@@ -58,7 +58,7 @@ class IOObjectCache {
       it = p.first;
     }
     return it->second;
-  };
+  }
 
   void setFactory(TFactory factory) {
     factory_ = std::move(factory);

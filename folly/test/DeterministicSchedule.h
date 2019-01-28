@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 #include <atomic>
 #include <functional>
+#include <list>
 #include <mutex>
 #include <queue>
 #include <thread>
@@ -50,6 +51,77 @@ namespace test {
 /* signatures of user-defined auxiliary functions */
 using AuxAct = std::function<void(bool)>;
 using AuxChk = std::function<void(uint64_t)>;
+
+struct DSchedThreadId {
+  unsigned val;
+  explicit constexpr DSchedThreadId() : val(0) {}
+  explicit constexpr DSchedThreadId(unsigned v) : val(v) {}
+  unsigned operator=(unsigned v) {
+    return val = v;
+  }
+};
+
+class DSchedTimestamp {
+ public:
+  constexpr explicit DSchedTimestamp() : val_(0) {}
+  DSchedTimestamp advance() {
+    return DSchedTimestamp(++val_);
+  }
+  bool atLeastAsRecentAs(const DSchedTimestamp& other) const {
+    return val_ >= other.val_;
+  }
+  void sync(const DSchedTimestamp& other) {
+    val_ = std::max(val_, other.val_);
+  }
+  bool initialized() const {
+    return val_ > 0;
+  }
+  static constexpr DSchedTimestamp initial() {
+    return DSchedTimestamp(1);
+  }
+
+ protected:
+  constexpr explicit DSchedTimestamp(size_t v) : val_(v) {}
+
+ private:
+  size_t val_;
+};
+
+class ThreadTimestamps {
+ public:
+  void sync(const ThreadTimestamps& src);
+  DSchedTimestamp advance(DSchedThreadId tid);
+
+  void setIfNotPresent(DSchedThreadId tid, DSchedTimestamp ts);
+  void clear();
+  bool atLeastAsRecentAs(DSchedThreadId tid, DSchedTimestamp ts) const;
+  bool atLeastAsRecentAsAny(const ThreadTimestamps& src) const;
+
+ private:
+  std::vector<DSchedTimestamp> timestamps_;
+};
+
+struct ThreadInfo {
+  ThreadInfo() = delete;
+  explicit ThreadInfo(DSchedThreadId tid) {
+    acqRelOrder_.setIfNotPresent(tid, DSchedTimestamp::initial());
+  }
+  ThreadTimestamps acqRelOrder_;
+  ThreadTimestamps acqFenceOrder_;
+  ThreadTimestamps relFenceOrder_;
+};
+
+class ThreadSyncVar {
+ public:
+  ThreadSyncVar() = default;
+
+  void acquire();
+  void release();
+  void acq_rel();
+
+ private:
+  ThreadTimestamps order_;
+};
 
 /**
  * DeterministicSchedule coordinates the inter-thread communication of a
@@ -122,6 +194,7 @@ class DeterministicSchedule : boost::noncopyable {
   template <typename Func, typename... Args>
   static inline std::thread thread(Func&& func, Args&&... args) {
     // TODO: maybe future versions of gcc will allow forwarding to thread
+    atomic_thread_fence(std::memory_order_seq_cst);
     auto sched = tls_sched;
     auto sem = sched ? sched->beforeThreadCreate() : nullptr;
     auto child = std::thread(
@@ -151,6 +224,15 @@ class DeterministicSchedule : boost::noncopyable {
 
   /** Calls child.join() as part of a deterministic schedule. */
   static void join(std::thread& child);
+
+  /** Waits for each thread in children to reach the end of their
+   * thread function without allowing them to fully terminate. Then,
+   * allow one child at a time to fully terminate and join each one.
+   * This functionality is important to protect shared access that can
+   * take place after beforeThreadExit() has already been invoked,
+   * for example when executing thread local destructors.
+   */
+  static void joinAll(std::vector<std::thread>& children);
 
   /** Calls sem_post(sem) as part of a deterministic schedule. */
   static void post(sem_t* sem);
@@ -188,13 +270,34 @@ class DeterministicSchedule : boost::noncopyable {
   /** Remove the current thread's semaphore from sems_ */
   static sem_t* descheduleCurrentThread();
 
+  /** Returns true if the current thread has already completed
+   * the thread function, for example if the thread is executing
+   * thread local destructors. */
+  static bool isCurrentThreadExiting() {
+    return tls_exiting;
+  }
+
   /** Add sem back into sems_ */
   static void reschedule(sem_t* sem);
+
+  static bool isActive() {
+    return tls_sched != nullptr;
+  }
+
+  static DSchedThreadId getThreadId() {
+    assert(tls_sched != nullptr);
+    return tls_threadId;
+  }
+
+  static ThreadInfo& getCurrentThreadInfo();
+
+  static void atomic_thread_fence(std::memory_order mo);
 
  private:
   static FOLLY_TLS sem_t* tls_sem;
   static FOLLY_TLS DeterministicSchedule* tls_sched;
-  static FOLLY_TLS unsigned tls_threadId;
+  static FOLLY_TLS bool tls_exiting;
+  static FOLLY_TLS DSchedThreadId tls_threadId;
   static thread_local AuxAct tls_aux_act;
   static AuxChk aux_chk;
 
@@ -202,6 +305,11 @@ class DeterministicSchedule : boost::noncopyable {
   std::vector<sem_t*> sems_;
   std::unordered_set<std::thread::id> active_;
   std::unordered_map<std::thread::id, sem_t*> joins_;
+  std::unordered_map<std::thread::id, sem_t*> exitingSems_;
+
+  std::vector<ThreadInfo> threadInfoMap_;
+  ThreadTimestamps seqCstFenceOrder_;
+
   unsigned nextThreadId_;
   /* step_ keeps count of shared accesses that correspond to user
    * synchronization steps (atomic accesses for now).
@@ -214,6 +322,7 @@ class DeterministicSchedule : boost::noncopyable {
   sem_t* beforeThreadCreate();
   void afterThreadCreate(sem_t*);
   void beforeThreadExit();
+  void waitForBeforeThreadExit(std::thread& child);
   /** Calls user-defined auxiliary function (if any) */
   void callAux(bool);
 };
@@ -469,6 +578,126 @@ detail::FutexResult futexWaitImpl(
     std::chrono::steady_clock::time_point const* absSteadyTime,
     uint32_t waitMask);
 
+/* Generic futex extensions to allow sharing between DeterministicAtomic and
+ * BufferedDeterministicAtomic.*/
+template <template <typename> class Atom>
+int deterministicFutexWakeImpl(
+    const detail::Futex<Atom>* futex,
+    std::mutex& futexLock,
+    std::unordered_map<
+        const detail::Futex<Atom>*,
+        std::list<std::pair<uint32_t, bool*>>>& futexQueues,
+    int count,
+    uint32_t wakeMask) {
+  using namespace test;
+  using namespace std::chrono;
+
+  int rv = 0;
+  DeterministicSchedule::beforeSharedAccess();
+  futexLock.lock();
+  if (futexQueues.count(futex) > 0) {
+    auto& queue = futexQueues[futex];
+    auto iter = queue.begin();
+    while (iter != queue.end() && rv < count) {
+      auto cur = iter++;
+      if ((cur->first & wakeMask) != 0) {
+        *(cur->second) = true;
+        rv++;
+        queue.erase(cur);
+      }
+    }
+    if (queue.empty()) {
+      futexQueues.erase(futex);
+    }
+  }
+  futexLock.unlock();
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWake(" << futex << ", " << count << ", " << std::hex << wakeMask
+                   << ") -> " << rv);
+  DeterministicSchedule::afterSharedAccess();
+  return rv;
+}
+
+template <template <typename> class Atom>
+detail::FutexResult deterministicFutexWaitImpl(
+    const detail::Futex<Atom>* futex,
+    std::mutex& futexLock,
+    std::unordered_map<
+        const detail::Futex<Atom>*,
+        std::list<std::pair<uint32_t, bool*>>>& futexQueues,
+    uint32_t expected,
+    std::chrono::system_clock::time_point const* absSystemTimeout,
+    std::chrono::steady_clock::time_point const* absSteadyTimeout,
+    uint32_t waitMask) {
+  using namespace test;
+  using namespace std::chrono;
+  using namespace folly::detail;
+
+  bool hasTimeout = absSystemTimeout != nullptr || absSteadyTimeout != nullptr;
+  bool awoken = false;
+  FutexResult result = FutexResult::AWOKEN;
+
+  DeterministicSchedule::beforeSharedAccess();
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWait(" << futex << ", " << std::hex << expected << ", .., "
+                   << std::hex << waitMask << ") beginning..");
+  futexLock.lock();
+  // load_direct avoids deadlock on inner call to beforeSharedAccess
+  if (futex->load_direct() == expected) {
+    auto& queue = futexQueues[futex];
+    queue.emplace_back(waitMask, &awoken);
+    auto ours = queue.end();
+    ours--;
+    while (!awoken) {
+      futexLock.unlock();
+      DeterministicSchedule::afterSharedAccess();
+      DeterministicSchedule::beforeSharedAccess();
+      futexLock.lock();
+
+      // Simulate spurious wake-ups, timeouts each time with
+      // a 10% probability if we haven't been woken up already
+      if (!awoken && hasTimeout &&
+          DeterministicSchedule::getRandNumber(100) < 10) {
+        assert(futexQueues.count(futex) != 0 && &futexQueues[futex] == &queue);
+        queue.erase(ours);
+        if (queue.empty()) {
+          futexQueues.erase(futex);
+        }
+        // Simulate ETIMEDOUT 90% of the time and other failures
+        // remaining time
+        result = DeterministicSchedule::getRandNumber(100) >= 10
+            ? FutexResult::TIMEDOUT
+            : FutexResult::INTERRUPTED;
+        break;
+      }
+    }
+  } else {
+    result = FutexResult::VALUE_CHANGED;
+  }
+  futexLock.unlock();
+
+  char const* resultStr = "?";
+  switch (result) {
+    case FutexResult::AWOKEN:
+      resultStr = "AWOKEN";
+      break;
+    case FutexResult::TIMEDOUT:
+      resultStr = "TIMEDOUT";
+      break;
+    case FutexResult::INTERRUPTED:
+      resultStr = "INTERRUPTED";
+      break;
+    case FutexResult::VALUE_CHANGED:
+      resultStr = "VALUE_CHANGED";
+      break;
+  }
+  FOLLY_TEST_DSCHED_VLOG(
+      "futexWait(" << futex << ", " << std::hex << expected << ", .., "
+                   << std::hex << waitMask << ") -> " << resultStr);
+  DeterministicSchedule::afterSharedAccess();
+  return result;
+}
+
 /**
  * Implementations of the atomic_wait API for DeterministicAtomic, these are
  * no-ops here.  Which for a correct implementation should not make a
@@ -496,6 +725,7 @@ void atomic_notify_all(const DeterministicAtomic<Integer>*) {}
 struct DeterministicMutex {
   std::mutex m;
   std::queue<sem_t*> waiters_;
+  ThreadSyncVar syncVar_;
 
   DeterministicMutex() = default;
   ~DeterministicMutex() = default;
@@ -514,12 +744,18 @@ struct DeterministicMutex {
       // Wait to be scheduled by unlock
       DeterministicSchedule::beforeSharedAccess();
     }
+    if (DeterministicSchedule::isActive()) {
+      syncVar_.acquire();
+    }
     DeterministicSchedule::afterSharedAccess();
   }
 
   bool try_lock() {
     DeterministicSchedule::beforeSharedAccess();
     bool rv = m.try_lock();
+    if (rv && DeterministicSchedule::isActive()) {
+      syncVar_.acquire();
+    }
     FOLLY_TEST_DSCHED_VLOG(this << ".try_lock() -> " << rv);
     DeterministicSchedule::afterSharedAccess();
     return rv;
@@ -527,8 +763,11 @@ struct DeterministicMutex {
 
   void unlock() {
     FOLLY_TEST_DSCHED_VLOG(this << ".unlock()");
-    m.unlock();
     DeterministicSchedule::beforeSharedAccess();
+    m.unlock();
+    if (DeterministicSchedule::isActive()) {
+      syncVar_.release();
+    }
     if (!waiters_.empty()) {
       sem_t* sem = waiters_.front();
       DeterministicSchedule::reschedule(sem);

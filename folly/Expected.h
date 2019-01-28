@@ -101,15 +101,8 @@ namespace expected_detail {
 template <typename Value, typename Error>
 struct PromiseReturn;
 
-#ifdef _MSC_VER
-// MSVC 2015 can't handle the StrictConjunction, so we have
-// to use std::conjunction instead.
-template <template <class...> class Trait, class... Ts>
-using StrictAllOf = std::conjunction<Trait<Ts>...>;
-#else
 template <template <class...> class Trait, class... Ts>
 using StrictAllOf = StrictConjunction<Trait<Ts>...>;
-#endif
 
 template <class T>
 using IsCopyable = StrictConjunction<
@@ -244,11 +237,6 @@ struct ExpectedStorage {
   Value&& value() && {
     return std::move(value_);
   }
-  // TODO (t17322426): remove when VS2015 support is deprecated
-  // VS2015 static analyzer incorrectly flags these as unreachable in certain
-  // circumstances. VS2017 does not have this problem on the same code.
-  FOLLY_PUSH_WARNING
-  FOLLY_MSVC_DISABLE_WARNING(4702) // unreachable code
   Error& error() & {
     return error_;
   }
@@ -258,7 +246,6 @@ struct ExpectedStorage {
   Error&& error() && {
     return std::move(error_);
   }
-  FOLLY_POP_WARNING
 };
 
 template <class Value, class Error>
@@ -545,11 +532,6 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
   Value&& value() && {
     return std::move(value_);
   }
-  // TODO (t17322426): remove when VS2015 support is deprecated
-  // VS2015 static analyzer incorrectly flags these as unreachable in certain
-  // circumstances. VS2017 does not have this problem on the same code.
-  FOLLY_PUSH_WARNING
-  FOLLY_MSVC_DISABLE_WARNING(4702) // unreachable code
   Error& error() & {
     return error_;
   }
@@ -559,7 +541,6 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
   Error&& error() && {
     return std::move(error_);
   }
-  FOLLY_POP_WARNING
 };
 
 namespace expected_detail_ExpectedHelper {

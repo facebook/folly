@@ -310,6 +310,43 @@ TEST_F(LifoSemTest, timeout) {
   }
 }
 
+TEST_F(LifoSemTest, shutdown_try_wait_for) {
+  long seed = folly::randomNumberSeed() % 1000000;
+  LOG(INFO) << "seed=" << seed;
+  DSched sched(DSched::uniform(seed));
+
+  DLifoSem stopped;
+  std::thread worker1 = DSched::thread([&stopped] {
+    while (!stopped.isShutdown()) {
+      // i.e. poll for messages with timeout
+      LOG(INFO) << "thread polled";
+    }
+  });
+  std::thread worker2 = DSched::thread([&stopped] {
+    while (!stopped.isShutdown()) {
+      // Do some work every 1 second
+
+      try {
+        // this is normally 1 second in prod use case.
+        stopped.try_wait_for(std::chrono::milliseconds(1));
+      } catch (folly::ShutdownSemError& e) {
+        LOG(INFO) << "try_wait_for shutdown";
+      }
+    }
+  });
+
+  std::thread shutdown = DSched::thread([&stopped] {
+    LOG(INFO) << "LifoSem shutdown";
+    stopped.shutdown();
+    LOG(INFO) << "LifoSem shutdown done";
+  });
+
+  DSched::join(shutdown);
+  DSched::join(worker1);
+  DSched::join(worker2);
+  LOG(INFO) << "Threads joined";
+}
+
 BENCHMARK(lifo_sem_pingpong, iters) {
   LifoSem a;
   LifoSem b;

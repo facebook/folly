@@ -248,6 +248,25 @@ void SSLContext::loadCertificateFromBufferPEM(folly::StringPiece cert) {
   if (SSL_CTX_use_certificate(ctx_, x509.get()) == 0) {
     throw std::runtime_error("SSL_CTX_use_certificate: " + getErrors());
   }
+
+  // Any further X509 PEM blocks are treated as additional certificates in
+  // the certificate chain.
+  constexpr size_t kMaxCertChain = 64;
+
+  for (size_t i = 0; i < kMaxCertChain; i++) {
+    x509.reset(PEM_read_bio_X509(bio.get(), nullptr, nullptr, nullptr));
+    if (x509 == nullptr) {
+      ERR_clear_error();
+      return;
+    }
+
+    if (SSL_CTX_add1_chain_cert(ctx_, x509.get()) == 0) {
+      throw std::runtime_error("SSL_CTX_add0_chain_cert: " + getErrors());
+    }
+  }
+
+  throw std::runtime_error(
+      "loadCertificateFromBufferPEM(): Too many certificates in chain");
 }
 
 void SSLContext::loadPrivateKey(const char* path, const char* format) {

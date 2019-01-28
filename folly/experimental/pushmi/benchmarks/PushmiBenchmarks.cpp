@@ -48,7 +48,7 @@ struct countdown {
   void value(ExecutorRef exec);
   template <class E>
   void error(E e) {
-    std::abort();
+    std::terminate();
   }
   void done() {}
   PUSHMI_TEMPLATE(class Up)

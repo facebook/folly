@@ -260,12 +260,40 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 
 #endif
 
+// Define FOLLY_HAS_EXCEPTIONS
+#if __cpp_exceptions >= 199711 || FOLLY_HAS_FEATURE(cxx_exceptions)
+#define FOLLY_HAS_EXCEPTIONS 1
+#elif __GNUC__
+#if __EXCEPTIONS
+#define FOLLY_HAS_EXCEPTIONS 1
+#else // __EXCEPTIONS
+#define FOLLY_HAS_EXCEPTIONS 0
+#endif // __EXCEPTIONS
+#elif FOLLY_MICROSOFT_ABI_VER
+#if _CPPUNWIND
+#define FOLLY_HAS_EXCEPTIONS 1
+#else // _CPPUNWIND
+#define FOLLY_HAS_EXCEPTIONS 0
+#endif // _CPPUNWIND
+#else
+#define FOLLY_HAS_EXCEPTIONS 1 // default assumption for unknown platforms
+#endif
+
 // Debug
 namespace folly {
 #ifdef NDEBUG
 constexpr auto kIsDebug = false;
 #else
 constexpr auto kIsDebug = true;
+#endif
+} // namespace folly
+
+// Exceptions
+namespace folly {
+#if FOLLY_HAS_EXCEPTIONS
+constexpr auto kHasExceptions = true;
+#else
+constexpr auto kHasExceptions = false;
 #endif
 } // namespace folly
 
@@ -438,7 +466,7 @@ constexpr auto kCpplibVer = 0;
 //    extern int const num;
 //    FOLLY_STORAGE_CONSTEXPR int const num = 3;
 //
-//  True for MSVC 2015 and MSVC 2017.
+//  True as of MSVC 2017.
 #if _MSC_VER
 #define FOLLY_STORAGE_CONSTEXPR
 #define FOLLY_STORAGE_CPP14_CONSTEXPR
@@ -465,25 +493,6 @@ constexpr auto kCpplibVer = 0;
 #if __cpp_noexcept_function_type >= 201510 || \
     (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
 #define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
-#endif
-
-// Define FOLLY_HAS_EXCEPTIONS
-#if __cpp_exceptions >= 199711 || FOLLY_HAS_FEATURE(cxx_exceptions)
-#define FOLLY_HAS_EXCEPTIONS 1
-#elif __GNUC__
-#if __EXCEPTIONS
-#define FOLLY_HAS_EXCEPTIONS 1
-#else // __EXCEPTIONS
-#define FOLLY_HAS_EXCEPTIONS 0
-#endif // __EXCEPTIONS
-#elif FOLLY_MICROSOFT_ABI_VER
-#if _CPPUNWIND
-#define FOLLY_HAS_EXCEPTIONS 1
-#else // _CPPUNWIND
-#define FOLLY_HAS_EXCEPTIONS 0
-#endif // _CPPUNWIND
-#else
-#define FOLLY_HAS_EXCEPTIONS 1 // default assumption for unknown platforms
 #endif
 
 // feature test __cpp_lib_string_view is defined in <string>, which is

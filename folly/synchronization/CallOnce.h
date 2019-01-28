@@ -57,6 +57,19 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
   flag.call_once(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
+//  test_once
+//
+//  Tests whether any invocation to call_once with the given flag has succeeded.
+//
+//  May help with space usage in certain esoteric scenarios compared with caller
+//  code tracking a separate and possibly-padded bool.
+//
+//  Note: This is has no parallel in the std::once_flag interface.
+template <typename Mutex, template <typename> class Atom>
+FOLLY_ALWAYS_INLINE bool test_once(basic_once_flag<Mutex, Atom> const& flag) {
+  return flag.called_.load(std::memory_order_acquire);
+}
+
 //  basic_once_flag
 //
 //  The flag template to be used with call_once. Parameterizable by the mutex
@@ -76,6 +89,9 @@ class basic_once_flag {
       typename F,
       typename... Args>
   friend void call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...);
+
+  template <typename Mutex_, template <typename> class Atom_>
+  friend bool test_once(basic_once_flag<Mutex_, Atom_> const& flag);
 
   template <typename F, typename... Args>
   FOLLY_ALWAYS_INLINE void call_once(F&& f, Args&&... args) {

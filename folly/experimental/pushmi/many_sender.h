@@ -105,8 +105,9 @@ class any_many_sender {
   (requires SenderTo<
       wrapped_t<Wrapped>,
       any_receiver<E, VN...>,
-      is_many<>>)
-  explicit any_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+      is_many<>>) //
+      explicit any_many_sender(Wrapped obj) //
+      noexcept(insitu<Wrapped>())
       : any_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_many_sender() {
     vptr_->op_(data_, nullptr);
@@ -146,9 +147,9 @@ class many_sender<SF, EXF> {
     return exf_();
   }
   PUSHMI_TEMPLATE(class Out)
-  (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
-                           lazy::Invocable<SF&, Out>))
-  void submit(Out out) {
+  (requires PUSHMI_EXP(
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>)) //
+      void submit(Out out) {
     sf_(std::move(out));
   }
 };
@@ -176,9 +177,8 @@ class many_sender<Data, DSF, DEXF> {
   }
   PUSHMI_TEMPLATE(class Out)
   (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND
-          lazy::Invocable<DSF&, Data&, Out>))
-  void submit(Out out) {
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&, Data&, Out>)) //
+      void submit(Out out) {
     sf_(data_, std::move(out));
   }
 };
@@ -196,59 +196,72 @@ PUSHMI_INLINE_VAR constexpr struct make_many_sender_fn {
     return many_sender<ignoreSF, trampolineEXF>{};
   }
   PUSHMI_TEMPLATE(class SF)
-    (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-  auto operator()(SF sf) const {
+  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
+      auto
+      operator()(SF sf) const {
     return many_sender<SF, trampolineEXF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class SF, class EXF)
-    (requires True<> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-  auto operator()(SF sf, EXF exf) const {
+  (requires True<>&& Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(
+      &&not Sender<SF>)) //
+      auto
+      operator()(SF sf, EXF exf) const {
     return many_sender<SF, EXF>{std::move(sf), std::move(exf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires True<> && Sender<Data, is_many<>>)
-  auto operator()(Data d) const {
+  (requires True<>&& Sender<Data, is_many<>>) //
+      auto
+      operator()(Data d) const {
     return many_sender<Data, passDSF, passDEXF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires Sender<Data, is_many<>>)
-  auto operator()(Data d, DSF sf) const {
+  (requires Sender<Data, is_many<>>) //
+      auto
+      operator()(Data d, DSF sf) const {
     return many_sender<Data, DSF, passDEXF>{std::move(d), std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-    (requires Sender<Data, is_many<>> && Invocable<DEXF&, Data&>)
-  auto operator()(Data d, DSF sf, DEXF exf) const {
-    return many_sender<Data, DSF, DEXF>{std::move(d), std::move(sf), std::move(exf)};
+  (requires Sender<Data, is_many<>>&& Invocable<DEXF&, Data&>) //
+      auto
+      operator()(Data d, DSF sf, DEXF exf) const {
+    return many_sender<Data, DSF, DEXF>{
+        std::move(d), std::move(sf), std::move(exf)};
   }
-} const make_many_sender {};
+} const make_many_sender{};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703
-many_sender() -> many_sender<ignoreSF, trampolineEXF>;
+many_sender()->many_sender<ignoreSF, trampolineEXF>;
 
 PUSHMI_TEMPLATE(class SF)
-  (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-many_sender(SF) -> many_sender<SF, trampolineEXF>;
+(requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
+    many_sender(SF)
+        ->many_sender<SF, trampolineEXF>;
 
 PUSHMI_TEMPLATE(class SF, class EXF)
-  (requires True<> && Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-many_sender(SF, EXF) -> many_sender<SF, EXF>;
+(requires True<>&& Invocable<EXF&> PUSHMI_BROKEN_SUBSUMPTION(
+    &&not Sender<SF>)) //
+    many_sender(SF, EXF)
+        ->many_sender<SF, EXF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && Sender<Data, is_many<>>)
-many_sender(Data) -> many_sender<Data, passDSF, passDEXF>;
+(requires True<>&& Sender<Data, is_many<>>) //
+    many_sender(Data)
+        ->many_sender<Data, passDSF, passDEXF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_many<>>)
-many_sender(Data, DSF) -> many_sender<Data, DSF, passDEXF>;
+(requires Sender<Data, is_many<>>) //
+    many_sender(Data, DSF)
+        ->many_sender<Data, DSF, passDEXF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF, class DEXF)
-  (requires Sender<Data, is_many<>> && Invocable<DEXF&, Data&>)
-many_sender(Data, DSF, DEXF) -> many_sender<Data, DSF, DEXF>;
+(requires Sender<Data, is_many<>>&& Invocable<DEXF&, Data&>) //
+    many_sender(Data, DSF, DEXF)
+        ->many_sender<Data, DSF, DEXF>;
 #endif
 
-template<>
+template <>
 struct construct_deduced<many_sender> : make_many_sender_fn {};
 
 } // namespace pushmi

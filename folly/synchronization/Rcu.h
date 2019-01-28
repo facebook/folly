@@ -26,7 +26,7 @@
 #include <folly/synchronization/detail/ThreadCachedInts.h>
 #include <folly/synchronization/detail/ThreadCachedLists.h>
 
-// Implementation of proposed RCU C++ API
+// Implementation of proposed Read-Copy-Update (RCU) C++ API
 // http://open-std.org/JTC1/SC22/WG21/docs/papers/2017/p0566r3.pdf
 
 // Overview
@@ -175,7 +175,7 @@
 //   callers should only ever use the default, global domain.
 //
 //   Creation of a domain takes a template tag argument, which
-//   defaults to void. To access different domains, you have to pass a
+//   defaults to RcuTag. To access different domains, you have to pass a
 //   different tag.  The global domain is preferred for almost all
 //   purposes, unless a different executor is required.
 //
@@ -288,9 +288,9 @@ class rcu_domain;
 
 // Opaque token used to match up lock_shared() and unlock_shared()
 // pairs.
+template <typename Tag>
 class rcu_token {
  public:
-  rcu_token(uint64_t epoch) : epoch_(epoch) {}
   rcu_token() {}
   ~rcu_token() = default;
 
@@ -300,8 +300,9 @@ class rcu_token {
   rcu_token& operator=(rcu_token&& other) = default;
 
  private:
-  template <typename Tag>
-  friend class rcu_domain;
+  explicit rcu_token(uint64_t epoch) : epoch_(epoch) {}
+
+  friend class rcu_domain<Tag>;
   uint64_t epoch_;
 };
 
@@ -317,7 +318,7 @@ class rcu_domain {
    * If an executor is passed, it is used to run calls and delete
    * retired objects.
    */
-  rcu_domain(Executor* executor = nullptr) noexcept;
+  explicit rcu_domain(Executor* executor = nullptr) noexcept;
 
   rcu_domain(const rcu_domain&) = delete;
   rcu_domain(rcu_domain&&) = delete;
@@ -330,8 +331,8 @@ class rcu_domain {
   // all preceding lock_shared() sections are finished.
 
   // Note: can potentially allocate on thread first use.
-  FOLLY_ALWAYS_INLINE rcu_token lock_shared();
-  FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token&&);
+  FOLLY_ALWAYS_INLINE rcu_token<Tag> lock_shared();
+  FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token<Tag>&&);
 
   // Call a function after concurrent critical sections have finished.
   // Does not block unless the queue is full, then may block to wait
@@ -390,10 +391,10 @@ inline rcu_domain<RcuTag>* rcu_default_domain() {
 template <typename Tag = RcuTag>
 class rcu_reader_domain {
  public:
-  FOLLY_ALWAYS_INLINE rcu_reader_domain(
+  explicit FOLLY_ALWAYS_INLINE rcu_reader_domain(
       rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
       : epoch_(domain->lock_shared()), domain_(domain) {}
-  rcu_reader_domain(
+  explicit rcu_reader_domain(
       std::defer_lock_t,
       rcu_domain<Tag>* domain = rcu_default_domain()) noexcept
       : domain_(domain) {}
@@ -433,7 +434,7 @@ class rcu_reader_domain {
   }
 
  private:
-  Optional<rcu_token> epoch_;
+  Optional<rcu_token<Tag>> epoch_;
   rcu_domain<Tag>* domain_;
 };
 

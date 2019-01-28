@@ -14,7 +14,9 @@
  * limitations under the License.
  */
 #pragma once
+
 #include <atomic>
+#include <limits.h>
 #include <memory>
 
 #include <folly/lang/SafeAssert.h>

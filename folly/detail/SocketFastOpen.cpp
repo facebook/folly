@@ -40,22 +40,23 @@ namespace detail {
 #define TCPI_OPT_SYN_DATA 32
 #endif
 
-ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
+ssize_t tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags) {
   flags |= MSG_FASTOPEN;
-  return sendmsg(sockfd, msg, flags);
+  return netops::sendmsg(sockfd, msg, flags);
 }
 
-int tfo_enable(int sockfd, size_t max_queue_size) {
-  return setsockopt(
+int tfo_enable(NetworkSocket sockfd, size_t max_queue_size) {
+  return netops::setsockopt(
       sockfd, SOL_TCP, TCP_FASTOPEN, &max_queue_size, sizeof(max_queue_size));
 }
 
-bool tfo_succeeded(int sockfd) {
+bool tfo_succeeded(NetworkSocket sockfd) {
   // Call getsockopt to check if TFO was used.
   struct tcp_info info;
   socklen_t info_len = sizeof(info);
   errno = 0;
-  if (getsockopt(sockfd, IPPROTO_TCP, TCP_INFO, &info, &info_len) != 0) {
+  if (netops::getsockopt(sockfd, IPPROTO_TCP, TCP_INFO, &info, &info_len) !=
+      0) {
     // errno is set from getsockopt
     return false;
   }
@@ -64,7 +65,7 @@ bool tfo_succeeded(int sockfd) {
 
 #elif FOLLY_ALLOW_TFO && defined(__APPLE__)
 
-ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
+ssize_t tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags) {
   sa_endpoints_t endpoints;
   endpoints.sae_srcif = 0;
   endpoints.sae_srcaddr = nullptr;
@@ -72,7 +73,7 @@ ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
   endpoints.sae_dstaddr = (struct sockaddr*)msg->msg_name;
   endpoints.sae_dstaddrlen = msg->msg_namelen;
   int ret = connectx(
-      sockfd,
+      sockfd.toFd(),
       &endpoints,
       SAE_ASSOCID_ANY,
       CONNECT_RESUME_ON_READ_WRITE | CONNECT_DATA_IDEMPOTENT,
@@ -84,12 +85,12 @@ ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags) {
   if (ret != 0) {
     return ret;
   }
-  ret = sendmsg(sockfd, msg, flags);
+  ret = netops::sendmsg(sockfd, msg, flags);
   return ret;
 }
 
-int tfo_enable(int sockfd, size_t max_queue_size) {
-  return setsockopt(
+int tfo_enable(NetworkSocket sockfd, size_t max_queue_size) {
+  return netops::setsockopt(
       sockfd,
       IPPROTO_TCP,
       TCP_FASTOPEN,
@@ -97,25 +98,27 @@ int tfo_enable(int sockfd, size_t max_queue_size) {
       sizeof(max_queue_size));
 }
 
-bool tfo_succeeded(int /* sockfd */) {
+bool tfo_succeeded(NetworkSocket /* sockfd */) {
   errno = EOPNOTSUPP;
   return false;
 }
 
 #else
 
-ssize_t
-tfo_sendmsg(int /* sockfd */, const struct msghdr* /* msg */, int /* flags */) {
+ssize_t tfo_sendmsg(
+    NetworkSocket /* sockfd */,
+    const struct msghdr* /* msg */,
+    int /* flags */) {
   errno = EOPNOTSUPP;
   return -1;
 }
 
-int tfo_enable(int /* sockfd */, size_t /* max_queue_size */) {
+int tfo_enable(NetworkSocket /* sockfd */, size_t /* max_queue_size */) {
   errno = ENOPROTOOPT;
   return -1;
 }
 
-bool tfo_succeeded(int /* sockfd */) {
+bool tfo_succeeded(NetworkSocket /* sockfd */) {
   errno = EOPNOTSUPP;
   return false;
 }

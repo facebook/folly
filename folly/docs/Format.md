@@ -102,6 +102,10 @@ std::cout << format("{0:05d} decimal = {0:04x} hex", 42);
 std::string s = format("The only answer is {}", 42).str();
 std::cout << s;
 // => "The only answer is 42"
+
+// Decimal precision usage
+std::cout << format("Only 2 decimals is {:.2f}", 23.34134534535);
+// => "Only 2 decimals is 23.34"
 ```
 
 

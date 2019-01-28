@@ -17,6 +17,9 @@
 
 #include <folly/Synchronized.h>
 #include <folly/fibers/Baton.h>
+#if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Task.h>
+#endif
 
 namespace folly {
 namespace fibers {
@@ -45,10 +48,19 @@ class Semaphore {
    */
   void wait();
 
+#if FOLLY_HAS_COROUTINES
+
+  /*
+   * Wait for capacity in the semaphore.
+   */
+  coro::Task<void> co_wait();
+
+#endif
+
   size_t getCapacity() const;
 
  private:
-  bool waitSlow();
+  bool waitSlow(folly::fibers::Baton& waitBaton);
   bool signalSlow();
 
   size_t capacity_;

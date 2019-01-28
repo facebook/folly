@@ -14,12 +14,20 @@
  * limitations under the License.
  */
 
+#ifndef _WIN32
+#include <dlfcn.h>
+#endif
+
 #include <thread>
 #include <unordered_set>
 #include <vector>
 
+#include <boost/thread/barrier.hpp>
+
 #include <folly/SingletonThreadLocal.h>
+#include <folly/String.h>
 #include <folly/Synchronized.h>
+#include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -64,7 +72,35 @@ TEST(SingletonThreadLocalTest, OneSingletonPerThread) {
   EXPECT_EQ(threads.size(), fooDeletedCount);
 }
 
-TEST(SingletonThreadLocalTest, MoveConstructibleMake) {
+TEST(SingletonThreadLocalTest, DefaultMakeMoveConstructible) {
+  struct Foo {
+    int a = 4;
+    Foo() = default;
+    Foo(Foo&&) = default;
+    Foo& operator=(Foo&&) = default;
+  };
+  using Real = detail::DefaultMake<Foo>::type;
+  EXPECT_TRUE((std::is_same<Real, Foo>::value));
+  struct Tag {};
+  auto& single = SingletonThreadLocal<Foo, Tag>::get();
+  EXPECT_EQ(4, single.a);
+}
+
+TEST(SingletonThreadLocalTest, DefaultMakeNotMoveConstructible) {
+  struct Foo {
+    int a = 4;
+    Foo() = default;
+    Foo(Foo&&) = delete;
+    Foo& operator=(Foo&&) = delete;
+  };
+  using Real = detail::DefaultMake<Foo>::type;
+  EXPECT_TRUE(((__cplusplus >= 201703ULL) == std::is_same<Real, Foo>::value));
+  struct Tag {};
+  auto& single = SingletonThreadLocal<Foo, Tag>::get();
+  EXPECT_EQ(4, single.a);
+}
+
+TEST(SingletonThreadLocalTest, SameTypeMake) {
   struct Foo {
     int a, b;
     Foo(int a_, int b_) : a(a_), b(b_) {}
@@ -81,21 +117,23 @@ TEST(SingletonThreadLocalTest, MoveConstructibleMake) {
   EXPECT_EQ(4, single.b);
 }
 
-TEST(SingletonThreadLocalTest, NotMoveConstructibleMake) {
+TEST(SingletonThreadLocalTest, ReferenceConvertibleTypeMake) {
   struct Foo {
-    int a, b;
-    Foo(int a_, int b_) : a(a_), b(b_) {}
-    Foo(Foo&&) = delete;
-    Foo& operator=(Foo&&) = delete;
+    int b = 3;
   };
+  struct A {
+    int a = 2;
+  };
+  struct C {
+    int c = 4;
+  };
+  struct Bar : A, Foo, C {};
   struct Tag {};
-  struct Make {
-    Foo* operator()(unsigned char (&buf)[sizeof(Foo)]) const {
-      return new (buf) Foo(3, 4);
-    }
-  };
-  auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
-  EXPECT_EQ(4, single.b);
+  using Make = detail::DefaultMake<Bar>;
+  auto& foo = SingletonThreadLocal<Foo, Tag, Make>::get();
+  EXPECT_EQ(3, foo.b);
+  auto& bar = static_cast<Bar&>(foo);
+  EXPECT_EQ(2, bar.a);
 }
 
 TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {
@@ -149,3 +187,52 @@ TEST(SingletonThreadLocalTest, Reused) {
     EXPECT_EQ(i == 0u ? "hello" : "", data);
   }
 }
+
+TEST(SingletonThreadLocalTest, AccessAllThreads) {
+  struct Tag {};
+  struct Obj {
+    size_t value;
+  };
+  using STL = SingletonThreadLocal<Obj, Tag>;
+  constexpr size_t n_threads = 4;
+  boost::barrier barrier{n_threads + 1};
+  std::vector<std::thread> threads{n_threads};
+
+  // setup
+  std::atomic<size_t> count{0};
+  for (auto& thread : threads) {
+    thread = std::thread([&] {
+      STL::get().value = ++count;
+      barrier.wait();
+      barrier.wait();
+    });
+  }
+  barrier.wait();
+  EXPECT_EQ(n_threads, count) << "sanity";
+
+  // expectations
+  size_t sum = 0;
+  for (auto& obj : STL::accessAllThreads()) { // explicitly auto
+    sum += obj.value;
+  }
+  EXPECT_EQ((n_threads * (n_threads + 1) / 2), sum);
+
+  // cleanup
+  barrier.wait();
+  for (auto& thread : threads) {
+    thread.join();
+  }
+}
+
+#ifndef _WIN32
+TEST(SingletonThreadLocalDeathTest, Overload) {
+  auto exe = fs::executable_path();
+  auto lib = exe.parent_path() / "singleton_thread_local_overload.so";
+  auto message = stripLeftMargin(R"MESSAGE(
+    Overloaded folly::SingletonThreadLocal<int, DeathTag, ...> with differing trailing arguments:
+      folly::SingletonThreadLocal<int, DeathTag, Make1, DeathTag>
+      folly::SingletonThreadLocal<int, DeathTag, Make2, DeathTag>
+  )MESSAGE");
+  EXPECT_DEATH(dlopen(lib.string().c_str(), RTLD_LAZY), message);
+}
+#endif

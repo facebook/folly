@@ -73,8 +73,8 @@ static void run(RWSpinLockType* lock) {
 }
 
 TYPED_TEST(RWSpinLockTest, Writer_Wait_Readers) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
 
   for (int i = 0; i < kMaxReaders; ++i) {
     EXPECT_TRUE(l.try_lock_shared());
@@ -90,8 +90,8 @@ TYPED_TEST(RWSpinLockTest, Writer_Wait_Readers) {
 }
 
 TYPED_TEST(RWSpinLockTest, Readers_Wait_Writer) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
 
   EXPECT_TRUE(l.try_lock());
 
@@ -106,8 +106,8 @@ TYPED_TEST(RWSpinLockTest, Readers_Wait_Writer) {
 }
 
 TYPED_TEST(RWSpinLockTest, Writer_Wait_Writer) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
 
   EXPECT_TRUE(l.try_lock());
   EXPECT_FALSE(l.try_lock());
@@ -118,11 +118,11 @@ TYPED_TEST(RWSpinLockTest, Writer_Wait_Writer) {
 }
 
 TYPED_TEST(RWSpinLockTest, Read_Holders) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
 
   {
-    typename RWSpinLockType::ReadHolder guard(&l);
+    typename LockType::ReadHolder guard(&l);
     EXPECT_FALSE(l.try_lock());
     EXPECT_TRUE(l.try_lock_shared());
     l.unlock_shared();
@@ -135,10 +135,10 @@ TYPED_TEST(RWSpinLockTest, Read_Holders) {
 }
 
 TYPED_TEST(RWSpinLockTest, Write_Holders) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
   {
-    typename RWSpinLockType::WriteHolder guard(&l);
+    typename LockType::WriteHolder guard(&l);
     EXPECT_FALSE(l.try_lock());
     EXPECT_FALSE(l.try_lock_shared());
   }
@@ -150,13 +150,13 @@ TYPED_TEST(RWSpinLockTest, Write_Holders) {
 }
 
 TYPED_TEST(RWSpinLockTest, ConcurrentTests) {
-  typedef typename TestFixture::RWSpinLockType RWSpinLockType;
-  RWSpinLockType l;
+  typedef typename TestFixture::RWSpinLockType LockType;
+  LockType l;
   srand(time(nullptr));
 
   std::vector<std::thread> threads;
   for (int i = 0; i < FLAGS_num_threads; ++i) {
-    threads.push_back(std::thread(&run<RWSpinLockType>, &l));
+    threads.push_back(std::thread(&run<LockType>, &l));
   }
 
   sleep(1);

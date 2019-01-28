@@ -23,6 +23,7 @@
 #include <boost/noncopyable.hpp>
 
 #include <folly/File.h>
+#include <folly/net/NetworkSocket.h>
 
 namespace folly {
 
@@ -45,7 +46,7 @@ class ShutdownSocketSet : private boost::noncopyable {
    * ShutdownSocketSet::close (which will, as a side effect, also handle EINTR
    * properly) and not by calling close() on the file descriptor.
    */
-  void add(int fd);
+  void add(NetworkSocket fd);
 
   /**
    * Remove a socket from the list of sockets managed by ShutdownSocketSet.
@@ -53,13 +54,13 @@ class ShutdownSocketSet : private boost::noncopyable {
    * sleep()-ing) in the extremely rare case that the fd is currently
    * being shutdown().
    */
-  void remove(int fd);
+  void remove(NetworkSocket fd);
 
   /**
    * Close a socket managed by ShutdownSocketSet. Returns the same return code
    * as ::close() (and sets errno accordingly).
    */
-  int close(int fd);
+  int close(NetworkSocket fd);
 
   /**
    * Shut down a socket. If abortive is true, we perform an abortive
@@ -70,7 +71,7 @@ class ShutdownSocketSet : private boost::noncopyable {
    * read() and write() operations to the socket will fail. During normal
    * operation, just call ::shutdown() on the socket.
    */
-  void shutdown(int fd, bool abortive = false);
+  void shutdown(NetworkSocket fd, bool abortive = false);
 
   /**
    * Immediate shutdown of all connections. This is a hard-hitting hammer;
@@ -95,7 +96,7 @@ class ShutdownSocketSet : private boost::noncopyable {
   void shutdownAll(bool abortive = false);
 
  private:
-  void doShutdown(int fd, bool abortive);
+  void doShutdown(NetworkSocket fd, bool abortive);
 
   // State transitions:
   // add():

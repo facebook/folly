@@ -1,4 +1,5 @@
 #!/bin/bash -uex
+# Copyright (c) Facebook, Inc. and its affiliates.
 # .travis.yml in the top-level dir explains why this is a separate script.
 # Read the docs: ./make_docker_context.py --help
 

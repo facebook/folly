@@ -22,10 +22,11 @@
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
-#include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/ssl/Init.h>
 
@@ -111,17 +112,12 @@ uint32_t TestSSLAsyncCacheServer::lookupDelay_ = 0;
 constexpr size_t SSLClient::kMaxReadBufferSz;
 constexpr size_t SSLClient::kMaxReadsPerEvent;
 
-void getfds(int fds[2]) {
-  if (socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
+void getfds(NetworkSocket fds[2]) {
+  if (netops::socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
     FAIL() << "failed to create socketpair: " << errnoStr(errno);
   }
   for (int idx = 0; idx < 2; ++idx) {
-    int flags = fcntl(fds[idx], F_GETFL, 0);
-    if (flags == -1) {
-      FAIL() << "failed to get flags for socket " << idx << ": "
-             << errnoStr(errno);
-    }
-    if (fcntl(fds[idx], F_SETFL, flags | O_NONBLOCK) != 0) {
+    if (netops::set_socket_non_blocking(fds[idx]) != 0) {
       FAIL() << "failed to put socket " << idx
              << " in non-blocking mode: " << errnoStr(errno);
     }
@@ -144,7 +140,7 @@ void sslsocketpair(
     AsyncSSLSocket::UniquePtr* serverSock) {
   auto clientCtx = std::make_shared<folly::SSLContext>();
   auto serverCtx = std::make_shared<folly::SSLContext>();
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, serverCtx);
   clientSock->reset(new AsyncSSLSocket(clientCtx, eventBase, fds[0], false));
@@ -258,7 +254,7 @@ TEST(AsyncSSLSocketTest, Renegotiate) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
-  std::array<int, 2> fds;
+  std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, dfServerCtx);
 
@@ -495,7 +491,7 @@ class NextProtocolTest : public Test {
   EventBase eventBase;
   std::shared_ptr<SSLContext> clientCtx{std::make_shared<SSLContext>()};
   std::shared_ptr<SSLContext> serverCtx{std::make_shared<SSLContext>()};
-  int fds[2];
+  NetworkSocket fds[2];
   std::unique_ptr<AlpnClient> client;
   std::unique_ptr<AlpnServer> server;
 };
@@ -568,7 +564,7 @@ TEST(AsyncSSLSocketTest, SNITestMatch) {
   // tlsext_hostname match.
   std::shared_ptr<SSLContext> hskServerCtx(dfServerCtx);
   const std::string serverName("xyz.newdev.facebook.com");
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -602,7 +598,7 @@ TEST(AsyncSSLSocketTest, SNITestNotMatch) {
   const std::string clientRequestingServerName("foo.com");
   const std::string serverExpectedServerName("xyz.newdev.facebook.com");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -636,7 +632,7 @@ TEST(AsyncSSLSocketTest, SNITestChangeServerName) {
   // tlsext_hostname match.
   std::shared_ptr<SSLContext> hskServerCtx(dfServerCtx);
   const std::string serverName("xyz.newdev.facebook.com");
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -669,7 +665,7 @@ TEST(AsyncSSLSocketTest, SNITestClientHelloNoHostname) {
   std::shared_ptr<SSLContext> hskServerCtx(dfServerCtx);
   const std::string serverExpectedServerName("xyz.newdev.facebook.com");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -915,7 +911,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloSuccess) {
   clientCtx->loadCertificate(kTestCert);
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -962,7 +958,7 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   clientCtx->loadCertificate(kClientTestCert);
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  std::array<int, 2> fds;
+  std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -999,7 +995,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   EventBase eventBase;
   auto ctx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   int bufLen = 42;
@@ -1041,7 +1037,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   EventBase eventBase;
   auto ctx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   int bufLen = 42;
@@ -1100,7 +1096,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   EventBase eventBase;
   auto ctx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   int bufLen = 42;
@@ -1156,7 +1152,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSuccess) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -1194,7 +1190,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -1234,7 +1230,7 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxDisableVerify) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -1285,7 +1281,7 @@ TEST(AsyncSSLSocketTest, OverrideSSLCtxEnableVerify) {
   clientCtx->loadCertificate(kTestCert);
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1317,7 +1313,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationOverride) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -1354,7 +1350,7 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationSkip) {
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, dfServerCtx);
 
@@ -1402,7 +1398,7 @@ TEST(AsyncSSLSocketTest, ClientCertHandshakeSuccess) {
   clientCtx->loadCertificate(kTestCert);
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1459,7 +1455,7 @@ TEST(AsyncSSLSocketTest, NoClientCertHandshakeError) {
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1684,7 +1680,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTest) {
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1722,7 +1718,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1761,7 +1757,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -1875,7 +1871,7 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
 
   auto clientCtx = std::make_shared<folly::SSLContext>();
   auto serverCtx = std::make_shared<folly::SSLContext>();
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
   getctx(clientCtx, serverCtx);
   auto client =
@@ -1892,7 +1888,7 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
 
   // Check that bytes are unencrypted
   char c;
-  EXPECT_EQ(1, recv(fds[1], &c, 1, MSG_PEEK));
+  EXPECT_EQ(1, netops::recv(fds[1], &c, 1, MSG_PEEK));
   EXPECT_EQ('a', c);
 
   EventBaseAborter eba(&base, 3000);
@@ -1913,7 +1909,7 @@ TEST(AsyncSSLSocketTest, UnencryptedTest) {
 
   // Check that bytes are *not* unencrypted
   char c2;
-  EXPECT_EQ(1, recv(fds[1], &c2, 1, MSG_PEEK));
+  EXPECT_EQ(1, netops::recv(fds[1], &c2, 1, MSG_PEEK));
   EXPECT_NE('a', c2);
 
   base.loop();
@@ -1968,7 +1964,7 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerBasic) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -2003,7 +1999,7 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptError) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -2037,7 +2033,7 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptClose) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -2071,7 +2067,7 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptDestroy) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
 
-  int fds[2];
+  NetworkSocket fds[2];
   getfds(fds);
 
   AsyncSSLSocket::UniquePtr clientSock(
@@ -2089,6 +2085,95 @@ TEST(AsyncSSLSocketTest, SSLAcceptRunnerAcceptDestroy) {
 
   EXPECT_FALSE(client.handshakeSuccess_);
   EXPECT_TRUE(client.handshakeError_);
+  EXPECT_FALSE(server.handshakeSuccess_);
+  EXPECT_TRUE(server.handshakeError_);
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiber) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptFiberRunner>(&eventBase));
+
+  eventBase.loop();
+
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_FALSE(server.handshakeError_);
+}
+
+static int newCloseCb(SSL* ssl, SSL_SESSION*) {
+  AsyncSSLSocket::getFromSSL(ssl)->closeNow();
+  return 1;
+}
+
+#if FOLLY_OPENSSL_IS_110
+static SSL_SESSION* getCloseCb(SSL* ssl, const unsigned char*, int, int*) {
+#else
+static SSL_SESSION* getCloseCb(SSL* ssl, unsigned char*, int, int*) {
+#endif
+  AsyncSSLSocket::getFromSSL(ssl)->closeNow();
+  return nullptr;
+}
+
+TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  SSL_CTX_set_session_cache_mode(
+      serverCtx->getSSLCtx(),
+      SSL_SESS_CACHE_NO_INTERNAL | SSL_SESS_CACHE_SERVER);
+  SSL_CTX_sess_set_new_cb(serverCtx->getSSLCtx(), &newCloseCb);
+  SSL_CTX_sess_set_get_cb(serverCtx->getSSLCtx(), &getCloseCb);
+  serverCtx->sslAcceptRunner(
+      std::make_unique<SSLAcceptFiberRunner>(&eventBase));
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  clientCtx->ciphers("AES128-SHA256");
+  clientCtx->loadTrustedCertificates(kTestCA);
+  clientCtx->setOptions(SSL_OP_NO_TICKET);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
+
+  eventBase.loop();
+
+  // As close() is called during session callbacks, client sees it as a
+  // successful connection
+  EXPECT_TRUE(client.handshakeSuccess_);
+  EXPECT_FALSE(client.handshakeError_);
   EXPECT_FALSE(server.handshakeSuccess_);
   EXPECT_TRUE(server.handshakeError_);
 }
@@ -2229,7 +2314,9 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
       EventBase* evb)
       : AsyncSocket(evb), AsyncSSLSocket(sslCtx, evb) {}
 
-  MOCK_METHOD3(tfoSendMsg, ssize_t(int fd, struct msghdr* msg, int msg_flags));
+  MOCK_METHOD3(
+      tfoSendMsg,
+      ssize_t(NetworkSocket fd, struct msghdr* msg, int msg_flags));
 };
 
 #if defined __linux__
@@ -2372,10 +2459,10 @@ MockAsyncTFOSSLSocket::UniquePtr setupSocketWithFallback(
 
   EXPECT_CALL(*socket, tfoSendMsg(_, _, _))
       .Times(cardinality)
-      .WillOnce(Invoke([&](int fd, struct msghdr*, int) {
+      .WillOnce(Invoke([&](NetworkSocket fd, struct msghdr*, int) {
         sockaddr_storage addr;
         auto len = address.getAddress(&addr);
-        return connect(fd, (const struct sockaddr*)&addr, len);
+        return netops::connect(fd, (const struct sockaddr*)&addr, len);
       }));
   return socket;
 }
@@ -2490,7 +2577,7 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
-  std::array<int, 2> fds;
+  std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, dfServerCtx);
 
@@ -2504,7 +2591,7 @@ TEST(AsyncSSLSocketTest, TestPreReceivedData) {
 
   // Steal some data from the server.
   std::array<uint8_t, 10> buf;
-  auto bytesReceived = recv(fds[1], buf.data(), buf.size(), 0);
+  auto bytesReceived = netops::recv(fds[1], buf.data(), buf.size(), 0);
   checkUnixError(bytesReceived, "recv failed");
 
   serverSock->setPreReceivedData(
@@ -2524,7 +2611,7 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
   EventBase eventBase;
   auto clientCtx = std::make_shared<SSLContext>();
   auto dfServerCtx = std::make_shared<SSLContext>();
-  std::array<int, 2> fds;
+  std::array<NetworkSocket, 2> fds;
   getfds(fds.data());
   getctx(clientCtx, dfServerCtx);
 
@@ -2537,7 +2624,7 @@ TEST(AsyncSSLSocketTest, TestMoveFromAsyncSocket) {
 
   // Steal some data from the server.
   std::array<uint8_t, 10> buf;
-  auto bytesReceived = recv(fds[1], buf.data(), buf.size(), 0);
+  auto bytesReceived = netops::recv(fds[1], buf.data(), buf.size(), 0);
   checkUnixError(bytesReceived, "recv failed");
 
   serverSock->setPreReceivedData(

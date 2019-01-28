@@ -90,15 +90,14 @@ size_t Core::refresh(size_t version, bool force) {
     }
 
     try {
-      {
-        VersionedData newData{creator_(), version};
-        if (!newData.data) {
-          throw std::logic_error("Observer creator returned nullptr.");
-        }
-        data_.swap(newData);
+      VersionedData newData{creator_(), version};
+      if (!newData.data) {
+        throw std::logic_error("Observer creator returned nullptr.");
       }
-
-      versionLastChange_ = version;
+      if (data_.copy().data != newData.data) {
+        data_.swap(newData);
+        versionLastChange_ = version;
+      }
     } catch (...) {
       LOG(ERROR) << "Exception while refreshing Observer: "
                  << exceptionStr(std::current_exception());

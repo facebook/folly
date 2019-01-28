@@ -21,12 +21,11 @@
 
 #include <glog/logging.h>
 
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/GTest.h>
-#include <folly/portability/Sockets.h>
 
 using folly::ShutdownSocketSet;
-
-namespace fsp = folly::portability::sockets;
 
 namespace folly {
 namespace test {
@@ -45,31 +44,31 @@ class Server {
   int closeClients(bool abortive);
 
  private:
-  int acceptSocket_;
+  NetworkSocket acceptSocket_;
   int port_;
   enum StopMode { NO_STOP, ORDERLY, ABORTIVE };
   std::atomic<StopMode> stop_;
   std::thread serverThread_;
-  std::vector<int> fds_;
+  std::vector<NetworkSocket> fds_;
 };
 
-Server::Server() : acceptSocket_(-1), port_(0), stop_(NO_STOP) {
-  acceptSocket_ = fsp::socket(PF_INET, SOCK_STREAM, 0);
-  CHECK_ERR(acceptSocket_);
+Server::Server() : acceptSocket_(), port_(0), stop_(NO_STOP) {
+  acceptSocket_ = netops::socket(PF_INET, SOCK_STREAM, 0);
+  CHECK_NE(acceptSocket_, NetworkSocket());
   shutdownSocketSet.add(acceptSocket_);
 
   sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = 0;
   addr.sin_addr.s_addr = INADDR_ANY;
-  CHECK_ERR(bind(
+  CHECK_ERR(netops::bind(
       acceptSocket_, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
 
-  CHECK_ERR(listen(acceptSocket_, 10));
+  CHECK_ERR(netops::listen(acceptSocket_, 10));
 
   socklen_t addrLen = sizeof(addr);
-  CHECK_ERR(
-      getsockname(acceptSocket_, reinterpret_cast<sockaddr*>(&addr), &addrLen));
+  CHECK_ERR(netops::getsockname(
+      acceptSocket_, reinterpret_cast<sockaddr*>(&addr), &addrLen));
 
   port_ = ntohs(addr.sin_port);
 
@@ -77,9 +76,9 @@ Server::Server() : acceptSocket_(-1), port_(0), stop_(NO_STOP) {
     while (stop_ == NO_STOP) {
       sockaddr_in peer;
       socklen_t peerLen = sizeof(peer);
-      int fd =
-          accept(acceptSocket_, reinterpret_cast<sockaddr*>(&peer), &peerLen);
-      if (fd == -1) {
+      auto fd = netops::accept(
+          acceptSocket_, reinterpret_cast<sockaddr*>(&peer), &peerLen);
+      if (fd == NetworkSocket()) {
         if (errno == EINTR) {
           continue;
         }
@@ -87,7 +86,7 @@ Server::Server() : acceptSocket_(-1), port_(0), stop_(NO_STOP) {
           break;
         }
       }
-      CHECK_ERR(fd);
+      CHECK_NE(fd, NetworkSocket());
       shutdownSocketSet.add(fd);
       fds_.push_back(fd);
     }
@@ -97,16 +96,16 @@ Server::Server() : acceptSocket_(-1), port_(0), stop_(NO_STOP) {
     }
 
     shutdownSocketSet.close(acceptSocket_);
-    acceptSocket_ = -1;
+    acceptSocket_ = NetworkSocket();
     port_ = 0;
   });
 }
 
 int Server::closeClients(bool abortive) {
-  for (int fd : fds_) {
+  for (auto fd : fds_) {
     if (abortive) {
       struct linger l = {1, 0};
-      CHECK_ERR(setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)));
+      CHECK_ERR(netops::setsockopt(fd, SOL_SOCKET, SO_LINGER, &l, sizeof(l)));
     }
     shutdownSocketSet.close(fd);
   }
@@ -117,29 +116,29 @@ int Server::closeClients(bool abortive) {
 
 void Server::stop(bool abortive) {
   stop_ = abortive ? ABORTIVE : ORDERLY;
-  shutdown(acceptSocket_, SHUT_RDWR);
+  netops::shutdown(acceptSocket_, SHUT_RDWR);
 }
 
 void Server::join() {
   serverThread_.join();
 }
 
-int createConnectedSocket(int port) {
-  int sock = fsp::socket(PF_INET, SOCK_STREAM, 0);
-  CHECK_ERR(sock);
+NetworkSocket createConnectedSocket(int port) {
+  auto sock = netops::socket(PF_INET, SOCK_STREAM, 0);
+  CHECK_NE(sock, NetworkSocket());
   sockaddr_in addr;
   addr.sin_family = AF_INET;
   addr.sin_port = htons(port);
   addr.sin_addr.s_addr = htonl((127 << 24) | 1); // XXX
-  CHECK_ERR(
-      connect(sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
+  CHECK_ERR(netops::connect(
+      sock, reinterpret_cast<const sockaddr*>(&addr), sizeof(addr)));
   return sock;
 }
 
 void runCloseTest(bool abortive) {
   Server server;
 
-  int sock = createConnectedSocket(server.port());
+  auto sock = createConnectedSocket(server.port());
 
   std::thread stopper([&server, abortive] {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -148,7 +147,7 @@ void runCloseTest(bool abortive) {
   });
 
   char c;
-  int r = read(sock, &c, 1);
+  int r = netops::recv(sock, &c, 1, 0);
   if (abortive) {
     int e = errno;
     EXPECT_EQ(-1, r);
@@ -157,7 +156,7 @@ void runCloseTest(bool abortive) {
     EXPECT_EQ(0, r);
   }
 
-  close(sock);
+  netops::close(sock);
 
   stopper.join();
 
@@ -175,7 +174,7 @@ TEST(ShutdownSocketSetTest, AbortiveClose) {
 void runKillTest(bool abortive) {
   Server server;
 
-  int sock = createConnectedSocket(server.port());
+  auto sock = createConnectedSocket(server.port());
 
   std::thread killer([&server, abortive] {
     std::this_thread::sleep_for(std::chrono::milliseconds(200));
@@ -184,7 +183,7 @@ void runKillTest(bool abortive) {
   });
 
   char c;
-  int r = read(sock, &c, 1);
+  int r = netops::recv(sock, &c, 1, 0);
 
   // "abortive" is just a hint for ShutdownSocketSet, so accept both
   // behaviors
@@ -198,7 +197,7 @@ void runKillTest(bool abortive) {
     EXPECT_EQ(0, r);
   }
 
-  close(sock);
+  netops::close(sock);
 
   killer.join();
 

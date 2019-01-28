@@ -572,16 +572,20 @@ TEST(ThreadPoolExecutorTest, RequestContext) {
   });
 }
 
+std::atomic<int> g_sequence{};
+
 struct SlowMover {
   explicit SlowMover(bool slow_ = false) : slow(slow_) {}
   SlowMover(SlowMover&& other) noexcept {
     *this = std::move(other);
   }
   SlowMover& operator=(SlowMover&& other) noexcept {
+    ++g_sequence;
     slow = other.slow;
     if (slow) {
       /* sleep override */ std::this_thread::sleep_for(milliseconds(50));
     }
+    ++g_sequence;
     return *this;
   }
 
@@ -637,6 +641,44 @@ struct UBQ : public UnboundedBlockingQueue<T> {
 
 TEST(ThreadPoolExecutorTest, UnboundedBlockingQueueBugD3527722) {
   bugD3527722_test<UBQ<SlowMover>>();
+}
+
+template <typename Q>
+void nothrow_not_full_test() {
+  /* LifoSemMPMCQueue should not throw when not full when active
+     consumers are delayed. */
+  Q q(2);
+  g_sequence = 0;
+
+  std::thread consumer1([&] {
+    while (g_sequence < 4) {
+      ;
+    }
+    q.take(); // ++g_sequence to 5 then slow
+  });
+  std::thread consumer2([&] {
+    while (g_sequence < 5) {
+      ;
+    }
+    q.take(); // ++g_sequence to 6 and 7 - fast
+  });
+
+  std::thread producer([&] {
+    q.add(SlowMover(true)); // ++g_sequence to 1 and 2
+    q.add(SlowMover(false)); // ++g_sequence to 3 and 4
+    while (g_sequence < 7) { // g_sequence == 7 implies queue is not full
+      ;
+    }
+    EXPECT_NO_THROW(q.add(SlowMover(false)));
+  });
+
+  producer.join();
+  consumer1.join();
+  consumer2.join();
+}
+
+TEST(ThreadPoolExecutorTest, LifoSemMPMCQueueNoThrowNotFull) {
+  nothrow_not_full_test<LifoSemMPMCQueue<SlowMover>>();
 }
 
 template <typename TPE>

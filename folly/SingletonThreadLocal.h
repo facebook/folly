@@ -16,14 +16,46 @@
 
 #pragma once
 
+#include <typeinfo>
+
 #include <boost/intrusive/list.hpp>
 
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
+#include <folly/detail/Iterators.h>
 #include <folly/detail/Singleton.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {
+
+namespace detail {
+
+class SingletonThreadLocalBase {
+ public:
+  class UniqueBase {
+   public:
+    using Ptr = std::type_info const*;
+    using Ref = std::type_info const&;
+    struct Value {
+      bool init;
+      Ptr make;
+      Ptr tltag;
+    };
+
+    template <typename T, typename Tag, typename Make, typename TLTag>
+    explicit UniqueBase(TypeTuple<T, Tag, Make, TLTag>)
+        : UniqueBase(
+              typeid(T),
+              typeid(Tag),
+              typeid(Make),
+              typeid(TLTag),
+              detail::createGlobal<Value, TypeTuple<T, Tag, UniqueBase>>()) {}
+
+    UniqueBase(Ref type, Ref tag, Ref make, Ref tltag, Value& value);
+  };
+};
+
+} // namespace detail
 
 /// SingletonThreadLocal
 ///
@@ -61,12 +93,15 @@ template <
     typename T,
     typename Tag = detail::DefaultTag,
     typename Make = detail::DefaultMake<T>,
-    typename TLTag = _t<std::conditional<
-        std::is_same<Tag, detail::DefaultTag>::value,
-        void,
-        Tag>>>
-class SingletonThreadLocal {
+    typename TLTag = std::
+        conditional_t<std::is_same<Tag, detail::DefaultTag>::value, void, Tag>>
+class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
  private:
+  struct Unique final : UniqueBase {
+    Unique() : UniqueBase(detail::TypeTuple<T, Tag, Make, TLTag>{}) {}
+  };
+  static Unique unique;
+
   struct Wrapper;
 
   using NodeBase = boost::intrusive::list_base_hook<
@@ -95,36 +130,22 @@ class SingletonThreadLocal {
       boost::intrusive::list<Node, boost::intrusive::constant_time_size<false>>;
 
   struct Wrapper {
-    template <typename S>
-    using MakeRet = is_invocable_r<S, Make>;
+    using Object = invoke_result_t<Make>;
+    static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
     // keep as first field, to save 1 instr in the fast path
-    union {
-      alignas(alignof(T)) unsigned char storage[sizeof(T)];
-      T object;
-    };
+    Object object{Make{}()};
     List caches;
 
     /* implicit */ operator T&() {
       return object;
     }
 
-    // normal make types
-    template <typename S = T, _t<std::enable_if<MakeRet<S>::value, int>> = 0>
-    Wrapper() {
-      (void)new (storage) S(Make{}());
-    }
-    // default and special make types for non-move-constructible T, until C++17
-    template <typename S = T, _t<std::enable_if<!MakeRet<S>::value, int>> = 0>
-    Wrapper() {
-      (void)Make{}(storage);
-    }
     ~Wrapper() {
       for (auto& node : caches) {
         node.clear();
       }
       caches.clear();
-      object.~T();
     }
   };
 
@@ -132,9 +153,8 @@ class SingletonThreadLocal {
 
   SingletonThreadLocal() = delete;
 
-  FOLLY_EXPORT FOLLY_NOINLINE static WrapperTL& getWrapperTL() {
-    static auto& entry = *detail::createGlobal<WrapperTL, Tag>();
-    return entry;
+  FOLLY_ALWAYS_INLINE static WrapperTL& getWrapperTL() {
+    return detail::createGlobal<WrapperTL, Tag>();
   }
 
   FOLLY_NOINLINE static Wrapper& getWrapper() {
@@ -143,6 +163,7 @@ class SingletonThreadLocal {
 
 #ifdef FOLLY_TLS
   FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
+    (void)unique; // force the object not to be thrown out as unused
     static thread_local Wrapper** check = &cache;
     CHECK_EQ(check, &cache) << "inline function static thread_local merging";
     static thread_local bool stale;
@@ -161,11 +182,58 @@ class SingletonThreadLocal {
 #endif
   }
 
+  class Accessor {
+   private:
+    using Inner = typename WrapperTL::Accessor;
+    using IteratorBase = typename Inner::Iterator;
+    using IteratorTag = std::bidirectional_iterator_tag;
+
+    Inner inner_;
+
+    explicit Accessor(Inner inner) noexcept : inner_(std::move(inner)) {}
+
+   public:
+    friend class SingletonThreadLocal<T, Tag, Make, TLTag>;
+
+    class Iterator
+        : public detail::
+              IteratorAdaptor<Iterator, IteratorBase, T, IteratorTag> {
+     private:
+      using Super =
+          detail::IteratorAdaptor<Iterator, IteratorBase, T, IteratorTag>;
+      using Super::Super;
+
+     public:
+      friend class Accessor;
+
+      T& dereference() const {
+        return const_cast<Iterator*>(this)->base()->object;
+      }
+    };
+
+    Accessor(const Accessor&) = delete;
+    Accessor& operator=(const Accessor&) = delete;
+    Accessor(Accessor&&) = default;
+    Accessor& operator=(Accessor&&) = default;
+
+    Iterator begin() const {
+      return Iterator(inner_.begin());
+    }
+
+    Iterator end() const {
+      return Iterator(inner_.end());
+    }
+  };
+
   // Must use a unique Tag, takes a lock that is one per Tag
-  static typename WrapperTL::Accessor accessAllThreads() {
-    return getWrapperTL().accessAllThreads();
+  static Accessor accessAllThreads() {
+    return Accessor(getWrapperTL().accessAllThreads());
   }
 };
+
+template <typename T, typename Tag, typename Make, typename TLTag>
+typename SingletonThreadLocal<T, Tag, Make, TLTag>::Unique
+    SingletonThreadLocal<T, Tag, Make, TLTag>::unique;
 
 } // namespace folly
 

@@ -189,3 +189,4 @@ using DistributedMutex = detail::distributed_mutex::DistributedMutex<>;
 } // namespace folly
 
 #include <folly/synchronization/DistributedMutex-inl.h>
+#include <folly/synchronization/DistributedMutexSpecializations.h>

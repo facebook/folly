@@ -103,6 +103,9 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   LockedPtr wlock() {
     return LockedPtr(static_cast<Subclass*>(this));
   }
+  ConstWLockedPtr wlock() const {
+    return ConstWLockedPtr(static_cast<const Subclass*>(this));
+  }
 
   /**
    * Attempts to acquire the lock in exclusive mode.  If acquisition is
@@ -113,6 +116,9 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    */
   TryWLockedPtr tryWLock() {
     return TryWLockedPtr{static_cast<Subclass*>(this)};
+  }
+  ConstTryWLockedPtr tryWLock() const {
+    return ConstTryWLockedPtr{static_cast<const Subclass*>(this)};
   }
 
   /**
@@ -144,6 +150,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   template <class Rep, class Period>
   LockedPtr wlock(const std::chrono::duration<Rep, Period>& timeout) {
     return LockedPtr(static_cast<Subclass*>(this), timeout);
+  }
+  template <class Rep, class Period>
+  LockedPtr wlock(const std::chrono::duration<Rep, Period>& timeout) const {
+    return LockedPtr(static_cast<const Subclass*>(this), timeout);
   }
 
   /**
@@ -177,6 +187,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   auto withWLock(Function&& function) {
     return function(*wlock());
   }
+  template <class Function>
+  auto withWLock(Function&& function) const {
+    return function(*wlock());
+  }
 
   /**
    * Invoke a function while holding the lock exclusively.
@@ -189,6 +203,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    */
   template <class Function>
   auto withWLockPtr(Function&& function) {
+    return function(wlock());
+  }
+  template <class Function>
+  auto withWLockPtr(Function&& function) const {
     return function(wlock());
   }
 
@@ -214,7 +232,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
  *
  * This class provides all the functionality provided by the SynchronizedBase
  * specialization for shared mutexes and a ulock() method that returns an
- * upgradable lock RAII proxy
+ * upgrade lock RAII proxy
  */
 template <class Subclass>
 class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
@@ -718,9 +736,9 @@ struct Synchronized : public SynchronizedBase<
   /**
    * Copies datum to a given target.
    */
-  void copy(T* target) const {
+  void copyInto(T& target) const {
     ConstLockedPtr guard(this);
-    *target = datum_;
+    target = datum_;
   }
 
   /**
@@ -1426,8 +1444,8 @@ class LockedPtr : public LockedPtrBase<
   }
 
   /***************************************************************************
-   * Upgradable lock methods.
-   * These are disabled via SFINAE when the mutex is not upgradable
+   * Upgrade lock methods.
+   * These are disabled via SFINAE when the mutex is not an upgrade mutex.
    **************************************************************************/
   /**
    * Move the locked ptr from an upgrade state to an exclusive state.  The
@@ -1517,6 +1535,10 @@ class LockedPtr : public LockedPtrBase<
  */
 template <typename D, typename M, typename... Args>
 auto wlock(Synchronized<D, M>& synchronized, Args&&... args) {
+  return detail::wlock(synchronized, std::forward<Args>(args)...);
+}
+template <typename D, typename M, typename... Args>
+auto wlock(const Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::wlock(synchronized, std::forward<Args>(args)...);
 }
 template <typename Data, typename Mutex, typename... Args>

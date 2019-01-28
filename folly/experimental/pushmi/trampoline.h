@@ -130,7 +130,7 @@ class trampoline {
   template <class Selector, class Derived>
   static void submit(Selector, Derived&, recurse_t) {
     if (!is_owned()) {
-      abort();
+      std::terminate();
     }
     repeat(*owner()) = true;
   }
@@ -185,19 +185,19 @@ class trampoline {
       pending(pending_store).clear();
 
       if (!is_owned()) {
-        std::abort();
+        std::terminate();
       }
       if (!pending(pending_store).empty()) {
-        std::abort();
+        std::terminate();
       }
       owner() = nullptr;
       throw;
     }
     if (!is_owned()) {
-      std::abort();
+      std::terminate();
     }
     if (!pending(pending_store).empty()) {
-      std::abort();
+      std::terminate();
     }
     owner() = nullptr;
   }
@@ -247,7 +247,7 @@ class trampoline {
 template <class E = std::exception_ptr>
 detail::trampoline_id get_trampoline_id() {
   if (!detail::trampoline<E>::is_owned()) {
-    std::abort();
+    std::terminate();
   }
   return detail::trampoline<E>::get_id();
 }
@@ -282,7 +282,7 @@ decltype(auto) repeat(delegator<E>& exec) {
 }
 template <class AnyExec>
 [[noreturn]] void repeat(AnyExec&) {
-  std::abort();
+  std::terminate();
 }
 
 } // namespace detail

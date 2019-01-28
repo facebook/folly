@@ -340,11 +340,11 @@ template <class T>
 Future<T> fGen() {
   Promise<T> p;
   auto f = p.getFuture()
-               .then([](T&& t) { return std::move(t); })
-               .then([](T&& t) { return makeFuture(std::move(t)); })
+               .thenValue([](T&& t) { return std::move(t); })
+               .thenValue([](T&& t) { return makeFuture(std::move(t)); })
                .via(&exe)
-               .then([](T&& t) { return std::move(t); })
-               .then([](T&& t) { return makeFuture(std::move(t)); });
+               .thenValue([](T&& t) { return std::move(t); })
+               .thenValue([](T&& t) { return makeFuture(std::move(t)); });
   p.setValue(T());
   return f;
 }
@@ -363,8 +363,8 @@ void complexBenchmark() {
   collect(fsGen<T>());
   collectAll(fsGen<T>());
   collectAny(fsGen<T>());
-  futures::map(fsGen<T>(), [](const T& t) { return t; });
-  futures::map(fsGen<T>(), [](const T& t) { return makeFuture(T(t)); });
+  futures::mapValue(fsGen<T>(), [](const T& t) { return t; });
+  futures::mapValue(fsGen<T>(), [](const T& t) { return makeFuture(T(t)); });
 }
 
 BENCHMARK_DRAW_LINE();

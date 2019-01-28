@@ -18,8 +18,6 @@
 
 #include <folly/io/async/DelayedDestructionBase.h>
 
-#include <glog/logging.h>
-
 namespace folly {
 
 /**

@@ -913,6 +913,27 @@ class IOBuf {
   }
 
   /**
+   *
+   * Returns the SharedInfo::userData if sharedInfo()
+   * is not nullptr, nullptr otherwise
+   *
+   **/
+  void* getUserData() const {
+    SharedInfo* info = sharedInfo();
+    return info ? info->userData : nullptr;
+  }
+
+  /**
+   *
+   * Returns free function if sharedInfo() is not nullputr, nullptr otherwise
+   *
+   **/
+  FreeFunction getFreeFn() const {
+    SharedInfo* info = sharedInfo();
+    return info ? info->freeFn : nullptr;
+  }
+
+  /**
    * Return true if all IOBufs in this chain are managed by the usual
    * refcounting mechanism (and so the lifetime of the underlying memory
    * can be extended by clone()).
@@ -1244,17 +1265,25 @@ class IOBuf {
    */
   void appendToIov(folly::fbvector<struct iovec>* iov) const;
 
+  struct FillIovResult {
+    // How many iovecs were filled (or 0 on error).
+    size_t numIovecs;
+    // The total length of filled iovecs (or 0 on error).
+    size_t totalLength;
+  };
+
   /**
    * Fill an iovec array with the IOBuf data.
    *
-   * Returns the number of iovec filled. If there are more buffer than
-   * iovec, returns 0. This version is suitable to use with stack iovec
-   * arrays.
+   * Returns a struct with two fields: the number of iovec filled, and total
+   * size of the iovecs filled. If there are more buffer than iovec, returns 0
+   * in both fields.
+   * This version is suitable to use with stack iovec arrays.
    *
    * Naturally, the filled iovec data will be invalid if you modify the
    * buffer chain.
    */
-  size_t fillIov(struct iovec* iov, size_t len) const;
+  FillIovResult fillIov(struct iovec* iov, size_t len) const;
 
   /**
    * A helper that wraps a number of iovecs into an IOBuf chain.  If count == 0,
@@ -1346,7 +1375,9 @@ class IOBuf {
 
   struct SharedInfo {
     SharedInfo();
-    SharedInfo(FreeFunction fn, void* arg);
+    SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
+
+    static void releaseStorage(SharedInfo* info);
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.
@@ -1354,6 +1385,7 @@ class IOBuf {
     void* userData;
     std::atomic<uint32_t> refcount;
     bool externallyShared{false};
+    bool useHeapFullStorage{false};
   };
   // Helper structs for use by operator new and delete
   struct HeapPrefix;
@@ -1510,6 +1542,9 @@ class IOBuf {
 struct IOBufHash {
   size_t operator()(const IOBuf& buf) const noexcept;
   size_t operator()(const std::unique_ptr<IOBuf>& buf) const noexcept {
+    return operator()(buf.get());
+  }
+  size_t operator()(const IOBuf* buf) const noexcept {
     return buf ? (*this)(*buf) : 0;
   }
 };
@@ -1524,6 +1559,9 @@ struct IOBufCompare {
   ordering operator()(
       const std::unique_ptr<IOBuf>& a,
       const std::unique_ptr<IOBuf>& b) const {
+    return operator()(a.get(), b.get());
+  }
+  ordering operator()(const IOBuf* a, const IOBuf* b) const {
     // clang-format off
     return
         !a && !b ? ordering::eq :

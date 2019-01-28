@@ -308,8 +308,8 @@
 #endif
 
 #define XLOG_SET_CATEGORY_NAME(category)                   \
-  namespace {                                              \
   namespace xlog_detail {                                  \
+  namespace {                                              \
   XLOG_SET_CATEGORY_CHECK                                  \
   constexpr inline folly::StringPiece getXlogCategoryName( \
       folly::StringPiece,                                  \
@@ -585,8 +585,8 @@ constexpr const char* xlogStripFilename(
  * We want each .cpp file that uses xlog.h to get its own separate
  * implementation of the following functions and variables.
  */
-namespace {
 namespace xlog_detail {
+namespace {
 /**
  * The default getXlogCategoryName() function.
  *
@@ -636,5 +636,5 @@ constexpr inline bool isXlogCategoryOverridden(T) {
  * statement.
  */
 ::folly::XlogFileScopeInfo xlogFileScopeInfo;
-} // namespace xlog_detail
 } // namespace
+} // namespace xlog_detail

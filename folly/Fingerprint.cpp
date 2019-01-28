@@ -83,7 +83,7 @@ constexpr auto copy_table(D const (&table)[S0][S1][S2]) {
 
 template <size_t Deg>
 constexpr poly_table<Deg> make_poly_table() {
-  FingerprintPolynomial<Deg> const poly(FingerprintTablePoly<Deg>::data);
+  FingerprintPolynomial<Deg> poly(FingerprintTablePoly<Deg>::data);
   uint64_t table[8][256][poly_size(Deg)] = {};
   // table[i][q] is Q(X) * X^(k+8*i) mod P(X),
   // where k is the number of bits in the fingerprint (and deg(P)) and

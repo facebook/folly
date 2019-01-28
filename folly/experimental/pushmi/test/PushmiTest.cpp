@@ -125,7 +125,7 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
             return v + 1;
           },
           [&](auto v) {
-            std::abort();
+            std::terminate();
             return v;
           }) |
       op::transform([&](int v) {
@@ -157,7 +157,7 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
 }
 
 TEST(FromIntManySender, TransformAndSubmit) {
-  std::array<int, 3> arr{0, 9, 99};
+  std::array<int, 3> arr{{0, 9, 99}};
   auto m = op::from(arr);
   using M = decltype(m);
 
@@ -175,7 +175,7 @@ TEST(FromIntManySender, TransformAndSubmit) {
             return v + 1;
           },
           [&](auto v) {
-            std::abort();
+            std::terminate();
             return v;
           }) |
       op::transform([&](int v) {

@@ -33,8 +33,8 @@ TEST(AsyncSocketTest, getSockOpt) {
   int val;
   socklen_t len;
 
-  int expectedRc =
-      getsockopt(socket->getFd(), SOL_SOCKET, SO_REUSEADDR, &val, &len);
+  int expectedRc = getsockopt(
+      socket->getNetworkSocket().toFd(), SOL_SOCKET, SO_REUSEADDR, &val, &len);
   int actualRc = socket->getSockOpt(SOL_SOCKET, SO_REUSEADDR, &val, &len);
 
   EXPECT_EQ(expectedRc, actualRc);

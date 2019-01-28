@@ -239,8 +239,8 @@ class hazptr_obj_base_linked : public hazptr_obj_linked<Atom>,
   void retire() {
     this->pre_retire_check(); // defined in hazptr_obj
     set_reclaim();
-    this->push_to_retired(
-        default_hazptr_domain<Atom>()); // defined in hazptr_obj
+    auto& domain = default_hazptr_domain<Atom>();
+    this->push_obj(domain); // defined in hazptr_obj
   }
 
   /* unlink: Retire object if last link is released. */

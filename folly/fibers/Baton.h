@@ -19,7 +19,7 @@
 
 #include <folly/Portability.h>
 #include <folly/detail/Futex.h>
-#include <folly/fibers/TimeoutController.h>
+#include <folly/io/async/HHWheelTimer.h>
 
 #if FOLLY_HAS_COROUTINES
 #include <experimental/coroutine>
@@ -215,19 +215,22 @@ class Baton {
    * scheduleTimeout() may only be called once prior to the end of the
    * associated Baton's life.
    */
-  class TimeoutHandler {
+  class TimeoutHandler final : private HHWheelTimer::Callback {
    public:
-    void scheduleTimeout(TimeoutController::Duration timeoutMs);
+    void scheduleTimeout(std::chrono::milliseconds timeout);
 
    private:
     friend class Baton;
 
-    void cancelTimeout();
-
     std::function<void()> timeoutFunc_{nullptr};
     FiberManager* fiberManager_{nullptr};
 
-    intptr_t timeoutPtr_{0};
+    void timeoutExpired() noexcept override {
+      assert(timeoutFunc_ != nullptr);
+      timeoutFunc_();
+    }
+
+    void callbackCanceled() noexcept override {}
   };
 
  private:
@@ -268,7 +271,7 @@ class Baton {
    */
   bool spinWaitForEarlyPost();
 
-  bool timedWaitThread(TimeoutController::Duration timeout);
+  bool timedWaitThread(std::chrono::milliseconds timeout);
 
   static constexpr intptr_t NO_WAITER = 0;
   static constexpr intptr_t POSTED = -1;

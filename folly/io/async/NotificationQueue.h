@@ -819,9 +819,9 @@ void NotificationQueue<MessageT>::Consumer::init(
   queue_->ensureSignal();
 
   if (queue_->eventfd_ >= 0) {
-    initHandler(eventBase, queue_->eventfd_);
+    initHandler(eventBase, folly::NetworkSocket::fromFd(queue_->eventfd_));
   } else {
-    initHandler(eventBase, queue_->pipeFds_[0]);
+    initHandler(eventBase, folly::NetworkSocket::fromFd(queue_->pipeFds_[0]));
   }
 }
 

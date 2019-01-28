@@ -40,8 +40,7 @@ static void run(
   eb->loopForever();
 
   // must destruct in io thread for on-destruction callbacks
-  EventBase::StackFunctionLoopCallback cb([=] { ebm->clearEventBase(); });
-  eb->runOnDestruction(&cb);
+  eb->runOnDestruction([=] { ebm->clearEventBase(); });
   // wait until terminateLoopSoon() is complete
   stop->wait();
   eb->~EventBase();

@@ -27,6 +27,7 @@
 #include <folly/futures/Promise.h>
 
 #include <atomic>
+#include <future>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -1559,6 +1560,56 @@ TEST(EventBaseTest, LoopTermination) {
   close(pipeFds[0]);
 }
 
+TEST(EventBaseTest, CallbackOrderTest) {
+  size_t num = 0;
+  EventBase evb;
+
+  evb.runInEventBaseThread([&]() {
+    std::thread t([&]() {
+      evb.runInEventBaseThread([&]() {
+        num++;
+        EXPECT_EQ(num, 2);
+      });
+    });
+    t.join();
+
+    // this callback will run first
+    // even if it is scheduled after the first one
+    evb.runInEventBaseThread([&]() {
+      num++;
+      EXPECT_EQ(num, 1);
+    });
+  });
+
+  evb.loop();
+  EXPECT_EQ(num, 2);
+}
+
+TEST(EventBaseTest, AlwaysEnqueueCallbackOrderTest) {
+  size_t num = 0;
+  EventBase evb;
+
+  evb.runInEventBaseThread([&]() {
+    std::thread t([&]() {
+      evb.runInEventBaseThreadAlwaysEnqueue([&]() {
+        num++;
+        EXPECT_EQ(num, 1);
+      });
+    });
+    t.join();
+
+    // this callback will run second
+    // since it was enqueued after the first one
+    evb.runInEventBaseThreadAlwaysEnqueue([&]() {
+      num++;
+      EXPECT_EQ(num, 2);
+    });
+  });
+
+  evb.loop();
+  EXPECT_EQ(num, 2);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Tests for latency calculations
 ///////////////////////////////////////////////////////////////////////////
@@ -1991,4 +2042,89 @@ TEST(EventBaseTest, CancelLoopCallbackRequestContextTest) {
   EXPECT_EQ(rctx_weak_ptr.expired(), true);
 
   EXPECT_EQ(defaultCtx, RequestContext::get());
+}
+
+TEST(EventBaseTest, TestStarvation) {
+  EventBase evb;
+  std::promise<void> stopRequested;
+  std::promise<void> stopScheduled;
+  bool stopping{false};
+  std::thread t{[&] {
+    stopRequested.get_future().get();
+    evb.add([&]() { stopping = true; });
+    stopScheduled.set_value();
+  }};
+
+  size_t num{0};
+  std::function<void()> fn;
+  fn = [&]() {
+    if (stopping || num >= 2000) {
+      return;
+    }
+
+    if (++num == 1000) {
+      stopRequested.set_value();
+      stopScheduled.get_future().get();
+    }
+
+    evb.add(fn);
+  };
+
+  evb.add(fn);
+  evb.loop();
+
+  EXPECT_EQ(1000, num);
+  t.join();
+}
+
+TEST(EventBaseTest, RunOnDestructionBasic) {
+  bool ranOnDestruction = false;
+  {
+    EventBase evb;
+    evb.runOnDestruction([&ranOnDestruction] { ranOnDestruction = true; });
+  }
+  EXPECT_TRUE(ranOnDestruction);
+}
+
+TEST(EventBaseTest, RunOnDestructionCancelled) {
+  struct Callback : EventBase::OnDestructionCallback {
+    bool ranOnDestruction{false};
+
+    void onEventBaseDestruction() noexcept final {
+      ranOnDestruction = true;
+    }
+  };
+
+  auto cb = std::make_unique<Callback>();
+  {
+    EventBase evb;
+    evb.runOnDestruction(*cb);
+    EXPECT_TRUE(cb->cancel());
+  }
+  EXPECT_FALSE(cb->ranOnDestruction);
+  EXPECT_FALSE(cb->cancel());
+}
+
+TEST(EventBaseTest, RunOnDestructionAfterHandleDestroyed) {
+  EventBase evb;
+  {
+    bool ranOnDestruction = false;
+    auto* cb = new EventBase::FunctionOnDestructionCallback(
+        [&ranOnDestruction] { ranOnDestruction = true; });
+    evb.runOnDestruction(*cb);
+    EXPECT_TRUE(cb->cancel());
+    delete cb;
+  }
+}
+
+TEST(EventBaseTest, RunOnDestructionAddCallbackWithinCallback) {
+  size_t callbacksCalled = 0;
+  {
+    EventBase evb;
+    evb.runOnDestruction([&] {
+      ++callbacksCalled;
+      evb.runOnDestruction([&] { ++callbacksCalled; });
+    });
+  }
+  EXPECT_EQ(2, callbacksCalled);
 }

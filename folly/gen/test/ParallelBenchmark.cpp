@@ -38,6 +38,7 @@ size_t fib(int n) {
   return n <= 1 ? 1 : fib(n - 1) + fib(n - 2);
 }
 
+namespace {
 static auto isPrimeSlow = [](int n) {
   if (n < 2) {
     return false;
@@ -87,6 +88,7 @@ auto medium = from(v) | take(1 << 14);
 auto large = from(v) | take(1 << 18);
 auto huge = from(v);
 auto chunks = chunked(v);
+} // namespace
 
 BENCH_GEN(small | map(factorsSlow) | sum);
 BENCH_GEN_REL(small | parallel(map(factorsSlow)) | sum);

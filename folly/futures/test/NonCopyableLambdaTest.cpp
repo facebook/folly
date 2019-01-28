@@ -29,7 +29,7 @@ TEST(NonCopyableLambda, basic) {
       std::placeholders::_1));
 
   // The previous statement can be simplified in C++14:
-  //  Future<Unit>().then([promise = std::move(promise)]() mutable {
+  //  Future<Unit>().thenValue([promise = std::move(promise)](auto&&) mutable {
   //    promise.setValue(123);
   //  });
 
@@ -53,7 +53,8 @@ TEST(NonCopyableLambda, unique_ptr) {
 
   // The previous statement can be simplified in C++14:
   //  auto future =
-  //      promise.getFuture().then([int_ptr = std::move(int_ptr)]() mutable {
+  //      promise.getFuture().thenValue([int_ptr = std::move(int_ptr)](
+  //          auto&&) mutable {
   //        ++*int_ptr;
   //        return std::move(int_ptr);
   //      });
@@ -69,7 +70,7 @@ TEST(NonCopyableLambda, Function) {
 
   Function<int(int)> callback = [](int x) { return x + 1; };
 
-  auto future = promise.getFuture().then(std::move(callback));
+  auto future = promise.getFuture().thenValue(std::move(callback));
   EXPECT_THROW(callback(0), std::bad_function_call);
 
   EXPECT_FALSE(future.isReady());
@@ -83,7 +84,7 @@ TEST(NonCopyableLambda, FunctionConst) {
 
   Function<int(int) const> callback = [](int x) { return x + 1; };
 
-  auto future = promise.getFuture().then(std::move(callback));
+  auto future = promise.getFuture().thenValue(std::move(callback));
   EXPECT_THROW(callback(0), std::bad_function_call);
 
   EXPECT_FALSE(future.isReady());

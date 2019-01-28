@@ -210,11 +210,6 @@ struct IndexedMemPool : boost::noncopyable {
       assert(errno == ENOMEM);
       throw std::bad_alloc();
     }
-    for (size_t i = 1; i < actualCapacity_ + 1; i++) {
-      // Atom is enforced above to be nothrow-default-constructible
-      new (&slots_[i].localNext) Atom<uint32_t>();
-      new (&slots_[i].globalNext) Atom<uint32_t>();
-    }
   }
 
   /// Destroys all of the contained elements
@@ -222,8 +217,6 @@ struct IndexedMemPool : boost::noncopyable {
     using A = Atom<uint32_t>;
     for (uint32_t i = maxAllocatedIndex(); i > 0; --i) {
       Traits::cleanup(&slots_[i].elem);
-    }
-    for (size_t i = 1; i < actualCapacity_ + 1; i++) {
       slots_[i].localNext.~A();
       slots_[i].globalNext.~A();
     }
@@ -498,7 +491,14 @@ struct IndexedMemPool : boost::noncopyable {
           // allocation failed
           return 0;
         }
-        Traits::initialize(&slot(idx).elem);
+        Slot& s = slot(idx);
+        // Atom is enforced above to be nothrow-default-constructible
+        // As an optimization, use default-initialization (no parens) rather
+        // than direct-initialization (with parens): these locations are
+        // stored-to before they are loaded-from
+        new (&s.localNext) Atom<uint32_t>;
+        new (&s.globalNext) Atom<uint32_t>;
+        Traits::initialize(&s.elem);
         return idx;
       }
 

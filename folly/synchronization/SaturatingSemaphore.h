@@ -127,7 +127,7 @@ class SaturatingSemaphore {
   };
 
  public:
-  FOLLY_ALWAYS_INLINE static WaitOptions wait_options() {
+  FOLLY_ALWAYS_INLINE static constexpr WaitOptions wait_options() {
     return {};
   }
 

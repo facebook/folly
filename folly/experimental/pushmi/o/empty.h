@@ -32,10 +32,9 @@ struct single_empty_sender_base : single_sender<ignoreSF, inlineEXF> {
 template <class... VN>
 struct single_empty_impl {
   PUSHMI_TEMPLATE(class Out)
-  (requires ReceiveValue<Out, VN...>)
-  void operator()(
-      single_empty_sender_base&,
-      Out out) {
+  (requires ReceiveValue<Out, VN...>) //
+      void
+      operator()(single_empty_sender_base&, Out out) {
     set_done(out);
   }
 };

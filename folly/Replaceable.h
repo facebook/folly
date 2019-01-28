@@ -637,7 +637,7 @@ class alignas(T) Replaceable
   friend struct replaceable_detail::copy_ctor_mixin<T>;
   friend struct replaceable_detail::move_assignment_mixin<T>;
   friend struct replaceable_detail::copy_assignment_mixin<T>;
-  std::aligned_storage_t<sizeof(T), alignof(T)> storage_[1];
+  aligned_storage_for_t<T> storage_[1];
 };
 
 #if __cplusplus > 201402L

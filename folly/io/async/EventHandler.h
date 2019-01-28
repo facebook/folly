@@ -140,10 +140,6 @@ class EventHandler : private boost::noncopyable {
    *
    * This may only be called when the handler is not currently registered.
    */
-  void changeHandlerFD(int fd) {
-    changeHandlerFD(NetworkSocket::fromFd(fd));
-  }
-
   void changeHandlerFD(NetworkSocket fd);
 
   /**
@@ -153,10 +149,6 @@ class EventHandler : private boost::noncopyable {
    * a EventBase.  This is primarily intended to be used to initialize
    * EventHandler objects created using the default constructor.
    */
-  void initHandler(EventBase* eventBase, int fd) {
-    initHandler(eventBase, NetworkSocket::fromFd(fd));
-  }
-
   void initHandler(EventBase* eventBase, NetworkSocket fd);
 
   /**

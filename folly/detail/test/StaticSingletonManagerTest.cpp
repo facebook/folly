@@ -21,28 +21,31 @@
 namespace folly {
 namespace detail {
 
+extern "C" int* check() {
+  return &createGlobal<int, void>();
+}
+
 struct StaticSingletonManagerTest : public testing::Test {};
 
 template <typename T>
 struct Tag {};
 
+template <int I>
+using Int = std::integral_constant<int, I>;
+
 TEST_F(StaticSingletonManagerTest, example) {
-  auto make3 = [n = 3] { return new int(n); };
-  auto i = createGlobal<int, Tag<char>>(make3);
-  ASSERT_NE(nullptr, i);
-  EXPECT_EQ(3, *i);
+  using T = std::integral_constant<int, 3>;
 
-  auto const make4 = [n = 4] { return new int(n); };
-  auto j = createGlobal<int, Tag<char>>(make4);
-  ASSERT_NE(nullptr, j);
-  EXPECT_EQ(i, j);
-  EXPECT_EQ(3, *j);
+  auto& i = createGlobal<T, Tag<char>>();
+  EXPECT_EQ(T::value, i);
 
-  auto make5 = [n = 5] { return new int(n); };
-  auto k = createGlobal<int, Tag<char*>>(std::move(make5));
-  ASSERT_NE(nullptr, k);
-  EXPECT_NE(i, k);
-  EXPECT_EQ(5, *k);
+  auto& j = createGlobal<T, Tag<char>>();
+  EXPECT_EQ(&i, &j);
+  EXPECT_EQ(T::value, j);
+
+  auto& k = createGlobal<T, Tag<char*>>();
+  EXPECT_NE(&i, &k);
+  EXPECT_EQ(T::value, k);
 }
 
 } // namespace detail

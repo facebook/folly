@@ -268,6 +268,18 @@ TEST(Traits, type_t) {
            value));
 }
 
+TEST(Traits, aligned_storage_for_t) {
+  struct alignas(2) Foo {
+    char data[4];
+  };
+  using storage = aligned_storage_for_t<Foo[4]>;
+  EXPECT_EQ(16, sizeof(storage));
+  EXPECT_EQ(2, alignof(storage));
+  EXPECT_TRUE(std::is_trivial<storage>::value);
+  EXPECT_TRUE(std::is_standard_layout<storage>::value);
+  EXPECT_TRUE(std::is_pod<storage>::value); // pod = trivial + standard-layout
+}
+
 TEST(Traits, remove_cvref) {
   using folly::remove_cvref;
   using folly::remove_cvref_t;

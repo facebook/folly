@@ -17,6 +17,7 @@
 #pragma once
 
 #include <exception>
+#include <typeinfo>
 
 #include <folly/CPortability.h>
 

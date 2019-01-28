@@ -63,6 +63,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
@@ -381,5 +382,27 @@ T bitReverse(T n) {
   m = ((m & 0xF0F0F0F0F0F0F0F0) >> 4) | ((m & 0x0F0F0F0F0F0F0F0F) << 4);
   return static_cast<T>(Endian::swap(m));
 }
+
+#if __cpp_lib_bit_cast
+
+using std::bit_cast;
+
+#else
+
+//  mimic: std::bit_cast, C++20
+template <
+    typename To,
+    typename From,
+    std::enable_if_t<
+        sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
+            is_trivially_copyable<From>::value,
+        int> = 0>
+To bit_cast(const From& src) noexcept {
+  To to;
+  std::memcpy(&to, &src, sizeof(From));
+  return to;
+}
+
+#endif
 
 } // namespace folly

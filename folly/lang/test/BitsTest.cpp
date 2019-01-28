@@ -25,7 +25,7 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace folly;
+namespace folly {
 
 // Test constexpr-ness.
 #if !defined(__clang__) && !defined(_MSC_VER)
@@ -230,4 +230,22 @@ TEST(Bits, PartialLoadUnaligned) {
       }
     }
   }
+}
+
+TEST(Bits, BitCastBasic) {
+  auto one = std::make_unique<int>();
+  auto two = folly::bit_cast<std::uintptr_t>(one.get());
+  EXPECT_EQ(folly::bit_cast<int*>(two), one.get());
+}
+
+} // namespace folly
+
+TEST(Bits, BitCastCompatibilityTest) {
+  using namespace folly;
+  using namespace std;
+
+  auto one = folly::Random::rand64();
+  auto pointer = bit_cast<std::uintptr_t>(one);
+  auto two = bit_cast<std::uint64_t>(pointer);
+  EXPECT_EQ(one, two);
 }

@@ -301,6 +301,10 @@ using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
+template <typename T>
+using aligned_storage_for_t =
+    typename std::aligned_storage<sizeof(T), alignof(T)>::type;
+
 // Older versions of libstdc++ do not provide std::is_trivially_copyable
 #if defined(__clang__) && !defined(_LIBCPP_VERSION)
 template <class T>
@@ -415,12 +419,12 @@ struct IsLessThanComparable
 
 namespace traits_detail_IsNothrowSwappable {
 #if defined(__cpp_lib_is_swappable) || (_CPPLIB_VER && _HAS_CXX17)
-// MSVC 2015+ already implements the C++17 P0185R1 proposal which
-// adds std::is_nothrow_swappable, so use it instead if C++17 mode
-// is enabled.
+// MSVC already implements the C++17 P0185R1 proposal which adds
+// std::is_nothrow_swappable, so use it instead if C++17 mode is
+// enabled.
 template <typename T>
 using IsNothrowSwappable = std::is_nothrow_swappable<T>;
-#elif _CPPLIB_VER > 601
+<<<<<<< HEAD
 // MSVC 2015+ defines the base even if C++17 is disabled, and
 // MSVC 2015 has issues with our fallback implementation due to
 // over-eager evaluation of noexcept.

@@ -18,6 +18,7 @@
 
 #include <folly/DynamicConverter.h>
 
+#include <folly/FBVector.h>
 #include <folly/portability/GTest.h>
 
 #include <algorithm>

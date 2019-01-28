@@ -78,7 +78,7 @@ struct ignoreVF {
 struct abortEF {
   [[noreturn]]
   void operator()(detail::any) noexcept {
-    std::abort();
+    std::terminate();
   }
 };
 
@@ -115,6 +115,7 @@ struct priorityZeroF {
 
 struct passDVF {
   PUSHMI_TEMPLATE(class Data, class... VN)
+  // (requires True<>) //
     (requires requires (
       set_value(std::declval<Data&>(), std::declval<VN>()...)
     ) && Receiver<Data>)

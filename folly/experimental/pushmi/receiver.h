@@ -413,8 +413,8 @@ receiver() -> receiver<>;
 
 PUSHMI_TEMPLATE(class VF)
   (requires PUSHMI_EXP(
-    True<>
-    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::Receiver<VF>)))
+    lazy::True<>
+    PUSHMI_BROKEN_SUBSUMPTION(PUSHMI_AND not lazy::ReceiverDataArg<VF>)))
 receiver(VF) -> receiver<VF, abortEF, ignoreDF>;
 
 template <class... EFN>

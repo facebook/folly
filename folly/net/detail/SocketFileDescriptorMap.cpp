@@ -23,11 +23,8 @@
 
 #include <fcntl.h>
 
-// Including ntdef.h requires building as a driver, but all we want
-// is a status code, but we need NTSTATUS defined for that. Luckily
-// bcrypt.h also defines NTSTATUS, so we'll use that one instead.
-#include <bcrypt.h> // @manual
-#include <ntstatus.h> // @manual
+// We need this, but it's only defined for kernel drivers :(
+#define STATUS_HANDLE_NOT_CLOSABLE 0xC0000235L
 
 namespace folly {
 namespace netops {

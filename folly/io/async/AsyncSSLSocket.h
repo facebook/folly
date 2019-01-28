@@ -221,6 +221,18 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       EventBase* evb,
       int fd,
       bool server = true,
+      bool deferSecurityNegotiation = false)
+      : AsyncSSLSocket(
+            ctx,
+            evb,
+            NetworkSocket::fromFd(fd),
+            server,
+            deferSecurityNegotiation) {}
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      NetworkSocket fd,
+      bool server = true,
       bool deferSecurityNegotiation = false);
 
   /**
@@ -239,12 +251,22 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static std::shared_ptr<AsyncSSLSocket> newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
-      int fd,
+      NetworkSocket fd,
       bool server = true,
       bool deferSecurityNegotiation = false) {
     return std::shared_ptr<AsyncSSLSocket>(
         new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation),
         Destructor());
+  }
+
+  static std::shared_ptr<AsyncSSLSocket> newSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      bool server = true,
+      bool deferSecurityNegotiation = false) {
+    return newSocket(
+        ctx, evb, NetworkSocket::fromFd(fd), server, deferSecurityNegotiation);
   }
 
   /**
@@ -287,9 +309,21 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   AsyncSSLSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
-      int fd,
+      NetworkSocket fd,
       const std::string& serverName,
       bool deferSecurityNegotiation = false);
+  AsyncSSLSocket(
+      const std::shared_ptr<folly::SSLContext>& ctx,
+      EventBase* evb,
+      int fd,
+      const std::string& serverName,
+      bool deferSecurityNegotiation = false)
+      : AsyncSSLSocket(
+            ctx,
+            evb,
+            NetworkSocket::fromFd(fd),
+            serverName,
+            deferSecurityNegotiation) {}
 
   static std::shared_ptr<AsyncSSLSocket> newSocket(
       const std::shared_ptr<folly::SSLContext>& ctx,
@@ -732,15 +766,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     return minWriteSize_;
   }
 
-  void setReadCB(ReadCallback* callback) override;
-
-  /**
-   * Tries to enable the buffer movable experimental feature in openssl.
-   * This is not guaranteed to succeed in case openssl does not have
-   * the experimental feature built in.
-   */
-  void setBufferMovableEnabled(bool enabled);
-
   const AsyncTransportCertificate* getPeerCertificate() const override;
   const AsyncTransportCertificate* getSelfCertificate() const override;
 
@@ -821,7 +846,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   // Inherit event notification methods from AsyncSocket except
   // the following.
-  void prepareReadBuffer(void** buf, size_t* buflen) override;
   void handleRead() noexcept override;
   void handleWrite() noexcept override;
   void handleAccept() noexcept;
@@ -948,7 +972,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   bool parseClientHello_{false};
   bool cacheAddrOnFailure_{false};
-  bool bufferMovableEnabled_{false};
   bool certCacheHit_{false};
   std::unique_ptr<ssl::ClientHelloInfo> clientHelloInfo_;
   std::vector<std::pair<char, StringPiece>> alertsReceived_;
@@ -966,6 +989,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   bool sessionIDResumed_{false};
   // This can be called for OpenSSL 1.1.0 async operation finishes
   std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
+  // Whether this socket is currently waiting on SSL_accept
+  bool waitingOnAccept_{false};
 };
 
 } // namespace folly

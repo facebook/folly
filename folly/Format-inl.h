@@ -260,11 +260,9 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
           arg.width = asDerived().getSizeArg(size_t(arg.widthIndex), arg);
         }
 
-        try {
-          argIndex = to<int>(piece);
-        } catch (const std::out_of_range&) {
-          arg.error("argument index must be integer");
-        }
+        auto result = tryTo<int>(piece);
+        arg.enforce(result, "argument index must be integer");
+        argIndex = *result;
         arg.enforce(argIndex >= 0, "argument index must be non-negative");
         hasExplicitArgIndex = true;
       }

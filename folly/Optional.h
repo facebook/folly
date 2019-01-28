@@ -134,14 +134,23 @@ class Optional {
   }
 
   /**
-   * DEPRECATED: use folly::none
+   * Explicitly disallow converting nullptr to non-pointer
+   * types. Optional used to support initialization from nullptr as if
+   * it were folly::none. Without this constructor,
+   * folly::Optional<bool> could be constructed from nullptr,
+   * producing {false} instead of {}. This would be a change in
+   * behavior from the old code, so explicitly disallow it. Note that
+   * std::optional<bool> can be constructed from nullptr, also
+   * producing {false}.
+   *
+   * This constructor is temporary and should be removed when all call
+   * sites are fixed.
    */
   template <typename Null = std::nullptr_t>
-  FOLLY_CPP14_CONSTEXPR /* implicit */
+  /* implicit */
   Optional(typename std::enable_if<
-           !std::is_pointer<Value>::value &&
-               std::is_same<Null, std::nullptr_t>::value,
-           Null>::type) noexcept {}
+           std::is_convertible<Null, Value>::value,
+           Null>::type) noexcept = delete;
 
   template <typename... Args>
   FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
@@ -346,7 +355,7 @@ class Optional {
 
  private:
   template <class T>
-  friend constexpr Optional<_t<std::decay<T>>> make_optional(T&&);
+  friend constexpr Optional<std::decay_t<T>> make_optional(T&&);
   template <class T, class... Args>
   friend constexpr Optional<T> make_optional(Args&&... args);
   template <class T, class U, class... As>
@@ -403,17 +412,10 @@ class Optional {
     };
     bool hasValue;
 
-    FOLLY_PUSH_WARNING
-    // These are both informational warnings, but they trigger rare
-    // enough that we've left them enabled. Needed as long as MSVC
-    // 2015 is supported.
-    FOLLY_MSVC_DISABLE_WARNING(4587) // constructor of .value is not called
-    FOLLY_MSVC_DISABLE_WARNING(4588) // destructor of .value is not called
     StorageNonTriviallyDestructible() : hasValue{false} {}
     ~StorageNonTriviallyDestructible() {
       clear();
     }
-    FOLLY_POP_WARNING
 
     void clear() {
       if (hasValue) {
@@ -447,9 +449,9 @@ void swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
 }
 
 template <class T>
-constexpr Optional<_t<std::decay<T>>> make_optional(T&& v) {
+constexpr Optional<std::decay_t<T>> make_optional(T&& v) {
   using PrivateConstructor =
-      typename folly::Optional<_t<std::decay<T>>>::PrivateConstructor;
+      typename folly::Optional<std::decay_t<T>>::PrivateConstructor;
   return {PrivateConstructor{}, std::forward<T>(v)};
 }
 

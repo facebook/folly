@@ -38,8 +38,9 @@ struct on_fn {
   struct out_impl {
     ExecutorFactory ef_;
     PUSHMI_TEMPLATE(class Out)
-    (requires SenderTo<In, Out>)
-    void operator()(In& in, Out out) const {
+    (requires SenderTo<In, Out>) //
+        void
+        operator()(In& in, Out out) const {
       auto exec = ef_();
       submit(
           exec,
@@ -60,8 +61,9 @@ struct on_fn {
   struct time_out_impl {
     ExecutorFactory ef_;
     PUSHMI_TEMPLATE(class TP, class Out)
-    (requires TimeSenderTo<In, Out>)
-    void operator()(In& in, TP at, Out out) const {
+    (requires TimeSenderTo<In, Out>) //
+        void
+        operator()(In& in, TP at, Out out) const {
       auto exec = ef_();
       submit(
           exec,
@@ -74,8 +76,9 @@ struct on_fn {
   struct in_impl {
     ExecutorFactory ef_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>)
-    auto operator()(In in) const {
+    (requires Sender<In>) //
+        auto
+        operator()(In in) const {
       return ::folly::pushmi::detail::sender_from(
           std::move(in),
           detail::submit_transform_out<In>(
@@ -87,8 +90,9 @@ struct on_fn {
  public:
   PUSHMI_TEMPLATE(class ExecutorFactory)
   (requires Invocable<ExecutorFactory&>&&
-       Executor<invoke_result_t<ExecutorFactory&>>)
-  auto operator()(ExecutorFactory ef) const {
+       Executor<invoke_result_t<ExecutorFactory&>>) //
+      auto
+      operator()(ExecutorFactory ef) const {
     return in_impl<ExecutorFactory>{std::move(ef)};
   }
 };

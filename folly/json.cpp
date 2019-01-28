@@ -249,7 +249,25 @@ struct Input {
   }
 
   void skipWhitespace() {
-    range_ = folly::skipWhitespace(range_);
+    unsigned index = 0;
+    while (true) {
+      while (index < range_.size() && range_[index] == ' ') {
+        index++;
+      }
+      if (index < range_.size()) {
+        if (range_[index] == '\n') {
+          index++;
+          ++lineNum_;
+          continue;
+        }
+        if (range_[index] == '\t' || range_[index] == '\r') {
+          index++;
+          continue;
+        }
+      }
+      break;
+    }
+    range_.advance(index);
     storeCurrent();
   }
 

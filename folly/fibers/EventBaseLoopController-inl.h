@@ -104,19 +104,10 @@ inline void EventBaseLoopController::scheduleThreadSafe() {
       });
 }
 
-inline void EventBaseLoopController::timedSchedule(
-    std::function<void()> func,
-    TimePoint time) {
+inline HHWheelTimer& EventBaseLoopController::timer() {
   assert(eventBaseAttached_);
 
-  // We want upper bound for the cast, thus we just add 1
-  auto delay_ms =
-      std::chrono::duration_cast<std::chrono::milliseconds>(time - Clock::now())
-          .count() +
-      1;
-  // If clock is not monotonic
-  delay_ms = std::max<decltype(delay_ms)>(delay_ms, 0);
-  eventBase_->tryRunAfterDelay(func, uint32_t(delay_ms));
+  return eventBase_->timer();
 }
 } // namespace fibers
 } // namespace folly

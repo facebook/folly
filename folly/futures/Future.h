@@ -697,6 +697,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
   defer(F&& func) &&;
 
+  template <typename F>
+  SemiFuture<
+      typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+  defer(F&& func) &&;
+
   template <typename R, typename... Args>
   auto defer(R (&func)(Args...)) && {
     return std::move(*this).defer(&func);
@@ -829,41 +834,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   Future<T> toUnsafeFuture() &&;
 
 #if FOLLY_HAS_COROUTINES
-  class promise_type {
-   public:
-    SemiFuture get_return_object() {
-      return promise_.getSemiFuture();
-    }
-
-    std::experimental::suspend_never initial_suspend() {
-      return {};
-    }
-
-    std::experimental::suspend_never final_suspend() {
-      return {};
-    }
-
-    void return_value(const T& value) {
-      promise_.setValue(value);
-    }
-
-    void return_value(T&& value) {
-      promise_.setValue(std::move(value));
-    }
-
-    void unhandled_exception() {
-      try {
-        std::rethrow_exception(std::current_exception());
-      } catch (std::exception& e) {
-        promise_.setException(exception_wrapper(std::current_exception(), e));
-      } catch (...) {
-        promise_.setException(exception_wrapper(std::current_exception()));
-      }
-    }
-
-   private:
-    folly::Promise<T> promise_;
-  };
 
   // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
   // directly awaited within a folly::coro::Task coroutine.
@@ -1163,9 +1133,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated("ERROR: use thenValue instead")]] typename std::enable_if<
       !is_invocable<F>::value && is_invocable<F, T&&>::value,
       typename R::Return>::type
-  then(F&& func) && {
-    return std::move(*this).thenValue(std::forward<F>(func));
-  }
+  then(F&& func) && = delete;
 
   template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("ERROR: use thenTry instead")]] typename std::enable_if<
@@ -1355,7 +1323,16 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   template <class ExceptionType, class F>
-  Future<T> thenError(F&& func) &&;
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
+
+  template <class ExceptionType, class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
 
   template <class ExceptionType, class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
@@ -1387,7 +1364,16 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   template <class F>
-  Future<T> thenError(F&& func) &&;
+  typename std::enable_if<
+      isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
+
+  template <class F>
+  typename std::enable_if<
+      !isFutureOrSemiFuture<invoke_result_t<F, exception_wrapper>>::value,
+      Future<T>>::type
+  thenError(F&& func) &&;
 
   template <class R, class... Args>
   Future<T> thenError(R (&func)(Args...)) && {
@@ -1459,6 +1445,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
+  [[deprecated(
+      "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
       !is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
@@ -1477,6 +1465,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
+  [[deprecated(
+      "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
       !is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
@@ -1495,6 +1485,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
+  [[deprecated(
+      "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
       is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
@@ -1513,18 +1505,23 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
+  [[deprecated(
+      "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
       is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func) &&;
 
+  template <class R, class... Args>
+  Future<T> onError(R (&func)(Args...)) && {
+    return std::move(*this).onError(&func);
+  }
+
   // clang-format off
   template <class F>
-  [[deprecated("use rvalue-qualified fn, eg, std::move(future).onError(...)")]]
-  Future<T> onError(F&& func) & {
-    return std::move(*this).onError(std::forward<F>(func));
-  }
+  [[deprecated("ERROR: use rvalue-qualified fn, eg, std::move(future).onError(...)")]]
+  Future<T> onError(F&& func) & = delete;
 
   /// func is like std::function<void()> and is executed unconditionally, and
   /// the value/exception is passed through to the resulting Future.
@@ -2049,23 +2046,28 @@ class FutureAwaitable {
   explicit FutureAwaitable(folly::Future<T>&& future) noexcept
       : future_(std::move(future)) {}
 
-  bool await_ready() const {
-    return future_.isReady();
+  bool await_ready() {
+    if (future_.isReady()) {
+      result_ = std::move(future_.getTry());
+      return true;
+    }
+    return false;
   }
 
   T await_resume() {
-    return std::move(future_).value();
+    return std::move(result_).value();
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([h](Try<T>&&) mutable {
-      // Don't std::move() so the try is left in the future for await_resume()
+    future_.setCallback_([this, h](Try<T>&& result) mutable {
+      result_ = std::move(result);
       h.resume();
     });
   }
 
  private:
   folly::Future<T> future_;
+  folly::Try<T> result_;
 };
 
 } // namespace detail
@@ -2075,30 +2077,6 @@ inline detail::FutureAwaitable<T>
 /* implicit */ operator co_await(Future<T>&& future) noexcept {
   return detail::FutureAwaitable<T>(std::move(future));
 }
-
-namespace coro {
-
-/// Convert an awaitable type into a SemiFuture that can then be consumed by
-/// APIs that use folly::Future/SemiFuture.
-///
-/// This will eagerly start execution of 'co_await awaitable' and will make
-/// the eventual result available via the returned SemiFuture.
-template <typename Awaitable>
-inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
-    !std::is_void<folly::coro::await_result_t<Awaitable>>::value,
-    SemiFuture<await_result_t<Awaitable>>> {
-  co_return co_await static_cast<Awaitable&&>(awaitable);
-}
-
-template <typename Awaitable>
-inline auto toSemiFuture(Awaitable awaitable) -> std::enable_if_t<
-    std::is_void<folly::coro::await_result_t<Awaitable>>::value,
-    SemiFuture<Unit>> {
-  co_await static_cast<Awaitable&&>(awaitable);
-  co_return Unit{};
-}
-
-} // namespace coro
 
 } // namespace folly
 #endif

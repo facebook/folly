@@ -29,6 +29,7 @@
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Random.h>
+#include <folly/Traits.h>
 #include <folly/detail/AtomicUnorderedMapUtils.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/SysMman.h>
@@ -362,8 +363,7 @@ struct AtomicUnorderedInsertMap {
     IndexType next_;
 
     /// Key and Value
-    typename std::aligned_storage<sizeof(value_type), alignof(value_type)>::type
-        raw_;
+    aligned_storage_for_t<value_type> raw_;
 
     ~Slot() {
       auto s = state();
@@ -463,7 +463,7 @@ struct AtomicUnorderedInsertMap {
   void zeroFillSlots() {
     using folly::detail::GivesZeroFilledMemory;
     if (!GivesZeroFilledMemory<Allocator>::value) {
-      memset(slots_, 0, mmapRequested_);
+      memset(static_cast<void*>(slots_), 0, mmapRequested_);
     }
   }
 };

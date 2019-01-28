@@ -66,6 +66,7 @@
 
 #include <boost/operators.hpp>
 
+#include <folly/Expected.h>
 #include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/container/F14Map.h>
@@ -374,6 +375,10 @@ struct dynamic : private boost::operators<dynamic> {
           std::is_convertible<K, dynamic>::value,
       T>;
 
+  template <typename K, typename T>
+  using IfNotIterator =
+      std::enable_if_t<!std::is_convertible<K, iterator>::value, T>;
+
  public:
   /*
    * You can iterate over the keys, values, or items (std::pair of key and
@@ -433,9 +438,70 @@ struct dynamic : private boost::operators<dynamic> {
   dynamic&& at(StringPiece) &&;
 
   /*
-   * Locate element using JSON pointer, per RFC 6901. Returns nullptr if
-   * element could not be located. Throws if pointer does not match the
-   * shape of the document, e.g. uses string to index in array.
+   * Locate element using JSON pointer, per RFC 6901
+   */
+
+  enum class json_pointer_resolution_error_code : uint8_t {
+    other = 0,
+    // key not found in object
+    key_not_found,
+    // array index out of bounds
+    index_out_of_bounds,
+    // special index "-" requesting append
+    append_requested,
+    // indexes in arrays must be numeric
+    index_not_numeric,
+    // indexes in arrays should not have leading zero
+    index_has_leading_zero,
+    // element not subscribable, i.e. neither object or array
+    element_not_object_or_array,
+    // hit document boundary, but pointer not exhausted yet
+    json_pointer_out_of_bounds,
+  };
+
+  template <typename Dynamic>
+  struct json_pointer_resolution_error {
+    // error code encountered while resolving JSON pointer
+    json_pointer_resolution_error_code error_code{};
+    // index of the JSON pointer's token that caused the error
+    size_t index{0};
+    // Last correctly resolved element in object. You can use it,
+    // for example, to add last element to the array
+    Dynamic* context{nullptr};
+  };
+
+  template <typename Dynamic>
+  struct json_pointer_resolved_value {
+    // parent element of the value in dynamic, if exist
+    Dynamic* parent{nullptr};
+    // pointer to the value itself
+    Dynamic* value{nullptr};
+    // if parent isObject, this is the key in object to get value
+    StringPiece parent_key;
+    // if parent isArray, this is the index in array to get value
+    size_t parent_index{0};
+  };
+
+  // clang-format off
+  template <typename Dynamic>
+  using resolved_json_pointer = Expected<
+      json_pointer_resolved_value<Dynamic>,
+      json_pointer_resolution_error<Dynamic>>;
+
+  resolved_json_pointer<dynamic const>
+  try_get_ptr(json_pointer const&) const&;
+  resolved_json_pointer<dynamic>
+  try_get_ptr(json_pointer const&) &;
+  resolved_json_pointer<dynamic const>
+  try_get_ptr(json_pointer const&) const&& = delete;
+  resolved_json_pointer<dynamic const>
+  try_get_ptr(json_pointer const&) && = delete;
+  // clang-format on
+
+  /*
+   * The following versions return nullptr if element could not be located.
+   * Throws if pointer does not match the shape of the document, e.g. uses
+   * string to index in array.
    */
   const dynamic* get_ptr(json_pointer const&) const&;
   dynamic* get_ptr(json_pointer const&) &;
@@ -557,7 +623,16 @@ struct dynamic : private boost::operators<dynamic> {
    * Invalidates iterators.
    */
   template <class K, class V>
-  void insert(K&&, V&& val);
+  IfNotIterator<K, void> insert(K&&, V&& val);
+
+  /*
+   * Inserts the supplied value into array, or throw if not array
+   * Shifts existing values in the array to the right
+   *
+   * Invalidates iterators.
+   */
+  template <class T>
+  iterator insert(const_iterator pos, T&& value);
 
   /*
    * These functions merge two folly dynamic objects.
@@ -708,9 +783,7 @@ struct dynamic : private boost::operators<dynamic> {
      * incomplete type right now).  (Note that in contrast we know it
      * is ok to do this with fbvector because we own it.)
      */
-    std::aligned_storage<
-        sizeof(F14NodeMap<int, int>),
-        alignof(F14NodeMap<int, int>)>::type objectBuffer;
+    aligned_storage_for_t<F14NodeMap<int, int>> objectBuffer;
   } u_;
 };
 

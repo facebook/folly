@@ -171,7 +171,7 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
   ValueType low;
   ValueType high;
   if (bucketIdx == 0) {
-    if (avg > min_) {
+    if (kIsExact && min_ < avg) {
       // This normally shouldn't happen.  This bucket is only supposed to track
       // values less than min_.  Most likely this means that integer overflow
       // occurred, and the code in avgFromBucket() returned a huge value
@@ -194,7 +194,7 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
       low = std::numeric_limits<ValueType>::min();
     }
   } else if (bucketIdx == buckets_.size() - 1) {
-    if (avg < max_) {
+    if (kIsExact && avg < max_) {
       // Most likely this means integer overflow occurred.  See the comments
       // above in the minimum case.
       LOG(ERROR) << "invalid average value in histogram maximum bucket: " << avg
@@ -212,7 +212,7 @@ T HistogramBuckets<T, BucketType>::getPercentileEstimate(
   } else {
     low = getBucketMin(bucketIdx);
     high = getBucketMax(bucketIdx);
-    if (avg < low || avg > high) {
+    if (kIsExact && (avg < low || avg > high)) {
       // Most likely this means an integer overflow occurred.
       // See the comments above.  Return the midpoint between low and high
       // as a best guess, since avg is meaningless.

@@ -16,8 +16,10 @@
 
 #pragma once
 
-#include <folly/portability/Sockets.h>
 #include <sys/types.h>
+
+#include <folly/net/NetworkSocket.h>
+#include <folly/portability/Sockets.h>
 
 #if !defined(FOLLY_ALLOW_TFO)
 #if defined(__linux__) || defined(__APPLE__)
@@ -28,21 +30,20 @@
 
 namespace folly {
 namespace detail {
-
 /**
  * tfo_sendto has the same semantics as sendmsg, but is used to
  * send with TFO data.
  */
-ssize_t tfo_sendmsg(int sockfd, const struct msghdr* msg, int flags);
+ssize_t tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags);
 
 /**
  * Enable TFO on a listening socket.
  */
-int tfo_enable(int sockfd, size_t max_queue_size);
+int tfo_enable(NetworkSocket sockfd, size_t max_queue_size);
 
 /**
  * Check if TFO succeeded in being used.
  */
-bool tfo_succeeded(int sockfd);
+bool tfo_succeeded(NetworkSocket sockfd);
 } // namespace detail
 } // namespace folly

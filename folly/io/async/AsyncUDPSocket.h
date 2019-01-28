@@ -128,9 +128,6 @@ class AsyncUDPSocket : public EventHandler {
    * FDOwnership::SHARED. In case FD is shared, it will not be `close`d in
    * destructor.
    */
-  void setFD(int fd, FDOwnership ownership) {
-    setFD(NetworkSocket::fromFd(fd), ownership);
-  }
   virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
   /**
@@ -140,6 +137,17 @@ class AsyncUDPSocket : public EventHandler {
   virtual ssize_t write(
       const folly::SocketAddress& address,
       const std::unique_ptr<folly::IOBuf>& buf);
+
+  /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * bufs is an array of std::unique_ptr<folly::IOBuf>
+   * of size num
+   */
+  virtual int writem(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t num);
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -188,8 +196,12 @@ class AsyncUDPSocket : public EventHandler {
    * Get internal FD used by this socket
    */
   virtual int getFD() const {
+    return getNetworkSocket().toFd();
+  }
+
+  virtual NetworkSocket getNetworkSocket() const {
     CHECK_NE(NetworkSocket(), fd_) << "Need to bind before getting FD out";
-    return fd_.toFd();
+    return fd_;
   }
 
   /**
@@ -200,7 +212,7 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   /**
-   * Set SO_REUSEADDR flag on the socket. Default is ON.
+   * Set SO_REUSEADDR flag on the socket. Default is OFF.
    */
   virtual void setReuseAddr(bool reuseAddr) {
     reuseAddr_ = reuseAddr;
@@ -289,6 +301,29 @@ class AsyncUDPSocket : public EventHandler {
     return netops::sendmsg(socket, message, flags);
   }
 
+  virtual int sendmmsg(
+      NetworkSocket socket,
+      struct mmsghdr* msgvec,
+      unsigned int vlen,
+      int flags) {
+    return netops::sendmmsg(socket, msgvec, vlen, flags);
+  }
+
+  void fillMsgVec(
+      sockaddr_storage* addr,
+      socklen_t addr_len,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec,
+      struct iovec* iov,
+      size_t iov_count);
+
+  virtual int writeImpl(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      struct mmsghdr* msgvec);
+
   size_t handleErrMessages() noexcept;
 
   void failErrMessageRead(const AsyncSocketException& ex);
@@ -315,7 +350,7 @@ class AsyncUDPSocket : public EventHandler {
   // Temp space to receive client address
   folly::SocketAddress clientAddress_;
 
-  bool reuseAddr_{true};
+  bool reuseAddr_{false};
   bool reusePort_{false};
   int rcvBuf_{0};
   int sndBuf_{0};

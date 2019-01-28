@@ -1,4 +1,5 @@
 #!/bin/bash -uex
+# Copyright (c) Facebook, Inc. and its affiliates.
 set -o pipefail  # Be sure to `|| :` commands that are allowed to fail.
 
 #

@@ -19,6 +19,9 @@
 #include <functional>
 
 namespace folly {
+
+class HHWheelTimer;
+
 namespace fibers {
 
 class FiberManager;
@@ -53,9 +56,9 @@ class LoopController {
   virtual void scheduleThreadSafe() = 0;
 
   /**
-   * Called by FiberManager to schedule some function to be run at some time.
+   * Used by FiberManager to schedule some function to be run at some time.
    */
-  virtual void timedSchedule(std::function<void()> func, TimePoint time) = 0;
+  virtual HHWheelTimer& timer() = 0;
 };
 } // namespace fibers
 } // namespace folly

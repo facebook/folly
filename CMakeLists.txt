@@ -117,6 +117,7 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/experimental/io/HugePageUtil.cpp
   ${FOLLY_DIR}/python/fibers.cpp
   ${FOLLY_DIR}/python/GILAwareManualExecutor.cpp
+  ${FOLLY_DIR}/cybld/folly/executor.cpp
 )
 list(REMOVE_ITEM hfiles
   ${FOLLY_DIR}/python/fibers.h
@@ -218,6 +219,25 @@ target_compile_definitions(folly_base
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
 
+option(PYTHON_EXTENSIONS "Build Python Bindings for Folly, requires Cython" OFF)
+if (PYTHON_EXTENSIONS)
+  # Compile folly such that it can be linked in to a shared library
+  # required for linking to python extensions
+  add_library(folly_pic
+    $<TARGET_PROPERTY:folly_base,SOURCES>
+  )
+  apply_folly_compile_options_to_target(folly_pic)
+  target_include_directories(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_INCLUDE_DIRECTORIES>
+  )
+  target_compile_definitions(folly_pic
+    PUBLIC
+      $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
+  )
+  set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+endif ()
+
 add_library(folly
   $<TARGET_OBJECTS:folly_base>
 )
@@ -307,6 +327,7 @@ if (BUILD_TESTS)
 
   add_library(folly_test_support
     ${FOLLY_DIR}/test/common/TestMain.cpp
+    ${FOLLY_DIR}/test/FBVectorTestUtil.cpp
     ${FOLLY_DIR}/test/DeterministicSchedule.cpp
     ${FOLLY_DIR}/test/DeterministicSchedule.h
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
@@ -433,6 +454,9 @@ if (BUILD_TESTS)
       #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
+    DIRECTORY external/farmhash/test/
+      TEST farmhash_test SOURCES farmhash_test.cpp
+
     DIRECTORY logging/test/
       TEST async_file_writer_test SOURCES AsyncFileWriterTest.cpp
       TEST config_parser_test SOURCES ConfigParserTest.cpp
@@ -515,6 +539,7 @@ if (BUILD_TESTS)
 
     DIRECTORY hash/test/
       TEST checksum_test SOURCES ChecksumTest.cpp
+      TEST farm_hash_test SOURCES FarmHashTest.cpp
       TEST hash_test WINDOWS_DISABLED
         SOURCES HashTest.cpp
       TEST spooky_hash_v1_test SOURCES SpookyHashV1Test.cpp
@@ -714,7 +739,6 @@ if (BUILD_TESTS)
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
-      TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp
       TEST small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
@@ -731,6 +755,18 @@ if (BUILD_TESTS)
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
   )
+
+  get_target_property(pic folly POSITION_INDEPENDENT_CODE)
+  if (pic)
+    add_library(singleton_thread_local_overload
+      SHARED ${FOLLY_DIR}/test/SingletonThreadLocalTestOverload.cpp)
+    apply_folly_compile_options_to_target(singleton_thread_local_overload)
+    set_target_properties(singleton_thread_local_overload PROPERTIES PREFIX "")
+    target_link_libraries(singleton_thread_local_overload PRIVATE folly)
+    folly_define_tests(
+      DIRECTORY test/
+        TEST singleton_thread_local_test SOURCES SingletonThreadLocalTest.cpp)
+  endif()
 endif()
 
 add_subdirectory(folly)

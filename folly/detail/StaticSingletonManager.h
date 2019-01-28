@@ -16,9 +16,12 @@
 
 #pragma once
 
+#include <atomic>
 #include <typeinfo>
 
 #include <folly/CPortability.h>
+#include <folly/Likely.h>
+#include <folly/detail/Singleton.h>
 
 namespace folly {
 namespace detail {
@@ -29,51 +32,31 @@ namespace detail {
 // dynamically.
 class StaticSingletonManager {
  public:
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static T* create(
-      F&& creator) {
-    return static_cast<T*>(create_<T, Tag>(creator));
+  template <typename T, typename Tag>
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
+    static Cache cache;
+    auto const& key = typeid(TypeTuple<T, Tag>);
+    auto const v = cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
+    return *static_cast<T*>(p);
   }
 
  private:
-  template <typename A, typename B>
-  struct TypePair {};
-
   using Key = std::type_info;
-  using Make = void*(void*);
+  using Make = void*();
+  using Cache = std::atomic<void*>;
 
-  template <typename F>
-  struct Creator {
-    static void* create(void* f) {
-      return static_cast<void*>((*static_cast<F*>(f))());
-    }
-  };
-
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static void* create_(
-      F& creator) {
-    auto const& key = typeid(TypePair<T, Tag>);
-    return create_(key, &Creator<F>::create, &creator);
+  template <typename T>
+  static void* make() {
+    return new T();
   }
 
-  template <typename T, typename Tag, typename F>
-  FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN static void* create_(
-      F const& creator) {
-    auto const& key = typeid(TypePair<T, Tag>);
-    return create_(key, &Creator<F const>::create, const_cast<F*>(&creator));
-  }
-
-  FOLLY_NOINLINE static void* create_(Key const& key, Make* make, void* ctx);
+  FOLLY_NOINLINE static void* create_(Key const& key, Make& make, Cache& cache);
 };
 
-template <typename T, typename Tag, typename F>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal(F&& creator) {
-  return StaticSingletonManager::create<T, Tag>(static_cast<F&&>(creator));
-}
-
 template <typename T, typename Tag>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T* createGlobal() {
-  return StaticSingletonManager::create<T, Tag>([]() { return new T(); });
+FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T& createGlobal() {
+  return StaticSingletonManager::create<T, Tag>();
 }
 
 } // namespace detail

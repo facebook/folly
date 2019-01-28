@@ -26,6 +26,7 @@
 
 #include <boost/regex.hpp>
 
+#include <folly/FBVector.h>
 #include <folly/container/Array.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>

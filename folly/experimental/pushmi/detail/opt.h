@@ -19,6 +19,7 @@
 #include <optional> // @manual
 #endif
 #include <type_traits>
+#include <utility>
 
 namespace folly {
 namespace pushmi {

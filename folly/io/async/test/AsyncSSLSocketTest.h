@@ -20,6 +20,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/SocketAddress.h>
 #include <folly/experimental/TestUtil.h>
+#include <folly/fibers/FiberManagerMap.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -215,12 +216,14 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
     int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
         SOF_TIMESTAMPING_SOFTWARE;
     AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
-    int ret = tstampingOpt.apply(socket_->getFd(), flags);
+    int ret = tstampingOpt.apply(
+        folly::NetworkSocket::fromFd(socket_->getNetworkSocket().toFd()),
+        flags);
     EXPECT_EQ(ret, 0);
   }
 
   void checkForTimestampNotifications() noexcept {
-    int fd = socket_->getFd();
+    int fd = socket_->getNetworkSocket().toFd();
     std::vector<char> ctrl(1024, 0);
     unsigned char data;
     struct msghdr msg;
@@ -428,7 +431,7 @@ class WriteErrorCallback : public ReadCallback {
     currentBuffer.length = len;
 
     // close the socket before writing to trigger writeError().
-    ::close(socket_->getFd());
+    ::close(socket_->getNetworkSocket().toFd());
 
     wcb_->setSocket(socket_);
 
@@ -582,7 +585,7 @@ class SSLServerAcceptCallbackDelay : public SSLServerAcceptCallback {
     auto sock = std::static_pointer_cast<AsyncSSLSocket>(s);
 
     std::cerr << "SSLServerAcceptCallbackDelay::connAccepted" << std::endl;
-    int fd = sock->getFd();
+    int fd = sock->getNetworkSocket().toFd();
 
 #ifndef TCP_NOPUSH
     {
@@ -776,7 +779,7 @@ class TestSSLAsyncCacheServer : public TestSSLServer {
   }
 };
 
-void getfds(int fds[2]);
+void getfds(NetworkSocket fds[2]);
 
 void getctx(
     std::shared_ptr<folly::SSLContext> clientCtx,
@@ -1528,4 +1531,19 @@ class SSLAcceptDestroyRunner : public SSLAcceptEvbRunner {
   SSLHandshakeBase* sslBase_;
 };
 
+class SSLAcceptFiberRunner : public SSLAcceptEvbRunner {
+ public:
+  explicit SSLAcceptFiberRunner(EventBase* evb) : SSLAcceptEvbRunner(evb) {}
+  ~SSLAcceptFiberRunner() override = default;
+
+  void run(Function<int()> acceptFunc, Function<void(int)> finallyFunc)
+      const override {
+    auto& fiberManager = folly::fibers::getFiberManager(*evb_);
+    fiberManager.addTaskFinally(
+        std::move(acceptFunc),
+        [finally = std::move(finallyFunc)](folly::Try<int>&& res) mutable {
+          finally(res.value());
+        });
+  }
+};
 } // namespace folly

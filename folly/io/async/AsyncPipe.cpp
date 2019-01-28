@@ -43,7 +43,7 @@ void AsyncPipeReader::failRead(const AsyncSocketException& ex) {
 void AsyncPipeReader::close() {
   unregisterHandler();
   if (fd_ >= 0) {
-    changeHandlerFD(-1);
+    changeHandlerFD(NetworkSocket());
 
     if (closeCb_) {
       closeCb_(fd_);
@@ -192,7 +192,7 @@ void AsyncPipeWriter::closeNow() {
   }
   if (fd_ >= 0) {
     unregisterHandler();
-    changeHandlerFD(-1);
+    changeHandlerFD(NetworkSocket());
     if (closeCb_) {
       closeCb_(fd_);
     } else {

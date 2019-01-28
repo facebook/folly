@@ -45,7 +45,7 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
                 make_receiver(
                     std::move(out),
                     [func, sb, se, driver, initFunc, selector](
-                        auto& out, auto input) {
+                        auto& out_, auto input) {
                       driver(
                           initFunc,
                           selector,
@@ -53,7 +53,7 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
                           func,
                           sb,
                           se,
-                          std::move(out));
+                          std::move(out_));
                     }));
           });
     };

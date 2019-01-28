@@ -63,12 +63,12 @@ std::system_error makeSystemError(Args&&... args) {
 
 // Helper to throw std::system_error
 [[noreturn]] inline void throwSystemErrorExplicit(int err, const char* msg) {
-  throw makeSystemErrorExplicit(err, msg);
+  throw_exception(makeSystemErrorExplicit(err, msg));
 }
 
 template <class... Args>
 [[noreturn]] void throwSystemErrorExplicit(int err, Args&&... args) {
-  throw makeSystemErrorExplicit(err, std::forward<Args>(args)...);
+  throw_exception(makeSystemErrorExplicit(err, std::forward<Args>(args)...));
 }
 
 // Helper to throw std::system_error from errno and components of a string
@@ -132,11 +132,11 @@ void checkFopenErrorExplicit(FILE* fp, int savedErrno, Args&&... args) {
  * If cond is not true, raise an exception of type E.  E must have a ctor that
  * works with const char* (a description of the failure).
  */
-#define CHECK_THROW(cond, E)           \
-  do {                                 \
-    if (!(cond)) {                     \
-      throw E("Check failed: " #cond); \
-    }                                  \
+#define CHECK_THROW(cond, E)                             \
+  do {                                                   \
+    if (!(cond)) {                                       \
+      folly::throw_exception<E>("Check failed: " #cond); \
+    }                                                    \
   } while (0)
 
 } // namespace folly

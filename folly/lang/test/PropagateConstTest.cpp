@@ -31,7 +31,7 @@ template class folly::propagate_const<std::shared_ptr<int>>;
 
 template <typename T>
 static bool is_const(T&&) {
-  return std::is_const<_t<std::remove_reference<T>>>::value;
+  return std::is_const<std::remove_reference_t<T>>::value;
 }
 
 template <typename T>

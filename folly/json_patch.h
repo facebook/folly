@@ -97,6 +97,28 @@ class json_patch {
 
   std::vector<patch_operation> const& ops() const;
 
+  enum class patch_application_error_code : uint8_t {
+    other,
+    // "from" pointer did not resolve
+    from_not_found,
+    // "path" pointer did not resolve
+    path_not_found,
+    // "test" condition failed
+    test_failed,
+  };
+
+  struct patch_application_error {
+    patch_application_error_code error_code{};
+    // index of the patch element (in array) that caused error
+    size_t index{};
+  };
+
+  /*
+   * Mutate supplied object in accordance with patch operations. Leaves
+   * object in partially modified state if one of the operations fails.
+   */
+  Expected<Unit, patch_application_error> apply(folly::dynamic& obj);
+
  private:
   std::vector<patch_operation> ops_;
 };

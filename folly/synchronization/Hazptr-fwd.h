@@ -54,6 +54,14 @@ class hazptr_obj;
 template <template <typename> class Atom = std::atomic>
 class hazptr_obj_list;
 
+/** hazptr_obj_batch */
+template <template <typename> class Atom = std::atomic>
+class hazptr_obj_batch;
+
+/** hazptr_obj_retired_list */
+template <template <typename> class Atom = std::atomic>
+class hazptr_obj_retired_list;
+
 /** hazptr_deleter */
 template <typename T, typename D>
 class hazptr_deleter;
@@ -123,6 +131,12 @@ class hazptr_domain;
 template <template <typename> class Atom = std::atomic>
 hazptr_domain<Atom>& default_hazptr_domain();
 
+/** hazptr_domain_push_list */
+template <template <typename> class Atom = std::atomic>
+void hazptr_domain_push_list(
+    hazptr_obj_list<Atom>& l,
+    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
+
 /** hazptr_domain_push_retired */
 template <template <typename> class Atom = std::atomic>
 void hazptr_domain_push_retired(
@@ -140,6 +154,12 @@ void hazptr_retire(T* obj, D reclaim = {});
 /** hazptr_cleanup */
 template <template <typename> class Atom = std::atomic>
 void hazptr_cleanup(
+    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
+
+/** hazptr_cleanup_batch_tag */
+template <template <typename> class Atom = std::atomic>
+void hazptr_cleanup_batch_tag(
+    const hazptr_obj_batch<Atom>* batch,
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
 /** Global default domain defined in Hazptr.cpp */

@@ -19,6 +19,7 @@
 #include <folly/ProducerConsumerQueue.h>
 #include <folly/portability/GTest.h>
 
+#include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
 
 #include <atomic>
@@ -40,6 +41,90 @@ using USPMC = folly::USPMCQueue<T, MayBlock>;
 
 template <typename T, bool MayBlock>
 using UMPMC = folly::UMPMCQueue<T, MayBlock>;
+
+// check functions for inspecting inlined native code
+
+FOLLY_ATTR_WEAK void noop(folly::Optional<int>&&) {}
+
+extern "C" void check_uspsc_mayblock_dequeue_ref(
+    USPSC<int, true>& queue,
+    int& item) {
+  queue.dequeue(item);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_ref(
+    USPSC<int, true>& queue,
+    int& item) {
+  return queue.try_dequeue(item);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_for_ref(
+    USPSC<int, true>& queue,
+    int& item,
+    std::chrono::milliseconds const& timeout) {
+  return queue.try_dequeue_for(item, timeout);
+}
+extern "C" bool check_uspsc_mayblock_try_dequeue_until_ref(
+    USPSC<int, true>& queue,
+    int& item,
+    std::chrono::steady_clock::time_point const& deadline) {
+  return queue.try_dequeue_until(item, deadline);
+}
+
+extern "C" int check_uspsc_mayblock_dequeue_ret(USPSC<int, true>& queue) {
+  return queue.dequeue();
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_ret(USPSC<int, true>& queue) {
+  noop(queue.try_dequeue());
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_for_ret(
+    USPSC<int, true>& queue,
+    std::chrono::milliseconds const& timeout) {
+  noop(queue.try_dequeue_for(timeout));
+}
+extern "C" void check_uspsc_mayblock_try_dequeue_until_ret(
+    USPSC<int, true>& queue,
+    std::chrono::steady_clock::time_point const& deadline) {
+  noop(queue.try_dequeue_until(deadline));
+}
+
+extern "C" void check_umpmc_mayblock_dequeue_ref(
+    UMPMC<int, true>& queue,
+    int& item) {
+  queue.dequeue(item);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_ref(
+    UMPMC<int, true>& queue,
+    int& item) {
+  return queue.try_dequeue(item);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_for_ref(
+    UMPMC<int, true>& queue,
+    int& item,
+    std::chrono::milliseconds const& timeout) {
+  return queue.try_dequeue_for(item, timeout);
+}
+extern "C" bool check_umpmc_mayblock_try_dequeue_until_ref(
+    UMPMC<int, true>& queue,
+    int& item,
+    std::chrono::steady_clock::time_point const& deadline) {
+  return queue.try_dequeue_until(item, deadline);
+}
+
+extern "C" int check_umpmc_mayblock_dequeue_ret(UMPMC<int, true>& queue) {
+  return queue.dequeue();
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_ret(UMPMC<int, true>& queue) {
+  noop(queue.try_dequeue());
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_for_ret(
+    UMPMC<int, true>& queue,
+    std::chrono::milliseconds const& timeout) {
+  noop(queue.try_dequeue_for(timeout));
+}
+extern "C" void check_umpmc_mayblock_try_dequeue_until_ret(
+    UMPMC<int, true>& queue,
+    std::chrono::steady_clock::time_point const& deadline) {
+  noop(queue.try_dequeue_until(deadline));
+}
 
 template <template <typename, bool> class Q, bool MayBlock>
 void basic_test() {
@@ -161,18 +246,16 @@ inline uint64_t run_once(
     const ProdFunc& prodFn,
     const ConsFunc& consFn,
     const EndFunc& endFn) {
-  std::atomic<bool> start{false};
-  std::atomic<int> ready{0};
+  boost::barrier barrier(1 + nprod + ncons);
 
   /* producers */
   std::vector<std::thread> prodThr(nprod);
   for (int tid = 0; tid < nprod; ++tid) {
     prodThr[tid] = std::thread([&, tid] {
-      ++ready;
-      while (!start.load()) {
-        /* spin */;
-      }
+      barrier.wait(); // A - wait for thread start
+      barrier.wait(); // B - init the work
       prodFn(tid);
+      barrier.wait(); // C - join the work
     });
   }
 
@@ -180,22 +263,23 @@ inline uint64_t run_once(
   std::vector<std::thread> consThr(ncons);
   for (int tid = 0; tid < ncons; ++tid) {
     consThr[tid] = std::thread([&, tid] {
-      ++ready;
-      while (!start.load()) {
-        /* spin */;
-      }
+      barrier.wait(); // A - wait for thread start
+      barrier.wait(); // B - init the work
       consFn(tid);
+      barrier.wait(); // C - join the work
     });
   }
 
-  /* wait for all producers and consumers to be ready */
-  while (ready.load() < (nprod + ncons)) {
-    /* spin */;
-  }
+  barrier.wait(); // A - wait for thread start
 
   /* begin time measurement */
-  auto tbegin = std::chrono::steady_clock::now();
-  start.store(true);
+  auto const tbegin = std::chrono::steady_clock::now();
+
+  barrier.wait(); // B - init the work
+  barrier.wait(); // C - join the work
+
+  /* end time measurement */
+  auto const tend = std::chrono::steady_clock::now();
 
   /* wait for completion */
   for (int i = 0; i < nprod; ++i) {
@@ -205,11 +289,9 @@ inline uint64_t run_once(
     consThr[i].join();
   }
 
-  /* end time measurement */
-  auto tend = std::chrono::steady_clock::now();
   endFn();
-  return std::chrono::duration_cast<std::chrono::nanoseconds>(tend - tbegin)
-      .count();
+  auto const dur = tend - tbegin;
+  return std::chrono::duration_cast<std::chrono::nanoseconds>(dur).count();
 }
 
 template <bool SingleProducer, bool SingleConsumer, bool MayBlock>
@@ -270,10 +352,9 @@ void enq_deq_test(const int nprod, const int ncons) {
   };
 
   auto endfn = [&] {
-    uint64_t expected = ops;
-    expected *= ops - 1;
-    expected /= 2;
-    ASSERT_EQ(sum.load(), expected);
+    uint64_t expected = (ops) * (ops - 1) / 2;
+    uint64_t actual = sum.load();
+    ASSERT_EQ(expected, actual);
   };
   run_once(nprod, ncons, prod, cons, endfn);
 }
@@ -320,9 +401,12 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   uint64_t max = 0;
   uint64_t sum = 0;
 
+  std::vector<uint64_t> durs(reps);
+
   repFn(); // sometimes first run is outlier
   for (int r = 0; r < reps; ++r) {
     uint64_t dur = repFn();
+    durs[r] = dur;
     sum += dur;
     min = std::min(min, dur);
     max = std::max(max, dur);
@@ -337,9 +421,16 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   const std::string unit = " ns";
   uint64_t avg = sum / reps;
   uint64_t res = min;
+  uint64_t varsum = 0;
+  for (auto r = 0; r < reps; ++r) {
+    auto term = int64_t(reps * durs[r]) - int64_t(sum);
+    varsum += term * term;
+  }
+  uint64_t dev = uint64_t(std::sqrt(varsum) * std::pow(reps, -1.5));
   std::cout << name;
   std::cout << "   " << std::setw(4) << max / ops << unit;
   std::cout << "   " << std::setw(4) << avg / ops << unit;
+  std::cout << "   " << std::setw(4) << dev / ops << unit;
   std::cout << "   " << std::setw(4) << res / ops << unit;
   std::cout << std::endl;
   return res;
@@ -370,7 +461,7 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
             /* keep trying */;
           }
         } else {
-          ASSERT_TRUE(Op == 2 || Op == 5);
+          DCHECK(Op == 2 || Op == 5);
           q.dequeue(v);
         }
         if (nprod == 1 && ncons == 1) {
@@ -381,10 +472,9 @@ uint64_t bench(const int nprod, const int ncons, const std::string& name) {
       sum.fetch_add(mysum);
     };
     auto endfn = [&] {
-      uint64_t expected = ops;
-      expected *= ops - 1;
-      expected /= 2;
-      ASSERT_EQ(sum.load(), expected);
+      uint64_t expected = (ops) * (ops - 1) / 2;
+      uint64_t actual = sum.load();
+      DCHECK_EQ(expected, actual);
     };
     return run_once(nprod, ncons, prod, cons, endfn);
   };
@@ -470,14 +560,15 @@ struct IntArray {
 };
 
 void dottedLine() {
-  std::cout << ".............................................................."
-            << std::endl;
+  std::cout
+      << "........................................................................"
+      << std::endl;
 }
 
 template <typename T>
 void type_benches(const int np, const int nc, const std::string& name) {
-  std::cout << name
-            << "===========================================" << std::endl;
+  std::cout << name << "====================================================="
+            << std::endl;
   if (np == 1 && nc == 1) {
     bench<USPSC, T, 0>(1, 1, "Unbounded SPSC try   spin only  ");
     bench<USPSC, T, 1>(1, 1, "Unbounded SPSC timed spin only  ");
@@ -519,14 +610,15 @@ void type_benches(const int np, const int nc, const std::string& name) {
   bench<FMPMC, T, 3>(np, nc, "folly::MPMC  read               ");
   bench<FMPMC, T, 4>(np, nc, "folly::MPMC  tryReadUntil       ");
   bench<FMPMC, T, 5>(np, nc, "folly::MPMC  blockingRead       ");
-  std::cout << "=============================================================="
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
 }
 
 void benches(const int np, const int nc) {
   std::cout << "====================== " << std::setw(2) << np << " prod"
             << "  " << std::setw(2) << nc << " cons"
-            << " ======================" << std::endl;
+            << " ================================" << std::endl;
   type_benches<uint32_t>(np, nc, "=== uint32_t ======");
   // Benchmarks for other element sizes can be added as follows:
   //   type_benches<IntArray<4>>(np, nc, "=== IntArray<4> ===");
@@ -536,8 +628,9 @@ TEST(UnboundedQueue, bench) {
   if (!FLAGS_bench) {
     return;
   }
-  std::cout << "=============================================================="
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
   std::cout << std::setw(2) << FLAGS_reps << " reps of " << std::setw(8)
             << FLAGS_ops << " handoffs\n";
   dottedLine();
@@ -546,10 +639,12 @@ TEST(UnboundedQueue, bench) {
   std::cout << "Using capacity " << FLAGS_capacity
             << " for folly::ProducerConsumerQueue and\n"
             << "folly::MPMCQueue\n";
-  std::cout << "=============================================================="
-            << std::endl;
-  std::cout << "Test name                         Max time  Avg time  Min time"
-            << std::endl;
+  std::cout
+      << "========================================================================"
+      << std::endl;
+  std::cout
+      << "Test name                         Max time  Avg time  Dev time  Min time"
+      << std::endl;
 
   for (int nc : {1, 2, 4, 8, 16, 32}) {
     int np = 1;

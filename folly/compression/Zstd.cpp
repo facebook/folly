@@ -39,6 +39,33 @@ namespace io {
 namespace zstd {
 namespace {
 
+// Compatibility helpers for zstd versions < 1.3.8.
+#if ZSTD_VERSION_NUMBER < 10308
+
+#define ZSTD_compressStream2 ZSTD_compress_generic
+#define ZSTD_c_compressionLevel ZSTD_p_compressionLevel
+#define ZSTD_c_contentSizeFlag ZSTD_p_contentSizeFlag
+
+void resetCCtxSessionAndParameters(ZSTD_CCtx* cctx) {
+  ZSTD_CCtx_reset(cctx);
+}
+
+void resetDCtxSessionAndParameters(ZSTD_DCtx* dctx) {
+  ZSTD_DCtx_reset(dctx);
+}
+
+#else
+
+void resetCCtxSessionAndParameters(ZSTD_CCtx* cctx) {
+  ZSTD_CCtx_reset(cctx, ZSTD_reset_session_and_parameters);
+}
+
+void resetDCtxSessionAndParameters(ZSTD_DCtx* dctx) {
+  ZSTD_DCtx_reset(dctx, ZSTD_reset_session_and_parameters);
+}
+
+#endif
+
 void zstdFreeCCtx(ZSTD_CCtx* zc) {
   ZSTD_freeCCtx(zc);
 }
@@ -165,7 +192,7 @@ void ZSTDStreamCodec::resetCCtx() {
       throw std::bad_alloc{};
     }
   }
-  ZSTD_CCtx_reset(cctx_.get());
+  resetCCtxSessionAndParameters(cctx_.get());
   zstdThrowIfError(
       ZSTD_CCtx_setParametersUsingCCtxParams(cctx_.get(), options_.params()));
   zstdThrowIfError(ZSTD_CCtx_setPledgedSrcSize(
@@ -186,7 +213,7 @@ bool ZSTDStreamCodec::doCompressStream(
     input.uncheckedAdvance(in.pos);
     output.uncheckedAdvance(out.pos);
   };
-  size_t const rc = zstdThrowIfError(ZSTD_compress_generic(
+  size_t const rc = zstdThrowIfError(ZSTD_compressStream2(
       cctx_.get(), &out, &in, zstdTranslateFlush(flushOp)));
   switch (flushOp) {
     case StreamCodec::FlushOp::NONE:
@@ -206,7 +233,7 @@ void ZSTDStreamCodec::resetDCtx() {
       throw std::bad_alloc{};
     }
   }
-  ZSTD_DCtx_reset(dctx_.get());
+  resetDCtxSessionAndParameters(dctx_.get());
   if (options_.maxWindowSize() != 0) {
     zstdThrowIfError(
         ZSTD_DCtx_setMaxWindowSize(dctx_.get(), options_.maxWindowSize()));
@@ -228,7 +255,7 @@ bool ZSTDStreamCodec::doUncompressStream(
     output.uncheckedAdvance(out.pos);
   };
   size_t const rc =
-      zstdThrowIfError(ZSTD_decompress_generic(dctx_.get(), &out, &in));
+      zstdThrowIfError(ZSTD_decompressStream(dctx_.get(), &out, &in));
   return rc == 0;
 }
 
@@ -242,17 +269,17 @@ Options::Options(int level) : params_(ZSTD_createCCtxParams()), level_(level) {
   zstdThrowIfError(ZSTD_CCtxParams_init(params_.get(), level));
 #else
   zstdThrowIfError(ZSTD_initCCtxParams(params_.get(), level));
-  set(ZSTD_p_contentSizeFlag, 1);
+  set(ZSTD_c_contentSizeFlag, 1);
 #endif
   // zstd-1.3.4 is buggy and only disables Huffman decompression for negative
   // compression levels if this call is present. This call is begign in other
   // versions.
-  set(ZSTD_p_compressionLevel, level);
+  set(ZSTD_c_compressionLevel, level);
 }
 
 void Options::set(ZSTD_cParameter param, unsigned value) {
   zstdThrowIfError(ZSTD_CCtxParam_setParameter(params_.get(), param, value));
-  if (param == ZSTD_p_compressionLevel) {
+  if (param == ZSTD_c_compressionLevel) {
     level_ = static_cast<int>(value);
   }
 }

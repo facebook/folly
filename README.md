@@ -72,7 +72,7 @@ Folly is published on Github at https://github.com/facebook/folly
 
 #### Dependencies
 
-folly requires gcc 4.9+ and a version of boost compiled with C++14 support.
+folly requires gcc 5.1+ and a version of boost compiled with C++14 support.
 
 googletest is required to build and run folly's tests.  You can download
 it from https://github.com/google/googletest/archive/release-1.8.0.tar.gz
@@ -139,12 +139,12 @@ sudo apt-get install \
     libdwarf-dev
 ```
 
-In the folly directory, run:
+In the folly directory (e.g. the checkout root or the archive unpack root), run:
 ```
   mkdir _build && cd _build
   cmake ..
   make -j $(nproc)
-  make install
+  make install # with either sudo or DESTDIR as necessary
 ```
 
 #### OS X (Homebrew)

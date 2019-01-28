@@ -19,6 +19,7 @@
 #include <boost/algorithm/string.hpp>
 #include <folly/Memory.h>
 #include <folly/Subprocess.h>
+#include <folly/container/Array.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Stdlib.h>
@@ -160,8 +161,9 @@ TEST(EnvironmentStateTest, forC) {
   (*env)["spork"] = "foon";
   EXPECT_STREQ("spork=foon", env.toPointerArray().get()[0]);
   EXPECT_EQ(nullptr, env.toPointerArray().get()[1]);
-  char const* program = fLS::FLAGS_env_util_subprocess_binary.c_str();
+  char* program = &fLS::FLAGS_env_util_subprocess_binary[0];
   pid_t pid;
+  auto argV = folly::make_array(program, nullptr);
   PCHECK(
       0 ==
       posix_spawn(
@@ -169,7 +171,7 @@ TEST(EnvironmentStateTest, forC) {
           program,
           nullptr,
           nullptr,
-          nullptr,
+          argV.data(),
           env.toPointerArray().get()));
   int result;
   PCHECK(pid == waitpid(pid, &result, 0));

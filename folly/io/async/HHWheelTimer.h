@@ -19,13 +19,14 @@
 #include <folly/Optional.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/DelayedDestruction.h>
+#include <folly/io/async/HHWheelTimer-fwd.h>
 
 #include <boost/intrusive/list.hpp>
 #include <glog/logging.h>
 
+#include <array>
 #include <chrono>
 #include <cstddef>
-#include <list>
 #include <memory>
 
 namespace folly {
@@ -106,20 +107,11 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
     /**
      * Get the time remaining until this timeout expires. Return 0 if this
-     * timeout is not scheduled or expired. Otherwise, return expiration time
-     * minus getCurTime().
+     * timeout is not scheduled or expired. Otherwise, return expiration
+     * time minus current time.
      */
     std::chrono::milliseconds getTimeRemaining() {
-      return getTimeRemaining(getCurTime());
-    }
-
-   protected:
-    /**
-     * Don't override this unless you're doing a test. This is mainly here so
-     * that we can override it to simulate lag in steady_clock.
-     */
-    virtual std::chrono::steady_clock::time_point getCurTime() {
-      return std::chrono::steady_clock::now();
+      return getTimeRemaining(std::chrono::steady_clock::now());
     }
 
    private:
@@ -133,7 +125,9 @@ class HHWheelTimer : private folly::AsyncTimeout,
           expiration_ - now);
     }
 
-    void setScheduled(HHWheelTimer* wheel, std::chrono::milliseconds);
+    void setScheduled(
+        HHWheelTimer* wheel,
+        std::chrono::steady_clock::time_point deadline);
     void cancelTimeoutImpl();
 
     HHWheelTimer* wheel_{nullptr};
@@ -209,9 +203,6 @@ class HHWheelTimer : private folly::AsyncTimeout,
    * before scheduling the new timeout.
    */
   void scheduleTimeout(Callback* callback, std::chrono::milliseconds timeout);
-  void scheduleTimeoutImpl(
-      Callback* callback,
-      std::chrono::milliseconds timeout);
 
   /**
    * Schedule the specified Callback to be invoked after the
@@ -289,24 +280,63 @@ class HHWheelTimer : private folly::AsyncTimeout,
 
   typedef Callback::List CallbackList;
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
-  std::vector<std::size_t> bitmap_;
+  std::array<std::size_t, (WHEEL_SIZE / sizeof(std::size_t)) / 8> bitmap_;
 
   int64_t timeToWheelTicks(std::chrono::milliseconds t) {
     return t.count() / interval_.count();
   }
 
   bool cascadeTimers(int bucket, int tick);
-  int64_t lastTick_;
   int64_t expireTick_;
   std::size_t count_;
   std::chrono::steady_clock::time_point startTime_;
 
   int64_t calcNextTick();
+  int64_t calcNextTick(std::chrono::steady_clock::time_point curTime);
 
-  void scheduleNextTimeout();
+  static bool inSameEpoch(int64_t tickA, int64_t tickB) {
+    return (tickA >> WHEEL_BITS) == (tickB >> WHEEL_BITS);
+  }
+
+  /**
+   * Schedule a given timeout by putting it into the appropriate bucket of the
+   * wheel.
+   *
+   * @param callback           Callback to fire after `timeout`
+   * @param dueTick            Tick at which the timer is due.
+   * @param nextTickToProcess  next tick that was not processed by the timer
+   *                           yet. Can be less than nextTick if we're lagging.
+   * @param nextTick           next tick based on the actual time
+   */
+  void scheduleTimeoutImpl(
+      Callback* callback,
+      int64_t dueTick,
+      int64_t nextTickToProcess,
+      int64_t nextTick);
+
+  /**
+   * Compute next required wheel tick to fire and schedule the timeout for that
+   * tick.
+   *
+   * @param nextTick  next tick based on the actual time
+   */
+  void scheduleNextTimeout(int64_t nextTick);
+
+  /**
+   * Schedule next wheel timeout in a fixed number of wheel ticks.
+   *
+   * @param nextTick  next tick based on the actual time
+   * @param ticks     number of ticks in which the timer should fire
+   */
+  void scheduleNextTimeout(int64_t nextTick, int64_t ticks);
+
+  size_t cancelTimeoutsFromList(CallbackList& timeouts);
 
   bool* processingCallbacksGuard_;
-  CallbackList timeouts; // Timeouts queued to run
+  // Timeouts that we're about to run. They're already extracted from their
+  // corresponding buckets, so we need this list for the `cancelAll` to be able
+  // to cancel them.
+  CallbackList timeoutsToRunNow_;
 
   std::chrono::steady_clock::time_point getCurTime() {
     return std::chrono::steady_clock::now();

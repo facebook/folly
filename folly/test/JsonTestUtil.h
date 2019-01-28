@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include <iostream>
+#include <string>
+
 #include <folly/Range.h>
 #include <folly/dynamic.h>
 
@@ -23,15 +26,33 @@ namespace folly {
 
 /**
  * Compares two JSON strings and returns whether they represent the
- * same document (thus ignoring things like object ordering or
- * multiple representations of the same number).
+ * same document (thus ignoring things like object ordering or multiple
+ * representations of the same number).
  *
- * This is implemented by deserializing both strings into dynamic, so
- * it is not efficient and it is meant to only be used in tests.
+ * This is implemented by deserializing both strings into dynamic, so it
+ * is not efficient and it is meant to only be used in tests.
  *
  * It will throw an exception if any of the inputs is invalid.
  */
 bool compareJson(StringPiece json1, StringPiece json2);
+
+/**
+ * Like compareJson, but if strNestingDepth > 0 then contained strings that
+ * are valid JSON will be compared using compareJsonWithNestedJson(str1,
+ * str2, strNestingDepth - 1).
+ */
+bool compareJsonWithNestedJson(
+    StringPiece json1,
+    StringPiece json2,
+    unsigned strNestingDepth);
+
+/**
+ * Like compareJson, but with dynamic instances.
+ */
+bool compareDynamicWithNestedJson(
+    dynamic const& obj1,
+    dynamic const& obj2,
+    unsigned strNestingDepth);
 
 /**
  * Like compareJson, but allows for the given tolerance when comparing
@@ -67,6 +88,9 @@ bool compareDynamicWithTolerance(
  */
 #define FOLLY_EXPECT_JSON_EQ(json1, json2) \
   EXPECT_PRED2(::folly::compareJson, json1, json2)
+
+#define FOLLY_EXPECT_JSON_WITH_NESTED_JSON_EQ(json1, json2) \
+  EXPECT_PRED3(::folly::compareJsonWithNestedJson, json1, json2, 1)
 
 #define FOLLY_EXPECT_JSON_NEAR(json1, json2, tolerance) \
   EXPECT_PRED3(::folly::compareJsonWithTolerance, json1, json2, tolerance)

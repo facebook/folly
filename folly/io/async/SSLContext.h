@@ -288,14 +288,16 @@ class SSLContext {
       bool checkPeerName,
       const std::string& peerName = std::string());
   /**
-   * Load server certificate.
+   * Loads a certificate chain stored on disk to be sent to the peer during
+   * TLS connection establishment.
    *
    * @param path   Path to the certificate file
    * @param format Certificate file format
    */
   virtual void loadCertificate(const char* path, const char* format = "PEM");
   /**
-   * Load server certificate from memory.
+   * Loads a PEM formatted certificate chain from memory to be sent to the peer
+   * during TLS connection establishment.
    *
    * @param cert  A PEM formatted certificate
    */

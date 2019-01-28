@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/Range.h>
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
@@ -123,8 +124,8 @@ class OpenSSLUtils {
   static int getBioShouldRetryWrite(int ret);
   static void setBioAppData(BIO* b, void* ptr);
   static void* getBioAppData(BIO* b);
-  static int getBioFd(BIO* b, int* fd);
-  static void setBioFd(BIO* b, int fd, int flags);
+  static NetworkSocket getBioFd(BIO* b);
+  static void setBioFd(BIO* b, NetworkSocket fd, int flags);
 };
 
 } // namespace ssl

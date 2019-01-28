@@ -72,7 +72,7 @@ template <int BITS>
 const poly_table<BITS> FingerprintTable<BITS>::table = {};
 
 #ifndef _MSC_VER
-// MSVC 2015 can't handle these extern specialization declarations,
+// MSVC as of 2017 can't handle these extern specialization declarations,
 // but they aren't needed for things to work right, so we just don't
 // declare them in the header for MSVC.
 

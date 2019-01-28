@@ -15,6 +15,8 @@
  */
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
+#include <future>
+
 #include <folly/ExceptionString.h>
 #include <folly/Format.h>
 #include <folly/MPMCQueue.h>
@@ -116,11 +118,9 @@ class ObserverManager::NextQueue {
 
         std::vector<Core::Ptr> cores;
         {
-          auto queueCore = queueCoreWeak.lock();
-          if (!queueCore) {
-            continue;
+          if (auto queueCore = queueCoreWeak.lock()) {
+            cores.emplace_back(std::move(queueCore));
           }
-          cores.emplace_back(std::move(queueCore));
         }
 
         {
@@ -143,6 +143,18 @@ class ObserverManager::NextQueue {
         for (auto& core : cores) {
           manager_.scheduleRefresh(std::move(core), manager_.version_, true);
         }
+
+        {
+          auto wEmptyWaiters = emptyWaiters_.wlock();
+          // We don't want any new waiters to be added while we are checking the
+          // queue.
+          if (queue_.isEmpty()) {
+            for (auto& promise : *wEmptyWaiters) {
+              promise.set_value();
+            }
+            wEmptyWaiters->clear();
+          }
+        }
       }
     });
   }
@@ -158,11 +170,23 @@ class ObserverManager::NextQueue {
     thread_.join();
   }
 
+  void waitForEmpty() {
+    std::promise<void> promise;
+    auto future = promise.get_future();
+    emptyWaiters_.wlock()->push_back(std::move(promise));
+
+    // Write to the queue to notify the thread.
+    queue_.blockingWrite(Core::WeakPtr());
+
+    future.get();
+  }
+
  private:
   ObserverManager& manager_;
   MPMCQueue<Core::WeakPtr> queue_;
   std::thread thread_;
   std::atomic<bool> stop_{false};
+  folly::Synchronized<std::vector<std::promise<void>>> emptyWaiters_;
 };
 
 ObserverManager::ObserverManager() {
@@ -183,6 +207,18 @@ void ObserverManager::scheduleCurrent(Function<void()> task) {
 
 void ObserverManager::scheduleNext(Core::WeakPtr core) {
   nextQueue_->add(std::move(core));
+}
+
+void ObserverManager::waitForAllUpdates() {
+  auto instance = getInstance();
+
+  if (!instance) {
+    return;
+  }
+
+  instance->nextQueue_->waitForEmpty();
+  // Wait for all readers to release the lock.
+  SharedMutexReadPriority::WriteHolder wh(instance->versionMutex_);
 }
 
 struct ObserverManager::Singleton {

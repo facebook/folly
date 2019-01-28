@@ -103,9 +103,26 @@ TEST_F(ExceptionTest, terminate_with_variadic) {
       message_for_terminate_with<MyException>("world"));
 }
 
+TEST_F(ExceptionTest, invoke_cold) {
+  EXPECT_THROW(
+      folly::invoke_cold([] { throw std::runtime_error("bad"); }),
+      std::runtime_error);
+  EXPECT_EQ(7, folly::invoke_cold([] { return 7; }));
+}
+
 TEST_F(ExceptionTest, invoke_noreturn_cold) {
   EXPECT_THROW(
       folly::invoke_noreturn_cold([] { throw std::runtime_error("bad"); }),
       std::runtime_error);
   EXPECT_DEATH(folly::invoke_noreturn_cold([] {}), message_for_terminate());
+}
+
+TEST_F(ExceptionTest, catch_exception) {
+  auto identity = [](int i) { return i; };
+  auto returner = [](int i) { return [=] { return i; }; };
+  auto thrower = [](int i) { return [=]() -> int { throw i; }; };
+  EXPECT_EQ(3, folly::catch_exception(returner(3), returner(4)));
+  EXPECT_EQ(3, folly::catch_exception<int>(returner(3), identity));
+  EXPECT_EQ(4, folly::catch_exception(thrower(3), returner(4)));
+  EXPECT_EQ(3, folly::catch_exception<int>(thrower(3), identity));
 }

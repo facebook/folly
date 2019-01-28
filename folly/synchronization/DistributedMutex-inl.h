@@ -20,6 +20,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Utility.h>
+#include <folly/chrono/Hardware.h>
 #include <folly/detail/Futex.h>
 #include <folly/lang/Align.h>
 #include <folly/portability/Asm.h>
@@ -188,7 +189,7 @@ class Waiter {
  * https://c9x.me/x86/html/file_module_x86_id_278.html
  */
 inline std::chrono::nanoseconds time() {
-  return std::chrono::nanoseconds{asm_rdtsc()};
+  return std::chrono::nanoseconds{hardware_timestamp()};
 }
 
 /**
@@ -228,24 +229,33 @@ inline std::uint64_t recover(std::uint64_t from) {
 template <template <typename> class Atomic, bool TimePublishing>
 class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
  public:
-  /// DistributedMutexStateProxy is movable, so the caller can contain their
-  /// critical section by moving the proxy around
-  DistributedMutexStateProxy(DistributedMutexStateProxy&& other)
-      : next_{exchange(other.next_, nullptr)},
-        expected_{exchange(other.expected_, 0)},
-        wakerMetadata_{exchange(other.wakerMetadata_, {})},
-        waiters_{exchange(other.waiters_, nullptr)},
-        ready_{exchange(other.ready_, nullptr)} {}
+  // DistributedMutexStateProxy is move constructible and assignable for
+  // convenience
+  DistributedMutexStateProxy(DistributedMutexStateProxy&& other) {
+    *this = std::move(other);
+  }
 
-  /// The proxy is valid when a mutex acquisition attempt was successful,
-  /// lock() is guaranteed to return a valid proxy, try_lock() is not
+  DistributedMutexStateProxy& operator=(DistributedMutexStateProxy&& other) {
+    DCHECK(!(*this)) << "Cannot move into a valid DistributedMutexStateProxy";
+
+    next_ = exchange(other.next_, nullptr);
+    expected_ = exchange(other.expected_, 0);
+    wakerMetadata_ = exchange(other.wakerMetadata_, {});
+    waiters_ = exchange(other.waiters_, nullptr);
+    ready_ = exchange(other.ready_, nullptr);
+
+    return *this;
+  }
+
+  // The proxy is valid when a mutex acquisition attempt was successful,
+  // lock() is guaranteed to return a valid proxy, try_lock() is not
   explicit operator bool() const {
     return expected_;
   }
 
   // private:
-  /// friend the mutex class, since that will be accessing state private to
-  /// this class
+  // friend the mutex class, since that will be accessing state private to
+  // this class
   friend class DistributedMutex<Atomic, TimePublishing>;
 
   DistributedMutexStateProxy(

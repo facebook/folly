@@ -450,7 +450,7 @@ class fbvector {
   static void S_uninitialized_fill_n(T* dest, size_type n) {
     if (folly::IsZeroInitializable<T>::value) {
       if (LIKELY(n != 0)) {
-        std::memset(dest, 0, sizeof(T) * n);
+        std::memset((void*)dest, 0, sizeof(T) * n);
       }
     } else {
       auto b = dest;
@@ -1245,7 +1245,8 @@ class fbvector {
           if (last - first >= cend() - last) {
             std::memcpy((void*)first, (void*)last, (cend() - last) * sizeof(T));
           } else {
-            std::memmove((iterator)first, last, (cend() - last) * sizeof(T));
+            std::memmove(
+                (void*)first, (void*)last, (cend() - last) * sizeof(T));
           }
           impl_.e_ -= (last - first);
         } else {
@@ -1340,7 +1341,7 @@ class fbvector {
       impl_.e_ += n;
     } else {
       if (folly::IsRelocatable<T>::value && usingStdAllocator::value) {
-        std::memmove(position + n, position, tail * sizeof(T));
+        std::memmove((void*)(position + n), (void*)position, tail * sizeof(T));
         impl_.e_ += n;
       } else {
         D_uninitialized_move_a(impl_.e_, impl_.e_ - n, impl_.e_);

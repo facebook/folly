@@ -64,7 +64,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     CHECK_LT(queue, queues_.size());
     switch (kBehavior) { // static
       case QueueBehaviorIfFull::THROW:
-        if (!queues_[queue].write(std::move(item))) {
+        if (!queues_[queue].writeIfNotFull(std::move(item))) {
           throw QueueFullException("LifoSemMPMCQueue full, can't add item");
         }
         break;

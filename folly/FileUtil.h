@@ -50,9 +50,6 @@ int ftruncateNoInt(int fd, off_t len);
 int truncateNoInt(const char* path, off_t len);
 int flockNoInt(int fd, int operation);
 int shutdownNoInt(NetworkSocket fd, int how);
-inline int shutdownNoInt(int fd, int how) {
-  return shutdownNoInt(NetworkSocket::fromFd(fd), how);
-}
 
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);

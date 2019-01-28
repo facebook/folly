@@ -35,11 +35,13 @@ DEFINE_int64(num_ops, 1003, "Number of ops or pairs of ops per rep");
 using folly::default_hazptr_domain;
 using folly::hazptr_array;
 using folly::hazptr_cleanup;
+using folly::hazptr_cleanup_batch_tag;
 using folly::hazptr_domain;
 using folly::hazptr_holder;
 using folly::hazptr_local;
 using folly::hazptr_obj_base;
 using folly::hazptr_obj_base_linked;
+using folly::hazptr_obj_batch;
 using folly::hazptr_retire;
 using folly::hazptr_root;
 using folly::hazptr_tc;
@@ -810,6 +812,99 @@ void priv_dtor_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
+void batch_test() {
+  int num = 10001;
+  using NodeT = Node<Atom>;
+  c_.clear();
+  {
+    hazptr_obj_batch<Atom> batch;
+    auto thr = DSched::thread([&]() {
+      for (int i = 0; i < num; ++i) {
+        auto p = new NodeT;
+        p->set_batch_no_tag(&batch);
+        p->retire();
+      }
+    });
+    DSched::join(thr);
+    batch.shutdown_and_reclaim();
+  }
+  ASSERT_EQ(c_.ctors(), num);
+  //  ASSERT_GT(c_.dtors(), 0);
+  hazptr_cleanup<Atom>();
+  c_.clear();
+  {
+    hazptr_obj_batch<Atom> batch;
+    auto thr = DSched::thread([&]() {
+      for (int i = 0; i < num; ++i) {
+        auto p = new NodeT;
+        p->set_batch_tag(&batch);
+        p->retire();
+      }
+    });
+    DSched::join(thr);
+    batch.shutdown_and_reclaim();
+    hazptr_cleanup_batch_tag<Atom>(&batch);
+  }
+  ASSERT_EQ(c_.ctors(), num);
+  ASSERT_GT(c_.dtors(), 0);
+  hazptr_cleanup<Atom>();
+}
+
+template <template <typename> class Atom = std::atomic>
+void recursive_destruction_test() {
+  struct Foo : public hazptr_obj_base<Foo, Atom> {
+    hazptr_obj_batch<Atom> batch_;
+    Foo* foo_{nullptr};
+    explicit Foo(hazptr_obj_batch<Atom>* b) {
+      this->set_batch_tag(b);
+      c_.inc_ctors();
+    }
+    ~Foo() {
+      set(nullptr);
+      batch_.shutdown_and_reclaim();
+      hazptr_cleanup_batch_tag<Atom>(&batch_);
+      c_.inc_dtors();
+    }
+    void set(Foo* foo) {
+      if (foo_) {
+        foo_->retire();
+      }
+      foo_ = foo;
+    }
+    hazptr_obj_batch<Atom>* batch() {
+      return &batch_;
+    }
+  };
+
+  int num1 = 101;
+  int num2 = 42;
+  int nthr = FLAGS_num_threads;
+  c_.clear();
+  std::vector<std::thread> threads(nthr);
+  for (int tid = 0; tid < nthr; ++tid) {
+    threads[tid] = DSched::thread([&, tid]() {
+      hazptr_obj_batch<Atom> b0;
+      Foo* foo0 = new Foo(&b0);
+      for (int i = tid; i < num1; i += nthr) {
+        Foo* foo1 = new Foo(foo0->batch());
+        foo0->set(foo1);
+        for (int j = 0; j < num2; ++j) {
+          foo1->set(new Foo(foo1->batch()));
+        }
+      }
+      foo0->retire();
+      b0.shutdown_and_reclaim();
+    });
+  }
+  for (auto& t : threads) {
+    DSched::join(t);
+  }
+  int total = nthr + num1 + num1 * num2;
+  ASSERT_EQ(c_.ctors(), total);
+  ASSERT_EQ(c_.dtors(), total);
+}
+
+template <template <typename> class Atom = std::atomic>
 void lifo_test() {
   for (int i = 0; i < FLAGS_num_reps; ++i) {
     Atom<int> sum{0};
@@ -1062,6 +1157,23 @@ TEST(HazptrTest, priv_dtor) {
 TEST_F(HazptrPreInitTest, dsched_priv_dtor) {
   DSched sched(DSched::uniform(0));
   priv_dtor_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, batch) {
+  batch_test();
+}
+
+TEST(HazptrTest, dsched_batch) {
+  DSched sched(DSched::uniform(0));
+  batch_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, recursive_destruction) {
+  recursive_destruction_test();
+}
+
+TEST(HazptrTest, dsched_recursive_destruction) {
+  recursive_destruction_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, lifo) {

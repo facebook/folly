@@ -164,10 +164,14 @@ EventBase::~EventBase() {
   }
 
   // Call all destruction callbacks, before we start cleaning up our state.
-  while (!onDestructionCallbacks_.empty()) {
-    LoopCallback* callback = &onDestructionCallbacks_.front();
-    onDestructionCallbacks_.pop_front();
-    callback->runLoopCallback();
+  while (!onDestructionCallbacks_.rlock()->empty()) {
+    OnDestructionCallback::List callbacks;
+    onDestructionCallbacks_.swap(callbacks);
+    while (!callbacks.empty()) {
+      auto& callback = callbacks.front();
+      callbacks.pop_front();
+      callback.runCallback();
+    }
   }
 
   clearCobTimeouts();
@@ -378,16 +382,18 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
       VLOG(11) << "EventBase " << this << " did not timeout";
     }
 
-    // If the event loop indicate that there were no more events, and
-    // we also didn't have any loop callbacks to run, there is nothing left to
-    // do.
-    if (res != 0 && !ranLoopCallbacks) {
+    // Event loop indicated that there were no more events (NotificationQueue
+    // was registered as an internal event and there were no other registered
+    // events).
+    if (res != 0) {
       // Since Notification Queue is marked 'internal' some events may not have
       // run.  Run them manually if so, and continue looping.
       //
       if (getNotificationQueueSize() > 0) {
         fnRunner_->handlerReady(0);
-      } else {
+      } else if (!ranLoopCallbacks) {
+        // If there were no more events and we also didn't have any loop
+        // callbacks to run, there is nothing left to do.
         break;
       }
     }
@@ -539,10 +545,18 @@ void EventBase::runInLoop(Func cob, bool thisIteration) {
   }
 }
 
-void EventBase::runOnDestruction(LoopCallback* callback) {
-  std::lock_guard<std::mutex> lg(onDestructionCallbacksMutex_);
-  callback->cancelLoopCallback();
-  onDestructionCallbacks_.push_back(*callback);
+void EventBase::runOnDestruction(OnDestructionCallback& callback) {
+  callback.schedule(
+      [this](auto& cb) { onDestructionCallbacks_.wlock()->push_back(cb); },
+      [this](auto& cb) {
+        onDestructionCallbacks_.withWLock(
+            [&](auto& list) { list.erase(list.iterator_to(cb)); });
+      });
+}
+
+void EventBase::runOnDestruction(Func f) {
+  auto* callback = new FunctionOnDestructionCallback(std::move(f));
+  runOnDestruction(*callback);
 }
 
 void EventBase::runBeforeLoop(LoopCallback* callback) {
@@ -566,6 +580,28 @@ bool EventBase::runInEventBaseThread(Func fn) {
   if (inRunningEventBaseThread()) {
     runInLoop(std::move(fn));
     return true;
+  }
+
+  try {
+    queue_->putMessage(std::move(fn));
+  } catch (const std::exception& ex) {
+    LOG(ERROR) << "EventBase " << this << ": failed to schedule function "
+               << "for EventBase thread: " << ex.what();
+    return false;
+  }
+
+  return true;
+}
+
+bool EventBase::runInEventBaseThreadAlwaysEnqueue(Func fn) {
+  // Send the message.
+  // It will be received by the FunctionRunner in the EventBase's thread.
+
+  // We try not to schedule nullptr callbacks
+  if (!fn) {
+    LOG(ERROR) << "EventBase " << this
+               << ": Scheduling nullptr callbacks is not allowed";
+    return false;
   }
 
   try {
@@ -777,5 +813,49 @@ EventBase* EventBase::getEventBase() {
   return this;
 }
 
+EventBase::OnDestructionCallback::~OnDestructionCallback() {
+  if (*scheduled_.rlock()) {
+    LOG(FATAL)
+        << "OnDestructionCallback must be canceled if needed prior to destruction";
+  }
+}
+
+void EventBase::OnDestructionCallback::runCallback() noexcept {
+  scheduled_.withWLock([&](bool& scheduled) {
+    CHECK(scheduled);
+    scheduled = false;
+
+    // run can only be called by EventBase and VirtualEventBase, and it's called
+    // after the callback has been popped off the list.
+    eraser_ = nullptr;
+
+    // Note that the exclusive lock on shared state is held while the callback
+    // runs. This ensures concurrent callers to cancel() block until the
+    // callback finishes.
+    onEventBaseDestruction();
+  });
+}
+
+void EventBase::OnDestructionCallback::schedule(
+    FunctionRef<void(OnDestructionCallback&)> linker,
+    Function<void(OnDestructionCallback&)> eraser) {
+  eraser_ = std::move(eraser);
+  scheduled_.withWLock([](bool& scheduled) { scheduled = true; });
+  linker(*this);
+}
+
+bool EventBase::OnDestructionCallback::cancel() {
+  return scheduled_.withWLock([this](bool& scheduled) {
+    const bool wasScheduled = std::exchange(scheduled, false);
+    if (wasScheduled) {
+      auto eraser = std::move(eraser_);
+      CHECK(eraser);
+      eraser(*this);
+    }
+    return wasScheduled;
+  });
+}
+
 constexpr std::chrono::milliseconds EventBase::SmoothLoopTime::buffer_interval_;
+
 } // namespace folly

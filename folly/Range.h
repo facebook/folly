@@ -59,8 +59,9 @@ namespace folly {
 template <class T>
 struct IsSomeString : std::false_type {};
 
-template <>
-struct IsSomeString<std::string> : std::true_type {};
+template <typename Alloc>
+struct IsSomeString<std::basic_string<char, std::char_traits<char>, Alloc>>
+    : std::true_type {};
 
 template <class Iter>
 class Range;
@@ -170,6 +171,10 @@ struct IsCharPointer<const char*> {
  */
 template <class Iter>
 class Range {
+ private:
+  template <typename Alloc>
+  using string = std::basic_string<char, std::char_traits<char>, Alloc>;
+
  public:
   typedef std::size_t size_type;
   typedef Iter iterator;
@@ -220,12 +225,18 @@ class Range {
         "This constructor is only available for character ranges");
   }
 
-  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
-  /* implicit */ Range(const std::string& str)
+  template <
+      class Alloc,
+      class T = Iter,
+      typename detail::IsCharPointer<T>::const_type = 0>
+  /* implicit */ Range(const string<Alloc>& str)
       : b_(str.data()), e_(b_ + str.size()) {}
 
-  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
-  Range(const std::string& str, std::string::size_type startFrom) {
+  template <
+      class Alloc,
+      class T = Iter,
+      typename detail::IsCharPointer<T>::const_type = 0>
+  Range(const string<Alloc>& str, typename string<Alloc>::size_type startFrom) {
     if (UNLIKELY(startFrom > str.size())) {
       throw_exception<std::out_of_range>("index out of range");
     }
@@ -233,11 +244,14 @@ class Range {
     e_ = str.data() + str.size();
   }
 
-  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
+  template <
+      class Alloc,
+      class T = Iter,
+      typename detail::IsCharPointer<T>::const_type = 0>
   Range(
-      const std::string& str,
-      std::string::size_type startFrom,
-      std::string::size_type size) {
+      const string<Alloc>& str,
+      typename string<Alloc>::size_type startFrom,
+      typename string<Alloc>::size_type size) {
     if (UNLIKELY(startFrom > str.size())) {
       throw_exception<std::out_of_range>("index out of range");
     }
@@ -405,8 +419,11 @@ class Range {
   Range& operator=(const Range& rhs) & = default;
   Range& operator=(Range&& rhs) & = default;
 
-  template <class T = Iter, typename detail::IsCharPointer<T>::const_type = 0>
-  Range& operator=(std::string&& rhs) = delete;
+  template <
+      class Alloc,
+      class T = Iter,
+      typename detail::IsCharPointer<T>::const_type = 0>
+  Range& operator=(string<Alloc>&& rhs) = delete;
 
   void clear() {
     b_ = Iter();
@@ -424,7 +441,8 @@ class Range {
   }
 
   // Works only for Range<const char*>
-  void reset(const std::string& str) {
+  template <typename Alloc>
+  void reset(const string<Alloc>& str) {
     reset(str.data(), str.size());
   }
 
@@ -496,13 +514,22 @@ class Range {
   // At the moment the set of implicit target types consists of just
   // std::string_view (when it is available).
 #if FOLLY_HAS_STRING_VIEW
-  using StringViewType =
-      std::basic_string_view<std::remove_const_t<value_type>>;
+  struct NotStringView {};
+  template <typename ValueType>
+  struct StringViewType
+      : std::conditional<
+            std::is_pod<std::remove_const_t<ValueType>>::value,
+            std::basic_string_view<std::remove_const_t<ValueType>>,
+            NotStringView> {};
 
   template <typename Target>
-  using IsConstructibleViaStringView = StrictConjunction<
-      std::is_constructible<StringViewType, Iter const&, size_type>,
-      std::is_constructible<Target, StringViewType>>;
+  struct IsConstructibleViaStringView
+      : Conjunction<
+            std::is_constructible<
+                _t<StringViewType<value_type>>,
+                Iter const&,
+                size_type>,
+            std::is_constructible<Target, _t<StringViewType<value_type>>>> {};
 #else
   template <typename Target>
   using IsConstructibleViaStringView = std::false_type;
@@ -542,11 +569,14 @@ class Range {
   /// implicit operator conversion to std::string_view
   template <
       typename Tgt,
+      typename ValueType = value_type,
       std::enable_if_t<
           StrictConjunction<
-              std::is_same<Tgt, StringViewType>,
-              std::is_constructible<StringViewType, Iter const&, size_type>>::
-              value,
+              std::is_same<Tgt, _t<StringViewType<ValueType>>>,
+              std::is_constructible<
+                  _t<StringViewType<ValueType>>,
+                  Iter const&,
+                  size_type>>::value,
           int> = 0>
   constexpr operator Tgt() const noexcept(
       std::is_nothrow_constructible<Tgt, Iter const&, size_type>::value) {
@@ -1235,8 +1265,9 @@ struct ComparableAsStringPiece {
  * operator== through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator==(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator==(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) == StringPiece(rhs);
 }
 
@@ -1244,8 +1275,9 @@ operator==(const T& lhs, const U& rhs) {
  * operator!= through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator!=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator!=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) != StringPiece(rhs);
 }
 
@@ -1253,8 +1285,9 @@ operator!=(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator<(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) < StringPiece(rhs);
 }
 
@@ -1262,8 +1295,9 @@ operator<(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator>(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) > StringPiece(rhs);
 }
 
@@ -1271,8 +1305,9 @@ operator>(const T& lhs, const U& rhs) {
  * operator< through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator<=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) <= StringPiece(rhs);
 }
 
@@ -1280,8 +1315,9 @@ operator<=(const T& lhs, const U& rhs) {
  * operator> through conversion for Range<const char*>
  */
 template <class T, class U>
-_t<std::enable_if<detail::ComparableAsStringPiece<T, U>::value, bool>>
-operator>=(const T& lhs, const U& rhs) {
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
+    const T& lhs,
+    const U& rhs) {
   return StringPiece(lhs) >= StringPiece(rhs);
 }
 
