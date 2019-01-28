@@ -1236,31 +1236,18 @@ typename std::enable_if<
         !futures::detail::Extract<F>::ReturnsFuture::value,
     Future<T>>::type
 Future<T>::onError(F&& func) && {
-  typedef std::remove_reference_t<
-      typename futures::detail::Extract<F>::FirstArg>
-      Exn;
+  typedef typename futures::detail::Extract<F>::FirstArg Exn;
   static_assert(
       std::is_same<typename futures::detail::Extract<F>::RawReturn, T>::value,
       "Return type of onError callback must be T or Future<T>");
 
-  Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
-  auto sf = p.getSemiFuture();
-
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
-        if (auto e = t.template tryGetExceptionObject<Exn>()) {
-          state.setTry(makeTryWith([&] { return state.invoke(*e); }));
-        } else {
-          state.setTry(std::move(t));
-        }
-      });
-
-  // Allow for applying to future with null executor while this is still
-  // possible.
-  // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&InlineExecutor::instance());
+  // NOTE: Removes the executor to maintain historical behaviour.
+  return std::move(*this)
+      .template thenError<Exn>(
+          [func = std::forward<F>(func)](auto&& ex) mutable {
+            return std::forward<F>(func)(ex);
+          })
+      .via(&InlineExecutor::instance());
 }
 
 // onError where the callback returns Future<T>
@@ -1275,34 +1262,15 @@ Future<T>::onError(F&& func) && {
       std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
           value,
       "Return type of onError callback must be T or Future<T>");
-  typedef std::remove_reference_t<
-      typename futures::detail::Extract<F>::FirstArg>
-      Exn;
+  typedef typename futures::detail::Extract<F>::FirstArg Exn;
 
-  Promise<T> p;
-  auto sf = p.getSemiFuture();
-
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
-        if (auto e = t.template tryGetExceptionObject<Exn>()) {
-          auto tf2 = state.tryInvoke(*e);
-          if (tf2.hasException()) {
-            state.setException(std::move(tf2.exception()));
-          } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<T>&& t3) mutable {
-              p.setTry(std::move(t3));
-            });
-          }
-        } else {
-          state.setTry(std::move(t));
-        }
-      });
-
-  // Allow for applying to future with null executor while this is still
-  // possible.
-  // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&InlineExecutor::instance());
+  // NOTE: Removes the executor to maintain historical behaviour.
+  return std::move(*this)
+      .template thenError<Exn>(
+          [func = std::forward<F>(func)](auto&& ex) mutable {
+            return std::forward<F>(func)(ex);
+          })
+      .via(&InlineExecutor::instance());
 }
 
 template <class T>
@@ -1336,29 +1304,10 @@ Future<T>::onError(F&& func) && {
           value,
       "Return type of onError callback must be T or Future<T>");
 
-  Promise<T> p;
-  auto sf = p.getSemiFuture();
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T> t) mutable {
-        if (t.hasException()) {
-          auto tf2 = state.tryInvoke(std::move(t.exception()));
-          if (tf2.hasException()) {
-            state.setException(std::move(tf2.exception()));
-          } else {
-            tf2->setCallback_([p = state.stealPromise()](Try<T>&& t3) mutable {
-              p.setTry(std::move(t3));
-            });
-          }
-        } else {
-          state.setTry(std::move(t));
-        }
-      });
-
-  // Allow for applying to future with null executor while this is still
-  // possible.
-  // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&InlineExecutor::instance());
+  // NOTE: Removes the executor to maintain historical behaviour.
+  return std::move(*this)
+      .template thenError(std::forward<F>(func))
+      .via(&InlineExecutor::instance());
 }
 
 // onError(exception_wrapper) that returns T
@@ -1374,23 +1323,10 @@ Future<T>::onError(F&& func) && {
           value,
       "Return type of onError callback must be T or Future<T>");
 
-  Promise<T> p;
-  auto sf = p.getSemiFuture();
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
-        if (t.hasException()) {
-          state.setTry(makeTryWith(
-              [&] { return state.invoke(std::move(t.exception())); }));
-        } else {
-          state.setTry(std::move(t));
-        }
-      });
-
-  // Allow for applying to future with null executor while this is still
-  // possible.
-  // TODO(T26801487): Should have an executor
-  return std::move(sf).via(&InlineExecutor::instance());
+  // NOTE: Removes the executor to maintain historical behaviour.
+  return std::move(*this)
+      .template thenError(std::forward<F>(func))
+      .via(&InlineExecutor::instance());
 }
 
 template <class Func>

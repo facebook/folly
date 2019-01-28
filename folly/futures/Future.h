@@ -1513,6 +1513,11 @@ class Future : private futures::detail::FutureBase<T> {
       Future<T>>::type
   onError(F&& func) &&;
 
+  template <class R, class... Args>
+  Future<T> onError(R (&func)(Args...)) && {
+    return std::move(*this).onError(&func);
+  }
+
   // clang-format off
   template <class F>
   [[deprecated("ERROR: use rvalue-qualified fn, eg, std::move(future).onError(...)")]]
