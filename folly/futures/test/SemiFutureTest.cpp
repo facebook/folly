@@ -746,7 +746,8 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw eggs; })
-                 .deferError<eggs_t>([&](eggs_t const& /* e */) { flag(); });
+                 .deferError(
+                     tag_t<eggs_t>{}, [&](eggs_t const& /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -754,7 +755,8 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer(deferHelper)
-                 .deferError<eggs_t>([&](eggs_t const& /* e */) { flag(); });
+                 .deferError(
+                     tag_t<eggs_t>{}, [&](eggs_t const& /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -763,7 +765,7 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw eggs; })
-                 .deferError<eggs_t>([&](auto& /* e */) { flag(); });
+                 .deferError(tag_t<eggs_t>{}, [&](auto& /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -772,7 +774,7 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw eggs; })
-                 .deferError<eggs_t>([&](eggs_t /* e */) { flag(); });
+                 .deferError(tag_t<eggs_t>{}, [&](eggs_t /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -781,17 +783,18 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw eggs; })
-                 .deferError<eggs_t>([&](auto /* e */) { flag(); });
+                 .deferError(tag_t<eggs_t>{}, [&](auto /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
 
   // Polymorphic
   {
-    auto f =
-        makeSemiFuture()
-            .defer([](auto&&) { throw eggs; })
-            .deferError<std::exception>([&](auto const& /* e */) { flag(); });
+    auto f = makeSemiFuture()
+                 .defer([](auto&&) { throw eggs; })
+                 .deferError(tag_t<std::exception>{}, [&](auto const& /* e */) {
+                   flag();
+                 });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -800,17 +803,18 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw - 1; })
-                 .deferError<int>([&](auto /* e */) { flag(); });
+                 .deferError(tag_t<int>{}, [&](auto /* e */) { flag(); });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
 
   // Mutable lambda
   {
-    auto f =
-        makeSemiFuture()
-            .defer([](auto&&) { throw eggs; })
-            .deferError<eggs_t>([&](auto const& /* e */) mutable { flag(); });
+    auto f = makeSemiFuture()
+                 .defer([](auto&&) { throw eggs; })
+                 .deferError(tag_t<eggs_t>{}, [&](auto const& /* e */) mutable {
+                   flag();
+                 });
     EXPECT_NO_THROW(std::move(f).get());
     EXPECT_FLAG();
   }
@@ -819,7 +823,7 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto &&) -> int { throw eggs; })
-                 .deferError<eggs_t>(onErrorHelperEggs)
+                 .deferError(tag_t<eggs_t>{}, onErrorHelperEggs)
                  .deferError(onErrorHelperGeneric);
     EXPECT_EQ(10, std::move(f).get());
   }
@@ -827,7 +831,7 @@ TEST(SemiFuture, onError) {
     auto f =
         makeSemiFuture()
             .defer([](auto &&) -> int { throw std::runtime_error("test"); })
-            .deferError<eggs_t>(onErrorHelperEggs)
+            .deferError(tag_t<eggs_t>{}, onErrorHelperEggs)
             .deferError(onErrorHelperGeneric);
     EXPECT_EQ(20, std::move(f).get());
   }
@@ -835,7 +839,7 @@ TEST(SemiFuture, onError) {
     auto f =
         makeSemiFuture()
             .defer([](auto &&) -> int { throw std::runtime_error("test"); })
-            .deferError<eggs_t>(onErrorHelperEggs);
+            .deferError(tag_t<eggs_t>{}, onErrorHelperEggs);
     EXPECT_THROW(std::move(f).get(), std::runtime_error);
   }
 
@@ -843,7 +847,7 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { return 42; })
-                 .deferError<eggs_t>([&](auto& /* e */) {
+                 .deferError(tag_t<eggs_t>{}, [&](auto& /* e */) {
                    flag();
                    return -1;
                  });
@@ -856,7 +860,8 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto&&) { throw eggs; })
-                 .deferError<std::runtime_error>(
+                 .deferError(
+                     tag_t<std::runtime_error>{},
                      [&](auto const& /* e */) { flag(); });
     EXPECT_THROW(std::move(f).get(), eggs_t);
     EXPECT_NO_FLAG();
@@ -866,7 +871,8 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto &&) -> int { throw eggs; })
-                 .deferError<eggs_t>([&](auto const& /* e */) { return 42; });
+                 .deferError(
+                     tag_t<eggs_t>{}, [&](auto const& /* e */) { return 42; });
     EXPECT_EQ(42, std::move(f).get());
   }
 
@@ -874,7 +880,8 @@ TEST(SemiFuture, onError) {
   {
     auto f = makeSemiFuture()
                  .defer([](auto &&) -> int { throw eggs; })
-                 .deferError<eggs_t>([&](auto const& e) -> int { throw e; });
+                 .deferError(
+                     tag_t<eggs_t>{}, [&](auto const& e) -> int { throw e; });
     EXPECT_THROW(std::move(f).get(), eggs_t);
   }
 

@@ -932,7 +932,7 @@ SemiFuture<T>::deferValue(F&& func) && {
 
 template <class T>
 template <class ExceptionType, class F>
-SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
+SemiFuture<T> SemiFuture<T>::deferError(tag_t<ExceptionType>, F&& func) && {
   return std::move(*this).defer(
       [func = std::forward<F>(func)](Try<T>&& t) mutable {
         if (auto e = t.template tryGetExceptionObject<ExceptionType>()) {
@@ -1114,7 +1114,7 @@ template <class ExceptionType, class F>
 typename std::enable_if<
     isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
     Future<T>>::type
-Future<T>::thenError(F&& func) && {
+Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
   Promise<T> p;
   auto sf = p.getSemiFuture();
   auto* ePtr = this->getExecutor();
@@ -1146,7 +1146,7 @@ template <class ExceptionType, class F>
 typename std::enable_if<
     !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
     Future<T>>::type
-Future<T>::thenError(F&& func) && {
+Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
   Promise<T> p;
   p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
   auto sf = p.getSemiFuture();
@@ -1243,7 +1243,8 @@ Future<T>::onError(F&& func) && {
 
   // NOTE: Removes the executor to maintain historical behaviour.
   return std::move(*this)
-      .template thenError<Exn>(
+      .thenError(
+          tag_t<Exn>{},
           [func = std::forward<F>(func)](auto&& ex) mutable {
             return std::forward<F>(func)(ex);
           })
@@ -1266,7 +1267,8 @@ Future<T>::onError(F&& func) && {
 
   // NOTE: Removes the executor to maintain historical behaviour.
   return std::move(*this)
-      .template thenError<Exn>(
+      .thenError(
+          tag_t<Exn>{},
           [func = std::forward<F>(func)](auto&& ex) mutable {
             return std::forward<F>(func)(ex);
           })
@@ -1286,7 +1288,8 @@ Future<T> Future<T>::ensure(F&& func) && {
 template <class T>
 template <class F>
 Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) && {
-  return std::move(*this).within(dur, tk).template thenError<FutureTimeout>(
+  return std::move(*this).within(dur, tk).thenError(
+      tag_t<FutureTimeout>{},
       [funcw = std::forward<F>(func)](auto const&) mutable {
         return std::forward<F>(funcw)();
       });
@@ -1306,7 +1309,7 @@ Future<T>::onError(F&& func) && {
 
   // NOTE: Removes the executor to maintain historical behaviour.
   return std::move(*this)
-      .template thenError(std::forward<F>(func))
+      .thenError(std::forward<F>(func))
       .via(&InlineExecutor::instance());
 }
 
@@ -1325,7 +1328,7 @@ Future<T>::onError(F&& func) && {
 
   // NOTE: Removes the executor to maintain historical behaviour.
   return std::move(*this)
-      .template thenError(std::forward<F>(func))
+      .thenError(std::forward<F>(func))
       .via(&InlineExecutor::instance());
 }
 
