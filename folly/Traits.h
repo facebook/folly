@@ -134,6 +134,16 @@
 
 namespace folly {
 
+template <typename...>
+struct tag_t {};
+
+#if __cplusplus >= 201703L
+
+template <typename... T>
+inline constexpr tag_t<T...> tag;
+
+#endif
+
 #if __cpp_lib_bool_constant || _MSC_VER
 
 using std::bool_constant;
