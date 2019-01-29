@@ -22,8 +22,6 @@
 #include <memory>
 #include <string>
 
-#include <boost/random.hpp>
-
 #include <folly/FBVector.h>
 #include <folly/Traits.h>
 #include <folly/container/Foreach.h>
