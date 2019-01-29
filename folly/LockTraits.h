@@ -370,6 +370,8 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, true>
  */
 template <template <typename...> class LockTraits>
 struct UnlockPolicyExclusive {
+  constexpr static bool allows_concurrent_access = false;
+
   template <typename Mutex>
   static void unlock(Mutex& mutex) {
     LockTraits<Mutex>::unlock(mutex);
@@ -377,6 +379,8 @@ struct UnlockPolicyExclusive {
 };
 template <template <typename...> class LockTraits>
 struct UnlockPolicyShared {
+  constexpr static bool allows_concurrent_access = true;
+
   template <typename Mutex>
   static void unlock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_shared(mutex);
@@ -384,6 +388,8 @@ struct UnlockPolicyShared {
 };
 template <template <typename...> class LockTraits>
 struct UnlockPolicyUpgrade {
+  constexpr static bool allows_concurrent_access = true;
+
   template <typename Mutex>
   static void unlock(Mutex& mutex) {
     LockTraits<Mutex>::unlock_upgrade(mutex);
