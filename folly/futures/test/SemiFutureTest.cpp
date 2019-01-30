@@ -710,16 +710,16 @@ TEST(SemiFuture, DeferWithinContinuation) {
   Promise<int> p;
   Promise<int> p2;
   auto f = p.getSemiFuture().via(&e2);
-  auto resultF = std::move(f).thenValue([&, p3 = std::move(p2)](
-                                            int outer) mutable {
-    result = outer;
-    return makeSemiFuture<int>(std::move(outer))
-        .deferValue([&, p4 = std::move(p3)](int inner) mutable {
-          innerResult = inner;
-          p4.setValue(inner);
-          return inner;
-        });
-  });
+  auto resultF =
+      std::move(f).thenValue([&, p3 = std::move(p2)](int outer) mutable {
+        result = outer;
+        return makeSemiFuture<int>(std::move(outer))
+            .deferValue([&, p4 = std::move(p3)](int inner) mutable {
+              innerResult = inner;
+              p4.setValue(inner);
+              return inner;
+            });
+      });
   p.setValue(7);
   auto r = resultF.getVia(&e2);
   ASSERT_EQ(r, 7);

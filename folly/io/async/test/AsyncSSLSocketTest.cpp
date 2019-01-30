@@ -2135,7 +2135,7 @@ static SSL_SESSION* getCloseCb(SSL* ssl, unsigned char*, int, int*) {
 #endif
   AsyncSSLSocket::getFromSSL(ssl)->closeNow();
   return nullptr;
-}
+} // namespace folly
 
 TEST(AsyncSSLSocketTest, SSLAcceptRunnerFiberCloseSessionCb) {
   EventBase eventBase;

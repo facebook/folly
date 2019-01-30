@@ -15,8 +15,8 @@
  */
 #pragma once
 
-#include <atomic>
 #include <limits.h>
+#include <atomic>
 #include <memory>
 
 #include <folly/lang/SafeAssert.h>
