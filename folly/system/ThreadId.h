@@ -16,7 +16,11 @@
 
 #pragma once
 
+#if __has_include(<cstdint>)
 #include <cstdint>
+#else 
+#include <stdint.h>
+#endif
 
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysSyscall.h>
@@ -78,7 +82,7 @@ inline uint64_t getCurrentThreadID() {
  * joined.
  */
 inline uint64_t getOSThreadID() {
-#if __APPLE__ 
+#if __APPLE__
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
   return tid;

@@ -22,7 +22,7 @@
 #include <stdint.h>
 #endif
 
-#include <folly/GLog.h>
+#include <glog/logging.h>
 
 namespace folly {
 
