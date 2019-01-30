@@ -160,6 +160,8 @@ void DH_get0_pqg(
     const BIGNUM** q,
     const BIGNUM** g);
 void DH_get0_key(const DH* dh, const BIGNUM** pub_key, const BIGNUM** priv_key);
+long DH_get_length(const DH* dh);
+int DH_set_length(DH* dh, long length);
 
 void DSA_get0_pqg(
     const DSA* dsa,
