@@ -480,7 +480,7 @@ TEST(Future, onError) {
   {
     auto f = makeFuture()
                  .thenValue([](auto &&) -> int { throw eggs; })
-                 .thenError<eggs_t>(onErrorHelperEggs)
+                 .thenError(tag_t<eggs_t>{}, onErrorHelperEggs)
                  .thenError<std::exception>(onErrorHelperGeneric);
     EXPECT_EQ(10, f.value());
   }
@@ -488,7 +488,7 @@ TEST(Future, onError) {
     auto f =
         makeFuture()
             .thenValue([](auto &&) -> int { throw std::runtime_error("test"); })
-            .thenError<eggs_t>(onErrorHelperEggs)
+            .thenError(tag_t<eggs_t>{}, onErrorHelperEggs)
             .thenError(onErrorHelperWrapper);
     EXPECT_EQ(30, f.value());
   }
@@ -496,7 +496,7 @@ TEST(Future, onError) {
     auto f =
         makeFuture()
             .thenValue([](auto &&) -> int { throw std::runtime_error("test"); })
-            .thenError<eggs_t>(onErrorHelperEggs);
+            .thenError(tag_t<eggs_t>{}, onErrorHelperEggs);
     EXPECT_THROW(f.value(), std::runtime_error);
   }
 
@@ -654,18 +654,20 @@ TEST(Future, thenError) {
 
   // By reference
   {
-    auto f = makeFuture()
-                 .thenValue([](auto&&) { throw eggs; })
-                 .thenError<eggs_t>([&](const eggs_t& /* e */) { flag(); });
+    auto f =
+        makeFuture()
+            .thenValue([](auto&&) { throw eggs; })
+            .thenError(tag_t<eggs_t>{}, [&](const eggs_t& /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }
 
   // By auto reference
   {
-    auto f = makeFuture()
-                 .thenValue([](auto&&) { throw eggs; })
-                 .thenError<eggs_t>([&](auto const& /* e */) { flag(); });
+    auto f =
+        makeFuture()
+            .thenValue([](auto&&) { throw eggs; })
+            .thenError(tag_t<eggs_t>{}, [&](auto const& /* e */) { flag(); });
     EXPECT_FLAG();
     EXPECT_NO_THROW(f.value());
   }

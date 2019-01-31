@@ -385,6 +385,9 @@ TEST_F(SynchronizedLockTest, UpgradeLocking) {
 
   {
     auto ulock = sync.ulock();
+    EXPECT_TRUE((std::is_same<decltype(*ulock), const int&>::value));
+    EXPECT_TRUE(
+        (std::is_same<decltype(ulock.asNonConstUnsafe()), int&>::value));
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
         FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UPGRADE);
@@ -399,6 +402,7 @@ TEST_F(SynchronizedLockTest, UpgradeLocking) {
   {
     auto ulock = sync.ulock();
     auto wlock = ulock.moveFromUpgradeToWrite();
+    EXPECT_TRUE((std::is_same<decltype(*wlock), int&>::value));
     EXPECT_EQ(static_cast<bool>(ulock), false);
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
@@ -430,6 +434,9 @@ TEST_F(SynchronizedLockTest, UpgradeLocking) {
     auto wlock = sync.wlock();
     auto ulock = wlock.moveFromWriteToUpgrade();
     EXPECT_EQ(static_cast<bool>(wlock), false);
+    EXPECT_TRUE((std::is_same<decltype(*ulock), const int&>::value));
+    EXPECT_TRUE(
+        (std::is_same<decltype(ulock.asNonConstUnsafe()), int&>::value));
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
         FakeAllPowerfulAssertingMutexInternal::CurrentLockState::UPGRADE);
@@ -445,6 +452,9 @@ TEST_F(SynchronizedLockTest, UpgradeLocking) {
     auto wlock = sync.wlock();
     auto slock = wlock.moveFromWriteToRead();
     EXPECT_EQ(static_cast<bool>(wlock), false);
+    EXPECT_TRUE((std::is_same<decltype(*slock), const int&>::value));
+    EXPECT_TRUE(
+        (std::is_same<decltype(slock.asNonConstUnsafe()), int&>::value));
     EXPECT_EQ(
         globalAllPowerfulAssertingMutex.lock_state,
         FakeAllPowerfulAssertingMutexInternal::CurrentLockState::SHARED);

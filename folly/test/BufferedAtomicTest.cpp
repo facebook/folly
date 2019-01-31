@@ -203,4 +203,3 @@ TEST(BufferedAtomic, single_thread_unguarded_access) {
   x.store(1);
   ASSERT_EQ(1, x.load());
 }
-

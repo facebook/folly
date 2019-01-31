@@ -89,10 +89,12 @@ bool RequestContext::doSetContextData(
     std::unique_ptr<RequestData>& data,
     DoSetBehaviour behaviour) {
   auto ulock = state_.ulock();
+  // Need non-const iterators to use under write lock.
+  auto& state = ulock.asNonConstUnsafe();
 
   bool conflict = false;
-  auto it = ulock->requestData_.find(val);
-  if (it != ulock->requestData_.end()) {
+  auto it = state.requestData_.find(val);
+  if (it != state.requestData_.end()) {
     if (behaviour == DoSetBehaviour::SET_IF_ABSENT) {
       return false;
     } else if (behaviour == DoSetBehaviour::SET) {
@@ -179,8 +181,10 @@ void RequestContext::clearContextData(const RequestToken& val) {
   // RequestData destructors will try to grab the lock again.
   {
     auto ulock = state_.ulock();
-    auto it = ulock->requestData_.find(val);
-    if (it == ulock->requestData_.end()) {
+    // Need non-const iterators to use under write lock.
+    auto& state = ulock.asNonConstUnsafe();
+    auto it = state.requestData_.find(val);
+    if (it == state.requestData_.end()) {
       return;
     }
 

@@ -272,6 +272,19 @@ void DH_get0_key(
   }
 }
 
+long DH_get_length(const DH* dh) {
+  return dh->length;
+}
+
+int DH_set_length(DH* dh, long length) {
+  if (dh != nullptr) {
+    dh->length = length;
+    return 1;
+  } else {
+    return 0;
+  }
+}
+
 void DSA_get0_pqg(
     const DSA* dsa,
     const BIGNUM** p,

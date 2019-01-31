@@ -1700,7 +1700,7 @@ void doubleBatchOuterDispatch(
             innerDispatchResultFutures.end())
             .toUnsafeFuture()
             .thenValue([&](std::vector<Try<std::vector<std::string>>>
-                          innerDispatchResults) {
+                               innerDispatchResults) {
               for (auto& unit : innerDispatchResults) {
                 for (auto& element : unit.value()) {
                   results.push_back(element);

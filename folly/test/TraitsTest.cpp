@@ -223,6 +223,26 @@ TEST(Traits, actuallyRelocatable) {
   testIsRelocatable<std::vector<char>>(5, 'g');
 }
 
+struct inspects_tag {
+  template <typename T>
+  std::false_type is_char(tag_t<T>) const {
+    return {};
+  }
+  std::true_type is_char(tag_t<char>) const {
+    return {};
+  }
+};
+
+TEST(Traits, tag) {
+  inspects_tag f;
+  EXPECT_FALSE(f.is_char(tag_t<int>{}));
+  EXPECT_TRUE(f.is_char(tag_t<char>{}));
+#if __cplusplus >= 201703L
+  EXPECT_FALSE(f.is_char(tag<int>));
+  EXPECT_TRUE(f.is_char(tag<char>));
+#endif
+}
+
 namespace {
 // has_value_type<T>::value is true if T has a nested type `value_type`
 template <class T, class = void>

@@ -23,8 +23,6 @@
 #include <map>
 #include <memory>
 
-#include <boost/random.hpp>
-
 #include <folly/FBString.h>
 #include <folly/Random.h>
 #include <folly/Traits.h>

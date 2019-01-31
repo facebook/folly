@@ -738,7 +738,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///     throw std::runtime_error("oh no!");
   ///     return 42;
   ///   })
-  ///   .deferError<std::runtime_error>([] (auto const& e) {
+  ///   .deferError(folly::tag_t<std::runtime_error>{}, [] (auto const& e) {
   ///     LOG(INFO) << "std::runtime_error: " << e.what();
   ///     return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
   ///   });
@@ -753,11 +753,17 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   template <class ExceptionType, class F>
-  SemiFuture<T> deferError(F&& func) &&;
+  SemiFuture<T> deferError(tag_t<ExceptionType>, F&& func) &&;
 
   template <class ExceptionType, class R, class... Args>
-  SemiFuture<T> deferError(R (&func)(Args...)) && {
-    return std::move(*this).template deferError<ExceptionType>(&func);
+  SemiFuture<T> deferError(tag_t<ExceptionType> tag, R (&func)(Args...)) && {
+    return std::move(*this).deferError(tag, &func);
+  }
+
+  template <class ExceptionType, class F>
+  SemiFuture<T> deferError(F&& func) && {
+    return std::move(*this).deferError(
+        tag_t<ExceptionType>{}, std::forward<F>(func));
   }
 
   /// Set an error continuation for this SemiFuture where the continuation can
@@ -1309,7 +1315,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///       throw std::runtime_error("oh no!");
   ///       return 42;
   ///     })
-  ///     .thenError<std::runtime_error>([] (auto const& e) {
+  ///     .thenError(folly::tag_t<std::runtime_error>{}, [] (auto const& e) {
   ///       LOG(INFO) << "std::runtime_error: " << e.what();
   ///       return -1; // or makeFuture<int>(-1) or makeSemiFuture<int>(-1)
   ///     });
@@ -1326,17 +1332,23 @@ class Future : private futures::detail::FutureBase<T> {
   typename std::enable_if<
       isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
       Future<T>>::type
-  thenError(F&& func) &&;
+  thenError(tag_t<ExceptionType>, F&& func) &&;
 
   template <class ExceptionType, class F>
   typename std::enable_if<
       !isFutureOrSemiFuture<invoke_result_t<F, ExceptionType>>::value,
       Future<T>>::type
-  thenError(F&& func) &&;
+  thenError(tag_t<ExceptionType>, F&& func) &&;
 
   template <class ExceptionType, class R, class... Args>
-  Future<T> thenError(R (&func)(Args...)) && {
-    return std::move(*this).template thenError<ExceptionType>(&func);
+  Future<T> thenError(tag_t<ExceptionType> tag, R (&func)(Args...)) && {
+    return std::move(*this).thenError(tag, &func);
+  }
+
+  template <class ExceptionType, class F>
+  Future<T> thenError(F&& func) && {
+    return std::move(*this).thenError(
+        tag_t<ExceptionType>{}, std::forward<F>(func));
   }
 
   /// Set an error continuation for this Future where the continuation can

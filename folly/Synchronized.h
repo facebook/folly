@@ -83,15 +83,25 @@ class SynchronizedBase;
 template <class Subclass>
 class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
  public:
-  using LockedPtr = ::folly::LockedPtr<Subclass, LockPolicyExclusive>;
+  using WLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyExclusive>;
   using ConstWLockedPtr =
       ::folly::LockedPtr<const Subclass, LockPolicyExclusive>;
-  using ConstLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
+
+  using RLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
+  using ConstRLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
 
   using TryWLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyTryExclusive>;
   using ConstTryWLockedPtr =
       ::folly::LockedPtr<const Subclass, LockPolicyTryExclusive>;
-  using TryRLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyTryShared>;
+
+  using TryRLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyTryShared>;
+  using ConstTryRLockedPtr =
+      ::folly::LockedPtr<const Subclass, LockPolicyTryShared>;
+
+  // These aliases are deprecated.
+  // TODO: Codemod them away.
+  using LockedPtr = WLockedPtr;
+  using ConstLockedPtr = ConstRLockedPtr;
 
   /**
    * Acquire an exclusive lock, and return a LockedPtr that can be used to
@@ -122,9 +132,13 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   }
 
   /**
-   * Acquire a read lock, and return a ConstLockedPtr that can be used to
-   * safely access the datum.
+   * Acquire a read lock. The returned LockedPtr will have force const
+   * access to the data unless the lock is acquired in non-const
+   * context and asNonConstUnsafe() is used.
    */
+  RLockedPtr rlock() {
+    return RLockedPtr(static_cast<Subclass*>(this));
+  }
   ConstLockedPtr rlock() const {
     return ConstLockedPtr(static_cast<const Subclass*>(this));
   }
@@ -136,8 +150,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
    */
-  TryRLockedPtr tryRLock() const {
-    return TryRLockedPtr{static_cast<const Subclass*>(this)};
+  TryRLockedPtr tryRLock() {
+    return TryRLockedPtr{static_cast<Subclass*>(this)};
+  }
+  ConstTryRLockedPtr tryRLock() const {
+    return ConstTryRLockedPtr{static_cast<const Subclass*>(this)};
   }
 
   /**
@@ -222,6 +239,11 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   }
 
   template <class Function>
+  auto withRLockPtr(Function&& function) {
+    return function(rlock());
+  }
+
+  template <class Function>
   auto withRLockPtr(Function&& function) const {
     return function(rlock());
   }
@@ -248,13 +270,15 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
       ::folly::LockedPtr<const Subclass, LockPolicyTryUpgrade>;
 
   /**
-   * Acquire an upgrade lock and return a LockedPtr that can be used to safely
-   * access the datum
-   *
-   * And the const version
+   * Acquire an upgrade lock. The returned LockedPtr will have force
+   * const access to the data unless the lock is acquired in non-const
+   * context and asNonConstUnsafe() is used.
    */
   UpgradeLockedPtr ulock() {
     return UpgradeLockedPtr(static_cast<Subclass*>(this));
+  }
+  ConstUpgradeLockedPtr ulock() const {
+    return ConstUpgradeLockedPtr(static_cast<const Subclass*>(this));
   }
 
   /**
@@ -303,6 +327,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
   auto withULock(Function&& function) {
     return function(*ulock());
   }
+  template <class Function>
+  auto withULock(Function&& function) const {
+    return function(*ulock());
+  }
 
   /**
    * Invoke a function while holding the lock exclusively.
@@ -318,6 +346,10 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UPGRADE>
    */
   template <class Function>
   auto withULockPtr(Function&& function) {
+    return function(ulock());
+  }
+  template <class Function>
+  auto withULockPtr(Function&& function) const {
     return function(ulock());
   }
 };
@@ -797,9 +829,9 @@ namespace detail {
  * A helper alias that resolves to "const T" if the template parameter
  * is a const Synchronized<T>, or "T" if the parameter is not const.
  */
-template <class SynchronizedType>
+template <class SynchronizedType, bool AllowsConcurrentAccess>
 using SynchronizedDataType = typename std::conditional<
-    std::is_const<SynchronizedType>::value,
+    AllowsConcurrentAccess || std::is_const<SynchronizedType>::value,
     typename SynchronizedType::DataType const,
     typename SynchronizedType::DataType>::type;
 /*
@@ -1311,9 +1343,12 @@ class LockedPtr : public LockedPtrBase<
       SynchronizedType,
       typename SynchronizedType::MutexType,
       LockPolicy>;
+  constexpr static bool AllowsConcurrentAccess =
+      LockPolicy::allows_concurrent_access;
   using UnlockerData = typename Base::UnlockerData;
   // CDataType is the DataType with the appropriate const-qualification
-  using CDataType = detail::SynchronizedDataType<SynchronizedType>;
+  using CDataType =
+      detail::SynchronizedDataType<SynchronizedType, AllowsConcurrentAccess>;
   // Enable only if the unlock policy of the other LockPolicy is the same as
   // ours
   template <typename LockPolicyOther>
@@ -1429,6 +1464,34 @@ class LockedPtr : public LockedPtrBase<
    * This method should only be used if the LockedPtr is valid.
    */
   CDataType& operator*() const {
+    return this->parent_->datum_;
+  }
+
+  /**
+   * Locks that allow concurrent access (shared, upgrade) force const
+   * access with the standard accessors even if the Synchronized
+   * object is non-const.
+   *
+   * In some cases non-const access can be needed, for example:
+   *
+   *   - Under an upgrade lock, to get references that will be mutated
+   *     after upgrading to a write lock.
+   *
+   *   - Under an read lock, if some mutating operations on the data
+   *     are thread safe (e.g. mutating the value in an associative
+   *     container with reference stability).
+   *
+   * asNonConstUnsafe() returns a non-const reference to the data if
+   * the parent Synchronized object was non-const at the point of lock
+   * acquisition.
+   */
+  template <typename = void>
+  DataType& asNonConstUnsafe() const {
+    static_assert(
+        AllowsConcurrentAccess && !std::is_const<SynchronizedType>::value,
+        "asNonConstUnsafe() is only available on non-exclusive locks"
+        " acquired in a non-const context");
+
     return this->parent_->datum_;
   }
 
