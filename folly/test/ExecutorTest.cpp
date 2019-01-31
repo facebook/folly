@@ -52,7 +52,7 @@ TEST(ExecutorTest, KeepAliveBasic) {
   EXPECT_EQ(0, exec.refCount);
 }
 
-TEST(ExecutorTest, KeepAliveMove) {
+TEST(ExecutorTest, KeepAliveMoveConstructor) {
   KeepAliveTestExecutor exec;
 
   {
@@ -61,11 +61,98 @@ TEST(ExecutorTest, KeepAliveMove) {
     EXPECT_EQ(&exec, ka.get());
     EXPECT_EQ(1, exec.refCount);
 
-    auto ka2 = std::move(ka);
+    // member move constructor
+    Executor::KeepAlive<KeepAliveTestExecutor> ka2(std::move(ka));
     EXPECT_FALSE(ka);
     EXPECT_TRUE(ka2);
     EXPECT_EQ(&exec, ka2.get());
     EXPECT_EQ(1, exec.refCount);
+
+    // template move constructor
+    Executor::KeepAlive<Executor> ka3(std::move(ka2));
+    EXPECT_FALSE(ka2);
+    EXPECT_TRUE(ka3);
+    EXPECT_EQ(&exec, ka3.get());
+    EXPECT_EQ(1, exec.refCount);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
+TEST(ExecutorTest, KeepAliveCopyConstructor) {
+  KeepAliveTestExecutor exec;
+
+  {
+    auto ka = getKeepAliveToken(exec);
+    EXPECT_TRUE(ka);
+    EXPECT_EQ(&exec, ka.get());
+    EXPECT_EQ(1, exec.refCount);
+
+    // member copy constructor
+    Executor::KeepAlive<KeepAliveTestExecutor> ka2(ka);
+    EXPECT_TRUE(ka);
+    EXPECT_TRUE(ka2);
+    EXPECT_EQ(&exec, ka2.get());
+    EXPECT_EQ(2, exec.refCount);
+
+    // template copy constructor
+    Executor::KeepAlive<Executor> ka3(ka);
+    EXPECT_TRUE(ka);
+    EXPECT_TRUE(ka3);
+    EXPECT_EQ(&exec, ka3.get());
+    EXPECT_EQ(3, exec.refCount);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
+TEST(ExecutorTest, KeepAliveImplicitConstructorFromRawPtr) {
+  KeepAliveTestExecutor exec;
+
+  {
+    auto myFunc = [&exec](Executor::KeepAlive<> /*ka*/) mutable {
+      EXPECT_EQ(1, exec.refCount);
+    };
+    myFunc(&exec);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
+TEST(ExecutorTest, KeepAliveMoveAssignment) {
+  KeepAliveTestExecutor exec;
+
+  {
+    auto ka = getKeepAliveToken(exec);
+    EXPECT_TRUE(ka);
+    EXPECT_EQ(&exec, ka.get());
+    EXPECT_EQ(1, exec.refCount);
+
+    Executor::KeepAlive<> ka2;
+    ka2 = std::move(ka);
+    EXPECT_FALSE(ka);
+    EXPECT_TRUE(ka2);
+    EXPECT_EQ(&exec, ka2.get());
+    EXPECT_EQ(1, exec.refCount);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
+TEST(ExecutorTest, KeepAliveCopyAssignment) {
+  KeepAliveTestExecutor exec;
+
+  {
+    auto ka = getKeepAliveToken(exec);
+    EXPECT_TRUE(ka);
+    EXPECT_EQ(&exec, ka.get());
+    EXPECT_EQ(1, exec.refCount);
+
+    auto ka2 = ka;
+    EXPECT_TRUE(ka);
+    EXPECT_TRUE(ka2);
+    EXPECT_EQ(&exec, ka2.get());
+    EXPECT_EQ(2, exec.refCount);
   }
 
   EXPECT_EQ(0, exec.refCount);

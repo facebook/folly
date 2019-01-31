@@ -61,6 +61,9 @@ class Executor {
     KeepAlive(KeepAlive&& other) noexcept
         : executorAndDummyFlag_(exchange(other.executorAndDummyFlag_, 0)) {}
 
+    KeepAlive(const KeepAlive& other) noexcept
+        : KeepAlive(getKeepAliveToken(other.get())) {}
+
     template <
         typename OtherExecutor,
         typename = typename std::enable_if<
@@ -68,6 +71,17 @@ class Executor {
     /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
         : KeepAlive(other.get(), other.executorAndDummyFlag_ & kDummyFlag) {
       other.executorAndDummyFlag_ = 0;
+    }
+
+    template <
+        typename OtherExecutor,
+        typename = typename std::enable_if<
+            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+    /* implicit */ KeepAlive(const KeepAlive<OtherExecutor>& other) noexcept
+        : KeepAlive(getKeepAliveToken(other.get())) {}
+
+    /* implicit */ KeepAlive(ExecutorT* executor) {
+      *this = getKeepAliveToken(executor);
     }
 
     KeepAlive& operator=(KeepAlive&& other) {
@@ -82,6 +96,14 @@ class Executor {
             std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
     KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) {
       return *this = KeepAlive(std::move(other));
+    }
+
+    template <
+        typename OtherExecutor,
+        typename = typename std::enable_if<
+            std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
+    KeepAlive& operator=(const KeepAlive<OtherExecutor>& other) {
+      return *this = KeepAlive(other);
     }
 
     void reset() {
