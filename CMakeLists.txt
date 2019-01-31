@@ -219,6 +219,8 @@ target_compile_definitions(folly_base
     $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
 )
 
+set(FOLLY_INSTALL_TARGETS folly folly_deps)
+
 option(PYTHON_EXTENSIONS "Build Python Bindings for Folly, requires Cython" OFF)
 if (PYTHON_EXTENSIONS)
   # Compile folly such that it can be linked in to a shared library
@@ -236,6 +238,7 @@ if (PYTHON_EXTENSIONS)
       $<TARGET_PROPERTY:folly_deps,INTERFACE_COMPILE_DEFINITIONS>
   )
   set_target_properties(folly_pic PROPERTIES POSITION_INDEPENDENT_CODE True)
+  list(APPEND FOLLY_INSTALL_TARGETS folly_pic)
 endif ()
 
 add_library(folly
@@ -245,7 +248,8 @@ apply_folly_compile_options_to_target(folly)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
-install(TARGETS folly folly_deps
+
+install(TARGETS ${FOLLY_INSTALL_TARGETS}
   EXPORT folly
   RUNTIME DESTINATION bin
   LIBRARY DESTINATION ${LIB_INSTALL_DIR}
