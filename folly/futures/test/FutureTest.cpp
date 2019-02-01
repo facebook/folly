@@ -328,13 +328,22 @@ TEST(Future, hasPostconditionInvalid) {
 }
 
 namespace {
-Future<int> onErrorHelperEggs(const eggs_t&) {
+Future<int> onErrorHelperEggs(eggs_t&) {
   return makeFuture(10);
 }
-Future<int> onErrorHelperGeneric(const std::exception&) {
+Future<int> onErrorHelperGeneric(std::exception&) {
   return makeFuture(20);
 }
-Future<int> onErrorHelperWrapper(folly::exception_wrapper&&) {
+Future<int> onErrorHelperWrapper(folly::exception_wrapper&) {
+  return makeFuture(30);
+}
+Future<int> thenErrorHelperEggs(eggs_t&&) {
+  return makeFuture(10);
+}
+Future<int> thenErrorHelperGeneric(std::exception&&) {
+  return makeFuture(20);
+}
+Future<int> thenErrorHelperWrapper(folly::exception_wrapper&&) {
   return makeFuture(30);
 }
 } // namespace
@@ -480,23 +489,23 @@ TEST(Future, onError) {
   {
     auto f = makeFuture()
                  .thenValue([](auto &&) -> int { throw eggs; })
-                 .thenError(tag_t<eggs_t>{}, onErrorHelperEggs)
-                 .thenError<std::exception>(onErrorHelperGeneric);
+                 .thenError(tag_t<eggs_t>{}, thenErrorHelperEggs)
+                 .thenError<std::exception>(thenErrorHelperGeneric);
     EXPECT_EQ(10, f.value());
   }
   {
     auto f =
         makeFuture()
             .thenValue([](auto &&) -> int { throw std::runtime_error("test"); })
-            .thenError(tag_t<eggs_t>{}, onErrorHelperEggs)
-            .thenError(onErrorHelperWrapper);
+            .thenError(tag_t<eggs_t>{}, thenErrorHelperEggs)
+            .thenError(thenErrorHelperWrapper);
     EXPECT_EQ(30, f.value());
   }
   {
     auto f =
         makeFuture()
             .thenValue([](auto &&) -> int { throw std::runtime_error("test"); })
-            .thenError(tag_t<eggs_t>{}, onErrorHelperEggs);
+            .thenError(tag_t<eggs_t>{}, thenErrorHelperEggs);
     EXPECT_THROW(f.value(), std::runtime_error);
   }
 

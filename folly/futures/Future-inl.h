@@ -1125,7 +1125,7 @@ Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
            std::move(p), std::forward<F>(func))](Try<T>&& t) mutable {
         if (auto ex = t.template tryGetExceptionObject<
                       std::remove_reference_t<ExceptionType>>()) {
-          auto tf2 = state.tryInvoke(*ex);
+          auto tf2 = state.tryInvoke(std::move(*ex));
           if (tf2.hasException()) {
             state.setException(std::move(tf2.exception()));
           } else {
