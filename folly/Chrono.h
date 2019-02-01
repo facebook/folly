@@ -36,6 +36,7 @@
 namespace folly {
 namespace chrono {
 
+/* using override */ using std::chrono::abs;
 /* using override */ using std::chrono::ceil;
 /* using override */ using std::chrono::floor;
 /* using override */ using std::chrono::round;
@@ -80,6 +81,18 @@ constexpr To round_impl(Duration const& d, To const& t0) {
   return round_impl(d, t0, t0 + To{1});
 }
 } // namespace detail
+
+//  mimic: std::chrono::abs, C++17
+template <
+    typename Rep,
+    typename Period,
+    typename = typename std::enable_if<
+        std::chrono::duration<Rep, Period>::min() <
+        std::chrono::duration<Rep, Period>::zero()>::type>
+constexpr std::chrono::duration<Rep, Period> abs(
+    std::chrono::duration<Rep, Period> const& d) {
+  return d < std::chrono::duration<Rep, Period>::zero() ? -d : d;
+}
 
 //  mimic: std::chrono::ceil, C++17
 //  from: http://en.cppreference.com/w/cpp/chrono/duration/ceil, CC-BY-SA

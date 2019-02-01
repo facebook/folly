@@ -25,6 +25,11 @@ namespace {
 class ChronoTest : public testing::Test {};
 } // namespace
 
+TEST_F(ChronoTest, abs_duration) {
+  EXPECT_EQ(seconds(7), abs(seconds(7)));
+  EXPECT_EQ(seconds(7), abs(seconds(-7)));
+}
+
 TEST_F(ChronoTest, ceil_duration) {
   EXPECT_EQ(seconds(7), ceil<seconds>(seconds(7)));
   EXPECT_EQ(seconds(7), ceil<seconds>(milliseconds(7000)));
