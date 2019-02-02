@@ -136,6 +136,8 @@ void HHWheelTimer::scheduleTimeoutImpl(
 void HHWheelTimer::scheduleTimeout(
     Callback* callback,
     std::chrono::milliseconds timeout) {
+  // Make sure that the timeout is not negative.
+  timeout = std::max(timeout, std::chrono::milliseconds::zero());
   // Cancel the callback if it happens to be scheduled already.
   callback->cancelTimeout();
   callback->requestContext_ = RequestContext::saveContext();
