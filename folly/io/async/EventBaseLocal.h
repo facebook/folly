@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <folly/Synchronized.h>
 #include <folly/io/async/EventBase.h>
 #include <memory>
@@ -28,9 +27,10 @@ namespace folly {
 
 namespace detail {
 
-class EventBaseLocalBase : public EventBaseLocalBaseBase, boost::noncopyable {
+class EventBaseLocalBase : public EventBaseLocalBaseBase {
  public:
   EventBaseLocalBase() {}
+  EventBaseLocalBase(const EventBaseLocalBase&) = delete;
   ~EventBaseLocalBase() override;
   void erase(EventBase& evb);
   void onEventBaseDestruction(EventBase& evb) override;

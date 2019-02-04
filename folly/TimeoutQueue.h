@@ -98,7 +98,6 @@ class TimeoutQueue {
 
  private:
   int64_t runInternal(int64_t now, bool runOnce);
-  // noncopyable
   TimeoutQueue(const TimeoutQueue&) = delete;
   TimeoutQueue& operator=(const TimeoutQueue&) = delete;
 
