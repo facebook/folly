@@ -170,14 +170,16 @@ Future<Unit> fut3 = std::move(fut2)
   .thenTry([](folly::Try<string> strTry) {
     cout << strTry.value() << endl;
   })
-  .thenError<std::exception>([](std::exception const& e) {
+  .thenError(folly::tag_t<std::exception>{}, [](std::exception const& e) {
     cerr << e.what() << endl;
   });
 ```
 
 That example is a little contrived but the idea is that you can transform a result from one type to another, potentially in a chain, and unhandled errors propagate. Of course, the intermediate variables are optional.
 
-Using `.thenValue` or `.thenTry` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell. `.thenValue` appends a continuation that takes `T&&` for some `Future<T>` and an error bypasses the callback and is passed to the next, `thenTry` takes a callback taking `folly::Try<T>` which encapsulates both value and exception. `thenError<ExceptionType>` will bypass a value and only run if there is an exception, the `ExceptionType` template parameter allows filtering by exception type; `ExceptionType` is optional and if not passed the function will be parameterised with a `folly::exception_wrapper`.
+Using `.thenValue` or `.thenTry` to add callbacks is idiomatic. It brings all the code into one place, which avoids callback hell. `.thenValue` appends a continuation that takes `T&&` for some `Future<T>` and an error bypasses the callback and is passed to the next, `thenTry` takes a callback taking `folly::Try<T>` which encapsulates both value and exception. `thenError(tag_t<ExceptionType>{},...` will bypass a value and only run if there is an exception, the `ExceptionType` template parameter to the tag type allows filtering by exception type; `tag_t<ExceptionType>{}` is optional and if no tag is passed passed the function will be parameterised with a `folly::exception_wrapper`. For C++17 there is a global inline variable and `folly::tag<ExceptionType>` may be passed directly without explicit construction.
+
+
 
 Up to this point we have skirted around the matter of waiting for Futures. You may never need to wait for a Future, because your code is event-driven and all follow-up action happens in a then-block. But if want to have a batch workflow, where you initiate a batch of asynchronous operations and then wait for them all to finish at a synchronization point, then you will want to wait for a Future. Futures have a blocking method called `wait()` that does exactly that and optionally takes a timeout.
 
