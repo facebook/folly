@@ -15,7 +15,10 @@
  */
 
 #pragma once
+#include <chrono>
 
 namespace folly {
-class HHWheelTimer;
+template <class Duration>
+class HHWheelTimerBase;
+using HHWheelTimer = HHWheelTimerBase<std::chrono::milliseconds>;
 }

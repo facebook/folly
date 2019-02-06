@@ -28,7 +28,6 @@ namespace folly {
 
 class EventBase;
 class RequestContext;
-class TimeoutManager;
 
 /**
  * AsyncTimeout is used to asynchronously wait for a timeout to occur.
@@ -97,6 +96,7 @@ class AsyncTimeout : private boost::noncopyable {
    */
   bool scheduleTimeout(uint32_t milliseconds);
   bool scheduleTimeout(TimeoutManager::timeout_type timeout);
+  bool scheduleTimeoutHighRes(TimeoutManager::timeout_type_high_res timeout);
 
   /**
    * Cancel the timeout, if it is running.
