@@ -417,10 +417,6 @@ class FutureBase {
   // Must be called either before attaching a callback or after the callback
   // has already been invoked, but not concurrently with anything which might
   // trigger invocation of the callback.
-  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    getCore().setExecutor(x, priority);
-  }
-
   void setExecutor(
       Executor::KeepAlive<> x,
       int8_t priority = Executor::MID_PRI) {
@@ -669,8 +665,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   bool wait(Duration dur) &&;
 
   /// Returns a Future which will call back on the other side of executor.
-  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
-
   Future<T> via(
       Executor::KeepAlive<> executor,
       int8_t priority = Executor::MID_PRI) &&;
@@ -1088,8 +1082,6 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
-  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &&;
-
   Future<T> via(
       Executor::KeepAlive<> executor,
       int8_t priority = Executor::MID_PRI) &&;
@@ -1107,8 +1099,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == true`
   /// - `RESULT.valid() == true`
   /// - when `this` gets fulfilled, it automatically fulfills RESULT
-  Future<T> via(Executor* executor, int8_t priority = Executor::MID_PRI) &;
-
   Future<T> via(
       Executor::KeepAlive<> executor,
       int8_t priority = Executor::MID_PRI) &;
@@ -1218,9 +1208,9 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Arg>
-  auto then(Executor* x, Arg&& arg) && {
-    auto oldX = this->getExecutor();
-    this->setExecutor(x);
+  auto then(Executor::KeepAlive<> x, Arg&& arg) && {
+    auto oldX = getKeepAliveToken(this->getExecutor());
+    this->setExecutor(std::move(x));
 
     // TODO(T29171940): thenImplementation here is ambiguous
     // as then used to be but that is better than keeping then in the public
@@ -1228,21 +1218,24 @@ class Future : private futures::detail::FutureBase<T> {
     using R = futures::detail::callableResult<T, Arg&&>;
     return std::move(*this)
         .thenImplementation(std::forward<Arg>(arg), R{})
-        .via(oldX);
+        .via(std::move(oldX));
   }
 
   template <class R, class Caller, class... Args>
-  auto then(Executor* x, R (Caller::*func)(Args...), Caller* instance) && {
-    auto oldX = this->getExecutor();
-    this->setExecutor(x);
+  auto then(
+      Executor::KeepAlive<> x,
+      R (Caller::*func)(Args...),
+      Caller* instance) && {
+    auto oldX = getKeepAliveToken(this->getExecutor());
+    this->setExecutor(std::move(x));
 
-    return std::move(*this).then(func, instance).via(oldX);
+    return std::move(*this).then(func, instance).via(std::move(oldX));
   }
 
   template <class Arg, class... Args>
   [[deprecated(
       "must be rvalue-qualified, e.g., std::move(future).then(...)")]] auto
-  then(Executor* x, Arg&& arg, Args&&... args) & = delete;
+  then(Executor::KeepAlive<> x, Arg&& arg, Args&&... args) & = delete;
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with `Try<T>&&` (often a lambda with parameter type
@@ -1894,12 +1887,14 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Callback, class... Callbacks>
-  auto
-  thenMultiWithExecutor(Executor* x, Callback&& fn, Callbacks&&... fns) && {
+  auto thenMultiWithExecutor(
+      Executor::KeepAlive<> x,
+      Callback&& fn,
+      Callbacks&&... fns) && {
     // thenMultiExecutor with two callbacks is
     // via(x).then(a).thenMulti(b, ...).via(oldX)
-    auto oldX = this->getExecutor();
-    this->setExecutor(x);
+    auto oldX = getKeepAliveToken(this->getExecutor());
+    this->setExecutor(std::move(x));
     // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
     // as then used to be but that is better than keeping then in the public
     // API.
@@ -1907,13 +1902,13 @@ class Future : private futures::detail::FutureBase<T> {
     return std::move(*this)
         .thenImplementation(std::forward<Callback>(fn), R{})
         .thenMulti(std::forward<Callbacks>(fns)...)
-        .via(oldX);
+        .via(std::move(oldX));
   }
 
   template <class Callback>
-  auto thenMultiWithExecutor(Executor* x, Callback&& fn) && {
+  auto thenMultiWithExecutor(Executor::KeepAlive<> x, Callback&& fn) && {
     // thenMulti with one callback is just a then with an executor
-    return std::move(*this).then(x, std::forward<Callback>(fn));
+    return std::move(*this).then(std::move(x), std::forward<Callback>(fn));
   }
 
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
@@ -2044,9 +2039,9 @@ class Timekeeper {
 };
 
 template <class T>
-std::pair<Promise<T>, Future<T>> makePromiseContract(Executor* e) {
+std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
   auto p = Promise<T>();
-  auto f = p.getSemiFuture().via(e);
+  auto f = p.getSemiFuture().via(std::move(e));
   return std::make_pair(std::move(p), std::move(f));
 }
 

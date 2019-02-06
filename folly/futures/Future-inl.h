@@ -872,11 +872,6 @@ Future<T> SemiFuture<T>::via(
 }
 
 template <class T>
-Future<T> SemiFuture<T>::via(Executor* executor, int8_t priority) && {
-  return std::move(*this).via(getKeepAliveToken(executor), priority);
-}
-
-template <class T>
 Future<T> SemiFuture<T>::toUnsafeFuture() && {
   return std::move(*this).via(&InlineExecutor::instance());
 }
@@ -1043,11 +1038,6 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor* executor, int8_t priority) && {
-  return std::move(*this).via(getKeepAliveToken(executor), priority);
-}
-
-template <class T>
 Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
   this->throwIfInvalid();
   Promise<T> p;
@@ -1063,11 +1053,6 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
   auto f = Future<T>(sf.core_);
   sf.core_ = nullptr;
   return std::move(f).via(std::move(executor), priority);
-}
-
-template <class T>
-Future<T> Future<T>::via(Executor* executor, int8_t priority) & {
-  return via(getKeepAliveToken(executor), priority);
 }
 
 template <typename T>
@@ -1333,15 +1318,6 @@ Future<T>::onError(F&& func) && {
 }
 
 template <class Func>
-auto via(Executor* x, Func&& func) -> Future<
-    typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
-  // TODO make this actually more performant. :-P #7260175
-  return via(x).thenValue([f = std::forward<Func>(func)](auto&&) mutable {
-    return std::forward<Func>(f)();
-  });
-}
-
-template <class Func>
 auto via(Executor::KeepAlive<> x, Func&& func) -> Future<
     typename isFutureOrSemiFuture<decltype(std::declval<Func>()())>::Inner> {
   return via(std::move(x))
@@ -1412,10 +1388,6 @@ Future<T> makeFuture(Try<T> t) {
 }
 
 // via
-Future<Unit> via(Executor* executor, int8_t priority) {
-  return makeFuture().via(executor, priority);
-}
-
 Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority) {
   return makeFuture().via(std::move(executor), priority);
 }
@@ -1842,13 +1814,6 @@ template <class F>
 auto window(size_t times, F func, size_t n)
     -> std::vector<invoke_result_t<F, size_t>> {
   return window(futures::detail::WindowFakeVector(times), std::move(func), n);
-}
-
-template <class Collection, class F, class ItT, class Result>
-std::vector<Future<Result>>
-window(Executor* executor, Collection input, F func, size_t n) {
-  return window(
-      getKeepAliveToken(executor), std::move(input), std::move(func), n);
 }
 
 template <class Collection, class F, class ItT, class Result>
