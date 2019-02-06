@@ -1624,9 +1624,14 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
-  /// NOTE: Deprecated
   /// WARNING: Returned future may complete on Timekeeper thread.
-  Future<T> delayedUnsafe(Duration, Timekeeper* = nullptr);
+  // clang-format off
+  [[deprecated(
+      "Continuation may compelete on Timekeeper thread. "
+      "Please use delayed instead.")]]
+  Future<T>
+  delayedUnsafe(Duration, Timekeeper* = nullptr);
+  // clang-format on
 
   /// Blocks until the future is fulfilled. Returns the value (moved-out), or
   /// throws the exception. The future must not already have a continuation.
