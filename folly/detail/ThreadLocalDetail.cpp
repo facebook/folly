@@ -108,6 +108,15 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
 #endif
 }
 
+bool StaticMetaBase::dying() {
+  for (auto te = getThreadEntryList()->head; te; te = te->listNext) {
+    if (te->removed_) {
+      return true;
+    }
+  }
+  return false;
+}
+
 void StaticMetaBase::onThreadExit(void* ptr) {
   auto threadEntry = static_cast<ThreadEntry*>(ptr);
 

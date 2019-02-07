@@ -26,6 +26,7 @@
 #include <folly/Synchronized.h>
 #include <folly/Utility.h>
 #include <folly/detail/StaticSingletonManager.h>
+#include <folly/detail/ThreadLocalDetail.h>
 
 namespace folly {
 
@@ -169,6 +170,9 @@ class SingletonRelaxedCounter {
   }
 
   FOLLY_NOINLINE static Counter* counterSlow(CounterAndCache& state) {
+    if (threadlocal_detail::StaticMetaBase::dying()) {
+      return &Global::instance().fallback;
+    }
     lifetime().track(state); // idempotent
     auto const cache = state.cache;
     return FOLLY_LIKELY(!!cache) ? cache : &Global::instance().fallback;

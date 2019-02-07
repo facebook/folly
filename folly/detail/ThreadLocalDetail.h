@@ -356,6 +356,8 @@ struct StaticMetaBase {
 
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
+  static bool dying();
+
   static void onThreadExit(void* ptr);
 
   // returns the elementsCapacity for the
