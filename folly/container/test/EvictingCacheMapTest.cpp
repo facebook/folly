@@ -312,6 +312,17 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     ~SumInt() {
       *ref += val;
     }
+
+    SumInt(SumInt const&) = delete;
+    SumInt& operator=(SumInt const&) = delete;
+
+    SumInt(SumInt&& other) : val(std::exchange(other.val, 0)), ref(other.ref) {}
+    SumInt& operator=(SumInt&& other) {
+      std::swap(val, other.val);
+      std::swap(ref, other.ref);
+      return *this;
+    }
+
     int val;
     int* ref;
   };
@@ -408,7 +419,25 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     EXPECT_EQ(i, map.get(i).val);
   }
   EXPECT_EQ((89 * 90) / 2, sum);
+
   sum = 0;
+  for (int i = 0; i < 90; i++) {
+    auto pair = map.insert(i, SumInt(i + 1, &sum));
+    EXPECT_EQ(i + 1, pair.first->second.val);
+    EXPECT_TRUE(pair.second);
+    EXPECT_TRUE(map.exists(i));
+  }
+  EXPECT_EQ(0, sum);
+  for (int i = 90; i < 100; i++) {
+    auto pair = map.insert(i, SumInt(i + 1, &sum));
+    EXPECT_EQ(i, pair.first->second.val);
+    EXPECT_FALSE(pair.second);
+    EXPECT_TRUE(map.exists(i));
+  }
+  EXPECT_EQ((10 * 191) / 2, sum);
+  sum = 0;
+  map.prune(100);
+  EXPECT_EQ((90 * 91) / 2 + (10 * 189) / 2, sum);
 }
 
 TEST(EvictingCacheMap, LruSanityTest) {

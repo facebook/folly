@@ -336,6 +336,31 @@ class EvictingCacheMap {
   }
 
   /**
+   * Insert a new key-value pair in the dictionary if no element exists for key
+   * @param key key to associate with value
+   * @param value value to associate with the key
+   * @param pruneHook callback to use on eviction (if it occurs).
+   * @return a pair consisting of an iterator to the inserted element (or to the
+   *     element that prevented the insertion) and a bool denoting whether the
+   *     insertion took place.
+   */
+  std::pair<iterator, bool>
+  insert(const TKey& key, TValue value, PruneHookCall pruneHook = nullptr) {
+    auto node = std::make_unique<Node>(key, std::move(value));
+    auto pair = index_.insert(*node);
+    if (pair.second) {
+      lru_.push_front(*node);
+      node.release();
+
+      // no evictions if maxSize_ is 0 i.e. unlimited capacity
+      if (maxSize_ > 0 && size() > maxSize_) {
+        prune(clearSize_, pruneHook);
+      }
+    }
+    return std::make_pair(iterator(lru_.iterator_to(*pair.first)), pair.second);
+  }
+
+  /**
    * Get the number of elements in the dictionary
    * @return the size of the dictionary
    */
