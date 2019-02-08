@@ -325,7 +325,8 @@ PUSHMI_CONCEPT_DEF(
     (concept ReceiveError)(R, E), //
     requires(R& r, E&& e)( //
         set_error(r, (E &&) e)) &&
-        Receiver<R> && SemiMovable<E>);
+        Receiver<R> && SemiMovable<E>
+);
 
 PUSHMI_CONCEPT_DEF(
     template(class D, class... PropertyN) //

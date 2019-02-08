@@ -18,6 +18,7 @@
 #include <functional>
 #include <type_traits>
 
+#include <folly/Traits.h>
 #include <folly/experimental/pushmi/detail/functional.h>
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
@@ -74,9 +75,6 @@ PUSHMI_INLINE_VAR constexpr int sum_v = detail::sum_impl<Is...>();
 template <class...>
 struct typelist;
 
-template <class...>
-using void_t = void;
-
 template <class T>
 using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
 
@@ -84,12 +82,6 @@ PUSHMI_CONCEPT_DEF(
   template(class... Args)
   (concept True)(Args...),
     true
-);
-
-PUSHMI_CONCEPT_DEF(
-  template(class T, template<class...> class C)
-  (concept Valid)(T, C),
-    True< C<T> >
 );
 
 PUSHMI_CONCEPT_DEF(

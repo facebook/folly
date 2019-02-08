@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/Traits.h>
 #include <folly/experimental/pushmi/traits.h>
 #include <folly/experimental/pushmi/forwards.h>
 
@@ -35,7 +36,7 @@ struct property_traits {};
 template <class T>
 struct property_traits<
     T,
-    std::enable_if_t<Valid<std::decay_t<T>, __property_category_t>>> {
+    void_t<__property_category_t<std::decay_t<T>>>> {
   using property_category = __property_category_t<std::decay_t<T>>;
 };
 
@@ -45,7 +46,7 @@ using property_category_t = __property_category_t<property_traits<T>>;
 PUSHMI_CONCEPT_DEF(
     template(class T)
 concept Property,
-    Valid<T, property_category_t>
+    True<__property_category_t<property_traits<T>>>
 );
 
 // in cases where Set contains T, allow T to find itself only once
@@ -96,7 +97,7 @@ struct property_set_traits {};
 template <class T>
 struct property_set_traits<
     T,
-    std::enable_if_t<Valid<std::decay_t<T>, __properties_t>>> {
+    void_t<__properties_t<std::decay_t<T>>>> {
   using properties = __properties_t<std::decay_t<T>>;
 };
 
@@ -108,7 +109,7 @@ using properties_t = std::enable_if_t<
 PUSHMI_CONCEPT_DEF(
     template(class T)
 concept Properties,
-    Valid<T, properties_t>
+    PropertySet<__properties_t<property_set_traits<T>>>
 );
 
 // find property in the specified set that matches the category of the property

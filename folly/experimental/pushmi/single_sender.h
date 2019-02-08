@@ -92,7 +92,6 @@ class any_single_sender {
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
       std::enable_if_t<!std::is_same<U, any_single_sender>::value, U>;
-
  public:
   using properties = property_set<is_sender<>, is_single<>>;
 
@@ -102,13 +101,9 @@ class any_single_sender {
     std::swap(that.vptr_, vptr_);
   }
 
-  PUSHMI_TEMPLATE(class Wrapped)
-  (requires SenderTo<
-      wrapped_t<Wrapped>,
-      any_receiver<
-          E,
-          VN...>>) //
-      explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+  PUSHMI_TEMPLATE(class Wrapped) //
+  (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>) //
+  explicit any_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
       : any_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_single_sender() {
     vptr_->op_(data_, nullptr);

@@ -99,13 +99,18 @@ struct tap_fn {
   (requires Sender<In>&& Receiver<SideEffects>)
   struct out_impl {
     SideEffects sideEffects_;
+    template<class Out>
+    using tap_t =
+      decltype(
+        detail::make_tap(
+          std::declval<const SideEffects&>(),
+          std::declval<Out>()));
+    template<class Out>
+    using receiver_t = invoke_result_t<receiver_from_fn<In>, tap_t<Out>>;
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>&& SenderTo<In, Out>&& SenderTo<
         In,
-        decltype(
-            ::folly::pushmi::detail::receiver_from_fn<In>()(detail::make_tap(
-                std::declval<SideEffects>(),
-                std::declval<Out>())))>)
+        receiver_t<Out>>)
     auto operator()(Out out) const {
       auto gang{::folly::pushmi::detail::receiver_from_fn<In>()(
           detail::make_tap(sideEffects_, std::move(out)))};

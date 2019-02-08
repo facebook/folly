@@ -123,9 +123,8 @@ class any_receiver {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE(class Wrapped)
-  (requires ReceiveValue<wrapped_t<Wrapped>, VN...>&& ReceiveError<
-      Wrapped,
-      E>)
+  (requires ReceiveValue<wrapped_t<Wrapped>, VN...>&& //
+      ReceiveError<wrapped_t<Wrapped>, E>)
   explicit any_receiver(Wrapped obj) noexcept(insitu<Wrapped>())
       : any_receiver{std::move(obj), bool_<insitu<Wrapped>()>{}} {
     check<Wrapped>();

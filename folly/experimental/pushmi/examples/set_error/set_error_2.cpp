@@ -29,13 +29,15 @@ using namespace folly::pushmi::aliases;
 
 // concat not yet implemented
 template <class T, class E = std::exception_ptr>
-auto concat = [](auto in) {
-  return mi::make_single_sender([in](auto out) mutable {
-    mi::submit(in, mi::make_receiver(out, [](auto out_, auto v) {
-                 mi::submit(v, mi::any_receiver<E, T>(out_));
-               }));
-  });
-};
+auto concat() {
+  return [](auto in) {
+    return mi::make_single_sender([in](auto out) mutable {
+      mi::submit(in, mi::make_receiver(out, [](auto out_, auto v) {
+                   mi::submit(v, mi::any_receiver<E, T>(out_));
+                 }));
+    });
+  };
+}
 
 int main() {
   auto stop_abort = mi::on_error([](auto) noexcept {});
@@ -76,7 +78,7 @@ int main() {
     } else {
       return r_t{op::just(v)};
     }
-  }) | concat<int> |
+  }) | concat<int>() |
       op::submit();
 
   // retry on error

@@ -68,7 +68,7 @@ public:
     static_assert(
       SenderTo<Wrapped, any_receiver<E,This>>,
       "Expecting to be passed a Sender that can send to a SingleReceiver"
-      " that accpets a value of type This and an error of type E");
+      " that accepts a value of type This and an error of type E");
     struct s {
       static void submit(void* pobj, void* s) {
         return ::folly::pushmi::submit(
