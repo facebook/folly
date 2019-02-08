@@ -95,7 +95,7 @@ TEST(AsyncSocketTest, tosReflect) {
   auto server1 = AsyncServerSocket::newSocket(&base);
   server1->bind(0);
   server1->listen(10);
-  int fd = server1->getSocket();
+  int fd = server1->getNetworkSocket().toFd();
 
   // Verify if tos reflect is disabled by default
   // and the TCP_SAVE_SYN setting is not enabled
