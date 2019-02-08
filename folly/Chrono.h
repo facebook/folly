@@ -150,7 +150,7 @@ template <
         detail::is_duration<To>::value &&
         !std::chrono::treat_as_floating_point<typename To::rep>::value>::type>
 constexpr To round(std::chrono::duration<Rep, Period> const& d) {
-  return detail::round_impl(d, floor<To>(d));
+  return detail::round_impl(d, folly::chrono::floor<To>(d));
 }
 
 //  mimic: std::chrono::round, C++17
