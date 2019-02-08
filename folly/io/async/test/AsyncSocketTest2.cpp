@@ -3101,14 +3101,12 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   errMsgCB.resetAfter_ = 3;
 
   // Enable timestamp notifications
-  ASSERT_GT(socket->getFd(), 0);
+  ASSERT_NE(socket->getNetworkSocket(), NetworkSocket());
   int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
       SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_OPT_CMSG |
       SOF_TIMESTAMPING_TX_SCHED;
   AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
-  EXPECT_EQ(
-      tstampingOpt.apply(folly::NetworkSocket::fromFd(socket->getFd()), flags),
-      0);
+  EXPECT_EQ(tstampingOpt.apply(socket->getNetworkSocket(), flags), 0);
 
   // write()
   std::vector<uint8_t> wbuf(128, 'a');

@@ -212,13 +212,11 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
   void setSocket(const std::shared_ptr<AsyncSSLSocket>& socket) override {
     WriteCallbackBase::setSocket(socket);
 
-    EXPECT_NE(socket_->getFd(), 0);
+    EXPECT_NE(socket_->getNetworkSocket(), NetworkSocket());
     int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
         SOF_TIMESTAMPING_SOFTWARE;
     AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
-    int ret = tstampingOpt.apply(
-        folly::NetworkSocket::fromFd(socket_->getNetworkSocket().toFd()),
-        flags);
+    int ret = tstampingOpt.apply(socket_->getNetworkSocket(), flags);
     EXPECT_EQ(ret, 0);
   }
 

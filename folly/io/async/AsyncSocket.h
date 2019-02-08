@@ -337,10 +337,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   }
 
   /**
-   * Get the file descriptor used by the AsyncSocket.
+   * Get the network socket used by the AsyncSocket.
    */
-  virtual int getFd() const {
-    return getNetworkSocket().toFd();
+  virtual int getFd(int /*breakAllTheThings*/) const {
+    return -1;
   }
 
   virtual NetworkSocket getNetworkSocket() const {
