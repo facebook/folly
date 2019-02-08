@@ -287,9 +287,7 @@ coro::Task<void> taskTimedWait() {
 }
 
 TEST(Coro, TimedWait) {
-  ManualExecutor executor;
-  taskTimedWait().scheduleOn(&executor).start().via(&executor).getVia(
-      &executor);
+  coro::blockingWait(taskTimedWait());
 }
 
 template <int value>
@@ -318,14 +316,7 @@ coro::Task<int> taskAwaitableWithOperator() {
 }
 
 TEST(Coro, AwaitableWithOperator) {
-  ManualExecutor executor;
-  EXPECT_EQ(
-      42,
-      taskAwaitableWithOperator()
-          .scheduleOn(&executor)
-          .start()
-          .via(&executor)
-          .getVia(&executor));
+  EXPECT_EQ(42, coro::blockingWait(taskAwaitableWithOperator()));
 }
 
 struct AwaitableWithMemberOperator {
@@ -343,14 +334,7 @@ coro::Task<int> taskAwaitableWithMemberOperator() {
 }
 
 TEST(Coro, AwaitableWithMemberOperator) {
-  ManualExecutor executor;
-  EXPECT_EQ(
-      42,
-      taskAwaitableWithMemberOperator()
-          .scheduleOn(&executor)
-          .start()
-          .via(&executor)
-          .getVia(&executor));
+  EXPECT_EQ(42, coro::blockingWait(taskAwaitableWithMemberOperator()));
 }
 
 coro::Task<int> taskBaton(fibers::Baton& baton) {
@@ -382,21 +366,11 @@ coro::Task<Type> taskFuture(Type value) {
 }
 
 TEST(Coro, FulfilledFuture) {
-  ManualExecutor executor;
-  auto value =
-      taskFuture(42).scheduleOn(&executor).start().via(&executor).getVia(
-          &executor);
-  EXPECT_EQ(42, value);
+  EXPECT_EQ(42, coro::blockingWait(taskFuture(42)));
 }
 
 TEST(Coro, MoveOnlyReturn) {
-  ManualExecutor executor;
-  auto value = taskFuture(std::make_unique<int>(42))
-                   .scheduleOn(&executor)
-                   .start()
-                   .via(&executor)
-                   .getVia(&executor);
-  EXPECT_EQ(42, *value);
+  EXPECT_EQ(42, *coro::blockingWait(taskFuture(std::make_unique<int>(42))));
 }
 
 TEST(Coro, co_invoke) {
