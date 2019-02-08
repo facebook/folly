@@ -29,7 +29,7 @@ class FatalTests(unittest.TestCase):
         else:
             build_dir = os.path.join(os.getcwd(), "buck-out", "gen")
             self.helper = os.path.join(
-                build_dir, "folly", "logging", "test", "fatal_helper"
+                build_dir, "folly", "logging", "test", "helpers", "fatal_helper"
             )
 
     def run_helper(self, *args, **kwargs):
