@@ -70,7 +70,8 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
     try {
       // Create a AsyncSSLSocket object with the fd. The socket should be
       // added to the event base and in the state of accepting SSL connection.
-      socket_ = AsyncSSLSocket::newSocket(ctx_, base_, fd);
+      socket_ = AsyncSSLSocket::newSocket(
+          ctx_, base_, folly::NetworkSocket::fromFd(fd));
     } catch (const std::exception& e) {
       LOG(ERROR) << "Exception %s caught while creating a AsyncSSLSocket "
                     "object with socket "

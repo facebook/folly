@@ -50,8 +50,15 @@ if (PYTHON_EXTENSIONS)
     COMMAND
       python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
       build_ext -f ${incs} ${libs}
+    BYPRODUCTS ${_cybld}/folly/executor_api.h
     DEPENDS folly_pic
     WORKING_DIRECTORY ${_cybld})
+
+  install(
+    FILES ${_cybld}/folly/executor_api.h
+    DESTINATION ${INCLUDE_INSTALL_DIR}/folly/python
+    COMPONENT dev
+  )
 
   # Install Folly Python Bindings
   install(CODE "

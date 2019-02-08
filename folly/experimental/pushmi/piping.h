@@ -22,7 +22,8 @@ namespace folly {
 namespace pushmi {
 
 PUSHMI_TEMPLATE(class In, class Op)
-(requires lazy::Sender<std::decay_t<In>>&& lazy::Invocable<Op&, In>) //
+(requires PUSHMI_EXP(lazy::Sender<std::decay_t<In>> PUSHMI_AND
+    lazy::Invocable<Op&, In>)) //
     decltype(auto)
     operator|(In&& in, Op op) {
   return op((In &&) in);

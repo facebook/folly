@@ -27,8 +27,6 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
  public:
   explicit BlockingSocket(folly::NetworkSocket fd)
       : sock_(new folly::AsyncSocket(&eventBase_, fd)) {}
-  explicit BlockingSocket(int fd)
-      : sock_(new folly::AsyncSocket(&eventBase_, fd)) {}
 
   BlockingSocket(
       folly::SocketAddress address,

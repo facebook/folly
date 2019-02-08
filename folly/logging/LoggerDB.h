@@ -270,6 +270,7 @@ class LoggerDB {
       StringPiece categoryName,
       const std::vector<std::string>& categoryHandlerNames);
 
+  static LoggerDB* createSingleton();
   static void internalWarningImpl(
       folly::StringPiece filename,
       int lineNumber,

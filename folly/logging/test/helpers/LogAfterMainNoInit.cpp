@@ -1,5 +1,5 @@
 /*
- * Copyright 2014-present Facebook, Inc.
+ * Copyright 2017-present Facebook, Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -13,12 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <folly/logging/test/helpers/helpers.h>
 
-#pragma once
-#include <chrono>
+LogOnDestruction d1("1");
+LogOnDestruction d2("2");
 
-namespace folly {
-template <class Duration>
-class HHWheelTimerBase;
-using HHWheelTimer = HHWheelTimerBase<std::chrono::milliseconds>;
+int main(int, char*[]) {
+  // Never initialize folly logging.
+  return 0;
 }

@@ -259,16 +259,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
         Destructor());
   }
 
-  static std::shared_ptr<AsyncSSLSocket> newSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
-      EventBase* evb,
-      int fd,
-      bool server = true,
-      bool deferSecurityNegotiation = false) {
-    return newSocket(
-        ctx, evb, NetworkSocket::fromFd(fd), server, deferSecurityNegotiation);
-  }
-
   /**
    * Helper function to create a client shared_ptr<AsyncSSLSocket>.
    */

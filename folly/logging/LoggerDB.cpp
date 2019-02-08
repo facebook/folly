@@ -69,50 +69,43 @@ FOLLY_ATTR_WEAK void initializeLoggerDB(LoggerDB& db) {
 }
 
 namespace {
-class LoggerDBSingleton {
+class LoggerDBCleanup {
  public:
-  explicit LoggerDBSingleton(LoggerDB* FOLLY_NONNULL db) : db_{db} {
-    // Call initializeLoggerDB() to apply some basic initial configuration.
-    initializeLoggerDB(*db_);
-  }
-
-  ~LoggerDBSingleton() {
-    // We intentionally leak the LoggerDB object on normal destruction.
-    // We want Logger objects to remain valid for the entire lifetime of the
-    // program, without having to worry about destruction ordering issues, or
-    // making the Logger perform reference counting on the LoggerDB.
-    //
-    // Therefore the main LoggerDB object, and all of the LogCategory objects
-    // it contains, are always intentionally leaked.
-    //
-    // However, we do call db_->cleanupHandlers() to destroy any registered
-    // LogHandler objects.  The LogHandlers can be user-defined objects and may
-    // hold resources that should be cleaned up.  This also ensures that the
-    // LogHandlers flush all outstanding messages before we exit.
+  explicit LoggerDBCleanup(LoggerDB* FOLLY_NONNULL db) : db_{db} {}
+  ~LoggerDBCleanup() {
     db_->cleanupHandlers();
-
-    // Store the released pointer in a static variable just to prevent ASAN
-    // from complaining that we are leaking data.
-    static LoggerDB* db = db_.release();
-    (void)db;
-  }
-
-  LoggerDB& getDB() const {
-    return *db_;
   }
 
  private:
-  // Store LoggerDB as a unique_ptr so it will be automatically destroyed if
-  // initializeLoggerDB() throws in the constructor.  We will explicitly
-  // release this during the normal destructor.
-  std::unique_ptr<LoggerDB> db_;
+  LoggerDB* const db_;
 };
 } // namespace
 
+LoggerDB* LoggerDB::createSingleton() {
+  // Use a unique_ptr() to clean up the LoggerDB if initializeLoggerDB() throws
+  std::unique_ptr<LoggerDB> db(new LoggerDB());
+  initializeLoggerDB(*db);
+
+  // Once initializeLoggerDB() has succeeded extract the raw pointer to return
+  // to our caller.
+  //
+  // We intentionally leak the LoggerDB singleton and all of the LogCategory
+  // objects it contains.
+  //
+  // We want Logger objects to remain valid for the entire lifetime of the
+  // program, without having to worry about destruction ordering issues, or
+  // making the Logger perform reference counting on the LoggerDB.
+  return db.release();
+}
+
 LoggerDB& LoggerDB::get() {
-  // Intentionally leaky singleton
-  static LoggerDBSingleton singleton{new LoggerDB()};
-  return singleton.getDB();
+  // Intentionally leaky LoggerDB singleton
+  static LoggerDB* const db = createSingleton();
+  // LoggerDBCleanup is responsible for calling db->cleanupHandlers() on program
+  // shutdown.  This allows log handlers to flush any buffered messages before
+  // the program exits.
+  static LoggerDBCleanup cleanup(db);
+  return *db;
 }
 
 LoggerDB::LoggerDB() {

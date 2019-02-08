@@ -499,3 +499,21 @@ TEST_F(HHWheelTimerTest, Level1) {
   ASSERT_EQ(tt.timestamps.size(), 1);
   T_CHECK_TIMEOUT(start, end, milliseconds(500));
 }
+
+// Test that we handle negative timeouts properly (i.e. treat them as 0)
+TEST_F(HHWheelTimerTest, NegativeTimeout) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  std::this_thread::sleep_for(std::chrono::milliseconds(10));
+  TestTimeout tt1;
+  TestTimeout tt2;
+  // Make sure we have event scheduled.
+  t.scheduleTimeout(&tt1, std::chrono::milliseconds(1));
+  // Schedule another timeout that would appear to be earlier than
+  // the already scheduled one.
+  t.scheduleTimeout(&tt2, std::chrono::milliseconds(-500000000));
+  TimePoint start;
+  eventBase.loop();
+  TimePoint end;
+  ASSERT_EQ(tt2.timestamps.size(), 1);
+  T_CHECK_TIMEOUT(start, end, milliseconds(1));
+}

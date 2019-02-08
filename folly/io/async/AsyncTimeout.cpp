@@ -77,6 +77,13 @@ bool AsyncTimeout::scheduleTimeout(TimeoutManager::timeout_type timeout) {
   return timeoutManager_->scheduleTimeout(this, timeout);
 }
 
+bool AsyncTimeout::scheduleTimeoutHighRes(
+    TimeoutManager::timeout_type_high_res timeout) {
+  assert(timeoutManager_ != nullptr);
+  context_ = RequestContext::saveContext();
+  return timeoutManager_->scheduleTimeoutHighRes(this, timeout);
+}
+
 bool AsyncTimeout::scheduleTimeout(uint32_t milliseconds) {
   return scheduleTimeout(TimeoutManager::timeout_type(milliseconds));
 }

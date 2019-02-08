@@ -42,13 +42,15 @@ auto println = [](auto v) { std::cout << v << std::endl; };
 
 // concat not yet implemented
 template <class T, class E = std::exception_ptr>
-auto concat = [](auto in) {
-  return mi::make_single_sender([in](auto out) mutable {
-    mi::submit(in, mi::make_receiver(out, [](auto out_, auto v) {
-                 mi::submit(v, mi::any_receiver<E, T>(out_));
-               }));
-  });
-};
+auto concat() {
+  return [](auto in) {
+    return mi::make_single_sender([in](auto out) mutable {
+      mi::submit(in, mi::make_receiver(out, [](auto out_, auto v) {
+                   mi::submit(v, mi::any_receiver<E, T>(out_));
+                 }));
+    });
+  };
+}
 
 int main() {
   get_setting() | op::transform([](int i) { return std::to_string(i); }) |
@@ -65,7 +67,7 @@ int main() {
     }
     return mi::any_single_sender<std::exception_ptr, std::string>{
         op::just(std::to_string(i))};
-  }) | concat<std::string> |
+  }) | concat<std::string>() |
       op::submit(println);
 
   std::cout << "OK" << std::endl;

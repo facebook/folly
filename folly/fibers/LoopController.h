@@ -18,10 +18,9 @@
 #include <chrono>
 #include <functional>
 
+#include <folly/io/async/HHWheelTimer-fwd.h>
+
 namespace folly {
-
-class HHWheelTimer;
-
 namespace fibers {
 
 class FiberManager;

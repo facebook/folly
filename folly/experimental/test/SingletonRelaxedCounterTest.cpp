@@ -21,6 +21,7 @@
 
 #include <boost/thread/barrier.hpp>
 
+#include <folly/ThreadLocal.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
@@ -38,6 +39,39 @@ TEST_F(SingletonRelaxedCounterTest, Basic) {
   Counter::add(3);
   EXPECT_EQ(3, Counter::count());
   Counter::sub(3);
+  EXPECT_EQ(0, Counter::count());
+}
+
+TEST_F(SingletonRelaxedCounterTest, CompatibilityWithThreadLocal) {
+  struct CounterNoOpInDtor {
+    ~CounterNoOpInDtor() {
+      Counter::add(0);
+    }
+  };
+  ThreadLocal<CounterNoOpInDtor> tl;
+  auto thread = std::thread([&] { //
+    std::ignore = *tl;
+  });
+  thread.join();
+  EXPECT_EQ(0, Counter::count());
+}
+
+TEST_F(SingletonRelaxedCounterTest, CompatibilityWithThreadLocalMany) {
+  struct CounterNoOpInDtor {
+    ~CounterNoOpInDtor() {
+      Counter::add(0);
+    }
+  };
+  ThreadLocal<CounterNoOpInDtor> tl;
+  std::vector<std::thread> threads(16);
+  for (auto& thread : threads) {
+    thread = std::thread([&] { //
+      std::ignore = *tl;
+    });
+  }
+  for (auto& thread : threads) {
+    thread.join();
+  }
   EXPECT_EQ(0, Counter::count());
 }
 

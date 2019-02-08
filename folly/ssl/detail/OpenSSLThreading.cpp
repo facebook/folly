@@ -54,8 +54,8 @@ static std::map<int, LockType>& lockTypes() {
 
 void setLockTypes(std::map<int, LockType> inLockTypes) {
 #if FOLLY_SSL_DETAIL_OPENSSL_IS_110
-  LOG(INFO) << "setLockTypes() is unsupported on OpenSSL >= 1.1.0. "
-            << "OpenSSL now uses platform native mutexes";
+  VLOG(3) << "setLockTypes() is unsupported on OpenSSL >= 1.1.0. "
+          << "OpenSSL now uses platform native mutexes";
 #endif
 
   lockTypes() = inLockTypes;
