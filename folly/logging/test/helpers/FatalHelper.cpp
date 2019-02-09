@@ -96,7 +96,7 @@ std::string fbLogFatalCheck() {
  * This is a simple helper program to exercise the LOG(FATAL) functionality.
  */
 int main(int argc, char* argv[]) {
-  auto init = folly::Init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
   if (FLAGS_check_debug) {
     std::cout << "DEBUG=" << static_cast<int>(folly::kIsDebug) << "\n";
