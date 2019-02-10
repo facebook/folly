@@ -1032,7 +1032,7 @@ namespace {
 template <typename T, typename V>
 std::string prefixWithType(V value) {
   std::ostringstream oss;
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
   oss << "(" << demangle(typeid(T)) << ") ";
 #endif
   oss << to<std::string>(value);

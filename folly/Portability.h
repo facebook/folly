@@ -358,6 +358,8 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
 #define FOLLY_HAS_RTTI 1
+#else
+#define FOLLY_HAS_RTTI 0
 #endif
 
 #if defined(__APPLE__) || defined(_MSC_VER)

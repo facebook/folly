@@ -1335,7 +1335,7 @@ convertTo(const Src& value) noexcept {
 
 template <typename Tgt, typename Src>
 inline std::string errorValue(const Src& value) {
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
   return to<std::string>("(", demangle(typeid(Tgt)), ") ", value);
 #else
   return to<std::string>(value);

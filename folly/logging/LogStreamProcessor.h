@@ -44,7 +44,7 @@ auto fallbackFormatOneArg(std::string* str, const Arg* arg, int) -> decltype(
     std::declval<void>()) {
   str->push_back('(');
   try {
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
     toAppend(folly::demangle(typeid(*arg)), str);
     str->append(": ");
 #endif
@@ -58,7 +58,7 @@ auto fallbackFormatOneArg(std::string* str, const Arg* arg, int) -> decltype(
 template <typename Arg>
 inline void fallbackFormatOneArg(std::string* str, const Arg* arg, long) {
   str->push_back('(');
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
   try {
     toAppend(folly::demangle(typeid(*arg)), str);
     str->append(": ");
