@@ -34,7 +34,7 @@ class StaticSingletonManager {
  public:
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Cache cache;
+    static Cache cache{};
     auto const& key = typeid(TypeTuple<T, Tag>);
     auto const v = cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
