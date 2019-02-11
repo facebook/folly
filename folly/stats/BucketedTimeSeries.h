@@ -469,12 +469,13 @@ class BucketedTimeSeries {
   TimePoint getEarliestTimeNonEmpty() const;
   size_t updateBuckets(TimePoint now);
 
-  ValueType rangeAdjust(
+  template <typename ReturnType>
+  ReturnType rangeAdjust(
       TimePoint bucketStart,
       TimePoint nextBucketStart,
       TimePoint start,
       TimePoint end,
-      ValueType input) const;
+      ReturnType input) const;
 
   template <typename Function>
   void forEachBucket(TimePoint start, TimePoint end, Function fn) const;
