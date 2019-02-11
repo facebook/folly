@@ -34,8 +34,6 @@
 
 #include <type_traits>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Portability.h>
 #include <folly/synchronization/SmallLocks.h>
 
@@ -61,13 +59,17 @@ class SpinLock {
 };
 
 template <typename LOCK>
-class SpinLockGuardImpl : private boost::noncopyable {
+class SpinLockGuardImpl {
  public:
   FOLLY_ALWAYS_INLINE explicit SpinLockGuardImpl(LOCK& lock) noexcept(
       noexcept(lock.lock()))
       : lock_(lock) {
     lock_.lock();
   }
+
+  SpinLockGuardImpl(const SpinLockGuardImpl&) = delete;
+  SpinLockGuardImpl& operator=(const SpinLockGuardImpl&) = delete;
+
   FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {
     lock_.unlock();
   }

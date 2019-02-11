@@ -22,8 +22,6 @@
 #include <memory>
 #include <type_traits>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/detail/TurnSequencer.h>
@@ -56,7 +54,7 @@ class RingBufferSlot;
 ///
 
 template <typename T, template <typename> class Atom = std::atomic>
-class LockFreeRingBuffer : boost::noncopyable {
+class LockFreeRingBuffer {
   static_assert(
       std::is_nothrow_default_constructible<T>::value,
       "Element type must be nothrow default constructible");
@@ -100,6 +98,9 @@ class LockFreeRingBuffer : boost::noncopyable {
       : capacity_(capacity),
         slots_(new detail::RingBufferSlot<T, Atom>[capacity]),
         ticket_(0) {}
+
+  LockFreeRingBuffer(const LockFreeRingBuffer&) = delete;
+  LockFreeRingBuffer& operator=(const LockFreeRingBuffer&) = delete;
 
   /// Perform a single write of an object of type T.
   /// Writes can block iff a previous writer has not yet completed a write

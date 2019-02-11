@@ -368,7 +368,7 @@ void MemoryMapping::advise(int advice, size_t offset, size_t length) const {
   PLOG_IF(WARNING, ::madvise(mapStart, length, advice)) << "madvise";
 }
 
-MemoryMapping& MemoryMapping::operator=(MemoryMapping other) {
+MemoryMapping& MemoryMapping::operator=(MemoryMapping&& other) {
   swap(other);
   return *this;
 }

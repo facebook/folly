@@ -17,7 +17,6 @@
 #pragma once
 
 #include <assert.h>
-#include <boost/noncopyable.hpp>
 #include <errno.h>
 #include <glog/logging.h>
 #include <atomic>
@@ -144,7 +143,7 @@ class ThreadSyncVar {
  * Invocations of the scheduler function will be serialized, but will
  * occur from multiple threads.  A good starting schedule is uniform(0).
  */
-class DeterministicSchedule : boost::noncopyable {
+class DeterministicSchedule {
  public:
   /**
    * Arranges for the current thread (and all threads created by
@@ -153,6 +152,9 @@ class DeterministicSchedule : boost::noncopyable {
    */
   explicit DeterministicSchedule(
       const std::function<size_t(size_t)>& scheduler);
+
+  DeterministicSchedule(const DeterministicSchedule&) = delete;
+  DeterministicSchedule& operator=(const DeterministicSchedule&) = delete;
 
   /** Completes the schedule. */
   ~DeterministicSchedule();

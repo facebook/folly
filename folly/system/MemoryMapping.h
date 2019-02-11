@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <boost/noncopyable.hpp>
 #include <glog/logging.h>
 
 #include <folly/File.h>
@@ -29,7 +28,7 @@ namespace folly {
  *
  * @author Tudor Bosman (tudorb@fb.com)
  */
-class MemoryMapping : boost::noncopyable {
+class MemoryMapping {
  public:
   /**
    * Lock the pages in memory?
@@ -147,11 +146,13 @@ class MemoryMapping : boost::noncopyable {
       off_t length = -1,
       Options options = Options());
 
+  MemoryMapping(const MemoryMapping&) = delete;
   MemoryMapping(MemoryMapping&&) noexcept;
 
   ~MemoryMapping();
 
-  MemoryMapping& operator=(MemoryMapping);
+  MemoryMapping& operator=(const MemoryMapping&) = delete;
+  MemoryMapping& operator=(MemoryMapping&&);
 
   void swap(MemoryMapping& other) noexcept;
 

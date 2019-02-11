@@ -125,8 +125,7 @@ class VirtualEventBase;
  * EventBase from other threads.  When it is safe to call a method from
  * another thread it is explicitly listed in the method comments.
  */
-class EventBase : private boost::noncopyable,
-                  public TimeoutManager,
+class EventBase : public TimeoutManager,
                   public DrivableExecutor,
                   public IOExecutor,
                   public SequencedExecutor,
@@ -292,6 +291,9 @@ class EventBase : private boost::noncopyable,
    *                              observer, max latency and avg loop time.
    */
   explicit EventBase(bool enableTimeMeasurement);
+
+  EventBase(const EventBase&) = delete;
+  EventBase& operator=(const EventBase&) = delete;
 
   /**
    * Create a new EventBase object that will use the specified libevent
