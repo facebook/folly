@@ -33,6 +33,40 @@ struct Tag {};
 template <int I>
 using Int = std::integral_constant<int, I>;
 
+TEST_F(StaticSingletonManagerTest, example_sans_rtti) {
+  using K = StaticSingletonManagerSansRtti;
+
+  using T = std::integral_constant<int, 3>;
+
+  auto& i = K::create<T, Tag<char>>();
+  EXPECT_EQ(T::value, i);
+
+  auto& j = K::create<T, Tag<char>>();
+  EXPECT_EQ(&i, &j);
+  EXPECT_EQ(T::value, j);
+
+  auto& k = K::create<T, Tag<char*>>();
+  EXPECT_NE(&i, &k);
+  EXPECT_EQ(T::value, k);
+}
+
+TEST_F(StaticSingletonManagerTest, example_with_rtti) {
+  using K = StaticSingletonManagerWithRtti;
+
+  using T = std::integral_constant<int, 3>;
+
+  auto& i = K::create<T, Tag<char>>();
+  EXPECT_EQ(T::value, i);
+
+  auto& j = K::create<T, Tag<char>>();
+  EXPECT_EQ(&i, &j);
+  EXPECT_EQ(T::value, j);
+
+  auto& k = K::create<T, Tag<char*>>();
+  EXPECT_NE(&i, &k);
+  EXPECT_EQ(T::value, k);
+}
+
 TEST_F(StaticSingletonManagerTest, example) {
   using T = std::integral_constant<int, 3>;
 
