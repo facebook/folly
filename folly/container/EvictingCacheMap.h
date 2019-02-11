@@ -120,10 +120,24 @@ class EvictingCacheMap {
                             TIterator,
                             Value,
                             boost::bidirectional_traversal_tag> {
+   private:
+    struct Enabler {};
+
    public:
     iterator_base() {}
+
     explicit iterator_base(TIterator it)
         : iterator_base::iterator_adaptor_(it) {}
+
+    template <typename V, typename I>
+    /* implicit */ iterator_base(
+        iterator_base<V, I> const& other,
+        std::enable_if_t<
+            std::is_convertible<V, Value>::value &&
+                std::is_convertible<I, TIterator>::value,
+            Enabler> = Enabler())
+        : iterator_base::iterator_adaptor_(other.base()) {}
+
     Value& dereference() const {
       return this->base_reference()->pr;
     }
@@ -292,14 +306,24 @@ class EvictingCacheMap {
    */
   bool erase(const TKey& key) {
     auto it = findInIndex(key);
-    if (it == index_.end()) {
-      return false;
+    if (it != index_.end()) {
+      erase(const_iterator(lru_.iterator_to(*it)));
+      return true;
     }
-    auto node = &(*it);
+    return false;
+  }
+
+  /**
+   * Erase the key-value pair associated with pos
+   * @param pos iterator to the element to be erased
+   * @return iterator to the following element or end() if pos was the last
+   *     element
+   */
+  iterator erase(const_iterator pos) {
+    auto* node = const_cast<Node*>(&(*pos.base()));
     std::unique_ptr<Node> nptr(node);
-    lru_.erase(lru_.iterator_to(*node));
-    index_.erase(it);
-    return true;
+    index_.erase(index_.iterator_to(*node));
+    return iterator(lru_.erase(pos.base()));
   }
 
   /**
