@@ -28,7 +28,8 @@ namespace folly {
 
 TEST(AsyncSocketTest, getSockOpt) {
   EventBase evb;
-  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb, 0);
+  std::shared_ptr<AsyncSocket> socket =
+      AsyncSocket::newSocket(&evb, folly::NetworkSocket::fromFd(0));
 
   int val;
   socklen_t len;
