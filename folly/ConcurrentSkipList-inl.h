@@ -28,7 +28,6 @@
 #include <vector>
 
 #include <boost/random.hpp>
-#include <boost/type_traits.hpp>
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
@@ -83,7 +82,7 @@ class SkipListNode {
   template <typename NodeAlloc>
   struct DestroyIsNoOp : StrictConjunction<
                              AllocatorHasTrivialDeallocate<NodeAlloc>,
-                             boost::has_trivial_destructor<SkipListNode>> {};
+                             std::is_trivially_destructible<SkipListNode>> {};
 
   // copy the head node to a new head node assuming lock acquired
   SkipListNode* copyHead(SkipListNode* node) {

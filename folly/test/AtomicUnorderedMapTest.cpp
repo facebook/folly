@@ -109,8 +109,8 @@ using UIM = AtomicUnorderedInsertMap<
     Value,
     std::hash<Key>,
     std::equal_to<Key>,
-    (boost::has_trivial_destructor<Key>::value &&
-     boost::has_trivial_destructor<Value>::value),
+    (std::is_trivially_destructible<Key>::value &&
+     std::is_trivially_destructible<Value>::value),
     Atom,
     IndexType,
     Allocator>;

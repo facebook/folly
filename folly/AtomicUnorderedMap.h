@@ -24,8 +24,6 @@
 #include <system_error>
 #include <type_traits>
 
-#include <boost/type_traits/has_trivial_destructor.hpp>
-
 #include <folly/Conv.h>
 #include <folly/Likely.h>
 #include <folly/Random.h>
@@ -136,8 +134,8 @@ template <
     typename Hash = std::hash<Key>,
     typename KeyEqual = std::equal_to<Key>,
     bool SkipKeyValueDeletion =
-        (boost::has_trivial_destructor<Key>::value &&
-         boost::has_trivial_destructor<Value>::value),
+        (std::is_trivially_destructible<Key>::value &&
+         std::is_trivially_destructible<Value>::value),
     template <typename> class Atom = std::atomic,
     typename IndexType = uint32_t,
     typename Allocator = folly::detail::MMapAlloc>
@@ -478,8 +476,8 @@ template <
     typename Hash = std::hash<Key>,
     typename KeyEqual = std::equal_to<Key>,
     bool SkipKeyValueDeletion =
-        (boost::has_trivial_destructor<Key>::value &&
-         boost::has_trivial_destructor<Value>::value),
+        (std::is_trivially_destructible<Key>::value &&
+         std::is_trivially_destructible<Value>::value),
     template <typename> class Atom = std::atomic,
     typename Allocator = folly::detail::MMapAlloc>
 using AtomicUnorderedInsertMap64 = AtomicUnorderedInsertMap<
