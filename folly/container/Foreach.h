@@ -208,21 +208,6 @@ FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
 namespace folly {
 namespace detail {
 
-// Boost 1.48 lacks has_less, we emulate a subset of it here.
-template <typename T, typename U>
-class HasLess {
-  struct BiggerThanChar {
-    char unused[2];
-  };
-  template <typename C, typename D>
-  static char test(decltype(C() < D())*);
-  template <typename, typename>
-  static BiggerThanChar test(...);
-
- public:
-  enum { value = sizeof(test<T, U>(nullptr)) == 1 };
-};
-
 /**
  * notThereYet helps the FOR_EACH_RANGE macro by opportunistically
  * using "<" instead of "!=" whenever available when checking for loop
@@ -231,33 +216,17 @@ class HasLess {
  * forever. At the same time, some iterator types define "!=" but not
  * "<". The notThereYet function will dispatch differently for those.
  *
- * Below is the correct implementation of notThereYet. It is disabled
- * because of a bug in Boost 1.46: The filesystem::path::iterator
- * defines operator< (via boost::iterator_facade), but that in turn
- * uses distance_to which is undefined for that particular
- * iterator. So HasLess (defined above) identifies
- * boost::filesystem::path as properly comparable with <, but in fact
- * attempting to do so will yield a compile-time error.
+ * The code below uses `<` for a conservative subset of types for which
+ * it is known to be valid.
  *
- * The else branch (active) contains a conservative
- * implementation.
+ * There is a bug in Boost 1.46: The filesystem::path::iterator defines
+ * operator< (via boost::iterator_facade), but that in turn uses
+ * uses distance_to which is undefined for that particular iterator. So
+ * doing detection of `<` invocability identifies
+ * boost::filesystem::path as properly comparable with <, but in fact
+ * attempting to use it would yield a compile-time error. Thus `<` is
+ * used only for a conservative subset of types.
  */
-
-#if 0
-
-template <class T, class U>
-typename std::enable_if<HasLess<T, U>::value, bool>::type
-notThereYet(T& iter, const U& end) {
-  return iter < end;
-}
-
-template <class T, class U>
-typename std::enable_if<!HasLess<T, U>::value, bool>::type
-notThereYet(T& iter, const U& end) {
-  return iter != end;
-}
-
-#else
 
 template <class T, class U>
 typename std::enable_if<
@@ -276,8 +245,6 @@ typename std::enable_if<
 notThereYet(T& iter, const U& end) {
   return iter != end;
 }
-
-#endif
 
 } // namespace detail
 } // namespace folly
