@@ -279,28 +279,6 @@ notThereYet(T& iter, const U& end) {
 
 #endif
 
-/**
- * downTo is similar to notThereYet, but in reverse - it helps the
- * FOR_EACH_RANGE_R macro.
- */
-template <class T, class U>
-typename std::enable_if<HasLess<U, T>::value, bool>::type downTo(
-    T& iter,
-    const U& begin) {
-  return begin < iter--;
-}
-
-template <class T, class U>
-typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
-    T& iter,
-    const U& begin) {
-  if (iter == begin) {
-    return false;
-  }
-  --iter;
-  return true;
-}
-
 } // namespace detail
 } // namespace folly
 
@@ -314,14 +292,5 @@ typename std::enable_if<!HasLess<U, T>::value, bool>::type downTo(
   for (auto i = (true ? (begin) : (end));      \
        ::folly::detail::notThereYet(i, (end)); \
        ++i)
-
-/*
- * Look at the Ranges-v3 views and you'll probably find an easier way to build
- * the view you want but the equivalent is roughly:
- *
- *    for (auto& element : make_subrange(begin, end) | view::reverse)
- */
-#define FOR_EACH_RANGE_R(i, begin, end) \
-  for (auto i = (false ? (begin) : (end)); ::folly::detail::downTo(i, (begin));)
 
 #include <folly/container/Foreach-inl.h>
