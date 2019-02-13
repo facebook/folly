@@ -32,7 +32,6 @@
 #include <string>
 #include <tuple>
 #include <type_traits>
-#include <typeinfo>
 #include <utility>
 
 #include <double-conversion/double-conversion.h> // V8 JavaScript implementation
@@ -45,6 +44,7 @@
 #include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/Pretty.h>
 #include <folly/portability/Math.h>
 
 namespace folly {
@@ -1335,11 +1335,7 @@ convertTo(const Src& value) noexcept {
 
 template <typename Tgt, typename Src>
 inline std::string errorValue(const Src& value) {
-#if FOLLY_HAS_RTTI
-  return to<std::string>("(", demangle(typeid(Tgt)), ") ", value);
-#else
-  return to<std::string>(value);
-#endif
+  return to<std::string>("(", pretty_name<Tgt>(), ") ", value);
 }
 
 template <typename Tgt, typename Src>

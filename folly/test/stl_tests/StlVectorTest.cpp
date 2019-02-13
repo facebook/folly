@@ -179,7 +179,6 @@ THOUGHTS:
 #include <stdexcept>
 #include <string>
 #include <type_traits>
-#include <typeinfo>
 
 #include <boost/iterator/iterator_adaptor.hpp>
 #include <boost/preprocessor.hpp>
@@ -187,6 +186,7 @@ THOUGHTS:
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/lang/Pretty.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
@@ -1042,7 +1042,7 @@ struct PrettyType {
     if (is_same<T, uint64_t>::value) {
       return "uint64_t";
     }
-    return typeid(T).name();
+    return pretty_name<T>();
   }
 };
 

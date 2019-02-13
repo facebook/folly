@@ -21,23 +21,12 @@
 #include <string>
 
 #include <folly/Portability.h>
+#include <folly/lang/Pretty.h>
 #include <folly/portability/GTest.h>
 
 template <typename Ex>
-static std::string type_pretty_name() {
-  auto const name = __PRETTY_FUNCTION__;
-  auto const size = std::strlen(name);
-  auto const eq = std::find(name, name + size, '=');
-  auto const sc = std::find(name, name + size, ';');
-  auto const br = std::find(name, name + size, ']');
-  auto const bpos = name + size - eq >= 2 ? eq + 2 : name + size;
-  auto const epos = std::min(sc, br);
-  return epos < bpos ? "" : std::string(bpos, epos - bpos);
-}
-
-template <typename Ex>
 static std::string message_for_terminate_with(std::string const& what) {
-  auto const name = type_pretty_name<Ex>();
+  auto const name = folly::pretty_name<Ex>();
   auto const prefix =
       std::string("terminate called after throwing an instance of ");
   // clang-format off
