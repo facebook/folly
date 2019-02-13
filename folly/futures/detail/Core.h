@@ -569,10 +569,11 @@ class Core final {
   // May be called at most once.
   void doCallback() {
     DCHECK(state_ == State::Done);
-    auto x = exchange(executor_, Executor::KeepAlive<>());
-    int8_t priority = priority_;
 
-    if (x) {
+    if (executor_) {
+      auto x = exchange(executor_, Executor::KeepAlive<>());
+      int8_t priority = priority_;
+
       exception_wrapper ew;
       // We need to reset `callback_` after it was executed (which can happen
       // through the executor or, if `Executor::add` throws, below). The
