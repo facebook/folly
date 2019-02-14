@@ -421,24 +421,13 @@ class Core final {
   /// Call only from consumer thread, either before attaching a callback or
   /// after the callback has already been invoked, but not concurrently with
   /// anything which might trigger invocation of the callback.
-  void setExecutor(
-      Executor::KeepAlive<> x,
-      int8_t priority = Executor::MID_PRI) {
+  void setExecutor(Executor::KeepAlive<> x) {
     DCHECK(state_ != State::OnlyCallback);
     executor_ = std::move(x);
-    priority_ = priority;
-  }
-
-  void setExecutor(Executor* x, int8_t priority = Executor::MID_PRI) {
-    setExecutor(getKeepAliveToken(x), priority);
   }
 
   Executor* getExecutor() const {
     return executor_.get();
-  }
-
-  int8_t getPriority() const {
-    return priority_;
   }
 
   /// Call only from consumer thread
@@ -572,7 +561,6 @@ class Core final {
 
     if (executor_) {
       auto x = exchange(executor_, Executor::KeepAlive<>());
-      int8_t priority = priority_;
 
       exception_wrapper ew;
       // We need to reset `callback_` after it was executed (which can happen
@@ -590,25 +578,13 @@ class Core final {
       CoreAndCallbackReference guard_lambda(this);
       try {
         auto xPtr = x.get();
-        if (LIKELY(x->getNumPriorities() == 1)) {
-          xPtr->add([core_ref = std::move(guard_lambda),
-                     keepAlive = std::move(x)]() mutable {
-            auto cr = std::move(core_ref);
-            Core* const core = cr.getCore();
-            RequestContextScopeGuard rctx(core->context_);
-            core->callback_(std::move(core->result_));
-          });
-        } else {
-          xPtr->addWithPriority(
-              [core_ref = std::move(guard_lambda),
-               keepAlive = std::move(x)]() mutable {
-                auto cr = std::move(core_ref);
-                Core* const core = cr.getCore();
-                RequestContextScopeGuard rctx(core->context_);
-                core->callback_(std::move(core->result_));
-              },
-              priority);
-        }
+        xPtr->add([core_ref = std::move(guard_lambda),
+                   keepAlive = std::move(x)]() mutable {
+          auto cr = std::move(core_ref);
+          Core* const core = cr.getCore();
+          RequestContextScopeGuard rctx(core->context_);
+          core->callback_(std::move(core->result_));
+        });
       } catch (const std::exception& e) {
         ew = exception_wrapper(std::current_exception(), e);
       } catch (...) {
@@ -633,7 +609,7 @@ class Core final {
 
   void proxyCallback() {
     state_.store(State::Empty, std::memory_order_relaxed);
-    proxy_->setExecutor(std::move(executor_), priority_);
+    proxy_->setExecutor(std::move(executor_));
     proxy_->setCallback(std::move(callback_), std::move(context_));
     proxy_->detachFuture();
     context_.~Context();
@@ -673,7 +649,6 @@ class Core final {
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> interruptHandlerSet_{false};
   SpinLock interruptLock_;
-  int8_t priority_{-1};
   Executor::KeepAlive<> executor_;
   union {
     Context context_;

@@ -315,9 +315,8 @@ Future<T> makeFuture(Try<T> t);
  *
  * @returns a void Future that will call back on the given executor
  */
-inline Future<Unit> via(
-    Executor::KeepAlive<> executor,
-    int8_t priority = Executor::MID_PRI);
+inline Future<Unit> via(Executor::KeepAlive<> executor);
+inline Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority);
 
 /// Execute a function via the given executor and return a future.
 /// This is semantically equivalent to via(executor).then(func), but

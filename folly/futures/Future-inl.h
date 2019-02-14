@@ -21,6 +21,7 @@
 #include <thread>
 
 #include <folly/Optional.h>
+#include <folly/executors/ExecutorWithPriority.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/detail/Core.h>
@@ -853,9 +854,7 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-Future<T> SemiFuture<T>::via(
-    Executor::KeepAlive<> executor,
-    int8_t priority) && {
+Future<T> SemiFuture<T>::via(Executor::KeepAlive<> executor) && {
   if (!executor) {
     throw_exception<FutureNoExecutor>();
   }
@@ -866,9 +865,17 @@ Future<T> SemiFuture<T>::via(
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
-  newFuture.setExecutor(std::move(executor), priority);
+  newFuture.setExecutor(std::move(executor));
 
   return newFuture;
+}
+
+template <class T>
+Future<T> SemiFuture<T>::via(
+    Executor::KeepAlive<> executor,
+    int8_t priority) && {
+  return std::move(*this).via(
+      ExecutorWithPriority::create(std::move(executor), priority));
 }
 
 template <class T>
@@ -1029,8 +1036,8 @@ typename std::
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
-  this->setExecutor(std::move(executor), priority);
+Future<T> Future<T>::via(Executor::KeepAlive<> executor) && {
+  this->setExecutor(std::move(executor));
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
@@ -1038,7 +1045,13 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
+  return std::move(*this).via(
+      ExecutorWithPriority::create(std::move(executor), priority));
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
@@ -1052,7 +1065,12 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
   // check in SemiFuture::via
   auto f = Future<T>(sf.core_);
   sf.core_ = nullptr;
-  return std::move(f).via(std::move(executor), priority);
+  return std::move(f).via(std::move(executor));
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
+  return this->via(ExecutorWithPriority::create(std::move(executor), priority));
 }
 
 template <typename T>
@@ -1388,6 +1406,10 @@ Future<T> makeFuture(Try<T> t) {
 }
 
 // via
+Future<Unit> via(Executor::KeepAlive<> executor) {
+  return makeFuture().via(std::move(executor));
+}
+
 Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority) {
   return makeFuture().via(std::move(executor), priority);
 }

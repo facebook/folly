@@ -195,7 +195,9 @@ TEST(Via, chain3) {
 }
 
 struct PriorityExecutor : public Executor {
-  void add(Func /* f */) override {}
+  void add(Func /* f */) override {
+    count1++;
+  }
 
   void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
