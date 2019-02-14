@@ -46,6 +46,7 @@ namespace futures {
 /// needed. If your program never uses any timeouts or other time-based
 /// Futures you will pay no Timekeeper thread overhead.
 Future<Unit> sleep(Duration, Timekeeper* = nullptr);
+Future<Unit> sleepUnsafe(Duration, Timekeeper* = nullptr);
 
 /**
  * Set func as the callback for each input Future and return a vector of

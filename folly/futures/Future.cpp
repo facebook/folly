@@ -53,5 +53,9 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   return tk->after(dur);
 }
 
+Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
+  return sleep(dur, tk);
+}
+
 } // namespace futures
 } // namespace folly

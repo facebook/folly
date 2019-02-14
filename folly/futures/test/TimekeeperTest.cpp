@@ -79,6 +79,12 @@ TEST(Timekeeper, futureSleep) {
   EXPECT_GE(now() - t1, one_ms);
 }
 
+TEST(Timekeeper, futureSleepUnsafe) {
+  auto t1 = now();
+  futures::sleepUnsafe(one_ms).get();
+  EXPECT_GE(now() - t1, one_ms);
+}
+
 TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
   Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
   SCOPE_EXIT {
