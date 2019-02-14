@@ -18,6 +18,10 @@ cdef extern from "folly/futures/Future.h" namespace "folly" nogil:
         cbool isReady()
         #TODO add via and then
 
+    cdef cppclass cFollySemiFuture "folly::SemiFuture"[T]:
+        T get()
+        pass
+
 cdef extern from "folly/Unit.h" namespace "folly":
     struct cFollyUnit "folly::Unit":
         pass
