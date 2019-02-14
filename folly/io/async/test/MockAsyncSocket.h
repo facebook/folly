@@ -47,7 +47,7 @@ class MockAsyncSocket : public AsyncSocket {
   }
 
   MOCK_CONST_METHOD1(getPeerAddress, void(folly::SocketAddress*));
-  MOCK_METHOD0(detachFd, int());
+  MOCK_METHOD0(detachNetworkSocket, NetworkSocket());
   MOCK_CONST_METHOD0(getNetworkSocket, NetworkSocket());
   MOCK_METHOD0(closeNow, void());
   MOCK_CONST_METHOD0(good, bool());

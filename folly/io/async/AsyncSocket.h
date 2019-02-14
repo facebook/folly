@@ -361,7 +361,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * Returns the file descriptor.  The caller assumes ownership of the
    * descriptor, and it will not be closed when the AsyncSocket is destroyed.
    */
-  virtual int detachFd() {
+  virtual int detachFd(int) {
     return detachNetworkSocket().toFd();
   }
 
