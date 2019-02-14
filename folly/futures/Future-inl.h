@@ -2003,11 +2003,6 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) && {
       });
 }
 
-template <class T>
-Future<T> Future<T>::delayedUnsafe(Duration dur, Timekeeper* tk) {
-  return std::move(*this).semi().delayed(dur, tk).toUnsafeFuture();
-}
-
 namespace futures {
 namespace detail {
 

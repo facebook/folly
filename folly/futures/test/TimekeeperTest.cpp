@@ -134,16 +134,6 @@ TEST(Timekeeper, semiFutureDelayed) {
   EXPECT_GE(dur, one_ms);
 }
 
-TEST(Timekeeper, futureDelayedUnsafe) {
-  auto t1 = now();
-  auto dur = makeFuture()
-                 .delayedUnsafe(one_ms)
-                 .thenValue([=](auto&&) { return now() - t1; })
-                 .get();
-
-  EXPECT_GE(dur, one_ms);
-}
-
 TEST(Timekeeper, futureDelayedStickyExecutor) {
   // Check that delayed without an executor binds the inline executor.
   {
