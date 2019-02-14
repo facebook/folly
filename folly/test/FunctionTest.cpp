@@ -1205,3 +1205,11 @@ TEST(Function, CtorWithCopy) {
 TEST(Function, Bug_T23346238) {
   const Function<void()> nullfun;
 }
+
+TEST(Function, MaxAlignCallable) {
+  using A = folly::aligned_storage_for_t<folly::max_align_t>;
+  auto f = [a = A()] { return reinterpret_cast<uintptr_t>(&a) % alignof(A); };
+  EXPECT_EQ(alignof(A), alignof(decltype(f))) << "sanity";
+  EXPECT_EQ(0, f()) << "sanity";
+  EXPECT_EQ(0, Function<size_t()>(f)());
+}
