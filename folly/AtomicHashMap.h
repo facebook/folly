@@ -82,7 +82,6 @@
 #define FOLLY_ATOMICHASHMAP_H_
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/type_traits/is_convertible.hpp>
 
 #include <atomic>
 #include <functional>

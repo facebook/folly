@@ -20,6 +20,8 @@
 
 #include <folly/detail/AtomicHashUtils.h>
 
+#include <type_traits>
+
 namespace folly {
 
 // AtomicHashMap constructor -- Atomic wrapper that allows growth
