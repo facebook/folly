@@ -1077,3 +1077,25 @@ TEST(SemiFuture, DeferWithExecutor) {
       [&](Executor* e, Try<Unit>) { EXPECT_EQ(&executor, e); });
   std::move(sf).via(&executor).getVia(&executor);
 }
+
+TEST(SemiFuture, within) {
+  {
+    auto sf = makeSemiFuture(42)
+                  .deferValue([](int x) { return x / 2; })
+                  .within(std::chrono::seconds{10})
+                  .deferValue([](int x) { return x * 2; });
+    EXPECT_EQ(42, std::move(sf).get());
+  }
+  {
+    folly::Promise<folly::Unit> p;
+    auto sf = p.getSemiFuture()
+                  .deferValue([](auto) {
+                    CHECK(false);
+                    return -1;
+                  })
+                  .within(std::chrono::seconds{1})
+                  .deferError(tag_t<FutureTimeout>{}, [](auto) { return 42; });
+    EXPECT_EQ(42, std::move(sf).get());
+    p.setValue();
+  }
+}

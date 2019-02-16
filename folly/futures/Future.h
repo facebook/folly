@@ -789,8 +789,18 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   template <class E>
   SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) && {
-    return this->isReady() ? std::move(*this)
-                           : std::move(*this).withinImplementation(dur, e, tk);
+    if (this->isReady()) {
+      return std::move(*this);
+    }
+    auto deferredExecutor = stealDeferredExecutor();
+    auto ret = std::move(*this).withinImplementation(dur, e, tk);
+    if (deferredExecutor) {
+      ret =
+          std::move(ret).defer([](Try<T>&& t) { return std::move(t).value(); });
+      ret.getDeferredExecutor()->setNestedExecutors(
+          {std::move(deferredExecutor)});
+    }
+    return ret;
   }
 
   /// Delay the completion of this SemiFuture for at least this duration from
