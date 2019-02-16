@@ -575,8 +575,8 @@ struct Synchronized : public SynchronizedBase<
       : Synchronized{std::piecewise_construct,
                      std::move(datumArgs),
                      std::move(mutexArgs),
-                     make_index_sequence<sizeof...(DatumArgs)>{},
-                     make_index_sequence<sizeof...(MutexArgs)>{}} {}
+                     std::make_index_sequence<sizeof...(DatumArgs)>{},
+                     std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
    * Copy assignment operator; deprecated
@@ -811,8 +811,8 @@ struct Synchronized : public SynchronizedBase<
       std::piecewise_construct_t,
       std::tuple<DatumArgs...> datumArgs,
       std::tuple<MutexArgs...> mutexArgs,
-      index_sequence<IndicesOne...>,
-      index_sequence<IndicesTwo...>)
+      std::index_sequence<IndicesOne...>,
+      std::index_sequence<IndicesTwo...>)
       : datum_{std::get<IndicesOne>(std::move(datumArgs))...},
         mutex_{std::get<IndicesTwo>(std::move(mutexArgs))...} {}
 

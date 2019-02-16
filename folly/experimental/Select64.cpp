@@ -17,6 +17,7 @@
 #include <folly/experimental/Select64.h>
 
 #include <cstdint>
+#include <utility>
 
 #include <folly/ConstexprMath.h>
 #include <folly/Portability.h>
@@ -39,13 +40,13 @@ constexpr std::uint8_t selectInByte(std::size_t i, std::size_t j) {
 
 template <std::size_t... I, std::size_t J>
 constexpr auto makeSelectInByteNestedArray(
-    index_sequence<I...>,
+    std::index_sequence<I...>,
     index_constant<J>) {
   return std::array<std::uint8_t, sizeof...(I)>{{selectInByte(I, J)...}};
 }
 
 template <typename Is, std::size_t... J>
-constexpr auto makeSelectInByteArray(Is is, index_sequence<J...>) {
+constexpr auto makeSelectInByteArray(Is is, std::index_sequence<J...>) {
   using inner = std::array<std::uint8_t, Is::size()>;
   using outer = std::array<inner, sizeof...(J)>;
   return outer{{makeSelectInByteNestedArray(is, index_constant<J>{})...}};
@@ -55,8 +56,8 @@ constexpr auto makeSelectInByteArray(Is is, index_sequence<J...>) {
 
 FOLLY_STORAGE_CONSTEXPR std::array<std::array<std::uint8_t, 256>, 8> const
     kSelectInByte = makeSelectInByteArray(
-        make_index_sequence<256>{},
-        make_index_sequence<8>{});
+        std::make_index_sequence<256>{},
+        std::make_index_sequence<8>{});
 
 } // namespace detail
 } // namespace folly

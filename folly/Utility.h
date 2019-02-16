@@ -169,46 +169,18 @@ struct make_seq<0> {
 };
 } // namespace utility_detail
 
-#if __cpp_lib_integer_sequence || _MSC_VER
-
-/* using override */ using std::index_sequence;
-/* using override */ using std::integer_sequence;
-
-#else
-
-// TODO: Remove after upgrading to C++14 baseline
-
-template <class T, T... Ints>
-struct integer_sequence {
-  using value_type = T;
-
-  static constexpr std::size_t size() noexcept {
-    return sizeof...(Ints);
-  }
-};
-
-template <std::size_t... Ints>
-using index_sequence = integer_sequence<std::size_t, Ints...>;
-
-#endif
-
 #if FOLLY_HAS_BUILTIN(__make_integer_seq) || _MSC_FULL_VER >= 190023918
 
 template <typename T, std::size_t Size>
-using make_integer_sequence = __make_integer_seq<integer_sequence, T, Size>;
+using make_integer_sequence = __make_integer_seq<std::integer_sequence, T, Size>;
 
 #else
 
 template <typename T, std::size_t Size>
 using make_integer_sequence = typename utility_detail::make_seq<
-    Size>::template apply<integer_sequence<T>, integer_sequence<T, 0>>;
+    Size>::template apply<std::integer_sequence<T>, std::integer_sequence<T, 0>>;
 
 #endif
-
-template <std::size_t Size>
-using make_index_sequence = make_integer_sequence<std::size_t, Size>;
-template <class... T>
-using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 /**
  *  Backports from C++17 of:
