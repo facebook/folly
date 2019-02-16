@@ -22,6 +22,7 @@
 #include <memory>
 #include <mutex>
 #include <stdexcept>
+#include <utility>
 
 namespace folly {
 namespace detail {
@@ -75,7 +76,7 @@ template <typename Mutex>
 ProxyLockableUniqueLock<Mutex>& ProxyLockableUniqueLock<Mutex>::operator=(
     ProxyLockableUniqueLock&& other) noexcept {
   proxy_ = std::move(other.proxy_);
-  mutex_ = exchange(other.mutex_, nullptr);
+  mutex_ = std::exchange(other.mutex_, nullptr);
   return *this;
 }
 

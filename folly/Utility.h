@@ -108,23 +108,6 @@ constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
   return static_cast<like_t<Src, Dst>&&>(std::forward<Dst>(dst));
 }
 
-#if __cpp_lib_exchange_function || _LIBCPP_STD_VER > 11 || _MSC_VER
-
-/* using override */ using std::exchange;
-
-#else
-
-//  mimic: std::exchange, C++14
-//  from: http://en.cppreference.com/w/cpp/utility/exchange, CC-BY-SA
-template <class T, class U = T>
-T exchange(T& obj, U&& new_value) {
-  T old_value = std::move(obj);
-  obj = std::forward<U>(new_value);
-  return old_value;
-}
-
-#endif
-
 namespace utility_detail {
 template <typename...>
 struct make_seq_cat;

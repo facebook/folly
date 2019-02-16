@@ -21,6 +21,7 @@
 
 #include <stdexcept>
 #include <tuple>
+#include <utility>
 
 namespace folly {
 
@@ -174,7 +175,7 @@ void Try<T>::throwIfFailed() const {
 
 template <class T>
 void Try<T>::destroy() noexcept {
-  auto oldContains = folly::exchange(contains_, Contains::NOTHING);
+  auto oldContains = std::exchange(contains_, Contains::NOTHING);
   if (LIKELY(oldContains == Contains::VALUE)) {
     value_.~T();
   } else if (UNLIKELY(oldContains == Contains::EXCEPTION)) {

@@ -538,7 +538,7 @@ class Core final {
     CoreAndCallbackReference& operator=(CoreAndCallbackReference&&) = delete;
 
     CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept
-        : core_(exchange(o.core_, nullptr)) {}
+        : core_(std::exchange(o.core_, nullptr)) {}
 
     Core* getCore() const noexcept {
       return core_;
@@ -560,7 +560,7 @@ class Core final {
     DCHECK(state_ == State::Done);
 
     if (executor_) {
-      auto x = exchange(executor_, Executor::KeepAlive<>());
+      auto x = std::exchange(executor_, Executor::KeepAlive<>());
 
       exception_wrapper ew;
       // We need to reset `callback_` after it was executed (which can happen
