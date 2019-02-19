@@ -87,7 +87,7 @@ class StaticSingletonManagerWithRtti {
 };
 
 using StaticSingletonManager = std::conditional_t<
-    FOLLY_HAS_RTTI,
+    kHasRtti,
     StaticSingletonManagerWithRtti,
     StaticSingletonManagerSansRtti>;
 

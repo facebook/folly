@@ -362,6 +362,10 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 #define FOLLY_HAS_RTTI 0
 #endif
 
+namespace folly {
+constexpr bool const kHasRtti = FOLLY_HAS_RTTI;
+} // namespace folly
+
 #if defined(__APPLE__) || defined(_MSC_VER)
 #define FOLLY_STATIC_CTOR_PRIORITY_MAX
 #else
