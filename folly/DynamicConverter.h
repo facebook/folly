@@ -328,6 +328,17 @@ struct DynamicConstructor<
   }
 };
 
+// enums
+template <typename C>
+struct DynamicConstructor<
+    C,
+    typename std::enable_if<std::is_enum<C>::value>::type> {
+  static dynamic construct(const C& x) {
+    using type = typename std::underlying_type<C>::type;
+    return dynamic(static_cast<type>(x));
+  }
+};
+
 // maps
 template <typename C>
 struct DynamicConstructor<
