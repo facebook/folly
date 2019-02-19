@@ -57,6 +57,16 @@ SSLContext::SSLContext(SSLVersion version) {
       // do nothing
       break;
   }
+
+    // Disable TLS 1.3 by default, for now, if this version of OpenSSL
+    // supports it. There are some semantic differences (e.g. assumptions
+    // on getSession() returning a resumable session, SSL_CTX_set_ciphersuites,
+    // etc.)
+    //
+#if FOLLY_OPENSSL_HAS_TLS13
+  opt |= SSL_OP_NO_TLSv1_3;
+#endif
+
   int newOpt = SSL_CTX_set_options(ctx_, opt);
   DCHECK((newOpt & opt) == opt);
 
