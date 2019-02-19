@@ -37,6 +37,7 @@
 #include <limits>
 #include <stdexcept>
 #include <thread>
+#include <utility>
 
 namespace folly {
 namespace detail {
@@ -238,11 +239,11 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
   DistributedMutexStateProxy& operator=(DistributedMutexStateProxy&& other) {
     DCHECK(!(*this)) << "Cannot move into a valid DistributedMutexStateProxy";
 
-    next_ = exchange(other.next_, nullptr);
-    expected_ = exchange(other.expected_, 0);
-    wakerMetadata_ = exchange(other.wakerMetadata_, {});
-    waiters_ = exchange(other.waiters_, nullptr);
-    ready_ = exchange(other.ready_, nullptr);
+    next_ = std::exchange(other.next_, nullptr);
+    expected_ = std::exchange(other.expected_, 0);
+    wakerMetadata_ = std::exchange(other.wakerMetadata_, {});
+    waiters_ = std::exchange(other.waiters_, nullptr);
+    ready_ = std::exchange(other.ready_, nullptr);
 
     return *this;
   }
@@ -415,7 +416,7 @@ bool doFutexWait(Waiter* waiter, Waiter*& next) {
   while (pre != kWake) {
     // before enqueueing on the futex, we wake any waiters that we were
     // possibly responsible for
-    doFutexWake(exchange(next, nullptr));
+    doFutexWake(std::exchange(next, nullptr));
 
     // then we wait on the futex
     //
@@ -765,7 +766,11 @@ void DistributedMutex<Atomic, Publish>::unlock(
     recordTimedWaiterAndClearTimedBit(proxy.timedWaiters_, head);
     auto next = extractAddress<CachelinePadded<Waiter<Atomic>>>(head);
     DCHECK((head & kLocked) && (head != kLocked)) << "incorrect state " << head;
-    if (wake(Publish, *next, {exchange(proxy.expected_, kLocked)}, sleepers)) {
+    if (wake(
+            Publish,
+            *next,
+            {std::exchange(proxy.expected_, kLocked)},
+            sleepers)) {
       break;
     }
   }

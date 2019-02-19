@@ -18,6 +18,7 @@
 
 #include <cassert>
 #include <climits>
+#include <utility>
 
 #include <folly/Function.h>
 #include <folly/Utility.h>
@@ -59,7 +60,8 @@ class Executor {
     }
 
     KeepAlive(KeepAlive&& other) noexcept
-        : executorAndDummyFlag_(exchange(other.executorAndDummyFlag_, 0)) {}
+        : executorAndDummyFlag_(std::exchange(other.executorAndDummyFlag_, 0)) {
+    }
 
     KeepAlive(const KeepAlive& other) noexcept
         : KeepAlive(getKeepAliveToken(other.get())) {}
@@ -86,7 +88,7 @@ class Executor {
 
     KeepAlive& operator=(KeepAlive&& other) {
       reset();
-      executorAndDummyFlag_ = exchange(other.executorAndDummyFlag_, 0);
+      executorAndDummyFlag_ = std::exchange(other.executorAndDummyFlag_, 0);
       return *this;
     }
 
@@ -108,7 +110,7 @@ class Executor {
 
     void reset() {
       if (Executor* executor = get()) {
-        if (exchange(executorAndDummyFlag_, 0) & kDummyFlag) {
+        if (std::exchange(executorAndDummyFlag_, 0) & kDummyFlag) {
           return;
         }
         executor->keepAliveRelease();

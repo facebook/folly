@@ -90,13 +90,6 @@ TEST_F(UtilityTest, forward_like) {
   EXPECT_EQ(&x, std::addressof(as_mutable(folly::forward_like<char const>(x))));
 }
 
-TEST_F(UtilityTest, exchange) {
-  auto obj = std::map<std::string, int>{{"hello", 3}};
-  auto old = exchange(obj, {{"world", 4}});
-  EXPECT_EQ((std::map<std::string, int>{{"world", 4}}), obj);
-  EXPECT_EQ((std::map<std::string, int>{{"hello", 3}}), old);
-}
-
 TEST(FollyIntegerSequence, core) {
   constexpr auto seq = folly::integer_sequence<int, 0, 3, 2>();
   static_assert(seq.size() == 3, "");

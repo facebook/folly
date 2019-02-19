@@ -21,6 +21,8 @@
 #include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
+#include <utility>
+
 namespace folly {
 
 namespace {
@@ -104,13 +106,13 @@ class Atomic {
       Integer value,
       std::memory_order = std::memory_order_seq_cst) {
     onFetchOr_();
-    return exchange(integer_, integer_ | value);
+    return std::exchange(integer_, integer_ | value);
   }
   Integer fetch_and(
       Integer value,
       std::memory_order = std::memory_order_seq_cst) {
     onFetchAnd_();
-    return exchange(integer_, integer_ & value);
+    return std::exchange(integer_, integer_ & value);
   }
 
   Integer load(std::memory_order = std::memory_order_seq_cst) {

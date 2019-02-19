@@ -19,6 +19,7 @@
 #include <cassert>
 #include <chrono>
 #include <thread>
+#include <utility>
 
 #include <folly/Optional.h>
 #include <folly/executors/ExecutorWithPriority.h>
@@ -167,7 +168,7 @@ FutureBase<T>::FutureBase(in_place_t, Args&&... args)
 template <class T>
 void FutureBase<T>::assign(FutureBase<T>&& other) noexcept {
   detach();
-  core_ = exchange(other.core_, nullptr);
+  core_ = std::exchange(other.core_, nullptr);
 }
 
 template <class T>
@@ -1963,7 +1964,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
       auto f = p.getFuture();
       {
         folly::MSLGuard lock(ctx->lock_);
-        f = exchange(ctx->memo_, std::move(f));
+        f = std::exchange(ctx->memo_, std::move(f));
         if (++ctx->numThens_ == ctx->numFutures_) {
           // After reducing the value of the last Future, fulfill the Promise
           ctx->memo_.setCallback_(

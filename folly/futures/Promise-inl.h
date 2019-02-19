@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <thread>
+#include <utility>
 
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/detail/Core.h>
@@ -47,14 +48,14 @@ Promise<T>::Promise() : retrieved_(false), core_(Core::make()) {}
 
 template <class T>
 Promise<T>::Promise(Promise<T>&& other) noexcept
-    : retrieved_(exchange(other.retrieved_, false)),
-      core_(exchange(other.core_, nullptr)) {}
+    : retrieved_(std::exchange(other.retrieved_, false)),
+      core_(std::exchange(other.core_, nullptr)) {}
 
 template <class T>
 Promise<T>& Promise<T>::operator=(Promise<T>&& other) noexcept {
   detach();
-  retrieved_ = exchange(other.retrieved_, false);
-  core_ = exchange(other.core_, nullptr);
+  retrieved_ = std::exchange(other.retrieved_, false);
+  core_ = std::exchange(other.core_, nullptr);
   return *this;
 }
 
