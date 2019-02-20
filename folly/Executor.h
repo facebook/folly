@@ -243,4 +243,10 @@ Executor::KeepAlive<ExecutorT> getKeepAliveToken(ExecutorT& executor) {
   return getKeepAliveToken(&executor);
 }
 
+template <typename ExecutorT>
+Executor::KeepAlive<ExecutorT> getKeepAliveToken(
+    Executor::KeepAlive<ExecutorT>& ka) {
+  return ka.copy();
+}
+
 } // namespace folly
