@@ -33,7 +33,7 @@ namespace folly {
  */
 template <typename Tuple>
 using index_sequence_for_tuple =
-    make_index_sequence<std::tuple_size<Tuple>::value>;
+    std::make_index_sequence<std::tuple_size<Tuple>::value>;
 
 namespace detail {
 namespace apply_tuple {
@@ -45,7 +45,8 @@ struct ApplyInvoke {
   using seq = index_sequence_for_tuple<std::remove_reference_t<T>>;
 
   template <typename F, typename T, std::size_t... I>
-  static constexpr auto invoke_(F&& f, T&& t, index_sequence<I...>) noexcept(
+  static constexpr auto
+  invoke_(F&& f, T&& t, std::index_sequence<I...>) noexcept(
       is_nothrow_invocable<F&&, decltype(get<I>(std::declval<T>()))...>::value)
       -> invoke_result_t<F&&, decltype(get<I>(std::declval<T>()))...> {
     return invoke(static_cast<F&&>(f), get<I>(static_cast<T&&>(t))...);
@@ -57,7 +58,8 @@ template <
     std::size_t... Indices,
     typename ReturnTuple =
         std::tuple<decltype(get<Indices>(std::declval<Tuple>()))...>>
-auto forward_tuple(Tuple&& tuple, index_sequence<Indices...>) -> ReturnTuple {
+auto forward_tuple(Tuple&& tuple, std::index_sequence<Indices...>)
+    -> ReturnTuple {
   return ReturnTuple{get<Indices>(std::forward<Tuple>(tuple))...};
 }
 } // namespace adl

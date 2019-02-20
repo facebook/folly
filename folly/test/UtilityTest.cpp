@@ -90,28 +90,6 @@ TEST_F(UtilityTest, forward_like) {
   EXPECT_EQ(&x, std::addressof(as_mutable(folly::forward_like<char const>(x))));
 }
 
-TEST(FollyIntegerSequence, core) {
-  constexpr auto seq = folly::integer_sequence<int, 0, 3, 2>();
-  static_assert(seq.size() == 3, "");
-  EXPECT_EQ(3, seq.size());
-
-  auto seq2 = folly::index_sequence<0, 4, 3>();
-  EXPECT_EQ(3, seq2.size());
-
-  constexpr auto seq3 = folly::make_index_sequence<3>();
-  static_assert(seq3.size() == 3, "");
-  EXPECT_EQ(3, seq3.size());
-
-  // check our own implementation even when the builtin is available
-  using seq4 = typename folly::utility_detail::make_seq<5>::template apply<
-      folly::integer_sequence<int>,
-      folly::integer_sequence<int, 0>>;
-  EXPECT_EQ(5, seq4{}.size());
-  EXPECT_TRUE((std::is_same<seq4::value_type, int>::value));
-  using seq4_expected = folly::integer_sequence<int, 0, 1, 2, 3, 4>;
-  EXPECT_TRUE((std::is_same<seq4, seq4_expected>::value));
-}
-
 TEST_F(UtilityTest, MoveOnly) {
   class FooBar : folly::MoveOnly {
     int a;

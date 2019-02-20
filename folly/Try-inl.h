@@ -310,7 +310,7 @@ struct RemoveTry<TupleType<folly::Try<Types>...>> {
 };
 
 template <std::size_t... Indices, typename Tuple>
-auto unwrapTryTupleImpl(folly::index_sequence<Indices...>, Tuple&& instance) {
+auto unwrapTryTupleImpl(std::index_sequence<Indices...>, Tuple&& instance) {
   using std::get;
   using ReturnType = typename RemoveTry<typename std::decay<Tuple>::type>::type;
   return ReturnType{(get<Indices>(std::forward<Tuple>(instance)).value())...};
@@ -320,7 +320,7 @@ auto unwrapTryTupleImpl(folly::index_sequence<Indices...>, Tuple&& instance) {
 template <typename Tuple>
 auto unwrapTryTuple(Tuple&& instance) {
   using TupleDecayed = typename std::decay<Tuple>::type;
-  using Seq = folly::make_index_sequence<std::tuple_size<TupleDecayed>::value>;
+  using Seq = std::make_index_sequence<std::tuple_size<TupleDecayed>::value>;
   return try_detail::unwrapTryTupleImpl(Seq{}, std::forward<Tuple>(instance));
 }
 

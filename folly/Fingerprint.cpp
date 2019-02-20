@@ -20,6 +20,8 @@
 #include <folly/Utility.h>
 #include <folly/detail/FingerprintPolynomial.h>
 
+#include <utility>
+
 namespace folly {
 namespace detail {
 
@@ -52,33 +54,37 @@ struct FingerprintTablePoly<127> {
 };
 
 template <typename D, size_t S0, size_t... I0>
-constexpr auto copy_table(D const (&table)[S0], index_sequence<I0...>) {
+constexpr auto copy_table(D const (&table)[S0], std::index_sequence<I0...>) {
   using array = std::array<D, S0>;
   return array{{table[I0]...}};
 }
 template <typename D, size_t S0>
 constexpr auto copy_table(D const (&table)[S0]) {
-  return copy_table(table, make_index_sequence<S0>{});
+  return copy_table(table, std::make_index_sequence<S0>{});
 }
 
 template <typename D, size_t S0, size_t S1, size_t... I0>
-constexpr auto copy_table(D const (&table)[S0][S1], index_sequence<I0...>) {
+constexpr auto copy_table(
+    D const (&table)[S0][S1],
+    std::index_sequence<I0...>) {
   using array = std::array<std::array<D, S1>, S0>;
   return array{{copy_table(table[I0])...}};
 }
 template <typename D, size_t S0, size_t S1>
 constexpr auto copy_table(D const (&table)[S0][S1]) {
-  return copy_table(table, make_index_sequence<S0>{});
+  return copy_table(table, std::make_index_sequence<S0>{});
 }
 
 template <typename D, size_t S0, size_t S1, size_t S2, size_t... I0>
-constexpr auto copy_table(D const (&table)[S0][S1][S2], index_sequence<I0...>) {
+constexpr auto copy_table(
+    D const (&table)[S0][S1][S2],
+    std::index_sequence<I0...>) {
   using array = std::array<std::array<std::array<D, S2>, S1>, S0>;
   return array{{copy_table(table[I0])...}};
 }
 template <typename D, size_t S0, size_t S1, size_t S2>
 constexpr auto copy_table(D const (&table)[S0][S1][S2]) {
-  return copy_table(table, make_index_sequence<S0>{});
+  return copy_table(table, std::make_index_sequence<S0>{});
 }
 
 template <size_t Deg>
