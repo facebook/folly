@@ -19,6 +19,8 @@
 #include <experimental/coroutine>
 #include <mutex>
 
+#include <folly/Portability.h>
+
 namespace folly {
 namespace coro {
 
@@ -125,7 +127,7 @@ class Mutex {
   /// If you do not specify an executor by calling .via() then the inline
   /// executor is used and the awaiting coroutine is resumed inline inside the
   /// call to .unlock() by the previous lock holder.
-  [[nodiscard]] ScopedLockOperation co_scoped_lock() noexcept;
+  FOLLY_NODISCARD ScopedLockOperation co_scoped_lock() noexcept;
 
   /// Lock the mutex asynchronously.
   ///
@@ -142,7 +144,7 @@ class Mutex {
   ///
   /// Consider using scopedLockAsync() instead to obtain a std::scoped_lock
   /// that handles releasing the lock at the end of the scope.
-  [[nodiscard]] LockOperation co_lock() noexcept;
+  FOLLY_NODISCARD LockOperation co_lock() noexcept;
 
   /// Unlock the mutex.
   ///

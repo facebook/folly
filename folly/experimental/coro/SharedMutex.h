@@ -23,6 +23,7 @@
 #include <utility>
 
 #include <folly/Executor.h>
+#include <folly/Portability.h>
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
 #include <folly/experimental/coro/SharedLock.h>
@@ -129,7 +130,7 @@ class SharedMutexFair {
   ///
   /// After this operation completes, the caller is responsible for calling
   /// .unlock() to release the lock.
-  [[nodiscard]] LockOperation<LockAwaiter> co_lock() noexcept;
+  FOLLY_NODISCARD LockOperation<LockAwaiter> co_lock() noexcept;
 
   /// Asynchronously acquire an exclusive lock on the mutex and return an object
   /// that will release the lock when it goes out of scope.
@@ -142,7 +143,7 @@ class SharedMutexFair {
   /// execution without suspending. Otherwise, the coroutine is suspended and
   /// will later be resumed on the specified executor once the lock has been
   /// acquired.
-  [[nodiscard]] LockOperation<ScopedLockAwaiter> co_scoped_lock() noexcept;
+  FOLLY_NODISCARD LockOperation<ScopedLockAwaiter> co_scoped_lock() noexcept;
 
   /// Asynchronously acquire a shared lock on the mutex.
   ///
@@ -160,7 +161,7 @@ class SharedMutexFair {
   ///
   /// After this operation completes, the caller is responsible for calling
   /// .unlock_shared() to release the lock.
-  [[nodiscard]] LockOperation<LockSharedAwaiter> co_lock_shared() noexcept;
+FOLLY_NODISCARD LockOperation<LockSharedAwaiter> co_lock_shared() noexcept;
 
   /// Asynchronously acquire an exclusive lock on the mutex and return an object
   /// that will release the lock when it goes out of scope.
@@ -173,7 +174,7 @@ class SharedMutexFair {
   /// execution without suspending. Otherwise, the coroutine is suspended and
   /// will later be resumed on the specified executor once the lock has been
   /// acquired.
-  [[nodiscard]] LockOperation<ScopedLockSharedAwaiter>
+  FOLLY_NODISCARD LockOperation<ScopedLockSharedAwaiter>
   co_scoped_lock_shared() noexcept;
 
   /// Release the exclusive lock.
@@ -275,7 +276,7 @@ class SharedMutexFair {
    public:
     using LockAwaiter::LockAwaiter;
 
-    [[nodiscard]] std::unique_lock<SharedMutexFair> await_resume() noexcept {
+    FOLLY_NODISCARD std::unique_lock<SharedMutexFair> await_resume() noexcept {
       LockAwaiter::await_resume();
       return std::unique_lock<SharedMutexFair>{*mutex_, std::adopt_lock};
     }
@@ -285,7 +286,7 @@ class SharedMutexFair {
    public:
     using LockSharedAwaiter::LockSharedAwaiter;
 
-    [[nodiscard]] SharedLock<SharedMutexFair> await_resume() noexcept {
+    FOLLY_NODISCARD SharedLock<SharedMutexFair> await_resume() noexcept {
       LockSharedAwaiter::await_resume();
       return SharedLock<SharedMutexFair>{*mutex_, std::adopt_lock};
     }

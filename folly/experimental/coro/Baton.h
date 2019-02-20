@@ -18,6 +18,8 @@
 #include <atomic>
 #include <experimental/coroutine>
 
+#include <folly/Portability.h>
+
 namespace folly {
 namespace coro {
 
@@ -78,7 +80,7 @@ class Baton {
   /// the behaviour is as if an inline executor was specified.
   /// i.e. the coroutine will be resumed inside the call to .post() on the
   /// thread that next calls .post().
-  [[nodiscard]] WaitOperation operator co_await() const noexcept;
+  FOLLY_NODISCARD WaitOperation operator co_await() const noexcept;
 
   /// Set the Baton to the signalled state if it is not already signalled.
   ///
