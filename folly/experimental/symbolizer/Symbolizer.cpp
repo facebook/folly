@@ -69,7 +69,6 @@ void SymbolizedFrame::set(
   clear();
   found = true;
 
-  address += file->getBaseAddress();
   auto sym = file->getDefinitionByAddress(address);
   if (!sym.first) {
     return;
@@ -134,13 +133,6 @@ void Symbolizer::symbolize(
       continue;
     }
 
-    // Get the address at which the object is loaded.  We have to use the ELF
-    // header for the running executable, since its `l_addr' is zero, but we
-    // should use `l_addr' for everything else---in particular, if the object
-    // is position-independent, getBaseAddress() (which is p_vaddr) will be 0.
-    auto const base =
-        lmap->l_addr != 0 ? lmap->l_addr : elfFile->getBaseAddress();
-
     for (size_t i = 0; i < addrCount && remaining != 0; ++i) {
       auto& frame = frames[i];
       if (frame.found) {
@@ -160,8 +152,9 @@ void Symbolizer::symbolize(
         }
       }
 
-      // Get the unrelocated, ELF-relative address.
-      auto const adjusted = addr - base;
+      // Get the unrelocated, ELF-relative address by normalizing via the
+      // address at which the object is loaded.
+      auto const adjusted = addr - lmap->l_addr;
 
       if (elfFile->getSectionContainingAddress(adjusted)) {
         frame.set(elfFile, adjusted, mode_);
