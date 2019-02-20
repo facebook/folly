@@ -608,8 +608,7 @@ void AsyncSSLSocket::setServerName(std::string serverName) noexcept {
 
 void AsyncSSLSocket::timeoutExpired(
     std::chrono::milliseconds timeout) noexcept {
-  if (state_ == StateEnum::ESTABLISHED &&
-      (sslState_ == STATE_CACHE_LOOKUP || sslState_ == STATE_ASYNC_PENDING)) {
+  if (state_ == StateEnum::ESTABLISHED && sslState_ == STATE_ASYNC_PENDING) {
     sslState_ = STATE_ERROR;
     // We are expecting a callback in restartSSLAccept.  The cache lookup
     // and rsa-call necessarily have pointers to this ssl socket, so delay
@@ -985,36 +984,13 @@ bool AsyncSSLSocket::willBlock(
     // Register for write event if not already.
     updateEventRegistration(EventHandler::WRITE, EventHandler::READ);
     return true;
-#ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
-  } else if (error == SSL_ERROR_WANT_SESS_CACHE_LOOKUP) {
-    // We will block but we can't register our own socket.  The callback that
-    // triggered this code will re-call handleAccept at the appropriate time.
-
-    // We can only get here if the linked libssl.so has support for this feature
-    // as well, otherwise SSL_get_error cannot return our error code.
-    sslState_ = STATE_CACHE_LOOKUP;
-
-    // Unregister for all events while blocked here
-    updateEventRegistration(
-        EventHandler::NONE, EventHandler::READ | EventHandler::WRITE);
-
-    // The timeout (if set) keeps running here
-    return true;
-#endif
   } else if ((false
-#ifdef SSL_ERROR_WANT_RSA_ASYNC_PENDING
-              || error == SSL_ERROR_WANT_RSA_ASYNC_PENDING
-#endif
-#ifdef SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
-              || error == SSL_ERROR_WANT_ECDSA_ASYNC_PENDING
-#endif
 #ifdef SSL_ERROR_WANT_ASYNC // OpenSSL 1.1.0 Async API
               || error == SSL_ERROR_WANT_ASYNC
 #endif
               )) {
-    // Our custom openssl function has kicked off an async request to do
-    // rsa/ecdsa private key operation.  When that call returns, a callback will
-    // be invoked that will re-call handleAccept.
+    // An asynchronous request has been kicked off. On completion, it will
+    // invoke a callback to re-call handleAccept
     sslState_ = STATE_ASYNC_PENDING;
 
     // Unregister for all events while blocked here
@@ -1087,8 +1063,8 @@ void AsyncSSLSocket::restartSSLAccept() {
           << "sslState=" << sslState_ << ", events=" << eventFlags_;
   DestructorGuard dg(this);
   assert(
-      sslState_ == STATE_CACHE_LOOKUP || sslState_ == STATE_ASYNC_PENDING ||
-      sslState_ == STATE_ERROR || sslState_ == STATE_CLOSED);
+      sslState_ == STATE_ASYNC_PENDING || sslState_ == STATE_ERROR ||
+      sslState_ == STATE_CLOSED);
   if (sslState_ == STATE_CLOSED) {
     // I sure hope whoever closed this socket didn't delete it already,
     // but this is not strictly speaking an error

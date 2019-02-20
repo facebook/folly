@@ -610,29 +610,6 @@ class SSLServerAcceptCallbackDelay : public SSLServerAcceptCallback {
   }
 };
 
-class SSLServerAsyncCacheAcceptCallback : public SSLServerAcceptCallback {
- public:
-  explicit SSLServerAsyncCacheAcceptCallback(
-      HandshakeCallback* hcb,
-      uint32_t timeout = 0)
-      : SSLServerAcceptCallback(hcb, timeout) {}
-
-  void connAccepted(
-      const std::shared_ptr<folly::AsyncSSLSocket>& s) noexcept override {
-    auto sock = std::static_pointer_cast<AsyncSSLSocket>(s);
-
-    std::cerr << "SSLServerAcceptCallback::connAccepted" << std::endl;
-
-    hcb_->setSocket(sock);
-    sock->sslAccept(hcb_, std::chrono::milliseconds(timeout_));
-    ASSERT_TRUE(
-        (sock->getSSLState() == AsyncSSLSocket::STATE_ACCEPTING) ||
-        (sock->getSSLState() == AsyncSSLSocket::STATE_CACHE_LOOKUP));
-
-    state = STATE_SUCCEEDED;
-  }
-};
-
 class HandshakeErrorCallback : public SSLServerAcceptCallbackBase {
  public:
   explicit HandshakeErrorCallback(HandshakeCallback* hcb)
@@ -709,71 +686,6 @@ class ConnectTimeoutCallback : public SSLServerAcceptCallbackBase {
     // Just wait a while before closing the socket, so the client
     // will time out waiting for the handshake to complete.
     s->getEventBase()->tryRunAfterDelay([=] { s->close(); }, 100);
-  }
-};
-
-class TestSSLAsyncCacheServer : public TestSSLServer {
- public:
-  explicit TestSSLAsyncCacheServer(
-      SSLServerAcceptCallbackBase* acb,
-      int lookupDelay = 100)
-      : TestSSLServer(acb) {
-    SSL_CTX* sslCtx = ctx_->getSSLCtx();
-#ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
-    SSL_CTX_sess_set_get_cb(
-        sslCtx, TestSSLAsyncCacheServer::getSessionCallback);
-#endif
-    SSL_CTX_set_session_cache_mode(
-        sslCtx, SSL_SESS_CACHE_NO_INTERNAL | SSL_SESS_CACHE_SERVER);
-    asyncCallbacks_ = 0;
-    asyncLookups_ = 0;
-    lookupDelay_ = lookupDelay;
-  }
-
-  uint32_t getAsyncCallbacks() const {
-    return asyncCallbacks_;
-  }
-  uint32_t getAsyncLookups() const {
-    return asyncLookups_;
-  }
-
- private:
-  static uint32_t asyncCallbacks_;
-  static uint32_t asyncLookups_;
-  static uint32_t lookupDelay_;
-
-  static SSL_SESSION* getSessionCallback(
-      SSL* ssl,
-      unsigned char* /* sess_id */,
-      int /* id_len */,
-      int* copyflag) {
-    *copyflag = 0;
-    asyncCallbacks_++;
-    (void)ssl;
-#ifdef SSL_ERROR_WANT_SESS_CACHE_LOOKUP
-    if (!SSL_want_sess_cache_lookup(ssl)) {
-      // libssl.so mismatch
-      std::cerr << "no async support" << std::endl;
-      return nullptr;
-    }
-
-    AsyncSSLSocket* sslSocket = AsyncSSLSocket::getFromSSL(ssl);
-    assert(sslSocket != nullptr);
-    // Going to simulate an async cache by just running delaying the miss 100ms
-    if (asyncCallbacks_ % 2 == 0) {
-      // This socket is already blocked on lookup, return miss
-      std::cerr << "returning miss" << std::endl;
-    } else {
-      // fresh meat - block it
-      std::cerr << "async lookup" << std::endl;
-      sslSocket->getEventBase()->tryRunAfterDelay(
-          std::bind(&AsyncSSLSocket::restartSSLAccept, sslSocket),
-          lookupDelay_);
-      *copyflag = SSL_SESSION_CB_WOULD_BLOCK;
-      asyncLookups_++;
-    }
-#endif
-    return nullptr;
   }
 };
 
