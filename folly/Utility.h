@@ -369,7 +369,7 @@ class MoveOnly {
 using MoveOnly = moveonly_::MoveOnly;
 
 template <typename T>
-constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
+constexpr auto to_signed(T const& t) {
   using S = typename std::make_signed<T>::type;
   // note: static_cast<S>(t) would be more straightforward, but it would also be
   // implementation-defined behavior and that is typically to be avoided; the
@@ -379,7 +379,7 @@ constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
 }
 
 template <typename T>
-constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
+constexpr auto to_unsigned(T const& t) {
   using U = typename std::make_unsigned<T>::type;
   return static_cast<U>(t);
 }
