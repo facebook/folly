@@ -27,6 +27,7 @@
 #include <folly/Likely.h>
 #include <folly/Optional.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/dynamic.h>
 #include <folly/lang/Exception.h>
 
@@ -334,8 +335,7 @@ struct DynamicConstructor<
     C,
     typename std::enable_if<std::is_enum<C>::value>::type> {
   static dynamic construct(const C& x) {
-    using type = typename std::underlying_type<C>::type;
-    return dynamic(static_cast<type>(x));
+    return dynamic(to_underlying_type(x));
   }
 };
 
