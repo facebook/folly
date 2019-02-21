@@ -23,7 +23,7 @@
 // So we extract the inclusion of `<demangle.h>` which includes `<libiberty.h>`
 // to here, isolating it.
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
-#include <demangle.h>
+#include <demangle.h> // @manual
 #endif
 
 namespace folly {
