@@ -24,6 +24,7 @@
 #include <folly/Likely.h>
 #include <folly/detail/Singleton.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/TypeInfo.h>
 
 namespace folly {
 namespace detail {
@@ -75,12 +76,12 @@ class StaticSingletonManagerWithRtti {
   }
 
   template <typename T, typename Tag>
-  FOLLY_ALWAYS_INLINE static std::type_info const& key_() {
-#if FOLLY_HAS_RTTI
-    return typeid(TypeTuple<T, Tag>);
-#else
-    throw_exception<std::logic_error>("rtti unavailable");
-#endif
+  FOLLY_ALWAYS_INLINE static Key const& key_() {
+    auto const key = type_info_of<TypeTuple<T, Tag>>();
+    if (!key) {
+      throw_exception<std::logic_error>("rtti unavailable");
+    }
+    return *key;
   }
 
   FOLLY_NOINLINE static void* create_(Key const& key, Make& make, Cache& cache);
