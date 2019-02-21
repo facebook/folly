@@ -28,7 +28,7 @@
 bool folly::JemallocHugePageAllocator::hugePagesSupported{true};
 #endif
 
-#endif // defined(FOLLY_HAVE_LIBJEMALLOC) && !FOLLY_SANITIZE
+#endif // MADV_HUGEPAGE && defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
 
 #ifndef FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 // Some mocks when jemalloc.h is not included or version too old
@@ -39,6 +39,8 @@ bool folly::JemallocHugePageAllocator::hugePagesSupported{true};
 #define MALLOCX_ARENA(x) 0
 #define MALLOCX_TCACHE_NONE 0
 #define MADV_HUGEPAGE 0
+
+#if !defined(JEMALLOC_VERSION_MAJOR) || (JEMALLOC_VERSION_MAJOR < 5)
 typedef struct extent_hooks_s extent_hooks_t;
 typedef void*(extent_alloc_t)(
     extent_hooks_t*,
@@ -51,6 +53,8 @@ typedef void*(extent_alloc_t)(
 struct extent_hooks_s {
   extent_alloc_t* alloc;
 };
+#endif // JEMALLOC_VERSION_MAJOR
+
 bool folly::JemallocHugePageAllocator::hugePagesSupported{false};
 #endif // FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 
@@ -65,7 +69,7 @@ static void print_error(int err, const char* msg) {
 
 class HugePageArena {
  public:
-  int init(int nr_pages);
+  int init(int nr_pages, const JemallocHugePageAllocator::Options& options);
   void* reserve(size_t size, size_t alignment);
 
   bool addressInArena(void* address) {
@@ -75,6 +79,10 @@ class HugePageArena {
 
   size_t freeSpace() {
     return end_ - freePtr_;
+  }
+
+  unsigned arenaIndex() {
+    return arenaIndex_;
   }
 
  private:
@@ -92,6 +100,7 @@ class HugePageArena {
   uintptr_t freePtr_{0};
   extent_alloc_t* originalAlloc_{nullptr};
   extent_hooks_t extentHooks_;
+  unsigned arenaIndex_{0};
 };
 
 constexpr size_t kHugePageSize = 2 * 1024 * 1024;
@@ -151,8 +160,6 @@ void* HugePageArena::allocHook(
   if (new_addr == nullptr) {
     res = arena.reserve(size, alignment);
   }
-  LOG(INFO) << "Extent request of size " << size << " alignment " << alignment
-            << " = " << res << " (" << arena.freeSpace() << " bytes free)";
   if (res == nullptr) {
     LOG_IF(WARNING, new_addr != nullptr) << "Explicit address not supported";
     res = arena.originalAlloc_(
@@ -163,16 +170,19 @@ void* HugePageArena::allocHook(
     }
     *commit = true;
   }
+  VLOG(0) << "Extent request of size " << size << " alignment " << alignment
+          << " = " << res << " (" << arena.freeSpace() << " bytes free)";
   return res;
 }
 
-int HugePageArena::init(int nr_pages) {
+int HugePageArena::init(
+    int nr_pages,
+    const JemallocHugePageAllocator::Options& options) {
   DCHECK(start_ == 0);
   DCHECK(usingJEMalloc());
 
-  unsigned arena_index;
-  size_t len = sizeof(arena_index);
-  if (auto ret = mallctl("arenas.create", &arena_index, &len, nullptr, 0)) {
+  size_t len = sizeof(arenaIndex_);
+  if (auto ret = mallctl("arenas.create", &arenaIndex_, &len, nullptr, 0)) {
     print_error(ret, "Unable to create arena");
     return 0;
   }
@@ -187,13 +197,13 @@ int HugePageArena::init(int nr_pages) {
   size_t mib[3];
   size_t miblen = sizeof(mib) / sizeof(size_t);
   std::ostringstream rtl_key;
-  rtl_key << "arena." << arena_index << ".retain_grow_limit";
+  rtl_key << "arena." << arenaIndex_ << ".retain_grow_limit";
   if (auto ret = mallctlnametomib(rtl_key.str().c_str(), mib, &miblen)) {
     print_error(ret, "Unable to read growth limit");
     return 0;
   }
   size_t grow_retained_limit = kHugePageSize;
-  mib[1] = arena_index;
+  mib[1] = arenaIndex_;
   if (auto ret = mallctlbymib(
           mib,
           miblen,
@@ -206,7 +216,7 @@ int HugePageArena::init(int nr_pages) {
   }
 
   std::ostringstream hooks_key;
-  hooks_key << "arena." << arena_index << ".extent_hooks";
+  hooks_key << "arena." << arenaIndex_ << ".extent_hooks";
   extent_hooks_t* hooks;
   len = sizeof(hooks);
   // Read the existing hooks
@@ -230,12 +240,29 @@ int HugePageArena::init(int nr_pages) {
     return 0;
   }
 
+  if (options.noDecay) {
+    // Set decay time to 0, which will cause jemalloc to free memory
+    // back to kernel immediately.
+    ssize_t decay_ms = 0;
+    std::ostringstream dirty_decay_key;
+    dirty_decay_key << "arena." << arenaIndex_ << ".dirty_decay_ms";
+    if (auto ret = mallctl(
+            dirty_decay_key.str().c_str(),
+            nullptr,
+            nullptr,
+            &decay_ms,
+            sizeof(decay_ms))) {
+      print_error(ret, "Unable to set decay time");
+      return 0;
+    }
+  }
+
   start_ = freePtr_ = map_pages(nr_pages);
   if (start_ == 0) {
     return false;
   }
   end_ = start_ + (nr_pages * kHugePageSize);
-  return MALLOCX_ARENA(arena_index) | MALLOCX_TCACHE_NONE;
+  return MALLOCX_ARENA(arenaIndex_) | MALLOCX_TCACHE_NONE;
 }
 
 void* HugePageArena::reserve(size_t size, size_t alignment) {
@@ -255,14 +282,14 @@ void* HugePageArena::reserve(size_t size, size_t alignment) {
 
 int JemallocHugePageAllocator::flags_{0};
 
-bool JemallocHugePageAllocator::init(int nr_pages) {
+bool JemallocHugePageAllocator::init(int nr_pages, const Options& options) {
   if (!usingJEMalloc()) {
     LOG(ERROR) << "Not linked with jemalloc?";
     hugePagesSupported = false;
   }
   if (hugePagesSupported) {
     if (flags_ == 0) {
-      flags_ = arena.init(nr_pages);
+      flags_ = arena.init(nr_pages, options);
     } else {
       LOG(WARNING) << "Already initialized";
     }
@@ -278,6 +305,10 @@ size_t JemallocHugePageAllocator::freeSpace() {
 
 bool JemallocHugePageAllocator::addressInArena(void* address) {
   return arena.addressInArena(address);
+}
+
+unsigned arenaIndex() {
+  return arena.arenaIndex();
 }
 
 } // namespace folly

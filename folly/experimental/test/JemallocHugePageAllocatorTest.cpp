@@ -75,7 +75,7 @@ TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   }
 
   // This fits
-  void* ptr1 = jha::allocate(mb(1) + kb(512));
+  void* ptr1 = jha::allocate(mb(2));
   EXPECT_NE(nullptr, ptr1);
 
   if (initialized) {
@@ -91,7 +91,7 @@ TEST(JemallocHugePageAllocatorTest, LargeAllocations) {
   // Free and reuse huge page area
   jha::deallocate(ptr2);
   jha::deallocate(ptr0);
-  ptr2 = jha::allocate(mb(1));
+  ptr2 = jha::allocate(kb(64));
 
   // No memory in the huge page arena was freed - ptr0 was allocated
   // before init and ptr2 didn't fit
