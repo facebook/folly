@@ -307,7 +307,7 @@ struct Helper {
 #endif
 
 template <class T>
-FOLLY_CPP14_CONSTEXPR void constexpr_swap(T& a, T& b) noexcept(
+constexpr void constexpr_swap(T& a, T& b) noexcept(
     noexcept(a = T(std::move(a)))) {
   T tmp((std::move(a)));
   a = std::move(b);
@@ -336,7 +336,7 @@ struct ReverseIterator {
 
   constexpr ReverseIterator() = default;
   constexpr ReverseIterator(const ReverseIterator&) = default;
-  FOLLY_CPP14_CONSTEXPR ReverseIterator& operator=(const ReverseIterator&) =
+  constexpr ReverseIterator& operator=(const ReverseIterator&) =
       default;
   constexpr explicit ReverseIterator(T* p) noexcept : p_(p) {}
   constexpr /* implicit */ ReverseIterator(const other& that) noexcept
@@ -354,25 +354,25 @@ struct ReverseIterator {
   constexpr reference operator*() const {
     return *(p_ - 1);
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator& operator++() noexcept {
+  constexpr ReverseIterator& operator++() noexcept {
     --p_;
     return *this;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator operator++(int) noexcept {
+  constexpr ReverseIterator operator++(int) noexcept {
     auto tmp(*this);
     --p_;
     return tmp;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator& operator--() noexcept {
+  constexpr ReverseIterator& operator--() noexcept {
     ++p_;
     return *this;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator operator--(int) noexcept {
+  constexpr ReverseIterator operator--(int) noexcept {
     auto tmp(*this);
     ++p_;
     return tmp;
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator& operator+=(std::ptrdiff_t i) noexcept {
+  constexpr ReverseIterator& operator+=(std::ptrdiff_t i) noexcept {
     p_ -= i;
     return *this;
   }
@@ -386,7 +386,7 @@ struct ReverseIterator {
       std::ptrdiff_t i) noexcept {
     return ReverseIterator{that.p_ - i};
   }
-  FOLLY_CPP14_CONSTEXPR ReverseIterator& operator-=(std::ptrdiff_t i) noexcept {
+  constexpr ReverseIterator& operator-=(std::ptrdiff_t i) noexcept {
     p_ += i;
     return *this;
   }
@@ -728,7 +728,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   constexpr BasicFixedString(std::initializer_list<Char> il) noexcept(false)
       : BasicFixedString{il.begin(), il.size()} {}
 
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator=(
+  constexpr BasicFixedString& operator=(
       const BasicFixedString&) noexcept = default;
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
@@ -745,7 +745,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return `*this`
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator=(
+  constexpr BasicFixedString& operator=(
       const BasicFixedString<Char, M>& that) noexcept(M <= N) {
     detail::fixedstring::checkOverflow(that.size_, N);
     size_ = that.copy(data_, that.size_);
@@ -764,7 +764,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return `*this`
    */
   template <std::size_t M, class = typename std::enable_if<(M - 1u <= N)>::type>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator=(
+  constexpr BasicFixedString& operator=(
       const Char (&that)[M]) noexcept {
     return assign(detail::fixedstring::checkNullTerminated(that), M - 1u);
   }
@@ -778,7 +778,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \throw std::out_of_range when il.size() > N
    * \return `*this`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator=(
+  constexpr BasicFixedString& operator=(
       std::initializer_list<Char> il) noexcept(false) {
     detail::fixedstring::checkOverflow(il.size(), N);
     for (std::size_t i = 0u; i < il.size(); ++i) {
@@ -793,7 +793,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Conversion to folly::Range
    * \return `Range<Char*>{begin(), end()}`
    */
-  FOLLY_CPP14_CONSTEXPR Range<Char*> toRange() noexcept {
+  constexpr Range<Char*> toRange() noexcept {
     return {begin(), end()};
   }
 
@@ -821,7 +821,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   // to compile. But it creates ambiguities when passing a FixedString to an
   // API that has overloads for `const char*` and `folly::Range`, for instance.
   // using ArrayType = Char[N];
-  // FOLLY_CPP14_CONSTEXPR /* implicit */ operator ArrayType&() noexcept {
+  // constexpr /* implicit */ operator ArrayType&() noexcept {
   //   return data_;
   // }
 
@@ -841,7 +841,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \throw std::out_of_range when count > N
    * \return `*this`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       std::size_t count,
       Char ch) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N);
@@ -858,7 +858,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `assign(that, 0, that.size())`
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       const BasicFixedString<Char, M>& that) noexcept(M <= N) {
     return *this = that;
   }
@@ -868,7 +868,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   // N is a count of characters. In the latter, it would be a position, which
   // totally changes the meaning of the code.
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       const BasicFixedString<Char, M>& that,
       std::size_t pos) noexcept(false) = delete;
 
@@ -890,7 +890,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return `*this`
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       const BasicFixedString<Char, M>& that,
       std::size_t pos,
       std::size_t count) noexcept(false) {
@@ -907,7 +907,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `assign(that, M - 1)`
    */
   template <std::size_t M, class = typename std::enable_if<(M - 1u <= N)>::type>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       const Char (&that)[M]) noexcept {
     return assign(detail::fixedstring::checkNullTerminated(that), M - 1u);
   }
@@ -924,7 +924,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \throw std::out_of_range when count > N
    * \return `*this`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& assign(
+  constexpr BasicFixedString& assign(
       const Char* that,
       std::size_t count) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N);
@@ -939,7 +939,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Swap the contents of this string with `that`.
    */
-  FOLLY_CPP14_CONSTEXPR void swap(BasicFixedString& that) noexcept {
+  constexpr void swap(BasicFixedString& that) noexcept {
     // less-than-or-equal here to copy the null terminator:
     for (std::size_t i = 0u; i <= folly::constexpr_max(size_, that.size_);
          ++i) {
@@ -952,7 +952,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Return a pointer to a range of `size()+1` characters, the last of which
    * is `Char(0)`.
    */
-  FOLLY_CPP14_CONSTEXPR Char* data() noexcept {
+  constexpr Char* data() noexcept {
     return data_;
   }
 
@@ -973,7 +973,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  FOLLY_CPP14_CONSTEXPR Char* begin() noexcept {
+  constexpr Char* begin() noexcept {
     return data_;
   }
 
@@ -994,7 +994,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data() + size()`.
    */
-  FOLLY_CPP14_CONSTEXPR Char* end() noexcept {
+  constexpr Char* end() noexcept {
     return data_ + size_;
   }
 
@@ -1016,7 +1016,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Returns a reverse iterator to the first character of the reversed string.
    * It corresponds to the last + 1 character of the non-reversed string.
    */
-  FOLLY_CPP14_CONSTEXPR reverse_iterator rbegin() noexcept {
+  constexpr reverse_iterator rbegin() noexcept {
     return reverse_iterator{data_ + size_};
   }
 
@@ -1038,7 +1038,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Returns a reverse iterator to the last + 1 character of the reversed
    * string. It corresponds to the first character of the non-reversed string.
    */
-  FOLLY_CPP14_CONSTEXPR reverse_iterator rend() noexcept {
+  constexpr reverse_iterator rend() noexcept {
     return reverse_iterator{data_};
   }
 
@@ -1102,7 +1102,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return `*(data() + i)`
    * \throw std::out_of_range when i > size()
    */
-  FOLLY_CPP14_CONSTEXPR Char& at(std::size_t i) noexcept(false) {
+  constexpr Char& at(std::size_t i) noexcept(false) {
     return i <= size_ ? data_[i]
                       : (throw_exception<std::out_of_range>(
                              "Out of range in BasicFixedString::at"),
@@ -1124,7 +1124,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note `(*this)[size()]` is allowed will return `Char(0)`.
    * \return `*(data() + i)`
    */
-  FOLLY_CPP14_CONSTEXPR Char& operator[](std::size_t i) noexcept {
+  constexpr Char& operator[](std::size_t i) noexcept {
 #ifdef NDEBUG
     return data_[i];
 #else
@@ -1146,7 +1146,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `(*this)[0]`
    */
-  FOLLY_CPP14_CONSTEXPR Char& front() noexcept {
+  constexpr Char& front() noexcept {
     return (*this)[0u];
   }
 
@@ -1161,7 +1161,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `at(size()-1)`
    * \pre `!empty()`
    */
-  FOLLY_CPP14_CONSTEXPR Char& back() noexcept {
+  constexpr Char& back() noexcept {
 #ifdef NDEBUG
     return data_[size_ - 1u];
 #else
@@ -1185,7 +1185,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \post `size() == 0u`
    * \post `at(size()) == Char(0)`
    */
-  FOLLY_CPP14_CONSTEXPR void clear() noexcept {
+  constexpr void clear() noexcept {
     data_[0u] = Char(0);
     size_ = 0u;
   }
@@ -1193,7 +1193,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `append(1u, ch)`.
    */
-  FOLLY_CPP14_CONSTEXPR void push_back(Char ch) noexcept(false) {
+  constexpr void push_back(Char ch) noexcept(false) {
     detail::fixedstring::checkOverflow(1u, N - size_);
     data_[size_] = ch;
     data_[++size_] = Char(0);
@@ -1214,7 +1214,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \post The characters in the half-open range `[0,size()-1)` are unmodified.
    * \throw std::out_of_range if empty().
    */
-  FOLLY_CPP14_CONSTEXPR void pop_back() noexcept(false) {
+  constexpr void pop_back() noexcept(false) {
     detail::fixedstring::checkOverflow(1u, size_);
     --size_;
     data_[size_] = Char(0);
@@ -1237,7 +1237,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \post `size() == old_size + count`
    * \throw std::out_of_range if count > N - size().
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(
+  constexpr BasicFixedString& append(
       std::size_t count,
       Char ch) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N - size_);
@@ -1253,7 +1253,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `append(*this, 0, that.size())`.
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(
+  constexpr BasicFixedString& append(
       const BasicFixedString<Char, M>& that) noexcept(false) {
     return append(that, 0u, that.size_);
   }
@@ -1262,7 +1262,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   // append("null-terminated", N), where N would be a count instead
   // of a position.
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(
+  constexpr BasicFixedString& append(
       const BasicFixedString<Char, M>& that,
       std::size_t pos) noexcept(false) = delete;
 
@@ -1283,7 +1283,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *        `old_size + count > N`.
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(
+  constexpr BasicFixedString& append(
       const BasicFixedString<Char, M>& that,
       std::size_t pos,
       std::size_t count) noexcept(false) {
@@ -1301,7 +1301,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `append(that, strlen(that))`.
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(const Char* that) noexcept(
+  constexpr BasicFixedString& append(const Char* that) noexcept(
       false) {
     return append(that, folly::constexpr_strlen(that));
   }
@@ -1315,7 +1315,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \post `at(size()) == Char(0)`
    * \throw std::out_of_range if old_size + count > N.
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& append(
+  constexpr BasicFixedString& append(
       const Char* that,
       std::size_t count) noexcept(false) {
     detail::fixedstring::checkOverflow(count, N - size_);
@@ -1401,7 +1401,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Appends characters from a null-terminated string literal to this string.
    * \note Equivalent to `append(that)`.
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator+=(const Char* that) noexcept(
+  constexpr BasicFixedString& operator+=(const Char* that) noexcept(
       false) {
     return append(that);
   }
@@ -1411,7 +1411,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `append(that)`.
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator+=(
+  constexpr BasicFixedString& operator+=(
       const BasicFixedString<Char, M>& that) noexcept(false) {
     return append(that, 0u, that.size_);
   }
@@ -1420,7 +1420,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Appends a character to this string.
    * \note Equivalent to `push_back(ch)`.
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator+=(Char ch) noexcept(false) {
+  constexpr BasicFixedString& operator+=(Char ch) noexcept(false) {
     push_back(ch);
     return *this;
   }
@@ -1429,7 +1429,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Appends characters from an `initializer_list` to this string.
    * \note Equivalent to `append(il.begin(), il.size())`.
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& operator+=(
+  constexpr BasicFixedString& operator+=(
       std::initializer_list<Char> il) noexcept(false) {
     return append(il.begin(), il.size());
   }
@@ -1439,7 +1439,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `clear()`
    * \return *this;
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& erase() noexcept {
+  constexpr BasicFixedString& erase() noexcept {
     clear();
     return *this;
   }
@@ -1454,7 +1454,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return *this;
    * \throw std::out_of_range when pos > size().
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& erase(
+  constexpr BasicFixedString& erase(
       std::size_t pos,
       std::size_t count = npos) noexcept(false) {
     using A = const Char[1];
@@ -1471,7 +1471,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `erase(first - data(), 1)`
    * \return A pointer to the first character after the erased character.
    */
-  FOLLY_CPP14_CONSTEXPR Char* erase(const Char* first) noexcept(false) {
+  constexpr Char* erase(const Char* first) noexcept(false) {
     erase(first - data_, 1u);
     return data_ + (first - data_);
   }
@@ -1480,7 +1480,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `erase(first - data(), last - first)`
    * \return A pointer to the first character after the erased characters.
    */
-  FOLLY_CPP14_CONSTEXPR Char* erase(
+  constexpr Char* erase(
       const Char* first,
       const Char* last) noexcept(false) {
     erase(first - data_, last - first);
@@ -1661,7 +1661,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   `replace(first - data(), last - first, that.data(), that.size())`
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       const Char* first,
       const Char* last,
       const BasicFixedString<Char, M>& that) noexcept(false) {
@@ -1677,7 +1677,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   that.size() - that_pos)</tt>
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       std::size_t this_pos,
       std::size_t this_count,
       const BasicFixedString<Char, M>& that,
@@ -1694,7 +1694,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   `replace(this_pos, this_count, that.data() + that_pos, that_count)`
    */
   template <std::size_t M>
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       std::size_t this_pos,
       std::size_t this_count,
       const BasicFixedString<Char, M>& that,
@@ -1709,7 +1709,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to
    *   `replace(this_pos, this_count, that, strlen(that))`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       std::size_t this_pos,
       std::size_t this_count,
       const Char* that) noexcept(false) {
@@ -1724,7 +1724,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to
    *   `replace(first - data(), last - first, that, strlen(that))`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       const Char* first,
       const Char* last,
       const Char* that) noexcept(false) {
@@ -1749,7 +1749,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   - `this_count > size() - this_pos`
    *   - `size() - this_count + that_count > N`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       std::size_t this_pos,
       std::size_t this_count,
       const Char* that,
@@ -1772,7 +1772,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to
    *   `replace(this_pos, this_count, BasicFixedString{that_count, ch})`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       std::size_t this_pos,
       std::size_t this_count,
       std::size_t that_count,
@@ -1786,7 +1786,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to
    *   `replace(first - data(), last - first, BasicFixedString{that_count, ch})`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       const Char* first,
       const Char* last,
       std::size_t that_count,
@@ -1803,7 +1803,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to
    *   `replace(this_pos, this_count, il.begin(), il.size())`
    */
-  FOLLY_CPP14_CONSTEXPR BasicFixedString& replace(
+  constexpr BasicFixedString& replace(
       const Char* first,
       const Char* last,
       std::initializer_list<Char> il) noexcept(false) {
@@ -2014,7 +2014,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   from this string into the buffer pointed to by `dest`.
    * \return The number of characters copied.
    */
-  FOLLY_CPP14_CONSTEXPR std::size_t copy(Char* dest, std::size_t count) const
+  constexpr std::size_t copy(Char* dest, std::size_t count) const
       noexcept {
     return copy(dest, count, 0u);
   }
@@ -2026,7 +2026,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \return The number of characters copied.
    * \throw std::out_of_range if `pos > size()`
    */
-  FOLLY_CPP14_CONSTEXPR std::size_t
+  constexpr std::size_t
   copy(Char* dest, std::size_t count, std::size_t pos) const noexcept(false) {
     detail::fixedstring::checkOverflow(pos, size_);
     for (std::size_t i = 0u; i < count; ++i) {
@@ -2042,7 +2042,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Resizes the current string.
    * \note Equivalent to `resize(count, Char(0))`
    */
-  FOLLY_CPP14_CONSTEXPR void resize(std::size_t count) noexcept(false) {
+  constexpr void resize(std::size_t count) noexcept(false) {
     resize(count, Char(0));
   }
 
@@ -2051,7 +2051,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    *   `data()[count]` to `Char(0)`. If `count > old_size`, the characters
    *   in the range [`old_size`,`count`) are set to `ch`.
    */
-  FOLLY_CPP14_CONSTEXPR void resize(std::size_t count, Char ch) noexcept(
+  constexpr void resize(std::size_t count, Char ch) noexcept(
       false) {
     detail::fixedstring::checkOverflow(count, N);
     if (count == size_) {
@@ -2998,7 +2998,7 @@ constexpr BasicFixedString<Char, N - 1u> makeFixedString(
  * Swap function
  */
 template <class Char, std::size_t N>
-FOLLY_CPP14_CONSTEXPR void swap(
+constexpr void swap(
     BasicFixedString<Char, N>& a,
     BasicFixedString<Char, N>& b) noexcept {
   a.swap(b);

@@ -83,7 +83,7 @@ namespace folly {
  *  });
  */
 template <typename Range, typename Func>
-FOLLY_CPP14_CONSTEXPR Func for_each(Range&& range, Func func);
+constexpr Func for_each(Range&& range, Func func);
 
 /**
  * The user should return loop_break and loop_continue if they want to iterate
@@ -119,7 +119,7 @@ constexpr auto loop_continue = for_each_detail::LoopControl::CONTINUE;
  * required element.
  */
 template <typename Sequence, typename Index>
-FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index);
+constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
 
 } // namespace folly
 

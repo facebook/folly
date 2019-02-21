@@ -440,24 +440,6 @@ constexpr auto kCpplibVer = 0;
 #endif
 } // namespace folly
 
-// Define FOLLY_USE_CPP14_CONSTEXPR to be true if the compiler's C++14
-// constexpr support is "good enough".
-#ifndef FOLLY_USE_CPP14_CONSTEXPR
-#if defined(__clang__)
-#define FOLLY_USE_CPP14_CONSTEXPR __cplusplus >= 201300L
-#elif defined(__GNUC__)
-#define FOLLY_USE_CPP14_CONSTEXPR __cplusplus >= 201304L
-#else
-#define FOLLY_USE_CPP14_CONSTEXPR 0 // MSVC?
-#endif
-#endif
-
-#if FOLLY_USE_CPP14_CONSTEXPR
-#define FOLLY_CPP14_CONSTEXPR constexpr
-#else
-#define FOLLY_CPP14_CONSTEXPR inline
-#endif
-
 //  MSVC does not permit:
 //
 //    extern int const num;
@@ -471,18 +453,8 @@ constexpr auto kCpplibVer = 0;
 //  True as of MSVC 2017.
 #if _MSC_VER
 #define FOLLY_STORAGE_CONSTEXPR
-#define FOLLY_STORAGE_CPP14_CONSTEXPR
-#else
-#if __ICC
-#define FOLLY_STORAGE_CONSTEXPR
 #else
 #define FOLLY_STORAGE_CONSTEXPR constexpr
-#endif
-#if FOLLY_USE_CPP14_CONSTEXPR
-#define FOLLY_STORAGE_CPP14_CONSTEXPR constexpr
-#else
-#define FOLLY_STORAGE_CPP14_CONSTEXPR
-#endif
 #endif
 
 #if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)

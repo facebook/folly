@@ -439,7 +439,7 @@ class alignas(T) Replaceable
   template <
       class... Args,
       std::enable_if_t<std::is_constructible<T, Args&&...>::value, int> = 0>
-  FOLLY_CPP14_CONSTEXPR explicit Replaceable(in_place_t, Args&&... args)
+  constexpr explicit Replaceable(in_place_t, Args&&... args)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, Args&&...>::value)
       // clang-format on
@@ -453,7 +453,7 @@ class alignas(T) Replaceable
       std::enable_if_t<
           std::is_constructible<T, std::initializer_list<U>, Args&&...>::value,
           int> = 0>
-  FOLLY_CPP14_CONSTEXPR explicit Replaceable(
+  constexpr explicit Replaceable(
       in_place_t,
       std::initializer_list<U> il,
       Args&&... args)
@@ -475,7 +475,7 @@ class alignas(T) Replaceable
               !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
               std::is_convertible<U&&, T>::value,
           int> = 0>
-  FOLLY_CPP14_CONSTEXPR /* implicit */ Replaceable(U&& other)
+  constexpr /* implicit */ Replaceable(U&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
       // clang-format on
@@ -491,7 +491,7 @@ class alignas(T) Replaceable
               !std::is_same<Replaceable<T>, std::decay_t<U>>::value &&
               !std::is_convertible<U&&, T>::value,
           int> = 0>
-  FOLLY_CPP14_CONSTEXPR explicit Replaceable(U&& other)
+  constexpr explicit Replaceable(U&& other)
       // clang-format off
       noexcept(std::is_nothrow_constructible<T, U&&>::value)
       // clang-format on
@@ -611,7 +611,7 @@ class alignas(T) Replaceable
     return launder(reinterpret_cast<T const*>(storage_));
   }
 
-  FOLLY_CPP14_CONSTEXPR T* operator->() {
+  constexpr T* operator->() {
     return launder(reinterpret_cast<T*>(storage_));
   }
 
@@ -619,11 +619,11 @@ class alignas(T) Replaceable
     return *launder(reinterpret_cast<T const*>(storage_));
   }
 
-  FOLLY_CPP14_CONSTEXPR T& operator*() & {
+  constexpr T& operator*() & {
     return *launder(reinterpret_cast<T*>(storage_));
   }
 
-  FOLLY_CPP14_CONSTEXPR T&& operator*() && {
+  constexpr T&& operator*() && {
     return std::move(*launder(reinterpret_cast<T*>(storage_)));
   }
 

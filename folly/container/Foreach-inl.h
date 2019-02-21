@@ -313,7 +313,7 @@ decltype(auto) fetch_impl(RangeTag, Sequence&& sequence, Index&& index) {
 } // namespace for_each_detail
 
 template <typename Sequence, typename Func>
-FOLLY_CPP14_CONSTEXPR Func for_each(Sequence&& sequence, Func func) {
+constexpr Func for_each(Sequence&& sequence, Func func) {
   namespace fed = for_each_detail;
   using tag = fed::SequenceTag<Sequence>;
   fed::for_each_impl(tag{}, std::forward<Sequence>(sequence), func);
@@ -321,7 +321,7 @@ FOLLY_CPP14_CONSTEXPR Func for_each(Sequence&& sequence, Func func) {
 }
 
 template <typename Sequence, typename Index>
-FOLLY_CPP14_CONSTEXPR decltype(auto) fetch(Sequence&& sequence, Index&& index) {
+constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index) {
   namespace fed = for_each_detail;
   using tag = fed::SequenceTag<Sequence>;
   return for_each_detail::fetch_impl(

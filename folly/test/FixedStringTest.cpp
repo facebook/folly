@@ -159,7 +159,6 @@ TEST(FixedStringConcatTest, FromTwoStrings) {
   static_assert(res == "hello world!!!", "");
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<20> constexpr_swap_test() {
   folly::FixedString<10> tmp1{"hello"}, tmp2{"world!"};
   tmp2.swap(tmp1);
@@ -169,7 +168,6 @@ constexpr folly::FixedString<20> constexpr_swap_test() {
 TEST(FixedStringSwapTest, ConstexprSwap) {
   static_assert(constexpr_swap_test() == "world!hello", "");
 }
-#endif
 
 TEST(FixedStringSwapTest, RuntimeSwap) {
   folly::FixedString<10> tmp1{"hello"}, tmp2{"world!"};
@@ -177,7 +175,6 @@ TEST(FixedStringSwapTest, RuntimeSwap) {
   EXPECT_STREQ((tmp1 + tmp2).c_str(), "world!hello");
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<10> constexpr_assign_string_test_1() {
   folly::FixedString<10> tmp1, tmp2{"world!"};
   tmp1 = tmp2;
@@ -205,7 +202,6 @@ TEST(FixedStringAssignTest, ConstexprAssignString) {
   static_assert(constexpr_assign_string_test_3() == "db", "");
   static_assert(constexpr_assign_string_test_4() == "dbye", "");
 }
-#endif
 
 TEST(FixedStringAssignTest, RuntimeAssignString) {
   folly::FixedString<10> tmp1, tmp2{"world!"};
@@ -219,7 +215,6 @@ TEST(FixedStringAssignTest, RuntimeAssignString) {
   EXPECT_STREQ("dby", tmp1.c_str());
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<10> constexpr_assign_literal_test_1() {
   folly::FixedString<10> tmp{"aaaaaaaaaa"};
   tmp = "hello";
@@ -244,7 +239,6 @@ TEST(FixedStringAssignTest, ConstexprAssignLiteral) {
   static_assert(constexpr_assign_literal_test_2() == "hello", "");
   static_assert(constexpr_assign_literal_test_3() == "good", "");
 }
-#endif
 
 TEST(FixedStringAssignTest, RuntimeAssignLiteral) {
   folly::FixedString<10> tmp{"aaaaaaaaaa"};
@@ -333,7 +327,6 @@ TEST(FixedStringCompareTest, CompareStdString) {
   EXPECT_TRUE(tmp2 >= tmp1);
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<20> constexpr_append_string_test() {
   folly::FixedString<20> a{"hello"}, b{"X world!"};
   a.append(1u, ' ');
@@ -345,7 +338,6 @@ constexpr folly::FixedString<20> constexpr_append_string_test() {
 TEST(FixedStringAssignTest, ConstexprAppendString) {
   static_assert(constexpr_append_string_test() == "hello world!", "");
 }
-#endif
 
 TEST(FixedStringAssignTest, RuntimeAppendString) {
   folly::FixedString<20> a{"hello"}, b{"X world!"};
@@ -355,7 +347,6 @@ TEST(FixedStringAssignTest, RuntimeAppendString) {
   EXPECT_STREQ("hello world!", a.c_str());
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<20> constexpr_append_literal_test() {
   folly::FixedString<20> a{"hello"};
   a.append(1u, ' ');
@@ -367,7 +358,6 @@ constexpr folly::FixedString<20> constexpr_append_literal_test() {
 TEST(FixedStringAssignTest, ConstexprAppendLiteral) {
   static_assert(constexpr_append_literal_test() == "hello world!", "");
 }
-#endif
 
 TEST(FixedStringAssignTest, RuntimeAppendLiteral) {
   folly::FixedString<20> a{"hello"};
@@ -393,7 +383,6 @@ TEST(FixedStringCAppendTest, CAppendLiteral) {
   static_assert(tmp3 == "hello world!", "");
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr folly::FixedString<10> constexpr_replace_string_test() {
   folly::FixedString<10> tmp{"abcdefghij"};
   tmp.replace(1, 5, FS("XX"));
@@ -404,7 +393,6 @@ TEST(FixedStringReplaceTest, ConstexprReplaceString) {
   static_assert(constexpr_replace_string_test().size() == 7u, "");
   static_assert(constexpr_replace_string_test() == "aXXghij", "");
 }
-#endif
 
 TEST(FixedStringReplaceTest, RuntimeReplaceString) {
   folly::FixedString<10> tmp{"abcdefghij"};
@@ -637,7 +625,6 @@ TEST(FixedStringConversionTest, ConversionToStdString) {
   EXPECT_STREQ("another string", str.c_str());
 }
 
-#if FOLLY_USE_CPP14_CONSTEXPR
 constexpr std::size_t countSpacesReverse(folly::FixedString<50> s) {
   std::size_t count = 0u;
   auto i = s.rbegin();
@@ -652,7 +639,6 @@ constexpr std::size_t countSpacesReverse(folly::FixedString<50> s) {
 TEST(FixedStringReverseIteratorTest, Cpp14ConstexprReverseIteration) {
   static_assert(3 == countSpacesReverse("This is a string"), "");
 }
-#endif
 
 TEST(FixedStringReverseIteratorTest, ConstexprReverseIteration) {
   static constexpr auto alpha = FS("abcdefghijklmnopqrstuvwxyz");
