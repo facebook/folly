@@ -216,7 +216,7 @@ Type* extractAddress(std::uintptr_t from) {
  */
 inline std::uint64_t strip(std::chrono::nanoseconds t) {
   auto time = t.count();
-  return time << 8;
+  return static_cast<std::uint64_t>(time) << 8;
 }
 
 /**
