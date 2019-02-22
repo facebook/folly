@@ -20,6 +20,16 @@
 
 #include <folly/Portability.h>
 
+//  FOLLY_TYPE_INFO_OF
+//
+//  Returns &typeid(...) if RTTI is available, nullptr otherwise. In either
+//  case, has type std::type_info const*.
+#if FOLLY_HAS_RTTI
+#define FOLLY_TYPE_INFO_OF(...) (&typeid(__VA_ARGS__))
+#else
+#define FOLLY_TYPE_INFO_OF(...) (static_cast<std::type_info const*>(nullptr))
+#endif
+
 namespace folly {
 
 //  type_info_of
@@ -29,11 +39,7 @@ namespace folly {
 //  This overload works on the static type of the template parameter.
 template <typename T>
 FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of() {
-#if FOLLY_HAS_RTTI
-  return &typeid(T);
-#else
-  return nullptr;
-#endif
+  return FOLLY_TYPE_INFO_OF(T);
 }
 
 //  type_info_of
@@ -43,11 +49,7 @@ FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of() {
 //  This overload works on the dynamic type of the non-template parameter.
 template <typename T>
 FOLLY_ALWAYS_INLINE static std::type_info const* type_info_of(T const& t) {
-#if FOLLY_HAS_RTTI
-  return &typeid(t);
-#else
-  return nullptr;
-#endif
+  return FOLLY_TYPE_INFO_OF(t);
 }
 
 } // namespace folly
