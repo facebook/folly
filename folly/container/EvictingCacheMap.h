@@ -120,22 +120,20 @@ class EvictingCacheMap {
                             TIterator,
                             Value,
                             boost::bidirectional_traversal_tag> {
-   private:
-    struct Enabler {};
-
    public:
     iterator_base() {}
 
     explicit iterator_base(TIterator it)
         : iterator_base::iterator_adaptor_(it) {}
 
-    template <typename V, typename I>
-    /* implicit */ iterator_base(
-        iterator_base<V, I> const& other,
+    template <
+        typename V,
+        typename I,
         std::enable_if_t<
-            std::is_convertible<V, Value>::value &&
+            std::is_same<V const, Value>::value &&
                 std::is_convertible<I, TIterator>::value,
-            Enabler> = Enabler())
+            int> = 0>
+    /* implicit */ iterator_base(iterator_base<V, I> const& other)
         : iterator_base::iterator_adaptor_(other.base()) {}
 
     Value& dereference() const {

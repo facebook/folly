@@ -698,3 +698,21 @@ TEST(EvictingCacheMap, CustomKeyEqual) {
     EXPECT_EQ(i, map.get(i + nItems));
   }
 }
+
+TEST(EvictingCacheMap, IteratorConversion) {
+  using type = EvictingCacheMap<int, int>;
+  using i = type::iterator;
+  using ci = type::const_iterator;
+  using ri = type::reverse_iterator;
+  using cri = type::const_reverse_iterator;
+
+  EXPECT_TRUE((std::is_convertible<i, i>::value));
+  EXPECT_TRUE((std::is_convertible<i, ci>::value));
+  EXPECT_FALSE((std::is_convertible<ci, i>::value));
+  EXPECT_TRUE((std::is_convertible<ci, ci>::value));
+
+  EXPECT_TRUE((std::is_convertible<ri, ri>::value));
+  EXPECT_TRUE((std::is_convertible<ri, cri>::value));
+  EXPECT_FALSE((std::is_convertible<cri, ri>::value));
+  EXPECT_TRUE((std::is_convertible<cri, cri>::value));
+}
