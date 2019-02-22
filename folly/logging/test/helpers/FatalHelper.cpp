@@ -38,6 +38,25 @@ DEFINE_bool(
     "Fail an XCHECK() test with no additional message.");
 DEFINE_bool(fail_xdcheck, false, "Fail an XDCHECK() test.");
 
+DEFINE_int32(xcheck_eq0, 0, "Check this value using XCHECK_EQ(value, 0)");
+DEFINE_int32(xcheck_ne0, 1, "Check this value using XCHECK_NE 0)");
+DEFINE_int32(xcheck_lt0, -1, "Check this value using XCHECK_LT(value, 0)");
+DEFINE_int32(xcheck_le0, 0, "Check this value using XCHECK_LE(value, 0)");
+DEFINE_int32(xcheck_gt0, 1, "Check this value using XCHECK_GT(value, 0)");
+DEFINE_int32(xcheck_ge0, 0, "Check this value using XCHECK_GE(value, 0)");
+
+DEFINE_int32(xdcheck_eq0, 0, "Check this value using XDCHECK_EQ(value, 0)");
+DEFINE_int32(xdcheck_ne0, 1, "Check this value using XDCHECK_NE 0)");
+DEFINE_int32(xdcheck_lt0, -1, "Check this value using XDCHECK_LT(value, 0)");
+DEFINE_int32(xdcheck_le0, 0, "Check this value using XDCHECK_LE(value, 0)");
+DEFINE_int32(xdcheck_gt0, 1, "Check this value using XDCHECK_GT(value, 0)");
+DEFINE_int32(xdcheck_ge0, 0, "Check this value using XDCHECK_GE(value, 0)");
+
+DEFINE_bool(
+    test_xcheck_eq_evalutates_once,
+    false,
+    "Test an XCHECK_EQ() statement where the arguments have side effects");
+
 using folly::LogLevel;
 
 namespace {
@@ -110,7 +129,27 @@ int main(int argc, char* argv[]) {
   XCHECK(!FLAGS_fail_xcheck_nomsg);
   XDCHECK(!FLAGS_fail_xdcheck) << ": --fail_xdcheck specified!";
 
-  // Do most of the work in a separate helper function.
+  XCHECK_EQ(FLAGS_xcheck_eq0, 0) << " extra user args";
+  XCHECK_NE(FLAGS_xcheck_ne0, 0, " extra user args");
+  XCHECK_LT(FLAGS_xcheck_lt0, 0, " extra ", "user", " args");
+  XCHECK_LE(FLAGS_xcheck_le0, 0, " extra ", "user") << " args";
+  XCHECK_GT(FLAGS_xcheck_gt0, 0) << " extra user args";
+  XCHECK_GE(FLAGS_xcheck_ge0, 0) << " extra user args";
+  XDCHECK_EQ(FLAGS_xdcheck_eq0, 0) << " extra user args";
+  XDCHECK_NE(FLAGS_xdcheck_ne0, 0, " extra user args");
+  XDCHECK_LT(FLAGS_xdcheck_lt0, 0) << " extra user args";
+  XDCHECK_LE(FLAGS_xdcheck_le0, 0) << " extra user args";
+  XDCHECK_GT(FLAGS_xdcheck_gt0, 0) << " extra user args";
+  XDCHECK_GE(FLAGS_xdcheck_ge0, 0) << " extra user args";
+
+  if (FLAGS_test_xcheck_eq_evalutates_once) {
+    // Make sure XCHECK_EQ() only evaluates "++x" once,
+    // and logs that it equals 6 and not 7.
+    int x = 5;
+    XCHECK_EQ(++x, 7);
+  }
+
+  // Do the remainder of the work in a separate helper function.
   //
   // The main reason for putting this in a helper function is to ensure that
   // the compiler does not warn about missing return statements on XLOG(FATAL)

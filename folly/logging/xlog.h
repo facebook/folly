@@ -332,12 +332,54 @@
 #define XCHECK(cond, ...) \
   XLOG_IF(FATAL, UNLIKELY(!(cond)), "Check failed: " #cond " ", ##__VA_ARGS__)
 
+namespace folly {
+namespace detail {
+template <typename Arg1, typename Arg2, typename CmpFn>
+std::unique_ptr<std::string> XCheckOpImpl(
+    folly::StringPiece checkStr,
+    const Arg1& arg1,
+    const Arg2& arg2,
+    CmpFn&& cmp_fn) {
+  if (LIKELY(cmp_fn(arg1, arg2))) {
+    return nullptr;
+  }
+  return std::make_unique<std::string>(folly::to<std::string>(
+      "Check failed: ", checkStr, " (", arg1, " vs. ", arg2, ")"));
+}
+} // namespace detail
+} // namespace folly
+
+#define XCHECK_OP(op, arg1, arg2, ...)                                        \
+  while (auto _folly_logging_check_result = ::folly::detail::XCheckOpImpl(    \
+             #arg1 " " #op " " #arg2,                                         \
+             (arg1),                                                          \
+             (arg2),                                                          \
+             [](const auto& _folly_check_arg1, const auto& _folly_check_arg2) \
+                 -> bool { return _folly_check_arg1 op _folly_check_arg2; })) \
+  XLOG(FATAL, *_folly_logging_check_result, ##__VA_ARGS__)
+
 /**
- * Assert that a condition is true in non-debug builds.
+ * Assert a comparison relationship between two arguments.
  *
- * When NDEBUG is set this behaves like XDCHECK()
- * When NDEBUG is not defined XDCHECK statements are not evaluated and will
- * never log.
+ * If the comparison check fails the values of both expressions being compared
+ * will be included in the failure message.  This is the main benefit of using
+ * these specific comparison macros over XCHECK().  XCHECK() will simply log
+ * that the expression evaluated was false, while these macros include the
+ * specific values being compared.
+ */
+#define XCHECK_EQ(arg1, arg2, ...) XCHECK_OP(==, arg1, arg2, ##__VA_ARGS__)
+#define XCHECK_NE(arg1, arg2, ...) XCHECK_OP(!=, arg1, arg2, ##__VA_ARGS__)
+#define XCHECK_LT(arg1, arg2, ...) XCHECK_OP(<, arg1, arg2, ##__VA_ARGS__)
+#define XCHECK_GT(arg1, arg2, ...) XCHECK_OP(>, arg1, arg2, ##__VA_ARGS__)
+#define XCHECK_LE(arg1, arg2, ...) XCHECK_OP(<=, arg1, arg2, ##__VA_ARGS__)
+#define XCHECK_GE(arg1, arg2, ...) XCHECK_OP(>=, arg1, arg2, ##__VA_ARGS__)
+
+/**
+ * Assert that a condition is true in debug builds only.
+ *
+ * When NDEBUG is not defined this behaves like XCHECK().
+ * When NDEBUG is defined XDCHECK statements are not evaluated and will never
+ * log.
  *
  * You can use `XLOG_IF(DFATAL, condition)` instead if you want the condition to
  * be evaluated in release builds but log a message without crashing the
@@ -345,6 +387,34 @@
  */
 #define XDCHECK(cond, ...) \
   (!::folly::kIsDebug) ? static_cast<void>(0) : XCHECK(cond, ##__VA_ARGS__)
+
+/*
+ * It would be nice to rely solely on folly::kIsDebug here rather than NDEBUG.
+ * However doing so would make the code substantially more complicated.  It is
+ * much simpler to simply change the definition of XDCHECK_OP() based on NDEBUG.
+ */
+#ifdef NDEBUG
+#define XDCHECK_OP(op, arg1, arg2, ...) \
+  while (false)                         \
+  XCHECK_OP(op, arg1, arg2, ##__VA_ARGS__)
+#else
+#define XDCHECK_OP(op, arg1, arg2, ...) XCHECK_OP(op, arg1, arg2, ##__VA_ARGS__)
+#endif
+
+/**
+ * Assert a comparison relationship between two arguments in debug builds.
+ *
+ * When NDEBUG is not set these macros behaves like the corresponding
+ * XCHECK_XX() versions (XCHECK_EQ(), XCHECK_NE(), etc).
+ *
+ * When NDEBUG is defined these statements are not evaluated and will never log.
+ */
+#define XDCHECK_EQ(arg1, arg2, ...) XDCHECK_OP(==, arg1, arg2, ##__VA_ARGS__)
+#define XDCHECK_NE(arg1, arg2, ...) XDCHECK_OP(!=, arg1, arg2, ##__VA_ARGS__)
+#define XDCHECK_LT(arg1, arg2, ...) XDCHECK_OP(<, arg1, arg2, ##__VA_ARGS__)
+#define XDCHECK_GT(arg1, arg2, ...) XDCHECK_OP(>, arg1, arg2, ##__VA_ARGS__)
+#define XDCHECK_LE(arg1, arg2, ...) XDCHECK_OP(<=, arg1, arg2, ##__VA_ARGS__)
+#define XDCHECK_GE(arg1, arg2, ...) XDCHECK_OP(>=, arg1, arg2, ##__VA_ARGS__)
 
 /**
  * XLOG_IS_IN_HEADER_FILE evaluates to false if we can definitively tell if we
