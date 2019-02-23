@@ -491,6 +491,12 @@ ReturnType BucketedTimeSeries<VT, CT>::rangeAdjust(
   // latestTime_.
   if (bucketStart <= latestTime_ && nextBucketStart > latestTime_) {
     nextBucketStart = latestTime_ + Duration(1);
+    // If nextBucketStart is now lower than start then it means that we have
+    // never recorded any data points in the requested time interval,
+    // and can simply return 0.
+    if (start >= nextBucketStart) {
+      return ReturnType{};
+    }
   }
 
   if (start <= bucketStart && end >= nextBucketStart) {
