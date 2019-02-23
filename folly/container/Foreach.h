@@ -218,14 +218,6 @@ namespace detail {
  *
  * The code below uses `<` for a conservative subset of types for which
  * it is known to be valid.
- *
- * There is a bug in Boost 1.46: The filesystem::path::iterator defines
- * operator< (via boost::iterator_facade), but that in turn uses
- * uses distance_to which is undefined for that particular iterator. So
- * doing detection of `<` invocability identifies
- * boost::filesystem::path as properly comparable with <, but in fact
- * attempting to use it would yield a compile-time error. Thus `<` is
- * used only for a conservative subset of types.
  */
 
 template <class T, class U>
