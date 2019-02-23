@@ -339,10 +339,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   /**
    * Get the network socket used by the AsyncSocket.
    */
-  virtual int getFd(int /*breakAllTheThings*/) const {
-    return -1;
-  }
-
   virtual NetworkSocket getNetworkSocket() const {
     return fd_;
   }
@@ -361,10 +357,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * Returns the file descriptor.  The caller assumes ownership of the
    * descriptor, and it will not be closed when the AsyncSocket is destroyed.
    */
-  virtual int detachFd(int) {
-    return detachNetworkSocket().toFd();
-  }
-
   virtual NetworkSocket detachNetworkSocket();
 
   /**
