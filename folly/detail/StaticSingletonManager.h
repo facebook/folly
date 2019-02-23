@@ -23,7 +23,6 @@
 #include <folly/Indestructible.h>
 #include <folly/Likely.h>
 #include <folly/detail/Singleton.h>
-#include <folly/lang/Exception.h>
 #include <folly/lang/TypeInfo.h>
 
 namespace folly {
@@ -58,10 +57,11 @@ class StaticSingletonManagerWithRtti {
  public:
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Cache cache{};
-    auto const& key = key_<T, Tag>();
-    auto const v = cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
+    // gcc and clang behave poorly if typeid is hidden behind a non-constexpr
+    // function, but typeid is not constexpr under msvc
+    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(TypeTuple<T, Tag>), make<T>};
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_(arg);
     return *static_cast<T*>(p);
   }
 
@@ -69,22 +69,18 @@ class StaticSingletonManagerWithRtti {
   using Key = std::type_info;
   using Make = void*();
   using Cache = std::atomic<void*>;
+  struct Arg {
+    Cache cache; // should be first field
+    Key const* key;
+    Make& make;
+  };
 
   template <typename T>
   static void* make() {
     return new T();
   }
 
-  template <typename T, typename Tag>
-  FOLLY_ALWAYS_INLINE static Key const& key_() {
-    auto const key = type_info_of<TypeTuple<T, Tag>>();
-    if (!key) {
-      throw_exception<std::logic_error>("rtti unavailable");
-    }
-    return *key;
-  }
-
-  FOLLY_NOINLINE static void* create_(Key const& key, Make& make, Cache& cache);
+  FOLLY_NOINLINE static void* create_(Arg& arg);
 };
 
 using StaticSingletonManager = std::conditional_t<
