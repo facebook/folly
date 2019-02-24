@@ -51,7 +51,7 @@ namespace folly {
  *  Note: If passed an rvalue, invokes the move-ctor, not the copy-ctor. This
  *  can be used to to force a move, where just using std::move would not:
  *
- *      std::copy(std::move(data)); // force-move, not just a cast to &&
+ *      folly::copy(std::move(data)); // force-move, not just a cast to &&
  *
  *  Note: The following text appears in the standard:
  *
