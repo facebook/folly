@@ -104,7 +104,7 @@ class Optional {
       !std::is_abstract<Value>::value,
       "Optional may not be used with abstract types");
 
-  FOLLY_CPP14_CONSTEXPR Optional() noexcept {}
+  constexpr Optional() noexcept {}
 
   Optional(const Optional& src) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
@@ -121,14 +121,14 @@ class Optional {
     }
   }
 
-  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(const None&) noexcept {}
+  constexpr /* implicit */ Optional(const None&) noexcept {}
 
-  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(Value&& newValue) noexcept(
+  constexpr /* implicit */ Optional(Value&& newValue) noexcept(
       std::is_nothrow_move_constructible<Value>::value) {
     construct(std::move(newValue));
   }
 
-  FOLLY_CPP14_CONSTEXPR /* implicit */ Optional(const Value& newValue) noexcept(
+  constexpr /* implicit */ Optional(const Value& newValue) noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     construct(newValue);
   }
@@ -153,12 +153,12 @@ class Optional {
            Null>::type) noexcept = delete;
 
   template <typename... Args>
-  FOLLY_CPP14_CONSTEXPR explicit Optional(in_place_t, Args&&... args) noexcept(
+  constexpr explicit Optional(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<Value, Args...>::value)
       : Optional{PrivateConstructor{}, std::forward<Args>(args)...} {}
 
   template <typename U, typename... Args>
-  FOLLY_CPP14_CONSTEXPR explicit Optional(
+  constexpr explicit Optional(
       in_place_t,
       std::initializer_list<U> il,
       Args&&... args) noexcept(std::
@@ -274,22 +274,22 @@ class Optional {
     }
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value& value() const& {
+  constexpr const Value& value() const& {
     require_value();
     return storage_.value;
   }
 
-  FOLLY_CPP14_CONSTEXPR Value& value() & {
+  constexpr Value& value() & {
     require_value();
     return storage_.value;
   }
 
-  FOLLY_CPP14_CONSTEXPR Value&& value() && {
+  constexpr Value&& value() && {
     require_value();
     return std::move(storage_.value);
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value&& value() const&& {
+  constexpr const Value&& value() const&& {
     require_value();
     return std::move(storage_.value);
   }
@@ -302,41 +302,41 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  FOLLY_CPP14_CONSTEXPR bool has_value() const noexcept {
+  constexpr bool has_value() const noexcept {
     return storage_.hasValue;
   }
 
-  FOLLY_CPP14_CONSTEXPR bool hasValue() const noexcept {
+  constexpr bool hasValue() const noexcept {
     return has_value();
   }
 
-  FOLLY_CPP14_CONSTEXPR explicit operator bool() const noexcept {
+  constexpr explicit operator bool() const noexcept {
     return has_value();
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value& operator*() const& {
+  constexpr const Value& operator*() const& {
     return value();
   }
-  FOLLY_CPP14_CONSTEXPR Value& operator*() & {
+  constexpr Value& operator*() & {
     return value();
   }
-  FOLLY_CPP14_CONSTEXPR const Value&& operator*() const&& {
+  constexpr const Value&& operator*() const&& {
     return std::move(value());
   }
-  FOLLY_CPP14_CONSTEXPR Value&& operator*() && {
+  constexpr Value&& operator*() && {
     return std::move(value());
   }
 
-  FOLLY_CPP14_CONSTEXPR const Value* operator->() const {
+  constexpr const Value* operator->() const {
     return &value();
   }
-  FOLLY_CPP14_CONSTEXPR Value* operator->() {
+  constexpr Value* operator->() {
     return &value();
   }
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
-  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) const& {
+  constexpr Value value_or(U&& dflt) const& {
     if (storage_.hasValue) {
       return storage_.value;
     }
@@ -345,7 +345,7 @@ class Optional {
   }
 
   template <class U>
-  FOLLY_CPP14_CONSTEXPR Value value_or(U&& dflt) && {
+  constexpr Value value_or(U&& dflt) && {
     if (storage_.hasValue) {
       return std::move(storage_.value);
     }
@@ -373,7 +373,7 @@ class Optional {
     explicit PrivateConstructor() = default;
   };
   template <typename... Args>
-  FOLLY_CPP14_CONSTEXPR Optional(PrivateConstructor, Args&&... args) noexcept(
+  constexpr Optional(PrivateConstructor, Args&&... args) noexcept(
       std::is_constructible<Value, Args&&...>::value) {
     construct(std::forward<Args>(args)...);
   }
@@ -493,9 +493,7 @@ constexpr bool operator!=(const U& a, const Optional<V>& b) {
 }
 
 template <class U, class V>
-FOLLY_CPP14_CONSTEXPR bool operator==(
-    const Optional<U>& a,
-    const Optional<V>& b) {
+constexpr bool operator==(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) {
     return false;
   }
@@ -511,9 +509,7 @@ constexpr bool operator!=(const Optional<U>& a, const Optional<V>& b) {
 }
 
 template <class U, class V>
-FOLLY_CPP14_CONSTEXPR bool operator<(
-    const Optional<U>& a,
-    const Optional<V>& b) {
+constexpr bool operator<(const Optional<U>& a, const Optional<V>& b) {
   if (a.hasValue() != b.hasValue()) {
     return a.hasValue() < b.hasValue();
   }

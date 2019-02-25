@@ -33,10 +33,11 @@ struct PartialConstructFromCallable {};
 
 template <typename F, typename Tuple>
 class Partial {
-  using Indexes = make_index_sequence<std::tuple_size<Tuple>{}>;
+  using Indexes = std::make_index_sequence<std::tuple_size<Tuple>{}>;
 
   template <typename Self, std::size_t... I, typename... Args>
-  static auto invokeForward(Self&& self, index_sequence<I...>, Args&&... args)
+  static auto
+  invokeForward(Self&& self, std::index_sequence<I...>, Args&&... args)
       -> decltype(invoke(
           std::declval<Self>().f_,
           std::get<I>(std::declval<Self>().stored_args_)...,

@@ -26,7 +26,7 @@ LogOnDestruction d1("1");
 LogOnDestruction d2("2");
 
 int main(int argc, char* argv[]) {
-  auto init = folly::Init(&argc, &argv);
+  folly::Init init(&argc, &argv);
   XLOG(INFO) << "main running";
   use_log_on_shutdown();
   return 0;

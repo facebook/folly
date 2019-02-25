@@ -82,8 +82,6 @@
 #define FOLLY_ATOMICHASHMAP_H_
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/noncopyable.hpp>
-#include <boost/type_traits/is_convertible.hpp>
 
 #include <atomic>
 #include <functional>
@@ -162,7 +160,7 @@ template <
     class Allocator,
     class ProbeFcn,
     class KeyConvertFcn>
-class AtomicHashMap : boost::noncopyable {
+class AtomicHashMap {
   typedef AtomicHashArray<
       KeyT,
       ValueT,
@@ -205,6 +203,9 @@ class AtomicHashMap : boost::noncopyable {
   // number of elements to maximize space utilization and performance,
   // and a Config object to specify more advanced options.
   explicit AtomicHashMap(size_t finalSizeEst, const Config& c = Config());
+
+  AtomicHashMap(const AtomicHashMap&) = delete;
+  AtomicHashMap& operator=(const AtomicHashMap&) = delete;
 
   ~AtomicHashMap() {
     const unsigned int numMaps =

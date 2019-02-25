@@ -43,7 +43,7 @@ int main(int argc, char* argv[]) {
   // folly::Init() will automatically initialize the logging settings based on
   // the FOLLY_INIT_LOGGING_CONFIG declaration above and the --logging command
   // line flag.
-  auto init = folly::Init(&argc, &argv);
+  folly::Init init(&argc, &argv);
 
   // All XLOG() statements in this file will log to the category
   // folly.logging.example.main

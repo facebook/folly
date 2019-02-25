@@ -312,6 +312,17 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     ~SumInt() {
       *ref += val;
     }
+
+    SumInt(SumInt const&) = delete;
+    SumInt& operator=(SumInt const&) = delete;
+
+    SumInt(SumInt&& other) : val(std::exchange(other.val, 0)), ref(other.ref) {}
+    SumInt& operator=(SumInt&& other) {
+      std::swap(val, other.val);
+      std::swap(ref, other.ref);
+      return *this;
+    }
+
     int val;
     int* ref;
   };
@@ -408,7 +419,37 @@ TEST(EvictingCacheMap, DestructorInvocationTest) {
     EXPECT_EQ(i, map.get(i).val);
   }
   EXPECT_EQ((89 * 90) / 2, sum);
+
   sum = 0;
+  for (int i = 0; i < 90; i++) {
+    auto pair = map.insert(i, SumInt(i + 1, &sum));
+    EXPECT_EQ(i + 1, pair.first->second.val);
+    EXPECT_TRUE(pair.second);
+    EXPECT_TRUE(map.exists(i));
+  }
+  EXPECT_EQ(0, sum);
+  for (int i = 90; i < 100; i++) {
+    auto pair = map.insert(i, SumInt(i + 1, &sum));
+    EXPECT_EQ(i, pair.first->second.val);
+    EXPECT_FALSE(pair.second);
+    EXPECT_TRUE(map.exists(i));
+  }
+  EXPECT_EQ((10 * 191) / 2, sum);
+  sum = 0;
+  map.prune(100);
+  EXPECT_EQ((90 * 91) / 2 + (10 * 189) / 2, sum);
+
+  sum = 0;
+  map.set(3, SumInt(3, &sum));
+  map.set(2, SumInt(2, &sum));
+  map.set(1, SumInt(1, &sum));
+  EXPECT_EQ(0, sum);
+  EXPECT_EQ(2, map.erase(map.find(1))->second.val);
+  EXPECT_EQ(1, sum);
+  EXPECT_EQ(map.end(), map.erase(map.findWithoutPromotion(3)));
+  EXPECT_EQ(4, sum);
+  map.prune(1);
+  EXPECT_EQ(6, sum);
 }
 
 TEST(EvictingCacheMap, LruSanityTest) {
@@ -656,4 +697,22 @@ TEST(EvictingCacheMap, CustomKeyEqual) {
     EXPECT_TRUE(map.exists(i + nItems));
     EXPECT_EQ(i, map.get(i + nItems));
   }
+}
+
+TEST(EvictingCacheMap, IteratorConversion) {
+  using type = EvictingCacheMap<int, int>;
+  using i = type::iterator;
+  using ci = type::const_iterator;
+  using ri = type::reverse_iterator;
+  using cri = type::const_reverse_iterator;
+
+  EXPECT_TRUE((std::is_convertible<i, i>::value));
+  EXPECT_TRUE((std::is_convertible<i, ci>::value));
+  EXPECT_FALSE((std::is_convertible<ci, i>::value));
+  EXPECT_TRUE((std::is_convertible<ci, ci>::value));
+
+  EXPECT_TRUE((std::is_convertible<ri, ri>::value));
+  EXPECT_TRUE((std::is_convertible<ri, cri>::value));
+  EXPECT_FALSE((std::is_convertible<cri, ri>::value));
+  EXPECT_TRUE((std::is_convertible<cri, cri>::value));
 }

@@ -64,5 +64,24 @@ void bridgeFuture(
       getExecutor(), std::move(futureFrom), std::move(callback), userData);
 }
 
+template <typename T>
+void bridgeSemiFuture(
+    folly::Executor* executor,
+    folly::SemiFuture<T>&& semiFutureFrom,
+    folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
+    PyObject* userData) {
+  folly::Future<T> futureFrom = std::move(semiFutureFrom).via(executor);
+  bridgeFuture(executor, std::move(futureFrom), std::move(callback), userData);
+}
+
+template <typename T>
+void bridgeSemiFuture(
+    folly::SemiFuture<T>&& semiFutureFrom,
+    folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
+    PyObject* userData) {
+  bridgeSemiFuture(
+      getExecutor(), std::move(semiFutureFrom), std::move(callback), userData);
+}
+
 } // namespace python
 } // namespace folly

@@ -22,8 +22,6 @@
 #include <cstddef>
 #include <limits>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Portability.h>
 
 namespace folly {
@@ -32,12 +30,15 @@ namespace folly {
  * An atomic bitset of fixed size (specified at compile time).
  */
 template <size_t N>
-class AtomicBitSet : private boost::noncopyable {
+class AtomicBitSet {
  public:
   /**
    * Construct an AtomicBitSet; all bits are initially false.
    */
   AtomicBitSet();
+
+  AtomicBitSet(const AtomicBitSet&) = delete;
+  AtomicBitSet& operator=(const AtomicBitSet&) = delete;
 
   /**
    * Set bit idx to true, using the given memory order. Returns the

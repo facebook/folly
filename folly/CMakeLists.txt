@@ -26,6 +26,7 @@ if (PYTHON_EXTENSIONS)
     "executor.pxd"
     "executor.pyx"
     "futures.pxd"
+    "range.pxd"
     "__init__.pxd"
     "AsyncioExecutor.h")
     message(

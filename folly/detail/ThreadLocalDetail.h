@@ -400,7 +400,9 @@ struct StaticMetaBase {
   bool strict_;
 
  protected:
-  ~StaticMetaBase() {}
+  [[noreturn]] ~StaticMetaBase() {
+    std::terminate();
+  }
 };
 
 // Held in a singleton to track our global instances.
@@ -422,8 +424,6 @@ struct StaticMeta final : StaticMetaBase {
         /*parent*/ &StaticMeta::onForkParent,
         /*child*/ &StaticMeta::onForkChild);
   }
-
-  ~StaticMeta() = delete;
 
   static StaticMeta<Tag, AccessMode>& instance() {
     // Leak it on exit, there's only one per process and we don't have to

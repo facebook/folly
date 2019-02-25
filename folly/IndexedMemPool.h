@@ -22,7 +22,6 @@
 
 #include <type_traits>
 
-#include <boost/noncopyable.hpp>
 #include <folly/Portability.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/portability/SysMman.h>
@@ -156,11 +155,14 @@ template <
     uint32_t LocalListLimit_ = 200,
     template <typename> class Atom = std::atomic,
     typename Traits = IndexedMemPoolTraits<T>>
-struct IndexedMemPool : boost::noncopyable {
+struct IndexedMemPool {
   typedef T value_type;
 
   typedef std::unique_ptr<T, detail::IndexedMemPoolRecycler<IndexedMemPool>>
       UniquePtr;
+
+  IndexedMemPool(const IndexedMemPool&) = delete;
+  IndexedMemPool& operator=(const IndexedMemPool&) = delete;
 
   static_assert(LocalListLimit_ <= 255, "LocalListLimit must fit in 8 bits");
   enum {

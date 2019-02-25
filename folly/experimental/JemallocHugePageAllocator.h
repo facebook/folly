@@ -56,7 +56,21 @@ namespace folly {
  */
 class JemallocHugePageAllocator {
  public:
-  static bool init(int nr_pages);
+  struct Options {
+    // Set decay time to 0, which will cause jemalloc to free memory
+    // back to kernel immediately. It can still be reclaimed later if
+    // the kernel hasn't reused it for something else.
+    // This is primarily useful for preventing RSS regressions, but
+    // can cause the number of available pages to shrink over time
+    // as the likelihood they get reused by the kernel is increased.
+    bool noDecay = false;
+  };
+
+  static bool init(int nr_pages) {
+    return init(nr_pages, Options());
+  }
+
+  static bool init(int nr_pages, const Options& options);
 
   static void* allocate(size_t size) {
     // If uninitialized, flags_ will be 0 and the mallocx behavior

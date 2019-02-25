@@ -196,4 +196,23 @@ TEST(ExecutorTest, KeepAliveCopy) {
   EXPECT_EQ(0, exec.refCount);
 }
 
+TEST(ExecutorTest, GetKeepAliveTokenFromToken) {
+  KeepAliveTestExecutor exec;
+
+  {
+    auto ka = getKeepAliveToken(exec);
+    EXPECT_TRUE(ka);
+    EXPECT_EQ(&exec, ka.get());
+    EXPECT_EQ(1, exec.refCount);
+
+    auto ka2 = getKeepAliveToken(ka);
+    EXPECT_TRUE(ka);
+    EXPECT_TRUE(ka2);
+    EXPECT_EQ(&exec, ka2.get());
+    EXPECT_EQ(2, exec.refCount);
+  }
+
+  EXPECT_EQ(0, exec.refCount);
+}
+
 } // namespace folly

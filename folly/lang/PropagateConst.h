@@ -64,7 +64,7 @@ class propagate_const {
       std::remove_reference_t<decltype(*std::declval<Pointer&>())>;
 
   constexpr propagate_const() = default;
-  FOLLY_CPP14_CONSTEXPR propagate_const(propagate_const&&) = default;
+  constexpr propagate_const(propagate_const&&) = default;
   propagate_const(propagate_const const&) = delete;
 
   template <
@@ -105,15 +105,14 @@ class propagate_const {
   constexpr propagate_const(OtherPointer&& other)
       : pointer_(static_cast<OtherPointer&&>(other)) {}
 
-  FOLLY_CPP14_CONSTEXPR propagate_const& operator=(propagate_const&&) = default;
+  constexpr propagate_const& operator=(propagate_const&&) = default;
   propagate_const& operator=(propagate_const const&) = delete;
 
   template <
       typename OtherPointer,
       typename =
           std::enable_if_t<std::is_convertible<OtherPointer&&, Pointer>::value>>
-  FOLLY_CPP14_CONSTEXPR propagate_const& operator=(
-      propagate_const<OtherPointer>&& other) {
+  constexpr propagate_const& operator=(propagate_const<OtherPointer>&& other) {
     pointer_ = static_cast<OtherPointer&&>(other.pointer_);
   }
 
@@ -122,19 +121,19 @@ class propagate_const {
       typename = std::enable_if_t<
           !detail::is_decay_propagate_const<OtherPointer>::value &&
           std::is_convertible<OtherPointer&&, Pointer>::value>>
-  FOLLY_CPP14_CONSTEXPR propagate_const& operator=(OtherPointer&& other) {
+  constexpr propagate_const& operator=(OtherPointer&& other) {
     pointer_ = static_cast<OtherPointer&&>(other);
     return *this;
   }
 
-  FOLLY_CPP14_CONSTEXPR void swap(propagate_const& other) noexcept(
+  constexpr void swap(propagate_const& other) noexcept(
       noexcept(detail::propagate_const_adl::adl_swap(
           std::declval<Pointer&>(),
           other.pointer_))) {
     detail::propagate_const_adl::adl_swap(pointer_, other.pointer_);
   }
 
-  FOLLY_CPP14_CONSTEXPR element_type* get() {
+  constexpr element_type* get() {
     return get_(pointer_);
   }
 
@@ -146,7 +145,7 @@ class propagate_const {
     return static_cast<bool>(pointer_);
   }
 
-  FOLLY_CPP14_CONSTEXPR element_type& operator*() {
+  constexpr element_type& operator*() {
     return *get();
   }
 
@@ -154,7 +153,7 @@ class propagate_const {
     return *get();
   }
 
-  FOLLY_CPP14_CONSTEXPR element_type* operator->() {
+  constexpr element_type* operator->() {
     return get();
   }
 
@@ -167,7 +166,7 @@ class propagate_const {
       typename = std::enable_if_t<
           std::is_pointer<OtherPointer>::value ||
           std::is_convertible<OtherPointer, element_type*>::value>>
-  FOLLY_CPP14_CONSTEXPR operator element_type*() {
+  constexpr operator element_type*() {
     return get();
   }
 
@@ -199,7 +198,7 @@ class propagate_const {
 };
 
 template <typename Pointer>
-FOLLY_CPP14_CONSTEXPR void swap(
+constexpr void swap(
     propagate_const<Pointer>& a,
     propagate_const<Pointer>& b) noexcept(noexcept(a.swap(b))) {
   a.swap(b);

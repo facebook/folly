@@ -23,8 +23,6 @@
 #include <limits>
 #include <type_traits>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/Traits.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/TurnSequencer.h>
@@ -640,7 +638,7 @@ template <
     typename T,
     template <typename> class Atom,
     bool Dynamic>
-class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
+class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   // Note: Using CRTP static casts in several functions of this base
   // template instead of making called functions virtual or duplicating
   // the code of calling functions in the derived partially specialized
@@ -732,6 +730,9 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> : boost::noncopyable {
     }
     return *this;
   }
+
+  MPMCQueueBase(const MPMCQueueBase&) = delete;
+  MPMCQueueBase& operator=(const MPMCQueueBase&) = delete;
 
   /// MPMCQueue can only be safely destroyed when there are no
   /// pending enqueuers or dequeuers (this is not checked).

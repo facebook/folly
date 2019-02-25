@@ -15,15 +15,17 @@
  */
 #pragma once
 
-#include <folly/Conv.h>
-#include <folly/CppAttributes.h>
-#include <folly/Range.h>
-#include <folly/Synchronized.h>
 #include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
 
+#include <folly/Conv.h>
+#include <folly/CppAttributes.h>
+#include <folly/Range.h>
+#include <folly/ScopeGuard.h>
+#include <folly/Synchronized.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/logging/LogName.h>
 
 namespace folly {
@@ -270,7 +272,6 @@ class LoggerDB {
       StringPiece categoryName,
       const std::vector<std::string>& categoryHandlerNames);
 
-  static LoggerDB* createSingleton();
   static void internalWarningImpl(
       folly::StringPiece filename,
       int lineNumber,
@@ -327,5 +328,25 @@ class LoggerDB {
  * that used by GLOG.
  */
 void initializeLoggerDB(LoggerDB& db);
+
+FOLLY_ALWAYS_INLINE LoggerDB& LoggerDB::get() {
+  struct Singleton : LoggerDB {
+    Singleton() {
+      initializeLoggerDB(*this);
+      // This allows log handlers to flush any buffered messages before
+      // the program exits.
+      /* library-local */ static auto guard =
+          makeGuard([this] { cleanupHandlers(); });
+    }
+  };
+
+  // We intentionally leak the LoggerDB singleton and all of the LogCategory
+  // objects it contains.
+  //
+  // We want Logger objects to remain valid for the entire lifetime of the
+  // program, without having to worry about destruction ordering issues, or
+  // making the Logger perform reference counting on the LoggerDB.
+  return detail::createGlobal<Singleton, void>();
+}
 
 } // namespace folly

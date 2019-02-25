@@ -19,8 +19,10 @@
 #include <cassert>
 #include <chrono>
 #include <thread>
+#include <utility>
 
 #include <folly/Optional.h>
+#include <folly/executors/ExecutorWithPriority.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/detail/Core.h>
@@ -166,7 +168,7 @@ FutureBase<T>::FutureBase(in_place_t, Args&&... args)
 template <class T>
 void FutureBase<T>::assign(FutureBase<T>&& other) noexcept {
   detach();
-  core_ = exchange(other.core_, nullptr);
+  core_ = std::exchange(other.core_, nullptr);
 }
 
 template <class T>
@@ -853,9 +855,7 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 }
 
 template <class T>
-Future<T> SemiFuture<T>::via(
-    Executor::KeepAlive<> executor,
-    int8_t priority) && {
+Future<T> SemiFuture<T>::via(Executor::KeepAlive<> executor) && {
   if (!executor) {
     throw_exception<FutureNoExecutor>();
   }
@@ -866,9 +866,17 @@ Future<T> SemiFuture<T>::via(
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
-  newFuture.setExecutor(std::move(executor), priority);
+  newFuture.setExecutor(std::move(executor));
 
   return newFuture;
+}
+
+template <class T>
+Future<T> SemiFuture<T>::via(
+    Executor::KeepAlive<> executor,
+    int8_t priority) && {
+  return std::move(*this).via(
+      ExecutorWithPriority::create(std::move(executor), priority));
 }
 
 template <class T>
@@ -1029,8 +1037,8 @@ typename std::
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
-  this->setExecutor(std::move(executor), priority);
+Future<T> Future<T>::via(Executor::KeepAlive<> executor) && {
+  this->setExecutor(std::move(executor));
 
   auto newFuture = Future<T>(this->core_);
   this->core_ = nullptr;
@@ -1038,7 +1046,13 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
 }
 
 template <class T>
-Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
+  return std::move(*this).via(
+      ExecutorWithPriority::create(std::move(executor), priority));
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
@@ -1052,7 +1066,12 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
   // check in SemiFuture::via
   auto f = Future<T>(sf.core_);
   sf.core_ = nullptr;
-  return std::move(f).via(std::move(executor), priority);
+  return std::move(f).via(std::move(executor));
+}
+
+template <class T>
+Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) & {
+  return this->via(ExecutorWithPriority::create(std::move(executor), priority));
 }
 
 template <typename T>
@@ -1388,6 +1407,10 @@ Future<T> makeFuture(Try<T> t) {
 }
 
 // via
+Future<Unit> via(Executor::KeepAlive<> executor) {
+  return makeFuture().via(std::move(executor));
+}
+
 Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority) {
   return makeFuture().via(std::move(executor), priority);
 }
@@ -1397,7 +1420,7 @@ namespace detail {
 
 template <typename V, typename... Fs, std::size_t... Is>
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
-foreach_(index_sequence<Is...>, V&& v, Fs&&... fs) {
+foreach_(std::index_sequence<Is...>, V&& v, Fs&&... fs) {
   using _ = int[];
   void(_{0, (void(v(index_constant<Is>{}, static_cast<Fs&&>(fs))), 0)...});
 }
@@ -1405,7 +1428,7 @@ template <typename V, typename... Fs>
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void foreach(
     V&& v,
     Fs&&... fs) {
-  using _ = index_sequence_for<Fs...>;
+  using _ = std::index_sequence_for<Fs...>;
   foreach_(_{}, static_cast<V&&>(v), static_cast<Fs&&>(fs)...);
 }
 
@@ -1941,7 +1964,7 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
       auto f = p.getFuture();
       {
         folly::MSLGuard lock(ctx->lock_);
-        f = exchange(ctx->memo_, std::move(f));
+        f = std::exchange(ctx->memo_, std::move(f));
         if (++ctx->numThens_ == ctx->numFutures_) {
           // After reducing the value of the last Future, fulfill the Promise
           ctx->memo_.setCallback_(
@@ -2001,11 +2024,6 @@ Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) && {
       .thenValue([](std::tuple<Try<T>, Try<Unit>>&& tup) {
         return makeFuture<T>(std::get<0>(std::move(tup)));
       });
-}
-
-template <class T>
-Future<T> Future<T>::delayedUnsafe(Duration dur, Timekeeper* tk) {
-  return std::move(*this).semi().delayed(dur, tk).toUnsafeFuture();
 }
 
 namespace futures {

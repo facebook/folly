@@ -21,6 +21,7 @@
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
+#include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
@@ -298,17 +299,13 @@ TEST(Task, RequestContextSideEffectsArePreserved) {
 }
 
 TEST(Task, FutureTailCall) {
-  folly::ManualExecutor executor;
   EXPECT_EQ(
       42,
-      folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
-        co_return co_await folly::makeSemiFuture().deferValue(
-            [](auto) { return folly::makeSemiFuture(42); });
-      })
-          .scheduleOn(&executor)
-          .start()
-          .via(&executor)
-          .getVia(&executor));
+      folly::coro::blockingWait(
+          folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
+            co_return co_await folly::makeSemiFuture().deferValue(
+                [](auto) { return folly::makeSemiFuture(42); });
+          })));
 }
 
 #endif

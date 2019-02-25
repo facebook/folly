@@ -252,15 +252,16 @@ class emplace_iterator_base<Derived, EmplaceImpl, false>
    */
   template <typename... Args>
   Derived& operator=(emplace_args<Args...>& args) {
-    return unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(const emplace_args<Args...>& args) {
-    return unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(emplace_args<Args...>&& args) {
-    return unpackAndEmplace(std::move(args), index_sequence_for<Args...>{});
+    return unpackAndEmplace(
+        std::move(args), std::index_sequence_for<Args...>{});
   }
 
   // No-ops.
@@ -284,17 +285,17 @@ class emplace_iterator_base<Derived, EmplaceImpl, false>
 
  protected:
   template <typename Args, std::size_t... I>
-  Derived& unpackAndEmplace(Args& args, index_sequence<I...>) {
+  Derived& unpackAndEmplace(Args& args, std::index_sequence<I...>) {
     this->emplace(get_emplace_arg<I>(args)...);
     return static_cast<Derived&>(*this);
   }
   template <typename Args, std::size_t... I>
-  Derived& unpackAndEmplace(const Args& args, index_sequence<I...>) {
+  Derived& unpackAndEmplace(const Args& args, std::index_sequence<I...>) {
     this->emplace(get_emplace_arg<I>(args)...);
     return static_cast<Derived&>(*this);
   }
   template <typename Args, std::size_t... I>
-  Derived& unpackAndEmplace(Args&& args, index_sequence<I...>) {
+  Derived& unpackAndEmplace(Args&& args, std::index_sequence<I...>) {
     this->emplace(get_emplace_arg<I>(std::move(args))...);
     return static_cast<Derived&>(*this);
   }
@@ -323,16 +324,16 @@ class emplace_iterator_base<Derived, EmplaceImpl, true>
    */
   template <typename... Args>
   Derived& operator=(std::pair<Args...>& args) {
-    return this->unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return this->unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(const std::pair<Args...>& args) {
-    return this->unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return this->unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(std::pair<Args...>&& args) {
     return this->unpackAndEmplace(
-        std::move(args), index_sequence_for<Args...>{});
+        std::move(args), std::index_sequence_for<Args...>{});
   }
 
   /**
@@ -341,16 +342,16 @@ class emplace_iterator_base<Derived, EmplaceImpl, true>
    */
   template <typename... Args>
   Derived& operator=(std::tuple<Args...>& args) {
-    return this->unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return this->unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(const std::tuple<Args...>& args) {
-    return this->unpackAndEmplace(args, index_sequence_for<Args...>{});
+    return this->unpackAndEmplace(args, std::index_sequence_for<Args...>{});
   }
   template <typename... Args>
   Derived& operator=(std::tuple<Args...>&& args) {
     return this->unpackAndEmplace(
-        std::move(args), index_sequence_for<Args...>{});
+        std::move(args), std::index_sequence_for<Args...>{});
   }
 
   // We need all of these explicit defaults because the custom operator=

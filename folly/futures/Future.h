@@ -344,11 +344,6 @@ class FutureBase {
     raise(FutureCancellation());
   }
 
-  // Returns this future's executor priority.
-  int8_t getPriority() const {
-    return getCore().getPriority();
-  }
-
  protected:
   friend class Promise<T>;
   template <class>
@@ -417,10 +412,8 @@ class FutureBase {
   // Must be called either before attaching a callback or after the callback
   // has already been invoked, but not concurrently with anything which might
   // trigger invocation of the callback.
-  void setExecutor(
-      Executor::KeepAlive<> x,
-      int8_t priority = Executor::MID_PRI) {
-    getCore().setExecutor(std::move(x), priority);
+  void setExecutor(Executor::KeepAlive<> x) {
+    getCore().setExecutor(std::move(x));
   }
 
   // Variant: returns a value
@@ -551,7 +544,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /* implicit */ SemiFuture(Future<T>&&) noexcept;
 
   using Base::cancel;
-  using Base::getPriority;
   using Base::hasException;
   using Base::hasValue;
   using Base::isReady;
@@ -665,9 +657,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   bool wait(Duration dur) &&;
 
   /// Returns a Future which will call back on the other side of executor.
-  Future<T> via(
-      Executor::KeepAlive<> executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  Future<T> via(Executor::KeepAlive<> executor) &&;
+  Future<T> via(Executor::KeepAlive<> executor, int8_t priority) &&;
 
   /// Defer work to run on the consumer of the future.
   /// Function must take a Try as a parameter.
@@ -798,8 +789,18 @@ class SemiFuture : private futures::detail::FutureBase<T> {
 
   template <class E>
   SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) && {
-    return this->isReady() ? std::move(*this)
-                           : std::move(*this).withinImplementation(dur, e, tk);
+    if (this->isReady()) {
+      return std::move(*this);
+    }
+    auto deferredExecutor = stealDeferredExecutor();
+    auto ret = std::move(*this).withinImplementation(dur, e, tk);
+    if (deferredExecutor) {
+      ret =
+          std::move(ret).defer([](Try<T>&& t) { return std::move(t).value(); });
+      ret.getDeferredExecutor()->setNestedExecutors(
+          {std::move(deferredExecutor)});
+    }
+    return ret;
   }
 
   /// Delay the completion of this SemiFuture for at least this duration from
@@ -1008,7 +1009,6 @@ class Future : private futures::detail::FutureBase<T> {
   Future& operator=(Future<T2>&&);
 
   using Base::cancel;
-  using Base::getPriority;
   using Base::hasException;
   using Base::hasValue;
   using Base::isReady;
@@ -1082,9 +1082,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
-  Future<T> via(
-      Executor::KeepAlive<> executor,
-      int8_t priority = Executor::MID_PRI) &&;
+  Future<T> via(Executor::KeepAlive<> executor) &&;
+  Future<T> via(Executor::KeepAlive<> executor, int8_t priority) &&;
 
   /// Returns a Future which will call back on the other side of executor.
   ///
@@ -1099,9 +1098,8 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == true`
   /// - `RESULT.valid() == true`
   /// - when `this` gets fulfilled, it automatically fulfills RESULT
-  Future<T> via(
-      Executor::KeepAlive<> executor,
-      int8_t priority = Executor::MID_PRI) &;
+  Future<T> via(Executor::KeepAlive<> executor) &;
+  Future<T> via(Executor::KeepAlive<> executor, int8_t priority) &;
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with either `T&&` or `Try<T>&&`.
@@ -1614,17 +1612,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
   Future<T> delayed(Duration, Timekeeper* = nullptr) &&;
-
-  /// Delay the completion of this Future for at least this duration from
-  /// now. The optional Timekeeper is as with futures::sleep().
-  /// WARNING: Returned future may complete on Timekeeper thread.
-  // clang-format off
-  [[deprecated(
-      "Continuation may compelete on Timekeeper thread. "
-      "Please use delayed instead.")]]
-  Future<T>
-  delayedUnsafe(Duration, Timekeeper* = nullptr);
-  // clang-format on
 
   /// Blocks until the future is fulfilled. Returns the value (moved-out), or
   /// throws the exception. The future must not already have a continuation.

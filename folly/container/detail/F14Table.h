@@ -29,6 +29,10 @@
 #include <utility>
 #include <vector>
 
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view> // @manual
+#endif
+
 #include <folly/Bits.h>
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
@@ -41,6 +45,7 @@
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
+#include <folly/lang/Pretty.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Builtins.h>
 
@@ -156,8 +161,11 @@ struct StdIsFastHash<std::hash<long double>> : std::false_type {};
 template <typename... Args>
 struct StdIsFastHash<std::hash<std::basic_string<Args...>>> : std::false_type {
 };
-
-// TODO: add specialization for std::basic_string_view
+#if FOLLY_HAS_STRING_VIEW
+template <typename... Args>
+struct StdIsFastHash<std::hash<std::basic_string_view<Args...>>>
+    : std::false_type {};
+#endif
 
 // mimic internal node of unordered containers in STL to estimate the size
 template <typename K, typename V, typename H, typename Enable = void>
@@ -2574,9 +2582,7 @@ class F14Table : public Policy {
     FOLLY_SAFE_DCHECK(n1 == size(), "");
     FOLLY_SAFE_DCHECK(n2 == size(), "");
 
-#if FOLLY_HAS_RTTI
-    stats.policy = typeid(Policy).name();
-#endif
+    stats.policy = pretty_name<Policy>();
     stats.size = size();
     stats.valueSize = sizeof(value_type);
     stats.bucketCount = bucket_count();

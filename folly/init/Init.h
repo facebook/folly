@@ -49,6 +49,11 @@ class Init {
   // Force ctor & dtor out of line for better stack traces even with LTO.
   FOLLY_NOINLINE Init(int* argc, char*** argv, bool removeFlags = true);
   FOLLY_NOINLINE ~Init();
+
+  Init(Init const&) = delete;
+  Init(Init&&) = delete;
+  Init& operator=(Init const&) = delete;
+  Init& operator=(Init&&) = delete;
 };
 
 } // namespace folly

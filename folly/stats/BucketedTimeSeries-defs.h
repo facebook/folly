@@ -305,7 +305,7 @@ uint64_t BucketedTimeSeries<VT, CT>::count(TimePoint start, TimePoint end)
           TimePoint bucketStart,
           TimePoint nextBucketStart) -> bool {
         sample_count += this->rangeAdjust(
-            bucketStart, nextBucketStart, start, end, ValueType(bucket.count));
+            bucketStart, nextBucketStart, start, end, bucket.count);
         return true;
       });
 
@@ -327,7 +327,7 @@ ReturnType BucketedTimeSeries<VT, CT>::avg(TimePoint start, TimePoint end)
         total += this->rangeAdjust(
             bucketStart, nextBucketStart, start, end, bucket.sum);
         sample_count += this->rangeAdjust(
-            bucketStart, nextBucketStart, start, end, ValueType(bucket.count));
+            bucketStart, nextBucketStart, start, end, bucket.count);
         return true;
       });
 
@@ -476,12 +476,13 @@ void BucketedTimeSeries<VT, CT>::forEachBucket(Function fn) const {
  * range [10, 16), this will return 60% of the input value.
  */
 template <typename VT, typename CT>
-VT BucketedTimeSeries<VT, CT>::rangeAdjust(
+template <typename ReturnType>
+ReturnType BucketedTimeSeries<VT, CT>::rangeAdjust(
     TimePoint bucketStart,
     TimePoint nextBucketStart,
     TimePoint start,
     TimePoint end,
-    ValueType input) const {
+    ReturnType input) const {
   // If nextBucketStart is greater than latestTime_, treat nextBucketStart as
   // if it were latestTime_.  This makes us more accurate when someone is
   // querying for all of the data up to latestTime_.  Even though latestTime_
@@ -490,6 +491,12 @@ VT BucketedTimeSeries<VT, CT>::rangeAdjust(
   // latestTime_.
   if (bucketStart <= latestTime_ && nextBucketStart > latestTime_) {
     nextBucketStart = latestTime_ + Duration(1);
+    // If nextBucketStart is now lower than start then it means that we have
+    // never recorded any data points in the requested time interval,
+    // and can simply return 0.
+    if (start >= nextBucketStart) {
+      return ReturnType{};
+    }
   }
 
   if (start <= bucketStart && end >= nextBucketStart) {
@@ -499,8 +506,9 @@ VT BucketedTimeSeries<VT, CT>::rangeAdjust(
 
   TimePoint intervalStart = std::max(start, bucketStart);
   TimePoint intervalEnd = std::min(end, nextBucketStart);
-  return input * (intervalEnd - intervalStart) /
-      (nextBucketStart - bucketStart);
+  float scale =
+      (intervalEnd - intervalStart) * 1.f / (nextBucketStart - bucketStart);
+  return input * scale;
 }
 
 template <typename VT, typename CT>

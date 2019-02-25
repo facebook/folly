@@ -337,7 +337,7 @@ void AsyncServerSocket::bindSocket(
 
 bool AsyncServerSocket::setZeroCopy(bool enable) {
   if (msgErrQueueSupported) {
-    int fd = getSocket();
+    int fd = getNetworkSocket().toFd();
     int val = enable ? 1 : 0;
     int ret = setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
 

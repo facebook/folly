@@ -46,7 +46,7 @@ class ManualTimekeeper : public folly::Timekeeper {
   explicit ManualTimekeeper(Executor::KeepAlive<Executor>&& executor)
       : executor_(std::move(executor)), now_(steady_clock::now()) {}
 
-  virtual Future<Unit> after(Duration dur) override {
+  Future<Unit> after(Duration dur) override {
     auto contract = folly::makePromiseContract<Unit>(executor_.get());
     if (dur.count() == 0) {
       contract.first.setValue(folly::unit);

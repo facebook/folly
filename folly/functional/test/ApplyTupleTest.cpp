@@ -22,6 +22,7 @@
 
 #include <array>
 #include <memory>
+#include <utility>
 
 namespace {
 
@@ -429,24 +430,23 @@ TEST(MakeFromTupleTest, make_from_tuple) {
 }
 
 TEST(MakeIndexSequenceFromTuple, Basic) {
-  using folly::index_sequence;
   using folly::index_sequence_for_tuple;
   using OneElementTuple = std::tuple<int>;
   using TwoElementTuple = std::tuple<int>;
 
   EXPECT_TRUE((std::is_same<
                index_sequence_for_tuple<OneElementTuple>,
-               index_sequence<0>>::value));
+               std::index_sequence<0>>::value));
   EXPECT_TRUE((std::is_same<
                index_sequence_for_tuple<const OneElementTuple>,
-               index_sequence<0>>::value));
+               std::index_sequence<0>>::value));
 
   EXPECT_TRUE((std::is_same<
                index_sequence_for_tuple<TwoElementTuple>,
-               index_sequence<0>>::value));
+               std::index_sequence<0>>::value));
   EXPECT_TRUE((std::is_same<
                index_sequence_for_tuple<const TwoElementTuple>,
-               index_sequence<0>>::value));
+               std::index_sequence<0>>::value));
 }
 
 TEST(ApplyResult, Basic) {

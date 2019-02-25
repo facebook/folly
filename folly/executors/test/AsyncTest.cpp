@@ -43,7 +43,7 @@ TEST(AsyncFunc, void_lambda) {
   auto lambda = [] { /*do something*/ return; };
   auto future = async(lambda);
   // Futures with a void returning function, return Unit type
-  EXPECT_EQ(typeid(Unit), typeid(std::move(future).get()));
+  EXPECT_TRUE((std::is_same<Unit, decltype(std::move(future).get())>::value));
 }
 
 TEST(AsyncFunc, moveonly_lambda) {

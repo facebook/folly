@@ -27,7 +27,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/noncopyable.hpp>
 #include <libaio.h>
 
 #include <folly/Portability.h>
@@ -42,7 +41,7 @@ namespace folly {
  *
  * The op must remain allocated until it is completed or canceled.
  */
-class AsyncIOOp : private boost::noncopyable {
+class AsyncIOOp {
   friend class AsyncIO;
   friend std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& o);
 
@@ -50,6 +49,8 @@ class AsyncIOOp : private boost::noncopyable {
   typedef std::function<void(AsyncIOOp*)> NotificationCallback;
 
   explicit AsyncIOOp(NotificationCallback cb = NotificationCallback());
+  AsyncIOOp(const AsyncIOOp&) = delete;
+  AsyncIOOp& operator=(const AsyncIOOp&) = delete;
   ~AsyncIOOp();
 
   enum class State {
@@ -122,7 +123,7 @@ std::ostream& operator<<(std::ostream& stream, AsyncIOOp::State state);
 /**
  * C++ interface around Linux Async IO.
  */
-class AsyncIO : private boost::noncopyable {
+class AsyncIO {
  public:
   typedef AsyncIOOp Op;
 
@@ -152,6 +153,8 @@ class AsyncIO : private boost::noncopyable {
    * of the current number of pending requests.
    */
   explicit AsyncIO(size_t capacity, PollMode pollMode = NOT_POLLABLE);
+  AsyncIO(const AsyncIO&) = delete;
+  AsyncIO& operator=(const AsyncIO&) = delete;
   ~AsyncIO();
 
   /**

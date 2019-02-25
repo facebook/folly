@@ -443,21 +443,3 @@ TEST(Foreach, ForEachEnumerateBreak) {
   EXPECT_EQ(sumIter, 3); // 1 + 2
   EXPECT_EQ(numIterations, 2);
 }
-
-TEST(Foreach, ForEachRangeR) {
-  int sum = 0;
-
-  FOR_EACH_RANGE_R (i, 0, 0) { sum += i; }
-  EXPECT_EQ(0, sum);
-
-  FOR_EACH_RANGE_R (i, 0, -1) { sum += i; }
-  EXPECT_EQ(0, sum);
-
-  FOR_EACH_RANGE_R (i, 0, 5) { sum += i; }
-  EXPECT_EQ(10, sum);
-
-  std::list<int> lst = {0, 1, 2, 3, 4};
-  sum = 0;
-  FOR_EACH_RANGE_R (i, lst.begin(), lst.end()) { sum += *i; }
-  EXPECT_EQ(10, sum);
-}

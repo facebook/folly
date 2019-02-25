@@ -35,7 +35,6 @@
 #include <atomic>
 
 #include <boost/iterator/iterator_facade.hpp>
-#include <boost/noncopyable.hpp>
 
 #include <folly/ThreadCachedInt.h>
 #include <folly/Utility.h>
@@ -102,7 +101,7 @@ template <
     class Allocator = std::allocator<char>,
     class ProbeFcn = AtomicHashArrayLinearProbeFcn,
     class KeyConvertFcn = Identity>
-class AtomicHashArray : boost::noncopyable {
+class AtomicHashArray {
   static_assert(
       (std::is_convertible<KeyT, int32_t>::value ||
        std::is_convertible<KeyT, int64_t>::value ||
@@ -421,6 +420,9 @@ class AtomicHashArray : boost::noncopyable {
       KeyT erasedKey,
       double maxLoadFactor,
       uint32_t cacheSize);
+
+  AtomicHashArray(const AtomicHashArray&) = delete;
+  AtomicHashArray& operator=(const AtomicHashArray&) = delete;
 
   ~AtomicHashArray() = default;
 

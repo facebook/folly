@@ -82,6 +82,13 @@
 #define FOLLY_OPENSSL_HAS_ALPN 0
 #endif
 
+// OpenSSL 1.1.1 and above have TLS 1.3 support
+#if OPENSSL_VERSION_NUMBER >= 0x1010100fL
+#define FOLLY_OPENSSL_HAS_TLS13 1
+#else
+#define FOLLY_OPENSSL_HAS_TLS13 0
+#endif
+
 // This attempts to "unify" the OpenSSL libcrypto/libssl APIs between
 // OpenSSL 1.0.2, 1.1.0 (and some earlier versions) and BoringSSL. The general
 // idea is to provide namespaced wrapper methods for versions which do not

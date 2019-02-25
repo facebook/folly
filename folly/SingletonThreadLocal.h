@@ -43,7 +43,7 @@ class SingletonThreadLocalBase {
     };
 
     template <typename T, typename Tag, typename Make, typename TLTag>
-    explicit UniqueBase(TypeTuple<T, Tag, Make, TLTag>)
+    explicit UniqueBase(TypeTuple<T, Tag, Make, TLTag>) noexcept
         : UniqueBase(
               typeid(T),
               typeid(Tag),
@@ -51,7 +51,7 @@ class SingletonThreadLocalBase {
               typeid(TLTag),
               detail::createGlobal<Value, TypeTuple<T, Tag, UniqueBase>>()) {}
 
-    UniqueBase(Ref type, Ref tag, Ref make, Ref tltag, Value& value);
+    UniqueBase(Ref type, Ref tag, Ref make, Ref tltag, Value& value) noexcept;
   };
 };
 
@@ -98,7 +98,7 @@ template <
 class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
  private:
   struct Unique final : UniqueBase {
-    Unique() : UniqueBase(detail::TypeTuple<T, Tag, Make, TLTag>{}) {}
+    Unique() noexcept : UniqueBase(detail::TypeTuple<T, Tag, Make, TLTag>{}) {}
   };
   static Unique unique;
 

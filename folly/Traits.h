@@ -634,20 +634,6 @@ using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
 
 namespace detail {
 
-template <typename T, bool>
-struct is_negative_impl {
-  constexpr static bool check(T x) {
-    return x < 0;
-  }
-};
-
-template <typename T>
-struct is_negative_impl<T, false> {
-  constexpr static bool check(T) {
-    return false;
-  }
-};
-
 // folly::to integral specializations can end up generating code
 // inside what are really static ifs (not executed because of the templated
 // types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
@@ -687,7 +673,7 @@ FOLLY_POP_WARNING
 // same as `x < 0`
 template <typename T>
 constexpr bool is_negative(T x) {
-  return folly::detail::is_negative_impl<T, std::is_signed<T>::value>::check(x);
+  return std::is_signed<T>::value && x < T(0);
 }
 
 // same as `x <= 0`

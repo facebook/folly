@@ -23,7 +23,6 @@
 #include <ostream>
 #include <vector>
 
-#include <folly/Demangle.h>
 #include <folly/Function.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
@@ -442,13 +441,7 @@ std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   using f14::Histo;
 
   xo << "{ " << std::endl;
-  xo << "  policy: "
-#if FOLLY_HAS_RTTI
-     << folly::demangle(stats.policy)
-#else
-     << "unknown (RTTI not availabe)"
-#endif
-     << std::endl;
+  xo << "  policy: " << stats.policy << std::endl;
   xo << "  size: " << stats.size << std::endl;
   xo << "  valueSize: " << stats.valueSize << std::endl;
   xo << "  bucketCount: " << stats.bucketCount << std::endl;

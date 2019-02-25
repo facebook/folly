@@ -194,7 +194,7 @@ void clause11_21_4_2_k(String& test) {
   EXPECT_EQ(s.size(), size);
   FOR_EACH_RANGE (i, 0, s.size()) { s[i] = random('a', 'z'); }
   test = std::move(s);
-  if (typeid(String) == typeid(fbstring)) {
+  if (std::is_same<String, fbstring>::value) {
     EXPECT_LE(s.size(), 128);
   }
 }
@@ -381,7 +381,7 @@ void clause11_21_4_6_3_a(String& test) {
   EXPECT_EQ(test, s);
   // move assign
   test.assign(std::move(s));
-  if (typeid(String) == typeid(fbstring)) {
+  if (std::is_same<String, fbstring>::value) {
     EXPECT_LE(s.size(), 128);
   }
 }

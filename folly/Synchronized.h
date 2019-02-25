@@ -575,8 +575,8 @@ struct Synchronized : public SynchronizedBase<
       : Synchronized{std::piecewise_construct,
                      std::move(datumArgs),
                      std::move(mutexArgs),
-                     make_index_sequence<sizeof...(DatumArgs)>{},
-                     make_index_sequence<sizeof...(MutexArgs)>{}} {}
+                     std::make_index_sequence<sizeof...(DatumArgs)>{},
+                     std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
    * Copy assignment operator; deprecated
@@ -811,8 +811,8 @@ struct Synchronized : public SynchronizedBase<
       std::piecewise_construct_t,
       std::tuple<DatumArgs...> datumArgs,
       std::tuple<MutexArgs...> mutexArgs,
-      index_sequence<IndicesOne...>,
-      index_sequence<IndicesTwo...>)
+      std::index_sequence<IndicesOne...>,
+      std::index_sequence<IndicesTwo...>)
       : datum_{std::get<IndicesOne>(std::move(datumArgs))...},
         mutex_{std::get<IndicesTwo>(std::move(mutexArgs))...} {}
 
@@ -1086,7 +1086,7 @@ class LockedPtrBase {
     }
   }
   LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : parent_{exchange(rhs.parent_, nullptr)} {}
+      : parent_{std::exchange(rhs.parent_, nullptr)} {}
   LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
     assignImpl(*this, rhs);
     return *this;
@@ -1107,7 +1107,7 @@ class LockedPtrBase {
   template <typename LockPolicyType>
   LockedPtrBase(
       LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept
-      : parent_{exchange(rhs.parent_, nullptr)} {}
+      : parent_{std::exchange(rhs.parent_, nullptr)} {}
   template <typename LockPolicyType>
   LockedPtrBase& operator=(
       LockedPtrBase<SynchronizedType, Mutex, LockPolicyType>&& rhs) noexcept {
@@ -1126,7 +1126,7 @@ class LockedPtrBase {
       LockPolicy::unlock(lhs.parent_->mutex_);
     }
 
-    lhs.parent_ = exchange(rhs.parent_, nullptr);
+    lhs.parent_ = std::exchange(rhs.parent_, nullptr);
   }
 
   using UnlockerData = SynchronizedType*;
@@ -1188,7 +1188,8 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   }
 
   LockedPtrBase(LockedPtrBase&& rhs) noexcept
-      : lock_{std::move(rhs.lock_)}, parent_{exchange(rhs.parent_, nullptr)} {}
+      : lock_{std::move(rhs.lock_)},
+        parent_{std::exchange(rhs.parent_, nullptr)} {}
   LockedPtrBase& operator=(LockedPtrBase&& rhs) noexcept {
     assignImpl(*this, rhs);
     return *this;
@@ -1204,7 +1205,7 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
   LockedPtrBase(LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
                     other) noexcept
       : lock_{std::move(other.lock_)},
-        parent_{exchange(other.parent_, nullptr)} {}
+        parent_{std::exchange(other.parent_, nullptr)} {}
   template <typename LockPolicyType>
   LockedPtrBase& operator=(
       LockedPtrBase<SynchronizedType, std::mutex, LockPolicyType>&&
@@ -1222,7 +1223,7 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
       LockedPtrBase<SynchronizedType, std::mutex, LockPolicyRhs>&
           rhs) noexcept {
     lhs.lock_ = std::move(rhs.lock_);
-    lhs.parent_ = exchange(rhs.parent_, nullptr);
+    lhs.parent_ = std::exchange(rhs.parent_, nullptr);
   }
 
   /**
@@ -1301,7 +1302,8 @@ class ScopedUnlocker {
   ScopedUnlocker(const ScopedUnlocker&) = delete;
   ScopedUnlocker& operator=(const ScopedUnlocker&) = delete;
   ScopedUnlocker(ScopedUnlocker&& other) noexcept
-      : ptr_(exchange(other.ptr_, nullptr)), data_(std::move(other.data_)) {}
+      : ptr_(std::exchange(other.ptr_, nullptr)),
+        data_(std::move(other.data_)) {}
   ScopedUnlocker& operator=(ScopedUnlocker&& other) = delete;
 
   ~ScopedUnlocker() {
@@ -1521,7 +1523,7 @@ class LockedPtr : public LockedPtrBase<
   LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>
   moveFromUpgradeToWrite() {
     return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToExclusive>(
-        exchange(this->parent_, nullptr));
+        std::exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1535,7 +1537,7 @@ class LockedPtr : public LockedPtrBase<
   LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>
   moveFromWriteToUpgrade() {
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToUpgrade>(
-        exchange(this->parent_, nullptr));
+        std::exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1549,7 +1551,7 @@ class LockedPtr : public LockedPtrBase<
   LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>
   moveFromUpgradeToRead() {
     return LockedPtr<SynchronizedType, LockPolicyFromUpgradeToShared>(
-        exchange(this->parent_, nullptr));
+        std::exchange(this->parent_, nullptr));
   }
 
   /**
@@ -1563,7 +1565,7 @@ class LockedPtr : public LockedPtrBase<
   LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>
   moveFromWriteToRead() {
     return LockedPtr<SynchronizedType, LockPolicyFromExclusiveToShared>(
-        exchange(this->parent_, nullptr));
+        std::exchange(this->parent_, nullptr));
   }
 };
 

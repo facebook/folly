@@ -303,16 +303,6 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     useExistingSocket(NetworkSocket::fromFd(fd));
   }
   void useExistingSocket(NetworkSocket fd);
-  void useExistingSockets(const std::vector<int>& fds) {
-    // This isn't a big enough perf impact to matter, as it's only really used
-    // for long-lived servers :)
-    std::vector<NetworkSocket> socks;
-    socks.reserve(fds.size());
-    for (size_t i = 0; i < fds.size(); ++i) {
-      socks.push_back(NetworkSocket::fromFd(fds[i]));
-    }
-    useExistingSockets(socks);
-  }
   void useExistingSockets(const std::vector<NetworkSocket>& fds);
 
   /**

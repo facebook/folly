@@ -406,3 +406,13 @@ TEST(Xlog, xlogStripFilename) {
           "src/test.cpp") == 0,
       "incorrect xlogStripFilename() behavior");
 }
+
+TEST(Xlog, XCheckPrecedence) {
+  // Ensure that XCHECK_XX() and XDCHECK_XX() avoid the common macro pitfall of
+  // not wrapping arguments in parentheses and causing incorrect operator
+  // precedence issues.
+  XCHECK_EQ(0x22 & 0x3, 2);
+  XDCHECK_EQ(2, 0x22 & 0x3);
+  XCHECK_NE(0x62 & 0x22, 2);
+  XDCHECK_NE(0x62 & 0x22, 2);
+}

@@ -68,46 +68,6 @@ FOLLY_ATTR_WEAK void initializeLoggerDB(LoggerDB& db) {
   db.updateConfig(config);
 }
 
-namespace {
-class LoggerDBCleanup {
- public:
-  explicit LoggerDBCleanup(LoggerDB* FOLLY_NONNULL db) : db_{db} {}
-  ~LoggerDBCleanup() {
-    db_->cleanupHandlers();
-  }
-
- private:
-  LoggerDB* const db_;
-};
-} // namespace
-
-LoggerDB* LoggerDB::createSingleton() {
-  // Use a unique_ptr() to clean up the LoggerDB if initializeLoggerDB() throws
-  std::unique_ptr<LoggerDB> db(new LoggerDB());
-  initializeLoggerDB(*db);
-
-  // Once initializeLoggerDB() has succeeded extract the raw pointer to return
-  // to our caller.
-  //
-  // We intentionally leak the LoggerDB singleton and all of the LogCategory
-  // objects it contains.
-  //
-  // We want Logger objects to remain valid for the entire lifetime of the
-  // program, without having to worry about destruction ordering issues, or
-  // making the Logger perform reference counting on the LoggerDB.
-  return db.release();
-}
-
-LoggerDB& LoggerDB::get() {
-  // Intentionally leaky LoggerDB singleton
-  static LoggerDB* const db = createSingleton();
-  // LoggerDBCleanup is responsible for calling db->cleanupHandlers() on program
-  // shutdown.  This allows log handlers to flush any buffered messages before
-  // the program exits.
-  static LoggerDBCleanup cleanup(db);
-  return *db;
-}
-
 LoggerDB::LoggerDB() {
   // Create the root log category and set its log level
   auto rootUptr = std::make_unique<LogCategory>(this);

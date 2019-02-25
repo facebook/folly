@@ -25,7 +25,7 @@ namespace detail {
 
 namespace {
 
-class StaticSingletonManagerImpl {
+class StaticSingletonManagerWithRttiImpl {
  public:
   using Make = void*();
   using Cache = std::atomic<void*>;
@@ -59,13 +59,10 @@ class StaticSingletonManagerImpl {
 
 } // namespace
 
-void* StaticSingletonManager::create_(
-    Key const& key,
-    Make& make,
-    Cache& cache) {
+void* StaticSingletonManagerWithRtti::create_(Arg& arg) {
   // This Leaky Meyers Singleton must always live in the .cpp file.
-  static auto& instance = *new StaticSingletonManagerImpl();
-  return instance.create(key, make, cache);
+  static auto& instance = *new StaticSingletonManagerWithRttiImpl();
+  return instance.create(*arg.key, arg.make, arg.cache);
 }
 
 } // namespace detail

@@ -342,12 +342,6 @@ BENCHMARK(ForEachDescendingManual, iters) {
   doNotOptimizeAway(sum);
 }
 
-BENCHMARK(ForEachRangeR, iters) {
-  int sum = 1;
-  FOR_EACH_RANGE_R (i, 1U, iters) { sum *= i; }
-  doNotOptimizeAway(sum);
-}
-
 BENCHMARK(CharVecForRange, iters) {
   BENCHMARK_SUSPEND {
     setupCharVecBenchmark(iters);

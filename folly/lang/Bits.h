@@ -62,6 +62,28 @@
 
 namespace folly {
 
+#if __cpp_lib_bit_cast
+
+using std::bit_cast;
+
+#else
+
+//  mimic: std::bit_cast, C++20
+template <
+    typename To,
+    typename From,
+    std::enable_if_t<
+        sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
+            is_trivially_copyable<From>::value,
+        int> = 0>
+To bit_cast(const From& src) noexcept {
+  To to;
+  std::memcpy(&to, &src, sizeof(From));
+  return to;
+}
+
+#endif
+
 namespace detail {
 template <typename Dst, typename Src>
 constexpr std::make_signed_t<Dst> bits_to_signed(Src const s) {
@@ -203,15 +225,11 @@ struct EndianInt {
           std::is_floating_point<T>::value,
       "template type parameter must be non-bool integral or floating point");
   static T swap(T x) {
-    // we implement this with memcpy because that is defined behavior in C++
-    // we rely on compilers to optimize away the memcpy calls
+    // we implement this with bit_cast because that is defined behavior in C++
+    // we rely on compilers to optimize away the bit_cast calls
     constexpr auto s = sizeof(T);
     using B = typename uint_types_by_size<s>::type;
-    B b;
-    std::memcpy(&b, &x, s);
-    b = byteswap_gen(b);
-    std::memcpy(&x, &b, s);
-    return x;
+    return bit_cast<T>(byteswap_gen(bit_cast<B>(x)));
   }
   static T big(T x) {
     return kIsLittleEndian ? EndianInt::swap(x) : x;
@@ -374,27 +392,5 @@ T bitReverse(T n) {
   m = ((m & 0xF0F0F0F0F0F0F0F0) >> 4) | ((m & 0x0F0F0F0F0F0F0F0F) << 4);
   return static_cast<T>(Endian::swap(m));
 }
-
-#if __cpp_lib_bit_cast
-
-using std::bit_cast;
-
-#else
-
-//  mimic: std::bit_cast, C++20
-template <
-    typename To,
-    typename From,
-    std::enable_if_t<
-        sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
-            is_trivially_copyable<From>::value,
-        int> = 0>
-To bit_cast(const From& src) noexcept {
-  To to;
-  std::memcpy(&to, &src, sizeof(From));
-  return to;
-}
-
-#endif
 
 } // namespace folly

@@ -20,8 +20,6 @@
 #include <cstdlib>
 #include <memory>
 
-#include <boost/noncopyable.hpp>
-
 #include <folly/File.h>
 #include <folly/net/NetworkSocket.h>
 
@@ -30,7 +28,7 @@ namespace folly {
 /**
  * Set of sockets that allows immediate, take-no-prisoners abort.
  */
-class ShutdownSocketSet : private boost::noncopyable {
+class ShutdownSocketSet {
  public:
   /**
    * Create a socket set that can handle file descriptors < maxFd.
@@ -39,6 +37,9 @@ class ShutdownSocketSet : private boost::noncopyable {
    * on your system.
    */
   explicit ShutdownSocketSet(int maxFd = 1 << 18);
+
+  ShutdownSocketSet(const ShutdownSocketSet&) = delete;
+  ShutdownSocketSet& operator=(const ShutdownSocketSet&) = delete;
 
   /**
    * Add an already open socket to the list of sockets managed by

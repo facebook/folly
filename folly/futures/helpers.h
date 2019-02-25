@@ -46,6 +46,7 @@ namespace futures {
 /// needed. If your program never uses any timeouts or other time-based
 /// Futures you will pay no Timekeeper thread overhead.
 Future<Unit> sleep(Duration, Timekeeper* = nullptr);
+Future<Unit> sleepUnsafe(Duration, Timekeeper* = nullptr);
 
 /**
  * Set func as the callback for each input Future and return a vector of
@@ -314,9 +315,8 @@ Future<T> makeFuture(Try<T> t);
  *
  * @returns a void Future that will call back on the given executor
  */
-inline Future<Unit> via(
-    Executor::KeepAlive<> executor,
-    int8_t priority = Executor::MID_PRI);
+inline Future<Unit> via(Executor::KeepAlive<> executor);
+inline Future<Unit> via(Executor::KeepAlive<> executor, int8_t priority);
 
 /// Execute a function via the given executor and return a future.
 /// This is semantically equivalent to via(executor).then(func), but

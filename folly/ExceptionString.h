@@ -31,7 +31,7 @@ namespace folly {
  * defined.
  */
 inline fbstring exceptionStr(const std::exception& e) {
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
   fbstring rv(demangle(typeid(e)));
   rv += ": ";
 #else
@@ -41,10 +41,6 @@ inline fbstring exceptionStr(const std::exception& e) {
   return rv;
 }
 
-// Empirically, this indicates if the runtime supports
-// std::exception_ptr, as not all (arm, for instance) do.
-#if defined(__GNUC__) && defined(__GCC_ATOMIC_INT_LOCK_FREE) && \
-    __GCC_ATOMIC_INT_LOCK_FREE > 1
 inline fbstring exceptionStr(std::exception_ptr ep) {
   if (!kHasExceptions) {
     return "Exception (catch unavailable)";
@@ -52,20 +48,16 @@ inline fbstring exceptionStr(std::exception_ptr ep) {
   return catch_exception(
       [&]() -> fbstring {
         return catch_exception<std::exception const&>(
-            [&]() -> fbstring {
-              std::rethrow_exception(ep);
-              assume_unreachable();
-            },
+            [&]() -> fbstring { std::rethrow_exception(ep); },
             [](auto&& e) { return exceptionStr(e); });
       },
       []() -> fbstring { return "<unknown exception>"; });
 }
-#endif
 
 template <typename E>
 auto exceptionStr(const E& e) -> typename std::
     enable_if<!std::is_base_of<std::exception, E>::value, fbstring>::type {
-#ifdef FOLLY_HAS_RTTI
+#if FOLLY_HAS_RTTI
   return demangle(typeid(e));
 #else
   (void)e;

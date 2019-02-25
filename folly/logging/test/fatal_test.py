@@ -180,3 +180,50 @@ class FatalTests(unittest.TestCase):
         else:
             self.assertEqual(b"", err)
             self.assertEqual(0, returncode)
+
+    def test_xcheck_comparisons(self):
+        self._test_xcheck_cmp("xcheck_eq0", 1, "==")
+        self._test_xcheck_cmp("xcheck_ne0", 0, "!=")
+        self._test_xcheck_cmp("xcheck_lt0", 0, "<")
+        self._test_xcheck_cmp("xcheck_le0", 9, "<=")
+        self._test_xcheck_cmp("xcheck_gt0", 0, ">")
+        self._test_xcheck_cmp("xcheck_ge0", -3, ">=")
+
+        self._test_xcheck_cmp("xcheck_eq0", 0, "==", expect_failure=False)
+        self._test_xcheck_cmp("xcheck_ne0", 123, "!=", expect_failure=False)
+        self._test_xcheck_cmp("xcheck_lt0", -12, "<", expect_failure=False)
+        self._test_xcheck_cmp("xcheck_le0", 0, "<=", expect_failure=False)
+        self._test_xcheck_cmp("xcheck_gt0", 123, ">", expect_failure=False)
+        self._test_xcheck_cmp("xcheck_ge0", 123, ">=", expect_failure=False)
+
+        is_debug = self.is_debug_build()
+        self._test_xcheck_cmp("xdcheck_eq0", 1, "==", expect_failure=is_debug)
+        self._test_xcheck_cmp("xdcheck_ne0", 0, "!=", expect_failure=is_debug)
+        self._test_xcheck_cmp("xdcheck_lt0", 0, "<", expect_failure=is_debug)
+        self._test_xcheck_cmp("xdcheck_le0", 9, "<=", expect_failure=is_debug)
+        self._test_xcheck_cmp("xdcheck_gt0", 0, ">", expect_failure=is_debug)
+        self._test_xcheck_cmp("xdcheck_ge0", -3, ">=", expect_failure=is_debug)
+
+    def test_xcheck_eval_once(self):
+        err = self.run_helper("--test_xcheck_eq_evalutates_once")
+        expected_msg = "Check failed: ++x == 7 (6 vs. 7)"
+        self.assertRegex(err, self.get_crash_regex(expected_msg.encode("utf-8")))
+
+    def _test_xcheck_cmp(
+        self, flag, value, op, extra_msg=" extra user args", expect_failure=True
+    ):
+        args = ["--crash=no", "--" + flag, str(value)]
+        if expect_failure:
+            err = self.run_helper(*args)
+            expected_msg = "Check failed: FLAGS_%s %s 0 (%s vs. 0)%s" % (
+                flag,
+                op,
+                value,
+                extra_msg,
+            )
+            self.assertRegex(err, self.get_crash_regex(expected_msg.encode("utf-8")))
+        else:
+            returncode, out, err = self.run_helper_nochecks(*args)
+            self.assertEqual(b"", err)
+            self.assertEqual(b"", out)
+            self.assertEqual(0, returncode)

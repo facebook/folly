@@ -20,24 +20,48 @@
 #include <typeinfo>
 
 #include <folly/CPortability.h>
+#include <folly/Indestructible.h>
 #include <folly/Likely.h>
 #include <folly/detail/Singleton.h>
+#include <folly/lang/TypeInfo.h>
 
 namespace folly {
 namespace detail {
+
+// Does not support dynamic loading but works without rtti.
+class StaticSingletonManagerSansRtti {
+ public:
+  template <typename T, typename Tag>
+  FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
+    std::atomic<T*> cache{};
+    auto const pointer = cache.load(std::memory_order_acquire);
+    return FOLLY_LIKELY(!!pointer) ? *pointer : create_<T, Tag>(cache);
+  }
+
+ private:
+  template <typename T, typename Tag>
+  FOLLY_EXPORT FOLLY_NOINLINE static T& create_(std::atomic<T*>& cache) {
+    static Indestructible<T> instance;
+    cache.store(&*instance, std::memory_order_release);
+    return *instance;
+  }
+};
 
 // This internal-use-only class is used to create all leaked Meyers singletons.
 // It guarantees that only one instance of every such singleton will ever be
 // created, even when requested from different compilation units linked
 // dynamically.
-class StaticSingletonManager {
+//
+// Supports dynamic loading but requires rtti.
+class StaticSingletonManagerWithRtti {
  public:
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    static Cache cache;
-    auto const& key = typeid(TypeTuple<T, Tag>);
-    auto const v = cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : create_(key, make<T>, cache);
+    // gcc and clang behave poorly if typeid is hidden behind a non-constexpr
+    // function, but typeid is not constexpr under msvc
+    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(TypeTuple<T, Tag>), make<T>};
+    auto const v = arg.cache.load(std::memory_order_acquire);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
   }
 
@@ -45,14 +69,29 @@ class StaticSingletonManager {
   using Key = std::type_info;
   using Make = void*();
   using Cache = std::atomic<void*>;
+  struct Arg {
+    Cache cache; // should be first field
+    Key const* key;
+    Make& make;
+  };
 
   template <typename T>
   static void* make() {
     return new T();
   }
 
-  FOLLY_NOINLINE static void* create_(Key const& key, Make& make, Cache& cache);
+  template <bool Noexcept>
+  FOLLY_ATTR_VISIBILITY_HIDDEN FOLLY_ALWAYS_INLINE static void* create_(
+      Arg& arg) noexcept(Noexcept) {
+    return create_(arg);
+  }
+  FOLLY_NOINLINE static void* create_(Arg& arg);
 };
+
+using StaticSingletonManager = std::conditional_t<
+    kHasRtti,
+    StaticSingletonManagerWithRtti,
+    StaticSingletonManagerSansRtti>;
 
 template <typename T, typename Tag>
 FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T& createGlobal() {

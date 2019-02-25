@@ -25,6 +25,8 @@
 #include <folly/init/Init.h>
 #include <folly/json.h>
 
+#include <utility>
+
 using namespace folly;
 
 namespace {
@@ -100,7 +102,7 @@ BENCHMARK_RELATIVE(intAppend_format) {
 BENCHMARK_DRAW_LINE();
 
 template <size_t... Indexes>
-int snprintf20Numbers(int i, index_sequence<Indexes...>) {
+int snprintf20Numbers(int i, std::index_sequence<Indexes...>) {
   static_assert(20 == sizeof...(Indexes), "Must have exactly 20 indexes");
   return snprintf(
       bigBuf.data(),
@@ -115,13 +117,13 @@ int snprintf20Numbers(int i, index_sequence<Indexes...>) {
 BENCHMARK(bigFormat_snprintf, iters) {
   while (iters--) {
     for (int i = -100; i < 100; i++) {
-      snprintf20Numbers(i, make_index_sequence<20>());
+      snprintf20Numbers(i, std::make_index_sequence<20>());
     }
   }
 }
 
 template <size_t... Indexes>
-decltype(auto) format20Numbers(int i, index_sequence<Indexes...>) {
+decltype(auto) format20Numbers(int i, std::index_sequence<Indexes...>) {
   static_assert(20 == sizeof...(Indexes), "Must have exactly 20 indexes");
   return format(
       "{} {} {} {} {}"
@@ -142,8 +144,9 @@ BENCHMARK_RELATIVE(bigFormat_format, iters) {
   while (iters--) {
     for (int i = -100; i < 100; i++) {
       p = bigBuf.data();
-      suspender.dismissing(
-          [&] { format20Numbers(i, make_index_sequence<20>())(writeToBuf); });
+      suspender.dismissing([&] {
+        format20Numbers(i, std::make_index_sequence<20>())(writeToBuf);
+      });
     }
   }
 }

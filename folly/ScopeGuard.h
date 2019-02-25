@@ -90,7 +90,7 @@ class ScopeGuardImpl : public ScopeGuardImplBase {
     // on the value of other.dismissed_. The following lines only execute
     // if the move/copy succeeded, in which case *this assumes ownership of
     // the cleanup action and dismisses other.
-    dismissed_ = exchange(other.dismissed_, true);
+    dismissed_ = std::exchange(other.dismissed_, true);
   }
 
   ~ScopeGuardImpl() noexcept(InvokeNoexcept) {

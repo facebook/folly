@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 
 namespace folly {
@@ -51,7 +52,7 @@ namespace folly {
  *  Note: If passed an rvalue, invokes the move-ctor, not the copy-ctor. This
  *  can be used to to force a move, where just using std::move would not:
  *
- *      std::copy(std::move(data)); // force-move, not just a cast to &&
+ *      folly::copy(std::move(data)); // force-move, not just a cast to &&
  *
  *  Note: The following text appears in the standard:
  *
@@ -107,108 +108,6 @@ template <typename Src, typename Dst>
 constexpr like_t<Src, Dst>&& forward_like(Dst&& dst) noexcept {
   return static_cast<like_t<Src, Dst>&&>(std::forward<Dst>(dst));
 }
-
-#if __cpp_lib_exchange_function || _LIBCPP_STD_VER > 11 || _MSC_VER
-
-/* using override */ using std::exchange;
-
-#else
-
-//  mimic: std::exchange, C++14
-//  from: http://en.cppreference.com/w/cpp/utility/exchange, CC-BY-SA
-template <class T, class U = T>
-T exchange(T& obj, U&& new_value) {
-  T old_value = std::move(obj);
-  obj = std::forward<U>(new_value);
-  return old_value;
-}
-
-#endif
-
-namespace utility_detail {
-template <typename...>
-struct make_seq_cat;
-template <
-    template <typename T, T...> class S,
-    typename T,
-    T... Ta,
-    T... Tb,
-    T... Tc>
-struct make_seq_cat<S<T, Ta...>, S<T, Tb...>, S<T, Tc...>> {
-  using type =
-      S<T,
-        Ta...,
-        (sizeof...(Ta) + Tb)...,
-        (sizeof...(Ta) + sizeof...(Tb) + Tc)...>;
-};
-
-// Not parameterizing by `template <typename T, T...> class, typename` because
-// clang precisely v4.0 fails to compile that. Note that clang v3.9 and v5.0
-// handle that code correctly.
-//
-// For this to work, `S0` is required to be `Sequence<T>` and `S1` is required
-// to be `Sequence<T, 0>`.
-
-template <std::size_t Size>
-struct make_seq {
-  template <typename S0, typename S1>
-  using apply = typename make_seq_cat<
-      typename make_seq<Size / 2>::template apply<S0, S1>,
-      typename make_seq<Size / 2>::template apply<S0, S1>,
-      typename make_seq<Size % 2>::template apply<S0, S1>>::type;
-};
-template <>
-struct make_seq<1> {
-  template <typename S0, typename S1>
-  using apply = S1;
-};
-template <>
-struct make_seq<0> {
-  template <typename S0, typename S1>
-  using apply = S0;
-};
-} // namespace utility_detail
-
-#if __cpp_lib_integer_sequence || _MSC_VER
-
-/* using override */ using std::index_sequence;
-/* using override */ using std::integer_sequence;
-
-#else
-
-// TODO: Remove after upgrading to C++14 baseline
-
-template <class T, T... Ints>
-struct integer_sequence {
-  using value_type = T;
-
-  static constexpr std::size_t size() noexcept {
-    return sizeof...(Ints);
-  }
-};
-
-template <std::size_t... Ints>
-using index_sequence = integer_sequence<std::size_t, Ints...>;
-
-#endif
-
-#if FOLLY_HAS_BUILTIN(__make_integer_seq) || _MSC_FULL_VER >= 190023918
-
-template <typename T, std::size_t Size>
-using make_integer_sequence = __make_integer_seq<integer_sequence, T, Size>;
-
-#else
-
-template <typename T, std::size_t Size>
-using make_integer_sequence = typename utility_detail::make_seq<
-    Size>::template apply<integer_sequence<T>, integer_sequence<T, 0>>;
-
-#endif
-
-template <std::size_t Size>
-using make_index_sequence = make_integer_sequence<std::size_t, Size>;
-template <class... T>
-using index_sequence_for = make_index_sequence<sizeof...(T)>;
 
 /**
  *  Backports from C++17 of:
@@ -399,6 +298,12 @@ template <typename T>
 constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
   using U = typename std::make_unsigned<T>::type;
   return static_cast<U>(t);
+}
+
+template <class E>
+constexpr std::underlying_type_t<E> to_underlying_type(E e) noexcept {
+  static_assert(std::is_enum<E>::value, "not an enum type");
+  return static_cast<std::underlying_type_t<E>>(e);
 }
 
 } // namespace folly
