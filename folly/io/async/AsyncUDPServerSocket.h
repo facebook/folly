@@ -225,14 +225,12 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
         break;
     }
 
-    auto client = clientAddress;
     auto callback = listeners_[listenerId].second;
-    auto socket = socket_;
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    auto f = [socket,
-              client,
+    auto f = [socket = socket_,
+              client = clientAddress,
               callback,
               data = std::move(data),
               truncated]() mutable {
