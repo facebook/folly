@@ -195,30 +195,30 @@ TEST(Timekeeper, futureDelayedStickyExecutor) {
 
 TEST(Timekeeper, futureWithinThrows) {
   Promise<int> p;
-  auto f =
-      p.getFuture().within(one_ms).onError([](FutureTimeout&) { return -1; });
+  auto f = p.getFuture().within(one_ms).thenError(
+      tag_t<FutureTimeout>{}, [](auto&&) { return -1; });
 
   EXPECT_EQ(-1, std::move(f).get());
 }
 
 TEST(Timekeeper, semiFutureWithinThrows) {
   Promise<int> p;
-  auto f = p.getSemiFuture().within(one_ms).toUnsafeFuture().onError(
-      [](FutureTimeout&) { return -1; });
+  auto f = p.getSemiFuture().within(one_ms).toUnsafeFuture().thenError(
+      tag_t<FutureTimeout>{}, [](auto&&) { return -1; });
 
   EXPECT_EQ(-1, std::move(f).get());
 }
 
 TEST(Timekeeper, futureWithinAlreadyComplete) {
-  auto f =
-      makeFuture(42).within(one_ms).onError([&](FutureTimeout&) { return -1; });
+  auto f = makeFuture(42).within(one_ms).thenError(
+      tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
 
   EXPECT_EQ(42, std::move(f).get());
 }
 
 TEST(Timekeeper, semiFutureWithinAlreadyComplete) {
-  auto f = makeSemiFuture(42).within(one_ms).toUnsafeFuture().onError(
-      [&](FutureTimeout&) { return -1; });
+  auto f = makeSemiFuture(42).within(one_ms).toUnsafeFuture().thenError(
+      tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
 
   EXPECT_EQ(42, std::move(f).get());
 }
@@ -227,7 +227,7 @@ TEST(Timekeeper, futureWithinFinishesInTime) {
   Promise<int> p;
   auto f = p.getFuture()
                .within(std::chrono::minutes(1))
-               .onError([&](FutureTimeout&) { return -1; });
+               .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
   p.setValue(42);
 
   EXPECT_EQ(42, std::move(f).get());
@@ -238,7 +238,7 @@ TEST(Timekeeper, semiFutureWithinFinishesInTime) {
   auto f = p.getSemiFuture()
                .within(std::chrono::minutes(1))
                .toUnsafeFuture()
-               .onError([&](FutureTimeout&) { return -1; });
+               .thenError(tag_t<FutureTimeout>{}, [&](auto&&) { return -1; });
   p.setValue(42);
 
   EXPECT_EQ(42, std::move(f).get());
