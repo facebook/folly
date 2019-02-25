@@ -30,7 +30,7 @@ SingletonThreadLocalBase::UniqueBase::UniqueBase(
     Ref tag,
     Ref make,
     Ref tltag,
-    Value& value) {
+    Value& value) noexcept {
   if (!value.init) {
     value.init = true;
     value.make = &make;

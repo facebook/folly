@@ -184,7 +184,7 @@ void SingletonHolder<T>::destroyInstance() {
 template <typename T>
 SingletonHolder<T>::SingletonHolder(
     TypeDescriptor typeDesc,
-    SingletonVault& vault)
+    SingletonVault& vault) noexcept
     : SingletonHolderBase(typeDesc), vault_(vault) {}
 
 template <typename T>

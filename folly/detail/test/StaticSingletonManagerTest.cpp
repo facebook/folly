@@ -21,8 +21,32 @@
 namespace folly {
 namespace detail {
 
+FOLLY_ATTR_WEAK void check_doit() {}
+
+namespace {
+template <bool Noexcept>
+struct MayThrow {
+  FOLLY_NOINLINE MayThrow() noexcept(Noexcept) {
+    check_doit();
+  }
+  FOLLY_NOINLINE ~MayThrow() {
+    check_doit();
+  }
+};
+} // namespace
+
 extern "C" int* check() {
   return &createGlobal<int, void>();
+}
+
+extern "C" void* check_throw() {
+  MayThrow<false> obj;
+  return &createGlobal<MayThrow<false>, void>();
+}
+
+extern "C" void* check_nothrow() {
+  MayThrow<false> obj;
+  return &createGlobal<MayThrow<true>, void>();
 }
 
 struct StaticSingletonManagerTest : public testing::Test {};

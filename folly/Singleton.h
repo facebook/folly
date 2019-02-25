@@ -279,7 +279,8 @@ struct SingletonVaultState {
 // SingletonHolders.
 class SingletonHolderBase {
  public:
-  explicit SingletonHolderBase(TypeDescriptor typeDesc) : type_(typeDesc) {}
+  explicit SingletonHolderBase(TypeDescriptor typeDesc) noexcept
+      : type_(typeDesc) {}
   virtual ~SingletonHolderBase() = default;
 
   TypeDescriptor type() const {
@@ -325,7 +326,7 @@ struct SingletonHolder : public SingletonHolderBase {
   template <typename Tag, typename VaultTag>
   struct Impl;
 
-  SingletonHolder(TypeDescriptor type, SingletonVault& vault);
+  SingletonHolder(TypeDescriptor type, SingletonVault& vault) noexcept;
 
   enum class SingletonHolderState {
     NotRegistered,
@@ -409,7 +410,8 @@ class SingletonVault {
 
   static Type defaultVaultType();
 
-  explicit SingletonVault(Type type = defaultVaultType()) : type_(type) {}
+  explicit SingletonVault(Type type = defaultVaultType()) noexcept
+      : type_(type) {}
 
   // Destructor is only called by unit tests to check destroyInstances.
   ~SingletonVault();
@@ -726,7 +728,7 @@ class LeakySingleton {
   enum class State { NotRegistered, Dead, Living };
 
   struct Entry {
-    Entry() {}
+    Entry() noexcept {}
     Entry(const Entry&) = delete;
     Entry& operator=(const Entry&) = delete;
 

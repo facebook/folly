@@ -61,7 +61,7 @@ class StaticSingletonManagerWithRtti {
     // function, but typeid is not constexpr under msvc
     static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(TypeTuple<T, Tag>), make<T>};
     auto const v = arg.cache.load(std::memory_order_acquire);
-    auto const p = FOLLY_LIKELY(!!v) ? v : create_(arg);
+    auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
   }
 
@@ -80,6 +80,11 @@ class StaticSingletonManagerWithRtti {
     return new T();
   }
 
+  template <bool Noexcept>
+  FOLLY_ATTR_VISIBILITY_HIDDEN FOLLY_ALWAYS_INLINE static void* create_(
+      Arg& arg) noexcept(Noexcept) {
+    return create_(arg);
+  }
   FOLLY_NOINLINE static void* create_(Arg& arg);
 };
 
