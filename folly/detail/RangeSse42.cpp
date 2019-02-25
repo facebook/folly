@@ -15,7 +15,9 @@
  */
 
 #include <folly/detail/RangeSse42.h>
+
 #include <glog/logging.h>
+
 #include <folly/Portability.h>
 
 //  Essentially, two versions of this file: one with an SSE42 implementation

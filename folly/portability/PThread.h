@@ -28,12 +28,7 @@
 
 #elif !FOLLY_HAVE_PTHREAD
 
-#if __has_include(<cstdint>)
 #include <cstdint>
-#else 
-#include <stdint.h>
-#endif
-
 #include <memory>
 
 #include <folly/portability/Sched.h>

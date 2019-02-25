@@ -45,11 +45,7 @@
 #pragma once
 
 #include <cstddef>
-#if __has_include(<cstdint>) 
 #include <cstdint>
-#else 
-#include <stdint.h>
-#endif
 
 namespace folly {
 namespace hash {
