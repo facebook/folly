@@ -43,6 +43,7 @@
 #include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/Unit.h>
+#include <folly/Utility.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Pretty.h>
 #include <folly/portability/Math.h>
@@ -648,15 +649,13 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
 toAppend(Src value, Tgt* result) {
-  toAppend(
-      static_cast<typename std::underlying_type<Src>::type>(value), result);
+  toAppend(to_underlying_type(value), result);
 }
 
 template <class Src>
 typename std::enable_if<std::is_enum<Src>::value, size_t>::type
 estimateSpaceNeeded(Src value) {
-  return estimateSpaceNeeded(
-      static_cast<typename std::underlying_type<Src>::type>(value));
+  return estimateSpaceNeeded(to_underlying_type(value));
 }
 
 /*******************************************************************************
@@ -1547,8 +1546,7 @@ typename std::enable_if<
         !std::is_convertible<Tgt, StringPiece>::value,
     Expected<Tgt, ConversionCode>>::type
 tryTo(const Src& value) {
-  using I = typename std::underlying_type<Src>::type;
-  return tryTo<Tgt>(static_cast<I>(value));
+  return tryTo<Tgt>(to_underlying_type(value));
 }
 
 template <class Tgt, class Src>
@@ -1567,7 +1565,7 @@ typename std::enable_if<
         !std::is_convertible<Tgt, StringPiece>::value,
     Tgt>::type
 to(const Src& value) {
-  return to<Tgt>(static_cast<typename std::underlying_type<Src>::type>(value));
+  return to<Tgt>(to_underlying_type(value));
 }
 
 template <class Tgt, class Src>

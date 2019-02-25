@@ -506,7 +506,7 @@ struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
   size_t operator()(T key) const noexcept {
-    return Hash()(static_cast<std::underlying_type_t<T>>(key));
+    return Hash()(to_underlying_type(key));
   }
 };
 

@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <folly/CPortability.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 
 namespace folly {
@@ -297,6 +298,12 @@ template <typename T>
 constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
   using U = typename std::make_unsigned<T>::type;
   return static_cast<U>(t);
+}
+
+template <class E>
+constexpr std::underlying_type_t<E> to_underlying_type(E e) noexcept {
+  static_assert(std::is_enum<E>::value, "not an enum type");
+  return static_cast<std::underlying_type_t<E>>(e);
 }
 
 } // namespace folly
