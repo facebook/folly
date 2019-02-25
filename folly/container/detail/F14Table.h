@@ -29,6 +29,10 @@
 #include <utility>
 #include <vector>
 
+#if FOLLY_HAS_STRING_VIEW
+#include <string_view> // @manual
+#endif
+
 #include <folly/Bits.h>
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
@@ -157,8 +161,11 @@ struct StdIsFastHash<std::hash<long double>> : std::false_type {};
 template <typename... Args>
 struct StdIsFastHash<std::hash<std::basic_string<Args...>>> : std::false_type {
 };
-
-// TODO: add specialization for std::basic_string_view
+#if FOLLY_HAS_STRING_VIEW
+template <typename... Args>
+struct StdIsFastHash<std::hash<std::basic_string_view<Args...>>>
+    : std::false_type {};
+#endif
 
 // mimic internal node of unordered containers in STL to estimate the size
 template <typename K, typename V, typename H, typename Enable = void>
