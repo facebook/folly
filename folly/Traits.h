@@ -453,13 +453,11 @@ struct IsNothrowSwappable
 /* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
 
 template <class T>
-struct IsRelocatable : std::conditional<
+struct IsRelocatable : std::conditional_t<
                            traits_detail::has_IsRelocatable<T>::value,
                            traits_detail::has_true_IsRelocatable<T>,
-                           // TODO add this line (and some tests for it) when we
-                           // upgrade to gcc 4.7
-                           // std::is_trivially_move_constructible<T>::value ||
-                           is_trivially_copyable<T>>::type {};
+                           bool_constant<std::is_trivially_move_constructible<T>
+                           ::value || is_trivially_copyable<T>::value>>{};
 
 template <class T>
 struct IsZeroInitializable
