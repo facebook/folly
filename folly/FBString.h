@@ -78,10 +78,6 @@
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_GNU_DISABLE_WARNING("-Wshadow")
-// GCC 4.9 has a false positive in setSmallSize (probably
-// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59124), disable
-// compile-time array bound checking.
-FOLLY_GNU_DISABLE_WARNING("-Warray-bounds")
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use folly::throw_exception
