@@ -39,7 +39,7 @@ template class Future<double>;
 namespace folly {
 namespace futures {
 
-Future<Unit> sleep(Duration dur, Timekeeper* tk) {
+SemiFuture<Unit> sleep(Duration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
   if (LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
@@ -47,14 +47,14 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   }
 
   if (UNLIKELY(!tk)) {
-    return makeFuture<Unit>(FutureNoTimekeeper());
+    return makeSemiFuture<Unit>(FutureNoTimekeeper());
   }
 
   return tk->after(dur);
 }
 
 Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
-  return sleep(dur, tk);
+  return sleep(dur, tk).toUnsafeFuture();
 }
 
 } // namespace futures

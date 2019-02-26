@@ -45,7 +45,7 @@ namespace futures {
 /// The Timekeeper thread will be lazily created the first time it is
 /// needed. If your program never uses any timeouts or other time-based
 /// Futures you will pay no Timekeeper thread overhead.
-Future<Unit> sleep(Duration, Timekeeper* = nullptr);
+SemiFuture<Unit> sleep(Duration, Timekeeper* = nullptr);
 Future<Unit> sleepUnsafe(Duration, Timekeeper* = nullptr);
 
 /**

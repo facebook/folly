@@ -320,8 +320,9 @@ TEST(Timekeeper, interruptDoesntCrash) {
 
 TEST(Timekeeper, chainedInterruptTest) {
   bool test = false;
-  auto f =
-      futures::sleep(milliseconds(100)).thenValue([&](auto&&) { test = true; });
+  auto f = futures::sleep(milliseconds(100)).deferValue([&](auto&&) {
+    test = true;
+  });
   f.cancel();
   f.wait();
   EXPECT_FALSE(test);

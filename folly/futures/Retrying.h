@@ -181,7 +181,8 @@ retryingPolicyCappedJitteredExponentialBackoff(
           }
           auto backoff = detail::retryingJitteredExponentialBackoffDur(
               n, backoff_min, backoff_max, jitter_param, rngp);
-          return futures::sleep(backoff).thenValue([](auto&&) { return true; });
+          return futures::sleep(backoff).toUnsafeFuture().thenValue(
+              [](auto&&) { return true; });
         });
   };
 }

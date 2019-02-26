@@ -77,7 +77,7 @@ class TimedWaitAwaitable {
   bool await_suspend(std::experimental::coroutine_handle<> ch) {
     auto sharedState = std::make_shared<SharedState>(ch, storage_);
     waitAndNotify(std::move(awaitable_), sharedState).detach();
-    futures::sleep(duration_).thenValue(
+    futures::sleepUnsafe(duration_).thenValue(
         [sharedState = std::move(sharedState)](Unit) {
           sharedState->setTimeout();
         });
