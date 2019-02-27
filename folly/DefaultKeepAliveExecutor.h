@@ -143,8 +143,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
 
   std::shared_ptr<ControlBlock> controlBlock_{std::make_shared<ControlBlock>()};
   Baton<> keepAliveReleaseBaton_;
-  KeepAlive<DefaultKeepAliveExecutor> keepAlive_{
-      makeKeepAlive<DefaultKeepAliveExecutor>(this)};
+  KeepAlive<DefaultKeepAliveExecutor> keepAlive_{makeKeepAlive(this)};
 };
 
 } // namespace folly
