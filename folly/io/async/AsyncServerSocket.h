@@ -308,14 +308,6 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Return the underlying file descriptor
    */
-  std::vector<int> getSockets() const {
-    std::vector<int> sockets;
-    for (auto& handler : sockets_) {
-      sockets.push_back(handler.socket_.toFd());
-    }
-    return sockets;
-  }
-
   std::vector<NetworkSocket> getNetworkSockets() const {
     std::vector<NetworkSocket> sockets;
     for (auto& handler : sockets_) {
