@@ -148,6 +148,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     return socket_->getFD();
   }
 
+  NetworkSocket getNetworkSocket() const {
+    CHECK(socket_) << "Need to bind before getting Network Socket";
+    return socket_->getNetworkSocket();
+  }
+
   void close() {
     CHECK(socket_) << "Need to bind before closing";
     socket_->close();
