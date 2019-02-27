@@ -205,10 +205,8 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
  */
 #if defined(_MSC_VER)
 #define FOLLY_TLS __declspec(thread)
-#elif (defined(__GNUC__) || defined(__clang__)) && !_LIBCPP_VER 
+#elif (defined(__GNUC__) || defined(__clang__))
 #define FOLLY_TLS __thread
-#elif (defined(__GNUC__) || defined(__clang__)) && _LIBCPP_VER 
-#define FOLLY_TLS thread_local
 #else
 #error cannot define platform specific thread local storage
 #endif

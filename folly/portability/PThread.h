@@ -22,10 +22,6 @@
 
 #include <pthread.h>
 
-#if __has_include(<pthread_np.h>)
-#include <pthread_np.h>
-#endif
-
 #elif !FOLLY_HAVE_PTHREAD
 
 #include <cstdint>

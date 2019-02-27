@@ -23,6 +23,10 @@
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
+#if __has_include(<pthread_np.h>)
+#include <pthread_np.h>
+#endif
+
 namespace folly {
 
 /**
