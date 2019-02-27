@@ -248,6 +248,27 @@ TEST(Observer, Stress) {
   });
 }
 
+TEST(Observer, StressMultipleUpdates) {
+  SimpleObservable<int> observable1(0);
+  SimpleObservable<int> observable2(0);
+
+  auto observer = makeObserver(
+      [o1 = observable1.getObserver(), o2 = observable2.getObserver()]() {
+        return (**o1) * (**o2);
+      });
+
+  EXPECT_EQ(0, **observer);
+
+  constexpr size_t numIters = 10000;
+
+  for (size_t i = 1; i <= numIters; ++i) {
+    observable1.setValue(i);
+    observable2.setValue(i);
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
+    EXPECT_EQ(i * i, **observer);
+  }
+}
+
 TEST(Observer, TLObserver) {
   auto createTLObserver = [](int value) {
     return folly::observer::makeTLObserver([=] { return value; });

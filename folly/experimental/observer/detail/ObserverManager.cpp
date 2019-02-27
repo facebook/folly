@@ -137,11 +137,15 @@ class ObserverManager::NextQueue {
             }
           }
 
+          for (auto& corePtr : cores) {
+            corePtr->setForceRefresh();
+          }
+
           ++manager_.version_;
         }
 
         for (auto& core : cores) {
-          manager_.scheduleRefresh(std::move(core), manager_.version_, true);
+          manager_.scheduleRefresh(std::move(core), manager_.version_);
         }
 
         {

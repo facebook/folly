@@ -81,12 +81,17 @@ class Core : public std::enable_shared_from_this<Core> {
 
   /**
    * Check if the observed object needs to be re-computed. Returns the version
-   * of last change. If force is true, re-computes the observed object, even if
-   * dependencies didn't change.
+   * of last change.
    *
    * This should be only called from ObserverManager thread.
    */
-  size_t refresh(size_t version, bool force = false);
+  size_t refresh(size_t version);
+
+  /**
+   * Force the next call to refresh to unconditionally re-compute the observed
+   * object, even if dependencies didn't change.
+   */
+  void setForceRefresh();
 
   ~Core();
 
@@ -110,6 +115,8 @@ class Core : public std::enable_shared_from_this<Core> {
   folly::Function<std::shared_ptr<const void>()> creator_;
 
   std::mutex refreshMutex_;
+
+  bool forceRefresh_{false};
 };
 } // namespace observer_detail
 } // namespace folly
