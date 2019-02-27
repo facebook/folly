@@ -20,6 +20,7 @@
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/detail/Traits.h>
 #include <folly/fibers/Baton.h>
 #include <folly/synchronization/Baton.h>
 
@@ -251,23 +252,12 @@ BlockingWaitPromise<void>::get_return_object() noexcept {
       BlockingWaitPromise<void>>::from_promise(*this)};
 }
 
-template <typename T>
-struct decay_rvalue_reference {
-  using type = T;
-};
-
-template <typename T>
-struct decay_rvalue_reference<T&&> : std::decay<T> {};
-
-template <typename T>
-using decay_rvalue_reference_t = typename decay_rvalue_reference<T>::type;
-
 template <
     typename Awaitable,
     typename Result = await_result_t<Awaitable>,
     std::enable_if_t<!std::is_lvalue_reference<Result>::value, int> = 0>
 auto makeBlockingWaitTask(Awaitable&& awaitable)
-    -> BlockingWaitTask<decay_rvalue_reference_t<Result>> {
+    -> BlockingWaitTask<detail::decay_rvalue_reference_t<Result>> {
   co_return co_await static_cast<Awaitable&&>(awaitable);
 }
 
@@ -276,7 +266,7 @@ template <
     typename Result = await_result_t<Awaitable>,
     std::enable_if_t<std::is_lvalue_reference<Result>::value, int> = 0>
 auto makeBlockingWaitTask(Awaitable&& awaitable)
-    -> BlockingWaitTask<decay_rvalue_reference_t<Result>> {
+    -> BlockingWaitTask<detail::decay_rvalue_reference_t<Result>> {
   co_yield co_await static_cast<Awaitable&&>(awaitable);
 }
 
