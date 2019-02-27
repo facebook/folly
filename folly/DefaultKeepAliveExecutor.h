@@ -46,6 +46,15 @@ class DefaultKeepAliveExecutor : public virtual Executor {
     keepAliveReleaseBaton_.wait();
   }
 
+  void joinAndResetKeepAlive() {
+    joinKeepAlive();
+    auto keepAliveCount =
+        controlBlock_->keepAliveCount_.exchange(1, std::memory_order_relaxed);
+    DCHECK_EQ(keepAliveCount, 0);
+    keepAliveReleaseBaton_.reset();
+    keepAlive_ = makeKeepAlive(this);
+  }
+
  private:
   struct ControlBlock {
     std::atomic<ssize_t> keepAliveCount_{1};
