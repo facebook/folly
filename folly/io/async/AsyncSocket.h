@@ -310,9 +310,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   /**
    * Helper function to create a shared_ptr<AsyncSocket>.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(EventBase* evb, int fd) {
-    return newSocket(evb, NetworkSocket::fromFd(fd));
-  }
   static std::shared_ptr<AsyncSocket> newSocket(
       EventBase* evb,
       NetworkSocket fd) {
