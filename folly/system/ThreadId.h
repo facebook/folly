@@ -86,12 +86,12 @@ inline uint64_t getOSThreadID() {
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
   return tid;
-#elif __has_include(<pthread_np.h>)
-  return uint64_t(pthread_getthreadid_np());
 #elif _WIN32
   return uint64_t(GetCurrentThreadId());
-#else
+#elif __linux__
   return uint64_t(syscall(FOLLY_SYS_gettid));
+#else
+  return uint64_t(pthread_getthreadid_np());
 #endif
 }
 } // namespace folly

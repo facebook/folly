@@ -205,7 +205,7 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
  */
 #if defined(_MSC_VER)
 #define FOLLY_TLS __declspec(thread)
-#elif (defined(__GNUC__) || defined(__clang__))
+#elif defined(__GNUC__) || defined(__clang__)
 #define FOLLY_TLS __thread
 #else
 #error cannot define platform specific thread local storage
@@ -219,9 +219,7 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.
 #if FOLLY_USE_LIBCPP
-#if __has_include(<__config>)
 #include <__config> // @manual
-#endif
 #define FOLLY_NAMESPACE_STD_BEGIN _LIBCPP_BEGIN_NAMESPACE_STD
 #define FOLLY_NAMESPACE_STD_END _LIBCPP_END_NAMESPACE_STD
 #else

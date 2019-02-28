@@ -26,7 +26,7 @@
 // malloc_usable_size, and that's what we should be using.
 #include <jemalloc/jemalloc.h>
 #else
-#if !defined(__APPLE__) && !defined(__STDC__)
+#if !defined(__APPLE__) && (!defined(__STDC__) || !__STDC__)
 #include <malloc.h>
 #endif
 

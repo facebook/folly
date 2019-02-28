@@ -487,7 +487,7 @@ fbstring errnoStr(int err) {
 #elif FOLLY_HAVE_XSI_STRERROR_R || defined(__APPLE__)
 
   // Using XSI-compatible strerror_r
-  auto r = strerror_r(err, buf, sizeof(buf));
+  int r = strerror_r(err, buf, sizeof(buf));
 
   // OSX/FreeBSD use EINVAL and Linux uses -1 so just check for non-zero
   if (r != 0) {
