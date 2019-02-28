@@ -1194,7 +1194,7 @@ class fbvector {
   // std::vector implements a similar function with a different growth
   //  strategy: empty() ? 1 : capacity() * 2.
   //
-  // fbvector grows differently on two counts:
+  // fbvector grows differently on three counts:
   //
   // (1) initial size
   //     Instead of growing to size 1 from empty, fbvector allocates at least
@@ -1205,11 +1205,26 @@ class fbvector {
   //     for details.
   //     This does not apply to very small or very large fbvectors. This is a
   //     heuristic.
-  //     A nice addition to fbvector would be the capability of having a user-
-  //     defined growth strategy, probably as part of the allocator.
-  //
+  // (3) allocator-defined
+  //     If the Allocator implements a member function of the signature
+  //     size_t calculate_capacity(size_t) const
+  //     then this function will always be called to determine the next
+  //     capacity value.
 
-  size_type computePushBackCapacity() const {
+  template<class U, class = void>
+  struct has_calculate_capacity : std::false_type{};
+
+  template<class U>
+  struct has_calculate_capacity<U, folly::void_t<decltype(std::declval<U>().
+         calculate_capacity(std::declval<size_t>()))>> : std::true_type{};
+
+  size_type computePushBackCapacityImpl(std::true_type) const
+  {
+    return impl_.calculate_capacity(capacity());
+  }
+
+  size_type computePushBackCapacityImpl(std::false_type) const
+  {
     if (capacity() == 0) {
       return std::max(64 / sizeof(T), size_type(1));
     }
@@ -1220,6 +1235,10 @@ class fbvector {
       return capacity() * 2;
     }
     return (capacity() * 3 + 1) / 2;
+  }
+
+  size_type computePushBackCapacity() const {
+    return computePushBackCapacityImpl(has_calculate_capacity<Allocator>{});
   }
 
   template <class... Args>

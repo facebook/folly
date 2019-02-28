@@ -22,6 +22,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <new>
 
 #include <folly/FBString.h>
 #include <folly/Random.h>
@@ -255,4 +256,38 @@ TEST(FBVector, zero_len) {
   std::initializer_list<int> il = {};
   fb6 = il;
   fbvector<int> fb7(fb6.begin(), fb6.end());
+}
+
+namespace {
+  template<class T>
+  struct growth_policy_allocator
+  {
+    using value_type = T;
+    using pointer_type = T*;
+
+    pointer_type allocate(size_t n)
+    {
+      return static_cast<pointer_type>(::operator new(n * sizeof(value_type)));
+    }
+
+    void deallocate(void *p, size_t n)
+    {
+      ::operator delete(p);
+    }
+
+    size_t calculate_capacity(size_t current) const
+    {
+      return current + 1;
+    }
+  };
+}
+
+TEST(FBVector, allocator_growth_policy) {
+  using value_type = int;
+  growth_policy_allocator<value_type> alloc{};
+  fbvector<value_type, decltype(alloc)> v{};
+  v.push_back(1);
+  EXPECT_EQ(1u, v.capacity());
+  v.push_back(2);
+  EXPECT_EQ(2u, v.capacity());
 }
