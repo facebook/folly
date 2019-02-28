@@ -24,7 +24,7 @@
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // JEMalloc provides it's own implementation of
 // malloc_usable_size, and that's what we should be using.
-#include <jemalloc/jemalloc.h>
+#include <jemalloc/jemalloc.h> // @manual
 #else
 #ifndef __APPLE__
 #include <malloc.h>
