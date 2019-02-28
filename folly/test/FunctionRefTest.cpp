@@ -19,8 +19,7 @@
 #include <folly/Function.h>
 #include <folly/portability/GTest.h>
 
-using folly::Function;
-using folly::FunctionRef;
+namespace folly {
 
 TEST(FunctionRef, Traits) {
   static_assert(std::is_literal_type<FunctionRef<int(int)>>::value, "");
@@ -224,3 +223,5 @@ TEST(FunctionRef, ForEach) {
 
   EXPECT_EQ(55, sum);
 }
+
+} // namespace folly
