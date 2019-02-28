@@ -333,7 +333,7 @@ AsyncSocket::AsyncSocket(
 AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
     : AsyncSocket(
           oldAsyncSocket->getEventBase(),
-          oldAsyncSocket->detachNetworkSocket().toFd(),
+          oldAsyncSocket->detachNetworkSocket(),
           oldAsyncSocket->getZeroCopyBufId()) {
   preReceivedData_ = std::move(oldAsyncSocket->preReceivedData_);
 }

@@ -53,7 +53,7 @@ class ZeroCopyTestAsyncSocket {
       : counter_(counter),
         evb_(evb),
         numLoops_(numLoops),
-        sock_(new folly::AsyncSocket(evb, fd)),
+        sock_(new folly::AsyncSocket(evb, folly::NetworkSocket::fromFd(fd))),
         callback_(this),
         client_(false) {
     setBufferSize(bufferSize);
