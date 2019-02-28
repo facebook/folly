@@ -446,7 +446,7 @@ class IPAddress {
     IPAddressV6 ipV6Addr;
     // default constructor
     IPAddressV46() noexcept {
-      std::memset(this, 0, sizeof(IPAddressV46));
+      std::memset(static_cast<void*>(this), 0, sizeof(IPAddressV46));
     }
     explicit IPAddressV46(const IPAddressV4& addr) noexcept : ipV4Addr(addr) {}
     explicit IPAddressV46(const IPAddressV6& addr) noexcept : ipV6Addr(addr) {}
