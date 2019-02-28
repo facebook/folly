@@ -21,6 +21,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
 
@@ -96,6 +97,21 @@ TEST(Traits, typedefd) {
 TEST(Traits, unset) {
   EXPECT_TRUE(IsRelocatable<F1>::value);
   EXPECT_TRUE(IsRelocatable<F4>::value);
+}
+
+TEST(Traits, triviallyMoveConstructible) {
+  FOLLY_PUSH_WARNING
+  FOLLY_CLANG_DISABLE_WARNING("-Wunneeded-member-function")
+  struct TriviallyMoveConstructible {
+    TriviallyMoveConstructible(const TriviallyMoveConstructible&) = delete;
+    TriviallyMoveConstructible& operator=(const TriviallyMoveConstructible&) =
+        delete;
+    TriviallyMoveConstructible(TriviallyMoveConstructible&&) = default;
+    TriviallyMoveConstructible& operator=(TriviallyMoveConstructible&&) =
+        delete;
+  };
+  EXPECT_TRUE(IsRelocatable<TriviallyMoveConstructible>::value);
+  FOLLY_POP_WARNING
 }
 
 TEST(Traits, bitAndInit) {
