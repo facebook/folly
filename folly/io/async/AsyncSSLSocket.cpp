@@ -1015,7 +1015,8 @@ bool AsyncSSLSocket::willBlock(
         return false;
       }
 
-      auto asyncPipeReader = AsyncPipeReader::newReader(eventBase_, ofd);
+      auto asyncPipeReader =
+          AsyncPipeReader::newReader(eventBase_, NetworkSocket(ofd).toFd());
       auto asyncPipeReaderPtr = asyncPipeReader.get();
       if (!asyncOperationFinishCallback_) {
         asyncOperationFinishCallback_.reset(
