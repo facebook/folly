@@ -170,6 +170,14 @@ if (NOT ${LIBAIO_FOUND})
     ${FOLLY_DIR}/experimental/io/AsyncIO.h
   )
 endif()
+if (NOT ${LIBSODIUM_FOUND})
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/crypto/Blake2xb.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/crypto/Blake2xb.h
+  )
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/Poly.cpp
