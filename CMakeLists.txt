@@ -170,12 +170,52 @@ if (NOT ${LIBAIO_FOUND})
     ${FOLLY_DIR}/experimental/io/AsyncIO.h
   )
 endif()
-if (NOT ${LIBSODIUM_FOUND})
+if (${LIBSODIUM_FOUND})
+  string(FIND ${CMAKE_LIBRARY_ARCHITECTURE} "x86_64" IS_X86_64_ARCH)
+  if (${IS_X86_64_ARCH} STREQUAL "-1")
+    message(
+      STATUS
+      "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
+      "skipping setting SSE2/AVX2 compile flags for LtHash SIMD code"
+    )
+  else()
+    message(
+      STATUS
+      "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
+      "setting SSE2/AVX2 compile flags for LtHash SIMD code"
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mavx -mavx2 -msse2
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mno-avx -mno-avx2 -mno-sse2
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mno-avx -mno-avx2 -msse2
+    )
+  endif()
+else()
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/crypto/Blake2xb.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+    ${FOLLY_DIR}/experimental/crypto/LtHash.cpp
   )
   list(REMOVE_ITEM hfiles
     ${FOLLY_DIR}/experimental/crypto/Blake2xb.h
+    ${FOLLY_DIR}/experimental/crypto/detail/LtHashInternal.h
+    ${FOLLY_DIR}/experimental/crypto/LtHash-inl.h
+    ${FOLLY_DIR}/experimental/crypto/LtHash.h
   )
 endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
