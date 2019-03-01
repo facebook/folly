@@ -71,7 +71,7 @@ class Blake2xb {
   static constexpr size_t kMaxOutputLength = 0xfffffffeULL;
   /**
    * If the amount of output data desired is not known in advance, use this
-   * constant as the outputLength parameter to init() or reinit().
+   * constant as the outputLength parameter to init().
    */
   static constexpr size_t kUnknownOutputLength = 0;
 
@@ -116,7 +116,7 @@ class Blake2xb {
   /**
    * Computes the final hash and stores it in the given output. The value of
    * out.size() MUST equal the outputLength parameter that was given to the
-   * last init() or reinit() call, except when the outputLength parameter was
+   * last init() call, except when the outputLength parameter was
    * kUnknownOutputLength.
    *
    * WARNING: never compare the results of two Blake2xb.finish() calls
