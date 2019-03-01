@@ -30,6 +30,23 @@ constexpr size_t Blake2xb::kMaxOutputLength;
 constexpr size_t Blake2xb::kUnknownOutputLength;
 
 namespace {
+
+// In libsodium 1.0.17, the crypto_generichash_blake2b_state struct was made
+// opaque. We have to copy the internal definition of the real struct here
+// so we can properly initialize it.
+#if SODIUM_LIBRARY_VERSION_MAJOR > 10 || \
+    (SODIUM_LIBRARY_VERSION_MAJOR == 10 && SODIUM_LIBRARY_VERSION_MINOR >= 2)
+struct _blake2b_state {
+  uint64_t h[8];
+  uint64_t t[2];
+  uint64_t f[2];
+  uint8_t buf[256];
+  size_t buflen;
+  uint8_t last_node;
+};
+#define __LIBSODIUM_BLAKE2B_OPAQUE__ 1
+#endif
+
 constexpr std::array<uint64_t, 8> kBlake2bIV = {{
     0x6a09e667f3bcc908ULL,
     0xbb67ae8584caa73bULL,
@@ -42,9 +59,14 @@ constexpr std::array<uint64_t, 8> kBlake2bIV = {{
 }};
 
 void initStateFromParams(
-    crypto_generichash_blake2b_state* state,
+    crypto_generichash_blake2b_state* _state,
     const detail::Blake2xbParam& param,
     ByteRange key) {
+#ifdef __LIBSODIUM_BLAKE2B_OPAQUE__
+  _blake2b_state* state = reinterpret_cast<_blake2b_state*>(_state);
+#else
+  crypto_generichash_blake2b_state* state = _state;
+#endif
   const uint64_t* p = reinterpret_cast<const uint64_t*>(&param);
   for (int i = 0; i < 8; ++i) {
     state->h[i] = kBlake2bIV.data()[i] ^ Endian::little(p[i]);
@@ -61,7 +83,14 @@ void initStateFromParams(
     std::array<uint8_t, 128> block;
     memcpy(block.data(), key.data(), key.size());
     memset(block.data() + key.size(), 0, block.size() - key.size());
-    crypto_generichash_blake2b_update(state, block.data(), block.size());
+    crypto_generichash_blake2b_update(
+#ifdef __LIBSODIUM_BLAKE2B_OPAQUE__
+        reinterpret_cast<decltype(_state)>(state),
+#else
+        state,
+#endif
+        block.data(),
+        block.size());
     sodium_memzero(block.data(), block.size()); // erase key from stack
   }
 }
