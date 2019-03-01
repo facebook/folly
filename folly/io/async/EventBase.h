@@ -469,10 +469,9 @@ class EventBase : public TimeoutManager,
    * running, the function call will be delayed until the next time the loop is
    * started.
    *
-   * If runInEventBaseThread() returns true the function has successfully been
-   * scheduled to run in the loop thread.  However, if the loop is terminated
-   * (and never later restarted) before it has a chance to run the requested
-   * function, the function will be run upon the EventBase's destruction.
+   * If the loop is terminated (and never later restarted) before it has a
+   * chance to run the requested function, the function will be run upon the
+   * EventBase's destruction.
    *
    * If two calls to runInEventBaseThread() are made from the same thread, the
    * functions will always be run in the order that they were scheduled.
@@ -482,12 +481,9 @@ class EventBase : public TimeoutManager,
    * @param fn  The function to run.  The function must not throw any
    *     exceptions.
    * @param arg An argument to pass to the function.
-   *
-   * @return Returns true if the function was successfully scheduled, or false
-   *         if there was an error scheduling the function.
    */
   template <typename T>
-  bool runInEventBaseThread(void (*fn)(T*), T* arg);
+  void runInEventBaseThread(void (*fn)(T*), T* arg) noexcept;
 
   /**
    * Run the specified function in the EventBase's thread
@@ -504,7 +500,7 @@ class EventBase : public TimeoutManager,
    *
    * The function must not throw any exceptions.
    */
-  bool runInEventBaseThread(Func fn);
+  void runInEventBaseThread(Func fn) noexcept;
 
   /**
    * Run the specified function in the EventBase's thread.
@@ -515,11 +511,9 @@ class EventBase : public TimeoutManager,
    * not running, the function call will be delayed until the next time the loop
    * is started.
    *
-   * If runInEventBaseThreadAlwaysEnqueue() returns true the function has
-   * successfully been scheduled to run in the loop thread.  However, if the
-   * loop is terminated (and never later restarted) before it has a chance to
-   * run the requested function, the function will be run upon the EventBase's
-   * destruction.
+   * If the loop is terminated (and never later restarted) before it has a
+   * chance to run the requested function, the function will be run upon the
+   * EventBase's destruction.
    *
    * If two calls to runInEventBaseThreadAlwaysEnqueue() are made from the same
    * thread, the functions will always be run in the order that they were
@@ -531,12 +525,9 @@ class EventBase : public TimeoutManager,
    * @param fn  The function to run.  The function must not throw any
    *     exceptions.
    * @param arg An argument to pass to the function.
-   *
-   * @return Returns true if the function was successfully scheduled, or false
-   *         if there was an error scheduling the function.
    */
   template <typename T>
-  bool runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg);
+  void runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg) noexcept;
 
   /**
    * Run the specified function in the EventBase's thread
@@ -553,33 +544,35 @@ class EventBase : public TimeoutManager,
    *
    * The function must not throw any exceptions.
    */
-  bool runInEventBaseThreadAlwaysEnqueue(Func fn);
+  void runInEventBaseThreadAlwaysEnqueue(Func fn) noexcept;
 
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
   template <typename T>
-  bool runInEventBaseThreadAndWait(void (*fn)(T*), T* arg);
+  void runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept;
 
   /*
    * Like runInEventBaseThread, but the caller waits for the callback to be
    * executed.
    */
-  bool runInEventBaseThreadAndWait(Func fn);
+  void runInEventBaseThreadAndWait(Func fn) noexcept;
 
   /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
   template <typename T>
-  bool runImmediatelyOrRunInEventBaseThreadAndWait(void (*fn)(T*), T* arg);
+  void runImmediatelyOrRunInEventBaseThreadAndWait(
+      void (*fn)(T*),
+      T* arg) noexcept;
 
   /*
    * Like runInEventBaseThreadAndWait, except if the caller is already in the
    * event base thread, the functor is simply run inline.
    */
-  bool runImmediatelyOrRunInEventBaseThreadAndWait(Func fn);
+  void runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept;
 
   /**
    * Set the maximum desired latency in us and provide a callback which will be
@@ -916,24 +909,26 @@ class EventBase : public TimeoutManager,
 };
 
 template <typename T>
-bool EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) {
+void EventBase::runInEventBaseThread(void (*fn)(T*), T* arg) noexcept {
   return runInEventBaseThread([=] { fn(arg); });
 }
 
 template <typename T>
-bool EventBase::runInEventBaseThreadAlwaysEnqueue(void (*fn)(T*), T* arg) {
+void EventBase::runInEventBaseThreadAlwaysEnqueue(
+    void (*fn)(T*),
+    T* arg) noexcept {
   return runInEventBaseThreadAlwaysEnqueue([=] { fn(arg); });
 }
 
 template <typename T>
-bool EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) {
+void EventBase::runInEventBaseThreadAndWait(void (*fn)(T*), T* arg) noexcept {
   return runInEventBaseThreadAndWait([=] { fn(arg); });
 }
 
 template <typename T>
-bool EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
+void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(
     void (*fn)(T*),
-    T* arg) {
+    T* arg) noexcept {
   return runImmediatelyOrRunInEventBaseThreadAndWait([=] { fn(arg); });
 }
 

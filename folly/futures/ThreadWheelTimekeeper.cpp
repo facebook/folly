@@ -137,20 +137,8 @@ Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
   // callback has either been executed, or will never be executed. So we are
   // fine here.
   //
-  if (!eventBase_.runInEventBaseThread(
-          [this, cob, dur] { wheelTimer_->scheduleTimeout(cob.get(), dur); })) {
-    // Release promise to break the circular reference. Because if
-    // scheduleTimeout fails, there is nothing to *promise*. Internally
-    // Core would automatically set an exception result when Promise is
-    // destructed before fulfilling.
-    // This is either called from EventBase thread, or here.
-    // They are somewhat racy but given the rare chance this could fail,
-    // I don't see it is introducing any problem yet.
-    auto promise = cob->stealPromise();
-    if (!promise.isFulfilled()) {
-      promise.setException(FutureNoTimekeeper{});
-    }
-  }
+  eventBase_.runInEventBaseThread(
+      [this, cob, dur] { wheelTimer_->scheduleTimeout(cob.get(), dur); });
   return f;
 }
 
