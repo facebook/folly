@@ -26,6 +26,8 @@
 
 #include <sstream>
 
+#include <glog/logging.h>
+
 #include <folly/Optional.h>
 
 namespace folly {

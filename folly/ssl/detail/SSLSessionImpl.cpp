@@ -15,6 +15,9 @@
  */
 
 #include <folly/ssl/detail/SSLSessionImpl.h>
+
+#include <glog/logging.h>
+
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLVersionFinder.h>
 

@@ -18,6 +18,7 @@
 #define FOLLY_FORMAT_H_
 
 #include <cstdio>
+#include <ios>
 #include <stdexcept>
 #include <tuple>
 #include <type_traits>
@@ -241,9 +242,9 @@ class Formatter : public BaseFormatter<
 /**
  * Formatter objects can be written to streams.
  */
-template <bool containerMode, class... Args>
+template <class C, bool containerMode, class... Args>
 std::ostream& operator<<(
-    std::ostream& out,
+    std::basic_ostream<C>& out,
     const Formatter<containerMode, Args...>& formatter) {
   auto writer = [&out](StringPiece sp) {
     out.write(sp.data(), std::streamsize(sp.size()));

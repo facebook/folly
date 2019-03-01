@@ -18,6 +18,8 @@
 
 #include <random>
 
+#include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/Random.h>
 #include <folly/String.h>

@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>

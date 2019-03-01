@@ -25,6 +25,7 @@
 #include <set>
 
 #include <boost/regex.hpp>
+#include <glog/logging.h>
 
 #include <folly/FBVector.h>
 #include <folly/container/Array.h>
