@@ -13,7 +13,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include <folly/json.h>
 
 #include <algorithm>
@@ -22,7 +21,6 @@
 #include <type_traits>
 
 #include <boost/algorithm/string.hpp>
-#include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>

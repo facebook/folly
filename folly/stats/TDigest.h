@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <cmath>
 #include <vector>
 
@@ -54,7 +53,7 @@ class TDigest {
    public:
     explicit Centroid(double mean = 0.0, double weight = 1.0)
         : mean_(mean), weight_(weight) {
-      assert(weight > 0);
+      DCHECK_GT(weight, 0);
     }
 
     inline double mean() const {

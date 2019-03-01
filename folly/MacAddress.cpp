@@ -16,7 +16,6 @@
 
 #include <folly/MacAddress.h>
 
-#include <cassert>
 #include <ostream>
 
 #include <folly/Exception.h>
@@ -39,7 +38,7 @@ MacAddress::MacAddress(StringPiece str) {
 
 MacAddress MacAddress::createMulticast(IPAddressV6 v6addr) {
   // This method should only be used for multicast addresses.
-  assert(v6addr.isMulticast());
+  DCHECK(v6addr.isMulticast());
 
   uint8_t bytes[SIZE];
   bytes[0] = 0x33;

@@ -16,8 +16,6 @@
 
 #include <folly/Format.h>
 
-#include <cassert>
-
 #include <folly/ConstexprMath.h>
 #include <folly/CppAttributes.h>
 #include <folly/container/Array.h>
@@ -210,7 +208,7 @@ void FormatValue<double>::formatHelper(
 
   int len = builder.position();
   builder.Finalize();
-  assert(len > 0);
+  DCHECK_GT(len, 0);
 
   // Add '+' or ' ' sign if needed
   char* p = buf + 1;

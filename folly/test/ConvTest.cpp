@@ -19,7 +19,6 @@
 #endif
 
 #include <boost/lexical_cast.hpp>
-#include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/container/Foreach.h>

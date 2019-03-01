@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <cassert>
 #include <string>
 
 #include <folly/Function.h>
@@ -81,7 +80,7 @@ class CompressionCounter {
       return makeCompressionCounterHandler(
           codecType, codecName, level, key, counterType);
     };
-    assert(!initialize_.hasAllocatedMemory());
+    DCHECK(!initialize_.hasAllocatedMemory());
   }
 
   void operator+=(double sum) {

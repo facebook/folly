@@ -119,6 +119,7 @@ struct hash<::folly::dynamic> {
         apply(std::string);           \
         break;                        \
       default:                        \
+        CHECK(0);                     \
         abort();                      \
     }                                 \
   } while (0)

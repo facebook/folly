@@ -16,8 +16,6 @@
 
 #include <folly/File.h>
 
-#include <glog/logging.h>
-
 #include <folly/String.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/GTest.h>

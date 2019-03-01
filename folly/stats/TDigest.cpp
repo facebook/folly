@@ -15,9 +15,6 @@
  */
 
 #include <folly/stats/TDigest.h>
-
-#include <glog/logging.h>
-
 #include <folly/stats/detail/DoubleRadixSort.h>
 
 #include <algorithm>

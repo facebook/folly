@@ -24,7 +24,6 @@
 #pragma once
 
 #include <algorithm>
-#include <cassert>
 #include <cctype>
 #include <climits>
 #include <cstddef>
@@ -700,7 +699,7 @@ toAppend(
       conv.ToFixed(value, int(numDigits), &builder);
       break;
     default:
-      assert(mode == DoubleToStringConverter::PRECISION);
+      CHECK(mode == DoubleToStringConverter::PRECISION);
       conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }

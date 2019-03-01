@@ -597,7 +597,7 @@ bool Dwarf::findAddress(
       // it only if such behavior is requested via LocationInfoMode.
       return false;
     } else {
-      FOLLY_SAFE_DCHECK(mode == LocationInfoMode::FULL, "unexpected mode");
+      DCHECK(mode == LocationInfoMode::FULL);
       // Fall back to the linear scan.
     }
   }

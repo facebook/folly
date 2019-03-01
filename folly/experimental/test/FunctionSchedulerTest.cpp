@@ -20,7 +20,6 @@
 #include <random>
 
 #include <boost/thread.hpp>
-#include <glog/logging.h>
 
 #include <folly/Random.h>
 #include <folly/experimental/FunctionScheduler.h>

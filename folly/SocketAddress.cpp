@@ -20,7 +20,6 @@
 
 #include <folly/SocketAddress.h>
 
-#include <cassert>
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -586,7 +585,7 @@ size_t SocketAddress::hash() const {
       break;
     }
     case AF_UNIX:
-      assert(external_);
+      DCHECK(external_);
       break;
     case AF_UNSPEC:
     default:

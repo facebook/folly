@@ -18,8 +18,6 @@
 // specializations.
 #include <folly/experimental/crypto/detail/LtHashInternal.h>
 
-#include <glog/logging.h>
-
 #ifdef __AVX2__
 #include <immintrin.h>
 #include <sodium.h>

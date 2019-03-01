@@ -16,8 +16,6 @@
 
 #include <folly/experimental/symbolizer/Dwarf.h>
 
-#include <glog/logging.h>
-
 #include <folly/portability/GTest.h>
 
 using folly::symbolizer::Dwarf;
