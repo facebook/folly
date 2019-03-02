@@ -20,8 +20,10 @@
 #include <iosfwd>
 #include <memory>
 #include <string>
+#include <type_traits>
 #include <utility> // std::pair
 
+#include <folly/ConstexprMath.h>
 #include <folly/IPAddressException.h>
 #include <folly/IPAddressV4.h>
 #include <folly/IPAddressV6.h>
@@ -442,7 +444,10 @@ class IPAddress {
   [[noreturn]] void asV6Throw() const;
 
   typedef union IPAddressV46 {
-    std::aligned_union_t<0, IPAddressV4, IPAddressV6> storage;
+    std::aligned_storage<
+        constexpr_max(sizeof(IPAddressV4), sizeof(IPAddressV6)),
+        constexpr_max(alignof(IPAddressV4), alignof(IPAddressV6))>::type
+        storage;
     IPAddressV4 ipV4Addr;
     IPAddressV6 ipV6Addr;
     // default constructor
