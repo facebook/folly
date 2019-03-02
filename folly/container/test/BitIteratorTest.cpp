@@ -16,7 +16,9 @@
 
 #include <folly/container/BitIterator.h>
 
+#include <forward_list>
 #include <limits>
+#include <list>
 #include <type_traits>
 #include <vector>
 
@@ -83,4 +85,26 @@ TEST(BitIterator, Const) {
   auto bi(makeBitIterator(v.cbegin()));
   checkIt(0x10, bi);
   checkIt(0x42, bi);
+}
+
+TEST(BitIterator, IteratorCategory) {
+  EXPECT_TRUE( //
+      (std::is_same<
+          std::iterator_traits<BitIterator<uint64_t*>>::iterator_category,
+          std::random_access_iterator_tag>::value));
+  EXPECT_TRUE(
+      (std::is_same<
+          std::iterator_traits<
+              BitIterator<std::vector<uint64_t>::iterator>>::iterator_category,
+          std::random_access_iterator_tag>::value));
+  EXPECT_TRUE(
+      (std::is_same<
+          std::iterator_traits<
+              BitIterator<std::list<uint64_t>::iterator>>::iterator_category,
+          std::bidirectional_iterator_tag>::value));
+  EXPECT_TRUE( //
+      (std::is_same<
+          std::iterator_traits<BitIterator<
+              std::forward_list<uint64_t>::iterator>>::iterator_category,
+          std::forward_iterator_tag>::value));
 }
