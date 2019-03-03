@@ -21,6 +21,7 @@
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/Combine.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::gen;

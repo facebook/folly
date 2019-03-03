@@ -17,6 +17,7 @@
 #include <folly/concurrency/DynamicBoundedQueue.h>
 #include <folly/MPMCQueue.h>
 #include <folly/ProducerConsumerQueue.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 #include <glog/logging.h>
