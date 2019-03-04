@@ -5,8 +5,7 @@
 # fail fast
 set -e
 
-BASE_DIR="$(cd "$(dirname -- "$0")"/.. ; pwd)"  # folly/folly
-cd "$BASE_DIR"
+BUILD_DIR=${BUILD_DIR:-_build}
 
 # brew install alias
 brew_install() {
@@ -15,45 +14,52 @@ brew_install() {
 
 # install deps
 install_deps() {
-	# folly deps
-	dependencies=(autoconf automake libtool pkg-config double-conversion glog gflags boost libevent xz snappy lz4 jemalloc openssl)
+    # folly deps
+    dependencies=(
+        boost
+        cmake
+        double-conversion
+        gflags
+        glog
+        jemalloc
+        libevent
+        lz4
+        openssl
+        pkg-config
+        snappy
+        xz
+    )
 
-	# fetch deps
-	for dependency in "${dependencies[@]}"; do
-		brew_install "${dependency}"
-	done
+    # fetch deps
+    for dependency in "${dependencies[@]}"; do
+        brew_install "${dependency}"
+    done
 }
 
-# set env flags
-export_flags() {
-	# fetch opt dirs
-	OPT_GFLAGS=$(brew --prefix gflags)
-	OPT_OPENSSL=$(brew --prefix openssl)
-
-	# export flags
-	export LDFLAGS=-L${OPT_OPENSSL}/lib
-	export OPENSSL_INCLUDES=-I${OPT_OPENSSL}/include
-	export GFLAGS_LIBS=-L${OPT_GFLAGS}/lib
-	export GFLAGS_CFLAGS=-I${OPT_GFLAGS}/include
-}
-
-# now the fun part
 install_deps
-export_flags
-autoreconf -ivf
-./configure --disable-silent-rules --disable-dependency-tracking
+
+# Allows this script to be invoked from anywhere in the source tree but the
+# BUILD_DIR we create will always be in the top level folly directory
+TOP_LEVEL_DIR="$(cd "$(dirname -- "$0")"/../.. ; pwd)"  # folly
+cd "$TOP_LEVEL_DIR"
+mkdir -p "${BUILD_DIR}"
+cd "${BUILD_DIR}"
+
+OPENSSL_INCLUDES=$(brew --prefix openssl)/include
+cmake \
+    -DOPENSSL_INCLUDE_DIR="${OPENSSL_INCLUDES}" \
+    "$@" \
+    ..
 
 # fetch googletest, if doesn't exist
-pushd test
 GTEST_VER=1.8.0
 GTEST_DIR=gtest-${GTEST_VER}
 if [ ! -d ${GTEST_DIR} ]; then
-	mkdir ${GTEST_DIR}
+    mkdir ${GTEST_DIR}
     curl -SL \
     	https://github.com/google/googletest/archive/release-${GTEST_VER}.tar.gz | \
     	tar -xvzf - --strip-components=1 -C ${GTEST_DIR}
 fi
-popd
 
 # make, test, install
 make
