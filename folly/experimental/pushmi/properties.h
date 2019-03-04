@@ -120,7 +120,7 @@ POut __property_set_index_fn(
     property_set_element<POut, property_category_t<PIn>>);
 
 template <class PIn, class POut, class... Ps>
-property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, PIn), POut, Ps>...>
+property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, POut), PIn, Ps>...>
 __property_set_insert_fn(
     property_set<Ps...>,
     property_set_element<POut, property_category_t<PIn>>);
