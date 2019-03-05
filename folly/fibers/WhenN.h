@@ -44,7 +44,7 @@ typename std::enable_if<
         invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
-    typename std::vector<typename std::pair<
+    std::vector<std::pair<
         size_t,
         invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>>>>::
