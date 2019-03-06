@@ -422,7 +422,7 @@ constexpr bool poly_empty(Poly<I&> const&) noexcept {
  */
 template <
     class I,
-    std::enable_if_t<detail::Not<std::is_reference<I>>::value, int> = 0>
+    std::enable_if_t<Negation<std::is_reference<I>>::value, int> = 0>
 constexpr Poly<I>&& poly_move(detail::PolyRoot<I>& that) noexcept {
   return static_cast<Poly<I>&&>(static_cast<Poly<I>&>(that));
 }
@@ -430,7 +430,7 @@ constexpr Poly<I>&& poly_move(detail::PolyRoot<I>& that) noexcept {
 /// \overload
 template <
     class I,
-    std::enable_if_t<detail::Not<std::is_const<I>>::value, int> = 0>
+    std::enable_if_t<Negation<std::is_const<I>>::value, int> = 0>
 Poly<I&&> poly_move(detail::PolyRoot<I&> const& that) noexcept {
   return detail::PolyAccess::move(that);
 }
