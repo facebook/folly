@@ -49,3 +49,8 @@ TEST(FollyCountersTest, AvgWorks) {
     counter += 5;
   }
 }
+
+TEST(FollyCountersTest, DefaultConstruction) {
+  CompressionCounter counter;
+  ++counter;
+}
