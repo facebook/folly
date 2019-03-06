@@ -25,6 +25,7 @@
 
 #include <folly/Traits.h>
 #include <folly/Utility.h>
+#include <folly/detail/StaticConst.h>
 #include <folly/detail/TypeList.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
@@ -191,14 +192,6 @@ struct IsInstanceOf<U<Ts...>, U> : std::true_type {};
 
 template <class T>
 using Not = Bool<!T::value>;
-
-template <class T>
-struct StaticConst {
-  static constexpr T value{};
-};
-
-template <class T>
-constexpr T StaticConst<T>::value;
 
 template <class Then>
 decltype(auto) if_constexpr(std::true_type, Then then) {

@@ -23,11 +23,47 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Mutex.h>
+#include <folly/experimental/coro/SharedMutex.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/portability/GTest.h>
 
+#include <type_traits>
+
 using namespace folly;
+
+static_assert(
+    std::is_same<
+        folly::coro::semi_await_result_t<folly::coro::Task<void>>,
+        void>::value,
+    "");
+static_assert(
+    std::is_same<
+        folly::coro::semi_await_result_t<folly::coro::Task<int>>,
+        int>::value,
+    "");
+
+static_assert(
+    std::is_same<
+        folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<void>>,
+        void>::value,
+    "");
+static_assert(
+    std::is_same<
+        folly::coro::semi_await_result_t<folly::coro::detail::InlineTask<int>>,
+        int>::value,
+    "");
+
+static_assert(
+    std::is_same<folly::coro::semi_await_result_t<folly::coro::Baton&>, void>::
+        value,
+    "");
+static_assert(
+    std::is_same<
+        folly::coro::semi_await_result_t<decltype(
+            std::declval<folly::coro::SharedMutex&>().co_scoped_lock_shared())>,
+        folly::coro::SharedLock<folly::coro::SharedMutex>>::value,
+    "");
 
 namespace {
 
@@ -265,7 +301,8 @@ TEST(Task, RequestContextSideEffectsArePreserved) {
 
     // HACK: Need to use co_viaIfAsync() to ensure request context is preserved
     // across suspend-point.
-    co_await co_viaIfAsync(&folly::InlineExecutor::instance(), baton);
+    co_await folly::coro::co_viaIfAsync(
+        &folly::InlineExecutor::instance(), baton);
 
     EXPECT_NE(RequestContext::get()->getContextData(testToken1), nullptr);
 
