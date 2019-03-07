@@ -808,6 +808,14 @@ if (BUILD_TESTS)
       TEST varint_test SOURCES VarintTest.cpp
   )
 
+  if (${LIBSODIUM_FOUND})
+    folly_define_tests(
+      DIRECTORY experimental/crypto/test/
+        TEST blake2xb_test SOURCES Blake2xbTest.cpp
+        TEST lt_hash_test SOURCES LtHashTest.cpp
+    )
+  endif()
+
   get_target_property(pic folly POSITION_INDEPENDENT_CODE)
   if (pic)
     add_library(singleton_thread_local_overload
