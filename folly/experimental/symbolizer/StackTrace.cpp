@@ -19,6 +19,10 @@
 #define UNW_LOCAL_ONLY 1
 #include <libunwind.h>
 
+#ifdef __APPLE__
+#include <execinfo.h>
+#endif
+
 namespace folly {
 namespace symbolizer {
 
@@ -28,7 +32,11 @@ ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses) {
   // The libunwind documentation says that unw_backtrace is async-signal-safe
   // but, as of libunwind 1.0.1, it isn't (tdep_trace allocates memory on
   // x86_64)
+#ifdef __APPLE__
+  int r = backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+#else
   int r = unw_backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+#endif
   return r < 0 ? -1 : r;
 }
 
