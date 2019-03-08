@@ -145,7 +145,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
   int getFD() const {
     CHECK(socket_) << "Need to bind before getting FD";
-    return socket_->getFD();
+    return socket_->getNetworkSocket().toFd();
   }
 
   NetworkSocket getNetworkSocket() const {

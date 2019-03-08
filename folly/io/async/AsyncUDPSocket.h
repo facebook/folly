@@ -195,7 +195,7 @@ class AsyncUDPSocket : public EventHandler {
   /**
    * Get internal FD used by this socket
    */
-  virtual int getFD() const {
+  virtual int getFD(int) const {
     return getNetworkSocket().toFd();
   }
 
