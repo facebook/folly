@@ -159,12 +159,7 @@ dynamic numericOp(dynamic const& a, dynamic const& b) {
   if (!a.isNumber() || !b.isNumber()) {
     throw_exception<TypeError>("numeric", a.type(), b.type());
   }
-  if (a.type() != b.type()) {
-    auto& integ = a.isInt() ? a : b;
-    auto& nonint = a.isInt() ? b : a;
-    return Op<double>()(to<double>(integ.asInt()), nonint.asDouble());
-  }
-  if (a.isDouble()) {
+  if (a.isDouble() || b.isDouble()) {
     return Op<double>()(a.asDouble(), b.asDouble());
   }
   return Op<int64_t>()(a.asInt(), b.asInt());
