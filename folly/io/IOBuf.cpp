@@ -1134,6 +1134,21 @@ IOBuf::FillIovResult IOBuf::fillIov(struct iovec* iov, size_t len) const {
   return {0, 0};
 }
 
+uint32_t IOBuf::approximateShareCountOne() const {
+  if (UNLIKELY(!sharedInfo())) {
+    return 1U;
+  }
+  if (LIKELY(!(flags() & kFlagMaybeShared))) {
+    return 1U;
+  }
+  auto shareCount = sharedInfo()->refcount.load(std::memory_order_acquire);
+  if (shareCount < 2) {
+    // we're the last one left
+    clearFlags(kFlagMaybeShared);
+  }
+  return shareCount;
+}
+
 size_t IOBufHash::operator()(const IOBuf& buf) const noexcept {
   folly::hash::SpookyHashV2 hasher;
   hasher.Init(0, 0);

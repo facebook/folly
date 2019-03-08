@@ -531,6 +531,8 @@ TEST(IOBuf, Chaining) {
   EXPECT_TRUE(iob1->isShared());
 
   EXPECT_TRUE(iob1->isSharedOne());
+  // Also verify the share count is consistent:
+  EXPECT_LT(1, iob1->approximateShareCountOne());
   EXPECT_TRUE(iob2ptr->isSharedOne());
   EXPECT_TRUE(iob3ptr->isSharedOne());
   EXPECT_TRUE(iob4ptr->isSharedOne());
@@ -540,6 +542,8 @@ TEST(IOBuf, Chaining) {
   chainClone->unshare();
   EXPECT_FALSE(chainClone->isShared());
   EXPECT_FALSE(iob1->isShared());
+  // Also verify the share count is consistent:
+  EXPECT_EQ(1, iob1->approximateShareCountOne());
 
   // Make sure the unshared result still has the same data
   EXPECT_EQ(fullLength, chainClone->computeChainDataLength());
