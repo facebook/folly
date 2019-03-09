@@ -22,6 +22,7 @@
 #include <utility>
 
 #include <folly/Optional.h>
+#include <folly/Traits.h>
 #include <folly/executors/ExecutorWithPriority.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
@@ -1074,9 +1075,9 @@ template <typename R, typename Caller, typename... Args>
 Future<typename isFuture<R>::Inner> Future<T>::then(
     R (Caller::*func)(Args...),
     Caller* instance) && {
-  typedef typename std::remove_cv<typename std::remove_reference<
-      typename futures::detail::ArgType<Args...>::FirstArg>::type>::type
-      FirstArg;
+
+  using FirstArg = remove_cvref_t<typename futures::detail::ArgType<Args...>
+    ::FirstArg>;
 
   return std::move(*this).thenTry([instance, func](Try<T>&& t) {
     return (instance->*func)(t.template get<isTry<FirstArg>::value, Args>()...);
