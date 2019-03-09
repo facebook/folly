@@ -19,6 +19,7 @@
 #include <folly/Poly.h>
 
 #include <folly/Conv.h>
+#include <folly/Utility.h>
 #include <folly/poly/Nullable.h>
 #include <folly/poly/Regular.h>
 #include <folly/portability/GTest.h>
@@ -585,16 +586,6 @@ TEST(Poly, NullablePointer) {
   EXPECT_THROW(Poly<INullablePointer&> r_(q), BadPolyAccess);
 }
 
-namespace {
-struct MoveOnly_ {
-  MoveOnly_() = default;
-  MoveOnly_(MoveOnly_&&) = default;
-  MoveOnly_(MoveOnly_ const&) = delete;
-  MoveOnly_& operator=(MoveOnly_&&) = default;
-  MoveOnly_& operator=(MoveOnly_ const&) = delete;
-};
-} // namespace
-
 TEST(Poly, Move) {
   {
     int i = 42;
@@ -614,6 +605,9 @@ TEST(Poly, Move) {
     EXPECT_EQ(&poly_cast<int>(p), &poly_cast<int>(q));
   }
   {
+    struct MoveOnly_ : MoveOnly {
+      ~MoveOnly_() = default;
+    };
     Poly<IMoveOnly> p = MoveOnly_{};
     static_assert(!std::is_copy_constructible<Poly<IMoveOnly>>::value, "");
     auto q = poly_move(p);

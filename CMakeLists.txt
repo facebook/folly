@@ -828,7 +828,8 @@ if (BUILD_TESTS)
       TEST packed_sync_ptr_test HANGING
         SOURCES PackedSyncPtrTest.cpp
       TEST padded_test SOURCES PaddedTest.cpp
-      #TEST poly_test SOURCES PolyTest.cpp
+      # Linker errors with comparison ops for ArchetypeBase
+      TEST poly_test MAC_DISABLED SOURCES PolyTest.cpp
       TEST portability_test SOURCES PortabilityTest.cpp
       TEST producer_consumer_queue_test SLOW
         SOURCES ProducerConsumerQueueTest.cpp
