@@ -22,6 +22,7 @@
 
 #include <folly/Memory.h>
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Table.h>
@@ -156,13 +157,6 @@ struct BasePolicy
   struct AllocIsAlwaysEqual<A, typename A::is_always_equal>
       : A::is_always_equal {};
 
-  // emulate c++17 has std::is_nothrow_swappable
-  template <typename T>
-  static constexpr bool isNothrowSwap() {
-    using std::swap;
-    return noexcept(swap(std::declval<T&>(), std::declval<T&>()));
-  }
-
  public:
   static constexpr bool kAllocIsAlwaysEqual = AllocIsAlwaysEqual<Alloc>::value;
 
@@ -172,7 +166,7 @@ struct BasePolicy
       std::is_nothrow_default_constructible<Alloc>::value;
 
   static constexpr bool kSwapIsNoexcept = kAllocIsAlwaysEqual &&
-      isNothrowSwap<Hasher>() && isNothrowSwap<KeyEqual>();
+      IsNothrowSwappable<Hasher>{} && IsNothrowSwappable<KeyEqual>{};
 
   static constexpr bool isAvalanchingHasher() {
     return IsAvalanchingHasher<Hasher, Key>::value;
