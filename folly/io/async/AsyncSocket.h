@@ -262,8 +262,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param fd  File descriptor to take over (should be a connected socket).
    * @param zeroCopyBufId Zerocopy buf id to start with.
    */
-  AsyncSocket(EventBase* evb, int fd, uint32_t zeroCopyBufId = 0)
-      : AsyncSocket(evb, NetworkSocket::fromFd(fd), zeroCopyBufId) {}
   AsyncSocket(EventBase* evb, NetworkSocket fd, uint32_t zeroCopyBufId = 0);
 
   /**
