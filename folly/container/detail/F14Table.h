@@ -232,26 +232,13 @@ template <
     typename TableKey,
     typename Hasher,
     typename KeyEqual,
-    typename ArgKey,
-    typename Void = void>
-struct EligibleForHeterogeneousFind : std::false_type {};
-
-template <
-    typename TableKey,
-    typename Hasher,
-    typename KeyEqual,
     typename ArgKey>
-struct EligibleForHeterogeneousFind<
-    TableKey,
-    Hasher,
-    KeyEqual,
-    ArgKey,
-    void_t<
-        typename Hasher::is_transparent,
-        typename KeyEqual::is_transparent,
-        invoke_result_t<Hasher, ArgKey const&>,
-        invoke_result_t<KeyEqual, ArgKey const&, TableKey const&>>>
-    : std::true_type {};
+struct EligibleForHeterogeneousFind
+    : Conjunction<
+          is_transparent<Hasher>,
+          is_transparent<KeyEqual>,
+          is_invocable<Hasher, ArgKey const&>,
+          is_invocable<KeyEqual, ArgKey const&, TableKey const&>> {};
 
 template <
     typename TableKey,

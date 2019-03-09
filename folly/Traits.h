@@ -505,6 +505,21 @@ struct StrictDisjunction
     : Negation<
           std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
 
+namespace detail {
+template <typename, typename>
+struct is_transparent_ : std::false_type {};
+template <typename T>
+struct is_transparent_<void_t<typename T::is_transparent>, T> : std::true_type {
+};
+} // namespace detail
+
+//  is_transparent
+//
+//  To test whether a less, equal-to, or hash type follows the is-transparent
+//  protocol used by containers with optional heterogeneous access.
+template <typename T>
+struct is_transparent : detail::is_transparent_<void, T> {};
+
 } // namespace folly
 
 /**
