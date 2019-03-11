@@ -19,6 +19,8 @@
 #include <cmath>
 #include <vector>
 
+#include <glog/logging.h>
+
 #include <folly/Range.h>
 #include <folly/Utility.h>
 

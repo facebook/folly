@@ -17,9 +17,8 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <string>
-
-#include <glog/logging.h>
 
 #include <folly/Likely.h>
 
@@ -56,7 +55,7 @@ class StringPieceLite {
     return size() == 0;
   }
   const char& operator[](size_t i) const {
-    DCHECK_GT(size(), i);
+    assert(size() > i);
     return b_[i];
   }
   template <typename Range>

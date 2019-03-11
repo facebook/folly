@@ -35,6 +35,7 @@
 #include <utility>
 
 #include <double-conversion/double-conversion.h> // V8 JavaScript implementation
+#include <glog/logging.h>
 
 #include <folly/Demangle.h>
 #include <folly/Expected.h>

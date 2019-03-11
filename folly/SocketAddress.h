@@ -21,6 +21,8 @@
 #include <iosfwd>
 #include <string>
 
+#include <glog/logging.h>
+
 #include <folly/IPAddress.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>

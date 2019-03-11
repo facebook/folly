@@ -22,6 +22,8 @@
 #include <cassert>
 #include <limits>
 
+#include <glog/logging.h>
+
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
