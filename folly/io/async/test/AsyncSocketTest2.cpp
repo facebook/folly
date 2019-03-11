@@ -3032,6 +3032,94 @@ enum SOF_TIMESTAMPING {
   SOF_TIMESTAMPING_OPT_TSONLY = (1 << 11),
 };
 
+struct AsyncSocketErrMessageCallbackTestParams {
+  folly::Optional<int> resetCallbackAfter;
+  folly::Optional<int> closeSocketAfter;
+  int gotTimestampExpected{0};
+  int gotByteSeqExpected{0};
+};
+
+class AsyncSocketErrMessageCallbackTest
+    : public ::testing::TestWithParam<AsyncSocketErrMessageCallbackTestParams> {
+ public:
+  static std::vector<AsyncSocketErrMessageCallbackTestParams>
+  getTestingValues() {
+    std::vector<AsyncSocketErrMessageCallbackTestParams> vals;
+    // each socket err message triggers two socket callbacks:
+    //   (1) timestamp callback
+    //   (2) byteseq callback
+
+    // reset callback cases
+    // resetting the callback should prevent any further callbacks
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.resetCallbackAfter = 1;
+      params.gotTimestampExpected = 1;
+      params.gotByteSeqExpected = 0;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.resetCallbackAfter = 2;
+      params.gotTimestampExpected = 1;
+      params.gotByteSeqExpected = 1;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.resetCallbackAfter = 3;
+      params.gotTimestampExpected = 2;
+      params.gotByteSeqExpected = 1;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.resetCallbackAfter = 4;
+      params.gotTimestampExpected = 2;
+      params.gotByteSeqExpected = 2;
+      vals.push_back(params);
+    }
+
+    // close socket cases
+    // closing the socket will prevent callbacks after the current err message
+    // callbacks (both timestamp and byteseq) are completed
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.closeSocketAfter = 1;
+      params.gotTimestampExpected = 1;
+      params.gotByteSeqExpected = 1;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.closeSocketAfter = 2;
+      params.gotTimestampExpected = 1;
+      params.gotByteSeqExpected = 1;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.closeSocketAfter = 3;
+      params.gotTimestampExpected = 2;
+      params.gotByteSeqExpected = 2;
+      vals.push_back(params);
+    }
+    {
+      AsyncSocketErrMessageCallbackTestParams params;
+      params.closeSocketAfter = 4;
+      params.gotTimestampExpected = 2;
+      params.gotByteSeqExpected = 2;
+      vals.push_back(params);
+    }
+    return vals;
+  }
+};
+
+INSTANTIATE_TEST_CASE_P(
+    ErrMessageTests,
+    AsyncSocketErrMessageCallbackTest,
+    ::testing::ValuesIn(AsyncSocketErrMessageCallbackTest::getTestingValues()));
+
 class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
  public:
   TestErrMessageCallback()
@@ -3041,11 +3129,13 @@ class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
     if (cmsg.cmsg_level == SOL_SOCKET && cmsg.cmsg_type == SCM_TIMESTAMPING) {
       gotTimestamp_++;
       checkResetCallback();
+      checkCloseSocket();
     } else if (
         (cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
         (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
       gotByteSeq_++;
       checkResetCallback();
+      checkCloseSocket();
     }
   }
 
@@ -3055,9 +3145,16 @@ class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
   }
 
   void checkResetCallback() noexcept {
-    if (socket_ != nullptr && resetAfter_ != -1 &&
-        gotTimestamp_ + gotByteSeq_ == resetAfter_) {
+    if (socket_ != nullptr && resetCallbackAfter_ != -1 &&
+        gotTimestamp_ + gotByteSeq_ == resetCallbackAfter_) {
       socket_->setErrMessageCB(nullptr);
+    }
+  }
+
+  void checkCloseSocket() noexcept {
+    if (socket_ != nullptr && closeSocketAfter_ != -1 &&
+        gotTimestamp_ + gotByteSeq_ == closeSocketAfter_) {
+      socket_->close();
     }
   }
 
@@ -3065,10 +3162,11 @@ class TestErrMessageCallback : public folly::AsyncSocket::ErrMessageCallback {
   folly::AsyncSocketException exception_;
   int gotTimestamp_{0};
   int gotByteSeq_{0};
-  int resetAfter_{-1};
+  int resetCallbackAfter_{-1};
+  int closeSocketAfter_{-1};
 };
 
-TEST(AsyncSocketTest, ErrMessageCallback) {
+TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
   TestServer server;
 
   // connect()
@@ -3097,8 +3195,15 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
       socket->getErrMessageCallback(),
       static_cast<folly::AsyncSocket::ErrMessageCallback*>(&errMsgCB));
 
+  // set the number of error messages before socket is closed or callback reset
+  const auto testParams = GetParam();
   errMsgCB.socket_ = socket.get();
-  errMsgCB.resetAfter_ = 3;
+  if (testParams.resetCallbackAfter.hasValue()) {
+    errMsgCB.resetCallbackAfter_ = testParams.resetCallbackAfter.value();
+  }
+  if (testParams.closeSocketAfter.hasValue()) {
+    errMsgCB.closeSocketAfter_ = testParams.closeSocketAfter.value();
+  }
 
   // Enable timestamp notifications
   ASSERT_NE(socket->getNetworkSocket(), NetworkSocket());
@@ -3139,10 +3244,8 @@ TEST(AsyncSocketTest, ErrMessageCallback) {
   // Check for the timestamp notifications.
   ASSERT_EQ(
       errMsgCB.exception_.getType(), folly::AsyncSocketException::UNKNOWN);
-  ASSERT_GT(errMsgCB.gotByteSeq_, 0);
-  ASSERT_GT(errMsgCB.gotTimestamp_, 0);
-  ASSERT_EQ(
-      errMsgCB.gotByteSeq_ + errMsgCB.gotTimestamp_, errMsgCB.resetAfter_);
+  ASSERT_EQ(errMsgCB.gotByteSeq_, testParams.gotByteSeqExpected);
+  ASSERT_EQ(errMsgCB.gotTimestamp_, testParams.gotTimestampExpected);
 }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 

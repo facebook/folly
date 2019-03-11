@@ -1844,7 +1844,8 @@ size_t AsyncSocket::handleErrMessages() noexcept {
 
   int ret;
   size_t num = 0;
-  while (true) {
+  // the socket may be closed by errMessage callback, so check on each iteration
+  while (fd_ != NetworkSocket()) {
     ret = netops::recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
 
@@ -1852,7 +1853,7 @@ size_t AsyncSocket::handleErrMessages() noexcept {
       if (errno != EAGAIN) {
         auto errnoCopy = errno;
         LOG(ERROR) << "::recvmsg exited with code " << ret
-                   << ", errno: " << errnoCopy;
+                   << ", errno: " << errnoCopy << ", fd: " << fd_;
         AsyncSocketException ex(
             AsyncSocketException::INTERNAL_ERROR,
             withAddr("recvmsg() failed"),
@@ -1876,6 +1877,7 @@ size_t AsyncSocket::handleErrMessages() noexcept {
       }
     }
   }
+  return num;
 #else
   return 0;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
