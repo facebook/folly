@@ -187,9 +187,6 @@ struct IsInstanceOf : std::false_type {};
 template <class... Ts, template <class...> class U>
 struct IsInstanceOf<U<Ts...>, U> : std::true_type {};
 
-template <class T>
-using Not = Bool<!T::value>;
-
 template <class Then>
 decltype(auto) if_constexpr(std::true_type, Then then) {
   return then(Identity{});
@@ -601,7 +598,7 @@ void* execOnHeap(Op op, Data* from, void* to) {
 template <
     class I,
     class T,
-    std::enable_if_t<Not<std::is_reference<T>>::value, int> = 0>
+    std::enable_if_t<Negation<std::is_reference<T>>::value, int> = 0>
 void* execOnHeap(Op op, Data* from, void* to) {
   switch (op) {
     case Op::eNuke:
@@ -901,7 +898,7 @@ template <
     class T,
     class I,
     class U = std::decay_t<T>,
-    std::enable_if_t<Not<std::is_base_of<PolyBase, U>>::value, int> = 0,
+    std::enable_if_t<Negation<std::is_base_of<PolyBase, U>>::value, int> = 0,
     std::enable_if_t<std::is_constructible<AddCvrefOf<U, I>, T>::value, int> =
         0,
     class = MembersOf<std::decay_t<I>, U>>
