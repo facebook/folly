@@ -21,4 +21,5 @@ namespace folly {
 template <class Duration>
 class HHWheelTimerBase;
 using HHWheelTimer = HHWheelTimerBase<std::chrono::milliseconds>;
+using HHWheelTimerHighRes = HHWheelTimerBase<std::chrono::microseconds>;
 }

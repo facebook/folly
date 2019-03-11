@@ -346,4 +346,12 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
 using HHWheelTimer = HHWheelTimerBase<std::chrono::milliseconds>;
 extern template class HHWheelTimerBase<std::chrono::milliseconds>;
 
+// std::chrono::microseconds
+template <>
+void HHWheelTimerBase<std::chrono::microseconds>::scheduleTimeoutInternal(
+    std::chrono::microseconds timeout);
+
+using HHWheelTimerHighRes = HHWheelTimerBase<std::chrono::microseconds>;
+extern template class HHWheelTimerBase<std::chrono::microseconds>;
+
 } // namespace folly

@@ -375,6 +375,16 @@ int64_t HHWheelTimerBase<Duration>::calcNextTick(
   return (curTime - startTime_) / interval_;
 }
 
+// std::chrono::microseconds
+template <>
+void HHWheelTimerBase<std::chrono::microseconds>::scheduleTimeoutInternal(
+    std::chrono::microseconds timeout) {
+  this->AsyncTimeout::scheduleTimeoutHighRes(timeout);
+}
+
+// std::chrono::milliseconds
 template class HHWheelTimerBase<std::chrono::milliseconds>;
 
+// std::chrono::microseconds
+template class HHWheelTimerBase<std::chrono::microseconds>;
 } // namespace folly
