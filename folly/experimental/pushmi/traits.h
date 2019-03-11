@@ -75,9 +75,6 @@ PUSHMI_INLINE_VAR constexpr int sum_v = detail::sum_impl<Is...>();
 template <class...>
 struct typelist;
 
-template <class T>
-using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
-
 PUSHMI_CONCEPT_DEF(
   template(class... Args)
   (concept True)(Args...),
