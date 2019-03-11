@@ -21,6 +21,7 @@
 #include <thread>
 
 #include <folly/hash/Hash.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 

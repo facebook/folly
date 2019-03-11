@@ -28,6 +28,7 @@
 
 #include <folly/Random.h>
 #include <folly/portability/Asm.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>

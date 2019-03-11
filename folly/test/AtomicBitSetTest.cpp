@@ -16,6 +16,7 @@
 
 #include <folly/AtomicBitSet.h>
 
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 #include <glog/logging.h>

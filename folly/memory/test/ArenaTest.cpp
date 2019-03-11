@@ -16,6 +16,7 @@
 
 #include <folly/memory/Arena.h>
 #include <folly/Memory.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 #include <set>
