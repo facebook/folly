@@ -64,7 +64,7 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
 //  May help with space usage in certain esoteric scenarios compared with caller
 //  code tracking a separate and possibly-padded bool.
 //
-//  Note: This is has no parallel in the std::once_flag interface.
+//  Note: This has no parallel in the std::once_flag interface.
 template <typename Mutex, template <typename> class Atom>
 FOLLY_ALWAYS_INLINE bool test_once(basic_once_flag<Mutex, Atom> const& flag) {
   return flag.called_.load(std::memory_order_acquire);
