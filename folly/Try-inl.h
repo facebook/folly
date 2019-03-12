@@ -219,7 +219,8 @@ void Try<void>::throwIfFailed() const {
 
 template <typename F>
 typename std::enable_if<
-    !std::is_same<invoke_result_t<F>, void>::value,
+    !std::is_same<invoke_result_t<F>, void>::value &&
+        !isTry<invoke_result_t<F>>::value,
     Try<invoke_result_t<F>>>::type
 makeTryWith(F&& f) {
   using ResultType = invoke_result_t<F>;
@@ -243,6 +244,20 @@ typename std::
     return Try<void>(exception_wrapper(std::current_exception(), e));
   } catch (...) {
     return Try<void>(exception_wrapper(std::current_exception()));
+  }
+}
+
+template <typename F>
+typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
+    type
+    makeTryWith(F&& f) {
+  using ResultType = invoke_result_t<F>;
+  try {
+    return f();
+  } catch (std::exception& e) {
+    return ResultType(exception_wrapper(std::current_exception(), e));
+  } catch (...) {
+    return ResultType(exception_wrapper(std::current_exception()));
   }
 }
 

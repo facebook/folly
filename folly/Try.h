@@ -585,6 +585,12 @@ class Try<void> {
   };
 };
 
+template <typename T>
+struct isTry : std::false_type {};
+
+template <typename T>
+struct isTry<Try<T>> : std::true_type {};
+
 /*
  * @param f a function to execute and capture the result of (value or exception)
  *
@@ -592,7 +598,8 @@ class Try<void> {
  */
 template <typename F>
 typename std::enable_if<
-    !std::is_same<invoke_result_t<F>, void>::value,
+    !std::is_same<invoke_result_t<F>, void>::value &&
+        !isTry<invoke_result_t<F>>::value,
     Try<invoke_result_t<F>>>::type
 makeTryWith(F&& f);
 
@@ -606,6 +613,20 @@ makeTryWith(F&& f);
 template <typename F>
 typename std::
     enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    makeTryWith(F&& f);
+
+/*
+ * Specialization of makeTryWith for functions that return Try<T>
+ * Causes makeTryWith to not double-wrap the try.
+ *
+ * @param f a function to execute and capture the result of
+ *
+ * @returns result of f if f did not throw. Otherwise Try<T> containing
+ * exception
+ */
+template <typename F>
+typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
+    type
     makeTryWith(F&& f);
 
 /*

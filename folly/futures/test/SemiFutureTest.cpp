@@ -694,7 +694,7 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
   });
   p.setException(make_exception_wrapper<std::logic_error>("Try"));
   auto tryResult = std::move(sf).get();
-  ASSERT_EQ(tryResult.value(), "Try");
+  ASSERT_EQ(tryResult, "Try");
 }
 
 namespace {
