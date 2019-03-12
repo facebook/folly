@@ -25,10 +25,10 @@
 
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/detail/StaticConst.h>
 #include <folly/detail/TypeList.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
+#include <folly/lang/StaticConst.h>
 
 #include <folly/PolyException.h>
 

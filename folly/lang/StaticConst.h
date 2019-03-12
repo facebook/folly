@@ -17,14 +17,11 @@
 #pragma once
 
 namespace folly {
-namespace detail {
 
-// The StaticConst<T> class is a helper for defining constexpr objects at
-// namespace scope in an ODR-safe and initialisation-order fiasco-safe way
-// in C++ versions earlier than C++17.
+//  StaticConst
 //
-// For example, see the FOLLY_DEFINE_CPO() macro in folly/Portability.h for
-// usage in defining customisation-point objects (CPOs).
+//  A template for defining ODR-usable constexpr instances. Safe from ODR
+//  violations and initialization-order problems.
 
 template <typename T>
 struct StaticConst {
@@ -34,5 +31,4 @@ struct StaticConst {
 template <typename T>
 constexpr T StaticConst<T>::value;
 
-} // namespace detail
 } // namespace folly

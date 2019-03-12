@@ -457,31 +457,6 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
-// Helpers for portably defining customisation-point objects (CPOs).
-//
-// The customisation-point object must be placed in a nested namespace to
-// avoid potential conflicts with customisations defined as friend-functions
-// of types defined in the same namespace as the CPO.
-//
-// In C++17 and later we can define the object using 'inline constexpr' to
-// avoid ODR issues. However, prior to that we need to use the StaticConst<T>
-// helper to ensure that there is only a single instance of the CPO created
-// and then we need to put a named reference to this object in an anonymous
-// namespace to avoid duplicate symbol definitions.
-#if __cpp_inline_variables >= 201606L
-#define FOLLY_DEFINE_CPO(Type, Name) \
-  namespace __hidden {               \
-  inline constexpr Type Name{};      \
-  }                                  \
-  using namespace __hidden;
-#else
-#include <folly/detail/StaticConst.h>
-#define FOLLY_DEFINE_CPO(Type, Name)                                \
-  namespace {                                                       \
-  constexpr auto& Name = ::folly::detail::StaticConst<Type>::value; \
-  }
-#endif
-
 #if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED

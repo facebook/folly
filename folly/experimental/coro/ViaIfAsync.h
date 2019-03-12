@@ -22,6 +22,7 @@
 #include <folly/Traits.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/io/async/Request.h>
+#include <folly/lang/CustomizationPoint.h>
 
 #include <glog/logging.h>
 
