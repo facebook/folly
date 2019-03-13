@@ -26,24 +26,23 @@ namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct just_fn {
  private:
-  struct sender_base : single_sender<ignoreSF, inlineEXF> {
+  struct sender_base : single_sender<> {
     using properties = property_set<
         is_sender<>,
         is_single<>,
-        is_always_blocking<>,
-        is_fifo_sequence<>>;
+        is_always_blocking<>>;
   };
   template <class... VN>
   struct impl {
     std::tuple<VN...> vn_;
-    PUSHMI_TEMPLATE(class Out)
+    PUSHMI_TEMPLATE(class In, class Out)
     (requires ReceiveValue<Out, VN...>) //
         void
-        operator()(sender_base&, Out out) {
+        operator()(In&&, Out&& out) {
       ::folly::pushmi::apply(
           ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out&>{out}, std::move(vn_)));
-      set_done(std::move(out));
+      set_done(out);
     }
   };
 

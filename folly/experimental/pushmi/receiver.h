@@ -24,6 +24,7 @@
 #include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/traits.h>
 #include <future>
+#include <type_traits>
 
 namespace folly {
 namespace pushmi {
@@ -33,7 +34,7 @@ class any_receiver {
   bool done_ = false;
   union data {
     void* pobj_ = nullptr;
-    char buffer_[sizeof(std::promise<int>)]; // can hold a std::promise in-situ
+    std::aligned_union_t<0, std::promise<int>> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() noexcept {
@@ -65,7 +66,7 @@ class any_receiver {
         ReceiveError<Wrapped, std::exception_ptr>,
         "Wrapped receiver must support std::exception_ptr and be noexcept");
     static_assert(
-        NothrowInvocable<decltype(::folly::pushmi::set_error), Wrapped, E>,
+        NothrowInvocable<decltype(::folly::pushmi::set_error), Wrapped&, E>,
         "Wrapped receiver must support E and be noexcept");
   }
   template <class Wrapped>
@@ -95,22 +96,22 @@ class any_receiver {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
-          new (dst->buffer_)
-              Wrapped(std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
-        static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
+          new (&dst->buffer_)
+              Wrapped(std::move(*static_cast<Wrapped*>((void*)&src.buffer_)));
+        static_cast<Wrapped const*>((void*)&src.buffer_)->~Wrapped();
       }
       static void done(data& src) {
-        set_done(*static_cast<Wrapped*>((void*)src.buffer_));
+        set_done(*static_cast<Wrapped*>((void*)&src.buffer_));
       }
       static void error(data& src, E e) noexcept {
-        set_error(*static_cast<Wrapped*>((void*)src.buffer_), std::move(e));
+        set_error(*static_cast<Wrapped*>((void*)&src.buffer_), std::move(e));
       }
       static void value(data& src, VN... vn) {
-        set_value(*static_cast<Wrapped*>((void*)src.buffer_), std::move(vn)...);
+        set_value(*static_cast<Wrapped*>((void*)&src.buffer_), std::move(vn)...);
       }
     };
     static const vtable vtbl{s::op, s::done, s::error, s::value};
-    new ((void*)data_.buffer_) Wrapped(std::move(obj));
+    new ((void*)&data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
 
@@ -137,16 +138,22 @@ class any_receiver {
     new ((void*)this) any_receiver(std::move(that));
     return *this;
   }
-  void value(VN&&... vn) {
+  PUSHMI_TEMPLATE(class... AN)
+  (requires sizeof...(VN) == sizeof...(AN)) //
+  void value(AN&&... vn) {
+    // moved this check out of the requires due to a
+    // mismached pack size between VN and AN on gcc.
+    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
     if (!done_) {
       // done_ = true;
-      vptr_->value_(data_, (VN &&) vn...);
+      vptr_->value_(data_, VN{(AN&&)vn}...);
     }
   }
-  void error(E e) noexcept {
+  template<class A>
+  void error(A&& e) noexcept {
     if (!done_) {
       done_ = true;
-      vptr_->error_(data_, std::move(e));
+      vptr_->error_(data_, E{(A&&)e});
     }
   }
   void done() {
@@ -198,21 +205,20 @@ class receiver<VF, EF, DF> {
         df_(std::move(df)) {}
 
   PUSHMI_TEMPLATE(class... VN)
-  (requires Invocable<VF&, VN...>)
+  (requires Invocable<VF&, VN...>) //
   void value(VN&&... vn) {
     if (done_) {
       return;
     }
-    // done_ = true;
     vf_((VN &&) vn...);
   }
   PUSHMI_TEMPLATE(class E)
-  (requires Invocable<EF&, E>)
-  void error(E e) noexcept {
-    static_assert(NothrowInvocable<EF&, E>, "error function must be noexcept");
+  (requires Invocable<EF&, E&&>) //
+  void error(E&& e) noexcept {
+    static_assert(NothrowInvocable<EF&, E&&>, "error function must be noexcept");
     if (!done_) {
       done_ = true;
-      ef_(std::move(e));
+      ef_((E&&)e);
     }
   }
   void done() {
@@ -245,11 +251,8 @@ class receiver<Data, DVF, DEF, DDF> {
       !detail::is_v<DEF, on_value_fn>,
       "the second parameter is the error implementation, but on_value{} was passed");
   static_assert(
-      Invocable<DEF, Data&, std::exception_ptr>,
-      "error function must support std::exception_ptr");
-  static_assert(
       NothrowInvocable<DEF, Data&, std::exception_ptr>,
-      "error function must be noexcept");
+      "error function must be noexcept and support std::exception_ptr");
 
  public:
   using properties =
@@ -269,21 +272,20 @@ class receiver<Data, DVF, DEF, DDF> {
   }
 
   PUSHMI_TEMPLATE(class... VN)
-  (requires Invocable<DVF&, Data&, VN...>)
+  (requires Invocable<DVF&, Data&, VN...>) //
   void value(VN&&... vn) {
     if (!done_) {
-      // done_ = true;
       vf_(data_, (VN &&) vn...);
     }
   }
   PUSHMI_TEMPLATE(class E)
-  (requires Invocable<DEF&, Data&, E>)
-  void error(E e) noexcept {
+  (requires Invocable<DEF&, Data&, E>) //
+  void error(E&& e) noexcept {
     static_assert(
-        NothrowInvocable<DEF&, Data&, E>, "error function must be noexcept");
+        NothrowInvocable<DEF&, Data&, E&&>, "error function must be noexcept");
     if (!done_) {
       done_ = true;
-      ef_(data_, std::move(e));
+      ef_(data_, (E&&)e);
     }
   }
   void done() {
@@ -496,18 +498,18 @@ struct construct_deduced<receiver> : make_receiver_fn {};
 
 PUSHMI_TEMPLATE (class T, class In)
   (requires SenderTo<In, std::promise<T>, is_single<>>)
-std::future<T> future_from(In in) {
+std::future<T> future_from(In&& in) {
   std::promise<T> p;
   auto result = p.get_future();
-  submit(in, std::move(p));
+  submit((In&&)in, std::move(p));
   return result;
 }
 PUSHMI_TEMPLATE (class In)
   (requires SenderTo<In, std::promise<void>, is_single<>>)
-std::future<void> future_from(In in) {
+std::future<void> future_from(In&& in) {
   std::promise<void> p;
   auto result = p.get_future();
-  submit(in, std::move(p));
+  submit((In&&)in, std::move(p));
   return result;
 }
 

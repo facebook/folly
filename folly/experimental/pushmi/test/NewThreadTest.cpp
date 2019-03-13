@@ -50,7 +50,7 @@ struct countdownsingle {
   template <class ExecutorRef>
   void operator()(ExecutorRef exec) {
     if (--*counter > 0) {
-      exec | op::submit(*this);
+      exec | op::schedule() | op::submit(*this);
     }
   }
 };
@@ -58,7 +58,8 @@ struct countdownsingle {
 using NT = decltype(mi::new_thread());
 
 inline auto make_time(mi::time_source<>& t, NT& ex) {
-  return t.make(mi::systemNowF{}, [ex]() { return ex; })();
+  auto strands = t.make(mi::systemNowF{}, ex);
+  return mi::make_strand(strands);
 }
 
 class NewthreadExecutor : public Test {
@@ -79,7 +80,7 @@ TEST_F(NewthreadExecutor, BlockingSubmitNow) {
   auto signals = 0;
   auto start = v::now(tnt_);
   auto signaled = start;
-  tnt_ | op::transform([](auto tnt) { return tnt | ep::now(); }) |
+  tnt_ | op::schedule() | op::transform([](auto tnt) { return tnt | ep::now(); }) |
       op::blocking_submit(
           [&](auto at) {
             signaled = at;
@@ -98,7 +99,7 @@ TEST_F(NewthreadExecutor, BlockingSubmitNow) {
 
 TEST_F(NewthreadExecutor, BlockingGetNow) {
   auto start = v::now(tnt_);
-  auto signaled = tnt_ | op::transform([](auto tnt) { return v::now(tnt); }) |
+  auto signaled = tnt_ | op::schedule() | op::transform([](auto tnt) { return v::now(tnt); }) |
       op::get<std::chrono::system_clock::time_point>;
 
   auto delay =
@@ -117,11 +118,12 @@ TEST_F(NewthreadExecutor, SubmissionsAreOrderedInTime) {
       ++pushed;
     });
   };
-  tnt_ | op::submit(v::on_value([push](auto tnt) {
+  tnt_ | op::schedule() | op::submit(v::on_value([push](auto tnt) {
     auto now = tnt | ep::now();
-    tnt | op::submit_after(40ms, push(40)) |
-        op::submit_at(now + 10ms, push(10)) | op::submit_after(20ms, push(20)) |
-        op::submit_at(now + 10ms, push(11));
+    tnt | op::schedule_after(40ms) | op::submit(push(40));
+    tnt | op::schedule_at(now + 10ms) | op::submit(push(10));
+    tnt | op::schedule_after(20ms) | op::submit(push(20));
+    tnt | op::schedule_at(now + 10ms) | op::submit(push(11));
   }));
 
   while (pushed.load() < 4) {
@@ -135,7 +137,7 @@ TEST_F(NewthreadExecutor, SubmissionsAreOrderedInTime) {
 TEST_F(NewthreadExecutor, NowIsCalled) {
   bool done = false;
   tnt_ | ep::now();
-  tnt_ | op::blocking_submit([&](auto tnt) {
+  tnt_ | op::schedule() | op::blocking_submit([&](auto tnt) {
     tnt | ep::now();
     done = true;
   });
@@ -145,7 +147,7 @@ TEST_F(NewthreadExecutor, NowIsCalled) {
 
 TEST_F(NewthreadExecutor, BlockingSubmit) {
   auto signals = 0;
-  nt_ | op::transform([](auto) { return 42; }) |
+  nt_ | op::schedule() | op::transform([](auto) { return 42; }) |
       op::blocking_submit(
           [&](auto) { signals += 100; },
           [&](auto) noexcept { signals += 1000; },
@@ -156,7 +158,7 @@ TEST_F(NewthreadExecutor, BlockingSubmit) {
 }
 
 TEST_F(NewthreadExecutor, BlockingGet) {
-  auto v = nt_ | op::transform([](auto) { return 42; }) | op::get<int>;
+  auto v = nt_ | op::schedule() | op::transform([](auto) { return 42; }) | op::get<int>;
 
   EXPECT_THAT(v, Eq(42)) << "expected that the result would be different";
 }
@@ -167,9 +169,9 @@ TEST_F(NewthreadExecutor, VirtualDerecursion) {
   recurse = [&](::folly::pushmi::any_executor_ref<> nt) {
     if (--counter <= 0)
       return;
-    nt | op::submit(recurse);
+    nt | op::schedule() | op::submit(recurse);
   };
-  nt_ | op::blocking_submit([&](auto nt) { recurse(nt); });
+  nt_ | op::schedule() | op::blocking_submit([&](auto nt) { recurse(nt); });
 
   EXPECT_THAT(counter, Eq(0))
       << "expected that all nested submissions complete";
@@ -178,7 +180,7 @@ TEST_F(NewthreadExecutor, VirtualDerecursion) {
 TEST_F(NewthreadExecutor, StaticDerecursion) {
   int counter = 100'000;
   countdownsingle single{counter};
-  nt_ | op::blocking_submit(single);
+  nt_ | op::schedule() | op::blocking_submit(single);
 
   EXPECT_THAT(counter, Eq(0))
       << "expected that all nested submissions complete";
@@ -194,7 +196,7 @@ TEST_F(NewthreadExecutor, UsedWithOn) {
     ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::min());
     ::folly::pushmi::set_value(out, std::numeric_limits<int8_t>::max());
   });
-  sender | op::on([&]() { return nt_; }) |
+  sender | op::on(mi::strands(nt_)) |
       op::blocking_submit(v::on_value(
           [&](auto v) { values.push_back(folly::to<std::string>(v)); }));
 

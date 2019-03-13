@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <folly/experimental/pushmi/piping.h>
 #include <folly/experimental/pushmi/executor.h>
 #include <algorithm>
 #include <chrono>
@@ -26,8 +27,6 @@ namespace pushmi {
 
 struct recurse_t {};
 constexpr const recurse_t recurse{};
-
-struct _pipeable_sender_ {};
 
 namespace detail {
 
@@ -49,47 +48,39 @@ class trampoline_id {
 template <class E = std::exception_ptr>
 class trampoline;
 
-template <class E = std::exception_ptr>
-class delegator : _pipeable_sender_ {
- public:
+template<class E, class Tag>
+struct trampoline_task {
   using properties = property_set<
       is_sender<>,
-      is_executor<>,
       is_maybe_blocking<>,
-      is_fifo_sequence<>,
       is_single<>>;
 
-  delegator executor() {
-    return {};
-  }
   PUSHMI_TEMPLATE(class SingleReceiver)
   (requires ReceiveValue<
-      remove_cvref_t<SingleReceiver>,
+      SingleReceiver,
       any_executor_ref<E>>)
-  void submit(SingleReceiver&& what) {
-    trampoline<E>::submit(ownordelegate, std::forward<SingleReceiver>(what));
+  void submit(SingleReceiver&& what) && {
+    trampoline<E>::submit(Tag{}, std::forward<SingleReceiver>(what));
   }
 };
 
 template <class E = std::exception_ptr>
-class nester : _pipeable_sender_ {
+class delegator : pipeorigin {
  public:
-  using properties = property_set<
-      is_sender<>,
-      is_executor<>,
-      is_maybe_blocking<>,
-      is_fifo_sequence<>,
-      is_single<>>;
+   using properties = property_set<is_executor<>, is_fifo_sequence<>>;
 
-  nester executor() {
+  trampoline_task<E, ownordelegate_t> schedule() {
     return {};
   }
-  PUSHMI_TEMPLATE(class SingleReceiver)
-  (requires ReceiveValue<
-      remove_cvref_t<SingleReceiver>,
-      any_executor_ref<E>>)
-  void submit(SingleReceiver&& what) {
-    trampoline<E>::submit(ownornest, std::forward<SingleReceiver>(what));
+};
+
+template <class E = std::exception_ptr>
+class nester : pipeorigin {
+ public:
+  using properties = property_set<is_executor<>, is_fifo_sequence<>>;
+
+  trampoline_task<E, ownornest_t> schedule() {
+    return {};
   }
 };
 
@@ -97,7 +88,7 @@ template <class E>
 class trampoline {
  private:
   using error_type = std::decay_t<E>;
-  using work_type = any_receiver<error_type, any_executor_ref<error_type>>;
+  using work_type = any_receiver<error_type>;
   using queue_type = std::deque<work_type>;
   using pending_type = std::tuple<int, queue_type, bool>;
 
@@ -127,6 +118,14 @@ class trampoline {
     return owner() != nullptr;
   }
 
+  struct delegate_impl {
+    template<class Data>
+    void operator()(Data& d){
+      delegator<E> that;
+      set_value(d, that);
+    }
+  };
+
   template <class Selector, class Derived>
   static void submit(Selector, Derived&, recurse_t) {
     if (!is_owned()) {
@@ -149,7 +148,7 @@ class trampoline {
       try {
         if (++depth(*owner()) > 100) {
           // defer work to owner
-          pending(*owner()).push_back(work_type{std::move(awhat)});
+          pending(*owner()).push_back(work_type{make_receiver(std::move(awhat), delegate_impl{})});
         } else {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
@@ -226,7 +225,7 @@ class trampoline {
         go = repeat(pending_store);
       }
     } else {
-      pending(pending_store).push_back(work_type{std::move(awhat)});
+      pending(pending_store).push_back(work_type{make_receiver(std::move(awhat), delegate_impl{})});
     }
 
     if (pending(pending_store).empty()) {
@@ -236,7 +235,7 @@ class trampoline {
     while (!pending(pending_store).empty()) {
       auto what = std::move(pending(pending_store).front());
       pending(pending_store).pop_front();
-      set_value(what, any_executor_ref<error_type>{that});
+      set_value(what);
       set_done(what);
     }
   }
