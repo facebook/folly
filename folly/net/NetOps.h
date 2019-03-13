@@ -77,9 +77,7 @@ struct mmsghdr {
   unsigned int msg_len;
 };
 #else
-#ifndef FOLLY_HAVE_SENDMMSG
 #define FOLLY_HAVE_SENDMMSG 1
-#endif
 #endif
 
 #else
