@@ -10,7 +10,7 @@ cd "$BASE_DIR"
 
 # brew install alias
 brew_install() {
-    brew install $@ || brew upgrade $@
+    brew install "$@" || brew upgrade "$@"
 }
 
 # install deps
@@ -19,8 +19,8 @@ install_deps() {
 	dependencies=(autoconf automake libtool pkg-config double-conversion glog gflags boost libevent xz snappy lz4 jemalloc openssl)
 
 	# fetch deps
-	for dependency in ${dependencies[@]}; do
-		brew_install ${dependency}
+	for dependency in "${dependencies[@]}"; do
+		brew_install "${dependency}"
 	done
 }
 
