@@ -502,8 +502,6 @@ if (BUILD_TESTS)
       TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
     DIRECTORY experimental/io/test/
-      # Depends on libaio
-      #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
     DIRECTORY external/farmhash/test/
@@ -813,6 +811,13 @@ if (BUILD_TESTS)
       DIRECTORY experimental/crypto/test/
         TEST blake2xb_test SOURCES Blake2xbTest.cpp
         TEST lt_hash_test SOURCES LtHashTest.cpp
+    )
+  endif()
+
+  if (${LIBAIO_FOUND})
+    folly_define_tests(
+      DIRECTORY experimental/io/test/
+        TEST async_io_test SOURCES AsyncIOTest.cpp
     )
   endif()
 
