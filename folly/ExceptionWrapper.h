@@ -58,9 +58,6 @@ namespace folly {
 
 namespace exception_wrapper_detail {
 
-template <template <class> class T, class... As>
-using AllOf = StrictConjunction<T<As>...>;
-
 template <bool If, class T>
 using AddConstIf = std::conditional_t<If, const T, T>;
 

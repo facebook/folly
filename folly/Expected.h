@@ -101,9 +101,6 @@ namespace expected_detail {
 template <typename Value, typename Error>
 struct PromiseReturn;
 
-template <template <class...> class Trait, class... Ts>
-using StrictAllOf = StrictConjunction<Trait<Ts>...>;
-
 template <class T>
 using IsCopyable = StrictConjunction<
     std::is_copy_constructible<T>,
@@ -163,9 +160,9 @@ enum class StorageType { ePODStruct, ePODUnion, eUnion };
 
 template <class Value, class Error>
 constexpr StorageType getStorageType() {
-  return StrictAllOf<is_trivially_copyable, Value, Error>::value
+  return StrictConjunctionBy<is_trivially_copyable, Value, Error>::value
       ? (sizeof(std::pair<Value, Error>) <= sizeof(void * [2]) &&
-                 StrictAllOf<std::is_trivial, Value, Error>::value
+                 StrictConjunctionBy<std::is_trivial, Value, Error>::value
              ? StorageType::ePODStruct
              : StorageType::ePODUnion)
       : StorageType::eUnion;
@@ -382,20 +379,20 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
     : ExpectedUnion<Value, Error>,
       CopyConstructible<
           ExpectedStorage<Value, Error, StorageType::eUnion>,
-          StrictAllOf<std::is_copy_constructible, Value, Error>::value,
-          StrictAllOf<std::is_nothrow_copy_constructible, Value, Error>::value>,
+          StrictConjunctionBy<std::is_copy_constructible, Value, Error>::value,
+          StrictConjunctionBy<std::is_nothrow_copy_constructible, Value, Error>::value>,
       MoveConstructible<
           ExpectedStorage<Value, Error, StorageType::eUnion>,
-          StrictAllOf<std::is_move_constructible, Value, Error>::value,
-          StrictAllOf<std::is_nothrow_move_constructible, Value, Error>::value>,
+          StrictConjunctionBy<std::is_move_constructible, Value, Error>::value,
+          StrictConjunctionBy<std::is_nothrow_move_constructible, Value, Error>::value>,
       CopyAssignable<
           ExpectedStorage<Value, Error, StorageType::eUnion>,
-          StrictAllOf<IsCopyable, Value, Error>::value,
-          StrictAllOf<IsNothrowCopyable, Value, Error>::value>,
+          StrictConjunctionBy<IsCopyable, Value, Error>::value,
+          StrictConjunctionBy<IsNothrowCopyable, Value, Error>::value>,
       MoveAssignable<
           ExpectedStorage<Value, Error, StorageType::eUnion>,
-          StrictAllOf<IsMovable, Value, Error>::value,
-          StrictAllOf<IsNothrowMovable, Value, Error>::value> {
+          StrictConjunctionBy<IsMovable, Value, Error>::value,
+          StrictConjunctionBy<IsNothrowMovable, Value, Error>::value> {
   using value_type = Value;
   using error_type = Error;
   using Base = ExpectedUnion<Value, Error>;
@@ -1043,7 +1040,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
    * swap
    */
   void swap(Expected& that) noexcept(
-      expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
+      StrictConjunctionBy<IsNothrowSwappable, Value, Error>::value) {
     if (this->uninitializedByException() || that.uninitializedByException()) {
       throw_exception<BadExpectedAccess>();
     }
@@ -1347,7 +1344,7 @@ inline bool operator>=(
  */
 template <class Value, class Error>
 void swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
-    expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
+    StrictConjunctionBy<IsNothrowSwappable, Value, Error>::value) {
   lhs.swap(rhs);
 }
 

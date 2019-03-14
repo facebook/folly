@@ -487,6 +487,9 @@ template <typename T, typename... TList>
 struct Conjunction<T, TList...>
     : std::conditional<T::value, Conjunction<TList...>, T>::type {};
 
+template <template <class> class F, class... Ts>
+using ConjunctionBy = Conjunction<F<Ts>...>;
+
 template <typename...>
 struct Disjunction : std::false_type {};
 template <typename T>
@@ -494,6 +497,9 @@ struct Disjunction<T> : T {};
 template <typename T, typename... TList>
 struct Disjunction<T, TList...>
     : std::conditional<T::value, T, Disjunction<TList...>>::type {};
+
+template <template <class> class F, class... Ts>
+using DisjunctionBy = Disjunction<F<Ts>...>;
 
 template <typename T>
 struct Negation : bool_constant<!T::value> {};
@@ -511,10 +517,16 @@ template <class... Ts>
 struct StrictConjunction
     : std::is_same<Bools<Ts::value...>, Bools<(Ts::value || true)...>> {};
 
+template <template <class> class F, class... Ts>
+using StrictConjunctionBy = StrictConjunction<F<Ts>...>;
+
 template <class... Ts>
 struct StrictDisjunction
     : Negation<
           std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
+
+template <template <class> class F, class... Ts>
+using StrictDisjunctionBy = StrictDisjunction<F<Ts>...>;
 
 namespace detail {
 template <typename, typename>

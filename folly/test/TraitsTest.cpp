@@ -126,7 +126,7 @@ TEST(Traits, conditional) {
   EXPECT_FALSE(Cond<true>::fun_folly("hello"));
 }
 
-TEST(Trait, logicOperators) {
+TEST(Traits, logicOperators) {
   static_assert(Conjunction<true_type>::value, "");
   static_assert(!Conjunction<false_type>::value, "");
   static_assert(is_same<Conjunction<true_type>::type, true_type>::value, "");
@@ -143,6 +143,21 @@ TEST(Trait, logicOperators) {
 
   static_assert(!Negation<true_type>::value, "");
   static_assert(Negation<false_type>::value, "");
+}
+
+TEST(Traits, localOperatorsWithMetafunction) {
+  struct X;
+  struct Y;
+
+  static_assert(ConjunctionBy<std::is_class, X, Y>::value, "");
+  static_assert(!ConjunctionBy<std::is_class, X, Y, int>::value, "");
+  static_assert(StrictConjunctionBy<std::is_class, X, Y>::value, "");
+  static_assert(!StrictConjunctionBy<std::is_class, X, Y, int>::value, "");
+
+  static_assert(DisjunctionBy<std::is_class, int, X>::value, "");
+  static_assert(!DisjunctionBy<std::is_class, int, double>::value, "");
+  static_assert(StrictDisjunctionBy<std::is_class, int, X>::value, "");
+  static_assert(!StrictDisjunctionBy<std::is_class, int, double>::value, "");
 }
 
 TEST(Traits, is_negative) {
