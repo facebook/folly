@@ -226,7 +226,7 @@ using VoidDefault =
 
 template <typename Arg, typename Default>
 using Defaulted =
-    typename std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
+    std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
 
 template <
     typename TableKey,
