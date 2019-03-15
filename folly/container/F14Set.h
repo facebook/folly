@@ -530,13 +530,13 @@ class F14BasicSet {
   //// PUBLIC - Lookup
 
   FOLLY_ALWAYS_INLINE size_type count(key_type const& key) const {
-    return table_.find(key).atEnd() ? 0 : 1;
+    return contains(key) ? 1 : 0;
   }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, size_type> count(
       K const& key) const {
-    return table_.find(key).atEnd() ? 0 : 1;
+    return contains(key) ? 1 : 0;
   }
 
   // prehash(key) does the work of evaluating hash_function()(key)
@@ -603,6 +603,16 @@ class F14BasicSet {
       F14HashToken const& token,
       K const& key) const {
     return table_.makeIter(table_.find(token, key));
+  }
+
+  FOLLY_ALWAYS_INLINE bool contains(key_type const& key) const {
+    return !table_.find(key).atEnd();
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
+      K const& key) const {
+    return !table_.find(key).atEnd();
   }
 
   std::pair<iterator, iterator> equal_range(key_type const& key) {
