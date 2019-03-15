@@ -529,7 +529,7 @@ class F14BasicSet {
 
   //// PUBLIC - Lookup
 
-  FOLLY_ALWAYS_INLINE std::size_t count(key_type const& key) const {
+  FOLLY_ALWAYS_INLINE size_type count(key_type const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 

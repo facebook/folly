@@ -747,12 +747,12 @@ class F14BasicMap {
     return try_emplace(std::forward<K>(key)).first->second;
   }
 
-  FOLLY_ALWAYS_INLINE std::size_t count(key_type const& key) const {
+  FOLLY_ALWAYS_INLINE size_type count(key_type const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, std::size_t> count(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, size_type> count(
       K const& key) const {
     return table_.find(key).atEnd() ? 0 : 1;
   }
