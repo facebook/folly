@@ -17,6 +17,7 @@
 
 #include <folly/Synchronized.h>
 #include <folly/fibers/Baton.h>
+#include <folly/futures/Future.h>
 #if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Task.h>
 #endif
@@ -56,6 +57,11 @@ class Semaphore {
   coro::Task<void> co_wait();
 
 #endif
+
+  /*
+   * Wait for capacity in the semaphore.
+   */
+  SemiFuture<Unit> future_wait();
 
   size_t getCapacity() const;
 

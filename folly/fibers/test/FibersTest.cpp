@@ -1594,7 +1594,11 @@ TEST(FiberManager, semaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              sem.wait();
+              if (j % 2) {
+                sem.wait();
+              } else {
+                sem.future_wait().get();
+              }
               ++counter;
               sem.signal();
               --counter;
