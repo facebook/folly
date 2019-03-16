@@ -1625,3 +1625,21 @@ TEST(Future, ThenRecursion) {
 
   EXPECT_EQ(42, recursion(&executor, 100000).getVia(&executor));
 }
+
+TEST(Future, BatonWait) {
+  auto baton = std::make_unique<fibers::Baton>();
+  bool posted{false};
+
+  ManualExecutor executor;
+  auto postFuture = futures::sleep(std::chrono::milliseconds{100})
+                        .via(&executor)
+                        .thenValue([&posted, batonPtr = baton.get()](auto) {
+                          posted = true;
+                          batonPtr->post();
+                        });
+  futures::wait(std::move(baton))
+      .via(&executor)
+      .thenValue([&](auto) { EXPECT_TRUE(posted); })
+      .getVia(&executor);
+  EXPECT_TRUE(postFuture.isReady());
+}

@@ -27,6 +27,10 @@
 
 namespace folly {
 
+namespace fibers {
+class Baton;
+}
+
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
 /// depend on the template type (rather, on the type of their arguments in
@@ -140,6 +144,8 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
     -> decltype(mapTry(exec, c.begin(), c.end(), func)) {
   return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
 }
+
+SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
 
 } // namespace futures
 

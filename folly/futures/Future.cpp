@@ -57,5 +57,33 @@ Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
   return sleep(dur, tk).toUnsafeFuture();
 }
 
+#if FOLLY_FUTURE_USING_FIBER
+namespace {
+class FutureWaiter : public fibers::Baton::Waiter {
+ public:
+  FutureWaiter(Promise<Unit> promise, std::unique_ptr<fibers::Baton> baton)
+      : promise_(std::move(promise)), baton_(std::move(baton)) {
+    baton_->setWaiter(*this);
+  }
+
+  void post() override {
+    promise_.setValue();
+    delete this;
+  }
+
+ private:
+  Promise<Unit> promise_;
+  std::unique_ptr<fibers::Baton> baton_;
+};
+} // namespace
+
+SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton) {
+  Promise<Unit> promise;
+  auto sf = promise.getSemiFuture();
+  new FutureWaiter(std::move(promise), std::move(baton));
+  return sf;
+}
+#endif
+
 } // namespace futures
 } // namespace folly
