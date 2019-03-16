@@ -80,3 +80,4 @@
 
 #cmakedefine FOLLY_SUPPORT_SHARED_LIBRARY 1
 #cmakedefine FOLLY_HAVE_SENDMMSG 1
+#cmakedefine FOLLY_HAVE_RECVMMSG 1
