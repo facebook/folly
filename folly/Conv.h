@@ -24,6 +24,7 @@
 #pragma once
 
 #include <algorithm>
+#include <cassert>
 #include <cctype>
 #include <climits>
 #include <cstddef>
@@ -35,7 +36,6 @@
 #include <utility>
 
 #include <double-conversion/double-conversion.h> // V8 JavaScript implementation
-#include <glog/logging.h>
 
 #include <folly/Demangle.h>
 #include <folly/Expected.h>
@@ -700,7 +700,7 @@ toAppend(
       conv.ToFixed(value, int(numDigits), &builder);
       break;
     default:
-      CHECK(mode == DoubleToStringConverter::PRECISION);
+      assert(mode == DoubleToStringConverter::PRECISION);
       conv.ToPrecision(value, int(numDigits), &builder);
       break;
   }

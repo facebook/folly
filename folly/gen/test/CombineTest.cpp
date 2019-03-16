@@ -13,9 +13,12 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <string>
 #include <tuple>
 #include <vector>
+
+#include <glog/logging.h>
 
 #include <folly/FBVector.h>
 #include <folly/Range.h>

@@ -16,6 +16,8 @@
 
 #include <folly/experimental/EnvUtil.h>
 
+#include <glog/logging.h>
+
 #include <folly/String.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>

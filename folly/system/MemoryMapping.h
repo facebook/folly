@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <glog/logging.h>
+#include <cassert>
 
 #include <folly/File.h>
 #include <folly/Range.h>
@@ -40,8 +40,8 @@ class MemoryMapping {
     MUST_LOCK,
   };
   /**
-   * Map a portion of the file indicated by filename in memory, causing a CHECK
-   * failure on error.
+   * Map a portion of the file indicated by filename in memory, causing SIGABRT
+   * on error.
    *
    * By default, map the whole file.  length=-1: map from offset to EOF.
    * Unlike the mmap() system call, offset and length don't need to be
@@ -204,7 +204,7 @@ class MemoryMapping {
    */
   template <class T>
   Range<T*> asWritableRange() const {
-    DCHECK(options_.writable); // you'll segfault anyway...
+    assert(options_.writable); // you'll segfault anyway...
     size_t count = data_.size() / sizeof(T);
     return Range<T*>(static_cast<T*>(static_cast<void*>(data_.data())), count);
   }
@@ -213,7 +213,7 @@ class MemoryMapping {
    * A range of mutable bytes mapped by this mapping.
    */
   MutableByteRange writableRange() const {
-    DCHECK(options_.writable); // you'll segfault anyway...
+    assert(options_.writable); // you'll segfault anyway...
     return data_;
   }
 

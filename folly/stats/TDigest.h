@@ -16,10 +16,9 @@
 
 #pragma once
 
+#include <cassert>
 #include <cmath>
 #include <vector>
-
-#include <glog/logging.h>
 
 #include <folly/Range.h>
 #include <folly/Utility.h>
@@ -55,7 +54,7 @@ class TDigest {
    public:
     explicit Centroid(double mean = 0.0, double weight = 1.0)
         : mean_(mean), weight_(weight) {
-      DCHECK_GT(weight, 0);
+      assert(weight > 0);
     }
 
     inline double mean() const {

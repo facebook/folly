@@ -20,6 +20,8 @@
 #include <functional>
 #include <utility>
 
+#include <glog/logging.h>
+
 #include <folly/Format.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>

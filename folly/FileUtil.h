@@ -22,8 +22,6 @@
 #include <cassert>
 #include <limits>
 
-#include <glog/logging.h>
-
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
@@ -131,7 +129,7 @@ bool readFile(
 
   size_t soFar = 0; // amount of bytes successfully read
   SCOPE_EXIT {
-    DCHECK(out.size() >= soFar); // resize better doesn't throw
+    assert(out.size() >= soFar); // resize better doesn't throw
     out.resize(soFar);
   };
 
@@ -175,7 +173,7 @@ bool readFile(
     const char* file_name,
     Container& out,
     size_t num_bytes = std::numeric_limits<size_t>::max()) {
-  DCHECK(file_name);
+  assert(file_name);
 
   const auto fd = openNoInt(file_name, O_RDONLY | O_CLOEXEC);
   if (fd == -1) {

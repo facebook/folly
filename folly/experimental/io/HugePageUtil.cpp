@@ -17,6 +17,8 @@
 #include <iostream>
 #include <stdexcept>
 
+#include <glog/logging.h>
+
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/HugePages.h>

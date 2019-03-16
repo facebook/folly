@@ -16,6 +16,8 @@
 
 #include <folly/dynamic.h>
 
+#include <glog/logging.h>
+
 #include <folly/Range.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
