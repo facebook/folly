@@ -108,10 +108,6 @@ struct F14TableStats {
     return m->computeStats();
   }
 
-  static F14TableStats computeHelper(...) {
-    return {};
-  }
-
  public:
   template <typename T>
   static F14TableStats compute(T const& m) {
