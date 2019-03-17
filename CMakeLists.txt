@@ -233,6 +233,30 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   )
 endif()
 
+set(PCLMUL_FILES
+  ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
+  ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
+  ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
+)
+CHECK_CXX_COMPILER_FLAG(-mpclmul COMPILER_HAS_M_PCLMUL)
+if (COMPILER_HAS_M_PCLMUL)
+  message(
+    STATUS
+    "compiler has flag pclmul, setting compile flag for ${PCLMUL_FILES}"
+  )
+  set_source_files_properties(
+    ${PCLMUL_FILES}
+    PROPERTIES
+    COMPILE_OPTIONS
+    -mpclmul
+  )
+else()
+  message(
+    STATUS
+    "compiler does not have flag pclmul, skipping setting compile flags for ${PCLMUL_FILES}"
+  )
+endif()
+
 add_library(folly_base OBJECT
   ${files} ${hfiles}
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
