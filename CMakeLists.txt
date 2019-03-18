@@ -8,6 +8,11 @@ if (POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()
 
+# CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
+if(POLICY CMP0075)
+  cmake_policy(SET CMP0075 NEW)
+endif()
+
 # includes
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
 
