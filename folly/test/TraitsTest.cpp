@@ -103,6 +103,29 @@ TEST(Traits, bitAndInit) {
   EXPECT_FALSE(IsZeroInitializable<vector<int>>::value);
 }
 
+template <bool V>
+struct Cond {
+  template <typename K = std::string>
+  static auto fun_std(std::conditional_t<V, K, std::string>&& arg) {
+    return std::is_same<remove_cvref_t<decltype(arg)>, std::string>{};
+  }
+  template <typename K = std::string>
+  static auto fun_folly(folly::conditional_t<V, K, std::string>&& arg) {
+    return std::is_same<remove_cvref_t<decltype(arg)>, std::string>{};
+  }
+};
+
+TEST(Traits, conditional) {
+  using folly::conditional_t;
+  EXPECT_TRUE((std::is_same<conditional_t<false, char, int>, int>::value));
+  EXPECT_TRUE((std::is_same<conditional_t<true, char, int>, char>::value));
+
+  EXPECT_TRUE(Cond<false>::fun_std("hello"));
+  EXPECT_TRUE(Cond<true>::fun_std("hello"));
+  EXPECT_TRUE(Cond<false>::fun_folly("hello"));
+  EXPECT_FALSE(Cond<true>::fun_folly("hello"));
+}
+
 TEST(Trait, logicOperators) {
   static_assert(Conjunction<true_type>::value, "");
   static_assert(!Conjunction<false_type>::value, "");

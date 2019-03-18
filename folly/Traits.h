@@ -468,6 +468,31 @@ struct IsZeroInitializable
           traits_detail::has_true_IsZeroInitializable<T>,
           bool_constant<!std::is_class<T>::value>>::type {};
 
+namespace detail {
+template <bool>
+struct conditional_;
+template <>
+struct conditional_<false> {
+  template <typename, typename T>
+  using apply = T;
+};
+template <>
+struct conditional_<true> {
+  template <typename T, typename>
+  using apply = T;
+};
+} // namespace detail
+
+//  conditional_t
+//
+//  Like std::conditional_t but with only two total class template instances,
+//  rather than as many class template instances as there are uses.
+//
+//  As one effect, the result can be used in deducible contexts, allowing
+//  deduction of conditional_t<V, T, F> to work when T or F is a template param.
+template <bool V, typename T, typename F>
+using conditional_t = typename detail::conditional_<V>::template apply<T, F>;
+
 template <typename...>
 struct Conjunction : std::true_type {};
 template <typename T>
