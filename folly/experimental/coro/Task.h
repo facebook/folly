@@ -84,13 +84,10 @@ class TaskPromiseBase {
     return {};
   }
 
-  template <typename U>
-  auto await_transform(Task<U>&& t) noexcept;
-
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) noexcept {
     return folly::coro::co_viaIfAsync(
-        executor_.get(), static_cast<Awaitable&&>(awaitable));
+        executor_.copyDummy(), static_cast<Awaitable&&>(awaitable));
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -364,9 +361,11 @@ class FOLLY_NODISCARD Task {
         });
   }
 
-  friend auto co_viaIfAsync(Executor* executor, Task<T>&& t) noexcept {
+  friend auto co_viaIfAsync(
+      Executor::KeepAlive<> executor,
+      Task<T>&& t) noexcept {
     // Child task inherits the awaiting task's executor
-    t.coro_.promise().executor_ = getKeepAliveToken(executor);
+    t.coro_.promise().executor_ = std::move(executor);
     return Awaiter{std::exchange(t.coro_, {})};
   }
 
@@ -413,13 +412,6 @@ class FOLLY_NODISCARD Task {
 
   handle_t coro_;
 };
-
-template <typename T>
-auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
-  // Child task inherits the awaiting task's executor
-  t.coro_.promise().executor_ = executor_.copyDummy();
-  return typename Task<T>::Awaiter{std::exchange(t.coro_, {})};
-}
 
 template <typename T>
 Task<T> detail::TaskPromise<T>::get_return_object() noexcept {
