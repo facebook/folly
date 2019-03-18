@@ -116,6 +116,8 @@ coro::Task<void> Semaphore::co_wait() {
       std::memory_order_acquire));
 }
 
+#endif
+
 SemiFuture<Unit> Semaphore::future_wait() {
   auto oldVal = tokens_.load(std::memory_order_acquire);
   do {
@@ -135,8 +137,6 @@ SemiFuture<Unit> Semaphore::future_wait() {
       std::memory_order_acquire));
   return makeSemiFuture();
 }
-
-#endif
 
 size_t Semaphore::getCapacity() const {
   return capacity_;
