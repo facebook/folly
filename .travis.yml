@@ -31,15 +31,19 @@ matrix:
   include:
     - env: ['os_image=ubuntu:16.04', gcc_version=5]
       services: [docker]
+    - os: osx
 
 addons:
   apt:
     packages: python2.7
 
 script:
-  # We don't want to write the script inline because of Travis kludginess --
-  # it looks like it escapes " and \ in scripts when using `matrix:`.
-  - ./build/fbcode_builder/travis_docker_build.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];
+    then
+      folly/build/bootstrap-osx-homebrew.sh;
+    else
+      ./build/fbcode_builder/travis_docker_build.sh;
+    fi
 
 notifications:
   webhooks: https://code.facebook.com/travis/webhook/
