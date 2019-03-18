@@ -187,6 +187,16 @@ struct StdNodeReplica<
 
 #endif
 
+template <class Container, class Predicate>
+void erase_if_impl(Container& c, Predicate& predicate) {
+  for (auto i = c.begin(), last = c.end(); i != last;) {
+    auto prev = i++;
+    if (predicate(*prev)) {
+      c.erase(prev);
+    }
+  }
+}
+
 } // namespace detail
 } // namespace f14
 

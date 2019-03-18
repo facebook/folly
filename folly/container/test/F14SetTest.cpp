@@ -1370,6 +1370,26 @@ TEST(F14Set, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14FastSet>();
 }
 
+template<template<class...> class TSet>
+void testEraseIf()
+{
+  TSet<int> s{1, 2, 3, 4};
+  const auto isEvenKey = [](const auto& key) {
+    return key % 2 == 0;
+  };
+  erase_if(s, isEvenKey);
+  ASSERT_EQ(2u, s.size());
+  EXPECT_TRUE(s.contains(1));
+  EXPECT_TRUE(s.contains(3));
+}
+
+TEST(F14Set, eraseIf) {
+  testEraseIf<F14ValueSet>();
+  testEraseIf<F14FastSet>();
+  testEraseIf<F14VectorSet>();
+  testEraseIf<F14NodeSet>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////

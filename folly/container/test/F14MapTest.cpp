@@ -1777,6 +1777,26 @@ TEST(F14Map, containsWithPrecomputedHash) {
   testContainsWithPrecomputedHash<F14FastMap>();
 }
 
+template<template<class...> class TMap>
+void testEraseIf()
+{
+  TMap<int, int> m{{1, 1}, {2, 2}, {3, 3}, {4, 4}};
+  const auto isEvenKey = [](const auto& p) {
+    return p.first % 2 == 0;
+  };
+  erase_if(m, isEvenKey);
+  ASSERT_EQ(2u, m.size());
+  EXPECT_TRUE(m.contains(1));
+  EXPECT_TRUE(m.contains(3));
+}
+
+TEST(F14Map, eraseIf) {
+  testEraseIf<F14ValueMap>();
+  testEraseIf<F14VectorMap>();
+  testEraseIf<F14NodeMap>();
+  testEraseIf<F14FastMap>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
