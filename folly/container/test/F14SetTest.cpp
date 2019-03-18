@@ -991,13 +991,20 @@ TEST(F14ValueSet, heterogeneous) {
     EXPECT_TRUE(ref.end() == ref.find(buddy));
     EXPECT_EQ(hello, *ref.find(hello));
 
+    const auto buddyHashToken = ref.prehash(buddy);
+    const auto helloHashToken = ref.prehash(hello);
+
     // prehash + find
-    EXPECT_TRUE(ref.end() == ref.find(ref.prehash(buddy), buddy));
-    EXPECT_EQ(hello, *ref.find(ref.prehash(hello), hello));
+    EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
+    EXPECT_EQ(hello, *ref.find(helloHashToken, hello));
 
     // contains
     EXPECT_FALSE(ref.contains(buddy));
     EXPECT_TRUE(ref.contains(hello));
+
+    // contains with prehash
+    EXPECT_FALSE(ref.contains(buddyHashToken, buddy));
+    EXPECT_TRUE(ref.contains(helloHashToken, hello));
 
     // equal_range
     EXPECT_TRUE(std::make_pair(ref.end(), ref.end()) == ref.equal_range(buddy));
@@ -1342,6 +1349,25 @@ TEST(F14Set, randomInsertOrder) {
   runRandomInsertOrderTest<F14FastSet<std::string>>([](char x) {
     return std::string{std::size_t{1}, x};
   });
+}
+
+template <template <class...> class TSet>
+void testContainsWithPrecomputedHash() {
+  TSet<int> m{};
+  const auto key{1};
+  m.insert(key);
+  const auto hashToken = m.prehash(key);
+  EXPECT_TRUE(m.contains(hashToken, key));
+  const auto otherKey{2};
+  const auto hashTokenNotFound = m.prehash(otherKey);
+  EXPECT_FALSE(m.contains(hashTokenNotFound, otherKey));
+}
+
+TEST(F14Set, containsWithPrecomputedHash) {
+  testContainsWithPrecomputedHash<F14ValueSet>();
+  testContainsWithPrecomputedHash<F14NodeSet>();
+  testContainsWithPrecomputedHash<F14VectorSet>();
+  testContainsWithPrecomputedHash<F14FastSet>();
 }
 
 ///////////////////////////////////

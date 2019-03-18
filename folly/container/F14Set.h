@@ -615,6 +615,19 @@ class F14BasicSet {
     return !table_.find(key).atEnd();
   }
 
+  FOLLY_ALWAYS_INLINE bool contains(
+      F14HashToken const& token,
+      key_type const& key) const {
+    return !table_.find(token, key).atEnd();
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
+      F14HashToken const& token,
+      K const& key) const {
+    return !table_.find(token, key).atEnd();
+  }
+
   std::pair<iterator, iterator> equal_range(key_type const& key) {
     return equal_range(*this, key);
   }
