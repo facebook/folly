@@ -6,16 +6,22 @@ sudo: required
 # Docker disables IPv6 in containers by default. Enable it for unit tests that need [::1].
 before_script:
   # `daemon.json` is normally missing, but let's log it in case that changes.
-  - sudo touch /etc/docker/daemon.json
-  - sudo cat /etc/docker/daemon.json
-  - sudo service docker stop
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]];
+    then
+      sudo touch /etc/docker/daemon.json;
+      sudo cat /etc/docker/daemon.json;
+      sudo service docker stop;
+    fi
   # This needs YAML quoting because of the curly braces.
-  - 'echo ''{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"}'' | sudo tee /etc/docker/daemon.json'
-  - sudo service docker start
+  - 'if [[ "$TRAVIS_OS_NAME" != "osx" ]]; then echo ''{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"}''| sudo tee /etc/docker/daemon.json; fi'
   # Fail early if docker failed on start -- add `- sudo dockerd` to debug.
-  - sudo docker info
   # Paranoia log: what if our config got overwritten?
-  - sudo cat /etc/docker/daemon.json
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]];
+    then
+      sudo service docker start;
+      sudo docker info;
+      sudo cat /etc/docker/daemon.json;
+    fi
 
 env:
   global:
@@ -38,13 +44,19 @@ matrix:
   include:
     - env: ['os_image=ubuntu:16.04', gcc_version=5]
       services: [docker]
+    - os: osx
+
+addons:
+  apt:
+    packages: python2.7
 
 script:
-  # Travis seems to get confused when `matrix:` is used with `language:`
-  - sudo apt-get install python2.7
-  # We don't want to write the script inline because of Travis kludginess --
-  # it looks like it escapes " and \ in scripts when using `matrix:`.
-  - ./build/fbcode_builder/travis_docker_build.sh
+  - if [[ "$TRAVIS_OS_NAME" == "osx" ]];
+    then
+      folly/build/bootstrap-osx-homebrew.sh;
+    else
+      ./build/fbcode_builder/travis_docker_build.sh;
+    fi
 
 notifications:
   webhooks: https://code.facebook.com/travis/webhook/
