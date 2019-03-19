@@ -24,6 +24,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -33,17 +34,6 @@
 
 namespace folly {
 namespace coro {
-
-namespace detail {
-struct co_current_executor_ {
-  enum class secret_ { token_ };
-  explicit constexpr co_current_executor_(secret_) {}
-};
-} // namespace detail
-
-using co_current_executor_t = detail::co_current_executor_;
-constexpr co_current_executor_t co_current_executor{
-    co_current_executor_t::secret_::token_};
 
 template <typename T = void>
 class Task;
