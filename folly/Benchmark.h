@@ -53,20 +53,16 @@ inline bool runBenchmarksOnFlag() {
   return FLAGS_benchmark;
 }
 
-struct UserMetric {
-  enum Type { CUSTOM, TIME, METRIC };
-  int value;
-  Type type{CUSTOM};
+class UserMetric {
+ public:
+  enum class Type { CUSTOM, TIME, METRIC };
+
+  int value{};
+  Type type{Type::CUSTOM};
+
   UserMetric() = default;
-  template <typename T>
-  /* implicit */ UserMetric(T val, Type typ = CUSTOM)
-      : value(static_cast<int>(val)), type(typ) {}
-  operator int() const {
-    return value;
-  }
-  operator int&() {
-    return value;
-  }
+  /* implicit */ UserMetric(int val, Type typ = Type::CUSTOM)
+      : value(val), type(typ) {}
 };
 
 using UserCounters = std::unordered_map<std::string, UserMetric>;
