@@ -18,6 +18,7 @@
 
 #include <cstdint>
 
+#include <folly/Portability.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/IOVec.h>
 #include <folly/portability/SysTypes.h>
@@ -71,13 +72,11 @@
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif
 
-#if (!__linux__) || (defined(__ANDROID__) && (__ANDROID_API__ < 21))
+#if !(FOLLY_HAVE_RECVMMSG || FOLLY_HAVE_SENDMMSG)
 struct mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;
 };
-#else
-#define FOLLY_HAVE_SENDMMSG 1
 #endif
 
 #else
