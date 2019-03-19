@@ -325,6 +325,19 @@ apply_folly_compile_options_to_target(folly)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
+# Test utilities exported for use by down-stream projects
+add_library(folly_test_util
+  ${FOLLY_DIR}/test/DeterministicSchedule.cpp
+  ${FOLLY_DIR}/test/JsonTestUtil.cpp
+)
+target_link_libraries(folly_test_util
+  PUBLIC
+    ${BOOST_LIBRARIES}
+    folly
+    ${LIBGMOCK_LIBRARIES}
+)
+apply_folly_compile_options_to_target(folly_test_util)
+list(APPEND FOLLY_INSTALL_TARGETS folly_test_util)
 
 install(TARGETS ${FOLLY_INSTALL_TARGETS}
   EXPORT folly
