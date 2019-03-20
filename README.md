@@ -154,9 +154,10 @@ folly is available as a Formula and releases may be built via `brew install foll
 You may also use `folly/build/bootstrap-osx-homebrew.sh` to build against `master`:
 
 ```
-  cd folly
-  ./build/bootstrap-osx-homebrew.sh
+  ./folly/build/bootstrap-osx-homebrew.sh
 ```
+
+This will create a build directory `_build` in the top-level.
 
 #### OS X (MacPorts)
 
@@ -164,9 +165,8 @@ Install the required packages from MacPorts:
 
 ```
   sudo port install \
-    autoconf \
-    automake \
     boost \
+    cmake \
     gflags \
     git \
     google-glog \
@@ -174,8 +174,9 @@ Install the required packages from MacPorts:
     libtool \
     lz4 \
     lzma \
-    scons \
+    openssl \
     snappy \
+    xz \
     zlib
 ```
 
@@ -193,9 +194,10 @@ Download and install folly with the parameters listed below:
 
 ```
   git clone https://github.com/facebook/folly.git
-  cd folly/folly
-  autoreconf -ivf
-  ./configure CPPFLAGS="-I/opt/local/include" LDFLAGS="-L/opt/local/lib"
+  cd folly
+  mkdir _build
+  cd _build
+  cmake ..
   make
   sudo make install
 ```
