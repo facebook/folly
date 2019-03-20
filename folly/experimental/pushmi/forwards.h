@@ -126,28 +126,26 @@ template <
     class... VN>
 class any_flow_many_sender;
 
-template <class E = std::exception_ptr, class... VN>
+template <class E = std::exception_ptr>
 class any_executor;
 
-template <class E = std::exception_ptr, class... VN>
+template <class E = std::exception_ptr>
 struct any_executor_ref;
 
-template <class E = std::exception_ptr, class CV = std::ptrdiff_t, class... VN>
+template <class E = std::exception_ptr, class CV = std::ptrdiff_t>
 class any_constrained_executor;
 
-template <class E = std::exception_ptr, class TP = std::ptrdiff_t, class... VN>
+template <class E = std::exception_ptr, class TP = std::ptrdiff_t>
 struct any_constrained_executor_ref;
 
 template <
     class E = std::exception_ptr,
-    class TP = std::chrono::system_clock::time_point,
-    class... VN>
+    class TP = std::chrono::system_clock::time_point>
 class any_time_executor;
 
 template <
     class E = std::exception_ptr,
-    class TP = std::chrono::system_clock::time_point,
-    class... VN>
+    class TP = std::chrono::system_clock::time_point>
 struct any_time_executor_ref;
 
 namespace operators {}

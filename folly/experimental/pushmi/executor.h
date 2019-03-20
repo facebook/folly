@@ -34,11 +34,11 @@ using not_is_t = std::enable_if_t<!is_v<std::decay_t<T>, C>, std::decay_t<T>>;
 //
 // define types for executors
 
-template <class E, class... VN>
+template <class E>
 class any_executor {
   union data {
     void* pobj_ = nullptr;
-    std::aligned_union_t< 0, std::tuple<VN...> > buffer_;
+    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -48,10 +48,10 @@ class any_executor {
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_consume_op(data&&, data*) {}
-    static any_single_sender<E, any_executor_ref<E>> s_schedule(data&, VN...) { return {}; }
+    static any_single_sender<E, any_executor_ref<E>> s_schedule(data&) { return {}; }
     void (*op_)(data&, data*) = vtable::s_op;
     void (*consume_op_)(data&, data*) = vtable::s_consume_op;
-    any_single_sender<E, any_executor_ref<E>> (*schedule_)(data&, VN...) = vtable::s_schedule;
+    any_single_sender<E, any_executor_ref<E>> (*schedule_)(data&) = vtable::s_schedule;
   };
   static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
@@ -66,9 +66,9 @@ class any_executor {
           dst->pobj_ = std::exchange(src.pobj_, nullptr);
         delete static_cast<Wrapped const*>(src.pobj_);
       }
-      static any_single_sender<E, any_executor_ref<E>> schedule(data& src, VN... vn) {
+      static any_single_sender<E, any_executor_ref<E>> schedule(data& src) {
         return any_single_sender<E, any_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>(src.pobj_), vn...)};
+            *static_cast<Wrapped*>(src.pobj_))};
       }
     };
     static const vtable vtbl{s::op, s::consume_op, s::schedule};
@@ -89,9 +89,9 @@ class any_executor {
               Wrapped(std::move(*static_cast<Wrapped*>((void*)src.buffer_)));
         static_cast<Wrapped const*>((void*)src.buffer_)->~Wrapped();
       }
-      static any_single_sender<E, any_executor_ref<E>> schedule(data& src, VN... vn) {
+      static any_single_sender<E, any_executor_ref<E>> schedule(data& src) {
         return any_single_sender<E, any_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>((void*)src.buffer_), vn...)};
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
     };
     static const vtable vtbl{s::op, s::consume_op, s::schedule};
@@ -132,20 +132,15 @@ class any_executor {
     new ((void*)this) any_executor(std::move(that));
     return *this;
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires sizeof...(VN) == sizeof...(AN)) //
-  any_single_sender<E, any_executor_ref<E>> schedule(AN&&... an) {
-    // moved this check out of the requires due to a
-    // mismatched pack size between VN and AN on gcc.
-    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
-    return vptr_->schedule_(data_, VN{(AN &&) an}...);
+  any_single_sender<E, any_executor_ref<E>> schedule() {
+    return vptr_->schedule_(data_);
   }
 };
 
 // Class static definitions:
-template <class E, class... VN>
-constexpr typename any_executor<E, VN...>::vtable const
-    any_executor<E, VN...>::noop_;
+template <class E>
+constexpr typename any_executor<E>::vtable const
+    any_executor<E>::noop_;
 
 template <class SF>
 class executor<SF> {
@@ -157,11 +152,10 @@ class executor<SF> {
   constexpr executor() = default;
   constexpr explicit executor(SF sf) : sf_(std::move(sf)) {}
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<SF&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_((AN&&)an...);
+  PUSHMI_TEMPLATE(class SF_ = SF)
+  (requires Invocable<SF_&>) //
+  auto schedule() {
+    return sf_();
   }
 };
 
@@ -182,11 +176,10 @@ class executor<Data, DSF> {
   constexpr executor(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<DSF&, Data&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_(data_, (AN&&)an...);
+  PUSHMI_TEMPLATE(class DSF_ = DSF)
+  (requires Invocable<DSF_&, Data&>) //
+      auto schedule() {
+    return sf_(data_);
   }
 };
 
@@ -252,13 +245,13 @@ template <class T>
 using not_any_executor_ref_t = not_is_t<T, any_executor_ref>;
 } // namespace detail
 
-template <class E, class... VN>
+template <class E>
 struct any_executor_ref {
  private:
   using This = any_executor_ref;
   void* pobj_;
   struct vtable {
-    any_single_sender<E, any_executor_ref<E>> (*schedule_)(void*, VN...);
+    any_single_sender<E, any_executor_ref<E>> (*schedule_)(void*);
   } const* vptr_;
   template <class T>
   using wrapped_t = detail::not_any_executor_ref_t<T>;
@@ -273,9 +266,9 @@ struct any_executor_ref {
   (requires Executor<wrapped_t<Wrapped>>) //
       any_executor_ref(Wrapped& w) {
     struct s {
-      static any_single_sender<E, any_executor_ref<E>> schedule(void* pobj, VN... vn) {
+      static any_single_sender<E, any_executor_ref<E>> schedule(void* pobj) {
         return any_single_sender<E, any_executor_ref<E>>{
-            ::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj), vn...)};
+            ::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj))};
       }
     };
     static const vtable vtbl{s::schedule};
@@ -283,8 +276,8 @@ struct any_executor_ref {
     vptr_ = &vtbl;
   }
   template<class... AN>
-  any_single_sender<E, any_executor_ref<E>> schedule(AN&&... an) {
-    return vptr_->schedule_(pobj_, VN{(AN&&)an}...);
+  any_single_sender<E, any_executor_ref<E>> schedule() {
+    return vptr_->schedule_(pobj_);
   }
 };
 
@@ -316,28 +309,36 @@ PUSHMI_TEMPLATE(class Wrapped)
 // define types for constrained executors
 
 
-template <class E, class CV, class... VN>
+template <class E, class CV>
 class any_constrained_executor {
   union data {
     void* pobj_ = nullptr;
-    std::aligned_union_t< 0, std::tuple<CV, VN...> > buffer_;
+    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
         std::is_nothrow_move_constructible<Wrapped>::value;
   }
+  using exec_ref = any_constrained_executor_ref<E>;
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_consume_op(data&&, data*) {}
-    static any_single_sender<E, any_constrained_executor_ref<E>> s_schedule(data&, VN...) { std::terminate(); return {}; }
-    static any_single_sender<E, any_constrained_executor_ref<E>> s_schedule_cv(data&, CV, VN...) { std::terminate(); return {}; }
+    static any_single_sender<E, exec_ref> s_schedule(data&) {
+      std::terminate();
+      return {};
+    }
+    static any_single_sender<E, exec_ref> s_schedule_cv(data&, CV) {
+      std::terminate();
+      return {};
+    }
     static CV s_top(data&) { return {}; }
     void (*op_)(data&, data*) = vtable::s_op;
     void (*consume_op_)(data&&, data*) = vtable::s_consume_op;
     CV (*top_)(data&) = vtable::s_top;
-    any_single_sender<E, any_constrained_executor_ref<E>> (*schedule_)(data&, VN...) = vtable::s_schedule;
-    any_single_sender<E, any_constrained_executor_ref<E>> (*schedule_cv_)(data&, CV, VN...) = vtable::s_schedule_cv;
+    any_single_sender<E, exec_ref> (*schedule_)(data&) = vtable::s_schedule;
+    any_single_sender<E, exec_ref> (*schedule_cv_)(data&, CV) =
+      vtable::s_schedule_cv;
   };
   static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
@@ -355,16 +356,22 @@ class any_constrained_executor {
       static CV top(data& src) {
         return ::folly::pushmi::top(*static_cast<Wrapped*>(src.pobj_));
       }
-      static any_single_sender<E, any_constrained_executor_ref<E>> schedule(data& src, VN... vn) {
-        return any_single_sender<E, any_constrained_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>(src.pobj_), vn...)};
+      static any_single_sender<E, exec_ref> schedule(data& src) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>(src.pobj_))};
       }
-      static any_single_sender<E, any_constrained_executor_ref<E>> schedule_cv(data& src, CV cv, VN... vn) {
-        return any_single_sender<E, any_constrained_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>(src.pobj_), cv, vn...)};
+      static any_single_sender<E, exec_ref> schedule_cv(data& src, CV cv) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>(src.pobj_), cv)};
       }
     };
-    static const vtable vtbl{s::op, s::consume_op, s::top, s::schedule, s::schedule_cv};
+    static const vtable vtbl{
+      s::op,
+      s::consume_op,
+      s::top,
+      s::schedule,
+      s::schedule_cv
+    };
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
@@ -385,16 +392,22 @@ class any_constrained_executor {
       static CV top(data& src) {
         return ::folly::pushmi::top(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static any_single_sender<E, any_constrained_executor_ref<E>> schedule(data& src, VN... vn) {
-        return any_single_sender<E, any_constrained_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>((void*)src.buffer_), vn...)};
+      static any_single_sender<E, exec_ref> schedule(data& src) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static any_single_sender<E, any_constrained_executor_ref<E>> schedule_cv(data& src, CV cv, VN... vn) {
-        return any_single_sender<E, any_constrained_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>((void*)src.buffer_), cv, vn...)};
+      static any_single_sender<E, exec_ref> schedule_cv(data& src, CV cv) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>((void*)src.buffer_), cv)};
       }
     };
-    static const vtable vtbl{s::op, s::consume_op, s::top, s::schedule};
+    static const vtable vtbl{
+      s::op,
+      s::consume_op,
+      s::top,
+      s::schedule,
+      s::schedule_cv
+    };
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
@@ -406,11 +419,13 @@ class any_constrained_executor {
   using properties = property_set<is_constrained<>>;
 
   any_constrained_executor() = default;
-  any_constrained_executor(const any_constrained_executor& that) noexcept : any_constrained_executor() {
+  any_constrained_executor(const any_constrained_executor& that) noexcept
+  : any_constrained_executor() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
-  any_constrained_executor(any_constrained_executor&& that) noexcept : any_constrained_executor() {
+  any_constrained_executor(any_constrained_executor&& that) noexcept
+  : any_constrained_executor() {
     that.vptr_->consume_op_(std::move(that.data_), &data_);
     std::swap(that.vptr_, vptr_);
   }
@@ -435,22 +450,18 @@ class any_constrained_executor {
   CV top() {
     return vptr_->top_(data_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires And<Constructible<VN, AN>...>)
-  any_single_sender<E, any_constrained_executor_ref<E>> schedule(AN&&... an) {
-    return vptr_->schedule_(data_, VN{(AN &&) an}...);
+  any_single_sender<E, any_constrained_executor_ref<E>> schedule() {
+    return vptr_->schedule_(data_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires And<Constructible<VN, AN>...>)
-  any_single_sender<E, any_constrained_executor_ref<E>> schedule(CV cv, AN&&... an) {
-    return vptr_->schedule_cv_(data_, cv, VN{(AN &&) an}...);
+  any_single_sender<E, any_constrained_executor_ref<E>> schedule(CV cv) {
+    return vptr_->schedule_cv_(data_, cv);
   }
 };
 
 // Class static definitions:
-template <class E, class CV, class... VN>
-constexpr typename any_constrained_executor<E, CV, VN...>::vtable const
-    any_constrained_executor<E, CV, VN...>::noop_;
+template <class E, class CV>
+constexpr typename any_constrained_executor<E, CV>::vtable const
+    any_constrained_executor<E, CV>::noop_;
 
 template <class SF, class ZF>
 class constrained_executor<SF, ZF> {
@@ -468,11 +479,10 @@ class constrained_executor<SF, ZF> {
     return zf_();
   }
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<SF&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_((AN&&)an...);
+  PUSHMI_TEMPLATE(class SF_ = SF)
+  (requires Invocable<SF_&>) //
+      auto schedule() {
+    return sf_();
   }
 };
 
@@ -501,11 +511,10 @@ class constrained_executor<Data, DSF, DZF> {
     return zf_(data_);
   }
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<DSF&, Data&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_(data_, (AN&&)an...);
+  PUSHMI_TEMPLATE(class DSF_ = DSF)
+  (requires Invocable<DSF_&, Data&>) //
+      auto schedule() {
+    return sf_(data_);
   }
 };
 
@@ -593,17 +602,16 @@ using not_any_constrained_executor_ref_t =
     not_is_t<T, any_constrained_executor_ref>;
 } // namespace detail
 
-template <class E, class CV, class... VN>
+template <class E, class CV>
 struct any_constrained_executor_ref {
  private:
   using This = any_constrained_executor_ref;
   void* pobj_;
+  using exec_ref = any_constrained_executor_ref<E, CV>;
   struct vtable {
     CV (*top_)(void*);
-    any_single_sender<E, CV, any_constrained_executor_ref<E, CV>> (*schedule_)(
-        void*, VN...);
-    any_single_sender<E, CV, any_constrained_executor_ref<E, CV>> (
-        *schedule_cv_)(void*, CV, VN...);
+    any_single_sender<E, CV, exec_ref> (*schedule_)(void*);
+    any_single_sender<E, CV, exec_ref> (*schedule_cv_)(void*, CV);
   } const* vptr_;
   template <class T>
   using wrapped_t = detail::not_any_constrained_executor_ref_t<T>;
@@ -621,15 +629,13 @@ struct any_constrained_executor_ref {
       static CV top(void* pobj) {
         return ::folly::pushmi::top(*static_cast<Wrapped*>(pobj));
       }
-      static any_single_sender<E, CV, any_constrained_executor_ref<E, CV>>
-      schedule(void* pobj, VN... vn) {
+      static any_single_sender<E, CV, exec_ref> schedule(void* pobj) {
         return ::folly::pushmi::schedule(
             *static_cast<Wrapped*>(pobj),
-            ::folly::pushmi::top(*static_cast<Wrapped*>(pobj)), vn...);
+            ::folly::pushmi::top(*static_cast<Wrapped*>(pobj)));
       }
-      static any_single_sender<E, CV, any_constrained_executor_ref<E, CV>>
-      schedule_cv(void* pobj, CV cv, VN... vn) {
-        return ::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj), cv, vn...);
+      static any_single_sender<E, CV, exec_ref> schedule_cv(void* pobj, CV cv) {
+        return ::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj), cv);
       }
     };
     static const vtable vtbl{s::top, s::schedule, s::schedule_cv};
@@ -639,21 +645,11 @@ struct any_constrained_executor_ref {
   CV top() {
     return vptr_->top_(pobj_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires sizeof...(VN) == sizeof...(AN)) //
-  any_single_sender<E, any_constrained_executor_ref<E>> schedule(AN&&... an) {
-    // moved this check out of the requires due to a
-    // mismatched pack size between VN and AN on gcc.
-    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
-    return vptr_->schedule_(pobj_, VN{(AN&&)an}...);
+  any_single_sender<E, any_constrained_executor_ref<E>> schedule() {
+    return vptr_->schedule_(pobj_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires sizeof...(VN) == sizeof...(AN)) //
-  any_single_sender<E, any_constrained_executor_ref<E>> schedule(CV cv, AN&&... an) {
-    // moved this check out of the requires due to a
-    // mismatched pack size between VN and AN on gcc.
-    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
-    return vptr_->schedule_cv_(pobj_, cv, VN{(AN&&)an}...);
+  any_single_sender<E, any_constrained_executor_ref<E>> schedule(CV cv) {
+    return vptr_->schedule_cv_(pobj_, cv);
   }
 };
 
@@ -689,28 +685,36 @@ PUSHMI_TEMPLATE(class Wrapped)
 //
 // define types for time executors
 
-template <class E, class TP, class... VN>
+template <class E, class TP>
 class any_time_executor {
   union data {
     void* pobj_ = nullptr;
-    std::aligned_union_t< 0, std::tuple<TP, VN...> > buffer_;
+    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
     return sizeof(Wrapped) <= sizeof(data::buffer_) &&
         std::is_nothrow_move_constructible<Wrapped>::value;
   }
+  using exec_ref = any_time_executor_ref<E>;
   struct vtable {
     static void s_op(data&, data*) {}
     static void s_consume_op(data&&, data*) {}
-    static any_single_sender<E, any_time_executor_ref<E>> s_schedule(data&, VN...) { std::terminate(); return {}; }
-    static any_single_sender<E, any_time_executor_ref<E>> s_schedule_time(data&, TP, VN...) { std::terminate(); return {}; }
+    static any_single_sender<E, exec_ref> s_schedule(data&) {
+      std::terminate();
+      return {};
+    }
+    static any_single_sender<E, exec_ref> s_schedule_time(data&, TP) {
+      std::terminate();
+      return {};
+    }
     static TP s_now(data&) { return {}; }
     void (*op_)(data&, data*) = vtable::s_op;
     void (*consume_op_)(data&&, data*) = vtable::s_consume_op;
     TP (*now_)(data&) = vtable::s_now;
-    any_single_sender<E, any_time_executor_ref<E>> (*schedule_)(data&, VN...) = vtable::s_schedule;
-    any_single_sender<E, any_time_executor_ref<E>> (*schedule_time_)(data&, TP, VN...) = vtable::s_schedule_time;
+    any_single_sender<E, exec_ref> (*schedule_)(data&) = vtable::s_schedule;
+    any_single_sender<E, exec_ref> (*schedule_time_)(data&, TP) =
+      vtable::s_schedule_time;
   };
   static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
@@ -728,16 +732,22 @@ class any_time_executor {
       static TP now(data& src) {
         return ::folly::pushmi::now(*static_cast<Wrapped*>(src.pobj_));
       }
-      static any_single_sender<E, any_time_executor_ref<E>> schedule(data& src, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>(src.pobj_), vn...)};
+      static any_single_sender<E, exec_ref> schedule(data& src) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>(src.pobj_))};
       }
-      static any_single_sender<E, any_time_executor_ref<E>> schedule_time(data& src, TP tp, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>(src.pobj_), tp, vn...)};
+      static any_single_sender<E, exec_ref> schedule_time(data& src, TP tp) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>(src.pobj_), tp)};
       }
     };
-    static const vtable vtbl{s::op, s::consume_op, s::now, s::schedule, s::schedule_time};
+    static const vtable vtbl{
+      s::op,
+      s::consume_op,
+      s::now,
+      s::schedule,
+      s::schedule_time
+    };
     data_.pobj_ = new Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
@@ -758,16 +768,22 @@ class any_time_executor {
       static TP now(data& src) {
         return ::folly::pushmi::now(*static_cast<Wrapped*>((void*)src.buffer_));
       }
-      static any_single_sender<E, any_time_executor_ref<E>> schedule(data& src, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>((void*)src.buffer_), vn...)};
+      static any_single_sender<E, exec_ref> schedule(data& src) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>((void*)src.buffer_))};
       }
-      static any_single_sender<E, any_time_executor_ref<E>> schedule_time(data& src, TP tp, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E>>{::folly::pushmi::schedule(
-            *static_cast<Wrapped*>((void*)src.buffer_), tp, vn...)};
+      static any_single_sender<E, exec_ref> schedule_time(data& src, TP tp) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
+            *static_cast<Wrapped*>((void*)src.buffer_), tp)};
       }
     };
-    static const vtable vtbl{s::op, s::consume_op, s::now, s::schedule, s::schedule_time};
+    static const vtable vtbl{
+      s::op,
+      s::consume_op,
+      s::now,
+      s::schedule,
+      s::schedule_time
+    };
     new (data_.buffer_) Wrapped(std::move(obj));
     vptr_ = &vtbl;
   }
@@ -808,22 +824,18 @@ class any_time_executor {
   TP top() {
     return vptr_->now_(data_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires And<Constructible<VN, AN>...>)
-  any_single_sender<E, any_time_executor_ref<E>> schedule(AN&&... an) {
-    return vptr_->schedule_(data_, VN{(AN &&) an}...);
+  any_single_sender<E, any_time_executor_ref<E>> schedule() {
+    return vptr_->schedule_(data_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires And<Constructible<VN, AN>...>)
-  any_single_sender<E, any_time_executor_ref<E>> schedule(TP tp, AN&&... an) {
-    return vptr_->schedule_time_(data_, tp, VN{(AN &&) an}...);
+  any_single_sender<E, any_time_executor_ref<E>> schedule(TP tp) {
+    return vptr_->schedule_time_(data_, tp);
   }
 };
 
 // Class static definitions:
-template <class E, class TP, class... VN>
-constexpr typename any_time_executor<E, TP, VN...>::vtable const
-    any_time_executor<E, TP, VN...>::noop_;
+template <class E, class TP>
+constexpr typename any_time_executor<E, TP>::vtable const
+    any_time_executor<E, TP>::noop_;
 
 template <class SF, class NF>
 class time_executor<SF, NF> {
@@ -841,11 +853,10 @@ class time_executor<SF, NF> {
     return nf_();
   }
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<SF&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_((AN&&)an...);
+  PUSHMI_TEMPLATE(class SF_ = SF)
+  (requires Invocable<SF_&>) //
+      auto schedule() {
+    return sf_();
   }
 };
 
@@ -874,11 +885,10 @@ class time_executor<Data, DSF, DNF> {
     return nf_(data_);
   }
 
-  PUSHMI_TEMPLATE(class... AN)
-  (requires PUSHMI_EXP(
-      lazy::Invocable<DSF&, Data&, AN...>)) //
-      auto schedule(AN&&... an) {
-    return sf_(data_, (AN&&)an...);
+  PUSHMI_TEMPLATE(class DSF_ = DSF)
+  (requires Invocable<DSF_&, Data&>) //
+      auto schedule() {
+    return sf_(data_);
   }
 };
 
@@ -966,16 +976,16 @@ template <class T>
 using not_any_time_executor_ref_t = not_is_t<T, any_time_executor_ref>;
 } // namespace detail
 
-template <class E, class TP, class... VN>
+template <class E, class TP>
 struct any_time_executor_ref {
  private:
   using This = any_time_executor_ref;
+  using exec_ref = any_time_executor_ref<E, TP>;
   void* pobj_;
   struct vtable {
     TP (*now_)(void*);
-    any_single_sender<E, any_time_executor_ref<E, TP>> (*schedule_)(void*, VN...);
-    any_single_sender<E, any_time_executor_ref<E, TP>> (
-        *schedule_tp_)(void*, TP, VN...);
+    any_single_sender<E, exec_ref> (*schedule_)(void*);
+    any_single_sender<E, exec_ref> (*schedule_tp_)(void*, TP);
   } const* vptr_;
   template <class T>
   using wrapped_t = detail::not_any_time_executor_ref_t<T>;
@@ -993,17 +1003,17 @@ struct any_time_executor_ref {
       static TP now(void* pobj) {
         return ::folly::pushmi::now(*static_cast<Wrapped*>(pobj));
       }
-      static any_single_sender<E, any_time_executor_ref<E, TP>> schedule(
-          void* pobj, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E, TP>>{::folly::pushmi::schedule(
+      static any_single_sender<E, exec_ref> schedule(
+          void* pobj) {
+        return any_single_sender<E, exec_ref>{::folly::pushmi::schedule(
             *static_cast<Wrapped*>(pobj),
-            ::folly::pushmi::now(*static_cast<Wrapped*>(pobj)), vn...)};
+            ::folly::pushmi::now(*static_cast<Wrapped*>(pobj)))};
       }
-      static any_single_sender<E, any_time_executor_ref<E, TP>> schedule_tp(
+      static any_single_sender<E, exec_ref> schedule_tp(
           void* pobj,
-          TP tp,
-          VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E, TP>>{::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj), tp, vn...)};
+          TP tp) {
+        return any_single_sender<E, exec_ref>{
+          ::folly::pushmi::schedule(*static_cast<Wrapped*>(pobj), tp)};
       }
     };
     static const vtable vtbl{s::now, s::schedule, s::schedule_tp};
@@ -1011,24 +1021,24 @@ struct any_time_executor_ref {
     vptr_ = &vtbl;
   }
   PUSHMI_TEMPLATE(class Wrapped)
-  (requires TimeExecutor<wrapped_t<Wrapped>> && std::is_rvalue_reference<Wrapped>::value)
+  (requires TimeExecutor<wrapped_t<Wrapped>> && //
+      std::is_rvalue_reference<Wrapped>::value) //
       any_time_executor_ref(Wrapped&& w) {
     struct s {
       static TP now(void* pobj) {
         return ::folly::pushmi::now(*static_cast<Wrapped*>(pobj));
       }
-      static any_single_sender<E, any_time_executor_ref<E, TP>> schedule(
-          void* pobj, VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E, TP>>{::folly::pushmi::schedule(
+      static any_single_sender<E, exec_ref> schedule(
+          void* pobj) {
+        return any_single_sender<E,exec_ref>{::folly::pushmi::schedule(
             std::move(*static_cast<Wrapped*>(pobj)),
-            ::folly::pushmi::now(*static_cast<Wrapped*>(pobj)), vn...)};
+            ::folly::pushmi::now(*static_cast<Wrapped*>(pobj)))};
       }
-      static any_single_sender<E, any_time_executor_ref<E, TP>> schedule_tp(
-          void* pobj,
-          TP tp,
-          VN... vn) {
-        return any_single_sender<E, any_time_executor_ref<E, TP>>{::folly::pushmi::schedule(
-          std::move(*static_cast<Wrapped*>(pobj)), tp, vn...)};
+      static any_single_sender<E, exec_ref> schedule_tp(void* pobj, TP tp) {
+        return any_single_sender<E, any_time_executor_ref<E, TP>>{
+          ::folly::pushmi::schedule(
+            std::move(*static_cast<Wrapped*>(pobj)),
+            tp)};
       }
     };
     static const vtable vtbl{s::now, s::schedule, s::schedule_tp};
@@ -1038,21 +1048,11 @@ struct any_time_executor_ref {
   TP top() {
     return vptr_->now_(pobj_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires sizeof...(VN) == sizeof...(AN)) //
-  any_single_sender<E, any_time_executor_ref<E, TP>> schedule(AN&&... an) {
-    // moved this check out of the requires due to a
-    // mismatched pack size between VN and AN on gcc.
-    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
-    return vptr_->schedule_(pobj_, VN{(AN&&)an}...);
+  any_single_sender<E, any_time_executor_ref<E, TP>> schedule() {
+    return vptr_->schedule_(pobj_);
   }
-  PUSHMI_TEMPLATE(class... AN)
-  (requires sizeof...(VN) == sizeof...(AN)) //
-  any_single_sender<E, any_time_executor_ref<E, TP>> schedule(TP tp, AN&&... an) {
-    // moved this check out of the requires due to a
-    // mismatched pack size between VN and AN on gcc.
-    static_assert(And<Constructible<VN, AN>...>, "arguments must be convertible");
-    return vptr_->schedule_tp_(pobj_, tp, VN{(AN&&)an}...);
+  any_single_sender<E, any_time_executor_ref<E, TP>> schedule(TP tp) {
+    return vptr_->schedule_tp_(pobj_, tp);
   }
 };
 
