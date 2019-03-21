@@ -31,6 +31,7 @@
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
 #include <folly/functional/Invoke.h>
+#include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Exception.h>

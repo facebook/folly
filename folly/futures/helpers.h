@@ -23,6 +23,7 @@
 #include <folly/Try.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
+#include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
 
 namespace folly {
@@ -145,7 +146,11 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
   return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
 }
 
+#if FOLLY_FUTURE_USING_FIBER
+
 SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
+
+#endif
 
 } // namespace futures
 

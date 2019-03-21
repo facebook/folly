@@ -1597,7 +1597,11 @@ TEST(FiberManager, semaphore) {
               if (j % 2) {
                 sem.wait();
               } else {
+#if FOLLY_FUTURE_USING_FIBER
                 sem.future_wait().get();
+#else
+                sem.wait();
+#endif
               }
               ++counter;
               sem.signal();

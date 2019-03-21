@@ -28,13 +28,8 @@
 #include <folly/futures/detail/Core.h>
 #include <folly/synchronization/Baton.h>
 
-#ifndef FOLLY_FUTURE_USING_FIBER
-#if FOLLY_MOBILE || defined(__APPLE__)
-#define FOLLY_FUTURE_USING_FIBER 0
-#else
-#define FOLLY_FUTURE_USING_FIBER 1
+#if FOLLY_FUTURE_USING_FIBER
 #include <folly/fibers/Baton.h>
-#endif
 #endif
 
 namespace folly {

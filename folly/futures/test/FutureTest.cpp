@@ -1627,6 +1627,7 @@ TEST(Future, ThenRecursion) {
 }
 
 #if FOLLY_FUTURE_USING_FIBER
+
 TEST(Future, BatonWait) {
   auto baton = std::make_unique<fibers::Baton>();
   bool posted{false};
@@ -1644,4 +1645,5 @@ TEST(Future, BatonWait) {
       .getVia(&executor);
   EXPECT_TRUE(postFuture.isReady());
 }
+
 #endif
