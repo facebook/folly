@@ -92,7 +92,7 @@ void runCoroutine1() {
 }
 
 void runCoroutine2() {
-  folly::SemiFuture<folly::Unit> f =
+  folly::SemiFuture<folly::Unit> f = 
     checkArg(42).scheduleOn(folly::getCPUExecutor().get()).start();
 }
 ```
@@ -107,7 +107,7 @@ folly::coro::Task<int> task42Slow() {
   // This doesn't suspend the coroutine, just extracts the Executor*
   folly::Executor* startExecutor = co_await folly::coro::co_current_executor;
   co_await folly::futures::sleep(std::chrono::seconds{1});
-  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor;
+  folly::Executor* resumeExecutor = co_await folly::coro::co_current_executor; 
   CHECK_EQ(startExecutor, resumeExecutor);
 }
 ```
@@ -130,7 +130,10 @@ folly::coro::Task<void> bar(folly::CPUThreadPoolExecutor* otherExecutor) {
 ```
 
 ## Awaitables
-You can `co_await` anything that implements the `Awaitable` concept (see Coroutines TS for more details). It can be `folly::coro::Task`, `folly::Future`, `folly::SemiFuture` etc. Keep in mind that an `Awaitable` may result in an exception, so you'll have to use try-catch blocks to handle errors.
+You can `co_await` anything that implements the `Awaitable` concept (see Coroutines TS for more details).
+It can be `folly::coro::Task`, `folly::Future`, `folly::SemiFuture` etc.
+
+Keep in mind that an `Awaitable` may result in an exception, so you'll have to use try-catch blocks to handle errors.
 ```c++
 folly::coro::Task<void> throwCoro() {
   throw std::logic_error("Expected");
@@ -148,6 +151,93 @@ folly::coro::Task<void> coro() {
   } catch (...) {
     LOG(FATAL) << "Unreachable";
   }
+}
+```
+
+## Concurrently awaiting multiple Tasks
+
+Normally, when you call another `folly::coro::Task`-returning coroutine it doesn't
+start executing until you `co_await` the returned task and doing so will suspend
+the awaiting coroutine until the operation completes.
+
+This means that you cannot perform two operations concurrently by simply calling
+the two coroutines and later awaiting them both.
+
+**SLOWER: The following will execute the two operations sequentially**
+```c++
+folly::coro::Task<int> task1();
+folly::coro::Task<int> task2();
+
+folly::coro::Task<int> example() {
+  auto t1 = task1();
+  auto t2 = task2();
+  int result1 = co_await std::move(t1);
+  int result2 = co_await std::move(t2);
+  co_return result1 + result2;
+}
+```
+
+If, instead, you want to perform these operations concurrently and wait until
+both of the operations complete you can use `folly::coro::collectAll()`.
+
+**FASTER: The following _may_ execute the two operations concurrently**
+```c++
+folly::coro::Task<int> task1();
+folly::coro::Task<int> task2();
+
+folly::coro::Task<int> example() {
+  auto [result1, result2] =
+      co_await folly::coro::collectAll(task1(), task2());
+  co_return result1 + result2;
+}
+```
+
+Note that in the above example, when the `co_await` expression is evaluated
+it first launches the `task1()` coroutine and it will execute in the current
+thread until it reaches its first suspend-point, at which point it will then
+launch `task2()`. Once both sub-tasks are complete then the `example()`
+coroutine is resumed with a tuple of the individual results.
+
+Note that if both `task1()` and `task2()` complete synchronously then they
+will still be executed sequentially.
+
+## Handling partial failure
+
+When executing multiple sub-tasks concurrently it's possible that some of those
+tasks will fail with an exception and some will succeed.
+
+If you use the `folly::coro::collectAll()` function to concurrently wait for
+multiple tasks to complete then any partial results are discarded if any of
+the tasks complete with an exception. If multiple sub-tasks complete with an
+exception then one of the exceptions is rethrown as the result and the others
+are discarded.
+
+If you need to be able determine which sub-operation failed or if you need
+to be able to retrieve partial results then you can use `folly::coro::collectAllTry()`
+instead. Instead of producing a tuple of the results it produces a tuple of
+`folly::Try<T>` values, one for each input task.
+
+```c++
+folly::coro::Task<int> task1();
+folly::coro::Task<int> task2();
+
+folly::coro::Task<int> example() {
+  auto [try1, try2] = co_await folly::coro::collectAllTry(task1(), task2());
+  int result = 0;
+
+  if (try1.hasValue()) {
+    result += try1.value();
+  } else {
+    LOG(ERROR) << "Error in task1(): " << try1.exception().what();
+  }
+
+  if (try2.hasValue()) {
+    result += try2.value();
+  } else {
+    LOG(ERROR) << "Error in task2(): " << try2.exception().what();
+  }
+
+  co_return result;
 }
 ```
 
@@ -206,5 +296,60 @@ folly::SemiFuture<Reply> semifuture_send(const Request& request) {
   });
 
   return std::move(task).semi();
+}
+```
+
+## Writing loops with coroutines
+
+### Sequential retry loop
+
+```c++
+folly::coro::Task<void> pingServer();
+
+folly::coro::Task<void> pingServerWithRetry(int retryCount) {
+  for (int retry = 0; retry <= retryCount; ++retry) {
+    try {
+      co_await pingServer();
+      co_return;
+    } catch (...) {
+      LOG(WARNING) << "Ping attempt " << retry << " failed";
+      if (retry == retryCount) throw;
+    }
+    // Wait before trying again.
+    co_await folly::futures::sleep(10ms);
+  }
+}
+```
+
+### Concurrently execute many operations
+
+Operations with side-effects:
+```c++
+folly::coro::Task<void> doWork(int i);
+
+folly::coro::Task<void> example(int count) {
+  std::vector<folly::coro::SemiFuture<Unit>> tasks;
+  for (int i = 0; i < count; ++i) {
+    tasks.push_back(doWork(i).semi());
+  }
+  co_await folly::collectSemiFuture(tasks.begin(), tasks.end());
+}
+```
+
+Operations that return values:
+```c++
+folly::coro::Task<std::string> getString(int i);
+
+folly::coro::Task<void> example(int count) {
+  std::vector<folly::coro::SemiFuture<Unit>> tasks;
+  for (int i = 0; i < count; ++i) {
+    tasks.push_back(getString(i).semi());
+  }
+
+  // Concurrently wait for all of these tasks.
+  std::vector<std::string> strings =
+      co_await folly::collectSemiFuture(tasks.begin(), tasks.end());
+
+  // ... use 'strings'
 }
 ```
