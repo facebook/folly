@@ -16,6 +16,12 @@
 
 #pragma once
 
+// MSCV 2017 __cplusplus definition by default does not track the C++ version.
+// https://devblogs.microsoft.com/cppblog/msvc-now-correctly-reports-__cplusplus/
+#if !defined(_MSC_VER) || _MSC_VER >= 2000
+static_assert(__cplusplus >= 201402L, "__cplusplus >= 201402L");
+#endif
+
 #include <cstddef>
 
 #include <folly/CPortability.h>
