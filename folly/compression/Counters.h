@@ -82,7 +82,7 @@ class CompressionCounter {
       return makeCompressionCounterHandler(
           codecType, codecName, level, key, counterType);
     };
-    assert(!initialize_.hasAllocatedMemory());
+    assert(!initialize_.heapAllocatedMemory());
   }
 
   void operator+=(double sum) {

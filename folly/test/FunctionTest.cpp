@@ -208,7 +208,7 @@ TEST(Function, InvokeFunctor) {
   Function<int(size_t) const> getter = std::move(func);
 
   // Function will allocate memory on the heap to store the functor object
-  EXPECT_TRUE(getter.hasAllocatedMemory());
+  EXPECT_GT(getter.heapAllocatedMemory(), 0);
 
   EXPECT_EQ(123, getter(5));
 }
@@ -407,7 +407,7 @@ TEST(Function, NonCopyableLambda) {
   EXPECT_EQ(901, functor());
 
   Function<int(void)> func = std::move(functor);
-  EXPECT_TRUE(func.hasAllocatedMemory());
+  EXPECT_GT(func.heapAllocatedMemory(), 0);
 
   EXPECT_EQ(902, func());
 }
@@ -1100,11 +1100,11 @@ TEST(Function, NoAllocatedMemoryAfterMove) {
   Functor<int, 100> foo;
 
   Function<int(size_t)> func = foo;
-  EXPECT_TRUE(func.hasAllocatedMemory());
+  EXPECT_GT(func.heapAllocatedMemory(), 0);
 
   Function<int(size_t)> func2 = std::move(func);
-  EXPECT_TRUE(func2.hasAllocatedMemory());
-  EXPECT_FALSE(func.hasAllocatedMemory());
+  EXPECT_GT(func2.heapAllocatedMemory(), 0);
+  EXPECT_EQ(func.heapAllocatedMemory(), 0);
 }
 
 TEST(Function, ConstCastEmbedded) {
@@ -1112,10 +1112,10 @@ TEST(Function, ConstCastEmbedded) {
   auto functor = [&x]() { ++x; };
 
   Function<void() const> func(functor);
-  EXPECT_FALSE(func.hasAllocatedMemory());
+  EXPECT_EQ(func.heapAllocatedMemory(), 0);
 
   Function<void()> func2(std::move(func));
-  EXPECT_FALSE(func2.hasAllocatedMemory());
+  EXPECT_EQ(func2.heapAllocatedMemory(), 0);
 }
 
 TEST(Function, EmptyAfterConstCast) {
@@ -1212,4 +1212,22 @@ TEST(Function, MaxAlignCallable) {
   EXPECT_EQ(alignof(A), alignof(decltype(f))) << "sanity";
   EXPECT_EQ(0, f()) << "sanity";
   EXPECT_EQ(0, Function<size_t()>(f)());
+}
+
+TEST(Function, AllocatedSize) {
+  Function<void(int)> defaultConstructed;
+  EXPECT_EQ(defaultConstructed.heapAllocatedMemory(), 0U)
+      << "Default constructed Function should have zero allocations";
+
+  // On any platform this has to allocate heap storage, because the captures are
+  // larger than the inline size of the Function object:
+  constexpr size_t kCaptureBytes = sizeof(Function<void(int)>) + 1;
+  Function<void(int)> fromLambda{
+      [x = std::array<char, kCaptureBytes>()](int) { (void)x; }};
+  // I can't assert much about the size because it's permitted to vary from
+  // platform to platform or as optimization levels change, but we can be sure
+  // that the lambda must be at least as large as its captures
+  EXPECT_GE(fromLambda.heapAllocatedMemory(), kCaptureBytes)
+      << "Lambda-derived Function's allocated size is smaller than the "
+         "lambda's capture size";
 }
