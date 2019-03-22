@@ -637,7 +637,7 @@ if (BUILD_TESTS)
 
     DIRECTORY gen/test/
       # MSVC bug can't resolve initializer_list constructor properly
-      #TEST base_test SOURCES BaseTest.cpp
+      TEST base_test WINDOWS_DISABLED SOURCES BaseTest.cpp
       TEST combine_test SOURCES CombineTest.cpp
       TEST parallel_map_test SOURCES ParallelMapTest.cpp
       TEST parallel_test SOURCES ParallelTest.cpp
@@ -677,11 +677,10 @@ if (BUILD_TESTS)
           AsyncSSLSocketTest2.cpp
           AsyncSSLSocketWriteTest.cpp
           AsyncTransportTest.cpp
-          # This is disabled because it depends on things that don't exist
-          # on Windows.
-          #EventHandlerTest.cpp
-          # The async signal handler is not supported on Windows.
-          #AsyncSignalHandlerTest.cpp
+      # This is disabled because it depends on things that don't exist
+      # on Windows.
+      # TODO: Refactor EventHandlerTest to not use eventfd so it can work on Mac OS X.
+      #TEST async_event_handler_test WINDOWS_DISABLED SOURCES EventHandlerTest.cpp
       TEST async_timeout_test SOURCES AsyncTimeoutTest.cpp
       TEST AsyncUDPSocketTest SOURCES AsyncUDPSocketTest.cpp
       TEST DelayedDestructionTest SOURCES DelayedDestructionTest.cpp
@@ -761,15 +760,20 @@ if (BUILD_TESTS)
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
       TEST ascii_check_test SOURCES AsciiCaseInsensitiveTest.cpp
+      TEST atfork_test WINDOWS_DISABLED SOURCES AtForkTest.cpp
       TEST atomic_bit_set_test SOURCES AtomicBitSetTest.cpp
       TEST atomic_hash_array_test SOURCES AtomicHashArrayTest.cpp
       TEST atomic_hash_map_test HANGING
         SOURCES AtomicHashMapTest.cpp
       TEST atomic_linked_list_test SOURCES AtomicLinkedListTest.cpp
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
+      TEST buffered_atomic_test SOURCES BufferedAtomicTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
+      TEST cancellation_token_test SOURCES CancellationTokenTest.cpp
+      TEST chrono_test SOURCES ChronoTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
+      TEST constexpr_math_test SOURCES ConstexprMathTest.cpp
       TEST conv_test SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp
       TEST demangle_test SOURCES DemangleTest.cpp
@@ -778,9 +782,12 @@ if (BUILD_TESTS)
       TEST dynamic_test SOURCES DynamicTest.cpp
       TEST dynamic_converter_test SOURCES DynamicConverterTest.cpp
       TEST dynamic_other_test SOURCES DynamicOtherTest.cpp
+      TEST enable_shared_from_this SOURCES EnableSharedFromThisTest.cpp
       TEST endian_test SOURCES EndianTest.cpp
+      TEST exception_string_test BROKEN SOURCES ExceptionStringTest.cpp
       TEST exception_test SOURCES ExceptionTest.cpp
       TEST exception_wrapper_test SOURCES ExceptionWrapperTest.cpp
+      TEST expected_coroutines_test SOURCES ExpectedCoroutinesTest.cpp
       TEST expected_test SOURCES ExpectedTest.cpp
       TEST fbstring_test SOURCES FBStringTest.cpp
       TEST fbvector_test SOURCES FBVectorTest.cpp
@@ -800,12 +807,12 @@ if (BUILD_TESTS)
       TEST group_varint_test SOURCES GroupVarintTest.cpp
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
       TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
-      TEST iterators_test SOURCES IteratorsTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN
         SOURCES IndexedMemPoolTest.cpp
+      TEST iterators_test SOURCES IteratorsTest.cpp
       # MSVC Preprocessor stringizing raw string literals bug
-      #TEST json_test SOURCES JsonTest.cpp
+      TEST json_test WINDOWS_DISABLED SOURCES JsonTest.cpp
       TEST json_pointer_test SOURCES json_pointer_test.cpp
       TEST json_patch_test SOURCES json_patch_test.cpp
       TEST json_other_test
@@ -830,6 +837,7 @@ if (BUILD_TESTS)
           IPAddressTest.cpp
           MacAddressTest.cpp
           SocketAddressTest.cpp
+      TEST optional_coroutines_test SOURCES OptionalCoroutinesTest.cpp
       TEST optional_test SOURCES OptionalTest.cpp
       TEST packed_sync_ptr_test HANGING
         SOURCES PackedSyncPtrTest.cpp
@@ -845,10 +853,16 @@ if (BUILD_TESTS)
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
       # SingletonTest requires Subprocess
       #TEST singleton_test SOURCES SingletonTest.cpp
+      TEST singleton_double_registration_test BROKEN SOURCES
+        SingletonDoubleRegistration.cpp
       TEST singleton_test_global SOURCES SingletonTestGlobal.cpp
+      TEST singleton_thread_local_test BROKEN SOURCES
+        SingletonThreadLocalTest.cpp
+        SingletonThreadLocalTestOverload.cpp
       TEST small_vector_test WINDOWS_DISABLED
         SOURCES small_vector_test.cpp
       TEST sorted_vector_types_test SOURCES sorted_vector_test.cpp
+      TEST spin_lock_test SOURCES SpinLockTest.cpp
       TEST string_test SOURCES StringTest.cpp
       TEST synchronized_test WINDOWS_DISABLED
         SOURCES SynchronizedTest.cpp
@@ -858,8 +872,12 @@ if (BUILD_TESTS)
       TEST token_bucket_test SOURCES TokenBucketTest.cpp
       TEST traits_test SOURCES TraitsTest.cpp
       TEST try_test SOURCES TryTest.cpp
+      TEST type_list_test WINDOWS_DISABLED SOURCES TypeListTest.cpp
+      TEST unicode_test SOURCES UnicodeTest.cpp
       TEST unit_test SOURCES UnitTest.cpp
       TEST uri_test SOURCES UriTest.cpp
+      TEST utility_test SOURCES UtilityTest.cpp
+      TEST utf8_string_test SOURCES UTF8StringTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
   )
 
