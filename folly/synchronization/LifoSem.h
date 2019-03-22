@@ -475,6 +475,10 @@ struct LifoSemBase {
     FOLLY_SAFE_DCHECK(res, "infinity time has passed");
   }
 
+  bool try_wait() {
+    return tryWait();
+  }
+
   template <typename Rep, typename Period>
   bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {
     return try_wait_until(timeout + std::chrono::steady_clock::now());
