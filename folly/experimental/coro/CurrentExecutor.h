@@ -27,8 +27,13 @@ struct co_current_executor_ {
 
 using co_current_executor_t = detail::co_current_executor_;
 
-// A special singleton object that can be co_await'ed within a Task<T> to query
-// the current executor associated with the Task.
+// Special placeholder object that can be 'co_await'ed from within a Task<T>
+// or an AsyncGenerator<T> to obtain the current folly::Executor associated
+// with the current coroutine.
+//
+// Note that for a folly::Task the executor will remain the same throughout
+// the lifetime of the coroutine. For a folly::AsyncGenerator<T> the current
+// executor may change when resuming from a co_yield suspend-point.
 //
 // Example:
 //   folly::coro::Task<void> example() {
