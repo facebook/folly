@@ -39,14 +39,14 @@ TEST(EmptySingleSender, TapAndSubmit) {
   auto e = op::empty();
   using E = decltype(e);
 
-  EXPECT_THAT((v::SenderTo<E, v::any_receiver<>, v::is_single<>>), Eq(true))
+  EXPECT_THAT((v::SenderTo<E, v::any_receiver<>> && v::is_single_v<E>), Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<>";
 
   EXPECT_THAT(
       (v::SenderTo<
           E,
-          v::any_receiver<std::exception_ptr, int>,
-          v::is_single<>>),
+          v::any_receiver<std::exception_ptr, int>> &&
+          v::is_single_v<E>),
       Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<int>";
 
@@ -80,8 +80,8 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
   EXPECT_THAT(
       (v::SenderTo<
           J,
-          v::any_receiver<std::exception_ptr, int>,
-          v::is_single<>>),
+          v::any_receiver<std::exception_ptr, int>> &&
+          v::is_single_v<J>),
       Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<int>";
 
@@ -131,7 +131,7 @@ TEST(FromIntManySender, TransformAndSubmit) {
   using M = decltype(m);
 
   EXPECT_THAT(
-      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>, v::is_many<>>),
+      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>> && v::is_many_v<M>),
       Eq(true))
       << "expected empty to return a many sender that can take an any_receiver<int>";
 

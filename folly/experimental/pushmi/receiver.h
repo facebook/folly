@@ -497,7 +497,7 @@ template<>
 struct construct_deduced<receiver> : make_receiver_fn {};
 
 PUSHMI_TEMPLATE (class T, class In)
-  (requires SenderTo<In, std::promise<T>, is_single<>>)
+  (requires SenderTo<In, std::promise<T>> && is_single_v<In>)
 std::future<T> future_from(In&& in) {
   std::promise<T> p;
   auto result = p.get_future();
@@ -505,7 +505,7 @@ std::future<T> future_from(In&& in) {
   return result;
 }
 PUSHMI_TEMPLATE (class In)
-  (requires SenderTo<In, std::promise<void>, is_single<>>)
+  (requires SenderTo<In, std::promise<void>> && is_single_v<In>)
 std::future<void> future_from(In&& in) {
   std::promise<void> p;
   auto result = p.get_future();

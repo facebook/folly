@@ -103,7 +103,7 @@ class any_executor {
       std::enable_if_t<!std::is_same<U, any_executor>::value, U>;
 
  public:
-  using properties = property_set<is_executor<>>;
+  using properties = property_set<>;
 
   any_executor() = default;
   any_executor(const any_executor& that) noexcept : any_executor() {
@@ -147,7 +147,7 @@ class executor<SF> {
   SF sf_;
 
  public:
-  using properties = property_set<is_executor<>>;
+  using properties = property_set<>;
 
   constexpr executor() = default;
   constexpr explicit executor(SF sf) : sf_(std::move(sf)) {}
@@ -167,9 +167,7 @@ class executor<Data, DSF> {
   DSF sf_;
 
  public:
-  using properties = property_set_insert_t<
-      properties_t<Data>,
-      property_set<is_executor<>>>;
+  using properties = properties_t<Data>;
 
   constexpr executor() = default;
   constexpr explicit executor(Data data) : data_(std::move(data)) {}
@@ -257,7 +255,7 @@ struct any_executor_ref {
   using wrapped_t = detail::not_any_executor_ref_t<T>;
 
  public:
-  using properties = property_set<is_executor<>>;
+  using properties = property_set<>;
 
   any_executor_ref() = delete;
   any_executor_ref(const any_executor_ref&) = default;
@@ -416,7 +414,7 @@ class any_constrained_executor {
       std::enable_if_t<!std::is_same<U, any_constrained_executor>::value, U>;
 
  public:
-  using properties = property_set<is_constrained<>>;
+  using properties = property_set<>;
 
   any_constrained_executor() = default;
   any_constrained_executor(const any_constrained_executor& that) noexcept
@@ -469,7 +467,7 @@ class constrained_executor<SF, ZF> {
   ZF zf_;
 
  public:
-  using properties = property_set<is_constrained<>>;
+  using properties = property_set<>;
 
   constexpr constrained_executor() = default;
   constexpr explicit constrained_executor(SF sf) : sf_(std::move(sf)) {}
@@ -496,9 +494,7 @@ class constrained_executor<Data, DSF, DZF> {
   DZF zf_;
 
  public:
-  using properties = property_set_insert_t<
-      properties_t<Data>,
-      property_set<is_constrained<>>>;
+  using properties = properties_t<Data>;
 
   constexpr constrained_executor() = default;
   constexpr explicit constrained_executor(Data data) : data_(std::move(data)) {}
@@ -617,7 +613,7 @@ struct any_constrained_executor_ref {
   using wrapped_t = detail::not_any_constrained_executor_ref_t<T>;
 
  public:
-  using properties = property_set<is_constrained<>>;
+  using properties = property_set<>;
 
   any_constrained_executor_ref() = delete;
   any_constrained_executor_ref(const any_constrained_executor_ref&) = default;
@@ -792,7 +788,7 @@ class any_time_executor {
       std::enable_if_t<!std::is_same<U, any_time_executor>::value, U>;
 
  public:
-  using properties = property_set<is_time<>>;
+  using properties = property_set<>;
 
   any_time_executor() = default;
   any_time_executor(const any_time_executor& that) noexcept : any_time_executor() {
@@ -843,7 +839,7 @@ class time_executor<SF, NF> {
   NF nf_;
 
  public:
-  using properties = property_set<is_time<>>;
+  using properties = property_set<>;
 
   constexpr time_executor() = default;
   constexpr explicit time_executor(SF sf) : sf_(std::move(sf)) {}
@@ -870,9 +866,7 @@ class time_executor<Data, DSF, DNF> {
   DNF nf_;
 
  public:
-  using properties = property_set_insert_t<
-      properties_t<Data>,
-      property_set<is_time<>>>;
+  using properties = properties_t<Data>;
 
   constexpr time_executor() = default;
   constexpr explicit time_executor(Data data) : data_(std::move(data)) {}
@@ -991,7 +985,7 @@ struct any_time_executor_ref {
   using wrapped_t = detail::not_any_time_executor_ref_t<T>;
 
  public:
-  using properties = property_set<is_time<>>;
+  using properties = property_set<>;
 
   any_time_executor_ref() = delete;
   any_time_executor_ref(const any_time_executor_ref&) = default;

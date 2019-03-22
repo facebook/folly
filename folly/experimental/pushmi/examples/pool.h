@@ -32,7 +32,7 @@ class pool_executor {
 
 public:
   using properties =
-    property_set<is_executor<>, is_concurrent_sequence<>>;
+    property_set<is_concurrent_sequence<>>;
 
   pool_executor() = default;
   explicit pool_executor(pool &e);

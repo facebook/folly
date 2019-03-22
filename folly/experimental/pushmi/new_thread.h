@@ -45,7 +45,7 @@ struct new_thread_task {
 };
 
 struct new_thread_executor {
-  using properties = property_set<is_executor<>, is_concurrent_sequence<>>;
+  using properties = property_set<is_concurrent_sequence<>>;
 
   new_thread_task schedule() {
     return {};

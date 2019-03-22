@@ -319,7 +319,7 @@ class flow_receiver<>
 PUSHMI_CONCEPT_DEF(
   template (class T)
   concept FlowReceiverDataArg,
-    Receiver<T, is_flow<>> &&
+    FlowReceiver<T> &&
     not Invocable<T&>
 );
 

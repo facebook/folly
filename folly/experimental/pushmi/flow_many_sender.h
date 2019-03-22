@@ -91,7 +91,7 @@ class any_flow_many_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>, is_many<>>)
+    (requires FlowSender<wrapped_t<Wrapped>> && is_many_v<wrapped_t<Wrapped>>)
   explicit any_flow_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_flow_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_flow_many_sender() {
@@ -173,12 +173,12 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_many_sender_fn {
     return flow_many_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires True<> && Sender<Data, is_many<>, is_flow<>>)
+    (requires True<> && FlowSender<Data> && is_many_v<Data>)
   auto operator()(Data d) const {
     return flow_many_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires Sender<Data, is_many<>, is_flow<>>)
+    (requires FlowSender<Data> && is_many_v<Data>)
   auto operator()(Data d, DSF sf) const {
     return flow_many_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
@@ -194,11 +194,11 @@ PUSHMI_TEMPLATE(class SF)
 flow_many_sender(SF) -> flow_many_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && Sender<Data, is_many<>, is_flow<>>)
+  (requires True<> && FlowSender<Data> && is_many_v<Data>)
 flow_many_sender(Data) -> flow_many_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_many<>, is_flow<>>)
+  (requires FlowSender<Data> && is_many_v<Data>)
 flow_many_sender(Data, DSF) -> flow_many_sender<Data, DSF>;
 #endif
 

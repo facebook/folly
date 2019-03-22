@@ -98,7 +98,7 @@ class any_flow_single_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>, is_single<>>)
+    (requires FlowSender<wrapped_t<Wrapped>> &&is_single_v<wrapped_t<Wrapped>>)
   explicit any_flow_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_flow_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_flow_single_sender() {
@@ -184,12 +184,12 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_sender_fn {
     return flow_single_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires True<> && Sender<Data, is_single<>, is_flow<>>)
+    (requires True<> && FlowSender<Data> && is_single_v<Data>)
   auto operator()(Data d) const {
     return flow_single_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires Sender<Data, is_single<>, is_flow<>>)
+    (requires FlowSender<Data> && is_single_v<Data>)
   auto operator()(Data d, DSF sf) const {
     return flow_single_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
@@ -205,11 +205,11 @@ PUSHMI_TEMPLATE(class SF)
 flow_single_sender(SF) -> flow_single_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && Sender<Data, is_single<>, is_flow<>>)
+  (requires True<> && FlowSender<Data> && is_single_v<Data>)
 flow_single_sender(Data) -> flow_single_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_single<>, is_flow<>>)
+  (requires FlowSender<Data> && is_single_v<Data>)
 flow_single_sender(Data, DSF) -> flow_single_sender<Data, DSF>;
 #endif
 

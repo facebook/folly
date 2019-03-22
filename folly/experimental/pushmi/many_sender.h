@@ -91,10 +91,8 @@ class any_many_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
-  (requires SenderTo<
-      wrapped_t<Wrapped>,
-      any_receiver<E, VN...>,
-      is_many<>>) //
+  (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>> &&
+      is_many_v<wrapped_t<Wrapped>>) //
       explicit any_many_sender(Wrapped obj) //
       noexcept(insitu<Wrapped>())
       : any_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
@@ -184,13 +182,13 @@ PUSHMI_INLINE_VAR constexpr struct make_many_sender_fn {
     return many_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-  (requires True<>&& Sender<Data, is_many<>>) //
+  (requires True<>&& Sender<Data> && is_many_v<Data>) //
       auto
       operator()(Data d) const {
     return many_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_many<>>) //
+  (requires Sender<Data> && is_many_v<Data>) //
       auto
       operator()(Data d, DSF sf) const {
     return many_sender<Data, DSF>{std::move(d), std::move(sf)};
@@ -208,12 +206,12 @@ PUSHMI_TEMPLATE(class SF)
         ->many_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-(requires True<>&& Sender<Data, is_many<>>) //
+(requires True<>&& Sender<Data> && is_many_v<Data>) //
     many_sender(Data)
         ->many_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-(requires Sender<Data, is_many<>>) //
+(requires Sender<Data> && is_many_v<Data>) //
     many_sender(Data, DSF)
         ->many_sender<Data, DSF>;
 #endif

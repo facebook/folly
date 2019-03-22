@@ -84,10 +84,7 @@ using countdownmany = countdown<decltype(mi::make_receiver)>;
 using countdownflowmany = countdown<decltype(mi::make_flow_receiver)>;
 
 struct inline_time_executor {
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_time<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     std::chrono::system_clock::time_point at;
@@ -116,9 +113,7 @@ struct inline_time_executor {
 };
 
 struct inline_executor {
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     using properties = mi::property_set<
@@ -141,9 +136,7 @@ template <class CancellationFactory>
 struct inline_executor_flow_single {
   CancellationFactory cf;
 
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     CancellationFactory cf;
@@ -225,9 +218,7 @@ using inline_executor_flow_single_entangled =
     inline_executor_flow_single<entangled_cancellation_factory>;
 
 struct inline_executor_flow_single_ignore {
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     using properties = mi::property_set<
@@ -256,9 +247,7 @@ struct inline_executor_flow_many {
 
   std::atomic<int>* counter = nullptr;
 
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     std::atomic<int>* counter = nullptr;
@@ -322,9 +311,7 @@ struct inline_executor_flow_many {
 };
 
 struct inline_executor_flow_many_ignore {
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     using properties = mi::property_set<
@@ -347,9 +334,7 @@ struct inline_executor_flow_many_ignore {
 };
 
 struct inline_executor_many {
-  using properties = mi::property_set<
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
   struct task {
     using properties = mi::property_set<

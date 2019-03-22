@@ -22,9 +22,7 @@ namespace pushmi {
 
 class inline_constrained_executor_t {
  public:
-   using properties = property_set<
-       is_constrained<>,
-       is_fifo_sequence<>>;
+   using properties = property_set<is_fifo_sequence<>>;
 
  template<class CV>
  struct task {
@@ -65,9 +63,7 @@ inline inline_constrained_executor_t inline_constrained_executor() {
 
 class inline_time_executor_t {
  public:
-   using properties = property_set<
-       is_time<>,
-       is_fifo_sequence<>>;
+   using properties = property_set<is_fifo_sequence<>>;
 
  template<class TP>
  struct task {
@@ -110,9 +106,7 @@ inline inline_time_executor_t inline_time_executor() {
 
 class inline_executor_t {
   public:
-    using properties = property_set<
-        is_executor<>,
-        is_fifo_sequence<>>;
+    using properties = property_set<is_fifo_sequence<>>;
 
   struct task {
     using properties = property_set<

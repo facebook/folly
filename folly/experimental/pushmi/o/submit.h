@@ -120,16 +120,22 @@ struct blocking_submit_fn {
 
     using properties = properties_t<Exec>;
 
-    PUSHMI_TEMPLATE(class... ZN)
-    (requires Constrained<Exec>) //
-        auto top() {
+    PUSHMI_TEMPLATE(class Exec_ = Exec)
+    (requires ConstrainedExecutor<Exec_>) //
+    auto top() {
       return ::folly::pushmi::top(ex_);
     }
-    template<class... VN>
-    auto schedule(VN&&... vn) {
+    auto schedule() {
       auto protected_scope = protect_stack{state_};
-      return nested_task_impl<decltype(::folly::pushmi::schedule(ex_, (VN&&)vn...))>{
-          state_, ::folly::pushmi::schedule(ex_, (VN&&)vn...)};
+      return nested_task_impl<decltype(::folly::pushmi::schedule(ex_))>{
+          state_, ::folly::pushmi::schedule(ex_)};
+    }
+    PUSHMI_TEMPLATE(class Exec_ = Exec)
+    (requires ConstrainedExecutor<Exec_>) //
+    auto schedule(constraint_t<Exec_> top) {
+      auto protected_scope = protect_stack{state_};
+      return nested_task_impl<sender_t<Exec_, constraint_t<Exec_>>>{
+          state_, ::folly::pushmi::schedule(ex_, std::move(top))};
     }
   };
 
@@ -272,7 +278,7 @@ struct blocking_submit_fn {
              receiver_impl<std::decay_t<In>>&,
              lock_state*,
              std::tuple<AN...>&&>> &&
-     not AlwaysBlocking<In>) //
+     not is_always_blocking_v<In>) //
         void
         operator()(In&& in) {
       lock_state state{};
@@ -331,8 +337,10 @@ struct get_fn {
     static_assert(
         SenderTo<In, Out>,
         "'In' does not deliver value compatible with 'T' to 'Out'");
-    std::conditional_t<AlwaysBlocking<In>, submit_fn, blocking_submit_fn>{}(
-        std::move(out))(std::move(in));
+    std::conditional_t<
+      is_always_blocking_v<In>,
+      submit_fn,
+      blocking_submit_fn>{}(std::move(out))(std::move(in));
     if (!!ep_) {
       std::rethrow_exception(*ep_);
     }

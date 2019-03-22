@@ -218,13 +218,13 @@ PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
     return single_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-  (requires True<>&& Sender<Data, is_single<>>) //
+  (requires True<>&& Sender<Data> && is_single_v<Data>) //
       auto
       operator()(Data d) const {
     return single_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data, is_single<>>) //
+  (requires Sender<Data> && is_single_v<Data>) //
       auto
       operator()(Data d, DSF sf) const {
     return single_sender<Data, DSF>{std::move(d), std::move(sf)};
@@ -242,12 +242,12 @@ PUSHMI_TEMPLATE(class SF)
         ->single_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-(requires True<>&& Sender<Data, is_single<>>) //
+(requires True<>&& Sender<Data> && is_single_v<Data>) //
     single_sender(Data)
         ->single_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-(requires Sender<Data, is_single<>>) //
+(requires Sender<Data> && is_single_v<Data>) //
     single_sender(Data, DSF)
         ->single_sender<Data, DSF>;
 #endif

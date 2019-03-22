@@ -71,8 +71,7 @@ struct transform_on<F, is_single<>, true> {
         ::folly::pushmi::SemiMovable<Result>,
         "none of the functions supplied to transform can convert this value");
     static_assert(
-        ::folly::pushmi::Flow<Out> &&
-            ::folly::pushmi::ReceiveValue<Out, Result>,
+        ::folly::pushmi::FlowReceiveValue<Out, Result>,
         "Result of value transform cannot be delivered to Out");
     set_value(out, f_((V0 &&) v0, (VN &&) vn...));
   }
@@ -116,8 +115,7 @@ struct transform_on<F, is_many<>, true> {
         ::folly::pushmi::SemiMovable<Result>,
         "none of the functions supplied to transform can convert this value");
     static_assert(
-        ::folly::pushmi::Flow<Out> &&
-            ::folly::pushmi::ReceiveValue<Out, Result>,
+        ::folly::pushmi::FlowReceiveValue<Out, Result>,
         "Result of value transform cannot be delivered to Out");
     set_value(out, f_((V0 &&) v0, (VN &&) vn...));
   }

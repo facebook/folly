@@ -49,14 +49,6 @@ template <class... TN>
 struct is_sender;
 
 template <class... TN>
-struct is_executor;
-
-template <class... TN>
-struct is_time;
-template <class... TN>
-struct is_constrained;
-
-template <class... TN>
 struct is_always_blocking;
 
 template <class... TN>

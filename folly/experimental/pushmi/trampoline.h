@@ -67,7 +67,7 @@ struct trampoline_task {
 template <class E = std::exception_ptr>
 class delegator : pipeorigin {
  public:
-   using properties = property_set<is_executor<>, is_fifo_sequence<>>;
+   using properties = property_set<is_fifo_sequence<>>;
 
   trampoline_task<E, ownordelegate_t> schedule() {
     return {};
@@ -77,7 +77,7 @@ class delegator : pipeorigin {
 template <class E = std::exception_ptr>
 class nester : pipeorigin {
  public:
-  using properties = property_set<is_executor<>, is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
   trampoline_task<E, ownornest_t> schedule() {
     return {};

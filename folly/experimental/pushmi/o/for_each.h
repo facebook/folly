@@ -75,7 +75,7 @@ struct for_each_fn {
   struct fn {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>&& Flow<In>&& Many<In>)
+    (requires FlowSender<In>&& is_many_v<In>)
     In operator()(In in) {
       auto out{::folly::pushmi::detail::receiver_from_fn<subset<
           is_sender<>,

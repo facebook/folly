@@ -210,7 +210,7 @@ class strand_executor {
   std::shared_ptr<strand_queue<E, Exec>> queue_;
 
  public:
-  using properties = property_set<is_executor<>, is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
   strand_executor(std::shared_ptr<strand_queue<E, Exec>> queue)
       : queue_(std::move(queue)) {}
@@ -239,12 +239,12 @@ class same_strand_factory_fn {
 
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Provider)
 (requires ExecutorProvider<Provider>&&
-         ConcurrentSequence<executor_t<Provider>>) //
+         is_concurrent_sequence_v<executor_t<Provider>>) //
     auto strands(Provider ep) {
   return same_strand_factory_fn<E, executor_t<Provider>>{get_executor(ep)};
 }
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Exec)
-(requires Executor<Exec>&& ConcurrentSequence<Exec>) //
+(requires Executor<Exec>&& is_concurrent_sequence_v<Exec>) //
     auto strands(Exec ex) {
   return same_strand_factory_fn<E, Exec>{std::move(ex)};
 }

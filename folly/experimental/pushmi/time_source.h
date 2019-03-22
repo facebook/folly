@@ -481,8 +481,7 @@ class time_source_executor {
   std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue_;
 
  public:
-  using properties = property_set<is_time<>,
-    is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
   time_source_executor(
       std::shared_ptr<time_source_shared<E, time_point>> source,
@@ -583,14 +582,16 @@ class time_source {
   }
 
   PUSHMI_TEMPLATE(class NF, class Factory)
-  (requires StrandFactory<Factory> && not Executor<Factory> && not ExecutorProvider<Factory>) //
+  (requires StrandFactory<Factory> && not Executor<Factory> &&
+            not ExecutorProvider<Factory>) //
   auto make(NF nf, Factory ef) {
     return time_source_executor_factory_fn<E, time_point, NF, Factory>{
         source_, std::move(nf), std::move(ef)};
   }
   PUSHMI_TEMPLATE(class NF, class Provider)
   (requires ExecutorProvider<Provider>&&
-           NeverBlocking<sender_t<executor_t<Provider>>> && not StrandFactory<Provider>) //
+            is_never_blocking_v<sender_t<executor_t<Provider>>> &&
+            not StrandFactory<Provider>) //
   auto make(NF nf, Provider ep) {
     auto ex = ::folly::pushmi::get_executor(ep);
     auto queue =
@@ -601,7 +602,7 @@ class time_source {
   }
   PUSHMI_TEMPLATE(class NF, class Exec)
   (requires Executor<Exec>&&
-           NeverBlocking<sender_t<Exec>> && not StrandFactory<Exec>) //
+            is_never_blocking_v<sender_t<Exec>> && not StrandFactory<Exec>) //
   auto make(NF nf, Exec ex) {
     auto queue =
         std::make_shared<time_source_queue<E, time_point, NF, Exec>>(
