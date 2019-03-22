@@ -13,26 +13,23 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <algorithm>
-#include <cassert>
+#include <cstdio>
 #include <iostream>
-#include <vector>
-
-#include <folly/experimental/pushmi/examples/pool.h>
 
 #include <folly/experimental/pushmi/strand.h>
 
 #include <folly/experimental/pushmi/o/request_via.h>
-
 #include <folly/experimental/pushmi/o/tap.h>
 #include <folly/experimental/pushmi/o/transform.h>
+
+#include <folly/experimental/pushmi/examples/pool.h>
 
 using namespace folly::pushmi::aliases;
 
 template <class Io>
 auto io_operation(Io io) {
-  return io | op::transform([](auto) { return 42; }) |
-      op::tap([](int v) { printf("io pool producing, %d\n", v); }) |
+  return io.schedule() | op::transform([](auto) { return 42; }) |
+      op::tap([](int v) { std::printf("io pool producing, %d\n", v); }) |
       op::request_via();
 }
 
@@ -44,14 +41,17 @@ int main() {
   auto cpu = cpuPool.executor();
 
   io_operation(io).via(mi::strands(cpu)) |
-      op::tap([](int v) { printf("cpu pool processing, %d\n", v); }) |
+      op::tap([](int v) { std::printf("cpu pool processing, %d\n", v); }) |
       op::submit();
 
   // when the caller is not going to process the result (only side-effect
-  // matters) or the caller is just going to push the result into a queue.
+  // matters) or the caller is just going to push the result into a queue,
   // provide a way to skip the transition to a different executor and make it
   // stand out so that it has to be justified in code reviews.
   mi::via_cast<mi::is_sender<>>(io_operation(io)) | op::submit();
+
+  io = mi::pool_executor{};
+  cpu = mi::pool_executor{};
 
   ioPool.wait();
   cpuPool.wait();

@@ -13,6 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <algorithm>
 #include <cassert>
 #include <iostream>
@@ -41,32 +42,32 @@ void lisp(CPUExecutor cpu, IOExecutor io) {
   // f on cpu - g on cpu (implicit: a single task on the cpu executor runs all
   // the functions)
   op::submit([](g_t) {})(op::transform([](f_t ft) { return g(ft); })(
-      op::transform([](auto) { return f(); })(cpu)));
+      op::transform([](auto) { return f(); })(cpu.schedule())));
 
   // f on cpu - g on cpu (explicit: the first cpu task runs f and a second cpu
   // task runs g)
   op::submit([](g_t) {})(op::transform([](f_t ft) { return g(ft); })(
-      op::via(mi::strands(cpu))(op::transform([](auto) { return f(); })(cpu))));
+      op::via(mi::strands(cpu))(op::transform([](auto) { return f(); })(cpu.schedule()))));
 
   // f on io  - g on cpu
   op::submit([](g_t) {})(op::transform([](f_t ft) { return g(ft); })(
-      op::via(mi::strands(cpu))(op::transform([](auto) { return f(); })(io))));
+      op::via(mi::strands(cpu))(op::transform([](auto) { return f(); })(io.schedule()))));
 }
 
 template <class CPUExecutor, class IOExecutor>
 void sugar(CPUExecutor cpu, IOExecutor io) {
   // f on cpu - g on cpu (implicit: a single task on the cpu executor runs all
   // the functions)
-  cpu | op::transform([](auto) { return f(); }) |
+  cpu.schedule() | op::transform([](auto) { return f(); }) |
       op::transform([](f_t ft) { return g(ft); }) | op::submit([](g_t) {});
 
   // f on cpu - g on cpu (explicit: the first cpu task runs f and a second cpu
   // task runs g)
-  cpu | op::transform([](auto) { return f(); }) | op::via(mi::strands(cpu)) |
+  cpu.schedule() | op::transform([](auto) { return f(); }) | op::via(mi::strands(cpu)) |
       op::transform([](f_t ft) { return g(ft); }) | op::submit([](g_t) {});
 
   // f on io  - g on cpu
-  io | op::transform([](auto) { return f(); }) | op::via(mi::strands(cpu)) |
+  io.schedule() | op::transform([](auto) { return f(); }) | op::via(mi::strands(cpu)) |
       op::transform([](f_t ft) { return g(ft); }) | op::submit([](g_t) {});
 }
 
@@ -75,7 +76,7 @@ void pipe(CPUExecutor cpu, IOExecutor io) {
   // f on cpu - g on cpu (implicit: a single task on the cpu executor runs all
   // the functions)
   mi::pipe(
-      cpu,
+      cpu.schedule(),
       op::transform([](auto) { return f(); }),
       op::transform([](f_t ft) { return g(ft); }),
       op::submit([](g_t) {}));
@@ -83,7 +84,7 @@ void pipe(CPUExecutor cpu, IOExecutor io) {
   // f on cpu - g on cpu (explicit: the first cpu task runs f and a second cpu
   // task runs g)
   mi::pipe(
-      cpu,
+      cpu.schedule(),
       op::transform([](auto) { return f(); }),
       op::via(mi::strands(cpu)),
       op::transform([](f_t ft) { return g(ft); }),
@@ -91,7 +92,7 @@ void pipe(CPUExecutor cpu, IOExecutor io) {
 
   // f on io  - g on cpu
   mi::pipe(
-      io,
+      io.schedule(),
       op::transform([](auto) { return f(); }),
       op::via(mi::strands(cpu)),
       op::transform([](f_t ft) { return g(ft); }),

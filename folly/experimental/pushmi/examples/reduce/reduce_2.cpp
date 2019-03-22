@@ -34,7 +34,7 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
              auto&& func,
              auto sb,
              auto se,
-             auto out) {
+             auto out) mutable {
     using RS = decltype(selector);
     using F = std::conditional_t<
         std::is_lvalue_reference<decltype(func)>::value,
@@ -44,63 +44,70 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
     try {
       typename std::allocator_traits<Allocator>::template rebind_alloc<char>
           allocState(a);
-      auto shared_state = std::allocate_shared<std::tuple<
-          std::exception_ptr, // first exception
-          Out, // destination
-          RS, // selector
-          F, // func
-          std::atomic<decltype(init(input))>, // accumulation
-          std::atomic<std::size_t>, // pending
-          std::atomic<std::size_t> // exception count (protects assignment to
-                                   // first exception)
-          >>(
+      using Acc = decltype(init(input));
+      struct shared_state_type {
+        std::exception_ptr first_exception_{};
+        Out destination_;
+        RS selector_;
+        F func_;
+        std::atomic<Acc> accumulation_;
+        std::atomic<std::size_t> pending_{1};
+        std::atomic<std::size_t> exception_count_{0}; // protects assignment to
+                                                      // first exception
+
+        shared_state_type(Out&& destination, RS&& selector, F&& func, Acc acc)
+        : destination_((Out&&) destination)
+        , selector_((RS&&) selector)
+        , func_((F&&) func)
+        , accumulation_(acc)
+        {}
+      };
+      auto shared_state = std::allocate_shared<shared_state_type>(
           allocState,
-          std::exception_ptr{},
           std::move(out),
           std::move(selector),
           (decltype(func)&&)func,
-          init(std::move(input)),
-          1,
-          0);
-      e | op::submit([e, sb, se, shared_state](auto) {
+          init(std::move(input)));
+      e.schedule() | op::submit([e, sb, se, shared_state](auto) mutable {
         auto stepDone = [](auto shared_state) {
           // pending
-          if (--std::get<5>(*shared_state) == 0) {
+          if (--shared_state->pending_ == 0) {
             // first exception
-            if (std::get<0>(*shared_state)) {
+            if (shared_state->first_exception_) {
               mi::set_error(
-                  std::get<1>(*shared_state), std::get<0>(*shared_state));
+                  shared_state->destination_, shared_state->first_exception_);
               return;
             }
             try {
               // selector(accumulation)
-              auto result = std::get<2>(*shared_state)(
-                  std::move(std::get<4>(*shared_state).load()));
-              mi::set_value(std::get<1>(*shared_state), std::move(result));
+              auto result = shared_state->selector_(
+                  std::move(shared_state->accumulation_.load()));
+              mi::set_value(shared_state->destination_, std::move(result));
+              mi::set_done(shared_state->destination_);
             } catch (...) {
               mi::set_error(
-                  std::get<1>(*shared_state), std::current_exception());
+                  shared_state->destination_, std::current_exception());
             }
           }
         };
-        for (decltype(sb) idx{sb}; idx != se;
-             ++idx, ++std::get<5>(*shared_state)) {
-          e | op::submit([shared_state, idx, stepDone](auto ex) {
+        for (decltype(sb) idx{sb}; idx != se; ++idx) {
+          ++shared_state->pending_;
+          e.schedule() | op::submit([shared_state, idx, stepDone](auto) {
             try {
               // this indicates to me that bulk is not the right abstraction
-              auto old = std::get<4>(*shared_state).load();
-              auto step = old;
+              auto old = shared_state->accumulation_.load();
+              Acc step;
               do {
                 step = old;
                 // func(accumulation, idx)
-                std::get<3> (*shared_state)(step, idx);
-              } while (!std::get<4>(*shared_state)
+                shared_state->func_(step, idx);
+              } while (!shared_state->accumulation_
                             .compare_exchange_strong(old, step));
             } catch (...) {
               // exception count
-              if (std::get<6>(*shared_state)++ == 0) {
+              if (shared_state->exception_count_++ == 0) {
                 // store first exception
-                std::get<0>(*shared_state) = std::current_exception();
+                shared_state->first_exception_ = std::current_exception();
               } // else eat the exception
             }
             stepDone(shared_state);
@@ -109,7 +116,7 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
         stepDone(shared_state);
       });
     } catch (...) {
-      e |
+      e.schedule() |
           op::submit([out = std::move(out), ep = std::current_exception()](
                          auto) mutable { mi::set_error(out, ep); });
     }
