@@ -1214,7 +1214,71 @@ class fbvector {
   }
 
   template <class... Args>
-  void emplace_back_aux(Args&&... args);
+  void emplace_back_aux(Args&&... args) {
+    size_type byte_sz =
+      folly::goodMallocSize(computePushBackCapacity() * sizeof(T));
+    if (usingStdAllocator && usingJEMalloc() &&
+        ((impl_.z_ - impl_.b_) * sizeof(T) >=
+         folly::jemallocMinInPlaceExpandable)) {
+      // Try to reserve in place.
+      // Ask xallocx to allocate in place at least size()+1 and at most sz space.
+      // xallocx will allocate as much as possible within that range, which
+      //  is the best possible outcome: if sz space is available, take it all,
+      //  otherwise take as much as possible. If nothing is available, then fail.
+      // In this fashion, we never relocate if there is a possibility of
+      //  expanding in place, and we never reallocate by less than the desired
+      //  amount unless we cannot expand further. Hence we will not reallocate
+      //  sub-optimally twice in a row (modulo the blocking memory being freed).
+      size_type lower = folly::goodMallocSize(sizeof(T) + size() * sizeof(T));
+      size_type upper = byte_sz;
+      size_type extra = upper - lower;
+
+      void* p = impl_.b_;
+      size_t actual;
+
+      if ((actual = xallocx(p, lower, extra, 0)) >= lower) {
+        impl_.z_ = impl_.b_ + actual / sizeof(T);
+        M_construct(impl_.e_, std::forward<Args>(args)...);
+        ++impl_.e_;
+        return;
+      }
+    }
+
+    // Reallocation failed. Perform a manual relocation.
+    size_type sz = byte_sz / sizeof(T);
+    auto newB = M_allocate(sz);
+    auto newE = newB + size();
+    try {
+      if (folly::IsRelocatable<T>::value && usingStdAllocator) {
+        // For linear memory access, relocate before construction.
+        // By the test condition, relocate is noexcept.
+        // Note that there is no cleanup to do if M_construct throws - that's
+        //  one of the beauties of relocation.
+        // Benchmarks for this code have high variance, and seem to be close.
+        relocate_move(newB, impl_.b_, impl_.e_);
+        M_construct(newE, std::forward<Args>(args)...);
+        ++newE;
+      } else {
+        M_construct(newE, std::forward<Args>(args)...);
+        ++newE;
+        try {
+          M_relocate(newB);
+        } catch (...) {
+          M_destroy(newE - 1);
+          throw;
+        }
+      }
+    } catch (...) {
+      M_deallocate(newB, sz);
+      throw;
+    }
+    if (impl_.b_) {
+      M_deallocate(impl_.b_, size());
+    }
+    impl_.b_ = newB;
+    impl_.e_ = newE;
+    impl_.z_ = newB + sz;
+  }
 
   //===========================================================================
   //---------------------------------------------------------------------------
@@ -1609,78 +1673,6 @@ class fbvector {
   friend void attach(fbvector<_T, _A>&, _T* data, size_t sz, size_t cap);
 
 }; // class fbvector
-
-//=============================================================================
-//-----------------------------------------------------------------------------
-// outlined functions (gcc, you finicky compiler you)
-
-template <typename T, typename Allocator>
-template <class... Args>
-void fbvector<T, Allocator>::emplace_back_aux(Args&&... args) {
-  size_type byte_sz =
-      folly::goodMallocSize(computePushBackCapacity() * sizeof(T));
-  if (usingStdAllocator && usingJEMalloc() &&
-      ((impl_.z_ - impl_.b_) * sizeof(T) >=
-       folly::jemallocMinInPlaceExpandable)) {
-    // Try to reserve in place.
-    // Ask xallocx to allocate in place at least size()+1 and at most sz space.
-    // xallocx will allocate as much as possible within that range, which
-    //  is the best possible outcome: if sz space is available, take it all,
-    //  otherwise take as much as possible. If nothing is available, then fail.
-    // In this fashion, we never relocate if there is a possibility of
-    //  expanding in place, and we never reallocate by less than the desired
-    //  amount unless we cannot expand further. Hence we will not reallocate
-    //  sub-optimally twice in a row (modulo the blocking memory being freed).
-    size_type lower = folly::goodMallocSize(sizeof(T) + size() * sizeof(T));
-    size_type upper = byte_sz;
-    size_type extra = upper - lower;
-
-    void* p = impl_.b_;
-    size_t actual;
-
-    if ((actual = xallocx(p, lower, extra, 0)) >= lower) {
-      impl_.z_ = impl_.b_ + actual / sizeof(T);
-      M_construct(impl_.e_, std::forward<Args>(args)...);
-      ++impl_.e_;
-      return;
-    }
-  }
-
-  // Reallocation failed. Perform a manual relocation.
-  size_type sz = byte_sz / sizeof(T);
-  auto newB = M_allocate(sz);
-  auto newE = newB + size();
-  try {
-    if (folly::IsRelocatable<T>::value && usingStdAllocator) {
-      // For linear memory access, relocate before construction.
-      // By the test condition, relocate is noexcept.
-      // Note that there is no cleanup to do if M_construct throws - that's
-      //  one of the beauties of relocation.
-      // Benchmarks for this code have high variance, and seem to be close.
-      relocate_move(newB, impl_.b_, impl_.e_);
-      M_construct(newE, std::forward<Args>(args)...);
-      ++newE;
-    } else {
-      M_construct(newE, std::forward<Args>(args)...);
-      ++newE;
-      try {
-        M_relocate(newB);
-      } catch (...) {
-        M_destroy(newE - 1);
-        throw;
-      }
-    }
-  } catch (...) {
-    M_deallocate(newB, sz);
-    throw;
-  }
-  if (impl_.b_) {
-    M_deallocate(impl_.b_, size());
-  }
-  impl_.b_ = newB;
-  impl_.e_ = newE;
-  impl_.z_ = newB + sz;
-}
 
 //=============================================================================
 //-----------------------------------------------------------------------------
