@@ -256,3 +256,13 @@ TEST(FBVector, zero_len) {
   fb6 = il;
   fbvector<int> fb7(fb6.begin(), fb6.end());
 }
+
+TEST(FBVector, erase_if) {
+  fbvector<int> v(6);
+  std::iota(v.begin(), v.end(), 1);
+  erase_if(v, [](const auto &x) { return x % 2 == 0; });
+  ASSERT_EQ(3u, v.size());
+  EXPECT_EQ(1u, v[0]);
+  EXPECT_EQ(3u, v[1]);
+  EXPECT_EQ(5u, v[2]);
+}

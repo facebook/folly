@@ -1748,4 +1748,9 @@ void attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
   v.impl_.z_ = data + cap;
 }
 
+template <class T, class A, class Predicate>
+void erase_if(fbvector<T, A>& v, Predicate predicate) {
+  v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
+}
+
 } // namespace folly
