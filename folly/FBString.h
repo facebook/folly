@@ -57,6 +57,7 @@
 
 #include <folly/Traits.h>
 #include <folly/hash/Hash.h>
+#include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
@@ -185,27 +186,6 @@ inline void podMove(const Pod* b, const Pod* e, Pod* d) {
   FBSTRING_ASSERT(e >= b);
   memmove(d, b, (e - b) * sizeof(*b));
 }
-
-// always inline
-#if defined(__GNUC__) // Clang also defines __GNUC__
-#define FBSTRING_ALWAYS_INLINE inline __attribute__((__always_inline__))
-#elif defined(_MSC_VER)
-#define FBSTRING_ALWAYS_INLINE __forceinline
-#else
-#define FBSTRING_ALWAYS_INLINE inline
-#endif
-
-[[noreturn]] FBSTRING_ALWAYS_INLINE void assume_unreachable() {
-#if defined(__GNUC__) // Clang also defines __GNUC__
-  __builtin_unreachable();
-#elif defined(_MSC_VER)
-  __assume(0);
-#else
-  // Well, it's better than nothing.
-  std::abort();
-#endif
-}
-
 } // namespace fbstring_detail
 
 /**
@@ -351,7 +331,7 @@ class fbstring_core {
         copyLarge(rhs);
         break;
       default:
-        fbstring_detail::assume_unreachable();
+        folly::assume_unreachable();
     }
     FBSTRING_ASSERT(size() == rhs.size());
     FBSTRING_ASSERT(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
@@ -438,7 +418,7 @@ class fbstring_core {
       case Category::isLarge:
         return mutableDataLarge();
     }
-    fbstring_detail::assume_unreachable();
+    folly::assume_unreachable();
   }
 
   const Char* c_str() const {
@@ -472,7 +452,7 @@ class fbstring_core {
         reserveLarge(minCapacity);
         break;
       default:
-        fbstring_detail::assume_unreachable();
+        folly::assume_unreachable();
     }
     FBSTRING_ASSERT(capacity() >= minCapacity);
   }
