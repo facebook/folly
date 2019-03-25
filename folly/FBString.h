@@ -2729,7 +2729,7 @@ operator>>(
       _istream_type;
   typename _istream_type::sentry sentry(is);
   size_t extracted = 0;
-  auto err = _istream_type::goodbit;
+  typename _istream_type::iostate err = _istream_type::goodbit;
   if (sentry) {
     auto n = is.width();
     if (n <= 0) {

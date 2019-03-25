@@ -774,6 +774,7 @@ if (BUILD_TESTS)
       TEST exception_test SOURCES ExceptionTest.cpp
       TEST exception_wrapper_test SOURCES ExceptionWrapperTest.cpp
       TEST expected_test SOURCES ExpectedTest.cpp
+      TEST fbstring_test SOURCES FBStringTest.cpp
       TEST fbvector_test SOURCES FBVectorTest.cpp
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
