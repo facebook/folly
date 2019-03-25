@@ -26,6 +26,7 @@
 #include <folly/experimental/coro/SharedMutex.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
+#include <folly/futures/helpers.h>
 #include <folly/portability/GTest.h>
 
 #include <type_traits>
@@ -343,6 +344,16 @@ TEST(Task, FutureTailCall) {
             co_return co_await folly::makeSemiFuture().deferValue(
                 [](auto) { return folly::makeSemiFuture(42); });
           })));
+}
+
+// NOTE: This function is unused.
+// We just want to make sure this compiles without errors or warnings.
+folly::coro::Task<void>
+checkAwaitingFutureOfUnitDoesntWarnAboutDiscardedResult() {
+  co_await folly::makeSemiFuture();
+
+  using namespace std::literals::chrono_literals;
+  co_await folly::futures::sleep(1ms);
 }
 
 #endif
