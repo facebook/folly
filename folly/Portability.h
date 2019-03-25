@@ -22,6 +22,10 @@
 static_assert(__cplusplus >= 201402L, "__cplusplus >= 201402L");
 #endif
 
+#if defined(__GNUC__) && !defined(__clang__)
+static_assert(__GNUC__ >= 5, "__GNUC__ >= 5");
+#endif
+
 #include <cstddef>
 
 #include <folly/CPortability.h>
