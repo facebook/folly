@@ -136,6 +136,7 @@ int main() {
       2,
       std::plus<>{});
 
+  std::ignore = fortyTwo;
   assert(std::accumulate(vec.begin(), vec.end(), 2) == fortyTwo);
 
   std::cout << "OK" << std::endl;
