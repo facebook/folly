@@ -159,6 +159,8 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/TimeUtil.h
   ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
   ${FOLLY_DIR}/io/async/test/Util.h
+  ${FOLLY_DIR}/test/DeterministicSchedule.h
+  ${FOLLY_DIR}/test/JsonTestUtil.h
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
