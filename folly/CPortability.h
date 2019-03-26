@@ -121,15 +121,41 @@
 #endif
 
 #if FOLLY_SANITIZE
-#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...) \
-  __attribute__((no_sanitize(__VA_ARGS__)))
-#else
-#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER(...)
+/**
+ * GCC 8.2.0 and Clang 6.0 both support the no_sanitize attribute, however,
+ * GCC 7.3.0 does not. Check for alternative attributes if no_sanitize is not
+ * available.
+ */
+#if defined(__has_cpp_attribute)
+
+#if __has_cpp_attribute(no_sanitize)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER \
+  __attribute__((no_sanitize("undefined")))
+#elif __has_cpp_attribute(no_sanitize_undefined)
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER \
+  __attribute__((no_sanitize_undefined))
+#endif // __has_cpp_attribute(no_sanitize)
+
+#if __has_cpp_attribute(no_sanitize)
+#define FOLLY_DISABLE_NONNULL_SANITIZER \
+  __attribute__((no_sanitize("nonnull-attribute")))
+#elif __has_cpp_attribute(nonnull)
+#define FOLLY_DISABLE_NONNULL_SANITIZER \
+  __attribute__((nonnull))
+#endif // __has_cpp_attribute(no_sanitize)
+
+#else // defined(__has_cpp_attribute)
+#error __has_cpp_attribute was not found, cannot determine which attributes to\
+       use.
+#endif // defined(__has_cpp_attribute)
+#else // FOLLY_SANITIZE
+#define FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER
+#define FOLLY_DISABLE_NONNULL_SANITIZER
 #endif // FOLLY_SANITIZE
 
 #define FOLLY_DISABLE_SANITIZERS                                 \
   FOLLY_DISABLE_ADDRESS_SANITIZER FOLLY_DISABLE_THREAD_SANITIZER \
-      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("undefined")
+      FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER
 
 /**
  * Macro for marking functions as having public visibility.
