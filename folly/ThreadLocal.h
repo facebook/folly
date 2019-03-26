@@ -40,6 +40,7 @@
 
 #pragma once
 
+#include<glog/logging.h>
 #include <iterator>
 #include <type_traits>
 #include <utility>

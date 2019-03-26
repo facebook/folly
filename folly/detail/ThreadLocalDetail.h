@@ -18,6 +18,7 @@
 
 #include <limits.h>
 
+#include <glog/logging.h>
 #include <atomic>
 #include <functional>
 #include <mutex>
