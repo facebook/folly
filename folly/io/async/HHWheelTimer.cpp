@@ -40,8 +40,15 @@ namespace folly {
  * start showing up in cpu perf.  Also, it might not be possible to set
  * tick interval less than 10ms on older kernels.
  */
-template <class Duration>
-int HHWheelTimerBase<Duration>::DEFAULT_TICK_INTERVAL = 10;
+template <>
+int HHWheelTimerBase<std::chrono::milliseconds>::DEFAULT_TICK_INTERVAL = 10;
+
+/*
+ * An interval of 200usec will give us 200usec * WHEEL_SIZE^WHEEL_BUCKETS
+ * for the largest timeout possible, or about 9 days.
+ */
+template <>
+int HHWheelTimerBase<std::chrono::microseconds>::DEFAULT_TICK_INTERVAL = 200;
 
 template <class Duration>
 HHWheelTimerBase<Duration>::Callback::Callback() {}

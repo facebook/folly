@@ -343,10 +343,15 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
   }
 };
 
+// std::chrono::milliseconds
+template <>
+int HHWheelTimerBase<std::chrono::milliseconds>::DEFAULT_TICK_INTERVAL;
 using HHWheelTimer = HHWheelTimerBase<std::chrono::milliseconds>;
 extern template class HHWheelTimerBase<std::chrono::milliseconds>;
 
 // std::chrono::microseconds
+template <>
+int HHWheelTimerBase<std::chrono::microseconds>::DEFAULT_TICK_INTERVAL;
 template <>
 void HHWheelTimerBase<std::chrono::microseconds>::scheduleTimeoutInternal(
     std::chrono::microseconds timeout);
