@@ -118,9 +118,6 @@ static_assert(
  * contention is unlikely.
  */
 
-// TODO: generate it from configure (`getconf LEVEL1_DCACHE_LINESIZE`)
-#define FOLLY_CACHE_LINE_SIZE 64
-
 template <class T, size_t N>
 struct alignas(max_align_v) SpinLockArray {
   T& operator[](size_t i) noexcept {
@@ -139,19 +136,20 @@ struct alignas(max_align_v) SpinLockArray {
   struct PaddedSpinLock {
     PaddedSpinLock() : lock() {}
     T lock;
-    char padding[FOLLY_CACHE_LINE_SIZE - sizeof(T)];
+    char padding[hardware_destructive_interference_size - sizeof(T)];
   };
   static_assert(
-      sizeof(PaddedSpinLock) == FOLLY_CACHE_LINE_SIZE,
+      sizeof(PaddedSpinLock) == hardware_destructive_interference_size,
       "Invalid size of PaddedSpinLock");
 
   // Check if T can theoretically cross a cache line.
   static_assert(
-      max_align_v > 0 && FOLLY_CACHE_LINE_SIZE % max_align_v == 0 &&
+      max_align_v > 0 &&
+          hardware_destructive_interference_size % max_align_v == 0 &&
           sizeof(T) <= max_align_v,
       "T can cross cache line boundaries");
 
-  char padding_[FOLLY_CACHE_LINE_SIZE];
+  char padding_[hardware_destructive_interference_size];
   std::array<PaddedSpinLock, N> data_;
 };
 
