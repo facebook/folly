@@ -24,6 +24,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -33,17 +34,6 @@
 
 namespace folly {
 namespace coro {
-
-namespace detail {
-struct co_current_executor_ {
-  enum class secret_ { token_ };
-  explicit constexpr co_current_executor_(secret_) {}
-};
-} // namespace detail
-
-using co_current_executor_t = detail::co_current_executor_;
-constexpr co_current_executor_t co_current_executor{
-    co_current_executor_t::secret_::token_};
 
 template <typename T = void>
 class Task;
@@ -84,13 +74,10 @@ class TaskPromiseBase {
     return {};
   }
 
-  template <typename U>
-  auto await_transform(Task<U>&& t) noexcept;
-
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) noexcept {
-    using folly::coro::co_viaIfAsync;
-    return co_viaIfAsync(executor_.get(), static_cast<Awaitable&&>(awaitable));
+    return folly::coro::co_viaIfAsync(
+        executor_.copyDummy(), static_cast<Awaitable&&>(awaitable));
   }
 
   auto await_transform(co_current_executor_t) noexcept {
@@ -324,6 +311,7 @@ class FOLLY_NODISCARD Task {
   using promise_type = detail::TaskPromise<T>;
 
  private:
+  class Awaiter;
   using handle_t = std::experimental::coroutine_handle<promise_type>;
 
  public:
@@ -363,18 +351,17 @@ class FOLLY_NODISCARD Task {
         });
   }
 
+  friend auto co_viaIfAsync(
+      Executor::KeepAlive<> executor,
+      Task<T>&& t) noexcept {
+    // Child task inherits the awaiting task's executor
+    t.coro_.promise().executor_ = std::move(executor);
+    return Awaiter{std::exchange(t.coro_, {})};
+  }
+
  private:
   friend class detail::TaskPromiseBase;
   friend class detail::TaskPromise<T>;
-
-  Task(handle_t coro) noexcept : coro_(coro) {}
-
-  handle_t coro_;
-};
-
-template <typename T>
-auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
-  using handle_t = std::experimental::coroutine_handle<detail::TaskPromise<T>>;
 
   class Awaiter {
    public:
@@ -411,11 +398,10 @@ auto detail::TaskPromiseBase::await_transform(Task<T>&& t) noexcept {
     handle_t coro_;
   };
 
-  // Child task inherits the awaiting task's executor
-  t.coro_.promise().executor_ = executor_.copyDummy();
+  Task(handle_t coro) noexcept : coro_(coro) {}
 
-  return Awaiter{std::exchange(t.coro_, {})};
-}
+  handle_t coro_;
+};
 
 template <typename T>
 Task<T> detail::TaskPromise<T>::get_return_object() noexcept {

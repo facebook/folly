@@ -28,11 +28,11 @@ class ObserverCreatorContext {
   template <typename... Args>
   ObserverCreatorContext(Args&&... args)
       : observable_(std::forward<Args>(args)...) {
-    updateValue();
+    state_->updateValue(Traits::get(observable_));
   }
 
   ~ObserverCreatorContext() {
-    if (value_.copy()) {
+    if (state_->value) {
       Traits::unsubscribe(observable_);
     }
   }
@@ -42,8 +42,9 @@ class ObserverCreatorContext {
   }
 
   std::shared_ptr<const T> get() {
-    updateRequested_ = false;
-    return value_.copy();
+    auto state = state_.lock();
+    state->updateRequested = false;
+    return state->value;
   }
 
   void update() {
@@ -53,14 +54,13 @@ class ObserverCreatorContext {
     // Additionally it helps avoid races between two different subscription
     // callbacks (getting new value from observable and storing it into value_
     // is not atomic).
-    std::lock_guard<std::mutex> lg(updateMutex_);
-    if (!updateValue()) {
+    auto state = state_.lock();
+    if (!state->updateValue(Traits::get(observable_))) {
       // Value didn't change, so we can skip the version update.
       return;
     }
 
-    bool expected = false;
-    if (updateRequested_.compare_exchange_strong(expected, true)) {
+    if (!std::exchange(state->updateRequested, true)) {
       observer_detail::ObserverManager::scheduleRefreshNewVersion(coreWeak_);
     }
   }
@@ -71,24 +71,24 @@ class ObserverCreatorContext {
   }
 
  private:
-  bool updateValue() {
-    auto newValue = Traits::get(observable_);
-    auto newValuePtr = newValue.get();
-    if (!newValue) {
-      throw std::logic_error("Observable returned nullptr.");
+  struct State {
+    bool updateValue(std::shared_ptr<const T> newValue) {
+      auto newValuePtr = newValue.get();
+      if (!newValue) {
+        throw std::logic_error("Observable returned nullptr.");
+      }
+      value.swap(newValue);
+      return newValuePtr != newValue.get();
     }
-    value_.swap(newValue);
-    return newValuePtr != newValue.get();
-  }
 
-  folly::Synchronized<std::shared_ptr<const T>> value_;
-  std::atomic<bool> updateRequested_{false};
+    std::shared_ptr<const T> value;
+    bool updateRequested{false};
+  };
+  folly::Synchronized<State, std::mutex> state_;
 
   observer_detail::Core::WeakPtr coreWeak_;
 
   Observable observable_;
-
-  std::mutex updateMutex_;
 };
 
 } // namespace detail

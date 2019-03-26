@@ -119,7 +119,6 @@ struct hash<::folly::dynamic> {
         apply(std::string);           \
         break;                        \
       default:                        \
-        CHECK(0);                     \
         abort();                      \
     }                                 \
   } while (0)
@@ -134,17 +133,6 @@ struct FOLLY_EXPORT TypeError : std::runtime_error {
       const std::string& expected,
       dynamic::Type actual1,
       dynamic::Type actual2);
-  // TODO: noexcept calculation required through gcc-v4.9; remove once upgrading
-  // to gcc-v5.
-  TypeError(const TypeError&) noexcept(
-      std::is_nothrow_copy_constructible<std::runtime_error>::value);
-  TypeError& operator=(const TypeError&) noexcept(
-      std::is_nothrow_copy_assignable<std::runtime_error>::value);
-  TypeError(TypeError&&) noexcept(
-      std::is_nothrow_move_constructible<std::runtime_error>::value);
-  TypeError& operator=(TypeError&&) noexcept(
-      std::is_nothrow_move_assignable<std::runtime_error>::value);
-  ~TypeError() override;
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -170,12 +158,7 @@ dynamic numericOp(dynamic const& a, dynamic const& b) {
   if (!a.isNumber() || !b.isNumber()) {
     throw_exception<TypeError>("numeric", a.type(), b.type());
   }
-  if (a.type() != b.type()) {
-    auto& integ = a.isInt() ? a : b;
-    auto& nonint = a.isInt() ? b : a;
-    return Op<double>()(to<double>(integ.asInt()), nonint.asDouble());
-  }
-  if (a.isDouble()) {
+  if (a.isDouble() || b.isDouble()) {
     return Op<double>()(a.asDouble(), b.asDouble());
   }
   return Op<int64_t>()(a.asInt(), b.asInt());

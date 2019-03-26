@@ -108,10 +108,7 @@ void IOThreadPoolExecutor::add(
   };
 
   ioThread->pendingTasks++;
-  if (!ioThread->eventBase->runInEventBaseThread(std::move(wrappedFunc))) {
-    ioThread->pendingTasks--;
-    throw std::runtime_error("Unable to run func in event base thread");
-  }
+  ioThread->eventBase->runInEventBaseThread(std::move(wrappedFunc));
 }
 
 std::shared_ptr<IOThreadPoolExecutor::IOThread>

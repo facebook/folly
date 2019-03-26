@@ -80,7 +80,8 @@ struct BitIteratorBase {
       BitIterator<BaseIter>, // Derived
       BaseIter, // Base
       bool, // Value
-      boost::use_default, // CategoryOrTraversal
+      typename std::iterator_traits<
+          BaseIter>::iterator_category, // CategoryOrTraversal
       bititerator_detail::BitReference<
           typename std::iterator_traits<BaseIter>::reference,
           typename std::iterator_traits<BaseIter>::value_type>, // Reference

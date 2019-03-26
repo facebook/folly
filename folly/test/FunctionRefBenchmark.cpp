@@ -16,6 +16,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Function.h>
 #include <folly/Random.h>
+#include <folly/synchronization/detail/InlineFunctionRef.h>
 
 #include <cstdint>
 #include <functional>
@@ -59,6 +60,7 @@ void runSmallInvokeBenchmark(std::size_t iters, MakeFunction make) {
     folly::makeUnpredictable(i);
     return i;
   };
+  folly::makeUnpredictable(lambda);
   auto func = make(lambda);
   folly::makeUnpredictable(func);
 
@@ -73,6 +75,7 @@ void runSmallCreateAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
     folly::makeUnpredictable(i);
     return i;
   };
+  folly::makeUnpredictable(lambda);
 
   for (auto i = std::size_t{iters}; --i;) {
     auto func = make(lambda);
@@ -92,6 +95,7 @@ void runBigAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
     folly::makeUnpredictable(i);
     return i;
   };
+  folly::makeUnpredictable(lambda);
   auto func = make(lambda);
   folly::makeUnpredictable(func);
 
@@ -113,6 +117,7 @@ void runBigCreateAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
     folly::makeUnpredictable(i);
     return i;
   };
+  folly::makeUnpredictable(lambda);
 
   suspender.dismissing([&] {
     for (auto i = std::size_t{iters}; --i;) {
@@ -145,6 +150,11 @@ BENCHMARK(SmallFunctionFollyFunctionRefInvoke, iters) {
   runSmallInvokeBenchmark(
       iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
 }
+BENCHMARK(SmallFunctionFollyInlineFunctionRefInvoke, iters) {
+  runSmallInvokeBenchmark(iters, [](auto f) {
+    return detail::InlineFunctionRef<size_t(size_t&), 24>{std::move(f)};
+  });
+}
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(SmallFunctionFunctionPointerCreateInvoke, iters) {
@@ -168,6 +178,11 @@ BENCHMARK(SmallFunctionFollyFunctionRefCreateInvoke, iters) {
   runSmallCreateAndInvokeBenchmark(
       iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
 }
+BENCHMARK(SmallFunctionFollyInlineFunctionRefCreateInvoke, iters) {
+  runSmallInvokeBenchmark(iters, [](auto f) {
+    return detail::InlineFunctionRef<size_t(size_t&), 24>{std::move(f)};
+  });
+}
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(BigFunctionStdFunctionInvoke, iters) {
@@ -187,6 +202,11 @@ BENCHMARK(BigFunctionFollyFunctionRefInvoke, iters) {
   runBigAndInvokeBenchmark(
       iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
 }
+BENCHMARK(BigFunctionFollyInlineFunctionRefInvoke, iters) {
+  runSmallInvokeBenchmark(iters, [](auto f) {
+    return detail::InlineFunctionRef<size_t(size_t&), 24>{std::move(f)};
+  });
+}
 
 BENCHMARK_DRAW_LINE();
 BENCHMARK(BigFunctionStdFunctionCreateInvoke, iters) {
@@ -205,6 +225,11 @@ BENCHMARK(BigFunctionFollyFunctionCreateInvoke, iters) {
 BENCHMARK(BigFunctionFollyFunctionRefCreateInvoke, iters) {
   runBigCreateAndInvokeBenchmark(
       iters, [](auto& f) { return folly::FunctionRef<size_t(size_t&)>{f}; });
+}
+BENCHMARK(BigFunctionFollyInlineFunctionRefCreateInvoke, iters) {
+  runSmallInvokeBenchmark(iters, [](auto f) {
+    return detail::InlineFunctionRef<size_t(size_t&), 24>{std::move(f)};
+  });
 }
 } // namespace folly
 

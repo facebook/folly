@@ -71,8 +71,7 @@ struct transform_on<F, is_single<>, true> {
         ::folly::pushmi::SemiMovable<Result>,
         "none of the functions supplied to transform can convert this value");
     static_assert(
-        ::folly::pushmi::Flow<Out> &&
-            ::folly::pushmi::ReceiveValue<Out, Result>,
+        ::folly::pushmi::FlowReceiveValue<Out, Result>,
         "Result of value transform cannot be delivered to Out");
     set_value(out, f_((V0 &&) v0, (VN &&) vn...));
   }
@@ -110,14 +109,13 @@ struct transform_on<F, is_many<>, true> {
     return make_flow_receiver(std::move(out), on_value(*this));
   }
   template <class Out, class V0, class... VN>
-  auto operator()(Out& out, V0&& v0, VN&&... vn) {
+  void operator()(Out& out, V0&& v0, VN&&... vn) {
     using Result = ::folly::pushmi::invoke_result_t<F, V0, VN...>;
     static_assert(
         ::folly::pushmi::SemiMovable<Result>,
         "none of the functions supplied to transform can convert this value");
     static_assert(
-        ::folly::pushmi::Flow<Out> &&
-            ::folly::pushmi::ReceiveValue<Out, Result>,
+        ::folly::pushmi::FlowReceiveValue<Out, Result>,
         "Result of value transform cannot be delivered to Out");
     set_value(out, f_((V0 &&) v0, (VN &&) vn...));
   }
@@ -125,21 +123,34 @@ struct transform_on<F, is_many<>, true> {
 
 struct transform_fn {
  private:
+  template <class F, class In>
+  struct submit_impl {
+    F f_;
+    PUSHMI_TEMPLATE(class SIn, class Out)
+    (requires Receiver<std::decay_t<Out>>) //
+        auto
+        operator()(SIn&& in, Out&& out) const {
+      using Cardinality = property_set_index_t<properties_t<In>, is_single<>>;
+      // copy 'f_' to allow multiple calls to connect to multiple 'in'
+      ::folly::pushmi::submit(
+          (In &&) in,
+          transform_on<
+              F,
+              Cardinality,
+              property_query_v<properties_t<In>, is_flow<>>>{f_}((Out &&) out));
+    }
+  };
+
   template <class F>
-  struct impl {
+  struct adapt_impl {
     F f_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>)
-    auto operator()(In in) const {
-      using Cardinality = property_set_index_t<properties_t<In>, is_single<>>;
+    (requires Sender<std::decay_t<In>>) //
+        auto
+        operator()(In&& in) const {
+      // copy 'f_' to allow multiple calls to connect to multiple 'in'
       return ::folly::pushmi::detail::sender_from(
-          std::move(in),
-          ::folly::pushmi::detail::submit_transform_out<In>(
-              // copy 'f_' to allow multiple calls to connect to multiple 'in'
-              transform_on<
-                  F,
-                  Cardinality,
-                  property_query_v<properties_t<In>, is_flow<>>>{f_}));
+          (In &&) in, submit_impl<F, In&&>{f_});
     }
   };
 
@@ -148,7 +159,7 @@ struct transform_fn {
   auto operator()(FN... fn) const {
     auto f = ::folly::pushmi::overload(std::move(fn)...);
     using F = decltype(f);
-    return impl<F>{std::move(f)};
+    return adapt_impl<F>{std::move(f)};
   }
 };
 

@@ -694,7 +694,7 @@ TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
   });
   p.setException(make_exception_wrapper<std::logic_error>("Try"));
   auto tryResult = std::move(sf).get();
-  ASSERT_EQ(tryResult.value(), "Try");
+  ASSERT_EQ(tryResult, "Try");
 }
 
 namespace {
@@ -1061,7 +1061,6 @@ TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
 TEST(SemiFuture, DeferWithNestedSemiFuture) {
   auto start = std::chrono::steady_clock::now();
   auto future = futures::sleep(std::chrono::milliseconds{100})
-                    .semi()
                     .deferValue([](auto&&) {
                       return futures::sleep(std::chrono::milliseconds{200});
                     });

@@ -18,7 +18,6 @@
 #include <vector>
 
 #include <folly/experimental/pushmi/concepts.h>
-#include <folly/experimental/pushmi/time_single_sender.h>
 #include <folly/experimental/pushmi/trampoline.h>
 #include <folly/experimental/pushmi/detail/opt.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
@@ -43,25 +42,25 @@ struct subject<PS, TN...> {
     std::vector<receiver_t> receivers_;
     std::mutex lock_;
     PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>)
+    (requires ReceiveError<Out, std::exception_ptr> && ReceiveValue<Out, TN...>)
     void submit(Out out) {
       std::unique_lock<std::mutex> guard(lock_);
       if (ep_) {
         set_error(out, ep_);
         return;
       }
-      if (!!t_) {
+      if (!!t_ && done_) {
         auto args = *t_;
         ::folly::pushmi::apply(
             ::folly::pushmi::set_value,
-            std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(args)));
+            std::tuple_cat(std::tuple<Out&>{out}, std::move(args)));
         return;
       }
       if (done_) {
         set_done(out);
         return;
       }
-      receivers_.push_back(receiver_t{out});
+      receivers_.push_back(receiver_t{std::move(out)});
     }
     PUSHMI_TEMPLATE(class... VN)
     (requires And<SemiMovable<VN>...>)
@@ -74,7 +73,6 @@ struct subject<PS, TN...> {
                 out, detail::as_const(vn)...});
       }
       t_ = std::make_tuple((VN &&) vn...);
-      receivers_.clear();
     }
     PUSHMI_TEMPLATE(class E)
     (requires SemiMovable<E>)
@@ -118,9 +116,6 @@ struct subject<PS, TN...> {
 
   std::shared_ptr<subject_shared> s = std::make_shared<subject_shared>();
 
-  auto executor() {
-    return trampoline();
-  }
   PUSHMI_TEMPLATE(class Out)
   (requires Receiver<Out>)
   void submit(Out out) {

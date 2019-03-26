@@ -89,15 +89,21 @@ class ClosableMPMCQueue {
   template <typename... Args>
   bool writeUnlessClosed(Args&&... args) {
     // write if there's room
-    while (!queue_.writeIfNotFull(std::forward<Args>(args)...)) {
-      // if write fails, check if there are still consumers listening
-      auto key = wakeProducer_.prepareWait();
-      if (!consumers()) {
-        // no consumers left; bail out
-        wakeProducer_.cancelWait();
-        return false;
+    if (!queue_.writeIfNotFull(std::forward<Args>(args)...)) {
+      while (true) {
+        auto key = wakeProducer_.prepareWait();
+        // if write fails, check if there are still consumers listening
+        if (!consumers()) {
+          // no consumers left; bail out
+          wakeProducer_.cancelWait();
+          return false;
+        }
+        if (queue_.writeIfNotFull(std::forward<Args>(args)...)) {
+          wakeProducer_.cancelWait();
+          break;
+        }
+        wakeProducer_.wait(key);
       }
-      wakeProducer_.wait(key);
     }
     // wake consumers to pick up new value
     wakeConsumer_.notify();
@@ -114,14 +120,21 @@ class ClosableMPMCQueue {
   }
 
   bool readUnlessClosed(T& out) {
-    while (!queue_.readIfNotEmpty(out)) {
-      auto key = wakeConsumer_.prepareWait();
-      if (!producers()) {
-        // wake producers to fill empty space
-        wakeProducer_.notify();
-        return false;
+    if (!queue_.readIfNotEmpty(out)) {
+      while (true) {
+        auto key = wakeConsumer_.prepareWait();
+        if (queue_.readIfNotEmpty(out)) {
+          wakeConsumer_.cancelWait();
+          break;
+        }
+        if (!producers()) {
+          wakeConsumer_.cancelWait();
+          // wake producers to fill empty space
+          wakeProducer_.notify();
+          return false;
+        }
+        wakeConsumer_.wait(key);
       }
-      wakeConsumer_.wait(key);
     }
     // wake writers blocked by full queue
     wakeProducer_.notify();

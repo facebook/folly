@@ -27,6 +27,7 @@
 #include <sstream>
 
 #include <boost/algorithm/string.hpp>
+#include <glog/logging.h>
 
 #include <folly/Conv.h>
 #include <folly/Portability.h>
@@ -93,7 +94,7 @@ void clause11_21_4_2_b(String& test) {
 template <class String>
 void clause11_21_4_2_c(String& test) {
   // Test move constructor. There is a more specialized test, see
-  // TEST(FBString, testMoveCtor)
+  // testMoveCtor test
   String donor(test);
   String test2(std::move(donor));
   EXPECT_EQ(test2, test);

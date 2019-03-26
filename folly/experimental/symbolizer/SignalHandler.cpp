@@ -365,7 +365,7 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printDec(syscall(__NR_gettid));
 
   // Kernel-sourced signals don't give us useful info for pid/uid.
-  if (siginfo->si_code != SI_KERNEL) {
+  if (siginfo->si_code <= 0) {
     print(") (maybe from PID ");
     printDec(siginfo->si_pid);
     print(", UID ");
@@ -374,9 +374,17 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
 
   auto reason = signal_reason(signum, siginfo->si_code);
 
+  print(") (code: ");
+  // If we can't find a reason code make a best effort to print the (int) code.
   if (reason != nullptr) {
-    print(") (code: ");
     print(reason);
+  } else {
+    if (siginfo->si_code < 0) {
+      print("-");
+      printDec(-siginfo->si_code);
+    } else {
+      printDec(siginfo->si_code);
+    }
   }
 
   print("), stack trace: ***\n");

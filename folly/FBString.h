@@ -78,10 +78,6 @@
 FOLLY_PUSH_WARNING
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_GNU_DISABLE_WARNING("-Wshadow")
-// GCC 4.9 has a false positive in setSmallSize (probably
-// https://gcc.gnu.org/bugzilla/show_bug.cgi?id=59124), disable
-// compile-time array bound checking.
-FOLLY_GNU_DISABLE_WARNING("-Warray-bounds")
 
 // FBString cannot use throw when replacing std::string, though it may still
 // use folly::throw_exception
@@ -2733,7 +2729,7 @@ operator>>(
       _istream_type;
   typename _istream_type::sentry sentry(is);
   size_t extracted = 0;
-  auto err = _istream_type::goodbit;
+  typename _istream_type::iostate err = _istream_type::goodbit;
   if (sentry) {
     auto n = is.width();
     if (n <= 0) {

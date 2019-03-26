@@ -63,29 +63,19 @@ void AsyncServerSocket::RemoteAcceptor::start(
   setMaxReadAtOnce(maxAtOnce);
   queue_.setMaxQueueSize(maxInQueue);
 
-  if (!eventBase->runInEventBaseThread([=]() {
-        callback_->acceptStarted();
-        this->startConsuming(eventBase, &queue_);
-      })) {
-    throw std::invalid_argument(
-        "unable to start waiting on accept "
-        "notification queue in the specified "
-        "EventBase thread");
-  }
+  eventBase->runInEventBaseThread([=]() {
+    callback_->acceptStarted();
+    this->startConsuming(eventBase, &queue_);
+  });
 }
 
 void AsyncServerSocket::RemoteAcceptor::stop(
     EventBase* eventBase,
     AcceptCallback* callback) {
-  if (!eventBase->runInEventBaseThread([=]() {
-        callback->acceptStopped();
-        delete this;
-      })) {
-    throw std::invalid_argument(
-        "unable to start waiting on accept "
-        "notification queue in the specified "
-        "EventBase thread");
-  }
+  eventBase->runInEventBaseThread([=]() {
+    callback->acceptStopped();
+    delete this;
+  });
 }
 
 void AsyncServerSocket::RemoteAcceptor::messageAvailable(

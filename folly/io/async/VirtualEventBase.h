@@ -71,13 +71,12 @@ class VirtualEventBase : public folly::Executor, public folly::TimeoutManager {
    * @see EventBase::runInEventBaseThread
    */
   template <typename F>
-  void runInEventBaseThread(F&& f) {
+  void runInEventBaseThread(F&& f) noexcept {
     // KeepAlive token has to be released in the EventBase thread. If
     // runInEventBaseThread() fails, we can't extract the KeepAlive token
     // from the callback to properly release it.
-    CHECK(evb_->runInEventBaseThread(
-        [keepAliveToken = getKeepAliveToken(this),
-         f = std::forward<F>(f)]() mutable { f(); }));
+    evb_->runInEventBaseThread([keepAliveToken = getKeepAliveToken(this),
+                                f = std::forward<F>(f)]() mutable { f(); });
   }
 
   HHWheelTimer& timer() {

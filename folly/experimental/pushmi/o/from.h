@@ -34,23 +34,22 @@ namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct from_fn {
  private:
-  struct sender_base : many_sender<ignoreSF, inlineEXF> {
+  struct sender_base : many_sender<> {
     using properties = property_set<
         is_sender<>,
         is_many<>,
-        is_always_blocking<>,
-        is_fifo_sequence<>>;
+        is_always_blocking<>>;
   };
   template <class I, class S>
   struct out_impl {
     I begin_;
     S end_;
-    PUSHMI_TEMPLATE(class Out)
+    PUSHMI_TEMPLATE(class In, class Out)
     (requires ReceiveValue<
         Out,
         typename std::iterator_traits<I>::value_type>) //
         void
-        operator()(sender_base&, Out out) const {
+        operator()(In&&, Out out) const {
       auto c = begin_;
       for (; c != end_; ++c) {
         set_value(out, *c);
@@ -105,7 +104,7 @@ struct flow_from_up {
     }
     // submit work to exec
     ::folly::pushmi::submit(
-        p->exec, make_receiver([p = p, requested](auto) {
+        ::folly::pushmi::schedule(p->exec), make_receiver([p = p, requested](auto) {
           auto remaining = requested;
           // this loop is structured to work when there is
           // re-entrancy out.value in the loop may call up.value.
@@ -126,13 +125,13 @@ struct flow_from_up {
   void error(E) noexcept {
     p->stop.store(true);
     ::folly::pushmi::submit(
-        p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
+        ::folly::pushmi::schedule(p->exec), make_receiver([p = p](auto) { set_done(p->out); }));
   }
 
   void done() {
     p->stop.store(true);
     ::folly::pushmi::submit(
-        p->exec, make_receiver([p = p](auto) { set_done(p->out); }));
+        ::folly::pushmi::schedule(p->exec), make_receiver([p = p](auto) { set_done(p->out); }));
   }
 };
 
@@ -142,19 +141,19 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
   struct out_impl {
     I begin_;
     S end_;
-    mutable Exec exec_;
+    Exec exec_;
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out,
         typename std::iterator_traits<I>::value_type>) //
         void
-        operator()(Out out) const {
+        operator()(Out out) {
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), exec_, false);
 
       ::folly::pushmi::submit(
-          exec_, make_receiver([p](auto) {
+          ::folly::pushmi::schedule(exec_), make_receiver([p](auto) {
             // pass reference for cancellation.
             set_starting(p->out, make_receiver(flow_from_up<Producer>{p}));
           }));
@@ -181,14 +180,14 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
   PUSHMI_TEMPLATE(class I, class S, class Exec)
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
-      std::forward_iterator_tag>&& Sender<Exec, is_single<>, is_executor<>>) //
+      std::forward_iterator_tag>&& Executor<Exec>) //
       auto
       operator()(I begin, S end, Exec exec) const {
     return make_flow_many_sender(out_impl<I, S, Exec>{begin, end, exec});
   }
 
   PUSHMI_TEMPLATE(class R, class Exec)
-  (requires Range<R>&& Sender<Exec, is_single<>, is_executor<>>) //
+  (requires Range<R>&& Executor<Exec>) //
       auto
       operator()(R&& range, Exec exec) const {
     return (*this)(std::begin(range), std::end(range), exec);

@@ -143,9 +143,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     socket_->resumeRead(this);
   }
 
-  int getFD() const {
-    CHECK(socket_) << "Need to bind before getting FD";
-    return socket_->getFD();
+  NetworkSocket getNetworkSocket() const {
+    CHECK(socket_) << "Need to bind before getting Network Socket";
+    return socket_->getNetworkSocket();
   }
 
   void close() {
@@ -225,14 +225,12 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
         break;
     }
 
-    auto client = clientAddress;
     auto callback = listeners_[listenerId].second;
-    auto socket = socket_;
 
     // Schedule it in the listener's eventbase
     // XXX: Speed this up
-    auto f = [socket,
-              client,
+    auto f = [socket = socket_,
+              client = clientAddress,
               callback,
               data = std::move(data),
               truncated]() mutable {

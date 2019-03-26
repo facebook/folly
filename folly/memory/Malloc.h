@@ -29,7 +29,7 @@
  */
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // We have JEMalloc, so use it.
-#include <jemalloc/jemalloc.h>
+#include <jemalloc/jemalloc.h> // @manual
 #else
 #ifndef MALLOCX_LG_ALIGN
 #define MALLOCX_LG_ALIGN(la) (la)

@@ -17,6 +17,8 @@
 #pragma once
 
 #include <sys/types.h>
+
+#include <cassert>
 #include <cstddef>
 #include <iosfwd>
 #include <string>
@@ -403,7 +405,7 @@ class SocketAddress {
   socklen_t getActualSize() const;
 
   sa_family_t getFamily() const {
-    DCHECK(external_ || AF_UNIX != storage_.addr.family());
+    assert(external_ || AF_UNIX != storage_.addr.family());
     return external_ ? sa_family_t(AF_UNIX) : storage_.addr.family();
   }
 

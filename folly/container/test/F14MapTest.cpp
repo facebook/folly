@@ -19,6 +19,8 @@
 #include <algorithm>
 #include <unordered_map>
 
+#include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
@@ -277,6 +279,8 @@ void runSimple() {
   EXPECT_EQ(h8.size(), 2);
   EXPECT_EQ(h8.count(s("abc")), 1);
   EXPECT_EQ(h8.count(s("xyz")), 0);
+  EXPECT_TRUE(h8.contains(s("abc")));
+  EXPECT_FALSE(h8.contains(s("xyz")));
 
   EXPECT_TRUE(h7 != h8);
   EXPECT_TRUE(h8 != h9);
@@ -294,6 +298,10 @@ void runSimple() {
     EXPECT_EQ(h5.count(k), 1);
     EXPECT_EQ(h6.count(k), 1);
     EXPECT_EQ(h8.count(k), 1);
+    EXPECT_TRUE(h4.contains(k));
+    EXPECT_TRUE(h5.contains(k));
+    EXPECT_TRUE(h6.contains(k));
+    EXPECT_TRUE(h8.contains(k));
   }
 
   EXPECT_TRUE(h2 == h7);
@@ -485,6 +493,8 @@ void runRandom() {
             EXPECT_EQ(t->second.val_, r->second.val_);
           }
           EXPECT_EQ(t0.count(k), r0.count(k));
+          // TODO: When std::unordered_map supports c++20:
+          // EXPECT_EQ(t0.contains(k), r0.contains(k));
         } else if (pct < 60) {
           // equal_range
           auto t = t0.equal_range(k);
@@ -1183,10 +1193,13 @@ void runInsertAndEmplace(std::string const& name) {
   M m;
   typename M::key_type k;
   EXPECT_EQ(m.count(k), 0);
+  EXPECT_FALSE(m.contains(k));
   m.emplace();
   EXPECT_EQ(m.count(k), 1);
+  EXPECT_TRUE(m.contains(k));
   m.emplace();
   EXPECT_EQ(m.count(k), 1);
+  EXPECT_TRUE(m.contains(k));
 }
 
 TEST(F14ValueMap, destructuring) {
@@ -1304,9 +1317,20 @@ TEST(F14ValueMap, heterogeneousLookup) {
     EXPECT_TRUE(ref.end() == ref.find(buddy));
     EXPECT_EQ(hello, ref.find(hello)->first);
 
+    const auto buddyHashToken = ref.prehash(buddy);
+    const auto helloHashToken = ref.prehash(hello);
+
     // prehash + find
-    EXPECT_TRUE(ref.end() == ref.find(ref.prehash(buddy), buddy));
-    EXPECT_EQ(hello, ref.find(ref.prehash(hello), hello)->first);
+    EXPECT_TRUE(ref.end() == ref.find(buddyHashToken, buddy));
+    EXPECT_EQ(hello, ref.find(helloHashToken, hello)->first);
+
+    // contains
+    EXPECT_FALSE(ref.contains(buddy));
+    EXPECT_TRUE(ref.contains(hello));
+
+    // contains with prehash
+    EXPECT_FALSE(ref.contains(buddyHashToken, buddy));
+    EXPECT_TRUE(ref.contains(helloHashToken, hello));
 
     // equal_range
     EXPECT_TRUE(std::make_pair(ref.end(), ref.end()) == ref.equal_range(buddy));
@@ -1403,6 +1427,7 @@ void runHeterogeneousInsertTest() {
 
   resetTracking();
   EXPECT_EQ(map.count(10), 0);
+  EXPECT_FALSE(map.contains(10));
   EXPECT_EQ(Tracked<1>::counts.dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts;
 
@@ -1731,6 +1756,25 @@ TEST(F14Map, continuousCapacityBig3) {
 TEST(F14Map, continuousCapacityF12) {
   runContinuousCapacityTest<folly::F14VectorMap<uint16_t, uint16_t>>(
       0xfff0, 0xfffe);
+}
+
+template <template <class...> class TMap>
+void testContainsWithPrecomputedHash() {
+  TMap<int, int> m{};
+  const auto key{1};
+  m.insert({key, 1});
+  const auto hashToken = m.prehash(key);
+  EXPECT_TRUE(m.contains(hashToken, key));
+  const auto otherKey{2};
+  const auto hashTokenNotFound = m.prehash(otherKey);
+  EXPECT_FALSE(m.contains(hashTokenNotFound, otherKey));
+}
+
+TEST(F14Map, containsWithPrecomputedHash) {
+  testContainsWithPrecomputedHash<F14ValueMap>();
+  testContainsWithPrecomputedHash<F14VectorMap>();
+  testContainsWithPrecomputedHash<F14NodeMap>();
+  testContainsWithPrecomputedHash<F14FastMap>();
 }
 
 ///////////////////////////////////

@@ -30,14 +30,28 @@ namespace pushmi {
 template <class T>
 using __property_category_t = typename T::property_category;
 
+template <class T, class Void=void>
+struct member_property_category {};
+
+template <class T>
+struct member_property_category<
+    T,
+    void_t<__property_category_t<T>>> {
+  using property_category = __property_category_t<T>;
+};
+
 // allow specializations to use enable_if to constrain
-template <class T, class>
-struct property_traits {};
+template <class T, class Void>
+struct property_traits : std::conditional_t<
+  std::is_same<T, std::decay_t<T>>::value,
+  member_property_category<T>,
+  property_traits<std::decay_t<T>, Void>>
+{};
 template <class T>
 struct property_traits<
     T,
-    void_t<__property_category_t<std::decay_t<T>>>> {
-  using property_category = __property_category_t<std::decay_t<T>>;
+    void_t<__property_category_t<T>>> {
+  using property_category = __property_category_t<T>;
 };
 
 template <class T>
@@ -91,15 +105,23 @@ concept PropertySet,
 template <class T>
 using __properties_t = typename T::properties;
 
-// allow specializations to use enable_if to constrain
-template <class T, class>
-struct property_set_traits {};
+template <class T, class Void=void>
+struct member_properties {};
+
 template <class T>
-struct property_set_traits<
+struct member_properties<
     T,
-    void_t<__properties_t<std::decay_t<T>>>> {
-  using properties = __properties_t<std::decay_t<T>>;
+    void_t<__properties_t<T>>> {
+  using properties = __properties_t<T>;
 };
+
+// allow specializations to use enable_if to constrain
+template <class T, class Void>
+struct property_set_traits : std::conditional_t<
+  std::is_same<T, std::decay_t<T>>::value,
+  member_properties<T>,
+  property_set_traits<std::decay_t<T>, Void>>
+{};
 
 template <class T>
 using properties_t = std::enable_if_t<
@@ -120,7 +142,7 @@ POut __property_set_index_fn(
     property_set_element<POut, property_category_t<PIn>>);
 
 template <class PIn, class POut, class... Ps>
-property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, PIn), POut, Ps>...>
+property_set<std::conditional_t<PUSHMI_PP_IS_SAME(Ps, POut), PIn, Ps>...>
 __property_set_insert_fn(
     property_set<Ps...>,
     property_set_element<POut, property_category_t<PIn>>);
@@ -193,7 +215,7 @@ struct category_query_impl : bool_<and_v<decltype(category_query_fn<ExpectedN>(
 
 template <class PS, class... ExpectedN>
 struct category_query : std::conditional_t<
-                            Properties<PS> && not Or<Property<ExpectedN>...>,
+                            Properties<PS> && !Or<Property<ExpectedN>...>,
                             detail::category_query_impl<PS, ExpectedN...>,
                             std::false_type> {};
 

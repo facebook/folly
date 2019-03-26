@@ -253,8 +253,9 @@ TEST(Coro, CurrentExecutor) {
 }
 
 coro::Task<void> taskTimedWait() {
+  auto ex = co_await coro::co_current_executor;
   auto fastFuture =
-      futures::sleep(std::chrono::milliseconds{50}).thenValue([](Unit) {
+      futures::sleep(std::chrono::milliseconds{50}).via(ex).thenValue([](Unit) {
         return 42;
       });
   auto fastResult = co_await coro::timed_wait(
@@ -267,7 +268,7 @@ coro::Task<void> taskTimedWait() {
   };
 
   auto throwingFuture =
-      futures::sleep(std::chrono::milliseconds{50}).thenValue([](Unit) {
+      futures::sleep(std::chrono::milliseconds{50}).via(ex).thenValue([](Unit) {
         throw ExpectedException();
       });
   EXPECT_THROW(
@@ -275,13 +276,22 @@ coro::Task<void> taskTimedWait() {
           std::move(throwingFuture), std::chrono::milliseconds{100}),
       ExpectedException);
 
+  auto promiseFuturePair = folly::makePromiseContract<folly::Unit>(ex);
+  auto lifetimeFuture = std::move(promiseFuturePair.second);
   auto slowFuture =
-      futures::sleep(std::chrono::milliseconds{200}).thenValue([](Unit) {
-        return 42;
-      });
+      futures::sleep(std::chrono::milliseconds{200})
+          .via(ex)
+          .thenValue([lifetimePromise =
+                          std::move(promiseFuturePair.first)](Unit) mutable {
+            lifetimePromise.setValue();
+            return 42;
+          });
   auto slowResult = co_await coro::timed_wait(
       std::move(slowFuture), std::chrono::milliseconds{100});
   EXPECT_FALSE(slowResult);
+
+  // Ensure that task completes for safe executor lifetimes
+  (void)co_await std::move(lifetimeFuture);
 
   co_return;
 }

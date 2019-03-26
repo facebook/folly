@@ -30,8 +30,8 @@ struct StringKeyedUnorderedMap
     : public F14NodeMap<std::string, Mapped, Hash, Eq, Alloc> {
   using Super = F14NodeMap<std::string, Mapped, Hash, Eq, Alloc>;
 
-  using require_transparent_hash = typename Hash::is_transparent;
-  using require_transparent_eq = typename Eq::is_transparent;
+  static_assert(is_transparent<Hash>::value, "not transparent");
+  static_assert(is_transparent<Eq>::value, "not transparent");
 
  public:
   using Super::Super;

@@ -20,6 +20,7 @@
 #include <sys/types.h>
 
 #include <boost/regex.hpp>
+#include <glog/logging.h>
 
 #include <folly/Exception.h>
 #include <folly/File.h>

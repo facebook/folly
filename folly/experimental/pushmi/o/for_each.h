@@ -17,6 +17,7 @@
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
+#include <folly/Function.h>
 
 namespace folly {
 namespace pushmi {
@@ -28,45 +29,53 @@ struct for_each_fn {
   struct subset {
     using properties = property_set<PN...>;
   };
+  template<class Up>
+  struct request_fn {
+    Up up_;
+    explicit request_fn(Up up) : up_(std::move(up)) {}
+    request_fn(request_fn&& o) : up_(std::move(o.up_)) {}
+    void operator()(std::ptrdiff_t requested) {
+      ::folly::pushmi::set_value(up_, requested);
+    }
+  };
   template <class In, class Out>
-  struct Pull : Out {
-    explicit Pull(Out out) : Out(std::move(out)) {}
+  struct Pull {
+    Out out_;
+    explicit Pull(Out out) : out_(std::move(out)) {}
     using properties =
         property_set_insert_t<properties_t<Out>, property_set<is_flow<>>>;
-    std::function<void(std::ptrdiff_t)> pull;
+    folly::Function<void(std::ptrdiff_t)> pull;
     template <class... VN>
     void value(VN&&... vn) {
-      ::folly::pushmi::set_value(static_cast<Out&>(*this), (VN &&) vn...);
+      ::folly::pushmi::set_value(out_, (VN &&) vn...);
       pull(1);
     }
     template <class E>
-    void error(E&& e) {
+    void error(E&& e) noexcept {
       // break circular reference
       pull = nullptr;
-      ::folly::pushmi::set_error(static_cast<Out&>(*this), (E &&) e);
+      ::folly::pushmi::set_error(out_, (E &&) e);
     }
     void done() {
       // break circular reference
       pull = nullptr;
-      ::folly::pushmi::set_done(static_cast<Out&>(*this));
+      ::folly::pushmi::set_done(out_);
     }
     PUSHMI_TEMPLATE(class Up)
-    (requires Receiver<Up> && ReceiveValue<Up, std::ptrdiff_t>)
+    (requires ReceiveValue<Up, std::ptrdiff_t>)
     void starting(Up up) {
-      pull = [up = std::move(up)](std::ptrdiff_t requested) mutable {
-        ::folly::pushmi::set_value(up, requested);
-      };
+      pull = request_fn<Up>{std::move(up)};
       pull(1);
     }
     PUSHMI_TEMPLATE(class Up)
-    (requires ReceiveValue<Up>)
+    (requires ReceiveValue<Up> && not ReceiveValue<Up, std::ptrdiff_t>)
     void starting(Up) {}
   };
   template <class... AN>
   struct fn {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>&& Flow<In>&& Many<In>)
+    (requires FlowSender<In>&& is_many_v<In>)
     In operator()(In in) {
       auto out{::folly::pushmi::detail::receiver_from_fn<subset<
           is_sender<>,

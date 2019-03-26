@@ -242,13 +242,13 @@ def get_stacktrace(thread_id):
 
 
 def is_thread_blocked_with_frame(
-    thread_id, top_line, expected_top_line, expected_frame
+    thread_id, top_line, expected_top_lines, expected_frame
 ):
     '''
     Returns True if we found expected_top_line in top_line, and
     we found the expected_frame in the thread's stack trace.
     '''
-    if expected_top_line not in top_line:
+    if all(expected not in top_line for expected in expected_top_lines):
         return False
     stacktrace_lines = get_stacktrace(thread_id)
     return any(expected_frame in line for line in stacktrace_lines)
@@ -267,12 +267,22 @@ class MutexType(Enum):
         of the thread's stack. Returns None if not found.
         '''
 
+        WAITLIST = [
+            '__lll_lock_wait',
+            'futex_abstimed_wait',
+            'futex_abstimed_wait_cancelable',
+            'futex_reltimed_wait',
+            'futex_reltimed_wait_cancelable',
+            'futex_wait',
+            'futex_wait_cancelable',
+        ]
+
         if is_thread_blocked_with_frame(
-            thread_id, top_line, '__lll_lock_wait', 'pthread_mutex'
+            thread_id, top_line, WAITLIST, 'pthread_mutex'
         ):
             return MutexType.PTHREAD_MUTEX_T
         if is_thread_blocked_with_frame(
-            thread_id, top_line, 'futex_wait', 'pthread_rwlock'
+            thread_id, top_line, WAITLIST, 'pthread_rwlock'
         ):
             return MutexType.PTHREAD_RWLOCK_T
         return None
@@ -382,7 +392,11 @@ def get_pthread_rwlock_t_owner_and_address(lwp_to_thread_id, thread_lwp):
     # fields of the mutex.
     try:
         rwlock_info = gdb.parse_and_eval('rwlock').dereference()
-        rwlock_owner_lwp = int(rwlock_info['__data']['__writer'])
+        rwlock_data = rwlock_info['__data']
+        field_names = ['__cur_writer', '__writer']
+        fields = rwlock_data.type.fields()
+        field = [f for f in fields if f.name in field_names][0]
+        rwlock_owner_lwp = int(rwlock_data[field])
         # We can only track the owner if it is currently write-locked.
         # If it is not write-locked or if it is currently read-locked,
         # possibly by multiple threads, we cannot find the owner.

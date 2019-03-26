@@ -41,7 +41,7 @@ Core::VersionedData Core::getData() {
   return data_.copy();
 }
 
-size_t Core::refresh(size_t version, bool force) {
+size_t Core::refresh(size_t version) {
   CHECK(ObserverManager::inManagerThread());
 
   ObserverManager::DependencyRecorder::markRefreshDependency(*this);
@@ -61,7 +61,7 @@ size_t Core::refresh(size_t version, bool force) {
       return versionLastChange_;
     }
 
-    bool needRefresh = force || version_ == 0;
+    bool needRefresh = std::exchange(forceRefresh_, false) || version_ == 0;
 
     ObserverManager::DependencyRecorder dependencyRecorder(*this);
 
@@ -141,6 +141,10 @@ size_t Core::refresh(size_t version, bool force) {
   }
 
   return versionLastChange_;
+}
+
+void Core::setForceRefresh() {
+  forceRefresh_ = true;
 }
 
 Core::Core(folly::Function<std::shared_ptr<const void>()> creator)

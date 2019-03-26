@@ -4,7 +4,7 @@
 
 I wrote an operator called `bulk()` and implemented for_each and reduce in terms of it. I departed from the `bulk_execute()` signature and tried to model the reduce signature on my `bulk` operator. I am not satisfied with the result and would need to invest more to get an abstraction for bulk that I was confident was minimal and efficient.
 
-# Background 
+# Background
 
 ## bulk_execute
 
@@ -43,13 +43,13 @@ auto bulk(
     RS&& selector);
 ```
 
-The `bulk` function packages the parameters and returns an adapter function. 
+The `bulk` function packages the parameters and returns an adapter function.
 
 > A Sender is an object with a `submit()` method
 
 > An Adapter is a function that takes a Sender and returns a Sender. Adapters are used for composition.
 
-When called, the Adapter from `bulk()` will package the Adapter parameter with the original parameters and return a Sender. 
+When called, the Adapter from `bulk()` will package the Adapter parameter with the original parameters and return a Sender.
 
 > A Receiver is an object that has methods like `value()`, `error()` and `done()`. A Receiver is like a Promise.
 
@@ -78,16 +78,17 @@ void inline_driver(
         }
         auto result = selector(std::move(acc));
         mi::set_value(out, std::move(result));
+        mi::set_done(out);
     } catch(...) {
         mi::set_error(out, std::current_exception());
     }
     };
 ```
 
-> ways to improve bulk: 
+> ways to improve bulk:
 >  - merge ShapeBegin and ShapeEnd into a Range.
 >  - pass out to selector so that it can deliver an error or a success.
->  - initFunc multiple times to have context local state that does not need locking or CAS loop. 
+>  - initFunc multiple times to have context local state that does not need locking or CAS loop.
 >  - compose the driver implementations from operators rather than each having a bespoke implementation
 
 # for_each
@@ -97,18 +98,18 @@ implementing for_each was straight-forward with the interface.
 ```cpp
 template<class ExecutionPolicy, class RandomAccessIterator, class Function>
 void for_each(
-  ExecutionPolicy&& policy, 
-  RandomAccessIterator begin, 
-  RandomAccessIterator end, 
+  ExecutionPolicy&& policy,
+  RandomAccessIterator begin,
+  RandomAccessIterator end,
   Function f)
 {
-  operators::just(0) | 
+  operators::just(0) |
     operators::bulk(
-      [f](auto& acc, auto cursor){ f(*cursor); }, 
+      [f](auto& acc, auto cursor){ f(*cursor); },
       begin,
-      end, 
-      policy, 
-      [](auto&& args){ return args; }, 
+      end,
+      policy,
+      [](auto&& args){ return args; },
       [](auto&& acc){ return 0; }) |
     operators::blocking_submit();
 }
@@ -116,7 +117,7 @@ void for_each(
 
 The oddity is that bulk is expecting a shared state value and a value as input and a value result. Since for_each does not have shared state, this is overhead that becomes obvious and disturbing when looking at the naive concurrent driver in the code (there is a CAS loop around the call to the state update function even though the state is not updated here).
 
-# reduce 
+# reduce
 
 implementing reduce took more effort and some of the code in the drivers and parameters to the driver were modified to get reduce working.
 
@@ -124,23 +125,23 @@ implementing reduce took more effort and some of the code in the drivers and par
 template<class ExecutionPolicy, class ForwardIt, class T, class BinaryOp>
 T reduce(
   ExecutionPolicy&& policy,
-  ForwardIt begin, 
-  ForwardIt end, 
-  T init, 
+  ForwardIt begin,
+  ForwardIt end,
+  T init,
   BinaryOp binary_op){
-    return operators::just(std::move(init)) | 
+    return operators::just(std::move(init)) |
       operators::bulk(
-        [binary_op](auto& acc, auto cursor){ acc = binary_op(acc, *cursor); }, 
+        [binary_op](auto& acc, auto cursor){ acc = binary_op(acc, *cursor); },
         begin,
-        end, 
-        policy, 
-        [](auto&& args){ return args; }, 
+        end,
+        policy,
+        [](auto&& args){ return args; },
         [](auto&& acc){ return acc; }) |
       operators::get<T>;
     }
 ```
 
-Based on examples that I have been shown, the existing bulk_execute would expect the bulk_execute caller to provide the synchronization for the shared state. In the case of reduce it is important to synchronize when the execution is concurrent and equally important not to synchronize when it is not concurrent. Using if constexpr to implement reduce with and without sync in the parameters to bulk would add a lot of unsafe bespoke work and complication into every algorithm using bulk. In this bulk design the driver owns synchronization instead. 
+Based on examples that I have been shown, the existing bulk_execute would expect the bulk_execute caller to provide the synchronization for the shared state. In the case of reduce it is important to synchronize when the execution is concurrent and equally important not to synchronize when it is not concurrent. Using if constexpr to implement reduce with and without sync in the parameters to bulk would add a lot of unsafe bespoke work and complication into every algorithm using bulk. In this bulk design the driver owns synchronization instead.
 
 > NOTE - in any case, if a high-level async library design requires manual lock or lock-free primitive usage for correct behavior, then the design needs to be changed.
 

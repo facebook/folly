@@ -22,6 +22,7 @@
 #include <glog/logging.h>
 
 #include <folly/Conv.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

@@ -21,7 +21,6 @@
 
 #include <folly/Hash.h>
 #include <folly/Indestructible.h>
-#include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/Unit.h>
 #include <folly/lang/SafeAssert.h>

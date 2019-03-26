@@ -8,8 +8,19 @@ if (POLICY CMP0057)
   cmake_policy(SET CMP0057 NEW)
 endif()
 
+# CMP0075 Include file check macros honor CMAKE_REQUIRED_LIBRARIES
+if(POLICY CMP0075)
+  cmake_policy(SET CMP0075 NEW)
+endif()
+
 # includes
-set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/CMake" ${CMAKE_MODULE_PATH})
+set(CMAKE_MODULE_PATH
+  "${CMAKE_CURRENT_SOURCE_DIR}/CMake"
+  # for in-fbsource builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/../opensource/fbcode_builder/CMake"
+  # For shipit-transformed builds
+  "${CMAKE_CURRENT_SOURCE_DIR}/build/fbcode_builder/CMake"
+  ${CMAKE_MODULE_PATH})
 
 # package information
 set(PACKAGE_NAME      "folly")
@@ -148,6 +159,8 @@ list(APPEND hfiles
   ${FOLLY_DIR}/io/async/test/TimeUtil.h
   ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
   ${FOLLY_DIR}/io/async/test/Util.h
+  ${FOLLY_DIR}/test/DeterministicSchedule.h
+  ${FOLLY_DIR}/test/JsonTestUtil.h
   ${FOLLY_DIR}/test/TestUtils.h
 )
 
@@ -170,6 +183,54 @@ if (NOT ${LIBAIO_FOUND})
     ${FOLLY_DIR}/experimental/io/AsyncIO.h
   )
 endif()
+if (${LIBSODIUM_FOUND})
+  string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
+  if (${IS_X86_64_ARCH} STREQUAL "-1")
+    message(
+      STATUS
+      "arch ${CMAKE_LIBRARY_ARCHITECTURE} does not match x86_64, "
+      "skipping setting SSE2/AVX2 compile flags for LtHash SIMD code"
+    )
+  else()
+    message(
+      STATUS
+      "arch ${CMAKE_LIBRARY_ARCHITECTURE} matches x86_64, "
+      "setting SSE2/AVX2 compile flags for LtHash SIMD code"
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mavx -mavx2 -msse2
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mno-avx -mno-avx2 -mno-sse2
+    )
+    set_source_files_properties(
+      ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+      PROPERTIES
+      COMPILE_FLAGS
+      -mno-avx -mno-avx2 -msse2
+    )
+  endif()
+else()
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/crypto/Blake2xb.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_AVX2.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_Simple.cpp
+    ${FOLLY_DIR}/experimental/crypto/detail/MathOperation_SSE2.cpp
+    ${FOLLY_DIR}/experimental/crypto/LtHash.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/crypto/Blake2xb.h
+    ${FOLLY_DIR}/experimental/crypto/detail/LtHashInternal.h
+    ${FOLLY_DIR}/experimental/crypto/LtHash-inl.h
+    ${FOLLY_DIR}/experimental/crypto/LtHash.h
+  )
+endif()
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/Poly.cpp
@@ -182,6 +243,30 @@ if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
     ${FOLLY_DIR}/detail/TypeList.h
     ${FOLLY_DIR}/poly/Nullable.h
     ${FOLLY_DIR}/poly/Regular.h
+  )
+endif()
+
+set(PCLMUL_FILES
+  ${FOLLY_DIR}/hash/detail/ChecksumDetail.cpp
+  ${FOLLY_DIR}/hash/detail/Crc32CombineDetail.cpp
+  ${FOLLY_DIR}/hash/detail/Crc32cDetail.cpp
+)
+CHECK_CXX_COMPILER_FLAG(-mpclmul COMPILER_HAS_M_PCLMUL)
+if (COMPILER_HAS_M_PCLMUL)
+  message(
+    STATUS
+    "compiler has flag pclmul, setting compile flag for ${PCLMUL_FILES}"
+  )
+  set_source_files_properties(
+    ${PCLMUL_FILES}
+    PROPERTIES
+    COMPILE_OPTIONS
+    -mpclmul
+  )
+else()
+  message(
+    STATUS
+    "compiler does not have flag pclmul, skipping setting compile flags for ${PCLMUL_FILES}"
   )
 endif()
 
@@ -248,6 +333,19 @@ apply_folly_compile_options_to_target(folly)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
+# Test utilities exported for use by downstream projects
+add_library(folly_test_util
+  ${FOLLY_DIR}/test/DeterministicSchedule.cpp
+  ${FOLLY_DIR}/test/JsonTestUtil.cpp
+)
+target_link_libraries(folly_test_util
+  PUBLIC
+    ${BOOST_LIBRARIES}
+    folly
+    ${LIBGMOCK_LIBRARIES}
+)
+apply_folly_compile_options_to_target(folly_test_util)
+list(APPEND FOLLY_INSTALL_TARGETS folly_test_util)
 
 install(TARGETS ${FOLLY_INSTALL_TARGETS}
   EXPORT folly
@@ -454,8 +552,6 @@ if (BUILD_TESTS)
       TEST tuple_ops_test SOURCES TupleOpsTest.cpp
 
     DIRECTORY experimental/io/test/
-      # Depends on libaio
-      #TEST async_io_test SOURCES AsyncIOTest.cpp
       TEST fs_util_test SOURCES FsUtilTest.cpp
 
     DIRECTORY external/farmhash/test/
@@ -680,6 +776,7 @@ if (BUILD_TESTS)
       TEST exception_test SOURCES ExceptionTest.cpp
       TEST exception_wrapper_test SOURCES ExceptionWrapperTest.cpp
       TEST expected_test SOURCES ExpectedTest.cpp
+      TEST fbstring_test SOURCES FBStringTest.cpp
       TEST fbvector_test SOURCES FBVectorTest.cpp
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
@@ -759,6 +856,21 @@ if (BUILD_TESTS)
       TEST uri_test SOURCES UriTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
   )
+
+  if (${LIBSODIUM_FOUND})
+    folly_define_tests(
+      DIRECTORY experimental/crypto/test/
+        TEST blake2xb_test SOURCES Blake2xbTest.cpp
+        TEST lt_hash_test SOURCES LtHashTest.cpp
+    )
+  endif()
+
+  if (${LIBAIO_FOUND})
+    folly_define_tests(
+      DIRECTORY experimental/io/test/
+        TEST async_io_test SOURCES AsyncIOTest.cpp
+    )
+  endif()
 
   get_target_property(pic folly POSITION_INDEPENDENT_CODE)
   if (pic)

@@ -243,10 +243,8 @@ int socketpair(int domain, int type, int protocol, int sv[2]) {
   if (r == -1) {
     return r;
   }
-  sv[0] =
-      _open_osfhandle(static_cast<intptr_t>(pair[0].data), O_RDWR | O_BINARY);
-  sv[1] =
-      _open_osfhandle(static_cast<intptr_t>(pair[1].data), O_RDWR | O_BINARY);
+  sv[0] = network_socket_to_fd(pair[0]);
+  sv[1] = network_socket_to_fd(pair[1]);
   return 0;
 }
 } // namespace sockets

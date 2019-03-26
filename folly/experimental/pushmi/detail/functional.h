@@ -28,16 +28,20 @@ PUSHMI_INLINE_VAR constexpr struct invoke_fn {
   using mem_fn_t = decltype(std::mem_fn(std::declval<F>()));
 
  public:
-  template <class F, class... As>
+  PUSHMI_TEMPLATE(class F, class... As)
+  (requires //
+    requires(
+    std::declval<F>()(std::declval<As>()...))) //
   auto operator()(F&& f, As&&... as) const
-      noexcept(noexcept(((F &&) f)((As &&) as...)))
-          -> decltype(((F &&) f)((As &&) as...)) {
+      noexcept(noexcept(((F &&) f)((As &&) as...))) {
     return ((F &&) f)((As &&) as...);
   }
-  template <class F, class... As>
+  PUSHMI_TEMPLATE(class F, class... As)
+  (requires //
+    requires(
+    std::mem_fn(std::declval<F>())(std::declval<As>()...))) //
   auto operator()(F&& f, As&&... as) const
-      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As &&) as...)))
-          -> decltype(std::mem_fn(f)((As &&) as...)) {
+      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As &&) as...))) {
     return std::mem_fn(f)((As &&) as...);
   }
 } invoke{};

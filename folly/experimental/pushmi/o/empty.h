@@ -22,34 +22,23 @@
 namespace folly {
 namespace pushmi {
 namespace detail {
-struct single_empty_sender_base : single_sender<ignoreSF, inlineEXF> {
+struct single_empty_impl : pipeorigin {
   using properties = property_set<
       is_sender<>,
       is_single<>,
-      is_always_blocking<>,
-      is_fifo_sequence<>>;
-};
-template <class... VN>
-struct single_empty_impl {
+      is_always_blocking<>>;
+
   PUSHMI_TEMPLATE(class Out)
-  (requires ReceiveValue<Out, VN...>) //
-      void
-      operator()(single_empty_sender_base&, Out out) {
+  (requires Receiver<Out>&& Invocable<decltype(set_done)&, Out&>) //
+      void submit(Out&& out) {
     set_done(out);
   }
 };
 } // namespace detail
 
 namespace operators {
-template <class... VN>
-auto empty() {
-  return make_single_sender(
-      detail::single_empty_sender_base{}, detail::single_empty_impl<VN...>{});
-}
-
-inline auto empty() {
-  return make_single_sender(
-      detail::single_empty_sender_base{}, detail::single_empty_impl<>{});
+inline detail::single_empty_impl empty() {
+  return {};
 }
 
 } // namespace operators

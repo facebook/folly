@@ -217,6 +217,35 @@ TEST(FiberManager, batonTryWait) {
   manager.loopUntilNoReady();
 }
 
+TEST(FiberManager, batonTryWaitConsistent) {
+  folly::EventBase evb;
+  struct ExpectedException {};
+  auto& fm = getFiberManager(evb);
+
+  // Check if try_wait and post have a consistent behavior on a timed out
+  // baton
+  Baton b;
+
+  b.try_wait_for(std::chrono::milliseconds(1));
+  b.try_wait(); // returns false
+
+  b.post();
+  EXPECT_TRUE(b.try_wait());
+  b.reset();
+
+  fm.addTask([&]() {
+    b.try_wait_for(std::chrono::milliseconds(1));
+    b.try_wait(); // returns false
+
+    b.post();
+    EXPECT_TRUE(b.try_wait());
+  });
+
+  while (fm.hasTasks()) {
+    evb.loopOnce();
+  }
+}
+
 TEST(FiberManager, genericBatonFiberWait) {
   FiberManager manager(std::make_unique<SimpleLoopController>());
 
@@ -1565,7 +1594,15 @@ TEST(FiberManager, semaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              sem.wait();
+              if (j % 2) {
+                sem.wait();
+              } else {
+#if FOLLY_FUTURE_USING_FIBER
+                sem.future_wait().get();
+#else
+                sem.wait();
+#endif
+              }
               ++counter;
               sem.signal();
               --counter;

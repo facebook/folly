@@ -33,7 +33,7 @@ auto get_setting() {
     if (setting_exists) {
       op::just(42) | op::submit(out);
     } else {
-      op::empty<int>() | op::submit(out);
+      op::empty() | op::submit(out);
     }
   });
 }
@@ -63,7 +63,7 @@ int main() {
   op::just(42) | op::transform([](int i) {
     if (i < 42) {
       return mi::any_single_sender<std::exception_ptr, std::string>{
-          op::empty<std::string>()};
+          op::empty()};
     }
     return mi::any_single_sender<std::exception_ptr, std::string>{
         op::just(std::to_string(i))};

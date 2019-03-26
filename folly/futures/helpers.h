@@ -23,9 +23,14 @@
 #include <folly/Try.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Future.h>
+#include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
 
 namespace folly {
+
+namespace fibers {
+class Baton;
+}
 
 /// This namespace is for utility functions that would usually be static
 /// members of Future, except they don't make sense there because they don't
@@ -45,8 +50,12 @@ namespace futures {
 /// The Timekeeper thread will be lazily created the first time it is
 /// needed. If your program never uses any timeouts or other time-based
 /// Futures you will pay no Timekeeper thread overhead.
-Future<Unit> sleep(Duration, Timekeeper* = nullptr);
-Future<Unit> sleepUnsafe(Duration, Timekeeper* = nullptr);
+SemiFuture<Unit> sleep(Duration, Timekeeper* = nullptr);
+[[deprecated(
+    "futures::sleep now returns a SemiFuture<Unit>. "
+    "sleepUnsafe is deprecated. "
+    "Please call futures::sleep and apply an executor with .via")]] Future<Unit>
+sleepUnsafe(Duration, Timekeeper* = nullptr);
 
 /**
  * Set func as the callback for each input Future and return a vector of
@@ -136,6 +145,12 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
     -> decltype(mapTry(exec, c.begin(), c.end(), func)) {
   return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
 }
+
+#if FOLLY_FUTURE_USING_FIBER
+
+SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
+
+#endif
 
 } // namespace futures
 

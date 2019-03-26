@@ -36,19 +36,4 @@ using libevent_fd_t = evutil_socket_t;
 #else
 using libevent_fd_t = int;
 #endif
-
-inline libevent_fd_t getLibeventFd(int fd) {
-  return netops::detail::SocketFileDescriptorMap::fdToSocket(fd);
-}
-
-inline int libeventFdToFd(libevent_fd_t fd) {
-  return netops::detail::SocketFileDescriptorMap::socketToFd(fd);
-}
-
-using EventSetCallback = void (*)(libevent_fd_t, short, void*);
-inline void
-folly_event_set(event* e, int fd, short s, EventSetCallback f, void* arg) {
-  auto lfd = getLibeventFd(fd);
-  event_set(e, lfd, s, f, arg);
-}
 } // namespace folly

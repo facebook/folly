@@ -53,7 +53,19 @@ inline bool runBenchmarksOnFlag() {
   return FLAGS_benchmark;
 }
 
-using UserCounters = std::unordered_map<std::string, int>;
+class UserMetric {
+ public:
+  enum class Type { CUSTOM, TIME, METRIC };
+
+  int value{};
+  Type type{Type::CUSTOM};
+
+  UserMetric() = default;
+  /* implicit */ UserMetric(int val, Type typ = Type::CUSTOM)
+      : value(val), type(typ) {}
+};
+
+using UserCounters = std::unordered_map<std::string, UserMetric>;
 
 namespace detail {
 struct TimeIterData {

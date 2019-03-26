@@ -20,6 +20,7 @@
 #include <cstdint>
 
 #include <folly/Function.h>
+#include <folly/Optional.h>
 
 namespace folly {
 

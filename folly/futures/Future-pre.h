@@ -52,7 +52,19 @@ struct isFutureOrSemiFuture : std::false_type {
 };
 
 template <typename T>
+struct isFutureOrSemiFuture<Try<T>> : std::false_type {
+  using Inner = lift_unit_t<T>;
+  using Return = Inner;
+};
+
+template <typename T>
 struct isFutureOrSemiFuture<Future<T>> : std::true_type {
+  typedef T Inner;
+  using Return = Future<Inner>;
+};
+
+template <typename T>
+struct isFutureOrSemiFuture<Future<Try<T>>> : std::true_type {
   typedef T Inner;
   using Return = Future<Inner>;
 };
@@ -64,10 +76,10 @@ struct isFutureOrSemiFuture<SemiFuture<T>> : std::true_type {
 };
 
 template <typename T>
-struct isTry : std::false_type {};
-
-template <typename T>
-struct isTry<Try<T>> : std::true_type {};
+struct isFutureOrSemiFuture<SemiFuture<Try<T>>> : std::true_type {
+  typedef T Inner;
+  using Return = SemiFuture<Inner>;
+};
 
 namespace futures {
 namespace detail {

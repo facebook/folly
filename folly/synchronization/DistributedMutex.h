@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <folly/Optional.h>
+#include <folly/functional/Invoke.h>
+
 #include <atomic>
 #include <chrono>
 #include <cstdint>
@@ -26,32 +29,39 @@ namespace distributed_mutex {
 /**
  * DistributedMutex is a small, exclusive-only mutex that distributes the
  * bookkeeping required for mutual exclusion in the stacks of threads that are
- * contending for it.  It tries to come at a lower space cost than std::mutex
- * while still trying to maintain the fairness benefits that come from using
- * std::mutex.  DistributedMutex provides the entire API included in
- * std::mutex, and more, with slight modifications.  DistributedMutex is the
+ * contending for it.  It has a mode that can combine critical sections when
+ * the mutex experiences contention, this allows the implementation to elide
+ * several expensive coherence and synchronization operations to boost
+ * throughput, surpassing even some atomic CAS instructions in some cases.  It
+ * has no dependencies on heap allocation and tries to come at a lower space
+ * cost than std::mutex while still trying to maintain the fairness benefits
+ * that come from using std::mutex.  DistributedMutex provides the entire API
+ * included in std::mutex, and more, with slight modifications.  It is the
  * same width as a single pointer (8 bytes on most platforms), where on the
  * other hand, std::mutex and pthread_mutex_t are both 40 bytes.  It is larger
  * than some of the other smaller locks, but the wide majority of cases using
  * the small locks are wasting the difference in alignment padding anyway
  *
  * Benchmark results are good - at the time of writing in the common
- * uncontended case, it is 30% faster than some of the other small mutexes in
- * folly and as fast as std::mutex, which recently optimized its uncontended
- * path.  In the contended case, it is about 4-5x faster than some of the
- * smaller locks in folly, ~2x faster than std::mutex in clang and ~1.8x
- * faster in gcc.  DistributedMutex is also resistent to tail latency
- * pathalogies unlike many of the other small mutexes.  Which sleep for large
+ * uncontended case, it is a few cycles faster than folly::MicroLock but a bit
+ * slower than std::mutex.  In the contended case, for lock/unlock based
+ * critical sections, it is about 4-5x faster than some of the smaller locks
+ * and about ~2x faster than std::mutex.  When used in combinable mode, it can
+ * go more than 10x faster than the small locks, about 6x faster than
+ * std::mutex and up to 2-3x faster than the implementations of flat combining
+ * we benchmarked against.  DistributedMutex is also resistent to tail latency
+ * pathalogies unlike many of the other mutexes in use, which sleep for large
  * time quantums to reduce spin churn, this causes elevated latencies for
  * threads that enter the sleep cycle.  The tail latency of lock acquisition
- * on average up to 10x better with DistributedMutex
+ * can go up to 10x lower because of a more deterministic scheduling algorithm
+ * that is managed almost entirely in userspace
  *
- * DistributedMutex reduces cache line contention by making each thread wait
- * on a thread local spinlock and futex.  This allows threads to keep working
- * only on their own cache lines without requiring cache coherence operations
- * when a mutex heavy contention.  This strategy does not require sequential
- * ordering on the centralized atomic storage for wakeup operations as each
- * thread assigned its own wait state
+ * DistributedMutex reduces cache line contention in userspace and in the
+ * kernel by making each thread wait on a thread local spinlock and futex.
+ * This allows threads to keep working only on their own cache lines without
+ * requiring cache coherence operations when a mutex heavy contention.  This
+ * strategy does not require sequential ordering on the centralized atomic
+ * storage for wakeup operations as each thread assigned its own wait state
  *
  * Non-timed mutex acquisitions are scheduled through intrusive LIFO
  * contention chains.  Each thread starts by spinning for a short quantum and
@@ -88,6 +98,23 @@ namespace distributed_mutex {
  * own, thinking a mutex is functionally identical to a binary semaphore,
  * which, unlike a mutex, is a suitable primitive for that usage
  *
+ * Combined critical sections, allow the implementation to elide several
+ * expensive operations during the lifetime of a critical section that cause
+ * slowdowns with regular lock/unlock based usage.  DistributedMutex resolves
+ * contention through combining up to a constant factor of 2 contention chains
+ * to prevent issues with fairness and latency outliers, so we retain the
+ * fairness benefits of the lock/unlock implementation with no noticeable
+ * regression when switching between the lock methods.  Despite the efficiency
+ * benefits, combined critical sections can only be used when the critical
+ * section does not depend on thread local state and does not introduce new
+ * dependencies between threads when the critical section gets combined.  For
+ * example, locking or unlocking an unrelated mutex in a combined critical
+ * section might lead to unexpected results or even undefined behavior.  This
+ * can happen if, for example, a different thread unlocks a mutex locked by
+ * the calling thread, leading to undefined behavior as the mutex might not
+ * allow locking and unlocking from unrelated threads (the posix and C++
+ * standard disallow this usage for their mutexes)
+ *
  * Timed locking through DistributedMutex is implemented through a centralized
  * algorithm - all waiters wait on the central mutex state, by setting and
  * resetting bits within the pointer-length word.  Since pointer length atomic
@@ -121,8 +148,15 @@ class DistributedMutex {
    *
    * The proxy has no public API and is intended to be for internal usage only
    *
-   * This is not a recursive mutex - trying to acquire the mutex twice from
-   * the same thread without unlocking it results in undefined behavior
+   * There are three notable cases where undefined behavior might come up:
+   *  - This is not a recursive mutex.  Trying to acquire the mutex twice from
+   *    the same thread without unlocking it results in undefined behavior
+   *  - Thread, coroutine or fiber migrations are disallowed.  This is because
+   *    the implementation requires owning the stack frame through the
+   *    execution of the critical section for both lock/unlock or combined
+   *    critical sections.  This means that you cannot allow another thread,
+   *    fiber or coroutine to unlock the mutex
+   *  - This mutex cannot be used in a program compiled with segmented stacks
    */
   DistributedMutexStateProxy lock();
 
@@ -132,6 +166,9 @@ class DistributedMutex {
    * The proxy returned by lock must be passed to unlock as an rvalue.  No
    * other option is possible here, since the proxy is only movable and not
    * copyable
+   *
+   * It is undefined behavior to unlock from a thread that did not lock the
+   * mutex
    */
   void unlock(DistributedMutexStateProxy);
 
@@ -173,6 +210,102 @@ class DistributedMutex {
   DistributedMutexStateProxy try_lock_until(
       const std::chrono::time_point<Clock, Duration>& deadline);
 
+  /**
+   * Execute a task as a combined critical section
+   *
+   * Unlike traditional lock and unlock methods, lock_combine() enqueues the
+   * passed task for execution on any arbitrary thread.  This allows the
+   * implementation to prevent cache line invalidations originating from
+   * expensive synchronization operations.  The thread holding the lock is
+   * allowed to execute the task before unlocking, thereby forming a "combined
+   * critical section".
+   *
+   * This idea is inspired by Flat Combining.  Flat Combining was introduced
+   * in the SPAA 2010 paper titled "Flat Combining and the
+   * Synchronization-Parallelism Tradeoff", by Danny Hendler, Itai Incze, Nir
+   * Shavit, and Moran Tzafrir -
+   * https://www.cs.bgu.ac.il/~hendlerd/papers/flat-combining.pdf.  The
+   * implementation used here is significantly different from that described
+   * in the paper.  The high-level goal of reducing the overhead of
+   * synchronization, however, is the same.
+   *
+   * Combined critical sections work best when kept simple.  Since the
+   * critical section might be executed on any arbitrary thread, relying on
+   * things like thread local state or mutex locking and unlocking might cause
+   * incorrectness.  Associativity is important.  For example
+   *
+   *    auto one = std::unique_lock{one_};
+   *    two_.lock_combine([&]() {
+   *      if (bar()) {
+   *        one.unlock();
+   *      }
+   *    });
+   *
+   * This has the potential to cause undefined behavior because mutexes are
+   * only meant to be acquired and released from the owning thread.  Similar
+   * errors can arise from a combined critical section introducing implicit
+   * dependencies based on the state of the combining thread.  For example
+   *
+   *    // thread 1
+   *    auto one = std::unique_lock{one_};
+   *    auto two = std::unique_lock{two_};
+   *
+   *    // thread 2
+   *    two_.lock_combine([&]() {
+   *      auto three = std::unique_lock{three_};
+   *    });
+   *
+   * Here, because we used a combined critical section, we have introduced a
+   * dependency from one -> three that might not obvious to the reader
+   *
+   * There are three notable cases where undefined behavior might come up:
+   *  - This is not a recursive mutex.  Trying to acquire the mutex twice from
+   *    the same thread without unlocking it results in undefined behavior
+   *  - Thread, coroutine or fiber migrations are disallowed.  This is because
+   *    the implementation requires the locking entity to own the stack frame
+   *    through the execution of the critical section for both lock/unlock or
+   *    combined critical sections.  This means that you cannot allow another
+   *    thread, fiber or coroutine to unlock the mutex
+   *  - This mutex cannot be used in a program compiled with segmented stacks
+   */
+  template <typename Task>
+  auto lock_combine(Task task) noexcept -> folly::invoke_result_t<const Task&>;
+
+  /**
+   * Try to combine a task as a combined critical section untill the given time
+   *
+   * Like the other try_lock() mehtods, this is allowed to fail spuriously,
+   * and is not guaranteed to return true even when the mutex is currently
+   * unlocked.
+   *
+   * Note that this does not necessarily have the same performance
+   * characteristics as the non-timed version of the combine method.  If
+   * performance is critical, use that one instead
+   */
+  template <
+      typename Rep,
+      typename Period,
+      typename Task,
+      typename ReturnType = decltype(std::declval<Task&>()())>
+  folly::Optional<ReturnType> try_lock_combine_for(
+      const std::chrono::duration<Rep, Period>& duration,
+      Task task) noexcept;
+
+  /**
+   * Try to combine a task as a combined critical section untill the given time
+   *
+   * Other than the difference in the meaning of the second argument, the
+   * semantics of this function are identical to try_lock_combine_for()
+   */
+  template <
+      typename Clock,
+      typename Duration,
+      typename Task,
+      typename ReturnType = decltype(std::declval<Task&>()())>
+  folly::Optional<ReturnType> try_lock_combine_until(
+      const std::chrono::time_point<Clock, Duration>& deadline,
+      Task task) noexcept;
+
  private:
   Atomic<std::uintptr_t> state_{0};
 };
@@ -184,6 +317,7 @@ class DistributedMutex {
  * Bring the default instantiation of DistributedMutex into the folly
  * namespace without requiring any template arguments for public usage
  */
+extern template class detail::distributed_mutex::DistributedMutex<>;
 using DistributedMutex = detail::distributed_mutex::DistributedMutex<>;
 
 } // namespace folly

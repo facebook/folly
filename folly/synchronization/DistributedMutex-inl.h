@@ -15,23 +15,24 @@
  */
 #include <folly/synchronization/DistributedMutex.h>
 
-#include <folly/CachelinePadded.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Utility.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/detail/Futex.h>
+#include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
+#include <folly/lang/Bits.h>
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
-#include <folly/synchronization/WaitOptions.h>
+#include <folly/synchronization/detail/InlineFunctionRef.h>
 #include <folly/synchronization/detail/Sleeper.h>
-#include <folly/synchronization/detail/Spin.h>
 
 #include <glog/logging.h>
 
+#include <array>
 #include <atomic>
 #include <cstdint>
 #include <limits>
@@ -75,6 +76,13 @@ constexpr auto kTimedWaiter = std::uintptr_t{0b10};
 // this becomes significant for threads that are trying to wake up the
 // uninitialized thread, if they see that the thread is not yet initialized,
 // they can do nothing but spin, and wait for the thread to get initialized
+//
+// This also plays a role in the functioning of flat combining as implemented
+// in DistributedMutex.  When a thread owning the lock goes through the
+// contention chain to either unlock the mutex or combine critical sections
+// from the other end.  The presence of kUninitialized means that the
+// combining thread is not able to make progress after this point.  So we
+// transfer the lock.
 constexpr auto kUninitialized = std::uint32_t{0b0};
 // kWaiting will be set in the waiter's futex structs while they are spinning
 // while waiting for the mutex
@@ -107,6 +115,20 @@ constexpr auto kAboutToWait = std::uint32_t{0b100};
 // had not yet entered futex().  This interleaving causes the thread calling
 // futex() to return spuriously, as the futex word is not what it should be
 constexpr auto kSleeping = std::uint32_t{0b101};
+// kCombined is set by the lock holder to let the waiter thread know that its
+// combine request was successfully completed by the lock holder.  A
+// successful combine means that the thread requesting the combine operation
+// does not need to unlock the mutex; in fact, doing so would be an error.
+constexpr auto kCombined = std::uint32_t{0b111};
+// kCombineUninitialized is like kUninitialized but is set by a thread when it
+// enqueues in hopes of getting its critical section combined with the lock
+// holder
+constexpr auto kCombineUninitialized = std::uint32_t{0b1000};
+// kCombineWaiting is set by a thread when it is ready to have its combine
+// record fulfilled by the lock holder.  In particular, this signals to the
+// lock holder that the thread has set its next_ pointer in the contention
+// chain
+constexpr auto kCombineWaiting = std::uint32_t{0b1001};
 
 // The number of spins that we are allowed to do before we resort to marking a
 // thread as having slept
@@ -116,15 +138,18 @@ constexpr auto kScheduledAwaySpinThreshold = std::chrono::nanoseconds{200};
 // The maximum number of spins before a thread starts yielding its processor
 // in hopes of getting skipped
 constexpr auto kMaxSpins = 4000;
+// The maximum number of contention chains we can resolve with flat combining.
+// After this number of contention chains, the mutex falls back to regular
+// two-phased mutual exclusion to ensure that we don't starve the combiner
+// thread
+constexpr auto kMaxCombineIterations = 2;
 
 /**
  * Write only data that is available to the thread that is waking up another.
  * Only the waking thread is allowed to write to this, the thread to be woken
  * is allowed to read from this after a wakeup has been issued
- *
- * Because of the write only semantics of the data here, acquire-release (or
- * stronger) memory ordering is needed to write to this
  */
+template <template <typename> class Atomic>
 class WakerMetadata {
  public:
   // This is the thread that initiated wakeups for the contention chain.
@@ -133,7 +158,7 @@ class WakerMetadata {
   // woke up sees this as the next thread to wake up, it knows that it is the
   // terminal node in the contention chain.  This means that it was the one
   // that took off the thread that had acquired the mutex off the centralized
-  // state.  Therefore, the current thread is the last in it's contention
+  // state.  Therefore, the current thread is the last in its contention
   // chain.  It will fall back to centralized storage to pick up the next
   // waiter or release the mutex
   //
@@ -144,26 +169,6 @@ class WakerMetadata {
   // prohitively large threshold to avoid heap allocations, this strategy
   // however, might cause increased cache misses on wakeup signalling
   std::uintptr_t waker_{0};
-};
-
-/**
- * Waiter encapsulates the state required for waiting on the mutex, this
- * contains potentially heavy state and is intended to be allocated on the
- * stack as part of a lock() function call
- */
-template <template <typename> class Atomic>
-class Waiter {
- public:
-  explicit Waiter(std::uint64_t futex) : futex_{futex} {}
-
-  // the atomic that this thread will spin on while waiting for the mutex to
-  // be unlocked
-  Atomic<std::uint64_t> futex_{kUninitialized};
-  // metadata for the waker
-  WakerMetadata wakerMetadata_{};
-  // The successor of this node.  This will be the thread that had its address
-  // on the mutex previously
-  std::uintptr_t next_{0};
   // the list of threads that the waker had previously seen to be sleeping on
   // a futex(),
   //
@@ -178,6 +183,339 @@ class Waiter {
   // how can we reuse futex_ from above for futex management?
   Futex<Atomic> sleeper_{kUninitialized};
 };
+
+/**
+ * Type of the type-erased callable that is used for combining from the lock
+ * holder's end.  This has 48 bytes of inline storage that can be used to
+ * minimize cache misses when combining
+ */
+using CombineFunction = detail::InlineFunctionRef<void(), 48>;
+
+/**
+ * Waiter encapsulates the state required for waiting on the mutex, this
+ * contains potentially heavy state and is intended to be allocated on the
+ * stack as part of a lock() function call
+ *
+ * To ensure that synchronization does not cause unintended side effects on
+ * the rest of the thread stack (eg. metadata in lockImplementation(), or any
+ * other data in the user's thread), we aggresively pad this struct and use
+ * custom alignment internally to ensure that the relevant data fits within a
+ * single cacheline.  The added alignment here also gives us some room to
+ * wiggle in the bottom few bits of the mutex, where we store extra metadata
+ */
+template <template <typename> class Atomic>
+class Waiter {
+ public:
+  Waiter() = default;
+  Waiter(Waiter&&) = delete;
+  Waiter(const Waiter&) = delete;
+  Waiter& operator=(Waiter&&) = delete;
+  Waiter& operator=(const Waiter&) = delete;
+
+  void initialize(std::uint64_t futex, CombineFunction task) {
+    // we only initialize the function if we were actually given a non-null
+    // task, otherwise
+    if (task) {
+      DCHECK_EQ(futex, kCombineUninitialized);
+      new (&function_) CombineFunction{task};
+    } else {
+      DCHECK((futex == kUninitialized) || (futex == kAboutToWait));
+      new (&metadata_) WakerMetadata<Atomic>{};
+    }
+
+    // this pedantic store is needed to ensure that the waking thread
+    // synchronizes with the state in the waiter struct when it loads the
+    // value of the futex word
+    //
+    // on x86, this gets optimized away to just a regular store, it might be
+    // needed on platforms where explicit acquire-release barriers are
+    // required for synchronization
+    //
+    // note that we release here at the end of the constructor because
+    // construction is complete here, any thread that acquires this release
+    // will see a well constructed wait node
+    futex_.store(futex, std::memory_order_release);
+  }
+
+  std::array<std::uint8_t, hardware_destructive_interference_size> padding1;
+  // the atomic that this thread will spin on while waiting for the mutex to
+  // be unlocked
+  alignas(hardware_destructive_interference_size) Atomic<std::uint64_t> futex_{
+      kUninitialized};
+  // The successor of this node.  This will be the thread that had its address
+  // on the mutex previously
+  std::uintptr_t next_{0};
+  // We use an anonymous union for the combined critical section request and
+  // the metadata that will be filled in from the leader's end.  Only one is
+  // active at a time - if a leader decides to combine the requested critical
+  // section into its execution, it will not touch the metadata field.  If a
+  // leader decides to migrate the lock to the waiter, it will not touch the
+  // function
+  //
+  // this allows us to transfer more state when combining a critical section
+  // and reduce the cache misses originating from executing an arbitrary
+  // lambda
+  //
+  // note that this is an anonymous union, not an unnamed union, the members
+  // leak into the surrounding scope
+  union {
+    // metadata for the waker
+    WakerMetadata<Atomic> metadata_;
+    // The critical section that can potentially be combined into the critical
+    // section of the locking thread
+    //
+    // This is kept as a FunctionRef because the original function is preserved
+    // until the lock_combine() function returns.  A consequence of using
+    // FunctionRef here is that we don't need to do any allocations and can
+    // allow users to capture unbounded state into the critical section.  Flat
+    // combining means that the user does not have access to the thread
+    // executing the critical section, so assumptions about thread local
+    // references can be invalidated.  Being able to capture arbitrary state
+    // allows the user to do thread local accesses right before the critical
+    // section and pass them as state to the callable being referenced here
+    CombineFunction function_;
+    // The user is allowed to use a combined critical section that returns a
+    // value.  This buffer is used to implement the value transfer to the
+    // waiting thread.  We reuse the same union because this helps us combine
+    // one synchronization operation with a material value transfer.
+    //
+    // The waker thread needs to synchronize on this cacheline to issue a
+    // wakeup to the waiter, meaning that the entire line needs to be pulled
+    // into the remote core in exclusive mode.  So we reuse the coherence
+    // operation to transfer the return value in addition to the
+    // synchronization signal.  In the case that the user's data item is
+    // small, the data is transferred all inline as part of the same line,
+    // which pretty much arrives into the CPU cache in the same clock cycle or
+    // two after a read-for-ownership request.  This gives us a high chance of
+    // coalescing the entire transitive store buffer together into one cache
+    // coherence operation from the waker's end.  This allows us to make use
+    // of the CPU bus bandwidth which would have otherwise gone to waste.
+    // Benchmarks prove this theory under a wide range of contention, value
+    // sizes, NUMA interactions and processor models
+    //
+    // The current version of the Intel optimization manual confirms this
+    // theory somewhat as well in section 2.3.5.1 (Load and Store Operation
+    // Overview)
+    //
+    //    When an instruction writes data to a memory location [...], the
+    //    processor ensures that it has the line containing this memory location
+    //    is in its L1d cache [...]. If the cache line is not there, it fetches
+    //    from the next levels using a RFO request [...] RFO and storing the
+    //    data happens after instruction retirement.  Therefore, the store
+    //    latency usually does not affect the store instruction itself
+    //
+    // This gives the user the ability to input up to 48 bytes into the
+    // combined critical section through an InlineFunctionRef and output 48
+    // bytes from it basically without any cost.  The type of the entity
+    // stored in the buffer has to be matched by the type erased callable that
+    // the caller has used.  At this point, the caller is still in the
+    // template instantiation leading to the combine request, so it has
+    // knowledge of the return type and can apply the appropriate
+    // reinterpret_cast and launder operation to safely retrieve the data from
+    // this buffer
+    std::aligned_storage_t<48, 8> storage_;
+  };
+  std::array<std::uint8_t, hardware_destructive_interference_size> padding2;
+};
+
+/**
+ * A template that helps us differentiate between the different ways to return
+ * a value from a combined critical section.  A return value of type void
+ * cannot be stored anywhere, so we use specializations and pick the right one
+ * switched through std::conditional_t
+ *
+ * This is then used by CoalescedTask and its family of functions to implement
+ * efficient return value transfers to the waiting threads
+ */
+template <typename Func>
+class RequestWithReturn {
+ public:
+  using F = Func;
+  using ReturnType = folly::invoke_result_t<const Func&>;
+  explicit RequestWithReturn(Func func) : func_{std::move(func)} {}
+
+  /**
+   * We need to define the destructor here because C++ requires (with good
+   * reason) that a union with non-default destructor be explicitly destroyed
+   * from the surrounding class, as neither the runtime nor compiler have the
+   * knowledge of what to do with a union at the time of destruction
+   *
+   * Each request that has a valid return value set will have the value
+   * retrieved from the get() method, where the value is destroyed.  So we
+   * don't need to destroy it here
+   */
+  ~RequestWithReturn() {}
+
+  /**
+   * This method can be used to return a value from the request.  This returns
+   * the underlying value because return type of the function we were
+   * instantiated with is not void
+   */
+  ReturnType get() && {
+    // when the return value has been processed, we destroy the value
+    // contained in this request.  Using a scope_exit means that we don't have
+    // to worry about storing the value somewhere and causing potentially an
+    // extra move
+    //
+    // note that the invariant here is that this function is only called if the
+    // requesting thread had it's critical section combined, and the value_
+    // member constructed through detach()
+    SCOPE_EXIT {
+      value_.~ReturnType();
+    };
+    return std::move(value_);
+  }
+
+  // this contains a copy of the function the waiter had requested to be
+  // executed as a combined critical section
+  Func func_;
+  // this stores the return value used in the request, we use a union here to
+  // avoid laundering and allow return types that are not default
+  // constructible to be propagated through the execution of the critical
+  // section
+  //
+  // note that this is an anonymous union, the member leaks into the
+  // surrounding scope as a member variable
+  union {
+    ReturnType value_;
+  };
+};
+
+template <typename Func>
+class RequestWithoutReturn {
+ public:
+  using F = Func;
+  using ReturnType = void;
+  explicit RequestWithoutReturn(Func func) : func_{std::move(func)} {}
+
+  /**
+   * In this version of the request class, get() returns nothing as there is
+   * no stored value
+   */
+  void get() && {}
+
+  // this contains a copy of the function the waiter had requested to be
+  // executed as a combined critical section
+  Func func_;
+};
+
+// we need to use std::integral_constant::value here as opposed to
+// std::integral_constant::operator T() because MSVC errors out with the
+// implicit conversion
+template <typename Func>
+using Request = std::conditional_t<
+    std::is_same<folly::invoke_result_t<const Func&>, void>::value,
+    RequestWithoutReturn<Func>,
+    RequestWithReturn<Func>>;
+
+/**
+ * A template that helps us to transform a callable returning a value to one
+ * that returns void so it can be type erased and passed on to the waker.  The
+ * return value gets coalesced into the wait struct when it is small enough
+ * for optimal data transfer
+ *
+ * This helps a combined critical section feel more normal in the case where
+ * the user wants to return a value, for example
+ *
+ *    auto value = mutex_.lock_combine([&]() {
+ *      return data_.value();
+ *    });
+ *
+ * Without this, the user would typically create a dummy object that they
+ * would then assign to from within the lambda.  With return value chaining,
+ * this pattern feels more natural
+ *
+ * Note that it is important to copy the entire callble into this class.
+ * Storing something like a reference instead is not desirable because it does
+ * not allow InlineFunctionRef to use inline storage to represent the user's
+ * callable without extra indirections
+ *
+ * We use std::conditional_t and switch to the right type of task with the
+ * CoalescedTask type alias
+ */
+template <typename Func, typename Waiter>
+class TaskWithCoalesce {
+ public:
+  using ReturnType = folly::invoke_result_t<const Func&>;
+  explicit TaskWithCoalesce(Func func, Waiter& waiter)
+      : func_{std::move(func)}, waiter_{waiter} {}
+
+  void operator()() const {
+    auto value = func_();
+    new (&waiter_.storage_) ReturnType{std::move(value)};
+  }
+
+ private:
+  Func func_;
+  Waiter& waiter_;
+
+  static_assert(alignof(decltype(waiter_.storage_)) >= alignof(ReturnType), "");
+  static_assert(sizeof(decltype(waiter_.storage_)) >= sizeof(ReturnType), "");
+};
+
+template <typename Func, typename Waiter>
+class TaskWithoutCoalesce {
+ public:
+  using ReturnType = void;
+  explicit TaskWithoutCoalesce(Func func, Waiter&) : func_{std::move(func)} {}
+
+  void operator()() const {
+    func_();
+  }
+
+ private:
+  Func func_;
+};
+
+// we need to use std::integral_constant::value here as opposed to
+// std::integral_constant::operator T() because MSVC errors out with the
+// implicit conversion
+template <typename Func, typename Waiter>
+using CoalescedTask = std::conditional_t<
+    std::is_void<folly::invoke_result_t<const Func&>>::value,
+    TaskWithoutCoalesce<Func, Waiter>,
+    TaskWithCoalesce<Func, Waiter>>;
+
+/**
+ * Given a request and a wait node, coalesce them into a CoalescedTask that
+ * coalesces the return value into the wait node when invoked from a remote
+ * thread
+ *
+ * When given a null request through nullptr_t, coalesce() returns null as well
+ */
+template <typename Waiter>
+std::nullptr_t coalesce(std::nullptr_t&, Waiter&) {
+  return nullptr;
+}
+
+template <
+    typename Request,
+    typename Waiter,
+    typename Func = typename Request::F>
+CoalescedTask<Func, Waiter> coalesce(Request& request, Waiter& waiter) {
+  static_assert(!std::is_same<Request, std::nullptr_t>{}, "");
+  return CoalescedTask<Func, Waiter>{request.func_, waiter};
+}
+
+/**
+ * Given a CoalescedTask, a wait node and a request.  Detach the return value
+ * into the request from the wait node and task.
+ */
+template <typename Waiter>
+void detach(std::nullptr_t&, Waiter&) {}
+
+template <typename Waiter, typename F>
+void detach(RequestWithoutReturn<F>&, Waiter&) {}
+
+template <typename Waiter, typename F>
+void detach(RequestWithReturn<F>& request, Waiter& waiter) {
+  using ReturnType = typename RequestWithReturn<F>::ReturnType;
+  static_assert(!std::is_same<ReturnType, void>{}, "");
+
+  auto& val = *folly::launder(reinterpret_cast<ReturnType*>(&waiter.storage_));
+  new (&request.value_) ReturnType{std::move(val)};
+  val.~ReturnType();
+}
 
 /**
  * Get the time since epoch in nanoseconds
@@ -198,14 +536,14 @@ inline std::chrono::nanoseconds time() {
  * address from a uintptr_t
  */
 template <typename Type>
-Type* extractAddress(std::uintptr_t from) {
+Type* extractPtr(std::uintptr_t from) {
   // shift one bit off the end, to get all 1s followed by a single 0
   auto mask = std::numeric_limits<std::uintptr_t>::max();
   mask >>= 1;
   mask <<= 1;
   CHECK(!(mask & 0b1));
 
-  return reinterpret_cast<Type*>(from & mask);
+  return folly::bit_cast<Type*>(from & mask);
 }
 
 /**
@@ -241,7 +579,9 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
 
     next_ = std::exchange(other.next_, nullptr);
     expected_ = std::exchange(other.expected_, 0);
-    wakerMetadata_ = std::exchange(other.wakerMetadata_, {});
+    timedWaiters_ = std::exchange(other.timedWaiters_, false);
+    combined_ = std::exchange(other.combined_, false);
+    waker_ = std::exchange(other.waker_, 0);
     waiters_ = std::exchange(other.waiters_, nullptr);
     ready_ = std::exchange(other.ready_, nullptr);
 
@@ -260,23 +600,25 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
   friend class DistributedMutex<Atomic, TimePublishing>;
 
   DistributedMutexStateProxy(
-      CachelinePadded<Waiter<Atomic>>* next,
+      Waiter<Atomic>* next,
       std::uintptr_t expected,
       bool timedWaiter = false,
-      WakerMetadata wakerMetadata = {},
-      CachelinePadded<Waiter<Atomic>>* waiters = nullptr,
-      CachelinePadded<Waiter<Atomic>>* ready = nullptr)
+      bool combined = false,
+      std::uintptr_t waker = 0,
+      Waiter<Atomic>* waiters = nullptr,
+      Waiter<Atomic>* ready = nullptr)
       : next_{next},
         expected_{expected},
         timedWaiters_{timedWaiter},
-        wakerMetadata_{wakerMetadata},
+        combined_{combined},
+        waker_{waker},
         waiters_{waiters},
         ready_{ready} {}
 
   // the next thread that is to be woken up, this being null at the time of
   // unlock() shows that the current thread acquired the mutex without
   // contention or it was the terminal thread in the queue of threads waking up
-  CachelinePadded<Waiter<Atomic>>* next_{nullptr};
+  Waiter<Atomic>* next_{nullptr};
   // this is the value that the current thread should expect to find on
   // unlock, and if this value is not there on unlock, the current thread
   // should assume that other threads are enqueued waiting for the mutex
@@ -298,18 +640,22 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
   // done so we can avoid having to issue a atomic_notify_all() call (and
   // subsequently a thundering herd) when waking up timed-wait threads
   bool timedWaiters_{false};
+  // a boolean that contains true if the state proxy is not meant to be passed
+  // to the unlock() function.  This is set only when there is contention and
+  // a thread had asked for its critical section to be combined
+  bool combined_{false};
   // metadata passed along from the thread that woke this thread up
-  WakerMetadata wakerMetadata_{};
+  std::uintptr_t waker_{0};
   // the list of threads that are waiting on a futex
   //
   // the current threads is meant to wake up this list of waiters if it is
   // able to commit an unlock() on the mutex without seeing a contention chain
-  CachelinePadded<Waiter<Atomic>>* waiters_{nullptr};
+  Waiter<Atomic>* waiters_{nullptr};
   // after a thread has woken up from a futex() call, it will have the rest of
   // the threads that it were waiting behind it in this list, a thread that
   // unlocks has to wake up threads from this list if it has any, before it
   // goes to sleep to prevent pathological unfairness
-  CachelinePadded<Waiter<Atomic>>* ready_{nullptr};
+  Waiter<Atomic>* ready_{nullptr};
 };
 
 template <template <typename> class Atomic, bool TimePublishing>
@@ -317,8 +663,9 @@ DistributedMutex<Atomic, TimePublishing>::DistributedMutex()
     : state_{kUnlocked} {}
 
 template <typename Waiter>
-bool spin(Waiter& waiter) {
+bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
   auto spins = 0;
+  auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
   while (true) {
     // publish our current time in the futex as a part of the spin waiting
     // process
@@ -328,14 +675,15 @@ bool spin(Waiter& waiter) {
     // timestamp to force the waking thread to skip us
     ++spins;
     auto now = (spins < kMaxSpins) ? time() : decltype(time())::zero();
-    auto data = strip(now) | kWaiting;
+    auto data = strip(now) | waitMode;
     auto signal = waiter.futex_.exchange(data, std::memory_order_acq_rel);
     signal &= std::numeric_limits<std::uint8_t>::max();
 
     // if we got skipped, make a note of it and return if we got a skipped
     // signal or a signal to wake up
-    auto skipped = signal == kSkipped;
-    if (skipped || (signal == kWake)) {
+    auto skipped = (signal == kSkipped);
+    if (skipped || (signal == kWake) || (signal == kCombined)) {
+      sig = signal;
       return !skipped;
     }
 
@@ -379,7 +727,7 @@ void doFutexWake(Waiter* waiter) {
     //
     // this dangilng pointer possibility is why we use a pointer to the futex
     // word, and avoid dereferencing after the store() operation
-    auto sleeper = &(*waiter)->sleeper_;
+    auto sleeper = &waiter->metadata_.sleeper_;
     sleeper->store(kWake, std::memory_order_release);
     futexWake(sleeper, 1);
   }
@@ -389,7 +737,7 @@ template <typename Waiter>
 bool doFutexWait(Waiter* waiter, Waiter*& next) {
   // first we get ready to sleep by calling exchange() on the futex with a
   // kSleeping value
-  DCHECK((*waiter)->futex_.load(std::memory_order_relaxed) == kAboutToWait);
+  DCHECK(waiter->futex_.load(std::memory_order_relaxed) == kAboutToWait);
 
   // note the semantics of using a futex here, when we exchange the sleeper_
   // with kSleeping, we are getting ready to sleep, but before sleeping we get
@@ -397,7 +745,8 @@ bool doFutexWait(Waiter* waiter, Waiter*& next) {
   // sleeper_ might have changed.  We can also wake up because of a spurious
   // wakeup, so we always check against the value in sleeper_ after returning
   // from futexWait(), if the value is not kWake, then we continue
-  auto pre = (*waiter)->sleeper_.exchange(kSleeping, std::memory_order_acq_rel);
+  auto pre =
+      waiter->metadata_.sleeper_.exchange(kSleeping, std::memory_order_acq_rel);
 
   // Seeing a kSleeping on a futex word before we set it ourselves means only
   // one thing - an unlocking thread caught us before we went to futex(), and
@@ -424,25 +773,25 @@ bool doFutexWait(Waiter* waiter, Waiter*& next) {
     // Because the corresponding futexWake() above does not synchronize
     // wakeups around the futex word.  Because doing so would become
     // inefficient
-    futexWait(&(*waiter)->sleeper_, kSleeping);
-    pre = (*waiter)->sleeper_.load(std::memory_order_acquire);
+    futexWait(&waiter->metadata_.sleeper_, kSleeping);
+    pre = waiter->metadata_.sleeper_.load(std::memory_order_acquire);
     DCHECK((pre == kSleeping) || (pre == kWake));
   }
 
   // when coming out of a futex, we might have some other sleeping threads
   // that we were supposed to wake up, assign that to the next pointer
   DCHECK(next == nullptr);
-  next = extractAddress<Waiter>((*waiter)->next_);
+  next = extractPtr<Waiter>(waiter->next_);
   return false;
 }
 
 template <typename Waiter>
-bool wait(Waiter* waiter, bool shouldSleep, Waiter*& next) {
-  if (shouldSleep) {
+bool wait(Waiter* waiter, std::uint32_t mode, Waiter*& next, uint32_t& signal) {
+  if (mode == kAboutToWait) {
     return doFutexWait(waiter, next);
   }
 
-  return spin(**waiter);
+  return spin(*waiter, signal, mode);
 }
 
 inline void recordTimedWaiterAndClearTimedBit(
@@ -461,26 +810,131 @@ inline void recordTimedWaiterAndClearTimedBit(
   }
 }
 
+template <typename Atomic>
+void wakeTimedWaiters(Atomic* state, bool timedWaiters) {
+  if (UNLIKELY(timedWaiters)) {
+    atomic_notify_one(state);
+  }
+}
+
+template <template <typename> class Atomic, bool TimePublishing>
+template <typename Func>
+auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func) noexcept
+    -> folly::invoke_result_t<const Func&> {
+  // invoke the lock implementation function and check whether we came out of
+  // it with our task executed as a combined critical section.  This usually
+  // happens when the mutex is contended.
+  //
+  // In the absence of contention, we just return from the try_lock() function
+  // with the lock acquired.  So we need to invoke the task and unlock
+  // the mutex before returning
+  auto&& task = Request<Func>{func};
+  auto&& state = lockImplementation(*this, state_, task);
+  if (!state.combined_) {
+    // to avoid having to play a return-value dance when the combinable
+    // returns void, we use a scope exit to perform the unlock after the
+    // function return has been processed
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
+    return func();
+  }
+
+  // if we are here, that means we were able to get our request combined, we
+  // can return the value that was transferred to us
+  //
+  // each thread that enqueues as a part of a contention chain takes up the
+  // responsibility of any timed waiter that had come immediately before it,
+  // so we wake up timed waiters before exiting the lock function.  Another
+  // strategy might be to add the timed waiter information to the metadata and
+  // let a single leader wake up a timed waiter for better concurrency.  But
+  // this has proven not to be useful in benchmarks beyond a small 5% delta,
+  // so we avoid taking the complexity hit and branch to wake up timed waiters
+  // from each thread
+  wakeTimedWaiters(&state_, state.timedWaiters_);
+  return std::move(task).get();
+}
+
 template <template <typename> class Atomic, bool TimePublishing>
 typename DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy
 DistributedMutex<Atomic, TimePublishing>::lock() {
+  auto null = nullptr;
+  return lockImplementation(*this, state_, null);
+}
+
+template <template <typename> class Atomic, bool TimePublishing>
+template <typename Rep, typename Period, typename Func, typename ReturnType>
+folly::Optional<ReturnType>
+DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
+    const std::chrono::duration<Rep, Period>& duration,
+    Func func) noexcept {
+  auto state = try_lock_for(duration);
+  if (state) {
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
+    return func();
+  }
+
+  return folly::none;
+}
+
+template <template <typename> class Atomic, bool TimePublishing>
+template <typename Clock, typename Duration, typename Func, typename ReturnType>
+folly::Optional<ReturnType>
+DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
+    const std::chrono::time_point<Clock, Duration>& deadline,
+    Func func) noexcept {
+  auto state = try_lock_until(deadline);
+  if (state) {
+    SCOPE_EXIT {
+      unlock(std::move(state));
+    };
+    return func();
+  }
+
+  return folly::none;
+}
+
+template <
+    template <typename> class Atomic,
+    bool TimePublishing,
+    typename State,
+    typename Request>
+typename DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy
+lockImplementation(
+    DistributedMutex<Atomic, TimePublishing>& mutex,
+    State& atomic,
+    Request& request) {
   // first try and acquire the lock as a fast path, the underlying
   // implementation is slightly faster than using std::atomic::exchange() as
   // is used in this function.  So we get a small perf boost in the
   // uncontended case
-  if (auto state = try_lock()) {
-    return state;
+  //
+  // We only go through this fast path for the lock/unlock usage and avoid this
+  // for combined critical sections.  This check adds unnecessary overhead in
+  // that case as it causes an extra cacheline bounce
+  constexpr auto combineRequested = !std::is_same<Request, std::nullptr_t>{};
+  if (!combineRequested) {
+    if (auto state = mutex.try_lock()) {
+      return state;
+    }
   }
 
   auto previous = std::uintptr_t{0};
-  auto waitMode = kUninitialized;
+  auto waitMode = combineRequested ? kCombineUninitialized : kUninitialized;
   auto nextWaitMode = kAboutToWait;
   auto timedWaiter = false;
-  CachelinePadded<Waiter<Atomic>>* nextSleeper = nullptr;
+  Waiter<Atomic>* nextSleeper = nullptr;
   while (true) {
     // construct the state needed to wait
-    auto&& state = CachelinePadded<Waiter<Atomic>>{waitMode};
-    auto&& address = reinterpret_cast<std::uintptr_t>(&state);
+    //
+    // We can't use auto here because MSVC errors out due to a missing copy
+    // constructor
+    Waiter<Atomic> state{};
+    auto&& task = coalesce(request, state);
+    auto&& address = folly::bit_cast<std::uintptr_t>(&state);
+    state.initialize(waitMode, std::move(task));
     DCHECK(!(address & 0b1));
 
     // set the locked bit in the address we will be persisting in the mutex
@@ -496,17 +950,24 @@ DistributedMutex<Atomic, TimePublishing>::lock() {
     // other threads that read the address of this value should see the full
     // well-initialized node we are going to wait on if the mutex acquisition
     // was unsuccessful
-    previous = state_.exchange(address, std::memory_order_acq_rel);
+    previous = atomic.exchange(address, std::memory_order_acq_rel);
     recordTimedWaiterAndClearTimedBit(timedWaiter, previous);
-    state->next_ = previous;
+    state.next_ = previous;
     if (previous == kUnlocked) {
-      return {nullptr, address, timedWaiter, {}, nullptr, nextSleeper};
+      return {/* next */ nullptr,
+              /* expected */ address,
+              /* timedWaiter */ timedWaiter,
+              /* combined */ false,
+              /* waker */ 0,
+              /* waiters */ nullptr,
+              /* ready */ nextSleeper};
     }
     DCHECK(previous & kLocked);
 
     // wait until we get a signal from another thread, if this returns false,
     // we got skipped and had probably been scheduled out, so try again
-    if (!wait(&state, (waitMode == kAboutToWait), nextSleeper)) {
+    auto signal = kUninitialized;
+    if (!wait(&state, waitMode, nextSleeper, signal)) {
       std::swap(waitMode, nextWaitMode);
       continue;
     }
@@ -531,37 +992,139 @@ DistributedMutex<Atomic, TimePublishing>::lock() {
     // relationship until broken
     auto next = previous;
     auto expected = address;
-    if (previous == state->wakerMetadata_.waker_) {
+    if (previous == state.metadata_.waker_) {
       next = 0;
       expected = kLocked;
+    }
+
+    // if we were given a combine signal, detach the return value from the
+    // wait struct into the request, so the current thread can access it
+    // outside this function
+    if (signal == kCombined) {
+      detach(request, state);
     }
 
     // if we are just coming out of a futex call, then it means that the next
     // waiter we are responsible for is also a waiter waiting on a futex, so
     // we return that list in the list of ready threads.  We wlil be waking up
     // the ready threads on unlock no matter what
-    return {extractAddress<CachelinePadded<Waiter<Atomic>>>(next),
-            expected,
-            timedWaiter,
-            state->wakerMetadata_,
-            extractAddress<CachelinePadded<Waiter<Atomic>>>(state->waiters_),
-            nextSleeper};
+    return {/* next */ extractPtr<Waiter<Atomic>>(next),
+            /* expected */ expected,
+            /* timedWaiter */ timedWaiter,
+            /* combined */ combineRequested && (signal == kCombined),
+            /* waker */ state.metadata_.waker_,
+            /* waiters */ extractPtr<Waiter<Atomic>>(state.metadata_.waiters_),
+            /* ready */ nextSleeper};
   }
 }
 
-inline bool preempted(std::uint64_t value) {
-  auto currentTime = recover(strip(time()));
+inline bool preempted(std::uint64_t value, std::chrono::nanoseconds now) {
+  auto currentTime = recover(strip(now));
   auto nodeTime = recover(value);
   auto preempted = currentTime > nodeTime + kScheduledAwaySpinThreshold.count();
 
   // we say that the thread has been preempted if its timestamp says so, and
   // also if it is neither uninitialized nor skipped
   DCHECK(value != kSkipped);
-  return (preempted) && (value != kUninitialized);
+  return (preempted) && (value != kUninitialized) &&
+      (value != kCombineUninitialized);
 }
 
 inline bool isSleeper(std::uintptr_t value) {
   return (value == kAboutToWait);
+}
+
+inline bool isInitialized(std::uintptr_t value) {
+  return (value != kUninitialized) && (value != kCombineUninitialized);
+}
+
+inline bool isCombiner(std::uintptr_t value) {
+  auto mode = (value & 0xff);
+  return (mode == kCombineWaiting) || (mode == kCombineUninitialized);
+}
+
+inline bool isWaitingCombiner(std::uintptr_t value) {
+  return (value & 0xff) == kCombineWaiting;
+}
+
+template <typename Waiter>
+CombineFunction loadTask(Waiter* current, std::uintptr_t value) {
+  // if we know that the waiter is a combiner of some sort, it is safe to read
+  // and copy the value of the function in the waiter struct, since we know
+  // that a waiter would have set it before enqueueing
+  if (isCombiner(value)) {
+    return current->function_;
+  }
+
+  return nullptr;
+}
+
+template <template <typename> class Atomic>
+std::uintptr_t tryCombine(
+    std::uintptr_t value,
+    Waiter<Atomic>* waiter,
+    std::uint64_t iteration,
+    std::chrono::nanoseconds now,
+    CombineFunction task) {
+  // it is important to load the value of next_ before checking the value of
+  // function_ in the next if condition.  This is because of two things, the
+  // first being cache locality - it is helpful to read the value of the
+  // variable that is closer to futex_, since we just loaded from that before
+  // entering this function.  The second is cache coherence, the wait struct
+  // is shared between two threads, one thread is spinning on the futex
+  // waiting for a signal while the other is possibly combining the requested
+  // critical section into its own.  This means that there is a high chance
+  // we would cause the cachelines to bounce between the threads in the next
+  // if block.
+  //
+  // This leads to a degenerate case where the FunctionRef object ends up in a
+  // different cacheline thereby making it seem like benchmarks avoid this
+  // problem.  When compiled differently (eg.  with link time optimization)
+  // the wait struct ends up on the stack in a manner that causes the
+  // FunctionRef object to be in the same cacheline as the other data, thereby
+  // forcing the current thread to bounce on the cacheline twice (first to
+  // load the data from the other thread, that presumably owns the cacheline
+  // due to timestamp publishing) and then to signal the thread
+  //
+  // To avoid this sort of non-deterministic behavior based on compilation and
+  // stack layout, we load the value before executing the other thread's
+  // critical section
+  //
+  // Note that the waiting thread writes the value to the wait struct after
+  // enqueuing, but never writes to it after the value in the futex_ is
+  // initialised (showing that the thread is in the spin loop), this makes it
+  // safe for us to read next_ without synchronization
+  auto next = std::uintptr_t{0};
+  if (isInitialized(value)) {
+    next = waiter->next_;
+  }
+
+  // if the waiter has asked for a combine operation, we should combine its
+  // critical section and move on to the next waiter
+  //
+  // the waiter is combinable if the following conditions are satisfied
+  //
+  //  1) the state in the futex word is not uninitialized (kUninitialized)
+  //  2) it has a valid combine function
+  //  3) we are not past the limit of the number of combines we can perform
+  //     or the waiter thread been preempted.  If the waiter gets preempted,
+  //     its better to just execute their critical section before moving on.
+  //     As they will have to re-queue themselves after preemption anyway,
+  //     leading to further delays in critical section completion
+  //
+  // if all the above are satisfied, then we can combine the critical section.
+  // Note that it is only safe to read from the waiter struct if the value is
+  // not uninitialized.  If the state is uninitialized, we synchronize with
+  // the write to the next_ member in the lock function.  If the value is not
+  // uninitialized, there is a race in reading the next_ value
+  if (isWaitingCombiner(value) &&
+      (iteration <= kMaxCombineIterations || preempted(value, now))) {
+    task();
+    waiter->futex_.store(kCombined, std::memory_order_release);
+    return next;
+  }
+
+  return 0;
 }
 
 template <typename Waiter>
@@ -569,14 +1132,32 @@ std::uintptr_t tryWake(
     bool publishing,
     Waiter* waiter,
     std::uintptr_t value,
-    WakerMetadata metadata,
-    Waiter*& sleepers) {
+    std::uintptr_t waker,
+    Waiter*& sleepers,
+    std::uint64_t iteration,
+    CombineFunction task) {
+  // try and combine the waiter's request first, if that succeeds that means
+  // we have successfully executed their critical section and can move on to
+  // the rest of the chain
+  auto now = time();
+  if (auto next = tryCombine(value, waiter, iteration, now, task)) {
+    return next;
+  }
+
   // first we see if we can wake the current thread that is spinning
-  if ((!publishing || !preempted(value)) && !isSleeper(value)) {
-    // we need release here because of the write to wakerMetadata_
-    (*waiter)->wakerMetadata_ = metadata;
-    (*waiter)->waiters_ = reinterpret_cast<std::uintptr_t>(sleepers);
-    (*waiter)->futex_.store(kWake, std::memory_order_release);
+  if ((!publishing || !preempted(value, now)) && !isSleeper(value)) {
+    // the Metadata class should be trivially destructible as we use placement
+    // new to set the relevant metadata without calling any destructor.  We
+    // need to use placement new because the class contains a futex, which is
+    // non-movable and non-copyable
+    using Metadata = std::decay_t<decltype(waiter->metadata_)>;
+    static_assert(std::is_trivially_destructible<Metadata>{}, "");
+
+    // we need release here because of the write to waker_ and also because we
+    // are unlocking the mutex, the thread we do the handoff to here should
+    // see the modified data
+    new (&waiter->metadata_) Metadata{waker, bit_cast<uintptr_t>(sleepers)};
+    waiter->futex_.store(kWake, std::memory_order_release);
     return 0;
   }
 
@@ -600,9 +1181,10 @@ std::uintptr_t tryWake(
     // still sees the locked bit, and never gets woken up
     //
     // Can we relax this?
-    DCHECK(preempted(value));
-    auto next = (*waiter)->next_;
-    (*waiter)->futex_.store(kSkipped, std::memory_order_release);
+    DCHECK(preempted(value, now));
+    DCHECK(!isCombiner(value));
+    auto next = waiter->next_;
+    waiter->futex_.store(kSkipped, std::memory_order_release);
     return next;
   }
 
@@ -623,15 +1205,16 @@ std::uintptr_t tryWake(
   // that the thread was already sleeping, we have synchronized with the write
   // to next_ in the context of the sleeping thread
   //
-  // Also we need to set the value of waiters_ and wakerMetadata_ in the
-  // thread before doing the exchange because we need to pass on the list of
-  // sleepers in the event that we were able to catch the thread before it
-  // went to futex().  If we were unable to catch the thread before it slept,
-  // these fields will be ignored when the thread wakes up anyway
+  // Also we need to set the value of waiters_ and waker_ in the thread before
+  // doing the exchange because we need to pass on the list of sleepers in the
+  // event that we were able to catch the thread before it went to futex().
+  // If we were unable to catch the thread before it slept, these fields will
+  // be ignored when the thread wakes up anyway
   DCHECK(isSleeper(value));
-  (*waiter)->wakerMetadata_ = metadata;
-  (*waiter)->waiters_ = reinterpret_cast<std::uintptr_t>(sleepers);
-  auto pre = (*waiter)->sleeper_.exchange(kSleeping, std::memory_order_acq_rel);
+  waiter->metadata_.waker_ = waker;
+  waiter->metadata_.waiters_ = folly::bit_cast<std::uintptr_t>(sleepers);
+  auto pre =
+      waiter->metadata_.sleeper_.exchange(kSleeping, std::memory_order_acq_rel);
 
   // we were able to catch the thread before it went to sleep, return true
   if (pre != kSleeping) {
@@ -643,8 +1226,8 @@ std::uintptr_t tryWake(
   //
   // we also need to collect this sleeper in the list of sleepers being built
   // up
-  auto next = (*waiter)->next_;
-  (*waiter)->next_ = reinterpret_cast<std::uintptr_t>(sleepers);
+  auto next = waiter->next_;
+  waiter->next_ = folly::bit_cast<std::uintptr_t>(sleepers);
   sleepers = waiter;
   return next;
 }
@@ -653,15 +1236,24 @@ template <typename Waiter>
 bool wake(
     bool publishing,
     Waiter& waiter,
-    WakerMetadata metadata,
-    Waiter*& sleepers) {
+    std::uintptr_t waker,
+    Waiter*& sleepers,
+    std::uint64_t iter) {
   // loop till we find a node that is either at the end of the list (as
-  // specified by metadata) or we find a node that is active (as specified by
+  // specified by waker) or we find a node that is active (as specified by
   // the last published timestamp of the node)
   auto current = &waiter;
   while (current) {
-    auto value = (*current)->futex_.load(std::memory_order_acquire);
-    auto next = tryWake(publishing, current, value, metadata, sleepers);
+    // it is important that we load the value of function after the initial
+    // acquire load.  This is required because we need to synchronize with the
+    // construction of the waiter struct before reading from it
+    auto value = current->futex_.load(std::memory_order_acquire);
+    auto task = loadTask(current, value);
+    auto next =
+        tryWake(publishing, current, value, waker, sleepers, iter, task);
+
+    // if there is no next node, we have managed to wake someone up and have
+    // successfully migrated the lock to another thread
     if (!next) {
       return true;
     }
@@ -670,18 +1262,10 @@ bool wake(
     // it, this is because after we skip it the node might wake up and enqueue
     // itself, and thereby gain a new next node
     CHECK(publishing);
-    current =
-        (next == metadata.waker_) ? nullptr : extractAddress<Waiter>(next);
+    current = (next == waker) ? nullptr : extractPtr<Waiter>(next);
   }
 
   return false;
-}
-
-template <typename Atomic>
-void wakeTimedWaiters(Atomic* state, bool timedWaiters) {
-  if (UNLIKELY(timedWaiters)) {
-    atomic_notify_one(state);
-  }
 }
 
 template <typename Atomic, typename Proxy, typename Sleepers>
@@ -717,6 +1301,7 @@ void DistributedMutex<Atomic, Publish>::unlock(
     DistributedMutex::DistributedMutexStateProxy proxy) {
   // we always wake up ready threads and timed waiters if we saw either
   DCHECK(proxy) << "Invalid proxy passed to DistributedMutex::unlock()";
+  DCHECK(!proxy.combined_) << "Cannot unlock mutex after a successful combine";
   SCOPE_EXIT {
     doFutexWake(proxy.ready_);
     wakeTimedWaiters(&state_, proxy.timedWaiters_);
@@ -726,7 +1311,7 @@ void DistributedMutex<Atomic, Publish>::unlock(
   // don't bother with the mutex state
   auto sleepers = proxy.waiters_;
   if (proxy.next_) {
-    if (wake(Publish, *proxy.next_, proxy.wakerMetadata_, sleepers)) {
+    if (wake(Publish, *proxy.next_, proxy.waker_, sleepers, 0)) {
       return;
     }
 
@@ -741,7 +1326,7 @@ void DistributedMutex<Atomic, Publish>::unlock(
     proxy.expected_ = kLocked;
   }
 
-  while (true) {
+  for (std::uint64_t i = 0; true; ++i) {
     // otherwise, since we don't have anyone we need to wake up, we try and
     // release the mutex just as is
     //
@@ -764,13 +1349,10 @@ void DistributedMutex<Atomic, Publish>::unlock(
     // terminal node of the new chain will see kLocked in the central storage
     auto head = state_.exchange(kLocked, std::memory_order_acq_rel);
     recordTimedWaiterAndClearTimedBit(proxy.timedWaiters_, head);
-    auto next = extractAddress<CachelinePadded<Waiter<Atomic>>>(head);
+    auto next = extractPtr<Waiter<Atomic>>(head);
+    auto expected = std::exchange(proxy.expected_, kLocked);
     DCHECK((head & kLocked) && (head != kLocked)) << "incorrect state " << head;
-    if (wake(
-            Publish,
-            *next,
-            {std::exchange(proxy.expected_, kLocked)},
-            sleepers)) {
+    if (wake(Publish, *next, expected, sleepers, i)) {
       break;
     }
   }

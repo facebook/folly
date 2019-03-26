@@ -29,26 +29,26 @@ struct switch_on_error_fn {
   struct on_error_impl {
     ErrorSelector es_;
     PUSHMI_TEMPLATE(class Out, class E)
-    (requires Receiver<Out>&& Invocable<const ErrorSelector&, E>&&
+    (requires Receiver<Out>&& Invocable<ErrorSelector&, E>&&
          SenderTo<::folly::pushmi::invoke_result_t<ErrorSelector&, E>, Out>)
-    void operator()(Out& out, E&& e) const noexcept {
+    void operator()(Out& out, E&& e) noexcept {
       static_assert(
-          ::folly::pushmi::NothrowInvocable<const ErrorSelector&, E>,
+          ::folly::pushmi::NothrowInvocable<ErrorSelector&, E>,
           "switch_on_error - error selector function must be noexcept");
       auto next = es_((E &&) e);
-      submit(next, out);
+      submit(std::move(next), std::move(out));
     }
   };
   template <class In, class ErrorSelector>
   struct out_impl {
     ErrorSelector es_;
-    PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>)
-    auto operator()(Out out) const {
-      return ::folly::pushmi::detail::receiver_from_fn<In>()(
-          std::move(out),
+    PUSHMI_TEMPLATE(class SIn, class Out)
+    (requires Receiver<std::decay_t<Out>>)
+    auto operator()(SIn&& in, Out&& out) const {
+      submit((In&&)in, ::folly::pushmi::detail::receiver_from_fn<In>()(
+          (Out&&)out,
           // copy 'es' to allow multiple calls to submit
-          ::folly::pushmi::on_error(on_error_impl<ErrorSelector>{es_}));
+          ::folly::pushmi::on_error(on_error_impl<ErrorSelector>{es_})));
     }
   };
   template <class ErrorSelector>
@@ -56,11 +56,10 @@ struct switch_on_error_fn {
     ErrorSelector es_;
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>)
-    auto operator()(In in) const {
+    auto operator()(In&& in) {
       return ::folly::pushmi::detail::sender_from(
-          std::move(in),
-          ::folly::pushmi::detail::submit_transform_out<In>(
-              out_impl<In, ErrorSelector>{es_}));
+          (In&&)in,
+          out_impl<In, ErrorSelector>{std::move(es_)});
     }
   };
 

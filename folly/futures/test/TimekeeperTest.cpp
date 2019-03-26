@@ -79,11 +79,14 @@ TEST(Timekeeper, futureSleep) {
   EXPECT_GE(now() - t1, one_ms);
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(Timekeeper, futureSleepUnsafe) {
   auto t1 = now();
   futures::sleepUnsafe(one_ms).get();
   EXPECT_GE(now() - t1, one_ms);
 }
+FOLLY_POP_WARNING
 
 TEST(Timekeeper, futureSleepHandlesNullTimekeeperSingleton) {
   Singleton<ThreadWheelTimekeeper>::make_mock([] { return nullptr; });
@@ -320,8 +323,9 @@ TEST(Timekeeper, interruptDoesntCrash) {
 
 TEST(Timekeeper, chainedInterruptTest) {
   bool test = false;
-  auto f =
-      futures::sleep(milliseconds(100)).thenValue([&](auto&&) { test = true; });
+  auto f = futures::sleep(milliseconds(100)).deferValue([&](auto&&) {
+    test = true;
+  });
   f.cancel();
   f.wait();
   EXPECT_FALSE(test);

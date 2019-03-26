@@ -16,6 +16,8 @@
 
 #include <cstdlib>
 
+#include <glog/logging.h>
+
 #include <folly/FileUtil.h>
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>

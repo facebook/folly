@@ -39,13 +39,13 @@ struct filter_fn {
   template <class In, class Predicate>
   struct submit_impl {
     Predicate p_;
-    PUSHMI_TEMPLATE(class Out)
+    PUSHMI_TEMPLATE(class SIn, class Out)
     (requires Receiver<Out>)
-    auto operator()(Out out) const {
-      return ::folly::pushmi::detail::receiver_from_fn<In>()(
+    auto operator()(SIn&& in, Out out) const {
+      submit((In&&)in, ::folly::pushmi::detail::receiver_from_fn<In>()(
           std::move(out),
           // copy 'p' to allow multiple calls to submit
-          on_value_impl<In, Predicate>{p_});
+          on_value_impl<In, Predicate>{p_}));
     }
   };
   template <class Predicate>
@@ -56,8 +56,7 @@ struct filter_fn {
     auto operator()(In in) const {
       return ::folly::pushmi::detail::sender_from(
           std::move(in),
-          ::folly::pushmi::detail::submit_transform_out<In>(
-              submit_impl<In, Predicate>{p_}));
+          submit_impl<In, Predicate>{p_});
     }
   };
 

@@ -219,16 +219,13 @@ void single_sender_test() {
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
   auto in1 = mi::MAKE(single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(single_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(single_sender)(
+  auto in2 = mi::MAKE(single_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
-      },
-      []() { return mi::trampoline(); });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
+      });
+  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
 
   std::promise<int> p0;
   auto promise0 = mi::MAKE(receiver)(std::move(p0));
@@ -237,13 +234,9 @@ void single_sender_test() {
   auto out0 = mi::MAKE(receiver)();
   auto out1 = mi::MAKE(receiver)(
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(out1);
+  in2.submit(out1);
 
   auto any0 = mi::any_single_sender<std::exception_ptr, int>(in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
 }
 
 void many_sender_test() {
@@ -251,117 +244,20 @@ void many_sender_test() {
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
   auto in1 = mi::MAKE(many_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(many_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(many_sender)(
+  auto in2 = mi::MAKE(many_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
-      },
-      []() { return mi::trampoline(); });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
+      });
+  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
 
   auto out0 = mi::MAKE(receiver)();
   auto out1 = mi::MAKE(receiver)(
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(out1);
+  in2.submit(out1);
 
   auto any0 = mi::any_many_sender<std::exception_ptr, int>(in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
-}
-
-void constrained_single_sender_test() {
-  auto in0 = mi::MAKE(constrained_single_sender)();
-  static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = mi::MAKE(constrained_single_sender)(mi::ignoreSF{});
-  static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(constrained_single_sender)(
-      mi::ignoreSF{}, mi::inlineConstrainedEXF{}, mi::priorityZeroF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(constrained_single_sender)(
-      [&](auto c, auto out) {
-        in0.submit(
-            c,
-            mi::MAKE(receiver)(std::move(out), mi::on_value([](auto d, int v) {
-                                 mi::set_value(d, v);
-                               })));
-      },
-      []() { return mi::inline_constrained_executor(); },
-      []() { return 0; });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
-  auto in4 = mi::MAKE(constrained_single_sender)(
-      mi::ignoreSF{}, mi::inlineConstrainedEXF{});
-  static_assert(mi::Sender<decltype(in4)>, "in4 not a sender");
-
-  std::promise<int> p0;
-  auto promise0 = mi::MAKE(receiver)(std::move(p0));
-  in0.submit(in0.top(), std::move(promise0));
-
-  auto out0 = mi::MAKE(receiver)();
-  auto out1 = mi::MAKE(receiver)(
-      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(in0.top(), out1);
-
-  auto any0 = mi::
-      any_constrained_single_sender<std::exception_ptr, std::ptrdiff_t, int>(
-          in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
-
-  in3 | op::submit();
-  in3 | op::blocking_submit();
-}
-
-void time_single_sender_test() {
-  auto in0 = mi::MAKE(time_single_sender)();
-  static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = mi::MAKE(time_single_sender)(mi::ignoreSF{});
-  static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(time_single_sender)(
-      mi::ignoreSF{}, mi::inlineTimeEXF{}, mi::systemNowF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(time_single_sender)(
-      [&](auto tp, auto out) {
-        in0.submit(
-            tp,
-            mi::MAKE(receiver)(std::move(out), mi::on_value([](auto d, int v) {
-                                 mi::set_value(d, v);
-                               })));
-      },
-      []() { return mi::inline_time_executor(); },
-      []() { return std::chrono::system_clock::now(); });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
-  auto in4 = mi::MAKE(time_single_sender)(mi::ignoreSF{}, mi::inlineTimeEXF{});
-  static_assert(mi::Sender<decltype(in4)>, "in4 not a sender");
-
-  std::promise<int> p0;
-  auto promise0 = mi::MAKE(receiver)(std::move(p0));
-  in0.submit(in0.top(), std::move(promise0));
-
-  auto out0 = mi::MAKE(receiver)();
-  auto out1 = mi::MAKE(receiver)(
-      out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(in0.top(), out1);
-
-  auto any0 = mi::any_time_single_sender<
-      std::exception_ptr,
-      std::chrono::system_clock::time_point,
-      int>(in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
-
-  in3 | op::submit();
-  in3 | op::blocking_submit();
-  in3 | op::submit_at(in3.top() + 1s);
-  in3 | op::submit_after(1s);
 }
 
 void flow_receiver_1_test() {
@@ -511,29 +407,22 @@ void flow_single_sender_test() {
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
   auto in1 = mi::MAKE(flow_single_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(flow_single_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(flow_single_sender)(
+  auto in2 = mi::MAKE(flow_single_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(flow_receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
-      },
-      []() { return mi::trampoline(); });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
+      });
+  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
 
   auto out0 = mi::MAKE(flow_receiver)();
   auto out1 = mi::MAKE(flow_receiver)(
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(out1);
+  in2.submit(out1);
 
   auto any0 =
       mi::any_flow_single_sender<std::exception_ptr, std::exception_ptr, int>(
           in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
 }
 
 void flow_many_sender_test() {
@@ -541,31 +430,24 @@ void flow_many_sender_test() {
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
   auto in1 = mi::MAKE(flow_many_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(flow_many_sender)(mi::ignoreSF{}, mi::trampolineEXF{});
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
-  auto in3 = mi::MAKE(flow_many_sender)(
+  auto in2 = mi::MAKE(flow_many_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(flow_receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
-      },
-      []() { return mi::trampoline(); });
-  static_assert(mi::Sender<decltype(in3)>, "in3 not a sender");
+      });
+  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
 
   auto out0 = mi::MAKE(flow_receiver)();
   auto out1 = mi::MAKE(flow_receiver)(
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
-  in3.submit(out1);
+  in2.submit(out1);
 
   auto any0 = mi::any_flow_many_sender<
       std::exception_ptr,
       std::ptrdiff_t,
       std::exception_ptr,
       int>(in0);
-
-  static_assert(
-      mi::Executor<mi::executor_t<decltype(in0)>>,
-      "sender has invalid executor");
 }
 
 TEST(CompileTest, Test) {}

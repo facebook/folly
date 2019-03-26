@@ -16,6 +16,8 @@
 
 #include <folly/dynamic.h>
 
+#include <glog/logging.h>
+
 #include <folly/Range.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
@@ -1204,5 +1206,50 @@ TEST(Dynamic, JSONPointer) {
     EXPECT_EQ(1, err.index);
     EXPECT_EQ(target.get_ptr(json_pointer::parse("/foo")), err.context);
     EXPECT_EQ(nullptr, target.get_ptr(json_pointer::parse("/foo/-")));
+  }
+}
+
+TEST(Dynamic, Math) {
+  // tests int-int, int-double, double-int, and double-double math operations
+  std::vector<dynamic> values = {2, 5.0};
+
+  // addition
+  for (auto value1 : values) {
+    for (auto value2 : values) {
+      auto testValue = value1;
+      testValue += value2;
+      EXPECT_NEAR(
+          value1.asDouble() + value2.asDouble(), testValue.asDouble(), 0.0001);
+    }
+  }
+
+  // subtraction
+  for (auto value1 : values) {
+    for (auto value2 : values) {
+      auto testValue = value1;
+      testValue -= value2;
+      EXPECT_NEAR(
+          value1.asDouble() - value2.asDouble(), testValue.asDouble(), 0.0001);
+    }
+  }
+
+  // multiplication
+  for (auto value1 : values) {
+    for (auto value2 : values) {
+      auto testValue = value1;
+      testValue *= value2;
+      EXPECT_NEAR(
+          value1.asDouble() * value2.asDouble(), testValue.asDouble(), 0.0001);
+    }
+  }
+
+  // division
+  for (auto value1 : values) {
+    for (auto value2 : values) {
+      auto testValue = value1;
+      testValue /= value2;
+      EXPECT_NEAR(
+          value1.asDouble() / value2.asDouble(), testValue.asDouble(), 0.0001);
+    }
   }
 }

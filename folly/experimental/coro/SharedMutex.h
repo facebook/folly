@@ -298,12 +298,8 @@ class SharedMutexFair {
    public:
     explicit LockOperation(SharedMutexFair& mutex) noexcept : mutex_(mutex) {}
 
-    auto viaIfAsync(folly::Executor* executor) const {
-      return co_viaIfAsync(executor, Awaiter{mutex_});
-    }
-
-    friend auto co_viaIfAsync(folly::Executor* executor, LockOperation lockOp) {
-      return lockOp.viaIfAsync(executor);
+    auto viaIfAsync(folly::Executor::KeepAlive<> executor) const {
+      return folly::coro::co_viaIfAsync(std::move(executor), Awaiter{mutex_});
     }
 
    private:

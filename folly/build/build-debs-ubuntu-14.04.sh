@@ -5,11 +5,13 @@
 
 set -e
 
+BUILD_DIR=${BUILD_DIR:-_build}
 BOOST_VERSION=${BOOST_VERSION:-1.54.0}
 LIBEVENT_VERSION=${LIBEVENT_VERSION:-2.0-5}
 SSL_VERSION=${SSL_VERSION:-1.0.0}
 
-VERSION=${VERSION:-"$(sed 's/:/./' VERSION)"}
+VERSION_FILE_PATH=folly/VERSION
+VERSION=${VERSION:-"$(sed 's/:/./' ${VERSION_FILE_PATH})"}
 ITERATION=${ITERATION:-1}
 
 DESTDIR=${DESTDIR:-$(mktemp -d)}
@@ -22,12 +24,16 @@ URL=https://github.com/facebook/folly
 LICENSE="Apache License v2.0"
 MAINTAINER="Folly Eng"
 
-which fpm || (echo "Please install fpm from https://github.com/jordansissel/fpm" && exit 1)
+command -v fpm || (echo "Please install fpm from https://github.com/jordansissel/fpm" && exit 1)
 [ -d "$DESTDIR" ]
 
+command -v cmake || (echo "Please install cmake." && exit 1)
+
 # Make
-[ -e ./configure ] || autoreconf -if
-[ -e Makefile ] || ./configure --prefix=/usr
+rm -rf "${BUILD_DIR}"
+mkdir "${BUILD_DIR}"
+cd "${BUILD_DIR}"
+cmake ..
 make
 make install DESTDIR="$DESTDIR"
 

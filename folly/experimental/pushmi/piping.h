@@ -15,35 +15,52 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/traits.h>
 #include <folly/experimental/pushmi/concepts.h>
+#include <folly/experimental/pushmi/traits.h>
 
 namespace folly {
 namespace pushmi {
 
+struct pipeorigin {};
+
 PUSHMI_TEMPLATE(class In, class Op)
-(requires PUSHMI_EXP(lazy::Sender<std::decay_t<In>> PUSHMI_AND
+(requires PUSHMI_EXP(lazy::Sender<In> PUSHMI_AND
     lazy::Invocable<Op&, In>)) //
     decltype(auto)
-    operator|(In&& in, Op op) {
+    operator|(In&& in, Op&& op) {
   return op((In &&) in);
+}
+PUSHMI_TEMPLATE(class Ex, class Op)
+(requires PUSHMI_EXP(lazy::Executor<Ex> PUSHMI_AND
+    lazy::Invocable<Op&, Ex>)) //
+    decltype(auto)
+    operator|(Ex&& ex, Op&& op) {
+  return op((Ex &&) ex);
+}
+PUSHMI_TEMPLATE(class Out, class Op)
+(requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
+    lazy::Invocable<Op&, Out>)) //
+    decltype(auto)
+    operator|(Out&& out, Op&& op) {
+  return op((Out &&) out);
 }
 
 PUSHMI_INLINE_VAR constexpr struct pipe_fn {
 #if __cpp_fold_expressions >= 201603
   template <class T, class... FN>
-  auto operator()(T t, FN... fn) const -> decltype((t | ... | fn)) {
-    return (t | ... | fn);
+  auto operator()(T&& t, FN&&... fn) const
+      -> decltype(((T &&) t | ... | (FN &&) fn)) {
+    return ((T &&) t | ... | (FN &&) fn);
   }
 #else
   template <class T, class F>
-  auto operator()(T t, F f) const -> decltype(t | f) {
-    return t | f;
+  auto operator()(T&& t, F&& f) const -> decltype((T &&) t | (F &&) f) {
+    return (T &&) t | (F &&) f;
   }
   template <class T, class F, class... FN, class This = pipe_fn>
-  auto operator()(T t, F f, FN... fn) const
-      -> decltype(This()((t | f), fn...)) {
-    return This()((t | f), fn...);
+  auto operator()(T&& t, F&& f, FN&&... fn) const
+      -> decltype(This()(((T &&) t | (F &&) f), (FN &&) fn...)) {
+    return This()(((T &&) t | (F &&) f), (FN &&) fn...);
   }
 #endif
 } const pipe{};

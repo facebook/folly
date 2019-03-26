@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
-#include <numeric>
-
-#include <folly/container/Enumerate.h>
 #include <folly/dynamic.h>
 
+#include <numeric>
+
+#include <glog/logging.h>
+
 #include <folly/Format.h>
+#include <folly/container/Enumerate.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
@@ -62,16 +64,6 @@ TypeError::TypeError(
           expected,
           dynamic::typeName(actual1),
           dynamic::typeName(actual2))) {}
-
-TypeError::TypeError(const TypeError&) noexcept(
-    std::is_nothrow_copy_constructible<std::runtime_error>::value) = default;
-TypeError& TypeError::operator=(const TypeError&) noexcept(
-    std::is_nothrow_copy_assignable<std::runtime_error>::value) = default;
-TypeError::TypeError(TypeError&&) noexcept(
-    std::is_nothrow_move_constructible<std::runtime_error>::value) = default;
-TypeError& TypeError::operator=(TypeError&&) noexcept(
-    std::is_nothrow_move_assignable<std::runtime_error>::value) = default;
-TypeError::~TypeError() = default;
 
 // This is a higher-order preprocessor macro to aid going from runtime
 // types to the compile time type system.

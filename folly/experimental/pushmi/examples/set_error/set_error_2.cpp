@@ -74,7 +74,7 @@ int main() {
   op::just(42) | op::transform([](auto v) {
     using r_t = mi::any_single_sender<std::exception_ptr, int>;
     if (v < 40) {
-      return r_t{op::error<int>(std::exception_ptr{})};
+      return r_t{op::error(std::exception_ptr{})};
     } else {
       return r_t{op::just(v)};
     }

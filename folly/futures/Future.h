@@ -31,6 +31,7 @@
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
 #include <folly/functional/Invoke.h>
+#include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Exception.h>
@@ -839,9 +840,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   // Customise the co_viaIfAsync() operator so that SemiFuture<T> can be
   // directly awaited within a folly::coro::Task coroutine.
   friend Future<T> co_viaIfAsync(
-      folly::Executor* executor,
+      folly::Executor::KeepAlive<> executor,
       SemiFuture<T>&& future) noexcept {
-    return std::move(future).via(executor);
+    return std::move(future).via(std::move(executor));
   }
 
 #endif
@@ -1914,9 +1915,9 @@ class Future : private futures::detail::FutureBase<T> {
   // Overload needed to customise behaviour of awaiting a Future<T>
   // inside a folly::coro::Task coroutine.
   friend Future<T> co_viaIfAsync(
-      folly::Executor* executor,
+      folly::Executor::KeepAlive<> executor,
       Future<T>&& future) noexcept {
-    return std::move(future).via(executor);
+    return std::move(future).via(std::move(executor));
   }
 
 #endif

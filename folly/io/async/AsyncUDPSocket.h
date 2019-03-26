@@ -195,10 +195,6 @@ class AsyncUDPSocket : public EventHandler {
   /**
    * Get internal FD used by this socket
    */
-  virtual int getFD() const {
-    return getNetworkSocket().toFd();
-  }
-
   virtual NetworkSocket getNetworkSocket() const {
     CHECK_NE(NetworkSocket(), fd_) << "Need to bind before getting FD out";
     return fd_;

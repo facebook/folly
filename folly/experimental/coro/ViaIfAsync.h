@@ -19,8 +19,10 @@
 #include <memory>
 
 #include <folly/Executor.h>
+#include <folly/Traits.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/io/async/Request.h>
+#include <folly/lang/CustomizationPoint.h>
 
 #include <glog/logging.h>
 
@@ -36,7 +38,8 @@ class ViaCoroutine {
  public:
   class promise_type {
    public:
-    promise_type(folly::Executor* executor) noexcept : executor_(executor) {}
+    promise_type(folly::Executor::KeepAlive<> executor) noexcept
+        : executor_(std::move(executor)) {}
 
     ViaCoroutine get_return_object() noexcept {
       return ViaCoroutine{
@@ -89,7 +92,7 @@ class ViaCoroutine {
     }
 
    private:
-    folly::Executor* executor_;
+    folly::Executor::KeepAlive<> executor_;
     std::experimental::coroutine_handle<> continuation_;
     std::shared_ptr<RequestContext> context_;
   };
@@ -132,7 +135,7 @@ class ViaCoroutine {
     }
   }
 
-  static ViaCoroutine create(folly::Executor* executor) {
+  static ViaCoroutine create(folly::Executor::KeepAlive<> executor) {
     co_return;
   }
 
@@ -164,13 +167,9 @@ class ViaIfAsyncAwaiter {
       "Awaiter type does not implement the Awaiter interface.");
 
   template <typename Awaitable>
-  explicit ViaIfAsyncAwaiter(folly::InlineExecutor*, Awaitable&& awaitable)
-      : viaCoroutine_(detail::ViaCoroutine::createInline()),
-        awaiter_(
-            folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
-
-  template <typename Awaitable>
-  explicit ViaIfAsyncAwaiter(folly::Executor* executor, Awaitable&& awaitable)
+  explicit ViaIfAsyncAwaiter(
+      folly::Executor::KeepAlive<> executor,
+      Awaitable&& awaitable)
       : viaCoroutine_(detail::ViaCoroutine::create(executor)),
         awaiter_(
             folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
@@ -247,11 +246,12 @@ template <typename Awaitable>
 class ViaIfAsyncAwaitable {
  public:
   explicit ViaIfAsyncAwaitable(
-      folly::Executor* executor,
+      folly::Executor::KeepAlive<> executor,
       Awaitable&&
           awaitable) noexcept(std::is_nothrow_move_constructible<Awaitable>::
                                   value)
-      : executor_(executor), awaitable_(static_cast<Awaitable&&>(awaitable)) {}
+      : executor_(std::move(executor)),
+        awaitable_(static_cast<Awaitable&&>(awaitable)) {}
 
   template <typename Awaitable2>
   friend auto operator co_await(ViaIfAsyncAwaitable<Awaitable2>&& awaitable)
@@ -272,7 +272,7 @@ class ViaIfAsyncAwaitable {
       -> ViaIfAsyncAwaiter<folly::coro::awaiter_type_t<const Awaitable2&>>;
 
  private:
-  folly::Executor* executor_;
+  folly::Executor::KeepAlive<> executor_;
   Awaitable awaitable_;
 };
 
@@ -305,6 +305,62 @@ auto operator co_await(const ViaIfAsyncAwaitable<Awaitable>& awaitable)
       awaitable.executor_, awaitable.awaitable_};
 }
 
+namespace detail {
+
+template <typename SemiAwaitable, typename = void>
+struct HasViaIfAsyncMethod : std::false_type {};
+
+template <typename SemiAwaitable>
+struct HasViaIfAsyncMethod<
+    SemiAwaitable,
+    void_t<decltype(std::declval<SemiAwaitable>().viaIfAsync(
+        std::declval<folly::Executor::KeepAlive<>>()))>> : std::true_type {};
+
+namespace adl {
+
+template <typename SemiAwaitable>
+auto co_viaIfAsync(
+    folly::Executor::KeepAlive<> executor,
+    SemiAwaitable&&
+        awaitable) noexcept(noexcept(static_cast<SemiAwaitable&&>(awaitable)
+                                         .viaIfAsync(std::move(executor))))
+    -> decltype(static_cast<SemiAwaitable&&>(awaitable).viaIfAsync(
+        std::move(executor))) {
+  return static_cast<SemiAwaitable&&>(awaitable).viaIfAsync(
+      std::move(executor));
+}
+
+template <
+    typename Awaitable,
+    std::enable_if_t<
+        is_awaitable_v<Awaitable> && !HasViaIfAsyncMethod<Awaitable>::value,
+        int> = 0>
+auto co_viaIfAsync(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
+    -> ViaIfAsyncAwaitable<Awaitable> {
+  static_assert(
+      folly::coro::is_awaitable_v<Awaitable>,
+      "co_viaIfAsync() argument 2 is not awaitable.");
+  return ViaIfAsyncAwaitable<Awaitable>{std::move(executor),
+                                        static_cast<Awaitable&&>(awaitable)};
+}
+
+struct ViaIfAsyncFunction {
+  template <typename Awaitable>
+  auto operator()(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
+      const noexcept(noexcept(co_viaIfAsync(
+          std::move(executor),
+          static_cast<Awaitable&&>(awaitable))))
+          -> decltype(co_viaIfAsync(
+              std::move(executor),
+              static_cast<Awaitable&&>(awaitable))) {
+    return co_viaIfAsync(
+        std::move(executor), static_cast<Awaitable&&>(awaitable));
+  }
+};
+
+} // namespace adl
+} // namespace detail
+
 /// Returns a new awaitable that will resume execution of the awaiting coroutine
 /// on a specified executor in the case that the operation does not complete
 /// synchronously.
@@ -312,15 +368,25 @@ auto operator co_await(const ViaIfAsyncAwaitable<Awaitable>& awaitable)
 /// If the operation completes synchronously then the awaiting coroutine
 /// will continue execution on the current thread without transitioning
 /// execution to the specified executor.
-template <typename Awaitable>
-auto co_viaIfAsync(folly::Executor* executor, Awaitable&& awaitable)
-    -> ViaIfAsyncAwaitable<Awaitable> {
-  static_assert(
-      folly::coro::is_awaitable_v<Awaitable>,
-      "co_viaIfAsync() argument 2 is not awaitable.");
-  return ViaIfAsyncAwaitable<Awaitable>{executor,
-                                        static_cast<Awaitable&&>(awaitable)};
-}
+FOLLY_DEFINE_CPO(detail::adl::ViaIfAsyncFunction, co_viaIfAsync)
+
+template <typename T, typename = void>
+struct is_semi_awaitable : std::false_type {};
+
+template <typename T>
+struct is_semi_awaitable<
+    T,
+    void_t<decltype(folly::coro::co_viaIfAsync(
+        std::declval<folly::Executor::KeepAlive<>>(),
+        std::declval<T>()))>> : std::true_type {};
+
+template <typename T>
+constexpr bool is_semi_awaitable_v = is_semi_awaitable<T>::value;
+
+template <typename T>
+using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
+    std::declval<folly::Executor::KeepAlive<>>(),
+    std::declval<T>()))>;
 
 } // namespace coro
 } // namespace folly

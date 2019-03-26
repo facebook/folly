@@ -37,15 +37,21 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
       Target&& driver,
       IF&& initFunc,
       RS&& selector) const {
-    return [func, sb, se, driver, initFunc, selector](auto in) {
+    return [func, sb, se, driver, initFunc, selector](auto in) mutable {
       return make_single_sender(
           [in, func, sb, se, driver, initFunc, selector](auto out) mutable {
+            using Out = decltype(out);
+            struct data : Out {
+              data(Out out) : Out(std::move(out)) {}
+              bool empty = true;
+            };
             submit(
                 in,
                 make_receiver(
-                    std::move(out),
+                    data{std::move(out)},
                     [func, sb, se, driver, initFunc, selector](
-                        auto& out_, auto input) {
+                        auto& out_, auto input) mutable noexcept {
+                      out_.empty = false;
                       driver(
                           initFunc,
                           selector,
@@ -53,8 +59,12 @@ PUSHMI_INLINE_VAR constexpr struct bulk_fn {
                           func,
                           sb,
                           se,
-                          std::move(out_));
-                    }));
+                          std::move(static_cast<Out&>(out_)));
+                    },
+                    // forward to output
+                    [](auto o, auto e) noexcept {set_error(o, e);},
+                    // only pass done through when empty
+                    [](auto o){ if (o.empty) { set_done(o); }}));
           });
     };
   }

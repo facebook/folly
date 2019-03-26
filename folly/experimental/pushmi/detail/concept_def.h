@@ -23,7 +23,7 @@
 
 // disable buggy compatibility warning about "requires" and "concept" being
 // C++20 keywords.
-#if defined(__clang__) && not defined(__APPLE__)
+#if defined(__clang__) && !defined(__APPLE__)
 #define PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN \
     _Pragma("GCC diagnostic push") \
     _Pragma("GCC diagnostic ignored \"-Wunknown-pragmas\"") \
@@ -419,9 +419,7 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #else
 #define PUSHMI_BROKEN_SUBSUMPTION(...) __VA_ARGS__
 #define PUSHMI_TYPE_CONSTRAINT(...) class
-// bool() is used to prevent 'error: pasting "PUSHMI_PP_REQUIRES_PROBE_" and
-// "::" does not give a valid preprocessing token'
-#define PUSHMI_EXP(...) bool(::folly::pushmi::expAnd(__VA_ARGS__))
+#define PUSHMI_EXP(...)  decltype(::folly::pushmi::expAnd(__VA_ARGS__)){}
 #define PUSHMI_AND ,
 #endif
 
@@ -484,7 +482,7 @@ struct Not {
 template <class T, class U>
 struct And {
   explicit constexpr operator bool() const noexcept {
-    return (bool)std::conditional_t<(bool)T{}, U, std::false_type>{};
+    return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), U, std::false_type>{});
   }
   PUSHMI_TEMPLATE(class This = And, bool B) //
   (requires B == static_cast<bool>(This{})) //
@@ -507,7 +505,7 @@ struct And {
 template <class T, class U>
 struct Or {
   explicit constexpr operator bool() const noexcept {
-    return (bool)std::conditional_t<(bool)T{}, std::true_type, U>{};
+    return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), std::true_type, U>{});
   }
   PUSHMI_TEMPLATE(class This = Or, bool B)  //
   (requires B == static_cast<bool>(This{})) //

@@ -33,21 +33,15 @@ class UnboundedBlockingQueue : public BlockingQueue<T> {
   }
 
   T take() override {
-    T item;
-    while (!queue_.try_dequeue(item)) {
-      sem_.wait();
-    }
-    return item;
+    sem_.wait();
+    return queue_.dequeue();
   }
 
   folly::Optional<T> try_take_for(std::chrono::milliseconds time) override {
-    T item;
-    while (!queue_.try_dequeue(item)) {
-      if (!sem_.try_wait_for(time)) {
-        return folly::none;
-      }
+    if (!sem_.try_wait_for(time)) {
+      return folly::none;
     }
-    return std::move(item);
+    return queue_.dequeue();
   }
 
   size_t size() override {

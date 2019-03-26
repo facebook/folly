@@ -118,6 +118,30 @@ coro::Task<void> Semaphore::co_wait() {
 
 #endif
 
+#if FOLLY_FUTURE_USING_FIBER
+
+SemiFuture<Unit> Semaphore::future_wait() {
+  auto oldVal = tokens_.load(std::memory_order_acquire);
+  do {
+    while (oldVal == 0) {
+      auto waitBaton = std::make_unique<fibers::Baton>();
+      // If waitSlow fails it is because the token is non-zero by the time
+      // the lock is taken, so we can just continue round the loop
+      if (waitSlow(*waitBaton)) {
+        return futures::wait(std::move(waitBaton));
+      }
+      oldVal = tokens_.load(std::memory_order_acquire);
+    }
+  } while (!tokens_.compare_exchange_weak(
+      oldVal,
+      oldVal - 1,
+      std::memory_order_release,
+      std::memory_order_acquire));
+  return makeSemiFuture();
+}
+
+#endif
+
 size_t Semaphore::getCapacity() const {
   return capacity_;
 }

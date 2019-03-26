@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <string>
 
 #include <folly/Function.h>
@@ -69,18 +70,19 @@ namespace detail {
 /// Wrapper around the makeCompressionCounterHandler() extension point.
 class CompressionCounter {
  public:
-  CompressionCounter() {}
+  CompressionCounter() : initialized_(true) {}
   CompressionCounter(
       folly::io::CodecType codecType,
       folly::StringPiece codecName,
       folly::Optional<int> level,
       CompressionCounterKey key,
-      CompressionCounterType counterType) {
+      CompressionCounterType counterType)
+      : initialized_(false) {
     initialize_ = [=]() {
       return makeCompressionCounterHandler(
           codecType, codecName, level, key, counterType);
     };
-    DCHECK(!initialize_.hasAllocatedMemory());
+    assert(!initialize_.heapAllocatedMemory());
   }
 
   void operator+=(double sum) {
@@ -112,7 +114,7 @@ class CompressionCounter {
     }
   }
 
-  bool initialized_{false};
+  bool initialized_;
   folly::Function<folly::Function<void(double)>()> initialize_;
   folly::Function<void(double)> increment_;
 };

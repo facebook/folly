@@ -494,7 +494,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 #endif
 
 template <typename Fun>
-bool execSmall(Op o, Data* src, Data* dst) {
+std::size_t execSmall(Op o, Data* src, Data* dst) {
   switch (o) {
     case Op::MOVE:
       ::new (static_cast<void*>(&dst->tiny))
@@ -506,11 +506,11 @@ bool execSmall(Op o, Data* src, Data* dst) {
     case Op::HEAP:
       break;
   }
-  return false;
+  return 0U;
 }
 
 template <typename Fun>
-bool execBig(Op o, Data* src, Data* dst) {
+std::size_t execBig(Op o, Data* src, Data* dst) {
   switch (o) {
     case Op::MOVE:
       dst->big = src->big;
@@ -522,7 +522,7 @@ bool execBig(Op o, Data* src, Data* dst) {
     case Op::HEAP:
       break;
   }
-  return true;
+  return sizeof(Fun);
 }
 
 } // namespace function
@@ -541,7 +541,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 
   using Traits = detail::function::FunctionTraits<FunctionType>;
   using Call = typename Traits::Call;
-  using Exec = bool (*)(Op, Data*, Data*);
+  using Exec = std::size_t (*)(Op, Data*, Data*);
 
   template <typename Fun>
   using IsSmall = detail::function::IsSmall<Fun>;
@@ -554,8 +554,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   Call call_{&Traits::uninitCall};
   Exec exec_{nullptr};
 
-  bool exec(Op o, Data* src, Data* dst) const {
-    return exec_ && exec_(o, src, dst);
+  std::size_t exec(Op o, Data* src, Data* dst) const {
+    if (!exec_) {
+      return 0U;
+    }
+    return exec_(o, src, dst);
   }
 
   friend Traits;
@@ -799,12 +802,11 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   }
 
   /**
-   * Returns `true` if this `Function` stores the callable on the
-   * heap. If `false` is returned, there has been no additional memory
-   * allocation and the callable is stored inside the `Function`
-   * object itself.
+   * Returns the size of the allocation made to store the callable on the
+   * heap. If `0` is returned, there has been no additional memory
+   * allocation because the callable is stored within the `Function` object.
    */
-  bool hasAllocatedMemory() const noexcept {
+  std::size_t heapAllocatedMemory() const noexcept {
     return exec(Op::HEAP, nullptr, nullptr);
   }
 

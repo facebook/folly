@@ -21,7 +21,7 @@ VirtualEventBase::VirtualEventBase(EventBase& evb)
     : evb_(getKeepAliveToken(evb)) {}
 
 std::future<void> VirtualEventBase::destroy() {
-  CHECK(evb_->runInEventBaseThread([this] { loopKeepAlive_.reset(); }));
+  evb_->runInEventBaseThread([this] { loopKeepAlive_.reset(); });
 
   return std::move(destroyFuture_);
 }

@@ -24,28 +24,34 @@ namespace pushmi {
 // very poor perf example executor.
 //
 
-struct new_thread_executor {
+struct new_thread_executor;
+
+struct new_thread_task {
   using properties = property_set<
       is_sender<>,
-      is_executor<>,
       is_never_blocking<>,
-      is_concurrent_sequence<>,
       is_single<>>;
 
-  new_thread_executor executor() {
-    return {};
-  }
   PUSHMI_TEMPLATE(class Out)
   (requires Receiver<Out>)
-  void submit(Out out) {
+  void submit(Out out) && {
     std::thread t{[out = std::move(out)]() mutable {
       auto tr = ::folly::pushmi::trampoline();
-      ::folly::pushmi::submit(tr, std::move(out));
+      ::folly::pushmi::submit(::folly::pushmi::schedule(tr), std::move(out));
     }};
     // pass ownership of thread to out
     t.detach();
   }
 };
+
+struct new_thread_executor {
+  using properties = property_set<is_concurrent_sequence<>>;
+
+  new_thread_task schedule() {
+    return {};
+  }
+};
+
 
 inline new_thread_executor new_thread() {
   return {};

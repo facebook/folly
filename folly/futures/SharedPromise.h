@@ -34,7 +34,7 @@ namespace folly {
  * callbacks on the same Future (which is indefinitely unsupported), consider
  * refactoring to use SharedPromise to "split" the Future.
  *
- * The ShardPromise must be kept alive manually. Consider FutureSplitter for
+ * The SharedPromise must be kept alive manually. Consider FutureSplitter for
  * automatic lifetime management.
  */
 template <class T>

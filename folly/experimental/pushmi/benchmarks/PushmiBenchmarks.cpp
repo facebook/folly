@@ -13,6 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
+#include <numeric>
+#include <thread>
 #include <vector>
 
 #include <folly/experimental/pushmi/o/defer.h>
@@ -32,7 +35,11 @@
 #include <folly/experimental/pushmi/entangle.h>
 #include <folly/experimental/pushmi/receiver.h>
 
-#include <folly/experimental/pushmi/pool.h>
+#include <folly/experimental/pushmi/examples/pool.h>
+
+#include <folly/Benchmark.h>
+#include <folly/Optional.h>
+#include <folly/container/Foreach.h>
 
 using namespace folly::pushmi::aliases;
 
@@ -47,20 +54,18 @@ struct countdown {
   template <class ExecutorRef>
   void value(ExecutorRef exec);
   template <class E>
-  void error(E e) {
+  void error(E) {
     std::terminate();
   }
   void done() {}
   PUSHMI_TEMPLATE(class Up)
-  (requires mi::Invocable<
-      decltype(mi::set_value),
-      Up,
-      std::ptrdiff_t>)void starting(Up up) {
+  (requires mi::ReceiveValue<Up, std::ptrdiff_t>) //
+  void starting(Up up) {
     mi::set_value(up, 1);
   }
   PUSHMI_TEMPLATE(class Up)
-  (requires mi::True<>&& mi::
-       Invocable<decltype(mi::set_value), Up>)void starting(Up up) volatile {
+  (requires mi::ReceiveValue<Up>&& (!mi::ReceiveValue<Up, std::ptrdiff_t>)) //
+  void starting(Up up) {
     mi::set_value(up);
   }
 };
@@ -69,7 +74,7 @@ template <class R>
 template <class ExecutorRef>
 void countdown<R>::value(ExecutorRef exec) {
   if (--*counter >= 0) {
-    exec | op::submit(R{}(*this));
+    exec.schedule() | op::submit(R{}(*this));
   }
 }
 
@@ -79,38 +84,51 @@ using countdownmany = countdown<decltype(mi::make_receiver)>;
 using countdownflowmany = countdown<decltype(mi::make_flow_receiver)>;
 
 struct inline_time_executor {
-  using properties = mi::property_set<
-      mi::is_time<>,
-      mi::is_executor<>,
-      mi::is_fifo_sequence<>,
-      mi::is_always_blocking<>,
-      mi::is_single<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
+
+  struct task {
+    std::chrono::system_clock::time_point at;
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_always_blocking<>,
+        mi::is_single<>>;
+
+    template <class Out>
+    void submit(Out out) {
+      std::this_thread::sleep_until(at);
+      ::mi::set_value(out, inline_time_executor{});
+      ::mi::set_done(out);
+    }
+  };
 
   std::chrono::system_clock::time_point top() {
     return std::chrono::system_clock::now();
   }
-  auto executor() {
-    return *this;
+  auto schedule(std::chrono::system_clock::time_point at) {
+    return task{at};
   }
-  template <class Out>
-  void submit(std::chrono::system_clock::time_point at, Out out) {
-    std::this_thread::sleep_until(at);
-    ::mi::set_value(out, *this);
+  auto schedule() {
+    return schedule(top());
   }
 };
 
 struct inline_executor {
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_fifo_sequence<>,
-      mi::is_always_blocking<>,
-      mi::is_single<>>;
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    ::mi::set_value(out, *this);
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
+
+  struct task {
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_always_blocking<>,
+        mi::is_single<>>;
+
+    template <class Out>
+    void submit(Out out) {
+      ::mi::set_value(out, inline_executor{});
+      ::mi::set_done(out);
+    }
+  };
+  auto schedule() {
+    return task{};
   }
 };
 
@@ -118,46 +136,54 @@ template <class CancellationFactory>
 struct inline_executor_flow_single {
   CancellationFactory cf;
 
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_flow<>,
-      mi::is_fifo_sequence<>,
-      mi::is_maybe_blocking<>,
-      mi::is_single<>>;
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    auto tokens = cf();
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-    using Stopper = decltype(tokens.second);
-    struct Data : mi::receiver<> {
-      explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
-      Stopper stopper;
-    };
-    auto up = mi::MAKE(receiver)(
-        Data{std::move(tokens.second)},
-        [](auto& data) {},
-        [](auto& data, auto e) noexcept {
-          auto both = lock_both(data.stopper);
-          (*(both.first))(both.second);
-        },
-        [](auto& data) {
-          auto both = lock_both(data.stopper);
-          (*(both.first))(both.second);
-        });
+  struct task {
+    CancellationFactory cf;
 
-    // pass reference for cancellation.
-    ::mi::set_starting(out, std::move(up));
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_flow<>,
+        mi::is_maybe_blocking<>,
+        mi::is_single<>>;
 
-    auto both = lock_both(tokens.first);
-    if (!!both.first && !*(both.first)) {
-      ::mi::set_value(out, *this);
-    } else {
-      // cancellation is not an error
-      ::mi::set_done(out);
+    template <class Out>
+    void submit(Out out) {
+      auto tokens = cf();
+
+      using Stopper = decltype(tokens.second);
+      struct Data : mi::receiver<> {
+        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        Stopper stopper;
+      };
+      auto up = mi::make_receiver(
+          Data{std::move(tokens.second)},
+          [](auto&) {},
+          [](auto& data, auto) noexcept {
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          },
+          [](auto& data) {
+            auto both = lock_both(data.stopper);
+            (*(both.first))(both.second);
+          });
+
+      // pass reference for cancellation.
+      ::mi::set_starting(out, std::move(up));
+
+      auto both = lock_both(tokens.first);
+      if (!!both.first && !*(both.first)) {
+        ::mi::set_value(out, inline_executor_flow_single{cf});
+        ::mi::set_done(out);
+      } else {
+        // cancellation is not an error
+        ::mi::set_done(out);
+      }
     }
+  };
+
+  auto schedule() {
+    return task{cf};
   }
 };
 
@@ -192,403 +218,438 @@ using inline_executor_flow_single_entangled =
     inline_executor_flow_single<entangled_cancellation_factory>;
 
 struct inline_executor_flow_single_ignore {
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_flow<>,
-      mi::is_fifo_sequence<>,
-      mi::is_maybe_blocking<>,
-      mi::is_single<>>;
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    // pass reference for cancellation.
-    ::mi::set_starting(out, mi::receiver<>{});
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-    ::mi::set_value(out, *this);
+  struct task {
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_flow<>,
+        mi::is_maybe_blocking<>,
+        mi::is_single<>>;
+
+    template <class Out>
+    void submit(Out out) {
+      // pass reference for cancellation.
+      ::mi::set_starting(out, mi::receiver<>{});
+      ::mi::set_value(out, inline_executor_flow_single_ignore{});
+      ::mi::set_done(out);
+    }
+  };
+
+  auto schedule() {
+    return task{};
   }
 };
 
 struct inline_executor_flow_many {
-  inline_executor_flow_many() : counter(nullptr) {}
+  inline_executor_flow_many() = default;
   inline_executor_flow_many(std::atomic<int>& c) : counter(&c) {}
 
-  std::atomic<int>* counter;
+  std::atomic<int>* counter = nullptr;
 
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_flow<>,
-      mi::is_fifo_sequence<>,
-      mi::is_maybe_blocking<>,
-      mi::is_many<>>;
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    // boolean cancellation
-    struct producer {
-      producer(Out out, bool s) : out(std::move(out)), stop(s) {}
-      Out out;
-      std::atomic<bool> stop;
-    };
-    auto p = std::make_shared<producer>(std::move(out), false);
+  struct task {
+    std::atomic<int>* counter = nullptr;
 
-    struct Data : mi::receiver<> {
-      explicit Data(std::shared_ptr<producer> p) : p(std::move(p)) {}
-      std::shared_ptr<producer> p;
-    };
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_flow<>,
+        mi::is_maybe_blocking<>,
+        mi::is_many<>>;
 
-    auto up = mi::MAKE(receiver)(
-        Data{p},
-        [counter = this->counter](auto& data, auto requested) {
-          if (requested < 1) {
-            return;
-          }
-          // this is re-entrant
-          while (!data.p->stop && --requested >= 0 &&
-                 (!counter || --*counter >= 0)) {
-            ::mi::set_value(
-                data.p->out,
-                !!counter ? inline_executor_flow_many{*counter}
-                          : inline_executor_flow_many{});
-          }
-          if (!counter || *counter == 0) {
+    template <class Out>
+    void submit(Out out) {
+      // boolean cancellation
+      struct producer {
+        producer(Out out, bool s) : out(std::move(out)), stop(s) {}
+        Out out;
+        std::atomic<bool> stop;
+      };
+      auto p = std::make_shared<producer>(std::move(out), false);
+
+      struct Data : mi::receiver<> {
+        explicit Data(std::shared_ptr<producer> p) : p(std::move(p)) {}
+        std::shared_ptr<producer> p;
+      };
+
+      auto up = mi::make_receiver(
+          Data{p},
+          [counter = this->counter](auto& data, auto requested) {
+            if (requested < 1) {
+              return;
+            }
+            // this is re-entrant
+            while (!data.p->stop && --requested >= 0 &&
+                  (!counter || --*counter >= 0)) {
+              ::mi::set_value(
+                  data.p->out,
+                  !!counter ? inline_executor_flow_many{*counter}
+                            : inline_executor_flow_many{});
+            }
+            if (!counter || *counter == 0) {
+              ::mi::set_done(data.p->out);
+            }
+          },
+          [](auto& data, auto) noexcept {
+            data.p->stop.store(true);
             ::mi::set_done(data.p->out);
-          }
-        },
-        [](auto& data, auto e) noexcept {
-          data.p->stop.store(true);
-          ::mi::set_done(data.p->out);
-        },
-        [](auto& data) {
-          data.p->stop.store(true);
-          ::mi::set_done(data.p->out);
-        });
+          },
+          [](auto& data) {
+            data.p->stop.store(true);
+            ::mi::set_done(data.p->out);
+          });
 
-    // pass reference for cancellation.
-    ::mi::set_starting(p->out, std::move(up));
+      // pass reference for cancellation.
+      ::mi::set_starting(p->out, std::move(up));
+    }
+  };
+
+  auto schedule() {
+    return task{counter};
   }
 };
 
 struct inline_executor_flow_many_ignore {
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_flow<>,
-      mi::is_fifo_sequence<>,
-      mi::is_always_blocking<>,
-      mi::is_many<>>;
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    // pass reference for cancellation.
-    ::mi::set_starting(out, mi::receiver<>{});
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-    ::mi::set_value(out, *this);
+  struct task {
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_flow<>,
+        mi::is_always_blocking<>,
+        mi::is_many<>>;
+    template <class Out>
+    void submit(Out out) {
+      // pass reference for cancellation.
+      ::mi::set_starting(out, mi::receiver<>{});
+      ::mi::set_value(out, inline_executor_flow_many_ignore{});
+      ::mi::set_done(out);
+    }
+  };
 
-    ::mi::set_done(out);
+  auto schedule() {
+    return task{};
   }
 };
 
 struct inline_executor_many {
-  using properties = mi::property_set<
-      mi::is_sender<>,
-      mi::is_fifo_sequence<>,
-      mi::is_always_blocking<>,
-      mi::is_many<>>;
-  auto executor() {
-    return inline_time_executor{};
-  }
-  template <class Out>
-  void submit(Out out) {
-    ::mi::set_value(out, *this);
-    ::mi::set_done(out);
+  using properties = mi::property_set<mi::is_fifo_sequence<>>;
+
+  struct task {
+    using properties = mi::property_set<
+        mi::is_sender<>,
+        mi::is_always_blocking<>,
+        mi::is_many<>>;
+    template <class Out>
+    void submit(Out out) {
+      ::mi::set_value(out, inline_executor_many{});
+      ::mi::set_done(out);
+    }
+  };
+
+  auto schedule() {
+    return task{};
   }
 };
 
-#define concept Concept
-#include <nonius/nonius.h++>
-
-NONIUS_BENCHMARK("ready 1'000 single get (submit)", [](nonius::chronometer meter){
+BENCHMARK(ready_1000_single_get_submit) {
   int counter{0};
-  meter.measure([&]{
-    counter = 1'000;
-    while (--counter >=0) {
-      auto fortyTwo = op::just(42) | op::get<int>;
-    }
-    return counter;
-  });
-})
+  counter = 1'000;
+  std::atomic<int> result{0};
+  while (--counter >=0) {
+    result += op::just(42) | op::get<int>;
+  }
+  (void) result.load();
+}
 
-NONIUS_BENCHMARK("ready 1'000 single get (blocking_submit)", [](nonius::chronometer meter){
+BENCHMARK(ready_1000_single_get_blocking_submit) {
   int counter{0};
-  meter.measure([&]{
-    counter = 1'000;
-    while (--counter >=0) {
-      auto fortyTwo = mi::make_single_sender([](auto out){ mi::set_value(out, 42); mi::set_done(out);}) | op::get<int>;
-    }
-    return counter;
-  });
-})
+  counter = 1'000;
+  std::atomic<int> result{0};
+  while (--counter >=0) {
+    result += mi::make_single_sender(
+      [](auto out){
+        mi::set_value(out, 42);
+        mi::set_done(out);
+      })
+    | op::get<int>;
+  }
+  (void) result.load();
+}
 
-NONIUS_BENCHMARK("inline 1'000 single", [](nonius::chronometer meter){
+BENCHMARK(inline_1000_single, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor{};
   using IE = decltype(ie);
   countdownsingle single{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_receiver(single));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 time single", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_receiver(single));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_time_single, n) {
   std::atomic<int> counter{0};
   auto ie = inline_time_executor{};
   using IE = decltype(ie);
   countdownsingle single{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_receiver(single));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 many", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_receiver(single));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_many, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_many{};
   using IE = decltype(ie);
   countdownmany many{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_receiver(many));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 flow_single shared", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_receiver(many));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_flow_single_shared, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_single_shared{};
   using IE = decltype(ie);
   countdownflowsingle flowsingle{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(flowsingle));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 flow_single entangle", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_flow_receiver(flowsingle));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_flow_single_entangle, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_single_entangled{};
   using IE = decltype(ie);
   countdownflowsingle flowsingle{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(flowsingle));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 flow_single ignore cancellation", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_flow_receiver(flowsingle));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_flow_single_ignore_cancellation, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_single_ignore{};
   using IE = decltype(ie);
   countdownflowsingle flowsingle{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(flowsingle));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 flow_many", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_flow_receiver(flowsingle));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_flow_many, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_many{};
   using IE = decltype(ie);
   countdownflowmany flowmany{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(flowmany));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1 flow_many with 1'000 values pull 1", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_flow_receiver(flowmany));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1_flow_many_with_1000_values_pull_1, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_many{counter};
   using IE = decltype(ie);
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::for_each(mi::make_receiver());
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1 flow_many with 1'000 values pull 1'000", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::for_each(mi::make_receiver());
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1_flow_many_with_1000_values_pull_1000, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_many{counter};
   using IE = decltype(ie);
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(mi::ignoreNF{}, mi::abortEF{}, mi::ignoreDF{}, [](auto up){
-      mi::set_value(up, 1'000);
-    }));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("inline 1'000 flow_many ignore cancellation", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule()
+      | op::submit(
+          mi::make_flow_receiver(
+            mi::ignoreNF{},
+            mi::abortEF{},
+            mi::ignoreDF{},
+            [](auto up){
+              mi::set_value(up, 1'000);
+            }
+          )
+        );
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(inline_1000_flow_many_ignore_cancellation, n) {
   std::atomic<int> counter{0};
   auto ie = inline_executor_flow_many_ignore{};
   using IE = decltype(ie);
   countdownflowmany flowmany{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    ie | op::submit(mi::make_flow_receiver(flowmany));
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("trampoline 1'000 single get (blocking_submit)", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    ie.schedule() | op::submit(mi::make_flow_receiver(flowmany));
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(trampoline_1000_single_get_blocking_submit, n) {
   int counter{0};
   auto tr = mi::trampoline();
   using TR = decltype(tr);
-  meter.measure([&]{
-    counter = 1'000;
-    while (--counter >=0) {
-      auto fortyTwo = tr | op::transform([](auto){return 42;}) | op::get<int>;
-    }
-    return counter;
-  });
-})
 
-NONIUS_BENCHMARK("trampoline static derecursion 1'000", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter = 1'000;
+    while (--counter >= 0) {
+      auto fortyTwo = tr.schedule()
+        | op::transform([](auto){return 42;})
+        | op::get<int>;
+      (void) fortyTwo;
+    }
+    (void) counter;
+  }
+}
+
+BENCHMARK(trampoline_static_derecursion_1000, n) {
   std::atomic<int> counter{0};
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   countdownsingle single{counter};
-  meter.measure([&]{
-    counter.store(1'000);
-    tr | op::submit(single);
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
 
-NONIUS_BENCHMARK("trampoline virtual derecursion 1'000", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    tr.schedule() | op::submit(single);
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(trampoline_virtual_derecursion_1000, n) {
   std::atomic<int> counter{0};
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   auto single = countdownsingle{counter};
   std::function<void(mi::any_executor_ref<>)> recurse{
-      [&](auto exec) { ::folly::pushmi::set_value(single, exec); }};
-  meter.measure([&]{
-    counter.store(1'000);
-    tr | op::submit([&](auto exec) { recurse(exec); });
-    while(counter.load() > 0);
-    return counter.load();
-  });
-})
+      [&](auto exec) { mi::set_value(single, exec); }};
 
-NONIUS_BENCHMARK("trampoline flow_many_sender 1'000", [](nonius::chronometer meter){
+  FOR_EACH_RANGE (i, 0, n) {
+    counter.store(1'000);
+    tr.schedule() | op::submit([&](auto exec) { recurse(exec); });
+    while(counter.load() > 0);
+  }
+}
+
+BENCHMARK(trampoline_flow_many_sender_1000, n) {
   std::atomic<int> counter{0};
   auto tr = mi::trampoline();
   using TR = decltype(tr);
   std::vector<int> values(1'000);
-  std::iota(values.begin(), values.end(), 1);
+  BENCHMARK_SUSPEND {
+    std::iota(values.begin(), values.end(), 1);
+  }
   auto f = op::flow_from(values, tr) | op::tap([&](int){
     --counter;
   });
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
     f | op::for_each(mi::make_receiver());
     while(counter.load() > 0);
-    return counter.load();
-  });
-})
+  }
+}
 
-NONIUS_BENCHMARK("pool{1} submit 1'000", [](nonius::chronometer meter){
-  mi::pool pl{std::max(1u,std::thread::hardware_concurrency())};
-  auto pe = pl.executor();
-  using PE = decltype(pe);
+BENCHMARK(pool_1_submit_1000, n) {
+  folly::Optional<mi::pool> pl;
+  mi::pool_executor pe;
+  BENCHMARK_SUSPEND {
+    pl.emplace(1u);
+    pe = pl->executor();
+  }
   std::atomic<int> counter{0};
   countdownsingle single{counter};
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
-    pe | op::submit(single);
+    pe.schedule() | op::submit(single);
     while(counter.load() > 0);
-    return counter.load();
-  });
-})
+  }
+}
 
-NONIUS_BENCHMARK("pool{hardware_concurrency} submit 1'000", [](nonius::chronometer meter){
-  mi::pool pl{std::min(1u,std::thread::hardware_concurrency())};
-  auto pe = pl.executor();
-  using PE = decltype(pe);
+BENCHMARK(pool_hardware_concurrency_submit_1000, n) {
+  folly::Optional<mi::pool> pl;
+  mi::pool_executor pe;
+  BENCHMARK_SUSPEND {
+    pl.emplace(std::max(1u, std::thread::hardware_concurrency()));
+    pe = pl->executor();
+  }
   std::atomic<int> counter{0};
   countdownsingle single{counter};
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
-    pe | op::submit(single);
+    pe.schedule() | op::submit(single);
     while(counter.load() > 0);
-    return counter.load();
-  });
-})
+  }
+}
 
-NONIUS_BENCHMARK("new thread submit 1'000", [](nonius::chronometer meter){
+BENCHMARK(new_thread_submit_1000, n) {
   auto nt = mi::new_thread();
   using NT = decltype(nt);
   std::atomic<int> counter{0};
   countdownsingle single{counter};
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
-    nt | op::submit(single);
+    nt.schedule() | op::submit(single);
     while(counter.load() > 0);
-    return counter.load();
-  });
-})
+  }
+}
 
-NONIUS_BENCHMARK("new thread blocking_submit 1'000", [](nonius::chronometer meter){
+BENCHMARK(new_thread_blocking_submit_1000, n) {
   auto nt = mi::new_thread();
-  using NT = decltype(nt);
   std::atomic<int> counter{0};
   countdownsingle single{counter};
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
-    nt | op::blocking_submit(single);
-    return counter.load();
-  });
-})
+    nt.schedule() | op::blocking_submit(single);
+  }
+}
 
-NONIUS_BENCHMARK("new thread + time submit 1'000", [](nonius::chronometer meter){
+BENCHMARK(new_thread_and_time_submit_1000, n) {
   auto nt = mi::new_thread();
-  using NT = decltype(nt);
   auto time = mi::time_source<>{};
-  auto tnt = time.make(mi::systemNowF{}, [nt](){ return nt; })();
-  using TNT = decltype(tnt);
+  auto strands = time.make(mi::systemNowF{}, nt);
+  auto tnt = mi::make_strand(strands);
   std::atomic<int> counter{0};
   countdownsingle single{counter};
-  meter.measure([&]{
+  FOR_EACH_RANGE (i, 0, n) {
     counter.store(1'000);
-    tnt | op::submit(single);
+    tnt.schedule() | op::submit(single);
     while(counter.load() > 0);
-    return counter.load();
-  });
-  time.join();
-})
+  }
+  BENCHMARK_SUSPEND {
+    time.join();
+  }
+}
+
+int main() {
+  folly::runBenchmarks();
+}

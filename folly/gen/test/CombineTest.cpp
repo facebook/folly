@@ -13,14 +13,18 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+
 #include <string>
 #include <tuple>
 #include <vector>
+
+#include <glog/logging.h>
 
 #include <folly/FBVector.h>
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
 #include <folly/gen/Combine.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::gen;

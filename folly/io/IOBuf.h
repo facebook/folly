@@ -961,6 +961,21 @@ class IOBuf {
   }
 
   /**
+   * For most of the  use-cases where it seems like a good idea to call this
+   * function, what you really want is `isSharedOne()`.
+   *
+   * If this IOBuf is managed by the usual refcounting mechanism (ie
+   * `isManagedOne()` returns `true`): this returns the reference count as it
+   * was when recently observed by this thread.
+   *
+   * If this IOBuf is *not* managed by the usual refcounting mechanism then the
+   * result of this function is not defined.
+   *
+   * This only checks the current IOBuf, and not other IOBufs in the chain.
+   */
+  uint32_t approximateShareCountOne() const;
+
+  /**
    * Return true if other IOBufs are also pointing to the buffer used by this
    * IOBuf, and false otherwise.
    *

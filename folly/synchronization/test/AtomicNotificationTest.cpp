@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 #include <folly/synchronization/AtomicNotification.h>
+
+#include <folly/Optional.h>
 #include <folly/portability/GTest.h>
 
 #include <thread>

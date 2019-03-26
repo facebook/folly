@@ -30,6 +30,7 @@
 #include <folly/SpinLock.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 
@@ -69,25 +70,6 @@ const size_t MAX_STACK_BUF_SIZE = 2048;
 inline bool zero_return(int error, int rc) {
   return (error == SSL_ERROR_ZERO_RETURN || (rc == 0 && errno == 0));
 }
-
-class AsyncSSLCertificate : public folly::AsyncTransportCertificate {
- public:
-  // assumed to be non null
-  explicit AsyncSSLCertificate(folly::ssl::X509UniquePtr x509)
-      : x509_(std::move(x509)) {}
-
-  folly::ssl::X509UniquePtr getX509() const override {
-    X509_up_ref(x509_.get());
-    return folly::ssl::X509UniquePtr(x509_.get());
-  }
-
-  std::string getIdentity() const override {
-    return OpenSSLUtils::getCommonName(x509_.get());
-  }
-
- private:
-  folly::ssl::X509UniquePtr x509_;
-};
 
 class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
                                 public AsyncSSLSocket::HandshakeCB {
@@ -940,7 +922,9 @@ const AsyncTransportCertificate* AsyncSSLSocket::getPeerCertificate() const {
     if (peerX509) {
       // already up ref'd
       folly::ssl::X509UniquePtr peer(peerX509);
-      peerCertData_ = std::make_unique<AsyncSSLCertificate>(std::move(peer));
+      auto cn = OpenSSLUtils::getCommonName(peerX509);
+      peerCertData_ = std::make_unique<BasicTransportCertificate>(
+          std::move(cn), std::move(peer));
     }
   }
   return peerCertData_.get();
@@ -956,7 +940,9 @@ const AsyncTransportCertificate* AsyncSSLSocket::getSelfCertificate() const {
       // need to upref
       X509_up_ref(selfX509);
       folly::ssl::X509UniquePtr peer(selfX509);
-      selfCertData_ = std::make_unique<AsyncSSLCertificate>(std::move(peer));
+      auto cn = OpenSSLUtils::getCommonName(selfX509);
+      selfCertData_ = std::make_unique<BasicTransportCertificate>(
+          std::move(cn), std::move(peer));
     }
   }
   return selfCertData_.get();

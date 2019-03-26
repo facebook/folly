@@ -160,12 +160,12 @@ void Baton::postHelper(intptr_t new_value) {
       return postThread();
     }
 
-    if (waiter == POSTED || waiter == TIMEOUT) {
+    if (waiter == POSTED) {
       return;
     }
   } while (!waiter_.compare_exchange_weak(waiter, new_value));
 
-  if (waiter != NO_WAITER) {
+  if (waiter != NO_WAITER && waiter != TIMEOUT) {
     reinterpret_cast<Waiter*>(waiter)->post();
   }
 }

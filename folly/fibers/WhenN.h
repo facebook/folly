@@ -39,17 +39,16 @@ namespace fibers {
  * @return vector of pairs (task index, return value of task)
  */
 template <class InputIterator>
-typename std::vector<
-    typename std::enable_if<
-        !std::is_same<
-            invoke_result_t<
-                typename std::iterator_traits<InputIterator>::value_type>,
-            void>::value,
-        typename std::pair<
-            size_t,
-            invoke_result_t<
-                typename std::iterator_traits<InputIterator>::value_type>>>::
-        type> inline collectN(InputIterator first, InputIterator last, size_t n);
+typename std::enable_if<
+    !std::is_same<
+        invoke_result_t<
+            typename std::iterator_traits<InputIterator>::value_type>,
+        void>::value,
+    std::vector<std::pair<
+        size_t,
+        invoke_result_t<
+            typename std::iterator_traits<InputIterator>::value_type>>>>::
+    type inline collectN(InputIterator first, InputIterator last, size_t n);
 
 /**
  * collectN specialization for functions returning void

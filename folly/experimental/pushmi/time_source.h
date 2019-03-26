@@ -17,7 +17,6 @@
 
 #include <folly/experimental/pushmi/detail/opt.h>
 #include <folly/experimental/pushmi/executor.h>
-#include <folly/experimental/pushmi/time_single_sender.h>
 
 #include <algorithm>
 #include <queue>
@@ -32,7 +31,7 @@ namespace pushmi {
 template <class E, class TP>
 class time_source_shared;
 
-template <class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Exec>
 class time_source_executor;
 
 template <class E, class TP>
@@ -104,7 +103,7 @@ class time_source_queue_base
   virtual void dispatch() = 0;
 };
 
-template <class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Exec>
 class time_source_queue : public time_source_queue_base<E, TP> {
  public:
   using time_point = std::decay_t<TP>;
@@ -112,25 +111,25 @@ class time_source_queue : public time_source_queue_base<E, TP> {
   time_source_queue(
       std::weak_ptr<time_source_shared<E, time_point>> source,
       NF nf,
-      Executor ex)
+      Exec ex)
       : source_(std::move(source)), nf_(std::move(nf)), ex_(std::move(ex)) {}
   std::weak_ptr<time_source_shared<E, time_point>> source_;
   NF nf_;
-  Executor ex_;
+  Exec ex_;
 
   void dispatch() override;
 
   auto shared_from_that() {
-    return std::static_pointer_cast<time_source_queue<E, TP, NF, Executor>>(
+    return std::static_pointer_cast<time_source_queue<E, TP, NF, Exec>>(
         this->shared_from_this());
   }
 
-  template <class Exec>
-  void value(Exec&&) {
+  template <class SubExec>
+  void value(SubExec&&) {
     auto s = source_.lock();
 
     if (s->t_.get_id() == std::this_thread::get_id()) {
-      // Executor is not allowed to use the time_source thread
+      // Exec is not allowed to use the time_source thread
       std::terminate();
     }
 
@@ -151,7 +150,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
       return;
     }
     auto that = shared_from_that();
-    auto subEx = time_source_executor<E, TP, NF, Executor>{s, that};
+    auto subEx = time_source_executor<E, TP, NF, Exec>{s, that};
     while (!this->heap_.empty() && this->heap_.top().when <= start) {
       auto item{std::move(this->top())};
       this->heap_.pop();
@@ -224,22 +223,22 @@ class time_source_queue : public time_source_queue_base<E, TP> {
   }
 };
 
-template <class E, class TP, class NF, class Executor>
+template <class E, class TP, class NF, class Exec>
 struct time_source_queue_receiver
-    : std::shared_ptr<time_source_queue<E, TP, NF, Executor>> {
+    : std::shared_ptr<time_source_queue<E, TP, NF, Exec>> {
   ~time_source_queue_receiver() {}
   explicit time_source_queue_receiver(
-      std::shared_ptr<time_source_queue<E, TP, NF, Executor>> that)
-      : std::shared_ptr<time_source_queue<E, TP, NF, Executor>>(that),
+      std::shared_ptr<time_source_queue<E, TP, NF, Exec>> that)
+      : std::shared_ptr<time_source_queue<E, TP, NF, Exec>>(that),
         source_(that->source_.lock()) {}
   using properties = property_set<is_receiver<>>;
   std::shared_ptr<time_source_shared<E, TP>> source_;
 };
 
-template <class E, class TP, class NF, class Executor>
-void time_source_queue<E, TP, NF, Executor>::dispatch() {
-  submit(
-      ex_, time_source_queue_receiver<E, TP, NF, Executor>{shared_from_that()});
+template <class E, class TP, class NF, class Exec>
+void time_source_queue<E, TP, NF, Exec>::dispatch() {
+  ::folly::pushmi::submit(
+      ::folly::pushmi::schedule(ex_), time_source_queue_receiver<E, TP, NF, Exec>{shared_from_that()});
 }
 
 template <class E, class TP>
@@ -435,45 +434,69 @@ class time_source_shared : public time_source_shared_base<E, TP> {
   }
 };
 
+template <class E, class TP, class NF, class Exec>
+class time_source_executor;
+
 //
-// the time executor will queue the work to the time ordered heap.
+// the time task will queue the work to the time ordered heap.
 //
 
-template <class E, class TP, class NF, class Executor>
-class time_source_executor {
+template <class E, class TP, class NF, class Exec>
+class time_source_task {
   using time_point = std::decay_t<TP>;
+  time_point tp_;
   std::shared_ptr<time_source_shared<E, time_point>> source_;
-  std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue_;
+  std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue_;
 
  public:
-  using properties = property_set<
-      is_time<>,
-      is_executor<>,
-      is_maybe_blocking<>,
-      is_fifo_sequence<>,
-      is_single<>>;
+  using properties = property_set_insert_t<properties_t<sender_t<Exec>>, property_set<
+    is_never_blocking<>>>;
 
-  time_source_executor(
+  time_source_task(
+      time_point tp,
       std::shared_ptr<time_source_shared<E, time_point>> source,
-      std::shared_ptr<time_source_queue<E, time_point, NF, Executor>> queue)
-      : source_(std::move(source)), queue_(std::move(queue)) {}
+      std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue)
+      : tp_(tp), source_(std::move(source)), queue_(std::move(queue)) {}
 
-  auto top() {
-    return queue_->nf_();
-  }
-  auto executor() {
-    return *this;
-  }
-
-  PUSHMI_TEMPLATE(class TPA, class Out)
-  (requires Regular<TPA>&& ReceiveValue<Out, any_time_executor_ref<E, TP>>&&
+  PUSHMI_TEMPLATE(class Out)
+  (requires ReceiveValue<Out, any_time_executor_ref<E, TP>>&&
        ReceiveError<Out, E>)
-  void submit(TPA tp, Out out) {
+  void submit(Out&& out) && {
     // queue for later
     source_->insert(
         queue_,
         time_heap_item<E, TP>{
-            tp, any_receiver<E, any_time_executor_ref<E, TP>>{std::move(out)}});
+            tp_, any_receiver<E, any_time_executor_ref<E, TP>>{(Out&&)out}});
+  }
+};
+
+//
+// the time task will queue create tasks.
+//
+
+template <class E, class TP, class NF, class Exec>
+class time_source_executor {
+  using time_point = std::decay_t<TP>;
+  std::shared_ptr<time_source_shared<E, time_point>> source_;
+  std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue_;
+
+ public:
+  using properties = property_set<is_fifo_sequence<>>;
+
+  time_source_executor(
+      std::shared_ptr<time_source_shared<E, time_point>> source,
+      std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue)
+      : source_(std::move(source)), queue_(std::move(queue)) {}
+
+  TP top() {
+    return queue_->nf_();
+  }
+
+  time_source_task<E, TP, NF, Exec> schedule() {
+    return {queue_->nf_(), source_, queue_};
+  }
+  time_source_task<E, TP, NF, Exec> schedule(TP tp) {
+    return {tp, source_, queue_};
   }
 };
 
@@ -482,26 +505,45 @@ class time_source_executor {
 // is called.
 //
 
-template <class E, class TP, class NF, class ExecutorFactory>
+template <class E, class TP, class NF, class Factory>
 class time_source_executor_factory_fn {
   using time_point = std::decay_t<TP>;
   std::shared_ptr<time_source_shared<E, time_point>> source_;
   NF nf_;
-  ExecutorFactory ef_;
+  Factory ef_;
 
  public:
   time_source_executor_factory_fn(
       std::shared_ptr<time_source_shared<E, time_point>> source,
       NF nf,
-      ExecutorFactory ef)
+      Factory ef)
       : source_(std::move(source)), nf_(std::move(nf)), ef_(std::move(ef)) {}
-  auto operator()() {
-    auto ex = ef_();
+  auto make_strand() {
+    auto ex = ::folly::pushmi::make_strand(ef_);
     auto queue =
         std::make_shared<time_source_queue<E, time_point, NF, decltype(ex)>>(
             source_, nf_, std::move(ex));
     return time_source_executor<E, time_point, NF, decltype(ex)>{source_,
                                                                  queue};
+  }
+};
+
+template <class E, class TP, class NF, class Exec>
+class time_source_same_executor_factory_fn {
+  using time_point = std::decay_t<TP>;
+  std::shared_ptr<time_source_shared<E, time_point>> source_;
+  std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue_;
+  NF nf_;
+
+ public:
+  time_source_same_executor_factory_fn(
+      std::shared_ptr<time_source_shared<E, time_point>> source,
+      std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue,
+      NF nf)
+      : source_(std::move(source)), queue_(std::move(queue)), nf_(std::move(nf)) {}
+  auto make_strand() {
+    return time_source_executor<E, time_point, NF, Exec>{source_,
+                                                                 queue_};
   }
 };
 
@@ -539,14 +581,34 @@ class time_source {
     source_->start(source_);
   }
 
-  PUSHMI_TEMPLATE(class NF, class ExecutorFactory)
-  (requires Invocable<ExecutorFactory&>&&
-       Executor<invoke_result_t<ExecutorFactory&>>&&
-           NeverBlocking<invoke_result_t<
-               ExecutorFactory&>>)
-  auto make(NF nf, ExecutorFactory ef) {
-    return time_source_executor_factory_fn<E, time_point, NF, ExecutorFactory>{
+  PUSHMI_TEMPLATE(class NF, class Factory)
+  (requires StrandFactory<Factory> && not Executor<Factory> &&
+            not ExecutorProvider<Factory>) //
+  auto make(NF nf, Factory ef) {
+    return time_source_executor_factory_fn<E, time_point, NF, Factory>{
         source_, std::move(nf), std::move(ef)};
+  }
+  PUSHMI_TEMPLATE(class NF, class Provider)
+  (requires ExecutorProvider<Provider>&&
+            is_never_blocking_v<sender_t<executor_t<Provider>>> &&
+            not StrandFactory<Provider>) //
+  auto make(NF nf, Provider ep) {
+    auto ex = ::folly::pushmi::get_executor(ep);
+    auto queue =
+        std::make_shared<time_source_queue<E, time_point, NF, decltype(ex)>>(
+            source_, nf, std::move(ex));
+    return time_source_same_executor_factory_fn<E, time_point, NF, decltype(ex)>{
+        source_, std::move(queue), std::move(nf)};
+  }
+  PUSHMI_TEMPLATE(class NF, class Exec)
+  (requires Executor<Exec>&&
+            is_never_blocking_v<sender_t<Exec>> && not StrandFactory<Exec>) //
+  auto make(NF nf, Exec ex) {
+    auto queue =
+        std::make_shared<time_source_queue<E, time_point, NF, Exec>>(
+            source_, nf, std::move(ex));
+    return time_source_same_executor_factory_fn<E, time_point, NF, Exec>{
+        source_, std::move(queue), std::move(nf)};
   }
 
   void join() {

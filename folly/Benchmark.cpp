@@ -322,7 +322,22 @@ class BenchmarkResultsPrinter {
       }
       for (auto const& name : counterNames_) {
         if (auto ptr = folly::get_ptr(datum.counters, name)) {
-          printf("  %-*d", int(name.length()), *ptr);
+          switch (ptr->type) {
+            case UserMetric::Type::TIME:
+              printf(
+                  "  %-*s",
+                  int(name.length()),
+                  readableTime(ptr->value, 2).c_str());
+              break;
+            case UserMetric::Type::METRIC:
+              printf(
+                  "  %-*s",
+                  int(name.length()),
+                  metricReadable(ptr->value, 2).c_str());
+              break;
+            default:
+              printf("  %-*d", int(name.length()), ptr->value);
+          }
         } else {
           printf("  %-*s", int(name.length()), "NaN");
         }

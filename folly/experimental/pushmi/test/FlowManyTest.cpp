@@ -101,6 +101,16 @@ class ImmediateFlowManySender : public Test {
   int signals_{0};
 };
 
+TEST(AnyFlowManySender, Construct) {
+  std::array<int, 3> arr{{0, 9, 99}};
+  auto m = folly::pushmi::operators::flow_from(arr);
+  auto any_m = folly::pushmi::any_flow_many_sender<
+      std::exception_ptr,
+      std::ptrdiff_t,
+      std::exception_ptr,
+      int>(m);
+}
+
 TEST_F(ImmediateFlowManySender, EarlyCancellation) {
   make_producer() | op::submit(make_consumer([](auto up) {
     // immediately stop producer
@@ -124,7 +134,8 @@ TEST_F(ImmediateFlowManySender, LateCancellation) {
 using NT = decltype(mi::new_thread());
 
 inline auto make_time(mi::time_source<>& t, NT& ex) {
-  return t.make(mi::systemNowF{}, [ex]() { return ex; })();
+  auto strands = t.make(mi::systemNowF{}, ex);
+  return mi::make_strand(strands);
 }
 
 class ConcurrentFlowManySender : public Test {
@@ -170,7 +181,9 @@ class ConcurrentFlowManySender : public Test {
               return;
             }
             // submit work to happen later
-            data.p->tnt | op::submit_at(at_, [p = data.p](auto) {
+            data.p->tnt |
+              op::schedule_at(at_) |
+              op::submit([p = data.p](auto) {
               // check boolean to select signal
               if (!p->stop) {
                 ::mi::set_value(p->out, 42);
@@ -182,6 +195,7 @@ class ConcurrentFlowManySender : public Test {
             signals_ += 100000;
             data.p->stop.store(true);
             data.p->tnt |
+                op::schedule() |
                 op::submit([p = data.p](auto) { ::mi::set_done(p->out); });
             ++cancel_;
           },
@@ -189,11 +203,14 @@ class ConcurrentFlowManySender : public Test {
             signals_ += 10000;
             data.p->stop.store(true);
             data.p->tnt |
+                op::schedule() |
                 op::submit([p = data.p](auto) { ::mi::set_done(p->out); });
             ++cancel_;
           });
 
-      tnt_ | op::submit([p, sup = std::move(up)](auto) mutable {
+      tnt_ |
+        op::schedule() |
+        op::submit([p, sup = std::move(up)](auto) mutable {
         // pass reference for cancellation.
         ::mi::set_starting(p->out, std::move(sup));
       });
@@ -213,7 +230,9 @@ class ConcurrentFlowManySender : public Test {
             mi::on_starting([&, at](auto up) {
               signals_ += 10;
               mi::set_value(up, 1);
-              tcncl_ | op::submit_at(at, [up = std::move(up)](auto) mutable {
+              tcncl_ |
+                op::schedule_at(at) |
+                op::submit([up = std::move(up)](auto) mutable {
                 ::mi::set_done(up);
               });
             })));

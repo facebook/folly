@@ -28,13 +28,8 @@
 #include <folly/futures/detail/Core.h>
 #include <folly/synchronization/Baton.h>
 
-#ifndef FOLLY_FUTURE_USING_FIBER
-#if FOLLY_MOBILE || defined(__APPLE__)
-#define FOLLY_FUTURE_USING_FIBER 0
-#else
-#define FOLLY_FUTURE_USING_FIBER 1
+#if FOLLY_FUTURE_USING_FIBER
 #include <folly/fibers/Baton.h>
-#endif
 #endif
 
 namespace folly {
@@ -1572,9 +1567,9 @@ collectAll(InputIterator first, InputIterator last) {
 
 // TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<std::vector<
+SemiFuture<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
-collect(InputIterator first, InputIterator last) {
+collectSemiFuture(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
 
@@ -1611,15 +1606,22 @@ collect(InputIterator first, InputIterator last) {
       }
     });
   }
-  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
+  return ctx->p.getSemiFuture();
+}
+
+template <class InputIterator>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collect(InputIterator first, InputIterator last) {
+  return collectSemiFuture(first, last).toUnsafeFuture();
 }
 
 // collect (variadic)
 
 // TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
-Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
-    Fs&&... fs) {
+SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>>
+collectSemiFuture(Fs&&... fs) {
   using Result = std::tuple<typename remove_cvref_t<Fs>::value_type...>;
   struct Context {
     ~Context() {
@@ -1646,7 +1648,13 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
         });
       },
       static_cast<Fs&&>(fs)...);
-  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
+  return ctx->p.getSemiFuture();
+}
+
+template <typename... Fs>
+Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
+    Fs&&... fs) {
+  return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
 // collectAny (iterator)

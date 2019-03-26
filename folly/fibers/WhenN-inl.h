@@ -22,15 +22,15 @@ namespace folly {
 namespace fibers {
 
 template <class InputIterator>
-typename std::vector<typename std::enable_if<
+typename std::enable_if<
     !std::is_same<
         invoke_result_t<
             typename std::iterator_traits<InputIterator>::value_type>,
         void>::value,
-    typename std::pair<
+    std::vector<std::pair<
         size_t,
         invoke_result_t<
-            typename std::iterator_traits<InputIterator>::value_type>>>::type>
+            typename std::iterator_traits<InputIterator>::value_type>>>>::type
 collectN(InputIterator first, InputIterator last, size_t n) {
   typedef invoke_result_t<
       typename std::iterator_traits<InputIterator>::value_type>

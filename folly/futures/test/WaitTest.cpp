@@ -18,6 +18,7 @@
 
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Future.h>
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
@@ -272,7 +273,8 @@ TEST(Wait, waitWithDuration) {
 }
 
 TEST(Wait, multipleWait) {
-  auto f = futures::sleep(milliseconds(100));
+  folly::TestExecutor executor(1);
+  auto f = futures::sleep(milliseconds(100)).via(&executor);
   for (size_t i = 0; i < 5; ++i) {
     EXPECT_FALSE(f.isReady());
     f.wait(milliseconds(3));

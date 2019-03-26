@@ -39,7 +39,7 @@ template class Future<double>;
 namespace folly {
 namespace futures {
 
-Future<Unit> sleep(Duration dur, Timekeeper* tk) {
+SemiFuture<Unit> sleep(Duration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
   if (LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
@@ -47,15 +47,45 @@ Future<Unit> sleep(Duration dur, Timekeeper* tk) {
   }
 
   if (UNLIKELY(!tk)) {
-    return makeFuture<Unit>(FutureNoTimekeeper());
+    return makeSemiFuture<Unit>(FutureNoTimekeeper());
   }
 
   return tk->after(dur);
 }
 
 Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
-  return sleep(dur, tk);
+  return sleep(dur, tk).toUnsafeFuture();
 }
+
+#if FOLLY_FUTURE_USING_FIBER
+
+namespace {
+class FutureWaiter : public fibers::Baton::Waiter {
+ public:
+  FutureWaiter(Promise<Unit> promise, std::unique_ptr<fibers::Baton> baton)
+      : promise_(std::move(promise)), baton_(std::move(baton)) {
+    baton_->setWaiter(*this);
+  }
+
+  void post() override {
+    promise_.setValue();
+    delete this;
+  }
+
+ private:
+  Promise<Unit> promise_;
+  std::unique_ptr<fibers::Baton> baton_;
+};
+} // namespace
+
+SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton) {
+  Promise<Unit> promise;
+  auto sf = promise.getSemiFuture();
+  new FutureWaiter(std::move(promise), std::move(baton));
+  return sf;
+}
+
+#endif
 
 } // namespace futures
 } // namespace folly

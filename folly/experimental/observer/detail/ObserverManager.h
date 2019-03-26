@@ -65,8 +65,7 @@ class ObserverManager {
     return inManagerThread_;
   }
 
-  static void
-  scheduleRefresh(Core::Ptr core, size_t minVersion, bool force = false) {
+  static void scheduleRefresh(Core::Ptr core, size_t minVersion) {
     if (core->getVersion() >= minVersion) {
       return;
     }
@@ -93,8 +92,7 @@ class ObserverManager {
 
     instance->scheduleCurrent([core = std::move(core),
                                instancePtr = instance.get(),
-                               rh = std::move(rh),
-                               force]() {
+                               rh = std::move(rh)]() {
       // Make TSAN know that the current thread owns the read lock now.
       annotate_rwlock_acquired(
           &instancePtr->versionMutex_,
@@ -102,7 +100,7 @@ class ObserverManager {
           __FILE__,
           __LINE__);
 
-      core->refresh(instancePtr->version_, force);
+      core->refresh(instancePtr->version_);
     });
   }
 
@@ -131,7 +129,7 @@ class ObserverManager {
 
     SharedMutexReadPriority::ReadHolder rh(instance->versionMutex_);
 
-    core->refresh(instance->version_, false);
+    core->refresh(instance->version_);
   }
 
   static void waitForAllUpdates();

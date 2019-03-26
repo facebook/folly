@@ -747,14 +747,14 @@ class F14BasicMap {
     return try_emplace(std::forward<K>(key)).first->second;
   }
 
-  FOLLY_ALWAYS_INLINE std::size_t count(key_type const& key) const {
-    return table_.find(key).atEnd() ? 0 : 1;
+  FOLLY_ALWAYS_INLINE size_type count(key_type const& key) const {
+    return contains(key) ? 1 : 0;
   }
 
   template <typename K>
-  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, std::size_t> count(
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, size_type> count(
       K const& key) const {
-    return table_.find(key).atEnd() ? 0 : 1;
+    return contains(key) ? 1 : 0;
   }
 
   // prehash(key) does the work of evaluating hash_function()(key)
@@ -821,6 +821,29 @@ class F14BasicMap {
       F14HashToken const& token,
       K const& key) const {
     return table_.makeConstIter(table_.find(token, key));
+  }
+
+  FOLLY_ALWAYS_INLINE bool contains(key_type const& key) const {
+    return !table_.find(key).atEnd();
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
+      K const& key) const {
+    return !table_.find(key).atEnd();
+  }
+
+  FOLLY_ALWAYS_INLINE bool contains(
+      F14HashToken const& token,
+      key_type const& key) const {
+    return !table_.find(token, key).atEnd();
+  }
+
+  template <typename K>
+  FOLLY_ALWAYS_INLINE EnableHeterogeneousFind<K, bool> contains(
+      F14HashToken const& token,
+      K const& key) const {
+    return !table_.find(token, key).atEnd();
   }
 
   std::pair<iterator, iterator> equal_range(key_type const& key) {

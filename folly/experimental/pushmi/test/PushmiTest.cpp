@@ -24,13 +24,9 @@ using namespace std::literals;
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/from.h>
 #include <folly/experimental/pushmi/o/just.h>
-#include <folly/experimental/pushmi/o/on.h>
 #include <folly/experimental/pushmi/o/submit.h>
 #include <folly/experimental/pushmi/o/tap.h>
 #include <folly/experimental/pushmi/o/transform.h>
-
-#include <folly/experimental/pushmi/new_thread.h>
-#include <folly/experimental/pushmi/trampoline.h>
 
 using namespace folly::pushmi::aliases;
 
@@ -39,12 +35,20 @@ using namespace folly::pushmi::aliases;
 
 using namespace testing;
 
-TEST(EmptyNoArgSingleSender, TapAndSubmit) {
+TEST(EmptySingleSender, TapAndSubmit) {
   auto e = op::empty();
   using E = decltype(e);
 
-  EXPECT_THAT((v::SenderTo<E, v::any_receiver<>, v::is_single<>>), Eq(true))
-      << "expected empty to return a single sender that can take an any_receiver";
+  EXPECT_THAT((v::SenderTo<E, v::any_receiver<>> && v::is_single_v<E>), Eq(true))
+      << "expected empty to return a single sender that can take an any_receiver<>";
+
+  EXPECT_THAT(
+      (v::SenderTo<
+          E,
+          v::any_receiver<std::exception_ptr, int>> &&
+          v::is_single_v<E>),
+      Eq(true))
+      << "expected empty to return a single sender that can take an any_receiver<int>";
 
   int signals = 0;
   e |
@@ -69,41 +73,6 @@ TEST(EmptyNoArgSingleSender, TapAndSubmit) {
       << "expected future_from(e) to return std::future<void>";
 }
 
-TEST(EmptyIntSingleSender, TapAndSubmit) {
-  auto e = op::empty<int>();
-  using E = decltype(e);
-
-  EXPECT_THAT(
-      (v::SenderTo<
-          E,
-          v::any_receiver<std::exception_ptr, int>,
-          v::is_single<>>),
-      Eq(true))
-      << "expected empty to return a single sender that can take an any_receiver<int>";
-
-  int signals = 0;
-  e |
-      op::tap(
-          [&](auto) { signals += 100; },
-          [&](auto) noexcept { signals += 1000; },
-          [&]() { signals += 10; }) |
-      op::submit(
-          [&](auto) { signals += 100; },
-          [&](auto) noexcept { signals += 1000; },
-          [&]() { signals += 10; });
-
-  EXPECT_THAT(signals, Eq(20))
-      << "expected the done signal to be recorded twice";
-
-  EXPECT_THROW(v::future_from<int>(e).get(), std::future_error)
-      << "expected future_error when future_from is applied";
-
-  EXPECT_THAT(
-      (std::is_same<std::future<int>, decltype(v::future_from<int>(e))>::value),
-      Eq(true))
-      << "expected future_from(e) to return std::future<void>";
-}
-
 TEST(JustIntSingleSender, TransformAndSubmit) {
   auto j = op::just(20);
   using J = decltype(j);
@@ -111,8 +80,8 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
   EXPECT_THAT(
       (v::SenderTo<
           J,
-          v::any_receiver<std::exception_ptr, int>,
-          v::is_single<>>),
+          v::any_receiver<std::exception_ptr, int>> &&
+          v::is_single_v<J>),
       Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<int>";
 
@@ -162,7 +131,7 @@ TEST(FromIntManySender, TransformAndSubmit) {
   using M = decltype(m);
 
   EXPECT_THAT(
-      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>, v::is_many<>>),
+      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>> && v::is_many_v<M>),
       Eq(true))
       << "expected empty to return a many sender that can take an any_receiver<int>";
 

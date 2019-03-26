@@ -108,7 +108,7 @@ struct pretty_name_zarray {
   static constexpr auto raw = pretty_raw<T>();
   static constexpr auto info = pretty_parse(raw.data);
   static constexpr auto size = info.e - info.b;
-  static constexpr pretty_carray<size + 1> zarray_() {
+  static constexpr auto zarray_() {
     pretty_carray<size + 1> data{};
     for (std::size_t i = 0; i < size; ++i) {
       data.data[i] = raw.data[info.b + i];

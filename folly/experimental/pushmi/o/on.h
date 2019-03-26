@@ -34,66 +34,38 @@ struct on_fn {
       submit(in_, std::move(out_));
     }
   };
-  template <class In, class ExecutorFactory>
-  struct out_impl {
-    ExecutorFactory ef_;
-    PUSHMI_TEMPLATE(class Out)
+  template <class Factory>
+  struct submit_impl {
+    Factory ef_;
+    PUSHMI_TEMPLATE(class In, class Out)
     (requires SenderTo<In, Out>) //
         void
-        operator()(In& in, Out out) const {
-      auto exec = ef_();
+        operator()(In&& in, Out out) const {
+      auto exec = ::folly::pushmi::make_strand(ef_);
       submit(
-          exec,
-          ::folly::pushmi::make_receiver(
-              on_value_impl<In, Out>{in, std::move(out)}));
+          ::folly::pushmi::schedule(exec),
+          ::folly::pushmi::make_receiver(on_value_impl<std::decay_t<In>, Out>{
+              (In&&) in, std::move(out)}));
     }
   };
-  template <class In, class TP, class Out>
-  struct time_on_value_impl {
-    In in_;
-    TP at_;
-    Out out_;
-    void operator()(any) {
-      submit(in_, at_, std::move(out_));
-    }
-  };
-  template <class In, class ExecutorFactory>
-  struct time_out_impl {
-    ExecutorFactory ef_;
-    PUSHMI_TEMPLATE(class TP, class Out)
-    (requires TimeSenderTo<In, Out>) //
-        void
-        operator()(In& in, TP at, Out out) const {
-      auto exec = ef_();
-      submit(
-          exec,
-          at,
-          ::folly::pushmi::make_receiver(
-              time_on_value_impl<In, TP, Out>{in, at, std::move(out)}));
-    }
-  };
-  template <class ExecutorFactory>
-  struct in_impl {
-    ExecutorFactory ef_;
+  template <class Factory>
+  struct adapt_impl {
+    Factory ef_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>) //
+    (requires Sender<std::decay_t<In>>) //
         auto
-        operator()(In in) const {
+        operator()(In&& in) const {
       return ::folly::pushmi::detail::sender_from(
-          std::move(in),
-          detail::submit_transform_out<In>(
-              out_impl<In, ExecutorFactory>{ef_},
-              time_out_impl<In, ExecutorFactory>{ef_}));
+          (In&&) in, submit_impl<Factory>{ef_});
     }
   };
 
  public:
-  PUSHMI_TEMPLATE(class ExecutorFactory)
-  (requires Invocable<ExecutorFactory&>&&
-       Executor<invoke_result_t<ExecutorFactory&>>) //
+  PUSHMI_TEMPLATE(class Factory)
+  (requires StrandFactory<Factory>) //
       auto
-      operator()(ExecutorFactory ef) const {
-    return in_impl<ExecutorFactory>{std::move(ef)};
+      operator()(Factory ef) const {
+    return adapt_impl<Factory>{std::move(ef)};
   }
 };
 
