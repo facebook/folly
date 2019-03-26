@@ -43,7 +43,7 @@ struct Watchdog {
   Watchdog(const Watchdog&) = delete;
   Watchdog& operator=(const Watchdog&) = delete;
   Watchdog(Watchdog&&) noexcept = default;
-  Watchdog& operator=(Watchdog&&) noexcept = default;
+  Watchdog& operator=(Watchdog&&) noexcept = delete;
 };
 
 // Some basic types we use for tracking.
