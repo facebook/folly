@@ -640,8 +640,7 @@ class alignas(T) Replaceable
   aligned_storage_for_t<T> storage_[1];
 };
 
-#if __cplusplus > 201402L
-// C++17 allows us to define a deduction guide:
+#if __cpp_deduction_guides >= 201703 || _MSC_VER
 template <class T>
 Replaceable(T)->Replaceable<T>;
 #endif
