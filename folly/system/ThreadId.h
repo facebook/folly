@@ -90,8 +90,10 @@ inline uint64_t getOSThreadID() {
   return uint64_t(GetCurrentThreadId());
 #elif __linux__
   return uint64_t(syscall(FOLLY_SYS_gettid));
-#else
+#elif __has_include(<pthread_np.h>)
   return uint64_t(pthread_getthreadid_np());
+#else
+#error Cannot define platform-specific get Thread ID.
 #endif
 }
 } // namespace folly
