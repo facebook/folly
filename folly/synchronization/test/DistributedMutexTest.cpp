@@ -16,12 +16,14 @@
 #include <folly/synchronization/DistributedMutex.h>
 #include <folly/MapUtil.h>
 #include <folly/Synchronized.h>
+#include <folly/container/Array.h>
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
 
 #include <chrono>
+#include <cmath>
 #include <thread>
 
 using namespace std::literals;
@@ -186,6 +188,7 @@ void atomic_notify_one(const ManualAtomic<std::uintptr_t>*) {
 
 namespace {
 DEFINE_int32(stress_factor, 1000, "The stress test factor for tests");
+DEFINE_int32(stress_test_seconds, 2, "Duration for stress tests");
 constexpr auto kForever = 100h;
 
 using DSched = test::DeterministicSchedule;
@@ -206,6 +209,7 @@ void basicNThreads(int numThreads, int iterations = FLAGS_stress_factor) {
       for (auto j = 0; j < iterations; ++j) {
         auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
         EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
         result.push_back(id);
         EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
       }
@@ -225,14 +229,328 @@ void basicNThreads(int numThreads, int iterations = FLAGS_stress_factor) {
   }
   EXPECT_EQ(total, sum(numThreads) * iterations);
 }
+
+template <template <typename> class Atom = std::atomic>
+void lockWithTryAndTimedNThreads(
+    int numThreads,
+    std::chrono::seconds duration) {
+  auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
+  auto&& barrier = std::atomic<int>{0};
+  auto&& threads = std::vector<std::thread>{};
+  auto&& stop = std::atomic<bool>{false};
+
+  auto&& lockUnlockFunction = [&]() {
+    while (!stop.load()) {
+      auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
+      EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+      std::this_thread::yield();
+      EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+    }
+  };
+
+  auto tryLockFunction = [&]() {
+    while (!stop.load()) {
+      using Mutex = std::decay_t<decltype(mutex)>;
+      auto lck = std::unique_lock<Mutex>{mutex, std::defer_lock};
+      if (lck.try_lock()) {
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+      }
+    }
+  };
+
+  auto timedLockFunction = [&]() {
+    while (!stop.load()) {
+      using Mutex = std::decay_t<decltype(mutex)>;
+      auto lck = std::unique_lock<Mutex>{mutex, std::defer_lock};
+      if (lck.try_lock_for(kForever)) {
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+      }
+    }
+  };
+
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(lockUnlockFunction));
+  }
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(tryLockFunction));
+  }
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(timedLockFunction));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
+
+template <template <typename> class Atom = std::atomic>
+void combineNThreads(int numThreads, std::chrono::seconds duration) {
+  auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
+  auto&& barrier = std::atomic<int>{0};
+  auto&& threads = std::vector<std::thread>{};
+  auto&& stop = std::atomic<bool>{false};
+
+  auto&& function = [&]() {
+    return [&] {
+      auto&& expected = std::uint64_t{0};
+      auto&& local = std::atomic<std::uint64_t>{0};
+      auto&& result = std::atomic<std::uint64_t>{0};
+      while (!stop.load()) {
+        ++expected;
+        auto current = mutex.lock_combine([&]() {
+          result.fetch_add(1);
+          EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+          std::this_thread::yield();
+          EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+          return local.fetch_add(1);
+        });
+        EXPECT_EQ(current, expected - 1);
+      }
+
+      EXPECT_EQ(expected, result.load());
+    };
+  };
+
+  for (auto i = 1; i <= numThreads; ++i) {
+    threads.push_back(DSched::thread(function()));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
+
+template <template <typename> class Atom = std::atomic>
+void combineWithLockNThreads(int numThreads, std::chrono::seconds duration) {
+  auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
+  auto&& barrier = std::atomic<int>{0};
+  auto&& threads = std::vector<std::thread>{};
+  auto&& stop = std::atomic<bool>{false};
+
+  auto&& lockUnlockFunction = [&]() {
+    while (!stop.load()) {
+      auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
+      EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+      std::this_thread::yield();
+      EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+    }
+  };
+
+  auto&& combineFunction = [&]() {
+    auto&& expected = std::uint64_t{0};
+    auto&& total = std::atomic<std::uint64_t>{0};
+
+    while (!stop.load()) {
+      ++expected;
+      auto current = mutex.lock_combine([&]() {
+        auto iteration = total.fetch_add(1);
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+        return iteration;
+      });
+
+      EXPECT_EQ(expected, current + 1);
+    }
+
+    EXPECT_EQ(expected, total.load());
+  };
+
+  for (auto i = 1; i < (numThreads / 2); ++i) {
+    threads.push_back(DSched::thread(combineFunction));
+  }
+  for (auto i = 0; i < (numThreads / 2); ++i) {
+    threads.push_back(DSched::thread(lockUnlockFunction));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
+
+template <template <typename> class Atom = std::atomic>
+void combineWithTryLockNThreads(int numThreads, std::chrono::seconds duration) {
+  auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
+  auto&& barrier = std::atomic<int>{0};
+  auto&& threads = std::vector<std::thread>{};
+  auto&& stop = std::atomic<bool>{false};
+
+  auto&& lockUnlockFunction = [&]() {
+    while (!stop.load()) {
+      auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
+      EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+      std::this_thread::yield();
+      EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+    }
+  };
+
+  auto&& combineFunction = [&]() {
+    auto&& expected = std::uint64_t{0};
+    auto&& total = std::atomic<std::uint64_t>{0};
+
+    while (!stop.load()) {
+      ++expected;
+      auto current = mutex.lock_combine([&]() {
+        auto iteration = total.fetch_add(1);
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+        return iteration;
+      });
+
+      EXPECT_EQ(expected, current + 1);
+    }
+
+    EXPECT_EQ(expected, total.load());
+  };
+
+  auto tryLockFunction = [&]() {
+    while (!stop.load()) {
+      using Mutex = std::decay_t<decltype(mutex)>;
+      auto lck = std::unique_lock<Mutex>{mutex, std::defer_lock};
+      if (lck.try_lock()) {
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+      }
+    }
+  };
+
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(lockUnlockFunction));
+  }
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(combineFunction));
+  }
+  for (auto i = 0; i < (numThreads / 3); ++i) {
+    threads.push_back(DSched::thread(tryLockFunction));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
+
+template <template <typename> class Atom = std::atomic>
+void combineWithLockTryAndTimedNThreads(
+    int numThreads,
+    std::chrono::seconds duration) {
+  auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
+  auto&& barrier = std::atomic<int>{0};
+  auto&& threads = std::vector<std::thread>{};
+  auto&& stop = std::atomic<bool>{false};
+
+  auto&& lockUnlockFunction = [&]() {
+    while (!stop.load()) {
+      auto lck = std::unique_lock<std::decay_t<decltype(mutex)>>{mutex};
+      EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+      std::this_thread::yield();
+      EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+    }
+  };
+
+  auto&& combineFunction = [&]() {
+    auto&& expected = std::uint64_t{0};
+    auto&& total = std::atomic<std::uint64_t>{0};
+
+    while (!stop.load()) {
+      ++expected;
+      auto current = mutex.lock_combine([&]() {
+        auto iteration = total.fetch_add(1);
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+
+        // return a non-trivially-copyable object that occupies all the
+        // storage we use to coalesce returns to test that codepath
+        return folly::make_array(
+            iteration,
+            iteration + 1,
+            iteration + 2,
+            iteration + 3,
+            iteration + 4,
+            iteration + 5);
+      });
+
+      EXPECT_EQ(expected, current[0] + 1);
+      EXPECT_EQ(expected, current[1]);
+      EXPECT_EQ(expected, current[2] - 1);
+      EXPECT_EQ(expected, current[3] - 2);
+      EXPECT_EQ(expected, current[4] - 3);
+      EXPECT_EQ(expected, current[5] - 4);
+    }
+
+    EXPECT_EQ(expected, total.load());
+  };
+
+  auto tryLockFunction = [&]() {
+    while (!stop.load()) {
+      using Mutex = std::decay_t<decltype(mutex)>;
+      auto lck = std::unique_lock<Mutex>{mutex, std::defer_lock};
+      if (lck.try_lock()) {
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+      }
+    }
+  };
+
+  auto timedLockFunction = [&]() {
+    while (!stop.load()) {
+      using Mutex = std::decay_t<decltype(mutex)>;
+      auto lck = std::unique_lock<Mutex>{mutex, std::defer_lock};
+      if (lck.try_lock_for(kForever)) {
+        EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+        std::this_thread::yield();
+        EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+      }
+    }
+  };
+
+  for (auto i = 0; i < (numThreads / 4); ++i) {
+    threads.push_back(DSched::thread(lockUnlockFunction));
+  }
+  for (auto i = 0; i < (numThreads / 4); ++i) {
+    threads.push_back(DSched::thread(combineFunction));
+  }
+  for (auto i = 0; i < (numThreads / 4); ++i) {
+    threads.push_back(DSched::thread(tryLockFunction));
+  }
+  for (auto i = 0; i < (numThreads / 4); ++i) {
+    threads.push_back(DSched::thread(timedLockFunction));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
 } // namespace
 
 TEST(DistributedMutex, InternalDetailTestOne) {
   auto value = 0;
   auto ptr = reinterpret_cast<std::uintptr_t>(&value);
-  EXPECT_EQ(detail::distributed_mutex::extractAddress<int>(ptr), &value);
+  EXPECT_EQ(detail::distributed_mutex::extractPtr<int>(ptr), &value);
   ptr = ptr | 0b1;
-  EXPECT_EQ(detail::distributed_mutex::extractAddress<int>(ptr), &value);
+  EXPECT_EQ(detail::distributed_mutex::extractPtr<int>(ptr), &value);
 }
 
 TEST(DistributedMutex, Basic) {
@@ -434,6 +752,159 @@ TEST(DistributedMutex, StressHardwareConcurrencyThreads) {
   basicNThreads(std::thread::hardware_concurrency());
 }
 
+TEST(DistributedMutex, StressThreeThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwelveThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwentyFourThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFourtyEightThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixtyFourThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHwConcThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreads(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, StressTwoThreadsCombine) {
+  combineNThreads(2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressThreeThreadsCombine) {
+  combineNThreads(3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFourThreadsCombine) {
+  combineNThreads(4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFiveThreadsCombine) {
+  combineNThreads(5, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixThreadsCombine) {
+  combineNThreads(6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSevenThreadsCombine) {
+  combineNThreads(7, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressEightThreadsCombine) {
+  combineNThreads(8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixteenThreadsCombine) {
+  combineNThreads(16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressThirtyTwoThreadsCombine) {
+  combineNThreads(32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixtyFourThreadsCombine) {
+  combineNThreads(64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHundredThreadsCombine) {
+  combineNThreads(100, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombine) {
+  combineNThreads(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, StressTwoThreadsCombineAndLock) {
+  combineWithLockNThreads(2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFourThreadsCombineAndLock) {
+  combineWithLockNThreads(4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressEightThreadsCombineAndLock) {
+  combineWithLockNThreads(8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixteenThreadsCombineAndLock) {
+  combineWithLockNThreads(16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressThirtyTwoThreadsCombineAndLock) {
+  combineWithLockNThreads(32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixtyFourThreadsCombineAndLock) {
+  combineWithLockNThreads(64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineAndLock) {
+  combineWithLockNThreads(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, StressThreeThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwelveThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwentyFourThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFourtyEightThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHardwareConcurrencyThreadsCombineTryLockAndLock) {
+  combineWithTryLockNThreads(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, StressThreeThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwelveThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressTwentyFourThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressFourtyEightThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressSixtyFourThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressHwConcurrencyThreadsCombineTryLockLockAndTimed) {
+  combineWithLockTryAndTimedNThreads(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
 TEST(DistributedMutex, StressTryLock) {
   auto&& mutex = DistributedMutex{};
 
@@ -464,6 +935,73 @@ void runBasicNThreadsDeterministic(int threads, int iterations) {
     static_cast<void>(schedule);
   }
 }
+
+void combineNThreadsDeterministic(int threads, std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    combineNThreads<test::DeterministicAtomic>(threads, time);
+    static_cast<void>(schedule);
+  }
+}
+
+void combineAndLockNThreadsDeterministic(int threads, std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    combineWithLockNThreads<test::DeterministicAtomic>(threads, time);
+    static_cast<void>(schedule);
+  }
+}
+
+void combineTryLockAndLockNThreadsDeterministic(
+    int threads,
+    std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    combineWithTryLockNThreads<test::DeterministicAtomic>(threads, time);
+    static_cast<void>(schedule);
+  }
+}
+
+void lockWithTryAndTimedNThreadsDeterministic(
+    int threads,
+    std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    lockWithTryAndTimedNThreads<test::DeterministicAtomic>(threads, time);
+    static_cast<void>(schedule);
+  }
+}
+
+void combineWithTryLockAndTimedNThreadsDeterministic(
+    int threads,
+    std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    combineWithLockTryAndTimedNThreads<test::DeterministicAtomic>(
+        threads, time);
+    static_cast<void>(schedule);
+  }
+}
 } // namespace
 
 TEST(DistributedMutex, DeterministicStressTwoThreads) {
@@ -480,6 +1018,156 @@ TEST(DistributedMutex, DeterministicStressSixteenThreads) {
 }
 TEST(DistributedMutex, DeterministicStressThirtyTwoThreads) {
   runBasicNThreadsDeterministic(32, numIterationsDeterministicTest(32));
+}
+
+TEST(DistributedMutex, DeterministicStressThreeThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressSixThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressTwelveThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressTwentyFourThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressFourtyEightThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressSixtyFourThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicStressHwConcThreadsLockTryAndTimed) {
+  lockWithTryAndTimedNThreadsDeterministic(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, CombineDeterministicStressTwoThreads) {
+  combineNThreadsDeterministic(
+      2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressFourThreads) {
+  combineNThreadsDeterministic(
+      4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressEightThreads) {
+  combineNThreadsDeterministic(
+      8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressSixteenThreads) {
+  combineNThreadsDeterministic(
+      16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressThirtyTwoThreads) {
+  combineNThreadsDeterministic(
+      32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressSixtyFourThreads) {
+  combineNThreadsDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineDeterministicStressHardwareConcurrencyThreads) {
+  combineNThreadsDeterministic(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, CombineAndLockDeterministicStressTwoThreads) {
+  combineAndLockNThreadsDeterministic(
+      2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressFourThreads) {
+  combineAndLockNThreadsDeterministic(
+      4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressEightThreads) {
+  combineAndLockNThreadsDeterministic(
+      8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressSixteenThreads) {
+  combineAndLockNThreadsDeterministic(
+      16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressThirtyTwoThreads) {
+  combineAndLockNThreadsDeterministic(
+      32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressSixtyFourThreads) {
+  combineAndLockNThreadsDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineAndLockDeterministicStressHWConcurrencyThreads) {
+  combineAndLockNThreadsDeterministic(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressThreeThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressSixThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressTwelveThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressTwentyThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressFortyThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressSixtyThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndLockDeterministicStressHWConcThreads) {
+  combineTryLockAndLockNThreadsDeterministic(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressThreeThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      3, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressSixThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      6, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressTwelveThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      12, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressTwentyThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      24, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressFortyThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      48, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressSixtyThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, CombineTryLockAndTimedDeterministicStressHWConcThreads) {
+  combineWithTryLockAndTimedNThreadsDeterministic(
+      std::thread::hardware_concurrency(),
+      std::chrono::seconds{FLAGS_stress_test_seconds});
 }
 
 TEST(DistributedMutex, TimedLockTimeout) {
@@ -831,6 +1519,133 @@ TEST(DistributedMutex, DeterministicTryLockSixtyFourThreads) {
     concurrentTryLocks<test::DeterministicAtomic>(64, 5);
     static_cast<void>(schedule);
   }
+}
+
+namespace {
+class TestConstruction {
+ public:
+  TestConstruction() = delete;
+  explicit TestConstruction(int) {
+    defaultConstructs().fetch_add(1, std::memory_order_relaxed);
+  }
+  TestConstruction(TestConstruction&&) noexcept {
+    moveConstructs().fetch_add(1, std::memory_order_relaxed);
+  }
+  TestConstruction(const TestConstruction&) {
+    copyConstructs().fetch_add(1, std::memory_order_relaxed);
+  }
+  TestConstruction& operator=(const TestConstruction&) {
+    copyAssigns().fetch_add(1, std::memory_order_relaxed);
+    return *this;
+  }
+  TestConstruction& operator=(TestConstruction&&) {
+    moveAssigns().fetch_add(1, std::memory_order_relaxed);
+    return *this;
+  }
+  ~TestConstruction() {
+    destructs().fetch_add(1, std::memory_order_relaxed);
+  }
+
+  static std::atomic<std::uint64_t>& defaultConstructs() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+  static std::atomic<std::uint64_t>& moveConstructs() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+  static std::atomic<std::uint64_t>& copyConstructs() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+  static std::atomic<std::uint64_t>& moveAssigns() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+  static std::atomic<std::uint64_t>& copyAssigns() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+  static std::atomic<std::uint64_t>& destructs() {
+    static auto&& atomic = std::atomic<std::uint64_t>{0};
+    return atomic;
+  }
+
+  static void reset() {
+    defaultConstructs().store(0);
+    moveConstructs().store(0);
+    copyConstructs().store(0);
+    copyAssigns().store(0);
+    destructs().store(0);
+  }
+};
+} // namespace
+
+TEST(DistributedMutex, TestAppropriateDestructionAndConstructionWithCombine) {
+  auto&& mutex = folly::DistributedMutex{};
+  auto&& stop = std::atomic<bool>{false};
+
+  // test the simple return path to make sure that in the absence of
+  // contention, we get the right number of constructs and destructs
+  mutex.lock_combine([]() { return TestConstruction{1}; });
+  auto moves = TestConstruction::moveConstructs().load();
+  auto defaults = TestConstruction::defaultConstructs().load();
+  EXPECT_EQ(TestConstruction::defaultConstructs().load(), 1);
+  EXPECT_TRUE(moves == 0 || moves == 1);
+  EXPECT_EQ(TestConstruction::destructs().load(), moves + defaults);
+
+  // loop and make sure we were able to test the path where the critical
+  // section of the thread gets combined, and assert that we see the expected
+  // number of constructions and destructions
+  //
+  // this implements a timed backoff to test the combined path, so we use the
+  // smallest possible delay in tests
+  auto thread = std::thread{[&]() {
+    auto&& duration = std::chrono::milliseconds{10};
+    while (!stop.load()) {
+      TestConstruction::reset();
+      auto&& ready = folly::Baton<>{};
+      auto&& release = folly::Baton<>{};
+
+      // make one thread start it's critical section, signal and wait for
+      // another thread to enqueue, to test the
+      auto innerThread = std::thread{[&]() {
+        mutex.lock_combine([&]() {
+          ready.post();
+          release.wait();
+          /* sleep override */
+          std::this_thread::sleep_for(duration);
+        });
+      }};
+
+      // wait for the thread to get in its critical section, then tell it to go
+      ready.wait();
+      release.post();
+      mutex.lock_combine([&]() { return TestConstruction{1}; });
+
+      innerThread.join();
+
+      // at this point we should have only one default construct, either 3
+      // or 4 move constructs the same number of destructions as
+      // constructions
+      auto innerDefaults = TestConstruction::defaultConstructs().load();
+      auto innerMoves = TestConstruction::moveConstructs().load();
+      auto destructs = TestConstruction::destructs().load();
+      EXPECT_EQ(innerDefaults, 1);
+      EXPECT_TRUE(innerMoves == 3 || innerMoves == 4 || innerMoves == 1);
+      EXPECT_EQ(destructs, innerMoves + innerDefaults);
+      EXPECT_EQ(TestConstruction::moveAssigns().load(), 0);
+      EXPECT_EQ(TestConstruction::copyAssigns().load(), 0);
+
+      // increase duration by 100ms each iteration
+      duration = duration + 100ms;
+    }
+  }};
+
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::seconds{FLAGS_stress_test_seconds});
+  stop.store(true);
+  thread.join();
 }
 
 } // namespace folly
