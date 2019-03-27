@@ -115,7 +115,7 @@ namespace folly {
  * ------------
  *
  * IOBuf objects also contain pointers to next and previous IOBuf objects.
- * This can be used to represent a single logical piece of data that its stored
+ * This can be used to represent a single logical piece of data that is stored
  * in non-contiguous chunks in separate buffers.
  *
  * A single IOBuf object can only belong to one chain at a time.
@@ -130,8 +130,7 @@ namespace folly {
  * it is simplest to treat this as if the head of the chain owns all other
  * IOBufs in the chain.  When you delete the head of the chain, it will delete
  * the other elements as well.  For this reason, prependChain() and
- * appendChain() take ownership of of the new elements being added to this
- * chain.
+ * appendChain() take ownership of the new elements being added to this chain.
  *
  * When the coalesce() method is used to coalesce an entire IOBuf chain into a
  * single IOBuf, all other IOBufs in the chain are eliminated and automatically
