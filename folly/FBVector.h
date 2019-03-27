@@ -1751,4 +1751,14 @@ template <
 fbvector(InputIt, InputIt, Allocator = Allocator())
     ->fbvector<typename std::iterator_traits<InputIt>::value_type, Allocator>;
 #endif
+
+template <class T, class A, class U>
+void erase(fbvector<T, A>& v, U value) {
+  v.erase(std::remove(v.begin(), v.end(), value), v.end());
+}
+
+template <class T, class A, class Predicate>
+void erase_if(fbvector<T, A>& v, Predicate predicate) {
+  v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
+}
 } // namespace folly
