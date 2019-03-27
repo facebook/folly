@@ -33,7 +33,7 @@ DEFINE_int32(
 
 constexpr int kFib = 35; // unit of work
 size_t fib(int n) {
-  return n <= 1 ? 1 : fib(n - 1) * fib(n - 2);
+  return n <= 1 ? 1 : fib(n - 1) + fib(n - 2);
 }
 
 BENCHMARK(FibSumMap, n) {

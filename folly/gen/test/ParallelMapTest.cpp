@@ -155,6 +155,10 @@ TEST(Pmap, Rvalues) {
   }
 }
 
+TEST(Pmap, Exception) {
+  EXPECT_THROW(from({"a"}) | pmap(To<int>()) | count, std::runtime_error);
+}
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

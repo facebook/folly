@@ -20,11 +20,13 @@
 
 #include <atomic>
 #include <cassert>
+#include <exception>
 #include <thread>
 #include <type_traits>
 #include <utility>
 #include <vector>
 
+#include <folly/Expected.h>
 #include <folly/MPMCPipeline.h>
 #include <folly/experimental/EventCount.h>
 #include <folly/functional/Invoke.h>
@@ -66,11 +68,13 @@ class PMap : public Operator<PMap<Predicate>> {
     Predicate pred_;
     const size_t nThreads_;
 
+    using Result = folly::Expected<Output, std::exception_ptr>;
     class ExecutionPipeline {
       std::vector<std::thread> workers_;
       std::atomic<bool> done_{false};
       const Predicate& pred_;
-      MPMCPipeline<Input, Output> pipeline_;
+      using Pipeline = MPMCPipeline<Input, Result>;
+      Pipeline pipeline_;
       EventCount wake_;
 
      public:
@@ -109,12 +113,12 @@ class PMap : public Operator<PMap<Predicate>> {
         wake_.notify();
       }
 
-      bool read(Output& out) {
-        return pipeline_.read(out);
+      bool read(Result& result) {
+        return pipeline_.read(result);
       }
 
-      void blockingRead(Output& out) {
-        pipeline_.blockingRead(out);
+      void blockingRead(Result& result) {
+        pipeline_.blockingRead(result);
       }
 
      private:
@@ -128,11 +132,16 @@ class PMap : public Operator<PMap<Predicate>> {
         for (;;) {
           auto key = wake_.prepareWait();
 
-          typename MPMCPipeline<Input, Output>::template Ticket<0> ticket;
+          typename Pipeline::template Ticket<0> ticket;
           if (pipeline_.template readStage<0>(ticket, in)) {
             wake_.cancelWait();
-            Output out = pred_(std::move(in));
-            pipeline_.template blockingWriteStage<0>(ticket, std::move(out));
+            try {
+              Output out = pred_(std::move(in));
+              pipeline_.template blockingWriteStage<0>(ticket, std::move(out));
+            } catch (...) {
+              pipeline_.template blockingWriteStage<0>(
+                  ticket, makeUnexpected(std::current_exception()));
+            }
             continue;
           }
 
@@ -146,6 +155,13 @@ class PMap : public Operator<PMap<Predicate>> {
         }
       }
     };
+
+    static Output&& getOutput(Result& result) {
+      if (result.hasError()) {
+        std::rethrow_exception(std::move(result).error());
+      }
+      return std::move(result).value();
+    }
 
    public:
     Generator(Source source, const Predicate& pred, size_t nThreads)
@@ -168,10 +184,10 @@ class PMap : public Operator<PMap<Predicate>> {
         }
 
         // input queue full; drain ready items from the queue
-        Output out;
-        while (pipeline.read(out)) {
+        Result result;
+        while (pipeline.read(result)) {
           ++read;
-          body(std::move(out));
+          body(getOutput(result));
         }
 
         // write the value we were going to write before we made room.
@@ -183,10 +199,10 @@ class PMap : public Operator<PMap<Predicate>> {
 
       // flush the output queue
       while (read < wrote) {
-        Output out;
-        pipeline.blockingRead(out);
+        Result result;
+        pipeline.blockingRead(result);
         ++read;
-        body(std::move(out));
+        body(getOutput(result));
       }
     }
 
@@ -206,10 +222,10 @@ class PMap : public Operator<PMap<Predicate>> {
         }
 
         // input queue full; drain ready items from the queue
-        Output out;
-        while (pipeline.read(out)) {
+        Result result;
+        while (pipeline.read(result)) {
           ++read;
-          if (!handler(std::move(out))) {
+          if (!handler(getOutput(result))) {
             more = false;
             return false;
           }
@@ -225,11 +241,11 @@ class PMap : public Operator<PMap<Predicate>> {
 
       // flush the output queue
       while (read < wrote) {
-        Output out;
-        pipeline.blockingRead(out);
+        Result result;
+        pipeline.blockingRead(result);
         ++read;
-        if (more) {
-          more = more && handler(std::move(out));
+        if (more && !handler(getOutput(result))) {
+          more = false;
         }
       }
       return more;
