@@ -182,12 +182,12 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
   }
 
   void connectionAccepted(
-      NetworkSocket fd,
+      int fd,
       const folly::SocketAddress& clientAddr) noexcept override {
-    events_.emplace_back(fd, clientAddr);
+    events_.emplace_back(NetworkSocket::fromFd(fd), clientAddr);
 
     if (connectionAcceptedFn_) {
-      connectionAcceptedFn_(fd, clientAddr);
+      connectionAcceptedFn_(NetworkSocket::fromFd(fd), clientAddr);
     }
   }
   void acceptError(const std::exception& ex) noexcept override {

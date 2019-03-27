@@ -61,10 +61,8 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
   }
 
   void connectionAccepted(
-      folly::NetworkSocket fdNetworkSocket,
+      int fd,
       const SocketAddress& /* clientAddr */) noexcept override {
-    int fd = fdNetworkSocket.toFd();
-
     if (socket_) {
       socket_->detachEventBase();
     }

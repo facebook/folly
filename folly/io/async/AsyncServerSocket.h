@@ -158,8 +158,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
      *                    remain valid until connectionAccepted() returns.
      */
     virtual void connectionAccepted(
-        NetworkSocket fd,
+        int fd,
         const SocketAddress& clientAddr) noexcept = 0;
+    void connectionAccepted(
+        NetworkSocket fd,
+        const SocketAddress& clientAddr) noexcept {
+      connectionAccepted(fd.toFd(), clientAddr);
+    }
 
     /**
      * acceptError() is called if an error occurs while accepting.
