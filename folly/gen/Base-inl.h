@@ -1748,7 +1748,9 @@ class RangeConcat : public Operator<RangeConcat> {
  *    | eachTo<int>()
  *    | as<vector>();
  *
- *  TODO(tjackson): Rename this back to Guard.
+ *  KNOWN ISSUE: This only guards pipelines through operators which do not
+ *  retain resulting values. Exceptions thrown after operators like pmap, order,
+ *  batch, cannot be caught from here.
  **/
 template <class Exception, class ErrorHandler>
 class GuardImpl : public Operator<GuardImpl<Exception, ErrorHandler>> {

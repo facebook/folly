@@ -1201,6 +1201,22 @@ TEST(Gen, Guard) {
   // clang-format on
 }
 
+// Disabled: guard currently can't catch exceptions thrown after a buffering op.
+TEST(Gen, DISABLED_GuardThroughBuffers) {
+  using std::runtime_error;
+  // clang-format off
+  EXPECT_EQ(
+      4,
+      (from({"1", "a", "3"})
+         | guard<runtime_error>([](runtime_error&, const char*) {
+             return true;
+           })
+         | batch(1)
+         | rconcat
+         | eachTo<int>()
+         | sum));
+  // clang-format on
+}
 TEST(Gen, eachTryTo) {
   using std::runtime_error;
   // clang-format off
