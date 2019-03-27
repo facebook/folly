@@ -140,7 +140,7 @@ class flow_single_sender<SF> {
 };
 
 template <
-    PUSHMI_TYPE_CONSTRAINT(Sender<is_single<>, is_flow<>>) Data,
+    PUSHMI_TYPE_CONSTRAINT(Sender) Data,
     class DSF>
 class flow_single_sender<Data, DSF> {
   Data data_;

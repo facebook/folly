@@ -134,7 +134,7 @@ class many_sender<SF> {
   }
 };
 
-template <PUSHMI_TYPE_CONSTRAINT(Sender<is_many<>>) Data, class DSF>
+template <PUSHMI_TYPE_CONSTRAINT(Sender) Data, class DSF>
 class many_sender<Data, DSF> {
   Data data_;
   DSF sf_;
