@@ -32,6 +32,7 @@
 #include <boost/mpl/vector.hpp>
 
 #include <folly/Conv.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -80,17 +81,12 @@ using ArgumentTypes =
     typename ArgumentTypesByKind<IdentifyCallable::getKind<Fn>(), Fn>::type;
 
 // At present, works for lambdas or plain old functions, but can be
-// extended.  The comparison deliberately strips cv-qualifieers and
+// extended.  The comparison deliberately strips cv-qualifiers and
 // reference, leaving that choice up to the caller.
 template <typename Fn, typename... Args>
 struct HasArgumentTypes
-    : boost::mpl::template equal<
-          typename boost::mpl::template transform<
-              typename boost::mpl::template transform<
-                  ArgumentTypes<Fn>,
-                  typename std::template remove_reference<boost::mpl::_1>>::
-                  type,
-              typename std::template remove_cv<boost::mpl::_1>>::type,
+    : boost::mpl::template equal<typename boost::mpl::transform<
+          ArgumentTypes<Fn>, remove_cvref<boost::mpl::_1>>::type,
           boost::mpl::vector<Args...>>::type {};
 template <typename... Args>
 using EnableForArgTypes =
