@@ -42,7 +42,6 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wno-unused
       -Wunused-label
       -Wunused-result
-      -Wnon-virtual-dtor
       ${FOLLY_CXX_FLAGS}
   )
 endfunction()
