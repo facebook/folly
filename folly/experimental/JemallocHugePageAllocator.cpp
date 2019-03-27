@@ -147,6 +147,15 @@ static uintptr_t map_pages(size_t nr_pages) {
   return first_page;
 }
 
+// WARNING WARNING WARNING
+// This function is the hook invoked on malloc path for the hugepage allocator.
+// This means it should not, itself, call malloc. If any of the following
+// happens within this function, it *WILL* cause a DEADLOCK (from the circular
+// dependency):
+// - any dynamic memory allocation (i.e. calls to malloc)
+// - any operations that may lead to dynamic operations, such as logging (e.g.
+//   LOG, VLOG, LOG_IF) and DCHECK.
+// WARNING WARNING WARNING
 void* HugePageArena::allocHook(
     extent_hooks_t* extent,
     void* new_addr,
@@ -155,13 +164,12 @@ void* HugePageArena::allocHook(
     bool* zero,
     bool* commit,
     unsigned arena_ind) {
-  DCHECK((size & (size - 1)) == 0);
+  assert((size & (size - 1)) == 0);
   void* res = nullptr;
   if (new_addr == nullptr) {
     res = arena.reserve(size, alignment);
   }
   if (res == nullptr) {
-    LOG_IF(WARNING, new_addr != nullptr) << "Explicit address not supported";
     res = arena.originalAlloc_(
         extent, new_addr, size, alignment, zero, commit, arena_ind);
   } else {
@@ -170,8 +178,6 @@ void* HugePageArena::allocHook(
     }
     *commit = true;
   }
-  VLOG(0) << "Extent request of size " << size << " alignment " << alignment
-          << " = " << res << " (" << arena.freeSpace() << " bytes free)";
   return res;
 }
 
@@ -265,13 +271,12 @@ int HugePageArena::init(
   return MALLOCX_ARENA(arenaIndex_) | MALLOCX_TCACHE_NONE;
 }
 
+// Warning: Check the comments in HugePageArena::allocHook before making any
+// change to this function.
 void* HugePageArena::reserve(size_t size, size_t alignment) {
-  VLOG(1) << "Reserve: " << size << " alignemnt " << alignment;
   uintptr_t res = align_up(freePtr_, alignment);
   uintptr_t newFreePtr = res + size;
   if (newFreePtr > end_) {
-    LOG(WARNING) << "Request of size " << size << " denied: " << freeSpace()
-                 << " bytes available - not backed by huge pages";
     return nullptr;
   }
   freePtr_ = newFreePtr;
