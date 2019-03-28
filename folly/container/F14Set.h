@@ -1225,4 +1225,24 @@ void swap(F14FastSet<K, H, E, A>& lhs, F14FastSet<K, H, E, A>& rhs) noexcept(
     noexcept(lhs.swap(rhs))) {
   lhs.swap(rhs);
 }
+
+template <typename K, typename H, typename E, typename A, typename Pred>
+void erase_if(F14ValueSet<K, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <typename K, typename H, typename E, typename A, typename Pred>
+void erase_if(F14NodeSet<K, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <typename K, typename H, typename E, typename A, typename Pred>
+void erase_if(F14VectorSet<K, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <typename K, typename H, typename E, typename A, typename Pred>
+void erase_if(F14FastSet<K, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
 } // namespace folly

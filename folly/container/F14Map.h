@@ -1490,4 +1490,48 @@ void swap(
   lhs.swap(rhs);
 }
 
+template <
+    typename K,
+    typename M,
+    typename H,
+    typename E,
+    typename A,
+    typename Pred>
+void erase_if(F14ValueMap<K, M, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <
+    typename K,
+    typename M,
+    typename H,
+    typename E,
+    typename A,
+    typename Pred>
+void erase_if(F14NodeMap<K, M, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <
+    typename K,
+    typename M,
+    typename H,
+    typename E,
+    typename A,
+    typename Pred>
+void erase_if(F14VectorMap<K, M, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
+template <
+    typename K,
+    typename M,
+    typename H,
+    typename E,
+    typename A,
+    typename Pred>
+void erase_if(F14FastMap<K, M, H, E, A>& c, Pred pred) {
+  f14::detail::erase_if_impl(c, pred);
+}
+
 } // namespace folly
