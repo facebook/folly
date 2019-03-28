@@ -312,11 +312,12 @@ auto blockingWait(Awaitable&& awaitable)
 
 template <typename T>
 T blockingWait(Task<T>&& task) {
+  using StorageType = detail::lift_lvalue_reference_t<T>;
   folly::ManualExecutor executor;
-  Try<T> ret;
+  Try<StorageType> ret;
   bool done{false};
 
-  std::move(task).scheduleOn(&executor).start([&](Try<T>&& result) {
+  std::move(task).scheduleOn(&executor).start([&](Try<StorageType>&& result) {
     ret = std::move(result);
     done = true;
   });

@@ -356,4 +356,27 @@ checkAwaitingFutureOfUnitDoesntWarnAboutDiscardedResult() {
   co_await folly::futures::sleep(1ms);
 }
 
+folly::coro::Task<int&> returnIntRef(int& value) {
+  co_return value;
+}
+
+TEST(Task, TaskOfLvalueReference) {
+  int value = 123;
+  auto&& result = folly::coro::blockingWait(returnIntRef(value));
+  static_assert(std::is_same_v<decltype(result), int&>);
+  CHECK_EQ(&value, &result);
+}
+
+TEST(Task, TaskOfLvalueReferenceAsTry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int value = 123;
+    auto&& result = co_await returnIntRef(value).co_awaitTry();
+    CHECK(result.hasValue());
+    CHECK_EQ(&value, &result.value().get());
+
+    int& valueRef = co_await returnIntRef(value);
+    CHECK_EQ(&value, &valueRef);
+  }());
+}
+
 #endif
