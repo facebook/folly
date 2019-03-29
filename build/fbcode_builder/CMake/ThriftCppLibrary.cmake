@@ -107,11 +107,14 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     PUBLIC
       ${CMAKE_SOURCE_DIR}
       ${CMAKE_BINARY_DIR}
+      ${FOLLY_INCLUDE_DIR}
+      ${FBTHRIFT_INCLUDE_DIR}
   )
   target_link_libraries(
     ${LIB_NAME}
     PUBLIC
       ${DEPENDS}
       FBThrift::thriftcpp2
+      Folly::folly
   )
 endfunction()
