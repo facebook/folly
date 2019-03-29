@@ -63,7 +63,10 @@ class BlockingWaitPromiseBase {
     return {};
   }
 
- protected:
+  bool done() const noexcept {
+    return baton_.ready();
+  }
+
   void wait() noexcept {
     baton_.wait();
   }
@@ -94,18 +97,8 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
     result_->emplace(static_cast<U&&>(value));
   }
 
-  folly::Try<T> getAsTry() {
-    folly::Try<T> result;
+  void setTry(folly::Try<T>* result) noexcept {
     result_ = &result;
-    std::experimental::coroutine_handle<BlockingWaitPromise<T>>::from_promise(
-        *this)
-        .resume();
-    this->wait();
-    return result;
-  }
-
-  T get() {
-    return getAsTry().value();
   }
 
  private:
@@ -150,18 +143,8 @@ class BlockingWaitPromise<T&> final : public BlockingWaitPromiseBase {
     std::abort();
   }
 
-  folly::Try<std::reference_wrapper<T>> getAsTry() {
-    folly::Try<std::reference_wrapper<T>> result;
-    result_ = &result;
-    std::experimental::coroutine_handle<BlockingWaitPromise<T&>>::from_promise(
-        *this)
-        .resume();
-    this->wait();
-    return result;
-  }
-
-  T& get() {
-    return getAsTry().value();
+  void setTry(folly::Try<std::reference_wrapper<T>>* result) noexcept {
+    result_ = result;
   }
 
  private:
@@ -182,18 +165,8 @@ class BlockingWaitPromise<void> final : public BlockingWaitPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  folly::Try<void> getAsTry() {
-    folly::Try<void> result;
-    result_ = &result;
-    std::experimental::coroutine_handle<
-        BlockingWaitPromise<void>>::from_promise(*this)
-        .resume();
-    this->wait();
-    return result;
-  }
-
-  void get() {
-    return getAsTry().value();
+  void setTry(folly::Try<void>* result) noexcept {
+    result_ = result;
   }
 
  private:
@@ -219,12 +192,28 @@ class BlockingWaitTask {
     }
   }
 
-  decltype(auto) getAsTry() && {
-    return coro_.promise().getAsTry();
+  folly::Try<detail::lift_lvalue_reference_t<T>> getAsTry() && {
+    folly::Try<detail::lift_lvalue_reference_t<T>> result;
+    auto& promise = coro_.promise();
+    promise.setTry(&result);
+    coro_.resume();
+    promise.wait();
+    return result;
   }
 
-  decltype(auto) get() && {
-    return coro_.promise().get();
+  T get() && {
+    return std::move(*this).getAsTry().value();
+  }
+
+  T getVia(folly::DrivableExecutor* executor) && {
+    folly::Try<detail::lift_lvalue_reference_t<T>> result;
+    auto& promise = coro_.promise();
+    promise.setTry(&result);
+    coro_.resume();
+    while (!promise.done()) {
+      executor->drive();
+    }
+    return std::move(result).value();
   }
 
  private:
@@ -310,22 +299,19 @@ auto blockingWait(Awaitable&& awaitable)
           .get());
 }
 
-template <typename T>
-T blockingWait(Task<T>&& task) {
-  using StorageType = detail::lift_lvalue_reference_t<T>;
+template <
+    typename SemiAwaitable,
+    std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
+auto blockingWait(SemiAwaitable&& awaitable)
+    -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
   folly::ManualExecutor executor;
-  Try<StorageType> ret;
-  bool done{false};
-
-  std::move(task).scheduleOn(&executor).start([&](Try<StorageType>&& result) {
-    ret = std::move(result);
-    done = true;
-  });
-  while (!done) {
-    executor.drive();
-  }
-
-  return std::move(ret).value();
+  return static_cast<
+      std::add_rvalue_reference_t<semi_await_result_t<SemiAwaitable>>>(
+      detail::makeRefBlockingWaitTask(
+          folly::coro::co_viaIfAsync(
+              folly::getKeepAliveToken(executor),
+              static_cast<SemiAwaitable&&>(awaitable)))
+          .getVia(&executor));
 }
 
 } // namespace coro

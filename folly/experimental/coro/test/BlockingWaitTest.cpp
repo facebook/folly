@@ -244,4 +244,9 @@ TEST(BlockingWait, WaitInFiber) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
+TEST(BlockingWait, WaitOnSemiFuture) {
+  int result = folly::coro::blockingWait(folly::makeSemiFuture(123));
+  CHECK_EQ(result, 123);
+}
+
 #endif
