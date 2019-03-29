@@ -35,8 +35,18 @@ list(APPEND FOLLY_INCLUDE_DIRECTORIES ${GLOG_INCLUDE_DIR})
 
 find_package(Libevent CONFIG QUIET)
 if(TARGET event)
-  message(STATUS "Found libevent from package config")
+  message(STATUS "Found libevent from package config inc=${LIBEVENT_INCLUDE_DIRS}")
   list(APPEND FOLLY_SHINY_DEPENDENCIES event)
+  # Somewhat gross, but some vcpkg installed libevents have a relative
+  # `include` path exported into LIBEVENT_INCLUDE_DIRS, which triggers
+  # a cmake error because it resolves to the `include` dir within the
+  # folly repo, which is not something cmake allows to be in the
+  # INTERFACE_INCLUDE_DIRECTORIES.  Thankfully on such a system the
+  # actual include directory is already part of the global include
+  # directories, so we can just skip it.
+  if (NOT "${LIBEVENT_INCLUDE_DIRS}" STREQUAL "include")
+    list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBEVENT_INCLUDE_DIRS})
+  endif()
 else()
   find_package(LibEvent MODULE REQUIRED)
   list(APPEND FOLLY_LINK_LIBRARIES ${LIBEVENT_LIB})
