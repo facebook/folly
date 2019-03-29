@@ -202,11 +202,6 @@ constexpr bool kIsSanitize = false;
 #define FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS /* empty */
 #endif
 
-// Globally disable -Wshadow for gcc < 5.
-#if __GNUC__ == 4 && !__clang__
-FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
-#endif
-
 /* Platform specific TLS support
  * gcc implements __thread
  * msvc implements __declspec(thread)

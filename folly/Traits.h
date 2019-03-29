@@ -319,9 +319,6 @@ using aligned_storage_for_t =
 #if defined(__clang__) && !defined(_LIBCPP_VERSION)
 template <class T>
 struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
-#elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
-template <class T>
-struct is_trivially_copyable : std::is_trivial<T> {};
 #else
 template <class T>
 using is_trivially_copyable = std::is_trivially_copyable<T>;
