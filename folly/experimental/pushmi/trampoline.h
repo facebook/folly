@@ -118,11 +118,19 @@ class trampoline {
     return owner() != nullptr;
   }
 
+  template<class SingleReceiver>
   struct delegate_impl {
-    template<class Data>
-    void operator()(Data& d){
+    using properties = property_set<is_receiver<>>;
+    std::decay_t<SingleReceiver> out_;
+    void value(){
       delegator<E> that;
-      set_value(d, that);
+      set_value(out_, that);
+    }
+    void error(E e) noexcept {
+      set_error(out_, e);
+    }
+    void done() {
+      set_done(out_);
     }
   };
 
@@ -148,7 +156,8 @@ class trampoline {
       try {
         if (++depth(*owner()) > 100) {
           // defer work to owner
-          pending(*owner()).push_back(work_type{make_receiver(std::move(awhat), delegate_impl{})});
+          work_type work(delegate_impl<SingleReceiver>{std::move(awhat)});
+          pending(*owner()).push_back(std::move(work));
         } else {
           // dynamic recursion - optimization to balance queueing and
           // stack usage and value interleaving on the same thread.
@@ -225,7 +234,7 @@ class trampoline {
         go = repeat(pending_store);
       }
     } else {
-      pending(pending_store).push_back(work_type{make_receiver(std::move(awhat), delegate_impl{})});
+      pending(pending_store).push_back(work_type{delegate_impl<SingleReceiver>{std::move(awhat)}});
     }
 
     if (pending(pending_store).empty()) {

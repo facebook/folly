@@ -15,53 +15,15 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/traits.h>
 #include <chrono>
 #include <exception>
 
+#include <folly/experimental/pushmi/traits.h>
+#include <folly/experimental/pushmi/tags.h>
+#include <folly/experimental/pushmi/properties.h>
+
 namespace folly {
 namespace pushmi {
-
-// property_set
-
-template <class T, class = void>
-struct property_traits;
-
-template <class T, class = void>
-struct property_set_traits;
-
-template <class... PropertyN>
-struct property_set;
-
-// trait & tag types
-template <class... TN>
-struct is_single;
-template <class... TN>
-struct is_many;
-
-template <class... TN>
-struct is_flow;
-
-template <class... TN>
-struct is_receiver;
-
-template <class... TN>
-struct is_sender;
-
-template <class... TN>
-struct is_always_blocking;
-
-template <class... TN>
-struct is_never_blocking;
-
-template <class... TN>
-struct is_maybe_blocking;
-
-template <class... TN>
-struct is_fifo_sequence;
-
-template <class... TN>
-struct is_concurrent_sequence;
 
 // implementation types
 

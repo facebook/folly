@@ -71,16 +71,18 @@ PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
 
 struct tap_fn {
  private:
-  PUSHMI_TEMPLATE(class In, class SideEffects)
-  (requires SenderTo<In, SideEffects>) //
-  static auto impl(
-      In&& in,
-      SideEffects&& sideEffects) {
-    return ::folly::pushmi::detail::sender_from(
-        (In &&) in,
-        submit_impl<In, std::decay_t<SideEffects>>{(SideEffects &&)
+  struct impl_fn {
+    PUSHMI_TEMPLATE(class In, class SideEffects)
+    (requires SenderTo<In, SideEffects>) //
+    auto operator()(
+        In&& in,
+        SideEffects&& sideEffects) {
+      return ::folly::pushmi::detail::sender_from(
+          (In &&) in,
+          submit_impl<In, std::decay_t<SideEffects>>{(SideEffects &&)
                                                        sideEffects});
-  }
+    }
+  };
 
   template <class... AN>
   struct adapt_impl {
@@ -88,7 +90,7 @@ struct tap_fn {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<std::decay_t<In>>) //
     auto operator()(In&& in) {
-      return tap_fn::impl(
+      return tap_fn::impl_fn{}(
           (In &&) in,
           ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
     }

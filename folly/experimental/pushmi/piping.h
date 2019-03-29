@@ -21,32 +21,15 @@
 namespace folly {
 namespace pushmi {
 
-struct pipeorigin {};
-
 PUSHMI_TEMPLATE(class In, class Op)
-(requires PUSHMI_EXP(lazy::Sender<In> PUSHMI_AND
-    lazy::Invocable<Op&, In>)) //
+(requires PUSHMI_EXP(lazy::Invocable<Op&, In>)) //
     decltype(auto)
     operator|(In&& in, Op&& op) {
   return op((In &&) in);
 }
-PUSHMI_TEMPLATE(class Ex, class Op)
-(requires PUSHMI_EXP(lazy::Executor<Ex> PUSHMI_AND
-    lazy::Invocable<Op&, Ex>)) //
-    decltype(auto)
-    operator|(Ex&& ex, Op&& op) {
-  return op((Ex &&) ex);
-}
-PUSHMI_TEMPLATE(class Out, class Op)
-(requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
-    lazy::Invocable<Op&, Out>)) //
-    decltype(auto)
-    operator|(Out&& out, Op&& op) {
-  return op((Out &&) out);
-}
 
 PUSHMI_INLINE_VAR constexpr struct pipe_fn {
-#if __cpp_fold_expressions >= 201603
+#if __cpp_fold_expressions >= 201603 && PUSHMI_NOT_ON_WINDOWS
   template <class T, class... FN>
   auto operator()(T&& t, FN&&... fn) const
       -> decltype(((T &&) t | ... | (FN &&) fn)) {

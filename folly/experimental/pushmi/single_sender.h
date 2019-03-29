@@ -25,9 +25,10 @@ namespace pushmi {
 
 template <class E, class... VN>
 class any_single_sender {
+  using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
-    std::aligned_union_t<0, std::tuple<VN...>> buffer_;
+    std::aligned_union_t<0, insitu_t> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -176,9 +177,14 @@ class single_sender<Data, DSF> {
   DSF sf_;
 
  public:
-  using properties = property_set_insert_t<
-      properties_t<Data>,
-      property_set<is_sender<>, is_single<>>>;
+  using properties = properties_t<Data>;
+
+  static_assert(
+      Sender<Data>,
+      "Data must be a sender");
+  static_assert(
+      is_single_v<Data>,
+      "Data must be a single sender");
 
   constexpr single_sender() = default;
   constexpr explicit single_sender(Data data) : data_(std::move(data)) {}
@@ -233,7 +239,7 @@ PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 single_sender()->single_sender<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)

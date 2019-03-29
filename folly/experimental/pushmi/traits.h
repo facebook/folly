@@ -15,11 +15,9 @@
  */
 #pragma once
 
-#include <functional>
 #include <type_traits>
 
-#include <folly/Traits.h>
-#include <folly/experimental/pushmi/detail/functional.h>
+#include <folly/experimental/pushmi/detail/concept_def.h>
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
   noexcept(noexcept(static_cast<decltype((__VA_ARGS__))>(__VA_ARGS__)))\
@@ -74,6 +72,12 @@ PUSHMI_INLINE_VAR constexpr int sum_v = detail::sum_impl<Is...>();
 
 template <class...>
 struct typelist;
+
+template <class T>
+using remove_cvref_t = std::remove_cv_t<std::remove_reference_t<T>>;
+
+template<class T>
+PUSHMI_INLINE_VAR constexpr bool bool_v = T::value;
 
 PUSHMI_CONCEPT_DEF(
   template(class... Args)

@@ -36,9 +36,10 @@ using not_is_t = std::enable_if_t<!is_v<std::decay_t<T>, C>, std::decay_t<T>>;
 
 template <class E>
 class any_executor {
+  using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
-    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
+    std::aligned_union_t<0, insitu_t> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -215,7 +216,7 @@ PUSHMI_INLINE_VAR constexpr struct make_executor_fn {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 executor()->executor<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)
@@ -294,7 +295,7 @@ PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 any_executor_ref()->any_executor_ref<std::exception_ptr>;
 
 PUSHMI_TEMPLATE(class Wrapped)
@@ -309,9 +310,10 @@ PUSHMI_TEMPLATE(class Wrapped)
 
 template <class E, class CV>
 class any_constrained_executor {
+  using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
-    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
+    std::aligned_union_t<0, insitu_t> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -560,7 +562,7 @@ PUSHMI_INLINE_VAR constexpr struct make_constrained_executor_fn {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 constrained_executor()->constrained_executor<ignoreSF, priorityZeroF>;
 
 PUSHMI_TEMPLATE(class SF)
@@ -665,7 +667,7 @@ PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 any_constrained_executor_ref()
     ->any_constrained_executor_ref<std::exception_ptr, std::ptrdiff_t>;
 
@@ -683,9 +685,10 @@ PUSHMI_TEMPLATE(class Wrapped)
 
 template <class E, class TP>
 class any_time_executor {
+  using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
-    std::aligned_storage_t< 2 * sizeof(void*) > buffer_;
+    std::aligned_union_t<0, insitu_t> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -932,7 +935,7 @@ PUSHMI_INLINE_VAR constexpr struct make_time_executor_fn {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 time_executor()->time_executor<ignoreSF, systemNowF>;
 
 PUSHMI_TEMPLATE(class SF)
@@ -1067,7 +1070,7 @@ PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 any_time_executor_ref()
     ->any_time_executor_ref<
         std::exception_ptr,

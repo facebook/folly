@@ -15,12 +15,12 @@
  */
 #pragma once
 
-#include <functional>
 #include <future>
 
-#include <folly/experimental/pushmi/forwards.h>
+#include <folly/experimental/pushmi/detail/functional.h>
 #include <folly/experimental/pushmi/properties.h>
-#include <folly/experimental/pushmi/traits.h>
+#include <folly/experimental/pushmi/tags.h>
+#include <folly/Portability.h>
 
 namespace folly {
 namespace pushmi {
@@ -162,7 +162,7 @@ PUSHMI_TEMPLATE(class SD)
 PUSHMI_TEMPLATE(class SD, class Out)
 (requires //
  requires(submit(*std::declval<SD>(), std::declval<Out>()))) //
-    void submit(SD&& sd, Out&& out) //
+    void submit(SD&& sd, Out&& out, ...) // MSVC(use ... to disambiguate)
     noexcept(noexcept(submit(*sd, (Out &&) out))) {
   submit(*sd, (Out &&) out);
 }
@@ -264,11 +264,15 @@ struct set_done_fn {
        set_error(std::declval<S&>(), std::current_exception()))) //
       void
       operator()(S& s) const noexcept {
+#if FOLLY_HAS_EXCEPTIONS
     try {
       set_done(s);
     } catch (...) {
       set_error(s, std::current_exception());
     }
+#else // FOLLY_HAS_EXCEPTIONS
+    set_done(s);
+#endif // FOLLY_HAS_EXCEPTIONS
   }
 };
 struct set_error_fn {
@@ -289,11 +293,15 @@ struct set_value_fn {
        set_error(std::declval<S&>(), std::current_exception()))) //
       void
       operator()(S& s, VN&&... vn) const noexcept {
+#if FOLLY_HAS_EXCEPTIONS
     try {
       set_value(s, (VN &&) vn...);
     } catch (...) {
       set_error(s, std::current_exception());
     }
+#else // FOLLY_HAS_EXCEPTIONS
+    set_value(s, (VN &&) vn...);
+#endif // FOLLY_HAS_EXCEPTIONS
   }
 };
 
@@ -305,11 +313,15 @@ struct set_starting_fn {
        set_error(std::declval<S&>(), std::current_exception()))) //
       void
       operator()(S& s, Up&& up) const noexcept {
+#if FOLLY_HAS_EXCEPTIONS
     try {
       set_starting(s, (Up &&) up);
     } catch (...) {
       set_error(s, std::current_exception());
     }
+#else // FOLLY_HAS_EXCEPTIONS
+    set_starting(s, (Up &&) up);
+#endif // FOLLY_HAS_EXCEPTIONS
   }
 };
 

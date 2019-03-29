@@ -25,9 +25,10 @@ namespace pushmi {
 
 template <class PE, class PV, class E, class... VN>
 class any_flow_many_sender {
+  using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
-    std::aligned_union_t<0, std::tuple<VN...>> buffer_;
+    std::aligned_union_t<0, insitu_t> buffer_;
   } data_{};
   template <class Wrapped>
   static constexpr bool insitu() {
@@ -138,7 +139,14 @@ class flow_many_sender<Data, DSF> {
   DSF sf_;
 
  public:
-  using properties = property_set_insert_t<properties_t<Data>, property_set<is_sender<>, is_flow<>, is_many<>>>;
+  using properties = properties_t<Data>;
+
+  static_assert(
+      FlowSender<Data>,
+      "Data must be a flow sender");
+  static_assert(
+      is_many_v<Data>,
+      "Data must be a many sender");
 
   constexpr flow_many_sender() = default;
   constexpr explicit flow_many_sender(Data data)
@@ -149,8 +157,14 @@ class flow_many_sender<Data, DSF> {
   PUSHMI_TEMPLATE(class Out)
     (requires PUSHMI_EXP(lazy::FlowReceiver<Out> PUSHMI_AND
         lazy::Invocable<DSF&, Data&, Out>))
-  void submit(Out out) {
+  void submit(Out out) & {
     sf_(data_, std::move(out));
+  }
+  PUSHMI_TEMPLATE(class Out)
+    (requires PUSHMI_EXP(lazy::FlowReceiver<Out> PUSHMI_AND
+        lazy::Invocable<DSF&, Data&, Out>))
+  void submit(Out out) && {
+    sf_(std::move(data_), std::move(out));
   }
 };
 
@@ -186,7 +200,7 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_many_sender_fn {
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 flow_many_sender() -> flow_many_sender<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)

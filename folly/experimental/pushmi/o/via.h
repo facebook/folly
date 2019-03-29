@@ -34,32 +34,67 @@ struct via_fn_base {
   }
 };
 template <class Exec, class Out>
-struct via_fn_data : flow_receiver<>, via_fn_base<Exec> {
+struct via_fn_data : via_fn_base<Exec> {
   via_fn_data(Out out, Exec exec)
       : via_fn_base<Exec>(std::move(exec)), out_(std::make_shared<Out>(std::move(out))) {}
 
   using properties = properties_t<Out>;
-  using flow_receiver<>::value;
-  using flow_receiver<>::error;
-  using flow_receiver<>::done;
 
-  template <class Up>
+  template <class CPO, class... AN>
   struct impl {
-    Up up_;
+    using properties = property_set<is_receiver<>>;
+    const CPO& fn_;
+    std::tuple<Out&, AN...> an_;
     std::shared_ptr<Out> out_;
-    void operator()(any) {
-      set_starting(out_, std::move(up_));
+    void value(any) {
+      ::folly::pushmi::apply(fn_, std::move(an_));
+    }
+    template<class E>
+    void error(E e) noexcept {
+      set_error(*out_, e);
+    }
+    void done() {
     }
   };
+  template <class CPO, class... AN>
+  void via(const CPO& fn, AN&&... an) {
+    submit(
+      ::folly::pushmi::schedule(this->via_fn_base_ref().exec_),
+        impl<CPO, std::decay_t<AN>...>{
+            fn, std::tuple<Out&, std::decay_t<AN>...>{*out_, (AN &&) an...}, out_});
+  }
+
+  template<class... VN>
+  void value(VN&&... vn) {
+    if (this->via_fn_base_ref().done_) {
+      return;
+    }
+    via(set_value, (VN&&) vn...);
+  }
+
+  template<class E>
+  void error(E&& e) noexcept {
+    if (this->via_fn_base_ref().done_) {
+      return;
+    }
+    this->via_fn_base_ref().done_ = true;
+    via(set_error, (E&&) e);
+  }
+
+  void done() {
+    if (this->via_fn_base_ref().done_) {
+      return;
+    }
+    this->via_fn_base_ref().done_ = true;
+    via(set_done);
+  }
+
   template<class Up>
   void starting(Up&& up) {
     if (this->via_fn_base_ref().done_) {
       return;
     }
-    submit(
-      ::folly::pushmi::schedule(this->via_fn_base_ref().exec_),
-        ::folly::pushmi::make_receiver(impl<std::decay_t<Up>>{
-            (Up &&) up, out_}));
+    via(set_starting, (Up&&) up);
   }
   std::shared_ptr<Out> out_;
 };
@@ -71,69 +106,6 @@ auto make_via_fn_data(Out out, Exec ex) -> via_fn_data<Exec, Out> {
 
 struct via_fn {
  private:
-  template <class Out>
-  struct on_value_impl {
-    template <class V>
-    struct impl {
-      V v_;
-      std::shared_ptr<Out> out_;
-      void operator()(any) {
-        set_value(out_, std::move(v_));
-      }
-    };
-    template <class Data, class V>
-    void operator()(Data& data, V&& v) const {
-      if (data.via_fn_base_ref().done_) {
-        return;
-      }
-      submit(
-        ::folly::pushmi::schedule(data.via_fn_base_ref().exec_),
-          ::folly::pushmi::make_receiver(impl<std::decay_t<V>>{
-              (V &&) v, data.out_}));
-    }
-  };
-  template <class Out>
-  struct on_error_impl {
-    template <class E>
-    struct impl {
-      E e_;
-      std::shared_ptr<Out> out_;
-      void operator()(any) noexcept {
-        set_error(out_, std::move(e_));
-      }
-    };
-    template <class Data, class E>
-    void operator()(Data& data, E e) const noexcept {
-      if (data.via_fn_base_ref().done_) {
-        return;
-      }
-      data.via_fn_base_ref().done_ = true;
-      submit(
-        ::folly::pushmi::schedule(data.via_fn_base_ref().exec_),
-          ::folly::pushmi::make_receiver(
-              impl<E>{std::move(e), std::move(data.out_)}));
-    }
-  };
-  template <class Out>
-  struct on_done_impl {
-    struct impl {
-      std::shared_ptr<Out> out_;
-      void operator()(any) {
-        set_done(out_);
-      }
-    };
-    template <class Data>
-    void operator()(Data& data) const {
-      if (data.via_fn_base_ref().done_) {
-        return;
-      }
-      data.via_fn_base_ref().done_ = true;
-      submit(
-          ::folly::pushmi::schedule(data.via_fn_base_ref().exec_),
-          ::folly::pushmi::make_receiver(
-              impl{std::move(data.out_)}));
-    }
-  };
   template <class In, class Factory>
   struct submit_impl {
     Factory ef_;
@@ -142,13 +114,8 @@ struct via_fn {
         void
         operator()(SIn&& in, Out out) const {
       auto exec = ::folly::pushmi::make_strand(ef_);
-      ::folly::pushmi::submit(
-          (In &&) in,
-          ::folly::pushmi::detail::receiver_from_fn<std::decay_t<In>>()(
-              make_via_fn_data(std::move(out), std::move(exec)),
-              on_value_impl<Out>{},
-              on_error_impl<Out>{},
-              on_done_impl<Out>{}));
+      ::folly::pushmi::submit((In &&) in,
+        make_via_fn_data(std::move(out), std::move(exec)));
     }
   };
   template <class Factory>

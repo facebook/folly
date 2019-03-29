@@ -38,7 +38,7 @@ using namespace folly::pushmi::aliases;
 
 using namespace testing;
 
-#if __cpp_deduction_guides >= 201703
+#if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
 #define MAKE(x) x MAKE_
 #define MAKE_(...) \
   { __VA_ARGS__ }

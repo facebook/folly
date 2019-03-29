@@ -62,7 +62,7 @@ struct transform_on<F, is_single<>, true> {
   constexpr explicit transform_on(F f) : f_(std::move(f)) {}
   template <class Out>
   auto operator()(Out out) const {
-    return make_flow_single(std::move(out), on_value(*this));
+    return make_flow_receiver(std::move(out), on_value(*this));
   }
   template <class Out, class V0, class... VN>
   auto operator()(Out& out, V0&& v0, VN&&... vn) {

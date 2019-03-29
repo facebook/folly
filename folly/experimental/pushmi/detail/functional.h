@@ -15,40 +15,21 @@
  */
 #pragma once
 
-#include <functional>
+#include <folly/functional/Invoke.h>
 
 #include <folly/experimental/pushmi/detail/concept_def.h>
 
 namespace folly {
 namespace pushmi {
 
-PUSHMI_INLINE_VAR constexpr struct invoke_fn {
- private:
-  template <class F>
-  using mem_fn_t = decltype(std::mem_fn(std::declval<F>()));
+/* using override */ using folly::invoke;
 
- public:
-  PUSHMI_TEMPLATE(class F, class... As)
-  (requires //
-    requires(
-    std::declval<F>()(std::declval<As>()...))) //
-  auto operator()(F&& f, As&&... as) const
-      noexcept(noexcept(((F &&) f)((As &&) as...))) {
-    return ((F &&) f)((As &&) as...);
-  }
-  PUSHMI_TEMPLATE(class F, class... As)
-  (requires //
-    requires(
-    std::mem_fn(std::declval<F>())(std::declval<As>()...))) //
-  auto operator()(F&& f, As&&... as) const
-      noexcept(noexcept(std::declval<mem_fn_t<F>>()((As &&) as...))) {
-    return std::mem_fn(f)((As &&) as...);
-  }
-} invoke{};
-
-template <class F, class... As>
-using invoke_result_t =
-    decltype(folly::pushmi::invoke(std::declval<F>(), std::declval<As>()...));
+/* using override */ using folly::invoke_result;
+/* using override */ using folly::invoke_result_t;
+/* using override */ using folly::is_invocable;
+/* using override */ using folly::is_invocable_r;
+/* using override */ using folly::is_nothrow_invocable;
+/* using override */ using folly::is_nothrow_invocable_r;
 
 PUSHMI_CONCEPT_DEF(
   template (class F, class... Args)

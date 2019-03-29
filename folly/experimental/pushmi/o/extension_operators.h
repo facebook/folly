@@ -36,7 +36,7 @@
 namespace folly {
 namespace pushmi {
 
-#if __cpp_lib_apply >= 201603
+#if __cpp_lib_apply >= 201603 || not PUSHMI_NOT_ON_WINDOWS
 using std::apply;
 #else
 namespace detail {
@@ -77,7 +77,7 @@ struct make_receiver<> : construct_deduced<receiver> {};
 template <>
 struct make_receiver<true> : construct_deduced<flow_receiver> {};
 
-template <class Cardinality, bool IsFlow>
+template <bool IsFlow>
 struct receiver_from_impl {
   using MakeReceiver = make_receiver<IsFlow>;
   template <class... AN>
@@ -111,7 +111,6 @@ struct receiver_from_impl {
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
 using receiver_from_fn = receiver_from_impl<
-    property_set_index_t<properties_t<In>, is_single<>>,
     property_query_v<properties_t<In>, is_flow<>>>;
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class... AN>

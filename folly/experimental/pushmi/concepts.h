@@ -15,7 +15,10 @@
  */
 #pragma once
 
+#include <functional>
+
 #include <folly/experimental/pushmi/extension_points.h>
+#include <folly/experimental/pushmi/detail/functional.h>
 #include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/properties.h>
 
@@ -24,85 +27,30 @@ namespace pushmi {
 
 // traits & tags
 
-// cardinality affects both sender and receiver
-
-struct cardinality_category {};
-
-// Trait
 template <class PS>
 struct has_cardinality : category_query<PS, cardinality_category> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool has_cardinality_v = has_cardinality<PS>::value;
 
-// flow affects both sender and receiver
-
-struct flow_category {};
-
-// sender and receiver are mutually exclusive
-
-struct receiver_category {};
-
-struct sender_category {};
-
-// blocking affects senders
-
-struct blocking_category {};
-
-// sequence affects senders
-
-struct sequence_category {};
-
-// is_single trait and tag
-template <class... TN>
-struct is_single;
-// Tag
-template <>
-struct is_single<> {
-  using property_category = cardinality_category;
-};
-// Trait
+// is_single trait
 template <class PS>
 struct is_single<PS> : property_query<PS, is_single<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_single_v = is_single<PS>::value;
 
-// is_many trait and tag
-template <class... TN>
-struct is_many;
-// Tag
-template <>
-struct is_many<> {
-  using property_category = cardinality_category;
-}; // many::value() does not terminate, so it is not a refinement of single
-// Trait
+// is_many trait
 template <class PS>
 struct is_many<PS> : property_query<PS, is_many<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_many_v = is_many<PS>::value;
 
-// is_flow trait and tag
-template <class... TN>
-struct is_flow;
-// Tag
-template <>
-struct is_flow<> {
-  using property_category = flow_category;
-};
-// Trait
+// is_flow trait
 template <class PS>
 struct is_flow<PS> : property_query<PS, is_flow<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_flow_v = is_flow<PS>::value;
 
-// Receiver trait and tag
-template <class... TN>
-struct is_receiver;
-// Tag
-template <>
-struct is_receiver<> {
-  using property_category = receiver_category;
-};
-// Trait
+// is_receiver trait
 template <class PS>
 struct is_receiver<PS> : property_query<PS, is_receiver<>> {};
 template <class PS>
@@ -134,15 +82,7 @@ PUSHMI_CONCEPT_DEF(
         Receiver<R> && MoveConstructible<E>
 );
 
-// Sender trait and tag
-template <class... TN>
-struct is_sender;
-// Tag
-template <>
-struct is_sender<> {
-  using property_category = sender_category;
-};
-// Trait
+// is_sender trait
 template <class PS>
 struct is_sender<PS> : property_query<PS, is_sender<>> {};
 template <class PS>
@@ -170,74 +110,34 @@ PUSHMI_CONCEPT_DEF(
         Sender<S> && Receiver<R>);
 
 // is_always_blocking trait and tag
-template <class... TN>
-struct is_always_blocking;
-// Tag
-template <>
-struct is_always_blocking<> {
-  using property_category = blocking_category;
-};
-// Trait
 template <class PS>
 struct is_always_blocking<PS> : property_query<PS, is_always_blocking<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_always_blocking_v =
     is_always_blocking<PS>::value;
 
-// is_never_blocking trait and tag
-template <class... TN>
-struct is_never_blocking;
-// Tag
-template <>
-struct is_never_blocking<> {
-  using property_category = blocking_category;
-};
-// Trait
+// is_never_blocking trait
 template <class PS>
 struct is_never_blocking<PS> : property_query<PS, is_never_blocking<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_never_blocking_v =
     is_never_blocking<PS>::value;
 
-// is_maybe_blocking trait and tag
-template <class... TN>
-struct is_maybe_blocking;
-// Tag
-template <>
-struct is_maybe_blocking<> {
-  using property_category = blocking_category;
-};
-// Trait
+// is_maybe_blocking trait
 template <class PS>
 struct is_maybe_blocking<PS> : property_query<PS, is_maybe_blocking<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_maybe_blocking_v =
     is_maybe_blocking<PS>::value;
 
-// is_fifo_sequence trait and tag
-template <class... TN>
-struct is_fifo_sequence;
-// Tag
-template <>
-struct is_fifo_sequence<> {
-  using property_category = sequence_category;
-};
-// Trait
+// is_fifo_sequence trait
 template <class PS>
 struct is_fifo_sequence<PS> : property_query<PS, is_fifo_sequence<>> {};
 template <class PS>
 PUSHMI_INLINE_VAR constexpr bool is_fifo_sequence_v =
     is_fifo_sequence<PS>::value;
 
-// is_concurrent_sequence trait and tag
-template <class... TN>
-struct is_concurrent_sequence;
-// Tag
-template <>
-struct is_concurrent_sequence<> {
-  using property_category = sequence_category;
-};
-// Trait
+// is_concurrent_sequence trait
 template <class PS>
 struct is_concurrent_sequence<PS>
     : property_query<PS, is_concurrent_sequence<>> {};
