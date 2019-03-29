@@ -89,7 +89,7 @@ inline uint64_t select64(uint64_t x, uint64_t k) {
 template <>
 FOLLY_ALWAYS_INLINE uint64_t
 select64<compression::instructions::Haswell>(uint64_t x, uint64_t k) {
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__)
   // GCC and Clang won't inline the intrinsics.
   uint64_t result = uint64_t(1) << k;
 

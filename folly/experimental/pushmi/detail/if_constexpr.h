@@ -64,7 +64,7 @@
 
 // disable buggy compatibility warning about "requires" and "concept" being
 // C++20 keywords.
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+#if defined(__GNUC__) && __GNUC__ >= 5
 #define PUSHMI_PP_IGNORE_SHADOW_BEGIN \
     _Pragma("GCC diagnostic push") \
     _Pragma("GCC diagnostic ignored \"-Wshadow\"") \

@@ -54,7 +54,7 @@
 
 PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+#if defined(__GNUC__) && __GNUC__ >= 5
 #define PUSHMI_NOT_ON_WINDOWS 1
 #else
 #define PUSHMI_NOT_ON_WINDOWS 0

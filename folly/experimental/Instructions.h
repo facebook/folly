@@ -90,7 +90,7 @@ struct Nehalem : public Default {
 
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
 // POPCNT is supported starting with Intel Nehalem, AMD K10.
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__)
     // GCC and Clang won't inline the intrinsics.
     uint64_t result;
     asm("popcntq %1, %0" : "=r"(result) : "r"(value));
@@ -109,7 +109,7 @@ struct Haswell : public Nehalem {
   static FOLLY_ALWAYS_INLINE uint64_t blsr(uint64_t value) {
 // BMI1 is supported starting with Intel Haswell, AMD Piledriver.
 // BLSR combines two instructions into one and reduces register pressure.
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__)
     // GCC and Clang won't inline the intrinsics.
     uint64_t result;
     asm("blsrq %1, %0" : "=r"(result) : "r"(value));
@@ -121,7 +121,7 @@ struct Haswell : public Nehalem {
 
   static FOLLY_ALWAYS_INLINE uint64_t
   bextr(uint64_t value, uint32_t start, uint32_t length) {
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__)
     // GCC and Clang won't inline the intrinsics.
     // Encode parameters in `pattern` where `pattern[0:7]` is `start` and
     // `pattern[8:15]` is `length`.
@@ -137,7 +137,7 @@ struct Haswell : public Nehalem {
   }
 
   static FOLLY_ALWAYS_INLINE uint64_t bzhi(uint64_t value, uint32_t index) {
-#if defined(__GNUC__) || defined(__clang__)
+#if defined(__GNUC__)
     // GCC and Clang won't inline the intrinsics.
     const uint64_t index64 = index;
     uint64_t result;

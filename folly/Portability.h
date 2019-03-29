@@ -68,7 +68,7 @@ constexpr bool kHasUnalignedAccess = false;
 #if !defined FOLLY_NODISCARD
 #if defined(_MSC_VER) && (_MSC_VER >= 1700)
 #define FOLLY_NODISCARD _Check_return_
-#elif defined(__clang__) || defined(__GNUC__)
+#elif defined(__GNUC__)
 #define FOLLY_NODISCARD __attribute__((__warn_unused_result__))
 #else
 #define FOLLY_NODISCARD
@@ -146,7 +146,7 @@ constexpr bool kIsSanitize = false;
 #define FOLLY_PACK_ATTR /**/
 #define FOLLY_PACK_PUSH __pragma(pack(push, 1))
 #define FOLLY_PACK_POP __pragma(pack(pop))
-#elif defined(__clang__) || defined(__GNUC__)
+#elif defined(__GNUC__)
 #define FOLLY_PACK_ATTR __attribute__((__packed__))
 #define FOLLY_PACK_PUSH /**/
 #define FOLLY_PACK_POP /**/
@@ -215,7 +215,7 @@ FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS
  */
 #if defined(_MSC_VER)
 #define FOLLY_TLS __declspec(thread)
-#elif defined(__GNUC__) || defined(__clang__)
+#elif defined(__GNUC__)
 #define FOLLY_TLS __thread
 #else
 #error cannot define platform specific thread local storage
