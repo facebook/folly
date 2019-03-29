@@ -42,6 +42,7 @@
 #else // !_LIBSTDCXX_FBSTRING
 
 #include <folly/CppAttributes.h>
+#include <folly/CPortability.h>
 #include <folly/Portability.h>
 
 // libc++ doesn't provide this header, nor does msvc
@@ -99,23 +100,13 @@ FOLLY_GNU_DISABLE_WARNING("-Wshadow")
 
 FOLLY_FBSTRING_BEGIN_NAMESPACE
 
-#if defined(__clang__)
-#if __has_feature(address_sanitizer)
-#define FBSTRING_SANITIZE_ADDRESS
-#endif
-#elif defined(__GNUC__) &&                                             \
-    (((__GNUC__ == 4) && (__GNUC_MINOR__ >= 8)) || (__GNUC__ >= 5)) && \
-    __SANITIZE_ADDRESS__
-#define FBSTRING_SANITIZE_ADDRESS
-#endif
-
 // When compiling with ASan, always heap-allocate the string even if
 // it would fit in-situ, so that ASan can detect access to the string
 // buffer after it has been invalidated (destroyed, resized, etc.).
 // Note that this flag doesn't remove support for in-situ strings, as
 // that would break ABI-compatibility and wouldn't allow linking code
 // compiled with this flag with code compiled without.
-#ifdef FBSTRING_SANITIZE_ADDRESS
+#ifdef FOLLY_SANITIZE_ADDRESS
 #define FBSTRING_DISABLE_SSO true
 #else
 #define FBSTRING_DISABLE_SSO false
@@ -743,7 +734,7 @@ inline void fbstring_core<Char>::initSmall(
 // The word-wise path reads bytes which are outside the range of
 // the string, and makes ASan unhappy, so we disable it when
 // compiling with ASan.
-#ifndef FBSTRING_SANITIZE_ADDRESS
+#ifndef FOLLY_SANITIZE_ADDRESS
   if ((reinterpret_cast<size_t>(data) & (sizeof(size_t) - 1)) == 0) {
     const size_t byteSize = size * sizeof(Char);
     constexpr size_t wordWidth = sizeof(size_t);
@@ -2921,7 +2912,6 @@ FOLLY_FBSTRING_HASH
 FOLLY_POP_WARNING
 
 #undef FBSTRING_DISABLE_SSO
-#undef FBSTRING_SANITIZE_ADDRESS
 #undef throw
 #undef FBSTRING_LIKELY
 #undef FBSTRING_UNLIKELY
