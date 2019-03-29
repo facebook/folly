@@ -156,7 +156,8 @@ TEST(Pmap, Rvalues) {
 }
 
 TEST(Pmap, Exception) {
-  EXPECT_THROW(from({"a"}) | pmap(To<int>()) | count, std::runtime_error);
+  std::vector<char const*> input{"a"};
+  EXPECT_THROW(from(input) | pmap(To<int>()) | count, std::runtime_error);
 }
 
 int main(int argc, char* argv[]) {
