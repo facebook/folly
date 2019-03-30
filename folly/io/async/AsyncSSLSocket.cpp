@@ -1001,7 +1001,15 @@ bool AsyncSSLSocket::willBlock(
         return false;
       }
 
-      auto asyncPipeReader = AsyncPipeReader::newReader(eventBase_, ofd);
+      // On POSIX systems, OSSL_ASYNC_FD is type int, but on win32
+      // it has type HANDLE.
+      // Our NetworkSocket::native_handle_type is type SOCKET on
+      // win32, which means that we need to explicitly construct
+      // a native handle type to pass to the constructor.
+      auto native_handle = NetworkSocket::native_handle_type(ofd);
+
+      auto asyncPipeReader = AsyncPipeReader::newReader(
+          eventBase_, NetworkSocket(native_handle).toFd());
       auto asyncPipeReaderPtr = asyncPipeReader.get();
       if (!asyncOperationFinishCallback_) {
         asyncOperationFinishCallback_.reset(
