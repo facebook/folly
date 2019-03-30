@@ -640,7 +640,7 @@ class alignas(T) Replaceable
   aligned_storage_for_t<T> storage_[1];
 };
 
-#if __cpp_deduction_guides >= 201703 || _MSC_VER
+#if __cpp_deduction_guides >= 201703
 template <class T>
 Replaceable(T)->Replaceable<T>;
 #endif

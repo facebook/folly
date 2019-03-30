@@ -289,3 +289,11 @@ TEST(ReplaceableTest, Conversions) {
   Replaceable<OddA> rOddA{std::move(rOddB)};
   Replaceable<OddB> rOddB2{rOddA};
 }
+
+#if __cpp_deduction_guides >= 201703
+TEST(ReplaceableTest, DeductionGuide) {
+  Basic b{};
+  Replaceable r{b};
+  EXPECT_TRUE((std::is_same_v<Replaceable<Basic>, decltype(r)>));
+}
+#endif

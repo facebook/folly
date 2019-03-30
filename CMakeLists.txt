@@ -834,6 +834,7 @@ if (BUILD_TESTS)
         SOURCES ProducerConsumerQueueTest.cpp
       TEST random_test SOURCES RandomTest.cpp
       TEST range_test SOURCES RangeTest.cpp
+      TEST replaceable_test SOURCES ReplaceableTest.cpp
       TEST scope_guard_test SOURCES ScopeGuardTest.cpp
       # Heavily dependent on drand and srand48
       #TEST shared_mutex_test SOURCES SharedMutexTest.cpp
