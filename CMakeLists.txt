@@ -475,6 +475,7 @@ if (BUILD_TESTS)
       follybenchmark
       folly
       ${LIBGMOCK_LIBRARIES}
+      ${GLOG_LIBRARY}
   )
   apply_folly_compile_options_to_target(folly_test_support)
 

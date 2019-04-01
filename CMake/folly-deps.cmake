@@ -2,6 +2,9 @@ include(CheckCXXSourceCompiles)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
+if(MSVC)
+  set(Boost_USE_STATIC_LIBS ON) #Force static lib in msvc
+endif(MSVC)
 find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
