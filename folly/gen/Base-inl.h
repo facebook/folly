@@ -19,6 +19,8 @@
 #endif
 
 #include <folly/Portability.h>
+#include <folly/container/F14Map.h>
+#include <folly/container/F14Set.h>
 #include <folly/functional/Invoke.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
@@ -1172,7 +1174,7 @@ class GroupBy : public Operator<GroupBy<Selector>> {
 
     template <class Handler>
     bool apply(Handler&& handler) const {
-      std::unordered_map<KeyDecayed, typename GroupType::VectorType> groups;
+      folly::F14FastMap<KeyDecayed, typename GroupType::VectorType> groups;
       source_ | [&](Value value) {
         const Value& cv = value;
         auto& group = groups[selector_(cv)];
@@ -1372,7 +1374,7 @@ class Distinct : public Operator<Distinct<Selector>> {
 
     template <class Body>
     void foreach(Body&& body) const {
-      std::unordered_set<KeyStorageType> keysSeen;
+      folly::F14FastSet<KeyStorageType> keysSeen;
       source_.foreach([&](Value value) {
         if (keysSeen.insert(selector_(ParamType(value))).second) {
           body(std::forward<Value>(value));
@@ -1382,7 +1384,7 @@ class Distinct : public Operator<Distinct<Selector>> {
 
     template <class Handler>
     bool apply(Handler&& handler) const {
-      std::unordered_set<KeyStorageType> keysSeen;
+      folly::F14FastSet<KeyStorageType> keysSeen;
       return source_.apply([&](Value value) -> bool {
         if (keysSeen.insert(selector_(ParamType(value))).second) {
           return handler(std::forward<Value>(value));
