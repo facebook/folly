@@ -256,3 +256,15 @@ TEST(FBVector, zero_len) {
   fb6 = il;
   fbvector<int> fb7(fb6.begin(), fb6.end());
 }
+
+#if __cpp_deduction_guides >= 201703
+TEST(FBVector, deduction_guides) {
+  fbvector<int> v(3);
+
+  fbvector x(v.begin(), v.end());
+  EXPECT_TRUE((std::is_same_v<fbvector<int>, decltype(x)>));
+
+  fbvector y{v.begin(), v.end()};
+  EXPECT_TRUE((std::is_same_v<fbvector<fbvector<int>::iterator>, decltype(y)>));
+}
+#endif
