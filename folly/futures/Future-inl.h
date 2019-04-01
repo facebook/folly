@@ -2433,6 +2433,16 @@ mapTry(Executor& exec, It first, It last, F func, int) {
   return results;
 }
 
+template <typename F, class Ensure>
+auto ensure(F&& f, Ensure&& ensure) {
+  return makeSemiFuture()
+      .deferValue([f = std::forward<F>(f)](auto) mutable { return f(); })
+      .defer([ensure = std::forward<Ensure>(ensure)](auto resultTry) mutable {
+        ensure();
+        return std::move(resultTry).value();
+      });
+}
+
 } // namespace futures
 
 template <class Clock>

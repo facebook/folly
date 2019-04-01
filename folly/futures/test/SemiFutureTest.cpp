@@ -1098,3 +1098,46 @@ TEST(SemiFuture, within) {
     p.setValue();
   }
 }
+
+TEST(SemiFuture, ensure) {
+  {
+    bool fCalled{false};
+    bool ensureCalled{false};
+    auto sf = futures::ensure(
+        [&] {
+          fCalled = true;
+          return 42;
+        },
+        [&] { ensureCalled = true; });
+    EXPECT_EQ(42, std::move(sf).get());
+    EXPECT_TRUE(fCalled);
+    EXPECT_TRUE(ensureCalled);
+  }
+  {
+    bool fCalled{false};
+    bool ensureCalled{false};
+    futures::ensure(
+        [&] {
+          fCalled = true;
+          return 42;
+        },
+        [&] { ensureCalled = true; });
+    EXPECT_FALSE(fCalled);
+    EXPECT_FALSE(ensureCalled);
+  }
+  {
+    struct ExpectedException {};
+
+    bool fCalled{false};
+    bool ensureCalled{false};
+    auto sf = futures::ensure(
+        [&] {
+          fCalled = true;
+          throw ExpectedException();
+        },
+        [&] { ensureCalled = true; });
+    EXPECT_THROW(std::move(sf).get(), ExpectedException);
+    EXPECT_TRUE(fCalled);
+    EXPECT_TRUE(ensureCalled);
+  }
+}

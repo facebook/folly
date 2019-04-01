@@ -152,6 +152,15 @@ SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
 
 #endif
 
+/**
+ * Returns a lazy SemiFuture constructed by f, which also ensures that ensure is
+ * called before completion.
+ * f doesn't get called until the SemiFuture is activated (e.g. through a .get()
+ * or .via() call). If f gets called, ensure is guaranteed to be called as well.
+ */
+template <typename F, class Ensure>
+auto ensure(F&& f, Ensure&& ensure);
+
 } // namespace futures
 
 /**
