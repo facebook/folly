@@ -74,7 +74,7 @@ TimeoutManager::TimeoutManager()
 bool TimeoutManager::scheduleTimeoutHighRes(
     AsyncTimeout* obj,
     timeout_type_high_res timeout) {
-  timeout_type timeout_ms = folly::chrono::round<timeout_type>(timeout);
+  timeout_type timeout_ms = folly::chrono::ceil<timeout_type>(timeout);
   return scheduleTimeout(obj, timeout_ms);
 }
 
