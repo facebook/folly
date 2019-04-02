@@ -276,8 +276,10 @@ TEST(LockFreeRingBuffer, writeReadDifferentType) {
     }
 
     StringBuffer& operator=(FixedBuffer& data) {
-      strncpy(data_, data.data_, sizeof(data_) - 1);
-
+      static_assert(
+          sizeof(data_) == sizeof(data.data_),
+          "FixedBuffer::data_ size must match StringBuffer::data_");
+      memcpy(data_, data.data_, sizeof(data.data_));
       return (*this);
     }
   };
