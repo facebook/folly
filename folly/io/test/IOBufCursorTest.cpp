@@ -203,7 +203,7 @@ TEST(IOBuf, PullAndPeek) {
   EXPECT_EQ(3, iobuf1->countChainElements());
   EXPECT_EQ(11, iobuf1->computeChainDataLength());
 
-  char buf[12];
+  char buf[20];
   memset(buf, 0, sizeof(buf));
   Cursor(iobuf1.get()).pull(buf, 11);
   EXPECT_EQ("hello world", std::string(buf));
