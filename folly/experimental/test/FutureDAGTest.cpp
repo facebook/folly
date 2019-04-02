@@ -30,7 +30,7 @@ struct FutureDAGTest : public testing::Test {
   }
 
   void reset() {
-    Handle source_node;
+    Handle source_node{0};
     std::unordered_set<Handle> memo;
     for (auto& node : nodes) {
       for (Handle handle : node.second->dependencies) {
