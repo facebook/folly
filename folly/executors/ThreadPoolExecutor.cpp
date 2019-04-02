@@ -113,11 +113,11 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   });
 }
 
-size_t ThreadPoolExecutor::numThreads() {
+size_t ThreadPoolExecutor::numThreads() const {
   return maxThreads_.load(std::memory_order_relaxed);
 }
 
-size_t ThreadPoolExecutor::numActiveThreads() {
+size_t ThreadPoolExecutor::numActiveThreads() const {
   return activeThreads_.load(std::memory_order_relaxed);
 }
 
@@ -254,7 +254,7 @@ void ThreadPoolExecutor::withAll(FunctionRef<void(ThreadPoolExecutor&)> f) {
   });
 }
 
-ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
+ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   const auto now = std::chrono::steady_clock::now();
   SharedMutex::ReadHolder r{&threadListLock_};
   ThreadPoolExecutor::PoolStats stats;
@@ -279,12 +279,12 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() {
   return stats;
 }
 
-size_t ThreadPoolExecutor::getPendingTaskCount() {
+size_t ThreadPoolExecutor::getPendingTaskCount() const {
   SharedMutex::ReadHolder r{&threadListLock_};
   return getPendingTaskCountImpl();
 }
 
-std::string ThreadPoolExecutor::getName() {
+std::string ThreadPoolExecutor::getName() const {
   auto ntf = dynamic_cast<NamedThreadFactory*>(threadFactory_.get());
   if (ntf == nullptr) {
     return folly::demangle(typeid(*this).name()).toStdString();

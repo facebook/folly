@@ -141,7 +141,7 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
  private:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(size_t n) override;
-  size_t getPendingTaskCountImpl() override;
+  size_t getPendingTaskCountImpl() const override;
 
   bool tryDecrToStop();
   bool taskShouldStop(folly::Optional<CPUTask>&);
