@@ -34,7 +34,6 @@ function(apply_folly_compile_options_to_target THETARGET)
       -std=${CXX_STD}
       -finput-charset=UTF-8
       -fsigned-char
-      -Werror
       -Wall
       -Wno-deprecated
       -Wno-deprecated-declarations
