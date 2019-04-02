@@ -73,3 +73,12 @@ inline std::basic_ostream<CharT, Traits>& operator<<(
   return os;
 }
 } // namespace folly
+
+namespace std {
+template <>
+struct hash<folly::NetworkSocket> {
+  size_t operator()(const folly::NetworkSocket& s) const noexcept {
+    return std::hash<folly::NetworkSocket::native_handle_type>()(s.data);
+  }
+};
+} // namespace std

@@ -312,7 +312,7 @@ class ConnectedWriteUDPClient : public UDPClient {
     msg.msg_controllen = 0;
     msg.msg_flags = 0;
 
-    ssize_t ret = ::sendmsg(socket_->getNetworkSocket().toFd(), &msg, 0);
+    ssize_t ret = folly::netops::sendmsg(socket_->getNetworkSocket(), &msg, 0);
     if (ret == -1) {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
         throw folly::AsyncSocketException(

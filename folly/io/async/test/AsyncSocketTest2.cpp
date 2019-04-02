@@ -542,7 +542,7 @@ TEST_P(AsyncSocketConnectTest, ConnectWriteAndRead) {
 
   // shut down the write half of acceptedSocket, so that the AsyncSocket
   // will stop reading and we can break out of the event loop.
-  shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
+  netops::shutdown(acceptedSocket->getNetworkSocket(), SHUT_WR);
 
   // Loop
   evb.loop();
@@ -606,11 +606,11 @@ TEST(AsyncSocketTest, ConnectWriteAndShutdownWrite) {
 
   // Since the connection is still in progress, there should be no data to
   // read yet.  Verify that the accepted socket is not readable.
-  struct pollfd fds[1];
-  fds[0].fd = acceptedSocket->getSocketFD();
+  netops::PollDescriptor fds[1];
+  fds[0].fd = acceptedSocket->getNetworkSocket();
   fds[0].events = POLLIN;
   fds[0].revents = 0;
-  int rc = poll(fds, 1, 0);
+  int rc = netops::poll(fds, 1, 0);
   ASSERT_EQ(rc, 0);
 
   // Write data to the accepted socket
@@ -697,11 +697,11 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
 
   // Since the connection is still in progress, there should be no data to
   // read yet.  Verify that the accepted socket is not readable.
-  struct pollfd fds[1];
-  fds[0].fd = acceptedSocket->getSocketFD();
+  netops::PollDescriptor fds[1];
+  fds[0].fd = acceptedSocket->getNetworkSocket();
   fds[0].events = POLLIN;
   fds[0].revents = 0;
-  int rc = poll(fds, 1, 0);
+  int rc = netops::poll(fds, 1, 0);
   ASSERT_EQ(rc, 0);
 
   // Write data to the accepted socket
@@ -711,7 +711,7 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWrite) {
   acceptedSocket->flush();
   // Shutdown writes to the accepted socket.  This will cause it to see EOF
   // and uninstall the read callback.
-  shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
+  netops::shutdown(acceptedSocket->getNetworkSocket(), SHUT_WR);
 
   // Loop
   evb.loop();
@@ -790,11 +790,11 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
 
   // Since the connection is still in progress, there should be no data to
   // read yet.  Verify that the accepted socket is not readable.
-  struct pollfd fds[1];
-  fds[0].fd = acceptedSocket->getSocketFD();
+  netops::PollDescriptor fds[1];
+  fds[0].fd = acceptedSocket->getNetworkSocket();
   fds[0].events = POLLIN;
   fds[0].revents = 0;
-  int rc = poll(fds, 1, 0);
+  int rc = netops::poll(fds, 1, 0);
   ASSERT_EQ(rc, 0);
 
   // Write data to the accepted socket
@@ -804,7 +804,7 @@ TEST(AsyncSocketTest, ConnectReadWriteAndShutdownWriteNow) {
   acceptedSocket->flush();
   // Shutdown writes to the accepted socket.  This will cause it to see EOF
   // and uninstall the read callback.
-  shutdown(acceptedSocket->getSocketFD(), SHUT_WR);
+  netops::shutdown(acceptedSocket->getNetworkSocket(), SHUT_WR);
 
   // Loop
   evb.loop();
@@ -1695,9 +1695,13 @@ TEST(AsyncSocketTest, ServerAcceptOptions) {
       acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
   auto fd = acceptCallback.getEvents()->at(1).fd;
 
-  // The accepted connection should already be in non-blocking mode
+#ifndef _WIN32
+  // It is not possible to check if a socket is already in non-blocking mode on
+  // Windows. Yes really. The accepted connection should already be in
+  // non-blocking mode
   int flags = fcntl(fd.toFd(), F_GETFL, 0);
   ASSERT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
+#endif
 
 #ifndef TCP_NOPUSH
   // The accepted connection should already have TCP_NODELAY set
@@ -2122,9 +2126,13 @@ TEST(AsyncSocketTest, UnixDomainSocketTest) {
       acceptCallback.getEvents()->at(2).type, TestAcceptCallback::TYPE_STOP);
   auto fd = acceptCallback.getEvents()->at(1).fd;
 
-  // The accepted connection should already be in non-blocking mode
+#ifndef _WIN32
+  // It is not possible to check if a socket is already in non-blocking mode on
+  // Windows. Yes really. The accepted connection should already be in
+  // non-blocking mode
   int flags = fcntl(fd.toFd(), F_GETFL, 0);
   ASSERT_EQ(flags & O_NONBLOCK, O_NONBLOCK);
+#endif
 }
 
 TEST(AsyncSocketTest, ConnectionEventCallbackDefault) {
@@ -3175,7 +3183,7 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
 
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30);
-  LOG(INFO) << "Client socket fd=" << socket->getNetworkSocket().toFd();
+  LOG(INFO) << "Client socket fd=" << socket->getNetworkSocket();
 
   // Let the socket
   evb.loop();
@@ -3222,7 +3230,7 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
 
   // Accept the connection.
   std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
-  LOG(INFO) << "Server socket fd=" << acceptedSocket->getSocketFD();
+  LOG(INFO) << "Server socket fd=" << acceptedSocket->getNetworkSocket();
 
   // Loop
   evb.loopOnce();

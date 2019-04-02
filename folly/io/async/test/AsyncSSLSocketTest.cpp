@@ -80,7 +80,7 @@ struct GlobalStatic {
     ttlsDisabledSet.clear();
   }
   // for each fd, tracks whether TTLS is disabled or not
-  std::set<int /* fd */> ttlsDisabledSet;
+  std::unordered_set<folly::NetworkSocket /* fd */> ttlsDisabledSet;
 };
 
 // the constructor will be called before main() which is all we care about
@@ -97,7 +97,7 @@ int setsockopt(
     const void* optval,
     socklen_t optlen) {
   if (optname == SO_NO_TRANSPARENT_TLS) {
-    globalStatic.ttlsDisabledSet.insert(sockfd);
+    globalStatic.ttlsDisabledSet.insert(folly::NetworkSocket::fromFd(sockfd));
     return 0;
   }
   return real_setsockopt_(sockfd, level, optname, optval, optlen);
@@ -2164,7 +2164,7 @@ TEST(AsyncSSLSocketTest, TTLSDisabled) {
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
-  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getSocketFD()));
+  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getNetworkSocket()));
 
   // write()
   std::array<uint8_t, 128> buf;
@@ -2216,7 +2216,7 @@ TEST(AsyncSSLSocketTest, TTLSDisabledWithTFO) {
   socket->enableTFO();
   socket->open();
 
-  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getSocketFD()));
+  EXPECT_EQ(1, globalStatic.ttlsDisabledSet.count(socket->getNetworkSocket()));
 
   // write()
   std::array<uint8_t, 128> buf;

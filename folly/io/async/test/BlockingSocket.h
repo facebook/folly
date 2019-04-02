@@ -84,8 +84,8 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     return readHelper(buf, len, false);
   }
 
-  int getSocketFD() const {
-    return sock_->getNetworkSocket().toFd();
+  folly::NetworkSocket getNetworkSocket() const {
+    return sock_->getNetworkSocket();
   }
 
   folly::AsyncSocket* getSocket() {

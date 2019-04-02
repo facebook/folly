@@ -555,7 +555,7 @@ void AsyncSSLSocket::switchServerSSLContext(
     // We log it here and allow the switch.
     // It should not affect our re-negotiation support (which
     // is not supported now).
-    VLOG(6) << "fd=" << getNetworkSocket().toFd()
+    VLOG(6) << "fd=" << getNetworkSocket()
             << " renegotation detected when switching SSL_CTX";
   }
 

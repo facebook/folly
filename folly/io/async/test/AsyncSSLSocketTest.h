@@ -221,7 +221,7 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
   }
 
   void checkForTimestampNotifications() noexcept {
-    int fd = socket_->getNetworkSocket().toFd();
+    auto fd = socket_->getNetworkSocket();
     std::vector<char> ctrl(1024, 0);
     unsigned char data;
     struct msghdr msg;
@@ -237,7 +237,7 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
 
     int ret;
     while (true) {
-      ret = recvmsg(fd, &msg, MSG_ERRQUEUE);
+      ret = netops::recvmsg(fd, &msg, MSG_ERRQUEUE);
       if (ret < 0) {
         if (errno != EAGAIN) {
           auto errnoCopy = errno;
@@ -429,7 +429,7 @@ class WriteErrorCallback : public ReadCallback {
     currentBuffer.length = len;
 
     // close the socket before writing to trigger writeError().
-    ::close(socket_->getNetworkSocket().toFd());
+    netops::close(socket_->getNetworkSocket());
 
     wcb_->setSocket(socket_);
 
@@ -583,14 +583,15 @@ class SSLServerAcceptCallbackDelay : public SSLServerAcceptCallback {
     auto sock = std::static_pointer_cast<AsyncSSLSocket>(s);
 
     std::cerr << "SSLServerAcceptCallbackDelay::connAccepted" << std::endl;
-    int fd = sock->getNetworkSocket().toFd();
+    auto fd = sock->getNetworkSocket();
 
 #ifndef TCP_NOPUSH
     {
       // The accepted connection should already have TCP_NODELAY set
       int value;
       socklen_t valueLength = sizeof(value);
-      int rc = getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
+      int rc = netops::getsockopt(
+          fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
       EXPECT_EQ(rc, 0);
       EXPECT_EQ(value, 1);
     }
@@ -599,10 +600,11 @@ class SSLServerAcceptCallbackDelay : public SSLServerAcceptCallback {
     // Unset the TCP_NODELAY option.
     int value = 0;
     socklen_t valueLength = sizeof(value);
-    int rc = setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, valueLength);
+    int rc =
+        netops::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, valueLength);
     EXPECT_EQ(rc, 0);
 
-    rc = getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
+    rc = netops::getsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &value, &valueLength);
     EXPECT_EQ(rc, 0);
     EXPECT_EQ(value, 0);
 
