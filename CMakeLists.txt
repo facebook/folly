@@ -509,6 +509,8 @@ if (BUILD_TESTS)
       TEST concurrent_hash_map_test SOURCES ConcurrentHashMapTest.cpp
       TEST dynamic_bounded_queue_test WINDOWS_DISABLED
         SOURCES DynamicBoundedQueueTest.cpp
+      TEST priority_unbounded_queue_set_test
+        SOURCES PriorityUnboundedQueueSetTest.cpp
       TEST unbounded_queue_test SOURCES UnboundedQueueTest.cpp
 
     DIRECTORY detail/test/
