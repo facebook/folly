@@ -46,11 +46,13 @@ void appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
       // joining two IOBufQueues together.
       size_t copyRemaining = MAX_PACK_COPY;
       std::size_t n;
-      while (src && (n = src->length()) < copyRemaining &&
-             n < tail->tailroom() && n > 0) {
-        memcpy(tail->writableTail(), src->data(), n);
-        tail->append(n);
-        copyRemaining -= n;
+      while (src && (n = src->length()) <= copyRemaining &&
+             n <= tail->tailroom()) {
+        if (n > 0) {
+          memcpy(tail->writableTail(), src->data(), n);
+          tail->append(n);
+          copyRemaining -= n;
+        }
         src = src->pop();
       }
     }
