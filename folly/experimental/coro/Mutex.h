@@ -15,6 +15,9 @@
  */
 #pragma once
 
+#include <folly/Executor.h>
+#include <folly/experimental/coro/ViaIfAsync.h>
+
 #include <atomic>
 #include <experimental/coroutine>
 #include <mutex>
@@ -30,7 +33,7 @@ namespace coro {
 /// on another thread.
 ///
 /// This mutex guarantees a FIFO scheduling algorithm - coroutines acquire the
-/// lock in the order that they execute the 'co_await mutex.lockAsync()'
+/// lock in the order that they execute the 'co_await mutex.co_lock()'
 /// operation.
 ///
 /// Note that you cannot use std::scoped_lock/std::lock_guard to acquire the
@@ -39,8 +42,8 @@ namespace coro {
 ///
 /// You can still use the std::scoped_lock/std::lock_guard in conjunction with
 /// std::adopt_lock to automatically unlock the mutex when the current scope
-/// exits after having locked the mutex using either co_await m.lock_async()
-/// or try_lock() .
+/// exits after having locked the mutex using either 'co_await m.co_lock()'
+/// or 'm.try_lock()'.
 ///
 /// You can also attempt to acquire the lock using std::unique_lock in
 /// conjunction with std::try_to_lock.
@@ -82,7 +85,9 @@ namespace coro {
 ///     }
 ///   }
 class Mutex {
-  class ScopedLockOperation;
+  class ScopedLockAwaiter;
+  class LockAwaiter;
+  template <typename Awaiter>
   class LockOperation;
 
  public:
@@ -117,32 +122,30 @@ class Mutex {
   ///
   /// You must co_await the return value to wait until the lock is acquired.
   ///
-  /// Chain a call to .via() to specify the executor to resume on when the lock
-  /// is eventually acquired in the case that the lock could not be acquired
-  /// synchronously. The awaiting coroutine will continue without suspending
-  /// if the lock could be acquired synchronously.
-  ///
-  /// If you do not specify an executor by calling .via() then the inline
-  /// executor is used and the awaiting coroutine is resumed inline inside the
-  /// call to .unlock() by the previous lock holder.
-  [[nodiscard]] ScopedLockOperation co_scoped_lock() noexcept;
+  /// Chain a call to .viaIfAsync() to specify the executor to resume on when
+  /// the lock is eventually acquired in the case that the lock could not be
+  /// acquired synchronously. Note that the executor will be passed implicitly
+  /// if awaiting from a Task or AsyncGenerator coroutine. The awaiting
+  /// coroutine will continue without suspending if the lock could be acquired
+  /// synchronously.
+  [[nodiscard]] LockOperation<ScopedLockAwaiter> co_scoped_lock() noexcept;
 
   /// Lock the mutex asynchronously.
   ///
   /// You must co_await the return value to wait until the lock is acquired.
   ///
-  /// Chain a call to .via() to specify the executor to resume on when the lock
-  /// is eventually acquired in the case that the lock could not be acquired
-  /// synchronously. The awaiting coroutine will continue without suspending
-  /// if the lock could be acquired synchronously.
+  /// Chain a call to .viaIfAsync() to specify the executor to resume on when
+  /// the lock is eventually acquired in the case that the lock could not be
+  /// acquired synchronously. The awaiting coroutine will continue without
+  /// suspending if the lock could be acquired synchronously.
   ///
-  /// Once the 'co_await m.lockAsync()' operation completes, the awaiting
+  /// Once the 'co_await m.co_lock()' operation completes, the awaiting
   /// coroutine is responsible for ensuring that .unlock() is called to release
   /// the lock.
   ///
-  /// Consider using scopedLockAsync() instead to obtain a std::scoped_lock
+  /// Consider using co_scoped_lock() instead to obtain a std::scoped_lock
   /// that handles releasing the lock at the end of the scope.
-  [[nodiscard]] LockOperation co_lock() noexcept;
+  [[nodiscard]] LockOperation<LockAwaiter> co_lock() noexcept;
 
   /// Unlock the mutex.
   ///
@@ -151,8 +154,10 @@ class Mutex {
   void unlock() noexcept;
 
  private:
-  class LockOperation {
+  class LockAwaiter {
    public:
+    explicit LockAwaiter(Mutex& mutex) noexcept : mutex_(mutex) {}
+
     bool await_ready() noexcept {
       return mutex_.try_lock();
     }
@@ -166,27 +171,36 @@ class Mutex {
     void await_resume() noexcept {}
 
    protected:
-    friend class Mutex;
-
-    explicit LockOperation(Mutex& mutex) noexcept : mutex_(mutex) {}
-
     Mutex& mutex_;
+
+   private:
+    friend Mutex;
+
     std::experimental::coroutine_handle<> awaitingCoroutine_;
-    LockOperation* next_;
+    LockAwaiter* next_;
   };
 
-  class ScopedLockOperation : public LockOperation {
+  class ScopedLockAwaiter : public LockAwaiter {
    public:
+    using LockAwaiter::LockAwaiter;
+
     std::unique_lock<Mutex> await_resume() noexcept {
       return std::unique_lock<Mutex>{mutex_, std::adopt_lock};
     }
-
-   private:
-    friend class Mutex;
-    using LockOperation::LockOperation;
   };
 
-  friend class LockOperation;
+  template <typename Awaiter>
+  class LockOperation {
+   public:
+    explicit LockOperation(Mutex& mutex) noexcept : mutex_(mutex) {}
+
+    auto viaIfAsync(folly::Executor::KeepAlive<> executor) const {
+      return folly::coro::co_viaIfAsync(std::move(executor), Awaiter{mutex_});
+    }
+
+   private:
+    Mutex& mutex_;
+  };
 
   // Special value for state_ that indicates the mutex is not locked.
   void* unlockedState() noexcept {
@@ -200,26 +214,27 @@ class Mutex {
   // once it acquires the mutex. Returns false if the lock was acquired
   // synchronously and the awaiting coroutine should continue without
   // suspending.
-  bool lockAsyncImpl(LockOperation* awaiter);
+  bool lockAsyncImpl(LockAwaiter* awaiter);
 
   // This contains either:
   // - this    => Not locked
   // - nullptr => Locked, no newly queued waiters (ie. empty list of waiters)
-  // - other   => Pointer to first LockAwaiterBase* in a linked-list of newly
+  // - other   => Pointer to first LockAwaiter* in a linked-list of newly
   //              queued awaiters in LIFO order.
   std::atomic<void*> state_;
 
   // Linked-list of waiters in FIFO order.
   // Only the current lock holder is allowed to access this member.
-  LockOperation* waiters_;
+  LockAwaiter* waiters_;
 };
 
-inline Mutex::ScopedLockOperation Mutex::co_scoped_lock() noexcept {
-  return ScopedLockOperation{*this};
+inline Mutex::LockOperation<Mutex::ScopedLockAwaiter>
+Mutex::co_scoped_lock() noexcept {
+  return LockOperation<ScopedLockAwaiter>{*this};
 }
 
-inline Mutex::LockOperation Mutex::co_lock() noexcept {
-  return LockOperation{*this};
+inline Mutex::LockOperation<Mutex::LockAwaiter> Mutex::co_lock() noexcept {
+  return LockOperation<LockAwaiter>{*this};
 }
 
 } // namespace coro

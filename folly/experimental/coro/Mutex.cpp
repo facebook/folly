@@ -59,7 +59,7 @@ void Mutex::unlock() noexcept {
     assert(currentState != unlockedState());
     assert(currentState != nullptr);
 
-    auto* waiter = static_cast<LockOperation*>(currentState);
+    auto* waiter = static_cast<LockAwaiter*>(currentState);
     do {
       auto* temp = waiter->next_;
       waiter->next_ = waitersHead;
@@ -75,7 +75,7 @@ void Mutex::unlock() noexcept {
   waitersHead->awaitingCoroutine_.resume();
 }
 
-bool Mutex::lockAsyncImpl(LockOperation* awaiter) {
+bool Mutex::lockAsyncImpl(LockAwaiter* awaiter) {
   void* oldValue = state_.load(std::memory_order_relaxed);
   while (true) {
     if (oldValue == unlockedState()) {
@@ -94,7 +94,7 @@ bool Mutex::lockAsyncImpl(LockOperation* awaiter) {
       // It looks like the mutex is currently locked.
       // Try to queue this waiter to the list of waiters.
       void* newValue = awaiter;
-      awaiter->next_ = static_cast<LockOperation*>(oldValue);
+      awaiter->next_ = static_cast<LockAwaiter*>(oldValue);
       if (state_.compare_exchange_weak(
               oldValue,
               newValue,

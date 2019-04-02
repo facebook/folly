@@ -156,37 +156,4 @@ TEST(Mutex, ThreadSafety) {
   CHECK_EQ(30'000, value);
 }
 
-TEST(Mutex, InlineTaskDeadlock) {
-  coro::Mutex coroMutex;
-  std::timed_mutex stdMutex;
-
-  std::thread thread1([&] {
-    coro::blockingWait(
-        [](auto& coroMutex, auto& stdMutex) -> coro::detail::InlineTask<void> {
-          co_await coroMutex.co_lock();
-          std::this_thread::sleep_for(std::chrono::milliseconds{200});
-          stdMutex.lock();
-          // At this point the other coroutine is suspended waiting on
-          // coroMutex.co_lock(). coroMutex.unlock() will unlock the mutex and
-          // run the other coroutine *inline*. That coroutine will
-          // try to acquire stdMutex resulting in a deadlock.
-          coroMutex.unlock();
-          stdMutex.unlock();
-        }(coroMutex, stdMutex));
-  });
-
-  std::thread thread2([&] {
-    coro::blockingWait(
-        [](auto& coroMutex, auto& stdMutex) -> coro::detail::InlineTask<void> {
-          std::this_thread::sleep_for(std::chrono::milliseconds{100});
-          co_await coroMutex.co_lock();
-          EXPECT_FALSE(stdMutex.try_lock_for(std::chrono::milliseconds{500}));
-          coroMutex.unlock();
-        }(coroMutex, stdMutex));
-  });
-
-  thread1.join();
-  thread2.join();
-}
-
 #endif
