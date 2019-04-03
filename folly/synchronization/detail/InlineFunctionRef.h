@@ -66,14 +66,17 @@ class InlineFunctionRef;
 
 template <typename ReturnType, typename... Args, std::size_t Size>
 class InlineFunctionRef<ReturnType(Args...), Size> {
-  using Storage = std::aligned_storage_t<Size - 8, 8>;
+  using Storage =
+      std::aligned_storage_t<Size - sizeof(uintptr_t), sizeof(uintptr_t)>;
   using Call = ReturnType (*)(const Storage&, Args&&...);
 
   struct InSituTag {};
   struct RefTag {};
 
-  static_assert((Size % 8) == 0, "Size has to be a multiple of 8");
-  static_assert(Size >= 16, "This doesn't work");
+  static_assert(
+      (Size % sizeof(uintptr_t)) == 0,
+      "Size has to be a multiple of sizeof(uintptr_t)");
+  static_assert(Size >= 2 * sizeof(uintptr_t), "This doesn't work");
   static_assert(alignof(Call) == alignof(Storage), "Mismatching alignments");
 
   // This defines a mode tag that is used in the construction of
