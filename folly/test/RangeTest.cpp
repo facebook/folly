@@ -223,6 +223,7 @@ TEST(StringPiece, All) {
   EXPECT_EQ(s2, s);
 }
 
+#if !defined(__GLIBCXX__) || _GLIBCXX_USE_CXX11_ABI
 TEST(StringPiece, CustomAllocator) {
   using Alloc = AlignedSysAllocator<char>;
   Alloc const alloc{32};
@@ -235,6 +236,7 @@ TEST(StringPiece, CustomAllocator) {
   piece.reset(str);
   EXPECT_EQ("foo", piece.subpiece(0, 3));
 }
+#endif
 
 template <class T>
 void expectLT(const T& a, const T& b) {
