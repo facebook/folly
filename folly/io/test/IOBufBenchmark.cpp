@@ -19,6 +19,13 @@
 
 using folly::IOBuf;
 
+BENCHMARK(createAndDestroy, iters) {
+  while (iters--) {
+    IOBuf buf(IOBuf::CREATE, 10);
+    folly::doNotOptimizeAway(buf.capacity());
+  }
+}
+
 BENCHMARK(cloneOneBenchmark, iters) {
   IOBuf buf(IOBuf::CREATE, 10);
   while (iters--) {

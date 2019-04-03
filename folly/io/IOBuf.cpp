@@ -799,13 +799,18 @@ void IOBuf::decrementRefcount() {
     return;
   }
 
-  // Decrement the refcount
-  uint32_t newcnt = info->refcount.fetch_sub(1, std::memory_order_acq_rel);
-  // Note that fetch_sub() returns the value before we decremented.
-  // If it is 1, we were the only remaining user; if it is greater there are
-  // still other users.
-  if (newcnt > 1) {
-    return;
+  // Avoid doing atomic decrement if the refcount is 1.
+  // This is safe, because it means that we're the last reference and destroying
+  // the object. Anything trying to copy it is already undefined behavior.
+  if (info->refcount.load(std::memory_order_acquire) > 1) {
+    // Decrement the refcount
+    uint32_t newcnt = info->refcount.fetch_sub(1, std::memory_order_acq_rel);
+    // Note that fetch_sub() returns the value before we decremented.
+    // If it is 1, we were the only remaining user; if it is greater there are
+    // still other users.
+    if (newcnt > 1) {
+      return;
+    }
   }
 
   // save the useHeapFullStorage flag here since
