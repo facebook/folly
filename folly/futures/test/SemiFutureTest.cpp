@@ -1058,6 +1058,106 @@ TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
   }
 }
 
+TEST(SemiFuture, collectSemiFutureDeferredWork) {
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    auto future = collectSemiFuture(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }),
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    auto result = std::move(future).getTry(std::chrono::milliseconds{100});
+
+    EXPECT_TRUE(result.hasValue());
+
+    EXPECT_EQ(2, std::get<0>(*result));
+    EXPECT_EQ(4, std::get<1>(*result));
+  }
+
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    auto future = collectSemiFuture(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }),
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    ManualExecutor executor;
+
+    auto value = std::move(future).via(&executor).getVia(&executor);
+
+    EXPECT_EQ(2, std::get<0>(value));
+    EXPECT_EQ(4, std::get<1>(value));
+  }
+
+  {
+    Promise<int> promise1;
+    Promise<int> promise2;
+
+    std::vector<SemiFuture<int>> futures;
+    futures.push_back(
+        promise1.getSemiFuture().deferValue([](int x) { return x * 2; }));
+    futures.push_back(
+        promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+    auto future = collectSemiFuture(futures);
+
+    promise1.setValue(1);
+    promise2.setValue(2);
+
+    EXPECT_TRUE(future.wait().isReady());
+
+    auto value = std::move(future).get();
+    EXPECT_EQ(2, value[0]);
+    EXPECT_EQ(4, value[1]);
+  }
+
+  {
+    bool deferredDestroyed = false;
+
+    {
+      Promise<int> promise;
+      auto guard = makeGuard([&] { deferredDestroyed = true; });
+      collectSemiFuture(promise.getSemiFuture().deferValue(
+          [guard = std::move(guard)](int x) { return x; }));
+    }
+
+    EXPECT_TRUE(deferredDestroyed);
+  }
+}
+
+TEST(SemiFuture, collectNDeferredWork) {
+  Promise<int> promise1;
+  Promise<int> promise2;
+  Promise<int> promise3;
+
+  std::vector<SemiFuture<int>> futures;
+  futures.push_back(
+      promise1.getSemiFuture().deferValue([](int x) { return x * 2; }));
+  futures.push_back(
+      promise2.getSemiFuture().deferValue([](int x) { return x * 2; }));
+  futures.push_back(
+      promise3.getSemiFuture().deferValue([](int x) { return x * 2; }));
+
+  auto future = collectN(std::move(futures), 2);
+
+  promise1.setValue(1);
+  promise3.setValue(3);
+
+  EXPECT_TRUE(future.wait().isReady());
+
+  auto value = std::move(future).get();
+  EXPECT_EQ(2, *value[0].second);
+  EXPECT_EQ(6, *value[1].second);
+}
+
 TEST(SemiFuture, DeferWithNestedSemiFuture) {
   auto start = std::chrono::steady_clock::now();
   auto future = futures::sleep(std::chrono::milliseconds{100})

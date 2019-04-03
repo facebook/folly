@@ -1594,6 +1594,10 @@ collectSemiFuture(InputIterator first, InputIterator last) {
     std::atomic<bool> threw{false};
   };
 
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
+
   auto ctx = std::make_shared<Context>(std::distance(first, last));
   for (size_t i = 0; first != last; ++first, ++i) {
     first->setCallback_([i, ctx](Try<T>&& t) {
@@ -1606,7 +1610,17 @@ collectSemiFuture(InputIterator first, InputIterator last) {
       }
     });
   }
-  return ctx->p.getSemiFuture();
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    auto work = [](Try<typename decltype(future)::value_type>&& t) {
+      return std::move(t).value();
+    };
+    future = std::move(future).defer(work);
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 template <class InputIterator>
@@ -1634,6 +1648,10 @@ collectSemiFuture(Fs&&... fs) {
     std::atomic<bool> threw{false};
   };
 
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutorsVariadic(executors, fs...);
+
   auto ctx = std::make_shared<Context>();
   futures::detail::foreach(
       [&](auto i, auto&& f) {
@@ -1648,13 +1666,29 @@ collectSemiFuture(Fs&&... fs) {
         });
       },
       static_cast<Fs&&>(fs)...);
-  return ctx->p.getSemiFuture();
+
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    auto work = [](Try<typename decltype(future)::value_type>&& t) {
+      return std::move(t).value();
+    };
+    future = std::move(future).defer(work);
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 template <typename... Fs>
 Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
     Fs&&... fs) {
   return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+}
+
+template <class Collection>
+auto collectSemiFuture(Collection&& c)
+    -> decltype(collectSemiFuture(c.begin(), c.end())) {
+  return collectSemiFuture(c.begin(), c.end());
 }
 
 // collectAny (iterator)
@@ -1762,6 +1796,10 @@ collectN(InputIterator first, InputIterator last, size_t n) {
         exception_wrapper(std::runtime_error("Not enough futures")));
   }
 
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
+
   // for each completed Future, increase count and add to vector, until we
   // have n completed futures at which point we fulfil our Promise with the
   // vector
@@ -1793,7 +1831,16 @@ collectN(InputIterator first, InputIterator last, size_t n) {
     });
   }
 
-  return ctx->p.getSemiFuture();
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 // reduce (iterator)
