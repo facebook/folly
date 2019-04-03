@@ -1173,7 +1173,7 @@ class QueueAppender : public detail::Writable<QueueAppender> {
   }
 
   void insert(const folly::IOBuf& buf) {
-    insert(buf.clone());
+    queueCache_.queue()->append(buf, true);
   }
 
  private:

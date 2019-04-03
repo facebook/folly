@@ -153,6 +153,42 @@ void IOBufQueue::append(unique_ptr<IOBuf>&& buf, bool pack) {
   appendToChain(head_, std::move(buf), pack);
 }
 
+void IOBufQueue::append(const folly::IOBuf& buf, bool pack) {
+  if (!head_ || !pack) {
+    append(buf.clone(), pack);
+    return;
+  }
+
+  auto guard = updateGuard();
+  if (options_.cacheChainLength) {
+    chainLength_ += buf.computeChainDataLength();
+  }
+
+  size_t copyRemaining = MAX_PACK_COPY;
+  std::size_t n;
+  const folly::IOBuf* src = &buf;
+  folly::IOBuf* tail = head_->prev();
+  while ((n = src->length()) <= copyRemaining && n <= tail->tailroom()) {
+    if (n > 0) {
+      memcpy(tail->writableTail(), src->data(), n);
+      tail->append(n);
+      copyRemaining -= n;
+    }
+    src = src->next();
+
+    // Consumed full input.
+    if (src == &buf) {
+      return;
+    }
+  }
+
+  // Clone the rest.
+  do {
+    head_->prependChain(src->cloneOne());
+    src = src->next();
+  } while (src != &buf);
+}
+
 void IOBufQueue::append(IOBufQueue& other, bool pack) {
   if (!other.head_) {
     return;

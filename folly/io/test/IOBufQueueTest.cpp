@@ -57,6 +57,12 @@ void checkConsistency(const IOBufQueue& queue) {
   }
 }
 
+std::string queueToString(const IOBufQueue& queue) {
+  std::string out;
+  queue.appendToString(out);
+  return out;
+}
+
 } // namespace
 
 TEST(IOBufQueue, Simple) {
@@ -118,6 +124,50 @@ TEST(IOBufQueue, AppendStringPiece) {
   EXPECT_EQ(s.length(), chain->computeChainDataLength());
   EXPECT_EQ(s.length(), chain2->computeChainDataLength());
   EXPECT_EQ(0, memcmp(chain->data(), chain2->data(), s.length()));
+}
+
+TEST(IOBufQueue, AppendIOBufRef) {
+  IOBufQueue queue(clOptions);
+  queue.append(*stringToIOBuf("abc", 3), true);
+  EXPECT_EQ(3, queue.chainLength());
+  EXPECT_EQ(1, queue.front()->countChainElements());
+  EXPECT_EQ("abc", queueToString(queue));
+  // Make sure we have enough space to copy over next data.
+  queue.preallocate(10, 10, 10);
+  EXPECT_LE(10, queue.tailroom());
+  auto numElements = queue.front()->countChainElements();
+  queue.append(*stringToIOBuf("FooBar", 6), true);
+  EXPECT_EQ(9, queue.chainLength());
+  // Make sure that we performed copy and not append chain.
+  EXPECT_EQ(numElements, queue.front()->countChainElements());
+  EXPECT_EQ("abcFooBar", queueToString(queue));
+}
+
+TEST(IOBufQueue, AppendIOBufRefChain) {
+  IOBufQueue queue(clOptions);
+  queue.append(*stringToIOBuf("abc", 3), true);
+  queue.preallocate(10, 10, 10);
+  auto numElements = queue.front()->countChainElements();
+  auto chain = stringToIOBuf("Hello", 5);
+  chain->prependChain(stringToIOBuf("World", 5));
+  queue.append(*chain, true);
+  // Make sure that we performed a copy and not append chain.
+  EXPECT_EQ(numElements, queue.front()->countChainElements());
+  EXPECT_EQ("abcHelloWorld", queueToString(queue));
+}
+
+TEST(IOBufQueue, AppendIOBufRefChainPartial) {
+  IOBufQueue queue(clOptions);
+  queue.append(*stringToIOBuf("abc", 3), true);
+  queue.preallocate(10, 10, 10);
+  auto numElements = queue.front()->countChainElements();
+  auto chain = stringToIOBuf("Hello", 5);
+  chain->prependChain(stringToIOBuf("World!", 6));
+  chain->prependChain(stringToIOBuf("Test", 4));
+  queue.append(*chain, true);
+  // Make sure that we performed a copy of first IOBuf and cloned the rest.
+  EXPECT_EQ(numElements + 2, queue.front()->countChainElements());
+  EXPECT_EQ("abcHelloWorld!Test", queueToString(queue));
 }
 
 TEST(IOBufQueue, Split) {

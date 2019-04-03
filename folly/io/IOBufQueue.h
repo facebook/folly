@@ -292,6 +292,7 @@ class IOBufQueue {
    * the chain topology unchanged.
    */
   void append(std::unique_ptr<folly::IOBuf>&& buf, bool pack = false);
+  void append(const folly::IOBuf& buf, bool pack = false);
 
   /**
    * Add a queue to the end of this queue. The queue takes ownership of
