@@ -15,26 +15,63 @@
  */
 #pragma once
 
+#include <folly/experimental/pushmi/detail/sender_base.h>
+
 namespace folly {
 namespace pushmi {
+namespace detail {
+// inherit: a class that inherits from a bunch of bases
+template <class... Ts>
+struct inherit : Ts... {
+  inherit() = default;
+  constexpr inherit(Ts... ts)
+    : Ts((Ts&&) ts)...
+  {}
+};
+template <class T>
+struct inherit<T> : T {
+  inherit() = default;
+  explicit constexpr inherit(T t)
+    : T((T&&) t)
+  {}
+};
+template <>
+struct inherit<>
+{};
+} // namespace detail
 
 // derive from this for types that need to find operator|() overloads by ADL
 
 struct pipeorigin {};
 
-// cardinality affects both sender and receiver
+// traits & tags
+struct sender_tag
+  : sender_base<sender_tag> {
+};
+namespace detail {
+struct virtual_sender_tag
+  : virtual sender_tag {
+};
+} // namespace detail
 
-struct cardinality_category {};
+struct single_sender_tag
+  : sender_base<single_sender_tag, detail::virtual_sender_tag> {
+};
 
-// flow affects both sender and receiver
+struct flow_sender_tag
+  : sender_base<flow_sender_tag, detail::virtual_sender_tag> {
+};
+struct flow_single_sender_tag
+  : sender_base<
+      flow_single_sender_tag,
+      detail::inherit<flow_sender_tag, single_sender_tag>> {
+};
 
 struct flow_category {};
 
 // sender and receiver are mutually exclusive
 
 struct receiver_category {};
-
-struct sender_category {};
 
 // blocking affects senders
 
@@ -45,20 +82,6 @@ struct blocking_category {};
 struct sequence_category {};
 
 // trait & tag types
-
-template <class... TN>
-struct is_single;
-template <>
-struct is_single<> {
-  using property_category = cardinality_category;
-};
-
-template <class... TN>
-struct is_many;
-template <>
-struct is_many<> {
-  using property_category = cardinality_category;
-};
 
 template <class... TN>
 struct is_flow;
@@ -72,13 +95,6 @@ struct is_receiver;
 template <>
 struct is_receiver<> {
   using property_category = receiver_category;
-};
-
-template <class... TN>
-struct is_sender;
-template <>
-struct is_sender<> {
-  using property_category = sender_category;
 };
 
 template <class... TN>

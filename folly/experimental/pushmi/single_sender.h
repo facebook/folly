@@ -24,7 +24,8 @@ namespace folly {
 namespace pushmi {
 
 template <class E, class... VN>
-class any_single_sender {
+class any_single_sender
+: public single_sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
@@ -44,7 +45,8 @@ class any_single_sender {
   static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_single_sender(Wrapped obj, std::true_type, std::false_type) : any_single_sender() {
+  any_single_sender(Wrapped obj, std::true_type, std::false_type)
+  : any_single_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -119,7 +121,7 @@ class any_single_sender {
   using wrapped_t =
       std::enable_if_t<!std::is_same<U, any_single_sender>::value, U>;
  public:
-  using properties = property_set<is_sender<>, is_single<>>;
+  using properties = property_set<>;
 
   any_single_sender() = default;
   any_single_sender(any_single_sender&& that) noexcept : any_single_sender() {
@@ -128,7 +130,8 @@ class any_single_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped) //
-  (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>) //
+  (requires SingleSender<wrapped_t<Wrapped>> &&
+    SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>) //
   explicit any_single_sender(Wrapped&& obj) noexcept(insitu<Wrapped>())
       : any_single_sender{std::move(obj), std::is_rvalue_reference<Wrapped&&>{}, bool_<insitu<Wrapped>()>{}} {}
   ~any_single_sender() {
@@ -156,7 +159,8 @@ class single_sender<SF> {
   SF sf_;
 
  public:
-  using properties = property_set<is_sender<>, is_single<>>;
+  using sender_category = single_sender_tag;
+  using properties = property_set<>;
 
   constexpr single_sender() = default;
   constexpr explicit single_sender(SF sf) : sf_(std::move(sf)) {}
@@ -170,20 +174,18 @@ class single_sender<SF> {
 };
 
 template <
-    PUSHMI_TYPE_CONSTRAINT(Sender) Data,
+    PUSHMI_TYPE_CONSTRAINT(SingleSender) Data,
     class DSF>
 class single_sender<Data, DSF> {
   Data data_;
   DSF sf_;
 
  public:
+  using sender_category = single_sender_tag;
   using properties = properties_t<Data>;
 
   static_assert(
-      Sender<Data>,
-      "Data must be a sender");
-  static_assert(
-      is_single_v<Data>,
+      SingleSender<Data>,
       "Data must be a single sender");
 
   constexpr single_sender() = default;
@@ -224,13 +226,13 @@ PUSHMI_INLINE_VAR constexpr struct make_single_sender_fn {
     return single_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-  (requires True<>&& Sender<Data> && is_single_v<Data>) //
+  (requires True<>&& SingleSender<Data>) //
       auto
       operator()(Data d) const {
     return single_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data> && is_single_v<Data>) //
+  (requires SingleSender<Data>) //
       auto
       operator()(Data d, DSF sf) const {
     return single_sender<Data, DSF>{std::move(d), std::move(sf)};
@@ -248,12 +250,12 @@ PUSHMI_TEMPLATE(class SF)
         ->single_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-(requires True<>&& Sender<Data> && is_single_v<Data>) //
+(requires True<>&& SingleSender<Data>) //
     single_sender(Data)
         ->single_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-(requires Sender<Data> && is_single_v<Data>) //
+(requires SingleSender<Data>) //
     single_sender(Data, DSF)
         ->single_sender<Data, DSF>;
 #endif

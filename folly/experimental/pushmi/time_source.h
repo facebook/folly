@@ -442,7 +442,9 @@ class time_source_executor;
 //
 
 template <class E, class TP, class NF, class Exec>
-class time_source_task {
+class time_source_task
+: public single_sender_tag::with_values<any_time_executor_ref<E, TP>>::
+    template with_error<E> {
   using time_point = std::decay_t<TP>;
   time_point tp_;
   std::shared_ptr<time_source_shared<E, time_point>> source_;

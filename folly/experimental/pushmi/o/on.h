@@ -52,7 +52,7 @@ struct on_fn {
   struct adapt_impl {
     Factory ef_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<std::decay_t<In>>) //
+    (requires Sender<In>) //
         auto
         operator()(In&& in) const {
       return ::folly::pushmi::detail::sender_from(

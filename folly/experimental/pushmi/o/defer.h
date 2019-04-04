@@ -28,28 +28,31 @@ namespace operators {
 PUSHMI_INLINE_VAR constexpr struct defer_fn {
  private:
   template <class F>
-  struct impl {
+  struct task : sender_traits<invoke_result_t<F&>> {
+    using sender_type = invoke_result_t<F&>;
     F f_;
-    PUSHMI_TEMPLATE(class Data, class Out)
-    (requires Receiver<Out>)
-    void operator()(Data&, Out out) {
+  public:
+    using properties = properties_t<sender_type>;
+
+    task() = default;
+    explicit task(F f) : f_(std::move(f)) {}
+
+    PUSHMI_TEMPLATE(class Out)
+    (requires SenderTo<sender_type&, Out>)
+    void submit(Out out) {
       auto sender = f_();
-      submit(sender, std::move(out));
+      pushmi::submit(sender, std::move(out));
     }
   };
 
  public:
   PUSHMI_TEMPLATE(class F)
-  (requires Invocable<F&>)
+  (requires Invocable<F&> && Sender<invoke_result_t<F&>>)
   auto operator()(F f) const {
-    struct sender_base : single_sender<> {
-      using properties = properties_t<invoke_result_t<F&>>;
-    };
-    return make_single_sender(sender_base{}, impl<F>{std::move(f)});
+    return task<F>{std::move(f)};
   }
 } defer{};
 
 } // namespace operators
-
 } // namespace pushmi
 } // namespace folly

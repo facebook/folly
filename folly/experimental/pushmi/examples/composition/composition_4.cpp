@@ -48,7 +48,7 @@ int main() {
   // matters) or the caller is just going to push the result into a queue,
   // provide a way to skip the transition to a different executor and make it
   // stand out so that it has to be justified in code reviews.
-  mi::via_cast<mi::is_sender<>>(io_operation(io)) | op::submit();
+  mi::via_cast(io_operation(io)) | op::submit();
 
   io = mi::pool_executor{};
   cpu = mi::pool_executor{};

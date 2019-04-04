@@ -22,15 +22,17 @@ namespace pushmi {
 
 class inline_constrained_executor_t {
  public:
-   using properties = property_set<is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
- template<class CV>
- struct task {
-   CV cv_;
-  using properties = property_set<
-      is_sender<>,
-      is_always_blocking<>,
-      is_single<>>;
+  template<class CV>
+  struct task
+  : single_sender_tag::with_values<inline_constrained_executor_t>::no_error {
+  private:
+    CV cv_;
+  public:
+    task() = default;
+    explicit task(CV cv) : cv_(cv) {}
+    using properties = property_set<is_always_blocking<>>;
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
@@ -39,15 +41,15 @@ class inline_constrained_executor_t {
       set_done(out);
     }
   };
-  auto top() {
+  std::ptrdiff_t top() {
     return 0;
   }
-  task<std::ptrdiff_t> schedule() {
-    return {top()};
+  auto schedule() {
+    return task<std::ptrdiff_t>{top()};
   }
-  template<class CV>
-  task<std::ptrdiff_t> schedule(CV cv) {
-    return {cv};
+  template <class CV>
+  auto schedule(CV cv) {
+    return task<CV>{cv};
   }
 };
 
@@ -63,15 +65,16 @@ inline inline_constrained_executor_t inline_constrained_executor() {
 
 class inline_time_executor_t {
  public:
-   using properties = property_set<is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
- template<class TP>
- struct task {
+  template<class TP>
+  struct task : single_sender_tag::with_values<inline_time_executor_t>::no_error {
+  private:
    TP tp_;
-  using properties = property_set<
-      is_sender<>,
-      is_always_blocking<>,
-      is_single<>>;
+  public:
+    using properties = property_set<is_always_blocking<>>;
+    task() = default;
+    explicit task(TP tp) : tp_(std::move(tp)) {}
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
@@ -85,12 +88,12 @@ class inline_time_executor_t {
   auto top() {
     return std::chrono::system_clock::now();
   }
-  task<std::chrono::system_clock::time_point> schedule() {
-    return {top()};
+  auto schedule() {
+    return task<std::chrono::system_clock::time_point>{top()};
   }
   template<class TP>
-  task<TP> schedule(TP tp) {
-    return {tp};
+  auto schedule(TP tp) {
+    return task<TP>{tp};
   }
 };
 
@@ -108,11 +111,8 @@ class inline_executor_t {
   public:
     using properties = property_set<is_fifo_sequence<>>;
 
-  struct task {
-    using properties = property_set<
-        is_sender<>,
-        is_always_blocking<>,
-        is_single<>>;
+  struct task : single_sender_tag::with_values<inline_executor_t>::no_error {
+    using properties = property_set<is_always_blocking<>>;
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
@@ -128,7 +128,7 @@ class inline_executor_t {
 };
 
 struct inlineEXF {
-  inline_executor_t operator()() {
+  inline_executor_t operator()() const {
     return {};
   }
 };

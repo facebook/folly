@@ -24,7 +24,8 @@ namespace folly {
 namespace pushmi {
 
 template <class PE, class PV, class E, class... VN>
-class any_flow_many_sender {
+class any_flow_many_sender
+: public flow_sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
@@ -83,7 +84,7 @@ class any_flow_many_sender {
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, any_flow_many_sender>::value, U>;
  public:
-  using properties = property_set<is_sender<>, is_flow<>, is_many<>>;
+  using properties = property_set<>;
 
   any_flow_many_sender() = default;
   any_flow_many_sender(any_flow_many_sender&& that) noexcept
@@ -92,7 +93,7 @@ class any_flow_many_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>> && is_many_v<wrapped_t<Wrapped>>)
+    (requires FlowSender<wrapped_t<Wrapped>>)
   explicit any_flow_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_flow_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_flow_many_sender() {
@@ -120,7 +121,8 @@ class flow_many_sender<SF> {
   SF sf_;
 
  public:
-  using properties = property_set<is_sender<>, is_flow<>, is_many<>>;
+  using sender_category = flow_sender_tag;
+  using properties = property_set<>;
 
   constexpr flow_many_sender() = default;
   constexpr explicit flow_many_sender(SF sf)
@@ -133,20 +135,18 @@ class flow_many_sender<SF> {
   }
 };
 
-template <PUSHMI_TYPE_CONSTRAINT(Sender) Data, class DSF>
+template <PUSHMI_TYPE_CONSTRAINT(FlowSender) Data, class DSF>
 class flow_many_sender<Data, DSF> {
   Data data_;
   DSF sf_;
 
  public:
+  using sender_category = flow_sender_tag;
   using properties = properties_t<Data>;
 
   static_assert(
       FlowSender<Data>,
       "Data must be a flow sender");
-  static_assert(
-      is_many_v<Data>,
-      "Data must be a many sender");
 
   constexpr flow_many_sender() = default;
   constexpr explicit flow_many_sender(Data data)
@@ -187,12 +187,12 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_many_sender_fn {
     return flow_many_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires True<> && FlowSender<Data> && is_many_v<Data>)
+    (requires True<> && FlowSender<Data>)
   auto operator()(Data d) const {
     return flow_many_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires FlowSender<Data> && is_many_v<Data>)
+    (requires FlowSender<Data>)
   auto operator()(Data d, DSF sf) const {
     return flow_many_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
@@ -208,11 +208,11 @@ PUSHMI_TEMPLATE(class SF)
 flow_many_sender(SF) -> flow_many_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && FlowSender<Data> && is_many_v<Data>)
+  (requires True<> && FlowSender<Data>)
 flow_many_sender(Data) -> flow_many_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires FlowSender<Data> && is_many_v<Data>)
+  (requires FlowSender<Data>)
 flow_many_sender(Data, DSF) -> flow_many_sender<Data, DSF>;
 #endif
 

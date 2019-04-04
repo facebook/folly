@@ -35,13 +35,17 @@ struct no_fail_fn {
     PUSHMI_TEMPLATE(class SIn, class Out)
     (requires Receiver<Out>) //
     void operator()(SIn&& in, Out out) const {
-      submit((In&&)in, ::folly::pushmi::detail::receiver_from_fn<In>()(
-          std::move(out), ::folly::pushmi::on_error(on_error_impl{})));
+      submit(
+        (In&&)in,
+        receiver_from_fn<In>()(
+          std::move(out),
+          ::folly::pushmi::on_error(on_error_impl{})));
     }
   };
   struct in_impl {
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<In>)auto operator()(In in) const {
+    (requires Sender<In>) //
+    auto operator()(In in) const {
       return ::folly::pushmi::detail::sender_from(
           std::move(in),
           out_impl<In>{});

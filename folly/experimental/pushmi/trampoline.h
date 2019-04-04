@@ -49,11 +49,9 @@ template <class E = std::exception_ptr>
 class trampoline;
 
 template<class E, class Tag>
-struct trampoline_task {
-  using properties = property_set<
-      is_sender<>,
-      is_maybe_blocking<>,
-      is_single<>>;
+struct trampoline_task
+: single_sender_tag::with_values<any_executor_ref<E>>::template with_error<E> {
+  using properties = property_set<is_maybe_blocking<>>;
 
   PUSHMI_TEMPLATE(class SingleReceiver)
   (requires ReceiveValue<

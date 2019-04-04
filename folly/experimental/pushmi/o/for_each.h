@@ -25,10 +25,6 @@ namespace detail {
 
 struct for_each_fn {
  private:
-  template <class... PN>
-  struct subset {
-    using properties = property_set<PN...>;
-  };
   template<class Up>
   struct request_fn {
     Up up_;
@@ -75,17 +71,16 @@ struct for_each_fn {
   struct fn {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires FlowSender<In>&& is_many_v<In>)
+    (requires FlowSender<In>)
     In operator()(In in) {
-      auto out{::folly::pushmi::detail::receiver_from_fn<subset<
-          is_sender<>,
-          property_set_index_t<properties_t<In>, is_single<>>>>()(
-          std::move(args_))};
+      // Strip flow:
+      using C =
+        std::conditional_t<SingleSender<In>, single_sender_tag, sender_tag>;
+      auto out{receiver_from_fn<C>()(std::move(args_))};
       using Out = decltype(out);
       ::folly::pushmi::submit(
           in,
-          ::folly::pushmi::detail::receiver_from_fn<In>()(
-              Pull<In, Out>{std::move(out)}));
+          receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
       return in;
     }
   };

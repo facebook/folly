@@ -39,10 +39,9 @@ public:
   task schedule();
 };
 
-struct pool_executor::task {
-  using properties =
-    property_set<
-      is_sender<>, is_never_blocking<>, is_single<>>;
+struct pool_executor::task
+: single_sender_tag::with_values<pool_executor&>::no_error {
+  using properties = property_set<is_never_blocking<>>;
 
   explicit task(pool_executor e)
     : pool_ex_(std::move(e))

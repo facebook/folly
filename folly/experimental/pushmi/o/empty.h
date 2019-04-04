@@ -21,25 +21,23 @@
 
 namespace folly {
 namespace pushmi {
-namespace detail {
-struct single_empty_impl : pipeorigin {
-  using properties = property_set<
-      is_sender<>,
-      is_single<>,
-      is_always_blocking<>>;
-
-  PUSHMI_TEMPLATE(class Out)
-  (requires Receiver<Out>&& Invocable<decltype(set_done)&, Out&>) //
-      void submit(Out&& out) {
-    set_done(out);
-  }
-};
-} // namespace detail
-
 namespace operators {
-inline detail::single_empty_impl empty() {
-  return {};
-}
+PUSHMI_INLINE_VAR constexpr struct empty_fn {
+private:
+  struct task : pipeorigin, single_sender_tag::with_values<> {
+    using properties = property_set<is_always_blocking<>>;
+
+    PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out>) //
+    void submit(Out&& out) {
+      set_done(out);
+    }
+  };
+public:
+  auto operator()() const {
+    return task{};
+  }
+} empty {};
 
 } // namespace operators
 } // namespace pushmi

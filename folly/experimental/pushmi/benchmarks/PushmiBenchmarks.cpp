@@ -86,16 +86,19 @@ using countdownflowmany = countdown<decltype(mi::make_flow_receiver)>;
 struct inline_time_executor {
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    std::chrono::system_clock::time_point at;
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_always_blocking<>,
-        mi::is_single<>>;
+  struct task
+  : mi::single_sender_tag::with_values<inline_time_executor>::no_error {
+  private:
+    std::chrono::system_clock::time_point at_;
+  public:
+    using properties = mi::property_set<mi::is_always_blocking<>>;
+
+    task() = default;
+    explicit task(std::chrono::system_clock::time_point at) : at_(at) {}
 
     template <class Out>
     void submit(Out out) {
-      std::this_thread::sleep_until(at);
+      std::this_thread::sleep_until(at_);
       ::mi::set_value(out, inline_time_executor{});
       ::mi::set_done(out);
     }
@@ -115,11 +118,8 @@ struct inline_time_executor {
 struct inline_executor {
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_always_blocking<>,
-        mi::is_single<>>;
+  struct task : mi::single_sender_tag::with_values<inline_executor>::no_error {
+    using properties = mi::property_set<mi::is_always_blocking<>>;
 
     template <class Out>
     void submit(Out out) {
@@ -138,22 +138,25 @@ struct inline_executor_flow_single {
 
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    CancellationFactory cf;
+  struct task
+  : mi::flow_single_sender_tag::with_values<inline_executor_flow_single>
+      ::no_error {
+  private:
+    CancellationFactory cf_;
 
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_flow<>,
-        mi::is_maybe_blocking<>,
-        mi::is_single<>>;
+  public:
+    using properties = mi::property_set<mi::is_maybe_blocking<>>;
+
+    task() = default;
+    explicit task(CancellationFactory cf) : cf_(std::move(cf)) {}
 
     template <class Out>
     void submit(Out out) {
-      auto tokens = cf();
+      auto tokens = cf_();
 
       using Stopper = decltype(tokens.second);
       struct Data : mi::receiver<> {
-        explicit Data(Stopper stopper) : stopper(std::move(stopper)) {}
+        explicit Data(Stopper s) : stopper(std::move(s)) {}
         Stopper stopper;
       };
       auto up = mi::make_receiver(
@@ -173,7 +176,7 @@ struct inline_executor_flow_single {
 
       auto both = lock_both(tokens.first);
       if (!!both.first && !*(both.first)) {
-        ::mi::set_value(out, inline_executor_flow_single{cf});
+        ::mi::set_value(out, inline_executor_flow_single{cf_});
         ::mi::set_done(out);
       } else {
         // cancellation is not an error
@@ -191,9 +194,9 @@ struct shared_cancellation_factory {
   auto operator()() {
     // boolean cancellation
     bool stop = false;
-    auto set_stop = [](auto& stop) {
-      if (!!stop) {
-        *stop = true;
+    auto set_stop = [](auto& stop_) {
+      if (!!stop_) {
+        *stop_ = true;
       }
     };
     return mi::shared_entangle(stop, set_stop);
@@ -206,9 +209,9 @@ struct entangled_cancellation_factory {
   auto operator()() {
     // boolean cancellation
     bool stop = false;
-    auto set_stop = [](auto& stop) {
-      if (!!stop) {
-        *stop = true;
+    auto set_stop = [](auto& stop_) {
+      if (!!stop_) {
+        *stop_ = true;
       }
     };
     return mi::entangle(stop, set_stop);
@@ -220,12 +223,10 @@ using inline_executor_flow_single_entangled =
 struct inline_executor_flow_single_ignore {
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_flow<>,
-        mi::is_maybe_blocking<>,
-        mi::is_single<>>;
+  struct task
+  : mi::flow_single_sender_tag::with_values<inline_executor_flow_single_ignore>
+      ::no_error {
+    using properties = mi::property_set<mi::is_maybe_blocking<>>;
 
     template <class Out>
     void submit(Out out) {
@@ -249,27 +250,29 @@ struct inline_executor_flow_many {
 
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
+  struct task
+  : mi::flow_sender_tag::with_values<inline_executor_flow_many>
+      ::no_error {
+  private:
     std::atomic<int>* counter = nullptr;
 
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_flow<>,
-        mi::is_maybe_blocking<>,
-        mi::is_many<>>;
+  public:
+    using properties = mi::property_set<mi::is_maybe_blocking<>>;
+    task() = default;
+    explicit task(std::atomic<int>* c) : counter(c) {}
 
     template <class Out>
     void submit(Out out) {
       // boolean cancellation
       struct producer {
-        producer(Out out, bool s) : out(std::move(out)), stop(s) {}
+        producer(Out o, bool s) : out(std::move(o)), stop(s) {}
         Out out;
         std::atomic<bool> stop;
       };
       auto p = std::make_shared<producer>(std::move(out), false);
 
       struct Data : mi::receiver<> {
-        explicit Data(std::shared_ptr<producer> p) : p(std::move(p)) {}
+        explicit Data(std::shared_ptr<producer> sp) : p(std::move(sp)) {}
         std::shared_ptr<producer> p;
       };
 
@@ -313,12 +316,10 @@ struct inline_executor_flow_many {
 struct inline_executor_flow_many_ignore {
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_flow<>,
-        mi::is_always_blocking<>,
-        mi::is_many<>>;
+  struct task
+  : mi::flow_sender_tag::with_values<inline_executor_flow_many_ignore>
+      ::no_error {
+    using properties = mi::property_set<mi::is_always_blocking<>>;
     template <class Out>
     void submit(Out out) {
       // pass reference for cancellation.
@@ -336,11 +337,9 @@ struct inline_executor_flow_many_ignore {
 struct inline_executor_many {
   using properties = mi::property_set<mi::is_fifo_sequence<>>;
 
-  struct task {
-    using properties = mi::property_set<
-        mi::is_sender<>,
-        mi::is_always_blocking<>,
-        mi::is_many<>>;
+  struct task
+  : mi::sender_tag::with_values<inline_executor_many>::no_error {
+    using properties = mi::property_set<mi::is_always_blocking<>>;
     template <class Out>
     void submit(Out out) {
       ::mi::set_value(out, inline_executor_many{});

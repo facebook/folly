@@ -67,24 +67,24 @@ auto naive_executor_bulk_target(Executor e, Allocator a = Allocator{}) {
           (decltype(func)&&)func,
           init(std::move(input)));
       e.schedule() | op::submit([e, sb, se, shared_state](auto) mutable {
-        auto stepDone = [](auto shared_state) {
+        auto stepDone = [](auto shared_state_) {
           // pending
-          if (--shared_state->pending_ == 0) {
+          if (--shared_state_->pending_ == 0) {
             // first exception
-            if (shared_state->first_exception_) {
+            if (shared_state_->first_exception_) {
               mi::set_error(
-                  shared_state->destination_, shared_state->first_exception_);
+                  shared_state_->destination_, shared_state_->first_exception_);
               return;
             }
             try {
               // selector(accumulation)
-              auto result = shared_state->selector_(
-                  std::move(shared_state->accumulation_.load()));
-              mi::set_value(shared_state->destination_, std::move(result));
-              mi::set_done(shared_state->destination_);
+              auto result = shared_state_->selector_(
+                  std::move(shared_state_->accumulation_.load()));
+              mi::set_value(shared_state_->destination_, std::move(result));
+              mi::set_done(shared_state_->destination_);
             } catch (...) {
               mi::set_error(
-                  shared_state->destination_, std::current_exception());
+                  shared_state_->destination_, std::current_exception());
             }
           }
         };

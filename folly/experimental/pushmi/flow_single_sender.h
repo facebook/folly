@@ -25,7 +25,8 @@ namespace folly {
 namespace pushmi {
 
 template <class PE, class E, class... VN>
-class any_flow_single_sender {
+class any_flow_single_sender
+: public flow_single_sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
@@ -90,7 +91,7 @@ class any_flow_single_sender {
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, any_flow_single_sender>::value, U>;
  public:
-  using properties = property_set<is_sender<>, is_flow<>, is_single<>>;
+  using properties = property_set<>;
 
   any_flow_single_sender() = default;
   any_flow_single_sender(any_flow_single_sender&& that) noexcept
@@ -99,7 +100,8 @@ class any_flow_single_sender {
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
-    (requires FlowSender<wrapped_t<Wrapped>> &&is_single_v<wrapped_t<Wrapped>>)
+    (requires SingleSender<wrapped_t<Wrapped>> &&
+      FlowSender<wrapped_t<Wrapped>>)
   explicit any_flow_single_sender(Wrapped obj) noexcept(insitu<Wrapped>())
     : any_flow_single_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_flow_single_sender() {
@@ -112,8 +114,10 @@ class any_flow_single_sender {
   }
   PUSHMI_TEMPLATE(class Out)
   (requires ReceiveError<Out, E>&& ReceiveValue<Out, VN...>) //
-      void submit(Out&& out) {
-    vptr_->submit_(data_, any_flow_receiver<PE, std::ptrdiff_t, E, VN...>{(Out &&) out});
+  void submit(Out&& out) {
+    vptr_->submit_(
+      data_,
+      any_flow_receiver<PE, std::ptrdiff_t, E, VN...>{(Out &&) out});
   }
 };
 
@@ -127,7 +131,8 @@ class flow_single_sender<SF> {
   SF sf_;
 
  public:
-  using properties = property_set<is_sender<>, is_flow<>, is_single<>>;
+  using sender_category = flow_single_sender_tag;
+  using properties = property_set<>;
 
   constexpr flow_single_sender() = default;
   constexpr explicit flow_single_sender(SF sf)
@@ -141,20 +146,21 @@ class flow_single_sender<SF> {
 };
 
 template <
-    PUSHMI_TYPE_CONSTRAINT(Sender) Data,
+    PUSHMI_TYPE_CONSTRAINT(SingleSender) Data,
     class DSF>
 class flow_single_sender<Data, DSF> {
   Data data_;
   DSF sf_;
 
  public:
+  using sender_category = flow_single_sender_tag;
   using properties = properties_t<Data>;
 
   static_assert(
       FlowSender<Data>,
       "Data must be a flow sender");
   static_assert(
-      is_single_v<Data>,
+      SingleSender<Data>,
       "Data must be a single sender");
 
   constexpr flow_single_sender() = default;
@@ -190,12 +196,12 @@ PUSHMI_INLINE_VAR constexpr struct make_flow_single_sender_fn {
     return flow_single_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-    (requires True<> && FlowSender<Data> && is_single_v<Data>)
+    (requires True<> && FlowSender<Data> && SingleSender<Data>)
   auto operator()(Data d) const {
     return flow_single_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-    (requires FlowSender<Data> && is_single_v<Data>)
+    (requires FlowSender<Data> && SingleSender<Data>)
   auto operator()(Data d, DSF sf) const {
     return flow_single_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
@@ -211,11 +217,11 @@ PUSHMI_TEMPLATE(class SF)
 flow_single_sender(SF) -> flow_single_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-  (requires True<> && FlowSender<Data> && is_single_v<Data>)
+  (requires True<> && FlowSender<Data> && SingleSender<Data>)
 flow_single_sender(Data) -> flow_single_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires FlowSender<Data> && is_single_v<Data>)
+  (requires FlowSender<Data> && SingleSender<Data>)
 flow_single_sender(Data, DSF) -> flow_single_sender<Data, DSF>;
 #endif
 

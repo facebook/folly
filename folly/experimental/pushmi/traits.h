@@ -141,7 +141,8 @@ PUSHMI_CONCEPT_DEF(
 PUSHMI_CONCEPT_DEF(
   template (class A, class B)
   concept DerivedFrom,
-    __is_base_of(B, A)
+    __is_base_of(B, A) &&
+    std::is_convertible<const volatile A*, const volatile B*>::value
 );
 
 PUSHMI_CONCEPT_DEF(

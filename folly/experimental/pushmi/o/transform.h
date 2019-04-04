@@ -25,11 +25,11 @@ namespace pushmi {
 
 namespace detail {
 
-template <class F, class Tag, bool IsFlow = false>
+template <class F, class SenderCategory>
 struct transform_on;
 
 template <class F>
-struct transform_on<F, is_single<>> {
+struct transform_on<F, single_sender_tag> {
   F f_;
   transform_on() = default;
   constexpr explicit transform_on(F f) : f_(std::move(f)) {}
@@ -56,7 +56,7 @@ struct transform_on<F, is_single<>> {
 };
 
 template <class F>
-struct transform_on<F, is_single<>, true> {
+struct transform_on<F, flow_single_sender_tag> {
   F f_;
   transform_on() = default;
   constexpr explicit transform_on(F f) : f_(std::move(f)) {}
@@ -78,7 +78,7 @@ struct transform_on<F, is_single<>, true> {
 };
 
 template <class F>
-struct transform_on<F, is_many<>> {
+struct transform_on<F, sender_tag> {
   F f_;
   transform_on() = default;
   constexpr explicit transform_on(F f) : f_(std::move(f)) {}
@@ -100,7 +100,7 @@ struct transform_on<F, is_many<>> {
 };
 
 template <class F>
-struct transform_on<F, is_many<>, true> {
+struct transform_on<F, flow_sender_tag> {
   F f_;
   transform_on() = default;
   constexpr explicit transform_on(F f) : f_(std::move(f)) {}
@@ -128,16 +128,11 @@ struct transform_fn {
     F f_;
     PUSHMI_TEMPLATE(class SIn, class Out)
     (requires Receiver<std::decay_t<Out>>) //
-        auto
-        operator()(SIn&& in, Out&& out) const {
-      using Cardinality = property_set_index_t<properties_t<In>, is_single<>>;
+    auto operator()(SIn&& in, Out&& out) const {
       // copy 'f_' to allow multiple calls to connect to multiple 'in'
       ::folly::pushmi::submit(
           (In &&) in,
-          transform_on<
-              F,
-              Cardinality,
-              property_query_v<properties_t<In>, is_flow<>>>{f_}((Out &&) out));
+          transform_on<F, sender_category_t<In>>{f_}((Out &&) out));
     }
   };
 
@@ -145,9 +140,8 @@ struct transform_fn {
   struct adapt_impl {
     F f_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<std::decay_t<In>>) //
-        auto
-        operator()(In&& in) const {
+    (requires Sender<In>) //
+    auto operator()(In&& in) const {
       // copy 'f_' to allow multiple calls to connect to multiple 'in'
       return ::folly::pushmi::detail::sender_from(
           (In &&) in, submit_impl<F, In&&>{f_});

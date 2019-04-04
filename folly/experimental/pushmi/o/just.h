@@ -17,7 +17,6 @@
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/single_sender.h>
 
 namespace folly {
 namespace pushmi {
@@ -26,22 +25,33 @@ namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct just_fn {
  private:
-  struct sender_base : single_sender<> {
-    using properties = property_set<
-        is_sender<>,
-        is_single<>,
-        is_always_blocking<>>;
-  };
   template <class... VN>
-  struct impl {
+  struct task : single_sender_tag::with_values<VN...>::no_error {
+  private:
     std::tuple<VN...> vn_;
-    PUSHMI_TEMPLATE(class In, class Out)
-    (requires ReceiveValue<Out, VN...>) //
-        void
-        operator()(In&&, Out&& out) {
+  public:
+    using properties = property_set<is_always_blocking<>>;
+
+    task() = default;
+    explicit task(VN&&... vn) : vn_{(VN&&) vn...} {}
+
+    PUSHMI_TEMPLATE(class Out)
+    (requires ReceiveValue<Out&, VN...>) //
+    void submit(Out&& out) && {
       ::folly::pushmi::apply(
-          ::folly::pushmi::set_value,
-          std::tuple_cat(std::tuple<Out&>{out}, std::move(vn_)));
+        [&out](VN&&... vn) { set_value(out, (VN&&) vn...); },
+        std::move(vn_)
+      );
+      set_done(out);
+    }
+
+    PUSHMI_TEMPLATE(class Out)
+    (requires ReceiveValue<Out&, VN&...>) //
+    void submit(Out&& out) & {
+      ::folly::pushmi::apply(
+        [&out](VN&... vn) { set_value(out, vn...); },
+        vn_
+      );
       set_done(out);
     }
   };
@@ -49,10 +59,8 @@ PUSHMI_INLINE_VAR constexpr struct just_fn {
  public:
   PUSHMI_TEMPLATE(class... VN)
   (requires And<SemiMovable<VN>...>) //
-      auto
-      operator()(VN... vn) const {
-    return make_single_sender(
-        sender_base{}, impl<VN...>{std::tuple<VN...>{std::move(vn)...}});
+  auto operator()(VN... vn) const {
+    return task<VN...>{std::move(vn)...};
   }
 } just{};
 } // namespace operators

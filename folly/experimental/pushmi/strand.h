@@ -178,21 +178,22 @@ template <class E, class Exec>
 class strand_executor;
 
 template <class E, class Exec>
-class strand_task {
+class strand_task
+: public single_sender_tag::with_values<any_executor_ref<E>>
+    ::template with_error<E> {
   std::shared_ptr<strand_queue<E, Exec>> queue_;
 
  public:
-  using properties = property_set<
-      is_sender<>,
-      property_set_index_t<properties_t<sender_t<Exec>>, is_never_blocking<>>,
-      is_single<>>;
+  using properties =
+    property_set<
+      property_set_index_t<properties_t<sender_t<Exec>>, is_never_blocking<>>>;
 
   strand_task(std::shared_ptr<strand_queue<E, Exec>> queue)
       : queue_(std::move(queue)) {}
 
   PUSHMI_TEMPLATE(class Out)
   (requires ReceiveValue<Out&, any_executor_ref<E>>&& ReceiveError<Out, E>) //
-      void submit(Out out) {
+  void submit(Out out) {
     // queue for later
     std::unique_lock<std::mutex> guard{queue_->lock_};
     queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
@@ -200,7 +201,8 @@ class strand_task {
       // noone is minding the shop, send a worker
       guard.unlock();
       ::folly::pushmi::submit(
-          ::folly::pushmi::schedule(queue_->ex_), strand_queue_receiver<E, Exec>{queue_});
+          ::folly::pushmi::schedule(queue_->ex_),
+          strand_queue_receiver<E, Exec>{queue_});
     }
   }
 };
@@ -240,12 +242,12 @@ class same_strand_factory_fn {
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Provider)
 (requires ExecutorProvider<Provider>&&
          is_concurrent_sequence_v<executor_t<Provider>>) //
-    auto strands(Provider ep) {
+auto strands(Provider ep) {
   return same_strand_factory_fn<E, executor_t<Provider>>{get_executor(ep)};
 }
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Exec)
 (requires Executor<Exec>&& is_concurrent_sequence_v<Exec>) //
-    auto strands(Exec ex) {
+auto strands(Exec ex) {
   return same_strand_factory_fn<E, Exec>{std::move(ex)};
 }
 

@@ -28,8 +28,6 @@ using namespace folly::pushmi::aliases;
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
-using namespace testing;
-
 using namespace std::literals;
 
 #if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
@@ -39,6 +37,56 @@ using namespace std::literals;
 #else
 #define MAKE(x) make_##x
 #endif
+
+template <class...> struct tuple;
+template <class...> struct variant;
+
+template <class S>
+using values_of_t = mi::sender_values_t<S, tuple, variant>;
+template <class S>
+using error_of_t = mi::sender_error_t<S, variant>;
+
+using s0 = mi::single_sender_tag::no_values;
+static_assert(std::is_same<values_of_t<s0>, variant<>>::value, "");
+static_assert(std::is_same<error_of_t<s0>, variant<std::exception_ptr>>::value, "");
+
+using s1 = mi::single_sender_tag::no_values::no_error;
+static_assert(std::is_same<values_of_t<s1>, variant<>>::value, "");
+static_assert(std::is_same<error_of_t<s1>, variant<>>::value, "");
+
+using s2 = mi::single_sender_tag::with_values<int, int*>;
+static_assert(std::is_same<values_of_t<s2>, variant<tuple<int, int*>>>::value, "");
+static_assert(std::is_same<error_of_t<s2>, variant<std::exception_ptr>>::value, "");
+
+using s3 = mi::single_sender_tag::with_values<int, int*>::no_error;
+static_assert(std::is_same<values_of_t<s3>, variant<tuple<int, int*>>>::value, "");
+static_assert(std::is_same<error_of_t<s3>, variant<>>::value, "");
+
+using s4 = mi::single_sender_tag::with_values<int>::with_error<short>;
+static_assert(std::is_same<values_of_t<s4>, variant<tuple<int>>>::value, "");
+static_assert(std::is_same<error_of_t<s4>, variant<short>>::value, "");
+
+using s5 = mi::single_sender_tag::with_values<int>::or_<char*>;
+static_assert(std::is_same<values_of_t<s5>, variant<tuple<int>, tuple<char*>>>::value, "");
+static_assert(std::is_same<error_of_t<s5>, variant<std::exception_ptr>>::value, "");
+
+using s6 = mi::single_sender_tag::with_values<int>::or_<char*>::no_error;
+static_assert(std::is_same<values_of_t<s6>, variant<tuple<int>, tuple<char*>>>::value, "");
+static_assert(std::is_same<error_of_t<s6>, variant<>>::value, "");
+
+using s7 = mi::single_sender_tag::with_values<int>::or_<char*>::with_error<short>;
+static_assert(std::is_same<values_of_t<s7>, variant<tuple<int>, tuple<char*>>>::value, "");
+static_assert(std::is_same<error_of_t<s7>, variant<short>>::value, "");
+
+using s8 = mi::single_sender_tag::with_values<int>::or_<char*>::with_error<short>::or_<float>;
+static_assert(std::is_same<values_of_t<s8>, variant<tuple<int>, tuple<char*>>>::value, "");
+static_assert(std::is_same<error_of_t<s8>, variant<short, float>>::value, "");
+
+using s9 = mi::single_sender_tag::with_values<int>::with_error<short>::or_<float>;
+static_assert(std::is_same<values_of_t<s9>, variant<tuple<int>>>::value, "");
+static_assert(std::is_same<error_of_t<s9>, variant<short, float>>::value, "");
+
+using namespace testing;
 
 void receiver_0_test() {
   auto out0 = mi::MAKE(receiver)();
@@ -216,16 +264,16 @@ void receiver_n_test() {
 
 void single_sender_test() {
   auto in0 = mi::MAKE(single_sender)();
-  static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
+  static_assert(mi::SingleSender<decltype(in0)>, "in0 not a sender");
   auto in1 = mi::MAKE(single_sender)(mi::ignoreSF{});
-  static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
+  static_assert(mi::SingleSender<decltype(in1)>, "in1 not a sender");
   auto in2 = mi::MAKE(single_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
       });
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
+  static_assert(mi::SingleSender<decltype(in2)>, "in2 not a sender");
 
   std::promise<int> p0;
   auto promise0 = mi::MAKE(receiver)(std::move(p0));
@@ -404,16 +452,19 @@ void flow_receiver_n_test() {
 
 void flow_single_sender_test() {
   auto in0 = mi::MAKE(flow_single_sender)();
-  static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
+  static_assert(mi::SingleSender<decltype(in0)>, "in0 not a sender");
+  static_assert(mi::FlowSender<decltype(in0)>, "in0 not flow");
   auto in1 = mi::MAKE(flow_single_sender)(mi::ignoreSF{});
-  static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
+  static_assert(mi::SingleSender<decltype(in1)>, "in1 not a sender");
+  static_assert(mi::FlowSender<decltype(in1)>, "in1 not flow");
   auto in2 = mi::MAKE(flow_single_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(flow_receiver)(
             std::move(out),
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
       });
-  static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
+  static_assert(mi::SingleSender<decltype(in2)>, "in2 not a sender");
+  static_assert(mi::FlowSender<decltype(in2)>, "in2 not flow");
 
   auto out0 = mi::MAKE(flow_receiver)();
   auto out1 = mi::MAKE(flow_receiver)(
@@ -428,8 +479,10 @@ void flow_single_sender_test() {
 void flow_many_sender_test() {
   auto in0 = mi::MAKE(flow_many_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
+  static_assert(mi::FlowSender<decltype(in0)>, "in0 not flow");
   auto in1 = mi::MAKE(flow_many_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
+  static_assert(mi::FlowSender<decltype(in1)>, "in1 not flow");
   auto in2 = mi::MAKE(flow_many_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(flow_receiver)(
@@ -437,6 +490,7 @@ void flow_many_sender_test() {
             mi::on_value([](auto d, int v) { mi::set_value(d, v); })));
       });
   static_assert(mi::Sender<decltype(in2)>, "in2 not a sender");
+  static_assert(mi::FlowSender<decltype(in2)>, "in2 not flow");
 
   auto out0 = mi::MAKE(flow_receiver)();
   auto out1 = mi::MAKE(flow_receiver)(

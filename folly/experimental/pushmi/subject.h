@@ -29,18 +29,17 @@ template <class... TN>
 struct subject;
 
 template <class PS, class... TN>
-struct subject<PS, TN...> {
-  using properties = property_set_insert_t<
-      property_set<is_sender<>, is_single<>>,
-      property_set<property_set_index_t<PS, is_single<>>>>;
+struct subject<PS, TN...> : single_sender_tag::with_values<TN...> {
+  using properties = property_set<>;
 
-  struct subject_shared {
+  struct subject_shared : single_sender_tag::with_values<TN...> {
     using receiver_t = any_receiver<std::exception_ptr, TN...>;
     bool done_ = false;
     ::folly::pushmi::detail::opt<std::tuple<std::decay_t<TN>...>> t_;
     std::exception_ptr ep_;
     std::vector<receiver_t> receivers_;
     std::mutex lock_;
+
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveError<Out, std::exception_ptr> && ReceiveValue<Out, TN...>)
     void submit(Out out) {
@@ -52,8 +51,11 @@ struct subject<PS, TN...> {
       if (!!t_ && done_) {
         auto args = *t_;
         ::folly::pushmi::apply(
-            ::folly::pushmi::set_value,
-            std::tuple_cat(std::tuple<Out&>{out}, std::move(args)));
+          [&out](std::decay_t<TN>&&... ts) {
+            set_value(out, (std::decay_t<TN>&&) ts...);
+          },
+          std::move(args)
+        );
         return;
       }
       if (done_) {
@@ -62,28 +64,35 @@ struct subject<PS, TN...> {
       }
       receivers_.push_back(receiver_t{std::move(out)});
     }
+
     PUSHMI_TEMPLATE(class... VN)
-    (requires And<SemiMovable<VN>...>)
+    (requires sizeof...(VN) == sizeof...(TN)) //
+    static constexpr bool AllConvertibleTo() noexcept {
+      return And<ConvertibleTo<VN, std::decay_t<TN>>...>;
+    }
+
+    PUSHMI_TEMPLATE(class... VN)
+    (requires subject_shared::AllConvertibleTo<VN...>())
     void value(VN&&... vn) {
       std::unique_lock<std::mutex> guard(lock_);
+      t_ = std::tuple<std::decay_t<TN>...>{(VN&&) vn...};
       for (auto& out : receivers_) {
         ::folly::pushmi::apply(
-            ::folly::pushmi::set_value,
-            std::tuple<decltype(out), std::decay_t<TN>...>{
-                out, detail::as_const(vn)...});
+          [&out](const std::decay_t<TN>&... ts) { set_value(out, ts...); },
+          *t_
+        );
       }
-      t_ = std::make_tuple((VN &&) vn...);
     }
-    PUSHMI_TEMPLATE(class E)
-    (requires SemiMovable<E>)
-    void error(E e) noexcept {
+
+    void error(std::exception_ptr e) noexcept {
       std::unique_lock<std::mutex> guard(lock_);
       ep_ = e;
       for (auto& out : receivers_) {
-        set_error(out, std::move(e));
+        set_error(out, e);
       }
       receivers_.clear();
     }
+
     void done() {
       std::unique_lock<std::mutex> guard(lock_);
       done_ = true;

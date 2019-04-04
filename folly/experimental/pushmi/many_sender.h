@@ -24,7 +24,8 @@ namespace folly {
 namespace pushmi {
 
 template <class E, class... VN>
-class any_many_sender {
+class any_many_sender
+: public sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
     void* pobj_ = nullptr;
@@ -83,7 +84,7 @@ class any_many_sender {
       std::enable_if_t<!std::is_same<U, any_many_sender>::value, U>;
 
  public:
-  using properties = property_set<is_sender<>, is_many<>>;
+  using properties = property_set<>;
 
   any_many_sender() = default;
   any_many_sender(any_many_sender&& that) noexcept : any_many_sender() {
@@ -92,10 +93,8 @@ class any_many_sender {
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
-  (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>> &&
-      is_many_v<wrapped_t<Wrapped>>) //
-      explicit any_many_sender(Wrapped obj) //
-      noexcept(insitu<Wrapped>())
+  (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>) //
+  explicit any_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
       : any_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_many_sender() {
     vptr_->op_(data_, nullptr);
@@ -118,11 +117,11 @@ constexpr typename any_many_sender<E, VN...>::vtable const
     any_many_sender<E, VN...>::noop_;
 
 template <class SF>
-class many_sender<SF> {
+class many_sender<SF> : public sender_tag {
   SF sf_;
 
  public:
-  using properties = property_set<is_sender<>, is_many<>>;
+  using properties = property_set<>;
 
   constexpr many_sender() = default;
   constexpr explicit many_sender(SF sf) : sf_(std::move(sf)) {}
@@ -141,14 +140,12 @@ class many_sender<Data, DSF> {
   DSF sf_;
 
  public:
+  using sender_category = sender_tag;
   using properties = properties_t<Data>;
 
   static_assert(
       Sender<Data>,
       "Data must be a sender");
-  static_assert(
-      is_many_v<Data>,
-      "Data must be a many sender");
 
   constexpr many_sender() = default;
   constexpr explicit many_sender(Data data) : data_(std::move(data)) {}
@@ -188,13 +185,13 @@ PUSHMI_INLINE_VAR constexpr struct make_many_sender_fn {
     return many_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
-  (requires True<>&& Sender<Data> && is_many_v<Data>) //
+  (requires True<>&& Sender<Data>) //
       auto
       operator()(Data d) const {
     return many_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
-  (requires Sender<Data> && is_many_v<Data>) //
+  (requires Sender<Data>) //
       auto
       operator()(Data d, DSF sf) const {
     return many_sender<Data, DSF>{std::move(d), std::move(sf)};
@@ -212,12 +209,12 @@ PUSHMI_TEMPLATE(class SF)
         ->many_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
-(requires True<>&& Sender<Data> && is_many_v<Data>) //
+(requires True<>&& Sender<Data>) //
     many_sender(Data)
         ->many_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
-(requires Sender<Data> && is_many_v<Data>) //
+(requires Sender<Data>) //
     many_sender(Data, DSF)
         ->many_sender<Data, DSF>;
 #endif

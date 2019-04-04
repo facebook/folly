@@ -82,65 +82,53 @@ struct receiver_from_impl {
   using MakeReceiver = make_receiver<IsFlow>;
   template <class... AN>
   using receiver_type = ::folly::pushmi::invoke_result_t<MakeReceiver&, AN...>;
+
   PUSHMI_TEMPLATE(class... Ts)
   (requires Invocable<MakeReceiver&, Ts...>) //
-      auto
-      operator()(std::tuple<Ts...> args) const {
+  auto operator()(std::tuple<Ts...> args) const {
     return ::folly::pushmi::apply(MakeReceiver(), std::move(args));
   }
-  PUSHMI_TEMPLATE(
-      class... Ts,
-      class F0,
-      class... Fns)
-  (requires And<SemiMovable<F0>, SemiMovable<Fns>...>&& Invocable<MakeReceiver&, Ts...>&&
-       Invocable<
-           const receiver_from_impl&,
-           receiver_type<Ts...>,
-           F0, Fns...>) //
-      auto
-      operator()(std::tuple<Ts...> args, F0 f0, Fns... fns) const {
+
+  PUSHMI_TEMPLATE(class... Ts, class F0, class... Fns)
+  (requires And<SemiMovable<F0>, SemiMovable<Fns>...>&&
+    Invocable<MakeReceiver&, Ts...>&&
+    Invocable<const receiver_from_impl&, receiver_type<Ts...>, F0, Fns...>) //
+  auto operator()(std::tuple<Ts...> args, F0 f0, Fns... fns) const {
     return (*this)((*this)(std::move(args)), std::move(f0), std::move(fns)...);
   }
+
   PUSHMI_TEMPLATE(class Out, class... Fns)
   (requires not is_v<Out, std::tuple>&& And<MoveConstructible<Fns&&>...>) //
-      auto
-      operator()(Out&& out, Fns&&... fns) const {
+  auto operator()(Out&& out, Fns&&... fns) const {
     return MakeReceiver()((Out&&)out, (Fns&&)fns...);
   }
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In>
-using receiver_from_fn = receiver_from_impl<
-    property_query_v<properties_t<In>, is_flow<>>>;
+using receiver_from_fn = receiver_from_impl<FlowSender<In>>;
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class... AN>
 using receiver_type_t =
     typename receiver_from_fn<In>::template receiver_type<AN...>;
 
-template <
-    class Cardinality,
-    bool IsFlow = false>
+template <class SenderCategory>
 struct make_sender;
 template <>
-struct make_sender<is_single<>> : construct_deduced<single_sender> {};
+struct make_sender<single_sender_tag> : construct_deduced<single_sender> {};
 template <>
-struct make_sender<is_many<>> : construct_deduced<many_sender> {};
+struct make_sender<sender_tag> : construct_deduced<many_sender> {};
 template <>
-struct make_sender<is_single<>, true>
+struct make_sender<flow_single_sender_tag>
     : construct_deduced<flow_single_sender> {};
 template <>
-struct make_sender<is_many<>, true>
+struct make_sender<flow_sender_tag>
     : construct_deduced<flow_many_sender> {};
 
 PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   PUSHMI_TEMPLATE(class In, class... FN)
   (requires Sender<In>) //
-      auto
-      operator()(In in, FN&&... fn) const {
-    using MakeSender = make_sender<
-        property_set_index_t<properties_t<In>, is_single<>>,
-        property_query_v<properties_t<In>, is_flow<>>>;
-    return MakeSender{}(std::move(in), (FN &&) fn...);
+  auto operator()(In in, FN&&... fn) const {
+    return make_sender<sender_category_t<In>>{}(std::move(in), (FN &&) fn...);
   }
 } const sender_from{};
 
@@ -151,8 +139,7 @@ struct set_value_fn {
     std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<Out, VN...>) //
-        void
-        operator()(Out out) {
+    void operator()(Out out) {
       ::folly::pushmi::apply(
           ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(vn_)));
@@ -173,8 +160,7 @@ struct set_error_fn {
     E e_;
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveError<Out, E>) //
-        void
-        operator()(Out out) {
+    void operator()(Out out) {
       set_error(out, std::move(e_));
     }
   };
@@ -182,8 +168,7 @@ struct set_error_fn {
  public:
   PUSHMI_TEMPLATE(class E)
   (requires SemiMovable<E>) //
-      auto
-      operator()(E e) const {
+  auto operator()(E e) const {
     return impl<E>{std::move(e)};
   }
 };
@@ -193,8 +178,7 @@ struct set_done_fn {
   struct impl {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
-        void
-        operator()(Out out) {
+    void operator()(Out out) {
       set_done(out);
     }
   };
@@ -212,8 +196,7 @@ struct set_starting_fn {
     Up up_;
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
-        void
-        operator()(Out out) {
+    void operator()(Out out) {
       set_starting(out, std::move(up_));
     }
   };
@@ -221,8 +204,7 @@ struct set_starting_fn {
  public:
   PUSHMI_TEMPLATE(class Up)
   (requires Receiver<Up>) //
-      auto
-      operator()(Up up) const {
+  auto operator()(Up up) const {
     return impl<Up>{std::move(up)};
   }
 };
@@ -232,8 +214,7 @@ struct get_executor_fn {
   struct impl {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>) //
-        auto
-        operator()(In& in) const {
+    auto operator()(In& in) const {
       return get_executor(in);
     }
   };
@@ -249,8 +230,7 @@ struct make_strand_fn {
   struct impl {
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>) //
-        auto
-        operator()(In& in) const {
+    auto operator()(In& in) const {
       return make_strand(in);
     }
   };
@@ -268,14 +248,12 @@ struct do_submit_fn {
     Out out_;
     PUSHMI_TEMPLATE(class In)
     (requires SenderTo<In, Out>) //
-        void
-        operator()(In&& in) && {
+    void operator()(In&& in) && {
       submit((In&&)in, std::move(out_));
     }
     PUSHMI_TEMPLATE(class In)
     (requires SenderTo<In, Out>) //
-        void
-        operator()(In&& in) & {
+    void operator()(In&& in) & {
       submit((In&&)in, out_);
     }
   };
@@ -283,8 +261,7 @@ struct do_submit_fn {
  public:
   PUSHMI_TEMPLATE(class Out)
   (requires Receiver<Out>) //
-      auto
-      operator()(Out out) const {
+  auto operator()(Out out) const {
     return impl<Out>{std::move(out)};
   }
 };
@@ -294,8 +271,7 @@ struct do_schedule_fn {
   struct impl {
     PUSHMI_TEMPLATE(class Ex, class... VN)
     (requires Executor<Ex>) //
-        auto
-        operator()(Ex& ex, VN&&... vn) {
+    auto operator()(Ex& ex, VN&&... vn) {
       return schedule(ex, (VN&&)vn...);
     }
   };
@@ -311,8 +287,7 @@ struct top_fn {
   struct impl {
     PUSHMI_TEMPLATE(class In)
     (requires ConstrainedExecutor<std::decay_t<In>>) //
-        auto
-        operator()(In& in) const {
+    auto operator()(In& in) const {
       return ::folly::pushmi::top(in);
     }
   };
@@ -328,8 +303,7 @@ struct now_fn {
   struct impl {
     PUSHMI_TEMPLATE(class In)
     (requires TimeExecutor<std::decay_t<In>>) //
-        auto
-        operator()(In&& in) const {
+    auto operator()(In&& in) const {
       return ::folly::pushmi::now(in);
     }
   };

@@ -20,7 +20,6 @@
 
 namespace folly {
 namespace pushmi {
-
 namespace detail {
 
 PUSHMI_TEMPLATE(class SideEffects, class Out)
@@ -74,9 +73,7 @@ struct tap_fn {
   struct impl_fn {
     PUSHMI_TEMPLATE(class In, class SideEffects)
     (requires SenderTo<In, SideEffects>) //
-    auto operator()(
-        In&& in,
-        SideEffects&& sideEffects) {
+    auto operator()(In&& in, SideEffects&& sideEffects) {
       return ::folly::pushmi::detail::sender_from(
           (In &&) in,
           submit_impl<In, std::decay_t<SideEffects>>{(SideEffects &&)
@@ -88,18 +85,17 @@ struct tap_fn {
   struct adapt_impl {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<std::decay_t<In>>) //
+    (requires Sender<In>) //
     auto operator()(In&& in) {
       return tap_fn::impl_fn{}(
           (In &&) in,
-          ::folly::pushmi::detail::receiver_from_fn<In>()(std::move(args_)));
+          receiver_from_fn<In>()(std::move(args_)));
     }
   };
 
   PUSHMI_TEMPLATE(class In, class SideEffects)
-  (requires Sender<std::decay_t<In>>&&
-       Receiver<SideEffects>) //
-       struct submit_impl {
+  (requires Sender<In> && Receiver<SideEffects>) //
+  struct submit_impl {
     SideEffects sideEffects_;
     template <class Out>
     using tap_t = decltype(detail::make_tap(
@@ -112,8 +108,8 @@ struct tap_fn {
     (requires Receiver<std::decay_t<Out>>
       && SenderTo<In, Out>&&
          SenderTo<In, receiver_t<Out>>) //
-         auto operator()(Data&& in, Out&& out) const {
-      auto gang{::folly::pushmi::detail::receiver_from_fn<std::decay_t<In>>()(
+    auto operator()(Data&& in, Out&& out) const {
+      auto gang{receiver_from_fn<std::decay_t<In>>()(
           detail::make_tap(sideEffects_, (Out &&) out))};
       submit((In &&) in, std::move(gang));
     }

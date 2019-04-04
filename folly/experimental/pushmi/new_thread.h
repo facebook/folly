@@ -26,11 +26,9 @@ namespace pushmi {
 
 struct new_thread_executor;
 
-struct new_thread_task {
-  using properties = property_set<
-      is_sender<>,
-      is_never_blocking<>,
-      is_single<>>;
+struct new_thread_task
+: single_sender_tag::with_values<any_executor_ref<std::exception_ptr>> {
+  using properties = property_set<is_never_blocking<>>;
 
   PUSHMI_TEMPLATE(class Out)
   (requires Receiver<Out>)

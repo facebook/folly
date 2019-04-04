@@ -97,7 +97,7 @@ struct blocking_submit_fn {
 
   PUSHMI_TEMPLATE(class Exec)
   (requires Executor<Exec>) //
-      struct nested_executor_impl {
+  struct nested_executor_impl {
     nested_executor_impl(lock_state* state, Exec ex)
         : state_(state), ex_(std::move(ex)) {}
     lock_state* state_;
@@ -108,13 +108,13 @@ struct blocking_submit_fn {
 
     PUSHMI_TEMPLATE(class Ex)
     (requires Executor<Ex>&& detail::is_v<Ex, test_for_this>) //
-        static auto make(lock_state*, Ex ex) {
+    static auto make(lock_state*, Ex ex) {
       return ex;
     }
     PUSHMI_TEMPLATE(class Ex)
     (requires Executor<Ex> &&
      not detail::is_v<Ex, test_for_this>) //
-        static auto make(lock_state* state, Ex ex) {
+    static auto make(lock_state* state, Ex ex) {
       return nested_executor_impl<Ex>{state, ex};
     }
 
@@ -127,20 +127,22 @@ struct blocking_submit_fn {
     }
     auto schedule() {
       auto protected_scope = protect_stack{state_};
-      return nested_task_impl<decltype(::folly::pushmi::schedule(ex_))>{
-          state_, ::folly::pushmi::schedule(ex_)};
+      return nested_task_impl<sender_t<Exec>>{
+          state_,
+          ::folly::pushmi::schedule(ex_)};
     }
     PUSHMI_TEMPLATE(class Exec_ = Exec)
     (requires ConstrainedExecutor<Exec_>) //
     auto schedule(constraint_t<Exec_> at) {
       auto protected_scope = protect_stack{state_};
       return nested_task_impl<sender_t<Exec_, constraint_t<Exec_>>>{
-          state_, ::folly::pushmi::schedule(ex_, std::move(at))};
+          state_,
+          ::folly::pushmi::schedule(ex_, std::move(at))};
     }
   };
 
   template<class Task>
-  struct nested_task_impl {
+  struct nested_task_impl : sender_traits<Task> {
     nested_task_impl(lock_state* state, Task t)
         : state_(state), t_(std::move(t)) {}
     lock_state* state_;
@@ -150,11 +152,12 @@ struct blocking_submit_fn {
 
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
-        void submit(Out out) && {
+    void submit(Out out) && {
       auto protected_scope = protect_stack{state_};
       ++state_->nested; // reversed in nested_receiver_impl ::done/::error
       ::folly::pushmi::submit(
-          std::move(t_), nested_receiver_impl<Out>{state_, std::move(out)});
+          std::move(t_),
+          nested_receiver_impl<Out>{state_, std::move(out)});
     }
   };
 
@@ -271,7 +274,7 @@ struct blocking_submit_fn {
     std::tuple<AN...> args_;
 
     PUSHMI_TEMPLATE(class In)
-    (requires Sender<std::decay_t<In>>&& Invocable<
+    (requires Sender<In>&& Invocable<
          submit_impl<In>&,
          In&&,
          ::folly::pushmi::invoke_result_t<

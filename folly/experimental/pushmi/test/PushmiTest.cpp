@@ -39,14 +39,16 @@ TEST(EmptySingleSender, TapAndSubmit) {
   auto e = op::empty();
   using E = decltype(e);
 
-  EXPECT_THAT((v::SenderTo<E, v::any_receiver<>> && v::is_single_v<E>), Eq(true))
+  EXPECT_THAT(
+    (v::SenderTo<E, v::any_receiver<>> && v::SingleSender<E>),
+    Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<>";
 
   EXPECT_THAT(
       (v::SenderTo<
           E,
           v::any_receiver<std::exception_ptr, int>> &&
-          v::is_single_v<E>),
+          v::SingleSender<E>),
       Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<int>";
 
@@ -78,16 +80,14 @@ TEST(JustIntSingleSender, TransformAndSubmit) {
   using J = decltype(j);
 
   EXPECT_THAT(
-      (v::SenderTo<
-          J,
-          v::any_receiver<std::exception_ptr, int>> &&
-          v::is_single_v<J>),
+      (v::SenderTo<J,v::any_receiver<std::exception_ptr, int>> &&
+        v::SingleSender<J>),
       Eq(true))
       << "expected empty to return a single sender that can take an any_receiver<int>";
 
   int signals = 0;
   int value = 0;
-  j |
+  std::move(j) |
       op::transform(
           [&](int v) {
             signals += 10000;
@@ -131,7 +131,7 @@ TEST(FromIntManySender, TransformAndSubmit) {
   using M = decltype(m);
 
   EXPECT_THAT(
-      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>> && v::is_many_v<M>),
+      (v::SenderTo<M, v::any_receiver<std::exception_ptr, int>>),
       Eq(true))
       << "expected empty to return a many sender that can take an any_receiver<int>";
 

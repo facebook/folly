@@ -20,35 +20,33 @@
 
 namespace folly {
 namespace pushmi {
-namespace detail {
-struct single_error_sender_base : single_sender<ignoreSF> {
-  using properties = property_set<
-      is_sender<>,
-      is_single<>,
-      is_always_blocking<>>;
-};
-template <class E>
-struct single_error_impl {
-  E e_;
-  PUSHMI_TEMPLATE(class Base, class Out)
-  (requires ReceiveError<Out, E>)
-  void operator()(
-      Base&&,
-      Out&& out) {
-    set_error(out, std::move(e_));
-  }
-};
-} // namespace detail
-
 namespace operators {
 
-PUSHMI_TEMPLATE(class E)
-(requires MoveConstructible<E>)
-auto error(E e) {
-  return make_single_sender(
-      detail::single_error_sender_base{},
-      detail::single_error_impl<E>{std::move(e)});
-}
+PUSHMI_INLINE_VAR constexpr struct error_fn {
+private:
+  template <class E>
+  struct task : single_sender_tag::with_values<>::with_error<E> {
+  private:
+    E e_;
+  public:
+    using properties = property_set<is_always_blocking<>>;
+    task() = default;
+    explicit task(E e) : e_(std::move(e)) {}
+
+    PUSHMI_TEMPLATE(class Out)
+    (requires ReceiveError<Out, E>)
+    void submit(Out&& out) && {
+      set_error(out, std::move(e_));
+    }
+  };
+
+public:
+  PUSHMI_TEMPLATE(class E)
+  (requires SemiMovable<E>)
+  auto operator()(E e) const {
+    return task<E>{std::move(e)};
+  }
+} error {};
 
 } // namespace operators
 } // namespace pushmi

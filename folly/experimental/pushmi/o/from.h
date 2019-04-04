@@ -28,29 +28,32 @@ PUSHMI_CONCEPT_DEF(
     template(class R) //
     concept Range, //
     requires(R&& r)( //
-        implicitly_convertible_to<bool>(std::begin(r) == std::end(r))));
+        implicitly_convertible_to<bool>(std::begin(r) == std::end(r))
+    )
+);
 
 namespace operators {
 
 PUSHMI_INLINE_VAR constexpr struct from_fn {
  private:
   template <class I, class S>
-  struct sender_impl : pipeorigin {
-    using properties = property_set<
-        is_sender<>,
-        is_many<>,
-        is_always_blocking<>>;
+  struct task
+  : sender_tag::with_values<typename std::iterator_traits<I>::value_type>
+      ::no_error {
+  private:
     I begin_;
     S end_;
-    sender_impl(I begin, S end) : begin_(begin), end_(end) {}
+  public:
+    using properties = property_set<is_always_blocking<>>;
+    task() = default;
+    task(I begin, S end) : begin_(begin), end_(end) {}
+
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out,
         typename std::iterator_traits<I>::value_type>) //
-        void
-        submit(Out out) {
-      auto c = begin_;
-      for (; c != end_; ++c) {
+    void submit(Out&& out) const {
+      for (auto c = begin_; c != end_; ++c) {
         set_value(out, *c);
       }
       set_done(out);
@@ -62,15 +65,13 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
       std::forward_iterator_tag>) //
-      auto
-      operator()(I begin, S end) const {
-    return sender_impl<I, S>{begin, end};
+  auto operator()(I begin, S end) const {
+    return task<I, S>{begin, end};
   }
 
   PUSHMI_TEMPLATE(class R)
   (requires Range<R>) //
-      auto
-      operator()(R&& range) const {
+  auto operator()(R&& range) const {
     return (*this)(std::begin(range), std::end(range));
   }
 } from{};
@@ -177,25 +178,28 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
 
     void done() {
     }
-
   };
+
   template <class I, class S, class Exec>
-  struct sender_impl : pipeorigin {
-    using properties = property_set<
-        is_sender<>,
-        is_flow<>,
-        is_many<>,
-        is_always_blocking<>>;
+  struct task
+  : flow_sender_tag::with_values<typename std::iterator_traits<I>::value_type>
+      ::no_error
+  , pipeorigin {
+    using properties = property_set<is_always_blocking<>>;
+
     I begin_;
     S end_;
     Exec exec_;
-    sender_impl(I begin, S end, Exec exec) : begin_(begin), end_(end), exec_(exec) {}
+
+    task(I begin, S end, Exec exec)
+    : begin_(begin), end_(end), exec_(exec) {
+    }
+
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out&,
         typename std::iterator_traits<I>::value_type>) //
-        void
-        submit(Out out) {
+    void submit(Out out) {
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), exec_, false);
@@ -210,15 +214,13 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
       std::forward_iterator_tag>) //
-      auto
-      operator()(I begin, S end) const {
+  auto operator()(I begin, S end) const {
     return (*this)(begin, end, trampoline());
   }
 
   PUSHMI_TEMPLATE(class R)
   (requires Range<R>) //
-      auto
-      operator()(R&& range) const {
+  auto operator()(R&& range) const {
     return (*this)(std::begin(range), std::end(range), trampoline());
   }
 
@@ -226,15 +228,13 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
       std::forward_iterator_tag>&& Executor<Exec>) //
-      auto
-      operator()(I begin, S end, Exec exec) const {
-    return sender_impl<I, S, Exec>{begin, end, exec};
+  auto operator()(I begin, S end, Exec exec) const {
+    return task<I, S, Exec>{begin, end, exec};
   }
 
   PUSHMI_TEMPLATE(class R, class Exec)
   (requires Range<R>&& Executor<Exec>) //
-      auto
-      operator()(R&& range, Exec exec) const {
+  auto operator()(R&& range, Exec exec) const {
     return (*this)(std::begin(range), std::end(range), exec);
   }
 } flow_from{};
