@@ -1096,6 +1096,24 @@ Future<T>::thenTry(F&& func) && {
 
 template <class T>
 template <typename F>
+Future<typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+Future<T>::thenExTry(F&& func) && {
+  // As Futures may carry null executors, ensure that what we pass into the
+  // continuation is always usable by replacing with inline if necessary.
+  auto ka = getKeepAliveToken(this->getExecutor());
+  // Enforce that executor cannot be null
+  DCHECK(ka);
+
+  auto lambdaFunc = [f = std::forward<F>(func),
+                     exec = std::move(ka)](folly::Try<T>&& t) mutable {
+    return std::forward<F>(f)(exec, std::move(t));
+  };
+  using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
+  return this->thenImplementation(std::move(lambdaFunc), R{});
+}
+
+template <class T>
+template <typename F>
 Future<typename futures::detail::valueCallableResult<T, F>::value_type>
 Future<T>::thenValue(F&& func) && {
   auto lambdaFunc = [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {

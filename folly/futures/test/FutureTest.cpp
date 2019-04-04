@@ -1029,6 +1029,15 @@ TEST(Future, thenTry) {
   EXPECT_TRUE(f.isReady());
 }
 
+TEST(Future, ThenTryWithExecutor) {
+  ManualExecutor executor;
+  auto sf = makeFuture().via(&executor).thenExTry(
+      [&](const Executor::KeepAlive<>& e, Try<Unit>) {
+        EXPECT_EQ(&executor, e.get());
+      });
+  std::move(sf).getVia(&executor);
+}
+
 TEST(Future, thenValue) {
   bool flag = false;
   makeFuture<int>(42).thenValue([&](int i) {

@@ -1261,6 +1261,10 @@ class Future : private futures::detail::FutureBase<T> {
   Future<typename futures::detail::tryCallableResult<T, F>::value_type> thenTry(
       F&& func) &&;
 
+  template <typename F>
+  Future<typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+  thenExTry(F&& func) &&;
+
   template <typename R, typename... Args>
   auto thenTry(R (&func)(Args...)) && {
     return std::move(*this).thenTry(&func);
