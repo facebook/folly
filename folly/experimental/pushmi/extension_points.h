@@ -17,15 +17,21 @@
 
 #include <future>
 
+#include <folly/experimental/pushmi/detail/awaitable_concepts.h>
 #include <folly/experimental/pushmi/detail/functional.h>
+#include <folly/experimental/pushmi/detail/if_constexpr.h>
+#include <folly/experimental/pushmi/detail/sender_concepts.h>
 #include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/tags.h>
+#include <folly/experimental/pushmi/traits.h>
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
+#include <folly/lang/CustomizationPoint.h>
 
 namespace folly {
 namespace pushmi {
-namespace __adl {
+namespace _adl {
 
 //
 // support methods on a class reference
@@ -77,13 +83,13 @@ auto make_strand(SD& sd) //
   return sd.make_strand();
 }
 
-PUSHMI_TEMPLATE(class SD, class Out)
-(requires //
- requires(std::declval<SD>().submit(std::declval<Out>()))) //
-void submit(SD&& sd, Out&& out) //
-    noexcept(noexcept(((SD &&) sd).submit((Out &&) out))) {
-  ((SD &&) sd).submit((Out &&) out);
-}
+// PUSHMI_TEMPLATE(class SD, class Out)
+// (requires //
+//  requires(std::declval<SD>().submit(std::declval<Out>()))) //
+// void submit(SD&& sd, Out&& out) //
+//     noexcept(noexcept(((SD &&) sd).submit((Out &&) out))) {
+//   ((SD &&) sd).submit((Out &&) out);
+// }
 
 PUSHMI_TEMPLATE(class SD)
 (requires //
@@ -160,13 +166,13 @@ auto make_strand(SD&& sd) //
   return make_strand(*sd);
 }
 
-PUSHMI_TEMPLATE(class SD, class Out)
-(requires //
- requires(submit(*std::declval<SD>(), std::declval<Out>()))) //
-void submit(SD&& sd, Out&& out, ...) // MSVC(use ... to disambiguate)
-    noexcept(noexcept(submit(*sd, (Out &&) out))) {
-  submit(*sd, (Out &&) out);
-}
+// PUSHMI_TEMPLATE(class SD, class Out)
+// (requires //
+//  requires(submit(*std::declval<SD>(), std::declval<Out>()))) //
+// void submit(SD&& sd, Out&& out, ...) // MSVC(use ... to disambiguate)
+//     noexcept(noexcept(submit(*sd, (Out &&) out))) {
+//   submit(*sd, (Out &&) out);
+// }
 
 PUSHMI_TEMPLATE(class SD)
 (requires //
@@ -320,14 +326,14 @@ struct make_strand_fn {
   }
 };
 
-struct do_submit_fn {
-  PUSHMI_TEMPLATE(class SD, class Out)
-  (requires requires(submit(std::declval<SD>(), std::declval<Out>()))) //
-  void operator()(SD&& s, Out&& out) const //
-      noexcept(noexcept(submit((SD &&) s, (Out &&) out))) {
-    submit((SD &&) s, (Out &&) out);
-  }
-};
+// struct do_submit_fn {
+//   PUSHMI_TEMPLATE(class SD, class Out)
+//   (requires requires(submit(std::declval<SD>(), std::declval<Out>()))) //
+//   void operator()(SD&& s, Out&& out) const //
+//       noexcept(noexcept(submit((SD &&) s, (Out &&) out))) {
+//     submit((SD &&) s, (Out &&) out);
+//   }
+// };
 
 struct do_schedule_fn {
   PUSHMI_TEMPLATE(class SD, class... VN)
@@ -349,19 +355,20 @@ struct get_top_fn {
   }
 };
 
-} // namespace __adl
+} // namespace _adl
 
-PUSHMI_INLINE_VAR constexpr __adl::set_done_fn set_done{};
-PUSHMI_INLINE_VAR constexpr __adl::set_error_fn set_error{};
-PUSHMI_INLINE_VAR constexpr __adl::set_value_fn set_value{};
-PUSHMI_INLINE_VAR constexpr __adl::set_starting_fn set_starting{};
-PUSHMI_INLINE_VAR constexpr __adl::get_executor_fn get_executor{};
-PUSHMI_INLINE_VAR constexpr __adl::make_strand_fn make_strand{};
-PUSHMI_INLINE_VAR constexpr __adl::do_submit_fn submit{};
-PUSHMI_INLINE_VAR constexpr __adl::do_schedule_fn schedule{};
-PUSHMI_INLINE_VAR constexpr __adl::get_top_fn now{};
-PUSHMI_INLINE_VAR constexpr __adl::get_top_fn top{};
+FOLLY_DEFINE_CPO(_adl::set_done_fn, set_done)
+FOLLY_DEFINE_CPO(_adl::set_error_fn, set_error)
+FOLLY_DEFINE_CPO(_adl::set_value_fn, set_value)
+FOLLY_DEFINE_CPO(_adl::set_starting_fn, set_starting)
+FOLLY_DEFINE_CPO(_adl::get_executor_fn, get_executor)
+FOLLY_DEFINE_CPO(_adl::make_strand_fn, make_strand)
+//FOLLY_DEFINE_CPO(_adl::do_submit_fn, submit)
+FOLLY_DEFINE_CPO(_adl::do_schedule_fn, schedule)
+FOLLY_DEFINE_CPO(_adl::get_top_fn, now)
+FOLLY_DEFINE_CPO(_adl::get_top_fn, top)
 
+/// A std::promise is a valid Receiver:
 template <class T>
 struct receiver_traits<std::promise<T>> {
   using receiver_category = receiver_tag;
@@ -370,6 +377,159 @@ template <>
 struct receiver_traits<std::promise<void>> {
   using receiver_category = receiver_tag;
 };
+
+namespace _submit_adl
+{
+  template <class S, class R>
+  void submit(S&&, R&&) = delete;
+
+  template <class T>
+  constexpr typename T::value_type const _v = T::value;
+
+  PUSHMI_CONCEPT_DEF(
+    template(class S, class R)
+    concept HasMemberSubmit_,
+      requires (S&& from, R&& to) (
+        ((S&&) from).submit((R&&) to),
+        // requires_<noexcept(((S&&) from).submit((R&&) to))>,
+        requires_<std::is_void<decltype(((S&&) from).submit((R&&) to))>::value>
+      )
+  );
+
+  PUSHMI_CONCEPT_DEF(
+    template(class S, class R)
+    concept HasNonMemberSubmit_,
+      requires (S&& from, R&& to) (
+        submit((S&&) from, (R&&) to),
+        // requires_<noexcept(submit((S&&) from, (R&&) to))>,
+        requires_<std::is_void<decltype(submit((S&&) from, (R&&) to))>::value>
+      )
+  );
+
+#if defined(__cpp_coroutines)
+  PUSHMI_CONCEPT_DEF(
+    template (class A, class R)
+    concept IsSubmittableAwaitable_,
+      not detail::SenderLike_<A> && Awaitable<A> //&&
+      //ReceiveError<R, std::exception_ptr> &&
+      //ReceiveValue<R, coro::await_result_t<A>>
+  );
+#endif
+
+  struct _fn
+  {
+  private:
+#if defined(__cpp_coroutines)
+    // See detail/awaitable_adapter.hpp for implementation.
+    template<class A, class R>
+    static void _submit_awaitable_(A awaitable, R to) noexcept;
+#endif
+
+    struct _impl_ {
+      PUSHMI_TEMPLATE(class S, class R)
+      (requires Sender<S>) // && Receiver<R>)
+      auto operator()(S&& from, R&& to) const
+      {
+        // Prefer a .submit() member if it exists:
+        PUSHMI_IF_CONSTEXPR_RETURN((HasMemberSubmit_<S, R>) (
+          id((S&&) from).submit((R&&) to);
+          return std::true_type{};
+        ) else (
+          // Otherwise, dispatch to a submit() free function if it exists:
+          PUSHMI_IF_CONSTEXPR_RETURN((HasNonMemberSubmit_<S, R>) (
+            submit(id((S&&) from), (R&&) to);
+            return std::true_type{};
+          ) else (
+#if defined(__cpp_coroutines)
+            // Otherwise, if we support coroutines and S looks like an
+            // awaitable, dispatch to the
+            PUSHMI_IF_CONSTEXPR_RETURN((IsSubmittableAwaitable_<S, R>) (
+              _submit_awaitable_(id((S&&) from), (R&&) to);
+              return std::true_type{};
+            ) else (
+              return std::false_type{};
+            ))
+#else
+            return std::false_type{};
+#endif
+          ))
+        ))
+      }
+    };
+
+  public:
+    PUSHMI_TEMPLATE(class S, class R)
+    (requires Invocable<_impl_, S, R> && invoke_result_t<_impl_, S, R>::value)
+    constexpr void operator()(S&& from, R&& to) const {
+      (void) _impl_{}((S&&) from, (R&&) to);
+    }
+  };
+
+#if defined(__cpp_coroutines)
+  struct FOLLY_MAYBE_UNUSED oneway_task
+  {
+    struct promise_type
+    {
+      oneway_task get_return_object() noexcept { return {}; }
+      std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+      std::experimental::suspend_never final_suspend() noexcept { return {}; }
+      void return_void() noexcept {}
+      [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
+    };
+  };
+#endif
+
+#if defined(__cpp_coroutines)
+  // Make all awaitables senders:
+  template<class A, class R>
+  void _fn::_submit_awaitable_(A awaitable, R to) noexcept
+  {
+    // TRICKY: We want to make sure that if copying/moving 'awaitable' throws
+    // or if allocating the coroutine frame throws that we can still call
+    // op::set_error() on the receiver. So we pass the receiver by reference
+    // so that if the call to std::invoke() throws that we can catch the
+    // exception and pass it into 'receiver'.
+#if FOLLY_HAS_EXCEPTIONS
+    try
+    {
+#endif
+      // Create a lambda coroutine and immediately invoke it:
+      [](A a, R&& r) -> oneway_task
+      {
+        // Receivers should be nothrow move-constructible so we should't need to
+        // worry about this potentially throwing.
+        R rCopy(static_cast<R&&>(r));
+#if FOLLY_HAS_EXCEPTIONS
+        try
+        {
+#endif
+          PUSHMI_IF_CONSTEXPR ((std::is_void<coro::await_result_t<A>>::value) (
+            co_await static_cast<A&&>(a);
+            set_value(id(rCopy));
+          ) else (
+            set_value(id(rCopy), co_await static_cast<A&&>(a));
+          ))
+          set_done(rCopy);
+#if FOLLY_HAS_EXCEPTIONS
+        }
+        catch (...)
+        {
+          set_error(rCopy, std::current_exception());
+        }
+#endif
+      }(static_cast<A&&>(awaitable), static_cast<R&&>(to));
+#if FOLLY_HAS_EXCEPTIONS
+    }
+    catch (...)
+    {
+      set_error(to, std::current_exception());
+    }
+#endif
+  }
+#endif
+} // namespace _submit_adl
+
+FOLLY_DEFINE_CPO(_submit_adl::_fn, submit)
 
 } // namespace pushmi
 } // namespace folly

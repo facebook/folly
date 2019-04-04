@@ -520,11 +520,6 @@ struct Not {
   explicit constexpr operator bool() const noexcept {
     return !static_cast<bool>(T{});
   }
-  PUSHMI_TEMPLATE(class This = Not, bool B)
-  (requires B == static_cast<bool>(This{})) constexpr
-  operator std::integral_constant<bool, B>() const noexcept {
-    return {};
-  }
   constexpr auto operator!() const noexcept {
     return T{};
   }
@@ -543,11 +538,6 @@ struct And {
   explicit constexpr operator bool() const noexcept {
     return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), U, std::false_type>{});
   }
-  PUSHMI_TEMPLATE(class This = And, bool B) //
-  (requires B == static_cast<bool>(This{})) //
-  constexpr operator std::integral_constant<bool, B>() const noexcept {
-    return {};
-  }
   constexpr auto operator!() const noexcept {
     return Not<And>{};
   }
@@ -565,11 +555,6 @@ template <class T, class U>
 struct Or {
   explicit constexpr operator bool() const noexcept {
     return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), std::true_type, U>{});
-  }
-  PUSHMI_TEMPLATE(class This = Or, bool B)  //
-  (requires B == static_cast<bool>(This{})) //
-  constexpr operator std::integral_constant<bool, B>() const noexcept {
-    return {};
   }
   constexpr auto operator!() const noexcept {
     return Not<Or>{};

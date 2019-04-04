@@ -22,6 +22,7 @@
 #include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/tags.h>
+#include <folly/experimental/pushmi/detail/sender_concepts.h>
 #include <folly/experimental/pushmi/traits.h>
 
 namespace folly {
@@ -92,162 +93,11 @@ PUSHMI_CONCEPT_DEF(
 // add concepts to support senders
 //
 
-namespace detail {
-  template<template<template<class...> class, template<class...> class> class>
-  struct test_value_types;
-  template<template<template<class...> class> class>
-  struct test_error_type;
-
-  PUSHMI_CONCEPT_DEF(
-    template(class S)
-    concept SenderLike_,
-      True<typename S::sender_category>
-  );
-
-  PUSHMI_CONCEPT_DEF(
-    template(class S)
-    concept TypedSenderLike_,
-      SenderLike_<S> &&
-      True<test_value_types<S::template value_types>> &&
-      True<test_error_type<S::template error_type>>
-  );
-
-  template<class, class = void>
-  struct basic_sender_traits {
-  };
-  template<class S>
-  struct basic_typed_sender_traits : awaitable_senders::sender_adl_hook {
-    template<template<class...> class Tuple, template<class...> class Variant>
-    using value_types = typename S::template value_types<Tuple, Variant>;
-
-    template<template<class...> class Variant>
-    using error_type = typename S::template error_type<Variant>;
-  };
-  template<class S>
-  struct basic_sender_traits<S, std::enable_if_t<SenderLike_<S>>>
-  : std::conditional_t<
-      TypedSenderLike_<S>,
-      basic_typed_sender_traits<S>,
-      awaitable_senders::sender_adl_hook> {
-    using sender_category = typename S::sender_category;
-  };
-} // namespace detail
-
-template<typename S, typename>
-struct sender_traits
-  : std::conditional_t<
-      std::is_same<std::decay_t<S>, S>::value,
-      detail::basic_sender_traits<S>,
-      sender_traits<std::decay_t<S>>> {
-  using _not_specialized = void;
-};
-
-// A Sender is, by default, a "many" sender, in that it may call
-// set_value on its Receiver multiple times before calling set_done.
-PUSHMI_CONCEPT_DEF(
-  template(class S)
-  concept Sender,
-    SemiMovable<remove_cvref_t<S>> &&
-    True<typename sender_traits<S>::sender_category> &&
-    DerivedFrom<typename sender_traits<S>::sender_category, sender_tag>
-);
-
-template<class S>
-PUSHMI_PP_CONSTRAINED_USING(
-  Sender<S>,
-  sender_category_t =,
-    typename sender_traits<S>::sender_category
-);
-
-// A single sender is a special kind of sender that promises to only
-// call set_value once (or not at all) before calling set_done.
-PUSHMI_CONCEPT_DEF(
-  template(class S)
-  concept SingleSender,
-    Sender<S> &&
-    DerivedFrom<typename sender_traits<S>::sender_category, single_sender_tag>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template(class S)
-  concept TypedSender,
-    Sender<S> &&
-    True<detail::test_value_types<sender_traits<S>::template value_types>> &&
-    True<detail::test_error_type<sender_traits<S>::template error_type>>
-);
-
-template<
-  class From,
-  template<class...> class Tuple,
-  template<class...> class Variant = detail::identity_t>
-PUSHMI_PP_CONSTRAINED_USING(
-  TypedSender<From>,
-  sender_values_t =,
-    typename sender_traits<remove_cvref_t<From>>::
-      template value_types<Tuple, Variant>
-);
-
-template<class From, template<class...> class Variant = detail::identity_t>
-PUSHMI_PP_CONSTRAINED_USING(
-  TypedSender<From>,
-  sender_error_t =,
-    typename sender_traits<remove_cvref_t<From>>::
-      template error_type<Variant>
-);
-
-namespace detail {
-template<class... Ts>
-using count_values = std::integral_constant<std::size_t, sizeof...(Ts)>;
-} // namespace detail
-
-PUSHMI_CONCEPT_DEF(
-  template(class S)
-  concept SingleTypedSender,
-    TypedSender<S> &&
-    SingleSender<S> &&
-    (sender_values_t<S, detail::count_values>::value <= 1u)
-);
-
-// /// \cond
-// template<class Fun>
-// struct __invoke_with {
-//   template<typename...Args>
-//   using result_t = std::invoke_result_t<Fun, Args...>;
-//   template<template<class...> class Tuple>
-//   struct as {
-//     template<typename...Args>
-//     using result_t =
-//       std::conditional_t<
-//         std::is_void_v<result_t<Args...>>,
-//         Tuple<>,
-//         Tuple<result_t<Args...>>>;
-//   };
-// };
-// /// \endcond
-//
-// template<class Fun, TypedSender From>
-//   requires requires {
-//     typename sender_traits<From>::template value_types<
-//       __invoke_with<Fun>::template result_t, __typelist>;
-//   }
-// struct transformed_sender_of : sender_base<sender_category_t<From>> {
-//   template<template<class...> class Variant = identity_t>
-//   using error_type = sender_error_t<Variant>;
-//   template<
-//     template<class...> class Tuple,
-//     template<class...> class Variant = identity_t>
-//   using value_types =
-//     sender_values_t<
-//       From,
-//       __invoke_with<Fun>::template as<Tuple>::template result_t,
-//       Variant>;
-// };
-
 PUSHMI_CONCEPT_DEF(
     template(class S, class R) //
     (concept SenderTo)(S, R), //
     requires(S&& s, R&& r) //
-        (submit((S &&) s, (R &&) r)) &&
+        (pushmi::submit((S &&) s, (R &&) r)) &&
         Sender<S> && Receiver<R>);
 
 // is_always_blocking trait and tag
@@ -290,12 +140,12 @@ PUSHMI_INLINE_VAR constexpr bool is_concurrent_sequence_v =
 //
 
 PUSHMI_CONCEPT_DEF(
-    template(class Exec) //
-    (concept Executor)(Exec), //
-    requires(Exec& exec)( //
-        schedule(exec),
-        requires_<SingleSender<decltype(schedule(exec))>>) &&
-        SemiMovable<std::decay_t<Exec>>);
+  template(class Exec) //
+  (concept Executor)(Exec), //
+  requires(Exec& exec)( //
+    schedule(exec),
+    requires_<SingleSender<decltype(schedule(exec))>>) &&
+    SemiMovable<std::decay_t<Exec>>);
 
 template <class Exec, class... Args>
 PUSHMI_PP_CONSTRAINED_USING(
@@ -365,33 +215,33 @@ PUSHMI_CONCEPT_DEF(
   template(class Exec, class TP, class Duration) //
   concept TimeExecutorImpl2_, //
     requires(Exec& exec, TP tp, Duration d)( //
-        requires_<SingleSender<decltype(exec.schedule(tp + d))>>,
-        requires_<SingleSender<decltype(exec.schedule(d + tp))>>,
-        requires_<SingleSender<decltype(exec.schedule(tp - d))>>,
-        tp += d,
-        tp -= d));
+      requires_<SingleSender<decltype(exec.schedule(tp + d))>>,
+      requires_<SingleSender<decltype(exec.schedule(d + tp))>>,
+      requires_<SingleSender<decltype(exec.schedule(tp - d))>>,
+      tp += d,
+      tp -= d));
 
 PUSHMI_CONCEPT_DEF(
   template(class Exec, class TP = decltype(now(std::declval<Exec&>()))) //
   (concept TimeExecutorImpl_)(Exec, TP), //
-      Regular<TP> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::nanoseconds> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::microseconds> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::milliseconds> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::seconds> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::minutes> &&
-      TimeExecutorImpl2_<Exec, TP, std::chrono::hours> &&
-      TimeExecutorImpl2_<Exec, TP, decltype(TP{} - TP{})>);
+    Regular<TP> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::nanoseconds> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::microseconds> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::milliseconds> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::seconds> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::minutes> &&
+    TimeExecutorImpl2_<Exec, TP, std::chrono::hours> &&
+    TimeExecutorImpl2_<Exec, TP, decltype(TP{} - TP{})>);
 
 PUSHMI_CONCEPT_DEF(
   template(class Exec) //
   (concept TimeExecutor)(Exec), //
     requires(Exec& exec)( //
-        now(exec),
-        schedule(exec, now(exec)),
-        requires_<SingleSender<decltype(schedule(exec, now(exec)))>>) &&
-        ConstrainedExecutor<Exec> &&
-        TimeExecutorImpl_<Exec>);
+      now(exec),
+      schedule(exec, now(exec)),
+      requires_<SingleSender<decltype(schedule(exec, now(exec)))>>) &&
+      ConstrainedExecutor<Exec> &&
+      TimeExecutorImpl_<Exec>);
 
 template <class Exec>
 PUSHMI_PP_CONSTRAINED_USING(
@@ -444,3 +294,6 @@ PUSHMI_CONCEPT_DEF(
 
 } // namespace pushmi
 } // namespace folly
+
+// Make all single typed senders also awaitable:
+#include <folly/experimental/pushmi/detail/sender_adapter.h>

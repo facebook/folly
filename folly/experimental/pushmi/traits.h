@@ -16,7 +16,6 @@
 #pragma once
 
 #include <type_traits>
-
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/experimental/pushmi/detail/concept_def.h>
@@ -228,19 +227,25 @@ struct Enable_<true> {
 };
 
 template <class...>
-struct Front_ {};
+struct FrontOrVoid_ {
+  using type = void;
+};
 template <class T, class... Us>
-struct Front_<T, Us...> {
+struct FrontOrVoid_<T, Us...> {
   using type = T;
 };
 
 // An alias for the type in the pack if the pack has exactly one type in it.
 // Otherwise, this SFINAE's away. T cannot be an array type of an abstract type.
 // Instantiation proceeds from left to right. The use of Enable_ here avoids
-// needless instantiations of Front_.
+// needless instantiations of FrontOrVoid_.
 template<class...Ts>
 using identity_t = typename Enable_<sizeof...(Ts) == 1u>::
-  template _type<Front_<Ts...>>::type;
+  template _type<FrontOrVoid_<Ts...>>::type;
+
+template<class...Ts>
+using identity_or_void_t = typename Enable_<sizeof...(Ts) <= 1u>::
+  template _type<FrontOrVoid_<Ts...>>::type;
 } // namespace detail
 
 } // namespace pushmi

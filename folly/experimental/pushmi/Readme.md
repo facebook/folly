@@ -50,7 +50,7 @@ it is this convolution that creates the race between the producer and consumer t
 
 The `receiver` type in the library provides simple ways to construct new implementations of the Receiver concept.
 
-construct a sink type that accepts any value or error type (and aborts on error)
+construct a receiver_tag type that accepts any value or error type (and aborts on error)
 
 ```cpp
 receiver<> s;

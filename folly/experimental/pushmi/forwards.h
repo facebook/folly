@@ -27,10 +27,10 @@ namespace pushmi {
 
 // Traits types:
 
-template< class, class = void >
+template <class T, class = void>
 struct sender_traits;
 
-template< class, class = void >
+template <class T, class = void>
 struct receiver_traits;
 
 // implementation types
@@ -125,6 +125,13 @@ struct any {
   constexpr any(T&&) noexcept {}
 };
 } // namespace detail
+
+namespace awaitable_senders {
+// Used in the definition of sender_traits to define Senders in terms
+// Awaitables without causing constraint recursion.
+std::false_type safe_to_test_awaitable(void*);
+struct sender_adl_hook;
+} // namespace awaitable_senders
 
 } // namespace pushmi
 } // namespace folly
