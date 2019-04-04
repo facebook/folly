@@ -38,8 +38,7 @@ struct for_each_fn {
   struct Pull {
     Out out_;
     explicit Pull(Out out) : out_(std::move(out)) {}
-    using properties =
-        property_set_insert_t<properties_t<Out>, property_set<is_flow<>>>;
+    using receiver_category = flow_receiver_tag;
     folly::Function<void(std::ptrdiff_t)> pull;
     template <class... VN>
     void value(VN&&... vn) {

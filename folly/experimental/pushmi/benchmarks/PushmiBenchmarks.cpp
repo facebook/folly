@@ -47,7 +47,7 @@ template <class R>
 struct countdown {
   explicit countdown(std::atomic<int>& c) : counter(&c) {}
 
-  using properties = mi::properties_t<decltype(R{}())>;
+  using receiver_category = mi::receiver_category_t<folly::invoke_result_t<R>>;
 
   std::atomic<int>* counter;
 

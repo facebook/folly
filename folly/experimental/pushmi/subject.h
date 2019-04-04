@@ -30,8 +30,6 @@ struct subject;
 
 template <class PS, class... TN>
 struct subject<PS, TN...> : single_sender_tag::with_values<TN...> {
-  using properties = property_set<>;
-
   struct subject_shared : single_sender_tag::with_values<TN...> {
     using receiver_t = any_receiver<std::exception_ptr, TN...>;
     bool done_ = false;
@@ -104,7 +102,7 @@ struct subject<PS, TN...> : single_sender_tag::with_values<TN...> {
   };
 
   struct subject_receiver {
-    using properties = property_set<is_receiver<>>;
+    using receiver_category = receiver_tag;
 
     std::shared_ptr<subject_shared> s;
 

@@ -198,7 +198,7 @@ class time_source_queue : public time_source_queue_base<E, TP> {
       this->heap_.pop();
       --s->items_;
       guard.unlock();
-      set_error(what, detail::as_const(e));
+      set_error(what, folly::as_const(e));
       guard.lock();
     }
     this->dispatching_ = false;
@@ -231,7 +231,7 @@ struct time_source_queue_receiver
       std::shared_ptr<time_source_queue<E, TP, NF, Exec>> that)
       : std::shared_ptr<time_source_queue<E, TP, NF, Exec>>(that),
         source_(that->source_.lock()) {}
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = receiver_tag;
   std::shared_ptr<time_source_shared<E, TP>> source_;
 };
 
@@ -451,8 +451,7 @@ class time_source_task
   std::shared_ptr<time_source_queue<E, time_point, NF, Exec>> queue_;
 
  public:
-  using properties = property_set_insert_t<properties_t<sender_t<Exec>>, property_set<
-    is_never_blocking<>>>;
+  using properties = property_set<is_never_blocking<>>;
 
   time_source_task(
       time_point tp,

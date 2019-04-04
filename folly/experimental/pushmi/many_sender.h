@@ -84,8 +84,6 @@ class any_many_sender
       std::enable_if_t<!std::is_same<U, any_many_sender>::value, U>;
 
  public:
-  using properties = property_set<>;
-
   any_many_sender() = default;
   any_many_sender(any_many_sender&& that) noexcept : any_many_sender() {
     that.vptr_->op_(that.data_, &data_);
@@ -121,8 +119,6 @@ class many_sender<SF> : public sender_tag {
   SF sf_;
 
  public:
-  using properties = property_set<>;
-
   constexpr many_sender() = default;
   constexpr explicit many_sender(SF sf) : sf_(std::move(sf)) {}
 

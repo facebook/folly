@@ -27,82 +27,66 @@
 namespace folly {
 namespace pushmi {
 
-// traits & tags
-struct sender_tag;
-struct single_sender_tag;
-struct flow_sender_tag;
-struct flow_single_sender_tag;
-
 // add concepts to support receivers
 //
 
 /// \cond
 namespace detail {
-template <bool>
-struct Enable_ {};
-template <>
-struct Enable_<true> {
-  template <class T>
-  using _type = T;
+template <class R, class = void>
+struct basic_receiver_traits {
 };
-
-#if defined(__cpp_fold_expressions) && __cpp_fold_expressions > 0
-// An alias for the type in the pack if the pack has exactly one type in it.
-// Otherwise, this SFINAE's away. T cannot be an array type of an abstract type.
-template<class... Ts>
-using identity_t = typename Enable_<sizeof...(Ts) == 1u>::
-  template _type<decltype((((Ts(*)())0)(),...))>;
-#else
-template <class...>
-struct Front_ {};
-template <class T, class... Us>
-struct Front_<T, Us...> {
-  using type = T;
+template <class R>
+struct basic_receiver_traits<R, void_t<typename R::receiver_category>> {
+  using receiver_category = typename R::receiver_category;
 };
-// Instantiation proceeds from left to right. The use of Enable_ here avoids
-// needless instantiations of Front_.
-template<class...Ts>
-using identity_t = typename Enable_<sizeof...(Ts) == 1u>::
-  template _type<Front_<Ts...>>::type;
-#endif
 } // namespace detail
+/// \endcond
 
-// is_flow trait
-template <class PS>
-struct is_flow<PS> : property_query<PS, is_flow<>> {};
-template <class PS>
-PUSHMI_INLINE_VAR constexpr bool is_flow_v = is_flow<PS>::value;
-
-// is_receiver trait
-template <class PS>
-struct is_receiver<PS> : property_query<PS, is_receiver<>> {};
-template <class PS>
-PUSHMI_INLINE_VAR constexpr bool is_receiver_v = is_receiver<PS>::value;
-
-// add concepts to support receivers
-//
+template<typename R, typename>
+struct receiver_traits
+  : std::conditional_t<
+      std::is_same<std::decay_t<R>, R>::value,
+      detail::basic_receiver_traits<R>,
+      receiver_traits<std::decay_t<R>>> {
+  using _not_specialized = void;
+};
 
 PUSHMI_CONCEPT_DEF(
-    template(class R) //
-    (concept Receiver)(R), //
-    requires(R& r) //
-        (set_done(r)) &&
-        SemiMovable<std::decay_t<R>> &&
-        is_receiver_v<R>);
+  template(class R) //
+  (concept Receiver)(R), //
+    requires(R& r)( //
+      set_done(r) //
+    ) && //
+    SemiMovable<std::decay_t<R>> &&
+    True<typename receiver_traits<R>::receiver_category> &&
+    DerivedFrom<typename receiver_traits<R>::receiver_category, receiver_tag>
+);
+
+template <class R>
+PUSHMI_PP_CONSTRAINED_USING(
+  Receiver<R>,
+  receiver_category_t =,
+    typename receiver_traits<R>::receiver_category
+);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class... VN) //
-    (concept ReceiveValue)(R, VN...), //
-    requires(R& r) //
-        (set_value(r, std::declval<VN&&>()...)) &&
-        Receiver<R>&& And<MoveConstructible<VN>...>);
+  template(class R, class... VN) //
+  (concept ReceiveValue)(R, VN...), //
+    requires(R& r)( //
+      set_value(r, std::declval<VN&&>()...) //
+    ) && //
+    Receiver<R> && //
+    And<MoveConstructible<VN>...>
+);
 
 PUSHMI_CONCEPT_DEF(
-    template(class R, class E) //
-    (concept ReceiveError)(R, E), //
+  template(class R, class E) //
+  (concept ReceiveError)(R, E), //
     requires(R& r, E&& e)( //
-        set_error(r, (E &&) e)) &&
-        Receiver<R> && MoveConstructible<E>
+        set_error(r, (E &&) e) //
+    ) && //
+    Receiver<R> && //
+    MoveConstructible<E>
 );
 
 // add concepts to support senders
@@ -127,6 +111,7 @@ namespace detail {
       True<test_value_types<S::template value_types>> &&
       True<test_error_type<S::template error_type>>
   );
+
   template<class, class = void>
   struct basic_sender_traits {
   };
@@ -148,7 +133,7 @@ namespace detail {
   };
 } // namespace detail
 
-template<typename S>
+template<typename S, typename>
 struct sender_traits
   : std::conditional_t<
       std::is_same<std::decay_t<S>, S>::value,
@@ -421,36 +406,41 @@ PUSHMI_CONCEPT_DEF(
   template(class R) //
   (concept FlowReceiver)(R), //
     Receiver<R>&&
-    is_flow_v<R>);
+    DerivedFrom<receiver_category_t<R>, flow_receiver_tag>);
 
 PUSHMI_CONCEPT_DEF(
   template(class R, class... VN) //
   (concept FlowReceiveValue)(R, VN...), //
-    is_flow_v<R>&& ReceiveValue<R, VN...>);
+    FlowReceiver<R>&& ReceiveValue<R, VN...>);
 
 PUSHMI_CONCEPT_DEF(
   template(class R, class E = std::exception_ptr) //
   (concept FlowReceiveError)(R, E), //
-    is_flow_v<R>&& ReceiveError<R, E>);
+    FlowReceiver<R>&& ReceiveError<R, E>);
 
 PUSHMI_CONCEPT_DEF(
   template(class R, class Up) //
   (concept FlowUpTo)(R, Up), //
     requires(R& r, Up&& up)( //
-        set_starting(r, (Up &&) up)) &&
-        is_flow_v<R>);
+        set_starting(r, (Up &&) up) //
+    ) &&
+    FlowReceiver<R>
+);
 
 PUSHMI_CONCEPT_DEF(
   template(class S) //
   (concept FlowSender)(S), //
     Sender<S>&&
-    DerivedFrom<sender_category_t<S>, flow_sender_tag>);
+    DerivedFrom<sender_category_t<S>, flow_sender_tag>
+);
 
 PUSHMI_CONCEPT_DEF(
   template(class S, class R) //
   (concept FlowSenderTo)(S, R), //
-    FlowSender<S>&& SenderTo<S, R>&&
-    FlowReceiver<R>);
+    FlowSender<S> && //
+    SenderTo<S, R>&& //
+    FlowReceiver<R>
+);
 
 } // namespace pushmi
 } // namespace folly

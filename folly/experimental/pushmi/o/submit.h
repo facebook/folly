@@ -28,8 +28,8 @@ namespace detail {
 namespace submit_detail {
 
 PUSHMI_CONCEPT_DEF(
-    template(class In, class... AN) //
-    (concept AutoSenderTo)(In, AN...), //
+  template(class In, class... AN) //
+  (concept AutoSenderTo)(In, AN...), //
     SenderTo<In, receiver_type_t<std::decay_t<In>, AN...>>);
 } // namespace submit_detail
 
@@ -42,15 +42,12 @@ struct submit_fn {
   struct fn : pipeorigin {
     explicit fn(AN&&... an) : args_((AN &&) an...) {}
     std::tuple<AN...> args_;
-    PUSHMI_TEMPLATE(class In)
-    (requires //
-      submit_detail::AutoSenderTo<In&&, AN...>) //
-        void
-        operator()(In&& in) {
-      using maker_t = ::folly::pushmi::detail::receiver_from_fn<std::decay_t<In>>;
+    PUSHMI_TEMPLATE(class In)( //
+      requires submit_detail::AutoSenderTo<In&&, AN...>) //
+    void operator()(In&& in) {
+      using maker_t = receiver_from_fn<std::decay_t<In>>;
       using receiver_t = invoke_result_t<maker_t, std::tuple<AN...>&&>;
-      receiver_t out{
-          maker_t{}(std::move(args_))};
+      receiver_t out{maker_t{}(std::move(args_))}; (void)out;
       ::folly::pushmi::submit((In &&) in, std::move(out));
     }
   };
@@ -148,8 +145,6 @@ struct blocking_submit_fn {
     lock_state* state_;
     Task t_;
 
-    using properties = properties_t<Task>;
-
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
     void submit(Out out) && {
@@ -168,7 +163,7 @@ struct blocking_submit_fn {
     lock_state* state_;
     Out out_;
 
-    using properties = properties_t<Out>;
+    using receiver_category = receiver_category_t<Out>;
 
     template <class V>
     void value(V&& v) {

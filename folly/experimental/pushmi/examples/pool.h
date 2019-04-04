@@ -31,8 +31,7 @@ class pool_executor {
   Executor::KeepAlive<CPUThreadPoolExecutor> exec_ {};
 
 public:
-  using properties =
-    property_set<is_concurrent_sequence<>>;
+  using properties = property_set<is_concurrent_sequence<>>;
 
   pool_executor() = default;
   explicit pool_executor(pool &e);

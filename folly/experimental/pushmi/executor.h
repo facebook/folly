@@ -104,8 +104,6 @@ class any_executor {
       std::enable_if_t<!std::is_same<U, any_executor>::value, U>;
 
  public:
-  using properties = property_set<>;
-
   any_executor() = default;
   any_executor(const any_executor& that) noexcept : any_executor() {
     that.vptr_->op_(that.data_, &data_);
@@ -148,8 +146,6 @@ class executor<SF> {
   SF sf_;
 
  public:
-  using properties = property_set<>;
-
   constexpr executor() = default;
   constexpr explicit executor(SF sf) : sf_(std::move(sf)) {}
 
@@ -177,7 +173,7 @@ class executor<Data, DSF> {
 
   PUSHMI_TEMPLATE(class DSF_ = DSF)
   (requires Invocable<DSF_&, Data&>) //
-      auto schedule() {
+  auto schedule() {
     return sf_(data_);
   }
 };
@@ -196,20 +192,17 @@ PUSHMI_INLINE_VAR constexpr struct make_executor_fn {
   }
   PUSHMI_TEMPLATE(class SF)
   (requires not Executor<SF>) //
-      auto
-      operator()(SF sf) const {
+  auto operator()(SF sf) const {
     return executor<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
   (requires True<>&& Executor<Data>) //
-      auto
-      operator()(Data d) const {
+  auto operator()(Data d) const {
     return executor<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Executor<Data>) //
-      auto
-      operator()(Data d, DSF sf) const {
+  auto operator()(Data d, DSF sf) const {
     return executor<Data, DSF>{std::move(d), std::move(sf)};
   }
 } const make_executor{};
@@ -256,8 +249,6 @@ struct any_executor_ref {
   using wrapped_t = detail::not_any_executor_ref_t<T>;
 
  public:
-  using properties = property_set<>;
-
   any_executor_ref() = delete;
   any_executor_ref(const any_executor_ref&) = default;
 
@@ -289,7 +280,7 @@ auto make_any_executor_ref() {
 
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 (requires Executor<detail::not_any_executor_ref_t<Wrapped>>) //
-    auto make_any_executor_ref(Wrapped& w) {
+auto make_any_executor_ref(Wrapped& w) {
   return any_executor_ref<E>{w};
 }
 
@@ -416,8 +407,6 @@ class any_constrained_executor {
       std::enable_if_t<!std::is_same<U, any_constrained_executor>::value, U>;
 
  public:
-  using properties = property_set<>;
-
   any_constrained_executor() = default;
   any_constrained_executor(const any_constrained_executor& that) noexcept
   : any_constrained_executor() {
@@ -469,8 +458,6 @@ class constrained_executor<SF, ZF> {
   ZF zf_;
 
  public:
-  using properties = property_set<>;
-
   constexpr constrained_executor() = default;
   constexpr explicit constrained_executor(SF sf) : sf_(std::move(sf)) {}
   constexpr constrained_executor(SF sf, ZF zf) : sf_(std::move(sf)), zf_(std::move(zf)) {}
@@ -481,7 +468,7 @@ class constrained_executor<SF, ZF> {
 
   PUSHMI_TEMPLATE(class SF_ = SF)
   (requires Invocable<SF_&>) //
-      auto schedule() {
+  auto schedule() {
     return sf_();
   }
 };
@@ -511,7 +498,7 @@ class constrained_executor<Data, DSF, DZF> {
 
   PUSHMI_TEMPLATE(class DSF_ = DSF)
   (requires Invocable<DSF_&, Data&>) //
-      auto schedule() {
+  auto schedule() {
     return sf_(data_);
   }
 };
@@ -530,32 +517,27 @@ PUSHMI_INLINE_VAR constexpr struct make_constrained_executor_fn {
   }
   PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not ConstrainedExecutor<SF>)) //
-      auto
-      operator()(SF sf) const {
+  auto operator()(SF sf) const {
     return constrained_executor<SF, priorityZeroF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class SF, class ZF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not ConstrainedExecutor<SF>)) //
-      auto
-      operator()(SF sf, ZF zf) const {
+  auto operator()(SF sf, ZF zf) const {
     return constrained_executor<SF, ZF>{std::move(sf), std::move(zf)};
   }
   PUSHMI_TEMPLATE(class Data)
   (requires True<>&& ConstrainedExecutor<Data>) //
-      auto
-      operator()(Data d) const {
+  auto operator()(Data d) const {
     return constrained_executor<Data, passDSF, passDZF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
   (requires ConstrainedExecutor<Data>) //
-      auto
-      operator()(Data d, DSF sf) const {
+  auto operator()(Data d, DSF sf) const {
     return constrained_executor<Data, DSF, passDZF>{std::move(d), std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF, class DZF)
   (requires ConstrainedExecutor<Data>) //
-      auto
-      operator()(Data d, DSF sf, DZF zf) const {
+  auto operator()(Data d, DSF sf, DZF zf) const {
     return constrained_executor<Data, DSF, DZF>{std::move(d), std::move(sf), std::move(zf)};
   }
 } const make_constrained_executor{};
@@ -615,14 +597,12 @@ struct any_constrained_executor_ref {
   using wrapped_t = detail::not_any_constrained_executor_ref_t<T>;
 
  public:
-  using properties = property_set<>;
-
   any_constrained_executor_ref() = delete;
   any_constrained_executor_ref(const any_constrained_executor_ref&) = default;
 
   PUSHMI_TEMPLATE(class Wrapped)
   (requires ConstrainedExecutor<wrapped_t<Wrapped>>)
-      any_constrained_executor_ref(Wrapped& w) {
+  any_constrained_executor_ref(Wrapped& w) {
     struct s {
       static CV top(void* pobj) {
         return ::folly::pushmi::top(*static_cast<Wrapped*>(pobj));
@@ -661,7 +641,7 @@ auto make_any_constrained_executor_ref() {
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 (requires ConstrainedExecutor<
     detail::not_any_constrained_executor_ref_t<Wrapped>>) //
-    auto make_any_constrained_executor_ref(Wrapped& w) {
+auto make_any_constrained_executor_ref(Wrapped& w) {
   return any_constrained_executor_ref<E, constraint_t<Wrapped>>{w};
 }
 
@@ -791,8 +771,6 @@ class any_time_executor {
       std::enable_if_t<!std::is_same<U, any_time_executor>::value, U>;
 
  public:
-  using properties = property_set<>;
-
   any_time_executor() = default;
   any_time_executor(const any_time_executor& that) noexcept : any_time_executor() {
     that.vptr_->op_(that.data_, &data_);
@@ -805,7 +783,7 @@ class any_time_executor {
 
   PUSHMI_TEMPLATE(class Wrapped)
   (requires TimeExecutor<wrapped_t<Wrapped>>) //
-      explicit any_time_executor(Wrapped obj) noexcept(insitu<Wrapped>())
+  explicit any_time_executor(Wrapped obj) noexcept(insitu<Wrapped>())
       : any_time_executor{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
   ~any_time_executor() {
     vptr_->consume_op_(std::move(data_), nullptr);
@@ -842,8 +820,6 @@ class time_executor<SF, NF> {
   NF nf_;
 
  public:
-  using properties = property_set<>;
-
   constexpr time_executor() = default;
   constexpr explicit time_executor(SF sf) : sf_(std::move(sf)) {}
   constexpr time_executor(SF sf, NF nf) : sf_(std::move(sf)), nf_(std::move(nf)) {}
@@ -854,7 +830,7 @@ class time_executor<SF, NF> {
 
   PUSHMI_TEMPLATE(class SF_ = SF)
   (requires Invocable<SF_&>) //
-      auto schedule() {
+  auto schedule() {
     return sf_();
   }
 };
@@ -884,7 +860,7 @@ class time_executor<Data, DSF, DNF> {
 
   PUSHMI_TEMPLATE(class DSF_ = DSF)
   (requires Invocable<DSF_&, Data&>) //
-      auto schedule() {
+  auto schedule() {
     return sf_(data_);
   }
 };
@@ -903,32 +879,27 @@ PUSHMI_INLINE_VAR constexpr struct make_time_executor_fn {
   }
   PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not TimeExecutor<SF>)) //
-      auto
-      operator()(SF sf) const {
+  auto operator()(SF sf) const {
     return time_executor<SF, systemNowF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class SF, class NF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not TimeExecutor<SF>)) //
-      auto
-      operator()(SF sf, NF nf) const {
+  auto operator()(SF sf, NF nf) const {
     return time_executor<SF, NF>{std::move(sf), std::move(nf)};
   }
   PUSHMI_TEMPLATE(class Data)
   (requires True<>&& TimeExecutor<Data>) //
-      auto
-      operator()(Data d) const {
+  auto operator()(Data d) const {
     return time_executor<Data, passDSF, passDNF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
   (requires TimeExecutor<Data>) //
-      auto
-      operator()(Data d, DSF sf) const {
+  auto operator()(Data d, DSF sf) const {
     return time_executor<Data, DSF, passDNF>{std::move(d), std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF, class DNF)
   (requires TimeExecutor<Data>) //
-      auto
-      operator()(Data d, DSF sf, DNF nf) const {
+  auto operator()(Data d, DSF sf, DNF nf) const {
     return time_executor<Data, DSF, DNF>{std::move(d), std::move(sf), std::move(nf)};
   }
 } const make_time_executor{};
@@ -967,7 +938,6 @@ PUSHMI_TEMPLATE(class Data, class DSF, class DNF)
 template <>
 struct construct_deduced<time_executor> : make_time_executor_fn {};
 
-
 namespace detail {
 template <class T>
 using not_any_time_executor_ref_t = not_is_t<T, any_time_executor_ref>;
@@ -988,8 +958,6 @@ struct any_time_executor_ref {
   using wrapped_t = detail::not_any_time_executor_ref_t<T>;
 
  public:
-  using properties = property_set<>;
-
   any_time_executor_ref() = delete;
   any_time_executor_ref(const any_time_executor_ref&) = default;
 
@@ -1020,7 +988,7 @@ struct any_time_executor_ref {
   PUSHMI_TEMPLATE(class Wrapped)
   (requires TimeExecutor<wrapped_t<Wrapped>> && //
       std::is_rvalue_reference<Wrapped>::value) //
-      any_time_executor_ref(Wrapped&& w) {
+  any_time_executor_ref(Wrapped&& w) {
     struct s {
       static TP now(void* pobj) {
         return ::folly::pushmi::now(*static_cast<Wrapped*>(pobj));
@@ -1064,7 +1032,7 @@ auto make_any_time_executor_ref() {
 
 PUSHMI_TEMPLATE(class E = std::exception_ptr, class Wrapped)
 (requires TimeExecutor<detail::not_any_time_executor_ref_t<Wrapped>>) //
-    auto make_any_time_executor_ref(Wrapped& w) {
+auto make_any_time_executor_ref(Wrapped& w) {
   return any_time_executor_ref<E, time_point_t<Wrapped>>{w};
 }
 
@@ -1078,7 +1046,7 @@ any_time_executor_ref()
 
 PUSHMI_TEMPLATE(class Wrapped)
 (requires TimeExecutor<detail::not_any_time_executor_ref_t<Wrapped>>) //
-    any_time_executor_ref(Wrapped&)
+any_time_executor_ref(Wrapped&)
         ->any_time_executor_ref<std::exception_ptr, time_point_t<Wrapped>>;
 #endif
 

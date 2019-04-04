@@ -93,7 +93,7 @@ struct flow_from_producer {
 
 template <class Producer>
 struct flow_from_done {
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = flow_receiver_tag;
 
   explicit flow_from_done(std::shared_ptr<Producer> p) : p_(std::move(p)) {}
   std::shared_ptr<Producer> p_;
@@ -114,7 +114,7 @@ struct flow_from_done {
 
 template <class Producer>
 struct flow_from_up {
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = receiver_tag;
 
   explicit flow_from_up(std::shared_ptr<Producer> p_) : p(std::move(p_)) {}
   std::shared_ptr<Producer> p;
@@ -125,34 +125,37 @@ struct flow_from_up {
     }
     // submit work to exec
     ::folly::pushmi::submit(
-        ::folly::pushmi::schedule(p->exec), make_receiver([p = p, requested](auto) {
-          auto remaining = requested;
-          // this loop is structured to work when there is
-          // re-entrancy out.value in the loop may call up.value.
-          // to handle this the state of p->c must be captured and
-          // the remaining and p->c must be changed before
-          // out.value is called.
-          while (remaining-- > 0 && !p->stop && p->c != p->end) {
-            auto i = (p->c)++;
-            set_value(p->out, ::folly::pushmi::detail::as_const(*i));
-          }
-          if (p->c == p->end) {
-            set_done(p->out);
-          }
-        }));
+      ::folly::pushmi::schedule(p->exec),
+      make_receiver([p = p, requested](auto) {
+        auto remaining = requested;
+        // this loop is structured to work when there is
+        // re-entrancy out.value in the loop may call up.value.
+        // to handle this the state of p->c must be captured and
+        // the remaining and p->c must be changed before
+        // out.value is called.
+        while (remaining-- > 0 && !p->stop && p->c != p->end) {
+          auto i = (p->c)++;
+          set_value(p->out, folly::as_const(*i));
+        }
+        if (p->c == p->end) {
+          set_done(p->out);
+        }
+      }));
   }
 
   template <class E>
   void error(E) noexcept {
     p->stop.store(true);
     ::folly::pushmi::submit(
-        ::folly::pushmi::schedule(p->exec), flow_from_done<Producer>{p});
+        ::folly::pushmi::schedule(p->exec),
+        flow_from_done<Producer>{p});
   }
 
   void done() {
     p->stop.store(true);
     ::folly::pushmi::submit(
-        ::folly::pushmi::schedule(p->exec), flow_from_done<Producer>{p});
+        ::folly::pushmi::schedule(p->exec),
+        flow_from_done<Producer>{p});
   }
 };
 
@@ -160,7 +163,7 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
  private:
   template <class Producer>
   struct receiver_impl : pipeorigin {
-    using properties = property_set<is_receiver<>>;
+    using receiver_category = receiver_tag;
 
     explicit receiver_impl(std::shared_ptr<Producer> p) : p_(std::move(p)) {}
     std::shared_ptr<Producer> p_;

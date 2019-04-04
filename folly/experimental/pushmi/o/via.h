@@ -21,7 +21,6 @@
 
 namespace folly {
 namespace pushmi {
-
 namespace detail {
 
 template <class Exec>
@@ -36,13 +35,14 @@ struct via_fn_base {
 template <class Exec, class Out>
 struct via_fn_data : via_fn_base<Exec> {
   via_fn_data(Out out, Exec exec)
-      : via_fn_base<Exec>(std::move(exec)), out_(std::make_shared<Out>(std::move(out))) {}
+      : via_fn_base<Exec>(std::move(exec))
+      , out_(std::make_shared<Out>(std::move(out))) {}
 
-  using properties = properties_t<Out>;
+  using receiver_category = receiver_category_t<Out>;
 
   template <class CPO, class... AN>
   struct impl {
-    using properties = property_set<is_receiver<>>;
+    using receiver_category = receiver_tag;
     const CPO& fn_;
     std::tuple<Out&, AN...> an_;
     std::shared_ptr<Out> out_;
@@ -109,22 +109,23 @@ struct via_fn {
   template <class In, class Factory>
   struct submit_impl {
     Factory ef_;
+
     PUSHMI_TEMPLATE(class SIn, class Out)
     (requires Receiver<Out>) //
-        void
-        operator()(SIn&& in, Out out) const {
+    void operator()(SIn&& in, Out out) const {
       auto exec = ::folly::pushmi::make_strand(ef_);
       ::folly::pushmi::submit((In &&) in,
         make_via_fn_data(std::move(out), std::move(exec)));
     }
   };
+
   template <class Factory>
   struct adapt_impl {
     Factory ef_;
+
     PUSHMI_TEMPLATE(class In)
     (requires Sender<In>) //
-        auto
-        operator()(In&& in) const {
+    auto operator()(In&& in) const {
       return ::folly::pushmi::detail::sender_from(
           (In&&)in,
           submit_impl<In&&, Factory>{ef_});

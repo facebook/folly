@@ -117,7 +117,7 @@ class any_receiver {
   }
 
  public:
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = receiver_tag;
 
   any_receiver() = default;
   any_receiver(any_receiver&& that) noexcept : any_receiver() {
@@ -191,7 +191,7 @@ class receiver<VF, EF, DF> {
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = receiver_tag;
 
   receiver() = default;
   constexpr explicit receiver(VF vf) : receiver(std::move(vf), EF{}, DF{}) {}
@@ -268,7 +268,7 @@ class receiver<Data, DVF, DEF, DDF> {
       "error function must be noexcept and support std::exception_ptr");
 
  public:
-  using properties = properties_t<Data>;
+  using receiver_category = receiver_tag;
 
   constexpr explicit receiver(Data d)
       : receiver(std::move(d), DVF{}, DEF{}, DDF{}) {}

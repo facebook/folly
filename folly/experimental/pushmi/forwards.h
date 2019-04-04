@@ -25,6 +25,14 @@
 namespace folly {
 namespace pushmi {
 
+// Traits types:
+
+template< class, class = void >
+struct sender_traits;
+
+template< class, class = void >
+struct receiver_traits;
+
 // implementation types
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>

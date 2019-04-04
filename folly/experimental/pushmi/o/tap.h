@@ -29,20 +29,20 @@ struct tap_ {
   Out out;
 
   // side effect has no effect on the properties.
-  using properties = properties_t<Out>;
+  using receiver_category = receiver_category_t<Out>;
 
   PUSHMI_TEMPLATE(class... VN)
   (requires ReceiveValue<SideEffects&, const std::remove_reference_t<VN>&...>&&
        ReceiveValue<Out&, VN...>) //
-      void value(VN&&... vn) {
-    set_value(sideEffects, as_const(vn)...);
+  void value(VN&&... vn) {
+    set_value(sideEffects, folly::as_const(vn)...);
     set_value(out, (VN &&) vn...);
   }
   PUSHMI_TEMPLATE(class E)
   (requires ReceiveError<SideEffects&, const std::remove_reference_t<E>&>&&
        ReceiveError<Out&, E>) //
-       void error(E&& e) noexcept {
-    set_error(sideEffects, as_const(e));
+   void error(E&& e) noexcept {
+    set_error(sideEffects, folly::as_const(e));
     set_error(out, (E&&) e);
   }
   void done() {
@@ -51,8 +51,7 @@ struct tap_ {
   }
   PUSHMI_TEMPLATE(class Up)
   (requires FlowReceiver<SideEffects>&& FlowReceiver<Out>) //
-  void starting(
-      Up&& up) {
+  void starting(Up&& up) {
     // up is not made const because sideEffects is allowed to call methods on up
     set_starting(sideEffects, up);
     set_starting(out, (Up &&) up);
@@ -63,7 +62,7 @@ PUSHMI_INLINE_VAR constexpr struct make_tap_fn {
   PUSHMI_TEMPLATE(class SideEffects, class Out)
   (requires Receiver<std::decay_t<SideEffects>>&& Receiver<std::decay_t<Out>>&&
        Receiver<tap_<std::decay_t<SideEffects>, std::decay_t<Out>>>) //
-       auto operator()(const SideEffects& se, Out&& out) const {
+  auto operator()(const SideEffects& se, Out&& out) const {
     return tap_<std::decay_t<SideEffects>, std::decay_t<Out>>{se, (Out &&) out};
   }
 } const make_tap{};
@@ -105,9 +104,9 @@ struct tap_fn {
     using receiver_t =
         invoke_result_t<receiver_from_fn<std::decay_t<In>>, tap_t<Out>>;
     PUSHMI_TEMPLATE(class Data, class Out)
-    (requires Receiver<std::decay_t<Out>>
-      && SenderTo<In, Out>&&
-         SenderTo<In, receiver_t<Out>>) //
+    (requires Receiver<std::decay_t<Out>> &&
+      SenderTo<In, Out>&&
+      SenderTo<In, receiver_t<Out>>) //
     auto operator()(Data&& in, Out&& out) const {
       auto gang{receiver_from_fn<std::decay_t<In>>()(
           detail::make_tap(sideEffects_, (Out &&) out))};

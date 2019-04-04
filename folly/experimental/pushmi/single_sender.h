@@ -121,8 +121,6 @@ class any_single_sender
   using wrapped_t =
       std::enable_if_t<!std::is_same<U, any_single_sender>::value, U>;
  public:
-  using properties = property_set<>;
-
   any_single_sender() = default;
   any_single_sender(any_single_sender&& that) noexcept : any_single_sender() {
     that.vptr_->op_(that.data_, &data_);
@@ -160,7 +158,6 @@ class single_sender<SF> {
 
  public:
   using sender_category = single_sender_tag;
-  using properties = property_set<>;
 
   constexpr single_sender() = default;
   constexpr explicit single_sender(SF sf) : sf_(std::move(sf)) {}
@@ -182,7 +179,6 @@ class single_sender<Data, DSF> {
 
  public:
   using sender_category = single_sender_tag;
-  using properties = properties_t<Data>;
 
   static_assert(
       SingleSender<Data>,

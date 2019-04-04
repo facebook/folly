@@ -84,8 +84,6 @@ class any_flow_many_sender
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, any_flow_many_sender>::value, U>;
  public:
-  using properties = property_set<>;
-
   any_flow_many_sender() = default;
   any_flow_many_sender(any_flow_many_sender&& that) noexcept
       : any_flow_many_sender() {
@@ -122,7 +120,6 @@ class flow_many_sender<SF> {
 
  public:
   using sender_category = flow_sender_tag;
-  using properties = property_set<>;
 
   constexpr flow_many_sender() = default;
   constexpr explicit flow_many_sender(SF sf)

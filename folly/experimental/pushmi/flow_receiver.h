@@ -104,7 +104,7 @@ class any_flow_receiver {
   using wrapped_t =
     std::enable_if_t<!std::is_same<U, any_flow_receiver>::value, U>;
 public:
-  using properties = property_set<is_receiver<>, is_flow<>>;
+  using receiver_category = flow_receiver_tag;
 
   any_flow_receiver() = default;
   any_flow_receiver(any_flow_receiver&& that) noexcept : any_flow_receiver() {
@@ -171,7 +171,7 @@ class flow_receiver<VF, EF, DF, StrtF> {
   StrtF strtf_;
 
  public:
-  using properties = property_set<is_receiver<>, is_flow<>>;
+  using receiver_category = flow_receiver_tag;
 
   static_assert(
       !detail::is_v<VF, on_error_fn>,
@@ -255,11 +255,11 @@ class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
   DStrtF strtf_;
 
  public:
-  using properties = properties_t<Data>;
-
   static_assert(
       FlowReceiverDataArg<Data>,
       "Data must be a flow receiver");
+  using receiver_category = flow_receiver_tag;
+  using properties = properties_t<Data>;
 
   static_assert(
       !detail::is_v<DVF, on_error_fn>,

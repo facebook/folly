@@ -17,7 +17,10 @@
 
 #include <type_traits>
 
+#include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/experimental/pushmi/detail/concept_def.h>
+#include <folly/experimental/pushmi/detail/functional.h>
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
   noexcept(noexcept(static_cast<decltype((__VA_ARGS__))>(__VA_ARGS__)))\
@@ -216,13 +219,28 @@ constexpr bool is_v = is_<T, C>::value;
 template <bool B, class T = void>
 using requires_ = std::enable_if_t<B, T>;
 
-PUSHMI_INLINE_VAR constexpr struct as_const_fn {
+template <bool>
+struct Enable_ {};
+template <>
+struct Enable_<true> {
   template <class T>
-  constexpr const T& operator()(T& t) const noexcept {
-    return t;
-  }
-} const as_const{};
+  using _type = T;
+};
 
+template <class...>
+struct Front_ {};
+template <class T, class... Us>
+struct Front_<T, Us...> {
+  using type = T;
+};
+
+// An alias for the type in the pack if the pack has exactly one type in it.
+// Otherwise, this SFINAE's away. T cannot be an array type of an abstract type.
+// Instantiation proceeds from left to right. The use of Enable_ here avoids
+// needless instantiations of Front_.
+template<class...Ts>
+using identity_t = typename Enable_<sizeof...(Ts) == 1u>::
+  template _type<Front_<Ts...>>::type;
 } // namespace detail
 
 } // namespace pushmi

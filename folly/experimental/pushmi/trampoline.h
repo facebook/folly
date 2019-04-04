@@ -118,7 +118,7 @@ class trampoline {
 
   template<class SingleReceiver>
   struct delegate_impl {
-    using properties = property_set<is_receiver<>>;
+    using receiver_category = receiver_tag;
     std::decay_t<SingleReceiver> out_;
     void value(){
       delegator<E> that;

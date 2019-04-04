@@ -135,7 +135,7 @@ class strand_queue : public strand_queue_base<E> {
       auto what{std::move(this->front().what)};
       this->items_.pop();
       guard.unlock();
-      set_error(what, detail::as_const(e));
+      set_error(what, folly::as_const(e));
       guard.lock();
     }
   }
@@ -161,7 +161,7 @@ struct strand_queue_receiver : std::shared_ptr<strand_queue<E, Exec>> {
   ~strand_queue_receiver() {}
   explicit strand_queue_receiver(std::shared_ptr<strand_queue<E, Exec>> that)
       : std::shared_ptr<strand_queue<E, Exec>>(that) {}
-  using properties = property_set<is_receiver<>>;
+  using receiver_category = receiver_tag;
 };
 
 template <class E, class Exec>
@@ -184,9 +184,7 @@ class strand_task
   std::shared_ptr<strand_queue<E, Exec>> queue_;
 
  public:
-  using properties =
-    property_set<
-      property_set_index_t<properties_t<sender_t<Exec>>, is_never_blocking<>>>;
+  using properties = property_set<is_never_blocking<>>;
 
   strand_task(std::shared_ptr<strand_queue<E, Exec>> queue)
       : queue_(std::move(queue)) {}

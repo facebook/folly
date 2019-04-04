@@ -67,11 +67,11 @@ struct flow_single_sender_tag
       detail::inherit<flow_sender_tag, single_sender_tag>> {
 };
 
-struct flow_category {};
+struct receiver_tag {
+};
 
-// sender and receiver are mutually exclusive
-
-struct receiver_category {};
+struct flow_receiver_tag : receiver_tag {
+};
 
 // blocking affects senders
 
@@ -82,20 +82,6 @@ struct blocking_category {};
 struct sequence_category {};
 
 // trait & tag types
-
-template <class... TN>
-struct is_flow;
-template <>
-struct is_flow<> {
-  using property_category = flow_category;
-};
-
-template <class... TN>
-struct is_receiver;
-template <>
-struct is_receiver<> {
-  using property_category = receiver_category;
-};
 
 template <class... TN>
 struct is_always_blocking;

@@ -113,14 +113,13 @@ concept PropertySet,
 
 // customization point for a type with properties
 
-template <class T, class Void=void>
+template <class T, class = void>
 struct member_properties {
     using properties = property_set<>;
 };
 
 template <class T>
-struct member_properties<
-    T, void_t<typename T::properties>> {
+struct member_properties<T, void_t<typename T::properties>> {
   using properties = typename T::properties;
 };
 
@@ -132,7 +131,7 @@ template <class T, class Void>
 struct property_set_traits : std::conditional_t<
   std::is_same<T, std::decay_t<T>>::value,
   member_properties<T>,
-  property_set_traits<std::decay_t<T>, Void>>
+  property_set_traits<std::decay_t<T>>>
 {};
 
 template <class T, class Target, class Void>
@@ -143,13 +142,14 @@ PUSHMI_INLINE_VAR constexpr bool property_set_traits_disable_v =
   property_set_traits_disable<T, Target>::value;
 
 template <class T>
-using properties_t = std::enable_if_t<
+using properties_t =
+  std::enable_if_t<
     PropertySet<__properties_t<property_set_traits<T>>>,
     __properties_t<property_set_traits<T>>>;
 
 PUSHMI_CONCEPT_DEF(
-    template(class T)
-concept Properties,
+  template(class T)
+  concept Properties,
     PropertySet<__properties_t<property_set_traits<T>>>
 );
 

@@ -109,7 +109,7 @@ using receiver_from_fn = receiver_from_impl<FlowSender<In>>;
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) In, class... AN>
 using receiver_type_t =
-    typename receiver_from_fn<In>::template receiver_type<AN...>;
+  typename receiver_from_fn<In>::template receiver_type<AN...>;
 
 template <class SenderCategory>
 struct make_sender;
