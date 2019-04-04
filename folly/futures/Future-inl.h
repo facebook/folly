@@ -903,7 +903,7 @@ template <class T>
 template <typename F>
 SemiFuture<
     typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
-SemiFuture<T>::defer(F&& func) && {
+SemiFuture<T>::deferExTry(F&& func) && {
   DeferredExecutor* deferredExecutor = getDeferredExecutor();
   if (!deferredExecutor) {
     auto newDeferredExecutor = DeferredExecutor::create();

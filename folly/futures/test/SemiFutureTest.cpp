@@ -1172,8 +1172,10 @@ TEST(SemiFuture, DeferWithNestedSemiFuture) {
 
 TEST(SemiFuture, DeferWithExecutor) {
   ManualExecutor executor;
-  auto sf = makeSemiFuture().defer(
-      [&](Executor* e, Try<Unit>) { EXPECT_EQ(&executor, e); });
+  auto sf = makeSemiFuture().deferExTry(
+      [&](const Executor::KeepAlive<>& e, Try<Unit>) {
+        EXPECT_EQ(&executor, e.get());
+      });
   std::move(sf).via(&executor).getVia(&executor);
 }
 

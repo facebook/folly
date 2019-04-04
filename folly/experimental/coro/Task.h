@@ -357,9 +357,10 @@ class FOLLY_NODISCARD Task {
   }
 
   SemiFuture<folly::lift_unit_t<StorageType>> semi() && {
-    return makeSemiFuture().defer(
-        [task = std::move(*this)](Executor* executor, Try<Unit>&&) mutable {
-          return std::move(task).scheduleOn(executor).start();
+    return makeSemiFuture().deferExTry(
+        [task = std::move(*this)](
+            const Executor::KeepAlive<>& executor, Try<Unit>&&) mutable {
+          return std::move(task).scheduleOn(executor.get()).start();
         });
   }
 
