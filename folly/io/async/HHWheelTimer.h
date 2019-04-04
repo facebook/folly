@@ -126,7 +126,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
      * timeout is not scheduled or expired. Otherwise, return expiration
      * time minus current time.
      */
-    Duration getTimeRemaining() {
+    Duration getTimeRemaining() const {
       return getTimeRemaining(std::chrono::steady_clock::now());
     }
 
