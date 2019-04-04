@@ -50,6 +50,19 @@ class Executor {
   static const int8_t MID_PRI = 0;
   static const int8_t HI_PRI = SCHAR_MAX;
 
+  /**
+   * Executor::KeepAlive is a safe pointer to an Executor.
+   * For any Executor that supports KeepAlive functionality, Executor's
+   * destructor will block until all the KeepAlive objects associated with that
+   * Executor are destroyed.
+   * For Executors that don't support the KeepAlive funcionality, KeepAlive
+   * doesn't provide such protection.
+   *
+   * KeepAlive should *always* be used instead of Executor*. KeepAlive can be
+   * implicitly constructed from Executor*. getKeepAliveToken() helper method
+   * can be used to construct a KeepAlive in templated code if you need to
+   * preserve the original Executor type.
+   */
   template <typename ExecutorT = Executor>
   class KeepAlive {
    public:
