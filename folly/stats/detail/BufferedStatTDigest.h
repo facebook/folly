@@ -23,6 +23,8 @@ namespace folly {
 namespace detail {
 
 extern template class BufferedStat<TDigest, std::chrono::steady_clock>;
+extern template class BufferedDigest<TDigest, std::chrono::steady_clock>;
+extern template class BufferedSlidingWindow<TDigest, std::chrono::steady_clock>;
 
 } // namespace detail
 } // namespace folly
