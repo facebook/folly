@@ -21,8 +21,11 @@
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/detail/Traits.h>
 
+#include <range/v3/view/move.hpp>
+
 #include <experimental/coroutine>
 #include <functional>
+#include <iterator>
 #include <tuple>
 #include <type_traits>
 
@@ -37,6 +40,23 @@ using collect_all_try_component_t = folly::Try<decay_rvalue_reference_t<
 template <typename SemiAwaitable>
 using collect_all_component_t =
     decay_rvalue_reference_t<lift_unit_t<semi_await_result_t<SemiAwaitable>>>;
+
+template <typename SemiAwaitable>
+using collect_all_range_component_t = decay_rvalue_reference_t<
+    lift_lvalue_reference_t<semi_await_result_t<SemiAwaitable>>>;
+
+template <typename SemiAwaitable>
+using collect_all_try_range_component_t =
+    collect_all_try_component_t<SemiAwaitable>;
+
+template <typename Range>
+using range_iterator_t = decltype(std::begin(std::declval<Range>()));
+
+template <typename Iterator>
+using iterator_reference_t = typename std::iterator_traits<Iterator>::reference;
+
+template <typename Range>
+using range_reference_t = iterator_reference_t<range_iterator_t<Range>>;
 
 } // namespace detail
 
@@ -121,6 +141,86 @@ template <typename... SemiAwaitables>
 auto collectAllTry(SemiAwaitables&&... awaitables)
     -> folly::coro::Task<std::tuple<detail::collect_all_try_component_t<
         remove_cvref_t<SemiAwaitables>>...>>;
+
+////////////////////////////////////////////////////////////////////////
+// rangeCollectAll(RangeOf<SemiAwaitable<T>>&&)
+//   -> SemiAwaitable<std::vector<T>>
+//
+// The collectAllRange() function can be used to concurrently await a collection
+// of SemiAwaitable objects, returning a std::vector of the individual results
+// once all operations have completed.
+//
+// If any of the operations fail with an exception the entire operation fails
+// with an exception and any partial results are discarded. If more than one
+// operation fails with an exception then the exception from the first failed
+// operation in the input range is rethrown. Other results and exceptions are
+// discarded.
+//
+// If you need to be able to distinguish which operation failed or handle
+// partial failures then use collectAllTryRange() instead.
+//
+// Note that the expression `*it` must be SemiAwaitable.
+// This typically means that containers of Task<T> must be adapted to produce
+// moved-elements by applying the ranges::view::move transform.
+// e.g.
+//
+//   std::vector<Task<T>> tasks = ...;
+//   std::vector<T> vals = co_await collectAllRange(tasks | ranges::view::move);
+//
+template <
+    typename InputRange,
+    std::enable_if_t<
+        !std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int> = 0>
+auto collectAllRange(InputRange awaitables)
+    -> folly::coro::Task<std::vector<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>>;
+template <
+    typename InputRange,
+    std::enable_if_t<
+        std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int> = 0>
+auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void>;
+
+////////////////////////////////////////////////////////////////////////////
+// collectAllTryRange(RangeOf<SemiAwaitable<T>>&&)
+//    -> SemiAwaitable<std::vector<folly::Try<T>>>
+//
+// The collectAllTryRange() function can be used to concurrently await a
+// collection of SemiAwaitable objects and produces a std::vector of
+// Try<T> objects once all of the input operations have completed.
+//
+// The element of the returned vector contains the result of the corresponding
+// input operation in the same order that they appeared in the 'awaitables'
+// sequence.
+//
+// The success/failure of individual results can be inspected by calling
+// .hasValue() or .hasException() on the elements of the returned vector.
+template <typename InputRange>
+auto collectAllTryRange(InputRange awaitables)
+    -> folly::coro::Task<std::vector<detail::collect_all_try_range_component_t<
+        detail::range_reference_t<InputRange>>>>;
+
+// collectAllRange()/collectAllTryRange() overloads that simplifies the
+// common-case where an rvalue std::vector<Task<T>> is passed.
+//
+// This avoids the caller needing to pipe the input through ranges::view::move
+// transform to force the Task<T> elements to be rvalue-references since the
+// std::vector<T>::reference type is T& rather than T&& and Task<T>& is not
+// awaitable.
+template <typename T>
+auto collectAllRange(std::vector<Task<T>> awaitables)
+    -> decltype(collectAllRange(awaitables | ranges::view::move)) {
+  co_return co_await collectAllRange(awaitables | ranges::view::move);
+}
+
+template <typename T>
+auto collectAllTryRange(std::vector<Task<T>> awaitables)
+    -> decltype(collectAllTryRange(awaitables | ranges::view::move)) {
+  co_return co_await collectAllTryRange(awaitables | ranges::view::move);
+}
 
 } // namespace coro
 } // namespace folly

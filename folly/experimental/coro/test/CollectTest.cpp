@@ -325,4 +325,163 @@ TEST(CollectAllTry, PartialFailure) {
   }());
 }
 
+/////////////////////////////////////////////////////////////
+// collectAllRange() tests
+
+TEST(CollectAllRange, EmptyRangeOfVoidTask) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    std::vector<folly::coro::Task<void>> tasks;
+    auto collectTask = folly::coro::collectAllRange(std::move(tasks));
+    static_assert(
+        std::is_void<
+            folly::coro::semi_await_result_t<decltype(collectTask)>>::value,
+        "Result of awaiting collectAllRange() of Task<void> should be void");
+    co_await std::move(collectTask);
+  }());
+}
+
+TEST(CollectAllRange, RangeOfVoidAllSucceeding) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int count = 0;
+    auto makeTask = [&]() -> folly::coro::Task<void> {
+      ++count;
+      co_return;
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+
+    co_await folly::coro::collectAllRange(std::move(tasks));
+
+    CHECK_EQ(3, count);
+  }());
+}
+
+TEST(CollectAllRange, RangeOfVoidSomeFailing) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int count = 0;
+    auto makeTask = [&]() -> folly::coro::Task<void> {
+      if ((++count % 3) == 0) {
+        throw ErrorA{};
+      }
+      co_return;
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+
+    try {
+      co_await folly::coro::collectAllRange(std::move(tasks));
+      CHECK(false);
+    } catch (const ErrorA&) {
+    }
+
+    CHECK_EQ(5, count);
+  }());
+}
+
+TEST(CollectAllRange, RangeOfNonVoid) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int count = 0;
+    auto makeTask = [&]() -> folly::coro::Task<int> {
+      using namespace std::literals::chrono_literals;
+      int x = count++;
+      if ((x % 20) == 0) {
+        co_await folly::futures::sleep(50ms);
+      }
+      co_return x;
+    };
+
+    constexpr int taskCount = 50;
+
+    std::vector<folly::coro::Task<int>> tasks;
+    for (int i = 0; i < taskCount; ++i) {
+      tasks.push_back(makeTask());
+    }
+
+    CHECK_EQ(0, count);
+
+    std::vector<int> results =
+        co_await folly::coro::collectAllRange(std::move(tasks));
+
+    CHECK_EQ(taskCount, results.size());
+    CHECK_EQ(taskCount, count);
+
+    for (int i = 0; i < taskCount; ++i) {
+      CHECK_EQ(i, results[i]);
+    }
+  }());
+}
+
+////////////////////////////////////////////////////////////////////
+// folly::coro::collectAllTryRange() tests
+
+TEST(CollectAllTryRange, RangeOfVoidSomeFailing) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int count = 0;
+    auto makeTask = [&]() -> folly::coro::Task<void> {
+      if ((++count % 3) == 0) {
+        throw ErrorA{};
+      }
+      co_return;
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+
+    auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
+
+    CHECK_EQ(5, results.size());
+    CHECK(results[0].hasValue());
+    CHECK(results[1].hasValue());
+    CHECK(results[2].hasException());
+    CHECK(results[3].hasValue());
+    CHECK(results[4].hasValue());
+  }());
+}
+
+TEST(CollectAllTryRange, RangeOfValueSomeFailing) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int count = 0;
+    auto makeTask = [&]() -> folly::coro::Task<std::string> {
+      if ((++count % 3) == 0) {
+        throw ErrorA{};
+      }
+      co_return "testing";
+    };
+
+    std::vector<folly::coro::Task<std::string>> tasks;
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+    tasks.push_back(makeTask());
+
+    auto results = co_await folly::coro::collectAllTryRange(std::move(tasks));
+
+    CHECK_EQ(6, results.size());
+    CHECK(results[0].hasValue());
+    CHECK_EQ("testing", results[0].value());
+    CHECK(results[1].hasValue());
+    CHECK_EQ("testing", results[1].value());
+    CHECK(results[2].hasException());
+    CHECK(results[3].hasValue());
+    CHECK_EQ("testing", results[3].value());
+    CHECK(results[4].hasValue());
+    CHECK_EQ("testing", results[4].value());
+    CHECK(results[5].hasException());
+  }());
+}
+
 #endif
