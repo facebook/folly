@@ -30,6 +30,13 @@ static eggs_t eggs("eggs");
 
 auto rng = std::mt19937(folly::randomNumberSeed());
 
+class NoAddExecutor : public folly::Executor {
+ public:
+  void add(Func) override {
+    throw eggs;
+  }
+};
+
 TEST(Collect, collectAll) {
   // returns a vector variant
   {
@@ -777,6 +784,43 @@ TEST(Collect, collectAllNone) {
   std::vector<Future<int>> fs;
   auto f = collectAll(fs);
   EXPECT_TRUE(f.isReady());
+}
+
+TEST(Collect, collectNoRequeue) {
+  NoAddExecutor executor;
+  std::vector<Future<int>> futures;
+  for (int i = 0; i < 10; ++i) {
+    futures.emplace_back(makeFuture(i).via(&executor));
+  }
+  EXPECT_NO_THROW(collect(futures).get());
+}
+
+TEST(Collect, collectVariadicNoRequeue) {
+  NoAddExecutor executor;
+  auto f1 = makeFuture(0).via(&executor);
+  auto f2 = makeFuture(1).via(&executor);
+  EXPECT_NO_THROW(collect(f1, f2).get());
+}
+
+TEST(Collect, collectAllNoRequeue) {
+  NoAddExecutor executor;
+  std::vector<Future<int>> futures;
+  for (int i = 0; i < 10; ++i) {
+    futures.emplace_back(makeFuture(i).via(&executor));
+  }
+  auto results = collectAll(futures).get();
+  for (auto& t : results) {
+    EXPECT_FALSE(t.hasException());
+  }
+}
+
+TEST(Collect, collectAllVariadicNoRequeue) {
+  NoAddExecutor executor;
+  auto f1 = makeFuture(0).via(&executor);
+  auto f2 = makeFuture(1).via(&executor);
+  auto results = collectAll(f1, f2).get();
+  EXPECT_FALSE(std::get<0>(results).hasException());
+  EXPECT_FALSE(std::get<1>(results).hasException());
 }
 
 TEST(Collect, noDefaultConstructor) {
