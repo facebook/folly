@@ -319,10 +319,6 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Backwards compatible getSocket, warns if > 1 socket
    */
-  int getSocket() const {
-    return getNetworkSocket().toFd();
-  }
-
   NetworkSocket getNetworkSocket() const {
     if (sockets_.size() > 1) {
       VLOG(2) << "Warning: getSocket can return multiple fds, "
