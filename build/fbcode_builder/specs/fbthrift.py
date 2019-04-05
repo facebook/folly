@@ -21,15 +21,12 @@ def fbcode_builder_spec(builder):
         'no1msd/mstch:git_hash',
         ShellQuoted('$(git describe --abbrev=0 --tags)')
     )
-    builder.add_option('krb5/krb5:git_hash', 'krb5-1.16.1-final')
     return {
         'depends_on': [folly, fizz, sodium, rsocket, wangle, zstd],
         'steps': [
             # This isn't a separete spec, since only fbthrift uses mstch.
             builder.github_project_workdir('no1msd/mstch', 'build'),
             builder.cmake_install('no1msd/mstch'),
-            builder.github_project_workdir('krb5/krb5', 'src'),
-            builder.autoconf_install('krb5/krb5'),
             builder.fb_github_cmake_install('fbthrift/thrift'),
         ],
     }
