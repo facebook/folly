@@ -299,9 +299,6 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * On error a TTransportException will be thrown and the caller will retain
    * ownership of the file descriptor.
    */
-  void useExistingSocket(int fd) {
-    useExistingSocket(NetworkSocket::fromFd(fd));
-  }
   void useExistingSocket(NetworkSocket fd);
   void useExistingSockets(const std::vector<NetworkSocket>& fds);
 
