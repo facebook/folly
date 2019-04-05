@@ -16,7 +16,7 @@
 #include <cstdio>
 #include <iostream>
 
-#include <folly/experimental/pushmi/strand.h>
+#include <folly/experimental/pushmi/executor/strand.h>
 
 #include <folly/experimental/pushmi/o/request_via.h>
 #include <folly/experimental/pushmi/o/tap.h>

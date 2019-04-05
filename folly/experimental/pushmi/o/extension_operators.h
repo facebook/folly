@@ -15,23 +15,28 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/boosters.h>
-#include <folly/experimental/pushmi/concepts.h>
+#include <tuple>
+
+#include <folly/experimental/pushmi/executor/concepts.h>
+#include <folly/experimental/pushmi/executor/primitives.h>
+#include <folly/experimental/pushmi/sender/concepts.h>
+#include <folly/experimental/pushmi/sender/primitives.h>
+#include <folly/experimental/pushmi/receiver/concepts.h>
+#include <folly/experimental/pushmi/receiver/primitives.h>
 #include <folly/experimental/pushmi/detail/functional.h>
-#include <folly/experimental/pushmi/executor.h>
-#include <folly/experimental/pushmi/inline.h>
-#include <folly/experimental/pushmi/trampoline.h>
-#include <folly/experimental/pushmi/flow_many_sender.h>
-#include <folly/experimental/pushmi/flow_receiver.h>
-#include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/executor/executor.h>
+#include <folly/experimental/pushmi/executor/inline.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
+#include <folly/experimental/pushmi/sender/flow_many_sender.h>
+#include <folly/experimental/pushmi/receiver/flow_receiver.h>
+#include <folly/experimental/pushmi/sender/flow_single_sender.h>
 #include <folly/experimental/pushmi/forwards.h>
-#include <folly/experimental/pushmi/many_sender.h>
+#include <folly/experimental/pushmi/sender/many_sender.h>
 #include <folly/experimental/pushmi/piping.h>
 #include <folly/experimental/pushmi/properties.h>
-#include <folly/experimental/pushmi/receiver.h>
-#include <folly/experimental/pushmi/single_sender.h>
+#include <folly/experimental/pushmi/receiver/receiver.h>
+#include <folly/experimental/pushmi/sender/single_sender.h>
 #include <folly/experimental/pushmi/traits.h>
-#include <tuple>
 
 namespace folly {
 namespace pushmi {

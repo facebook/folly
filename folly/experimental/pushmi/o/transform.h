@@ -15,10 +15,10 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/flow_receiver.h>
+#include <folly/experimental/pushmi/receiver/flow_receiver.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/receiver.h>
+#include <folly/experimental/pushmi/receiver/receiver.h>
 
 namespace folly {
 namespace pushmi {

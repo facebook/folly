@@ -15,10 +15,14 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/executor.h>
-#include <folly/experimental/pushmi/receiver.h>
-#include <folly/experimental/pushmi/trampoline.h>
 #include <type_traits>
+
+#include <folly/experimental/pushmi/receiver/concepts.h>
+#include <folly/experimental/pushmi/receiver/receiver.h>
+#include <folly/experimental/pushmi/sender/concepts.h>
+#include <folly/experimental/pushmi/sender/functional.h>
+#include <folly/experimental/pushmi/sender/primitives.h>
+#include <folly/experimental/pushmi/sender/tags.h>
 
 namespace folly {
 namespace pushmi {

@@ -15,31 +15,14 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/detail/functional.h>
-#include <folly/experimental/pushmi/o/extension_operators.h>
-#include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/sender/properties.h>
-
 namespace folly {
 namespace pushmi {
-namespace operators {
-PUSHMI_INLINE_VAR constexpr struct empty_fn {
-private:
-  struct task : pipeorigin, single_sender_tag::with_values<> {
-    using properties = property_set<is_always_blocking<>>;
 
-    PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>) //
-    void submit(Out&& out) {
-      set_done(out);
-    }
-  };
-public:
-  auto operator()() const {
-    return task{};
-  }
-} empty {};
+struct receiver_tag {
+};
 
-} // namespace operators
+struct flow_receiver_tag : receiver_tag {
+};
+
 } // namespace pushmi
 } // namespace folly

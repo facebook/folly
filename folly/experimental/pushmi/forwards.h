@@ -16,14 +16,16 @@
 #pragma once
 
 #include <chrono>
+#include <cstddef>
 #include <exception>
 
-#include <folly/experimental/pushmi/traits.h>
-#include <folly/experimental/pushmi/tags.h>
-#include <folly/experimental/pushmi/properties.h>
+#include <folly/experimental/pushmi/detail/traits.h>
 
 namespace folly {
 namespace pushmi {
+
+// derive from this for types that need to find operator|() overloads by ADL
+struct pipeorigin {};
 
 // Traits types:
 
@@ -132,6 +134,27 @@ namespace awaitable_senders {
 std::false_type safe_to_test_awaitable(void*);
 struct sender_adl_hook;
 } // namespace awaitable_senders
+
+template<template <class...> class T>
+struct construct_deduced;
+
+template<>
+struct construct_deduced<receiver>;
+
+template<>
+struct construct_deduced<flow_receiver>;
+
+template<>
+struct construct_deduced<single_sender>;
+
+template<>
+struct construct_deduced<many_sender>;
+
+template<>
+struct construct_deduced<flow_single_sender>;
+
+template<>
+struct construct_deduced<flow_many_sender>;
 
 } // namespace pushmi
 } // namespace folly

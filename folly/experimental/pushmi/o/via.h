@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/executor.h>
+#include <folly/experimental/pushmi/executor/executor.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/piping.h>
 

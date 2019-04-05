@@ -16,7 +16,7 @@
 #pragma once
 
 #include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/single_sender.h>
+#include <folly/experimental/pushmi/sender/single_sender.h>
 
 namespace folly {
 namespace pushmi {

@@ -16,9 +16,10 @@
 #pragma once
 
 #include <type_traits>
+
 #include <folly/Traits.h>
 #include <folly/Utility.h>
-#include <folly/experimental/pushmi/detail/concept_def.h>
+#include <folly/experimental/pushmi/detail/traits.h>
 #include <folly/experimental/pushmi/detail/functional.h>
 
 #define PUSHMI_NOEXCEPT_AUTO(...) \
@@ -113,31 +114,8 @@ PUSHMI_CONCEPT_DEF(
 
 PUSHMI_CONCEPT_DEF(
   template (class T)
-  concept Object,
-    requires (T* p) (
-      *p,
-      implicitly_convertible_to<const volatile void*>(p)
-    )
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class T, class... Args)
-  (concept Constructible)(T, Args...),
-    PUSHMI_PP_IS_CONSTRUCTIBLE(T, Args...)
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class T)
   concept MoveConstructible,
     Constructible<T, T>
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class From, class To)
-  concept ConvertibleTo,
-    requires (From (&f)()) (
-      static_cast<To>(f())
-    ) && std::is_convertible<From, To>::value
 );
 
 PUSHMI_CONCEPT_DEF(
@@ -169,12 +147,6 @@ PUSHMI_CONCEPT_DEF(
       implicitly_convertible_to<bool>( t == t ),
       implicitly_convertible_to<bool>( t != t )
     )
-);
-
-PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept SemiMovable,
-    Object<T> && Constructible<T, T> && ConvertibleTo<T, T>
 );
 
 PUSHMI_CONCEPT_DEF(

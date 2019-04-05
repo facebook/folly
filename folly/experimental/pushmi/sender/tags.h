@@ -19,6 +19,27 @@
 
 namespace folly {
 namespace pushmi {
+namespace detail {
+// inherit: a class that inherits from a bunch of bases
+template <class... Ts>
+struct inherit : Ts... {
+  inherit() = default;
+  constexpr inherit(Ts... ts)
+    : Ts((Ts&&) ts)...
+  {}
+};
+template <class T>
+struct inherit<T> : T {
+  inherit() = default;
+  explicit constexpr inherit(T t)
+    : T((T&&) t)
+  {}
+};
+template <>
+struct inherit<>
+{};
+} // namespace detail
+
 namespace awaitable_senders {
 struct sender_adl_hook {
 };
@@ -176,5 +197,30 @@ struct sender_base : BaseCategory {
     using or_ = _or_<with_values, MoreValues...>;
   };
 };
+
+
+// traits & tags
+struct sender_tag
+  : sender_base<sender_tag> {
+};
+namespace detail {
+struct virtual_sender_tag
+  : virtual sender_tag {
+};
+} // namespace detail
+
+struct single_sender_tag
+  : sender_base<single_sender_tag, detail::virtual_sender_tag> {
+};
+
+struct flow_sender_tag
+  : sender_base<flow_sender_tag, detail::virtual_sender_tag> {
+};
+struct flow_single_sender_tag
+  : sender_base<
+      flow_single_sender_tag,
+      detail::inherit<flow_sender_tag, single_sender_tag>> {
+};
+
 } // namespace pushmi
 } // namespace folly

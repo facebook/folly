@@ -16,7 +16,10 @@
 #pragma once
 
 #include <folly/experimental/pushmi/properties.h>
-#include <folly/experimental/pushmi/concepts.h>
+#include <folly/experimental/pushmi/receiver/concepts.h>
+#include <folly/experimental/pushmi/sender/tags.h>
+#include <folly/experimental/pushmi/sender/properties.h>
+#include <folly/experimental/pushmi/executor/properties.h>
 
 #include <folly/Executor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>

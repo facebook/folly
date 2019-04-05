@@ -23,7 +23,7 @@
 
 #include <folly/experimental/pushmi/o/transform.h>
 #include <folly/experimental/pushmi/o/via.h>
-#include <folly/experimental/pushmi/strand.h>
+#include <folly/experimental/pushmi/executor/strand.h>
 
 using namespace folly::pushmi::aliases;
 

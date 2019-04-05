@@ -28,12 +28,14 @@
 #include <folly/experimental/pushmi/o/transform.h>
 #include <folly/experimental/pushmi/o/via.h>
 
-#include <folly/experimental/pushmi/new_thread.h>
-#include <folly/experimental/pushmi/time_source.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/executor/new_thread.h>
+#include <folly/experimental/pushmi/executor/time_source.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
 
 #include <folly/experimental/pushmi/entangle.h>
-#include <folly/experimental/pushmi/receiver.h>
+#include <folly/experimental/pushmi/receiver/receiver.h>
+#include <folly/experimental/pushmi/executor/properties.h>
+#include <folly/experimental/pushmi/sender/properties.h>
 
 #include <folly/experimental/pushmi/examples/pool.h>
 

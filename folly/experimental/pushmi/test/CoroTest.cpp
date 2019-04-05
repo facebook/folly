@@ -18,7 +18,7 @@
 
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
-#include <folly/experimental/pushmi/single_sender.h>
+#include <folly/experimental/pushmi/sender/single_sender.h>
 
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

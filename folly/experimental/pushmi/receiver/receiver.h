@@ -15,16 +15,16 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/boosters.h>
-#include <folly/experimental/pushmi/concepts.h>
-#include <folly/experimental/pushmi/detail/concept_def.h>
-#include <folly/experimental/pushmi/detail/functional.h>
-#include <folly/experimental/pushmi/extension_points.h>
-#include <folly/experimental/pushmi/forwards.h>
-#include <folly/experimental/pushmi/properties.h>
-#include <folly/experimental/pushmi/traits.h>
 #include <future>
 #include <type_traits>
+
+#include <folly/experimental/pushmi/traits.h>
+#include <folly/experimental/pushmi/receiver/concepts.h>
+#include <folly/experimental/pushmi/receiver/functional.h>
+#include <folly/experimental/pushmi/receiver/primitives.h>
+#include <folly/experimental/pushmi/receiver/tags.h>
+#include <folly/experimental/pushmi/sender/concepts.h>
+#include <folly/experimental/pushmi/sender/primitives.h>
 
 namespace folly {
 namespace pushmi {
@@ -522,6 +522,7 @@ std::future<T> future_from(In&& in) {
   submit((In&&)in, std::move(p));
   return result;
 }
+
 PUSHMI_TEMPLATE (class In)
   (requires SenderTo<In, std::promise<void>> && SingleSender<In>)
 std::future<void> future_from(In&& in) {

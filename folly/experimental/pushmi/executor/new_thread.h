@@ -15,8 +15,10 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/executor.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/executor/executor.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
+#include <folly/experimental/pushmi/sender/properties.h>
+#include <folly/experimental/pushmi/executor/properties.h>
 
 namespace folly {
 namespace pushmi {

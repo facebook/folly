@@ -15,31 +15,41 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/detail/functional.h>
-#include <folly/experimental/pushmi/o/extension_operators.h>
-#include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/sender/properties.h>
+#include <type_traits>
+
+#include <folly/experimental/pushmi/detail/concept_def.h>
 
 namespace folly {
 namespace pushmi {
-namespace operators {
-PUSHMI_INLINE_VAR constexpr struct empty_fn {
-private:
-  struct task : pipeorigin, single_sender_tag::with_values<> {
-    using properties = property_set<is_always_blocking<>>;
 
-    PUSHMI_TEMPLATE(class Out)
-    (requires Receiver<Out>) //
-    void submit(Out&& out) {
-      set_done(out);
-    }
-  };
-public:
-  auto operator()() const {
-    return task{};
-  }
-} empty {};
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept Object,
+    requires (T* p) (
+      *p,
+      implicitly_convertible_to<const volatile void*>(p)
+    )
+);
 
-} // namespace operators
+PUSHMI_CONCEPT_DEF(
+  template (class T, class... Args)
+  (concept Constructible)(T, Args...),
+    PUSHMI_PP_IS_CONSTRUCTIBLE(T, Args...)
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class From, class To)
+  concept ConvertibleTo,
+    requires (From (&f)()) (
+      static_cast<To>(f())
+    ) && std::is_convertible<From, To>::value
+);
+
+PUSHMI_CONCEPT_DEF(
+  template (class T)
+  concept SemiMovable,
+    Object<T> && Constructible<T, T> && ConvertibleTo<T, T>
+);
+
 } // namespace pushmi
 } // namespace folly

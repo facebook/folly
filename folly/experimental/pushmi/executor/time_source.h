@@ -16,7 +16,9 @@
 #pragma once
 
 #include <folly/experimental/pushmi/detail/opt.h>
-#include <folly/experimental/pushmi/executor.h>
+#include <folly/experimental/pushmi/executor/time_executor.h>
+#include <folly/experimental/pushmi/sender/properties.h>
+#include <folly/experimental/pushmi/executor/properties.h>
 
 #include <algorithm>
 #include <queue>

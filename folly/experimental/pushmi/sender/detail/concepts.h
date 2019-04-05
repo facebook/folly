@@ -20,6 +20,7 @@
 
 #include <folly/experimental/pushmi/detail/concept_def.h>
 #include <folly/experimental/pushmi/forwards.h>
+#include <folly/experimental/pushmi/sender/tags.h>
 #include <folly/experimental/pushmi/traits.h>
 
 namespace folly {

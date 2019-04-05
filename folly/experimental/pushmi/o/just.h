@@ -17,6 +17,7 @@
 
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/sender/properties.h>
 
 namespace folly {
 namespace pushmi {

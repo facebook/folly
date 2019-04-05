@@ -27,11 +27,12 @@
 #if defined(__cpp_coroutines)
 #include <folly/experimental/coro/detail/ManualLifetime.h>
 #endif
-#include <folly/experimental/pushmi/detail/awaitable_concepts.h>
-#include <folly/experimental/pushmi/detail/sender_concepts.h>
-#include <folly/experimental/pushmi/extension_points.h>
+#include <folly/experimental/pushmi/awaitable/concepts.h>
+#include <folly/experimental/pushmi/sender/detail/concepts.h>
+#include <folly/experimental/pushmi/sender/primitives.h>
+#include <folly/experimental/pushmi/sender/properties.h>
 #include <folly/experimental/pushmi/traits.h>
-#include <folly/experimental/pushmi/tags.h>
+#include <folly/experimental/pushmi/receiver/tags.h>
 
 namespace folly {
 namespace pushmi {
@@ -171,8 +172,7 @@ template<typename From>
 sender_awaiter(From&&) -> sender_awaiter<From>;
 #endif
 
-namespace awaitable_senders
-{
+namespace awaitable_senders {
   // Any TypedSender that inherits from `sender` or `sender_traits` is
   // automatically awaitable with the following operator co_await through the
   // magic of associated namespaces. To make any other TypedSender awaitable,
@@ -181,11 +181,10 @@ namespace awaitable_senders
   PUSHMI_TEMPLATE(class From)( //
     requires not lazy::Awaiter<From> && lazy::SingleTypedSender<From> //
   ) //
-  sender_awaiter<From> operator co_await(From&& from)
-  {
+  sender_awaiter<From> operator co_await(From&& from) {
     return static_cast<From&&>(from);
   }
-}
+} // namespace awaitable_senders
 
 #endif
 

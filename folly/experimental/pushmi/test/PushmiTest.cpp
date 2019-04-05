@@ -19,7 +19,7 @@
 #include <chrono>
 using namespace std::literals;
 
-#include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/sender/flow_single_sender.h>
 #include <folly/experimental/pushmi/o/empty.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/from.h>

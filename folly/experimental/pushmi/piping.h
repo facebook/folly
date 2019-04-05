@@ -15,7 +15,6 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/concepts.h>
 #include <folly/experimental/pushmi/traits.h>
 
 namespace folly {

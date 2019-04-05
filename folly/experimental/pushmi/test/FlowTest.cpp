@@ -19,13 +19,14 @@
 #include <chrono>
 using namespace std::literals;
 
-#include <folly/experimental/pushmi/flow_single_sender.h>
+#include <folly/experimental/pushmi/sender/flow_single_sender.h>
 #include <folly/experimental/pushmi/o/submit.h>
+#include <folly/experimental/pushmi/o/schedule.h>
 
 #include <folly/experimental/pushmi/entangle.h>
-#include <folly/experimental/pushmi/new_thread.h>
-#include <folly/experimental/pushmi/time_source.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/executor/new_thread.h>
+#include <folly/experimental/pushmi/executor/time_source.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
 #include <folly/functional/Invoke.h>
 
 using namespace folly::pushmi::aliases;

@@ -15,10 +15,14 @@
  */
 #pragma once
 
+#include <exception>
+#include <memory>
+#include <mutex>
 #include <vector>
 
-#include <folly/experimental/pushmi/concepts.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/receiver/concepts.h>
+#include <folly/experimental/pushmi/traits.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
 #include <folly/experimental/pushmi/detail/opt.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 

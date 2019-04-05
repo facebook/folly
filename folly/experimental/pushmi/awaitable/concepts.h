@@ -24,7 +24,7 @@
 #endif
 #include <folly/experimental/pushmi/detail/concept_def.h>
 #include <folly/experimental/pushmi/forwards.h>
-#include <folly/experimental/pushmi/detail/sender_concepts.h>
+#include <folly/experimental/pushmi/sender/detail/concepts.h>
 #include <folly/experimental/pushmi/traits.h>
 
 namespace folly {

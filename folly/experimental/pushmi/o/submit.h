@@ -15,12 +15,20 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/boosters.h>
-#include <folly/experimental/pushmi/detail/opt.h>
-#include <folly/experimental/pushmi/o/extension_operators.h>
-#include <folly/experimental/pushmi/o/schedule.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <atomic>
+#include <condition_variable>
+#include <exception>
 #include <functional>
+#include <mutex>
+
+#include <folly/experimental/pushmi/executor/concepts.h>
+#include <folly/experimental/pushmi/executor/primitives.h>
+#include <folly/experimental/pushmi/sender/concepts.h>
+#include <folly/experimental/pushmi/sender/primitives.h>
+#include <folly/experimental/pushmi/sender/properties.h>
+#include <folly/experimental/pushmi/detail/opt.h>
+#include <folly/experimental/pushmi/detail/functional.h>
+#include <folly/experimental/pushmi/o/extension_operators.h>
 
 namespace folly {
 namespace pushmi {

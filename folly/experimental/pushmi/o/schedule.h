@@ -15,11 +15,8 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/boosters.h>
-#include <folly/experimental/pushmi/detail/opt.h>
-#include <folly/experimental/pushmi/o/extension_operators.h>
-#include <folly/experimental/pushmi/trampoline.h>
-#include <functional>
+#include <folly/experimental/pushmi/executor/concepts.h>
+#include <folly/experimental/pushmi/executor/primitives.h>
 
 namespace folly {
 namespace pushmi {

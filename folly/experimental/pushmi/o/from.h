@@ -15,11 +15,12 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/flow_many_sender.h>
-#include <folly/experimental/pushmi/many_sender.h>
+#include <folly/experimental/pushmi/sender/flow_many_sender.h>
+#include <folly/experimental/pushmi/sender/many_sender.h>
+#include <folly/experimental/pushmi/sender/properties.h>
 #include <folly/experimental/pushmi/o/extension_operators.h>
 #include <folly/experimental/pushmi/o/submit.h>
-#include <folly/experimental/pushmi/trampoline.h>
+#include <folly/experimental/pushmi/executor/trampoline.h>
 
 namespace folly {
 namespace pushmi {

@@ -15,12 +15,15 @@
  */
 #pragma once
 
-#include <folly/experimental/pushmi/piping.h>
-#include <folly/experimental/pushmi/executor.h>
 #include <algorithm>
 #include <chrono>
 #include <deque>
 #include <thread>
+
+#include <folly/experimental/pushmi/piping.h>
+#include <folly/experimental/pushmi/executor/executor.h>
+#include <folly/experimental/pushmi/executor/properties.h>
+#include <folly/experimental/pushmi/sender/properties.h>
 
 namespace folly {
 namespace pushmi {
@@ -65,7 +68,7 @@ struct trampoline_task
 template <class E = std::exception_ptr>
 class delegator : pipeorigin {
  public:
-   using properties = property_set<is_fifo_sequence<>>;
+  using properties = property_set<is_fifo_sequence<>>;
 
   trampoline_task<E, ownordelegate_t> schedule() {
     return {};
@@ -271,13 +274,6 @@ template <class E = std::exception_ptr>
 inline detail::nester<E> nested_trampoline() {
   return {};
 }
-
-// see boosters.h
-struct trampolineEXF {
-  auto operator()() {
-    return trampoline();
-  }
-};
 
 namespace detail {
 
