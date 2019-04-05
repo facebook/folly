@@ -629,15 +629,6 @@ FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
 struct pair;
-#ifndef _GLIBCXX_USE_FB
-FOLLY_GLIBCXX_NAMESPACE_CXX11_BEGIN
-template <class T, class R, class A>
-class basic_string;
-FOLLY_GLIBCXX_NAMESPACE_CXX11_END
-#else
-template <class T, class R, class A, class S>
-class basic_string;
-#endif
 template <class T, class A>
 class vector;
 template <class T, class A>
@@ -750,10 +741,6 @@ bool greater_than(LHS const lhs) {
 
 // Assume nothing when compiling with MSVC.
 #ifndef _MSC_VER
-// gcc-5.0 changed string's implementation in libstdc++ to be non-relocatable
-#if !_GLIBCXX_USE_CXX11_ABI
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_3(std::basic_string)
-#endif
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
