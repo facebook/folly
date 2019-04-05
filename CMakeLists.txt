@@ -529,6 +529,8 @@ if (BUILD_TESTS)
       TEST timed_drivable_executor_test SOURCES TimedDrivableExecutorTest.cpp
 
     DIRECTORY executors/task_queue/test/
+      TEST priority_unbounded_blocking_queue_test
+        SOURCES PriorityUnboundedBlockingQueueTest.cpp
       TEST unbounded_blocking_queue_test SOURCES UnboundedBlockingQueueTest.cpp
 
     DIRECTORY experimental/test/
