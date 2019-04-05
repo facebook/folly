@@ -930,6 +930,23 @@ SemiFuture<T>::deferValue(F&& func) && {
 }
 
 template <class T>
+template <typename F>
+SemiFuture<
+    typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
+SemiFuture<T>::deferExValue(F&& func) && {
+  return std::move(*this).deferExTry(
+      [f = std::forward<F>(func)](
+          folly::Executor::KeepAlive<> ka, folly::Try<T>&& t) mutable {
+        return std::forward<F>(f)(
+            ka,
+            t.template get<
+                false,
+                typename futures::detail::valueExecutorCallableResult<T, F>::
+                    ValueArg>());
+      });
+}
+
+template <class T>
 template <class ExceptionType, class F>
 SemiFuture<T> SemiFuture<T>::deferError(tag_t<ExceptionType>, F&& func) && {
   return std::move(*this).defer(
@@ -1121,6 +1138,28 @@ Future<T>::thenValue(F&& func) && {
         t.template get<
             false,
             typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+  };
+  using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
+  return this->thenImplementation(std::move(lambdaFunc), R{});
+}
+
+template <class T>
+template <typename F>
+Future<typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
+Future<T>::thenExValue(F&& func) && {
+  // As Futures may carry null executors, ensure that what we pass into the
+  // continuation is always usable by replacing with inline if necessary.
+  auto ka = getKeepAliveToken(this->getExecutor());
+  // Enforce that executor cannot be null
+  DCHECK(ka);
+  auto lambdaFunc = [f = std::forward<F>(func),
+                     exec = std::move(ka)](folly::Try<T>&& t) mutable {
+    return std::forward<F>(f)(
+        exec,
+        t.template get<
+            false,
+            typename futures::detail::valueExecutorCallableResult<T, F>::
+                ValueArg>());
   };
   using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
   return this->thenImplementation(std::move(lambdaFunc), R{});

@@ -707,6 +707,11 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
   deferValue(F&& func) &&;
 
+  template <typename F>
+  SemiFuture<
+      typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
+  deferExValue(F&& func) &&;
+
   template <typename R, typename... Args>
   auto deferValue(R (&func)(Args...)) && {
     return std::move(*this).deferValue(&func);
@@ -1294,6 +1299,11 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename F>
   Future<typename futures::detail::valueCallableResult<T, F>::value_type>
   thenValue(F&& func) &&;
+
+  template <typename F>
+  Future<
+      typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
+  thenExValue(F&& func) &&;
 
   template <typename R, typename... Args>
   auto thenValue(R (&func)(Args...)) && {

@@ -1065,6 +1065,16 @@ TEST(Future, thenValue) {
   EXPECT_THROW(f.value(), eggs_t);
 }
 
+TEST(Future, ThenValueWithExecutor) {
+  ManualExecutor executor;
+  auto sf = makeFuture(42).via(&executor).thenExValue(
+      [&](const Executor::KeepAlive<>& e, int val) {
+        EXPECT_EQ(&executor, e.get());
+        EXPECT_EQ(val, 42);
+      });
+  std::move(sf).getVia(&executor);
+}
+
 TEST(Future, thenValueFuture) {
   bool flag = false;
   makeFuture<int>(42)

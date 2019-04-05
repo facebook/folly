@@ -93,6 +93,7 @@ struct ArgType;
 template <typename Arg, typename... Args>
 struct ArgType<Arg, Args...> {
   typedef Arg FirstArg;
+  typedef ArgType<Args...> Tail;
 };
 
 template <>
@@ -153,6 +154,15 @@ struct valueCallableResult {
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
   typedef typename Arg::ArgList::FirstArg FirstArg;
+  typedef Future<value_type> Return;
+};
+
+template <typename T, typename F>
+struct valueExecutorCallableResult {
+  typedef detail::argResult<false, F, const Executor::KeepAlive<>&, T&&> Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef typename ReturnsFuture::Inner value_type;
+  typedef typename Arg::ArgList::Tail::FirstArg ValueArg;
   typedef Future<value_type> Return;
 };
 
