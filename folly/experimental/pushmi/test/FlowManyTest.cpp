@@ -21,7 +21,7 @@
 #include <chrono>
 using namespace std::literals;
 
-#include <folly/experimental/pushmi/sender/flow_many_sender.h>
+#include <folly/experimental/pushmi/sender/flow_sender.h>
 #include <folly/experimental/pushmi/o/for_each.h>
 #include <folly/experimental/pushmi/o/from.h>
 #include <folly/experimental/pushmi/o/submit.h>
@@ -50,7 +50,7 @@ using namespace testing;
 class ImmediateFlowManySender : public Test {
  protected:
   auto make_producer() {
-    return mi::MAKE(flow_many_sender)([&](auto out) {
+    return mi::MAKE(flow_sender)([&](auto out) {
       using Out = decltype(out);
       struct Data : mi::receiver<> {
         explicit Data(Out out_) : out(std::move(out_)), stop(false) {}
@@ -105,7 +105,7 @@ class ImmediateFlowManySender : public Test {
 TEST(AnyFlowManySender, Construct) {
   std::array<int, 3> arr{{0, 9, 99}};
   auto m = folly::pushmi::operators::flow_from(arr);
-  auto any_m = folly::pushmi::any_flow_many_sender<
+  auto any_m = folly::pushmi::any_flow_sender<
       std::exception_ptr,
       std::ptrdiff_t,
       std::exception_ptr,
@@ -156,7 +156,7 @@ class ConcurrentFlowManySender : public Test {
   }
 
   void cancellation_test(std::chrono::system_clock::time_point at) {
-    auto f = mi::MAKE(flow_many_sender)([&](auto out) {
+    auto f = mi::MAKE(flow_sender)([&](auto out) {
       using Out = decltype(out);
 
       // boolean cancellation

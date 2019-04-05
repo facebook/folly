@@ -28,7 +28,7 @@ namespace folly {
 namespace pushmi {
 
 template <class PE, class PV, class E, class... VN>
-class any_flow_many_sender
+class any_flow_sender
 : public flow_sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
@@ -49,7 +49,7 @@ class any_flow_many_sender
   static constexpr vtable const noop_ {};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_flow_many_sender(Wrapped obj, std::false_type) : any_flow_many_sender() {
+  any_flow_sender(Wrapped obj, std::false_type) : any_flow_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -66,8 +66,8 @@ class any_flow_many_sender
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_flow_many_sender(Wrapped obj, std::true_type) noexcept
-    : any_flow_many_sender() {
+  any_flow_sender(Wrapped obj, std::true_type) noexcept
+    : any_flow_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -86,24 +86,24 @@ class any_flow_many_sender
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-    std::enable_if_t<!std::is_same<U, any_flow_many_sender>::value, U>;
+    std::enable_if_t<!std::is_same<U, any_flow_sender>::value, U>;
  public:
-  any_flow_many_sender() = default;
-  any_flow_many_sender(any_flow_many_sender&& that) noexcept
-      : any_flow_many_sender() {
+  any_flow_sender() = default;
+  any_flow_sender(any_flow_sender&& that) noexcept
+      : any_flow_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
   PUSHMI_TEMPLATE (class Wrapped)
     (requires FlowSender<wrapped_t<Wrapped>>)
-  explicit any_flow_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
-    : any_flow_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~any_flow_many_sender() {
+  explicit any_flow_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+    : any_flow_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~any_flow_sender() {
     vptr_->op_(data_, nullptr);
   }
-  any_flow_many_sender& operator=(any_flow_many_sender&& that) noexcept {
-    this->~any_flow_many_sender();
-    new ((void*)this) any_flow_many_sender(std::move(that));
+  any_flow_sender& operator=(any_flow_sender&& that) noexcept {
+    this->~any_flow_sender();
+    new ((void*)this) any_flow_sender(std::move(that));
     return *this;
   }
   PUSHMI_TEMPLATE(class Out)
@@ -115,18 +115,18 @@ class any_flow_many_sender
 
 // Class static definitions:
 template <class PE, class PV, class E, class... VN>
-constexpr typename any_flow_many_sender<PE, PV, E, VN...>::vtable const
-    any_flow_many_sender<PE, PV, E, VN...>::noop_;
+constexpr typename any_flow_sender<PE, PV, E, VN...>::vtable const
+    any_flow_sender<PE, PV, E, VN...>::noop_;
 
 template <class SF>
-class flow_many_sender<SF> {
+class flow_sender<SF> {
   SF sf_;
 
  public:
   using sender_category = flow_sender_tag;
 
-  constexpr flow_many_sender() = default;
-  constexpr explicit flow_many_sender(SF sf)
+  constexpr flow_sender() = default;
+  constexpr explicit flow_sender(SF sf)
       : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
@@ -137,7 +137,7 @@ class flow_many_sender<SF> {
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(FlowSender) Data, class DSF>
-class flow_many_sender<Data, DSF> {
+class flow_sender<Data, DSF> {
   Data data_;
   DSF sf_;
 
@@ -149,10 +149,10 @@ class flow_many_sender<Data, DSF> {
       FlowSender<Data>,
       "Data must be a flow sender");
 
-  constexpr flow_many_sender() = default;
-  constexpr explicit flow_many_sender(Data data)
+  constexpr flow_sender() = default;
+  constexpr explicit flow_sender(Data data)
       : data_(std::move(data)) {}
-  constexpr flow_many_sender(Data data, DSF sf)
+  constexpr flow_sender(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
@@ -170,61 +170,61 @@ class flow_many_sender<Data, DSF> {
 };
 
 template <>
-class flow_many_sender<>
-    : public flow_many_sender<ignoreSF> {
+class flow_sender<>
+    : public flow_sender<ignoreSF> {
 public:
-  flow_many_sender() = default;
+  flow_sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_flow_many_sender
+// make_flow_sender
 PUSHMI_INLINE_VAR constexpr struct make_flow_many_sender_fn {
   inline auto operator()() const {
-    return flow_many_sender<ignoreSF>{};
+    return flow_sender<ignoreSF>{};
   }
   PUSHMI_TEMPLATE(class SF)
     (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
   auto operator()(SF sf) const {
-    return flow_many_sender<SF>{std::move(sf)};
+    return flow_sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
     (requires True<> && FlowSender<Data>)
   auto operator()(Data d) const {
-    return flow_many_sender<Data, passDSF>{std::move(d)};
+    return flow_sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
     (requires FlowSender<Data>)
   auto operator()(Data d, DSF sf) const {
-    return flow_many_sender<Data, DSF>{std::move(d), std::move(sf)};
+    return flow_sender<Data, DSF>{std::move(d), std::move(sf)};
   }
-} const make_flow_many_sender {};
+} const make_flow_sender {};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
-flow_many_sender() -> flow_many_sender<ignoreSF>;
+flow_sender() -> flow_sender<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&& not Sender<SF>))
-flow_many_sender(SF) -> flow_many_sender<SF>;
+flow_sender(SF) -> flow_sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
   (requires True<> && FlowSender<Data>)
-flow_many_sender(Data) -> flow_many_sender<Data, passDSF>;
+flow_sender(Data) -> flow_sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
   (requires FlowSender<Data>)
-flow_many_sender(Data, DSF) -> flow_many_sender<Data, DSF>;
+flow_sender(Data, DSF) -> flow_sender<Data, DSF>;
 #endif
 
 template<>
-struct construct_deduced<flow_many_sender>
+struct construct_deduced<flow_sender>
   : make_flow_many_sender_fn {};
 
 // // TODO constrain me
 // template <class V, class E = std::exception_ptr, Sender Wrapped>
 // auto erase_cast(Wrapped w) {
-//   return flow_many_sender<V, E>{std::move(w)};
+//   return flow_sender<V, E>{std::move(w)};
 // }
 
 } // namespace pushmi

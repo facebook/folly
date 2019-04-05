@@ -288,11 +288,11 @@ void single_sender_test() {
 }
 
 void many_sender_test() {
-  auto in0 = mi::MAKE(many_sender)();
+  auto in0 = mi::MAKE(sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
-  auto in1 = mi::MAKE(many_sender)(mi::ignoreSF{});
+  auto in1 = mi::MAKE(sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
-  auto in2 = mi::MAKE(many_sender)(
+  auto in2 = mi::MAKE(sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(receiver)(
             std::move(out),
@@ -305,7 +305,7 @@ void many_sender_test() {
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in2.submit(out1);
 
-  auto any0 = mi::any_many_sender<std::exception_ptr, int>(in0);
+  auto any0 = mi::any_sender<std::exception_ptr, int>(in0);
 }
 
 void flow_receiver_1_test() {
@@ -477,13 +477,13 @@ void flow_single_sender_test() {
 }
 
 void flow_many_sender_test() {
-  auto in0 = mi::MAKE(flow_many_sender)();
+  auto in0 = mi::MAKE(flow_sender)();
   static_assert(mi::Sender<decltype(in0)>, "in0 not a sender");
   static_assert(mi::FlowSender<decltype(in0)>, "in0 not flow");
-  auto in1 = mi::MAKE(flow_many_sender)(mi::ignoreSF{});
+  auto in1 = mi::MAKE(flow_sender)(mi::ignoreSF{});
   static_assert(mi::Sender<decltype(in1)>, "in1 not a sender");
   static_assert(mi::FlowSender<decltype(in1)>, "in1 not flow");
-  auto in2 = mi::MAKE(flow_many_sender)(
+  auto in2 = mi::MAKE(flow_sender)(
       [&](auto out) {
         in0.submit(mi::MAKE(flow_receiver)(
             std::move(out),
@@ -497,7 +497,7 @@ void flow_many_sender_test() {
       out0, mi::on_value([](auto d, int v) { mi::set_value(d, v); }));
   in2.submit(out1);
 
-  auto any0 = mi::any_flow_many_sender<
+  auto any0 = mi::any_flow_sender<
       std::exception_ptr,
       std::ptrdiff_t,
       std::exception_ptr,

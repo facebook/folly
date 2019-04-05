@@ -56,13 +56,13 @@ template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class many_sender;
+class sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
 class flow_single_sender;
 
 template <PUSHMI_TYPE_CONSTRAINT(SemiMovable)... TN>
-class flow_many_sender;
+class flow_sender;
 
 template <class E = std::exception_ptr, class... VN>
 class any_receiver;
@@ -78,7 +78,7 @@ template <class E = std::exception_ptr, class... VN>
 class any_single_sender;
 
 template <class E = std::exception_ptr, class... VN>
-class any_many_sender;
+class any_sender;
 
 template <class PE = std::exception_ptr, class E = PE, class... VN>
 class any_flow_single_sender;
@@ -88,7 +88,7 @@ template <
     class PV = std::ptrdiff_t,
     class E = PE,
     class... VN>
-class any_flow_many_sender;
+class any_flow_sender;
 
 template <class E = std::exception_ptr>
 class any_executor;
@@ -148,13 +148,13 @@ template<>
 struct construct_deduced<single_sender>;
 
 template<>
-struct construct_deduced<many_sender>;
+struct construct_deduced<sender>;
 
 template<>
 struct construct_deduced<flow_single_sender>;
 
 template<>
-struct construct_deduced<flow_many_sender>;
+struct construct_deduced<flow_sender>;
 
 } // namespace pushmi
 } // namespace folly

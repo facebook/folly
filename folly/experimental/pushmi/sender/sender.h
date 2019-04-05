@@ -28,7 +28,7 @@ namespace folly {
 namespace pushmi {
 
 template <class E, class... VN>
-class any_many_sender
+class any_sender
 : public sender_tag::with_values<VN...>::template with_error<E> {
   using insitu_t = void*[2];
   union data {
@@ -49,7 +49,7 @@ class any_many_sender
   static constexpr vtable const noop_{};
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
-  any_many_sender(Wrapped obj, std::false_type) : any_many_sender() {
+  any_sender(Wrapped obj, std::false_type) : any_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -66,7 +66,7 @@ class any_many_sender
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_many_sender(Wrapped obj, std::true_type) noexcept : any_many_sender() {
+  any_sender(Wrapped obj, std::true_type) noexcept : any_sender() {
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -85,25 +85,25 @@ class any_many_sender
   }
   template <class T, class U = std::decay_t<T>>
   using wrapped_t =
-      std::enable_if_t<!std::is_same<U, any_many_sender>::value, U>;
+      std::enable_if_t<!std::is_same<U, any_sender>::value, U>;
 
  public:
-  any_many_sender() = default;
-  any_many_sender(any_many_sender&& that) noexcept : any_many_sender() {
+  any_sender() = default;
+  any_sender(any_sender&& that) noexcept : any_sender() {
     that.vptr_->op_(that.data_, &data_);
     std::swap(that.vptr_, vptr_);
   }
 
   PUSHMI_TEMPLATE(class Wrapped)
   (requires SenderTo<wrapped_t<Wrapped>, any_receiver<E, VN...>>) //
-  explicit any_many_sender(Wrapped obj) noexcept(insitu<Wrapped>())
-      : any_many_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
-  ~any_many_sender() {
+  explicit any_sender(Wrapped obj) noexcept(insitu<Wrapped>())
+      : any_sender{std::move(obj), bool_<insitu<Wrapped>()>{}} {}
+  ~any_sender() {
     vptr_->op_(data_, nullptr);
   }
-  any_many_sender& operator=(any_many_sender&& that) noexcept {
-    this->~any_many_sender();
-    new ((void*)this) any_many_sender(std::move(that));
+  any_sender& operator=(any_sender&& that) noexcept {
+    this->~any_sender();
+    new ((void*)this) any_sender(std::move(that));
     return *this;
   }
   PUSHMI_TEMPLATE(class Out)
@@ -115,16 +115,16 @@ class any_many_sender
 
 // Class static definitions:
 template <class E, class... VN>
-constexpr typename any_many_sender<E, VN...>::vtable const
-    any_many_sender<E, VN...>::noop_;
+constexpr typename any_sender<E, VN...>::vtable const
+    any_sender<E, VN...>::noop_;
 
 template <class SF>
-class many_sender<SF> : public sender_tag {
+class sender<SF> : public sender_tag {
   SF sf_;
 
  public:
-  constexpr many_sender() = default;
-  constexpr explicit many_sender(SF sf) : sf_(std::move(sf)) {}
+  constexpr sender() = default;
+  constexpr explicit sender(SF sf) : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
   (requires PUSHMI_EXP(
@@ -135,7 +135,7 @@ class many_sender<SF> : public sender_tag {
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(Sender) Data, class DSF>
-class many_sender<Data, DSF> {
+class sender<Data, DSF> {
   Data data_;
   DSF sf_;
 
@@ -147,9 +147,9 @@ class many_sender<Data, DSF> {
       Sender<Data>,
       "Data must be a sender");
 
-  constexpr many_sender() = default;
-  constexpr explicit many_sender(Data data) : data_(std::move(data)) {}
-  constexpr many_sender(Data data, DSF sf)
+  constexpr sender() = default;
+  constexpr explicit sender(Data data) : data_(std::move(data)) {}
+  constexpr sender(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
@@ -167,60 +167,60 @@ class many_sender<Data, DSF> {
 };
 
 template <>
-class many_sender<> : public many_sender<ignoreSF> {
+class sender<> : public sender<ignoreSF> {
  public:
-  many_sender() = default;
+  sender() = default;
 };
 
 ////////////////////////////////////////////////////////////////////////////////
-// make_many_sender
+// make_sender
 PUSHMI_INLINE_VAR constexpr struct make_many_sender_fn {
   inline auto operator()() const {
-    return many_sender<ignoreSF>{};
+    return sender<ignoreSF>{};
   }
   PUSHMI_TEMPLATE(class SF)
   (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
       auto
       operator()(SF sf) const {
-    return many_sender<SF>{std::move(sf)};
+    return sender<SF>{std::move(sf)};
   }
   PUSHMI_TEMPLATE(class Data)
   (requires True<>&& Sender<Data>) //
       auto
       operator()(Data d) const {
-    return many_sender<Data, passDSF>{std::move(d)};
+    return sender<Data, passDSF>{std::move(d)};
   }
   PUSHMI_TEMPLATE(class Data, class DSF)
   (requires Sender<Data>) //
       auto
       operator()(Data d, DSF sf) const {
-    return many_sender<Data, DSF>{std::move(d), std::move(sf)};
+    return sender<Data, DSF>{std::move(d), std::move(sf)};
   }
-} const make_many_sender{};
+} const make_sender{};
 
 ////////////////////////////////////////////////////////////////////////////////
 // deduction guides
 #if __cpp_deduction_guides >= 201703 && PUSHMI_NOT_ON_WINDOWS
-many_sender()->many_sender<ignoreSF>;
+sender()->sender<ignoreSF>;
 
 PUSHMI_TEMPLATE(class SF)
 (requires True<> PUSHMI_BROKEN_SUBSUMPTION(&&not Sender<SF>)) //
-    many_sender(SF)
-        ->many_sender<SF>;
+    sender(SF)
+        ->sender<SF>;
 
 PUSHMI_TEMPLATE(class Data)
 (requires True<>&& Sender<Data>) //
-    many_sender(Data)
-        ->many_sender<Data, passDSF>;
+    sender(Data)
+        ->sender<Data, passDSF>;
 
 PUSHMI_TEMPLATE(class Data, class DSF)
 (requires Sender<Data>) //
-    many_sender(Data, DSF)
-        ->many_sender<Data, DSF>;
+    sender(Data, DSF)
+        ->sender<Data, DSF>;
 #endif
 
 template <>
-struct construct_deduced<many_sender> : make_many_sender_fn {};
+struct construct_deduced<sender> : make_many_sender_fn {};
 
 } // namespace pushmi
 } // namespace folly

@@ -27,11 +27,11 @@
 #include <folly/experimental/pushmi/executor/executor.h>
 #include <folly/experimental/pushmi/executor/inline.h>
 #include <folly/experimental/pushmi/executor/trampoline.h>
-#include <folly/experimental/pushmi/sender/flow_many_sender.h>
+#include <folly/experimental/pushmi/sender/flow_sender.h>
 #include <folly/experimental/pushmi/receiver/flow_receiver.h>
 #include <folly/experimental/pushmi/sender/flow_single_sender.h>
 #include <folly/experimental/pushmi/forwards.h>
-#include <folly/experimental/pushmi/sender/many_sender.h>
+#include <folly/experimental/pushmi/sender/sender.h>
 #include <folly/experimental/pushmi/piping.h>
 #include <folly/experimental/pushmi/properties.h>
 #include <folly/experimental/pushmi/receiver/receiver.h>
@@ -121,13 +121,13 @@ struct make_sender;
 template <>
 struct make_sender<single_sender_tag> : construct_deduced<single_sender> {};
 template <>
-struct make_sender<sender_tag> : construct_deduced<many_sender> {};
+struct make_sender<sender_tag> : construct_deduced<sender> {};
 template <>
 struct make_sender<flow_single_sender_tag>
     : construct_deduced<flow_single_sender> {};
 template <>
 struct make_sender<flow_sender_tag>
-    : construct_deduced<flow_many_sender> {};
+    : construct_deduced<flow_sender> {};
 
 PUSHMI_INLINE_VAR constexpr struct sender_from_fn {
   PUSHMI_TEMPLATE(class In, class... FN)
