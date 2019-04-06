@@ -58,7 +58,7 @@ namespace _submit_adl {
       )
   );
 
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
   PUSHMI_CONCEPT_DEF(
     template (class A, class R)
     concept IsSubmittableAwaitable_,
@@ -71,7 +71,7 @@ namespace _submit_adl {
   struct _fn
   {
   private:
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
     template<class A, class R>
     static void _submit_awaitable_(A awaitable, R to) noexcept;
 #endif
@@ -91,7 +91,7 @@ namespace _submit_adl {
             submit(id((S&&) from), (R&&) to);
             return std::true_type{};
           ) else (
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
             // Otherwise, if we support coroutines and S looks like an
             // awaitable, dispatch to the
             PUSHMI_IF_CONSTEXPR_RETURN((IsSubmittableAwaitable_<S, R>) (
@@ -116,7 +116,7 @@ namespace _submit_adl {
     }
   };
 
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
   struct FOLLY_MAYBE_UNUSED oneway_task
   {
     struct promise_type
@@ -130,7 +130,7 @@ namespace _submit_adl {
   };
 #endif
 
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
   // Make all awaitables senders:
   template<class A, class R>
   void _fn::_submit_awaitable_(A awaitable, R to) noexcept

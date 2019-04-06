@@ -18,10 +18,12 @@
 #include <utility>
 #include <type_traits>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Traits.h>
 #endif
+
 #include <folly/experimental/pushmi/detail/concept_def.h>
 #include <folly/experimental/pushmi/forwards.h>
 #include <folly/experimental/pushmi/sender/detail/concepts.h>
@@ -30,7 +32,7 @@
 namespace folly {
 namespace pushmi {
 
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
 
 namespace detail {
 
@@ -103,12 +105,12 @@ PUSHMI_CONCEPT_DEF(
     Awaitable<Tp> && ConvertibleTo<coro::await_result_t<Tp>, Result>
 );
 
-#else // if defined(__cpp_coroutines)
+#else // if FOLLY_HAS_COROUTINES
 namespace detail {
 template <class>
 using awaitable_sender_traits = awaitable_senders::sender_adl_hook;
 } // namespace detail
-#endif // if defined(__cpp_coroutines)
+#endif // if FOLLY_HAS_COROUTINES
 
 namespace detail {
 template<class S>

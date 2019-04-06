@@ -14,7 +14,8 @@
  * limitations under the License.
  */
 
-#if defined(__cpp_coroutines)
+#include <folly/Portability.h>
+#if FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/detail/InlineTask.h>

@@ -18,21 +18,22 @@
 
 #include <cassert>
 #include <exception>
-#if defined(__cpp_coroutines)
-#include <experimental/coroutine>
-#endif
 #include <type_traits>
 #include <utility>
 
-#if defined(__cpp_coroutines)
-#include <folly/experimental/coro/detail/ManualLifetime.h>
-#endif
+#include <folly/Portability.h>
+
 #include <folly/experimental/pushmi/awaitable/concepts.h>
 #include <folly/experimental/pushmi/sender/detail/concepts.h>
 #include <folly/experimental/pushmi/sender/primitives.h>
 #include <folly/experimental/pushmi/sender/properties.h>
 #include <folly/experimental/pushmi/traits.h>
 #include <folly/experimental/pushmi/receiver/tags.h>
+
+#if FOLLY_HAS_COROUTINES
+#include <experimental/coroutine>
+#include <folly/experimental/coro/detail/ManualLifetime.h>
+#endif
 
 namespace folly {
 namespace pushmi {
@@ -43,7 +44,7 @@ struct operation_cancelled : std::exception {
   }
 };
 
-#if defined(__cpp_coroutines)
+#if FOLLY_HAS_COROUTINES
 
 PUSHMI_TEMPLATE(class From)( //
   requires SingleTypedSender<From> //
@@ -186,7 +187,7 @@ namespace awaitable_senders {
   }
 } // namespace awaitable_senders
 
-#endif
+#endif // FOLLY_HAS_COROUTINES
 
 } // namespace pushmi
 } // namespace folly
