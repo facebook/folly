@@ -397,7 +397,7 @@ TEST(UnboundedQueue, enq_deq) {
 
 template <typename RepFunc>
 uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
-  int reps = FLAGS_reps;
+  uint64_t reps = FLAGS_reps;
   uint64_t min = UINTMAX_MAX;
   uint64_t max = 0;
   uint64_t sum = 0;
@@ -405,7 +405,7 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   std::vector<uint64_t> durs(reps);
 
   repFn(); // sometimes first run is outlier
-  for (int r = 0; r < reps; ++r) {
+  for (uint64_t r = 0; r < reps; ++r) {
     uint64_t dur = repFn();
     durs[r] = dur;
     sum += dur;
@@ -423,7 +423,7 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
   uint64_t avg = sum / reps;
   uint64_t res = min;
   uint64_t varsum = 0;
-  for (auto r = 0; r < reps; ++r) {
+  for (uint64_t r = 0; r < reps; ++r) {
     auto term = int64_t(reps * durs[r]) - int64_t(sum);
     varsum += term * term;
   }
@@ -439,18 +439,18 @@ uint64_t runBench(const std::string& name, int ops, const RepFunc& repFn) {
 
 template <template <typename, bool> class Q, typename T, int Op>
 uint64_t bench(const int nprod, const int ncons, const std::string& name) {
-  int ops = FLAGS_ops;
-  auto repFn = [&] {
+  const uint64_t ops = FLAGS_ops;
+  auto repFn = [&, ops] {
     Q<T, Op == 3 || Op == 4 || Op == 5> q;
     std::atomic<uint64_t> sum(0);
     auto prod = [&](int tid) {
-      for (int i = tid; i < ops; i += nprod) {
+      for (uint64_t i = tid; i < ops; i += nprod) {
         q.enqueue(i);
       }
     };
     auto cons = [&](int tid) {
       uint64_t mysum = 0;
-      for (int i = tid; i < ops; i += ncons) {
+      for (uint64_t i = tid; i < ops; i += ncons) {
         T v;
         if (Op == 0 || Op == 3) {
           while (UNLIKELY(!q.try_dequeue(v))) {
