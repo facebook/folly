@@ -1548,8 +1548,7 @@ collectAllSemiFuture(Fs&&... fs) {
   auto ctx = std::make_shared<Context>();
   futures::detail::foreach(
       [&](auto i, auto&& f) {
-        auto g = std::move(f).via(&InlineExecutor::instance());
-        g.setCallback_([i, ctx](auto&& t) {
+        f.setCallback_([i, ctx](auto&& t) {
           std::get<i.value>(ctx->results) = std::move(t);
         });
       },
@@ -1598,8 +1597,8 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
 
   for (size_t i = 0; first != last; ++first, ++i) {
-    auto f = std::move(*first).via(&InlineExecutor::instance());
-    f.setCallback_([i, ctx](Try<T>&& t) { ctx->results[i] = std::move(t); });
+    first->setCallback_(
+        [i, ctx](Try<T>&& t) { ctx->results[i] = std::move(t); });
   }
 
   auto future = ctx->p.getSemiFuture();
@@ -1658,8 +1657,7 @@ collectSemiFuture(InputIterator first, InputIterator last) {
 
   auto ctx = std::make_shared<Context>(std::distance(first, last));
   for (size_t i = 0; first != last; ++first, ++i) {
-    auto f = std::move(*first).via(&InlineExecutor::instance());
-    f.setCallback_([i, ctx](Try<T>&& t) {
+    first->setCallback_([i, ctx](Try<T>&& t) {
       if (t.hasException()) {
         if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
           ctx->p.setException(std::move(t.exception()));
@@ -1714,8 +1712,7 @@ collectSemiFuture(Fs&&... fs) {
   auto ctx = std::make_shared<Context>();
   futures::detail::foreach(
       [&](auto i, auto&& f) {
-        auto g = std::move(f).via(&InlineExecutor::instance());
-        g.setCallback_([i, ctx](auto&& t) {
+        f.setCallback_([i, ctx](auto&& t) {
           if (t.hasException()) {
             if (!ctx->threw.exchange(true, std::memory_order_relaxed)) {
               ctx->p.setException(std::move(t.exception()));
