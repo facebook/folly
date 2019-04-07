@@ -595,11 +595,8 @@ class alignas(T) Replaceable
 
   /**
    * `swap` just calls `swap(T&, T&)`.
-   *
-   * Should be `noexcept(std::is_nothrow_swappable<T>::value)` but we don't
-   * depend on C++17 features.
    */
-  void swap(Replaceable& other) {
+  void swap(Replaceable& other) noexcept(IsNothrowSwappable<Replaceable>{}) {
     using std::swap;
     swap(*(*this), *other);
   }
