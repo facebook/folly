@@ -741,7 +741,6 @@ if (BUILD_TESTS)
     DIRECTORY synchronization/test/
       TEST baton_test SOURCES BatonTest.cpp
       TEST call_once_test SOURCES CallOnceTest.cpp
-      TEST distributed_mutex_test SOURCES DistributedMutexTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
 
