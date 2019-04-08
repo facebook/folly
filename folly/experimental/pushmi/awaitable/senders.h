@@ -180,7 +180,7 @@ namespace awaitable_senders {
   // from within the body of the awaiting coroutine, do:
   // `using namespace ::folly::pushmi::awaitable_senders;`
   PUSHMI_TEMPLATE(class From)( //
-    requires not lazy::Awaiter<From> && lazy::SingleTypedSender<From> //
+    requires not Awaiter<From> && SingleTypedSender<From> //
   ) //
   sender_awaiter<From> operator co_await(From&& from) {
     return static_cast<From&&>(from);
