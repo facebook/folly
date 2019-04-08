@@ -36,7 +36,13 @@ if (TARGET event)
   # this results in linker errors.
   # To resolve this, we ask cmake to lookup the full path to the library
   # and use that instead.
+  cmake_policy(PUSH)
+  if(POLICY CMP0026)
+    # Allow reading the LOCATION property
+    cmake_policy(SET CMP0026 OLD)
+  endif()
   get_target_property(LIBEVENT_LIB event LOCATION)
+  cmake_policy(POP)
 
   set(LibEvent_FOUND ${Libevent_FOUND})
   if (NOT LibEvent_FIND_QUIETLY)
