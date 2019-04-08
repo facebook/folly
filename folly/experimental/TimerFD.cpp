@@ -26,7 +26,7 @@ TimerFD::TimerFD(folly::EventBase* eventBase)
     : TimerFD(eventBase, createTimerFd()) {}
 
 TimerFD::TimerFD(folly::EventBase* eventBase, int fd)
-    : folly::EventHandler(eventBase, fd), fd_(fd) {
+    : folly::EventHandler(eventBase, NetworkSocket::fromFd(fd)), fd_(fd) {
   if (fd_ > 0) {
     registerHandler(folly::EventHandler::READ | folly::EventHandler::PERSIST);
   }

@@ -61,8 +61,6 @@ class EventHandler {
    *                   descriptor must be set separately using initHandler() or
    *                   changeHandlerFD() before the handler can be registered.
    */
-  explicit EventHandler(EventBase* eventBase, int fd)
-      : EventHandler(eventBase, NetworkSocket::fromFd(fd)) {}
   explicit EventHandler(
       EventBase* eventBase = nullptr,
       NetworkSocket fd = NetworkSocket());

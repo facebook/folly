@@ -47,7 +47,8 @@ void runInThreadsAndWait(vector<function<void()>> cbs) {
 
 class EventHandlerMock : public EventHandler {
  public:
-  EventHandlerMock(EventBase* eb, int fd) : EventHandler(eb, fd) {}
+  EventHandlerMock(EventBase* eb, int fd)
+      : EventHandler(eb, NetworkSocket::fromFd(fd)) {}
   // gmock can't mock noexcept methods, so we need an intermediary
   MOCK_METHOD1(_handlerReady, void(uint16_t));
   void handlerReady(uint16_t events) noexcept override {
@@ -286,7 +287,8 @@ TEST_F(EventHandlerOobTest, EPOLLPRI) {
   acceptConn();
 
   struct SockEvent : public EventHandler {
-    SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), fd_(fd) {}
+    SockEvent(EventBase* eb, int fd)
+        : EventHandler(eb, NetworkSocket::fromFd(fd)), fd_(fd) {}
 
     void handlerReady(uint16_t events) noexcept override {
       EXPECT_TRUE(EventHandler::EventFlags::PRI & events);
@@ -335,7 +337,8 @@ TEST_F(EventHandlerOobTest, OOB_AND_NORMAL_DATA) {
   acceptConn();
 
   struct SockEvent : public EventHandler {
-    SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), eb_(eb), fd_(fd) {}
+    SockEvent(EventBase* eb, int fd)
+        : EventHandler(eb, NetworkSocket::fromFd(fd)), eb_(eb), fd_(fd) {}
 
     void handlerReady(uint16_t events) noexcept override {
       std::array<char, 255> buffer;
@@ -388,7 +391,8 @@ TEST_F(EventHandlerOobTest, SWALLOW_OOB) {
   acceptConn();
 
   struct SockEvent : public EventHandler {
-    SockEvent(EventBase* eb, int fd) : EventHandler(eb, fd), fd_(fd) {}
+    SockEvent(EventBase* eb, int fd)
+        : EventHandler(eb, NetworkSocket::fromFd(fd)), fd_(fd) {}
 
     void handlerReady(uint16_t events) noexcept override {
       std::array<char, 255> buffer;

@@ -144,7 +144,7 @@ void scheduleEvents(EventBase* eventBase, int fd, ScheduledEvent* events) {
 class TestHandler : public EventHandler {
  public:
   TestHandler(EventBase* eventBase, int fd)
-      : EventHandler(eventBase, fd), fd_(fd) {}
+      : EventHandler(eventBase, NetworkSocket::fromFd(fd)), fd_(fd) {}
 
   void handlerReady(uint16_t events) noexcept override {
     ssize_t bytesRead = 0;
@@ -1470,7 +1470,7 @@ class TerminateTestCallback : public EventBase::LoopCallback,
                               public EventHandler {
  public:
   TerminateTestCallback(EventBase* eventBase, int fd)
-      : EventHandler(eventBase, fd),
+      : EventHandler(eventBase, NetworkSocket::fromFd(fd)),
         eventBase_(eventBase),
         loopInvocations_(0),
         maxLoopInvocations_(0),
@@ -1783,7 +1783,8 @@ TEST(EventBaseTest, RunBeforeLoopWait) {
 
 class PipeHandler : public EventHandler {
  public:
-  PipeHandler(EventBase* eventBase, int fd) : EventHandler(eventBase, fd) {}
+  PipeHandler(EventBase* eventBase, int fd)
+      : EventHandler(eventBase, NetworkSocket::fromFd(fd)) {}
 
   void handlerReady(uint16_t /* events */) noexcept override {
     abort();
