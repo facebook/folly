@@ -1402,8 +1402,9 @@ static int customRsaPrivEnc(
   int ret = 0;
   int* retptr = &ret;
 
-  auto asyncPipeWriter =
-      folly::AsyncPipeWriter::newWriter(asyncJobEvb, pipefds[1]);
+  auto hand = folly::NetworkSocket::native_handle_type(pipefds[1]);
+  auto asyncPipeWriter = folly::AsyncPipeWriter::newWriter(
+      asyncJobEvb, folly::NetworkSocket(hand));
 
   asyncJobEvb->runInEventBaseThread([retptr = retptr,
                                      flen = flen,

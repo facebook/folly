@@ -104,8 +104,10 @@ class AsyncPipeTest : public Test {
 
     EXPECT_EQ(::fcntl(pipeFds_[0], F_SETFL, O_NONBLOCK), 0);
     EXPECT_EQ(::fcntl(pipeFds_[1], F_SETFL, O_NONBLOCK), 0);
-    reader_ = folly::AsyncPipeReader::newReader(&eventBase_, pipeFds_[0]);
-    writer_ = folly::AsyncPipeWriter::newWriter(&eventBase_, pipeFds_[1]);
+    reader_ = folly::AsyncPipeReader::newReader(
+        &eventBase_, folly::NetworkSocket::fromFd(pipeFds_[0]));
+    writer_ = folly::AsyncPipeWriter::newWriter(
+        &eventBase_, folly::NetworkSocket::fromFd(pipeFds_[1]));
 
     readCallback_.setMovable(movable);
   }

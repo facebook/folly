@@ -16,6 +16,7 @@
 #include <folly/io/async/AsyncPipe.h>
 
 #include <folly/FileUtil.h>
+#include <folly/detail/FileUtilDetail.h>
 #include <folly/io/async/AsyncSocketException.h>
 
 using folly::IOBuf;
@@ -42,17 +43,27 @@ void AsyncPipeReader::failRead(const AsyncSocketException& ex) {
 
 void AsyncPipeReader::close() {
   unregisterHandler();
-  if (fd_ >= 0) {
+  if (fd_ != NetworkSocket()) {
     changeHandlerFD(NetworkSocket());
 
     if (closeCb_) {
       closeCb_(fd_);
     } else {
-      ::close(fd_);
+      netops::close(fd_);
     }
-    fd_ = -1;
+    fd_ = NetworkSocket();
   }
 }
+
+#if _WIN32
+static int recv_internal(NetworkSocket s, void* buf, size_t count) {
+  auto r = netops::recv(s, buf, count, 0);
+  if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
+    errno = EAGAIN;
+  }
+  return r;
+}
+#endif
 
 void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
   DestructorGuard dg(this);
@@ -104,7 +115,13 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
     }
 
     // Perform the read
-    ssize_t bytesRead = folly::readNoInt(fd_, buf, buflen);
+#if _WIN32
+    // On Windows you can't call read on a socket, so call recv instead.
+    ssize_t bytesRead =
+        folly::fileutil_detail::wrapNoInt(recv_internal, fd_, buf, buflen);
+#else
+    ssize_t bytesRead = folly::readNoInt(fd_.toFd(), buf, buflen);
+#endif
 
     if (bytesRead > 0) {
       if (movable) {
@@ -190,15 +207,15 @@ void AsyncPipeWriter::closeNow() {
     failAllWrites(AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "closed with pending writes"));
   }
-  if (fd_ >= 0) {
+  if (fd_ != NetworkSocket()) {
     unregisterHandler();
     changeHandlerFD(NetworkSocket());
     if (closeCb_) {
       closeCb_(fd_);
     } else {
-      close(fd_);
+      netops::close(fd_);
     }
-    fd_ = -1;
+    fd_ = NetworkSocket();
   }
 }
 
@@ -220,6 +237,16 @@ void AsyncPipeWriter::handlerReady(uint16_t events) noexcept {
   handleWrite();
 }
 
+#if _WIN32
+static int send_internal(NetworkSocket s, const void* buf, size_t count) {
+  auto r = netops::send(s, buf, count, 0);
+  if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
+    errno = EAGAIN;
+  }
+  return r;
+}
+#endif
+
 void AsyncPipeWriter::handleWrite() {
   DestructorGuard dg(this);
   assert(!queue_.empty());
@@ -230,7 +257,13 @@ void AsyncPipeWriter::handleWrite() {
     // someday, support writev.  The logic for partial writes is a bit complex
     const IOBuf* head = curQueue.front();
     CHECK(head->length());
-    ssize_t rc = folly::writeNoInt(fd_, head->data(), head->length());
+#if _WIN32
+    // On Windows you can't call write on a socket.
+    ssize_t rc = folly::fileutil_detail::wrapNoInt(
+        send_internal, fd_, head->data(), head->length());
+#else
+    ssize_t rc = folly::writeNoInt(fd_.toFd(), head->data(), head->length());
+#endif
     if (rc < 0) {
       if (errno == EAGAIN || errno == EWOULDBLOCK) {
         // pipe is full

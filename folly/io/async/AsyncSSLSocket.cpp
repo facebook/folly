@@ -1008,8 +1008,8 @@ bool AsyncSSLSocket::willBlock(
       // a native handle type to pass to the constructor.
       auto native_handle = NetworkSocket::native_handle_type(ofd);
 
-      auto asyncPipeReader = AsyncPipeReader::newReader(
-          eventBase_, NetworkSocket(native_handle).toFd());
+      auto asyncPipeReader =
+          AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
       auto asyncPipeReaderPtr = asyncPipeReader.get();
       if (!asyncOperationFinishCallback_) {
         asyncOperationFinishCallback_.reset(

@@ -39,14 +39,20 @@ class AsyncPipeReader : public EventHandler,
       unique_ptr<AsyncPipeReader, folly::DelayedDestruction::Destructor>
           UniquePtr;
 
-  template <typename... Args>
-  static UniquePtr newReader(Args&&... args) {
-    return UniquePtr(new AsyncPipeReader(std::forward<Args>(args)...));
+  static UniquePtr newReader(
+      folly::EventBase* eventBase,
+      NetworkSocket pipeFd) {
+    return UniquePtr(new AsyncPipeReader(eventBase, pipeFd));
   }
 
+  static UniquePtr newReader(folly::EventBase* eventBase, int pipeFd) {
+    return newReader(eventBase, NetworkSocket::fromFd(pipeFd));
+  }
+
+  AsyncPipeReader(folly::EventBase* eventBase, NetworkSocket pipeFd)
+      : EventHandler(eventBase, pipeFd), fd_(pipeFd) {}
   AsyncPipeReader(folly::EventBase* eventBase, int pipeFd)
-      : EventHandler(eventBase, folly::NetworkSocket::fromFd(pipeFd)),
-        fd_(pipeFd) {}
+      : AsyncPipeReader(eventBase, NetworkSocket::fromFd(pipeFd)) {}
 
   /**
    * Set the read callback and automatically install/uninstall the handler
@@ -74,7 +80,7 @@ class AsyncPipeReader : public EventHandler,
   /**
    * Set a special hook to close the socket (otherwise, will call close())
    */
-  void setCloseCallback(std::function<void(int)> closeCb) {
+  void setCloseCallback(std::function<void(NetworkSocket)> closeCb) {
     closeCb_ = closeCb;
   }
 
@@ -85,9 +91,9 @@ class AsyncPipeReader : public EventHandler,
   void failRead(const AsyncSocketException& ex);
   void close();
 
-  int fd_;
+  NetworkSocket fd_;
   AsyncReader::ReadCallback* readCallback_{nullptr};
-  std::function<void(int)> closeCb_;
+  std::function<void(NetworkSocket)> closeCb_;
 };
 
 /**
@@ -101,14 +107,20 @@ class AsyncPipeWriter : public EventHandler,
       unique_ptr<AsyncPipeWriter, folly::DelayedDestruction::Destructor>
           UniquePtr;
 
-  template <typename... Args>
-  static UniquePtr newWriter(Args&&... args) {
-    return UniquePtr(new AsyncPipeWriter(std::forward<Args>(args)...));
+  static UniquePtr newWriter(
+      folly::EventBase* eventBase,
+      NetworkSocket pipeFd) {
+    return UniquePtr(new AsyncPipeWriter(eventBase, pipeFd));
   }
 
+  static UniquePtr newWriter(folly::EventBase* eventBase, int pipeFd) {
+    return newWriter(eventBase, NetworkSocket::fromFd(pipeFd));
+  }
+
+  AsyncPipeWriter(folly::EventBase* eventBase, NetworkSocket pipeFd)
+      : EventHandler(eventBase, pipeFd), fd_(pipeFd) {}
   AsyncPipeWriter(folly::EventBase* eventBase, int pipeFd)
-      : EventHandler(eventBase, folly::NetworkSocket::fromFd(pipeFd)),
-        fd_(pipeFd) {}
+      : AsyncPipeWriter(eventBase, NetworkSocket::fromFd(pipeFd)) {}
 
   /**
    * Asynchronously write the given iobuf to this pipe, and invoke the callback
@@ -121,7 +133,7 @@ class AsyncPipeWriter : public EventHandler,
   /**
    * Set a special hook to close the socket (otherwise, will call close())
    */
-  void setCloseCallback(std::function<void(int)> closeCb) {
+  void setCloseCallback(std::function<void(NetworkSocket)> closeCb) {
     closeCb_ = closeCb;
   }
 
@@ -129,7 +141,7 @@ class AsyncPipeWriter : public EventHandler,
    * Returns true if the pipe is closed
    */
   bool closed() const {
-    return (fd_ < 0 || closeOnEmpty_);
+    return (fd_ == NetworkSocket() || closeOnEmpty_);
   }
 
   /**
@@ -175,10 +187,10 @@ class AsyncPipeWriter : public EventHandler,
   void handleWrite();
   void failAllWrites(const AsyncSocketException& ex);
 
-  int fd_;
+  NetworkSocket fd_;
   std::list<std::pair<folly::IOBufQueue, AsyncWriter::WriteCallback*>> queue_;
   bool closeOnEmpty_{false};
-  std::function<void(int)> closeCb_;
+  std::function<void(NetworkSocket)> closeCb_;
 
   ~AsyncPipeWriter() override {
     closeNow();
