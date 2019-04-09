@@ -102,20 +102,6 @@ TEST(Future, getRequiresOnlyMoveCtor) {
     auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
     EXPECT_TRUE(f.valid());
     EXPECT_TRUE(f.isReady());
-    auto v = std::move(f).get();
-    EXPECT_EQ(v.id_, 42);
-  }
-  {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    EXPECT_TRUE(f.valid());
-    EXPECT_TRUE(f.isReady());
-    auto v = std::move(f).get(std::chrono::milliseconds(10));
-    EXPECT_EQ(v.id_, 42);
-  }
-  {
-    auto f = makeFuture<MoveCtorOnly>(MoveCtorOnly(42));
-    EXPECT_TRUE(f.valid());
-    EXPECT_TRUE(f.isReady());
     auto v = std::move(f).get(std::chrono::milliseconds(10));
     EXPECT_EQ(v.id_, 42);
   }
