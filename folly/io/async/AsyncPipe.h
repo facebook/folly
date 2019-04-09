@@ -45,14 +45,8 @@ class AsyncPipeReader : public EventHandler,
     return UniquePtr(new AsyncPipeReader(eventBase, pipeFd));
   }
 
-  static UniquePtr newReader(folly::EventBase* eventBase, int pipeFd) {
-    return newReader(eventBase, NetworkSocket::fromFd(pipeFd));
-  }
-
   AsyncPipeReader(folly::EventBase* eventBase, NetworkSocket pipeFd)
       : EventHandler(eventBase, pipeFd), fd_(pipeFd) {}
-  AsyncPipeReader(folly::EventBase* eventBase, int pipeFd)
-      : AsyncPipeReader(eventBase, NetworkSocket::fromFd(pipeFd)) {}
 
   /**
    * Set the read callback and automatically install/uninstall the handler
@@ -113,14 +107,8 @@ class AsyncPipeWriter : public EventHandler,
     return UniquePtr(new AsyncPipeWriter(eventBase, pipeFd));
   }
 
-  static UniquePtr newWriter(folly::EventBase* eventBase, int pipeFd) {
-    return newWriter(eventBase, NetworkSocket::fromFd(pipeFd));
-  }
-
   AsyncPipeWriter(folly::EventBase* eventBase, NetworkSocket pipeFd)
       : EventHandler(eventBase, pipeFd), fd_(pipeFd) {}
-  AsyncPipeWriter(folly::EventBase* eventBase, int pipeFd)
-      : AsyncPipeWriter(eventBase, NetworkSocket::fromFd(pipeFd)) {}
 
   /**
    * Asynchronously write the given iobuf to this pipe, and invoke the callback
