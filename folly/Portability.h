@@ -435,6 +435,12 @@ constexpr auto kMscVer = _MSC_VER;
 constexpr auto kMscVer = 0;
 #endif
 
+#if __clang__
+constexpr auto kIsClang = true;
+#else
+constexpr auto kIsClang = false;
+#endif
+
 #if FOLLY_MICROSOFT_ABI_VER
 constexpr auto kMicrosoftAbiVer = FOLLY_MICROSOFT_ABI_VER;
 #else
