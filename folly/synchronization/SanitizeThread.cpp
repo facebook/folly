@@ -42,12 +42,8 @@ extern "C" FOLLY_ATTR_WEAK void AnnotateBenignRaceSized(
     long size,
     const char* desc);
 
-namespace {
-void do_nothing(...) {}
-} // namespace
-
 #if _MSC_VER
-#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) do_nothing(__VA_ARGS__)
+#define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) [](...) {}(__VA_ARGS__)
 #else
 #define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) name(__VA_ARGS__)
 #endif
