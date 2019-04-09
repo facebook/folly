@@ -641,7 +641,7 @@ class ValueContainerPolicy : public BasePolicy<
 
   //////// F14BasicMap/Set policy
 
-  Iter makeIter(ItemIter const& underlying) const {
+  FOLLY_ALWAYS_INLINE Iter makeIter(ItemIter const& underlying) const {
     return Iter{underlying};
   }
   ConstIter makeConstIter(ItemIter const& underlying) const {
@@ -876,7 +876,7 @@ class NodeContainerPolicy
 
   //////// F14BasicMap/Set policy
 
-  Iter makeIter(ItemIter const& underlying) const {
+  FOLLY_ALWAYS_INLINE Iter makeIter(ItemIter const& underlying) const {
     return Iter{underlying};
   }
   ConstIter makeConstIter(ItemIter const& underlying) const {

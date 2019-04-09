@@ -688,7 +688,7 @@ class F14BasicMap {
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
-  iterator erase(iterator pos) {
+  FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
     auto itemPos = table_.unwrapIter(pos);
     table_.eraseIter(itemPos);
     itemPos.advanceLikelyDead();
