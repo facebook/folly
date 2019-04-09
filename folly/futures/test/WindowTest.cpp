@@ -359,7 +359,7 @@ TEST(WindowExecutor, parallel) {
     t.join();
   }
 
-  executor.waitFor(f);
+  executor.drain();
   EXPECT_TRUE(f.isReady());
   for (size_t i = 0; i < ps.size(); i++) {
     EXPECT_EQ(i, f.value()[i]);
@@ -396,7 +396,7 @@ TEST(WindowExecutor, parallelWithError) {
     t.join();
   }
 
-  executor.waitFor(f);
+  executor.drain();
   EXPECT_TRUE(f.isReady());
   EXPECT_THROW(f.value(), eggs_t);
 }
