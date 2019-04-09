@@ -767,7 +767,7 @@ void escapeStringImpl(
         // checking that utf8 encodings are valid
         char32_t v = utf8ToCodePoint(q, e, opts.skip_invalid_utf8);
         if (opts.skip_invalid_utf8 && v == U'\ufffd') {
-          out.append(u8"\ufffd");
+          out.append(reinterpret_cast<const char*>(u8"\ufffd"));
           p = q;
           continue;
         }
