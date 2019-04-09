@@ -28,14 +28,16 @@ TEST_F(PrettyTest, example) {
 }
 
 TEST_F(PrettyTest, example_msc) {
+  constexpr auto const tag = detail::pretty_tag_msc{};
   constexpr auto const& name = "void __cdecl foo<int>(void)";
-  constexpr auto const info = detail::pretty_parse_msc(name);
+  constexpr auto const info = detail::pretty_parse(tag, name);
   EXPECT_EQ("int", detail::pretty_info_to<std::string>(info, name));
 }
 
 TEST_F(PrettyTest, example_gcc) {
+  constexpr auto const tag = detail::pretty_tag_gcc{};
   constexpr auto const& name = "void foo() [T = int]";
-  constexpr auto const info = detail::pretty_parse_gcc(name);
+  constexpr auto const info = detail::pretty_parse(tag, name);
   EXPECT_EQ("int", detail::pretty_info_to<std::string>(info, name));
 }
 
