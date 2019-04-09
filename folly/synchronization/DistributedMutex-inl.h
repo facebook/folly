@@ -206,7 +206,7 @@ using CombineFunction = detail::InlineFunctionRef<void(), 48>;
 template <template <typename> class Atomic>
 class Waiter {
  public:
-  Waiter() = default;
+  Waiter() {}
   Waiter(Waiter&&) = delete;
   Waiter(const Waiter&) = delete;
   Waiter& operator=(Waiter&&) = delete;
