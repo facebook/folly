@@ -220,8 +220,8 @@ TEST(RcuTest, ForkTest) {
     // parent
     rcu_default_domain()->unlock_shared(std::move(epoch));
     synchronize_rcu();
-    int status;
-    auto pid2 = wait(&status);
+    int status = -1;
+    auto pid2 = waitpid(pid, &status, 0);
     EXPECT_EQ(status, 0);
     EXPECT_EQ(pid, pid2);
   } else {
