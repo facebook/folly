@@ -79,7 +79,16 @@ template <
     typename Allocator = std::allocator<uint8_t>,
     uint8_t ShardBits = 8,
     template <typename> class Atom = std::atomic,
-    class Mutex = std::mutex>
+    class Mutex = std::mutex,
+    template <
+        typename,
+        typename,
+        uint8_t,
+        typename,
+        typename,
+        typename,
+        template <typename> class,
+        class> class Impl = detail::concurrenthashmap::bucket::BucketTable>
 class ConcurrentHashMap {
   using SegmentT = detail::ConcurrentHashMapSegment<
       KeyType,
@@ -89,12 +98,12 @@ class ConcurrentHashMap {
       KeyEqual,
       Allocator,
       Atom,
-      Mutex>;
+      Mutex,
+      Impl>;
+
+  float load_factor_ = SegmentT::kDefaultLoadFactor;
+
   static constexpr uint64_t NumShards = (1 << ShardBits);
-  // Slightly higher than 1.0, in case hashing to shards isn't
-  // perfectly balanced, reserve(size) will still work without
-  // rehashing.
-  float load_factor_ = 1.05;
 
  public:
   class ConstIterator;
