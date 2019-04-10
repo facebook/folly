@@ -119,7 +119,11 @@ static constexpr pretty_info pretty_parse(
 
 template <typename T, typename Tag>
 struct pretty_name_zarray {
-  static constexpr auto raw = pretty_raw<T>(Tag{});
+  static constexpr auto raw_() {
+    constexpr auto const raw_ = pretty_raw<T>(Tag{});
+    return raw_;
+  }
+  static constexpr auto raw = raw_(); // indirection b/c of gcc-5.3 ice, gh#1105
   static constexpr auto info = pretty_parse(Tag{}, raw.data);
   static constexpr auto size = info.e - info.b;
   static constexpr auto zarray_() {
