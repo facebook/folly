@@ -89,7 +89,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     T item;
     while (true) {
       if (nonBlockingTake(item)) {
-        return std::move(item);
+        return item;
       }
       if (!sem_.try_wait_for(time)) {
         return folly::none;
