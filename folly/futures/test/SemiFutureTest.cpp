@@ -533,7 +533,6 @@ TEST(SemiFuture, SimpleValueThrow) {
 }
 
 TEST(SemiFuture, SimpleResult) {
-  EventBase e2;
   Promise<int> p;
   auto sf = p.getSemiFuture();
   p.setValue(3);
@@ -542,7 +541,6 @@ TEST(SemiFuture, SimpleResult) {
 }
 
 TEST(SemiFuture, SimpleResultThrow) {
-  EventBase e2;
   Promise<folly::Unit> p;
   auto sf = p.getSemiFuture();
   EXPECT_THROW(std::move(sf).result(), FutureNotReady);
@@ -551,8 +549,7 @@ TEST(SemiFuture, SimpleResultThrow) {
 TEST(SemiFuture, SimpleDefer) {
   std::atomic<int> innerResult{0};
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { innerResult = 17; });
+  auto sf = p.getSemiFuture().defer([&](auto&&) { innerResult = 17; });
   p.setValue();
   // Run "F" here inline in the calling thread
   std::move(sf).get();
@@ -560,10 +557,8 @@ TEST(SemiFuture, SimpleDefer) {
 }
 
 TEST(SemiFuture, DeferWithDelayedSetValue) {
-  EventBase e2;
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { return 17; });
+  auto sf = p.getSemiFuture().defer([&](auto&&) { return 17; });
 
   // Start thread and have it blocking in the semifuture before we satisfy the
   // promise
@@ -582,8 +577,7 @@ TEST(SemiFuture, DeferWithDelayedSetValue) {
 TEST(SemiFuture, DeferWithViaAndDelayedSetValue) {
   EventBase e2;
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { return 17; }).via(&e2);
+  auto sf = p.getSemiFuture().defer([&](auto&&) { return 17; }).via(&e2);
   // Start thread and have it blocking in the semifuture before we satisfy the
   // promise.
   auto resultF =
@@ -603,8 +597,7 @@ TEST(SemiFuture, DeferWithViaAndDelayedSetValue) {
 TEST(SemiFuture, DeferWithGetTimedGet) {
   std::atomic<int> innerResult{0};
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { innerResult = 17; });
+  auto sf = p.getSemiFuture().defer([&](auto&&) { innerResult = 17; });
   EXPECT_THROW(
       std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
   ASSERT_EQ(innerResult, 0);
@@ -614,8 +607,7 @@ TEST(SemiFuture, DeferWithVia) {
   std::atomic<int> innerResult{0};
   EventBase e2;
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { innerResult = 17; });
+  auto sf = p.getSemiFuture().defer([&](auto&&) { innerResult = 17; });
   // Run "F" here inline in the calling thread
   auto tf = std::move(sf).via(&e2);
   p.setValue();
@@ -628,8 +620,7 @@ TEST(SemiFuture, ChainingDefertoThen) {
   std::atomic<int> result{0};
   EventBase e2;
   Promise<folly::Unit> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](auto&&) { innerResult = 17; });
+  auto sf = p.getSemiFuture().defer([&](auto&&) { innerResult = 17; });
   // Run "F" here inline in a task running on the eventbase
   auto tf = std::move(sf).via(&e2).thenValue([&](auto&&) { result = 42; });
   p.setValue();
@@ -641,8 +632,7 @@ TEST(SemiFuture, ChainingDefertoThen) {
 TEST(SemiFuture, SimpleDeferWithValue) {
   std::atomic<int> innerResult{0};
   Promise<int> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().deferValue([&](int a) { innerResult = a; });
+  auto sf = p.getSemiFuture().deferValue([&](int a) { innerResult = a; });
   p.setValue(7);
   // Run "F" here inline in the calling thread
   std::move(sf).get();
@@ -657,8 +647,7 @@ int deferValueHelper(int a) {
 } // namespace
 TEST(SemiFuture, SimpleDeferWithValueFunctionReference) {
   Promise<int> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().deferValue(deferValueHelper);
+  auto sf = p.getSemiFuture().deferValue(deferValueHelper);
   p.setValue(7);
   // Run "F" here inline in the calling thread
   ASSERT_EQ(std::move(sf).get(), 7);
@@ -669,8 +658,7 @@ TEST(SemiFuture, ChainingDefertoThenWithValue) {
   std::atomic<int> result{0};
   EventBase e2;
   Promise<int> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().deferValue([&](int a) {
+  auto sf = p.getSemiFuture().deferValue([&](int a) {
     innerResult = a;
     return a;
   });
@@ -684,8 +672,7 @@ TEST(SemiFuture, ChainingDefertoThenWithValue) {
 
 TEST(SemiFuture, MakeSemiFutureFromFutureWithTry) {
   Promise<int> p;
-  auto f = p.getSemiFuture().toUnsafeFuture();
-  auto sf = std::move(f).semi().defer([&](Try<int> t) {
+  auto sf = p.getSemiFuture().defer([&](Try<int> t) {
     if (auto err = t.tryGetExceptionObject<std::logic_error>()) {
       return Try<std::string>(err->what());
     }
@@ -976,11 +963,11 @@ TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
   Promise<std::shared_ptr<int>> promise;
   auto veryShort = std::chrono::milliseconds(1);
 
-  promise.getSemiFuture().within(veryShort).toUnsafeFuture().thenTry(
+  auto f = promise.getSemiFuture().within(veryShort).toUnsafeFuture().thenTry(
       [](folly::Try<std::shared_ptr<int>>&& callbackInput) {
-        // Timeout is fired. Verify callbackInput is not referenced
-        EXPECT_EQ(0, callbackInput.value().use_count());
+        EXPECT_THROW(callbackInput.throwIfFailed(), FutureTimeout);
       });
+  std::move(f).get();
 }
 
 TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
@@ -1160,10 +1147,10 @@ TEST(SemiFuture, collectNDeferredWork) {
 
 TEST(SemiFuture, DeferWithNestedSemiFuture) {
   auto start = std::chrono::steady_clock::now();
-  auto future = futures::sleep(std::chrono::milliseconds{100})
-                    .deferValue([](auto&&) {
-                      return futures::sleep(std::chrono::milliseconds{200});
-                    });
+  auto future =
+      futures::sleep(std::chrono::milliseconds{100}).deferValue([](auto&&) {
+        return futures::sleep(std::chrono::milliseconds{200});
+      });
   future.wait();
   EXPECT_TRUE(future.hasValue());
   EXPECT_GE(
