@@ -2,3 +2,4 @@
 # source tree, so we install all projects into this directory.
 /facebook_ci
 __pycache__/
+*.pyc
