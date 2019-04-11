@@ -32,6 +32,15 @@ struct priorityZeroF {
   auto operator()(){ return 0; }
 };
 
+PUSHMI_TEMPLATE(class Exec)
+  (requires Strand<Exec>)
+struct strandFactory {
+  Exec ex_;
+  strandFactory() = default;
+  explicit strandFactory(Exec ex) : ex_(std::move(ex)) {}
+  Exec operator()(){ return ex_; }
+};
+
 struct passDNF {
   PUSHMI_TEMPLATE(class Data)
     (requires TimeExecutor<Data>)

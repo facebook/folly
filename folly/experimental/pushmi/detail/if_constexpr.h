@@ -68,6 +68,7 @@
 #define PUSHMI_PP_IGNORE_SHADOW_BEGIN \
     _Pragma("GCC diagnostic push") \
     _Pragma("GCC diagnostic ignored \"-Wshadow\"") \
+    _Pragma("GCC diagnostic ignored \"-Wshadow-local\"") \
     /**/
 #define PUSHMI_PP_IGNORE_SHADOW_END \
     _Pragma("GCC diagnostic pop")

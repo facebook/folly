@@ -275,6 +275,12 @@ inline detail::nester<E> nested_trampoline() {
   return {};
 }
 
+PUSHMI_INLINE_VAR constexpr auto trampolines =
+  strandFactory<detail::delegator<std::exception_ptr>>{};
+
+PUSHMI_INLINE_VAR constexpr auto nested_trampolines =
+  strandFactory<detail::nester<std::exception_ptr>>{};
+
 namespace detail {
 
 PUSHMI_TEMPLATE(class E)

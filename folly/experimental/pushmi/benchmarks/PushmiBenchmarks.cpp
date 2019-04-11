@@ -570,7 +570,7 @@ BENCHMARK(trampoline_flow_many_sender_1000, n) {
   BENCHMARK_SUSPEND {
     std::iota(values.begin(), values.end(), 1);
   }
-  auto f = op::flow_from(values, tr) | op::tap([&](int){
+  auto f = op::flow_from(values, [&]{return tr;}) | op::tap([&](int){
     --counter;
   });
   FOR_EACH_RANGE (i, 0, n) {

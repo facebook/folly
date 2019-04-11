@@ -117,8 +117,8 @@ template <class Producer>
 struct flow_from_up {
   using receiver_category = receiver_tag;
 
-  explicit flow_from_up(std::shared_ptr<Producer> p_) : p(std::move(p_)) {}
-  std::shared_ptr<Producer> p;
+  explicit flow_from_up(std::shared_ptr<Producer> p) : p_(std::move(p)) {}
+  std::shared_ptr<Producer> p_;
 
   void value(std::ptrdiff_t requested) {
     if (requested < 1) {
@@ -126,8 +126,8 @@ struct flow_from_up {
     }
     // submit work to exec
     ::folly::pushmi::submit(
-      ::folly::pushmi::schedule(p->exec),
-      make_receiver([p = p, requested](auto) {
+      ::folly::pushmi::schedule(p_->exec),
+      make_receiver([p = p_, requested](auto) {
         auto remaining = requested;
         // this loop is structured to work when there is
         // re-entrancy out.value in the loop may call up.value.
@@ -146,17 +146,17 @@ struct flow_from_up {
 
   template <class E>
   void error(E) noexcept {
-    p->stop.store(true);
+    p_->stop.store(true);
     ::folly::pushmi::submit(
-        ::folly::pushmi::schedule(p->exec),
-        flow_from_done<Producer>{p});
+        ::folly::pushmi::schedule(p_->exec),
+        flow_from_done<Producer>{p_});
   }
 
   void done() {
-    p->stop.store(true);
+    p_->stop.store(true);
     ::folly::pushmi::submit(
-        ::folly::pushmi::schedule(p->exec),
-        flow_from_done<Producer>{p});
+        ::folly::pushmi::schedule(p_->exec),
+        flow_from_done<Producer>{p_});
   }
 };
 
@@ -184,8 +184,8 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
     }
   };
 
-  template <class I, class S, class Exec>
-  struct task
+  template <class I, class S, class EF>
+  struct sender_impl
   : flow_sender_tag::with_values<typename std::iterator_traits<I>::value_type>
       ::no_error
   , pipeorigin {
@@ -193,23 +193,21 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
 
     I begin_;
     S end_;
-    Exec exec_;
-
-    task(I begin, S end, Exec exec)
-    : begin_(begin), end_(end), exec_(exec) {
-    }
-
+    EF ef_;
+    sender_impl(I begin, S end, EF ef) : begin_(begin), end_(end), ef_(ef) {}
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out&,
         typename std::iterator_traits<I>::value_type>) //
     void submit(Out out) {
+      auto exec = ::folly::pushmi::make_strand(ef_);
+      using Exec = decltype(exec);
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(
-          begin_, end_, std::move(out), exec_, false);
+          begin_, end_, std::move(out), std::move(exec), false);
 
       ::folly::pushmi::submit(
-          ::folly::pushmi::schedule(exec_), receiver_impl<Producer>{p});
+          ::folly::pushmi::schedule(p->exec), receiver_impl<Producer>{p});
     }
   };
 
@@ -219,27 +217,27 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
       typename std::iterator_traits<I>::iterator_category,
       std::forward_iterator_tag>) //
   auto operator()(I begin, S end) const {
-    return (*this)(begin, end, trampoline());
+    return (*this)(begin, end, trampolines);
   }
 
   PUSHMI_TEMPLATE(class R)
   (requires Range<R>) //
   auto operator()(R&& range) const {
-    return (*this)(std::begin(range), std::end(range), trampoline());
+    return (*this)(std::begin(range), std::end(range), trampolines);
   }
 
-  PUSHMI_TEMPLATE(class I, class S, class Exec)
+  PUSHMI_TEMPLATE(class I, class S, class EF)
   (requires DerivedFrom<
       typename std::iterator_traits<I>::iterator_category,
-      std::forward_iterator_tag>&& Executor<Exec>) //
-  auto operator()(I begin, S end, Exec exec) const {
-    return task<I, S, Exec>{begin, end, exec};
+      std::forward_iterator_tag>&& StrandFactory<EF>) //
+  auto operator()(I begin, S end, EF ef) const {
+    return sender_impl<I, S, EF>{begin, end, ef};
   }
 
-  PUSHMI_TEMPLATE(class R, class Exec)
-  (requires Range<R>&& Executor<Exec>) //
-  auto operator()(R&& range, Exec exec) const {
-    return (*this)(std::begin(range), std::end(range), exec);
+  PUSHMI_TEMPLATE(class R, class EF)
+  (requires Range<R>&& StrandFactory<EF>) //
+  auto operator()(R&& range, EF ef) const {
+    return (*this)(std::begin(range), std::end(range), ef);
   }
 } flow_from{};
 
