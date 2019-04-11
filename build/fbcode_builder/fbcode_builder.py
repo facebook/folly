@@ -210,6 +210,7 @@ class FBCodeBuilder(object):
             'sudo',
             'unzip',
             'wget',
+            'python3-venv',
         ]
 
     #
@@ -245,6 +246,20 @@ class FBCodeBuilder(object):
         actions.extend(self.debian_ccache_setup_steps())
 
         return self.step('Install packages for Debian-based OS', actions)
+
+    def create_python_venv(self):
+        action = []
+        if self.option("PYTHON_VENV", "OFF") == "ON":
+            action = self.run(ShellQuoted("python3 -m venv {p}").format(
+                p=path_join(self.option('prefix'), "venv")))
+        return(action)
+
+    def python_venv(self):
+        action = []
+        if self.option("PYTHON_VENV", "OFF") == "ON":
+            action = ShellQuoted("source {p}").format(
+                p=path_join(self.option('prefix'), "venv", "bin", "activate"))
+        return(action)
 
     def debian_ccache_setup_steps(self):
         return []  # It's ok to ship a renderer without ccache support.

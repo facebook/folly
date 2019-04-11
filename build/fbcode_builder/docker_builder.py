@@ -23,7 +23,7 @@ import tempfile
 
 from fbcode_builder import FBCodeBuilder
 from shell_quoting import (
-    raw_shell, shell_comment, shell_join, ShellQuoted
+    raw_shell, shell_comment, shell_join, ShellQuoted, path_join
 )
 from utils import recursively_flatten_list, run_command
 
@@ -47,7 +47,19 @@ class DockerFBCodeBuilder(FBCodeBuilder):
             ShellQuoted('FROM {}'.format(self.option('os_image'))),
             # /bin/sh syntax is a pain
             ShellQuoted('SHELL ["/bin/bash", "-c"]'),
-        ] + self.install_debian_deps() + [self._change_user()])
+        ] + self.install_debian_deps() + [self._change_user()]
+            + [self.workdir(self.option('prefix')),
+            self.create_python_venv(),
+            self.python_venv()])
+
+    def python_venv(self):
+        # To both avoid calling venv activate on each RUN command AND to ensure
+        # it is present when the resulting container is run add to PATH
+        actions = []
+        if self.option("PYTHON_VENV", "OFF") == "ON":
+            actions = ShellQuoted('ENV PATH={p}:$PATH').format(
+                p=path_join(self.option('prefix'), "venv", "bin"))
+        return(actions)
 
     def step(self, name, actions):
         assert '\n' not in name, 'Name {0} would span > 1 line'.format(name)
