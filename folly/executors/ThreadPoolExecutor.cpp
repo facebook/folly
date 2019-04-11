@@ -113,6 +113,11 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   });
 }
 
+void ThreadPoolExecutor::add(Func, std::chrono::milliseconds, Func) {
+  throw std::runtime_error(
+      "add() with expiration is not implemented for this Executor");
+}
+
 size_t ThreadPoolExecutor::numThreads() const {
   return maxThreads_.load(std::memory_order_relaxed);
 }

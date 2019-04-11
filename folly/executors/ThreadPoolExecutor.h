@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 #pragma once
+
+#include <algorithm>
+#include <mutex>
+#include <queue>
+
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Memory.h>
 #include <folly/SharedMutex.h>
@@ -23,10 +28,6 @@
 #include <folly/io/async/Request.h>
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/Baton.h>
-
-#include <algorithm>
-#include <mutex>
-#include <queue>
 
 #include <glog/logging.h>
 
@@ -64,7 +65,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   void add(Func func) override = 0;
   virtual void
-  add(Func func, std::chrono::milliseconds expiration, Func expireCallback) = 0;
+  add(Func func, std::chrono::milliseconds expiration, Func expireCallback);
 
   void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
     CHECK(numThreads() == 0);

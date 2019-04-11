@@ -23,6 +23,7 @@
 #include <folly/Exception.h>
 #include <folly/VirtualExecutor.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
@@ -50,8 +51,12 @@ TEST(ThreadPoolExecutorTest, CPUBasic) {
   basic<CPUThreadPoolExecutor>();
 }
 
-TEST(IOThreadPoolExecutorTest, IOBasic) {
+TEST(ThreadPoolExecutorTest, IOBasic) {
   basic<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFBasic) {
+  basic<EDFThreadPoolExecutor>();
 }
 
 template <class TPE>
@@ -70,6 +75,10 @@ TEST(ThreadPoolExecutorTest, CPUResize) {
 
 TEST(ThreadPoolExecutorTest, IOResize) {
   resize<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFResize) {
+  resize<EDFThreadPoolExecutor>();
 }
 
 template <class TPE>
@@ -113,6 +122,10 @@ TEST(ThreadPoolExecutorTest, IOStop) {
   stop<IOThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, EDFStop) {
+  stop<EDFThreadPoolExecutor>();
+}
+
 template <class TPE>
 static void join() {
   TPE tpe(10);
@@ -134,6 +147,10 @@ TEST(ThreadPoolExecutorTest, CPUJoin) {
 
 TEST(ThreadPoolExecutorTest, IOJoin) {
   join<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFJoin) {
+  join<EDFThreadPoolExecutor>();
 }
 
 template <class TPE>
@@ -177,6 +194,10 @@ TEST(ThreadPoolExecutorTest, IODestroy) {
   destroy<IOThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, EDFDestroy) {
+  destroy<EDFThreadPoolExecutor>();
+}
+
 template <class TPE>
 static void resizeUnderLoad() {
   TPE tpe(10);
@@ -200,6 +221,10 @@ TEST(ThreadPoolExecutorTest, CPUResizeUnderLoad) {
 
 TEST(ThreadPoolExecutorTest, IOResizeUnderLoad) {
   resizeUnderLoad<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFResizeUnderLoad) {
+  resizeUnderLoad<EDFThreadPoolExecutor>();
 }
 
 template <class TPE>
@@ -260,6 +285,10 @@ TEST(ThreadPoolExecutorTest, CPUTaskStats) {
 
 TEST(ThreadPoolExecutorTest, IOTaskStats) {
   taskStats<IOThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, EDFTaskStats) {
+  taskStats<EDFThreadPoolExecutor>();
 }
 
 template <class TPE>
@@ -347,6 +376,10 @@ TEST(ThreadPoolExecutorTest, IOFuturePool) {
   futureExecutor<IOThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, EDFFuturePool) {
+  futureExecutor<EDFThreadPoolExecutor>();
+}
+
 TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
   bool tookLopri = false;
   auto completed = 0;
@@ -394,11 +427,12 @@ class TestObserver : public ThreadPoolExecutor::Observer {
   std::atomic<int> threads_{0};
 };
 
-TEST(ThreadPoolExecutorTest, IOObserver) {
+template <typename TPE>
+static void testObserver() {
   auto observer = std::make_shared<TestObserver>();
 
   {
-    IOThreadPoolExecutor exe(10);
+    TPE exe(10);
     exe.addObserver(observer);
     exe.setNumThreads(3);
     exe.setNumThreads(0);
@@ -410,20 +444,16 @@ TEST(ThreadPoolExecutorTest, IOObserver) {
   observer->checkCalls();
 }
 
+TEST(ThreadPoolExecutorTest, IOObserver) {
+  testObserver<IOThreadPoolExecutor>();
+}
+
 TEST(ThreadPoolExecutorTest, CPUObserver) {
-  auto observer = std::make_shared<TestObserver>();
+  testObserver<CPUThreadPoolExecutor>();
+}
 
-  {
-    CPUThreadPoolExecutor exe(10);
-    exe.addObserver(observer);
-    exe.setNumThreads(3);
-    exe.setNumThreads(0);
-    exe.setNumThreads(7);
-    exe.removeObserver(observer);
-    exe.setNumThreads(10);
-  }
-
-  observer->checkCalls();
+TEST(ThreadPoolExecutorTest, EDFObserver) {
+  testObserver<EDFThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, AddWithPriority) {
@@ -433,6 +463,10 @@ TEST(ThreadPoolExecutorTest, AddWithPriority) {
   // IO exe doesn't support priorities
   IOThreadPoolExecutor ioExe(10);
   EXPECT_THROW(ioExe.addWithPriority(f, 0), std::runtime_error);
+
+  // EDF exe doesn't support priorities
+  EDFThreadPoolExecutor edfExe(10);
+  EXPECT_THROW(edfExe.addWithPriority(f, 0), std::runtime_error);
 
   CPUThreadPoolExecutor cpuExe(10, 3);
   cpuExe.addWithPriority(f, -1);
@@ -715,6 +749,10 @@ TEST(ThreadPoolExecutorTest, RemoveThreadTestCPU) {
   removeThreadTest<CPUThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, RemoveThreadTestEDF) {
+  removeThreadTest<EDFThreadPoolExecutor>();
+}
+
 template <typename TPE>
 static void resizeThreadWhileExecutingTest() {
   TPE tpe(10);
@@ -746,6 +784,10 @@ TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestCPU) {
   resizeThreadWhileExecutingTest<CPUThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, resizeThreadWhileExecutingTestEDF) {
+  resizeThreadWhileExecutingTest<EDFThreadPoolExecutor>();
+}
+
 template <typename TPE>
 void keepAliveTest() {
   auto executor = std::make_unique<TPE>(4);
@@ -768,6 +810,10 @@ TEST(ThreadPoolExecutorTest, KeepAliveTestIO) {
 
 TEST(ThreadPoolExecutorTest, KeepAliveTestCPU) {
   keepAliveTest<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, KeepAliveTestEDF) {
+  keepAliveTest<EDFThreadPoolExecutor>();
 }
 
 int getNumThreadPoolExecutors() {
@@ -799,6 +845,10 @@ TEST(ThreadPoolExecutorTest, registersToExecutorListTestCPU) {
   registersToExecutorListTest<CPUThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, registersToExecutorListTestEDF) {
+  registersToExecutorListTest<EDFThreadPoolExecutor>();
+}
+
 template <typename TPE>
 static void testUsesNameFromNamedThreadFactory() {
   auto ntf = std::make_shared<NamedThreadFactory>("my_executor");
@@ -812,6 +862,10 @@ TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryIO) {
 
 TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryCPU) {
   testUsesNameFromNamedThreadFactory<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, testUsesNameFromNamedThreadFactoryEDF) {
+  testUsesNameFromNamedThreadFactory<EDFThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, DynamicThreadsTest) {
@@ -933,10 +987,18 @@ TEST(ThreadPoolExecutorTest, WeakRefTestCPU) {
   WeakRefTest<CPUThreadPoolExecutor>();
 }
 
+TEST(ThreadPoolExecutorTest, WeakRefTestEDF) {
+  WeakRefTest<EDFThreadPoolExecutor>();
+}
+
 TEST(ThreadPoolExecutorTest, VirtualExecutorTestIO) {
   virtualExecutorTest<IOThreadPoolExecutor>();
 }
 
 TEST(ThreadPoolExecutorTest, VirtualExecutorTestCPU) {
   virtualExecutorTest<CPUThreadPoolExecutor>();
+}
+
+TEST(ThreadPoolExecutorTest, VirtualExecutorTestEDF) {
+  virtualExecutorTest<EDFThreadPoolExecutor>();
 }
