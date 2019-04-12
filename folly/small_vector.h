@@ -98,20 +98,27 @@ namespace detail {
 
 /*
  * Move objects in memory to the right into some uninitialized
- * memory, where the region overlaps.  This doesn't just use
- * std::move_backward because move_backward only works if all the
- * memory is initialized to type T already.
+ * memory, where the region overlaps. Then call create(size_t) for each
+ * "hole" passing it the offset of the hole from first.
+ *
+ * This doesn't just use std::move_backward because move_backward only works
+ * if all the memory is initialized to type T already.
+ *
+ * The create function should return a reference type, to avoid
+ * extra copies and moves for non-trivial types.
  */
-template <class T>
-typename std::enable_if<
-    std::is_default_constructible<T>::value &&
-    !folly::is_trivially_copyable<T>::value>::type
-moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
+template <class T, class Create>
+typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+moveObjectsRightAndCreate(
+    T* const first,
+    T* const lastConstructed,
+    T* const realLast,
+    Create&& create) {
   if (lastConstructed == realLast) {
     return;
   }
 
-  T* end = first - 1; // Past the end going backwards.
+  T* const end = first - 1; // Past the end going backwards.
   T* out = realLast - 1;
   T* in = lastConstructed - 1;
   {
@@ -133,21 +140,33 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
       *out = std::move(*in);
     }
     for (; out >= lastConstructed; --out) {
-      new (out) T();
+      new (out) T(create(out - first));
+    }
+    for (; out != end; --out) {
+      *out = create(out - first);
     }
     rollback.dismiss();
   }
 }
 
 // Specialization for trivially copyable types.  The call to
-// std::move_backward here will just turn into a memmove.  (TODO:
-// change to std::is_trivially_copyable when that works.)
-template <class T>
-typename std::enable_if<
-    !std::is_default_constructible<T>::value ||
-    folly::is_trivially_copyable<T>::value>::type
-moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
+// std::move_backward here will just turn into a memmove.
+// This must only be used with trivially copyable types because some of the
+// memory may be uninitialized, and std::move_backward() won't work when it
+// can't memmove().
+template <class T, class Create>
+typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+moveObjectsRightAndCreate(
+    T* const first,
+    T* const lastConstructed,
+    T* const realLast,
+    Create&& create) {
   std::move_backward(first, lastConstructed, realLast);
+  T* const end = first - 1;
+  T* out = first + (realLast - lastConstructed) - 1;
+  for (; out != end; --out) {
+    *out = create(out - first);
+  }
 }
 
 /*
@@ -795,10 +814,16 @@ class small_vector : public detail::small_vector_base<
           offset);
       this->setSize(this->size() + 1);
     } else {
-      detail::moveObjectsRight(
-          data() + offset, data() + size(), data() + size() + 1);
+      detail::moveObjectsRightAndCreate(
+          data() + offset,
+          data() + size(),
+          data() + size() + 1,
+          [&](size_t i) -> value_type&& {
+            assert(i == 0);
+            (void)i;
+            return std::move(t);
+          });
       this->setSize(size() + 1);
-      data()[offset] = std::move(t);
     }
     return begin() + offset;
   }
@@ -812,10 +837,16 @@ class small_vector : public detail::small_vector_base<
   iterator insert(const_iterator pos, size_type n, value_type const& val) {
     auto offset = pos - begin();
     makeSize(size() + n);
-    detail::moveObjectsRight(
-        data() + offset, data() + size(), data() + size() + n);
+    detail::moveObjectsRightAndCreate(
+        data() + offset,
+        data() + size(),
+        data() + size() + n,
+        [&](size_t i) -> value_type const& {
+          assert(i < n);
+          (void)i;
+          return val;
+        });
     this->setSize(size() + n);
-    std::generate_n(begin() + offset, n, [&] { return val; });
     return begin() + offset;
   }
 
@@ -919,7 +950,8 @@ class small_vector : public detail::small_vector_base<
   // iterator insert functions from integral types (see insert().)
   template <class It>
   iterator insertImpl(iterator pos, It first, It last, std::false_type) {
-    typedef typename std::iterator_traits<It>::iterator_category categ;
+    using categ = typename std::iterator_traits<It>::iterator_category;
+    using it_ref = typename std::iterator_traits<It>::reference;
     if (std::is_same<categ, std::input_iterator_tag>::value) {
       auto offset = pos - begin();
       while (first != last) {
@@ -929,13 +961,20 @@ class small_vector : public detail::small_vector_base<
       return begin() + offset;
     }
 
-    auto distance = std::distance(first, last);
-    auto offset = pos - begin();
+    auto const distance = std::distance(first, last);
+    auto const offset = pos - begin();
+    assert(distance >= 0);
+    assert(offset >= 0);
     makeSize(size() + distance);
-    detail::moveObjectsRight(
-        data() + offset, data() + size(), data() + size() + distance);
+    detail::moveObjectsRightAndCreate(
+        data() + offset,
+        data() + size(),
+        data() + size() + distance,
+        [&](size_t i) -> it_ref {
+          assert(i < size_t(distance));
+          return *(first + i);
+        });
     this->setSize(size() + distance);
-    std::copy_n(first, distance, begin() + offset);
     return begin() + offset;
   }
 

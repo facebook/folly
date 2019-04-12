@@ -329,7 +329,7 @@ TEST(small_vector, leak_test) {
   }
 }
 
-TEST(small_vector, Insert) {
+TEST(small_vector, InsertTrivial) {
   folly::small_vector<int> someVec(3, 3);
   someVec.insert(someVec.begin(), 12, 12);
   EXPECT_EQ(someVec.size(), 15);
@@ -341,15 +341,38 @@ TEST(small_vector, Insert) {
     }
   }
 
+  // Make sure we insert a larger range so we can test placement new
+  // and move inserts
   auto oldSize = someVec.size();
-  someVec.insert(someVec.begin() + 1, 12, 12);
-  EXPECT_EQ(someVec.size(), oldSize + 12);
+  someVec.insert(someVec.begin() + 1, 30, 30);
+  EXPECT_EQ(someVec.size(), oldSize + 30);
+  EXPECT_EQ(someVec[0], 12);
+  EXPECT_EQ(someVec[1], 30);
+  EXPECT_EQ(someVec[31], 12);
+}
 
+TEST(small_vector, InsertNontrivial) {
   folly::small_vector<std::string> v1(6, "asd"), v2(7, "wat");
   v1.insert(v1.begin() + 1, v2.begin(), v2.end());
   EXPECT_TRUE(v1.size() == 6 + 7);
   EXPECT_EQ(v1.front(), "asd");
   EXPECT_EQ(v1[1], "wat");
+
+  // Insert without default constructor
+  class TestClass {
+   public:
+    // explicit TestClass() = default;
+    explicit TestClass(std::string s) : s(s) {}
+    std::string s;
+  };
+  folly::small_vector<TestClass> v3(5, TestClass("asd"));
+  folly::small_vector<TestClass> v4(10, TestClass("wat"));
+  v3.insert(v3.begin() + 1, v4.begin(), v4.end());
+  EXPECT_TRUE(v3.size() == 5 + 10);
+  EXPECT_EQ(v3[0].s, "asd");
+  EXPECT_EQ(v3[1].s, "wat");
+  EXPECT_EQ(v3[10].s, "wat");
+  EXPECT_EQ(v3[11].s, "asd");
 }
 
 TEST(small_vector, Swap) {
@@ -783,6 +806,23 @@ TEST(small_vector, SelfInsert) {
 
     EXPECT_EQ(vec[i - 1], "abc");
     EXPECT_EQ(vec[i], "abc");
+  }
+
+  // range insert
+  for (int i = 2; i < 33; ++i) {
+    folly::small_vector<std::string> vec;
+    // reserve 2 * i space so we don't grow and invalidate references.
+    vec.reserve(2 * i);
+    for (int j = 0; j < i; ++j) {
+      vec.push_back("abc");
+    }
+    EXPECT_EQ(vec.size(), i);
+    vec.insert(vec.end() - 1, vec.begin(), vec.end() - 1);
+    EXPECT_EQ(vec.size(), 2 * i - 1);
+
+    for (auto const& val : vec) {
+      EXPECT_EQ(val, "abc");
+    }
   }
 }
 
