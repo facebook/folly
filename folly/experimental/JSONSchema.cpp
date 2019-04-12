@@ -1031,7 +1031,7 @@ std::unique_ptr<Validator> makeValidator(const dynamic& schema) {
   SchemaValidatorContext context(schema);
   context.refs["#"] = v.get();
   v->loadSchema(context, schema);
-  return std::move(v);
+  return v;
 }
 
 std::shared_ptr<Validator> makeSchemaValidator() {

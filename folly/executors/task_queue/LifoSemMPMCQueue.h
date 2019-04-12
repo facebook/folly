@@ -57,7 +57,7 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
         return folly::none;
       }
     }
-    return std::move(item);
+    return item;
   }
 
   size_t capacity() {

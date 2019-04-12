@@ -574,7 +574,7 @@ dynamic logConfigToDynamic(const LogHandlerConfig& config) {
   if (config.type.hasValue()) {
     result("type", config.type.value());
   }
-  return std::move(result);
+  return result;
 }
 
 dynamic logConfigToDynamic(const LogCategoryConfig& config) {
@@ -587,7 +587,7 @@ dynamic logConfigToDynamic(const LogCategoryConfig& config) {
     }
     value("handlers", std::move(handlers));
   }
-  return std::move(value);
+  return value;
 }
 
 } // namespace folly
