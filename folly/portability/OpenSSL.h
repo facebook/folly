@@ -118,6 +118,9 @@ int SSL_CTX_up_ref(SSL_CTX* session);
 int SSL_SESSION_up_ref(SSL_SESSION* session);
 int X509_up_ref(X509* x);
 int X509_STORE_up_ref(X509_STORE* v);
+void X509_STORE_CTX_set0_verified_chain(
+    X509_STORE_CTX* ctx,
+    STACK_OF(X509) * sk);
 int EVP_PKEY_up_ref(EVP_PKEY* evp);
 void RSA_get0_key(
     const RSA* r,

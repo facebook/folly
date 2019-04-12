@@ -64,6 +64,13 @@ int X509_up_ref(X509* x) {
   return CRYPTO_add(&x->references, 1, CRYPTO_LOCK_X509);
 }
 
+void X509_STORE_CTX_set0_verified_chain(
+    X509_STORE_CTX* ctx,
+    STACK_OF(X509) * sk) {
+  sk_X509_pop_free(ctx->chain, X509_free);
+  ctx->chain = sk;
+}
+
 int X509_STORE_up_ref(X509_STORE* v) {
   return CRYPTO_add(&v->references, 1, CRYPTO_LOCK_X509_STORE);
 }
