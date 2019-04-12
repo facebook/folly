@@ -367,6 +367,10 @@ struct Hash {
   size_t operator()(const T& t, const Ts&... ts) const {
     return hash::hash_128_to_64((*this)(t), (*this)(ts...));
   }
+
+  size_t operator()() const noexcept {
+    return 0;
+  }
 };
 
 // IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.

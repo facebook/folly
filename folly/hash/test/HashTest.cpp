@@ -495,6 +495,15 @@ TEST(Hash, std_tuple) {
   EXPECT_EQ("bar", m[t]);
 }
 
+TEST(Hash, std_empty_tuple) {
+  std::unordered_map<std::tuple<>, std::string, folly::Hash> m;
+  m[{}] = "foo";
+  EXPECT_EQ(m[{}], "foo");
+
+  folly::hasher<std::tuple<>> h;
+  EXPECT_EQ(h({}), 0);
+}
+
 TEST(Hash, enum_type) {
   const auto hash = folly::Hash();
 
