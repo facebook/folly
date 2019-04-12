@@ -19,8 +19,6 @@
 #include <cstring>
 #include <type_traits>
 
-#include <folly/Traits.h>
-
 namespace folly {
 
 /**
@@ -50,7 +48,7 @@ class Tearable {
   // We memcpy the object representation, and the destructor would not know how
   // to deal with an object state it doesn't understand.
   static_assert(
-      is_trivially_copyable<T>::value,
+      std::is_trivially_copyable<T>::value,
       "Tearable types must be trivially copyable.");
 
   Tearable() noexcept {

@@ -105,7 +105,7 @@ namespace detail {
 template <class T>
 typename std::enable_if<
     std::is_default_constructible<T>::value &&
-    !folly::is_trivially_copyable<T>::value>::type
+    !std::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   if (lastConstructed == realLast) {
     return;
@@ -140,12 +140,11 @@ moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
 }
 
 // Specialization for trivially copyable types.  The call to
-// std::move_backward here will just turn into a memmove.  (TODO:
-// change to std::is_trivially_copyable when that works.)
+// std::move_backward here will just turn into a memmove.
 template <class T>
 typename std::enable_if<
     !std::is_default_constructible<T>::value ||
-    folly::is_trivially_copyable<T>::value>::type
+    std::is_trivially_copyable<T>::value>::type
 moveObjectsRight(T* first, T* lastConstructed, T* realLast) {
   std::move_backward(first, lastConstructed, realLast);
 }
@@ -229,7 +228,7 @@ struct IntegralSizePolicy<SizeType, true>
    * ranges don't overlap.
    */
   template <class T>
-  typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+  typename std::enable_if<!std::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
     {
@@ -252,7 +251,7 @@ struct IntegralSizePolicy<SizeType, true>
 
   // Specialization for trivially copyable types.
   template <class T>
-  typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+  typename std::enable_if<std::is_trivially_copyable<T>::value>::type
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(
         static_cast<void*>(out),

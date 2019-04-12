@@ -315,18 +315,6 @@ template <typename T>
 using aligned_storage_for_t =
     typename std::aligned_storage<sizeof(T), alignof(T)>::type;
 
-// Older versions of libstdc++ do not provide std::is_trivially_copyable
-#if defined(__clang__) && !defined(_LIBCPP_VERSION)
-template <class T>
-struct is_trivially_copyable : bool_constant<__is_trivially_copyable(T)> {};
-#elif defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5
-template <class T>
-struct is_trivially_copyable : std::is_trivial<T> {};
-#else
-template <class T>
-using is_trivially_copyable = std::is_trivially_copyable<T>;
-#endif
-
 /**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
@@ -459,7 +447,7 @@ struct IsRelocatable : std::conditional<
                            // TODO add this line (and some tests for it) when we
                            // upgrade to gcc 4.7
                            // std::is_trivially_move_constructible<T>::value ||
-                           is_trivially_copyable<T>>::type {};
+                           std::is_trivially_copyable<T>>::type {};
 
 template <class T>
 struct IsZeroInitializable
