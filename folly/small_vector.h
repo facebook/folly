@@ -118,9 +118,8 @@ moveObjectsRightAndCreate(
     return;
   }
 
-  T* const end = first - 1; // Past the end going backwards.
-  T* out = realLast - 1;
-  T* in = lastConstructed - 1;
+  T* out = realLast;
+  T* in = lastConstructed;
   {
     auto rollback = makeGuard([&] {
       // We want to make sure the same stuff is uninitialized memory
@@ -133,16 +132,26 @@ moveObjectsRightAndCreate(
         it->~T();
       }
     });
-    for (; in != end && out >= lastConstructed; --in, --out) {
-      new (out) T(std::move(*in));
+    // Decrement the pointers only when it is known that the resulting pointer
+    // is within the boundaries of the object. Decrementing past the beginning
+    // of the object is UB. Note that this is asymmetric wrt forward iteration,
+    // as past-the-end pointers are explicitly allowed.
+    for (; in != first && out > lastConstructed;) {
+      // Out must be decremented before an exception can be thrown so that
+      // the rollback guard knows where to start.
+      --out;
+      new (out) T(std::move(*(--in)));
     }
-    for (; in != end; --in, --out) {
-      *out = std::move(*in);
+    for (; in != first;) {
+      --out;
+      *out = std::move(*(--in));
     }
-    for (; out >= lastConstructed; --out) {
+    for (; out > lastConstructed;) {
+      --out;
       new (out) T(create(out - first));
     }
-    for (; out != end; --out) {
+    for (; out != first;) {
+      --out;
       *out = create(out - first);
     }
     rollback.dismiss();
