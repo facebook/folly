@@ -5,17 +5,10 @@ sudo: required
 
 # Docker disables IPv6 in containers by default. Enable it for unit tests that need [::1].
 before_script:
-  # `daemon.json` is normally missing, but let's log it in case that changes.
-  - sudo touch /etc/docker/daemon.json
-  - sudo cat /etc/docker/daemon.json
-  - sudo service docker stop
-  # This needs YAML quoting because of the curly braces.
-  - 'echo ''{"ipv6": true, "fixed-cidr-v6": "2001:db8:1::/64"}'' | sudo tee /etc/docker/daemon.json'
-  - sudo service docker start
-  # Fail early if docker failed on start -- add `- sudo dockerd` to debug.
-  - sudo docker info
-  # Paranoia log: what if our config got overwritten?
-  - sudo cat /etc/docker/daemon.json
+  - if [[ "$TRAVIS_OS_NAME" != "osx" ]];
+    then
+      sudo build/fbcode_builder/docker_enable_ipv6.sh;
+    fi
 
 env:
   global:
@@ -39,9 +32,11 @@ matrix:
     - env: ['os_image=ubuntu:16.04', gcc_version=5]
       services: [docker]
 
+addons:
+  apt:
+    packages: python2.7
+
 script:
-  # Travis seems to get confused when `matrix:` is used with `language:`
-  - sudo apt-get install python2.7
   # We don't want to write the script inline because of Travis kludginess --
   # it looks like it escapes " and \ in scripts when using `matrix:`.
   - ./build/fbcode_builder/travis_docker_build.sh
