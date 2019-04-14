@@ -59,7 +59,7 @@ class StaticSingletonManagerWithRtti {
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
     // gcc and clang behave poorly if typeid is hidden behind a non-constexpr
     // function, but typeid is not constexpr under msvc
-    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(TypeTuple<T, Tag>), make<T>};
+    static Arg arg{{nullptr}, FOLLY_TYPE_INFO_OF(tag_t<T, Tag>), make<T>};
     auto const v = arg.cache.load(std::memory_order_acquire);
     auto const p = FOLLY_LIKELY(!!v) ? v : create_<noexcept(T())>(arg);
     return *static_cast<T*>(p);
