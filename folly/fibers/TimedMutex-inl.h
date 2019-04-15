@@ -79,16 +79,15 @@ TimedMutex::LockResult TimedMutex::lockHelper(WaitFunc&& waitFunc) {
 }
 
 inline void TimedMutex::lock() {
-  auto result = lockHelper([](MutexWaiter& waiter) {
-    waiter.baton.wait();
-    return true;
-  });
+  LockResult result;
+  do {
+    result = lockHelper([](MutexWaiter& waiter) {
+      waiter.baton.wait();
+      return true;
+    });
 
-  DCHECK(result != LockResult::TIMEOUT);
-  if (result == LockResult::SUCCESS) {
-    return;
-  }
-  lock();
+    DCHECK(result != LockResult::TIMEOUT);
+  } while (result != LockResult::SUCCESS);
 }
 
 template <typename Rep, typename Period>
