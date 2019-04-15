@@ -711,6 +711,12 @@ struct dynamic : private boost::operators<dynamic> {
   void pop_back();
 
   /*
+   * Return reference to the last element in an array. If this is not
+   * an array, throws TypeError.
+   */
+  const dynamic& back() const;
+
+  /*
    * Get a hash code.  This function is called by a std::hash<>
    * specialization, also.
    *

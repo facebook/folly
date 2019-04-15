@@ -23,6 +23,7 @@
 
 using folly::dynamic;
 using folly::parseJson;
+using folly::parseJsonWithMetadata;
 using folly::toJson;
 
 TEST(Json, Unicode) {
@@ -120,6 +121,225 @@ TEST(Json, Parse) {
   dynamic expected =
       dynamic::object("old_value", 40)("changed", true)("opened", false);
   EXPECT_EQ(something, expected);
+}
+
+TEST(Json, TestLineNumbers) {
+  // Simple object
+  folly::json::metadata_map map;
+  dynamic val = parseJsonWithMetadata("\n\n{\n\n\"value\":40}", &map);
+  EXPECT_TRUE(val.isObject());
+  auto ov = val.get_ptr("value");
+  EXPECT_TRUE(ov != nullptr);
+  auto it = map.find(ov);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 4);
+  EXPECT_EQ(it->second.value_range.begin.line, 4);
+
+  // check with find() API too
+  auto dv = val.find("value");
+  it = map.find(&dv->second);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 4);
+  EXPECT_EQ(it->second.value_range.begin.line, 4);
+
+  map.clear();
+
+  // One line apart
+  val = parseJsonWithMetadata(
+      "{\"old_value\":40,\n\"changed\":true,\n\"opened\":1.5}", &map);
+
+  EXPECT_TRUE(val.isObject());
+  auto i1 = val.get_ptr("old_value");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 0);
+  EXPECT_EQ(i1->asInt(), 40);
+
+  auto i2 = val.get_ptr("changed");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 1);
+  EXPECT_EQ(it->second.value_range.begin.line, 1);
+  EXPECT_EQ(i2->asBool(), true);
+
+  auto i3 = val.get_ptr("opened");
+  EXPECT_TRUE(i3 != nullptr);
+  it = map.find(i3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 2);
+  EXPECT_EQ(it->second.value_range.begin.line, 2);
+  EXPECT_EQ(i3->asDouble(), 1.5);
+  map.clear();
+
+  // Multiple lines apart
+  val = parseJsonWithMetadata(
+      "\n{\n\"a\":40,\n\"b\":1.45,\n"
+      "\n\n\"c\":false,\n\n\n\n\n\"d\":\"dval\"\n\n}",
+      &map);
+
+  EXPECT_TRUE(val.isObject());
+
+  i1 = val.get_ptr("a");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 2);
+  EXPECT_EQ(it->second.value_range.begin.line, 2);
+  EXPECT_EQ(i1->asInt(), 40);
+
+  i2 = val.get_ptr("b");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 3);
+  EXPECT_EQ(it->second.value_range.begin.line, 3);
+  EXPECT_EQ(i2->asDouble(), 1.45);
+
+  i3 = val.get_ptr("c");
+  EXPECT_TRUE(i3 != nullptr);
+  it = map.find(i3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 6);
+  EXPECT_EQ(it->second.value_range.begin.line, 6);
+  EXPECT_EQ(i3->asBool(), false);
+
+  auto i4 = val.get_ptr("d");
+  EXPECT_TRUE(i4 != nullptr);
+  it = map.find(i4);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 11);
+  EXPECT_EQ(it->second.value_range.begin.line, 11);
+  EXPECT_EQ(i4->asString(), "dval");
+  map.clear();
+
+  // All in the same line
+  val = parseJsonWithMetadata("{\"x\":40,\"y\":true,\"z\":3.33}", &map);
+  EXPECT_TRUE(val.isObject());
+
+  i1 = val.get_ptr("x");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 0);
+  EXPECT_EQ(i1->asInt(), 40);
+
+  i2 = val.get_ptr("y");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 0);
+  EXPECT_EQ(i2->asBool(), true);
+
+  i3 = val.get_ptr("z");
+  EXPECT_TRUE(i3 != nullptr);
+  it = map.find(i3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 0);
+  map.clear();
+
+  // Key and value in different numbers
+  val =
+      parseJsonWithMetadata("{\"x\":\n70,\"y\":\n\n80,\n\"z\":\n\n\n33}", &map);
+  EXPECT_TRUE(val.isObject());
+
+  i1 = val.get_ptr("x");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 1);
+  EXPECT_EQ(i1->asInt(), 70);
+
+  i2 = val.get_ptr("y");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 1);
+  EXPECT_EQ(it->second.value_range.begin.line, 3);
+  EXPECT_EQ(i2->asInt(), 80);
+
+  i3 = val.get_ptr("z");
+  EXPECT_TRUE(i3 != nullptr);
+  it = map.find(i3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 4);
+  EXPECT_EQ(it->second.value_range.begin.line, 7);
+  EXPECT_EQ(i3->asInt(), 33);
+  map.clear();
+
+  // With Arrays
+  val = parseJsonWithMetadata(
+      "{\"x\":\n[10, 20],\n\"y\":\n\n[80,\n90,\n100]}", &map);
+  EXPECT_TRUE(val.isObject());
+
+  i1 = val.get_ptr("x");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 1);
+
+  int i = 1;
+  for (auto arr_it = i1->begin(); arr_it != i1->end(); arr_it++, i++) {
+    auto arr_it_md = map.find(&*arr_it);
+    EXPECT_TRUE(arr_it_md != map.end());
+    EXPECT_EQ(arr_it_md->second.value_range.begin.line, 1);
+    EXPECT_EQ(arr_it->asInt(), 10 * i);
+  }
+
+  i2 = val.get_ptr("y");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 2);
+  EXPECT_EQ(it->second.value_range.begin.line, 4);
+
+  i = 8;
+  int ln = 4;
+  for (auto arr_it = i2->begin(); arr_it != i2->end(); arr_it++, i++, ln++) {
+    auto arr_it_md = map.find(&*arr_it);
+    EXPECT_TRUE(arr_it_md != map.end());
+    EXPECT_EQ(arr_it_md->second.value_range.begin.line, ln);
+    EXPECT_EQ(arr_it->asInt(), 10 * i);
+  }
+  map.clear();
+
+  // With nested objects
+  val = parseJsonWithMetadata(
+      "{\"a1\":{\n\"a2\":{\n\"a3\":{\n\"a4\":4}}}}", &map);
+  EXPECT_TRUE(val.isObject());
+  i1 = val.get_ptr("a1");
+  EXPECT_TRUE(i1 != nullptr);
+  it = map.find(i1);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 0);
+  EXPECT_EQ(it->second.value_range.begin.line, 0);
+  i2 = i1->get_ptr("a2");
+  EXPECT_TRUE(i2 != nullptr);
+  it = map.find(i2);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 1);
+  EXPECT_EQ(it->second.value_range.begin.line, 1);
+  i3 = i2->get_ptr("a3");
+  EXPECT_TRUE(i3 != nullptr);
+  it = map.find(i3);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 2);
+  EXPECT_EQ(it->second.value_range.begin.line, 2);
+  i4 = i3->get_ptr("a4");
+  EXPECT_TRUE(i4 != nullptr);
+  it = map.find(i4);
+  EXPECT_TRUE(it != map.end());
+  EXPECT_EQ(it->second.key_range.begin.line, 3);
+  EXPECT_EQ(it->second.value_range.begin.line, 3);
+  EXPECT_EQ(i4->asInt(), 4);
+  map.clear();
 }
 
 TEST(Json, ParseTrailingComma) {

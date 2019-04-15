@@ -991,6 +991,11 @@ inline void dynamic::pop_back() {
   arr.pop_back();
 }
 
+inline const dynamic& dynamic::back() const {
+  auto& arr = get<Array>();
+  return arr.back();
+}
+
 //////////////////////////////////////////////////////////////////////
 
 inline dynamic::dynamic(Array&& r) : type_(ARRAY) {
