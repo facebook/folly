@@ -6,6 +6,7 @@ from __future__ import unicode_literals
 
 'fbcode_builder steps to build & test folly'
 
+import specs.fmt as fmt
 import specs.gmock as gmock
 
 from shell_quoting import ShellQuoted
@@ -20,7 +21,7 @@ def fbcode_builder_spec(builder):
         }
     )
     return {
-        'depends_on': [gmock],
+        'depends_on': [fmt, gmock],
         'steps': [
             builder.fb_github_cmake_install('folly/_build'),
             builder.step(
