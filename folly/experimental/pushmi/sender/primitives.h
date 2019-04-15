@@ -77,7 +77,7 @@ namespace _submit_adl {
 #endif
 
     struct _impl_ {
-      PUSHMI_TEMPLATE(class S, class R)
+      PUSHMI_TEMPLATE_DEBUG(class S, class R)
       (requires Sender<S> && Receiver<R>)
       auto operator()(S&& from, R&& to) const
       {
@@ -101,7 +101,11 @@ namespace _submit_adl {
               return std::false_type{};
             ))
 #else
+
+            // does not work for free functions
+            id((S&&) from).submit((R&&) to);
             return std::false_type{};
+
 #endif
           ))
         ))
@@ -109,7 +113,8 @@ namespace _submit_adl {
     };
 
   public:
-    PUSHMI_TEMPLATE(class S, class R)
+
+    PUSHMI_TEMPLATE_DEBUG(class S, class R)
     (requires Invocable<_impl_, S, R> && invoke_result_t<_impl_, S, R>::value)
     constexpr void operator()(S&& from, R&& to) const {
       (void) _impl_{}((S&&) from, (R&&) to);

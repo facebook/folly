@@ -38,7 +38,7 @@ namespace operators {
 PUSHMI_INLINE_VAR constexpr struct from_fn {
  private:
   template <class I, class S>
-  struct task
+  struct sender_impl
   : sender_tag::with_values<typename std::iterator_traits<I>::value_type>
       ::no_error {
   private:
@@ -46,16 +46,16 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
     S end_;
   public:
     using properties = property_set<is_always_blocking<>>;
-    task() = default;
-    task(I begin, S end) : begin_(begin), end_(end) {}
+    sender_impl() = default;
+    sender_impl(I begin, S end) : begin_(begin), end_(end) {}
 
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<
         Out,
         typename std::iterator_traits<I>::value_type>) //
-    void submit(Out&& out) const {
+    void submit(Out&& out) {
       for (auto c = begin_; c != end_; ++c) {
-        set_value(out, *c);
+        set_value(out, folly::as_const(*c));
       }
       set_done(out);
     }
@@ -67,7 +67,7 @@ PUSHMI_INLINE_VAR constexpr struct from_fn {
       typename std::iterator_traits<I>::iterator_category,
       std::forward_iterator_tag>) //
   auto operator()(I begin, S end) const {
-    return task<I, S>{begin, end};
+    return sender_impl<I, S>{begin, end};
   }
 
   PUSHMI_TEMPLATE(class R)
@@ -199,12 +199,26 @@ PUSHMI_INLINE_VAR constexpr struct flow_from_fn {
     (requires ReceiveValue<
         Out&,
         typename std::iterator_traits<I>::value_type>) //
-    void submit(Out out) {
+    void submit(Out out) & {
       auto exec = ::folly::pushmi::make_strand(ef_);
       using Exec = decltype(exec);
       using Producer = flow_from_producer<I, S, Out, Exec>;
       auto p = std::make_shared<Producer>(
           begin_, end_, std::move(out), std::move(exec), false);
+
+      ::folly::pushmi::submit(
+          ::folly::pushmi::schedule(p->exec), receiver_impl<Producer>{p});
+    }
+    PUSHMI_TEMPLATE(class Out)
+    (requires ReceiveValue<
+        Out&,
+        typename std::iterator_traits<I>::value_type>) //
+    void submit(Out out) && {
+      auto exec = ::folly::pushmi::make_strand(ef_);
+      using Exec = decltype(exec);
+      using Producer = flow_from_producer<I, S, Out, Exec>;
+      auto p = std::make_shared<Producer>(
+          std::move(begin_), std::move(end_), std::move(out), std::move(exec), false);
 
       ::folly::pushmi::submit(
           ::folly::pushmi::schedule(p->exec), receiver_impl<Producer>{p});

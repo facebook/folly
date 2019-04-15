@@ -291,9 +291,9 @@ class flow_receiver<Data, DVF, DEF, DDF, DStrtF> {
       DDF df = DDF{},
       DStrtF strtf = DStrtF{})
       : data_(std::move(d)),
-        nf_(nf),
-        ef_(ef),
-        df_(df),
+        nf_(std::move(nf)),
+        ef_(std::move(ef)),
+        df_(std::move(df)),
         strtf_(std::move(strtf)) {}
 
 

@@ -273,11 +273,11 @@ class receiver<Data, DVF, DEF, DDF> {
   constexpr explicit receiver(Data d)
       : receiver(std::move(d), DVF{}, DEF{}, DDF{}) {}
   constexpr receiver(Data d, DDF df)
-      : done_(false), data_(std::move(d)), vf_(), ef_(), df_(df) {}
+      : done_(false), data_(std::move(d)), vf_(), ef_(), df_(std::move(df)) {}
   constexpr receiver(Data d, DEF ef, DDF df = DDF{})
-      : done_(false), data_(std::move(d)), vf_(), ef_(ef), df_(df) {}
+      : done_(false), data_(std::move(d)), vf_(), ef_(std::move(ef)), df_(std::move(df)) {}
   constexpr receiver(Data d, DVF vf, DEF ef = DEF{}, DDF df = DDF{})
-      : done_(false), data_(std::move(d)), vf_(vf), ef_(ef), df_(df) {}
+      : done_(false), data_(std::move(d)), vf_(std::move(vf)), ef_(std::move(ef)), df_(std::move(df)) {}
 
   Data& data() {
     return data_;

@@ -469,6 +469,32 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
     /**/
 #endif
 
+////////////////////////////////////////////////////////////////////////////////
+// PUSHMI_TEMPLATE_DEBUG
+//  templates declared with this macro can have the concepts compiled out
+//  by adding -DPUSHMI_DEBUG_CONCEPTS=1 in build.
+//  This is applied to templates that
+//    a - have no overloads disambiguated by the concepts checks
+//    b - obscure concept checks that provide more information about a compile
+//        error
+// Usage:
+//   PUSHMI_TEMPLATE_DEBUG (class A, class B)
+//     (requires Concept1<A> && Concept2<B>)
+//   void foo(A a, B b)
+//   {}
+// or
+//   PUSHMI_TEMPLATE_DEBUG (class A, class B)
+//     (requires requires (expr1, expr2, expr3) && Concept1<A> && Concept2<B>)
+//   void foo(A a, B b)
+//   {}
+#if PUSHMI_DEBUG_CONCEPTS
+#define PUSHMI_TEMPLATE_DEBUG(...)                                             \
+    template<__VA_ARGS__> PUSHMI_PP_EAT
+#else
+#define PUSHMI_TEMPLATE_DEBUG(...)                                             \
+    PUSHMI_TEMPLATE(PUSHMI_PP_EXPAND(__VA_ARGS__))                             \
+/**/
+#endif
 
 #if __cpp_concepts
 #define PUSHMI_BROKEN_SUBSUMPTION(...)

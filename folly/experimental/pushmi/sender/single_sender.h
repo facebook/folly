@@ -167,10 +167,15 @@ class single_sender<SF> {
   constexpr explicit single_sender(SF sf) : sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-  (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>)) //
-      void submit(Out&& out) {
+  (requires Receiver<Out> && Invocable<SF&, Out>) //
+      void submit(Out&& out) & {
     sf_((Out&&)out);
+  }
+
+  PUSHMI_TEMPLATE(class Out)
+  (requires Receiver<Out> && Invocable<SF&&, Out>) //
+      void submit(Out&& out) && {
+    std::move(sf_)((Out&&)out);
   }
 };
 
@@ -194,16 +199,14 @@ class single_sender<Data, DSF> {
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-  (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&, Data&, Out>)) //
+  (requires Receiver<Out> && Invocable<DSF&, Data&, Out>) //
       void submit(Out&& out) & {
     sf_(data_, (Out&&)out);
   }
   PUSHMI_TEMPLATE(class Out)
-  (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&, Data&&, Out>)) //
+  (requires Receiver<Out> && Invocable<DSF&&, Data&&, Out>) //
       void submit(Out&& out) && {
-    sf_(std::move(data_), (Out&&)out);
+    std::move(sf_)(std::move(data_), (Out&&)out);
   }
 };
 

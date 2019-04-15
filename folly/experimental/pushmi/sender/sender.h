@@ -129,8 +129,15 @@ class sender<SF> : public sender_tag {
   PUSHMI_TEMPLATE(class Out)
   (requires PUSHMI_EXP(
       lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&, Out>)) //
-      void submit(Out out) {
+      void submit(Out out) & {
     sf_(std::move(out));
+  }
+
+  PUSHMI_TEMPLATE(class Out)
+  (requires PUSHMI_EXP(
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<SF&&, Out>)) //
+      void submit(Out out) && {
+    std::move(sf_)(std::move(out));
   }
 };
 
@@ -160,9 +167,9 @@ class sender<Data, DSF> {
   }
   PUSHMI_TEMPLATE(class Out)
   (requires PUSHMI_EXP(
-      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&, Data&&, Out>)) //
+      lazy::Receiver<Out> PUSHMI_AND lazy::Invocable<DSF&&, Data&&, Out>)) //
       void submit(Out out) && {
-    sf_(std::move(data_), std::move(out));
+    std::move(sf_)(std::move(data_), std::move(out));
   }
 };
 

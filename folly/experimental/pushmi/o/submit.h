@@ -50,8 +50,8 @@ struct submit_fn {
   struct fn : pipeorigin {
     explicit fn(AN&&... an) : args_((AN &&) an...) {}
     std::tuple<AN...> args_;
-    PUSHMI_TEMPLATE(class In)( //
-      requires submit_detail::AutoSenderTo<In&&, AN...>) //
+    PUSHMI_TEMPLATE_DEBUG(class In)
+    (requires submit_detail::AutoSenderTo<In&&, AN...>) //
     void operator()(In&& in) {
       using maker_t = receiver_from_fn<std::decay_t<In>>;
       using receiver_t = invoke_result_t<maker_t, std::tuple<AN...>&&>;

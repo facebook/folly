@@ -88,6 +88,10 @@ struct overload_fn<Fn> : Fn {
   constexpr overload_fn() = default;
   constexpr explicit overload_fn(Fn fn)
       : Fn(std::move(fn)) {}
+  constexpr overload_fn(overload_fn&&) = default;
+  constexpr overload_fn& operator=(overload_fn&&) = default;
+  constexpr overload_fn(const overload_fn&) = default;
+  constexpr overload_fn& operator=(const overload_fn&) = default;
   using Fn::operator();
 };
 #if !defined(__GNUC__) || __GNUC__ >= 8
@@ -96,6 +100,10 @@ struct overload_fn<Fn, Fns...> : Fn, overload_fn<Fns...> {
   constexpr overload_fn() = default;
   constexpr overload_fn(Fn fn, Fns... fns)
       : Fn(std::move(fn)), overload_fn<Fns...>{std::move(fns)...} {}
+  constexpr overload_fn(overload_fn&&) = default;
+  constexpr overload_fn& operator=(overload_fn&&) = default;
+  constexpr overload_fn(const overload_fn&) = default;
+  constexpr overload_fn& operator=(const overload_fn&) = default;
   using Fn::operator();
   using overload_fn<Fns...>::operator();
 };
@@ -110,6 +118,10 @@ public:
   constexpr overload_fn() = default;
   constexpr overload_fn(Fn fn, Fns... fns)
       : fns_{std::move(fn), overload_fn<Fns...>{std::move(fns)...}} {}
+  constexpr overload_fn(overload_fn&&) = default;
+  constexpr overload_fn& operator=(overload_fn&&) = default;
+  constexpr overload_fn(const overload_fn&) = default;
+  constexpr overload_fn& operator=(const overload_fn&) = default;
   PUSHMI_TEMPLATE (class... Args)
     (requires lazy::Invocable<Fn&, Args...> ||
       lazy::Invocable<overload_fn<Fns...>&, Args...>)

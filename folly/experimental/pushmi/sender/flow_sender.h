@@ -131,9 +131,16 @@ class flow_sender<SF> {
 
   PUSHMI_TEMPLATE(class Out)
     (requires FlowReceiver<Out> && Invocable<SF&, Out>)
-  void submit(Out out) {
+  void submit(Out out) & {
     sf_(std::move(out));
   }
+
+  PUSHMI_TEMPLATE(class Out)
+    (requires FlowReceiver<Out> && Invocable<SF&&, Out>)
+  void submit(Out out) && {
+    std::move(sf_)(std::move(out));
+  }
+
 };
 
 template <PUSHMI_TYPE_CONSTRAINT(FlowSender) Data, class DSF>
@@ -156,16 +163,14 @@ class flow_sender<Data, DSF> {
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::FlowReceiver<Out> PUSHMI_AND
-        lazy::Invocable<DSF&, Data&, Out>))
+    (requires FlowReceiver<Out> && Invocable<DSF&, Data&, Out>)
   void submit(Out out) & {
     sf_(data_, std::move(out));
   }
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::FlowReceiver<Out> PUSHMI_AND
-        lazy::Invocable<DSF&, Data&, Out>))
+    (requires FlowReceiver<Out> && Invocable<DSF&&, Data&&, Out>)
   void submit(Out out) && {
-    sf_(std::move(data_), std::move(out));
+    std::move(sf_)(std::move(data_), std::move(out));
   }
 };
 

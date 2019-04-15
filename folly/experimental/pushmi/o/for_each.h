@@ -34,7 +34,7 @@ struct for_each_fn {
       ::folly::pushmi::set_value(up_, requested);
     }
   };
-  template <class In, class Out>
+  template <class Out>
   struct Pull {
     Out out_;
     explicit Pull(Out out) : out_(std::move(out)) {}
@@ -67,27 +67,39 @@ struct for_each_fn {
     void starting(Up) {}
   };
   template <class... AN>
-  struct fn {
+  struct adapt_impl {
     std::tuple<AN...> args_;
     PUSHMI_TEMPLATE(class In)
-    (requires FlowSender<In>)
-    In operator()(In in) {
+    (requires FlowSender<In> && Constructible<std::tuple<AN...>, const std::tuple<AN...>&>)
+    void operator()(In&& in) & {
+      // Strip flow:
+      using C =
+        std::conditional_t<SingleSender<In>, single_sender_tag, sender_tag>;
+      //  copy args to allow adapt to be called multiple times
+      auto out{receiver_from_fn<C>()(args_)};
+      using Out = decltype(out);
+      ::folly::pushmi::submit(
+          (In &&) in,
+          receiver_from_fn<In>()(Pull<Out>{std::move(out)}));
+    }
+    PUSHMI_TEMPLATE(class In)
+    (requires FlowSender<In> && Constructible<std::tuple<AN...>, std::tuple<AN...>&&>)
+    void operator()(In&& in) && {
       // Strip flow:
       using C =
         std::conditional_t<SingleSender<In>, single_sender_tag, sender_tag>;
       auto out{receiver_from_fn<C>()(std::move(args_))};
       using Out = decltype(out);
       ::folly::pushmi::submit(
-          in,
-          receiver_from_fn<In>()(Pull<In, Out>{std::move(out)}));
-      return in;
+          (In &&) in,
+          receiver_from_fn<In>()(Pull<Out>{std::move(out)}));
     }
   };
 
  public:
   template <class... AN>
   auto operator()(AN&&... an) const {
-    return for_each_fn::fn<AN...>{std::tuple<AN...>{(AN &&) an...}};
+    return for_each_fn::adapt_impl<AN...>{std::tuple<AN...>{(AN &&) an...}};
   }
 };
 

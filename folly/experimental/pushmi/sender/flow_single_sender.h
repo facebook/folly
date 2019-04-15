@@ -141,8 +141,14 @@ class flow_single_sender<SF> {
 
   PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out> && Invocable<SF&, Out>)
-  void submit(Out out) {
+  void submit(Out out) & {
     sf_(std::move(out));
+  }
+
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out> && Invocable<SF&&, Out>)
+  void submit(Out out) && {
+    std::move(sf_)(std::move(out));
   }
 };
 
@@ -171,10 +177,15 @@ class flow_single_sender<Data, DSF> {
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
   PUSHMI_TEMPLATE(class Out)
-    (requires PUSHMI_EXP(lazy::Receiver<Out> PUSHMI_AND
-        lazy::Invocable<DSF&, Data&, Out>))
-  void submit(Out out) {
+    (requires Receiver<Out> && Invocable<DSF&, Data&, Out>)
+  void submit(Out out) & {
     sf_(data_, std::move(out));
+  }
+
+  PUSHMI_TEMPLATE(class Out)
+    (requires Receiver<Out> && Invocable<DSF&&, Data&&, Out>)
+  void submit(Out out) && {
+    std::move(sf_)(std::move(data_), std::move(out));
   }
 };
 

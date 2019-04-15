@@ -160,7 +160,8 @@ using FlowReceiverSignals =
     detail::ReceiverSignals_<mi::flow_receiver<>>;
 
 TEST(EmptySourceEmptyTriggerTrampoline, TakeUntil) {
-  auto e = op::flow_from(std::array<int, 0>{}, mi::trampolines);
+  std::array<int, 0> ae{};
+  auto e = op::flow_from(ae, mi::trampolines);
 
   FlowReceiverSignals source{"source"};
   FlowReceiverSignals trigger{"trigger"};
@@ -188,7 +189,8 @@ TEST(EmptySourceEmptyTriggerTrampoline, TakeUntil) {
 
 TEST(EmptySourceEmptyTrigger, TakeUntil) {
   auto nt = mi::new_thread();
-  auto e = op::flow_from(std::array<int, 0>{}, mi::strands(nt));
+  std::array<int, 0> ae{};
+  auto e = op::flow_from(ae, mi::strands(nt));
 
   FlowReceiverSignals source{"source"};
   FlowReceiverSignals trigger{"trigger"};
@@ -216,8 +218,10 @@ TEST(EmptySourceEmptyTrigger, TakeUntil) {
 
 TEST(EmptySourceValueTrigger, TakeUntil) {
   auto nt = mi::new_thread();
-  auto e = op::flow_from(std::array<int, 0>{}, mi::strands(nt));
-  auto v = op::flow_from(std::array<int, 1>{{42}}, mi::strands(nt));
+  std::array<int, 0> ae{};
+  std::array<int, 1> av{{42}};
+  auto e = op::flow_from(ae, mi::strands(nt));
+  auto v = op::flow_from(av, mi::strands(nt));
 
   FlowReceiverSignals source{"source"};
   FlowReceiverSignals trigger{"trigger"};
@@ -245,8 +249,10 @@ TEST(EmptySourceValueTrigger, TakeUntil) {
 
 TEST(ValueSourceEmptyTrigger, TakeUntil) {
   auto nt = mi::new_thread();
-  auto e = op::flow_from(std::array<int, 0>{}, mi::strands(nt));
-  auto v = op::flow_from(std::array<int, 1>{{42}}, mi::strands(nt));
+  std::array<int, 0> ae{};
+  std::array<int, 1> av{{42}};
+  auto e = op::flow_from(ae, mi::strands(nt));
+  auto v = op::flow_from(av, mi::strands(nt));
 
   FlowReceiverSignals source{"source"};
   FlowReceiverSignals trigger{"trigger"};
@@ -273,7 +279,8 @@ TEST(ValueSourceEmptyTrigger, TakeUntil) {
 
 TEST(ValueSourceValueTrigger, TakeUntil) {
   auto nt = mi::new_thread();
-  auto v = op::flow_from(std::array<int, 1>{{42}}, mi::strands(nt));
+  std::array<int, 1> av{{42}};
+  auto v = op::flow_from(av, mi::strands(nt));
 
   FlowReceiverSignals source{"source"};
   FlowReceiverSignals trigger{"trigger"};
