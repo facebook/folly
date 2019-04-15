@@ -564,4 +564,26 @@ class ConcurrentHashMap {
   mutable Atom<hazptr_obj_batch<Atom>*> batch_{nullptr};
 };
 
+#if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE
+template <
+    typename KeyType,
+    typename ValueType,
+    typename HashFn = std::hash<KeyType>,
+    typename KeyEqual = std::equal_to<KeyType>,
+    typename Allocator = std::allocator<uint8_t>,
+    uint8_t ShardBits = 8,
+    template <typename> class Atom = std::atomic,
+    class Mutex = std::mutex>
+using ConcurrentHashMapSIMD = ConcurrentHashMap<
+    KeyType,
+    ValueType,
+    HashFn,
+    KeyEqual,
+    Allocator,
+    ShardBits,
+    Atom,
+    Mutex,
+    detail::concurrenthashmap::simd::SIMDTable>;
+#endif
+
 } // namespace folly
