@@ -118,7 +118,7 @@ PUSHMI_CONCEPT_DEF(
 //     template<typename...Args>
 //     using result_t =
 //       std::conditional_t<
-//         std::is_void_v<result_t<Args...>>,
+//         std::is_void<result_t<Args...>>::value,
 //         Tuple<>,
 //         Tuple<result_t<Args...>>>;
 //   };

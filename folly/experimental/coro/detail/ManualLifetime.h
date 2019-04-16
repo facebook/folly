@@ -36,9 +36,9 @@ class ManualLifetime {
 
   template <
       typename... Args,
-      std::enable_if_t<std::is_constructible_v<T, Args...>, int> = 0>
+      std::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
   void construct(Args&&... args) noexcept(
-      noexcept(std::is_nothrow_constructible_v<T, Args...>)) {
+      noexcept(std::is_nothrow_constructible<T, Args...>::value)) {
     new (static_cast<void*>(std::addressof(value_)))
         T(static_cast<Args&&>(args)...);
   }
@@ -108,6 +108,16 @@ class ManualLifetime<T&&> {
 
  private:
   T* ptr_;
+};
+
+template <>
+class ManualLifetime<void> {
+ public:
+  void construct() noexcept {}
+
+  void destruct() noexcept {}
+
+  void get() const noexcept {}
 };
 
 } // namespace detail

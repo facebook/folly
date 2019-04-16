@@ -75,7 +75,7 @@ private:
       requires ConvertibleTo<U, value_type> //
     )                                       //
     void value(U&& value)
-      noexcept(std::is_nothrow_constructible_v<value_type, U>) {
+      noexcept(std::is_nothrow_constructible<value_type, U>::value) {
       this_->value_.construct(static_cast<U&&>(value));
       this_->state_ = state::value;
     }
@@ -96,7 +96,7 @@ private:
     template<typename Error>
     void error(Error error) noexcept {
       assert(this_->state_ != state::value);
-      PUSHMI_IF_CONSTEXPR( (std::is_same_v<Error, std::exception_ptr>) (
+      PUSHMI_IF_CONSTEXPR( (std::is_same<Error, std::exception_ptr>::value) (
         this_->exception_.construct(std::move(error));
       ) else (
         this_->exception_.construct(std::make_exception_ptr(std::move(error)));
@@ -113,13 +113,13 @@ public:
   : sender_(std::addressof(sender))
   {}
   sender_awaiter(sender_awaiter &&that)
-    noexcept(std::is_nothrow_move_constructible_v<value_type> ||
-      std::is_void_v<value_type>)
+    noexcept(std::is_nothrow_move_constructible<value_type>::value ||
+      std::is_void<value_type>::value)
   : sender_(std::exchange(that.sender_, nullptr))
   , continuation_{std::exchange(that.continuation_, {})}
   , state_(that.state_) {
     if (that.state_ == state::value) {
-      PUSHMI_IF_CONSTEXPR( (!std::is_void_v<value_type>) (
+      PUSHMI_IF_CONSTEXPR( (!std::is_void<value_type>::value) (
         id(value_).construct(std::move(that.value_).get());
       ) else (
       ))
