@@ -18,23 +18,14 @@
 #include <folly/experimental/pushmi/traits.h>
 #include <folly/Traits.h>
 
+#include <folly/experimental/pushmi/forwards.h>
+
 namespace folly {
 namespace pushmi {
 
 // property_set implements a map of category-type to property-type.
 // for each category only one property in that category is allowed in the set.
-
-template <class T, class = void>
-struct property_traits;
-
-template <class T, class = void>
-struct property_set_traits;
-
-template <class... PropertyN>
-struct property_set;
-
-template <class T, class Target, class = void>
-struct property_set_traits_disable;
+//
 
 // customization point for a property with a category
 

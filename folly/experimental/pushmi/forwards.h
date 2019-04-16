@@ -27,6 +27,20 @@ namespace pushmi {
 // derive from this for types that need to find operator|() overloads by ADL
 struct pipeorigin {};
 
+// properties types:
+
+template <class T, class = void>
+struct property_traits;
+
+template <class T, class = void>
+struct property_set_traits;
+
+template <class... PropertyN>
+struct property_set;
+
+template <class T, class Target, class = void>
+struct property_set_traits_disable;
+
 // Traits types:
 
 template <class T, class = void>
