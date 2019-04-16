@@ -104,7 +104,7 @@ void atomic_notify_one_impl(const Atom<Integer, Args...>* atomic) {
   });
 }
 
-template <template <typename...> class Atom, typename Integer, typename... Args>
+template <template <typename...> class Atom, typename... Args>
 void atomic_notify_all_impl(const Atom<std::uint32_t, Args...>* atomic) {
   futexWake(atomic);
   return;
