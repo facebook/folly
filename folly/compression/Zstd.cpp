@@ -39,6 +39,13 @@ namespace io {
 namespace zstd {
 namespace {
 
+// Compatibility helpers for zstd versions < 1.4.0
+#if ZSTD_VERSION_NUMBER < 10400
+
+#define ZSTD_CCtxParams_setParameter ZSTD_CCtxParam_setParameter
+
+#endif
+
 // Compatibility helpers for zstd versions < 1.3.8.
 #if ZSTD_VERSION_NUMBER < 10308
 
@@ -278,7 +285,7 @@ Options::Options(int level) : params_(ZSTD_createCCtxParams()), level_(level) {
 }
 
 void Options::set(ZSTD_cParameter param, unsigned value) {
-  zstdThrowIfError(ZSTD_CCtxParam_setParameter(params_.get(), param, value));
+  zstdThrowIfError(ZSTD_CCtxParams_setParameter(params_.get(), param, value));
   if (param == ZSTD_c_compressionLevel) {
     level_ = static_cast<int>(value);
   }
