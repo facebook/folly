@@ -197,8 +197,6 @@ template <
             semi_await_result_t<detail::range_reference_t<InputRange>>>,
         int>>
 auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
-  using reference_type = detail::range_reference_t<InputRange>;
-
   std::vector<detail::collect_all_try_range_component_t<
       detail::range_reference_t<InputRange>>>
       results;
