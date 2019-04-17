@@ -30,7 +30,6 @@ using folly::IOBuf;
 
 const size_t MIN_ALLOC_SIZE = 2000;
 const size_t MAX_ALLOC_SIZE = 8000;
-const size_t MAX_PACK_COPY = 4096;
 
 /**
  * Convenience function to append chain src to chain dst.
@@ -41,10 +40,10 @@ void appendToChain(unique_ptr<IOBuf>& dst, unique_ptr<IOBuf>&& src, bool pack) {
   } else {
     IOBuf* tail = dst->prev();
     if (pack) {
-      // Copy up to MAX_PACK_COPY bytes if we can free buffers; this helps
+      // Copy up to kMaxPackCopy bytes if we can free buffers; this helps
       // reduce wastage (the tail's tailroom and the head's headroom) when
       // joining two IOBufQueues together.
-      size_t copyRemaining = MAX_PACK_COPY;
+      size_t copyRemaining = folly::IOBufQueue::kMaxPackCopy;
       std::size_t n;
       while (src && (n = src->length()) <= copyRemaining &&
              n <= tail->tailroom()) {
@@ -164,7 +163,7 @@ void IOBufQueue::append(const folly::IOBuf& buf, bool pack) {
     chainLength_ += buf.computeChainDataLength();
   }
 
-  size_t copyRemaining = MAX_PACK_COPY;
+  size_t copyRemaining = kMaxPackCopy;
   std::size_t n;
   const folly::IOBuf* src = &buf;
   folly::IOBuf* tail = head_->prev();

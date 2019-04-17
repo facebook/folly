@@ -532,6 +532,8 @@ class IOBufQueue {
   IOBufQueue(IOBufQueue&&) noexcept;
   IOBufQueue& operator=(IOBufQueue&&);
 
+  static constexpr size_t kMaxPackCopy = 4096;
+
  private:
   std::unique_ptr<folly::IOBuf> split(size_t n, bool throwOnUnderflow);
 
