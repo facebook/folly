@@ -102,10 +102,8 @@
  */
 #if FOLLY_HAS_EXTENSION(nullability)
 #define FOLLY_NULLABLE _Nullable
-#define FOLLY_NONNULL _Nonnull
 #else
 #define FOLLY_NULLABLE
-#define FOLLY_NONNULL
 #endif
 
 /**
