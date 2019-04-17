@@ -399,7 +399,8 @@ class Optional {
     };
     bool hasValue;
 
-    StorageTriviallyDestructible() : hasValue{false} {}
+    constexpr StorageTriviallyDestructible()
+        : emptyState('\0'), hasValue{false} {}
     void clear() {
       hasValue = false;
     }
