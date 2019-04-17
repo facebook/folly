@@ -33,7 +33,7 @@ class StaticSingletonManagerSansRtti {
  public:
   template <typename T, typename Tag>
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& create() {
-    std::atomic<T*> cache{};
+    static std::atomic<T*> cache{};
     auto const pointer = cache.load(std::memory_order_acquire);
     return FOLLY_LIKELY(!!pointer) ? *pointer : create_<T, Tag>(cache);
   }
