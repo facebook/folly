@@ -1351,8 +1351,8 @@ class alignas(64) SIMDTable {
       chunks_.store(newchunks, std::memory_order_release);
       size_ = 0;
     }
-    chunks->retire(HazptrTableDeleter(ccount));
     chunks->reclaim_nodes(ccount);
+    chunks->retire(HazptrTableDeleter(ccount));
   }
 
   void max_load_factor(float factor) {
