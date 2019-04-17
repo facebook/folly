@@ -14,7 +14,7 @@ def fbcode_builder_spec(builder):
             # dir when we build, otherwise the system will decide
             # that `folly/String.h` is the file it wants when including
             # `string.h` and the build will fail.
-            builder.github_project_workdir('facebook/folly', '_build'),
+            builder.fb_github_project_workdir('folly/_build'),
             builder.cmake_install('facebook/folly'),
         ],
     }
