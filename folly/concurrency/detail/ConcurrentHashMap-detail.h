@@ -1411,7 +1411,7 @@ class alignas(64) SIMDTable {
         tag_idx = hits.next();
         Node* node = chunk->item(tag_idx).load(std::memory_order_relaxed);
         if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
-          chunk_idx = (chunk_idx & ccount - 1);
+          chunk_idx = (chunk_idx & (ccount - 1));
           return node;
         }
       }
