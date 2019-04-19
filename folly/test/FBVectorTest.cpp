@@ -124,8 +124,10 @@ TEST(fbvector, emplace) {
   fbvector<std::string> s(12, "asd");
   EXPECT_EQ(s.size(), 12);
   EXPECT_EQ(s.front(), "asd");
-  s.emplace_back("funk");
+  const auto& emplaced = s.emplace_back("funk");
+  EXPECT_EQ(emplaced, "funk");
   EXPECT_EQ(s.back(), "funk");
+  EXPECT_EQ(std::addressof(emplaced), std::addressof(s.back()));
 }
 
 TEST(fbvector, initializer_lists) {

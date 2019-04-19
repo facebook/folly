@@ -1136,13 +1136,14 @@ class fbvector {
   // modifiers (common)
  public:
   template <class... Args>
-  void emplace_back(Args&&... args) {
+  reference emplace_back(Args&&... args) {
     if (impl_.e_ != impl_.z_) {
       M_construct(impl_.e_, std::forward<Args>(args)...);
       ++impl_.e_;
     } else {
       emplace_back_aux(std::forward<Args>(args)...);
     }
+    return back();
   }
 
   void push_back(const T& value) {
