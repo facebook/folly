@@ -853,15 +853,20 @@ TEST(AsyncSSLSocketTest, GetClientCertificate) {
   auto srvSocket = std::move(server).moveSocket();
 
   // Client cert retrieved from server side.
-  folly::ssl::X509UniquePtr serverPeerCert = srvSocket->getPeerCert();
+  auto serverPeerCert = srvSocket->getPeerCertificate();
   CHECK(serverPeerCert);
 
   // Client cert retrieved from client side.
-  const X509* clientSelfCert = cliSocket->getSelfCert();
+  auto clientSelfCert = cliSocket->getSelfCertificate();
   CHECK(clientSelfCert);
 
+  auto serverX509 = serverPeerCert->getX509();
+  auto clientX509 = clientSelfCert->getX509();
+  CHECK(serverX509);
+  CHECK(clientX509);
+
   // The two certs should be the same.
-  EXPECT_EQ(0, X509_cmp(clientSelfCert, serverPeerCert.get()));
+  EXPECT_EQ(0, X509_cmp(clientX509.get(), serverX509.get()));
 }
 
 TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {

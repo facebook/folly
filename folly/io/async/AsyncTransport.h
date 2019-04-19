@@ -379,20 +379,6 @@ class AsyncTransport : public DelayedDestruction, public AsyncSocketBase {
   }
 
   /**
-   * Get the certificate used to authenticate the peer.
-   */
-  virtual ssl::X509UniquePtr getPeerCert() const {
-    return nullptr;
-  }
-
-  /**
-   * The local certificate used for this connection. May be null
-   */
-  virtual const X509* getSelfCert() const {
-    return nullptr;
-  }
-
-  /**
    * Get the peer certificate information if any
    */
   virtual const AsyncTransportCertificate* getPeerCertificate() const {

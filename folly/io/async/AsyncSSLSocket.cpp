@@ -948,11 +948,6 @@ const AsyncTransportCertificate* AsyncSSLSocket::getSelfCertificate() const {
   return selfCertData_.get();
 }
 
-// TODO: deprecate/remove in favor of getSelfCertificate.
-const X509* AsyncSSLSocket::getSelfCert() const {
-  return (ssl_ != nullptr) ? SSL_get_certificate(ssl_.get()) : nullptr;
-}
-
 bool AsyncSSLSocket::willBlock(
     int ret,
     int* sslErrorOut,

@@ -560,11 +560,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    */
   int getSSLCertSize() const;
 
-  /**
-   * Get the certificate used for this SSL connection. May be null
-   */
-  const X509* getSelfCert() const override;
-
   void attachEventBase(EventBase* eventBase) override {
     AsyncSocket::attachEventBase(eventBase);
     handshakeTimeout_.attachEventBase(eventBase);
@@ -733,17 +728,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   const AsyncTransportCertificate* getPeerCertificate() const override;
   const AsyncTransportCertificate* getSelfCertificate() const override;
-
-  /**
-   * Returns the peer certificate, or nullptr if no peer certificate received.
-   */
-  ssl::X509UniquePtr getPeerCert() const override {
-    auto peerCert = getPeerCertificate();
-    if (!peerCert) {
-      return nullptr;
-    }
-    return peerCert->getX509();
-  }
 
   /**
    * Force AsyncSSLSocket object to cache local and peer socket addresses.
