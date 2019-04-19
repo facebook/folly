@@ -435,17 +435,24 @@ TEST(small_vector, Emplace) {
 
   folly::small_vector<NontrivialType> vec;
   vec.reserve(1024);
-  vec.emplace_back(12);
-  EXPECT_EQ(NontrivialType::ctored, 1);
-  EXPECT_EQ(vec.front().a, 12);
-  vec.emplace_back(13);
-  EXPECT_EQ(vec.front().a, 12);
-  EXPECT_EQ(vec.back().a, 13);
-  EXPECT_EQ(NontrivialType::ctored, 2);
+  {
+    auto& emplaced = vec.emplace_back(12);
+    EXPECT_EQ(NontrivialType::ctored, 1);
+    EXPECT_EQ(vec.front().a, 12);
+    EXPECT_TRUE(std::addressof(emplaced) == std::addressof(vec.back()));
+  }
+  {
+    auto& emplaced = vec.emplace_back(13);
+    EXPECT_EQ(vec.front().a, 12);
+    EXPECT_EQ(vec.back().a, 13);
+    EXPECT_EQ(NontrivialType::ctored, 2);
+    EXPECT_TRUE(std::addressof(emplaced) == std::addressof(vec.back()));
+  }
 
   NontrivialType::ctored = 0;
   for (int i = 0; i < 120; ++i) {
-    vec.emplace_back(i);
+    auto& emplaced = vec.emplace_back(i);
+    EXPECT_TRUE(std::addressof(emplaced) == std::addressof(vec.back()));
   }
   EXPECT_EQ(NontrivialType::ctored, 120);
   EXPECT_EQ(vec[0].a, 12);

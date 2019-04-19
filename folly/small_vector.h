@@ -779,7 +779,7 @@ class small_vector : public detail::small_vector_base<
   }
 
   template <class... Args>
-  void emplace_back(Args&&... args) {
+  reference emplace_back(Args&&... args) {
     if (capacity() == size()) {
       // Any of args may be references into the vector.
       // When we are reallocating, we have to be careful to construct the new
@@ -792,10 +792,11 @@ class small_vector : public detail::small_vector_base<
       new (end()) value_type(std::forward<Args>(args)...);
     }
     this->setSize(size() + 1);
+    return back();
   }
 
   void push_back(value_type&& t) {
-    return emplace_back(std::move(t));
+    emplace_back(std::move(t));
   }
 
   void push_back(value_type const& t) {
