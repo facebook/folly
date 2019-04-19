@@ -42,7 +42,7 @@
  *  }
  */
 
-#if defined(__clang__) || (defined(__GNUC__) && __GNUC__ >= 5)
+#if defined(__GNUC__)
 #define PUSHMI_CEXP_NOT_ON_WINDOWS 1
 #else
 #define PUSHMI_CEXP_NOT_ON_WINDOWS 0
