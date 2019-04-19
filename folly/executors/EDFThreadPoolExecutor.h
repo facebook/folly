@@ -57,11 +57,12 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
 
   folly::Executor::KeepAlive<> deadlineExecutor(uint64_t deadline);
 
- private:
+ protected:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(std::size_t numThreads) override;
   std::size_t getPendingTaskCountImpl() const override;
 
+ private:
   bool shouldStop();
   std::shared_ptr<Task> take();
 
