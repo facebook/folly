@@ -404,7 +404,7 @@ class RequestWithoutReturn {
 // implicit conversion
 template <typename Func>
 using Request = std::conditional_t<
-    std::is_same<folly::invoke_result_t<const Func&>, void>::value,
+    std::is_void<folly::invoke_result_t<const Func&>>::value,
     RequestWithoutReturn<Func>,
     RequestWithReturn<Func>>;
 
