@@ -84,7 +84,7 @@ void unique_ptr_test(Allocator& allocator) {
     auto p = folly::allocate_unique<Foo>(allocator, counter);
     EXPECT_EQ(counter.count(), 2);
 
-    [&](ptr_type g) {
+    [&counter](ptr_type g) {
       EXPECT_EQ(counter.count(), 2);
       g.reset();
       EXPECT_EQ(counter.count(), 1);
@@ -137,7 +137,7 @@ void shared_ptr_test(Allocator& allocator) {
     EXPECT_EQ(counter.count(), 1);
     EXPECT_EQ(p.use_count(), 2);
 
-    [&](ptr_type g) {
+    [&counter, &p](ptr_type g) {
       EXPECT_EQ(counter.count(), 1);
       EXPECT_EQ(p.use_count(), 3);
       EXPECT_EQ(g.use_count(), 3);

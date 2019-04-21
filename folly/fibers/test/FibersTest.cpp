@@ -1639,7 +1639,7 @@ TEST(FiberManager, semaphore) {
 template <typename ExecutorT>
 void singleBatchDispatch(ExecutorT& executor, int batchSize, int index) {
   thread_local BatchDispatcher<int, std::string, ExecutorT> batchDispatcher(
-      executor, [=](std::vector<int>&& batch) {
+      executor, [batchSize](std::vector<int>&& batch) {
         EXPECT_EQ(batchSize, batch.size());
         std::vector<std::string> results;
         for (auto& it : batch) {
@@ -1687,20 +1687,22 @@ folly::Future<std::vector<std::string>> doubleBatchInnerDispatch(
       std::vector<int>,
       std::vector<std::string>,
       ExecutorT>
-      batchDispatcher(executor, [=](std::vector<std::vector<int>>&& batch) {
-        std::vector<std::vector<std::string>> results;
-        int numberOfElements = 0;
-        for (auto& unit : batch) {
-          numberOfElements += unit.size();
-          std::vector<std::string> result;
-          for (auto& element : unit) {
-            result.push_back(folly::to<std::string>(element));
-          }
-          results.push_back(std::move(result));
-        }
-        EXPECT_EQ(totalNumberOfElements, numberOfElements);
-        return results;
-      });
+      batchDispatcher(
+          executor,
+          [totalNumberOfElements](std::vector<std::vector<int>>&& batch) {
+            std::vector<std::vector<std::string>> results;
+            int numberOfElements = 0;
+            for (auto& unit : batch) {
+              numberOfElements += unit.size();
+              std::vector<std::string> result;
+              for (auto& element : unit) {
+                result.push_back(folly::to<std::string>(element));
+              }
+              results.push_back(std::move(result));
+            }
+            EXPECT_EQ(totalNumberOfElements, numberOfElements);
+            return results;
+          });
 
   return batchDispatcher.add(std::move(input));
 }

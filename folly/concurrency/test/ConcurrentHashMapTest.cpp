@@ -790,13 +790,16 @@ TYPED_TEST_P(ConcurrentHashMapTest, ForEachLoop) {
   EXPECT_EQ(iters, 1);
 }
 
+template <typename T>
+struct FooBase {
+  typename T::ConstIterator it;
+  explicit FooBase(typename T::ConstIterator&& it_) : it(std::move(it_)) {}
+  FooBase(FooBase&&) = default;
+  FooBase& operator=(FooBase&&) = default;
+};
+
 TYPED_TEST_P(ConcurrentHashMapTest, IteratorMove) {
-  struct Foo {
-    CHM<int, int>::ConstIterator it;
-    explicit Foo(CHM<int, int>::ConstIterator&& it_) : it(std::move(it_)) {}
-    Foo(Foo&&) = default;
-    Foo& operator=(Foo&&) = default;
-  };
+  using Foo = FooBase<CHM<int, int>>;
   CHM<int, int> map;
   int k = 111;
   int v = 999999;

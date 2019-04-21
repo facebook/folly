@@ -322,7 +322,7 @@ void simpleStressTest(Duration duration, int numThreads) {
   auto&& stop = std::atomic<bool>{true};
 
   for (auto i = 0; i < numThreads; ++i) {
-    threads.emplace_back([&] {
+    threads.emplace_back([&mutex, &data, &stop] {
       while (!stop.load(std::memory_order_relaxed)) {
         auto lck = std::unique_lock<Mutex>{mutex};
         EXPECT_EQ(data.fetch_add(1, std::memory_order_relaxed), 0);

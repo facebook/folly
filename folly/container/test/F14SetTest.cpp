@@ -305,7 +305,7 @@ void runSimple() {
   EXPECT_TRUE(h8.empty());
   EXPECT_EQ(h9.size(), 2);
 
-  auto expectH8 = [&](T& ref) { EXPECT_EQ(&ref, &h8); };
+  auto expectH8 = [&h8](T& ref) { EXPECT_EQ(&ref, &h8); };
   expectH8((h8 = h2));
   expectH8((h8 = std::move(h2)));
   expectH8((h8 = {}));

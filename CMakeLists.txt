@@ -506,7 +506,8 @@ if (BUILD_TESTS)
       TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp
       TEST cache_locality_test SOURCES CacheLocalityTest.cpp
       TEST core_cached_shared_ptr_test SOURCES CoreCachedSharedPtrTest.cpp
-      TEST concurrent_hash_map_test SOURCES ConcurrentHashMapTest.cpp
+      TEST concurrent_hash_map_test WINDOWS_DISABLED
+        SOURCES ConcurrentHashMapTest.cpp
       TEST dynamic_bounded_queue_test WINDOWS_DISABLED
         SOURCES DynamicBoundedQueueTest.cpp
       TEST priority_unbounded_queue_set_test
