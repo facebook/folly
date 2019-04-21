@@ -34,16 +34,28 @@ class SocketPair {
   void closeFD0();
   void closeFD1();
 
+  NetworkSocket extractNetworkSocket0() {
+    return extractNetworkSocket(0);
+  }
+  NetworkSocket extractNetworkSocket1() {
+    return extractNetworkSocket(1);
+  }
+
   int extractFD0() {
-    return extractFD(0);
+    return extractNetworkSocket0().toFd();
   }
   int extractFD1() {
-    return extractFD(1);
+    return extractNetworkSocket1().toFd();
   }
-  int extractFD(int index) {
+
+  NetworkSocket extractNetworkSocket(int index) {
     auto fd = fds_[index];
     fds_[index] = NetworkSocket();
-    return fd.toFd();
+    return fd;
+  }
+
+  int extractFD(int index) {
+    return extractNetworkSocket(index).toFd();
   }
 
  private:
