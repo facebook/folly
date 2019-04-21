@@ -676,14 +676,12 @@ TEST(Conv, EmptyStringToDouble) {
 TEST(Conv, IntToDouble) {
   auto d = to<double>(42);
   EXPECT_EQ(d, 42);
-  /* This seems not work in ubuntu11.10, gcc 4.6.1
   try {
-    auto f = to<float>(957837589847);
+    (void)to<float>(957837589847);
     ADD_FAILURE();
   } catch (std::range_error& e) {
     //LOG(INFO) << e.what();
   }
-  */
 }
 
 TEST(Conv, DoubleToInt) {
