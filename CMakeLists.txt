@@ -577,7 +577,6 @@ if (BUILD_TESTS)
       TEST log_message_test SOURCES LogMessageTest.cpp
       TEST log_name_test SOURCES LogNameTest.cpp
       TEST log_stream_test SOURCES LogStreamTest.cpp
-      TEST printf_test SOURCES PrintfTest.cpp
       TEST rate_limiter_test SOURCES RateLimiterTest.cpp
       TEST standard_log_handler_test SOURCES StandardLogHandlerTest.cpp
       TEST xlog_test

@@ -70,16 +70,6 @@ XLOGF(DBG1, "cannot engage {} thruster: {}", thruster.name(), err.what());
 This uses [`folly::format()`](https://github.com/facebook/folly/blob/master/folly/docs/Format.md)
 to perform the formatting internally.
 
-## `printf`-style string formatting
-
-To help existing projects convert from older logging APIs, `XLOGC()` and
-`FB_LOGC()` macros exist to support C-style `printf()` format strings.
-You must include `folly/logging/printf.h` to access these macros.
-
-```
-XLOGC(DBG1, "failed to engage thruster %d: %s", thruster.number(), err.what());
-```
-
 # Log Category Selection
 
 The `XLOG()` macro automatically selects a log category to log to based on the
