@@ -473,11 +473,15 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_STORAGE_CONSTEXPR constexpr
 #endif
 
+#if __cplusplus >= 201703L
+// folly::coro requires C++17 support
 #if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
-#define FOLLY_HAS_COROUTINES 1
+// NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
+// does not yet support symmetric-transfer.
 #endif
+#endif // __cplusplus >= 201703L
 
 // MSVC 2017.5 && C++17
 #if __cpp_noexcept_function_type >= 201510 || \
