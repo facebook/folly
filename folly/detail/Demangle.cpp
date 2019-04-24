@@ -37,6 +37,9 @@ int cplus_demangle_v3_callback_wrapper(
   auto const options = DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES;
   return cplus_demangle_v3_callback(mangled, options, cbref, opaque);
 #else
+  (void)mangled;
+  (void)cbref;
+  (void)opaque;
   return 0;
 #endif
 }
