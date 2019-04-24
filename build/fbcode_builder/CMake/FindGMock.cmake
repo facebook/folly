@@ -1,4 +1,4 @@
-#
+# Copyright (c) Facebook, Inc. and its affiliates.
 # Find libgmock
 #
 #  LIBGMOCK_DEFINES     - List of defines when using libgmock.

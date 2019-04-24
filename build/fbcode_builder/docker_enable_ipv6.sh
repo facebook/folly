@@ -1,4 +1,5 @@
 #!/bin/sh
+# Copyright (c) Facebook, Inc. and its affiliates.
 
 
 # `daemon.json` is normally missing, but let's log it in case that changes.
