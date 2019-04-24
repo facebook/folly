@@ -572,9 +572,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get() &&;
 
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get()")]] T
-  get() & = delete;
-
   /// Blocks until the semifuture is fulfilled, or until `dur` elapses. Returns
   /// the value (moved-out), or throws the exception (which might be a
   /// FutureTimeout exception).
@@ -587,9 +584,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   T get(Duration dur) &&;
-
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get(dur)")]] T
-  get(Duration dur) & = delete;
 
   /// Blocks until the future is fulfilled. Returns the Try of the result
   ///   (moved-out).
@@ -1130,31 +1124,12 @@ class Future : private futures::detail::FutureBase<T> {
   /// thenTry or thenError rather than then and onError as they avoid ambiguity
   /// when using polymorphic lambdas.
   template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated("ERROR: use thenValue instead")]] typename std::enable_if<
-      !is_invocable<F>::value && is_invocable<F, T&&>::value,
-      typename R::Return>::type
-  then(F&& func) && = delete;
-
-  template <typename F, typename R = futures::detail::callableResult<T, F>>
   [[deprecated("ERROR: use thenTry instead")]] typename std::enable_if<
       !is_invocable<F, T&&>::value && !is_invocable<F>::value,
       typename R::Return>::type
   then(F&& func) && {
     return std::move(*this).thenTry(std::forward<F>(func));
   }
-
-  template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated(
-      "ERROR: use thenValue with auto&& or folly::Unit parameter instead")]]
-  typename std::enable_if<is_invocable<F>::value, typename R::Return>::type
-  then(F&& func) && = delete;
-
-  // clang-format off
-  template <typename F, typename R = futures::detail::callableResult<T, F>>
-  [[deprecated(
-    "must be rvalue-qualified, e.g., std::move(future).thenValue(...)")]]
-  typename R::Return then(F&& func) & = delete;
-  // clang-format on
 
   /// Variant where func is an member function
   ///
@@ -1180,14 +1155,6 @@ class Future : private futures::detail::FutureBase<T> {
   Future<typename isFuture<R>::Inner> then(
       R (Caller::*func)(Args...),
       Caller* instance) &&;
-
-  // clang-format off
-  template <typename R, typename Caller, typename... Args>
-  [[deprecated(
-      "must be rvalue-qualified, e.g., std::move(future).then(...)")]]
-  Future<typename isFuture<R>::Inner>
-  then(R (Caller::*func)(Args...), Caller* instance) & = delete;
-  // clang-format on
 
   /// Execute the callback via the given Executor. The executor doesn't stick.
   ///
@@ -1235,11 +1202,6 @@ class Future : private futures::detail::FutureBase<T> {
 
     return std::move(*this).then(func, instance).via(std::move(oldX));
   }
-
-  template <class Arg, class... Args>
-  [[deprecated(
-      "must be rvalue-qualified, e.g., std::move(future).then(...)")]] auto
-  then(Executor::KeepAlive<> x, Arg&& arg, Args&&... args) & = delete;
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with `Try<T>&&` (often a lambda with parameter type
@@ -1412,12 +1374,6 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   Future<Unit> then() &&;
-
-  // clang-format off
-  [[deprecated(
-      "must be rvalue-qualified, e.g., std::move(future).thenValue()")]]
-  Future<Unit> then() & = delete;
-  // clang-format on
 
   /// Convenience method for ignoring the value and creating a Future<Unit>.
   /// Exceptions still propagate.
@@ -1639,9 +1595,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get() &&;
 
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get()")]] T
-  get() & = delete;
-
   /// Blocks until the future is fulfilled, or until `dur` elapses. Returns the
   /// value (moved-out), or throws the exception (which might be a FutureTimeout
   /// exception).
@@ -1654,9 +1607,6 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   T get(Duration dur) &&;
-
-  [[deprecated("must be rvalue-qualified, e.g., std::move(future).get(dur)")]] T
-  get(Duration dur) & = delete;
 
   /// A reference to the Try of the value
   ///
