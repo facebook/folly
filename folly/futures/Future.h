@@ -1469,7 +1469,7 @@ class Future : private futures::detail::FutureBase<T> {
       !is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func) &&;
+  onError(F&& func) && = delete;
 
   /// Overload of onError where the error continuation returns a Future<T>
   ///
@@ -1489,7 +1489,7 @@ class Future : private futures::detail::FutureBase<T> {
       !is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func) &&;
+  onError(F&& func) && = delete;
 
   /// Overload of onError that takes exception_wrapper and returns Future<T>
   ///
@@ -1509,7 +1509,7 @@ class Future : private futures::detail::FutureBase<T> {
       is_invocable<F, exception_wrapper>::value &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func) &&;
+  onError(F&& func) && = delete;
 
   /// Overload of onError that takes exception_wrapper and returns T
   ///
@@ -1529,16 +1529,15 @@ class Future : private futures::detail::FutureBase<T> {
       is_invocable<F, exception_wrapper>::value &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
-  onError(F&& func) &&;
+  onError(F&& func) && = delete;
 
   template <class R, class... Args>
-  Future<T> onError(R (&func)(Args...)) && {
-    return std::move(*this).onError(&func);
-  }
+  Future<T> onError(R (&func)(Args...)) && = delete;
 
   // clang-format off
   template <class F>
-  [[deprecated("ERROR: use rvalue-qualified fn, eg, std::move(future).onError(...)")]]
+  [[deprecated(
+      "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   Future<T> onError(F&& func) & = delete;
 
   /// func is like std::function<void()> and is executed unconditionally, and
@@ -1559,7 +1558,7 @@ class Future : private futures::detail::FutureBase<T> {
   Future<T> ensure(F&& func) &&;
   // clang-format on
 
-  /// Like onError, but for timeouts. example:
+  /// Like thenError, but for timeouts. example:
   ///
   ///   Future<int> f = makeFuture<int>(42)
   ///     .delayed(long_time)

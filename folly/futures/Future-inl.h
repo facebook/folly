@@ -1284,53 +1284,6 @@ Future<Unit> Future<T>::then() && {
   return std::move(*this).thenValue([](T&&) {});
 }
 
-// onError where the callback returns T
-template <class T>
-template <class F>
-typename std::enable_if<
-    !is_invocable<F, exception_wrapper>::value &&
-        !futures::detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
-Future<T>::onError(F&& func) && {
-  typedef typename futures::detail::Extract<F>::FirstArg Exn;
-  static_assert(
-      std::is_same<typename futures::detail::Extract<F>::RawReturn, T>::value,
-      "Return type of onError callback must be T or Future<T>");
-
-  // NOTE: Removes the executor to maintain historical behaviour.
-  return std::move(*this)
-      .thenError(
-          tag_t<Exn>{},
-          [func = std::forward<F>(func)](auto&& ex) mutable {
-            return std::forward<F>(func)(ex);
-          })
-      .via(&InlineExecutor::instance());
-}
-
-// onError where the callback returns Future<T>
-template <class T>
-template <class F>
-typename std::enable_if<
-    !is_invocable<F, exception_wrapper>::value &&
-        futures::detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
-Future<T>::onError(F&& func) && {
-  static_assert(
-      std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
-          value,
-      "Return type of onError callback must be T or Future<T>");
-  typedef typename futures::detail::Extract<F>::FirstArg Exn;
-
-  // NOTE: Removes the executor to maintain historical behaviour.
-  return std::move(*this)
-      .thenError(
-          tag_t<Exn>{},
-          [func = std::forward<F>(func)](auto&& ex) mutable {
-            return std::forward<F>(func)(ex);
-          })
-      .via(&InlineExecutor::instance());
-}
-
 template <class T>
 template <class F>
 Future<T> Future<T>::ensure(F&& func) && {
@@ -1349,43 +1302,6 @@ Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) && {
       [funcw = std::forward<F>(func)](auto const&) mutable {
         return std::forward<F>(funcw)();
       });
-}
-
-template <class T>
-template <class F>
-typename std::enable_if<
-    is_invocable<F, exception_wrapper>::value &&
-        futures::detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
-Future<T>::onError(F&& func) && {
-  static_assert(
-      std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
-          value,
-      "Return type of onError callback must be T or Future<T>");
-
-  // NOTE: Removes the executor to maintain historical behaviour.
-  return std::move(*this)
-      .thenError(std::forward<F>(func))
-      .via(&InlineExecutor::instance());
-}
-
-// onError(exception_wrapper) that returns T
-template <class T>
-template <class F>
-typename std::enable_if<
-    is_invocable<F, exception_wrapper>::value &&
-        !futures::detail::Extract<F>::ReturnsFuture::value,
-    Future<T>>::type
-Future<T>::onError(F&& func) && {
-  static_assert(
-      std::is_same<typename futures::detail::Extract<F>::Return, Future<T>>::
-          value,
-      "Return type of onError callback must be T or Future<T>");
-
-  // NOTE: Removes the executor to maintain historical behaviour.
-  return std::move(*this)
-      .thenError(std::forward<F>(func))
-      .via(&InlineExecutor::instance());
 }
 
 template <class Func>

@@ -128,7 +128,7 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
               nodes[handle].promise.setTry(std::move(t));
             });
           })
-          .onError([this, handle](exception_wrapper ew) {
+          .thenError([this, handle](exception_wrapper ew) {
             nodes[handle].promise.setException(std::move(ew));
           });
     }
