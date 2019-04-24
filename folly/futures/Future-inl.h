@@ -53,6 +53,58 @@ std::shared_ptr<Timekeeper> getTimekeeperSingleton();
 
 namespace futures {
 namespace detail {
+
+// InvokeResultWrapper and wrapInvoke enable wrapping a result value in its
+// nearest Future-type counterpart capable of also carrying an exception.
+// e.g.
+//    (semi)Future<T> -> (semi)Future<T>           (no change)
+//    Try<T>          -> Try<T>                    (no change)
+//    void            -> Try<folly::Unit>
+//    T               -> Try<T>
+template <typename T>
+struct InvokeResultWrapperBase {
+  template <typename F>
+  static T wrapResult(F fn) {
+    return T(fn());
+  }
+  static T wrapException(exception_wrapper&& e) {
+    return T(std::move(e));
+  }
+};
+template <typename T>
+struct InvokeResultWrapper : InvokeResultWrapperBase<Try<T>> {};
+template <typename T>
+struct InvokeResultWrapper<Try<T>> : InvokeResultWrapperBase<Try<T>> {};
+template <typename T>
+struct InvokeResultWrapper<SemiFuture<T>>
+    : InvokeResultWrapperBase<SemiFuture<T>> {};
+template <typename T>
+struct InvokeResultWrapper<Future<T>> : InvokeResultWrapperBase<Future<T>> {};
+template <>
+struct InvokeResultWrapper<void> : InvokeResultWrapperBase<Try<Unit>> {
+  template <typename F>
+  static Try<Unit> wrapResult(F fn) {
+    fn();
+    return Try<Unit>(unit);
+  }
+};
+
+template <typename T, typename F>
+auto wrapInvoke(folly::Try<T>&& t, F&& f) {
+  auto fn = [&]() {
+    return std::forward<F>(f)(
+        t.template get<
+            false,
+            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+  };
+  using FnResult = decltype(fn());
+  using Wrapper = InvokeResultWrapper<FnResult>;
+  if (t.hasException()) {
+    return Wrapper::wrapException(std::move(t).exception());
+  }
+  return Wrapper::wrapResult(fn);
+}
+
 //  Guarantees that the stored functor is destructed before the stored promise
 //  may be fulfilled. Assumes the stored functor to be noexcept-destructible.
 template <typename T, typename F>
@@ -920,13 +972,10 @@ template <class T>
 template <typename F>
 SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
 SemiFuture<T>::deferValue(F&& func) && {
-  return std::move(*this).defer([f = std::forward<F>(func)](
-                                    folly::Try<T>&& t) mutable {
-    return std::forward<F>(f)(
-        t.template get<
-            false,
-            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
-  });
+  return std::move(*this).defer(
+      [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
+        return futures::detail::wrapInvoke(std::move(t), std::forward<F>(f));
+      });
 }
 
 template <class T>
@@ -1134,10 +1183,7 @@ template <typename F>
 Future<typename futures::detail::valueCallableResult<T, F>::value_type>
 Future<T>::thenValue(F&& func) && {
   auto lambdaFunc = [f = std::forward<F>(func)](folly::Try<T>&& t) mutable {
-    return std::forward<F>(f)(
-        t.template get<
-            false,
-            typename futures::detail::valueCallableResult<T, F>::FirstArg>());
+    return futures::detail::wrapInvoke(std::move(t), std::forward<F>(f));
   };
   using R = futures::detail::tryCallableResult<T, decltype(lambdaFunc)>;
   return this->thenImplementation(std::move(lambdaFunc), R{});

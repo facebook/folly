@@ -1355,6 +1355,79 @@ TEST(Future, ThenRecursion) {
   EXPECT_EQ(42, recursion(&executor, 100000).getVia(&executor));
 }
 
+// We want to detect if the Try value is being dereferenced before being
+// checked for validity. The only way to do that is with a custom Try impl.
+struct NoThrowTestResult {};
+namespace folly {
+// Forward all methods except throwIfFailed().
+template <>
+class Try<NoThrowTestResult> : public Try<void> {
+ public:
+  using Try<void>::Try;
+
+  explicit Try(const NoThrowTestResult&) : Try<void>() {}
+
+  NoThrowTestResult value() const {
+    throwIfFailed();
+    return NoThrowTestResult();
+  }
+  NoThrowTestResult operator*() const {
+    return value();
+  }
+
+  // If the Try contains an exception, throws it
+  inline void throwIfFailed() const {
+    EXPECT_FALSE(this->hasException())
+        << "throwIfFailed() should never have been invoked.";
+    Try<void>::throwIfFailed();
+  }
+
+  template <bool isTry, typename R>
+  typename std::enable_if<isTry, R>::type get() {
+    return std::forward<R>(*this);
+  }
+
+  template <bool isTry, typename R>
+  typename std::enable_if<!isTry, R>::type get() {
+    return std::forward<R>(value());
+  }
+};
+} // namespace folly
+
+TEST(Future, NoThrow) {
+  // Test that the Futures implementation never invokes c++ throw, by
+  // accessing the value without first checking whether the value exists.
+  const std::string kErrorMessage = "NoThrow test";
+  // Test thenValue
+  {
+    Try<NoThrowTestResult> t =
+        Future<NoThrowTestResult>(std::runtime_error(kErrorMessage))
+            .thenValue([](NoThrowTestResult&& value) {
+              ADD_FAILURE() << "This code should be unreachable";
+              return std::move(value);
+            })
+            .getTry();
+
+    EXPECT_TRUE(t.hasException());
+    EXPECT_EQ(t.exception().get_exception()->what(), kErrorMessage);
+  }
+
+  // Test deferValue
+  {
+    Try<NoThrowTestResult> t =
+        SemiFuture<NoThrowTestResult>(std::runtime_error(kErrorMessage))
+            .deferValue([](NoThrowTestResult&& value) {
+              ADD_FAILURE() << "This code should be unreachable";
+              return std::move(value);
+            })
+            .via(&InlineExecutor::instance())
+            .getTry();
+
+    EXPECT_TRUE(t.hasException());
+    EXPECT_EQ(t.exception().get_exception()->what(), kErrorMessage);
+  }
+}
+
 #if FOLLY_FUTURE_USING_FIBER
 
 TEST(Future, BatonWait) {
