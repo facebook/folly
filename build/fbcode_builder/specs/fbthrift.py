@@ -7,6 +7,7 @@ from __future__ import unicode_literals
 
 import specs.folly as folly
 import specs.fizz as fizz
+import specs.fmt as fmt
 import specs.rsocket as rsocket
 import specs.sodium as sodium
 import specs.wangle as wangle
@@ -22,7 +23,7 @@ def fbcode_builder_spec(builder):
         ShellQuoted('$(git describe --abbrev=0 --tags)')
     )
     return {
-        'depends_on': [folly, fizz, sodium, rsocket, wangle, zstd],
+        'depends_on': [folly, fizz, fmt, sodium, rsocket, wangle, zstd],
         'steps': [
             # This isn't a separete spec, since only fbthrift uses mstch.
             builder.github_project_workdir('no1msd/mstch', 'build'),
