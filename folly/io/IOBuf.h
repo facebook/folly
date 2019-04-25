@@ -187,7 +187,7 @@ namespace folly {
  * However, note that stack-allocated IOBufs may only be used as the head of a
  * chain (or standalone as the only IOBuf in a chain).  All non-head members of
  * an IOBuf chain must be heap allocated.  (All functions to add nodes to a
- * chain require a std::unique_ptr<IOBuf>, which enforces this requrement.)
+ * chain require a std::unique_ptr<IOBuf>, which enforces this requirement.)
  *
  * Copying IOBufs is only meaningful for the head of a chain. The entire chain
  * is cloned; the IOBufs will become shared, and the old and new IOBufs will
