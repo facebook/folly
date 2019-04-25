@@ -15,7 +15,7 @@ from shell_quoting import ShellQuoted
 
 
 def fbcode_builder_spec(builder):
-    builder.add_option('zeromq/libzmq:git_hash', 'v4.2.5')
+    builder.add_option('zeromq/libzmq:git_hash', 'v4.2.2')
     return {
         'depends_on': [folly, fbthrift, gmock, sodium, sigar],
         'steps': [
