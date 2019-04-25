@@ -27,7 +27,7 @@ T&& getValueOrUnit(Try<T>&& value) {
   return std::move(value).value();
 }
 
-Unit getValueOrUnit(Try<void>&& value) {
+inline Unit getValueOrUnit(Try<void>&& value) {
   value.throwIfFailed();
   return Unit{};
 }
