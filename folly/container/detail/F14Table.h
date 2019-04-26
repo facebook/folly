@@ -1573,12 +1573,12 @@ class F14Table : public Policy {
         chunks_->setCapacityScale(scale);
       }
     } else {
-      std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
-
-      // happy path, no rehash but pack items toward bottom of chunk and
-      // use copy constructor
-      auto srcChunk = &src.chunks_[maxChunkIndex];
-      Chunk* dstChunk = &chunks_[maxChunkIndex];
+      // Happy path, no rehash but pack items toward bottom of chunk
+      // and use copy constructor.  Don't try to optimize by using
+      // lastOccupiedChunk() because there may be higher unoccupied chunks
+      // with the overflow bit set.
+      auto srcChunk = &src.chunks_[chunkMask_];
+      Chunk* dstChunk = &chunks_[chunkMask_];
       do {
         dstChunk->copyOverflowInfoFrom(*srcChunk);
 
@@ -1607,6 +1607,7 @@ class F14Table : public Policy {
 
       // reset doesn't care about packedBegin, so we don't fix it until the end
       if (kEnableItemIteration) {
+        std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
         sizeAndPackedBegin_.packedBegin() =
             ItemIter{chunks_ + maxChunkIndex,
                      chunks_[maxChunkIndex].lastOccupied().index()}

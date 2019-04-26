@@ -1797,3 +1797,45 @@ TEST(F14Map, eraseIf) {
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
+
+namespace {
+template <std::size_t N>
+struct DivideBy {
+  // this is a lie for testing purposes
+  using folly_is_avalanching = std::true_type;
+
+  std::size_t operator()(std::size_t v) const {
+    return v / N;
+  }
+};
+} // namespace
+
+template <template <class...> class TMap>
+void testCopyAfterRemovedCollisions() {
+  // Insert 11 things into chunks 0, 1, and 2, 15 into chunk 3, then
+  // remove all but the last one from chunk 1 and see if we can find that
+  // one in a copy of the map.
+  TMap<std::size_t, bool, DivideBy<16>> map;
+  map.reserve(48);
+  for (std::size_t k = 0; k < 11; ++k) {
+    map[k] = true;
+    map[k + 16] = true;
+    map[k + 32] = true;
+  }
+  for (std::size_t k = 0; k < 14; ++k) {
+    map[k + 48] = true;
+  }
+  map[14 + 48] = true;
+  for (std::size_t k = 0; k < 14; ++k) {
+    map.erase(k + 48);
+  }
+  auto copy = map;
+  EXPECT_EQ(copy.count(14 + 48), 1);
+}
+
+TEST(F14Map, copyAfterRemovedCollisions) {
+  testCopyAfterRemovedCollisions<F14ValueMap>();
+  testCopyAfterRemovedCollisions<F14VectorMap>();
+  testCopyAfterRemovedCollisions<F14NodeMap>();
+  testCopyAfterRemovedCollisions<F14FastMap>();
+}
