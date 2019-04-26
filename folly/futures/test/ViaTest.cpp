@@ -296,21 +296,6 @@ TEST(Via, then2) {
   EXPECT_TRUE(c);
 }
 
-TEST(Via, then2Variadic) {
-  struct Foo {
-    bool a = false;
-    void foo(Try<Unit>) {
-      a = true;
-    }
-  };
-  Foo f;
-  ManualExecutor x;
-  makeFuture().then(&x, &Foo::foo, &f);
-  EXPECT_FALSE(f.a);
-  x.run();
-  EXPECT_TRUE(f.a);
-}
-
 #ifndef __APPLE__ // TODO #7372389
 /// Simple executor that does work in another thread
 class ThreadExecutor : public Executor {

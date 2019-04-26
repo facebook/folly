@@ -1188,17 +1188,6 @@ class Future : private futures::detail::FutureBase<T> {
         .via(std::move(oldX));
   }
 
-  template <class R, class Caller, class... Args>
-  auto then(
-      Executor::KeepAlive<> x,
-      R (Caller::*func)(Args...),
-      Caller* instance) && {
-    auto oldX = getKeepAliveToken(this->getExecutor());
-    this->setExecutor(std::move(x));
-
-    return std::move(*this).then(func, instance).via(std::move(oldX));
-  }
-
   /// When this Future has completed, execute func which is a function that
   /// can be called with `Try<T>&&` (often a lambda with parameter type
   /// `auto&&` or `auto`).
