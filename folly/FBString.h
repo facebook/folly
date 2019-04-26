@@ -292,18 +292,6 @@ class fbstring_core_model {
  */
 template <class Char>
 class fbstring_core {
- protected:
-// It's MSVC, so we just have to guess ... and allow an override
-#ifdef _MSC_VER
-#ifdef FOLLY_ENDIAN_BE
-  static constexpr auto kIsLittleEndian = false;
-#else
-  static constexpr auto kIsLittleEndian = true;
-#endif
-#else
-  static constexpr auto kIsLittleEndian =
-      __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
-#endif
  public:
   fbstring_core() noexcept {
     reset();
