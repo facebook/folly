@@ -388,6 +388,10 @@ class fbstring_core {
     return c_str();
   }
 
+  Char* data() {
+    return c_str();
+  }
+
   Char* mutableData() {
     switch (category()) {
       case Category::isSmall:
@@ -486,6 +490,13 @@ class fbstring_core {
  private:
   // Disabled
   fbstring_core& operator=(const fbstring_core& rhs);
+
+  Char* c_str() {
+    Char* ptr = ml_.data_;
+    // With this syntax, GCC and Clang generate a CMOV instead of a branch.
+    ptr = (category() == Category::isSmall) ? small_ : ptr;
+    return ptr;
+  }
 
   void reset() {
     setSmallSize(0);
@@ -1672,6 +1683,10 @@ class basic_fbstring {
 
   const value_type* data() const {
     return c_str();
+  }
+
+  value_type* data() {
+    return store_.data();
   }
 
   allocator_type get_allocator() const {
