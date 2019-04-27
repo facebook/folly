@@ -2114,27 +2114,27 @@ void waitImpl(FutureType& f) {
   }
 
   Promise<T> promise;
-  auto ret = promise.getSemiFuture();
+  auto ret = convertFuture(promise.getSemiFuture(), f);
   auto baton = std::make_shared<FutureBatonType>();
   f.setCallback_([baton, promise = std::move(promise)](Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
-  convertFuture(std::move(ret), f);
+  f = std::move(ret);
   baton->wait();
   assert(f.isReady());
 }
 
 template <class T>
-void convertFuture(SemiFuture<T>&& sf, Future<T>& f) {
+Future<T> convertFuture(SemiFuture<T>&& sf, const Future<T>& f) {
   // Carry executor from f, inserting an inline executor if it did not have one
   auto* exe = f.getExecutor();
-  f = std::move(sf).via(exe ? exe : &InlineExecutor::instance());
+  return std::move(sf).via(exe ? exe : &InlineExecutor::instance());
 }
 
 template <class T>
-void convertFuture(SemiFuture<T>&& sf, SemiFuture<T>& f) {
-  f = std::move(sf);
+SemiFuture<T> convertFuture(SemiFuture<T>&& sf, const SemiFuture<T>&) {
+  return std::move(sf);
 }
 
 template <class FutureType, typename T = typename FutureType::value_type>
@@ -2148,13 +2148,13 @@ void waitImpl(FutureType& f, Duration dur) {
   }
 
   Promise<T> promise;
-  auto ret = promise.getSemiFuture();
+  auto ret = convertFuture(promise.getSemiFuture(), f);
   auto baton = std::make_shared<FutureBatonType>();
   f.setCallback_([baton, promise = std::move(promise)](Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
-  convertFuture(std::move(ret), f);
+  f = std::move(ret);
   if (baton->try_wait_for(dur)) {
     assert(f.isReady());
   }

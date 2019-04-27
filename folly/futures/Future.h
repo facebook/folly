@@ -430,7 +430,7 @@ class FutureBase {
   SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
 };
 template <class T>
-void convertFuture(SemiFuture<T>&& sf, Future<T>& f);
+Future<T> convertFuture(SemiFuture<T>&& sf, const Future<T>& f);
 
 class DeferredExecutor;
 
@@ -1914,9 +1914,9 @@ class Future : private futures::detail::FutureBase<T> {
   friend Future<Unit> whileDo(P&& predicate, F&& thunk);
 
   template <class FT>
-  friend void futures::detail::convertFuture(
+  friend Future<FT> futures::detail::convertFuture(
       SemiFuture<FT>&& sf,
-      Future<FT>& f);
+      const Future<FT>& f);
 };
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay
