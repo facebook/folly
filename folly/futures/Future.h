@@ -260,9 +260,6 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func);
 
-  template <class F>
-  void setCallback_(F&& func, std::shared_ptr<folly::RequestContext> context);
-
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
   ///
