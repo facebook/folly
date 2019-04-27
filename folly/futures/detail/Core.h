@@ -582,7 +582,7 @@ class Core final {
                    keepAlive = std::move(x)]() mutable {
           auto cr = std::move(core_ref);
           Core* const core = cr.getCore();
-          RequestContextScopeGuard rctx(core->context_);
+          RequestContextScopeGuard rctx(std::move(core->context_));
           core->callback_(std::move(core->result_));
         });
       } catch (const std::exception& e) {
@@ -591,7 +591,7 @@ class Core final {
         ew = exception_wrapper(std::current_exception());
       }
       if (ew) {
-        RequestContextScopeGuard rctx(context_);
+        RequestContextScopeGuard rctx(std::move(context_));
         result_ = Try<T>(std::move(ew));
         callback_(std::move(result_));
       }
@@ -602,7 +602,7 @@ class Core final {
         callback_.~Callback();
         detachOne();
       };
-      RequestContextScopeGuard rctx(context_);
+      RequestContextScopeGuard rctx(std::move(context_));
       callback_(std::move(result_));
     }
   }
