@@ -1594,14 +1594,25 @@ TEST(FiberManager, semaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              if (j % 2) {
-                sem.wait();
-              } else {
+              switch (j % 3) {
+                case 0:
+                  sem.wait();
+                  break;
+                case 1:
 #if FOLLY_FUTURE_USING_FIBER
-                sem.future_wait().get();
+                  sem.future_wait().get();
 #else
-                sem.wait();
+                  sem.wait();
 #endif
+                  break;
+                case 2: {
+                  Baton baton;
+                  bool acquired = sem.try_wait(baton);
+                  if (!acquired) {
+                    baton.wait();
+                  }
+                  break;
+                }
               }
               ++counter;
               sem.signal();

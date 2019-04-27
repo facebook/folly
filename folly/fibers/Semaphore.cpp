@@ -94,6 +94,23 @@ void Semaphore::wait() {
       std::memory_order_acquire));
 }
 
+bool Semaphore::try_wait(Baton& waitBaton) {
+  auto oldVal = tokens_.load(std::memory_order_acquire);
+  do {
+    while (oldVal == 0) {
+      if (waitSlow(waitBaton)) {
+        return false;
+      }
+      oldVal = tokens_.load(std::memory_order_acquire);
+    }
+  } while (!tokens_.compare_exchange_weak(
+      oldVal,
+      oldVal - 1,
+      std::memory_order_release,
+      std::memory_order_acquire));
+  return true;
+}
+
 #if FOLLY_HAS_COROUTINES
 
 coro::Task<void> Semaphore::co_wait() {

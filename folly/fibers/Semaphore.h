@@ -49,6 +49,14 @@ class Semaphore {
    */
   void wait();
 
+  /**
+   * Try to wait on the semaphore.
+   * Return true on success.
+   * On failure, the passed baton is enqueued, it will be posted once the
+   * semaphore has capacity. Caller is responsible to wait then signal.
+   */
+  bool try_wait(Baton& waitBaton);
+
 #if FOLLY_HAS_COROUTINES
 
   /*
