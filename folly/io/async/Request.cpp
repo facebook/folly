@@ -229,7 +229,14 @@ void exec_set_difference(const TData& data, const TData& other, TExec&& exec) {
 } // namespace
 
 std::shared_ptr<RequestContext> RequestContext::setContext(
-    std::shared_ptr<RequestContext> newCtx) {
+    std::shared_ptr<RequestContext> const& newCtx) {
+  return setContext(copy(newCtx));
+}
+
+std::shared_ptr<RequestContext> RequestContext::setContext(
+    std::shared_ptr<RequestContext>&& newCtx_) {
+  auto newCtx = std::move(newCtx_); // enforce that it is really moved-from
+
   auto& staticCtx = getStaticContext();
   if (newCtx == staticCtx) {
     return newCtx;
