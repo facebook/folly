@@ -19,25 +19,31 @@ namespace folly {
 namespace fibers {
 
 bool Semaphore::signalSlow() {
-  // If we signalled a release, notify the waitlist
-  auto waitListLock = waitList_.wlock();
-  auto& waitList = *waitListLock;
+  Baton* waiter = nullptr;
+  {
+    // If we signalled a release, notify the waitlist
+    auto waitListLock = waitList_.wlock();
+    auto& waitList = *waitListLock;
 
-  auto testVal = tokens_.load(std::memory_order_acquire);
-  if (testVal != 0) {
-    return false;
-  }
+    auto testVal = tokens_.load(std::memory_order_acquire);
+    if (testVal != 0) {
+      return false;
+    }
 
-  if (waitList.empty()) {
-    // If the waitlist is now empty, ensure the token count increments
-    // No need for CAS here as we will always be under the mutex
-    CHECK(tokens_.compare_exchange_strong(
-        testVal, testVal + 1, std::memory_order_relaxed));
-  } else {
-    // trigger waiter if there is one
-    waitList.front()->post();
+    if (waitList.empty()) {
+      // If the waitlist is now empty, ensure the token count increments
+      // No need for CAS here as we will always be under the mutex
+      CHECK(tokens_.compare_exchange_strong(
+          testVal, testVal + 1, std::memory_order_relaxed));
+      return true;
+    }
+    waiter = waitList.front();
     waitList.pop();
   }
+  // Trigger waiter if there is one
+  // Do it after releasing the waitList mutex, in case the waiter
+  // eagerly calls signal
+  waiter->post();
   return true;
 }
 
