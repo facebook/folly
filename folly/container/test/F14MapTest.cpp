@@ -1794,10 +1794,6 @@ TEST(F14Map, eraseIf) {
   testEraseIf<F14FastMap>();
 }
 
-///////////////////////////////////
-#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-///////////////////////////////////
-
 namespace {
 template <std::size_t N>
 struct DivideBy {
@@ -1839,3 +1835,7 @@ TEST(F14Map, copyAfterRemovedCollisions) {
   testCopyAfterRemovedCollisions<F14NodeMap>();
   testCopyAfterRemovedCollisions<F14FastMap>();
 }
+
+///////////////////////////////////
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+///////////////////////////////////
