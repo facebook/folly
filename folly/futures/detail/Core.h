@@ -303,7 +303,7 @@ class Core final {
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
   template <typename F>
-  void setCallback(F&& func, std::shared_ptr<folly::RequestContext> context) {
+  void setCallback(F&& func, std::shared_ptr<folly::RequestContext>&& context) {
     DCHECK(!hasCallback());
 
     // construct callback_ first; if that fails, context_ will not leak
