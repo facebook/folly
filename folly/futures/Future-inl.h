@@ -2522,4 +2522,6 @@ Future<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
   return after(std::chrono::duration_cast<Duration>(when - now));
 }
 
+// Instantiate the most common Future types to save compile time
+extern template class Future<Unit>;
 } // namespace folly
