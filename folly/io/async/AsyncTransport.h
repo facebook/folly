@@ -52,9 +52,10 @@ enum class WriteFlags : uint32_t {
    */
   CORK = 0x01,
   /*
-   * for a socket that has ACK latency enabled, it will cause the kernel
-   * to fire a TCP ESTATS event when the last byte of the given write call
-   * will be acknowledged.
+   * Used to request timestamping when entire buffer ACKed by remote endpoint.
+   *
+   * How timestamping is performed is implementation specific and may rely on
+   * software or hardware timestamps
    */
   EOR = 0x02,
   /*
@@ -65,6 +66,13 @@ enum class WriteFlags : uint32_t {
    * use msg zerocopy if allowed
    */
   WRITE_MSG_ZEROCOPY = 0x08,
+  /*
+   * Used to request timestamping when entire buffer transmitted by the NIC.
+   *
+   * How timestamping is performed is implementation specific and may rely on
+   * software or hardware timestamps
+   */
+  TIMESTAMP_TX = 0x10,
 };
 
 /*
