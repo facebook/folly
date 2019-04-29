@@ -86,12 +86,9 @@ class Baton {
   /// for the Baton inside 'co_await baton.waitAsync()'.
   void post() noexcept;
 
-  /// Reset the baton back to the non-signalled state.
+  /// Atomically reset the baton back to the non-signalled state.
   ///
-  /// This method is not safe to be called concurrently with any other
-  /// method on the Baton. The caller must ensure that there are no coroutines
-  /// currently waiting on the Baton and that there are no threads currently
-  /// calling .post() when .reset() is called.
+  /// This is a no-op if the baton was already in the non-signalled state.
   void reset() noexcept;
 
   class WaitOperation {
@@ -142,7 +139,10 @@ inline Baton::WaitOperation Baton::operator co_await() const noexcept {
 }
 
 inline void Baton::reset() noexcept {
-  state_.store(nullptr, std::memory_order_relaxed);
+  // Transition from 'signalled' (ie. 'this') to not-signalled (ie. nullptr).
+  void* oldState = this;
+  (void)state_.compare_exchange_strong(
+      oldState, nullptr, std::memory_order_acq_rel, std::memory_order_relaxed);
 }
 
 } // namespace coro
