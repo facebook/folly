@@ -21,6 +21,7 @@
 #include <iterator>
 #include <limits>
 #include <memory>
+#include <numeric>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -1161,4 +1162,24 @@ TEST(small_vector, SelfCopyAssignmentForVectorOfPair) {
   test = static_cast<decltype(test)&>(test); // suppress self-assign warning
   EXPECT_EQ(test.size(), 1);
   EXPECT_EQ(test[0].first, 13);
+}
+
+TEST(small_vector, erase) {
+  small_vector<int> v(3);
+  std::iota(v.begin(), v.end(), 1);
+  v.push_back(2);
+  erase(v, 2);
+  ASSERT_EQ(2u, v.size());
+  EXPECT_EQ(1u, v[0]);
+  EXPECT_EQ(3u, v[1]);
+}
+
+TEST(small_vector, erase_if) {
+  small_vector<int> v(6);
+  std::iota(v.begin(), v.end(), 1);
+  erase_if(v, [](const auto& x) { return x % 2 == 0; });
+  ASSERT_EQ(3u, v.size());
+  EXPECT_EQ(1u, v[0]);
+  EXPECT_EQ(3u, v[1]);
+  EXPECT_EQ(5u, v[2]);
 }

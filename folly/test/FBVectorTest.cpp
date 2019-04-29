@@ -22,6 +22,7 @@
 #include <list>
 #include <map>
 #include <memory>
+#include <numeric>
 
 #include <folly/FBString.h>
 #include <folly/Random.h>
@@ -270,3 +271,23 @@ TEST(FBVector, deduction_guides) {
   EXPECT_TRUE((std::is_same_v<fbvector<fbvector<int>::iterator>, decltype(y)>));
 }
 #endif
+
+TEST(FBVector, erase) {
+  fbvector<int> v(3);
+  std::iota(v.begin(), v.end(), 1);
+  v.push_back(2);
+  erase(v, 2);
+  ASSERT_EQ(2u, v.size());
+  EXPECT_EQ(1u, v[0]);
+  EXPECT_EQ(3u, v[1]);
+}
+
+TEST(FBVector, erase_if) {
+  fbvector<int> v(6);
+  std::iota(v.begin(), v.end(), 1);
+  erase_if(v, [](const auto& x) { return x % 2 == 0; });
+  ASSERT_EQ(3u, v.size());
+  EXPECT_EQ(1u, v[0]);
+  EXPECT_EQ(3u, v[1]);
+  EXPECT_EQ(5u, v[2]);
+}

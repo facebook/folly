@@ -1267,6 +1267,22 @@ void swap(
   a.swap(b);
 }
 
+template <class T, std::size_t MaxInline, class A, class B, class C, class U>
+void erase(small_vector<T, MaxInline, A, B, C>& v, U value) {
+  v.erase(std::remove(v.begin(), v.end(), value), v.end());
+}
+
+template <
+    class T,
+    std::size_t MaxInline,
+    class A,
+    class B,
+    class C,
+    class Predicate>
+void erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
+  v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
+}
+
 //////////////////////////////////////////////////////////////////////
 
 namespace detail {
