@@ -314,7 +314,10 @@ class Core final {
 
     if (state == State::Start) {
       if (state_.compare_exchange_strong(
-              state, State::OnlyCallback, std::memory_order_release)) {
+              state,
+              State::OnlyCallback,
+              std::memory_order_release,
+              std::memory_order_acquire)) {
         return;
       }
       assume(state == State::OnlyResult || state == State::Proxy);
@@ -348,7 +351,10 @@ class Core final {
     switch (state) {
       case State::Start:
         if (state_.compare_exchange_strong(
-                state, State::Proxy, std::memory_order_release)) {
+                state,
+                State::Proxy,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
           break;
         }
         assume(state == State::OnlyCallback);
@@ -379,27 +385,25 @@ class Core final {
     ::new (&result_) Result(std::move(t));
 
     auto state = state_.load(std::memory_order_acquire);
-    while (true) {
-      switch (state) {
-        case State::Start:
-          if (state_.compare_exchange_strong(
-                  state, State::OnlyResult, std::memory_order_release)) {
-            return;
-          }
-          assume(state == State::OnlyCallback);
-          FOLLY_FALLTHROUGH;
+    switch (state) {
+      case State::Start:
+        if (state_.compare_exchange_strong(
+                state,
+                State::OnlyResult,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
+          return;
+        }
+        assume(state == State::OnlyCallback);
+        FOLLY_FALLTHROUGH;
 
-        case State::OnlyCallback:
-          if (state_.compare_exchange_strong(
-                  state, State::Done, std::memory_order_release)) {
-            doCallback();
-            return;
-          }
-          FOLLY_FALLTHROUGH;
+      case State::OnlyCallback:
+        state_.store(State::Done, std::memory_order_relaxed);
+        doCallback();
+        return;
 
-        default:
-          terminate_with<std::logic_error>("setResult unexpected state");
-      }
+      default:
+        terminate_with<std::logic_error>("setResult unexpected state");
     }
   }
 
