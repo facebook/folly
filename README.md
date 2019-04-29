@@ -66,7 +66,7 @@ is to look at the headers in [top level `folly/` directory](https://github.com/f
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
-Folly is published on Github at https://github.com/facebook/folly
+Folly is published on GitHub at https://github.com/facebook/folly
 
 ### Build Notes
 
