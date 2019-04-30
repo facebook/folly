@@ -1163,8 +1163,6 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
 Future<T>::thenExTry(F&& func) && {
-  // As Futures may carry null executors, ensure that what we pass into the
-  // continuation is always usable by replacing with inline if necessary.
   auto ka = getKeepAliveToken(this->getExecutor());
   // Enforce that executor cannot be null
   DCHECK(ka);
@@ -1192,8 +1190,6 @@ template <class T>
 template <typename F>
 Future<typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
 Future<T>::thenExValue(F&& func) && {
-  // As Futures may carry null executors, ensure that what we pass into the
-  // continuation is always usable by replacing with inline if necessary.
   auto ka = getKeepAliveToken(this->getExecutor());
   // Enforce that executor cannot be null
   DCHECK(ka);
