@@ -429,6 +429,11 @@ Future<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
+template <class InputIterator>
+SemiFuture<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAnySemiFuture(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
 template <class Collection>

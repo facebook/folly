@@ -1717,6 +1717,14 @@ Future<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last) {
+  return collectAnySemiFuture(first, last).via(&InlineExecutor::instance());
+}
+
+template <class InputIterator>
+SemiFuture<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAnySemiFuture(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
 
@@ -1724,6 +1732,10 @@ collectAny(InputIterator first, InputIterator last) {
     Promise<std::pair<size_t, Try<T>>> p;
     std::atomic<bool> done{false};
   };
+
+  std::vector<folly::Executor::KeepAlive<futures::detail::DeferredExecutor>>
+      executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
 
   auto ctx = std::make_shared<Context>();
   for (size_t i = 0; first != last; ++first, ++i) {
@@ -1733,7 +1745,16 @@ collectAny(InputIterator first, InputIterator last) {
       }
     });
   }
-  return ctx->p.getSemiFuture().via(&InlineExecutor::instance());
+  auto future = ctx->p.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    auto deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
 }
 
 // collectAnyWithoutException (iterator)
