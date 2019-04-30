@@ -667,6 +667,18 @@ TEST(Optional, InitializerListConstruct) {
   std::ignore = optional;
 }
 
+TEST(Optional, ConversionFromNullptr) {
+  // Match the behavior of std::optional
+  static constexpr void* null = nullptr;
+  folly::Optional<bool> o1{null};
+  folly::Optional<bool> o2(null);
+  folly::Optional<bool> o3 = null;
+
+  EXPECT_EQ(false, o1.value());
+  EXPECT_EQ(false, o2.value());
+  EXPECT_EQ(false, o3.value());
+}
+
 TEST(Optional, TestDisambiguationMakeOptionalVariants) {
   {
     auto optional = make_optional<int>(1);
