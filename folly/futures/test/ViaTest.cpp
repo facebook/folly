@@ -171,29 +171,6 @@ TEST_F(ViaFixture, viaAssignment) {
   auto f2 = f.via(eastExecutor.get());
 }
 
-TEST(Via, chain1) {
-  EXPECT_EQ(42, makeFuture().thenMulti([] { return 42; }).get());
-}
-
-TEST(Via, chain3) {
-  int count = 0;
-  auto f = makeFuture().thenMulti(
-      [&] {
-        count++;
-        return 3.14159;
-      },
-      [&](double) {
-        count++;
-        return std::string("hello");
-      },
-      [&] {
-        count++;
-        return makeFuture(42);
-      });
-  EXPECT_EQ(42, std::move(f).get());
-  EXPECT_EQ(3, count);
-}
-
 struct PriorityExecutor : public Executor {
   void add(Func /* f */) override {
     count1++;

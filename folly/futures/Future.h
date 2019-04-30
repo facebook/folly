@@ -1743,64 +1743,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class I, class F>
   Future<I> reduce(I&& initial, F&& func) &&;
 
-  /// Create a Future chain from a sequence of continuations. i.e.
-  ///
-  ///   f.then(a).then(b).then(c)
-  ///
-  /// where f is a Future<A> and the result of the chain is a Future<D>
-  /// becomes
-  ///
-  ///   std::move(f).thenMulti(a, b, c);
-  ///
-  /// Preconditions:
-  ///
-  /// - `valid() == true` (else throws FutureInvalid)
-  ///
-  /// Postconditions:
-  ///
-  /// - Calling code should act as if `valid() == false`,
-  ///   i.e., as if `*this` was moved into RESULT.
-  /// - `RESULT.valid() == true`
-  template <class Callback, class... Callbacks>
-  auto thenMulti(Callback&& fn, Callbacks&&... fns) && {
-    // thenMulti with two callbacks is just then(a).thenMulti(b, ...)
-
-    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
-    // as then used to be but that is better than keeping then in the public
-    // API.
-    using R = futures::detail::callableResult<T, decltype(fn)>;
-    return std::move(*this)
-        .thenImplementation(std::forward<Callback>(fn), R{})
-        .thenMulti(std::forward<Callbacks>(fns)...);
-  }
-
-  /// Create a Future chain from a sequence of callbacks.
-  ///
-  /// Preconditions:
-  ///
-  /// - `valid() == true` (else throws FutureInvalid)
-  ///
-  /// Postconditions:
-  ///
-  /// - Calling code should act as if `valid() == false`,
-  ///   i.e., as if `*this` was moved into RESULT.
-  /// - `RESULT.valid() == true`
-  template <class Callback>
-  auto thenMulti(Callback&& fn) && {
-    // thenMulti with one callback is just a then
-
-    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
-    // as then used to be but that is better than keeping then in the public
-    // API.
-    using R = futures::detail::callableResult<T, decltype(fn)>;
-    return std::move(*this).thenImplementation(std::forward<Callback>(fn), R{});
-  }
-
-  template <class Callback>
-  auto thenMulti(Callback&& fn) & {
-    return std::move(*this).thenMulti(std::forward<Callback>(fn));
-  }
-
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
   /// Result will behave like `*this` except result won't have an Executor.
   ///
