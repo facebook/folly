@@ -2004,7 +2004,11 @@ class FutureAwaitable {
   }
 
   void await_suspend(std::experimental::coroutine_handle<> h) {
-    future_.setCallback_([this, h](Try<T>&& result) mutable {
+    // FutureAwaitable may get destroyed as soon as the callback is executed.
+    // Make sure the future object doesn't get destroyed until setCallback_
+    // returns.
+    auto future = std::move(future_);
+    future.setCallback_([this, h](Try<T>&& result) mutable {
       result_ = std::move(result);
       h.resume();
     });
