@@ -8,8 +8,8 @@
 
 find_path(ZSTD_INCLUDE_DIR NAMES zstd.h)
 
-find_library(ZSTD_LIBRARY_DEBUG NAMES zstdd)
-find_library(ZSTD_LIBRARY_RELEASE NAMES zstd)
+find_library(ZSTD_LIBRARY_DEBUG NAMES zstdd zstd_staticd)
+find_library(ZSTD_LIBRARY_RELEASE NAMES zstd zstd_static)
 
 include(SelectLibraryConfigurations)
 SELECT_LIBRARY_CONFIGURATIONS(ZSTD)
