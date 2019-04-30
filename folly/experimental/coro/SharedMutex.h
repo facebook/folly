@@ -218,7 +218,7 @@ class SharedMutexFair {
       return mutex_->try_lock();
     }
 
-    bool await_suspend(
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
       auto lock = mutex_->state_.contextualLock();
 
@@ -247,7 +247,7 @@ class SharedMutexFair {
       return mutex_->try_lock_shared();
     }
 
-    bool await_suspend(
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
       auto lock = mutex_->state_.contextualLock();
 

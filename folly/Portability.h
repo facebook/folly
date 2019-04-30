@@ -477,6 +477,9 @@ constexpr auto kCpplibVer = 0;
 // folly::coro requires C++17 support
 #if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
+// This is mainly to workaround bugs triggered by LTO, when stack allocated
+// variables in await_suspend end up on a coroutine frame.
+#define FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES FOLLY_NOINLINE
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
 // NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
 // does not yet support symmetric-transfer.

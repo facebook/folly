@@ -37,7 +37,8 @@ class co_schedule_t {
       return false;
     }
 
-    void await_suspend(std::experimental::coroutine_handle<> coro) {
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
+        std::experimental::coroutine_handle<> coro) {
       executor_->add([coro, ctx = RequestContext::saveContext()]() mutable {
         RequestContextScopeGuard contextScope{std::move(ctx)};
         coro.resume();

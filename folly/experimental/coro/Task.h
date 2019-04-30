@@ -237,7 +237,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       return false;
     }
 
-    void await_suspend(
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);

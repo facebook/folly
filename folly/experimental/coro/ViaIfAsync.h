@@ -56,7 +56,7 @@ class ViaCoroutine {
         bool await_ready() noexcept {
           return false;
         }
-        void await_suspend(
+        FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
             std::experimental::coroutine_handle<promise_type> coro) noexcept {
           // Schedule resumption of the coroutine on the executor.
           auto& promise = coro.promise();

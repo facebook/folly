@@ -74,7 +74,8 @@ class TimedWaitAwaitable {
     return false;
   }
 
-  bool await_suspend(std::experimental::coroutine_handle<> ch) {
+  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
+      std::experimental::coroutine_handle<> ch) {
     auto sharedState = std::make_shared<SharedState>(ch, storage_);
     waitAndNotify(std::move(awaitable_), sharedState).detach();
     futures::sleepUnsafe(duration_).thenValue(
