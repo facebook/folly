@@ -1801,49 +1801,6 @@ class Future : private futures::detail::FutureBase<T> {
     return std::move(*this).thenMulti(std::forward<Callback>(fn));
   }
 
-  /// Create a Future chain from a sequence of callbacks. i.e.
-  ///
-  ///   f.via(executor).then(a).then(b).then(c).via(oldExecutor)
-  ///
-  /// where f is a Future<A> and the result of the chain is a Future<D>
-  /// becomes
-  ///
-  ///   std::move(f).thenMultiWithExecutor(executor, a, b, c);
-  ///
-  /// Preconditions:
-  ///
-  /// - `valid() == true` (else throws FutureInvalid)
-  ///
-  /// Postconditions:
-  ///
-  /// - Calling code should act as if `valid() == false`,
-  ///   i.e., as if `*this` was moved into RESULT.
-  /// - `RESULT.valid() == true`
-  template <class Callback, class... Callbacks>
-  auto thenMultiWithExecutor(
-      Executor::KeepAlive<> x,
-      Callback&& fn,
-      Callbacks&&... fns) && {
-    // thenMultiExecutor with two callbacks is
-    // via(x).then(a).thenMulti(b, ...).via(oldX)
-    auto oldX = getKeepAliveToken(this->getExecutor());
-    this->setExecutor(std::move(x));
-    // TODO(T29171940): Switch to thenImplementation here. It is ambiguous
-    // as then used to be but that is better than keeping then in the public
-    // API.
-    using R = futures::detail::callableResult<T, decltype(fn)>;
-    return std::move(*this)
-        .thenImplementation(std::forward<Callback>(fn), R{})
-        .thenMulti(std::forward<Callbacks>(fns)...)
-        .via(std::move(oldX));
-  }
-
-  template <class Callback>
-  auto thenMultiWithExecutor(Executor::KeepAlive<> x, Callback&& fn) && {
-    // thenMulti with one callback is just a then with an executor
-    return std::move(*this).then(std::move(x), std::forward<Callback>(fn));
-  }
-
   /// Moves-out `*this`, creating/returning a corresponding SemiFuture.
   /// Result will behave like `*this` except result won't have an Executor.
   ///

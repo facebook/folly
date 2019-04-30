@@ -240,38 +240,6 @@ TEST(Via, priority) {
   EXPECT_EQ(3, exe.count2);
 }
 
-TEST_F(ViaFixture, chainX1) {
-  EXPECT_EQ(
-      42,
-      makeFuture()
-          .thenMultiWithExecutor(eastExecutor.get(), [] { return 42; })
-          .get());
-}
-
-TEST_F(ViaFixture, chainX3) {
-  auto westThreadId = std::this_thread::get_id();
-  int count = 0;
-  auto f = via(westExecutor.get())
-               .thenMultiWithExecutor(
-                   eastExecutor.get(),
-                   [&] {
-                     EXPECT_NE(std::this_thread::get_id(), westThreadId);
-                     count++;
-                     return 3.14159;
-                   },
-                   [&](double) {
-                     count++;
-                     return std::string("hello");
-                   },
-                   [&] { count++; })
-               .thenValue([&](auto&&) {
-                 EXPECT_EQ(std::this_thread::get_id(), westThreadId);
-                 return makeFuture(42);
-               });
-  EXPECT_EQ(42, f.getVia(waiter.get()));
-  EXPECT_EQ(3, count);
-}
-
 TEST(Via, then2) {
   ManualExecutor x1, x2;
   bool a = false, b = false, c = false;
