@@ -69,7 +69,8 @@ class strand_queue_base
     : public std::enable_shared_from_this<strand_queue_base<E>> {
  public:
   std::mutex lock_;
-  size_t remaining_ = 0;
+  size_t owned_ = 0;
+  size_t entered_ = 0;
   std::queue<strand_item<E>> items_;
 
   virtual ~strand_queue_base() {}
@@ -103,22 +104,15 @@ class strand_queue : public strand_queue_base<E> {
 
     std::unique_lock<std::mutex> guard{this->lock_};
 
-    // only allow one at a time
-    if (this->remaining_ > 0) {
-      return;
-    }
-    // skip when empty
-    if (this->items_.empty()) {
-      return;
-    }
+    ++this->entered_;
 
     // do not allow recursive queueing to block this executor
-    this->remaining_ = this->items_.size();
+    auto remaining = this->items_.size();
 
     auto that = shared_from_that();
     auto subEx = strand_executor<E, Exec>{that};
 
-    while (!this->items_.empty() && --this->remaining_ >= 0) {
+    while (!this->items_.empty() && --remaining >= 0) {
       auto item{std::move(this->front())};
       this->items_.pop();
       guard.unlock();
@@ -129,31 +123,73 @@ class strand_queue : public strand_queue_base<E> {
   }
   template <class AE>
   void error(AE e) noexcept {
+    //
+    // propagate error result to ready items from the queue in order.
+
     std::unique_lock<std::mutex> guard{this->lock_};
 
-    this->remaining_ = 0;
+    // do not allow recursive queueing to block this executor
+    auto remaining = this->items_.size();
 
-    while (!this->items_.empty()) {
+    while (!this->items_.empty() && --remaining >= 0) {
       auto what{std::move(this->front().what)};
       this->items_.pop();
       guard.unlock();
       set_error(what, folly::as_const(e));
       guard.lock();
     }
+
+    // reset for next worker
+    this->entered_ = 0;
+
+    // exit worker when empty
+    if (this->items_.empty()) {
+      --this->owned_;
+      return;
+    }
+
+    //
+    // reschedule for new items in the queue
+
+    auto that = shared_from_that();
+
+    guard.unlock();
+    submit(schedule(ex_), strand_queue_receiver<E, Exec>{that});
   }
   void done() {
     std::unique_lock<std::mutex> guard{this->lock_};
 
-    // only allow one at a time
-    if (this->remaining_ > 0) {
-      return;
+    if (this->entered_ == 0) {
+      //
+      // propagate empty result to ready items from the queue in order.
+
+      // do not allow recursive queueing to block this executor
+      auto remaining = this->items_.size();
+
+      while (!this->items_.empty() && --remaining >= 0) {
+        auto what{std::move(this->front().what)};
+        this->items_.pop();
+        guard.unlock();
+        set_done(what);
+        guard.lock();
+      }
     }
-    // skip when empty
+
+    // reset for next worker
+    this->entered_ = 0;
+
+    // exit worker when empty
     if (this->items_.empty()) {
+      --this->owned_;
       return;
     }
 
+    //
+    // reschedule for new items in the queue
+
     auto that = shared_from_that();
+
+    guard.unlock();
     submit(schedule(ex_), strand_queue_receiver<E, Exec>{that});
   }
 };
@@ -197,7 +233,8 @@ class strand_task
     // queue for later
     std::unique_lock<std::mutex> guard{queue_->lock_};
     queue_->items_.push(any_receiver<E, any_executor_ref<E>>{std::move(out)});
-    if (queue_->remaining_ == 0) {
+    if (queue_->owned_ == 0) {
+      ++queue_->owned_;
       // noone is minding the shop, send a worker
       guard.unlock();
       ::folly::pushmi::submit(
