@@ -1116,11 +1116,9 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  template <typename F, typename R = futures::detail::callableResult<T, F>>
-  typename std::enable_if<
-      !is_invocable<F, T&&>::value && !is_invocable<F>::value,
-      typename R::Return>::type
-  then(F&& func) && {
+  template <typename F>
+  Future<typename futures::detail::tryCallableResult<T, F>::value_type> then(
+      F&& func) && {
     return std::move(*this).thenTry(std::forward<F>(func));
   }
 
