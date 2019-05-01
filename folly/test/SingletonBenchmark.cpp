@@ -144,6 +144,7 @@ int main(int argc, char** argv) {
   gflags::SetCommandLineOptionWithMode(
       "bm_min_usec", "100000", gflags::SET_FLAG_IF_DEFAULT);
 
+  folly::SingletonVault::singleton<BenchmarkTag>()->registrationComplete();
   folly::runBenchmarks();
 
   return 0;
