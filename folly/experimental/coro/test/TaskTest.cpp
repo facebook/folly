@@ -370,7 +370,7 @@ TEST(Task, TaskOfLvalueReference) {
 TEST(Task, TaskOfLvalueReferenceAsTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int value = 123;
-    auto&& result = co_await returnIntRef(value).co_awaitTry();
+    auto&& result = co_await co_awaitTry(returnIntRef(value));
     CHECK(result.hasValue());
     CHECK_EQ(&value, &result.value().get());
 

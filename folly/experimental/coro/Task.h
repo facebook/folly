@@ -321,9 +321,7 @@ class FOLLY_NODISCARD Task {
   using StorageType = typename promise_type::StorageType;
 
  private:
-  template <typename ResultCreator>
   class Awaiter;
-  class TrySemiAwaitable;
   using handle_t = std::experimental::coroutine_handle<promise_type>;
 
  public:
@@ -364,32 +362,18 @@ class FOLLY_NODISCARD Task {
         });
   }
 
-  // Returns a SemiAwaitable<folly::Try<T>> type that when co_awaited will
-  // produce a Try<T> instead of the value T.
-  //
-  // eg.
-  //  auto result = co_await std::move(someTask).co_awaitTry();
-  //  if (result.hasValue()) {
-  //    use(result.value());
-  //  }
-  auto co_awaitTry() && noexcept {
-    return TrySemiAwaitable{std::exchange(coro_, {})};
-  }
-
   friend auto co_viaIfAsync(
       Executor::KeepAlive<> executor,
       Task<T>&& t) noexcept {
     // Child task inherits the awaiting task's executor
     t.coro_.promise().executor_ = std::move(executor);
-    return Awaiter<typename TaskWithExecutor<T>::ValueCreator>{
-        std::exchange(t.coro_, {})};
+    return Awaiter{std::exchange(t.coro_, {})};
   }
 
  private:
   friend class detail::TaskPromiseBase;
   friend class detail::TaskPromise<T>;
 
-  template <typename ResultCreator>
   class Awaiter {
    public:
     explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
@@ -414,49 +398,18 @@ class FOLLY_NODISCARD Task {
       return coro_;
     }
 
-    decltype(auto) await_resume() {
+    T await_resume() {
+      return await_resume_try().value();
+    }
+
+    auto await_resume_try() {
       SCOPE_EXIT {
         std::exchange(coro_, {}).destroy();
       };
-      return ResultCreator{}(std::move(coro_.promise().result()));
+      return std::move(coro_.promise().result());
     }
 
    private:
-    handle_t coro_;
-  };
-
-  class TrySemiAwaitable {
-   public:
-    TrySemiAwaitable(TrySemiAwaitable&& other) noexcept
-        : coro_(std::exchange(other.coro_, {})) {}
-
-    ~TrySemiAwaitable() {
-      if (coro_) {
-        coro_.destroy();
-      }
-    }
-
-    TrySemiAwaitable& operator=(TrySemiAwaitable&& other) noexcept {
-      auto oldCoro = std::exchange(coro_, std::exchange(other.coro_, {}));
-      if (oldCoro) {
-        oldCoro.destroy();
-      }
-      return *this;
-    }
-
-    friend auto co_viaIfAsync(
-        Executor::KeepAlive<> executor,
-        TrySemiAwaitable&& awaitable) noexcept {
-      awaitable.coro_.promise().executor_ = std::move(executor);
-      return Awaiter<typename TaskWithExecutor<T>::TryCreator>{
-          std::exchange(awaitable.coro_, {})};
-    }
-
-   private:
-    friend Task<T>;
-
-    explicit TrySemiAwaitable(handle_t coro) noexcept : coro_(coro) {}
-
     handle_t coro_;
   };
 

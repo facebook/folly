@@ -388,5 +388,59 @@ using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
     std::declval<folly::Executor::KeepAlive<>>(),
     std::declval<T>()))>;
 
+namespace detail {
+
+template <typename Awaiter>
+class TryAwaiter {
+ public:
+  TryAwaiter(Awaiter&& awaiter) : awaiter_(std::move(awaiter)) {}
+
+  bool await_ready() {
+    return awaiter_.await_ready();
+  }
+
+  template <typename Promise>
+  auto await_suspend(std::experimental::coroutine_handle<Promise> coro) {
+    return awaiter_.await_suspend(coro);
+  }
+
+  auto await_resume() {
+    return awaiter_.await_resume_try();
+  }
+
+ private:
+  Awaiter awaiter_;
+};
+
+template <typename Awaiter>
+auto makeTryAwaiter(Awaiter&& awaiter) {
+  return TryAwaiter<std::decay_t<Awaiter>>(std::move(awaiter));
+}
+
+template <typename SemiAwaitable>
+class TrySemiAwaitable {
+ public:
+  explicit TrySemiAwaitable(SemiAwaitable&& semiAwaitable)
+      : semiAwaitable_(std::move(semiAwaitable)) {}
+
+  friend auto co_viaIfAsync(
+      Executor::KeepAlive<> executor,
+      TrySemiAwaitable&& self) noexcept {
+    return makeTryAwaiter(get_awaiter(
+        co_viaIfAsync(std::move(executor), std::move(self.semiAwaitable_))));
+  }
+
+ private:
+  SemiAwaitable semiAwaitable_;
+};
+} // namespace detail
+
+template <
+    typename SemiAwaitable,
+    typename = std::enable_if_t<is_semi_awaitable_v<SemiAwaitable>>>
+auto co_awaitTry(SemiAwaitable&& semiAwaitable) {
+  return detail::TrySemiAwaitable<SemiAwaitable>(std::move(semiAwaitable));
+}
+
 } // namespace coro
 } // namespace folly

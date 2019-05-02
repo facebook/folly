@@ -1900,6 +1900,10 @@ class FutureAwaitable {
     return std::move(result_).value();
   }
 
+  Try<T> await_resume_try() {
+    return std::move(result_);
+  }
+
   FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
       std::experimental::coroutine_handle<> h) {
     // FutureAwaitable may get destroyed as soon as the callback is executed.

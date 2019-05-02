@@ -459,4 +459,33 @@ TEST(Coro, Semaphore) {
   }
 }
 
+TEST(Coro, FutureTry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    {
+      auto result = co_await folly::coro::co_awaitTry(task42().semi());
+      EXPECT_TRUE(result.hasValue());
+      EXPECT_EQ(42, result.value());
+    }
+
+    {
+      auto result = co_await folly::coro::co_awaitTry(taskException().semi());
+      EXPECT_TRUE(result.hasException());
+    }
+
+    {
+      auto result = co_await folly::coro::co_awaitTry(
+          task42().semi().via(co_await folly::coro::co_current_executor));
+      EXPECT_TRUE(result.hasValue());
+      EXPECT_EQ(42, result.value());
+    }
+
+    {
+      auto result =
+          co_await folly::coro::co_awaitTry(taskException().semi().via(
+              co_await folly::coro::co_current_executor));
+      EXPECT_TRUE(result.hasException());
+    }
+  }());
+}
+
 #endif
