@@ -158,12 +158,12 @@ class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
   }
 
   FOLLY_NOINLINE static Wrapper& getWrapper() {
-    (void)unique; // force the object not to be thrown out as unused
     return *getWrapperTL();
   }
 
 #ifdef FOLLY_TLS
   FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
+    (void)unique; // force the object not to be thrown out as unused
     static thread_local Wrapper** check = &cache;
     CHECK_EQ(check, &cache) << "inline function static thread_local merging";
     static thread_local bool stale;
