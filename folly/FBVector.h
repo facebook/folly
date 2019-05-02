@@ -37,6 +37,7 @@
 
 #include <folly/FormatTraits.h>
 #include <folly/Likely.h>
+#include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
@@ -174,12 +175,9 @@ class fbvector {
 
     void reset(size_type newCap) {
       destroy();
-      try {
-        init(newCap);
-      } catch (...) {
-        init(0);
-        throw;
-      }
+      auto rollback = makeGuard([&] { init(0); });
+      init(newCap);
+      rollback.dismiss();
     }
     void reset() { // same as reset(0)
       destroy();
@@ -429,15 +427,12 @@ class fbvector {
       Args&&... args) {
     auto b = dest;
     auto e = dest + sz;
-    try {
-      for (; b != e; ++b) {
-        std::allocator_traits<Allocator>::construct(
-            a, b, std::forward<Args>(args)...);
-      }
-    } catch (...) {
-      S_destroy_range_a(a, dest, b);
-      throw;
+    auto rollback = makeGuard([&] { S_destroy_range_a(a, dest, b); });
+    for (; b != e; ++b) {
+      std::allocator_traits<Allocator>::construct(
+          a, b, std::forward<Args>(args)...);
     }
+    rollback.dismiss();
   }
 
   // optimized
@@ -449,31 +444,27 @@ class fbvector {
     } else {
       auto b = dest;
       auto e = dest + n;
-      try {
-        for (; b != e; ++b) {
-          S_construct(b);
-        }
-      } catch (...) {
+      auto rollback = makeGuard([&] {
         --b;
         for (; b >= dest; --b) {
           b->~T();
         }
-        throw;
+      });
+      for (; b != e; ++b) {
+        S_construct(b);
       }
+      rollback.dismiss();
     }
   }
 
   static void S_uninitialized_fill_n(T* dest, size_type n, const T& value) {
     auto b = dest;
     auto e = dest + n;
-    try {
-      for (; b != e; ++b) {
-        S_construct(b, value);
-      }
-    } catch (...) {
-      S_destroy_range(dest, b);
-      throw;
+    auto rollback = makeGuard([&] { S_destroy_range(dest, b); });
+    for (; b != e; ++b) {
+      S_construct(b, value);
     }
+    rollback.dismiss();
   }
 
   //---------------------------------------------------------------------------
@@ -519,28 +510,22 @@ class fbvector {
   template <typename It>
   static void S_uninitialized_copy_a(Allocator& a, T* dest, It first, It last) {
     auto b = dest;
-    try {
-      for (; first != last; ++first, ++b) {
-        std::allocator_traits<Allocator>::construct(a, b, *first);
-      }
-    } catch (...) {
-      S_destroy_range_a(a, dest, b);
-      throw;
+    auto rollback = makeGuard([&] { S_destroy_range_a(a, dest, b); });
+    for (; first != last; ++first, ++b) {
+      std::allocator_traits<Allocator>::construct(a, b, *first);
     }
+    rollback.dismiss();
   }
 
   // optimized
   template <typename It>
   static void S_uninitialized_copy(T* dest, It first, It last) {
     auto b = dest;
-    try {
-      for (; first != last; ++first, ++b) {
-        S_construct(b, *first);
-      }
-    } catch (...) {
-      S_destroy_range(dest, b);
-      throw;
+    auto rollback = makeGuard([&] { S_destroy_range(dest, b); });
+    for (; first != last; ++first, ++b) {
+      S_construct(b, *first);
     }
+    rollback.dismiss();
   }
 
   static void
@@ -1002,11 +987,10 @@ class fbvector {
 
     auto newCap = folly::goodMallocSize(n * sizeof(T)) / sizeof(T);
     auto newB = M_allocate(newCap);
-    try {
+    {
+      auto rollback = makeGuard([&] { M_deallocate(newB, newCap); });
       M_relocate(newB);
-    } catch (...) {
-      M_deallocate(newB, newCap);
-      throw;
+      rollback.dismiss();
     }
     if (impl_.b_) {
       M_deallocate(impl_.b_, size_type(impl_.z_ - impl_.b_));
@@ -1039,15 +1023,25 @@ class fbvector {
       impl_.z_ += newCap - oldCap;
     } else {
       T* newB; // intentionally uninitialized
-      try {
-        newB = M_allocate(newCap);
-        try {
-          M_relocate(newB);
-        } catch (...) {
-          M_deallocate(newB, newCap);
-          return; // swallow the error
-        }
-      } catch (...) {
+      if (!catch_exception(
+              [&] {
+                newB = M_allocate(newCap);
+                return true;
+              },
+              [&] { //
+                return false;
+              })) {
+        return;
+      }
+      if (!catch_exception(
+              [&] {
+                M_relocate(newB);
+                return true;
+              },
+              [&] {
+                M_deallocate(newB, newCap);
+                return false;
+              })) {
         return;
       }
       if (impl_.b_) {
@@ -1251,7 +1245,8 @@ class fbvector {
     size_type sz = byte_sz / sizeof(T);
     auto newB = M_allocate(sz);
     auto newE = newB + size();
-    try {
+    {
+      auto rollback1 = makeGuard([&] { M_deallocate(newB, sz); });
       if (folly::IsRelocatable<T>::value && usingStdAllocator) {
         // For linear memory access, relocate before construction.
         // By the test condition, relocate is noexcept.
@@ -1264,16 +1259,11 @@ class fbvector {
       } else {
         M_construct(newE, std::forward<Args>(args)...);
         ++newE;
-        try {
-          M_relocate(newB);
-        } catch (...) {
-          M_destroy(newE - 1);
-          throw;
-        }
+        auto rollback2 = makeGuard([&] { M_destroy(newE - 1); });
+        M_relocate(newB);
+        rollback2.dismiss();
       }
-    } catch (...) {
-      M_deallocate(newB, sz);
-      throw;
+      rollback1.dismiss();
     }
     if (impl_.b_) {
       M_deallocate(impl_.b_, size());
@@ -1403,15 +1393,16 @@ class fbvector {
         impl_.e_ += n;
       } else {
         D_uninitialized_move_a(impl_.e_, impl_.e_ - n, impl_.e_);
-        try {
+        {
+          auto rollback = makeGuard([&] {
+            D_destroy_range_a(impl_.e_ - n, impl_.e_ + n);
+            impl_.e_ -= n;
+          });
           std::copy_backward(
               std::make_move_iterator(position),
               std::make_move_iterator(impl_.e_ - n),
               impl_.e_);
-        } catch (...) {
-          D_destroy_range_a(impl_.e_ - n, impl_.e_ + n);
-          impl_.e_ -= n;
-          throw;
+          rollback.dismiss();
         }
         impl_.e_ += n;
         D_destroy_range_a(position, position + n);
@@ -1432,11 +1423,12 @@ class fbvector {
     assert(n != 0);
 
     relocate_move(ledge, impl_.b_, impl_.b_ + idx);
-    try {
+    {
+      auto rollback = makeGuard([&] { //
+        relocate_undo(ledge, impl_.b_, impl_.b_ + idx);
+      });
       relocate_move(ledge + idx + n, impl_.b_ + idx, impl_.e_);
-    } catch (...) {
-      relocate_undo(ledge, impl_.b_, impl_.b_ + idx);
-      throw;
+      rollback.dismiss();
     }
     relocate_done(ledge, impl_.b_, impl_.b_ + idx);
     relocate_done(ledge + idx + n, impl_.b_ + idx, impl_.e_);
@@ -1508,30 +1500,32 @@ class fbvector {
     }
 
     T* start = b + idx;
-    try {
+    {
+      auto rollback = makeGuard([&] {
+        if (fresh) {
+          M_deallocate(b, newCap);
+        } else {
+          if (!at_end) {
+            undo_window(position, n);
+          } else {
+            impl_.e_ -= n;
+          }
+        }
+      });
       // construct the inserted elements
       constructFunc(start);
-    } catch (...) {
-      if (fresh) {
-        M_deallocate(b, newCap);
-      } else {
-        if (!at_end) {
-          undo_window(position, n);
-        } else {
-          impl_.e_ -= n;
-        }
-      }
-      throw;
+      rollback.dismiss();
     }
 
     if (fresh) {
-      try {
+      {
+        auto rollback = makeGuard([&] {
+          // delete the inserted elements (exception has been thrown)
+          destroyFunc(start);
+          M_deallocate(b, newCap);
+        });
         wrap_frame(b, idx, n);
-      } catch (...) {
-        // delete the inserted elements (exception has been thrown)
-        destroyFunc(start);
-        M_deallocate(b, newCap);
-        throw;
+        rollback.dismiss();
       }
       if (impl_.b_) {
         M_deallocate(impl_.b_, capacity());
