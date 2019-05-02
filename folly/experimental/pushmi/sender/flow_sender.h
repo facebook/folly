@@ -50,6 +50,7 @@ class any_flow_sender
   vtable const* vptr_ = &noop_;
   template <class Wrapped>
   any_flow_sender(Wrapped obj, std::false_type) : any_flow_sender() {
+    static_assert(FlowSenderTo<wrapped_t<Wrapped>&, any_flow_receiver<PE, PV, E, VN...>>, "Wrapped object does not support w.submit(any_flow_receiver) - perhaps std::move(w).submit(any_flow_receiver) is supported");
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -66,8 +67,8 @@ class any_flow_sender
     vptr_ = &vtbl;
   }
   template <class Wrapped>
-  any_flow_sender(Wrapped obj, std::true_type) noexcept
-    : any_flow_sender() {
+  any_flow_sender(Wrapped obj, std::true_type) noexcept : any_flow_sender() {
+    static_assert(FlowSenderTo<wrapped_t<Wrapped>&, any_flow_receiver<PE, PV, E, VN...>>, "Wrapped object does not support w.submit(any_flow_receiver) - perhaps std::move(w).submit(any_flow_receiver) is supported");
     struct s {
       static void op(data& src, data* dst) {
         if (dst)
@@ -106,8 +107,8 @@ class any_flow_sender
     new ((void*)this) any_flow_sender(std::move(that));
     return *this;
   }
-  PUSHMI_TEMPLATE(class Out)
-  (requires ReceiveError<Out, E>&& ReceiveValue<Out, VN...>) //
+  PUSHMI_TEMPLATE_DEBUG(class Out)
+  (requires ReceiveError<Out, E>&& ReceiveValue<Out, VN...> && Constructible<any_flow_receiver<PE, PV, E, VN...>, Out>) //
       void submit(Out&& out) {
     vptr_->submit_(data_, any_flow_receiver<PE, PV, E, VN...>{(Out &&) out});
   }
@@ -129,13 +130,13 @@ class flow_sender<SF> {
   constexpr explicit flow_sender(SF sf)
       : sf_(std::move(sf)) {}
 
-  PUSHMI_TEMPLATE(class Out)
+  PUSHMI_TEMPLATE_DEBUG(class Out)
     (requires FlowReceiver<Out> && Invocable<SF&, Out>)
   void submit(Out out) & {
     sf_(std::move(out));
   }
 
-  PUSHMI_TEMPLATE(class Out)
+  PUSHMI_TEMPLATE_DEBUG(class Out)
     (requires FlowReceiver<Out> && Invocable<SF&&, Out>)
   void submit(Out out) && {
     std::move(sf_)(std::move(out));
@@ -162,12 +163,12 @@ class flow_sender<Data, DSF> {
   constexpr flow_sender(Data data, DSF sf)
       : data_(std::move(data)), sf_(std::move(sf)) {}
 
-  PUSHMI_TEMPLATE(class Out)
+  PUSHMI_TEMPLATE_DEBUG(class Out)
     (requires FlowReceiver<Out> && Invocable<DSF&, Data&, Out>)
   void submit(Out out) & {
     sf_(data_, std::move(out));
   }
-  PUSHMI_TEMPLATE(class Out)
+  PUSHMI_TEMPLATE_DEBUG(class Out)
     (requires FlowReceiver<Out> && Invocable<DSF&&, Data&&, Out>)
   void submit(Out out) && {
     std::move(sf_)(std::move(data_), std::move(out));

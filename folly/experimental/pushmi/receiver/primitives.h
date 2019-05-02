@@ -168,7 +168,7 @@ inline void set_value(std::promise<void>& p) //
 //
 
 struct set_done_fn {
-  PUSHMI_TEMPLATE(class S)
+  PUSHMI_TEMPLATE_DEBUG(class S)
   (requires //
    requires(
        set_done(std::declval<S&>()),
@@ -186,7 +186,7 @@ struct set_done_fn {
   }
 };
 struct set_error_fn {
-  PUSHMI_TEMPLATE(class S, class E)
+  PUSHMI_TEMPLATE_DEBUG(class S, class E)
   (requires //
    requires(set_error(std::declval<S&>(), std::declval<E>()))) //
   void operator()(S& s, E&& e) const //
@@ -195,7 +195,7 @@ struct set_error_fn {
   }
 };
 struct set_value_fn {
-  PUSHMI_TEMPLATE(class S, class... VN)
+  PUSHMI_TEMPLATE_DEBUG(class S, class... VN)
   (requires //
    requires(
        set_value(std::declval<S&>(), std::declval<VN>()...),
@@ -214,7 +214,7 @@ struct set_value_fn {
 };
 
 struct set_starting_fn {
-  PUSHMI_TEMPLATE(class S, class Up)
+  PUSHMI_TEMPLATE_DEBUG(class S, class Up)
   (requires //
    requires(
        set_starting(std::declval<S&>(), std::declval<Up>()),

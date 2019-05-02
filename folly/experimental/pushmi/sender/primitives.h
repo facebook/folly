@@ -32,8 +32,9 @@ namespace folly {
 namespace pushmi {
 
 namespace _submit_adl {
+  struct submit_adl_disabled;
   template <class S, class R>
-  void submit(S&&, R&&) = delete;
+  submit_adl_disabled submit(S&&, R&&);
 
   template <class T>
   constexpr typename T::value_type const _v = T::value;
@@ -77,35 +78,57 @@ namespace _submit_adl {
 #endif
 
     struct _impl_ {
-      PUSHMI_TEMPLATE_DEBUG(class S, class R)
+      // these pull the line numbers for the different invocations
+      // out of the IF_CONSTEXPR macros
+      PUSHMI_TEMPLATE(class S, class R)
       (requires Sender<S> && Receiver<R>)
-      auto operator()(S&& from, R&& to) const
-      {
+      auto adl_submit(S&& from, R&& to) const {
+        return submit((S&&) from, (R&&) to);
+      }
+      PUSHMI_TEMPLATE(class S, class R)
+      (requires Sender<S> && Receiver<R>)
+      auto member_submit(S&& from, R&& to) const {
+        return ((S&&) from).submit((R&&) to);
+      }
+      PUSHMI_TEMPLATE(class S, class R)
+      (requires Sender<S> && Receiver<R>)
+      void debug_submit(S&& from, R&& to) const {
+        // try to get a useful compile error
+        PUSHMI_IF_CONSTEXPR((
+          Same<decltype(submit((S&&) from, (R&&) to)),
+            submit_adl_disabled>) (
+          static_assert(std::is_void<decltype(member_submit(id((S&&) from), (R&&) to))>::value, "s.submit(r) failed and adl was disabled");
+        ) else (
+          static_assert(std::is_void<decltype(adl_submit(id((S&&) from), (R&&) to))>::value, "submit(s, r) via ADL failed");
+        ))
+      }
+
+      PUSHMI_TEMPLATE(class S, class R)
+      (requires Sender<S> && Receiver<R>)
+      auto operator()(S&& from, R&& to) const {
         // Prefer a .submit() member if it exists:
         PUSHMI_IF_CONSTEXPR_RETURN((HasMemberSubmit_<S, R>) (
-          id((S&&) from).submit((R&&) to);
+          member_submit(id((S&&) from), (R&&) to);
           return std::true_type{};
         ) else (
           // Otherwise, dispatch to a submit() free function if it exists:
           PUSHMI_IF_CONSTEXPR_RETURN((HasNonMemberSubmit_<S, R>) (
-            submit(id((S&&) from), (R&&) to);
+            adl_submit(id((S&&) from), (R&&) to);
             return std::true_type{};
           ) else (
 #if FOLLY_HAS_COROUTINES
             // Otherwise, if we support coroutines and S looks like an
-            // awaitable, dispatch to the
+            // awaitable, dispatch to the coroutine
             PUSHMI_IF_CONSTEXPR_RETURN((IsSubmittableAwaitable_<S, R>) (
               _submit_awaitable_(id((S&&) from), (R&&) to);
               return std::true_type{};
             ) else (
+              debug_submit(id((S&&) from), (R&&) to);
               return std::false_type{};
             ))
 #else
-
-            // does not work for free functions
-            id((S&&) from).submit((R&&) to);
+            debug_submit(id((S&&) from), (R&&) to);
             return std::false_type{};
-
 #endif
           ))
         ))
