@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import io
 
 from .expr import parse_expr
-from .fetcher import GitFetcher
+from .fetcher import ArchiveFetcher, GitFetcher
 
 
 try:
@@ -262,6 +262,12 @@ class ManifestParser(object):
         if repo_url:
             rev = self.get("git", "rev")
             return GitFetcher(build_options, self, repo_url, rev)
+
+        url = self.get("download", "url", ctx=ctx)
+        if url:
+            return ArchiveFetcher(
+                build_options, self, url, self.get("download", "sha256", ctx=ctx)
+            )
 
         raise KeyError(
             "project %s has no fetcher configuration matching %r" % (self.name, ctx)

@@ -7,17 +7,26 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import hashlib
 import os
 import re
+import shutil
 import subprocess
+import sys
+import tarfile
+import time
+import zipfile
 
+from .platform import is_windows
 from .runcmd import run_cmd
 
 
 try:
     from urlparse import urlparse
+    from urllib import urlretrieve
 except ImportError:
     from urllib.parse import urlparse
+    from urllib.request import urlretrieve
 
 
 class ChangeStatus(object):
@@ -214,3 +223,141 @@ class GitFetcher(Fetcher):
 
     def get_src_dir(self):
         return self.repo_dir
+
+
+def download_url_to_file_with_progress(url, file_name):
+    print("Download %s -> %s ..." % (url, file_name))
+
+    class Progress(object):
+        last_report = 0
+
+        def progress(self, count, block, total):
+            if total == -1:
+                total = "(Unknown)"
+            amount = count * block
+
+            if sys.stdout.isatty():
+                sys.stdout.write("\r downloading %s of %s " % (amount, total))
+            else:
+                # When logging to CI logs, avoid spamming the logs and print
+                # status every few seconds
+                now = time.time()
+                if now - self.last_report > 5:
+                    sys.stdout.write(".. %s of %s " % (amount, total))
+                    self.last_report = now
+            sys.stdout.flush()
+
+    progress = Progress()
+    start = time.time()
+    (_filename, headers) = urlretrieve(url, file_name, reporthook=progress.progress)
+    end = time.time()
+    sys.stdout.write(" [Complete in %f seconds]\n" % (end - start))
+    sys.stdout.flush()
+    print("%s" % (headers))
+
+
+class ArchiveFetcher(Fetcher):
+    def __init__(self, build_options, manifest, url, sha256):
+        self.manifest = manifest
+        self.url = url
+        self.sha256 = sha256
+        self.build_options = build_options
+
+        url = urlparse(self.url)
+        basename = "%s-%s" % (manifest.name, os.path.basename(url.path))
+        self.file_name = os.path.join(build_options.scratch_dir, "downloads", basename)
+        self.src_dir = os.path.join(build_options.scratch_dir, "extracted", basename)
+        self.hash_file = self.src_dir + ".hash"
+
+    def _verify_hash(self):
+        h = hashlib.sha256()
+        with open(self.file_name, "rb") as f:
+            while True:
+                block = f.read(8192)
+                if not block:
+                    break
+                h.update(block)
+        digest = h.hexdigest()
+        if digest != self.sha256:
+            os.unlink(self.file_name)
+            raise Exception(
+                "%s: expected sha256 %s but got %s" % (self.url, self.sha256, digest)
+            )
+
+    def _download(self):
+        download_dir = os.path.dirname(self.file_name)
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir)
+
+        download_url_to_file_with_progress(self.url, self.file_name)
+
+        self._verify_hash()
+
+    def clean(self):
+        if os.path.exists(self.src_dir):
+            shutil.rmtree(self.src_dir)
+
+    def update(self):
+        try:
+            with open(self.hash_file, "r") as f:
+                saved_hash = f.read().strip()
+                if saved_hash == self.sha256 and os.path.exists(self.src_dir):
+                    # Everything is up to date
+                    return ChangeStatus()
+                print(
+                    "saved hash %s doesn't match expected hash %s, re-validating"
+                    % (saved_hash, self.sha256)
+                )
+                os.unlink(self.hash_file)
+        except EnvironmentError:
+            pass
+
+        # If we got here we know the contents of src_dir are either missing
+        # or wrong, so blow away whatever happened to be there first.
+        if os.path.exists(self.src_dir):
+            shutil.rmtree(self.src_dir)
+
+        # If we already have a file here, make sure it looks legit before
+        # proceeding: any errors and we just remove it and re-download
+        if os.path.exists(self.file_name):
+            try:
+                self._verify_hash()
+            except Exception:
+                if os.path.exists(self.file_name):
+                    os.unlink(self.file_name)
+
+        if not os.path.exists(self.file_name):
+            self._download()
+
+        if tarfile.is_tarfile(self.file_name):
+            opener = tarfile.open
+        elif zipfile.is_zipfile(self.file_name):
+            opener = zipfile.ZipFile
+        else:
+            raise Exception("don't know how to extract %s" % self.file_name)
+        os.makedirs(self.src_dir)
+        print("Extract %s -> %s" % (self.file_name, self.src_dir))
+        t = opener(self.file_name)
+        if is_windows():
+            # Ensure that we don't fall over when dealing with long paths
+            # on windows
+            src = r"\\?\%s" % os.path.normpath(self.src_dir)
+        else:
+            src = self.src_dir
+        # The `str` here is necessary to ensure that we don't pass a unicode
+        # object down to tarfile.extractall on python2.  When extracting
+        # the boost tarball it makes some assumptions and tries to convert
+        # a non-ascii path to ascii and throws.
+        src = str(src)
+        t.extractall(src)
+
+        with open(self.hash_file, "w") as f:
+            f.write(self.sha256)
+
+        return ChangeStatus(True)
+
+    def hash(self):
+        return self.sha256[0:6]
+
+    def get_src_dir(self):
+        return self.src_dir
