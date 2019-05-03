@@ -130,8 +130,8 @@ struct flow_from_up {
       make_receiver([p = p_, requested](auto) {
         auto remaining = requested;
         // this loop is structured to work when there is
-        // re-entrancy out.value in the loop may call up.value.
-        // to handle this the state of p->c must be captured and
+        // re-entrancy. out.value in the loop may call up.value.
+        // to handle this, the state of p->c must be captured and
         // the remaining and p->c must be changed before
         // out.value is called.
         while (remaining-- > 0 && !p->stop && p->c != p->end) {

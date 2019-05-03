@@ -144,7 +144,7 @@ struct set_value_fn {
     std::tuple<VN...> vn_;
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveValue<Out, VN...>) //
-    void operator()(Out out) {
+    void operator()(Out& out) {
       ::folly::pushmi::apply(
           ::folly::pushmi::set_value,
           std::tuple_cat(std::tuple<Out>{std::move(out)}, std::move(vn_)));
@@ -165,7 +165,7 @@ struct set_error_fn {
     E e_;
     PUSHMI_TEMPLATE(class Out)
     (requires ReceiveError<Out, E>) //
-    void operator()(Out out) {
+    void operator()(Out& out) {
       set_error(out, std::move(e_));
     }
   };
@@ -183,7 +183,7 @@ struct set_done_fn {
   struct impl {
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
-    void operator()(Out out) {
+    void operator()(Out& out) {
       set_done(out);
     }
   };
@@ -201,7 +201,7 @@ struct set_starting_fn {
     Up up_;
     PUSHMI_TEMPLATE(class Out)
     (requires Receiver<Out>) //
-    void operator()(Out out) {
+    void operator()(Out& out) {
       set_starting(out, std::move(up_));
     }
   };
@@ -308,7 +308,7 @@ struct now_fn {
   struct impl {
     PUSHMI_TEMPLATE(class In)
     (requires TimeExecutor<std::decay_t<In>>) //
-    auto operator()(In&& in) const {
+    auto operator()(In& in) const {
       return ::folly::pushmi::now(in);
     }
   };
