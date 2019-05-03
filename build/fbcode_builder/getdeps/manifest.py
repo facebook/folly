@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import io
 
 from .expr import parse_expr
-from .fetcher import ArchiveFetcher, GitFetcher
+from .fetcher import ArchiveFetcher, GitFetcher, ShipitTransformerFetcher
 
 
 try:
@@ -258,6 +258,15 @@ class ManifestParser(object):
         return d
 
     def create_fetcher(self, build_options, ctx):
+        if (
+            self.fbsource_path
+            and build_options.fbsource_dir
+            and self.shipit_project
+            and ShipitTransformerFetcher.available()
+        ):
+            # We can use the code from fbsource
+            return ShipitTransformerFetcher(build_options, self.shipit_project)
+
         repo_url = self.get("git", "repo_url", ctx=ctx)
         if repo_url:
             rev = self.get("git", "rev")

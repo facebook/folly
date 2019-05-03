@@ -225,6 +225,79 @@ class GitFetcher(Fetcher):
         return self.repo_dir
 
 
+class ShipitTransformerFetcher(Fetcher):
+    SHIPIT = "/var/www/scripts/opensource/shipit/run_shipit.php"
+
+    def __init__(self, build_options, project_name):
+        self.build_options = build_options
+        self.project_name = project_name
+        self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", project_name)
+
+    def update(self):
+        if os.path.exists(self.repo_dir):
+            return ChangeStatus()
+        self.run_shipit()
+        return ChangeStatus(True)
+
+    def clean(self):
+        if os.path.exists(self.repo_dir):
+            shutil.rmtree(self.repo_dir)
+
+    @classmethod
+    def available(cls):
+        return os.path.exists(cls.SHIPIT)
+
+    def run_shipit(self):
+        tmp_path = self.repo_dir + ".new"
+        try:
+            if os.path.exists(tmp_path):
+                shutil.rmtree(tmp_path)
+
+            # Run shipit
+            run_cmd(
+                [
+                    "php",
+                    ShipitTransformerFetcher.SHIPIT,
+                    "--project=" + self.project_name,
+                    "--create-new-repo",
+                    "--source-repo-dir=" + self.build_options.fbsource_dir,
+                    "--source-branch=.",
+                    "--skip-source-init",
+                    "--skip-source-pull",
+                    "--skip-source-clean",
+                    "--skip-push",
+                    "--skip-reset",
+                    "--skip-project-specific",
+                    "--destination-use-anonymous-https",
+                    "--create-new-repo-output-path=" + tmp_path,
+                ]
+            )
+
+            # Remove the .git directory from the repository it generated.
+            # There is no need to commit this.
+            repo_git_dir = os.path.join(tmp_path, ".git")
+            shutil.rmtree(repo_git_dir)
+            os.rename(tmp_path, self.repo_dir)
+        except Exception:
+            # Clean up after a failed extraction
+            if os.path.exists(tmp_path):
+                shutil.rmtree(tmp_path)
+            self.clean()
+            raise
+
+    def hash(self):
+        cmd = ["hg", "log", "-r.", "-T{node}"]
+        env = os.environ.copy()
+        env["HGPLAIN"] = "1"
+        fbsource_hash = subprocess.check_output(
+            cmd, cwd=self.build_options.fbsource_dir, env=env
+        )
+        return fbsource_hash[0:6]
+
+    def get_src_dir(self):
+        return self.repo_dir
+
+
 def download_url_to_file_with_progress(url, file_name):
     print("Download %s -> %s ..." % (url, file_name))
 
