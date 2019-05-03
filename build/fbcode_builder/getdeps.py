@@ -22,6 +22,14 @@ from getdeps.platform import HostType, context_from_host_tuple
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
 
 
+try:
+    import getdeps.facebook  # noqa: F401
+except ImportError:
+    # we don't ship the facebook specific subdir,
+    # so allow that to fail silently
+    pass
+
+
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "getdeps"))
 
 
