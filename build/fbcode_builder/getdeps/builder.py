@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import glob
 import os
 import shutil
+import sys
 
 from .envfuncs import Env, add_path_entry, path_search
 from .runcmd import run_cmd
@@ -220,3 +221,20 @@ class CMakeBuilder(BuilderBase):
             ],
             env=env,
         )
+
+
+class NinjaBootstrap(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir):
+        super(NinjaBootstrap, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+
+    def _build(self, install_dirs, reconfigure):
+        self._run_cmd([sys.executable, "configure.py", "--bootstrap"], cwd=self.src_dir)
+        src_ninja = os.path.join(self.src_dir, "ninja")
+        dest_ninja = os.path.join(self.inst_dir, "bin/ninja")
+        bin_dir = os.path.dirname(dest_ninja)
+        if not os.path.exists(bin_dir):
+            os.makedirs(bin_dir)
+        shutil.copyfile(src_ninja, dest_ninja)
+        shutil.copymode(src_ninja, dest_ninja)

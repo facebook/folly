@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import io
 
-from .builder import AutoconfBuilder, CMakeBuilder, MakeBuilder
+from .builder import AutoconfBuilder, CMakeBuilder, MakeBuilder, NinjaBootstrap
 from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
@@ -316,6 +316,11 @@ class ManifestParser(object):
             defines = self.get_section_as_dict("cmake.defines", ctx)
             return CMakeBuilder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir, defines
+            )
+
+        if builder == "ninja_bootstrap":
+            return NinjaBootstrap(
+                build_options, ctx, self, build_dir, src_dir, inst_dir
             )
 
         raise KeyError("project %s has no known builder" % (self.name))
