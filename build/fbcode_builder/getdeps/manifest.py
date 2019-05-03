@@ -329,9 +329,20 @@ class ManifestParser(object):
 
         url = self.get("download", "url", ctx=ctx)
         if url:
-            return ArchiveFetcher(
-                build_options, self, url, self.get("download", "sha256", ctx=ctx)
-            )
+            # We need to defer this import until now to avoid triggering
+            # a cycle when the facebook/__init__.py is loaded.
+            try:
+                from getdeps.facebook.lfs import LFSCachingArchiveFetcher
+
+                return LFSCachingArchiveFetcher(
+                    build_options, self, url, self.get("download", "sha256", ctx=ctx)
+                )
+            except ImportError:
+                # This FB internal module isn't shippped to github,
+                # so just use its base class
+                return ArchiveFetcher(
+                    build_options, self, url, self.get("download", "sha256", ctx=ctx)
+                )
 
         raise KeyError(
             "project %s has no fetcher configuration matching %r" % (self.name, ctx)

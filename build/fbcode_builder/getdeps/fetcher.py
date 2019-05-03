@@ -583,13 +583,16 @@ class ArchiveFetcher(Fetcher):
                 "%s: expected sha256 %s but got %s" % (self.url, self.sha256, digest)
             )
 
-    def _download(self):
+    def _download_dir(self):
+        """ returns the download dir, creating it if it doesn't already exist """
         download_dir = os.path.dirname(self.file_name)
         if not os.path.exists(download_dir):
             os.makedirs(download_dir)
+        return download_dir
 
+    def _download(self):
+        self._download_dir()
         download_url_to_file_with_progress(self.url, self.file_name)
-
         self._verify_hash()
 
     def clean(self):
