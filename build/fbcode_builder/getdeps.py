@@ -145,7 +145,9 @@ class BuildCmd(SubCmd):
         manifest = load_project(opts, args.project)
 
         ctx = context_from_host_tuple()
+        print("Building on %s" % ctx)
         projects = manifests_in_dependency_order(opts, manifest, ctx)
+        manifests_by_name = {m.name: m for m in projects}
 
         # Accumulate the install directories so that the build steps
         # can find their dep installation
@@ -161,7 +163,7 @@ class BuildCmd(SubCmd):
             reconfigure = change_status.build_changed()
             sources_changed = change_status.sources_changed()
 
-            dirs = opts.compute_dirs(m, fetcher)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
@@ -169,7 +171,7 @@ class BuildCmd(SubCmd):
             if os.path.exists(built_marker):
                 with open(built_marker, "r") as f:
                     built_hash = f.read().strip()
-                if built_hash != hash:
+                if built_hash != dirs["hash"]:
                     # Some kind of inconsistency with a prior build,
                     # let's run it again to be sure
                     os.unlink(built_marker)
@@ -213,6 +215,7 @@ class TestCmd(SubCmd):
 
         ctx = context_from_host_tuple()
         projects = manifests_in_dependency_order(opts, manifest, ctx)
+        manifests_by_name = {m.name: m for m in projects}
 
         # Accumulate the install directories so that the test steps
         # can find their dep installation
@@ -221,7 +224,7 @@ class TestCmd(SubCmd):
         for m in projects:
             fetcher = m.create_fetcher(opts, ctx)
 
-            dirs = opts.compute_dirs(m, fetcher)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 

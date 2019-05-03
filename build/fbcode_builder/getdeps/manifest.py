@@ -271,6 +271,36 @@ class ManifestParser(object):
                 d[field] = value
         return d
 
+    def update_hash(self, hasher, ctx):
+        """ Compute a hash over the configuration for the given
+        context.  The goal is for the hash to change if the config
+        for that context changes, but not if a change is made to
+        the config only for a different platform than that expressed
+        by ctx.  The hash is intended to be used to help invalidate
+        a future cache for the third party build products.
+        The hasher argument is a hash object returned from hashlib. """
+        for section in sorted(SCHEMA.keys()):
+            hasher.update(section.encode("utf-8"))
+
+            # Note: at the time of writing, nothing in the implementation
+            # relies on keys in any config section being ordered.
+            # In theory we could have conflicting flags in different
+            # config sections and later flags override earlier flags.
+            # For the purposes of computing a hash we're not super
+            # concerned about this: manifest changes should be rare
+            # enough and we'd rather that this trigger an invalidation
+            # than strive for a cache hit at this time.
+            pairs = self.get_section_as_ordered_pairs(section, ctx)
+            pairs.sort(key=lambda pair: pair[0])
+            for key, value in pairs:
+                hasher.update(key.encode("utf-8"))
+                if value is not None:
+                    hasher.update(value.encode("utf-8"))
+
+    def is_first_party_project(self):
+        """ returns true if this is an FB first-party project """
+        return self.shipit_project is not None
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit

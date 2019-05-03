@@ -20,6 +20,7 @@ import time
 import zipfile
 
 from .copytree import prefetch_dir_if_eden
+from .envfuncs import Env
 from .platform import is_windows
 from .runcmd import run_cmd
 
@@ -114,7 +115,12 @@ class Fetcher(object):
         working copy.  For a git repo this is commit hash for the working
         copy.  For other Fetchers this should relate to the version of
         the code in the src dir.  The intent is that if a manifest
-        changes the version/rev of a project that the hash be different. """
+        changes the version/rev of a project that the hash be different.
+        Importantly, this should be computable without actually fetching
+        the code, as we want this to factor into a hash used to download
+        a pre-built version of the code, without having to first download
+        and extract its sources (eg: boost on windows is pretty painful).
+        """
         pass
 
     def get_src_dir(self):
@@ -216,13 +222,7 @@ class GitFetcher(Fetcher):
             run_cmd(["git", "clean", "-fxd"], cwd=self.repo_dir)
 
     def hash(self):
-        """ Returns a hash that identifies the version of the code in the
-        working copy """
-        return (
-            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repo_dir)
-            .strip()
-            .decode("utf-8")[0:6]
-        )
+        return self.rev
 
     def get_src_dir(self):
         return self.repo_dir
@@ -402,6 +402,31 @@ class ShipitPathMap(object):
         return change_status
 
 
+FBSOURCE_REPO_HASH = {}
+
+
+def get_fbsource_repo_hash(build_options):
+    """ Returns the hash for the fbsource repo.
+    Since we may have multiple first party projects to
+    hash, and because we don't mutate the repo, we cache
+    this hash in a global. """
+    global FBSOURCE_REPO_HASH
+    cached_hash = FBSOURCE_REPO_HASH.get(build_options.fbsource_dir)
+    if cached_hash:
+        return cached_hash
+
+    cmd = ["hg", "log", "-r.", "-T{node}"]
+    env = Env()
+    env.set("HGPLAIN", "1")
+    cached_hash = subprocess.check_output(
+        cmd, cwd=build_options.fbsource_dir, env=dict(env.items())
+    ).decode("ascii")
+
+    FBSOURCE_REPO_HASH[build_options.fbsource_dir] = cached_hash
+
+    return cached_hash
+
+
 class SimpleShipitTransformerFetcher(Fetcher):
     def __init__(self, build_options, manifest):
         self.build_options = build_options
@@ -426,7 +451,7 @@ class SimpleShipitTransformerFetcher(Fetcher):
         return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)
 
     def hash(self):
-        return "fbsource"  # FIXME: use the hash of the repo in this and the repo_dir
+        return get_fbsource_repo_hash(self.build_options)
 
     def get_src_dir(self):
         return self.repo_dir
@@ -493,13 +518,7 @@ class ShipitTransformerFetcher(Fetcher):
             raise
 
     def hash(self):
-        cmd = ["hg", "log", "-r.", "-T{node}"]
-        env = os.environ.copy()
-        env["HGPLAIN"] = "1"
-        fbsource_hash = subprocess.check_output(
-            cmd, cwd=self.build_options.fbsource_dir, env=env
-        )
-        return fbsource_hash[0:6]
+        return get_fbsource_repo_hash(self.build_options)
 
     def get_src_dir(self):
         return self.repo_dir
@@ -637,7 +656,7 @@ class ArchiveFetcher(Fetcher):
         return ChangeStatus(True)
 
     def hash(self):
-        return self.sha256[0:6]
+        return self.sha256
 
     def get_src_dir(self):
         return self.src_dir
