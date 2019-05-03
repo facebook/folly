@@ -10,8 +10,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import glob
 import os
+import shutil
 
-from .envfuncs import Env, add_path_entry
+from .envfuncs import Env, add_path_entry, path_search
 from .runcmd import run_cmd
 
 
@@ -142,3 +143,80 @@ class AutoconfBuilder(BuilderBase):
         self._run_cmd(configure_cmd, env=env)
         self._run_cmd(["make", "-j%s" % self.build_opts.num_jobs], env=env)
         self._run_cmd(["make", "install"], env=env)
+
+
+class CMakeBuilder(BuilderBase):
+    def __init__(
+        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, defines
+    ):
+        super(CMakeBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+        self.defines = defines or {}
+
+    def _invalidate_cache(self):
+        for name in ["CMakeCache.txt", "CMakeFiles"]:
+            name = os.path.join(self.build_dir, name)
+            if os.path.isdir(name):
+                shutil.rmtree(name)
+            elif os.path.exists(name):
+                os.unlink(name)
+
+    def _needs_reconfigure(self):
+        for name in ["CMakeCache.txt", "build.ninja"]:
+            name = os.path.join(self.build_dir, name)
+            if not os.path.exists(name):
+                return True
+        return False
+
+    def _build(self, install_dirs, reconfigure):
+        reconfigure = reconfigure or self._needs_reconfigure()
+
+        defines = {
+            "CMAKE_INSTALL_PREFIX": self.inst_dir,
+            "BUILD_SHARED_LIBS": "OFF",
+            # Some of the deps (rsocket) default to UBSAN enabled if left
+            # unspecified.  Some of the deps fail to compile in release mode
+            # due to warning->error promotion.  RelWithDebInfo is the happy
+            # medium.
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        }
+
+        defines.update(self.defines)
+        define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
+
+        # if self.build_opts.is_windows():
+        #    define_args += ["-G", "Visual Studio 15 2017 Win64"]
+        define_args += ["-G", "Ninja"]
+
+        # CMAKE_PREFIX_PATH is only respected when passed through the
+        # environment, so we construct an appropriate path to pass down
+        env = self.env.copy()
+        for d in install_dirs:
+            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+            add_path_entry(env, "PKG_CONFIG_PATH", "%s/lib/pkgconfig" % d)
+
+            bindir = os.path.join(d, "bin")
+            add_path_entry(env, "PATH", bindir, append=False)
+
+        # Resolve the cmake that we installed
+        cmake = path_search(env, "cmake")
+
+        if reconfigure:
+            self._invalidate_cache()
+            self._run_cmd([cmake, self.src_dir] + define_args, env=env)
+
+        self._run_cmd(
+            [
+                cmake,
+                "--build",
+                self.build_dir,
+                "--target",
+                "install",
+                "--config",
+                "Release",
+                "-j",
+                str(self.build_opts.num_jobs),
+            ],
+            env=env,
+        )

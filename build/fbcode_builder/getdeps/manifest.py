@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import io
 
-from .builder import AutoconfBuilder, MakeBuilder
+from .builder import AutoconfBuilder, CMakeBuilder, MakeBuilder
 from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
@@ -310,6 +310,12 @@ class ManifestParser(object):
             args = self.get_section_as_args("autoconf.args", ctx)
             return AutoconfBuilder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir, args
+            )
+
+        if builder == "cmake":
+            defines = self.get_section_as_dict("cmake.defines", ctx)
+            return CMakeBuilder(
+                build_options, ctx, self, src_dir, build_dir, inst_dir, defines
             )
 
         raise KeyError("project %s has no known builder" % (self.name))
