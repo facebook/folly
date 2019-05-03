@@ -30,7 +30,13 @@ def containing_repo_type(path):
 
 class BuildOptions(object):
     def __init__(
-        self, fbcode_builder_dir, scratch_dir, host_type, install_dir=None, num_jobs=0
+        self,
+        fbcode_builder_dir,
+        scratch_dir,
+        host_type,
+        install_dir=None,
+        num_jobs=0,
+        use_shipit=False,
     ):
         """ fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                                  or for shipit-transformed repos, the build dir that
@@ -42,6 +48,7 @@ class BuildOptions(object):
                           for builds outside of FB
             install_dir - where the project will ultimately be installed
             num_jobs - the level of concurrency to use while building
+            use_shipit - use real shipit instead of the simple shipit transformer
         """
         if not num_jobs:
             import multiprocessing
@@ -71,6 +78,7 @@ class BuildOptions(object):
         self.install_dir = install_dir
         self.fbcode_builder_dir = fbcode_builder_dir
         self.host_type = host_type
+        self.use_shipit = use_shipit
 
     def is_darwin(self):
         return self.host_type.is_darwin()
@@ -223,4 +231,5 @@ def setup_build_options(args, host_type=None):
         host_type,
         install_dir=args.install_prefix,
         num_jobs=args.num_jobs,
+        use_shipit=args.use_shipit,
     )

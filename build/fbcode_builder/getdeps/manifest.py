@@ -272,9 +272,15 @@ class ManifestParser(object):
         return d
 
     def create_fetcher(self, build_options, ctx):
-        # TODO: add a build_option flag to force using ShipitTransformerFetcher
-        # instead of this in CI environments
-        if self.fbsource_path and build_options.fbsource_dir and self.shipit_project:
+        use_real_shipit = (
+            ShipitTransformerFetcher.available() and build_options.use_shipit
+        )
+        if (
+            not use_real_shipit
+            and self.fbsource_path
+            and build_options.fbsource_dir
+            and self.shipit_project
+        ):
             return SimpleShipitTransformerFetcher(build_options, self)
 
         if (

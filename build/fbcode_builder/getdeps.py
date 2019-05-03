@@ -207,6 +207,12 @@ def build_argparser():
             "(default=number of cpu cores)"
         ),
     )
+    common_args.add_argument(
+        "--use-shipit",
+        help="use the real ShipIt instead of the simple shipit transformer",
+        action="store_true",
+        default=False,
+    )
 
     ap = argparse.ArgumentParser(
         description="Get and build dependencies and projects", parents=[common_args]
