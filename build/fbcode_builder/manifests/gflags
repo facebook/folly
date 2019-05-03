@@ -1,0 +1,17 @@
+[manifest]
+name = gflags
+
+[download]
+url = https://github.com/gflags/gflags/archive/v2.2.2.tar.gz
+sha256 = 34af2f15cf7367513b352bdcd2493ab14ce43692d2dcd9dfc499492966c64dcf
+
+[build]
+builder = cmake
+subdir = gflags-2.2.2
+
+[cmake.defines]
+BUILD_SHARED_LIBS = ON
+BUILD_STATIC_LIBS = ON
+#BUILD_gflags_nothreads_LIB = OFF
+BUILD_gflags_LIB = ON
+

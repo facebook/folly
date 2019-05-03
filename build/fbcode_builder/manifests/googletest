@@ -1,0 +1,18 @@
+[manifest]
+name = googletest
+
+[download]
+url = https://github.com/google/googletest/archive/release-1.8.1.tar.gz
+sha256 = 9bf1fe5182a604b4135edc1a425ae356c9ad15e9b23f9f12a02e80184c3a249c
+
+[build]
+builder = cmake
+subdir = googletest-release-1.8.1
+
+[cmake.defines]
+# Everything else defaults to the shared runtime, so tell gtest that
+# it should not use its choice of the static runtime
+gtest_force_shared_crt=ON
+
+[cmake.defines.os=windows]
+BUILD_SHARED_LIBS=ON

@@ -1,0 +1,51 @@
+[manifest]
+name = folly
+fbsource_path = fbcode/folly
+shipit_project = folly
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/folly.git
+
+[build]
+builder = cmake
+
+[dependencies]
+gflags
+glog
+googletest
+boost
+libevent
+double-conversion
+fmt
+snappy
+zstd
+# no openssl or zlib in the linux case, why?
+# these are usually installed on the system
+# and are the easiest system deps to pull in.
+# In the future we want to be able to express
+# that a system dep is sufficient in the manifest
+# for eg: openssl and zlib, but for now we don't
+# have it.
+
+# macOS doesn't expose the openssl api so we need
+# to build our own.
+[dependencies.os=darwin]
+openssl
+
+# Windows has neither openssl nor zlib, so we get
+# to provide both
+[dependencies.os=windows]
+openssl
+zlib
+
+[shipit.pathmap]
+fbcode/folly/public_tld = .
+fbcode/folly = folly
+
+[shipit.strip]
+^fbcode/folly/folly-config\.h$
+^fbcode/folly/public_tld/build/facebook_.*
+
+[cmake.defines]
+BUILD_SHARED_LIBS=OFF

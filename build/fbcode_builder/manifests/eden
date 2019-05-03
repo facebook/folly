@@ -1,0 +1,38 @@
+[manifest]
+name = eden
+fbsource_path = fbcode/eden
+shipit_project = eden
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/eden.git
+
+[build]
+builder = cmake
+
+[dependencies]
+googletest
+folly
+fbthrift
+cpptoml
+rocksdb
+libgit2
+
+# macOS ships with sqlite3, and some of the core system
+# frameworks require that that version be linked rather
+# than the one we might build for ourselves here, so we
+# skip building it on macos.
+[dependencies.not(os=darwin)]
+sqlite3
+
+[dependencies.os=darwin]
+osxfuse
+
+[shipit.pathmap]
+fbcode/eden/oss = .
+fbcode/eden = eden
+fbcode/fboss/common = common
+
+[shipit.strip]
+^fbcode/eden/fs/eden-config\.h$
+^fbcode/eden/hg/.*$

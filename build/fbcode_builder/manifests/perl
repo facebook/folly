@@ -1,0 +1,11 @@
+[manifest]
+name = perl
+
+[download.os=windows]
+url = http://strawberryperl.com/download/5.28.1.1/strawberry-perl-5.28.1.1-64bit-portable.zip
+sha256 = 935c95ba096fa11c4e1b5188732e3832d330a2a79e9882ab7ba8460ddbca810d
+
+[build.os=windows]
+builder = nop
+subdir = perl
+

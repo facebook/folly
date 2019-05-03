@@ -1,0 +1,18 @@
+[manifest]
+name = libgit2
+
+[download]
+url = https://github.com/libgit2/libgit2/archive/v0.28.1.tar.gz
+sha256 = 0ca11048795b0d6338f2e57717370208c2c97ad66c6d5eac0c97a8827d13936b
+
+[build]
+builder = cmake
+subdir = libgit2-0.28.1
+
+[cmake.defines]
+# Could turn this on if we also wanted to add a manifest for libssh2
+USE_SSH = OFF
+BUILD_CLAR = OFF
+# Have to build shared to work around annoying problems with cmake
+# mis-parsing the frameworks required to link this on macos :-/
+BUILD_SHARED_LIBS = ON

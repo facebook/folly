@@ -1,0 +1,27 @@
+[manifest]
+name = ninja
+
+[download.os=windows]
+url = https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-win.zip
+sha256 = 2d70010633ddaacc3af4ffbd21e22fae90d158674a09e132e06424ba3ab036e9
+
+[build.not(os=linux)]
+builder = nop
+
+[install.files.os=windows]
+ninja.exe = bin/ninja.exe
+
+[download.os=darwin]
+url = https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-mac.zip
+sha256 = 26d32a79f786cca1004750f59e545199bf110e21e300d3c2424c1fddd78f28ab
+
+[download.os=linux]
+url = https://github.com/ninja-build/ninja/archive/v1.9.0.tar.gz
+sha256 = 5d7ec75828f8d3fd1a0c2f31b5b0cea780cdfe1031359228c428c1a48bfcd5b9
+
+[install.files.os=darwin]
+ninja = bin/ninja
+
+[build.os=linux]
+builder = ninja_bootstrap
+subdir = ninja-1.9.0

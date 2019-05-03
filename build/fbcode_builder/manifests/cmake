@@ -1,0 +1,33 @@
+[manifest]
+name = cmake
+
+[dependencies]
+ninja
+
+[download.os=windows]
+url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0-win64-x64.zip
+sha256 = 40e8140d68120378262322bbc8c261db8d184d7838423b2e5bf688a6209d3807
+
+[download.os=darwin]
+url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0-Darwin-x86_64.tar.gz
+sha256 = a02ad0d5b955dfad54c095bd7e937eafbbbfe8a99860107025cc442290a3e903
+
+[download.os=linux]
+url = https://github.com/Kitware/CMake/releases/download/v3.14.0/cmake-3.14.0-Linux-x86_64.tar.gz
+sha256 = 91dc9af7345e458eb10c853aa875e591efb7079a045641685ddec8d973c2b2bc
+
+[build.os=windows]
+builder = nop
+subdir = cmake-3.14.0-win64-x64
+
+[build.os=darwin]
+builder = nop
+subdir = cmake-3.14.0-Darwin-x86_64
+
+[install.files.os=darwin]
+CMake.app/Contents/bin = bin
+CMake.app/Contents/share = share
+
+[build.os=linux]
+builder = nop
+subdir = cmake-3.14.0-Linux-x86_64

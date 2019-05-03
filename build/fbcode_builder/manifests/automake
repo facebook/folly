@@ -1,0 +1,13 @@
+[manifest]
+name = automake
+
+[download]
+url = http://ftp.gnu.org/gnu/automake/automake-1.16.1.tar.gz
+sha256 = 608a97523f97db32f1f5d5615c98ca69326ced2054c9f82e65bade7fc4c9dea8
+
+[build]
+builder = autoconf
+subdir = automake-1.16.1
+
+[dependencies]
+autoconf

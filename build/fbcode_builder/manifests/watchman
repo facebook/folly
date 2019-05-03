@@ -1,0 +1,25 @@
+[manifest]
+name = watchman
+fbsource_path = fbcode/watchman
+shipit_project = watchman
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/watchman.git
+
+[build]
+builder = cmake
+
+[dependencies]
+boost
+folly
+fbthrift
+pcre
+
+[shipit.pathmap]
+fbcode/watchman = .
+fbcode/fboss/common = common
+fbcode/eden/fs/service = eden/fs/service
+
+[shipit.strip]
+^fbcode/eden/fs/service/(?!.*\.thrift|shipit_test_file\.txt)

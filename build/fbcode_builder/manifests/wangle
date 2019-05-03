@@ -1,0 +1,24 @@
+[manifest]
+name = wangle
+fbsource_path = fbcode/wangle
+shipit_project = wangle
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/wangle.git
+
+[build]
+builder = cmake
+subdir = wangle
+
+[cmake.defines]
+BUILD_TESTS = OFF
+
+[dependencies]
+folly
+googletest
+fizz
+
+[shipit.pathmap]
+fbcode/wangle/public_tld = .
+fbcode/wangle = wangle

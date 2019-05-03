@@ -1,0 +1,18 @@
+[manifest]
+name = snappy
+
+[download]
+url = https://github.com/google/snappy/archive/1.1.7.tar.gz
+sha256 = 3dfa02e873ff51a11ee02b9ca391807f0c8ea0529a4924afa645fbf97163f9d4
+
+[build]
+builder = cmake
+subdir = snappy-1.1.7
+
+[cmake.defines]
+SNAPPY_BUILD_TESTS = OFF
+
+# Avoid problems like `relocation R_X86_64_PC32 against symbol` on ELF systems
+# when linking rocksdb, which builds PIC even when building a static lib
+[cmake.defines.os=linux]
+BUILD_SHARED_LIBS = ON

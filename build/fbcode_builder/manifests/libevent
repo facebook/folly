@@ -1,0 +1,23 @@
+[manifest]
+name = libevent
+
+# Note that the CMakeLists.txt file is present only in
+# git repo and not in the release tarball, so take care
+# to use the github generated source tarball rather than
+# the explicitly uploaded source tarball
+[download]
+url = https://github.com/libevent/libevent/archive/release-2.1.8-stable.tar.gz
+sha256 = 316ddb401745ac5d222d7c529ef1eada12f58f6376a66c1118eee803cb70f83d
+
+[build]
+builder = cmake
+subdir = libevent-release-2.1.8-stable
+
+[cmake.defines]
+EVENT__DISABLE_TESTS = ON
+EVENT__DISABLE_BENCHMARK = ON
+EVENT__DISABLE_SAMPLES = ON
+EVENT__DISABLE_REGRESS = ON
+
+[dependencies.os=windows]
+openssl

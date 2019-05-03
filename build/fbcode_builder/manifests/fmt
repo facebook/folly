@@ -1,0 +1,14 @@
+[manifest]
+name = fmt
+
+[download]
+url = https://github.com/fmtlib/fmt/archive/5.3.0.tar.gz
+sha256 = defa24a9af4c622a7134076602070b45721a43c51598c8456ec6f2c4dbb51c89
+
+[build]
+builder = cmake
+subdir = fmt-5.3.0
+
+[cmake.defines]
+FMT_TEST = OFF
+FMT_DOC = OFF

@@ -1,0 +1,16 @@
+[manifest]
+name = glog
+
+[download]
+url = https://github.com/google/glog/archive/v0.4.0.tar.gz
+sha256 = f28359aeba12f30d73d9e4711ef356dc842886968112162bc73002645139c39c
+
+[build]
+builder = cmake
+subdir = glog-0.4.0
+
+[dependencies]
+gflags
+
+[cmake.defines]
+BUILD_SHARED_LIBS=ON

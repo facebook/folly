@@ -1,0 +1,25 @@
+[manifest]
+name = rsocket-cpp
+fbsource_path = fbcode/rsocket
+shipit_project = rsocket-cpp
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/rsocket/rsocket-cpp.git
+
+[build]
+builder = cmake
+
+[cmake.defines]
+BUILD_EXAMPLES = OFF
+BUILD_BENCHMARKS = OFF
+BUILD_TESTS = OFF
+
+[dependencies]
+googletest
+folly
+
+[shipit.pathmap]
+fbcode/rsocket/public_tld = .
+fbcode/rsocket = rsocket
+fbcode/yarpl = yarpl

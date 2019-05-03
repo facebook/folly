@@ -1,0 +1,13 @@
+[manifest]
+name = openssl
+
+[download]
+url = https://www.openssl.org/source/openssl-1.1.1b.tar.gz
+sha256 = 5c557b023230413dfb0756f3137a13e6d726838ccd1430888ad15bfb2b43ea4b
+
+[build]
+builder = openssl
+subdir = openssl-1.1.1b
+
+[dependencies.os=windows]
+perl

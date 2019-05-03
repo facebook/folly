@@ -10,6 +10,8 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import unittest
 
+import pkg_resources
+
 from ..manifest import ManifestParser
 
 
@@ -203,3 +205,13 @@ foo = bar
             {"foo": "bar"},
             msg="sections cascade in the order they appear in the manifest",
         )
+
+    def test_parse_common_manifests(self):
+        n = 0
+        for name in pkg_resources.resource_listdir(__name__, "manifests"):
+            contents = pkg_resources.resource_string(
+                __name__, "manifests/%s" % name
+            ).decode("utf8")
+            ManifestParser(file_name=name, fp=contents)
+            n += 1
+        self.assertTrue(n > 0, msg="parsed some number of manifests")

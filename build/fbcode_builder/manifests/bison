@@ -1,0 +1,22 @@
+[manifest]
+name = bison
+
+[download.not(os=windows)]
+url = https://mirrors.kernel.org/gnu/bison/bison-3.3.tar.gz
+sha256 = fdeafb7fffade05604a61e66b8c040af4b2b5cbb1021dcfe498ed657ac970efd
+
+[download.os=windows]
+url = https://github.com/lexxmark/winflexbison/releases/download/v2.5.17/winflexbison-2.5.17.zip
+sha256 = 3dc27a16c21b717bcc5de8590b564d4392a0b8577170c058729d067d95ded825
+
+[build.not(os=windows)]
+builder = autoconf
+subdir = bison-3.3
+
+[build.os=windows]
+builder = nop
+
+[install.files.os=windows]
+data = bin/data
+win_bison.exe = bin/bison.exe
+win_flex.exe = bin/flex.exe
