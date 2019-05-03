@@ -45,20 +45,17 @@
 // the test due to runtime issues or behavior that do not necessarily indicate
 // a problem with the code.
 //
-// googletest does not have a built-in mechanism to report tests as
-// skipped a run time.  We either report the test as successful or
-// failure based on whether the TEST_PILOT environment variable is
-// set.  The default is to report the test as successful.  Enabling
-// FOLLY_SKIP_AS_FAILURE can be useful with a test harness that can
-// identify the "Test skipped by client" in the failure message and
-// convert this into a skipped test result.
-#define SKIP()                                       \
-  GTEST_AMBIGUOUS_ELSE_BLOCKER_                      \
-  return GTEST_MESSAGE_(                             \
-      "Test skipped by client",                      \
-      ::folly::test::detail::skipIsFailure()         \
-          ? ::testing::TestPartResult::kFatalFailure \
-          : ::testing::TestPartResult::kSuccess)
+// googletest does not have a built-in mechanism to report tests as skipped a
+// run time.  We either report the test as successful or failure based on the
+// FOLLY_SKIP_AS_FAILURE configuration setting.  The default is to report the
+// test as successful.  Enabling FOLLY_SKIP_AS_FAILURE can be useful with a
+// test harness that can identify the "Test skipped by client" in the failure
+// message and convert this into a skipped test result.
+#if FOLLY_SKIP_AS_FAILURE
+#define SKIP() GTEST_FATAL_FAILURE_("Test skipped by client")
+#else
+#define SKIP() return GTEST_SUCCESS_("Test skipped by client")
+#endif
 
 // Encapsulate conditional-skip, since it's nontrivial to get right.
 #define SKIP_IF(expr)           \
@@ -145,11 +142,6 @@ AreWithinSecs(T1 val1, T2 val2, std::chrono::seconds acceptableDeltaSecs) {
 }
 
 namespace detail {
-
-inline bool skipIsFailure() {
-  const char* p = getenv("FOLLY_SKIP_AS_FAILURE");
-  return p && *p;
-}
 
 /**
  * Helper class for implementing test macros
