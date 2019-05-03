@@ -238,3 +238,50 @@ class NinjaBootstrap(BuilderBase):
             os.makedirs(bin_dir)
         shutil.copyfile(src_ninja, dest_ninja)
         shutil.copymode(src_ninja, dest_ninja)
+
+
+class OpenSSLBuilder(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, build_dir, src_dir, inst_dir):
+        super(OpenSSLBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+
+    def _build(self, install_dirs, reconfigure):
+        configure = os.path.join(self.src_dir, "Configure")
+
+        # prefer to resolve the perl that we installed from
+        # our manifest on windows, but fall back to the system
+        # path on eg: darwin
+        env = self.env.copy()
+        for d in install_dirs:
+            bindir = os.path.join(d, "bin")
+            add_path_entry(env, "PATH", bindir, append=False)
+
+        perl = path_search(env, "perl", "perl")
+
+        if self.build_opts.is_windows():
+            make = "nmake.exe"
+            args = ["VC-WIN64A-masm", "-utf-8"]
+        elif self.build_opts.is_darwin():
+            make = "make"
+            args = ["darwin64-x86_64-cc"]
+        else:
+            raise Exception("don't know how to build openssl for %r" % self.ctx)
+
+        self._run_cmd(
+            [
+                perl,
+                configure,
+                "--prefix=%s" % self.inst_dir,
+                "--openssldir=%s" % self.inst_dir,
+            ]
+            + args
+            + [
+                "enable-static-engine",
+                "enable-capieng",
+                "no-makedepend",
+                "no-unit-test",
+                "no-tests",
+            ]
+        )
+        self._run_cmd([make, "install_sw", "install_ssldirs"])

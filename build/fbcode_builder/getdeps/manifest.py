@@ -10,7 +10,13 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import io
 
-from .builder import AutoconfBuilder, CMakeBuilder, MakeBuilder, NinjaBootstrap
+from .builder import (
+    AutoconfBuilder,
+    CMakeBuilder,
+    MakeBuilder,
+    NinjaBootstrap,
+    OpenSSLBuilder,
+)
 from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
@@ -320,6 +326,11 @@ class ManifestParser(object):
 
         if builder == "ninja_bootstrap":
             return NinjaBootstrap(
+                build_options, ctx, self, build_dir, src_dir, inst_dir
+            )
+
+        if builder == "openssl":
+            return OpenSSLBuilder(
                 build_options, ctx, self, build_dir, src_dir, inst_dir
             )
 
