@@ -135,6 +135,74 @@ class CleanCmd(SubCmd):
         clean_dirs(opts)
 
 
+@cmd("show-inst-dir", "print the installation dir for a given project")
+class ShowInstDirCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        manifest = load_project(opts, args.project)
+        ctx = context_from_host_tuple()
+        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        manifests_by_name = {m.name: m for m in projects}
+
+        if args.recursive:
+            manifests = projects
+        else:
+            manifests = [manifest]
+
+        for m in manifests:
+            fetcher = m.create_fetcher(opts, ctx)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            inst_dir = dirs["inst_dir"]
+            print(inst_dir)
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+        parser.add_argument(
+            "--recursive",
+            help="print the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+
+
+@cmd("show-source-dir", "print the source dir for a given project")
+class ShowSourceDirCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        manifest = load_project(opts, args.project)
+        ctx = context_from_host_tuple()
+
+        if args.recursive:
+            manifests = manifests_in_dependency_order(opts, manifest, ctx)
+        else:
+            manifests = [manifest]
+
+        for m in manifests:
+            fetcher = m.create_fetcher(opts, ctx)
+            print(fetcher.get_src_dir())
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+        parser.add_argument(
+            "--recursive",
+            help="print the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+
+
 @cmd("build", "build a given project")
 class BuildCmd(SubCmd):
     def run(self, args):
