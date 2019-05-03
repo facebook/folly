@@ -11,7 +11,12 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import io
 
 from .expr import parse_expr
-from .fetcher import ArchiveFetcher, GitFetcher, ShipitTransformerFetcher
+from .fetcher import (
+    ArchiveFetcher,
+    GitFetcher,
+    ShipitTransformerFetcher,
+    SimpleShipitTransformerFetcher,
+)
 
 
 try:
@@ -258,6 +263,11 @@ class ManifestParser(object):
         return d
 
     def create_fetcher(self, build_options, ctx):
+        # TODO: add a build_option flag to force using ShipitTransformerFetcher
+        # instead of this in CI environments
+        if self.fbsource_path and build_options.fbsource_dir and self.shipit_project:
+            return SimpleShipitTransformerFetcher(build_options, self)
+
         if (
             self.fbsource_path
             and build_options.fbsource_dir

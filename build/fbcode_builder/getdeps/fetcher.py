@@ -7,16 +7,19 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import errno
 import hashlib
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 import tarfile
 import time
 import zipfile
 
+from .copytree import prefetch_dir_if_eden
 from .platform import is_windows
 from .runcmd import run_cmd
 
@@ -220,6 +223,210 @@ class GitFetcher(Fetcher):
             .strip()
             .decode("utf-8")[0:6]
         )
+
+    def get_src_dir(self):
+        return self.repo_dir
+
+
+def does_file_need_update(src_name, src_st, dest_name):
+    try:
+        target_st = os.lstat(dest_name)
+    except OSError as exc:
+        if exc.errno != errno.ENOENT:
+            raise
+        return True
+
+    if src_st.st_size != target_st.st_size:
+        return True
+
+    if stat.S_IFMT(src_st.st_mode) != stat.S_IFMT(target_st.st_mode):
+        return True
+    if stat.S_ISLNK(src_st.st_mode):
+        return os.readlink(src_name) != os.readlink(dest_name)
+    if not stat.S_ISREG(src_st.st_mode):
+        return True
+
+    # They might have the same content; compare.
+    with open(src_name, "rb") as sf, open(dest_name, "rb") as df:
+        chunk_size = 8192
+        while True:
+            src_data = sf.read(chunk_size)
+            dest_data = df.read(chunk_size)
+            if src_data != dest_data:
+                return True
+            if len(src_data) < chunk_size:
+                # EOF
+                break
+    return False
+
+
+def copy_if_different(src_name, dest_name):
+    """ Copy src_name -> dest_name, but only touch dest_name
+    if src_name is different from dest_name, making this a
+    more build system friendly way to copy. """
+    src_st = os.lstat(src_name)
+    if not does_file_need_update(src_name, src_st, dest_name):
+        return False
+
+    dest_parent = os.path.dirname(dest_name)
+    if not os.path.exists(dest_parent):
+        os.makedirs(dest_parent)
+    if stat.S_ISLNK(src_st.st_mode):
+        try:
+            os.unlink(dest_name)
+        except OSError as exc:
+            if exc.errno != errno.ENOENT:
+                raise
+        target = os.readlink(src_name)
+        print("Symlinking %s -> %s" % (dest_name, target))
+        os.symlink(target, dest_name)
+    else:
+        print("Copying %s -> %s" % (src_name, dest_name))
+        shutil.copy2(src_name, dest_name)
+
+    return True
+
+
+class ShipitPathMap(object):
+    def __init__(self):
+        self.roots = []
+        self.mapping = []
+        self.exclusion = []
+
+    def add_mapping(self, fbsource_dir, target_dir):
+        """ Add a posix path or pattern.  We cannot normpath the input
+        here because that would change the paths from posix to windows
+        form and break the logic throughout this class. """
+        self.roots.append(fbsource_dir)
+        self.mapping.append((fbsource_dir, target_dir))
+
+    def add_exclusion(self, pattern):
+        self.exclusion.append(re.compile(pattern))
+
+    def _minimize_roots(self):
+        """ compute the de-duplicated set of roots within fbsource.
+        We take the shortest common directory prefix to make this
+        determination """
+        self.roots.sort(key=len)
+        minimized = []
+
+        for r in self.roots:
+            add_this_entry = True
+            for existing in minimized:
+                if r.startswith(existing + "/"):
+                    add_this_entry = False
+                    break
+            if add_this_entry:
+                minimized.append(r)
+
+        self.roots = minimized
+
+    def _sort_mapping(self):
+        self.mapping.sort(reverse=True, key=lambda x: len(x[0]))
+
+    def _map_name(self, norm_name, dest_root):
+        if norm_name.endswith(".pyc") or norm_name.endswith(".swp"):
+            # Ignore some incidental garbage while iterating
+            return None
+
+        for excl in self.exclusion:
+            if excl.match(norm_name):
+                return None
+
+        for src_name, dest_name in self.mapping:
+            if norm_name == src_name or norm_name.startswith(src_name + "/"):
+                rel_name = os.path.relpath(norm_name, src_name)
+                # We can have "." as a component of some paths, depending
+                # on the contents of the shipit transformation section.
+                # normpath doesn't always remove `.` as the final component
+                # of the path, which be problematic when we later mkdir
+                # the dirname of the path that we return.  Take care to avoid
+                # returning a path with a `.` in it.
+                rel_name = os.path.normpath(rel_name)
+                if dest_name == ".":
+                    return os.path.normpath(os.path.join(dest_root, rel_name))
+                dest_name = os.path.normpath(dest_name)
+                return os.path.normpath(os.path.join(dest_root, dest_name, rel_name))
+
+        raise Exception("%s did not match any rules" % norm_name)
+
+    def mirror(self, fbsource_root, dest_root):
+        self._minimize_roots()
+        self._sort_mapping()
+
+        change_status = ChangeStatus()
+
+        # Record the full set of files that should be in the tree
+        full_file_list = set()
+
+        for fbsource_subdir in self.roots:
+            dir_to_mirror = os.path.join(fbsource_root, fbsource_subdir)
+            prefetch_dir_if_eden(dir_to_mirror)
+            if not os.path.exists(dir_to_mirror):
+                raise Exception(
+                    "%s doesn't exist; check your sparse profile!" % dir_to_mirror
+                )
+            for root, _dirs, files in os.walk(dir_to_mirror):
+                for src_file in files:
+                    full_name = os.path.join(root, src_file)
+                    rel_name = os.path.relpath(full_name, fbsource_root)
+                    norm_name = rel_name.replace("\\", "/")
+
+                    target_name = self._map_name(norm_name, dest_root)
+                    if target_name:
+                        full_file_list.add(target_name)
+                        if copy_if_different(full_name, target_name):
+                            change_status.record_change(target_name)
+
+        # Compare the list of previously shipped files; if a file is
+        # in the old list but not the new list then it has been
+        # removed from the source and should be removed from the
+        # destination.
+        # Why don't we simply create this list by walking dest_root?
+        # Some builds currently have to be in-source builds and
+        # may legitimately need to keep some state in the source tree :-/
+        installed_name = os.path.join(dest_root, ".shipit_shipped")
+        if os.path.exists(installed_name):
+            with open(installed_name, "r") as f:
+                for name in f.readlines():
+                    name = name.strip()
+                    if name not in full_file_list:
+                        print("Remove %s" % name)
+                        os.unlink(name)
+                        change_status.record_change(name)
+
+        with open(installed_name, "w") as f:
+            for name in sorted(list(full_file_list)):
+                f.write("%s\n" % name)
+
+        return change_status
+
+
+class SimpleShipitTransformerFetcher(Fetcher):
+    def __init__(self, build_options, manifest):
+        self.build_options = build_options
+        self.manifest = manifest
+        self.repo_dir = os.path.join(build_options.scratch_dir, "shipit", manifest.name)
+
+    def clean(self):
+        if os.path.exists(self.repo_dir):
+            shutil.rmtree(self.repo_dir)
+
+    def update(self):
+        mapping = ShipitPathMap()
+        for src, dest in self.manifest.get_section_as_ordered_pairs("shipit.pathmap"):
+            mapping.add_mapping(src, dest)
+        if self.manifest.shipit_fbcode_builder:
+            mapping.add_mapping(
+                "fbcode/opensource/fbcode_builder", "build/fbcode_builder"
+            )
+        for pattern in self.manifest.get_section_as_args("shipit.strip"):
+            mapping.add_exclusion(pattern)
+
+        return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)
+
+    def hash(self):
+        return "fbsource"  # FIXME: use the hash of the repo in this and the repo_dir
 
     def get_src_dir(self):
         return self.repo_dir
