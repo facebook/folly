@@ -15,6 +15,7 @@ import subprocess
 import sys
 
 from getdeps.manifest import ManifestParser
+from getdeps.platform import HostType
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
 
 
@@ -34,6 +35,14 @@ class ValidateManifest(SubCmd):
 
     def setup_parser(self, parser):
         parser.add_argument("file_name", help="path to the manifest file")
+
+
+@cmd("show-host-type", "outputs the host type tuple for the host machine")
+class ShowHostType(SubCmd):
+    def run(self, args):
+        host = HostType()
+        print("%s" % host.as_tuple_string())
+        return 0
 
 
 def build_argparser():
