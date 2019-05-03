@@ -7,6 +7,18 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import os
+import re
+import subprocess
+
+from .runcmd import run_cmd
+
+
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
+
 
 class ChangeStatus(object):
     """ Indicates the nature of changes that happened while updating
@@ -97,3 +109,108 @@ class Fetcher(object):
         """ Returns the source directory that the project was
         extracted into """
         pass
+
+
+class GitFetcher(Fetcher):
+    def __init__(self, build_options, manifest, repo_url, rev):
+        # Extract the host/path portions of the URL and generate a flattened
+        # directory name.  eg:
+        # github.com/facebook/folly.git -> github.com-facebook-folly.git
+        url = urlparse(repo_url)
+        directory = "%s%s" % (url.netloc, url.path)
+        for s in ["/", "\\", ":"]:
+            directory = directory.replace(s, "-")
+
+        # Place it in a repos dir in the scratch space
+        repos_dir = os.path.join(build_options.scratch_dir, "repos")
+        if not os.path.exists(repos_dir):
+            os.makedirs(repos_dir)
+        self.repo_dir = os.path.join(repos_dir, directory)
+
+        if not rev:
+            hash_file = os.path.join(
+                build_options.project_hashes,
+                re.sub("\\.git$", "-rev.txt", url.path[1:]),
+            )
+            if os.path.exists(hash_file):
+                with open(hash_file, "r") as f:
+                    data = f.read()
+                    m = re.match("Subproject commit ([a-fA-F0-9]{40})", data)
+                    if not m:
+                        raise Exception("Failed to parse rev from %s" % hash_file)
+                    rev = m.group(1)
+                    print("Using pinned rev %s for %s" % (rev, repo_url))
+
+        self.rev = rev or "master"
+        self.origin_repo = repo_url
+        self.manifest = manifest
+
+    def _update(self):
+        current_hash = (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repo_dir)
+            .strip()
+            .decode("utf-8")
+        )
+        target_hash = (
+            subprocess.check_output(["git", "rev-parse", self.rev], cwd=self.repo_dir)
+            .strip()
+            .decode("utf-8")
+        )
+        if target_hash == current_hash:
+            # It's up to date, so there are no changes.  This doesn't detect eg:
+            # if origin/master moved and rev='master', but that's ok for our purposes;
+            # we should be using explicit hashes or eg: a stable branch for the cases
+            # that we care about, and it isn't unreasonable to require that the user
+            # explicitly perform a clean build if those have moved.  For the most
+            # part we prefer that folks build using a release tarball from github
+            # rather than use the git protocol, as it is generally a bit quicker
+            # to fetch and easier to hash and verify tarball downloads.
+            return ChangeStatus()
+
+        print("Updating %s -> %s" % (self.repo_dir, self.rev))
+        run_cmd(["git", "fetch", "origin"], cwd=self.repo_dir)
+        run_cmd(["git", "checkout", self.rev], cwd=self.repo_dir)
+        run_cmd(["git", "submodule", "update", "--init"], cwd=self.repo_dir)
+
+        return ChangeStatus(True)
+
+    def update(self):
+        if os.path.exists(self.repo_dir):
+            return self._update()
+        self._clone()
+        return ChangeStatus(True)
+
+    def _clone(self):
+        print("Cloning %s..." % self.origin_repo)
+        # The basename/dirname stuff allows us to dance around issues where
+        # eg: this python process is native win32, but the git.exe is cygwin
+        # or msys and doesn't like the absolute windows path that we'd otherwise
+        # pass to it.  Careful use of cwd helps avoid headaches with cygpath.
+        run_cmd(
+            [
+                "git",
+                "clone",
+                "--depth=100",
+                "--",
+                self.origin_repo,
+                os.path.basename(self.repo_dir),
+            ],
+            cwd=os.path.dirname(self.repo_dir),
+        )
+        self._update()
+
+    def clean(self):
+        if os.path.exists(self.repo_dir):
+            run_cmd(["git", "clean", "-fxd"], cwd=self.repo_dir)
+
+    def hash(self):
+        """ Returns a hash that identifies the version of the code in the
+        working copy """
+        return (
+            subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=self.repo_dir)
+            .strip()
+            .decode("utf-8")[0:6]
+        )
+
+    def get_src_dir(self):
+        return self.repo_dir

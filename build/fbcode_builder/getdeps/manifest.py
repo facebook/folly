@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import io
 
 from .expr import parse_expr
+from .fetcher import GitFetcher
 
 
 try:
@@ -257,6 +258,11 @@ class ManifestParser(object):
         return d
 
     def create_fetcher(self, build_options, ctx):
+        repo_url = self.get("git", "repo_url", ctx=ctx)
+        if repo_url:
+            rev = self.get("git", "rev")
+            return GitFetcher(build_options, self, repo_url, rev)
+
         raise KeyError(
             "project %s has no fetcher configuration matching %r" % (self.name, ctx)
         )
