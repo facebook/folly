@@ -15,9 +15,9 @@ import subprocess
 import sys
 
 from getdeps.buildopts import setup_build_options
-from getdeps.load import resolve_manifest_path
+from getdeps.load import load_project, manifests_in_dependency_order
 from getdeps.manifest import ManifestParser
-from getdeps.platform import HostType
+from getdeps.platform import HostType, context_from_host_tuple
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
 
 
@@ -57,13 +57,58 @@ class FetchCmd(SubCmd):
                 "file describing the project"
             ),
         )
+        parser.add_argument(
+            "--recursive",
+            help="fetch the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
+            "--host-type",
+            help=(
+                "When recursively fetching, fetch deps for "
+                "this host type rather than the current system"
+            ),
+        )
 
     def run(self, args):
         opts = setup_build_options(args)
-        manifest_path = resolve_manifest_path(opts, args.project)
-        manifest = ManifestParser(manifest_path)
-        fetcher = manifest.create_fetcher(opts, ctx={})
-        fetcher.update()
+        manifest = load_project(opts, args.project)
+        ctx = context_from_host_tuple(args.host_type)
+        if args.recursive:
+            projects = manifests_in_dependency_order(opts, manifest, ctx)
+        else:
+            projects = [manifest]
+        for m in projects:
+            fetcher = m.create_fetcher(opts, ctx)
+            fetcher.update()
+
+
+@cmd("list-deps", "lists the transitive deps for a given project")
+class ListDepsCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        manifest = load_project(opts, args.project)
+        ctx = context_from_host_tuple(args.host_type)
+        for m in manifests_in_dependency_order(opts, manifest, ctx):
+            print(m.name)
+        return 0
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "--host-type",
+            help=(
+                "Produce the list for the specified host type, "
+                "rather than that of the current system"
+            ),
+        )
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
 
 
 def build_argparser():
