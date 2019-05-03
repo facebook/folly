@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import argparse
 import os
+import shutil
 import subprocess
 import sys
 
@@ -107,6 +108,81 @@ class ListDepsCmd(SubCmd):
             help=(
                 "name of the project or path to a manifest "
                 "file describing the project"
+            ),
+        )
+
+
+@cmd("build", "build a given project")
+class BuildCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        if args.clean:
+            for d in ["build", "installed", "extracted", "shipit"]:
+                d = os.path.join(opts.scratch_dir, d)
+                print("Cleaning %s..." % d)
+                if os.path.exists(d):
+                    shutil.rmtree(d)
+
+        manifest = load_project(opts, args.project)
+
+        ctx = context_from_host_tuple()
+        projects = manifests_in_dependency_order(opts, manifest, ctx)
+
+        # Accumulate the install directories so that the build steps
+        # can find their dep installation
+        install_dirs = []
+
+        for m in projects:
+            print("Assessing %s..." % m.name)
+            fetcher = m.create_fetcher(opts, ctx)
+
+            if args.clean:
+                fetcher.clean()
+            change_status = fetcher.update()
+            reconfigure = change_status.build_changed()
+            sources_changed = change_status.sources_changed()
+
+            hash = fetcher.hash()
+            directory = "%s-%s" % (m.name, hash)
+            build_dir = os.path.join(opts.scratch_dir, "build", directory)
+            inst_dir = os.path.join(opts.scratch_dir, "installed", directory)
+
+            built_marker = os.path.join(inst_dir, ".built-by-getdeps")
+            if os.path.exists(built_marker):
+                with open(built_marker, "r") as f:
+                    built_hash = f.read().strip()
+                if built_hash != hash:
+                    # Some kind of inconsistency with a prior build,
+                    # let's run it again to be sure
+                    os.unlink(built_marker)
+
+            if sources_changed or reconfigure or not os.path.exists(built_marker):
+                if os.path.exists(built_marker):
+                    os.unlink(built_marker)
+                src_dir = fetcher.get_src_dir()
+                builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
+                builder.build(install_dirs, reconfigure=reconfigure)
+
+                with open(built_marker, "w") as f:
+                    f.write(hash)
+
+            install_dirs.append(inst_dir)
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+        parser.add_argument(
+            "--clean",
+            action="store_true",
+            default=False,
+            help=(
+                "Clean up the build and installation area prior to building, "
+                "causing the projects to be built from scratch"
             ),
         )
 
