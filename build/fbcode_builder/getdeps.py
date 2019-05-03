@@ -222,37 +222,39 @@ class BuildCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
-            print("Assessing %s..." % m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
             if args.clean:
                 fetcher.clean()
-            change_status = fetcher.update()
-            reconfigure = change_status.build_changed()
-            sources_changed = change_status.sources_changed()
 
             dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
-            built_marker = os.path.join(inst_dir, ".built-by-getdeps")
-            if os.path.exists(built_marker):
-                with open(built_marker, "r") as f:
-                    built_hash = f.read().strip()
-                if built_hash != dirs["hash"]:
-                    # Some kind of inconsistency with a prior build,
-                    # let's run it again to be sure
-                    os.unlink(built_marker)
+            if m == manifest or not args.no_deps:
+                print("Assessing %s..." % m.name)
+                change_status = fetcher.update()
+                reconfigure = change_status.build_changed()
+                sources_changed = change_status.sources_changed()
 
-            if sources_changed or reconfigure or not os.path.exists(built_marker):
+                built_marker = os.path.join(inst_dir, ".built-by-getdeps")
                 if os.path.exists(built_marker):
-                    os.unlink(built_marker)
-                src_dir = fetcher.get_src_dir()
-                builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
-                builder.build(install_dirs, reconfigure=reconfigure)
+                    with open(built_marker, "r") as f:
+                        built_hash = f.read().strip()
+                    if built_hash != dirs["hash"]:
+                        # Some kind of inconsistency with a prior build,
+                        # let's run it again to be sure
+                        os.unlink(built_marker)
 
-                with open(built_marker, "w") as f:
-                    f.write(dirs["hash"])
+                if sources_changed or reconfigure or not os.path.exists(built_marker):
+                    if os.path.exists(built_marker):
+                        os.unlink(built_marker)
+                    src_dir = fetcher.get_src_dir()
+                    builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
+                    builder.build(install_dirs, reconfigure=reconfigure)
+
+                    with open(built_marker, "w") as f:
+                        f.write(dirs["hash"])
 
             install_dirs.append(inst_dir)
 
@@ -271,6 +273,17 @@ class BuildCmd(SubCmd):
             help=(
                 "Clean up the build and installation area prior to building, "
                 "causing the projects to be built from scratch"
+            ),
+        )
+        parser.add_argument(
+            "--no-deps",
+            action="store_true",
+            default=False,
+            help=(
+                "Only build the named project, not its deps. "
+                "This is most useful after you've built all of the deps, "
+                "and helps to avoid waiting for relatively "
+                "slow up-to-date-ness checks"
             ),
         )
 
