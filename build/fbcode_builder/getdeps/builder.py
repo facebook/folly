@@ -11,7 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import glob
 import os
 
-from .envfuncs import Env
+from .envfuncs import Env, add_path_entry
 from .runcmd import run_cmd
 
 
@@ -103,3 +103,42 @@ class MakeBuilder(BuilderBase):
 
         install_cmd = ["make", "install", "PREFIX=" + self.inst_dir]
         self._run_cmd(install_cmd)
+
+
+class AutoconfBuilder(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
+        super(AutoconfBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+        self.args = args or []
+
+    def _build(self, install_dirs, reconfigure):
+        configure_path = os.path.join(self.src_dir, "configure")
+        autogen_path = os.path.join(self.src_dir, "autogen.sh")
+
+        env = self.env.copy()
+        for d in install_dirs:
+            add_path_entry(env, "PKG_CONFIG_PATH", "%s/lib/pkgconfig" % d)
+            bindir = os.path.join(d, "bin")
+            add_path_entry(env, "PATH", bindir, append=False)
+
+        if not os.path.exists(configure_path):
+            print("%s doesn't exist, so reconfiguring" % configure_path)
+            # This libtoolize call is a bit gross; the issue is that
+            # `autoreconf` as invoked by libsodium's `autogen.sh` doesn't
+            # seem to realize that it should invoke libtoolize and then
+            # error out when the configure script references a libtool
+            # related symbol.
+            self._run_cmd(["libtoolize"], cwd=self.src_dir, env=env)
+
+            # We generally prefer to call the `autogen.sh` script provided
+            # by the project on the basis that it may know more than plain
+            # autoreconf does.
+            if os.path.exists(autogen_path):
+                self._run_cmd([autogen_path], cwd=self.src_dir, env=env)
+            else:
+                self._run_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
+        configure_cmd = [configure_path, "--prefix=" + self.inst_dir] + self.args
+        self._run_cmd(configure_cmd, env=env)
+        self._run_cmd(["make", "-j%s" % self.build_opts.num_jobs], env=env)
+        self._run_cmd(["make", "install"], env=env)

@@ -10,7 +10,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import io
 
-from .builder import MakeBuilder
+from .builder import AutoconfBuilder, MakeBuilder
 from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
@@ -305,5 +305,11 @@ class ManifestParser(object):
         if builder == "make":
             args = self.get_section_as_args("make.args", ctx)
             return MakeBuilder(build_options, ctx, self, src_dir, None, inst_dir, args)
+
+        if builder == "autoconf":
+            args = self.get_section_as_args("autoconf.args", ctx)
+            return AutoconfBuilder(
+                build_options, ctx, self, src_dir, build_dir, inst_dir, args
+            )
 
         raise KeyError("project %s has no known builder" % (self.name))
