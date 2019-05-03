@@ -89,6 +89,14 @@ class BuildOptions(object):
     def is_linux(self):
         return self.host_type.is_linux()
 
+    def compute_dirs(self, manifest, fetcher):
+        hash = fetcher.hash()
+        directory = "%s-%s" % (manifest.name, hash)
+        build_dir = os.path.join(self.scratch_dir, "build", directory)
+        inst_dir = os.path.join(self.scratch_dir, "installed", directory)
+
+        return {"build_dir": build_dir, "inst_dir": inst_dir, "hash": hash}
+
 
 def list_win32_subst_letters():
     output = subprocess.check_output(["subst"]).decode("utf-8")

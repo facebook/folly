@@ -12,7 +12,7 @@ builder = cmake
 subdir = wangle
 
 [cmake.defines]
-BUILD_TESTS = OFF
+BUILD_TESTS = ON
 
 [dependencies]
 folly

@@ -153,10 +153,9 @@ class BuildCmd(SubCmd):
             reconfigure = change_status.build_changed()
             sources_changed = change_status.sources_changed()
 
-            hash = fetcher.hash()
-            directory = "%s-%s" % (m.name, hash)
-            build_dir = os.path.join(opts.scratch_dir, "build", directory)
-            inst_dir = os.path.join(opts.scratch_dir, "installed", directory)
+            dirs = opts.compute_dirs(m, fetcher)
+            build_dir = dirs["build_dir"]
+            inst_dir = dirs["inst_dir"]
 
             built_marker = os.path.join(inst_dir, ".built-by-getdeps")
             if os.path.exists(built_marker):
@@ -175,7 +174,7 @@ class BuildCmd(SubCmd):
                 builder.build(install_dirs, reconfigure=reconfigure)
 
                 with open(built_marker, "w") as f:
-                    f.write(hash)
+                    f.write(dirs["hash"])
 
             install_dirs.append(inst_dir)
 
@@ -195,6 +194,56 @@ class BuildCmd(SubCmd):
                 "Clean up the build and installation area prior to building, "
                 "causing the projects to be built from scratch"
             ),
+        )
+
+
+@cmd("test", "test a given project")
+class TestCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        manifest = load_project(opts, args.project)
+
+        ctx = context_from_host_tuple()
+        projects = manifests_in_dependency_order(opts, manifest, ctx)
+
+        # Accumulate the install directories so that the test steps
+        # can find their dep installation
+        install_dirs = []
+
+        for m in projects:
+            fetcher = m.create_fetcher(opts, ctx)
+
+            dirs = opts.compute_dirs(m, fetcher)
+            build_dir = dirs["build_dir"]
+            inst_dir = dirs["inst_dir"]
+
+            if m == manifest or args.test_all:
+                built_marker = os.path.join(inst_dir, ".built-by-getdeps")
+                if not os.path.exists(built_marker):
+                    print("project %s has not been built" % m.name)
+                    # TODO: we could just go ahead and build it here, but I
+                    # want to tackle that as part of adding build-for-test
+                    # support.
+                    return 1
+                src_dir = fetcher.get_src_dir()
+                builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
+                builder.run_tests(install_dirs)
+
+            install_dirs.append(inst_dir)
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+        parser.add_argument(
+            "--test-all",
+            action="store_true",
+            default=False,
+            help="Enable running tests for the named project and all of its deps",
         )
 
 

@@ -83,6 +83,11 @@ class BuilderBase(object):
 
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
 
+    def run_tests(self, install_dirs):
+        """ Execute any tests that we know how to run.  If they fail,
+        raise an exception. """
+        pass
+
     def _build(self, install_dirs, reconfigure):
         """ Perform the build.
         install_dirs contains the list of installation directories for
@@ -171,6 +176,43 @@ class CMakeBuilder(BuilderBase):
                 return True
         return False
 
+    def _compute_env(self, install_dirs):
+        # CMAKE_PREFIX_PATH is only respected when passed through the
+        # environment, so we construct an appropriate path to pass down
+        env = self.env.copy()
+
+        lib_path = None
+        if self.build_opts.is_darwin():
+            lib_path = "DYLD_LIBRARY_PATH"
+        elif self.build_opts.is_linux():
+            lib_path = "LD_LIBRARY_PATH"
+        else:
+            lib_path = None
+
+        for d in install_dirs:
+            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+
+            pkgconfig = os.path.join(d, "lib/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
+            # Allow resolving shared objects built earlier (eg: zstd
+            # doesn't include the full path to the dylib in its linkage
+            # so we need to give it an assist)
+            if lib_path:
+                for lib in ["lib", "lib64"]:
+                    libdir = os.path.join(d, lib)
+                    if os.path.exists(libdir):
+                        add_path_entry(env, lib_path, libdir)
+
+            # Allow resolving binaries (eg: cmake, ninja) and dlls
+            # built by earlier steps
+            bindir = os.path.join(d, "bin")
+            if os.path.exists(bindir):
+                add_path_entry(env, "PATH", bindir, append=False)
+
+        return env
+
     def _build(self, install_dirs, reconfigure):
         reconfigure = reconfigure or self._needs_reconfigure()
 
@@ -183,6 +225,24 @@ class CMakeBuilder(BuilderBase):
             # medium.
             "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         }
+        env = self._compute_env(install_dirs)
+        if self.build_opts.is_darwin():
+            # Try to persuade cmake to set the rpath to match the lib
+            # dirs of the dependencies.  This isn't automatic, and to
+            # make things more interesting, cmake uses `;` as the path
+            # separator, so translate the runtime path to something
+            # that cmake will parse
+            defines["CMAKE_INSTALL_RPATH"] = ";".join(
+                env.get("DYLD_LIBRARY_PATH", "").split(":")
+            )
+            # Tell cmake that we want to set the rpath in the tree
+            # at build time.  Without this the rpath is only set
+            # at the moment that the binaries are installed.  That
+            # default is problematic for example when using the
+            # gtest integration in cmake which runs the built test
+            # executables during the build to discover the set of
+            # tests.
+            defines["CMAKE_BUILD_WITH_INSTALL_RPATH"] = "ON"
 
         defines.update(self.defines)
         define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
@@ -190,16 +250,6 @@ class CMakeBuilder(BuilderBase):
         # if self.build_opts.is_windows():
         #    define_args += ["-G", "Visual Studio 15 2017 Win64"]
         define_args += ["-G", "Ninja"]
-
-        # CMAKE_PREFIX_PATH is only respected when passed through the
-        # environment, so we construct an appropriate path to pass down
-        env = self.env.copy()
-        for d in install_dirs:
-            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
-            add_path_entry(env, "PKG_CONFIG_PATH", "%s/lib/pkgconfig" % d)
-
-            bindir = os.path.join(d, "bin")
-            add_path_entry(env, "PATH", bindir, append=False)
 
         # Resolve the cmake that we installed
         cmake = path_search(env, "cmake")
@@ -221,6 +271,13 @@ class CMakeBuilder(BuilderBase):
                 str(self.build_opts.num_jobs),
             ],
             env=env,
+        )
+
+    def run_tests(self, install_dirs):
+        env = self._compute_env(install_dirs)
+        ctest = path_search(env, "ctest")
+        self._run_cmd(
+            [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)], env=env
         )
 
 
