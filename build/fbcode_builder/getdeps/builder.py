@@ -17,6 +17,7 @@ import subprocess
 import sys
 
 from .envfuncs import Env, add_path_entry, path_search
+from .fetcher import copy_if_different
 from .runcmd import run_cmd
 
 
@@ -99,6 +100,43 @@ class BuilderBase(object):
         system needs to regenerate its rules. """
         pass
 
+    def _compute_env(self, install_dirs):
+        # CMAKE_PREFIX_PATH is only respected when passed through the
+        # environment, so we construct an appropriate path to pass down
+        env = self.env.copy()
+
+        lib_path = None
+        if self.build_opts.is_darwin():
+            lib_path = "DYLD_LIBRARY_PATH"
+        elif self.build_opts.is_linux():
+            lib_path = "LD_LIBRARY_PATH"
+        else:
+            lib_path = None
+
+        for d in install_dirs:
+            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+
+            pkgconfig = os.path.join(d, "lib/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
+            # Allow resolving shared objects built earlier (eg: zstd
+            # doesn't include the full path to the dylib in its linkage
+            # so we need to give it an assist)
+            if lib_path:
+                for lib in ["lib", "lib64"]:
+                    libdir = os.path.join(d, lib)
+                    if os.path.exists(libdir):
+                        add_path_entry(env, lib_path, libdir)
+
+            # Allow resolving binaries (eg: cmake, ninja) and dlls
+            # built by earlier steps
+            bindir = os.path.join(d, "bin")
+            if os.path.exists(bindir):
+                add_path_entry(env, "PATH", bindir, append=False)
+
+        return env
+
 
 class MakeBuilder(BuilderBase):
     def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
@@ -177,43 +215,6 @@ class CMakeBuilder(BuilderBase):
             if not os.path.exists(name):
                 return True
         return False
-
-    def _compute_env(self, install_dirs):
-        # CMAKE_PREFIX_PATH is only respected when passed through the
-        # environment, so we construct an appropriate path to pass down
-        env = self.env.copy()
-
-        lib_path = None
-        if self.build_opts.is_darwin():
-            lib_path = "DYLD_LIBRARY_PATH"
-        elif self.build_opts.is_linux():
-            lib_path = "LD_LIBRARY_PATH"
-        else:
-            lib_path = None
-
-        for d in install_dirs:
-            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
-
-            pkgconfig = os.path.join(d, "lib/pkgconfig")
-            if os.path.exists(pkgconfig):
-                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
-
-            # Allow resolving shared objects built earlier (eg: zstd
-            # doesn't include the full path to the dylib in its linkage
-            # so we need to give it an assist)
-            if lib_path:
-                for lib in ["lib", "lib64"]:
-                    libdir = os.path.join(d, lib)
-                    if os.path.exists(libdir):
-                        add_path_entry(env, lib_path, libdir)
-
-            # Allow resolving binaries (eg: cmake, ninja) and dlls
-            # built by earlier steps
-            bindir = os.path.join(d, "bin")
-            if os.path.exists(bindir):
-                add_path_entry(env, "PATH", bindir, append=False)
-
-        return env
 
     def _build(self, install_dirs, reconfigure):
         reconfigure = reconfigure or self._needs_reconfigure()
@@ -482,3 +483,70 @@ class NopBuilder(BuilderBase):
         else:
             if not os.path.exists(self.inst_dir):
                 shutil.copytree(self.src_dir, self.inst_dir)
+
+
+class SqliteBuilder(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir):
+        super(SqliteBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+
+    def _build(self, install_dirs, reconfigure):
+        for f in ["sqlite3.c", "sqlite3.h", "sqlite3ext.h"]:
+            src = os.path.join(self.src_dir, f)
+            dest = os.path.join(self.build_dir, f)
+            copy_if_different(src, dest)
+
+        cmake_lists = """
+cmake_minimum_required(VERSION 3.1.3 FATAL_ERROR)
+project(sqlite3 C)
+add_library(sqlite3 STATIC sqlite3.c)
+# These options are taken from the defaults in Makefile.msc in
+# the sqlite distribution
+target_compile_definitions(sqlite3 PRIVATE
+    -DSQLITE_ENABLE_COLUMN_METADATA=1
+    -DSQLITE_ENABLE_FTS3=1
+    -DSQLITE_ENABLE_RTREE=1
+    -DSQLITE_ENABLE_GEOPOLY=1
+    -DSQLITE_ENABLE_JSON1=1
+    -DSQLITE_ENABLE_STMTVTAB=1
+    -DSQLITE_ENABLE_DBPAGE_VTAB=1
+    -DSQLITE_ENABLE_DBSTAT_VTAB=1
+    -DSQLITE_INTROSPECTION_PRAGMAS=1
+    -DSQLITE_ENABLE_DESERIALIZE=1
+)
+install(TARGETS sqlite3)
+install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
+            """
+
+        with open(os.path.join(self.build_dir, "CMakeLists.txt"), "w") as f:
+            f.write(cmake_lists)
+
+        defines = {
+            "CMAKE_INSTALL_PREFIX": self.inst_dir,
+            "BUILD_SHARED_LIBS": "OFF",
+            "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        }
+        define_args = ["-D%s=%s" % (k, v) for (k, v) in defines.items()]
+        define_args += ["-G", "Ninja"]
+
+        env = self._compute_env(install_dirs)
+
+        # Resolve the cmake that we installed
+        cmake = path_search(env, "cmake")
+
+        self._run_cmd([cmake, self.build_dir] + define_args, env=env)
+        self._run_cmd(
+            [
+                cmake,
+                "--build",
+                self.build_dir,
+                "--target",
+                "install",
+                "--config",
+                "Release",
+                "-j",
+                str(self.build_opts.num_jobs),
+            ],
+            env=env,
+        )

@@ -2,9 +2,13 @@
 name = sqlite3
 
 [download]
-url = https://sqlite.org/2019/sqlite-autoconf-3270200.tar.gz
-sha256 = 50c39e85ea28b5ecfdb3f9e860afe9ba606381e21836b2849efca6a0bfe6ef6e
+url = https://sqlite.org/2019/sqlite-amalgamation-3280000.zip
+sha256 = d02fc4e95cfef672b45052e221617a050b7f2e20103661cda88387349a9b1327
+
+[dependencies]
+cmake
+ninja
 
 [build]
-builder = autoconf
-subdir = sqlite-autoconf-3270200
+builder = sqlite
+subdir = sqlite-amalgamation-3280000

@@ -18,6 +18,7 @@ from .builder import (
     NinjaBootstrap,
     NopBuilder,
     OpenSSLBuilder,
+    SqliteBuilder,
 )
 from .expr import parse_expr
 from .fetcher import (
@@ -375,6 +376,9 @@ class ManifestParser(object):
             return CMakeBuilder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir, defines
             )
+
+        if builder == "sqlite":
+            return SqliteBuilder(build_options, ctx, self, src_dir, build_dir, inst_dir)
 
         if builder == "ninja_bootstrap":
             return NinjaBootstrap(
