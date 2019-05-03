@@ -12,6 +12,7 @@ import unittest
 
 import pkg_resources
 
+from ..load import load_all_manifests, patch_loader
 from ..manifest import ManifestParser
 
 
@@ -207,11 +208,6 @@ foo = bar
         )
 
     def test_parse_common_manifests(self):
-        n = 0
-        for name in pkg_resources.resource_listdir(__name__, "manifests"):
-            contents = pkg_resources.resource_string(
-                __name__, "manifests/%s" % name
-            ).decode("utf8")
-            ManifestParser(file_name=name, fp=contents)
-            n += 1
-        self.assertTrue(n > 0, msg="parsed some number of manifests")
+        patch_loader(__name__)
+        manifests = load_all_manifests(None)
+        self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")

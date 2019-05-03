@@ -7,9 +7,61 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import glob
 import os
 
 from .manifest import ManifestParser
+
+
+class Loader(object):
+    """ The loader allows our tests to patch the load operation """
+
+    def load_project(self, build_opts, project_name):
+        manifest_path = resolve_manifest_path(build_opts, project_name)
+        return ManifestParser(manifest_path)
+
+    def load_all(self, build_opts):
+        manifests_by_name = {}
+        manifests_dir = os.path.join(build_opts.fbcode_builder_dir, "manifests")
+        # We use glob rather than os.listdir because glob won't include
+        # eg: vim swap files that a maintainer might happen to have
+        # for manifests that they are editing
+        for name in glob.glob("%s/*" % manifests_dir):
+            m = ManifestParser(name)
+            manifests_by_name[m.name] = m
+
+        return manifests_by_name
+
+
+class ResourceLoader(Loader):
+    def __init__(self, namespace):
+        self.namespace = namespace
+
+    def load_project(self, build_opts, project_name):
+        import pkg_resources
+
+        contents = pkg_resources.resource_string(
+            self.namespace, "manifests/%s" % project_name
+        ).decode("utf8")
+        m = ManifestParser(file_name=project_name, fp=contents)
+        return m
+
+    def load_all(self, build_opts):
+        import pkg_resources
+
+        manifest_by_name = {}
+        for name in pkg_resources.resource_listdir(self.namespace, "manifests"):
+            m = self.load_project(build_opts, name)
+            manifest_by_name[m.name] = m
+        return manifest_by_name
+
+
+LOADER = Loader()
+
+
+def patch_loader(namespace):
+    global LOADER
+    LOADER = ResourceLoader(namespace)
 
 
 def resolve_manifest_path(build_opts, project_name):
@@ -24,8 +76,11 @@ def resolve_manifest_path(build_opts, project_name):
 def load_project(build_opts, project_name):
     """ given the name of a project or a path to a manifest file,
     load up the ManifestParser instance for it and return it """
-    manifest_path = resolve_manifest_path(build_opts, project_name)
-    return ManifestParser(manifest_path)
+    return LOADER.load_project(build_opts, project_name)
+
+
+def load_all_manifests(build_opts):
+    return LOADER.load_all(build_opts)
 
 
 def manifests_in_dependency_order(build_opts, manifest, ctx):
