@@ -9,9 +9,11 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import glob
+import json
 import os
 import shutil
 import stat
+import subprocess
 import sys
 
 from .envfuncs import Env, add_path_entry, path_search
@@ -276,9 +278,54 @@ class CMakeBuilder(BuilderBase):
     def run_tests(self, install_dirs):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
-        self._run_cmd(
-            [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)], env=env
-        )
+
+        def list_tests():
+            output = subprocess.check_output(
+                [ctest, "--show-only=json-v1"], env=env, cwd=self.build_dir
+            )
+            data = json.loads(output.decode("utf-8"))
+            tests = []
+            machine_suffix = self.build_opts.host_type.as_tuple_string()
+            for test in data["tests"]:
+                tests.append(
+                    {
+                        "type": "custom",
+                        "target": "%s-%s-getdeps-%s"
+                        % (self.manifest.name, test["name"], machine_suffix),
+                        "command": test["command"],
+                    }
+                )
+            return tests
+
+        testpilot = path_search(env, "testpilot")
+        if testpilot:
+            buck_test_info = list_tests()
+            buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
+            with open(buck_test_info_name, "w") as f:
+                json.dump(buck_test_info, f)
+
+            env.set("http_proxy", "")
+            env.set("https_proxy", "")
+            self._run_cmd(
+                [
+                    testpilot,
+                    # Need to force the repo type otherwise testpilot on windows
+                    # can be confused (presumably sparse profile related)
+                    "--force-repo",
+                    "fbcode",
+                    "--force-repo-root",
+                    self.build_opts.fbsource_dir,
+                    "--buck-test-info",
+                    buck_test_info_name,
+                ],
+                cwd=self.build_opts.fbcode_builder_dir,
+                env=env,
+            )
+        else:
+            self._run_cmd(
+                [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)],
+                env=env,
+            )
 
 
 class NinjaBootstrap(BuilderBase):
