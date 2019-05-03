@@ -255,3 +255,8 @@ class ManifestParser(object):
                 value = self._config.get(s, field)
                 d[field] = value
         return d
+
+    def create_fetcher(self, build_options, ctx):
+        raise KeyError(
+            "project %s has no fetcher configuration matching %r" % (self.name, ctx)
+        )
