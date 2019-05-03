@@ -88,3 +88,18 @@ class BuilderBase(object):
         that the sources have changed in such a way that the build
         system needs to regenerate its rules. """
         pass
+
+
+class MakeBuilder(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
+        super(MakeBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+        self.args = args or []
+
+    def _build(self, install_dirs, reconfigure):
+        cmd = ["make", "-j%s" % self.build_opts.num_jobs] + self.args
+        self._run_cmd(cmd)
+
+        install_cmd = ["make", "install", "PREFIX=" + self.inst_dir]
+        self._run_cmd(install_cmd)
