@@ -25,11 +25,13 @@ class SubCmd(object):
 CmdTable = []
 
 
-def add_subcommands(parser, cmd_table=CmdTable):
+def add_subcommands(parser, common_args, cmd_table=CmdTable):
     """ Register parsers for the defined commands with the provided parser """
     for cls in cmd_table:
         command = cls()
-        command_parser = parser.add_parser(command.NAME, help=command.HELP)
+        command_parser = parser.add_parser(
+            command.NAME, help=command.HELP, parents=[common_args]
+        )
         command.setup_parser(command_parser)
         command_parser.set_defaults(func=command.run)
 

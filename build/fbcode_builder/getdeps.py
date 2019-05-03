@@ -46,7 +46,29 @@ class ShowHostType(SubCmd):
 
 
 def build_argparser():
-    ap = argparse.ArgumentParser(description="Get and build dependencies and projects")
+    common_args = argparse.ArgumentParser(add_help=False)
+    common_args.add_argument(
+        "--scratch-path", help="Where to maintain checkouts and build dirs"
+    )
+    common_args.add_argument(
+        "--install-prefix",
+        help=(
+            "Where the final build products will be installed "
+            "(default is [scratch-path]/installed)"
+        ),
+    )
+    common_args.add_argument(
+        "--num-jobs",
+        type=int,
+        help=(
+            "Number of concurrent jobs to use while building. "
+            "(default=number of cpu cores)"
+        ),
+    )
+
+    ap = argparse.ArgumentParser(
+        description="Get and build dependencies and projects", parents=[common_args]
+    )
     sub = ap.add_subparsers(
         # metavar suppresses the long and ugly default list of subcommands on a
         # single line.  We still render the nicer list below where we would
@@ -56,7 +78,7 @@ def build_argparser():
         help="",
     )
 
-    add_subcommands(sub)
+    add_subcommands(sub, common_args)
 
     return ap
 
