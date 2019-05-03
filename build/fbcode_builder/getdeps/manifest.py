@@ -16,6 +16,7 @@ from .builder import (
     CMakeBuilder,
     MakeBuilder,
     NinjaBootstrap,
+    NopBuilder,
     OpenSSLBuilder,
 )
 from .expr import parse_expr
@@ -332,6 +333,9 @@ class ManifestParser(object):
             return NinjaBootstrap(
                 build_options, ctx, self, build_dir, src_dir, inst_dir
             )
+
+        if builder == "nop":
+            return NopBuilder(build_options, ctx, self, src_dir, inst_dir)
 
         if builder == "openssl":
             return OpenSSLBuilder(

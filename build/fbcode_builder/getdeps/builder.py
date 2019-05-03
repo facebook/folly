@@ -11,6 +11,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import glob
 import os
 import shutil
+import stat
 import sys
 
 from .envfuncs import Env, add_path_entry, path_search
@@ -335,3 +336,45 @@ class Boost(BuilderBase):
                 ],
                 cwd=self.src_dir,
             )
+
+
+class NopBuilder(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, src_dir, inst_dir):
+        super(NopBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, None, inst_dir
+        )
+
+    def build(self, install_dirs, reconfigure):
+        print("Installing %s -> %s" % (self.src_dir, self.inst_dir))
+        parent = os.path.dirname(self.inst_dir)
+        if not os.path.exists(parent):
+            os.makedirs(parent)
+
+        install_files = self.manifest.get_section_as_ordered_pairs(
+            "install.files", self.ctx
+        )
+        if install_files:
+            for src_name, dest_name in self.manifest.get_section_as_ordered_pairs(
+                "install.files", self.ctx
+            ):
+                full_dest = os.path.join(self.inst_dir, dest_name)
+                full_src = os.path.join(self.src_dir, src_name)
+
+                dest_parent = os.path.dirname(full_dest)
+                if not os.path.exists(dest_parent):
+                    os.makedirs(dest_parent)
+                if os.path.isdir(full_src):
+                    if not os.path.exists(full_dest):
+                        shutil.copytree(full_src, full_dest)
+                else:
+                    shutil.copyfile(full_src, full_dest)
+                    shutil.copymode(full_src, full_dest)
+                    # This is a bit gross, but the mac ninja.zip doesn't
+                    # give ninja execute permissions, so force them on
+                    # for things that look like they live in a bin dir
+                    if os.path.dirname(dest_name) == "bin":
+                        st = os.lstat(full_dest)
+                        os.chmod(full_dest, st.st_mode | stat.S_IXUSR)
+        else:
+            if not os.path.exists(self.inst_dir):
+                shutil.copytree(self.src_dir, self.inst_dir)
