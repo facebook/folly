@@ -285,3 +285,53 @@ class OpenSSLBuilder(BuilderBase):
             ]
         )
         self._run_cmd([make, "install_sw", "install_ssldirs"])
+
+
+class Boost(BuilderBase):
+    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir):
+        children = os.listdir(src_dir)
+        assert len(children) == 1, "expected a single directory entry: %r" % (children,)
+        boost_src = children[0]
+        assert boost_src.startswith("boost")
+        src_dir = os.path.join(src_dir, children[0])
+        super(Boost, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+
+    def _build(self, install_dirs, reconfigure):
+        linkage = ["static"]
+        if self.build_opts.is_windows():
+            linkage.append("shared")
+        for link in linkage:
+            args = []
+            if self.build_opts.is_windows():
+                bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
+                self._run_cmd([bootstrap], cwd=self.src_dir)
+                args += ["address-model=64"]
+            else:
+                bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
+                self._run_cmd(
+                    [bootstrap, "--prefix=%s" % self.inst_dir], cwd=self.src_dir
+                )
+
+            b2 = os.path.join(self.src_dir, "b2")
+            self._run_cmd(
+                [
+                    b2,
+                    "-j%s" % self.build_opts.num_jobs,
+                    "--prefix=%s" % self.inst_dir,
+                    "--builddir=%s" % self.build_dir,
+                ]
+                + args
+                + [
+                    "link=%s" % link,
+                    "runtime-link=shared",
+                    "variant=release",
+                    "threading=multi",
+                    "debug-symbols=on",
+                    "visibility=global",
+                    "-d2",
+                    "install",
+                ],
+                cwd=self.src_dir,
+            )

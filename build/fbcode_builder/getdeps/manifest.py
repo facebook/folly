@@ -12,6 +12,7 @@ import io
 
 from .builder import (
     AutoconfBuilder,
+    Boost,
     CMakeBuilder,
     MakeBuilder,
     NinjaBootstrap,
@@ -317,6 +318,9 @@ class ManifestParser(object):
             return AutoconfBuilder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir, args
             )
+
+        if builder == "boost":
+            return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir)
 
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
