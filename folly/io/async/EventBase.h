@@ -277,6 +277,17 @@ class EventBase : public TimeoutManager,
   /**
    * Create a new EventBase object.
    *
+   * Same as EventBase(true), which constructs an EventBase that measures time,
+   * except that this also allows the timer granularity to be specified
+   */
+
+  explicit EventBase(std::chrono::milliseconds tickInterval) : EventBase(true) {
+    intervalDuration_ = tickInterval;
+  }
+
+  /**
+   * Create a new EventBase object.
+   *
    * Same as EventBase(true), which constructs an EventBase that measures time.
    */
   EventBase() : EventBase(true) {}
@@ -648,7 +659,7 @@ class EventBase : public TimeoutManager,
 
   HHWheelTimer& timer() {
     if (!wheelTimer_) {
-      wheelTimer_ = HHWheelTimer::newTimer(this);
+      wheelTimer_ = HHWheelTimer::newTimer(this, intervalDuration_);
     }
     return *wheelTimer_.get();
   }
@@ -826,6 +837,9 @@ class EventBase : public TimeoutManager,
 
   void initNotificationQueue();
 
+  // Tick granularity to wheelTimer_
+  std::chrono::milliseconds intervalDuration_{
+      HHWheelTimer::DEFAULT_TICK_INTERVAL};
   // should only be accessed through public getter
   HHWheelTimer::UniquePtr wheelTimer_;
 
