@@ -14,6 +14,8 @@ import os
 import subprocess
 import sys
 
+from getdeps.buildopts import setup_build_options
+from getdeps.load import resolve_manifest_path
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
@@ -43,6 +45,25 @@ class ShowHostType(SubCmd):
         host = HostType()
         print("%s" % host.as_tuple_string())
         return 0
+
+
+@cmd("fetch", "fetch the code for a given project")
+class FetchCmd(SubCmd):
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+
+    def run(self, args):
+        opts = setup_build_options(args)
+        manifest_path = resolve_manifest_path(opts, args.project)
+        manifest = ManifestParser(manifest_path)
+        fetcher = manifest.create_fetcher(opts, ctx={})
+        fetcher.update()
 
 
 def build_argparser():
