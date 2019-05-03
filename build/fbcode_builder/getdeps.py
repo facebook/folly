@@ -112,16 +112,27 @@ class ListDepsCmd(SubCmd):
         )
 
 
+def clean_dirs(opts):
+    for d in ["build", "installed", "extracted", "shipit"]:
+        d = os.path.join(opts.scratch_dir, d)
+        print("Cleaning %s..." % d)
+        if os.path.exists(d):
+            shutil.rmtree(d)
+
+
+@cmd("clean", "clean up the scratch dir")
+class CleanCmd(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+        clean_dirs(opts)
+
+
 @cmd("build", "build a given project")
 class BuildCmd(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
         if args.clean:
-            for d in ["build", "installed", "extracted", "shipit"]:
-                d = os.path.join(opts.scratch_dir, d)
-                print("Cleaning %s..." % d)
-                if os.path.exists(d):
-                    shutil.rmtree(d)
+            clean_dirs(opts)
 
         manifest = load_project(opts, args.project)
 
