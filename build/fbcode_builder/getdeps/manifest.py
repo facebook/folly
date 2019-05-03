@@ -291,3 +291,14 @@ class ManifestParser(object):
         raise KeyError(
             "project %s has no fetcher configuration matching %r" % (self.name, ctx)
         )
+
+    def create_builder(self, build_options, src_dir, build_dir, inst_dir, ctx):
+        builder = self.get("build", "builder", ctx=ctx)
+        if not builder:
+            raise Exception("project %s has no builder for %r" % (self.name, ctx))
+        build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
+        if build_in_src_dir == "true":
+            build_dir = src_dir
+            print("build_dir is %s" % build_dir)  # just to quiet lint
+
+        raise KeyError("project %s has no known builder" % (self.name))
