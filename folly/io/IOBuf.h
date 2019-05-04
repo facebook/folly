@@ -1523,7 +1523,7 @@ class IOBuf {
 
   struct DeleterBase {
     virtual ~DeleterBase() {}
-    virtual void dispose(void* p) = 0;
+    virtual void dispose(void* p) noexcept = 0;
   };
 
   template <class UniquePtr>
@@ -1532,13 +1532,9 @@ class IOBuf {
     typedef typename UniquePtr::deleter_type Deleter;
 
     explicit UniquePtrDeleter(Deleter deleter) : deleter_(std::move(deleter)) {}
-    void dispose(void* p) override {
-      try {
-        deleter_(static_cast<Pointer>(p));
-        delete this;
-      } catch (...) {
-        abort();
-      }
+    void dispose(void* p) noexcept override {
+      deleter_(static_cast<Pointer>(p));
+      delete this;
     }
 
    private:
