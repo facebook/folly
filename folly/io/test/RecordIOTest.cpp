@@ -262,6 +262,72 @@ TEST(RecordIOTest, Randomized) {
     EXPECT_EQ(records.size(), i);
   }
 }
+
+TEST(RecordIOTest, validateRecordAPI) {
+  uint32_t hdrSize = recordio_helpers::headerSize();
+  std::vector<uint32_t> testSizes = {
+      0, 1, hdrSize - 1, hdrSize, hdrSize + 1, 2 * hdrSize, 1024};
+  constexpr uint32_t kTestFileId = 100;
+  std::mt19937 rnd(FLAGS_random_seed);
+
+  for (auto& testSize : testSizes) {
+    char testChar = testSize % 26 + 'A';
+    // create a IOBuf of size = testSize
+    auto buf = folly::IOBuf::create(testSize);
+    buf->append(testSize);
+    EXPECT_NE(buf, nullptr);
+    auto wData = buf->writableData();
+    if (testSize > hdrSize) {
+      // if the testSize is more than header size, populate databytes with
+      // testChar
+      buf->trimStart(hdrSize);
+      memset(wData, testChar, buf->length());
+      recordio_helpers::prependHeader(buf, kTestFileId);
+      buf->unshare();
+      buf->coalesce();
+      wData = buf->writableData();
+    }
+    // validate header
+    auto res = recordio_helpers::validateRecordHeader(
+        folly::Range<unsigned char*>(wData, buf->length()), kTestFileId);
+    if (testSize > hdrSize) {
+      // validation should succeed for buffers larger than header size
+      EXPECT_TRUE(res);
+      auto range = folly::Range<unsigned char*>(wData, buf->length());
+      // make sure data validation also succeeds
+      auto dataRes = recordio_helpers::validateRecordData(range);
+      EXPECT_NE(dataRes.fileId, 0);
+
+      // do the entire record validation again
+      auto recRes = recordio_helpers::validateRecord(range, kTestFileId);
+      EXPECT_NE(recRes.fileId, 0);
+
+      std::uniform_int_distribution<uint32_t> dataDist(
+          0, testSize - hdrSize - 1);
+      size_t idx = dataDist(rnd);
+      /* Now corrupt a random byte and expect data validation to fail */
+      wData[hdrSize + idx] = testChar + 1;
+      auto newDataRes = recordio_helpers::validateRecordData(range);
+      EXPECT_EQ(newDataRes.fileId, 0);
+
+      /* header validation should still pass */
+      auto newRes = recordio_helpers::validateRecordHeader(range, kTestFileId);
+      EXPECT_TRUE(newRes);
+
+      /* corrupt a random header byte */
+      std::uniform_int_distribution<uint32_t> hdrDist(0, hdrSize - 1);
+      idx = hdrDist(rnd);
+      wData[idx] = testChar;
+
+      /* header validation should fail now */
+      newRes = recordio_helpers::validateRecordHeader(range, kTestFileId);
+      EXPECT_FALSE(newRes);
+    } else {
+      EXPECT_FALSE(res);
+    }
+  }
+}
+
 } // namespace test
 } // namespace folly
 
