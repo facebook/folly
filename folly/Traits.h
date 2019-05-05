@@ -25,17 +25,6 @@
 
 #include <folly/Portability.h>
 
-// libc++ doesn't provide this header, nor does msvc
-#if __has_include(<bits/c++config.h>)
-// This file appears in two locations: inside fbcode and in the
-// libstdc++ source code (when embedding fbstring as std::string).
-// To aid in this schizophrenic use, two macros are defined in
-// c++config.h:
-//   _LIBSTDCXX_FBSTRING - Set inside libstdc++.  This is useful to
-//      gate use inside fbcode v. libstdc++
-#include <bits/c++config.h>
-#endif
-
 #define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name)              \
   template <typename TTheClass_>                                               \
   struct classname##__folly_traits_impl__ {                                    \

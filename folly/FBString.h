@@ -45,11 +45,6 @@
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 
-// libc++ doesn't provide this header, nor does msvc
-#if __has_include(<bits/c++config.h>)
-#include <bits/c++config.h>
-#endif
-
 #include <algorithm>
 #include <cassert>
 #include <cstring>

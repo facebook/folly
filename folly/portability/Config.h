@@ -24,6 +24,10 @@
 #include <features.h> // @manual
 #endif
 
+#if __has_include(<bits/c++config.h>)
+#include <bits/c++config.h> // @manual
+#endif
+
 #ifdef __ANDROID__
 #include <android/api-level.h> // @manual
 #endif
