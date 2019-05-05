@@ -417,6 +417,12 @@ constexpr auto kIsGlibcxx = true;
 constexpr auto kIsGlibcxx = false;
 #endif
 
+#if __GLIBCXX__ && _GLIBCXX_RELEASE // major version, 7+
+constexpr auto kGlibcxxVer = _GLIBCXX_RELEASE;
+#else
+constexpr auto kGlibcxxVer = 0;
+#endif
+
 #if _LIBCPP_VERSION
 constexpr auto kIsLibcpp = true;
 #else
