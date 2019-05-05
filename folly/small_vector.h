@@ -459,6 +459,7 @@ class small_vector : public detail::small_vector_base<
  public:
   typedef std::size_t size_type;
   typedef Value value_type;
+  typedef std::allocator<Value> allocator_type;
   typedef value_type& reference;
   typedef value_type const& const_reference;
   typedef value_type* iterator;
@@ -560,6 +561,10 @@ class small_vector : public detail::small_vector_base<
   static constexpr size_type max_size() {
     return !BaseType::kShouldUseHeap ? static_cast<size_type>(MaxInline)
                                      : BaseType::policyMaxSize();
+  }
+
+  allocator_type get_allocator() {
+    return {};
   }
 
   size_type size() const {
