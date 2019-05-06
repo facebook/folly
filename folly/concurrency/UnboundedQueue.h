@@ -274,13 +274,11 @@ class UnboundedQueue {
 
   /** dequeue */
   FOLLY_ALWAYS_INLINE void dequeue(T& item) noexcept {
-    dequeueImpl(item);
+    item = dequeueImpl();
   }
 
   FOLLY_ALWAYS_INLINE T dequeue() noexcept {
-    T item;
-    dequeueImpl(item);
-    return item;
+    return dequeueImpl();
   }
 
   /** try_dequeue */
@@ -401,32 +399,33 @@ class UnboundedQueue {
   }
 
   /** dequeueImpl */
-  FOLLY_ALWAYS_INLINE void dequeueImpl(T& item) noexcept {
+  FOLLY_ALWAYS_INLINE T dequeueImpl() noexcept {
     if (SPSC) {
       Segment* s = head();
-      dequeueCommon(s, item);
+      return dequeueCommon(s);
     } else {
       // Using hazptr_holder instead of hazptr_local because it is
       // possible to call the T dtor and it may happen to use hazard
       // pointers.
       hazptr_holder<Atom> hptr;
       Segment* s = hptr.get_protected(c_.head);
-      dequeueCommon(s, item);
+      return dequeueCommon(s);
     }
   }
 
   /** dequeueCommon */
-  FOLLY_ALWAYS_INLINE void dequeueCommon(Segment* s, T& item) noexcept {
+  FOLLY_ALWAYS_INLINE T dequeueCommon(Segment* s) noexcept {
     Ticket t = fetchIncrementConsumerTicket();
     if (!SingleConsumer) {
       s = findSegment(s, t);
     }
     size_t idx = index(t);
     Entry& e = s->entry(idx);
-    e.takeItem(item);
+    auto res = e.takeItem();
     if (responsibleForAdvance(t)) {
       advanceHead(s);
     }
+    return res;
   }
 
   /** tryDequeueUntil */
@@ -459,7 +458,7 @@ class UnboundedQueue {
       return folly::Optional<T>();
     }
     setConsumerTicket(t + 1);
-    auto ret = e.takeItem();
+    folly::Optional<T> ret = e.takeItem();
     if (responsibleForAdvance(t)) {
       advanceHead(s);
     }
@@ -487,7 +486,7 @@ class UnboundedQueue {
               t, t + 1, std::memory_order_acq_rel, std::memory_order_acquire)) {
         continue;
       }
-      auto ret = e.takeItem();
+      folly::Optional<T> ret = e.takeItem();
       if (responsibleForAdvance(t)) {
         advanceHead(s);
       }
@@ -767,12 +766,7 @@ class UnboundedQueue {
       flag_.post();
     }
 
-    FOLLY_ALWAYS_INLINE void takeItem(T& item) noexcept {
-      flag_.wait();
-      getItem(item);
-    }
-
-    FOLLY_ALWAYS_INLINE folly::Optional<T> takeItem() noexcept {
+    FOLLY_ALWAYS_INLINE T takeItem() noexcept {
       flag_.wait();
       return getItem();
     }
@@ -796,13 +790,8 @@ class UnboundedQueue {
     }
 
    private:
-    FOLLY_ALWAYS_INLINE void getItem(T& item) noexcept {
-      item = std::move(*(itemPtr()));
-      destroyItem();
-    }
-
-    FOLLY_ALWAYS_INLINE folly::Optional<T> getItem() noexcept {
-      folly::Optional<T> ret = std::move(*(itemPtr()));
+    FOLLY_ALWAYS_INLINE T getItem() noexcept {
+      T ret = std::move(*(itemPtr()));
       destroyItem();
       return ret;
     }
