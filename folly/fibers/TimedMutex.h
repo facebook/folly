@@ -80,24 +80,32 @@ class TimedMutex {
 };
 
 /**
- * @class TimedRWMutex
+ * @class TimedRWMutexImpl
  *
  * A readers-writer lock which allows multiple readers to hold the
  * lock simultaneously or only one writer.
  *
- * NOTE: This is a reader-preferred RWLock i.e. readers are give priority
- * when there are both readers and writers waiting to get the lock.
+ * NOTE: When ReaderPriority is set to true then the lock is a reader-preferred
+ * RWLock i.e. readers are given priority when there are both readers and
+ * writers waiting to get the lock.
+ *
+ * When ReaderPriority is set to false then the lock is a writer-preferred
+ * RWLock i.e. writers are given priority when there are both readers and
+ * writers waiting to get the lock. Note that when the lock is in
+ * writer-preferred mode, the readers are not re-entrant (e.g. if a caller owns
+ * a read lock, it can't attempt to acquire the read lock again as it can
+ * deadlock.)
  **/
-template <typename BatonType>
-class TimedRWMutex {
+template <bool ReaderPriority, typename BatonType>
+class TimedRWMutexImpl {
  public:
-  TimedRWMutex() = default;
-  ~TimedRWMutex() = default;
+  TimedRWMutexImpl() = default;
+  ~TimedRWMutexImpl() = default;
 
-  TimedRWMutex(const TimedRWMutex& rhs) = delete;
-  TimedRWMutex& operator=(const TimedRWMutex& rhs) = delete;
-  TimedRWMutex(TimedRWMutex&& rhs) = delete;
-  TimedRWMutex& operator=(TimedRWMutex&& rhs) = delete;
+  TimedRWMutexImpl(const TimedRWMutexImpl& rhs) = delete;
+  TimedRWMutexImpl& operator=(const TimedRWMutexImpl& rhs) = delete;
+  TimedRWMutexImpl(TimedRWMutexImpl&& rhs) = delete;
+  TimedRWMutexImpl& operator=(TimedRWMutexImpl&& rhs) = delete;
 
   // Lock for shared access. The thread / fiber is blocked until the lock
   // can be acquired.
@@ -143,7 +151,7 @@ class TimedRWMutex {
 
   class ReadHolder {
    public:
-    explicit ReadHolder(TimedRWMutex& lock) : lock_(&lock) {
+    explicit ReadHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->read_lock();
     }
 
@@ -159,12 +167,12 @@ class TimedRWMutex {
     ReadHolder& operator=(ReadHolder&& rhs) = delete;
 
    private:
-    TimedRWMutex* lock_;
+    TimedRWMutexImpl* lock_;
   };
 
   class WriteHolder {
    public:
-    explicit WriteHolder(TimedRWMutex& lock) : lock_(&lock) {
+    explicit WriteHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->write_lock();
     }
 
@@ -180,7 +188,7 @@ class TimedRWMutex {
     WriteHolder& operator=(WriteHolder&& rhs) = delete;
 
    private:
-    TimedRWMutex* lock_;
+    TimedRWMutexImpl* lock_;
   };
 
  private:
@@ -190,6 +198,8 @@ class TimedRWMutex {
     assert(read_waiters_.empty());
     assert(write_waiters_.empty());
   }
+
+  bool shouldReadersWait() const;
 
   // Different states the lock can be in
   enum class State {
@@ -228,6 +238,16 @@ class TimedRWMutex {
   MutexWaiterList read_waiters_; //< List of thread / fibers waiting for
   //  shared access
 };
+
+template <typename BatonType>
+using TimedRWMutexReadPriority = TimedRWMutexImpl<true, BatonType>;
+
+template <typename BatonType>
+using TimedRWMutexWritePriority = TimedRWMutexImpl<false, BatonType>;
+
+template <typename BatonType>
+using TimedRWMutex = TimedRWMutexReadPriority<BatonType>;
+
 } // namespace fibers
 } // namespace folly
 
