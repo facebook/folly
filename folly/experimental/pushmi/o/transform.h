@@ -51,19 +51,18 @@ struct transform_fn {
   template <class F, class In>
   struct submit_impl {
     F f_;
+    using maker_t = receiver_from_fn<std::decay_t<In>>;
     PUSHMI_TEMPLATE(class SIn, class Out)
-    (requires Receiver<Out> && Constructible<F, const F&>) //
-    auto operator()(SIn&& in, Out&& out) & {
+    (requires Receiver<Out> && Constructible<F, const F&> && SenderTo<In, invoke_result_t<maker_t, Out, value_fn<F>>>) //
+    void operator()(SIn&& in, Out&& out) & {
       // copy 'f_' to allow multiple calls to connect to multiple 'in'
-      using maker_t = receiver_from_fn<std::decay_t<In>>;
       ::folly::pushmi::submit(
           (In &&) in,
-          maker_t{}((Out &&) out, value_fn<F>{std::move(f_)}));
+          maker_t{}((Out &&) out, value_fn<F>{f_}));
     }
     PUSHMI_TEMPLATE(class SIn, class Out)
-    (requires Receiver<Out> && Constructible<F, F&&>) //
-    auto operator()(SIn&& in, Out&& out) && {
-      using maker_t = receiver_from_fn<std::decay_t<In>>;
+    (requires Receiver<Out> && MoveConstructible<F> && SenderTo<In, invoke_result_t<maker_t, Out, value_fn<F>>>) //
+    void operator()(SIn&& in, Out&& out) && {
       ::folly::pushmi::submit(
           (In &&) in,
           maker_t{}((Out &&) out, value_fn<F>{std::move(f_)}));
