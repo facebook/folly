@@ -668,7 +668,7 @@ struct WithConstructor {
 
 // libstdc++ with GCC 4.x doesn't have std::is_trivially_copyable
 #if (defined(__clang__) && !defined(_LIBCPP_VERSION)) || \
-    !(defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5)
+    !(defined(__GNUC__) && !defined(__clang__))
 TEST(Expected, TriviallyCopyable) {
   // These could all be static_asserts but EXPECT_* give much nicer output on
   // failure.

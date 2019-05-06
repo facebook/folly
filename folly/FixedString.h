@@ -100,13 +100,6 @@ constexpr const Char (&checkNullTerminated(const Char (&a)[N]) noexcept)[N] {
       : (assertNotNullTerminated(), decltype(a)(a));
 }
 
-// Rather annoyingly, GCC's -Warray-bounds warning issues false positives for
-// this code. See https://gcc.gnu.org/bugzilla/show_bug.cgi?id=61971
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 5
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Warray-bounds"
-#endif
-
 template <class Left, class Right>
 constexpr ordering compare_(
     const Left& left,
@@ -301,10 +294,6 @@ struct Helper {
     return that.data_;
   }
 };
-
-#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 4
-#pragma GCC diagnostic pop
-#endif
 
 template <class T>
 constexpr void constexpr_swap(T& a, T& b) noexcept(

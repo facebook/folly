@@ -27,8 +27,6 @@ TEST(ConstexprTest, constexpr_strlen_cstr) {
   EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
 }
 
-// gcc-4.9 cannot compile the following constexpr code correctly
-#if !(defined(__GNUC__) && !defined(__clang__) && __GNUC__ < 5)
 TEST(ConstexprTest, constexpr_strlen_ints) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   constexpr auto a = folly::constexpr_strlen(v);
@@ -42,7 +40,6 @@ TEST(ConstexprTest, constexpr_strcmp_ints) {
   static_assert(constexpr_strcmp(v1, v) > 0, "constexpr_strcmp is broken");
   static_assert(constexpr_strcmp(v, v) == 0, "constexpr_strcmp is broken");
 }
-#endif
 
 static_assert(
     constexpr_strcmp("abc", "abc") == 0,
