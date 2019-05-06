@@ -480,7 +480,37 @@ AsyncGeneratorPromise<Reference, Value>::get_return_object() noexcept {
       AsyncGeneratorPromise<Reference, Value>>::from_promise(*this)};
 }
 
+template <typename T>
+inline constexpr bool is_async_generator_v = false;
+
+template <typename Reference, typename Value>
+inline constexpr bool is_async_generator_v<AsyncGenerator<Reference, Value>> =
+    true;
+
 } // namespace detail
+
+// Helper for immediately invoking a lambda with captures that returns an
+// AsyncGenerator to keep the lambda alive until the generator completes.
+//
+// Example:
+//   auto gen = co_invoke([min, max]() -> AsyncGenerator<T> {
+//     for (int i = min; i <= max; ++i) {
+//       co_yield co_await doSomething(i);
+//     }
+//   });
+template <typename Func, typename... Args>
+auto co_invoke(Func func, Args... args) -> std::enable_if_t<
+    detail::is_async_generator_v<invoke_result_t<Func, Args...>>,
+    invoke_result_t<Func, Args...>> {
+  auto asyncRange =
+      folly::invoke(static_cast<Func&&>(func), static_cast<Args&&>(args)...);
+  const auto itEnd = asyncRange.end();
+  auto it = co_await asyncRange.begin();
+  while (it != itEnd) {
+    co_yield* it;
+    co_await++ it;
+  }
+}
 
 } // namespace coro
 } // namespace folly

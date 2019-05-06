@@ -391,4 +391,21 @@ TEST(AsyncGenerator, ExplicitValueType) {
   CHECK_EQ("au revoir", items["bar"]);
 }
 
+TEST(AsyncGenerator, InvokeLambda) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto ptr = std::make_unique<int>(123);
+    auto gen = folly::coro::co_invoke(
+        [p = std::move(ptr)]() mutable
+        -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
+          co_yield std::move(p);
+        });
+
+    auto it = co_await gen.begin();
+    CHECK(it != gen.end());
+    ptr = *it;
+    CHECK(ptr);
+    CHECK(*ptr == 123);
+  }());
+}
+
 #endif
