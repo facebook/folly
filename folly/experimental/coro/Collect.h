@@ -50,7 +50,7 @@ using collect_all_try_range_component_t =
     collect_all_try_component_t<SemiAwaitable>;
 
 template <typename Range>
-using range_iterator_t = decltype(std::begin(std::declval<Range>()));
+using range_iterator_t = decltype(std::begin(std::declval<Range&>()));
 
 template <typename Iterator>
 using iterator_reference_t = typename std::iterator_traits<Iterator>::reference;
@@ -220,6 +220,88 @@ template <typename T>
 auto collectAllTryRange(std::vector<Task<T>> awaitables)
     -> decltype(collectAllTryRange(awaitables | ranges::view::move)) {
   co_return co_await collectAllTryRange(awaitables | ranges::view::move);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// collectAllWindowed(RangeOf<SemiAwaitable<T>>&&, size_t maxConcurrency)
+//   -> SemiAwaitable<std::vector<T>>
+//
+// collectAllWindowed(RangeOf<SemiAwaitable<void>>&&, size_t maxConcurrency)
+//   -> SemiAwaitable<void>
+//
+// Await each of the input awaitables in the range, allowing at most
+// 'maxConcurrency' of these input awaitables to be concurrently awaited
+// at any one point in time.
+//
+// If any of the input awaitables fail with an exception then the whole
+// operation fails with an exception. If multiple input awaitables fail with
+// an exception then one of these exceptions will be rethrown and the rest
+// of the results will be discarded.
+//
+// If there is an exception thrown while iterating over the input-range then
+// it will still guarantee that any prior awaitables in the input-range will
+// run to completion before completing the collectAllWindowed() operation with
+// an exception.
+//
+// The resulting std::vector will contain the results in the corresponding
+// order of their respective awaitables in the input range.
+template <
+    typename InputRange,
+    std::enable_if_t<
+        std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int> = 0>
+auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<void>;
+template <
+    typename InputRange,
+    std::enable_if_t<
+        !std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int> = 0>
+auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<std::vector<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>>;
+
+///////////////////////////////////////////////////////////////////////////////
+// collectAllTryWindowed(RangeOf<SemiAwaitable<T>>&, size_t maxConcurrency)
+//   -> SemiAwaitable<std::vector<folly::Try<T>>>
+//
+// Concurrently awaits a collection of awaitable with bounded concurrency,
+// producing a vector of Try values containing each of the results.
+//
+// The resulting std::vector will contain the results in the corresponding
+// order of their respective awaitables in the input range.
+//
+// Note that the whole operation may still complete with an exception if
+// iterating over the awaitables fails with an exception (eg. if you pass
+// a Generator<Task<T>&&> and the generator throws an exception).
+template <typename InputRange>
+auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<std::vector<detail::collect_all_try_range_component_t<
+        detail::range_reference_t<InputRange>>>>;
+
+// collectAllWindowed()/collectAllTryWindowed() overloads that simplify the
+// use of these functions with std::vector<Task<T>>.
+template <typename T>
+auto collectAllWindowed(
+    std::vector<Task<T>> awaitables,
+    std::size_t maxConcurrency)
+    -> decltype(
+        collectAllWindowed(awaitables | ranges::view::move, maxConcurrency)) {
+  co_return co_await collectAllWindowed(
+      awaitables | ranges::view::move, maxConcurrency);
+}
+
+template <typename T>
+auto collectAllTryWindowed(
+    std::vector<Task<T>> awaitables,
+    std::size_t maxConcurrency)
+    -> decltype(collectAllTryWindowed(
+        awaitables | ranges::view::move,
+        maxConcurrency)) {
+  co_return co_await collectAllTryWindowed(
+      awaitables | ranges::view::move, maxConcurrency);
 }
 
 } // namespace coro

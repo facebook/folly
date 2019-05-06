@@ -15,6 +15,7 @@
  */
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
 
@@ -291,7 +292,7 @@ auto collectAllTryRange(InputRange awaitables)
 
   {
     std::size_t index = 0;
-    for (auto&& semiAwaitable : static_cast<InputRange&&>(awaitables)) {
+    for (auto&& semiAwaitable : awaitables) {
       tasks.push_back(makeTask(
           index++, static_cast<decltype(semiAwaitable)&&>(semiAwaitable)));
     }
@@ -309,6 +310,260 @@ auto collectAllTryRange(InputRange awaitables)
       task.start(&barrier);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
+  }
+
+  co_return std::move(results);
+}
+
+template <
+    typename InputRange,
+    std::enable_if_t<
+        std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int>>
+auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<void> {
+  assert(maxConcurrency > 0);
+
+  std::exception_ptr firstException;
+
+  folly::coro::Mutex mutex;
+
+  folly::Executor::KeepAlive<> executor =
+      folly::getKeepAliveToken(co_await co_current_executor);
+
+  using std::begin;
+  using std::end;
+  auto iter = begin(awaitables);
+  const auto iterEnd = end(awaitables);
+
+  using iterator_t = decltype(iter);
+  using awaitable_t = typename std::iterator_traits<iterator_t>::value_type;
+
+  auto makeWorker = [&]() -> detail::BarrierTask {
+    auto lock =
+        co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+
+    while (iter != iterEnd) {
+      awaitable_t awaitable = *iter;
+      try {
+        ++iter;
+      } catch (...) {
+        if (!firstException) {
+          firstException = std::current_exception();
+        }
+      }
+
+      lock.unlock();
+
+      std::exception_ptr ex;
+      try {
+        co_await co_viaIfAsync(
+            executor.copyDummy(), static_cast<awaitable_t&&>(awaitable));
+      } catch (...) {
+        ex = std::current_exception();
+      }
+
+      lock =
+          co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+
+      if (ex && !firstException) {
+        firstException = std::move(ex);
+      }
+    }
+  };
+
+  std::vector<detail::BarrierTask> workerTasks;
+
+  detail::Barrier barrier{1};
+
+  std::exception_ptr workerCreationException;
+
+  try {
+    auto lock = co_await mutex.co_scoped_lock();
+
+    while (iter != iterEnd && workerTasks.size() < maxConcurrency) {
+      // Unlock the mutex before starting the worker so that
+      // it can consume as many results synchronously as it can before
+      // returning here and letting us spawn another task.
+      // This can avoid spawning more worker coroutines than is necessary
+      // to consume all of the awaitables.
+      lock.unlock();
+
+      workerTasks.push_back(makeWorker());
+      barrier.add(1);
+      workerTasks.back().start(&barrier);
+
+      lock = co_await mutex.co_scoped_lock();
+    }
+  } catch (...) {
+    workerCreationException = std::current_exception();
+  }
+
+  co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
+
+  if (firstException) {
+    std::rethrow_exception(std::move(firstException));
+  } else if (workerTasks.empty() && workerCreationException) {
+    // Failed to create any workers to process the tasks.
+    std::rethrow_exception(std::move(workerCreationException));
+  }
+}
+
+template <
+    typename InputRange,
+    std::enable_if_t<
+        !std::is_void_v<
+            semi_await_result_t<detail::range_reference_t<InputRange>>>,
+        int>>
+auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<std::vector<detail::collect_all_range_component_t<
+        detail::range_reference_t<InputRange>>>> {
+  auto tryResults = co_await collectAllTryWindowed(
+      static_cast<InputRange&&>(awaitables), maxConcurrency);
+
+  std::vector<detail::collect_all_range_component_t<
+      detail::range_reference_t<InputRange>>>
+      results;
+  results.reserve(tryResults.size());
+
+  for (auto&& tryResult : tryResults) {
+    results.emplace_back(std::move(tryResult).value());
+  }
+
+  co_return std::move(results);
+}
+
+template <typename InputRange>
+auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
+    -> folly::coro::Task<std::vector<detail::collect_all_try_range_component_t<
+        detail::range_reference_t<InputRange>>>> {
+  assert(maxConcurrency > 0);
+
+  std::vector<detail::collect_all_try_range_component_t<
+      detail::range_reference_t<InputRange>>>
+      results;
+
+  std::exception_ptr iterationException;
+
+  folly::coro::Mutex mutex;
+
+  folly::Executor::KeepAlive<> executor =
+      folly::getKeepAliveToken(co_await co_current_executor);
+
+  using std::begin;
+  using std::end;
+  auto iter = begin(awaitables);
+  const auto iterEnd = end(awaitables);
+
+  using iterator_t = decltype(iter);
+  using awaitable_t = typename std::iterator_traits<iterator_t>::value_type;
+  using result_t = semi_await_result_t<awaitable_t>;
+
+  auto makeWorker = [&]() -> detail::BarrierTask {
+    auto lock =
+        co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+
+    while (!iterationException && iter != iterEnd) {
+      try {
+        awaitable_t awaitable = *iter;
+
+        try {
+          ++iter;
+        } catch (...) {
+          iterationException = std::current_exception();
+        }
+
+        const auto thisIndex = results.size();
+        try {
+          results.emplace_back();
+        } catch (...) {
+          if (!iterationException) {
+            iterationException = std::current_exception();
+          }
+
+          // Failure to grow the results vector is fatal.
+          co_return;
+        }
+
+        lock.unlock();
+
+        detail::collect_all_try_range_component_t<
+            detail::range_reference_t<InputRange>>
+            result;
+
+        try {
+          if constexpr (std::is_void_v<result_t>) {
+            co_await co_viaIfAsync(
+                executor.copyDummy(), static_cast<awaitable_t&&>(awaitable));
+            result.emplace();
+          } else {
+            result.emplace(co_await co_viaIfAsync(
+                executor.copyDummy(), static_cast<awaitable_t&&>(awaitable)));
+          }
+        } catch (const std::exception& ex) {
+          result.emplaceException(std::current_exception(), ex);
+        } catch (...) {
+          result.emplaceException(std::current_exception());
+        }
+
+        lock = co_await co_viaIfAsync(
+            executor.copyDummy(), mutex.co_scoped_lock());
+
+        try {
+          results[thisIndex] = std::move(result);
+        } catch (const std::exception& ex) {
+          results[thisIndex].emplaceException(std::current_exception(), ex);
+        } catch (...) {
+          results[thisIndex].emplaceException(std::current_exception());
+        }
+      } catch (...) {
+        assert(lock.owns_lock());
+        if (!iterationException) {
+          iterationException = std::current_exception();
+        }
+        co_return;
+      }
+
+      assert(lock.owns_lock());
+    }
+  };
+
+  std::vector<detail::BarrierTask> workerTasks;
+
+  detail::Barrier barrier{1};
+
+  std::exception_ptr workerCreationException;
+
+  try {
+    auto lock = co_await mutex.co_scoped_lock();
+    while (iter != iterEnd && workerTasks.size() < maxConcurrency) {
+      // Unlock the mutex before starting the child operation so that
+      // it can consume as many results synchronously as it can before
+      // returning here and letting us potentially spawn another task.
+      // This can avoid spawning more worker coroutines than is necessary
+      // to consume all of the awaitables.
+      lock.unlock();
+
+      workerTasks.push_back(makeWorker());
+      barrier.add(1);
+      workerTasks.back().start(&barrier);
+
+      lock = co_await mutex.co_scoped_lock();
+    }
+  } catch (...) {
+    workerCreationException = std::current_exception();
+  }
+
+  co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
+
+  if (iterationException) {
+    std::rethrow_exception(std::move(iterationException));
+  } else if (workerTasks.empty() && workerCreationException) {
+    // Couldn't spawn any child workers to execute the tasks.
+    // TODO: We could update this code-path to try to execute them serially
+    // here but the system is probably in a bad state anyway.
+    std::rethrow_exception(std::move(workerCreationException));
   }
 
   co_return std::move(results);
