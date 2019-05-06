@@ -25,13 +25,13 @@
 
 #include <folly/portability/GTest.h>
 
-TEST(Task, CoSchedule) {
+TEST(Task, CoRescheduleOnCurrentExecutor) {
   std::vector<int> results;
   folly::coro::blockingWait(folly::coro::collectAll(
       folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         for (int i = 0; i <= 10; i += 2) {
           if (i == 6) {
-            co_await folly::coro::co_schedule;
+            co_await folly::coro::co_reschedule_on_current_executor;
           }
           results.push_back(i);
         }
@@ -39,7 +39,7 @@ TEST(Task, CoSchedule) {
       folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
         for (int i = 1; i < 10; i += 2) {
           if (i == 7) {
-            co_await folly::coro::co_schedule;
+            co_await folly::coro::co_reschedule_on_current_executor;
           }
           results.push_back(i);
         }

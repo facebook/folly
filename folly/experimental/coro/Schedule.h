@@ -25,7 +25,7 @@ namespace coro {
 
 namespace detail {
 
-class co_schedule_t {
+class co_reschedule_on_current_executor_t {
   class Awaiter {
     folly::Executor::KeepAlive<> executor_;
 
@@ -50,7 +50,7 @@ class co_schedule_t {
 
   friend Awaiter co_viaIfAsync(
       folly::Executor::KeepAlive<> executor,
-      co_schedule_t) {
+      co_reschedule_on_current_executor_t) {
     return Awaiter{std::move(executor)};
   }
 };
@@ -69,12 +69,13 @@ class co_schedule_t {
 //     for (int i = 0; i < 1'000'000; ++i) {
 //       // Periodically reschedule to the executor.
 //       if ((i % 1024) == 1023) {
-//         co_await folly::coro::co_schedule;
+//         co_await folly::coro::co_reschedule_on_current_executor;
 //       }
 //       doSomeWork(i);
 //     }
 //   }
-inline constexpr detail::co_schedule_t co_schedule;
+inline constexpr detail::co_reschedule_on_current_executor_t
+    co_reschedule_on_current_executor;
 
 } // namespace coro
 } // namespace folly

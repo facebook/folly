@@ -396,7 +396,7 @@ TEST(CollectAllRange, RangeOfNonVoid) {
       using namespace std::literals::chrono_literals;
       int x = count++;
       if ((x % 20) == 0) {
-        co_await folly::coro::co_schedule;
+        co_await folly::coro::co_reschedule_on_current_executor;
       }
       co_return x;
     };
@@ -500,7 +500,7 @@ TEST(CollectAllWindowed, ConcurrentTasks) {
       [&]() -> Generator<Task<std::string>&&> {
         for (int i = 0; i < 10'000; ++i) {
           co_yield[](int i)->Task<std::string> {
-            co_await folly::coro::co_schedule;
+            co_await folly::coro::co_reschedule_on_current_executor;
             co_return folly::to<std::string>(i);
           }
           (i);
@@ -527,7 +527,7 @@ TEST(CollectAllWindowed, WithGeneratorOfTaskOfValue) {
     // Reschedule a variable number of times so that tasks may complete out of
     // order.
     for (int i = 0; i < index % 5; ++i) {
-      co_await folly::coro::co_schedule;
+      co_await folly::coro::co_reschedule_on_current_executor;
     }
 
     --activeCount;
@@ -565,7 +565,7 @@ TEST(CollectAllWindowed, WithGeneratorOfTaskOfVoid) {
   auto makeTask = [&]() -> folly::coro::Task<void> {
     auto count = ++activeCount;
     CHECK_LE(count, maxConcurrency);
-    co_await folly::coro::co_schedule;
+    co_await folly::coro::co_reschedule_on_current_executor;
     --activeCount;
     ++completedCount;
   };
@@ -591,7 +591,7 @@ TEST(CollectAllWindowed, VectorOfVoidTask) {
 
   int count = 0;
   auto makeTask = [&]() -> folly::coro::Task<void> {
-    co_await folly::coro::co_schedule;
+    co_await folly::coro::co_reschedule_on_current_executor;
     ++count;
   };
 
@@ -611,7 +611,7 @@ TEST(CollectAllWindowed, VectorOfValueTask) {
 
   int count = 0;
   auto makeTask = [&](int i) -> folly::coro::Task<std::unique_ptr<int>> {
-    co_await folly::coro::co_schedule;
+    co_await folly::coro::co_reschedule_on_current_executor;
     ++count;
     co_return std::make_unique<int>(i);
   };
@@ -640,11 +640,11 @@ TEST(CollectAllWindowed, PartialFailure) {
                 co_yield[](int i)->folly::coro::Task<int> {
                   using namespace std::literals::chrono_literals;
                   if (i == 3) {
-                    co_await folly::coro::co_schedule;
-                    co_await folly::coro::co_schedule;
+                    co_await folly::coro::co_reschedule_on_current_executor;
+                    co_await folly::coro::co_reschedule_on_current_executor;
                     throw ErrorA{};
                   } else if (i == 7) {
-                    co_await folly::coro::co_schedule;
+                    co_await folly::coro::co_reschedule_on_current_executor;
                     throw ErrorB{};
                   }
                   co_return i;
@@ -671,11 +671,11 @@ TEST(CollectAllTryWindowed, PartialFailure) {
           co_yield[](int i)->folly::coro::Task<int> {
             using namespace std::literals::chrono_literals;
             if (i == 3) {
-              co_await folly::coro::co_schedule;
-              co_await folly::coro::co_schedule;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
               throw ErrorA{};
             } else if (i == 7) {
-              co_await folly::coro::co_schedule;
+              co_await folly::coro::co_reschedule_on_current_executor;
               throw ErrorB{};
             }
             co_return i;
@@ -707,7 +707,7 @@ TEST(CollectAllTryWindowed, GeneratorFailure) {
     ++active;
     ++started;
     for (int j = 0; j < (i % 3); ++j) {
-      co_await folly::coro::co_schedule;
+      co_await folly::coro::co_reschedule_on_current_executor;
     }
     --active;
   };
