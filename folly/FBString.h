@@ -197,6 +197,7 @@ class fbstring_core_model {
  public:
   fbstring_core_model();
   fbstring_core_model(const fbstring_core_model &);
+  fbstring_core_model& operator=(const fbstring_core_model &) = delete;
   ~fbstring_core_model();
   // Returns a pointer to string's buffer (currently only contiguous
   // strings are supported). The pointer is guaranteed to be valid
@@ -243,9 +244,6 @@ class fbstring_core_model {
   // the string without reallocation. For reference-counted strings,
   // it should fork the data even if minCapacity < size().
   void reserve(size_t minCapacity);
- private:
-  // Do not implement
-  fbstring_core_model& operator=(const fbstring_core_model &);
 };
 */
 
@@ -310,6 +308,8 @@ class fbstring_core {
     FBSTRING_ASSERT(size() == rhs.size());
     FBSTRING_ASSERT(memcmp(data(), rhs.data(), size() * sizeof(Char)) == 0);
   }
+
+  fbstring_core& operator=(const fbstring_core& rhs) = delete;
 
   fbstring_core(fbstring_core&& goner) noexcept {
     // Take goner's guts
@@ -483,9 +483,6 @@ class fbstring_core {
   }
 
  private:
-  // Disabled
-  fbstring_core& operator=(const fbstring_core& rhs);
-
   Char* c_str() {
     Char* ptr = ml_.data_;
     // With this syntax, GCC and Clang generate a CMOV instead of a branch.
