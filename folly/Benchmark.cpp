@@ -388,7 +388,19 @@ void benchmarkResultsToDynamic(
     dynamic& out) {
   out = dynamic::array;
   for (auto& datum : data) {
-    out.push_back(dynamic::array(datum.file, datum.name, datum.timeInNs));
+    if (!datum.counters.empty()) {
+      dynamic obj = dynamic::object;
+      for (auto& counter : datum.counters) {
+        dynamic counterInfo = dynamic::object;
+        counterInfo["value"] = counter.second.value;
+        counterInfo["type"] = static_cast<int>(counter.second.type);
+        obj[counter.first] = counterInfo;
+      }
+      out.push_back(
+          dynamic::array(datum.file, datum.name, datum.timeInNs, obj));
+    } else {
+      out.push_back(dynamic::array(datum.file, datum.name, datum.timeInNs));
+    }
   }
 }
 
