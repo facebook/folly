@@ -15,6 +15,12 @@
  */
 #pragma once
 
+#include <utility>
+
+#include <folly/Executor.h>
+#include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/io/async/Request.h>
+
 namespace folly {
 namespace coro {
 
@@ -42,6 +48,63 @@ using co_current_executor_t = detail::co_current_executor_;
 //   }
 constexpr co_current_executor_t co_current_executor{
     co_current_executor_t::secret_::token_};
+
+namespace detail {
+
+class co_reschedule_on_current_executor_ {
+  class Awaiter {
+    folly::Executor::KeepAlive<> executor_;
+
+   public:
+    explicit Awaiter(folly::Executor::KeepAlive<> executor) noexcept
+        : executor_(std::move(executor)) {}
+
+    bool await_ready() {
+      return false;
+    }
+
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
+        std::experimental::coroutine_handle<> coro) {
+      executor_->add([coro, ctx = RequestContext::saveContext()]() mutable {
+        RequestContextScopeGuard contextScope{std::move(ctx)};
+        coro.resume();
+      });
+    }
+
+    void await_resume() {}
+  };
+
+  friend Awaiter co_viaIfAsync(
+      folly::Executor::KeepAlive<> executor,
+      co_reschedule_on_current_executor_) {
+    return Awaiter{std::move(executor)};
+  }
+};
+
+} // namespace detail
+
+using co_reschedule_on_current_executor_t =
+    detail::co_reschedule_on_current_executor_;
+
+// A SemiAwaitable object that allows you to reschedule the current coroutine
+// onto the currently associated executor.
+//
+// This can be used as a form of cooperative multi-tasking for coroutines that
+// wish to provide fair access to the execution resources. eg. to periodically
+// give up their current execution slot to allow other tasks to run.
+//
+// Example:
+//   folly::coro::Task<void> doCpuIntensiveWorkFairly() {
+//     for (int i = 0; i < 1'000'000; ++i) {
+//       // Periodically reschedule to the executor.
+//       if ((i % 1024) == 1023) {
+//         co_await folly::coro::co_reschedule_on_current_executor;
+//       }
+//       doSomeWork(i);
+//     }
+//   }
+inline constexpr co_reschedule_on_current_executor_t
+    co_reschedule_on_current_executor;
 
 } // namespace coro
 } // namespace folly

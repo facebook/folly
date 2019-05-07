@@ -23,9 +23,9 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Generator.h>
 #include <folly/experimental/coro/Mutex.h>
-#include <folly/experimental/coro/Schedule.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
