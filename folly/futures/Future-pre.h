@@ -125,6 +125,20 @@ struct callableResult {
   typedef Future<typename ReturnsFuture::Inner> Return;
 };
 
+template <typename T, typename F>
+struct executorCallableResult {
+  typedef typename std::conditional<
+      is_invocable<F, Executor::KeepAlive<>&&>::value,
+      detail::argResult<false, F, Executor::KeepAlive<>&&>,
+      typename std::conditional<
+          is_invocable<F, Executor::KeepAlive<>&&, T&&>::value,
+          detail::argResult<false, F, Executor::KeepAlive<>&&, T&&>,
+          detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&>>::
+          type>::type Arg;
+  typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
+  typedef Future<typename ReturnsFuture::Inner> Return;
+};
+
 template <
     typename T,
     typename F,
@@ -141,8 +155,7 @@ template <
     typename F,
     typename = std::enable_if_t<is_invocable<F, Executor*, Try<T>&&>::value>>
 struct tryExecutorCallableResult {
-  typedef detail::argResult<true, F, const Executor::KeepAlive<>&, Try<T>&&>
-      Arg;
+  typedef detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
   typedef Future<value_type> Return;
@@ -159,7 +172,7 @@ struct valueCallableResult {
 
 template <typename T, typename F>
 struct valueExecutorCallableResult {
-  typedef detail::argResult<false, F, const Executor::KeepAlive<>&, T&&> Arg;
+  typedef detail::argResult<false, F, Executor::KeepAlive<>&&, T&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
   typedef typename ReturnsFuture::Inner value_type;
   typedef typename Arg::ArgList::Tail::FirstArg ValueArg;
@@ -202,6 +215,28 @@ struct Extract<R (&)(Args...)> {
 };
 
 class DeferredExecutor;
+
+template <class T, class F>
+auto makeExecutorLambda(
+    F&& func,
+    typename std::enable_if<is_invocable<F>::value, int>::type = 0) {
+  return
+      [func = std::forward<F>(func)](Executor::KeepAlive<>&&, auto&&) mutable {
+        return std::forward<F>(func)();
+      };
+}
+
+template <class T, class F>
+auto makeExecutorLambda(
+    F&& func,
+    typename std::enable_if<!is_invocable<F>::value, int>::type = 0) {
+  using R = futures::detail::callableResult<T, F&&>;
+  return [func = std::forward<F>(func)](
+             Executor::KeepAlive<>&&,
+             typename R::Arg::ArgList::FirstArg&& param) mutable {
+    return std::forward<F>(func)(std::forward<decltype(param)>(param));
+  };
+}
 
 } // namespace detail
 } // namespace futures

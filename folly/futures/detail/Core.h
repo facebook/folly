@@ -199,7 +199,7 @@ class Core final {
 
  public:
   using Result = Try<T>;
-  using Callback = folly::Function<void(Result&&)>;
+  using Callback = folly::Function<void(Executor::KeepAlive<>&&, Result&&)>;
 
   /// State will be Start
   static Core* make() {
@@ -587,7 +587,7 @@ class Core final {
           auto cr = std::move(core_ref);
           Core* const core = cr.getCore();
           RequestContextScopeGuard rctx(std::move(core->context_));
-          core->callback_(std::move(core->result_));
+          core->callback_(std::move(keepAlive), std::move(core->result_));
         });
       } catch (const std::exception& e) {
         ew = exception_wrapper(std::current_exception(), e);
@@ -597,7 +597,7 @@ class Core final {
       if (ew) {
         RequestContextScopeGuard rctx(std::move(context_));
         result_ = Try<T>(std::move(ew));
-        callback_(std::move(result_));
+        callback_(Executor::KeepAlive<>{}, std::move(result_));
       }
     } else {
       attached_.fetch_add(1, std::memory_order_relaxed);
@@ -607,7 +607,7 @@ class Core final {
         detachOne();
       };
       RequestContextScopeGuard rctx(std::move(context_));
-      callback_(std::move(result_));
+      callback_(Executor::KeepAlive<>{}, std::move(result_));
     }
   }
 

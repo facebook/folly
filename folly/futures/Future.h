@@ -1173,14 +1173,20 @@ class Future : private futures::detail::FutureBase<T> {
   auto then(Executor::KeepAlive<> x, Arg&& arg) && {
     auto oldX = getKeepAliveToken(this->getExecutor());
     this->setExecutor(std::move(x));
-
     // TODO(T29171940): thenImplementation here is ambiguous
     // as then used to be but that is better than keeping then in the public
     // API.
-    using R = futures::detail::callableResult<T, Arg&&>;
+    auto lambdaFunc =
+        futures::detail::makeExecutorLambda<T>(std::forward<Arg>(arg));
+    using R = futures::detail::executorCallableResult<T, decltype(lambdaFunc)>;
     return std::move(*this)
-        .thenImplementation(std::forward<Arg>(arg), R{})
+        .thenImplementation(std::move(lambdaFunc), R{})
         .via(std::move(oldX));
+  }
+
+  template <typename R, typename... Args>
+  auto then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
+    return std::move(*this).then(std::move(x), &func);
   }
 
   /// When this Future has completed, execute func which is a function that
@@ -1910,10 +1916,11 @@ class FutureAwaitable {
     // Make sure the future object doesn't get destroyed until setCallback_
     // returns.
     auto future = std::move(future_);
-    future.setCallback_([this, h](Try<T>&& result) mutable {
-      result_ = std::move(result);
-      h.resume();
-    });
+    future.setCallback_(
+        [this, h](Executor::KeepAlive<>&&, Try<T>&& result) mutable {
+          result_ = std::move(result);
+          h.resume();
+        });
   }
 
  private:
