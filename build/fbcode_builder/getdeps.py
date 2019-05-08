@@ -245,6 +245,7 @@ class BuildCmd(SubCmd):
                         # Some kind of inconsistency with a prior build,
                         # let's run it again to be sure
                         os.unlink(built_marker)
+                        reconfigure = True
 
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
