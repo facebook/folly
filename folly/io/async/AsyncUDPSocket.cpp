@@ -647,6 +647,14 @@ int AsyncUDPSocket::getGSO() {
   return gso_.value();
 }
 
+void AsyncUDPSocket::setTrafficClass(int tclass) {
+  if (netops::setsockopt(
+          fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(int)) != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+  }
+}
+
 void AsyncUDPSocket::detachEventBase() {
   DCHECK(eventBase_ && eventBase_->isInEventBaseThread());
   registerHandler(uint16_t(NONE));

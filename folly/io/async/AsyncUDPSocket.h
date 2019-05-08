@@ -291,6 +291,8 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGSO(int val);
 
+  void setTrafficClass(int tclass);
+
  protected:
   virtual ssize_t
   sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
