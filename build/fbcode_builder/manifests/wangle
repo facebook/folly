@@ -11,8 +11,11 @@ repo_url = https://github.com/facebook/wangle.git
 builder = cmake
 subdir = wangle
 
-[cmake.defines]
-BUILD_TESTS = ON
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
 
 [dependencies]
 folly
