@@ -30,33 +30,37 @@ struct SSLCommonOptions {
   /**
    * The cipher list recommended for this options configuration.
    */
-  static constexpr auto kCipherList = folly::make_array(
-      "ECDHE-ECDSA-AES128-GCM-SHA256",
-      "ECDHE-RSA-AES128-GCM-SHA256",
-      "ECDHE-ECDSA-AES256-GCM-SHA384",
-      "ECDHE-RSA-AES256-GCM-SHA384",
-      "ECDHE-ECDSA-AES256-SHA",
-      "ECDHE-RSA-AES256-SHA",
-      "ECDHE-ECDSA-AES128-SHA",
-      "ECDHE-RSA-AES128-SHA",
-      "ECDHE-RSA-AES256-SHA384",
-      "AES128-GCM-SHA256",
-      "AES256-SHA",
-      "AES128-SHA");
+  static constexpr auto ciphers() {
+    return folly::make_array(
+        "ECDHE-ECDSA-AES128-GCM-SHA256",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "ECDHE-ECDSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-ECDSA-AES256-SHA",
+        "ECDHE-RSA-AES256-SHA",
+        "ECDHE-ECDSA-AES128-SHA",
+        "ECDHE-RSA-AES128-SHA",
+        "ECDHE-RSA-AES256-SHA384",
+        "AES128-GCM-SHA256",
+        "AES256-SHA",
+        "AES128-SHA");
+  }
 
   /**
    * The list of signature algorithms recommended for this options
    * configuration.
    */
-  static constexpr auto kSignatureAlgorithms = folly::make_array(
-      "RSA+SHA512",
-      "ECDSA+SHA512",
-      "RSA+SHA384",
-      "ECDSA+SHA384",
-      "RSA+SHA256",
-      "ECDSA+SHA256",
-      "RSA+SHA1",
-      "ECDSA+SHA1");
+  static constexpr auto sigalgs() {
+    return folly::make_array(
+        "RSA+SHA512",
+        "ECDSA+SHA512",
+        "RSA+SHA384",
+        "ECDSA+SHA384",
+        "RSA+SHA256",
+        "ECDSA+SHA256",
+        "RSA+SHA1",
+        "ECDSA+SHA1");
+  }
 
   /**
    * Set common parameters on a client SSL context, for example,
@@ -73,19 +77,21 @@ struct SSLServerOptions {
   /**
    * The list of ciphers recommended for server use.
    */
-  static constexpr auto kCipherList = folly::make_array(
-      "ECDHE-ECDSA-AES128-GCM-SHA256",
-      "ECDHE-ECDSA-AES256-GCM-SHA384",
-      "ECDHE-ECDSA-AES128-SHA",
-      "ECDHE-ECDSA-AES256-SHA",
-      "ECDHE-RSA-AES128-GCM-SHA256",
-      "ECDHE-RSA-AES256-GCM-SHA384",
-      "ECDHE-RSA-AES128-SHA",
-      "ECDHE-RSA-AES256-SHA",
-      "AES128-GCM-SHA256",
-      "AES256-GCM-SHA384",
-      "AES128-SHA",
-      "AES256-SHA");
+  static constexpr auto ciphers() {
+    return folly::make_array(
+        "ECDHE-ECDSA-AES128-GCM-SHA256",
+        "ECDHE-ECDSA-AES256-GCM-SHA384",
+        "ECDHE-ECDSA-AES128-SHA",
+        "ECDHE-ECDSA-AES256-SHA",
+        "ECDHE-RSA-AES128-GCM-SHA256",
+        "ECDHE-RSA-AES256-GCM-SHA384",
+        "ECDHE-RSA-AES128-SHA",
+        "ECDHE-RSA-AES256-SHA",
+        "AES128-GCM-SHA256",
+        "AES256-GCM-SHA384",
+        "AES128-SHA",
+        "AES256-SHA");
+  }
 };
 
 /**
@@ -96,7 +102,7 @@ struct SSLServerOptions {
 template <typename TSSLOptions>
 void setCipherSuites(SSLContext& ctx) {
   try {
-    ctx.setCipherList(TSSLOptions::kCipherList);
+    ctx.setCipherList(TSSLOptions::ciphers());
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);
   }
@@ -110,7 +116,7 @@ void setCipherSuites(SSLContext& ctx) {
 template <typename TSSLOptions>
 void setSignatureAlgorithms(SSLContext& ctx) {
   try {
-    ctx.setSignatureAlgorithms(TSSLOptions::kSignatureAlgorithms);
+    ctx.setSignatureAlgorithms(TSSLOptions::sigalgs());
   } catch (std::runtime_error const& e) {
     ssl_options_detail::logDfatal(e);
   }
