@@ -222,11 +222,13 @@ bool atomic_fetch_reset_x86(
 
 template <typename Atomic>
 bool atomic_fetch_set_x86(Atomic&, std::size_t, std::memory_order) noexcept {
-  throw std::logic_error{"Incorrect function called"};
+  // This should never be called on non x86_64 platforms.
+  std::terminate();
 }
 template <typename Atomic>
 bool atomic_fetch_reset_x86(Atomic&, std::size_t, std::memory_order) noexcept {
-  throw std::logic_error{"Incorrect function called"};
+  // This should never be called on non x86_64 platforms.
+  std::terminate();
 }
 
 #endif
