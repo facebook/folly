@@ -27,6 +27,7 @@
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/Unistd.h>
 
 using folly::AsyncTimeout;
 using folly::AsyncUDPServerSocket;
@@ -610,6 +611,19 @@ TEST_F(AsyncUDPSocketTest, TestBound) {
   folly::SocketAddress address("0.0.0.0", 0);
   socket.bind(address);
   EXPECT_TRUE(socket.isBound());
+}
+
+TEST_F(AsyncUDPSocketTest, TestBoundUnixSocket) {
+  const auto kTmpUnixSocketPath{"/tmp/tmp_unix_socket"};
+  AsyncUDPSocket socket(&evb_);
+  EXPECT_FALSE(socket.isBound());
+  SCOPE_EXIT {
+    ::unlink(kTmpUnixSocketPath);
+  };
+  ::unlink(kTmpUnixSocketPath);
+  socket.bind(folly::SocketAddress::makeFromPath(kTmpUnixSocketPath));
+  EXPECT_TRUE(socket.isBound());
+  socket.close();
 }
 
 TEST_F(AsyncUDPSocketTest, TestAttachAfterDetachEvbWithReadCallback) {

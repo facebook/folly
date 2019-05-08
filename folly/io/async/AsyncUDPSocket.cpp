@@ -56,8 +56,10 @@ AsyncUDPSocket::~AsyncUDPSocket() {
 }
 
 void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  NetworkSocket socket =
-      netops::socket(address.getFamily(), SOCK_DGRAM, IPPROTO_UDP);
+  NetworkSocket socket = netops::socket(
+      address.getFamily(),
+      SOCK_DGRAM,
+      address.getFamily() != AF_UNIX ? IPPROTO_UDP : 0);
   if (socket == NetworkSocket()) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
@@ -171,7 +173,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   // attach to EventHandler
   EventHandler::changeHandlerFD(fd_);
 
-  if (address.getPort() != 0) {
+  if (address.getFamily() == AF_UNIX || address.getPort() != 0) {
     localAddress_ = address;
   } else {
     localAddress_.setFromLocalAddress(fd_);
