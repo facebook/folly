@@ -65,6 +65,17 @@ void testFLS() {
   }
 }
 
+template <class UINT>
+void testEFS() {
+  EXPECT_EQ(0, extractFirstSet(static_cast<UINT>(0)));
+  size_t bits = std::numeric_limits<UINT>::digits;
+  for (size_t i = 0; i < bits; i++) {
+    UINT lsb = static_cast<UINT>(1) << i;
+    UINT v = (static_cast<UINT>(1) << (bits - 1)) | lsb;
+    EXPECT_EQ(lsb, extractFirstSet(v));
+  }
+}
+
 } // namespace
 
 TEST(Bits, FindFirstSet) {
@@ -93,6 +104,14 @@ TEST(Bits, FindLastSet) {
   testFLS<unsigned long>();
   testFLS<long long>();
   testFLS<unsigned long long>();
+}
+
+TEST(Bits, ExtractFirstSet) {
+  testEFS<unsigned char>();
+  testEFS<unsigned short>();
+  testEFS<unsigned int>();
+  testEFS<unsigned long>();
+  testEFS<unsigned long long>();
 }
 
 TEST(Bits, nextPowTwoClz) {

@@ -26,6 +26,10 @@
  *    1-based.  0 = no bits are set (x == 0)
  *    for x != 0, findLastSet(x) == 1 + floor(log2(x))
  *
+ * extractFirstSet(x)  [constexpr]
+ *    extract first (least significant) bit set in a value of an integral
+ *    type, 0 = no bits are set (x == 0)
+ *
  * nextPowTwo(x)  [constexpr]
  *    Finds the next power of two >= x.
  *
@@ -144,6 +148,18 @@ inline constexpr unsigned int findLastSet(T const v) {
       sizeof(T) <= sizeof(U2) ? __builtin_clzll(bits_to_unsigned<U2>(v)) :
       0)) : 0u;
   // clang-format on
+}
+
+/// extractFirstSet
+///
+/// Return a value where all the bits but the least significant are cleared.
+template <typename T>
+inline constexpr T extractFirstSet(T const v) {
+  static_assert(std::is_integral<T>::value, "non-integral type");
+  static_assert(std::is_unsigned<T>::value, "signed type");
+  static_assert(!std::is_same<T, bool>::value, "bool type");
+
+  return v & -v;
 }
 
 /// popcount
