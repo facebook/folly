@@ -148,7 +148,7 @@ namespace detail {
 
 inline bool skipIsFailure() {
   const char* p = getenv("FOLLY_SKIP_AS_FAILURE");
-  return p && (0 == strcmp(p, "1") || 0 == strcmp(p, "true"));
+  return p && (0 == strcmp(p, "1"));
 }
 
 /**
