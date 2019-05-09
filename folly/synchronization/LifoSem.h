@@ -127,19 +127,25 @@ struct LifoSemRawNode {
   /// The IndexedMemPool index of the next node in this chain, or 0
   /// if none.  This will be set to uint32_t(-1) if the node is being
   /// posted due to a shutdown-induced wakeup
-  uint32_t next;
+  Atom<uint32_t> next{0};
 
   bool isShutdownNotice() const {
-    return next == uint32_t(-1);
+    return next.load(std::memory_order_relaxed) == uint32_t(-1);
   }
   void clearShutdownNotice() {
-    next = 0;
+    next.store(0, std::memory_order_relaxed);
   }
   void setShutdownNotice() {
-    next = uint32_t(-1);
+    next.store(uint32_t(-1), std::memory_order_relaxed);
   }
 
-  typedef folly::IndexedMemPool<LifoSemRawNode<Atom>, 32, 200, Atom> Pool;
+  typedef folly::IndexedMemPool<
+      LifoSemRawNode<Atom>,
+      32,
+      200,
+      Atom,
+      IndexedMemPoolTraitsLazyRecycle<LifoSemRawNode<Atom>>>
+      Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
   static Pool& pool();
@@ -422,7 +428,7 @@ struct LifoSemBase {
         continue;
       }
       auto& node = idxToNode(h.idx());
-      auto repl = h.withPop(node.next);
+      auto repl = h.withPop(node.next.load(std::memory_order_relaxed));
       if (head_->compare_exchange_strong(h, repl)) {
         // successful pop, wake up the waiter and move on.  The next
         // field is used to convey that this wakeup didn't consume a value
@@ -630,20 +636,23 @@ struct LifoSemBase {
     if (idx == removeidx) {
       // pop from head.  Head seqno is updated.
       head_->store(
-          head.withoutLock(removenode.next), std::memory_order_release);
+          head.withoutLock(removenode.next.load(std::memory_order_relaxed)),
+          std::memory_order_release);
       return true;
     }
     auto node = &idxToNode(idx);
-    idx = node->next;
+    idx = node->next.load(std::memory_order_relaxed);
     while (idx) {
       if (idx == removeidx) {
         // Pop from mid-list.
-        node->next = removenode.next;
+        node->next.store(
+            removenode.next.load(std::memory_order_relaxed),
+            std::memory_order_relaxed);
         result = true;
         break;
       }
       node = &idxToNode(idx);
-      idx = node->next;
+      idx = node->next.load(std::memory_order_relaxed);
     }
     // Unlock and return result
     head_->store(head.withoutLock(head.idx()), std::memory_order_release);
@@ -664,7 +673,9 @@ struct LifoSemBase {
       }
       if (head.isNodeIdx()) {
         auto& node = idxToNode(head.idx());
-        if (head_->compare_exchange_strong(head, head.withPop(node.next))) {
+        if (head_->compare_exchange_strong(
+                head,
+                head.withPop(node.next.load(std::memory_order_relaxed)))) {
           // successful pop
           return head.idx();
         }
@@ -715,7 +726,8 @@ struct LifoSemBase {
         }
 
         auto& node = idxToNode(idx);
-        node.next = head.isNodeIdx() ? head.idx() : 0;
+        node.next.store(
+            head.isNodeIdx() ? head.idx() : 0, std::memory_order_relaxed);
         if (head_->compare_exchange_strong(head, head.withPush(idx))) {
           // push succeeded
           return WaitResult::PUSH;
