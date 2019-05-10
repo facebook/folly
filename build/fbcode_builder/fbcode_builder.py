@@ -283,7 +283,9 @@ class FBCodeBuilder(object):
         return self.step('Check out {0}, workdir {1}'.format(project, path), [
             self.workdir(base_dir),
             self.run(
-                ShellQuoted('git clone https://github.com/{p}').format(p=project)
+                ShellQuoted('git clone {opts} https://github.com/{p}').format(
+                    p=project,
+                    opts=ShellQuoted(self.option('{}:git_clone_opts'.format(project), '')))
             ) if not local_repo_dir else self.copy_local_repo(
                 local_repo_dir, os.path.basename(project)
             ),
