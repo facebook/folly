@@ -114,14 +114,40 @@
 
 /**
  * Similar to XLOG(...) except only log a message every @param n
- * invocations.
+ * invocations, approximately.
  *
- * The internal counter is process-global and threadsafe.
+ * The internal counter is process-global and threadsafe but, to
+ * to avoid the performance degradation of atomic-rmw operations,
+ * increments are non-atomic. Some increments may be missed under
+ * contention, leading to possible over-logging or under-logging
+ * effects.
  */
-#define XLOG_EVERY_N(level, n, ...)                                            \
+#define XLOG_EVERY_N(level, n, ...)                                        \
+  XLOG_IF(                                                                 \
+      level,                                                               \
+      []() FOLLY_EXPORT -> bool {                                          \
+        static std::atomic<size_t> folly_detail_xlog_count{0};             \
+        auto const folly_detail_xlog_count_value =                         \
+            folly_detail_xlog_count.load(std::memory_order_relaxed);       \
+        folly_detail_xlog_count.store(                                     \
+            folly_detail_xlog_count_value + 1, std::memory_order_relaxed); \
+        return FOLLY_UNLIKELY((folly_detail_xlog_count_value % (n)) == 0); \
+      }(),                                                                 \
+      ##__VA_ARGS__)
+
+/**
+ * Similar to XLOG(...) except only log a message every @param n
+ * invocations, exactly.
+ *
+ * The internal counter is process-global and threadsafe and
+ * increments are atomic. The over-logging and under-logging
+ * schenarios of XLOG_EVERY_N(...) are avoided, traded off for
+ * the performance degradation of atomic-rmw operations.
+ */
+#define XLOG_EVERY_N_EXACT(level, n, ...)                                      \
   XLOG_IF(                                                                     \
       level,                                                                   \
-      [] {                                                                     \
+      []() FOLLY_EXPORT -> bool {                                              \
         static std::atomic<size_t> folly_detail_xlog_count{0};                 \
         return FOLLY_UNLIKELY(                                                 \
             (folly_detail_xlog_count.fetch_add(1, std::memory_order_relaxed) % \

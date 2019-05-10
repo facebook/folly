@@ -294,6 +294,23 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 49"));
   handler->clearMessages();
 
+  // Test XLOG_EVERY_N_EXACT
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N_EXACT(DBG1, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49"));
+  handler->clearMessages();
+
   // Test XLOG_EVERY_MS and XLOG_N_PER_MS
   // We test these together to minimize the number of sleep operations.
   for (size_t n = 0; n < 10; ++n) {
