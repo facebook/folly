@@ -95,6 +95,10 @@ class TDigest {
    * digest and the given sortedValues.
    */
   TDigest merge(presorted_t, Range<const double*> sortedValues) const;
+  /*
+   * Returns a new TDigest constructed with values merged from the current
+   * digest and the given unsortedValues.
+   */
   TDigest merge(Range<const double*> unsortedValues) const;
 
   /*
