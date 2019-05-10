@@ -17,6 +17,8 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
+#include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
+#include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/portability/GFlags.h>
 
 DEFINE_bool(
@@ -57,8 +59,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory)
     : CPUThreadPoolExecutor(
           numThreads,
-          std::make_unique<LifoSemMPMCQueue<CPUTask>>(
-              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::make_unique<UnboundedBlockingQueue<CPUTask>>(),
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
@@ -66,8 +67,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory)
     : CPUThreadPoolExecutor(
           numThreads,
-          std::make_unique<LifoSemMPMCQueue<CPUTask>>(
-              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::make_unique<UnboundedBlockingQueue<CPUTask>>(),
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
@@ -81,9 +81,8 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::shared_ptr<ThreadFactory> threadFactory)
     : CPUThreadPoolExecutor(
           numThreads,
-          std::make_unique<PriorityLifoSemMPMCQueue<CPUTask>>(
-              numPriorities,
-              CPUThreadPoolExecutor::kDefaultMaxQueueSize),
+          std::make_unique<PriorityUnboundedBlockingQueue<CPUTask>>(
+              numPriorities),
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
