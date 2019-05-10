@@ -52,18 +52,6 @@ constexpr long double nextafter(long double x, long double y) {
   return __builtin_nextafterl(x, y);
 }
 
-constexpr float remainder(float x, float y) {
-  return __builtin_remainderf(x, y);
-}
-
-constexpr double remainder(double x, double y) {
-  return __builtin_remainder(x, y);
-}
-
-constexpr long double remainder(long double x, long double y) {
-  return __builtin_remainderl(x, y);
-}
-
 #else // __GNUC__
 
 inline float nextafter(float x, float y) {
@@ -78,19 +66,25 @@ inline long double nextafter(long double x, long double y) {
   return ::nextafterl(x, y);
 }
 
-inline float remainder(float x, float y) {
-  return ::remainderf(x, y);
-}
-
-inline double remainder(double x, double y) {
-  return ::remainder(x, y);
-}
-
-inline long double remainder(long double x, long double y) {
-  return ::remainderl(x, y);
-}
-
 #endif // __GNUC__
+
+/**
+ * On uclibc, std::remainder isn't implemented.
+ * Implement it using builtin versions
+ */
+#ifdef __UCLIBC__
+constexpr float remainder(float x, float y) {
+  return __builtin_remainderf(x, y);
+}
+
+constexpr double remainder(double x, double y) {
+  return __builtin_remainder(x, y);
+}
+
+constexpr long double remainder(long double x, long double y) {
+  return __builtin_remainderl(x, y);
+}
+#endif // __UCLIBC__
 
 #endif // !__ANDROID__ && !__UCLIBC__
 } // namespace folly
