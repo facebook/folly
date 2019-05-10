@@ -197,8 +197,7 @@ void bulk_insert(
 
 template <typename Container, typename Compare>
 Container&& as_sorted(Container&& container, Compare const& comp) {
-  using namespace std;
-  std::sort(begin(container), end(container), comp);
+  std::sort(container.begin(), container.end(), comp);
   return static_cast<Container&&>(container);
 }
 } // namespace detail
