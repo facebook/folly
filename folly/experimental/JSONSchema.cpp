@@ -25,6 +25,7 @@
 #include <folly/Singleton.h>
 #include <folly/String.h>
 #include <folly/json.h>
+#include <folly/portability/Math.h>
 
 namespace folly {
 namespace jsonschema {
@@ -141,7 +142,7 @@ struct MultipleOfValidator final : IValidator {
       return none;
     }
     if (schema_.isDouble() || value.isDouble()) {
-      const auto rem = std::remainder(value.asDouble(), schema_.asDouble());
+      const auto rem = folly::remainder(value.asDouble(), schema_.asDouble());
       if (std::abs(rem) > std::numeric_limits<double>::epsilon()) {
         return makeError("a multiple of ", schema_, value);
       }
