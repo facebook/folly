@@ -388,17 +388,17 @@ class ShipitPathMap(object):
         # may legitimately need to keep some state in the source tree :-/
         installed_name = os.path.join(dest_root, ".shipit_shipped")
         if os.path.exists(installed_name):
-            with open(installed_name, "r") as f:
-                for name in f.readlines():
+            with open(installed_name, "rb") as f:
+                for name in f.read().decode("utf-8").splitlines():
                     name = name.strip()
                     if name not in full_file_list:
                         print("Remove %s" % name)
                         os.unlink(name)
                         change_status.record_change(name)
 
-        with open(installed_name, "w") as f:
+        with open(installed_name, "wb") as f:
             for name in sorted(list(full_file_list)):
-                f.write("%s\n" % name)
+                f.write(("%s\n" % name).encode("utf-8"))
 
         return change_status
 
