@@ -46,7 +46,7 @@ void merge(unsigned int iters, size_t maxSize, size_t bufSize) {
   }
 
   for (const auto& buffer : buffers) {
-    digest = digest.merge(folly::presorted, buffer);
+    digest = digest.merge(folly::sorted_equivalent, buffer);
   }
 }
 

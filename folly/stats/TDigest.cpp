@@ -123,10 +123,11 @@ TDigest TDigest::merge(Range<const double*> unsortedValues) const {
   detail::double_radix_sort(n, buckets.get(), in, out);
   DCHECK(std::is_sorted(in, in + n));
 
-  return merge(presorted, Range<const double*>(in, in + n));
+  return merge(sorted_equivalent, Range<const double*>(in, in + n));
 }
 
-TDigest TDigest::merge(presorted_t, Range<const double*> sortedValues) const {
+TDigest TDigest::merge(sorted_equivalent_t, Range<const double*> sortedValues)
+    const {
   if (sortedValues.empty()) {
     return *this;
   }
