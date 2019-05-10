@@ -29,7 +29,7 @@ cache:
 #   https://github.com/travis-ci/travis-ci/issues/5142
 matrix:
   include:
-    - env: ['os_image=ubuntu:16.04', gcc_version=5]
+    - env: ['os_image=ubuntu:18.04', gcc_version=7]
       services: [docker]
 
 addons:

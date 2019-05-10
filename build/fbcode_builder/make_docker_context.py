@@ -45,6 +45,7 @@ def make_docker_context(
 
     valid_versions = (
         ('ubuntu:16.04', '5'),
+        ('ubuntu:18.04', '7'),
     )
 
     def add_args(parser):
