@@ -811,11 +811,7 @@ TEST(Function, SafeCaptureByReference) {
   // for_each's second parameter is of type Function<...> const&.
   // Hence we know we can safely pass it a lambda that references local
   // variables. There is no way the reference to x will be stored anywhere.
-  for_each<std::vector<int>>(vec, [&sum](int x) { sum += x; });
-
-  // gcc versions before 4.9 cannot deduce the type T in the above call
-  // to for_each. Modern compiler versions can compile the following line:
-  //   for_each(vec, [&sum](int x) { sum += x; });
+  for_each(vec, [&sum](int x) { sum += x; });
 
   EXPECT_EQ(999, sum);
 }
