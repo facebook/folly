@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 from getdeps.buildopts import setup_build_options
+from getdeps.errors import TransientFailure
 from getdeps.load import load_project, manifests_in_dependency_order
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType, context_from_host_tuple
@@ -407,7 +408,14 @@ def main():
         return 0
     try:
         return args.func(args)
-    except subprocess.CalledProcessError:
+    except TransientFailure as exc:
+        print("TransientFailure: %s" % str(exc))
+        # This return code is treated as a retryable transient infrastructure
+        # error by Facebook's internal CI, rather than eg: a build or code
+        # related error that needs to be fixed before progress can be made.
+        return 128
+    except subprocess.CalledProcessError as exc:
+        print("%s" % str(exc), file=sys.stderr)
         print("!! Failed", file=sys.stderr)
         return 1
 

@@ -21,6 +21,7 @@ import zipfile
 
 from .copytree import prefetch_dir_if_eden
 from .envfuncs import Env
+from .errors import TransientFailure
 from .platform import is_windows
 from .runcmd import run_cmd
 
@@ -548,7 +549,13 @@ def download_url_to_file_with_progress(url, file_name):
 
     progress = Progress()
     start = time.time()
-    (_filename, headers) = urlretrieve(url, file_name, reporthook=progress.progress)
+    try:
+        (_filename, headers) = urlretrieve(url, file_name, reporthook=progress.progress)
+    except OSError as exc:
+        raise TransientFailure(
+            "Failed to download %s to %s: %s" % (url, file_name, str(exc))
+        )
+
     end = time.time()
     sys.stdout.write(" [Complete in %f seconds]\n" % (end - start))
     sys.stdout.flush()
