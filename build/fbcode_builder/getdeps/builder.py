@@ -279,6 +279,21 @@ class CMakeBuilder(BuilderBase):
     def run_tests(self, install_dirs):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
+        cmake = path_search(env, "cmake")
+
+        def get_property(test, propname, defval=None):
+            """ extracts a named property from a cmake test info json blob.
+            The properties look like:
+            [{"name": "WORKING_DIRECTORY"},
+             {"value": "something"}]
+            We assume that it is invalid for the same named property to be
+            listed more than once.
+            """
+            props = test.get("properties", [])
+            for p in props:
+                if p.get("name", None) == propname:
+                    return p.get("value", defval)
+            return defval
 
         def list_tests():
             output = subprocess.check_output(
@@ -288,12 +303,16 @@ class CMakeBuilder(BuilderBase):
             tests = []
             machine_suffix = self.build_opts.host_type.as_tuple_string()
             for test in data["tests"]:
+                working_dir = get_property(test, "WORKING_DIRECTORY")
+                command = test["command"]
+                if working_dir:
+                    command = [cmake, "-E", "chdir", working_dir] + command
                 tests.append(
                     {
                         "type": "custom",
                         "target": "%s-%s-getdeps-%s"
                         % (self.manifest.name, test["name"], machine_suffix),
-                        "command": test["command"],
+                        "command": command,
                     }
                 )
             return tests
