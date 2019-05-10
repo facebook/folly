@@ -860,6 +860,7 @@ if (BUILD_TESTS)
       TEST try_test SOURCES TryTest.cpp
       TEST unit_test SOURCES UnitTest.cpp
       TEST uri_test SOURCES UriTest.cpp
+      TEST utility_test SOURCES UtilityTest.cpp
       TEST varint_test SOURCES VarintTest.cpp
   )
 

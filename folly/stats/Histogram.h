@@ -28,6 +28,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
 #include <folly/stats/detail/Bucket.h>
 
 namespace folly {
@@ -475,17 +476,6 @@ class Histogram {
   };
 
  private:
-  template <typename S, typename = std::enable_if_t<std::is_integral<S>::value>>
-  static constexpr std::make_unsigned_t<S> to_unsigned(S s) {
-    return static_cast<std::make_unsigned_t<S>>(s);
-  }
-  template <
-      typename S,
-      typename = std::enable_if_t<!std::is_integral<S>::value>>
-  static constexpr S to_unsigned(S s) {
-    return s;
-  }
-
   detail::HistogramBuckets<ValueType, Bucket> buckets_;
 };
 

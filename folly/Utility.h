@@ -294,10 +294,15 @@ constexpr auto to_signed(T const& t) -> typename std::make_signed<T>::type {
                                            : static_cast<S>(t);
 }
 
-template <typename T>
+template <typename T, typename = std::enable_if_t<std::is_integral<T>::value>>
 constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
   using U = typename std::make_unsigned<T>::type;
   return static_cast<U>(t);
+}
+
+template <typename T, typename = std::enable_if_t<!std::is_integral<T>::value>>
+constexpr auto to_unsigned(T const& t) {
+  return t;
 }
 
 template <class E>

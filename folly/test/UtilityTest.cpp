@@ -136,3 +136,8 @@ TEST_F(UtilityTest, to_unsigned) {
     EXPECT_EQ(-12, actual);
   }
 }
+
+TEST_F(UtilityTest, to_unsigned_sfinae_friendly) {
+  constexpr auto actual = folly::to_unsigned(double(-12));
+  EXPECT_EQ(-12, actual);
+}
