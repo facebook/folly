@@ -115,6 +115,7 @@ struct SSLLock {
 // SSLContext runs in such environments.
 // Instead of declaring a static member we "new" the static
 // member so that it won't be destructed on exit().
+#if !FOLLY_SSL_DETAIL_OPENSSL_IS_110
 static std::unique_ptr<SSLLock[]>& locks() {
   static auto locksInst = new std::unique_ptr<SSLLock[]>();
   return *locksInst;
@@ -150,8 +151,10 @@ dyn_lock(int mode, struct CRYPTO_dynlock_value* lock, const char*, int) {
 static void dyn_destroy(struct CRYPTO_dynlock_value* lock, const char*, int) {
   delete lock;
 }
+#endif
 
 void installThreadingLocks() {
+#if !FOLLY_SSL_DETAIL_OPENSSL_IS_110
   // static locking
   locks() = std::make_unique<SSLLock[]>(size_t(CRYPTO_num_locks()));
   for (auto it : lockTypes()) {
@@ -163,15 +166,18 @@ void installThreadingLocks() {
   CRYPTO_set_dynlock_create_callback(dyn_create);
   CRYPTO_set_dynlock_lock_callback(dyn_lock);
   CRYPTO_set_dynlock_destroy_callback(dyn_destroy);
+#endif
 }
 
 void cleanupThreadingLocks() {
+#if !FOLLY_SSL_DETAIL_OPENSSL_IS_110
   CRYPTO_THREADID_set_callback(nullptr);
   CRYPTO_set_locking_callback(nullptr);
   CRYPTO_set_dynlock_create_callback(nullptr);
   CRYPTO_set_dynlock_lock_callback(nullptr);
   CRYPTO_set_dynlock_destroy_callback(nullptr);
   locks().reset();
+#endif
 }
 
 } // namespace detail

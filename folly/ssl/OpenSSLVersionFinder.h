@@ -25,7 +25,7 @@ namespace folly {
 namespace ssl {
 inline std::string getOpenSSLLongVersion() {
 #ifdef OPENSSL_VERSION_TEXT
-  return SSLeay_version(SSLEAY_VERSION);
+  return OpenSSL_version(OPENSSL_VERSION);
 #elif defined(OPENSSL_VERSION_NUMBER)
   return folly::format("0x{:x}", OPENSSL_VERSION_NUMBER).str();
 #else
@@ -35,7 +35,7 @@ inline std::string getOpenSSLLongVersion() {
 
 inline uint64_t getOpenSSLNumericVersion() {
 #ifdef OPENSSL_VERSION_NUMBER
-  return SSLeay();
+  return OpenSSL_version_num();
 #else
   return 0;
 #endif
