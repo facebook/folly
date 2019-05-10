@@ -20,7 +20,7 @@
 
 namespace folly {
 
-#ifndef __ANDROID__
+#if !defined(__ANDROID__) && !defined(__UCLIBC__)
 
 /**
  * Most platforms hopefully provide std::nextafter.
@@ -28,13 +28,13 @@ namespace folly {
 
 /* using override */ using std::nextafter;
 
-#else // !__ANDROID__
+#else // !__ANDROID__ && !__UCLIBC__
 
 /**
- * On Android, std::nextafter isn't implemented. However, the C functions and
- * compiler builtins are still provided. Using the GCC builtin is actually
- * slightly faster, as they're constexpr and the use cases within folly are in
- * constexpr context.
+ * On Android and uclibc, std::nextafter isn't implemented. However, the C
+ * functions and compiler builtins are still provided. Using the GCC builtin is
+ * actually slightly faster, as they're constexpr and the use cases within folly
+ * are in constexpr context.
  */
 
 #if defined(__GNUC__) && !defined(__clang__)
@@ -67,5 +67,5 @@ inline long double nextafter(long double x, long double y) {
 
 #endif // __GNUC__
 
-#endif // __ANDROID__
+#endif // !__ANDROID__ && !__UCLIBC__
 } // namespace folly
