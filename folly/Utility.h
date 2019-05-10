@@ -188,6 +188,53 @@ inline in_place_index_tag<I> in_place_index(in_place_index_tag<I> = {}) {
 struct initlist_construct_t {};
 constexpr initlist_construct_t initlist_construct{};
 
+//  sorted_unique_t, sorted_unique
+//
+//  A generic tag type and value to indicate that some constructor or method
+//  accepts a container in which the values are sorted and unique.
+//
+//  Example:
+//
+//    void takes_numbers(folly::sorted_unique_t, std::vector<int> alist) {
+//      assert(std::is_sorted(alist.begin(), alist.end()));
+//      assert(std::unique(alist.begin(), alist.end()) == alist.end());
+//      for (i : alist) {
+//        // some behavior which safe only when alist is sorted and unique
+//      }
+//    }
+//    void takes_numbers(std::vector<int> alist) {
+//      std::sort(alist.begin(), alist.end());
+//      alist.erase(std::unique(alist.begin(), alist.end()), alist.end());
+//      takes_numbers(folly::sorted_unique, alist);
+//    }
+//
+//  mimic: std::sorted_unique_t, std::sorted_unique, p0429r6
+struct sorted_unique_t {};
+constexpr sorted_unique_t sorted_unique;
+
+//  sorted_equivalent_t, sorted_equivalent
+//
+//  A generic tag type and value to indicate that some constructor or method
+//  accepts a container in which the values are sorted but not necessarily
+//  unique.
+//
+//  Example:
+//
+//    void takes_numbers(folly::sorted_equivalent_t, std::vector<int> alist) {
+//      assert(std::is_sorted(alist.begin(), alist.end()));
+//      for (i : alist) {
+//        // some behavior which safe only when alist is sorted
+//      }
+//    }
+//    void takes_numbers(std::vector<int> alist) {
+//      std::sort(alist.begin(), alist.end());
+//      takes_numbers(folly::sorted_equivalent, alist);
+//    }
+//
+//  mimic: std::sorted_equivalent_t, std::sorted_equivalent, p0429r6
+struct sorted_equivalent_t {};
+constexpr sorted_equivalent_t sorted_equivalent;
+
 /**
  * A generic tag type to indicate that some constructor or method accepts a
  * presorted container.
