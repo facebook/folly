@@ -163,10 +163,6 @@ EventBase::~EventBase() {
     virtualEventBaseDestroyFuture.get();
   }
 
-  // Destruction of the wheel timer may trigger cancellation callbacks.
-  // Run those before destruction callbacks.
-  wheelTimer_.reset();
-
   // Call all destruction callbacks, before we start cleaning up our state.
   while (!onDestructionCallbacks_.rlock()->empty()) {
     OnDestructionCallback::List callbacks;

@@ -2129,28 +2129,3 @@ TEST(EventBaseTest, RunOnDestructionAddCallbackWithinCallback) {
   }
   EXPECT_EQ(2, callbacksCalled);
 }
-
-class TestWheelTimeout : public HHWheelTimer::Callback {
- public:
-  ~TestWheelTimeout() override = default;
-
-  void callbackCanceled() noexcept override {
-    // This is invoked when the EventBase is destroyed
-    canceled = true;
-  }
-
-  void timeoutExpired() noexcept override {}
-
-  bool canceled{false};
-};
-
-TEST(EventBaseTest, WheelTimerWhileDestroyingEvb) {
-  TestWheelTimeout timeout;
-
-  {
-    EventBase eb;
-    eb.runOnDestruction([&]() { EXPECT_TRUE(timeout.canceled); });
-    auto& timer = eb.timer();
-    timer.scheduleTimeout(&timeout, std::chrono::seconds(10));
-  }
-}
