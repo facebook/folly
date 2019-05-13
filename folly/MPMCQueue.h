@@ -1455,9 +1455,9 @@ struct SingleElementQueue {
     } catch (...) {
       // g++ doesn't seem to have std::is_nothrow_destructible yet
     }
-#ifndef NDEBUG
-    memset(&contents_, 'Q', sizeof(T));
-#endif
+    if (kIsDebug) {
+      memset(&contents_, 'Q', sizeof(T));
+    }
   }
 
   /// Tag classes for dispatching to enqueue/dequeue implementation.
