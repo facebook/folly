@@ -236,6 +236,58 @@ TEST(RetryingTest, large_retries) {
   }
 }
 
+TEST(RetryingTest, retryingJitteredExponentialBackoffDur) {
+  mt19937_64 rng(0);
+
+  auto backoffMin = milliseconds(100);
+  auto backoffMax = milliseconds(1000);
+
+  EXPECT_EQ(
+      100,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          1, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  EXPECT_EQ(
+      200,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          2, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  EXPECT_EQ(
+      400,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          3, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  EXPECT_EQ(
+      800,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          4, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  EXPECT_EQ(
+      1000,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          5, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  // Invalid usage: backoffMin > backoffMax
+  backoffMax = milliseconds(0);
+
+  EXPECT_EQ(
+      100,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          1, backoffMin, backoffMax, 0, rng)
+          .count());
+
+  EXPECT_EQ(
+      100,
+      futures::detail::retryingJitteredExponentialBackoffDur(
+          1000, backoffMin, backoffMax, 0, rng)
+          .count());
+}
+
 /*
 TEST(RetryingTest, policy_sleep_cancel) {
   multiAttemptExpectDurationWithin(5, milliseconds(0), milliseconds(10), []{

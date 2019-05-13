@@ -148,7 +148,7 @@ Duration retryingJitteredExponentialBackoffDur(
   auto jitter = std::exp(dist(rng));
   auto backoff_rep = jitter * backoff_min.count() * std::pow(2, n - 1);
   if (UNLIKELY(backoff_rep >= std::numeric_limits<Duration::rep>::max())) {
-    return backoff_max;
+    return std::max(backoff_min, backoff_max);
   }
   auto backoff = Duration(Duration::rep(backoff_rep));
   return std::max(backoff_min, std::min(backoff_max, backoff));
