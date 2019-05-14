@@ -122,6 +122,33 @@ class FiberManager : public ::folly::Executor {
     uint32_t fibersPoolResizePeriodMs{0};
 
     constexpr Options() {}
+
+    auto hash() const {
+      return std::make_tuple(
+          stackSize,
+          stackSizeMultiplier,
+          recordStackEvery,
+          maxFibersPoolSize,
+          useGuardPages,
+          fibersPoolResizePeriodMs);
+    }
+  };
+
+  /**
+   * A (const) Options instance with a dedicated unique identifier,
+   * which is used as a key in FiberManagerMap.
+   * This is relevant if you want to run different FiberManager,
+   * with different Option, on the same EventBase.
+   */
+  struct FrozenOptions {
+    explicit FrozenOptions(Options options_)
+        : options(std::move(options_)), token(create(options)) {}
+
+    const Options options;
+    const ssize_t token;
+
+   private:
+    static ssize_t create(const Options&);
   };
 
   using ExceptionCallback =

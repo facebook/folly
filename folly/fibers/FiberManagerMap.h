@@ -29,5 +29,10 @@ FiberManager& getFiberManager(
 FiberManager& getFiberManager(
     folly::VirtualEventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options());
+
+FiberManager& getFiberManager(
+    folly::EventBase& evb,
+    const FiberManager::FrozenOptions& opts);
+
 } // namespace fibers
 } // namespace folly

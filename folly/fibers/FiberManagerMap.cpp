@@ -28,18 +28,25 @@ namespace fibers {
 
 namespace {
 
+// ssize_t is a hash of FiberManager::Options
 template <typename EventBaseT>
-Function<void()> makeOnEventBaseDestructionCallback(EventBaseT& evb);
+using Key = std::pair<EventBaseT*, ssize_t>;
+
+template <typename EventBaseT>
+Function<void()> makeOnEventBaseDestructionCallback(const Key<EventBaseT>& key);
 
 template <typename EventBaseT>
 class GlobalCache {
  public:
-  static FiberManager& get(EventBaseT& evb, const FiberManager::Options& opts) {
-    return instance().getImpl(evb, opts);
+  static FiberManager& get(
+      const Key<EventBaseT>& key,
+      EventBaseT& evb,
+      const FiberManager::Options& opts) {
+    return instance().getImpl(key, evb, opts);
   }
 
-  static std::unique_ptr<FiberManager> erase(EventBaseT& evb) {
-    return instance().eraseImpl(evb);
+  static std::unique_ptr<FiberManager> erase(const Key<EventBaseT>& key) {
+    return instance().eraseImpl(key);
   }
 
  private:
@@ -52,17 +59,20 @@ class GlobalCache {
     return *ret;
   }
 
-  FiberManager& getImpl(EventBaseT& evb, const FiberManager::Options& opts) {
+  FiberManager& getImpl(
+      const Key<EventBaseT>& key,
+      EventBaseT& evb,
+      const FiberManager::Options& opts) {
     bool constructed = false;
     SCOPE_EXIT {
       if (constructed) {
-        evb.runOnDestruction(makeOnEventBaseDestructionCallback(evb));
+        evb.runOnDestruction(makeOnEventBaseDestructionCallback(key));
       }
     };
 
     std::lock_guard<std::mutex> lg(mutex_);
 
-    auto& fmPtrRef = map_[&evb];
+    auto& fmPtrRef = map_[key];
 
     if (!fmPtrRef) {
       constructed = true;
@@ -75,18 +85,18 @@ class GlobalCache {
     return *fmPtrRef;
   }
 
-  std::unique_ptr<FiberManager> eraseImpl(EventBaseT& evb) {
+  std::unique_ptr<FiberManager> eraseImpl(const Key<EventBaseT>& key) {
     std::lock_guard<std::mutex> lg(mutex_);
 
-    DCHECK_EQ(map_.count(&evb), 1u);
+    DCHECK_EQ(map_.count(key), 1u);
 
-    auto ret = std::move(map_[&evb]);
-    map_.erase(&evb);
+    auto ret = std::move(map_[key]);
+    map_.erase(key);
     return ret;
   }
 
   std::mutex mutex_;
-  std::unordered_map<EventBaseT*, std::unique_ptr<FiberManager>> map_;
+  std::unordered_map<Key<EventBaseT>, std::unique_ptr<FiberManager>> map_;
 };
 
 constexpr size_t kEraseListMaxSize = 64;
@@ -94,17 +104,20 @@ constexpr size_t kEraseListMaxSize = 64;
 template <typename EventBaseT>
 class ThreadLocalCache {
  public:
-  static FiberManager& get(EventBaseT& evb, const FiberManager::Options& opts) {
-    return instance()->getImpl(evb, opts);
+  static FiberManager& get(
+      const Key<EventBaseT>& key,
+      EventBaseT& evb,
+      const FiberManager::Options& opts) {
+    return instance()->getImpl(key, evb, opts);
   }
 
-  static void erase(EventBaseT& evb) {
+  static void erase(const Key<EventBaseT>& key) {
     for (auto& localInstance : instance().accessAllThreads()) {
       localInstance.eraseInfo_.withWLock([&](auto& info) {
         if (info.eraseList.size() >= kEraseListMaxSize) {
           info.eraseAll = true;
         } else {
-          info.eraseList.push_back(&evb);
+          info.eraseList.push_back(key);
         }
         localInstance.eraseRequested_ = true;
       });
@@ -126,12 +139,15 @@ class ThreadLocalCache {
     return *ret;
   }
 
-  FiberManager& getImpl(EventBaseT& evb, const FiberManager::Options& opts) {
+  FiberManager& getImpl(
+      const Key<EventBaseT>& key,
+      EventBaseT& evb,
+      const FiberManager::Options& opts) {
     eraseImpl();
 
-    auto& fmPtrRef = map_[&evb];
+    auto& fmPtrRef = map_[key];
     if (!fmPtrRef) {
-      fmPtrRef = &GlobalCache<EventBaseT>::get(evb, opts);
+      fmPtrRef = &GlobalCache<EventBaseT>::get(key, evb, opts);
     }
 
     DCHECK(fmPtrRef != nullptr);
@@ -148,8 +164,8 @@ class ThreadLocalCache {
       if (info.eraseAll) {
         map_.clear();
       } else {
-        for (auto evbPtr : info.eraseList) {
-          map_.erase(evbPtr);
+        for (auto& key : info.eraseList) {
+          map_.erase(key);
         }
       }
 
@@ -159,23 +175,24 @@ class ThreadLocalCache {
     });
   }
 
-  std::unordered_map<EventBaseT*, FiberManager*> map_;
+  std::unordered_map<Key<EventBaseT>, FiberManager*> map_;
   std::atomic<bool> eraseRequested_{false};
 
   struct EraseInfo {
     bool eraseAll{false};
-    std::vector<EventBaseT*> eraseList;
+    std::vector<Key<EventBaseT>> eraseList;
   };
 
   folly::Synchronized<EraseInfo> eraseInfo_;
 };
 
 template <typename EventBaseT>
-Function<void()> makeOnEventBaseDestructionCallback(EventBaseT& evb) {
-  return [&evb] {
-    auto fm = GlobalCache<EventBaseT>::erase(evb);
+Function<void()> makeOnEventBaseDestructionCallback(
+    const Key<EventBaseT>& key) {
+  return [key] {
+    auto fm = GlobalCache<EventBaseT>::erase(key);
     DCHECK(fm.get() != nullptr);
-    ThreadLocalCache<EventBaseT>::erase(evb);
+    ThreadLocalCache<EventBaseT>::erase(key);
   };
 }
 
@@ -184,13 +201,22 @@ Function<void()> makeOnEventBaseDestructionCallback(EventBaseT& evb) {
 FiberManager& getFiberManager(
     EventBase& evb,
     const FiberManager::Options& opts) {
-  return ThreadLocalCache<EventBase>::get(evb, opts);
+  return ThreadLocalCache<EventBase>::get(std::make_pair(&evb, 0), evb, opts);
 }
 
 FiberManager& getFiberManager(
     VirtualEventBase& evb,
     const FiberManager::Options& opts) {
-  return ThreadLocalCache<VirtualEventBase>::get(evb, opts);
+  return ThreadLocalCache<VirtualEventBase>::get(
+      std::make_pair(&evb, 0), evb, opts);
 }
+
+FiberManager& getFiberManager(
+    folly::EventBase& evb,
+    const FiberManager::FrozenOptions& opts) {
+  return ThreadLocalCache<EventBase>::get(
+      std::make_pair(&evb, opts.token), evb, opts.options);
+}
+
 } // namespace fibers
 } // namespace folly

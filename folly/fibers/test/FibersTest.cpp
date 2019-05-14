@@ -1570,6 +1570,50 @@ TEST(FiberManager, nestedFiberManagers) {
   outerEvb.loopForever();
 }
 
+TEST(FiberManager, nestedFiberManagersSameEvb) {
+  folly::EventBase evb;
+  auto& fm1 = getFiberManager(evb);
+  EXPECT_EQ(&fm1, &getFiberManager(evb));
+
+  // Always return the same fm by default
+  FiberManager::Options unused;
+  unused.stackSize = 1024;
+  EXPECT_EQ(&fm1, &getFiberManager(evb, unused));
+
+  // Use frozen options
+  FiberManager::Options used;
+  used.stackSize = 1024;
+  FiberManager::FrozenOptions options{used};
+  auto& fm2 = getFiberManager(evb, options);
+  EXPECT_NE(&fm1, &fm2);
+
+  // Same option
+  EXPECT_EQ(&fm2, &getFiberManager(evb, options));
+  EXPECT_EQ(&fm2, &getFiberManager(evb, FiberManager::FrozenOptions{used}));
+  FiberManager::Options same;
+  same.stackSize = 1024;
+  EXPECT_EQ(&fm2, &getFiberManager(evb, FiberManager::FrozenOptions{same}));
+
+  // Different option
+  FiberManager::Options differ;
+  differ.stackSize = 2048;
+  auto& fm3 = getFiberManager(evb, FiberManager::FrozenOptions{differ});
+  EXPECT_NE(&fm1, &fm3);
+  EXPECT_NE(&fm2, &fm3);
+
+  // Nested usage
+  getFiberManager(evb)
+      .addTaskFuture([&] {
+        EXPECT_EQ(&fm1, FiberManager::getFiberManagerUnsafe());
+
+        getFiberManager(evb, options)
+            .addTaskFuture(
+                [&] { EXPECT_EQ(&fm2, FiberManager::getFiberManagerUnsafe()); })
+            .wait();
+      })
+      .waitVia(&evb);
+}
+
 TEST(FiberManager, semaphore) {
   static constexpr size_t kTasks = 10;
   static constexpr size_t kIterations = 10000;

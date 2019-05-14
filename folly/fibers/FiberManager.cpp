@@ -65,10 +65,23 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc();
 
 #endif
 
+namespace std {
+template <>
+struct hash<folly::fibers::FiberManager::Options> {
+  ssize_t operator()(const folly::fibers::FiberManager::Options& opts) const {
+    return hash<decltype(opts.hash())>()(opts.hash());
+  }
+};
+} // namespace std
+
 namespace folly {
 namespace fibers {
 
 FOLLY_TLS FiberManager* FiberManager::currentFiberManager_ = nullptr;
+
+auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
+  return std::hash<Options>()(options);
+}
 
 FiberManager::FiberManager(
     std::unique_ptr<LoopController> loopController,
