@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <glog/logging.h>
 #include <typeinfo>
 
 #include <boost/intrusive/list.hpp>
-
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
 #include <folly/detail/Iterators.h>

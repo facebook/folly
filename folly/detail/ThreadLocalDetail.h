@@ -18,13 +18,12 @@
 
 #include <limits.h>
 
+#include <glog/logging.h>
 #include <atomic>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <vector>
-
-#include <glog/logging.h>
 
 #include <folly/Exception.h>
 #include <folly/Function.h>

@@ -23,6 +23,10 @@
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
+#if __has_include(<pthread_np.h>)
+#include <pthread_np.h>
+#endif
+
 namespace folly {
 
 /**
@@ -84,8 +88,12 @@ inline uint64_t getOSThreadID() {
   return tid;
 #elif _WIN32
   return uint64_t(GetCurrentThreadId());
-#else
+#elif __linux__
   return uint64_t(syscall(FOLLY_SYS_gettid));
+#elif __has_include(<pthread_np.h>)
+  return uint64_t(pthread_getthreadid_np());
+#else
+#error Cannot define platform-specific get Thread ID.
 #endif
 }
 } // namespace folly
