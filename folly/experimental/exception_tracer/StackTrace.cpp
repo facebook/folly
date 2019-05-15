@@ -61,46 +61,46 @@ bool StackTraceStack::pushCurrent() {
   }
   node->frameCount = n;
 
-  node->next = top_;
-  top_ = node;
+  node->next = state_[kTopIdx];
+  state_[kTopIdx] = node;
   return true;
 }
 
 bool StackTraceStack::pop() {
   checkGuard();
-  if (!top_) {
+  if (!state_[kTopIdx]) {
     return false;
   }
 
-  auto node = top_;
-  top_ = node->next;
+  auto node = state_[kTopIdx];
+  state_[kTopIdx] = node->next;
   node->deallocate();
   return true;
 }
 
 bool StackTraceStack::moveTopFrom(StackTraceStack& other) {
   checkGuard();
-  if (!other.top_) {
+  if (!other.state_[kTopIdx]) {
     return false;
   }
 
-  auto node = other.top_;
-  other.top_ = node->next;
-  node->next = top_;
-  top_ = node;
+  auto node = other.state_[kTopIdx];
+  other.state_[kTopIdx] = node->next;
+  node->next = state_[kTopIdx];
+  state_[kTopIdx] = node;
   return true;
 }
 
 void StackTraceStack::clear() {
   checkGuard();
-  while (top_) {
+  while (state_[kTopIdx]) {
     pop();
   }
 }
 
 StackTrace* StackTraceStack::top() {
   checkGuard();
-  return top_;
+  return state_[kTopIdx];
 }
 
 StackTrace* StackTraceStack::next(StackTrace* p) {
