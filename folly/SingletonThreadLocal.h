@@ -16,46 +16,16 @@
 
 #pragma once
 
-#include <typeinfo>
-
 #include <boost/intrusive/list.hpp>
 
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
 #include <folly/detail/Iterators.h>
 #include <folly/detail/Singleton.h>
+#include <folly/detail/UniqueInstance.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {
-
-namespace detail {
-
-class SingletonThreadLocalBase {
- public:
-  class UniqueBase {
-   public:
-    using Ptr = std::type_info const*;
-    using Ref = std::type_info const&;
-    struct Value {
-      bool init;
-      Ptr make;
-      Ptr tltag;
-    };
-
-    template <typename T, typename Tag, typename Make, typename TLTag>
-    explicit UniqueBase(tag_t<T, Tag, Make, TLTag>) noexcept
-        : UniqueBase(
-              typeid(T),
-              typeid(Tag),
-              typeid(Make),
-              typeid(TLTag),
-              detail::createGlobal<Value, tag_t<T, Tag, UniqueBase>>()) {}
-
-    UniqueBase(Ref type, Ref tag, Ref make, Ref tltag, Value& value) noexcept;
-  };
-};
-
-} // namespace detail
 
 /// SingletonThreadLocal
 ///
@@ -95,12 +65,9 @@ template <
     typename Make = detail::DefaultMake<T>,
     typename TLTag = std::
         conditional_t<std::is_same<Tag, detail::DefaultTag>::value, void, Tag>>
-class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
+class SingletonThreadLocal {
  private:
-  struct Unique final : UniqueBase {
-    Unique() noexcept : UniqueBase(tag_t<T, Tag, Make, TLTag>{}) {}
-  };
-  static Unique unique;
+  static detail::UniqueInstance unique;
 
   struct Wrapper;
 
@@ -232,8 +199,10 @@ class SingletonThreadLocal : private detail::SingletonThreadLocalBase {
 };
 
 template <typename T, typename Tag, typename Make, typename TLTag>
-typename SingletonThreadLocal<T, Tag, Make, TLTag>::Unique
-    SingletonThreadLocal<T, Tag, Make, TLTag>::unique;
+detail::UniqueInstance SingletonThreadLocal<T, Tag, Make, TLTag>::unique{
+    "folly::SingletonThreadLocal",
+    tag_t<T, Tag>{},
+    tag_t<Make, TLTag>{}};
 
 } // namespace folly
 
