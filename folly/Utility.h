@@ -235,48 +235,6 @@ constexpr sorted_unique_t sorted_unique;
 struct sorted_equivalent_t {};
 constexpr sorted_equivalent_t sorted_equivalent;
 
-/**
- * A generic tag type to indicate that some constructor or method accepts a
- * presorted container.
- *
- * Example:
- *
- *  void takes_numbers(std::vector<int> alist) {
- *    std::sort(alist.begin(), alist.end());
- *    takes_numbers(folly::presorted, alist);
- *  }
- *
- *  void takes_numbers(folly::presorted_t, std::vector<int> alist) {
- *    assert(std::is_sorted(alist.begin(), alist.end())); // debug mode only
- *    for (i : alist) {
- *      // some behavior which is defined and safe only when alist is sorted ...
- *    }
- *  }
- */
-struct presorted_t {};
-constexpr presorted_t presorted{};
-
-/**
- * A generic tag type to indicate that some constructor or method accepts an
- * unsorted container. Useful in contexts which might have some reason to assume
- * a container to be sorted.
- *
- * Example:
- *
- *  void takes_numbers(std::vector<int> alist) {
- *    takes_numbers(folly::unsorted, alist);
- *  }
- *
- *  void takes_numbers(folly::unsorted_t, std::vector<int> alist) {
- *    std::sort(alist.begin(), alist.end());
- *    for (i : alist) {
- *      // some behavior which is defined and safe only when alist is sorted ...
- *    }
- *  }
- */
-struct unsorted_t {};
-constexpr unsorted_t unsorted{};
-
 template <typename T>
 struct transparent : T {
   using is_transparent = void;

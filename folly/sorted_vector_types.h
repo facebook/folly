@@ -210,13 +210,8 @@ bool is_sorted_unique(Container const& container, Compare const& comp) {
 }
 
 template <typename Container, typename Compare>
-Container&& as_sorted(Container&& container, Compare const& comp) {
+Container&& as_sorted_unique(Container&& container, Compare const& comp) {
   std::sort(container.begin(), container.end(), comp);
-  return static_cast<Container&&>(container);
-}
-
-template <typename Container, typename Compare>
-Container&& as_unique(Container&& container, Compare const& comp) {
   container.erase(
       std::unique(
           container.begin(),
@@ -226,11 +221,6 @@ Container&& as_unique(Container&& container, Compare const& comp) {
           }),
       container.end());
   return static_cast<Container&&>(container);
-}
-
-template <typename Container, typename Compare>
-Container&& as_sorted_unique(Container&& container, Compare const& comp) {
-  return as_unique(as_sorted(static_cast<Container&&>(container), comp), comp);
 }
 } // namespace detail
 
@@ -348,15 +338,6 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     assert(detail::is_sorted_unique(container, value_comp()));
     m_.cont_.swap(container);
   }
-
-  sorted_vector_set(
-      presorted_t,
-      Container&& container,
-      const Compare& comp = Compare())
-      : sorted_vector_set(
-            sorted_unique,
-            detail::as_unique(std::move(container), value_compare(comp)),
-            comp) {}
 
   sorted_vector_set& operator=(std::initializer_list<value_type> ilist) {
     clear();
@@ -771,15 +752,6 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     assert(detail::is_sorted_unique(container, value_comp()));
     m_.cont_.swap(container);
   }
-
-  sorted_vector_map(
-      presorted_t,
-      Container&& container,
-      const Compare& comp = Compare())
-      : sorted_vector_map(
-            sorted_unique,
-            detail::as_unique(std::move(container), value_compare(comp)),
-            comp) {}
 
   sorted_vector_map& operator=(std::initializer_list<value_type> ilist) {
     clear();
