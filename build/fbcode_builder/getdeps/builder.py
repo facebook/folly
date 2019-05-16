@@ -229,6 +229,9 @@ class CMakeBuilder(BuilderBase):
             "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         }
         env = self._compute_env(install_dirs)
+        ccache = path_search(env, "ccache")
+        if ccache:
+            defines["CMAKE_CXX_COMPILER_LAUNCHER"] = ccache
         if self.build_opts.is_darwin():
             # Try to persuade cmake to set the rpath to match the lib
             # dirs of the dependencies.  This isn't automatic, and to
