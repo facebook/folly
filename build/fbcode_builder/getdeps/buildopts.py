@@ -59,7 +59,7 @@ class BuildOptions(object):
             num_jobs = multiprocessing.cpu_count()
 
         if not install_dir:
-            install_dir = os.path.join(scratch_dir, "install")
+            install_dir = os.path.join(scratch_dir, "installed")
 
         self.project_hashes = None
         for p in ["../deps/github_hashes", "../project_hashes"]:
@@ -157,7 +157,7 @@ class BuildOptions(object):
             directory = "%s-%s" % (manifest.name, hash)
 
         build_dir = os.path.join(self.scratch_dir, "build", directory)
-        inst_dir = os.path.join(self.scratch_dir, "installed", directory)
+        inst_dir = os.path.join(self.install_dir, directory)
 
         return {"build_dir": build_dir, "inst_dir": inst_dir, "hash": hash}
 
