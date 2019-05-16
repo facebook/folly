@@ -241,6 +241,71 @@ TEST(Via, then2) {
   EXPECT_TRUE(c);
 }
 
+TEST(Via, allowInline) {
+  ManualExecutor x1, x2;
+  bool a = false, b = false, c = false, d = false, e = false, f = false,
+       g = false, h = false, i = false, j = false;
+  via(&x1)
+      .thenValue([&](auto&&) { a = true; })
+      .thenTryInline([&](auto&&) { b = true; })
+      .thenTry([&](auto&&) { c = true; })
+      .via(&x2)
+      .thenTryInline([&](auto&&) { d = true; })
+      .thenValue([&](auto&&) {
+        e = true;
+        return via(&x2).thenValue([&](auto&&) { f = true; });
+      })
+      .thenValueInline([&](auto&&) { g = true; })
+      .thenValue([&](auto&&) {
+        h = true;
+        return via(&x1).thenValue([&](auto&&) { i = true; });
+      })
+      .thenValueInline([&](auto&&) { j = true; });
+
+  EXPECT_FALSE(a);
+  EXPECT_FALSE(b);
+
+  // Expect b to be satisfied inline with the task x1
+  x1.run();
+  EXPECT_TRUE(a);
+  EXPECT_TRUE(b);
+  EXPECT_FALSE(c);
+
+  x1.run();
+  EXPECT_TRUE(c);
+  EXPECT_FALSE(d);
+
+  // Demonstrate that the executor transition did not allow inline execution
+  x2.run();
+  EXPECT_TRUE(d);
+  EXPECT_FALSE(e);
+
+  x2.run();
+  EXPECT_TRUE(e);
+  EXPECT_FALSE(f);
+  EXPECT_FALSE(g);
+
+  // Completing nested continuation should satisfy inline continuation
+  x2.run();
+  EXPECT_TRUE(f);
+  EXPECT_TRUE(g);
+  EXPECT_FALSE(h);
+
+  x2.run();
+  EXPECT_TRUE(h);
+  EXPECT_FALSE(i);
+  EXPECT_FALSE(j);
+
+  // Nested continuation on different executor should not complete next entry
+  // inline
+  x1.run();
+  EXPECT_TRUE(i);
+  EXPECT_FALSE(j);
+
+  x2.run();
+  EXPECT_TRUE(j);
+}
+
 #ifndef __APPLE__ // TODO #7372389
 /// Simple executor that does work in another thread
 class ThreadExecutor : public Executor {

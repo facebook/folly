@@ -258,7 +258,7 @@ class FutureBase {
   /// not worth listing all those and their fancy template signatures as
   /// friends. But it's not for public consumption.
   template <class F>
-  void setCallback_(F&& func);
+  void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
@@ -418,13 +418,13 @@ class FutureBase {
   // e.g. f.thenTry([](Try<T> t){ return t.value(); });
   template <typename F, typename R>
   typename std::enable_if<!R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, R);
+  thenImplementation(F&& func, R, InlineContinuation);
 
   // Variant: returns a Future
   // e.g. f.thenTry([](Try<T> t){ return makeFuture<T>(t); });
   template <typename F, typename R>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
-  thenImplementation(F&& func, R);
+  thenImplementation(F&& func, R, InlineContinuation);
 
   template <typename E>
   SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
@@ -1103,7 +1103,16 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Func shall return either another Future or a value.
   ///
+  /// thenInline will run the continuation inline with the execution of the
+  /// previous callback in the chain if the callback attached to the previous
+  /// future that triggers execution of func runs on the same executor that func
+  /// would be executed on.
+  ///
   /// A Future for the return type of func is returned.
+  ///
+  /// Versions of these functions with Inline in the name will run the
+  /// continuation inline if the executor the previous task completes on matches
+  /// the executor the next is to be enqueued on to.
   ///
   ///   Future<string> f2 = f1.thenTry([](Try<T>&&) { return string("foo"); });
   ///
@@ -1120,6 +1129,11 @@ class Future : private futures::detail::FutureBase<T> {
   Future<typename futures::detail::tryCallableResult<T, F>::value_type> then(
       F&& func) && {
     return std::move(*this).thenTry(std::forward<F>(func));
+  }
+  template <typename F>
+  Future<typename futures::detail::tryCallableResult<T, F>::value_type>
+  thenInline(F&& func) && {
+    return std::move(*this).thenTryInline(std::forward<F>(func));
   }
 
   /// Variant where func is an member function
@@ -1180,7 +1194,10 @@ class Future : private futures::detail::FutureBase<T> {
         futures::detail::makeExecutorLambda<T>(std::forward<Arg>(arg));
     using R = futures::detail::executorCallableResult<T, decltype(lambdaFunc)>;
     return std::move(*this)
-        .thenImplementation(std::move(lambdaFunc), R{})
+        .thenImplementation(
+            std::move(lambdaFunc),
+            R{},
+            futures::detail::InlineContinuation::forbid)
         .via(std::move(oldX));
   }
 
@@ -1194,6 +1211,12 @@ class Future : private futures::detail::FutureBase<T> {
   /// `auto&&` or `auto`).
   ///
   /// Func shall return either another Future or a value.
+  ///
+  /// Versions of these functions with Inline in the name will run the
+  /// continuation inline with the execution of the previous callback in the
+  /// chain if the callback attached to the previous future that triggers
+  /// execution of func runs on the same executor that func would be executed
+  /// on.
   ///
   /// A Future for the return type of func is returned.
   ///
@@ -1215,12 +1238,25 @@ class Future : private futures::detail::FutureBase<T> {
       F&& func) &&;
 
   template <typename F>
+  Future<typename futures::detail::tryCallableResult<T, F>::value_type>
+  thenTryInline(F&& func) &&;
+
+  template <typename F>
   Future<typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
   thenExTry(F&& func) &&;
+
+  template <typename F>
+  Future<typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
+  thenExTryInline(F&& func) &&;
 
   template <typename R, typename... Args>
   auto thenTry(R (&func)(Args...)) && {
     return std::move(*this).thenTry(&func);
+  }
+
+  template <typename R, typename... Args>
+  auto thenTryInline(R (&func)(Args...)) && {
+    return std::move(*this).thenTryInline(&func);
   }
 
   /// When this Future has completed, execute func which is a function that
@@ -1228,6 +1264,12 @@ class Future : private futures::detail::FutureBase<T> {
   /// `auto&&` or `auto`).
   ///
   /// Func shall return either another Future or a value.
+  ///
+  /// Versions of these functions with Inline in the name will run the
+  /// continuation inline with the execution of the previous callback in the
+  /// chain if the callback attached to the previous future that triggers
+  /// execution of func runs on the same executor that func would be executed
+  /// on.
   ///
   /// A Future for the return type of func is returned.
   ///
@@ -1249,13 +1291,27 @@ class Future : private futures::detail::FutureBase<T> {
   thenValue(F&& func) &&;
 
   template <typename F>
+  Future<typename futures::detail::valueCallableResult<T, F>::value_type>
+  thenValueInline(F&& func) &&;
+
+  template <typename F>
   Future<
       typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
   thenExValue(F&& func) &&;
 
+  template <typename F>
+  Future<
+      typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
+  thenExValueInline(F&& func) &&;
+
   template <typename R, typename... Args>
   auto thenValue(R (&func)(Args...)) && {
     return std::move(*this).thenValue(&func);
+  }
+
+  template <typename R, typename... Args>
+  auto thenValueInline(R (&func)(Args...)) && {
+    return std::move(*this).thenValueInline(&func);
   }
 
   /// Set an error continuation for this Future where the continuation can

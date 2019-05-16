@@ -127,6 +127,12 @@ void Promise<T>::setTry(Try<T>&& t) {
 }
 
 template <class T>
+void Promise<T>::setTry(Executor::KeepAlive<>&& ka, Try<T>&& t) {
+  throwIfFulfilled();
+  core_->setResult(std::move(ka), std::move(t));
+}
+
+template <class T>
 template <class M>
 void Promise<T>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value, "Use setValue() instead");

@@ -433,6 +433,10 @@ class Promise {
     return *core;
   }
 
+  /// Fulfill the Promise with the specified Try (value or exception) and
+  /// propagate the completing executor.
+  void setTry(Executor::KeepAlive<>&& ka, Try<T>&& t);
+
   // shared core state object
   // usually you should use `getCore()` instead of directly accessing `core_`.
   Core* core_;

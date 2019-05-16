@@ -35,4 +35,9 @@ namespace folly {
 ///   futures::sleep(std::chrono::seconds(1));
 using Duration = std::chrono::milliseconds;
 
+namespace futures {
+namespace detail {
+enum class InlineContinuation { permit, forbid };
+} // namespace detail
+} // namespace futures
 } // namespace folly
