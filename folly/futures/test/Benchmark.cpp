@@ -18,6 +18,7 @@
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Semaphore.h>
 #include <folly/synchronization/Baton.h>
@@ -33,11 +34,29 @@ T incr(Try<T>&& t) {
   return t.value() + 1;
 }
 
+Future<int> thens(Future<int> f, size_t n, bool runInline = false) {
+  for (size_t i = 0; i < n; i++) {
+    if (runInline) {
+      f = std::move(f).thenInline(incr<int>);
+    } else {
+      f = std::move(f).then(incr<int>);
+    }
+  }
+  return f;
+}
+
 void someThens(size_t n) {
   auto f = makeFuture<int>(42);
-  for (size_t i = 0; i < n; i++) {
-    f = std::move(f).then(incr<int>);
-  }
+  f = thens(std::move(f), n);
+}
+
+void someThensOnThread(size_t n, bool runInline = false) {
+  auto executor = std::make_unique<TestExecutor>(1);
+  auto f = makeFuture<int>(42).via(executor.get());
+  f = thens(std::move(f), n / 2, runInline);
+  f = thens(std::move(f), 1, false);
+  f = thens(std::move(f), n / 2, runInline);
+  f.wait();
 }
 
 } // namespace
@@ -80,6 +99,28 @@ BENCHMARK_RELATIVE(fourThens) {
 // look for >= 1% relative
 BENCHMARK_RELATIVE(hundredThens) {
   someThens(100);
+}
+
+BENCHMARK_DRAW_LINE();
+
+// look for >= 25% relative
+BENCHMARK_RELATIVE(fourThensOnThread) {
+  someThensOnThread(4);
+}
+
+// look for >= 25% relative
+BENCHMARK_RELATIVE(fourThensOnThreadInline) {
+  someThensOnThread(4, true);
+}
+
+// look for >= 1% relative
+BENCHMARK_RELATIVE(hundredThensOnThread) {
+  someThensOnThread(100);
+}
+
+// look for >= 1% relative
+BENCHMARK_RELATIVE(hundredThensOnThreadInline) {
+  someThensOnThread(100, true);
 }
 
 // Lock contention. Although in practice fulfills tend to be temporally
