@@ -303,22 +303,24 @@ class SharedMutexImpl {
       cleanupTokenlessSharedDeferred(state);
     }
 
-#ifndef NDEBUG
-    // These asserts check that everybody has released the lock before it
-    // is destroyed.  If you arrive here while debugging that is likely
-    // the problem.  (You could also have general heap corruption.)
+    if (folly::kIsDebug) {
+      // These asserts check that everybody has released the lock before it
+      // is destroyed.  If you arrive here while debugging that is likely
+      // the problem.  (You could also have general heap corruption.)
 
-    // if a futexWait fails to go to sleep because the value has been
-    // changed, we don't necessarily clean up the wait bits, so it is
-    // possible they will be set here in a correct system
-    assert((state & ~(kWaitingAny | kMayDefer | kAnnotationCreated)) == 0);
-    if ((state & kMayDefer) != 0) {
-      for (uint32_t slot = 0; slot < kMaxDeferredReaders; ++slot) {
-        auto slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
-        assert(!slotValueIsThis(slotValue));
+      // if a futexWait fails to go to sleep because the value has been
+      // changed, we don't necessarily clean up the wait bits, so it is
+      // possible they will be set here in a correct system
+      assert((state & ~(kWaitingAny | kMayDefer | kAnnotationCreated)) == 0);
+      if ((state & kMayDefer) != 0) {
+        for (uint32_t slot = 0; slot < kMaxDeferredReaders; ++slot) {
+          auto slotValue =
+              deferredReader(slot)->load(std::memory_order_relaxed);
+          assert(!slotValueIsThis(slotValue));
+          (void)slotValue;
+        }
       }
     }
-#endif
     annotateDestroy();
   }
 
@@ -457,9 +459,9 @@ class SharedMutexImpl {
         !tryUnlockSharedDeferred(token.slot_)) {
       unlockSharedInline();
     }
-#ifndef NDEBUG
-    token.type_ = Token::Type::INVALID;
-#endif
+    if (folly::kIsDebug) {
+      token.type_ = Token::Type::INVALID;
+    }
   }
 
   void unlock_and_lock_shared() {
