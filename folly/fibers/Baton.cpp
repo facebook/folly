@@ -59,11 +59,6 @@ void Baton::wait(TimeoutHandler& timeoutHandler) {
 }
 
 void Baton::waitThread() {
-  if (spinWaitForEarlyPost()) {
-    assert(waiter_.load(std::memory_order_acquire) == POSTED);
-    return;
-  }
-
   auto waiter = waiter_.load();
 
   if (LIKELY(
@@ -90,31 +85,7 @@ void Baton::waitThread() {
   throw std::logic_error("Other waiter is already waiting on this baton");
 }
 
-bool Baton::spinWaitForEarlyPost() {
-  static_assert(
-      PreBlockAttempts > 0,
-      "isn't this assert clearer than an uninitialized variable warning?");
-  for (int i = 0; i < PreBlockAttempts; ++i) {
-    if (try_wait()) {
-      // hooray!
-      return true;
-    }
-    // The pause instruction is the polite way to spin, but it doesn't
-    // actually affect correctness to omit it if we don't have it.
-    // Pausing donates the full capabilities of the current core to
-    // its other hyperthreads for a dozen cycles or so
-    asm_volatile_pause();
-  }
-
-  return false;
-}
-
 bool Baton::timedWaitThread(std::chrono::milliseconds timeout) {
-  if (spinWaitForEarlyPost()) {
-    assert(waiter_.load(std::memory_order_acquire) == POSTED);
-    return true;
-  }
-
   auto waiter = waiter_.load();
 
   if (LIKELY(
