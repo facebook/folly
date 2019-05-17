@@ -348,6 +348,10 @@ class AsyncUDPSocket : public EventHandler {
   // Temp space to receive client address
   folly::SocketAddress clientAddress_;
 
+  // If the socket is connected.
+  folly::SocketAddress connectedAddress_;
+  bool connected_{false};
+
   bool reuseAddr_{false};
   bool reusePort_{false};
   int rcvBuf_{0};

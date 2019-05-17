@@ -272,13 +272,21 @@ ssize_t AsyncUDPSocket::writev(
     size_t iovec_len,
     int gso) {
   CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
-
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
 
   struct msghdr msg;
-  msg.msg_name = reinterpret_cast<void*>(&addrStorage);
-  msg.msg_namelen = address.getActualSize();
+  if (!connected_) {
+    msg.msg_name = reinterpret_cast<void*>(&addrStorage);
+    msg.msg_namelen = address.getActualSize();
+  } else {
+    if (connectedAddress_ != address) {
+      errno = ENOTSUP;
+      return -1;
+    }
+    msg.msg_name = nullptr;
+    msg.msg_namelen = 0;
+  }
   msg.msg_iov = const_cast<struct iovec*>(vec);
   msg.msg_iovlen = iovec_len;
   msg.msg_control = nullptr;
@@ -533,8 +541,13 @@ int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  return netops::connect(
+  int ret = netops::connect(
       fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
+  if (ret == 0) {
+    connected_ = true;
+    connectedAddress_ = address;
+  }
+  return ret;
 }
 
 void AsyncUDPSocket::handleRead() noexcept {
