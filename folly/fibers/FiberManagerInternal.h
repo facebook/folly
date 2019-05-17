@@ -210,6 +210,15 @@ class FiberManager : public ::folly::Executor {
   bool hasTasks() const;
 
   /**
+   * @return The number of currently active fibers (ready to run or blocked).
+   * Does not include the number of remotely enqueued tasks that have not been
+   * run yet.
+   */
+  size_t numActiveTasks() const noexcept {
+    return fibersActive_;
+  }
+
+  /**
    * @return true if there are tasks ready to run.
    */
   bool hasReadyTasks() const;
