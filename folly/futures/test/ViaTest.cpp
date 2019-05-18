@@ -547,11 +547,14 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetValueFirst) {
   Promise<Unit> captured_promise;
   auto captured_promise_future = captured_promise.getFuture();
 
-  Optional<Future<int>> future;
+  Optional<SemiFuture<int>> future;
   {
     ManualExecutor x;
-    future = makeFuture().via(&x).thenValue(
-        [c = std::move(captured_promise)](auto&&) { return 42; });
+    future =
+        makeFuture()
+            .via(&x)
+            .thenValue([c = std::move(captured_promise)](auto&&) { return 42; })
+            .semi();
     x.clear();
   }
 
@@ -570,12 +573,15 @@ TEST(Via, viaExecutorDiscardsTaskFutureSetCallbackFirst) {
   Promise<Unit> captured_promise;
   auto captured_promise_future = captured_promise.getFuture();
 
-  Optional<Future<int>> future;
+  Optional<SemiFuture<int>> future;
   {
     ManualExecutor x;
     Promise<Unit> trigger;
-    future = trigger.getFuture().via(&x).thenValue(
-        [c = std::move(captured_promise)](auto&&) { return 42; });
+    future =
+        trigger.getFuture()
+            .via(&x)
+            .thenValue([c = std::move(captured_promise)](auto&&) { return 42; })
+            .semi();
     trigger.setValue();
     x.clear();
   }

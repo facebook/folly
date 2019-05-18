@@ -210,6 +210,18 @@ TEST(ManualExecutor, drainsOnDestruction) {
   EXPECT_EQ(1, count);
 }
 
+TEST(ManualExecutor, keepAlive) {
+  auto future = [] {
+    ManualExecutor ex;
+    return futures::sleep(std::chrono::milliseconds{100})
+        .via(&ex)
+        .thenValue([](auto) { return 42; })
+        .semi();
+  }();
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, std::move(future).get());
+}
+
 TEST(Executor, InlineExecutor) {
   InlineExecutor x;
   size_t counter = 0;

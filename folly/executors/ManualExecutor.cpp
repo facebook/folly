@@ -23,6 +23,9 @@
 namespace folly {
 
 ManualExecutor::~ManualExecutor() {
+  while (keepAliveCount_.load(std::memory_order_relaxed)) {
+    drive();
+  }
   drain();
 }
 
@@ -68,6 +71,7 @@ size_t ManualExecutor::run() {
       funcs_.pop();
     }
     func();
+    func = nullptr;
   }
 
   return count;
