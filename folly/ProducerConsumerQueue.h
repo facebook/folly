@@ -36,7 +36,7 @@ namespace folly {
  * without locks.
  */
 template <class T>
-struct ProducerConsumerQueue {
+struct alignas(hardware_destructive_interference_size) ProducerConsumerQueue {
   typedef T value_type;
 
   ProducerConsumerQueue(const ProducerConsumerQueue&) = delete;
@@ -51,7 +51,9 @@ struct ProducerConsumerQueue {
       : size_(size),
         records_(static_cast<T*>(std::malloc(sizeof(T) * size))),
         readIndex_(0),
-        writeIndex_(0) {
+        writeIndexCache_(0),
+        writeIndex_(0),
+        readIndexCache_(0) {
     assert(size >= 2);
     if (!records_) {
       throw std::bad_alloc();
@@ -83,22 +85,30 @@ struct ProducerConsumerQueue {
     if (nextRecord == size_) {
       nextRecord = 0;
     }
-    if (nextRecord != readIndex_.load(std::memory_order_acquire)) {
-      new (&records_[currentWrite]) T(std::forward<Args>(recordArgs)...);
-      writeIndex_.store(nextRecord, std::memory_order_release);
-      return true;
+
+    auto readIndex = readIndexCache_;
+    if (nextRecord == readIndex) {
+      readIndex = readIndexCache_ = readIndex_.load(std::memory_order_acquire);
+      if (nextRecord == readIndex) {
+        return false;
+      }
     }
 
-    // queue is full
-    return false;
+    new (&records_[currentWrite]) T(std::forward<Args>(recordArgs)...);
+    writeIndex_.store(nextRecord, std::memory_order_release);
+    return true;
   }
 
   // move (or copy) the value at the front of the queue to given variable
   bool read(T& record) {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
-      // queue is empty
-      return false;
+    auto writeIndex = writeIndexCache_;
+    if (currentRead == writeIndex) {
+      writeIndex = writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
+      if (currentRead == writeIndex) {
+        // queue is empty
+        return false;
+      }
     }
 
     auto nextRecord = currentRead + 1;
@@ -115,9 +125,13 @@ struct ProducerConsumerQueue {
   // nullptr if empty.
   T* frontPtr() {
     auto const currentRead = readIndex_.load(std::memory_order_relaxed);
-    if (currentRead == writeIndex_.load(std::memory_order_acquire)) {
-      // queue is empty
-      return nullptr;
+    auto writeIndex = writeIndexCache_;
+    if (currentRead == writeIndex) {
+      writeIndex = writeIndexCache_ = writeIndex_.load(std::memory_order_acquire);
+      if (currentRead == writeIndex) {
+        // queue is empty
+        return nullptr;
+      }
     }
     return &records_[currentRead];
   }
@@ -172,16 +186,16 @@ struct ProducerConsumerQueue {
   }
 
  private:
-  using AtomicIndex = std::atomic<unsigned int>;
+  using IndexType = unsigned int;
+  using AtomicIndex = std::atomic<IndexType>;
 
-  char pad0_[hardware_destructive_interference_size];
   const uint32_t size_;
   T* const records_;
 
   alignas(hardware_destructive_interference_size) AtomicIndex readIndex_;
+  IndexType writeIndexCache_;
   alignas(hardware_destructive_interference_size) AtomicIndex writeIndex_;
-
-  char pad1_[hardware_destructive_interference_size - sizeof(AtomicIndex)];
+  IndexType readIndexCache_;
 };
 
 } // namespace folly
