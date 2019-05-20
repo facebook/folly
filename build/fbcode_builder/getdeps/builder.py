@@ -86,7 +86,7 @@ class BuilderBase(object):
 
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
 
-    def run_tests(self, install_dirs):
+    def run_tests(self, install_dirs, schedule_type):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -279,7 +279,7 @@ class CMakeBuilder(BuilderBase):
             env=env,
         )
 
-    def run_tests(self, install_dirs):
+    def run_tests(self, install_dirs, schedule_type):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")

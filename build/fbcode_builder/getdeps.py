@@ -302,6 +302,9 @@ class BuildCmd(SubCmd):
                 "is able to execute tests"
             ),
         )
+        parser.add_argument(
+            "--schedule-type", help="Indicates how the build was activated"
+        )
 
 
 @cmd("test", "test a given project")
@@ -336,7 +339,7 @@ class TestCmd(SubCmd):
                     return 1
                 src_dir = fetcher.get_src_dir()
                 builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
-                builder.run_tests(install_dirs)
+                builder.run_tests(install_dirs, schedule_type=args.schedule_type)
 
             install_dirs.append(inst_dir)
 
@@ -353,6 +356,9 @@ class TestCmd(SubCmd):
             action="store_true",
             default=False,
             help="Enable running tests for the named project and all of its deps",
+        )
+        parser.add_argument(
+            "--schedule-type", help="Indicates how the build was activated"
         )
 
 
