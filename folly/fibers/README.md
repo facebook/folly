@@ -449,7 +449,7 @@
 
 <h3 id="stack-overflow-detection">Stack overflow detection <a href="#stack-overflow-detection" class="headerLink">#</a></h3>
 
-<p>By default every fiber-task stack is allocated with a special guard page next to it (this can be controlled via <tt>useGuardPages</tt> option of <tt>FiberManager</tt>). If a stack overflow happens - this guard page will be accessed, which will result in immediate segmentation fault.</p>
+<p>By default every fiber-task stack is allocated with a special guard page next to it (this can be controlled via <tt>guardPagesPerStack</tt> option of <tt>FiberManager</tt>). If a stack overflow happens - this guard page will be accessed, which will result in immediate segmentation fault.</p>
 
 <div class="remarkup-important"><span class="remarkup-note-word">IMPORTANT:</span> disabling guard page protection may result in unnoticed stack overflows. Those will inevitably cause memory corruptions, which are usually very hard to debug.</div></section><section class="dex_document"><h1>Event Loops</h1><p class="dex_introduction"></p><p>folly::fibers library doesn&#039;t implement it&#039;s own event system. Instead it allows <tt>fibers::FiberManager</tt> to work with any other event system by implementing <tt>fibers::LoopController</tt> interface.</p>
 

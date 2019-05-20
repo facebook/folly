@@ -59,7 +59,9 @@ constexpr size_t kMaxInUse = 100;
  */
 class StackCache {
  public:
-  explicit StackCache(size_t stackSize) : allocSize_(allocSize(stackSize)) {
+  explicit StackCache(size_t stackSize, size_t guardPagesPerStack)
+      : allocSize_(allocSize(stackSize, guardPagesPerStack)),
+        guardPagesPerStack_(guardPagesPerStack) {
     auto p = ::mmap(
         nullptr,
         allocSize_ * kNumGuarded,
@@ -82,15 +84,17 @@ class StackCache {
 
     assert(storage_);
 
-    auto as = allocSize(size);
+    auto as = allocSize(size, guardPagesPerStack_);
     if (as != allocSize_ || freeList_.empty()) {
       return nullptr;
     }
 
     auto p = freeList_.back().first;
     if (!freeList_.back().second) {
-      PCHECK(0 == ::mprotect(p, pagesize(), PROT_NONE));
-      protectedPages().wlock()->insert(reinterpret_cast<intptr_t>(p));
+      PCHECK(0 == ::mprotect(p, pagesize() * guardPagesPerStack_, PROT_NONE));
+      protectedRanges().wlock()->insert(std::make_pair(
+          reinterpret_cast<intptr_t>(p),
+          reinterpret_cast<intptr_t>(p + pagesize() * guardPagesPerStack_)));
     }
     freeList_.pop_back();
 
@@ -106,7 +110,7 @@ class StackCache {
                       limit -^
     */
     auto limit = p + allocSize_ - size;
-    assert(limit >= p + pagesize());
+    assert(limit >= p + pagesize() * guardPagesPerStack_);
     return limit;
   }
 
@@ -115,7 +119,7 @@ class StackCache {
 
     assert(storage_);
 
-    auto as = allocSize(size);
+    auto as = allocSize(size, guardPagesPerStack_);
     if (std::less_equal<void*>{}(limit, storage_) ||
         std::less_equal<void*>{}(storage_ + allocSize_ * kNumGuarded, limit)) {
       /* not mine */
@@ -131,9 +135,12 @@ class StackCache {
 
   ~StackCache() {
     assert(storage_);
-    protectedPages().withWLock([&](auto& pages) {
+    protectedRanges().withWLock([&](auto& ranges) {
       for (const auto& item : freeList_) {
-        pages.erase(reinterpret_cast<intptr_t>(item.first));
+        ranges.erase(std::make_pair(
+            reinterpret_cast<intptr_t>(item.first),
+            reinterpret_cast<intptr_t>(
+                item.first + pagesize() * guardPagesPerStack_)));
       }
     });
     PCHECK(0 == ::munmap(storage_, allocSize_ * kNumGuarded));
@@ -141,10 +148,9 @@ class StackCache {
 
   static bool isProtected(intptr_t addr) {
     // Use a read lock for reading.
-    return protectedPages().withRLock([&](auto const& pages) {
-      for (const auto& page : pages) {
-        intptr_t pageEnd = intptr_t(page + pagesize());
-        if (page <= addr && addr < pageEnd) {
+    return protectedRanges().withRLock([&](auto const& ranges) {
+      for (const auto& range : ranges) {
+        if (range.first <= addr && addr < range.second) {
           return true;
         }
       }
@@ -155,7 +161,8 @@ class StackCache {
  private:
   folly::SpinLock lock_;
   unsigned char* storage_{nullptr};
-  size_t allocSize_{0};
+  const size_t allocSize_{0};
+  const size_t guardPagesPerStack_{0};
 
   /**
    * LIFO free list. Each pair contains stack pointer and protected flag.
@@ -167,14 +174,20 @@ class StackCache {
     return pagesize;
   }
 
-  /* Returns a multiple of pagesize() enough to store size + one guard page */
-  static size_t allocSize(size_t size) {
-    return pagesize() * ((size + pagesize() - 1) / pagesize() + 1);
+  /**
+   * Returns a multiple of pagesize() enough to store size + a few guard pages
+   */
+  static size_t allocSize(size_t size, size_t guardPages) {
+    return pagesize() * ((size + pagesize() * guardPages - 1) / pagesize() + 1);
   }
 
-  static folly::Synchronized<std::unordered_set<intptr_t>>& protectedPages() {
-    static auto instance =
-        new folly::Synchronized<std::unordered_set<intptr_t>>();
+  /**
+   * For each [b, e) range in this set, the bytes in the range were mprotected.
+   */
+  static folly::Synchronized<std::unordered_set<std::pair<intptr_t, intptr_t>>>&
+  protectedRanges() {
+    static auto instance = new folly::Synchronized<
+        std::unordered_set<std::pair<intptr_t, intptr_t>>>();
     return *instance;
   }
 };
@@ -240,11 +253,13 @@ class CacheManager {
     return *inst;
   }
 
-  std::unique_ptr<StackCacheEntry> getStackCache(size_t stackSize) {
+  std::unique_ptr<StackCacheEntry> getStackCache(
+      size_t stackSize,
+      size_t guardPagesPerStack) {
     std::lock_guard<folly::SpinLock> lg(lock_);
     if (inUse_ < kMaxInUse) {
       ++inUse_;
-      return std::make_unique<StackCacheEntry>(stackSize);
+      return std::make_unique<StackCacheEntry>(stackSize, guardPagesPerStack);
     }
 
     return nullptr;
@@ -275,8 +290,9 @@ class CacheManager {
  */
 class StackCacheEntry {
  public:
-  explicit StackCacheEntry(size_t stackSize)
-      : stackCache_(std::make_unique<StackCache>(stackSize)) {}
+  explicit StackCacheEntry(size_t stackSize, size_t guardPagesPerStack)
+      : stackCache_(
+            std::make_unique<StackCache>(stackSize, guardPagesPerStack)) {}
 
   StackCache& cache() const noexcept {
     return *stackCache_;
@@ -290,8 +306,8 @@ class StackCacheEntry {
   std::unique_ptr<StackCache> stackCache_;
 };
 
-GuardPageAllocator::GuardPageAllocator(bool useGuardPages)
-    : useGuardPages_(useGuardPages) {
+GuardPageAllocator::GuardPageAllocator(size_t guardPagesPerStack)
+    : guardPagesPerStack_(guardPagesPerStack) {
 #ifndef _WIN32
   installSignalHandler();
 #endif
@@ -300,8 +316,9 @@ GuardPageAllocator::GuardPageAllocator(bool useGuardPages)
 GuardPageAllocator::~GuardPageAllocator() = default;
 
 unsigned char* GuardPageAllocator::allocate(size_t size) {
-  if (useGuardPages_ && !stackCache_) {
-    stackCache_ = CacheManager::instance().getStackCache(size);
+  if (guardPagesPerStack_ && !stackCache_) {
+    stackCache_ =
+        CacheManager::instance().getStackCache(size, guardPagesPerStack_);
   }
 
   if (stackCache_) {

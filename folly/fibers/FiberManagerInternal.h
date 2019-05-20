@@ -110,9 +110,9 @@ class FiberManager : public ::folly::Executor {
     size_t maxFibersPoolSize{1000};
 
     /**
-     * Protect limited amount of fiber stacks with guard pages.
+     * Protect a small number of fiber stacks with this many guard pages.
      */
-    bool useGuardPages{true};
+    size_t guardPagesPerStack{1};
 
     /**
      * Free unnecessary fibers in the fibers pool every fibersPoolResizePeriodMs
@@ -129,7 +129,7 @@ class FiberManager : public ::folly::Executor {
           stackSizeMultiplier,
           recordStackEvery,
           maxFibersPoolSize,
-          useGuardPages,
+          guardPagesPerStack,
           fibersPoolResizePeriodMs);
     }
   };
