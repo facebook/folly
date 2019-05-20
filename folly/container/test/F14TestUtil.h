@@ -397,7 +397,8 @@ class SwapTrackingAlloc {
     std::size_t extra =
         std::max<std::size_t>(1, sizeof(std::size_t) / sizeof(T));
     T* p = a_.allocate(extra + n);
-    std::memcpy(p, &n, sizeof(std::size_t));
+    void* raw = static_cast<void*>(p);
+    *static_cast<std::size_t*>(raw) = n;
     return p + extra;
   }
   void deallocate(T* p, size_t n) {
@@ -406,7 +407,8 @@ class SwapTrackingAlloc {
     std::size_t extra =
         std::max<std::size_t>(1, sizeof(std::size_t) / sizeof(T));
     std::size_t check;
-    std::memcpy(&check, p - extra, sizeof(std::size_t));
+    void* raw = static_cast<void*>(p - extra);
+    check = *static_cast<std::size_t*>(raw);
     FOLLY_SAFE_CHECK(check == n, "");
     a_.deallocate(p - extra, n + extra);
   }
