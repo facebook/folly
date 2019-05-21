@@ -153,15 +153,12 @@ mutex type: `Synchronized<T, Mutex>`.
 If not specified, the mutex type defaults to `folly::SharedMutex`.  However, any
 mutex type supported by `folly::LockTraits` can be used instead.
 `folly::LockTraits` can be specialized to support other custom mutex
-types that it does not know about out of the box.  See
-`folly/LockTraitsBoost.h` for an example of how to support additional mutex
-types.
+types that it does not know about out of the box.
 
 `Synchronized` provides slightly different APIs when instantiated with a
 shared mutex type or an upgrade mutex type then with a plain exclusive mutex.
-If instantiated with either of the two mutex types above (either through
-having a member called lock_shared() or specializing `LockTraits` as in
-`folly/LockTraitsBoost.h`) the `Synchronized` object has corresponding
+If instantiated with either of the two mutex types above through having a
+member called lock_shared(), the `Synchronized` object has corresponding
 `wlock`, `rlock` or `ulock` methods to acquire different lock types.  When
 using a shared or upgrade mutex type, these APIs ensure that callers make an
 explicit choice to acquire a shared, exclusive or upgrade lock and that

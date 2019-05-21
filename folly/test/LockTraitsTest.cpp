@@ -14,7 +14,6 @@
  * limitations under the License.
  */
 #include <folly/LockTraits.h>
-#include <folly/LockTraitsBoost.h>
 
 #include <mutex>
 
@@ -207,33 +206,6 @@ TEST(LockTraits, RWSpinLock) {
   traits::unlock_shared(mutex);
 }
 
-TEST(LockTraits, boost_mutex) {
-  using traits = LockTraits<boost::mutex>;
-  static_assert(!traits::is_timed, "boost::mutex is not a timed lock");
-  static_assert(!traits::is_shared, "boost::mutex is not a shared lock");
-  static_assert(!traits::is_upgrade, "boost::mutex is not an upgradable lock");
-
-  boost::mutex mutex;
-  traits::lock(mutex);
-  traits::unlock(mutex);
-}
-
-TEST(LockTraits, boost_recursive_mutex) {
-  using traits = LockTraits<boost::recursive_mutex>;
-  static_assert(
-      !traits::is_timed, "boost::recursive_mutex is not a timed lock");
-  static_assert(
-      !traits::is_shared, "boost::recursive_mutex is not a shared lock");
-  static_assert(
-      !traits::is_upgrade, "boost::recursive_mutex is not an upgradable lock");
-
-  boost::recursive_mutex mutex;
-  traits::lock(mutex);
-  traits::lock(mutex);
-  traits::unlock(mutex);
-  traits::unlock(mutex);
-}
-
 #if FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 TEST(LockTraits, timed_mutex) {
   using traits = LockTraits<std::timed_mutex>;
@@ -266,34 +238,6 @@ TEST(LockTraits, recursive_timed_mutex) {
                        << "recursive_timed_mutex a second time";
   traits::unlock(mutex);
   traits::unlock(mutex);
-}
-
-TEST(LockTraits, boost_shared_mutex) {
-  using traits = LockTraits<boost::shared_mutex>;
-  static_assert(traits::is_timed, "boost::shared_mutex is a timed lock");
-  static_assert(traits::is_shared, "boost::shared_mutex is a shared lock");
-  static_assert(
-      traits::is_upgrade, "boost::shared_mutex is an upgradable lock");
-
-  boost::shared_mutex mutex;
-  traits::lock(mutex);
-  auto gotLock = traits::try_lock_for(mutex, std::chrono::milliseconds(1));
-  EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
-                        << "shared_mutex a second time";
-  gotLock = traits::try_lock_shared_for(mutex, std::chrono::milliseconds(1));
-  EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
-                        << "shared_mutex a second time";
-  traits::unlock(mutex);
-
-  traits::lock_shared(mutex);
-  gotLock = traits::try_lock_for(mutex, std::chrono::milliseconds(1));
-  EXPECT_FALSE(gotLock) << "should not have been able to acquire the "
-                        << "shared_mutex a second time";
-  gotLock = traits::try_lock_shared_for(mutex, std::chrono::milliseconds(10));
-  EXPECT_TRUE(gotLock) << "should have been able to acquire the "
-                       << "shared_mutex a second time in shared mode";
-  traits::unlock_shared(mutex);
-  traits::unlock_shared(mutex);
 }
 #endif // FOLLY_LOCK_TRAITS_HAVE_TIMED_MUTEXES
 

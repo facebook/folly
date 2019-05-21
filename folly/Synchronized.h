@@ -479,10 +479,6 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
  * Supported mutexes that work by default include std::mutex,
  * std::recursive_mutex, std::timed_mutex, std::recursive_timed_mutex,
  * folly::SharedMutex, folly::RWSpinLock, and folly::SpinLock.
- * Include LockTraitsBoost.h to get additional LockTraits specializations to
- * support the following boost mutex types: boost::mutex,
- * boost::recursive_mutex, boost::shared_mutex, boost::timed_mutex, and
- * boost::recursive_timed_mutex.
  */
 template <class T, class Mutex = SharedMutex>
 struct Synchronized : public SynchronizedBase<
