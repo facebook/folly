@@ -115,6 +115,9 @@ class MPMCQueue : public detail::MPMCQueueBase<MPMCQueue<T, Atom, Dynamic>> {
   MPMCQueue() noexcept {}
 };
 
+/// *** The dynamic version of MPMCQueue is deprecated. ***
+/// Use UnboundedQueue instead.
+
 /// The dynamic version of MPMCQueue allows dynamic expansion of queue
 /// capacity, such that a queue may start with a smaller capacity than
 /// specified and expand only if needed. Users may optionally specify
