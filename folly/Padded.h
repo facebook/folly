@@ -517,7 +517,7 @@ class Adaptor {
   std::pair<Container, size_t> move() {
     std::pair<Container, size_t> p(std::move(c_), lastCount_);
     lastCount_ = Node::kElementCount;
-    return std::move(p);
+    return p;
   }
 
   /**

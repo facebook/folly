@@ -125,7 +125,7 @@ addTasks(InputIterator first, InputIterator last) {
 
   iterator.context_->results.reserve(iterator.context_->totalTasks);
 
-  return std::move(iterator);
+  return iterator;
 }
 } // namespace fibers
 } // namespace folly

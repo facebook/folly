@@ -2419,7 +2419,7 @@ inline basic_fbstring<E, T, A, S> operator+(
   basic_fbstring<E, T, A, S> result;
   result.reserve(lhs.size() + rhs.size());
   result.append(lhs).append(rhs);
-  return std::move(result);
+  return result;
 }
 
 // C++11 21.4.8.1/2
