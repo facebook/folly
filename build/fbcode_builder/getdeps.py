@@ -213,7 +213,7 @@ class BuildCmd(SubCmd):
 
         manifest = load_project(opts, args.project)
 
-        ctx = context_from_host_tuple()
+        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
         print("Building on %s" % ctx)
         projects = manifests_in_dependency_order(opts, manifest, ctx)
         manifests_by_name = {m.name: m for m in projects}
@@ -313,7 +313,7 @@ class TestCmd(SubCmd):
         opts = setup_build_options(args)
         manifest = load_project(opts, args.project)
 
-        ctx = context_from_host_tuple()
+        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
         ctx["test"] = "on"
         projects = manifests_in_dependency_order(opts, manifest, ctx)
         manifests_by_name = {m.name: m for m in projects}
@@ -385,6 +385,12 @@ def build_argparser():
     common_args.add_argument(
         "--use-shipit",
         help="use the real ShipIt instead of the simple shipit transformer",
+        action="store_true",
+        default=False,
+    )
+    common_args.add_argument(
+        "--facebook-internal",
+        help="Setup the build context as an FB internal build",
         action="store_true",
         default=False,
     )

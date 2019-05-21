@@ -98,7 +98,7 @@ class HostType(object):
         )
 
 
-def context_from_host_tuple(host_tuple=None):
+def context_from_host_tuple(host_tuple=None, facebook_internal=False):
     """ Given an optional host tuple, construct a context appropriate
     for passing to the boolean expression evaluator so that conditional
     sections in manifests can be resolved. """
@@ -113,4 +113,5 @@ def context_from_host_tuple(host_tuple=None):
         "os": host_type.ostype,
         "distro": host_type.distro,
         "distro_vers": host_type.distrovers,
+        "fb": "on" if facebook_internal else "off",
     }

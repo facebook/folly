@@ -26,3 +26,10 @@ fbcode/eden/fs/service = eden/fs/service
 
 [cmake.defines]
 ENABLE_EDEN_SUPPORT=ON
+
+# FB macos specific settings
+[cmake.defines.all(fb=on,os=darwin)]
+# this path is coupled with the FB internal watchman-osx.spec
+WATCHMAN_STATE_DIR=/opt/facebook/watchman/var/run/watchman
+# tell cmake not to try to create /opt/facebook/...
+INSTALL_WATCHMAN_STATE_DIR=OFF
