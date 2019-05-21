@@ -1,0 +1,15 @@
+[manifest]
+name = sigar
+
+[download]
+url = https://github.com/hyperic/sigar/archive/ad47dc3b494e9293d1f087aebb099bdba832de5e.zip
+sha256 = 6604f993ddaf081dbf61e705cbe8d7b91045d8f1226c7ab1aebe6fc20986c3cc
+
+[build]
+builder = cmake
+subdir = sigar-ad47dc3b494e9293d1f087aebb099bdba832de5e
+
+# Override CFLAGS; this is needed because there are a number of functions defined
+# in C files with the `inline` keyword that otherwise get optimized away
+[cmake.defines]
+CMAKE_C_FLAGS = -fgnu89-inline

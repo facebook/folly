@@ -183,7 +183,7 @@ class AutoconfBuilder(BuilderBase):
             # by the project on the basis that it may know more than plain
             # autoreconf does.
             if os.path.exists(autogen_path):
-                self._run_cmd([autogen_path], cwd=self.src_dir, env=env)
+                self._run_cmd(["bash", autogen_path], cwd=self.src_dir, env=env)
             else:
                 self._run_cmd(["autoreconf", "-ivf"], cwd=self.src_dir, env=env)
         configure_cmd = [configure_path, "--prefix=" + self.inst_dir] + self.args
