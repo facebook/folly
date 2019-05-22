@@ -109,13 +109,12 @@ TEST_F(LoggerTest, follyFormatError) {
   ASSERT_EQ(1, messages.size());
   // Use a regex match here, since the type IDs are reported slightly
   // differently on different platforms.
-  EXPECT_THAT(
-      messages[0].first.getMessage(),
-      MatchesRegex(
-          R"(error formatting log message: )"
-          R"(invalid format argument \{:6.3f\}: invalid specifier 'f'; )"
-          R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
-          R"(arguments: \((.*: )?1234\), \((.*: )?hello world\!\))"));
+  EXPECT_EQ(
+      R"(error formatting log message: )"
+      R"(invalid format argument {:6.3f}: invalid specifier 'f'; )"
+      R"(format string: "param1: {:06d}, param2: {:6.3f}", )"
+      R"(arguments: 1234, hello world!)",
+      messages[0].first.getMessage());
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -216,9 +215,8 @@ TEST_F(LoggerTest, formatFallbackError) {
           R"(error formatting log message: invalid format argument \{\}: )"
           R"(argument index out of range, max=2; )"
           R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
-          R"(arguments: \((.*: )?1234\), )"
-          R"(\((.*ToStringFailure.*: )?<error_converting_to_string: )"
-          R"(error converting ToStringFailure object to a string>\))"));
+          R"(arguments: 1234, )"
+          R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -235,7 +233,7 @@ TEST_F(LoggerTest, formatFallbackUnsupported) {
   auto expectedRegex =
       R"(error formatting log message: test; )"
       R"(format string: "param1: \{\}, param2: \{\}", )"
-      R"(arguments: \((.*: )?1234\), )"
+      R"(arguments: 1234, )"
       R"(\[(.*FormattableButNoToString.*|object) of size 4: )" +
       objectHex + R"(\])";
 
@@ -351,12 +349,11 @@ TEST_F(LoggerTest, logMacros) {
   // Bad format arguments should not throw
   FB_LOGF(footest1234, ERR, "whoops: {}, {}", getValue());
   ASSERT_EQ(1, messages.size());
-  EXPECT_THAT(
-      messages[0].first.getMessage(),
-      MatchesRegex(
-          R"(error formatting log message: invalid format argument \{\}: )"
-          R"(argument index out of range, max=1; )"
-          R"(format string: "whoops: \{\}, \{\}", arguments: \((.*: )?5\))"));
+  EXPECT_EQ(
+      R"(error formatting log message: invalid format argument {}: )"
+      R"(argument index out of range, max=1; )"
+      R"(format string: "whoops: {}, {}", arguments: 5)",
+      messages[0].first.getMessage());
   messages.clear();
 }
 

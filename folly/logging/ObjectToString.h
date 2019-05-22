@@ -90,19 +90,12 @@ template <typename Arg>
 auto appendObjectToString(std::string& str, const Arg* arg, int) -> decltype(
     toAppend(std::declval<Arg>(), std::declval<std::string*>()),
     std::declval<void>()) {
-  str.push_back('(');
   try {
-#if FOLLY_HAS_RTTI
-    toAppend(folly::demangle(typeid(*arg)), &str);
-    str.append(": ");
-#endif
     toAppend(*arg, &str);
-  } catch (const std::exception& ex) {
-    str.append("<error_converting_to_string: ");
-    str.append(ex.what());
-    str.append(">");
+  } catch (const std::exception&) {
+    // If anything goes wrong in `toAppend()` fall back to appendRawObjectInfo()
+    ::folly::logging::appendRawObjectInfo(str, arg);
   }
-  str.push_back(')');
 }
 
 template <typename Arg>
