@@ -69,10 +69,7 @@ futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
  *
  * For any other clock type, now() will be invoked twice.
  */
-template <
-    typename Futex,
-    class Clock,
-    class Duration = typename Clock::duration>
+template <typename Futex, class Clock, class Duration>
 FutexResult futexWaitUntil(
     const Futex* futex,
     uint32_t expected,
