@@ -18,6 +18,7 @@
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
+#include <folly/experimental/coro/detail/Helpers.h>
 
 namespace folly {
 namespace coro {
@@ -32,25 +33,6 @@ inline Unit getValueOrUnit(Try<void>&& value) {
   value.throwIfFailed();
   return Unit{};
 }
-
-// Helper class that can be used to annotate Awaitable objects that will
-// guarantee that they will be resumed on the correct executor so that
-// when the object is awaited within a Task<T> it doesn't automatically
-// wrap the Awaitable in something that forces a reschedule onto the
-// executor.
-template <typename Awaitable>
-class UnsafeResumeInlineSemiAwaitable {
- public:
-  explicit UnsafeResumeInlineSemiAwaitable(Awaitable&& awaitable) noexcept
-      : awaitable_(awaitable) {}
-
-  Awaitable&& viaIfAsync(folly::Executor::KeepAlive<>) && noexcept {
-    return static_cast<Awaitable&&>(awaitable_);
-  }
-
- private:
-  Awaitable awaitable_;
-};
 
 template <typename SemiAwaitable, typename Result>
 detail::BarrierTask makeCollectAllTask(
