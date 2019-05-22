@@ -32,6 +32,7 @@
 #include <folly/hash/SpookyHashV2.h>
 #include <folly/io/Cursor.h>
 #include <folly/lang/Align.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
 using std::unique_ptr;
@@ -311,12 +312,11 @@ IOBuf::IOBuf(
       capacity_(capacity),
       flagsAndSharedInfo_(
           packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
-  try {
-    setSharedInfo(new SharedInfo(freeFn, userData));
-  } catch (...) {
+  auto rollback = makeGuard([&] { //
     takeOwnershipError(freeOnError, buf, freeFn, userData);
-    throw;
-  }
+  });
+  setSharedInfo(new SharedInfo(freeFn, userData));
+  rollback.dismiss();
 }
 
 unique_ptr<IOBuf> IOBuf::takeOwnership(
@@ -327,29 +327,32 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     void* userData,
     bool freeOnError) {
   HeapFullStorage* storage = nullptr;
-  try {
-    size_t requiredStorage = sizeof(HeapFullStorage);
-    size_t mallocSize = goodMallocSize(requiredStorage);
-    storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
-
-    new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kSharedInfoInUse);
-    new (&storage->shared)
-        SharedInfo(freeFn, userData, true /*useHeapFullStorage*/);
-
-    return unique_ptr<IOBuf>(new (&storage->hs.buf) IOBuf(
-        InternalConstructor(),
-        packFlagsAndSharedInfo(0, &storage->shared),
-        static_cast<uint8_t*>(buf),
-        capacity,
-        static_cast<uint8_t*>(buf),
-        length));
-  } catch (...) {
+  auto rollback = makeGuard([&] {
     if (storage) {
       free(storage);
     }
     takeOwnershipError(freeOnError, buf, freeFn, userData);
-    throw;
-  }
+  });
+
+  size_t requiredStorage = sizeof(HeapFullStorage);
+  size_t mallocSize = goodMallocSize(requiredStorage);
+  storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
+
+  new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kSharedInfoInUse);
+  new (&storage->shared)
+      SharedInfo(freeFn, userData, true /*useHeapFullStorage*/);
+
+  auto result = unique_ptr<IOBuf>(new (&storage->hs.buf) IOBuf(
+      InternalConstructor(),
+      packFlagsAndSharedInfo(0, &storage->shared),
+      static_cast<uint8_t*>(buf),
+      capacity,
+      static_cast<uint8_t*>(buf),
+      length));
+
+  rollback.dismiss();
+
+  return result;
 }
 
 IOBuf::IOBuf(WrapBufferOp, const void* buf, std::size_t capacity) noexcept
@@ -725,7 +728,7 @@ void IOBuf::coalesceSlow(size_t maxLength) {
       break;
     }
     if (end == this) {
-      throw std::overflow_error(
+      throw_exception<std::overflow_error>(
           "attempted to coalesce more data than "
           "available");
     }
@@ -900,7 +903,7 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
       if (copySlack * 2 <= length_) {
         void* p = realloc(buf_, newAllocatedCapacity);
         if (UNLIKELY(p == nullptr)) {
-          throw std::bad_alloc();
+          throw_exception<std::bad_alloc>();
         }
         newBuffer = static_cast<uint8_t*>(p);
         newHeadroom = oldHeadroom;
