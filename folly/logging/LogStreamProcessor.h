@@ -17,58 +17,15 @@
 
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
-#include <folly/Demangle.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/logging/LogCategory.h>
 #include <folly/logging/LogMessage.h>
 #include <folly/logging/LogStream.h>
+#include <folly/logging/ObjectToString.h>
 #include <cstdlib>
 
 namespace folly {
-
-/*
- * Helper functions for fallback-formatting of arguments if folly::format()
- * throws an exception.
- *
- * These are in a detail namespace so that we can include a using directive in
- * order to do proper argument-dependent lookup of the correct toAppend()
- * function to use.
- */
-namespace detail {
-/* using override */
-using folly::toAppend;
-template <typename Arg>
-auto fallbackFormatOneArg(std::string* str, const Arg* arg, int) -> decltype(
-    toAppend(std::declval<Arg>(), std::declval<std::string*>()),
-    std::declval<void>()) {
-  str->push_back('(');
-  try {
-#if FOLLY_HAS_RTTI
-    toAppend(folly::demangle(typeid(*arg)), str);
-    str->append(": ");
-#endif
-    toAppend(*arg, str);
-  } catch (const std::exception&) {
-    str->append("<error_converting_to_string>");
-  }
-  str->push_back(')');
-}
-
-template <typename Arg>
-inline void fallbackFormatOneArg(std::string* str, const Arg* arg, long) {
-  str->push_back('(');
-#if FOLLY_HAS_RTTI
-  try {
-    toAppend(folly::demangle(typeid(*arg)), str);
-    str->append(": ");
-  } catch (const std::exception&) {
-    // Ignore the error
-  }
-#endif
-  str->append("<no_string_conversion>)");
-}
-} // namespace detail
 
 template <bool IsInHeaderFile>
 class XlogCategoryInfo;
@@ -406,29 +363,9 @@ class LogStreamProcessor {
       result.append("; format string: \"");
       result.append(fmt.data(), fmt.size());
       result.append("\", arguments: ");
-      fallbackFormat(&result, args...);
+      folly::logging::appendToString(result, args...);
       return result;
     }
-  }
-
-  /**
-   * Helper function generate a fallback version of the arguments in case
-   * folly::sformat() throws an exception.
-   *
-   * This attempts to convert each argument to a string using a similar
-   * mechanism to folly::to<std::string>(), if supported.
-   */
-  template <typename Arg1, typename... Args>
-  void
-  fallbackFormat(std::string* str, const Arg1& arg1, const Args&... remainder) {
-    detail::fallbackFormatOneArg(str, &arg1, 0);
-    str->append(", ");
-    fallbackFormat(str, remainder...);
-  }
-
-  template <typename Arg>
-  void fallbackFormat(std::string* str, const Arg& arg) {
-    detail::fallbackFormatOneArg(str, &arg, 0);
   }
 
   const LogCategory* const category_;

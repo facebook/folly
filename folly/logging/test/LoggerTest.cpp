@@ -213,7 +213,8 @@ TEST_F(LoggerTest, formatFallbackError) {
           R"(argument index out of range, max=2; )"
           R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
           R"(arguments: \((.*: )?1234\), )"
-          R"(\((.*ToStringFailure.*: )?<error_converting_to_string>\))"));
+          R"(\((.*ToStringFailure.*: )?<error_converting_to_string: )"
+          R"(error converting ToStringFailure object to a string>\))"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
