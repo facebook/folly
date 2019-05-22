@@ -21,6 +21,7 @@
 #include <folly/logging/LogStream.h>
 #include <folly/logging/Logger.h>
 #include <folly/logging/LoggerDB.h>
+#include <folly/logging/ObjectToString.h>
 #include <folly/logging/RateLimiter.h>
 #include <cstdlib>
 
@@ -370,7 +371,13 @@ std::unique_ptr<std::string> XCheckOpImpl(
     return nullptr;
   }
   return std::make_unique<std::string>(folly::to<std::string>(
-      "Check failed: ", checkStr, " (", arg1, " vs. ", arg2, ")"));
+      "Check failed: ",
+      checkStr,
+      " (",
+      ::folly::logging::objectToString(arg1),
+      " vs. ",
+      folly::logging::objectToString(arg2),
+      ")"));
 }
 } // namespace detail
 } // namespace folly

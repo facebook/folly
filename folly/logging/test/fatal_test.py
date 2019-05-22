@@ -18,6 +18,7 @@ import os
 import re
 import signal
 import subprocess
+import sys
 import unittest
 
 
@@ -207,6 +208,23 @@ class FatalTests(unittest.TestCase):
     def test_xcheck_eval_once(self):
         err = self.run_helper("--test_xcheck_eq_evalutates_once")
         expected_msg = "Check failed: ++x == 7 (6 vs. 7)"
+        self.assertRegex(err, self.get_crash_regex(expected_msg.encode("utf-8")))
+
+    def test_xcheck_custom_object(self):
+        err = self.run_helper("--xcheck_eq_custom_struct")
+        if sys.byteorder == "little":
+            obj1_hexdump = "01 00 00 00 02 00 00 00"
+            obj2_hexdump = "01 00 00 00 ef cd ab 12"
+        else:
+            obj1_hexdump = "00 00 00 01 00 00 00 02"
+            obj2_hexdump = "00 00 00 01 12 ab cd ef"
+
+        expected_msg = (
+            "Check failed: MyStruct(1, 2) == m ("
+            f"[MyStruct of size 8: {obj1_hexdump}] vs. "
+            f"[MyStruct of size 8: {obj2_hexdump}]"
+            ")"
+        )
         self.assertRegex(err, self.get_crash_regex(expected_msg.encode("utf-8")))
 
     def _test_xcheck_cmp(
