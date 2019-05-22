@@ -1937,6 +1937,19 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
   return std::make_pair(std::move(p), std::move(f));
 }
 
+template <class F>
+auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
+  return
+      [func = std::forward<F>(func), ka = std::move(ka)](auto&& param) mutable {
+        return via(
+            ka,
+            [func = std::move(func),
+             param = std::forward<decltype(param)>(param)]() mutable {
+              return func(std::forward<decltype(param)>(param));
+            });
+      };
+}
+
 } // namespace folly
 
 #if FOLLY_HAS_COROUTINES
