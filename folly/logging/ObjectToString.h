@@ -16,8 +16,8 @@
 #pragma once
 
 #include <folly/Conv.h>
-#include <folly/Demangle.h>
 #include <folly/Portability.h>
+#include <folly/lang/TypeInfo.h>
 
 /*
  * This file contains functions for converting arbitrary objects to strings for
@@ -45,6 +45,36 @@
 
 namespace folly {
 namespace logging {
+
+namespace detail {
+void appendRawObjectInfo(
+    std::string& result,
+    const std::type_info* type,
+    const uint8_t* data,
+    size_t length);
+} // namespace detail
+
+/**
+ * Append raw information about an object to a string.
+ *
+ * This is used as a fallback for objects that we do not otherwise know how to
+ * print.  This emits:
+ * - The object type name (if RTTI is supported)
+ * - The object size
+ * - A hexdump of the object contents.
+ *
+ * e.g.
+ *   [MyStruct of size 4: 37 6f af 2a]
+ *   [AnotherClass of size 8: f9 48 78 85 56 54 8f 54]
+ */
+template <typename Arg>
+inline void appendRawObjectInfo(std::string& str, const Arg* arg) {
+  detail::appendRawObjectInfo(
+      str,
+      FOLLY_TYPE_INFO_OF(*arg),
+      reinterpret_cast<const uint8_t*>(arg),
+      sizeof(*arg));
+}
 
 /*
  * Helper functions for object to string conversion.
@@ -77,16 +107,7 @@ auto appendObjectToString(std::string& str, const Arg* arg, int) -> decltype(
 
 template <typename Arg>
 inline void appendObjectToString(std::string& str, const Arg* arg, long) {
-  str.push_back('(');
-#if FOLLY_HAS_RTTI
-  try {
-    toAppend(folly::demangle(typeid(*arg)), &str);
-    str.append(": ");
-  } catch (const std::exception&) {
-    // Ignore the error
-  }
-#endif
-  str.append("<no_string_conversion>)");
+  ::folly::logging::appendRawObjectInfo(str, arg);
 }
 } // namespace detail
 

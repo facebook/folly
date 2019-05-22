@@ -140,7 +140,11 @@ TEST_F(LoggerTest, toString) {
 }
 
 class ToStringFailure {};
-class FormattableButNoToString {};
+class FormattableButNoToString {
+ public:
+  explicit FormattableButNoToString(uint32_t v) : value(v) {}
+  uint32_t value = 0;
+};
 
 // clang-format off
 [[noreturn]] void toAppend(
@@ -224,18 +228,20 @@ TEST_F(LoggerTest, formatFallbackError) {
 
 TEST_F(LoggerTest, formatFallbackUnsupported) {
   // Check the behavior if logf() fails, and toAppend() also fails.
-  FormattableButNoToString obj;
+  FormattableButNoToString obj(0x1234cdef);
   FB_LOGF(logger_, WARN, "param1: {}, param2: {}", 1234, obj);
+
+  std::string objectHex = kIsLittleEndian ? "ef cd 34 12" : "12 34 cd ef";
+  auto expectedRegex =
+      R"(error formatting log message: test; )"
+      R"(format string: "param1: \{\}, param2: \{\}", )"
+      R"(arguments: \((.*: )?1234\), )"
+      R"(\[(.*FormattableButNoToString.*|object) of size 4: )" +
+      objectHex + R"(\])";
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
-  EXPECT_THAT(
-      messages[0].first.getMessage(),
-      MatchesRegex(
-          R"(error formatting log message: test; )"
-          R"(format string: "param1: \{\}, param2: \{\}", )"
-          R"(arguments: \((.*: )?1234\), )"
-          R"(\((.*FormattableButNoToString.*: )?<no_string_conversion>\))"));
+  EXPECT_THAT(messages[0].first.getMessage(), MatchesRegex(expectedRegex));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
