@@ -62,11 +62,14 @@ enum : std::size_t {
 };
 
 // Helper function for IOBuf::takeOwnership()
+// The user's free function is not allowed to throw.
+// (We are already in the middle of throwing an exception, so
+// we cannot let this exception go unhandled.)
 void takeOwnershipError(
     bool freeOnError,
     void* buf,
     folly::IOBuf::FreeFunction freeFn,
-    void* userData) {
+    void* userData) noexcept {
   if (!freeOnError) {
     return;
   }
@@ -74,14 +77,7 @@ void takeOwnershipError(
     free(buf);
     return;
   }
-  try {
-    freeFn(buf, userData);
-  } catch (...) {
-    // The user's free function is not allowed to throw.
-    // (We are already in the middle of throwing an exception, so
-    // we cannot let this exception go unhandled.)
-    abort();
-  }
+  freeFn(buf, userData);
 }
 
 } // namespace
@@ -133,7 +129,7 @@ IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg, bool hfs)
   refcount.store(1, std::memory_order_relaxed);
 }
 
-void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) {
+void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) noexcept {
   if (info->useHeapFullStorage) {
     auto* storageAddr =
         reinterpret_cast<uint8_t*>(info) - offsetof(HeapFullStorage, shared);
@@ -167,7 +163,7 @@ void IOBuf::operator delete(void* /* ptr */, void* /* placement */) {
   // constructor.
 }
 
-void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) {
+void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
   CHECK_EQ(storage->prefix.magic, static_cast<uint16_t>(kHeapMagic));
 
   // Use relaxed memory order here.  If we are unlucky and happen to get
@@ -200,7 +196,7 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) {
   }
 }
 
-void IOBuf::freeInternalBuf(void* /* buf */, void* userData) {
+void IOBuf::freeInternalBuf(void* /* buf */, void* userData) noexcept {
   auto* storage = static_cast<HeapStorage*>(userData);
   releaseStorage(storage, kDataInUse);
 }
@@ -791,7 +787,7 @@ void IOBuf::coalesceAndReallocate(
   }
 }
 
-void IOBuf::decrementRefcount() {
+void IOBuf::decrementRefcount() noexcept {
   // Externally owned buffers don't have a SharedInfo object and aren't managed
   // by the reference count
   SharedInfo* info = sharedInfo();
@@ -945,19 +941,15 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
   // length_ is unchanged
 }
 
-void IOBuf::freeExtBuffer() {
+// The user's free function should never throw. Otherwise we might throw from
+// the IOBuf destructor. Other code paths like coalesce() also assume that
+// decrementRefcount() cannot throw.
+void IOBuf::freeExtBuffer() noexcept {
   SharedInfo* info = sharedInfo();
   DCHECK(info);
 
   if (info->freeFn) {
-    try {
-      info->freeFn(buf_, info->userData);
-    } catch (...) {
-      // The user's free function should never throw.  Otherwise we might
-      // throw from the IOBuf destructor.  Other code paths like coalesce()
-      // also assume that decrementRefcount() cannot throw.
-      abort();
-    }
+    info->freeFn(buf_, info->userData);
   } else {
     free(buf_);
   }

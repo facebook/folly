@@ -917,7 +917,7 @@ class IOBuf {
    * is not nullptr, nullptr otherwise
    *
    **/
-  void* getUserData() const {
+  void* getUserData() const noexcept {
     SharedInfo* info = sharedInfo();
     return info ? info->userData : nullptr;
   }
@@ -927,7 +927,7 @@ class IOBuf {
    * Returns free function if sharedInfo() is not nullputr, nullptr otherwise
    *
    **/
-  FreeFunction getFreeFn() const {
+  FreeFunction getFreeFn() const noexcept {
     SharedInfo* info = sharedInfo();
     return info ? info->freeFn : nullptr;
   }
@@ -955,7 +955,7 @@ class IOBuf {
    * (and so the lifetime of the underlying memory can be extended by
    * cloneOne()).
    */
-  bool isManagedOne() const {
+  bool isManagedOne() const noexcept {
     return sharedInfo();
   }
 
@@ -984,7 +984,7 @@ class IOBuf {
    *
    * This only checks the current IOBuf, and not other IOBufs in the chain.
    */
-  bool isSharedOne() const {
+  bool isSharedOne() const noexcept {
     // If this is a user-owned buffer, it is always considered shared
     if (UNLIKELY(!sharedInfo())) {
       return true;
@@ -1391,7 +1391,7 @@ class IOBuf {
     SharedInfo();
     SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
 
-    static void releaseStorage(SharedInfo* info);
+    static void releaseStorage(SharedInfo* info) noexcept;
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.
@@ -1437,9 +1437,9 @@ class IOBuf {
   void coalesceAndReallocate(size_t newLength, IOBuf* end) {
     coalesceAndReallocate(headroom(), newLength, end, end->prev_->tailroom());
   }
-  void decrementRefcount();
+  void decrementRefcount() noexcept;
   void reserveSlow(std::size_t minHeadroom, std::size_t minTailroom);
-  void freeExtBuffer();
+  void freeExtBuffer() noexcept;
 
   static size_t goodExtBufferSize(std::size_t minCapacity);
   static void initExtBuffer(
@@ -1452,8 +1452,8 @@ class IOBuf {
       uint8_t** bufReturn,
       SharedInfo** infoReturn,
       std::size_t* capacityReturn);
-  static void releaseStorage(HeapStorage* storage, uint16_t freeFlags);
-  static void freeInternalBuf(void* buf, void* userData);
+  static void releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept;
+  static void freeInternalBuf(void* buf, void* userData) noexcept;
 
   /*
    * Member variables
@@ -1485,39 +1485,41 @@ class IOBuf {
 
   static inline uintptr_t packFlagsAndSharedInfo(
       uintptr_t flags,
-      SharedInfo* info) {
+      SharedInfo* info) noexcept {
     uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     DCHECK_EQ(uinfo & kFlagMask, 0u);
     return flags | uinfo;
   }
 
-  inline SharedInfo* sharedInfo() const {
+  inline SharedInfo* sharedInfo() const noexcept {
     return reinterpret_cast<SharedInfo*>(flagsAndSharedInfo_ & ~kFlagMask);
   }
 
-  inline void setSharedInfo(SharedInfo* info) {
+  inline void setSharedInfo(SharedInfo* info) noexcept {
     uintptr_t uinfo = reinterpret_cast<uintptr_t>(info);
     DCHECK_EQ(uinfo & kFlagMask, 0u);
     flagsAndSharedInfo_ = (flagsAndSharedInfo_ & kFlagMask) | uinfo;
   }
 
-  inline uintptr_t flags() const {
+  inline uintptr_t flags() const noexcept {
     return flagsAndSharedInfo_ & kFlagMask;
   }
 
   // flags_ are changed from const methods
-  inline void setFlags(uintptr_t flags) const {
+  inline void setFlags(uintptr_t flags) const noexcept {
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ |= flags;
   }
 
-  inline void clearFlags(uintptr_t flags) const {
+  inline void clearFlags(uintptr_t flags) const noexcept {
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ &= ~flags;
   }
 
-  inline void setFlagsAndSharedInfo(uintptr_t flags, SharedInfo* info) {
+  inline void setFlagsAndSharedInfo(
+      uintptr_t flags,
+      SharedInfo* info) noexcept {
     flagsAndSharedInfo_ = packFlagsAndSharedInfo(flags, info);
   }
 
@@ -1541,7 +1543,7 @@ class IOBuf {
     Deleter deleter_;
   };
 
-  static void freeUniquePtrBuffer(void* ptr, void* userData) {
+  static void freeUniquePtrBuffer(void* ptr, void* userData) noexcept {
     static_cast<DeleterBase*>(userData)->dispose(ptr);
   }
 };
