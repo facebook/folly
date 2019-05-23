@@ -1412,15 +1412,19 @@ TEST(EventBaseTest, messageAvailableException) {
 }
 
 TEST(EventBaseTest, TryRunningAfterTerminate) {
-  EventBase eventBase;
-  CountedLoopCallback c1(
-      &eventBase, 1, std::bind(&EventBase::terminateLoopSoon, &eventBase));
-  eventBase.runInLoop(&c1);
-  eventBase.loopForever();
   bool ran = false;
-  eventBase.runInEventBaseThread([&]() { ran = true; });
+  {
+    EventBase eventBase;
+    CountedLoopCallback c1(
+        &eventBase, 1, std::bind(&EventBase::terminateLoopSoon, &eventBase));
+    eventBase.runInLoop(&c1);
+    eventBase.loopForever();
+    eventBase.runInEventBaseThread([&]() { ran = true; });
 
-  ASSERT_FALSE(ran);
+    ASSERT_FALSE(ran);
+  }
+  // Loop callbacks are triggered on EventBase destruction
+  ASSERT_TRUE(ran);
 }
 
 // Test cancelling runInLoop() callbacks
@@ -1732,23 +1736,28 @@ TEST(EventBaseTest, IdleTime) {
  * Test that thisLoop functionality works with terminateLoopSoon
  */
 TEST(EventBaseTest, ThisLoop) {
-  EventBase eb;
   bool runInLoop = false;
   bool runThisLoop = false;
 
-  eb.runInLoop(
-      [&]() {
-        eb.terminateLoopSoon();
-        eb.runInLoop([&]() { runInLoop = true; });
-        eb.runInLoop([&]() { runThisLoop = true; }, true);
-      },
-      true);
-  eb.loopForever();
+  {
+    EventBase eb;
+    eb.runInLoop(
+        [&]() {
+          eb.terminateLoopSoon();
+          eb.runInLoop([&]() { runInLoop = true; });
+          eb.runInLoop([&]() { runThisLoop = true; }, true);
+        },
+        true);
+    eb.loopForever();
 
-  // Should not work
-  ASSERT_FALSE(runInLoop);
-  // Should work with thisLoop
-  ASSERT_TRUE(runThisLoop);
+    // Should not work
+    ASSERT_FALSE(runInLoop);
+    // Should work with thisLoop
+    ASSERT_TRUE(runThisLoop);
+  }
+
+  // Pending loop callbacks will be run when the EventBase is destroyed.
+  ASSERT_TRUE(runInLoop);
 }
 
 TEST(EventBaseTest, EventBaseThreadLoop) {
