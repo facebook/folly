@@ -1104,7 +1104,7 @@ TEST(EventBaseTest, ScheduledFnAt) {
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
   eb.scheduleAt(
-      std::bind(&TimePoint::reset, &timestamp1), eb.now() - milliseconds(5));
+      std::bind(&TimePoint::reset, &timestamp0), eb.now() - milliseconds(5));
   eb.scheduleAt(
       std::bind(&TimePoint::reset, &timestamp1), eb.now() + milliseconds(9));
   eb.scheduleAt(
@@ -1116,7 +1116,11 @@ TEST(EventBaseTest, ScheduledFnAt) {
   eb.loop();
   TimePoint end;
 
-  T_CHECK_TIME_LT(start, timestamp0, milliseconds(0));
+  // Even though we asked to schedule the first function in the past,
+  // in practice it doesn't run until after 1 iteration of the HHWheelTimer tick
+  // interval.
+  T_CHECK_TIMEOUT(start, timestamp0, eb.timer().getTickInterval());
+
   T_CHECK_TIMEOUT(start, timestamp1, milliseconds(9));
   T_CHECK_TIMEOUT(start, timestamp2, milliseconds(19));
   T_CHECK_TIMEOUT(start, timestamp3, milliseconds(39));
