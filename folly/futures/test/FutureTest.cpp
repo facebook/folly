@@ -1365,14 +1365,25 @@ class Try<NoThrowTestResult> : public Try<void> {
  public:
   using Try<void>::Try;
 
+  NoThrowTestResult value_;
+
   explicit Try(const NoThrowTestResult&) : Try<void>() {}
 
-  NoThrowTestResult value() const {
+  NoThrowTestResult const& value() const& {
     throwIfFailed();
-    return NoThrowTestResult();
+    return value_;
   }
-  NoThrowTestResult operator*() const {
-    return value();
+  NoThrowTestResult const&& value() const&& {
+    throwIfFailed();
+    return std::move(value_);
+  }
+  NoThrowTestResult& value() & {
+    throwIfFailed();
+    return value_;
+  }
+  NoThrowTestResult&& value() && {
+    throwIfFailed();
+    return std::move(value_);
   }
 
   // If the Try contains an exception, throws it
