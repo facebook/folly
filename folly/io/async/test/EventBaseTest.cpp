@@ -199,10 +199,10 @@ TEST(EventBaseTest, ReadEvent) {
       {160, EventHandler::WRITE, 99, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -245,13 +245,13 @@ TEST(EventBaseTest, ReadPersist) {
       {100, EventHandler::WRITE, 100, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler after the third write
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -293,13 +293,13 @@ TEST(EventBaseTest, ReadImmediate) {
       {10, EventHandler::WRITE, 2345, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 20);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -341,10 +341,10 @@ TEST(EventBaseTest, WriteEvent) {
       {60, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -384,13 +384,13 @@ TEST(EventBaseTest, WritePersist) {
       {100, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler after the third read
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 85);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -425,6 +425,7 @@ TEST(EventBaseTest, WriteImmediate) {
       {10, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
@@ -433,7 +434,6 @@ TEST(EventBaseTest, WriteImmediate) {
       std::bind(&TestHandler::unregisterHandler, &handler), unregisterTimeout);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -476,10 +476,10 @@ TEST(EventBaseTest, ReadWrite) {
       {40, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -517,10 +517,10 @@ TEST(EventBaseTest, WriteRead) {
       {40, EventHandler::WRITE, sock1WriteLength, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -562,10 +562,10 @@ TEST(EventBaseTest, ReadWriteSimultaneous) {
       {10, EventHandler::READ | EventHandler::WRITE, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -605,13 +605,13 @@ TEST(EventBaseTest, ReadWritePersist) {
       {120, EventHandler::WRITE, 2345, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 80);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -682,13 +682,13 @@ TEST(EventBaseTest, ReadPartial) {
       {10, EventHandler::WRITE, (3 * readLength) + (readLength / 2), 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -748,13 +748,13 @@ TEST(EventBaseTest, WritePartial) {
       {10, EventHandler::READ, 0, 0},
       {0, 0, 0, 0},
   };
+  TimePoint start;
   scheduleEvents(&eb, sp[1], events);
 
   // Schedule a timeout to unregister the handler
   eb.tryRunAfterDelay(std::bind(&TestHandler::unregisterHandler, &handler), 30);
 
   // Loop
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -835,11 +835,15 @@ TEST(EventBaseTest, RunAfterDelay) {
   TimePoint timestamp1(false);
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
-  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
-  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp2), 20);
-  eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 40);
+  auto fn1 = std::bind(&TimePoint::reset, &timestamp1);
+  auto fn2 = std::bind(&TimePoint::reset, &timestamp2);
+  auto fn3 = std::bind(&TimePoint::reset, &timestamp3);
 
   TimePoint start;
+  eb.tryRunAfterDelay(std::move(fn1), 10);
+  eb.tryRunAfterDelay(std::move(fn2), 20);
+  eb.tryRunAfterDelay(std::move(fn3), 40);
+
   eb.loop();
   TimePoint end;
 
@@ -863,6 +867,7 @@ TEST(EventBaseTest, RunAfterDelayDestruction) {
 
   {
     EventBase eb;
+    start.reset();
 
     // Run two normal timeouts
     eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp1), 10);
@@ -875,7 +880,6 @@ TEST(EventBaseTest, RunAfterDelayDestruction) {
     eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp3), 80);
     eb.tryRunAfterDelay(std::bind(&TimePoint::reset, &timestamp4), 160);
 
-    start.reset();
     eb.loop();
     end.reset();
   }
@@ -909,11 +913,11 @@ TEST(EventBaseTest, BasicTimeouts) {
   TestTimeout t1(&eb);
   TestTimeout t2(&eb);
   TestTimeout t3(&eb);
+  TimePoint start;
   t1.scheduleTimeout(10);
   t2.scheduleTimeout(20);
   t3.scheduleTimeout(40);
 
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -964,9 +968,8 @@ TEST(EventBaseTest, ReuseTimeout) {
   timeouts.push_back(15);
 
   ReschedulingTimeout t(&eb, timeouts);
-  t.start();
-
   TimePoint start;
+  t.start();
   eb.loop();
   TimePoint end;
 
@@ -994,6 +997,7 @@ TEST(EventBaseTest, RescheduleTimeout) {
   TestTimeout t2(&eb);
   TestTimeout t3(&eb);
 
+  TimePoint start;
   t1.scheduleTimeout(15);
   t2.scheduleTimeout(30);
   t3.scheduleTimeout(30);
@@ -1006,7 +1010,6 @@ TEST(EventBaseTest, RescheduleTimeout) {
   // after 10ms, reschedule t3 to run later than originally scheduled
   eb.tryRunAfterDelay(std::bind(f, &t3, 40), 10);
 
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -1028,10 +1031,10 @@ TEST(EventBaseTest, CancelTimeout) {
   timeouts.push_back(25);
 
   ReschedulingTimeout t(&eb, timeouts);
+  TimePoint start;
   t.start();
   eb.tryRunAfterDelay(std::bind(&AsyncTimeout::cancelTimeout, &t), 50);
 
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -1061,12 +1064,12 @@ TEST(EventBaseTest, DestroyTimeout) {
   EventBase eb;
 
   TestTimeout* t1 = new TestTimeout(&eb);
+  TimePoint start;
   t1->scheduleTimeout(30);
 
   DestroyTimeout dt(&eb, t1);
   dt.scheduleTimeout(10);
 
-  TimePoint start;
   eb.loop();
   TimePoint end;
 
@@ -1082,11 +1085,14 @@ TEST(EventBaseTest, ScheduledFn) {
   TimePoint timestamp1(false);
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
-  eb.schedule(std::bind(&TimePoint::reset, &timestamp1), milliseconds(9));
-  eb.schedule(std::bind(&TimePoint::reset, &timestamp2), milliseconds(19));
-  eb.schedule(std::bind(&TimePoint::reset, &timestamp3), milliseconds(39));
-
+  auto fn1 = std::bind(&TimePoint::reset, &timestamp1);
+  auto fn2 = std::bind(&TimePoint::reset, &timestamp2);
+  auto fn3 = std::bind(&TimePoint::reset, &timestamp3);
   TimePoint start;
+  eb.schedule(std::move(fn1), milliseconds(9));
+  eb.schedule(std::move(fn2), milliseconds(19));
+  eb.schedule(std::move(fn3), milliseconds(39));
+
   eb.loop();
   TimePoint end;
 
@@ -1103,16 +1109,17 @@ TEST(EventBaseTest, ScheduledFnAt) {
   TimePoint timestamp1(false);
   TimePoint timestamp2(false);
   TimePoint timestamp3(false);
-  eb.scheduleAt(
-      std::bind(&TimePoint::reset, &timestamp0), eb.now() - milliseconds(5));
-  eb.scheduleAt(
-      std::bind(&TimePoint::reset, &timestamp1), eb.now() + milliseconds(9));
-  eb.scheduleAt(
-      std::bind(&TimePoint::reset, &timestamp2), eb.now() + milliseconds(19));
-  eb.scheduleAt(
-      std::bind(&TimePoint::reset, &timestamp3), eb.now() + milliseconds(39));
-
+  auto fn0 = std::bind(&TimePoint::reset, &timestamp0);
+  auto fn1 = std::bind(&TimePoint::reset, &timestamp1);
+  auto fn2 = std::bind(&TimePoint::reset, &timestamp2);
+  auto fn3 = std::bind(&TimePoint::reset, &timestamp3);
   TimePoint start;
+  eb.scheduleAt(fn0, eb.now() - milliseconds(5));
+  eb.scheduleAt(fn1, eb.now() + milliseconds(9));
+  eb.scheduleAt(fn2, eb.now() + milliseconds(19));
+  eb.scheduleAt(fn3, eb.now() + milliseconds(39));
+
+  TimePoint loopStart;
   eb.loop();
   TimePoint end;
 
