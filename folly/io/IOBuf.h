@@ -34,6 +34,7 @@
 #include <folly/detail/Iterators.h>
 #include <folly/lang/Ordering.h>
 #include <folly/portability/SysUio.h>
+#include <folly/synchronization/MicroSpinLock.h>
 
 // Ignore shadowing warnings within this file, so includers can use -Wshadow.
 FOLLY_PUSH_WARNING
@@ -932,6 +933,29 @@ class IOBuf {
     return info ? info->freeFn : nullptr;
   }
 
+  template <typename Observer>
+  bool appendSharedInfoObserver(Observer&& observer) {
+    SharedInfo* info = sharedInfo();
+    if (!info) {
+      return false;
+    }
+
+    auto* entry =
+        new SharedInfoObserverEntry<Observer>(std::forward<Observer>(observer));
+    std::lock_guard<MicroSpinLock> guard(info->observerListLock);
+    if (!info->observerListHead) {
+      info->observerListHead = entry;
+    } else {
+      // prepend
+      entry->next = info->observerListHead;
+      entry->prev = info->observerListHead->prev;
+      info->observerListHead->prev->next = entry;
+      info->observerListHead->prev = entry;
+    }
+
+    return true;
+  }
+
   /**
    * Return true if all IOBufs in this chain are managed by the usual
    * refcounting mechanism (and so the lifetime of the underlying memory
@@ -1387,6 +1411,28 @@ class IOBuf {
     kFlagMask = kFlagFreeSharedInfo | kFlagMaybeShared
   };
 
+  struct SharedInfoObserverEntryBase {
+    SharedInfoObserverEntryBase* prev{this};
+    SharedInfoObserverEntryBase* next{this};
+
+    virtual ~SharedInfoObserverEntryBase() = default;
+
+    virtual void beforeFreeExtBuffer() const noexcept = 0;
+  };
+
+  template <typename Observer>
+  struct SharedInfoObserverEntry : SharedInfoObserverEntryBase {
+    std::decay_t<Observer> observer;
+
+    explicit SharedInfoObserverEntry(Observer&& obs) noexcept(
+        noexcept(Observer(std::forward<Observer>(obs))))
+        : observer(std::forward<Observer>(obs)) {}
+
+    void beforeFreeExtBuffer() const noexcept final {
+      observer.beforeFreeExtBuffer();
+    }
+  };
+
   struct SharedInfo {
     SharedInfo();
     SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
@@ -1397,9 +1443,11 @@ class IOBuf {
     // hits 0.  If this is null, free() will be used instead.
     FreeFunction freeFn;
     void* userData;
+    SharedInfoObserverEntryBase* observerListHead{nullptr};
     std::atomic<uint32_t> refcount;
     bool externallyShared{false};
     bool useHeapFullStorage{false};
+    MicroSpinLock observerListLock{0};
   };
   // Helper structs for use by operator new and delete
   struct HeapPrefix;

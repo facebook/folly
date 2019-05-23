@@ -1604,3 +1604,54 @@ TEST(IOBuf, fillIov2) {
   EXPECT_EQ(0, res.numIovecs);
   EXPECT_EQ(0, res.totalLength);
 }
+
+TEST(IOBuf, FreeFn) {
+  class IOBufFreeObserver {
+   public:
+    using Func = std::function<void()>;
+    explicit IOBufFreeObserver(Func&& func) : func_(std::move(func)) {}
+    void beforeFreeExtBuffer() const noexcept {
+      func_();
+    }
+
+   private:
+    Func func_;
+  };
+
+  // no observers
+  { unique_ptr<IOBuf> iobuf(IOBuf::create(64)); }
+
+  int val = 0;
+  // one observer
+  {
+    unique_ptr<IOBuf> iobuf(IOBuf::create(64));
+
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
+      EXPECT_EQ(val, 0);
+      val += 1;
+    })));
+  }
+  EXPECT_EQ(val, 1);
+
+  val = 0;
+  // multiple observers
+  {
+    unique_ptr<IOBuf> iobuf(IOBuf::create(64));
+
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
+      EXPECT_EQ(val, 0);
+      val += 1;
+    })));
+
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
+      EXPECT_EQ(val, 1);
+      val += 20;
+    })));
+
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
+      EXPECT_EQ(val, 21);
+      val += 300;
+    })));
+  }
+  EXPECT_EQ(val, 321);
+}
