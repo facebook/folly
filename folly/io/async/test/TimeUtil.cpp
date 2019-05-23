@@ -32,6 +32,7 @@
 #include <stdexcept>
 
 #include <folly/Conv.h>
+#include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
@@ -274,6 +275,13 @@ bool checkTimeout(
   nanoseconds effectiveElapsedTime(0);
   if (elapsedTime > timeExcluded) {
     effectiveElapsedTime = elapsedTime - timeExcluded;
+  }
+
+  if (!kIsLinux) {
+    // We can only compute timeExcluded accurately on Linux.
+    // On other platforms, just increase the amount of tolerance allowed to
+    // account for time possibly spent waiting to be scheduled.
+    tolerance += 20ms;
   }
 
   // On x86 Linux, sleep calls generally have precision only to the nearest
