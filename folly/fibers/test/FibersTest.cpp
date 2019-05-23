@@ -2431,3 +2431,32 @@ TEST(FiberManager, addTaskEagerNested) {
   EXPECT_TRUE(eagerTaskDone);
   EXPECT_TRUE(secondTaskDone);
 }
+
+TEST(FiberManager, swapWithException) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  bool done = false;
+
+  fm.addTask([&] {
+    try {
+      throw std::logic_error("test");
+    } catch (const std::exception& e) {
+      // Ok to call runInMainContext in exception unwinding
+      runInMainContext([&] { done = true; });
+    }
+  });
+
+  evb.loop();
+  EXPECT_TRUE(done);
+
+  fm.addTask([&] {
+    try {
+      throw std::logic_error("test");
+    } catch (const std::exception& e) {
+      Baton b;
+      // Can't block during exception unwinding
+      ASSERT_DEATH(b.try_wait_for(std::chrono::milliseconds(1)), "");
+    }
+  });
+  evb.loop();
+}
