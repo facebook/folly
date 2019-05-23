@@ -10,6 +10,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import base64
 import errno
 import hashlib
+import ntpath
 import os
 import subprocess
 import tempfile
@@ -178,11 +179,14 @@ def list_win32_subst_letters():
     return mapping
 
 
-def find_existing_win32_subst_for_path(path):
-    path = os.path.normpath(path)
-    mapping = list_win32_subst_letters()
-    for letter, target in mapping.items():
-        if target == path:
+def find_existing_win32_subst_for_path(
+    path,  # type: str
+    subst_mapping,  # type: typing.Mapping[str, str]
+):
+    # type: (...) -> typing.Optional[str]
+    path = ntpath.normcase(ntpath.normpath(path))
+    for letter, target in subst_mapping.items():
+        if ntpath.normcase(target) == path:
             return letter
     return None
 
@@ -210,7 +214,9 @@ def find_unused_drive_letter():
 
 def create_subst_path(path):
     for _attempt in range(0, 24):
-        drive = find_existing_win32_subst_for_path(path)
+        drive = find_existing_win32_subst_for_path(
+            path, subst_mapping=list_win32_subst_letters()
+        )
         if drive:
             return drive
         available = find_unused_drive_letter()
