@@ -3237,10 +3237,10 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
 
   // Check that we can read the data that was written to the socket
-  std::vector<uint8_t> rbuf(1 + wbuf.size(), 0);
-  uint32_t bytesRead = acceptedSocket->read(rbuf.data(), rbuf.size());
-  ASSERT_TRUE(std::equal(wbuf.begin(), wbuf.end(), rbuf.begin()));
+  std::vector<uint8_t> rbuf(wbuf.size(), 0);
+  uint32_t bytesRead = acceptedSocket->readAll(rbuf.data(), rbuf.size());
   ASSERT_EQ(bytesRead, wbuf.size());
+  ASSERT_TRUE(std::equal(wbuf.begin(), wbuf.end(), rbuf.begin()));
 
   // Close both sockets
   acceptedSocket->close();
