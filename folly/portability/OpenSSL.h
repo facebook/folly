@@ -27,6 +27,7 @@
 
 #include <openssl/asn1.h>
 #include <openssl/bio.h>
+#include <openssl/bn.h>
 #include <openssl/crypto.h>
 #include <openssl/dh.h>
 #include <openssl/err.h>
@@ -87,6 +88,17 @@
 #define FOLLY_OPENSSL_HAS_TLS13 1
 #else
 #define FOLLY_OPENSSL_HAS_TLS13 0
+#endif
+
+#if !FOLLY_OPENSSL_IS_110
+#define OPENSSL_VERSION SSLEAY_VERSION
+#define OpenSSL_version SSLeay_version
+#define OpenSSL_version_num SSLeay
+#endif
+
+#if !FOLLY_OPENSSL_IS_110
+#define X509_get0_notAfter X509_get_notAfter
+#define X509_get0_notBefore X509_get_notBefore
 #endif
 
 // This attempts to "unify" the OpenSSL libcrypto/libssl APIs between

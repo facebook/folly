@@ -156,11 +156,11 @@ folly::Optional<std::string> OpenSSLCertUtils::toString(X509& x509) {
 }
 
 std::string OpenSSLCertUtils::getNotAfterTime(X509& x509) {
-  return getDateTimeStr(X509_get_notAfter(&x509));
+  return getDateTimeStr(X509_get0_notAfter(&x509));
 }
 
 std::string OpenSSLCertUtils::getNotBeforeTime(X509& x509) {
-  return getDateTimeStr(X509_get_notBefore(&x509));
+  return getDateTimeStr(X509_get0_notBefore(&x509));
 }
 
 std::string OpenSSLCertUtils::getDateTimeStr(const ASN1_TIME* time) {
