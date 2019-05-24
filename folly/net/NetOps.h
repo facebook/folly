@@ -72,7 +72,7 @@
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif
 
-#if !(FOLLY_HAVE_RECVMMSG || FOLLY_HAVE_SENDMMSG)
+#ifndef MSG_WAITFORONE
 struct mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;
