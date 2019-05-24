@@ -30,38 +30,50 @@ namespace distributed_mutex {
  * DistributedMutex is a small, exclusive-only mutex that distributes the
  * bookkeeping required for mutual exclusion in the stacks of threads that are
  * contending for it.  It has a mode that can combine critical sections when
- * the mutex experiences contention, this allows the implementation to elide
+ * the mutex experiences contention; this allows the implementation to elide
  * several expensive coherence and synchronization operations to boost
- * throughput, surpassing even some atomic CAS instructions in some cases.  It
- * has no dependencies on heap allocation and tries to come at a lower space
- * cost than std::mutex while still trying to maintain the fairness benefits
- * that come from using std::mutex.  DistributedMutex provides the entire API
- * included in std::mutex, and more, with slight modifications.  It is the
+ * throughput, surpassing even atomic instructions in some cases.  It has a
+ * smaller memory footprint than std::mutex, a similar level of fairness
+ * (better in some cases) and no dependencies on heap allocation.  It is the
  * same width as a single pointer (8 bytes on most platforms), where on the
  * other hand, std::mutex and pthread_mutex_t are both 40 bytes.  It is larger
  * than some of the other smaller locks, but the wide majority of cases using
  * the small locks are wasting the difference in alignment padding anyway
  *
- * Benchmark results are good - at the time of writing in the common
- * uncontended case, it is a few cycles faster than folly::MicroLock but a bit
- * slower than std::mutex.  In the contended case, for lock/unlock based
- * critical sections, it is about 4-5x faster than some of the smaller locks
- * and about ~2x faster than std::mutex.  When used in combinable mode, it can
- * go more than 10x faster than the small locks, about 6x faster than
- * std::mutex and up to 2-3x faster than the implementations of flat combining
- * we benchmarked against.  DistributedMutex is also resistent to tail latency
- * pathalogies unlike many of the other mutexes in use, which sleep for large
- * time quantums to reduce spin churn, this causes elevated latencies for
- * threads that enter the sleep cycle.  The tail latency of lock acquisition
- * can go up to 10x lower because of a more deterministic scheduling algorithm
- * that is managed almost entirely in userspace
+ * Benchmark results are good - at the time of writing, in the contended case,
+ * for lock/unlock based critical sections, it is about 4-5x faster than the
+ * smaller locks and about ~2x faster than std::mutex.  When used in
+ * combinable mode, it is much faster than the alternatives, going more than
+ * 10x faster than the small locks, about 6x faster than std::mutex, 2-3x
+ * faster than flat combining and even faster than std::atomic<> in some
+ * cases, allowing more work with higher throughput.  In the uncontended case,
+ * it is a few cycles faster than folly::MicroLock but a bit slower than
+ * std::mutex.  DistributedMutex is also resistent to tail latency pathalogies
+ * unlike many of the other mutexes in use, which sleep for large time
+ * quantums to reduce spin churn, this causes elevated latencies for threads
+ * that enter the sleep cycle.  The tail latency of lock acquisition can go up
+ * to 10x lower because of a more deterministic scheduling algorithm that is
+ * managed almost entirely in userspace.  Detailed results comparing the
+ * throughput and latencies of different mutex implementations and atomics are
+ * at the bottom of folly/synchronization/test/SmallLocksBenchmark.cpp
  *
- * DistributedMutex reduces cache line contention in userspace and in the
- * kernel by making each thread wait on a thread local spinlock and futex.
- * This allows threads to keep working only on their own cache lines without
- * requiring cache coherence operations when a mutex heavy contention.  This
- * strategy does not require sequential ordering on the centralized atomic
- * storage for wakeup operations as each thread assigned its own wait state
+ * Theoretically, write locks promote concurrency when the critical sections
+ * are small as most of the work is done outside the lock.  And indeed,
+ * performant concurrent applications go through several pains to limit the
+ * amount of work they do while holding a lock.  However, most times, the
+ * synchronization and scheduling overhead of a write lock in the critical
+ * path is so high, that after a certain point, making critical sections
+ * smaller does not actually increase the concurrency of the application and
+ * throughput plateaus.  DistributedMutex moves this breaking point to the
+ * level of hardware atomic instructions, so applications keep getting
+ * concurrency even under very high contention.  It does this by reducing
+ * cache misses and contention in userspace and in the kernel by making each
+ * thread wait on a thread local node and futex.  When combined critical
+ * sections are used DistributedMutex leverages template metaprogramming to
+ * allow the mutex to make better synchronization decisions based on the
+ * layout of the input and output data.  This allows threads to keep working
+ * only on their own cache lines without requiring cache coherence operations
+ * when a mutex experiences heavy contention
  *
  * Non-timed mutex acquisitions are scheduled through intrusive LIFO
  * contention chains.  Each thread starts by spinning for a short quantum and
@@ -98,7 +110,7 @@ namespace distributed_mutex {
  * own, thinking a mutex is functionally identical to a binary semaphore,
  * which, unlike a mutex, is a suitable primitive for that usage
  *
- * Combined critical sections, allow the implementation to elide several
+ * Combined critical sections allow the implementation to elide several
  * expensive operations during the lifetime of a critical section that cause
  * slowdowns with regular lock/unlock based usage.  DistributedMutex resolves
  * contention through combining up to a constant factor of 2 contention chains
@@ -116,11 +128,13 @@ namespace distributed_mutex {
  * standard disallow this usage for their mutexes)
  *
  * Timed locking through DistributedMutex is implemented through a centralized
- * algorithm - all waiters wait on the central mutex state, by setting and
- * resetting bits within the pointer-length word.  Since pointer length atomic
- * integers are incompatible with futex(FUTEX_WAIT) on most systems, a
- * non-standard implementation of futex() is used, where wait queues are
- * managed in user-space.  See p1135r0 and folly::ParkingLot
+ * algorithm.  The underlying contention-chains framework used in
+ * DistributedMutex is not abortable so we build abortability on the side.
+ * All waiters wait on the central mutex state, by setting and resetting bits
+ * within the pointer-length word.  Since pointer length atomic integers are
+ * incompatible with futex(FUTEX_WAIT) on most systems, a non-standard
+ * implementation of futex() is used, where wait queues are managed in
+ * user-space (see p1135r0 and folly::ParkingLot for more)
  */
 template <
     template <typename> class Atomic = std::atomic,
@@ -148,15 +162,19 @@ class DistributedMutex {
    *
    * The proxy has no public API and is intended to be for internal usage only
    *
-   * There are three notable cases where undefined behavior might come up:
+   * There are three notable cases where this method causes undefined
+   * behavior:
+   *
    *  - This is not a recursive mutex.  Trying to acquire the mutex twice from
    *    the same thread without unlocking it results in undefined behavior
-   *  - Thread, coroutine or fiber migrations are disallowed.  This is because
-   *    the implementation requires owning the stack frame through the
-   *    execution of the critical section for both lock/unlock or combined
-   *    critical sections.  This means that you cannot allow another thread,
-   *    fiber or coroutine to unlock the mutex
-   *  - This mutex cannot be used in a program compiled with segmented stacks
+   *  - Thread, coroutine or fiber migrations from within a critical section
+   *    are disallowed.  This is because the implementation requires owning the
+   *    stack frame through the execution of the critical section for both
+   *    lock/unlock or combined critical sections.  This also means that you
+   *    cannot allow another thread, fiber or coroutine to unlock the mutex
+   *  - This mutex cannot be used in a program compiled with segmented stacks,
+   *    there is currently no way to detect the presence of segmented stacks
+   *    at compile time or runtime, so we have no checks against this
    */
   DistributedMutexStateProxy lock();
 
@@ -258,15 +276,19 @@ class DistributedMutex {
    * Here, because we used a combined critical section, we have introduced a
    * dependency from one -> three that might not obvious to the reader
    *
-   * There are three notable cases where undefined behavior might come up:
+   * There are three notable cases where this method causes undefined
+   * behavior:
+   *
    *  - This is not a recursive mutex.  Trying to acquire the mutex twice from
    *    the same thread without unlocking it results in undefined behavior
-   *  - Thread, coroutine or fiber migrations are disallowed.  This is because
-   *    the implementation requires the locking entity to own the stack frame
-   *    through the execution of the critical section for both lock/unlock or
-   *    combined critical sections.  This means that you cannot allow another
-   *    thread, fiber or coroutine to unlock the mutex
-   *  - This mutex cannot be used in a program compiled with segmented stacks
+   *  - Thread, coroutine or fiber migrations from within a critical section
+   *    are disallowed.  This is because the implementation requires owning the
+   *    stack frame through the execution of the critical section for both
+   *    lock/unlock or combined critical sections.  This also means that you
+   *    cannot allow another thread, fiber or coroutine to unlock the mutex
+   *  - This mutex cannot be used in a program compiled with segmented stacks,
+   *    there is currently no way to detect the presence of segmented stacks
+   *    at compile time or runtime, so we have no checks against this
    */
   template <typename Task>
   auto lock_combine(Task task) noexcept -> folly::invoke_result_t<const Task&>;

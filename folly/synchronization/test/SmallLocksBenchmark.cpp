@@ -209,6 +209,7 @@ class alignas(folly::hardware_destructive_interference_size) AtomicsAdd {
 };
 std::uint64_t write(AtomicsAdd& atomics) {
   auto sum = 0;
+  folly::makeUnpredictable(sum);
   for (auto& integer : atomics.ints_) {
     sum += integer->fetch_add(1);
   }
@@ -221,12 +222,35 @@ class alignas(folly::hardware_destructive_interference_size) AtomicCas {
   std::atomic<std::uint64_t> integer_{0};
 };
 std::uint64_t write(AtomicCas& atomic) {
-  auto value = atomic.integer_.load();
+  auto value = atomic.integer_.load(std::memory_order_relaxed);
+  folly::makeUnpredictable(value);
   while (!atomic.integer_.compare_exchange_strong(value, value + 1)) {
   }
   return value;
 }
 void initialize(AtomicCas&) {}
+
+class alignas(folly::hardware_destructive_interference_size) AtomicFetchXor {
+ public:
+  std::atomic<std::uint64_t> integer_{0};
+};
+std::uint64_t write(AtomicFetchXor& atomic) {
+  auto value = std::numeric_limits<std::uint64_t>::max();
+  folly::makeUnpredictable(value);
+
+  // XOR is a good choice here because it allows us to simulate random
+  // operation in the hardware.  For example, if we were to use the same value
+  // to do something like a bitwise or, the hardware is allowed to coalesce
+  // the operations into one by treating all of the ones after the first as
+  // idempotent, and then it only needs to transfer data across the bus
+  // without actually needing to move the cacheline to the remote cores.  Very
+  // much like the implementation here, but done in the hardware.  Coalescing
+  // XORs is hard because it requires knowledge of the previous state and is
+  // mutating on every operation
+  value = atomic.integer_.fetch_xor(value, std::memory_order_acq_rel);
+  return value;
+}
+void initialize(AtomicFetchXor&) {}
 
 template <typename Lock, typename Data = std::uint64_t>
 static void
@@ -516,6 +540,9 @@ static void folly_distributedmutex_combining_simple(size_t o, size_t t) {
 static void atomics_fetch_add(size_t numOps, size_t numThreads) {
   runContended<NoLock, AtomicsAdd>(numOps, numThreads, 0);
 }
+static void atomic_fetch_xor(size_t numOps, size_t numThreads) {
+  runContended<NoLock, AtomicFetchXor>(numOps, numThreads, 0);
+}
 static void atomic_cas(size_t numOps, size_t numThreads) {
   runContended<NoLock, AtomicCas>(numOps, numThreads, 0);
 }
@@ -627,6 +654,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 1thread, 1)
 BENCH_REL(folly_flatcombining_no_caching_simple, 1thread, 1)
 BENCH_REL(folly_flatcombining_caching_simple, 1thread, 1)
 BENCH_REL(atomics_fetch_add, 1thread, 1)
+BENCH_REL(atomic_fetch_xor, 1thread, 1)
 BENCH_REL(atomic_cas, 1thread, 1)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 2thread, 2)
@@ -640,6 +668,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 2thread, 2)
 BENCH_REL(folly_flatcombining_no_caching_simple, 2thread, 2)
 BENCH_REL(folly_flatcombining_caching_simple, 2thread, 2)
 BENCH_REL(atomics_fetch_add, 2thread, 2)
+BENCH_REL(atomic_fetch_xor, 2thread, 2)
 BENCH_REL(atomic_cas, 2thread, 2)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 4thread, 4)
@@ -653,6 +682,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 4thread, 4)
 BENCH_REL(folly_flatcombining_no_caching_simple, 4thread, 4)
 BENCH_REL(folly_flatcombining_caching_simple, 4thread, 4)
 BENCH_REL(atomics_fetch_add, 4thread, 4)
+BENCH_REL(atomic_fetch_xor, 4thread, 4)
 BENCH_REL(atomic_cas, 4thread, 4)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 8thread, 8)
@@ -666,6 +696,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 8thread, 8)
 BENCH_REL(folly_flatcombining_no_caching_simple, 8thread, 8)
 BENCH_REL(folly_flatcombining_caching_simple, 8thread, 8)
 BENCH_REL(atomics_fetch_add, 8thread, 8)
+BENCH_REL(atomic_fetch_xor, 8thread, 8)
 BENCH_REL(atomic_cas, 8thread, 8)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 16thread, 16)
@@ -679,6 +710,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 16thread, 16)
 BENCH_REL(folly_flatcombining_no_caching_simple, 16thread, 16)
 BENCH_REL(folly_flatcombining_caching_simple, 16thread, 16)
 BENCH_REL(atomics_fetch_add, 16thread, 16)
+BENCH_REL(atomic_fetch_xor, 16thread, 16)
 BENCH_REL(atomic_cas, 16thread, 16)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 32thread, 32)
@@ -692,6 +724,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 32thread, 32)
 BENCH_REL(folly_flatcombining_no_caching_simple, 32thread, 32)
 BENCH_REL(folly_flatcombining_caching_simple, 32thread, 32)
 BENCH_REL(atomics_fetch_add, 32thread, 32)
+BENCH_REL(atomic_fetch_xor, 32thread, 32)
 BENCH_REL(atomic_cas, 32thread, 32)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 64thread, 64)
@@ -705,6 +738,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 64thread, 64)
 BENCH_REL(folly_flatcombining_no_caching_simple, 64thread, 64)
 BENCH_REL(folly_flatcombining_caching_simple, 64thread, 64)
 BENCH_REL(atomics_fetch_add, 64thread, 64)
+BENCH_REL(atomic_fetch_xor, 64thread, 64)
 BENCH_REL(atomic_cas, 64thread, 64)
 BENCHMARK_DRAW_LINE();
 BENCH_BASE(std_mutex_simple, 128thread, 128)
@@ -718,6 +752,7 @@ BENCH_REL(folly_distributedmutex_combining_simple, 128thread, 128)
 BENCH_REL(folly_flatcombining_no_caching_simple, 128thread, 128)
 BENCH_REL(folly_flatcombining_caching_simple, 128thread, 128)
 BENCH_REL(atomics_fetch_add, 128thread, 128)
+BENCH_REL(atomic_fetch_xor, 128thread, 128)
 BENCH_REL(atomic_cas, 128thread, 128)
 
 template <typename Mutex>
@@ -891,207 +926,215 @@ Lock time stats in us: mean 56 stddev 960 max 32873
 ============================================================================
 folly/synchronization/test/SmallLocksBenchmark.cpprelative  time/iter  iters/s
 ============================================================================
-StdMutexUncontendedBenchmark                                18.85ns   53.04M
-GoogleSpinUncontendedBenchmark                              11.25ns   88.87M
-MicroSpinLockUncontendedBenchmark                           10.95ns   91.34M
-PicoSpinLockUncontendedBenchmark                            20.38ns   49.06M
-MicroLockUncontendedBenchmark                               28.60ns   34.96M
-SharedMutexUncontendedBenchmark                             19.51ns   51.25M
-DistributedMutexUncontendedBenchmark                        25.27ns   39.58M
-AtomicFetchAddUncontendedBenchmark                           5.47ns  182.91M
+StdMutexUncontendedBenchmark                                16.40ns   60.98M
+GoogleSpinUncontendedBenchmark                              11.23ns   89.02M
+MicroSpinLockUncontendedBenchmark                           10.94ns   91.45M
+PicoSpinLockUncontendedBenchmark                            20.37ns   49.08M
+MicroLockUncontendedBenchmark                               29.21ns   34.24M
+SharedMutexUncontendedBenchmark                             19.44ns   51.45M
+DistributedMutexUncontendedBenchmark                        29.49ns   33.91M
+AtomicFetchAddUncontendedBenchmark                           5.45ns  183.56M
 ----------------------------------------------------------------------------
 ----------------------------------------------------------------------------
-std_mutex(1thread)                                         797.34ns    1.25M
-google_spin(1thread)                             101.28%   787.29ns    1.27M
-folly_microspin(1thread)                         118.32%   673.90ns    1.48M
-folly_picospin(1thread)                          118.36%   673.66ns    1.48M
-folly_microlock(1thread)                         117.98%   675.84ns    1.48M
-folly_sharedmutex(1thread)                       118.40%   673.41ns    1.48M
-folly_distributedmutex(1thread)                  116.11%   686.74ns    1.46M
-folly_distributedmutex_combining(1thread)        115.05%   693.05ns    1.44M
-folly_flatcombining_no_caching(1thread)           90.40%   882.05ns    1.13M
-folly_flatcombining_caching(1thread)             107.30%   743.08ns    1.35M
+std_mutex(1thread)                                         706.81ns    1.41M
+google_spin(1thread)                             103.09%   685.63ns    1.46M
+folly_microspin(1thread)                         117.03%   603.96ns    1.66M
+folly_picospin(1thread)                          102.72%   688.12ns    1.45M
+folly_microlock(1thread)                         103.40%   683.59ns    1.46M
+folly_sharedmutex(1thread)                       103.64%   682.01ns    1.47M
+folly_distributedmutex(1thread)                  101.07%   699.32ns    1.43M
+folly_distributedmutex_combining(1thread)        102.75%   687.89ns    1.45M
+folly_flatcombining_no_caching(1thread)           94.78%   745.77ns    1.34M
+folly_flatcombining_caching(1thread)             100.95%   700.15ns    1.43M
 ----------------------------------------------------------------------------
-std_mutex(2thread)                                           1.14us  874.72K
-google_spin(2thread)                             120.79%   946.42ns    1.06M
-folly_microspin(2thread)                         136.28%   838.90ns    1.19M
-folly_picospin(2thread)                          133.80%   854.45ns    1.17M
-folly_microlock(2thread)                         111.09%     1.03us  971.76K
-folly_sharedmutex(2thread)                       109.19%     1.05us  955.10K
-folly_distributedmutex(2thread)                  106.62%     1.07us  932.65K
-folly_distributedmutex_combining(2thread)        105.45%     1.08us  922.42K
-folly_flatcombining_no_caching(2thread)           74.73%     1.53us  653.70K
-folly_flatcombining_caching(2thread)              82.78%     1.38us  724.05K
+std_mutex(2thread)                                           1.28us  779.95K
+google_spin(2thread)                             137.96%   929.38ns    1.08M
+folly_microspin(2thread)                         151.64%   845.52ns    1.18M
+folly_picospin(2thread)                          140.81%   910.52ns    1.10M
+folly_microlock(2thread)                         131.62%   974.11ns    1.03M
+folly_sharedmutex(2thread)                       143.97%   890.53ns    1.12M
+folly_distributedmutex(2thread)                  129.20%   992.39ns    1.01M
+folly_distributedmutex_combining(2thread)        131.27%   976.71ns    1.02M
+folly_flatcombining_no_caching(2thread)           93.85%     1.37us  732.01K
+folly_flatcombining_caching(2thread)              97.05%     1.32us  756.98K
 ----------------------------------------------------------------------------
-std_mutex(4thread)                                           2.39us  418.41K
-google_spin(4thread)                             128.49%     1.86us  537.63K
-folly_microspin(4thread)                         102.60%     2.33us  429.28K
-folly_picospin(4thread)                          111.94%     2.14us  468.37K
-folly_microlock(4thread)                          78.19%     3.06us  327.16K
-folly_sharedmutex(4thread)                        86.30%     2.77us  361.11K
-folly_distributedmutex(4thread)                  138.25%     1.73us  578.44K
-folly_distributedmutex_combining(4thread)        146.96%     1.63us  614.90K
-folly_flatcombining_no_caching(4thread)           87.93%     2.72us  367.90K
-folly_flatcombining_caching(4thread)              96.09%     2.49us  402.04K
+std_mutex(4thread)                                           2.65us  376.96K
+google_spin(4thread)                             125.03%     2.12us  471.33K
+folly_microspin(4thread)                         118.43%     2.24us  446.44K
+folly_picospin(4thread)                          122.04%     2.17us  460.05K
+folly_microlock(4thread)                         102.38%     2.59us  385.94K
+folly_sharedmutex(4thread)                       101.76%     2.61us  383.60K
+folly_distributedmutex(4thread)                  137.07%     1.94us  516.71K
+folly_distributedmutex_combining(4thread)        191.98%     1.38us  723.71K
+folly_flatcombining_no_caching(4thread)          106.91%     2.48us  403.02K
+folly_flatcombining_caching(4thread)             111.66%     2.38us  420.91K
 ----------------------------------------------------------------------------
-std_mutex(8thread)                                           3.84us  260.54K
-google_spin(8thread)                              98.58%     3.89us  256.83K
-folly_microspin(8thread)                          64.01%     6.00us  166.77K
-folly_picospin(8thread)                           64.76%     5.93us  168.72K
-folly_microlock(8thread)                          44.31%     8.66us  115.45K
-folly_sharedmutex(8thread)                        50.20%     7.65us  130.78K
-folly_distributedmutex(8thread)                  120.38%     3.19us  313.64K
-folly_distributedmutex_combining(8thread)        190.44%     2.02us  496.18K
-folly_flatcombining_no_caching(8thread)          102.17%     3.76us  266.19K
-folly_flatcombining_caching(8thread)             129.25%     2.97us  336.76K
+std_mutex(8thread)                                           5.21us  191.97K
+google_spin(8thread)                             102.12%     5.10us  196.05K
+folly_microspin(8thread)                          97.02%     5.37us  186.26K
+folly_picospin(8thread)                           83.62%     6.23us  160.53K
+folly_microlock(8thread)                          69.32%     7.51us  133.08K
+folly_sharedmutex(8thread)                        64.22%     8.11us  123.29K
+folly_distributedmutex(8thread)                  175.50%     2.97us  336.91K
+folly_distributedmutex_combining(8thread)        258.13%     2.02us  495.55K
+folly_flatcombining_no_caching(8thread)          137.21%     3.80us  263.41K
+folly_flatcombining_caching(8thread)             174.75%     2.98us  335.48K
 ----------------------------------------------------------------------------
-std_mutex(16thread)                                          9.09us  110.05K
-google_spin(16thread)                            110.38%     8.23us  121.47K
-folly_microspin(16thread)                         79.81%    11.39us   87.83K
-folly_picospin(16thread)                          33.62%    27.03us   37.00K
-folly_microlock(16thread)                         49.93%    18.20us   54.95K
-folly_sharedmutex(16thread)                       46.15%    19.69us   50.79K
-folly_distributedmutex(16thread)                 145.48%     6.25us  160.10K
-folly_distributedmutex_combining(16thread)       275.84%     3.29us  303.56K
-folly_flatcombining_no_caching(16thread)         151.81%     5.99us  167.06K
-folly_flatcombining_caching(16thread)            153.44%     5.92us  168.86K
+std_mutex(16thread)                                         10.06us   99.37K
+google_spin(16thread)                             97.24%    10.35us   96.63K
+folly_microspin(16thread)                         91.23%    11.03us   90.65K
+folly_picospin(16thread)                          58.31%    17.26us   57.94K
+folly_microlock(16thread)                         51.59%    19.51us   51.26K
+folly_sharedmutex(16thread)                       49.87%    20.18us   49.56K
+folly_distributedmutex(16thread)                 155.47%     6.47us  154.49K
+folly_distributedmutex_combining(16thread)       316.70%     3.18us  314.70K
+folly_flatcombining_no_caching(16thread)         198.94%     5.06us  197.68K
+folly_flatcombining_caching(16thread)            184.72%     5.45us  183.55K
 ----------------------------------------------------------------------------
-std_mutex(32thread)                                         26.15us   38.24K
-google_spin(32thread)                            111.41%    23.47us   42.60K
-folly_microspin(32thread)                         84.76%    30.85us   32.41K
-folly_picospin(32thread)                          27.30%    95.80us   10.44K
-folly_microlock(32thread)                         48.93%    53.45us   18.71K
-folly_sharedmutex(32thread)                       54.64%    47.86us   20.89K
-folly_distributedmutex(32thread)                 158.31%    16.52us   60.53K
-folly_distributedmutex_combining(32thread)       314.13%     8.33us  120.12K
-folly_flatcombining_no_caching(32thread)         175.18%    14.93us   66.99K
-folly_flatcombining_caching(32thread)            206.73%    12.65us   79.05K
+std_mutex(32thread)                                         33.80us   29.59K
+google_spin(32thread)                            109.19%    30.95us   32.31K
+folly_microspin(32thread)                        110.23%    30.66us   32.62K
+folly_picospin(32thread)                          39.94%    84.62us   11.82K
+folly_microlock(32thread)                         56.56%    59.75us   16.74K
+folly_sharedmutex(32thread)                       73.92%    45.72us   21.87K
+folly_distributedmutex(32thread)                 192.60%    17.55us   56.99K
+folly_distributedmutex_combining(32thread)       402.79%     8.39us  119.19K
+folly_flatcombining_no_caching(32thread)         235.30%    14.36us   69.63K
+folly_flatcombining_caching(32thread)            259.02%    13.05us   76.64K
 ----------------------------------------------------------------------------
-std_mutex(64thread)                                         30.72us   32.55K
-google_spin(64thread)                            113.69%    27.02us   37.00K
-folly_microspin(64thread)                         87.23%    35.22us   28.39K
-folly_picospin(64thread)                          27.66%   111.06us    9.00K
-folly_microlock(64thread)                         49.93%    61.53us   16.25K
-folly_sharedmutex(64thread)                       54.00%    56.89us   17.58K
-folly_distributedmutex(64thread)                 162.10%    18.95us   52.77K
-folly_distributedmutex_combining(64thread)       317.85%     9.67us  103.46K
-folly_flatcombining_no_caching(64thread)         160.43%    19.15us   52.22K
-folly_flatcombining_caching(64thread)            185.57%    16.56us   60.40K
+std_mutex(64thread)                                         38.86us   25.73K
+google_spin(64thread)                            109.06%    35.63us   28.06K
+folly_microspin(64thread)                        109.92%    35.36us   28.28K
+folly_picospin(64thread)                          37.02%   104.99us    9.53K
+folly_microlock(64thread)                         56.33%    68.99us   14.49K
+folly_sharedmutex(64thread)                       69.39%    56.00us   17.86K
+folly_distributedmutex(64thread)                 194.31%    20.00us   50.00K
+folly_distributedmutex_combining(64thread)       397.54%     9.78us  102.29K
+folly_flatcombining_no_caching(64thread)         230.64%    16.85us   59.35K
+folly_flatcombining_caching(64thread)            254.03%    15.30us   65.37K
 ----------------------------------------------------------------------------
-std_mutex(128thread)                                        72.86us   13.72K
-google_spin(128thread)                           114.50%    63.64us   15.71K
-folly_microspin(128thread)                        99.89%    72.95us   13.71K
-folly_picospin(128thread)                         31.49%   231.40us    4.32K
-folly_microlock(128thread)                        57.76%   126.14us    7.93K
-folly_sharedmutex(128thread)                      61.49%   118.50us    8.44K
-folly_distributedmutex(128thread)                188.86%    38.58us   25.92K
-folly_distributedmutex_combining(128thread)      372.60%    19.56us   51.14K
-folly_flatcombining_no_caching(128thread)        149.17%    48.85us   20.47K
-folly_flatcombining_caching(128thread)           165.93%    43.91us   22.77K
+std_mutex(128thread)                                        76.62us   13.05K
+google_spin(128thread)                           109.31%    70.09us   14.27K
+folly_microspin(128thread)                       102.86%    74.49us   13.43K
+folly_picospin(128thread)                         42.23%   181.42us    5.51K
+folly_microlock(128thread)                        55.01%   139.29us    7.18K
+folly_sharedmutex(128thread)                      63.50%   120.65us    8.29K
+folly_distributedmutex(128thread)                183.63%    41.72us   23.97K
+folly_distributedmutex_combining(128thread)      388.41%    19.73us   50.69K
+folly_flatcombining_no_caching(128thread)        183.56%    41.74us   23.96K
+folly_flatcombining_caching(128thread)           198.02%    38.69us   25.84K
 ----------------------------------------------------------------------------
-std_mutex_simple(1thread)                                  623.35ns    1.60M
-google_spin_simple(1thread)                      103.37%   603.04ns    1.66M
-folly_microspin_simple(1thread)                  103.18%   604.15ns    1.66M
-folly_picospin_simple(1thread)                   103.27%   603.63ns    1.66M
-folly_microlock_simple(1thread)                  102.75%   606.68ns    1.65M
-folly_sharedmutex_simple(1thread)                 99.03%   629.43ns    1.59M
-folly_distributedmutex_simple(1thread)           100.62%   619.52ns    1.61M
-folly_distributedmutex_combining_simple(1thread   99.43%   626.92ns    1.60M
-folly_flatcombining_no_caching_simple(1thread)    81.20%   767.71ns    1.30M
-folly_flatcombining_caching_simple(1thread)       79.80%   781.15ns    1.28M
-atomics_fetch_add(1thread)                       100.67%   619.22ns    1.61M
-atomic_cas(1thread)                              104.04%   599.13ns    1.67M
+std_mutex_simple(1thread)                                  634.77ns    1.58M
+google_spin_simple(1thread)                      104.06%   610.01ns    1.64M
+folly_microspin_simple(1thread)                  104.59%   606.89ns    1.65M
+folly_picospin_simple(1thread)                    99.37%   638.81ns    1.57M
+folly_microlock_simple(1thread)                  104.08%   609.86ns    1.64M
+folly_sharedmutex_simple(1thread)                 91.77%   691.73ns    1.45M
+folly_distributedmutex_simple(1thread)            98.10%   647.04ns    1.55M
+folly_distributedmutex_combining_simple(1thread  101.90%   622.93ns    1.61M
+folly_flatcombining_no_caching_simple(1thread)    93.71%   677.40ns    1.48M
+folly_flatcombining_caching_simple(1thread)      101.81%   623.46ns    1.60M
+atomics_fetch_add(1thread)                       102.23%   620.90ns    1.61M
+atomic_fetch_xor(1thread)                        104.67%   606.43ns    1.65M
+atomic_cas(1thread)                               84.68%   749.58ns    1.33M
 ----------------------------------------------------------------------------
-std_mutex_simple(2thread)                                    1.13us  884.14K
-google_spin_simple(2thread)                      119.42%   947.08ns    1.06M
-folly_microspin_simple(2thread)                  118.54%   954.12ns    1.05M
-folly_picospin_simple(2thread)                   117.00%   966.67ns    1.03M
-folly_microlock_simple(2thread)                  114.90%   984.36ns    1.02M
-folly_sharedmutex_simple(2thread)                110.79%     1.02us  979.53K
-folly_distributedmutex_simple(2thread)           110.43%     1.02us  976.34K
-folly_distributedmutex_combining_simple(2thread  105.80%     1.07us  935.43K
-folly_flatcombining_no_caching_simple(2thread)    82.28%     1.37us  727.43K
-folly_flatcombining_caching_simple(2thread)       89.85%     1.26us  794.41K
-atomics_fetch_add(2thread)                       107.37%     1.05us  949.27K
-atomic_cas(2thread)                              173.23%   652.92ns    1.53M
+std_mutex_simple(2thread)                                    1.24us  803.81K
+google_spin_simple(2thread)                      123.09%     1.01us  989.38K
+folly_microspin_simple(2thread)                  138.46%   898.48ns    1.11M
+folly_picospin_simple(2thread)                   121.05%     1.03us  973.01K
+folly_microlock_simple(2thread)                  112.54%     1.11us  904.60K
+folly_sharedmutex_simple(2thread)                112.16%     1.11us  901.60K
+folly_distributedmutex_simple(2thread)           119.86%     1.04us  963.47K
+folly_distributedmutex_combining_simple(2thread  130.78%   951.25ns    1.05M
+folly_flatcombining_no_caching_simple(2thread)    93.25%     1.33us  749.54K
+folly_flatcombining_caching_simple(2thread)      102.34%     1.22us  822.65K
+atomics_fetch_add(2thread)                       113.81%     1.09us  914.83K
+atomic_fetch_xor(2thread)                        161.97%   768.09ns    1.30M
+atomic_cas(2thread)                              150.00%   829.41ns    1.21M
 ----------------------------------------------------------------------------
-std_mutex_simple(4thread)                                    2.12us  471.59K
-google_spin_simple(4thread)                      101.25%     2.09us  477.50K
-folly_microspin_simple(4thread)                   97.79%     2.17us  461.17K
-folly_picospin_simple(4thread)                    98.80%     2.15us  465.92K
-folly_microlock_simple(4thread)                   79.65%     2.66us  375.61K
-folly_sharedmutex_simple(4thread)                 82.35%     2.57us  388.35K
-folly_distributedmutex_simple(4thread)           113.43%     1.87us  534.91K
-folly_distributedmutex_combining_simple(4thread  158.22%     1.34us  746.17K
-folly_flatcombining_no_caching_simple(4thread)    89.95%     2.36us  424.22K
-folly_flatcombining_caching_simple(4thread)       98.86%     2.14us  466.24K
-atomics_fetch_add(4thread)                       160.21%     1.32us  755.54K
-atomic_cas(4thread)                              283.73%   747.35ns    1.34M
+std_mutex_simple(4thread)                                    2.39us  418.75K
+google_spin_simple(4thread)                      109.55%     2.18us  458.74K
+folly_microspin_simple(4thread)                  110.15%     2.17us  461.26K
+folly_picospin_simple(4thread)                   115.62%     2.07us  484.17K
+folly_microlock_simple(4thread)                   88.54%     2.70us  370.77K
+folly_sharedmutex_simple(4thread)                100.50%     2.38us  420.86K
+folly_distributedmutex_simple(4thread)           114.93%     2.08us  481.26K
+folly_distributedmutex_combining_simple(4thread  161.11%     1.48us  674.64K
+folly_flatcombining_no_caching_simple(4thread)   106.27%     2.25us  445.02K
+folly_flatcombining_caching_simple(4thread)      113.01%     2.11us  473.23K
+atomics_fetch_add(4thread)                       156.29%     1.53us  654.48K
+atomic_fetch_xor(4thread)                        285.69%   835.89ns    1.20M
+atomic_cas(4thread)                              270.31%   883.45ns    1.13M
 ----------------------------------------------------------------------------
-std_mutex_simple(8thread)                                    3.81us  262.49K
-google_spin_simple(8thread)                      118.19%     3.22us  310.23K
-folly_microspin_simple(8thread)                   87.11%     4.37us  228.66K
-folly_picospin_simple(8thread)                    66.31%     5.75us  174.05K
-folly_microlock_simple(8thread)                   61.18%     6.23us  160.59K
-folly_sharedmutex_simple(8thread)                 61.65%     6.18us  161.82K
-folly_distributedmutex_simple(8thread)           116.66%     3.27us  306.22K
-folly_distributedmutex_combining_simple(8thread  222.30%     1.71us  583.53K
-folly_flatcombining_no_caching_simple(8thread)   105.97%     3.59us  278.17K
-folly_flatcombining_caching_simple(8thread)      119.21%     3.20us  312.92K
-atomics_fetch_add(8thread)                       248.65%     1.53us  652.70K
-atomic_cas(8thread)                              171.55%     2.22us  450.30K
+std_mutex_simple(8thread)                                    4.83us  207.09K
+google_spin_simple(8thread)                      117.15%     4.12us  242.60K
+folly_microspin_simple(8thread)                  106.41%     4.54us  220.37K
+folly_picospin_simple(8thread)                    88.31%     5.47us  182.88K
+folly_microlock_simple(8thread)                   77.90%     6.20us  161.33K
+folly_sharedmutex_simple(8thread)                 72.21%     6.69us  149.55K
+folly_distributedmutex_simple(8thread)           138.98%     3.47us  287.83K
+folly_distributedmutex_combining_simple(8thread  289.79%     1.67us  600.12K
+folly_flatcombining_no_caching_simple(8thread)   134.25%     3.60us  278.03K
+folly_flatcombining_caching_simple(8thread)      149.74%     3.22us  310.10K
+atomics_fetch_add(8thread)                       318.11%     1.52us  658.78K
+atomic_fetch_xor(8thread)                        373.98%     1.29us  774.47K
+atomic_cas(8thread)                              241.00%     2.00us  499.09K
 ----------------------------------------------------------------------------
-std_mutex_simple(16thread)                                   9.02us  110.93K
-google_spin_simple(16thread)                     115.67%     7.79us  128.31K
-folly_microspin_simple(16thread)                  85.45%    10.55us   94.79K
-folly_picospin_simple(16thread)                   46.06%    19.57us   51.09K
-folly_microlock_simple(16thread)                  53.34%    16.90us   59.17K
-folly_sharedmutex_simple(16thread)                47.16%    19.12us   52.31K
-folly_distributedmutex_simple(16thread)          131.65%     6.85us  146.03K
-folly_distributedmutex_combining_simple(16threa  353.51%     2.55us  392.13K
-folly_flatcombining_no_caching_simple(16thread)  175.03%     5.15us  194.16K
-folly_flatcombining_caching_simple(16thread)     169.24%     5.33us  187.73K
-atomics_fetch_add(16thread)                      428.31%     2.10us  475.10K
-atomic_cas(16thread)                             194.29%     4.64us  215.52K
+std_mutex_simple(16thread)                                  12.03us   83.13K
+google_spin_simple(16thread)                      98.34%    12.23us   81.75K
+folly_microspin_simple(16thread)                 115.19%    10.44us   95.76K
+folly_picospin_simple(16thread)                   54.50%    22.07us   45.31K
+folly_microlock_simple(16thread)                  58.38%    20.61us   48.53K
+folly_sharedmutex_simple(16thread)                69.90%    17.21us   58.11K
+folly_distributedmutex_simple(16thread)          155.15%     7.75us  128.97K
+folly_distributedmutex_combining_simple(16threa  463.66%     2.59us  385.43K
+folly_flatcombining_no_caching_simple(16thread)  279.15%     4.31us  232.05K
+folly_flatcombining_caching_simple(16thread)     207.72%     5.79us  172.67K
+atomics_fetch_add(16thread)                      538.64%     2.23us  447.76K
+atomic_fetch_xor(16thread)                       570.85%     2.11us  474.53K
+atomic_cas(16thread)                             334.73%     3.59us  278.25K
 ----------------------------------------------------------------------------
-std_mutex_simple(32thread)                                  22.66us   44.12K
-google_spin_simple(32thread)                     114.91%    19.72us   50.70K
-folly_microspin_simple(32thread)                  70.53%    32.13us   31.12K
-folly_picospin_simple(32thread)                   17.21%   131.71us    7.59K
-folly_microlock_simple(32thread)                  39.17%    57.86us   17.28K
-folly_sharedmutex_simple(32thread)                46.84%    48.39us   20.67K
-folly_distributedmutex_simple(32thread)          128.80%    17.60us   56.83K
-folly_distributedmutex_combining_simple(32threa  397.59%     5.70us  175.43K
-folly_flatcombining_no_caching_simple(32thread)  205.08%    11.05us   90.49K
-folly_flatcombining_caching_simple(32thread)     247.48%     9.16us  109.20K
-atomics_fetch_add(32thread)                      466.03%     4.86us  205.63K
-atomic_cas(32thread)                             439.89%     5.15us  194.10K
+std_mutex_simple(32thread)                                  30.92us   32.34K
+google_spin_simple(32thread)                     107.22%    28.84us   34.68K
+folly_microspin_simple(32thread)                 106.48%    29.04us   34.44K
+folly_picospin_simple(32thread)                   32.90%    93.97us   10.64K
+folly_microlock_simple(32thread)                  55.77%    55.44us   18.04K
+folly_sharedmutex_simple(32thread)                63.85%    48.42us   20.65K
+folly_distributedmutex_simple(32thread)          170.50%    18.13us   55.14K
+folly_distributedmutex_combining_simple(32threa  562.55%     5.50us  181.94K
+folly_flatcombining_no_caching_simple(32thread)  296.57%    10.43us   95.92K
+folly_flatcombining_caching_simple(32thread)     295.25%    10.47us   95.49K
+atomics_fetch_add(32thread)                      952.20%     3.25us  307.96K
+atomic_fetch_xor(32thread)                       818.15%     3.78us  264.61K
+atomic_cas(32thread)                             634.91%     4.87us  205.34K
 ----------------------------------------------------------------------------
-std_mutex_simple(64thread)                                  30.55us   32.73K
-google_spin_simple(64thread)                     105.69%    28.91us   34.59K
-folly_microspin_simple(64thread)                  83.06%    36.79us   27.18K
-folly_picospin_simple(64thread)                   20.28%   150.63us    6.64K
-folly_microlock_simple(64thread)                  45.10%    67.75us   14.76K
-folly_sharedmutex_simple(64thread)                54.07%    56.50us   17.70K
-folly_distributedmutex_simple(64thread)          151.84%    20.12us   49.70K
-folly_distributedmutex_combining_simple(64threa  465.77%     6.56us  152.45K
-folly_flatcombining_no_caching_simple(64thread)  186.46%    16.39us   61.03K
-folly_flatcombining_caching_simple(64thread)     250.81%    12.18us   82.09K
-atomics_fetch_add(64thread)                      530.59%     5.76us  173.67K
-atomic_cas(64thread)                             510.57%     5.98us  167.12K
+std_mutex_simple(64thread)                                  35.29us   28.33K
+google_spin_simple(64thread)                     107.33%    32.88us   30.41K
+folly_microspin_simple(64thread)                 106.02%    33.29us   30.04K
+folly_picospin_simple(64thread)                   32.93%   107.17us    9.33K
+folly_microlock_simple(64thread)                  54.76%    64.45us   15.52K
+folly_sharedmutex_simple(64thread)                63.74%    55.37us   18.06K
+folly_distributedmutex_simple(64thread)          170.45%    20.71us   48.30K
+folly_distributedmutex_combining_simple(64threa  558.99%     6.31us  158.38K
+folly_flatcombining_no_caching_simple(64thread)  311.86%    11.32us   88.36K
+folly_flatcombining_caching_simple(64thread)     327.64%    10.77us   92.83K
+atomics_fetch_add(64thread)                      858.61%     4.11us  243.28K
+atomic_fetch_xor(64thread)                       738.35%     4.78us  209.20K
+atomic_cas(64thread)                             623.72%     5.66us  176.72K
 ----------------------------------------------------------------------------
-std_mutex_simple(128thread)                                 69.85us   14.32K
-google_spin_simple(128thread)                     97.54%    71.61us   13.97K
-folly_microspin_simple(128thread)                 88.01%    79.36us   12.60K
-folly_picospin_simple(128thread)                  22.31%   313.13us    3.19K
-folly_microlock_simple(128thread)                 50.49%   138.34us    7.23K
-folly_sharedmutex_simple(128thread)               59.30%   117.78us    8.49K
-folly_distributedmutex_simple(128thread)         174.90%    39.94us   25.04K
-folly_distributedmutex_combining_simple(128thre  531.75%    13.14us   76.13K
-folly_flatcombining_no_caching_simple(128thread  212.56%    32.86us   30.43K
-folly_flatcombining_caching_simple(128thread)    183.68%    38.03us   26.30K
-atomics_fetch_add(128thread)                     629.64%    11.09us   90.15K
-atomic_cas(128thread)                            562.01%    12.43us   80.46K
+std_mutex_simple(128thread)                                 69.21us   14.45K
+google_spin_simple(128thread)                    107.42%    64.43us   15.52K
+folly_microspin_simple(128thread)                 96.36%    71.82us   13.92K
+folly_picospin_simple(128thread)                  31.07%   222.75us    4.49K
+folly_microlock_simple(128thread)                 53.97%   128.25us    7.80K
+folly_sharedmutex_simple(128thread)               60.56%   114.29us    8.75K
+folly_distributedmutex_simple(128thread)         165.16%    41.91us   23.86K
+folly_distributedmutex_combining_simple(128thre  542.63%    12.75us   78.40K
+folly_flatcombining_no_caching_simple(128thread  246.16%    28.12us   35.57K
+folly_flatcombining_caching_simple(128thread)    232.56%    29.76us   33.60K
+atomics_fetch_add(128thread)                     839.43%     8.24us  121.29K
+atomic_fetch_xor(128thread)                      761.39%     9.09us  110.01K
+atomic_cas(128thread)                            598.53%    11.56us   86.48K
 ============================================================================
 
 ./small_locks_benchmark --bm_min_iters=100000
@@ -1198,108 +1241,116 @@ folly_distributedmutex_combining(128thread)      273.55%    30.93us   32.33K
 folly_flatcombining_no_caching(128thread)        183.86%    46.02us   21.73K
 folly_flatcombining_caching(128thread)           180.95%    46.76us   21.38K
 ----------------------------------------------------------------------------
-std_mutex_simple(1thread)                                    1.20us  833.55K
-google_spin_simple(1thread)                      105.03%     1.14us  875.52K
-folly_microspin_simple(1thread)                  102.64%     1.17us  855.57K
-folly_picospin_simple(1thread)                   101.94%     1.18us  849.74K
-folly_microlock_simple(1thread)                  101.01%     1.19us  841.96K
-folly_sharedmutex_simple(1thread)                100.82%     1.19us  840.37K
-folly_distributedmutex_simple(1thread)           100.15%     1.20us  834.83K
-folly_distributedmutex_combining_simple(1thread  102.37%     1.17us  853.32K
-folly_flatcombining_no_caching_simple(1thread)    93.19%     1.29us  776.81K
-folly_flatcombining_caching_simple(1thread)      100.03%     1.20us  833.80K
-atomic_fetch_add(1thread)                         98.13%     1.22us  817.99K
-atomic_cas(1thread)                              101.95%     1.18us  849.82K
+std_mutex_simple(1thread)                                    1.19us  839.60K
+google_spin_simple(1thread)                      100.96%     1.18us  847.68K
+folly_microspin_simple(1thread)                  101.35%     1.18us  850.96K
+folly_picospin_simple(1thread)                   101.04%     1.18us  848.31K
+folly_microlock_simple(1thread)                  100.58%     1.18us  844.50K
+folly_sharedmutex_simple(1thread)                100.75%     1.18us  845.88K
+folly_distributedmutex_simple(1thread)            98.62%     1.21us  828.05K
+folly_distributedmutex_combining_simple(1thread   99.58%     1.20us  836.07K
+folly_flatcombining_no_caching_simple(1thread)    95.63%     1.25us  802.87K
+folly_flatcombining_caching_simple(1thread)       99.37%     1.20us  834.27K
+atomics_fetch_add(1thread)                       101.98%     1.17us  856.25K
+atomic_fetch_xor(1thread)                        101.29%     1.18us  850.43K
+atomic_cas(1thread)                              101.73%     1.17us  854.11K
 ----------------------------------------------------------------------------
-std_mutex_simple(2thread)                                    1.56us  641.79K
-google_spin_simple(2thread)                      110.31%     1.41us  707.98K
-folly_microspin_simple(2thread)                  115.05%     1.35us  738.35K
-folly_picospin_simple(2thread)                   110.28%     1.41us  707.78K
-folly_microlock_simple(2thread)                  107.14%     1.45us  687.60K
-folly_sharedmutex_simple(2thread)                113.16%     1.38us  726.22K
-folly_distributedmutex_simple(2thread)           108.31%     1.44us  695.14K
-folly_distributedmutex_combining_simple(2thread  104.39%     1.49us  669.95K
-folly_flatcombining_no_caching_simple(2thread)    87.04%     1.79us  558.63K
-folly_flatcombining_caching_simple(2thread)       97.59%     1.60us  626.30K
-atomic_fetch_add(2thread)                        103.06%     1.51us  661.42K
-atomic_cas(2thread)                              123.77%     1.26us  794.32K
+std_mutex_simple(2thread)                                    1.60us  623.66K
+google_spin_simple(2thread)                      113.06%     1.42us  705.12K
+folly_microspin_simple(2thread)                  114.38%     1.40us  713.32K
+folly_picospin_simple(2thread)                   112.84%     1.42us  703.74K
+folly_microlock_simple(2thread)                   97.27%     1.65us  606.66K
+folly_sharedmutex_simple(2thread)                111.31%     1.44us  694.20K
+folly_distributedmutex_simple(2thread)           109.21%     1.47us  681.11K
+folly_distributedmutex_combining_simple(2thread  107.91%     1.49us  672.98K
+folly_flatcombining_no_caching_simple(2thread)    89.48%     1.79us  558.04K
+folly_flatcombining_caching_simple(2thread)       98.95%     1.62us  617.14K
+atomics_fetch_add(2thread)                       106.88%     1.50us  666.58K
+atomic_fetch_xor(2thread)                        126.82%     1.26us  790.91K
+atomic_cas(2thread)                              130.34%     1.23us  812.86K
 ----------------------------------------------------------------------------
-std_mutex_simple(4thread)                                    2.72us  368.29K
-google_spin_simple(4thread)                      122.17%     2.22us  449.96K
-folly_microspin_simple(4thread)                  142.12%     1.91us  523.43K
-folly_picospin_simple(4thread)                   160.27%     1.69us  590.27K
-folly_microlock_simple(4thread)                  143.16%     1.90us  527.24K
-folly_sharedmutex_simple(4thread)                139.18%     1.95us  512.61K
-folly_distributedmutex_simple(4thread)           111.52%     2.43us  410.71K
-folly_distributedmutex_combining_simple(4thread  138.74%     1.96us  510.96K
-folly_flatcombining_no_caching_simple(4thread)    96.48%     2.81us  355.34K
-folly_flatcombining_caching_simple(4thread)      105.15%     2.58us  387.28K
-atomic_fetch_add(4thread)                        148.73%     1.83us  547.75K
-atomic_cas(4thread)                              213.49%     1.27us  786.28K
+std_mutex_simple(4thread)                                    2.74us  364.72K
+google_spin_simple(4thread)                      123.43%     2.22us  450.16K
+folly_microspin_simple(4thread)                  153.56%     1.79us  560.07K
+folly_picospin_simple(4thread)                   146.03%     1.88us  532.59K
+folly_microlock_simple(4thread)                  116.28%     2.36us  424.10K
+folly_sharedmutex_simple(4thread)                142.39%     1.93us  519.33K
+folly_distributedmutex_simple(4thread)           111.84%     2.45us  407.89K
+folly_distributedmutex_combining_simple(4thread  140.61%     1.95us  512.83K
+folly_flatcombining_no_caching_simple(4thread)   101.22%     2.71us  369.17K
+folly_flatcombining_caching_simple(4thread)      105.38%     2.60us  384.35K
+atomics_fetch_add(4thread)                       150.95%     1.82us  550.52K
+atomic_fetch_xor(4thread)                        223.43%     1.23us  814.87K
+atomic_cas(4thread)                              217.57%     1.26us  793.52K
 ----------------------------------------------------------------------------
-std_mutex_simple(8thread)                                    7.04us  142.04K
-google_spin_simple(8thread)                      127.59%     5.52us  181.23K
-folly_microspin_simple(8thread)                  135.94%     5.18us  193.09K
-folly_picospin_simple(8thread)                   113.86%     6.18us  161.72K
-folly_microlock_simple(8thread)                  112.07%     6.28us  159.18K
-folly_sharedmutex_simple(8thread)                113.25%     6.22us  160.86K
-folly_distributedmutex_simple(8thread)           124.12%     5.67us  176.30K
-folly_distributedmutex_combining_simple(8thread  309.01%     2.28us  438.91K
-folly_flatcombining_no_caching_simple(8thread)   134.62%     5.23us  191.21K
-folly_flatcombining_caching_simple(8thread)      147.13%     4.79us  208.99K
-atomic_fetch_add(8thread)                        347.94%     2.02us  494.21K
-atomic_cas(8thread)                              412.06%     1.71us  585.28K
+std_mutex_simple(8thread)                                    6.99us  142.98K
+google_spin_simple(8thread)                      128.58%     5.44us  183.84K
+folly_microspin_simple(8thread)                  131.98%     5.30us  188.69K
+folly_picospin_simple(8thread)                   121.81%     5.74us  174.16K
+folly_microlock_simple(8thread)                  100.06%     6.99us  143.06K
+folly_sharedmutex_simple(8thread)                115.88%     6.04us  165.69K
+folly_distributedmutex_simple(8thread)           123.11%     5.68us  176.02K
+folly_distributedmutex_combining_simple(8thread  307.74%     2.27us  439.99K
+folly_flatcombining_no_caching_simple(8thread)   136.00%     5.14us  194.45K
+folly_flatcombining_caching_simple(8thread)      148.43%     4.71us  212.22K
+atomics_fetch_add(8thread)                       358.67%     1.95us  512.81K
+atomic_fetch_xor(8thread)                        466.73%     1.50us  667.32K
+atomic_cas(8thread)                              371.61%     1.88us  531.31K
 ----------------------------------------------------------------------------
-std_mutex_simple(16thread)                                  12.87us   77.73K
-google_spin_simple(16thread)                     122.44%    10.51us   95.17K
-folly_microspin_simple(16thread)                  99.49%    12.93us   77.33K
-folly_picospin_simple(16thread)                   72.60%    17.72us   56.43K
-folly_microlock_simple(16thread)                  80.39%    16.00us   62.48K
-folly_sharedmutex_simple(16thread)                78.76%    16.34us   61.22K
-folly_distributedmutex_simple(16thread)          118.58%    10.85us   92.17K
-folly_distributedmutex_combining_simple(16threa  483.44%     2.66us  375.76K
-folly_flatcombining_no_caching_simple(16thread)  194.22%     6.62us  150.96K
-folly_flatcombining_caching_simple(16thread)     229.03%     5.62us  178.02K
-atomic_fetch_add(16thread)                       617.57%     2.08us  480.01K
-atomic_cas(16thread)                             258.86%     4.97us  201.20K
+std_mutex_simple(16thread)                                  12.83us   77.96K
+google_spin_simple(16thread)                     122.19%    10.50us   95.26K
+folly_microspin_simple(16thread)                  99.14%    12.94us   77.30K
+folly_picospin_simple(16thread)                   62.74%    20.44us   48.91K
+folly_microlock_simple(16thread)                  75.01%    17.10us   58.48K
+folly_sharedmutex_simple(16thread)                79.92%    16.05us   62.31K
+folly_distributedmutex_simple(16thread)          118.18%    10.85us   92.14K
+folly_distributedmutex_combining_simple(16threa  482.27%     2.66us  376.00K
+folly_flatcombining_no_caching_simple(16thread)  191.45%     6.70us  149.26K
+folly_flatcombining_caching_simple(16thread)     227.12%     5.65us  177.07K
+atomics_fetch_add(16thread)                      612.80%     2.09us  477.77K
+atomic_fetch_xor(16thread)                       551.00%     2.33us  429.58K
+atomic_cas(16thread)                             282.79%     4.54us  220.47K
 ----------------------------------------------------------------------------
-std_mutex_simple(32thread)                                  22.85us   43.77K
-google_spin_simple(32thread)                     123.96%    18.43us   54.25K
-folly_microspin_simple(32thread)                  73.35%    31.15us   32.11K
-folly_picospin_simple(32thread)                   46.43%    49.21us   20.32K
-folly_microlock_simple(32thread)                  55.62%    41.08us   24.34K
-folly_sharedmutex_simple(32thread)                52.67%    43.38us   23.05K
-folly_distributedmutex_simple(32thread)          106.87%    21.38us   46.78K
-folly_distributedmutex_combining_simple(32threa  581.80%     3.93us  254.64K
-folly_flatcombining_no_caching_simple(32thread)  280.19%     8.15us  122.63K
-folly_flatcombining_caching_simple(32thread)     350.87%     6.51us  153.57K
-atomic_fetch_add(32thread)                      1031.35%     2.22us  451.41K
-atomic_cas(32thread)                             209.10%    10.93us   91.52K
+std_mutex_simple(32thread)                                  23.09us   43.30K
+google_spin_simple(32thread)                     125.07%    18.46us   54.16K
+folly_microspin_simple(32thread)                  76.39%    30.23us   33.08K
+folly_picospin_simple(32thread)                   46.54%    49.62us   20.16K
+folly_microlock_simple(32thread)                  52.84%    43.71us   22.88K
+folly_sharedmutex_simple(32thread)                53.06%    43.52us   22.98K
+folly_distributedmutex_simple(32thread)          107.10%    21.56us   46.38K
+folly_distributedmutex_combining_simple(32threa  596.57%     3.87us  258.33K
+folly_flatcombining_no_caching_simple(32thread)  274.44%     8.41us  118.84K
+folly_flatcombining_caching_simple(32thread)     312.83%     7.38us  135.46K
+atomics_fetch_add(32thread)                     1082.13%     2.13us  468.59K
+atomic_fetch_xor(32thread)                       552.82%     4.18us  239.39K
+atomic_cas(32thread)                             203.03%    11.37us   87.92K
 ----------------------------------------------------------------------------
-std_mutex_simple(64thread)                                  39.55us   25.28K
-google_spin_simple(64thread)                     124.15%    31.86us   31.39K
-folly_microspin_simple(64thread)                  72.27%    54.73us   18.27K
-folly_picospin_simple(64thread)                   39.96%    98.98us   10.10K
-folly_microlock_simple(64thread)                  53.10%    74.48us   13.43K
-folly_sharedmutex_simple(64thread)                48.83%    81.00us   12.35K
-folly_distributedmutex_simple(64thread)          103.91%    38.06us   26.27K
-folly_distributedmutex_combining_simple(64threa  520.61%     7.60us  131.63K
-folly_flatcombining_no_caching_simple(64thread)  288.46%    13.71us   72.93K
-folly_flatcombining_caching_simple(64thread)     306.57%    12.90us   77.51K
-atomic_fetch_add(64thread)                       982.24%     4.03us  248.34K
-atomic_cas(64thread)                             191.87%    20.61us   48.51K
+std_mutex_simple(64thread)                                  39.95us   25.03K
+google_spin_simple(64thread)                     124.75%    32.02us   31.23K
+folly_microspin_simple(64thread)                  73.49%    54.36us   18.40K
+folly_picospin_simple(64thread)                   39.80%   100.37us    9.96K
+folly_microlock_simple(64thread)                  50.07%    79.78us   12.53K
+folly_sharedmutex_simple(64thread)                49.52%    80.66us   12.40K
+folly_distributedmutex_simple(64thread)          104.56%    38.20us   26.18K
+folly_distributedmutex_combining_simple(64threa  532.34%     7.50us  133.26K
+folly_flatcombining_no_caching_simple(64thread)  279.23%    14.31us   69.90K
+folly_flatcombining_caching_simple(64thread)     325.10%    12.29us   81.39K
+atomics_fetch_add(64thread)                     1031.51%     3.87us  258.23K
+atomic_fetch_xor(64thread)                       525.68%     7.60us  131.60K
+atomic_cas(64thread)                             187.67%    21.28us   46.98K
 ----------------------------------------------------------------------------
-std_mutex_simple(128thread)                                 77.79us   12.85K
-google_spin_simple(128thread)                    123.39%    63.05us   15.86K
-folly_microspin_simple(128thread)                 69.13%   112.53us    8.89K
-folly_picospin_simple(128thread)                  30.32%   256.57us    3.90K
-folly_microlock_simple(128thread)                 50.78%   153.20us    6.53K
-folly_sharedmutex_simple(128thread)               48.00%   162.07us    6.17K
-folly_distributedmutex_simple(128thread)         102.79%    75.68us   13.21K
-folly_distributedmutex_combining_simple(128thre  433.00%    17.97us   55.66K
-folly_flatcombining_no_caching_simple(128thread  186.46%    41.72us   23.97K
-folly_flatcombining_caching_simple(128thread)    204.22%    38.09us   26.25K
-atomic_fetch_add(128thread)                      965.10%     8.06us  124.06K
-atomic_cas(128thread)                            184.01%    42.28us   23.65K
+std_mutex_simple(128thread)                                 78.65us   12.71K
+google_spin_simple(128thread)                    124.05%    63.40us   15.77K
+folly_microspin_simple(128thread)                 70.00%   112.36us    8.90K
+folly_picospin_simple(128thread)                  29.72%   264.60us    3.78K
+folly_microlock_simple(128thread)                 47.74%   164.73us    6.07K
+folly_sharedmutex_simple(128thread)               48.87%   160.93us    6.21K
+folly_distributedmutex_simple(128thread)         104.04%    75.59us   13.23K
+folly_distributedmutex_combining_simple(128thre  426.02%    18.46us   54.17K
+folly_flatcombining_no_caching_simple(128thread  210.85%    37.30us   26.81K
+folly_flatcombining_caching_simple(128thread)    241.48%    32.57us   30.70K
+atomics_fetch_add(128thread)                     992.30%     7.93us  126.17K
+atomic_fetch_xor(128thread)                      525.32%    14.97us   66.79K
+atomic_cas(128thread)                            181.89%    43.24us   23.13K
 ============================================================================
 */

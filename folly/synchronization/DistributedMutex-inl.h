@@ -683,7 +683,7 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
     // signal or a signal to wake up
     auto skipped = (signal == kSkipped);
     if (skipped || (signal == kWake) || (signal == kCombined)) {
-      sig = signal;
+      sig = static_cast<std::uint32_t>(signal);
       return !skipped;
     }
 
@@ -896,6 +896,40 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
   return folly::none;
 }
 
+template <typename Atomic, template <typename> class A, bool T>
+auto tryLockNoLoad(Atomic& atomic, DistributedMutex<A, T>&) {
+  // Try and set the least significant bit of the centralized lock state to 1,
+  // if this succeeds, it must have been the case that we had a kUnlocked (or
+  // 0) in the central storage before, since that is the only case where a 0
+  // can be found in the least significant bit
+  //
+  // If this fails, then it is a no-op
+  using Proxy = typename DistributedMutex<A, T>::DistributedMutexStateProxy;
+  auto previous = atomic_fetch_set(atomic, 0, std::memory_order_acquire);
+  if (!previous) {
+    return Proxy{nullptr, kLocked};
+  }
+
+  return Proxy{nullptr, 0};
+}
+
+template <template <typename> class Atomic, bool TimePublishing>
+typename DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy
+DistributedMutex<Atomic, TimePublishing>::try_lock() {
+  // The lock attempt below requires an expensive atomic fetch-and-mutate or
+  // an even more expensive atomic compare-and-swap loop depending on the
+  // platform.  These operations require pulling the lock cacheline into the
+  // current core in exclusive mode and are therefore hard to parallelize
+  //
+  // This probabilistically avoids the expense by first checking whether the
+  // mutex is currently locked
+  if (state_.load(std::memory_order_relaxed) != kUnlocked) {
+    return DistributedMutexStateProxy{nullptr, 0};
+  }
+
+  return tryLockNoLoad(state_, *this);
+}
+
 template <
     template <typename> class Atomic,
     bool TimePublishing,
@@ -916,7 +950,7 @@ lockImplementation(
   // that case as it causes an extra cacheline bounce
   constexpr auto combineRequested = !std::is_same<Request, std::nullptr_t>{};
   if (!combineRequested) {
-    if (auto state = mutex.try_lock()) {
+    if (auto state = tryLockNoLoad(atomic, mutex)) {
       return state;
     }
   }
@@ -1356,25 +1390,6 @@ void DistributedMutex<Atomic, Publish>::unlock(
       break;
     }
   }
-}
-
-template <template <typename> class Atomic, bool TimePublishing>
-typename DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy
-DistributedMutex<Atomic, TimePublishing>::try_lock() {
-  // Try and set the least significant bit of the centralized lock state to 1,
-  // indicating locked.
-  //
-  // If this succeeds, it must have been the case that we had a kUnlocked (or
-  // 0) in the centralized storage before, since that is the only case where a
-  // 0 can be found.  So we assert that in debug mode
-  //
-  // If this fails, then it is a no-op
-  auto previous = atomic_fetch_set(state_, 0, std::memory_order_acquire);
-  if (!previous) {
-    return {nullptr, kLocked};
-  }
-
-  return {nullptr, 0};
 }
 
 template <typename Atomic, typename Deadline, typename MakeProxy>

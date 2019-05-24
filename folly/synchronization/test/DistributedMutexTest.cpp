@@ -1648,4 +1648,111 @@ TEST(DistributedMutex, TestAppropriateDestructionAndConstructionWithCombine) {
   thread.join();
 }
 
+namespace {
+template <template <typename> class Atom = std::atomic>
+void concurrentLocksManyMutexes(int numThreads, std::chrono::seconds duration) {
+  using DMutex = detail::distributed_mutex::DistributedMutex<Atom>;
+  const auto&& kNumMutexes = 10;
+  auto&& threads = std::vector<std::thread>{};
+  auto&& mutexes = std::vector<DMutex>(kNumMutexes);
+  auto&& barriers = std::vector<std::atomic<std::uint64_t>>(kNumMutexes);
+  auto&& stop = std::atomic<bool>{false};
+
+  for (auto i = 0; i < numThreads; ++i) {
+    threads.push_back(DSched::thread([&] {
+      auto&& total = std::atomic<std::uint64_t>{0};
+      auto&& expected = std::uint64_t{0};
+
+      for (auto j = 0; !stop.load(std::memory_order_relaxed); ++j) {
+        auto& mutex = mutexes[j % kNumMutexes];
+        auto& barrier = barriers[j % kNumMutexes];
+
+        ++expected;
+        auto result = mutex.lock_combine([&]() {
+          EXPECT_EQ(barrier.fetch_add(1, std::memory_order_relaxed), 0);
+          std::this_thread::yield();
+          EXPECT_EQ(barrier.fetch_sub(1, std::memory_order_relaxed), 1);
+          return total.fetch_add(1, std::memory_order_relaxed);
+        });
+        EXPECT_EQ(result, expected - 1);
+      }
+
+      EXPECT_EQ(total.load(), expected);
+    }));
+  }
+
+  /* sleep override */
+  std::this_thread::sleep_for(duration);
+  stop.store(true);
+  for (auto& thread : threads) {
+    DSched::join(thread);
+  }
+}
+} // namespace
+
+TEST(DistributedMutex, StressWithManyMutexesAlternatingTwoThreads) {
+  concurrentLocksManyMutexes(
+      2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressWithManyMutexesAlternatingFourThreads) {
+  concurrentLocksManyMutexes(
+      4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressWithManyMutexesAlternatingEightThreads) {
+  concurrentLocksManyMutexes(
+      8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressWithManyMutexesAlternatingSixteenThreads) {
+  concurrentLocksManyMutexes(
+      16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressWithManyMutexesAlternatingThirtyTwoThreads) {
+  concurrentLocksManyMutexes(
+      32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, StressWithManyMutexesAlternatingSixtyFourThreads) {
+  concurrentLocksManyMutexes(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+
+namespace {
+void concurrentLocksManyMutexesDeterministic(
+    int threads,
+    std::chrono::seconds t) {
+  const auto kNumPasses = 3.0;
+  const auto seconds = std::ceil(static_cast<double>(t.count()) / kNumPasses);
+  const auto time = std::chrono::seconds{static_cast<std::uint64_t>(seconds)};
+
+  for (auto pass = 0; pass < kNumPasses; ++pass) {
+    auto&& schedule = DSched{DSched::uniform(pass)};
+    concurrentLocksManyMutexes<test::DeterministicAtomic>(threads, time);
+    static_cast<void>(schedule);
+  }
+}
+} // namespace
+
+TEST(DistributedMutex, DeterministicWithManyMutexesAlternatingTwoThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      2, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicWithManyMutexesAlternatingFourThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      4, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicWithManyMutexesAlternatingEightThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      8, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicWithManyMutexesAlternatingSixteenThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      16, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicWithManyMtxAlternatingThirtyTwoThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      32, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
+TEST(DistributedMutex, DeterministicWithManyMtxAlternatingSixtyFourThreads) {
+  concurrentLocksManyMutexesDeterministic(
+      64, std::chrono::seconds{FLAGS_stress_test_seconds});
+}
 } // namespace folly
