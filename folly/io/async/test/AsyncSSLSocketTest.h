@@ -57,6 +57,12 @@ class SendMsgParamsCallbackBase
     socket_ = socket;
     oldCallback_ = socket_->getSendMsgParamsCB();
     socket_->setSendMsgParamCB(this);
+    socket_->setEorTracking(trackEor_);
+  }
+
+  void setEorTracking(bool track) {
+    CHECK(!socket_); // should only be called during setup
+    trackEor_ = track;
   }
 
   int getFlagsImpl(
@@ -74,6 +80,7 @@ class SendMsgParamsCallbackBase
   }
 
   std::shared_ptr<AsyncSSLSocket> socket_;
+  bool trackEor_{false};
   folly::AsyncSocket::SendMsgParamsCallback* oldCallback_{nullptr};
 };
 
@@ -98,15 +105,29 @@ class SendMsgFlagsCallback : public SendMsgParamsCallbackBase {
   int flags_{0};
 };
 
-class SendMsgDataCallback : public SendMsgFlagsCallback {
+class SendMsgAncillaryDataCallback : public SendMsgParamsCallbackBase {
  public:
-  SendMsgDataCallback() {}
+  SendMsgAncillaryDataCallback() {}
 
+  /**
+   * This data will be returned on calls to getAncillaryData.
+   */
   void resetData(std::vector<char>&& data) {
     ancillaryData_.swap(data);
   }
 
+  /**
+   * These flags were observed on the last call to getAncillaryData.
+   */
+  folly::WriteFlags getObservedWriteFlags() {
+    return observedWriteFlags_;
+  }
+
   void getAncillaryData(folly::WriteFlags flags, void* data) noexcept override {
+    // getAncillaryData is called through a long chain of functions after send
+    // record the observed write flags so we can compare later
+    observedWriteFlags_ = flags;
+
     if (ancillaryData_.size()) {
       std::cerr << "getAncillaryData: copying data" << std::endl;
       memcpy(data, ancillaryData_.data(), ancillaryData_.size());
@@ -124,6 +145,7 @@ class SendMsgDataCallback : public SendMsgFlagsCallback {
     }
   }
 
+  folly::WriteFlags observedWriteFlags_{};
   std::vector<char> ancillaryData_;
 };
 
@@ -205,8 +227,6 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
 
   ~WriteCheckTimestampCallback() override {
     EXPECT_EQ(STATE_SUCCEEDED, state);
-    EXPECT_TRUE(gotTimestamp_);
-    EXPECT_TRUE(gotByteSeq_);
   }
 
   void setSocket(const std::shared_ptr<AsyncSSLSocket>& socket) override {
@@ -220,7 +240,7 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
     EXPECT_EQ(ret, 0);
   }
 
-  void checkForTimestampNotifications() noexcept {
+  std::vector<int32_t> getTimestampNotifications() noexcept {
     auto fd = socket_->getNetworkSocket();
     std::vector<char> ctrl(1024, 0);
     unsigned char data;
@@ -235,6 +255,11 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
     msg.msg_control = ctrl.data();
     msg.msg_controllen = ctrl.size();
 
+    std::vector<int32_t> timestampsFound;
+
+    folly::Optional<int32_t> timestampType;
+    bool gotTimestamp = false;
+    bool gotByteSeq = false;
     int ret;
     while (true) {
       ret = netops::recvmsg(fd, &msg, MSG_ERRQUEUE);
@@ -249,7 +274,7 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
               errnoCopy);
           exception = ex;
         }
-        return;
+        return timestampsFound;
       }
 
       for (struct cmsghdr* cmsg = CMSG_FIRSTHDR(&msg);
@@ -257,21 +282,39 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
            cmsg = CMSG_NXTHDR(&msg, cmsg)) {
         if (cmsg->cmsg_level == SOL_SOCKET &&
             cmsg->cmsg_type == SCM_TIMESTAMPING) {
-          gotTimestamp_ = true;
-          continue;
+          CHECK(!gotTimestamp); // shouldn't already be set
+          gotTimestamp = true;
         }
 
         if ((cmsg->cmsg_level == SOL_IP && cmsg->cmsg_type == IP_RECVERR) ||
             (cmsg->cmsg_level == SOL_IPV6 && cmsg->cmsg_type == IPV6_RECVERR)) {
-          gotByteSeq_ = true;
-          continue;
-        }
-      }
-    }
-  }
+          const struct cmsghdr& cmsgh = *cmsg;
+          const auto serr = reinterpret_cast<const struct sock_extended_err*>(
+              CMSG_DATA(&cmsgh));
+          if (serr->ee_errno != ENOMSG ||
+              serr->ee_origin != SO_EE_ORIGIN_TIMESTAMPING) {
+            // not a timestamp
+            continue;
+          }
 
-  bool gotTimestamp_{false};
-  bool gotByteSeq_{false};
+          CHECK(!timestampType); // shouldn't already be set
+          CHECK(!gotByteSeq); // shouldn't already be set
+          gotByteSeq = true;
+          timestampType = serr->ee_info;
+        }
+
+        // check if we have both a timestamp and byte sequence
+        if (gotTimestamp && gotByteSeq) {
+          timestampsFound.push_back(*timestampType);
+          timestampType = folly::none;
+          gotTimestamp = false;
+          gotByteSeq = false;
+        }
+      } // for(...)
+    } // while(true)
+
+    return timestampsFound;
+  }
 };
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
@@ -312,10 +355,16 @@ class ReadCallbackBase : public AsyncTransportWrapper::ReadCallback {
   StateEnum state;
 };
 
+/**
+ * ReadCallback reads data from the socket and then writes it back.
+ *
+ * It includes any folly::WriteFlags set via setWriteFlags(...) in its write
+ * back operation.
+ */
 class ReadCallback : public ReadCallbackBase {
  public:
   explicit ReadCallback(WriteCallbackBase* wcb)
-      : ReadCallbackBase(wcb), buffers() {}
+      : ReadCallbackBase(wcb), buffers(), writeFlags(folly::WriteFlags::NONE) {}
 
   ~ReadCallback() override {
     for (std::vector<Buffer>::iterator it = buffers.begin();
@@ -342,11 +391,18 @@ class ReadCallback : public ReadCallbackBase {
     wcb_->setSocket(socket_);
 
     // Write back the same data.
-    socket_->write(wcb_, currentBuffer.buffer, len);
+    socket_->write(wcb_, currentBuffer.buffer, len, writeFlags);
 
     buffers.push_back(currentBuffer);
     currentBuffer.reset();
     state = STATE_SUCCEEDED;
+  }
+
+  /**
+   * These flags will be used when writing the read data back to the socket.
+   */
+  void setWriteFlags(folly::WriteFlags flags) {
+    writeFlags = flags;
   }
 
   class Buffer {
@@ -374,6 +430,7 @@ class ReadCallback : public ReadCallbackBase {
 
   std::vector<Buffer> buffers;
   Buffer currentBuffer;
+  folly::WriteFlags writeFlags;
 };
 
 class ReadErrorCallback : public ReadCallbackBase {

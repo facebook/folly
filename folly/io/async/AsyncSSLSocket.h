@@ -894,16 +894,31 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
 
-  // The app byte num that we are tracking for the MSG_EOR
+  // The app byte num that we are tracking for EOR.
+  //
   // Only one app EOR byte can be tracked.
+  // See appEorByteWriteFlags_ for details.
   size_t appEorByteNo_{0};
+
+  // The WriteFlags to pass for the app byte num that is tracked for EOR.
+  //
+  // When openssl is about to send appEorByteNo_, these flags will be passed to
+  // the application via the getAncillaryData callback. The application can then
+  // generate a control message containing socket timestamping flags or other
+  // commands that will be included when the corresponding buffer is passed to
+  // the kernel via sendmsg().
+  //
+  // See AsyncSSLSocket::bioWrite (which overrides OpenSSL biowrite).
+  WriteFlags appEorByteWriteFlags_{};
 
   // Try to avoid calling SSL_write() for buffers smaller than this.
   // It doesn't take effect when it is 0.
   size_t minWriteSize_{1500};
 
   // When openssl is about to sendmsg() across the minEorRawBytesNo_,
-  // it will pass MSG_EOR to sendmsg().
+  // it will trigger logic to include an application defined control message.
+  //
+  // See appEorByteWriteFlags_ for details.
   size_t minEorRawByteNo_{0};
 #if FOLLY_OPENSSL_HAS_SNI
   std::shared_ptr<folly::SSLContext> handshakeCtx_;

@@ -2561,7 +2561,7 @@ TEST(AsyncSSLSocketTest, SendMsgParamsCallback) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
 /**
  * Test connecting to, writing to, reading from, and closing the
- * connection to the SSL server.
+ * connection to the SSL server with ancillary data from the application.
  */
 TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   // This test requires Linux kernel v4.6 or later
@@ -2580,7 +2580,7 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   }
 
   // Start listening on a local port
-  SendMsgDataCallback msgCallback;
+  SendMsgAncillaryDataCallback msgCallback;
   WriteCheckTimestampCallback writeCallback(&msgCallback);
   ReadCallback readCallback(&writeCallback);
   HandshakeCallback handshakeCallback(&readCallback);
@@ -2596,11 +2596,17 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
       std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
   socket->open();
 
-  // Adding MSG_EOR flag to the message flags - it'll trigger
-  // timestamp generation for the last byte of the message.
-  msgCallback.resetFlags(MSG_DONTWAIT | MSG_NOSIGNAL | MSG_EOR);
+  // we'll pass the EOR and TIMESTAMP_TX flags with the write back
+  // EOR tracking must be enabled for WriteFlags be passed
+  const auto writeFlags =
+      folly::WriteFlags::EOR | folly::WriteFlags::TIMESTAMP_TX;
+  readCallback.setWriteFlags(writeFlags);
+  msgCallback.setEorTracking(true);
 
   // Init ancillary data buffer to trigger timestamp notification
+  //
+  // We generate the same ancillary data regardless of the specific WriteFlags,
+  // we verify that the WriteFlags are observed as expected below.
   union {
     uint8_t ctrl_data[CMSG_LEN(sizeof(uint32_t))];
     struct cmsghdr cmsg;
@@ -2615,9 +2621,9 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   memcpy(ctrl.data(), u.ctrl_data, CMSG_LEN(sizeof(uint32_t)));
   msgCallback.resetData(std::move(ctrl));
 
-  // write()
+  // write(), including flags
   std::vector<uint8_t> buf(128, 'a');
-  socket->write(buf.data(), buf.size());
+  socket->write(buf.data(), buf.size(), writeFlags);
 
   // read()
   std::vector<uint8_t> readbuf(buf.size());
@@ -2625,11 +2631,29 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
   EXPECT_EQ(bytesRead, buf.size());
   EXPECT_TRUE(std::equal(buf.begin(), buf.end(), readbuf.begin()));
 
-  writeCallback.checkForTimestampNotifications();
+  // should receive three timestamps (schedule, TX/SND, ACK)
+  // may take some time for all to arrive, so loop to wait
+  //
+  // socket error queue does not have the equivalent of an EOF, so we must
+  // loop on it unless we want to use libevent for this test...
+  const std::vector<int32_t> timestampsExpected = {
+      SCM_TSTAMP_SCHED, SCM_TSTAMP_SND, SCM_TSTAMP_ACK};
+  std::vector<int32_t> timestampsReceived;
+  while (timestampsExpected.size() != timestampsReceived.size()) {
+    const auto timestamps = writeCallback.getTimestampNotifications();
+    timestampsReceived.insert(
+        timestampsReceived.end(), timestamps.begin(), timestamps.end());
+  }
+  EXPECT_THAT(timestampsReceived, ElementsAreArray(timestampsExpected));
+
+  // check the observed write flags
+  EXPECT_EQ(
+      static_cast<std::underlying_type<folly::WriteFlags>::type>(
+          msgCallback.getObservedWriteFlags()),
+      static_cast<std::underlying_type<folly::WriteFlags>::type>(writeFlags));
 
   // close()
   socket->close();
-
   cerr << "SendMsgDataCallback test completed" << endl;
 }
 #endif // FOLLY_HAVE_MSG_ERRQUEUE

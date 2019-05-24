@@ -78,7 +78,7 @@ enum class WriteFlags : uint32_t {
 /*
  * union operator
  */
-inline WriteFlags operator|(WriteFlags a, WriteFlags b) {
+constexpr WriteFlags operator|(WriteFlags a, WriteFlags b) {
   return static_cast<WriteFlags>(
       static_cast<uint32_t>(a) | static_cast<uint32_t>(b));
 }
@@ -86,7 +86,7 @@ inline WriteFlags operator|(WriteFlags a, WriteFlags b) {
 /*
  * compound assignment union operator
  */
-inline WriteFlags& operator|=(WriteFlags& a, WriteFlags b) {
+constexpr WriteFlags& operator|=(WriteFlags& a, WriteFlags b) {
   a = a | b;
   return a;
 }
@@ -94,7 +94,7 @@ inline WriteFlags& operator|=(WriteFlags& a, WriteFlags b) {
 /*
  * intersection operator
  */
-inline WriteFlags operator&(WriteFlags a, WriteFlags b) {
+constexpr WriteFlags operator&(WriteFlags a, WriteFlags b) {
   return static_cast<WriteFlags>(
       static_cast<uint32_t>(a) & static_cast<uint32_t>(b));
 }
@@ -102,7 +102,7 @@ inline WriteFlags operator&(WriteFlags a, WriteFlags b) {
 /*
  * compound assignment intersection operator
  */
-inline WriteFlags& operator&=(WriteFlags& a, WriteFlags b) {
+constexpr WriteFlags& operator&=(WriteFlags& a, WriteFlags b) {
   a = a & b;
   return a;
 }
@@ -110,23 +110,36 @@ inline WriteFlags& operator&=(WriteFlags& a, WriteFlags b) {
 /*
  * exclusion parameter
  */
-inline WriteFlags operator~(WriteFlags a) {
+constexpr WriteFlags operator~(WriteFlags a) {
   return static_cast<WriteFlags>(~static_cast<uint32_t>(a));
 }
 
 /*
  * unset operator
  */
-inline WriteFlags unSet(WriteFlags a, WriteFlags b) {
+constexpr WriteFlags unSet(WriteFlags a, WriteFlags b) {
   return a & ~b;
 }
 
 /*
  * inclusion operator
  */
-inline bool isSet(WriteFlags a, WriteFlags b) {
+constexpr bool isSet(WriteFlags a, WriteFlags b) {
   return (a & b) == b;
 }
+
+/**
+ * Write flags that are specifically for the final write call of a buffer.
+ *
+ * In some cases, buffers passed to send may be coalesced or split by the socket
+ * write handling logic. For instance, a buffer passed to AsyncSSLSocket may be
+ * split across multiple TLS records (and therefore multiple calls to write).
+ *
+ * When a buffer is split up, these flags will only be applied for the final
+ * call to write for that buffer.
+ */
+constexpr WriteFlags kEorRelevantWriteFlags =
+    WriteFlags::EOR | WriteFlags::TIMESTAMP_TX;
 
 /**
  * AsyncTransport defines an asynchronous API for streaming I/O.

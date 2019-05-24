@@ -386,6 +386,7 @@ void AsyncSSLSocket::setEorTracking(bool track) {
   if (isEorTrackingEnabled() != track) {
     AsyncSocket::setEorTracking(track);
     appEorByteNo_ = 0;
+    appEorByteWriteFlags_ = {};
     minEorRawByteNo_ = 0;
   }
 }
@@ -1536,13 +1537,18 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
       }
     }
 
+    // cork the current write if the original flags included CORK or if there
+    // are remaining iovec to write
     corkCurrentWrite_ =
         isSet(flags, WriteFlags::CORK) || (i + buffersStolen + 1 < count);
-    bytes = eorAwareSSLWrite(
-        ssl_,
-        sslWriteBuf,
-        int(len),
-        (isSet(flags, WriteFlags::EOR) && i + buffersStolen + 1 == count));
+
+    // track the EoR if:
+    //  (1) there are write flags that require EoR tracking (EOR / TIMESTAMP_TX)
+    //  (2) if the buffer includes the EOR byte
+    appEorByteWriteFlags_ = flags & kEorRelevantWriteFlags;
+    bool trackEor = appEorByteWriteFlags_ != folly::WriteFlags::NONE &&
+        (i + buffersStolen + 1 == count);
+    bytes = eorAwareSSLWrite(ssl_, sslWriteBuf, int(len), trackEor);
 
     if (bytes <= 0) {
       int error = SSL_get_error(ssl_.get(), int(bytes));
@@ -1609,6 +1615,7 @@ int AsyncSSLSocket::eorAwareSSLWrite(
       }
       if (appBytesWritten_ == appEorByteNo_) {
         appEorByteNo_ = 0;
+        appEorByteWriteFlags_ = {};
       } else {
         CHECK(appBytesWritten_ < appEorByteNo_);
       }
@@ -1658,7 +1665,7 @@ int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
   WriteFlags flags = WriteFlags::NONE;
   if (tsslSock->isEorTrackingEnabled() && tsslSock->minEorRawByteNo_ &&
       tsslSock->minEorRawByteNo_ <= BIO_number_written(b) + inl) {
-    flags |= WriteFlags::EOR;
+    flags |= tsslSock->appEorByteWriteFlags_;
   }
 
   if (tsslSock->corkCurrentWrite_) {
