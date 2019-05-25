@@ -25,6 +25,12 @@
 #include <folly/detail/UniqueInstance.h>
 #include <folly/functional/Invoke.h>
 
+#if defined(FOLLY_TLS) && !(__GNUC__ && __PIC__)
+#define FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS 1
+#else
+#define FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS 0
+#endif
+
 namespace folly {
 
 /// SingletonThreadLocal
@@ -129,7 +135,7 @@ class SingletonThreadLocal {
     return *getWrapperTL();
   }
 
-#ifdef FOLLY_TLS
+#if FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS
   FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
     static thread_local Wrapper** check = &cache;
     CHECK_EQ(check, &cache) << "inline function static thread_local merging";
@@ -141,7 +147,7 @@ class SingletonThreadLocal {
 
  public:
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
-#ifdef FOLLY_TLS
+#if FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS
     static thread_local Wrapper* cache;
     return FOLLY_LIKELY(!!cache) ? *cache : getSlow(cache);
 #else
