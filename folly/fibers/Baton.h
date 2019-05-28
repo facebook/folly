@@ -245,7 +245,9 @@ class Baton {
   template <typename F>
   inline void waitFiber(FiberManager& fm, F&& mainContextFunc);
 
-  bool timedWaitThread(std::chrono::milliseconds timeout);
+  template <typename Clock, typename Duration>
+  bool timedWaitThread(
+      const std::chrono::time_point<Clock, Duration>& deadline);
 
   static constexpr intptr_t NO_WAITER = 0;
   static constexpr intptr_t POSTED = -1;

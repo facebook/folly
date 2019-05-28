@@ -71,40 +71,72 @@ void Baton::waitFiber(FiberManager& fm, F&& mainContextFunc) {
   fm.activeFiber_->preempt(Fiber::AWAITING);
 }
 
+template <typename Clock, typename Duration>
+bool Baton::timedWaitThread(
+    const std::chrono::time_point<Clock, Duration>& deadline) {
+  auto waiter = waiter_.load();
+
+  if (LIKELY(
+          waiter == NO_WAITER &&
+          waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
+    do {
+      auto* futex = &futex_.futex;
+      const auto wait_rv = folly::detail::futexWaitUntil(
+          futex, uint32_t(THREAD_WAITING), deadline);
+      if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
+        return false;
+      }
+      waiter = waiter_.load(std::memory_order_relaxed);
+    } while (waiter == THREAD_WAITING);
+  }
+
+  if (LIKELY(waiter == POSTED)) {
+    return true;
+  }
+
+  // Handle errors
+  if (waiter == TIMEOUT) {
+    throw std::logic_error("Thread baton can't have timeout status");
+  }
+  if (waiter == THREAD_WAITING) {
+    throw std::logic_error("Other thread is already waiting on this baton");
+  }
+  throw std::logic_error("Other waiter is already waiting on this baton");
+}
+
 template <typename Rep, typename Period, typename F>
 bool Baton::try_wait_for(
     const std::chrono::duration<Rep, Period>& timeout,
     F&& mainContextFunc) {
-  auto fm = FiberManager::getFiberManagerUnsafe();
-  auto timeoutMs =
-      std::chrono::duration_cast<std::chrono::milliseconds>(timeout);
-
-  if (!fm || !fm->activeFiber_) {
-    mainContextFunc();
-    return timedWaitThread(timeoutMs);
-  }
-
-  auto timeoutFunc = [this]() mutable { this->postHelper(TIMEOUT); };
-  TimeoutHandler handler;
-  handler.timeoutFunc_ = std::ref(timeoutFunc);
-
-  fm->loopController_->timer().scheduleTimeout(&handler, timeoutMs);
-  waitFiber(*fm, static_cast<F&&>(mainContextFunc));
-
-  return waiter_ == POSTED;
+  const auto deadline = std::chrono::steady_clock::now() + timeout;
+  return try_wait_until(deadline, static_cast<F&&>(mainContextFunc));
 }
 
 template <typename Clock, typename Duration, typename F>
 bool Baton::try_wait_until(
     const std::chrono::time_point<Clock, Duration>& deadline,
     F&& mainContextFunc) {
-  auto now = Clock::now();
+  auto fm = FiberManager::getFiberManagerUnsafe();
 
-  if (LIKELY(now <= deadline)) {
-    return try_wait_for(deadline - now, static_cast<F&&>(mainContextFunc));
-  } else {
-    return try_wait_for(Duration{}, static_cast<F&&>(mainContextFunc));
+  if (!fm || !fm->activeFiber_) {
+    mainContextFunc();
+    return timedWaitThread(deadline);
   }
+
+  assert(Clock::is_steady); // fiber timer assumes deadlines are steady
+
+  auto timeoutFunc = [this]() mutable { this->postHelper(TIMEOUT); };
+  TimeoutHandler handler;
+  handler.timeoutFunc_ = std::ref(timeoutFunc);
+
+  // TODO: have timer support arbitrary clocks
+  const auto now = Clock::now();
+  const auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(
+      FOLLY_LIKELY(now <= deadline) ? deadline - now : Duration{});
+  fm->loopController_->timer().scheduleTimeout(&handler, timeoutMs);
+  waitFiber(*fm, static_cast<F&&>(mainContextFunc));
+
+  return waiter_ == POSTED;
 }
 } // namespace fibers
 } // namespace folly

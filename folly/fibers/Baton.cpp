@@ -24,7 +24,6 @@
 namespace folly {
 namespace fibers {
 
-using folly::detail::futexWaitUntil;
 using folly::detail::futexWake;
 
 void Baton::setWaiter(Waiter& waiter) {
@@ -73,38 +72,6 @@ void Baton::waitThread() {
 
   if (LIKELY(waiter == POSTED)) {
     return;
-  }
-
-  // Handle errors
-  if (waiter == TIMEOUT) {
-    throw std::logic_error("Thread baton can't have timeout status");
-  }
-  if (waiter == THREAD_WAITING) {
-    throw std::logic_error("Other thread is already waiting on this baton");
-  }
-  throw std::logic_error("Other waiter is already waiting on this baton");
-}
-
-bool Baton::timedWaitThread(std::chrono::milliseconds timeout) {
-  auto waiter = waiter_.load();
-
-  if (LIKELY(
-          waiter == NO_WAITER &&
-          waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
-    auto deadline = std::chrono::steady_clock::now() + timeout;
-    do {
-      auto* futex = &futex_.futex;
-      const auto wait_rv =
-          futexWaitUntil(futex, uint32_t(THREAD_WAITING), deadline);
-      if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
-        return false;
-      }
-      waiter = waiter_.load(std::memory_order_relaxed);
-    } while (waiter == THREAD_WAITING);
-  }
-
-  if (LIKELY(waiter == POSTED)) {
-    return true;
   }
 
   // Handle errors
