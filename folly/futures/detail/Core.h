@@ -650,7 +650,6 @@ class Core final {
       };
       RequestContextScopeGuard rctx(std::move(context_));
       callback_(executor_.copy(), std::move(result_));
-      return;
     }
   }
 
