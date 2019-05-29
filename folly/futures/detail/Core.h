@@ -601,13 +601,13 @@ class Core final {
   void doCallback(Executor::KeepAlive<>&& completingKA, State priorState) {
     DCHECK(state_ == State::Done);
 
+    auto executor = std::exchange(executor_, Executor::KeepAlive<>());
     bool allowInline =
-        (executor_.get() == completingKA.get() &&
+        (executor.get() == completingKA.get() &&
          priorState == State::OnlyCallbackAllowInline);
     // If we have no executor or if we are allowing inline executor on a
     // matching executor, run inline.
-    if (executor_ && !allowInline) {
-      auto x = std::exchange(executor_, Executor::KeepAlive<>());
+    if (executor && !allowInline) {
       exception_wrapper ew;
       // We need to reset `callback_` after it was executed (which can happen
       // through the executor or, if `Executor::add` throws, below). The
@@ -623,13 +623,13 @@ class Core final {
       CoreAndCallbackReference guard_local_scope(this);
       CoreAndCallbackReference guard_lambda(this);
       try {
-        auto xPtr = x.get();
+        auto xPtr = executor.get();
         xPtr->add([core_ref = std::move(guard_lambda),
-                   keepAlive = std::move(x)]() mutable {
+                   executor = std::move(executor)]() mutable {
           auto cr = std::move(core_ref);
           Core* const core = cr.getCore();
           RequestContextScopeGuard rctx(std::move(core->context_));
-          core->callback_(std::move(keepAlive), std::move(core->result_));
+          core->callback_(std::move(executor), std::move(core->result_));
         });
       } catch (const std::exception& e) {
         ew = exception_wrapper(std::current_exception(), e);
@@ -649,7 +649,7 @@ class Core final {
         detachOne();
       };
       RequestContextScopeGuard rctx(std::move(context_));
-      callback_(executor_.copy(), std::move(result_));
+      callback_(std::move(executor), std::move(result_));
     }
   }
 
