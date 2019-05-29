@@ -20,6 +20,8 @@
 #include <cstddef>
 #include <cstdint>
 
+#include <folly/Portability.h>
+
 namespace folly {
 namespace exception_tracer {
 
@@ -67,7 +69,7 @@ class StackTraceStack {
    * Is the stack empty?
    */
   bool empty() const {
-    return !top_;
+    return !state_[kTopIdx];
   }
 
   /**
@@ -82,21 +84,15 @@ class StackTraceStack {
   StackTrace* next(StackTrace* p);
 
  private:
+  static constexpr size_t kTopIdx = kIsDebug ? 1 : 0;
+
   // In debug mode, we assert that we're in zero-initialized memory by
-  // checking that the two guards around top_ are zero.
+  // checking that the two guards around the Node* from top() are zero.
   void checkGuard() const {
-#ifndef NDEBUG
-    assert(guard1_ == 0 && guard2_ == 0);
-#endif
+    assert(state_[0] == 0 && state_[2] == 0);
   }
 
-#ifndef NDEBUG
-  uintptr_t guard1_;
-#endif
-  Node* top_;
-#ifndef NDEBUG
-  uintptr_t guard2_;
-#endif
+  Node* state_[kIsDebug ? 3 : 1];
 };
 } // namespace exception_tracer
 } // namespace folly

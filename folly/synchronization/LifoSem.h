@@ -26,6 +26,7 @@
 #include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/AtomicStruct.h>
@@ -185,9 +186,9 @@ struct LifoSemNode : public LifoSemRawNode<Atom> {
 
   void destroy() {
     handoff().~Handoff();
-#ifndef NDEBUG
-    memset(&this->raw, 'F', sizeof(this->raw));
-#endif
+    if (kIsDebug) {
+      memset(&this->raw, 'F', sizeof(this->raw));
+    }
   }
 
   Handoff& handoff() {
