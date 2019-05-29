@@ -32,6 +32,10 @@
 
 using namespace folly;
 
+extern "C" int* check() {
+  return &SingletonThreadLocal<int>::get();
+}
+
 namespace {
 static std::atomic<std::size_t> fooCreatedCount{0};
 static std::atomic<std::size_t> fooDeletedCount{0};

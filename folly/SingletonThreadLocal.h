@@ -16,7 +16,9 @@
 
 #pragma once
 
-#include <boost/intrusive/list.hpp>
+#include <type_traits>
+#include <unordered_map>
+#include <unordered_set>
 
 #include <folly/ScopeGuard.h>
 #include <folly/ThreadLocal.h>
@@ -24,12 +26,6 @@
 #include <folly/detail/Singleton.h>
 #include <folly/detail/UniqueInstance.h>
 #include <folly/functional/Invoke.h>
-
-#if defined(FOLLY_TLS) && !(__GNUC__ && __PIC__)
-#define FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS 1
-#else
-#define FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS 0
-#endif
 
 namespace folly {
 
@@ -77,52 +73,62 @@ class SingletonThreadLocal {
 
   struct Wrapper;
 
-  using NodeBase = boost::intrusive::list_base_hook<
-      boost::intrusive::link_mode<boost::intrusive::auto_unlink>>;
-
-  struct Node : NodeBase {
-    Wrapper*& cache;
-    bool& stale;
-
-    Node(Wrapper*& cache_, bool& stale_) : cache(cache_), stale(stale_) {
-      auto& wrapper = getWrapper();
-      wrapper.caches.push_front(*this);
-      cache = &wrapper;
-    }
-    ~Node() {
-      clear();
-    }
-
-    void clear() {
-      cache = nullptr;
-      stale = true;
-    }
+  struct LocalCache {
+    Wrapper* cache;
   };
+  static_assert(std::is_pod<LocalCache>::value, "non-pod");
 
-  using List =
-      boost::intrusive::list<Node, boost::intrusive::constant_time_size<false>>;
+  struct LocalLifetime;
 
   struct Wrapper {
     using Object = invoke_result_t<Make>;
     static_assert(std::is_convertible<Object&, T&>::value, "inconvertible");
 
+    using LocalCacheSet = std::unordered_set<LocalCache*>;
+
     // keep as first field, to save 1 instr in the fast path
     Object object{Make{}()};
-    List caches;
+
+    // per-cache refcounts, the number of lifetimes tracking that cache
+    std::unordered_map<LocalCache*, size_t> caches;
+
+    // per-lifetime cache tracking; 1-M lifetimes may track 1-N caches
+    std::unordered_map<LocalLifetime*, LocalCacheSet> lifetimes;
 
     /* implicit */ operator T&() {
       return object;
     }
 
     ~Wrapper() {
-      for (auto& node : caches) {
-        node.clear();
+      for (auto& kvp : caches) {
+        kvp.first->cache = nullptr;
       }
-      caches.clear();
     }
   };
 
   using WrapperTL = ThreadLocal<Wrapper, TLTag>;
+
+  struct LocalLifetime {
+    ~LocalLifetime() {
+      auto& wrapper = getWrapper();
+      auto& lifetimes = wrapper.lifetimes[this];
+      for (auto cache : lifetimes) {
+        auto const it = wrapper.caches.find(cache);
+        if (!--it->second) {
+          wrapper.caches.erase(it);
+          cache->cache = nullptr;
+        }
+      }
+      wrapper.lifetimes.erase(this);
+    }
+
+    void track(LocalCache& cache) {
+      auto& wrapper = getWrapper();
+      cache.cache = &wrapper;
+      auto const inserted = wrapper.lifetimes[this].insert(&cache);
+      wrapper.caches[&cache] += inserted.second;
+    }
+  };
 
   SingletonThreadLocal() = delete;
 
@@ -135,21 +141,22 @@ class SingletonThreadLocal {
     return *getWrapperTL();
   }
 
-#if FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS
-  FOLLY_NOINLINE static T& getSlow(Wrapper*& cache) {
-    static thread_local Wrapper** check = &cache;
-    CHECK_EQ(check, &cache) << "inline function static thread_local merging";
-    static thread_local bool stale;
-    static thread_local Node node(cache, stale);
-    return !stale && node.cache ? *node.cache : getWrapper();
+#ifdef FOLLY_TLS
+  FOLLY_NOINLINE static Wrapper& getSlow(LocalCache& cache) {
+    if (threadlocal_detail::StaticMetaBase::dying()) {
+      return getWrapper();
+    }
+    static thread_local LocalLifetime lifetime;
+    lifetime.track(cache); // idempotent
+    return FOLLY_LIKELY(!!cache.cache) ? *cache.cache : getWrapper();
   }
 #endif
 
  public:
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
-#if FOLLY_DETAIL_SINGLETON_THREAD_LOCAL_USE_TLS
-    static thread_local Wrapper* cache;
-    return FOLLY_LIKELY(!!cache) ? *cache : getSlow(cache);
+#ifdef FOLLY_TLS
+    static thread_local LocalCache cache;
+    return FOLLY_LIKELY(!!cache.cache) ? *cache.cache : getSlow(cache);
 #else
     return getWrapper();
 #endif
