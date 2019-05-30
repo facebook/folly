@@ -324,6 +324,34 @@ class SharedMutexImpl {
     annotateDestroy();
   }
 
+  // Checks if an exclusive lock could succeed so that lock elision could be
+  // enabled. Different from the two eligible_for_lock_{upgrade|shared}_elision
+  // functions, this is a conservative check since kMayDefer indicates
+  // "may-existing" deferred readers.
+  bool eligible_for_lock_elision() const {
+    // We rely on the transaction for linearization.  Wait bits are
+    // irrelevant because a successful transaction will be in and out
+    // without affecting the wakeup.  kBegunE is also okay for a similar
+    // reason.
+    auto state = state_.load(std::memory_order_relaxed);
+    return (state & (kHasS | kMayDefer | kHasE | kHasU)) == 0;
+  }
+
+  // Checks if an upgrade lock could succeed so that lock elision could be
+  // enabled.
+  bool eligible_for_lock_upgrade_elision() const {
+    auto state = state_.load(std::memory_order_relaxed);
+    return (state & (kHasE | kHasU)) == 0;
+  }
+
+  // Checks if a shared lock could succeed so that lock elision could be
+  // enabled.
+  bool eligible_for_lock_shared_elision() const {
+    // No need to honor kBegunE because a transaction doesn't block anybody
+    auto state = state_.load(std::memory_order_relaxed);
+    return (state & kHasE) == 0;
+  }
+
   void lock() {
     WaitForever ctx;
     (void)lockExclusiveImpl(kHasSolo, ctx);
