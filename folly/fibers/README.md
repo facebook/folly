@@ -57,7 +57,7 @@
 
 <h2 id="why-would-i-not-want-to">Why would I not want to use fibers ? <a href="#why-would-i-not-want-to" class="headerLink">#</a></h2>
 
-<p>The only real downside to using fibers is the need to keep a pre-allocated stack for every fiber being run. That either makes you application use a lot of memory (if you have many concurrent tasks and each of them uses large stacks) or creates a risk of stack overflow bugs (if you try to reduce the stack size).</p>
+<p>The only real downside to using fibers is the need to keep a pre-allocated stack for every fiber being run. That either makes your application use a lot of memory (if you have many concurrent tasks and each of them uses large stacks) or creates a risk of stack overflow bugs (if you try to reduce the stack size).</p>
 
 <p>We believe these problems can be addressed (and we provide some tooling for that), as fibers library is used in many critical applications at Facebook (mcrouter, TAO, Service Router). However, it&#039;s important to be aware of the risks and be ready to deal with stack issues if you decide to use fibers library in your application.</p>
 
@@ -352,7 +352,7 @@
   <span class="o">...</span>
 <span class="o">&#125;);</span></pre></div>
 
-<p>It is important to remember that <tt>addTask()</tt> is not thread-safe. I.e. it can only be safely called from the the thread, which is running the <tt>folly::FiberManager</tt> loop.</p>
+<p>It is important to remember that <tt>addTask()</tt> is not thread-safe. I.e. it can only be safely called from the thread, which is running the <tt>folly::FiberManager</tt> loop.</p>
 
 <p>If you need to create a fiber-task from a different thread, you have to use <tt>addTaskRemote()</tt>:</p>
 
@@ -451,7 +451,7 @@
 
 <p>By default every fiber-task stack is allocated with a special guard page next to it (this can be controlled via <tt>guardPagesPerStack</tt> option of <tt>FiberManager</tt>). If a stack overflow happens - this guard page will be accessed, which will result in immediate segmentation fault.</p>
 
-<div class="remarkup-important"><span class="remarkup-note-word">IMPORTANT:</span> disabling guard page protection may result in unnoticed stack overflows. Those will inevitably cause memory corruptions, which are usually very hard to debug.</div></section><section class="dex_document"><h1>Event Loops</h1><p class="dex_introduction"></p><p>folly::fibers library doesn&#039;t implement it&#039;s own event system. Instead it allows <tt>fibers::FiberManager</tt> to work with any other event system by implementing <tt>fibers::LoopController</tt> interface.</p>
+<div class="remarkup-important"><span class="remarkup-note-word">IMPORTANT:</span> disabling guard page protection may result in unnoticed stack overflows. Those will inevitably cause memory corruptions, which are usually very hard to debug.</div></section><section class="dex_document"><h1>Event Loops</h1><p class="dex_introduction"></p><p>folly::fibers library doesn&#039;t implement its own event system. Instead it allows <tt>fibers::FiberManager</tt> to work with any other event system by implementing <tt>fibers::LoopController</tt> interface.</p>
 
 <h2 id="folly-eventbase-integrat">folly::EventBase integration <a href="#folly-eventbase-integrat" class="headerLink">#</a></h2>
 
