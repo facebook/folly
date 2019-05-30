@@ -16,6 +16,7 @@
 #pragma once
 
 #include <folly/IntrusiveList.h>
+#include <folly/Portability.h>
 #include <folly/SpinLock.h>
 #include <folly/fibers/GenericBaton.h>
 
@@ -149,7 +150,7 @@ class TimedRWMutexImpl {
   // are any.
   void downgrade();
 
-  class ReadHolder {
+  class FOLLY_NODISCARD ReadHolder {
    public:
     explicit ReadHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->read_lock();
@@ -170,7 +171,7 @@ class TimedRWMutexImpl {
     TimedRWMutexImpl* lock_;
   };
 
-  class WriteHolder {
+  class FOLLY_NODISCARD WriteHolder {
    public:
     explicit WriteHolder(TimedRWMutexImpl& lock) : lock_(&lock) {
       lock_->write_lock();

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <assert.h>
+#include <folly/Portability.h>
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -59,7 +60,7 @@ class DelayedDestructionBase {
    * object, causing problems when the callback function returns and the
    * guarded object's method resumes execution.
    */
-  class DestructorGuard {
+  class FOLLY_NODISCARD DestructorGuard {
    public:
     explicit DestructorGuard(DelayedDestructionBase* dd) : dd_(dd) {
       if (dd_ != nullptr) {

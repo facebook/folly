@@ -278,9 +278,9 @@ class SharedMutexImpl {
 
   typedef SharedMutexToken Token;
 
-  class ReadHolder;
-  class UpgradeHolder;
-  class WriteHolder;
+  class FOLLY_NODISCARD ReadHolder;
+  class FOLLY_NODISCARD UpgradeHolder;
+  class FOLLY_NODISCARD WriteHolder;
 
   constexpr SharedMutexImpl() noexcept : state_(0) {}
 
@@ -1301,7 +1301,7 @@ class SharedMutexImpl {
   }
 
  public:
-  class ReadHolder {
+  class FOLLY_NODISCARD ReadHolder {
     ReadHolder() : lock_(nullptr) {}
 
    public:
@@ -1363,7 +1363,7 @@ class SharedMutexImpl {
     SharedMutexToken token_;
   };
 
-  class UpgradeHolder {
+  class FOLLY_NODISCARD UpgradeHolder {
     UpgradeHolder() : lock_(nullptr) {}
 
    public:
@@ -1413,7 +1413,7 @@ class SharedMutexImpl {
     SharedMutexImpl* lock_;
   };
 
-  class WriteHolder {
+  class FOLLY_NODISCARD WriteHolder {
     WriteHolder() : lock_(nullptr) {}
 
    public:

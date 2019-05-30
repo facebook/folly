@@ -307,11 +307,11 @@ class RWSpinLock {
     return bits_.load(std::memory_order_acquire);
   }
 
-  class ReadHolder;
-  class UpgradedHolder;
-  class WriteHolder;
+  class FOLLY_NODISCARD ReadHolder;
+  class FOLLY_NODISCARD UpgradedHolder;
+  class FOLLY_NODISCARD WriteHolder;
 
-  class ReadHolder {
+  class FOLLY_NODISCARD ReadHolder {
    public:
     explicit ReadHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {
@@ -380,7 +380,7 @@ class RWSpinLock {
     RWSpinLock* lock_;
   };
 
-  class UpgradedHolder {
+  class FOLLY_NODISCARD UpgradedHolder {
    public:
     explicit UpgradedHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {
@@ -443,7 +443,7 @@ class RWSpinLock {
     RWSpinLock* lock_;
   };
 
-  class WriteHolder {
+  class FOLLY_NODISCARD WriteHolder {
    public:
     explicit WriteHolder(RWSpinLock* lock) : lock_(lock) {
       if (lock_) {
@@ -742,10 +742,10 @@ class RWTicketSpinLockT {
     __sync_fetch_and_add(&ticket.write, 1);
   }
 
-  class WriteHolder;
+  class FOLLY_NODISCARD WriteHolder;
 
   typedef RWTicketSpinLockT<kBitWidth, kFavorWriter> RWSpinLock;
-  class ReadHolder {
+  class FOLLY_NODISCARD ReadHolder {
    public:
     ReadHolder(ReadHolder const&) = delete;
     ReadHolder& operator=(ReadHolder const&) = delete;
@@ -794,7 +794,7 @@ class RWTicketSpinLockT {
     RWSpinLock* lock_;
   };
 
-  class WriteHolder {
+  class FOLLY_NODISCARD WriteHolder {
    public:
     WriteHolder(WriteHolder const&) = delete;
     WriteHolder& operator=(WriteHolder const&) = delete;
