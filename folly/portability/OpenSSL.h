@@ -90,6 +90,12 @@
 #define FOLLY_OPENSSL_HAS_TLS13 0
 #endif
 
+#if FOLLY_OPENSSL_IS_110 && (!defined(OPENSSL_NO_CHACHA) || !defined(OPENSSL_NO_POLY1305))
+#define FOLLY_OPENSSL_HAS_CHACHA 1
+#else
+#define FOLLY_OPENSSL_HAS_CHACHA 0
+#endif
+
 #if !FOLLY_OPENSSL_IS_110
 #define OPENSSL_VERSION SSLEAY_VERSION
 #define OpenSSL_version SSLeay_version
