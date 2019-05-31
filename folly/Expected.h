@@ -52,17 +52,6 @@
 
 #define FOLLY_REQUIRES(...) template <FOLLY_REQUIRES_IMPL(__VA_ARGS__)>
 
-/**
- * gcc-4.7 warns about use of uninitialized memory around the use of storage_
- * even though this is explicitly initialized at each point.
- */
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic push
-#pragma GCC diagnostic ignored "-Wuninitialized"
-#pragma GCC diagnostic ignored "-Wpragmas"
-#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
-#endif // __GNUC__
-
 namespace folly {
 
 /**
@@ -1405,10 +1394,6 @@ template <class Value, class Error>
 bool operator>(const Value& other, const Expected<Value, Error>&) = delete;
 
 } // namespace folly
-
-#if defined(__GNUC__) && !defined(__clang__)
-#pragma GCC diagnostic pop
-#endif
 
 #undef FOLLY_REQUIRES
 #undef FOLLY_REQUIRES_TRAILING
