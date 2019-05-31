@@ -1056,7 +1056,7 @@ class F14Table : public Policy {
 
   // Hash values are used to compute the desired position, which is the
   // chunk index at which we would like to place a value (if there is no
-  // overflow), and the tag, which is an additional 8 bits of entropy.
+  // overflow), and the tag, which is an additional 7 bits of entropy.
   //
   // The standard's definition of hash function quality only refers to
   // the probability of collisions of the entire hash value, not to the
@@ -1067,7 +1067,7 @@ class F14Table : public Policy {
   //
   // If the user-supplied hasher is an avalanching one (each bit of the
   // hash value has a 50% chance of being the same for differing hash
-  // inputs), then we can just take 1 byte of the hash value for the tag
+  // inputs), then we can just take 7 bits of the hash value for the tag
   // and the rest for the desired position.  Avalanching hashers also
   // let us map hash value to array index position with just a bitmask
   // without risking clumping.  (Many hash tables just accept the risk
