@@ -19,6 +19,7 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/SerialExecutor.h>
+#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -31,6 +32,22 @@ void burnMs(uint64_t ms) {
 }
 } // namespace
 
+class SerialExecutorContextData : public folly::RequestData {
+ public:
+  static const std::string kCtxKey;
+  explicit SerialExecutorContextData(int id) : id_(id) {}
+  bool hasCallback() override {
+    return false;
+  }
+  int getId() const {
+    return id_;
+  }
+
+ private:
+  const int id_;
+};
+const std::string SerialExecutorContextData::kCtxKey =
+    "SerialExecutorContextDataKey";
 void SimpleTest(std::shared_ptr<folly::Executor> const& parent) {
   auto executor =
       SerialExecutor::create(folly::getKeepAliveToken(parent.get()));
@@ -39,7 +56,18 @@ void SimpleTest(std::shared_ptr<folly::Executor> const& parent) {
   std::vector<int> expected;
 
   for (int i = 0; i < 20; ++i) {
+    auto ctx = std::make_shared<folly::RequestContext>();
+    ctx->setContextData(
+        SerialExecutorContextData::kCtxKey,
+        std::make_unique<SerialExecutorContextData>(i));
+    folly::RequestContextScopeGuard ctxGuard(ctx);
     executor->add([i, &values] {
+      EXPECT_EQ(
+          i,
+          dynamic_cast<SerialExecutorContextData*>(
+              folly::RequestContext::get()->getContextData(
+                  SerialExecutorContextData::kCtxKey))
+              ->getId());
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
       burnMs(10);

@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 
@@ -57,7 +58,11 @@ void SerialExecutor::keepAliveRelease() {
 }
 
 void SerialExecutor::add(Func func) {
-  queue_.enqueue(std::move(func));
+  queue_.enqueue([ctx = folly::RequestContext::saveContext(),
+                  func = std::move(func)]() mutable {
+    folly::RequestContextScopeGuard ctxGuard(ctx);
+    func();
+  });
   parent_->add([keepAlive = getKeepAliveToken(this)] { keepAlive->run(); });
 }
 
