@@ -2018,7 +2018,6 @@ class F14Table : public Policy {
     reserveImpl(capacity);
   }
 
-  // Returns true iff a rehash was performed
   void reserveForInsert(size_t incoming = 1) {
     FOLLY_SAFE_DCHECK(incoming > 0, "");
 
