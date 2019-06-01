@@ -19,7 +19,6 @@
 #include <glog/logging.h>
 
 #include <folly/ExceptionString.h>
-#include <folly/io/async/Request.h>
 
 namespace folly {
 
@@ -58,16 +57,12 @@ void SerialExecutor::keepAliveRelease() {
 }
 
 void SerialExecutor::add(Func func) {
-  queue_.enqueue([ctx = folly::RequestContext::saveContext(),
-                  func = std::move(func)]() mutable {
-    folly::RequestContextScopeGuard ctxGuard(ctx);
-    func();
-  });
+  queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
   parent_->add([keepAlive = getKeepAliveToken(this)] { keepAlive->run(); });
 }
 
 void SerialExecutor::addWithPriority(Func func, int8_t priority) {
-  queue_.enqueue(std::move(func));
+  queue_.enqueue(Task{std::move(func), RequestContext::saveContext()});
   parent_->addWithPriority(
       [keepAlive = getKeepAliveToken(this)] { keepAlive->run(); }, priority);
 }
@@ -80,11 +75,12 @@ void SerialExecutor::run() {
   }
 
   do {
-    Func func;
-    queue_.dequeue(func);
+    Task task;
+    queue_.dequeue(task);
 
     try {
-      func();
+      folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
+      task.func();
     } catch (std::exception const& ex) {
       LOG(ERROR) << "SerialExecutor: func threw unhandled exception "
                  << folly::exceptionStr(ex);
