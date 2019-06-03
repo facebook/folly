@@ -98,7 +98,16 @@ class RequestData {
   struct DestructPtr {
     void operator()(RequestData* ptr);
   };
-  using SharedPtr = std::unique_ptr<RequestData, DestructPtr>;
+  struct SharedPtr : public std::unique_ptr<RequestData, DestructPtr> {
+    SharedPtr() = default;
+    using std::unique_ptr<RequestData, DestructPtr>::unique_ptr;
+    SharedPtr(const SharedPtr& other) : SharedPtr(constructPtr(other.get())) {}
+    SharedPtr& operator=(const SharedPtr& other) {
+      return operator=(constructPtr(other.get()));
+    }
+    SharedPtr(SharedPtr&&) = default;
+    SharedPtr& operator=(SharedPtr&&) = default;
+  };
 
   // Initialize the pseudo-shared ptr, increment the counter
   static SharedPtr constructPtr(RequestData* ptr);

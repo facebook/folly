@@ -282,15 +282,8 @@ RequestContext::setShallowCopyContext() {
   auto child = std::make_shared<RequestContext>();
 
   if (parent) {
-    auto ret = folly::acquireLocked(as_const(parent->state_), child->state_);
-    auto& parentLock = std::get<0>(ret);
-    auto& childLock = std::get<1>(ret);
-    childLock->callbackData_ = parentLock->callbackData_;
-    childLock->requestData_.reserve(parentLock->requestData_.size());
-    for (const auto& entry : parentLock->requestData_) {
-      childLock->requestData_.insert(std::make_pair(
-          entry.first, RequestData::constructPtr(entry.second.get())));
-    }
+    auto locks = folly::acquireLocked(as_const(parent->state_), child->state_);
+    *std::get<1>(locks) = *std::get<0>(locks);
   }
 
   // Do not use setContext to avoid global set/unset
