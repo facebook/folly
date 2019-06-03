@@ -52,8 +52,9 @@ FOLLY_ALWAYS_INLINE int __builtin_clzl(unsigned long x) {
 
 #if defined(_M_IX86) || defined(_M_ARM)
 FOLLY_ALWAYS_INLINE int __builtin_clzll(unsigned long long x) {
-  if (x == 0)
+  if (x == 0) {
     return 64;
+  }
   unsigned int msb = (unsigned int)(x >> 32);
   unsigned int lsb = (unsigned int)x;
   return (msb != 0) ? __builtin_clz(msb) : 32 + __builtin_clz(lsb);
@@ -79,10 +80,11 @@ FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
   unsigned long index;
   unsigned int msb = (unsigned int)(x >> 32);
   unsigned int lsb = (unsigned int)x;
-  if (lsb != 0)
+  if (lsb != 0) {
     return (int)(_BitScanForward(&index, lsb) ? index : 64);
-  else
+  } else {
     return (int)(_BitScanForward(&index, msb) ? index + 32 : 64);
+  }
 }
 #else
 FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
