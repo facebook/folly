@@ -92,9 +92,9 @@ bool RequestContext::doSetContextData(
   // Need non-const iterators to use under write lock.
   auto& state = ulock.asNonConstUnsafe();
 
-  bool conflict = false;
   auto it = state.requestData_.find(val);
-  if (it != state.requestData_.end()) {
+  bool conflict = it != state.requestData_.end();
+  if (conflict) {
     if (behaviour == DoSetBehaviour::SET_IF_ABSENT) {
       return false;
     } else if (behaviour == DoSetBehaviour::SET) {
@@ -102,7 +102,6 @@ bool RequestContext::doSetContextData(
           << "Calling RequestContext::setContextData for "
           << val.getDebugString() << " but it is already set";
     }
-    conflict = true;
   }
 
   auto wlock = ulock.moveFromUpgradeToWrite();
@@ -123,8 +122,12 @@ bool RequestContext::doSetContextData(
     wlock->callbackData_.insert(data.get());
     data->onSet();
   }
-  wlock->requestData_[val] = RequestData::constructPtr(data.release());
-
+  auto ptr = RequestData::constructPtr(data.release());
+  if (conflict) {
+    it->second = std::move(ptr);
+  } else {
+    wlock->requestData_.insert(std::make_pair(val, std::move(ptr)));
+  }
   return true;
 }
 
