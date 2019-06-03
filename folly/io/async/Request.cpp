@@ -279,13 +279,8 @@ std::shared_ptr<RequestContext>& RequestContext::getStaticContext() {
 /* static */ std::shared_ptr<RequestContext>
 RequestContext::setShallowCopyContext() {
   auto& parent = getStaticContext();
-  auto child = std::make_shared<RequestContext>();
-
-  if (parent) {
-    auto locks = folly::acquireLocked(as_const(parent->state_), child->state_);
-    *std::get<1>(locks) = *std::get<0>(locks);
-  }
-
+  auto child = parent ? std::make_shared<RequestContext>(*parent)
+                      : std::make_shared<RequestContext>();
   // Do not use setContext to avoid global set/unset
   std::swap(child, parent);
   return child;
