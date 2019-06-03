@@ -2843,8 +2843,14 @@ std::string AsyncSocket::withAddr(const std::string& s) {
   // e.g. if constructed from fd
   folly::SocketAddress peer, local;
   try {
-    getPeerAddress(&peer);
     getLocalAddress(&local);
+  } catch (const std::exception&) {
+    // ignore
+  } catch (...) {
+    // ignore
+  }
+  try {
+    getPeerAddress(&peer);
   } catch (const std::exception&) {
     // ignore
   } catch (...) {
