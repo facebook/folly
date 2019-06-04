@@ -291,7 +291,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * listen on the file descriptor.  If so the caller should skip calling the
    * corresponding AsyncServerSocket::bind() and listen() methods.
    *
-   * On error a TTransportException will be thrown and the caller will retain
+   * On error a AsyncSocketException will be thrown and the caller will retain
    * ownership of the file descriptor.
    */
   void useExistingSocket(NetworkSocket fd);
@@ -333,7 +333,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * This must be called from the primary EventBase thread.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   virtual void bind(const SocketAddress& address);
 
@@ -342,7 +342,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * This must be called from the primary EventBase thread.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   virtual void bind(const std::vector<IPAddress>& ipAddresses, uint16_t port);
 
@@ -351,21 +351,21 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * This must be called from the primary EventBase thread.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   virtual void bind(uint16_t port);
 
   /**
    * Get the local address to which the socket is bound.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   void getAddress(SocketAddress* addressReturn) const override;
 
   /**
    * Get the local address to which the socket is bound.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   SocketAddress getAddress() const {
     SocketAddress ret;
@@ -376,7 +376,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get all the local addresses to which the socket is bound.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   std::vector<SocketAddress> getAddresses() const;
 
@@ -398,7 +398,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * bind() must be called before calling listen().
    * listen() must be called from the primary EventBase thread.
    *
-   * Throws TTransportException on error.
+   * Throws AsyncSocketException on error.
    */
   virtual void listen(int backlog);
 

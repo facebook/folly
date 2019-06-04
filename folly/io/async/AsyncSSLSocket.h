@@ -529,7 +529,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Get the server name for this SSL connection.
    * Returns the server name used or the constant value "NONE" when no SSL
    * session has been established.
-   * If openssl has no SNI support, throw TTransportException.
+   * If openssl has no SNI support, throw AsyncSocketException.
    */
   const char* getSSLServerName() const;
 
