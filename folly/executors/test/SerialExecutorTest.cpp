@@ -16,6 +16,7 @@
 
 #include <chrono>
 
+#include <folly/ScopeGuard.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/SerialExecutor.h>
@@ -62,13 +63,16 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
         SerialExecutorContextData::kCtxKey(),
         std::make_unique<SerialExecutorContextData>(i));
     folly::RequestContextScopeGuard ctxGuard(ctx);
-    executor->add([i, &values] {
+    static auto checkReqCtx = [](auto i) {
       EXPECT_EQ(
           i,
           dynamic_cast<SerialExecutorContextData*>(
               folly::RequestContext::get()->getContextData(
                   SerialExecutorContextData::kCtxKey()))
               ->getId());
+    };
+    executor->add([i, g = folly::makeGuard([i] { checkReqCtx(i); }), &values] {
+      checkReqCtx(i);
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
       burnMs(10);

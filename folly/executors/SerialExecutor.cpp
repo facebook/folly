@@ -80,7 +80,8 @@ void SerialExecutor::run() {
 
     try {
       folly::RequestContextScopeGuard ctxGuard(std::move(task.ctx));
-      task.func();
+      auto func = std::move(task.func);
+      func();
     } catch (std::exception const& ex) {
       LOG(ERROR) << "SerialExecutor: func threw unhandled exception "
                  << folly::exceptionStr(ex);
