@@ -36,8 +36,18 @@ void initializeOpenSSLLocked() {
   if (initialized_) {
     return;
   }
-  OPENSSL_init_ssl(0, nullptr);
-  randomize();
+  if (OPENSSL_init_ssl(0, nullptr) != 1) {
+    // Fail early if we fail to initialize OpenSSL. Ignoring this means that
+    // future OpenSSL methods may segfault, since there is an implicit
+    // precondition that initialization properly initializes internal OpenSSL
+    // pointers to global resources.
+    throw std::runtime_error("Failed to initialize OpenSSL.");
+  }
+  if (RAND_poll() != 1) {
+    // Similarly, if we fail to seed the RNG, future crypto operations
+    // may no longer be safe to use; fail fast and hard here.
+    throw std::runtime_error("Failed to initialize OpenSSL RNG.");
+  }
   initialized_ = true;
 }
 
@@ -82,10 +92,6 @@ void setLockTypes(LockTypeMapping inLockTypes) {
     return;
   }
   detail::setLockTypes(std::move(inLockTypes));
-}
-
-void randomize() {
-  RAND_poll();
 }
 
 bool isLockDisabled(int lockId) {

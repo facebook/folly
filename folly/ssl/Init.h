@@ -21,6 +21,7 @@
 
 namespace folly {
 namespace ssl {
+
 /**
  * Initializes openssl. This should be invoked once, during the start of an
  * application. Subsequent calls to this function are no-ops.
@@ -81,8 +82,5 @@ void setLockTypes(LockTypeMapping inLockTypes);
 void setLockTypesAndInit(LockTypeMapping lockTypes);
 
 bool isLockDisabled(int lockId);
-
-void randomize();
-
 } // namespace ssl
 } // namespace folly
