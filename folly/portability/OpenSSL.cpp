@@ -469,7 +469,7 @@ int OPENSSL_init_ssl(uint64_t, const OPENSSL_INIT_SETTINGS*) {
   // The caller should have used SSLContext::setLockTypes() prior to calling
   // this function.
   folly::ssl::detail::installThreadingLocks();
-  return 0;
+  return 1;
 }
 
 void OPENSSL_cleanup() {
