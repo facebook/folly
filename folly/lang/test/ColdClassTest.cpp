@@ -27,7 +27,7 @@ static void validateInheritedClass() {
   // default constructor/destructor, default copy/move constructors and default
   // copy/move assignment operators when a class derives from it.
   EXPECT_TRUE(std::is_nothrow_default_constructible<TestClass>::value);
-#if !defined(__GLIBCXX__) || __GNUC__ >= 5
+#if !defined(__GLIBCXX__)
   EXPECT_TRUE(std::is_trivially_copy_constructible<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_move_constructible<TestClass>::value);
   EXPECT_TRUE(std::is_trivially_copy_assignable<TestClass>::value);
