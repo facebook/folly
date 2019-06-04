@@ -60,6 +60,7 @@
 #include <folly/lang/Bits.h>
 #include <folly/stop_watch.h>
 #include <algorithm>
+#include <memory>
 #include <unordered_set>
 
 using folly::io::compression::detail::dataStartsWithLE;
@@ -1237,13 +1238,13 @@ bool LZMA2StreamCodec::canUncompress(const IOBuf* data, Optional<uint64_t>)
 std::unique_ptr<Codec> LZMA2StreamCodec::createCodec(
     int level,
     CodecType type) {
-  return make_unique<LZMA2StreamCodec>(level, type);
+  return std::make_unique<LZMA2StreamCodec>(level, type);
 }
 
 std::unique_ptr<StreamCodec> LZMA2StreamCodec::createStream(
     int level,
     CodecType type) {
-  return make_unique<LZMA2StreamCodec>(level, type);
+  return std::make_unique<LZMA2StreamCodec>(level, type);
 }
 
 LZMA2StreamCodec::LZMA2StreamCodec(int level, CodecType type)
