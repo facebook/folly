@@ -76,11 +76,11 @@ class PriorityUnboundedBlockingQueue : public BlockingQueue<T> {
 
  private:
   size_t translatePriority(int8_t const priority) {
-    int8_t const priorities = queue_.priorities();
-    int8_t const value = (priorities - 1) / 2 + priority;
-    int8_t const lo = 0;
-    int8_t const hi = priorities - 1;
-    return hi - constexpr_clamp(value, lo, hi);
+    size_t const priorities = queue_.priorities();
+    assert(priorities <= 255);
+    int8_t const hi = (priorities + 1) / 2 - 1;
+    int8_t const lo = hi - (priorities - 1);
+    return hi - constexpr_clamp(priority, lo, hi);
   }
 
   T dequeue() {

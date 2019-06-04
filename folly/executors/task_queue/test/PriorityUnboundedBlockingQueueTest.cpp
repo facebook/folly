@@ -79,7 +79,7 @@ TEST_F(PriorityUnboundedBlockingQueueTest, priority_order) {
   EXPECT_EQ(0, q.size());
 }
 
-// Since PrioritizedBlockingQueueSetTest implements folly::BlockingQueue<T>,
+// Since PriorityUnboundedBlockingQueue implements folly::BlockingQueue<T>,
 // addWithPriority method has to accept priority as int_8. This means invalid
 // values for priority (such as negative or very large numbers) might get
 // passed. Verify this behavior.
@@ -87,6 +87,15 @@ TEST_F(PriorityUnboundedBlockingQueueTest, invalid_priorities) {
   PriorityUnboundedBlockingQueue<int> q(2);
   q.addWithPriority(1, -1); // expected to be converted to the lowest priority
   q.addWithPriority(2, 50); // expected to be converted to the highest priority
+
+  EXPECT_EQ(q.take(), 2);
+  EXPECT_EQ(q.take(), 1);
+}
+
+TEST_F(PriorityUnboundedBlockingQueueTest, invalid_priorities_edge) {
+  PriorityUnboundedBlockingQueue<int> q(2);
+  q.addWithPriority(1, Executor::LO_PRI);
+  q.addWithPriority(2, Executor::HI_PRI);
 
   EXPECT_EQ(q.take(), 2);
   EXPECT_EQ(q.take(), 1);
