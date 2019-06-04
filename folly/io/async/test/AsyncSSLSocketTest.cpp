@@ -216,6 +216,49 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 }
 
 /**
+ * Same as above simple test, but with a large read len to test
+ * clamping behavior.
+ */
+TEST(AsyncSSLSocketTest, ConnectWriteReadLargeClose) {
+  // Start listening on a local port
+  WriteCallbackBase writeCallback;
+  ReadCallback readCallback(&writeCallback);
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback);
+
+  // Set up SSL context.
+  std::shared_ptr<SSLContext> sslContext(new SSLContext());
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  // sslContext->loadTrustedCertificates("./trusted-ca-certificate.pem");
+  // sslContext->authenticate(true, false);
+
+  // connect
+  auto socket =
+      std::make_shared<BlockingSocket>(server.getAddress(), sslContext);
+  socket->open(std::chrono::milliseconds(10000));
+
+  // write()
+  uint8_t buf[128];
+  memset(buf, 'a', sizeof(buf));
+  socket->write(buf, sizeof(buf));
+
+  // read()
+  uint8_t readbuf[128];
+  // we will fake the read len but that should be fine
+  size_t readLen = 1L << 33;
+  uint32_t bytesRead = socket->read(readbuf, readLen);
+  EXPECT_EQ(bytesRead, 128);
+  EXPECT_EQ(memcmp(buf, readbuf, bytesRead), 0);
+
+  // close()
+  socket->close();
+
+  cerr << "ConnectWriteReadClose test completed" << endl;
+  EXPECT_EQ(socket->getSSLSocket()->getTotalConnectTimeout().count(), 10000);
+}
+
+/**
  * Test reading after server close.
  */
 TEST(AsyncSSLSocketTest, ReadAfterClose) {

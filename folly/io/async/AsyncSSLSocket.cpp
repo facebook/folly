@@ -1328,7 +1328,14 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
     return AsyncSocket::performRead(buf, buflen, offset);
   }
 
-  int bytes = SSL_read(ssl_.get(), *buf, int(*buflen));
+  int numToRead = 0;
+  if (*buflen > std::numeric_limits<int>::max()) {
+    numToRead = std::numeric_limits<int>::max();
+    VLOG(4) << "Clamping SSL_read to " << numToRead;
+  } else {
+    numToRead = int(*buflen);
+  }
+  int bytes = SSL_read(ssl_.get(), *buf, numToRead);
 
   if (server_ && renegotiateAttempted_) {
     LOG(ERROR) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
