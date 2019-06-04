@@ -88,45 +88,39 @@ bool RequestContext::doSetContextData(
     const RequestToken& val,
     std::unique_ptr<RequestData>& data,
     DoSetBehaviour behaviour) {
-  auto ulock = state_.ulock();
-  // Need non-const iterators to use under write lock.
-  auto& state = ulock.asNonConstUnsafe();
+  auto wlock = state_.wlock();
+  auto& state = *wlock;
 
   auto it = state.requestData_.find(val);
-  bool conflict = it != state.requestData_.end();
-  if (conflict) {
+  if (it != state.requestData_.end()) {
     if (behaviour == DoSetBehaviour::SET_IF_ABSENT) {
       return false;
-    } else if (behaviour == DoSetBehaviour::SET) {
-      LOG_FIRST_N(WARNING, 1)
-          << "Calling RequestContext::setContextData for "
-          << val.getDebugString() << " but it is already set";
     }
-  }
-
-  auto wlock = ulock.moveFromUpgradeToWrite();
-  if (conflict) {
     if (it->second) {
       if (it->second->hasCallback()) {
         it->second->onUnset();
-        wlock->callbackData_.erase(it->second.get());
+        state.callbackData_.erase(it->second.get());
       }
       it->second.reset(nullptr);
     }
     if (behaviour == DoSetBehaviour::SET) {
+      LOG_FIRST_N(WARNING, 1)
+          << "Calling RequestContext::setContextData for "
+          << val.getDebugString() << " but it is already set";
       return true;
     }
+    DCHECK(behaviour == DoSetBehaviour::OVERWRITE);
   }
 
   if (data && data->hasCallback()) {
-    wlock->callbackData_.insert(data.get());
+    state.callbackData_.insert(data.get());
     data->onSet();
   }
   auto ptr = RequestData::constructPtr(data.release());
-  if (conflict) {
+  if (it != state.requestData_.end()) {
     it->second = std::move(ptr);
   } else {
-    wlock->requestData_.insert(std::make_pair(val, std::move(ptr)));
+    state.requestData_.insert(std::make_pair(val, std::move(ptr)));
   }
   return true;
 }
