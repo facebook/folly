@@ -53,6 +53,8 @@ using namespace folly;
 // Tests for read and write events
 ///////////////////////////////////////////////////////////////////////////
 
+namespace {
+
 enum { BUF_SIZE = 4096 };
 
 ssize_t writeToFD(int fd, size_t length) {
@@ -181,6 +183,8 @@ class TestHandler : public EventHandler {
  private:
   int fd_;
 };
+
+} // namespace
 
 /**
  * Test a READ event
@@ -646,6 +650,7 @@ TEST(EventBaseTest, ReadWritePersist) {
   ASSERT_EQ(bytesRemaining, events[5].length);
 }
 
+namespace {
 class PartialReadHandler : public TestHandler {
  public:
   PartialReadHandler(EventBase* eventBase, int fd, size_t readLength)
@@ -661,6 +666,7 @@ class PartialReadHandler : public TestHandler {
   int fd_;
   size_t readLength_;
 };
+} // namespace
 
 /**
  * Test reading only part of the available data when a read event is fired.
@@ -710,6 +716,7 @@ TEST(EventBaseTest, ReadPartial) {
   ASSERT_EQ(handler.log[3].bytesWritten, 0);
 }
 
+namespace {
 class PartialWriteHandler : public TestHandler {
  public:
   PartialWriteHandler(EventBase* eventBase, int fd, size_t writeLength)
@@ -725,6 +732,7 @@ class PartialWriteHandler : public TestHandler {
   int fd_;
   size_t writeLength_;
 };
+} // namespace
 
 /**
  * Test writing without completely filling up the write buffer when the fd
@@ -895,6 +903,7 @@ TEST(EventBaseTest, RunAfterDelayDestruction) {
   // memory is leaked.
 }
 
+namespace {
 class TestTimeout : public AsyncTimeout {
  public:
   explicit TestTimeout(EventBase* eventBase)
@@ -906,6 +915,7 @@ class TestTimeout : public AsyncTimeout {
 
   TimePoint timestamp;
 };
+} // namespace
 
 TEST(EventBaseTest, BasicTimeouts) {
   EventBase eb;
@@ -927,6 +937,7 @@ TEST(EventBaseTest, BasicTimeouts) {
   T_CHECK_TIMEOUT(start, end, milliseconds(40));
 }
 
+namespace {
 class ReschedulingTimeout : public AsyncTimeout {
  public:
   ReschedulingTimeout(EventBase* evb, const vector<uint32_t>& timeouts)
@@ -955,6 +966,7 @@ class ReschedulingTimeout : public AsyncTimeout {
   vector<uint32_t> timeouts_;
   vector<uint32_t>::const_iterator iterator_;
 };
+} // namespace
 
 /**
  * Test rescheduling the same timeout multiple times
@@ -1138,6 +1150,8 @@ TEST(EventBaseTest, ScheduledFnAt) {
 // Test for runInThreadTestFunc()
 ///////////////////////////////////////////////////////////////////////////
 
+namespace {
+
 struct RunInThreadData {
   RunInThreadData(int numThreads, int opsPerThread_)
       : opsPerThread(opsPerThread_), opsToGo(numThreads * opsPerThread) {}
@@ -1168,6 +1182,8 @@ void runInThreadTestFunc(RunInThreadArg* arg) {
     data->evb.terminateLoopSoon();
   }
 }
+
+} // namespace
 
 TEST(EventBaseTest, RunInThread) {
   constexpr uint32_t numThreads = 50;
@@ -1309,6 +1325,7 @@ TEST(EventBaseTest, RunImmediatelyOrRunInEventBaseThreadNotLooping) {
 // Tests for runInLoop()
 ///////////////////////////////////////////////////////////////////////////
 
+namespace {
 class CountedLoopCallback : public EventBase::LoopCallback {
  public:
   CountedLoopCallback(
@@ -1335,6 +1352,7 @@ class CountedLoopCallback : public EventBase::LoopCallback {
   unsigned int count_;
   std::function<void()> action_;
 };
+} // namespace
 
 // Test that EventBase::loop() doesn't exit while there are
 // still LoopCallbacks remaining to be invoked.
@@ -1481,6 +1499,7 @@ TEST(EventBaseTest, CancelRunInLoop) {
   ASSERT_EQ(c2.getCount(), 11);
 }
 
+namespace {
 class TerminateTestCallback : public EventBase::LoopCallback,
                               public EventHandler {
  public:
@@ -1537,6 +1556,7 @@ class TerminateTestCallback : public EventBase::LoopCallback,
   uint32_t eventInvocations_;
   uint32_t maxEventInvocations_;
 };
+} // namespace
 
 /**
  * Test that EventBase::loop() correctly detects when there are no more events
@@ -1629,6 +1649,7 @@ TEST(EventBaseTest, AlwaysEnqueueCallbackOrderTest) {
 // Tests for latency calculations
 ///////////////////////////////////////////////////////////////////////////
 
+namespace {
 class IdleTimeTimeoutSeries : public AsyncTimeout {
  public:
   explicit IdleTimeTimeoutSeries(
@@ -1663,6 +1684,7 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
   int timeouts_;
   std::deque<std::size_t>& timeout_;
 };
+} // namespace
 
 /**
  * Verify that idle time is correctly accounted for when decaying our loop
@@ -1801,6 +1823,7 @@ TEST(EventBaseTest, RunBeforeLoopWait) {
   ASSERT_EQ(cb.getCount(), 0);
 }
 
+namespace {
 class PipeHandler : public EventHandler {
  public:
   PipeHandler(EventBase* eventBase, int fd)
@@ -1810,6 +1833,7 @@ class PipeHandler : public EventHandler {
     abort();
   }
 };
+} // namespace
 
 TEST(EventBaseTest, StopBeforeLoop) {
   EventBase evb;
