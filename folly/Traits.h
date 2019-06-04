@@ -657,9 +657,7 @@ namespace detail {
 // in order to not prevent all calling code from using it.
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
-#if __GNUC_PREREQ(5, 0)
-FOLLY_GNU_DISABLE_WARNING("-Wbool-compare")
-#endif
+FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
 FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
 FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
 
