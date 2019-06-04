@@ -192,18 +192,6 @@ check_cxx_source_compiles("
 )
 
 check_cxx_source_runs("
-  #include <string.h>
-  #include <errno.h>
-  int main(int argc, char** argv) {
-    char buf[1024];
-    buf[0] = 0;
-    int ret = strerror_r(ENOMEM, buf, sizeof(buf));
-    return ret;
-  }"
-  FOLLY_HAVE_XSI_STRERROR_R
-)
-
-check_cxx_source_runs("
   #include <stdarg.h>
   #include <stdio.h>
 
