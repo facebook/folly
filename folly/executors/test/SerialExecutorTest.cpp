@@ -63,7 +63,7 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
         SerialExecutorContextData::kCtxKey(),
         std::make_unique<SerialExecutorContextData>(i));
     folly::RequestContextScopeGuard ctxGuard(ctx);
-    static auto checkReqCtx = [](auto i) {
+    auto checkReqCtx = [i] {
       EXPECT_EQ(
           i,
           dynamic_cast<SerialExecutorContextData*>(
@@ -71,8 +71,8 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
                   SerialExecutorContextData::kCtxKey()))
               ->getId());
     };
-    executor->add([i, g = folly::makeGuard([i] { checkReqCtx(i); }), &values] {
-      checkReqCtx(i);
+    executor->add([i, checkReqCtx, g = folly::makeGuard(checkReqCtx), &values] {
+      checkReqCtx();
       // make this extra vulnerable to concurrent execution
       values.push_back(0);
       burnMs(10);
