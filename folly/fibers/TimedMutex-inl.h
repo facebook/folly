@@ -91,10 +91,16 @@ inline void TimedMutex::lock() {
 }
 
 template <typename Rep, typename Period>
-bool TimedMutex::timed_lock(
-    const std::chrono::duration<Rep, Period>& duration) {
+bool TimedMutex::try_lock_for(
+    const std::chrono::duration<Rep, Period>& timeout) {
+  return try_lock_until(std::chrono::steady_clock::now() + timeout);
+}
+
+template <typename Clock, typename Duration>
+bool TimedMutex::try_lock_until(
+    const std::chrono::time_point<Clock, Duration>& deadline) {
   auto result = lockHelper([&](MutexWaiter& waiter) {
-    if (!waiter.baton.try_wait_for(duration)) {
+    if (!waiter.baton.try_wait_until(deadline)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -159,7 +165,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::shouldReadersWait() const {
 }
 
 template <bool ReaderPriority, typename BatonType>
-void TimedRWMutexImpl<ReaderPriority, BatonType>::read_lock() {
+void TimedRWMutexImpl<ReaderPriority, BatonType>::lock_shared() {
   std::unique_lock<folly::SpinLock> ulock{lock_};
   if (shouldReadersWait()) {
     MutexWaiter waiter;
@@ -179,15 +185,22 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::read_lock() {
 
 template <bool ReaderPriority, typename BatonType>
 template <typename Rep, typename Period>
-bool TimedRWMutexImpl<ReaderPriority, BatonType>::timed_read_lock(
-    const std::chrono::duration<Rep, Period>& duration) {
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_for(
+    const std::chrono::duration<Rep, Period>& timeout) {
+  return try_lock_shared_until(std::chrono::steady_clock::now() + timeout);
+}
+
+template <bool ReaderPriority, typename BatonType>
+template <typename Clock, typename Duration>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared_until(
+    const std::chrono::time_point<Clock, Duration>& deadline) {
   std::unique_lock<folly::SpinLock> ulock{lock_};
   if (shouldReadersWait()) {
     MutexWaiter waiter;
     read_waiters_.push_back(waiter);
     ulock.unlock();
 
-    if (!waiter.baton.try_wait_for(duration)) {
+    if (!waiter.baton.try_wait_until(deadline)) {
       // We timed out. Two cases:
       // 1. We're still in the waiter list and we truly timed out
       // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -211,7 +224,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::timed_read_lock(
 }
 
 template <bool ReaderPriority, typename BatonType>
-bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_read_lock() {
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_shared() {
   std::lock_guard<SpinLock> guard{lock_};
   if (!shouldReadersWait()) {
     assert(
@@ -226,7 +239,16 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_read_lock() {
 }
 
 template <bool ReaderPriority, typename BatonType>
-void TimedRWMutexImpl<ReaderPriority, BatonType>::write_lock() {
+void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_shared() {
+  if (kIsDebug) {
+    std::unique_lock<folly::SpinLock> ulock{lock_};
+    assert(state_ == State::READ_LOCKED);
+  }
+  unlock_();
+}
+
+template <bool ReaderPriority, typename BatonType>
+void TimedRWMutexImpl<ReaderPriority, BatonType>::lock() {
   std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
@@ -241,8 +263,15 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::write_lock() {
 
 template <bool ReaderPriority, typename BatonType>
 template <typename Rep, typename Period>
-bool TimedRWMutexImpl<ReaderPriority, BatonType>::timed_write_lock(
-    const std::chrono::duration<Rep, Period>& duration) {
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_for(
+    const std::chrono::duration<Rep, Period>& timeout) {
+  return try_lock_until(std::chrono::steady_clock::now() + timeout);
+}
+
+template <bool ReaderPriority, typename BatonType>
+template <typename Clock, typename Duration>
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock_until(
+    const std::chrono::time_point<Clock, Duration>& deadline) {
   std::unique_lock<folly::SpinLock> ulock{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
@@ -253,7 +282,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::timed_write_lock(
   write_waiters_.push_back(waiter);
   ulock.unlock();
 
-  if (!waiter.baton.try_wait_for(duration)) {
+  if (!waiter.baton.try_wait_until(deadline)) {
     // We timed out. Two cases:
     // 1. We're still in the waiter list and we truly timed out
     // 2. We're not in the waiter list anymore. This could happen if the baton
@@ -270,7 +299,7 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::timed_write_lock(
 }
 
 template <bool ReaderPriority, typename BatonType>
-bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_write_lock() {
+bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_lock() {
   std::lock_guard<SpinLock> guard{lock_};
   if (state_ == State::UNLOCKED) {
     verify_unlocked_properties();
@@ -282,6 +311,15 @@ bool TimedRWMutexImpl<ReaderPriority, BatonType>::try_write_lock() {
 
 template <bool ReaderPriority, typename BatonType>
 void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
+  if (kIsDebug) {
+    std::unique_lock<folly::SpinLock> ulock{lock_};
+    assert(state_ == State::WRITE_LOCKED);
+  }
+  unlock_();
+}
+
+template <bool ReaderPriority, typename BatonType>
+void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_() {
   std::lock_guard<SpinLock> guard{lock_};
   assert(state_ != State::UNLOCKED);
   assert(
@@ -322,7 +360,7 @@ void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock() {
 }
 
 template <bool ReaderPriority, typename BatonType>
-void TimedRWMutexImpl<ReaderPriority, BatonType>::downgrade() {
+void TimedRWMutexImpl<ReaderPriority, BatonType>::unlock_and_lock_shared() {
   std::lock_guard<SpinLock> guard{lock_};
   assert(state_ == State::WRITE_LOCKED && readers_ == 0);
   state_ = State::READ_LOCKED;

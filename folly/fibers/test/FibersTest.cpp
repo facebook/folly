@@ -2222,7 +2222,7 @@ TEST(TimedMutex, ThreadFiberDeadlockOrder) {
   fm.addTask([&] { std::lock_guard<TimedMutex> lg(mutex); });
   fm.addTask([&] {
     runInMainContext([&] {
-      auto locked = mutex.timed_lock(std::chrono::seconds{1});
+      auto locked = mutex.try_lock_for(std::chrono::seconds{1});
       EXPECT_TRUE(locked);
       if (locked) {
         mutex.unlock();
@@ -2244,7 +2244,7 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
   mutex.lock();
 
   fm.addTask([&] {
-    auto locked = mutex.timed_lock(std::chrono::seconds{1});
+    auto locked = mutex.try_lock_for(std::chrono::seconds{1});
     EXPECT_TRUE(locked);
     if (locked) {
       mutex.unlock();
@@ -2253,7 +2253,7 @@ TEST(TimedMutex, ThreadFiberDeadlockRace) {
   fm.addTask([&] {
     mutex.unlock();
     runInMainContext([&] {
-      auto locked = mutex.timed_lock(std::chrono::seconds{1});
+      auto locked = mutex.try_lock_for(std::chrono::seconds{1});
       EXPECT_TRUE(locked);
       if (locked) {
         mutex.unlock();
