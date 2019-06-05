@@ -131,7 +131,9 @@ class Fetcher(object):
 
 
 class GitFetcher(Fetcher):
-    def __init__(self, build_options, manifest, repo_url, rev):
+    DEFAULT_DEPTH = 100
+
+    def __init__(self, build_options, manifest, repo_url, rev, depth):
         # Extract the host/path portions of the URL and generate a flattened
         # directory name.  eg:
         # github.com/facebook/folly.git -> github.com-facebook-folly.git
@@ -163,6 +165,7 @@ class GitFetcher(Fetcher):
         self.rev = rev or "master"
         self.origin_repo = repo_url
         self.manifest = manifest
+        self.depth = depth if depth else GitFetcher.DEFAULT_DEPTH
 
     def _update(self):
         current_hash = (
@@ -209,7 +212,7 @@ class GitFetcher(Fetcher):
             [
                 "git",
                 "clone",
-                "--depth=100",
+                "--depth=" + str(self.depth),
                 "--",
                 self.origin_repo,
                 os.path.basename(self.repo_dir),

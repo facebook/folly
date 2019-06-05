@@ -14,6 +14,7 @@ from .builder import (
     AutoconfBuilder,
     Boost,
     CMakeBuilder,
+    Iproute2Builder,
     MakeBuilder,
     NinjaBootstrap,
     NopBuilder,
@@ -50,7 +51,7 @@ SCHEMA = {
     "dependencies": {"optional_section": True, "allow_values": False},
     "git": {
         "optional_section": True,
-        "fields": {"repo_url": REQUIRED, "rev": OPTIONAL},
+        "fields": {"repo_url": REQUIRED, "rev": OPTIONAL, "depth": OPTIONAL},
     },
     "download": {
         "optional_section": True,
@@ -326,7 +327,8 @@ class ManifestParser(object):
         repo_url = self.get("git", "repo_url", ctx=ctx)
         if repo_url:
             rev = self.get("git", "rev")
-            return GitFetcher(build_options, self, repo_url, rev)
+            depth = self.get("git", "depth")
+            return GitFetcher(build_options, self, repo_url, rev, depth)
 
         url = self.get("download", "url", ctx=ctx)
         if url:
@@ -391,6 +393,11 @@ class ManifestParser(object):
         if builder == "openssl":
             return OpenSSLBuilder(
                 build_options, ctx, self, build_dir, src_dir, inst_dir
+            )
+
+        if builder == "iproute2":
+            return Iproute2Builder(
+                build_options, ctx, self, src_dir, build_dir, inst_dir
             )
 
         raise KeyError("project %s has no known builder" % (self.name))
