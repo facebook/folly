@@ -347,23 +347,17 @@ inline uint32_t digits10(uint64_t v) {
 
 #else
 
-  uint32_t result = 1;
-  while (true) {
-    if (LIKELY(v < 10)) {
-      return result;
-    }
-    if (LIKELY(v < 100)) {
-      return result + 1;
-    }
-    if (LIKELY(v < 1000)) {
-      return result + 2;
-    }
-    if (LIKELY(v < 10000)) {
-      return result + 3;
-    }
-    // Skip ahead by 4 orders of magnitude
-    v /= 10000U;
-    result += 4;
+  std::uint32_t result = 0;
+  for (;;)
+  {
+    result += 1
+            + (std::uint32_t)(v>=10)
+            + (std::uint32_t)(v>=100)
+            + (std::uint32_t)(v>=1000)
+            + (std::uint32_t)(v>=10000)
+            + (std::uint32_t)(v>=100000);
+    if (v < 1000000) return result;
+    v /= 1000000U;
   }
 
 #endif
