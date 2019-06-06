@@ -98,6 +98,15 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
      * @param ex        An exception describing the error that occurred.
      */
     virtual void connectErr(const AsyncSocketException& ex) noexcept = 0;
+
+    /**
+     * preConnect() will be invoked just before the actual connect happens,
+     *              default is no-ops.
+     *
+     * @param fd      An underneath created socket, use for connection.
+     *
+     */
+    virtual void preConnect(NetworkSocket /*fd*/) {}
   };
 
   class EvbChangeCallback {

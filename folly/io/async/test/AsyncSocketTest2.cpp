@@ -19,7 +19,6 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/SocketAddress.h>
-#include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -3670,6 +3669,30 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
       netops::getsockopt(fd, IPPROTO_IPV6, IPV6_TCLASS, &value, &valueLength);
   ASSERT_EQ(rc, 0);
   ASSERT_EQ(value, 0x2c);
+
+  // Additional Test for ConnectCallback without bindAddr
+  serverSocket->addAcceptCallback(&acceptCallback, &eventBase);
+  serverSocket->startAccepting();
+
+  auto newClientSock = AsyncSocket::newSocket(&eventBase);
+  TestConnectCallback callback;
+  // connect call will not set this SO_REUSEADDR if we do not
+  // pass the bindAddress in its call; so we can safely verify this.
+  newClientSock->connect(&callback, serverAddress, 30);
+
+  // Collect events
+  eventBase.loop();
+
+  auto acceptedFd = acceptCallback.getEvents()->at(1).fd;
+  ASSERT_NE(acceptedFd, NetworkSocket());
+  int reuseAddrVal;
+  socklen_t reuseAddrValLen = sizeof(reuseAddrVal);
+  // Get the socket created underneath connect call of AsyncSocket
+  auto usedSockFd = newClientSock->getNetworkSocket();
+  int getOptRet = netops::getsockopt(
+      usedSockFd, SOL_SOCKET, SO_REUSEADDR, &reuseAddrVal, &reuseAddrValLen);
+  ASSERT_EQ(getOptRet, 0);
+  ASSERT_EQ(reuseAddrVal, 1 /* configured through preConnect*/);
 }
 
 TEST(AsyncSocketTest, V4TosReflectTest) {

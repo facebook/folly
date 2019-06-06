@@ -92,6 +92,13 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
         timeout_(timeout),
         startTime_(std::chrono::steady_clock::now()) {}
 
+  void preConnect(folly::NetworkSocket fd) override {
+    VLOG(7) << "client preConnect hook is invoked";
+    if (callback_) {
+      callback_->preConnect(fd);
+    }
+  }
+
   void connectSuccess() noexcept override {
     VLOG(7) << "client socket connected";
 

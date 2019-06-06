@@ -557,6 +557,11 @@ void AsyncSocket::connect(
       }
     }
 
+    // Call preConnect hook if any.
+    if (connectCallback_) {
+      connectCallback_->preConnect(fd_);
+    }
+
     // Perform the connect()
     address.getAddress(&addrStorage);
 
