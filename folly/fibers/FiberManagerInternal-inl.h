@@ -198,6 +198,9 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
   // Support nested FiberManagers
   auto originalFiberManager = std::exchange(currentFiberManager_, this);
 
+  numUncaughtExceptions_ = uncaught_exceptions();
+  currentException_ = std::current_exception();
+
   // Save current context, and reset it after executing all fibers.
   // This can avoid a lot of context swapping,
   // if the Fibers share the same context

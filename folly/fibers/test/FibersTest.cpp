@@ -2460,3 +2460,57 @@ TEST(FiberManager, swapWithException) {
   });
   evb.loop();
 }
+
+TEST(FiberManager, loopInCatch) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  bool started = false;
+  folly::fibers::Baton baton;
+  bool done = false;
+
+  fm.addTask([&] {
+    started = true;
+    baton.wait();
+    done = true;
+  });
+
+  try {
+    throw std::logic_error("expected");
+  } catch (...) {
+    EXPECT_FALSE(started);
+    evb.drive();
+    EXPECT_TRUE(started);
+    EXPECT_FALSE(done);
+    baton.post();
+    evb.drive();
+    EXPECT_TRUE(done);
+  }
+}
+
+TEST(FiberManager, loopInUnwind) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  bool started = false;
+  folly::fibers::Baton baton;
+  bool done = false;
+
+  fm.addTask([&] {
+    started = true;
+    baton.wait();
+    done = true;
+  });
+
+  try {
+    SCOPE_EXIT {
+      EXPECT_FALSE(started);
+      evb.drive();
+      EXPECT_TRUE(started);
+      EXPECT_FALSE(done);
+      baton.post();
+      evb.drive();
+      EXPECT_TRUE(done);
+    };
+    throw std::logic_error("expected");
+  } catch (...) {
+  }
+}

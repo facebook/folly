@@ -548,6 +548,15 @@ class FiberManager : public ::folly::Executor {
 
   ssize_t remoteCount_{0};
 
+  /**
+   * Number of uncaught exceptions when FiberManager loop was called.
+   */
+  ssize_t numUncaughtExceptions_{0};
+  /**
+   * Current exception when FiberManager loop was called.
+   */
+  std::exception_ptr currentException_;
+
   class FibersPoolResizer final : private HHWheelTimer::Callback {
    public:
     explicit FibersPoolResizer(FiberManager& fm) : fiberManager_(fm) {}
