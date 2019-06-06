@@ -594,18 +594,6 @@ struct LifoSemBase {
     return decrOrPush(n, nodeToIdx(waiterNode));
   }
 
- private:
-  CachelinePadded<folly::AtomicStruct<LifoSemHead, Atom>> head_;
-
-  static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
-    auto raw = &LifoSemRawNode<Atom>::pool()[idx];
-    return *static_cast<LifoSemNode<Handoff, Atom>*>(raw);
-  }
-
-  static uint32_t nodeToIdx(const LifoSemNode<Handoff, Atom>& node) {
-    return LifoSemRawNode<Atom>::pool().locateElem(&node);
-  }
-
   // Locks the list head (blocking concurrent pushes and pops)
   // and attempts to remove this node.  Returns true if node was
   // found and removed, false if not found.
@@ -658,6 +646,18 @@ struct LifoSemBase {
     // Unlock and return result
     head_->store(head.withoutLock(head.idx()), std::memory_order_release);
     return result;
+  }
+
+ private:
+  CachelinePadded<folly::AtomicStruct<LifoSemHead, Atom>> head_;
+
+  static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
+    auto raw = &LifoSemRawNode<Atom>::pool()[idx];
+    return *static_cast<LifoSemNode<Handoff, Atom>*>(raw);
+  }
+
+  static uint32_t nodeToIdx(const LifoSemNode<Handoff, Atom>& node) {
+    return LifoSemRawNode<Atom>::pool().locateElem(&node);
   }
 
   /// Either increments by n and returns 0, or pops a node and returns it.
