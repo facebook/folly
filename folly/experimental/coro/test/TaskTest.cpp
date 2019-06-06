@@ -26,7 +26,7 @@
 #include <folly/experimental/coro/SharedMutex.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
-#include <folly/futures/helpers.h>
+#include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 
 #include <type_traits>
