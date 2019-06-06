@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <thread>
 
+#include <boost/preprocessor/repetition/repeat.hpp>
 #include <boost/thread/barrier.hpp>
 
 #include <folly/Benchmark.h>
@@ -114,6 +115,41 @@ BENCHMARK(xlog_every_n_exact, iters) {
     XLOG_EVERY_N_EXACT(INFO, FLAGS_every_n, "hi");
   });
 }
+
+BENCHMARK(xlog_every_n_thread, iters) {
+  runXlogEveryNBench(iters, [] { //
+    XLOG_EVERY_N_THREAD(INFO, FLAGS_every_n, "hi");
+  });
+}
+
+#define XLOG_EVERY_N_THREAD_BENCH_REP(z, n, text) \
+  XLOG_EVERY_N_THREAD(INFO, FLAGS_every_n, "hi");
+
+BENCHMARK(xlog_every_n_thread_1_256, iters) {
+  runXlogEveryNBench(iters, [] { //
+    for (auto i = 0; i < 256; ++i) {
+      BOOST_PP_REPEAT(1, XLOG_EVERY_N_THREAD_BENCH_REP, unused)
+    }
+  });
+}
+
+BENCHMARK(xlog_every_n_thread_16_16, iters) {
+  runXlogEveryNBench(iters, [] { //
+    for (auto i = 0; i < 16; ++i) {
+      BOOST_PP_REPEAT(16, XLOG_EVERY_N_THREAD_BENCH_REP, unused)
+    }
+  });
+}
+
+BENCHMARK(xlog_every_n_thread_256_1, iters) {
+  runXlogEveryNBench(iters, [] { //
+    for (auto i = 0; i < 1; ++i) {
+      BOOST_PP_REPEAT(256, XLOG_EVERY_N_THREAD_BENCH_REP, unused)
+    }
+  });
+}
+
+#undef XLOG_EVERY_N_THREAD_BENCH_REP
 } // namespace folly
 
 FOLLY_INIT_LOGGING_CONFIG(".=INFO:default; default=null");

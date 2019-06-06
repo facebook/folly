@@ -156,6 +156,41 @@
       }(),                                                                     \
       ##__VA_ARGS__)
 
+namespace folly {
+namespace detail {
+
+size_t& xlogEveryNThreadEntry(void const* const key);
+
+} // namespace detail
+} // namespace folly
+
+/**
+ * Similar to XLOG(...) except only log a message every @param n
+ * invocations per thread.
+ *
+ * The internal counter is thread-local, avoiding the contention
+ * which the XLOG_EVERY_N variations which use a global counter
+ * may suffer. If a given XLOG_EVERY_N or variation expansion is
+ * encountered concurrently by multiple threads in a hot code
+ * path and the global counter in the expansion is observed to
+ * be contended, then switching to XLOG_EVERY_N_THREAD can help.
+ *
+ * Every thread that invokes this expansion has a counter for
+ * this expansion. The internal counters are all stored in a
+ * single thread-local map to control TLS overhead, at the cost
+ * of a small runtime performance hit.
+ */
+#define XLOG_EVERY_N_THREAD(level, n, ...)                                  \
+  XLOG_IF(                                                                  \
+      level,                                                                \
+      []() FOLLY_EXPORT -> bool {                                           \
+        static char folly_detail_xlog_key;                                  \
+        auto& folly_detail_xlog_count =                                     \
+            ::folly::detail::xlogEveryNThreadEntry(&folly_detail_xlog_key); \
+        return FOLLY_UNLIKELY((folly_detail_xlog_count++ % (n)) == 0);      \
+      }(),                                                                  \
+      ##__VA_ARGS__)
+
 /**
  * Similar to XLOG(...) except only log at most @param count messages
  * per @param ms millisecond interval.

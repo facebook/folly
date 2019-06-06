@@ -311,6 +311,23 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 49"));
   handler->clearMessages();
 
+  // Test XLOG_EVERY_N_THREAD
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N_THREAD(DBG1, 7, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49"));
+  handler->clearMessages();
+
   // Test XLOG_EVERY_MS and XLOG_N_PER_MS
   // We test these together to minimize the number of sleep operations.
   for (size_t n = 0; n < 10; ++n) {
@@ -348,6 +365,50 @@ TEST_F(XlogTest, rateLimiting) {
           "2x int arg 6",
           "1x ms arg 6",
           "2x int arg 7",
+      }));
+  handler->clearMessages();
+}
+
+TEST_F(XlogTest, rateLimitingEndOfThread) {
+  auto handler = make_shared<TestLogHandler>();
+  LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
+  LoggerDB::get().setLevel("xlog_test", LogLevel::DBG1);
+
+  auto th = std::thread([&] {
+    auto enqueue = [](int num) {
+      pthread_key_t key;
+      pthread_key_create(&key, [](void* obj) {
+        auto* i = static_cast<int*>(obj);
+        XLOG_EVERY_N_THREAD(DBG1, 1, "dtor ", *i);
+        delete i;
+      });
+      pthread_setspecific(key, new int(num));
+    };
+
+    enqueue(100);
+    enqueue(101);
+    for (size_t n = 0; n < 50; ++n) {
+      XLOG_EVERY_N_THREAD(DBG1, 7, "msg ", n);
+    }
+    enqueue(102);
+    enqueue(103);
+  });
+  th.join();
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAreArray({
+          "msg 0",
+          "msg 7",
+          "msg 14",
+          "msg 21",
+          "msg 28",
+          "msg 35",
+          "msg 42",
+          "msg 49",
+          "dtor 100",
+          "dtor 101",
+          "dtor 102",
+          "dtor 103",
       }));
   handler->clearMessages();
 }
