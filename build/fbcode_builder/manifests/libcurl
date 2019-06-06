@@ -1,0 +1,10 @@
+[manifest]
+name = libcurl
+
+[download]
+url = https://curl.haxx.se/download/curl-7.65.1.tar.gz
+sha256 = 821aeb78421375f70e55381c9ad2474bf279fc454b791b7e95fc83562951c690
+
+[build.os=linux]
+builder = cmake
+subdir = curl-7.65.1
