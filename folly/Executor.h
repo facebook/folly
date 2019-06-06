@@ -73,8 +73,7 @@ class Executor {
     }
 
     KeepAlive(KeepAlive&& other) noexcept
-        : executorAndDummyFlag_(std::exchange(other.executorAndDummyFlag_, 0)) {
-    }
+        : storage_(std::exchange(other.storage_, 0)) {}
 
     KeepAlive(const KeepAlive& other) noexcept
         : KeepAlive(getKeepAliveToken(other.get())) {}
@@ -84,8 +83,8 @@ class Executor {
         typename = typename std::enable_if<
             std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
     /* implicit */ KeepAlive(KeepAlive<OtherExecutor>&& other) noexcept
-        : KeepAlive(other.get(), other.executorAndDummyFlag_ & kDummyFlag) {
-      other.executorAndDummyFlag_ = 0;
+        : KeepAlive(other.get(), other.storage_ & kFlagMask) {
+      other.storage_ = 0;
     }
 
     template <
@@ -101,7 +100,7 @@ class Executor {
 
     KeepAlive& operator=(KeepAlive&& other) {
       reset();
-      executorAndDummyFlag_ = std::exchange(other.executorAndDummyFlag_, 0);
+      storage_ = std::exchange(other.storage_, 0);
       return *this;
     }
 
@@ -123,20 +122,19 @@ class Executor {
 
     void reset() {
       if (Executor* executor = get()) {
-        if (std::exchange(executorAndDummyFlag_, 0) & kDummyFlag) {
-          return;
+        auto const flags = std::exchange(storage_, 0) & kFlagMask;
+        if (!(flags & (kDummyFlag | kAliasFlag))) {
+          executor->keepAliveRelease();
         }
-        executor->keepAliveRelease();
       }
     }
 
     explicit operator bool() const {
-      return executorAndDummyFlag_;
+      return storage_;
     }
 
     ExecutorT* get() const {
-      return reinterpret_cast<ExecutorT*>(
-          executorAndDummyFlag_ & kExecutorMask);
+      return reinterpret_cast<ExecutorT*>(storage_ & kExecutorMask);
     }
 
     ExecutorT& operator*() const {
@@ -151,31 +149,38 @@ class Executor {
       return getKeepAliveToken(get());
     }
 
-    // Creates a dummy copy of this KeepAlive token, which doesn't increment
-    // the ref-count. Should only be used if this KeepAlive token is known to
-    // outlive such dummy copy.
-    KeepAlive copyDummy() const {
-      return KeepAlive(get(), true);
+    KeepAlive get_alias() const {
+      return KeepAlive(storage_ | kAliasFlag);
     }
 
    private:
-    static constexpr intptr_t kDummyFlag = 1;
-    static constexpr intptr_t kExecutorMask = ~kDummyFlag;
+    //  A dummy keep-alive is a keep-alive to an executor which does not support
+    //  the keep-alive mechanism.
+    static constexpr uintptr_t kDummyFlag = uintptr_t(1) << 0;
+
+    //  An alias keep-alive is a keep-alive to an executor to which there is
+    //  known to be another keep-alive whose lifetime surrounds the lifetime of
+    //  the alias.
+    static constexpr uintptr_t kAliasFlag = uintptr_t(1) << 1;
+
+    static constexpr uintptr_t kFlagMask = kDummyFlag | kAliasFlag;
+    static constexpr uintptr_t kExecutorMask = ~kFlagMask;
 
     friend class Executor;
     template <typename OtherExecutor>
     friend class KeepAlive;
 
-    KeepAlive(ExecutorT* executor, bool dummy)
-        : executorAndDummyFlag_(
-              reinterpret_cast<intptr_t>(executor) | (dummy ? kDummyFlag : 0)) {
+    KeepAlive(ExecutorT* executor, uintptr_t flags) noexcept
+        : storage_(reinterpret_cast<uintptr_t>(executor) | flags) {
       assert(executor);
-      assert(
-          (reinterpret_cast<intptr_t>(executor) & kExecutorMask) ==
-          reinterpret_cast<intptr_t>(executor));
+      assert(!(reinterpret_cast<uintptr_t>(executor) & ~kExecutorMask));
+      assert(!(flags & kExecutorMask));
     }
 
-    intptr_t executorAndDummyFlag_{reinterpret_cast<intptr_t>(nullptr)};
+    explicit KeepAlive(uintptr_t storage) noexcept : storage_(storage) {}
+
+    //  Combined storage for the executor pointer and for all flags.
+    uintptr_t storage_{reinterpret_cast<uintptr_t>(nullptr)};
   };
 
   template <typename ExecutorT>
@@ -208,7 +213,7 @@ class Executor {
    */
   template <typename ExecutorT>
   static bool isKeepAliveDummy(const KeepAlive<ExecutorT>& keepAlive) {
-    return reinterpret_cast<intptr_t>(keepAlive.executorAndDummyFlag_) &
+    return reinterpret_cast<uintptr_t>(keepAlive.storage_) &
         KeepAlive<ExecutorT>::kDummyFlag;
   }
 
@@ -233,7 +238,7 @@ class Executor {
     static_assert(
         std::is_base_of<Executor, ExecutorT>::value,
         "makeKeepAliveDummy only works for folly::Executor implementations.");
-    return KeepAlive<ExecutorT>{executor, true};
+    return KeepAlive<ExecutorT>{executor, KeepAlive<ExecutorT>::kDummyFlag};
   }
 };
 

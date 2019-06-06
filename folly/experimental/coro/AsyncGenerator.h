@@ -108,7 +108,7 @@ class AsyncGeneratorPromise {
   template <typename U>
   auto await_transform(U&& value) {
     return folly::coro::co_viaIfAsync(
-        executor_.copyDummy(), static_cast<U&&>(value));
+        executor_.get_alias(), static_cast<U&&>(value));
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {

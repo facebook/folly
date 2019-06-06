@@ -78,7 +78,7 @@ class TaskPromiseBase {
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) noexcept {
     return folly::coro::co_viaIfAsync(
-        executor_.copyDummy(), static_cast<Awaitable&&>(awaitable));
+        executor_.get_alias(), static_cast<Awaitable&&>(awaitable));
   }
 
   auto await_transform(co_current_executor_t) noexcept {

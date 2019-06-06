@@ -194,7 +194,7 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   auto makeTask = [&](awaitable_type semiAwaitable) -> detail::BarrierTask {
     try {
       co_await coro::co_viaIfAsync(
-          executor.copyDummy(), std::move(semiAwaitable));
+          executor.get_alias(), std::move(semiAwaitable));
     } catch (const std::exception& ex) {
       if (!anyFailures.exchange(true, std::memory_order_relaxed)) {
         firstException = exception_wrapper{std::current_exception(), ex};
@@ -253,11 +253,11 @@ auto collectAllTryRange(InputRange awaitables)
           semi_await_result_t<detail::range_reference_t<InputRange>>;
       if constexpr (std::is_void_v<await_result>) {
         co_await coro::co_viaIfAsync(
-            executor.copyDummy(), std::move(semiAwaitable));
+            executor.get_alias(), std::move(semiAwaitable));
         result.emplace();
       } else {
         result.emplace(co_await coro::co_viaIfAsync(
-            executor.copyDummy(), std::move(semiAwaitable)));
+            executor.get_alias(), std::move(semiAwaitable)));
       }
     } catch (const std::exception& ex) {
       result.emplaceException(std::current_exception(), ex);
@@ -324,7 +324,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   auto makeWorker = [&]() -> detail::BarrierTask {
     auto lock =
-        co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+        co_await co_viaIfAsync(executor.get_alias(), mutex.co_scoped_lock());
 
     while (iter != iterEnd) {
       awaitable_t awaitable = *iter;
@@ -341,13 +341,13 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       std::exception_ptr ex;
       try {
         co_await co_viaIfAsync(
-            executor.copyDummy(), static_cast<awaitable_t&&>(awaitable));
+            executor.get_alias(), static_cast<awaitable_t&&>(awaitable));
       } catch (...) {
         ex = std::current_exception();
       }
 
       lock =
-          co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+          co_await co_viaIfAsync(executor.get_alias(), mutex.co_scoped_lock());
 
       if (ex && !firstException) {
         firstException = std::move(ex);
@@ -444,7 +444,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   auto makeWorker = [&]() -> detail::BarrierTask {
     auto lock =
-        co_await co_viaIfAsync(executor.copyDummy(), mutex.co_scoped_lock());
+        co_await co_viaIfAsync(executor.get_alias(), mutex.co_scoped_lock());
 
     while (!iterationException && iter != iterEnd) {
       try {
@@ -477,11 +477,11 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
         try {
           if constexpr (std::is_void_v<result_t>) {
             co_await co_viaIfAsync(
-                executor.copyDummy(), static_cast<awaitable_t&&>(awaitable));
+                executor.get_alias(), static_cast<awaitable_t&&>(awaitable));
             result.emplace();
           } else {
             result.emplace(co_await co_viaIfAsync(
-                executor.copyDummy(), static_cast<awaitable_t&&>(awaitable)));
+                executor.get_alias(), static_cast<awaitable_t&&>(awaitable)));
           }
         } catch (const std::exception& ex) {
           result.emplaceException(std::current_exception(), ex);
@@ -490,7 +490,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
         }
 
         lock = co_await co_viaIfAsync(
-            executor.copyDummy(), mutex.co_scoped_lock());
+            executor.get_alias(), mutex.co_scoped_lock());
 
         try {
           results[thisIndex] = std::move(result);
