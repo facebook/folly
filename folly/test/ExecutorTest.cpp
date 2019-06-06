@@ -215,4 +215,23 @@ TEST(ExecutorTest, GetKeepAliveTokenFromToken) {
   EXPECT_EQ(0, exec.refCount);
 }
 
+TEST(ExecutorTest, CopyExpired) {
+  struct Ex : Executor {
+    void add(Func) override {}
+  };
+
+  Ex* ptr = nullptr;
+  Executor::KeepAlive<Ex> ka;
+
+  {
+    auto ex = std::make_unique<Ex>();
+    ptr = ex.get();
+    ka = getKeepAliveToken(ptr);
+  }
+
+  ka = ka.copy(); // if copy() doesn't check dummy, expect segfault
+
+  EXPECT_EQ(ptr, ka.get());
+}
+
 } // namespace folly

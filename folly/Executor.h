@@ -146,7 +146,9 @@ class Executor {
     }
 
     KeepAlive copy() const {
-      return getKeepAliveToken(get());
+      return isKeepAliveDummy(*this) //
+          ? makeKeepAliveDummy(get())
+          : getKeepAliveToken(get());
     }
 
     KeepAlive get_alias() const {
