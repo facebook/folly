@@ -1610,7 +1610,7 @@ TEST(IOBuf, FreeFn) {
    public:
     using Func = std::function<void()>;
     explicit IOBufFreeObserver(Func&& func) : func_(std::move(func)) {}
-    void beforeFreeExtBuffer() const noexcept {
+    void afterFreeExtBuffer() const noexcept {
       func_();
     }
 

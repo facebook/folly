@@ -951,22 +951,27 @@ void IOBuf::freeExtBuffer() noexcept {
   SharedInfo* info = sharedInfo();
   DCHECK(info);
 
-  if (info->observerListHead) {
-    // break the chain
-    info->observerListHead->prev->next = nullptr;
-    auto* entry = info->observerListHead;
-    while (entry) {
-      auto* tmp = entry->next;
-      entry->beforeFreeExtBuffer();
-      delete entry;
-      entry = tmp;
-    }
-  }
+  // save the observerListHead
+  // since the SharedInfo can be freed
+  auto* observerListHead = info->observerListHead;
+  info->observerListHead = nullptr;
 
   if (info->freeFn) {
     info->freeFn(buf_, info->userData);
   } else {
     free(buf_);
+  }
+
+  if (observerListHead) {
+    // break the chain
+    observerListHead->prev->next = nullptr;
+    auto* entry = observerListHead;
+    while (entry) {
+      auto* tmp = entry->next;
+      entry->afterFreeExtBuffer();
+      delete entry;
+      entry = tmp;
+    }
   }
 }
 

@@ -1417,7 +1417,7 @@ class IOBuf {
 
     virtual ~SharedInfoObserverEntryBase() = default;
 
-    virtual void beforeFreeExtBuffer() const noexcept = 0;
+    virtual void afterFreeExtBuffer() const noexcept = 0;
   };
 
   template <typename Observer>
@@ -1428,8 +1428,8 @@ class IOBuf {
         noexcept(Observer(std::forward<Observer>(obs))))
         : observer(std::forward<Observer>(obs)) {}
 
-    void beforeFreeExtBuffer() const noexcept final {
-      observer.beforeFreeExtBuffer();
+    void afterFreeExtBuffer() const noexcept final {
+      observer.afterFreeExtBuffer();
     }
   };
 
