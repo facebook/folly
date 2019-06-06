@@ -215,8 +215,7 @@ class Executor {
    */
   template <typename ExecutorT>
   static bool isKeepAliveDummy(const KeepAlive<ExecutorT>& keepAlive) {
-    return reinterpret_cast<uintptr_t>(keepAlive.storage_) &
-        KeepAlive<ExecutorT>::kDummyFlag;
+    return keepAlive.storage_ & KeepAlive<ExecutorT>::kDummyFlag;
   }
 
   // Acquire a keep alive token. Should return false if keep-alive mechanism
