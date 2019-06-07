@@ -347,18 +347,26 @@ inline uint32_t digits10(uint64_t v) {
 
 #else
 
-  std::uint32_t result = 0;
-  for (;;)
-  {
-    result += 1
-            + (std::uint32_t)(v>=10)
-            + (std::uint32_t)(v>=100)
-            + (std::uint32_t)(v>=1000)
-            + (std::uint32_t)(v>=10000)
-            + (std::uint32_t)(v>=100000);
-    if (v < 1000000) return result;
-    v /= 1000000U;
-  }
+  return  1
+        + (std::uint32_t)(v>=10)
+        + (std::uint32_t)(v>=100)
+        + (std::uint32_t)(v>=1000)
+        + (std::uint32_t)(v>=10000)
+        + (std::uint32_t)(v>=100000)
+        + (std::uint32_t)(v>=1000000)
+        + (std::uint32_t)(v>=10000000)
+        + (std::uint32_t)(v>=100000000)
+        + (std::uint32_t)(v>=1000000000)
+        + (std::uint32_t)(v>=10000000000ull)
+        + (std::uint32_t)(v>=100000000000ull)
+        + (std::uint32_t)(v>=1000000000000ull)
+        + (std::uint32_t)(v>=10000000000000ull)
+        + (std::uint32_t)(v>=100000000000000ull)
+        + (std::uint32_t)(v>=1000000000000000ull)
+        + (std::uint32_t)(v>=10000000000000000ull)
+        + (std::uint32_t)(v>=100000000000000000ull)
+        + (std::uint32_t)(v>=1000000000000000000ull)
+        + (std::uint32_t)(v>=10000000000000000000ull);
 
 #endif
 }
