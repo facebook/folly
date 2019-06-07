@@ -91,7 +91,8 @@ Optional<std::string> getThreadName(std::thread::id id) {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
     FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
   std::array<char, kMaxThreadNameLength> buf;
-  if (pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) != 0) {
+  if (id == std::thread::id() ||
+      pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) != 0) {
     return Optional<std::string>();
   }
   return folly::make_optional(std::string(buf.data()));
