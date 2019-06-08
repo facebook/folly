@@ -894,20 +894,31 @@ struct Sig<R(A&, As...)> : SigImpl<R, A&, As...> {
   }
 };
 
-template <
-    class T,
-    class I,
-    class U = std::decay_t<T>,
-    std::enable_if_t<Negation<std::is_base_of<PolyBase, U>>::value, int> = 0,
-    std::enable_if_t<std::is_constructible<AddCvrefOf<U, I>, T>::value, int> =
-        0,
-    class = MembersOf<std::decay_t<I>, U>>
-std::true_type modelsInterface_(int);
-template <class T, class I>
-std::false_type modelsInterface_(long);
+template <class T, class I, class = void>
+struct ModelsInterface2_ : std::false_type {};
 
 template <class T, class I>
-struct ModelsInterface : decltype(modelsInterface_<T, I>(0)) {};
+struct ModelsInterface2_<
+    T,
+    I,
+    void_t<
+        std::enable_if_t<
+            std::is_constructible<AddCvrefOf<std::decay_t<T>, I>, T>::value>,
+        MembersOf<std::decay_t<I>, std::decay_t<T>>>> : std::true_type {};
+
+template <class T, class I, class = void>
+struct ModelsInterface_ : std::false_type {};
+
+template <class T, class I>
+struct ModelsInterface_<
+    T,
+    I,
+    std::enable_if_t<
+        Negation<std::is_base_of<PolyBase, std::decay_t<T>>>::value>>
+    : ModelsInterface2_<T, I> {};
+
+template <class T, class I>
+struct ModelsInterface : ModelsInterface_<T, I> {};
 
 template <class I1, class I2>
 struct ValueCompatible : std::is_base_of<I1, I2> {};
