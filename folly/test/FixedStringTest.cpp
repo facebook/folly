@@ -350,9 +350,8 @@ TEST(FixedStringAssignTest, RuntimeAppendString) {
 constexpr folly::FixedString<20> constexpr_append_literal_test() {
   folly::FixedString<20> a{"hello"};
   a.append(1u, ' ');
-  constexpr char s[] = "X world!";
-  a.append(&s[2u], 5u);
-  a.append(&s[7u]);
+  a.append("world foo bar baz", 5u);
+  a.append("!");
   return a;
 }
 
