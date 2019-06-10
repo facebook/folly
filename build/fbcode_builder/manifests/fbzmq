@@ -1,0 +1,24 @@
+[manifest]
+name = fbzmq
+fbsource_path = facebook/fbzmq
+shipit_project = fbzmq
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/fbzmq.git
+
+[build]
+builder = cmake
+
+[dependencies]
+boost
+folly
+fbthrift
+googletest
+sigar
+libzmq
+
+[shipit.pathmap]
+fbcode/fbzmq = .
+
+[shipit.strip]
