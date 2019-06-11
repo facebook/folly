@@ -19,10 +19,10 @@ pcre
 [shipit.pathmap]
 fbcode/watchman = .
 fbcode/fboss/common = common
-fbcode/eden/fs/service = eden/fs/service
+fbcode/eden/fs = eden/fs
 
 [shipit.strip]
-^fbcode/eden/fs/service/(?!.*\.thrift|shipit_test_file\.txt)
+^fbcode/eden/fs/(?!.*\.thrift|service/shipit_test_file\.txt)
 
 [cmake.defines]
 ENABLE_EDEN_SUPPORT=ON
