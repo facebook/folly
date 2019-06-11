@@ -225,11 +225,12 @@ class Iproute2Builder(BuilderBase):
         self._patch()
         self._run_cmd(["make", "-j%s" % self.build_opts.num_jobs], env=env)
         install_cmd = ["make", "install", "DESTDIR=" + self.inst_dir]
-        if not os.path.isdir(os.path.join(self.inst_dir, "include")):
-            shutil.copytree(
-                os.path.join(self.build_dir, "include"),
-                os.path.join(self.inst_dir, "include"),
-            )
+
+        for d in ["include", "lib"]:
+            if not os.path.isdir(os.path.join(self.inst_dir, d)):
+                shutil.copytree(
+                    os.path.join(self.build_dir, d), os.path.join(self.inst_dir, d)
+                )
 
         self._run_cmd(install_cmd, env=env)
 
