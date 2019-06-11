@@ -6,5 +6,15 @@ url = https://curl.haxx.se/download/curl-7.65.1.tar.gz
 sha256 = 821aeb78421375f70e55381c9ad2474bf279fc454b791b7e95fc83562951c690
 
 [build.os=linux]
+builder = autoconf
+subdir = curl-7.65.1
+
+[autoconf.args]
+# fboss (which added the libcurl dep) doesn't need ldap so it is disabled here.
+# if someone in the future wants to add ldap for something else, it won't hurt
+# fboss. However, that would require adding an ldap manifest.
+--disable-ldap
+
+[build.not(os=linux)]
 builder = cmake
 subdir = curl-7.65.1
