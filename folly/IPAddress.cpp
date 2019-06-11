@@ -373,6 +373,9 @@ uint8_t IPAddress::getNthMSByte(size_t byteIndex) const {
 
 // public
 bool operator==(const IPAddress& addr1, const IPAddress& addr2) {
+  if (addr1.empty() || addr2.empty()) {
+    return addr1.empty() == addr2.empty();
+  }
   if (addr1.family() == addr2.family()) {
     if (addr1.isV6()) {
       return (addr1.asV6() == addr2.asV6());
@@ -403,6 +406,9 @@ bool operator==(const IPAddress& addr1, const IPAddress& addr2) {
 }
 
 bool operator<(const IPAddress& addr1, const IPAddress& addr2) {
+  if (addr1.empty() || addr2.empty()) {
+    return addr1.empty() < addr2.empty();
+  }
   if (addr1.family() == addr2.family()) {
     if (addr1.isV6()) {
       return (addr1.asV6() < addr2.asV6());

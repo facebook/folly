@@ -197,6 +197,11 @@ TEST(SocketAddress, SetFromStrings) {
 }
 
 TEST(SocketAddress, EqualityAndHash) {
+  SocketAddress empty1;
+  SocketAddress empty2;
+  EXPECT_EQ(empty1, empty2);
+  EXPECT_EQ(empty1.hash(), empty2.hash());
+
   // IPv4
   SocketAddress local1("127.0.0.1", 1234);
   EXPECT_EQ(local1, local1);

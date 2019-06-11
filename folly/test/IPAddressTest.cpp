@@ -419,6 +419,11 @@ TEST(IPAddress, CtorDefault) {
   EXPECT_EQ(IPAddressV4("0.0.0.0"), v4);
   IPAddressV6 v6;
   EXPECT_EQ(IPAddressV6("::0"), v6);
+  IPAddress v0;
+  EXPECT_EQ(IPAddress(), v0);
+  EXPECT_NE(v0, v4);
+  EXPECT_NE(v0, v6);
+  EXPECT_NE(v4, v6);
 }
 
 TEST(IPAddressV4, validate) {
@@ -542,6 +547,14 @@ TEST(IPAddress, CtorSockaddr) {
     addr.sin_addr = sin_addr;
 
     EXPECT_THROW(IPAddress((sockaddr*)&addr), IPAddressFormatException);
+  }
+  // test none address
+  {
+    IPAddress ipAddr;
+    EXPECT_TRUE(ipAddr.empty());
+    EXPECT_FALSE(ipAddr.isV4());
+    EXPECT_FALSE(ipAddr.isV6());
+    EXPECT_EQ("", ipAddr.str());
   }
 }
 
