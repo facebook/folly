@@ -1,0 +1,37 @@
+[manifest]
+name = fboss
+fbsource_path = fbcode/fboss
+shipit_project = fboss
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/fboss.git
+
+[build.os=linux]
+builder = cmake
+
+[build.not(os=linux)]
+builder = nop
+
+[dependencies]
+folly
+wangle
+rsocket-cpp
+mstch
+fizz
+fmt
+libsodium
+googletest
+zstd
+fbthrift
+iproute2
+OpenNSL
+libmnl
+libusb
+libcurl
+libnl
+
+[shipit.pathmap]
+fbcode/fboss/github = .
+fbcode/fboss/common = common
+fbcode/fboss = fboss
