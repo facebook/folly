@@ -794,4 +794,92 @@ TEST(Expected, ThenOrThrow) {
         Unexpected<E>::BadExpectedAccess);
   }
 }
+
+namespace {
+struct Source {};
+
+struct SmallPODConstructTo {
+  SmallPODConstructTo() = default;
+  explicit SmallPODConstructTo(Source) {}
+};
+
+struct LargePODConstructTo {
+  explicit LargePODConstructTo(Source) {}
+  int64_t array[10];
+};
+
+struct NonPODConstructTo {
+  explicit NonPODConstructTo(Source) {}
+  NonPODConstructTo(NonPODConstructTo const&) {}
+  NonPODConstructTo& operator=(NonPODConstructTo const&) { return *this; }
+};
+
+struct ConvertTo {
+  explicit ConvertTo(Source) {}
+  ConvertTo& operator=(Source) { return *this; }
+};
+
+static_assert(
+    expected_detail::getStorageType<int, SmallPODConstructTo>() ==
+        expected_detail::StorageType::ePODStruct,
+    "SmallPODConstructTo is ePODStruct");
+static_assert(
+    expected_detail::getStorageType<int, LargePODConstructTo>() ==
+        expected_detail::StorageType::ePODUnion,
+    "LargePODConstructTo is ePODUnion");
+static_assert(
+    expected_detail::getStorageType<int, NonPODConstructTo>() ==
+        expected_detail::StorageType::eUnion,
+    "NonPODConstructTo is eUnion");
+
+template <typename Target>
+constexpr bool constructibleNotConvertible() {
+  return std::is_constructible<Target, Source>() &&
+      !expected_detail::IsConvertible<Source, Target>();
+}
+
+static_assert(constructibleNotConvertible<SmallPODConstructTo>(), "");
+static_assert(constructibleNotConvertible<LargePODConstructTo>(), "");
+static_assert(constructibleNotConvertible<NonPODConstructTo>(), "");
+
+static_assert(expected_detail::IsConvertible<Source, ConvertTo>(),
+    "convertible");
+} // namespace
+
+TEST(Expected, GitHubIssue1111) {
+  // See https://github.com/facebook/folly/issues/1111
+  Expected<int, SmallPODConstructTo> a = folly::makeExpected<Source>(5);
+  EXPECT_EQ(a.value(), 5);
+}
+
+TEST(Expected, ConstructorConstructibleNotConvertible) {
+  const Expected<int, Source> v = makeExpected<Source>(5);
+  const Expected<int, Source> e = makeUnexpected(Source());
+  // Test construction and assignment for each ExpectedStorage backend
+  {
+    folly::Expected<int, SmallPODConstructTo> cv(v);
+    folly::Expected<int, SmallPODConstructTo> ce(e);
+    cv = v;
+    ce = e;
+  }
+  {
+    folly::Expected<int, LargePODConstructTo> cv(v);
+    folly::Expected<int, LargePODConstructTo> ce(e);
+    cv = v;
+    ce = e;
+  }
+  {
+    folly::Expected<int, NonPODConstructTo> cv(v);
+    folly::Expected<int, NonPODConstructTo> ce(e);
+    cv = v;
+    ce = e;
+  }
+  // Test convertible construction and assignment
+  {
+    folly::Expected<int, ConvertTo> cv(v);
+    folly::Expected<int, ConvertTo> ce(e);
+    cv = v;
+    ce = e;
+  }
+}
 } // namespace folly
