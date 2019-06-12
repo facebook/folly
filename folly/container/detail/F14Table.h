@@ -54,7 +54,7 @@
 #include <folly/container/detail/F14IntrinsicsAvailability.h>
 #include <folly/container/detail/F14Mask.h>
 
-#if FOLLY_ASAN_ENABLED && defined(FOLLY_TLS)
+#if FOLLY_LIBRARY_SANITIZE_ADDRESS && defined(FOLLY_TLS)
 #define FOLLY_F14_TLS_IF_ASAN FOLLY_TLS
 #else
 #define FOLLY_F14_TLS_IF_ASAN

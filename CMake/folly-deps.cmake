@@ -157,13 +157,13 @@ if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
 endif()
 
 option(
-  FOLLY_ASAN_ENABLED
+  FOLLY_LIBRARY_SANITIZE_ADDRESS
   "Build folly with Address Sanitizer enabled."
   OFF
 )
-if (FOLLY_ASAN_ENABLED)
+if (FOLLY_LIBRARY_SANITIZE_ADDRESS)
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU)
-    set(FOLLY_ASAN_ENABLED ON)
+    set(FOLLY_LIBRARY_SANITIZE_ADDRESS ON)
     set(FOLLY_ASAN_FLAGS -fsanitize=address,undefined)
     list(APPEND FOLLY_CXX_FLAGS ${FOLLY_ASAN_FLAGS})
     # All of the functions in folly/detail/Sse.cpp are intended to be compiled
@@ -175,7 +175,7 @@ if (FOLLY_ASAN_ENABLED)
       PROPERTIES COMPILE_FLAGS -fno-sanitize=address,undefined
     )
   elseif ("${CMAKE_CXX_COMPILER_ID}" MATCHES Clang)
-    set(FOLLY_ASAN_ENABLED ON)
+    set(FOLLY_LIBRARY_SANITIZE_ADDRESS ON)
     set(
       FOLLY_ASAN_FLAGS
       -fno-common

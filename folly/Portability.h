@@ -122,7 +122,7 @@ namespace folly {
  * folly/Portability.h, the value of kIsSanitizeAddress may be different
  * from whether or not the current compilation unit is being compiled with ASAN.
  */
-#if FOLLY_ASAN_ENABLED
+#if FOLLY_LIBRARY_SANITIZE_ADDRESS
 constexpr bool kIsSanitizeAddress = true;
 #else
 constexpr bool kIsSanitizeAddress = false;

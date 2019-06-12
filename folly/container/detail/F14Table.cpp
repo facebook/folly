@@ -36,7 +36,7 @@ EmptyTagVectorType kEmptyTagVector = {};
 
 //// Debug and ASAN stuff
 
-#if defined(FOLLY_TLS) && (!defined(NDEBUG) || FOLLY_ASAN_ENABLED)
+#if defined(FOLLY_TLS) && (!defined(NDEBUG) || FOLLY_LIBRARY_SANITIZE_ADDRESS)
 #define FOLLY_F14_DETAIL_TLS_SIZE_T FOLLY_TLS std::size_t
 #else
 #define FOLLY_F14_DETAIL_TLS_SIZE_T std::atomic<std::size_t>

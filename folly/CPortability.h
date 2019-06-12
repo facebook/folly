@@ -68,8 +68,8 @@
  * itself was compiled without ASAN but a downstream project that uses folly is
  * compiling with ASAN enabled.
  *
- * Use FOLLY_ASAN_ENABLED (defined in folly-config.h) to check if folly itself
- * was compiled with ASAN enabled.
+ * Use FOLLY_LIBRARY_SANITIZE_ADDRESS (defined in folly-config.h) to check if
+ * folly itself was compiled with ASAN enabled.
  */
 #if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
 #define FOLLY_SANITIZE_ADDRESS 1
