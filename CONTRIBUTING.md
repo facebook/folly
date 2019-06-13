@@ -28,6 +28,10 @@ Facebook has a [bounty program](https://www.facebook.com/whitehat/) for the safe
 disclosure of security bugs. In those cases, please go through the process
 outlined on that page and do not file a public issue.
 
+## Issue triage [![Open Source Helpers](https://www.codetriage.com/facebook/folly/badges/users.svg)](https://www.codetriage.com/facebook/folly)
+
+You can contribute by triaging issues which may include reproducing bug reports or asking for vital information, such as version numbers or reproduction instructions. If you would like to start triaging issues, one easy way to get started is to [subscribe to folly on CodeTriage](https://www.codetriage.com/facebook/folly).
+
 ## License
 By contributing to folly, you agree that your contributions will be licensed
 under the LICENSE file in the root directory of this source tree.
