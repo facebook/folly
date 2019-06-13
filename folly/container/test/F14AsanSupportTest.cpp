@@ -71,7 +71,7 @@ void repeat(F const& func) {
 
 template <typename F>
 void expectAsanFailure(F const& func) {
-  if (kIsSanitizeAddress) {
+  if (kIsLibrarySanitizeAddress) {
     EXPECT_EXIT(
         repeat(func), testing::ExitedWithCode(1), ".*heap-use-after-free.*");
   }
@@ -131,7 +131,7 @@ TEST(F14AsanSupportTest, F14VectorErase) {
   auto& v = *set.begin();
   EXPECT_EQ(v, 3);
   set.erase(2);
-  if (kIsSanitizeAddress) {
+  if (kIsLibrarySanitizeAddress) {
     EXPECT_NE(v, 3);
   }
 }

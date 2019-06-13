@@ -1954,7 +1954,7 @@ class F14Table : public Policy {
   // sanitizer builds
 
   FOLLY_ALWAYS_INLINE void debugModeOnReserve(std::size_t capacity) {
-    if (kIsSanitizeAddress || kIsDebug) {
+    if (kIsLibrarySanitizeAddress || kIsDebug) {
       if (capacity > size()) {
         tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(capacity - size()));
       }
@@ -1978,14 +1978,14 @@ class F14Table : public Policy {
     // One way to fix this is to call map.reserve(N) before such a
     // sequence, where N is the number of keys that might be inserted
     // within the section that retains references plus the existing size.
-    if (kIsSanitizeAddress && !tlsPendingSafeInserts() && size() > 0 &&
+    if (kIsLibrarySanitizeAddress && !tlsPendingSafeInserts() && size() > 0 &&
         tlsMinstdRand(size()) == 0) {
       debugModeSpuriousRehash();
     }
   }
 
   FOLLY_ALWAYS_INLINE void debugModeAfterInsert() {
-    if (kIsSanitizeAddress || kIsDebug) {
+    if (kIsLibrarySanitizeAddress || kIsDebug) {
       tlsPendingSafeInserts(-1);
     }
   }
@@ -2192,7 +2192,7 @@ class F14Table : public Policy {
   }
 
   void clear() noexcept {
-    if (kIsSanitizeAddress) {
+    if (kIsLibrarySanitizeAddress) {
       // force recycling of heap memory
       auto bc = bucket_count();
       reset();
@@ -2393,7 +2393,7 @@ class F14Table : public Policy {
 namespace f14 {
 namespace test {
 inline void disableInsertOrderRandomization() {
-  if (kIsSanitizeAddress || kIsDebug) {
+  if (kIsLibrarySanitizeAddress || kIsDebug) {
     detail::tlsPendingSafeInserts(static_cast<std::ptrdiff_t>(
         (std::numeric_limits<std::size_t>::max)() / 2));
   }

@@ -381,7 +381,7 @@ struct BasePolicy
   }
 
   void afterDestroyWithoutDeallocate(Value* addr, std::size_t n) {
-    if (kIsSanitizeAddress) {
+    if (kIsLibrarySanitizeAddress) {
       memset(static_cast<void*>(addr), 0x66, sizeof(Value) * n);
     }
   }
