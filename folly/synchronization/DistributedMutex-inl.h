@@ -129,6 +129,18 @@ constexpr auto kCombineUninitialized = std::uint32_t{0b1000};
 // lock holder that the thread has set its next_ pointer in the contention
 // chain
 constexpr auto kCombineWaiting = std::uint32_t{0b1001};
+// kExceptionOccurred is set on the waiter futex when the remote task throws
+// an exception.  It is the caller's responsibility to retrieve the exception
+// and rethrow it in their own context.  Note that when the caller uses a
+// noexcept function as their critical section, they can avoid checking for
+// this value
+//
+// This allows us to avoid all cost of exceptions in the memory layout of the
+// fast path (no errors) as exceptions are stored as an std::exception_ptr in
+// the same union that stores the return value of the critical section.  We
+// also avoid all CPU overhead because the combiner uses a try-catch block
+// without any additional branching to handle exceptions
+constexpr auto kExceptionOccurred = std::uint32_t{0b1010};
 
 // The number of spins that we are allowed to do before we resort to marking a
 // thread as having slept
@@ -244,7 +256,29 @@ class Waiter {
       kUninitialized};
   // The successor of this node.  This will be the thread that had its address
   // on the mutex previously
-  std::uintptr_t next_{0};
+  //
+  // We can do without making this atomic since the remote thread synchronizes
+  // on the futex variable above.  If this were not atomic, the remote thread
+  // would only be allowed to read from it after the waiter has moved into the
+  // waiting state to avoid risk of a load racing with a write.  However, it
+  // helps to make this atomic because we can use an unconditional load and make
+  // full use of the load buffer to coalesce both reads into a single clock
+  // cycle after the line arrives in the combiner core.  This is a heavily
+  // contended line, so an RFO from the enqueueing thread is highly likely and
+  // has the potential to cause an immediate invalidation; blocking the combiner
+  // thread from making progress until the line is pulled back to read this
+  // value
+  //
+  // Further, making this atomic prevents the compiler from making an incorrect
+  // optimization where it does not load the value as written in the code, but
+  // rather dereferences it through a pointer whenever needed (since the value
+  // of the pointer to this is readily available on the stack).  Doing this
+  // causes multiple invalidation requests from the enqueueing thread, blocking
+  // remote progress
+  //
+  // Note that we use relaxed loads and stores, so this should not have any
+  // additional overhead compared to a regular load on most architectures
+  std::atomic<std::uintptr_t> next_{0};
   // We use an anonymous union for the combined critical section request and
   // the metadata that will be filled in from the leader's end.  Only one is
   // active at a time - if a leader decides to combine the requested critical
@@ -410,9 +444,11 @@ using Request = std::conditional_t<
 
 /**
  * A template that helps us to transform a callable returning a value to one
- * that returns void so it can be type erased and passed on to the waker.  The
- * return value gets coalesced into the wait struct when it is small enough
- * for optimal data transfer
+ * that returns void so it can be type erased and passed on to the waker.  If
+ * the return value is small enough, it gets coalesced into the wait struct
+ * for optimal data transfer.  When it's not small enough to fit in the waiter
+ * storage buffer, we place it on it's own cacheline with isolation to prevent
+ * false-sharing with the on-stack metadata of the waiter thread
  *
  * This helps a combined critical section feel more normal in the case where
  * the user wants to return a value, for example
@@ -437,6 +473,7 @@ template <typename Func, typename Waiter>
 class TaskWithCoalesce {
  public:
   using ReturnType = folly::invoke_result_t<const Func&>;
+  using StorageType = folly::Unit;
   explicit TaskWithCoalesce(Func func, Waiter& waiter)
       : func_{std::move(func)}, waiter_{waiter} {}
 
@@ -449,6 +486,7 @@ class TaskWithCoalesce {
   Func func_;
   Waiter& waiter_;
 
+  static_assert(!std::is_void<ReturnType>{}, "");
   static_assert(alignof(decltype(waiter_.storage_)) >= alignof(ReturnType), "");
   static_assert(sizeof(decltype(waiter_.storage_)) >= sizeof(ReturnType), "");
 };
@@ -457,6 +495,7 @@ template <typename Func, typename Waiter>
 class TaskWithoutCoalesce {
  public:
   using ReturnType = void;
+  using StorageType = folly::Unit;
   explicit TaskWithoutCoalesce(Func func, Waiter&) : func_{std::move(func)} {}
 
   void operator()() const {
@@ -467,6 +506,52 @@ class TaskWithoutCoalesce {
   Func func_;
 };
 
+template <typename Func, typename Waiter>
+class TaskWithBigReturnValue {
+ public:
+  // Using storage that is aligned on the cacheline boundary helps us avoid a
+  // situation where the data ends up being allocated on two separate
+  // cachelines.  This would require the remote thread to pull in both lines
+  // to issue a write.
+  //
+  // We also isolate the storage by appending some padding to the end to
+  // ensure we avoid false-sharing with the metadata used while the waiter
+  // waits
+  using ReturnType = folly::invoke_result_t<const Func&>;
+  static const auto kReturnValueAlignment = std::max(
+      alignof(ReturnType),
+      folly::hardware_destructive_interference_size);
+  using StorageType = std::aligned_storage_t<
+      sizeof(std::aligned_storage_t<sizeof(ReturnType), kReturnValueAlignment>),
+      kReturnValueAlignment>;
+
+  explicit TaskWithBigReturnValue(Func func, Waiter&)
+      : func_{std::move(func)} {}
+
+  void operator()() const {
+    DCHECK(storage_);
+    auto value = func_();
+    new (storage_) ReturnType{std::move(value)};
+  }
+
+  void attach(StorageType* storage) {
+    DCHECK(!storage_);
+    storage_ = storage;
+  }
+
+ private:
+  Func func_;
+  StorageType* storage_{nullptr};
+
+  static_assert(!std::is_void<ReturnType>{}, "");
+  static_assert(sizeof(Waiter::storage_) < sizeof(ReturnType), "");
+};
+
+template <typename T, typename = std::enable_if_t<true>>
+constexpr const auto Sizeof = sizeof(T);
+template <typename T>
+constexpr const auto Sizeof<T, std::enable_if_t<std::is_void<T>{}>> = 0;
+
 // we need to use std::integral_constant::value here as opposed to
 // std::integral_constant::operator T() because MSVC errors out with the
 // implicit conversion
@@ -474,7 +559,10 @@ template <typename Func, typename Waiter>
 using CoalescedTask = std::conditional_t<
     std::is_void<folly::invoke_result_t<const Func&>>::value,
     TaskWithoutCoalesce<Func, Waiter>,
-    TaskWithCoalesce<Func, Waiter>>;
+    std::conditional_t<
+        Sizeof<folly::invoke_result_t<const Func&>> <= sizeof(Waiter::storage_),
+        TaskWithCoalesce<Func, Waiter>,
+        TaskWithBigReturnValue<Func, Waiter>>>;
 
 /**
  * Given a request and a wait node, coalesce them into a CoalescedTask that
@@ -498,21 +586,115 @@ CoalescedTask<Func, Waiter> coalesce(Request& request, Waiter& waiter) {
 }
 
 /**
+ * Given a task, create storage for the return value.  When we get a type
+ * of CoalescedTask, this returns an instance of CoalescedTask::StorageType.
+ * std::nullptr_t otherwise
+ */
+inline std::nullptr_t makeReturnValueStorageFor(std::nullptr_t&) {
+  return {};
+}
+
+template <
+    typename CoalescedTask,
+    typename StorageType = typename CoalescedTask::StorageType>
+StorageType makeReturnValueStorageFor(CoalescedTask&) {
+  return {};
+}
+
+/**
+ * Given a task and storage, attach them together if needed.  This only helps
+ * when we have a task that returns a value bigger than can be coalesced.  In
+ * that case, we need to attach the storage with the task so the return value
+ * can be transferred to this thread from the remote thread
+ */
+template <typename Task, typename Storage>
+void attach(Task&, Storage&) {
+  static_assert(
+      std::is_same<Storage, std::nullptr_t>{} ||
+          std::is_same<Storage, folly::Unit>{},
+      "");
+}
+
+template <
+    typename R,
+    typename W,
+    typename StorageType = typename TaskWithBigReturnValue<R, W>::StorageType>
+void attach(TaskWithBigReturnValue<R, W>& task, StorageType& storage) {
+  task.attach(&storage);
+}
+
+template <typename Request, typename Waiter>
+void throwIfExceptionOccurred(Request&, Waiter& waiter, bool exception) {
+  using Storage = decltype(waiter.storage_);
+  using F = typename Request::F;
+  static_assert(sizeof(Storage) >= sizeof(std::exception_ptr), "");
+  static_assert(alignof(Storage) >= alignof(std::exception_ptr), "");
+
+  // we only need to check for an exception in the waiter struct if the passed
+  // callable is not noexcept
+  //
+  // we need to make another instance of the exception with automatic storage
+  // duration and destroy the exception held in the storage *before throwing* to
+  // avoid leaks.  If we don't destroy the exception_ptr in storage, the
+  // refcount for the internal exception will never hit zero, thereby leaking
+  // memory
+  if (UNLIKELY(!folly::is_nothrow_invocable<const F&>{} && exception)) {
+    auto storage = &waiter.storage_;
+    auto exc = folly::launder(reinterpret_cast<std::exception_ptr*>(storage));
+    auto copy = std::move(*exc);
+    exc->std::exception_ptr::~exception_ptr();
+    std::rethrow_exception(std::move(copy));
+  }
+}
+
+/**
  * Given a CoalescedTask, a wait node and a request.  Detach the return value
  * into the request from the wait node and task.
  */
 template <typename Waiter>
-void detach(std::nullptr_t&, Waiter&) {}
+void detach(std::nullptr_t&, Waiter&, bool exception, std::nullptr_t&) {
+  DCHECK(!exception);
+}
 
 template <typename Waiter, typename F>
-void detach(RequestWithoutReturn<F>&, Waiter&) {}
+void detach(
+    RequestWithoutReturn<F>& request,
+    Waiter& waiter,
+    bool exception,
+    folly::Unit&) {
+  throwIfExceptionOccurred(request, waiter, exception);
+}
 
 template <typename Waiter, typename F>
-void detach(RequestWithReturn<F>& request, Waiter& waiter) {
+void detach(
+    RequestWithReturn<F>& request,
+    Waiter& waiter,
+    bool exception,
+    folly::Unit&) {
+  throwIfExceptionOccurred(request, waiter, exception);
+
   using ReturnType = typename RequestWithReturn<F>::ReturnType;
   static_assert(!std::is_same<ReturnType, void>{}, "");
+  static_assert(sizeof(waiter.storage_) >= sizeof(ReturnType), "");
 
   auto& val = *folly::launder(reinterpret_cast<ReturnType*>(&waiter.storage_));
+  new (&request.value_) ReturnType{std::move(val)};
+  val.~ReturnType();
+}
+
+template <typename Waiter, typename F, typename Storage>
+void detach(
+    RequestWithReturn<F>& request,
+    Waiter& waiter,
+    bool exception,
+    Storage& storage) {
+  throwIfExceptionOccurred(request, waiter, exception);
+
+  using ReturnType = typename RequestWithReturn<F>::ReturnType;
+  static_assert(!std::is_same<ReturnType, void>{}, "");
+  static_assert(sizeof(storage) >= sizeof(ReturnType), "");
+
+  auto& val = *folly::launder(reinterpret_cast<ReturnType*>(&storage));
   new (&request.value_) ReturnType{std::move(val)};
   val.~ReturnType();
 }
@@ -663,26 +845,72 @@ DistributedMutex<Atomic, TimePublishing>::DistributedMutex()
     : state_{kUnlocked} {}
 
 template <typename Waiter>
+std::uint64_t publish(
+    std::uint64_t spins,
+    bool& shouldPublish,
+    std::chrono::nanoseconds& previous,
+    Waiter& waiter,
+    std::uint32_t waitMode) {
+  // time publishing has some overhead because it executes an atomic exchange on
+  // the futex word.  If this line is in a remote thread (eg.  the combiner),
+  // then each time we publish a timestamp, this thread has to submit an RFO to
+  // the remote core for the cacheline, blocking progress for both threads.
+  //
+  // the remote core uses a store in the fast path - why then does an RFO make a
+  // difference?  The only educated guess we have here is that the added
+  // roundtrip delays draining of the store buffer, which essentially exerts
+  // backpressure on future stores, preventing parallelization
+  //
+  // if we have requested a combine, time publishing is less important as it
+  // only comes into play when the combiner has exhausted their max combine
+  // passes.  So we defer time publishing to the point when the current thread
+  // gets preempted
+  auto current = time();
+  if ((current - previous) >= kScheduledAwaySpinThreshold) {
+    shouldPublish = true;
+  }
+  previous = current;
+
+  // if we have requested a combine, and this is the first iteration of the
+  // wait-loop, we publish a max timestamp to optimistically convey that we have
+  // not yet been preempted (the remote knows the meaning of max timestamps)
+  //
+  // then if we are under the maximum number of spins allowed before sleeping,
+  // we publish the exact timestamp, otherwise we publish the minimum possible
+  // timestamp to force the waking thread to skip us
+  auto now = ((waitMode == kCombineWaiting) && !spins)
+      ? decltype(time())::max()
+      : (spins < kMaxSpins) ? previous : decltype(time())::zero();
+
+  // the wait mode information is published in the bottom 8 bits of the futex
+  // word, the rest contains time information as computed above.  Overflows are
+  // not really a correctness concern because time publishing is only a
+  // heuristic.  This leaves us 56 bits of nanoseconds (2 years) before we hit
+  // two consecutive wraparounds, so the lack of bits to respresent time is
+  // neither a performance nor correctness concern
+  auto data = strip(now) | waitMode;
+  auto signal = (shouldPublish || !spins || (waitMode != kCombineWaiting))
+      ? waiter.futex_.exchange(data, std::memory_order_acq_rel)
+      : waiter.futex_.load(std::memory_order_acquire);
+  return signal & std::numeric_limits<std::uint8_t>::max();
+}
+
+template <typename Waiter>
 bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
-  auto spins = 0;
+  auto spins = std::uint64_t{0};
   auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
+  auto previous = time();
+  auto shouldPublish = false;
   while (true) {
-    // publish our current time in the futex as a part of the spin waiting
-    // process
-    //
-    // if we are under the maximum number of spins allowed before sleeping, we
-    // publish the exact timestamp, otherwise we publish the minimum possible
-    // timestamp to force the waking thread to skip us
-    ++spins;
-    auto now = (spins < kMaxSpins) ? time() : decltype(time())::zero();
-    auto data = strip(now) | waitMode;
-    auto signal = waiter.futex_.exchange(data, std::memory_order_acq_rel);
-    signal &= std::numeric_limits<std::uint8_t>::max();
+    auto signal = publish(spins++, shouldPublish, previous, waiter, waitMode);
 
     // if we got skipped, make a note of it and return if we got a skipped
     // signal or a signal to wake up
     auto skipped = (signal == kSkipped);
-    if (skipped || (signal == kWake) || (signal == kCombined)) {
+    auto combined = (signal == kCombined);
+    auto exceptionOccurred = (signal == kExceptionOccurred);
+    auto woken = (signal == kWake);
+    if (skipped || woken || combined || exceptionOccurred) {
       sig = static_cast<std::uint32_t>(signal);
       return !skipped;
     }
@@ -781,7 +1009,7 @@ bool doFutexWait(Waiter* waiter, Waiter*& next) {
   // when coming out of a futex, we might have some other sleeping threads
   // that we were supposed to wake up, assign that to the next pointer
   DCHECK(next == nullptr);
-  next = extractPtr<Waiter>(waiter->next_);
+  next = extractPtr<Waiter>(waiter->next_.load(std::memory_order_relaxed));
   return false;
 }
 
@@ -819,7 +1047,7 @@ void wakeTimedWaiters(Atomic* state, bool timedWaiters) {
 
 template <template <typename> class Atomic, bool TimePublishing>
 template <typename Func>
-auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func) noexcept
+auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func)
     -> folly::invoke_result_t<const Func&> {
   // invoke the lock implementation function and check whether we came out of
   // it with our task executed as a combined critical section.  This usually
@@ -867,7 +1095,7 @@ template <typename Rep, typename Period, typename Func, typename ReturnType>
 folly::Optional<ReturnType>
 DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
     const std::chrono::duration<Rep, Period>& duration,
-    Func func) noexcept {
+    Func func) {
   auto state = try_lock_for(duration);
   if (state) {
     SCOPE_EXIT {
@@ -884,7 +1112,7 @@ template <typename Clock, typename Duration, typename Func, typename ReturnType>
 folly::Optional<ReturnType>
 DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
     const std::chrono::time_point<Clock, Duration>& deadline,
-    Func func) noexcept {
+    Func func) {
   auto state = try_lock_until(deadline);
   if (state) {
     SCOPE_EXIT {
@@ -967,7 +1195,9 @@ lockImplementation(
     // constructor
     Waiter<Atomic> state{};
     auto&& task = coalesce(request, state);
+    auto&& storage = makeReturnValueStorageFor(task);
     auto&& address = folly::bit_cast<std::uintptr_t>(&state);
+    attach(task, storage);
     state.initialize(waitMode, std::move(task));
     DCHECK(!(address & 0b1));
 
@@ -986,7 +1216,7 @@ lockImplementation(
     // was unsuccessful
     previous = atomic.exchange(address, std::memory_order_acq_rel);
     recordTimedWaiterAndClearTimedBit(timedWaiter, previous);
-    state.next_ = previous;
+    state.next_.store(previous, std::memory_order_relaxed);
     if (previous == kUnlocked) {
       return {/* next */ nullptr,
               /* expected */ address,
@@ -1034,8 +1264,10 @@ lockImplementation(
     // if we were given a combine signal, detach the return value from the
     // wait struct into the request, so the current thread can access it
     // outside this function
-    if (signal == kCombined) {
-      detach(request, state);
+    auto combined = (signal == kCombined);
+    auto exceptionOccurred = (signal == kExceptionOccurred);
+    if (combined || exceptionOccurred) {
+      detach(request, state, exceptionOccurred, storage);
     }
 
     // if we are just coming out of a futex call, then it means that the next
@@ -1045,7 +1277,7 @@ lockImplementation(
     return {/* next */ extractPtr<Waiter<Atomic>>(next),
             /* expected */ expected,
             /* timedWaiter */ timedWaiter,
-            /* combined */ combineRequested && (signal == kCombined),
+            /* combined */ combineRequested && (combined || exceptionOccurred),
             /* waker */ state.metadata_.waker_,
             /* waiters */ extractPtr<Waiter<Atomic>>(state.metadata_.waiters_),
             /* ready */ nextSleeper};
@@ -1055,7 +1287,9 @@ lockImplementation(
 inline bool preempted(std::uint64_t value, std::chrono::nanoseconds now) {
   auto currentTime = recover(strip(now));
   auto nodeTime = recover(value);
-  auto preempted = currentTime > nodeTime + kScheduledAwaySpinThreshold.count();
+  auto preempted =
+      (currentTime > nodeTime + kScheduledAwaySpinThreshold.count()) &&
+      (nodeTime != recover(strip(std::chrono::nanoseconds::max())));
 
   // we say that the thread has been preempted if its timestamp says so, and
   // also if it is neither uninitialized nor skipped
@@ -1093,46 +1327,21 @@ CombineFunction loadTask(Waiter* current, std::uintptr_t value) {
   return nullptr;
 }
 
+template <typename Waiter>
+FOLLY_COLD void transferCurrentException(Waiter* waiter) {
+  DCHECK(std::current_exception());
+  new (&waiter->storage_) std::exception_ptr{std::current_exception()};
+  waiter->futex_.store(kExceptionOccurred, std::memory_order_release);
+}
+
 template <template <typename> class Atomic>
-std::uintptr_t tryCombine(
-    std::uintptr_t value,
+FOLLY_ALWAYS_INLINE std::uintptr_t tryCombine(
     Waiter<Atomic>* waiter,
+    std::uintptr_t value,
+    std::uintptr_t next,
     std::uint64_t iteration,
     std::chrono::nanoseconds now,
     CombineFunction task) {
-  // it is important to load the value of next_ before checking the value of
-  // function_ in the next if condition.  This is because of two things, the
-  // first being cache locality - it is helpful to read the value of the
-  // variable that is closer to futex_, since we just loaded from that before
-  // entering this function.  The second is cache coherence, the wait struct
-  // is shared between two threads, one thread is spinning on the futex
-  // waiting for a signal while the other is possibly combining the requested
-  // critical section into its own.  This means that there is a high chance
-  // we would cause the cachelines to bounce between the threads in the next
-  // if block.
-  //
-  // This leads to a degenerate case where the FunctionRef object ends up in a
-  // different cacheline thereby making it seem like benchmarks avoid this
-  // problem.  When compiled differently (eg.  with link time optimization)
-  // the wait struct ends up on the stack in a manner that causes the
-  // FunctionRef object to be in the same cacheline as the other data, thereby
-  // forcing the current thread to bounce on the cacheline twice (first to
-  // load the data from the other thread, that presumably owns the cacheline
-  // due to timestamp publishing) and then to signal the thread
-  //
-  // To avoid this sort of non-deterministic behavior based on compilation and
-  // stack layout, we load the value before executing the other thread's
-  // critical section
-  //
-  // Note that the waiting thread writes the value to the wait struct after
-  // enqueuing, but never writes to it after the value in the futex_ is
-  // initialised (showing that the thread is in the spin loop), this makes it
-  // safe for us to read next_ without synchronization
-  auto next = std::uintptr_t{0};
-  if (isInitialized(value)) {
-    next = waiter->next_;
-  }
-
   // if the waiter has asked for a combine operation, we should combine its
   // critical section and move on to the next waiter
   //
@@ -1147,14 +1356,18 @@ std::uintptr_t tryCombine(
   //     leading to further delays in critical section completion
   //
   // if all the above are satisfied, then we can combine the critical section.
-  // Note that it is only safe to read from the waiter struct if the value is
-  // not uninitialized.  If the state is uninitialized, we synchronize with
-  // the write to the next_ member in the lock function.  If the value is not
-  // uninitialized, there is a race in reading the next_ value
+  // Note that if the waiter is in a combineable state, that means that it had
+  // finished its writes to both the task and the next_ value.  And observing
+  // a waiting state also means that we have acquired the writes to the other
+  // members of the waiter struct, so it's fine to use those values here
   if (isWaitingCombiner(value) &&
       (iteration <= kMaxCombineIterations || preempted(value, now))) {
-    task();
-    waiter->futex_.store(kCombined, std::memory_order_release);
+    try {
+      task();
+      waiter->futex_.store(kCombined, std::memory_order_release);
+    } catch (...) {
+      transferCurrentException(waiter);
+    }
     return next;
   }
 
@@ -1162,10 +1375,11 @@ std::uintptr_t tryCombine(
 }
 
 template <typename Waiter>
-std::uintptr_t tryWake(
+FOLLY_ALWAYS_INLINE std::uintptr_t tryWake(
     bool publishing,
     Waiter* waiter,
     std::uintptr_t value,
+    std::uintptr_t next,
     std::uintptr_t waker,
     Waiter*& sleepers,
     std::uint64_t iteration,
@@ -1174,7 +1388,7 @@ std::uintptr_t tryWake(
   // we have successfully executed their critical section and can move on to
   // the rest of the chain
   auto now = time();
-  if (auto next = tryCombine(value, waiter, iteration, now, task)) {
+  if (tryCombine(waiter, value, next, iteration, now, task)) {
     return next;
   }
 
@@ -1217,7 +1431,7 @@ std::uintptr_t tryWake(
     // Can we relax this?
     DCHECK(preempted(value, now));
     DCHECK(!isCombiner(value));
-    auto next = waiter->next_;
+    next = waiter->next_.load(std::memory_order_relaxed);
     waiter->futex_.store(kSkipped, std::memory_order_release);
     return next;
   }
@@ -1260,8 +1474,9 @@ std::uintptr_t tryWake(
   //
   // we also need to collect this sleeper in the list of sleepers being built
   // up
-  auto next = waiter->next_;
-  waiter->next_ = folly::bit_cast<std::uintptr_t>(sleepers);
+  next = waiter->next_.load(std::memory_order_relaxed);
+  auto head = folly::bit_cast<std::uintptr_t>(sleepers);
+  waiter->next_.store(head, std::memory_order_relaxed);
   sleepers = waiter;
   return next;
 }
@@ -1278,13 +1493,23 @@ bool wake(
   // the last published timestamp of the node)
   auto current = &waiter;
   while (current) {
-    // it is important that we load the value of function after the initial
-    // acquire load.  This is required because we need to synchronize with the
-    // construction of the waiter struct before reading from it
+    // it is important that we load the value of function and next_ after the
+    // initial acquire load.  This is required because we need to synchronize
+    // with the construction of the waiter struct before reading from it
+    //
+    // the load from the next_ variable is an optimistic load that assumes
+    // that the waiting thread has probably gone to the waiting state.  If the
+    // waiitng thread is in the waiting state (as revealed by the acquire load
+    // from the futex word), we will see a well formed next_ value because it
+    // happens-before the release store to the futex word.  The atomic load from
+    // next_ is an optimization to avoid branching before loading and prevent
+    // the compiler from eliding the load altogether (and using a pointer
+    // dereference when needed)
     auto value = current->futex_.load(std::memory_order_acquire);
+    auto next = current->next_.load(std::memory_order_relaxed);
     auto task = loadTask(current, value);
-    auto next =
-        tryWake(publishing, current, value, waker, sleepers, iter, task);
+    next =
+        tryWake(publishing, current, value, next, waker, sleepers, iter, task);
 
     // if there is no next node, we have managed to wake someone up and have
     // successfully migrated the lock to another thread

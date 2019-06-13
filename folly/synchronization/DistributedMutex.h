@@ -276,6 +276,10 @@ class DistributedMutex {
    * Here, because we used a combined critical section, we have introduced a
    * dependency from one -> three that might not obvious to the reader
    *
+   * This function is exception-safe.  If the passed task throws an exception,
+   * it will be propagated to the caller, even if the task is running on
+   * another thread
+   *
    * There are three notable cases where this method causes undefined
    * behavior:
    *
@@ -291,7 +295,7 @@ class DistributedMutex {
    *    at compile time or runtime, so we have no checks against this
    */
   template <typename Task>
-  auto lock_combine(Task task) noexcept -> folly::invoke_result_t<const Task&>;
+  auto lock_combine(Task task) -> folly::invoke_result_t<const Task&>;
 
   /**
    * Try to combine a task as a combined critical section untill the given time
@@ -311,7 +315,7 @@ class DistributedMutex {
       typename ReturnType = decltype(std::declval<Task&>()())>
   folly::Optional<ReturnType> try_lock_combine_for(
       const std::chrono::duration<Rep, Period>& duration,
-      Task task) noexcept;
+      Task task);
 
   /**
    * Try to combine a task as a combined critical section untill the given time
@@ -326,7 +330,7 @@ class DistributedMutex {
       typename ReturnType = decltype(std::declval<Task&>()())>
   folly::Optional<ReturnType> try_lock_combine_until(
       const std::chrono::time_point<Clock, Duration>& deadline,
-      Task task) noexcept;
+      Task task);
 
  private:
   Atomic<std::uintptr_t> state_{0};
