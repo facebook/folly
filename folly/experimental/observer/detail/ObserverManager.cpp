@@ -99,6 +99,9 @@ class ObserverManager::NextQueue {
  public:
   explicit NextQueue(ObserverManager& manager) : manager_(manager) {
     thread_ = std::thread([&]() {
+      folly::setThreadName(
+          folly::sformat("{}NQ", kObserverManagerThreadNamePrefix));
+
       Core::WeakPtr queueCoreWeak;
 
       while (true) {
