@@ -335,7 +335,7 @@ struct DynamicConstructor<
     C,
     typename std::enable_if<std::is_enum<C>::value>::type> {
   static dynamic construct(const C& x) {
-    return dynamic(to_underlying_type(x));
+    return dynamic(to_underlying(x));
   }
 };
 

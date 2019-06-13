@@ -306,7 +306,7 @@ constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
 }
 
 template <class E>
-constexpr std::underlying_type_t<E> to_underlying_type(E e) noexcept {
+constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
   static_assert(std::is_enum<E>::value, "not an enum type");
   return static_cast<std::underlying_type_t<E>>(e);
 }
