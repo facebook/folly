@@ -847,7 +847,7 @@ void AsyncServerSocket::handlerReady(
     }
 
     // Accept a new client socket
-#ifdef SOCK_NONBLOCK
+#if FOLLY_HAVE_ACCEPT4
     auto clientSocket = NetworkSocket::fromFd(
         accept4(fd.toFd(), saddr, &addrLen, SOCK_NONBLOCK));
 #else
@@ -942,7 +942,7 @@ void AsyncServerSocket::handlerReady(
       return;
     }
 
-#ifndef SOCK_NONBLOCK
+#if !FOLLY_HAVE_ACCEPT4
     // Explicitly set the new connection to non-blocking mode
     if (netops::set_socket_non_blocking(clientSocket) != 0) {
       closeNoInt(clientSocket);
