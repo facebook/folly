@@ -135,11 +135,7 @@
  * Macro for marking functions as having public visibility.
  */
 #if defined(__GNUC__)
-#if __GNUC_PREREQ(4, 9)
-#define FOLLY_EXPORT [[gnu::visibility("default")]]
-#else
 #define FOLLY_EXPORT __attribute__((__visibility__("default")))
-#endif
 #else
 #define FOLLY_EXPORT
 #endif
