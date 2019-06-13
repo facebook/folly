@@ -29,6 +29,7 @@
 #include <vector>
 
 #include <folly/ScopeGuard.h>
+#include <folly/SingletonThreadLocal.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Semaphore.h>
@@ -197,7 +198,8 @@ class DeterministicSchedule {
   static inline std::thread thread(Func&& func, Args&&... args) {
     // TODO: maybe future versions of gcc will allow forwarding to thread
     atomic_thread_fence(std::memory_order_seq_cst);
-    auto sched = tls_sched;
+    auto& tls = TLState::get();
+    auto sched = tls.sched;
     auto sem = sched ? sched->beforeThreadCreate() : nullptr;
     auto child = std::thread(
         [=](Args... a) {
@@ -276,19 +278,22 @@ class DeterministicSchedule {
    * the thread function, for example if the thread is executing
    * thread local destructors. */
   static bool isCurrentThreadExiting() {
-    return tls_exiting;
+    auto& tls = TLState::get();
+    return tls.exiting;
   }
 
   /** Add sem back into sems_ */
   static void reschedule(sem_t* sem);
 
   static bool isActive() {
-    return tls_sched != nullptr;
+    auto& tls = TLState::get();
+    return tls.sched != nullptr;
   }
 
   static DSchedThreadId getThreadId() {
-    assert(tls_sched != nullptr);
-    return tls_threadId;
+    auto& tls = TLState::get();
+    assert(tls.sched != nullptr);
+    return tls.threadId;
   }
 
   static ThreadInfo& getCurrentThreadInfo();
@@ -296,11 +301,25 @@ class DeterministicSchedule {
   static void atomic_thread_fence(std::memory_order mo);
 
  private:
-  static FOLLY_TLS sem_t* tls_sem;
-  static FOLLY_TLS DeterministicSchedule* tls_sched;
-  static FOLLY_TLS bool tls_exiting;
-  static FOLLY_TLS DSchedThreadId tls_threadId;
-  static thread_local AuxAct tls_aux_act;
+  struct PerThreadState {
+    // delete the constructors and assignment operators for sanity
+    //
+    // but... we can't delete the move constructor and assignment operators
+    // because those are required before C++17 in the implementation of
+    // SingletonThreadLocal
+    PerThreadState(const PerThreadState&) = delete;
+    PerThreadState& operator=(const PerThreadState&) = delete;
+    PerThreadState(PerThreadState&&) = default;
+    PerThreadState& operator=(PerThreadState&&) = default;
+    PerThreadState() = default;
+
+    sem_t* sem{nullptr};
+    DeterministicSchedule* sched{nullptr};
+    bool exiting{false};
+    DSchedThreadId threadId{};
+    AuxAct aux_act{};
+  };
+  using TLState = SingletonThreadLocal<PerThreadState>;
   static AuxChk aux_chk;
 
   std::function<size_t(size_t)> scheduler_;
