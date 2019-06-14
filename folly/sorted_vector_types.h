@@ -855,6 +855,22 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     insert(ilist.begin(), ilist.end());
   }
 
+  // emplace isn't better than insert for sorted_vector_map, but aids
+  // compatibility
+  template <typename... Args>
+  std::pair<iterator, bool> emplace(Args&&... args) {
+    value_type v(std::forward<Args>(args)...);
+    return insert(std::move(v));
+  }
+
+  std::pair<iterator, bool> emplace(const value_type& value) {
+    return insert(value);
+  }
+
+  std::pair<iterator, bool> emplace(value_type&& value) {
+    return insert(std::move(value));
+  }
+
   size_type erase(const key_type& key) {
     iterator it = find(key);
     if (it == end()) {

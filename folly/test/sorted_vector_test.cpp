@@ -303,6 +303,21 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   EXPECT_TRUE(m3 == m2);
   EXPECT_FALSE(m3 == m);
 
+  sorted_vector_map<int, float> m4;
+  m4.emplace(1, 2.0f);
+  m4.emplace(3, 1.0f);
+  m4.emplace(2, 1.5f);
+  check_invariant(m4);
+  EXPECT_TRUE(m4.size() == 3);
+
+  sorted_vector_map<int, float> m5;
+  for (auto& kv : m2) {
+    m5.emplace(kv);
+  }
+  check_invariant(m5);
+  EXPECT_TRUE(m5 == m2);
+  EXPECT_FALSE(m5 == m);
+
   EXPECT_TRUE(m != m2);
   EXPECT_TRUE(m2 == m3);
   EXPECT_TRUE(m3 != m);
@@ -318,9 +333,9 @@ TEST(SortedVectorTypes, SimpleMapTest) {
   m.insert(m.begin() + 3, std::make_pair(1 << 15, 1.0f));
   check_invariant(m);
 
-  sorted_vector_map<int, float> m4 = {};
-  m4.insert({{1, 1.0f}, {2, 2.0f}, {1, 2.0f}});
-  EXPECT_EQ(m4.at(2), 2.0f);
+  sorted_vector_map<int, float> m6 = {};
+  m6.insert({{1, 1.0f}, {2, 2.0f}, {1, 2.0f}});
+  EXPECT_EQ(m6.at(2), 2.0f);
 }
 
 TEST(SortedVectorTypes, TransparentMapTest) {
