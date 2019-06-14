@@ -130,6 +130,7 @@
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/Exception.h>
+#include <folly/memory/SanitizeLeak.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/synchronization/RWSpinLock.h>
 
@@ -717,8 +718,7 @@ class LeakySingleton {
 
     auto& entry = entryInstance();
     if (entry.ptr) {
-      // Make sure existing pointer doesn't get reported as a leak by LSAN.
-      entry.leakedPtrs.push_back(std::exchange(entry.ptr, nullptr));
+      annotate_object_leaked(std::exchange(entry.ptr, nullptr));
     }
     entry.createFunc = createFunc;
     entry.state = State::Dead;
@@ -737,7 +737,6 @@ class LeakySingleton {
     CreateFunc createFunc;
     std::mutex mutex;
     detail::TypeDescriptor type_{typeid(T), typeid(Tag)};
-    std::list<T*> leakedPtrs;
   };
 
   static Entry& entryInstance() {

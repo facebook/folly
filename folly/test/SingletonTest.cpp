@@ -783,3 +783,14 @@ TEST(Singleton, DoubleMakeMockAfterTryGet) {
   EXPECT_EQ(1, counts.ctor);
   EXPECT_EQ(1, counts.dtor);
 }
+
+TEST(Singleton, LeakySingletonLSAN) {
+  struct PrivateTag {};
+  static folly::LeakySingleton<int, PrivateTag> gPtr;
+  auto* ptr0 = &gPtr.get();
+  EXPECT_EQ(*ptr0, 0);
+  gPtr.make_mock([] { return new int(1); });
+  auto* ptr1 = &gPtr.get();
+  EXPECT_NE(ptr0, ptr1);
+  EXPECT_EQ(*ptr1, 1);
+}
