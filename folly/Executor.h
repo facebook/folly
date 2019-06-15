@@ -104,6 +104,10 @@ class Executor {
       return *this;
     }
 
+    KeepAlive& operator=(KeepAlive const& other) {
+      return operator=(folly::copy(other));
+    }
+
     template <
         typename OtherExecutor,
         typename = typename std::enable_if<

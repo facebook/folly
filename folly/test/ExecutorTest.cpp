@@ -148,7 +148,8 @@ TEST(ExecutorTest, KeepAliveCopyAssignment) {
     EXPECT_EQ(&exec, ka.get());
     EXPECT_EQ(1, exec.refCount);
 
-    auto ka2 = ka;
+    decltype(ka) ka2;
+    ka2 = ka;
     EXPECT_TRUE(ka);
     EXPECT_TRUE(ka2);
     EXPECT_EQ(&exec, ka2.get());
