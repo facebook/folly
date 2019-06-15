@@ -230,7 +230,7 @@ class Executor {
     static_assert(
         std::is_base_of<Executor, ExecutorT>::value,
         "makeKeepAlive only works for folly::Executor implementations.");
-    return KeepAlive<ExecutorT>{executor, false};
+    return KeepAlive<ExecutorT>{executor, uintptr_t(0)};
   }
 
  private:
