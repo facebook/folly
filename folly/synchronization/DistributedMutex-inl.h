@@ -547,20 +547,25 @@ class TaskWithBigReturnValue {
   static_assert(sizeof(Waiter::storage_) < sizeof(ReturnType), "");
 };
 
+template <typename T, bool>
+struct Sizeof_;
+template <typename T>
+struct Sizeof_<T, false> : index_constant<sizeof(T)> {};
+template <typename T>
+struct Sizeof_<T, true> : index_constant<0> {};
+template <typename T>
+struct Sizeof : Sizeof_<T, std::is_void<T>::value> {};
+
 // we need to use std::integral_constant::value here as opposed to
 // std::integral_constant::operator T() because MSVC errors out with the
 // implicit conversion
-template <typename T, typename = std::enable_if_t<true>>
-constexpr const auto Sizeof = sizeof(T);
-template <typename T>
-constexpr const auto Sizeof<T, std::enable_if_t<std::is_void<T>::value>> = 0;
-
 template <typename Func, typename Waiter>
 using CoalescedTask = std::conditional_t<
     std::is_void<folly::invoke_result_t<const Func&>>::value,
     TaskWithoutCoalesce<Func, Waiter>,
     std::conditional_t<
-        Sizeof<folly::invoke_result_t<const Func&>> <= sizeof(Waiter::storage_),
+        Sizeof<folly::invoke_result_t<const Func&>>::value <=
+            sizeof(Waiter::storage_),
         TaskWithCoalesce<Func, Waiter>,
         TaskWithBigReturnValue<Func, Waiter>>>;
 
