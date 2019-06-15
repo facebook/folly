@@ -15,6 +15,8 @@
  */
 
 #include <folly/futures/FutureSplitter.h>
+
+#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -173,4 +175,20 @@ TEST(FutureSplitter, splitFutureFailure) {
   auto f2 = sp.getFuture();
   EXPECT_TRUE(f2.isReady());
   EXPECT_TRUE(f2.hasException());
+}
+
+TEST(FutureSplitter, lifetime) {
+  struct ManualExecutorWithPriority : folly::ManualExecutor {
+    void addWithPriority(Func func, int8_t) override {
+      add(std::move(func));
+    }
+  };
+  ManualExecutorWithPriority ex;
+  auto ka = folly::ExecutorWithPriority::create(
+      folly::getKeepAliveToken(ex), folly::Executor::MID_PRI);
+  auto split = folly::splitFuture(folly::via(std::move(ka), [] { return 3; }));
+  ex.drain();
+  auto fut = split.getFuture().thenValue([](auto i) { return i + 1; });
+  ex.drain();
+  EXPECT_EQ(4, fut.value());
 }

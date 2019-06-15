@@ -79,7 +79,7 @@ class FutureSplitter {
 
  private:
   std::shared_ptr<SharedPromise<T>> promise_;
-  Executor* e_ = nullptr;
+  Executor::KeepAlive<> e_;
 
   static Executor* getExecutorFrom(Future<T>& f) {
     // If the passed future had a null executor, use an inline executor
