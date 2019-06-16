@@ -147,6 +147,10 @@ int unsetenv(const char* name) {
 #include <string>
 #include <vector>
 
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+extern "C" char **environ;
+#endif
+
 extern "C" int clearenv() {
   std::vector<std::string> data;
   for (auto it = environ; it && *it; ++it) {

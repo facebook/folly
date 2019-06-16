@@ -22,6 +22,10 @@
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
 
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+extern "C" char **environ;
+#endif
+
 using namespace folly;
 using namespace folly::experimental;
 

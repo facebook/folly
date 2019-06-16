@@ -23,6 +23,11 @@
 #include <folly/portability/Unistd.h>
 #include <folly/portability/Windows.h>
 
+#include <pthread.h>
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+#include <pthread_np.h>
+#endif
+
 namespace folly {
 
 /**
@@ -78,10 +83,12 @@ inline uint64_t getCurrentThreadID() {
  * joined.
  */
 inline uint64_t getOSThreadID() {
-#if __APPLE__
+#if defined(__APPLE__)
   uint64_t tid;
   pthread_threadid_np(nullptr, &tid);
   return tid;
+#elif defined(__FreeBSD__) || defined(__DragonFly__)
+  return (uint64_t)pthread_getthreadid_np();
 #elif _WIN32
   return uint64_t(GetCurrentThreadId());
 #else

@@ -24,6 +24,7 @@
 #include <sys/prctl.h>
 #endif
 #include <fcntl.h>
+#include <unistd.h>
 
 #include <algorithm>
 #include <array>
@@ -45,6 +46,10 @@
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/Shell.h>
+
+#if defined(__FreeBSD__) || defined(__DragonFly__)
+extern "C" char **environ;
+#endif
 
 constexpr int kExecFailure = 127;
 constexpr int kChildFailure = 126;
@@ -557,7 +562,11 @@ int Subprocess::prepareChild(
 #endif
 
   if (options.processGroupLeader_) {
+#if !defined(__FreeBSD__) && !defined(__DragonFly__)
     if (setpgrp() == -1) {
+#else
+    if (setpgrp(0, 0) == -1) {
+#endif
       return errno;
     }
   }
