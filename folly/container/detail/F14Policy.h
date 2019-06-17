@@ -221,21 +221,40 @@ struct BasePolicy
         KeyEqualHolder{std::move(rhs.keyEqual())},
         AllocHolder{alloc} {}
 
+ private:
+  template <typename Src>
+  void maybeAssignAlloc(std::true_type, Src&& src) {
+    alloc() = std::forward<Src>(src);
+  }
+
+  template <typename Src>
+  void maybeAssignAlloc(std::false_type, Src&&) {}
+
+  template <typename A>
+  void maybeSwapAlloc(std::true_type, A& rhs) {
+    using std::swap;
+    swap(alloc(), rhs);
+  }
+
+  template <typename A>
+  void maybeSwapAlloc(std::false_type, A&) {}
+
+ public:
   BasePolicy& operator=(BasePolicy const& rhs) {
     hasher() = rhs.hasher();
     keyEqual() = rhs.keyEqual();
-    if (AllocTraits::propagate_on_container_copy_assignment::value) {
-      alloc() = rhs.alloc();
-    }
+    maybeAssignAlloc(
+        typename AllocTraits::propagate_on_container_copy_assignment{},
+        rhs.alloc());
     return *this;
   }
 
   BasePolicy& operator=(BasePolicy&& rhs) noexcept {
     hasher() = std::move(rhs.hasher());
     keyEqual() = std::move(rhs.keyEqual());
-    if (AllocTraits::propagate_on_container_move_assignment::value) {
-      alloc() = std::move(rhs.alloc());
-    }
+    maybeAssignAlloc(
+        typename AllocTraits::propagate_on_container_move_assignment{},
+        std::move(rhs.alloc()));
     return *this;
   }
 
@@ -243,9 +262,8 @@ struct BasePolicy
     using std::swap;
     swap(hasher(), rhs.hasher());
     swap(keyEqual(), rhs.keyEqual());
-    if (AllocTraits::propagate_on_container_swap::value) {
-      swap(alloc(), rhs.alloc());
-    }
+    maybeSwapAlloc(
+        typename AllocTraits::propagate_on_container_swap{}, rhs.alloc());
   }
 
   Hasher& hasher() {
@@ -1360,7 +1378,7 @@ class VectorContainerPolicy : public BasePolicy<
             &*outChunkAllocation + valuesOffset(chunkAllocSize))));
 
     if (size > 0) {
-      Alloc& a{this->alloc()};
+      Alloc& a = this->alloc();
       transfer(a, std::addressof(before[0]), std::addressof(after[0]), size);
     }
 

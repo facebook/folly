@@ -19,7 +19,7 @@
 /**
  * F14NodeSet, F14ValueSet, and F14VectorSet
  *
- * F14FastSet conditionally inherits from F14ValueSet or F14VectorSet
+ * F14FastSet conditionally works like F14ValueSet or F14VectorSet
  *
  * See F14.md
  *
@@ -1245,4 +1245,5 @@ template <typename K, typename H, typename E, typename A, typename Pred>
 void erase_if(F14FastSet<K, H, E, A>& c, Pred pred) {
   f14::detail::erase_if_impl(c, pred);
 }
+
 } // namespace folly

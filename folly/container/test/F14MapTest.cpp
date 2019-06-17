@@ -180,6 +180,16 @@ TEST(F14FastMap, visitContiguousRanges) {
   runVisitContiguousRangesTest<folly::F14FastMap<int, int>>();
 }
 
+#if FOLLY_HAS_MEMORY_RESOURCE
+TEST(F14Map, pmr_empty) {
+  folly::pmr::F14ValueMap<int, int> m1;
+  folly::pmr::F14NodeMap<int, int> m2;
+  folly::pmr::F14VectorMap<int, int> m3;
+  folly::pmr::F14FastMap<int, int> m4;
+  EXPECT_TRUE(m1.empty() && m2.empty() && m3.empty() && m4.empty());
+}
+#endif
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
@@ -673,6 +683,24 @@ TEST(F14VectorMap, simple) {
 TEST(F14FastMap, simple) {
   runSimple<F14FastMap<std::string, std::string>>();
 }
+
+#if FOLLY_HAS_MEMORY_RESOURCE
+TEST(F14ValueMap, pmr_simple) {
+  runSimple<pmr::F14ValueMap<std::string, std::string>>();
+}
+
+TEST(F14NodeMap, pmr_simple) {
+  runSimple<pmr::F14NodeMap<std::string, std::string>>();
+}
+
+TEST(F14VectorMap, pmr_simple) {
+  runSimple<pmr::F14VectorMap<std::string, std::string>>();
+}
+
+TEST(F14FastMap, pmr_simple) {
+  runSimple<pmr::F14FastMap<std::string, std::string>>();
+}
+#endif
 
 TEST(F14VectorMap, reverse_iterator) {
   using TMap = F14VectorMap<uint64_t, uint64_t>;

@@ -177,6 +177,16 @@ TEST(F14FastSet, visitContiguousRanges) {
   runVisitContiguousRangesTest<folly::F14FastSet<int>>();
 }
 
+#if FOLLY_HAS_MEMORY_RESOURCE
+TEST(F14Set, pmr_empty) {
+  folly::pmr::F14ValueSet<int> s1;
+  folly::pmr::F14NodeSet<int> s2;
+  folly::pmr::F14VectorSet<int> s3;
+  folly::pmr::F14FastSet<int> s4;
+  EXPECT_TRUE(s1.empty() && s2.empty() && s3.empty() && s4.empty());
+}
+#endif
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
@@ -561,10 +571,30 @@ TEST(F14VectorSet, simple) {
 }
 
 TEST(F14FastSet, simple) {
-  // F14FastSet inherits from a conditional typedef. Verify it compiles.
+  // F14FastSet internally uses a conditional typedef. Verify it compiles.
   runRandom<F14FastSet<uint64_t>>();
   runSimple<F14FastSet<std::string>>();
 }
+
+#if FOLLY_HAS_MEMORY_RESOURCE
+TEST(F14ValueSet, pmr_simple) {
+  runSimple<pmr::F14ValueSet<std::string>>();
+}
+
+TEST(F14NodeSet, pmr_simple) {
+  runSimple<pmr::F14NodeSet<std::string>>();
+}
+
+TEST(F14VectorSet, pmr_simple) {
+  runSimple<pmr::F14VectorSet<std::string>>();
+}
+
+TEST(F14FastSet, pmr_simple) {
+  // F14FastSet internally uses a conditional typedef. Verify it compiles.
+  runRandom<pmr::F14FastSet<uint64_t>>();
+  runSimple<pmr::F14FastSet<std::string>>();
+}
+#endif
 
 TEST(F14Set, ContainerSize) {
   {

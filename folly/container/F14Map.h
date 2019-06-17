@@ -19,7 +19,7 @@
 /**
  * F14NodeMap, F14ValueMap, and F14VectorMap
  *
- * F14FastMap conditionally inherits from F14ValueMap or F14VectorMap
+ * F14FastMap conditionally works like F14ValueMap or F14VectorMap
  *
  * See F14.md
  *

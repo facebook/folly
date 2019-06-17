@@ -28,7 +28,9 @@ namespace std_pmr = ::std::pmr;
 } // namespace detail
 } // namespace folly
 
-#elif __has_include(<experimental/memory_resource>)
+// Ignore experimental/memory_resource for libc++ so that all programs
+// don't need to explicitly link the c++experimental lib
+#elif !defined(_LIBCPP_VERSION) && __has_include(<experimental/memory_resource>)
 
 #define FOLLY_HAS_MEMORY_RESOURCE 1
 #include <experimental/memory_resource> // @manual
