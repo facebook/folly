@@ -45,7 +45,10 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
   std::pair<Block*, size_t> p;
   char* start;
 
-  size_t allocSize = std::max(size, minBlockSize()) + sizeof(Block);
+  size_t allocSize;
+  if (!checked_add(&allocSize, std::max(size, minBlockSize()), sizeof(Block))) {
+    throw_exception<std::bad_alloc>();
+  }
   if (sizeLimit_ != kNoSizeLimit &&
       allocSize > sizeLimit_ - totalAllocatedSize_) {
     throw_exception(std::bad_alloc());

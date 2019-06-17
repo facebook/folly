@@ -158,6 +158,16 @@ TEST(Arena, SizeLimit) {
   EXPECT_THROW(arena.allocate(maxSize + 1), std::bad_alloc);
 }
 
+TEST(Arena, ExtremeSize) {
+  static const size_t requestedBlockSize = sizeof(size_t);
+
+  SysArena arena(requestedBlockSize);
+
+  void* a = arena.allocate(sizeof(size_t));
+  EXPECT_TRUE(a != nullptr);
+  EXPECT_THROW(arena.allocate(SIZE_MAX - 2), std::bad_alloc);
+}
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

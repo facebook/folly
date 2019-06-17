@@ -28,6 +28,7 @@
 #include <folly/Likely.h>
 #include <folly/Memory.h>
 #include <folly/lang/Align.h>
+#include <folly/lang/CheckedMath.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 
@@ -165,7 +166,12 @@ class Arena {
 
   // Round up size so it's properly aligned
   size_t roundUp(size_t size) const {
-    return (size + maxAlign_ - 1) & ~(maxAlign_ - 1);
+    auto maxAl = maxAlign_ - 1;
+    size_t realSize;
+    if (!checked_add<size_t>(&realSize, size, maxAl)) {
+      throw_exception<std::bad_alloc>();
+    }
+    return realSize & ~maxAl;
   }
 
   // cache_last<true> makes the list keep a pointer to the last element, so we
