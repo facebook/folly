@@ -743,6 +743,7 @@ if (BUILD_TESTS)
       TEST call_once_test SOURCES CallOnceTest.cpp
       TEST lifo_sem_test SOURCES LifoSemTests.cpp
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
+      TEST semaphore_test SOURCES SemaphoreTest.cpp
 
     DIRECTORY system/test/
       TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
