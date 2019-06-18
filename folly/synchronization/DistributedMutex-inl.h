@@ -15,6 +15,7 @@
  */
 #include <folly/synchronization/DistributedMutex.h>
 
+#include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -518,7 +519,7 @@ class TaskWithBigReturnValue {
   // ensure we avoid false-sharing with the metadata used while the waiter
   // waits
   using ReturnType = folly::invoke_result_t<const Func&>;
-  static const auto kReturnValueAlignment = std::max(
+  static const auto kReturnValueAlignment = folly::constexpr_max(
       alignof(ReturnType),
       folly::hardware_destructive_interference_size);
   using StorageType = std::aligned_storage_t<
