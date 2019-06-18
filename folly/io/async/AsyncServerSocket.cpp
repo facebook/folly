@@ -872,16 +872,21 @@ void AsyncServerSocket::handlerReady(
         uint32_t tosWord = folly::Endian::big(buffer[0]);
         if (addressFamily == AF_INET6) {
           tosWord = (tosWord & 0x0FC00000) >> 20;
-          ret = netops::setsockopt(
-              clientSocket,
-              IPPROTO_IPV6,
-              IPV6_TCLASS,
-              &tosWord,
-              sizeof(tosWord));
+          // Set the TOS on the return socket only if it is non-zero
+          if (tosWord) {
+            ret = netops::setsockopt(
+                clientSocket,
+                IPPROTO_IPV6,
+                IPV6_TCLASS,
+                &tosWord,
+                sizeof(tosWord));
+          }
         } else if (addressFamily == AF_INET) {
           tosWord = (tosWord & 0x00FC0000) >> 16;
-          ret = netops::setsockopt(
-              clientSocket, IPPROTO_IP, IP_TOS, &tosWord, sizeof(tosWord));
+          if (tosWord) {
+            ret = netops::setsockopt(
+                clientSocket, IPPROTO_IP, IP_TOS, &tosWord, sizeof(tosWord));
+          }
         }
 
         if (ret != 0) {
