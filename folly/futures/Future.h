@@ -261,6 +261,9 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
+  template <class F>
+  void setCallbackAndDetach_(F&& func);
+
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
   ///
@@ -550,6 +553,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::result;
   using Base::setCallback_;
+  using Base::setCallbackAndDetach_;
   using Base::valid;
   using Base::value;
 
@@ -1014,6 +1018,7 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::result;
   using Base::setCallback_;
+  using Base::setCallbackAndDetach_;
   using Base::valid;
   using Base::value;
 

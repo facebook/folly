@@ -325,6 +325,13 @@ void FutureBase<T>::setCallback_(
 }
 
 template <class T>
+template <class F>
+void FutureBase<T>::setCallbackAndDetach_(F&& func) {
+  setCallback_(std::forward<F>(func));
+  detach();
+}
+
+template <class T>
 FutureBase<T>::FutureBase(futures::detail::EmptyConstruct) noexcept
     : core_(nullptr) {}
 
@@ -2254,8 +2261,8 @@ void waitImpl(FutureType& f) {
   Promise<T> promise;
   auto ret = convertFuture(promise.getSemiFuture(), f);
   auto baton = std::make_shared<FutureBatonType>();
-  f.setCallback_([baton, promise = std::move(promise)](
-                     Executor::KeepAlive<>&&, Try<T>&& t) mutable {
+  f.setCallbackAndDetach_([baton, promise = std::move(promise)](
+                              Executor::KeepAlive<>&&, Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
@@ -2289,8 +2296,8 @@ void waitImpl(FutureType& f, Duration dur) {
   Promise<T> promise;
   auto ret = convertFuture(promise.getSemiFuture(), f);
   auto baton = std::make_shared<FutureBatonType>();
-  f.setCallback_([baton, promise = std::move(promise)](
-                     Executor::KeepAlive<>&&, Try<T>&& t) mutable {
+  f.setCallbackAndDetach_([baton, promise = std::move(promise)](
+                              Executor::KeepAlive<>&&, Try<T>&& t) mutable {
     promise.setTry(std::move(t));
     baton->post();
   });
