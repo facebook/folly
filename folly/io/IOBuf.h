@@ -528,7 +528,8 @@ class IOBuf {
   }
 
   /**
-   * Get the data length.
+   * Get the length of the data for this individual IOBuf in the chain. See
+   * computeChainDataLength() for the sum of data length for the full chain.
    */
   std::size_t length() const {
     return length_;
