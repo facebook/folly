@@ -32,6 +32,12 @@
 
 #include <folly/PolyException.h>
 
+#if defined(__cpp_template_auto) || defined(__cpp_nontype_template_parameter_auto)
+#define FOLLY_NTTP_AUTO 1
+#else
+#define FOLLY_NTTP_AUTO 0
+#endif
+
 namespace folly {
 /// \cond
 namespace detail {
@@ -66,7 +72,7 @@ detail::AddCvrefOf<T, I>& poly_cast(detail::PolyRoot<I>&);
 template <class T, class I>
 detail::AddCvrefOf<T, I> const& poly_cast(detail::PolyRoot<I> const&);
 
-#if !defined(__cpp_template_auto)
+#if !FOLLY_NTTP_AUTO
 #define FOLLY_AUTO class
 template <class... Ts>
 using PolyMembers = detail::TypeList<Ts...>;
@@ -233,7 +239,7 @@ using MembersOf = typename I::template Members<remove_cvref_t<T>>;
 template <class I, class T>
 using InterfaceOf = typename I::template Interface<T>;
 
-#if !defined(__cpp_template_auto)
+#if !FOLLY_NTTP_AUTO
 template <class T, T V>
 using Member = std::integral_constant<T, V>;
 
