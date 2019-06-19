@@ -18,6 +18,7 @@
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/detail/AtFork.h>
+#include <folly/logging/LoggerDB.h>
 #include <folly/system/ThreadName.h>
 
 using folly::File;
@@ -45,6 +46,23 @@ AsyncLogWriter::AsyncLogWriter() {
   }
 }
 
+AsyncLogWriter::~AsyncLogWriter() {
+  {
+    auto data = data_.lock();
+    if (!(data->flags & FLAG_DESTROYING)) {
+      LoggerDB::internalWarning(
+          __FILE__, __LINE__, "cleanup() is not called before destroying");
+      stopIoThread(data, FLAG_DESTROYING);
+      assert(false);
+    }
+  }
+
+  // Unregister the atfork handler after stopping the I/O thread.
+  // preFork(), postForkParent(), and postForkChild() calls can run
+  // concurrently with the destructor until unregisterHandler() returns.
+  folly::detail::AtFork::unregisterHandler(this);
+}
+
 void AsyncLogWriter::cleanup() {
   std::vector<std::string>* ioQueue;
   size_t numDiscarded;
@@ -59,11 +77,6 @@ void AsyncLogWriter::cleanup() {
     ioQueue = data->getCurrentQueue();
     numDiscarded = data->numDiscarded;
   }
-
-  // Unregister the atfork handler after stopping the I/O thread.
-  // preFork(), postForkParent(), and postForkChild() calls can run
-  // concurrently with the destructor until unregisterHandler() returns.
-  folly::detail::AtFork::unregisterHandler(this);
 
   // If there are still any pending messages, flush them now.
   if (!ioQueue->empty()) {

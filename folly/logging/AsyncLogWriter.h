@@ -56,6 +56,8 @@ class AsyncLogWriter : public LogWriter {
 
   explicit AsyncLogWriter();
 
+  virtual ~AsyncLogWriter() override;
+
   void writeMessage(folly::StringPiece buffer, uint32_t flags = 0) override;
 
   void writeMessage(std::string&& buffer, uint32_t flags = 0) override;
