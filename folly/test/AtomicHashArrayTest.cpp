@@ -435,3 +435,7 @@ TEST(Aha, ConstValue) {
   auto aha = AHAIntCInt::create(10);
   aha->emplace(1, 2);
 }
+
+TEST(Aha, ZeroSizeMapThrows) {
+  EXPECT_THROW(AHAIntCInt::create(0), std::invalid_argument);
+}

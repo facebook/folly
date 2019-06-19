@@ -22,6 +22,7 @@
 
 #include <folly/detail/AtomicHashUtils.h>
 #include <folly/lang/Bits.h>
+#include <folly/lang/Exception.h>
 
 namespace folly {
 
@@ -58,7 +59,11 @@ AtomicHashArray<
       numEntries_(0, cacheSize),
       numPendingEntries_(0, cacheSize),
       isFull_(0),
-      numErases_(0) {}
+      numErases_(0) {
+  if (capacity == 0) {
+    throw_exception<std::invalid_argument>("capacity");
+  }
+}
 
 /*
  * findInternal --
