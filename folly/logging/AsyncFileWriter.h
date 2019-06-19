@@ -54,10 +54,11 @@ class AsyncFileWriter : public AsyncLogWriter {
   }
 
  private:
+  void writeToFile(std::vector<std::string>* ioQueue, size_t numDiscarded);
+
   void performIO(std::vector<std::string>* ioQueue, size_t numDiscarded)
       override;
 
-  void onIoError(const std::exception& ex) override;
   std::string getNumDiscardedMsg(size_t numDiscarded);
 
   folly::File file_;

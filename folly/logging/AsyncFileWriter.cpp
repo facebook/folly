@@ -34,7 +34,7 @@ bool AsyncFileWriter::ttyOutput() const {
   return isatty(file_.fd());
 }
 
-void AsyncFileWriter::performIO(
+void AsyncFileWriter::writeToFile(
     std::vector<std::string>* ioQueue,
     size_t numDiscarded) {
   // kNumIovecs controls the maximum number of strings we write at once in a
@@ -68,14 +68,20 @@ void AsyncFileWriter::performIO(
   }
 }
 
-void AsyncFileWriter::onIoError(const std::exception& ex) {
-  LoggerDB::internalWarning(
-      __FILE__,
-      __LINE__,
-      "error writing to log file ",
-      file_.fd(),
-      " in AsyncFileWriter: ",
-      folly::exceptionStr(ex));
+void AsyncFileWriter::performIO(
+    std::vector<std::string>* ioQueue,
+    size_t numDiscarded) {
+  try {
+    writeToFile(ioQueue, numDiscarded);
+  } catch (const std::exception& ex) {
+    LoggerDB::internalWarning(
+        __FILE__,
+        __LINE__,
+        "error writing to log file ",
+        file_.fd(),
+        " in AsyncFileWriter: ",
+        folly::exceptionStr(ex));
+  }
 }
 
 std::string AsyncFileWriter::getNumDiscardedMsg(size_t numDiscarded) {

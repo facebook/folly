@@ -136,8 +136,6 @@ class AsyncLogWriter : public LogWriter {
       std::vector<std::string>* logs,
       size_t numDiscarded) = 0;
 
-  virtual void onIoError(const std::exception& ex) = 0;
-
   void ioThread();
 
   bool preFork();
