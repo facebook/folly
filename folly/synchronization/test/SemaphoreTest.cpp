@@ -50,7 +50,7 @@ class WaitForAll {
 };
 
 template <SemaphoreWakePolicy WakePolicy>
-auto wake_policy(Semaphore<WakePolicy> const&) {
+auto wake_policy(PolicySemaphore<WakePolicy> const&) {
   return WakePolicy;
 }
 
@@ -177,6 +177,19 @@ void test_concurrent_split_waiters_posters() {
 
 } // namespace
 
+class SemaphoreTest : public testing::Test {};
+
+TEST_F(SemaphoreTest, basic) {
+  test_basic<Semaphore>();
+}
+
+TEST_F(SemaphoreTest, multi_ping_pong) {
+  test_multi_ping_pong<Semaphore>();
+}
+
+TEST_F(SemaphoreTest, concurrent_split_waiters_posters) {
+  test_concurrent_split_waiters_posters<Semaphore>();
+}
 class FifoSemaphoreTest : public testing::Test {};
 
 TEST_F(FifoSemaphoreTest, basic) {

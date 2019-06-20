@@ -31,8 +31,6 @@
 namespace folly {
 namespace test {
 
-enum class SemaphoreWakePolicy { Fifo, Lifo };
-
 //  Semaphore
 //
 //  A basic portable semaphore, primarily intended for testing scenarios. Likely
@@ -40,12 +38,83 @@ enum class SemaphoreWakePolicy { Fifo, Lifo };
 //
 //  In the interest of portability, uses only synchronization mechanisms shipped
 //  with all implementations of C++: std::mutex and std::condition_variable.
-template <SemaphoreWakePolicy WakePolicy>
 class Semaphore {
  public:
-  Semaphore() : value_(0) {}
+  Semaphore() {}
 
   explicit Semaphore(std::size_t value) : value_(value) {}
+
+  bool try_wait() {
+    std::unique_lock<std::mutex> l{m_};
+    if (value_ > 0) {
+      --value_;
+      return true;
+    } else {
+      return false;
+    }
+  }
+
+  template <typename PreWait, typename PostWait>
+  void wait(PreWait pre_wait, PostWait post_wait) {
+    std::unique_lock<std::mutex> l{m_};
+    pre_wait();
+    if (value_ > 0) {
+      --value_;
+      post_wait();
+    } else {
+      ++waiting_;
+      cv_.wait(l, [&] { return signaled_ > 0; });
+      --signaled_;
+      post_wait();
+    }
+  }
+
+  void wait() {
+    wait([] {}, [] {});
+  }
+
+  template <typename PrePost>
+  void post(PrePost pre_post) {
+    std::unique_lock<std::mutex> l{m_};
+    pre_post();
+    if (!waiting_) {
+      ++value_;
+    } else {
+      --waiting_;
+      ++signaled_;
+      cv_.notify_one();
+    }
+  }
+
+  void post() {
+    post([] {});
+  }
+
+ private:
+  std::size_t value_ = 0;
+  std::size_t waiting_ = 0;
+  std::size_t signaled_ = 0;
+  std::mutex m_;
+  std::condition_variable cv_;
+};
+
+enum class SemaphoreWakePolicy { Fifo, Lifo };
+
+//  PolicySemaphore
+//
+//  A basic portable semaphore, primarily intended for testing scenarios. Likely
+//  to be much less performant than better-optimized semaphore implementations.
+//
+//  Like Semaphore above, but with controlled wake order.
+//
+//  In the interest of portability, uses only synchronization mechanisms shipped
+//  with all implementations of C++: std::mutex and std::condition_variable.
+template <SemaphoreWakePolicy WakePolicy>
+class PolicySemaphore {
+ public:
+  PolicySemaphore() {}
+
+  explicit PolicySemaphore(std::size_t value) : value_(value) {}
 
   bool try_wait() {
     std::unique_lock<std::mutex> lock{mutex_};
@@ -132,13 +201,13 @@ class Semaphore {
     terminate_with<std::invalid_argument>("wake-policy");
   }
 
-  std::size_t value_;
+  std::size_t value_ = 0;
   std::mutex mutex_;
   WaiterList waiters_;
 };
 
-using FifoSemaphore = Semaphore<SemaphoreWakePolicy::Fifo>;
-using LifoSemaphore = Semaphore<SemaphoreWakePolicy::Lifo>;
+using FifoSemaphore = PolicySemaphore<SemaphoreWakePolicy::Fifo>;
+using LifoSemaphore = PolicySemaphore<SemaphoreWakePolicy::Lifo>;
 
 } // namespace test
 } // namespace folly
