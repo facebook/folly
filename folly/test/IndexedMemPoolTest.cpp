@@ -65,13 +65,11 @@ TEST(IndexedMemPool, no_starvation) {
     EXPECT_EQ(pipe(fd), 0);
 
     // makes sure we wait for available nodes, rather than fail allocIndex
-    sem_t allocSem;
-    sem_init(&allocSem, 0, poolSize);
+    DeterministicSchedule::Sem allocSem(poolSize);
 
     // this semaphore is only needed for deterministic replay, so that we
     // always block in an Sched:: operation rather than in a read() syscall
-    sem_t readSem;
-    sem_init(&readSem, 0, 0);
+    DeterministicSchedule::Sem readSem(0);
 
     std::thread produce = Sched::thread([&]() {
       for (auto i = 0; i < count; ++i) {

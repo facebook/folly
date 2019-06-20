@@ -30,6 +30,8 @@
 namespace folly {
 namespace test {
 
+using Sem = DeterministicSchedule::Sem;
+
 AuxChk DeterministicSchedule::aux_chk;
 
 // access is protected by futexLock
@@ -123,8 +125,7 @@ DeterministicSchedule::DeterministicSchedule(
   assert(tls.aux_act == nullptr);
 
   tls.exiting = false;
-  tls.sem = new sem_t;
-  sem_init(tls.sem, 0, 1);
+  tls.sem = new Sem(true);
   sems_.push_back(tls.sem);
 
   tls.threadId = nextThreadId_++;
@@ -207,7 +208,7 @@ DeterministicSchedule::uniformSubset(uint64_t seed, size_t n, size_t m) {
 void DeterministicSchedule::beforeSharedAccess() {
   auto& tls = TLState::get();
   if (tls.sem) {
-    sem_wait(tls.sem);
+    tls.sem->wait();
   }
 }
 
@@ -217,7 +218,7 @@ void DeterministicSchedule::afterSharedAccess() {
   if (!sched) {
     return;
   }
-  sem_post(sched->sems_[sched->scheduler_(sched->sems_.size())]);
+  sched->sems_[sched->scheduler_(sched->sems_.size())]->post();
 }
 
 void DeterministicSchedule::afterSharedAccess(bool success) {
@@ -227,7 +228,7 @@ void DeterministicSchedule::afterSharedAccess(bool success) {
     return;
   }
   sched->callAux(success);
-  sem_post(sched->sems_[sched->scheduler_(sched->sems_.size())]);
+  sched->sems_[sched->scheduler_(sched->sems_.size())]->post();
 }
 
 size_t DeterministicSchedule::getRandNumber(size_t n) {
@@ -265,7 +266,7 @@ void DeterministicSchedule::clearAuxChk() {
   aux_chk = nullptr;
 }
 
-void DeterministicSchedule::reschedule(sem_t* sem) {
+void DeterministicSchedule::reschedule(Sem* sem) {
   auto& tls = TLState::get();
   auto sched = tls.sched;
   if (sched) {
@@ -273,7 +274,7 @@ void DeterministicSchedule::reschedule(sem_t* sem) {
   }
 }
 
-sem_t* DeterministicSchedule::descheduleCurrentThread() {
+Sem* DeterministicSchedule::descheduleCurrentThread() {
   auto& tls = TLState::get();
   auto sched = tls.sched;
   if (sched) {
@@ -283,16 +284,15 @@ sem_t* DeterministicSchedule::descheduleCurrentThread() {
   return tls.sem;
 }
 
-sem_t* DeterministicSchedule::beforeThreadCreate() {
-  sem_t* s = new sem_t;
-  sem_init(s, 0, 0);
+Sem* DeterministicSchedule::beforeThreadCreate() {
+  Sem* s = new Sem(false);
   beforeSharedAccess();
   sems_.push_back(s);
   afterSharedAccess();
   return s;
 }
 
-void DeterministicSchedule::afterThreadCreate(sem_t* sem) {
+void DeterministicSchedule::afterThreadCreate(Sem* sem) {
   auto& tls = TLState::get();
   assert(tls.sem == nullptr);
   assert(tls.sched == nullptr);
@@ -332,12 +332,11 @@ void DeterministicSchedule::beforeThreadExit() {
      * enters the thread local destructors. */
     exitingSems_[std::this_thread::get_id()] = tls.sem;
     afterSharedAccess();
-    sem_wait(tls.sem);
+    tls.sem->wait();
   }
   tls.sched = nullptr;
   tls.aux_act = nullptr;
   tls.exiting = true;
-  sem_destroy(tls.sem);
   delete tls.sem;
   tls.sem = nullptr;
 }
@@ -348,7 +347,7 @@ void DeterministicSchedule::waitForBeforeThreadExit(std::thread& child) {
   beforeSharedAccess();
   assert(tls.sched->joins_.count(child.get_id()) == 0);
   if (tls.sched->active_.count(child.get_id())) {
-    sem_t* sem = descheduleCurrentThread();
+    Sem* sem = descheduleCurrentThread();
     tls.sched->joins_.insert({child.get_id(), sem});
     afterSharedAccess();
     // Wait to be scheduled by exiting child thread
@@ -372,7 +371,7 @@ void DeterministicSchedule::joinAll(std::vector<std::thread>& children) {
    * shared access during thread local destructors.*/
   for (auto& child : children) {
     if (sched) {
-      sem_post(sched->exitingSems_[child.get_id()]);
+      sched->exitingSems_[child.get_id()]->post();
     }
     child.join();
   }
@@ -387,7 +386,7 @@ void DeterministicSchedule::join(std::thread& child) {
   atomic_thread_fence(std::memory_order_seq_cst);
   FOLLY_TEST_DSCHED_VLOG("joined " << std::hex << child.get_id());
   if (sched) {
-    sem_post(sched->exitingSems_[child.get_id()]);
+    sched->exitingSems_[child.get_id()]->post();
   }
   child.join();
 }
@@ -404,45 +403,40 @@ void DeterministicSchedule::callAux(bool success) {
   }
 }
 
-static std::unordered_map<sem_t*, std::unique_ptr<ThreadSyncVar>> semSyncVar;
+static std::unordered_map<Sem*, std::unique_ptr<ThreadSyncVar>> semSyncVar;
 
-void DeterministicSchedule::post(sem_t* sem) {
+void DeterministicSchedule::post(Sem* sem) {
   beforeSharedAccess();
   if (semSyncVar.count(sem) == 0) {
     semSyncVar[sem] = std::make_unique<ThreadSyncVar>();
   }
   semSyncVar[sem]->release();
-  sem_post(sem);
-  FOLLY_TEST_DSCHED_VLOG("sem_post(" << sem << ")");
+  sem->post();
+  FOLLY_TEST_DSCHED_VLOG("sem->post() [sem=" << sem << "]");
   afterSharedAccess();
 }
 
-bool DeterministicSchedule::tryWait(sem_t* sem) {
+bool DeterministicSchedule::tryWait(Sem* sem) {
   beforeSharedAccess();
   if (semSyncVar.count(sem) == 0) {
     semSyncVar[sem] = std::make_unique<ThreadSyncVar>();
   }
 
-  int rv = sem_trywait(sem);
-  int e = rv == 0 ? 0 : errno;
+  bool acquired = sem->try_wait();
+  bool acquired_s = acquired ? "true" : "false";
   FOLLY_TEST_DSCHED_VLOG(
-      "sem_trywait(" << sem << ") = " << rv << " errno=" << e);
-  if (rv == 0) {
+      "sem->try_wait() [sem=" << sem << "] -> " << acquired_s);
+  if (acquired) {
     semSyncVar[sem]->acq_rel();
   } else {
     semSyncVar[sem]->acquire();
   }
 
   afterSharedAccess();
-  if (rv == 0) {
-    return true;
-  } else {
-    assert(e == EAGAIN);
-    return false;
-  }
+  return acquired;
 }
 
-void DeterministicSchedule::wait(sem_t* sem) {
+void DeterministicSchedule::wait(Sem* sem) {
   while (!tryWait(sem)) {
     // we're not busy waiting because this is a deterministic schedule
   }
