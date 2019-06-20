@@ -27,7 +27,7 @@
 #include <folly/portability/SysMman.h>
 
 #ifdef __linux__
-#include <folly/experimental/io/HugePages.h>
+#include <folly/experimental/io/HugePages.h> // @manual
 #endif
 
 #include <fcntl.h>
