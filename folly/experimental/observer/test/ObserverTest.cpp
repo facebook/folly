@@ -325,6 +325,8 @@ TEST(Observer, SubscribeCallback) {
     EXPECT_EQ(3, getCallsStart);
     EXPECT_EQ(3, getCallsFinish);
 
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
+
     slowGet = true;
     cobThread = std::thread([] { updatesCob(); });
     /* sleep override */ std::this_thread::sleep_for(std::chrono::seconds{1});
