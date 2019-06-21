@@ -25,6 +25,7 @@
 
 #include <boost/intrusive/list.hpp>
 
+#include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
 #include <folly/lang/Exception.h>
 
@@ -134,19 +135,23 @@ class PolicySemaphore {
       --value_;
       post_wait();
     } else {
+      auto const protect_post_wait = !is_empty_callable(post_wait);
       Waiter w;
       waiters_.push_back(w);
+      w.protect_waiter_post_wait = protect_post_wait;
       w.wake_waiter.wait(lock);
       auto guard = makeGuard([&] {
-        w.wake_poster->post();
-        w.wake_waiter.wait(lock);
+        if (protect_post_wait) {
+          w.wake_poster->post();
+          w.wake_waiter.wait(lock);
+        }
       });
       post_wait();
     }
   }
 
   void wait() {
-    wait([] {}, [] {});
+    wait(EmptyCallable{}, EmptyCallable{});
   }
 
   template <typename PrePost>
@@ -161,11 +166,17 @@ class PolicySemaphore {
     } else {
       auto& w = pull();
       waiters_.erase(waiters_.iterator_to(w));
-      Event wake_poster;
-      w.wake_poster = &wake_poster;
+      auto const protect_waiter_post_wait = w.protect_waiter_post_wait;
+      Optional<Event> wake_poster;
+      if (protect_waiter_post_wait) {
+        wake_poster.emplace();
+        w.wake_poster = &*wake_poster;
+      }
       w.wake_waiter.post();
-      wake_poster.wait(lock);
-      w.wake_waiter.post();
+      if (protect_waiter_post_wait) {
+        wake_poster->wait(lock);
+        w.wake_waiter.post();
+      }
     }
   }
 
@@ -191,10 +202,24 @@ class PolicySemaphore {
   };
 
   struct Waiter : boost::intrusive::list_base_hook<> {
+    bool protect_waiter_post_wait = false;
     Event wake_waiter;
-    Event* wake_poster;
+    Event* wake_poster = nullptr;
   };
   using WaiterList = boost::intrusive::list<Waiter>;
+
+  class EmptyCallable {
+   public:
+    constexpr void operator()() const noexcept {}
+  };
+
+  template <typename Callable>
+  std::false_type is_empty_callable(Callable const&) {
+    return {};
+  }
+  std::true_type is_empty_callable(EmptyCallable const&) {
+    return {};
+  }
 
   Waiter& pull() {
     switch (WakePolicy) {
