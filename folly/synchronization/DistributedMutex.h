@@ -100,15 +100,15 @@ namespace distributed_mutex {
  * preemption.
  *
  * DistributedMutex does not have the typical mutex API - it does not satisfy
- * the Lockable concept.  It requires the user to maintain ephemeral
- * bookkeeping and pass that bookkeeping around to unlock() calls.  The API
- * overhead, however, comes for free when you wrap this mutex for usage with
- * folly::Synchronized or std::unique_lock, which is the recommended usage
- * (std::lock_guard, in optimized mode, has no performance benefit over
- * std::unique_lock, so has been omitted).  A benefit of this API is that it
- * disallows incorrect usage where a thread unlocks a mutex that it does not
- * own, thinking a mutex is functionally identical to a binary semaphore,
- * which, unlike a mutex, is a suitable primitive for that usage
+ * the Lockable concept.  It requires the user to maintain ephemeral bookkeeping
+ * and pass that bookkeeping around to unlock() calls.  The API overhead,
+ * however, comes for free when you wrap this mutex for usage with
+ * std::unique_lock, which is the recommended usage (std::lock_guard, in
+ * optimized mode, has no performance benefit over std::unique_lock, so has been
+ * omitted).  A benefit of this API is that it disallows incorrect usage where a
+ * thread unlocks a mutex that it does not own, thinking a mutex is functionally
+ * identical to a binary semaphore, which, unlike a mutex, is a suitable
+ * primitive for that usage
  *
  * Combined critical sections allow the implementation to elide several
  * expensive operations during the lifetime of a critical section that cause
