@@ -17,11 +17,18 @@
 #include <folly/synchronization/test/Semaphore.h>
 
 #include <array>
+#include <numeric>
 #include <thread>
 #include <vector>
 
+#include <glog/logging.h>
+
+#include <folly/Traits.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysMman.h>
 #include <folly/synchronization/test/Barrier.h>
+
+using namespace std::literals::chrono_literals;
 
 using namespace folly::test;
 
@@ -62,6 +69,53 @@ void test_basic() {
   EXPECT_TRUE(sem.try_wait());
   sem.post();
   sem.wait();
+}
+
+template <typename Sem>
+void test_handoff_destruction() {
+  //  regression to check for race:
+  //  * poster thread calls Sem::post()
+  //  * waiter thread calls Sem::wait() and then dtor+free
+  //  strategy: mprotect the sem page after dtor; racing post() will segv
+  //  alternate strategy: overwrite the former sem object, but non-portable
+
+  constexpr auto const nthreads = 1ull << 4;
+  constexpr auto const rounds = 1ull << 6;
+
+  std::array<size_t, nthreads> waits{};
+  for (auto r = 0ull; r < rounds; ++r) {
+    std::array<void*, nthreads> sems{};
+    std::array<std::thread, nthreads> threads;
+    WaitForAll ready(nthreads);
+    for (auto thi = 0ull; thi < nthreads; ++thi) {
+      sems[thi] = mmap(
+          nullptr,
+          sizeof(Sem),
+          PROT_READ | PROT_WRITE,
+          MAP_PRIVATE | MAP_ANONYMOUS,
+          -1,
+          0);
+      PCHECK((void*)-1 != sems[thi]);
+      auto sem_ = new (sems[thi]) Sem(0);
+      threads[thi] = std::thread([&, thi, sem_] {
+        auto& sem = *reinterpret_cast<Sem*>(sem_);
+        sem.wait([&] { ready.post(); }, [&, thi] { ++waits[thi]; });
+        sem.~Sem();
+        mprotect(sem_, sizeof(Sem), PROT_NONE);
+      });
+    }
+    ready.wait();
+    for (auto sem_ : sems) {
+      auto& sem = *reinterpret_cast<Sem*>(sem_);
+      sem.post();
+    }
+    for (auto thi = 0ull; thi < nthreads; ++thi) {
+      threads[thi].join();
+      munmap(sems[thi], sizeof(Sem));
+    }
+  }
+  auto const allwaits = std::accumulate(waits.begin(), waits.end(), size_t(0));
+  EXPECT_EQ(nthreads * rounds, allwaits);
 }
 
 template <typename Sem>
@@ -190,6 +244,11 @@ TEST_F(SemaphoreTest, multi_ping_pong) {
 TEST_F(SemaphoreTest, concurrent_split_waiters_posters) {
   test_concurrent_split_waiters_posters<Semaphore>();
 }
+
+TEST_F(SemaphoreTest, handoff) {
+  test_handoff_destruction<Semaphore>();
+}
+
 class FifoSemaphoreTest : public testing::Test {};
 
 TEST_F(FifoSemaphoreTest, basic) {
@@ -208,6 +267,10 @@ TEST_F(FifoSemaphoreTest, concurrent_split_waiters_posters) {
   test_concurrent_split_waiters_posters<FifoSemaphore>();
 }
 
+TEST_F(FifoSemaphoreTest, handoff) {
+  test_handoff_destruction<FifoSemaphore>();
+}
+
 class LifoSemaphoreTest : public testing::Test {};
 
 TEST_F(LifoSemaphoreTest, basic) {
@@ -224,4 +287,8 @@ TEST_F(LifoSemaphoreTest, multi_ping_pong) {
 
 TEST_F(LifoSemaphoreTest, concurrent_split_waiters_posters) {
   test_concurrent_split_waiters_posters<LifoSemaphore>();
+}
+
+TEST_F(LifoSemaphoreTest, handoff) {
+  test_handoff_destruction<LifoSemaphore>();
 }

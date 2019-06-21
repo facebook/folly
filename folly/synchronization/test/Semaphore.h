@@ -137,7 +137,10 @@ class PolicySemaphore {
       Waiter w;
       waiters_.push_back(w);
       w.wake_waiter.wait(lock);
-      auto wake_poster_guard = makeGuard([&] { w.wake_poster->post(); });
+      auto guard = makeGuard([&] {
+        w.wake_poster->post();
+        w.wake_waiter.wait(lock);
+      });
       post_wait();
     }
   }
@@ -162,6 +165,7 @@ class PolicySemaphore {
       w.wake_poster = &wake_poster;
       w.wake_waiter.post();
       wake_poster.wait(lock);
+      w.wake_waiter.post();
     }
   }
 
@@ -178,6 +182,7 @@ class PolicySemaphore {
     }
     void wait(std::unique_lock<std::mutex>& lock) {
       cv.wait(lock, [&] { return signaled; });
+      signaled = false;
     }
 
    private:
