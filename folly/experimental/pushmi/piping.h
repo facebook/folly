@@ -24,7 +24,7 @@ PUSHMI_TEMPLATE_DEBUG(class In, class Op)
 (requires PUSHMI_EXP(lazy::Invocable<Op, In>)) //
     decltype(auto)
     operator|(In&& in, Op&& op) {
-  return ((Op &&)op)((In &&) in);
+  return ((Op &&) op)((In &&) in);
 }
 
 PUSHMI_INLINE_VAR constexpr struct pipe_fn {

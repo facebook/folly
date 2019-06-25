@@ -24,6 +24,10 @@
 #include <folly/Utility.h>
 
 namespace folly {
+namespace pushmi {
+// derive from this for types that need to find operator|() overloads by ADL
+struct folly_pipeorigin {};
+} // namespace pushmi
 
 using Func = Function<void()>;
 
@@ -64,7 +68,7 @@ class Executor {
    * preserve the original Executor type.
    */
   template <typename ExecutorT = Executor>
-  class KeepAlive {
+  class KeepAlive : pushmi::folly_pipeorigin {
    public:
     KeepAlive() = default;
 
