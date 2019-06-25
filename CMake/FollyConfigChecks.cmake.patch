@@ -1,0 +1,13 @@
+diff --git a/CMake/FollyConfigChecks.cmake b/CMake/FollyConfigChecks.cmake
+index f93f4eac..290c49ec 100644
+--- a/CMake/FollyConfigChecks.cmake
++++ b/CMake/FollyConfigChecks.cmake
+@@ -31,6 +31,7 @@ if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
+     list(APPEND FOLLY_CXX_FLAGS -Wshadow-compatible-local)
+   endif()
+ 
++  list(APPEND FOLLY_CXX_FLAGS -DFOLLY_SANITIZE_ADDRESS=1)
+   CHECK_CXX_COMPILER_FLAG(-Wnoexcept-type COMPILER_HAS_W_NOEXCEPT_TYPE)
+   if (COMPILER_HAS_W_NOEXCEPT_TYPE)
+     list(APPEND FOLLY_CXX_FLAGS -Wno-noexcept-type)
+
