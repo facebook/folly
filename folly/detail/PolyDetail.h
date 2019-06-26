@@ -404,17 +404,6 @@ struct SignatureOf_<R (C::*)(As...) const, I> {
   using type = Ret<R, I> (*)(Data const&, Arg<As, I>...);
 };
 
-template <class R, class C, class... As, class I>
-struct SignatureOf_<R (C::*)(As...) noexcept, I> {
-  using type = std::add_pointer_t<Ret<R, I>(Data&, Arg<As, I>...) noexcept>;
-};
-
-template <class R, class C, class... As, class I>
-struct SignatureOf_<R (C::*)(As...) const noexcept, I> {
-  using type =
-      std::add_pointer_t<Ret<R, I>(Data const&, Arg<As, I>...) noexcept>;
-};
-
 template <class R, class This, class... As, class I>
 struct SignatureOf_<R (*)(This&, As...), I> {
   using type = Ret<R, I> (*)(Data&, Arg<As, I>...);
@@ -433,11 +422,6 @@ struct ArgTypes_;
 
 template <FOLLY_AUTO User, class I, class Ret, class Data, class... Args>
 struct ArgTypes_<User, I, Ret (*)(Data, Args...)> {
-  using type = TypeList<Args...>;
-};
-
-template <FOLLY_AUTO User, class I, class Ret, class Data, class... Args>
-struct ArgTypes_<User, I, Ret (*)(Data, Args...) noexcept> {
   using type = TypeList<Args...>;
 };
 
