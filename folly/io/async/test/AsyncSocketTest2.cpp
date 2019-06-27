@@ -3754,3 +3754,40 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
   ASSERT_EQ(value, 0x2c);
 }
 #endif
+
+#if __linux__
+TEST(AsyncSocketTest, getBufInUse) {
+  EventBase eventBase;
+  std::shared_ptr<AsyncServerSocket> server(
+      AsyncServerSocket::newSocket(&eventBase));
+  server->bind(0);
+  server->listen(5);
+
+  std::shared_ptr<AsyncSocket> client = AsyncSocket::newSocket(&eventBase);
+  client->connect(nullptr, server->getAddress());
+
+  NetworkSocket servfd = server->getNetworkSocket();
+
+  auto clientAccepted =
+      AsyncSocket::newSocket(nullptr, netops::accept(servfd, nullptr, nullptr));
+
+  clientAccepted->setRecvBufSize(3000);
+
+  std::string testData;
+
+  for (int i = 0; i < 10000; ++i) {
+    testData += "0123456789";
+  }
+
+  client->write(nullptr, (const void*)testData.c_str(), testData.size());
+
+  eventBase.loop();
+
+  size_t recvBufSize = clientAccepted->getRecvBufInUse();
+  size_t sendBufSize = client->getSendBufInUse();
+
+  EXPECT_EQ((recvBufSize + sendBufSize), testData.size());
+  EXPECT_GE(recvBufSize, 0);
+  EXPECT_GE(sendBufSize, 0);
+}
+#endif

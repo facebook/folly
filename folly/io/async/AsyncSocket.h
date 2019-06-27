@@ -716,6 +716,26 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   int setRecvBufSize(size_t bufsize);
 
+#if __linux__
+  /**
+   * @brief This method is used to get the number of bytes that are currently
+   *        stored in the TCP send/tx buffer
+   *
+   * @return the number of bytes in the send/tx buffer or folly::none if there
+   *         was a problem
+   */
+  size_t getSendBufInUse() const;
+
+  /**
+   * @brief This method is used to get the number of bytes that are currently
+   *        stored in the TCP receive/rx buffer
+   *
+   * @return the number of bytes in the receive/rx buffer or folly::none if
+   *         there was a problem
+   */
+  size_t getRecvBufInUse() const;
+#endif
+
 /**
  * Sets a specific tcp personality
  * Available only on kernels 3.2 and greater

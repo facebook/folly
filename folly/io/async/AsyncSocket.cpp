@@ -32,7 +32,13 @@
 #include <errno.h>
 #include <limits.h>
 #include <sys/types.h>
+#include <sstream>
 #include <thread>
+
+#if __linux__
+#include <linux/sockios.h>
+#include <sys/ioctl.h>
+#endif
 
 #if FOLLY_HAVE_VLA
 #define FOLLY_HAVE_VLA_01 1
@@ -1709,6 +1715,54 @@ int AsyncSocket::setRecvBufSize(size_t bufsize) {
 
   return 0;
 }
+
+#if __linux__
+size_t AsyncSocket::getSendBufInUse() const {
+  if (fd_ == NetworkSocket()) {
+    std::stringstream issueString;
+    issueString << "AsyncSocket::getSendBufInUse() called on non-open socket "
+                << this << "(state=" << state_ << ")";
+    VLOG(4) << issueString.str();
+    throw std::logic_error(issueString.str());
+  }
+
+  size_t returnValue = 0;
+  if (-1 == ::ioctl(fd_.toFd(), SIOCOUTQ, &returnValue)) {
+    int errnoCopy = errno;
+    std::stringstream issueString;
+    issueString << "Failed to get the tx used bytes on Socket: " << this
+                << "(fd=" << fd_ << ", state=" << state_
+                << "): " << errnoStr(errnoCopy);
+    VLOG(2) << issueString.str();
+    throw std::logic_error(issueString.str());
+  }
+
+  return returnValue;
+}
+
+size_t AsyncSocket::getRecvBufInUse() const {
+  if (fd_ == NetworkSocket()) {
+    std::stringstream issueString;
+    issueString << "AsyncSocket::getRecvBufInUse() called on non-open socket "
+                << this << "(state=" << state_ << ")";
+    VLOG(4) << issueString.str();
+    throw std::logic_error(issueString.str());
+  }
+
+  size_t returnValue = 0;
+  if (-1 == ::ioctl(fd_.toFd(), SIOCINQ, &returnValue)) {
+    std::stringstream issueString;
+    int errnoCopy = errno;
+    issueString << "Failed to get the rx used bytes on Socket: " << this
+                << "(fd=" << fd_ << ", state=" << state_
+                << "): " << errnoStr(errnoCopy);
+    VLOG(2) << issueString.str();
+    throw std::logic_error(issueString.str());
+  }
+
+  return returnValue;
+}
+#endif
 
 int AsyncSocket::setTCPProfile(int profd) {
   if (fd_ == NetworkSocket()) {
