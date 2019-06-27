@@ -133,6 +133,17 @@ TEST(RetryingTest, policy_basic) {
   EXPECT_EQ(2, r.value());
 }
 
+TEST(RetryingTest, semifuture_policy_basic) {
+  auto r = futures::retrying(
+               futures::retryingPolicyBasic(3),
+               [](size_t n) {
+                 return n < 2 ? makeSemiFuture<size_t>(runtime_error("ha"))
+                              : makeSemiFuture(n);
+               })
+               .wait();
+  EXPECT_EQ(2, r.value());
+}
+
 TEST(RetryingTest, policy_capped_jittered_exponential_backoff) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
     using ms = milliseconds;

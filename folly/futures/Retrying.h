@@ -30,14 +30,21 @@ namespace futures {
  *  policy.
  *
  *  The policy must be moveable - retrying will move it a lot - and callable of
- *  either of the two forms:
+ *  any of the forms:
  *  - Future<bool>(size_t, exception_wrapper)
+ *  - SemiFuture<bool>(size_t, exception_wrapper)
  *  - bool(size_t, exception_wrapper)
  *  Internally, the latter is transformed into the former in the obvious way.
  *  The first parameter is the attempt number of the next prospective attempt;
  *  the second parameter is the most recent exception. The policy returns a
- *  Future<bool> which, when completed with true, indicates that a retry is
- *  desired.
+ *  (Semi)Future<bool>  which, when completed with true, indicates that a retry
+ *  is desired.
+ *
+ *  If the callable or policy returns a SemiFuture, then retrying returns a
+ *  SemiFuture. Note that, consistent with other SemiFuture-returning functions
+ *  the implication of this statement is that retrying should be assumed to be
+ *  lazy: it may do nothing until .wait()/.get() is called on the result or
+ *  an executor is attached with .via.
  *
  *  We provide a few generic policies:
  *  - Basic
@@ -111,7 +118,11 @@ void retryingImpl(size_t k, Policy&& p, FF&& ff, Prom prom) {
 }
 
 template <class Policy, class FF>
-invoke_result_t<FF, size_t> retrying(size_t k, Policy&& p, FF&& ff) {
+typename std::enable_if<
+    !(isSemiFuture<invoke_result_t<FF, size_t>>::value ||
+      isSemiFuture<invoke_result_t<Policy, size_t, exception_wrapper>>::value),
+    invoke_result_t<FF, size_t>>::type
+retrying(size_t k, Policy&& p, FF&& ff) {
   using F = invoke_result_t<FF, size_t>;
   using T = typename F::value_type;
   auto prom = Promise<T>();
@@ -119,6 +130,26 @@ invoke_result_t<FF, size_t> retrying(size_t k, Policy&& p, FF&& ff) {
   retryingImpl(
       k, std::forward<Policy>(p), std::forward<FF>(ff), std::move(prom));
   return f;
+}
+
+template <class Policy, class FF>
+typename std::enable_if<
+    isSemiFuture<invoke_result_t<FF, size_t>>::value ||
+        isSemiFuture<invoke_result_t<Policy, size_t, exception_wrapper>>::value,
+    invoke_result_t<FF, size_t>>::type
+retrying(size_t k, Policy&& p, FF&& ff) {
+  auto sf = folly::makeSemiFuture().deferExValue(
+      [k, p = std::forward<Policy>(p), ff = std::forward<FF>(ff)](
+          Executor::KeepAlive<> ka, auto&&) mutable {
+        auto futureP = [p = std::forward<Policy>(p), ka](
+                           size_t k, exception_wrapper e) {
+          return p(k, std::move(e)).via(ka);
+        };
+        auto futureFF = [ff = std::forward<FF>(ff), ka = std::move(ka)](
+                            size_t v) { return ff(v).via(ka); };
+        return retrying(k, std::move(futureP), std::move(futureFF));
+      });
+  return sf;
 }
 
 template <class Policy, class FF>
