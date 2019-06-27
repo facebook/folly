@@ -29,6 +29,7 @@
 #include <folly/Executor.h>
 #include <folly/IntrusiveList.h>
 #include <folly/Likely.h>
+#include <folly/Portability.h>
 #include <folly/Try.h>
 #include <folly/functional/Invoke.h>
 #include <folly/io/async/HHWheelTimer.h>
