@@ -23,7 +23,6 @@
 #include <time.h>
 
 #ifndef _WIN32
-#define _GNU_SOURCE 1
 #include <dlfcn.h>
 #endif
 
