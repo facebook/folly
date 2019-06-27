@@ -1159,7 +1159,8 @@ class Appender : public detail::Writable<Appender> {
   void printf(FOLLY_PRINTF_FORMAT const char* fmt, ...)
       FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
-  void vprintf(const char* fmt, va_list ap);
+  void vprintf(FOLLY_PRINTF_FORMAT const char* fmt, va_list ap)
+      FOLLY_PRINTF_FORMAT_ATTR(2, 0);
 
   /*
    * Calling an Appender object with a StringPiece will append the string

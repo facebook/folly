@@ -185,9 +185,12 @@ std::string& stringAppendf(
  * As with vsnprintf() itself, the value of ap is undefined after the call.
  * These functions do not call va_end() on ap.
  */
-std::string stringVPrintf(const char* format, va_list ap);
-void stringVPrintf(std::string* out, const char* format, va_list ap);
-std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
+std::string stringVPrintf(FOLLY_PRINTF_FORMAT const char* format, va_list ap)
+    FOLLY_PRINTF_FORMAT_ATTR(1, 0);
+void stringVPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, va_list ap)
+    FOLLY_PRINTF_FORMAT_ATTR(2, 0);
+std::string& stringVAppendf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, va_list ap)
+    FOLLY_PRINTF_FORMAT_ATTR(2, 0);
 
 /**
  * Backslashify a string, that is, replace non-printable characters

@@ -166,10 +166,11 @@ StringPiece rtrimWhitespace(StringPiece sp) {
 
 namespace {
 
-int stringAppendfImplHelper(
+FOLLY_PRINTF_FORMAT_ATTR(3, 0)
+static int stringAppendfImplHelper(
     char* buf,
     size_t bufsize,
-    const char* format,
+    FOLLY_PRINTF_FORMAT const char* format,
     va_list args) {
   va_list args_copy;
   va_copy(args_copy, args);
@@ -178,7 +179,8 @@ int stringAppendfImplHelper(
   return bytes_used;
 }
 
-void stringAppendfImpl(std::string& output, const char* format, va_list args) {
+FOLLY_PRINTF_FORMAT_ATTR(2, 0)
+static void stringAppendfImpl(std::string& output, FOLLY_PRINTF_FORMAT const char* format, va_list args) {
   // Very simple; first, try to avoid an allocation by using an inline
   // buffer.  If that fails to hold the output string, allocate one on
   // the heap, use it instead.
