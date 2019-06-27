@@ -17,28 +17,10 @@
 
 #include <exception>
 
+#include <folly/experimental/pushmi/traits.h>
+
 namespace folly {
 namespace pushmi {
-namespace detail {
-// inherit: a class that inherits from a bunch of bases
-template <class... Ts>
-struct inherit : Ts... {
-  inherit() = default;
-  constexpr inherit(Ts... ts)
-    : Ts((Ts&&) ts)...
-  {}
-};
-template <class T>
-struct inherit<T> : T {
-  inherit() = default;
-  explicit constexpr inherit(T t)
-    : T((T&&) t)
-  {}
-};
-template <>
-struct inherit<>
-{};
-} // namespace detail
 
 namespace awaitable_senders {
 struct sender_adl_hook {

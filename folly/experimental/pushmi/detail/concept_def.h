@@ -94,8 +94,8 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_VA_ARGS_EXPANDER2_INNER(...) __VA_ARGS__
 #define PUSHMI_PP_VA_ARGS_EXPANDER2(...) __VA_ARGS__
 
-#define PUSHMI_PP_ENABLE_IF_INT(...)                                      \
-    std::enable_if_t<__VA_ARGS__, int> = 0                                \
+#define PUSHMI_PP_ENABLE_IF_INT(...)                                           \
+    std::enable_if_t<__VA_ARGS__, int> = 0                                     \
     /**/
 
 #define PUSHMI_PP_EVAL(X, ...) X(__VA_ARGS__)
@@ -114,20 +114,23 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_VA_ARGS_EXPANDER2_INNER(X) X
 #define PUSHMI_PP_VA_ARGS_EXPANDER2(X) PUSHMI_PP_VA_ARGS_EXPANDER2_INNER(X)
 
-#define PUSHMI_PP_ENABLE_IF_INT(...)                                      \
-    decltype(std::declval<std::enable_if_t<__VA_ARGS__>>(), 0) = 0        \
+#define PUSHMI_PP_ENABLE_IF_INT(...)                                           \
+    decltype(std::declval<std::enable_if_t<__VA_ARGS__>>(), 0) = 0             \
     /**/
 
 #define PUSHMI_PP_EVAL(X, ...) PUSHMI_PP_VA_ARGS_EXPANDER(X(__VA_ARGS__))
 #define PUSHMI_PP_EVAL2(X, ...) PUSHMI_PP_VA_ARGS_EXPANDER2(X(__VA_ARGS__))
 
 #define PUSHMI_PP_EXPAND_(...) __VA_ARGS__
-#define PUSHMI_PP_EXPAND(...) PUSHMI_PP_VA_ARGS_EXPANDER_INNER(PUSHMI_PP_EXPAND_(__VA_ARGS__))
+#define PUSHMI_PP_EXPAND(...) \
+  PUSHMI_PP_VA_ARGS_EXPANDER_INNER(PUSHMI_PP_EXPAND_(__VA_ARGS__))
 #define PUSHMI_PP_EXPAND2_(...) __VA_ARGS__
-#define PUSHMI_PP_EXPAND2(...) PUSHMI_PP_VA_ARGS_EXPANDER2_INNER(PUSHMI_PP_EXPAND2_(__VA_ARGS__))
+#define PUSHMI_PP_EXPAND2(...) \
+  PUSHMI_PP_VA_ARGS_EXPANDER2_INNER(PUSHMI_PP_EXPAND2_(__VA_ARGS__))
 
-#define PUSHMI_PP_CHECK(...) PUSHMI_PP_CHECK_(__VA_ARGS__, 0,)
-#define PUSHMI_PP_CHECK_(...) PUSHMI_PP_VA_ARGS_EXPANDER_INNER(PUSHMI_PP_CHECK_N(__VA_ARGS__))
+#define PUSHMI_PP_CHECK(...) PUSHMI_PP_CHECK_(__VA_ARGS__, 0, )
+#define PUSHMI_PP_CHECK_(...) \
+  PUSHMI_PP_VA_ARGS_EXPANDER_INNER(PUSHMI_PP_CHECK_N(__VA_ARGS__))
 #define PUSHMI_PP_CHECK_N(x, n, ...) n
 #define PUSHMI_PP_PROBE(x) x, 1,
 #endif
@@ -293,52 +296,52 @@ PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN
 #define PUSHMI_PP_DEF_REQUIRES_BODY(...)                                       \
     <decltype(__VA_ARGS__, void())>()                                          \
     /**/
-#define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                      \
-  struct PUSHMI_PP_CAT(NAME, Concept) {                                       \
-    using Concept = PUSHMI_PP_CAT(NAME, Concept);                             \
-    PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                       \
-    PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                     \
-    static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__,)(                   \
-        __VA_ARGS__) {                                                        \
-      return 0;                                                               \
-    }                                                                         \
-    PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                         \
-    PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                     \
-    struct Eval {                                                             \
-      template <class C_ = Concept,                                           \
-        decltype(::folly::pushmi::concepts::detail::gcc_bugs(                 \
-            &C_::template Requires_<PUSHMI_PP_EXPAND ARGS>)) = nullptr>       \
-      static constexpr bool impl(int) noexcept {                              \
-        return true;                                                          \
-      }                                                                       \
-      static constexpr bool impl(long) noexcept {                             \
-        return false;                                                         \
-      }                                                                       \
-      explicit constexpr operator bool() const noexcept {                     \
-        return Eval::impl(0);                                                 \
-      }                                                                       \
-      constexpr auto operator!() const noexcept {                             \
-        return ::folly::pushmi::concepts::detail::Not<Eval>{};                \
-      }                                                                       \
-      template <class That>                                                   \
-      constexpr auto operator&&(That) const noexcept {                        \
-        return ::folly::pushmi::concepts::detail::And<Eval, That>{};          \
-      }                                                                       \
-      template <class That>                                                   \
-      constexpr auto operator||(That) const noexcept {                        \
-        return ::folly::pushmi::concepts::detail::Or<Eval, That>{};           \
-      }                                                                       \
-    };                                                                        \
-  };                                                                          \
-  namespace lazy {                                                            \
-  PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                       \
-  PUSHMI_INLINE_VAR constexpr auto NAME =                                     \
-      PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{};            \
-  }                                                                           \
-  PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                       \
-  PUSHMI_INLINE_VAR constexpr bool NAME =                                     \
-      static_cast<bool>(                                                      \
-          PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{})        \
+#define PUSHMI_PP_DECL_DEF_IMPL(TPARAM, NAME, ARGS, ...)                       \
+  struct PUSHMI_PP_CAT(NAME, Concept) {                                        \
+    using Concept = PUSHMI_PP_CAT(NAME, Concept);                              \
+    PUSHMI_PP_IGNORE_CXX2A_COMPAT_BEGIN                                        \
+    PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                      \
+    static auto Requires_ PUSHMI_PP_DEF_IMPL(__VA_ARGS__,)(                    \
+        __VA_ARGS__) {                                                         \
+      return 0;                                                                \
+    }                                                                          \
+    PUSHMI_PP_IGNORE_CXX2A_COMPAT_END                                          \
+    PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                      \
+    struct Eval {                                                              \
+      template <class C_ = Concept,                                            \
+        decltype(::folly::pushmi::concepts::detail::gcc_bugs(                  \
+            &C_::template Requires_<PUSHMI_PP_EXPAND ARGS>)) = nullptr>        \
+      static constexpr bool impl(int) noexcept {                               \
+        return true;                                                           \
+      }                                                                        \
+      static constexpr bool impl(long) noexcept {                              \
+        return false;                                                          \
+      }                                                                        \
+      explicit constexpr operator bool() const noexcept {                      \
+        return Eval::impl(0);                                                  \
+      }                                                                        \
+      constexpr auto operator!() const noexcept {                              \
+        return ::folly::pushmi::concepts::detail::Not<Eval>{};                 \
+      }                                                                        \
+      template <class That>                                                    \
+      constexpr auto operator&&(That) const noexcept {                         \
+        return ::folly::pushmi::concepts::detail::And<Eval, That>{};           \
+      }                                                                        \
+      template <class That>                                                    \
+      constexpr auto operator||(That) const noexcept {                         \
+        return ::folly::pushmi::concepts::detail::Or<Eval, That>{};            \
+      }                                                                        \
+    };                                                                         \
+  };                                                                           \
+  namespace lazy {                                                             \
+  PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                        \
+  PUSHMI_INLINE_VAR constexpr auto NAME =                                      \
+      PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{};             \
+  }                                                                            \
+  PUSHMI_PP_CAT(PUSHMI_PP_DEF_, TPARAM)                                        \
+  PUSHMI_INLINE_VAR constexpr bool NAME =                                      \
+      static_cast<bool>(                                                       \
+          PUSHMI_PP_CAT(NAME, Concept)::Eval<PUSHMI_PP_EXPAND ARGS>{})         \
   /**/
 #endif
 
@@ -562,7 +565,8 @@ struct Not {
 template <class T, class U>
 struct And {
   explicit constexpr operator bool() const noexcept {
-    return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), U, std::false_type>{});
+    return static_cast<bool>(
+        std::conditional_t<static_cast<bool>(T{}), U, std::false_type>{});
   }
   constexpr auto operator!() const noexcept {
     return Not<And>{};
@@ -580,7 +584,8 @@ struct And {
 template <class T, class U>
 struct Or {
   explicit constexpr operator bool() const noexcept {
-    return static_cast<bool>(std::conditional_t<static_cast<bool>(T{}), std::true_type, U>{});
+    return static_cast<bool>(
+        std::conditional_t<static_cast<bool>(T{}), std::true_type, U>{});
   }
   constexpr auto operator!() const noexcept {
     return Not<Or>{};

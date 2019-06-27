@@ -190,6 +190,14 @@ constexpr bool is_v = is_<T, C>::value;
 template <bool B, class T = void>
 using requires_ = std::enable_if_t<B, T>;
 
+template <class T, class Self, class Derived = Self>
+PUSHMI_PP_CONSTRAINED_USING(
+    static_cast<bool>(
+        not DerivedFrom<remove_cvref_t<T>, remove_cvref_t<Derived>> &&
+        not Same<remove_cvref_t<T>, remove_cvref_t<Self>>),
+    not_self_t =,
+    T);
+
 template <bool>
 struct Enable_ {};
 template <>
@@ -218,6 +226,21 @@ using identity_t = typename Enable_<sizeof...(Ts) == 1u>::
 template<class...Ts>
 using identity_or_void_t = typename Enable_<sizeof...(Ts) <= 1u>::
   template _type<FrontOrVoid_<Ts...>>::type;
+
+// inherit: a class that inherits from a bunch of bases
+template <class... Ts>
+struct inherit : Ts... {
+  inherit() = default;
+  constexpr inherit(Ts... ts) : Ts((Ts &&) ts)... {}
+};
+template <class T>
+struct inherit<T> : T {
+  inherit() = default;
+  explicit constexpr inherit(T t) : T((T &&) t) {}
+};
+template <>
+struct inherit<> {};
+
 } // namespace detail
 
 } // namespace pushmi

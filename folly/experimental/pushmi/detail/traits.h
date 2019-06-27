@@ -23,33 +23,33 @@ namespace folly {
 namespace pushmi {
 
 PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept Object,
-    requires (T* p) (
-      *p,
-      implicitly_convertible_to<const volatile void*>(p)
-    )
-);
+    template(class T) //
+    concept Object,
+    requires(T* p) ( //
+      *p, implicitly_convertible_to<const volatile void*>(p))//
+  );
 
 PUSHMI_CONCEPT_DEF(
-  template (class T, class... Args)
-  (concept Constructible)(T, Args...),
-    PUSHMI_PP_IS_CONSTRUCTIBLE(T, Args...)
-);
+    template(class T, class... Args) //
+    (concept Constructible)(T, Args...),
+    PUSHMI_PP_IS_CONSTRUCTIBLE(T, Args...));
 
 PUSHMI_CONCEPT_DEF(
-  template (class From, class To)
-  concept ConvertibleTo,
-    requires (From (&f)()) (
-      static_cast<To>(f())
-    ) && std::is_convertible<From, To>::value
-);
+    template(class From, class To) //
+    concept ExplicitlyConvertibleTo,
+    requires(From (&f)()) ( //
+      static_cast<To>(f()))
+  );
 
 PUSHMI_CONCEPT_DEF(
-  template (class T)
-  concept SemiMovable,
-    Object<T> && Constructible<T, T> && ConvertibleTo<T, T>
-);
+    template(class From, class To) //
+    concept ConvertibleTo,
+    ExplicitlyConvertibleTo<From, To>&& std::is_convertible<From, To>::value);
+
+PUSHMI_CONCEPT_DEF(
+    template(class T) //
+    concept SemiMovable,
+    Object<T>&& Constructible<T, T>&& ConvertibleTo<T, T>);
 
 } // namespace pushmi
 } // namespace folly
