@@ -39,7 +39,7 @@ class ManualExecutor : public DrivableExecutor,
                        public ScheduledExecutor,
                        public SequencedExecutor {
  public:
-  ~ManualExecutor();
+  ~ManualExecutor() override;
 
   void add(Func) override;
 

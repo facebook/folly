@@ -31,7 +31,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
  public:
   DefaultKeepAliveExecutor() : Executor() {}
 
-  virtual ~DefaultKeepAliveExecutor() {
+  virtual ~DefaultKeepAliveExecutor() override {
     DCHECK(!keepAlive_);
   }
 

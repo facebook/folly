@@ -32,7 +32,7 @@ class FiberManager;
 class SimpleLoopController : public LoopController {
  public:
   SimpleLoopController();
-  ~SimpleLoopController();
+  ~SimpleLoopController() override;
 
   /**
    * Run FiberManager loop; if no ready task are present,

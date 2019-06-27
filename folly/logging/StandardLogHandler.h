@@ -46,7 +46,7 @@ class StandardLogHandler : public LogHandler {
       std::shared_ptr<LogFormatter> formatter,
       std::shared_ptr<LogWriter> writer,
       LogLevel syncLevel = LogLevel::MAX_LEVEL);
-  ~StandardLogHandler();
+  ~StandardLogHandler() override;
 
   /**
    * Get the LogFormatter used by this handler.

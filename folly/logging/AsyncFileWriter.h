@@ -40,7 +40,7 @@ class AsyncFileWriter : public AsyncLogWriter {
    */
   explicit AsyncFileWriter(folly::File&& file);
 
-  ~AsyncFileWriter();
+  ~AsyncFileWriter() override;
 
   /**
    * Returns true if the output steam is a tty.

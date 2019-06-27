@@ -29,7 +29,7 @@ namespace folly {
  */
 class TimedDrivableExecutor : public DrivableExecutor {
  public:
-  ~TimedDrivableExecutor() noexcept {
+  ~TimedDrivableExecutor() noexcept override {
     // Drain on destruction so that if work is added here during the collapse
     // of a future train, it will propagate.
     drain();
