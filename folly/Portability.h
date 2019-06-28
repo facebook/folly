@@ -263,7 +263,13 @@ constexpr bool kIsSanitize = false;
 
 // We have compiler support for the newest of the new, but
 // MSVC doesn't tell us that.
+//
+// Clang pretends to be MSVC on Windows, but it refuses to compile
+// SSE4.2 intrinsics unless -march argument is specified.
+// So cannot unconditionally define __SSE4_2__ in clang.
+#ifndef __clang__
 #define __SSE4_2__ 1
+#endif
 
 #endif
 
