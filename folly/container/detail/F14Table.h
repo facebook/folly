@@ -1093,7 +1093,7 @@ class F14Table : public Policy {
     std::size_t tag;
     if (!isAvalanchingHasher()) {
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
-#if FOLLY_SSE
+#if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
       std::size_t c = _mm_crc32_u64(0, hash);
       tag = (c >> 24) | 0x80;
@@ -1144,7 +1144,7 @@ class F14Table : public Policy {
     uint8_t tag;
     if (!isAvalanchingHasher()) {
 #if FOLLY_F14_CRC_INTRINSIC_AVAILABLE
-#if FOLLY_SSE
+#if FOLLY_SSE_PREREQ(4, 2)
       // SSE4.2 CRC
       auto c = _mm_crc32_u32(0, hash);
       tag = static_cast<uint8_t>(~(c >> 25));
