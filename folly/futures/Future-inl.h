@@ -584,11 +584,8 @@ class DeferredExecutor final : public Executor {
     }
     DCHECK(state == State::EMPTY);
     func_ = std::move(func);
-    if (state_.compare_exchange_strong(
-            state,
-            State::HAS_FUNCTION,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
+    if (detail::compare_exchange_strong_release_acquire(
+            state_, state, State::HAS_FUNCTION)) {
       return;
     }
     DCHECK(state == State::DETACHED || state == State::HAS_EXECUTOR);
@@ -614,11 +611,8 @@ class DeferredExecutor final : public Executor {
     executor_ = std::move(executor);
     auto state = state_.load(std::memory_order_acquire);
     if (state == State::EMPTY &&
-        state_.compare_exchange_strong(
-            state,
-            State::HAS_EXECUTOR,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
+        detail::compare_exchange_strong_release_acquire(
+            state_, state, State::HAS_EXECUTOR)) {
       return;
     }
 
@@ -636,11 +630,8 @@ class DeferredExecutor final : public Executor {
     }
     auto state = state_.load(std::memory_order_acquire);
     if (state == State::EMPTY &&
-        state_.compare_exchange_strong(
-            state,
-            State::DETACHED,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
+        detail::compare_exchange_strong_release_acquire(
+            state_, state, State::DETACHED)) {
       return;
     }
 
