@@ -295,6 +295,21 @@ class AsyncUDPSocket : public EventHandler {
 
  protected:
   virtual ssize_t
+  recvmsg(NetworkSocket socket, msghdr* message, int flags) {
+    return netops::recvmsg(socket, message, flags);
+  }
+
+  virtual ssize_t recvfrom(
+    NetworkSocket socket,
+    void* buf,
+    size_t len,
+    int flags,
+    sockaddr* from,
+    socklen_t* fromlen) {
+    return netops::recvfrom(socket, buf, len, flags, from, fromlen);
+  }
+
+  virtual ssize_t
   sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
     return netops::sendmsg(socket, message, flags);
   }
@@ -326,15 +341,15 @@ class AsyncUDPSocket : public EventHandler {
 
   void failErrMessageRead(const AsyncSocketException& ex);
 
+  // EventHandler
+  void handlerReady(uint16_t events) noexcept override;
+
   // Non-null only when we are reading
   ReadCallback* readCallback_;
 
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
-
-  // EventHandler
-  void handlerReady(uint16_t events) noexcept override;
 
   void handleRead() noexcept;
   bool updateRegistration() noexcept;

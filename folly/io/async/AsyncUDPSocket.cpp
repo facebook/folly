@@ -495,7 +495,7 @@ size_t AsyncUDPSocket::handleErrMessages() noexcept {
   int ret;
   size_t num = 0;
   while (fd_ != NetworkSocket()) {
-    ret = netops::recvmsg(fd_, &msg, MSG_ERRQUEUE);
+    ret = recvmsg(fd_, &msg, MSG_ERRQUEUE);
     VLOG(5) << "AsyncSocket::handleErrMessages(): recvmsg returned " << ret;
 
     if (ret < 0) {
@@ -584,7 +584,7 @@ void AsyncUDPSocket::handleRead() noexcept {
   rawAddr->sa_family = localAddress_.getFamily();
 
   ssize_t bytesRead =
-      netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+      recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 
