@@ -1,0 +1,23 @@
+[manifest]
+name = mvfst
+fbsource_path = fbcode/quic
+shipit_project = mvfst
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookincubator/mvfst.git
+
+[build]
+builder = cmake
+subdir = .
+
+[cmake.defines]
+BUILD_TESTS = OFF
+
+[dependencies]
+folly
+fizz
+
+[shipit.pathmap]
+fbcode/quic/public_root = .
+fbcode/quic = quic
