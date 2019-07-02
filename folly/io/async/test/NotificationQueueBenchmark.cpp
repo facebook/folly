@@ -16,6 +16,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/NotificationQueue.h>
 #include <folly/synchronization/Baton.h>
 #include <condition_variable>
 #include <mutex>
@@ -24,6 +25,13 @@
 using namespace folly;
 
 static size_t constexpr kMaxRead = 20;
+
+class MockConsumer : public NotificationQueue<Func>::Consumer {
+ public:
+  void messageAvailable(Func&& message) noexcept override {
+    message();
+  }
+};
 
 void runTest(int iters, int numThreads) {
   BenchmarkSuspender susp;
@@ -73,6 +81,37 @@ void runTest(int iters, int numThreads) {
   for (auto& t : threads) {
     t.join();
   }
+}
+
+BENCHMARK(EnqueueBenchmark, n) {
+  BenchmarkSuspender suspender;
+  NotificationQueue<Func> queue;
+  suspender.dismiss();
+  for (unsigned int i = 0; i < n; ++i) {
+    queue.putMessage(Func());
+  }
+  suspender.rehire();
+}
+
+BENCHMARK(DequeueBenchmark, n) {
+  BenchmarkSuspender suspender;
+  NotificationQueue<Func> queue;
+  EventBase base;
+  MockConsumer consumer;
+  consumer.setMaxReadAtOnce(kMaxRead);
+  consumer.startConsumingInternal(&base, &queue);
+  for (unsigned int i = 0; i < n; ++i) {
+    queue.putMessage([]() {});
+  }
+  suspender.dismiss();
+  for (unsigned int i = 0; i <= (n / kMaxRead); ++i) {
+    consumer.handlerReady(0);
+  }
+  suspender.rehire();
+  if (queue.size() > 0) {
+    throw std::logic_error("This should not happen batching might be broken");
+  }
+  consumer.stopConsuming();
 }
 
 BENCHMARK_PARAM(runTest, 1)
