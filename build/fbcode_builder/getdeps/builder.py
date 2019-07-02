@@ -49,30 +49,13 @@ class BuilderBase(object):
             env = self.env
 
         if self.build_opts.is_windows():
-            # On Windows, the compiler is not available in the PATH by default
-            # so we need to run the vcvarsall script to populate the environment.
-            # We use a glob to find some version of this script as deployed with
-            # Visual Studio 2017.  This logic will need updating when we switch
-            # to a newer compiler.
-            vcvarsall = glob.glob(
-                os.path.join(
-                    os.environ["ProgramFiles(x86)"],
-                    "Microsoft Visual Studio",
-                    "2017",
-                    "*",
-                    "VC",
-                    "Auxiliary",
-                    "Build",
-                    "vcvarsall.bat",
-                )
-            )
-
-            if len(vcvarsall) > 0:
+            vcvarsall = self.build_opts.get_vcvars_path()
+            if vcvarsall is not None:
                 # Since it sets rather a large number of variables we mildly abuse
                 # the cmd quoting rules to assemble a command that calls the script
                 # to prep the environment and then triggers the actual command that
                 # we wanted to run.
-                cmd = [vcvarsall[0], "amd64", "&&"] + cmd
+                cmd = [vcvarsall, "amd64", "&&"] + cmd
 
         run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir)
 

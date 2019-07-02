@@ -368,6 +368,9 @@ def build_argparser():
         "--scratch-path", help="Where to maintain checkouts and build dirs"
     )
     common_args.add_argument(
+        "--vcvars-path", default=None, help="Path to the vcvarsall.bat on Windows."
+    )
+    common_args.add_argument(
         "--install-prefix",
         help=(
             "Where the final build products will be installed "

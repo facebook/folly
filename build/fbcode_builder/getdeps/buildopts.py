@@ -9,6 +9,7 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import base64
 import errno
+import glob
 import hashlib
 import ntpath
 import os
@@ -41,6 +42,7 @@ class BuildOptions(object):
         install_dir=None,
         num_jobs=0,
         use_shipit=False,
+        vcvars_path=None,
     ):
         """ fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                                  or for shipit-transformed repos, the build dir that
@@ -53,6 +55,7 @@ class BuildOptions(object):
             install_dir - where the project will ultimately be installed
             num_jobs - the level of concurrency to use while building
             use_shipit - use real shipit instead of the simple shipit transformer
+            vcvars_path - Path to external VS toolchain's vsvarsall.bat
         """
         if not num_jobs:
             import multiprocessing
@@ -83,12 +86,37 @@ class BuildOptions(object):
         self.fbcode_builder_dir = fbcode_builder_dir
         self.host_type = host_type
         self.use_shipit = use_shipit
+        if vcvars_path is None and is_windows():
+
+            # On Windows, the compiler is not available in the PATH by
+            # default so we need to run the vcvarsall script to populate the
+            # environment. We use a glob to find some version of this script
+            # as deployed with Visual Studio 2017.  This logic will need
+            # updating when we switch to a newer compiler.
+            vcvarsall = glob.glob(
+                os.path.join(
+                    os.environ["ProgramFiles(x86)"],
+                    "Microsoft Visual Studio",
+                    "2017",
+                    "*",
+                    "VC",
+                    "Auxiliary",
+                    "Build",
+                    "vcvarsall.bat",
+                )
+            )
+            vcvars_path = vcvarsall[0]
+
+        self.vcvars_path = vcvars_path
 
     def is_darwin(self):
         return self.host_type.is_darwin()
 
     def is_windows(self):
         return self.host_type.is_windows()
+
+    def get_vcvars_path(self):
+        return self.vcvars_path
 
     def is_linux(self):
         return self.host_type.is_linux()
@@ -310,4 +338,5 @@ def setup_build_options(args, host_type=None):
         install_dir=args.install_prefix,
         num_jobs=args.num_jobs,
         use_shipit=args.use_shipit,
+        vcvars_path=args.vcvars_path,
     )
