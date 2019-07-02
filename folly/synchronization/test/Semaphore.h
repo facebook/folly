@@ -77,6 +77,9 @@ class Semaphore {
   template <typename PrePost>
   void post(PrePost pre_post) {
     std::unique_lock<std::mutex> l{m_};
+    if (value_ == -size_t(1)) {
+      throw_exception<std::logic_error>("overflow");
+    }
     pre_post();
     if (!waiting_) {
       ++value_;
