@@ -111,7 +111,7 @@ using PolySelf = decltype(Access::template self_<Node, Tfx>());
  */
 using PolyDecay = detail::MetaQuote<std::decay_t>;
 
-#if !defined(__cpp_template_auto)
+#if !FOLLY_POLY_NTTP_AUTO
 
 /**
  * Use `FOLLY_POLY_MEMBERS(MEMS...)` on pre-C++17 compilers to specify a
