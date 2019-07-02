@@ -168,7 +168,7 @@ using If = MetaApply<impl::If_<If_>, Then, Else>;
  */
 template <template <class...> class C, class... Ts>
 class MetaDefer {
-  template <template <class...> class D = C, class = D<Ts...>>
+  template <class = C<Ts...>>
   static char (&try_(int))[1];
   static char (&try_(long))[2];
   struct Result {
