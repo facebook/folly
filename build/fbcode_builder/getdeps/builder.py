@@ -332,7 +332,14 @@ class CMakeBuilder(BuilderBase):
             output = subprocess.check_output(
                 [ctest, "--show-only=json-v1"], env=env, cwd=self.build_dir
             )
-            data = json.loads(output.decode("utf-8"))
+            try:
+                data = json.loads(output.decode("utf-8"))
+            except ValueError as exc:
+                raise Exception(
+                    "Failed to decode cmake test info using %s: %s.  Output was: %r"
+                    % (ctest, str(exc), output)
+                )
+
             tests = []
             machine_suffix = self.build_opts.host_type.as_tuple_string()
             for test in data["tests"]:
