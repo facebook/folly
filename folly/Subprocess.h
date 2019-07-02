@@ -94,12 +94,7 @@
 
 #include <signal.h>
 #include <sys/types.h>
-
-#if __APPLE__
 #include <sys/wait.h>
-#else
-#include <wait.h>
-#endif
 
 #include <exception>
 #include <string>
