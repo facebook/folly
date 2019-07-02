@@ -26,11 +26,8 @@ namespace coro {
 namespace detail {
 
 template <typename T>
-struct _is_coroutine_handle : std::false_type {};
-
-template <typename T>
-struct _is_coroutine_handle<std::experimental::coroutine_handle<T>>
-    : std::true_type {};
+using _is_coroutine_handle =
+    is_instantiation_of<std::experimental::coroutine_handle, T>;
 
 template <typename T>
 struct _is_valid_await_suspend_return_type : folly::Disjunction<

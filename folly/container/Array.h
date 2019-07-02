@@ -26,10 +26,8 @@
 namespace folly {
 
 namespace array_detail {
-template <typename>
-struct is_ref_wrapper : std::false_type {};
-template <typename T>
-struct is_ref_wrapper<std::reference_wrapper<T>> : std::true_type {};
+template <class T>
+using is_ref_wrapper = detail::is_instantiation_of<std::reference_wrapper, T>;
 
 template <typename T>
 using not_ref_wrapper =

@@ -24,6 +24,7 @@
 #include <folly/Executor.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
+#include <folly/Traits.h>
 #include <folly/Try.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Traits.h>
@@ -481,9 +482,7 @@ inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
 
 namespace detail {
 template <typename T>
-struct is_task : std::false_type {};
-template <typename T>
-struct is_task<Task<T>> : std::true_type {};
+using is_task = detail::is_instantiation_of<Task, T>;
 
 template <typename F, typename... A, typename F_, typename... A_>
 invoke_result_t<F, A...> co_invoke_(F_ f, A_... a) {

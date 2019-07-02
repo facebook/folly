@@ -213,6 +213,24 @@ struct like_<Src&&> {
   template <typename Dst>
   using apply = typename like_<Src>::template apply<Dst>&&;
 };
+
+/**
+ * A type trait to check if a given type is an instantiation of a class
+ * template.
+ *
+ * Note that this only works with template type parameters.
+ * It does not work when mixing type and non-type template parameters.
+ * It also does not work with alias templates as you cannot pass an alias
+ * template as a template template parameter.
+ */
+template <template <typename...> class, typename>
+struct is_instantiation_of  : std::false_type {};
+
+template <template <typename...> class C, typename... Ts>
+struct is_instantiation_of<C, C<Ts...>> : std::true_type {};
+
+template <template <typename...> class C, typename T>
+constexpr bool is_instantiation_of_v = is_instantiation_of<C, T>::value;
 } // namespace detail
 
 //  mimic: like_t, p0847r0
