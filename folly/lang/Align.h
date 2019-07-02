@@ -31,7 +31,7 @@ constexpr size_t max_align_(std::size_t a) {
 }
 template <typename... Es>
 constexpr std::size_t max_align_(std::size_t a, std::size_t e, Es... es) {
-  return !(a < e) ? a : max_align_(e, es...);
+  return !(a < e) ? max_align_(a, es...) : max_align_(e, es...);
 }
 template <typename... Ts>
 struct max_align_t_ {
