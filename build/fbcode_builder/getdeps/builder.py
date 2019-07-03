@@ -86,39 +86,7 @@ class BuilderBase(object):
     def _compute_env(self, install_dirs):
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
-        env = self.env.copy()
-
-        lib_path = None
-        if self.build_opts.is_darwin():
-            lib_path = "DYLD_LIBRARY_PATH"
-        elif self.build_opts.is_linux():
-            lib_path = "LD_LIBRARY_PATH"
-        else:
-            lib_path = None
-
-        for d in install_dirs:
-            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
-
-            pkgconfig = os.path.join(d, "lib/pkgconfig")
-            if os.path.exists(pkgconfig):
-                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
-
-            # Allow resolving shared objects built earlier (eg: zstd
-            # doesn't include the full path to the dylib in its linkage
-            # so we need to give it an assist)
-            if lib_path:
-                for lib in ["lib", "lib64"]:
-                    libdir = os.path.join(d, lib)
-                    if os.path.exists(libdir):
-                        add_path_entry(env, lib_path, libdir)
-
-            # Allow resolving binaries (eg: cmake, ninja) and dlls
-            # built by earlier steps
-            bindir = os.path.join(d, "bin")
-            if os.path.exists(bindir):
-                add_path_entry(env, "PATH", bindir, append=False)
-
-        return env
+        return self.build_opts.compute_env_for_install_dirs(install_dirs, env=self.env)
 
 
 class MakeBuilder(BuilderBase):

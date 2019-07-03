@@ -16,7 +16,7 @@ import os
 import subprocess
 import tempfile
 
-from .envfuncs import path_search
+from .envfuncs import Env, add_path_entry, path_search
 from .platform import HostType, is_windows
 
 
@@ -189,6 +189,44 @@ class BuildOptions(object):
         inst_dir = os.path.join(self.install_dir, directory)
 
         return {"build_dir": build_dir, "inst_dir": inst_dir, "hash": hash}
+
+    def compute_env_for_install_dirs(self, install_dirs, env=None):
+        if env:
+            env = env.copy()
+        else:
+            env = Env()
+
+        lib_path = None
+        if self.is_darwin():
+            lib_path = "DYLD_LIBRARY_PATH"
+        elif self.is_linux():
+            lib_path = "LD_LIBRARY_PATH"
+        else:
+            lib_path = None
+
+        for d in install_dirs:
+            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+
+            pkgconfig = os.path.join(d, "lib/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
+            # Allow resolving shared objects built earlier (eg: zstd
+            # doesn't include the full path to the dylib in its linkage
+            # so we need to give it an assist)
+            if lib_path:
+                for lib in ["lib", "lib64"]:
+                    libdir = os.path.join(d, lib)
+                    if os.path.exists(libdir):
+                        add_path_entry(env, lib_path, libdir)
+
+            # Allow resolving binaries (eg: cmake, ninja) and dlls
+            # built by earlier steps
+            bindir = os.path.join(d, "bin")
+            if os.path.exists(bindir):
+                add_path_entry(env, "PATH", bindir, append=False)
+
+        return env
 
 
 def list_win32_subst_letters():
