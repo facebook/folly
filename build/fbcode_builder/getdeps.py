@@ -16,6 +16,7 @@ import subprocess
 import sys
 
 from getdeps.buildopts import setup_build_options
+from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
 from getdeps.load import load_project, manifests_in_dependency_order
 from getdeps.manifest import ManifestParser
@@ -292,6 +293,64 @@ class BuildCmd(SubCmd):
                 "and helps to avoid waiting for relatively "
                 "slow up-to-date-ness checks"
             ),
+        )
+        parser.add_argument(
+            "--enable-tests",
+            action="store_true",
+            default=False,
+            help=(
+                "For the named project, build tests so that the test command "
+                "is able to execute tests"
+            ),
+        )
+        parser.add_argument(
+            "--schedule-type", help="Indicates how the build was activated"
+        )
+
+
+@cmd("fixup-dyn-deps", "Adjusts dynamic dependencies for packaging purposes")
+class FixupDeps(SubCmd):
+    def run(self, args):
+        opts = setup_build_options(args)
+
+        manifest = load_project(opts, args.project)
+
+        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
+        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        manifests_by_name = {m.name: m for m in projects}
+
+        # Accumulate the install directories so that the build steps
+        # can find their dep installation
+        install_dirs = []
+
+        for m in projects:
+            ctx = dict(ctx)
+            if args.enable_tests and m.name == manifest.name:
+                ctx["test"] = "on"
+            else:
+                ctx["test"] = "off"
+            fetcher = m.create_fetcher(opts, ctx)
+
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            inst_dir = dirs["inst_dir"]
+
+            install_dirs.append(inst_dir)
+
+            if m == manifest:
+                dep_munger = create_dyn_dep_munger(opts, install_dirs)
+                dep_munger.process_deps(args.destdir, args.final_install_prefix)
+
+    def setup_parser(self, parser):
+        parser.add_argument(
+            "project",
+            help=(
+                "name of the project or path to a manifest "
+                "file describing the project"
+            ),
+        )
+        parser.add_argument("destdir", help=("Where to copy the fixed up executables"))
+        parser.add_argument(
+            "--final-install-prefix", help=("specify the final installation prefix")
         )
         parser.add_argument(
             "--enable-tests",
