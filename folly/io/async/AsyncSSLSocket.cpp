@@ -67,8 +67,18 @@ static SpinLock dummyCtxLock;
 const size_t MAX_STACK_BUF_SIZE = 2048;
 
 // This converts "illegal" shutdowns into ZERO_RETURN
-inline bool zero_return(int error, int rc) {
-  return (error == SSL_ERROR_ZERO_RETURN || (rc == 0 && errno == 0));
+inline bool zero_return(int error, int rc, int errno_copy) {
+  if (error == SSL_ERROR_ZERO_RETURN || (rc == 0 && errno_copy == 0)) {
+    return true;
+  }
+#ifdef _WIN32
+  // on windows underlying TCP socket may error with this code
+  // if the sending/receiving client crashes or is killed
+  if (error == SSL_ERROR_SYSCALL && errno_copy == WSAECONNRESET) {
+    return true;
+  }
+#endif
+  return false;
 }
 
 class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
@@ -1372,7 +1382,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
           READ_ERROR,
           std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
     } else {
-      if (zero_return(error, bytes)) {
+      if (zero_return(error, bytes, errno)) {
         return ReadResult(bytes);
       }
       auto errError = ERR_get_error();
@@ -1432,7 +1442,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
         WRITE_ERROR,
         std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
-    if (zero_return(error, rc)) {
+    if (zero_return(error, rc, errno)) {
       return WriteResult(0);
     }
     auto errError = ERR_get_error();
