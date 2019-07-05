@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import glob
 import os
 import re
 import shutil
@@ -94,7 +95,7 @@ class DepBase(object):
             return dep
         d = os.path.basename(dep)
         for inst_dir in self.install_dirs:
-            for libdir in ["lib", "lib64"]:
+            for libdir in ["bin", "lib", "lib64"]:
                 candidate = os.path.join(inst_dir, libdir, d)
                 if os.path.exists(candidate):
                     return candidate
@@ -109,6 +110,85 @@ class DepBase(object):
         return objs
 
     def is_objfile(self, objfile):
+        return True
+
+
+class WinDeps(DepBase):
+    def __init__(self, buildopts, install_dirs):
+        super(WinDeps, self).__init__(buildopts, install_dirs)
+        self.dumpbin = self.find_dumpbin()
+
+    def find_dumpbin(self):
+        # Looking for dumpbin in the following hardcoded paths.
+        # The registry option to find the install dir doesn't work anymore.
+        globs = [
+            (
+                "C:/Program Files (x86)/"
+                "Microsoft Visual Studio/"
+                "*/BuildTools/VC/Tools/"
+                "MSVC/*/bin/Hostx64/x64/dumpbin.exe"
+            ),
+            (
+                "C:/Program Files (x86)/"
+                "Microsoft Visual Studio/"
+                "*/Community/VC/Tools/"
+                "MSVC/*/bin/Hostx64/x64/dumpbin.exe"
+            ),
+            (
+                "C:/Program Files (x86)/"
+                "Common Files/"
+                "Microsoft/Visual C++ for Python/*/"
+                "VC/bin/dumpbin.exe"
+            ),
+            ("c:/Program Files (x86)/Microsoft Visual Studio */VC/bin/dumpbin.exe"),
+        ]
+        for pattern in globs:
+            for exe in glob.glob(pattern):
+                return exe
+
+        raise RuntimeError("could not find dumpbin.exe")
+
+    def list_dynamic_deps(self, exe):
+        deps = []
+        print("Resolve deps for %s" % exe)
+        output = subprocess.check_output(
+            [self.dumpbin, "/nologo", "/dependents", exe]
+        ).decode("utf-8")
+
+        lines = output.split("\n")
+        for line in lines:
+            m = re.match("\\s+(\\S+.dll)", line, re.IGNORECASE)
+            if m:
+                deps.append(m.group(1).lower())
+
+        return deps
+
+    def rewrite_dep(self, objfile, depname, old_dep, new_dep):
+        # We can't rewrite on windows, but we will
+        # place the deps alongside the exe so that
+        # they end up in the search path
+        pass
+
+    # These are the Windows system dll, which we don't want to copy while
+    # packaging.
+    SYSTEM_DLLS = set(  # noqa: C405
+        [
+            "advapi32.dll",
+            "dbghelp.dll",
+            "kernel32.dll",
+            "msvcp140.dll",
+            "vcruntime140.dll",
+            "ws2_32.dll",
+            "ntdll.dll",
+            "shlwapi.dll",
+        ]
+    )
+
+    def interesting_dep(self, d):
+        if "api-ms-win-crt" in d:
+            return False
+        if d in self.SYSTEM_DLLS:
+            return False
         return True
 
 
@@ -199,4 +279,4 @@ def create_dyn_dep_munger(buildopts, install_dirs):
     if buildopts.is_darwin():
         return MachDeps(buildopts, install_dirs)
     if buildopts.is_windows():
-        return DepBase(buildopts, install_dirs)
+        return WinDeps(buildopts, install_dirs)
