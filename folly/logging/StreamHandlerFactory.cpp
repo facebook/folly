@@ -22,40 +22,32 @@
 
 namespace folly {
 
-class StreamHandlerFactory::WriterFactory
-    : public StandardLogHandlerFactory::WriterFactory {
- public:
-  bool processOption(StringPiece name, StringPiece value) override {
-    if (name == "stream") {
-      stream_ = value.str();
-      return true;
-    }
-    return fileWriterFactory_.processOption(name, value);
+bool StreamHandlerFactory::WriterFactory::processOption(
+    StringPiece name,
+    StringPiece value) {
+  if (name == "stream") {
+    stream_ = value.str();
+    return true;
+  }
+  return fileWriterFactory_.processOption(name, value);
+}
+
+std::shared_ptr<LogWriter> StreamHandlerFactory::WriterFactory::createWriter() {
+  // Get the output file to use
+  File outputFile;
+  if (stream_.empty()) {
+    throw std::invalid_argument("no stream name specified for stream handler");
+  } else if (stream_ == "stderr") {
+    outputFile = File{STDERR_FILENO, /* ownsFd */ false};
+  } else if (stream_ == "stdout") {
+    outputFile = File{STDOUT_FILENO, /* ownsFd */ false};
+  } else {
+    throw std::invalid_argument(to<std::string>(
+        "unknown stream \"", stream_, "\": expected one of stdout or stderr"));
   }
 
-  std::shared_ptr<LogWriter> createWriter() override {
-    // Get the output file to use
-    File outputFile;
-    if (stream_.empty()) {
-      throw std::invalid_argument(
-          "no stream name specified for stream handler");
-    } else if (stream_ == "stderr") {
-      outputFile = File{STDERR_FILENO, /* ownsFd */ false};
-    } else if (stream_ == "stdout") {
-      outputFile = File{STDOUT_FILENO, /* ownsFd */ false};
-    } else {
-      throw std::invalid_argument(to<std::string>(
-          "unknown stream \"",
-          stream_,
-          "\": expected one of stdout or stderr"));
-    }
-
-    return fileWriterFactory_.createWriter(std::move(outputFile));
-  }
-
-  std::string stream_;
-  FileWriterFactory fileWriterFactory_;
-};
+  return fileWriterFactory_.createWriter(std::move(outputFile));
+}
 
 std::shared_ptr<LogHandler> StreamHandlerFactory::createHandler(
     const Options& options) {

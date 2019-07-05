@@ -106,7 +106,14 @@ std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
     throw std::invalid_argument(
         to<string>("unknown log formatter type \"", *formatterType, "\""));
   }
+  return createHandler(type, writerFactory, formatterFactory.get(), options);
+}
 
+std::shared_ptr<StandardLogHandler> StandardLogHandlerFactory::createHandler(
+    StringPiece type,
+    WriterFactory* writerFactory,
+    FormatterFactory* formatterFactory,
+    const Options& options) {
   Optional<LogLevel> logLevel;
   Optional<LogLevel> syncLevel;
 

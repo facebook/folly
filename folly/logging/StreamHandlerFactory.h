@@ -15,7 +15,9 @@
  */
 #pragma once
 
+#include <folly/logging/FileWriterFactory.h>
 #include <folly/logging/LogHandlerFactory.h>
+#include <folly/logging/StandardLogHandlerFactory.h>
 
 namespace folly {
 
@@ -37,8 +39,15 @@ class StreamHandlerFactory : public LogHandlerFactory {
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;
 
- private:
-  class WriterFactory;
+  class WriterFactory : public StandardLogHandlerFactory::WriterFactory {
+   public:
+    bool processOption(StringPiece name, StringPiece value) override;
+    std::shared_ptr<LogWriter> createWriter() override;
+
+   private:
+    std::string stream_;
+    FileWriterFactory fileWriterFactory_;
+  };
 };
 
 } // namespace folly

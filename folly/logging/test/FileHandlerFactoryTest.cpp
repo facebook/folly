@@ -357,3 +357,47 @@ TEST(StreamHandlerFactory, errors) {
         "unknown option \"foo\"");
   }
 }
+
+TEST(StreamHandlerFactory, writerFactory) {
+  StreamHandlerFactory::WriterFactory factory;
+  factory.processOption("stream", "stderr");
+  {
+    auto writer = factory.createWriter();
+    checkAsyncWriter(
+        writer.get(), STDERR_FILENO, AsyncFileWriter::kDefaultMaxBufferSize);
+  }
+
+  // For duplicate option, prefer the latter
+  factory.processOption("stream", "stdout");
+  {
+    auto writer = factory.createWriter();
+    checkAsyncWriter(
+        writer.get(), STDOUT_FILENO, AsyncFileWriter::kDefaultMaxBufferSize);
+  }
+}
+
+TEST(StreamHandlerFactory, writerFactoryError) {
+  {
+    StreamHandlerFactory::WriterFactory factory;
+    factory.processOption("stream", "nope");
+    EXPECT_THROW_RE(
+        factory.createWriter(),
+        std::invalid_argument,
+        "^unknown stream \"nope\": expected one of stdout or stderr$");
+  }
+  {
+    StreamHandlerFactory::WriterFactory factory;
+    EXPECT_THROW_RE(
+        factory.createWriter(),
+        std::invalid_argument,
+        "^no stream name specified for stream handler$");
+  }
+  {
+    StreamHandlerFactory::WriterFactory factory;
+    factory.processOption("stream", "");
+    EXPECT_THROW_RE(
+        factory.createWriter(),
+        std::invalid_argument,
+        "^no stream name specified for stream handler$");
+  }
+}
