@@ -14,6 +14,7 @@ import hashlib
 import ntpath
 import os
 import subprocess
+import sys
 import tempfile
 
 from .envfuncs import Env, add_path_entry, path_search
@@ -364,7 +365,9 @@ def setup_build_options(args, host_type=None):
 
         if is_windows():
             subst = create_subst_path(scratch_dir)
-            print("Mapping scratch dir %s -> %s" % (scratch_dir, subst))
+            print(
+                "Mapping scratch dir %s -> %s" % (scratch_dir, subst), file=sys.stderr
+            )
             scratch_dir = subst
 
     host_type = _check_host_type(args, host_type)
