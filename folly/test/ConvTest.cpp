@@ -1063,14 +1063,70 @@ TEST(Conv, ConversionErrorFloatToInt) {
 }
 
 TEST(Conv, TryStringToBool) {
-  auto rv1 = folly::tryTo<bool>("xxxx");
-  EXPECT_FALSE(rv1.hasValue());
-  auto rv2 = folly::tryTo<bool>("false");
-  EXPECT_TRUE(rv2.hasValue());
-  EXPECT_FALSE(rv2.value());
-  auto rv3 = folly::tryTo<bool>("yes");
-  EXPECT_TRUE(rv3.hasValue());
-  EXPECT_TRUE(rv3.value());
+  for (const char* bad : {
+           "fals",
+           "tru",
+           "false other string",
+           "true other string",
+           "0x1",
+           "2",
+           "10",
+           "nu",
+           "da",
+           "of",
+           "onn",
+           "yep",
+           "nope",
+       }) {
+    auto rv = folly::tryTo<bool>(bad);
+    EXPECT_FALSE(rv.hasValue()) << bad;
+  }
+
+  for (const char* falsy : {
+           "f",
+           "F",
+           "false",
+           "False",
+           "FALSE",
+           " false ",
+           "0",
+           "00",
+           "n",
+           "N",
+           "no",
+           "No",
+           "NO",
+           "off",
+           "Off",
+           "OFF",
+       }) {
+    auto rv = folly::tryTo<bool>(falsy);
+    EXPECT_TRUE(rv.hasValue()) << falsy;
+    EXPECT_FALSE(rv.value()) << falsy;
+  }
+
+  for (const char* truthy : {
+           "t",
+           "T",
+           "true",
+           "True",
+           "TRUE",
+           " true ",
+           "1",
+           "01",
+           "y",
+           "Y",
+           "yes",
+           "Yes",
+           "YES",
+           "on",
+           "On",
+           "ON",
+       }) {
+    auto rv = folly::tryTo<bool>(truthy);
+    EXPECT_TRUE(rv.hasValue()) << truthy;
+    EXPECT_TRUE(rv.value()) << truthy;
+  }
 }
 
 TEST(Conv, TryStringToInt) {
