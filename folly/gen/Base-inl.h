@@ -2542,10 +2542,30 @@ class RangeV3CopySource
   static constexpr bool infinite = false;
 };
 
-struct container_to_gen_fn {};
-struct rangev3_to_gen_fn {};
-struct rangev3_to_gen_copy_fn {};
-struct rangev3_will_be_consumed_fn {};
+struct container_to_gen_fn {
+  template <typename Container>
+  friend auto operator|(Container&& c, container_to_gen_fn) {
+    return gen::from(std::forward<Container>(c));
+  }
+};
+
+struct rangev3_to_gen_fn {
+  template <typename Range>
+  friend auto operator|(Range&& r, rangev3_to_gen_fn) {
+    using DecayedRange = std::decay_t<Range>;
+    using DecayedValue = std::decay_t<decltype(*r.begin())>;
+    return RangeV3Source<DecayedRange, DecayedValue>(r);
+  }
+};
+
+struct rangev3_to_gen_copy_fn {
+  template <typename Range>
+  friend auto operator|(Range&& r, rangev3_to_gen_copy_fn) {
+    using RangeDecay = std::decay_t<Range>;
+    using Value = std::decay_t<decltype(*r.begin())>;
+    return RangeV3CopySource<RangeDecay, Value>(std::move(r));
+  }
+};
 #endif // FOLLY_USE_RANGEV3
 } // namespace detail
 
@@ -2560,25 +2580,6 @@ struct rangev3_will_be_consumed_fn {};
 constexpr detail::container_to_gen_fn from_container;
 constexpr detail::rangev3_to_gen_fn from_rangev3;
 constexpr detail::rangev3_to_gen_copy_fn from_rangev3_copy;
-
-template <typename Container>
-auto operator|(Container&& c, detail::container_to_gen_fn) {
-  return gen::from(std::forward<Container>(c));
-}
-
-template <typename Range>
-auto operator|(Range&& r, detail::rangev3_to_gen_fn) {
-  using DecayedRange = std::decay_t<Range>;
-  using DecayedValue = std::decay_t<decltype(*r.begin())>;
-  return detail::RangeV3Source<DecayedRange, DecayedValue>(r);
-}
-
-template <typename Range>
-auto operator|(Range&& r, detail::rangev3_to_gen_copy_fn) {
-  using RangeDecay = std::decay_t<Range>;
-  using Value = std::decay_t<decltype(*r.begin())>;
-  return detail::RangeV3CopySource<RangeDecay, Value>(std::move(r));
-}
 
 template <typename Range>
 auto rangev3_to_gen_call(Range&& r) {
