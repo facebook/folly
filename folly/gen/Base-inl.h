@@ -2542,25 +2542,25 @@ class RangeV3CopySource
   static constexpr bool infinite = false;
 };
 
-struct container_to_gen_fn {
+struct from_container_fn {
   template <typename Container>
-  friend auto operator|(Container&& c, container_to_gen_fn) {
+  friend auto operator|(Container&& c, from_container_fn) {
     return gen::from(std::forward<Container>(c));
   }
 };
 
-struct rangev3_to_gen_fn {
+struct from_rangev3_fn {
   template <typename Range>
-  friend auto operator|(Range&& r, rangev3_to_gen_fn) {
+  friend auto operator|(Range&& r, from_rangev3_fn) {
     using DecayedRange = std::decay_t<Range>;
     using DecayedValue = std::decay_t<decltype(*r.begin())>;
     return RangeV3Source<DecayedRange, DecayedValue>(r);
   }
 };
 
-struct rangev3_to_gen_copy_fn {
+struct from_rangev3_copy_fn {
   template <typename Range>
-  friend auto operator|(Range&& r, rangev3_to_gen_copy_fn) {
+  friend auto operator|(Range&& r, from_rangev3_copy_fn) {
     using RangeDecay = std::decay_t<Range>;
     using Value = std::decay_t<decltype(*r.begin())>;
     return RangeV3CopySource<RangeDecay, Value>(std::move(r));
@@ -2573,16 +2573,16 @@ struct rangev3_to_gen_copy_fn {
 /*
  ******************************************************************************
  * Pipe fittings between a container/range-v3 and a folly::gen.
- * Example: vec | container_to_gen | folly::gen::filter(...);
- * Example: vec | ranges::view::filter(...) | rangev3_to_gen | folly::gen::xxx;
+ * Example: vec | gen::from_container | folly::gen::filter(...);
+ * Example: vec | ranges::view::filter(...) | gen::from_rangev3 | gen::xxx;
  ******************************************************************************
  */
-constexpr detail::container_to_gen_fn from_container;
-constexpr detail::rangev3_to_gen_fn from_rangev3;
-constexpr detail::rangev3_to_gen_copy_fn from_rangev3_copy;
+constexpr detail::from_container_fn from_container;
+constexpr detail::from_rangev3_fn from_rangev3;
+constexpr detail::from_rangev3_copy_fn from_rangev3_copy;
 
 template <typename Range>
-auto rangev3_to_gen_call(Range&& r) {
+auto from_rangev3_call(Range&& r) {
   using Value = std::decay_t<decltype(*r.begin())>;
   return detail::RangeV3Source<Range, Value>(r);
 }
