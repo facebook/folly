@@ -34,8 +34,6 @@
 
 #include <atomic>
 
-#include <boost/iterator/iterator_facade.hpp>
-
 #include <folly/ThreadCachedInt.h>
 #include <folly/Utility.h>
 #include <folly/hash/Hash.h>
