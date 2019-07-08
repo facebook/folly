@@ -32,6 +32,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
+#include <folly/test/TestUtils.h>
 
 using folly::MicroLock;
 using folly::MicroSpinLock;
@@ -391,6 +392,57 @@ TEST(SmallLocks, MicroSpinLockStressTestTryLockHardwareConcurrency) {
   auto duration = std::chrono::seconds{FLAGS_stress_test_seconds};
   auto threads = std::thread::hardware_concurrency();
   simpleStressTestTryLock<MicroSpinLock>(duration, threads);
+}
+
+TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
+  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+
+  uint8_t val = 0;
+  static_assert(sizeof(uint8_t) == sizeof(MicroSpinLock), "sanity check");
+  // make sure TSAN handles this case too:
+  // same lock but initialized via setting a value
+  for (int i = 0; i < 10; i++) {
+    val = 0;
+    std::lock_guard<MicroSpinLock> g(*reinterpret_cast<MicroSpinLock*>(&val));
+  }
+
+  {
+    MicroSpinLock a;
+    MicroSpinLock b;
+    a.init();
+    b.init();
+    {
+      std::lock_guard<MicroSpinLock> ga(a);
+      std::lock_guard<MicroSpinLock> gb(b);
+    }
+    {
+      std::lock_guard<MicroSpinLock> gb(b);
+      EXPECT_DEATH(
+          [&]() { std::lock_guard<MicroSpinLock> ga(a); }(),
+          "Cycle in lock order graph");
+    }
+  }
+
+  {
+    uint8_t a = 0;
+    uint8_t b = 0;
+    {
+      std::lock_guard<MicroSpinLock> ga(*reinterpret_cast<MicroSpinLock*>(&a));
+      std::lock_guard<MicroSpinLock> gb(*reinterpret_cast<MicroSpinLock*>(&b));
+    }
+
+    a = 0;
+    b = 0;
+    {
+      std::lock_guard<MicroSpinLock> gb(*reinterpret_cast<MicroSpinLock*>(&b));
+      EXPECT_DEATH(
+          [&]() {
+            std::lock_guard<MicroSpinLock> ga(
+                *reinterpret_cast<MicroSpinLock*>(&a));
+          }(),
+          "Cycle in lock order graph");
+    }
+  }
 }
 
 TEST(SmallLocks, PicoSpinLockStressTestTryLockTwoThreads) {
