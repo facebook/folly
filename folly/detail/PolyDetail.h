@@ -695,14 +695,19 @@ struct BasePtr {
   VTable<I> const* vptr_;
 };
 
-template <class I, class T, std::enable_if_t<inSitu<T>(), int> = 0>
-constexpr void* (*getOps() noexcept)(Op, Data*, void*) {
+template <class I, class T>
+constexpr void* (*getOpsImpl(std::true_type) noexcept)(Op, Data*, void*) {
   return &execInSitu<I, T>;
 }
 
-template <class I, class T, std::enable_if_t<!inSitu<T>(), int> = 0>
-constexpr void* (*getOps() noexcept)(Op, Data*, void*) {
+template <class I, class T>
+constexpr void* (*getOpsImpl(std::false_type) noexcept)(Op, Data*, void*) {
   return &execOnHeap<I, T>;
+}
+
+template <class I, class T>
+constexpr void* (*getOps() noexcept)(Op, Data*, void*) {
+  return getOpsImpl<I, T>(std::integral_constant<bool, inSitu<T>()>{});
 }
 
 template <class I, FOLLY_AUTO... Arch, class... S>
