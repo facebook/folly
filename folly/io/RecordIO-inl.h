@@ -18,17 +18,17 @@
 #error This file may only be included from folly/io/RecordIO.h
 #endif
 
-#include <boost/iterator/iterator_facade.hpp>
-
+#include <folly/detail/Iterators.h>
 #include <folly/hash/SpookyHashV2.h>
 
 namespace folly {
 
-class RecordIOReader::Iterator : public boost::iterator_facade<
+class RecordIOReader::Iterator : public detail::IteratorFacade<
                                      RecordIOReader::Iterator,
                                      const std::pair<ByteRange, off_t>,
-                                     boost::forward_traversal_tag> {
-  friend class boost::iterator_core_access;
+                                     std::forward_iterator_tag> {
+  friend class detail::
+      IteratorFacade<Iterator, value_type, std::forward_iterator_tag>;
   friend class RecordIOReader;
 
  private:

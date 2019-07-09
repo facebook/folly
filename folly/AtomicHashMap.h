@@ -81,8 +81,6 @@
 #pragma once
 #define FOLLY_ATOMICHASHMAP_H_
 
-#include <boost/iterator/iterator_facade.hpp>
-
 #include <atomic>
 #include <functional>
 #include <stdexcept>
