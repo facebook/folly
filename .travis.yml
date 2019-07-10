@@ -40,6 +40,3 @@ script:
   # We don't want to write the script inline because of Travis kludginess --
   # it looks like it escapes " and \ in scripts when using `matrix:`.
   - ./build/fbcode_builder/travis_docker_build.sh
-
-notifications:
-  webhooks: https://code.facebook.com/travis/webhook/
