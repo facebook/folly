@@ -2367,7 +2367,7 @@ auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
 
 /** Similar to collectAny, collectAnyWithoutException return the first Future to
  * complete without exceptions. If none of the future complete without
- * excpetions, the last exception will be returned as a result.
+ * exceptions, the last exception will be returned as a result.
  */
 template <class InputIterator>
 SemiFuture<std::pair<
