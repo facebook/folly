@@ -191,6 +191,13 @@ class WinDeps(DepBase):
             return False
         return True
 
+    def is_objfile(self, objfile):
+        if not os.path.isfile(objfile):
+            return False
+        if objfile.lower().endswith(".exe"):
+            return True
+        return False
+
 
 class ElfDeps(DepBase):
     def __init__(self, buildopts, install_dirs):
