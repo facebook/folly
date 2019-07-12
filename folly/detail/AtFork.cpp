@@ -19,8 +19,10 @@
 #include <list>
 #include <mutex>
 
+#include <folly/ScopeGuard.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/PThread.h>
+#include <folly/synchronization/SanitizeThread.h>
 
 namespace folly {
 
@@ -70,6 +72,20 @@ class AtForkList {
   }
 
   static void child() noexcept {
+    // if we fork a multithreaded process
+    // some of the TSAN mutexes might be locked
+    // so we just enable ignores for everything
+    // while handling the child callbacks
+    // This might still be an issue if we do not exec right away
+    annotate_ignore_reads_begin(__FILE__, __LINE__);
+    annotate_ignore_writes_begin(__FILE__, __LINE__);
+    annotate_ignore_sync_begin(__FILE__, __LINE__);
+
+    auto reenableAnnotationsGuard = folly::makeGuard([] {
+      annotate_ignore_reads_end(__FILE__, __LINE__);
+      annotate_ignore_writes_end(__FILE__, __LINE__);
+      annotate_ignore_sync_end(__FILE__, __LINE__);
+    });
     auto& tasks = instance().tasks;
     for (auto& task : tasks) {
       task.child();
