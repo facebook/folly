@@ -105,8 +105,8 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   target_include_directories(
     ${LIB_NAME}
     PUBLIC
-      ${CMAKE_SOURCE_DIR}
-      ${CMAKE_BINARY_DIR}
+      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
+      $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
       ${FOLLY_INCLUDE_DIR}
       ${FBTHRIFT_INCLUDE_DIR}
   )
