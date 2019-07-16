@@ -1185,7 +1185,13 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Arg>
-  auto then(Executor::KeepAlive<> x, Arg&& arg) && {
+  // clang-format off
+  [[deprecated("then forms that take an executor are ambiguous. "
+               "Replace with nested tasks, or for executor enforcement use "
+               "SemiFuture-returning functions.")]]
+  // clang-format on
+  auto
+  then(Executor::KeepAlive<> x, Arg&& arg) && {
     auto oldX = getKeepAliveToken(this->getExecutor());
     this->setExecutor(std::move(x));
     // TODO(T29171940): thenImplementation here is ambiguous
@@ -1203,7 +1209,13 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename R, typename... Args>
-  auto then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
+  // clang-format off
+  [[deprecated("then forms that take an executor are ambiguous. "
+               "Replace with nested tasks, or for executor enforcement use "
+               "SemiFuture-returning functions.")]]
+  // clang-format on
+  auto
+  then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
     return std::move(*this).then(std::move(x), &func);
   }
 
