@@ -37,7 +37,13 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     DIRECTORY
   )
 
-  list(APPEND GEN_ARGS "include_prefix=${output_dir}")
+  # Generate relative paths in #includes
+  file(RELATIVE_PATH include_prefix ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE})
+  get_filename_component(include_prefix ${include_prefix} DIRECTORY)
+
+  if (NOT "${include_prefix}" STREQUAL "")
+    list(APPEND GEN_ARGS "include_prefix=${include_prefix}")
+  endif()
   # CMake 3.12 is finally getting a list(JOIN) function, but until then
   # treating the list as a string and replacing the semicolons is good enough.
   string(REPLACE ";" "," GEN_ARG_STR "${GEN_ARGS}")
@@ -70,6 +76,24 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     )
   endforeach()
 
+  list(APPEND thrift_include_options -I ${CMAKE_SOURCE_DIR})
+  foreach(depends IN LISTS DEPENDS)
+    get_property(thrift_include_directory
+      TARGET ${depends}
+      PROPERTY THRIFT_INCLUDE_DIRECTORY)
+
+    if (thrift_include_directory STREQUAL "")
+      message(STATUS "No thrift dependency found for ${depends}")
+    else()
+      list(APPEND thrift_include_options -I
+        ${thrift_include_directory})
+    endif()
+  endforeach()
+
+  file(
+    GLOB_RECURSE THRIFT_TEMPLATE_FILES
+    FOLLOW_SYMLINKS ${FBTHRIFT_TEMPLATES_DIR}/*.mustache)
+
   # Emit the rule to run the thrift compiler
   add_custom_command(
     OUTPUT
@@ -82,7 +106,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       --strict
       --templates ${FBTHRIFT_TEMPLATES_DIR}
       --gen "mstch_cpp2:${GEN_ARG_STR}"
-      -I ${CMAKE_SOURCE_DIR}
+      ${thrift_include_options}
       -o ${output_dir}
       ${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}
     WORKING_DIRECTORY
@@ -97,16 +121,18 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   add_library(${LIB_NAME} STATIC
     ${generated_sources}
   )
-  set_property(
-    TARGET ${LIB_NAME}
-    PROPERTY PUBLIC_HEADER
-      ${generated_headers}
+
+  install(
+    FILES ${generated_headers}
+    DESTINATION $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}>/gen-cpp2
   )
+
   target_include_directories(
     ${LIB_NAME}
+    PRIVATE
+      ${CMAKE_SOURCE_DIR}
+      ${CMAKE_BINARY_DIR}
     PUBLIC
-      $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>
-      $<BUILD_INTERFACE:${CMAKE_BINARY_DIR}>
       ${FOLLY_INCLUDE_DIR}
       ${FBTHRIFT_INCLUDE_DIR}
   )
@@ -117,4 +143,15 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       FBThrift::thriftcpp2
       Folly::folly
   )
+
+  set_target_properties(
+    ${LIB_NAME}
+    PROPERTIES
+      EXPORT_PROPERTIES "THRIFT_INCLUDE_DIRECTORY"
+      THRIFT_INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}
+  )
+
+  get_property(thrift_include_directory
+    TARGET ${LIB_NAME}
+    PROPERTY THRIFT_INCLUDE_DIRECTORY)
 endfunction()
