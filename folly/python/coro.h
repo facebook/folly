@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 /*
- *  This file serves as a helper for bridging folly::coroTask and python
+ *  This file serves as a helper for bridging folly::coro::Task and python
  *  asyncio.future.
  */
 
@@ -40,9 +40,13 @@ void bridgeCoroTask(
     folly::coro::Task<T>&& coroFrom,
     folly::Function<void(folly::Try<T>&&, PyObject*)> callback,
     PyObject* userData) {
+  // We are handing over a pointer to a python object to c++ and need
+  // to make sure it isn't removed by python in that time.
+  Py_INCREF(userData);
+  auto guard = folly::makeGuard([=] { Py_DECREF(userData); });
   std::move(coroFrom).scheduleOn(executor).start(
-      [callback = std::move(callback),
-       userData](folly::Try<T>&& result) mutable {
+      [callback = std::move(callback), userData, guard = std::move(guard)](
+          folly::Try<T>&& result) mutable {
         callback(std::move(result), userData);
       });
 }
