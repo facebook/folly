@@ -338,7 +338,7 @@ void CompressionVarintTest::runSimpleTest(const DataHolder& dh) {
       Random::rand64(
           std::max(uint64_t(9), oneBasedMsbPos(uncompressedLength_)) / 9UL);
   auto tinyBuf = IOBuf::copyBuffer(
-      compressed->data(), std::min(compressed->length(), breakPoint));
+      compressed->data(), std::min<size_t>(compressed->length(), breakPoint));
   compressed->trimStart(breakPoint);
   tinyBuf->prependChain(std::move(compressed));
   compressed = std::move(tinyBuf);
