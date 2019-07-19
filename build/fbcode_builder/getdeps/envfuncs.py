@@ -150,6 +150,10 @@ def add_flag(env, name, flag, append=True):
     env.set(name, " ".join(val))
 
 
+_path_search_cache = {}
+_not_found = object()
+
+
 def path_search(env, exename, defval=None):
     """ Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
@@ -161,6 +165,18 @@ def path_search(env, exename, defval=None):
     if path is None:
         return defval
 
+    # The project hash computation code searches for C++ compilers (g++, clang, etc)
+    # repeatedly.  Cache the result so we don't end up searching for these over and over
+    # again.
+    cache_key = (path, exename)
+    result = _path_search_cache.get(cache_key, _not_found)
+    if result is _not_found:
+        result = _perform_path_search(path, exename)
+        _path_search_cache[cache_key] = result
+    return result
+
+
+def _perform_path_search(path, exename):
     is_win = sys.platform.startswith("win")
     if is_win:
         exename = "%s.exe" % exename
