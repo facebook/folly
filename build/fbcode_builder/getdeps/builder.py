@@ -257,6 +257,8 @@ class CMakeBuilder(BuilderBase):
 
         # Resolve the cmake that we installed
         cmake = path_search(env, "cmake")
+        if cmake is None:
+            raise Exception("Failed to find CMake")
 
         if reconfigure:
             self._invalidate_cache()
