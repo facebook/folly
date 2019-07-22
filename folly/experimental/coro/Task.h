@@ -349,8 +349,8 @@ class FOLLY_NODISCARD Task {
   /// Returns a new task that when co_awaited will launch execution of this
   /// task on the specified executor.
   FOLLY_NODISCARD
-  TaskWithExecutor<T> scheduleOn(Executor* executor) && noexcept {
-    coro_.promise().executor_ = getKeepAliveToken(executor);
+  TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
+    coro_.promise().executor_ = std::move(executor);
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
