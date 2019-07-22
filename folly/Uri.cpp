@@ -79,7 +79,12 @@ Uri::Uri(StringPiece str) : hasAuthority_(false), port_(0) {
 
     StringPiece port(authorityMatch[4].first, authorityMatch[4].second);
     if (!port.empty()) {
-      port_ = to<uint16_t>(port);
+      try {
+        port_ = to<uint16_t>(port);
+      } catch (ConversionError const& e) {
+        throw std::invalid_argument(
+            to<std::string>("invalid URI port: ", e.what()));
+      }
     }
 
     hasAuthority_ = true;
