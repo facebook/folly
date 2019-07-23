@@ -150,7 +150,8 @@ detail::Map<detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>
 eachToTuple(StringPiece delim) {
   return detail::Map<
       detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>>(
-      detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(delim));
+      detail::SplitTo<std::tuple<Targets...>, fbstring, Targets...>(
+          to<fbstring>(delim)));
 }
 
 template <class First, class Second>
