@@ -421,22 +421,45 @@ class TestCmd(SubCmd):
         )
 
 
-def build_argparser():
+def get_arg_var_name(args):
+    for arg in args:
+        if arg.startswith("--"):
+            return arg[2:].replace("-", "_")
+
+    raise Exception("unable to determine argument variable name from %r" % (args,))
+
+
+def parse_args():
+    # We want to allow common arguments to be specified either before or after
+    # the subcommand name.  In order to do this we add them to the main parser
+    # and to subcommand parsers.  In order for this to work, we need to tell
+    # argparse that the default value is SUPPRESS, so that the default values
+    # from the subparser arguments won't override values set by the user from
+    # the main parser.  We maintain our own list of desired defaults in the
+    # common_defaults dictionary, and manually set those if the argument wasn't
+    # present at all.
     common_args = argparse.ArgumentParser(add_help=False)
-    common_args.add_argument(
-        "--scratch-path", help="Where to maintain checkouts and build dirs"
-    )
-    common_args.add_argument(
+    common_defaults = {}
+
+    def add_common_arg(*args, **kwargs):
+        var_name = get_arg_var_name(args)
+        default_value = kwargs.pop("default", None)
+        common_defaults[var_name] = default_value
+        kwargs["default"] = argparse.SUPPRESS
+        common_args.add_argument(*args, **kwargs)
+
+    add_common_arg("--scratch-path", help="Where to maintain checkouts and build dirs")
+    add_common_arg(
         "--vcvars-path", default=None, help="Path to the vcvarsall.bat on Windows."
     )
-    common_args.add_argument(
+    add_common_arg(
         "--install-prefix",
         help=(
             "Where the final build products will be installed "
             "(default is [scratch-path]/installed)"
         ),
     )
-    common_args.add_argument(
+    add_common_arg(
         "--num-jobs",
         type=int,
         help=(
@@ -444,13 +467,13 @@ def build_argparser():
             "(default=number of cpu cores)"
         ),
     )
-    common_args.add_argument(
+    add_common_arg(
         "--use-shipit",
         help="use the real ShipIt instead of the simple shipit transformer",
         action="store_true",
         default=False,
     )
-    common_args.add_argument(
+    add_common_arg(
         "--facebook-internal",
         help="Setup the build context as an FB internal build",
         action="store_true",
@@ -471,12 +494,16 @@ def build_argparser():
 
     add_subcommands(sub, common_args)
 
-    return ap
+    args = ap.parse_args()
+    for var_name, default_value in common_defaults.items():
+        if not hasattr(args, var_name):
+            setattr(args, var_name, default_value)
+
+    return ap, args
 
 
 def main():
-    ap = build_argparser()
-    args = ap.parse_args()
+    ap, args = parse_args()
     if getattr(args, "func", None) is None:
         ap.print_help()
         return 0
