@@ -1417,6 +1417,21 @@ TEST(F14Set, eraseIf) {
   testEraseIf<F14NodeSet>();
 }
 
+template <template <class...> class TSet>
+void testExceptionOnInsert() {
+  TSet<ThrowOnCopyTestInt> m{};
+  ThrowOnCopyTestInt key;
+  EXPECT_THROW(m.insert(key), std::exception);
+  EXPECT_TRUE(m.empty());
+}
+
+TEST(F14Set, ExceptionOnInsert) {
+  testExceptionOnInsert<F14ValueSet>();
+  testExceptionOnInsert<F14NodeSet>();
+  testExceptionOnInsert<F14VectorSet>();
+  testExceptionOnInsert<F14FastSet>();
+}
+
 ///////////////////////////////////
 #endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////

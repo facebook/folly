@@ -118,6 +118,30 @@ struct MoveOnlyTestInt {
   }
 };
 
+struct ThrowOnCopyTestInt {
+  int x{0};
+
+  ThrowOnCopyTestInt() {}
+
+  __attribute__((__noreturn__))
+  ThrowOnCopyTestInt(const ThrowOnCopyTestInt& other)
+      : x(other.x) {
+    throw std::exception{};
+  }
+
+  ThrowOnCopyTestInt& operator=(const ThrowOnCopyTestInt&) {
+    throw std::exception{};
+  }
+
+  bool operator==(const ThrowOnCopyTestInt& other) const {
+    return x == other.x;
+  }
+
+  bool operator!=(const ThrowOnCopyTestInt& other) const {
+    return !(x == other.x);
+  }
+};
+
 // Tracked is implicitly constructible across tags
 struct Counts {
   uint64_t copyConstruct{0};
@@ -589,6 +613,13 @@ namespace std {
 template <>
 struct hash<folly::f14::MoveOnlyTestInt> {
   std::size_t operator()(folly::f14::MoveOnlyTestInt const& val) const {
+    return val.x;
+  }
+};
+
+template <>
+struct hash<folly::f14::ThrowOnCopyTestInt> {
+  std::size_t operator()(folly::f14::ThrowOnCopyTestInt const& val) const {
     return val.x;
   }
 };

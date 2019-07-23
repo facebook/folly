@@ -849,7 +849,9 @@ class NodeContainerPolicy
     auto p = std::addressof(**itemAddr);
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(p != nullptr);
+    auto rollback = makeGuard([&] { AllocTraits::deallocate(a, p, 1); });
     AllocTraits::construct(a, p, std::forward<Args>(args)...);
+    rollback.dismiss();
   }
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
