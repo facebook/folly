@@ -174,7 +174,7 @@ void* HugePageArena::allocHook(
         extent, new_addr, size, alignment, zero, commit, arena_ind);
   } else {
     if (*zero) {
-      bzero(res, size);
+      memset(res, 0, size);
     }
     *commit = true;
   }
