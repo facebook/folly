@@ -339,6 +339,18 @@ TEST(Coro, TimedWaitTask) {
   coro::blockingWait(taskTimedWaitTask());
 }
 
+TEST(Coro, TimedWaitKeepAlive) {
+  auto start = std::chrono::steady_clock::now();
+  coro::blockingWait([]() -> coro::Task<void> {
+    co_await coro::timed_wait(
+        futures::sleep(std::chrono::milliseconds{100}),
+        std::chrono::seconds{60});
+    co_return;
+  }());
+  auto duration = std::chrono::steady_clock::now() - start;
+  EXPECT_LE(duration, std::chrono::seconds{30});
+}
+
 template <int value>
 struct AwaitableInt {
   bool await_ready() const {

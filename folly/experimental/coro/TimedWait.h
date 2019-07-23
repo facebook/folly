@@ -37,11 +37,11 @@ timed_wait(Awaitable awaitable, Duration duration) {
       detail::lift_lvalue_reference_t<semi_await_result_t<Awaitable>>>>>
       result;
 
-  futures::sleep(duration)
-      .via(co_await co_current_executor)
-      .setCallback_([posted, &baton](auto&&, auto&&) {
+  futures::sleepUnsafe(duration).setCallback_(
+      [posted, &baton, executor = co_await co_current_executor](
+          auto&&, auto&&) {
         if (!posted->exchange(true, std::memory_order_relaxed)) {
-          baton.post();
+          executor->add([&baton] { baton.post(); });
         }
       });
 
