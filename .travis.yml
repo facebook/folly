@@ -1,8 +1,6 @@
 # Facebook projects that use `fbcode_builder` for continuous integration
 # share this Travis configuration to run builds via Docker.
 
-sudo: required
-
 # Docker disables IPv6 in containers by default. Enable it for unit tests that need [::1].
 before_script:
   - if [[ "$TRAVIS_OS_NAME" != "osx" ]];
