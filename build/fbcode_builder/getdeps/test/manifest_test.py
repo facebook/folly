@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
 import unittest
 
 import pkg_resources
@@ -211,3 +212,8 @@ foo = bar
         patch_loader(__name__)
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
+
+    if sys.version_info < (3, 2):
+
+        def assertRaisesRegex(self, *args, **kwargs):
+            return self.assertRaisesRegexp(*args, **kwargs)
