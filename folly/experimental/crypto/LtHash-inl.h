@@ -336,9 +336,8 @@ LtHash<B, N>& LtHash<B, N>::addObject(
     folly::ByteRange firstRange,
     Args&&... moreRanges) {
   // hash obj and add to elements of checksum
-  alignas(detail::kCacheLineSize)
-      std::array<unsigned char, getChecksumSizeBytes()>
-          h;
+  using H = std::array<unsigned char, getChecksumSizeBytes()>;
+  alignas(detail::kCacheLineSize) H h;
   hashObject(
       {h.data(), h.size()}, firstRange, std::forward<Args>(moreRanges)...);
   detail::MathOperation<detail::MathEngine::AUTO>::add(
@@ -356,9 +355,8 @@ LtHash<B, N>& LtHash<B, N>::removeObject(
     folly::ByteRange firstRange,
     Args&&... moreRanges) {
   // hash obj and subtract from elements of checksum
-  alignas(detail::kCacheLineSize)
-      std::array<unsigned char, getChecksumSizeBytes()>
-          h;
+  using H = std::array<unsigned char, getChecksumSizeBytes()>;
+  alignas(detail::kCacheLineSize) H h;
   hashObject(
       {h.data(), h.size()}, firstRange, std::forward<Args>(moreRanges)...);
   detail::MathOperation<detail::MathEngine::AUTO>::sub(
