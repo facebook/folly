@@ -112,7 +112,6 @@ constexpr size_t getElementsPerUint64() {
                                          : ((sizeof(uint64_t) * 8) / B);
 }
 
-
 // Compile-time computation of the checksum size for a hash with given B and N.
 template <std::size_t B, std::size_t N>
 constexpr size_t getChecksumSizeBytes() {
@@ -128,7 +127,8 @@ constexpr size_t getChecksumSizeBytes() {
 template <std::size_t B, std::size_t N>
 LtHash<B, N>::LtHash(const folly::IOBuf& initialChecksum) : checksum_{} {
   static_assert(N > 999, "element count must be at least 1000");
-  static_assert(B == 16 || B == 20 || B == 32,
+  static_assert(
+      B == 16 || B == 20 || B == 32,
       "invalid element size in bits, must be one of: [ 16, 20, 32 ]");
 
   // Make sure libsodium is initialized, but only do it once.
@@ -150,7 +150,6 @@ LtHash<B, N>::LtHash(const folly::IOBuf& initialChecksum) : checksum_{} {
 template <std::size_t B, std::size_t N>
 LtHash<B, N>::LtHash(std::unique_ptr<folly::IOBuf> initialChecksum)
     : checksum_{} {
-
   // Make sure libsodium is initialized, but only do it once.
   static const int sodiumInitResult = []() { return sodium_init(); }();
 
@@ -232,9 +231,7 @@ bool LtHash<B, N>::checksumEquals(folly::ByteRange otherChecksum) const {
     return false;
   } else {
     int cmp = sodium_memcmp(
-        this->checksum_.data(),
-        otherChecksum.data(),
-        this->checksum_.length());
+        this->checksum_.data(), otherChecksum.data(), this->checksum_.length());
     return cmp == 0;
   }
 }
@@ -263,8 +260,8 @@ void LtHash<B, N>::setChecksum(const folly::IOBuf& checksum) {
   if /* constexpr */ (detail::Bits<B>::needsPadding()) {
     bool isPaddedCorrectly =
         detail::MathOperation<detail::MathEngine::AUTO>::checkPaddingBits(
-          detail::Bits<B>::kDataMask(),
-          {checksumCopy.data(), checksumCopy.length()});
+            detail::Bits<B>::kDataMask(),
+            {checksumCopy.data(), checksumCopy.length()});
     if (!isPaddedCorrectly) {
       throw std::runtime_error("Invalid checksum has non-0 padding bits");
     }
@@ -278,8 +275,7 @@ void LtHash<B, N>::setChecksum(std::unique_ptr<folly::IOBuf> checksum) {
     throw std::runtime_error("null checksum");
   }
   // If the checksum is not eligible for move, call the copy version
-  if (checksum->isChained() ||
-      checksum->isShared() ||
+  if (checksum->isChained() || checksum->isShared() ||
       !detail::isCacheAlignedAddress(checksum->data())) {
     setChecksum(*checksum);
     return;
@@ -295,8 +291,8 @@ void LtHash<B, N>::setChecksum(std::unique_ptr<folly::IOBuf> checksum) {
   if /* constexpr */ (detail::Bits<B>::needsPadding()) {
     bool isPaddedCorrectly =
         detail::MathOperation<detail::MathEngine::AUTO>::checkPaddingBits(
-          detail::Bits<B>::kDataMask(),
-          {checksum->data(), checksum->length()});
+            detail::Bits<B>::kDataMask(),
+            {checksum->data(), checksum->length()});
     if (!isPaddedCorrectly) {
       throw std::runtime_error("Invalid checksum has non-0 padding bits");
     }
@@ -337,10 +333,12 @@ void LtHash<B, N>::updateDigest(Blake2xb& /* digest */) {}
 template <std::size_t B, std::size_t N>
 template <typename... Args>
 LtHash<B, N>& LtHash<B, N>::addObject(
-    folly::ByteRange firstRange, Args&&... moreRanges) {
+    folly::ByteRange firstRange,
+    Args&&... moreRanges) {
   // hash obj and add to elements of checksum
   alignas(detail::kCacheLineSize)
-  std::array<unsigned char, getChecksumSizeBytes()> h;
+      std::array<unsigned char, getChecksumSizeBytes()>
+          h;
   hashObject(
       {h.data(), h.size()}, firstRange, std::forward<Args>(moreRanges)...);
   detail::MathOperation<detail::MathEngine::AUTO>::add(
@@ -355,10 +353,12 @@ LtHash<B, N>& LtHash<B, N>::addObject(
 template <std::size_t B, std::size_t N>
 template <typename... Args>
 LtHash<B, N>& LtHash<B, N>::removeObject(
-    folly::ByteRange firstRange, Args&&... moreRanges) {
+    folly::ByteRange firstRange,
+    Args&&... moreRanges) {
   // hash obj and subtract from elements of checksum
   alignas(detail::kCacheLineSize)
-  std::array<unsigned char, getChecksumSizeBytes()> h;
+      std::array<unsigned char, getChecksumSizeBytes()>
+          h;
   hashObject(
       {h.data(), h.size()}, firstRange, std::forward<Args>(moreRanges)...);
   detail::MathOperation<detail::MathEngine::AUTO>::sub(
@@ -401,8 +401,7 @@ constexpr bool LtHash<B, N>::hasPaddingBits() {
 }
 
 template <std::size_t B, std::size_t N>
-std::unique_ptr<folly::IOBuf>
-LtHash<B, N>::getChecksum() const {
+std::unique_ptr<folly::IOBuf> LtHash<B, N>::getChecksum() const {
   auto result = std::make_unique<folly::IOBuf>(
       detail::allocateCacheAlignedIOBuf(checksum_.length()));
   result->append(checksum_.length());
