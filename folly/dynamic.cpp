@@ -292,12 +292,12 @@ std::size_t dynamic::hash() const {
       // Accumulate using addition instead of using hash_range (as in the ARRAY
       // case), as we need a commutative hash operation since unordered_map's
       // iteration order is unspecified.
-      auto h = std::hash<std::pair<dynamic, dynamic>>{};
+      auto h = std::hash<std::pair<dynamic const, dynamic>>{};
       return std::accumulate(
           items().begin(),
           items().end(),
           size_t{0x0B1EC7},
-          [&](auto acc, auto item) { return acc + h(item); });
+          [&](auto acc, auto const& item) { return acc + h(item); });
     }
     case ARRAY:
       return folly::hash::hash_range(begin(), end());
