@@ -12,8 +12,9 @@ builder = cmake
 
 [dependencies]
 boost
-folly
+fb303
 fbthrift
+folly
 pcre
 
 [shipit.pathmap]
