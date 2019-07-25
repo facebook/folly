@@ -50,6 +50,7 @@ DigestT DigestBuilder<DigestT>::build() {
   }
 
   std::vector<DigestT> digests;
+  digests.reserve(digestPtrs.size());
   for (auto& digestPtr : digestPtrs) {
     digests.push_back(std::move(*digestPtr));
   }

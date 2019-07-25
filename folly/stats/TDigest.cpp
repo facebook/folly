@@ -211,8 +211,8 @@ TDigest TDigest::merge(sorted_equivalent_t, Range<const double*> sortedValues)
 
 TDigest TDigest::merge(Range<const TDigest*> digests) {
   size_t nCentroids = 0;
-  for (auto it = digests.begin(); it != digests.end(); it++) {
-    nCentroids += it->centroids_.size();
+  for (const auto& digest : digests) {
+    nCentroids += digest.centroids_.size();
   }
 
   if (nCentroids == 0) {
@@ -232,16 +232,16 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
   double min = std::numeric_limits<double>::infinity();
   double max = -std::numeric_limits<double>::infinity();
 
-  for (auto it = digests.begin(); it != digests.end(); it++) {
+  for (const auto& digest : digests) {
     starts.push_back(centroids.end());
-    double curCount = it->count();
+    double curCount = digest.count();
     if (curCount > 0) {
-      DCHECK(!std::isnan(it->min_));
-      DCHECK(!std::isnan(it->max_));
-      min = std::min(min, it->min_);
-      max = std::max(max, it->max_);
+      DCHECK(!std::isnan(digest.min_));
+      DCHECK(!std::isnan(digest.max_));
+      min = std::min(min, digest.min_);
+      max = std::max(max, digest.max_);
       count += curCount;
-      for (const auto& centroid : it->centroids_) {
+      for (const auto& centroid : digest.centroids_) {
         centroids.push_back(centroid);
       }
     }

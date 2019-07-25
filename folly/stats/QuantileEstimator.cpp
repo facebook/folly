@@ -26,9 +26,9 @@ QuantileEstimates estimatesFromDigest(
   result.quantiles.reserve(quantiles.size());
   result.sum = digest.sum();
   result.count = digest.count();
-  for (auto it = quantiles.begin(); it != quantiles.end(); ++it) {
+  for (auto& quantile : quantiles) {
     result.quantiles.push_back(
-        std::make_pair(*it, digest.estimateQuantile(*it)));
+        std::make_pair(quantile, digest.estimateQuantile(quantile)));
   }
   return result;
 }
