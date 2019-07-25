@@ -187,6 +187,91 @@ TEST(F14Set, pmr_empty) {
 }
 #endif
 
+namespace {
+struct NestedHash {
+  template <typename N>
+  std::size_t operator()(N const& v) const;
+};
+
+template <template <class...> class TSet>
+struct Nested {
+  std::unique_ptr<TSet<Nested, NestedHash>> set_;
+
+  explicit Nested(int depth)
+      : set_(std::make_unique<TSet<Nested, NestedHash>>()) {
+    if (depth > 0) {
+      set_->emplace(depth - 1);
+    }
+  }
+};
+
+template <typename N>
+std::size_t NestedHash::operator()(N const& v) const {
+  std::size_t rv = 0;
+  for (auto& k : *v.set_) {
+    rv += operator()(k);
+  }
+  return folly::Hash{}(rv);
+}
+
+template <template <class...> class TSet>
+bool operator==(Nested<TSet> const& lhs, Nested<TSet> const& rhs) {
+  return *lhs.set_ == *rhs.set_;
+}
+
+template <template <class...> class TSet>
+bool operator!=(Nested<TSet> const& lhs, Nested<TSet> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <template <class...> class TSet>
+void testNestedSetEquality() {
+  auto n1 = Nested<TSet>(100);
+  auto n2 = Nested<TSet>(100);
+  auto n3 = Nested<TSet>(99);
+  EXPECT_TRUE(n1 == n1);
+  EXPECT_TRUE(n1 == n2);
+  EXPECT_FALSE(n1 == n3);
+  EXPECT_FALSE(n1 != n1);
+  EXPECT_FALSE(n1 != n2);
+  EXPECT_TRUE(n1 != n3);
+}
+
+template <template <class...> class TSet>
+void testEqualityRefinement() {
+  TSet<std::pair<int, int>, folly::f14::HashFirst, folly::f14::EqualFirst> s1;
+  TSet<std::pair<int, int>, folly::f14::HashFirst, folly::f14::EqualFirst> s2;
+  s1.insert(std::make_pair(0, 0));
+  s1.insert(std::make_pair(1, 1));
+  EXPECT_FALSE(s1.insert(std::make_pair(0, 2)).second);
+  EXPECT_EQ(s1.size(), 2);
+  EXPECT_EQ(s1.count(std::make_pair(0, 10)), 1);
+  for (auto& k : s1) {
+    s2.emplace(k.first, k.second + 1);
+  }
+  EXPECT_EQ(s1.size(), s2.size());
+  for (auto& k : s1) {
+    EXPECT_EQ(s2.count(k), 1);
+  }
+  EXPECT_FALSE(s1 == s2);
+  EXPECT_TRUE(s1 != s2);
+}
+} // namespace
+
+TEST(F14Set, nestedSetEquality) {
+  testNestedSetEquality<folly::F14ValueSet>();
+  testNestedSetEquality<folly::F14NodeSet>();
+  testNestedSetEquality<folly::F14VectorSet>();
+  testNestedSetEquality<folly::F14FastSet>();
+}
+
+TEST(F14Set, equalityRefinement) {
+  testEqualityRefinement<folly::F14ValueSet>();
+  testEqualityRefinement<folly::F14NodeSet>();
+  testEqualityRefinement<folly::F14VectorSet>();
+  testEqualityRefinement<folly::F14FastSet>();
+}
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////

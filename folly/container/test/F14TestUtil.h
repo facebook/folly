@@ -606,6 +606,20 @@ class GenericHasher {
   std::shared_ptr<HasherFunc> hasher_;
 };
 
+struct HashFirst {
+  template <typename P>
+  std::size_t operator()(P const& p) const {
+    return folly::Hash{}(p.first);
+  }
+};
+
+struct EqualFirst {
+  template <typename P>
+  bool operator()(P const& lhs, P const& rhs) const {
+    return lhs.first == rhs.first;
+  }
+};
+
 } // namespace f14
 } // namespace folly
 

@@ -588,6 +588,10 @@ class ValueContainerPolicy : public BasePolicy<
     return Super::moveValue(item);
   }
 
+  Value const& valueAtItem(Item const& item) const {
+    return item;
+  }
+
   Value&& valueAtItemForExtract(Item& item) {
     return std::move(item);
   }
@@ -834,6 +838,10 @@ class NodeContainerPolicy
   // buildArgForItem(Item&)&& is used when moving between unequal allocators
   decltype(auto) buildArgForItem(Item& item) && {
     return Super::moveValue(*item);
+  }
+
+  Value const& valueAtItem(Item const& item) const {
+    return *item;
   }
 
   Value&& valueAtItemForExtract(Item& item) {
@@ -1177,6 +1185,10 @@ class VectorContainerPolicy : public BasePolicy<
 
   VectorContainerIndexSearch buildArgForItem(Item const& item) const {
     return {item};
+  }
+
+  Value const& valueAtItem(Item const& item) const {
+    return values_[item];
   }
 
   Value&& valueAtItemForExtract(Item& item) {

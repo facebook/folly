@@ -1432,6 +1432,36 @@ class F14Table : public Policy {
     return findImpl(static_cast<HashPair>(token), key);
   }
 
+  // Searches for a key using a key predicate that is a refinement
+  // of key equality.  func(k) should return true only if k is equal
+  // to key according to key_eq(), but is allowed to apply additional
+  // constraints.
+  template <typename K, typename F>
+  FOLLY_ALWAYS_INLINE ItemIter findMatching(K const& key, F&& func) const {
+    auto hp = splitHash(this->computeKeyHash(key));
+    std::size_t index = hp.first;
+    std::size_t step = probeDelta(hp);
+    for (std::size_t tries = 0; tries <= chunkMask_; ++tries) {
+      ChunkPtr chunk = chunks_ + (index & chunkMask_);
+      if (sizeof(Chunk) > 64) {
+        prefetchAddr(chunk->itemAddr(8));
+      }
+      auto hits = chunk->tagMatchIter(hp.second);
+      while (hits.hasNext()) {
+        auto i = hits.next();
+        if (LIKELY(
+                func(this->keyForValue(this->valueAtItem(chunk->item(i)))))) {
+          return ItemIter{chunk, i};
+        }
+      }
+      if (LIKELY(chunk->outboundOverflowCount() == 0)) {
+        break;
+      }
+      index += step;
+    }
+    return ItemIter{};
+  }
+
  private:
   void adjustSizeAndBeginAfterInsert(ItemIter iter) {
     if (kEnableItemIteration) {

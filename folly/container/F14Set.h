@@ -568,6 +568,17 @@ class F14BasicSet {
 
   //// PUBLIC - F14 Extensions
 
+  // containsEqualValue returns true iff there is an element in the set
+  // that compares equal to key using operator==.  It is undefined
+  // behjavior to call this function if operator== on key_type can ever
+  // return true when the same keys passed to key_eq() would return false
+  // (the opposite is allowed).  When using the default key_eq this function
+  // is equivalent to contains().
+  bool containsEqualValue(value_type const& value) const {
+    return !table_.findMatching(value, [&](auto& k) { return value == k; })
+                .atEnd();
+  }
+
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {
     return table_.getAllocatedMemorySize();
@@ -612,28 +623,6 @@ class F14BasicSet {
  protected:
   F14Table<Policy> table_;
 };
-
-template <typename S>
-bool setsEqual(S const& lhs, S const& rhs) {
-  if (lhs.size() != rhs.size()) {
-    return false;
-  }
-  for (auto& k : lhs) {
-    auto iter = rhs.find(k);
-    if (iter == rhs.end()) {
-      return false;
-    }
-    if (!std::is_same<
-            typename S::key_equal,
-            std::equal_to<typename S::value_type>>::value) {
-      // spec says we compare key with == as well as with key_eq()
-      if (!(k == *iter)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
 } // namespace detail
 } // namespace f14
 
@@ -678,20 +667,6 @@ class F14ValueSet
   }
 };
 
-template <typename K, typename H, typename E, typename A>
-bool operator==(
-    F14ValueSet<K, H, E, A> const& lhs,
-    F14ValueSet<K, H, E, A> const& rhs) {
-  return setsEqual(lhs, rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
-bool operator!=(
-    F14ValueSet<K, H, E, A> const& lhs,
-    F14ValueSet<K, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
-
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14NodeSet
     : public f14::detail::F14BasicSet<f14::detail::SetPolicyWithDefaults<
@@ -735,20 +710,6 @@ class F14NodeSet
     });
   }
 };
-
-template <typename K, typename H, typename E, typename A>
-bool operator==(
-    F14NodeSet<K, H, E, A> const& lhs,
-    F14NodeSet<K, H, E, A> const& rhs) {
-  return setsEqual(lhs, rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
-bool operator!=(
-    F14NodeSet<K, H, E, A> const& lhs,
-    F14NodeSet<K, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
 
 namespace f14 {
 namespace detail {
@@ -1010,20 +971,6 @@ class F14VectorSet
   }
 };
 
-template <typename K, typename H, typename E, typename A>
-bool operator==(
-    F14VectorSet<K, H, E, A> const& lhs,
-    F14VectorSet<K, H, E, A> const& rhs) {
-  return setsEqual(lhs, rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
-bool operator!=(
-    F14VectorSet<K, H, E, A> const& lhs,
-    F14VectorSet<K, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
-
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet
     : public std::conditional_t<
@@ -1053,20 +1000,6 @@ class F14FastSet
     this->table_.swap(rhs.table_);
   }
 };
-
-template <typename K, typename H, typename E, typename A>
-bool operator==(
-    F14FastSet<K, H, E, A> const& lhs,
-    F14FastSet<K, H, E, A> const& rhs) {
-  return setsEqual(lhs, rhs);
-}
-
-template <typename K, typename H, typename E, typename A>
-bool operator!=(
-    F14FastSet<K, H, E, A> const& lhs,
-    F14FastSet<K, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
 } // namespace folly
 
 #else // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
@@ -1092,6 +1025,17 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
   using Super::Super;
 
   //// PUBLIC - F14 Extensions
+
+  bool containsEqualValue(value_type const& value) const {
+    auto slot = this->bucket(value);
+    auto e = this->end(slot);
+    for (auto b = this->begin(slot); b != e; ++b) {
+      if (*b == value) {
+        return true;
+      }
+    }
+    return false;
+  }
 
   // exact for libstdc++, approximate for others
   std::size_t getAllocatedMemorySize() const {
@@ -1200,6 +1144,78 @@ class F14FastSet
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE else
 
 namespace folly {
+namespace f14 {
+namespace detail {
+template <typename S>
+bool setsEqual(S const& lhs, S const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (auto& k : lhs) {
+    if (!rhs.containsEqualValue(k)) {
+      return false;
+    }
+  }
+  return true;
+}
+} // namespace detail
+} // namespace f14
+
+template <typename K, typename H, typename E, typename A>
+bool operator==(
+    F14ValueSet<K, H, E, A> const& lhs,
+    F14ValueSet<K, H, E, A> const& rhs) {
+  return setsEqual(lhs, rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator!=(
+    F14ValueSet<K, H, E, A> const& lhs,
+    F14ValueSet<K, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator==(
+    F14NodeSet<K, H, E, A> const& lhs,
+    F14NodeSet<K, H, E, A> const& rhs) {
+  return setsEqual(lhs, rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator!=(
+    F14NodeSet<K, H, E, A> const& lhs,
+    F14NodeSet<K, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator==(
+    F14VectorSet<K, H, E, A> const& lhs,
+    F14VectorSet<K, H, E, A> const& rhs) {
+  return setsEqual(lhs, rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator!=(
+    F14VectorSet<K, H, E, A> const& lhs,
+    F14VectorSet<K, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator==(
+    F14FastSet<K, H, E, A> const& lhs,
+    F14FastSet<K, H, E, A> const& rhs) {
+  return setsEqual(lhs, rhs);
+}
+
+template <typename K, typename H, typename E, typename A>
+bool operator!=(
+    F14FastSet<K, H, E, A> const& lhs,
+    F14FastSet<K, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
 
 template <typename K, typename H, typename E, typename A>
 void swap(F14ValueSet<K, H, E, A>& lhs, F14ValueSet<K, H, E, A>& rhs) noexcept(

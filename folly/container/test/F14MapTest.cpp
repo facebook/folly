@@ -190,6 +190,93 @@ TEST(F14Map, pmr_empty) {
 }
 #endif
 
+namespace {
+struct NestedHash {
+  template <typename N>
+  std::size_t operator()(N const& v) const;
+};
+
+template <template <class...> class TMap>
+struct Nested {
+  std::unique_ptr<TMap<Nested, int, NestedHash>> map_;
+
+  explicit Nested(int depth)
+      : map_(std::make_unique<TMap<Nested, int, NestedHash>>()) {
+    if (depth > 0) {
+      map_->emplace(Nested{depth - 1}, 0);
+    }
+  }
+};
+
+template <typename N>
+std::size_t NestedHash::operator()(N const& v) const {
+  std::size_t rv = 0;
+  for (auto& kv : *v.map_) {
+    rv += folly::Hash{}(operator()(kv.first), kv.second);
+  }
+  return folly::Hash{}(rv);
+}
+
+template <template <class...> class TMap>
+bool operator==(Nested<TMap> const& lhs, Nested<TMap> const& rhs) {
+  return *lhs.map_ == *rhs.map_;
+}
+
+template <template <class...> class TMap>
+bool operator!=(Nested<TMap> const& lhs, Nested<TMap> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <template <class...> class TMap>
+void testNestedMapEquality() {
+  auto n1 = Nested<TMap>(100);
+  auto n2 = Nested<TMap>(100);
+  auto n3 = Nested<TMap>(99);
+  EXPECT_TRUE(n1 == n1);
+  EXPECT_TRUE(n1 == n2);
+  EXPECT_FALSE(n1 == n3);
+  EXPECT_FALSE(n1 != n1);
+  EXPECT_FALSE(n1 != n2);
+  EXPECT_TRUE(n1 != n3);
+}
+
+template <template <class...> class TMap>
+void testEqualityRefinement() {
+  TMap<std::pair<int, int>, int, folly::f14::HashFirst, folly::f14::EqualFirst>
+      m1;
+  TMap<std::pair<int, int>, int, folly::f14::HashFirst, folly::f14::EqualFirst>
+      m2;
+  m1[std::make_pair(0, 0)] = 0;
+  m1[std::make_pair(1, 1)] = 1;
+  EXPECT_FALSE(m1.insert(std::make_pair(std::make_pair(0, 2), 0)).second);
+  EXPECT_EQ(m1.size(), 2);
+  EXPECT_EQ(m1.count(std::make_pair(0, 10)), 1);
+  for (auto& kv : m1) {
+    m2.emplace(std::make_pair(kv.first.first, kv.first.second + 1), kv.second);
+  }
+  EXPECT_EQ(m1.size(), m2.size());
+  for (auto& kv : m1) {
+    EXPECT_EQ(m2.count(kv.first), 1);
+  }
+  EXPECT_FALSE(m1 == m2);
+  EXPECT_TRUE(m1 != m2);
+}
+} // namespace
+
+TEST(F14Map, nestedMapEquality) {
+  testNestedMapEquality<folly::F14ValueMap>();
+  testNestedMapEquality<folly::F14NodeMap>();
+  testNestedMapEquality<folly::F14VectorMap>();
+  testNestedMapEquality<folly::F14FastMap>();
+}
+
+TEST(F14Map, equalityRefinement) {
+  testEqualityRefinement<folly::F14ValueMap>();
+  testEqualityRefinement<folly::F14NodeMap>();
+  testEqualityRefinement<folly::F14VectorMap>();
+  testEqualityRefinement<folly::F14FastMap>();
+}
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
