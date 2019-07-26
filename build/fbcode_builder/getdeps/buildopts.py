@@ -21,6 +21,12 @@ from .envfuncs import Env, add_path_entry, path_search
 from .platform import HostType, is_windows
 
 
+try:
+    import typing  # noqa: F401
+except ImportError:
+    pass
+
+
 def containing_repo_type(path):
     while True:
         if os.path.exists(os.path.join(path, ".git")):
