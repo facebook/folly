@@ -22,6 +22,7 @@
 #include <string>
 
 #include <folly/Range.h>
+#include <folly/Utility.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -65,7 +66,8 @@ struct CountCopyCtor {
 
   explicit CountCopyCtor(int val) : val_(val), count_(0) {}
 
-  CountCopyCtor(const CountCopyCtor& c) : val_(c.val_), count_(c.count_ + 1) {}
+  CountCopyCtor(const CountCopyCtor& c) noexcept
+      : val_(c.val_), count_(c.count_ + 1) {}
 
   bool operator<(const CountCopyCtor& o) const {
     return val_ < o.val_;
@@ -845,4 +847,30 @@ TEST(SortedVectorTypes, TestDataPointsToFirstElement) {
   map[1] = 1;
   EXPECT_EQ(set.data(), &*set.begin());
   EXPECT_EQ(map.data(), &*map.begin());
+}
+
+TEST(SortedVectorTypes, TestEmplaceHint) {
+  sorted_vector_set<std::pair<int, int>> set;
+  sorted_vector_map<int, int> map;
+
+  for (size_t i = 0; i < 4; ++i) {
+    const std::pair<int, int> k00(0, 0);
+    const std::pair<int, int> k0i(0, i % 2);
+    const std::pair<int, int> k10(1, 0);
+    const std::pair<int, int> k1i(1, i % 2);
+    const std::pair<int, int> k20(2, 0);
+    const std::pair<int, int> k2i(2, i % 2);
+
+    EXPECT_EQ(*set.emplace_hint(set.begin(), 0, i % 2), k0i);
+    EXPECT_EQ(*map.emplace_hint(map.begin(), 0, i % 2), k00);
+
+    EXPECT_EQ(*set.emplace_hint(set.begin(), k1i), k1i);
+    EXPECT_EQ(*map.emplace_hint(map.begin(), k1i), k10);
+
+    EXPECT_EQ(*set.emplace_hint(set.begin(), folly::copy(k2i)), k2i);
+    EXPECT_EQ(*map.emplace_hint(map.begin(), folly::copy(k2i)), k20);
+
+    check_invariant(set);
+    check_invariant(map);
+  }
 }

@@ -56,6 +56,9 @@
  *   - sorted_vector_map::value_type is pair<K,V>, not pair<const K,V>.
  *     (This is basically because we want to store the value_type in
  *     std::vector<>, which requires it to be Assignable.)
+ *   - insert() single key variants, emplace(), and emplace_hint() only provide
+ *     the strong exception guarantee (unchanged when exception is thrown) when
+ *     std::is_nothrow_move_constructible<value_type>::value is true.
  */
 
 #pragma once
@@ -131,7 +134,7 @@ template <class OurContainer, class Vector, class GrowthPolicy>
 typename OurContainer::iterator insert_with_hint(
     OurContainer& sorted,
     Vector& cont,
-    typename OurContainer::iterator hint,
+    typename OurContainer::const_iterator hint,
     typename OurContainer::value_type&& value,
     GrowthPolicy& po) {
   const typename OurContainer::value_compare& cmp(sorted.value_comp());
@@ -154,7 +157,7 @@ typename OurContainer::iterator insert_with_hint(
   }
 
   // Value and *hint did not compare, so they are equal keys.
-  return hint;
+  return sorted.begin() + std::distance(sorted.cbegin(), hint);
 }
 
 template <class OurContainer, class Vector, class InputIterator>
@@ -423,11 +426,11 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return std::make_pair(it, false);
   }
 
-  iterator insert(iterator hint, const value_type& value) {
+  iterator insert(const_iterator hint, const value_type& value) {
     return insert(hint, std::move(value_type(value)));
   }
 
-  iterator insert(iterator hint, value_type&& value) {
+  iterator insert(const_iterator hint, value_type&& value) {
     return detail::insert_with_hint(
         *this, m_.cont_, hint, std::move(value), get_growth_policy());
   }
@@ -457,6 +460,22 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return insert(std::move(value));
   }
 
+  // emplace_hint isn't better than insert for sorted_vector_set, but aids
+  // compatibility
+  template <typename... Args>
+  iterator emplace_hint(const_iterator hint, Args&&... args) {
+    value_type v(std::forward<Args>(args)...);
+    return insert(hint, std::move(v));
+  }
+
+  iterator emplace_hint(const_iterator hint, const value_type& value) {
+    return insert(hint, value);
+  }
+
+  iterator emplace_hint(const_iterator hint, value_type&& value) {
+    return insert(hint, std::move(value));
+  }
+
   size_type erase(const key_type& key) {
     iterator it = find(key);
     if (it == end()) {
@@ -466,11 +485,11 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     return 1;
   }
 
-  iterator erase(iterator it) {
+  iterator erase(const_iterator it) {
     return m_.cont_.erase(it);
   }
 
-  iterator erase(iterator first, iterator last) {
+  iterator erase(const_iterator first, const_iterator last) {
     return m_.cont_.erase(first, last);
   }
 
@@ -837,11 +856,11 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return std::make_pair(it, false);
   }
 
-  iterator insert(iterator hint, const value_type& value) {
+  iterator insert(const_iterator hint, const value_type& value) {
     return insert(hint, std::move(value_type(value)));
   }
 
-  iterator insert(iterator hint, value_type&& value) {
+  iterator insert(const_iterator hint, value_type&& value) {
     return detail::insert_with_hint(
         *this, m_.cont_, hint, std::move(value), get_growth_policy());
   }
@@ -871,6 +890,22 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return insert(std::move(value));
   }
 
+  // emplace_hint isn't better than insert for sorted_vector_set, but aids
+  // compatibility
+  template <typename... Args>
+  iterator emplace_hint(const_iterator hint, Args&&... args) {
+    value_type v(std::forward<Args>(args)...);
+    return insert(hint, std::move(v));
+  }
+
+  iterator emplace_hint(const_iterator hint, const value_type& value) {
+    return insert(hint, value);
+  }
+
+  iterator emplace_hint(const_iterator hint, value_type&& value) {
+    return insert(hint, std::move(value));
+  }
+
   size_type erase(const key_type& key) {
     iterator it = find(key);
     if (it == end()) {
@@ -880,11 +915,11 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     return 1;
   }
 
-  iterator erase(iterator it) {
+  iterator erase(const_iterator it) {
     return m_.cont_.erase(it);
   }
 
-  iterator erase(iterator first, iterator last) {
+  iterator erase(const_iterator first, const_iterator last) {
     return m_.cont_.erase(first, last);
   }
 
