@@ -196,7 +196,10 @@ class BlockingWaitTask {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;
     auto& promise = coro_.promise();
     promise.setTry(&result);
-    coro_.resume();
+    {
+      RequestContextScopeGuard guard{RequestContext::saveContext()};
+      coro_.resume();
+    }
     promise.wait();
     return result;
   }
@@ -209,7 +212,10 @@ class BlockingWaitTask {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;
     auto& promise = coro_.promise();
     promise.setTry(&result);
-    coro_.resume();
+    {
+      RequestContextScopeGuard guard{RequestContext::saveContext()};
+      coro_.resume();
+    }
     while (!promise.done()) {
       executor->drive();
     }
