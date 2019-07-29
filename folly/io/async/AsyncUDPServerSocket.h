@@ -159,6 +159,13 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   }
 
   /**
+   * Indicates if the current socket is accepting.
+   */
+  bool isAccepting() const {
+    return socket_->isReading();
+  }
+
+  /**
    * Pauses accepting datagrams on the underlying socket.
    */
   void pauseAccepting() {

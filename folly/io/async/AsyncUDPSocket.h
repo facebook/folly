@@ -281,6 +281,10 @@ class AsyncUDPSocket : public EventHandler {
     return fd_ != NetworkSocket();
   }
 
+  virtual bool isReading() const {
+    return readCallback_ != nullptr;
+  }
+
   virtual void detachEventBase();
 
   virtual void attachEventBase(folly::EventBase* evb);
