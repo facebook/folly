@@ -103,7 +103,7 @@ namespace {
  * This handler gathers statistics on all exceptions thrown by the program
  * Information is being stored in thread local storage.
  */
-void throwHandler(void*, std::type_info* exType, void (*)(void*)) noexcept {
+void throwHandler(void*, std::type_info* exType, void (**)(void*)) noexcept {
   // This array contains the exception type and the stack frame
   // pointers so they get all hashed together.
   uintptr_t frames[kMaxFrames + 1];
