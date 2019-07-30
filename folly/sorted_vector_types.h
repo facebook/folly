@@ -75,6 +75,7 @@
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/lang/Exception.h>
+#include <folly/memory/MemoryResource.h>
 
 namespace folly {
 
@@ -282,6 +283,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   sorted_vector_set() : m_(Compare(), Allocator()) {}
+
+  explicit sorted_vector_set(const Allocator& alloc) : m_(Compare(), alloc) {}
 
   explicit sorted_vector_set(
       const Compare& comp,
@@ -651,6 +654,27 @@ inline void swap(
   return a.swap(b);
 }
 
+#if FOLLY_HAS_MEMORY_RESOURCE
+
+namespace pmr {
+
+template <
+    class T,
+    class Compare = std::less<T>,
+    class GrowthPolicy = void,
+    class Container =
+        std::vector<T, folly::detail::std_pmr::polymorphic_allocator<T>>>
+using sorted_vector_set = folly::sorted_vector_set<
+    T,
+    Compare,
+    folly::detail::std_pmr::polymorphic_allocator<T>,
+    GrowthPolicy,
+    Container>;
+
+} // namespace pmr
+
+#endif
+
 //////////////////////////////////////////////////////////////////////
 
 /**
@@ -713,6 +737,9 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   typedef typename Container::const_reverse_iterator const_reverse_iterator;
 
   sorted_vector_map() : m_(value_compare(Compare()), Allocator()) {}
+
+  explicit sorted_vector_map(const Allocator& alloc)
+      : m_(value_compare(Compare()), alloc) {}
 
   explicit sorted_vector_map(
       const Compare& comp,
@@ -1121,6 +1148,30 @@ inline void swap(
     sorted_vector_map<K, V, C, A, G>& b) {
   return a.swap(b);
 }
+
+#if FOLLY_HAS_MEMORY_RESOURCE
+
+namespace pmr {
+
+template <
+    class Key,
+    class Value,
+    class Compare = std::less<Key>,
+    class GrowthPolicy = void,
+    class Container = std::vector<
+        std::pair<Key, Value>,
+        folly::detail::std_pmr::polymorphic_allocator<std::pair<Key, Value>>>>
+using sorted_vector_map = folly::sorted_vector_map<
+    Key,
+    Value,
+    Compare,
+    folly::detail::std_pmr::polymorphic_allocator<std::pair<Key, Value>>,
+    GrowthPolicy,
+    Container>;
+
+} // namespace pmr
+
+#endif
 
 //////////////////////////////////////////////////////////////////////
 
