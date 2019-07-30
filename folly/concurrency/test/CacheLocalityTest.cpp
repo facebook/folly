@@ -17,6 +17,7 @@
 #include <folly/concurrency/CacheLocality.h>
 
 #include <folly/portability/GTest.h>
+#include <folly/portability/SysResource.h>
 
 #include <glog/logging.h>
 #include <memory>
@@ -998,6 +999,39 @@ TEST(CacheLocality, LogSystem) {
     LOG(INFO) << "  [" << i << "]= " << sys.localityIndexByCpu[i];
   }
 }
+
+#ifdef RUSAGE_THREAD
+static uint64_t micros(struct timeval& tv) {
+  return static_cast<uint64_t>(tv.tv_sec) * 1000000 + tv.tv_usec;
+}
+
+template <typename F>
+static void logRusageFor(std::string name, F func) {
+  struct rusage before;
+  getrusage(RUSAGE_THREAD, &before);
+  auto beforeNow = std::chrono::steady_clock::now();
+  func();
+  auto afterNow = std::chrono::steady_clock::now();
+  struct rusage after;
+  getrusage(RUSAGE_THREAD, &after);
+  LOG(INFO) << name << ": real: "
+            << std::chrono::duration_cast<std::chrono::microseconds>(
+                   afterNow - beforeNow)
+                   .count()
+            << " usec, user: "
+            << (micros(after.ru_utime) - micros(before.ru_utime))
+            << " usec, sys: "
+            << (micros(after.ru_stime) - micros(before.ru_stime)) << " usec";
+}
+
+TEST(CacheLocality, BenchmarkProcCpuinfo) {
+  logRusageFor("readFromProcCpuinfo", CacheLocality::readFromProcCpuinfo);
+}
+
+TEST(CacheLocality, BenchmarkSysfs) {
+  logRusageFor("readFromSysfs", CacheLocality::readFromSysfs);
+}
+#endif
 
 #if FOLLY_HAVE_LINUX_VDSO
 TEST(Getcpu, VdsoGetcpu) {
