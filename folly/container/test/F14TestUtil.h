@@ -123,8 +123,7 @@ struct ThrowOnCopyTestInt {
 
   ThrowOnCopyTestInt() {}
 
-  __attribute__((__noreturn__))
-  ThrowOnCopyTestInt(const ThrowOnCopyTestInt& other)
+  [[noreturn]] ThrowOnCopyTestInt(const ThrowOnCopyTestInt& other)
       : x(other.x) {
     throw std::exception{};
   }
