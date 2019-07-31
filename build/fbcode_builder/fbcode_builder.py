@@ -87,6 +87,10 @@ class FBCodeBuilder(object):
         # This raises upon detecting options that are specified but unused,
         # because otherwise it is very easy to make a typo in option names.
         self.options_used = set()
+        # Mark 'projects_dir' used even if the build installs no github
+        # projects.  This is needed because driver programs like
+        # `shell_builder.py` unconditionally set this for all builds.
+        self._github_dir = self.option('projects_dir')
         self._github_hashes = dict(_read_project_github_hashes())
 
     def __repr__(self):
@@ -277,11 +281,9 @@ class FBCodeBuilder(object):
             self.run(ShellQuoted('git checkout {hash}').format(hash=git_hash)),
         ] if git_hash else []
 
-        base_dir = self.option('projects_dir')
-
         local_repo_dir = self.option('{0}:local_repo_dir'.format(project), '')
         return self.step('Check out {0}, workdir {1}'.format(project, path), [
-            self.workdir(base_dir),
+            self.workdir(self._github_dir),
             self.run(
                 ShellQuoted('git clone {opts} https://github.com/{p}').format(
                     p=project,
@@ -289,7 +291,9 @@ class FBCodeBuilder(object):
             ) if not local_repo_dir else self.copy_local_repo(
                 local_repo_dir, os.path.basename(project)
             ),
-            self.workdir(path_join(base_dir, os.path.basename(project), path)),
+            self.workdir(
+                path_join(self._github_dir, os.path.basename(project), path),
+            ),
         ] + maybe_change_branch)
 
     def fb_github_project_workdir(self, project_and_path, github_org='facebook'):
