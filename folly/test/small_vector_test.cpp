@@ -363,7 +363,7 @@ TEST(small_vector, InsertNontrivial) {
   class TestClass {
    public:
     // explicit TestClass() = default;
-    explicit TestClass(std::string s) : s(s) {}
+    explicit TestClass(std::string s_) : s(s_) {}
     std::string s;
   };
   folly::small_vector<TestClass> v3(5, TestClass("asd"));
