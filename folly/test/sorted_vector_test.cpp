@@ -20,6 +20,7 @@
 #include <list>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <folly/Range.h>
 #include <folly/Utility.h>
@@ -874,3 +875,32 @@ TEST(SortedVectorTypes, TestEmplaceHint) {
     check_invariant(map);
   }
 }
+
+#if FOLLY_HAS_MEMORY_RESOURCE
+
+TEST(SortedVectorTypes, TestPmrAllocatorSimple) {
+  folly::pmr::sorted_vector_set<std::pair<int, int>> set{
+      folly::detail::std_pmr::null_memory_resource()};
+  EXPECT_THROW(set.emplace(42, 42), std::bad_alloc);
+
+  folly::pmr::sorted_vector_map<int, int> map{
+      folly::detail::std_pmr::null_memory_resource()};
+  EXPECT_THROW(map.emplace(42, 42), std::bad_alloc);
+}
+
+TEST(SortedVectorTypes, TestPmrAllocatorScoped) {
+  using AllocT = folly::detail::std_pmr::polymorphic_allocator<char>;
+  using VectorT = std::vector<int, AllocT>;
+
+  AllocT alloc;
+
+  folly::pmr::sorted_vector_set<VectorT> set{alloc};
+  set.emplace(42);
+  EXPECT_EQ(set.begin()->get_allocator(), alloc);
+
+  folly::pmr::sorted_vector_map<int, VectorT> map{alloc};
+  map.emplace(42, 42);
+  EXPECT_EQ(map.begin()->second.get_allocator(), alloc);
+}
+
+#endif
