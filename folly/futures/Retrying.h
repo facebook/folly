@@ -142,8 +142,8 @@ retrying(size_t k, Policy&& p, FF&& ff) {
       [k, p = std::forward<Policy>(p), ff = std::forward<FF>(ff)](
           Executor::KeepAlive<> ka, auto&&) mutable {
         auto futureP = [p = std::forward<Policy>(p), ka](
-                           size_t kk, exception_wrapper e) {
-          return p(kk, std::move(e)).via(ka);
+                           size_t k, exception_wrapper e) {
+          return p(k, std::move(e)).via(ka);
         };
         auto futureFF = [ff = std::forward<FF>(ff), ka = std::move(ka)](
                             size_t v) { return ff(v).via(ka); };
