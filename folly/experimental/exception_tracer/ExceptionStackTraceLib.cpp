@@ -67,7 +67,7 @@ void moveTopException(StackTraceStack& from, StackTraceStack& to) {
 struct Initializer {
   Initializer() {
     registerCxaThrowCallback(
-        [](void*, std::type_info*, void (*)(void*)) noexcept {
+        [](void*, std::type_info*, void (**)(void*)) noexcept {
           addActiveException();
         });
 
