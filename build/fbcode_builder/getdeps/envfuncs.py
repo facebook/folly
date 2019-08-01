@@ -16,7 +16,10 @@ import sys
 class Env(object):
     def __init__(self, src=None):
         self._dict = {}
-        self.update(src or os.environ)
+        if src is None:
+            self.update(os.environ)
+        else:
+            self.update(src)
 
     def update(self, src):
         for k, v in src.items():

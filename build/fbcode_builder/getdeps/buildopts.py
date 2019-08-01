@@ -147,7 +147,7 @@ class BuildOptions(object):
         )
 
     def compute_env_for_install_dirs(self, install_dirs, env=None):
-        if env:
+        if env is not None:
             env = env.copy()
         else:
             env = Env()

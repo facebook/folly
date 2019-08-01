@@ -40,6 +40,17 @@ class BuilderBase(object):
         self.build_opts = build_opts
         self.manifest = manifest
 
+    def _get_cmd_prefix(self):
+        if self.build_opts.is_windows():
+            vcvarsall = self.build_opts.get_vcvars_path()
+            if vcvarsall is not None:
+                # Since it sets rather a large number of variables we mildly abuse
+                # the cmd quoting rules to assemble a command that calls the script
+                # to prep the environment and then triggers the actual command that
+                # we wanted to run.
+                return [vcvarsall, "amd64", "&&"]
+        return []
+
     def _run_cmd(self, cmd, cwd=None, env=None):
         if env:
             e = self.env.copy()
@@ -48,14 +59,9 @@ class BuilderBase(object):
         else:
             env = self.env
 
-        if self.build_opts.is_windows():
-            vcvarsall = self.build_opts.get_vcvars_path()
-            if vcvarsall is not None:
-                # Since it sets rather a large number of variables we mildly abuse
-                # the cmd quoting rules to assemble a command that calls the script
-                # to prep the environment and then triggers the actual command that
-                # we wanted to run.
-                cmd = [vcvarsall, "amd64", "&&"] + cmd
+        cmd_prefix = self._get_cmd_prefix()
+        if cmd_prefix:
+            cmd = cmd_prefix + cmd
 
         run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir)
 
@@ -187,6 +193,67 @@ class Iproute2Builder(BuilderBase):
 
 
 class CMakeBuilder(BuilderBase):
+    MANUAL_BUILD_SCRIPT = """\
+#!{sys.executable}
+
+from __future__ import absolute_import, division, print_function, unicode_literals
+
+import argparse
+import os
+import subprocess
+
+CMAKE = {cmake!r}
+CMAKE_ENV = {env!r}
+CMAKE_DEFINE_ARGS = {define_args!r}
+SRC_DIR = {src_dir!r}
+BUILD_DIR = {build_dir!r}
+INSTALL_DIR = {install_dir!r}
+CMD_PREFIX = {cmd_prefix!r}
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument(
+      "cmake_args",
+      nargs=argparse.REMAINDER,
+      help='Any extra arguments after an "--" argument will be passed '
+      "directly to CMake."
+    )
+    ap.add_argument(
+      "--build",
+      action="store_true",
+      help="Run the build step rather than the configure step",
+    )
+    args = ap.parse_args()
+
+    # Strip off a leading "--" from the additional CMake arguments
+    if args.cmake_args and args.cmake_args[0] == "--":
+        args.cmake_args = args.cmake_args[1:]
+
+    env = CMAKE_ENV
+
+    if args.build:
+        full_cmd = CMD_PREFIX + [
+                CMAKE,
+                "--build",
+                BUILD_DIR,
+                "--target",
+                "install",
+                "--config",
+                "Release",
+        ] + args.cmake_args
+    else:
+        full_cmd = CMD_PREFIX + [CMAKE, SRC_DIR] + CMAKE_DEFINE_ARGS + args.cmake_args
+
+    cmd_str = " ".join(full_cmd)
+    print("Running: %r" % (cmd_str,))
+    subprocess.call(full_cmd, env=env, cwd=BUILD_DIR)
+
+
+if __name__ == "__main__":
+    main()
+"""
+
     def __init__(
         self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, defines
     ):
@@ -210,9 +277,17 @@ class CMakeBuilder(BuilderBase):
                 return True
         return False
 
-    def _build(self, install_dirs, reconfigure):
-        reconfigure = reconfigure or self._needs_reconfigure()
+    def _write_build_script(self, **kwargs):
+        # In order to make it easier for developers to manually run builds for
+        # CMake-based projects, write out some build scripts that can be used to invoke
+        # CMake manually.
+        build_script_path = os.path.join(self.build_dir, "run_cmake.py")
+        script_contents = self.MANUAL_BUILD_SCRIPT.format(**kwargs)
+        with open(build_script_path, "w") as f:
+            f.write(script_contents)
+        os.chmod(build_script_path, 0o755)
 
+    def _compute_cmake_define_args(self, env):
         defines = {
             "CMAKE_INSTALL_PREFIX": self.inst_dir,
             "BUILD_SHARED_LIBS": "OFF",
@@ -222,7 +297,6 @@ class CMakeBuilder(BuilderBase):
             # medium.
             "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         }
-        env = self._compute_env(install_dirs)
         if "SANDCASTLE" not in os.environ:
             # We sometimes see intermittent ccache related breakages on some
             # of the FB internal CI hosts, so we prefer to disable ccache
@@ -255,12 +329,31 @@ class CMakeBuilder(BuilderBase):
         #    define_args += ["-G", "Visual Studio 15 2017 Win64"]
         define_args += ["-G", "Ninja"]
 
+        return define_args
+
+    def _build(self, install_dirs, reconfigure):
+        reconfigure = reconfigure or self._needs_reconfigure()
+
+        env = self._compute_env(install_dirs)
+
         # Resolve the cmake that we installed
         cmake = path_search(env, "cmake")
         if cmake is None:
             raise Exception("Failed to find CMake")
 
         if reconfigure:
+            define_args = self._compute_cmake_define_args(env)
+            self._write_build_script(
+                cmd_prefix=self._get_cmd_prefix(),
+                cmake=cmake,
+                env=env,
+                define_args=define_args,
+                src_dir=self.src_dir,
+                build_dir=self.build_dir,
+                install_dir=self.inst_dir,
+                sys=sys,
+            )
+
             self._invalidate_cache()
             self._run_cmd([cmake, self.src_dir] + define_args, env=env)
 
