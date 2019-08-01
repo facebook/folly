@@ -156,7 +156,7 @@ class ShowInstDirCmd(SubCmd):
         for m in manifests:
             ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
-            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx_gen)
             inst_dir = dirs["inst_dir"]
             print(inst_dir)
 
@@ -236,7 +236,7 @@ class BuildCmd(SubCmd):
             if args.clean:
                 fetcher.clean()
 
-            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx_gen)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
@@ -331,7 +331,7 @@ class FixupDeps(SubCmd):
             ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
-            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx_gen)
             inst_dir = dirs["inst_dir"]
 
             install_dirs.append(inst_dir)
@@ -388,7 +388,7 @@ class TestCmd(SubCmd):
             ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
-            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
+            dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx_gen)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
