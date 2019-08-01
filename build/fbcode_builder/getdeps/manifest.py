@@ -88,10 +88,12 @@ ALLOWED_EXPR_SECTIONS = [
     "install.files",
 ]
 
+ALLOWED_VARIABLES = {"os", "distro", "distro_vers", "fb", "test"}
+
 
 def parse_conditional_section_name(name, section_def):
     expr = name[len(section_def) + 1 :]
-    return parse_expr(expr)
+    return parse_expr(expr, ALLOWED_VARIABLES)
 
 
 def validate_allowed_fields(file_name, section, config, allowed_fields):
