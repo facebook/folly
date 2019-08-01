@@ -986,7 +986,7 @@ class IOBuf {
   }
 
   /**
-   * For most of the  use-cases where it seems like a good idea to call this
+   * For most of the use-cases where it seems like a good idea to call this
    * function, what you really want is `isSharedOne()`.
    *
    * If this IOBuf is managed by the usual refcounting mechanism (ie
