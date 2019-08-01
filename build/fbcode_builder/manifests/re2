@@ -1,0 +1,10 @@
+[manifest]
+name = re2
+
+[download]
+url = https://github.com/google/re2/archive/2019-06-01.tar.gz
+sha256 = 02b7d73126bd18e9fbfe5d6375a8bb13fadaf8e99e48cbb062e4500fc18e8e2e
+
+[build]
+builder = cmake
+subdir = re2-2019-06-01
