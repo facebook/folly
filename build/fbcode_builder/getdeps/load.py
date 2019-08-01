@@ -83,68 +83,107 @@ def load_all_manifests(build_opts):
     return LOADER.load_all(build_opts)
 
 
-def manifests_in_dependency_order(build_opts, manifest, ctx_gen):
-    """ Given a manifest, expand its dependencies and return a list
-    of the manifest objects that would need to be built in the order
-    that they would need to be built.  This does not evaluate whether
-    a build is needed; it just returns the list in the order specified
-    by the manifest files. """
-    # A dict to save loading a project multiple times
-    manifests_by_name = {manifest.name: manifest}
-    # The list of deps that have been fully processed
-    seen = set()
-    # The list of deps which have yet to be evaluated.  This
-    # can potentially contain duplicates.
-    deps = [manifest]
-    # The list of manifests in dependency order
-    dep_order = []
+class ManifestLoader(object):
+    """ ManifestLoader stores information about project manifest relationships for a
+    given set of (build options + platform) configuration.
 
-    while len(deps) > 0:
-        m = deps.pop(0)
-        if m.name in seen:
-            continue
+    The ManifestLoader class primarily serves as a location to cache project dependency
+    relationships and project hash values for this build configuration.
+    """
 
-        # Consider its deps, if any.
-        # We sort them for increased determinism; we'll produce
-        # a correct order even if they aren't sorted, but we prefer
-        # to produce the same order regardless of how they are listed
-        # in the project manifest files.
-        ctx = ctx_gen.get_context(m.name)
-        dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
-        builder = m.get("build", "builder", ctx=ctx)
-        if builder == "cmake":
-            dep_list.append("cmake")
-        elif builder == "autoconf" and m.name not in (
-            "autoconf",
-            "libtool",
-            "automake",
-        ):
-            # they need libtool and its deps (automake, autoconf) so add
-            # those as deps (but obviously not if we're building those
-            # projects themselves)
-            dep_list.append("libtool")
+    def __init__(self, build_opts, ctx_gen=None):
+        self._loader = LOADER
+        self.build_opts = build_opts
+        if ctx_gen is None:
+            self.ctx_gen = self.build_opts.get_context_generator()
+        else:
+            self.ctx_gen = ctx_gen
 
-        dep_count = 0
-        for dep in dep_list:
-            # If we're not sure whether it is done, queue it up
-            if dep not in seen:
-                if dep not in manifests_by_name:
-                    dep = load_project(build_opts, dep)
-                    manifests_by_name[dep.name] = dep
-                else:
-                    dep = manifests_by_name[dep]
+        self.manifests_by_name = {}
+        self._loaded_all = False
 
-                deps.append(dep)
-                dep_count += 1
+    def load_manifest(self, name):
+        manifest = self.manifests_by_name.get(name)
+        if manifest is None:
+            manifest = self._loader.load_project(self.build_opts, name)
+            self.manifests_by_name[name] = manifest
+        return manifest
 
-        if dep_count > 0:
-            # If we queued anything, re-queue this item, as it depends
-            # those new item(s) and their transitive deps.
-            deps.append(m)
-            continue
+    def load_all_manifests(self):
+        if not self._loaded_all:
+            self.manifests_by_name = self._loader.load_all(self.build_opts)
+            self._loaded_all = True
 
-        # Its deps are done, so we can emit it
-        seen.add(m.name)
-        dep_order.append(m)
+        return self.manifests_by_name
 
-    return dep_order
+    def manifests_in_dependency_order(self, manifest=None):
+        """ Compute all dependencies of the specified project.  Returns a list of the
+        dependencies plus the project itself, in topologically sorted order.
+
+        Each entry in the returned list only depends on projects that appear before it
+        in the list.
+
+        If the input manifest is None, the dependencies for all currently loaded
+        projects will be computed.  i.e., if you call load_all_manifests() followed by
+        manifests_in_dependency_order() this will return a global dependency ordering of
+        all projects.  """
+        # The list of deps that have been fully processed
+        seen = set()
+        # The list of deps which have yet to be evaluated.  This
+        # can potentially contain duplicates.
+        if manifest is None:
+            deps = list(self.manifests_by_name.values())
+        else:
+            assert manifest.name in self.manifests_by_name
+            deps = [manifest]
+        # The list of manifests in dependency order
+        dep_order = []
+
+        while len(deps) > 0:
+            m = deps.pop(0)
+            if m.name in seen:
+                continue
+
+            # Consider its deps, if any.
+            # We sort them for increased determinism; we'll produce
+            # a correct order even if they aren't sorted, but we prefer
+            # to produce the same order regardless of how they are listed
+            # in the project manifest files.
+            ctx = self.ctx_gen.get_context(m.name)
+            dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
+            builder = m.get("build", "builder", ctx=ctx)
+            if builder == "cmake":
+                dep_list.append("cmake")
+            elif builder == "autoconf" and m.name not in (
+                "autoconf",
+                "libtool",
+                "automake",
+            ):
+                # they need libtool and its deps (automake, autoconf) so add
+                # those as deps (but obviously not if we're building those
+                # projects themselves)
+                dep_list.append("libtool")
+
+            dep_count = 0
+            for dep_name in dep_list:
+                # If we're not sure whether it is done, queue it up
+                if dep_name not in seen:
+                    dep = self.manifests_by_name.get(dep_name)
+                    if dep is None:
+                        dep = self._loader.load_project(self.build_opts, dep_name)
+                        self.manifests_by_name[dep.name] = dep
+
+                    deps.append(dep)
+                    dep_count += 1
+
+            if dep_count > 0:
+                # If we queued anything, re-queue this item, as it depends
+                # those new item(s) and their transitive deps.
+                deps.append(m)
+                continue
+
+            # Its deps are done, so we can emit it
+            seen.add(m.name)
+            dep_order.append(m)
+
+        return dep_order
