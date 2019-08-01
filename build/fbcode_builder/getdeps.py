@@ -91,7 +91,7 @@ class FetchCmd(SubCmd):
         else:
             projects = [manifest]
         for m in projects:
-            fetcher = m.create_fetcher(opts, loader.ctx_gen.get_context(m.name))
+            fetcher = loader.create_fetcher(m)
             fetcher.update()
 
 
@@ -153,11 +153,8 @@ class ShowInstDirCmd(SubCmd):
             manifests = [manifest]
 
         for m in manifests:
-            ctx = loader.ctx_gen.get_context(m.name)
-            fetcher = m.create_fetcher(opts, ctx)
-            dirs = opts.compute_dirs(
-                m, fetcher, loader.manifests_by_name, loader.ctx_gen
-            )
+            fetcher = loader.create_fetcher(m)
+            dirs = opts.compute_dirs(m, fetcher, loader)
             inst_dir = dirs["inst_dir"]
             print(inst_dir)
 
@@ -191,7 +188,7 @@ class ShowSourceDirCmd(SubCmd):
             manifests = [manifest]
 
         for m in manifests:
-            fetcher = m.create_fetcher(opts, loader.ctx_gen.get_context(m.name))
+            fetcher = loader.create_fetcher(m)
             print(fetcher.get_src_dir())
 
     def setup_parser(self, parser):
@@ -232,13 +229,12 @@ class BuildCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
-            ctx = ctx_gen.get_context(m.name)
-            fetcher = m.create_fetcher(opts, ctx)
+            fetcher = loader.create_fetcher(m)
 
             if args.clean:
                 fetcher.clean()
 
-            dirs = opts.compute_dirs(m, fetcher, loader.manifests_by_name, ctx_gen)
+            dirs = opts.compute_dirs(m, fetcher, loader)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
@@ -262,6 +258,7 @@ class BuildCmd(SubCmd):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
                     src_dir = fetcher.get_src_dir()
+                    ctx = ctx_gen.get_context(m.name)
                     builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
                     builder.build(install_dirs, reconfigure=reconfigure)
 
@@ -330,10 +327,9 @@ class FixupDeps(SubCmd):
         install_dirs = []
 
         for m in projects:
-            ctx = ctx_gen.get_context(m.name)
-            fetcher = m.create_fetcher(opts, ctx)
+            fetcher = loader.create_fetcher(m)
 
-            dirs = opts.compute_dirs(m, fetcher, loader.manifests_by_name, ctx_gen)
+            dirs = opts.compute_dirs(m, fetcher, loader)
             inst_dir = dirs["inst_dir"]
 
             install_dirs.append(inst_dir)
@@ -387,10 +383,9 @@ class TestCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
-            ctx = ctx_gen.get_context(m.name)
-            fetcher = m.create_fetcher(opts, ctx)
+            fetcher = loader.create_fetcher(m)
 
-            dirs = opts.compute_dirs(m, fetcher, loader.manifests_by_name, ctx_gen)
+            dirs = opts.compute_dirs(m, fetcher, loader)
             build_dir = dirs["build_dir"]
             inst_dir = dirs["inst_dir"]
 
@@ -403,6 +398,7 @@ class TestCmd(SubCmd):
                     # support.
                     return 1
                 src_dir = fetcher.get_src_dir()
+                ctx = ctx_gen.get_context(m.name)
                 builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
                 builder.run_tests(install_dirs, schedule_type=args.schedule_type)
 

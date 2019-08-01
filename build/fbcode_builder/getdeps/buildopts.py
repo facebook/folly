@@ -148,7 +148,7 @@ class BuildOptions(object):
             }
         )
 
-    def _compute_hash(self, hash_by_name, manifest, manifests_by_name, ctx_gen):
+    def _compute_hash(self, hash_by_name, manifest, loader):
         """ This recursive function computes a hash for a given manifest.
         The hash takes into account some environmental factors on the
         host machine and includes the hashes of its dependencies.
@@ -173,8 +173,7 @@ class BuildOptions(object):
         for tool in ["cc", "c++", "gcc", "g++", "clang", "clang++"]:
             env["tool-%s" % tool] = path_search(os.environ, tool)
 
-        ctx = ctx_gen.get_context(manifest.name)
-        fetcher = manifest.create_fetcher(self, ctx)
+        fetcher = loader.create_fetcher(manifest)
         env["fetcher.hash"] = fetcher.hash()
 
         for name in sorted(env.keys()):
@@ -183,12 +182,13 @@ class BuildOptions(object):
             if value is not None:
                 hasher.update(value.encode("utf-8"))
 
+        ctx = loader.ctx_gen.get_context(manifest.name)
         manifest.update_hash(hasher, ctx)
 
         dep_list = sorted(manifest.get_section_as_dict("dependencies", ctx).keys())
         for dep in dep_list:
             dep_hash = self._compute_hash(
-                hash_by_name, manifests_by_name[dep], manifests_by_name, ctx_gen
+                hash_by_name, loader.load_manifest(dep), loader
             )
             hasher.update(dep_hash.encode("utf-8"))
 
@@ -204,9 +204,9 @@ class BuildOptions(object):
 
         return h
 
-    def compute_dirs(self, manifest, fetcher, manifests_by_name, ctx_gen):
+    def compute_dirs(self, manifest, fetcher, loader):
         hash_by_name = {}
-        hash = self._compute_hash(hash_by_name, manifest, manifests_by_name, ctx_gen)
+        hash = self._compute_hash(hash_by_name, manifest, loader)
 
         if manifest.is_first_party_project():
             directory = manifest.name

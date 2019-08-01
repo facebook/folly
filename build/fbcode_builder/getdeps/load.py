@@ -187,3 +187,7 @@ class ManifestLoader(object):
             dep_order.append(m)
 
         return dep_order
+
+    def create_fetcher(self, manifest):
+        ctx = self.ctx_gen.get_context(manifest.name)
+        return manifest.create_fetcher(self.build_opts, ctx)
