@@ -7,9 +7,12 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import base64
 import glob
+import hashlib
 import os
 
+from .envfuncs import path_search
 from .manifest import ManifestParser
 
 
@@ -101,6 +104,7 @@ class ManifestLoader(object):
 
         self.manifests_by_name = {}
         self._loaded_all = False
+        self._project_hashes = {}
 
     def load_manifest(self, name):
         manifest = self.manifests_by_name.get(name)
@@ -191,3 +195,74 @@ class ManifestLoader(object):
     def create_fetcher(self, manifest):
         ctx = self.ctx_gen.get_context(manifest.name)
         return manifest.create_fetcher(self.build_opts, ctx)
+
+    def get_project_hash(self, manifest):
+        h = self._project_hashes.get(manifest.name)
+        if h is None:
+            h = self._compute_project_hash(manifest)
+            self._project_hashes[manifest.name] = h
+        return h
+
+    def _compute_project_hash(self, manifest):
+        """ This recursive function computes a hash for a given manifest.
+        The hash takes into account some environmental factors on the
+        host machine and includes the hashes of its dependencies.
+        No caching of the computation is performed, which is theoretically
+        wasteful but the computation is fast enough that it is not required
+        to cache across multiple invocations. """
+        hasher = hashlib.sha256()
+        # Some environmental and configuration things matter
+        env = {}
+        env["install_dir"] = self.build_opts.install_dir
+        env["scratch_dir"] = self.build_opts.scratch_dir
+        env["os"] = self.build_opts.host_type.ostype
+        env["distro"] = self.build_opts.host_type.distro
+        env["distro_vers"] = self.build_opts.host_type.distrovers
+        for name in ["CXXFLAGS", "CPPFLAGS", "LDFLAGS", "CXX", "CC"]:
+            env[name] = os.environ.get(name)
+        for tool in ["cc", "c++", "gcc", "g++", "clang", "clang++"]:
+            env["tool-%s" % tool] = path_search(os.environ, tool)
+
+        fetcher = self.create_fetcher(manifest)
+        env["fetcher.hash"] = fetcher.hash()
+
+        for name in sorted(env.keys()):
+            hasher.update(name.encode("utf-8"))
+            value = env.get(name)
+            if value is not None:
+                hasher.update(value.encode("utf-8"))
+
+        ctx = self.ctx_gen.get_context(manifest.name)
+        manifest.update_hash(hasher, ctx)
+
+        dep_list = sorted(manifest.get_section_as_dict("dependencies", ctx).keys())
+        for dep in dep_list:
+            dep_manifest = self.load_manifest(dep)
+            dep_hash = self.get_project_hash(dep_manifest)
+            hasher.update(dep_hash.encode("utf-8"))
+
+        # Use base64 to represent the hash, rather than the simple hex digest,
+        # so that the string is shorter.  Use the URL-safe encoding so that
+        # the hash can also be safely used as a filename component.
+        h = base64.urlsafe_b64encode(hasher.digest()).decode("ascii")
+        # ... and because cmd.exe is troublesome with `=` signs, nerf those.
+        # They tend to be padding characters at the end anyway, so we can
+        # safely discard them.
+        h = h.replace("=", "")
+
+        return h
+
+    def _get_project_dir_name(self, manifest):
+        if manifest.is_first_party_project():
+            return manifest.name
+        else:
+            project_hash = self.get_project_hash(manifest)
+            return "%s-%s" % (manifest.name, project_hash)
+
+    def get_project_install_dir(self, manifest):
+        project_dir_name = self._get_project_dir_name(manifest)
+        return os.path.join(self.build_opts.install_dir, project_dir_name)
+
+    def get_project_build_dir(self, manifest):
+        project_dir_name = self._get_project_dir_name(manifest)
+        return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)

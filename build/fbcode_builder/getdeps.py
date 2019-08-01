@@ -153,9 +153,7 @@ class ShowInstDirCmd(SubCmd):
             manifests = [manifest]
 
         for m in manifests:
-            fetcher = loader.create_fetcher(m)
-            dirs = opts.compute_dirs(m, fetcher, loader)
-            inst_dir = dirs["inst_dir"]
+            inst_dir = loader.get_project_install_dir(m)
             print(inst_dir)
 
     def setup_parser(self, parser):
@@ -234,9 +232,8 @@ class BuildCmd(SubCmd):
             if args.clean:
                 fetcher.clean()
 
-            dirs = opts.compute_dirs(m, fetcher, loader)
-            build_dir = dirs["build_dir"]
-            inst_dir = dirs["inst_dir"]
+            build_dir = loader.get_project_build_dir(m)
+            inst_dir = loader.get_project_install_dir(m)
 
             if m == manifest or not args.no_deps:
                 print("Assessing %s..." % m.name)
@@ -244,11 +241,12 @@ class BuildCmd(SubCmd):
                 reconfigure = change_status.build_changed()
                 sources_changed = change_status.sources_changed()
 
+                project_hash = loader.get_project_hash(m)
                 built_marker = os.path.join(inst_dir, ".built-by-getdeps")
                 if os.path.exists(built_marker):
                     with open(built_marker, "r") as f:
                         built_hash = f.read().strip()
-                    if built_hash != dirs["hash"]:
+                    if built_hash != project_hash:
                         # Some kind of inconsistency with a prior build,
                         # let's run it again to be sure
                         os.unlink(built_marker)
@@ -263,7 +261,7 @@ class BuildCmd(SubCmd):
                     builder.build(install_dirs, reconfigure=reconfigure)
 
                     with open(built_marker, "w") as f:
-                        f.write(dirs["hash"])
+                        f.write(project_hash)
 
             install_dirs.append(inst_dir)
 
@@ -327,11 +325,7 @@ class FixupDeps(SubCmd):
         install_dirs = []
 
         for m in projects:
-            fetcher = loader.create_fetcher(m)
-
-            dirs = opts.compute_dirs(m, fetcher, loader)
-            inst_dir = dirs["inst_dir"]
-
+            inst_dir = loader.get_project_install_dir(m)
             install_dirs.append(inst_dir)
 
             if m == manifest:
@@ -383,11 +377,7 @@ class TestCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
-            fetcher = loader.create_fetcher(m)
-
-            dirs = opts.compute_dirs(m, fetcher, loader)
-            build_dir = dirs["build_dir"]
-            inst_dir = dirs["inst_dir"]
+            inst_dir = loader.get_project_install_dir(m)
 
             if m == manifest or args.test_all:
                 built_marker = os.path.join(inst_dir, ".built-by-getdeps")
@@ -397,8 +387,10 @@ class TestCmd(SubCmd):
                     # want to tackle that as part of adding build-for-test
                     # support.
                     return 1
+                fetcher = loader.create_fetcher(m)
                 src_dir = fetcher.get_src_dir()
                 ctx = ctx_gen.get_context(m.name)
+                build_dir = loader.get_project_build_dir(m)
                 builder = m.create_builder(opts, src_dir, build_dir, inst_dir, ctx)
                 builder.run_tests(install_dirs, schedule_type=args.schedule_type)
 
