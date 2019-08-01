@@ -20,7 +20,7 @@ from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
 from getdeps.load import load_project, manifests_in_dependency_order
 from getdeps.manifest import ManifestParser
-from getdeps.platform import HostType, context_from_host_tuple
+from getdeps.platform import HostType
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
 
 
@@ -84,14 +84,14 @@ class FetchCmd(SubCmd):
 
     def run(self, args):
         opts = setup_build_options(args)
+        ctx_gen = opts.get_context_generator()
         manifest = load_project(opts, args.project)
-        ctx = context_from_host_tuple(args.host_type)
         if args.recursive:
-            projects = manifests_in_dependency_order(opts, manifest, ctx)
+            projects = manifests_in_dependency_order(opts, manifest, ctx_gen)
         else:
             projects = [manifest]
         for m in projects:
-            fetcher = m.create_fetcher(opts, ctx)
+            fetcher = m.create_fetcher(opts, ctx_gen.get_context(m.name))
             fetcher.update()
 
 
@@ -99,9 +99,10 @@ class FetchCmd(SubCmd):
 class ListDepsCmd(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
+        ctx_gen = opts.get_context_generator()
+        ctx_gen.set_value_for_project(args.project, "test", "on")
         manifest = load_project(opts, args.project)
-        ctx = context_from_host_tuple(args.host_type)
-        for m in manifests_in_dependency_order(opts, manifest, ctx):
+        for m in manifests_in_dependency_order(opts, manifest, ctx_gen):
             print(m.name)
         return 0
 
@@ -141,9 +142,10 @@ class CleanCmd(SubCmd):
 class ShowInstDirCmd(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
+        ctx_gen = opts.get_context_generator()
+        ctx_gen.set_value_for_project(args.project, "test", "on")
         manifest = load_project(opts, args.project)
-        ctx = context_from_host_tuple()
-        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        projects = manifests_in_dependency_order(opts, manifest, ctx_gen)
         manifests_by_name = {m.name: m for m in projects}
 
         if args.recursive:
@@ -152,6 +154,7 @@ class ShowInstDirCmd(SubCmd):
             manifests = [manifest]
 
         for m in manifests:
+            ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
             dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
             inst_dir = dirs["inst_dir"]
@@ -177,16 +180,17 @@ class ShowInstDirCmd(SubCmd):
 class ShowSourceDirCmd(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
+        ctx_gen = opts.get_context_generator()
+        ctx_gen.set_value_for_project(args.project, "test", "on")
         manifest = load_project(opts, args.project)
-        ctx = context_from_host_tuple()
 
         if args.recursive:
-            manifests = manifests_in_dependency_order(opts, manifest, ctx)
+            manifests = manifests_in_dependency_order(opts, manifest, ctx_gen)
         else:
             manifests = [manifest]
 
         for m in manifests:
-            fetcher = m.create_fetcher(opts, ctx)
+            fetcher = m.create_fetcher(opts, ctx_gen.get_context(m.name))
             print(fetcher.get_src_dir())
 
     def setup_parser(self, parser):
@@ -212,11 +216,13 @@ class BuildCmd(SubCmd):
         if args.clean:
             clean_dirs(opts)
 
+        ctx_gen = opts.get_context_generator(facebook_internal=args.facebook_internal)
+        if args.enable_tests:
+            ctx_gen.set_value_for_project(args.project, "test", "on")
         manifest = load_project(opts, args.project)
 
-        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
-        print("Building on %s" % ctx)
-        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        print("Building on %s" % ctx_gen.get_context(args.project))
+        projects = manifests_in_dependency_order(opts, manifest, ctx_gen)
         manifests_by_name = {m.name: m for m in projects}
 
         # Accumulate the install directories so that the build steps
@@ -224,11 +230,7 @@ class BuildCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
-            ctx = dict(ctx)
-            if args.enable_tests and m.name == manifest.name:
-                ctx["test"] = "on"
-            else:
-                ctx["test"] = "off"
+            ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
             if args.clean:
@@ -312,11 +314,13 @@ class BuildCmd(SubCmd):
 class FixupDeps(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
+        ctx_gen = opts.get_context_generator(facebook_internal=args.facebook_internal)
+        if args.enable_tests:
+            ctx_gen.set_value_for_project(args.project, "test", "on")
 
         manifest = load_project(opts, args.project)
 
-        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
-        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        projects = manifests_in_dependency_order(opts, manifest, ctx_gen)
         manifests_by_name = {m.name: m for m in projects}
 
         # Accumulate the install directories so that the build steps
@@ -324,11 +328,7 @@ class FixupDeps(SubCmd):
         install_dirs = []
 
         for m in projects:
-            ctx = dict(ctx)
-            if args.enable_tests and m.name == manifest.name:
-                ctx["test"] = "on"
-            else:
-                ctx["test"] = "off"
+            ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
             dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)
@@ -370,11 +370,14 @@ class FixupDeps(SubCmd):
 class TestCmd(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
-        manifest = load_project(opts, args.project)
+        ctx_gen = opts.get_context_generator(facebook_internal=args.facebook_internal)
+        if args.test_all:
+            ctx_gen.set_value_for_all_projects("test", "on")
+        else:
+            ctx_gen.set_value_for_project(args.project, "test", "on")
 
-        ctx = context_from_host_tuple(facebook_internal=args.facebook_internal)
-        ctx["test"] = "on"
-        projects = manifests_in_dependency_order(opts, manifest, ctx)
+        manifest = load_project(opts, args.project)
+        projects = manifests_in_dependency_order(opts, manifest, ctx_gen)
         manifests_by_name = {m.name: m for m in projects}
 
         # Accumulate the install directories so that the test steps
@@ -382,6 +385,7 @@ class TestCmd(SubCmd):
         install_dirs = []
 
         for m in projects:
+            ctx = ctx_gen.get_context(m.name)
             fetcher = m.create_fetcher(opts, ctx)
 
             dirs = opts.compute_dirs(m, fetcher, manifests_by_name, ctx)

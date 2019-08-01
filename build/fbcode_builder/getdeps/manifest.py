@@ -88,12 +88,10 @@ ALLOWED_EXPR_SECTIONS = [
     "install.files",
 ]
 
-ALLOWED_VARIABLES = {"os", "distro", "distro_vers", "fb", "test"}
-
 
 def parse_conditional_section_name(name, section_def):
     expr = name[len(section_def) + 1 :]
-    return parse_expr(expr, ALLOWED_VARIABLES)
+    return parse_expr(expr, ManifestContext.ALLOWED_VARIABLES)
 
 
 def validate_allowed_fields(file_name, section, config, allowed_fields):
@@ -404,3 +402,59 @@ class ManifestParser(object):
             )
 
         raise KeyError("project %s has no known builder" % (self.name))
+
+
+class ManifestContext(object):
+    """ ProjectContext contains a dictionary of values to use when evaluating boolean
+    expressions in a project manifest.
+
+    This object should be passed as the `ctx` parameter in ManifestParser.get() calls.
+    """
+
+    ALLOWED_VARIABLES = {"os", "distro", "distro_vers", "fb", "test"}
+
+    def __init__(self, ctx_dict):
+        assert set(ctx_dict.keys()) == self.ALLOWED_VARIABLES
+        self.ctx_dict = ctx_dict
+
+    def get(self, key):
+        return self.ctx_dict[key]
+
+    def set(self, key, value):
+        assert key in self.ALLOWED_VARIABLES
+        self.ctx_dict[key] = value
+
+    def copy(self):
+        return ManifestContext(dict(self.ctx_dict))
+
+    def __str__(self):
+        s = ", ".join(
+            "%s=%s" % (key, value) for key, value in sorted(self.ctx_dict.items())
+        )
+        return "{" + s + "}"
+
+
+class ContextGenerator(object):
+    """ ContextGenerator allows creating ManifestContext objects on a per-project basis.
+    This allows us to evaluate different projects with slightly different contexts.
+
+    For instance, this can be used to only enable tests for some projects. """
+
+    def __init__(self, default_ctx):
+        self.default_ctx = ManifestContext(default_ctx)
+        self.ctx_by_project = {}
+
+    def set_value_for_project(self, project_name, key, value):
+        project_ctx = self.ctx_by_project.get(project_name)
+        if project_ctx is None:
+            project_ctx = self.default_ctx.copy()
+            self.ctx_by_project[project_name] = project_ctx
+        project_ctx.set(key, value)
+
+    def set_value_for_all_projects(self, key, value):
+        self.default_ctx.set(key, value)
+        for ctx in self.ctx_by_project.values():
+            ctx.set(key, value)
+
+    def get_context(self, project_name):
+        return self.ctx_by_project.get(project_name, self.default_ctx)

@@ -18,6 +18,7 @@ import sys
 import tempfile
 
 from .envfuncs import Env, add_path_entry, path_search
+from .manifest import ContextGenerator
 from .platform import HostType, is_windows
 
 
@@ -127,6 +128,25 @@ class BuildOptions(object):
 
     def is_linux(self):
         return self.host_type.is_linux()
+
+    def get_context_generator(self, host_tuple=None, facebook_internal=False):
+        """ Create a manifest ContextGenerator for the specified target platform. """
+        if host_tuple is None:
+            host_type = HostType()
+        elif isinstance(host_tuple, HostType):
+            host_type = host_tuple
+        else:
+            host_type = HostType.from_tuple_string(host_tuple)
+
+        return ContextGenerator(
+            {
+                "os": host_type.ostype,
+                "distro": host_type.distro,
+                "distro_vers": host_type.distrovers,
+                "fb": "on" if facebook_internal else "off",
+                "test": "off",
+            }
+        )
 
     def _compute_hash(self, hash_by_name, manifest, manifests_by_name, ctx):
         """ This recursive function computes a hash for a given manifest.

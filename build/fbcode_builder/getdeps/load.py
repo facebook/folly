@@ -83,7 +83,7 @@ def load_all_manifests(build_opts):
     return LOADER.load_all(build_opts)
 
 
-def manifests_in_dependency_order(build_opts, manifest, ctx):
+def manifests_in_dependency_order(build_opts, manifest, ctx_gen):
     """ Given a manifest, expand its dependencies and return a list
     of the manifest objects that would need to be built in the order
     that they would need to be built.  This does not evaluate whether
@@ -109,6 +109,7 @@ def manifests_in_dependency_order(build_opts, manifest, ctx):
         # a correct order even if they aren't sorted, but we prefer
         # to produce the same order regardless of how they are listed
         # in the project manifest files.
+        ctx = ctx_gen.get_context(m.name)
         dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
         builder = m.get("build", "builder", ctx=ctx)
         if builder == "cmake":
