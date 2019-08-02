@@ -777,6 +777,23 @@ struct Synchronized : public SynchronizedBase<
     return datum_;
   }
 
+  /**
+   * Returns a reference to the datum without acquiring a lock.
+   *
+   * Provided as a backdoor for call-sites where it is known safe to be used.
+   * For example, when it is known that only one thread has access to the
+   * Synchronized instance.
+   *
+   * To be used with care - this method explicitly overrides the normal safety
+   * guarantees provided by the rest of the Synchronized API.
+   */
+  T& unsafeGetUnlocked() {
+    return datum_;
+  }
+  const T& unsafeGetUnlocked() const {
+    return datum_;
+  }
+
  private:
   template <class LockedType, class MutexType, class LockPolicy>
   friend class folly::LockedPtrBase;
