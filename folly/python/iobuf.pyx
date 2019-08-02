@@ -115,7 +115,7 @@ cdef class IOBuf:
         "Iterates through the chain of buffers returning a memory view for each"
         yield memoryview(self, PyBUF_C_CONTIGUOUS)
         next = self.next
-        while next is not None and next != self:
+        while next is not None and next is not self:
             yield memoryview(next, PyBUF_C_CONTIGUOUS)
             next = next.next
 

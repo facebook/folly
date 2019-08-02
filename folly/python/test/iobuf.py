@@ -29,6 +29,18 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
         self.assertEqual(b''.join(chain), b''.join(control))
 
+    def test_cyclic_chain(self) -> None:
+        control = [b'aaa', b'aaaa']
+        chain = make_chain([IOBuf(x) for x in control])
+        self.assertTrue(chain.is_chained)
+        self.assertTrue(chain)
+        self.assertEqual(bytes(chain), control[0])
+        self.assertEqual(len(chain), len(control[0]))
+        self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
+        self.assertEqual(chain.chain_count(), len(control))
+        self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
+        self.assertEqual(b''.join(chain), b''.join(control))
+
     def test_hash(self) -> None:
         x = b"omg"
         y = b"wtf"
