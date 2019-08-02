@@ -31,6 +31,25 @@ struct folly_pipeorigin {};
 
 using Func = Function<void()>;
 
+namespace detail {
+
+class ExecutorKeepAliveBase {
+ public:
+  //  A dummy keep-alive is a keep-alive to an executor which does not support
+  //  the keep-alive mechanism.
+  static constexpr uintptr_t kDummyFlag = uintptr_t(1) << 0;
+
+  //  An alias keep-alive is a keep-alive to an executor to which there is
+  //  known to be another keep-alive whose lifetime surrounds the lifetime of
+  //  the alias.
+  static constexpr uintptr_t kAliasFlag = uintptr_t(1) << 1;
+
+  static constexpr uintptr_t kFlagMask = kDummyFlag | kAliasFlag;
+  static constexpr uintptr_t kExecutorMask = ~kFlagMask;
+};
+
+} // namespace detail
+
 /// An Executor accepts units of work with add(), which should be
 /// threadsafe.
 class Executor {
@@ -68,7 +87,8 @@ class Executor {
    * preserve the original Executor type.
    */
   template <typename ExecutorT = Executor>
-  class KeepAlive : pushmi::folly_pipeorigin {
+  class KeepAlive : pushmi::folly_pipeorigin,
+                    private detail::ExecutorKeepAliveBase {
    public:
     KeepAlive() = default;
 
@@ -164,18 +184,6 @@ class Executor {
     }
 
    private:
-    //  A dummy keep-alive is a keep-alive to an executor which does not support
-    //  the keep-alive mechanism.
-    static constexpr uintptr_t kDummyFlag = uintptr_t(1) << 0;
-
-    //  An alias keep-alive is a keep-alive to an executor to which there is
-    //  known to be another keep-alive whose lifetime surrounds the lifetime of
-    //  the alias.
-    static constexpr uintptr_t kAliasFlag = uintptr_t(1) << 1;
-
-    static constexpr uintptr_t kFlagMask = kDummyFlag | kAliasFlag;
-    static constexpr uintptr_t kExecutorMask = ~kFlagMask;
-
     friend class Executor;
     template <typename OtherExecutor>
     friend class KeepAlive;
