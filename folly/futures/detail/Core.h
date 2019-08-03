@@ -86,6 +86,159 @@ bool compare_exchange_strong_release_acquire(
       expected, desired, std::memory_order_release, std::memory_order_acquire);
 }
 
+/**
+ * Defer work until executor is actively boosted.
+ *
+ * NOTE: that this executor is a private implementation detail belonging to the
+ * Folly Futures library and not intended to be used elsewhere. It is designed
+ * specifically for the use case of deferring work on a SemiFuture. It is NOT
+ * thread safe. Please do not use for any other purpose without great care.
+ */
+class DeferredExecutor final : public Executor {
+ public:
+  void add(Func func) override {
+    addFrom(
+        Executor::KeepAlive<>{},
+        [func = std::move(func)](Executor::KeepAlive<>&& /*ka*/) mutable {
+          func();
+        });
+  }
+
+  // addFrom will:
+  //  * run func inline if there is a stored executor and completingKA matches
+  //    the stored executor
+  //  * enqueue func into the stored executor if one exists
+  //  * store func until an executor is set otherwise
+  void addFrom(
+      Executor::KeepAlive<>&& completingKA,
+      Executor::KeepAlive<>::KeepAliveFunc func) {
+    auto state = state_.load(std::memory_order_acquire);
+    if (state == State::DETACHED) {
+      return;
+    }
+
+    // If we are completing on the current executor, call inline, otherwise
+    // add
+    auto addWithInline =
+        [&](Executor::KeepAlive<>::KeepAliveFunc&& addFunc) mutable {
+          if (completingKA.get() == executor_.get()) {
+            addFunc(std::move(completingKA));
+          } else {
+            executor_.copy().add(std::move(addFunc));
+          }
+        };
+
+    if (state == State::HAS_EXECUTOR) {
+      addWithInline(std::move(func));
+      return;
+    }
+    DCHECK(state == State::EMPTY);
+    func_ = std::move(func);
+    if (state_.compare_exchange_strong(
+            state,
+            State::HAS_FUNCTION,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      return;
+    }
+    DCHECK(state == State::DETACHED || state == State::HAS_EXECUTOR);
+    if (state == State::DETACHED) {
+      std::exchange(func_, nullptr);
+      return;
+    }
+    addWithInline(std::exchange(func_, nullptr));
+  }
+
+  Executor* getExecutor() const {
+    assert(executor_.get());
+    return executor_.get();
+  }
+
+  void setExecutor(folly::Executor::KeepAlive<> executor) {
+    if (nestedExecutors_) {
+      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
+      for (auto& nestedExecutor : *nestedExecutors) {
+        nestedExecutor->setExecutor(executor.copy());
+      }
+    }
+    executor_ = std::move(executor);
+    auto state = state_.load(std::memory_order_acquire);
+    if (state == State::EMPTY &&
+        state_.compare_exchange_strong(
+            state,
+            State::HAS_EXECUTOR,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      return;
+    }
+
+    DCHECK(state == State::HAS_FUNCTION);
+    state_.store(State::HAS_EXECUTOR, std::memory_order_release);
+    executor_.copy().add(std::exchange(func_, nullptr));
+  }
+
+  void detach() {
+    if (nestedExecutors_) {
+      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
+      for (auto& nestedExecutor : *nestedExecutors) {
+        nestedExecutor->detach();
+      }
+    }
+    auto state = state_.load(std::memory_order_acquire);
+    if (state == State::EMPTY &&
+        state_.compare_exchange_strong(
+            state,
+            State::DETACHED,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      return;
+    }
+
+    DCHECK(state == State::HAS_FUNCTION);
+    state_.store(State::DETACHED, std::memory_order_release);
+    std::exchange(func_, nullptr);
+  }
+
+  void setNestedExecutors(
+      std::vector<folly::Executor::KeepAlive<DeferredExecutor>> executors) {
+    DCHECK(!nestedExecutors_);
+    nestedExecutors_ = std::make_unique<
+        std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>(
+        std::move(executors));
+  }
+
+  static KeepAlive<DeferredExecutor> create() {
+    return makeKeepAlive<DeferredExecutor>(new DeferredExecutor());
+  }
+
+ private:
+  DeferredExecutor() {}
+
+  bool keepAliveAcquire() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK(keepAliveCount > 0);
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    DCHECK(keepAliveCount > 0);
+    if (keepAliveCount == 1) {
+      delete this;
+    }
+  }
+
+  enum class State { EMPTY, HAS_FUNCTION, HAS_EXECUTOR, DETACHED };
+  std::atomic<State> state_{State::EMPTY};
+  Executor::KeepAlive<>::KeepAliveFunc func_;
+  folly::Executor::KeepAlive<> executor_;
+  std::unique_ptr<std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>
+      nestedExecutors_;
+  std::atomic<ssize_t> keepAliveCount_{1};
+};
+
 /// The shared state object for Future and Promise.
 ///
 /// Nomenclature:
