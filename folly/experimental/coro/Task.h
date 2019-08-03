@@ -123,6 +123,21 @@ class TaskPromise : public TaskPromiseBase {
     result_.emplace(static_cast<U&&>(value));
   }
 
+  void return_value(const Try<StorageType>& t) {
+    DCHECK(t.hasValue() || t.hasException());
+    result_ = t;
+  }
+
+  void return_value(Try<StorageType>& t) {
+    DCHECK(t.hasValue() || t.hasException());
+    result_ = t;
+  }
+
+  void return_value(Try<StorageType>&& t) {
+    DCHECK(t.hasValue() || t.hasException());
+    result_ = std::move(t);
+  }
+
   Try<StorageType>& result() {
     return result_;
   }

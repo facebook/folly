@@ -539,4 +539,29 @@ TEST(Coro, FutureTry) {
   }());
 }
 
+TEST(Coro, CoReturnTry) {
+  EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+              co_return folly::Try<int>(42);
+            }()));
+
+  struct ExpectedException : public std::runtime_error {
+    ExpectedException() : std::runtime_error("ExpectedException") {}
+  };
+  EXPECT_THROW(
+      folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+        co_return folly::Try<int>(ExpectedException());
+      }()),
+      ExpectedException);
+
+  folly::Try<int> t(42);
+  EXPECT_EQ(42, folly::coro::blockingWait([&]() -> folly::coro::Task<int> {
+              co_return t;
+            }()));
+
+  const folly::Try<int> tConst(42);
+  EXPECT_EQ(42, folly::coro::blockingWait([&]() -> folly::coro::Task<int> {
+              co_return tConst;
+            }()));
+}
+
 #endif
