@@ -571,12 +571,14 @@ class DeferredExecutor final : public Executor {
     if (state == State::DETACHED) {
       return;
     }
+    auto kaFunc = [func = std::move(func)](
+                      Executor::KeepAlive<>&& /* ka */) mutable { func(); };
     if (state == State::HAS_EXECUTOR) {
-      executor_->add(std::move(func));
+      executor_.copy().add(std::move(kaFunc));
       return;
     }
     DCHECK(state == State::EMPTY);
-    func_ = std::move(func);
+    func_ = std::move(kaFunc);
     if (detail::compare_exchange_strong_release_acquire(
             state_, state, State::HAS_FUNCTION)) {
       return;
@@ -586,7 +588,7 @@ class DeferredExecutor final : public Executor {
       std::exchange(func_, nullptr);
       return;
     }
-    executor_->add(std::exchange(func_, nullptr));
+    executor_.copy().add(std::exchange(func_, nullptr));
   }
 
   Executor* getExecutor() const {
@@ -611,7 +613,7 @@ class DeferredExecutor final : public Executor {
 
     DCHECK(state == State::HAS_FUNCTION);
     state_.store(State::HAS_EXECUTOR, std::memory_order_release);
-    executor_->add(std::exchange(func_, nullptr));
+    executor_.copy().add(std::exchange(func_, nullptr));
   }
 
   void detach() {
@@ -666,7 +668,7 @@ class DeferredExecutor final : public Executor {
 
   enum class State { EMPTY, HAS_FUNCTION, HAS_EXECUTOR, DETACHED };
   std::atomic<State> state_{State::EMPTY};
-  Func func_;
+  Executor::KeepAlive<>::KeepAliveFunc func_;
   folly::Executor::KeepAlive<> executor_;
   std::unique_ptr<std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>
       nestedExecutors_;

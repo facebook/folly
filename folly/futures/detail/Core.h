@@ -628,13 +628,12 @@ class Core final {
       CoreAndCallbackReference guard_local_scope(this);
       CoreAndCallbackReference guard_lambda(this);
       try {
-        auto xPtr = executor.get();
-        xPtr->add([core_ref = std::move(guard_lambda),
-                   executor = std::move(executor)]() mutable {
+        std::move(executor).add([core_ref = std::move(guard_lambda)](
+                                    Executor::KeepAlive<>&& ka) mutable {
           auto cr = std::move(core_ref);
           Core* const core = cr.getCore();
           RequestContextScopeGuard rctx(std::move(core->context_));
-          core->callback_(std::move(executor), std::move(core->result_));
+          core->callback_(std::move(ka), std::move(core->result_));
         });
       } catch (const std::exception& e) {
         ew = exception_wrapper(std::current_exception(), e);

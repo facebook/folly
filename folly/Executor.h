@@ -90,6 +90,8 @@ class Executor {
   class KeepAlive : pushmi::folly_pipeorigin,
                     private detail::ExecutorKeepAliveBase {
    public:
+    using KeepAliveFunc = Function<void(KeepAlive&&)>;
+
     KeepAlive() = default;
 
     ~KeepAlive() {
@@ -181,6 +183,17 @@ class Executor {
 
     KeepAlive get_alias() const {
       return KeepAlive(storage_ | kAliasFlag);
+    }
+
+    template <class KAF>
+    void add(KAF&& f) && {
+      static_assert(
+          is_invocable<KAF, KeepAlive&&>::value,
+          "Parameter to add must be void(KeepAlive&&)>");
+      auto ex = get();
+      ex->add([ka = std::move(*this), f = std::forward<KAF>(f)]() mutable {
+        f(std::move(ka));
+      });
     }
 
    private:
