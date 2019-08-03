@@ -249,7 +249,7 @@ TEST(Via, then2) {
 TEST(Via, allowInline) {
   ManualExecutor x1, x2;
   bool a = false, b = false, c = false, d = false, e = false, f = false,
-       g = false, h = false, i = false, j = false;
+       g = false, h = false, i = false, j = false, k = false, l = false;
   via(&x1)
       .thenValue([&](auto&&) { a = true; })
       .thenTryInline([&](auto&&) { b = true; })
@@ -265,7 +265,11 @@ TEST(Via, allowInline) {
         h = true;
         return via(&x1).thenValue([&](auto&&) { i = true; });
       })
-      .thenValueInline([&](auto&&) { j = true; });
+      .thenValueInline([&](auto&&) { j = true; })
+      .semi()
+      .deferValue([&](auto&&) { k = true; })
+      .via(&x2)
+      .thenValueInline([&](auto&&) { l = true; });
 
   EXPECT_FALSE(a);
   EXPECT_FALSE(b);
@@ -307,8 +311,16 @@ TEST(Via, allowInline) {
   EXPECT_TRUE(i);
   EXPECT_FALSE(j);
 
+  // Deferred work is not inline so k will remain false
   x2.run();
   EXPECT_TRUE(j);
+  EXPECT_FALSE(k);
+
+  // Deferred work is not inline, but subsequent inline work should be inlined
+  // consistently with deferred work.
+  x2.run();
+  EXPECT_TRUE(k);
+  EXPECT_TRUE(l);
 }
 
 #ifndef __APPLE__ // TODO #7372389

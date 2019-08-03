@@ -1247,9 +1247,10 @@ TEST(SemiFuture, deferredExecutorInlineTest) {
   auto manualExec1KA = getKeepAliveToken(manualExec1);
   auto manualExec2 = ManualExecutor{};
   auto manualExec2KA = getKeepAliveToken(manualExec2);
-  auto de = futures::detail::DeferredExecutor::create();
+  auto dw = futures::detail::DeferredWrapper::create();
+  auto* de = dw.get();
   de->setExecutor(manualExec1KA);
-  de->add([&]() { a = true; });
+  de->addFrom(Executor::KeepAlive<>{}, [&](auto&&) { a = true; });
   EXPECT_FALSE(a);
   manualExec1.run();
   EXPECT_TRUE(a);

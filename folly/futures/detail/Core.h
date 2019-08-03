@@ -86,24 +86,213 @@ bool compare_exchange_strong_release_acquire(
       expected, desired, std::memory_order_release, std::memory_order_acquire);
 }
 
+class DeferredExecutor;
+
 /**
- * Defer work until executor is actively boosted.
- *
- * NOTE: that this executor is a private implementation detail belonging to the
- * Folly Futures library and not intended to be used elsewhere. It is designed
- * specifically for the use case of deferring work on a SemiFuture. It is NOT
- * thread safe. Please do not use for any other purpose without great care.
+ * KeepAlive equivalent for DeferredExecutor, that is not a true executor.
+ * KeepAliveOrDeferred acts as a union of DeferredWrapper and KeepAlive.
  */
-class DeferredExecutor final : public Executor {
+class DeferredWrapper {
  public:
-  void add(Func func) override {
-    addFrom(
-        Executor::KeepAlive<>{},
-        [func = std::move(func)](Executor::KeepAlive<>&& /*ka*/) mutable {
-          func();
-        });
+  DeferredWrapper() = default;
+
+  /**
+   * Constructs a DeferredWrapper by acquiring the executor.
+   */
+  explicit DeferredWrapper(DeferredExecutor* de);
+
+  DeferredWrapper(const DeferredWrapper& other);
+
+  DeferredWrapper(DeferredWrapper&& other)
+      : storage_{std::exchange(
+            other.storage_,
+            reinterpret_cast<uint64_t>(nullptr))} {}
+
+  DeferredWrapper& operator=(const DeferredWrapper& other);
+
+  DeferredWrapper& operator=(DeferredWrapper&& other) {
+    storage_ =
+        std::exchange(other.storage_, reinterpret_cast<uint64_t>(nullptr));
+    return *this;
   }
 
+  DeferredExecutor* steal() {
+    uint64_t oldStorage =
+        std::exchange(storage_, reinterpret_cast<uint64_t>(nullptr));
+    return reinterpret_cast<DeferredExecutor*>(oldStorage & ~kDeferredFlag);
+  }
+
+  DeferredExecutor* get() const {
+    return reinterpret_cast<DeferredExecutor*>(storage_ & ~kDeferredFlag);
+  }
+
+  ~DeferredWrapper();
+
+  explicit operator bool() const {
+    return storage_;
+  }
+
+  /**
+   * Check the passed value against the deferred flag and return true if it
+   * represents a DeferredWrapper.
+   */
+  static bool representsDeferred(const uint64_t& storage) {
+    return (storage & kDeferredFlag) != 0;
+  }
+
+  static DeferredWrapper create();
+
+  // Bit to represent a deferred executor rather than a KeepAlive.
+  // Deferred bit will be bit 3 on 64-bit platforms, where pointers align to 8
+  // bytes so bit 2 is free. On 32-bit platforms pointers may align to 4 bytes
+  // so we have to use the rest of the uint64_t. On 32-bit big endian
+  // platforms where the pointer will sit at the high end of the uint64_t,
+  // also use bit 2. On little-endian 32-bit platforms use a bit above the
+  // size of the 32-bit pointer.
+  static constexpr uint64_t kDeferredFlag = uint64_t(1)
+      << (std::numeric_limits<uintptr_t>::digits >= 64
+              ? 2
+              : (std::numeric_limits<uintptr_t>::digits + 2));
+  static_assert(
+      !(std::numeric_limits<uintptr_t>::digits == 32 && kIsBigEndian),
+      "Big-endian 32-bit systems untested for Futures code.");
+  static_assert(
+      sizeof(uint64_t) >= sizeof(uintptr_t),
+      "Sanity check on pointer size");
+  static_assert(
+      (static_cast<uint64_t>(folly::detail::ExecutorKeepAliveBase::kFlagMask) &
+       kDeferredFlag) == 0,
+      "Nothing in the current executor mask can use the deferred bit.");
+
+ private:
+  uint64_t storage_ = reinterpret_cast<uint64_t>(nullptr);
+};
+
+/**
+ * Wrapper type that represents either a KeepAlive or a DeferredExecutor.
+ * Acts as if a type-safe tagged union of the two using knowledge that the two
+ * can safely be distinguished.
+ */
+class KeepAliveOrDeferred {
+ public:
+  KeepAliveOrDeferred(Executor::KeepAlive<> ka) {
+    new (&storage_) Executor::KeepAlive<>(std::move(ka));
+    // Verify that the deferred bit is not set. If it were, KeepAlive and
+    // DeferredExecutor would be impossible to distinguish.
+    DCHECK(!isDeferred());
+  }
+
+  KeepAliveOrDeferred(DeferredWrapper deferred) {
+    new (&storage_) DeferredWrapper(std::move(deferred));
+  }
+
+  KeepAliveOrDeferred() {}
+
+  ~KeepAliveOrDeferred() {
+    reset();
+  }
+
+  KeepAliveOrDeferred(KeepAliveOrDeferred&& other) {
+    if (other.isDeferred()) {
+      new (&storage_) DeferredWrapper(std::move(other).stealDeferred());
+    } else {
+      new (&storage_) Executor::KeepAlive<>(std::move(other).stealKeepAlive());
+    }
+  }
+
+  KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other) {
+    reset();
+    if (other.isDeferred()) {
+      new (&storage_) DeferredWrapper(std::move(other).stealDeferred());
+    } else {
+      new (&storage_) Executor::KeepAlive<>(std::move(other).stealKeepAlive());
+    }
+    return *this;
+  }
+
+  DeferredExecutor* getDeferredExecutor() const {
+    if (!isDeferred()) {
+      return nullptr;
+    }
+    return asDeferred().get();
+  }
+
+  Executor* getKeepAliveExecutor() const {
+    if (isDeferred()) {
+      return nullptr;
+    }
+    return asKeepAlive().get();
+  }
+
+  Executor::KeepAlive<> stealKeepAlive() && {
+    if (isDeferred()) {
+      return Executor::KeepAlive<>{};
+    }
+    return std::move(asKeepAlive());
+  }
+
+  DeferredWrapper stealDeferred() && {
+    if (!isDeferred()) {
+      return DeferredWrapper{};
+    }
+    return std::move(asDeferred());
+  }
+
+  bool isDeferred() const {
+    return DeferredWrapper::representsDeferred(storage_);
+  }
+
+  bool isKeepAlive() const {
+    return !isDeferred();
+  }
+
+  KeepAliveOrDeferred copy() const {
+    if (isDeferred()) {
+      return KeepAliveOrDeferred{std::move(asDeferred())};
+    } else {
+      return KeepAliveOrDeferred{std::move(asKeepAlive())};
+    }
+  }
+
+  explicit operator bool() const {
+    return storage_;
+  }
+
+ private:
+  uint64_t storage_ = reinterpret_cast<uintptr_t>(nullptr);
+
+  friend class DeferredExecutor;
+
+  void reset() {
+    if (isDeferred()) {
+      DeferredWrapper dw = std::move(asDeferred());
+    } else {
+      Executor::KeepAlive<> ka = std::move(asKeepAlive());
+    }
+  }
+
+  Executor::KeepAlive<>& asKeepAlive() {
+    return *reinterpret_cast<Executor::KeepAlive<>*>(&storage_);
+  }
+
+  const Executor::KeepAlive<>& asKeepAlive() const {
+    return *reinterpret_cast<const Executor::KeepAlive<>*>(&storage_);
+  }
+
+  DeferredWrapper& asDeferred() {
+    return *reinterpret_cast<DeferredWrapper*>(&storage_);
+  }
+
+  const DeferredWrapper& asDeferred() const {
+    return *reinterpret_cast<const DeferredWrapper*>(&storage_);
+  }
+};
+
+/**
+ * Defer work until executor is actively boosted.
+ */
+class DeferredExecutor final {
+ public:
   // addFrom will:
   //  * run func inline if there is a stored executor and completingKA matches
   //    the stored executor
@@ -158,7 +347,8 @@ class DeferredExecutor final : public Executor {
     if (nestedExecutors_) {
       auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
       for (auto& nestedExecutor : *nestedExecutors) {
-        nestedExecutor->setExecutor(executor.copy());
+        assert(nestedExecutor.get());
+        nestedExecutor.get()->setExecutor(executor.copy());
       }
     }
     executor_ = std::move(executor);
@@ -177,11 +367,18 @@ class DeferredExecutor final : public Executor {
     executor_.copy().add(std::exchange(func_, nullptr));
   }
 
+  void setNestedExecutors(std::vector<DeferredWrapper> executors) {
+    DCHECK(!nestedExecutors_);
+    nestedExecutors_ =
+        std::make_unique<std::vector<DeferredWrapper>>(std::move(executors));
+  }
+
   void detach() {
     if (nestedExecutors_) {
       auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
       for (auto& nestedExecutor : *nestedExecutors) {
-        nestedExecutor->detach();
+        assert(nestedExecutor.get());
+        nestedExecutor.get()->detach();
       }
     }
     auto state = state_.load(std::memory_order_acquire);
@@ -199,29 +396,17 @@ class DeferredExecutor final : public Executor {
     std::exchange(func_, nullptr);
   }
 
-  void setNestedExecutors(
-      std::vector<folly::Executor::KeepAlive<DeferredExecutor>> executors) {
-    DCHECK(!nestedExecutors_);
-    nestedExecutors_ = std::make_unique<
-        std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>(
-        std::move(executors));
-  }
-
-  static KeepAlive<DeferredExecutor> create() {
-    return makeKeepAlive<DeferredExecutor>(new DeferredExecutor());
-  }
-
  private:
   DeferredExecutor() {}
 
-  bool keepAliveAcquire() override {
+  bool acquire() {
     auto keepAliveCount =
         keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     DCHECK(keepAliveCount > 0);
     return true;
   }
 
-  void keepAliveRelease() override {
+  void release() {
     auto keepAliveCount =
         keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
     DCHECK(keepAliveCount > 0);
@@ -234,10 +419,47 @@ class DeferredExecutor final : public Executor {
   std::atomic<State> state_{State::EMPTY};
   Executor::KeepAlive<>::KeepAliveFunc func_;
   folly::Executor::KeepAlive<> executor_;
-  std::unique_ptr<std::vector<folly::Executor::KeepAlive<DeferredExecutor>>>
-      nestedExecutors_;
+  std::unique_ptr<std::vector<DeferredWrapper>> nestedExecutors_;
   std::atomic<ssize_t> keepAliveCount_{1};
+
+  friend class KeepAliveOrDeferred;
+  friend class DeferredWrapper;
 };
+
+inline DeferredWrapper::DeferredWrapper(DeferredExecutor* de)
+    : storage_{reinterpret_cast<uint64_t>(de) | kDeferredFlag} {
+  de->acquire();
+}
+
+inline DeferredWrapper::~DeferredWrapper() {
+  if (storage_) {
+    steal()->release();
+  }
+}
+
+inline DeferredWrapper::DeferredWrapper(const DeferredWrapper& other)
+    : storage_{other.storage_} {
+  if (storage_) {
+    get()->acquire();
+  }
+}
+
+inline DeferredWrapper& DeferredWrapper::operator=(
+    const DeferredWrapper& other) {
+  storage_ = other.storage_;
+  if (storage_) {
+    get()->acquire();
+  }
+  return *this;
+}
+
+/* static */
+inline DeferredWrapper DeferredWrapper::create() {
+  DeferredWrapper dw{};
+  auto* de = new DeferredExecutor{};
+  dw.storage_ = reinterpret_cast<uint64_t>(de) | kDeferredFlag;
+  return dw;
+}
 
 /// The shared state object for Future and Promise.
 ///
@@ -619,7 +841,7 @@ class Core final {
   /// Call only from consumer thread, either before attaching a callback or
   /// after the callback has already been invoked, but not concurrently with
   /// anything which might trigger invocation of the callback.
-  void setExecutor(Executor::KeepAlive<> x) {
+  void setExecutor(KeepAliveOrDeferred&& x) {
     DCHECK(
         state_ != State::OnlyCallback &&
         state_ != State::OnlyCallbackAllowInline);
@@ -627,7 +849,26 @@ class Core final {
   }
 
   Executor* getExecutor() const {
-    return executor_.get();
+    if (!executor_.isKeepAlive()) {
+      return nullptr;
+    }
+    return executor_.getKeepAliveExecutor();
+  }
+
+  DeferredExecutor* getDeferredExecutor() const {
+    if (!executor_.isDeferred()) {
+      return {};
+    }
+
+    return executor_.getDeferredExecutor();
+  }
+
+  DeferredWrapper stealDeferredExecutor() {
+    if (executor_.isKeepAlive()) {
+      return {};
+    }
+
+    return std::move(executor_).stealDeferred();
   }
 
   /// Call only from consumer thread
@@ -759,13 +1000,32 @@ class Core final {
   void doCallback(Executor::KeepAlive<>&& completingKA, State priorState) {
     DCHECK(state_ == State::Done);
 
-    auto executor = std::exchange(executor_, Executor::KeepAlive<>());
-    bool allowInline =
-        (executor.get() == completingKA.get() &&
-         priorState == State::OnlyCallbackAllowInline);
-    // If we have no executor or if we are allowing inline executor on a
-    // matching executor, run inline.
-    if (executor && !allowInline) {
+    auto executor = std::exchange(executor_, KeepAliveOrDeferred{});
+
+    // Customise inline behaviour
+    // If addCompletingKA is non-null, then we are allowing inline execution
+    auto doAdd = [](Executor::KeepAlive<>&& addCompletingKA,
+                    KeepAliveOrDeferred&& currentExecutor,
+                    auto&& keepAliveFunc) mutable {
+      if (auto deferredExecutorPtr = currentExecutor.getDeferredExecutor()) {
+        deferredExecutorPtr->addFrom(
+            std::move(addCompletingKA), std::move(keepAliveFunc));
+      } else {
+        // If executors match call inline
+        auto currentKeepAlive = std::move(currentExecutor).stealKeepAlive();
+        if (addCompletingKA.get() == currentKeepAlive.get()) {
+          keepAliveFunc(std::move(currentKeepAlive));
+        } else {
+          std::move(currentKeepAlive).add(std::move(keepAliveFunc));
+        }
+      }
+    };
+
+    if (executor) {
+      // If we are not allowing inline, clear the completing KA to disallow
+      if (!(priorState == State::OnlyCallbackAllowInline)) {
+        completingKA = Executor::KeepAlive<>{};
+      }
       exception_wrapper ew;
       // We need to reset `callback_` after it was executed (which can happen
       // through the executor or, if `Executor::add` throws, below). The
@@ -781,13 +1041,16 @@ class Core final {
       CoreAndCallbackReference guard_local_scope(this);
       CoreAndCallbackReference guard_lambda(this);
       try {
-        std::move(executor).add([core_ref = std::move(guard_lambda)](
-                                    Executor::KeepAlive<>&& ka) mutable {
-          auto cr = std::move(core_ref);
-          Core* const core = cr.getCore();
-          RequestContextScopeGuard rctx(std::move(core->context_));
-          core->callback_(std::move(ka), std::move(core->result_));
-        });
+        doAdd(
+            std::move(completingKA),
+            std::move(executor),
+            [core_ref =
+                 std::move(guard_lambda)](Executor::KeepAlive<>&& ka) mutable {
+              auto cr = std::move(core_ref);
+              Core* const core = cr.getCore();
+              RequestContextScopeGuard rctx(std::move(core->context_));
+              core->callback_(std::move(ka), std::move(core->result_));
+            });
       } catch (const std::exception& e) {
         ew = exception_wrapper(std::current_exception(), e);
       } catch (...) {
@@ -806,7 +1069,7 @@ class Core final {
         detachOne();
       };
       RequestContextScopeGuard rctx(std::move(context_));
-      callback_(std::move(executor), std::move(result_));
+      callback_(std::move(completingKA), std::move(result_));
     }
   }
 
@@ -858,14 +1121,14 @@ class Core final {
   std::atomic<unsigned char> callbackReferences_{0};
   std::atomic<bool> interruptHandlerSet_{false};
   SpinLock interruptLock_;
-  Executor::KeepAlive<> executor_;
+  KeepAliveOrDeferred executor_;
   union {
     Context context_;
   };
   std::unique_ptr<exception_wrapper> interrupt_{};
   std::function<void(exception_wrapper const&)> interruptHandler_{nullptr};
 };
-
 } // namespace detail
 } // namespace futures
+
 } // namespace folly

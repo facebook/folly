@@ -407,11 +407,15 @@ class FutureBase {
     return getCore().getExecutor();
   }
 
+  DeferredExecutor* getDeferredExecutor() const {
+    return getCore().getDeferredExecutor();
+  }
+
   // Sets the Executor within the Core state object of `this`.
   // Must be called either before attaching a callback or after the callback
   // has already been invoked, but not concurrently with anything which might
   // trigger invocation of the callback.
-  void setExecutor(Executor::KeepAlive<> x) {
+  void setExecutor(futures::detail::KeepAliveOrDeferred x) {
     getCore().setExecutor(std::move(x));
   }
 
@@ -439,8 +443,7 @@ template <typename T>
 DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future);
 
 template <typename T>
-folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor(
-    SemiFuture<T>& future);
+futures::detail::DeferredWrapper stealDeferredExecutor(SemiFuture<T>& future);
 } // namespace detail
 } // namespace futures
 
@@ -795,8 +798,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     if (deferredExecutor) {
       ret =
           std::move(ret).defer([](Try<T>&& t) { return std::move(t).value(); });
-      ret.getDeferredExecutor()->setNestedExecutors(
-          {std::move(deferredExecutor)});
+      std::vector<futures::detail::DeferredWrapper> des;
+      des.push_back(std::move(deferredExecutor));
+      ret.getDeferredExecutor()->setNestedExecutors(std::move(des));
     }
     return ret;
   }
@@ -852,9 +856,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   friend class SemiFuture;
   template <class>
   friend class Future;
-  friend folly::Executor::KeepAlive<DeferredExecutor>
-  futures::detail::stealDeferredExecutor<T>(SemiFuture&);
-  friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(SemiFuture&);
+  friend futures::detail::DeferredWrapper
+  futures::detail::stealDeferredExecutor<T>(SemiFuture<T>&);
+  friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(
+      SemiFuture<T>&);
 
   using Base::setExecutor;
   using Base::throwIfInvalid;
@@ -869,10 +874,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       : Base(futures::detail::EmptyConstruct{}) {}
 
   // Throws FutureInvalid if !this->core_
-  DeferredExecutor* getDeferredExecutor() const;
-
-  // Throws FutureInvalid if !this->core_
-  folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor() const;
+  futures::detail::DeferredWrapper stealDeferredExecutor();
 
   /// Blocks until the future is fulfilled, or `dur` elapses.
   ///
