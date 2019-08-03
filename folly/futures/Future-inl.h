@@ -567,18 +567,43 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
 class DeferredExecutor final : public Executor {
  public:
   void add(Func func) override {
+    addFrom(
+        Executor::KeepAlive<>{},
+        [func = std::move(func)](Executor::KeepAlive<>&& /*ka*/) mutable {
+          func();
+        });
+  }
+
+  // addFrom will:
+  //  * run func inline if there is a stored executor and completingKA matches
+  //    the stored executor
+  //  * enqueue func into the stored executor if one exists
+  //  * store func until an executor is set otherwise
+  void addFrom(
+      Executor::KeepAlive<>&& completingKA,
+      Executor::KeepAlive<>::KeepAliveFunc func) {
     auto state = state_.load(std::memory_order_acquire);
     if (state == State::DETACHED) {
       return;
     }
-    auto kaFunc = [func = std::move(func)](
-                      Executor::KeepAlive<>&& /* ka */) mutable { func(); };
+
+    // If we are completing on the current executor, call inline, otherwise
+    // add
+    auto addWithInline =
+        [&](Executor::KeepAlive<>::KeepAliveFunc&& addFunc) mutable {
+          if (completingKA.get() == executor_.get()) {
+            addFunc(std::move(completingKA));
+          } else {
+            executor_.copy().add(std::move(addFunc));
+          }
+        };
+
     if (state == State::HAS_EXECUTOR) {
-      executor_.copy().add(std::move(kaFunc));
+      addWithInline(std::move(func));
       return;
     }
     DCHECK(state == State::EMPTY);
-    func_ = std::move(kaFunc);
+    func_ = std::move(func);
     if (detail::compare_exchange_strong_release_acquire(
             state_, state, State::HAS_FUNCTION)) {
       return;
@@ -588,7 +613,7 @@ class DeferredExecutor final : public Executor {
       std::exchange(func_, nullptr);
       return;
     }
-    executor_.copy().add(std::exchange(func_, nullptr));
+    addWithInline(std::exchange(func_, nullptr));
   }
 
   Executor* getExecutor() const {
