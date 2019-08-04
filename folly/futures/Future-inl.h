@@ -823,7 +823,7 @@ SemiFuture<T>::defer(F&& func) && {
     }
   }();
 
-  auto sf = Future<T>(this->core_).thenTryInline(std::forward<F>(func)).semi();
+  auto sf = Future<T>(this->core_).thenTry(std::forward<F>(func)).semi();
   this->core_ = nullptr;
   // Carry deferred executor through chain as constructor from Future will
   // nullify it
@@ -849,9 +849,9 @@ SemiFuture<T>::deferExTry(F&& func) && {
   }();
 
   auto sf = Future<T>(this->core_)
-                .thenExTryInline([func = std::forward<F>(func)](
-                                     folly::Executor::KeepAlive<>&& keepAlive,
-                                     folly::Try<T>&& val) mutable {
+                .thenExTry([func = std::forward<F>(func)](
+                               folly::Executor::KeepAlive<>&& keepAlive,
+                               folly::Try<T>&& val) mutable {
                   return std::forward<F>(func)(
                       std::move(keepAlive), std::forward<decltype(val)>(val));
                 })

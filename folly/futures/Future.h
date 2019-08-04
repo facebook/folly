@@ -666,11 +666,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// support all executors would boost block and we would simply use some form
   /// of driveable executor here.
   ///
-  /// All forms of defer will run the continuation inline with the execution of
-  /// the  previous callback in the chain if the callback attached to the
-  /// previous future that triggers execution of func runs on the same executor
-  /// that func would be executed on.
-  ///
   /// Preconditions:
   ///
   /// - `valid() == true` (else throws FutureInvalid)
@@ -694,11 +689,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   }
 
   /// Defer for functions taking a T rather than a Try<T>.
-  ///
-  /// All forms of defer will run the continuation inline with the execution of
-  /// the  previous callback in the chain if the callback attached to the
-  /// previous future that triggers execution of func runs on the same executor
-  /// that func would be executed on.
   ///
   /// Preconditions:
   ///
