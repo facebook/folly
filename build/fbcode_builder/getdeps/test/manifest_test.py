@@ -8,6 +8,7 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import sys
 import unittest
 
 import pkg_resources
@@ -141,16 +142,16 @@ a
 b
 c
 
-[dependencies.foo=bar]
+[dependencies.test=on]
 foo
 """,
         )
         self.assertEqual(p.get_section_as_args("dependencies"), ["a", "b", "c"])
         self.assertEqual(
-            p.get_section_as_args("dependencies", {"foo": "not-bar"}), ["a", "b", "c"]
+            p.get_section_as_args("dependencies", {"test": "off"}), ["a", "b", "c"]
         )
         self.assertEqual(
-            p.get_section_as_args("dependencies", {"foo": "bar"}),
+            p.get_section_as_args("dependencies", {"test": "on"}),
             ["a", "b", "c", "foo"],
         )
 
@@ -179,13 +180,13 @@ name = foo
 [cmake.defines]
 foo = bar
 
-[cmake.defines.bar=baz]
+[cmake.defines.test=on]
 foo = baz
 """,
         )
         self.assertEqual(p.get_section_as_dict("cmake.defines"), {"foo": "bar"})
         self.assertEqual(
-            p.get_section_as_dict("cmake.defines", {"bar": "baz"}), {"foo": "baz"}
+            p.get_section_as_dict("cmake.defines", {"test": "on"}), {"foo": "baz"}
         )
 
         p2 = ManifestParser(
@@ -194,7 +195,7 @@ foo = baz
 [manifest]
 name = foo
 
-[cmake.defines.bar=baz]
+[cmake.defines.test=on]
 foo = baz
 
 [cmake.defines]
@@ -202,7 +203,7 @@ foo = bar
 """,
         )
         self.assertEqual(
-            p2.get_section_as_dict("cmake.defines", {"bar": "baz"}),
+            p2.get_section_as_dict("cmake.defines", {"test": "on"}),
             {"foo": "bar"},
             msg="sections cascade in the order they appear in the manifest",
         )
@@ -211,3 +212,8 @@ foo = bar
         patch_loader(__name__)
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
+
+    if sys.version_info < (3, 2):
+
+        def assertRaisesRegex(self, *args, **kwargs):
+            return self.assertRaisesRegexp(*args, **kwargs)

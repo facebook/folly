@@ -125,13 +125,7 @@ class WinDeps(DepBase):
             (
                 "C:/Program Files (x86)/"
                 "Microsoft Visual Studio/"
-                "*/BuildTools/VC/Tools/"
-                "MSVC/*/bin/Hostx64/x64/dumpbin.exe"
-            ),
-            (
-                "C:/Program Files (x86)/"
-                "Microsoft Visual Studio/"
-                "*/Community/VC/Tools/"
+                "*/*/VC/Tools/"
                 "MSVC/*/bin/Hostx64/x64/dumpbin.exe"
             ),
             (
@@ -190,6 +184,13 @@ class WinDeps(DepBase):
         if d in self.SYSTEM_DLLS:
             return False
         return True
+
+    def is_objfile(self, objfile):
+        if not os.path.isfile(objfile):
+            return False
+        if objfile.lower().endswith(".exe"):
+            return True
+        return False
 
 
 class ElfDeps(DepBase):

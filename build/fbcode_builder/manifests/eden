@@ -14,6 +14,7 @@ builder = cmake
 googletest
 folly
 fbthrift
+fb303
 cpptoml
 rocksdb
 libgit2
@@ -32,7 +33,6 @@ osxfuse
 [shipit.pathmap]
 fbcode/eden/oss = .
 fbcode/eden = eden
-fbcode/fboss/common = common
 
 [shipit.strip]
 ^fbcode/eden/fs/eden-config\.h$

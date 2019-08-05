@@ -96,22 +96,3 @@ class HostType(object):
             and self.distro == b.distro
             and self.distrovers == b.distrovers
         )
-
-
-def context_from_host_tuple(host_tuple=None, facebook_internal=False):
-    """ Given an optional host tuple, construct a context appropriate
-    for passing to the boolean expression evaluator so that conditional
-    sections in manifests can be resolved. """
-    if host_tuple is None:
-        host_type = HostType()
-    elif isinstance(host_tuple, HostType):
-        host_type = host_tuple
-    else:
-        host_type = HostType.from_tuple_string(host_tuple)
-
-    return {
-        "os": host_type.ostype,
-        "distro": host_type.distro,
-        "distro_vers": host_type.distrovers,
-        "fb": "on" if facebook_internal else "off",
-    }

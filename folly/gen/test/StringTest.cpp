@@ -191,6 +191,21 @@ TEST(StringGen, EachToTuple) {
     EXPECT_EQ(expected, actual);
   }
   {
+    // StringPiece target
+    auto lines = "1::cat 2::dog";
+    // clang-format off
+    auto actual
+      = split(lines, ' ')
+      | eachToTuple<int, StringPiece>("::")
+      | as<vector>();
+    // clang-format on
+    vector<tuple<int, StringPiece>> expected{
+        make_tuple(1, "cat"),
+        make_tuple(2, "dog"),
+    };
+    EXPECT_EQ(expected, actual);
+  }
+  {
     // Empty field
     auto lines = "2:tjackson:4 3::5";
     // clang-format off

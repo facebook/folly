@@ -103,7 +103,7 @@ void __cxa_throw(
     void (*destructor)(void*)) {
   static auto orig_cxa_throw =
       reinterpret_cast<decltype(&__cxa_throw)>(dlsym(RTLD_NEXT, "__cxa_throw"));
-  getCxaThrowCallbacks().invoke(thrownException, type, destructor);
+  getCxaThrowCallbacks().invoke(thrownException, type, &destructor);
   orig_cxa_throw(thrownException, type, destructor);
   __builtin_unreachable(); // orig_cxa_throw never returns
 }

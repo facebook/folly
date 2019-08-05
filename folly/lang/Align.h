@@ -17,6 +17,7 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 
 #include <folly/Portability.h>
 
@@ -117,5 +118,17 @@ static_assert(hardware_destructive_interference_size >= max_align_v, "math?");
 //  mimic: std::hardware_constructive_interference_size, C++17
 constexpr std::size_t hardware_constructive_interference_size = 64;
 static_assert(hardware_constructive_interference_size >= max_align_v, "math?");
+
+//  A value corresponding to hardware_constructive_interference_size but which
+//  may be used with alignas, since hardware_constructive_interference_size may
+//  be too large on some platforms to be used with alignas.
+//
+//  Currently, very heuristical - only non-mobile 64-bit linux gets the extended
+//  alignment treatment. Theoretically, this could be tuned better.
+constexpr std::size_t cacheline_align_v =
+    kIsLinux && sizeof(void*) >= sizeof(std::uint64_t)
+    ? hardware_constructive_interference_size
+    : max_align_v;
+struct alignas(cacheline_align_v) cacheline_align_t {};
 
 } // namespace folly

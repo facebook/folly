@@ -765,6 +765,17 @@ class F14BasicMap {
 
   //// PUBLIC - F14 Extensions
 
+  // containsEqualValue returns true iff there is an element in the map
+  // that compares equal to value using operator==.  It is undefined
+  // behavior to call this function if operator== on key_type can ever
+  // return true when the same keys passed to key_eq() would return false
+  // (the opposite is allowed).
+  bool containsEqualValue(value_type const& value) const {
+    auto it = table_.findMatching(
+        value.first, [&](auto& key) { return value.first == key; });
+    return !it.atEnd() && value.second == table_.valueAtItem(it.citem()).second;
+  }
+
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {
     return table_.getAllocatedMemorySize();
@@ -818,33 +829,6 @@ class F14BasicMap {
  protected:
   F14Table<Policy> table_;
 };
-
-template <typename M>
-bool mapsEqual(M const& lhs, M const& rhs) {
-  if (lhs.size() != rhs.size()) {
-    return false;
-  }
-  for (auto& kv : lhs) {
-    auto iter = rhs.find(kv.first);
-    if (iter == rhs.end()) {
-      return false;
-    }
-    if (std::is_same<
-            typename M::key_equal,
-            std::equal_to<typename M::key_type>>::value) {
-      // find already checked key, just check value
-      if (!(kv.second == iter->second)) {
-        return false;
-      }
-    } else {
-      // spec says we compare key with == as well as with key_eq()
-      if (!(kv == *iter)) {
-        return false;
-      }
-    }
-  }
-  return true;
-}
 } // namespace detail
 } // namespace f14
 
@@ -895,20 +879,6 @@ class F14ValueMap
     this->table_.visitContiguousItemRanges(visitor);
   }
 };
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator==(
-    F14ValueMap<K, M, H, E, A> const& lhs,
-    F14ValueMap<K, M, H, E, A> const& rhs) {
-  return mapsEqual(lhs, rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator!=(
-    F14ValueMap<K, M, H, E, A> const& lhs,
-    F14ValueMap<K, M, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
 
 template <
     typename Key,
@@ -962,20 +932,6 @@ class F14NodeMap
 
   // TODO extract and node_handle insert
 };
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator==(
-    F14NodeMap<K, M, H, E, A> const& lhs,
-    F14NodeMap<K, M, H, E, A> const& rhs) {
-  return mapsEqual(lhs, rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator!=(
-    F14NodeMap<K, M, H, E, A> const& lhs,
-    F14NodeMap<K, M, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
 
 namespace f14 {
 namespace detail {
@@ -1236,20 +1192,6 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
   }
 };
 
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator==(
-    F14VectorMap<K, M, H, E, A> const& lhs,
-    F14VectorMap<K, M, H, E, A> const& rhs) {
-  return mapsEqual(lhs, rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator!=(
-    F14VectorMap<K, M, H, E, A> const& lhs,
-    F14VectorMap<K, M, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
-
 template <
     typename Key,
     typename Mapped,
@@ -1293,20 +1235,6 @@ class F14FastMap : public std::conditional_t<
     this->table_.swap(rhs.table_);
   }
 };
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator==(
-    F14FastMap<K, M, H, E, A> const& lhs,
-    F14FastMap<K, M, H, E, A> const& rhs) {
-  return mapsEqual(lhs, rhs);
-}
-
-template <typename K, typename M, typename H, typename E, typename A>
-bool operator!=(
-    F14FastMap<K, M, H, E, A> const& lhs,
-    F14FastMap<K, M, H, E, A> const& rhs) {
-  return !(lhs == rhs);
-}
 } // namespace folly
 
 #else // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
@@ -1333,6 +1261,17 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super::Super;
 
   //// PUBLIC - F14 Extensions
+
+  bool containsEqualValue(value_type const& value) const {
+    auto slot = this->bucket(value.first);
+    auto e = this->end(slot);
+    for (auto b = this->begin(slot); b != e; ++b) {
+      if (b->first == value.first) {
+        return b->second == value.second;
+      }
+    }
+    return false;
+  }
 
   // exact for libstdc++, approximate for others
   std::size_t getAllocatedMemorySize() const {
@@ -1457,10 +1396,81 @@ class F14FastMap
   }
 };
 } // namespace folly
-
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE else
 
 namespace folly {
+namespace f14 {
+namespace detail {
+template <typename M>
+bool mapsEqual(M const& lhs, M const& rhs) {
+  if (lhs.size() != rhs.size()) {
+    return false;
+  }
+  for (auto& kv : lhs) {
+    if (!rhs.containsEqualValue(kv)) {
+      return false;
+    }
+  }
+  return true;
+}
+} // namespace detail
+} // namespace f14
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator==(
+    F14ValueMap<K, M, H, E, A> const& lhs,
+    F14ValueMap<K, M, H, E, A> const& rhs) {
+  return mapsEqual(lhs, rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator!=(
+    F14ValueMap<K, M, H, E, A> const& lhs,
+    F14ValueMap<K, M, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator==(
+    F14NodeMap<K, M, H, E, A> const& lhs,
+    F14NodeMap<K, M, H, E, A> const& rhs) {
+  return mapsEqual(lhs, rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator!=(
+    F14NodeMap<K, M, H, E, A> const& lhs,
+    F14NodeMap<K, M, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator==(
+    F14VectorMap<K, M, H, E, A> const& lhs,
+    F14VectorMap<K, M, H, E, A> const& rhs) {
+  return mapsEqual(lhs, rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator!=(
+    F14VectorMap<K, M, H, E, A> const& lhs,
+    F14VectorMap<K, M, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator==(
+    F14FastMap<K, M, H, E, A> const& lhs,
+    F14FastMap<K, M, H, E, A> const& rhs) {
+  return mapsEqual(lhs, rhs);
+}
+
+template <typename K, typename M, typename H, typename E, typename A>
+bool operator!=(
+    F14FastMap<K, M, H, E, A> const& lhs,
+    F14FastMap<K, M, H, E, A> const& rhs) {
+  return !(lhs == rhs);
+}
 
 template <typename K, typename M, typename H, typename E, typename A>
 void swap(

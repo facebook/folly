@@ -111,6 +111,18 @@ struct CacheLocality {
   /// Throws an exception if no cache information can be loaded.
   static CacheLocality readFromSysfs();
 
+  /// readFromProcCpuinfo(), except input is taken from memory rather
+  /// than the file system.
+  static CacheLocality readFromProcCpuinfoLines(
+      std::vector<std::string> const& lines);
+
+  /// Returns an estimate of the CacheLocality information by reading
+  /// /proc/cpuinfo.  This isn't as accurate as readFromSysfs(), but
+  /// is a lot faster because the info isn't scattered across
+  /// hundreds of files.  Throws an exception if no cache information
+  /// can be loaded.
+  static CacheLocality readFromProcCpuinfo();
+
   /// Returns a usable (but probably not reflective of reality)
   /// CacheLocality structure with the specified number of cpus and a
   /// single cache level that associates one cpu per cache.

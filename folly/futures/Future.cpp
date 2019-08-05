@@ -20,13 +20,6 @@
 #include <folly/futures/ThreadWheelTimekeeper.h>
 
 namespace folly {
-
-// Instantiate the most common Future types to save compile time
-template class SemiFuture<Unit>;
-template class Future<Unit>;
-} // namespace folly
-
-namespace folly {
 namespace futures {
 
 SemiFuture<Unit> sleep(Duration dur, Timekeeper* tk) {

@@ -121,7 +121,7 @@ std::string fbLogFatalCheck() {
 }
 
 struct MyStruct {
-  MyStruct(uint32_t a, uint32_t b) : a(a), b(b) {}
+  MyStruct(uint32_t a_, uint32_t b_) : a(a_), b(b_) {}
   uint32_t a;
   uint32_t b;
 };

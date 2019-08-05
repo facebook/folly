@@ -29,7 +29,7 @@ namespace detail {
  * We, however, want callbacks to be exception safe.
  * This dummies are an ugly workaround that problem.
  */
-void dummyCxaThrow(void*, std::type_info*, void (*)(void*)) noexcept;
+void dummyCxaThrow(void*, std::type_info*, void (**)(void*)) noexcept;
 void dummyCxaBeginCatch(void*) noexcept;
 void dummyCxaRethrow() noexcept;
 void dummyCxaEndCatch() noexcept;

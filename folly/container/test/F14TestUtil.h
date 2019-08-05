@@ -118,6 +118,29 @@ struct MoveOnlyTestInt {
   }
 };
 
+struct ThrowOnCopyTestInt {
+  int x{0};
+
+  ThrowOnCopyTestInt() {}
+
+  [[noreturn]] ThrowOnCopyTestInt(const ThrowOnCopyTestInt& other)
+      : x(other.x) {
+    throw std::exception{};
+  }
+
+  ThrowOnCopyTestInt& operator=(const ThrowOnCopyTestInt&) {
+    throw std::exception{};
+  }
+
+  bool operator==(const ThrowOnCopyTestInt& other) const {
+    return x == other.x;
+  }
+
+  bool operator!=(const ThrowOnCopyTestInt& other) const {
+    return !(x == other.x);
+  }
+};
+
 // Tracked is implicitly constructible across tags
 struct Counts {
   uint64_t copyConstruct{0};
@@ -582,6 +605,20 @@ class GenericHasher {
   std::shared_ptr<HasherFunc> hasher_;
 };
 
+struct HashFirst {
+  template <typename P>
+  std::size_t operator()(P const& p) const {
+    return folly::Hash{}(p.first);
+  }
+};
+
+struct EqualFirst {
+  template <typename P>
+  bool operator()(P const& lhs, P const& rhs) const {
+    return lhs.first == rhs.first;
+  }
+};
+
 } // namespace f14
 } // namespace folly
 
@@ -589,6 +626,13 @@ namespace std {
 template <>
 struct hash<folly::f14::MoveOnlyTestInt> {
   std::size_t operator()(folly::f14::MoveOnlyTestInt const& val) const {
+    return val.x;
+  }
+};
+
+template <>
+struct hash<folly::f14::ThrowOnCopyTestInt> {
+  std::size_t operator()(folly::f14::ThrowOnCopyTestInt const& val) const {
     return val.x;
   }
 };

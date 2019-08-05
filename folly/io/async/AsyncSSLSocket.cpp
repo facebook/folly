@@ -26,6 +26,7 @@
 #include <memory>
 
 #include <folly/Format.h>
+#include <folly/Indestructible.h>
 #include <folly/SocketAddress.h>
 #include <folly/SpinLock.h>
 #include <folly/io/Cursor.h>
@@ -348,8 +349,9 @@ void AsyncSSLSocket::closeNow() {
 
   DestructorGuard dg(this);
 
-  invokeHandshakeErr(AsyncSocketException(
-      AsyncSocketException::END_OF_FILE, "SSL connection closed locally"));
+  static const Indestructible<AsyncSocketException> ex(
+      AsyncSocketException::END_OF_FILE, "SSL connection closed locally");
+  invokeHandshakeErr(*ex);
 
   // Close the socket.
   AsyncSocket::closeNow();
@@ -446,16 +448,16 @@ void AsyncSSLSocket::invalidState(HandshakeCB* callback) {
   assert(!handshakeTimeout_.isScheduled());
   sslState_ = STATE_ERROR;
 
-  AsyncSocketException ex(
+  static const Indestructible<AsyncSocketException> ex(
       AsyncSocketException::INVALID_STATE,
       "sslAccept() called with socket in invalid state");
 
   handshakeEndTime_ = std::chrono::steady_clock::now();
   if (callback) {
-    callback->handshakeErr(this, ex);
+    callback->handshakeErr(this, *ex);
   }
 
-  failHandshake(__func__, ex);
+  failHandshake(__func__, *ex);
 }
 
 void AsyncSSLSocket::sslAccept(
@@ -616,10 +618,10 @@ void AsyncSSLSocket::timeoutExpired(
   } else if (state_ == StateEnum::CONNECTING) {
     assert(sslState_ == STATE_CONNECTING);
     DestructorGuard dg(this);
-    AsyncSocketException ex(
+    static const Indestructible<AsyncSocketException> ex(
         AsyncSocketException::TIMED_OUT,
         "Fallback connect timed out during TFO");
-    failHandshake(__func__, ex);
+    failHandshake(__func__, *ex);
   } else {
     assert(
         state_ == StateEnum::ESTABLISHED &&
@@ -778,19 +780,19 @@ void AsyncSSLSocket::sslConn(
     ssl_.reset(ctx_->createSSL());
   } catch (std::exception& e) {
     sslState_ = STATE_ERROR;
-    AsyncSocketException ex(
+    static const Indestructible<AsyncSocketException> ex(
         AsyncSocketException::INTERNAL_ERROR,
         "error calling SSLContext::createSSL()");
     LOG(ERROR) << "AsyncSSLSocket::sslConn(this=" << this << ", fd=" << fd_
                << "): " << e.what();
-    return failHandshake(__func__, ex);
+    return failHandshake(__func__, *ex);
   }
 
   if (!setupSSLBio()) {
     sslState_ = STATE_ERROR;
-    AsyncSocketException ex(
+    static const Indestructible<AsyncSocketException> ex(
         AsyncSocketException::INTERNAL_ERROR, "error creating SSL bio");
-    return failHandshake(__func__, ex);
+    return failHandshake(__func__, *ex);
   }
 
   applyVerificationOptions(ssl_);
@@ -1079,9 +1081,9 @@ void AsyncSSLSocket::restartSSLAccept() {
   }
   if (sslState_ == STATE_ERROR) {
     // go straight to fail if timeout expired during lookup
-    AsyncSocketException ex(
+    static const Indestructible<AsyncSocketException> ex(
         AsyncSocketException::TIMED_OUT, "SSL accept timed out");
-    failHandshake(__func__, ex);
+    failHandshake(__func__, *ex);
     return;
   }
   sslState_ = STATE_ACCEPTING;
@@ -1100,19 +1102,19 @@ void AsyncSSLSocket::handleAccept() noexcept {
       ssl_.reset(ctx_->createSSL());
     } catch (std::exception& e) {
       sslState_ = STATE_ERROR;
-      AsyncSocketException ex(
+      static const Indestructible<AsyncSocketException> ex(
           AsyncSocketException::INTERNAL_ERROR,
           "error calling SSLContext::createSSL()");
       LOG(ERROR) << "AsyncSSLSocket::handleAccept(this=" << this
                  << ", fd=" << fd_ << "): " << e.what();
-      return failHandshake(__func__, ex);
+      return failHandshake(__func__, *ex);
     }
 
     if (!setupSSLBio()) {
       sslState_ = STATE_ERROR;
-      AsyncSocketException ex(
+      static const Indestructible<AsyncSocketException> ex(
           AsyncSocketException::INTERNAL_ERROR, "error creating write bio");
-      return failHandshake(__func__, ex);
+      return failHandshake(__func__, *ex);
     }
 
     SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);

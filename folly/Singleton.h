@@ -313,6 +313,8 @@ struct SingletonHolder : public SingletonHolderBase {
   inline std::weak_ptr<T> get_weak();
   inline std::shared_ptr<T> try_get();
   inline folly::ReadMostlySharedPtr<T> try_get_fast();
+  template <typename Func>
+  inline invoke_result_t<Func, T*> apply(Func f);
   inline void vivify();
 
   void registerSingleton(CreateFunc c, TeardownFunc t);
@@ -597,6 +599,22 @@ class Singleton {
 
   static folly::ReadMostlySharedPtr<T> try_get_fast() {
     return getEntry().try_get_fast();
+  }
+
+  /**
+   * Applies a callback to the possibly-nullptr singleton instance, returning
+   * the callback's result. That is, the following two are functionally
+   * equivalent:
+   *    singleton.apply(std::ref(f));
+   *    f(singleton.try_get().get());
+   *
+   * For example, the following returns the singleton
+   * instance directly without any extra operations on the instance:
+   * auto ret = Singleton<T>::apply([](auto* v) { return v; });
+   */
+  template <typename Func>
+  static invoke_result_t<Func, T*> apply(Func f) {
+    return getEntry().apply(std::ref(f));
   }
 
   // Quickly ensure the instance exists.

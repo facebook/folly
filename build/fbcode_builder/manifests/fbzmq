@@ -20,5 +20,6 @@ libzmq
 
 [shipit.pathmap]
 fbcode/fbzmq = .
+fbcode/fbzmq/public_tld = .
 
 [shipit.strip]

@@ -150,6 +150,10 @@ class UDPServer {
     socket_->resumeAccepting();
   }
 
+  bool isAccepting() {
+    return socket_->isAccepting();
+  }
+
   // Whether writes from the UDP server should change the port for each message.
   void setChangePortForWrites(bool changePortForWrites) {
     changePortForWrites_ = changePortForWrites;
@@ -406,11 +410,13 @@ TEST_F(AsyncSocketIntegrationTest, PingPongPauseResumeListening) {
 
   // Exchange should not happen when paused.
   server->pauseAccepting();
+  EXPECT_FALSE(server->isAccepting());
   auto pausedClient = performPingPongTest(server->address(), folly::none);
   ASSERT_EQ(pausedClient->pongRecvd(), 0);
 
   // Exchange does occur after resuming.
   server->resumeAccepting();
+  EXPECT_TRUE(server->isAccepting());
   auto pingClient = performPingPongTest(server->address(), folly::none);
   ASSERT_GT(pingClient->pongRecvd(), 0);
 }

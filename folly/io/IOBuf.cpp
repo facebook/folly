@@ -130,6 +130,22 @@ IOBuf::SharedInfo::SharedInfo(FreeFunction fn, void* arg, bool hfs)
   refcount.store(1, std::memory_order_relaxed);
 }
 
+void IOBuf::SharedInfo::invokeAndDeleteEachObserver(
+    SharedInfoObserverEntryBase* observerListHead,
+    ObserverCb cb) noexcept {
+  if (observerListHead && cb) {
+    // break the chain
+    observerListHead->prev->next = nullptr;
+    auto* entry = observerListHead;
+    while (entry) {
+      auto* tmp = entry->next;
+      cb(*entry);
+      delete entry;
+      entry = tmp;
+    }
+  }
+}
+
 void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) noexcept {
   if (info->useHeapFullStorage) {
     auto* storageAddr =
@@ -962,17 +978,8 @@ void IOBuf::freeExtBuffer() noexcept {
     free(buf_);
   }
 
-  if (observerListHead) {
-    // break the chain
-    observerListHead->prev->next = nullptr;
-    auto* entry = observerListHead;
-    while (entry) {
-      auto* tmp = entry->next;
-      entry->afterFreeExtBuffer();
-      delete entry;
-      entry = tmp;
-    }
-  }
+  SharedInfo::invokeAndDeleteEachObserver(
+      observerListHead, [](auto& entry) { entry.afterFreeExtBuffer(); });
 }
 
 void IOBuf::allocExtBuffer(
@@ -1017,9 +1024,10 @@ void IOBuf::initExtBuffer(
 }
 
 fbstring IOBuf::moveToFbString() {
-  // we need to save useHeapFullStorage since
+  // we need to save useHeapFullStorage and the observerListHead since
   // sharedInfo() may not be valid after fbstring str
   bool useHeapFullStorage = false;
+  SharedInfoObserverEntryBase* observerListHead = nullptr;
   // malloc-allocated buffers are just fine, everything else needs
   // to be turned into one.
   if (!sharedInfo() || // user owned, not ours to give up
@@ -1032,9 +1040,19 @@ fbstring IOBuf::moveToFbString() {
     // to reallocate; we need 1 byte for NUL terminator.
     coalesceAndReallocate(0, computeChainDataLength(), this, 1);
   } else {
-    // if we do not call coalesceAndReallocate
-    // we might need to call SharedInfo::releaseStorage()
-    useHeapFullStorage = sharedInfo() && sharedInfo()->useHeapFullStorage;
+    auto* info = sharedInfo();
+    if (info) {
+      // if we do not call coalesceAndReallocate
+      // we might need to call SharedInfo::releaseStorage()
+      // and/or SharedInfo::invokeAndDeleteEachObserver()
+      useHeapFullStorage = info->useHeapFullStorage;
+      // save the observerListHead
+      // the coalesceAndReallocate path will call
+      // decrementRefcount and freeExtBuffer if needed
+      // so the observer lis notification is needed here
+      observerListHead = info->observerListHead;
+      info->observerListHead = nullptr;
+    }
   }
 
   // Ensure NUL terminated
@@ -1044,6 +1062,9 @@ fbstring IOBuf::moveToFbString() {
       length(),
       capacity(),
       AcquireMallocatedString());
+
+  SharedInfo::invokeAndDeleteEachObserver(
+      observerListHead, [](auto& entry) { entry.afterReleaseExtBuffer(); });
 
   if (flags() & kFlagFreeSharedInfo) {
     delete sharedInfo();

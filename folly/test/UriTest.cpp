@@ -408,3 +408,8 @@ TEST(Uri, Simple) {
     EXPECT_EQ(s, u.fbstr());
   }
 }
+
+TEST(Uri, BadPortThrowsInvalidArgument) {
+  constexpr folly::StringPiece s = "http://localhost:9999999999999999999/";
+  EXPECT_THROW(Uri{s}, std::invalid_argument);
+}

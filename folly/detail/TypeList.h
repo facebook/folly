@@ -168,8 +168,10 @@ using If = MetaApply<impl::If_<If_>, Then, Else>;
  */
 template <template <class...> class C, class... Ts>
 class MetaDefer {
-  template <template <class...> class D = C, class = D<Ts...>>
+  template <template <class...> class D, class = D<Ts...>>
   static char (&try_(int))[1];
+
+  template <template <class...> class D, class = void>
   static char (&try_(long))[2];
   struct Result {
     using type = C<Ts...>;
@@ -177,7 +179,7 @@ class MetaDefer {
 
  public:
   template <class... Us>
-  using apply = _t<If<sizeof(try_(0)) - 1 || sizeof...(Us), Empty, Result>>;
+  using apply = _t<If<sizeof(try_<C>(0)) - 1 || sizeof...(Us), Empty, Result>>;
 };
 
 /**

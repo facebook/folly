@@ -261,9 +261,6 @@ class FutureBase {
   template <class F>
   void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
-  template <class F>
-  void setCallbackAndDetach_(F&& func);
-
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
   ///
@@ -410,11 +407,15 @@ class FutureBase {
     return getCore().getExecutor();
   }
 
+  DeferredExecutor* getDeferredExecutor() const {
+    return getCore().getDeferredExecutor();
+  }
+
   // Sets the Executor within the Core state object of `this`.
   // Must be called either before attaching a callback or after the callback
   // has already been invoked, but not concurrently with anything which might
   // trigger invocation of the callback.
-  void setExecutor(Executor::KeepAlive<> x) {
+  void setExecutor(futures::detail::KeepAliveOrDeferred x) {
     getCore().setExecutor(std::move(x));
   }
 
@@ -442,8 +443,7 @@ template <typename T>
 DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future);
 
 template <typename T>
-folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor(
-    SemiFuture<T>& future);
+futures::detail::DeferredWrapper stealDeferredExecutor(SemiFuture<T>& future);
 } // namespace detail
 } // namespace futures
 
@@ -553,7 +553,6 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::result;
   using Base::setCallback_;
-  using Base::setCallbackAndDetach_;
   using Base::valid;
   using Base::value;
 
@@ -799,8 +798,9 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     if (deferredExecutor) {
       ret =
           std::move(ret).defer([](Try<T>&& t) { return std::move(t).value(); });
-      ret.getDeferredExecutor()->setNestedExecutors(
-          {std::move(deferredExecutor)});
+      std::vector<futures::detail::DeferredWrapper> des;
+      des.push_back(std::move(deferredExecutor));
+      ret.getDeferredExecutor()->setNestedExecutors(std::move(des));
     }
     return ret;
   }
@@ -856,9 +856,10 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   friend class SemiFuture;
   template <class>
   friend class Future;
-  friend folly::Executor::KeepAlive<DeferredExecutor>
-  futures::detail::stealDeferredExecutor<T>(SemiFuture&);
-  friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(SemiFuture&);
+  friend futures::detail::DeferredWrapper
+  futures::detail::stealDeferredExecutor<T>(SemiFuture<T>&);
+  friend DeferredExecutor* futures::detail::getDeferredExecutor<T>(
+      SemiFuture<T>&);
 
   using Base::setExecutor;
   using Base::throwIfInvalid;
@@ -873,10 +874,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       : Base(futures::detail::EmptyConstruct{}) {}
 
   // Throws FutureInvalid if !this->core_
-  DeferredExecutor* getDeferredExecutor() const;
-
-  // Throws FutureInvalid if !this->core_
-  folly::Executor::KeepAlive<DeferredExecutor> stealDeferredExecutor() const;
+  futures::detail::DeferredWrapper stealDeferredExecutor();
 
   /// Blocks until the future is fulfilled, or `dur` elapses.
   ///
@@ -1018,7 +1016,6 @@ class Future : private futures::detail::FutureBase<T> {
   using Base::raise;
   using Base::result;
   using Base::setCallback_;
-  using Base::setCallbackAndDetach_;
   using Base::valid;
   using Base::value;
 
@@ -1190,7 +1187,13 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Arg>
-  auto then(Executor::KeepAlive<> x, Arg&& arg) && {
+  // clang-format off
+  [[deprecated("then forms that take an executor are ambiguous. "
+               "Replace with nested tasks, or for executor enforcement use "
+               "SemiFuture-returning functions.")]]
+  // clang-format on
+  auto
+  then(Executor::KeepAlive<> x, Arg&& arg) && {
     auto oldX = getKeepAliveToken(this->getExecutor());
     this->setExecutor(std::move(x));
     // TODO(T29171940): thenImplementation here is ambiguous
@@ -1208,7 +1211,13 @@ class Future : private futures::detail::FutureBase<T> {
   }
 
   template <typename R, typename... Args>
-  auto then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
+  // clang-format off
+  [[deprecated("then forms that take an executor are ambiguous. "
+               "Replace with nested tasks, or for executor enforcement use "
+               "SemiFuture-returning functions.")]]
+  // clang-format on
+  auto
+  then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
     return std::move(*this).then(std::move(x), &func);
   }
 
@@ -2367,7 +2376,7 @@ auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
 
 /** Similar to collectAny, collectAnyWithoutException return the first Future to
  * complete without exceptions. If none of the future complete without
- * excpetions, the last exception will be returned as a result.
+ * exceptions, the last exception will be returned as a result.
  */
 template <class InputIterator>
 SemiFuture<std::pair<

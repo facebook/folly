@@ -1609,49 +1609,71 @@ TEST(IOBuf, FreeFn) {
   class IOBufFreeObserver {
    public:
     using Func = std::function<void()>;
-    explicit IOBufFreeObserver(Func&& func) : func_(std::move(func)) {}
+    explicit IOBufFreeObserver(Func&& freeFunc, Func&& releaseFunc)
+        : freeFunc_(std::move(freeFunc)),
+          releaseFunc_(std::move(releaseFunc)) {}
     void afterFreeExtBuffer() const noexcept {
-      func_();
+      freeFunc_();
+    }
+    void afterReleaseExtBuffer() const noexcept {
+      releaseFunc_();
     }
 
    private:
-    Func func_;
+    Func freeFunc_;
+    Func releaseFunc_;
   };
+
+  int freeVal = 0;
+  int releaseVal = 0;
+  IOBufFreeObserver observer(
+      [&freeVal]() { freeVal += 1; }, [&releaseVal]() { releaseVal += 1; });
 
   // no observers
   { unique_ptr<IOBuf> iobuf(IOBuf::create(64)); }
 
-  int val = 0;
   // one observer
   {
     unique_ptr<IOBuf> iobuf(IOBuf::create(64));
 
-    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
-      EXPECT_EQ(val, 0);
-      val += 1;
-    })));
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
   }
-  EXPECT_EQ(val, 1);
+  EXPECT_EQ(freeVal, 1);
+  EXPECT_EQ(releaseVal, 0);
 
-  val = 0;
+  freeVal = 0;
+  releaseVal = 0;
+  // reserve
+  {
+    unique_ptr<IOBuf> iobuf(IOBuf::create(64));
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
+    iobuf->reserve(0, iobuf->capacity() + 1024);
+    EXPECT_EQ(freeVal, 1);
+    EXPECT_EQ(releaseVal, 0);
+  }
+
+  freeVal = 0;
+  releaseVal = 0;
+  // one observer - call moveToFbString
+  {
+    unique_ptr<IOBuf> iobuf(IOBuf::create(64 * 1024));
+
+    EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
+    auto str = iobuf->moveToFbString().toStdString();
+  }
+  EXPECT_EQ(freeVal, 0);
+  EXPECT_EQ(releaseVal, 1);
+
+  freeVal = 0;
+  releaseVal = 0;
   // multiple observers
   {
     unique_ptr<IOBuf> iobuf(IOBuf::create(64));
 
-    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
-      EXPECT_EQ(val, 0);
-      val += 1;
-    })));
-
-    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
-      EXPECT_EQ(val, 1);
-      val += 20;
-    })));
-
-    EXPECT_TRUE(iobuf->appendSharedInfoObserver(IOBufFreeObserver([&val]() {
-      EXPECT_EQ(val, 21);
-      val += 300;
-    })));
+    for (size_t i = 0; i < 3; i++) {
+      EXPECT_TRUE(iobuf->appendSharedInfoObserver(observer));
+    }
   }
-  EXPECT_EQ(val, 321);
+  EXPECT_EQ(freeVal, 3);
+  EXPECT_EQ(releaseVal, 0);
 }

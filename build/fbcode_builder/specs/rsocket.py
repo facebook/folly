@@ -11,7 +11,7 @@ import specs.folly as folly
 
 def fbcode_builder_spec(builder):
     return {
-        'depends_on': [folly, gmock],
+        'depends_on': [folly],
         'steps': [
             builder.fb_github_cmake_install(
                 'rsocket-cpp/rsocket',

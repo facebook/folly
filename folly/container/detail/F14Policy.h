@@ -588,6 +588,10 @@ class ValueContainerPolicy : public BasePolicy<
     return Super::moveValue(item);
   }
 
+  Value const& valueAtItem(Item const& item) const {
+    return item;
+  }
+
   Value&& valueAtItemForExtract(Item& item) {
     return std::move(item);
   }
@@ -836,6 +840,10 @@ class NodeContainerPolicy
     return Super::moveValue(*item);
   }
 
+  Value const& valueAtItem(Item const& item) const {
+    return *item;
+  }
+
   Value&& valueAtItemForExtract(Item& item) {
     return std::move(*item);
   }
@@ -849,7 +857,9 @@ class NodeContainerPolicy
     auto p = std::addressof(**itemAddr);
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(p != nullptr);
+    auto rollback = makeGuard([&] { AllocTraits::deallocate(a, p, 1); });
     AllocTraits::construct(a, p, std::forward<Args>(args)...);
+    rollback.dismiss();
   }
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
@@ -1175,6 +1185,10 @@ class VectorContainerPolicy : public BasePolicy<
 
   VectorContainerIndexSearch buildArgForItem(Item const& item) const {
     return {item};
+  }
+
+  Value const& valueAtItem(Item const& item) const {
+    return values_[item];
   }
 
   Value&& valueAtItemForExtract(Item& item) {

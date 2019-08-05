@@ -29,6 +29,7 @@
 
 #include <folly/FBString.h>
 #include <folly/FBVector.h>
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/detail/Iterators.h>
@@ -985,7 +986,7 @@ class IOBuf {
   }
 
   /**
-   * For most of the  use-cases where it seems like a good idea to call this
+   * For most of the use-cases where it seems like a good idea to call this
    * function, what you really want is `isSharedOne()`.
    *
    * If this IOBuf is managed by the usual refcounting mechanism (ie
@@ -1419,6 +1420,7 @@ class IOBuf {
     virtual ~SharedInfoObserverEntryBase() = default;
 
     virtual void afterFreeExtBuffer() const noexcept = 0;
+    virtual void afterReleaseExtBuffer() const noexcept = 0;
   };
 
   template <typename Observer>
@@ -1432,6 +1434,10 @@ class IOBuf {
     void afterFreeExtBuffer() const noexcept final {
       observer.afterFreeExtBuffer();
     }
+
+    void afterReleaseExtBuffer() const noexcept final {
+      observer.afterReleaseExtBuffer();
+    }
   };
 
   struct SharedInfo {
@@ -1439,6 +1445,11 @@ class IOBuf {
     SharedInfo(FreeFunction fn, void* arg, bool hfs = false);
 
     static void releaseStorage(SharedInfo* info) noexcept;
+
+    using ObserverCb = folly::FunctionRef<void(SharedInfoObserverEntryBase&)>;
+    static void invokeAndDeleteEachObserver(
+        SharedInfoObserverEntryBase* observerListHead,
+        ObserverCb cb) noexcept;
 
     // A pointer to a function to call to free the buffer when the refcount
     // hits 0.  If this is null, free() will be used instead.

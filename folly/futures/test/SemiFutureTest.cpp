@@ -1240,3 +1240,24 @@ TEST(SemiFuture, ensure) {
     EXPECT_TRUE(ensureCalled);
   }
 }
+
+TEST(SemiFuture, deferredExecutorInlineTest) {
+  bool a = false, b = false, c = false;
+  auto manualExec1 = ManualExecutor{};
+  auto manualExec1KA = getKeepAliveToken(manualExec1);
+  auto manualExec2 = ManualExecutor{};
+  auto manualExec2KA = getKeepAliveToken(manualExec2);
+  auto dw = futures::detail::DeferredWrapper::create();
+  auto* de = dw.get();
+  de->setExecutor(manualExec1KA);
+  de->addFrom(Executor::KeepAlive<>{}, [&](auto&&) { a = true; });
+  EXPECT_FALSE(a);
+  manualExec1.run();
+  EXPECT_TRUE(a);
+  de->addFrom(manualExec2KA.copy(), [&](auto&&) { b = true; });
+  EXPECT_FALSE(b);
+  manualExec1.run();
+  EXPECT_TRUE(b);
+  de->addFrom(manualExec1KA.copy(), [&](auto&&) { c = true; });
+  EXPECT_TRUE(c);
+}

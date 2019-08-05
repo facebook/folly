@@ -12,7 +12,7 @@ import re
 import shlex
 
 
-def parse_expr(expr_text):
+def parse_expr(expr_text, valid_variables):
     """ parses the simple criteria expression syntax used in
     dependency specifications.
     Returns an ExprNode instance that can be evaluated like this:
@@ -37,7 +37,7 @@ def parse_expr(expr_text):
                            # none of them evaluated true.
     """
 
-    p = Parser(expr_text)
+    p = Parser(expr_text, valid_variables)
     return p.parse()
 
 
@@ -112,9 +112,10 @@ class EqualExpr(ExprNode):
 
 
 class Parser(object):
-    def __init__(self, text):
+    def __init__(self, text, valid_variables):
         self.text = text
         self.lex = shlex.shlex(text)
+        self.valid_variables = valid_variables
 
     def parse(self):
         expr = self.top()
@@ -141,6 +142,8 @@ class Parser(object):
             return func()
 
         if op == "=":
+            if name not in self.valid_variables:
+                raise Exception("unknown variable %r in expression" % (name,))
             return EqualExpr(name, self.lex.get_token())
 
         raise Exception(

@@ -3767,27 +3767,41 @@ TEST(AsyncSocketTest, getBufInUse) {
   client->connect(nullptr, server->getAddress());
 
   NetworkSocket servfd = server->getNetworkSocket();
+  NetworkSocket accepted;
+  uint64_t maxTries = 5;
 
-  auto clientAccepted =
-      AsyncSocket::newSocket(nullptr, netops::accept(servfd, nullptr, nullptr));
+  do {
+    std::this_thread::yield();
+    eventBase.loop();
+    accepted = netops::accept(servfd, nullptr, nullptr);
+  } while (accepted == NetworkSocket() && --maxTries);
 
-  clientAccepted->setRecvBufSize(3000);
+  // Exhaustion number of tries to accept client connection, good bye
+  ASSERT_TRUE(accepted != NetworkSocket());
+
+  auto clientAccepted = AsyncSocket::newSocket(nullptr, accepted);
+
+  // Use minimum receive buffer size
+  clientAccepted->setRecvBufSize(0);
+
+  // Use maximum send buffer size
+  client->setSendBufSize((unsigned)-1);
 
   std::string testData;
-
   for (int i = 0; i < 10000; ++i) {
     testData += "0123456789";
   }
 
   client->write(nullptr, (const void*)testData.c_str(), testData.size());
 
+  std::this_thread::yield();
   eventBase.loop();
 
   size_t recvBufSize = clientAccepted->getRecvBufInUse();
   size_t sendBufSize = client->getSendBufInUse();
 
   EXPECT_EQ((recvBufSize + sendBufSize), testData.size());
-  EXPECT_GE(recvBufSize, 0);
-  EXPECT_GE(sendBufSize, 0);
+  EXPECT_GT(recvBufSize, 0);
+  EXPECT_GT(sendBufSize, 0);
 }
 #endif
