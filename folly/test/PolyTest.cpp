@@ -433,7 +433,7 @@ struct foo_bar {
   void foo(int& i) {
     i += j_;
   }
-  std::string bar(int i) const {
+  std::string bar(int i) const noexcept {
     i += j_;
     return folly::to<std::string>(i);
   }
