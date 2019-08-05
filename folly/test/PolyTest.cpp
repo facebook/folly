@@ -433,7 +433,7 @@ struct foo_bar {
   void foo(int& i) {
     i += j_;
   }
-  std::string bar(int i) const noexcept {
+  std::string bar(int i) const {
     i += j_;
     return folly::to<std::string>(i);
   }
@@ -832,4 +832,36 @@ TEST(Poly, PolyRefAsArg) {
   frob.frobnicate(x);
   // should not throw:
   frob.frobnicate(folly::Poly<folly::poly::IRegular&>(x));
+}
+
+
+namespace {
+  struct ICat {
+    template<class Base>
+    struct Interface : Base {
+      void pet() { folly::poly_call<0>(*this); }
+
+      int meow() const { return folly::poly_call<1>(*this); }
+    };
+
+    template<class T>
+    using Members = FOLLY_POLY_MEMBERS(&T::pet, &T::meow);
+  };
+
+  struct cat {
+    void pet() noexcept { ++pet_count; }
+    int meow() const noexcept { return pet_count; }
+    int pet_count = 0;
+  };
+} // namespace
+
+TEST(Poly, NoexceptMembers)
+{
+  cat c{};
+
+  folly::Poly<ICat&> ref = c;
+  ref->pet();
+
+  folly::Poly<ICat const&> cref = ref;
+  EXPECT_EQ(cref->meow(), 1);
 }
