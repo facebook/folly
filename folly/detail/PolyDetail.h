@@ -522,6 +522,14 @@ struct IsConstMember<R (C::*)(As...) const> : std::true_type {};
 template <class R, class C, class... As>
 struct IsConstMember<R (*)(C const&, As...)> : std::true_type {};
 
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <class R, class C, class... As>
+struct IsConstMember<R (C::*)(As...) const noexcept> : std::true_type {};
+
+template <class R, class C, class... As>
+struct IsConstMember<R (*)(C const&, As...) noexcept> : std::true_type {};
+#endif
+
 template <
     class T,
     FOLLY_AUTO User,
