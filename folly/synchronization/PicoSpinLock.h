@@ -49,6 +49,7 @@
 
 #include <folly/Portability.h>
 #include <folly/synchronization/AtomicUtil.h>
+#include <folly/synchronization/SanitizeThread.h>
 #include <folly/synchronization/detail/Sleeper.h>
 
 namespace folly {
@@ -131,11 +132,10 @@ struct PicoSpinLock {
    * got it.
    */
   bool try_lock() const {
-    auto previous = atomic_fetch_set(
-        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
-        Bit,
-        std::memory_order_acquire);
-    return !previous;
+    auto ret = try_lock_internal();
+    annotate_rwlock_try_acquired(
+        this, annotate_rwlock_level::wrlock, ret, __FILE__, __LINE__);
+    return ret;
   }
 
   /*
@@ -143,9 +143,11 @@ struct PicoSpinLock {
    */
   void lock() const {
     detail::Sleeper sleeper;
-    while (!try_lock()) {
+    while (!try_lock_internal()) {
       sleeper.wait();
     }
+    annotate_rwlock_acquired(
+        this, annotate_rwlock_level::wrlock, __FILE__, __LINE__);
   }
 
   /*
@@ -153,11 +155,23 @@ struct PicoSpinLock {
    * integer.
    */
   void unlock() const {
+    annotate_rwlock_released(
+        this, annotate_rwlock_level::wrlock, __FILE__, __LINE__);
     auto previous = atomic_fetch_reset(
         *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
         Bit,
         std::memory_order_release);
     DCHECK(previous);
+  }
+
+ private:
+  // called by lock/try_lock - this is not TSAN aware
+  bool try_lock_internal() const {
+    auto previous = atomic_fetch_set(
+        *reinterpret_cast<std::atomic<UIntType>*>(&lock_),
+        Bit,
+        std::memory_order_acquire);
+    return !previous;
   }
 };
 

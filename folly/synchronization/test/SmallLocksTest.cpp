@@ -189,6 +189,29 @@ TEST(SmallLocks, PicoSpinSigned) {
   }
   EXPECT_EQ(val.getData(), -8);
 }
+
+TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
+  SKIP_IF(!folly::kIsSanitizeThread) << "Enabled in TSAN mode only";
+
+  typedef PicoSpinLock<int16_t, 0> Lock;
+
+  {
+    Lock a;
+    Lock b;
+    a.init(-8);
+    b.init(-8);
+    {
+      std::lock_guard<Lock> ga(a);
+      std::lock_guard<Lock> gb(b);
+    }
+    {
+      std::lock_guard<Lock> gb(b);
+      EXPECT_DEATH(
+          [&]() { std::lock_guard<Lock> ga(a); }(),
+          "Cycle in lock order graph");
+    }
+  }
+}
 #endif
 
 TEST(SmallLocks, RegClobber) {
