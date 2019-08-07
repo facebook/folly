@@ -825,11 +825,10 @@ SemiFuture<T>::defer(F&& func) && {
   auto deferredExecutorPtr = this->getDeferredExecutor();
   futures::detail::KeepAliveOrDeferred deferredExecutor = [&]() {
     if (deferredExecutorPtr) {
-      return futures::detail::KeepAliveOrDeferred{
-          futures::detail::DeferredWrapper{deferredExecutorPtr}};
+      return futures::detail::KeepAliveOrDeferred{deferredExecutorPtr->copy()};
     } else {
       auto newDeferredExecutor = futures::detail::KeepAliveOrDeferred(
-          futures::detail::DeferredWrapper::create());
+          futures::detail::DeferredExecutor::create());
       this->setExecutor(newDeferredExecutor.copy());
       return newDeferredExecutor;
     }
@@ -851,11 +850,11 @@ SemiFuture<T>::deferExTry(F&& func) && {
   auto deferredExecutorPtr = this->getDeferredExecutor();
   futures::detail::DeferredWrapper deferredExecutor = [&]() mutable {
     if (deferredExecutorPtr) {
-      return futures::detail::DeferredWrapper(deferredExecutorPtr);
+      return deferredExecutorPtr->copy();
     } else {
-      auto newDeferredExecutor = futures::detail::DeferredWrapper::create();
+      auto newDeferredExecutor = futures::detail::DeferredExecutor::create();
       this->setExecutor(
-          futures::detail::KeepAliveOrDeferred{newDeferredExecutor});
+          futures::detail::KeepAliveOrDeferred{newDeferredExecutor->copy()});
       return newDeferredExecutor;
     }
   }();

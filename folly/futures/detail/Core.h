@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include <boost/variant.hpp>
+
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
@@ -88,85 +90,12 @@ bool compare_exchange_strong_release_acquire(
 
 class DeferredExecutor;
 
-/**
- * KeepAlive equivalent for DeferredExecutor, that is not a true executor.
- * KeepAliveOrDeferred acts as a union of DeferredWrapper and KeepAlive.
- */
-class DeferredWrapper {
+class UniqueDeleter {
  public:
-  DeferredWrapper() = default;
-
-  /**
-   * Constructs a DeferredWrapper by acquiring the executor.
-   */
-  explicit DeferredWrapper(DeferredExecutor* de);
-
-  DeferredWrapper(const DeferredWrapper& other);
-
-  DeferredWrapper(DeferredWrapper&& other)
-      : storage_{std::exchange(
-            other.storage_,
-            reinterpret_cast<uint64_t>(nullptr))} {}
-
-  DeferredWrapper& operator=(const DeferredWrapper& other);
-
-  DeferredWrapper& operator=(DeferredWrapper&& other) {
-    storage_ =
-        std::exchange(other.storage_, reinterpret_cast<uint64_t>(nullptr));
-    return *this;
-  }
-
-  DeferredExecutor* steal() {
-    uint64_t oldStorage =
-        std::exchange(storage_, reinterpret_cast<uint64_t>(nullptr));
-    return reinterpret_cast<DeferredExecutor*>(oldStorage & ~kDeferredFlag);
-  }
-
-  DeferredExecutor* get() const {
-    return reinterpret_cast<DeferredExecutor*>(storage_ & ~kDeferredFlag);
-  }
-
-  ~DeferredWrapper();
-
-  explicit operator bool() const {
-    return storage_;
-  }
-
-  /**
-   * Check the passed value against the deferred flag and return true if it
-   * represents a DeferredWrapper.
-   */
-  static bool representsDeferred(const uint64_t& storage) {
-    return (storage & kDeferredFlag) != 0;
-  }
-
-  static DeferredWrapper create();
-
-  // Bit to represent a deferred executor rather than a KeepAlive.
-  // Deferred bit will be bit 3 on 64-bit platforms, where pointers align to 8
-  // bytes so bit 2 is free. On 32-bit platforms pointers may align to 4 bytes
-  // so we have to use the rest of the uint64_t. On 32-bit big endian
-  // platforms where the pointer will sit at the high end of the uint64_t,
-  // also use bit 2. On little-endian 32-bit platforms use a bit above the
-  // size of the 32-bit pointer.
-  static constexpr uint64_t kDeferredFlag = uint64_t(1)
-      << (std::numeric_limits<uintptr_t>::digits >= 64
-              ? 2
-              : (std::numeric_limits<uintptr_t>::digits + 2));
-  static_assert(
-      !(std::numeric_limits<uintptr_t>::digits == 32 && kIsBigEndian),
-      "Big-endian 32-bit systems untested for Futures code.");
-  static_assert(
-      sizeof(uint64_t) >= sizeof(uintptr_t),
-      "Sanity check on pointer size");
-  static_assert(
-      (static_cast<uint64_t>(folly::detail::ExecutorKeepAliveBase::kFlagMask) &
-       kDeferredFlag) == 0,
-      "Nothing in the current executor mask can use the deferred bit.");
-
- private:
-  uint64_t storage_ = reinterpret_cast<uint64_t>(nullptr);
+  void operator()(DeferredExecutor* ptr);
 };
+
+using DeferredWrapper = std::unique_ptr<DeferredExecutor, UniqueDeleter>;
 
 /**
  * Wrapper type that represents either a KeepAlive or a DeferredExecutor.
@@ -175,38 +104,22 @@ class DeferredWrapper {
  */
 class KeepAliveOrDeferred {
  public:
-  KeepAliveOrDeferred(Executor::KeepAlive<> ka) {
-    new (&storage_) Executor::KeepAlive<>(std::move(ka));
-    // Verify that the deferred bit is not set. If it were, KeepAlive and
-    // DeferredExecutor would be impossible to distinguish.
+  KeepAliveOrDeferred(Executor::KeepAlive<> ka) : storage_{std::move(ka)} {
     DCHECK(!isDeferred());
   }
 
-  KeepAliveOrDeferred(DeferredWrapper deferred) {
-    new (&storage_) DeferredWrapper(std::move(deferred));
-  }
+  KeepAliveOrDeferred(DeferredWrapper deferred)
+      : storage_{std::move(deferred)} {}
 
   KeepAliveOrDeferred() {}
 
-  ~KeepAliveOrDeferred() {
-    reset();
-  }
+  ~KeepAliveOrDeferred() {}
 
-  KeepAliveOrDeferred(KeepAliveOrDeferred&& other) {
-    if (other.isDeferred()) {
-      new (&storage_) DeferredWrapper(std::move(other).stealDeferred());
-    } else {
-      new (&storage_) Executor::KeepAlive<>(std::move(other).stealKeepAlive());
-    }
-  }
+  KeepAliveOrDeferred(KeepAliveOrDeferred&& other)
+      : storage_{std::move(other.storage_)} {}
 
   KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other) {
-    reset();
-    if (other.isDeferred()) {
-      new (&storage_) DeferredWrapper(std::move(other).stealDeferred());
-    } else {
-      new (&storage_) Executor::KeepAlive<>(std::move(other).stealKeepAlive());
-    }
+    storage_ = std::move(other.storage_);
     return *this;
   }
 
@@ -231,60 +144,46 @@ class KeepAliveOrDeferred {
     return std::move(asKeepAlive());
   }
 
-  DeferredWrapper stealDeferred() && {
+  std::unique_ptr<DeferredExecutor, UniqueDeleter> stealDeferred() && {
     if (!isDeferred()) {
-      return DeferredWrapper{};
+      return std::unique_ptr<DeferredExecutor, UniqueDeleter>{};
     }
     return std::move(asDeferred());
   }
 
   bool isDeferred() const {
-    return DeferredWrapper::representsDeferred(storage_);
+    return boost::get<DeferredWrapper>(&storage_) != nullptr;
   }
 
   bool isKeepAlive() const {
     return !isDeferred();
   }
 
-  KeepAliveOrDeferred copy() const {
-    if (isDeferred()) {
-      return KeepAliveOrDeferred{std::move(asDeferred())};
-    } else {
-      return KeepAliveOrDeferred{std::move(asKeepAlive())};
-    }
-  }
+  KeepAliveOrDeferred copy() const;
 
   explicit operator bool() const {
-    return storage_;
+    return getDeferredExecutor() || getKeepAliveExecutor();
   }
 
  private:
-  uint64_t storage_ = reinterpret_cast<uintptr_t>(nullptr);
+  boost::variant<DeferredWrapper, Executor::KeepAlive<>> storage_;
 
   friend class DeferredExecutor;
 
-  void reset() {
-    if (isDeferred()) {
-      DeferredWrapper dw = std::move(asDeferred());
-    } else {
-      Executor::KeepAlive<> ka = std::move(asKeepAlive());
-    }
-  }
-
   Executor::KeepAlive<>& asKeepAlive() {
-    return *reinterpret_cast<Executor::KeepAlive<>*>(&storage_);
+    return boost::get<Executor::KeepAlive<>>(storage_);
   }
 
   const Executor::KeepAlive<>& asKeepAlive() const {
-    return *reinterpret_cast<const Executor::KeepAlive<>*>(&storage_);
+    return boost::get<Executor::KeepAlive<>>(storage_);
   }
 
   DeferredWrapper& asDeferred() {
-    return *reinterpret_cast<DeferredWrapper*>(&storage_);
+    return boost::get<DeferredWrapper>(storage_);
   }
 
   const DeferredWrapper& asDeferred() const {
-    return *reinterpret_cast<const DeferredWrapper*>(&storage_);
+    return boost::get<DeferredWrapper>(storage_);
   }
 };
 
@@ -396,8 +295,18 @@ class DeferredExecutor final {
     std::exchange(func_, nullptr);
   }
 
+  DeferredWrapper copy() {
+    acquire();
+    return DeferredWrapper(this);
+  }
+
+  static DeferredWrapper create() {
+    return DeferredWrapper(new DeferredExecutor{});
+  }
+
  private:
   DeferredExecutor() {}
+  friend class UniqueDeleter;
 
   bool acquire() {
     auto keepAliveCount =
@@ -421,44 +330,24 @@ class DeferredExecutor final {
   folly::Executor::KeepAlive<> executor_;
   std::unique_ptr<std::vector<DeferredWrapper>> nestedExecutors_;
   std::atomic<ssize_t> keepAliveCount_{1};
-
-  friend class KeepAliveOrDeferred;
-  friend class DeferredWrapper;
 };
 
-inline DeferredWrapper::DeferredWrapper(DeferredExecutor* de)
-    : storage_{reinterpret_cast<uint64_t>(de) | kDeferredFlag} {
-  de->acquire();
-}
-
-inline DeferredWrapper::~DeferredWrapper() {
-  if (storage_) {
-    steal()->release();
+inline void UniqueDeleter::operator()(DeferredExecutor* ptr) {
+  if (ptr) {
+    ptr->release();
   }
 }
 
-inline DeferredWrapper::DeferredWrapper(const DeferredWrapper& other)
-    : storage_{other.storage_} {
-  if (storage_) {
-    get()->acquire();
+inline KeepAliveOrDeferred KeepAliveOrDeferred::copy() const {
+  if (isDeferred()) {
+    if (auto def = getDeferredExecutor()) {
+      return KeepAliveOrDeferred{def->copy()};
+    } else {
+      return KeepAliveOrDeferred{};
+    }
+  } else {
+    return KeepAliveOrDeferred{asKeepAlive()};
   }
-}
-
-inline DeferredWrapper& DeferredWrapper::operator=(
-    const DeferredWrapper& other) {
-  storage_ = other.storage_;
-  if (storage_) {
-    get()->acquire();
-  }
-  return *this;
-}
-
-/* static */
-inline DeferredWrapper DeferredWrapper::create() {
-  DeferredWrapper dw{};
-  auto* de = new DeferredExecutor{};
-  dw.storage_ = reinterpret_cast<uint64_t>(de) | kDeferredFlag;
-  return dw;
 }
 
 /// The shared state object for Future and Promise.
