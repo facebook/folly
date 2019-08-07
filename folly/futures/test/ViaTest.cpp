@@ -249,7 +249,8 @@ TEST(Via, then2) {
 TEST(Via, allowInline) {
   ManualExecutor x1, x2;
   bool a = false, b = false, c = false, d = false, e = false, f = false,
-       g = false, h = false, i = false, j = false, k = false, l = false;
+       g = false, h = false, i = false, j = false, k = false, l = false,
+       m = false, n = false, o = false, p = false, q = false, r = false;
   via(&x1)
       .thenValue([&](auto&&) { a = true; })
       .thenTryInline([&](auto&&) { b = true; })
@@ -269,7 +270,19 @@ TEST(Via, allowInline) {
       .semi()
       .deferValue([&](auto&&) { k = true; })
       .via(&x2)
-      .thenValueInline([&](auto&&) { l = true; });
+      .thenValueInline([&](auto&&) { l = true; })
+      .semi()
+      .deferValue([&](auto&&) { m = true; })
+      .via(&x1)
+      .thenValue([&](auto&&) { n = true; })
+      .semi()
+      .deferValue([&](auto&&) { o = true; })
+      .deferValue([&](auto&&) { p = true; })
+      .via(&x1)
+      .semi()
+      .deferValue([&](auto&&) { q = true; })
+      .deferValue([&](auto&&) { r = true; })
+      .via(&x2);
 
   EXPECT_FALSE(a);
   EXPECT_FALSE(b);
@@ -311,16 +324,31 @@ TEST(Via, allowInline) {
   EXPECT_TRUE(i);
   EXPECT_FALSE(j);
 
-  // Deferred work is not inline so k will remain false
+  // Defer should run on x1 and therefore not inline
+  // Subsequent deferred work is run on x1 and hence not inlined.
   x2.run();
   EXPECT_TRUE(j);
-  EXPECT_FALSE(k);
-
-  // Deferred work is not inline, but subsequent inline work should be inlined
-  // consistently with deferred work.
-  x2.run();
   EXPECT_TRUE(k);
   EXPECT_TRUE(l);
+  EXPECT_FALSE(m);
+
+  // Complete the deferred task
+  x1.run();
+  EXPECT_TRUE(m);
+  EXPECT_FALSE(n);
+
+  // Here defer and the above thenValue are both on x1, defer should be
+  // inline
+  x1.run();
+  EXPECT_TRUE(n);
+  EXPECT_TRUE(o);
+  EXPECT_TRUE(p);
+  EXPECT_FALSE(q);
+
+  // Change of executor in deferred executor so now run x2 to complete
+  x2.run();
+  EXPECT_TRUE(q);
+  EXPECT_TRUE(r);
 }
 
 #ifndef __APPLE__ // TODO #7372389
