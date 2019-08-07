@@ -244,6 +244,26 @@ TEST(BlockingWait, WaitInFiber) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
+TEST(BlockingWait, WaitTaskInFiber) {
+  SimplePromise<int> promise;
+  folly::EventBase evb;
+  auto& fm = folly::fibers::getFiberManager(evb);
+
+  auto future = fm.addTaskFuture([&] {
+    return folly::coro::blockingWait(folly::coro::co_invoke(
+        [&]() -> folly::coro::Task<int> { co_return co_await promise; }));
+  });
+
+  evb.loopOnce();
+  EXPECT_FALSE(future.isReady());
+
+  promise.emplace(42);
+
+  evb.loopOnce();
+  EXPECT_TRUE(future.isReady());
+  EXPECT_EQ(42, std::move(future).get());
+}
+
 TEST(BlockingWait, WaitOnSemiFuture) {
   int result = folly::coro::blockingWait(folly::makeSemiFuture(123));
   CHECK_EQ(result, 123);

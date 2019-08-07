@@ -282,6 +282,59 @@ auto makeRefBlockingWaitTask(Awaitable&& awaitable)
   co_yield co_await static_cast<Awaitable&&>(awaitable);
 }
 
+class BlockingWaitExecutor final : public folly::DrivableExecutor {
+ public:
+  ~BlockingWaitExecutor() {
+    while (keepAliveCount_.load() > 0) {
+      drive();
+    }
+  }
+
+  void add(Func func) override {
+    auto wQueue = queue_.wlock();
+    bool empty = wQueue->empty();
+    wQueue->push_back(std::move(func));
+    if (empty) {
+      baton_.post();
+    }
+  }
+
+  void drive() override {
+    baton_.wait();
+    baton_.reset();
+
+    folly::fibers::runInMainContext([&]() {
+      std::vector<Func> funcs;
+      queue_.swap(funcs);
+      for (auto& func : funcs) {
+        std::exchange(func, nullptr)();
+      }
+    });
+  }
+
+ private:
+  bool keepAliveAcquire() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
+    DCHECK(keepAliveCount >= 0);
+    return true;
+  }
+
+  void keepAliveRelease() override {
+    auto keepAliveCount =
+        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
+    DCHECK(keepAliveCount > 0);
+    if (keepAliveCount == 1) {
+      add([] {});
+    }
+  }
+
+  folly::Synchronized<std::vector<Func>> queue_;
+  fibers::Baton baton_;
+
+  std::atomic<ssize_t> keepAliveCount_{0};
+};
+
 } // namespace detail
 
 /// blockingWait(Awaitable&&) -> await_result_t<Awaitable>
@@ -310,7 +363,7 @@ template <
     std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
 auto blockingWait(SemiAwaitable&& awaitable)
     -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
-  folly::ManualExecutor executor;
+  detail::BlockingWaitExecutor executor;
   return static_cast<
       std::add_rvalue_reference_t<semi_await_result_t<SemiAwaitable>>>(
       detail::makeRefBlockingWaitTask(
