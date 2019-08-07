@@ -24,15 +24,10 @@
 #include <folly/Executor.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
-#include <folly/python/executor_api.h>
+#include <folly/python/executor.h>
 
 namespace folly {
 namespace python {
-
-inline folly::Executor* getExecutor() {
-  import_folly__executor();
-  return get_executor();
-}
 
 template <typename T>
 void bridgeCoroTask(
