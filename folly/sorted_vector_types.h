@@ -131,29 +131,29 @@ int distance_if_multipass(Iterator first, Iterator last) {
   return std::distance(first, last);
 }
 
-template <class OurContainer, class Vector, class GrowthPolicy>
+template <class OurContainer, class Vector, class GrowthPolicy, class Value>
 typename OurContainer::iterator insert_with_hint(
     OurContainer& sorted,
     Vector& cont,
     typename OurContainer::const_iterator hint,
-    typename OurContainer::value_type&& value,
+    Value&& value,
     GrowthPolicy& po) {
   const typename OurContainer::value_compare& cmp(sorted.value_comp());
   if (hint == cont.end() || cmp(value, *hint)) {
     if (hint == cont.begin() || cmp(*(hint - 1), value)) {
       hint = po.increase_capacity(cont, hint);
-      return cont.insert(hint, std::move(value));
+      return cont.insert(hint, std::forward<Value>(value));
     } else {
-      return sorted.insert(std::move(value)).first;
+      return sorted.insert(std::forward<Value>(value)).first;
     }
   }
 
   if (cmp(*hint, value)) {
     if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
       hint = po.increase_capacity(cont, hint + 1);
-      return cont.insert(hint, std::move(value));
+      return cont.insert(hint, std::forward<Value>(value));
     } else {
-      return sorted.insert(std::move(value)).first;
+      return sorted.insert(std::forward<Value>(value)).first;
     }
   }
 
@@ -430,7 +430,8 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   iterator insert(const_iterator hint, const value_type& value) {
-    return insert(hint, std::move(value_type(value)));
+    return detail::insert_with_hint(
+        *this, m_.cont_, hint, value, get_growth_policy());
   }
 
   iterator insert(const_iterator hint, value_type&& value) {
@@ -884,7 +885,8 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   iterator insert(const_iterator hint, const value_type& value) {
-    return insert(hint, std::move(value_type(value)));
+    return detail::insert_with_hint(
+        *this, m_.cont_, hint, value, get_growth_policy());
   }
 
   iterator insert(const_iterator hint, value_type&& value) {

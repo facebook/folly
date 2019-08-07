@@ -63,12 +63,14 @@ struct OneAtATimePolicy {
 };
 
 struct CountCopyCtor {
-  explicit CountCopyCtor() : val_(0) {}
+  explicit CountCopyCtor() : val_(0), count_(0) {}
 
   explicit CountCopyCtor(int val) : val_(val), count_(0) {}
 
   CountCopyCtor(const CountCopyCtor& c) noexcept
-      : val_(c.val_), count_(c.count_ + 1) {}
+      : val_(c.val_), count_(c.count_ + 1) {
+    ++gCount_;
+  }
 
   bool operator<(const CountCopyCtor& o) const {
     return val_ < o.val_;
@@ -76,7 +78,10 @@ struct CountCopyCtor {
 
   int val_;
   int count_;
+  static int gCount_;
 };
+
+int CountCopyCtor::gCount_ = 0;
 
 struct Opaque {
   int value;
@@ -877,3 +882,29 @@ TEST(SortedVectorTypes, TestPmrAllocatorScoped) {
 }
 
 #endif
+
+TEST(SortedVectorTypes, TestInsertHintCopy) {
+  sorted_vector_set<CountCopyCtor> set;
+  sorted_vector_map<CountCopyCtor, int> map;
+  CountCopyCtor skey;
+  std::pair<CountCopyCtor, int> mkey;
+
+  CountCopyCtor::gCount_ = 0;
+  set.insert(set.end(), skey);
+  map.insert(map.end(), mkey);
+  EXPECT_EQ(CountCopyCtor::gCount_, 2);
+
+  set.emplace(CountCopyCtor(1));
+  map.emplace(CountCopyCtor(1), 1);
+
+  CountCopyCtor::gCount_ = 0;
+  for (size_t i = 0; i <= set.size(); ++i) {
+    auto sit = set.begin();
+    auto mit = map.begin();
+    std::advance(sit, i);
+    std::advance(mit, i);
+    set.insert(sit, skey);
+    map.insert(mit, mkey);
+  }
+  EXPECT_EQ(CountCopyCtor::gCount_, 0);
+}
