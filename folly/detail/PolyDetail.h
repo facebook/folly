@@ -23,6 +23,7 @@
 #include <typeinfo>
 #include <utility>
 
+#include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/detail/TypeList.h>
@@ -404,7 +405,7 @@ struct SignatureOf_<R (C::*)(As...) const, I> {
   using type = Ret<R, I> (*)(Data const&, Arg<As, I>...);
 };
 
-#ifdef __cpp_noexcept_function_type
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <class R, class C, class... As, class I>
 struct SignatureOf_<R (C::*)(As...) noexcept, I> {
   using type = std::add_pointer_t<Ret<R, I>(Data&, Arg<As, I>...) noexcept>;
@@ -438,7 +439,7 @@ struct ArgTypes_<User, I, Ret (*)(Data, Args...)> {
   using type = TypeList<Args...>;
 };
 
-#ifdef __cpp_noexcept_function_type
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <FOLLY_AUTO User, class I, class Ret, class Data, class... Args>
 struct ArgTypes_<User, I, Ret (*)(Data, Args...) noexcept> {
   using type = TypeList<Args...>;
@@ -520,6 +521,14 @@ struct IsConstMember<R (C::*)(As...) const> : std::true_type {};
 
 template <class R, class C, class... As>
 struct IsConstMember<R (*)(C const&, As...)> : std::true_type {};
+
+#if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <class R, class C, class... As>
+struct IsConstMember<R (C::*)(As...) const noexcept> : std::true_type {};
+
+template <class R, class C, class... As>
+struct IsConstMember<R (*)(C const&, As...) noexcept> : std::true_type {};
+#endif
 
 template <
     class T,
