@@ -1210,3 +1210,288 @@ TEST(IOBuf, positionTracking) {
   EXPECT_EQ(0, cursor.getCurrentPosition());
   EXPECT_EQ(30, cursor.totalLength());
 }
+
+TEST(IOBuf, BoundedCursorSanity) {
+  // initialize bounded Cursor with length 0
+  std::unique_ptr<IOBuf> chain1(IOBuf::create(20));
+  chain1->append(10);
+  Cursor subC(chain1.get(), 0);
+  EXPECT_EQ(0, subC.totalLength());
+  EXPECT_EQ(0, subC.length());
+  EXPECT_EQ(0, subC - chain1.get());
+  EXPECT_TRUE(subC.isAtEnd());
+  EXPECT_FALSE(subC.canAdvance(1));
+  EXPECT_THROW(subC.skip(1), std::out_of_range);
+
+  // multi-item chain
+  chain1->appendChain(chain1->clone());
+  EXPECT_EQ(2, chain1->countChainElements());
+  EXPECT_EQ(20, chain1->computeChainDataLength());
+
+  Cursor subCurs1(chain1.get(), 0);
+  EXPECT_EQ(0, subCurs1.totalLength());
+  EXPECT_EQ(0, subCurs1.length());
+  EXPECT_TRUE(subCurs1.isAtEnd());
+  EXPECT_FALSE(subCurs1.canAdvance(1));
+  EXPECT_THROW(subCurs1.skip(1), std::out_of_range);
+
+  // initialize bounded Cursor with length greater than total IOBuf bytes
+  Cursor subCurs2(chain1.get(), 25);
+  EXPECT_EQ(20, subCurs2.totalLength());
+  EXPECT_FALSE(subCurs2.isAtEnd());
+  EXPECT_TRUE(subCurs2.canAdvance(1));
+  subCurs2.skip(10);
+  EXPECT_EQ(10, subCurs2.totalLength());
+  EXPECT_EQ(10, subCurs2 - chain1.get());
+  EXPECT_FALSE(subCurs2.isAtEnd());
+
+  subCurs2.skip(3);
+  EXPECT_EQ(7, subCurs2.totalLength());
+  EXPECT_EQ(13, subCurs2 - chain1.get());
+  EXPECT_EQ(7, subCurs2.skipAtMost(10));
+  EXPECT_TRUE(subCurs2.isAtEnd());
+
+  // initialize bounded Cursor with another bounded Cursor
+  Cursor subCurs3(chain1.get(), 16);
+  EXPECT_EQ(16, subCurs3.totalLength());
+  EXPECT_FALSE(subCurs3.isAtEnd());
+  subCurs3.skip(4);
+  EXPECT_EQ(12, subCurs3.totalLength());
+  EXPECT_FALSE(subCurs3.isAtEnd());
+  Cursor subCurs4(subCurs3, 9);
+  EXPECT_EQ(9, subCurs4.totalLength());
+  EXPECT_FALSE(subCurs4.isAtEnd());
+  EXPECT_EQ(0, subCurs3 - subCurs4);
+  subCurs4.skip(5);
+  EXPECT_EQ(4, subCurs4.totalLength());
+  EXPECT_FALSE(subCurs4.isAtEnd());
+  EXPECT_EQ(5, subCurs4 - subCurs3);
+  subCurs4.skip(4);
+  EXPECT_TRUE(subCurs4.isAtEnd());
+  EXPECT_EQ(0, subCurs4.totalLength());
+
+  // Initialize a bounded Cursor with length greater than the bytes left in the
+  // bounded Cursor in the ctor argument
+  EXPECT_THROW(Cursor(subCurs3, 20), std::out_of_range);
+  // Initialize a bounded Cursor with equal length as the bounded Cursor
+  // in the ctor arguments
+  Cursor subCurs5(subCurs3, 12);
+  EXPECT_EQ(12, subCurs5.totalLength());
+  EXPECT_FALSE(subCurs5.isAtEnd());
+
+  // Initialize a Cursor with bounded Cursor
+  Cursor subCurs6(chain1.get(), 17);
+  EXPECT_EQ(17, subCurs6.totalLength());
+  Cursor curs(subCurs6);
+  EXPECT_TRUE(curs.isBounded());
+  EXPECT_EQ(17, curs.totalLength());
+  EXPECT_EQ(0, curs - chain1.get());
+  EXPECT_FALSE(curs.isAtEnd());
+  curs.advanceToEnd();
+  EXPECT_EQ(0, curs.totalLength());
+  EXPECT_TRUE(curs.isAtEnd());
+  EXPECT_EQ(17, curs - chain1.get());
+
+  subCurs6.skip(7);
+  EXPECT_EQ(10, subCurs6.totalLength());
+  Cursor curs1(subCurs6);
+  EXPECT_TRUE(curs1.isBounded());
+  EXPECT_EQ(10, curs1.totalLength());
+  EXPECT_EQ(7, curs1 - chain1.get());
+  EXPECT_FALSE(curs1.isAtEnd());
+
+  // test reset
+  curs.reset(chain1.get());
+  EXPECT_FALSE(curs.isBounded());
+  EXPECT_EQ(20, curs.totalLength());
+  EXPECT_EQ(0, curs - chain1.get());
+  EXPECT_FALSE(curs.isAtEnd());
+}
+
+TEST(IOBuf, BoundedCursorOperators) {
+  // Test operators on a single-item chain
+  {
+    std::unique_ptr<IOBuf> chain1(IOBuf::create(20));
+    chain1->append(10);
+
+    Cursor subCurs1(chain1.get(), 8);
+    EXPECT_EQ(8, subCurs1.totalLength());
+    EXPECT_EQ(0, subCurs1 - chain1.get());
+    EXPECT_FALSE(subCurs1.isAtEnd());
+    subCurs1.skip(3);
+    EXPECT_EQ(5, subCurs1.totalLength());
+    EXPECT_EQ(3, subCurs1 - chain1.get());
+    EXPECT_FALSE(subCurs1.isAtEnd());
+    subCurs1.skip(5);
+    EXPECT_EQ(0, subCurs1.totalLength());
+    EXPECT_EQ(8, subCurs1 - chain1.get());
+    EXPECT_TRUE(subCurs1.isAtEnd());
+
+    Cursor curs1(chain1.get());
+    Cursor subCurs2(curs1, 6);
+    EXPECT_EQ(6, subCurs2.totalLength());
+    EXPECT_EQ(0, subCurs2 - chain1.get());
+    EXPECT_EQ(8, subCurs1 - subCurs2);
+    EXPECT_THROW(subCurs2 - subCurs1, std::out_of_range);
+    EXPECT_EQ(subCurs2.retreatAtMost(10), 0);
+    EXPECT_THROW(subCurs2.retreat(10), std::out_of_range);
+    subCurs2.advanceToEnd();
+    EXPECT_EQ(2, subCurs1 - subCurs2);
+    subCurs1.retreat(1);
+    EXPECT_EQ(1, subCurs1.totalLength());
+    EXPECT_EQ(subCurs1.retreatAtMost(10), 7);
+    EXPECT_EQ(0, subCurs1 - chain1.get());
+    EXPECT_EQ(8, subCurs1.totalLength());
+    EXPECT_EQ(6, subCurs2 - subCurs1);
+    subCurs1.advanceToEnd();
+    EXPECT_EQ(2, subCurs1 - subCurs2);
+  }
+
+  // Test cross-chain operations
+  {
+    std::unique_ptr<IOBuf> chain1(IOBuf::create(20));
+    chain1->append(10);
+    std::unique_ptr<IOBuf> chain2 = chain1->clone();
+
+    Cursor subCurs1(chain1.get(), 9);
+    Cursor subCurs2(chain2.get(), 9);
+    EXPECT_THROW(subCurs1 - subCurs2, std::out_of_range);
+    EXPECT_THROW(subCurs1 - chain2.get(), std::out_of_range);
+  }
+
+  // Test operations on multi-item chains
+  {
+    std::unique_ptr<IOBuf> iobuf1(IOBuf::create(20));
+    iobuf1->append(10);
+    std::unique_ptr<IOBuf> iobuf2(IOBuf::create(20));
+    iobuf2->append(10);
+    std::unique_ptr<IOBuf> iobuf3(IOBuf::create(20));
+    iobuf3->append(10);
+    iobuf1->prependChain(std::move(iobuf2));
+    iobuf1->prependChain(std::move(iobuf3));
+    EXPECT_EQ(3, iobuf1->countChainElements());
+    EXPECT_EQ(30, iobuf1->computeChainDataLength());
+
+    Cursor curs1(iobuf1.get());
+    Cursor subCurs1(curs1, 28);
+    subCurs1.skip(5);
+    EXPECT_EQ(23, subCurs1.totalLength());
+    EXPECT_EQ(5, subCurs1 - iobuf1.get());
+    EXPECT_FALSE(subCurs1.isAtEnd());
+    Cursor subCurs2(iobuf1.get(), 15);
+    subCurs2.skip(3);
+    EXPECT_EQ(12, subCurs2.totalLength());
+    EXPECT_EQ(2, subCurs1 - subCurs2);
+    EXPECT_THROW(subCurs2 - subCurs1, std::out_of_range);
+
+    subCurs1.skip(7);
+    EXPECT_EQ(9, subCurs1 - subCurs2);
+    EXPECT_EQ(12, subCurs1 - iobuf1.get());
+    EXPECT_FALSE(subCurs1.isAtEnd());
+    EXPECT_EQ(subCurs1.length(), 8);
+    EXPECT_THROW(subCurs2 - subCurs1, std::out_of_range);
+
+    subCurs2.skip(7);
+    EXPECT_EQ(5, subCurs2.totalLength());
+    EXPECT_EQ(10, subCurs2 - iobuf1.get());
+    EXPECT_FALSE(subCurs2.isAtEnd());
+    EXPECT_EQ(2, subCurs1 - subCurs2);
+    EXPECT_THROW(subCurs2 - subCurs1, std::out_of_range);
+
+    subCurs1.advanceToEnd();
+    EXPECT_EQ(28, subCurs1 - iobuf1.get());
+    EXPECT_EQ(18, subCurs1 - subCurs2);
+    EXPECT_TRUE(subCurs1.isAtEnd());
+
+    subCurs1.retreat(8);
+    EXPECT_FALSE(subCurs1.isAtEnd());
+    EXPECT_EQ(subCurs1.totalLength(), 8);
+    EXPECT_EQ(subCurs1.length(), 8);
+    EXPECT_EQ(20, subCurs1 - iobuf1.get());
+    EXPECT_EQ(10, subCurs1 - subCurs2);
+    subCurs1.retreat(1);
+    EXPECT_EQ(subCurs1.totalLength(), 9);
+    EXPECT_EQ(subCurs1.length(), 1);
+    EXPECT_EQ(19, subCurs1 - iobuf1.get());
+    EXPECT_EQ(subCurs1.retreatAtMost(20), 19);
+    EXPECT_EQ(subCurs1.totalLength(), 28);
+    EXPECT_EQ(0, subCurs1 - iobuf1.get());
+    EXPECT_EQ(10, subCurs2 - subCurs1);
+    EXPECT_THROW(subCurs1.retreat(1), std::out_of_range);
+  }
+
+  // Test canAdvance with a chain of items
+  {
+    auto chain = IOBuf::create(10);
+    chain->append(10);
+    chain->appendChain(chain->clone());
+    EXPECT_EQ(2, chain->countChainElements());
+    EXPECT_EQ(20, chain->computeChainDataLength());
+
+    Cursor c(chain.get());
+    Cursor subC(c, 14);
+    for (size_t i = 0; i <= 14; ++i) {
+      EXPECT_TRUE(subC.canAdvance(i));
+    }
+    EXPECT_FALSE(subC.canAdvance(15));
+    subC.skip(10);
+    EXPECT_TRUE(subC.canAdvance(4));
+    EXPECT_FALSE(subC.canAdvance(5));
+  }
+}
+
+TEST(IOBuf, BoundedCursorPullAndPeek) {
+  std::unique_ptr<IOBuf> iobuf1(IOBuf::create(10));
+  append(iobuf1, "he");
+  std::unique_ptr<IOBuf> iobuf2(IOBuf::create(10));
+  append(iobuf2, "llo ");
+  std::unique_ptr<IOBuf> iobuf3(IOBuf::create(10));
+  append(iobuf3, "world abc");
+  iobuf1->prependChain(std::move(iobuf2));
+  iobuf1->prependChain(std::move(iobuf3));
+  EXPECT_EQ(3, iobuf1->countChainElements());
+  EXPECT_EQ(15, iobuf1->computeChainDataLength());
+
+  std::array<char, 20> buf;
+  buf.fill(0);
+  Cursor subCurs1(iobuf1.get(), 13);
+  subCurs1.pull(buf.data(), 13);
+  EXPECT_EQ("hello world a", std::string(buf.data()));
+  EXPECT_TRUE(subCurs1.isAtEnd());
+
+  buf.fill(0);
+  Cursor subCurs2(iobuf1.get(), 11);
+  EXPECT_EQ(11, subCurs2.pullAtMost(buf.data(), 20));
+  EXPECT_EQ("hello world", std::string(buf.data()));
+  EXPECT_TRUE(subCurs2.isAtEnd());
+
+  buf.fill(0);
+  Cursor subCurs3(iobuf1.get(), 2);
+  EXPECT_EQ(2, subCurs3.totalLength());
+  EXPECT_EQ(0, subCurs3 - iobuf1.get());
+  EXPECT_EQ(2, subCurs3.pullAtMost(buf.data(), 20));
+  EXPECT_EQ("he", std::string(buf.data()));
+  EXPECT_TRUE(subCurs3.isAtEnd());
+  EXPECT_EQ(0, subCurs3.totalLength());
+  // the following test makes sure that tryAdvanceBuffer inside pullAtMostSlow
+  // won't go over the entire IOBuf chain, but terminate at the right boundary
+  EXPECT_EQ(2, subCurs3 - iobuf1.get());
+
+  EXPECT_THROW(
+      { Cursor(iobuf1.get(), 11).pull(buf.data(), 20); }, std::out_of_range);
+
+  {
+    Cursor subCursor(iobuf1.get(), 13);
+    auto b = subCursor.peekBytes();
+    EXPECT_EQ("he", StringPiece(b));
+    subCursor.skip(b.size());
+    b = subCursor.peekBytes();
+    EXPECT_EQ("llo ", StringPiece(b));
+    subCursor.skip(b.size());
+    b = subCursor.peekBytes();
+    EXPECT_EQ("world a", StringPiece(b));
+    subCursor.skip(b.size());
+    EXPECT_EQ(3, iobuf1->countChainElements());
+    EXPECT_EQ(15, iobuf1->computeChainDataLength());
+  }
+}
