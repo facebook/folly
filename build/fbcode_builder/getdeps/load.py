@@ -115,7 +115,15 @@ class ManifestLoader(object):
 
     def load_all_manifests(self):
         if not self._loaded_all:
-            self.manifests_by_name = self._loader.load_all(self.build_opts)
+            all_manifests_by_name = self._loader.load_all(self.build_opts)
+            if self.manifests_by_name:
+                # To help ensure that we only ever have a single manifest object for a
+                # given project, and that it can't change once we have loaded it,
+                # only update our mapping for projects that weren't already loaded.
+                for name, manifest in all_manifests_by_name.items():
+                    self.manifests_by_name.setdefault(name, manifest)
+            else:
+                self.manifests_by_name = all_manifests_by_name
             self._loaded_all = True
 
         return self.manifests_by_name
