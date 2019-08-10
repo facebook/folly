@@ -30,13 +30,13 @@
 #include <stdexcept>
 
 #include <folly/Traits.h>
-#include <folly/functional/ApplyTuple.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
 
 #include <folly/container/F14Map-fwd.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
+#include <folly/container/detail/Util.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
@@ -404,73 +404,20 @@ class F14BasicMap {
   }
 
  private:
-  std::pair<ItemIter, bool> emplaceItem() {
-    // rare but valid
-    return table_.tryEmplaceValue(key_type{});
-  }
-
-  template <typename U1, typename U2>
-  std::pair<ItemIter, bool> emplaceItem(U1&& x, U2&& y) {
-    using K = KeyTypeForEmplace<key_type, hasher, key_equal, U1>;
-    K key(std::forward<U1>(x));
-
-    // TODO(T31574848): piecewise_construct is to work around libstdc++ versions
-    // (e.g., GCC < 6) with no implementation of N4387 ("perfect initialization"
-    // for pairs and tuples).  Otherwise we could just pass key, forwarded key,
-    // and forwarded y to tryEmplaceValue.
-    return table_.tryEmplaceValue(
-        key,
-        std::piecewise_construct,
-        std::forward_as_tuple(std::forward<K>(key)),
-        std::forward_as_tuple(std::forward<U2>(y)));
-  }
-
-  template <typename U1, typename U2>
-  std::pair<ItemIter, bool> emplaceItem(std::pair<U1, U2> const& p) {
-    return emplaceItem(p.first, p.second);
-  }
-
-  template <typename U1, typename U2>
-  std::pair<ItemIter, bool> emplaceItem(std::pair<U1, U2>&& p) {
-    return emplaceItem(std::move(p.first), std::move(p.second));
-  }
-
-  template <typename Arg1, typename... Args2>
-  std::pair<ItemIter, bool> emplaceItem(
-      std::piecewise_construct_t,
-      std::tuple<Arg1>&& first_args,
-      std::tuple<Args2...>&& second_args) {
-    using K = KeyTypeForEmplace<key_type, hasher, key_equal, Arg1>;
-    K key(std::get<0>(std::move(first_args)));
-
-    // Args2&&... holds only references even if the caller gave us a
-    // tuple that directly contains values.
-    return table_.tryEmplaceValue(
-        key,
-        std::piecewise_construct,
-        std::forward_as_tuple(std::forward<K>(key)),
-        std::tuple<Args2&&...>(std::move(second_args)));
-  }
-
-  template <typename... Args1, typename... Args2>
-  std::enable_if_t<sizeof...(Args1) != 1, std::pair<ItemIter, bool>>
-  emplaceItem(
-      std::piecewise_construct_t,
-      std::tuple<Args1...>&& first_args,
-      std::tuple<Args2...>&& second_args) {
-    auto key = make_from_tuple<key_type>(
-        std::tuple<Args1&&...>(std::move(first_args)));
-    return table_.tryEmplaceValue(
-        key,
-        std::piecewise_construct,
-        std::forward_as_tuple(std::move(key)),
-        std::tuple<Args2&&...>(std::move(second_args)));
-  }
+  template <typename Arg>
+  using UsableAsKey =
+      EligibleForHeterogeneousFind<key_type, hasher, key_equal, Arg>;
 
  public:
   template <typename... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    auto rv = emplaceItem(std::forward<Args>(args)...);
+    auto rv = folly::detail::callWithExtractedKey<key_type, UsableAsKey>(
+        table_.alloc(),
+        [&](auto&&... inner) {
+          return table_.tryEmplaceValue(
+              std::forward<decltype(inner)>(inner)...);
+        },
+        std::forward<Args>(args)...);
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 

@@ -39,7 +39,6 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
-#include <folly/functional/ApplyTuple.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Assume.h>
@@ -259,35 +258,6 @@ template <
 using EligibleForHeterogeneousInsert = Conjunction<
     EligibleForHeterogeneousFind<TableKey, Hasher, KeyEqual, ArgKey>,
     std::is_constructible<TableKey, ArgKey>>;
-
-template <
-    typename TableKey,
-    typename Hasher,
-    typename KeyEqual,
-    typename KeyArg0OrBool,
-    typename... KeyArgs>
-using KeyTypeForEmplaceHelper = std::conditional_t<
-    sizeof...(KeyArgs) == 1 &&
-        (std::is_same<remove_cvref_t<KeyArg0OrBool>, TableKey>::value ||
-         EligibleForHeterogeneousFind<
-             TableKey,
-             Hasher,
-             KeyEqual,
-             KeyArg0OrBool>::value),
-    KeyArg0OrBool&&,
-    TableKey>;
-
-template <
-    typename TableKey,
-    typename Hasher,
-    typename KeyEqual,
-    typename... KeyArgs>
-using KeyTypeForEmplace = KeyTypeForEmplaceHelper<
-    TableKey,
-    Hasher,
-    KeyEqual,
-    std::tuple_element_t<0, std::tuple<KeyArgs..., bool>>,
-    KeyArgs...>;
 
 ////////////////
 

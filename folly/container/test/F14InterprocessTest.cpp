@@ -29,7 +29,6 @@
 #include <folly/Traits.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
-#include <folly/container/test/F14TestUtil.h>
 #include <folly/portability/GTest.h>
 
 using namespace boost::interprocess;

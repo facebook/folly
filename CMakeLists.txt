@@ -136,13 +136,15 @@ list(REMOVE_ITEM hfiles
 )
 
 # Explicitly include utility library code from inside
-# folly/test and folly/io/async/test/
+# test subdirs
 list(APPEND files
   ${FOLLY_DIR}/io/async/test/ScopedBoundPort.cpp
   ${FOLLY_DIR}/io/async/test/SocketPair.cpp
   ${FOLLY_DIR}/io/async/test/TimeUtil.cpp
 )
 list(APPEND hfiles
+  ${FOLLY_DIR}/container/test/F14TestUtil.h
+  ${FOLLY_DIR}/container/test/TrackingTypes.h
   ${FOLLY_DIR}/io/async/test/AsyncSSLSocketTest.h
   ${FOLLY_DIR}/io/async/test/AsyncSocketTest.h
   ${FOLLY_DIR}/io/async/test/AsyncSocketTest2.h
@@ -436,11 +438,9 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/test/SingletonTestStructs.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.cpp
     ${FOLLY_DIR}/test/SocketAddressTestHelper.h
+    ${FOLLY_DIR}/container/test/F14TestUtil.h
+    ${FOLLY_DIR}/container/test/TrackingTypes.h
     ${FOLLY_DIR}/experimental/test/CodingTestUtils.cpp
-    ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
-    ${FOLLY_DIR}/logging/test/ConfigHelpers.h
-    ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
-    ${FOLLY_DIR}/logging/test/TestLogHandler.h
     ${FOLLY_DIR}/futures/test/TestExecutor.cpp
     ${FOLLY_DIR}/futures/test/TestExecutor.h
     ${FOLLY_DIR}/io/async/test/BlockingSocket.h
@@ -460,6 +460,10 @@ if (BUILD_TESTS)
     ${FOLLY_DIR}/io/async/test/TimeUtil.h
     ${FOLLY_DIR}/io/async/test/UndelayedDestruction.h
     ${FOLLY_DIR}/io/async/test/Util.h
+    ${FOLLY_DIR}/logging/test/ConfigHelpers.cpp
+    ${FOLLY_DIR}/logging/test/ConfigHelpers.h
+    ${FOLLY_DIR}/logging/test/TestLogHandler.cpp
+    ${FOLLY_DIR}/logging/test/TestLogHandler.h
   )
   target_compile_definitions(folly_test_support
     PUBLIC
@@ -502,6 +506,7 @@ if (BUILD_TESTS)
       TEST foreach_test SOURCES ForeachTest.cpp
       TEST merge_test SOURCES MergeTest.cpp
       TEST sparse_byte_set_test SOURCES SparseByteSetTest.cpp
+      TEST util_test SOURCES UtilTest.cpp
 
     DIRECTORY concurrency/test/
       TEST atomic_shared_ptr_test SOURCES AtomicSharedPtrTest.cpp

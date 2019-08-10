@@ -34,6 +34,7 @@
 #include <folly/container/F14Set-fwd.h>
 #include <folly/container/detail/F14Policy.h>
 #include <folly/container/detail/F14Table.h>
+#include <folly/container/detail/Util.h>
 
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
@@ -323,18 +324,21 @@ class F14BasicSet {
     insert(ilist.begin(), ilist.end());
   }
 
+ private:
+  template <typename Arg>
+  using UsableAsKey =
+      EligibleForHeterogeneousFind<key_type, hasher, key_equal, Arg>;
+
+ public:
   template <class... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    using K = KeyTypeForEmplace<key_type, hasher, key_equal, Args...>;
-
-    // If args is a single arg that can be emplaced directly (either
-    // key_type or a heterogeneous find + conversion to key_type) key will
-    // just be a reference to that arg, otherwise this will construct an
-    // intermediate key.
-    K key(std::forward<Args>(args)...);
-
-    auto rv = table_.tryEmplaceValue(key, std::forward<K>(key));
-
+    auto rv = folly::detail::callWithConstructedKey<key_type, UsableAsKey>(
+        table_.alloc(),
+        [&](auto&&... inner) {
+          return table_.tryEmplaceValue(
+              std::forward<decltype(inner)>(inner)...);
+        },
+        std::forward<Args>(args)...);
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
