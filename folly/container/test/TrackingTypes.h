@@ -288,7 +288,7 @@ inline size_t& testAllocationCount() {
 }
 
 inline size_t& testAllocationMaxCount() {
-  static thread_local size_t value{0};
+  static thread_local size_t value{std::numeric_limits<std::size_t>::max()};
   return value;
 }
 
