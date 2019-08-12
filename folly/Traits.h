@@ -22,6 +22,12 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+#include <string>
+#include <vector>
+#include <set>
+#include <deque>
+#include <map>
+#include <utility>
 
 #include <folly/Portability.h>
 
@@ -610,23 +616,6 @@ struct is_transparent : detail::is_transparent_<void, T> {};
  * are. Furthermore, all STL containers can be assumed to comply,
  * although that is not guaranteed by the standard.
  */
-
-FOLLY_NAMESPACE_STD_BEGIN
-
-template <class T, class U>
-struct pair;
-template <class T, class A>
-class vector;
-template <class T, class A>
-class deque;
-template <class T, class C, class A>
-class set;
-template <class K, class V, class C, class A>
-class map;
-template <class T>
-class shared_ptr;
-
-FOLLY_NAMESPACE_STD_END
 
 namespace folly {
 
