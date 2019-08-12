@@ -23,17 +23,19 @@
 
 #include <glog/logging.h>
 
-#if defined(__GNUC__) || defined(__clang__)
-#include <cpuid.h>
-#elif defined(_MSC_VER)
-#include <intrin.h>
-#endif
-
 #if FOLLY_X64 && defined(__RTM__)
 #include <folly/lang/Assume.h>
 #include <immintrin.h>
 #define FOLLY_RTM_SUPPORT 1
 #elif FOLLY_X64
+#endif
+
+#if FOLLY_RTM_SUPPORT
+#if defined(__GNUC__) || defined(__clang__)
+#include <cpuid.h>
+#elif defined(_MSC_VER)
+#include <intrin.h>
+#endif
 #endif
 
 namespace folly {
