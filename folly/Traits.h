@@ -611,6 +611,21 @@ struct is_transparent : detail::is_transparent_<void, T> {};
  * although that is not guaranteed by the standard.
  */
 
+
+#if FOLLY_NO_ALLOW_DECLARATIONS_ADDED_TO_STD
+
+// 16.5.4.2.1 [namespace.std]
+// Unless otherwise specified, the behavior of a C++ program is undefined if it adds declarations or definitions to namespace std or to a namespace within namespace std.
+
+#include <string>
+#include <vector>
+#include <set>
+#include <deque>
+#include <map>
+#include <utility>
+
+#else
+
 FOLLY_NAMESPACE_STD_BEGIN
 
 template <class T, class U>
@@ -627,6 +642,8 @@ template <class T>
 class shared_ptr;
 
 FOLLY_NAMESPACE_STD_END
+
+#endif
 
 namespace folly {
 
