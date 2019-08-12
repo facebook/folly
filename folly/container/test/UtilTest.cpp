@@ -17,10 +17,13 @@
 #include <folly/container/detail/Util.h>
 
 #include <folly/Optional.h>
+#include <folly/Range.h>
 #include <folly/container/test/TrackingTypes.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::test;
+
+namespace folly {
 
 TEST(Tracked, baseline) {
   // this is a test that Tracked works like we expect
@@ -95,7 +98,7 @@ void runKeyExtractCases(
     std::string const& name,
     F const& func,
     uint64_t expectedDist = 0) {
-  folly::Optional<std::pair<Tracked<0> const, Tracked<1>>> sink;
+  Optional<std::pair<Tracked<0> const, Tracked<1>>> sink;
   auto sinkFunc = [&sink](Tracked<0> const& key, auto&&... args) {
     if (!sink.hasValue() || sink.value().first != key) {
       sink.emplace(std::forward<decltype(args)>(args)...);
@@ -303,7 +306,7 @@ struct DoEmplace1 {
   template <typename F, typename P>
   void operator()(F&& f, P&& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a, std::forward<F>(f), std::forward<P>(p));
   }
 };
@@ -312,14 +315,14 @@ struct DoEmplace2 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a, std::forward<F>(f), p.first, p.second);
   }
 
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a, std::forward<F>(f), std::move(p.first), std::move(p.second));
   }
 };
@@ -328,7 +331,7 @@ struct DoEmplace3 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -339,7 +342,7 @@ struct DoEmplace3 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -356,7 +359,7 @@ struct DoEmplace3Value {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -367,7 +370,7 @@ struct DoEmplace3Value {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -385,7 +388,7 @@ TEST(Util, callWithExtractedKey) {
   // Calling the default pair constructor via emplace is valid, but not
   // very useful in real life.  Verify that it works.
   std::allocator<char> a;
-  folly::detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+  detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
       a, [](Tracked<0> const& key, auto&&... args) {
         EXPECT_TRUE(key == 0);
         std::pair<Tracked<0> const, Tracked<1>> p(
@@ -396,7 +399,7 @@ TEST(Util, callWithExtractedKey) {
 }
 
 TEST(Util, callWithConstructedKey) {
-  folly::Optional<Tracked<0>> sink;
+  Optional<Tracked<0>> sink;
   auto sinkFunc = [&](Tracked<0> const& key, auto&&... args) {
     if (!sink.hasValue()) {
       sink.emplace(std::forward<decltype(args)>(args)...);
@@ -412,27 +415,23 @@ TEST(Util, callWithConstructedKey) {
     uint64_t k3 = 0;
     sink.clear();
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, k1);
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k1);
     // copy is expected on successful emplace
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{1, 0, 0, 0}), 0);
 
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, k2);
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k2);
     // no copies or moves on failing emplace with value_type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 0}), 0);
 
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, k3);
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k3);
     // copy convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 1, 0}), 0);
 
     sink.clear();
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, k3);
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k3);
     // copy convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 1, 0}), 0);
   }
@@ -442,26 +441,26 @@ TEST(Util, callWithConstructedKey) {
     uint64_t k3 = 0;
     sink.clear();
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k1));
     // move is expected on successful emplace
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 0, 0}), 0);
 
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k2));
     // no copies or moves on failing emplace with value_type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 0}), 0);
 
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k3));
     // move convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 1}), 0);
 
     sink.clear();
     resetTracking();
-    folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k3));
     // move convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 0, 1}), 0);
@@ -470,6 +469,127 @@ TEST(Util, callWithConstructedKey) {
   // Calling the default pair constructor via emplace is valid, but not
   // very useful in real life.  Verify that it works.
   sink.clear();
-  folly::detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc);
+  detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc);
   EXPECT_TRUE(sink.hasValue());
 }
+
+// We're deliberately allowing only a subset of the desired heterogeneous
+// string behaviors with this functor so that we can verify that
+// conversions will still be applied if the heterogeneous test fails.
+template <typename T>
+using IsStringPiece = std::is_same<T, StringPiece>;
+
+TEST(Util, callWithExtractedHeterogeneousKey) {
+  std::allocator<char> a;
+  std::string str{"key"};
+  StringPiece sp{"key"};
+  char const* ptr{"key"};
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        // avoid static_assert to ensure we don't affect SFINAE
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 3);
+        EXPECT_TRUE((std::is_same<
+                     std::tuple_element_t<1, T>,
+                     std::tuple<std::string&>&&>::value));
+        EXPECT_TRUE(
+            (std::is_same<std::tuple_element_t<2, T>, std::tuple<int&&>&&>::
+                 value));
+      },
+      str,
+      0);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 3);
+        EXPECT_TRUE((std::is_same<
+                     std::tuple_element_t<1, T>,
+                     std::tuple<std::string&&>&&>::value));
+      },
+      std::move(str),
+      0);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        EXPECT_TRUE((std::is_same<decltype(key), StringPiece const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 3);
+        EXPECT_TRUE((std::is_same<
+                     std::tuple_element_t<1, T>,
+                     std::tuple<StringPiece&>&&>::value));
+      },
+      sp,
+      0);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        // avoid static_assert to ensure we don't affect SFINAE
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 3);
+        EXPECT_TRUE((std::is_same<
+                     std::tuple_element_t<1, T>,
+                     std::tuple<std::string&&>&&>::value));
+        auto t = std::forward_as_tuple(std::forward<decltype(args)>(args)...);
+        EXPECT_EQ(&key, &std::get<0>(std::get<1>(t)));
+      },
+      ptr,
+      0);
+}
+
+TEST(Util, callWithConstructedHeterogeneousKey) {
+  std::allocator<char> a;
+  std::string str{"key"};
+  StringPiece sp{"key"};
+  char const* ptr{"key"};
+  detail::callWithConstructedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        // avoid static_assert to ensure we don't affect SFINAE
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 1);
+        EXPECT_TRUE(
+            (std::is_same<std::tuple_element_t<0, T>, std::string&>::value));
+      },
+      str);
+  detail::callWithConstructedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 1);
+        EXPECT_TRUE(
+            (std::is_same<std::tuple_element_t<0, T>, std::string&&>::value));
+      },
+      std::move(str));
+  detail::callWithConstructedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        EXPECT_TRUE((std::is_same<decltype(key), StringPiece const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 1);
+        EXPECT_TRUE(
+            (std::is_same<std::tuple_element_t<0, T>, StringPiece&>::value));
+      },
+      sp);
+  detail::callWithConstructedKey<std::string, IsStringPiece>(
+      a,
+      [](auto const& key, auto&&... args) {
+        // avoid static_assert to ensure we don't affect SFINAE
+        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
+        using T = std::tuple<decltype(args)&&...>;
+        EXPECT_EQ(std::tuple_size<T>::value, 1);
+        EXPECT_TRUE(
+            (std::is_same<std::tuple_element_t<0, T>, std::string&&>::value));
+        auto t = std::forward_as_tuple(std::forward<decltype(args)>(args)...);
+        EXPECT_EQ(&key, &std::get<0>(t));
+      },
+      ptr);
+}
+
+} // namespace folly
