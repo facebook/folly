@@ -563,7 +563,7 @@ class small_vector : public detail::small_vector_base<
                                      : BaseType::policyMaxSize();
   }
 
-  allocator_type get_allocator() {
+  allocator_type get_allocator() const {
     return {};
   }
 
