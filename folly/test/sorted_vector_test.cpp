@@ -856,29 +856,172 @@ TEST(SortedVectorTypes, TestEmplaceHint) {
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
-TEST(SortedVectorTypes, TestPmrAllocatorSimple) {
-  folly::pmr::sorted_vector_set<std::pair<int, int>> set{
-      folly::detail::std_pmr::null_memory_resource()};
-  EXPECT_THROW(set.emplace(42, 42), std::bad_alloc);
+using folly::detail::std_pmr::new_delete_resource;
+using folly::detail::std_pmr::null_memory_resource;
+using folly::detail::std_pmr::polymorphic_allocator;
+using folly::detail::std_pmr::resource_adaptor;
 
-  folly::pmr::sorted_vector_map<int, int> map{
-      folly::detail::std_pmr::null_memory_resource()};
-  EXPECT_THROW(map.emplace(42, 42), std::bad_alloc);
+namespace {
+
+struct test_resource : public resource_adaptor<std::allocator<char>> {
+  bool do_is_equal(const memory_resource& other) const noexcept override {
+    return this == &other;
+  }
+};
+
+} // namespace
+
+TEST(SortedVectorTypes, TestPmrAllocatorSimple) {
+  namespace pmr = folly::pmr;
+
+  pmr::sorted_vector_set<std::pair<int, int>> s(null_memory_resource());
+  EXPECT_THROW(s.emplace(42, 42), std::bad_alloc);
+
+  pmr::sorted_vector_map<int, int> m(null_memory_resource());
+  EXPECT_THROW(m.emplace(42, 42), std::bad_alloc);
 }
 
+TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
+  namespace pmr = folly::pmr;
+
+  set_default_resource(null_memory_resource());
+
+  test_resource r;
+  polymorphic_allocator<std::byte> a1(&r), a2(&r);
+  EXPECT_EQ(a1, a2);
+
+  {
+    pmr::sorted_vector_set<int> s1(a1);
+    s1.emplace(42);
+    auto d = s1.data();
+
+    pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    EXPECT_EQ(s2.data(), d);
+  }
+
+  {
+    pmr::sorted_vector_map<int, int> m1(a1);
+    m1.emplace(42, 42);
+    auto d = m1.data();
+
+    pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    EXPECT_EQ(m2.data(), d);
+  }
+}
+
+TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
+  namespace pmr = folly::pmr;
+
+  set_default_resource(null_memory_resource());
+
+  test_resource r1, r2;
+  polymorphic_allocator<std::byte> a1(&r1), a2(&r2);
+  EXPECT_NE(a1, a2);
+
+  {
+    pmr::sorted_vector_set<int> s1(a1);
+    s1.emplace(42);
+    auto d = s1.data();
+
+    pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    EXPECT_NE(s2.data(), d);
+  }
+
+  {
+    pmr::sorted_vector_map<int, int> m1(a1);
+    m1.emplace(42, 42);
+    auto d = m1.data();
+
+    pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    EXPECT_NE(m2.data(), d);
+  }
+}
+
+template <typename T>
+using pmr_vector =
+    std::vector<T, folly::detail::std_pmr::polymorphic_allocator<T>>;
+
 TEST(SortedVectorTypes, TestPmrAllocatorScoped) {
-  using AllocT = folly::detail::std_pmr::polymorphic_allocator<char>;
-  using VectorT = std::vector<int, AllocT>;
+  namespace pmr = folly::pmr;
 
-  AllocT alloc;
+  set_default_resource(null_memory_resource());
+  polymorphic_allocator<std::byte> alloc(new_delete_resource());
 
-  folly::pmr::sorted_vector_set<VectorT> set{alloc};
-  set.emplace(42);
-  EXPECT_EQ(set.begin()->get_allocator(), alloc);
+  {
+    pmr::sorted_vector_set<pmr_vector<int>> s(alloc);
+    s.emplace(1);
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
 
-  folly::pmr::sorted_vector_map<int, VectorT> map{alloc};
-  map.emplace(42, 42);
-  EXPECT_EQ(map.begin()->second.get_allocator(), alloc);
+  {
+    pmr::sorted_vector_set<pmr_vector<int>> s(alloc);
+    s.emplace_hint(s.begin(), 1);
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_map<int, pmr_vector<int>> m(alloc);
+    m.emplace(1, 1);
+    EXPECT_EQ(m.begin()->second.get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_map<int, pmr_vector<int>> m(alloc);
+    m.emplace_hint(m.begin(), 1, 1);
+    EXPECT_EQ(m.begin()->second.get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_set<pmr::sorted_vector_map<int, int>> s(alloc);
+    s.emplace(std::initializer_list<std::pair<int, int>>{{42, 42}});
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_set<pmr::sorted_vector_map<int, int>> s(alloc);
+    s.emplace_hint(
+        s.begin(), std::initializer_list<std::pair<int, int>>{{42, 42}});
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_set<pmr::sorted_vector_set<int>> s(alloc);
+    s.emplace(std::initializer_list<int>{1});
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_set<pmr::sorted_vector_set<int>> s(alloc);
+    s.emplace_hint(s.begin(), std::initializer_list<int>{1});
+    EXPECT_EQ(s.begin()->get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_map<int, pmr::sorted_vector_map<int, int>> m(alloc);
+    m.emplace(
+        std::piecewise_construct,
+        std::forward_as_tuple(42),
+        std::forward_as_tuple(
+            std::initializer_list<std::pair<int, int>>{{42, 42}}));
+    EXPECT_EQ(m.begin()->second.get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_map<int, pmr::sorted_vector_map<int, int>> m(alloc);
+    m.emplace_hint(
+        m.begin(),
+        std::piecewise_construct,
+        std::forward_as_tuple(42),
+        std::forward_as_tuple(
+            std::initializer_list<std::pair<int, int>>{{42, 42}}));
+    EXPECT_EQ(m.begin()->second.get_allocator(), alloc);
+  }
+
+  {
+    pmr::sorted_vector_map<int, pmr::sorted_vector_map<int, int>> m(alloc);
+    m[42][42] = 42;
+    EXPECT_EQ(m.begin()->second.get_allocator(), alloc);
+  }
 }
 
 #endif
