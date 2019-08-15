@@ -49,7 +49,7 @@ static void run(
 ScopedEventBaseThread::ScopedEventBaseThread()
     : ScopedEventBaseThread(nullptr, "") {}
 
-ScopedEventBaseThread::ScopedEventBaseThread(const StringPiece& name)
+ScopedEventBaseThread::ScopedEventBaseThread(StringPiece name)
     : ScopedEventBaseThread(nullptr, name) {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
@@ -57,7 +57,7 @@ ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
 
 ScopedEventBaseThread::ScopedEventBaseThread(
     EventBaseManager* ebm,
-    const StringPiece& name)
+    StringPiece name)
     : ebm_(ebm ? ebm : EventBaseManager::get()) {
   new (&eb_) EventBase();
   th_ = thread(run, ebm_, &eb_, &stop_, name);

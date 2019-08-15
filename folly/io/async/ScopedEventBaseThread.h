@@ -39,11 +39,9 @@ typedef Range<const char*> StringPiece;
 class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
  public:
   ScopedEventBaseThread();
-  explicit ScopedEventBaseThread(const StringPiece& name);
+  explicit ScopedEventBaseThread(StringPiece name);
   explicit ScopedEventBaseThread(EventBaseManager* ebm);
-  explicit ScopedEventBaseThread(
-      EventBaseManager* ebm,
-      const StringPiece& name);
+  explicit ScopedEventBaseThread(EventBaseManager* ebm, StringPiece name);
   ~ScopedEventBaseThread();
 
   EventBase* getEventBase() const {
