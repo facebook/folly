@@ -1767,6 +1767,10 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
 #define SYNCHRONIZED_VAR(var) FB_CONCATENATE(SYNCHRONIZED_##var##_, __LINE__)
 
 /**
+ * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
+ * functions instead.  In the future it will be marked with a deprecation
+ * attribute to emit build-time warnings, and then it will be removed entirely.
+ *
  * SYNCHRONIZED is the main facility that makes Synchronized<T>
  * helpful. It is a pseudo-statement that introduces a scope where the
  * object is locked. Inside that scope you get to access the unadorned
@@ -1804,6 +1808,11 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
            SYNCHRONIZED_VAR(state) = true)                            \
     FOLLY_POP_WARNING
 
+/**
+ * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
+ * functions instead.  In the future it will be marked with a deprecation
+ * attribute to emit build-time warnings, and then it will be removed entirely.
+ */
 #define TIMED_SYNCHRONIZED(timeout, ...)                                       \
   if (bool SYNCHRONIZED_VAR(state) = false) {                                  \
   } else                                                                       \
@@ -1819,6 +1828,10 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
            SYNCHRONIZED_VAR(state) = true)
 
 /**
+ * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
+ * functions instead.  In the future it will be marked with a deprecation
+ * attribute to emit build-time warnings, and then it will be removed entirely.
+ *
  * Similar to SYNCHRONIZED, but only uses a read lock.
  */
 #define SYNCHRONIZED_CONST(...)            \
@@ -1827,6 +1840,10 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
       as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
 
 /**
+ * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
+ * functions instead.  In the future it will be marked with a deprecation
+ * attribute to emit build-time warnings, and then it will be removed entirely.
+ *
  * Similar to TIMED_SYNCHRONIZED, but only uses a read lock.
  */
 #define TIMED_SYNCHRONIZED_CONST(timeout, ...) \
@@ -1836,6 +1853,10 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
       as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
 
 /**
+ * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
+ * functions instead.  In the future it will be marked with a deprecation
+ * attribute to emit build-time warnings, and then it will be removed entirely.
+ *
  * Synchronizes two Synchronized objects (they may encapsulate
  * different data). Synchronization is done in increasing address of
  * object order, so there is no deadlock risk.
