@@ -139,7 +139,11 @@ namespace folly {
 /**
  * Determine if we are using jemalloc or not.
  */
-#if defined(USE_JEMALLOC) && !FOLLY_SANITIZE
+#if defined(FOLLY_ASSUME_NO_JEMALLOC)
+  inline bool usingJEMalloc() noexcept {
+    return false;
+  }
+#elif defined(USE_JEMALLOC) && !FOLLY_SANITIZE
   inline bool usingJEMalloc() noexcept {
     return true;
   }
