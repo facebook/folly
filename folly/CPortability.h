@@ -71,8 +71,10 @@
  * Use FOLLY_LIBRARY_SANITIZE_ADDRESS (defined in folly-config.h) to check if
  * folly itself was compiled with ASAN enabled.
  */
+#ifndef FOLLY_SANITIZE_ADDRESS
 #if FOLLY_HAS_FEATURE(address_sanitizer) || __SANITIZE_ADDRESS__
 #define FOLLY_SANITIZE_ADDRESS 1
+#endif
 #endif
 
 /* Define attribute wrapper for function attribute used to disable
@@ -101,8 +103,10 @@
 
 /* Define a convenience macro to test when thread sanitizer is being used
  * across the different compilers (e.g. clang, gcc) */
+#ifndef FOLLY_SANITIZE_THREAD
 #if FOLLY_HAS_FEATURE(thread_sanitizer) || __SANITIZE_THREAD__
 #define FOLLY_SANITIZE_THREAD 1
+#endif
 #endif
 
 #if FOLLY_SANITIZE_THREAD
@@ -116,8 +120,10 @@
  * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
  * being used
  */
+#ifndef FOLLY_SANITIZE
 #if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD)
 #define FOLLY_SANITIZE 1
+#endif
 #endif
 
 #if FOLLY_SANITIZE
