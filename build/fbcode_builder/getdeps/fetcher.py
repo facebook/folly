@@ -148,7 +148,7 @@ class GitFetcher(Fetcher):
             os.makedirs(repos_dir)
         self.repo_dir = os.path.join(repos_dir, directory)
 
-        if not rev:
+        if not rev and build_options.project_hashes:
             hash_file = os.path.join(
                 build_options.project_hashes,
                 re.sub("\\.git$", "-rev.txt", url.path[1:]),
