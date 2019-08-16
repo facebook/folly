@@ -130,6 +130,26 @@ class Fetcher(object):
         pass
 
 
+class LocalDirFetcher(object):
+    """ This class exists to override the normal fetching behavior, and
+    use an explicit user-specified directory for the project sources.
+
+    This fetcher cannot update or track changes.  It always reports that the
+    project has changed, forcing it to always be built. """
+
+    def __init__(self, path):
+        self.path = os.path.realpath(path)
+
+    def update(self):
+        return ChangeStatus(all_changed=True)
+
+    def hash(self):
+        return "0" * 40
+
+    def get_src_dir(self):
+        return self.path
+
+
 class GitFetcher(Fetcher):
     DEFAULT_DEPTH = 100
 

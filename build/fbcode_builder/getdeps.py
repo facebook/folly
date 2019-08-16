@@ -35,6 +35,10 @@ except ImportError:
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "getdeps"))
 
 
+class UsageError(Exception):
+    pass
+
+
 @cmd("validate-manifest", "parse a manifest and validate that it is correct")
 class ValidateManifest(SubCmd):
     def run(self, args):
@@ -70,9 +74,38 @@ class ProjectCmdBase(SubCmd):
             ctx_gen.set_value_for_project(args.project, "test", "off")
 
         loader = ManifestLoader(opts, ctx_gen)
+        self.process_project_dir_arguments(args, loader)
+
         manifest = loader.load_manifest(args.project)
 
         self.run_project_cmd(args, loader, manifest)
+
+    def process_project_dir_arguments(self, args, loader):
+        def parse_project_arg(arg, arg_type):
+            parts = arg.split(":")
+            if len(parts) == 2:
+                project, path = parts
+            elif len(parts) == 1:
+                project = args.project
+                path = parts[0]
+            else:
+                raise UsageError(
+                    "invalid %s argument; too many ':' characters: %s" % (arg_type, arg)
+                )
+
+            return project, os.path.abspath(path)
+
+        for arg in args.src_dir:
+            project, path = parse_project_arg(arg, "--src-dir")
+            loader.set_project_src_dir(project, path)
+
+        for arg in args.build_dir:
+            project, path = parse_project_arg(arg, "--build-dir")
+            loader.set_project_build_dir(project, path)
+
+        for arg in args.install_dir:
+            project, path = parse_project_arg(arg, "--install-dir")
+            loader.set_project_install_dir(project, path)
 
     def setup_parser(self, parser):
         parser.add_argument(
@@ -93,6 +126,29 @@ class ProjectCmdBase(SubCmd):
             "--test-dependencies",
             action="store_true",
             help="Enable building tests for dependencies as well.",
+        )
+        parser.add_argument(
+            "--src-dir",
+            default=[],
+            action="append",
+            help="Specify a local directory to use for the project source, "
+            "rather than fetching it.",
+        )
+        parser.add_argument(
+            "--build-dir",
+            default=[],
+            action="append",
+            help="Explicitly specify the build directory to use for the "
+            "project, instead of the default location in the scratch path. "
+            "This only affects the project specified, and not its dependencies.",
+        )
+        parser.add_argument(
+            "--install-dir",
+            default=[],
+            action="append",
+            help="Explicitly specify the install directory to use for the "
+            "project, instead of the default location in the scratch path. "
+            "This only affects the project specified, and not its dependencies.",
         )
 
         self.setup_project_cmd_parser(parser)
@@ -428,6 +484,9 @@ def main():
         return 0
     try:
         return args.func(args)
+    except UsageError as exc:
+        ap.error(str(exc))
+        return 1
     except TransientFailure as exc:
         print("TransientFailure: %s" % str(exc))
         # This return code is treated as a retryable transient infrastructure

@@ -12,6 +12,7 @@ import glob
 import hashlib
 import os
 
+from . import fetcher
 from .envfuncs import path_search
 from .manifest import ManifestParser
 
@@ -105,6 +106,9 @@ class ManifestLoader(object):
         self.manifests_by_name = {}
         self._loaded_all = False
         self._project_hashes = {}
+        self._fetcher_overrides = {}
+        self._build_dir_overrides = {}
+        self._install_dir_overrides = {}
 
     def load_manifest(self, name):
         manifest = self.manifests_by_name.get(name)
@@ -200,7 +204,20 @@ class ManifestLoader(object):
 
         return dep_order
 
+    def set_project_src_dir(self, project_name, path):
+        self._fetcher_overrides[project_name] = fetcher.LocalDirFetcher(path)
+
+    def set_project_build_dir(self, project_name, path):
+        self._build_dir_overrides[project_name] = path
+
+    def set_project_install_dir(self, project_name, path):
+        self._install_dir_overrides[project_name] = path
+
     def create_fetcher(self, manifest):
+        override = self._fetcher_overrides.get(manifest.name)
+        if override is not None:
+            return override
+
         ctx = self.ctx_gen.get_context(manifest.name)
         return manifest.create_fetcher(self.build_opts, ctx)
 
@@ -268,9 +285,17 @@ class ManifestLoader(object):
             return "%s-%s" % (manifest.name, project_hash)
 
     def get_project_install_dir(self, manifest):
+        override = self._install_dir_overrides.get(manifest.name)
+        if override:
+            return override
+
         project_dir_name = self._get_project_dir_name(manifest)
         return os.path.join(self.build_opts.install_dir, project_dir_name)
 
     def get_project_build_dir(self, manifest):
+        override = self._build_dir_overrides.get(manifest.name)
+        if override:
+            return override
+
         project_dir_name = self._get_project_dir_name(manifest)
         return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)
