@@ -29,8 +29,7 @@ namespace folly {
 /// QueuedImmediateExecutor.
 class InlineExecutor : public Executor {
  public:
-  FOLLY_ATTR_VISIBILITY_HIDDEN FOLLY_ALWAYS_INLINE static InlineExecutor&
-  instance() noexcept {
+  FOLLY_ERASE static InlineExecutor& instance() noexcept {
     auto const value = cache.load(std::memory_order_acquire);
     return value ? *value : instance_slow();
   }

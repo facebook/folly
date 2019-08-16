@@ -61,7 +61,7 @@ constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
 
 namespace array_detail {
 template <typename MakeItem, std::size_t... Index>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN constexpr auto make_array_with(
+FOLLY_ERASE constexpr auto make_array_with(
     MakeItem const& make,
     std::index_sequence<Index...>) {
   return std::array<decltype(make(0)), sizeof...(Index)>{{make(Index)...}};

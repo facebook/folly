@@ -51,11 +51,11 @@ template <typename Ex>
 // clang-format off
 namespace detail {
 template <typename T>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN T&& to_exception_arg_(T&& t) {
+FOLLY_ERASE T&& to_exception_arg_(T&& t) {
   return static_cast<T&&>(t);
 }
 template <std::size_t N>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN char const* to_exception_arg_(
+FOLLY_ERASE char const* to_exception_arg_(
     char const (&array)[N]) {
   return static_cast<char const*>(array);
 }
@@ -78,8 +78,7 @@ template <typename Ex, typename... Args>
 ///
 /// Converts any arguments of type `char const[N]` to `char const*`.
 template <typename Ex, typename... Args>
-[[noreturn]] FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
-throw_exception(Args&&... args) {
+[[noreturn]] FOLLY_ERASE void throw_exception(Args&&... args) {
   detail::throw_exception_<Ex>(
       detail::to_exception_arg_(static_cast<Args&&>(args))...);
 }
@@ -89,7 +88,7 @@ throw_exception(Args&&... args) {
 /// Terminates as if by forwarding to throw_exception but in a noexcept context.
 // clang-format off
 template <typename Ex, typename... Args>
-[[noreturn]] FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
+[[noreturn]] FOLLY_ERASE void
 terminate_with(Args&&... args) noexcept {
   detail::terminate_with_<Ex>(
       detail::to_exception_arg_(static_cast<Args&&>(args))...);
@@ -182,11 +181,11 @@ template <typename F, typename... A>
 ///      def);
 ///  assert(result == input < 0 ? def : input);
 template <typename E, typename Try, typename Catch, typename... CatchA>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto
-catch_exception(Try&& t, Catch&& c, CatchA&&... a) -> typename std::common_type<
-    decltype(static_cast<Try&&>(t)()),
-    decltype(static_cast<Catch&&>(
-        c)(std::declval<E>(), static_cast<CatchA&&>(a)...))>::type {
+FOLLY_ERASE auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
+    typename std::common_type<
+        decltype(static_cast<Try&&>(t)()),
+        decltype(static_cast<Catch&&>(
+            c)(std::declval<E>(), static_cast<CatchA&&>(a)...))>::type {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();
@@ -222,10 +221,10 @@ catch_exception(Try&& t, Catch&& c, CatchA&&... a) -> typename std::common_type<
 ///      def);
 ///  assert(result == input < 0 ? def : input);
 template <typename Try, typename Catch, typename... CatchA>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto
-catch_exception(Try&& t, Catch&& c, CatchA&&... a) -> typename std::common_type<
-    decltype(static_cast<Try&&>(t)()),
-    decltype(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))>::type {
+FOLLY_ERASE auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
+    typename std::common_type<
+        decltype(static_cast<Try&&>(t)()),
+        decltype(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))>::type {
 #if FOLLY_HAS_EXCEPTIONS
   try {
     return static_cast<Try&&>(t)();

@@ -180,3 +180,12 @@
 #define FOLLY_MICROSOFT_ABI_VER _MSC_VER
 #endif
 #endif
+
+//  FOLLY_ERASE
+//
+//  A conceptual attribute/syntax combo for erasing a function from the build
+//  artifacts and forcing all call-sites to inline the callee, at least as far
+//  as each compiler supports.
+//
+//  Semantically includes the inline specifier.
+#define FOLLY_ERASE FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN

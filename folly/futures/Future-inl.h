@@ -1411,15 +1411,12 @@ namespace futures {
 namespace detail {
 
 template <typename V, typename... Fs, std::size_t... Is>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void
-foreach_(std::index_sequence<Is...>, V&& v, Fs&&... fs) {
+FOLLY_ERASE void foreach_(std::index_sequence<Is...>, V&& v, Fs&&... fs) {
   using _ = int[];
   void(_{0, (void(v(index_constant<Is>{}, static_cast<Fs&&>(fs))), 0)...});
 }
 template <typename V, typename... Fs>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN void foreach(
-    V&& v,
-    Fs&&... fs) {
+FOLLY_ERASE void foreach(V&& v, Fs&&... fs) {
   using _ = std::index_sequence_for<Fs...>;
   foreach_(_{}, static_cast<V&&>(v), static_cast<Fs&&>(fs)...);
 }

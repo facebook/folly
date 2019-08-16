@@ -65,13 +65,12 @@ template <bool If, class T>
 using AddConstIf = std::conditional_t<If, const T, T>;
 
 template <class Fn, class A>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto fold(Fn&&, A&& a) {
+FOLLY_ERASE auto fold(Fn&&, A&& a) {
   return static_cast<A&&>(a);
 }
 
 template <class Fn, class A, class B, class... Bs>
-FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN auto
-fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
+FOLLY_ERASE auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
   return fold(
       // This looks like a use of fn after a move of fn, but in reality, this is
       // just a cast and not a move. That's because regardless of which fold
