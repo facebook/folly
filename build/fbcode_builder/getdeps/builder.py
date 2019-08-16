@@ -203,12 +203,12 @@ import os
 import subprocess
 
 CMAKE = {cmake!r}
-CMAKE_ENV = {env!r}
-CMAKE_DEFINE_ARGS = {define_args!r}
 SRC_DIR = {src_dir!r}
 BUILD_DIR = {build_dir!r}
 INSTALL_DIR = {install_dir!r}
 CMD_PREFIX = {cmd_prefix!r}
+CMAKE_ENV = {env_str}
+CMAKE_DEFINE_ARGS = {define_args_str}
 
 
 def main():
@@ -278,6 +278,23 @@ if __name__ == "__main__":
         return False
 
     def _write_build_script(self, **kwargs):
+        env_lines = ["    {!r}: {!r},".format(k, v) for k, v in kwargs["env"].items()]
+        kwargs["env_str"] = "\n".join(["{"] + env_lines + ["}"])
+
+        define_arg_lines = ["["]
+        for arg in kwargs["define_args"]:
+            # Replace the CMAKE_INSTALL_PREFIX argument to use the INSTALL_DIR
+            # variable that we define in the MANUAL_BUILD_SCRIPT code.
+            if arg.startswith("-DCMAKE_INSTALL_PREFIX="):
+                value = "    {!r}.format(INSTALL_DIR),".format(
+                    "-DCMAKE_INSTALL_PREFIX={}"
+                )
+            else:
+                value = "    {!r},".format(arg)
+            define_arg_lines.append(value)
+        define_arg_lines.append("]")
+        kwargs["define_args_str"] = "\n".join(define_arg_lines)
+
         # In order to make it easier for developers to manually run builds for
         # CMake-based projects, write out some build scripts that can be used to invoke
         # CMake manually.
