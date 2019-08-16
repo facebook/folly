@@ -220,9 +220,25 @@ def main():
       "directly to CMake."
     )
     ap.add_argument(
+      "--mode",
+      choices=["configure", "build", "install"],
+      default="configure",
+      help="The mode to run: configure, build, or install.  "
+      "Defaults to configure",
+    )
+    ap.add_argument(
       "--build",
-      action="store_true",
-      help="Run the build step rather than the configure step",
+      action="store_const",
+      const="build",
+      dest="mode",
+      help="An alias for --mode=build",
+    )
+    ap.add_argument(
+      "--install",
+      action="store_const",
+      const="install",
+      dest="mode",
+      help="An alias for --mode=install",
     )
     args = ap.parse_args()
 
@@ -232,18 +248,21 @@ def main():
 
     env = CMAKE_ENV
 
-    if args.build:
+    if args.mode == "configure":
+        full_cmd = CMD_PREFIX + [CMAKE, SRC_DIR] + CMAKE_DEFINE_ARGS + args.cmake_args
+    elif args.mode in ("build", "install"):
+        target = "all" if args.mode == "build" else "install"
         full_cmd = CMD_PREFIX + [
                 CMAKE,
                 "--build",
                 BUILD_DIR,
                 "--target",
-                "install",
+                target,
                 "--config",
                 "Release",
         ] + args.cmake_args
     else:
-        full_cmd = CMD_PREFIX + [CMAKE, SRC_DIR] + CMAKE_DEFINE_ARGS + args.cmake_args
+        ap.error("unknown invocation mode: %s" % (args.mode,))
 
     cmd_str = " ".join(full_cmd)
     print("Running: %r" % (cmd_str,))
