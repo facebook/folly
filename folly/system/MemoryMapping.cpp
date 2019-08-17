@@ -17,6 +17,7 @@
 #include <folly/system/MemoryMapping.h>
 
 #include <algorithm>
+#include <cerrno>
 #include <functional>
 #include <utility>
 
@@ -25,6 +26,7 @@
 #include <folly/Format.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
+#include <folly/portability/SysSyscall.h>
 
 #ifdef __linux__
 #include <folly/experimental/io/HugePages.h> // @manual
@@ -266,12 +268,40 @@ bool memOpInChunks(
   return true;
 }
 
+/**
+ * mlock2 is Linux-only and exists since Linux 4.4
+ * On Linux pre-4.4 and other platforms fail with ENOSYS.
+ * glibc added the mlock2 wrapper in 2.27
+ * https://lists.gnu.org/archive/html/info-gnu/2018-02/msg00000.html
+ */
+int mlock2wrapper(const void* addr, size_t len, int flags) {
+#if defined(__GLIBC__) && !defined(__APPLE__)
+#if __GLIBC_PREREQ(2, 27)
+  return mlock2(addr, len, flags);
+#elif defined(SYS_mlock2)
+  // SYS_mlock2 is defined in Linux headers since 4.4
+  return syscall(SYS_mlock2, addr, len, flags);
+#else // !__GLIBC_PREREQ(2, 27) && !defined(SYS_mlock2)
+  errno = ENOSYS;
+  return -1;
+#endif
+#else // !defined(__GLIBC__) || defined(__APPLE__)
+  errno = ENOSYS;
+  return -1;
+#endif
+}
+
 } // namespace
 
-bool MemoryMapping::mlock(LockMode lock) {
+bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
   size_t amountSucceeded = 0;
   locked_ = memOpInChunks(
-      ::mlock,
+      [flags](void* addr, size_t len) -> int {
+        // If flags is 0, mlock2() behaves exactly the same as mlock().
+        // Prefer the portable variant.
+        return int(flags) == 0 ? ::mlock(addr, len)
+                               : mlock2wrapper(addr, len, int(flags));
+      },
       mapStart_,
       size_t(mapLength_),
       options_.pageSize,
@@ -282,9 +312,9 @@ bool MemoryMapping::mlock(LockMode lock) {
 
   auto msg =
       folly::format("mlock({}) failed at {}", mapLength_, amountSucceeded);
-  if (lock == LockMode::TRY_LOCK && errno == EPERM) {
+  if (mode == LockMode::TRY_LOCK && errno == EPERM) {
     PLOG(WARNING) << msg;
-  } else if (lock == LockMode::TRY_LOCK && errno == ENOMEM) {
+  } else if (mode == LockMode::TRY_LOCK && errno == ENOMEM) {
     VLOG(1) << msg;
   } else {
     PLOG(FATAL) << msg;
@@ -424,6 +454,12 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
       destMap.writableRange().data(),
       srcMap.range().data(),
       srcMap.range().size());
+}
+
+MemoryMapping::LockFlags operator|(
+    MemoryMapping::LockFlags a,
+    MemoryMapping::LockFlags b) {
+  return MemoryMapping::LockFlags(int(a) | int(b));
 }
 
 } // namespace folly

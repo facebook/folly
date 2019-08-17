@@ -23,6 +23,7 @@
 
 namespace folly {
 
+
 /**
  * Maps files in memory (read-only).
  *
@@ -39,6 +40,24 @@ class MemoryMapping {
     TRY_LOCK,
     MUST_LOCK,
   };
+
+  enum class LockFlags : int {
+    /**
+     * All pages that contain a part of the specified address range are
+     * guaranteed to be resident in RAM when the call returns successfully; the
+     * pages are guaranteed to stay in RAM until later unlocked.
+     * Uses mlock or mlock2(flags=0). Portable.
+     */
+    LOCK_PREFAULT = 0,
+    /**
+     * Lock pages that are currently resident and mark the entire range to have
+     * pages locked when they are populated by the page fault.
+     * Same value as MLOCK_ONFAULT which is defined in a non-portable header.
+     * Uses mlock2(flags=MLOCK_ONFAULT). Requires Linux >= 4.4.
+     */
+    LOCK_ONFAULT = 0x01, // = np MLOCK_ONFAULT
+  };
+
   /**
    * Map a portion of the file indicated by filename in memory, causing SIGABRT
    * on error.
@@ -159,7 +178,7 @@ class MemoryMapping {
   /**
    * Lock the pages in memory
    */
-  bool mlock(LockMode lock);
+  bool mlock(LockMode mode, LockFlags flags = LockFlags::LOCK_PREFAULT);
 
   /**
    * Unlock the pages.
@@ -268,5 +287,9 @@ void alignedForwardMemcpy(void* dest, const void* src, size_t size);
  * Copy a file using mmap(). Overwrites dest.
  */
 void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
+
+MemoryMapping::LockFlags operator|(
+    MemoryMapping::LockFlags a,
+    MemoryMapping::LockFlags b);
 
 } // namespace folly
