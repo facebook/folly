@@ -503,6 +503,12 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
     Future<Unit> thisFuture;
     Promise<T> promise;
     std::atomic<bool> token{false};
+
+    // The baton is required since the continuation in thisFuture and
+    // afterFuture need to access each other.
+    // Use a spin lock baton since this should be fulfilled almost immediately.
+    Baton</*MayBlock=*/false> thisFutureSet;
+    Future<Unit> afterFuture;
   };
 
   std::shared_ptr<Timekeeper> tks;
@@ -517,14 +523,43 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
 
   auto ctx = std::make_shared<Context>(std::move(e));
 
+  // Have time keeper use a weak ptr to hold ctx,
+  // so that ctx can be deallocated as soon as the future job finished.
+  ctx->afterFuture = tk->after(dur).thenTry(
+      [weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
+        if (t.hasException() &&
+            t.exception().is_compatible_with<FutureCancellation>()) {
+          // This got cancelled by thisFuture so we can just return.
+          return;
+        }
+
+        auto lockedCtx = weakCtx.lock();
+        if (!lockedCtx) {
+          // ctx already released. "this" completed first, cancel "after"
+          return;
+        }
+        // "after" completed first, cancel "this"
+        lockedCtx->thisFutureSet.wait();
+        lockedCtx->thisFuture.raise(FutureTimeout());
+        if (!lockedCtx->token.exchange(true, std::memory_order_relaxed)) {
+          if (t.hasException()) {
+            lockedCtx->promise.setException(std::move(t.exception()));
+          } else {
+            lockedCtx->promise.setException(std::move(lockedCtx->exception));
+          }
+        }
+      });
+
   auto f = [ctx](Executor::KeepAlive<>&&, Try<T>&& t) {
     if (!ctx->token.exchange(true, std::memory_order_relaxed)) {
       ctx->promise.setTry(std::move(t));
+      ctx->afterFuture.cancel();
     }
   };
   using R = futures::detail::tryExecutorCallableResult<T, decltype(f)>;
   ctx->thisFuture = this->thenImplementation(
       std::move(f), R{}, futures::detail::InlineContinuation::forbid);
+  ctx->thisFutureSet.post();
 
   // Properly propagate interrupt values through futures chained after within()
   ctx->promise.setInterruptHandler(
@@ -533,25 +568,6 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
           lockedCtx->thisFuture.raise(ex);
         }
       });
-
-  // Have time keeper use a weak ptr to hold ctx,
-  // so that ctx can be deallocated as soon as the future job finished.
-  tk->after(dur).thenTry([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
-    auto lockedCtx = weakCtx.lock();
-    if (!lockedCtx) {
-      // ctx already released. "this" completed first, cancel "after"
-      return;
-    }
-    // "after" completed first, cancel "this"
-    lockedCtx->thisFuture.raise(FutureTimeout());
-    if (!lockedCtx->token.exchange(true, std::memory_order_relaxed)) {
-      if (t.hasException()) {
-        lockedCtx->promise.setException(std::move(t.exception()));
-      } else {
-        lockedCtx->promise.setException(std::move(lockedCtx->exception));
-      }
-    }
-  });
 
   return ctx->promise.getSemiFuture();
 }

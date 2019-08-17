@@ -116,6 +116,31 @@ TEST(Timekeeper, semiFutureWithinHandlesNullTimekeeperSingleton) {
   EXPECT_THROW(std::move(f).get(), FutureNoTimekeeper);
 }
 
+TEST(Timekeeper, semiFutureWithinCancelsTimeout) {
+  struct MockTimekeeper : Timekeeper {
+    MockTimekeeper() {
+      p_.setInterruptHandler([this](const exception_wrapper& ew) {
+        ew.handle([this](const FutureCancellation&) { cancelled_ = true; });
+        p_.setException(ew);
+      });
+    }
+
+    Future<Unit> after(Duration) override {
+      return p_.getFuture();
+    }
+
+    Promise<Unit> p_;
+    bool cancelled_{false};
+  };
+
+  MockTimekeeper tk;
+
+  Promise<int> p;
+  auto f = p.getSemiFuture().within(too_long, static_cast<Timekeeper*>(&tk));
+  p.setValue(1);
+  EXPECT_TRUE(tk.cancelled_);
+}
+
 TEST(Timekeeper, futureDelayed) {
   auto t1 = now();
   auto dur = makeFuture()
