@@ -21,37 +21,38 @@
 
 namespace folly {
 
-/**
- * Sets a bit at the given index in the binary representation of the integer
- * to 1.  Returns the previous value of the bit, so true if the bit was not
- * changed, false otherwise
- *
- * On some architectures, using this is more efficient than the corresponding
- * std::atomic::fetch_or() with a mask.  For example to set the first (least
- * significant) bit of an integer, you could do atomic.fetch_or(0b1)
- *
- * The efficiency win is only visible in x86 (yet) and comes from the
- * implementation using the x86 bts instruction when possible.
- *
- * When something other than std::atomic is passed, the implementation assumed
- * incompatibility with this interface and calls Atomic::fetch_or()
- */
+//  atomic_fetch_set
+//
+//  Sets the bit at the given index in the binary representation of the integer
+//  to 1. Returns the previous value of the bit, which is equivalent to whether
+//  that bit is unchanged.
+//
+//  Equivalent to Atomic::fetch_or with a mask. For example, if the bit
+//  argument to this function is 1, the mask passed to the corresponding
+//  Atomic::fetch_or would be 0b1.
+//
+//  Uses an optimized implementation when available, otherwise falling back to
+//  Atomic::fetch_or with mask. The optimization is currently available for
+//  std::atomic on x86, using the bts instruction.
 template <typename Atomic>
 bool atomic_fetch_set(
     Atomic& atomic,
     std::size_t bit,
     std::memory_order order = std::memory_order_seq_cst);
 
-/**
- * Resets a bit at the given index in the binary representation of the integer
- * to 0.  Returns the previous value of the bit, so true if the bit was
- * changed, false otherwise
- *
- * This follows the same underlying principle and implementation as
- * fetch_set().  Using the optimized implementation when possible and falling
- * back to std::atomic::fetch_and() when in debug mode or in an architecture
- * where an optimization is not possible
- */
+//  atomic_fetch_reset
+//
+//  Resets the bit at the given index in the binary representation of the
+//  integer to 0. Returns the previous value of the bit, which is equivalent to
+//  whether that bit is changed.
+//
+//  Equivalent to Atomic::fetch_and with a mask. For example, if the bit
+//  argument to this function is 1, the mask passed to the corresponding
+//  Atomic::fetch_and would be ~0b1.
+//
+//  Uses an optimized implementation when available, otherwise falling back to
+//  Atomic::fetch_and with mask. The optimization is currently available for
+//  std::atomic on x86, using the btr instruction.
 template <typename Atomic>
 bool atomic_fetch_reset(
     Atomic& atomic,
