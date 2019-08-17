@@ -1793,6 +1793,10 @@ template <template <typename> class Atom = std::atomic>
 void concurrentExceptionPropagationStress(
     int numThreads,
     std::chrono::milliseconds t) {
+  // this test passes normally and under recent or Clang TSAN, but inexplicably
+  // TSAN-aborts under some older non-Clang TSAN versions
+  SKIP_IF(folly::kIsSanitizeThread && !folly::kIsClang);
+
   TestConstruction::reset();
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
   auto&& threads = std::vector<std::thread>{};
