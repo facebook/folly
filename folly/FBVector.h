@@ -372,7 +372,7 @@ class fbvector {
     if (!std::is_trivially_destructible<T>::value) {
 #define FOLLY_FBV_OP(p) (p)->~T()
       // EXPERIMENTAL DATA on fbvector<vector<int>> (where each vector<int> has
-      //  size 0).
+      //  size 0), were vector<int> to be relocatable.
       // The unrolled version seems to work faster for small to medium sized
       //  fbvectors. It gets a 10% speedup on fbvectors of size 1024, 64, and
       //  16.

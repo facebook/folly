@@ -21,6 +21,7 @@
 #include <functional>
 #include <limits>
 #include <memory>
+#include <tuple>
 #include <type_traits>
 
 #include <folly/Portability.h>
@@ -604,30 +605,6 @@ struct is_transparent : detail::is_transparent_<void, T> {};
   FOLLY_ASSUME_RELOCATABLE(__VA_ARGS__<T1, T2, T3, T4>); \
   }
 
-/**
- * Instantiate FOLLY_ASSUME_FBVECTOR_COMPATIBLE for a few types. It is
- * safe to assume that pair is compatible if both of its components
- * are. Furthermore, all STL containers can be assumed to comply,
- * although that is not guaranteed by the standard.
- */
-
-FOLLY_NAMESPACE_STD_BEGIN
-
-template <class T, class U>
-struct pair;
-template <class T, class A>
-class vector;
-template <class T, class A>
-class deque;
-template <class T, class C, class A>
-class set;
-template <class K, class V, class C, class A>
-class map;
-template <class T>
-class shared_ptr;
-
-FOLLY_NAMESPACE_STD_END
-
 namespace folly {
 
 // STL commonly-used types
@@ -725,11 +702,8 @@ bool greater_than(LHS const lhs) {
 
 // Assume nothing when compiling with MSVC.
 #ifndef _MSC_VER
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::vector)
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::deque)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_2(std::unique_ptr)
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::shared_ptr)
-FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(std::function)
 #endif
 
 /* Some combinations of compilers and C++ libraries make __int128 and

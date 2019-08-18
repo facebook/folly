@@ -20,6 +20,7 @@
 #include <string>
 #include <type_traits>
 #include <utility>
+#include <vector>
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/GTest.h>
@@ -76,7 +77,7 @@ TEST(Traits, scalars) {
 }
 
 TEST(Traits, containers) {
-  EXPECT_TRUE(IsRelocatable<vector<F1>>::value);
+  EXPECT_FALSE(IsRelocatable<vector<F1>>::value);
   EXPECT_TRUE((IsRelocatable<pair<F1, F1>>::value));
   EXPECT_TRUE((IsRelocatable<pair<T1, T2>>::value));
 }
