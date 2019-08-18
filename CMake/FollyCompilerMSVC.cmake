@@ -203,6 +203,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       /wd4435 # Object layout under /vd2 will change due to virtual base.
       /wd4514 # Unreferenced inline function has been removed. (caused by /Zc:inline)
       /wd4548 # Expression before comma has no effect. I wouldn't disable this normally, but malloc.h triggers this warning.
+      /wd4571 # Semantics of catch(...) changed in VC 7.1
       /wd4574 # ifdef'd macro was defined to 0.
       /wd4582 # Constructor is not implicitly called.
       /wd4583 # Destructor is not implicitly called.
