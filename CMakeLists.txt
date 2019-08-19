@@ -333,6 +333,7 @@ add_library(folly
   $<TARGET_OBJECTS:folly_base>
 )
 apply_folly_compile_options_to_target(folly)
+target_compile_features(folly INTERFACE cxx_generic_lambdas)
 
 target_link_libraries(folly PUBLIC folly_deps)
 
