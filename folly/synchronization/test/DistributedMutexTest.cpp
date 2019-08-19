@@ -1795,7 +1795,9 @@ void concurrentExceptionPropagationStress(
     std::chrono::milliseconds t) {
   // this test passes normally and under recent or Clang TSAN, but inexplicably
   // TSAN-aborts under some older non-Clang TSAN versions
-  SKIP_IF(folly::kIsSanitizeThread && !folly::kIsClang);
+  if (folly::kIsSanitizeThread && !folly::kIsClang) {
+    return;
+  }
 
   TestConstruction::reset();
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};
