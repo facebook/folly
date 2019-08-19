@@ -114,7 +114,12 @@ void setIOExecutor(std::weak_ptr<IOExecutor> executor) {
 }
 
 EventBase* getEventBase() {
-  return getIOExecutor()->getEventBase();
+  auto executor = getIOExecutor();
+  if (FOLLY_LIKELY(!!executor)) {
+    return executor->getEventBase();
+  }
+
+  return nullptr;
 }
 
 } // namespace folly
