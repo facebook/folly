@@ -635,6 +635,7 @@ namespace detail {
 FOLLY_PUSH_WARNING
 FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
 FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
+FOLLY_MSVC_DISABLE_WARNING(4287) // unsigned/negative constant mismatch
 FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
 FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
 
