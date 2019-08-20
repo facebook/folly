@@ -305,11 +305,16 @@ void AsyncServerSocket::bindSocket(
   sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
   if (netops::bind(fd, saddr, address.getActualSize()) != 0) {
-    if (!isExistingSocket) {
-      closeNoInt(fd);
+    if (errno != EINPROGRESS) {
+      // Get a copy of errno so that it is not overwritten by subsequent calls.
+      auto errnoCopy = errno;
+      if (!isExistingSocket) {
+        closeNoInt(fd);
+      }
+      folly::throwSystemError(
+          errnoCopy,
+          "failed to bind to async server socket: " + address.describe());
     }
-    folly::throwSystemError(
-        errno, "failed to bind to async server socket: " + address.describe());
   }
 
 #if __linux__
