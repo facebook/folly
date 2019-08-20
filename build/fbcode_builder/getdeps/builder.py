@@ -465,6 +465,7 @@ if __name__ == "__main__":
 
             env.set("http_proxy", "")
             env.set("https_proxy", "")
+            machine_suffix = self.build_opts.host_type.as_tuple_string()
 
             runs = []
 
@@ -478,6 +479,9 @@ if __name__ == "__main__":
                 self.build_opts.fbsource_dir,
                 "--buck-test-info",
                 buck_test_info_name,
+                "--test-config",
+                "platform=%s" % machine_suffix,
+                "buildsystem=getdeps",
             ]
 
             if schedule_type == "continuous":
