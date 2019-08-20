@@ -41,6 +41,26 @@ TEST(allocateBytes, simple) {
   deallocateBytes(p, 10);
 }
 
+TEST(allocateBytes, zero) {
+  auto p = allocateBytes(0);
+  deallocateBytes(p, 0);
+}
+
+TEST(operatorNewDelete, zero) {
+  auto p = ::operator new(0);
+  EXPECT_TRUE(p != nullptr);
+  ::operator delete(p);
+}
+
+#if __cpp_sized_deallocation
+TEST(operatorNewDelete, sized_zero) {
+  std::size_t n = 0;
+  auto p = ::operator new(n);
+  EXPECT_TRUE(p != nullptr);
+  ::operator delete(p, n);
+}
+#endif
+
 TEST(aligned_malloc, examples) {
   auto trial = [](size_t align) {
     auto const ptr = aligned_malloc(1, align);
