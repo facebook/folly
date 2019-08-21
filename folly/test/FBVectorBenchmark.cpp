@@ -22,6 +22,7 @@
 #include <memory>
 #include <string>
 
+#include <folly/Benchmark.h>
 #include <folly/FBVector.h>
 #include <folly/Traits.h>
 #include <folly/container/Foreach.h>

@@ -20,7 +20,6 @@
 #include <list>
 #include <random>
 
-#include <folly/Benchmark.h>
 #include <folly/FBString.h>
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
