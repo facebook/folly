@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/ConstexprMath.h>
 #include <chrono>
 #include <cstdint>
 #include <type_traits>
@@ -52,6 +53,40 @@ avgHelper(ValueType sum, uint64_t count) {
   const double sumf = double(sum);
   const double countf = double(count);
   return static_cast<ReturnType>(sumf / countf);
+}
+
+// Helpers to add bucket counts and values without
+// ever causing undefined behavior
+//
+// For non-integral vlaues everyhing is easy
+template <
+    typename ValueType,
+    typename std::enable_if<!std::is_integral<ValueType>::value, int>::type = 0>
+void addHelper(ValueType& a, const ValueType& b) {
+  a += b;
+}
+
+template <
+    typename ValueType,
+    typename std::enable_if<!std::is_integral<ValueType>::value, int>::type = 0>
+void subtractHelper(ValueType& a, const ValueType& b) {
+  a -= b;
+}
+
+// For integral values we use folly/ConstexprMath.h to make
+// the math safe and predictable
+template <
+    typename ValueType,
+    typename std::enable_if<std::is_integral<ValueType>::value, int>::type = 0>
+void addHelper(ValueType& a, const ValueType& b) {
+  a = constexpr_add_overflow_clamped(a, b);
+}
+
+template <
+    typename ValueType,
+    typename std::enable_if<std::is_integral<ValueType>::value, int>::type = 0>
+void subtractHelper(ValueType& a, const ValueType& b) {
+  a = constexpr_sub_overflow_clamped(a, b);
 }
 
 /*
@@ -100,9 +135,8 @@ struct Bucket {
   }
 
   void add(const ValueType& s, uint64_t c) {
-    // TODO: It would be nice to handle overflow here.
-    sum += s;
-    count += c;
+    addHelper(sum, s);
+    addHelper(count, c);
   }
 
   Bucket& operator+=(const Bucket& o) {
@@ -111,9 +145,8 @@ struct Bucket {
   }
 
   Bucket& operator-=(const Bucket& o) {
-    // TODO: It would be nice to handle overflow here.
-    sum -= o.sum;
-    count -= o.count;
+    subtractHelper(sum, o.sum);
+    subtractHelper(count, o.count);
     return *this;
   }
 
