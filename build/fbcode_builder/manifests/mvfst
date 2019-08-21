@@ -7,6 +7,9 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookincubator/mvfst.git
 
+[build.os=windows]
+builder = nop
+
 [build]
 builder = cmake
 subdir = .
