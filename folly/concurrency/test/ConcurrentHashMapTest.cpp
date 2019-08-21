@@ -811,6 +811,22 @@ TYPED_TEST_P(ConcurrentHashMapTest, IteratorMove) {
   ASSERT_EQ(foo2.it->second, v);
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, IteratorLoop) {
+  CHM<std::string, int> map;
+  static constexpr size_t kNum = 4000;
+  for (size_t i = 0; i < kNum; ++i) {
+    map.insert(to<std::string>(i), i);
+  }
+
+  size_t count = 0;
+  for (auto it = map.begin(); it != map.end(); ++it) {
+    ASSERT_LT(count, kNum);
+    ++count;
+  }
+
+  EXPECT_EQ(count, kNum);
+}
+
 REGISTER_TYPED_TEST_CASE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -843,7 +859,8 @@ REGISTER_TYPED_TEST_CASE_P(
     UpdateStressTest,
     assignStressTest,
     insertStressTest,
-    IteratorMove);
+    IteratorMove,
+    IteratorLoop);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

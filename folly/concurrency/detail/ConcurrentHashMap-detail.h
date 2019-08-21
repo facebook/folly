@@ -1088,6 +1088,7 @@ class alignas(64) SIMDTable {
           ++chunk_idx_;
         }
         if (chunk_idx_ >= chunk_count_) {
+          node_ = nullptr;
           break;
         }
         DCHECK(chunks_);
