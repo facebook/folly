@@ -30,20 +30,16 @@ class AsyncGeneratorWrapper {
       : gen_(std::move(gen)) {}
 
   coro::Task<Optional<T>> getNext() {
-    if (!iter_) {
-      iter_ = co_await gen_.begin();
+    auto item = co_await gen_.next();
+    if (item) {
+      co_return std::move(item).value();
     } else {
-      co_await(++*iter_);
-    }
-    if (iter_ == gen_.end()) {
       co_return none;
     }
-    co_return(**iter_);
   }
 
  private:
   coro::AsyncGenerator<T> gen_;
-  Optional<typename coro::AsyncGenerator<T>::async_iterator> iter_;
 };
 
 } // namespace python

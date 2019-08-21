@@ -32,17 +32,11 @@
 #include <string>
 #include <tuple>
 
-// AsyncGenerator's iterator type is move-only.
-static_assert(!std::is_copy_constructible_v<
-              folly::coro::AsyncGenerator<int>::async_iterator>);
-static_assert(std::is_move_constructible_v<
-              folly::coro::AsyncGenerator<int>::async_iterator>);
-
 TEST(AsyncGenerator, DefaultConstructedGeneratorIsEmpty) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncGenerator<int> g;
-    auto it = co_await g.begin();
-    CHECK(it == g.end());
+    auto result = co_await g.next();
+    CHECK(!result);
   }());
 }
 
@@ -79,11 +73,11 @@ TEST(AsyncGenerator, PartiallyConsumingSequenceDestroysObjectsInScope) {
       auto gen = makeGenerator();
       CHECK(!started);
       CHECK(!destroyed);
-      auto it = co_await gen.begin();
+      auto result = co_await gen.next();
       CHECK(started);
       CHECK(!destroyed);
-      CHECK(it != gen.end());
-      CHECK_EQ(1, *it);
+      CHECK(result);
+      CHECK_EQ(1, *result);
     }
     CHECK(destroyed);
   }());
@@ -98,20 +92,20 @@ TEST(AsyncGenerator, FullyConsumeSequence) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK(it != gen.end());
-    CHECK_EQ(0, *it);
-    co_await(++it);
-    CHECK(it != gen.end());
-    CHECK_EQ(1, *it);
-    co_await(++it);
-    CHECK(it != gen.end());
-    CHECK_EQ(2, *it);
-    co_await(++it);
-    CHECK(it != gen.end());
-    CHECK_EQ(3, *it);
-    co_await(++it);
-    CHECK(it == gen.end());
+    auto result = co_await gen.next();
+    CHECK(result);
+    CHECK_EQ(0, *result);
+    result = co_await gen.next();
+    CHECK(result);
+    CHECK_EQ(1, *result);
+    result = co_await gen.next();
+    CHECK(result);
+    CHECK_EQ(2, *result);
+    result = co_await gen.next();
+    CHECK(result);
+    CHECK_EQ(3, *result);
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -131,7 +125,7 @@ TEST(AsyncGenerator, ThrowExceptionBeforeFirstYield) {
     auto gen = makeGenerator();
     bool caughtException = false;
     try {
-      (void)co_await gen.begin();
+      (void)co_await gen.next();
       CHECK(false);
     } catch (const SomeError&) {
       caughtException = true;
@@ -148,12 +142,12 @@ TEST(AsyncGenerator, ThrowExceptionAfterFirstYield) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK(it != gen.end());
-    CHECK_EQ(42, *it);
+    auto result = co_await gen.next();
+    CHECK(result);
+    CHECK_EQ(42, *result);
     bool caughtException = false;
     try {
-      (void)co_await++ it;
+      (void)co_await gen.next();
       CHECK(false);
     } catch (const SomeError&) {
       caughtException = true;
@@ -172,8 +166,8 @@ TEST(AsyncGenerator, ConsumingManySynchronousElementsDoesNotOverflowStack) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
     std::uint64_t sum = 0;
-    for (auto it = co_await gen.begin(); it != gen.end(); co_await++ it) {
-      sum += *it;
+    while (auto result = co_await gen.next()) {
+      sum += *result;
     }
     CHECK_EQ(499999500000u, sum);
   }());
@@ -198,12 +192,12 @@ TEST(AsyncGenerator, ProduceResultsAsynchronously) {
     };
 
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK_EQ(1, *it);
-    co_await++ it;
-    CHECK_EQ(2, *it);
-    co_await++ it;
-    CHECK(it == gen.end());
+    auto result = co_await gen.next();
+    CHECK_EQ(1, *result);
+    result = co_await gen.next();
+    CHECK_EQ(2, *result);
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -229,13 +223,13 @@ TEST(AsyncGenerator, GeneratorOfLValueReference) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK_EQ(10, *it);
-    *it = 20;
-    co_await++ it;
-    CHECK_EQ(30, *it);
-    co_await++ it;
-    CHECK(it == gen.end());
+    auto result = co_await gen.next();
+    CHECK_EQ(10, result.value());
+    *result = 20;
+    result = co_await gen.next();
+    CHECK_EQ(30, result.value());
+    result = co_await gen.next();
+    CHECK(!result.has_value());
   }());
 }
 
@@ -259,14 +253,14 @@ TEST(AsyncGenerator, GeneratorOfConstLValueReference) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK_EQ(10, *it);
-    co_await++ it;
-    CHECK_EQ(30, *it);
-    co_await++ it;
-    CHECK_EQ(99, *it);
-    co_await++ it;
-    CHECK(it == gen.end());
+    auto result = co_await gen.next();
+    CHECK_EQ(10, *result);
+    result = co_await gen.next();
+    CHECK_EQ(30, *result);
+    result = co_await gen.next();
+    CHECK_EQ(99, *result);
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -283,16 +277,16 @@ TEST(AsyncGenerator, GeneratorOfRValueReference) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
 
-    auto it = co_await gen.begin();
-    CHECK_EQ(10, **it);
+    auto result = co_await gen.next();
+    CHECK_EQ(10, **result);
     // Don't move it to a local var.
 
-    co_await++ it;
-    CHECK_EQ(20, **it);
-    auto ptr = *it; // Move it to a local var.
+    result = co_await gen.next();
+    CHECK_EQ(20, **result);
+    auto ptr = *result; // Move it to a local var.
 
-    co_await++ it;
-    CHECK(it == gen.end());
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -321,17 +315,17 @@ TEST(AsyncGenerator, GeneratorOfMoveOnlyType) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
+    auto result = co_await gen.next();
 
     // NOTE: It's an error to dereference using '*it' as this returns a copy
     // of the iterator's reference type, which in this case is 'MoveOnly'.
-    CHECK_EQ(1, it->value());
+    CHECK_EQ(1, result->value());
 
-    co_await++ it;
-    CHECK_EQ(2, it->value());
+    result = co_await gen.next();
+    CHECK_EQ(2, result->value());
 
-    co_await++ it;
-    CHECK(it == gen.end());
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -349,15 +343,15 @@ TEST(AsyncGenerator, GeneratorOfConstValue) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
-    CHECK_EQ(42, *it);
-    static_assert(std::is_same_v<decltype(*it), int>);
-    co_await++ it;
-    CHECK_EQ(123, *it);
-    co_await++ it;
-    CHECK_EQ(99, *it);
-    co_await++ it;
-    CHECK(it == gen.end());
+    auto result = co_await gen.next();
+    CHECK_EQ(42, *result);
+    static_assert(std::is_same_v<decltype(*result), const int&>);
+    result = co_await gen.next();
+    CHECK_EQ(123, *result);
+    result = co_await gen.next();
+    CHECK_EQ(99, *result);
+    result = co_await gen.next();
+    CHECK(!result);
   }());
 }
 
@@ -376,15 +370,15 @@ TEST(AsyncGenerator, ExplicitValueType) {
 
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto gen = makeGenerator();
-    auto it = co_await gen.begin();
+    auto result = co_await gen.next();
     {
-      auto [kRef, vRef] = *it;
+      auto [kRef, vRef] = *result;
       CHECK_EQ("bar", kRef);
       CHECK_EQ("goodbye", vRef);
-      decltype(gen)::value_type copy = *it;
+      decltype(gen)::value_type copy = *result;
       vRef = "au revoir";
       CHECK_EQ("goodbye", std::get<1>(copy));
-      CHECK_EQ("au revoir", std::get<1>(*it));
+      CHECK_EQ("au revoir", std::get<1>(*result));
     }
   }());
 
@@ -400,9 +394,9 @@ TEST(AsyncGenerator, InvokeLambda) {
           co_yield std::move(p);
         });
 
-    auto it = co_await gen.begin();
-    CHECK(it != gen.end());
-    ptr = *it;
+    auto result = co_await gen.next();
+    CHECK(result);
+    ptr = *result;
     CHECK(ptr);
     CHECK(*ptr == 123);
   }());
