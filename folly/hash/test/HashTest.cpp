@@ -23,7 +23,9 @@
 #include <unordered_set>
 #include <utility>
 
+#include <folly/Conv.h>
 #include <folly/MapUtil.h>
+#include <folly/Random.h>
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>
 
@@ -623,6 +625,57 @@ TEST(Hash, Strings) {
   EXPECT_EQ(h2(a2), h2(a2.str()));
   EXPECT_EQ(h2(a3), h2(a3.str()));
   EXPECT_EQ(h2(a4), h2(a4.str()));
+}
+
+namespace {
+void deletePointer(const std::unique_ptr<std::string>&) {}
+void deletePointer(const std::shared_ptr<std::string>&) {}
+void deletePointer(std::string* pointer) {
+  delete pointer;
+}
+
+template <template <typename...> class PtrType>
+void pointerTestWithFollyHash() {
+  std::unordered_set<PtrType<std::string>, folly::Hash> set;
+
+  for (auto i = 0; i < 1000; ++i) {
+    auto random = PtrType<std::string>{
+        new std::string{folly::to<std::string>(folly::Random::rand64())}};
+    set.insert(std::move(random));
+  }
+
+  for (auto& pointer : set) {
+    EXPECT_TRUE(set.find(pointer) != set.end());
+    deletePointer(pointer);
+  }
+}
+
+template <typename T>
+using Pointer = T*;
+} // namespace
+
+TEST(Hash, UniquePtr) {
+  pointerTestWithFollyHash<std::unique_ptr>();
+}
+
+TEST(Hash, SharedPtr) {
+  pointerTestWithFollyHash<std::shared_ptr>();
+}
+
+TEST(Hash, Pointer) {
+  pointerTestWithFollyHash<Pointer>();
+
+  EXPECT_TRUE(
+      (std::is_same<
+          folly::hasher<std::string*>::folly_is_avalanching,
+          folly::hasher<std::unique_ptr<std::string>>::folly_is_avalanching>::
+           value));
+
+  EXPECT_TRUE(
+      (std::is_same<
+          folly::hasher<std::string*>::folly_is_avalanching,
+          folly::hasher<std::shared_ptr<std::string>>::folly_is_avalanching>::
+           value));
 }
 
 struct FNVTestParam {

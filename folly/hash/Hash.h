@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <cstring>
 #include <limits>
+#include <memory>
 #include <string>
 #include <tuple>
 #include <type_traits>
@@ -532,6 +533,33 @@ template <typename... Ts>
 struct hasher<std::tuple<Ts...>> {
   size_t operator()(const std::tuple<Ts...>& key) const {
     return apply(Hash(), key);
+  }
+};
+
+template <typename T>
+struct hasher<T*> {
+  using folly_is_avalanching = hasher<std::uintptr_t>::folly_is_avalanching;
+
+  size_t operator()(T* key) const {
+    return Hash()(bit_cast<std::uintptr_t>(key));
+  }
+};
+
+template <typename T>
+struct hasher<std::unique_ptr<T>> {
+  using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
+
+  size_t operator()(const std::unique_ptr<T>& key) const {
+    return Hash()(key.get());
+  }
+};
+
+template <typename T>
+struct hasher<std::shared_ptr<T>> {
+  using folly_is_avalanching = typename hasher<T*>::folly_is_avalanching;
+
+  size_t operator()(const std::shared_ptr<T>& key) const {
+    return Hash()(key.get());
   }
 };
 
