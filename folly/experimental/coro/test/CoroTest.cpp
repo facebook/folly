@@ -25,6 +25,7 @@
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
+#include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/TimedWait.h>
 #include <folly/experimental/coro/Utils.h>
@@ -106,7 +107,7 @@ TEST(Coro, TaskOfMoveOnly) {
 }
 
 coro::Task<void> taskSleep() {
-  (void)co_await futures::sleep(std::chrono::seconds{1});
+  (void)co_await coro::sleep(std::chrono::seconds{1});
   co_return;
 }
 
@@ -202,7 +203,7 @@ coro::Task<int> taskRecursion(int depth) {
   if (depth > 0) {
     EXPECT_EQ(depth - 1, co_await taskRecursion(depth - 1));
   } else {
-    (void)co_await futures::sleep(std::chrono::seconds{1});
+    (void)co_await coro::sleep(std::chrono::seconds{1});
   }
 
   co_return depth;
@@ -217,7 +218,7 @@ TEST(Coro, LargeStack) {
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
   EXPECT_EQ(threadId, std::this_thread::get_id());
-  (void)co_await futures::sleep(std::chrono::seconds{1});
+  (void)co_await coro::sleep(std::chrono::seconds{1});
   EXPECT_EQ(threadId, std::this_thread::get_id());
   co_return;
 }
@@ -309,7 +310,7 @@ TEST(Coro, TimedWaitFuture) {
 
 coro::Task<void> taskTimedWaitTask() {
   auto fastTask = []() -> coro::Task<int> {
-    co_await futures::sleep(std::chrono::milliseconds{50});
+    co_await coro::sleep(std::chrono::milliseconds{50});
     co_return 42;
   }();
   auto fastResult = co_await coro::timed_wait(
@@ -322,7 +323,7 @@ coro::Task<void> taskTimedWaitTask() {
   };
 
   auto throwingTask = []() -> coro::Task<void> {
-    co_await futures::sleep(std::chrono::milliseconds{50});
+    co_await coro::sleep(std::chrono::milliseconds{50});
     throw ExpectedException();
   }();
   EXPECT_THROW(
@@ -349,8 +350,7 @@ TEST(Coro, TimedWaitKeepAlive) {
   auto start = std::chrono::steady_clock::now();
   coro::blockingWait([]() -> coro::Task<void> {
     co_await coro::timed_wait(
-        futures::sleep(std::chrono::milliseconds{100}),
-        std::chrono::seconds{60});
+        coro::sleep(std::chrono::milliseconds{100}), std::chrono::seconds{60});
     co_return;
   }());
   auto duration = std::chrono::steady_clock::now() - start;
@@ -545,25 +545,6 @@ TEST(Coro, FutureTry) {
   }());
 }
 
-template <typename T>
-folly::coro::Task<T> cancellableFuture(folly::SemiFuture<T> future) {
-  folly::coro::Baton baton;
-
-  // Attach an executor to ensure that the operation has been started.
-  auto future2 = std::move(future)
-                     .via(co_await folly::coro::co_current_executor)
-                     .ensure([&]() { baton.post(); });
-
-  {
-    folly::CancellationCallback cb{
-        co_await folly::coro::co_current_cancellation_token,
-        [&] { future2.cancel(); }};
-    co_await baton;
-  }
-
-  co_return co_await std::move(future2);
-}
-
 TEST(Coro, CancellableSleep) {
   using namespace std::chrono;
   using namespace std::chrono_literals;
@@ -574,12 +555,8 @@ TEST(Coro, CancellableSleep) {
   coro::blockingWait([&]() -> coro::Task<void> {
     co_await coro::collectAll(
         [&]() -> coro::Task<void> {
-          try {
-            co_await coro::co_withCancellation(
-                cancelSrc.getToken(),
-                cancellableFuture(folly::futures::sleep(10s)));
-          } catch (const folly::FutureCancellation&) {
-          }
+          co_await coro::co_withCancellation(
+              cancelSrc.getToken(), coro::sleep(10s));
         }(),
         [&]() -> coro::Task<void> {
           co_await coro::co_reschedule_on_current_executor;

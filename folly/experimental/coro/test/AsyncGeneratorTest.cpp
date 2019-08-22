@@ -22,6 +22,7 @@
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/futures/Future.h>
 
@@ -179,15 +180,15 @@ TEST(AsyncGenerator, ProduceResultsAsynchronously) {
     auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<int> {
       using namespace std::literals::chrono_literals;
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
-      co_await folly::futures::sleep(1ms);
+      co_await folly::coro::sleep(1ms);
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
       co_yield 1;
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
-      co_await folly::futures::sleep(1ms);
+      co_await folly::coro::sleep(1ms);
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
       co_yield 2;
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
-      co_await folly::futures::sleep(1ms);
+      co_await folly::coro::sleep(1ms);
       CHECK_EQ(executor, co_await folly::coro::co_current_executor);
     };
 
