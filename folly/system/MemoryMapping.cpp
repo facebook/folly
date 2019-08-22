@@ -274,13 +274,22 @@ bool memOpInChunks(
  * glibc added the mlock2 wrapper in 2.27
  * https://lists.gnu.org/archive/html/info-gnu/2018-02/msg00000.html
  */
-int mlock2wrapper(const void* addr, size_t len, int flags) {
+int mlock2wrapper(
+    const void* addr,
+    size_t len,
+    MemoryMapping::LockFlags flags) {
+  int intFlags = 0;
+  if (flags.lockOnFault) {
+    // MLOCK_ONFAULT, only available in non-portable headers.
+    intFlags |= 0x01;
+  }
+
 #if defined(__GLIBC__) && !defined(__APPLE__)
 #if __GLIBC_PREREQ(2, 27)
-  return mlock2(addr, len, flags);
+  return mlock2(addr, len, intFlags);
 #elif defined(SYS_mlock2)
   // SYS_mlock2 is defined in Linux headers since 4.4
-  return syscall(SYS_mlock2, addr, len, flags);
+  return syscall(SYS_mlock2, addr, len, intFlags);
 #else // !__GLIBC_PREREQ(2, 27) && !defined(SYS_mlock2)
   errno = ENOSYS;
   return -1;
@@ -297,10 +306,10 @@ bool MemoryMapping::mlock(LockMode mode, LockFlags flags) {
   size_t amountSucceeded = 0;
   locked_ = memOpInChunks(
       [flags](void* addr, size_t len) -> int {
-        // If flags is 0, mlock2() behaves exactly the same as mlock().
-        // Prefer the portable variant.
-        return int(flags) == 0 ? ::mlock(addr, len)
-                               : mlock2wrapper(addr, len, int(flags));
+        // If no flags are set, mlock2() behaves exactly the same as
+        // mlock(). Prefer the portable variant.
+        return flags == LockFlags{} ? ::mlock(addr, len)
+                                    : mlock2wrapper(addr, len, flags);
       },
       mapStart_,
       size_t(mapLength_),
@@ -456,10 +465,8 @@ void mmapFileCopy(const char* src, const char* dest, mode_t mode) {
       srcMap.range().size());
 }
 
-MemoryMapping::LockFlags operator|(
-    MemoryMapping::LockFlags a,
-    MemoryMapping::LockFlags b) {
-  return MemoryMapping::LockFlags(int(a) | int(b));
+bool MemoryMapping::LockFlags::operator==(const LockFlags& other) const {
+  return lockOnFault == other.lockOnFault;
 }
 
 } // namespace folly
