@@ -106,5 +106,17 @@ using co_reschedule_on_current_executor_t =
 inline constexpr co_reschedule_on_current_executor_t
     co_reschedule_on_current_executor;
 
+namespace detail {
+struct co_current_cancellation_token_ {
+  enum class secret_ { token_ };
+  explicit constexpr co_current_cancellation_token_(secret_) {}
+};
+} // namespace detail
+
+using co_current_cancellation_token_t = detail::co_current_cancellation_token_;
+
+inline constexpr co_current_cancellation_token_t co_current_cancellation_token{
+    co_current_cancellation_token_t::secret_::token_};
+
 } // namespace coro
 } // namespace folly

@@ -379,4 +379,31 @@ TEST(Task, TaskOfLvalueReferenceAsTry) {
   }());
 }
 
+TEST(Task, CancellationPropagation) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto token = co_await folly::coro::co_current_cancellation_token;
+    CHECK(!token.canBeCancelled());
+
+    folly::CancellationSource cancelSource;
+
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), [&]() -> folly::coro::Task<void> {
+          auto token2 = co_await folly::coro::co_current_cancellation_token;
+          CHECK(token2.canBeCancelled());
+          CHECK(!token2.isCancellationRequested());
+
+          // The cancellation token should implicitly propagate into the
+          //
+          co_await[&]()->folly::coro::Task<void> {
+            auto token3 = co_await folly::coro::co_current_cancellation_token;
+            CHECK(token3 == token2);
+            cancelSource.requestCancellation();
+            CHECK(token3.isCancellationRequested());
+          }
+          ();
+          CHECK(token2.isCancellationRequested());
+        }());
+  }());
+}
+
 #endif

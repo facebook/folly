@@ -18,13 +18,19 @@
 
 #if FOLLY_HAS_COROUTINES
 
+#include <folly/CancellationToken.h>
 #include <folly/Chrono.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
+#include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/TimedWait.h>
 #include <folly/experimental/coro/Utils.h>
+#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/fibers/Semaphore.h>
+#include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -539,29 +545,51 @@ TEST(Coro, FutureTry) {
   }());
 }
 
-TEST(Coro, CoReturnTry) {
-  EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
-              co_return folly::Try<int>(42);
-            }()));
+template <typename T>
+folly::coro::Task<T> cancellableFuture(folly::SemiFuture<T> future) {
+  folly::coro::Baton baton;
 
-  struct ExpectedException : public std::runtime_error {
-    ExpectedException() : std::runtime_error("ExpectedException") {}
-  };
-  EXPECT_THROW(
-      folly::coro::blockingWait([]() -> folly::coro::Task<int> {
-        co_return folly::Try<int>(ExpectedException());
-      }()),
-      ExpectedException);
+  // Attach an executor to ensure that the operation has been started.
+  auto future2 = std::move(future)
+                     .via(co_await folly::coro::co_current_executor)
+                     .ensure([&]() { baton.post(); });
 
-  folly::Try<int> t(42);
-  EXPECT_EQ(42, folly::coro::blockingWait([&]() -> folly::coro::Task<int> {
-              co_return t;
-            }()));
+  {
+    folly::CancellationCallback cb{
+        co_await folly::coro::co_current_cancellation_token,
+        [&] { future2.cancel(); }};
+    co_await baton;
+  }
 
-  const folly::Try<int> tConst(42);
-  EXPECT_EQ(42, folly::coro::blockingWait([&]() -> folly::coro::Task<int> {
-              co_return tConst;
-            }()));
+  co_return co_await std::move(future2);
+}
+
+TEST(Coro, CancellableSleep) {
+  using namespace std::chrono;
+  using namespace std::chrono_literals;
+
+  CancellationSource cancelSrc;
+
+  auto start = steady_clock::now();
+  coro::blockingWait([&]() -> coro::Task<void> {
+    co_await coro::collectAll(
+        [&]() -> coro::Task<void> {
+          try {
+            co_await coro::co_withCancellation(
+                cancelSrc.getToken(),
+                cancellableFuture(folly::futures::sleep(10s)));
+          } catch (const folly::FutureCancellation&) {
+          }
+        }(),
+        [&]() -> coro::Task<void> {
+          co_await coro::co_reschedule_on_current_executor;
+          co_await coro::co_reschedule_on_current_executor;
+          co_await coro::co_reschedule_on_current_executor;
+          cancelSrc.requestCancellation();
+        }());
+  }());
+  auto end = steady_clock::now();
+  CHECK((end - start) < 1s);
 }
 
 #endif

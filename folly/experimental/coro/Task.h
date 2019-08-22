@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/CancellationToken.h>
 #include <folly/Executor.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -28,6 +29,7 @@
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/experimental/coro/detail/Traits.h>
 #include <folly/futures/Future.h>
@@ -78,11 +80,24 @@ class TaskPromiseBase {
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) noexcept {
     return folly::coro::co_viaIfAsync(
-        executor_.get_alias(), static_cast<Awaitable&&>(awaitable));
+        executor_.get_alias(),
+        folly::coro::co_withCancellation(
+            cancelToken_, static_cast<Awaitable&&>(awaitable)));
   }
 
   auto await_transform(co_current_executor_t) noexcept {
     return AwaitableReady<folly::Executor*>{executor_.get()};
+  }
+
+  auto await_transform(co_current_cancellation_token_t) noexcept {
+    return AwaitableReady<const folly::CancellationToken&>{cancelToken_};
+  }
+
+  void setCancelToken(const folly::CancellationToken& cancelToken) {
+    if (!hasCancelTokenOverride_) {
+      cancelToken_ = cancelToken;
+      hasCancelTokenOverride_ = true;
+    }
   }
 
  private:
@@ -94,6 +109,8 @@ class TaskPromiseBase {
 
   std::experimental::coroutine_handle<> continuation_;
   folly::Executor::KeepAlive<> executor_;
+  folly::CancellationToken cancelToken_;
+  bool hasCancelTokenOverride_ = false;
 };
 
 template <typename T>
@@ -212,6 +229,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   // that will complete with the result.
   auto start() && {
     Promise<lift_unit_t<StorageType>> p;
+
     auto sf = p.getSemiFuture();
 
     std::move(*this).start(
@@ -224,7 +242,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
   // Start execution of this task eagerly and call the callback when complete.
   template <typename F>
-  void start(F&& tryCallback) && {
+  void start(F&& tryCallback, folly::CancellationToken cancelToken = {}) && {
+    coro_.promise().setCancelToken(std::move(cancelToken));
+
     [](TaskWithExecutor task,
        std::decay_t<F> cb) -> detail::InlineTaskDetached {
       try {
@@ -297,6 +317,13 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
   auto co_awaitTry() && noexcept {
     return Awaiter<TryCreator>{std::exchange(coro_, {})};
+  }
+
+  friend TaskWithExecutor co_withCancellation(
+      const folly::CancellationToken& cancelToken,
+      TaskWithExecutor&& task) noexcept {
+    task.coro_.promise().setCancelToken(cancelToken);
+    return std::move(task);
   }
 
  private:
@@ -383,6 +410,13 @@ class FOLLY_NODISCARD Task {
     // Child task inherits the awaiting task's executor
     t.coro_.promise().executor_ = std::move(executor);
     return Awaiter{std::exchange(t.coro_, {})};
+  }
+
+  friend Task co_withCancellation(
+      const folly::CancellationToken& cancelToken,
+      Task&& task) noexcept {
+    task.coro_.promise().setCancelToken(cancelToken);
+    return std::move(task);
   }
 
  private:
