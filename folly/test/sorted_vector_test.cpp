@@ -22,8 +22,10 @@
 #include <string>
 #include <vector>
 
+#include <folly/CppAttributes.h>
 #include <folly/Range.h>
 #include <folly/Utility.h>
+#include <folly/memory/Malloc.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -856,14 +858,24 @@ TEST(SortedVectorTypes, TestEmplaceHint) {
 
 #if FOLLY_HAS_MEMORY_RESOURCE
 
+using folly::detail::std_pmr::memory_resource;
 using folly::detail::std_pmr::new_delete_resource;
 using folly::detail::std_pmr::null_memory_resource;
 using folly::detail::std_pmr::polymorphic_allocator;
-using folly::detail::std_pmr::resource_adaptor;
 
 namespace {
 
-struct test_resource : public resource_adaptor<std::allocator<char>> {
+struct test_resource : public memory_resource {
+  void* do_allocate(size_t bytes,
+                    FOLLY_MAYBE_UNUSED size_t alignment) override {
+    return folly::checkedMalloc(bytes);
+  }
+
+  void do_deallocate(void* p, FOLLY_MAYBE_UNUSED size_t bytes,
+                     FOLLY_MAYBE_UNUSED size_t alignment) noexcept override {
+    free(p);
+  }
+
   bool do_is_equal(const memory_resource& other) const noexcept override {
     return this == &other;
   }
