@@ -430,9 +430,6 @@ class FutureBase {
   template <typename F, typename R>
   typename std::enable_if<R::ReturnsFuture::value, typename R::Return>::type
   thenImplementation(F&& func, R, InlineContinuation);
-
-  template <typename E>
-  SemiFuture<T> withinImplementation(Duration dur, E e, Timekeeper* tk) &&;
 };
 template <class T>
 Future<T> convertFuture(SemiFuture<T>&& sf, const Future<T>& f);
@@ -799,21 +796,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   }
 
   template <class E>
-  SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) && {
-    if (this->isReady()) {
-      return std::move(*this);
-    }
-    auto deferredExecutor = stealDeferredExecutor();
-    auto ret = std::move(*this).withinImplementation(dur, e, tk);
-    if (deferredExecutor) {
-      ret =
-          std::move(ret).defer([](Try<T>&& t) { return std::move(t).value(); });
-      std::vector<futures::detail::DeferredWrapper> des;
-      des.push_back(std::move(deferredExecutor));
-      ret.getDeferredExecutor()->setNestedExecutors(std::move(des));
-    }
-    return ret;
-  }
+  SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) &&;
 
   /// Delay the completion of this SemiFuture for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().

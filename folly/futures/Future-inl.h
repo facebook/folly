@@ -493,22 +493,23 @@ FutureBase<T>::thenImplementation(
   return f;
 }
 
+} // namespace detail
+} // namespace futures
+
 template <class T>
 template <typename E>
-SemiFuture<T>
-FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
+SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
+  if (this->isReady()) {
+    return std::move(*this);
+  }
+
   struct Context {
     explicit Context(E ex) : exception(std::move(ex)) {}
     E exception;
-    Future<Unit> thisFuture;
+    SemiFuture<Unit> thisFuture;
+    Future<Unit> afterFuture;
     Promise<T> promise;
     std::atomic<bool> token{false};
-
-    // The baton is required since the continuation in thisFuture and
-    // afterFuture need to access each other.
-    // Use a spin lock baton since this should be fulfilled almost immediately.
-    Baton</*MayBlock=*/false> thisFutureSet;
-    Future<Unit> afterFuture;
   };
 
   std::shared_ptr<Timekeeper> tks;
@@ -522,6 +523,13 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
   }
 
   auto ctx = std::make_shared<Context>(std::move(e));
+
+  ctx->thisFuture = std::move(*this).defer([ctx](Try<T>&& t) {
+    if (!ctx->token.exchange(true, std::memory_order_relaxed)) {
+      ctx->promise.setTry(std::move(t));
+      ctx->afterFuture.cancel();
+    }
+  });
 
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
@@ -539,7 +547,6 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
           return;
         }
         // "after" completed first, cancel "this"
-        lockedCtx->thisFutureSet.wait();
         lockedCtx->thisFuture.raise(FutureTimeout());
         if (!lockedCtx->token.exchange(true, std::memory_order_relaxed)) {
           if (t.hasException()) {
@@ -550,17 +557,6 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
         }
       });
 
-  auto f = [ctx](Executor::KeepAlive<>&&, Try<T>&& t) {
-    if (!ctx->token.exchange(true, std::memory_order_relaxed)) {
-      ctx->promise.setTry(std::move(t));
-      ctx->afterFuture.cancel();
-    }
-  };
-  using R = futures::detail::tryExecutorCallableResult<T, decltype(f)>;
-  ctx->thisFuture = this->thenImplementation(
-      std::move(f), R{}, futures::detail::InlineContinuation::forbid);
-  ctx->thisFutureSet.post();
-
   // Properly propagate interrupt values through futures chained after within()
   ctx->promise.setInterruptHandler(
       [weakCtx = to_weak_ptr(ctx)](const exception_wrapper& ex) {
@@ -569,8 +565,13 @@ FutureBase<T>::withinImplementation(Duration dur, E e, Timekeeper* tk) && {
         }
       });
 
-  return ctx->promise.getSemiFuture();
+  auto fut = ctx->promise.getSemiFuture();
+  fut.setExecutor(ctx->thisFuture.stealDeferredExecutor());
+  return std::move(fut);
 }
+
+namespace futures {
+namespace detail {
 
 class WaitExecutor final : public folly::Executor {
  public:
@@ -2094,7 +2095,8 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) && {
 
   auto* exe = this->getExecutor();
   return std::move(*this)
-      .withinImplementation(dur, e, tk)
+      .semi()
+      .within(dur, e, tk)
       .via(exe ? exe : &InlineExecutor::instance());
 }
 

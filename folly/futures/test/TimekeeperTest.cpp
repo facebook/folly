@@ -138,7 +138,41 @@ TEST(Timekeeper, semiFutureWithinCancelsTimeout) {
   Promise<int> p;
   auto f = p.getSemiFuture().within(too_long, static_cast<Timekeeper*>(&tk));
   p.setValue(1);
+  f.wait();
   EXPECT_TRUE(tk.cancelled_);
+}
+
+TEST(Timekeeper, semiFutureWithinInlineAfter) {
+  struct MockTimekeeper : Timekeeper {
+    Future<Unit> after(Duration) override {
+      return folly::makeFuture<folly::Unit>(folly::FutureNoTimekeeper());
+    }
+  };
+
+  MockTimekeeper tk;
+
+  Promise<int> p;
+  auto f = p.getSemiFuture().within(too_long, static_cast<Timekeeper*>(&tk));
+  EXPECT_THROW(std::move(f).get(), folly::FutureNoTimekeeper);
+}
+
+TEST(Timekeeper, semiFutureWithinReady) {
+  struct MockTimekeeper : Timekeeper {
+    Future<Unit> after(Duration) override {
+      called_ = true;
+      return folly::makeFuture<folly::Unit>(folly::FutureNoTimekeeper());
+    }
+
+    bool called_{false};
+  };
+
+  MockTimekeeper tk;
+
+  Promise<int> p;
+  p.setValue(1);
+  auto f = p.getSemiFuture().within(too_long, static_cast<Timekeeper*>(&tk));
+  f.wait();
+  EXPECT_FALSE(tk.called_);
 }
 
 TEST(Timekeeper, futureDelayed) {
