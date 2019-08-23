@@ -87,7 +87,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
   using ConstWLockedPtr =
       ::folly::LockedPtr<const Subclass, LockPolicyExclusive>;
 
-  using RLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
+  using RLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyShared>;
   using ConstRLockedPtr = ::folly::LockedPtr<const Subclass, LockPolicyShared>;
 
   using TryWLockedPtr = ::folly::LockedPtr<Subclass, LockPolicyTryExclusive>;
@@ -181,9 +181,13 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * validity.)
    */
   template <class Rep, class Period>
-  ConstLockedPtr rlock(
+  RLockedPtr rlock(const std::chrono::duration<Rep, Period>& timeout) {
+    return RLockedPtr(static_cast<Subclass*>(this), timeout);
+  }
+  template <class Rep, class Period>
+  ConstRLockedPtr rlock(
       const std::chrono::duration<Rep, Period>& timeout) const {
-    return ConstLockedPtr(static_cast<const Subclass*>(this), timeout);
+    return ConstRLockedPtr(static_cast<const Subclass*>(this), timeout);
   }
 
   /**

@@ -285,11 +285,15 @@ testWithLock() {
     EXPECT_EQ(1006, lockedObj->size());
     EXPECT_EQ(16, lockedObj->back());
   });
-  obj.withRLockPtr([](typename SynchType::ConstLockedPtr&& lockedObj) {
+  obj.withRLockPtr([](typename SynchType::RLockedPtr&& lockedObj) {
+    EXPECT_TRUE(
+        (std::is_const<std::remove_reference_t<decltype(*lockedObj)>>{}));
     EXPECT_EQ(1006, lockedObj->size());
     EXPECT_EQ(16, lockedObj->back());
   });
-  constObj.withRLockPtr([](typename SynchType::ConstLockedPtr&& lockedObj) {
+  constObj.withRLockPtr([](typename SynchType::ConstRLockedPtr&& lockedObj) {
+    EXPECT_TRUE(
+        (std::is_const<std::remove_reference_t<decltype(*lockedObj)>>{}));
     EXPECT_EQ(1006, lockedObj->size());
     EXPECT_EQ(16, lockedObj->back());
   });

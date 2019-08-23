@@ -361,6 +361,26 @@ TEST_F(SynchronizedLockTest, TestCopyConstructibleValues) {
       std::is_copy_assignable<folly::Synchronized<CopyConstructible>>::value);
 }
 
+namespace {
+class Dummy {
+ public:
+  void foo() {}
+};
+} // namespace
+
+TEST_F(SynchronizedLockTest, ReadLockAsNonConstUnsafe) {
+  {
+    folly::Synchronized<Dummy> sync;
+    auto rlock = sync.rlock();
+    rlock.asNonConstUnsafe().foo();
+  }
+  {
+    folly::Synchronized<Dummy> sync;
+    auto rlock = sync.rlock(std::chrono::seconds{1});
+    rlock.asNonConstUnsafe().foo();
+  }
+}
+
 TEST_F(SynchronizedLockTest, UpgradeLocking) {
   folly::Synchronized<int, FakeAllPowerfulAssertingMutex> sync;
 
