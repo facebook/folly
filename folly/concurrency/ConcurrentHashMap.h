@@ -319,6 +319,11 @@ class ConcurrentHashMap {
     return res;
   }
 
+  /*
+   * The bool component will always be true if the map has been updated via
+   * either insertion or assignment. Note that this is different from the
+   * std::map::insert_or_assign interface.
+   */
   template <typename Key, typename Value>
   std::pair<ConstIterator, bool> insert_or_assign(Key&& k, Value&& v) {
     auto segment = pickSegment(k);
