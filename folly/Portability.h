@@ -222,10 +222,6 @@ constexpr bool kIsSanitize = false;
 #error cannot define platform specific thread local storage
 #endif
 
-#if FOLLY_MOBILE
-#undef FOLLY_TLS
-#endif
-
 // It turns out that GNU libstdc++ and LLVM libc++ differ on how they implement
 // the 'std' namespace; the latter uses inline namespaces. Wrap this decision
 // up in a macro to make forward-declarations easier.

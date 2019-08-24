@@ -27,6 +27,13 @@
 #include <folly/detail/UniqueInstance.h>
 #include <folly/functional/Invoke.h>
 
+// we do not want to use FOLLY_TLS here for mobile
+#if !FOLLY_MOBILE && defined(FOLLY_TLS)
+#define FOLLY_STL_USE_FOLLY_TLS 1
+#else
+#undef FOLLY_STL_USE_FOLLY_TLS
+#endif
+
 namespace folly {
 
 /// SingletonThreadLocal
@@ -141,7 +148,7 @@ class SingletonThreadLocal {
     return *getWrapperTL();
   }
 
-#ifdef FOLLY_TLS
+#ifdef FOLLY_STL_USE_FOLLY_TLS
   FOLLY_NOINLINE static Wrapper& getSlow(LocalCache& cache) {
     if (threadlocal_detail::StaticMetaBase::dying()) {
       return getWrapper();
@@ -154,7 +161,7 @@ class SingletonThreadLocal {
 
  public:
   FOLLY_EXPORT FOLLY_ALWAYS_INLINE static T& get() {
-#ifdef FOLLY_TLS
+#ifdef FOLLY_STL_USE_FOLLY_TLS
     static thread_local LocalCache cache;
     return FOLLY_LIKELY(!!cache.cache) ? *cache.cache : getSlow(cache);
 #else
