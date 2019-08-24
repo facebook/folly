@@ -181,7 +181,7 @@ template <typename F, typename... A>
 ///      def);
 ///  assert(result == input < 0 ? def : input);
 template <typename E, typename Try, typename Catch, typename... CatchA>
-FOLLY_ERASE auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
+FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
     typename std::common_type<
         decltype(static_cast<Try&&>(t)()),
         decltype(static_cast<Catch&&>(
@@ -221,7 +221,7 @@ FOLLY_ERASE auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
 ///      def);
 ///  assert(result == input < 0 ? def : input);
 template <typename Try, typename Catch, typename... CatchA>
-FOLLY_ERASE auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
+FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
     typename std::common_type<
         decltype(static_cast<Try&&>(t)()),
         decltype(static_cast<Catch&&>(c)(static_cast<CatchA&&>(a)...))>::type {

@@ -195,3 +195,16 @@
 //
 //  Semantically includes the inline specifier.
 #define FOLLY_ERASE FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
+
+//  FOLLY_ERASE_TRYCATCH
+//
+//  Equivalent to FOLLY_ERASE, but for code which might contain explicit
+//  exception handling. Has the effect of FOLLY_ERASE, except under MSVC which
+//  warns about __forceinline when functions contain exception handling.
+//
+//  Semantically includes the inline specifier.
+#ifdef _MSC_VER
+#define FOLLY_ERASE_TRYCATCH inline
+#else
+#define FOLLY_ERASE_TRYCATCH FOLLY_ERASE
+#endif
