@@ -17,7 +17,11 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   )
 
   # Generate relative paths in #includes
-  file(RELATIVE_PATH include_prefix ${CMAKE_SOURCE_DIR} ${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE})
+  file(
+    RELATIVE_PATH include_prefix
+    "${CMAKE_SOURCE_DIR}"
+    "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
+  )
   get_filename_component(include_prefix ${include_prefix} DIRECTORY)
 
   if (NOT "${include_prefix}" STREQUAL "")
@@ -29,33 +33,33 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
 
   # Compute the list of generated files
   list(APPEND generated_headers
-    ${output_dir}/gen-cpp2/${base}_constants.h
-    ${output_dir}/gen-cpp2/${base}_constants.cpp
-    ${output_dir}/gen-cpp2/${base}_types.h
-    ${output_dir}/gen-cpp2/${base}_types.tcc
-    ${output_dir}/gen-cpp2/${base}_types_custom_protocol.h
+    "${output_dir}/gen-cpp2/${base}_constants.h"
+    "${output_dir}/gen-cpp2/${base}_constants.cpp"
+    "${output_dir}/gen-cpp2/${base}_types.h"
+    "${output_dir}/gen-cpp2/${base}_types.tcc"
+    "${output_dir}/gen-cpp2/${base}_types_custom_protocol.h"
   )
   list(APPEND generated_sources
-    ${output_dir}/gen-cpp2/${base}_data.h
-    ${output_dir}/gen-cpp2/${base}_data.cpp
-    ${output_dir}/gen-cpp2/${base}_types.cpp
+    "${output_dir}/gen-cpp2/${base}_data.h"
+    "${output_dir}/gen-cpp2/${base}_data.cpp"
+    "${output_dir}/gen-cpp2/${base}_types.cpp"
   )
   foreach(service IN LISTS ARG_SERVICES)
     list(APPEND generated_headers
-      ${output_dir}/gen-cpp2/${service}.h
-      ${output_dir}/gen-cpp2/${service}.tcc
-      ${output_dir}/gen-cpp2/${service}AsyncClient.h
-      ${output_dir}/gen-cpp2/${service}_custom_protocol.h
+      "${output_dir}/gen-cpp2/${service}.h"
+      "${output_dir}/gen-cpp2/${service}.tcc"
+      "${output_dir}/gen-cpp2/${service}AsyncClient.h"
+      "${output_dir}/gen-cpp2/${service}_custom_protocol.h"
     )
     list(APPEND generated_sources
-      ${output_dir}/gen-cpp2/${service}.cpp
-      ${output_dir}/gen-cpp2/${service}AsyncClient.cpp
-      ${output_dir}/gen-cpp2/${service}_processmap_binary.cpp
-      ${output_dir}/gen-cpp2/${service}_processmap_compact.cpp
+      "${output_dir}/gen-cpp2/${service}.cpp"
+      "${output_dir}/gen-cpp2/${service}AsyncClient.cpp"
+      "${output_dir}/gen-cpp2/${service}_processmap_binary.cpp"
+      "${output_dir}/gen-cpp2/${service}_processmap_compact.cpp"
     )
   endforeach()
 
-  list(APPEND thrift_include_options -I ${CMAKE_SOURCE_DIR})
+  list(APPEND thrift_include_options -I "${CMAKE_SOURCE_DIR}")
   foreach(depends IN LISTS ARG_DEPENDS)
     get_property(thrift_include_directory
       TARGET ${depends}
@@ -64,14 +68,17 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     if (thrift_include_directory STREQUAL "")
       message(STATUS "No thrift dependency found for ${depends}")
     else()
-      list(APPEND thrift_include_options -I
-        ${thrift_include_directory})
+      list(
+        APPEND thrift_include_options
+        -I "${thrift_include_directory}"
+      )
     endif()
   endforeach()
 
   file(
     GLOB_RECURSE THRIFT_TEMPLATE_FILES
-    FOLLOW_SYMLINKS ${FBTHRIFT_TEMPLATES_DIR}/*.mustache)
+    FOLLOW_SYMLINKS "${FBTHRIFT_TEMPLATES_DIR}/*.mustache"
+  )
 
   # Emit the rule to run the thrift compiler
   add_custom_command(
@@ -79,25 +86,26 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       ${generated_headers}
       ${generated_sources}
     COMMAND
-      ${CMAKE_COMMAND} -E make_directory ${output_dir}
+      "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
     COMMAND
-      ${FBTHRIFT_COMPILER}
+      "${FBTHRIFT_COMPILER}"
       --strict
-      --templates ${FBTHRIFT_TEMPLATES_DIR}
+      --templates "${FBTHRIFT_TEMPLATES_DIR}"
       --gen "mstch_cpp2:${GEN_ARG_STR}"
       ${thrift_include_options}
-      -o ${output_dir}
-      ${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}
+      -o "${output_dir}"
+      "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
     WORKING_DIRECTORY
-      ${CMAKE_BINARY_DIR}
+      "${CMAKE_BINARY_DIR}"
     MAIN_DEPENDENCY
-      ${THRIFT_FILE}
+      "${THRIFT_FILE}"
     DEPENDS
       ${ARG_DEPENDS}
   )
 
   # Now emit the library rule to compile the sources
-  add_library(${LIB_NAME} STATIC
+  add_library(
+    "${LIB_NAME}" STATIC
     ${generated_sources}
   )
 
@@ -107,7 +115,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   )
 
   target_include_directories(
-    ${LIB_NAME}
+    "${LIB_NAME}"
     PRIVATE
       ${CMAKE_SOURCE_DIR}
       ${CMAKE_BINARY_DIR}
@@ -116,7 +124,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       ${FBTHRIFT_INCLUDE_DIR}
   )
   target_link_libraries(
-    ${LIB_NAME}
+    "${LIB_NAME}"
     PUBLIC
       ${ARG_DEPENDS}
       FBThrift::thriftcpp2
@@ -124,13 +132,13 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   )
 
   set_target_properties(
-    ${LIB_NAME}
+    "${LIB_NAME}"
     PROPERTIES
       EXPORT_PROPERTIES "THRIFT_INCLUDE_DIRECTORY"
-      THRIFT_INCLUDE_DIRECTORY ${CMAKE_SOURCE_DIR}
+      THRIFT_INCLUDE_DIRECTORY "${CMAKE_SOURCE_DIR}"
   )
 
   get_property(thrift_include_directory
-    TARGET ${LIB_NAME}
+    TARGET "${LIB_NAME}"
     PROPERTY THRIFT_INCLUDE_DIRECTORY)
 endfunction()
