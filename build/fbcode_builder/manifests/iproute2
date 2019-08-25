@@ -3,7 +3,7 @@ name = iproute2
 
 [git]
 repo_url = https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git
-rev = 7ca63aef7d1b0c808da0040c6b366ef7a61f38c1
+rev = 92a0236a3cdf3438000834121b7ea8a09f1f52b1
 depth = 1500
 
 [build.os=linux]
