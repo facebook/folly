@@ -1,34 +1,13 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
 # NOTE: If you change this file, fbcode/fboss/github/ThriftCppLibrary.cmake also
 # needs to be changed.  TODO: this should be handled via shipit.
+
+include(FBCMakeParseArgs)
+
 function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   # Parse the arguments
-  set(SERVICES)
-  set(DEPENDS)
-  set(GEN_ARGS)
-  set(mode "UNSET")
-  foreach(arg IN LISTS ARGN)
-    if("${arg}" STREQUAL "SERVICES")
-      set(mode "SERVICES")
-    elseif("${arg}" STREQUAL "DEPENDS")
-      set(mode "DEPENDS")
-    elseif("${arg}" STREQUAL "OPTIONS")
-      set(mode "OPTIONS")
-    else()
-      if("${mode}" STREQUAL "SERVICES")
-        list(APPEND SERVICES "${arg}")
-      elseif("${mode}" STREQUAL "DEPENDS")
-        list(APPEND DEPENDS "${arg}")
-      elseif("${mode}" STREQUAL "OPTIONS")
-        list(APPEND GEN_ARGS "${arg}")
-      else()
-        message(
-          FATAL_ERROR
-          "expected SERVICES, DEPENDS, or OPTIONS argument, found ${arg}"
-        )
-      endif()
-    endif()
-  endforeach()
+  set(multi_value_args SERVICES DEPENDS OPTIONS)
+  fb_cmake_parse_args(ARG "" "" "${multi_value_args}" "${ARGN}")
 
   get_filename_component(base ${THRIFT_FILE} NAME_WE)
   get_filename_component(
@@ -42,11 +21,11 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   get_filename_component(include_prefix ${include_prefix} DIRECTORY)
 
   if (NOT "${include_prefix}" STREQUAL "")
-    list(APPEND GEN_ARGS "include_prefix=${include_prefix}")
+    list(APPEND ARG_OPTIONS "include_prefix=${include_prefix}")
   endif()
   # CMake 3.12 is finally getting a list(JOIN) function, but until then
   # treating the list as a string and replacing the semicolons is good enough.
-  string(REPLACE ";" "," GEN_ARG_STR "${GEN_ARGS}")
+  string(REPLACE ";" "," GEN_ARG_STR "${ARG_OPTIONS}")
 
   # Compute the list of generated files
   list(APPEND generated_headers
@@ -61,7 +40,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     ${output_dir}/gen-cpp2/${base}_data.cpp
     ${output_dir}/gen-cpp2/${base}_types.cpp
   )
-  foreach(service IN LISTS SERVICES)
+  foreach(service IN LISTS ARG_SERVICES)
     list(APPEND generated_headers
       ${output_dir}/gen-cpp2/${service}.h
       ${output_dir}/gen-cpp2/${service}.tcc
@@ -77,7 +56,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   endforeach()
 
   list(APPEND thrift_include_options -I ${CMAKE_SOURCE_DIR})
-  foreach(depends IN LISTS DEPENDS)
+  foreach(depends IN LISTS ARG_DEPENDS)
     get_property(thrift_include_directory
       TARGET ${depends}
       PROPERTY THRIFT_INCLUDE_DIRECTORY)
@@ -114,7 +93,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     MAIN_DEPENDENCY
       ${THRIFT_FILE}
     DEPENDS
-      ${DEPENDS}
+      ${ARG_DEPENDS}
   )
 
   # Now emit the library rule to compile the sources
@@ -139,7 +118,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   target_link_libraries(
     ${LIB_NAME}
     PUBLIC
-      ${DEPENDS}
+      ${ARG_DEPENDS}
       FBThrift::thriftcpp2
       Folly::folly
   )
