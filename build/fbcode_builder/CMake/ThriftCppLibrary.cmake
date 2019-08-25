@@ -77,7 +77,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
 
   file(
     GLOB_RECURSE THRIFT_TEMPLATE_FILES
-    FOLLOW_SYMLINKS "${FBTHRIFT_TEMPLATES_DIR}/*.mustache"
+    FOLLOW_SYMLINKS "${FBTHRIFT_TEMPLATES_DIR}/cpp2/*.mustache"
   )
 
   # Emit the rule to run the thrift compiler
@@ -101,6 +101,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       "${THRIFT_FILE}"
     DEPENDS
       ${ARG_DEPENDS}
+      ${THRIFT_TEMPLATE_FILES}
   )
 
   # Now emit the library rule to compile the sources
