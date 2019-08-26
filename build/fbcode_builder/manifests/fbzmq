@@ -19,7 +19,7 @@ sigar
 libzmq
 
 [shipit.pathmap]
-fbcode/fbzmq = .
+fbcode/fbzmq = fbzmq
 fbcode/fbzmq/public_tld = .
 
 [shipit.strip]
