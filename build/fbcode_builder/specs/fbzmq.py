@@ -26,9 +26,9 @@ def fbcode_builder_spec(builder):
                 builder.make_and_install(),
             ]),
 
-            builder.fb_github_project_workdir('fbzmq/fbzmq/build', 'facebook'),
-            builder.step('Build and install fbzmq/fbzmq/build', [
-                builder.cmake_configure('fbzmq/fbzmq/build'),
+            builder.fb_github_project_workdir('fbzmq/_build', 'facebook'),
+            builder.step('Build and install fbzmq/', [
+                builder.cmake_configure('fbzmq/_build'),
                 # we need the pythonpath to find the thrift compiler
                 builder.run(ShellQuoted(
                     'PYTHONPATH="$PYTHONPATH:"{p}/lib/python2.7/site-packages '
