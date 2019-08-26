@@ -2013,11 +2013,10 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) && {
     return std::move(*this);
   }
 
-  auto* exe = this->getExecutor();
-  return std::move(*this)
-      .semi()
-      .within(dur, e, tk)
-      .via(exe ? exe : &InlineExecutor::instance());
+  auto* ePtr = this->getExecutor();
+  auto exe =
+      folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
+  return std::move(*this).semi().within(dur, e, tk).via(std::move(exe));
 }
 
 template <class T>
