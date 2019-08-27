@@ -1926,6 +1926,13 @@ class Timekeeper {
   /// will suffer.
   virtual Future<Unit> after(Duration dur) = 0;
 
+  /// Unsafe version of after that returns an inline Future.
+  /// Any work added to this future will run inline on the Timekeeper's thread.
+  /// This can potentially cause problems with timing.
+  Future<Unit> afterUnsafe(Duration dur) {
+    return after(dur).semi().toUnsafeFuture();
+  }
+
   /// Returns a future that will complete at the requested time.
   ///
   /// You may cancel this Future to reclaim resources.
@@ -1936,6 +1943,14 @@ class Timekeeper {
   /// according to the steady clock.
   template <class Clock>
   Future<Unit> at(std::chrono::time_point<Clock> when);
+
+  /// Unsafe version of at that returns an inline Future.
+  /// Any work added to this future will run inline on the Timekeeper's thread.
+  /// This can potentially cause problems with timing.
+  template <class Clock>
+  Future<Unit> atUnsafe(std::chrono::time_point<Clock> when) {
+    return at(when).semi().toUnsafeFuture();
+  }
 };
 
 template <class T>

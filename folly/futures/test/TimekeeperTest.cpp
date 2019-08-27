@@ -48,6 +48,16 @@ TEST_F(TimekeeperFixture, after) {
   EXPECT_GE(t2 - t1, awhile);
 }
 
+TEST_F(TimekeeperFixture, afterUnsafe) {
+  auto t1 = now();
+  auto f = timeLord_->afterUnsafe(awhile);
+  EXPECT_FALSE(f.isReady());
+  std::move(f).get();
+  auto t2 = now();
+
+  EXPECT_GE(t2 - t1, awhile);
+}
+
 TEST(Timekeeper, futureGet) {
   Promise<int> p;
   auto t = std::thread([&] { p.setValue(42); });
