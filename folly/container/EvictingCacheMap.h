@@ -47,7 +47,7 @@ namespace folly {
  * callback and the hasher to hash the keys can all be supplied by the caller.
  *
  * If at a given state, N1 - N6 are the nodes in MRU to LRU order and hashing
- * to index keys as {(N1,N5)->H1, (N4,N5,N5)->H2, N3->Hi}, the datastructure
+ * to index keys as {(N1,N5)->H1, (N4,N2,N6)->H2, N3->Hi}, the datastructure
  * layout is as below. N1 .. N6 is a list threaded through the hash.
  * Assuming, each the number of nodes hashed to each index key is bounded, the
  * following operations run in constant time.
