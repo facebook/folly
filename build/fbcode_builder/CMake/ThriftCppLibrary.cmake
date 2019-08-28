@@ -17,13 +17,24 @@ include(FBCMakeParseArgs)
 #   The sub-directory where generated headers will be installed.
 #   Defaults to "include" if not specified.  The caller must still call
 #   install() to install the thrift library if desired.
+# - THRIFT_INCLUDE_DIR <path>
+#   The sub-directory where generated headers will be installed.
+#   Defaults to "${INCLUDE_DIR}/thrift-files" if not specified.
+#   The caller must still call install() to install the thrift library if
+#   desired.
 function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
   # Parse the arguments
   set(one_value_args INCLUDE_DIR)
-  set(multi_value_args SERVICES DEPENDS OPTIONS)
+  set(multi_value_args SERVICES DEPENDS OPTIONS THRIFT_INCLUDE_DIR)
   fb_cmake_parse_args(
     ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
   )
+  if(NOT DEFINED ARG_INCLUDE_DIR)
+    set(ARG_INCLUDE_DIR "include")
+  endif()
+  if(NOT DEFINED ARG_THRIFT_INCLUDE_DIR)
+    set(ARG_THRIFT_INCLUDE_DIR "${ARG_INCLUDE_DIR}/thrift-files")
+  endif()
 
   get_filename_component(base ${THRIFT_FILE} NAME_WE)
   get_filename_component(
@@ -39,9 +50,6 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
   )
   get_filename_component(include_prefix ${include_prefix} DIRECTORY)
-  if(NOT DEFINED ARG_INCLUDE_DIR)
-    set(ARG_INCLUDE_DIR "include")
-  endif()
 
   if (NOT "${include_prefix}" STREQUAL "")
     list(APPEND ARG_OPTIONS "include_prefix=${include_prefix}")
@@ -78,22 +86,21 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     )
   endforeach()
 
-  list(APPEND thrift_include_options -I "${CMAKE_SOURCE_DIR}")
-  foreach(depends IN LISTS ARG_DEPENDS)
-    get_property(thrift_include_directory
-      TARGET ${depends}
-      PROPERTY THRIFT_INCLUDE_DIRECTORY)
-
-    if (thrift_include_directory STREQUAL "")
-      message(STATUS "No thrift dependency found for ${depends}")
-    else()
-      list(
-        APPEND thrift_include_options
-        -I "${thrift_include_directory}"
-      )
-    endif()
-  endforeach()
-
+  # This generator expression gets the list of include directories required
+  # for all of our dependencies.
+  # It requires using COMMAND_EXPAND_LISTS in the add_custom_command() call
+  # below.  COMMAND_EXPAND_LISTS is only available in CMake 3.8+
+  # If we really had to support older versions of CMake we would probably need
+  # to use a wrapper script around the thrift compiler that could take the
+  # include list as a single argument and split it up before invoking the
+  # thrift compiler.
+  if (NOT POLICY CMP0067)
+    message(FATAL_ERROR "add_thrift_cpp2_library() requires CMake 3.8+")
+  endif()
+  set(
+    thrift_include_options
+    "-I;$<JOIN:$<TARGET_PROPERTY:${LIB_NAME}.thrift_includes,INTERFACE_INCLUDE_DIRECTORIES>,;-I;>"
+  )
   file(
     GLOB_RECURSE THRIFT_TEMPLATE_FILES
     FOLLOW_SYMLINKS "${FBTHRIFT_TEMPLATES_DIR}/cpp2/*.mustache"
@@ -104,6 +111,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     OUTPUT
       ${generated_headers}
       ${generated_sources}
+    COMMAND_EXPAND_LISTS
     COMMAND
       "${CMAKE_COMMAND}" -E make_directory "${output_dir}"
     COMMAND
@@ -111,7 +119,7 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
       --strict
       --templates "${FBTHRIFT_TEMPLATES_DIR}"
       --gen "mstch_cpp2:${GEN_ARG_STR}"
-      ${thrift_include_options}
+      "${thrift_include_options}"
       -o "${output_dir}"
       "${CMAKE_CURRENT_SOURCE_DIR}/${THRIFT_FILE}"
     WORKING_DIRECTORY
@@ -159,11 +167,27 @@ function(add_thrift_cpp2_library LIB_NAME THRIFT_FILE)
     PROPERTY PUBLIC_HEADER ${generated_headers}
   )
 
+  # Define a dummy interface library to help propagate the thrift include
+  # directories between dependencies.
+  add_library("${LIB_NAME}.thrift_includes" INTERFACE)
+  target_include_directories(
+    "${LIB_NAME}.thrift_includes"
+    INTERFACE
+      "$<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}>"
+      "$<INSTALL_INTERFACE:${ARG_THRIFT_INCLUDE_DIR}>"
+  )
+  foreach(dep IN LISTS ARG_DEPENDS)
+    target_link_libraries(
+      "${LIB_NAME}.thrift_includes"
+      INTERFACE "${dep}.thrift_includes"
+    )
+  endforeach()
+
   set_target_properties(
     "${LIB_NAME}"
     PROPERTIES
-      EXPORT_PROPERTIES "THRIFT_INCLUDE_DIRECTORY"
-      THRIFT_INCLUDE_DIRECTORY "${CMAKE_SOURCE_DIR}"
+      EXPORT_PROPERTIES "THRIFT_INSTALL_DIR"
+      THRIFT_INSTALL_DIR "${ARG_THRIFT_INCLUDE_DIR}/${include_prefix}"
       HEADER_INSTALL_DIR "${ARG_INCLUDE_DIR}/${include_prefix}/gen-cpp2"
   )
 endfunction()
