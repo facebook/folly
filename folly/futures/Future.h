@@ -1872,13 +1872,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class T2>
   friend Future<T2> makeFuture(Try<T2>);
 
-  /// Carry out the computation contained in the given future if
-  /// the predicate holds.
-  ///
-  /// thunk behaves like std::function<Future<T2>(void)>
-  template <class F>
-  friend Future<Unit> when(bool p, F&& thunk);
-
   template <class FT>
   friend Future<FT> futures::detail::convertFuture(
       SemiFuture<FT>&& sf,
@@ -2085,6 +2078,15 @@ auto mapTry(Executor& exec, Collection&& c, F&& func)
     -> decltype(mapTry(exec, c.begin(), c.end(), func)) {
   return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
 }
+
+/// Carry out the computation contained in the given future if
+/// the predicate holds.
+///
+/// thunk behaves like std::function<Future<T2>(void)> or
+/// std::function<SemiFuture<T2>(void)>
+template <class F>
+auto when(bool p, F&& thunk)
+    -> decltype(std::declval<invoke_result_t<F>>().unit());
 
 #if FOLLY_FUTURE_USING_FIBER
 

@@ -30,6 +30,15 @@ TEST(When, predicateFalse) {
   auto f1 = folly::when(false, thunk);
   f1.wait();
   EXPECT_EQ(0, i);
+
+  auto sfThunk = [&] {
+    return makeSemiFuture().deferValue([&](auto&&) { i += 1; });
+  };
+
+  // false
+  auto f1s = folly::when(false, sfThunk);
+  f1s.wait();
+  EXPECT_EQ(0, i);
 }
 
 TEST(When, predicateTrue) {
@@ -40,4 +49,13 @@ TEST(When, predicateTrue) {
   auto f2 = folly::when(true, thunk);
   f2.wait();
   EXPECT_EQ(1, i);
+
+  auto sfThunk = [&] {
+    return makeSemiFuture().deferValue([&](auto&&) { i += 1; });
+  };
+
+  // true
+  auto f2s = folly::when(true, sfThunk);
+  f2s.wait();
+  EXPECT_EQ(2, i);
 }

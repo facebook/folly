@@ -2448,7 +2448,8 @@ Future<T> Future<T>::filter(F&& predicate) && {
 }
 
 template <class F>
-Future<Unit> when(bool p, F&& thunk) {
+auto when(bool p, F&& thunk)
+    -> decltype(std::declval<invoke_result_t<F>>().unit()) {
   return p ? std::forward<F>(thunk)().unit() : makeFuture();
 }
 
