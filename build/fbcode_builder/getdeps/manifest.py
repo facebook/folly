@@ -349,7 +349,7 @@ class ManifestParser(object):
                 )
 
         raise KeyError(
-            "project %s has no fetcher configuration matching %r" % (self.name, ctx)
+            "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
 
     def create_builder(self, build_options, src_dir, build_dir, inst_dir, ctx):
