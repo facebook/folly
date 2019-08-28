@@ -1,6 +1,4 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-# NOTE: If you change this file, fbcode/fboss/github/ThriftCppLibrary.cmake also
-# needs to be changed.  TODO: this should be handled via shipit.
 
 include(FBCMakeParseArgs)
 
