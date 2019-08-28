@@ -311,7 +311,7 @@ Getcpu::Func Getcpu::resolveVdsoFunc() {
 #endif
 }
 
-#ifdef FOLLY_TLS
+#ifdef FOLLY_CL_USE_FOLLY_TLS
 /////////////// SequentialThreadId
 template struct SequentialThreadId<std::atomic>;
 #endif
