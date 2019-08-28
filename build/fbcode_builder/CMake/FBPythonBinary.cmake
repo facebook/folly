@@ -326,6 +326,7 @@ function(add_fb_python_library LIB_NAME)
   if(NOT IS_ABSOLUTE "${abs_install_dir}")
     set(abs_install_dir "${CMAKE_INSTALL_PREFIX}/${abs_install_dir}")
   endif()
+  string(REGEX REPLACE "/$" "" abs_install_dir "${abs_install_dir}")
   set_target_properties(
     "${LIB_NAME}.py_lib_install"
     PROPERTIES
