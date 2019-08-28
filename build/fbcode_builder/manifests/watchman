@@ -19,7 +19,6 @@ pcre
 
 [shipit.pathmap]
 fbcode/watchman = .
-fbcode/fboss/common = common
 fbcode/eden/fs = eden/fs
 
 [shipit.strip]
