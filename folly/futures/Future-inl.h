@@ -868,6 +868,11 @@ SemiFuture<T> SemiFuture<T>::deferError(F&& func) && {
       });
 }
 
+template <class T>
+SemiFuture<Unit> SemiFuture<T>::unit() && {
+  return std::move(*this).deferValue([](T&&) {});
+}
+
 template <typename T>
 SemiFuture<T> SemiFuture<T>::delayed(Duration dur, Timekeeper* tk) && {
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))

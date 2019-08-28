@@ -50,6 +50,12 @@ TEST(SemiFuture, futureDefaultCtor) {
   SemiFuture<Unit>();
 }
 
+TEST(SemiFuture, semiFutureToUnit) {
+  SemiFuture<Unit> fu = makeSemiFuture(42).unit();
+  std::move(fu).get();
+  EXPECT_THROW(makeSemiFuture<int>(eggs).unit().get(), eggs_t);
+}
+
 TEST(SemiFuture, makeSemiFutureWithUnit) {
   int count = 0;
   SemiFuture<Unit> fu = makeSemiFutureWith([&] { count++; });

@@ -791,6 +791,20 @@ class SemiFuture : private futures::detail::FutureBase<T> {
     return std::move(*this).deferError(&func);
   }
 
+  /// Convenience method for ignoring the value and creating a Future<Unit>.
+  /// Exceptions still propagate.
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - Calling code should act as if `valid() == false`,
+  ///   i.e., as if `*this` was moved into RESULT.
+  /// - `RESULT.valid() == true`
+  SemiFuture<Unit> unit() &&;
+
   SemiFuture<T> within(Duration dur, Timekeeper* tk = nullptr) && {
     return std::move(*this).within(dur, FutureTimeout(), tk);
   }
