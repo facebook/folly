@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/small_vector.h>
 #include <folly/sorted_vector_types.h>
 
 #include <iterator>
@@ -805,6 +806,43 @@ TEST(SortedVectorTypes, TestMapCreationFromVector) {
   EXPECT_EQ(contents, expected_contents);
 }
 
+TEST(SortedVectorTypes, TestSetCreationFromSmallVector) {
+  using smvec = folly::small_vector<int, 5>;
+  smvec vec = {3, 1, -1, 5, 0};
+  sorted_vector_set<
+      int,
+      std::less<int>,
+      std::allocator<std::pair<int, int>>,
+      void,
+      smvec>
+      vset(std::move(vec));
+  check_invariant(vset);
+  EXPECT_THAT(vset, testing::ElementsAreArray({-1, 0, 1, 3, 5}));
+}
+
+TEST(SortedVectorTypes, TestMapCreationFromSmallVector) {
+  using smvec = folly::small_vector<std::pair<int, int>, 5>;
+  smvec vec = {{3, 1}, {1, 5}, {-1, 2}, {5, 3}, {0, 3}};
+  sorted_vector_map<
+      int,
+      int,
+      std::less<int>,
+      std::allocator<std::pair<int, int>>,
+      void,
+      smvec>
+      vmap(std::move(vec));
+  check_invariant(vmap);
+  auto contents = std::vector<std::pair<int, int>>(vmap.begin(), vmap.end());
+  auto expected_contents = std::vector<std::pair<int, int>>({
+      {-1, 2},
+      {0, 3},
+      {1, 5},
+      {3, 1},
+      {5, 3},
+  });
+  EXPECT_EQ(contents, expected_contents);
+}
+
 TEST(SortedVectorTypes, TestBulkInsertionWithDuplicatesIntoEmptySet) {
   sorted_vector_set<int> set;
   {
@@ -952,6 +990,46 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
 template <typename T>
 using pmr_vector =
     std::vector<T, folly::detail::std_pmr::polymorphic_allocator<T>>;
+
+TEST(SortedVectorTypes, TestCreationFromPmrVector) {
+  namespace pmr = folly::pmr;
+
+  set_default_resource(null_memory_resource());
+  test_resource r;
+  polymorphic_allocator<std::byte> a(&r);
+
+  {
+    pmr_vector<int> c({1, 2, 3}, a);
+    auto d = c.data();
+    pmr::sorted_vector_set<int> s(std::move(c));
+    EXPECT_EQ(s.get_allocator(), a);
+    EXPECT_EQ(s.data(), d);
+  }
+
+  {
+    pmr_vector<int> c({2, 1, 3}, a);
+    auto d = c.data();
+    pmr::sorted_vector_set<int> s(std::move(c));
+    EXPECT_EQ(s.get_allocator(), a);
+    EXPECT_EQ(s.data(), d);
+  }
+
+  {
+    pmr_vector<std::pair<int, int>> c({{1, 1}, {2, 2}, {3, 3}}, a);
+    auto d = c.data();
+    pmr::sorted_vector_map<int, int> m(std::move(c));
+    EXPECT_EQ(m.get_allocator(), a);
+    EXPECT_EQ(m.data(), d);
+  }
+
+  {
+    pmr_vector<std::pair<int, int>> c({{2, 2}, {1, 1}, {3, 3}}, a);
+    auto d = c.data();
+    pmr::sorted_vector_map<int, int> m(std::move(c));
+    EXPECT_EQ(m.get_allocator(), a);
+    EXPECT_EQ(m.data(), d);
+  }
+}
 
 TEST(SortedVectorTypes, TestPmrAllocatorScoped) {
   namespace pmr = folly::pmr;
