@@ -1871,15 +1871,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class F>
   friend Future<Unit> when(bool p, F&& thunk);
 
-  /// Carry out the computation contained in the given future if
-  /// while the predicate continues to hold.
-  ///
-  /// thunk behaves like std::function<Future<T2>(void)>
-  ///
-  /// predicate behaves like std::function<bool(void)>
-  template <class P, class F>
-  friend Future<Unit> whileDo(P&& predicate, F&& thunk);
-
   template <class FT>
   friend Future<FT> futures::detail::convertFuture(
       SemiFuture<FT>&& sf,
@@ -2488,6 +2479,22 @@ auto unorderedReduce(Collection&& c, T&& initial, F&& func)
   return unorderedReduce(
       c.begin(), c.end(), std::forward<T>(initial), std::forward<F>(func));
 }
+
+/// Carry out the computation contained in the given future if
+/// while the predicate continues to hold.
+///
+/// if thunk behaves like std::function<Future<T2>(void)>
+///    returns Future<Unit>
+/// if thunk behaves like std::function<SemiFuture<T2>(void)>
+///    returns SemiFuture<Unit>
+/// predicate behaves like std::function<bool(void)>
+template <class P, class F>
+typename std::enable_if<isFuture<invoke_result_t<F>>::value, Future<Unit>>::type
+whileDo(P&& predicate, F&& thunk);
+template <class P, class F>
+typename std::
+    enable_if<isSemiFuture<invoke_result_t<F>>::value, SemiFuture<Unit>>::type
+    whileDo(P&& predicate, F&& thunk);
 } // namespace folly
 
 #if FOLLY_HAS_COROUTINES

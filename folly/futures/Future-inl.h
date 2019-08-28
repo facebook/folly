@@ -2446,7 +2446,24 @@ Future<Unit> when(bool p, F&& thunk) {
 }
 
 template <class P, class F>
-Future<Unit> whileDo(P&& predicate, F&& thunk) {
+typename std::
+    enable_if<isSemiFuture<invoke_result_t<F>>::value, SemiFuture<Unit>>::type
+    whileDo(P&& predicate, F&& thunk) {
+  if (predicate()) {
+    auto future = thunk();
+    return std::move(future).deferExValue(
+        [predicate = std::forward<P>(predicate),
+         thunk = std::forward<F>(thunk)](auto&& ex, auto&&) mutable {
+          return whileDo(std::forward<P>(predicate), std::forward<F>(thunk))
+              .via(std::move(ex));
+        });
+  }
+  return makeSemiFuture();
+}
+
+template <class P, class F>
+typename std::enable_if<isFuture<invoke_result_t<F>>::value, Future<Unit>>::type
+whileDo(P&& predicate, F&& thunk) {
   if (predicate()) {
     auto future = thunk();
     return std::move(future).thenValue(
