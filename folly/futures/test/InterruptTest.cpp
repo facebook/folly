@@ -16,6 +16,7 @@
 
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
+#include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -83,10 +84,11 @@ TEST(Interrupt, futureWithinTimedOut) {
 }
 
 TEST(Interrupt, semiFutureWithinTimedOut) {
+  folly::TestExecutor ex(1);
   Promise<int> p;
   Baton<> done;
   p.setInterruptHandler([&](const exception_wrapper& /* e */) { done.post(); });
-  p.getSemiFuture().within(std::chrono::milliseconds(1));
+  p.getSemiFuture().within(std::chrono::milliseconds(1)).via(&ex);
   // Give it 100ms to time out and call the interrupt handler
   EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
 }

@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Singleton.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
@@ -431,9 +432,12 @@ TEST(Timekeeper, semiFutureWithinChainedInterruptTest) {
 }
 
 TEST(Timekeeper, executor) {
-  class ExecutorTester : public Executor {
+  class ExecutorTester : public DefaultKeepAliveExecutor {
    public:
-    void add(Func f) override {
+    ~ExecutorTester() override {
+      joinKeepAlive();
+    }
+    virtual void add(Func f) override {
       count++;
       f();
     }

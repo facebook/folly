@@ -2035,7 +2035,7 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
     explicit Context(E ex) : exception(std::move(ex)) {}
     E exception;
     SemiFuture<Unit> thisFuture;
-    Future<Unit> afterFuture;
+    SemiFuture<Unit> afterFuture;
     Promise<T> promise;
     std::atomic<bool> token{false};
   };
@@ -2061,7 +2061,7 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
 
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
-  ctx->afterFuture = tk->after(dur).thenTry(
+  ctx->afterFuture = tk->after(dur).semi().defer(
       [weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
         if (t.hasException() &&
             t.exception().is_compatible_with<FutureCancellation>()) {
@@ -2093,8 +2093,15 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
         }
       });
 
+  // Construct the future to return, assume the deferred executor from
+  // thisFuture and make afterFuture's executor nested to correctly propagate
+  // concrete exeutors
   auto fut = ctx->promise.getSemiFuture();
   fut.setExecutor(ctx->thisFuture.stealDeferredExecutor());
+  std::vector<folly::futures::detail::DeferredWrapper> nestedExecutors;
+  nestedExecutors.emplace_back(ctx->afterFuture.stealDeferredExecutor());
+  futures::detail::getDeferredExecutor(fut)->setNestedExecutors(
+      std::move(nestedExecutors));
   return std::move(fut);
 }
 
