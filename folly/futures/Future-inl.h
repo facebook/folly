@@ -2135,7 +2135,9 @@ template <class T>
 Future<T> convertFuture(SemiFuture<T>&& sf, const Future<T>& f) {
   // Carry executor from f, inserting an inline executor if it did not have one
   auto* exe = f.getExecutor();
-  return std::move(sf).via(exe ? exe : &InlineExecutor::instance());
+  auto newFut = std::move(sf).via(exe ? exe : &InlineExecutor::instance());
+  newFut.core_->setInterruptHandlerNoLock(f.core_->getInterruptHandler());
+  return newFut;
 }
 
 template <class T>

@@ -426,3 +426,16 @@ TEST(Wait, WaitPlusThen) {
     t.join();
   }
 }
+
+TEST(Wait, cancelAfterWait) {
+  folly::TestExecutor executor(1);
+  Promise<folly::Unit> p;
+  p.setInterruptHandler([&](const exception_wrapper& e) {
+    EXPECT_THROW(e.throw_exception(), FutureCancellation);
+  });
+
+  auto fut = p.getSemiFuture().within(std::chrono::seconds(1)).via(&executor);
+  fut.wait(std::chrono::milliseconds(1));
+  fut.cancel();
+  fut.wait();
+}
