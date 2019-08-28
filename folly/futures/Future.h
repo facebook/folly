@@ -1858,12 +1858,6 @@ class Future : private futures::detail::FutureBase<T> {
   template <class T2>
   friend Future<T2> makeFuture(Try<T2>);
 
-  /// Repeat the given future (i.e., the computation it contains) n times.
-  ///
-  /// thunk behaves like std::function<Future<T2>(void)>
-  template <class F>
-  friend Future<Unit> times(int n, F&& thunk);
-
   /// Carry out the computation contained in the given future if
   /// the predicate holds.
   ///
@@ -2495,6 +2489,15 @@ template <class P, class F>
 typename std::
     enable_if<isSemiFuture<invoke_result_t<F>>::value, SemiFuture<Unit>>::type
     whileDo(P&& predicate, F&& thunk);
+
+/// Repeat the given future (i.e., the computation it contains) n times.
+///
+/// thunk behaves like
+///   std::function<Future<T2>(void)>
+/// or
+///   std::function<SemiFuture<T2>(void)>
+template <class F>
+auto times(int n, F&& thunk);
 } // namespace folly
 
 #if FOLLY_HAS_COROUTINES

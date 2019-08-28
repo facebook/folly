@@ -2478,7 +2478,7 @@ whileDo(P&& predicate, F&& thunk) {
 }
 
 template <class F>
-Future<Unit> times(const int n, F&& thunk) {
+auto times(const int n, F&& thunk) {
   return folly::whileDo(
       [n, count = std::make_unique<std::atomic<int>>(0)]() mutable {
         return count->fetch_add(1, std::memory_order_relaxed) < n;
