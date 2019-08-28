@@ -15,6 +15,7 @@ builder = nop
 
 [dependencies]
 folly
+fb303
 wangle
 rsocket-cpp
 mstch
