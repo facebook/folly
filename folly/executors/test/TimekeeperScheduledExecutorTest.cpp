@@ -21,6 +21,7 @@
 #include <folly/executors/SerialExecutor.h>
 #include <folly/executors/ThreadedExecutor.h>
 #include <folly/executors/TimekeeperScheduledExecutor.h>
+#include <folly/futures/ManualTimekeeper.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
@@ -28,6 +29,7 @@ using folly::Duration;
 using folly::Executor;
 using folly::Func;
 using folly::Future;
+using folly::ManualTimekeeper;
 using folly::Promise;
 using folly::ScheduledExecutor;
 using folly::TimekeeperScheduledExecutor;
@@ -36,54 +38,6 @@ using std::chrono::steady_clock;
 using time_point = steady_clock::time_point;
 
 namespace {
-
-// Manually controlled Timekeeper for unit testing.
-// We assume advance(), now(), and numScheduled() are called
-// from only a single thread, while after() can safely be called
-// from multiple threads.
-class ManualTimekeeper : public folly::Timekeeper {
- public:
-  explicit ManualTimekeeper(Executor::KeepAlive<Executor>&& executor)
-      : executor_(std::move(executor)), now_(steady_clock::now()) {}
-
-  Future<Unit> after(Duration dur) override {
-    auto contract = folly::makePromiseContract<Unit>(executor_.get());
-    if (dur.count() == 0) {
-      contract.first.setValue(folly::unit);
-    } else {
-      schedule_.withWLock([&contract, this, &dur](auto& schedule) {
-        schedule.insert(std::make_pair(now_ + dur, std::move(contract.first)));
-      });
-    }
-    return std::move(contract.second);
-  }
-
-  void advance(Duration dur) {
-    now_ += dur;
-    schedule_.withWLock([this](auto& schedule) {
-      auto start = schedule.begin();
-      auto end = schedule.upper_bound(now_);
-      for (auto iter = start; iter != end; iter++) {
-        iter->second.setValue(folly::unit);
-      }
-      schedule.erase(start, end);
-    });
-  }
-
-  time_point now() {
-    return now_;
-  }
-
-  size_t numScheduled() {
-    return schedule_.withRLock([](const auto& sched) { return sched.size(); });
-  }
-
- private:
-  Executor::KeepAlive<Executor> executor_;
-  time_point now_;
-  folly::Synchronized<std::multimap<time_point, Promise<Unit>>> schedule_;
-};
-
 void simpleTest(std::unique_ptr<folly::Executor> const& parent) {
   auto tk = std::make_shared<ManualTimekeeper>(
       folly::getKeepAliveToken(parent.get()));
