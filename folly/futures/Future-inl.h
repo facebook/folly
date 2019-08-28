@@ -2125,14 +2125,14 @@ void waitImpl(FutureType& f) {
 
   Promise<T> promise;
   auto ret = convertFuture(promise.getSemiFuture(), f);
-  auto baton = std::make_shared<FutureBatonType>();
-  f.setCallback_([baton, promise = std::move(promise)](
+  FutureBatonType baton;
+  f.setCallback_([&baton, promise = std::move(promise)](
                      Executor::KeepAlive<>&&, Try<T>&& t) mutable {
     promise.setTry(std::move(t));
-    baton->post();
+    baton.post();
   });
   f = std::move(ret);
-  baton->wait();
+  baton.wait();
   assert(f.isReady());
 }
 
