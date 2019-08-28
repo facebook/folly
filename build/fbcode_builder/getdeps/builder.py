@@ -200,7 +200,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 import argparse
 import os
-import subprocess
 
 CMAKE = {cmake!r}
 SRC_DIR = {src_dir!r}
@@ -266,7 +265,8 @@ def main():
 
     cmd_str = " ".join(full_cmd)
     print("Running: %r" % (cmd_str,))
-    subprocess.call(full_cmd, env=env, cwd=BUILD_DIR)
+    os.chdir(BUILD_DIR)
+    os.execve(CMAKE, full_cmd, env)
 
 
 if __name__ == "__main__":
