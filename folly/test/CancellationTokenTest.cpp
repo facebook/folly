@@ -245,3 +245,17 @@ TEST(CancellationTokenTest, ManyConcurrentCallbackAddRemove) {
     t.join();
   }
 }
+
+TEST(CancellationTokenTest, NonCancellableSource) {
+  CancellationSource src = CancellationSource::invalid();
+  CHECK(!src.canBeCancelled());
+  CHECK(!src.isCancellationRequested());
+  CHECK(!src.requestCancellation());
+  CHECK(!src.isCancellationRequested());
+  CHECK(!src.canBeCancelled());
+
+  auto token = src.getToken();
+  CHECK(!src.canBeCancelled());
+  CHECK(!src.isCancellationRequested());
+  CHECK(token == CancellationToken{});
+}

@@ -139,6 +139,13 @@ class CancellationSource {
   CancellationSource& operator=(const CancellationSource& other) noexcept;
   CancellationSource& operator=(CancellationSource&& other) noexcept;
 
+  // Construct a CancellationSource that cannot be cancelled.
+  //
+  // This factory function can be used to obtain a CancellationSource that
+  // is equivalent to a moved-from CancellationSource object without needing
+  // to allocate any shared-state.
+  static CancellationSource invalid() noexcept;
+
   // Query if cancellation has already been requested on this CancellationSource
   // or any other CancellationSource object copied from the same original
   // CancellationSource object.
@@ -185,6 +192,9 @@ class CancellationSource {
       const CancellationSource& b) noexcept;
 
  private:
+  explicit CancellationSource(
+      detail::CancellationStateSourcePtr&& state) noexcept;
+
   detail::CancellationStateSourcePtr state_;
 };
 
