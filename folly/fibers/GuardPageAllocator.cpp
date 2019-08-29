@@ -272,6 +272,7 @@ class CacheManager {
   friend class StackCacheEntry;
 
   void giveBack(std::unique_ptr<StackCache> /* stackCache_ */) {
+    std::lock_guard<folly::SpinLock> lg(lock_);
     assert(inUse_ > 0);
     --inUse_;
     /* Note: we can add a free list for each size bucket
