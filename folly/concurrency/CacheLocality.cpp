@@ -196,6 +196,7 @@ CacheLocality CacheLocality::readFromProcCpuinfoLines(
   size_t physicalId = 0;
   size_t coreId = 0;
   std::vector<std::tuple<size_t, size_t, size_t>> cpus;
+  size_t maxCpu = 0;
   for (auto iter = lines.rbegin(); iter != lines.rend(); ++iter) {
     auto& line = *iter;
     if (!procCpuinfoLineRelevant(line)) {
@@ -219,12 +220,17 @@ CacheLocality CacheLocality::readFromProcCpuinfoLines(
       coreId = parseLeadingNumber(arg);
     } else if (line.find("processor") == 0) {
       auto cpu = parseLeadingNumber(arg);
+      maxCpu = std::max(cpu, maxCpu);
       cpus.emplace_back(physicalId, coreId, cpu);
     }
   }
 
   if (cpus.empty()) {
     throw std::runtime_error("no CPUs parsed from /proc/cpuinfo");
+  }
+  if (maxCpu != cpus.size() - 1) {
+    throw std::runtime_error(
+        "offline CPUs not supported for /proc/cpuinfo cache locality source");
   }
 
   std::sort(cpus.begin(), cpus.end());
