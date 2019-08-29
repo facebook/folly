@@ -419,12 +419,9 @@ class Range {
   }
 
   constexpr size_type size() const {
-    // It would be nice to assert(b_ <= e_) here.  This can be achieved even
-    // in a C++11 compatible constexpr function:
-    // http://ericniebler.com/2014/09/27/assert-and-constexpr-in-cxx11/
-    // Unfortunately current gcc versions have a bug causing it to reject
-    // this check in a constexpr function:
-    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=71448
+#if __clang__ || !__GNUC__ || __GNUC__ >= 7
+    assert(b_ <= e_);
+#endif
     return size_type(e_ - b_);
   }
   constexpr size_type walk_size() const {
