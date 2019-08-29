@@ -120,8 +120,8 @@ FOLLY_RTM_DISABLED_NORETURN static bool rtmTestFunc() {
 }
 
 template <size_t... I>
-FOLLY_DISABLE_SANITIZERS FOLLY_ALWAYS_INLINE static void
-    FOLLY_RTM_DISABLED_NORETURN
+FOLLY_RTM_DISABLED_NORETURN FOLLY_DISABLE_SANITIZERS
+    FOLLY_ALWAYS_INLINE static void
     rtmAbortFunc_(std::index_sequence<I...>, uint8_t status) {
 #if FOLLY_RTM_SUPPORT
   switch (status) {
