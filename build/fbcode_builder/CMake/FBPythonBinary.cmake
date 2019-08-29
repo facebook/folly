@@ -369,10 +369,9 @@ function(install_fb_python_library LIB_NAME)
 
   # Copy the intermediate install directory generated at build time into
   # the desired install location.
-  set(dest_dir "$<TARGET_PROPERTY:${LIB_NAME}.py_lib_install,INSTALL_DIR>")
-  set(
-    build_install_dir
-    "$<TARGET_PROPERTY:${LIB_NAME}.py_lib_install,BUILD_INSTALL_DIR>"
+  get_target_property(dest_dir "${LIB_NAME}.py_lib_install" "INSTALL_DIR")
+  get_target_property(
+    build_install_dir "${LIB_NAME}.py_lib_install" "BUILD_INSTALL_DIR"
   )
   install(
     DIRECTORY "${build_install_dir}/${LIB_NAME}"
