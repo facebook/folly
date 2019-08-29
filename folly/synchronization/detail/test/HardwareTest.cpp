@@ -15,16 +15,13 @@
  */
 
 #include <folly/synchronization/detail/Hardware.h>
-
+#include <folly/lang/Assume.h>
 #include <folly/portability/GTest.h>
-
 #include <glog/logging.h>
 
-using namespace folly;
+using namespace folly::hardware;
 
-class HardwareTest : public testing::Test {};
-
-TEST_F(HardwareTest, RtmBasicUsage) {
+TEST(RTM, BasicUsage) {
   // Test the checkers, though whichever values they returns,
   // we are allowed to run the loop below and use the return value of rtmBegin
   // to indicate whether RTM is supported.
