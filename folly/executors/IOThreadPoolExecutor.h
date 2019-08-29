@@ -73,8 +73,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   folly::EventBaseManager* getEventBaseManager();
 
  private:
-  struct alignas(hardware_destructive_interference_size) IOThread
-      : public Thread {
+  struct alignas(folly::cacheline_align_v) IOThread : public Thread {
     IOThread(IOThreadPoolExecutor* pool)
         : Thread(pool), shouldRun(true), pendingTasks(0) {}
     std::atomic<bool> shouldRun;

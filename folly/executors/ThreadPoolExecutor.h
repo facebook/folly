@@ -167,8 +167,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   struct TaskStatsCallbackRegistry;
 
-  struct alignas(hardware_destructive_interference_size) Thread
-      : public ThreadHandle {
+  struct alignas(folly::cacheline_align_v) Thread : public ThreadHandle {
     explicit Thread(ThreadPoolExecutor* pool)
         : id(nextId++),
           handle(),
