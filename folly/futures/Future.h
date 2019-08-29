@@ -147,7 +147,8 @@ class FutureBase {
       class... Args,
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
-  explicit FutureBase(in_place_t, Args&&... args);
+  explicit FutureBase(in_place_t, Args&&... args)
+      : core_(Core::make(in_place, std::forward<Args>(args)...)) {}
 
   FutureBase(FutureBase<T> const&) = delete;
   FutureBase(SemiFuture<T>&&) noexcept;
@@ -998,7 +999,10 @@ class Future : private futures::detail::FutureBase<T> {
               std::is_constructible<T, T2&&>::value &&
               std::is_convertible<T2&&, T>::value,
           int>::type = 0>
-  /* implicit */ Future(Future<T2>&&);
+  /* implicit */ Future(Future<T2>&& other)
+      : Future(std::move(other).thenValue(
+            [](T2&& v) { return T(std::move(v)); })) {}
+
   template <
       class T2,
       typename std::enable_if<
@@ -1006,14 +1010,20 @@ class Future : private futures::detail::FutureBase<T> {
               std::is_constructible<T, T2&&>::value &&
               !std::is_convertible<T2&&, T>::value,
           int>::type = 0>
-  explicit Future(Future<T2>&&);
+  explicit Future(Future<T2>&& other)
+      : Future(std::move(other).thenValue(
+            [](T2&& v) { return T(std::move(v)); })) {}
+
   template <
       class T2,
       typename std::enable_if<
           !std::is_same<T, typename std::decay<T2>::type>::value &&
               std::is_constructible<T, T2&&>::value,
           int>::type = 0>
-  Future& operator=(Future<T2>&&);
+  Future& operator=(Future<T2>&& other) {
+    return operator=(
+        std::move(other).thenValue([](T2&& v) { return T(std::move(v)); }));
+  }
 
   using Base::cancel;
   using Base::hasException;
