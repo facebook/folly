@@ -752,6 +752,9 @@ if (BUILD_TESTS)
       TEST rw_spin_lock_test SOURCES RWSpinLockTest.cpp
       TEST semaphore_test SOURCES SemaphoreTest.cpp
 
+    DIRECTORY synchronization/detail/test/
+      TEST hardware_test SOURCES HardwareTest.cpp
+
     DIRECTORY system/test/
       TEST memory_mapping_test SOURCES MemoryMappingTest.cpp
       TEST shell_test SOURCES ShellTest.cpp

@@ -16,10 +16,11 @@
 
 #pragma once
 
+#include <atomic>
+
 #include <folly/Portability.h>
 
 namespace folly {
-namespace hardware {
 
 // Valid status values returned from rtmBegin.
 // kRtmDisabled is a new return value indicating that RTM support is unavailable
@@ -44,20 +45,31 @@ constexpr bool kRtmSupportEnabled = kIsArchAmd64;
 // Check on cpu support for tsx-rtm
 extern bool rtmEnabled();
 
+namespace detail {
+
 // Use func ptrs to access the txn functions to avoid txn aborts
 // due to plt mapping.
-extern unsigned (*const rtmBegin)();
-extern void (*const rtmEnd)();
-extern bool (*const rtmTest)();
+extern std::atomic<unsigned (*)()> rtmBeginV;
+extern std::atomic<void (*)()> rtmEndV;
+extern std::atomic<bool (*)()> rtmTestV;
+extern std::atomic<void (*)(uint8_t)> rtmAbortV;
 
-// The abort status code must be known at compile time, so
-// the abstraction layer only supports a subset of the full
-// range.  rtmAbort(s) fails if s > 4 in the current implementation.
-extern void (*const rtmAbort)(unsigned status);
+} // namespace detail
 
-inline unsigned rtmStatusToAbortCode(unsigned status) {
+inline unsigned rtmBegin() {
+  return detail::rtmBeginV.load(std::memory_order_relaxed)();
+}
+inline void rtmEnd() {
+  return detail::rtmEndV.load(std::memory_order_relaxed)();
+}
+inline bool rtmTest() {
+  return detail::rtmTestV.load(std::memory_order_relaxed)();
+}
+inline void rtmAbort(uint8_t status) {
+  return detail::rtmAbortV.load(std::memory_order_relaxed)(status);
+}
+inline uint8_t rtmStatusToAbortCode(unsigned status) {
   return status >> 24;
 }
 
-} // namespace hardware
 } // namespace folly

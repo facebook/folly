@@ -16,18 +16,21 @@
 
 #include <folly/synchronization/detail/Hardware.h>
 
-#include <cassert>
+#include <atomic>
 #include <cstdlib>
-#include <exception>
+#include <stdexcept>
 #include <utility>
 
-#include <glog/logging.h>
+#include <boost/preprocessor/repetition/repeat.hpp>
+
+#include <folly/lang/Assume.h>
+#include <folly/lang/Exception.h>
 
 #if FOLLY_X64 && defined(__RTM__)
-#include <folly/lang/Assume.h>
 #include <immintrin.h>
 #define FOLLY_RTM_SUPPORT 1
-#elif FOLLY_X64
+#else
+#define FOLLY_RTM_SUPPORT 0
 #endif
 
 #if FOLLY_RTM_SUPPORT
@@ -39,12 +42,13 @@
 #endif
 
 namespace folly {
-namespace hardware {
 
-bool rtmEnabled() {
-#if FOLLY_RTM_SUPPORT
+static bool rtmEnabledImpl() {
+#if !FOLLY_RTM_SUPPORT
 
-#if defined(__GNUC__) || defined(__clang__)
+  return false;
+
+#elif defined(__GNUC__) || defined(__clang__)
 
   if (__get_cpuid_max(0, nullptr) < 7) {
     // very surprising, older than Core Duo!
@@ -55,7 +59,9 @@ bool rtmEnabled() {
   // EBX bit 11 -> RTM support
   __cpuid_count(7, 0, ax, bx, cx, dx);
   return ((bx >> 11) & 1) != 0;
+
 #elif defined(_MSC_VER)
+
   // __cpuidex:
   // https://docs.microsoft.com/en-us/cpp/intrinsics/cpuid-cpuidex?view=vs-2019
   int cpui[4];
@@ -65,87 +71,127 @@ bool rtmEnabled() {
   }
   __cpuidex(cpui, 7, 0);
   return ((cpui[1] >> 11) & 1) != 0;
-#else
-  return false;
-#endif
 
-#else // FOLLY_RTM_SUPPORT == 0
+#else
+
   return false;
+
 #endif
 }
 
-static unsigned rtmBeginFunc() {
+bool rtmEnabled() {
+  static std::atomic<int> result{-1};
+  auto value = result.load(std::memory_order_relaxed);
+  if (value < 0) {
+    value = int(rtmEnabledImpl());
+    result.store(value, std::memory_order_relaxed);
+  }
+  return value;
+}
+
+#if FOLLY_RTM_SUPPORT
+#define FOLLY_RTM_DISABLED_NORETURN
+#else
+#define FOLLY_RTM_DISABLED_NORETURN [[noreturn]]
+#endif
+
+FOLLY_RTM_DISABLED_NORETURN static unsigned rtmBeginFunc() {
 #if FOLLY_RTM_SUPPORT
   return _xbegin();
 #else
-  return kRtmDisabled;
+  assume_unreachable();
 #endif
 }
 
-static void rtmEndFunc() {
+FOLLY_RTM_DISABLED_NORETURN static void rtmEndFunc() {
 #if FOLLY_RTM_SUPPORT
   _xend();
 #else
-  CHECK(false) << "rtmEnd called without txn available";
+  assume_unreachable();
 #endif
 }
 
-static bool rtmTestFunc() {
+FOLLY_RTM_DISABLED_NORETURN static bool rtmTestFunc() {
 #if FOLLY_RTM_SUPPORT
   return _xtest() != 0;
 #else
-  return 0;
+  assume_unreachable();
 #endif
 }
 
+template <size_t... I>
+FOLLY_DISABLE_SANITIZERS FOLLY_ALWAYS_INLINE static void
+    FOLLY_RTM_DISABLED_NORETURN
+    rtmAbortFunc_(std::index_sequence<I...>, uint8_t status) {
 #if FOLLY_RTM_SUPPORT
-[[noreturn]] FOLLY_NOINLINE void rtmAbortFuncFailed() {
-  // If we get here either status is too large or we weren't in a txn.
-  // If we are actually in a transaction then assert, std::abort, or
-  // _xabort will all end up aborting the txn.  If we're not in a txn
-  // then we have done something very wrong.
-  CHECK(false)
-      << "rtmAbort called with an invalid status or without an active txn";
-  folly::assume_unreachable();
-}
-#endif
-
-[[noreturn]] static void rtmAbortFunc(unsigned status) {
-#if FOLLY_RTM_SUPPORT
-  // Manual case statement instead of using make_index_sequence so
-  // that we can avoid any object lifetime ASAN interactions even
-  // in non-optimized builds.  _xabort needs a compile-time constant
-  // argument :(
   switch (status) {
-    case 0:
-      _xabort(0);
-      break;
-    case 1:
-      _xabort(1);
-      break;
-    case 2:
-      _xabort(2);
-      break;
-    case 3:
-      _xabort(3);
-      break;
-    case 4:
-      _xabort(4);
-      break;
+#define FOLLY_RTM_ABORT_ONE(z, n, text) \
+  case uint8_t(n):                      \
+    _xabort(uint8_t(n));                \
+    FOLLY_FALLTHROUGH;
+    BOOST_PP_REPEAT(256, FOLLY_RTM_ABORT_ONE, unused)
+#undef FOLLY_RTM_ABORT_ONE
+    default:
+      terminate_with<std::runtime_error>("rtm not in transaction");
   }
-  rtmAbortFuncFailed();
 #else
-  (void)status;
-  std::terminate();
+  assume_unreachable();
 #endif
 }
 
-unsigned (*const rtmBegin)() = rtmBeginFunc;
+FOLLY_DISABLE_SANITIZERS static void rtmAbortFunc(uint8_t status) {
+  rtmAbortFunc_(std::make_index_sequence<256u>{}, status);
+}
 
-void (*const rtmEnd)() = rtmEndFunc;
+namespace detail {
 
-bool (*const rtmTest)() = rtmTestFunc;
+unsigned rtmBeginDisabled() {
+  return kRtmDisabled;
+}
+void rtmEndDisabled() {}
+bool rtmTestDisabled() {
+  return false;
+}
+[[noreturn]] void rtmAbortDisabled(uint8_t) {
+  terminate_with<std::runtime_error>("rtm not enabled");
+}
 
-void (*const rtmAbort)(unsigned) = rtmAbortFunc;
-} // namespace hardware
+static void rewrite() {
+  if (rtmEnabled()) {
+    rtmBeginV.store(rtmBeginFunc, std::memory_order_relaxed);
+    rtmEndV.store(rtmEndFunc, std::memory_order_relaxed);
+    rtmTestV.store(rtmTestFunc, std::memory_order_relaxed);
+    rtmAbortV.store(rtmAbortFunc, std::memory_order_relaxed);
+  } else {
+    rtmBeginV.store(rtmBeginDisabled, std::memory_order_relaxed);
+    rtmEndV.store(rtmEndDisabled, std::memory_order_relaxed);
+    rtmTestV.store(rtmTestDisabled, std::memory_order_relaxed);
+    rtmAbortV.store(rtmAbortDisabled, std::memory_order_relaxed);
+  }
+}
+
+unsigned rtmBeginVE() {
+  rewrite();
+  return rtmBeginV.load(std::memory_order_relaxed)();
+}
+void rtmEndVE() {
+  rewrite();
+  rtmEndV.load(std::memory_order_relaxed)();
+}
+bool rtmTestVE() {
+  rewrite();
+  return rtmTestV.load(std::memory_order_relaxed)();
+}
+void rtmAbortVE(uint8_t status) {
+  rewrite();
+  rtmAbortV.load(std::memory_order_relaxed)(status);
+}
+
+std::atomic<unsigned (*)()> rtmBeginV{rtmBeginVE};
+std::atomic<void (*)()> rtmEndV{rtmEndVE};
+std::atomic<bool (*)()> rtmTestV{rtmTestVE};
+std::atomic<void (*)(uint8_t)> rtmAbortV{rtmAbortVE};
+
+} // namespace detail
+
 } // namespace folly
