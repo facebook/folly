@@ -183,10 +183,7 @@ TEST(InlineTask, TaskOfMoveOnlyType) {
 TEST(InlineTask, MoveOnlyTypeNRVO) {
   auto f = []() -> InlineTask<MoveOnlyType> {
     MoveOnlyType x{10};
-
-    // Shouldn't need std::move(x) here, according to
-    // N4760 15.8.3(3) Copy/move elision
-    co_return std::move(x);
+    co_return x;
   };
 
   auto x = folly::coro::blockingWait(f());

@@ -170,7 +170,7 @@ auto collectAllRange(InputRange awaitables)
     values.push_back(std::move(result).value());
   }
 
-  co_return std::move(values);
+  co_return values;
 }
 
 template <
@@ -294,7 +294,7 @@ auto collectAllTryRange(InputRange awaitables)
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
 
-  co_return std::move(results);
+  co_return results;
 }
 
 template <
@@ -413,7 +413,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
     results.emplace_back(std::move(tryResult).value());
   }
 
-  co_return std::move(results);
+  co_return results;
 }
 
 template <typename InputRange>
@@ -548,7 +548,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
     std::rethrow_exception(std::move(workerCreationException));
   }
 
-  co_return std::move(results);
+  co_return results;
 }
 
 } // namespace coro
