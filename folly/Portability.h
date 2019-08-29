@@ -250,10 +250,6 @@ constexpr bool kIsSanitize = false;
 #ifdef _MSC_VER
 #include <folly/portability/SysTypes.h>
 
-// compiler specific to compiler specific
-// nolint
-#define __PRETTY_FUNCTION__ __FUNCSIG__
-
 // Hide a GCC specific thing that breaks MSVC if left alone.
 #define __extension__
 
@@ -265,6 +261,9 @@ constexpr bool kIsSanitize = false;
 // So cannot unconditionally define __SSE4_2__ in clang.
 #ifndef __clang__
 #define __SSE4_2__ 1
+// compiler specific to compiler specific
+// nolint
+#define __PRETTY_FUNCTION__ __FUNCSIG__
 #endif
 
 #endif
