@@ -207,14 +207,6 @@ FutureBase<T>::FutureBase(
     : core_(Core::make(Try<T>(T()))) {}
 
 template <class T>
-template <
-    class... Args,
-    typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
-        type>
-FutureBase<T>::FutureBase(in_place_t, Args&&... args)
-    : core_(Core::make(in_place, std::forward<Args>(args)...)) {}
-
-template <class T>
 void FutureBase<T>::assign(FutureBase<T>&& other) noexcept {
   detach();
   core_ = std::exchange(other.core_, nullptr);
@@ -896,42 +888,6 @@ template <class T>
 Future<T>& Future<T>::operator=(Future<T>&& other) noexcept {
   this->assign(std::move(other));
   return *this;
-}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value &&
-            std::is_convertible<T2&&, T>::value,
-        int>::type>
-Future<T>::Future(Future<T2>&& other)
-    : Future(
-          std::move(other).thenValue([](T2&& v) { return T(std::move(v)); })) {}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value &&
-            !std::is_convertible<T2&&, T>::value,
-        int>::type>
-Future<T>::Future(Future<T2>&& other)
-    : Future(
-          std::move(other).thenValue([](T2&& v) { return T(std::move(v)); })) {}
-
-template <class T>
-template <
-    class T2,
-    typename std::enable_if<
-        !std::is_same<T, typename std::decay<T2>::type>::value &&
-            std::is_constructible<T, T2&&>::value,
-        int>::type>
-Future<T>& Future<T>::operator=(Future<T2>&& other) {
-  return operator=(
-      std::move(other).thenValue([](T2&& v) { return T(std::move(v)); }));
 }
 
 // unwrap
