@@ -7,8 +7,13 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebook/fbzmq.git
 
-[build]
+[build.os=linux]
 builder = cmake
+
+[build.not(os=linux)]
+# boost.fiber is required and that is not available on macos.
+# libzmq doesn't currently build on windows.
+builder = nop
 
 [dependencies]
 boost
