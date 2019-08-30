@@ -26,6 +26,7 @@
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Generator.h>
 #include <folly/experimental/coro/Mutex.h>
+#include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
 
@@ -196,6 +197,8 @@ TEST(CollectAll, SynchronousCompletionInLoopDoesntCauseStackOverflow) {
   }());
 }
 
+struct OperationCancelled : std::exception {};
+
 template <
     typename Iter,
     typename Sentinel,
@@ -239,6 +242,69 @@ TEST(CollectAll, ParallelAccumulate) {
         CHECK_EQ(999'989, result);
       }()
                   .scheduleOn(&threadPool));
+}
+
+TEST(CollectAll, CollectAllCancelsSubtasksWhenASubtaskFails) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    try {
+      auto [a, b, c] = co_await folly::coro::collectAll(
+          []() -> folly::coro::Task<int> {
+            co_await folly::coro::sleep(10s);
+            co_return 42;
+          }(),
+          []() -> folly::coro::Task<float> {
+            co_await folly::coro::sleep(5s);
+            co_return 3.14f;
+          }(),
+          []() -> folly::coro::Task<void> {
+            co_await folly::coro::co_reschedule_on_current_executor;
+            throw ErrorA{};
+          }());
+      CHECK(false);
+      (void)a;
+      (void)b;
+      (void)c;
+    } catch (const ErrorA&) {
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+  }());
+}
+
+TEST(CollectAll, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    folly::CancellationSource cancelSource;
+    auto [a, b, c] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAll(
+            [&]() -> folly::coro::Task<int> {
+              co_await folly::coro::sleep(10s);
+              co_return 42;
+            }(),
+            [&]() -> folly::coro::Task<float> {
+              co_await folly::coro::sleep(5s);
+              co_return 3.14f;
+            }(),
+            [&]() -> folly::coro::Task<void> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              cancelSource.requestCancellation();
+            }()));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK_EQ(42, a);
+    CHECK_EQ(3.14f, b);
+    (void)c;
+  }());
 }
 
 /////////////////////////////////////////////////////////
@@ -325,6 +391,76 @@ TEST(CollectAllTry, PartialFailure) {
     CHECK(cRes.exception().get_exception<ErrorB>() != nullptr);
     CHECK(dRes.hasValue());
     CHECK_EQ(3.1415, dRes.value());
+  }());
+}
+
+TEST(CollectAllTry, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto [a, b, c] = co_await folly::coro::collectAllTry(
+        []() -> folly::coro::Task<int> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          CHECK(!(co_await folly::coro::co_current_cancellation_token)
+                     .isCancellationRequested());
+          co_return 42;
+        }(),
+        []() -> folly::coro::Task<float> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          CHECK(!(co_await folly::coro::co_current_cancellation_token)
+                     .isCancellationRequested());
+          co_return 3.14f;
+        }(),
+        []() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          throw ErrorA{};
+        }());
+
+    CHECK(a.hasValue());
+    CHECK_EQ(42, a.value());
+    CHECK(b.hasValue());
+    CHECK_EQ(3.14f, b.value());
+    CHECK(c.hasException());
+  }());
+}
+
+TEST(CollectAllTry, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto start = std::chrono::steady_clock::now();
+    folly::CancellationSource cancelSource;
+    auto [a, b, c] = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAllTry(
+            [&]() -> folly::coro::Task<int> {
+              co_await folly::coro::sleep(10s);
+              co_return 42;
+            }(),
+            [&]() -> folly::coro::Task<float> {
+              co_await folly::coro::sleep(5s);
+              co_return 3.14f;
+            }(),
+            [&]() -> folly::coro::Task<void> {
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              co_await folly::coro::co_reschedule_on_current_executor;
+              cancelSource.requestCancellation();
+            }()));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK_EQ(42, a.value());
+    CHECK_EQ(3.14f, b.value());
+    CHECK(c.hasValue());
   }());
 }
 
@@ -422,6 +558,81 @@ TEST(CollectAllRange, RangeOfNonVoid) {
   }());
 }
 
+TEST(CollectAllRange, SubtasksCancelledWhenASubtaskFails) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      for (int i = 0; i < 10; ++i) {
+        co_yield folly::coro::sleep(10s);
+      }
+
+      co_yield[]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        throw ErrorA{};
+      }
+      ();
+
+      for (int i = 0; i < 10; ++i) {
+        co_yield folly::coro::sleep(10s);
+      }
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    try {
+      co_await folly::coro::collectAllRange(generateTasks());
+      CHECK(false);
+    } catch (const ErrorA&) {
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
+  }());
+}
+
+TEST(CollectAllRange, SubtasksCancelledWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      for (int i = 0; i < 10; ++i) {
+        co_yield folly::coro::sleep(10s);
+      }
+
+      co_yield[&]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(token.isCancellationRequested());
+      }
+      ();
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), folly::coro::collectAllRange(generateTasks()));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
+  }());
+}
+
 ////////////////////////////////////////////////////////////////////
 // folly::coro::collectAllTryRange() tests
 
@@ -484,6 +695,84 @@ TEST(CollectAllTryRange, RangeOfValueSomeFailing) {
     CHECK(results[4].hasValue());
     CHECK_EQ("testing", results[4].value());
     CHECK(results[5].hasException());
+  }());
+}
+
+TEST(CollectAllTryRange, NotCancelledWhenSubtaskFails) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      auto makeValidationTask = []() -> folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(!token.isCancellationRequested());
+      };
+
+      co_yield makeValidationTask();
+      co_yield makeValidationTask();
+
+      co_yield[]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        throw ErrorA{};
+      }
+      ();
+
+      co_yield makeValidationTask();
+      co_yield makeValidationTask();
+    };
+
+    auto results = co_await folly::coro::collectAllTryRange(generateTasks());
+    CHECK_EQ(5, results.size());
+    CHECK(results[0].hasValue());
+    CHECK(results[1].hasValue());
+    CHECK(results[2].hasException());
+    CHECK(results[3].hasValue());
+    CHECK(results[4].hasValue());
+  }());
+}
+
+TEST(CollectAllTryRange, SubtasksCancelledWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      for (int i = 0; i < 10; ++i) {
+        co_yield folly::coro::sleep(10s);
+      }
+
+      co_yield[&]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(token.isCancellationRequested());
+      }
+      ();
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    auto results = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAllTryRange(generateTasks()));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK_EQ(11, results.size());
+    for (auto& result : results) {
+      CHECK(result.hasValue());
+    }
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
   }());
 }
 
@@ -661,6 +950,80 @@ TEST(CollectAllWindowed, PartialFailure) {
   }
 }
 
+TEST(CollectAllWindowed, SubtasksCancelledWhenASubtaskFails) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      co_yield[]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        throw ErrorA{};
+      }
+      ();
+
+      for (int i = 0; i < 10; ++i) {
+        co_yield folly::coro::sleep(10s);
+      }
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    try {
+      co_await folly::coro::collectAllWindowed(generateTasks(), 2);
+      CHECK(false);
+    } catch (const ErrorA&) {
+    }
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
+  }());
+}
+
+TEST(CollectAllWindowed, SubtasksCancelledWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      co_yield folly::coro::sleep(10s);
+      co_yield folly::coro::sleep(10s);
+
+      co_yield[&]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(token.isCancellationRequested());
+      }
+      ();
+
+      co_yield folly::coro::sleep(10s);
+      co_yield folly::coro::sleep(10s);
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAllWindowed(generateTasks(), 4));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
+  }());
+}
+
 ////////////////////////////////////////////////////////////////////
 // folly::coro::collectAllTryWindowed() tests
 
@@ -731,6 +1094,82 @@ TEST(CollectAllTryWindowed, GeneratorFailure) {
   // and waited for completion all of the prior tasks in the sequence.
   CHECK_EQ(10, started);
   CHECK_EQ(0, active);
+}
+
+TEST(CollectAllTryWindowed, NotCancelledWhenSubtaskFails) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      co_yield[]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        throw ErrorA{};
+      }
+      ();
+
+      auto makeValidationTask = []() -> folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(!token.isCancellationRequested());
+      };
+
+      co_yield makeValidationTask();
+      co_yield makeValidationTask();
+    };
+
+    auto results =
+        co_await folly::coro::collectAllTryWindowed(generateTasks(), 2);
+    CHECK_EQ(3, results.size());
+    CHECK(results[0].hasException());
+    CHECK(results[1].hasValue());
+    CHECK(results[2].hasValue());
+  }());
+}
+
+TEST(CollectAllTryWindowed, SubtasksCancelledWhenParentTaskCancelled) {
+  using namespace std::chrono_literals;
+
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+
+    bool consumedAllTasks = false;
+    auto generateTasks = [&]()
+        -> folly::coro::Generator<folly::coro::Task<void>&&> {
+      co_yield folly::coro::sleep(10s);
+      co_yield folly::coro::sleep(10s);
+
+      co_yield[&]()->folly::coro::Task<void> {
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        co_await folly::coro::co_reschedule_on_current_executor;
+        cancelSource.requestCancellation();
+
+        auto token = co_await folly::coro::co_current_cancellation_token;
+        CHECK(token.isCancellationRequested());
+      }
+      ();
+
+      co_yield folly::coro::sleep(10s);
+      co_yield folly::coro::sleep(10s);
+
+      consumedAllTasks = true;
+    };
+
+    auto start = std::chrono::steady_clock::now();
+    auto results = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(),
+        folly::coro::collectAllTryWindowed(generateTasks(), 4));
+    auto end = std::chrono::steady_clock::now();
+
+    CHECK_EQ(5, results.size());
+    for (auto& result : results) {
+      CHECK(result.hasValue());
+    }
+    CHECK((end - start) < 1s);
+    CHECK(consumedAllTasks);
+  }());
 }
 
 #endif

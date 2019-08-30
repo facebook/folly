@@ -77,12 +77,13 @@ using range_reference_t = iterator_reference_t<range_iterator_t<Range>>;
 // point. This means that awaiting multiple sub-tasks that all complete
 // synchronously will still execute them sequentially on the current thread.
 //
-// If any of the input operations complete with an exception then the whole
-// collectAll() operation will also complete with an exception once all of the
-// operations have completed. Any partial results will be discarded.
-// If multiple operations fail with an exception then one of the exceptions
-// will be rethrown to the caller (which one is unspecified) and the other
-// exceptions are discarded.
+// If any of the input operations complete with an exception then it will
+// request cancellation of any outstanding tasks and the whole collectAll()
+// operation will complete with an exception once all of the operations
+// have completed.  Any partial results will be discarded. If multiple
+// operations fail with an exception then one of the exceptions will be rethrown
+// to the caller (which one is unspecified) and the other exceptions are
+// discarded.
 //
 // If you need to know which operation failed or you want to handle partial
 // failures then you can use the folly::coro::collectAllTry() instead which
@@ -115,6 +116,9 @@ auto collectAll(SemiAwaitables&&... awaitables) -> folly::coro::Task<std::tuple<
 // This allows the caller to inspect the success/failure of individual
 // operations and handle partial failures but has a less-convenient interface
 // than collectAll().
+//
+// It also differs in that failure of one subtask does _not_ request
+// cancellation of the other subtasks.
 //
 // Example: Handling partial failure with collectAllTry()
 //    folly::coro::Task<Foo> doSomething();
@@ -150,11 +154,11 @@ auto collectAllTry(SemiAwaitables&&... awaitables)
 // of SemiAwaitable objects, returning a std::vector of the individual results
 // once all operations have completed.
 //
-// If any of the operations fail with an exception the entire operation fails
-// with an exception and any partial results are discarded. If more than one
-// operation fails with an exception then the exception from the first failed
-// operation in the input range is rethrown. Other results and exceptions are
-// discarded.
+// If any of the operations fail with an exception then requests cancellation of
+// any outstanding operations and the entire operation fails with an exception,
+// discarding any partial results. If more than one operation fails with an
+// exception then the exception from the first failed operation in the input
+// range is rethrown. Other results and exceptions are discarded.
 //
 // If you need to be able to distinguish which operation failed or handle
 // partial failures then use collectAllTryRange() instead.
@@ -233,8 +237,9 @@ auto collectAllTryRange(std::vector<Task<T>> awaitables)
 // 'maxConcurrency' of these input awaitables to be concurrently awaited
 // at any one point in time.
 //
-// If any of the input awaitables fail with an exception then the whole
-// operation fails with an exception. If multiple input awaitables fail with
+// If any of the input awaitables fail with an exception then requests
+// cancellation of any incomplete operations and fails the whole
+// operation with an exception. If multiple input awaitables fail with
 // an exception then one of these exceptions will be rethrown and the rest
 // of the results will be discarded.
 //
