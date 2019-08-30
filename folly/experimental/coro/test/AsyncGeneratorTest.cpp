@@ -19,11 +19,14 @@
 #if FOLLY_HAS_COROUTINES
 
 #include <folly/ScopeGuard.h>
+#include <folly/Traits.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/futures/Future.h>
 
 #include <folly/portability/GTest.h>
@@ -400,6 +403,42 @@ TEST(AsyncGenerator, InvokeLambda) {
     ptr = *result;
     CHECK(ptr);
     CHECK(*ptr == 123);
+  }());
+}
+
+template <typename Ref, typename Value = folly::remove_cvref_t<Ref>>
+folly::coro::AsyncGenerator<Ref, Value> neverStream() {
+  folly::coro::Baton baton;
+  folly::CancellationCallback cb{
+      co_await folly::coro::co_current_cancellation_token,
+      [&] { baton.post(); }};
+  co_await baton;
+}
+
+TEST(AsyncGenerator, CancellationTokenPropagatesFromConsumer) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSource;
+    bool suspended = false;
+    bool done = false;
+    co_await folly::coro::collectAll(
+        folly::coro::co_withCancellation(
+            cancelSource.getToken(),
+            [&]() -> folly::coro::Task<void> {
+              auto stream = neverStream<int>();
+              suspended = true;
+              auto result = co_await stream.next();
+              CHECK(!result.has_value());
+              done = true;
+            }()),
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          CHECK(suspended);
+          CHECK(!done);
+          cancelSource.requestCancellation();
+        }());
+    CHECK(done);
   }());
 }
 

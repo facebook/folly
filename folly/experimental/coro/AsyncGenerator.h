@@ -15,10 +15,12 @@
  */
 #pragma once
 
+#include <folly/CancellationToken.h>
 #include <folly/Traits.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/experimental/coro/detail/ManualLifetime.h>
 
 #include <glog/logging.h>
@@ -72,7 +74,7 @@ class AsyncGeneratorPromise {
     DCHECK(!hasValue_);
     value_.construct(static_cast<Reference&&>(value));
     hasValue_ = true;
-    executor_.reset();
+    clearContext();
     return YieldAwaiter{};
   }
 
@@ -92,7 +94,7 @@ class AsyncGeneratorPromise {
     DCHECK(!hasValue_);
     value_.construct(static_cast<U&&>(value));
     hasValue_ = true;
-    executor_.reset();
+    clearContext();
     return {};
   }
 
@@ -108,11 +110,26 @@ class AsyncGeneratorPromise {
   template <typename U>
   auto await_transform(U&& value) {
     return folly::coro::co_viaIfAsync(
-        executor_.get_alias(), static_cast<U&&>(value));
+        executor_.get_alias(),
+        folly::coro::co_withCancellation(
+            cancelToken_, static_cast<U&&>(value)));
   }
 
   auto await_transform(folly::coro::co_current_executor_t) noexcept {
     return AwaitableReady<folly::Executor*>{executor_.get()};
+  }
+
+  auto await_transform(folly::coro::co_current_cancellation_token_t) noexcept {
+    return AwaitableReady<folly::CancellationToken>{cancelToken_};
+  }
+
+  void setCancellationToken(folly::CancellationToken cancelToken) noexcept {
+    // Only keep the first cancellation token.
+    // ie. the inner-most cancellation scope of the consumer's calling context.
+    if (!hasCancelTokenOverride_) {
+      cancelToken_ = std::move(cancelToken);
+      hasCancelTokenOverride_ = true;
+    }
   }
 
   void setExecutor(folly::Executor::KeepAlive<> executor) noexcept {
@@ -148,11 +165,19 @@ class AsyncGeneratorPromise {
   }
 
  private:
+  void clearContext() noexcept {
+    executor_ = {};
+    cancelToken_ = {};
+    hasCancelTokenOverride_ = false;
+  }
+
   std::experimental::coroutine_handle<> continuation_;
   folly::Executor::KeepAlive<> executor_;
+  folly::CancellationToken cancelToken_;
   std::exception_ptr exception_;
   ManualLifetime<Reference> value_;
   bool hasValue_ = false;
+  bool hasCancelTokenOverride_ = false;
 };
 
 } // namespace detail
@@ -422,8 +447,17 @@ class FOLLY_NODISCARD AsyncGenerator {
       return NextAwaitable{coro_};
     }
 
+    friend NextSemiAwaitable co_withCancellation(
+        CancellationToken cancelToken,
+        NextSemiAwaitable&& awaitable) {
+      if (awaitable.coro_) {
+        awaitable.coro_.promise().setCancellationToken(std::move(cancelToken));
+      }
+      return NextSemiAwaitable{std::exchange(awaitable.coro_, {})};
+    }
+
    private:
-    friend AsyncGenerator; //<Reference, Value>;
+    friend AsyncGenerator;
 
     explicit NextSemiAwaitable(handle_t coro) noexcept : coro_(coro) {}
 
