@@ -22,8 +22,8 @@ include(FBCMakeParseArgs)
 #   desired.
 function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
   # Parse the arguments
-  set(one_value_args INCLUDE_DIR)
-  set(multi_value_args SERVICES DEPENDS OPTIONS THRIFT_INCLUDE_DIR)
+  set(one_value_args INCLUDE_DIR THRIFT_INCLUDE_DIR)
+  set(multi_value_args SERVICES DEPENDS OPTIONS)
   fb_cmake_parse_args(
     ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
   )
