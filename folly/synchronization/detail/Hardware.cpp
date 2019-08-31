@@ -119,10 +119,7 @@ FOLLY_RTM_DISABLED_NORETURN static bool rtmTestFunc() {
 #endif
 }
 
-template <size_t... I>
-FOLLY_RTM_DISABLED_NORETURN FOLLY_DISABLE_SANITIZERS
-    FOLLY_ALWAYS_INLINE static void
-    rtmAbortFunc_(std::index_sequence<I...>, uint8_t status) {
+[[noreturn]] FOLLY_DISABLE_SANITIZERS static void rtmAbortFunc(uint8_t status) {
 #if FOLLY_RTM_SUPPORT
   switch (status) {
 #define FOLLY_RTM_ABORT_ONE(z, n, text) \
@@ -137,10 +134,6 @@ FOLLY_RTM_DISABLED_NORETURN FOLLY_DISABLE_SANITIZERS
 #else
   assume_unreachable();
 #endif
-}
-
-FOLLY_DISABLE_SANITIZERS static void rtmAbortFunc(uint8_t status) {
-  rtmAbortFunc_(std::make_index_sequence<256u>{}, status);
 }
 
 namespace detail {
