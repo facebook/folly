@@ -2049,12 +2049,15 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
         }
       });
 
-  // Construct the future to return, assume the deferred executor from
-  // thisFuture and make afterFuture's executor nested to correctly propagate
-  // concrete exeutors
+  // Construct the future to return, create a fresh DeferredExecutor and
+  // nest the other two inside it, in case they already carry nested executors.
   auto fut = ctx->promise.getSemiFuture();
-  fut.setExecutor(ctx->thisFuture.stealDeferredExecutor());
+  auto newDeferredExecutor = futures::detail::KeepAliveOrDeferred(
+      futures::detail::DeferredExecutor::create());
+  fut.setExecutor(std::move(newDeferredExecutor));
+
   std::vector<folly::futures::detail::DeferredWrapper> nestedExecutors;
+  nestedExecutors.emplace_back(ctx->thisFuture.stealDeferredExecutor());
   nestedExecutors.emplace_back(ctx->afterFuture.stealDeferredExecutor());
   futures::detail::getDeferredExecutor(fut)->setNestedExecutors(
       std::move(nestedExecutors));
