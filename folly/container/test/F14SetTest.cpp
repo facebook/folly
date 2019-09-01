@@ -982,13 +982,17 @@ TEST(F14VectorSet, destructuring) {
 TEST(F14ValueSet, maxSize) {
   F14ValueSet<int> s;
   EXPECT_EQ(
-      s.max_size(), std::numeric_limits<std::size_t>::max() / sizeof(int));
+      s.max_size(),
+      std::allocator_traits<decltype(s)::allocator_type>::max_size(
+          s.get_allocator()));
 }
 
 TEST(F14NodeSet, maxSize) {
   F14NodeSet<int> s;
   EXPECT_EQ(
-      s.max_size(), std::numeric_limits<std::size_t>::max() / sizeof(int));
+      s.max_size(),
+      std::allocator_traits<decltype(s)::allocator_type>::max_size(
+          s.get_allocator()));
 }
 
 TEST(F14VectorSet, maxSize) {
@@ -997,7 +1001,8 @@ TEST(F14VectorSet, maxSize) {
       s.max_size(),
       std::min(
           std::size_t{std::numeric_limits<uint32_t>::max()},
-          std::numeric_limits<std::size_t>::max() / sizeof(int)));
+          std::allocator_traits<decltype(s)::allocator_type>::max_size(
+              s.get_allocator())));
 }
 
 template <typename S>
