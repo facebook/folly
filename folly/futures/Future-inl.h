@@ -2017,8 +2017,8 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
 
   // Have time keeper use a weak ptr to hold ctx,
   // so that ctx can be deallocated as soon as the future job finished.
-  ctx->afterFuture = tk->after(dur).semi().defer(
-      [weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
+  ctx->afterFuture =
+      tk->after(dur).defer([weakCtx = to_weak_ptr(ctx)](Try<Unit>&& t) mutable {
         if (t.hasException() &&
             t.exception().is_compatible_with<FutureCancellation>()) {
           // This got cancelled by thisFuture so we can just return.
@@ -2514,11 +2514,11 @@ auto ensure(F&& f, Ensure&& ensure) {
 } // namespace futures
 
 template <class Clock>
-Future<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
+SemiFuture<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
   auto now = Clock::now();
 
   if (when <= now) {
-    return makeFuture();
+    return makeSemiFuture();
   }
 
   return after(std::chrono::duration_cast<Duration>(when - now));

@@ -136,8 +136,8 @@ TEST(Timekeeper, semiFutureWithinCancelsTimeout) {
       });
     }
 
-    Future<Unit> after(Duration) override {
-      return p_.getFuture();
+    SemiFuture<Unit> after(Duration) override {
+      return p_.getSemiFuture();
     }
 
     Promise<Unit> p_;
@@ -155,8 +155,8 @@ TEST(Timekeeper, semiFutureWithinCancelsTimeout) {
 
 TEST(Timekeeper, semiFutureWithinInlineAfter) {
   struct MockTimekeeper : Timekeeper {
-    Future<Unit> after(Duration) override {
-      return folly::makeFuture<folly::Unit>(folly::FutureNoTimekeeper());
+    SemiFuture<Unit> after(Duration) override {
+      return folly::makeSemiFuture<folly::Unit>(folly::FutureNoTimekeeper());
     }
   };
 
@@ -169,9 +169,9 @@ TEST(Timekeeper, semiFutureWithinInlineAfter) {
 
 TEST(Timekeeper, semiFutureWithinReady) {
   struct MockTimekeeper : Timekeeper {
-    Future<Unit> after(Duration) override {
+    SemiFuture<Unit> after(Duration) override {
       called_ = true;
-      return folly::makeFuture<folly::Unit>(folly::FutureNoTimekeeper());
+      return folly::makeSemiFuture<folly::Unit>(folly::FutureNoTimekeeper());
     }
 
     bool called_{false};

@@ -32,6 +32,7 @@ using folly::Future;
 using folly::ManualTimekeeper;
 using folly::Promise;
 using folly::ScheduledExecutor;
+using folly::SemiFuture;
 using folly::TimekeeperScheduledExecutor;
 using folly::Unit;
 using std::chrono::steady_clock;
@@ -39,8 +40,7 @@ using time_point = steady_clock::time_point;
 
 namespace {
 void simpleTest(std::unique_ptr<folly::Executor> const& parent) {
-  auto tk = std::make_shared<ManualTimekeeper>(
-      folly::getKeepAliveToken(parent.get()));
+  auto tk = std::make_shared<ManualTimekeeper>();
   auto executor = TimekeeperScheduledExecutor::create(
       folly::getKeepAliveToken(parent.get()), [tk]() { return tk; });
 

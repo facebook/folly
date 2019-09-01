@@ -33,10 +33,7 @@ class ThreadWheelTimekeeper : public Timekeeper {
   ~ThreadWheelTimekeeper() override;
 
   /// Implement the Timekeeper interface
-  /// This future *does* complete on the timer thread. You should almost
-  /// certainly follow it with a via() call or the accuracy of other timers
-  /// will suffer.
-  Future<Unit> after(Duration) override;
+  SemiFuture<Unit> after(Duration) override;
 
  protected:
   folly::EventBase eventBase_;

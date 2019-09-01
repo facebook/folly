@@ -1922,36 +1922,38 @@ class Timekeeper {
   /// exceptional. Use the steady (monotonic) clock.
   ///
   /// The consumer thread may cancel this Future to reclaim resources.
-  ///
-  /// This future probably completes on the timer thread. You should almost
-  /// certainly follow it with a via() call or the accuracy of other timers
-  /// will suffer.
-  virtual Future<Unit> after(Duration dur) = 0;
+  virtual SemiFuture<Unit> after(Duration dur) = 0;
 
   /// Unsafe version of after that returns an inline Future.
   /// Any work added to this future will run inline on the Timekeeper's thread.
   /// This can potentially cause problems with timing.
+  ///
+  /// Please migrate to use after + a call to via with a valid, non-inline
+  /// executor.
   Future<Unit> afterUnsafe(Duration dur) {
-    return after(dur).semi().toUnsafeFuture();
+    return after(dur).toUnsafeFuture();
   }
 
   /// Returns a future that will complete at the requested time.
   ///
-  /// You may cancel this Future to reclaim resources.
+  /// You may cancel this SemiFuture to reclaim resources.
   ///
   /// NB This is sugar for `after(when - now)`, so while you are welcome to
   /// use a std::chrono::system_clock::time_point it will not track changes to
   /// the system clock but rather execute that many milliseconds in the future
   /// according to the steady clock.
   template <class Clock>
-  Future<Unit> at(std::chrono::time_point<Clock> when);
+  SemiFuture<Unit> at(std::chrono::time_point<Clock> when);
 
   /// Unsafe version of at that returns an inline Future.
   /// Any work added to this future will run inline on the Timekeeper's thread.
   /// This can potentially cause problems with timing.
+  ///
+  /// Please migrate to use at + a call to via with a valid, non-inline
+  /// executor.
   template <class Clock>
   Future<Unit> atUnsafe(std::chrono::time_point<Clock> when) {
-    return at(when).semi().toUnsafeFuture();
+    return at(when).toUnsafeFuture();
   }
 };
 

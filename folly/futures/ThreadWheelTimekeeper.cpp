@@ -44,8 +44,8 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback>,
     return cob;
   }
 
-  Future<Unit> getFuture() {
-    return promise_.getFuture();
+  SemiFuture<Unit> getSemiFuture() {
+    return promise_.getSemiFuture();
   }
 
   FOLLY_NODISCARD Promise<Unit> stealPromise() {
@@ -120,9 +120,9 @@ ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
   thread_.join();
 }
 
-Future<Unit> ThreadWheelTimekeeper::after(Duration dur) {
+SemiFuture<Unit> ThreadWheelTimekeeper::after(Duration dur) {
   auto cob = WTCallback::create(&eventBase_);
-  auto f = cob->getFuture();
+  auto f = cob->getSemiFuture();
   //
   // Even shared_ptr of cob is captured in lambda this is still somewhat *racy*
   // because it will be released once timeout is scheduled. So technically there

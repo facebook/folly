@@ -30,11 +30,11 @@ namespace folly {
 // thread, while after() can safely be called from multiple threads.
 class ManualTimekeeper : public folly::Timekeeper {
  public:
-  explicit ManualTimekeeper(Executor::KeepAlive<Executor>&& executor);
+  explicit ManualTimekeeper();
 
   /// The returned future is completed when someone calls advance and pushes the
   /// executor's clock to a value greater than or equal to (now() + dur)
-  Future<Unit> after(folly::Duration dur) override;
+  SemiFuture<Unit> after(folly::Duration dur) override;
 
   /// Advance the timekeeper's clock to (now() + dur).  All futures with target
   /// time points less than or equal to (now() + dur) are fulfilled after the

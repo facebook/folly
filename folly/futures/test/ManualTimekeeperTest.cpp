@@ -27,14 +27,14 @@ namespace folly {
 class ManualTimekeeperTest : public ::testing::Test {};
 
 TEST_F(ManualTimekeeperTest, Basic) {
-  auto timekeeper = folly::ManualTimekeeper{&folly::InlineExecutor::instance()};
+  auto timekeeper = folly::ManualTimekeeper{};
   auto future = timekeeper.after(100s);
   timekeeper.advance(100s);
   EXPECT_TRUE(future.isReady());
 }
 
 TEST_F(ManualTimekeeperTest, AdvanceWithoutAnyFutures) {
-  auto timekeeper = folly::ManualTimekeeper{&folly::InlineExecutor::instance()};
+  auto timekeeper = folly::ManualTimekeeper{};
   timekeeper.advance(100s);
   auto future = timekeeper.after(100s);
   EXPECT_FALSE(future.isReady());
@@ -43,7 +43,7 @@ TEST_F(ManualTimekeeperTest, AdvanceWithoutAnyFutures) {
 }
 
 TEST_F(ManualTimekeeperTest, AdvanceWithManyFutures) {
-  auto timekeeper = folly::ManualTimekeeper{&folly::InlineExecutor::instance()};
+  auto timekeeper = folly::ManualTimekeeper{};
 
   auto one = timekeeper.after(100s);
   auto two = timekeeper.after(200s);

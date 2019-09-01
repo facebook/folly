@@ -17,11 +17,10 @@
 
 namespace folly {
 
-ManualTimekeeper::ManualTimekeeper(Executor::KeepAlive<Executor>&& executor)
-    : executor_{std::move(executor)}, now_{std::chrono::steady_clock::now()} {}
+ManualTimekeeper::ManualTimekeeper() : now_{std::chrono::steady_clock::now()} {}
 
-Future<Unit> ManualTimekeeper::after(Duration dur) {
-  auto contract = folly::makePromiseContract<Unit>(executor_.get());
+SemiFuture<Unit> ManualTimekeeper::after(Duration dur) {
+  auto contract = folly::makePromiseContract<Unit>();
   if (dur.count() == 0) {
     contract.first.setValue(folly::unit);
   } else {
