@@ -2061,7 +2061,7 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
   nestedExecutors.emplace_back(ctx->afterFuture.stealDeferredExecutor());
   futures::detail::getDeferredExecutor(fut)->setNestedExecutors(
       std::move(nestedExecutors));
-  return std::move(fut);
+  return fut;
 }
 
 // delayed
