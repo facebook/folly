@@ -219,12 +219,11 @@ TEST(Via, priority) {
 
 TEST(Via, then2) {
   ManualExecutor x1, x2;
-  bool a = false, b = false, c = false, d = false;
+  bool a = false, b = false, c = false;
   via(&x1)
       .thenValue([&](auto&&) { a = true; })
-      .then(&x2, [&](auto&&) { b = true; })
-      .thenValue([&](auto&&) { c = true; })
-      .thenValueInline(folly::makeAsyncTask(&x2, [&](auto&&) { d = true; }));
+      .thenValue([&](auto&&) { b = true; })
+      .thenValueInline(folly::makeAsyncTask(&x2, [&](auto&&) { c = true; }));
 
   EXPECT_FALSE(a);
   EXPECT_FALSE(b);
@@ -234,16 +233,12 @@ TEST(Via, then2) {
   EXPECT_FALSE(b);
   EXPECT_FALSE(c);
 
-  x2.run();
+  x1.run();
   EXPECT_TRUE(b);
   EXPECT_FALSE(c);
 
-  x1.run();
-  EXPECT_TRUE(c);
-  EXPECT_FALSE(d);
-
   x2.run();
-  EXPECT_TRUE(d);
+  EXPECT_TRUE(c);
 }
 
 TEST(Via, allowInline) {

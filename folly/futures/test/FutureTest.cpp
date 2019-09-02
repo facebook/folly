@@ -1334,7 +1334,8 @@ TEST(Future, makePromiseContract) {
 }
 
 Future<bool> call(int depth, Executor* executor) {
-  return makeFuture().then(executor, [=] { return depth == 0; });
+  return makeFuture().thenValueInline(
+      makeAsyncTask(executor, [=](auto&&) { return depth == 0; }));
 }
 
 Future<int> recursion(Executor* executor, int depth) {

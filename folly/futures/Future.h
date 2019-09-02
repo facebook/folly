@@ -1204,39 +1204,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class Arg>
-  // clang-format off
-  [[deprecated("then forms that take an executor are ambiguous. "
-               "Replace with nested tasks, or for executor enforcement use "
-               "SemiFuture-returning functions.")]]
-  // clang-format on
-  auto
-  then(Executor::KeepAlive<> x, Arg&& arg) && {
-    auto oldX = getKeepAliveToken(this->getExecutor());
-    this->setExecutor(std::move(x));
-    // TODO(T29171940): thenImplementation here is ambiguous
-    // as then used to be but that is better than keeping then in the public
-    // API.
-    auto lambdaFunc =
-        futures::detail::makeExecutorLambda<T>(std::forward<Arg>(arg));
-    using R = futures::detail::executorCallableResult<T, decltype(lambdaFunc)>;
-    return std::move(*this)
-        .thenImplementation(
-            std::move(lambdaFunc),
-            R{},
-            futures::detail::InlineContinuation::forbid)
-        .via(std::move(oldX));
-  }
-
-  template <typename R, typename... Args>
-  // clang-format off
-  [[deprecated("then forms that take an executor are ambiguous. "
-               "Replace with nested tasks, or for executor enforcement use "
-               "SemiFuture-returning functions.")]]
-  // clang-format on
-  auto
-  then(Executor::KeepAlive<>&& x, R (&func)(Args...)) && {
-    return std::move(*this).then(std::move(x), &func);
-  }
+  auto then(Executor::KeepAlive<> x, Arg&& arg) && = delete;
 
   /// When this Future has completed, execute func which is a function that
   /// can be called with `Try<T>&&` (often a lambda with parameter type
