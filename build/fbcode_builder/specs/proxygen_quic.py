@@ -15,7 +15,8 @@ import specs.zstd as zstd
 
 def fbcode_builder_spec(builder):
     builder.add_option(
-        "proxygen/proxygen:cmake_defines", {"BUILD_QUIC": "ON", "BUILD_TESTS": "ON"}
+        "proxygen/proxygen:cmake_defines",
+        {"BUILD_QUIC": "ON", "BUILD_SHARED_LIBS": "OFF", "BUILD_TESTS": "ON"},
     )
     return {
         "depends_on": [folly, wangle, fizz, sodium, zstd, mvfst],

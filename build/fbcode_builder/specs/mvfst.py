@@ -10,6 +10,13 @@ import specs.fizz as fizz
 
 
 def fbcode_builder_spec(builder):
+    builder.add_option(
+        'mvfst/build:cmake_defines',
+        {
+            'BUILD_SHARED_LIBS': 'OFF',
+            'BUILD_TESTS': 'ON',
+        }
+    )
     return {
         'depends_on': [folly, fizz],
         'steps': [

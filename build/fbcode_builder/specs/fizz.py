@@ -10,6 +10,13 @@ import specs.sodium as sodium
 
 
 def fbcode_builder_spec(builder):
+    builder.add_option(
+        'fizz/fizz/build:cmake_defines',
+        {
+            'BUILD_SHARED_LIBS': 'OFF',
+            'BUILD_TESTS': 'ON',
+        }
+    )
     return {
         'depends_on': [folly, sodium],
         'steps': [
