@@ -513,7 +513,7 @@ auto co_invoke(Func func, Args... args) -> std::enable_if_t<
   auto asyncRange =
       folly::invoke(static_cast<Func&&>(func), static_cast<Args&&>(args)...);
   while (auto result = co_await asyncRange.next()) {
-    co_yield* result;
+    co_yield* std::move(result);
   }
 }
 

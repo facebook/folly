@@ -45,7 +45,7 @@ class Barrier {
     assert(SIZE_MAX - oldCount >= count);
   }
 
-  std::experimental::coroutine_handle<> arrive() noexcept {
+  [[nodiscard]] std::experimental::coroutine_handle<> arrive() noexcept {
     const std::size_t oldCount = count_.fetch_sub(1, std::memory_order_acq_rel);
 
     // Invalid to call arrive() if you haven't previously incremented the

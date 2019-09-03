@@ -25,10 +25,6 @@ namespace folly {
 namespace coro {
 namespace detail {
 
-class BarrierTask;
-
-class BarrierTaskPromise {};
-
 class BarrierTask {
  public:
   class promise_type {
@@ -128,6 +124,79 @@ class BarrierTask {
 
     assert(coro_);
     return awaiter{barrier, coro_};
+  }
+
+ private:
+  handle_t coro_;
+};
+
+class DetachedBarrierTask {
+ public:
+  class promise_type {
+   public:
+    DetachedBarrierTask get_return_object() noexcept {
+      return DetachedBarrierTask{
+          std::experimental::coroutine_handle<promise_type>::from_promise(
+              *this)};
+    }
+
+    std::experimental::suspend_always initial_suspend() noexcept {
+      return {};
+    }
+
+    auto final_suspend() noexcept {
+      struct awaiter {
+        bool await_ready() {
+          return false;
+        }
+        auto await_suspend(
+            std::experimental::coroutine_handle<promise_type> h) {
+          assert(h.promise().barrier_ != nullptr);
+          auto continuation = h.promise().barrier_->arrive();
+          h.destroy();
+          return continuation;
+        }
+        void await_resume() {}
+      };
+      return awaiter{};
+    }
+
+    [[noreturn]] void unhandled_exception() noexcept {
+      std::terminate();
+    }
+
+    void return_void() noexcept {}
+
+    void setBarrier(Barrier* barrier) noexcept {
+      barrier_ = barrier;
+    }
+
+   private:
+    Barrier* barrier_;
+  };
+
+ private:
+  using handle_t = std::experimental::coroutine_handle<promise_type>;
+
+  explicit DetachedBarrierTask(handle_t coro) : coro_(coro) {}
+
+ public:
+  DetachedBarrierTask(DetachedBarrierTask&& other) noexcept
+      : coro_(std::exchange(other.coro_, {})) {}
+
+  ~DetachedBarrierTask() {
+    if (coro_) {
+      coro_.destroy();
+    }
+  }
+
+  void start(Barrier* barrier) && noexcept {
+    assert(coro_);
+    assert(barrier != nullptr);
+    barrier->add(1);
+    auto coro = std::exchange(coro_, {});
+    coro.promise().setBarrier(barrier);
+    coro.resume();
   }
 
  private:
