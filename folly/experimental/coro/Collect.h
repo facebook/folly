@@ -165,11 +165,12 @@ auto collectAllTry(SemiAwaitables&&... awaitables)
 //
 // Note that the expression `*it` must be SemiAwaitable.
 // This typically means that containers of Task<T> must be adapted to produce
-// moved-elements by applying the ranges::view::move transform.
+// moved-elements by applying the ranges::views::move transform.
 // e.g.
 //
 //   std::vector<Task<T>> tasks = ...;
-//   std::vector<T> vals = co_await collectAllRange(tasks | ranges::view::move);
+//   std::vector<T> vals = co_await collectAllRange(tasks |
+//   ranges::views::move);
 //
 template <
     typename InputRange,
@@ -210,20 +211,20 @@ auto collectAllTryRange(InputRange awaitables)
 // collectAllRange()/collectAllTryRange() overloads that simplifies the
 // common-case where an rvalue std::vector<Task<T>> is passed.
 //
-// This avoids the caller needing to pipe the input through ranges::view::move
+// This avoids the caller needing to pipe the input through ranges::views::move
 // transform to force the Task<T> elements to be rvalue-references since the
 // std::vector<T>::reference type is T& rather than T&& and Task<T>& is not
 // awaitable.
 template <typename T>
 auto collectAllRange(std::vector<Task<T>> awaitables)
-    -> decltype(collectAllRange(awaitables | ranges::view::move)) {
-  co_return co_await collectAllRange(awaitables | ranges::view::move);
+    -> decltype(collectAllRange(awaitables | ranges::views::move)) {
+  co_return co_await collectAllRange(awaitables | ranges::views::move);
 }
 
 template <typename T>
 auto collectAllTryRange(std::vector<Task<T>> awaitables)
-    -> decltype(collectAllTryRange(awaitables | ranges::view::move)) {
-  co_return co_await collectAllTryRange(awaitables | ranges::view::move);
+    -> decltype(collectAllTryRange(awaitables | ranges::views::move)) {
+  co_return co_await collectAllTryRange(awaitables | ranges::views::move);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -293,9 +294,9 @@ auto collectAllWindowed(
     std::vector<Task<T>> awaitables,
     std::size_t maxConcurrency)
     -> decltype(
-        collectAllWindowed(awaitables | ranges::view::move, maxConcurrency)) {
+        collectAllWindowed(awaitables | ranges::views::move, maxConcurrency)) {
   co_return co_await collectAllWindowed(
-      awaitables | ranges::view::move, maxConcurrency);
+      awaitables | ranges::views::move, maxConcurrency);
 }
 
 template <typename T>
@@ -303,10 +304,10 @@ auto collectAllTryWindowed(
     std::vector<Task<T>> awaitables,
     std::size_t maxConcurrency)
     -> decltype(collectAllTryWindowed(
-        awaitables | ranges::view::move,
+        awaitables | ranges::views::move,
         maxConcurrency)) {
   co_return co_await collectAllTryWindowed(
-      awaitables | ranges::view::move, maxConcurrency);
+      awaitables | ranges::views::move, maxConcurrency);
 }
 
 } // namespace coro

@@ -2574,7 +2574,7 @@ struct from_rangev3_copy_fn {
  ******************************************************************************
  * Pipe fittings between a container/range-v3 and a folly::gen.
  * Example: vec | gen::from_container | folly::gen::filter(...);
- * Example: vec | ranges::view::filter(...) | gen::from_rangev3 | gen::xxx;
+ * Example: vec | ranges::views::filter(...) | gen::from_rangev3 | gen::xxx;
  ******************************************************************************
  */
 constexpr detail::from_container_fn from_container;
@@ -2594,7 +2594,7 @@ template <typename Range>
 auto rangev3_will_be_consumed(Range&& r) {
   // intentionally use `r` instead of `std::forward<Range>(r)`; see above.
   // range-v3 ranges copy in O(1) so it is appropriate.
-  return ranges::view::all(r);
+  return ranges::views::all(r);
 }
 #endif // FOLLY_USE_RANGEV3
 

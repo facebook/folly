@@ -149,7 +149,7 @@ constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
 /*
  * If you just want the element values, please use this (ranges-v3) construct:
  *
- *    for (auto&& element : collection | view::reverse)
+ *    for (auto&& element : collection | views::reverse)
  *
  * If you need access to the iterators please write an explicit iterator loop
  */
@@ -179,11 +179,11 @@ constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
 /**
  * If you just want the keys, please use this (ranges-v3) construct:
  *
- *    for (auto&& element : collection | view::keys)
+ *    for (auto&& element : collection | views::keys)
  *
  * If you just want the values, please use this (ranges-v3) construct:
  *
- *    for (auto&& element : collection | view::values)
+ *    for (auto&& element : collection | views::values)
  *
  * If you need to see both, use:
  *
