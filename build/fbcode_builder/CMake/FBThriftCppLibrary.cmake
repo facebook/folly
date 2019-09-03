@@ -59,12 +59,12 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
   # Compute the list of generated files
   list(APPEND generated_headers
     "${output_dir}/gen-cpp2/${base}_constants.h"
-    "${output_dir}/gen-cpp2/${base}_constants.cpp"
     "${output_dir}/gen-cpp2/${base}_types.h"
     "${output_dir}/gen-cpp2/${base}_types.tcc"
     "${output_dir}/gen-cpp2/${base}_types_custom_protocol.h"
   )
   list(APPEND generated_sources
+    "${output_dir}/gen-cpp2/${base}_constants.cpp"
     "${output_dir}/gen-cpp2/${base}_data.h"
     "${output_dir}/gen-cpp2/${base}_data.cpp"
     "${output_dir}/gen-cpp2/${base}_types.cpp"
