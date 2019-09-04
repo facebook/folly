@@ -75,7 +75,7 @@ class BuilderBase(object):
 
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
 
-    def run_tests(self, install_dirs, schedule_type):
+    def run_tests(self, install_dirs, schedule_type, owner):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -408,7 +408,7 @@ if __name__ == "__main__":
             env=env,
         )
 
-    def run_tests(self, install_dirs, schedule_type):
+    def run_tests(self, install_dirs, schedule_type, owner):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -483,6 +483,9 @@ if __name__ == "__main__":
                 "platform=%s" % machine_suffix,
                 "buildsystem=getdeps",
             ]
+
+            if owner:
+                testpilot_args += ["--contacts", owner]
 
             if schedule_type == "continuous":
                 runs.append(

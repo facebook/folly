@@ -386,7 +386,11 @@ class TestCmd(ProjectCmdBase):
                 builder = m.create_builder(
                     loader.build_opts, src_dir, build_dir, inst_dir, ctx
                 )
-                builder.run_tests(install_dirs, schedule_type=args.schedule_type)
+                builder.run_tests(
+                    install_dirs,
+                    schedule_type=args.schedule_type,
+                    owner=args.test_owner,
+                )
 
             install_dirs.append(inst_dir)
 
@@ -394,6 +398,7 @@ class TestCmd(ProjectCmdBase):
         parser.add_argument(
             "--schedule-type", help="Indicates how the build was activated"
         )
+        parser.add_argument("--test-owner", help="Owner for testpilot")
 
 
 def get_arg_var_name(args):
