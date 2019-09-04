@@ -806,10 +806,39 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   SemiFuture<Unit> unit() &&;
 
+  /// If this SemiFuture completes within duration dur from now, propagate its
+  /// value. Otherwise satisfy the returned SemiFuture with a FutureTimeout
+  /// exception.
+  ///
+  /// The optional Timekeeper is as with futures::sleep().
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - Calling code should act as if `valid() == false`,
+  ///   i.e., as if `*this` was moved into RESULT.
+  /// - `RESULT.valid() == true`
   SemiFuture<T> within(Duration dur, Timekeeper* tk = nullptr) && {
     return std::move(*this).within(dur, FutureTimeout(), tk);
   }
 
+  /// If this SemiFuture completes within duration dur from now, propagate its
+  /// value. Otherwise satisfy the returned SemiFuture with exception e.
+  ///
+  /// The optional Timekeeper is as with futures::sleep().
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - Calling code should act as if `valid() == false`,
+  ///   i.e., as if `*this` was moved into RESULT.
+  /// - `RESULT.valid() == true`
   template <class E>
   SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) &&;
 
@@ -1582,8 +1611,11 @@ class Future : private futures::detail::FutureBase<T> {
   template <class F>
   Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr) &&;
 
-  /// Throw FutureTimeout if this Future does not complete within the given
-  /// duration from now. The optional Timekeeper is as with futures::sleep().
+  /// If this Future completes within duration dur from now, propagate its
+  /// value. Otherwise satisfy the returned SemiFuture with a FutureTimeout
+  /// exception.
+  ///
+  /// The optional Timekeeper is as with futures::sleep().
   ///
   /// Preconditions:
   ///
@@ -1596,9 +1628,10 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `RESULT.valid() == true`
   Future<T> within(Duration dur, Timekeeper* tk = nullptr) &&;
 
-  /// Throw the given exception if this Future does not complete within the
-  /// given duration from now. The optional Timekeeper is as with
-  /// futures::sleep().
+  /// If this SemiFuture completes within duration dur from now, propagate its
+  /// value. Otherwise satisfy the returned SemiFuture with exception e.
+  ///
+  /// The optional Timekeeper is as with futures::sleep().
   ///
   /// Preconditions:
   ///
