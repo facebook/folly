@@ -83,6 +83,8 @@ struct CacheLocality {
   /// For example, if numCpus is 32 and numCachesByLevel.back() is 2,
   /// then cpus with a locality index < 16 will share one last-level
   /// cache and cpus with a locality index >= 16 will share the other.
+  /// A value of size_t::max() indicates that cpu is not online and
+  /// hence locality information is not available.
   std::vector<size_t> localityIndexByCpu;
 
   /// Returns the best CacheLocality information available for the current
@@ -368,6 +370,10 @@ struct AccessSpreader {
       auto numStripes = std::max(size_t{1}, width);
       for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
         auto index = cacheLocality.localityIndexByCpu[cpu];
+        if (index == std::numeric_limits<size_t>::max()) {
+          // offline (not present) CPU, skip.
+          continue;
+        }
         assert(index < n);
         // as index goes from 0..n, post-transform value goes from
         // 0..numStripes
