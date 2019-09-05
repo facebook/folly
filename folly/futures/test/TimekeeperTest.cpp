@@ -446,7 +446,10 @@ TEST(Timekeeper, executor) {
 
   Promise<Unit> p;
   ExecutorTester tester;
-  auto f = p.getFuture().via(&tester).within(one_ms).thenValue([&](auto&&) {});
+  auto f = p.getFuture()
+               .via(&tester)
+               .within(milliseconds(100))
+               .thenValue([&](auto&&) {});
   p.setValue();
   f.wait();
   EXPECT_EQ(2, tester.count);
