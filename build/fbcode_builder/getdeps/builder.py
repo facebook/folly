@@ -603,7 +603,9 @@ class OpenSSLBuilder(BuilderBase):
 
 
 class Boost(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir):
+    def __init__(
+        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, b2_args
+    ):
         children = os.listdir(src_dir)
         assert len(children) == 1, "expected a single directory entry: %r" % (children,)
         boost_src = children[0]
@@ -612,6 +614,7 @@ class Boost(BuilderBase):
         super(Boost, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
+        self.b2_args = b2_args
 
     def _build(self, install_dirs, reconfigure):
         linkage = ["static"]
@@ -638,6 +641,7 @@ class Boost(BuilderBase):
                     "--builddir=%s" % self.build_dir,
                 ]
                 + args
+                + self.b2_args
                 + [
                     "link=%s" % link,
                     "runtime-link=shared",

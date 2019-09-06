@@ -68,6 +68,7 @@ SCHEMA = {
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
+    "b2.args": {"optional_section": True},
     "make.args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
     "shipit.pathmap": {"optional_section": True},
@@ -83,6 +84,7 @@ ALLOWED_EXPR_SECTIONS = [
     "cmake.defines",
     "dependencies",
     "make.args",
+    "b2.args",
     "download",
     "git",
     "install.files",
@@ -372,7 +374,8 @@ class ManifestParser(object):
             )
 
         if builder == "boost":
-            return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir)
+            args = self.get_section_as_args("b2.args", ctx)
+            return Boost(build_options, ctx, self, src_dir, build_dir, inst_dir, args)
 
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
