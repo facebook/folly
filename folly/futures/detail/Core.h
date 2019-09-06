@@ -33,6 +33,7 @@
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/MicroSpinLock.h>
 #include <glog/logging.h>
 
@@ -73,20 +74,6 @@ struct SpinLock : private MicroSpinLock {
   using MicroSpinLock::unlock;
 };
 static_assert(sizeof(SpinLock) == 1, "missized");
-
-template <typename T>
-bool compare_exchange_strong_release_acquire(
-    std::atomic<T>& self,
-    T& expected,
-    T desired) {
-  if (kIsSanitizeThread) {
-    // Workaround for https://github.com/google/sanitizers/issues/970
-    return self.compare_exchange_strong(
-        expected, desired, std::memory_order_acq_rel);
-  }
-  return self.compare_exchange_strong(
-      expected, desired, std::memory_order_release, std::memory_order_acquire);
-}
 
 class DeferredExecutor;
 
@@ -608,8 +595,12 @@ class Core final {
         : State::OnlyCallback;
 
     if (state == State::Start) {
-      if (detail::compare_exchange_strong_release_acquire(
-              state_, state, nextState)) {
+      if (atomic_compare_exchange_strong_explicit(
+              &state_,
+              &state,
+              nextState,
+              std::memory_order_release,
+              std::memory_order_acquire)) {
         return;
       }
       assume(state == State::OnlyResult || state == State::Proxy);
@@ -642,8 +633,12 @@ class Core final {
     auto state = state_.load(std::memory_order_acquire);
     switch (state) {
       case State::Start:
-        if (detail::compare_exchange_strong_release_acquire(
-                state_, state, State::Proxy)) {
+        if (atomic_compare_exchange_strong_explicit(
+                &state_,
+                &state,
+                State::Proxy,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
           break;
         }
         assume(
@@ -692,8 +687,12 @@ class Core final {
     auto state = state_.load(std::memory_order_acquire);
     switch (state) {
       case State::Start:
-        if (detail::compare_exchange_strong_release_acquire(
-                state_, state, State::OnlyResult)) {
+        if (atomic_compare_exchange_strong_explicit(
+                &state_,
+                &state,
+                State::OnlyResult,
+                std::memory_order_release,
+                std::memory_order_acquire)) {
           return;
         }
         assume(

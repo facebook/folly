@@ -30,6 +30,62 @@
 #endif
 
 namespace folly {
+
+namespace detail {
+
+constexpr std::memory_order atomic_compare_exchange_succ(
+    bool cond,
+    std::memory_order succ,
+    std::memory_order fail) {
+  constexpr auto const relaxed = std::memory_order_relaxed;
+  constexpr auto const release = std::memory_order_release;
+  constexpr auto const acq_rel = std::memory_order_acq_rel;
+
+  assert(fail != release);
+  assert(fail != acq_rel);
+
+  //  Clang TSAN ignores the passed failure order and infers failure order from
+  //  success order in atomic compare-exchange operations, which is broken for
+  //  cases like success-release/failure-acquire, so return a success order with
+  //  the failure order mixed in.
+  auto const bump = succ == release ? acq_rel : succ;
+  auto const high = fail < bump ? bump : fail;
+  return !cond || fail == relaxed ? succ : high;
+}
+
+constexpr std::memory_order atomic_compare_exchange_succ(
+    std::memory_order succ,
+    std::memory_order fail) {
+  constexpr auto const cond = kIsSanitizeThread && kIsClang;
+  return atomic_compare_exchange_succ(cond, succ, fail);
+}
+
+} // namespace detail
+
+template <typename T>
+bool atomic_compare_exchange_weak_explicit(
+    std::atomic<T>* obj,
+    typename std::atomic<T>::value_type* expected,
+    typename std::atomic<T>::value_type desired,
+    std::memory_order succ,
+    std::memory_order fail) {
+  succ = detail::atomic_compare_exchange_succ(succ, fail);
+  return std::atomic_compare_exchange_weak_explicit(
+      obj, expected, desired, succ, fail);
+}
+
+template <typename T>
+bool atomic_compare_exchange_strong_explicit(
+    std::atomic<T>* obj,
+    typename std::atomic<T>::value_type* expected,
+    typename std::atomic<T>::value_type desired,
+    std::memory_order succ,
+    std::memory_order fail) {
+  succ = detail::atomic_compare_exchange_succ(succ, fail);
+  return std::atomic_compare_exchange_strong_explicit(
+      obj, expected, desired, succ, fail);
+}
+
 namespace detail {
 
 // TODO: Remove the non-default implementations when both gcc and clang

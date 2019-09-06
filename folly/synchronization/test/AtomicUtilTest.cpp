@@ -25,6 +25,85 @@
 
 namespace folly {
 
+class AtomicCompareExchangeSuccTest : public testing::Test {};
+
+TEST_F(AtomicCompareExchangeSuccTest, examples) {
+  using detail::atomic_compare_exchange_succ;
+
+  auto const relaxed = std::memory_order_relaxed;
+  auto const consume = std::memory_order_consume;
+  auto const acquire = std::memory_order_acquire;
+  auto const release = std::memory_order_release;
+  auto const acq_rel = std::memory_order_acq_rel;
+  auto const seq_cst = std::memory_order_seq_cst;
+
+  // noop table
+  EXPECT_EQ(relaxed, atomic_compare_exchange_succ(false, relaxed, relaxed));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(false, consume, relaxed));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(false, acquire, relaxed));
+  EXPECT_EQ(release, atomic_compare_exchange_succ(false, release, relaxed));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(false, acq_rel, relaxed));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(false, seq_cst, relaxed));
+  EXPECT_EQ(relaxed, atomic_compare_exchange_succ(false, relaxed, consume));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(false, consume, consume));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(false, acquire, consume));
+  EXPECT_EQ(release, atomic_compare_exchange_succ(false, release, consume));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(false, acq_rel, consume));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(false, seq_cst, consume));
+  EXPECT_EQ(relaxed, atomic_compare_exchange_succ(false, relaxed, acquire));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(false, consume, acquire));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(false, acquire, acquire));
+  EXPECT_EQ(release, atomic_compare_exchange_succ(false, release, acquire));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(false, acq_rel, acquire));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(false, seq_cst, acquire));
+  EXPECT_EQ(relaxed, atomic_compare_exchange_succ(false, relaxed, seq_cst));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(false, consume, seq_cst));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(false, acquire, seq_cst));
+  EXPECT_EQ(release, atomic_compare_exchange_succ(false, release, seq_cst));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(false, acq_rel, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(false, seq_cst, seq_cst));
+
+  // xform table
+  EXPECT_EQ(relaxed, atomic_compare_exchange_succ(true, relaxed, relaxed));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(true, consume, relaxed));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(true, acquire, relaxed));
+  EXPECT_EQ(release, atomic_compare_exchange_succ(true, release, relaxed));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(true, acq_rel, relaxed));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, seq_cst, relaxed));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(true, relaxed, consume));
+  EXPECT_EQ(consume, atomic_compare_exchange_succ(true, consume, consume));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(true, acquire, consume));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(true, release, consume));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(true, acq_rel, consume));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, seq_cst, consume));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(true, relaxed, acquire));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(true, consume, acquire));
+  EXPECT_EQ(acquire, atomic_compare_exchange_succ(true, acquire, acquire));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(true, release, acquire));
+  EXPECT_EQ(acq_rel, atomic_compare_exchange_succ(true, acq_rel, acquire));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, seq_cst, acquire));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, relaxed, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, consume, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, acquire, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, release, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, acq_rel, seq_cst));
+  EXPECT_EQ(seq_cst, atomic_compare_exchange_succ(true, seq_cst, seq_cst));
+
+  // properties
+  for (auto succ : {relaxed, consume, acquire, release, acq_rel, seq_cst}) {
+    SCOPED_TRACE(succ);
+    for (auto fail : {relaxed, consume, acquire, seq_cst}) {
+      SCOPED_TRACE(fail);
+      EXPECT_EQ(succ, atomic_compare_exchange_succ(false, succ, fail));
+      auto const sfix = atomic_compare_exchange_succ(true, succ, fail);
+      EXPECT_GE(sfix, succ);
+      EXPECT_GE(sfix, fail);
+      EXPECT_TRUE(fail != relaxed || sfix == succ);
+      EXPECT_TRUE(fail == relaxed || succ != release || sfix != release);
+    }
+  }
+}
+
 namespace {
 auto default_fetch_set = [](auto&&... args) {
   return atomic_fetch_set(args...);

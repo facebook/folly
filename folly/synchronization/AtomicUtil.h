@@ -21,6 +21,34 @@
 
 namespace folly {
 
+//  atomic_compare_exchange_weak_explicit
+//
+//  Fix TSAN bug in std::atomic_compare_exchange_weak_explicit.
+//  Workaround for https://github.com/google/sanitizers/issues/970.
+//
+//  mimic: std::atomic_compare_exchange_weak
+template <typename T>
+bool atomic_compare_exchange_weak_explicit(
+    std::atomic<T>* obj,
+    typename std::atomic<T>::value_type* expected,
+    typename std::atomic<T>::value_type desired,
+    std::memory_order succ,
+    std::memory_order fail);
+
+//  atomic_compare_exchange_strong_explicit
+//
+//  Fix TSAN bug in std::atomic_compare_exchange_strong_explicit.
+//  Workaround for https://github.com/google/sanitizers/issues/970.
+//
+//  mimic: std::atomic_compare_exchange_strong
+template <typename T>
+bool atomic_compare_exchange_weak_explicit(
+    std::atomic<T>* obj,
+    typename std::atomic<T>::value_type* expected,
+    typename std::atomic<T>::value_type desired,
+    std::memory_order succ,
+    std::memory_order fail);
+
 //  atomic_fetch_set
 //
 //  Sets the bit at the given index in the binary representation of the integer
