@@ -14,7 +14,13 @@ import os
 import shutil
 import subprocess
 import sys
+import tarfile
+import tempfile
 
+# We don't import cache.create_cache directly as the facebook
+# specific import below may monkey patch it, and we want to
+# observe the patched version of this function!
+import getdeps.cache as cache_module
 from getdeps.buildopts import setup_build_options
 from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
@@ -157,6 +163,72 @@ class ProjectCmdBase(SubCmd):
         pass
 
 
+class CachedProject(object):
+    """ A helper that allows calling the cache logic for a project
+    from both the build and the fetch code """
+
+    def __init__(self, cache, loader, m):
+        self.m = m
+        self.inst_dir = loader.get_project_install_dir(m)
+        self.project_hash = loader.get_project_hash(m)
+        self.ctx = loader.ctx_gen.get_context(m.name)
+        self.loader = loader
+        self.cache = cache
+
+        self.cache_file_name = "-".join(
+            (
+                m.name,
+                self.ctx.get("os"),
+                self.ctx.get("distro") or "none",
+                self.ctx.get("distro_vers") or "none",
+                self.project_hash,
+                "buildcache.tgz",
+            )
+        )
+
+    def is_cacheable(self):
+        """ We only cache third party projects """
+        return self.cache and not self.m.shipit_fbcode_builder
+
+    def download(self):
+        if self.is_cacheable() and not os.path.exists(self.inst_dir):
+            print("check cache for %s" % self.cache_file_name)
+            dl_dir = os.path.join(self.loader.build_opts.scratch_dir, "downloads")
+            if not os.path.exists(dl_dir):
+                os.makedirs(dl_dir)
+            try:
+                target_file_name = os.path.join(dl_dir, self.cache_file_name)
+                if self.cache.download_to_file(self.cache_file_name, target_file_name):
+                    tf = tarfile.open(target_file_name, "r")
+                    print(
+                        "Extracting %s -> %s..." % (self.cache_file_name, self.inst_dir)
+                    )
+                    tf.extractall(self.inst_dir)
+                    return True
+            except Exception as exc:
+                print("%s" % str(exc))
+
+        return False
+
+    def upload(self):
+        if self.cache and not self.m.shipit_fbcode_builder:
+            # We can prepare an archive and stick it in LFS
+            tempdir = tempfile.mkdtemp()
+            tarfilename = os.path.join(tempdir, self.cache_file_name)
+            print("Archiving for cache: %s..." % tarfilename)
+            tf = tarfile.open(tarfilename, "w:gz")
+            tf.add(self.inst_dir, arcname=".")
+            tf.close()
+            try:
+                self.cache.upload_from_file(self.cache_file_name, tarfilename)
+            except Exception as exc:
+                print(
+                    "Failed to upload to cache (%s), continue anyway" % str(exc),
+                    file=sys.stderr,
+                )
+            shutil.rmtree(tempdir)
+
+
 @cmd("fetch", "fetch the code for a given project")
 class FetchCmd(ProjectCmdBase):
     def setup_project_cmd_parser(self, parser):
@@ -179,7 +251,24 @@ class FetchCmd(ProjectCmdBase):
             projects = loader.manifests_in_dependency_order()
         else:
             projects = [manifest]
+
+        cache = cache_module.create_cache()
         for m in projects:
+            cached_project = CachedProject(cache, loader, m)
+            if cached_project.download():
+                continue
+
+            inst_dir = loader.get_project_install_dir(m)
+            built_marker = os.path.join(inst_dir, ".built-by-getdeps")
+            if os.path.exists(built_marker):
+                with open(built_marker, "r") as f:
+                    built_hash = f.read().strip()
+
+                project_hash = loader.get_project_hash(m)
+                if built_hash == project_hash:
+                    continue
+
+            # We need to fetch the sources
             fetcher = loader.create_fetcher(m)
             fetcher.update()
 
@@ -267,6 +356,8 @@ class BuildCmd(ProjectCmdBase):
         print("Building on %s" % loader.ctx_gen.get_context(args.project))
         projects = loader.manifests_in_dependency_order()
 
+        cache = cache_module.create_cache()
+
         # Accumulate the install directories so that the build steps
         # can find their dep installation
         install_dirs = []
@@ -282,26 +373,20 @@ class BuildCmd(ProjectCmdBase):
 
             if m == manifest or not args.no_deps:
                 print("Assessing %s..." % m.name)
-                change_status = fetcher.update()
-                reconfigure = change_status.build_changed()
-                sources_changed = change_status.sources_changed()
-
                 project_hash = loader.get_project_hash(m)
+                ctx = loader.ctx_gen.get_context(m.name)
                 built_marker = os.path.join(inst_dir, ".built-by-getdeps")
-                if os.path.exists(built_marker):
-                    with open(built_marker, "r") as f:
-                        built_hash = f.read().strip()
-                    if built_hash != project_hash:
-                        # Some kind of inconsistency with a prior build,
-                        # let's run it again to be sure
-                        os.unlink(built_marker)
-                        reconfigure = True
+
+                cached_project = CachedProject(cache, loader, m)
+
+                reconfigure, sources_changed = self.compute_source_change_status(
+                    cached_project, fetcher, m, built_marker, project_hash
+                )
 
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
                     src_dir = fetcher.get_src_dir()
-                    ctx = loader.ctx_gen.get_context(m.name)
                     builder = m.create_builder(
                         loader.build_opts, src_dir, build_dir, inst_dir, ctx
                     )
@@ -310,7 +395,45 @@ class BuildCmd(ProjectCmdBase):
                     with open(built_marker, "w") as f:
                         f.write(project_hash)
 
+                    # Only populate the cache from continuous build runs
+                    if args.schedule_type == "continuous":
+                        cached_project.upload()
+
             install_dirs.append(inst_dir)
+
+    def compute_source_change_status(
+        self, cached_project, fetcher, m, built_marker, project_hash
+    ):
+        reconfigure = False
+        sources_changed = False
+        if not cached_project.download():
+            check_fetcher = True
+            if os.path.exists(built_marker):
+                check_fetcher = False
+                with open(built_marker, "r") as f:
+                    built_hash = f.read().strip()
+                if built_hash == project_hash:
+                    if cached_project.is_cacheable():
+                        # We can blindly trust the build status
+                        reconfigure = False
+                        sources_changed = False
+                    else:
+                        # Otherwise, we may have changed the source, so let's
+                        # check in with the fetcher layer
+                        check_fetcher = True
+                else:
+                    # Some kind of inconsistency with a prior build,
+                    # let's run it again to be sure
+                    os.unlink(built_marker)
+                    reconfigure = True
+                    sources_changed = True
+
+            if check_fetcher:
+                change_status = fetcher.update()
+                reconfigure = change_status.build_changed()
+                sources_changed = change_status.sources_changed()
+
+        return reconfigure, sources_changed
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
@@ -332,6 +455,9 @@ class BuildCmd(ProjectCmdBase):
                 "and helps to avoid waiting for relatively "
                 "slow up-to-date-ness checks"
             ),
+        )
+        parser.add_argument(
+            "--schedule-type", help="Indicates how the build was activated"
         )
 
 
