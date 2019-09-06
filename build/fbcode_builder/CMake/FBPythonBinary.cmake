@@ -47,10 +47,11 @@ set(
 # Build a self-executing python binary.
 #
 # This accepts the same arguments as add_fb_python_library().
-# In addition, a MAIN_MODULE argument is required.  This argument specifies
-# which module should be started as the __main__ module when the executable is
-# run.
 #
+# In addition, a MAIN_MODULE argument is accepted.  This argument specifies
+# which module should be started as the __main__ module when the executable is
+# run.  If left unspecified, a __main__.py script must be present in the
+# manifest.
 function(add_fb_python_executable EXE_NAME)
   # Parse the arguments
   set(one_value_args BASE_DIR NAMESPACE MAIN_MODULE TYPE)
@@ -105,11 +106,15 @@ function(add_fb_python_executable EXE_NAME)
     endif()
   endif()
 
+  if(DEFINED ARG_MAIN_MODULE)
+    set(main_argument "--main" "${ARG_MAIN_MODULE}")
+  endif()
+
   add_custom_command(
     OUTPUT "${output_file}"
     ${extra_cmd_params}
     COMMAND
-      "${MAKE_PYTHON_ARCHIVE}" -o "${EXE_NAME}" --main "${ARG_MAIN_MODULE}"
+      "${MAKE_PYTHON_ARCHIVE}" -o "${EXE_NAME}" ${main_argument}
       ${make_py_args}
     DEPENDS
       ${source_files}
@@ -145,6 +150,11 @@ endfunction()
 #   namespace of "foo.bar"
 # - SOURCES <src1> <...>:
 #   The python source files.
+#   You may optionally specify as source using the form: PATH=ALIAS where
+#   PATH is a relative path in the source tree and ALIAS is the relative
+#   path into which PATH should be rewritten.  This is useful for mapping
+#   an executable script to the main module in a python executable.
+#   e.g.: `python/bin/watchman-wait=__main__.py`
 # - DEPENDS <target1> <...>:
 #   Other python libraries that this one depends on.
 # - INSTALL_DIR <dir>:
@@ -229,23 +239,43 @@ function(add_fb_python_library LIB_NAME)
   file(WRITE "${tmp_manifest}" "FBPY_MANIFEST 1\n")
   set(abs_sources)
   foreach(src_path IN LISTS ARG_SOURCES)
+    if("${src_path}" MATCHES "=")
+      # We want to split the string on the `=` sign, but cmake doesn't
+      # provide much in the way of helpers for this, so we rewrite the
+      # `=` sign to `;` so that we can treat it as a cmake list and
+      # then index into the components
+      string(REPLACE "=" ";" src_path_list "${src_path}")
+      list(GET src_path_list 0 src_path)
+      # Note that we ignore the `namespace_dir` in the alias case
+      # in order to allow aliasing a source to the top level `__main__.py`
+      # filename.
+      list(GET src_path_list 1 dest_path)
+    else()
+      unset(dest_path)
+    endif()
+
     get_filename_component(abs_source "${src_path}" ABSOLUTE)
     list(APPEND abs_sources "${abs_source}")
     file(RELATIVE_PATH rel_src "${ARG_BASE_DIR}" "${abs_source}")
+
+    if(NOT DEFINED dest_path)
+      if("${rel_src}" MATCHES "^../")
+        message(
+          FATAL_ERROR "${LIB_NAME}: source file \"${abs_source}\" is not inside "
+          "the base directory ${ARG_BASE_DIR}"
+        )
+      endif()
+      set(dest_path "${namespace_dir}${rel_src}")
+    endif()
+
     target_sources(
       "${LIB_NAME}.py_lib" INTERFACE
       "$<BUILD_INTERFACE:${abs_source}>"
-      "$<INSTALL_INTERFACE:${install_dir}${LIB_NAME}/${namespace_dir}${rel_src}>"
+      "$<INSTALL_INTERFACE:${install_dir}${LIB_NAME}/${dest_path}>"
     )
-    if("${rel_src}" MATCHES "^../")
-      message(
-        FATAL_ERROR "${LIB_NAME}: source file \"${abs_source}\" is not inside "
-        "the base directory ${ARG_BASE_DIR}"
-      )
-    endif()
     file(
       APPEND "${tmp_manifest}"
-      "${abs_source} :: ${namespace_dir}${rel_src}\n"
+      "${abs_source} :: ${dest_path}\n"
     )
   endforeach()
   configure_file("${tmp_manifest}" "${manifest_path}" COPYONLY)
@@ -260,7 +290,7 @@ function(add_fb_python_library LIB_NAME)
   # This is needed in case some of the source files are generated.  This will
   # ensure that these source files are brought up-to-date before we build
   # any python binaries that depend on this library.
-  add_custom_target("${LIB_NAME}.py_sources_built" DEPENDS ${ARG_SOURCES})
+  add_custom_target("${LIB_NAME}.py_sources_built" DEPENDS ${abs_sources})
   add_dependencies("${LIB_NAME}.py_lib" "${LIB_NAME}.py_sources_built")
 
   # Hook up library dependencies, and also make the *.py_sources_built target
@@ -306,7 +336,7 @@ function(add_fb_python_library LIB_NAME)
       --install-dir "${LIB_NAME}"
       -o "${build_install_dir}/${LIB_NAME}" "${manifest_path}"
     DEPENDS
-      "${ARG_SOURCES}"
+      "${abs_sources}"
       "${manifest_path}"
       "${MAKE_PYTHON_ARCHIVE}"
   )
