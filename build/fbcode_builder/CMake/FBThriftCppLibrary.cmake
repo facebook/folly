@@ -99,10 +99,6 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
     thrift_include_options
     "-I;$<JOIN:$<TARGET_PROPERTY:${LIB_NAME}.thrift_includes,INTERFACE_INCLUDE_DIRECTORIES>,;-I;>"
   )
-  file(
-    GLOB_RECURSE THRIFT_TEMPLATE_FILES
-    FOLLOW_SYMLINKS "${FBTHRIFT_TEMPLATES_DIR}/cpp2/*.mustache"
-  )
 
   # Emit the rule to run the thrift compiler
   add_custom_command(
@@ -115,7 +111,6 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
     COMMAND
       "${FBTHRIFT_COMPILER}"
       --strict
-      --templates "${FBTHRIFT_TEMPLATES_DIR}"
       --gen "mstch_cpp2:${GEN_ARG_STR}"
       "${thrift_include_options}"
       -o "${output_dir}"
