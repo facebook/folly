@@ -489,3 +489,5 @@ class BucketedTimeSeries {
 };
 
 } // namespace folly
+
+#include <folly/stats/BucketedTimeSeries-inl.h>

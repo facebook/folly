@@ -16,10 +16,6 @@
 
 #pragma once
 
-#include <folly/stats/QuantileEstimator.h>
-
-#include <folly/stats/detail/BufferedStat-defs.h>
-
 namespace folly {
 namespace detail {
 

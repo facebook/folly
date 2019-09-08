@@ -396,3 +396,5 @@ class TimeseriesHistogram {
   ValueType firstValue_;
 };
 } // namespace folly
+
+#include <folly/stats/TimeseriesHistogram-inl.h>

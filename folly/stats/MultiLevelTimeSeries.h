@@ -438,3 +438,5 @@ class MultiLevelTimeSeries {
 };
 
 } // namespace folly
+
+#include <folly/stats/MultiLevelTimeSeries-inl.h>

@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <folly/stats/MultiLevelTimeSeries.h>
 #include <glog/logging.h>
 
 namespace folly {

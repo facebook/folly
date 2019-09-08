@@ -147,3 +147,5 @@ class BufferedSlidingWindow : public BufferedStat<DigestT, ClockT> {
 
 } // namespace detail
 } // namespace folly
+
+#include <folly/stats/detail/BufferedStat-inl.h>

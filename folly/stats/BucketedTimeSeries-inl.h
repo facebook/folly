@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/Likely.h>
-#include <folly/stats/BucketedTimeSeries.h>
 #include <glog/logging.h>
 #include <algorithm>
 #include <stdexcept>

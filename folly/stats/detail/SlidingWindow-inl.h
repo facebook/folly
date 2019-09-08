@@ -16,8 +16,6 @@
 
 #pragma once
 
-#include <folly/stats/detail/SlidingWindow.h>
-
 #include <algorithm>
 
 namespace folly {

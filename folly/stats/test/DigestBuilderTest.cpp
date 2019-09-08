@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/stats/detail/DigestBuilder-defs.h>
+#include <folly/stats/detail/DigestBuilder.h>
 
 #include <chrono>
 #include <random>

@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/stats/detail/SlidingWindow-defs.h>
+#include <folly/stats/detail/SlidingWindow.h>
 
 #include <folly/portability/GTest.h>
 

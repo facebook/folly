@@ -16,12 +16,6 @@
 
 #pragma once
 
-#include <folly/Conv.h>
-#include <folly/stats/BucketedTimeSeries-defs.h>
-#include <folly/stats/Histogram-defs.h>
-#include <folly/stats/MultiLevelTimeSeries-defs.h>
-#include <folly/stats/TimeseriesHistogram.h>
-
 namespace folly {
 
 template <typename T, typename CT, typename C>

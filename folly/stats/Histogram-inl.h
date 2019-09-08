@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/Conv.h>
-#include <folly/stats/Histogram.h>
 
 #include <glog/logging.h>
 

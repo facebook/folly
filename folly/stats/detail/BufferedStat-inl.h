@@ -16,11 +16,6 @@
 
 #pragma once
 
-#include <folly/stats/detail/BufferedStat.h>
-
-#include <folly/stats/detail/DigestBuilder-defs.h>
-#include <folly/stats/detail/SlidingWindow-defs.h>
-
 namespace folly {
 namespace detail {
 

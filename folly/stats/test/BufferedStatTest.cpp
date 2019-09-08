@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/stats/detail/BufferedStat-defs.h>
+#include <folly/stats/detail/BufferedStat.h>
 
 #include <folly/Range.h>
 #include <folly/portability/GTest.h>

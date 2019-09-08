@@ -491,18 +491,4 @@ class Histogram {
 
 } // namespace folly
 
-// MSVC 2017 Update 3/4 has an issue with explicitly instantiating templated
-// functions with default arguments inside templated classes when compiled
-// with /permissive- (the default for the CMake build), so we directly include
-// the -defs as if it were -inl, and don't provide the explicit instantiations.
-// https://developercommunity.visualstudio.com/content/problem/81223/incorrect-error-c5037-with-permissive.html
-#if defined(_MSC_VER) && _MSC_FULL_VER >= 191125506 && \
-    _MSC_FULL_VER <= 191125547
-#define FOLLY_MSVC_USE_WORKAROUND_FOR_C5037 1
-#else
-#define FOLLY_MSVC_USE_WORKAROUND_FOR_C5037 0
-#endif
-
-#if FOLLY_MSVC_USE_WORKAROUND_FOR_C5037
-#include <folly/stats/Histogram-defs.h>
-#endif
+#include <folly/stats/Histogram-inl.h>

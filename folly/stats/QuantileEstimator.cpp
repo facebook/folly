@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/stats/QuantileEstimator-defs.h>
+#include <folly/stats/QuantileEstimator.h>
 
 namespace folly {
 namespace detail {
@@ -34,8 +34,5 @@ QuantileEstimates estimatesFromDigest(
 }
 
 } // namespace detail
-
-template class SimpleQuantileEstimator<std::chrono::steady_clock>;
-template class SlidingWindowQuantileEstimator<std::chrono::steady_clock>;
 
 } // namespace folly

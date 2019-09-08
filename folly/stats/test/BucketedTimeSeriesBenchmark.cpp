@@ -19,7 +19,6 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/stats/BucketedTimeSeries-defs.h>
 
 using folly::BenchmarkSuspender;
 using folly::BucketedTimeSeries;

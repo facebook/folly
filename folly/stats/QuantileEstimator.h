@@ -16,7 +16,8 @@
 
 #pragma once
 
-#include <folly/stats/detail/BufferedStatTDigest.h>
+#include <folly/stats/TDigest.h>
+#include <folly/stats/detail/BufferedStat.h>
 
 namespace folly {
 
@@ -82,7 +83,6 @@ class SlidingWindowQuantileEstimator {
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;
 };
 
-extern template class SimpleQuantileEstimator<std::chrono::steady_clock>;
-extern template class SlidingWindowQuantileEstimator<std::chrono::steady_clock>;
-
 } // namespace folly
+
+#include <folly/stats/QuantileEstimator-inl.h>

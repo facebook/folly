@@ -19,7 +19,6 @@
 #include <random>
 
 #include <folly/portability/GTest.h>
-#include <folly/stats/TimeseriesHistogram-defs.h>
 
 using namespace std;
 using namespace folly;

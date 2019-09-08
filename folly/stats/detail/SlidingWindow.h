@@ -56,3 +56,5 @@ class SlidingWindow {
 
 } // namespace detail
 } // namespace folly
+
+#include <folly/stats/detail/SlidingWindow-inl.h>

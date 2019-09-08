@@ -17,7 +17,6 @@
 #include <folly/stats/Histogram.h>
 
 #include <folly/portability/GTest.h>
-#include <folly/stats/Histogram-defs.h>
 
 using folly::Histogram;
 
