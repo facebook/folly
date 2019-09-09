@@ -34,6 +34,7 @@
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
+#include <folly/test/TestUtils.h>
 
 namespace fs = folly::fs;
 
@@ -137,7 +138,8 @@ void testReadsSerially(
   AsyncIO aioReader(1, pollMode);
   AsyncIO::Op op;
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  PCHECK(fd != -1);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };
@@ -169,7 +171,8 @@ void testReadsParallel(
   bufs.reserve(specs.size());
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  PCHECK(fd != -1);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };
@@ -234,7 +237,8 @@ void testReadsQueued(
   std::vector<ManagedBuffer> bufs;
 
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  PCHECK(fd != -1);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };
@@ -373,7 +377,8 @@ TEST(AsyncIO, NonBlockingWait) {
   AsyncIO aioReader(1, AsyncIO::NOT_POLLABLE);
   AsyncIO::Op op;
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  PCHECK(fd != -1);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };
@@ -403,7 +408,8 @@ TEST(AsyncIO, Cancel) {
 
   AsyncIO aioReader(kNumOpsBatch1 + kNumOpsBatch2, AsyncIO::NOT_POLLABLE);
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
-  PCHECK(fd != -1);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };

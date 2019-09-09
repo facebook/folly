@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <glog/logging.h>
+
 #include <folly/init/Init.h>
 
 #include <folly/Portability.h>
@@ -28,11 +30,8 @@
 FOLLY_ATTR_WEAK int main(int argc, char** argv);
 
 int main(int argc, char** argv) {
-#if FOLLY_HAVE_LIBGFLAGS
   // Enable glog logging to stderr by default.
-  gflags::SetCommandLineOptionWithMode(
-      "logtostderr", "1", gflags::SET_FLAGS_DEFAULT);
-#endif
+  FLAGS_logtostderr = true;
 
   ::testing::InitGoogleTest(&argc, argv);
   folly::Init init(&argc, &argv);

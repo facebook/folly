@@ -1365,14 +1365,16 @@ TEST(F14ValueMap, maxSize) {
   F14ValueMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::numeric_limits<std::size_t>::max() / sizeof(std::pair<int, int>));
+      std::allocator_traits<decltype(m)::allocator_type>::max_size(
+          m.get_allocator()));
 }
 
 TEST(F14NodeMap, maxSize) {
   F14NodeMap<int, int> m;
   EXPECT_EQ(
       m.max_size(),
-      std::numeric_limits<std::size_t>::max() / sizeof(std::pair<int, int>));
+      std::allocator_traits<decltype(m)::allocator_type>::max_size(
+          m.get_allocator()));
 }
 
 TEST(F14VectorMap, vectorMaxSize) {
@@ -1381,8 +1383,8 @@ TEST(F14VectorMap, vectorMaxSize) {
       m.max_size(),
       std::min(
           std::size_t{std::numeric_limits<uint32_t>::max()},
-          std::numeric_limits<std::size_t>::max() /
-              sizeof(std::pair<int, int>)));
+          std::allocator_traits<decltype(m)::allocator_type>::max_size(
+              m.get_allocator())));
 }
 
 template <typename M>
