@@ -56,7 +56,35 @@ namespace folly {
 /// 2. https://en.wikipedia.org/wiki/CoDel
 class Codel {
  public:
+  class Options {
+   public:
+    std::chrono::milliseconds interval() const {
+      return interval_;
+    }
+
+    Options& setInterval(std::chrono::milliseconds value) {
+      interval_ = value;
+      return *this;
+    }
+
+    std::chrono::milliseconds targetDelay() const {
+      return targetDelay_;
+    }
+
+    Options& setTargetDelay(std::chrono::milliseconds value) {
+      targetDelay_ = value;
+      return *this;
+    }
+
+   private:
+    std::chrono::milliseconds interval_;
+    std::chrono::milliseconds targetDelay_;
+  };
+
   Codel();
+
+  /// Preferable construction method
+  explicit Codel(const Options& options);
 
   /// Returns true if this request should be expired to reduce overload.
   /// In detail, this returns true if min_delay > target_delay for the
@@ -80,6 +108,7 @@ class Codel {
   std::chrono::milliseconds getSloughTimeout();
 
  private:
+  Options options_;
   std::atomic<uint64_t> codelMinDelayNs_;
   std::atomic<uint64_t> codelIntervalTimeNs_;
 

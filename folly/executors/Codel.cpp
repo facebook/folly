@@ -27,7 +27,13 @@ using namespace std::chrono;
 namespace folly {
 
 Codel::Codel()
-    : codelMinDelayNs_(0),
+    : Codel(Codel::Options()
+                .setInterval(milliseconds(FLAGS_codel_interval))
+                .setTargetDelay(milliseconds(FLAGS_codel_target_delay))) {}
+
+Codel::Codel(const Options& options)
+    : options_(options),
+      codelMinDelayNs_(0),
       codelIntervalTimeNs_(
           duration_cast<nanoseconds>(steady_clock::now().time_since_epoch())
               .count()),
@@ -91,11 +97,11 @@ nanoseconds Codel::getMinDelay() {
 }
 
 milliseconds Codel::getInterval() {
-  return milliseconds(FLAGS_codel_interval);
+  return options_.interval();
 }
 
 milliseconds Codel::getTargetDelay() {
-  return milliseconds(FLAGS_codel_target_delay);
+  return options_.targetDelay();
 }
 
 milliseconds Codel::getSloughTimeout() {
