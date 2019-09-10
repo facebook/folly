@@ -591,7 +591,6 @@ IOBuf IOBuf::cloneAsValue() const {
 
 IOBuf IOBuf::cloneOneAsValue() const {
   if (SharedInfo* info = sharedInfo()) {
-    setFlags(kFlagMaybeShared);
     info->refcount.fetch_add(1, std::memory_order_acq_rel);
   }
   return IOBuf(
@@ -657,7 +656,7 @@ void IOBuf::unshareOneSlow() {
 
   // Release our reference on the old buffer
   decrementRefcount();
-  // Make sure kFlagMaybeShared and kFlagFreeSharedInfo are all cleared.
+  // Make sure flags are all cleared.
   setFlagsAndSharedInfo(0, sharedInfo);
 
   // Update the buffer pointers to point to the new buffer
@@ -790,7 +789,7 @@ void IOBuf::coalesceAndReallocate(
   // Point at the new buffer
   decrementRefcount();
 
-  // Make sure kFlagMaybeShared and kFlagFreeSharedInfo are all cleared.
+  // Make sure flags are all cleared.
   setFlagsAndSharedInfo(0, newInfo);
 
   capacity_ = actualCapacity;
@@ -1176,15 +1175,7 @@ uint32_t IOBuf::approximateShareCountOne() const {
   if (UNLIKELY(!sharedInfo())) {
     return 1U;
   }
-  if (LIKELY(!(flags() & kFlagMaybeShared))) {
-    return 1U;
-  }
-  auto shareCount = sharedInfo()->refcount.load(std::memory_order_acquire);
-  if (shareCount < 2) {
-    // we're the last one left
-    clearFlags(kFlagMaybeShared);
-  }
-  return shareCount;
+  return sharedInfo()->refcount.load(std::memory_order_acquire);
 }
 
 size_t IOBufHash::operator()(const IOBuf& buf) const noexcept {

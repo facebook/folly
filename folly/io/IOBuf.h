@@ -1020,19 +1020,7 @@ class IOBuf {
       return true;
     }
 
-    if (LIKELY(!(flags() & kFlagMaybeShared))) {
-      return false;
-    }
-
-    // kFlagMaybeShared is set, so we need to check the reference count.
-    // (Checking the reference count requires an atomic operation, which is why
-    // we prefer to only check kFlagMaybeShared if possible.)
-    bool shared = sharedInfo()->refcount.load(std::memory_order_acquire) > 1;
-    if (!shared) {
-      // we're the last one left
-      clearFlags(kFlagMaybeShared);
-    }
-    return shared;
+    return sharedInfo()->refcount.load(std::memory_order_acquire) > 1;
   }
 
   /**
@@ -1409,8 +1397,7 @@ class IOBuf {
     // as these flags are stashed in the least significant 2 bits of a
     // max-align-aligned pointer.
     kFlagFreeSharedInfo = 0x1,
-    kFlagMaybeShared = 0x2,
-    kFlagMask = kFlagFreeSharedInfo | kFlagMaybeShared
+    kFlagMask = (1 << 2 /* least significant bits */) - 1,
   };
 
   struct SharedInfoObserverEntryBase {
@@ -1541,7 +1528,7 @@ class IOBuf {
   std::size_t capacity_{0};
 
   // Pack flags in least significant 2 bits, sharedInfo in the rest
-  mutable uintptr_t flagsAndSharedInfo_{0};
+  uintptr_t flagsAndSharedInfo_{0};
 
   static inline uintptr_t packFlagsAndSharedInfo(
       uintptr_t flags,
@@ -1567,12 +1554,12 @@ class IOBuf {
   }
 
   // flags_ are changed from const methods
-  inline void setFlags(uintptr_t flags) const noexcept {
+  inline void setFlags(uintptr_t flags) noexcept {
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ |= flags;
   }
 
-  inline void clearFlags(uintptr_t flags) const noexcept {
+  inline void clearFlags(uintptr_t flags) noexcept {
     DCHECK_EQ(flags & ~kFlagMask, 0u);
     flagsAndSharedInfo_ &= ~flags;
   }
