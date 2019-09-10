@@ -33,7 +33,9 @@ void run(Dwarf::LocationInfoMode mode, size_t n) {
   suspender.dismiss();
   for (size_t i = 0; i < n; i++) {
     Dwarf::LocationInfo info;
-    dwarf.findAddress(uintptr_t(&dummy), info, mode);
+    auto inlineInfo =
+        std::array<Dwarf::LocationInfo, Dwarf::kMaxLocationInfoPerFrame>();
+    dwarf.findAddress(uintptr_t(&dummy), mode, info, inlineInfo.data());
   }
 }
 
@@ -45,6 +47,10 @@ BENCHMARK(DwarfFindAddressFast, n) {
 
 BENCHMARK(DwarfFindAddressFull, n) {
   run(folly::symbolizer::Dwarf::LocationInfoMode::FULL, n);
+}
+
+BENCHMARK(DwarfFindAddressFullWithInline, n) {
+  run(folly::symbolizer::Dwarf::LocationInfoMode::FULL_WITH_INLINE, n);
 }
 
 int main(int argc, char* argv[]) {

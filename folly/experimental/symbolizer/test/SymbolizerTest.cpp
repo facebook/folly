@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/experimental/symbolizer/test/SymbolizerTest.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
 #include <cstdlib>
@@ -44,16 +45,6 @@ TEST(Symbolizer, Single) {
     basename.advance(pos + 1);
   }
   EXPECT_EQ("SymbolizerTest.cpp", basename.str());
-}
-
-FrameArray<100>* framesToFill{nullptr};
-
-int comparator(const void* ap, const void* bp) {
-  getStackTrace(*framesToFill);
-
-  int a = *static_cast<const int*>(ap);
-  int b = *static_cast<const int*>(bp);
-  return a < b ? -1 : a > b ? 1 : 0;
 }
 
 // Test stack frames...
@@ -125,6 +116,78 @@ TEST(SymbolizerTest, SymbolCache) {
   for (size_t i = 0; i < frames.frameCount; i++) {
     EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
   }
+}
+
+namespace {
+
+FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<100>& frames) {
+  inlineFoo(frames);
+}
+
+} // namespace
+
+TEST(SymbolizerTest, InlineFunctionBasic) {
+  Symbolizer symbolizer(
+      nullptr, Dwarf::LocationInfoMode::FULL_WITH_INLINE, 100);
+
+  FrameArray<100> frames;
+  inlineBar(frames);
+  symbolizer.symbolize(frames);
+
+  StringSymbolizePrinter printer;
+  // Stack trace for SymbolizerTest_InlineFunctionBasic_Test function call.
+  printer.print(4, frames.frames[4]);
+  EXPECT_STREQ(
+      printer.str().c_str(),
+      R"(    @ 0000000000000004 folly::symbolizer::test::SymbolizerTest_InlineFunctionBasic_Test::TestBody()
+                       ./folly/experimental/symbolizer/test/SymbolizerTest.h:134
+                       -> ./folly/experimental/symbolizer/test/SymbolizerTest.cpp
+                       inlineBar
+                       folly/experimental/symbolizer/test/SymbolizerTest.cpp:124
+                       inlineFoo
+                       folly/experimental/symbolizer/test/SymbolizerTest.h:39)");
+}
+TEST(SymbolizerTest, InlineFunctionInSeparateFile) {
+  Symbolizer symbolizer(
+      nullptr, Dwarf::LocationInfoMode::FULL_WITH_INLINE, 100);
+
+  FrameArray<100> frames;
+  inlineFunctionInSeparateFile(frames);
+  symbolizer.symbolize(frames);
+
+  StringSymbolizePrinter printer;
+  // Stack trace for SymbolizerTest_InlineFunctionInSeparateFile_Test function
+  // call.
+  printer.print(4, frames.frames[4]);
+  EXPECT_STREQ(
+      printer.str().c_str(),
+      R"(    @ 0000000000000004 folly::symbolizer::test::SymbolizerTest_InlineFunctionInSeparateFile_Test::TestBody()
+                       ./folly/experimental/symbolizer/test/SymbolizerTest.h:155
+                       -> ./folly/experimental/symbolizer/test/SymbolizerTest.cpp
+                       inlineFunctionInSeparateFile
+                       folly/experimental/symbolizer/test/SymbolizerTest.h:44
+                       inlineFoo
+                       folly/experimental/symbolizer/test/SymbolizerTest.h:39)");
+}
+
+// Not supported yet.
+TEST(SymbolizerTest, InlineFunctionInClass) {
+  Symbolizer symbolizer(
+      nullptr, Dwarf::LocationInfoMode::FULL_WITH_INLINE, 100);
+
+  FrameArray<100> frames;
+  ClassWithInlineFunction cif;
+  cif.inlineFunctionInClass(frames);
+  symbolizer.symbolize(frames);
+
+  StringSymbolizePrinter printer;
+  // Stack trace for SymbolizerTest_InlineFunctionInClass_Test function call.
+  printer.print(4, frames.frames[4]);
+  EXPECT_STREQ(
+      printer.str().c_str(),
+      R"(    @ 0000000000000004 folly::symbolizer::test::SymbolizerTest_InlineFunctionInClass_Test::TestBody()
+                       ./folly/experimental/symbolizer/test/SymbolizerTest.h:39
+                       -> ./folly/experimental/symbolizer/test/SymbolizerTest.cpp)");
 }
 
 } // namespace test

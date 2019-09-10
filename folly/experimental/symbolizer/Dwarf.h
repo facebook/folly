@@ -20,6 +20,7 @@
 
 #include <boost/variant.hpp>
 
+#include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 
@@ -115,9 +116,21 @@ class Dwarf {
     FAST,
     // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
     FULL,
+    // Scan .debug_info (super slower, use with caution) for inline functions in
+    // addition to FULL.
+    FULL_WITH_INLINE,
   };
 
+  // More than one location info may exist if current frame is an inline
+  // function call.
+  static const uint32_t kMaxLocationInfoPerFrame = 5;
+
   struct LocationInfo {
+    // Whether the location info is filled.
+    bool empty = true;
+
+    // Function name in call stack.
+    folly::StringPiece name;
     bool hasMainFile = false;
     Path mainFile;
 
@@ -126,21 +139,19 @@ class Dwarf {
     uint64_t line = 0;
   };
 
-  /**
-   * Find the file and line number information corresponding to address.
-   */
-  bool findAddress(uintptr_t address, LocationInfo& info, LocationInfoMode mode)
-      const;
+  // Find the file and line number information corresponding to address.
+  bool findAddress(
+      uintptr_t address,
+      LocationInfoMode mode,
+      LocationInfo& info,
+      LocationInfo inlineInfo[],
+      uint32_t maxNumInline = kMaxLocationInfoPerFrame) const;
 
  private:
   static bool
   findDebugInfoOffset(uintptr_t address, StringPiece aranges, uint64_t& offset);
 
   void init();
-  bool findLocation(
-      uintptr_t address,
-      StringPiece& infoEntry,
-      LocationInfo& info) const;
 
   const ElfFile* elf_;
 
@@ -169,18 +180,78 @@ class Dwarf {
     folly::StringPiece data_;
   };
 
+  struct AttributeSpec {
+    uint64_t name = 0;
+    uint64_t form = 0;
+
+    explicit operator bool() const {
+      return name != 0 || form != 0;
+    }
+  };
+
   // Abbreviation for a Debugging Information Entry.
   struct DIEAbbreviation {
     uint64_t code;
     uint64_t tag;
-    bool hasChildren;
-
-    struct Attribute {
-      uint64_t name;
-      uint64_t form;
-    };
+    bool hasChildren = false;
 
     folly::StringPiece attributes;
+  };
+
+  // Maximum number of DIEAbbreviation to cache in a compilation unit. Used to
+  // speed up inline function lookup.
+  static const uint32_t kMaxAbbreviationEntries = 1000;
+
+  // A top level chunk in the .debug_info that contains a compilation unit.
+  struct CompilationUnit {
+    // Offset in .debug_info of this compilation unit.
+    uint64_t offset;
+    uint64_t size;
+    bool is64Bit;
+    uint8_t version;
+    uint8_t addrSize;
+    uint64_t abbrevOffset;
+    // Offset in .debug_info for the first DIE in this compilation unit.
+    uint64_t firstDie;
+    // Only the CompilationUnit that contains the caller functions needs this
+    // cache.
+    // Indexed by (abbr.code - 1) if (abbr.code - 1) < abbrCache.size();
+    folly::Range<DIEAbbreviation*> abbrCache;
+  };
+
+  // Debugging information entry to define a low-level representation of a
+  // source program. Each debugging information entry consists of an identifying
+  // tag and a series of attributes. An entry, or group of entries together,
+  // provide a description of a corresponding entity in the source program.
+  struct Die {
+    const CompilationUnit* cu;
+    // Offset within debug info.
+    uint64_t offset;
+    bool is64Bit;
+    uint64_t code;
+    // Offset from start to first attribute
+    uint8_t attrOffset;
+    // If we know where the next sibling is (eg via DW_AT_sibling), and
+    // it fits in uint32_t, the delta we need to add to offset to get
+    // there; otherwise zero.
+    uint32_t siblingDelta;
+    // If we know where the next die is, and it fits in uint32_t, this
+    // is the delta we need to add to offset to get there; otherwise zero.
+    // if there are no children, this will be the same as sibling.
+    uint32_t nextDieDelta;
+    DIEAbbreviation abbr;
+  };
+
+  struct Attribute {
+    AttributeSpec spec;
+    Die* die;
+    boost::variant<uint64_t, folly::StringPiece> attrValue;
+  };
+
+  struct CodeLocation {
+    CompilationUnit cu;
+    Die die;
+    uint64_t line;
   };
 
   // Interpreter for the line number bytecode VM
@@ -191,6 +262,12 @@ class Dwarf {
         folly::StringPiece compilationDirectory);
 
     bool findAddress(uintptr_t address, Path& file, uint64_t& line);
+
+    // Gets full file name at given index including directory.
+    Path getFullFileName(uint64_t index) const {
+      auto fn = getFileName(index);
+      return Path({}, getIncludeDirectory(fn.directoryIndex), fn.relativeName);
+    }
 
    private:
     void init();
@@ -261,26 +338,81 @@ class Dwarf {
     uint64_t discriminator_;
   };
 
-  // Read an abbreviation from a StringPiece, return true if at end; advance sp
+  using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
+
+  // Finds the Compilation Unit starting at offset.
+  void getCompilationUnit(
+      Dwarf::CompilationUnit& cu,
+      uint64_t offset,
+      Dwarf::DIEAbbreviation* abbrs) const;
+  // Finds the Compilation Unit that contains offset.
+  CompilationUnit findCompilationUnit(uint64_t offset) const;
+
+  // cu must exist during the life cycle of created Die.
+  Die getDieAtOffset(const CompilationUnit& cu, uint64_t offset) const;
+  Die getNextSibling(Die& die) const;
+
+  // Reads an abbreviation from a StringPiece, return true if at end; advance sp
   static bool readAbbreviation(folly::StringPiece& sp, DIEAbbreviation& abbr);
 
-  // Get abbreviation corresponding to a code, in the chunk starting at
+  // Gets abbreviation corresponding to a code, in the chunk starting at
   // offset in the .debug_abbrev section
   DIEAbbreviation getAbbreviation(uint64_t code, uint64_t offset) const;
 
-  // Read one attribute <name, form> pair, advance sp; returns <0, 0> at end.
-  static DIEAbbreviation::Attribute readAttribute(folly::StringPiece& sp);
+  // Reads attribute name and form from sp.
+  static AttributeSpec readAttributeSpec(folly::StringPiece& sp);
 
-  // Read one attribute value, advance sp
-  typedef boost::variant<uint64_t, folly::StringPiece> AttributeValue;
-  AttributeValue
-  readAttributeValue(folly::StringPiece& sp, uint64_t form, bool is64Bit) const;
+  // Reads attribute value of given DIE
+  Attribute readAttribute(Die& die, AttributeSpec& spec, folly::StringPiece& sp)
+      const;
+
+  // Finds a subprogram debugging info entry that contains a given address among
+  // children of given die. Depth first search.
+  void findSubProgramDieForAddress(
+      Dwarf::Die& die,
+      uint64_t address,
+      Dwarf::Die& subprogram) const;
+
+  // Finds inlined subroutine DIEs and their caller lines that contains a given
+  // address among children of given die. Depth first search.
+  void findInlinedSubroutineDieForAddress(
+      const CompilationUnit& cu,
+      Dwarf::Die& die,
+      uint64_t address,
+      CodeLocation* isrLoc,
+      uint32_t& numFound) const;
+
+  // Iterates over all children of a debugging info entry, calling the given
+  // callable for each. Iteration is stopped early if any of the calls return
+  // false.
+  template <typename F>
+  void forEachChild(Die& die, F&& f) const;
+
+  // Iterates over all attributes of a debugging info entry,  calling the given
+  // callable for each. Iteration is stopped early if any of the calls return
+  // false.
+  template <typename F>
+  void forEachAttribute(Die& die, F&& f) const;
+
+  // Iterate over all attributes of the given DIE, and move to its first child
+  // if any or its next sibling.
+  void moveToNextDie(Dwarf::Die& die) const;
 
   // Get an ELF section by name, return true if found
   bool getSection(const char* name, folly::StringPiece* section) const;
 
-  // Get a string from the .debug_str section
+  // Gets a string from the .debug_str section
   folly::StringPiece getStringFromStringSection(uint64_t offset) const;
+
+  // Finds location info (file and line) for a given address in the given
+  // compilation unit.
+  bool findLocation(
+      uintptr_t address,
+      const LocationInfoMode mode,
+      const CompilationUnit& unit,
+      LocationInfo& info,
+      LocationInfo inlineInfo[],
+      uint32_t maxNumInline = kMaxLocationInfoPerFrame) const;
 
   folly::StringPiece info_; // .debug_info
   folly::StringPiece abbrev_; // .debug_abbrev

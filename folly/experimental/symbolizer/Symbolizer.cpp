@@ -76,8 +76,15 @@ void SymbolizedFrame::set(
 
   file_ = file;
   name = file->getSymbolName(sym);
+  location.name = name;
 
-  Dwarf(file.get()).findAddress(address, location, mode);
+  Dwarf(file.get())
+      .findAddress(
+          address,
+          mode,
+          location,
+          inlineLocations,
+          Dwarf::kMaxLocationInfoPerFrame);
 }
 
 Symbolizer::Symbolizer(
@@ -215,52 +222,19 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
     doPrint(formatter.format(address));
   }
 
-  const char padBuf[] = "                       ";
-  folly::StringPiece pad(
-      padBuf, sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
-
   color(kFunctionColor);
   if (!frame.found) {
     doPrint(" (not found)");
     return;
   }
 
-  if (!frame.name || frame.name[0] == '\0') {
-    doPrint(" (unknown)");
-  } else {
-    char demangledBuf[2048];
-    demangle(frame.name, demangledBuf, sizeof(demangledBuf));
-    doPrint(" ");
-    doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
-  }
-
-  if (!(options_ & NO_FILE_AND_LINE)) {
-    color(kFileColor);
-    char fileBuf[PATH_MAX];
-    fileBuf[0] = '\0';
-    if (frame.location.hasFileAndLine) {
-      frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
-      doPrint("\n");
-      doPrint(pad);
-      doPrint(fileBuf);
-
-      char buf[22];
-      uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
-      doPrint(":");
-      doPrint(StringPiece(buf, n));
+  printLocationInfo(frame.location, false);
+  for (const Dwarf::LocationInfo& location : frame.inlineLocations) {
+    if (location.empty) {
+      break;
     }
-
-    if (frame.location.hasMainFile) {
-      char mainFileBuf[PATH_MAX];
-      mainFileBuf[0] = '\0';
-      frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
-      if (!frame.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
-        doPrint("\n");
-        doPrint(pad);
-        doPrint("-> ");
-        doPrint(mainFileBuf);
-      }
-    }
+    doPrint("\n");
+    printLocationInfo(location, true);
   }
 }
 
@@ -309,6 +283,60 @@ void SymbolizePrinter::println(
     size_t frameCount) {
   for (size_t i = 0; i < frameCount; ++i) {
     println(addresses[i], frames[i]);
+  }
+}
+
+void SymbolizePrinter::printLocationInfo(
+    const Dwarf::LocationInfo& location,
+    bool isInline) {
+  const char padBuf[] = "                       ";
+  folly::StringPiece pad(
+      padBuf, sizeof(padBuf) - 1 - (16 - 2 * sizeof(uintptr_t)));
+
+  // Inline function has no address in stack trace.
+  if (isInline) {
+    doPrint(pad);
+  }
+
+  color(kFunctionColor);
+  if (location.name.empty()) {
+    doPrint(" (unknown)");
+  } else if (isInline) {
+    doPrint(location.name);
+  } else {
+    char demangledBuf[2048];
+    demangle(location.name.data(), demangledBuf, sizeof(demangledBuf));
+    doPrint(" ");
+    doPrint(demangledBuf[0] == '\0' ? location.name : demangledBuf);
+  }
+
+  if (!(options_ & NO_FILE_AND_LINE)) {
+    color(kFileColor);
+    char fileBuf[PATH_MAX];
+    fileBuf[0] = '\0';
+    if (location.hasFileAndLine) {
+      location.file.toBuffer(fileBuf, sizeof(fileBuf));
+      doPrint("\n");
+      doPrint(pad);
+      doPrint(fileBuf);
+
+      char buf[22];
+      uint32_t n = uint64ToBufferUnsafe(location.line, buf);
+      doPrint(":");
+      doPrint(StringPiece(buf, n));
+    }
+
+    if (location.hasMainFile) {
+      char mainFileBuf[PATH_MAX];
+      mainFileBuf[0] = '\0';
+      location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
+      if (!location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {
+        doPrint("\n");
+        doPrint(pad);
+        doPrint("-> ");
+        doPrint(mainFileBuf);
+      }
+    }
   }
 }
 
