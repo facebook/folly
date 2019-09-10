@@ -65,8 +65,8 @@ constexpr std::memory_order atomic_compare_exchange_succ(
 template <typename T>
 bool atomic_compare_exchange_weak_explicit(
     std::atomic<T>* obj,
-    typename std::atomic<T>::value_type* expected,
-    typename std::atomic<T>::value_type desired,
+    T* expected,
+    T desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);
@@ -77,8 +77,8 @@ bool atomic_compare_exchange_weak_explicit(
 template <typename T>
 bool atomic_compare_exchange_strong_explicit(
     std::atomic<T>* obj,
-    typename std::atomic<T>::value_type* expected,
-    typename std::atomic<T>::value_type desired,
+    T* expected,
+    T desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);

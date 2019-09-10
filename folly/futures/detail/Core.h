@@ -595,7 +595,7 @@ class Core final {
         : State::OnlyCallback;
 
     if (state == State::Start) {
-      if (atomic_compare_exchange_strong_explicit(
+      if (folly::atomic_compare_exchange_strong_explicit(
               &state_,
               &state,
               nextState,
@@ -633,7 +633,7 @@ class Core final {
     auto state = state_.load(std::memory_order_acquire);
     switch (state) {
       case State::Start:
-        if (atomic_compare_exchange_strong_explicit(
+        if (folly::atomic_compare_exchange_strong_explicit(
                 &state_,
                 &state,
                 State::Proxy,
@@ -687,7 +687,7 @@ class Core final {
     auto state = state_.load(std::memory_order_acquire);
     switch (state) {
       case State::Start:
-        if (atomic_compare_exchange_strong_explicit(
+        if (folly::atomic_compare_exchange_strong_explicit(
                 &state_,
                 &state,
                 State::OnlyResult,

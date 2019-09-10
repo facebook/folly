@@ -30,8 +30,8 @@ namespace folly {
 template <typename T>
 bool atomic_compare_exchange_weak_explicit(
     std::atomic<T>* obj,
-    typename std::atomic<T>::value_type* expected,
-    typename std::atomic<T>::value_type desired,
+    T* expected,
+    T desired,
     std::memory_order succ,
     std::memory_order fail);
 
@@ -42,10 +42,10 @@ bool atomic_compare_exchange_weak_explicit(
 //
 //  mimic: std::atomic_compare_exchange_strong
 template <typename T>
-bool atomic_compare_exchange_weak_explicit(
+bool atomic_compare_exchange_strong_explicit(
     std::atomic<T>* obj,
-    typename std::atomic<T>::value_type* expected,
-    typename std::atomic<T>::value_type desired,
+    T* expected,
+    T desired,
     std::memory_order succ,
     std::memory_order fail);
 
