@@ -327,10 +327,9 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
   template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
       FollyMemoryDetailTranslationUnitTag,                      \
       TYPE,                                                     \
-      std::vector<TYPE>::_Vector_impl(                          \
-          std::_Vector_base<TYPE, std::allocator<TYPE>>::*),    \
+      decltype(&std::vector<TYPE>::_M_impl),                    \
       &std::vector<TYPE>::_M_impl,                              \
-      TYPE*(std::vector<TYPE>::_Vector_impl::*),                \
+      decltype(&std::vector<TYPE>::_Vector_impl::_M_finish),    \
       &std::vector<TYPE>::_Vector_impl::_M_finish>;             \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
