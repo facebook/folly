@@ -15,10 +15,86 @@
  */
 
 /**
- * Converts anything to anything, with an emphasis on performance and
- * safety.
  *
- * @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
+ * This file provides a generic interface for converting objects to and from
+ * string-like types (std::string, fbstring, StringPiece), as well as
+ * range-checked conversions between numeric and enum types. The mechanisms are
+ * extensible, so that user-specified types can add folly::to support.
+ *
+ *******************************************************************************
+ * TYPE -> STRING CONVERSIONS
+ *******************************************************************************
+ * You can call the to<std::string> or to<fbstring>. These are variadic
+ * functions that convert their arguments to strings, and concatenate them to
+ * form a result. So, for example,
+ *
+ * auto str = to<std::string>(123, "456", 789);
+ *
+ * Sets str to "123456789".
+ *
+ * In addition to just concatenating the arguments, related functions can
+ * delimit them with some string: toDelim<std::string>(",", "123", 456, "789")
+ * will return the string "123,456,789".
+ *
+ * toAppend does not return a string; instead, it takes a pointer to a string as
+ * its last argument, and appends the result of the concatenation into it:
+ * std::string str = "123";
+ * toAppend(456, "789", &str); // Now str is "123456789".
+ *
+ * The toAppendFit function acts like toAppend, but it precalculates the size
+ * required to perform the append operation, and reserves that space in the
+ * output string before actually inserting its arguments. This can sometimes
+ * save on string expansion, but beware: appending to the same string many times
+ * with toAppendFit is likely a pessimization, since it will resize the string
+ * once per append.
+ *
+ * The combination of the append and delim variants also exist: toAppendDelim
+ * and toAppendDelimFit are defined, with the obvious semantics.
+ *
+ *******************************************************************************
+ * STRING -> TYPE CONVERSIONS
+ *******************************************************************************
+ * Going in the other direction, and parsing a string into a C++ type, is also
+ * supported:
+ * to<int>("123"); // Returns 123.
+ *
+ * Out of range (e.g. to<std::uint8_t>("1000")), or invalidly formatted (e.g.
+ * to<int>("four")) inputs will throw. If throw-on-error is undesirable (for
+ * instance: you're dealing with untrusted input, and want to protect yourself
+ * from users sending you down a very slow exception-throwing path), you can use
+ * tryTo<T>, which will return an Expected<T, ConversionCode>.
+ *
+ * There are overloads of to() and tryTo() that take a StringPiece*. These parse
+ * out a type from the beginning of a string, and modify the passed-in
+ * StringPiece to indicate the portion of the string not consumed.
+ *
+ *******************************************************************************
+ * NUMERIC / ENUM CONVERSIONS
+ *******************************************************************************
+ * Conv also supports a to<T>(S) overload, where T and S are numeric or enum
+ * types, that checks to see that the target type can represent its argument,
+ * and will throw if it cannot. This includes cases where a floating point ->
+ * integral conversion is attempted on a value with a non-zero fractional
+ * component, and integral -> floating point conversions that would lose
+ * precision. Enum conversions are range-checked for the underlying type of the
+ * enum, but there is no check that the input value is a valid choice of enum
+ * value.
+ *
+ *******************************************************************************
+ * CUSTOM TYPE CONVERSIONS
+ *******************************************************************************
+ * Users may customize the string conversion functionality for their own data
+ * types, . The key functions you should implement are:
+ * // Two functions to allow conversion to your type from a string.
+ * Expected<StringPiece, ConversionCode> parseTo(folly::StringPiece in,
+ *     YourType& out);
+ * YourErrorType makeConversionError(YourErrorType in, StringPiece in);
+ * // Two functions to allow conversion from your type to a string.
+ * template <class String>
+ * void toAppend(const YourType& in, String* out);
+ * size_t estimateSpaceNeeded(const YourType& in);
+ *
+ * These are documented below, inline.
  */
 
 #pragma once
