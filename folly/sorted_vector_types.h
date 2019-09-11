@@ -686,12 +686,20 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     explicit EBO(const Compare& c, const Allocator& alloc) noexcept(
         std::is_nothrow_default_constructible<Container>::value)
         : Compare(c), cont_(alloc) {}
+    EBO(const EBO& other, const Allocator& alloc)
+    noexcept(std::is_nothrow_constructible<
+             Container,
+             const Container&,
+             const Allocator&>::value)
+        : Compare(static_cast<const Compare&>(other)),
+          cont_(other.cont_, alloc) {}
     EBO(EBO&& other, const Allocator& alloc)
     noexcept(std::is_nothrow_constructible<
              Container,
              Container&&,
              const Allocator&>::value)
-        : Compare(), cont_(std::move(other.cont_), alloc) {}
+        : Compare(static_cast<Compare&&>(other)),
+          cont_(std::move(other.cont_), alloc) {}
     EBO(const Compare& c, Container&& cont)
     noexcept(std::is_nothrow_move_constructible<Container>::value)
         : Compare(c), cont_(std::move(cont)) {}
@@ -1220,12 +1228,20 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     explicit EBO(const value_compare& c, const Allocator& alloc) noexcept(
         std::is_nothrow_default_constructible<Container>::value)
         : value_compare(c), cont_(alloc) {}
+    EBO(const EBO& other, const Allocator& alloc)
+    noexcept(std::is_nothrow_constructible<
+             Container,
+             const Container&,
+             const Allocator&>::value)
+        : value_compare(static_cast<const value_compare&>(other)),
+          cont_(other.cont_, alloc) {}
     EBO(EBO&& other, const Allocator& alloc)
     noexcept(std::is_nothrow_constructible<
              Container,
              Container&&,
              const Allocator&>::value)
-        : value_compare(Compare()), cont_(std::move(other.cont_), alloc) {}
+        : value_compare(static_cast<value_compare&&>(other)),
+          cont_(std::move(other.cont_), alloc) {}
     EBO(const Compare& c, Container&& cont)
     noexcept(std::is_nothrow_move_constructible<Container>::value)
         : value_compare(c), cont_(std::move(cont)) {}

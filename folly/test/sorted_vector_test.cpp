@@ -931,6 +931,62 @@ TEST(SortedVectorTypes, TestPmrAllocatorSimple) {
   EXPECT_THROW(m.emplace(42, 42), std::bad_alloc);
 }
 
+TEST(SortedVectorTypes, TestPmrCopyConstructSameAlloc) {
+  namespace pmr = folly::pmr;
+
+  set_default_resource(null_memory_resource());
+
+  test_resource r;
+  polymorphic_allocator<std::byte> a1(&r), a2(&r);
+  EXPECT_EQ(a1, a2);
+
+  {
+    pmr::sorted_vector_set<int> s1(a1);
+    s1.emplace(42);
+
+    pmr::sorted_vector_set<int> s2(s1, a2);
+    EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
+    EXPECT_EQ(s2.count(42), 1);
+  }
+
+  {
+    pmr::sorted_vector_map<int, int> m1(a1);
+    m1.emplace(42, 42);
+
+    pmr::sorted_vector_map<int, int> m2(m1, a2);
+    EXPECT_EQ(m1.get_allocator(), m2.get_allocator());
+    EXPECT_EQ(m2.at(42), 42);
+  }
+}
+
+TEST(SortedVectorTypes, TestPmrCopyConstructDifferentAlloc) {
+  namespace pmr = folly::pmr;
+
+  set_default_resource(null_memory_resource());
+
+  test_resource r1, r2;
+  polymorphic_allocator<std::byte> a1(&r1), a2(&r2);
+  EXPECT_NE(a1, a2);
+
+  {
+    pmr::sorted_vector_set<int> s1(a1);
+    s1.emplace(42);
+
+    pmr::sorted_vector_set<int> s2(s1, a2);
+    EXPECT_NE(s1.get_allocator(), s2.get_allocator());
+    EXPECT_EQ(s2.count(42), 1);
+  }
+
+  {
+    pmr::sorted_vector_map<int, int> m1(a1);
+    m1.emplace(42, 42);
+
+    pmr::sorted_vector_map<int, int> m2(m1, a2);
+    EXPECT_NE(m1.get_allocator(), m2.get_allocator());
+    EXPECT_EQ(m2.at(42), 42);
+  }
+}
+
 TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
   namespace pmr = folly::pmr;
 
@@ -946,7 +1002,9 @@ TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = s1.data();
 
     pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    EXPECT_EQ(s1.get_allocator(), s2.get_allocator());
     EXPECT_EQ(s2.data(), d);
+    EXPECT_EQ(s2.count(42), 1);
   }
 
   {
@@ -955,7 +1013,9 @@ TEST(SortedVectorTypes, TestPmrMoveConstructSameAlloc) {
     auto d = m1.data();
 
     pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    EXPECT_EQ(m1.get_allocator(), m2.get_allocator());
     EXPECT_EQ(m2.data(), d);
+    EXPECT_EQ(m2.at(42), 42);
   }
 }
 
@@ -974,7 +1034,9 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = s1.data();
 
     pmr::sorted_vector_set<int> s2(std::move(s1), a2);
+    EXPECT_NE(s1.get_allocator(), s2.get_allocator());
     EXPECT_NE(s2.data(), d);
+    EXPECT_EQ(s2.count(42), 1);
   }
 
   {
@@ -983,7 +1045,9 @@ TEST(SortedVectorTypes, TestPmrMoveConstructDifferentAlloc) {
     auto d = m1.data();
 
     pmr::sorted_vector_map<int, int> m2(std::move(m1), a2);
+    EXPECT_NE(m1.get_allocator(), m2.get_allocator());
     EXPECT_NE(m2.data(), d);
+    EXPECT_EQ(m2.at(42), 42);
   }
 }
 
