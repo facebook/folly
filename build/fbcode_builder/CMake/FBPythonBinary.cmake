@@ -23,18 +23,45 @@ include(FBCMakeParseArgs)
 # library paths.
 #
 
+# If the caller has not already found Python, do so now.
+# If we fail to find python now we won't fail immediately, but
+# add_fb_python_executable() or add_fb_python_library() will fatal out if they
+# are used.
+if(NOT Python3_EXECUTABLE)
+  # CMake 3.12+ ships with a FindPython3.cmake module.  Try using it first.
+  # We find with QUIET here, since otherwise this generates some noisy warnings
+  # on versions of CMake before 3.12
+  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if(Python3_Interpreter_FOUND)
+    message(STATUS "Found Python 3: ${Python3_EXECUTABLE}")
+  else()
+    # Try with the FindPythonInterp.cmake module available in older CMake
+    # versions.  Check to see if the caller has already searched for this
+    # themselves first.
+    if(NOT PYTHONINTERP_FOUND)
+      set(Python_ADDITIONAL_VERSIONS 3 3.6 3.5 3.4 3.3 3.2 3.1)
+      find_package(PythonInterp)
+    endif()
+    if(PYTHONINTERP_FOUND)
+      if("${PYTHON_VERSION_MAJOR}" GREATER_EQUAL 3)
+        set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+      else()
+        string(
+          CONCAT FBPY_FIND_PYTHON_ERR
+          "found Python ${PYTHON_VERSION_MAJOR}.${PYTHON_VERSION_MINOR}, "
+          "but need Python 3"
+        )
+      endif()
+    endif()
+  endif()
+endif()
+
 # Find our helper program.
 # We typically install this in the same directory as this .cmake file.
 find_program(
-  MAKE_PYTHON_ARCHIVE "make_fbpy_archive.py"
+  FB_MAKE_PYTHON_ARCHIVE "make_fbpy_archive.py"
   PATHS ${CMAKE_MODULE_PATH}
 )
-if (NOT MAKE_PYTHON_ARCHIVE)
-  message(
-    FATAL_ERROR "unable to find make_fbpy_archive.py helper program (it "
-    "should be located in the same directory as FBPythonRules.cmake)"
-  )
-endif()
 
 # An option to control the default installation location for
 # install_fb_python_library().  This is relative to ${CMAKE_INSTALL_PREFIX}
@@ -52,7 +79,10 @@ set(
 # which module should be started as the __main__ module when the executable is
 # run.  If left unspecified, a __main__.py script must be present in the
 # manifest.
+#
 function(add_fb_python_executable EXE_NAME)
+  fb_py_check_available()
+
   # Parse the arguments
   set(one_value_args BASE_DIR NAMESPACE MAIN_MODULE TYPE)
   set(multi_value_args SOURCES DEPENDS)
@@ -107,19 +137,20 @@ function(add_fb_python_executable EXE_NAME)
   endif()
 
   if(DEFINED ARG_MAIN_MODULE)
-    set(main_argument "--main" "${ARG_MAIN_MODULE}")
+    list(APPEND make_py_args "--main" "${ARG_MAIN_MODULE}")
   endif()
 
   add_custom_command(
     OUTPUT "${output_file}"
     ${extra_cmd_params}
     COMMAND
-      "${MAKE_PYTHON_ARCHIVE}" -o "${EXE_NAME}" ${main_argument}
+      "${Python3_EXECUTABLE}" "${FB_MAKE_PYTHON_ARCHIVE}"
+      -o "${EXE_NAME}"
       ${make_py_args}
     DEPENDS
       ${source_files}
       "${EXE_NAME}.main_lib.py_sources_built"
-      "${MAKE_PYTHON_ARCHIVE}"
+      "${FB_MAKE_PYTHON_ARCHIVE}"
   )
 
   # Add an "ALL" target that depends on force ${EXE_NAME},
@@ -184,6 +215,8 @@ endfunction()
 #   will then be read at build-time in order to build executables.
 #
 function(add_fb_python_library LIB_NAME)
+  fb_py_check_available()
+
   # Parse the arguments
   # We use fb_cmake_parse_args() rather than cmake_parse_arguments() since
   # cmake_parse_arguments() does not handle empty arguments, and it is common
@@ -332,13 +365,13 @@ function(add_fb_python_library LIB_NAME)
       "${build_install_dir}/${LIB_NAME}.manifest"
     COMMAND "${CMAKE_COMMAND}" -E remove_directory "${build_install_dir}"
     COMMAND
-      "${MAKE_PYTHON_ARCHIVE}" --type lib-install
+      "${Python3_EXECUTABLE}" "${FB_MAKE_PYTHON_ARCHIVE}" --type lib-install
       --install-dir "${LIB_NAME}"
       -o "${build_install_dir}/${LIB_NAME}" "${manifest_path}"
     DEPENDS
       "${abs_sources}"
       "${manifest_path}"
-      "${MAKE_PYTHON_ARCHIVE}"
+      "${FB_MAKE_PYTHON_ARCHIVE}"
   )
   add_custom_target(
     "${LIB_NAME}.py_lib_install"
@@ -435,3 +468,22 @@ macro(fb_py_process_default_args NAMESPACE_VAR BASE_DIR_VAR)
     get_filename_component("${BASE_DIR_VAR}" "${${BASE_DIR_VAR}}" ABSOLUTE)
   endif()
 endmacro()
+
+function(fb_py_check_available)
+  # Make sure that Python 3 and our make_fbpy_archive.py helper script are
+  # available.
+  if(NOT Python3_EXECUTABLE)
+    if(FBPY_FIND_PYTHON_ERR)
+      message(FATAL_ERROR "Unable to find Python 3: ${FBPY_FIND_PYTHON_ERR}")
+    else()
+      message(FATAL_ERROR "Unable to find Python 3")
+    endif()
+  endif()
+
+  if (NOT FB_MAKE_PYTHON_ARCHIVE)
+    message(
+      FATAL_ERROR "unable to find make_fbpy_archive.py helper program (it "
+      "should be located in the same directory as FBPythonRules.cmake)"
+    )
+  endif()
+endfunction()
