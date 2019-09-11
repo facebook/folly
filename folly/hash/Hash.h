@@ -39,7 +39,21 @@
 namespace folly {
 namespace hash {
 
-uint64_t hash_128_to_64(const uint64_t upper, const uint64_t lower) noexcept;
+// This is the Hash128to64 function from Google's cityhash (available
+// under the MIT License).  We use it to reduce multiple 64 bit hashes
+// into a single hash.
+inline uint64_t hash_128_to_64(
+    const uint64_t upper,
+    const uint64_t lower) noexcept {
+  // Murmur-inspired hashing.
+  const uint64_t kMul = 0x9ddfea08eb382d69ULL;
+  uint64_t a = (lower ^ upper) * kMul;
+  a ^= (a >> 47);
+  uint64_t b = (upper ^ a) * kMul;
+  b ^= (b >> 47);
+  b *= kMul;
+  return b;
+}
 
 //////////////////////////////////////////////////////////////////////
 
@@ -595,22 +609,6 @@ class StdHasher {
 // order-dependent way) for items in the range [first, last);
 // commutative_hash_combine_* hashes values but combines them in an
 // order-independent way to yield a new hash.
-
-// This is the Hash128to64 function from Google's cityhash (available
-// under the MIT License).  We use it to reduce multiple 64 bit hashes
-// into a single hash.
-inline uint64_t hash_128_to_64(
-    const uint64_t upper,
-    const uint64_t lower) noexcept {
-  // Murmur-inspired hashing.
-  const uint64_t kMul = 0x9ddfea08eb382d69ULL;
-  uint64_t a = (lower ^ upper) * kMul;
-  a ^= (a >> 47);
-  uint64_t b = (upper ^ a) * kMul;
-  b ^= (b >> 47);
-  b *= kMul;
-  return b;
-}
 
 template <class Hash, class Value>
 uint64_t commutative_hash_combine_value_generic(
