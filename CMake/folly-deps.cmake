@@ -8,7 +8,6 @@ endif(MSVC)
 find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
-    chrono
     date_time
     filesystem
     program_options
