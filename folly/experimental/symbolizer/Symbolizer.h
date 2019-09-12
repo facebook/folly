@@ -56,12 +56,6 @@ struct SymbolizedFrame {
   bool found = false;
   const char* name = nullptr;
   Dwarf::LocationInfo location;
-  // If stack trace happens on an inline function call, more than one locations
-  // need to be printed. First element is always the location of caller
-  // function, and the subsequent locations are inline function locations if
-  // applicable. std::vector is not used here in favor of signal-safe and memory
-  // constrained situations like std::bad_alloc.
-  Dwarf::LocationInfo inlineLocations[Dwarf::kMaxLocationInfoPerFrame];
 
   /**
    * Demangle the name and return it. Not async-signal-safe; allocates memory.
@@ -259,9 +253,6 @@ class SymbolizePrinter {
 
  private:
   void printTerse(uintptr_t address, const SymbolizedFrame& frame);
-  void printLocationInfo(
-      const Dwarf::LocationInfo& locationInfo,
-      bool isInline);
   virtual void doPrint(StringPiece sp) = 0;
 
   static constexpr std::array<const char*, Color::NUM> kColorMap = {{
