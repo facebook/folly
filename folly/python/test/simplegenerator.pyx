@@ -17,8 +17,7 @@ from cpython.ref cimport PyObject
 from folly cimport cFollyTry
 from folly.coro cimport bridgeCoroTaskWith
 from folly.executor cimport cAsyncioExecutor, get_executor
-from folly.async_generator cimport cAsyncGenerator, cAsyncGeneratorWrapper
-from folly.optional cimport cOptional
+from folly.async_generator cimport cAsyncGenerator, cAsyncGeneratorWrapper, cNextResult
 
 
 cdef extern from "folly/python/test/simplegenerator.h" namespace "folly::python::test":
@@ -50,10 +49,9 @@ cdef class SimpleGenerator:
 
     @staticmethod
     cdef void callback(
-        cFollyTry[cOptional[int]]&& res,
+        cFollyTry[cNextResult[int]]&& res,
         PyObject* py_future,
     ):
-        cdef cOptional[int] opt_val
         future = <object> py_future
         if res.hasException():
             try:
@@ -61,9 +59,8 @@ cdef class SimpleGenerator:
             except Exception as ex:
                 future.set_exception(ex)
         else:
-            opt_val = res.value()
-            if opt_val.has_value():
-                future.set_result(opt_val.value())
+            if res.value().has_value():
+                future.set_result(res.value().value())
             else:
                 future.set_exception(StopAsyncIteration())
 
@@ -73,7 +70,7 @@ cdef class SimpleGenerator:
     def __anext__(self):
         loop = asyncio.get_event_loop()
         future = loop.create_future()
-        bridgeCoroTaskWith[cOptional[int]](
+        bridgeCoroTaskWith[cNextResult[int]](
             get_executor(),
             self.generator.getNext(),
             SimpleGenerator.callback,

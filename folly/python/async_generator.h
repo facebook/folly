@@ -15,12 +15,14 @@
  */
 #pragma once
 
-#include <folly/Optional.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
 #include <folly/experimental/coro/Task.h>
 
 namespace folly {
 namespace python {
+
+template <typename T>
+using NextResult = typename coro::AsyncGenerator<T>::NextResult;
 
 template <typename T>
 class AsyncGeneratorWrapper {
@@ -29,13 +31,8 @@ class AsyncGeneratorWrapper {
   explicit AsyncGeneratorWrapper(coro::AsyncGenerator<T>&& gen)
       : gen_(std::move(gen)) {}
 
-  coro::Task<Optional<T>> getNext() {
-    auto item = co_await gen_.next();
-    if (item) {
-      co_return std::move(item).value();
-    } else {
-      co_return none;
-    }
+  coro::Task<NextResult<T>> getNext() {
+    co_return co_await gen_.next();
   }
 
  private:

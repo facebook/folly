@@ -15,7 +15,7 @@
  */
 #pragma once
 
-#include <folly/python/executor_api.h>
+#include <folly/python/executor_api.h> // @manual
 
 namespace folly {
 namespace python {
