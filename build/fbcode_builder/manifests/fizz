@@ -2,6 +2,7 @@
 name = fizz
 fbsource_path = fbcode/fizz
 shipit_project = fizz
+shipit_fbcode_builder = true
 
 [git]
 repo_url = https://github.com/facebookincubator/fizz.git
