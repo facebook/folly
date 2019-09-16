@@ -1,3 +1,5 @@
+# Copyright (c) Facebook, Inc. and its affiliates.
+
 function (fb_activate_static_library_option)
   option(USE_STATIC_DEPS_ON_UNIX
     "If enabled, use static dependencies on unix systems. This is generally discouraged."
