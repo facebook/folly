@@ -11,6 +11,8 @@ repo_url = https://github.com/facebook/fbthrift.git
 builder = cmake
 
 [dependencies]
+bison
+flex
 folly
 wangle
 rsocket-cpp
@@ -19,9 +21,6 @@ fmt
 libsodium
 googletest
 zstd
-
-[dependencies.any(os=windows, os=darwin)]
-bison
 
 [cmake.defines.test=on]
 BUILD_TESTS=ON

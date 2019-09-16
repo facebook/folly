@@ -19,4 +19,3 @@ builder = nop
 [install.files.os=windows]
 data = bin/data
 win_bison.exe = bin/bison.exe
-win_flex.exe = bin/flex.exe
