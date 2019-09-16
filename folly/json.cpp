@@ -994,6 +994,7 @@ std::string toJson(dynamic const& dyn) {
 std::string toPrettyJson(dynamic const& dyn) {
   json::serialization_opts opts;
   opts.pretty_formatting = true;
+  opts.sort_keys = true;
   return json::serialize(dyn, opts);
 }
 
