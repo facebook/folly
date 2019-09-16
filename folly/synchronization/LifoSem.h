@@ -28,6 +28,7 @@
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
@@ -96,9 +97,9 @@ struct LifoSemImpl;
 typedef LifoSemImpl<> LifoSem;
 
 /// The exception thrown when wait()ing on an isShutdown() LifoSem
-struct FOLLY_EXPORT ShutdownSemError : public std::runtime_error {
-  explicit ShutdownSemError(const std::string& msg);
-  ~ShutdownSemError() noexcept override;
+class FOLLY_EXPORT ShutdownSemError : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
 };
 
 namespace detail {
@@ -149,21 +150,26 @@ struct LifoSemRawNode {
       Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
-  static Pool& pool();
-};
-
-/// Use this macro to declare the static storage that backs the raw nodes
-/// for the specified atomic type
-#define LIFOSEM_DECLARE_POOL(Atom, capacity)                 \
-  namespace folly {                                          \
-  namespace detail {                                         \
-  template <>                                                \
-  LifoSemRawNode<Atom>::Pool& LifoSemRawNode<Atom>::pool() { \
-    static Pool* instance = new Pool((capacity));            \
-    return *instance;                                        \
-  }                                                          \
-  }                                                          \
+  static Pool& pool() {
+    return detail::createGlobal<PoolImpl, void>();
   }
+
+ private:
+  struct PoolImpl : Pool {
+    /// Raw node storage is preallocated in a contiguous memory segment,
+    /// but we use an anonymous mmap so the physical memory used (RSS) will
+    /// only reflect the maximum number of waiters that actually existed
+    /// concurrently.  For blocked threads the max node count is limited by the
+    /// number of threads, so we can conservatively estimate that this will be
+    /// < 10k.  For LifoEventSem, however, we could potentially have many more.
+    ///
+    /// On a 64-bit architecture each LifoSemRawNode takes 16 bytes.  We make
+    /// the pool 1 million entries.
+    static constexpr size_t capacity = 1 << 20;
+
+    PoolImpl() : Pool(static_cast<uint32_t>(capacity)) {}
+  };
+};
 
 /// Handoff is a type not bigger than a void* that knows how to perform a
 /// single post() -> wait() communication.  It must have a post() method.

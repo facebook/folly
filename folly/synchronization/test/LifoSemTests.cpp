@@ -32,8 +32,6 @@ using namespace folly::test;
 typedef LifoSemImpl<DeterministicAtomic> DLifoSem;
 typedef DeterministicSchedule DSched;
 
-LIFOSEM_DECLARE_POOL(DeterministicAtomic, 100000)
-
 class LifoSemTest : public testing::Test {
  private:
   // pre-init the pool to avoid deadlock when using DeterministicAtomic
