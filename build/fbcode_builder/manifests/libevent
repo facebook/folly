@@ -19,5 +19,5 @@ EVENT__DISABLE_BENCHMARK = ON
 EVENT__DISABLE_SAMPLES = ON
 EVENT__DISABLE_REGRESS = ON
 
-[dependencies.os=windows]
+[dependencies.not(os=linux)]
 openssl
