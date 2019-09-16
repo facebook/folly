@@ -97,20 +97,25 @@ class BuildOptions(object):
             # On Windows, the compiler is not available in the PATH by
             # default so we need to run the vcvarsall script to populate the
             # environment. We use a glob to find some version of this script
-            # as deployed with Visual Studio 2017.  This logic will need
-            # updating when we switch to a newer compiler.
-            vcvarsall = glob.glob(
-                os.path.join(
-                    os.environ["ProgramFiles(x86)"],
-                    "Microsoft Visual Studio",
-                    "2017",
-                    "*",
-                    "VC",
-                    "Auxiliary",
-                    "Build",
-                    "vcvarsall.bat",
+            # as deployed with Visual Studio 2017.  This logic can also
+            # locate Visual Studio 2019 but note that at the time of writing
+            # the version of boost in our manifest cannot be built with
+            # VS 2019, so we're effectively tied to VS 2017 until we upgrade
+            # the boost dependency.
+            vcvarsall = []
+            for year in ["2017", "2019"]:
+                vcvarsall += glob.glob(
+                    os.path.join(
+                        os.environ["ProgramFiles(x86)"],
+                        "Microsoft Visual Studio",
+                        year,
+                        "*",
+                        "VC",
+                        "Auxiliary",
+                        "Build",
+                        "vcvarsall.bat",
+                    )
                 )
-            )
             vcvars_path = vcvarsall[0]
 
         self.vcvars_path = vcvars_path
