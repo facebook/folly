@@ -340,6 +340,16 @@ if __name__ == "__main__":
             ccache = path_search(env, "ccache")
             if ccache:
                 defines["CMAKE_CXX_COMPILER_LAUNCHER"] = ccache
+
+        if "GITHUB_ACTIONS" in os.environ and self.build_opts.is_windows():
+            # GitHub actions: the host has both gcc and msvc installed, and
+            # the default behavior of cmake is to prefer gcc.
+            # Instruct cmake that we want it to use cl.exe; this is important
+            # because Boost prefers cl.exe and the mismatch results in cmake
+            # with gcc not being able to find boost built with cl.exe.
+            defines["CMAKE_C_COMPILER"] = "cl.exe"
+            defines["CMAKE_CXX_COMPILER"] = "cl.exe"
+
         if self.build_opts.is_darwin():
             # Try to persuade cmake to set the rpath to match the lib
             # dirs of the dependencies.  This isn't automatic, and to
