@@ -356,7 +356,7 @@ class BuildCmd(ProjectCmdBase):
         print("Building on %s" % loader.ctx_gen.get_context(args.project))
         projects = loader.manifests_in_dependency_order()
 
-        cache = cache_module.create_cache()
+        cache = cache_module.create_cache() if args.use_build_cache else None
 
         # Accumulate the install directories so that the build steps
         # can find their dep installation
@@ -455,6 +455,13 @@ class BuildCmd(ProjectCmdBase):
                 "and helps to avoid waiting for relatively "
                 "slow up-to-date-ness checks"
             ),
+        )
+        parser.add_argument(
+            "--no-build-cache",
+            action="store_false",
+            default=True,
+            dest="use_build_cache",
+            help="Do not attempt to use the build cache.",
         )
         parser.add_argument(
             "--schedule-type", help="Indicates how the build was activated"
