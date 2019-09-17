@@ -25,7 +25,7 @@
 #include <tuple>
 #include <type_traits>
 
-#if _WIN32
+#ifdef _WIN32
 #include <intrin.h>
 #endif
 

@@ -59,7 +59,7 @@ LogMessage::LogMessage(
 }
 
 StringPiece LogMessage::getFileBaseName() const {
-#if _WIN32
+#ifdef _WIN32
   // Windows allows either backwards or forwards slash as path separator
   auto idx1 = filename_.rfind('\\');
   auto idx2 = filename_.rfind('/');

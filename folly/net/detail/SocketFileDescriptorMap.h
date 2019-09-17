@@ -28,7 +28,7 @@ namespace folly {
 namespace netops {
 namespace detail {
 struct SocketFileDescriptorMap {
-#if _WIN32
+#ifdef _WIN32
   static int close(int fd) noexcept;
   static int close(SOCKET sock) noexcept;
 

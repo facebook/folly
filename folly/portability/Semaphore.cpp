@@ -21,7 +21,7 @@
 #include <errno.h>
 #include <mutex>
 
-#if _WIN32
+#ifdef _WIN32
 namespace folly::portability::semaphore {
 struct sem_t_ {
   std::mutex mtx{};

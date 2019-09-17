@@ -109,7 +109,7 @@ Optional<std::string> getCurrentThreadName() {
 
 bool setThreadName(std::thread::id tid, StringPiece name) {
   auto trimmedName = name.subpiece(0, kMaxThreadNameLength - 1).str();
-#if _WIN32
+#ifdef _WIN32
   static_assert(
       sizeof(unsigned int) == sizeof(std::thread::id),
       "This assumes std::thread::id is a thin wrapper around "
@@ -171,7 +171,7 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 }
 
 bool setThreadName(pthread_t pid, StringPiece name) {
-#if _WIN32
+#ifdef _WIN32
   static_assert(
       sizeof(unsigned int) == sizeof(std::thread::id),
       "This assumes std::thread::id is a thin wrapper around "

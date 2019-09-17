@@ -28,7 +28,7 @@ namespace folly {
  * for explicitly converting to/from file descriptors, even on Windows.
  */
 struct NetworkSocket {
-#if _WIN32
+#ifdef _WIN32
   using native_handle_type = SOCKET;
   static constexpr native_handle_type invalid_handle_value = INVALID_SOCKET;
 #else

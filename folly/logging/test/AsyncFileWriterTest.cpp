@@ -155,7 +155,7 @@ TEST(AsyncFileWriter, ioError) {
   //
   // GTest on Windows doesn't support alternation in the regex syntax -_-....
   const std::string kExpectedErrorMessage =
-#if _WIN32
+#ifdef _WIN32
       // The `pipe` call above is actually implemented via sockets, so we get
       // a different error message.
       "An established connection was aborted by the software in your host machine\\.";

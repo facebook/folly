@@ -16,7 +16,7 @@
 
 #include <folly/portability/Builtins.h>
 
-#if _WIN32
+#ifdef _WIN32
 #include <folly/portability/Windows.h>
 
 namespace folly {

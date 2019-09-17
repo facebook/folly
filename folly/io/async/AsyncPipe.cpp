@@ -55,7 +55,7 @@ void AsyncPipeReader::close() {
   }
 }
 
-#if _WIN32
+#ifdef _WIN32
 static int recv_internal(NetworkSocket s, void* buf, size_t count) {
   auto r = netops::recv(s, buf, count, 0);
   if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
@@ -115,7 +115,7 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
     }
 
     // Perform the read
-#if _WIN32
+#ifdef _WIN32
     // On Windows you can't call read on a socket, so call recv instead.
     ssize_t bytesRead =
         folly::fileutil_detail::wrapNoInt(recv_internal, fd_, buf, buflen);
@@ -237,7 +237,7 @@ void AsyncPipeWriter::handlerReady(uint16_t events) noexcept {
   handleWrite();
 }
 
-#if _WIN32
+#ifdef _WIN32
 static int send_internal(NetworkSocket s, const void* buf, size_t count) {
   auto r = netops::send(s, buf, count, 0);
   if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
@@ -257,7 +257,7 @@ void AsyncPipeWriter::handleWrite() {
     // someday, support writev.  The logic for partial writes is a bit complex
     const IOBuf* head = curQueue.front();
     CHECK(head->length());
-#if _WIN32
+#ifdef _WIN32
     // On Windows you can't call write on a socket.
     ssize_t rc = folly::fileutil_detail::wrapNoInt(
         send_internal, fd_, head->data(), head->length());
