@@ -121,7 +121,7 @@ function(add_fbthrift_cpp_library LIB_NAME THRIFT_FILE)
       "${THRIFT_FILE}"
     DEPENDS
       ${ARG_DEPENDS}
-      ${THRIFT_TEMPLATE_FILES}
+      "${FBTHRIFT_COMPILER}"
   )
 
   # Now emit the library rule to compile the sources

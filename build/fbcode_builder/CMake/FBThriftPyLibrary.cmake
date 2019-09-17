@@ -93,6 +93,8 @@ function(add_fbthrift_py_library LIB_NAME THRIFT_FILE)
       "${CMAKE_BINARY_DIR}"
     MAIN_DEPENDENCY
       "${THRIFT_FILE}"
+    DEPENDS
+      "${FBTHRIFT_COMPILER}"
   )
 
   # We always want to pass the namespace as "" to this call:
