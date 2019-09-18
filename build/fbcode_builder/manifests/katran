@@ -1,0 +1,35 @@
+[manifest]
+name = katran
+fbsource_path = fbcode/katran
+shipit_project = katran
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookincubator/katran.git
+
+[build.not(os=linux)]
+builder = nop
+
+[build.os=linux]
+builder = cmake
+subdir = katran
+
+[cmake.defines]
+BUILD_TESTS = OFF
+
+[dependencies]
+folly
+fizz
+libbpf
+libmnl
+zlib
+googletest
+
+
+[shipit.pathmap]
+fbcode/katran/public_root = .
+fbcode/katran = katran
+
+[shipit.strip]
+^fbcode/katran/facebook
+^fbcode/katran/OSS_SYNC

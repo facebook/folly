@@ -1,0 +1,20 @@
+[manifest]
+name = libbpf
+
+[download]
+url = https://github.com/libbpf/libbpf/archive/v0.0.4.tar.gz
+sha256 = bb810e6d236437ebf51e57f49dd68738d5b944108470a99afc7070aa3be06349
+
+# BPF only builds on linux, so make it a NOP on other platforms
+[build.not(os=linux)]
+builder = nop
+
+[build.os=linux]
+builder = make
+subdir = libbpf-0.0.4/src
+
+[make.args]
+BUILD_STATIC_ONLY=y
+
+[dependencies]
+libelf

@@ -114,7 +114,7 @@ class MakeBuilder(BuilderBase):
         )
         self._run_cmd(cmd, env=env)
 
-        install_cmd = ["make", "install", "PREFIX=" + self.inst_dir]
+        install_cmd = ["make", "install"] + self.args + ["PREFIX=" + self.inst_dir]
         self._run_cmd(install_cmd, env=env)
 
 
