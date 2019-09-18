@@ -64,7 +64,7 @@ void runSmallInvokeBenchmark(std::size_t iters, MakeFunction make) {
   auto func = make(lambda);
   folly::makeUnpredictable(func);
 
-  for (auto i = std::size_t{iters}; --i;) {
+  for (auto i = iters; --i;) {
     folly::doNotOptimizeAway(func(i));
   }
 }
@@ -77,7 +77,7 @@ void runSmallCreateAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
   };
   folly::makeUnpredictable(lambda);
 
-  for (auto i = std::size_t{iters}; --i;) {
+  for (auto i = iters; --i;) {
     auto func = make(lambda);
     folly::makeUnpredictable(func);
     folly::doNotOptimizeAway(func(i));
@@ -100,7 +100,7 @@ void runBigAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
   folly::makeUnpredictable(func);
 
   suspender.dismissing([&] {
-    for (auto i = std::size_t{iters}; --i;) {
+    for (auto i = iters; --i;) {
       folly::doNotOptimizeAway(func(i));
     }
   });
@@ -120,7 +120,7 @@ void runBigCreateAndInvokeBenchmark(std::size_t iters, MakeFunction make) {
   folly::makeUnpredictable(lambda);
 
   suspender.dismissing([&] {
-    for (auto i = std::size_t{iters}; --i;) {
+    for (auto i = iters; --i;) {
       auto func = make(lambda);
       folly::makeUnpredictable(func);
       folly::doNotOptimizeAway(func(i));
