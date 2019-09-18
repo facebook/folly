@@ -172,6 +172,10 @@ class BuildOptions(object):
             if os.path.exists(pkgconfig):
                 add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
 
+            pkgconfig = os.path.join(d, "lib64/pkgconfig")
+            if os.path.exists(pkgconfig):
+                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
             # Allow resolving shared objects built earlier (eg: zstd
             # doesn't include the full path to the dylib in its linkage
             # so we need to give it an assist)

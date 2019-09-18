@@ -103,11 +103,19 @@ class MakeBuilder(BuilderBase):
         self.args = args or []
 
     def _build(self, install_dirs, reconfigure):
-        cmd = ["make", "-j%s" % self.build_opts.num_jobs] + self.args
-        self._run_cmd(cmd)
+        env = self._compute_env(install_dirs)
+
+        # Need to ensure that PREFIX is set prior to install because
+        # libbpf uses it when generating its pkg-config file
+        cmd = (
+            ["make", "-j%s" % self.build_opts.num_jobs]
+            + self.args
+            + ["PREFIX=" + self.inst_dir]
+        )
+        self._run_cmd(cmd, env=env)
 
         install_cmd = ["make", "install", "PREFIX=" + self.inst_dir]
-        self._run_cmd(install_cmd)
+        self._run_cmd(install_cmd, env=env)
 
 
 class AutoconfBuilder(BuilderBase):
@@ -121,11 +129,7 @@ class AutoconfBuilder(BuilderBase):
         configure_path = os.path.join(self.src_dir, "configure")
         autogen_path = os.path.join(self.src_dir, "autogen.sh")
 
-        env = self.env.copy()
-        for d in install_dirs:
-            add_path_entry(env, "PKG_CONFIG_PATH", "%s/lib/pkgconfig" % d)
-            bindir = os.path.join(d, "bin")
-            add_path_entry(env, "PATH", bindir, append=False)
+        env = self._compute_env(install_dirs)
 
         if not os.path.exists(configure_path):
             print("%s doesn't exist, so reconfiguring" % configure_path)
