@@ -157,8 +157,8 @@ class ConcurrentSkipList {
   typedef T value_type;
   typedef T key_type;
 
-  typedef detail::csl_iterator<value_type, NodeType> iterator;
-  typedef detail::csl_iterator<const value_type, NodeType> const_iterator;
+  typedef detail::csl_iterator<value_type, NodeType, SkipListType> iterator;
+  typedef detail::csl_iterator<const value_type, NodeType, SkipListType> const_iterator;
 
   class Accessor;
   class Skipper;
@@ -211,6 +211,8 @@ class ConcurrentSkipList {
   }
 
  private:
+	template <class, class, class>
+	friend class detail::csl_iterator;
   static bool greater(const value_type& data, const NodeType* node) {
     return node && Comp()(node->data(), data);
   }
@@ -272,6 +274,15 @@ class ConcurrentSkipList {
     }
     return nullptr;
   }
+
+  // Returns the previous node if found, nullptr otherwise.
+  NodeType* findPrevious(const value_type& data) const {
+    auto node = findPreviousNode(data).first;
+    while (node != nullptr && node->markedForRemoval()) {
+		node = findPreviousNode(node->data()).first;      
+    }
+    return node;
+  }	
 
   // lock all the necessary nodes for changing (adding or removing) the list.
   // returns true if all the lock acquried successfully and the related nodes
@@ -452,6 +463,34 @@ class ConcurrentSkipList {
     return findNodeDownRight(data);
   }
 
+  std::pair<NodeType*, int> findPreviousNode(const value_type& data) const {
+	NodeType* head = head_.load(std::memory_order_consume);
+	NodeType* pred = head;
+    int ht = pred->height();
+    bool found = false;
+    NodeType* last_not_after = nullptr;
+
+	while (true) {
+	  NodeType* next = pred->skip(ht - 1);
+	  if (next != last_not_after && next && greater(data, next)) {
+		  // stepping right
+		  pred = next;
+	  } else {
+	    if ((ht - 1) == 0) {
+			if (pred == head) {
+				pred = nullptr;
+			}
+		  found = (pred != nullptr);
+		  return std::make_pair(pred, found);
+	    } else {
+		  // stepping down
+		  last_not_after = next;
+		  --ht;
+	   }
+	  }
+	}
+  }
+	
   // Find node by first stepping down then stepping right. Based on benchmark
   // results, this is slightly faster than findNodeRightDown for better
   // localality on the skipping pointers.
@@ -608,10 +647,13 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   // iterator pointing to the data, and it's guaranteed that the data is valid
   // as far as the Accessor is hold.
   iterator find(const key_type& value) {
-    return iterator(sl_->find(value));
+	  return iterator(sl_->find(value), sl_);
   }
+  iterator findPrevious(const key_type& value) {
+	  return iterator(sl_->findPrevious(value), sl_);
+  }	
   const_iterator find(const key_type& value) const {
-    return iterator(sl_->find(value));
+	  return iterator(sl_->find(value), sl_);
   }
   size_type count(const key_type& data) const {
     return contains(data);
@@ -619,10 +661,10 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
 
   iterator begin() const {
     NodeType* head = sl_->head_.load(std::memory_order_consume);
-    return iterator(head->next());
+    return iterator(head->next(), sl_);
   }
   iterator end() const {
-    return iterator(nullptr);
+	  return iterator(nullptr, sl_);
   }
   const_iterator cbegin() const {
     return begin();
@@ -644,7 +686,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   }
 
   iterator lower_bound(const key_type& data) const {
-    return iterator(sl_->lower_bound(data));
+	  return iterator(sl_->lower_bound(data), sl_);
   }
 
   size_t height() const {
@@ -707,26 +749,26 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   std::shared_ptr<SkipListType> slHolder_;
 };
 
-// implements forward iterator concept.
-template <typename ValT, typename NodeT>
+// implements bidirectional iterator concept.
+template <typename ValT, typename NodeT, typename SkipListType>
 class detail::csl_iterator : public detail::IteratorFacade<
-                                 csl_iterator<ValT, NodeT>,
+	csl_iterator<ValT, NodeT, SkipListType>,
                                  ValT,
-                                 std::forward_iterator_tag> {
+                                 std::bidirectional_iterator_tag> {
  public:
   typedef ValT value_type;
   typedef value_type& reference;
   typedef value_type* pointer;
   typedef ptrdiff_t difference_type;
 
-  explicit csl_iterator(NodeT* node = nullptr) : node_(node) {}
+	explicit csl_iterator(NodeT* node = nullptr, SkipListType* sl = nullptr) : node_(node), sl_(sl) {}
 
-  template <typename OtherVal, typename OtherNode>
+	template <typename OtherVal, typename OtherNode, typename OtherSkipListType>
   csl_iterator(
-      const csl_iterator<OtherVal, OtherNode>& other,
+			   const csl_iterator<OtherVal, OtherNode, OtherSkipListType>& other,
       typename std::enable_if<
           std::is_convertible<OtherVal, ValT>::value>::type* = nullptr)
-      : node_(other.node_) {}
+		: node_(other.node_), sl_(other.sl_) {}
 
   size_t nodeSize() const {
     return node_ == nullptr ? 0
@@ -738,13 +780,20 @@ class detail::csl_iterator : public detail::IteratorFacade<
   }
 
  private:
-  template <class, class>
+ template <class, class, class>
   friend class csl_iterator;
   friend class detail::
-      IteratorFacade<csl_iterator, ValT, std::forward_iterator_tag>;
+      IteratorFacade<csl_iterator, ValT, std::bidirectional_iterator_tag>;
 
   void increment() {
     node_ = node_->next();
+  }
+  void decrement() {
+	  if (node_ != nullptr) {
+		  node_ = sl_->findPrevious(node_->data());
+	  } else {
+		  node_ = sl_->find(*sl_->last());
+	  }
   }
   bool equal(const csl_iterator& other) const {
     return node_ == other.node_;
@@ -754,6 +803,7 @@ class detail::csl_iterator : public detail::IteratorFacade<
   }
 
   NodeT* node_;
+  SkipListType* sl_;	
 };
 
 // Skipper interface

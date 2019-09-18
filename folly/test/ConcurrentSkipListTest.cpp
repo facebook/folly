@@ -248,6 +248,20 @@ TEST(ConcurrentSkipList, SequentialAccess) {
       EXPECT_EQ(found, (verifier.find(n) != verifier.end()));
     }
   }
+
+  {
+	// test reverse iteration 
+    auto skipList(SkipListType::create(kHeadHeight));
+
+    SetType verifier;
+    randomAdding(10000, skipList, &verifier);
+	EXPECT_EQ(skipList.size(), verifier.size());
+	auto skip_it = skipList.end();
+	auto set_it = verifier.end();
+    for (int i = 0; i < skipList.size(); ++i) {
+      EXPECT_EQ(*(--skip_it), *(--set_it));
+    }
+  }
 }
 
 static std::string makeRandomeString(int len) {

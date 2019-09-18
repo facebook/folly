@@ -37,7 +37,7 @@
 namespace folly {
 namespace detail {
 
-template <typename ValT, typename NodeT>
+template <typename ValT, typename NodeT, typename SkipListType>
 class csl_iterator;
 
 template <typename T>
