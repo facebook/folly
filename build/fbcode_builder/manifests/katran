@@ -12,7 +12,7 @@ builder = nop
 
 [build.os=linux]
 builder = cmake
-subdir = katran
+subdir = .
 
 [cmake.defines]
 BUILD_TESTS = OFF
