@@ -14,8 +14,12 @@ builder = nop
 builder = cmake
 subdir = .
 
-[cmake.defines]
-BUILD_TESTS = OFF
+[cmake.defines.test=on]
+BUILD_TESTS=ON
+
+[cmake.defines.test=off]
+BUILD_TESTS=OFF
+
 
 [dependencies]
 folly
