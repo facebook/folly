@@ -18,8 +18,9 @@ wangle
 rsocket-cpp
 fizz
 fmt
-libsodium
 googletest
+libsodium
+python-six
 zstd
 
 [cmake.defines.test=on]
