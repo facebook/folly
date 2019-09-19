@@ -168,7 +168,7 @@ class ManifestLoader(object):
             ctx = self.ctx_gen.get_context(m.name)
             dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
             builder = m.get("build", "builder", ctx=ctx)
-            if builder == "cmake":
+            if builder in ("cmake", "python-wheel"):
                 dep_list.append("cmake")
             elif builder == "autoconf" and m.name not in (
                 "autoconf",

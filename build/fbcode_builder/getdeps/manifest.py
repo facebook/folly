@@ -28,6 +28,7 @@ from .fetcher import (
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
 )
+from .py_wheel_builder import PythonWheelBuilder
 
 
 try:
@@ -381,6 +382,11 @@ class ManifestParser(object):
             defines = self.get_section_as_dict("cmake.defines", ctx)
             return CMakeBuilder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir, defines
+            )
+
+        if builder == "python-wheel":
+            return PythonWheelBuilder(
+                build_options, ctx, self, src_dir, build_dir, inst_dir
             )
 
         if builder == "sqlite":
