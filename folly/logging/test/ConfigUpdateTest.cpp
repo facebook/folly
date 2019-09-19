@@ -40,13 +40,13 @@ MATCHER_P(LogHandlerMatcherImpl, config, "") {
  * A helper function to use in EXPECT_THAT() for matching a TestLogHandler
  * with the specified type and options.
  */
+auto MatchLogHandler(const LogHandlerConfig& config) {
+  return LogHandlerMatcherImpl(config);
+}
 auto MatchLogHandler(
     StringPiece type,
     std::unordered_map<std::string, std::string> options) {
-  return LogHandlerMatcherImpl(LogHandlerConfig{type, std::move(options)});
-}
-auto MatchLogHandler(const LogHandlerConfig& config) {
-  return LogHandlerMatcherImpl(config);
+  return MatchLogHandler(LogHandlerConfig{type, std::move(options)});
 }
 
 } // namespace

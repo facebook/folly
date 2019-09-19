@@ -23,6 +23,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/Portability.h>
 #include <folly/String.h>
 #include <folly/experimental/exception_tracer/ExceptionAbi.h>
@@ -107,12 +108,12 @@ namespace {
 struct ArmAbiTag {};
 struct AnyAbiTag {};
 
-bool isAbiCppException(ArmAbiTag, const char (&klazz)[8]) {
+FOLLY_MAYBE_UNUSED bool isAbiCppException(ArmAbiTag, const char (&klazz)[8]) {
   return klazz[4] == 'C' && klazz[5] == '+' && klazz[6] == '+' &&
       klazz[7] == '\0';
 }
 
-bool isAbiCppException(AnyAbiTag, const uint64_t& klazz) {
+FOLLY_MAYBE_UNUSED bool isAbiCppException(AnyAbiTag, const uint64_t& klazz) {
   // The least significant four bytes must be "C++\0"
   static const uint64_t cppClass =
       ((uint64_t)'C' << 24) | ((uint64_t)'+' << 16) | ((uint64_t)'+' << 8);

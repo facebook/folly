@@ -16,6 +16,7 @@
 
 #include <folly/functional/Invoke.h>
 
+#include <folly/CppAttributes.h>
 #include <folly/portability/GTest.h>
 
 class InvokeTest : public testing::Test {};
@@ -72,7 +73,7 @@ char go(Obj const&, char const*) {
 namespace z {
 struct Obj {};
 } // namespace z
-float go(z::Obj const&, int) {
+FOLLY_MAYBE_UNUSED float go(z::Obj const&, int) {
   return 9;
 }
 

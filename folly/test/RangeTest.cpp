@@ -31,6 +31,7 @@
 #include <boost/algorithm/string/trim.hpp>
 #include <boost/range/concepts.hpp>
 
+#include <folly/CppAttributes.h>
 #include <folly/Memory.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
@@ -1645,7 +1646,7 @@ class NonPOD {
  public:
   NonPOD() {}
 };
-void test_func(Range<const NonPOD*>) {}
+FOLLY_MAYBE_UNUSED void test_func(Range<const NonPOD*>) {}
 
 } // anonymous namespace
 

@@ -109,7 +109,9 @@ TEST(Expected, CoroutineFailure) {
     co_return z;
   }();
   EXPECT_TRUE(r1.hasError());
+  EXPECT_NE(Err::bad(), r1.error());
   EXPECT_EQ(Err::badder(), r1.error());
+  EXPECT_NE(Err::baddest(), r1.error());
 }
 
 TEST(Expected, CoroutineException) {

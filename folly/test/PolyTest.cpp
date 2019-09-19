@@ -17,6 +17,7 @@
 #include <folly/Poly.h>
 
 #include <folly/Conv.h>
+#include <folly/CppAttributes.h>
 #include <folly/poly/Nullable.h>
 #include <folly/poly/Regular.h>
 #include <folly/portability/GTest.h>
@@ -718,7 +719,7 @@ struct Struct2 : Struct {
 int property(Struct const&) {
   return 42;
 }
-void property(Struct&, int) {}
+FOLLY_MAYBE_UNUSED void property(Struct&, int) {}
 
 int meow(Struct2&) {
   return 42;

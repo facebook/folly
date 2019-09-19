@@ -85,27 +85,6 @@ struct CountCopyCtor {
 
 int CountCopyCtor::gCount_ = 0;
 
-struct Opaque {
-  int value;
-  friend bool operator==(Opaque a, Opaque b) {
-    return a.value == b.value;
-  }
-  friend bool operator<(Opaque a, Opaque b) {
-    return a.value < b.value;
-  }
-  struct Compare : std::less<int>, std::less<Opaque> {
-    using is_transparent = void;
-    using std::less<int>::operator();
-    using std::less<Opaque>::operator();
-    bool operator()(int a, Opaque b) const {
-      return std::less<int>::operator()(a, b.value);
-    }
-    bool operator()(Opaque a, int b) const {
-      return std::less<int>::operator()(a.value, b);
-    }
-  };
-};
-
 } // namespace
 
 TEST(SortedVectorTypes, SetAssignmentInitListTest) {
@@ -603,16 +582,6 @@ TEST(SortedVectorTypes, EraseTest2) {
   }
   EXPECT_EQ(it2, m.end());
   EXPECT_EQ(m.size(), 5);
-}
-
-std::vector<int> extractValues(sorted_vector_set<CountCopyCtor> const& in) {
-  std::vector<int> ret;
-  std::transform(
-      in.begin(),
-      in.end(),
-      std::back_inserter(ret),
-      [](const CountCopyCtor& c) { return c.val_; });
-  return ret;
 }
 
 TEST(SortedVectorTypes, TestSetBulkInsertionSortMerge) {
