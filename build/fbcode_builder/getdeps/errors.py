@@ -14,3 +14,8 @@ class TransientFailure(Exception):
     infrastructure error """
 
     pass
+
+
+class ManifestNotFound(Exception):
+    def __init__(self, manifest_name):
+        super(Exception, self).__init__("Unable to find manifest '%s'" % manifest_name)

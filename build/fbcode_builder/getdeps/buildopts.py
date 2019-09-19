@@ -120,6 +120,10 @@ class BuildOptions(object):
 
         self.vcvars_path = vcvars_path
 
+    @property
+    def manifests_dir(self):
+        return os.path.join(self.fbcode_builder_dir, "manifests")
+
     def is_darwin(self):
         return self.host_type.is_darwin()
 

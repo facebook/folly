@@ -8,30 +8,44 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import base64
-import glob
 import hashlib
 import os
 
 from . import fetcher
 from .envfuncs import path_search
+from .errors import ManifestNotFound
 from .manifest import ManifestParser
 
 
 class Loader(object):
     """ The loader allows our tests to patch the load operation """
 
+    def _list_manifests(self, manifests_dir):
+        """ Returns a generator that iterates all the available manifests """
+        for (path, _, files) in os.walk(manifests_dir):
+            for name in files:
+                # skip hidden files
+                if name.startswith("."):
+                    continue
+
+                yield os.path.join(path, name)
+
     def load_project(self, build_opts, project_name):
-        manifest_path = resolve_manifest_path(build_opts, project_name)
-        return ManifestParser(manifest_path)
+        if "/" in project_name or "\\" in project_name:
+            # Assume this is a path already
+            return ManifestParser(project_name)
+
+        for manifest in self._list_manifests(build_opts.manifests_dir):
+            if os.path.basename(manifest) == project_name:
+                return ManifestParser(manifest)
+
+        raise ManifestNotFound(project_name)
 
     def load_all(self, build_opts):
         manifests_by_name = {}
-        manifests_dir = os.path.join(build_opts.fbcode_builder_dir, "manifests")
-        # We use glob rather than os.listdir because glob won't include
-        # eg: vim swap files that a maintainer might happen to have
-        # for manifests that they are editing
-        for name in glob.glob("%s/*" % manifests_dir):
-            m = ManifestParser(name)
+
+        for manifest in self._list_manifests(build_opts.manifests_dir):
+            m = ManifestParser(manifest)
             manifests_by_name[m.name] = m
 
         return manifests_by_name
@@ -41,23 +55,45 @@ class ResourceLoader(Loader):
     def __init__(self, namespace):
         self.namespace = namespace
 
-    def load_project(self, build_opts, project_name):
+    def _list_manifests(self):
         import pkg_resources
 
-        contents = pkg_resources.resource_string(
-            self.namespace, "manifests/%s" % project_name
-        ).decode("utf8")
-        m = ManifestParser(file_name=project_name, fp=contents)
-        return m
+        dirs = ["manifests"]
+
+        while dirs:
+            current = dirs.pop(0)
+            for name in pkg_resources.resource_listdir(self.namespace, current):
+                path = "%s/%s" % (current, name)
+
+                if pkg_resources.resource_isdir(self.namespace, path):
+                    dirs.append(path)
+                else:
+                    yield "%s/%s" % (current, name)
+
+    def _find_manifest(self, project_name):
+        for name in self._list_manifests():
+            if name.endswith("/%s" % project_name):
+                return name
+
+        raise ManifestNotFound(project_name)
+
+    def _load_resource_manifest(self, path):
+        import pkg_resources
+
+        contents = pkg_resources.resource_string(self.namespace, path).decode("utf8")
+        return ManifestParser(file_name=path, fp=contents)
+
+    def load_project(self, build_opts, project_name):
+        project_name = self._find_manifest(project_name)
+        return self._load_resource_manifest(project_name)
 
     def load_all(self, build_opts):
-        import pkg_resources
+        manifests_by_name = {}
+        for path in self._list_manifests():
+            m = self._load_resource_manifest(path)
+            manifests_by_name[m.name] = m
 
-        manifest_by_name = {}
-        for name in pkg_resources.resource_listdir(self.namespace, "manifests"):
-            m = self.load_project(build_opts, name)
-            manifest_by_name[m.name] = m
-        return manifest_by_name
+        return manifests_by_name
 
 
 LOADER = Loader()
@@ -66,15 +102,6 @@ LOADER = Loader()
 def patch_loader(namespace):
     global LOADER
     LOADER = ResourceLoader(namespace)
-
-
-def resolve_manifest_path(build_opts, project_name):
-    if "/" in project_name or "\\" in project_name:
-        # Assume this is a path already
-        return project_name
-
-    # Otherwise, resolve it relative to the manifests dir
-    return os.path.join(build_opts.fbcode_builder_dir, "manifests", project_name)
 
 
 def load_project(build_opts, project_name):
