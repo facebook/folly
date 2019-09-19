@@ -140,7 +140,7 @@ def build_zipapp(args, path_map):
         zipapp.create_archive(
             inst_dir, target=tmp_output, interpreter=args.python, main=args.main
         )
-        os.rename(tmp_output, args.output)
+        os.replace(tmp_output, args.output)
 
 
 def create_main_module(args, inst_dir, path_map):
