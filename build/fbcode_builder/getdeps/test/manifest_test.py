@@ -11,8 +11,6 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 import sys
 import unittest
 
-import pkg_resources
-
 from ..load import load_all_manifests, patch_loader
 from ..manifest import ManifestParser
 
@@ -41,10 +39,10 @@ class ManifestTest(unittest.TestCase):
             "test",
             """
 [manifest]
-name = foo
+name = test
 """,
         )
-        self.assertEqual(p.name, "foo")
+        self.assertEqual(p.name, "test")
         self.assertEqual(p.fbsource_path, None)
 
     def test_minimal_with_fbsource_path(self):
@@ -52,11 +50,11 @@ name = foo
             "test",
             """
 [manifest]
-name = foo
+name = test
 fbsource_path = fbcode/wat
 """,
         )
-        self.assertEqual(p.name, "foo")
+        self.assertEqual(p.name, "test")
         self.assertEqual(p.fbsource_path, "fbcode/wat")
 
     def test_unknown_field(self):
@@ -71,7 +69,7 @@ fbsource_path = fbcode/wat
                 "test",
                 """
 [manifest]
-name = foo
+name = test
 invalid.field = woot
 """,
             )
@@ -84,7 +82,7 @@ invalid.field = woot
                 "test",
                 """
 [manifest]
-name = foo
+name = test
 
 [invalid.section]
 foo = bar
@@ -104,7 +102,7 @@ foo = bar
                 "test",
                 """
 [manifest]
-name = foo
+name = test
 
 [dependencies]
 foo = bar
@@ -124,7 +122,7 @@ foo = bar
                 "test",
                 """
 [manifest]
-name = foo
+name = test
 
 [dependencies.=]
 """,
@@ -135,7 +133,7 @@ name = foo
             "test",
             """
 [manifest]
-name = foo
+name = test
 
 [dependencies]
 a
@@ -159,7 +157,7 @@ foo
             "test",
             """
 [manifest]
-name = foo
+name = test
 
 [autoconf.args]
 --prefix=/foo
@@ -175,7 +173,7 @@ name = foo
             "test",
             """
 [manifest]
-name = foo
+name = test
 
 [cmake.defines]
 foo = bar
@@ -193,7 +191,7 @@ foo = baz
             "test",
             """
 [manifest]
-name = foo
+name = test
 
 [cmake.defines.test=on]
 foo = baz
@@ -212,6 +210,25 @@ foo = bar
         patch_loader(__name__)
         manifests = load_all_manifests(None)
         self.assertNotEqual(0, len(manifests), msg="parsed some number of manifests")
+
+    def test_mismatch_name(self):
+        with self.assertRaisesRegex(
+            Exception,
+            "filename of the manifest 'foo' does not match the manifest name 'bar'",
+        ):
+            ManifestParser(
+                "foo",
+                """
+[manifest]
+name = bar
+""",
+            )
+
+    def test_duplicate_manifest(self):
+        patch_loader(__name__, "fixtures/duplicate")
+
+        with self.assertRaisesRegex(Exception, "found duplicate manifest 'foo'"):
+            load_all_manifests(None)
 
     if sys.version_info < (3, 2):
 

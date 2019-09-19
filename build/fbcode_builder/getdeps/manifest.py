@@ -9,6 +9,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import io
+import os
 
 from .builder import (
     AutoconfBuilder,
@@ -197,6 +198,12 @@ class ManifestParser(object):
         self.fbsource_path = self.get("manifest", "fbsource_path")
         self.shipit_project = self.get("manifest", "shipit_project")
         self.shipit_fbcode_builder = self.get("manifest", "shipit_fbcode_builder")
+
+        if self.name != os.path.basename(file_name):
+            raise Exception(
+                "filename of the manifest '%s' does not match the manifest name '%s'"
+                % (file_name, self.name)
+            )
 
     def get(self, section, key, defval=None, ctx=None):
         ctx = ctx or {}

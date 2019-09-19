@@ -20,9 +20,9 @@ from .manifest import ManifestParser
 class Loader(object):
     """ The loader allows our tests to patch the load operation """
 
-    def _list_manifests(self, manifests_dir):
+    def _list_manifests(self, build_opts):
         """ Returns a generator that iterates all the available manifests """
-        for (path, _, files) in os.walk(manifests_dir):
+        for (path, _, files) in os.walk(build_opts.manifests_dir):
             for name in files:
                 # skip hidden files
                 if name.startswith("."):
@@ -30,12 +30,15 @@ class Loader(object):
 
                 yield os.path.join(path, name)
 
+    def _load_manifest(self, path):
+        return ManifestParser(path)
+
     def load_project(self, build_opts, project_name):
         if "/" in project_name or "\\" in project_name:
             # Assume this is a path already
             return ManifestParser(project_name)
 
-        for manifest in self._list_manifests(build_opts.manifests_dir):
+        for manifest in self._list_manifests(build_opts):
             if os.path.basename(manifest) == project_name:
                 return ManifestParser(manifest)
 
@@ -44,21 +47,26 @@ class Loader(object):
     def load_all(self, build_opts):
         manifests_by_name = {}
 
-        for manifest in self._list_manifests(build_opts.manifests_dir):
-            m = ManifestParser(manifest)
+        for manifest in self._list_manifests(build_opts):
+            m = self._load_manifest(manifest)
+
+            if m.name in manifests_by_name:
+                raise Exception("found duplicate manifest '%s'" % m.name)
+
             manifests_by_name[m.name] = m
 
         return manifests_by_name
 
 
 class ResourceLoader(Loader):
-    def __init__(self, namespace):
+    def __init__(self, namespace, manifests_dir):
         self.namespace = namespace
+        self.manifests_dir = manifests_dir
 
-    def _list_manifests(self):
+    def _list_manifests(self, _build_opts):
         import pkg_resources
 
-        dirs = ["manifests"]
+        dirs = [self.manifests_dir]
 
         while dirs:
             current = dirs.pop(0)
@@ -77,7 +85,7 @@ class ResourceLoader(Loader):
 
         raise ManifestNotFound(project_name)
 
-    def _load_resource_manifest(self, path):
+    def _load_manifest(self, path):
         import pkg_resources
 
         contents = pkg_resources.resource_string(self.namespace, path).decode("utf8")
@@ -87,21 +95,13 @@ class ResourceLoader(Loader):
         project_name = self._find_manifest(project_name)
         return self._load_resource_manifest(project_name)
 
-    def load_all(self, build_opts):
-        manifests_by_name = {}
-        for path in self._list_manifests():
-            m = self._load_resource_manifest(path)
-            manifests_by_name[m.name] = m
-
-        return manifests_by_name
-
 
 LOADER = Loader()
 
 
-def patch_loader(namespace):
+def patch_loader(namespace, manifests_dir="manifests"):
     global LOADER
-    LOADER = ResourceLoader(namespace)
+    LOADER = ResourceLoader(namespace, manifests_dir)
 
 
 def load_project(build_opts, project_name):
