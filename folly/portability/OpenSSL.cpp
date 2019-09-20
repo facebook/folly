@@ -497,7 +497,7 @@ uint32_t X509_get_extension_flags(X509* x) {
 uint32_t X509_get_key_usage(X509* x) {
   // Call get_extension_flags rather than accessing directly to force loading
   // of flags
-  if (X509_get_extension_flags(x) & EXFLAG_KUSAGE == EXFLAG_KUSAGE) {
+  if ((X509_get_extension_flags(x) & EXFLAG_KUSAGE) == EXFLAG_KUSAGE) {
     return x->ex_kusage;
   }
   return UINT32_MAX;
