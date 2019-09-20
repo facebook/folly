@@ -188,7 +188,7 @@ class CachedProject(object):
 
     def is_cacheable(self):
         """ We only cache third party projects """
-        return self.cache and not self.m.shipit_fbcode_builder
+        return self.cache and self.m.shipit_project is None
 
     def download(self):
         if self.is_cacheable() and not os.path.exists(self.inst_dir):
@@ -211,7 +211,7 @@ class CachedProject(object):
         return False
 
     def upload(self):
-        if self.cache and not self.m.shipit_fbcode_builder:
+        if self.is_cacheable():
             # We can prepare an archive and stick it in LFS
             tempdir = tempfile.mkdtemp()
             tarfilename = os.path.join(tempdir, self.cache_file_name)
