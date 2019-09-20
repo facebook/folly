@@ -71,6 +71,23 @@ class ShowHostType(SubCmd):
 class ProjectCmdBase(SubCmd):
     def run(self, args):
         opts = setup_build_options(args)
+
+        if args.current_project is not None:
+            opts.repo_project = args.current_project
+        if args.project is None:
+            if opts.repo_project is None:
+                raise UsageError(
+                    "no project name specified, and no .projectid file found"
+                )
+            if opts.repo_project == "fbsource":
+                # The fbsource repository is a little special.  There is no project
+                # manifest file for it.  A specific project must always be explicitly
+                # specified when building from fbsource.
+                raise UsageError(
+                    "no project name specified (required when building in fbsource)"
+                )
+            args.project = opts.repo_project
+
         ctx_gen = opts.get_context_generator(facebook_internal=args.facebook_internal)
         if args.test_dependencies:
             ctx_gen.set_value_for_all_projects("test", "on")
@@ -101,6 +118,12 @@ class ProjectCmdBase(SubCmd):
 
             return project, os.path.abspath(path)
 
+        # If we are currently running from a project repository,
+        # use the current repository for the project sources.
+        build_opts = loader.build_opts
+        if build_opts.repo_project is not None and build_opts.repo_root is not None:
+            loader.set_project_src_dir(build_opts.repo_project, build_opts.repo_root)
+
         for arg in args.src_dir:
             project, path = parse_project_arg(arg, "--src-dir")
             loader.set_project_src_dir(project, path)
@@ -116,6 +139,7 @@ class ProjectCmdBase(SubCmd):
     def setup_parser(self, parser):
         parser.add_argument(
             "project",
+            nargs="?",
             help=(
                 "name of the project or path to a manifest "
                 "file describing the project"
@@ -132,6 +156,12 @@ class ProjectCmdBase(SubCmd):
             "--test-dependencies",
             action="store_true",
             help="Enable building tests for dependencies as well.",
+        )
+        parser.add_argument(
+            "--current-project",
+            help="Specify the name of the fbcode_builder manifest file for the "
+            "current repository.  If not specified, the code will attempt to find "
+            "this in a .projectid file in the repository root.",
         )
         parser.add_argument(
             "--src-dir",
