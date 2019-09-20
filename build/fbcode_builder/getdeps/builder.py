@@ -202,7 +202,8 @@ class CMakeBuilder(BuilderBase):
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
-import os
+import subprocess
+import sys
 
 CMAKE = {cmake!r}
 SRC_DIR = {src_dir!r}
@@ -268,8 +269,8 @@ def main():
 
     cmd_str = " ".join(full_cmd)
     print("Running: %r" % (cmd_str,))
-    os.chdir(BUILD_DIR)
-    os.execve(CMAKE, full_cmd, env)
+    proc = subprocess.run(full_cmd, env=env, cwd=BUILD_DIR)
+    sys.exit(proc.returncode)
 
 
 if __name__ == "__main__":
