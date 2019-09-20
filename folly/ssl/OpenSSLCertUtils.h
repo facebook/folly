@@ -15,6 +15,7 @@
  */
 #pragma once
 
+#include <chrono>
 #include <string>
 #include <vector>
 
@@ -108,6 +109,13 @@ class OpenSSLCertUtils {
    * @return A X509 store that contains certs in the CA file.
    */
   static X509StoreUniquePtr readStoreFromBuffer(ByteRange range);
+
+  /**
+   * Converts an ASN1_TIME* into a system clock time point for use with other
+   * std::chrono classes.
+   */
+  static std::chrono::system_clock::time_point asnTimeToTimepoint(
+      ASN1_TIME* asnTime);
 
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);

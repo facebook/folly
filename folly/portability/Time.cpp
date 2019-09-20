@@ -345,5 +345,13 @@ char* strptime(
   }
   return const_cast<char*>(s + input.tellg());
 }
+
+time_t timelocal(tm* tm) {
+  return mktime(tm);
+}
+
+time_t timegm(tm* tm) {
+  return _mkgmtime(tm);
+}
 }
 #endif

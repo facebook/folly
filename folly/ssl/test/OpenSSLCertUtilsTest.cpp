@@ -21,6 +21,7 @@
 #include <folly/container/Enumerate.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/portability/Time.h>
 #include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
@@ -218,6 +219,19 @@ TEST_P(OpenSSLCertUtilsTest, TestX509Dates) {
   EXPECT_EQ(notBefore, "Feb 13 23:21:03 2017 GMT");
   auto notAfter = folly::ssl::OpenSSLCertUtils::getNotAfterTime(*x509);
   EXPECT_EQ(notAfter, "Jul  1 23:21:03 2044 GMT");
+}
+
+TEST_P(OpenSSLCertUtilsTest, TestASN1TimeToTimePoint) {
+  auto x509 = readCertFromData(kTestCertWithSan);
+  EXPECT_NE(x509, nullptr);
+  std::tm tm = {};
+  strptime("Feb 13 23:21:03 2017", "%b %d %H:%M:%S %Y", &tm);
+  auto expected = std::chrono::system_clock::from_time_t(timegm(&tm));
+  auto notBefore = X509_get_notBefore(x509.get());
+  auto result = folly::ssl::OpenSSLCertUtils::asnTimeToTimepoint(notBefore);
+  EXPECT_EQ(
+      std::chrono::time_point_cast<std::chrono::seconds>(expected),
+      std::chrono::time_point_cast<std::chrono::seconds>(result));
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509Summary) {

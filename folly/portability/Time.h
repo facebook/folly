@@ -66,5 +66,7 @@ char* strptime(
     const char* __restrict buf,
     const char* __restrict fmt,
     struct tm* __restrict tm);
+time_t timelocal(tm* tm);
+time_t timegm(tm* tm);
 }
 #endif

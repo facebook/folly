@@ -163,6 +163,27 @@ std::string OpenSSLCertUtils::getNotBeforeTime(X509& x509) {
   return getDateTimeStr(X509_get0_notBefore(&x509));
 }
 
+std::chrono::system_clock::time_point OpenSSLCertUtils::asnTimeToTimepoint(
+    ASN1_TIME* asnTime) {
+  int dSecs = 0;
+  int dDays = 0;
+
+  auto epoch_time_t = std::chrono::system_clock::to_time_t(
+      std::chrono::system_clock::time_point());
+  folly::ssl::ASN1TimeUniquePtr epoch_asn(ASN1_TIME_set(nullptr, epoch_time_t));
+
+  if (!epoch_asn) {
+    throw std::runtime_error("failed to allocate epoch asn.1 time");
+  }
+
+  if (ASN1_TIME_diff(&dDays, &dSecs, epoch_asn.get(), asnTime) != 1) {
+    throw std::runtime_error("invalid asn.1 time");
+  }
+
+  return std::chrono::system_clock::time_point(
+      std::chrono::seconds(dSecs) + std::chrono::hours(24 * dDays));
+}
+
 std::string OpenSSLCertUtils::getDateTimeStr(const ASN1_TIME* time) {
   if (!time) {
     return "";
