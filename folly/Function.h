@@ -305,9 +305,6 @@ template <
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
 using SafeResultOf = decltype(static_cast<To>(std::declval<From>()));
 
-template <typename T>
-using CallArg = conditional_t<is_trivially_copyable<T>::value, T, T&&>;
-
 template <typename F, typename R, typename... A>
 class FunctionTraitsSharedProxy {
   std::shared_ptr<Function<F>> sp_;
@@ -348,7 +345,7 @@ struct FunctionTraits;
 
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...)> {
-  using Call = ReturnType (*)(CallArg<Args>..., Data&);
+  using Call = ReturnType (*)(Data&, Args&&...);
   using IsConst = std::false_type;
   using ConstSignature = ReturnType(Args...) const;
   using NonConstSignature = ReturnType(Args...);
@@ -359,24 +356,24 @@ struct FunctionTraits<ReturnType(Args...)> {
       SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) {
+  static ReturnType callSmall(Data& p, Args&&... args) {
     return static_cast<ReturnType>((*static_cast<Fun*>(
         static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) {
+  static ReturnType callBig(Data& p, Args&&... args) {
     return static_cast<ReturnType>(
         (*static_cast<Fun*>(p.big))(static_cast<Args&&>(args)...));
   }
 
-  static ReturnType uninitCall(CallArg<Args>..., Data&) {
+  static ReturnType uninitCall(Data&, Args&&...) {
     throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) {
     auto& fn = *static_cast<Function<NonConstSignature>*>(this);
-    return fn.call_(static_cast<Args&&>(args)..., fn.data_);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   using SharedProxy =
@@ -385,7 +382,7 @@ struct FunctionTraits<ReturnType(Args...)> {
 
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) const> {
-  using Call = ReturnType (*)(CallArg<Args>..., Data&);
+  using Call = ReturnType (*)(Data&, Args&&...);
   using IsConst = std::true_type;
   using ConstSignature = ReturnType(Args...) const;
   using NonConstSignature = ReturnType(Args...);
@@ -396,24 +393,24 @@ struct FunctionTraits<ReturnType(Args...) const> {
       SafeResultOf<CallableResult<const std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) {
+  static ReturnType callSmall(Data& p, Args&&... args) {
     return static_cast<ReturnType>((*static_cast<const Fun*>(
         static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) {
+  static ReturnType callBig(Data& p, Args&&... args) {
     return static_cast<ReturnType>(
         (*static_cast<const Fun*>(p.big))(static_cast<Args&&>(args)...));
   }
 
-  static ReturnType uninitCall(CallArg<Args>..., Data&) {
+  static ReturnType uninitCall(Data&, Args&&...) {
     throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) const {
     auto& fn = *static_cast<const Function<ConstSignature>*>(this);
-    return fn.call_(static_cast<Args&&>(args)..., fn.data_);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   using SharedProxy =
@@ -423,7 +420,7 @@ struct FunctionTraits<ReturnType(Args...) const> {
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) noexcept> {
-  using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
+  using Call = ReturnType (*)(Data&, Args&&...) noexcept;
   using IsConst = std::false_type;
   using ConstSignature = ReturnType(Args...) const noexcept;
   using NonConstSignature = ReturnType(Args...) noexcept;
@@ -434,24 +431,24 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
       SafeResultOf<CallableResult<std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
+  static ReturnType callSmall(Data& p, Args&&... args) noexcept {
     return static_cast<ReturnType>((*static_cast<Fun*>(
         static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
+  static ReturnType callBig(Data& p, Args&&... args) noexcept {
     return static_cast<ReturnType>(
         (*static_cast<Fun*>(p.big))(static_cast<Args&&>(args)...));
   }
 
-  static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
+  static ReturnType uninitCall(Data&, Args&&...) noexcept {
     terminate_with<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) noexcept {
     auto& fn = *static_cast<Function<NonConstSignature>*>(this);
-    return fn.call_(static_cast<Args&&>(args)..., fn.data_);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   using SharedProxy =
@@ -460,7 +457,7 @@ struct FunctionTraits<ReturnType(Args...) noexcept> {
 
 template <typename ReturnType, typename... Args>
 struct FunctionTraits<ReturnType(Args...) const noexcept> {
-  using Call = ReturnType (*)(CallArg<Args>..., Data&) noexcept;
+  using Call = ReturnType (*)(Data&, Args&&...) noexcept;
   using IsConst = std::true_type;
   using ConstSignature = ReturnType(Args...) const noexcept;
   using NonConstSignature = ReturnType(Args...) noexcept;
@@ -471,24 +468,24 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
       SafeResultOf<CallableResult<const std::decay_t<F>&, Args...>, ReturnType>;
 
   template <typename Fun>
-  static ReturnType callSmall(CallArg<Args>... args, Data& p) noexcept {
+  static ReturnType callSmall(Data& p, Args&&... args) noexcept {
     return static_cast<ReturnType>((*static_cast<const Fun*>(
         static_cast<void*>(&p.tiny)))(static_cast<Args&&>(args)...));
   }
 
   template <typename Fun>
-  static ReturnType callBig(CallArg<Args>... args, Data& p) noexcept {
+  static ReturnType callBig(Data& p, Args&&... args) noexcept {
     return static_cast<ReturnType>(
         (*static_cast<const Fun*>(p.big))(static_cast<Args&&>(args)...));
   }
 
-  static ReturnType uninitCall(CallArg<Args>..., Data&) noexcept {
+  static ReturnType uninitCall(Data&, Args&&...) noexcept {
     throw_exception<std::bad_function_call>();
   }
 
   ReturnType operator()(Args... args) const noexcept {
     auto& fn = *static_cast<const Function<ConstSignature>*>(this);
-    return fn.call_(static_cast<Args&&>(args)..., fn.data_);
+    return fn.call_(fn.data_, static_cast<Args&&>(args)...);
   }
 
   using SharedProxy =
@@ -915,17 +912,14 @@ class FunctionRef;
 
 template <typename ReturnType, typename... Args>
 class FunctionRef<ReturnType(Args...)> final {
-  template <typename Arg>
-  using CallArg = detail::function::CallArg<Arg>;
+  using Call = ReturnType (*)(void*, Args&&...);
 
-  using Call = ReturnType (*)(CallArg<Args>&&..., void*);
-
-  static ReturnType uninitCall(CallArg<Args>&&..., void*) {
+  static ReturnType uninitCall(void*, Args&&...) {
     throw_exception<std::bad_function_call>();
   }
 
   template <typename Fun>
-  static ReturnType call(CallArg<Args>&&... args, void* object) {
+  static ReturnType call(void* object, Args&&... args) {
     using Pointer = std::add_pointer_t<Fun>;
     return static_cast<ReturnType>(invoke(
         static_cast<Fun&&>(*static_cast<Pointer>(object)),
@@ -970,7 +964,7 @@ class FunctionRef<ReturnType(Args...)> final {
         call_(&FunctionRef::call<Fun>) {}
 
   ReturnType operator()(Args... args) const {
-    return call_(static_cast<Args&&>(args)..., object_);
+    return call_(object_, static_cast<Args&&>(args)...);
   }
 
   constexpr explicit operator bool() const noexcept {
