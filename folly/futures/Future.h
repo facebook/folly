@@ -681,11 +681,20 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::tryCallableResult<T, F>::value_type>
   defer(F&& func) &&;
 
+  /// Defer work to run on the consumer of the future.
+  /// Function must take a const Executor::KeepAlive<>& and a Try as parameters.
+  ///
+  /// As for defer(F&& func) except as the first parameter to func a KeepAlive
+  /// representing the executor running the work will be provided.
   template <typename F>
   SemiFuture<
       typename futures::detail::tryExecutorCallableResult<T, F>::value_type>
   deferExTry(F&& func) &&;
 
+  /// Defer work to run on the consumer of the future.
+  /// Function must take a Try as a parameter.
+  ///
+  /// As for defer(F&& func) but supporting function references.
   template <typename R, typename... Args>
   auto defer(R (&func)(Args...)) && {
     return std::move(*this).defer(&func);
@@ -710,11 +719,20 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   SemiFuture<typename futures::detail::valueCallableResult<T, F>::value_type>
   deferValue(F&& func) &&;
 
+  /// Defer for functions taking a T rather than a Try<T>.
+  /// Function must take a const Executor::KeepAlive<>& and a T as parameters.
+  ///
+  /// As for deferValue(F&& func) except as the first parameter to func a
+  /// KeepAlive representing the executor running the work will be provided.
   template <typename F>
   SemiFuture<
       typename futures::detail::valueExecutorCallableResult<T, F>::value_type>
   deferExValue(F&& func) &&;
 
+  /// Defer work to run on the consumer of the future.
+  /// Function must take a T as a parameter.
+  ///
+  /// As for deferValue(F&& func) but supporting function references.
   template <typename R, typename... Args>
   auto deferValue(R (&func)(Args...)) && {
     return std::move(*this).deferValue(&func);
@@ -749,11 +767,15 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class ExceptionType, class F>
   SemiFuture<T> deferError(tag_t<ExceptionType>, F&& func) &&;
 
+  /// As for deferError(tag_t<ExceptionType>, F&& func) but supporting function
+  /// references.
   template <class ExceptionType, class R, class... Args>
   SemiFuture<T> deferError(tag_t<ExceptionType> tag, R (&func)(Args...)) && {
     return std::move(*this).deferError(tag, &func);
   }
 
+  /// As for deferError(tag_t<ExceptionType>, F&& func) but makes the exception
+  /// explicit as a template argument rather than using a tag type.
   template <class ExceptionType, class F>
   SemiFuture<T> deferError(F&& func) && {
     return std::move(*this).deferError(
@@ -787,6 +809,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class F>
   SemiFuture<T> deferError(F&& func) &&;
 
+  /// As for deferError(tag_t<ExceptionType>, F&& func) but supporting function
+  /// references.
   template <class R, class... Args>
   SemiFuture<T> deferError(R (&func)(Args...)) && {
     return std::move(*this).deferError(&func);
