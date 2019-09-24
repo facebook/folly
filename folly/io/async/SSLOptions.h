@@ -109,6 +109,21 @@ void setCipherSuites(SSLContext& ctx) {
 }
 
 /**
+ * Set the cipher suite of ctx to the passed in  cipherList,
+ * and print any runtime error it catches.
+ * @param ctx The SSLContext to apply the desired SSL options to.
+ * @param cipherList the list of ciphersuites to set
+ */
+template <typename Container>
+void setCipherSuites(SSLContext& ctx, const Container& cipherList) {
+  try {
+    ctx.setCipherList(cipherList);
+  } catch (std::runtime_error const& e) {
+    ssl_options_detail::logDfatal(e);
+  }
+}
+
+/**
  * Set the signature algorithm list of ctx to that in TSSLOptions, and print
  * any runtime errors it catche.
  * @param ctx The SSLContext to apply the desired SSL options to.

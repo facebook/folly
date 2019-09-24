@@ -37,4 +37,18 @@ TEST_F(SSLOptionsTest, TestSetCommonCipherList) {
   }
   ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
 }
+
+TEST_F(SSLOptionsTest, TestSetCipherListWithVector) {
+  SSLContext ctx;
+  auto ciphers = ssl::SSLCommonOptions::ciphers();
+  ssl::setCipherSuites(ctx, ciphers);
+
+  int i = 0;
+  ssl::SSLUniquePtr ssl(ctx.createSSL());
+  for (auto& cipher : ssl::SSLCommonOptions::ciphers()) {
+    ASSERT_STREQ(cipher, SSL_get_cipher_list(ssl.get(), i++));
+  }
+  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
+}
+
 } // namespace folly
