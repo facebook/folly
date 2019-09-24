@@ -961,7 +961,7 @@ class FunctionRef<ReturnType(Args...)> final {
       // is a const type) inside `FunctionRef::call`
       : object_(
             const_cast<void*>(static_cast<void const*>(std::addressof(fun)))),
-        call_(&FunctionRef::call<Fun>) {}
+        call_(&FunctionRef::template call<Fun>) {}
 
   ReturnType operator()(Args... args) const {
     return call_(object_, static_cast<Args&&>(args)...);
