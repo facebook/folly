@@ -17,9 +17,11 @@
 #pragma once
 
 #include <cstddef>
+#include <cstdint>
 #include <utility>
 
 #include <folly/lang/Align.h>
+#include <folly/lang/SafeAssert.h>
 
 namespace folly {
 
@@ -35,14 +37,15 @@ namespace folly {
  */
 template <typename T>
 class CachelinePadded {
-  static_assert(
-      alignof(T) <= max_align_v,
-      "CachelinePadded does not support over-aligned types.");
 
  public:
   template <typename... Args>
   explicit CachelinePadded(Args&&... args)
-      : inner_(std::forward<Args>(args)...) {}
+      : inner_(std::forward<Args>(args)...) {
+    FOLLY_SAFE_DCHECK(
+        (reinterpret_cast<uintptr_t>(&inner_) % alignof(T)) == 0,
+        "CachelinePadded requires types aligned to their ABI requirement");
+  }
 
   T* get() {
     return &inner_;
