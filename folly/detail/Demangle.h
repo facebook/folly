@@ -18,7 +18,7 @@
 
 #include <cstddef>
 
-#if __has_include(<demangle.h>)
+#if __has_include(<Demangle.h>)
 #define FOLLY_DETAIL_HAVE_DEMANGLE_H 1
 #else
 #define FOLLY_DETAIL_HAVE_DEMANGLE_H 0
