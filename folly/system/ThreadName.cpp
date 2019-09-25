@@ -31,7 +31,11 @@ namespace folly {
 #if __GLIBC_PREREQ(2, 12)
 // has pthread_setname_np(pthread_t, const char*) (2 params)
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
+#else
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
 #endif
+#else
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
 #endif
 
 #if defined(__APPLE__)
@@ -43,12 +47,16 @@ namespace folly {
     __IPHONE_OS_VERSION_MIN_REQUIRED >= 30200
 // iOS 3.2+ has pthread_setname_np(const char*) (1 param)
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 1
+#else
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 0
 #endif
+#else
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 0
 #endif // defined(__APPLE__)
 
 namespace {
 
-#if FOLLY_HAVE_PTHREAD && !_WIN32
+#if FOLLY_HAVE_PTHREAD && !defined(_WIN32)
 pthread_t stdTidToPthreadId(std::thread::id tid) {
   static_assert(
       std::is_same<pthread_t, std::thread::native_handle_type>::value,
@@ -70,7 +78,7 @@ pthread_t stdTidToPthreadId(std::thread::id tid) {
 
 bool canSetCurrentThreadName() {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
-    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME || _WIN32
+    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME || defined(_WIN32)
   return true;
 #else
   return false;
@@ -78,7 +86,7 @@ bool canSetCurrentThreadName() {
 }
 
 bool canSetOtherThreadName() {
-#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || _WIN32
+#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || defined(_WIN32)
   return true;
 #else
   return false;
