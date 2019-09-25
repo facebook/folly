@@ -121,16 +121,18 @@ struct Printer {
     newline();
     if (opts_.sort_keys || opts_.sort_keys_by) {
       using ref = std::reference_wrapper<decltype(o.items())::value_type const>;
+      auto sort_keys_by = [&](auto begin, auto end, const auto& comp) {
+        std::sort(begin, end, [&](ref a, ref b) {
+          // Only compare keys.  No ordering among identical keys.
+          return comp(a.get().first, b.get().first);
+        });
+      };
       std::vector<ref> refs(o.items().begin(), o.items().end());
-
-      using SortByRef = FunctionRef<bool(dynamic const&, dynamic const&)>;
-      auto const& sort_keys_by = opts_.sort_keys_by
-          ? SortByRef(opts_.sort_keys_by)
-          : SortByRef(std::less<dynamic>());
-      std::sort(refs.begin(), refs.end(), [&](ref a, ref b) {
-        // Only compare keys.  No ordering among identical keys.
-        return sort_keys_by(a.get().first, b.get().first);
-      });
+      if (opts_.sort_keys_by) {
+        sort_keys_by(refs.begin(), refs.end(), opts_.sort_keys_by);
+      } else {
+        sort_keys_by(refs.begin(), refs.end(), std::less<>());
+      }
       printKVPairs(refs.cbegin(), refs.cend());
     } else {
       printKVPairs(o.items().begin(), o.items().end());
