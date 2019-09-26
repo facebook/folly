@@ -397,8 +397,13 @@ install(
 # CMake can depend on folly using pkg-config.
 configure_file(
   ${CMAKE_CURRENT_SOURCE_DIR}/CMake/libfolly.pc.in
-  ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
+  ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
   @ONLY
+)
+file(
+  GENERATE
+  OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
+  INPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
 )
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
