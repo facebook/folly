@@ -253,6 +253,16 @@ class AsyncUDPSocket : public EventHandler {
   virtual void dontFragment(bool df);
 
   /**
+   * Set Dont-Fragment (DF) but ignore Path MTU.
+   *
+   * On Linux, this sets  IP(V6)_MTU_DISCOVER to IP(V6)_PMTUDISC_PROBE.
+   * This essentially sets DF but ignores Path MTU for this socket.
+   * This may be desirable for apps that has its own PMTU Discovery mechanism.
+   * See http://man7.org/linux/man-pages/man7/ip.7.html for more info.
+   */
+  virtual void setDFAndTurnOffPMTU();
+
+  /**
    * Callback for receiving errors on the UDP sockets
    */
   virtual void setErrMessageCallback(ErrMessageCallback* errMessageCallback);

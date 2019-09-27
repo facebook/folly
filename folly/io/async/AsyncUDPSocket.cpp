@@ -209,6 +209,34 @@ void AsyncUDPSocket::dontFragment(bool df) {
 #endif
 }
 
+void AsyncUDPSocket::setDFAndTurnOffPMTU() {
+#if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_PROBE)
+  if (address().getFamily() == AF_INET) {
+    int v4 = IP_PMTUDISC_PROBE;
+    if (folly::netops::setsockopt(
+            fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "Failed to set PMTUDISC_PROBE with IP_MTU_DISCOVER",
+          errno);
+    }
+  }
+
+#endif
+#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_PROBE)
+  if (address().getFamily() == AF_INET6) {
+    int v6 = IPV6_PMTUDISC_PROBE;
+    if (folly::netops::setsockopt(
+            fd_, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &v6, sizeof(v6))) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN,
+          "Failed to set PMTUDISC_PROBE with IPV6_MTU_DISCOVER",
+          errno);
+    }
+  }
+#endif
+}
+
 void AsyncUDPSocket::setErrMessageCallback(
     ErrMessageCallback* errMessageCallback) {
   errMessageCallback_ = errMessageCallback;

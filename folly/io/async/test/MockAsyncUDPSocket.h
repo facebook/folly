@@ -43,6 +43,7 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_METHOD1(resumeRead, void(ReadCallback*));
   MOCK_METHOD0(pauseRead, void());
   MOCK_METHOD0(close, void());
+  MOCK_METHOD0(setDFAndTurnOffPMTU, void());
   MOCK_CONST_METHOD0(getNetworkSocket, NetworkSocket());
   MOCK_METHOD1(setReusePort, void(bool));
   MOCK_METHOD1(setReuseAddr, void(bool));
