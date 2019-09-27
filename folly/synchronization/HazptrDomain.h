@@ -639,12 +639,4 @@ void hazptr_cleanup(hazptr_domain<Atom>& domain) noexcept {
   domain.cleanup();
 }
 
-/** hazptr_cleanup_tag: Reclaims objects asssociated with a tag */
-template <template <typename> class Atom>
-void hazptr_cleanup_batch_tag(
-    const hazptr_obj_batch<Atom>* batch,
-    hazptr_domain<Atom>& domain) noexcept {
-  domain.cleanup_batch_tag(batch);
-}
-
 } // namespace folly

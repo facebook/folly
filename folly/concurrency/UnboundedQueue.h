@@ -259,7 +259,6 @@ class UnboundedQueue {
   /** destructor */
   ~UnboundedQueue() {
     cleanUpRemainingItems();
-    c_.batch.shutdown_and_reclaim();
     reclaimRemainingSegments();
   }
 

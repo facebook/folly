@@ -156,12 +156,6 @@ template <template <typename> class Atom = std::atomic>
 void hazptr_cleanup(
     hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
 
-/** hazptr_cleanup_batch_tag */
-template <template <typename> class Atom = std::atomic>
-void hazptr_cleanup_batch_tag(
-    const hazptr_obj_batch<Atom>* batch,
-    hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) noexcept;
-
 /** Global default domain defined in Hazptr.cpp */
 extern hazptr_domain<std::atomic> default_domain;
 

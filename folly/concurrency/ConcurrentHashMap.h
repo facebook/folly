@@ -594,7 +594,6 @@ class ConcurrentHashMap {
       if (batch_.compare_exchange_strong(b, newbatch)) {
         b = newbatch;
       } else {
-        newbatch->shutdown_and_reclaim();
         newbatch->~hazptr_obj_batch<Atom>();
         Allocator().deallocate(storage, sizeof(hazptr_obj_batch<Atom>));
       }
@@ -605,8 +604,6 @@ class ConcurrentHashMap {
   void batch_shutdown_cleanup() {
     auto b = batch();
     if (b) {
-      b->shutdown_and_reclaim();
-      hazptr_cleanup_batch_tag(b);
       b->~hazptr_obj_batch<Atom>();
       Allocator().deallocate((uint8_t*)b, sizeof(hazptr_obj_batch<Atom>));
     }

@@ -139,6 +139,11 @@ class hazptr_obj {
     return reinterpret_cast<hazptr_obj_batch<Atom>*>(btag);
   }
 
+  /** tagged */
+  bool tagged() {
+    return (batch_tag_ & kTagBit) == kTagBit;
+  }
+
   /** set_batch_tag: Set batch and make object tagged. */
   void set_batch_tag(hazptr_obj_batch<Atom>* batch) {
     batch_tag_ = reinterpret_cast<uintptr_t>(batch) + kTagBit;
@@ -184,7 +189,8 @@ class hazptr_obj {
   void push_obj(hazptr_domain<Atom>& domain) {
     auto b = batch();
     if (b) {
-      b->push_obj(this, domain);
+      DCHECK_EQ(&domain, &default_hazptr_domain<Atom>());
+      b->push_obj(this);
     } else {
       push_to_retired(domain);
     }
@@ -278,6 +284,8 @@ class hazptr_obj_list {
  *
  *  See description of hazptr_obj for notes on batches, tags, and
  *  tageed and untagged objects.
+ *
+ *  [Note: For now supports only the default domain.]
  */
 template <template <typename> class Atom>
 class hazptr_obj_batch {
@@ -290,10 +298,12 @@ class hazptr_obj_batch {
   SharedList l_;
   Atom<int> count_;
   bool active_;
+  Atom<bool> pushed_to_domain_tagged_;
 
  public:
   /** Constructor */
-  hazptr_obj_batch() noexcept : l_(), count_(0), active_(true) {}
+  hazptr_obj_batch() noexcept
+      : l_(), count_(0), active_(true), pushed_to_domain_tagged_{false} {}
 
   /** Not copyable or moveable */
   hazptr_obj_batch(const hazptr_obj_batch& o) = delete;
@@ -303,11 +313,14 @@ class hazptr_obj_batch {
 
   /** Destructor */
   ~hazptr_obj_batch() {
+    if (active_) {
+      shutdown_and_reclaim();
+    }
     DCHECK(!active_);
     DCHECK(l_.empty());
   }
 
-  /** shutdown */
+  /** shutdown_and_reclaim */
   void shutdown_and_reclaim() {
     DCHECK(active_);
     active_ = false;
@@ -317,6 +330,10 @@ class hazptr_obj_batch {
       Obj* obj = l.head();
       reclaim_list(obj);
     }
+    if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
+      default_hazptr_domain<Atom>().cleanup_batch_tag(this);
+    }
+    DCHECK(l_.empty());
   }
 
  private:
@@ -340,13 +357,11 @@ class hazptr_obj_batch {
   }
 
   /** push_obj */
-  void push_obj(
-      Obj* obj,
-      hazptr_domain<Atom>& domain = default_hazptr_domain<Atom>()) {
+  void push_obj(Obj* obj) {
     if (active_) {
       l_.push(obj);
       inc_count();
-      check_threshold_push(domain);
+      check_threshold_push();
     } else {
       obj->set_next(nullptr);
       reclaim_list(obj);
@@ -367,11 +382,14 @@ class hazptr_obj_batch {
   }
 
   /** check_threshold_push */
-  void check_threshold_push(hazptr_domain<Atom>& domain) {
+  void check_threshold_push() {
     auto c = count();
     while (c >= kThreshold) {
       if (cas_count(c, 0)) {
         List ll = l_.pop_all();
+        if (ll.head()->tagged()) {
+          pushed_to_domain_tagged_.store(true, std::memory_order_relaxed);
+        }
         if (kIsDebug) {
           Obj* p = ll.head();
           for (int i = 1; p; ++i, p = p->next()) {
@@ -379,7 +397,7 @@ class hazptr_obj_batch {
           }
         }
         hazptr_obj_list<Atom> l(ll.head(), ll.tail(), c);
-        hazptr_domain_push_list<Atom>(l, domain);
+        hazptr_domain_push_list<Atom>(l);
         return;
       }
     }

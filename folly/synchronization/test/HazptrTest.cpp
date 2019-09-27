@@ -35,7 +35,6 @@ DEFINE_int64(num_ops, 1003, "Number of ops or pairs of ops per rep");
 using folly::default_hazptr_domain;
 using folly::hazptr_array;
 using folly::hazptr_cleanup;
-using folly::hazptr_cleanup_batch_tag;
 using folly::hazptr_domain;
 using folly::hazptr_holder;
 using folly::hazptr_local;
@@ -826,7 +825,6 @@ void batch_test() {
       }
     });
     DSched::join(thr);
-    batch.shutdown_and_reclaim();
   }
   ASSERT_EQ(c_.ctors(), num);
   //  ASSERT_GT(c_.dtors(), 0);
@@ -842,8 +840,6 @@ void batch_test() {
       }
     });
     DSched::join(thr);
-    batch.shutdown_and_reclaim();
-    hazptr_cleanup_batch_tag<Atom>(&batch);
   }
   ASSERT_EQ(c_.ctors(), num);
   ASSERT_GT(c_.dtors(), 0);
@@ -861,8 +857,6 @@ void recursive_destruction_test() {
     }
     ~Foo() {
       set(nullptr);
-      batch_.shutdown_and_reclaim();
-      hazptr_cleanup_batch_tag<Atom>(&batch_);
       c_.inc_dtors();
     }
     void set(Foo* foo) {
@@ -893,7 +887,6 @@ void recursive_destruction_test() {
         }
       }
       foo0->retire();
-      b0.shutdown_and_reclaim();
     });
   }
   for (auto& t : threads) {
@@ -1428,8 +1421,6 @@ uint64_t batch_bench(std::string name, int nthreads) {
     auto fn = [&](int tid) {
       for (int j = tid; j < ops; j += nthreads) {
         hazptr_obj_batch b;
-        b.shutdown_and_reclaim();
-        hazptr_cleanup_batch_tag<std::atomic>(&b);
       }
     };
     auto endFn = [] {};
@@ -1506,7 +1497,7 @@ allocate/retire/reclaim object                     70 ns     68 ns     67 ns
 20-item list protect all - own hazptr              28 ns     28 ns     28 ns
 20-item list protect all                           31 ns     29 ns     29 ns
 1/1000 hazptr_cleanup                               2 ns      1 ns      1 ns
-Life cycle of unused tagged obj batch            1577 ns   1547 ns   1511 ns
+Life cycle of unused tagged obj batch               1 ns      1 ns      1 ns
 ================================ 10 threads ================================
 10x construct/destruct hazptr_holder               11 ns      8 ns      8 ns
 10x construct/destruct hazptr_array<1>              8 ns      7 ns      7 ns
@@ -1525,5 +1516,5 @@ allocate/retire/reclaim object                     20 ns     17 ns     16 ns
 20-item list protect all - own hazptr               4 ns      4 ns      4 ns
 20-item list protect all                            5 ns      4 ns      4 ns
 1/1000 hazptr_cleanup                             119 ns    113 ns     97 ns
-Life cycle of unused tagged obj batch            1985 ns   1918 ns   1853 ns
+Life cycle of unused tagged obj batch               0 ns      0 ns      0 ns
 */
