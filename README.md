@@ -70,6 +70,16 @@ Folly is published on GitHub at https://github.com/facebook/folly
 
 ### Build Notes
 
+You can download and install folly using the [vcpkg](https://github.com/Microsoft/vcpkg/) dependency manager:
+
+    git clone https://github.com/Microsoft/vcpkg.git
+    cd vcpkg
+    ./bootstrap-vcpkg.sh
+    ./vcpkg integrate install
+    vcpkg install folly
+
+The folly port in vcpkg is kept up to date by Microsoft team members and community contributors. If the version is out of date, please [create an issue or pull request](https://github.com/Microsoft/vcpkg) on the vcpkg repository.
+
 #### Dependencies
 
 folly requires gcc 5.1+ and a version of boost compiled with C++14 support.
