@@ -598,10 +598,9 @@ struct isTry<Try<T>> : std::true_type {};
  */
 template <typename F>
 typename std::enable_if<
-    !std::is_same<invoke_result_t<F>, void>::value &&
-        !isTry<invoke_result_t<F>>::value,
+    !std::is_same<invoke_result_t<F>, void>::value,
     Try<invoke_result_t<F>>>::type
-makeTryWith(F&& f);
+makeTryWithNoUnwrap(F&& f);
 
 /*
  * Specialization of makeTryWith for void return
@@ -613,6 +612,16 @@ makeTryWith(F&& f);
 template <typename F>
 typename std::
     enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    makeTryWithNoUnwrap(F&& f);
+
+/*
+ * @param f a function to execute and capture the result of (value or exception)
+ *
+ * @returns Try holding the result of f
+ */
+template <typename F>
+typename std::
+    enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type
     makeTryWith(F&& f);
 
 /*

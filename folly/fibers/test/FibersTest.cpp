@@ -2514,3 +2514,15 @@ TEST(FiberManager, loopInUnwind) {
   } catch (...) {
   }
 }
+
+TEST(FiberManager, addTaskRemoteFutureTry) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  EXPECT_EQ(
+      42,
+      fm.addTaskRemoteFuture(
+            [&]() -> folly::Try<int> { return folly::Try<int>(42); })
+          .getVia(&evb)
+          .value());
+}

@@ -60,7 +60,7 @@ auto FiberManager::addTaskRemoteFuture(F&& func)
   auto f = p.getFuture();
   addTaskRemote(
       [p = std::move(p), func = std::forward<F>(func), this]() mutable {
-        auto t = folly::makeTryWith(std::forward<F>(func));
+        auto t = folly::makeTryWithNoUnwrap(std::forward<F>(func));
         runInMainContext([&]() { p.setTry(std::move(t)); });
       });
   return f;

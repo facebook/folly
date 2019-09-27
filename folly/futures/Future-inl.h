@@ -2148,7 +2148,7 @@ void waitViaImpl(Future<T>& f, DrivableExecutor* e) {
   if (f.isReady()) {
     return;
   }
-  f = std::move(f).via(e).thenValue([](T&& t) { return std::move(t); });
+  f = std::move(f).via(e).thenTry([](Try<T>&& t) { return std::move(t); });
   while (!f.isReady()) {
     e->drive();
   }
