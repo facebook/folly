@@ -1237,7 +1237,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void invalidState(ReadCallback* callback);
   void invalidState(WriteCallback* callback);
 
-  std::string withAddr(const std::string& s);
+  std::string withAddr(folly::StringPiece s);
 
   void cacheLocalAddress() const;
   void cachePeerAddress() const;

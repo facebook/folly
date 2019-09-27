@@ -2897,7 +2897,7 @@ std::ostream& operator<<(
   return os;
 }
 
-std::string AsyncSocket::withAddr(const std::string& s) {
+std::string AsyncSocket::withAddr(folly::StringPiece s) {
   // Don't use addr_ directly because it may not be initialized
   // e.g. if constructed from fd
   folly::SocketAddress peer, local;
@@ -2915,7 +2915,9 @@ std::string AsyncSocket::withAddr(const std::string& s) {
   } catch (...) {
     // ignore
   }
-  return s + " (peer=" + peer.describe() + ", local=" + local.describe() + ")";
+
+  return folly::to<std::string>(
+      s, " (peer=", peer.describe(), ", local=", local.describe(), ")");
 }
 
 void AsyncSocket::setBufferCallback(BufferCallback* cb) {
