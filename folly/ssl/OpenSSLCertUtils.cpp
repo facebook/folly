@@ -164,7 +164,7 @@ std::string OpenSSLCertUtils::getNotBeforeTime(X509& x509) {
 }
 
 std::chrono::system_clock::time_point OpenSSLCertUtils::asnTimeToTimepoint(
-    ASN1_TIME* asnTime) {
+    const ASN1_TIME* asnTime) {
   int dSecs = 0;
   int dDays = 0;
 
