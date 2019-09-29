@@ -279,13 +279,16 @@ bool EventBase::loopOnce(int flags) {
 bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   VLOG(5) << "EventBase(): Starting loop.";
 
-  DCHECK(!invokingLoop_)
-      << "Your code just tried to loop over an event base from inside another "
-      << "event base loop. Since libevent is not reentrant, this leads to "
-      << "undefined behavior in opt builds. Please fix immediately. For the "
-      << "common case of an inner function that needs to do some synchronous "
-      << "computation on an event-base, replace getEventBase() by a new, "
-      << "stack-allocated EvenBase.";
+  const char* message =
+      "Your code just tried to loop over an event base from inside another "
+      "event base loop. Since libevent is not reentrant, this leads to "
+      "undefined behavior in opt builds. Please fix immediately. For the "
+      "common case of an inner function that needs to do some synchronous "
+      "computation on an event-base, replace getEventBase() by a new, "
+      "stack-allocated EvenBase.";
+
+  LOG_IF(DFATAL, invokingLoop_) << message;
+
   invokingLoop_ = true;
   SCOPE_EXIT {
     invokingLoop_ = false;
