@@ -2903,15 +2903,11 @@ std::string AsyncSocket::withAddr(folly::StringPiece s) {
   folly::SocketAddress peer, local;
   try {
     getLocalAddress(&local);
-  } catch (const std::exception&) {
-    // ignore
   } catch (...) {
     // ignore
   }
   try {
     getPeerAddress(&peer);
-  } catch (const std::exception&) {
-    // ignore
   } catch (...) {
     // ignore
   }
