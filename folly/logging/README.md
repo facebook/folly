@@ -106,8 +106,8 @@ and type-safe mechanisms for formatting log messages.
 
 ## Escapes unprintable characters in log messages by default.
 
-This makes it safer to safer to log arbitrary input data, without worrying if
-the data may contain potentially malicious terminal escape sequences.
+This makes it safer to log arbitrary input data, without worrying if the data
+may contain potentially malicious terminal escape sequences.
 
 For instance, this helps avoid vulnerabilities like CVE-2013-1862 and
 CVE-2009-4496.
