@@ -156,6 +156,12 @@ function(add_fb_python_executable EXE_NAME)
   # Add an "ALL" target that depends on force ${EXE_NAME},
   # so that ${EXE_NAME} will be included in the default list of build targets.
   add_custom_target("${EXE_NAME}.GEN_PY_EXE" ALL DEPENDS "${output_file}")
+
+  # Allow resolving the executable path for the target that we generate
+  # via a generator expression like:
+  # "WATCHMAN_WAIT_PATH=$<TARGET_PROPERTY:watchman-wait.GEN_PY_EXE,EXECUTABLE>"
+  set_property(TARGET "${EXE_NAME}.GEN_PY_EXE"
+      PROPERTY EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${output_file}")
 endfunction()
 
 #
