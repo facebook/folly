@@ -827,10 +827,7 @@ if (BUILD_TESTS)
       #TEST json_test SOURCES JsonTest.cpp
       TEST json_pointer_test SOURCES json_pointer_test.cpp
       TEST json_patch_test SOURCES json_patch_test.cpp
-      TEST json_other_test
-        CONTENT_DIR json_test_data/
-        SOURCES
-          JsonOtherTest.cpp
+      TEST json_other_test SOURCES JsonOtherTest.cpp
       TEST lazy_test SOURCES LazyTest.cpp
       TEST lock_traits_test SOURCES LockTraitsTest.cpp
       TEST locks_test SOURCES SpinLockTest.cpp
