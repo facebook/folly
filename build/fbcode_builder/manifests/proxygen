@@ -19,6 +19,7 @@ BUILD_QUIC=ON
 BUILD_TESTS=OFF
 
 [dependencies]
+gperf
 folly
 fizz
 wangle
