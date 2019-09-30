@@ -19,6 +19,7 @@
 #include <boost/thread/barrier.hpp>
 
 #include <folly/Random.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 #include <folly/small_vector.h>
@@ -107,6 +108,67 @@ TEST(Collect, collectAll) {
     for (auto& p : promises) {
       p.setValue();
     }
+    EXPECT_TRUE(allf.isReady());
+  }
+}
+
+TEST(Collect, collectAllSemiFutureInline) {
+  // inline future collection on same executor
+  {
+    ManualExecutor x;
+    std::vector<Future<int>> futures;
+    futures.emplace_back(makeFuture(42).via(&x));
+    futures.emplace_back(makeFuture(42).via(&x));
+    futures.emplace_back(makeFuture(42).via(&x));
+
+    auto allf =
+        collectAllSemiFuture(futures).via(&x).thenTryInline([](auto&&) {});
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(3, x.run());
+    EXPECT_TRUE(allf.isReady());
+  }
+  // inline defered semi-future collection on same executor
+  {
+    ManualExecutor x;
+    std::vector<SemiFuture<int>> futures;
+    futures.emplace_back(makeSemiFuture(42).defer([](auto&&) { return 42; }));
+    futures.emplace_back(makeSemiFuture(42).defer([](auto&&) { return 42; }));
+    futures.emplace_back(makeSemiFuture(42).defer([](auto&&) { return 42; }));
+
+    auto allf = collectAllSemiFuture(futures).defer([](auto&&) {}).via(&x);
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(3, x.run());
+    EXPECT_TRUE(allf.isReady());
+  }
+  // inline future collection lastly fullfilled on same executor
+  {
+    ManualExecutor x1, x2;
+    std::vector<Future<int>> futures;
+    futures.emplace_back(makeFuture(42).via(&x1));
+    futures.emplace_back(makeFuture(42).via(&x2));
+
+    auto allf = collectAllSemiFuture(futures).defer([](auto&&) {}).via(&x1);
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x2.run());
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x1.run());
+    EXPECT_TRUE(allf.isReady());
+  }
+  // prevent inlining of future collection lastly fullfilled on different
+  // executor
+  {
+    ManualExecutor x1, x2;
+    std::vector<Future<int>> futures;
+    futures.emplace_back(makeFuture(42).via(&x1));
+    futures.emplace_back(makeFuture(42).via(&x2));
+
+    auto allf = collectAllSemiFuture(futures).defer([](auto&&) {}).via(&x1);
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x1.run());
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x2.run());
+    EXPECT_FALSE(allf.isReady());
+    EXPECT_EQ(1, x1.run());
     EXPECT_TRUE(allf.isReady());
   }
 }

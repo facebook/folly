@@ -58,6 +58,8 @@ template <class T>
 class SemiFuture;
 template <class T>
 class Future;
+template <class T>
+class Promise;
 
 namespace futures {
 namespace detail {
@@ -66,6 +68,8 @@ class FutureBase;
 struct EmptyConstruct {};
 template <typename T, typename F>
 class CoreCallbackState;
+template <typename T>
+void setTry(Promise<T>& p, Executor::KeepAlive<>&& ka, Try<T>&& t);
 } // namespace detail
 } // namespace futures
 
@@ -407,6 +411,10 @@ class Promise {
   friend class Future;
   template <class, class>
   friend class futures::detail::CoreCallbackState;
+  friend void futures::detail::setTry<T>(
+      Promise<T>& p,
+      Executor::KeepAlive<>&& ka,
+      Try<T>&& t);
 
   // Whether the Future has been retrieved (a one-time operation).
   bool retrieved_;

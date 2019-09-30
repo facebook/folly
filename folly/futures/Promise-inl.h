@@ -35,6 +35,10 @@ void coreDetachPromiseMaybeWithResult(Core<T>& core) {
   }
   core.detachPromise();
 }
+template <typename T>
+void setTry(Promise<T>& p, Executor::KeepAlive<>&& ka, Try<T>&& t) {
+  p.setTry(std::move(ka), std::move(t));
+}
 } // namespace detail
 } // namespace futures
 

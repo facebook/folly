@@ -1415,12 +1415,15 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
   using T = typename F::value_type;
 
   struct Context {
-    explicit Context(size_t n) : results(n) {}
+    explicit Context(size_t n) : results(n), count(n) {}
     ~Context() {
-      p.setValue(std::move(results));
+      futures::detail::setTry(
+          p, std::move(ka), Try<std::vector<Try<T>>>(std::move(results)));
     }
     Promise<std::vector<Try<T>>> p;
+    Executor::KeepAlive<> ka;
     std::vector<Try<T>> results;
+    std::atomic<size_t> count;
   };
 
   std::vector<futures::detail::DeferredWrapper> executors;
@@ -1429,9 +1432,14 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
   auto ctx = std::make_shared<Context>(size_t(std::distance(first, last)));
 
   for (size_t i = 0; first != last; ++first, ++i) {
-    first->setCallback_([i, ctx](Executor::KeepAlive<>&&, Try<T>&& t) {
-      ctx->results[i] = std::move(t);
-    });
+    first->setCallback_(
+        [i, ctx](Executor::KeepAlive<>&& ka, Try<T>&& t) {
+          ctx->results[i] = std::move(t);
+          if (ctx->count.fetch_sub(1, std::memory_order_acq_rel) == 1) {
+            ctx->ka = std::move(ka);
+          }
+        },
+        futures::detail::InlineContinuation::permit);
   }
 
   auto future = ctx->p.getSemiFuture();
@@ -1936,25 +1944,24 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
           });
         }
       }
-      f.setCallback_(
-          [ctx, mp = std::move(p), mt = std::move(t)](
-              Executor::KeepAlive<>&&, Try<T>&& v) mutable {
-            if (v.hasValue()) {
-              try {
-                Fulfill{}(
-                    std::move(mp),
-                    ctx->func_(
-                        std::move(v.value()),
-                        mt.template get<IsTry::value, Arg&&>()));
-              } catch (std::exception& e) {
-                mp.setException(exception_wrapper(std::current_exception(), e));
-              } catch (...) {
-                mp.setException(exception_wrapper(std::current_exception()));
-              }
-            } else {
-              mp.setTry(std::move(v));
-            }
-          });
+      f.setCallback_([ctx, mp = std::move(p), mt = std::move(t)](
+                         Executor::KeepAlive<>&&, Try<T>&& v) mutable {
+        if (v.hasValue()) {
+          try {
+            Fulfill{}(
+                std::move(mp),
+                ctx->func_(
+                    std::move(v.value()),
+                    mt.template get<IsTry::value, Arg&&>()));
+          } catch (std::exception& e) {
+            mp.setException(exception_wrapper(std::current_exception(), e));
+          } catch (...) {
+            mp.setException(exception_wrapper(std::current_exception()));
+          }
+        } else {
+          mp.setTry(std::move(v));
+        }
+      });
     });
   }
   return ctx->promise_.getSemiFuture().via(&InlineExecutor::instance());
