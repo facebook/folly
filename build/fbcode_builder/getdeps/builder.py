@@ -206,6 +206,7 @@ import subprocess
 import sys
 
 CMAKE = {cmake!r}
+CTEST = {ctest!r}
 SRC_DIR = {src_dir!r}
 BUILD_DIR = {build_dir!r}
 INSTALL_DIR = {install_dir!r}
@@ -224,7 +225,7 @@ def main():
     )
     ap.add_argument(
       "--mode",
-      choices=["configure", "build", "install"],
+      choices=["configure", "build", "install", "test"],
       default="configure",
       help="The mode to run: configure, build, or install.  "
       "Defaults to configure",
@@ -242,6 +243,13 @@ def main():
       const="install",
       dest="mode",
       help="An alias for --mode=install",
+    )
+    ap.add_argument(
+      "--test",
+      action="store_const",
+      const="test",
+      dest="mode",
+      help="An alias for --mode=test",
     )
     args = ap.parse_args()
 
@@ -264,6 +272,8 @@ def main():
                 "--config",
                 "Release",
         ] + args.cmake_args
+    elif args.mode == "test":
+        full_cmd = CMD_PREFIX + [CTEST] + args.cmake_args
     else:
         ap.error("unknown invocation mode: %s" % (args.mode,))
 
@@ -396,6 +406,7 @@ if __name__ == "__main__":
             self._write_build_script(
                 cmd_prefix=self._get_cmd_prefix(),
                 cmake=cmake,
+                ctest=path_search(env, "ctest"),
                 env=env,
                 define_args=define_args,
                 src_dir=self.src_dir,
