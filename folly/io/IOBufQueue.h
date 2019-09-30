@@ -53,14 +53,14 @@ class IOBufQueue {
 
     WritableRangeCacheData(WritableRangeCacheData&& other)
         : cachedRange(other.cachedRange), attached(other.attached) {
-      other.cachedRange = {};
+      other.cachedRange = {nullptr, nullptr};
       other.attached = false;
     }
     WritableRangeCacheData& operator=(WritableRangeCacheData&& other) {
       cachedRange = other.cachedRange;
       attached = other.attached;
 
-      other.cachedRange = {};
+      other.cachedRange = {nullptr, nullptr};
       other.attached = false;
 
       return *this;
