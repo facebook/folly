@@ -62,6 +62,11 @@ find_program(
   FB_MAKE_PYTHON_ARCHIVE "make_fbpy_archive.py"
   PATHS ${CMAKE_MODULE_PATH}
 )
+set(FB_PY_TEST_MAIN "${CMAKE_CURRENT_LIST_DIR}/fb_py_test_main.py")
+set(
+  FB_PY_TEST_DISCOVER_SCRIPT
+  "${CMAKE_CURRENT_LIST_DIR}/FBPythonTestAddTests.cmake"
+)
 
 # An option to control the default installation location for
 # install_fb_python_library().  This is relative to ${CMAKE_INSTALL_PREFIX}
@@ -162,6 +167,119 @@ function(add_fb_python_executable EXE_NAME)
   # "WATCHMAN_WAIT_PATH=$<TARGET_PROPERTY:watchman-wait.GEN_PY_EXE,EXECUTABLE>"
   set_property(TARGET "${EXE_NAME}.GEN_PY_EXE"
       PROPERTY EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${output_file}")
+endfunction()
+
+# Define a python unittest executable.
+# The executable is built using add_fb_python_executable and has the
+# following differences:
+#
+# Each of the source files specified in SOURCES will be imported
+# and have unittest discovery performed upon them.
+# Those sources will be imported in the top level namespace.
+#
+# The ENV argument allows specifying a list of "KEY=VALUE"
+# pairs that will be used by the test runner to set up the environment
+# in the child process prior to running the test.  This is useful for
+# passing additional configuration to the test.
+function(add_fb_python_unittest TARGET)
+  # Parse the arguments
+  set(multi_value_args SOURCES DEPENDS ENV PROPERTIES)
+  set(
+    one_value_args
+    WORKING_DIRECTORY BASE_DIR NAMESPACE TEST_LIST DISCOVERY_TIMEOUT
+  )
+  fb_cmake_parse_args(
+    ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
+  )
+  fb_py_process_default_args(ARG_NAMESPACE ARG_BASE_DIR)
+  if(NOT ARG_WORKING_DIRECTORY)
+    # Default the working directory to the current binary directory.
+    # This matches the default behavior of add_test() and other standard
+    # test functions like gtest_discover_tests()
+    set(ARG_WORKING_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}")
+  endif()
+  if(NOT ARG_TEST_LIST)
+    set(ARG_TEST_LIST "${TARGET}_TESTS")
+  endif()
+  if(NOT ARG_DISCOVERY_TIMEOUT)
+    set(ARG_DISCOVERY_TIMEOUT 5)
+  endif()
+
+  # Tell our test program the list of modules to scan for tests.
+  # We scan all modules directly listed in our SOURCES argument, and skip
+  # modules that came from dependencies in the DEPENDS list.
+  #
+  # This is written into a __test_modules__.py module that the test runner
+  # will look at.
+  set(
+    test_modules_path
+    "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}_test_modules.py"
+  )
+  file(WRITE "${test_modules_path}" "TEST_MODULES = [\n")
+  string(REPLACE "." "/" namespace_dir "${ARG_NAMESPACE}")
+  if (NOT "${namespace_dir}" STREQUAL "")
+    set(namespace_dir "${namespace_dir}/")
+  endif()
+  set(test_modules)
+  foreach(src_path IN LISTS ARG_SOURCES)
+    fb_py_compute_dest_path(
+      abs_source dest_path
+      "${src_path}" "${namespace_dir}" "${ARG_BASE_DIR}"
+    )
+    string(REPLACE "/" "." module_name "${dest_path}")
+    string(REGEX REPLACE "\\.py$" "" module_name "${module_name}")
+    list(APPEND test_modules "${module_name}")
+    file(APPEND "${test_modules_path}" "  '${module_name}',\n")
+  endforeach()
+  file(APPEND "${test_modules_path}" "]\n")
+
+  # The __main__ is provided by our runner wrapper/bootstrap
+  list(APPEND ARG_SOURCES "${FB_PY_TEST_MAIN}=__main__.py")
+  list(APPEND ARG_SOURCES "${test_modules_path}=__test_modules__.py")
+
+  add_fb_python_executable(
+    "${TARGET}"
+    NAMESPACE "${ARG_NAMESPACE}"
+    BASE_DIR "${ARG_BASE_DIR}"
+    SOURCES ${ARG_SOURCES}
+    DEPENDS ${ARG_DEPENDS}
+  )
+
+  # Run test discovery after the test executable is built.
+  # This logic is based on the code for gtest_discover_tests()
+  set(ctest_file_base "${CMAKE_CURRENT_BINARY_DIR}/${TARGET}")
+  set(ctest_include_file "${ctest_file_base}_include.cmake")
+  set(ctest_tests_file "${ctest_file_base}_tests.cmake")
+  add_custom_command(
+    TARGET "${TARGET}.GEN_PY_EXE" POST_BUILD
+    BYPRODUCTS "${ctest_tests_file}"
+    COMMAND
+      "${CMAKE_COMMAND}"
+      -D "TEST_TARGET=${TARGET}"
+      -D "TEST_INTERPRETER=${Python3_EXECUTABLE}"
+      -D "TEST_ENV=${ARG_ENV}"
+      -D "TEST_EXECUTABLE=$<TARGET_PROPERTY:${TARGET}.GEN_PY_EXE,EXECUTABLE>"
+      -D "TEST_WORKING_DIR=${ARG_WORKING_DIRECTORY}"
+      -D "TEST_LIST=${ARG_TEST_LIST}"
+      -D "TEST_PREFIX=${TARGET}::"
+      -D "TEST_PROPERTIES=${ARG_PROPERTIES}"
+      -D "CTEST_FILE=${ctest_tests_file}"
+      -P "${FB_PY_TEST_DISCOVER_SCRIPT}"
+    VERBATIM
+  )
+
+  file(
+    WRITE "${ctest_include_file}"
+    "if(EXISTS \"${ctest_tests_file}\")\n"
+    "  include(\"${ctest_tests_file}\")\n"
+    "else()\n"
+    "  add_test(\"${TARGET}_NOT_BUILT\" \"${TARGET}_NOT_BUILT\")\n"
+    "endif()\n"
+  )
+  set_property(
+    DIRECTORY APPEND PROPERTY TEST_INCLUDE_FILES
+    "${ctest_include_file}"
+  )
 endfunction()
 
 #
@@ -278,35 +396,11 @@ function(add_fb_python_library LIB_NAME)
   file(WRITE "${tmp_manifest}" "FBPY_MANIFEST 1\n")
   set(abs_sources)
   foreach(src_path IN LISTS ARG_SOURCES)
-    if("${src_path}" MATCHES "=")
-      # We want to split the string on the `=` sign, but cmake doesn't
-      # provide much in the way of helpers for this, so we rewrite the
-      # `=` sign to `;` so that we can treat it as a cmake list and
-      # then index into the components
-      string(REPLACE "=" ";" src_path_list "${src_path}")
-      list(GET src_path_list 0 src_path)
-      # Note that we ignore the `namespace_dir` in the alias case
-      # in order to allow aliasing a source to the top level `__main__.py`
-      # filename.
-      list(GET src_path_list 1 dest_path)
-    else()
-      unset(dest_path)
-    endif()
-
-    get_filename_component(abs_source "${src_path}" ABSOLUTE)
+    fb_py_compute_dest_path(
+      abs_source dest_path
+      "${src_path}" "${namespace_dir}" "${ARG_BASE_DIR}"
+    )
     list(APPEND abs_sources "${abs_source}")
-    file(RELATIVE_PATH rel_src "${ARG_BASE_DIR}" "${abs_source}")
-
-    if(NOT DEFINED dest_path)
-      if("${rel_src}" MATCHES "^../")
-        message(
-          FATAL_ERROR "${LIB_NAME}: source file \"${abs_source}\" is not inside "
-          "the base directory ${ARG_BASE_DIR}"
-        )
-      endif()
-      set(dest_path "${namespace_dir}${rel_src}")
-    endif()
-
     target_sources(
       "${LIB_NAME}.py_lib" INTERFACE
       "$<BUILD_INTERFACE:${abs_source}>"
@@ -489,7 +583,42 @@ function(fb_py_check_available)
   if (NOT FB_MAKE_PYTHON_ARCHIVE)
     message(
       FATAL_ERROR "unable to find make_fbpy_archive.py helper program (it "
-      "should be located in the same directory as FBPythonRules.cmake)"
+      "should be located in the same directory as FBPythonBinary.cmake)"
     )
   endif()
+endfunction()
+
+function(
+    fb_py_compute_dest_path
+    src_path_output dest_path_output src_path namespace_dir base_dir
+)
+  if("${src_path}" MATCHES "=")
+    # We want to split the string on the `=` sign, but cmake doesn't
+    # provide much in the way of helpers for this, so we rewrite the
+    # `=` sign to `;` so that we can treat it as a cmake list and
+    # then index into the components
+    string(REPLACE "=" ";" src_path_list "${src_path}")
+    list(GET src_path_list 0 src_path)
+    # Note that we ignore the `namespace_dir` in the alias case
+    # in order to allow aliasing a source to the top level `__main__.py`
+    # filename.
+    list(GET src_path_list 1 dest_path)
+  else()
+    unset(dest_path)
+  endif()
+
+  get_filename_component(abs_source "${src_path}" ABSOLUTE)
+  if(NOT DEFINED dest_path)
+    file(RELATIVE_PATH rel_src "${ARG_BASE_DIR}" "${abs_source}")
+    if("${rel_src}" MATCHES "^../")
+      message(
+        FATAL_ERROR "${LIB_NAME}: source file \"${abs_source}\" is not inside "
+        "the base directory ${ARG_BASE_DIR}"
+      )
+    endif()
+    set(dest_path "${namespace_dir}${rel_src}")
+  endif()
+
+  set("${src_path_output}" "${abs_source}" PARENT_SCOPE)
+  set("${dest_path_output}" "${dest_path}" PARENT_SCOPE)
 endfunction()
