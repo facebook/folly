@@ -613,6 +613,15 @@ class Subprocess {
     sendSignal(SIGKILL);
   }
 
+  /**
+   * Send the SIGTERM to terminate the process, call `waitpid`
+   * non-blockingly for several times, up to `sigtermTimeoutSeconds`.
+   * If the process hasn't terminated after that, send SIGKILL to kill
+   * the process and call `waitpid` blockingly. Return the exit code of
+   * process.
+   */
+  ProcessReturnCode terminateOrKill(int sigtermTimeoutSeconds);
+
   ////
   //// The methods below only affect the process's communication pipes, but
   //// not its return code or state (they do not poll() or wait()).

@@ -28,6 +28,7 @@
 #include <algorithm>
 #include <array>
 #include <system_error>
+#include <thread>
 
 #include <boost/container/flat_set.hpp>
 #include <boost/range/adaptors.hpp>
@@ -669,6 +670,45 @@ void Subprocess::sendSignal(int signal) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   int r = ::kill(pid_, signal);
   checkUnixError(r, "kill");
+}
+
+ProcessReturnCode Subprocess::terminateOrKill(int sigtermTimeoutSeconds) {
+  returnCode_.enforce(ProcessReturnCode::RUNNING);
+  DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
+  // 1. Send SIGTERM to kill the process
+  terminate();
+  // 2. check whether subprocess has terminated using non-blocking waitpid
+  for (int i = 0; i < sigtermTimeoutSeconds * 10; i++) {
+    int status;
+    pid_t found;
+    // warp waitpid in the while loop to deal with EINTR.
+    do {
+      found = ::waitpid(pid_, &status, WNOHANG);
+    } while (found == -1 && errno == EINTR);
+    PCHECK(found != -1) << "waitpid(" << pid_ << ", &status, WNOHANG)";
+    if (found == 0) {
+      // The subprocess is still running, sleep for 100ms
+      std::this_thread::sleep_for(std::chrono::milliseconds(100));
+      continue;
+    } else {
+      // Just on the safe side, make sure it's the actual pid we are waiting.
+      DCHECK_EQ(found, pid_);
+      returnCode_ = ProcessReturnCode::make(status);
+      // Change pid_ to -1 to detect programming error like calling
+      // this method multiple times.
+      pid_ = -1;
+      return returnCode_;
+    }
+  }
+  // 3. If we are at this point, we have waited enough time after
+  // sending SIGTERM, we have to use nuclear option SIGKILL to kill
+  // the subprocess.
+  LOG(INFO) << "Send SIGKILL to " << pid_;
+  kill();
+  // 4. SIGKILL should kill the process otherwise there must be
+  // something seriously wrong, just use blocking wait to wait for the
+  // subprocess to finish.
+  return wait();
 }
 
 pid_t Subprocess::pid() const {

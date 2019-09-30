@@ -174,6 +174,68 @@ TEST(SimpleSubprocessTest, ChangeChildDirectoryWithError) {
   }
 }
 
+// This method verifies terminateOrKill shouldn't affect the exit
+// status if the process has exitted already.
+TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/bash", "-c", "echo hello; exit 1"},
+      Subprocess::Options().pipeStdout().pipeStderr());
+  const auto [stdout, stderr] = proc.communicate();
+  EXPECT_EQ("hello\n", stdout);
+  auto retCode = proc.terminateOrKill(1);
+  EXPECT_TRUE(retCode.exited());
+  EXPECT_EQ(1, retCode.exitStatus());
+}
+
+namespace {
+// Wait for the given subprocess to write anything in stdout to ensure
+// it has started.
+bool waitForAnyOutput(Subprocess& proc) {
+  // We couldn't use communicate here because it blocks until the
+  // stdout/stderr is closed.
+  char buffer;
+  ssize_t len;
+  do {
+    len = ::read(proc.stdoutFd(), &buffer, 1);
+  } while (len == -1 and errno == EINTR);
+  LOG(INFO) << "Read " << buffer;
+  return len == 1;
+}
+} // namespace
+
+// This method tests that if the subprocess handles SIGTERM faster
+// enough, we don't have to use SIGKILL to kill it.
+TEST(SimpleSubprocessTest, TerminateWithoutKill) {
+  // Start a bash process that would sleep for 60 seconds, and the
+  // default signal handler should exit itself upon receiving SIGTERM.
+  Subprocess proc(
+      std::vector<std::string>{
+          "/bin/bash", "-c", "echo TerminateWithoutKill; sleep 60"},
+      Subprocess::Options().pipeStdout().pipeStderr());
+  EXPECT_TRUE(waitForAnyOutput(proc));
+  auto retCode = proc.terminateOrKill(1);
+  EXPECT_TRUE(retCode.killed());
+  EXPECT_EQ(SIGTERM, retCode.killSignal());
+}
+
+// This method tests that if the subprocess ignores SIGTERM, we have
+// to use SIGKILL to kill it when calling terminateOrKill.
+TEST(SimpleSubprocessTest, KillAfterTerminate) {
+  Subprocess proc(
+      std::vector<std::string>{
+          "/bin/bash",
+          "-c",
+          // use trap to register handler that sleeps for 60 seconds
+          // upon receiving SIGTERM, so SIGKILL would be triggered to
+          // kill it.
+          "trap \"sleep 120\" SIGTERM; echo KillAfterTerminate; sleep 60"},
+      Subprocess::Options().pipeStdout().pipeStderr());
+  EXPECT_TRUE(waitForAnyOutput(proc));
+  auto retCode = proc.terminateOrKill(1);
+  EXPECT_TRUE(retCode.killed());
+  EXPECT_EQ(SIGKILL, retCode.killSignal());
+}
+
 namespace {
 boost::container::flat_set<int> getOpenFds() {
   auto pid = getpid();
