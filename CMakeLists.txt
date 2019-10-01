@@ -720,6 +720,7 @@ if (BUILD_TESTS)
       TEST ssl_errors_test SOURCES SSLErrorsTest.cpp
 
     DIRECTORY lang/test/
+      TEST aligned_test SOURCES AlignedTest.cpp
       TEST bits_test SOURCES BitsTest.cpp
       TEST cold_class_test SOURCES ColdClassTest.cpp
       TEST safe_assert_test SOURCES SafeAssertTest.cpp
