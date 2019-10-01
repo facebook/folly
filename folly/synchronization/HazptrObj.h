@@ -387,7 +387,7 @@ class hazptr_obj_batch {
     while (c >= kThreshold) {
       if (cas_count(c, 0)) {
         List ll = l_.pop_all();
-        if (ll.head()->tagged()) {
+        if (ll.head() && ll.head()->tagged()) {
           pushed_to_domain_tagged_.store(true, std::memory_order_relaxed);
         }
         if (kIsDebug) {
