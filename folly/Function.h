@@ -181,7 +181,7 @@
  * the function accepts a non-const one.
  *
  * How does the const behaviour compare to `std::function`?
- * `std::function` can wrap object with non-const invokation behaviour but
+ * `std::function` can wrap object with non-const invocation behaviour but
  * exposes them as const. The equivalent behaviour can be achieved with
  * `folly::Function` like so:
  *
@@ -200,15 +200,15 @@
  * `std::function` always involves this potentially dangerous aspect, which
  * is why it is not considered fully const-safe or even const-correct.
  * However, in most of the cases you will not need the dangerous aspect at all.
- * Either you do not require invokation of the function from a const context,
+ * Either you do not require invocation of the function from a const context,
  * in which case you do not need to use `constCastFunction` and just
  * use the inner `folly::Function` in the example above, i.e. just use a
- * non-const `folly::Function`. Or, you may need invokation from const, but
+ * non-const `folly::Function`. Or, you may need invocation from const, but
  * the callable you are wrapping does not mutate its state (e.g. it is a class
  * object and implements `operator() const`, or it is a normal,
  * non-mutable lambda), in which case you can wrap the callable in a const
  * `folly::Function` directly, without using `constCastFunction`.
- * Only if you require invokation from a const context of a callable that
+ * Only if you require invocation from a const context of a callable that
  * may mutate itself when invoked you have to go through the above procedure.
  * However, in that case what you do is potentially dangerous and requires
  * the equivalent of a `const_cast`, hence you need to call

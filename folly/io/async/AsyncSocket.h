@@ -1325,7 +1325,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   bool trackEor_{false};
   bool zeroCopyEnabled_{false};
   bool zeroCopyVal_{false};
-  // zerocopy reenable logic
+  // zerocopy re-enable logic
   size_t zeroCopyReenableThreshold_{0};
   size_t zeroCopyReenableCounter_{0};
 

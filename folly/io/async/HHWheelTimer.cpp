@@ -25,7 +25,6 @@
 #include <folly/io/async/Request.h>
 #include <folly/lang/Bits.h>
 
-
 namespace folly {
 /**
  * We want to select the default interval carefully.

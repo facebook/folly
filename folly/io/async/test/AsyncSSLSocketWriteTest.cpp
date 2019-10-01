@@ -285,10 +285,10 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor1) {
   EXPECT_TRUE(sock_->isEorTrackingEnabled());
 
   EXPECT_CALL(*(sock_.get()), getRawBytesWritten())
-      // rawBytesWritten after writting initAppBytesWritten + 1500
+      // rawBytesWritten after writing initAppBytesWritten + 1500
       // + some random SSL overhead
       .WillOnce(Return(3600u))
-      // rawBytesWritten after writting last 6 bytes
+      // rawBytesWritten after writing last 6 bytes
       // + some random SSL overhead
       .WillOnce(Return(3728u));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))
@@ -329,10 +329,10 @@ TEST_F(AsyncSSLSocketWriteTest, write_with_eor2) {
   sock_->setEorTracking(true);
 
   EXPECT_CALL(*(sock_.get()), getRawBytesWritten())
-      // rawBytesWritten after writting initAppBytesWritten +  1500 bytes
+      // rawBytesWritten after writing initAppBytesWritten +  1500 bytes
       // + some random SSL overhead
       .WillOnce(Return(3600))
-      // rawBytesWritten after writting last 300 bytes
+      // rawBytesWritten after writing last 300 bytes
       // + some random SSL overhead
       .WillOnce(Return(4100));
   EXPECT_CALL(*(sock_.get()), sslWriteImpl(_, _, 1500))

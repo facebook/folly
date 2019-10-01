@@ -205,7 +205,7 @@ class LtHash {
   bool operator!=(const LtHash<B, N>& that) const;
 
   /**
-   * Sets the intial checksum value to use for processing objects in the
+   * Sets the initial checksum value to use for processing objects in the
    * xxxObject() calls.
    */
   void setChecksum(const folly::IOBuf& checksum);

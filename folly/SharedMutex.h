@@ -49,7 +49,7 @@
 // SharedMutexReadPriority gives priority to readers,
 // SharedMutexWritePriority gives priority to writers.  SharedMutex is an
 // alias for SharedMutexWritePriority, because writer starvation is more
-// likely than reader starvation for the read-heavy workloads targetted
+// likely than reader starvation for the read-heavy workloads targeted
 // by SharedMutex.
 //
 // In my tests SharedMutex is as good or better than the other

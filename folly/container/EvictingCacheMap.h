@@ -193,7 +193,7 @@ class EvictingCacheMap {
    * bad, e.g., the nIndexBuckets_ is still 100 after maxSize is updated to 1M.
    *
    * Calling this function with an arugment of 0 removes the limit on the cache
-   * size and elements are not evicted unless clients explictly call prune.
+   * size and elements are not evicted unless clients explicitly call prune.
    *
    * If you intend to resize dynamically using this, then picking an index size
    * that works well and initializing with corresponding maxSize is the only

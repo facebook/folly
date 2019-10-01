@@ -37,7 +37,6 @@ namespace folly {
  */
 template <typename T>
 class CachelinePadded {
-
  public:
   template <typename... Args>
   explicit CachelinePadded(Args&&... args)
