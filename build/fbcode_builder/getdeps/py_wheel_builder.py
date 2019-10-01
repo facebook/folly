@@ -62,6 +62,8 @@ install(
 CMAKE_CONFIG_FILE = """
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
 set_and_check({upper_name}_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
 
 if (NOT TARGET {namespace}::{lib_name})
@@ -69,6 +71,8 @@ if (NOT TARGET {namespace}::{lib_name})
 endif()
 
 set({upper_name}_LIBRARIES {namespace}::{lib_name})
+
+{find_dependency_lines}
 
 if (NOT {manifest_name}_FIND_QUIETLY)
   message(STATUS "Found {manifest_name}: ${{PACKAGE_PREFIX_DIR}}")
@@ -120,6 +124,14 @@ class PythonWheelBuilder(BuilderBase):
         if not version.startswith("1."):
             raise Exception("unsupported wheel version %s" % (version,))
 
+        # Add a find_dependency() call for each of our dependencies.
+        # The dependencies are also listed in the wheel METADATA file, but it is simpler
+        # to pull this directly from the getdeps manifest.
+        dep_list = sorted(
+            self.manifest.get_section_as_dict("dependencies", self.ctx).keys()
+        )
+        find_dependency_lines = ["find_dependency({})".format(dep) for dep in dep_list]
+
         getdeps_cmake_dir = os.path.join(
             os.path.dirname(os.path.dirname(__file__)), "CMake"
         )
@@ -131,6 +143,7 @@ class PythonWheelBuilder(BuilderBase):
             "manifest_name": self.manifest.name,
             "namespace": self.manifest.name,
             "upper_name": self.manifest.name.upper().replace("-", "_"),
+            "find_dependency_lines": "\n".join(find_dependency_lines),
         }
 
         # Find sources from the root directory
@@ -153,7 +166,7 @@ class PythonWheelBuilder(BuilderBase):
             )
 
         # Emit CMake files
-        self._write_cmakelists(path_mapping)
+        self._write_cmakelists(path_mapping, dep_list)
         self._write_cmake_config_template()
 
         # Run the build
@@ -175,12 +188,14 @@ class PythonWheelBuilder(BuilderBase):
         )
         cmake_builder.build(install_dirs=install_dirs, reconfigure=reconfigure)
 
-    def _write_cmakelists(self, path_mapping):
+    def _write_cmakelists(self, path_mapping, dependencies):
         # type: (List[str]) -> None
 
         cmake_path = os.path.join(self.build_dir, "CMakeLists.txt")
         with open(cmake_path, "w") as f:
             f.write(CMAKE_HEADER.format(**self.template_format_dict))
+            for dep in dependencies:
+                f.write("find_package({0} REQUIRED)\n".format(dep))
 
             f.write(
                 "add_fb_python_library({lib_name}\n".format(**self.template_format_dict)
@@ -192,6 +207,10 @@ class PythonWheelBuilder(BuilderBase):
                     '    "%s=%s"\n'
                     % (_to_cmake_path(src_path), _to_cmake_path(install_path))
                 )
+            if dependencies:
+                f.write("  DEPENDS\n")
+                for dep in dependencies:
+                    f.write('    "{0}::{0}"\n'.format(dep))
             f.write(")\n")
 
             f.write(CMAKE_FOOTER.format(**self.template_format_dict))
