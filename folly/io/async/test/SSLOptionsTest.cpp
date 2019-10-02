@@ -19,6 +19,8 @@
 #include <folly/portability/GTest.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
+#include <folly/io/async/test/SSLUtil.h>
+
 using namespace std;
 using namespace testing;
 
@@ -30,12 +32,12 @@ TEST_F(SSLOptionsTest, TestSetCommonCipherList) {
   SSLContext ctx;
   ssl::setCipherSuites<ssl::SSLCommonOptions>(ctx);
 
-  int i = 0;
+  const auto& commonOptionCiphers = ssl::SSLCommonOptions::ciphers();
+  std::vector<std::string> commonOptionCiphersVec(
+      begin(commonOptionCiphers), end(commonOptionCiphers));
+
   ssl::SSLUniquePtr ssl(ctx.createSSL());
-  for (auto& cipher : ssl::SSLCommonOptions::ciphers()) {
-    ASSERT_STREQ(cipher, SSL_get_cipher_list(ssl.get(), i++));
-  }
-  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
+  EXPECT_EQ(commonOptionCiphersVec, test::getNonTLS13CipherList(ssl.get()));
 }
 
 TEST_F(SSLOptionsTest, TestSetCipherListWithVector) {
@@ -43,12 +45,9 @@ TEST_F(SSLOptionsTest, TestSetCipherListWithVector) {
   auto ciphers = ssl::SSLCommonOptions::ciphers();
   ssl::setCipherSuites(ctx, ciphers);
 
-  int i = 0;
   ssl::SSLUniquePtr ssl(ctx.createSSL());
-  for (auto& cipher : ssl::SSLCommonOptions::ciphers()) {
-    ASSERT_STREQ(cipher, SSL_get_cipher_list(ssl.get(), i++));
-  }
-  ASSERT_EQ(nullptr, SSL_get_cipher_list(ssl.get(), i));
+  std::vector<std::string> expectedCiphers(begin(ciphers), end(ciphers));
+  EXPECT_EQ(expectedCiphers, test::getNonTLS13CipherList(ssl.get()));
 }
 
 } // namespace folly
