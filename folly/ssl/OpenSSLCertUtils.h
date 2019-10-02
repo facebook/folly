@@ -115,7 +115,7 @@ class OpenSSLCertUtils {
    * std::chrono classes.
    */
   static std::chrono::system_clock::time_point asnTimeToTimepoint(
-      ASN1_TIME* asnTime);
+      const ASN1_TIME* asnTime);
 
  private:
   static std::string getDateTimeStr(const ASN1_TIME* time);
