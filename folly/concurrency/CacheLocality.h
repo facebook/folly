@@ -278,7 +278,10 @@ struct AccessSpreader {
  private:
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
-  enum { kMaxCpus = 128 };
+  enum {
+    // Android phones with 8 cores exist today; 16 for future-proofing.
+    kMaxCpus = kIsMobile ? 16 : 128,
+  };
 
   typedef uint8_t CompactStripe;
 
