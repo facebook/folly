@@ -40,7 +40,7 @@
  * only does async-signal-safe calls.
  */
 #define FOLLY_SAFE_DCHECK(expr, msg) \
-  FOLLY_SAFE_CHECK_IMPL(!folly::kIsDebug || (expr), (expr), (msg))
+  FOLLY_SAFE_CHECK_IMPL(!::folly::kIsDebug || (expr), (expr), (msg))
 
 namespace folly {
 namespace detail {
