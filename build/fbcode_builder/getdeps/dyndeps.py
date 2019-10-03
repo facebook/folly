@@ -201,7 +201,16 @@ class WinDeps(DepBase):
 class ElfDeps(DepBase):
     def __init__(self, buildopts, install_dirs):
         super(ElfDeps, self).__init__(buildopts, install_dirs)
-        self.patchelf = path_search(self.env, "patchelf")
+
+        # We need patchelf to rewrite deps, so ensure that it is built...
+        subprocess.check_call([sys.executable, sys.argv[0], "build", "patchelf"])
+        # ... and that we know where it lives
+        self.patchelf = os.path.join(
+            subprocess.check_output(
+                [sys.executable, sys.argv[0], "show-inst-dir", "patchelf"]
+            ).strip(),
+            "bin/patchelf",
+        )
 
     def list_dynamic_deps(self, objfile):
         out = (
