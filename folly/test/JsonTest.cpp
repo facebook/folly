@@ -25,6 +25,7 @@ using folly::dynamic;
 using folly::parseJson;
 using folly::parseJsonWithMetadata;
 using folly::toJson;
+using folly::json::parse_error;
 
 TEST(Json, Unicode) {
   auto val = parseJson(u8"\"I \u2665 UTF-8\"");
@@ -78,12 +79,12 @@ TEST(Json, Parse) {
   EXPECT_TRUE(std::isnan(parseJson("NaN").asDouble()));
 
   // case matters
-  EXPECT_THROW(parseJson("infinity"), std::runtime_error);
-  EXPECT_THROW(parseJson("inf"), std::runtime_error);
-  EXPECT_THROW(parseJson("Inf"), std::runtime_error);
-  EXPECT_THROW(parseJson("INF"), std::runtime_error);
-  EXPECT_THROW(parseJson("nan"), std::runtime_error);
-  EXPECT_THROW(parseJson("NAN"), std::runtime_error);
+  EXPECT_THROW(parseJson("infinity"), parse_error);
+  EXPECT_THROW(parseJson("inf"), parse_error);
+  EXPECT_THROW(parseJson("Inf"), parse_error);
+  EXPECT_THROW(parseJson("INF"), parse_error);
+  EXPECT_THROW(parseJson("nan"), parse_error);
+  EXPECT_THROW(parseJson("NAN"), parse_error);
 
   auto array = parseJson("[12,false, false  , null , [12e4,32, [], 12]]");
   EXPECT_EQ(array.size(), 5);
@@ -91,12 +92,11 @@ TEST(Json, Parse) {
     EXPECT_EQ(std::prev(array.end())->size(), 4);
   }
 
-  EXPECT_THROW(parseJson("\n[12,\n\nnotvalidjson"), std::runtime_error);
+  EXPECT_THROW(parseJson("\n[12,\n\nnotvalidjson"), parse_error);
 
-  EXPECT_THROW(parseJson("12e2e2"), std::runtime_error);
+  EXPECT_THROW(parseJson("12e2e2"), parse_error);
 
-  EXPECT_THROW(
-      parseJson("{\"foo\":12,\"bar\":42} \"something\""), std::runtime_error);
+  EXPECT_THROW(parseJson("{\"foo\":12,\"bar\":42} \"something\""), parse_error);
 
   // clang-format off
   dynamic value = dynamic::object
@@ -353,7 +353,7 @@ TEST(Json, ParseTrailingComma) {
   EXPECT_EQ(arr, parseJson("[1, 2, ]", on));
   EXPECT_EQ(arr, parseJson("[1, 2 , ]", on));
   EXPECT_EQ(arr, parseJson("[1, 2 ,]", on));
-  EXPECT_THROW(parseJson("[1, 2,]", off), std::runtime_error);
+  EXPECT_THROW(parseJson("[1, 2,]", off), parse_error);
 
   dynamic obj = dynamic::object("a", 1);
   EXPECT_EQ(obj, parseJson("{\"a\": 1}", on));
@@ -361,7 +361,7 @@ TEST(Json, ParseTrailingComma) {
   EXPECT_EQ(obj, parseJson("{\"a\": 1, }", on));
   EXPECT_EQ(obj, parseJson("{\"a\": 1 , }", on));
   EXPECT_EQ(obj, parseJson("{\"a\": 1 ,}", on));
-  EXPECT_THROW(parseJson("{\"a\":1,}", off), std::runtime_error);
+  EXPECT_THROW(parseJson("{\"a\":1,}", off), parse_error);
 }
 
 TEST(Json, BoolConversion) {
@@ -389,7 +389,7 @@ TEST(Json, Produce) {
 
   // We're not allowed to have non-string keys in json.
   EXPECT_THROW(
-      toJson(dynamic::object("abc", "xyz")(42.33, "asd")), std::runtime_error);
+      toJson(dynamic::object("abc", "xyz")(42.33, "asd")), parse_error);
 
   // Check Infinity/Nan
   folly::json::serialization_opts opts;
@@ -604,7 +604,7 @@ TEST(Json, ParseNonStringKeys) {
   // check that we don't allow non-string keys as this violates the
   // strict JSON spec (though it is emitted by the output of
   // folly::dynamic with operator <<).
-  EXPECT_THROW(parseJson("{1:[]}"), std::runtime_error);
+  EXPECT_THROW(parseJson("{1:[]}"), parse_error);
 
   // check that we can parse colloquial JSON if the option is set
   folly::json::serialization_opts opts;
@@ -713,14 +713,14 @@ TEST(Json, ParseNumbersAsStrings) {
   EXPECT_EQ("-Infinity", parse("-Infinity"));
   EXPECT_EQ("NaN", parse("NaN"));
 
-  EXPECT_THROW(parse("ThisIsWrong"), std::runtime_error);
-  EXPECT_THROW(parse("34-2"), std::runtime_error);
-  EXPECT_THROW(parse(""), std::runtime_error);
-  EXPECT_THROW(parse("-"), std::runtime_error);
-  EXPECT_THROW(parse("34-e2"), std::runtime_error);
-  EXPECT_THROW(parse("34e2.4"), std::runtime_error);
-  EXPECT_THROW(parse("infinity"), std::runtime_error);
-  EXPECT_THROW(parse("nan"), std::runtime_error);
+  EXPECT_THROW(parse("ThisIsWrong"), parse_error);
+  EXPECT_THROW(parse("34-2"), parse_error);
+  EXPECT_THROW(parse(""), parse_error);
+  EXPECT_THROW(parse("-"), parse_error);
+  EXPECT_THROW(parse("34-e2"), parse_error);
+  EXPECT_THROW(parse("34e2.4"), parse_error);
+  EXPECT_THROW(parse("infinity"), parse_error);
+  EXPECT_THROW(parse("nan"), parse_error);
 }
 
 TEST(Json, SortKeys) {

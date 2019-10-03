@@ -37,7 +37,20 @@ namespace folly {
 //////////////////////////////////////////////////////////////////////
 
 namespace json {
+
 namespace {
+
+parse_error make_parse_error(
+    unsigned int line,
+    std::string const& context,
+    std::string const& expected) {
+  return parse_error(to<std::string>(
+      "json parse error on line ",
+      line,
+      !context.empty() ? to<std::string>(" near `", context, '\'') : "",
+      ": ",
+      expected));
+}
 
 struct Printer {
   explicit Printer(
@@ -51,7 +64,7 @@ struct Printer {
       case dynamic::DOUBLE:
         if (!opts_.allow_nan_inf &&
             (std::isnan(v.asDouble()) || std::isinf(v.asDouble()))) {
-          throw std::runtime_error(
+          throw json::parse_error(
               "folly::toJson: JSON object value was a "
               "NaN or INF");
         }
@@ -91,7 +104,7 @@ struct Printer {
  private:
   void printKV(const std::pair<const dynamic, dynamic>& p) const {
     if (!opts_.allow_non_string_keys && !p.first.isString()) {
-      throw std::runtime_error(
+      throw json::parse_error(
           "folly::toJson: JSON object key was not a "
           "string");
     }
@@ -193,19 +206,6 @@ struct Printer {
 
 //////////////////////////////////////////////////////////////////////
 
-struct FOLLY_EXPORT ParseError : std::runtime_error {
-  explicit ParseError(
-      unsigned int line,
-      std::string const& context,
-      std::string const& expected)
-      : std::runtime_error(to<std::string>(
-            "json parse error on line ",
-            line,
-            !context.empty() ? to<std::string>(" near `", context, '\'') : "",
-            ": ",
-            expected)) {}
-};
-
 // Wraps our input buffer with some helper functions.
 struct Input {
   explicit Input(StringPiece range, json::serialization_opts const* opts)
@@ -281,7 +281,7 @@ struct Input {
 
   void expect(char c) {
     if (**this != c) {
-      throw ParseError(
+      throw json::make_parse_error(
           lineNum_, context(), to<std::string>("expected '", c, '\''));
     }
     ++*this;
@@ -323,7 +323,7 @@ struct Input {
   }
 
   dynamic error(char const* what) const {
-    throw ParseError(lineNum_, context(), what);
+    throw json::make_parse_error(lineNum_, context(), what);
   }
 
   json::serialization_opts const& getOpts() {

@@ -166,6 +166,11 @@ void escapeString(
  */
 std::string stripComments(StringPiece jsonC);
 
+class FOLLY_EXPORT parse_error : public std::runtime_error {
+ public:
+  using std::runtime_error::runtime_error;
+};
+
 // may be extened in future to include offset, col, etc.
 struct parse_location {
   uint32_t line{}; // 0-indexed
