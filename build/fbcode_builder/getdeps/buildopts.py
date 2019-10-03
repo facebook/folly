@@ -186,6 +186,8 @@ class BuildOptions(object):
             lib_path = "DYLD_LIBRARY_PATH"
         elif self.is_linux():
             lib_path = "LD_LIBRARY_PATH"
+        elif self.is_windows():
+            lib_path = "PATH"
         else:
             lib_path = None
 
