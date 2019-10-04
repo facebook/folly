@@ -437,10 +437,12 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   void setTag(std::size_t index, std::size_t tag) {
     FOLLY_SAFE_DCHECK(
         this != emptyInstance() && tag >= 0x80 && tag <= 0xff, "");
+    FOLLY_SAFE_CHECK(tags_[index] == 0, "");
     tags_[index] = static_cast<uint8_t>(tag);
   }
 
   void clearTag(std::size_t index) {
+    FOLLY_SAFE_CHECK((tags_[index] & 0x80) != 0, "");
     tags_[index] = 0;
   }
 
@@ -1696,7 +1698,7 @@ class F14Table : public Policy {
           auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
           auto const& srcKey = src.keyForValue(srcArg);
           auto hp = splitHash(this->computeKeyHash(srcKey));
-          FOLLY_SAFE_DCHECK(hp.second == srcChunk->tag(i), "");
+          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(i), "");
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
@@ -1928,7 +1930,7 @@ class F14Table : public Policy {
           Item& srcItem = srcChunk->item(srcI);
           auto hp = splitHash(
               this->computeItemHash(const_cast<Item const&>(srcItem)));
-          FOLLY_SAFE_DCHECK(hp.second == srcChunk->tag(srcI), "");
+          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(srcI), "");
 
           auto dstIter = allocateTag(fullness, hp);
           this->moveItemDuringRehash(dstIter.itemAddr(), srcItem);
