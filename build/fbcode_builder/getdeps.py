@@ -656,6 +656,16 @@ jobs:
             % manifest.name
         )
 
+        out.write("    - name: Copy artifacts\n")
+        out.write(
+            "      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps "
+            "--src-dir=. %s _artifacts/%s\n" % (manifest.name, job_name)
+        )
+        out.write("    - uses: actions/upload-artifact@master\n")
+        out.write("      with:\n")
+        out.write("        name: %s\n" % manifest.name)
+        out.write("        path: _artifacts\n")
+
         out.write("    - name: Test %s\n" % manifest.name)
         out.write(
             "      run: python build/fbcode_builder/getdeps.py test --src-dir=. %s\n"
