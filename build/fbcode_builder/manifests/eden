@@ -31,6 +31,12 @@ sqlite3
 [dependencies.os=darwin]
 osxfuse
 
+# TODO: teach getdeps to compile curl on Windows.
+# Enabling curl on Windows requires us to find a way to compile libcurl with
+# msvc.
+[dependencies.not(os=windows)]
+libcurl
+
 [shipit.pathmap]
 fbcode/eden/oss = .
 fbcode/eden = eden

@@ -5,7 +5,14 @@ name = libcurl
 url = https://curl.haxx.se/download/curl-7.65.1.tar.gz
 sha256 = 821aeb78421375f70e55381c9ad2474bf279fc454b791b7e95fc83562951c690
 
-[build.os=linux]
+[dependencies]
+nghttp2
+
+# We use system OpenSSL on Linux (see folly's manifest for details)
+[dependencies.not(os=linux)]
+openssl
+
+[build.not(os=windows)]
 builder = autoconf
 subdir = curl-7.65.1
 
@@ -13,8 +20,13 @@ subdir = curl-7.65.1
 # fboss (which added the libcurl dep) doesn't need ldap so it is disabled here.
 # if someone in the future wants to add ldap for something else, it won't hurt
 # fboss. However, that would require adding an ldap manifest.
+#
+# For the same reason, we disable libssh2 and libidn2 which aren't really used
+# but would require adding manifests if we don't disable them.
 --disable-ldap
+--without-libssh2
+--without-libidn2
 
-[build.not(os=linux)]
+[build.os=windows]
 builder = cmake
 subdir = curl-7.65.1

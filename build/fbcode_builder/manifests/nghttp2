@@ -1,0 +1,13 @@
+[manifest]
+name = nghttp2
+
+[download]
+url = https://github.com/nghttp2/nghttp2/releases/download/v1.39.2/nghttp2-1.39.2.tar.gz
+sha256 = fc820a305e2f410fade1a3260f09229f15c0494fc089b0100312cd64a33a38c0
+
+[build]
+builder = autoconf
+subdir = nghttp2-1.39.2
+
+[autoconf.args]
+--enable-lib-only
