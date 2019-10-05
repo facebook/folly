@@ -54,7 +54,7 @@ extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreSyncBegin(const char* f, int l);
 
 extern "C" FOLLY_ATTR_WEAK void AnnotateIgnoreSyncEnd(const char* f, int l);
 
-#if _MSC_VER
+#ifdef _MSC_VER
 #define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) [](...) {}(__VA_ARGS__)
 #else
 #define FOLLY_SANITIZE_THREAD_CALL_HOOK(name, ...) name(__VA_ARGS__)

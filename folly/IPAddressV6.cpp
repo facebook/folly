@@ -25,7 +25,7 @@
 #include <folly/MacAddress.h>
 #include <folly/detail/IPAddressSource.h>
 
-#if !_WIN32
+#ifndef _WIN32
 #include <net/if.h>
 #else
 // Because of the massive pain that is libnl, this can't go into the socket

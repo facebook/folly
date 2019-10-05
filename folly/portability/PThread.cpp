@@ -16,7 +16,7 @@
 
 #include <folly/portability/PThread.h>
 
-#if !FOLLY_HAVE_PTHREAD && _WIN32
+#if !FOLLY_HAVE_PTHREAD && defined(_WIN32)
 #include <boost/thread/tss.hpp> // @manual
 
 #include <errno.h>
