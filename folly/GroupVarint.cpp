@@ -18,7 +18,7 @@
 
 #include <folly/container/Array.h>
 
-#if HAVE_GROUP_VARINT
+#if FOLLY_HAVE_GROUP_VARINT
 namespace folly {
 
 const uint32_t GroupVarint32::kMask[] = {

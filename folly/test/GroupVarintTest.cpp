@@ -20,7 +20,7 @@
 #include <cstdarg>
 
 // On platforms where it's not supported, GroupVarint will be compiled out.
-#if HAVE_GROUP_VARINT
+#if FOLLY_HAVE_GROUP_VARINT
 
 #include <folly/portability/GTest.h>
 
