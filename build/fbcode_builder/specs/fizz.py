@@ -10,12 +10,13 @@ import specs.sodium as sodium
 
 
 def fbcode_builder_spec(builder):
-    # Projects that **depend** on fizz should don't need to build tests.
     builder.add_option(
         'fizz/fizz/build:cmake_defines',
         {
-            # This is set to ON in the fizz `fbcode_builder_config.py` 
-            'BUILD_TESTS': 'OFF',
+            # Fizz's build is kind of broken, in the sense that both `mvfst`
+            # and `proxygen` depend on files that are only installed with
+            # `BUILD_TESTS` enabled, e.g. `fizz/crypto/test/TestUtil.h`.
+            'BUILD_TESTS': 'ON',
         }
     )
     return {
