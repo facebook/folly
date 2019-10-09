@@ -1268,7 +1268,7 @@ class GroupByAdjacent : public Operator<GroupByAdjacent<Selector>> {
 
         if (key == newKey) {
           // grow the current group
-          values.push_back(value);
+          values.push_back(std::forward<Value>(value));
         } else {
           // flush the current group
           GroupType group(key.value(), std::move(values));
@@ -1279,7 +1279,7 @@ class GroupByAdjacent : public Operator<GroupByAdjacent<Selector>> {
           // start a new group
           key.emplace(newKey);
           values.clear();
-          values.push_back(value);
+          values.push_back(std::forward<Value>(value));
         }
         return true;
       });
