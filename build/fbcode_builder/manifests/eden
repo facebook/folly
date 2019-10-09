@@ -19,6 +19,7 @@ cpptoml
 rocksdb
 libgit2
 fb-mercurial
+fb-mercurial-rust
 python-toml
 
 # macOS ships with sqlite3, and some of the core system
