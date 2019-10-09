@@ -14,9 +14,15 @@ import specs.zstd as zstd
 
 
 def fbcode_builder_spec(builder):
+    # Projects that **depend** on proxygen should don't need to build tests
+    # or QUIC support.
     builder.add_option(
         "proxygen/proxygen:cmake_defines",
-        {"BUILD_QUIC": "OFF", "BUILD_SHARED_LIBS": "OFF", "BUILD_TESTS": "ON"},
+        {
+            # These 2 are set to ON in `proxygen_quic.py`
+            "BUILD_QUIC": "OFF",
+            "BUILD_TESTS": "OFF",
+        },
     )
 
     return {

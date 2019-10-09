@@ -12,11 +12,17 @@ import specs.sodium as sodium
 import specs.wangle as wangle
 import specs.zstd as zstd
 
-
+# DO NOT USE THIS AS A LIBRARY -- this is currently effectively just part
+# ofthe implementation of proxygen's `fbcode_builder_config.py`.  This is
+# why this builds tests and sets `BUILD_QUIC`.
 def fbcode_builder_spec(builder):
     builder.add_option(
         "proxygen/proxygen:cmake_defines",
-        {"BUILD_QUIC": "ON", "BUILD_SHARED_LIBS": "OFF", "BUILD_TESTS": "ON"},
+        {
+            "BUILD_QUIC": "ON",
+            "BUILD_SHARED_LIBS": "OFF",
+            "BUILD_TESTS": "ON",
+        },
     )
     return {
         "depends_on": [folly, wangle, fizz, sodium, zstd, mvfst],
