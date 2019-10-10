@@ -504,6 +504,7 @@ if __name__ == "__main__":
                 self.build_opts.fbsource_dir,
                 "--buck-test-info",
                 buck_test_info_name,
+                "--retry=3",
                 "--test-config",
                 "platform=%s" % machine_suffix,
                 "buildsystem=getdeps",
