@@ -151,6 +151,10 @@ class ObserverManager {
       currentDependencies_ = &dependencies_;
     }
 
+    static bool isActive() {
+      return currentDependencies_;
+    }
+
     static void markDependency(Core::Ptr dependency) {
       DCHECK(inManagerThread());
       DCHECK(currentDependencies_);

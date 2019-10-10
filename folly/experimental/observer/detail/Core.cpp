@@ -23,7 +23,7 @@ namespace folly {
 namespace observer_detail {
 
 Core::VersionedData Core::getData() {
-  if (!ObserverManager::inManagerThread()) {
+  if (!ObserverManager::DependencyRecorder::isActive()) {
     return data_.copy();
   }
 
