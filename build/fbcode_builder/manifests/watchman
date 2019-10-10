@@ -16,6 +16,7 @@ fb303
 fbthrift
 folly
 pcre
+googletest
 
 [shipit.pathmap]
 fbcode/watchman = .
