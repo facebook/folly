@@ -2128,6 +2128,7 @@ auto when(bool p, F&& thunk)
 #if FOLLY_FUTURE_USING_FIBER
 
 SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
+SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton);
 
 #endif
 

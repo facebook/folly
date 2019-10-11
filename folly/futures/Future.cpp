@@ -43,9 +43,10 @@ Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
 #if FOLLY_FUTURE_USING_FIBER
 
 namespace {
+template <typename Ptr>
 class FutureWaiter : public fibers::Baton::Waiter {
  public:
-  FutureWaiter(Promise<Unit> promise, std::unique_ptr<fibers::Baton> baton)
+  FutureWaiter(Promise<Unit> promise, Ptr baton)
       : promise_(std::move(promise)), baton_(std::move(baton)) {
     baton_->setWaiter(*this);
   }
@@ -57,14 +58,22 @@ class FutureWaiter : public fibers::Baton::Waiter {
 
  private:
   Promise<Unit> promise_;
-  std::unique_ptr<fibers::Baton> baton_;
+  Ptr baton_;
 };
 } // namespace
 
 SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton) {
   Promise<Unit> promise;
   auto sf = promise.getSemiFuture();
-  new FutureWaiter(std::move(promise), std::move(baton));
+  new FutureWaiter<std::unique_ptr<fibers::Baton>>(
+      std::move(promise), std::move(baton));
+  return sf;
+}
+SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
+  Promise<Unit> promise;
+  auto sf = promise.getSemiFuture();
+  new FutureWaiter<std::shared_ptr<fibers::Baton>>(
+      std::move(promise), std::move(baton));
   return sf;
 }
 
