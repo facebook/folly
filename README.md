@@ -9,11 +9,11 @@ Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++14 components designed with practicality and efficiency
 in mind. **Folly contains a variety of core library components used extensively
 at Facebook**. In particular, it's often a dependency of Facebook's other
-open source C++ efforts and place where those projects can share code.
+open-source C++ efforts and places where those projects can share code.
 
 It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
+such as Boost and of course `std`. We embark on defining our
+ component only when something we need is either not available, or
 does not meet the needed performance profile. We endeavor to remove
 things from folly if or when `std` or Boost obsoletes them.
 
@@ -48,8 +48,7 @@ an installation root of the library (with possible versioning a la
 including files, e.g. `#include <folly/FBString.h>`.
 
 The directory structure is flat (mimicking the namespace structure),
-i.e. we don't have an elaborate directory hierarchy (it is possible
-this will change in future versions). The subdirectory `experimental`
+i.e. we don't have an elaborate directory hierarchy (this may change in future versions). The subdirectory `experimental`
 contains files that are used inside folly and possibly at Facebook but
 not considered stable enough for client use. Your code should not use
 files in `folly/experimental` lest it may break when you update Folly.
@@ -107,7 +106,7 @@ cmake \
 #### Ubuntu 16.04 LTS
 
 The following packages are required (feel free to cut and paste the apt-get
-command below):
+the command below):
 
 ```
 sudo apt-get install \
