@@ -23,8 +23,6 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/Windows.h>
 
-namespace folly {
-
 // This looks a bit weird, but it's necessary to avoid
 // having an undefined compiler function called.
 #if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
@@ -53,6 +51,8 @@ namespace folly {
 #else
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_NAME 0
 #endif // defined(__APPLE__)
+
+namespace folly {
 
 namespace {
 
