@@ -23,6 +23,18 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/Windows.h>
 
+// Android only, prctl is only used when pthread_setname_np
+// and pthread_getname_np are not avilable.
+#if __linux__
+#define FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME 1
+#else
+#define FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME 0
+#endif
+
+#if FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME
+#include <sys/prctl.h>
+#endif
+
 // This looks a bit weird, but it's necessary to avoid
 // having an undefined compiler function called.
 #if defined(__GLIBC__) && !defined(__APPLE__) && !defined(__ANDROID__)
@@ -32,6 +44,9 @@
 #else
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
 #endif
+// pthread_setname_np was introduced in Android NDK version 9
+#elif defined(__ANDROID__) && __ANDROID_API__ >= 9
+#define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 1
 #else
 #define FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME 0
 #endif
@@ -77,8 +92,9 @@ pthread_t stdTidToPthreadId(std::thread::id tid) {
 } // namespace
 
 bool canSetCurrentThreadName() {
-#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
-    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME || defined(_WIN32)
+#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME ||                                \
+    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME || FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME || \
+    defined(_WIN32)
   return true;
 #else
   return false;
@@ -96,20 +112,26 @@ bool canSetOtherThreadName() {
 static constexpr size_t kMaxThreadNameLength = 16;
 
 Optional<std::string> getThreadName(std::thread::id id) {
-#if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
-    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
+#if (                                           \
+    FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME || \
+    FOLLY_HAS_PTHREAD_SETNAME_NP_NAME) &&       \
+    !defined(__ANDROID__)
+  // Android NDK does not yet support pthread_getname_np.
   std::array<char, kMaxThreadNameLength> buf;
-  if (id == std::thread::id() ||
-      pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) != 0) {
-    return Optional<std::string>();
+  if (id != std::thread::id() &&
+      pthread_getname_np(stdTidToPthreadId(id), buf.data(), buf.size()) == 0) {
+    return std::string(buf.data());
   }
-  return folly::make_optional(std::string(buf.data()));
-#else
-  // There's not actually a way to get the thread name on Windows because
-  // thread names are a concept managed by the debugger, not the runtime.
-  return Optional<std::string>();
+#elif FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME
+  std::array<char, kMaxThreadNameLength> buf;
+  if (id == std::this_thread::get_id() &&
+      prctl(PR_GET_NAME, buf.data(), 0L, 0L, 0L) == 0) {
+    return std::string(buf.data());
+  }
 #endif
-}
+  (void)id;
+  return none;
+} // namespace folly
 
 Optional<std::string> getCurrentThreadName() {
   return getThreadName(std::this_thread::get_id());
@@ -165,12 +187,18 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
 #if FOLLY_HAS_PTHREAD_SETNAME_NP_THREAD_NAME
   return 0 == pthread_setname_np(id, buf);
 #elif FOLLY_HAS_PTHREAD_SETNAME_NP_NAME
-  // Since macOS 10.6 and iOS 3.2 it is possible for a thread to set its own
-  // name, but not that of some other thread.
+  // Since macOS 10.6 and iOS 3.2 it is possible for a thread
+  // to set its own name using pthread, but
+  // not that of some other thread.
   if (pthread_equal(pthread_self(), id)) {
     return 0 == pthread_setname_np(buf);
   }
-  return false;
+#elif FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME
+  // for Android prctl is used instead of pthread_setname_np
+  // if Android NDK version is older than API level 9.
+  if (pthread_equal(pthread_self(), id)) {
+    return 0 == prctl(PR_SET_NAME, buf, 0L, 0L, 0L);
+  }
 #else
   (void)id;
   return false;
