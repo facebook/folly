@@ -28,6 +28,11 @@ namespace folly {
 
 class CancellationCallback;
 class CancellationSource;
+struct OperationCancelled : public std::exception {
+  const char* what() const noexcept override {
+    return "coroutine operation cancelled";
+  }
+};
 
 namespace detail {
 class CancellationState;
