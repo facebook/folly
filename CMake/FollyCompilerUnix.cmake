@@ -28,6 +28,7 @@ function(apply_folly_compile_options_to_target THETARGET)
       _GNU_SOURCE
       "FOLLY_XLOG_STRIP_PREFIXES=\"${FOLLY_DIR_PREFIXES}\""
   )
+
   target_compile_options(${THETARGET}
     PRIVATE
       -g
@@ -43,4 +44,10 @@ function(apply_folly_compile_options_to_target THETARGET)
       -Wunused-result
       ${FOLLY_CXX_FLAGS}
   )
+  if (${BUILD_SHARED_LIBS})
+    target_compile_options(${THETARGET}
+        PRIVATE
+        -fPIC
+        )
+  endif()
 endfunction()
