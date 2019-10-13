@@ -11,11 +11,7 @@ in mind. **Folly contains a variety of core library components used extensively
 at Facebook**. In particular, it's often a dependency of Facebook's other
 open source C++ efforts and place where those projects can share code.
 
-It complements (as opposed to competing against) offerings
-such as Boost and of course `std`. In fact, we embark on defining our
-own component only when something we need is either not available, or
-does not meet the needed performance profile. We endeavor to remove
-things from folly if or when `std` or Boost obsoletes them.
+It complements (as opposed to competing against) offerings such as Boost and of course std. We embark on defining our component only when something we need is either not available, or does not meet the needed performance profile. We endeavor to remove things from folly if or when std or Boost obsoletes them.
 
 Performance concerns permeate much of Folly, sometimes leading to
 designs that are more idiosyncratic than they would otherwise be (see
