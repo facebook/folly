@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 
+import re
 from collections import defaultdict
 from enum import Enum
+
 import gdb
-import re
 
 
 class DiGraph(object):

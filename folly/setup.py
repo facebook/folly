@@ -5,9 +5,10 @@
 # Cython requires source files in a specific structure, the structure is
 # created as tree of links to the real source files.
 
-from setuptools import setup, Extension
 from Cython.Build import cythonize
 from Cython.Compiler import Options
+from setuptools import Extension, setup
+
 
 Options.fast_fail = True
 

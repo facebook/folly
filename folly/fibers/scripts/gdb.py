@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 
 
+import collections
+import itertools
+
 import gdb
 import gdb.printing
 import gdb.types
 import gdb.unwinder
 import gdb.xmethod
-import collections
-import itertools
 
 
 class FiberPrinter:
