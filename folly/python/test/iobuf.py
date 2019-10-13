@@ -14,11 +14,11 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(len(ebuf), 0)
         self.assertEqual(ebuf.chain_size(), 0)
         self.assertEqual(ebuf.chain_count(), 8)
-        self.assertEqual(b''.join(ebuf), b'')
-        self.assertEqual(b'', bytes(ebuf))
+        self.assertEqual(b"".join(ebuf), b"")
+        self.assertEqual(b"", bytes(ebuf))
 
     def test_chain(self) -> None:
-        control = [b'facebook', b'thrift', b'python3', b'cython']
+        control = [b"facebook", b"thrift", b"python3", b"cython"]
         chain = make_chain([IOBuf(x) for x in control])
         self.assertTrue(chain.is_chained)
         self.assertTrue(chain)
@@ -27,10 +27,10 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
         self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
-        self.assertEqual(b''.join(chain), b''.join(control))
+        self.assertEqual(b"".join(chain), b"".join(control))
 
     def test_cyclic_chain(self) -> None:
-        control = [b'aaa', b'aaaa']
+        control = [b"aaa", b"aaaa"]
         chain = make_chain([IOBuf(x) for x in control])
         self.assertTrue(chain.is_chained)
         self.assertTrue(chain)
@@ -39,7 +39,7 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
         self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
-        self.assertEqual(b''.join(chain), b''.join(control))
+        self.assertEqual(b"".join(chain), b"".join(control))
 
     def test_hash(self) -> None:
         x = b"omg"
@@ -61,7 +61,7 @@ class IOBufTests(unittest.TestCase):
     def test_iter(self) -> None:
         x = b"testtest"
         xb = IOBuf(x)
-        self.assertEqual(b''.join(iter(xb)), x)
+        self.assertEqual(b"".join(iter(xb)), x)
 
     def test_bytes(self) -> None:
         x = b"omgwtfbbq"

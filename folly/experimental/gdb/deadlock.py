@@ -7,10 +7,10 @@ import re
 
 
 class DiGraph(object):
-    '''
+    """
     Adapted from networkx: http://networkx.github.io/
     Represents a directed graph. Edges can store (key, value) attributes.
-    '''
+    """
 
     def __init__(self):
         # Map of node -> set of nodes
@@ -57,36 +57,36 @@ class DiGraph(object):
         return graph
 
     def node_link_data(self):
-        '''
+        """
         Returns the graph as a dictionary in a format that can be
         serialized.
-        '''
+        """
         data = {
-            'directed': True,
-            'multigraph': False,
-            'graph': {},
-            'links': [],
-            'nodes': [],
+            "directed": True,
+            "multigraph": False,
+            "graph": {},
+            "links": [],
+            "nodes": [],
         }
 
         # Do one pass to build a map of node -> position in nodes
         node_to_number = {}
         for node in self.adjacency_map.keys():
-            node_to_number[node] = len(data['nodes'])
-            data['nodes'].append({'id': node})
+            node_to_number[node] = len(data["nodes"])
+            data["nodes"].append({"id": node})
 
         # Do another pass to build the link information
         for node, neighbors in self.adjacency_map.items():
             for neighbor in neighbors:
                 link = self.attributes_map[(node, neighbor)].copy()
-                link['source'] = node_to_number[node]
-                link['target'] = node_to_number[neighbor]
-                data['links'].append(link)
+                link["source"] = node_to_number[node]
+                link["target"] = node_to_number[neighbor]
+                data["links"].append(link)
         return data
 
 
 def strongly_connected_components(G):  # noqa: C901
-    '''
+    """
     Adapted from networkx: http://networkx.github.io/
     Parameters
     ----------
@@ -96,7 +96,7 @@ def strongly_connected_components(G):  # noqa: C901
     comp : generator of sets
         A generator of sets of nodes, one for each strongly connected
         component of G.
-    '''
+    """
     preorder = {}
     lowlink = {}
     scc_found = {}
@@ -129,9 +129,7 @@ def strongly_connected_components(G):  # noqa: C901
                     if lowlink[v] == preorder[v]:
                         scc_found[v] = True
                         scc = {v}
-                        while (
-                            scc_queue and preorder[scc_queue[-1]] > preorder[v]
-                        ):
+                        while scc_queue and preorder[scc_queue[-1]] > preorder[v]:
                             k = scc_queue.pop()
                             scc_found[k] = True
                             scc.add(k)
@@ -141,7 +139,7 @@ def strongly_connected_components(G):  # noqa: C901
 
 
 def simple_cycles(G):  # noqa: C901
-    '''
+    """
     Adapted from networkx: http://networkx.github.io/
     Parameters
     ----------
@@ -151,7 +149,7 @@ def simple_cycles(G):  # noqa: C901
     cycle_generator: generator
        A generator that produces elementary cycles of the graph.
        Each cycle is represented by a list of nodes along the cycle.
-    '''
+    """
 
     def _unblock(thisnode, blocked, B):
         stack = set([thisnode])
@@ -211,12 +209,12 @@ def simple_cycles(G):  # noqa: C901
 
 
 def find_cycle(graph):
-    '''
+    """
     Looks for a cycle in the graph. If found, returns the first cycle.
     If nodes a1, a2, ..., an are in a cycle, then this returns:
         [(a1,a2), (a2,a3), ... (an-1,an), (an, a1)]
     Otherwise returns an empty list.
-    '''
+    """
     cycles = list(simple_cycles(graph))
     if cycles:
         nodes = cycles[0]
@@ -232,22 +230,22 @@ def find_cycle(graph):
 
 
 def get_stacktrace(thread_id):
-    '''
+    """
     Returns the stack trace for the thread id as a list of strings.
-    '''
-    gdb.execute('thread %d' % thread_id, from_tty=False, to_string=True)
-    output = gdb.execute('bt', from_tty=False, to_string=True)
-    stacktrace_lines = output.strip().split('\n')
+    """
+    gdb.execute("thread %d" % thread_id, from_tty=False, to_string=True)
+    output = gdb.execute("bt", from_tty=False, to_string=True)
+    stacktrace_lines = output.strip().split("\n")
     return stacktrace_lines
 
 
 def is_thread_blocked_with_frame(
     thread_id, top_line, expected_top_lines, expected_frame
 ):
-    '''
+    """
     Returns True if we found expected_top_line in top_line, and
     we found the expected_frame in the thread's stack trace.
-    '''
+    """
     if all(expected not in top_line for expected in expected_top_lines):
         return False
     stacktrace_lines = get_stacktrace(thread_id)
@@ -255,41 +253,39 @@ def is_thread_blocked_with_frame(
 
 
 class MutexType(Enum):
-    '''Types of mutexes that we can detect deadlocks.'''
+    """Types of mutexes that we can detect deadlocks."""
 
-    PTHREAD_MUTEX_T = 'pthread_mutex_t'
-    PTHREAD_RWLOCK_T = 'pthread_rwlock_t'
+    PTHREAD_MUTEX_T = "pthread_mutex_t"
+    PTHREAD_RWLOCK_T = "pthread_rwlock_t"
 
     @staticmethod
     def get_mutex_type(thread_id, top_line):
-        '''
+        """
         Returns the probable mutex type, based on the first line
         of the thread's stack. Returns None if not found.
-        '''
+        """
 
         WAITLIST = [
-            '__lll_lock_wait',
-            'futex_abstimed_wait',
-            'futex_abstimed_wait_cancelable',
-            'futex_reltimed_wait',
-            'futex_reltimed_wait_cancelable',
-            'futex_wait',
-            'futex_wait_cancelable',
+            "__lll_lock_wait",
+            "futex_abstimed_wait",
+            "futex_abstimed_wait_cancelable",
+            "futex_reltimed_wait",
+            "futex_reltimed_wait_cancelable",
+            "futex_wait",
+            "futex_wait_cancelable",
         ]
 
-        if is_thread_blocked_with_frame(
-            thread_id, top_line, WAITLIST, 'pthread_mutex'
-        ):
+        if is_thread_blocked_with_frame(thread_id, top_line, WAITLIST, "pthread_mutex"):
             return MutexType.PTHREAD_MUTEX_T
         if is_thread_blocked_with_frame(
-            thread_id, top_line, WAITLIST, 'pthread_rwlock'
+            thread_id, top_line, WAITLIST, "pthread_rwlock"
         ):
             return MutexType.PTHREAD_RWLOCK_T
         return None
 
     @staticmethod
     def get_mutex_owner_and_address_func_for_type(mutex_type):
-        '''
+        """
         Returns a function to resolve the mutex owner and address for
         the given type. The returned function f has the following
         signature:
@@ -299,7 +295,7 @@ class MutexType(Enum):
                         or (None, None) if not found.
 
         Returns None if there is no function for this mutex_type.
-        '''
+        """
         if mutex_type == MutexType.PTHREAD_MUTEX_T:
             return get_pthread_mutex_t_owner_and_address
         if mutex_type == MutexType.PTHREAD_RWLOCK_T:
@@ -308,33 +304,37 @@ class MutexType(Enum):
 
 
 def print_cycle(graph, lwp_to_thread_id, cycle):
-    '''Prints the threads and mutexes involved in the deadlock.'''
+    """Prints the threads and mutexes involved in the deadlock."""
     for (m, n) in cycle:
         print(
-            'Thread %d (LWP %d) is waiting on %s (0x%016x) held by '
-            'Thread %d (LWP %d)' % (
-                lwp_to_thread_id[m], m,
-                graph.attributes(m, n)['mutex_type'].value,
-                graph.attributes(m, n)['mutex'], lwp_to_thread_id[n], n
+            "Thread %d (LWP %d) is waiting on %s (0x%016x) held by "
+            "Thread %d (LWP %d)"
+            % (
+                lwp_to_thread_id[m],
+                m,
+                graph.attributes(m, n)["mutex_type"].value,
+                graph.attributes(m, n)["mutex"],
+                lwp_to_thread_id[n],
+                n,
             )
         )
 
 
 def get_thread_info():
-    '''
+    """
     Returns a pair of:
     - map of LWP -> thread ID
     - map of blocked threads LWP -> potential mutex type
-    '''
+    """
     # LWP -> thread ID
     lwp_to_thread_id = {}
 
     # LWP -> potential mutex type it is blocked on
     blocked_threads = {}
 
-    output = gdb.execute('info threads', from_tty=False, to_string=True)
-    lines = output.strip().split('\n')[1:]
-    regex = re.compile(r'[\s\*]*(\d+).*Thread.*\(LWP (\d+)\).*')
+    output = gdb.execute("info threads", from_tty=False, to_string=True)
+    lines = output.strip().split("\n")[1:]
+    regex = re.compile(r"[\s\*]*(\d+).*Thread.*\(LWP (\d+)\).*")
     for line in lines:
         try:
             thread_id = int(regex.match(line).group(1))
@@ -350,50 +350,46 @@ def get_thread_info():
 
 
 def get_pthread_mutex_t_owner_and_address(lwp_to_thread_id, thread_lwp):
-    '''
+    """
     Finds the thread holding the mutex that this thread is blocked on.
     Returns a pair of (lwp of thread owning mutex, mutex address),
     or (None, None) if not found.
-    '''
+    """
     # Go up the stack to the pthread_mutex_lock frame
     gdb.execute(
-        'thread %d' % lwp_to_thread_id[thread_lwp],
-        from_tty=False,
-        to_string=True
+        "thread %d" % lwp_to_thread_id[thread_lwp], from_tty=False, to_string=True
     )
-    gdb.execute('frame 1', from_tty=False, to_string=True)
+    gdb.execute("frame 1", from_tty=False, to_string=True)
 
     # Get the owner of the mutex by inspecting the internal
     # fields of the mutex.
     try:
-        mutex_info = gdb.parse_and_eval('mutex').dereference()
-        mutex_owner_lwp = int(mutex_info['__data']['__owner'])
+        mutex_info = gdb.parse_and_eval("mutex").dereference()
+        mutex_owner_lwp = int(mutex_info["__data"]["__owner"])
         return (mutex_owner_lwp, int(mutex_info.address))
     except gdb.error:
         return (None, None)
 
 
 def get_pthread_rwlock_t_owner_and_address(lwp_to_thread_id, thread_lwp):
-    '''
+    """
     If the thread is waiting on a write-locked pthread_rwlock_t, this will
     return the pair of:
         (lwp of thread that is write-owning the mutex, mutex address)
     or (None, None) if not found, or if the mutex is read-locked.
-    '''
+    """
     # Go up the stack to the pthread_rwlock_{rd|wr}lock frame
     gdb.execute(
-        'thread %d' % lwp_to_thread_id[thread_lwp],
-        from_tty=False,
-        to_string=True
+        "thread %d" % lwp_to_thread_id[thread_lwp], from_tty=False, to_string=True
     )
-    gdb.execute('frame 2', from_tty=False, to_string=True)
+    gdb.execute("frame 2", from_tty=False, to_string=True)
 
     # Get the owner of the mutex by inspecting the internal
     # fields of the mutex.
     try:
-        rwlock_info = gdb.parse_and_eval('rwlock').dereference()
-        rwlock_data = rwlock_info['__data']
-        field_names = ['__cur_writer', '__writer']
+        rwlock_info = gdb.parse_and_eval("rwlock").dereference()
+        rwlock_data = rwlock_info["__data"]
+        field_names = ["__cur_writer", "__writer"]
         fields = rwlock_data.type.fields()
         field = [f for f in fields if f.name in field_names][0]
         rwlock_owner_lwp = int(rwlock_data[field])
@@ -409,13 +405,13 @@ def get_pthread_rwlock_t_owner_and_address(lwp_to_thread_id, thread_lwp):
 
 
 class Deadlock(gdb.Command):
-    '''Detects deadlocks'''
+    """Detects deadlocks"""
 
     def __init__(self):
-        super(Deadlock, self).__init__('deadlock', gdb.COMMAND_NONE)
+        super(Deadlock, self).__init__("deadlock", gdb.COMMAND_NONE)
 
     def invoke(self, arg, from_tty):
-        '''Prints the threads and mutexes in a deadlock, if it exists.'''
+        """Prints the threads and mutexes in a deadlock, if it exists."""
         lwp_to_thread_id, blocked_threads = get_thread_info()
 
         # Nodes represent threads. Edge (A,B) exists if thread A
@@ -425,8 +421,9 @@ class Deadlock(gdb.Command):
         # Go through all the blocked threads and see which threads
         # they are blocked on, and build the thread wait graph.
         for thread_lwp, mutex_type in blocked_threads.items():
-            get_owner_and_address_func = \
-                MutexType.get_mutex_owner_and_address_func_for_type(mutex_type)
+            get_owner_and_address_func = MutexType.get_mutex_owner_and_address_func_for_type(
+                mutex_type
+            )
             if not get_owner_and_address_func:
                 continue
             mutex_owner_lwp, mutex_address = get_owner_and_address_func(
@@ -437,19 +434,16 @@ class Deadlock(gdb.Command):
                     thread_lwp,
                     mutex_owner_lwp,
                     mutex=mutex_address,
-                    mutex_type=mutex_type
+                    mutex_type=mutex_type,
                 )
 
         # A deadlock exists if there is a cycle in the graph.
         cycle = find_cycle(graph)
         if cycle:
-            print('Found deadlock!')
+            print("Found deadlock!")
             print_cycle(graph, lwp_to_thread_id, cycle)
         else:
-            print(
-                'No deadlock detected. '
-                'Do you have debug symbols installed?'
-            )
+            print("No deadlock detected. " "Do you have debug symbols installed?")
 
 
 def load():
@@ -459,8 +453,8 @@ def load():
 
 
 def info():
-    return 'Detect deadlocks'
+    return "Detect deadlocks"
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     load()

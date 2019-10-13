@@ -16,7 +16,7 @@ class FiberPrinter:
     def __init__(self, val):
         self.val = val
 
-        state = self.val['state_']
+        state = self.val["state_"]
         d = gdb.types.make_enum_dict(state.type)
         d = dict((v, k) for k, v in d.items())
         self.state = d[int(state)]
@@ -39,9 +39,11 @@ class FiberPrinter:
         return "Unknown"
 
     def backtrace_available(self):
-        return self.state != "folly::fibers::Fiber::INVALID" and \
-            self.state != "folly::fibers::Fiber::NOT_STARTED" and \
-            self.state != "folly::fibers::Fiber::RUNNING"
+        return (
+            self.state != "folly::fibers::Fiber::INVALID"
+            and self.state != "folly::fibers::Fiber::NOT_STARTED"
+            and self.state != "folly::fibers::Fiber::RUNNING"
+        )
 
     def children(self):
         result = collections.OrderedDict()
@@ -58,17 +60,15 @@ class FiberPrinter:
 
 class GetFiberXMethodWorker(gdb.xmethod.XMethodWorker):
     def get_arg_types(self):
-        return gdb.lookup_type('int')
+        return gdb.lookup_type("int")
 
     def get_result_type(self):
-        return gdb.lookup_type('int')
+        return gdb.lookup_type("int")
 
     def __call__(self, *args):
         fm = args[0]
         index = int(args[1])
-        fiber = next(itertools.islice(fiber_manager_active_fibers(fm),
-                                      index,
-                                      None))
+        fiber = next(itertools.islice(fiber_manager_active_fibers(fm), index, None))
         if fiber is None:
             raise gdb.GdbError("Index out of range")
         else:
@@ -77,35 +77,37 @@ class GetFiberXMethodWorker(gdb.xmethod.XMethodWorker):
 
 class GetFiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
     def __init__(self):
-        super(GetFiberXMethodMatcher, self).__init__(
-            "Fiber address method matcher")
+        super(GetFiberXMethodMatcher, self).__init__("Fiber address method matcher")
         self.worker = GetFiberXMethodWorker()
 
     def match(self, class_type, method_name):
-        if class_type.name == "folly::fibers::FiberManager" and \
-           method_name == "get_fiber":
+        if (
+            class_type.name == "folly::fibers::FiberManager"
+            and method_name == "get_fiber"
+        ):
             return self.worker
         return None
 
 
 def fiber_manager_active_fibers(fm):
-    all_fibers = \
-        fm['allFibers_']['data_']['root_plus_size_']['m_header']
-    fiber_hook = all_fibers['next_']
+    all_fibers = fm["allFibers_"]["data_"]["root_plus_size_"]["m_header"]
+    fiber_hook = all_fibers["next_"]
 
     fiber_count = 0
 
     while fiber_hook != all_fibers.address:
         fiber = fiber_hook.cast(gdb.lookup_type("int64_t"))
         fiber = fiber - gdb.parse_and_eval(
-            "(int64_t)&'folly::fibers::Fiber'::globalListHook_")
+            "(int64_t)&'folly::fibers::Fiber'::globalListHook_"
+        )
         fiber = fiber.cast(
-            gdb.lookup_type('folly::fibers::Fiber').pointer()).dereference()
+            gdb.lookup_type("folly::fibers::Fiber").pointer()
+        ).dereference()
 
         if FiberPrinter(fiber).state != "folly::fibers::Fiber::INVALID":
             yield fiber
 
-        fiber_hook = fiber_hook.dereference()['next_']
+        fiber_hook = fiber_hook.dereference()["next_"]
 
         fiber_count = fiber_count + 1
 
@@ -123,7 +125,7 @@ class FiberManagerPrinter:
             num_items = 0
             for fiber in fibers_iterator:
                 if num_items >= self.fiber_print_limit:
-                    yield ('...', '...')
+                    yield ("...", "...")
                     return
 
                 yield (str(fiber.address), fiber)
@@ -141,15 +143,18 @@ class FiberManagerPrinter:
 class FiberPrintLimitCommand(gdb.Command):
     def __init__(self):
         super(FiberPrintLimitCommand, self).__init__(
-            "fiber-print-limit", gdb.COMMAND_USER)
+            "fiber-print-limit", gdb.COMMAND_USER
+        )
 
     def invoke(self, arg, from_tty):
         if not arg:
             print("New limit has to be passed to 'fiber_print_limit' command")
             return
         FiberManagerPrinter.fiber_print_limit = int(arg)
-        print("New fiber limit for FiberManager printer set to " +
-              str(FiberManagerPrinter.fiber_print_limit))
+        print(
+            "New fiber limit for FiberManager printer set to "
+            + str(FiberManagerPrinter.fiber_print_limit)
+        )
 
 
 class FrameId(object):
@@ -197,8 +202,8 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
             cls.instance = FiberUnwinder()
             gdb.unwinder.register_unwinder(None, cls.instance)
 
-        fiber_impl = fiber['fiberImpl_']
-        cls.instance.fiber_context_ptr = fiber_impl['fiberContext_']
+        fiber_impl = fiber["fiberImpl_"]
+        cls.instance.fiber_context_ptr = fiber_impl["fiberContext_"]
 
     def __init__(self):
         super(FiberUnwinder, self).__init__("Fiber unwinder")
@@ -208,10 +213,10 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
         if not self.fiber_context_ptr:
             return None
 
-        orig_sp = pending_frame.read_register('rsp')
-        orig_pc = pending_frame.read_register('rip')
+        orig_sp = pending_frame.read_register("rsp")
+        orig_pc = pending_frame.read_register("rip")
 
-        void_star_star = gdb.lookup_type('uint64_t').pointer()
+        void_star_star = gdb.lookup_type("uint64_t").pointer()
         ptr = self.fiber_context_ptr.cast(void_star_star)
 
         # This code may need to be adjusted to newer versions of boost::context.
@@ -236,9 +241,9 @@ class FiberUnwinder(gdb.unwinder.Unwinder):
 
         frame_id = FrameId(rsp, orig_pc)
         unwind_info = pending_frame.create_unwind_info(frame_id)
-        unwind_info.add_saved_register('rbp', rbp)
-        unwind_info.add_saved_register('rsp', rsp)
-        unwind_info.add_saved_register('rip', rip)
+        unwind_info.add_saved_register("rbp", rbp)
+        unwind_info.add_saved_register("rsp", rsp)
+        unwind_info.add_saved_register("rip", rip)
 
         self.fiber_context_ptr = None
 
@@ -279,7 +284,8 @@ class FiberActivateCommand(gdb.Command):
 class FiberDeactivateCommand(gdb.Command):
     def __init__(self):
         super(FiberDeactivateCommand, self).__init__(
-            "fiber-deactivate", gdb.COMMAND_USER)
+            "fiber-deactivate", gdb.COMMAND_USER
+        )
 
     def invoke(self, arg, from_tty):
         print(fiber_deactivate())
@@ -302,8 +308,7 @@ class FiberXMethodMatcher(gdb.xmethod.XMethodMatcher):
         self.worker = FiberXMethodWorker()
 
     def match(self, class_type, method_name):
-        if class_type.name == "folly::fibers::Fiber" and \
-           method_name == "activate":
+        if class_type.name == "folly::fibers::Fiber" and method_name == "activate":
             return self.worker
         return None
 
@@ -322,21 +327,26 @@ def get_fiber_manager_map(evb_type):
         # Exception thrown if unable to find type
         # Probably because of missing debug symbols
         global_cache_type = gdb.lookup_type(
-            "folly::fibers::(anonymous namespace)::GlobalCache<" + evb_type + ">")
+            "folly::fibers::(anonymous namespace)::GlobalCache<" + evb_type + ">"
+        )
     except gdb.error:
-        raise gdb.GdbError("Unable to find types. "
-                           "Please make sure debug info is available for this binary.\n"
-                           "Have you run 'fbload debuginfo_fbpkg'?")
+        raise gdb.GdbError(
+            "Unable to find types. "
+            "Please make sure debug info is available for this binary.\n"
+            "Have you run 'fbload debuginfo_fbpkg'?"
+        )
 
     global_cache_instance_ptr_ptr = gdb.parse_and_eval(
-        "&'" + global_cache_type.name + "::instance()::ret'")
+        "&'" + global_cache_type.name + "::instance()::ret'"
+    )
     global_cache_instance_ptr = global_cache_instance_ptr_ptr.cast(
-        global_cache_type.pointer().pointer()).dereference()
+        global_cache_type.pointer().pointer()
+    ).dereference()
     if global_cache_instance_ptr == 0x0:
         raise gdb.GdbError("FiberManager map is empty.")
 
     global_cache_instance = global_cache_instance_ptr.dereference()
-    return global_cache_instance['map_']
+    return global_cache_instance["map_"]
 
 
 def get_fiber_manager_map_evb():
@@ -349,9 +359,10 @@ def get_fiber_manager_map_vevb():
 
 def build_pretty_printer():
     pp = gdb.printing.RegexpCollectionPrettyPrinter("folly_fibers")
-    pp.add_printer('fibers::Fiber', '^folly::fibers::Fiber$', FiberPrinter)
-    pp.add_printer('fibers::FiberManager', '^folly::fibers::FiberManager$',
-                   FiberManagerPrinter)
+    pp.add_printer("fibers::Fiber", "^folly::fibers::Fiber$", FiberPrinter)
+    pp.add_printer(
+        "fibers::FiberManager", "^folly::fibers::FiberManager$", FiberManagerPrinter
+    )
     return pp
 
 
