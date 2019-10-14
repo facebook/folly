@@ -123,12 +123,12 @@ GlobalThreadPoolList& GlobalThreadPoolList::instance() {
 void GlobalThreadPoolList::registerThreadPool(
     ThreadPoolListHook* threadPoolId,
     std::string name) {
-  globalListImpl_->registerThreadPool(threadPoolId, name);
+  globalListImpl_.wlock()->registerThreadPool(threadPoolId, name);
 }
 
 void GlobalThreadPoolList::unregisterThreadPool(
     ThreadPoolListHook* threadPoolId) {
-  globalListImpl_->unregisterThreadPool(threadPoolId);
+  globalListImpl_.wlock()->unregisterThreadPool(threadPoolId);
 }
 
 void GlobalThreadPoolList::registerThreadPoolThread(
@@ -137,7 +137,7 @@ void GlobalThreadPoolList::registerThreadPoolThread(
   DCHECK(!threadHook_);
   threadHook_.reset(make_unique<ThreadListHook>(threadPoolId, threadId));
 
-  globalListImpl_->registerThreadPoolThread(threadPoolId, threadId);
+  globalListImpl_.wlock()->registerThreadPoolThread(threadPoolId, threadId);
 }
 
 void GlobalThreadPoolList::unregisterThreadPoolThread(
@@ -145,7 +145,7 @@ void GlobalThreadPoolList::unregisterThreadPoolThread(
     std::thread::id threadId) {
   (void)threadPoolId;
   (void)threadId;
-  globalListImpl_->unregisterThreadPoolThread(threadPoolId, threadId);
+  globalListImpl_.wlock()->unregisterThreadPoolThread(threadPoolId, threadId);
 }
 
 void GlobalThreadPoolListImpl::registerThreadPool(

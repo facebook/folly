@@ -45,7 +45,7 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads),
       threadTimeout_(FLAGS_threadtimeout_ms) {
-  getSyncVecThreadPoolExecutors()->push_back(this);
+  getSyncVecThreadPoolExecutors().wlock()->push_back(this);
 }
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {

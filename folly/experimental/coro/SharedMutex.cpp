@@ -23,8 +23,8 @@
 using namespace folly::coro;
 
 SharedMutexFair::~SharedMutexFair() {
-  assert(state_->lockedFlagAndReaderCount_ == kUnlocked);
-  assert(state_->waitersHead_ == nullptr);
+  assert(state_.lock()->lockedFlagAndReaderCount_ == kUnlocked);
+  assert(state_.lock()->waitersHead_ == nullptr);
 }
 
 bool SharedMutexFair::try_lock() noexcept {

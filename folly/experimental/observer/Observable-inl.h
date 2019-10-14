@@ -29,11 +29,11 @@ class ObserverCreatorContext {
   template <typename... Args>
   ObserverCreatorContext(Args&&... args)
       : observable_(std::forward<Args>(args)...) {
-    state_->updateValue(Traits::get(observable_));
+    state_.unsafeGetUnlocked().updateValue(Traits::get(observable_));
   }
 
   ~ObserverCreatorContext() {
-    if (state_->value) {
+    if (state_.unsafeGetUnlocked().value) {
       Traits::unsubscribe(observable_);
     }
   }

@@ -43,7 +43,7 @@ using ExceptionStatsHolderType =
 struct ExceptionStatsStorage {
   void appendTo(ExceptionStatsHolderType& data) {
     ExceptionStatsHolderType tempHolder;
-    statsHolder->swap(tempHolder);
+    statsHolder.wlock()->swap(tempHolder);
 
     for (const auto& myData : tempHolder) {
       auto inserted = data.insert(myData);

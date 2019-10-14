@@ -91,7 +91,7 @@ class ThreadCachedLists : public ThreadCachedListsBase {
     TLHead(ThreadCachedLists* parent) : parent_(parent) {}
 
     ~TLHead() {
-      parent_->ghead_->splice(*this);
+      parent_->ghead_.wlock()->splice(*this);
     }
   };
 

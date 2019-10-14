@@ -37,7 +37,7 @@ SysArena* ThreadCachedArena::allocateThreadLocalArena() {
 }
 
 void ThreadCachedArena::zombify(SysArena&& arena) {
-  zombies_->merge(std::move(arena));
+  zombies_.wlock()->merge(std::move(arena));
 }
 
 size_t ThreadCachedArena::totalSize() const {
@@ -45,7 +45,7 @@ size_t ThreadCachedArena::totalSize() const {
   for (const auto& arena : arena_.accessAllThreads()) {
     result += arena.totalSize();
   }
-  result += zombies_->totalSize() - sizeof(SysArena);
+  result += zombies_.rlock()->totalSize() - sizeof(SysArena);
   return result;
 }
 
