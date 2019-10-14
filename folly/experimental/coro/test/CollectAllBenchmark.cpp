@@ -52,11 +52,8 @@ void collectAllSemiFuture(size_t batchSize) {
 }
 
 folly::coro::Task<void> co_doWork() {
-  co_await[]()->folly::coro::Task<void> {
-    doWork();
-    co_return;
-  }
-  ().scheduleOn(&executor);
+  co_await folly::coro::co_reschedule_on_current_executor;
+  doWork();
 }
 
 void collectAllCoro(size_t batchSize) {
@@ -66,7 +63,8 @@ void collectAllCoro(size_t batchSize) {
           for (size_t i = 0; i < batchSize; ++i) {
             co_yield co_doWork();
           }
-        }());
+        }())
+        .scheduleOn(&executor);
   }());
 }
 
