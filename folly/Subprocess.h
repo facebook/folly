@@ -97,6 +97,7 @@
 #include <sys/types.h>
 #include <sys/wait.h>
 
+#include <chrono>
 #include <exception>
 #include <string>
 #include <vector>
@@ -614,14 +615,15 @@ class Subprocess {
     sendSignal(SIGKILL);
   }
 
+  using TimeoutDuration = std::chrono::milliseconds;
+
   /**
-   * Send the SIGTERM to terminate the process, call `waitpid`
-   * non-blockingly for several times, up to `sigtermTimeoutSeconds`.
-   * If the process hasn't terminated after that, send SIGKILL to kill
-   * the process and call `waitpid` blockingly. Return the exit code of
-   * process.
+   * Send the SIGTERM to terminate the process, poll `waitpid` non-blockingly
+   * several times up to `sigtermTimeout`. If the process hasn't terminated
+   * after that, send SIGKILL to kill the process and call `waitpid` blockingly.
+   * Return the exit code of process.
    */
-  ProcessReturnCode terminateOrKill(int sigtermTimeoutSeconds);
+  ProcessReturnCode terminateOrKill(TimeoutDuration sigtermTimeout);
 
   ////
   //// The methods below only affect the process's communication pipes, but

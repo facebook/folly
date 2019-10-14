@@ -182,7 +182,7 @@ TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
       Subprocess::Options().pipeStdout().pipeStderr());
   const auto [stdout, stderr] = proc.communicate();
   EXPECT_EQ("hello\n", stdout);
-  auto retCode = proc.terminateOrKill(1);
+  auto retCode = proc.terminateOrKill(1s);
   EXPECT_TRUE(retCode.exited());
   EXPECT_EQ(1, retCode.exitStatus());
 }
@@ -213,7 +213,7 @@ TEST(SimpleSubprocessTest, TerminateWithoutKill) {
           "/bin/bash", "-c", "echo TerminateWithoutKill; sleep 60"},
       Subprocess::Options().pipeStdout().pipeStderr());
   EXPECT_TRUE(waitForAnyOutput(proc));
-  auto retCode = proc.terminateOrKill(1);
+  auto retCode = proc.terminateOrKill(1s);
   EXPECT_TRUE(retCode.killed());
   EXPECT_EQ(SIGTERM, retCode.killSignal());
 }
@@ -231,7 +231,7 @@ TEST(SimpleSubprocessTest, KillAfterTerminate) {
           "trap \"sleep 120\" SIGTERM; echo KillAfterTerminate; sleep 60"},
       Subprocess::Options().pipeStdout().pipeStderr());
   EXPECT_TRUE(waitForAnyOutput(proc));
-  auto retCode = proc.terminateOrKill(1);
+  auto retCode = proc.terminateOrKill(1s);
   EXPECT_TRUE(retCode.killed());
   EXPECT_EQ(SIGKILL, retCode.killSignal());
 }

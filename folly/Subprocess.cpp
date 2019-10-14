@@ -652,7 +652,7 @@ ProcessReturnCode Subprocess::wait() {
   } while (found == -1 && errno == EINTR);
   // The only two remaining errors are ECHILD (other code reaped the
   // child?), or EINVAL (cosmic rays?), and both merit an abort:
-  PCHECK(found != -1) << "waitpid(" << pid_ << ", &status, WNOHANG)";
+  PCHECK(found != -1) << "waitpid(" << pid_ << ", &status, 0)";
   // Though the child process had quit, this call does not close the pipes
   // since its descendants may still be using them.
   DCHECK_EQ(found, pid_);
@@ -672,13 +672,14 @@ void Subprocess::sendSignal(int signal) {
   checkUnixError(r, "kill");
 }
 
-ProcessReturnCode Subprocess::terminateOrKill(int sigtermTimeoutSeconds) {
+ProcessReturnCode Subprocess::terminateOrKill(TimeoutDuration sigtermTimeout) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
   // 1. Send SIGTERM to kill the process
   terminate();
   // 2. check whether subprocess has terminated using non-blocking waitpid
-  for (int i = 0; i < sigtermTimeoutSeconds * 10; i++) {
+  auto pollUntil = std::chrono::steady_clock::now() + sigtermTimeout;
+  do {
     int status;
     pid_t found;
     // warp waitpid in the while loop to deal with EINTR.
@@ -686,11 +687,7 @@ ProcessReturnCode Subprocess::terminateOrKill(int sigtermTimeoutSeconds) {
       found = ::waitpid(pid_, &status, WNOHANG);
     } while (found == -1 && errno == EINTR);
     PCHECK(found != -1) << "waitpid(" << pid_ << ", &status, WNOHANG)";
-    if (found == 0) {
-      // The subprocess is still running, sleep for 100ms
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-      continue;
-    } else {
+    if (found) {
       // Just on the safe side, make sure it's the actual pid we are waiting.
       DCHECK_EQ(found, pid_);
       returnCode_ = ProcessReturnCode::make(status);
@@ -699,7 +696,10 @@ ProcessReturnCode Subprocess::terminateOrKill(int sigtermTimeoutSeconds) {
       pid_ = -1;
       return returnCode_;
     }
-  }
+
+    // The subprocess is still running, sleep for 100ms
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  } while (std::chrono::steady_clock::now() <= pollUntil);
   // 3. If we are at this point, we have waited enough time after
   // sending SIGTERM, we have to use nuclear option SIGKILL to kill
   // the subprocess.
