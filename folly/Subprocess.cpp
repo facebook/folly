@@ -671,6 +671,9 @@ ProcessReturnCode Subprocess::waitTimeout(TimeoutDuration timeout) {
   DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
 
   auto pollUntil = std::chrono::steady_clock::now() + timeout;
+  auto sleepDuration = std::chrono::milliseconds{2};
+  constexpr auto maximumSleepDuration = std::chrono::milliseconds{100};
+
   for (;;) {
     // Always call waitpid once after the full timeout has elapsed.
     auto now = std::chrono::steady_clock::now();
@@ -694,8 +697,10 @@ ProcessReturnCode Subprocess::waitTimeout(TimeoutDuration timeout) {
       // Timed out: still running().
       return returnCode_;
     }
-    // The subprocess is still running, sleep for 100ms
-    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+    // The subprocess is still running, sleep for increasing periods of time.
+    std::this_thread::sleep_for(sleepDuration);
+    sleepDuration =
+        std::min(maximumSleepDuration, sleepDuration + sleepDuration);
   }
 }
 
