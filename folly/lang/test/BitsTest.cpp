@@ -255,16 +255,25 @@ TEST(Bits, BitCastBasic) {
   auto one = std::make_unique<int>();
   auto two = folly::bit_cast<std::uintptr_t>(one.get());
   EXPECT_EQ(folly::bit_cast<int*>(two), one.get());
+
+  struct FancyInt {
+    FancyInt() {
+      ADD_FAILURE() << "Default constructor should not be called by bit_cast";
+    }
+
+    int value;
+  };
+
+  int x = 5;
+  auto bi = folly::bit_cast<FancyInt>(x);
+  EXPECT_EQ(x, bi.value);
+}
+
+TEST(Bits, BitCastCompatibilityTest) {
+  auto one = folly::Random::rand64();
+  auto pointer = folly::bit_cast<std::uintptr_t>(one);
+  auto two = folly::bit_cast<std::uint64_t>(pointer);
+  EXPECT_EQ(one, two);
 }
 
 } // namespace folly
-
-TEST(Bits, BitCastCompatibilityTest) {
-  using namespace folly;
-  using namespace std;
-
-  auto one = folly::Random::rand64();
-  auto pointer = bit_cast<std::uintptr_t>(one);
-  auto two = bit_cast<std::uint64_t>(pointer);
-  EXPECT_EQ(one, two);
-}

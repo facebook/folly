@@ -77,13 +77,13 @@ template <
     typename To,
     typename From,
     std::enable_if_t<
-        sizeof(From) == sizeof(To) && std::is_trivial<To>::value &&
+        sizeof(From) == sizeof(To) && is_trivially_copyable<To>::value &&
             is_trivially_copyable<From>::value,
         int> = 0>
 To bit_cast(const From& src) noexcept {
-  To to;
-  std::memcpy(&to, &src, sizeof(From));
-  return to;
+  aligned_storage_for_t<To> storage;
+  std::memcpy(&storage, &src, sizeof(From));
+  return reinterpret_cast<To&>(storage);
 }
 
 #endif
