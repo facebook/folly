@@ -174,6 +174,20 @@ TEST(SimpleSubprocessTest, ChangeChildDirectoryWithError) {
   }
 }
 
+TEST(SimpleSubprocessTest, waitOrTerminateOrKill_waits_if_process_exits) {
+  Subprocess proc(std::vector<std::string>{"/bin/sleep", "0.1"});
+  auto retCode = proc.waitOrTerminateOrKill(1s, 1s);
+  EXPECT_TRUE(retCode.exited());
+  EXPECT_EQ(0, retCode.exitStatus());
+}
+
+TEST(SimpleSubprocessTest, waitOrTerminateOrKill_terminates_if_timeout) {
+  Subprocess proc(std::vector<std::string>{"/bin/sleep", "60"});
+  auto retCode = proc.waitOrTerminateOrKill(1s, 1s);
+  EXPECT_TRUE(retCode.killed());
+  EXPECT_EQ(SIGTERM, retCode.killSignal());
+}
+
 // This method verifies terminateOrKill shouldn't affect the exit
 // status if the process has exitted already.
 TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {

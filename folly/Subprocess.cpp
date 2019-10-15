@@ -666,23 +666,17 @@ void Subprocess::waitChecked() {
   checkStatus(returnCode_);
 }
 
-void Subprocess::sendSignal(int signal) {
-  returnCode_.enforce(ProcessReturnCode::RUNNING);
-  int r = ::kill(pid_, signal);
-  checkUnixError(r, "kill");
-}
-
-ProcessReturnCode Subprocess::terminateOrKill(TimeoutDuration sigtermTimeout) {
+ProcessReturnCode Subprocess::waitTimeout(TimeoutDuration timeout) {
   returnCode_.enforce(ProcessReturnCode::RUNNING);
   DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
-  // 1. Send SIGTERM to kill the process
-  terminate();
-  // 2. check whether subprocess has terminated using non-blocking waitpid
-  auto pollUntil = std::chrono::steady_clock::now() + sigtermTimeout;
-  do {
+
+  auto pollUntil = std::chrono::steady_clock::now() + timeout;
+  for (;;) {
+    // Always call waitpid once after the full timeout has elapsed.
+    auto now = std::chrono::steady_clock::now();
+
     int status;
     pid_t found;
-    // warp waitpid in the while loop to deal with EINTR.
     do {
       found = ::waitpid(pid_, &status, WNOHANG);
     } while (found == -1 && errno == EINTR);
@@ -696,10 +690,45 @@ ProcessReturnCode Subprocess::terminateOrKill(TimeoutDuration sigtermTimeout) {
       pid_ = -1;
       return returnCode_;
     }
-
+    if (now > pollUntil) {
+      // Timed out: still running().
+      return returnCode_;
+    }
     // The subprocess is still running, sleep for 100ms
-    std::this_thread::sleep_for(std::chrono::milliseconds(100));
-  } while (std::chrono::steady_clock::now() <= pollUntil);
+    std::this_thread::sleep_for(std::chrono::milliseconds{100});
+  }
+}
+
+void Subprocess::sendSignal(int signal) {
+  returnCode_.enforce(ProcessReturnCode::RUNNING);
+  int r = ::kill(pid_, signal);
+  checkUnixError(r, "kill");
+}
+
+ProcessReturnCode Subprocess::waitOrTerminateOrKill(
+    TimeoutDuration waitTimeout,
+    TimeoutDuration sigtermTimeout) {
+  returnCode_.enforce(ProcessReturnCode::RUNNING);
+  DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
+
+  this->waitTimeout(waitTimeout);
+
+  if (returnCode_.running()) {
+    return terminateOrKill(sigtermTimeout);
+  }
+  return returnCode_;
+}
+
+ProcessReturnCode Subprocess::terminateOrKill(TimeoutDuration sigtermTimeout) {
+  returnCode_.enforce(ProcessReturnCode::RUNNING);
+  DCHECK_GT(pid_, 0) << "The subprocess has been waited already";
+  // 1. Send SIGTERM to kill the process
+  terminate();
+  // 2. check whether subprocess has terminated using non-blocking waitpid
+  waitTimeout(sigtermTimeout);
+  if (!returnCode_.running()) {
+    return returnCode_;
+  }
   // 3. If we are at this point, we have waited enough time after
   // sending SIGTERM, we have to use nuclear option SIGKILL to kill
   // the subprocess.

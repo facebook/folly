@@ -593,7 +593,7 @@ class Subprocess {
   /**
    * Wait for the process to terminate and return its status.  Like poll(),
    * the only exception this can throw is std::logic_error if you call this
-   * on a Subprocess whose status is RUNNING.  Aborts on egregious
+   * on a Subprocess whose status is not RUNNING.  Aborts on egregious
    * violations of contract, like an out-of-band waitpid(p.pid(), 0, 0).
    */
   ProcessReturnCode wait();
@@ -602,6 +602,16 @@ class Subprocess {
    * Wait for the process to terminate, throw if unsuccessful.
    */
   void waitChecked();
+
+  using TimeoutDuration = std::chrono::milliseconds;
+
+  /**
+   * Call `waitpid` non-blockingly up to `timeout`. Throws std::logic_error if
+   * called on a Subprocess whose status is not RUNNING.
+   *
+   * The return code will be running() if waiting timed out.
+   */
+  ProcessReturnCode waitTimeout(TimeoutDuration timeout);
 
   /**
    * Send a signal to the child.  Shortcuts for the commonly used Unix
@@ -615,7 +625,14 @@ class Subprocess {
     sendSignal(SIGKILL);
   }
 
-  using TimeoutDuration = std::chrono::milliseconds;
+  /**
+   * Call `waitpid` non-blockingly up to `waitTimeout`. If the process hasn't
+   * terminated after that, fall back on `terminateOrKill` with
+   * `sigtermTimeoutSeconds`.
+   */
+  ProcessReturnCode waitOrTerminateOrKill(
+      TimeoutDuration waitTimeout,
+      TimeoutDuration sigtermTimeout);
 
   /**
    * Send the SIGTERM to terminate the process, poll `waitpid` non-blockingly
