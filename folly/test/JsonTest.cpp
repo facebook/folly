@@ -749,6 +749,28 @@ TEST(Json, SortKeys) {
           nullptr));
   // clang-format on
 
+  // dynamic object uses F14NodeMap which may randomize the table iteration
+  // order; consequently, we must force the table iteration order to be
+  // different from sorted order so that we can deterministically test sorting
+  // below
+  auto get_top_keys = [&] {
+    std::vector<std::string> top_keys;
+    for (auto const& key : value.keys()) {
+      top_keys.push_back(key.asString());
+    }
+    return top_keys;
+  };
+  std::vector<std::string> sorted_top_keys = get_top_keys();
+  std::sort(sorted_top_keys.begin(), sorted_top_keys.end());
+  while (get_top_keys() == sorted_top_keys) {
+    for (size_t i = 0; i < 64; ++i) {
+      value.insert(folly::to<std::string>("fake-", i), i);
+    }
+    for (size_t i = 0; i < 64; ++i) {
+      value.erase(folly::to<std::string>("fake-", i));
+    }
+  }
+
   std::string sorted_keys =
       R"({"a":[{"a":"b","c":"d"},12.5,"Yo Dawg",["heh"],null],)"
       R"("another":32.2,"foo":"bar","junk":12})";
