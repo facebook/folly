@@ -104,6 +104,11 @@ cmake \
   -DCMAKE_LIBRARY_PATH=/alt/lib/path1:/alt/lib/path2 ...
 ```
 
+#### Building tests
+
+By default, building the tests is disabled as part of the CMake `all` target.
+To build the tests, specify `-DBUILD_TESTS=ON` to CMake at configure time.
+
 #### Ubuntu 16.04 LTS
 
 The following packages are required (feel free to cut and paste the apt-get
