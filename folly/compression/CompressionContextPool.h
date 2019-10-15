@@ -64,15 +64,19 @@ class CompressionContextPool {
       if (t == nullptr) {
         throw_exception<std::bad_alloc>();
       }
-      return Ref(t, ReturnToPoolDeleter(this, deleter_));
+      return Ref(t, get_deleter());
     }
     auto ptr = std::move(stack->back());
     stack->pop_back();
-    return Ref(ptr.release(), ReturnToPoolDeleter(this, deleter_));
+    return Ref(ptr.release(), get_deleter());
   }
 
   size_t size() {
     return stack_.rlock()->size();
+  }
+
+  ReturnToPoolDeleter get_deleter() {
+    return ReturnToPoolDeleter(this, deleter_);
   }
 
  private:
