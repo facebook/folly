@@ -372,13 +372,8 @@ struct is_convertible_from_replaceable
           std::is_convertible<const Replaceable<T>&&, T>::value> {};
 } // namespace replaceable_detail
 
-// Type trait template to statically test whether a type is a specialization of
-// Replaceable
 template <class T>
-struct is_replaceable : std::false_type {};
-
-template <class T>
-struct is_replaceable<Replaceable<T>> : std::true_type {};
+using is_replaceable = detail::is_instantiation_of<Replaceable, T>;
 
 // Function to make a Replaceable with a type deduced from its input
 template <class T>

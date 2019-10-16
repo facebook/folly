@@ -149,6 +149,25 @@ using bool_constant = std::integral_constant<bool, B>;
 template <std::size_t I>
 using index_constant = std::integral_constant<std::size_t, I>;
 
+namespace detail {
+
+/**
+ * A type trait to check if a given type is an instantiation of a class
+ * template.
+ *
+ * Note that this only works with template type parameters. It does not work
+ * with non-type template parameters, template template parameters, or alias
+ * templates.
+ */
+template <template <typename...> class, typename>
+struct is_instantiation_of : std::false_type {};
+template <template <typename...> class C, typename... T>
+struct is_instantiation_of<C, C<T...>> : std::true_type {};
+template <template <typename...> class C, typename T>
+constexpr bool is_instantiation_of_v = is_instantiation_of<C, T>::value;
+
+} // namespace detail
+
 /***
  *  _t
  *

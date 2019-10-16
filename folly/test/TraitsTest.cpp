@@ -62,6 +62,10 @@ struct F3 : T3 {
 };
 struct F4 : T1 {};
 
+template <class>
+struct A {};
+struct B {};
+
 namespace folly {
 template <>
 struct IsRelocatable<T1> : std::true_type {};
@@ -391,4 +395,9 @@ TEST(Traits, like) {
   EXPECT_TRUE(
       (std::is_same<like_t<int const volatile&&, char>, char const volatile&&>::
            value));
+}
+
+TEST(Traits, is_instantiation_of) {
+  EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
+  EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
 }

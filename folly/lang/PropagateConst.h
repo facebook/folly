@@ -39,10 +39,8 @@ constexpr Pointer const& get_underlying(propagate_const<Pointer> const& obj) {
 }
 
 namespace detail {
-template <typename>
-struct is_propagate_const : std::false_type {};
-template <typename Pointer>
-struct is_propagate_const<propagate_const<Pointer>> : std::true_type {};
+template <class Pointer>
+using is_propagate_const = is_instantiation_of<propagate_const, Pointer>;
 template <typename T>
 using is_decay_propagate_const = is_propagate_const<std::decay_t<T>>;
 
