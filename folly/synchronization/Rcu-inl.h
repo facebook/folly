@@ -89,21 +89,14 @@ void rcu_domain<Tag>::retire(list_node* node) noexcept {
   if (time > syncTime + syncTimePeriod_ &&
       syncTime_.compare_exchange_strong(
           syncTime, time, std::memory_order_relaxed)) {
-    // Starting doing the sync work. However it's possible that someone else
-    // is already assigned, so add the work check here as well, and move on if
-    // the work is assigned.
-    auto target = version_.load(std::memory_order_acquire) + 1;
-    auto work = work_.load(std::memory_order_acquire);
-    if (work < target && work_.compare_exchange_strong(work, target)) {
-      list_head finished;
-      {
-        std::lock_guard<std::mutex> g(syncMutex_);
-        half_sync(false, finished);
-      }
-      // callbacks are called outside of syncMutex_
-      finished.forEach(
-          [&](list_node* item) { executor_->add(std::move(item->cb_)); });
+    list_head finished;
+    {
+      std::lock_guard<std::mutex> g(syncMutex_);
+      half_sync(false, finished);
     }
+    // callbacks are called outside of syncMutex_
+    finished.forEach(
+        [&](list_node* item) { executor_->add(std::move(item->cb_)); });
   }
 }
 
