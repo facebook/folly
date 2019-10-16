@@ -57,7 +57,7 @@ class QuotientMultiSetTest : public ::testing::Test {
     auto spBuf = buff.move();
 
     folly::StringPiece data(spBuf->coalesce());
-    folly::QuotientMultiSet reader(data);
+    folly::QuotientMultiSet<> reader(data);
 
     size_t index = 0;
     folly::QuotientMultiSet<>::Iterator iter(&reader);
@@ -143,7 +143,7 @@ TEST_F(QuotientMultiSetTest, Empty) {
   builder.close(buff);
   auto spBuf = buff.move();
   folly::StringPiece data(spBuf->coalesce());
-  folly::QuotientMultiSet reader(data);
+  folly::QuotientMultiSet<> reader(data);
 
   for (size_t idx = 0; idx < 1024; idx++) {
     uint64_t key = folly::Random::rand32(rng);
