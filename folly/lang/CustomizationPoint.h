@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Portability.h>
 #include <folly/lang/StaticConst.h>
 
 //  FOLLY_DEFINE_CPO
@@ -31,7 +32,7 @@
 //  ensure that there is only a single instance of the CPO created and then a
 //  named reference in an anonymous namespace is required to avoid duplicate
 //  symbol definitions.
-#if __cpp_inline_variables >= 201606L
+#if FOLLY_HAS_INLINE_VARIABLES
 #define FOLLY_DEFINE_CPO(Type, Name) \
   namespace folly_cpo__ {            \
   inline constexpr Type Name{};      \

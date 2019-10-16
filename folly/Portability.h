@@ -507,6 +507,14 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE 1
 #endif
 
+#if __cpp_inline_variables >= 201606L
+#define FOLLY_HAS_INLINE_VARIABLES 1
+#define FOLLY_INLINE_VARIABLE inline
+#else
+#define FOLLY_HAS_INLINE_VARIABLES 0
+#define FOLLY_INLINE_VARIABLE
+#endif
+
 // feature test __cpp_lib_string_view is defined in <string>, which is
 // too heavy to include here.  MSVC __has_include support arrived later
 // than string_view, so we need an alternate case for it.
