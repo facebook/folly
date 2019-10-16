@@ -25,6 +25,8 @@
 #include <folly/Random.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
+#include <folly/synchronization/test/Barrier.h>
 
 using namespace folly;
 
@@ -289,3 +291,34 @@ TEST(RcuTest, RcuObjBase) {
   synchronize_rcu();
   EXPECT_TRUE(retired);
 }
+
+namespace folly {
+
+TEST(RcuTest, DeadLock) {
+  // The test tries to reproduce the potential deadlock caused by 2 threads.
+  // T1 does rcu_read_lock(), T2 starts synchronization_rcu(), T1 tries to
+  // call_rcu(). Which made deadlock happens.
+
+  // Use fresh RcuTag and domain to consistantly reproduce the deadlock.
+  struct FreshTag;
+  rcu_domain<FreshTag> fresh_domain;
+
+  // Run the test several times to guarantee the deadlock sequence happens.
+  for (int i = 0; i < 5; i++) {
+    folly::test::Barrier sync_ready(2);
+    std::thread t1([&] {
+      folly::rcu_reader_domain guard(&fresh_domain);
+      sync_ready.wait();
+      folly::rcu_retire(new std::string(), {}, &fresh_domain);
+    });
+    std::thread t2([&] {
+      sync_ready.wait();
+      folly::synchronize_rcu(&fresh_domain);
+    });
+
+    t1.join();
+    t2.join();
+  }
+}
+
+} // namespace folly
