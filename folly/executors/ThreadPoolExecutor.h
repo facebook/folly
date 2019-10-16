@@ -225,7 +225,9 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   }
 
   // Prerequisite: threadListLock_ readlocked or writelocked
-  virtual size_t getPendingTaskCountImpl() const = 0;
+  virtual size_t getPendingTaskCountImpl() const {
+    throw std::logic_error("getPendingTaskCountImpl not implemented");
+  }
 
   class ThreadList {
    public:
