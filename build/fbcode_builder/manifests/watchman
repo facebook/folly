@@ -34,3 +34,6 @@ ENABLE_EDEN_SUPPORT=ON
 WATCHMAN_STATE_DIR=/opt/facebook/watchman/var/run/watchman
 # tell cmake not to try to create /opt/facebook/...
 INSTALL_WATCHMAN_STATE_DIR=OFF
+
+[depends.environment]
+WATCHMAN_VERSION_OVERRIDE

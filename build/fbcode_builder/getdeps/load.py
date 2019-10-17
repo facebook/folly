@@ -260,6 +260,8 @@ class ManifestLoader(object):
         No caching of the computation is performed, which is theoretically
         wasteful but the computation is fast enough that it is not required
         to cache across multiple invocations. """
+        ctx = self.ctx_gen.get_context(manifest.name)
+
         hasher = hashlib.sha256()
         # Some environmental and configuration things matter
         env = {}
@@ -272,6 +274,8 @@ class ManifestLoader(object):
             env[name] = os.environ.get(name)
         for tool in ["cc", "c++", "gcc", "g++", "clang", "clang++"]:
             env["tool-%s" % tool] = path_search(os.environ, tool)
+        for name in manifest.get_section_as_args("depends.environment", ctx):
+            env[name] = os.environ.get(name)
 
         fetcher = self.create_fetcher(manifest)
         env["fetcher.hash"] = fetcher.hash()
@@ -282,7 +286,6 @@ class ManifestLoader(object):
             if value is not None:
                 hasher.update(value.encode("utf-8"))
 
-        ctx = self.ctx_gen.get_context(manifest.name)
         manifest.update_hash(hasher, ctx)
 
         dep_list = sorted(manifest.get_section_as_dict("dependencies", ctx).keys())

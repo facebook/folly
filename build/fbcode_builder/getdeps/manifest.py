@@ -49,6 +49,7 @@ SCHEMA = {
         },
     },
     "dependencies": {"optional_section": True, "allow_values": False},
+    "depends.environment": {"optional_section": True},
     "git": {
         "optional_section": True,
         "fields": {"repo_url": REQUIRED, "rev": OPTIONAL, "depth": OPTIONAL},
