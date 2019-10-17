@@ -335,6 +335,7 @@ class BenchmarkResultsPrinter {
                   int(name.length()),
                   metricReadable(ptr->value, 2).c_str());
               break;
+            case UserMetric::Type::CUSTOM:
             default:
               printf("  %-*d", int(name.length()), ptr->value);
           }

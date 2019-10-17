@@ -53,6 +53,7 @@ SSLContext::SSLContext(SSLVersion version) {
       opt = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
           SSL_OP_NO_TLSv1_1;
       break;
+    case SSLv2:
     default:
       // do nothing
       break;
@@ -185,7 +186,7 @@ int SSLContext::getVerificationMode(
     case SSLVerifyPeerEnum::NO_VERIFY:
       mode = SSL_VERIFY_NONE;
       break;
-
+    case SSLVerifyPeerEnum::USE_CTX:
     default:
       break;
   }

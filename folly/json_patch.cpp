@@ -221,6 +221,12 @@ do_add(
         ptr.error().context->push_back(value);
         break;
       }
+      case res_err_code::other:
+      case res_err_code::index_out_of_bounds:
+      case res_err_code::index_not_numeric:
+      case res_err_code::index_has_leading_zero:
+      case res_err_code::element_not_object_or_array:
+      case res_err_code::json_pointer_out_of_bounds:
       default:
         return folly::makeUnexpected(app_err_code::other);
     }

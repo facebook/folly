@@ -90,6 +90,10 @@ bool compareDynamicWithNestedJson(
         }
       }
       return false;
+    case dynamic::Type::NULLT:
+    case dynamic::Type::BOOL:
+    case dynamic::Type::DOUBLE:
+    case dynamic::Type::INT64:
     default:
       return false;
   }

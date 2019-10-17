@@ -877,6 +877,7 @@ TEST(IPAddress, V6Types) {
         return "teredo";
       case IPAddressV6::Type::T6TO4:
         return "6to4";
+      case IPAddressV6::Type::NORMAL:
       default:
         return "default";
     }

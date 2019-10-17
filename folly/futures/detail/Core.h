@@ -650,7 +650,10 @@ class Core final {
       case State::OnlyCallbackAllowInline:
         proxyCallback(state);
         break;
-
+      case State::OnlyResult:
+      case State::Proxy:
+      case State::Done:
+      case State::Empty:
       default:
         terminate_with<std::logic_error>("setCallback unexpected state");
     }
@@ -705,7 +708,10 @@ class Core final {
         state_.store(State::Done, std::memory_order_relaxed);
         doCallback(std::move(completingKA), state);
         return;
-
+      case State::OnlyResult:
+      case State::Proxy:
+      case State::Done:
+      case State::Empty:
       default:
         terminate_with<std::logic_error>("setResult unexpected state");
     }
@@ -846,6 +852,9 @@ class Core final {
       case State::Empty:
         break;
 
+      case State::Start:
+      case State::OnlyCallback:
+      case State::OnlyCallbackAllowInline:
       default:
         terminate_with<std::logic_error>("~Core unexpected state");
     }

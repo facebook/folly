@@ -168,6 +168,7 @@ void Try<T>::throwIfFailed() const {
       return;
     case Contains::EXCEPTION:
       e_.throw_exception();
+    case Contains::NOTHING:
     default:
       throw_exception<UsingUninitializedTry>();
   }

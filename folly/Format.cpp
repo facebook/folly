@@ -134,6 +134,9 @@ void FormatValue<double>::formatHelper(
     case FormatArg::Sign::SPACE_OR_MINUS:
       plusSign = ' ';
       break;
+    case FormatArg::Sign::DEFAULT:
+    case FormatArg::Sign::MINUS:
+    case FormatArg::Sign::INVALID:
     default:
       plusSign = '\0';
       break;

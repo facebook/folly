@@ -121,6 +121,8 @@ CIDRNetwork IPAddress::createNetwork(
           vec.size() == 2 ? vec.at(1) : to<string>(cidr),
           subnet.bitCount()));
     }
+    case CIDRNetworkError::INVALID_DEFAULT_CIDR:
+    case CIDRNetworkError::INVALID_IP_SLASH_CIDR:
     default:
       // unreachable
       break;

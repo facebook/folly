@@ -46,6 +46,15 @@ static int64_t decodeInt(Cursor& curs) {
       return curs.read<int32_t>();
     case BserType::Int64:
       return curs.read<int64_t>();
+    case BserType::Array:
+    case BserType::Object:
+    case BserType::String:
+    case BserType::Real:
+    case BserType::True:
+    case BserType::False:
+    case BserType::Null:
+    case BserType::Template:
+    case BserType::Skip:
     default:
       throwDecodeError(
           curs, "invalid integer encoding detected (", (int8_t)enc, ")");
@@ -192,6 +201,15 @@ static size_t decodeHeader(Cursor& curs) {
     case BserType::Int64:
       int_size = 8;
       break;
+    case BserType::Array:
+    case BserType::Object:
+    case BserType::String:
+    case BserType::Real:
+    case BserType::True:
+    case BserType::False:
+    case BserType::Null:
+    case BserType::Template:
+    case BserType::Skip:
     default:
       int_size = 0;
   }

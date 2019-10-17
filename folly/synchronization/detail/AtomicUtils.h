@@ -28,6 +28,10 @@ inline std::memory_order default_failure_memory_order(
       return std::memory_order_acquire;
     case std::memory_order_release:
       return std::memory_order_relaxed;
+    case std::memory_order_relaxed:
+    case std::memory_order_consume:
+    case std::memory_order_acquire:
+    case std::memory_order_seq_cst:
     default:
       return successMode;
   }

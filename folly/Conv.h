@@ -775,6 +775,7 @@ toAppend(
     case DoubleToStringConverter::FIXED:
       conv.ToFixed(value, int(numDigits), &builder);
       break;
+    case DoubleToStringConverter::PRECISION:
     default:
       assert(mode == DoubleToStringConverter::PRECISION);
       conv.ToPrecision(value, int(numDigits), &builder);

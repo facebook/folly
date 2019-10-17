@@ -462,6 +462,7 @@ const dynamic* dynamic::get_ptr(json_pointer const& jsonPtr) const& {
       throw_exception<TypeError>("object/array", objType);
     case err_code::json_pointer_out_of_bounds:
       return nullptr;
+    case err_code::other:
     default:
       return nullptr;
   }

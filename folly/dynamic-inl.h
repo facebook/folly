@@ -1032,6 +1032,9 @@ T dynamic::asImpl() const {
       return to<T>(*get_nothrow<bool>());
     case STRING:
       return to<T>(*get_nothrow<std::string>());
+    case NULLT:
+    case ARRAY:
+    case OBJECT:
     default:
       throw_exception<TypeError>("int/double/bool/string", type());
   }

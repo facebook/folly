@@ -476,6 +476,7 @@ class fbstring_core {
           return ml_.size_;
         }
         break;
+      case Category::isMedium:
       default:
         break;
     }

@@ -94,6 +94,10 @@ AsyncSocketException::AsyncSocketExceptionType exTypefromSSLErr(SSLError err) {
       return AsyncSocketException::END_OF_FILE;
     case SSLError::NETWORK_ERROR:
       return AsyncSocketException::NETWORK_ERROR;
+    case SSLError::CLIENT_RENEGOTIATION:
+    case SSLError::INVALID_RENEGOTIATION:
+    case SSLError::EARLY_WRITE:
+    case SSLError::SSL_ERROR:
     default:
       // everything else is a SSL_ERROR
       return AsyncSocketException::SSL_ERROR;

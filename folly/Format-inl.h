@@ -339,6 +339,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
       case FormatArg::Align::PAD_AFTER_SIGN:
         pad(padChars);
         break;
+      case FormatArg::Align::INVALID:
       default:
         abort();
         break;
@@ -463,6 +464,9 @@ class FormatValue<
           case FormatArg::Sign::SPACE_OR_MINUS:
             sign = ' ';
             break;
+          case FormatArg::Sign::DEFAULT:
+          case FormatArg::Sign::MINUS:
+          case FormatArg::Sign::INVALID:
           default:
             sign = '\0';
             break;
