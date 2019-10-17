@@ -141,6 +141,9 @@ IOThreadPoolExecutor::pickThread() {
 EventBase* IOThreadPoolExecutor::getEventBase() {
   ensureActiveThreads();
   SharedMutex::ReadHolder r{&threadListLock_};
+  if (threadList_.get().empty()) {
+    throw std::runtime_error("No threads available");
+  }
   return pickThread()->eventBase;
 }
 
