@@ -572,7 +572,7 @@ def download_url_to_file_with_progress(url, file_name):
     start = time.time()
     try:
         (_filename, headers) = urlretrieve(url, file_name, reporthook=progress.progress)
-    except OSError as exc:
+    except (OSError, IOError) as exc:
         raise TransientFailure(
             "Failed to download %s to %s: %s" % (url, file_name, str(exc))
         )
