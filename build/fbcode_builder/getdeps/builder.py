@@ -503,6 +503,7 @@ if __name__ == "__main__":
                 "--buck-test-info",
                 buck_test_info_name,
                 "--retry=3",
+                "-j=%s" % str(self.build_opts.num_jobs),
                 "--test-config",
                 "platform=%s" % machine_suffix,
                 "buildsystem=getdeps",
