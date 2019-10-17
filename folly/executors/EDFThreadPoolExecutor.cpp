@@ -248,9 +248,11 @@ EDFThreadPoolExecutor::EDFThreadPoolExecutor(
     : ThreadPoolExecutor(numThreads, numThreads, std::move(threadFactory)),
       taskQueue_(std::make_unique<TaskQueue>()) {
   setNumThreads(numThreads);
+  registerThreadPoolExecutor(this);
 }
 
 EDFThreadPoolExecutor::~EDFThreadPoolExecutor() {
+  deregisterThreadPoolExecutor(this);
   stop();
 }
 

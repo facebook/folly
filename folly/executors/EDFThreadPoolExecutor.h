@@ -60,7 +60,7 @@ class EDFThreadPoolExecutor : public SoftRealTimeExecutor,
  protected:
   void threadRun(ThreadPtr thread) override;
   void stopThreads(std::size_t numThreads) override;
-  std::size_t getPendingTaskCountImpl() const override;
+  std::size_t getPendingTaskCountImpl() const override final;
 
  private:
   bool shouldStop();

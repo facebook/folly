@@ -40,6 +40,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           std::move(threadFactory)),
       taskQueue_(std::move(taskQueue)) {
   setNumThreads(numThreads);
+  registerThreadPoolExecutor(this);
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
@@ -52,6 +53,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           std::move(threadFactory)),
       taskQueue_(std::move(taskQueue)) {
   setNumThreads(numThreads.first);
+  registerThreadPoolExecutor(this);
 }
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
@@ -98,6 +100,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           std::move(threadFactory)) {}
 
 CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
+  deregisterThreadPoolExecutor(this);
   stop();
   CHECK(threadsToStop_ == 0);
 }

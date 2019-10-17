@@ -80,9 +80,11 @@ IOThreadPoolExecutor::IOThreadPoolExecutor(
       nextThread_(0),
       eventBaseManager_(ebm) {
   setNumThreads(numThreads);
+  registerThreadPoolExecutor(this);
 }
 
 IOThreadPoolExecutor::~IOThreadPoolExecutor() {
+  deregisterThreadPoolExecutor(this);
   stop();
 }
 

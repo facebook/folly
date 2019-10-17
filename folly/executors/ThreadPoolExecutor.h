@@ -53,6 +53,15 @@ namespace folly {
  * ensureJoined() is called on add(), such that we can join idle
  * threads that were destroyed (which can't be joined from
  * themselves).
+ *
+ * Thread pool stats accounting:
+ *
+ * Derived classes must register instances to keep stats on all thread
+ * pools by calling registerThreadPoolExecutor(this) on constructions
+ * and deregisterThreadPoolExecutor(this) on destruction.
+ *
+ * Registration must be done wherever getPendingTaskCountImpl is implemented
+ * and getPendingTaskCountImpl should be marked 'final' to avoid data races.
  */
 class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
  public:
@@ -224,10 +233,11 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     return std::make_shared<Thread>(this);
   }
 
+  static void registerThreadPoolExecutor(ThreadPoolExecutor* tpe);
+  static void deregisterThreadPoolExecutor(ThreadPoolExecutor* tpe);
+
   // Prerequisite: threadListLock_ readlocked or writelocked
-  virtual size_t getPendingTaskCountImpl() const {
-    throw std::logic_error("getPendingTaskCountImpl not implemented");
-  }
+  virtual size_t getPendingTaskCountImpl() const = 0;
 
   class ThreadList {
    public:

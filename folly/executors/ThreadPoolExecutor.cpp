@@ -29,6 +29,16 @@ SyncVecThreadPoolExecutors& getSyncVecThreadPoolExecutors() {
   return *storage;
 }
 
+void ThreadPoolExecutor::registerThreadPoolExecutor(ThreadPoolExecutor* tpe) {
+  getSyncVecThreadPoolExecutors().wlock()->push_back(tpe);
+}
+
+void ThreadPoolExecutor::deregisterThreadPoolExecutor(ThreadPoolExecutor* tpe) {
+  getSyncVecThreadPoolExecutors().withWLock([tpe](auto& tpes) {
+    tpes.erase(std::remove(tpes.begin(), tpes.end(), tpe), tpes.end());
+  });
+}
+
 DEFINE_int64(
     threadtimeout_ms,
     60000,
@@ -44,16 +54,11 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads),
-      threadTimeout_(FLAGS_threadtimeout_ms) {
-  getSyncVecThreadPoolExecutors().wlock()->push_back(this);
-}
+      threadTimeout_(FLAGS_threadtimeout_ms) {}
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   joinKeepAliveOnce();
   CHECK_EQ(0, threadList_.get().size());
-  getSyncVecThreadPoolExecutors().withWLock([this](auto& tpe) {
-    tpe.erase(std::remove(tpe.begin(), tpe.end(), this), tpe.end());
-  });
 }
 
 ThreadPoolExecutor::Task::Task(
