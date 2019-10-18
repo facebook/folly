@@ -177,7 +177,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
         : nullptr;
 
     if (traceStack) {
-      LOG_IF(DFATAL, !trace)
+      LOG_IF(WARNING, !trace)
           << "Invalid trace stack for exception of type: "
           << (info.type ? folly::demangle(*info.type) : "null");
 
@@ -193,7 +193,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     exceptions.push_back(std::move(info));
   }
 
-  LOG_IF(DFATAL, trace) << "Invalid trace stack!";
+  LOG_IF(WARNING, trace) << "Invalid trace stack!";
 
   return exceptions;
 }
