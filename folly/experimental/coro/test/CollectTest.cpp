@@ -28,6 +28,7 @@
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/io/async/Request.h>
 #include <folly/portability/GTest.h>
 
 #include <numeric>
@@ -307,6 +308,55 @@ TEST(CollectAll, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
   }());
 }
 
+namespace {
+
+class TestRequestData : public folly::RequestData {
+ public:
+  explicit TestRequestData() noexcept {}
+
+  bool hasCallback() override {
+    return false;
+  }
+};
+
+} // namespace
+
+TEST(CollectAll, CollectAllKeepsRequestContextOfChildTasksIndependent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    auto getContextData = []() {
+      return folly::RequestContext::get()->getContextData("test");
+    };
+
+    auto setContextData = []() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestRequestData>());
+    };
+
+    setContextData();
+    auto initialContextData = getContextData();
+
+    auto makeChildTask = [&]() -> folly::coro::Task<void> {
+      CHECK(getContextData() == initialContextData);
+      folly::RequestContextScopeGuard childScope;
+      CHECK(getContextData() == nullptr);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == nullptr);
+      setContextData();
+      auto newContextData = getContextData();
+      CHECK(newContextData != nullptr);
+      CHECK(newContextData != initialContextData);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == newContextData);
+    };
+
+    co_await folly::coro::collectAll(makeChildTask(), makeChildTask());
+
+    CHECK(getContextData() == initialContextData);
+  }());
+}
+
 /////////////////////////////////////////////////////////
 // folly::coro::collectAllTry() tests
 
@@ -461,6 +511,42 @@ TEST(CollectAllTry, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
     CHECK_EQ(42, a.value());
     CHECK_EQ(3.14f, b.value());
     CHECK(c.hasValue());
+  }());
+}
+
+TEST(CollectAllTry, CollectAllTryKeepsRequestContextOfChildTasksIndependent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    auto getContextData = []() {
+      return folly::RequestContext::get()->getContextData("test");
+    };
+
+    auto setContextData = []() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestRequestData>());
+    };
+
+    setContextData();
+    auto initialContextData = getContextData();
+
+    auto makeChildTask = [&]() -> folly::coro::Task<void> {
+      CHECK(getContextData() == initialContextData);
+      folly::RequestContextScopeGuard childScope;
+      CHECK(getContextData() == nullptr);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == nullptr);
+      setContextData();
+      auto newContextData = getContextData();
+      CHECK(newContextData != nullptr);
+      CHECK(newContextData != initialContextData);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == newContextData);
+    };
+
+    co_await folly::coro::collectAllTry(makeChildTask(), makeChildTask());
+
+    CHECK(getContextData() == initialContextData);
   }());
 }
 
@@ -633,6 +719,49 @@ TEST(CollectAllRange, SubtasksCancelledWhenParentTaskCancelled) {
   }());
 }
 
+TEST(
+    CollectAllRange,
+    CollectAllRangeKeepsRequestContextOfChildTasksIndependent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    auto getContextData = []() {
+      return folly::RequestContext::get()->getContextData("test");
+    };
+
+    auto setContextData = []() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestRequestData>());
+    };
+
+    setContextData();
+    auto initialContextData = getContextData();
+
+    auto makeChildTask = [&]() -> folly::coro::Task<void> {
+      CHECK(getContextData() == initialContextData);
+      folly::RequestContextScopeGuard childScope;
+      CHECK(getContextData() == nullptr);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == nullptr);
+      setContextData();
+      auto newContextData = getContextData();
+      CHECK(newContextData != nullptr);
+      CHECK(newContextData != initialContextData);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == newContextData);
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+
+    co_await folly::coro::collectAllRange(std::move(tasks));
+
+    CHECK(getContextData() == initialContextData);
+  }());
+}
+
 ////////////////////////////////////////////////////////////////////
 // folly::coro::collectAllTryRange() tests
 
@@ -773,6 +902,49 @@ TEST(CollectAllTryRange, SubtasksCancelledWhenParentTaskCancelled) {
     }
     CHECK((end - start) < 1s);
     CHECK(consumedAllTasks);
+  }());
+}
+
+TEST(
+    CollectAllTryRange,
+    CollectAllTryRangeKeepsRequestContextOfChildTasksIndependent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    auto getContextData = []() {
+      return folly::RequestContext::get()->getContextData("test");
+    };
+
+    auto setContextData = []() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestRequestData>());
+    };
+
+    setContextData();
+    auto initialContextData = getContextData();
+
+    auto makeChildTask = [&]() -> folly::coro::Task<void> {
+      CHECK(getContextData() == initialContextData);
+      folly::RequestContextScopeGuard childScope;
+      CHECK(getContextData() == nullptr);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == nullptr);
+      setContextData();
+      auto newContextData = getContextData();
+      CHECK(newContextData != nullptr);
+      CHECK(newContextData != initialContextData);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == newContextData);
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+
+    co_await folly::coro::collectAllTryRange(std::move(tasks));
+
+    CHECK(getContextData() == initialContextData);
   }());
 }
 
@@ -1021,6 +1193,49 @@ TEST(CollectAllWindowed, SubtasksCancelledWhenParentTaskCancelled) {
 
     CHECK((end - start) < 1s);
     CHECK(consumedAllTasks);
+  }());
+}
+
+TEST(
+    CollectAllWindowed,
+    CollectAllWindowedKeepsRequestContextOfChildTasksIndependent) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::RequestContextScopeGuard requestScope;
+
+    auto getContextData = []() {
+      return folly::RequestContext::get()->getContextData("test");
+    };
+
+    auto setContextData = []() {
+      folly::RequestContext::get()->setContextData(
+          "test", std::make_unique<TestRequestData>());
+    };
+
+    setContextData();
+    auto initialContextData = getContextData();
+
+    auto makeChildTask = [&]() -> folly::coro::Task<void> {
+      CHECK(getContextData() == initialContextData);
+      folly::RequestContextScopeGuard childScope;
+      CHECK(getContextData() == nullptr);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == nullptr);
+      setContextData();
+      auto newContextData = getContextData();
+      CHECK(newContextData != nullptr);
+      CHECK(newContextData != initialContextData);
+      co_await folly::coro::co_reschedule_on_current_executor;
+      CHECK(getContextData() == newContextData);
+    };
+
+    std::vector<folly::coro::Task<void>> tasks;
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+    tasks.emplace_back(makeChildTask());
+
+    co_await folly::coro::collectAllWindowed(std::move(tasks), 2);
+
+    CHECK(getContextData() == initialContextData);
   }());
 }
 

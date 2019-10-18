@@ -93,7 +93,16 @@ auto collectAllTryImpl(
 
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
-    (void)std::initializer_list<int>{(tasks[Indices].start(&barrier), 0)...};
+
+    // Save the initial context and restore it after starting each task
+    // as the task may have modified the context before suspending and we
+    // want to make sure the next task is started with the same initial
+    // context.
+    const auto context = RequestContext::saveContext();
+    (void)std::initializer_list<int>{
+        (tasks[Indices].start(&barrier),
+         RequestContext::setContext(context),
+         0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -137,9 +146,18 @@ auto collectAllImpl(
 
     folly::coro::detail::Barrier barrier{sizeof...(SemiAwaitables) + 1};
 
+    // Save the initial context and restore it after starting each task
+    // as the task may have modified the context before suspending and we
+    // want to make sure the next task is started with the same initial
+    // context.
+    const auto context = RequestContext::saveContext();
+
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
-    (void)std::initializer_list<int>{(tasks[Indices].start(&barrier), 0)...};
+    (void)std::initializer_list<int>{
+        (tasks[Indices].start(&barrier),
+         RequestContext::setContext(context),
+         0)...};
 
     // Wait for all of the sub-tasks to finish execution.
     // Should be safe to avoid an executor transition here even if the
@@ -213,11 +231,18 @@ auto collectAllTryRangeImpl(
   // executing the tasks.
   results.resize(tasks.size());
 
+  // Save the initial context and restore it after starting each task
+  // as the task may have modified the context before suspending and we
+  // want to make sure the next task is started with the same initial
+  // context.
+  const auto context = RequestContext::saveContext();
+
   // Launch the tasks and wait for them all to finish.
   {
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
       task.start(&barrier);
+      RequestContext::setContext(context);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
@@ -360,6 +385,12 @@ auto collectAllTryWindowedImpl(
 
   exception_wrapper workerCreationException;
 
+  // Save the initial context and restore it after starting each task
+  // as the task may have modified the context before suspending and we
+  // want to make sure the next task is started with the same initial
+  // context.
+  const auto context = RequestContext::saveContext();
+
   try {
     auto lock = co_await mutex.co_scoped_lock();
     while (iter != iterEnd && workerTasks.size() < maxConcurrency) {
@@ -373,6 +404,8 @@ auto collectAllTryWindowedImpl(
       workerTasks.push_back(makeWorker());
       barrier.add(1);
       workerTasks.back().start(&barrier);
+
+      RequestContext::setContext(context);
 
       lock = co_await mutex.co_scoped_lock();
     }
@@ -506,11 +539,18 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
         makeTask(static_cast<decltype(semiAwaitable)&&>(semiAwaitable)));
   }
 
+  // Save the initial context and restore it after starting each task
+  // as the task may have modified the context before suspending and we
+  // want to make sure the next task is started with the same initial
+  // context.
+  const auto context = RequestContext::saveContext();
+
   // Launch the tasks and wait for them all to finish.
   {
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
       task.start(&barrier);
+      RequestContext::setContext(context);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
   }
@@ -613,6 +653,12 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   exception_wrapper workerCreationException;
 
+  // Save the initial context and restore it after starting each task
+  // as the task may have modified the context before suspending and we
+  // want to make sure the next task is started with the same initial
+  // context.
+  const auto context = RequestContext::saveContext();
+
   try {
     auto lock = co_await mutex.co_scoped_lock();
 
@@ -627,6 +673,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       workerTasks.push_back(makeWorker());
       barrier.add(1);
       workerTasks.back().start(&barrier);
+
+      RequestContext::setContext(context);
 
       lock = co_await mutex.co_scoped_lock();
     }
