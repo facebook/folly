@@ -2704,6 +2704,87 @@ TEST(AsyncSSLSocketTest, SendMsgDataCallback) {
 
 #endif
 
+TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
+  EventBase eventBase;
+  auto serverCtx = std::make_shared<SSLContext>();
+  auto clientCtx = std::make_shared<SSLContext>();
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+
+  clientCtx->setSessionCacheContext("test context");
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  SSL_SESSION* resumptionSession = nullptr;
+
+  {
+    std::array<NetworkSocket, 2> fds;
+    getfds(fds.data());
+
+    AsyncSSLSocket::UniquePtr clientSock(
+        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+    AsyncSSLSocket::UniquePtr serverSock(
+        new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+    // Client sends SNI that doesn't match anything the server cert advertises
+    clientSock->setServerName("Foobar");
+
+    SSLHandshakeServerParseClientHello server(
+        std::move(serverSock), true, true);
+    SSLHandshakeClient client(std::move(clientSock), true, true);
+    eventBase.loop();
+
+    serverSock = std::move(server).moveSocket();
+    auto chi = serverSock->getClientHelloInfo();
+    ASSERT_NE(chi, nullptr);
+    EXPECT_EQ(
+        std::string("Foobar"), std::string(serverSock->getSSLServerName()));
+
+    // create another client, resuming with the prior session, but under a
+    // different common name.
+    clientSock = std::move(client).moveSocket();
+    resumptionSession = clientSock->getSSLSession();
+  }
+
+  {
+    std::array<NetworkSocket, 2> fds;
+    getfds(fds.data());
+
+    AsyncSSLSocket::UniquePtr clientSock(
+        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+    AsyncSSLSocket::UniquePtr serverSock(
+        new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+    clientSock->setSSLSession(resumptionSession, true);
+    clientSock->setServerName("Baz");
+    SSLHandshakeServerParseClientHello server(
+        std::move(serverSock), true, true);
+    SSLHandshakeClient client(std::move(clientSock), true, true);
+    eventBase.loop();
+
+    serverSock = std::move(server).moveSocket();
+    clientSock = std::move(client).moveSocket();
+    EXPECT_TRUE(clientSock->getSSLSessionReused());
+
+    // OpenSSL 1.1.1 changes the semantics of SSL_get_servername
+    // in
+    // https://github.com/openssl/openssl/commit/1c4aa31d79821dee9be98e915159d52cc30d8403
+    //
+    // Previously, the SNI would be taken from the ClientHello.
+    // Now, the SNI will be taken from the established session.
+    //
+    // But the session that was established with the client (prior handshake)
+    // would not have set the server name field because the SNI that the client
+    // requested ("Foobar") did not match any of the SANs that the server was
+    // presenting ("127.0.0.1")
+    //
+    // To preserve this 1.1.0 behavior, getSSLServerName() should return the
+    // parsed ClientHello servername. This test asserts this behavior.
+    auto sni = serverSock->getSSLServerName();
+    ASSERT_NE(sni, nullptr);
+
+    std::string sniStr(sni);
+    EXPECT_EQ(sniStr, std::string("Baz"));
+  }
+}
 } // namespace folly
 
 #ifdef SIGPIPE

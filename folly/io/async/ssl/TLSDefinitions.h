@@ -77,6 +77,10 @@ enum class SignatureAlgorithm : uint8_t {
   ECDSA = 3
 };
 
+enum class NameType : uint8_t {
+  HOST_NAME = 0,
+};
+
 struct ClientHelloInfo {
   folly::IOBufQueue clientHelloBuf_;
   uint8_t clientHelloMajorVersion_;
@@ -86,6 +90,11 @@ struct ClientHelloInfo {
   std::vector<TLSExtension> clientHelloExtensions_;
   std::vector<std::pair<HashAlgorithm, SignatureAlgorithm>> clientHelloSigAlgs_;
   std::vector<uint16_t> clientHelloSupportedVersions_;
+
+  // Technically, the TLS spec allows for multiple ServerNames to be sent (as
+  // long as each ServerName has a distinct type). In practice, the only one
+  // we really care about is HOST_NAME.
+  std::string clientHelloSNIHostname_;
 };
 
 } // namespace ssl

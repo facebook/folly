@@ -897,6 +897,9 @@ const char* AsyncSSLSocket::getSSLServerNameFromSSL(SSL* ssl) {
 }
 
 const char* AsyncSSLSocket::getSSLServerName() const {
+  if (clientHelloInfo_ && !clientHelloInfo_->clientHelloSNIHostname_.empty()) {
+    return clientHelloInfo_->clientHelloSNIHostname_.c_str();
+  }
 #ifdef SSL_CTRL_SET_TLSEXT_SERVERNAME_CB
   return getSSLServerNameFromSSL(ssl_.get());
 #else
@@ -906,6 +909,9 @@ const char* AsyncSSLSocket::getSSLServerName() const {
 }
 
 const char* AsyncSSLSocket::getSSLServerNameNoThrow() const {
+  if (clientHelloInfo_ && !clientHelloInfo_->clientHelloSNIHostname_.empty()) {
+    return clientHelloInfo_->clientHelloSNIHostname_.c_str();
+  }
   return getSSLServerNameFromSSL(ssl_.get());
 }
 
@@ -1873,6 +1879,34 @@ void AsyncSSLSocket::clientHelloParsingCallback(
             sock->clientHelloInfo_->clientHelloSupportedVersions_.push_back(
                 cursor.readBE<uint16_t>());
             extensionDataLength -= 2;
+          }
+        } else if (extensionType == ssl::TLSExtension::SERVER_NAME) {
+          cursor.skip(2);
+          extensionDataLength -= 2;
+          while (extensionDataLength) {
+            static_assert(
+                std::is_same<
+                    typename std::underlying_type<ssl::NameType>::type,
+                    uint8_t>::value,
+                "unexpected underlying type");
+
+            ssl::NameType typ =
+                static_cast<ssl::NameType>(cursor.readBE<uint8_t>());
+            uint16_t nameLength = cursor.readBE<uint16_t>();
+
+            if (typ == NameType::HOST_NAME &&
+                sock->clientHelloInfo_->clientHelloSNIHostname_.empty() &&
+                cursor.canAdvance(nameLength)) {
+              sock->clientHelloInfo_->clientHelloSNIHostname_ =
+                  cursor.readFixedString(nameLength);
+            } else {
+              // Must attempt to skip |nameLength| in order to keep cursor
+              // in sync. If the remaining buffer length is smaller than
+              // nameLength, this will throw.
+              cursor.skip(nameLength);
+            }
+            extensionDataLength -=
+                sizeof(typ) + sizeof(nameLength) + nameLength;
           }
         } else {
           cursor.skip(extensionDataLength);

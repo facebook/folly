@@ -526,7 +526,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   virtual const char* getNegotiatedCipherName() const;
 
   /**
-   * Get the server name for this SSL connection.
+   * Get the server name for this SSL connection. Returns the SNI sent in the
+   * ClientHello, if enableClientHelloParsing() was called.
+   *
    * Returns the server name used or the constant value "NONE" when no SSL
    * session has been established.
    * If openssl has no SNI support, throw AsyncSocketException.
