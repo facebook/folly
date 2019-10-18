@@ -1258,6 +1258,26 @@ TEST(String, whitespace) {
   EXPECT_EQ("", rtrimWhitespace("\r   "));
 }
 
+TEST(String, trim) {
+  auto removeA = [](const char c) { return 'a' == c; };
+  auto removeB = [](const char c) { return 'b' == c; };
+
+  // trim:
+  EXPECT_EQ("akavabanga", trim("akavabanga", removeB));
+  EXPECT_EQ("kavabang", trim("akavabanga", removeA));
+  EXPECT_EQ("kavabang", trim("aakavabangaa", removeA));
+
+  // ltrim:
+  EXPECT_EQ("akavabanga", ltrim("akavabanga", removeB));
+  EXPECT_EQ("kavabanga", ltrim("akavabanga", removeA));
+  EXPECT_EQ("kavabangaa", ltrim("aakavabangaa", removeA));
+
+  // rtrim:
+  EXPECT_EQ("akavabanga", rtrim("akavabanga", removeB));
+  EXPECT_EQ("akavabang", rtrim("akavabanga", removeA));
+  EXPECT_EQ("aakavabang", rtrim("aakavabangaa", removeA));
+}
+
 TEST(String, stripLeftMargin_really_empty) {
   auto input = "";
   auto expected = "";

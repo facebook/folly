@@ -581,6 +581,41 @@ inline StringPiece skipWhitespace(StringPiece sp) {
 }
 
 /**
+ * Returns a subpiece with all characters the provided @toTrim returns true
+ * for removed from the front of @sp.
+ */
+template <typename ToTrim>
+StringPiece ltrim(StringPiece sp, ToTrim toTrim) {
+  while (!sp.empty() && toTrim(sp.front())) {
+    sp.pop_front();
+  }
+
+  return sp;
+}
+
+/**
+ * Returns a subpiece with all characters the provided @toTrim returns true
+ * for removed from the back of @sp.
+ */
+template <typename ToTrim>
+StringPiece rtrim(StringPiece sp, ToTrim toTrim) {
+  while (!sp.empty() && toTrim(sp.back())) {
+    sp.pop_back();
+  }
+
+  return sp;
+}
+
+/**
+ * Returns a subpiece with all characters the provided @toTrim returns true
+ * for removed from the back and front of @sp.
+ */
+template <typename ToTrim>
+StringPiece trim(StringPiece sp, ToTrim toTrim) {
+  return ltrim(rtrim(sp, std::ref(toTrim)), std::ref(toTrim));
+}
+
+/**
  *  Strips the leading and the trailing whitespace-only lines. Then looks for
  *  the least indented non-whitespace-only line and removes its amount of
  *  leading whitespace from every line. Assumes leading whitespace is either all
