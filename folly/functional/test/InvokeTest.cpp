@@ -114,27 +114,27 @@ TEST_F(InvokeTest, invoke_result) {
 }
 
 TEST_F(InvokeTest, is_invocable) {
-  EXPECT_TRUE((folly::is_invocable<Fn, int, char>::value));
-  EXPECT_TRUE((folly::is_invocable<Fn, int, char*>::value));
-  EXPECT_FALSE((folly::is_invocable<Fn, int>::value));
+  EXPECT_TRUE((folly::is_invocable_v<Fn, int, char>));
+  EXPECT_TRUE((folly::is_invocable_v<Fn, int, char*>));
+  EXPECT_FALSE((folly::is_invocable_v<Fn, int>));
 }
 
 TEST_F(InvokeTest, is_invocable_r) {
-  EXPECT_TRUE((folly::is_invocable_r<int, Fn, int, char>::value));
-  EXPECT_TRUE((folly::is_invocable_r<int, Fn, int, char*>::value));
-  EXPECT_FALSE((folly::is_invocable_r<int, Fn, int>::value));
+  EXPECT_TRUE((folly::is_invocable_r_v<int, Fn, int, char>));
+  EXPECT_TRUE((folly::is_invocable_r_v<int, Fn, int, char*>));
+  EXPECT_FALSE((folly::is_invocable_r_v<int, Fn, int>));
 }
 
 TEST_F(InvokeTest, is_nothrow_invocable) {
-  EXPECT_TRUE((folly::is_nothrow_invocable<Fn, int, char>::value));
-  EXPECT_FALSE((folly::is_nothrow_invocable<Fn, int, char*>::value));
-  EXPECT_FALSE((folly::is_nothrow_invocable<Fn, int>::value));
+  EXPECT_TRUE((folly::is_nothrow_invocable_v<Fn, int, char>));
+  EXPECT_FALSE((folly::is_nothrow_invocable_v<Fn, int, char*>));
+  EXPECT_FALSE((folly::is_nothrow_invocable_v<Fn, int>));
 }
 
 TEST_F(InvokeTest, is_nothrow_invocable_r) {
-  EXPECT_TRUE((folly::is_nothrow_invocable_r<int, Fn, int, char>::value));
-  EXPECT_FALSE((folly::is_nothrow_invocable_r<int, Fn, int, char*>::value));
-  EXPECT_FALSE((folly::is_nothrow_invocable_r<int, Fn, int>::value));
+  EXPECT_TRUE((folly::is_nothrow_invocable_r_v<int, Fn, int, char>));
+  EXPECT_FALSE((folly::is_nothrow_invocable_r_v<int, Fn, int, char*>));
+  EXPECT_FALSE((folly::is_nothrow_invocable_r_v<int, Fn, int>));
 }
 
 TEST_F(InvokeTest, free_invoke) {
@@ -161,38 +161,37 @@ TEST_F(InvokeTest, free_invoke_result) {
 TEST_F(InvokeTest, free_is_invocable) {
   using traits = go_invoke_traits;
 
-  EXPECT_TRUE((traits::is_invocable<x::Obj, int>::value));
-  EXPECT_TRUE((traits::is_invocable<y::Obj, char const*>::value));
-  EXPECT_FALSE((traits::is_invocable<z::Obj, int>::value));
-  EXPECT_FALSE((traits::is_invocable<float>::value));
+  EXPECT_TRUE((traits::is_invocable_v<x::Obj, int>));
+  EXPECT_TRUE((traits::is_invocable_v<y::Obj, char const*>));
+  EXPECT_FALSE((traits::is_invocable_v<z::Obj, int>));
+  EXPECT_FALSE((traits::is_invocable_v<float>));
 }
 
 TEST_F(InvokeTest, free_is_invocable_r) {
   using traits = go_invoke_traits;
 
-  EXPECT_TRUE((traits::is_invocable_r<int, x::Obj, int>::value));
-  EXPECT_TRUE((traits::is_invocable_r<char, y::Obj, char const*>::value));
-  EXPECT_FALSE((traits::is_invocable_r<float, z::Obj, int>::value));
-  EXPECT_FALSE((traits::is_invocable_r<from_any, float>::value));
+  EXPECT_TRUE((traits::is_invocable_r_v<int, x::Obj, int>));
+  EXPECT_TRUE((traits::is_invocable_r_v<char, y::Obj, char const*>));
+  EXPECT_FALSE((traits::is_invocable_r_v<float, z::Obj, int>));
+  EXPECT_FALSE((traits::is_invocable_r_v<from_any, float>));
 }
 
 TEST_F(InvokeTest, free_is_nothrow_invocable) {
   using traits = go_invoke_traits;
 
-  EXPECT_TRUE((traits::is_nothrow_invocable<x::Obj, int>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable<y::Obj, char const*>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable<z::Obj, int>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable<float>::value));
+  EXPECT_TRUE((traits::is_nothrow_invocable_v<x::Obj, int>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<y::Obj, char const*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<z::Obj, int>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<float>));
 }
 
 TEST_F(InvokeTest, free_is_nothrow_invocable_r) {
   using traits = go_invoke_traits;
 
-  EXPECT_TRUE((traits::is_nothrow_invocable_r<int, x::Obj, int>::value));
-  EXPECT_FALSE(
-      (traits::is_nothrow_invocable_r<char, y::Obj, char const*>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r<float, z::Obj, int>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r<from_any, float>::value));
+  EXPECT_TRUE((traits::is_nothrow_invocable_r_v<int, x::Obj, int>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<char, y::Obj, char const*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<float, z::Obj, int>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<from_any, float>));
 }
 
 TEST_F(InvokeTest, free_invoke_swap) {
@@ -242,31 +241,31 @@ TEST_F(InvokeTest, member_invoke_result) {
 TEST_F(InvokeTest, member_is_invocable) {
   using traits = test_invoke_traits;
 
-  EXPECT_TRUE((traits::is_invocable<Obj, int, char>::value));
-  EXPECT_TRUE((traits::is_invocable<Obj, int, char*>::value));
-  EXPECT_FALSE((traits::is_invocable<Obj, int>::value));
+  EXPECT_TRUE((traits::is_invocable_v<Obj, int, char>));
+  EXPECT_TRUE((traits::is_invocable_v<Obj, int, char*>));
+  EXPECT_FALSE((traits::is_invocable_v<Obj, int>));
 }
 
 TEST_F(InvokeTest, member_is_invocable_r) {
   using traits = test_invoke_traits;
 
-  EXPECT_TRUE((traits::is_invocable_r<int, Obj, int, char>::value));
-  EXPECT_TRUE((traits::is_invocable_r<int, Obj, int, char*>::value));
-  EXPECT_FALSE((traits::is_invocable_r<int, Obj, int>::value));
+  EXPECT_TRUE((traits::is_invocable_r_v<int, Obj, int, char>));
+  EXPECT_TRUE((traits::is_invocable_r_v<int, Obj, int, char*>));
+  EXPECT_FALSE((traits::is_invocable_r_v<int, Obj, int>));
 }
 
 TEST_F(InvokeTest, member_is_nothrow_invocable) {
   using traits = test_invoke_traits;
 
-  EXPECT_TRUE((traits::is_nothrow_invocable<Obj, int, char>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable<Obj, int, char*>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable<Obj, int>::value));
+  EXPECT_TRUE((traits::is_nothrow_invocable_v<Obj, int, char>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<Obj, int, char*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<Obj, int>));
 }
 
 TEST_F(InvokeTest, member_is_nothrow_invocable_r) {
   using traits = test_invoke_traits;
 
-  EXPECT_TRUE((traits::is_nothrow_invocable_r<int, Obj, int, char>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r<int, Obj, int, char*>::value));
-  EXPECT_FALSE((traits::is_nothrow_invocable_r<int, Obj, int>::value));
+  EXPECT_TRUE((traits::is_nothrow_invocable_r_v<int, Obj, int, char>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, Obj, int, char*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, Obj, int>));
 }

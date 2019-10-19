@@ -19,6 +19,7 @@
 #include <functional>
 #include <type_traits>
 
+#include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/Traits.h>
 
@@ -28,9 +29,13 @@
  *  * std::invoke_result
  *  * std::invoke_result_t
  *  * std::is_invocable
+ *  * std::is_invocable_v
  *  * std::is_invocable_r
+ *  * std::is_invocable_r_v
  *  * std::is_nothrow_invocable
+ *  * std::is_nothrow_invocable_v
  *  * std::is_nothrow_invocable_r
+ *  * std::is_nothrow_invocable_r_v
  */
 
 #if __cpp_lib_invoke >= 201411 || _MSC_VER
@@ -71,8 +76,12 @@ namespace folly {
 /* using override */ using std::invoke_result_t;
 /* using override */ using std::is_invocable;
 /* using override */ using std::is_invocable_r;
+/* using override */ using std::is_invocable_r_v;
+/* using override */ using std::is_invocable_v;
 /* using override */ using std::is_nothrow_invocable;
 /* using override */ using std::is_nothrow_invocable_r;
+/* using override */ using std::is_nothrow_invocable_r_v;
+/* using override */ using std::is_nothrow_invocable_v;
 
 } // namespace folly
 
@@ -145,19 +154,39 @@ using invoke_result_t = typename invoke_result<F, Args...>::type;
 template <typename F, typename... Args>
 struct is_invocable : invoke_detail::is_invocable<void, F, Args...> {};
 
+//  mimic: std::is_invocable_v, C++17
+template <typename F, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_invocable_v =
+    is_invocable<F, Args...>::value;
+
 //  mimic: std::is_invocable_r, C++17
 template <typename R, typename F, typename... Args>
 struct is_invocable_r : invoke_detail::is_invocable_r<void, R, F, Args...> {};
+
+//  mimic: std::is_invocable_r_v, C++17
+template <typename R, typename F, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_invocable_r_v =
+    is_invocable_r<R, F, Args...>::value;
 
 //  mimic: std::is_nothrow_invocable, C++17
 template <typename F, typename... Args>
 struct is_nothrow_invocable
     : invoke_detail::is_nothrow_invocable<void, F, Args...> {};
 
+//  mimic: std::is_nothrow_invocable_v, C++17
+template <typename F, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_v =
+    is_nothrow_invocable<F, Args...>::value;
+
 //  mimic: std::is_nothrow_invocable_r, C++17
 template <typename R, typename F, typename... Args>
 struct is_nothrow_invocable_r
     : invoke_detail::is_nothrow_invocable_r<void, R, F, Args...> {};
+
+//  mimic: std::is_nothrow_invocable_r_v, C++17
+template <typename R, typename F, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_invocable_r_v =
+    is_nothrow_invocable_r<R, F, Args...>::value;
 
 } // namespace folly
 
@@ -177,13 +206,25 @@ struct free_invoke_proxy {
   using invoke_result_t = folly::invoke_result_t<Invoke, Args...>;
   template <typename... Args>
   struct is_invocable : folly::is_invocable<Invoke, Args...> {};
+  template <typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_v =
+      is_invocable<Args...>::value;
   template <typename R, typename... Args>
   struct is_invocable_r : folly::is_invocable_r<R, Invoke, Args...> {};
+  template <typename R, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_r_v =
+      is_invocable_r<R, Args...>::value;
   template <typename... Args>
   struct is_nothrow_invocable : folly::is_nothrow_invocable<Invoke, Args...> {};
+  template <typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_v =
+      is_nothrow_invocable<Args...>::value;
   template <typename R, typename... Args>
   struct is_nothrow_invocable_r
       : folly::is_nothrow_invocable_r<R, Invoke, Args...> {};
+  template <typename R, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_r_v =
+      is_nothrow_invocable_r<R, Args...>::value;
 
   template <typename... Args>
   static constexpr auto invoke(Args&&... args) noexcept(
@@ -207,9 +248,13 @@ struct free_invoke_proxy {
  *  * invoke_result
  *  * invoke_result_t
  *  * is_invocable
+ *  * is_invocable_v
  *  * is_invocable_r
+ *  * is_invocable_r_v
  *  * is_nothrow_invocable
+ *  * is_nothrow_invocable_v
  *  * is_nothrow_invocable_r
+ *  * is_nothrow_invocable_r_v
  *
  *  The container also has a static member function:
  *
@@ -246,19 +291,19 @@ struct free_invoke_proxy {
  *    traits::invoke_result<Deep::CanFoo, Bar&&> // empty
  *    traits::invoke_result_t<Deep::CanFoo, Bar&&> // error
  *
- *    traits::is_invocable<CanFoo, Bar&>::value // true
- *    traits::is_invocable<CanFoo, Bar&&>::value // false
+ *    traits::is_invocable_v<CanFoo, Bar&> // true
+ *    traits::is_invocable_v<CanFoo, Bar&&> // false
  *
- *    traits::is_invocable_r<int, CanFoo, Bar&>::value // true
- *    traits::is_invocable_r<char*, CanFoo, Bar&>::value // false
+ *    traits::is_invocable_r_v<int, CanFoo, Bar&> // true
+ *    traits::is_invocable_r_v<char*, CanFoo, Bar&> // false
  *
- *    traits::is_nothrow_invocable<CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<CanFoo, Car&&>::value // true
+ *    traits::is_nothrow_invocable_v<CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<CanFoo, Car&&> // true
  *
- *    traits::is_nothrow_invocable<int, CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<char*, CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<int, CanFoo, Car&&>::value // true
- *    traits::is_nothrow_invocable<char*, CanFoo, Car&&>::value // false
+ *    traits::is_nothrow_invocable_v<int, CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<char*, CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<int, CanFoo, Car&&> // true
+ *    traits::is_nothrow_invocable_v<char*, CanFoo, Car&&> // false
  *
  *  When a name has a primary definition in a fixed namespace and alternate
  *  definitions in the namespaces of its arguments, the primary definition may
@@ -316,14 +361,26 @@ struct member_invoke_proxy {
   using invoke_result_t = folly::invoke_result_t<Invoke, O, Args...>;
   template <typename O, typename... Args>
   struct is_invocable : folly::is_invocable<Invoke, O, Args...> {};
+  template <typename O, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_v =
+      is_invocable<O, Args...>::value;
   template <typename R, typename O, typename... Args>
   struct is_invocable_r : folly::is_invocable_r<R, Invoke, O, Args...> {};
+  template <typename R, typename O, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_invocable_r_v =
+      is_invocable_r<R, O, Args...>::value;
   template <typename O, typename... Args>
   struct is_nothrow_invocable
       : folly::is_nothrow_invocable<Invoke, O, Args...> {};
+  template <typename O, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_v =
+      is_nothrow_invocable<O, Args...>::value;
   template <typename R, typename O, typename... Args>
   struct is_nothrow_invocable_r
       : folly::is_nothrow_invocable_r<R, Invoke, O, Args...> {};
+  template <typename R, typename O, typename... Args>
+  FOLLY_INLINE_VARIABLE static constexpr bool is_nothrow_invocable_r_v =
+      is_nothrow_invocable_r<R, O, Args...>::value;
 
   template <typename O, typename... Args>
   static constexpr auto invoke(O&& o, Args&&... args) noexcept(
@@ -347,9 +404,13 @@ struct member_invoke_proxy {
  *  * invoke_result
  *  * invoke_result_t
  *  * is_invocable
+ *  * is_invocable_v
  *  * is_invocable_r
+ *  * is_invocable_r_v
  *  * is_nothrow_invocable
+ *  * is_nothrow_invocable_v
  *  * is_nothrow_invocable_r
+ *  * is_nothrow_invocable_r_v
  *
  *  The container also has a static member function:
  *
@@ -385,19 +446,19 @@ struct member_invoke_proxy {
  *    traits::invoke_result<CanFoo, Bar&&> // empty
  *    traits::invoke_result_t<CanFoo, Bar&&> // error
  *
- *    traits::is_invocable<CanFoo, Bar&>::value // true
- *    traits::is_invocable<CanFoo, Bar&&>::value // false
+ *    traits::is_invocable_v<CanFoo, Bar&> // true
+ *    traits::is_invocable_v<CanFoo, Bar&&> // false
  *
- *    traits::is_invocable_r<int, CanFoo, Bar&>::value // true
- *    traits::is_invocable_r<char*, CanFoo, Bar&>::value // false
+ *    traits::is_invocable_r_v<int, CanFoo, Bar&> // true
+ *    traits::is_invocable_r_v<char*, CanFoo, Bar&> // false
  *
- *    traits::is_nothrow_invocable<CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<CanFoo, Car&&>::value // true
+ *    traits::is_nothrow_invocable_v<CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<CanFoo, Car&&> // true
  *
- *    traits::is_nothrow_invocable<int, CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<char*, CanFoo, Bar&>::value // false
- *    traits::is_nothrow_invocable<int, CanFoo, Car&&>::value // true
- *    traits::is_nothrow_invocable<char*, CanFoo, Car&&>::value // false
+ *    traits::is_nothrow_invocable_v<int, CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<char*, CanFoo, Bar&> // false
+ *    traits::is_nothrow_invocable_v<int, CanFoo, Car&&> // true
+ *    traits::is_nothrow_invocable_v<char*, CanFoo, Car&&> // false
  */
 #define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)              \
   struct classname##__folly_detail_member_invoke {                            \
