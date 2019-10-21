@@ -55,11 +55,19 @@ DEFINE_int64(
     "Maximum bytes to mlock/munlock/munmap at once "
     "(will be rounded up to PAGESIZE). Ignored if negative.");
 
-#ifndef MAP_POPULATE
-#define MAP_POPULATE 0
-#endif
-
 namespace folly {
+
+namespace {
+
+enum mmap_flags : int {
+#ifdef MAP_POPULATE
+  populate = MAP_POPULATE,
+#else
+  populate = 0,
+#endif
+};
+
+} // namespace
 
 MemoryMapping::MemoryMapping(MemoryMapping&& other) noexcept {
   swap(other);
@@ -196,7 +204,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
       flags |= MAP_ANONYMOUS;
     }
     if (options_.prefault) {
-      flags |= MAP_POPULATE;
+      flags |= mmap_flags::populate;
     }
 
     // The standard doesn't actually require PROT_NONE to be zero...
