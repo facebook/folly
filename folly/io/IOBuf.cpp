@@ -136,9 +136,9 @@ void IOBuf::SharedInfo::invokeAndDeleteEachObserver(
   if (observerListHead && cb) {
     // break the chain
     observerListHead->prev->next = nullptr;
-    auto* entry = observerListHead;
+    auto entry = observerListHead;
     while (entry) {
-      auto* tmp = entry->next;
+      auto tmp = entry->next;
       cb(*entry);
       delete entry;
       entry = tmp;
@@ -148,9 +148,9 @@ void IOBuf::SharedInfo::invokeAndDeleteEachObserver(
 
 void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) noexcept {
   if (info->useHeapFullStorage) {
-    auto* storageAddr =
+    auto storageAddr =
         reinterpret_cast<uint8_t*>(info) - offsetof(HeapFullStorage, shared);
-    auto* storage = reinterpret_cast<HeapFullStorage*>(storageAddr);
+    auto storage = reinterpret_cast<HeapFullStorage*>(storageAddr);
     info->~SharedInfo();
     IOBuf::releaseStorage(&storage->hs, kSharedInfoInUse);
   }
@@ -158,7 +158,7 @@ void IOBuf::SharedInfo::releaseStorage(SharedInfo* info) noexcept {
 
 void* IOBuf::operator new(size_t size) {
   size_t fullSize = offsetof(HeapStorage, buf) + size;
-  auto* storage = static_cast<HeapStorage*>(checkedMalloc(fullSize));
+  auto storage = static_cast<HeapStorage*>(checkedMalloc(fullSize));
 
   new (&storage->prefix) HeapPrefix(kIOBufInUse);
   return &(storage->buf);
@@ -169,8 +169,8 @@ void* IOBuf::operator new(size_t /* size */, void* ptr) {
 }
 
 void IOBuf::operator delete(void* ptr) {
-  auto* storageAddr = static_cast<uint8_t*>(ptr) - offsetof(HeapStorage, buf);
-  auto* storage = reinterpret_cast<HeapStorage*>(storageAddr);
+  auto storageAddr = static_cast<uint8_t*>(ptr) - offsetof(HeapStorage, buf);
+  auto storage = reinterpret_cast<HeapStorage*>(storageAddr);
   releaseStorage(storage, kIOBufInUse);
 }
 
@@ -190,7 +190,7 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
   DCHECK_EQ((flags & freeFlags), freeFlags);
 
   while (true) {
-    uint16_t newFlags = uint16_t(flags & ~freeFlags);
+    auto newFlags = uint16_t(flags & ~freeFlags);
     if (newFlags == 0) {
       // The storage space is now unused.  Free it.
       storage->prefix.HeapPrefix::~HeapPrefix();
@@ -214,7 +214,7 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
 }
 
 void IOBuf::freeInternalBuf(void* /* buf */, void* userData) noexcept {
-  auto* storage = static_cast<HeapStorage*>(userData);
+  auto storage = static_cast<HeapStorage*>(userData);
   releaseStorage(storage, kDataInUse);
 }
 
@@ -273,14 +273,14 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
   // SharedInfo struct, and the data itself all with a single call to malloc().
   size_t requiredStorage = offsetof(HeapFullStorage, align) + capacity;
   size_t mallocSize = goodMallocSize(requiredStorage);
-  auto* storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
+  auto storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
   new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kDataInUse);
   new (&storage->shared) SharedInfo(freeInternalBuf, storage);
 
-  uint8_t* bufAddr = reinterpret_cast<uint8_t*>(&storage->align);
+  auto bufAddr = reinterpret_cast<uint8_t*>(&storage->align);
   uint8_t* storageEnd = reinterpret_cast<uint8_t*>(storage) + mallocSize;
-  size_t actualCapacity = size_t(storageEnd - bufAddr);
+  auto actualCapacity = size_t(storageEnd - bufAddr);
   unique_ptr<IOBuf> ret(new (&storage->hs.buf) IOBuf(
       InternalConstructor(),
       packFlagsAndSharedInfo(0, &storage->shared),
@@ -968,7 +968,7 @@ void IOBuf::freeExtBuffer() noexcept {
 
   // save the observerListHead
   // since the SharedInfo can be freed
-  auto* observerListHead = info->observerListHead;
+  auto observerListHead = info->observerListHead;
   info->observerListHead = nullptr;
 
   if (info->freeFn) {
@@ -987,7 +987,7 @@ void IOBuf::allocExtBuffer(
     SharedInfo** infoReturn,
     std::size_t* capacityReturn) {
   size_t mallocSize = goodExtBufferSize(minCapacity);
-  uint8_t* buf = static_cast<uint8_t*>(checkedMalloc(mallocSize));
+  auto buf = static_cast<uint8_t*>(checkedMalloc(mallocSize));
   initExtBuffer(buf, mallocSize, infoReturn, capacityReturn);
   *bufReturn = buf;
 }
@@ -1016,7 +1016,7 @@ void IOBuf::initExtBuffer(
   // Find the SharedInfo storage at the end of the buffer
   // and construct the SharedInfo.
   uint8_t* infoStart = (buf + mallocSize) - sizeof(SharedInfo);
-  SharedInfo* sharedInfo = new (infoStart) SharedInfo;
+  auto sharedInfo = new (infoStart) SharedInfo;
 
   *capacityReturn = std::size_t(infoStart - buf);
   *infoReturn = sharedInfo;
@@ -1039,7 +1039,7 @@ fbstring IOBuf::moveToFbString() {
     // to reallocate; we need 1 byte for NUL terminator.
     coalesceAndReallocate(0, computeChainDataLength(), this, 1);
   } else {
-    auto* info = sharedInfo();
+    auto info = sharedInfo();
     if (info) {
       // if we do not call coalesceAndReallocate
       // we might need to call SharedInfo::releaseStorage()

@@ -69,8 +69,8 @@ void MathOperation<MathEngine::SSE2>::add(
   // the Endian::little() conversions when loading or storing data.
   if (bitsPerElement == 16 || bitsPerElement == 32) {
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const __m128i* v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
-      const __m128i* v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         __m128i v1 = _mm_load_si128(v1p + i);
         __m128i v2 = _mm_load_si128(v2p + i);
@@ -85,8 +85,8 @@ void MathOperation<MathEngine::SSE2>::add(
   } else {
     __m128i mask = _mm_set_epi64x(dataMask, dataMask);
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const __m128i* v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
-      const __m128i* v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         __m128i v1 = _mm_load_si128(v1p + i);
         __m128i v2 = _mm_load_si128(v2p + i);
@@ -125,8 +125,8 @@ void MathOperation<MathEngine::SSE2>::sub(
   // the Endian::little() conversions when loading or storing data.
   if (bitsPerElement == 16 || bitsPerElement == 32) {
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const __m128i* v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
-      const __m128i* v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         __m128i v1 = _mm_load_si128(v1p + i);
         __m128i v2 = _mm_load_si128(v2p + i);
@@ -142,8 +142,8 @@ void MathOperation<MathEngine::SSE2>::sub(
     __m128i mask = _mm_set_epi64x(dataMask, dataMask);
     __m128i paddingMask = _mm_set_epi64x(~dataMask, ~dataMask);
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const __m128i* v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
-      const __m128i* v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const __m128i*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const __m128i*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         __m128i v1 = _mm_load_si128(v1p + i);
         __m128i v2 = _mm_load_si128(v2p + i);
@@ -179,7 +179,7 @@ void MathOperation<MathEngine::SSE2>::clearPaddingBits(
 
   __m128i mask = _mm_set_epi64x(dataMask, dataMask);
   for (size_t pos = 0; pos < buf.size(); pos += kCacheLineSize) {
-    const __m128i* p = reinterpret_cast<const __m128i*>(buf.data() + pos);
+    auto p = reinterpret_cast<const __m128i*>(buf.data() + pos);
     for (size_t i = 0; i < kValsPerCacheLine; ++i) {
       results[i] = _mm_and_si128(_mm_load_si128(p + i), mask);
     }

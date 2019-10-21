@@ -270,7 +270,7 @@ void FormatArg::initSlow() {
     }
 
     Sign s;
-    unsigned char uSign = static_cast<unsigned char>(*p);
+    auto uSign = static_cast<unsigned char>(*p);
     if ((s = formatSignTable[uSign]) != Sign::INVALID) {
       sign = s;
       if (++p == end) {
@@ -391,7 +391,7 @@ void FormatArg::validate(Type type) const {
 
 namespace detail {
 void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
-  uint32_t remaining_digits = uint32_t(*end_buffer - start_buffer);
+  auto remaining_digits = uint32_t(*end_buffer - start_buffer);
   uint32_t separator_size = (remaining_digits - 1) / 3;
   uint32_t result_size = remaining_digits + separator_size;
   *end_buffer = *end_buffer + separator_size;

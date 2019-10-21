@@ -63,11 +63,11 @@ void initStateFromParams(
     const detail::Blake2xbParam& param,
     ByteRange key) {
 #ifdef __LIBSODIUM_BLAKE2B_OPAQUE__
-  _blake2b_state* state = reinterpret_cast<_blake2b_state*>(_state);
+  auto state = reinterpret_cast<_blake2b_state*>(_state);
 #else
   crypto_generichash_blake2b_state* state = _state;
 #endif
-  const uint64_t* p = reinterpret_cast<const uint64_t*>(&param);
+  auto p = reinterpret_cast<const uint64_t*>(&param);
   for (int i = 0; i < 8; ++i) {
     state->h[i] = kBlake2bIV.data()[i] ^ Endian::little(p[i]);
   }
@@ -169,7 +169,7 @@ void Blake2xb::finish(MutableByteRange out) {
   }
 
   if (outputLengthKnown_) {
-    uint32_t outLength = static_cast<uint32_t>(out.size());
+    auto outLength = static_cast<uint32_t>(out.size());
     if (outLength != Endian::little(param_.xofLength)) {
       throw std::runtime_error("out.size() must equal output length");
     }

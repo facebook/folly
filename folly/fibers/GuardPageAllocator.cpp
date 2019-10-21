@@ -171,7 +171,7 @@ class StackCache {
   std::vector<std::pair<unsigned char*, bool>> freeList_;
 
   static size_t pagesize() {
-    static const size_t pagesize = size_t(sysconf(_SC_PAGESIZE));
+    static const auto pagesize = size_t(sysconf(_SC_PAGESIZE));
     return pagesize;
   }
 

@@ -348,7 +348,7 @@ void SpookyHashV1::Final(uint64_t *hash1, uint64_t *hash2)
         return;
     }
 
-    const uint64_t *data = (const uint64_t *)m_data;
+    auto data = (const uint64_t *)m_data;
     uint8_t remainder = m_remainder;
 
     uint64_t h0 = m_state[0];

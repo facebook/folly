@@ -187,7 +187,7 @@ static nanoseconds getSchedTimeWaiting(pid_t tid) {
       throw std::runtime_error(
           folly::to<string>("failed to read process schedstat file", errno));
     }
-    size_t bytesRead = size_t(bytesReadRet);
+    auto bytesRead = size_t(bytesReadRet);
 
     if (buf[bytesRead - 1] != '\n') {
       throw std::runtime_error("expected newline at end of schedstat data");

@@ -546,7 +546,7 @@ std::string decodeUnicodeEscape(Input& in) {
       in.error("expected 4 hex digits");
     }
 
-    uint16_t ret = uint16_t(hexVal(*in) * 4096);
+    auto ret = uint16_t(hexVal(*in) * 4096);
     ++in;
     ret += hexVal(*in) * 256;
     ++in;

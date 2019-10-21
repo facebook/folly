@@ -468,7 +468,7 @@ void AsyncSocket::connect(
   connectCallback_ = callback;
 
   sockaddr_storage addrStorage;
-  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+  auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
   try {
     // Create the socket
@@ -981,7 +981,7 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   if ((cmsg.cmsg_level == SOL_IP && cmsg.cmsg_type == IP_RECVERR) ||
       (cmsg.cmsg_level == SOL_IPV6 && cmsg.cmsg_type == IPV6_RECVERR)) {
-    const struct sock_extended_err* serr =
+    auto serr =
         reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
     return (
         (serr->ee_errno == 0) && (serr->ee_origin == SO_EE_ORIGIN_ZEROCOPY));
@@ -993,7 +993,7 @@ bool AsyncSocket::isZeroCopyMsg(const cmsghdr& cmsg) const {
 
 void AsyncSocket::processZeroCopyMsg(const cmsghdr& cmsg) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  const struct sock_extended_err* serr =
+  auto serr =
       reinterpret_cast<const struct sock_extended_err*>(CMSG_DATA(&cmsg));
   uint32_t hi = serr->ee_data;
   uint32_t lo = serr->ee_info;
@@ -1791,7 +1791,7 @@ void AsyncSocket::ioReady(uint16_t events) noexcept {
   assert(events & EventHandler::READ_WRITE);
   eventBase_->dcheckIsInEventBaseThread();
 
-  uint16_t relevantEvents = uint16_t(events & EventHandler::READ_WRITE);
+  auto relevantEvents = uint16_t(events & EventHandler::READ_WRITE);
   EventBase* originalEventBase = eventBase_;
   // If we got there it means that either EventHandler::READ or
   // EventHandler::WRITE is set. Any of these flags can

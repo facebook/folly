@@ -48,7 +48,7 @@ std::unique_ptr<folly::IOBuf> allocateCacheAlignedIOBufUnique(size_t size) {
 }
 
 bool isCacheAlignedAddress(const void* addr) {
-  size_t addrValue = reinterpret_cast<size_t>(addr);
+  auto addrValue = reinterpret_cast<size_t>(addr);
   return (addrValue & (kCacheLineSize - 1)) == 0;
 }
 

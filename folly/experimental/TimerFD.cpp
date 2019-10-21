@@ -76,7 +76,7 @@ bool TimerFD::setTimer(std::chrono::microseconds useconds) {
 void TimerFD::handlerReady(uint16_t events) noexcept {
   DestructorGuard dg(this);
 
-  uint16_t relevantEvents = uint16_t(events & folly::EventHandler::READ_WRITE);
+  auto relevantEvents = uint16_t(events & folly::EventHandler::READ_WRITE);
   if (relevantEvents == folly::EventHandler::READ ||
       relevantEvents == folly::EventHandler::READ_WRITE) {
     uint64_t data = 0;

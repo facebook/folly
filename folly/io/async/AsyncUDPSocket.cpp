@@ -331,7 +331,7 @@ ssize_t AsyncUDPSocket::writev(
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
-    uint16_t gso_len = static_cast<uint16_t>(gso);
+    auto gso_len = static_cast<uint16_t>(gso);
     memcpy(CMSG_DATA(cm), &gso_len, sizeof(gso_len));
 
     return sendmsg(fd_, &msg, 0);
@@ -608,7 +608,7 @@ void AsyncUDPSocket::handleRead() noexcept {
   struct sockaddr_storage addrStorage;
   socklen_t addrLen = sizeof(addrStorage);
   memset(&addrStorage, 0, size_t(addrLen));
-  struct sockaddr* rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
+  auto rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
   ssize_t bytesRead =

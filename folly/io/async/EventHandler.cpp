@@ -146,7 +146,7 @@ void EventHandler::ensureNotRegistered(const char* fn) {
 }
 
 void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
-  EventHandler* handler = reinterpret_cast<EventHandler*>(arg);
+  auto handler = reinterpret_cast<EventHandler*>(arg);
   assert(fd == handler->event_.ev_fd);
   (void)fd; // prevent unused variable warnings
 
