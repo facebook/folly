@@ -526,7 +526,7 @@ FastStackTracePrinter::FastStackTracePrinter(
           LocationInfoMode::FULL,
           symbolCacheSize) {}
 
-FastStackTracePrinter::~FastStackTracePrinter() {}
+FastStackTracePrinter::~FastStackTracePrinter() = default;
 
 void FastStackTracePrinter::printStackTrace(bool symbolize) {
   SCOPE_EXIT {

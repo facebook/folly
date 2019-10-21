@@ -113,7 +113,7 @@ struct UniformDistributionFunctor {
 
 } // namespace
 
-FunctionScheduler::FunctionScheduler() {}
+FunctionScheduler::FunctionScheduler() = default;
 
 FunctionScheduler::~FunctionScheduler() {
   // make sure to stop the thread (if running)

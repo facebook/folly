@@ -22,7 +22,7 @@ using std::string;
 
 namespace folly {
 
-LogHandlerConfig::LogHandlerConfig() {}
+LogHandlerConfig::LogHandlerConfig() = default;
 
 LogHandlerConfig::LogHandlerConfig(StringPiece t) : type{t.str()} {}
 

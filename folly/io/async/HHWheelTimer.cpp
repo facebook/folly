@@ -50,7 +50,7 @@ int HHWheelTimerBase<Duration>::DEFAULT_TICK_INTERVAL =
     detail::HHWheelTimerDurationConst<Duration>::DEFAULT_TICK_INTERVAL;
 
 template <class Duration>
-HHWheelTimerBase<Duration>::Callback::Callback() {}
+HHWheelTimerBase<Duration>::Callback::Callback() = default;
 
 template <class Duration>
 HHWheelTimerBase<Duration>::Callback::~Callback() {

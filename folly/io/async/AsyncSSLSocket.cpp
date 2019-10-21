@@ -91,7 +91,7 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
   std::chrono::steady_clock::time_point startTime_;
 
  protected:
-  ~AsyncSSLSocketConnector() override {}
+  ~AsyncSSLSocketConnector() override = default;
 
  public:
   AsyncSSLSocketConnector(

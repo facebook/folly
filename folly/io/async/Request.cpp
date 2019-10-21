@@ -179,7 +179,7 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
   }
 }; // Combined
 
-RequestContext::StateHazptr::StateHazptr() {}
+RequestContext::StateHazptr::StateHazptr() = default;
 
 RequestContext::StateHazptr::StateHazptr(const StateHazptr& o) {
   Combined* oc = o.combined();

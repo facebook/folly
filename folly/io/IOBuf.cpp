@@ -394,7 +394,7 @@ IOBuf IOBuf::wrapBufferAsValue(const void* buf, std::size_t capacity) noexcept {
   return IOBuf(WrapBufferOp::WRAP_BUFFER, buf, capacity);
 }
 
-IOBuf::IOBuf() noexcept {}
+IOBuf::IOBuf() noexcept = default;
 
 IOBuf::IOBuf(IOBuf&& other) noexcept
     : data_(other.data_),

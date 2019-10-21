@@ -82,7 +82,7 @@ LoggerDB::LoggerDB() {
 
 LoggerDB::LoggerDB(TestConstructorArg) : LoggerDB() {}
 
-LoggerDB::~LoggerDB() {}
+LoggerDB::~LoggerDB() = default;
 
 LogCategory* LoggerDB::getCategory(StringPiece name) {
   return getOrCreateCategoryLocked(*loggersByName_.wlock(), name);

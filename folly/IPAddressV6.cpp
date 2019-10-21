@@ -67,7 +67,7 @@ bool IPAddressV6::validate(StringPiece ip) noexcept {
 }
 
 // public default constructor
-IPAddressV6::IPAddressV6() {}
+IPAddressV6::IPAddressV6() = default;
 
 // public string constructor
 IPAddressV6::IPAddressV6(StringPiece addr) {
