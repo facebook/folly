@@ -78,7 +78,7 @@ uint32_t IPAddressV4::toLongHBO(StringPiece ip) {
 }
 
 // public default constructor
-IPAddressV4::IPAddressV4() {}
+IPAddressV4::IPAddressV4() = default;
 
 // ByteArray4 constructor
 IPAddressV4::IPAddressV4(const ByteArray4& src) noexcept : addr_(src) {}

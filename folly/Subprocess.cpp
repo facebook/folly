@@ -186,7 +186,7 @@ Subprocess::Options& Subprocess::Options::fd(int fd, int action) {
   return *this;
 }
 
-Subprocess::Subprocess() {}
+Subprocess::Subprocess() = default;
 
 Subprocess::Subprocess(
     const std::vector<std::string>& argv,
