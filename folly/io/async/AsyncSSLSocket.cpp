@@ -19,7 +19,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Sockets.h>
 
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <chrono>

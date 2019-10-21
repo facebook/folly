@@ -20,7 +20,7 @@
 
 #include <folly/io/async/test/TimeUtil.h>
 
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>

@@ -16,7 +16,7 @@
 
 #include <folly/net/NetOps.h>
 
-#include <errno.h>
+#include <cerrno>
 #include <fcntl.h>
 
 #include <cstddef>

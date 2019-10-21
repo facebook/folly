@@ -16,7 +16,7 @@
 
 #include <folly/io/IOBufQueue.h>
 
-#include <string.h>
+#include <cstring>
 
 #include <stdexcept>
 

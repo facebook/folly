@@ -20,7 +20,7 @@
 
 #include <chrono>
 
-#include <time.h>
+#include <ctime>
 
 #ifndef _WIN32
 #define _GNU_SOURCE 1

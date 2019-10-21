@@ -30,8 +30,8 @@
 #include <folly/portability/Unistd.h>
 
 #include <boost/preprocessor/control/if.hpp>
-#include <errno.h>
-#include <limits.h>
+#include <cerrno>
+#include <climits>
 #include <sys/types.h>
 #include <sstream>
 #include <thread>

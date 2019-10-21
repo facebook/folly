@@ -23,7 +23,7 @@
 #include <folly/portability/Unistd.h>
 
 #include <boost/preprocessor/control/if.hpp>
-#include <errno.h>
+#include <cerrno>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.

@@ -22,7 +22,7 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
-#include <errno.h>
+#include <cerrno>
 #include <stdexcept>
 
 namespace folly {

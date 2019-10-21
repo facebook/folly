@@ -20,7 +20,7 @@
 #include <folly/io/async/Request.h>
 #include <folly/net/NetworkSocket.h>
 
-#include <assert.h>
+#include <cassert>
 #include <glog/logging.h>
 
 namespace folly {

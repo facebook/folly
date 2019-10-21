@@ -16,7 +16,7 @@
 
 #include <folly/portability/SysResource.h>
 
-#include <errno.h>
+#include <cerrno>
 
 #ifdef _WIN32
 #include <folly/portability/Windows.h>

@@ -19,7 +19,7 @@
 #ifndef _WIN32
 #include <dlfcn.h>
 #endif
-#include <signal.h>
+#include <csignal>
 
 #include <iostream>
 #include <mutex>
