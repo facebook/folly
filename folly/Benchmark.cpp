@@ -71,7 +71,7 @@ namespace folly {
 
 std::chrono::high_resolution_clock::duration BenchmarkSuspender::timeSpent;
 
-typedef function<detail::TimeIterData(unsigned int)> BenchmarkFun;
+using BenchmarkFun = function<detail::TimeIterData (unsigned int)>;
 
 vector<detail::BenchmarkRegistration>& benchmarks() {
   static vector<detail::BenchmarkRegistration> _benchmarks;
