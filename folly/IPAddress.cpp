@@ -246,12 +246,12 @@ IPAddress::IPAddress(const sockaddr* addr) : addr_(), family_(AF_UNSPEC) {
   family_ = addr->sa_family;
   switch (addr->sa_family) {
     case AF_INET: {
-      const sockaddr_in* v4addr = reinterpret_cast<const sockaddr_in*>(addr);
+      const auto* v4addr = reinterpret_cast<const sockaddr_in*>(addr);
       addr_.ipV4Addr = IPAddressV4(v4addr->sin_addr);
       break;
     }
     case AF_INET6: {
-      const sockaddr_in6* v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
+      const auto* v6addr = reinterpret_cast<const sockaddr_in6*>(addr);
       addr_.ipV6Addr = IPAddressV6(*v6addr);
       break;
     }
