@@ -97,10 +97,8 @@ class ReadCallback : public folly::AsyncTransportWrapper::ReadCallback {
         maxBufferSz(_maxBufferSz) {}
 
   ~ReadCallback() override {
-    for (std::vector<Buffer>::iterator it = buffers.begin();
-         it != buffers.end();
-         ++it) {
-      it->free();
+    for (const auto& buffer : buffers) {
+      buffers.free();
     }
     currentBuffer.free();
   }

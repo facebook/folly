@@ -31,10 +31,8 @@ AsyncSignalHandler::AsyncSignalHandler(EventBase* eventBase)
 
 AsyncSignalHandler::~AsyncSignalHandler() {
   // Unregister any outstanding events
-  for (auto it = signalEvents_.begin();
-       it != signalEvents_.end();
-       ++it) {
-    event_del(&it->second);
+  for (auto & signalEvent : signalEvents_) {
+    event_del(&signalEvent.second);
   }
 }
 
