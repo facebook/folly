@@ -473,7 +473,10 @@ class SimpleShipitTransformerFetcher(Fetcher):
         return mapping.mirror(self.build_options.fbsource_dir, self.repo_dir)
 
     def hash(self):
-        return get_fbsource_repo_hash(self.build_options)
+        # We return a fixed non-hash string for in-fbsource builds.
+        # We're relying on the `update` logic to correctly invalidate
+        # the build in the case that files have changed.
+        return "fbsource"
 
     def get_src_dir(self):
         return self.repo_dir
@@ -540,7 +543,8 @@ class ShipitTransformerFetcher(Fetcher):
             raise
 
     def hash(self):
-        return get_fbsource_repo_hash(self.build_options)
+        # We return a fixed non-hash string for in-fbsource builds.
+        return "fbsource"
 
     def get_src_dir(self):
         return self.repo_dir
