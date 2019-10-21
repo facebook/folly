@@ -47,7 +47,7 @@ using co_current_executor_t = detail::co_current_executor_;
 //     Executor* e = co_await folly::coro::co_current_executor;
 //     e->add([] { do_something(); });
 //   }
-constexpr co_current_executor_t co_current_executor{
+inline constexpr co_current_executor_t co_current_executor{
     co_current_executor_t::secret_::token_};
 
 namespace detail {
