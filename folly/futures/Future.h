@@ -108,9 +108,13 @@ class SemiFuture;
 template <class T>
 class FutureSplitter;
 
+#if FOLLY_FUTURE_USING_FIBER
+
 namespace fibers {
 class Baton;
 }
+
+#endif
 
 namespace futures {
 namespace detail {
