@@ -19,7 +19,6 @@
 #if FOLLY_HAS_COROUTINES
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
@@ -71,13 +70,15 @@ TEST(Mutex, LockAsync) {
     m.unlock();
   };
 
-  auto& inlineExecutor = InlineExecutor::instance();
+  ManualExecutor executor;
 
-  auto f1 = makeTask(b1).scheduleOn(&inlineExecutor).start();
+  auto f1 = makeTask(b1).scheduleOn(&executor).start();
+  executor.drain();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleOn(&inlineExecutor).start();
+  auto f2 = makeTask(b2).scheduleOn(&executor).start();
+  executor.drain();
   CHECK_EQ(1, value);
 
   // This will resume f1 coroutine and let it release the
@@ -85,11 +86,13 @@ TEST(Mutex, LockAsync) {
   // at co_await m.lockAsync() which will then increment the value
   // before becoming blocked on
   b1.post();
+  executor.drain();
 
   CHECK_EQ(3, value);
   CHECK(!m.try_lock());
 
   b2.post();
+  executor.drain();
   CHECK_EQ(4, value);
   CHECK(m.try_lock());
 }
@@ -108,13 +111,15 @@ TEST(Mutex, ScopedLockAsync) {
     ++value;
   };
 
-  auto& inlineExecutor = InlineExecutor::instance();
+  ManualExecutor executor;
 
-  auto f1 = makeTask(b1).scheduleOn(&inlineExecutor).start();
+  auto f1 = makeTask(b1).scheduleOn(&executor).start();
+  executor.drain();
   CHECK_EQ(1, value);
   CHECK(!m.try_lock());
 
-  auto f2 = makeTask(b2).scheduleOn(&inlineExecutor).start();
+  auto f2 = makeTask(b2).scheduleOn(&executor).start();
+  executor.drain();
   CHECK_EQ(1, value);
 
   // This will resume f1 coroutine and let it release the
@@ -122,11 +127,13 @@ TEST(Mutex, ScopedLockAsync) {
   // at co_await m.lockAsync() which will then increment the value
   // before becoming blocked on b2.
   b1.post();
+  executor.drain();
 
   CHECK_EQ(3, value);
   CHECK(!m.try_lock());
 
   b2.post();
+  executor.drain();
   CHECK_EQ(4, value);
   CHECK(m.try_lock());
 }

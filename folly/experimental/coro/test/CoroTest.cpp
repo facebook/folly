@@ -101,7 +101,7 @@ TEST(Coro, TaskOfMoveOnly) {
     co_return std::make_unique<int>(123);
   };
 
-  auto p = coro::blockingWait(f().scheduleOn(&InlineExecutor::instance()));
+  auto p = coro::blockingWait(f());
   EXPECT_TRUE(p);
   EXPECT_EQ(123, *p);
 }

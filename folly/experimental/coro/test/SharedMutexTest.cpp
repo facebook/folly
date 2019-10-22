@@ -19,7 +19,6 @@
 #if FOLLY_HAS_COROUTINES
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/InlineExecutor.h>
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
@@ -72,7 +71,7 @@ TEST(SharedMutex, ManualLockAsync) {
     mutex.unlock();
   };
 
-  auto& executor = InlineExecutor::instance();
+  ManualExecutor executor;
 
   {
     coro::Baton b1;
@@ -86,22 +85,28 @@ TEST(SharedMutex, ManualLockAsync) {
     auto w1 = makeWriterTask(b3).scheduleOn(&executor).start();
     auto w2 = makeWriterTask(b4).scheduleOn(&executor).start();
     auto r3 = makeReaderTask(b5).scheduleOn(&executor).start();
+    executor.drain();
 
     b1.post();
+    executor.drain();
     CHECK_EQ(0, std::move(r1).get());
 
     b2.post();
+    executor.drain();
     CHECK_EQ(0, std::move(r2).get());
 
     b3.post();
+    executor.drain();
     CHECK_EQ(1, value);
 
     b4.post();
+    executor.drain();
     CHECK_EQ(2, value);
 
     // This reader should have had to wait for the prior two write locks
     // to complete before it acquired the read-lock.
     b5.post();
+    executor.drain();
     CHECK_EQ(2, std::move(r3).get());
   }
 }
@@ -122,7 +127,7 @@ TEST(SharedMutex, ScopedLockAsync) {
     value += 1;
   };
 
-  auto& executor = InlineExecutor::instance();
+  ManualExecutor executor;
 
   {
     coro::Baton b1;
@@ -138,20 +143,25 @@ TEST(SharedMutex, ScopedLockAsync) {
     auto r3 = makeReaderTask(b5).scheduleOn(&executor).start();
 
     b1.post();
+    executor.drain();
     CHECK_EQ(0, std::move(r1).get());
 
     b2.post();
+    executor.drain();
     CHECK_EQ(0, std::move(r2).get());
 
     b3.post();
+    executor.drain();
     CHECK_EQ(1, value);
 
     b4.post();
+    executor.drain();
     CHECK_EQ(2, value);
 
     // This reader should have had to wait for the prior two write locks
     // to complete before it acquired the read-lock.
     b5.post();
+    executor.drain();
     CHECK_EQ(2, std::move(r3).get());
   }
 }

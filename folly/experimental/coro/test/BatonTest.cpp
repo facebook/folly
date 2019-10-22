@@ -18,7 +18,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#include <folly/executors/InlineExecutor.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
@@ -59,12 +59,15 @@ TEST(Baton, AwaitBaton) {
   CHECK(!reachedBeforeAwait);
   CHECK(!reachedAfterAwait);
 
-  auto f = std::move(t).scheduleOn(&InlineExecutor::instance()).start();
+  ManualExecutor executor;
+  auto f = std::move(t).scheduleOn(&executor).start();
+  executor.drain();
 
   CHECK(reachedBeforeAwait);
   CHECK(!reachedAfterAwait);
 
   baton.post();
+  executor.drain();
 
   CHECK(reachedAfterAwait);
 }
@@ -92,8 +95,10 @@ TEST(Baton, MultiAwaitBaton) {
   coro::Task<void> t1 = makeTask1();
   coro::Task<void> t2 = makeTask2();
 
-  auto f1 = std::move(t1).scheduleOn(&InlineExecutor::instance()).start();
-  auto f2 = std::move(t2).scheduleOn(&InlineExecutor::instance()).start();
+  ManualExecutor executor;
+  auto f1 = std::move(t1).scheduleOn(&executor).start();
+  auto f2 = std::move(t2).scheduleOn(&executor).start();
+  executor.drain();
 
   CHECK(reachedBeforeAwait1);
   CHECK(reachedBeforeAwait2);
@@ -101,6 +106,7 @@ TEST(Baton, MultiAwaitBaton) {
   CHECK(!reachedAfterAwait2);
 
   baton.post();
+  executor.drain();
 
   CHECK(f1.isReady());
   CHECK(f2.isReady());
