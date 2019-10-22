@@ -649,19 +649,19 @@ void toLowerAscii(char* str, size_t length) {
     // The next address is 32-bit aligned but not 64-bit aligned.
     // Convert the next 4 bytes in order to get to the 64-bit aligned
     // part of the input.
-    toLowerAscii32(*(uint32_t*)(str + offset));
+    toLowerAscii32(*reinterpret_cast<uint32_t*>(str + offset));
     offset += 4;
   }
 
   // Convert 8 characters at a time
   while (offset + 8 <= length) {
-    toLowerAscii64(*(uint64_t*)(str + offset));
+    toLowerAscii64(*reinterpret_cast<uint64_t*>(str + offset));
     offset += 8;
   }
 
   // Convert 4 characters at a time
   while (offset + 4 <= length) {
-    toLowerAscii32(*(uint32_t*)(str + offset));
+    toLowerAscii32(*reinterpret_cast<uint32_t*>(str + offset));
     offset += 4;
   }
 

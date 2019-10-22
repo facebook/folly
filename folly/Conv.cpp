@@ -769,7 +769,7 @@ ConversionError makeConversionError(ConversionCode code, StringPiece input) {
       std::is_unsigned<std::underlying_type<ConversionCode>::type>::value,
       "ConversionCode should be unsigned");
   assert((std::size_t)code < kErrorStrings.size());
-  const ErrorString& err = kErrorStrings[(std::size_t)code];
+  const ErrorString& err = kErrorStrings[static_cast<std::size_t>(code)];
   if (code == ConversionCode::EMPTY_INPUT_STRING && input.empty()) {
     return {err.string, code};
   }

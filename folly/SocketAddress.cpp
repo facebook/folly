@@ -656,11 +656,11 @@ void SocketAddress::setFromSocket(
   // Try to put the address into a local storage buffer.
   sockaddr_storage tmp_sock;
   socklen_t addrLen = sizeof(tmp_sock);
-  if (fn(socket, (sockaddr*)&tmp_sock, &addrLen) != 0) {
+  if (fn(socket, reinterpret_cast<sockaddr*>(&tmp_sock), &addrLen) != 0) {
     folly::throwSystemError("setFromSocket() failed");
   }
 
-  setFromSockaddr((sockaddr*)&tmp_sock, addrLen);
+  setFromSockaddr(reinterpret_cast<sockaddr*>(&tmp_sock), addrLen);
 }
 
 std::string SocketAddress::getIpString(int flags) const {
@@ -680,7 +680,7 @@ void SocketAddress::getIpString(char* buf, size_t buflen, int flags) const {
   sockaddr_storage tmp_sock;
   storage_.addr.toSockaddrStorage(&tmp_sock, port_);
   int rc = getnameinfo(
-      (sockaddr*)&tmp_sock,
+      reinterpret_cast<sockaddr*>(&tmp_sock),
       sizeof(sockaddr_storage),
       buf,
       buflen,

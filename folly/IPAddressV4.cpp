@@ -161,8 +161,8 @@ IPAddressV6 IPAddressV4::createIPv6() const {
 // public
 IPAddressV6 IPAddressV4::getIPv6For6To4() const {
   ByteArray16 ba{};
-  ba[0] = (uint8_t)((IPAddressV6::PREFIX_6TO4 & 0xFF00) >> 8);
-  ba[1] = (uint8_t)(IPAddressV6::PREFIX_6TO4 & 0x00FF);
+  ba[0] = static_cast<uint8_t>((IPAddressV6::PREFIX_6TO4 & 0xFF00) >> 8);
+  ba[1] = static_cast<uint8_t>(IPAddressV6::PREFIX_6TO4 & 0x00FF);
   std::memcpy(&ba[2], bytes(), 4);
   return IPAddressV6(ba);
 }

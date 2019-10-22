@@ -109,7 +109,7 @@ char32_t utf8ToCodePoint(
         return skip();
       }
       throw std::runtime_error(to<std::string>(
-          "folly::utf8ToCodePoint i=", i, " tmp=", (uint32_t)tmp));
+          "folly::utf8ToCodePoint i=", i, " tmp=", static_cast<uint32_t>(tmp)));
     }
 
     d = (d << 6) | (tmp & 0x3F);

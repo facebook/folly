@@ -649,11 +649,11 @@ dynamic parseValue(Input& in, json::metadata_map* map) {
       in.consume("false") ? false :
       in.consume("null") ? nullptr :
       in.consume("Infinity") ?
-      (in.getOpts().parse_numbers_as_strings ? (dynamic)"Infinity" :
-        (dynamic)std::numeric_limits<double>::infinity()) :
+      (in.getOpts().parse_numbers_as_strings ? dynamic("Infinity") :
+        dynamic(std::numeric_limits<double>::infinity())) :
       in.consume("NaN") ?
-        (in.getOpts().parse_numbers_as_strings ? (dynamic)"NaN" :
-          (dynamic)std::numeric_limits<double>::quiet_NaN()) :
+        (in.getOpts().parse_numbers_as_strings ? dynamic("NaN") :
+          dynamic(std::numeric_limits<double>::quiet_NaN())) :
       in.error("expected json value");
   // clang-format on
 }

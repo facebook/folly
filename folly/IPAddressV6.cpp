@@ -262,10 +262,10 @@ IPAddressV4 IPAddressV6::getIPv4For6To4() const {
     unsigned char bytes[4];
     in_addr addr;
   } ipv4;
-  ipv4.bytes[0] = (uint8_t)((ints[1] & 0xFF00) >> 8);
-  ipv4.bytes[1] = (uint8_t)(ints[1] & 0x00FF);
-  ipv4.bytes[2] = (uint8_t)((ints[2] & 0xFF00) >> 8);
-  ipv4.bytes[3] = (uint8_t)(ints[2] & 0x00FF);
+  ipv4.bytes[0] = static_cast<uint8_t>((ints[1] & 0xFF00) >> 8);
+  ipv4.bytes[1] = static_cast<uint8_t>(ints[1] & 0x00FF);
+  ipv4.bytes[2] = static_cast<uint8_t>((ints[2] & 0xFF00) >> 8);
+  ipv4.bytes[3] = static_cast<uint8_t>(ints[2] & 0x00FF);
   return IPAddressV4(ipv4.addr);
 }
 
@@ -294,11 +294,11 @@ IPAddressV6::Type IPAddressV6::type() const {
   uint16_t ints[2] = {0, 0};
   unpackInto(bytes(), ints, 2);
 
-  if ((((uint32_t)ints[0] << 16) | ints[1]) == IPAddressV6::PREFIX_TEREDO) {
+  if (((static_cast<uint32_t>(ints[0]) << 16) | ints[1]) == IPAddressV6::PREFIX_TEREDO) {
     return Type::TEREDO;
   }
 
-  if ((uint32_t)ints[0] == IPAddressV6::PREFIX_6TO4) {
+  if (static_cast<uint32_t>(ints[0]) == IPAddressV6::PREFIX_6TO4) {
     return Type::T6TO4;
   }
 
