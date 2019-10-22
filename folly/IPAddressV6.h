@@ -338,7 +338,7 @@ class IPAddressV6 {
    * @throws abort if numBits == 0 or numBits > bitCount()
    * @return mask associated with numBits
    */
-  static const ByteArray16 fetchMask(size_t numBits);
+  static ByteArray16 fetchMask(size_t numBits);
   // Given 2 IPAddressV6,mask pairs extract the longest common IPAddress,
   // mask pair
   static CIDRNetworkV6 longestCommonPrefix(
