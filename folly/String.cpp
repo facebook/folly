@@ -721,7 +721,7 @@ hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line) {
   }
   line.append(16 - n, ' ');
   line.push_back('|');
-  DCHECK_EQ(line.size(), 78u);
+  DCHECK_EQ(line.size(), 78U);
 
   return n;
 }

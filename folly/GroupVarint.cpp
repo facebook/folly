@@ -43,7 +43,7 @@ namespace detail {
 
 struct group_varint_table_base_make_item {
   constexpr std::size_t get_d(std::size_t index, std::size_t j) const {
-    return 1u + ((index >> (2 * j)) & 3u);
+    return 1U + ((index >> (2 * j)) & 3U);
   }
   constexpr std::size_t get_offset(std::size_t index, std::size_t j) const {
     // clang-format off
@@ -59,7 +59,7 @@ struct group_varint_table_base_make_item {
 
 struct group_varint_table_length_make_item : group_varint_table_base_make_item {
   constexpr std::uint8_t operator()(std::size_t index) const {
-    return 1u + get_offset(index, 4);
+    return 1U + get_offset(index, 4);
   }
 };
 
