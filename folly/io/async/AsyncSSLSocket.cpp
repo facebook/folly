@@ -1007,7 +1007,7 @@ bool AsyncSSLSocket::willBlock(
 #ifdef SSL_ERROR_WANT_ASYNC
     if (error == SSL_ERROR_WANT_ASYNC) {
       size_t numfds;
-      if (SSL_get_all_async_fds(ssl_.get(), NULL, &numfds) <= 0) {
+      if (SSL_get_all_async_fds(ssl_.get(), nullptr, &numfds) <= 0) {
         VLOG(4) << "SSL_ERROR_WANT_ASYNC but no async FDs set!";
         return false;
       }
