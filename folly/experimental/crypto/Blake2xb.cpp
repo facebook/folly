@@ -75,7 +75,7 @@ void initStateFromParams(
       reinterpret_cast<uint8_t*>(state) + sizeof(state->h),
       0,
       sizeof(*state) - sizeof(state->h));
-  if (key.size() > 0) {
+  if (!key.empty()) {
     if (key.size() < crypto_generichash_blake2b_KEYBYTES_MIN ||
         key.size() > crypto_generichash_blake2b_KEYBYTES_MAX) {
       throw std::runtime_error("invalid key size");
@@ -129,13 +129,13 @@ void Blake2xb::init(
   param_.fanout = 1;
   param_.depth = 1;
   param_.xofLength = Endian::little(static_cast<uint32_t>(outputLength));
-  if (salt.size() > 0) {
+  if (!salt.empty()) {
     if (salt.size() != crypto_generichash_blake2b_SALTBYTES) {
       throw std::runtime_error("Invalid salt length, must be 16 bytes");
     }
     std::memcpy(param_.salt, salt.data(), sizeof(param_.salt));
   }
-  if (personalization.size() > 0) {
+  if (!personalization.empty()) {
     if (personalization.size() != crypto_generichash_blake2b_PERSONALBYTES) {
       throw std::runtime_error(
           "Invalid personalization length, must be 16 bytes");

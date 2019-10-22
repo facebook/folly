@@ -824,7 +824,7 @@ void AsyncSSLSocket::sslConn(
     sslSession_ = nullptr;
   }
 #if FOLLY_OPENSSL_HAS_SNI
-  if (tlsextHostname_.size()) {
+  if (!tlsextHostname_.empty()) {
     SSL_set_tlsext_host_name(ssl_.get(), tlsextHostname_.c_str());
   }
 #endif

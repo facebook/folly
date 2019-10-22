@@ -291,7 +291,7 @@ LogConfig::CategoryConfigMap parseCategoryConfigs(StringPiece value) {
     std::vector<StringPiece> handlerPieces;
     folly::split(":", configString, handlerPieces);
     FOLLY_SAFE_DCHECK(
-        handlerPieces.size() >= 1,
+        !handlerPieces.empty(),
         "folly::split() always returns a list of length 1");
     auto levelString = trimWhitespace(handlerPieces[0]);
 
@@ -428,7 +428,7 @@ std::pair<std::string, LogHandlerConfig> parseHandlerConfig(StringPiece value) {
     std::vector<StringPiece> pieces;
     folly::split(",", optionsStr, pieces);
     FOLLY_SAFE_DCHECK(
-        pieces.size() >= 1, "folly::split() always returns a list of length 1");
+        !pieces.empty(), "folly::split() always returns a list of length 1");
 
     for (const auto& piece : pieces) {
       StringPiece optionName;
@@ -469,7 +469,7 @@ LogConfig parseLogConfig(StringPiece value) {
   std::vector<StringPiece> pieces;
   folly::split(";", value, pieces);
   FOLLY_SAFE_DCHECK(
-      pieces.size() >= 1, "folly::split() always returns a list of length 1");
+      !pieces.empty(), "folly::split() always returns a list of length 1");
 
   auto categoryConfigs = parseCategoryConfigs(pieces[0]);
   LogConfig::HandlerConfigMap handlerConfigs;

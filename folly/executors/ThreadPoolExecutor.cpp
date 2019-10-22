@@ -169,9 +169,9 @@ void ThreadPoolExecutor::setNumThreads(size_t numThreads) {
       ThreadPoolExecutor::removeThreads(numThreadsToJoin, false);
       activeThreads_.store(
           active - numThreadsToJoin, std::memory_order_relaxed);
-    } else if (pending > 0 || observers_.size() > 0 || active < minthreads) {
+    } else if (pending > 0 || !observers_.empty() || active < minthreads) {
       size_t numToAdd = std::min(pending, numThreads - active);
-      if (observers_.size() > 0) {
+      if (!observers_.empty()) {
         numToAdd = numThreads - active;
       }
       if (active + numToAdd < minthreads) {
@@ -323,7 +323,7 @@ ThreadPoolExecutor::ThreadPtr ThreadPoolExecutor::StoppedThreadQueue::take() {
   while (true) {
     {
       std::lock_guard<std::mutex> guard(mutex_);
-      if (queue_.size() > 0) {
+      if (!queue_.empty()) {
         auto item = std::move(queue_.front());
         queue_.pop();
         return item;
@@ -339,7 +339,7 @@ ThreadPoolExecutor::StoppedThreadQueue::try_take_for(
   while (true) {
     {
       std::lock_guard<std::mutex> guard(mutex_);
-      if (queue_.size() > 0) {
+      if (!queue_.empty()) {
         auto item = std::move(queue_.front());
         queue_.pop();
         return item;

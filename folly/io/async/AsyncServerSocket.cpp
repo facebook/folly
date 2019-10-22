@@ -263,7 +263,7 @@ void AsyncServerSocket::useExistingSockets(
     eventBase_->dcheckIsInEventBaseThread();
   }
 
-  if (sockets_.size() > 0) {
+  if (!sockets_.empty()) {
     throw std::invalid_argument(
         "cannot call useExistingSocket() on a "
         "AsyncServerSocket that already has a socket");
@@ -357,7 +357,7 @@ void AsyncServerSocket::bind(const SocketAddress& address) {
   // Don't set socket_ yet, so that socket_ will remain uninitialized if an
   // error occurs.
   NetworkSocket fd;
-  if (sockets_.size() == 0) {
+  if (sockets_.empty()) {
     fd = createSocket(address.getFamily());
   } else if (sockets_.size() == 1) {
     if (address.getFamily() != sockets_[0].addressFamily_) {
@@ -389,7 +389,7 @@ void AsyncServerSocket::bind(
 
     bindSocket(fd, address, false);
   }
-  if (sockets_.size() == 0) {
+  if (sockets_.empty()) {
     throw std::runtime_error(
         "did not bind any async server socket for port and addresses");
   }
@@ -523,7 +523,7 @@ void AsyncServerSocket::bind(uint16_t port) {
     break;
   }
 
-  if (sockets_.size() == 0) {
+  if (sockets_.empty()) {
     throw std::runtime_error("did not bind any async server socket for port");
   }
 }
@@ -542,7 +542,7 @@ void AsyncServerSocket::listen(int backlog) {
 }
 
 void AsyncServerSocket::getAddress(SocketAddress* addressReturn) const {
-  CHECK(sockets_.size() >= 1);
+  CHECK(!sockets_.empty());
   VLOG_IF(2, sockets_.size() > 1)
       << "Warning: getAddress() called and multiple addresses available ("
       << sockets_.size() << "). Returning only the first one.";
@@ -551,7 +551,7 @@ void AsyncServerSocket::getAddress(SocketAddress* addressReturn) const {
 }
 
 std::vector<SocketAddress> AsyncServerSocket::getAddresses() const {
-  CHECK(sockets_.size() >= 1);
+  CHECK(!sockets_.empty());
   auto tsaVec = std::vector<SocketAddress>(sockets_.size());
   auto tsaIter = tsaVec.begin();
   for (const auto& socket : sockets_) {

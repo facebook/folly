@@ -112,7 +112,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
           sformat("/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
       auto cacheType = mapping(dir + "type");
       auto equivStr = mapping(dir + "shared_cpu_list");
-      if (cacheType.size() == 0 || equivStr.size() == 0) {
+      if (cacheType.empty() || equivStr.empty()) {
         // no more caches
         break;
       }
@@ -134,7 +134,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
       }
     }
 
-    if (levels.size() == 0) {
+    if (levels.empty()) {
       // no levels at all for this cpu, we must be done
       break;
     }
@@ -142,7 +142,7 @@ CacheLocality CacheLocality::readFromSysfsTree(
     cpus.push_back(cpu);
   }
 
-  if (cpus.size() == 0) {
+  if (cpus.empty()) {
     throw std::runtime_error("unable to load cache sharing info");
   }
 
