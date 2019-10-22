@@ -189,4 +189,30 @@ FOLLY_ALWAYS_INLINE static void annotate_ignore_sync_end(const char* f, int l) {
     detail::annotate_ignore_sync_end_impl(f, l);
   }
 }
+
+class annotate_ignore_thread_sanitizer_guard {
+ public:
+  annotate_ignore_thread_sanitizer_guard(const char* file, int line)
+      : file_(file), line_(line) {
+    annotate_ignore_reads_begin(file_, line_);
+    annotate_ignore_writes_begin(file_, line_);
+    annotate_ignore_sync_begin(file_, line_);
+  }
+
+  annotate_ignore_thread_sanitizer_guard(
+      const annotate_ignore_thread_sanitizer_guard&) = delete;
+  annotate_ignore_thread_sanitizer_guard& operator=(
+      const annotate_ignore_thread_sanitizer_guard&) = delete;
+
+  ~annotate_ignore_thread_sanitizer_guard() {
+    annotate_ignore_reads_end(file_, line_);
+    annotate_ignore_writes_end(file_, line_);
+    annotate_ignore_sync_end(file_, line_);
+  }
+
+ private:
+  const char* file_;
+  int line_;
+};
+
 } // namespace folly
