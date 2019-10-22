@@ -374,17 +374,15 @@ void AsyncServerSocket::bind(
   if (ipAddresses.empty()) {
     throw std::invalid_argument("No ip addresses were provided");
   }
-  if (!sockets_.empty()) {
-    throw std::invalid_argument(
-        "Cannot call bind on a AsyncServerSocket "
-        "that already has a socket.");
+  if (eventBase_) {
+    eventBase_->dcheckIsInEventBaseThread();
   }
 
   for (const IPAddress& ipAddress : ipAddresses) {
     SocketAddress address(ipAddress.toFullyQualified(), port);
     auto fd = createSocket(address.getFamily());
 
-    bindSocket(fd, address, false);
+    bindSocket(fd, address, !sockets_.empty());
   }
   if (sockets_.size() == 0) {
     throw std::runtime_error(
