@@ -32,7 +32,7 @@ class QueuedImmediateExecutor : public Executor {
  public:
   static QueuedImmediateExecutor& instance();
 
-  void add(Func func) override;
+  void add(Func callback) override;
 
  private:
   folly::ThreadLocal<std::queue<Func>> q_;

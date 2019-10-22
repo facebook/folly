@@ -115,7 +115,7 @@ class Dwarf {
   bool findLocation(
       uintptr_t address,
       const LocationInfoMode mode,
-      detail::CompilationUnit& unit,
+      detail::CompilationUnit& cu,
       LocationInfo& info,
       folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
 
@@ -213,7 +213,7 @@ class Dwarf::LineNumberVM {
       folly::StringPiece data,
       folly::StringPiece compilationDirectory);
 
-  bool findAddress(uintptr_t address, Path& file, uint64_t& line);
+  bool findAddress(uintptr_t target, Path& file, uint64_t& line);
 
   /** Gets full file name at given index including directory. */
   Path getFullFileName(uint64_t index) const {
@@ -243,7 +243,7 @@ class Dwarf::LineNumberVM {
   };
 
   /** Read one FileName object, advance sp */
-  static bool readFileName(folly::StringPiece& sp, FileName& fn);
+  static bool readFileName(folly::StringPiece& program, FileName& fn);
 
   /**
    * Get file name at given index; may be in the initial table

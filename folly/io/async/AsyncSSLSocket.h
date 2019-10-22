@@ -699,9 +699,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   static int bioRead(BIO* b, char* out, int outl);
   void resetClientHelloParsing(SSL* ssl);
   static void clientHelloParsingCallback(
-      int write_p,
+      int written,
       int version,
-      int content_type,
+      int contentType,
       const void* buf,
       size_t len,
       SSL* ssl,
@@ -875,7 +875,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   void startSSLConnect();
 
-  static void sslInfoCallback(const SSL* ssl, int type, int val);
+  static void sslInfoCallback(const SSL* ssl, int where, int ret);
 
   // Whether the current write to the socket should use MSG_MORE.
   bool corkCurrentWrite_{false};

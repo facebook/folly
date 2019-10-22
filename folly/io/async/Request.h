@@ -209,22 +209,22 @@ class RequestContext {
   }
 
   // Remove the RequestData instance with string identifier "val", if it exists.
-  void clearContextData(const RequestToken& token);
+  void clearContextData(const RequestToken& val);
   void clearContextData(const std::string& val) {
     clearContextData(RequestToken(val));
   }
 
   // Returns true if and only if the RequestData instance with string identifier
   // "val" exists in this RequestContext instnace.
-  bool hasContextData(const RequestToken& token) const;
+  bool hasContextData(const RequestToken& val) const;
   bool hasContextData(const std::string& val) const {
     return hasContextData(RequestToken(val));
   }
 
   // Get (constant) raw pointer of the RequestData instance with string
   // identifier "val" if it exists, otherwise returns null pointer.
-  RequestData* getContextData(const RequestToken& token);
-  const RequestData* getContextData(const RequestToken& token) const;
+  RequestData* getContextData(const RequestToken& val);
+  const RequestData* getContextData(const RequestToken& val) const;
   RequestData* getContextData(const std::string& val) {
     return getContextData(RequestToken(val));
   }
@@ -253,7 +253,7 @@ class RequestContext {
   static std::shared_ptr<RequestContext> setContext(
       std::shared_ptr<RequestContext> const& ctx);
   static std::shared_ptr<RequestContext> setContext(
-      std::shared_ptr<RequestContext>&& ctx);
+      std::shared_ptr<RequestContext>&& newCtx_);
 
   static std::shared_ptr<RequestContext> saveContext() {
     return getStaticContext().first;
@@ -376,7 +376,7 @@ class RequestContext {
 
     Combined* combined() const;
     Combined* ensureCombined(); // Lazy allocation if needed
-    void setCombined(Combined* combined);
+    void setCombined(Combined* p);
     Combined* expand(Combined* combined);
 
     bool doSetContextData(
@@ -404,12 +404,12 @@ class RequestContext {
         DoSetBehaviour behaviour,
         bool safe);
     Combined* eraseOldData(
-        Combined* combined,
+        Combined* cur,
         const RequestToken& token,
         RequestData* oldData,
         bool safe);
     Combined* insertNewData(
-        Combined* combined,
+        Combined* cur,
         const RequestToken& token,
         std::unique_ptr<RequestData>& data,
         bool found);

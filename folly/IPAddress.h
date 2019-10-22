@@ -234,7 +234,7 @@ class IPAddress {
    *
    * @throws IPAddressFormatException
    */
-  explicit IPAddress(StringPiece ip);
+  explicit IPAddress(StringPiece str);
 
   /**
    * Create an IPAddress from a sockaddr.
@@ -251,10 +251,10 @@ class IPAddress {
   /* implicit */ IPAddress(const in6_addr& addr) noexcept;
 
   // Assign from V4 address
-  IPAddress& operator=(const IPAddressV4& ipV4Addr) noexcept;
+  IPAddress& operator=(const IPAddressV4& ipv4_addr) noexcept;
 
   // Assign from V6 address
-  IPAddress& operator=(const IPAddressV6& ipV6Addr) noexcept;
+  IPAddress& operator=(const IPAddressV6& ipv6_addr) noexcept;
 
   /**
    * Converts an IPAddress to an IPAddressV4 instance.
@@ -330,7 +330,7 @@ class IPAddress {
    * @throws IPAddressFormatException if no /mask
    * @return true if address is part of specified subnet with cidr
    */
-  bool inSubnet(StringPiece ipSlashCidr) const;
+  bool inSubnet(StringPiece cidrNetwork) const;
 
   /**
    * Check if an IPAddress belongs to a subnet.

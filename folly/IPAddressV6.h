@@ -140,7 +140,7 @@ class IPAddressV6 {
   // Create an IPAddressV6 from a string
   // @throws IPAddressFormatException
   //
-  explicit IPAddressV6(StringPiece ip);
+  explicit IPAddressV6(StringPiece addr);
 
   // ByteArray16 constructor
   explicit IPAddressV6(const ByteArray16& src) noexcept;

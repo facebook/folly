@@ -37,7 +37,7 @@ struct ExceptionStats {
  */
 std::vector<ExceptionStats> getExceptionStatistics();
 
-std::ostream& operator<<(std::ostream& out, const ExceptionStats& data);
+std::ostream& operator<<(std::ostream& out, const ExceptionStats& stats);
 
 } // namespace exception_tracer
 } // namespace folly

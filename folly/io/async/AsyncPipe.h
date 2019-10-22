@@ -115,8 +115,8 @@ class AsyncPipeWriter : public EventHandler,
    * on success/error.
    */
   void write(
-      std::unique_ptr<folly::IOBuf> iob,
-      AsyncWriter::WriteCallback* wcb = nullptr);
+      std::unique_ptr<folly::IOBuf> buf,
+      AsyncWriter::WriteCallback* callback = nullptr);
 
   /**
    * Set a special hook to close the socket (otherwise, will call close())

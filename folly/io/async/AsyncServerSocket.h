@@ -773,7 +773,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     void start(EventBase* eventBase, uint32_t maxAtOnce, uint32_t maxInQueue);
     void stop(EventBase* eventBase, AcceptCallback* callback);
 
-    void messageAvailable(QueueMessage&& message) noexcept override;
+    void messageAvailable(QueueMessage&& msg) noexcept override;
 
     NotificationQueue<QueueMessage>* getQueue() {
       return &queue_;
@@ -804,7 +804,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   virtual void handlerReady(
       uint16_t events,
-      NetworkSocket socket,
+      NetworkSocket fd,
       sa_family_t family) noexcept;
 
   NetworkSocket createSocket(int family);

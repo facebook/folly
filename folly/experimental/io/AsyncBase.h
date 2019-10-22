@@ -140,8 +140,8 @@ class AsyncBaseOp {
   void* userData_{nullptr};
 };
 
-std::ostream& operator<<(std::ostream& stream, const AsyncBaseOp& op);
-std::ostream& operator<<(std::ostream& stream, AsyncBaseOp::State state);
+std::ostream& operator<<(std::ostream& os, const AsyncBaseOp& op);
+std::ostream& operator<<(std::ostream& os, AsyncBaseOp::State state);
 
 /**
  * Generic C++ interface around Linux IO(io_submit, io_uring)

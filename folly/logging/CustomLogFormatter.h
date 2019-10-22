@@ -56,7 +56,7 @@ class CustomLogFormatter : public LogFormatter {
       const LogCategory* handlerCategory) override;
 
  private:
-  void parseFormatString(StringPiece format);
+  void parseFormatString(StringPiece input);
 
   std::string logFormat_;
   std::string singleLineLogFormat_;

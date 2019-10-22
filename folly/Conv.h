@@ -187,7 +187,7 @@ class ConversionError : public ConversionErrorBase {
  *   return YourConversionError(messageString);
  * }
  ******************************************************************************/
-ConversionError makeConversionError(ConversionCode code, StringPiece sp);
+ConversionError makeConversionError(ConversionCode code, StringPiece input);
 
 namespace detail {
 /**

@@ -278,7 +278,7 @@ void swap(MemoryMapping&, MemoryMapping&) noexcept;
  * Useful when copying from/to memory mappings after hintLinearScan();
  * copying backwards renders any prefetching useless (even harmful).
  */
-void alignedForwardMemcpy(void* dest, const void* src, size_t size);
+void alignedForwardMemcpy(void* dst, const void* src, size_t size);
 
 /**
  * Copy a file using mmap(). Overwrites dest.
