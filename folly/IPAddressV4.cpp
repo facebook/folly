@@ -90,7 +90,7 @@ IPAddressV4::IPAddressV4(StringPiece addr) : addr_() {
     throw IPAddressFormatException(
         to<std::string>("Invalid IPv4 address '", addr, "'"));
   }
-  *this = std::move(maybeIp.value());
+  *this = maybeIp.value();
 }
 
 Expected<IPAddressV4, IPAddressFormatError> IPAddressV4::tryFromString(
@@ -120,7 +120,7 @@ Expected<IPAddressV4, IPAddressFormatError> IPAddressV4::tryFromBinary(
   IPAddressV4 addr;
   auto setResult = addr.trySetFromBinary(bytes);
   if (setResult.hasError()) {
-    return makeUnexpected(std::move(setResult.error()));
+    return makeUnexpected(setResult.error());
   }
   return addr;
 }

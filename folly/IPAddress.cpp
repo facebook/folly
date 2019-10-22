@@ -222,7 +222,7 @@ IPAddress::IPAddress(StringPiece str) : addr_(), family_(AF_UNSPEC) {
     throw IPAddressFormatException(
         to<std::string>("Invalid IP address '", str, "'"));
   }
-  *this = std::move(maybeIp.value());
+  *this = maybeIp.value();
 }
 
 Expected<IPAddress, IPAddressFormatError> IPAddress::tryFromString(

@@ -76,7 +76,7 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
     throw IPAddressFormatException(
         to<std::string>("Invalid IPv6 address '", addr, "'"));
   }
-  *this = std::move(maybeIp.value());
+  *this = maybeIp.value();
 }
 
 Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromString(
@@ -180,7 +180,7 @@ Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromBinary(
   IPAddressV6 addr;
   auto setResult = addr.trySetFromBinary(bytes);
   if (setResult.hasError()) {
-    return makeUnexpected(std::move(setResult.error()));
+    return makeUnexpected(setResult.error());
   }
   return addr;
 }

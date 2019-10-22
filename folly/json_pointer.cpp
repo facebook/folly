@@ -49,7 +49,7 @@ Expected<json_pointer, json_pointer::parse_error> json_pointer::try_parse(
 json_pointer json_pointer::parse(StringPiece const str) {
   auto res = try_parse(str);
   if (res.hasValue()) {
-    return std::move(res.value());
+    return res.value();
   }
   switch (res.error()) {
     case parse_error::invalid_first_character:
