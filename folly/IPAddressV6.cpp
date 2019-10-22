@@ -498,7 +498,7 @@ uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
 }
 
 // protected
-const ByteArray16 IPAddressV6::fetchMask(size_t numBits) {
+ByteArray16 IPAddressV6::fetchMask(size_t numBits) {
   static const size_t bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException("IPv6 addresses are 128 bits.");

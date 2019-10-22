@@ -279,7 +279,7 @@ uint8_t IPAddressV4::getNthMSByte(size_t byteIndex) const {
   return bytes()[byteIndex];
 }
 // protected
-const ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
+ByteArray4 IPAddressV4::fetchMask(size_t numBits) {
   static const size_t bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException("IPv4 addresses are 32 bits");
