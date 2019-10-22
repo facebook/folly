@@ -357,6 +357,21 @@ TEST(CollectAll, CollectAllKeepsRequestContextOfChildTasksIndependent) {
   }());
 }
 
+TEST(CollectAll, TaskWithExecutorUsage) {
+  folly::CPUThreadPoolExecutor threadPool{
+      4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    auto [a, b] = co_await folly::coro::collectAll(
+        []() -> folly::coro::Task<int> { co_return 42; }().scheduleOn(
+                 &threadPool),
+        []() -> folly::coro::Task<std::string> { co_return "coroutine"; }()
+                    .scheduleOn(&threadPool));
+    CHECK(a == 42);
+    CHECK(b == "coroutine");
+  }());
+}
+
 /////////////////////////////////////////////////////////
 // folly::coro::collectAllTry() tests
 
@@ -759,6 +774,27 @@ TEST(
     co_await folly::coro::collectAllRange(std::move(tasks));
 
     CHECK(getContextData() == initialContextData);
+  }());
+}
+
+TEST(CollectAllRange, VectorOfTaskWithExecutorUsage) {
+  folly::CPUThreadPoolExecutor threadPool{
+      4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    std::vector<folly::coro::TaskWithExecutor<int>> tasks;
+    for (int i = 0; i < 4; ++i) {
+      tasks.push_back(
+          [](int i) -> folly::coro::Task<int> { co_return i + 1; }(i)
+                           .scheduleOn(&threadPool));
+    }
+
+    auto results = co_await folly::coro::collectAllRange(std::move(tasks));
+    CHECK(results.size() == 4);
+    CHECK(results[0] == 1);
+    CHECK(results[1] == 2);
+    CHECK(results[2] == 3);
+    CHECK(results[3] == 4);
   }());
 }
 
@@ -1236,6 +1272,28 @@ TEST(
     co_await folly::coro::collectAllWindowed(std::move(tasks), 2);
 
     CHECK(getContextData() == initialContextData);
+  }());
+}
+
+TEST(CollectAllWindowed, VectorOfTaskWithExecutorUsage) {
+  folly::CPUThreadPoolExecutor threadPool{
+      4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+    std::vector<folly::coro::TaskWithExecutor<int>> tasks;
+    for (int i = 0; i < 4; ++i) {
+      tasks.push_back(
+          [](int i) -> folly::coro::Task<int> { co_return i + 1; }(i)
+                           .scheduleOn(&threadPool));
+    }
+
+    auto results =
+        co_await folly::coro::collectAllWindowed(std::move(tasks), 2);
+    CHECK(results.size() == 4);
+    CHECK(results[0] == 1);
+    CHECK(results[1] == 2);
+    CHECK(results[2] == 3);
+    CHECK(results[3] == 4);
   }());
 }
 

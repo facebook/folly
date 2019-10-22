@@ -210,20 +210,20 @@ auto collectAllTryRange(InputRange awaitables)
         detail::range_reference_t<InputRange>>>>;
 
 // collectAllRange()/collectAllTryRange() overloads that simplifies the
-// common-case where an rvalue std::vector<Task<T>> is passed.
+// common-case where an rvalue std::vector<SemiAwaitable> is passed.
 //
 // This avoids the caller needing to pipe the input through ranges::views::move
-// transform to force the Task<T> elements to be rvalue-references since the
-// std::vector<T>::reference type is T& rather than T&& and Task<T>& is not
-// awaitable.
-template <typename T>
-auto collectAllRange(std::vector<Task<T>> awaitables)
+// transform to force the elements to be rvalue-references since the
+// std::vector<T>::reference type is T& rather than T&& and some awaitables,
+// such as Task<U>, are not lvalue awaitable.
+template <typename SemiAwaitable>
+auto collectAllRange(std::vector<SemiAwaitable> awaitables)
     -> decltype(collectAllRange(awaitables | ranges::views::move)) {
   co_return co_await collectAllRange(awaitables | ranges::views::move);
 }
 
-template <typename T>
-auto collectAllTryRange(std::vector<Task<T>> awaitables)
+template <typename SemiAwaitable>
+auto collectAllTryRange(std::vector<SemiAwaitable> awaitables)
     -> decltype(collectAllTryRange(awaitables | ranges::views::move)) {
   co_return co_await collectAllTryRange(awaitables | ranges::views::move);
 }
@@ -289,10 +289,10 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
         detail::range_reference_t<InputRange>>>>;
 
 // collectAllWindowed()/collectAllTryWindowed() overloads that simplify the
-// use of these functions with std::vector<Task<T>>.
-template <typename T>
+// use of these functions with std::vector<SemiAwaitable>.
+template <typename SemiAwaitable>
 auto collectAllWindowed(
-    std::vector<Task<T>> awaitables,
+    std::vector<SemiAwaitable> awaitables,
     std::size_t maxConcurrency)
     -> decltype(
         collectAllWindowed(awaitables | ranges::views::move, maxConcurrency)) {
@@ -300,9 +300,9 @@ auto collectAllWindowed(
       awaitables | ranges::views::move, maxConcurrency);
 }
 
-template <typename T>
+template <typename SemiAwaitable>
 auto collectAllTryWindowed(
-    std::vector<Task<T>> awaitables,
+    std::vector<SemiAwaitable> awaitables,
     std::size_t maxConcurrency)
     -> decltype(collectAllTryWindowed(
         awaitables | ranges::views::move,
