@@ -212,7 +212,7 @@ class ProcessReturnCode {
    * Helper function to enforce a precondition based on this.
    * Throws std::logic_error if in an unexpected state.
    */
-  void enforce(State state) const;
+  void enforce(State expected) const;
 
  private:
   explicit ProcessReturnCode(int rv) : rawStatus_(rv) {}

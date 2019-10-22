@@ -122,7 +122,7 @@ class IPAddressV4 {
 
   // Create an IPAddressV4 from a string
   // @throws IPAddressFormatException
-  explicit IPAddressV4(StringPiece ip);
+  explicit IPAddressV4(StringPiece addr);
 
   // ByteArray4 constructor
   explicit IPAddressV4(const ByteArray4& src) noexcept;
@@ -251,7 +251,7 @@ class IPAddressV4 {
    * @throws abort if numBits == 0 or numBits > bitCount()
    * @return mask associated with numBits
    */
-  static const ByteArray4 fetchMask(size_t numBits);
+  static ByteArray4 fetchMask(size_t numBits);
 
   // Given 2 IPAddressV4, mask pairs extract the longest common IPAddress,
   // mask pair
