@@ -17,6 +17,7 @@
 #include <folly/ExceptionWrapper.h>
 
 #include <iostream>
+#include <utility>
 
 #include <folly/GLog.h>
 
@@ -52,7 +53,7 @@ exception_wrapper::VTable const exception_wrapper::SharedPtr::ops_{
 namespace {
 std::exception const* get_std_exception_(std::exception_ptr eptr) noexcept {
   try {
-    std::rethrow_exception(eptr);
+    std::rethrow_exception(std::move(eptr));
   } catch (const std::exception& ex) {
     return &ex;
   } catch (...) {

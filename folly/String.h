@@ -624,7 +624,7 @@ StringPiece trim(StringPiece sp, ToTrim toTrim) {
  *  Purpose: including a multiline string literal in source code, indented to
  *  the level expected from context.
  */
-std::string stripLeftMargin(std::string s);
+std::string stripLeftMargin(const std::string& s);
 
 /**
  * Fast, in-place lowercasing of ASCII alphabetic characters in strings.
