@@ -380,7 +380,7 @@ dynamic::try_get_ptr(json_pointer const& jsonPtr) const& {
   size_t curr_idx{0};
   StringPiece curr_key{};
 
-  for (auto&& it : enumerate(tokens)) {
+  for (auto it : enumerate(tokens)) {
     // hit bottom but pointer not exhausted yet
     if (!curr) {
       return makeUnexpected(

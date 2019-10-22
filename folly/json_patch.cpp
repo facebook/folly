@@ -243,7 +243,7 @@ json_patch::apply(dynamic& obj) {
   using error_code = patch_application_error_code;
   using error = patch_application_error;
 
-  for (auto&& it : enumerate(ops_)) {
+  for (auto it : enumerate(ops_)) {
     auto const index = it.index;
     auto const& op = *it;
     auto resolved_path = obj.try_get_ptr(op.path);
