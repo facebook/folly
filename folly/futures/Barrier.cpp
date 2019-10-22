@@ -28,7 +28,7 @@ Barrier::Barrier(uint32_t n)
 Barrier::~Barrier() {
   auto block = controlBlock_.load(std::memory_order_relaxed);
   auto prev = block->valueAndReaderCount.load(std::memory_order_relaxed);
-  DCHECK_EQ(prev >> kReaderShift, 0u);
+  DCHECK_EQ(prev >> kReaderShift, 0U);
   auto val = prev & kValueMask;
   auto p = promises(block);
 

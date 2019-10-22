@@ -135,7 +135,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       // mark it as removed
       threadEntry->removed_ = true;
       auto elementsCapacity = threadEntry->getElementsCapacity();
-      for (size_t i = 0u; i < elementsCapacity; ++i) {
+      for (size_t i = 0U; i < elementsCapacity; ++i) {
         threadEntry->elements[i].node.eraseZero();
       }
       // No need to hold the lock any longer; the ThreadEntry is private to this
@@ -159,7 +159,7 @@ void StaticMetaBase::onThreadExit(void* ptr) {
   }
 
   auto threadEntryList = threadEntry->list;
-  DCHECK_GT(threadEntryList->count, 0u);
+  DCHECK_GT(threadEntryList->count, 0U);
 
   --threadEntryList->count;
 

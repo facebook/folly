@@ -110,7 +110,7 @@ void DynamicParser::ParserStack::Pop::operator()() noexcept {
   stackPtr_->value_ = value_;
   if (stackPtr_->unmaterializedSubErrorKeys_.empty()) {
     // There should be the current error, and the root.
-    CHECK_GE(stackPtr_->subErrors_.size(), 2u)
+    CHECK_GE(stackPtr_->subErrors_.size(), 2U)
         << "Internal bug: out of suberrors";
     stackPtr_->subErrors_.pop_back();
   } else {

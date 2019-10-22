@@ -39,8 +39,8 @@ std::thread::id localThreadId() {
 
 /* Size of the region from p + nBytes down to the last non-magic value */
 static size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
-  CHECK_EQ(reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t), 0u);
-  CHECK_EQ(stackSize % sizeof(uint64_t), 0u);
+  CHECK_EQ(reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t), 0U);
+  CHECK_EQ(stackSize % sizeof(uint64_t), 0U);
   auto begin = reinterpret_cast<uint64_t*>(stackLimit);
   auto end = reinterpret_cast<uint64_t*>(stackLimit + stackSize);
 
@@ -83,8 +83,8 @@ void Fiber::init(bool recordStackUsed) {
   recordStackUsed_ = recordStackUsed;
   if (UNLIKELY(recordStackUsed_ && !stackFilledWithMagic_)) {
     CHECK_EQ(
-        reinterpret_cast<intptr_t>(fiberStackLimit_) % sizeof(uint64_t), 0u);
-    CHECK_EQ(fiberStackSize_ % sizeof(uint64_t), 0u);
+        reinterpret_cast<intptr_t>(fiberStackLimit_) % sizeof(uint64_t), 0U);
+    CHECK_EQ(fiberStackSize_ % sizeof(uint64_t), 0U);
     std::fill(
         reinterpret_cast<uint64_t*>(fiberStackLimit_),
         reinterpret_cast<uint64_t*>(fiberStackLimit_ + fiberStackSize_),

@@ -1206,7 +1206,7 @@ ordering IOBufCompare::impl(const IOBuf& a, const IOBuf& b) const noexcept {
       return to_ordering(int(bb.empty()) - int(ba.empty()));
     }
     const size_t n = std::min(ba.size(), bb.size());
-    DCHECK_GT(n, 0u);
+    DCHECK_GT(n, 0U);
     const ordering r = to_ordering(std::memcmp(ba.data(), bb.data(), n));
     if (r != ordering::eq) {
       return r;

@@ -831,7 +831,7 @@ void escapeStringImpl(
         out.append(buf, 6);
       };
       // From the ECMA-404 The JSON Data Interchange Syntax 2nd Edition Dec 2017
-      if (cp < 0x10000u) {
+      if (cp < 0x10000U) {
         // If the code point is in the Basic Multilingual Plane (U+0000 through
         // U+FFFF), then it may be represented as a six-character sequence:
         // a reverse solidus, followed by the lowercase letter u, followed by
@@ -842,8 +842,8 @@ void escapeStringImpl(
         // the character may be represented as a twelve-character sequence,
         // encoding the UTF-16 surrogate pair corresponding to the code point.
         writeHex(static_cast<char16_t>(
-            0xd800u + (((cp - 0x10000u) >> 10) & 0x3ffu)));
-        writeHex(static_cast<char16_t>(0xdc00u + ((cp - 0x10000u) & 0x3ffu)));
+            0xd800U + (((cp - 0x10000U) >> 10) & 0x3ffU)));
+        writeHex(static_cast<char16_t>(0xdc00U + ((cp - 0x10000U) & 0x3ffU)));
       }
     } else if (*p == '\\' || *p == '\"') {
       char buf[] = "\\\0";
