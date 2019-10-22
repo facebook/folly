@@ -90,7 +90,7 @@ FiberManager::FiberManager(
     : FiberManager(
           LocalType<void>(),
           std::move(loopController),
-          std::move(options)) {}
+          options) {}
 
 FiberManager::~FiberManager() {
   loopController_.reset();
