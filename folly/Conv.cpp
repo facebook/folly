@@ -778,7 +778,7 @@ ConversionError makeConversionError(ConversionCode code, StringPiece input) {
   if (err.quote) {
     tmp.append(1, '"');
   }
-  if (input.size() > 0) {
+  if (!input.empty()) {
     tmp.append(input.data(), input.size());
   }
   if (err.quote) {

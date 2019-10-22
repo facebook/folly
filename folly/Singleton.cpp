@@ -98,7 +98,7 @@ std::string TypeDescriptor::name() const {
   auto trace = detail::getSingletonStackTrace();
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
-             << "Stacktrace:\n" << (trace != "" ? trace : "(not available)");
+             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
 }
 
 [[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
@@ -130,7 +130,7 @@ void singletonWarnDestroyInstanceLeak(
   auto trace = detail::getSingletonStackTrace();
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
-             << "Stacktrace:\n" << (trace != "" ? trace : "(not available)");
+             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
 }
 
 [[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
@@ -141,13 +141,13 @@ void singletonWarnDestroyInstanceLeak(
              << "This usually means that either main() never called "
              << "folly::init, or singleton was requested before main() "
              << "(which is not allowed).\n"
-             << "Stacktrace:\n" << (trace != "" ? trace : "(not available)");
+             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
 }
 
 void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
   auto trace = detail::getSingletonStackTrace();
   LOG(ERROR) << "Singleton " << type.name() << " was released.\n"
-             << "Stacktrace:\n" << (trace != "" ? trace : "(not available)");
+             << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
 }
 
 [[noreturn]] void singletonThrowNullCreator(const std::type_info& type) {

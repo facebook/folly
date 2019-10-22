@@ -126,7 +126,7 @@ std::string Uri::authority() const {
 }
 
 std::string Uri::hostname() const {
-  if (host_.size() > 0 && host_[0] == '[') {
+  if (!host_.empty() && host_[0] == '[') {
     // If it starts with '[', then it should end with ']', this is ensured by
     // regex
     return host_.substr(1, host_.size() - 2);
