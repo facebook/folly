@@ -422,7 +422,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
         } else {
           b += 3;
         }
-        result = std::numeric_limits<Tgt>::infinity();
+        result = std::numeric_limits<double>::infinity();
       }
       break;
 
@@ -430,7 +430,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
       if (size >= 3 && tolower_ascii(b[1]) == 'a' &&
           tolower_ascii(b[2]) == 'n') {
         b += 3;
-        result = std::numeric_limits<Tgt>::quiet_NaN();
+        result = std::numeric_limits<double>::quiet_NaN();
       }
       break;
 
