@@ -519,7 +519,7 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
   const char* c = value;
   if (c) {
     return folly::StringPiece(value).size();
-  };
+  }
   return 0;
 }
 
