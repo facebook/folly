@@ -839,7 +839,7 @@ void AsyncServerSocket::handlerReady(
   for (uint32_t n = 0; n < maxAcceptAtOnce_; ++n) {
     SocketAddress address;
 
-    sockaddr_storage addrStorage;
+    sockaddr_storage addrStorage = {};
     socklen_t addrLen = sizeof(addrStorage);
     sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
