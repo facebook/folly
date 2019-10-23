@@ -76,7 +76,7 @@
 //     that can identify the "Test skipped by client" in the failure message
 //     and convert this into a skipped test result.
 #ifdef GTEST_SKIP_
-#define SKIP(msg) GTEST_SKIP_("Test skipped by client")
+#define SKIP(msg) GTEST_SKIP()
 #else
 #define SKIP()                                       \
   GTEST_AMBIGUOUS_ELSE_BLOCKER_                      \
