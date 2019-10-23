@@ -406,4 +406,30 @@ TEST(Task, CancellationPropagation) {
   }());
 }
 
+TEST(Task, StartInlineUnsafe) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto executor = co_await folly::coro::co_current_executor;
+    bool hasStarted = false;
+    bool hasFinished = false;
+    auto sf = [&]() -> folly::coro::Task<void> {
+      hasStarted = true;
+      co_await folly::coro::co_reschedule_on_current_executor;
+      hasFinished = true;
+    }()
+                           .scheduleOn(executor)
+                           .startInlineUnsafe();
+
+    // Check that the task started inline on the current thread.
+    // It should not yet have completed, however, since the rest
+    // of the coroutine needs this coroutine to suspend so the
+    // executor can schedule the rest of it.
+    CHECK(hasStarted);
+    CHECK(!hasFinished);
+
+    co_await std::move(sf);
+
+    CHECK(hasFinished);
+  }());
+}
+
 #endif

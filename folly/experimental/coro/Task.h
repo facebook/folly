@@ -259,6 +259,45 @@ class FOLLY_NODISCARD TaskWithExecutor {
     }(std::move(*this), std::forward<F>(tryCallback));
   }
 
+  // Start execution of this task eagerly, inline on the current thread.
+  // Assumes that the current thread is already on the associated execution
+  // context.
+  template <typename F>
+  void startInlineUnsafe(
+      F&& tryCallback,
+      folly::CancellationToken cancelToken = {}) && {
+    coro_.promise().setCancelToken(std::move(cancelToken));
+
+    RequestContextScopeGuard contextScope{RequestContext::saveContext()};
+
+    [](TaskWithExecutor task,
+       std::decay_t<F> cb) -> detail::InlineTaskDetached {
+      try {
+        cb(co_await InlineAwaiter{std::exchange(task.coro_, {})});
+      } catch (const std::exception& e) {
+        cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
+      } catch (...) {
+        cb(Try<StorageType>(exception_wrapper(std::current_exception())));
+      }
+    }(std::move(*this), std::forward<F>(tryCallback));
+  }
+
+  // Start execution of this task eagerly inline on the current thread,
+  // assuming the current thread is already on the associated executor,
+  // and return a folly::SemiFuture<T> that will complete with the result.
+  auto startInlineUnsafe() && {
+    Promise<lift_unit_t<StorageType>> p;
+
+    auto sf = p.getSemiFuture();
+
+    std::move(*this).startInlineUnsafe(
+        [promise = std::move(p)](Try<StorageType>&& result) mutable {
+          promise.setTry(std::move(result));
+        });
+
+    return sf;
+  }
+
   template <typename ResultCreator>
   class Awaiter {
    public:
@@ -295,6 +334,41 @@ class FOLLY_NODISCARD TaskWithExecutor {
       };
       ResultCreator resultCreator;
       return resultCreator(std::move(coro_.promise().result()));
+    }
+
+   private:
+    handle_t coro_;
+  };
+
+  class InlineAwaiter {
+   public:
+    InlineAwaiter(handle_t coro) noexcept : coro_(coro) {}
+
+    ~InlineAwaiter() {
+      if (coro_) {
+        coro_.destroy();
+      }
+    }
+
+    bool await_ready() {
+      return false;
+    }
+
+    auto await_suspend(std::experimental::coroutine_handle<> continuation) {
+      auto& promise = coro_.promise();
+      DCHECK(!promise.continuation_);
+      DCHECK(promise.executor_);
+
+      promise.continuation_ = continuation;
+      return coro_;
+    }
+
+    folly::Try<StorageType> await_resume() {
+      // Eagerly destroy the coroutine-frame once we have retrieved the result.
+      SCOPE_EXIT {
+        std::exchange(coro_, {}).destroy();
+      };
+      return std::move(coro_.promise().result());
     }
 
    private:
