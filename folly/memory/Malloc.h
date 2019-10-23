@@ -96,7 +96,7 @@ mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
 // are found in stdlib.h.
-#if __has_include(<malloc.h>)
+#if defined(__linux__)
 #include <malloc.h>
 #else
 #include <stdlib.h>

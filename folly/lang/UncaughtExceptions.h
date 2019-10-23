@@ -24,7 +24,12 @@ namespace __cxxabiv1 {
 // forward declaration (originally defined in unwind-cxx.h from from libstdc++)
 struct __cxa_eh_globals;
 // declared in cxxabi.h from libstdc++-v3
+#if !defined(__FreeBSD__)
 extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
+#else
+// Signature mismatch with FreeBSD case
+extern "C" __cxa_eh_globals* __cxa_get_globals();
+#endif
 } // namespace __cxxabiv1
 #elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || defined(_MSC_VER)
 #define FOLLY_EXCEPTION_COUNT_USE_STD

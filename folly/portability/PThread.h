@@ -22,6 +22,10 @@
 
 #include <pthread.h>
 
+#if defined(__FreeBSD__)
+#include <sys/thr.h>
+#endif
+
 #elif !FOLLY_HAVE_PTHREAD
 
 #include <cstdint>
