@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Function.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/Invoke.h>
@@ -67,9 +68,12 @@ class InlineFunctionRef;
 
 template <typename ReturnType, typename... Args, std::size_t Size>
 class InlineFunctionRef<ReturnType(Args...), Size> {
+  template <typename Arg>
+  using CallArg = function::CallArg<Arg>;
+
   using Storage =
       std::aligned_storage_t<Size - sizeof(uintptr_t), sizeof(uintptr_t)>;
-  using Call = ReturnType (*)(const Storage&, Args&&...);
+  using Call = ReturnType (*)(CallArg<Args>..., const Storage&);
 
   struct InSituTag {};
   struct RefTag {};
@@ -149,7 +153,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
    * appropriate casting.
    */
   ReturnType operator()(Args... args) const {
-    return call_(storage_, static_cast<Args&&>(args)...);
+    return call_(static_cast<Args&&>(args)..., storage_);
   }
 
   /**
@@ -196,7 +200,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   }
 
   template <typename Func>
-  static ReturnType callInline(const Storage& object, Args&&... args) {
+  static ReturnType callInline(CallArg<Args>... args, const Storage& object) {
     // The only type of pointer allowed is a function pointer, no other
     // pointer types are invocable.
     static_assert(
@@ -209,7 +213,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   }
 
   template <typename Func>
-  static ReturnType callPointer(const Storage& object, Args&&... args) {
+  static ReturnType callPointer(CallArg<Args>... args, const Storage& object) {
     // When the function we were instantiated with was not trivial, the given
     // pointer points to a pointer, which pointers to the callable.  So we
     // cast to a pointer and then to the pointee.
