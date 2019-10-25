@@ -24,6 +24,7 @@
 #include <glog/logging.h>
 
 #include <folly/Format.h>
+#include <folly/Portability.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/SysSyscall.h>
@@ -36,18 +37,14 @@
 #include <sys/types.h>
 #include <system_error>
 
-static constexpr ssize_t kDefaultMlockChunkSize =
-#ifndef _MSC_VER
+static constexpr ssize_t kDefaultMlockChunkSize = !folly::kMscVer
     // Linux implementations of unmap/mlock/munlock take a kernel
     // semaphore and block other threads from doing other memory
     // operations. Split the operations in chunks.
-    (1 << 20) // 1MB
-#else // _MSC_VER
+    ? (1 << 20) // 1MB
     // MSVC doesn't have this problem, and calling munmap many times
     // with the same address is a bad idea with the windows implementation.
-    (-1)
-#endif // _MSC_VER
-    ;
+    : (-1);
 
 DEFINE_int64(
     mlock_chunk_size,
