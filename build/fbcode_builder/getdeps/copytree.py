@@ -10,6 +10,9 @@ import shutil
 import subprocess
 
 
+PREFETCHED_DIRS = set()
+
+
 def is_eden(dirpath):
     """Returns True if the specified directory is the root directory of,
     or is a sub-directory of an Eden mount."""
@@ -29,7 +32,8 @@ def prefetch_dir_if_eden(dirpath):
     performed by copytree makes this more expensive than is desirable
     so we help accelerate things by performing a prefetch on the
     source directory """
-    if not is_eden(dirpath):
+    global PREFETCHED_DIRS
+    if not is_eden(dirpath) or dirpath in PREFETCHED_DIRS:
         return
     root = find_eden_root(dirpath)
     rel = os.path.relpath(dirpath, root)
@@ -37,6 +41,7 @@ def prefetch_dir_if_eden(dirpath):
     # TODO: this should be edenfsctl but until I swing through a new
     # package deploy, I only have `eden` on my mac to test this
     subprocess.call(["eden", "prefetch", "--repo", root, "--silent", "%s/**" % rel])
+    PREFETCHED_DIRS.add(dirpath)
 
 
 def copytree(src_dir, dest_dir, ignore=None):
