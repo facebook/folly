@@ -382,7 +382,7 @@ void AsyncServerSocket::bind(
     SocketAddress address(ipAddress.toFullyQualified(), port);
     auto fd = createSocket(address.getFamily());
 
-    bindSocket(fd, address, !sockets_.empty());
+    bindSocket(fd, address, false);
   }
   if (sockets_.size() == 0) {
     throw std::runtime_error(
