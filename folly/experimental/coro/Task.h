@@ -318,6 +318,15 @@ class FOLLY_NODISCARD TaskWithExecutor {
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);
       DCHECK(promise.executor_);
+      DCHECK(!dynamic_cast<folly::InlineExecutor*>(promise.executor_.get()))
+          << "InlineExecutor is not safe and is not supported for coro::Task. "
+          << "If you need to run a task inline in a unit-test, you should use "
+          << "coro::blockingWait instead.";
+      DCHECK(!dynamic_cast<folly::QueuedImmediateExecutor*>(
+          promise.executor_.get()))
+          << "QueuedImmediateExecutor is not safe and is not supported for coro::Task. "
+          << "If you need to run a task inline in a unit-test, you should use "
+          << "coro::blockingWait instead.";
 
       promise.continuation_ = continuation;
       promise.executor_->add(

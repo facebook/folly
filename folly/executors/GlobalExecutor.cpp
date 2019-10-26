@@ -67,10 +67,18 @@ class GlobalExecutor {
   Function<std::unique_ptr<ExecutorBase>()> constructDefault_;
 };
 
+// aka InlineExecutor
+class DefaultCPUExecutor : public Executor {
+ public:
+  FOLLY_NOINLINE void add(Func f) override {
+    f();
+  }
+};
+
 Singleton<GlobalExecutor<Executor>> gGlobalCPUExecutor([] {
   return new GlobalExecutor<Executor>(
       // Default global CPU executor is an InlineExecutor.
-      [] { return std::make_unique<InlineExecutor>(); });
+      [] { return std::make_unique<DefaultCPUExecutor>(); });
 });
 
 Singleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
