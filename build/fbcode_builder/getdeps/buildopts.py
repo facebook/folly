@@ -179,6 +179,14 @@ class BuildOptions(object):
         else:
             env = Env()
 
+        if self.fbsource_dir:
+            env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
+                self.fbsource_dir, "xplat/third-party/yarn/offline-mirror"
+            )
+            env["YARN_PATH"] = os.path.join(
+                self.fbsource_dir, "xplat/third-party/yarn/yarn"
+            )
+
         lib_path = None
         if self.is_darwin():
             lib_path = "DYLD_LIBRARY_PATH"
