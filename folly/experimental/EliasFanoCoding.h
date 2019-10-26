@@ -360,9 +360,10 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   }
 
   void reset() {
-    block_ = start_ != nullptr ? folly::loadUnaligned<block_t>(start_) : 0;
-    position_ = std::numeric_limits<SizeType>::max();
-    outer_ = 0;
+    // Pretend the bitvector is prefixed by a block of zeroes.
+    block_ = 0;
+    position_ = static_cast<SizeType>(-1);
+    outer_ = static_cast<OuterType>(-sizeof(block_t));
     value_ = 0;
   }
 
@@ -754,8 +755,7 @@ class EliasFanoReader {
 
  private:
   // Must hold kInvalidValue + 1 == 0.
-  constexpr static ValueType kInvalidValue =
-      std::numeric_limits<ValueType>::max();
+  constexpr static ValueType kInvalidValue = -1;
 
   bool setDone() {
     value_ = kInvalidValue;
