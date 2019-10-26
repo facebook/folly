@@ -58,6 +58,7 @@ struct EliasFanoCompressedListBase {
       const EliasFanoCompressedListBase<OtherPointer>& other)
       : size(other.size),
         numLowerBits(other.numLowerBits),
+        upperSizeBytes(other.upperSizeBytes),
         data(other.data),
         skipPointers(reinterpret_cast<Pointer>(other.skipPointers)),
         forwardPointers(reinterpret_cast<Pointer>(other.forwardPointers)),
@@ -69,15 +70,13 @@ struct EliasFanoCompressedListBase {
     return ::free(data.data());
   }
 
-  size_t upperSize() const {
-    return size_t(data.end() - upper);
-  }
-
   size_t size = 0;
   uint8_t numLowerBits = 0;
+  size_t upperSizeBytes = 0;
 
-  // WARNING: EliasFanoCompressedList has no ownership of data. The 7
-  // bytes following the last byte should be readable.
+  // WARNING: EliasFanoCompressedList has no ownership of data. The 7 bytes
+  // following the last byte should be readable if kUpperFirst = false, 8 bytes
+  // otherwise.
   folly::Range<Pointer> data;
 
   Pointer skipPointers = nullptr;
@@ -297,6 +296,7 @@ struct EliasFanoEncoderV2<
     EliasFanoCompressedListBase<typename Range::iterator> result;
     result.size = size;
     result.numLowerBits = numLowerBits;
+    result.upperSizeBytes = upper;
     result.data = buf.subpiece(0, bytes());
 
     auto advance = [&](size_t n) {
@@ -321,12 +321,12 @@ struct EliasFanoEncoderV2<
   MutableCompressedList allocList() const {
     uint8_t* buf = nullptr;
     // WARNING: Current read/write logic assumes that the 7 bytes
-    // following the last byte of lower and upper sequences are
-    // readable (stored value doesn't matter and won't be changed), so
-    // we allocate additional 7 bytes, but do not include them in size
-    // of returned value.
+    // following the upper bytes and the 8 bytes following the lower bytes
+    // sequences are readable (stored value doesn't matter and won't be
+    // changed), so we allocate additional 8 bytes, but do not include them in
+    // size of returned value.
     if (size > 0) {
-      buf = static_cast<uint8_t*>(malloc(bytes() + 7));
+      buf = static_cast<uint8_t*>(malloc(bytes() + 8));
     }
     folly::MutableByteRange bufRange(buf, bytes());
     return openList(bufRange);
@@ -604,8 +604,8 @@ class EliasFanoReader {
       lastValue_ = 0;
       return;
     }
-    ValueType lastUpperValue = ValueType(8 * list.upperSize() - size_);
-    auto it = list.upper + list.upperSize() - 1;
+    ValueType lastUpperValue = ValueType(8 * list.upperSizeBytes - size_);
+    auto it = list.upper + list.upperSizeBytes - 1;
     DCHECK_NE(*it, 0);
     lastUpperValue -= 8 - folly::findLastSet(*it);
     lastValue_ = readLowerPart(size_ - 1) | (lastUpperValue << numLowerBits_);

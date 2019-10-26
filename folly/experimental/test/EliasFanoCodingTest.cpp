@@ -90,13 +90,18 @@ class EliasFanoCodingTest : public ::testing::Test {
     testEmpty<Reader, Encoder>();
   }
 
-  template <size_t kSkipQuantum, size_t kForwardQuantum, class SizeType>
+  template <
+      size_t kSkipQuantum,
+      size_t kForwardQuantum,
+      class SizeType,
+      bool kUpperFirst>
   void doTestAll() {
     typedef EliasFanoEncoderV2<
         uint32_t,
         uint32_t,
         kSkipQuantum,
-        kForwardQuantum>
+        kForwardQuantum,
+        kUpperFirst>
         Encoder;
     using Reader =
         EliasFanoReader<Encoder, instructions::Default, false, SizeType>;
@@ -111,23 +116,31 @@ TEST_F(EliasFanoCodingTest, Empty) {
 }
 
 TEST_F(EliasFanoCodingTest, Simple) {
-  doTestAll<0, 0, uint32_t>();
-  doTestAll<0, 0, size_t>();
+  doTestAll<0, 0, uint32_t, false>();
+  doTestAll<0, 0, uint32_t, true>();
+  doTestAll<0, 0, size_t, false>();
+  doTestAll<0, 0, size_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipPointers) {
-  doTestAll<128, 0, uint32_t>();
-  doTestAll<128, 0, size_t>();
+  doTestAll<128, 0, uint32_t, false>();
+  doTestAll<128, 0, uint32_t, true>();
+  doTestAll<128, 0, size_t, false>();
+  doTestAll<128, 0, size_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, ForwardPointers) {
-  doTestAll<0, 128, uint32_t>();
-  doTestAll<0, 128, size_t>();
+  doTestAll<0, 128, uint32_t, false>();
+  doTestAll<0, 128, uint32_t, true>();
+  doTestAll<0, 128, size_t, false>();
+  doTestAll<0, 128, size_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
-  doTestAll<128, 128, uint32_t>();
-  doTestAll<128, 128, size_t>();
+  doTestAll<128, 128, uint32_t, false>();
+  doTestAll<128, 128, uint32_t, true>();
+  doTestAll<128, 128, size_t, false>();
+  doTestAll<128, 128, size_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
