@@ -507,6 +507,7 @@ if __name__ == "__main__":
                 "--test-config",
                 "platform=%s" % machine_suffix,
                 "buildsystem=getdeps",
+                "--print-long-results",
             ]
 
             if owner:
