@@ -328,10 +328,8 @@ struct free_invoke_proxy {
 #define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)    \
   namespace classname##__folly_detail_invoke_ns {                    \
     namespace __folly_detail_invoke_base {                           \
-    FOLLY_PUSH_WARNING                                               \
-    FOLLY_CLANG_DISABLE_WARNING("-Wunused-function")                 \
-    void funcname(::folly::detail::invoke_private_overload&);        \
-    FOLLY_POP_WARNING                                                \
+    FOLLY_MAYBE_UNUSED void funcname(                                \
+        ::folly::detail::invoke_private_overload&);                  \
     }                                                                \
     using FB_ARG_2_OR_1(                                             \
         __folly_detail_invoke_base FOLLY_PP_DETAIL_APPEND_VA_ARG(    \
