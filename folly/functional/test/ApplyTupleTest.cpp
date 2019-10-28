@@ -81,7 +81,6 @@ struct GuardObjBase {
   GuardObjBase(GuardObjBase const&) = delete;
   GuardObjBase& operator=(GuardObjBase const&) = delete;
 };
-typedef GuardObjBase const& Guard;
 
 template <class F, class Tuple>
 struct GuardObj : GuardObjBase {
