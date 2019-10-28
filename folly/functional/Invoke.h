@@ -327,16 +327,16 @@ struct free_invoke_proxy {
  */
 #define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)    \
   namespace classname##__folly_detail_invoke_ns {                    \
-    namespace classname##__folly_detail_invoke_ns_inline {           \
-      FOLLY_PUSH_WARNING                                             \
-      FOLLY_CLANG_DISABLE_WARNING("-Wunused-function")               \
-      void funcname(::folly::detail::invoke_private_overload&);      \
-      FOLLY_POP_WARNING                                              \
+    namespace __folly_detail_invoke_base {                           \
+    FOLLY_PUSH_WARNING                                               \
+    FOLLY_CLANG_DISABLE_WARNING("-Wunused-function")                 \
+    void funcname(::folly::detail::invoke_private_overload&);        \
+    FOLLY_POP_WARNING                                                \
     }                                                                \
     using FB_ARG_2_OR_1(                                             \
-        classname##__folly_detail_invoke_ns_inline                   \
-            FOLLY_PP_DETAIL_APPEND_VA_ARG(__VA_ARGS__))::funcname;   \
-    struct classname##__folly_detail_invoke {                        \
+        __folly_detail_invoke_base FOLLY_PP_DETAIL_APPEND_VA_ARG(    \
+            __VA_ARGS__))::funcname;                                 \
+    struct __folly_detail_invoke_obj {                               \
       template <typename... Args>                                    \
       constexpr auto operator()(Args&&... args) const                \
           noexcept(noexcept(funcname(static_cast<Args&&>(args)...))) \
@@ -345,9 +345,9 @@ struct free_invoke_proxy {
       }                                                              \
     };                                                               \
   }                                                                  \
-  struct classname : ::folly::detail::free_invoke_proxy<             \
-                         classname##__folly_detail_invoke_ns::       \
-                             classname##__folly_detail_invoke> {}
+  struct classname                                                   \
+      : ::folly::detail::free_invoke_proxy<                          \
+            classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj> {}
 
 namespace folly {
 namespace detail {
