@@ -24,12 +24,12 @@
 #include <system_error>
 
 #include <folly/CPortability.h>
-#include <folly/CachelinePadded.h>
 #include <folly/IndexedMemPool.h>
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/detail/StaticSingletonManager.h>
+#include <folly/lang/Aligned.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/SaturatingSemaphore.h>
@@ -367,7 +367,7 @@ template <typename Handoff, template <typename> class Atom = std::atomic>
 struct LifoSemBase {
   /// Constructor
   constexpr explicit LifoSemBase(uint32_t initialValue = 0)
-      : head_(LifoSemHead::fresh(initialValue)) {}
+      : head_(in_place, LifoSemHead::fresh(initialValue)) {}
 
   LifoSemBase(LifoSemBase const&) = delete;
   LifoSemBase& operator=(LifoSemBase const&) = delete;
@@ -656,7 +656,7 @@ struct LifoSemBase {
   }
 
  private:
-  CachelinePadded<folly::AtomicStruct<LifoSemHead, Atom>> head_;
+  cacheline_aligned<folly::AtomicStruct<LifoSemHead, Atom>> head_;
 
   static LifoSemNode<Handoff, Atom>& idxToNode(uint32_t idx) {
     auto raw = &LifoSemRawNode<Atom>::pool()[idx];
