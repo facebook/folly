@@ -93,21 +93,25 @@ class EliasFanoCodingTest : public ::testing::Test {
   template <
       size_t kSkipQuantum,
       size_t kForwardQuantum,
-      class SizeType,
+      class ValueType,
       bool kUpperFirst>
   void doTestAll() {
+    // SkipValueType and SizeType could both be narrower than ValueType, but
+    // testing all combinations would be slow, so assume they are all the same.
     typedef EliasFanoEncoderV2<
-        uint32_t,
-        uint32_t,
+        ValueType,
+        ValueType,
         kSkipQuantum,
         kForwardQuantum,
         kUpperFirst>
         Encoder;
-    using Reader =
-        EliasFanoReader<Encoder, instructions::Default, false, SizeType>;
+    using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
     testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
+    // max() cannot be read, as it is assumed an invalid value.
+    // TODO(ott): It should be possible to lift this constraint.
+    testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max() - 1});
   }
 };
 
@@ -118,29 +122,29 @@ TEST_F(EliasFanoCodingTest, Empty) {
 TEST_F(EliasFanoCodingTest, Simple) {
   doTestAll<0, 0, uint32_t, false>();
   doTestAll<0, 0, uint32_t, true>();
-  doTestAll<0, 0, size_t, false>();
-  doTestAll<0, 0, size_t, true>();
+  doTestAll<0, 0, uint64_t, false>();
+  doTestAll<0, 0, uint64_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipPointers) {
   doTestAll<128, 0, uint32_t, false>();
   doTestAll<128, 0, uint32_t, true>();
-  doTestAll<128, 0, size_t, false>();
-  doTestAll<128, 0, size_t, true>();
+  doTestAll<128, 0, uint64_t, false>();
+  doTestAll<128, 0, uint64_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, ForwardPointers) {
   doTestAll<0, 128, uint32_t, false>();
   doTestAll<0, 128, uint32_t, true>();
-  doTestAll<0, 128, size_t, false>();
-  doTestAll<0, 128, size_t, true>();
+  doTestAll<0, 128, uint64_t, false>();
+  doTestAll<0, 128, uint64_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
   doTestAll<128, 128, uint32_t, false>();
   doTestAll<128, 128, uint32_t, true>();
-  doTestAll<128, 128, size_t, false>();
-  doTestAll<128, 128, size_t, true>();
+  doTestAll<128, 128, uint64_t, false>();
+  doTestAll<128, 128, uint64_t, true>();
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876
@@ -171,11 +175,11 @@ namespace bm {
 
 typedef EliasFanoEncoderV2<uint32_t, uint32_t, 128, 128> Encoder;
 
-std::vector<uint32_t> data;
+std::vector<uint64_t> data;
 std::vector<size_t> order;
 
-std::vector<uint32_t> encodeSmallData;
-std::vector<uint32_t> encodeLargeData;
+std::vector<uint64_t> encodeSmallData;
+std::vector<uint64_t> encodeLargeData;
 
 std::vector<std::pair<size_t, size_t>> numLowerBitsInput;
 

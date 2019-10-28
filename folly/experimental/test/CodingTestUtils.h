@@ -36,43 +36,43 @@ namespace folly {
 namespace compression {
 
 template <class URNG>
-std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId, URNG&& g) {
+std::vector<uint64_t> generateRandomList(size_t n, uint64_t maxId, URNG&& g) {
   CHECK_LT(n, 2 * maxId);
-  std::uniform_int_distribution<> uid(1, maxId);
-  std::unordered_set<uint32_t> dataset;
+  std::uniform_int_distribution<uint64_t> uid(1, maxId);
+  std::unordered_set<uint64_t> dataset;
   while (dataset.size() < n) {
-    uint32_t value = uid(g);
+    uint64_t value = uid(g);
     if (dataset.count(value) == 0) {
       dataset.insert(value);
     }
   }
 
-  std::vector<uint32_t> ids(dataset.begin(), dataset.end());
+  std::vector<uint64_t> ids(dataset.begin(), dataset.end());
   std::sort(ids.begin(), ids.end());
   return ids;
 }
 
-inline std::vector<uint32_t> generateRandomList(size_t n, uint32_t maxId) {
+inline std::vector<uint64_t> generateRandomList(size_t n, uint64_t maxId) {
   std::mt19937 gen;
   return generateRandomList(n, maxId, gen);
 }
 
-inline std::vector<uint32_t>
-generateSeqList(uint32_t minId, uint32_t maxId, uint32_t step = 1) {
+inline std::vector<uint64_t>
+generateSeqList(uint64_t minId, uint64_t maxId, uint64_t step = 1) {
   CHECK_LE(minId, maxId);
   CHECK_GT(step, 0);
-  std::vector<uint32_t> ids;
+  std::vector<uint64_t> ids;
   ids.reserve((maxId - minId) / step + 1);
-  for (uint32_t i = minId; i <= maxId; i += step) {
+  for (uint64_t i = minId; i <= maxId; i += step) {
     ids.push_back(i);
   }
   return ids;
 }
 
-inline std::vector<uint32_t> loadList(const std::string& filename) {
+inline std::vector<uint64_t> loadList(const std::string& filename) {
   std::ifstream fin(filename);
-  std::vector<uint32_t> result;
-  uint32_t id;
+  std::vector<uint64_t> result;
+  uint64_t id;
   while (fin >> id) {
     result.push_back(id);
   }
@@ -116,7 +116,7 @@ auto maybeTestPrevious(const Vector& data, Reader& reader, Index i)
 }
 
 template <class Reader, class List>
-void testNext(const std::vector<uint32_t>& data, const List& list) {
+void testNext(const std::vector<uint64_t>& data, const List& list) {
   Reader reader(list);
   EXPECT_FALSE(reader.valid());
 
@@ -135,7 +135,7 @@ void testNext(const std::vector<uint32_t>& data, const List& list) {
 
 template <class Reader, class List>
 void testSkip(
-    const std::vector<uint32_t>& data,
+    const std::vector<uint64_t>& data,
     const List& list,
     size_t skipStep) {
   CHECK_GT(skipStep, 0);
@@ -156,7 +156,7 @@ void testSkip(
 }
 
 template <class Reader, class List>
-void testSkip(const std::vector<uint32_t>& data, const List& list) {
+void testSkip(const std::vector<uint64_t>& data, const List& list) {
   for (size_t skipStep = 1; skipStep < 25; ++skipStep) {
     testSkip<Reader, List>(data, list, skipStep);
   }
@@ -167,14 +167,16 @@ void testSkip(const std::vector<uint32_t>& data, const List& list) {
 
 template <class Reader, class List>
 void testSkipTo(
-    const std::vector<uint32_t>& data,
+    const std::vector<uint64_t>& data,
     const List& list,
     size_t skipToStep) {
+  using ValueType = typename Reader::ValueType;
+
   CHECK_GT(skipToStep, 0);
   Reader reader(list);
 
-  const uint32_t delta = std::max<uint32_t>(1, data.back() / skipToStep);
-  uint32_t value = delta;
+  const uint64_t delta = std::max<uint64_t>(1, data.back() / skipToStep);
+  ValueType value = delta;
   auto it = data.begin();
   while (true) {
     it = std::lower_bound(it, data.end(), value);
@@ -186,9 +188,13 @@ void testSkipTo(
     EXPECT_TRUE(reader.valid());
     EXPECT_EQ(reader.value(), *it);
     EXPECT_EQ(reader.position(), std::distance(data.begin(), it));
-    value = reader.value() + delta;
     maybeTestPreviousValue(data, reader, std::distance(data.begin(), it));
     maybeTestPrevious(data, reader, std::distance(data.begin(), it));
+
+    value = reader.value() + delta;
+    if (value < reader.value()) { // Wrapped around.
+      value = reader.value() + 1;  // Can't be kInvalidValue.
+    }
   }
   EXPECT_FALSE(reader.valid());
   EXPECT_EQ(reader.position(), reader.size());
@@ -196,7 +202,7 @@ void testSkipTo(
 }
 
 template <class Reader, class List>
-void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
+void testSkipTo(const std::vector<uint64_t>& data, const List& list) {
   for (size_t steps = 10; steps < 100; steps += 10) {
     testSkipTo<Reader, List>(data, list, steps);
   }
@@ -231,7 +237,7 @@ void testSkipTo(const std::vector<uint32_t>& data, const List& list) {
 }
 
 template <class Reader, class List>
-void testJump(const std::vector<uint32_t>& data, const List& list) {
+void testJump(const std::vector<uint64_t>& data, const List& list) {
   std::mt19937 gen;
   std::vector<size_t> is(data.size());
   for (size_t i = 0; i < data.size(); ++i) {
@@ -256,16 +262,17 @@ void testJump(const std::vector<uint32_t>& data, const List& list) {
 }
 
 template <class Reader, class List>
-void testJumpTo(const std::vector<uint32_t>& data, const List& list) {
-  CHECK(!data.empty());
+void testJumpTo(const std::vector<uint64_t>& data, const List& list) {
+  using ValueType = typename Reader::ValueType;
 
+  CHECK(!data.empty());
   Reader reader(list);
 
   std::mt19937 gen;
-  std::uniform_int_distribution<> values(0, data.back());
+  std::uniform_int_distribution<ValueType> values(0, data.back());
   const size_t iters = Reader::EncoderType::skipQuantum == 0 ? 100 : 10000;
   for (size_t i = 0; i < iters; ++i) {
-    const uint32_t value = values(gen);
+    const uint64_t value = values(gen);
     auto it = std::lower_bound(data.begin(), data.end(), value);
     CHECK(it != data.end());
     EXPECT_TRUE(reader.jumpTo(value));
@@ -310,7 +317,7 @@ void testEmpty() {
 }
 
 template <class Reader, class Encoder>
-void testAll(const std::vector<uint32_t>& data) {
+void testAll(const std::vector<uint64_t>& data) {
   auto list = Encoder::encode(data.begin(), data.end());
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
@@ -321,7 +328,7 @@ void testAll(const std::vector<uint32_t>& data) {
 }
 
 template <class Reader, class List>
-void bmNext(const List& list, const std::vector<uint32_t>& data, size_t iters) {
+void bmNext(const List& list, const std::vector<uint64_t>& data, size_t iters) {
   if (data.empty()) {
     return;
   }
@@ -339,7 +346,7 @@ void bmNext(const List& list, const std::vector<uint32_t>& data, size_t iters) {
 template <class Reader, class List>
 void bmSkip(
     const List& list,
-    const std::vector<uint32_t>& /* data */,
+    const std::vector<uint64_t>& /* data */,
     size_t logAvgSkip,
     size_t iters) {
   size_t avg = (size_t(1) << logAvgSkip);
@@ -360,7 +367,7 @@ void bmSkip(
 template <class Reader, class List>
 void bmSkipTo(
     const List& list,
-    const std::vector<uint32_t>& data,
+    const std::vector<uint64_t>& data,
     size_t logAvgSkip,
     size_t iters) {
   size_t avg = (size_t(1) << logAvgSkip);
@@ -384,7 +391,7 @@ void bmSkipTo(
 template <class Reader, class List>
 void bmJump(
     const List& list,
-    const std::vector<uint32_t>& data,
+    const std::vector<uint64_t>& data,
     const std::vector<size_t>& order,
     size_t iters) {
   CHECK(!data.empty());
@@ -403,7 +410,7 @@ void bmJump(
 template <class Reader, class List>
 void bmJumpTo(
     const List& list,
-    const std::vector<uint32_t>& data,
+    const std::vector<uint64_t>& data,
     const std::vector<size_t>& order,
     size_t iters) {
   CHECK(!data.empty());

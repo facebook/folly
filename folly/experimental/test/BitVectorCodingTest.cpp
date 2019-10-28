@@ -69,11 +69,11 @@ namespace bm {
 
 typedef BitVectorEncoder<uint32_t, uint32_t, 128, 128> Encoder;
 
-std::vector<uint32_t> data;
+std::vector<uint64_t> data;
 std::vector<size_t> order;
 
-std::vector<uint32_t> encodeSmallData;
-std::vector<uint32_t> encodeLargeData;
+std::vector<uint64_t> encodeSmallData;
+std::vector<uint64_t> encodeLargeData;
 
 typename Encoder::MutableCompressedList list;
 

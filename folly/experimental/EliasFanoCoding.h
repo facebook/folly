@@ -90,7 +90,8 @@ typedef EliasFanoCompressedListBase<uint8_t*> MutableEliasFanoCompressedList;
 
 template <
     class Value,
-    class SkipValue = size_t,
+    // SkipValue must be wide enough to be able to represent the list length.
+    class SkipValue = uint64_t,
     size_t kSkipQuantum = 0, // 0 = disabled
     size_t kForwardQuantum = 0, // 0 = disabled
     bool kUpperFirst = false>
@@ -577,14 +578,17 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
 } // namespace detail
 
-// If kUnchecked = true the caller must guarantee that all the
-// operations return valid elements, i.e., they would never return
-// false if checked.
+// If kUnchecked = true the caller must guarantee that all the operations return
+// valid elements, i.e., they would never return false if checked.
+//
+// If the list length is known to be representable with a type narrower than the
+// SkipValueType used in the format, the reader footprint can be reduced by
+// passing the type as SizeType.
 template <
     class Encoder,
     class Instructions = instructions::Default,
     bool kUnchecked = false,
-    class SizeType = size_t>
+    class SizeType = typename Encoder::SkipValueType>
 class EliasFanoReader {
  public:
   typedef Encoder EncoderType;
