@@ -168,6 +168,45 @@ constexpr bool is_instantiation_of_v = is_instantiation_of<C, T>::value;
 
 } // namespace detail
 
+namespace detail {
+
+template <bool, typename T>
+struct is_constexpr_default_constructible_;
+template <typename T>
+struct is_constexpr_default_constructible_<false, T> {
+  using type = std::false_type;
+};
+template <typename T>
+struct is_constexpr_default_constructible_<true, T> {
+  static constexpr int take(T) {
+    return 0;
+  }
+  template <int = take(T{})>
+  static std::true_type sfinae(int);
+  static std::false_type sfinae(...);
+  using type = decltype(sfinae(0));
+};
+
+} // namespace detail
+
+//  is_constexpr_default_constructible
+//  is_constexpr_default_constructible_v
+//
+//  A type trait, with associated variable template, which determines whether
+//  its type parameter is constexpr default-constructible, that is, default-
+//  constructible in a constexpr context.
+//
+//  Instantiations of is_constexpr_default_constructible unambiguously inherit
+//  std::integral_constant<bool, V> for some bool V.
+template <typename T>
+struct is_constexpr_default_constructible
+    : detail::is_constexpr_default_constructible_<
+          std::is_default_constructible<T>::value,
+          T>::type {};
+template <typename T>
+FOLLY_INLINE_VARIABLE constexpr bool is_constexpr_default_constructible_v =
+    is_constexpr_default_constructible<T>::value;
+
 /***
  *  _t
  *

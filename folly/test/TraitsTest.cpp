@@ -401,3 +401,32 @@ TEST(Traits, is_instantiation_of) {
   EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
 }
+
+TEST(Traits, is_constexpr_default_constructible) {
+  EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
+
+  struct Empty {};
+  EXPECT_TRUE(is_constexpr_default_constructible_v<Empty>);
+
+  struct NonTrivialDtor {
+    ~NonTrivialDtor() {}
+  };
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
+
+  struct ConstexprCtor {
+    int x, y;
+    constexpr ConstexprCtor() noexcept : x(7), y(11) {}
+  };
+  EXPECT_TRUE(is_constexpr_default_constructible_v<ConstexprCtor>);
+
+  struct NonConstexprCtor {
+    int x, y;
+    NonConstexprCtor() noexcept : x(7), y(11) {}
+  };
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonConstexprCtor>);
+
+  struct NoDefaultCtor {
+    constexpr NoDefaultCtor(int, int) noexcept {}
+  };
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NoDefaultCtor>);
+}
