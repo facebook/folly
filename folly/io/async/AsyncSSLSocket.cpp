@@ -1450,9 +1450,6 @@ AsyncSocket::WriteResult AsyncSSLSocket::interpretSSLError(int rc, int error) {
         WRITE_ERROR,
         std::make_unique<SSLException>(SSLError::INVALID_RENEGOTIATION));
   } else {
-    if (zero_return(error, rc, errno)) {
-      return WriteResult(0);
-    }
     auto errError = ERR_get_error();
     VLOG(3) << "ERROR: AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
@@ -1589,10 +1586,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
         *partialWritten = uint32_t(offset);
         return WriteResult(totalWritten);
       }
-      auto writeResult = interpretSSLError(int(bytes), error);
-      if (writeResult.writeReturn < 0) {
-        return writeResult;
-      } // else fall through to below to correctly record totalWritten
+      return interpretSSLError(int(bytes), error);
     }
 
     totalWritten += bytes;

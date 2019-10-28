@@ -389,7 +389,9 @@ class ReadCallback : public ReadCallbackBase {
 
     currentBuffer.length = len;
 
-    wcb_->setSocket(socket_);
+    if (wcb_) {
+      wcb_->setSocket(socket_);
+    }
 
     // Write back the same data.
     socket_->write(wcb_, currentBuffer.buffer, len, writeFlags);
