@@ -199,10 +199,10 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
   if (pthread_equal(pthread_self(), id)) {
     return 0 == prctl(PR_SET_NAME, buf, 0L, 0L, 0L);
   }
-#else
+#endif
+
   (void)id;
   return false;
-#endif
 #endif
 }
 
