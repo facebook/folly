@@ -106,9 +106,8 @@ class BasicDynamicTokenBucket {
    * Returns the current time in seconds since Epoch.
    */
   static double defaultClockNow() noexcept {
-    using dur = std::chrono::duration<double>;
     auto const now = Clock::now().time_since_epoch();
-    return std::chrono::duration_cast<dur>(now).count();
+    return std::chrono::duration<double>(now).count();
   }
 
   /**
