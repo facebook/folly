@@ -33,19 +33,17 @@ class CompressionContextPool {
    public:
     using Pool = CompressionContextPool<T, Creator, Deleter>;
 
-    explicit ReturnToPoolDeleter(Pool* pool, const Deleter& deleter)
-        : pool_(pool), deleter_(deleter) {}
+    explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) {
+      DCHECK(pool);
+    }
 
     void operator()(T* t) {
-      InternalRef ptr(t, deleter_);
-      if (pool_ != nullptr) {
-        pool_->add(std::move(ptr));
-      }
+      InternalRef ptr(t, pool_->deleter_);
+      pool_->add(std::move(ptr));
     }
 
    private:
     Pool* pool_;
-    Deleter deleter_;
   };
 
  public:
@@ -68,6 +66,10 @@ class CompressionContextPool {
     }
     auto ptr = std::move(stack->back());
     stack->pop_back();
+    if (!ptr) {
+      throw_exception<std::logic_error>(
+          "A nullptr snuck into our context pool!?!?");
+    }
     return Ref(ptr.release(), get_deleter());
   }
 
@@ -76,7 +78,7 @@ class CompressionContextPool {
   }
 
   ReturnToPoolDeleter get_deleter() {
-    return ReturnToPoolDeleter(this, deleter_);
+    return ReturnToPoolDeleter(this);
   }
 
  private:

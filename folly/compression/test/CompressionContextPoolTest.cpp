@@ -39,6 +39,13 @@ struct FooCreator {
   }
 };
 
+struct BadFooCreator {
+  Foo* operator()() {
+    numFoos++;
+    return nullptr;
+  }
+};
+
 struct FooDeleter {
   void operator()(Foo* f) {
     numDeleted++;
@@ -47,6 +54,7 @@ struct FooDeleter {
 };
 
 using Pool = CompressionContextPool<Foo, FooCreator, FooDeleter>;
+using BadPool = CompressionContextPool<Foo, BadFooCreator, FooDeleter>;
 
 } // anonymous namespace
 
@@ -164,6 +172,11 @@ TEST_F(CompressionContextPoolTest, testMultithread) {
 
   EXPECT_LE(numFoos.load(), numThreads);
   EXPECT_LE(numDeleted.load(), 0);
+}
+
+TEST_F(CompressionContextPoolTest, testBadCreate) {
+  BadPool pool;
+  EXPECT_THROW(pool.get(), std::bad_alloc);
 }
 } // namespace compression
 } // namespace folly
