@@ -38,6 +38,7 @@ namespace folly {
 extern const char* kTestCert;
 extern const char* kTestKey;
 extern const char* kTestCA;
+extern const char* kTestCertCN;
 
 extern const char* kClientTestCert;
 extern const char* kClientTestKey;

@@ -718,10 +718,22 @@ bool AsyncSSLSocket::needsPeerVerification() const {
       verifyPeer_ == SSLContext::SSLVerifyPeerEnum::VERIFY_REQ_CLIENT_CERT);
 }
 
-void AsyncSSLSocket::applyVerificationOptions(const ssl::SSLUniquePtr& ssl) {
+bool AsyncSSLSocket::applyVerificationOptions(const ssl::SSLUniquePtr& ssl) {
   // apply the settings specified in verifyPeer_
   if (verifyPeer_ == SSLContext::SSLVerifyPeerEnum::USE_CTX) {
     if (ctx_->needsPeerVerification()) {
+      if (ctx_->checkPeerName()) {
+        std::string peerNameToVerify = !ctx_->peerFixedName().empty()
+            ? ctx_->peerFixedName()
+            : tlsextHostname_;
+
+        X509_VERIFY_PARAM* param = SSL_get0_param(ssl.get());
+        if (!X509_VERIFY_PARAM_set1_host(
+                param, peerNameToVerify.c_str(), peerNameToVerify.length())) {
+          return false;
+        }
+      }
+
       SSL_set_verify(
           ssl.get(),
           ctx_->getVerificationMode(),
@@ -736,6 +748,8 @@ void AsyncSSLSocket::applyVerificationOptions(const ssl::SSLUniquePtr& ssl) {
           AsyncSSLSocket::sslVerifyCallback);
     }
   }
+
+  return true;
 }
 
 bool AsyncSSLSocket::setupSSLBio() {
@@ -795,7 +809,13 @@ void AsyncSSLSocket::sslConn(
     return failHandshake(__func__, *ex);
   }
 
-  applyVerificationOptions(ssl_);
+  if (!applyVerificationOptions(ssl_)) {
+    sslState_ = STATE_ERROR;
+    static const Indestructible<AsyncSocketException> ex(
+        AsyncSocketException::INTERNAL_ERROR,
+        "error applying the SSL verification options");
+    return failHandshake(__func__, *ex);
+  }
 
   if (sslSession_ != nullptr) {
     sessionResumptionAttempted_ = true;
@@ -1125,7 +1145,13 @@ void AsyncSSLSocket::handleAccept() noexcept {
 
     SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
 
-    applyVerificationOptions(ssl_);
+    if (!applyVerificationOptions(ssl_)) {
+      sslState_ = STATE_ERROR;
+      static const Indestructible<AsyncSocketException> ex(
+          AsyncSocketException::INTERNAL_ERROR,
+          "error applying the SSL verification options");
+      return failHandshake(__func__, *ex);
+    }
   }
 
   if (server_ && parseClientHello_) {
@@ -1761,6 +1787,7 @@ int AsyncSSLSocket::sslVerifyCallback(
 
   VLOG(3) << "AsyncSSLSocket::sslVerifyCallback() this=" << self << ", "
           << "fd=" << self->fd_ << ", preverifyOk=" << preverifyOk;
+
   return (self->handshakeCallback_)
       ? self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx)
       : preverifyOk;

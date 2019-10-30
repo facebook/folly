@@ -839,7 +839,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * applied. If verifyPeer_ was explicitly set either via sslConn/sslAccept,
    * those options override the settings in the underlying SSLContext.
    */
-  void applyVerificationOptions(const ssl::SSLUniquePtr& ssl);
+  bool applyVerificationOptions(const ssl::SSLUniquePtr& ssl);
 
   /**
    * Sets up SSL with a custom write bio which intercepts all writes.

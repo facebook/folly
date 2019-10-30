@@ -21,6 +21,7 @@ namespace folly {
 const char* kTestCert = "folly/io/async/test/certs/tests-cert.pem";
 const char* kTestKey = "folly/io/async/test/certs/tests-key.pem";
 const char* kTestCA = "folly/io/async/test/certs/ca-cert.pem";
+const char* kTestCertCN = "Asox Company";
 
 const char* kClientTestCert = "folly/io/async/test/certs/client_cert.pem";
 const char* kClientTestKey = "folly/io/async/test/certs/client_key.pem";

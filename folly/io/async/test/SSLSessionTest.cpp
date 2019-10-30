@@ -45,6 +45,7 @@ void getctx(
     std::shared_ptr<folly::SSLContext> clientCtx,
     std::shared_ptr<folly::SSLContext> serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadTrustedCertificates(kTestCA);
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
@@ -184,5 +185,71 @@ TEST_F(SSLSessionTest, GetSessionID) {
   ASSERT_NE(sess, nullptr);
   auto sessID = sess->getSessionID();
   ASSERT_GE(sessID.length(), 0);
+}
+
+TEST_F(SSLSessionTest, ServerAuthWithPeerName) {
+  NetworkSocket fds[2];
+  getfds(fds);
+  clientCtx->authenticate(true, true, std::string(kTestCertCN));
+  clientCtx->setVerificationOption(
+      folly::SSLContext::SSLVerifyPeerEnum::VERIFY);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+  auto clientPtr = clientSock.get();
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServerParseClientHello server(
+      std::move(serverSock), false, false);
+
+  eventBase.loop();
+  ASSERT_TRUE(client.handshakeVerify_);
+  ASSERT_TRUE(client.handshakeSuccess_);
+  ASSERT_FALSE(client.handshakeError_);
+
+  std::unique_ptr<SSLSession> sess =
+      std::make_unique<SSLSession>(clientPtr->getSSLSession());
+  ASSERT_NE(sess, nullptr);
+}
+
+TEST_F(SSLSessionTest, ServerAuth_MismatchedPeerName) {
+  NetworkSocket fds[2];
+  getfds(fds);
+  clientCtx->authenticate(true, true, "foo");
+  clientCtx->setVerificationOption(
+      folly::SSLContext::SSLVerifyPeerEnum::VERIFY);
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+  SSLHandshakeClient client(std::move(clientSock), false, false);
+  SSLHandshakeServerParseClientHello server(
+      std::move(serverSock), false, false);
+
+  eventBase.loop();
+  ASSERT_TRUE(client.handshakeVerify_);
+  ASSERT_FALSE(client.handshakeSuccess_);
+  ASSERT_TRUE(client.handshakeError_);
+}
+
+TEST_F(SSLSessionTest, ServerAuth_MismatchedServerName) {
+  NetworkSocket fds[2];
+  getfds(fds);
+  clientCtx->authenticate(true, true);
+  clientCtx->setVerificationOption(
+      folly::SSLContext::SSLVerifyPeerEnum::VERIFY);
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
+  SSLHandshakeClient client(std::move(clientSock), false, false);
+  SSLHandshakeServerParseClientHello server(
+      std::move(serverSock), false, false);
+
+  eventBase.loop();
+  ASSERT_TRUE(client.handshakeVerify_);
+  ASSERT_FALSE(client.handshakeSuccess_);
+  ASSERT_TRUE(client.handshakeError_);
 }
 } // namespace folly
