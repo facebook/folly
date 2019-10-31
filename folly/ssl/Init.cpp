@@ -44,11 +44,16 @@ void initializeOpenSSLLocked() {
     // pointers to global resources.
     throw std::runtime_error("Failed to initialize OpenSSL.");
   }
+
+  // OpenSSL implicitly seeds its RNG since 1.1.0, so this call is unnecessary
+  // and is only here for compatibility with older versions of OpenSSL.
+#if !(FOLLY_OPENSSL_IS_110)
   if (RAND_poll() != 1) {
     // Similarly, if we fail to seed the RNG, future crypto operations
     // may no longer be safe to use; fail fast and hard here.
     throw std::runtime_error("Failed to initialize OpenSSL RNG.");
   }
+#endif
   initialized_ = true;
 }
 
