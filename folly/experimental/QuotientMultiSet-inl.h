@@ -288,7 +288,7 @@ uint64_t QuotientMultiSet<Instructions>::getBlockPayload(
 
 template <class Instructions>
 QuotientMultiSet<Instructions>::Iterator::Iterator(
-    QuotientMultiSet<Instructions>* qms)
+    const QuotientMultiSet<Instructions>* qms)
     : qms_(qms),
       key_(0),
       occBlockIndex_(-1),

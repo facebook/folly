@@ -176,7 +176,7 @@ class QuotientMultiSet final {
 template <class Instructions>
 class QuotientMultiSet<Instructions>::Iterator {
  public:
-  explicit Iterator(QuotientMultiSet<Instructions>* qms);
+  explicit Iterator(const QuotientMultiSet<Instructions>* qms);
 
   // Advance to the next key.
   bool next();
@@ -209,7 +209,7 @@ class QuotientMultiSet<Instructions>::Iterator {
   // Move to next occupied.
   bool nextOccupied();
 
-  QuotientMultiSet<Instructions>* qms_;
+  const QuotientMultiSet<Instructions>* qms_;
   uint64_t key_;
 
   // State members for the quotient occupied position.
