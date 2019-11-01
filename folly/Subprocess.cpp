@@ -558,7 +558,11 @@ int Subprocess::prepareChild(
 #endif
 
   if (options.processGroupLeader_) {
+#if !defined(__FreeBSD__)
     if (setpgrp() == -1) {
+#else
+    if (setpgrp(getpid(), getpgrp()) == -1) {
+#endif
       return errno;
     }
   }

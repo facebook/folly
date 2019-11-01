@@ -84,6 +84,10 @@ inline uint64_t getOSThreadID() {
   return tid;
 #elif defined(_WIN32)
   return uint64_t(GetCurrentThreadId());
+#elif defined(__FreeBSD__)
+  long tid;
+  thr_self(&tid);
+  return uint64_t(tid);
 #else
   return uint64_t(syscall(FOLLY_SYS_gettid));
 #endif

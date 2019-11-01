@@ -98,8 +98,6 @@ mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
 // are found in stdlib.h.
 #if __has_include(<malloc.h>)
 #include <malloc.h>
-#else
-#include <stdlib.h>
 #endif
 
 #include <cassert>

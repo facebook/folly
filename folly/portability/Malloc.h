@@ -30,7 +30,7 @@
 // malloc_usable_size, and that's what we should be using.
 #include <jemalloc/jemalloc.h> // @manual
 #else
-#ifndef __APPLE__
+#if __has_include(<malloc.h>)
 #include <malloc.h>
 #endif
 

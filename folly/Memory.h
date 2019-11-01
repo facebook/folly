@@ -53,11 +53,12 @@ inline void deallocateBytes(void* p, size_t n) {
 #endif
 }
 
-#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 || \
-    (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||   \
-    (defined(__APPLE__) &&                                \
-     (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 ||    \
-      __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0))
+#if _POSIX_C_SOURCE >= 200112L || _XOPEN_SOURCE >= 600 ||   \
+    (defined(__ANDROID__) && (__ANDROID_API__ > 16)) ||     \
+    (defined(__APPLE__) &&                                  \
+     (__MAC_OS_X_VERSION_MIN_REQUIRED >= __MAC_10_6 ||      \
+      __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0)) || \
+    defined(__FreeBSD__)
 
 inline void* aligned_malloc(size_t size, size_t align) {
   // use posix_memalign, but mimic the behaviour of memalign
