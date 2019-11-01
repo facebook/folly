@@ -37,11 +37,11 @@ void foo() {
   try {
     try {
       bar();
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       dumpExceptions("foo: simple catch");
       bar();
     }
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     dumpExceptions("foo: catch, exception thrown from previous catch block");
   }
 }
@@ -54,7 +54,7 @@ void foo() {
       dumpExceptions("baz: simple catch");
       throw;
     }
-  } catch (const std::exception& e) {
+  } catch (const std::exception&) {
     dumpExceptions("baz: catch rethrown exception");
     throw "hello";
   }

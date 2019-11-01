@@ -372,7 +372,7 @@ class ReadStats {
     size_t messageIndex = 0;
     try {
       parseMessage(msg, &threadID, &messageIndex);
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
       ++numUnableToParse_;
       XLOG(ERR, "unable to parse log message: ", msg);
       return;

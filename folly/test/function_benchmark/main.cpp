@@ -232,7 +232,7 @@ BENCHMARK(throw_exception, iters) {
   for (size_t n = 0; n < iters; ++n) {
     try {
       folly::throw_exception<Exception>("this is a test");
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
     }
   }
 }
@@ -241,7 +241,7 @@ BENCHMARK(catch_no_exception, iters) {
   for (size_t n = 0; n < iters; ++n) {
     try {
       doNothing();
-    } catch (const std::exception& ex) {
+    } catch (const std::exception&) {
     }
   }
 }

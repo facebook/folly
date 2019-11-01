@@ -327,7 +327,7 @@ TEST_F(LifoSemTest, shutdown_try_wait_for) {
       try {
         // this is normally 1 second in prod use case.
         stopped.try_wait_for(std::chrono::milliseconds(1));
-      } catch (folly::ShutdownSemError& e) {
+      } catch (folly::ShutdownSemError&) {
         LOG(INFO) << "try_wait_for shutdown";
       }
     }

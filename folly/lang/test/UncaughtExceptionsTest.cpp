@@ -54,7 +54,7 @@ TEST(UncaughtExceptions, no_uncaught_exception) {
   Validator validator(0, "no_uncaught_exception");
   try {
     throw std::runtime_error("exception");
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error&) {
     validator.validate();
   }
 }
@@ -63,7 +63,7 @@ TEST(UncaughtExceptions, one_uncaught_exception) {
   try {
     Validator validator(1, "one_uncaught_exception");
     throw std::runtime_error("exception");
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error&) {
   }
 }
 
@@ -73,12 +73,12 @@ TEST(UncaughtExceptions, catch_rethrow) {
     try {
       Validator validatorInner(1, "catch_rethrow_inner");
       throw std::runtime_error("exception");
-    } catch (const std::runtime_error& e) {
+    } catch (const std::runtime_error&) {
       EXPECT_EQ(0, folly::uncaught_exceptions());
       Validator validatorRethrow(1, "catch_rethrow");
       throw;
     }
-  } catch (const std::runtime_error& e) {
+  } catch (const std::runtime_error&) {
     EXPECT_EQ(0, folly::uncaught_exceptions());
   }
 }
@@ -114,7 +114,7 @@ struct ThrowInDestructor {
           N - I + 1, "validating in " + folly::to<std::string>(I));
       LOG(INFO) << "throwing in ~ThrowInDestructor " << I;
       throw std::logic_error("inner");
-    } catch (const std::logic_error& e) {
+    } catch (const std::logic_error&) {
       LOG(INFO) << "catching in ~ThrowInDestructor " << I << " expecting "
                 << N - I << ", it is " << folly::uncaught_exceptions();
       EXPECT_EQ(N - I, folly::uncaught_exceptions());

@@ -220,7 +220,7 @@ void throwAndCatchImpl() {
       .then([](Try<Unit>&& t) {
         try {
           t.value();
-        } catch (const std::runtime_error& e) {
+        } catch (const std::runtime_error&) {
           // ...
           return;
         }
@@ -255,7 +255,7 @@ void throwWrappedAndCatchImpl() {
       .then([](Try<Unit>&& t) {
         try {
           t.value();
-        } catch (const std::runtime_error& e) {
+        } catch (const std::runtime_error&) {
           // ...
           return;
         }

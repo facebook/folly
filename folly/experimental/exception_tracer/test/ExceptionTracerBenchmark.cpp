@@ -36,7 +36,7 @@ void loop(int iters) {
   for (int i = 0; i < iters * 100; ++i) {
     try {
       recurse(100);
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       folly::exception_tracer::getCurrentExceptions();
     }
   }

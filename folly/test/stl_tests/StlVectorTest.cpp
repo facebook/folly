@@ -2863,7 +2863,7 @@ STL_TEST("23.2.3 Table 100.12", at, is_destructible, a) {
   try {
     ca.at(ca.size());
     FAIL() << "at(size) should have thrown an error";
-  } catch (const std::out_of_range& e) {
+  } catch (const std::out_of_range&) {
   } catch (...) {
     FAIL() << "at(size) threw error other than out_of_range";
   }
@@ -2931,7 +2931,7 @@ STL_TEST("23.3.6.3", lengthError, is_move_constructible) {
   try {
     u.reserve(big);
     FAIL() << "reserve(big) should have thrown an error";
-  } catch (const std::length_error& e) {
+  } catch (const std::length_error&) {
   } catch (...) {
     FAIL() << "reserve(big) threw error other than length_error";
   }

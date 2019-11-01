@@ -311,7 +311,7 @@ TEST(ScopeGuard, TEST_SCOPE_FAIL_EXCEPTION_PTR) {
       ep = std::current_exception();
     }
     std::rethrow_exception(ep);
-  } catch (const std::exception& ex) {
+  } catch (const std::exception&) {
     catchExecuted = true;
   }
 

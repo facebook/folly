@@ -679,7 +679,7 @@ TEST(Conv, IntToDouble) {
   try {
     (void)to<float>(957837589847);
     ADD_FAILURE();
-  } catch (std::range_error& e) {
+  } catch (std::range_error&) {
     // LOG(INFO) << e.what();
   }
 }

@@ -2441,7 +2441,7 @@ TEST(FiberManager, swapWithException) {
   fm.addTask([&] {
     try {
       throw std::logic_error("test");
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       // Ok to call runInMainContext in exception unwinding
       runInMainContext([&] { done = true; });
     }
@@ -2453,7 +2453,7 @@ TEST(FiberManager, swapWithException) {
   fm.addTask([&] {
     try {
       throw std::logic_error("test");
-    } catch (const std::exception& e) {
+    } catch (const std::exception&) {
       Baton b;
       // Can't block during exception unwinding
       ASSERT_DEATH(b.try_wait_for(std::chrono::milliseconds(1)), "");
