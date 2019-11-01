@@ -1091,26 +1091,25 @@ Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
-  this->setCallback_(
-      [state = futures::detail::makeCoreCallbackState(
-           std::move(p), std::forward<F>(func))](
-          Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
-        if (auto ex = t.template tryGetExceptionObject<
-                      std::remove_reference_t<ExceptionType>>()) {
-          auto tf2 = state.tryInvoke(std::move(*ex));
-          if (tf2.hasException()) {
-            state.setException(std::move(ka), std::move(tf2.exception()));
-          } else {
-            tf2->setCallback_(
-                [p = state.stealPromise()](
-                    Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
-                  p.setTry(std::move(innerKA), std::move(t3));
-                });
-          }
-        } else {
-          state.setTry(std::move(ka), std::move(t));
-        }
-      });
+  this->setCallback_([state = futures::detail::makeCoreCallbackState(
+                          std::move(p), std::forward<F>(func))](
+                         Executor::KeepAlive<>&& ka, Try<T>&& t) mutable {
+    if (auto ex = t.template tryGetExceptionObject<
+                  std::remove_reference_t<ExceptionType>>()) {
+      auto tf2 = state.tryInvoke(std::move(*ex));
+      if (tf2.hasException()) {
+        state.setException(std::move(ka), std::move(tf2.exception()));
+      } else {
+        tf2->setCallback_(
+            [p = state.stealPromise()](
+                Executor::KeepAlive<>&& innerKA, Try<T>&& t3) mutable {
+              p.setTry(std::move(innerKA), std::move(t3));
+            });
+      }
+    } else {
+      state.setTry(std::move(ka), std::move(t));
+    }
+  });
 
   return std::move(sf).via(std::move(e));
 }
@@ -1881,9 +1880,8 @@ Future<I> Future<T>::reduce(I&& initial, F&& func) && {
 
 // unorderedReduce (iterator)
 
-// TODO(T26439406): Make return SemiFuture
 template <class It, class T, class F>
-Future<T> unorderedReduce(It first, It last, T initial, F func) {
+SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
   using ItF = typename std::iterator_traits<It>::value_type;
   using ItT = typename ItF::value_type;
   using Arg = MaybeTryArg<F, T, ItT>;
@@ -1922,6 +1920,9 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
           });
     }
   };
+
+  std::vector<futures::detail::DeferredWrapper> executors;
+  futures::detail::stealDeferredExecutors(executors, first, last);
 
   auto ctx = std::make_shared<Context>(
       std::move(initial), std::move(func), std::distance(first, last));
@@ -1965,7 +1966,24 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
       });
     });
   }
-  return ctx->promise_.getSemiFuture().via(&InlineExecutor::instance());
+
+  auto future = ctx->promise_.getSemiFuture();
+  if (!executors.empty()) {
+    future = std::move(future).defer(
+        [](Try<typename decltype(future)::value_type>&& t) {
+          return std::move(t).value();
+        });
+    const auto& deferredExecutor = futures::detail::getDeferredExecutor(future);
+    deferredExecutor->setNestedExecutors(std::move(executors));
+  }
+  return future;
+}
+
+template <class It, class T, class F>
+Future<T> unorderedReduce(It first, It last, T initial, F func) {
+  return unorderedReduceSemiFuture(
+             first, last, std::move(initial), std::move(func))
+      .via(&InlineExecutor::instance());
 }
 
 // within

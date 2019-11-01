@@ -139,26 +139,66 @@ TEST(Reduce, unorderedReduce) {
     p1.setValue(1);
     EXPECT_EQ(1.0, std::move(f).get());
   }
+  {
+    Promise<int> p1;
+    Promise<int> p2;
+    Promise<int> p3;
+
+    std::vector<SemiFuture<int>> fs;
+    fs.push_back(p1.getSemiFuture());
+    fs.push_back(p2.getSemiFuture());
+    fs.push_back(p3.getSemiFuture());
+
+    SemiFuture<double> f = unorderedReduceSemiFuture(
+        fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+          return double(b);
+        });
+    p3.setValue(3);
+    p2.setValue(2);
+    p1.setValue(1);
+    EXPECT_EQ(1.0, std::move(f).get());
+  }
 }
 
 TEST(Reduce, unorderedReduceException) {
-  Promise<int> p1;
-  Promise<int> p2;
-  Promise<int> p3;
+  {
+    Promise<int> p1;
+    Promise<int> p2;
+    Promise<int> p3;
 
-  std::vector<Future<int>> fs;
-  fs.push_back(p1.getFuture());
-  fs.push_back(p2.getFuture());
-  fs.push_back(p3.getFuture());
+    std::vector<Future<int>> fs;
+    fs.push_back(p1.getFuture());
+    fs.push_back(p2.getFuture());
+    fs.push_back(p3.getFuture());
 
-  Future<double> f =
-      unorderedReduce(fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
-        return b + 0.0;
-      });
-  p3.setValue(3);
-  p2.setException(exception_wrapper(std::runtime_error("blah")));
-  p1.setValue(1);
-  EXPECT_THROW(std::move(f).get(), std::runtime_error);
+    Future<double> f =
+        unorderedReduce(fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+          return b + 0.0;
+        });
+    p3.setValue(3);
+    p2.setException(exception_wrapper(std::runtime_error("blah")));
+    p1.setValue(1);
+    EXPECT_THROW(std::move(f).get(), std::runtime_error);
+  }
+  {
+    Promise<int> p1;
+    Promise<int> p2;
+    Promise<int> p3;
+
+    std::vector<SemiFuture<int>> fs;
+    fs.push_back(p1.getSemiFuture());
+    fs.push_back(p2.getSemiFuture());
+    fs.push_back(p3.getSemiFuture());
+
+    SemiFuture<double> f = unorderedReduceSemiFuture(
+        fs.begin(), fs.end(), 0.0, [](double /* a */, int&& b) {
+          return b + 0.0;
+        });
+    p3.setValue(3);
+    p2.setException(exception_wrapper(std::runtime_error("blah")));
+    p1.setValue(1);
+    EXPECT_THROW(std::move(f).get(), std::runtime_error);
+  }
 }
 
 TEST(Reduce, unorderedReduceFuture) {
