@@ -25,12 +25,14 @@ __all__ = ['IOBuf']
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view):
     """Take a python object that supports buffer protocol"""
+    if not view.is_c_contig() and not view.is_f_contig():
+        raise ValueError("View must be contiguous")
     return move(
         iobuf_from_python(
             get_executor(),
             <PyObject*>view,
             view.view.buf,
-            view.shape[0],
+            view.view.len,
         )
     )
 

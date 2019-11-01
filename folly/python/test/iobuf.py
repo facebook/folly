@@ -13,6 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import array
+import struct
 import unittest
 
 from folly.iobuf import IOBuf
@@ -93,3 +95,15 @@ class IOBufTests(unittest.TestCase):
         self.assertLessEqual(x, z)
         self.assertGreater(y, x)
         self.assertGreaterEqual(y, x)
+
+    def test_typed(self) -> None:
+        x = IOBuf(array.array("l", [1, 2, 3, 4, 5]))  # type: ignore
+        self.assertEqual(x.chain_size(), 5 * struct.calcsize("l"))
+
+    def test_unshaped(self) -> None:
+        x = IOBuf(memoryview(b"a").cast("B", shape=[]))  # type: ignore
+        self.assertEqual(x.chain_size(), 1)
+
+    def test_multidimensional(self) -> None:
+        x = IOBuf(memoryview(b"abcdef").cast("B", shape=[3, 2]))  # type: ignore
+        self.assertEqual(x.chain_size(), 6)
