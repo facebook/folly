@@ -84,8 +84,14 @@ struct Obj {
 void swap(Obj&, Obj&) noexcept {} // no-op
 } // namespace swappable
 
+struct AltSwappable;
+struct AltSwappableRet {};
+namespace unswappable {
+FOLLY_MAYBE_UNUSED AltSwappableRet swap(AltSwappable&, AltSwappable&);
+} // namespace unswappable
+
 FOLLY_CREATE_FREE_INVOKE_TRAITS(go_invoke_traits, go);
-FOLLY_CREATE_FREE_INVOKE_TRAITS(swap_invoke_traits, swap, std);
+FOLLY_CREATE_FREE_INVOKE_TRAITS(swap_invoke_traits, swap, std, unswappable);
 FOLLY_CREATE_FREE_INVOKE_TRAITS(unused_invoke_traits, definitely_unused_name_);
 
 } // namespace
@@ -214,6 +220,9 @@ TEST_F(InvokeTest, free_invoke_swap) {
   std::swap(x, y);
   EXPECT_EQ(4, x.x_);
   EXPECT_EQ(3, y.x_);
+
+  EXPECT_TRUE((
+      traits::is_invocable_r_v<AltSwappableRet, AltSwappable&, AltSwappable&>));
 }
 
 TEST_F(InvokeTest, member_invoke) {

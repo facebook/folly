@@ -19,6 +19,12 @@
 #include <functional>
 #include <type_traits>
 
+#include <boost/preprocessor/control/expr_iif.hpp>
+#include <boost/preprocessor/facilities/is_empty_variadic.hpp>
+#include <boost/preprocessor/list/for_each.hpp>
+#include <boost/preprocessor/logical/not.hpp>
+#include <boost/preprocessor/tuple/to_list.hpp>
+
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/Traits.h>
@@ -239,6 +245,17 @@ struct free_invoke_proxy {
 } // namespace detail
 } // namespace folly
 
+#define FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING_1(_, funcname, ns) \
+  using ns::funcname;
+
+#define FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING(_, funcname, ...) \
+  BOOST_PP_EXPR_IIF(                                                   \
+      BOOST_PP_NOT(BOOST_PP_IS_EMPTY(__VA_ARGS__)),                    \
+      BOOST_PP_LIST_FOR_EACH(                                          \
+          FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING_1,              \
+          funcname,                                                    \
+          BOOST_PP_TUPLE_TO_LIST((__VA_ARGS__))))
+
 /***
  *  FOLLY_CREATE_FREE_INVOKE_TRAITS
  *
@@ -305,9 +322,9 @@ struct free_invoke_proxy {
  *    traits::is_nothrow_invocable_v<int, CanFoo, Car&&> // true
  *    traits::is_nothrow_invocable_v<char*, CanFoo, Car&&> // false
  *
- *  When a name has a primary definition in a fixed namespace and alternate
- *  definitions in the namespaces of its arguments, the primary definition may
- *  automatically be found as follows:
+ *  When a name has one or more primary definition in a fixed set of namespaces
+ *  and alternate definitions in the namespaces of its arguments, the primary
+ *  definitions may automatically be found as follows:
  *
  *    FOLLY_CREATE_FREE_INVOKE_TRAITS(swap_invoke_traits, swap, std);
  *
@@ -325,26 +342,22 @@ struct free_invoke_proxy {
  *    HasData a, b;
  *    traits::invoke(a, b); // throw 7
  */
-#define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)    \
-  namespace classname##__folly_detail_invoke_ns {                    \
-    namespace __folly_detail_invoke_base {                           \
-    FOLLY_MAYBE_UNUSED void funcname(                                \
-        ::folly::detail::invoke_private_overload&);                  \
-    }                                                                \
-    using FB_ARG_2_OR_1(                                             \
-        __folly_detail_invoke_base FOLLY_PP_DETAIL_APPEND_VA_ARG(    \
-            __VA_ARGS__))::funcname;                                 \
-    struct __folly_detail_invoke_obj {                               \
-      template <typename... Args>                                    \
-      constexpr auto operator()(Args&&... args) const                \
-          noexcept(noexcept(funcname(static_cast<Args&&>(args)...))) \
-              -> decltype(funcname(static_cast<Args&&>(args)...)) {  \
-        return funcname(static_cast<Args&&>(args)...);               \
-      }                                                              \
-    };                                                               \
-  }                                                                  \
-  struct classname                                                   \
-      : ::folly::detail::free_invoke_proxy<                          \
+#define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)          \
+  namespace classname##__folly_detail_invoke_ns {                          \
+    FOLLY_MAYBE_UNUSED void funcname(                                      \
+        ::folly::detail::invoke_private_overload&);                        \
+    FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING(_, funcname, __VA_ARGS__) \
+    struct __folly_detail_invoke_obj {                                     \
+      template <typename... Args>                                          \
+      constexpr auto operator()(Args&&... args) const                      \
+          noexcept(noexcept(funcname(static_cast<Args&&>(args)...)))       \
+              -> decltype(funcname(static_cast<Args&&>(args)...)) {        \
+        return funcname(static_cast<Args&&>(args)...);                     \
+      }                                                                    \
+    };                                                                     \
+  }                                                                        \
+  struct classname                                                         \
+      : ::folly::detail::free_invoke_proxy<                                \
             classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj> {}
 
 namespace folly {
