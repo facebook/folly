@@ -15,12 +15,15 @@
  */
 
 #pragma once
+#include <folly/futures/Future.h>
 
 namespace folly {
 namespace fibers {
 
 inline ExecutorLoopController::ExecutorLoopController(folly::Executor* executor)
-    : executor_(executor) {}
+    : executor_(executor),
+      timeoutManager_(executor_),
+      timer_(HHWheelTimer::newTimer(&timeoutManager_)) {}
 
 inline ExecutorLoopController::~ExecutorLoopController() {}
 
@@ -59,7 +62,7 @@ inline void ExecutorLoopController::scheduleThreadSafe() {
 }
 
 inline HHWheelTimer& ExecutorLoopController::timer() {
-  throw std::logic_error("Time schedule isn't supported by asyncio executor");
+  return *timer_;
 }
 
 } // namespace fibers

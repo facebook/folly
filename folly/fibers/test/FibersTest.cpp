@@ -23,10 +23,12 @@
 #include <folly/futures/Future.h>
 
 #include <folly/Conv.h>
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>
 #include <folly/fibers/EventBaseLoopController.h>
+#include <folly/fibers/ExecutorLoopController.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/fibers/GenericBaton.h>
@@ -1471,6 +1473,28 @@ TEST(FiberManager, batonWaitTimeoutHandler) {
   manager.loopUntilNoReady();
 
   EXPECT_EQ(1, fibersRun);
+}
+
+TEST(FiberManager, batonWaitTimeoutHandlerExecutor) {
+  Baton baton2;
+  FiberManager manager(
+      std::make_unique<ExecutorLoopController>(folly::getCPUExecutor().get()));
+  auto task = [&](size_t timeout_ms) {
+    Baton baton;
+    auto start = std::chrono::steady_clock::now();
+    auto res = baton.try_wait_for(std::chrono::milliseconds(timeout_ms));
+    auto finish = std::chrono::steady_clock::now();
+    EXPECT_FALSE(res);
+    auto duration_ms =
+        std::chrono::duration_cast<std::chrono::milliseconds>(finish - start)
+            .count();
+
+    EXPECT_GT(duration_ms, timeout_ms);
+    EXPECT_LT(duration_ms, timeout_ms + 100);
+    baton2.post();
+  };
+  manager.addTask([&]() { task(300); });
+  baton2.wait();
 }
 
 TEST(FiberManager, batonWaitTimeoutMany) {

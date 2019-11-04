@@ -25,6 +25,50 @@
 namespace folly {
 namespace fibers {
 
+class ExecutorTimeoutManager : public TimeoutManager {
+ public:
+  explicit ExecutorTimeoutManager(folly::Executor* executor)
+      : executor_(executor) {}
+
+  ExecutorTimeoutManager(ExecutorTimeoutManager&&) = default;
+  ExecutorTimeoutManager& operator=(ExecutorTimeoutManager&&) = default;
+  ExecutorTimeoutManager(const ExecutorTimeoutManager&) = delete;
+  ExecutorTimeoutManager& operator=(const ExecutorTimeoutManager&) = delete;
+
+  void attachTimeoutManager(
+      AsyncTimeout* /* unused */,
+      InternalEnum /* unused */) final {}
+
+  void detachTimeoutManager(AsyncTimeout* /* unused */) final {
+    throw std::logic_error(
+        "detachTimeoutManager() call isn't supported by ExecutorTimeoutManager.");
+  }
+
+  bool scheduleTimeout(AsyncTimeout* obj, timeout_type timeout) final {
+    folly::futures::sleep(timeout).via(executor_).thenValue(
+        [obj](folly::Unit) { obj->timeoutExpired(); });
+    return true;
+  }
+
+  void cancelTimeout(AsyncTimeout* /* unused */) final {
+    throw std::logic_error(
+        "cancelTimeout() call isn't supported by ExecutorTimeoutManager.");
+  }
+
+  void bumpHandlingTime() final {
+    throw std::logic_error(
+        "bumpHandlingTime() call isn't supported by ExecutorTimeoutManager.");
+  }
+
+  bool isInTimeoutManagerThread() final {
+    throw std::logic_error(
+        "isInTimeoutManagerThread() call isn't supported by ExecutorTimeoutManager.");
+  }
+
+ private:
+  folly::Executor* executor_;
+};
+
 /**
  * A fiber loop controller that works for arbitrary folly::Executor
  */
@@ -41,6 +85,8 @@ class ExecutorLoopController : public fibers::LoopController {
   folly::Executor* executor_;
   Executor::KeepAlive<> executorKeepAlive_;
   fibers::FiberManager* fm_{nullptr};
+  ExecutorTimeoutManager timeoutManager_;
+  HHWheelTimer::UniquePtr timer_;
 
   void setFiberManager(fibers::FiberManager* fm) override;
   void schedule() override;
