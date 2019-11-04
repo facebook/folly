@@ -203,6 +203,23 @@ if (NOT ${LIBAIO_FOUND})
     ${FOLLY_DIR}/experimental/io/AsyncIO.h
   )
 endif()
+if (NOT ${LIBURING_FOUND})
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/io/IoUring.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/io/IoUring.h
+  )
+endif()
+if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
+  list(REMOVE_ITEM files
+    ${FOLLY_DIR}/experimental/io/AsyncBase.cpp
+  )
+  list(REMOVE_ITEM hfiles
+    ${FOLLY_DIR}/experimental/io/AsyncBase.h
+  )
+endif()
+
 if (${LIBSODIUM_FOUND})
   string(FIND "${CMAKE_LIBRARY_ARCHITECTURE}" "x86_64" IS_X86_64_ARCH)
   if (${IS_X86_64_ARCH} STREQUAL "-1")

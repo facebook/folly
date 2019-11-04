@@ -16,21 +16,30 @@
 
 #pragma once
 
-#include <libaio.h>
+extern "C" {
+#include <liburing.h>
+}
 
+#include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
 
 namespace folly {
 
-class AsyncIOOp : public AsyncBaseOp {
-  friend class AsyncIO;
-  friend std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& o);
+/**
+ * An IoUringOp represents a pending operation.  You may set a notification
+ * callback or you may use this class's methods directly.
+ *
+ * The op must remain allocated until it is completed or canceled.
+ */
+class IoUringOp : public AsyncBaseOp {
+  friend class IoUring;
+  friend std::ostream& operator<<(std::ostream& stream, const IoUringOp& o);
 
  public:
-  explicit AsyncIOOp(NotificationCallback cb = NotificationCallback());
-  AsyncIOOp(const AsyncIOOp&) = delete;
-  AsyncIOOp& operator=(const AsyncIOOp&) = delete;
-  ~AsyncIOOp() override;
+  explicit IoUringOp(NotificationCallback cb = NotificationCallback());
+  IoUringOp(const IoUringOp&) = delete;
+  IoUringOp& operator=(const IoUringOp&) = delete;
+  ~IoUringOp() override;
 
   /**
    * Initiate a read request.
@@ -47,36 +56,47 @@ class AsyncIOOp : public AsyncBaseOp {
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
   AsyncIOOp* getAsyncIOOp() override {
-    return this;
+    return nullptr;
   }
 
   IoUringOp* getIoUringOp() override {
-    return nullptr;
+    return this;
   }
 
   void toStream(std::ostream& os) const override;
 
+  const struct io_uring_sqe& getSqe() const {
+    return sqe_;
+  }
+
  private:
-  iocb iocb_;
+  struct io_uring_sqe sqe_;
+  struct iovec iov_[1];
 };
 
-std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& op);
+std::ostream& operator<<(std::ostream& stream, const IoUringOp& op);
 
 /**
- * C++ interface around Linux Async IO.
+ * C++ interface around Linux io_uring
  */
-class AsyncIO : public AsyncBase {
+class IoUring : public AsyncBase {
  public:
-  using Op = AsyncIOOp;
+  using Op = IoUringOp;
 
   /**
    * Note: the maximum number of allowed concurrent requests is controlled
-   * by the fs.aio-max-nr sysctl, the default value is usually 64K.
+   * by the kernel IORING_MAX_ENTRIES and the memlock limit,
+   * The default IORING_MAX_ENTRIES value is usually 32K.
    */
-  explicit AsyncIO(size_t capacity, PollMode pollMode = NOT_POLLABLE);
-  AsyncIO(const AsyncIO&) = delete;
-  AsyncIO& operator=(const AsyncIO&) = delete;
-  ~AsyncIO() override;
+  explicit IoUring(
+      size_t capacity,
+      PollMode pollMode = NOT_POLLABLE,
+      size_t maxSubmit = 1);
+  IoUring(const IoUring&) = delete;
+  IoUring& operator=(const IoUring&) = delete;
+  ~IoUring() override;
+
+  static bool isAvailable();
 
  private:
   void initializeContext() override;
@@ -88,8 +108,11 @@ class AsyncIO : public AsyncBase {
       size_t maxRequests,
       std::vector<AsyncBase::Op*>& result) override;
 
-  io_context_t ctx_{nullptr};
+  size_t maxSubmit_;
+  struct io_uring_params params_;
+  struct io_uring ioRing_;
+  SharedMutex submitMutex_;
 };
 
-using AsyncIOQueue = AsyncBaseQueue;
+using IoUringQueue = AsyncBaseQueue;
 } // namespace folly

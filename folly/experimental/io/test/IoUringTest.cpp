@@ -14,13 +14,28 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/AsyncIO.h>
+#include <folly/experimental/io/IoUring.h>
 #include <folly/experimental/io/test/AsyncBaseTestLib.h>
+#include <folly/init/Init.h>
 
-using folly::AsyncIO;
+using folly::IoUring;
 
 namespace folly {
 namespace test {
-INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, AsyncIO);
+INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, IoUring);
 } // namespace test
 } // namespace folly
+
+int main(int argc, char** argv) {
+  ::testing::InitGoogleTest(&argc, argv);
+  folly::init(&argc, &argv);
+
+  bool avail = IoUring::isAvailable();
+  if (!avail) {
+    LOG(INFO)
+        << "Not running tests since this kernel version does not support io_uring";
+    return 0;
+  }
+
+  return RUN_ALL_TESTS();
+}
