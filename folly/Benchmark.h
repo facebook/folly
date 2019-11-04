@@ -387,19 +387,20 @@ void printResultComparison(
 
 #define BENCHMARK_IMPL_COUNTERS(                                               \
     funName, stringName, counters, rv, paramType, paramName)                   \
-  static void funName(UserCounters& FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType)); \
+  static void funName(                                                         \
+      ::folly::UserCounters& FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType));        \
   FOLLY_MAYBE_UNUSED static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = \
       (::folly::addBenchmark(                                                  \
            __FILE__,                                                           \
            stringName,                                                         \
-           [](UserCounters& counters FOLLY_PP_DETAIL_APPEND_VA_ARG(            \
+           [](::folly::UserCounters& counters FOLLY_PP_DETAIL_APPEND_VA_ARG(   \
                paramType paramName)) -> unsigned {                             \
              funName(counters FOLLY_PP_DETAIL_APPEND_VA_ARG(paramName));       \
              return rv;                                                        \
            }),                                                                 \
        true);                                                                  \
-  static void funName(UserCounters& counters FOLLY_PP_DETAIL_APPEND_VA_ARG(    \
-      paramType paramName))
+  static void funName(::folly::UserCounters& counters                          \
+                          FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
 
 /**
  * Introduces a benchmark function with support for returning the actual
