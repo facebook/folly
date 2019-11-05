@@ -54,10 +54,12 @@ int shutdownNoInt(NetworkSocket fd, int how);
 ssize_t readNoInt(int fd, void* buf, size_t n);
 ssize_t preadNoInt(int fd, void* buf, size_t n, off_t offset);
 ssize_t readvNoInt(int fd, const iovec* iov, int count);
+ssize_t preadvNoInt(int fd, const iovec* iov, int count, off_t offset);
 
 ssize_t writeNoInt(int fd, const void* buf, size_t n);
 ssize_t pwriteNoInt(int fd, const void* buf, size_t n, off_t offset);
 ssize_t writevNoInt(int fd, const iovec* iov, int count);
+ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
 
 /**
  * Wrapper around read() (and pread()) that, in addition to retrying on

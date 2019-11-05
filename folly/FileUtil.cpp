@@ -111,6 +111,10 @@ ssize_t readvNoInt(int fd, const iovec* iov, int count) {
   return wrapNoInt(readv, fd, iov, count);
 }
 
+ssize_t preadvNoInt(int fd, const iovec* iov, int count, off_t offset) {
+  return wrapNoInt(preadv, fd, iov, count, offset);
+}
+
 ssize_t writeNoInt(int fd, const void* buf, size_t count) {
   return wrapNoInt(write, fd, buf, count);
 }
@@ -121,6 +125,10 @@ ssize_t pwriteNoInt(int fd, const void* buf, size_t count, off_t offset) {
 
 ssize_t writevNoInt(int fd, const iovec* iov, int count) {
   return wrapNoInt(writev, fd, iov, count);
+}
+
+ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset) {
+  return wrapNoInt(pwritev, fd, iov, count, offset);
 }
 
 ssize_t readFull(int fd, void* buf, size_t count) {
