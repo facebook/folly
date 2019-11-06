@@ -337,7 +337,7 @@ class BenchmarkResultsPrinter {
               break;
             case UserMetric::Type::CUSTOM:
             default:
-              printf("  %-*d", int(name.length()), ptr->value);
+              printf("  %-*" PRId64, int(name.length()), ptr->value);
           }
         } else {
           printf("  %-*s", int(name.length()), "NaN");

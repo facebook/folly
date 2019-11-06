@@ -57,11 +57,11 @@ class UserMetric {
  public:
   enum class Type { CUSTOM, TIME, METRIC };
 
-  int value{};
+  int64_t value{};
   Type type{Type::CUSTOM};
 
   UserMetric() = default;
-  /* implicit */ UserMetric(int val, Type typ = Type::CUSTOM)
+  /* implicit */ UserMetric(int64_t val, Type typ = Type::CUSTOM)
       : value(val), type(typ) {}
 };
 
