@@ -175,18 +175,6 @@ coro::Task<int> taskException() {
   co_return 42;
 }
 
-TEST(Coro, Throw) {
-  ManualExecutor executor;
-  auto future = taskException().scheduleOn(&executor).start();
-
-  EXPECT_FALSE(future.isReady());
-
-  executor.drive();
-
-  EXPECT_TRUE(future.isReady());
-  EXPECT_THROW(std::move(future).get(), std::runtime_error);
-}
-
 TEST(Coro, FutureThrow) {
   ManualExecutor executor;
   auto future = taskException().scheduleOn(&executor).start();
