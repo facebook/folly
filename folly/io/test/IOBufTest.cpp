@@ -1536,6 +1536,24 @@ TEST(IOBuf, CloneCoalescedChain) {
   EXPECT_EQ(b->computeChainDataLength(), c.length()); // Same length
   gen.seed(fillSeed);
   checkBuf(&c, gen); // Same contents
+
+  auto newHeadroom = b->headroom() + 10;
+  auto newTailroom = b->tailroom();
+  c = b->cloneCoalescedAsValueWithHeadroomTailroom(newHeadroom, newTailroom);
+  EXPECT_FALSE(c.isChained()); // Not chained
+  EXPECT_GE(c.headroom(), newHeadroom);
+  EXPECT_GE(c.tailroom(), newTailroom);
+  gen.seed(fillSeed);
+  checkBuf(&c, gen); // Same contents
+
+  newHeadroom = b->headroom();
+  newTailroom = b->tailroom() + 10;
+  c = b->cloneCoalescedAsValueWithHeadroomTailroom(newHeadroom, newTailroom);
+  EXPECT_FALSE(c.isChained()); // Not chained
+  EXPECT_GE(c.headroom(), newHeadroom);
+  EXPECT_GE(c.tailroom(), newTailroom);
+  gen.seed(fillSeed);
+  checkBuf(&c, gen); // Same contents
 }
 
 TEST(IOBuf, CloneCoalescedSingle) {
@@ -1553,6 +1571,24 @@ TEST(IOBuf, CloneCoalescedSingle) {
   EXPECT_EQ(b->capacity(), c->capacity());
   EXPECT_EQ(b->data(), c->data());
   EXPECT_EQ(b->length(), c->length());
+
+  auto newHeadroom = b->headroom() + 10;
+  auto newTailroom = b->tailroom();
+  c = b->cloneCoalescedWithHeadroomTailroom(newHeadroom, newTailroom);
+  EXPECT_FALSE(c->isChained()); // Not chained
+  EXPECT_EQ(
+      ByteRange(c->data(), c->length()), ByteRange(b->data(), b->length()));
+  EXPECT_GE(c->headroom(), newHeadroom);
+  EXPECT_GE(c->tailroom(), newTailroom);
+
+  newHeadroom = b->headroom();
+  newTailroom = b->tailroom() + 10;
+  c = b->cloneCoalescedWithHeadroomTailroom(newHeadroom, newTailroom);
+  EXPECT_FALSE(c->isChained()); // Not chained
+  EXPECT_EQ(
+      ByteRange(c->data(), c->length()), ByteRange(b->data(), b->length()));
+  EXPECT_GE(c->headroom(), newHeadroom);
+  EXPECT_GE(c->tailroom(), newTailroom);
 }
 
 TEST(IOBuf, fillIov) {

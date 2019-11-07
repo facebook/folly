@@ -611,7 +611,7 @@ IOBuf IOBuf::cloneCoalescedAsValue() const {
 IOBuf IOBuf::cloneCoalescedAsValueWithHeadroomTailroom(
     std::size_t newHeadroom,
     std::size_t newTailroom) const {
-  if (!isChained()) {
+  if (!isChained() && newHeadroom <= headroom() && newTailroom <= tailroom()) {
     return cloneOneAsValue();
   }
   // Coalesce into newBuf
