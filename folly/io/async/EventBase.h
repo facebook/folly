@@ -132,6 +132,8 @@ class EventBase : public TimeoutManager,
                   public SequencedExecutor,
                   public ScheduledExecutor {
  public:
+  friend class ScopedEventBaseThread;
+
   using Func = folly::Function<void()>;
 
   /**

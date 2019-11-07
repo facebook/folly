@@ -60,6 +60,15 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
     getEventBase()->add(std::move(func));
   }
 
+ protected:
+  bool keepAliveAcquire() override {
+    return getEventBase()->keepAliveAcquire();
+  }
+
+  void keepAliveRelease() override {
+    getEventBase()->keepAliveRelease();
+  }
+
  private:
   ScopedEventBaseThread(ScopedEventBaseThread&& other) = delete;
   ScopedEventBaseThread& operator=(ScopedEventBaseThread&& other) = delete;

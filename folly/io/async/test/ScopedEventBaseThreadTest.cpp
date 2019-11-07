@@ -20,6 +20,7 @@
 #include <string>
 
 #include <folly/Optional.h>
+#include <folly/futures/Promise.h>
 #include <folly/io/async/EventBaseManager.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
@@ -86,4 +87,29 @@ TEST_F(ScopedEventBaseThreadTest, eb_dtor_in_io_thread) {
   eb->runOnDestruction([&] { eb_dtor_thread_id = std::this_thread::get_id(); });
   sebt.clear();
   EXPECT_EQ(io_thread_id, eb_dtor_thread_id);
+}
+
+TEST_F(ScopedEventBaseThreadTest, keepalive) {
+  Baton<> started, done, reset;
+  folly::Executor::KeepAlive<> ex;
+  Promise<Unit> p;
+
+  std::thread t1([&] {
+    ScopedEventBaseThread sebt;
+    ex = &sebt;
+    started.post();
+  });
+
+  std::thread t2([&] {
+    started.wait();
+    p.getSemiFuture().via(ex).thenValue([&, ex](auto&&) { done.post(); });
+    ex.reset();
+    reset.post();
+  });
+
+  reset.wait();
+  p.setValue();
+  ASSERT_TRUE(done.try_wait_for(seconds(1)));
+  t1.join();
+  t2.join();
 }
