@@ -23,7 +23,7 @@
 #include <folly/futures/Future.h>
 
 #include <folly/Conv.h>
-#include <folly/executors/GlobalExecutor.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>
@@ -1477,8 +1477,8 @@ TEST(FiberManager, batonWaitTimeoutHandler) {
 
 TEST(FiberManager, batonWaitTimeoutHandlerExecutor) {
   Baton baton2;
-  FiberManager manager(
-      std::make_unique<ExecutorLoopController>(folly::getCPUExecutor().get()));
+  folly::CPUThreadPoolExecutor executor(1);
+  FiberManager manager(std::make_unique<ExecutorLoopController>(&executor));
   auto task = [&](size_t timeout_ms) {
     Baton baton;
     auto start = std::chrono::steady_clock::now();
@@ -1489,7 +1489,7 @@ TEST(FiberManager, batonWaitTimeoutHandlerExecutor) {
         std::chrono::duration_cast<std::chrono::milliseconds>(finish - start)
             .count();
 
-    EXPECT_GT(duration_ms, timeout_ms);
+    EXPECT_GT(duration_ms, timeout_ms - 10);
     EXPECT_LT(duration_ms, timeout_ms + 100);
     baton2.post();
   };
