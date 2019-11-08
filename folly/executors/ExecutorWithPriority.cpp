@@ -15,33 +15,12 @@
  */
 
 #include <folly/executors/ExecutorWithPriority.h>
-#include <glog/logging.h>
 
 namespace folly {
-Executor::KeepAlive<ExecutorWithPriority> ExecutorWithPriority::create(
-    KeepAlive<Executor> executor,
+Executor::KeepAlive<> ExecutorWithPriority::create(
+    Executor::KeepAlive<Executor> executor,
     int8_t priority) {
-  return makeKeepAlive<ExecutorWithPriority>(
-      new ExecutorWithPriority(std::move(executor), priority));
-}
-
-void ExecutorWithPriority::add(Func func) {
-  executor_->addWithPriority(std::move(func), priority_);
-}
-
-bool ExecutorWithPriority::keepAliveAcquire() {
-  auto keepAliveCounter =
-      keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
-  DCHECK(keepAliveCounter > 0);
-  return true;
-}
-
-void ExecutorWithPriority::keepAliveRelease() {
-  auto keepAliveCounter =
-      keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
-  DCHECK(keepAliveCounter > 0);
-  if (keepAliveCounter == 1) {
-    delete this;
-  }
+  return ExecutorWithPriority::createDynamic(
+      executor, [priority]() { return priority; });
 }
 } // namespace folly
