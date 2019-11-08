@@ -23,6 +23,7 @@
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/executors/InlineExecutor.h>
+#include <folly/system/HardwareConcurrency.h>
 
 using namespace folly;
 
@@ -86,7 +87,7 @@ Singleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
       // Default global IO executor is an IOThreadPoolExecutor.
       [] {
         return std::make_unique<IOThreadPoolExecutor>(
-            std::thread::hardware_concurrency(),
+            folly::hardware_concurrency(),
             std::make_shared<NamedThreadFactory>("GlobalIOThreadPool"));
       });
 });
