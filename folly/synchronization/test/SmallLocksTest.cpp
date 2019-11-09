@@ -37,7 +37,6 @@
 using folly::MicroLock;
 using folly::MicroSpinLock;
 using folly::MSLGuard;
-using std::string;
 
 #ifdef FOLLY_PICO_SPIN_LOCK_H_
 using folly::PicoSpinLock;

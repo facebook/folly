@@ -589,7 +589,6 @@ TEST(DistributedMutex, BasicTryLock) {
 }
 
 TEST(DistributedMutex, TestSingleElementContentionChain) {
-  using namespace folly::detail;
 
   // Acquire the mutex once, let another thread form a contention chain on the
   // mutex, and then release it.  Observe the other thread grab the lock
@@ -621,7 +620,6 @@ TEST(DistributedMutex, TestSingleElementContentionChain) {
 }
 
 TEST(DistributedMutex, TestTwoElementContentionChain) {
-  using namespace folly::detail;
 
   // Acquire the mutex once, let another thread form a contention chain on the
   // mutex, and then release it.  Observe the other thread grab the lock
@@ -669,7 +667,6 @@ TEST(DistributedMutex, TestTwoElementContentionChain) {
 }
 
 TEST(DistributedMutex, TestTwoContentionChains) {
-  using namespace folly::detail;
 
   auto&& schedule = test::ManualSchedule{};
   auto&& mutex = test::TestDistributedMutex<test::ManualAtomic>{};

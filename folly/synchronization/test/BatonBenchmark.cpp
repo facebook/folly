@@ -23,7 +23,6 @@
 #include <folly/synchronization/test/BatonTestHelpers.h>
 #include <folly/test/DeterministicSchedule.h>
 
-using namespace folly;
 using namespace folly::test;
 using folly::detail::EmulatedFutexAtomic;
 
