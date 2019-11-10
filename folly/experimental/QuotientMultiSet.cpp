@@ -16,7 +16,7 @@
 
 #include <folly/experimental/QuotientMultiSet.h>
 
-#include <math.h>
+#include <cmath>
 
 #include <folly/Math.h>
 

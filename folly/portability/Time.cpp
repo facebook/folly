@@ -19,7 +19,7 @@
 #include <folly/CPortability.h>
 #include <folly/Likely.h>
 
-#include <assert.h>
+#include <cassert>
 
 #include <chrono>
 

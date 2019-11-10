@@ -27,9 +27,9 @@
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/CallOnce.h>
 
-#include <limits.h>
-#include <stdio.h>
-#include <string.h>
+#include <climits>
+#include <cstdio>
+#include <cstring>
 #include <utility>
 
 namespace folly {

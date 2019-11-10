@@ -18,10 +18,10 @@
 #include <folly/ScopeGuard.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/SysSyscall.h>
-#include <stdint.h>
-#include <string.h>
 #include <array>
 #include <cerrno>
+#include <cstdint>
+#include <cstring>
 
 #include <folly/synchronization/ParkingLot.h>
 

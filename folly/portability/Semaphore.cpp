@@ -18,7 +18,7 @@
 
 #include <folly/portability/Windows.h>
 
-#include <errno.h>
+#include <cerrno>
 #include <mutex>
 
 #ifdef _WIN32

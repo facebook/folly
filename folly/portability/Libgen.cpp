@@ -16,7 +16,7 @@
 
 #include <folly/portability/Libgen.h>
 
-#include <string.h>
+#include <cstring>
 
 namespace folly {
 namespace portability {

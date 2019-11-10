@@ -31,9 +31,9 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 
-#include <errno.h>
-#include <string.h>
 #include <sys/types.h>
+#include <cerrno>
+#include <cstring>
 
 namespace folly {
 

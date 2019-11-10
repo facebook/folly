@@ -16,7 +16,7 @@
 
 #include <folly/executors/ManualExecutor.h>
 
-#include <string.h>
+#include <cstring>
 #include <string>
 #include <tuple>
 

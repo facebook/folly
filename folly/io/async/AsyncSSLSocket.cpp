@@ -19,9 +19,9 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Sockets.h>
 
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/types.h>
+#include <cerrno>
 #include <chrono>
 #include <memory>
 

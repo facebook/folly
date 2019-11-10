@@ -16,7 +16,7 @@
 
 #include <folly/fibers/FiberManagerInternal.h>
 
-#include <signal.h>
+#include <csignal>
 
 #include <cassert>
 #include <stdexcept>

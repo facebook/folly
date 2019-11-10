@@ -16,8 +16,8 @@
 
 #include <folly/portability/SysUio.h>
 
-#include <errno.h>
-#include <stdio.h>
+#include <cerrno>
+#include <cstdio>
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>

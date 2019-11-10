@@ -18,7 +18,7 @@
 #include <folly/String.h>
 #include <folly/io/async/EventBase.h>
 
-#include <assert.h>
+#include <cassert>
 
 namespace folly {
 

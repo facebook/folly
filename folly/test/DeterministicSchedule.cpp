@@ -16,7 +16,7 @@
 
 #include <folly/test/DeterministicSchedule.h>
 
-#include <assert.h>
+#include <cassert>
 
 #include <algorithm>
 #include <list>

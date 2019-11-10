@@ -20,10 +20,10 @@
 
 #include <folly/io/async/test/TimeUtil.h>
 
-#include <errno.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <cerrno>
 #ifdef __linux__
 #include <sys/utsname.h>
 #endif
