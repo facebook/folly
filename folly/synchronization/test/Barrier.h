@@ -36,7 +36,7 @@ struct Barrier {
       gen_++;
       cv_.notify_all();
     } else {
-      cv_.wait(lockHeld, [&]() { return gen == gen_; });
+      cv_.wait(lockHeld, [&]() { return gen != gen_; });
     }
   }
 
