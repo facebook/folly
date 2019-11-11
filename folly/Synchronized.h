@@ -620,7 +620,7 @@ struct Synchronized : public SynchronizedBase<
    */
   Synchronized& operator=(const T& rhs) {
     if (&datum_ != &rhs) {
-      auto guard = operator->();
+      auto guard = LockedPtr{this};
       datum_ = rhs;
     }
     return *this;
@@ -631,7 +631,7 @@ struct Synchronized : public SynchronizedBase<
    */
   Synchronized& operator=(T&& rhs) {
     if (&datum_ != &rhs) {
-      auto guard = operator->();
+      auto guard = LockedPtr{this};
       datum_ = std::move(rhs);
     }
     return *this;
@@ -689,7 +689,8 @@ struct Synchronized : public SynchronizedBase<
    * NOTE: This API is planned to be deprecated in an upcoming diff.
    * Prefer using lock(), wlock(), or rlock() instead.
    */
-  LockedPtr operator->() {
+  [[deprecated("use explicit lock(), wlock(), or rlock() instead")]] LockedPtr
+  operator->() {
     return LockedPtr(this);
   }
 
@@ -699,7 +700,9 @@ struct Synchronized : public SynchronizedBase<
    * NOTE: This API is planned to be deprecated in an upcoming diff.
    * Prefer using lock(), wlock(), or rlock() instead.
    */
-  ConstLockedPtr operator->() const {
+  [[deprecated(
+      "use explicit lock(), wlock(), or rlock() instead")]] ConstLockedPtr
+  operator->() const {
     return ConstLockedPtr(this);
   }
 
@@ -739,8 +742,8 @@ struct Synchronized : public SynchronizedBase<
     if (this > &rhs) {
       return rhs.swap(*this);
     }
-    auto guard1 = operator->();
-    auto guard2 = rhs.operator->();
+    auto guard1 = LockedPtr{this};
+    auto guard2 = LockedPtr{&rhs};
 
     using std::swap;
     swap(datum_, rhs.datum_);
@@ -1792,25 +1795,25 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  * Refer to folly/docs/Synchronized.md for a detailed explanation and more
  * examples.
  */
-#define SYNCHRONIZED(...)                                             \
-  FOLLY_PUSH_WARNING                                                  \
-  FOLLY_GNU_DISABLE_WARNING("-Wshadow")                               \
-  FOLLY_MSVC_DISABLE_WARNING(4189) /* initialized but unreferenced */ \
-  FOLLY_MSVC_DISABLE_WARNING(4456) /* declaration hides local */      \
-  FOLLY_MSVC_DISABLE_WARNING(4457) /* declaration hides parameter */  \
-  FOLLY_MSVC_DISABLE_WARNING(4458) /* declaration hides member */     \
-  FOLLY_MSVC_DISABLE_WARNING(4459) /* declaration hides global */     \
-  FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS                               \
-  if (bool SYNCHRONIZED_VAR(state) = false) {                         \
-  } else                                                              \
-    for (auto SYNCHRONIZED_VAR(lockedPtr) =                           \
-             (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).operator->(); \
-         !SYNCHRONIZED_VAR(state);                                    \
-         SYNCHRONIZED_VAR(state) = true)                              \
-      for (auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                \
-               *SYNCHRONIZED_VAR(lockedPtr).operator->();             \
-           !SYNCHRONIZED_VAR(state);                                  \
-           SYNCHRONIZED_VAR(state) = true)                            \
+#define SYNCHRONIZED(...)                                                 \
+  FOLLY_PUSH_WARNING                                                      \
+  FOLLY_GNU_DISABLE_WARNING("-Wshadow")                                   \
+  FOLLY_MSVC_DISABLE_WARNING(4189) /* initialized but unreferenced */     \
+  FOLLY_MSVC_DISABLE_WARNING(4456) /* declaration hides local */          \
+  FOLLY_MSVC_DISABLE_WARNING(4457) /* declaration hides parameter */      \
+  FOLLY_MSVC_DISABLE_WARNING(4458) /* declaration hides member */         \
+  FOLLY_MSVC_DISABLE_WARNING(4459) /* declaration hides global */         \
+  FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS                                   \
+  if (bool SYNCHRONIZED_VAR(state) = false) {                             \
+  } else                                                                  \
+    for (auto SYNCHRONIZED_VAR(lockedPtr) =                               \
+             (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).contextualLock(); \
+         !SYNCHRONIZED_VAR(state);                                        \
+         SYNCHRONIZED_VAR(state) = true)                                  \
+      for (auto& FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                    \
+               *SYNCHRONIZED_VAR(lockedPtr).operator->();                 \
+           !SYNCHRONIZED_VAR(state);                                      \
+           SYNCHRONIZED_VAR(state) = true)                                \
     FOLLY_POP_WARNING
 
 /**
