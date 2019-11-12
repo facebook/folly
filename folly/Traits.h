@@ -372,6 +372,10 @@ template <class T>
 using is_trivially_copyable = std::is_trivially_copyable<T>;
 #endif
 
+template <class T>
+FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
+    is_trivially_copyable<T>::value;
+
 /**
  * IsRelocatable<T>::value describes the ability of moving around
  * memory a value of type T by using memcpy (as opposed to the
