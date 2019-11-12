@@ -534,21 +534,33 @@ TEST_P(StreamingUnitTest, maxCompressedLength) {
 
 TEST_P(StreamingUnitTest, getUncompressedLength) {
   auto const empty = IOBuf::create(0);
+  EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(""));
   EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(empty.get()));
+  EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(""));
   EXPECT_EQ(uint64_t(0), codec_->getUncompressedLength(empty.get(), 0));
   EXPECT_ANY_THROW(codec_->getUncompressedLength(empty.get(), 1));
 
   auto const data = IOBuf::wrapBuffer(randomDataHolder.data(100));
   auto const compressed = codec_->compress(data.get());
+  auto const compressedString =
+      StringPiece(ByteRange(data->data(), data->length()));
 
   if (auto const length = codec_->getUncompressedLength(data.get())) {
     EXPECT_EQ(100, *length);
   }
+  if (auto const length = codec_->getUncompressedLength(compressedString)) {
+    EXPECT_EQ(100, *length);
+  }
   EXPECT_EQ(uint64_t(100), codec_->getUncompressedLength(data.get(), 100));
+  EXPECT_EQ(
+      uint64_t(100), codec_->getUncompressedLength(compressedString, 100));
   // If the uncompressed length is stored in the frame, then make sure it throws
   // when it is given the wrong length.
   if (codec_->getUncompressedLength(data.get()) == uint64_t(100)) {
     EXPECT_ANY_THROW(codec_->getUncompressedLength(data.get(), 200));
+  }
+  if (codec_->getUncompressedLength(compressedString) == uint64_t(100)) {
+    EXPECT_ANY_THROW(codec_->getUncompressedLength(compressedString, 200));
   }
 }
 

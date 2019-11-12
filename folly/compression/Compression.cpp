@@ -264,6 +264,13 @@ bool Codec::canUncompress(const IOBuf*, Optional<uint64_t>) const {
   return false;
 }
 
+bool Codec::canUncompress(
+    StringPiece data,
+    Optional<uint64_t> uncompressedLength) const {
+  auto buf = IOBuf::wrapBufferAsValue(data.data(), data.size());
+  return canUncompress(&buf, uncompressedLength);
+}
+
 std::string Codec::doCompressString(const StringPiece data) {
   const IOBuf inputBuffer{IOBuf::WRAP_BUFFER, data};
   auto outputBuffer = doCompress(&inputBuffer);
@@ -303,6 +310,13 @@ Optional<uint64_t> Codec::getUncompressedLength(
     return 0;
   }
   return doGetUncompressedLength(data, uncompressedLength);
+}
+
+Optional<uint64_t> Codec::getUncompressedLength(
+    StringPiece data,
+    Optional<uint64_t> uncompressedLength) const {
+  auto buf = IOBuf::wrapBufferAsValue(data.data(), data.size());
+  return getUncompressedLength(&buf, uncompressedLength);
 }
 
 Optional<uint64_t> Codec::doGetUncompressedLength(
