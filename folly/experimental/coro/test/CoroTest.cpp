@@ -37,6 +37,14 @@
 
 using namespace folly;
 
+struct S {
+  int x = 42;
+};
+
+coro::Task<S> taskS() {
+  co_return {};
+}
+
 coro::Task<int> task42() {
   co_return 42;
 }
@@ -555,6 +563,13 @@ TEST(Coro, CancellableSleep) {
   }());
   auto end = steady_clock::now();
   CHECK((end - start) < 1s);
+}
+
+TEST(Coro, DefaultConstructible) {
+  coro::blockingWait([]() -> coro::Task<void> {
+    auto s = co_await taskS();
+    EXPECT_EQ(42, s.x);
+  }());
 }
 
 #endif

@@ -134,27 +134,21 @@ class TaskPromise : public TaskPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
+  void return_value(T&& t) {
+    result_.emplace(static_cast<T&&>(t));
+  }
+
   template <typename U>
   void return_value(U&& value) {
-    static_assert(
-        std::is_convertible<U&&, StorageType>::value,
-        "cannot convert return value to type T");
-    result_.emplace(static_cast<U&&>(value));
-  }
-
-  void return_value(const Try<StorageType>& t) {
-    DCHECK(t.hasValue() || t.hasException());
-    result_ = t;
-  }
-
-  void return_value(Try<StorageType>& t) {
-    DCHECK(t.hasValue() || t.hasException());
-    result_ = t;
-  }
-
-  void return_value(Try<StorageType>&& t) {
-    DCHECK(t.hasValue() || t.hasException());
-    result_ = std::move(t);
+    if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
+      DCHECK(value.hasValue() || value.hasException());
+      result_ = static_cast<U&&>(value);
+    } else {
+      static_assert(
+          std::is_convertible<U&&, StorageType>::value,
+          "cannot convert return value to type T");
+      result_.emplace(static_cast<U&&>(value));
+    }
   }
 
   Try<StorageType>& result() {
