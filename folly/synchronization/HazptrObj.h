@@ -331,7 +331,8 @@ class hazptr_obj_batch {
       Obj* obj = l.head();
       reclaim_list(obj);
     }
-    if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
+    if (pushed_to_domain_tagged_.load(std::memory_order_relaxed) &&
+        default_hazptr_domain_alive<Atom>()) {
       default_hazptr_domain<Atom>().cleanup_batch_tag(this);
     }
     DCHECK(l_.empty());
@@ -359,7 +360,7 @@ class hazptr_obj_batch {
 
   /** push_obj */
   void push_obj(Obj* obj) {
-    if (active_) {
+    if (active_ && default_hazptr_domain_alive<Atom>()) {
       l_.push(obj);
       inc_count();
       check_threshold_push();
@@ -384,6 +385,9 @@ class hazptr_obj_batch {
 
   /** check_threshold_push */
   void check_threshold_push() {
+    if (!default_hazptr_domain_alive<Atom>()) {
+      return;
+    }
     auto c = count();
     while (c >= kThreshold) {
       if (cas_count(c, 0)) {

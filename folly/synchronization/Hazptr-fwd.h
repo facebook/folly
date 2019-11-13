@@ -132,6 +132,10 @@ class hazptr_domain;
 template <template <typename> class Atom = std::atomic>
 hazptr_domain<Atom>& default_hazptr_domain();
 
+/** default_hazptr_domain_alive */
+template <template <typename> class Atom = std::atomic>
+bool& default_hazptr_domain_alive();
+
 /** hazptr_domain_push_list */
 template <template <typename> class Atom = std::atomic>
 void hazptr_domain_push_list(
