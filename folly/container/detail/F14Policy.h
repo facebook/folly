@@ -1206,9 +1206,10 @@ class VectorContainerPolicy : public BasePolicy<
   template <typename Table, typename... Args>
   void constructValueAtItem(Table&& table, Item* itemAddr, Args&&... args) {
     Alloc& a = this->alloc();
-    std::size_t size = table.size();
-    FOLLY_SAFE_DCHECK(size < std::numeric_limits<InternalSizeType>::max(), "");
-    *itemAddr = static_cast<InternalSizeType>(size);
+    auto size = static_cast<InternalSizeType>(table.size());
+    FOLLY_SAFE_DCHECK(
+        table.size() < std::numeric_limits<InternalSizeType>::max(), "");
+    *itemAddr = size;
     auto dst = std::addressof(values_[size]);
     // TODO(T31574848): clean up assume-s used to optimize placement new
     assume(dst != nullptr);
@@ -1221,7 +1222,7 @@ class VectorContainerPolicy : public BasePolicy<
       // because the item and tag are already set in the table before
       // calling constructValueAtItem, so if there is a tag collision
       // find may evaluate values_[size] during the search.
-      auto i = tlsMinstdRand(size + 1);
+      auto i = static_cast<InternalSizeType>(tlsMinstdRand(size + 1));
       if (i != size) {
         auto& lhsItem = *itemAddr;
         auto rhsIter = table.find(
