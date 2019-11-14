@@ -26,7 +26,7 @@ EventBaseManager* EventBaseManager::get() {
     return mgr;
   }
 
-  EventBaseManager* new_mgr = new EventBaseManager;
+  auto new_mgr = new EventBaseManager;
   bool exchanged = globalManager.compare_exchange_strong(mgr, new_mgr);
   if (!exchanged) {
     delete new_mgr;

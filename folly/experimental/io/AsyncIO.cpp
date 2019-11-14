@@ -38,7 +38,7 @@ namespace {
     return #c
 
 const char* iocbCmdToString(short int cmd_short) {
-  io_iocb_cmd cmd = static_cast<io_iocb_cmd>(cmd_short);
+  auto cmd = static_cast<io_iocb_cmd>(cmd_short);
   switch (cmd) {
     X(IO_CMD_PREAD);
     X(IO_CMD_PWRITE);

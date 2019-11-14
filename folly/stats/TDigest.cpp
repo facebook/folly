@@ -261,7 +261,7 @@ TDigest TDigest::merge(Range<const TDigest*> digests) {
         // It is possible that the next block is incomplete (less than
         // digestsPerBlock big). In that case, merge to end. Otherwise, merge to
         // the end of that block.
-        std::vector<Centroid>::iterator last =
+        auto last =
             (i + (digestsPerBlock * 2) < starts.size())
             ? *(starts.begin() + i + 2 * digestsPerBlock)
             : centroids.end();

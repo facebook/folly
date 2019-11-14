@@ -416,7 +416,7 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
 double prettyToDouble(
     folly::StringPiece* const prettyString,
     const PrettyType type) {
-  double value = folly::to<double>(prettyString);
+  auto value = folly::to<double>(prettyString);
   while (prettyString->size() > 0 && std::isspace(prettyString->front())) {
     prettyString->advance(1); // Skipping spaces between number and suffix
   }
@@ -542,7 +542,7 @@ void toLowerAscii8(char& c) {
   // by adding 0x20.
 
   // Step 1: Clear the high order bit. We'll deal with it in Step 5.
-  uint8_t rotated = uint8_t(c & 0x7f);
+  auto rotated = uint8_t(c & 0x7f);
   // Currently, the value of rotated, as a function of the original c is:
   //   below 'A':   0- 64
   //   'A'-'Z':    65- 90
@@ -631,7 +631,7 @@ void toLowerAscii(char* str, size_t length) {
 
   // Convert a character at a time until we reach an address that
   // is at least 32-bit aligned
-  size_t n = (size_t)str;
+  auto n = (size_t)str;
   n &= kAlignMask32;
   n = std::min(n, length);
   size_t offset = 0;

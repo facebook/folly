@@ -31,7 +31,7 @@ AsyncSignalHandler::AsyncSignalHandler(EventBase* eventBase)
 
 AsyncSignalHandler::~AsyncSignalHandler() {
   // Unregister any outstanding events
-  for (SignalEventMap::iterator it = signalEvents_.begin();
+  for (auto it = signalEvents_.begin();
        it != signalEvents_.end();
        ++it) {
     event_del(&it->second);
@@ -78,7 +78,7 @@ void AsyncSignalHandler::registerSignalHandler(int signum) {
 }
 
 void AsyncSignalHandler::unregisterSignalHandler(int signum) {
-  SignalEventMap::iterator it = signalEvents_.find(signum);
+  auto it = signalEvents_.find(signum);
   if (it == signalEvents_.end()) {
     throw std::runtime_error(folly::to<string>(
         "unable to unregister handler for signal ",
@@ -94,7 +94,7 @@ void AsyncSignalHandler::libeventCallback(
     libevent_fd_t signum,
     short /* events */,
     void* arg) {
-  AsyncSignalHandler* handler = static_cast<AsyncSignalHandler*>(arg);
+  auto handler = static_cast<AsyncSignalHandler*>(arg);
   handler->signalReceived(int(signum));
 }
 

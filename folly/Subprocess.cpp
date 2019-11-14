@@ -386,7 +386,7 @@ void Subprocess::spawnInternal(
   // Note that the const casts below are legit, per
   // http://pubs.opengroup.org/onlinepubs/009695399/functions/exec.html
 
-  char** argVec = const_cast<char**>(argv.get());
+  auto argVec = const_cast<char**>(argv.get());
 
   // Set up environment
   std::unique_ptr<const char*[]> envHolder;

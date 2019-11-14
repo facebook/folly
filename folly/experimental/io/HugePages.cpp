@@ -159,7 +159,7 @@ HugePageSizeVec readHugePageSizes() {
         // Search for the "pagesize" option, which must have a value
         for (auto& option : options) {
           // key=value
-          const char* p = static_cast<const char*>(
+          auto p = static_cast<const char*>(
               memchr(option.data(), '=', option.size()));
           if (!p) {
             continue;

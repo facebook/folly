@@ -24,7 +24,7 @@ ThreadCachedArena::ThreadCachedArena(size_t minBlockSize, size_t maxAlign)
     : minBlockSize_(minBlockSize), maxAlign_(maxAlign) {}
 
 SysArena* ThreadCachedArena::allocateThreadLocalArena() {
-  SysArena* arena =
+  auto arena =
       new SysArena(minBlockSize_, SysArena::kNoSizeLimit, maxAlign_);
   auto disposer = [this](SysArena* t, TLPDestructionMode mode) {
     std::unique_ptr<SysArena> tp(t); // ensure it gets deleted

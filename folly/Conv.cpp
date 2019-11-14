@@ -276,7 +276,7 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
   }
 
   bool result;
-  size_t len = size_t(e - b);
+  auto len = size_t(e - b);
   switch (*b) {
     case '0':
     case '1': {
@@ -400,7 +400,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
 
   // There must be non-whitespace, otherwise we would have caught this above
   assert(b < e);
-  size_t size = size_t(e - b);
+  auto size = size_t(e - b);
 
   bool negative = false;
   if (*b == '-') {
@@ -544,7 +544,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
     return makeUnexpected(err);
   }
 
-  size_t size = size_t(e - b);
+  auto size = size_t(e - b);
 
   /* Although the string is entirely made of digits, we still need to
    * check for overflow.

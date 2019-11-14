@@ -212,7 +212,7 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   // removeAcceptCallback().
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
-  for (std::vector<CallbackInfo>::iterator it = callbacksCopy.begin();
+  for (auto it = callbacksCopy.begin();
        it != callbacksCopy.end();
        ++it) {
     // consumer may not be set if we are running in primary event base
@@ -302,7 +302,7 @@ void AsyncServerSocket::bindSocket(
     bool isExistingSocket) {
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+  auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
   if (netops::bind(fd, saddr, address.getActualSize()) != 0) {
     if (errno != EINPROGRESS) {
@@ -616,7 +616,7 @@ void AsyncServerSocket::removeAcceptCallback(
   // We just do a simple linear search; we don't expect removeAcceptCallback()
   // to be called frequently, and we expect there to only be a small number of
   // callbacks anyway.
-  std::vector<CallbackInfo>::iterator it = callbacks_.begin();
+  auto it = callbacks_.begin();
   uint32_t n = 0;
   while (true) {
     if (it == callbacks_.end()) {
@@ -841,7 +841,7 @@ void AsyncServerSocket::handlerReady(
 
     sockaddr_storage addrStorage = {};
     socklen_t addrLen = sizeof(addrStorage);
-    sockaddr* saddr = reinterpret_cast<sockaddr*>(&addrStorage);
+    auto saddr = reinterpret_cast<sockaddr*>(&addrStorage);
 
     // In some cases, accept() doesn't seem to update these correctly.
     saddr->sa_family = addressFamily;

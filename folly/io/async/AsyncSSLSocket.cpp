@@ -1812,7 +1812,7 @@ void AsyncSSLSocket::clientHelloParsingCallback(
     size_t len,
     SSL* ssl,
     void* arg) {
-  AsyncSSLSocket* sock = static_cast<AsyncSSLSocket*>(arg);
+  auto sock = static_cast<AsyncSSLSocket*>(arg);
   if (written != 0) {
     sock->resetClientHelloParsing(ssl);
     return;
@@ -1858,26 +1858,26 @@ void AsyncSSLSocket::clientHelloParsingCallback(
 
     cursor.skip(cursor.read<uint8_t>()); // session_id
 
-    uint16_t cipherSuitesLength = cursor.readBE<uint16_t>();
+    auto cipherSuitesLength = cursor.readBE<uint16_t>();
     for (int i = 0; i < cipherSuitesLength; i += 2) {
       sock->clientHelloInfo_->clientHelloCipherSuites_.push_back(
           cursor.readBE<uint16_t>());
     }
 
-    uint8_t compressionMethodsLength = cursor.read<uint8_t>();
+    auto compressionMethodsLength = cursor.read<uint8_t>();
     for (int i = 0; i < compressionMethodsLength; ++i) {
       sock->clientHelloInfo_->clientHelloCompressionMethods_.push_back(
           cursor.readBE<uint8_t>());
     }
 
     if (cursor.totalLength() > 0) {
-      uint16_t extensionsLength = cursor.readBE<uint16_t>();
+      auto extensionsLength = cursor.readBE<uint16_t>();
       while (extensionsLength) {
-        ssl::TLSExtension extensionType =
+        auto extensionType =
             static_cast<ssl::TLSExtension>(cursor.readBE<uint16_t>());
         sock->clientHelloInfo_->clientHelloExtensions_.push_back(extensionType);
         extensionsLength -= 2;
-        uint16_t extensionDataLength = cursor.readBE<uint16_t>();
+        auto extensionDataLength = cursor.readBE<uint16_t>();
         extensionsLength -= 2;
         extensionsLength -= extensionDataLength;
 
@@ -1885,9 +1885,9 @@ void AsyncSSLSocket::clientHelloParsingCallback(
           cursor.skip(2);
           extensionDataLength -= 2;
           while (extensionDataLength) {
-            ssl::HashAlgorithm hashAlg =
+            auto hashAlg =
                 static_cast<ssl::HashAlgorithm>(cursor.readBE<uint8_t>());
-            ssl::SignatureAlgorithm sigAlg =
+            auto sigAlg =
                 static_cast<ssl::SignatureAlgorithm>(cursor.readBE<uint8_t>());
             extensionDataLength -= 2;
             sock->clientHelloInfo_->clientHelloSigAlgs_.emplace_back(
@@ -1911,9 +1911,9 @@ void AsyncSSLSocket::clientHelloParsingCallback(
                     uint8_t>::value,
                 "unexpected underlying type");
 
-            ssl::NameType typ =
+            auto typ =
                 static_cast<ssl::NameType>(cursor.readBE<uint8_t>());
-            uint16_t nameLength = cursor.readBE<uint16_t>();
+            auto nameLength = cursor.readBE<uint16_t>();
 
             if (typ == NameType::HOST_NAME &&
                 sock->clientHelloInfo_->clientHelloSNIHostname_.empty() &&

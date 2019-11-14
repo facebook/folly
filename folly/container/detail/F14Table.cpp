@@ -59,7 +59,7 @@ std::size_t tlsMinstdRand(std::size_t n) {
   FOLLY_SAFE_DCHECK(n > 0, "");
 
   static FOLLY_F14_DETAIL_TLS_SIZE_T state{0};
-  uint32_t s = static_cast<uint32_t>(state);
+  auto s = static_cast<uint32_t>(state);
   if (s == 0) {
     uint64_t seed = static_cast<uint64_t>(
         std::chrono::steady_clock::now().time_since_epoch().count());

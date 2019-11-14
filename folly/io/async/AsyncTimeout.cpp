@@ -156,7 +156,7 @@ void AsyncTimeout::detachEventBase() {
 }
 
 void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
-  AsyncTimeout* timeout = reinterpret_cast<AsyncTimeout*>(arg);
+  auto timeout = reinterpret_cast<AsyncTimeout*>(arg);
   assert(fd == NetworkSocket::invalid_handle_value);
   assert(events == EV_TIMEOUT);
   // prevent unused variable warnings

@@ -69,8 +69,8 @@ void MathOperation<MathEngine::SIMPLE>::add(
         bitsPerElement == 16 ? 0xffff0000ffff0000ULL : 0xffffffff00000000ULL;
     const uint64_t kMaskB = ~kMaskA;
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const uint64_t* v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
-      const uint64_t* v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         uint64_t v1 = Endian::little(*(v1p + i));
         uint64_t v2 = Endian::little(*(v2p + i));
@@ -86,8 +86,8 @@ void MathOperation<MathEngine::SIMPLE>::add(
     }
   } else {
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const uint64_t* v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
-      const uint64_t* v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         uint64_t v1 = Endian::little(*(v1p + i));
         uint64_t v2 = Endian::little(*(v2p + i));
@@ -134,8 +134,8 @@ void MathOperation<MathEngine::SIMPLE>::sub(
         bitsPerElement == 16 ? 0xffff0000ffff0000ULL : 0xffffffff00000000ULL;
     const uint64_t kMaskB = ~kMaskA;
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const uint64_t* v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
-      const uint64_t* v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         uint64_t v1 = Endian::little(*(v1p + i));
         uint64_t v2 = Endian::little(*(v2p + i));
@@ -151,8 +151,8 @@ void MathOperation<MathEngine::SIMPLE>::sub(
     }
   } else {
     for (size_t pos = 0; pos < b1.size(); pos += kCacheLineSize) {
-      const uint64_t* v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
-      const uint64_t* v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
+      auto v1p = reinterpret_cast<const uint64_t*>(b1.data() + pos);
+      auto v2p = reinterpret_cast<const uint64_t*>(b2.data() + pos);
       for (size_t i = 0; i < kValsPerCacheLine; ++i) {
         uint64_t v1 = Endian::little(*(v1p + i));
         uint64_t v2 = Endian::little(*(v2p + i));
@@ -181,7 +181,7 @@ void MathOperation<MathEngine::SIMPLE>::clearPaddingBits(
       kValsPerCacheLine > 0, "kCacheLineSize must be >= sizeof(uint64_t)");
   alignas(kCacheLineSize) std::array<uint64_t, kValsPerCacheLine> results;
   for (size_t pos = 0; pos < buf.size(); pos += kCacheLineSize) {
-    const uint64_t* p = reinterpret_cast<const uint64_t*>(buf.data() + pos);
+    auto p = reinterpret_cast<const uint64_t*>(buf.data() + pos);
     for (size_t i = 0; i < kValsPerCacheLine; ++i) {
       results[i] = Endian::little(Endian::little(*(p + i)) & dataMask);
     }

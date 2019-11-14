@@ -41,8 +41,8 @@ std::thread::id localThreadId() {
 static size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
   CHECK_EQ(reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t), 0u);
   CHECK_EQ(stackSize % sizeof(uint64_t), 0u);
-  uint64_t* begin = reinterpret_cast<uint64_t*>(stackLimit);
-  uint64_t* end = reinterpret_cast<uint64_t*>(stackLimit + stackSize);
+  auto begin = reinterpret_cast<uint64_t*>(stackLimit);
+  auto end = reinterpret_cast<uint64_t*>(stackLimit + stackSize);
 
   auto firstNonMagic = std::find_if(
       begin, end, [](uint64_t val) { return val != kMagic8Bytes; });

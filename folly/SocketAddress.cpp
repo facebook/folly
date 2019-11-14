@@ -339,7 +339,7 @@ void SocketAddress::setFromSockaddr(
 
   // Fill the rest with 0s, just for safety
   if (addrlen < sizeof(struct sockaddr_un)) {
-    char* p = reinterpret_cast<char*>(storage_.un.addr);
+    auto p = reinterpret_cast<char*>(storage_.un.addr);
     memset(p + addrlen, 0, sizeof(struct sockaddr_un) - addrlen);
   }
 }

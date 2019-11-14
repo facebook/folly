@@ -73,7 +73,7 @@ class HugePageArena {
   void* reserve(size_t size, size_t alignment);
 
   bool addressInArena(void* address) {
-    uintptr_t addr = reinterpret_cast<uintptr_t>(address);
+    auto addr = reinterpret_cast<uintptr_t>(address);
     return addr >= start_ && addr < end_;
   }
 

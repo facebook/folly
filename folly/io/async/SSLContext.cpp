@@ -392,7 +392,7 @@ void SSLContext::addClientHelloCallback(const ClientHelloCallback& cb) {
 }
 
 int SSLContext::baseServerNameOpenSSLCallback(SSL* ssl, int* al, void* data) {
-  SSLContext* context = (SSLContext*)data;
+  auto context = (SSLContext*)data;
 
   if (context == nullptr) {
     return SSL_TLSEXT_ERR_NOACK;
@@ -437,7 +437,7 @@ int SSLContext::alpnSelectCallback(
     const unsigned char* in,
     unsigned int inlen,
     void* data) {
-  SSLContext* context = (SSLContext*)data;
+  auto context = (SSLContext*)data;
   CHECK(context);
   if (context->advertisedNextProtocols_.empty()) {
     *out = nullptr;
@@ -491,7 +491,7 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
     }
     unsigned char* dst = advertised_item.protocols;
     for (auto& proto : item.protocols) {
-      uint8_t protoLength = uint8_t(proto.length());
+      auto protoLength = uint8_t(proto.length());
       *dst++ = (unsigned char)protoLength;
       memcpy(dst, proto.data(), protoLength);
       dst += protoLength;
@@ -595,7 +595,7 @@ bool SSLContext::matchName(const char* host, const char* pattern, int size) {
 }
 
 int SSLContext::passwordCallback(char* password, int size, int, void* data) {
-  SSLContext* context = (SSLContext*)data;
+  auto context = (SSLContext*)data;
   if (context == nullptr || context->passwordCollector() == nullptr) {
     return 0;
   }

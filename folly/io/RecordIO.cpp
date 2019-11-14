@@ -91,7 +91,7 @@ void RecordIOReader::Iterator::advanceToValid() {
     recordAndPos_ = std::make_pair(ByteRange(), off_t(-1));
     range_.clear(); // at end
   } else {
-    size_t skipped = size_t(record.begin() - range_.begin());
+    auto skipped = size_t(record.begin() - range_.begin());
     DCHECK_GE(skipped, headerSize());
     skipped -= headerSize();
     range_.advance(skipped);
@@ -156,7 +156,7 @@ size_t prependHeader(std::unique_ptr<IOBuf>& buf, uint32_t fileId) {
     b->appendChain(std::move(buf));
     buf = std::move(b);
   }
-  Header* header = reinterpret_cast<Header*>(buf->writableData());
+  auto header = reinterpret_cast<Header*>(buf->writableData());
   memset(header, 0, sizeof(Header));
   header->magic = Header::kMagic;
   header->fileId = fileId;
@@ -171,7 +171,7 @@ bool validateRecordHeader(ByteRange range, uint32_t fileId) {
   if (range.size() < headerSize()) { // records may not be empty
     return false;
   }
-  const Header* header = reinterpret_cast<const Header*>(range.begin());
+  auto header = reinterpret_cast<const Header*>(range.begin());
   if (header->magic != Header::kMagic || header->version != 0 ||
       header->hashFunction != 0 || header->flags != 0 ||
       (fileId != 0 && header->fileId != fileId)) {
@@ -187,7 +187,7 @@ RecordInfo validateRecordData(ByteRange range) {
   if (range.size() <= headerSize()) { // records may not be empty
     return {0, {}};
   }
-  const Header* header = reinterpret_cast<const Header*>(range.begin());
+  auto header = reinterpret_cast<const Header*>(range.begin());
   range.advance(sizeof(Header));
   if (header->dataLength > range.size()) {
     return {0, {}};

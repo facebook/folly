@@ -169,7 +169,7 @@ int poll(PollDescriptor fds[], nfds_t nfds, int timeout) {
       "PollDescriptor.revents is the wrong size");
 
   // Pun it through
-  pollfd* files = reinterpret_cast<pollfd*>(reinterpret_cast<void*>(fds));
+  auto files = reinterpret_cast<pollfd*>(reinterpret_cast<void*>(fds));
 #ifdef _WIN32
   return ::WSAPoll(files, (ULONG)nfds, timeout);
 #else

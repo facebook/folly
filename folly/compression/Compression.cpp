@@ -2111,7 +2111,7 @@ constexpr Factory
 };
 
 Factory const& getFactory(CodecType type) {
-  size_t const idx = static_cast<size_t>(type);
+  auto const idx = static_cast<size_t>(type);
   if (idx >= static_cast<size_t>(CodecType::NUM_CODEC_TYPES)) {
     throw std::invalid_argument(
         to<std::string>("Compression type ", idx, " invalid"));

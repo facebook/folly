@@ -212,7 +212,7 @@ void MemoryMapping::init(off_t offset, off_t length) {
            (options_.writable ? PROT_WRITE : 0));
     }
 
-    unsigned char* start = static_cast<unsigned char*>(mmap(
+    auto start = static_cast<unsigned char*>(mmap(
         options_.address, size_t(mapLength_), prot, flags, file_.fd(), offset));
     PCHECK(start != MAP_FAILED)
         << " offset=" << offset << " length=" << mapLength_;
@@ -257,9 +257,9 @@ bool memOpInChunks(
   // chunks breaks the locking into intervals and lets other threads do memory
   // operations of their own.
 
-  size_t chunkSize = size_t(memOpChunkSize(off_t(bufSize), pageSize));
+  auto chunkSize = size_t(memOpChunkSize(off_t(bufSize), pageSize));
 
-  char* addr = static_cast<char*>(mem);
+  auto addr = static_cast<char*>(mem);
   amountSucceeded = 0;
 
   while (amountSucceeded < bufSize) {
