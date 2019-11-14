@@ -814,6 +814,7 @@ template <template <typename> class Atom = std::atomic>
 void batch_test() {
   int num = 10001;
   using NodeT = Node<Atom>;
+  // untagged
   c_.clear();
   {
     hazptr_obj_batch<Atom> batch;
@@ -827,8 +828,9 @@ void batch_test() {
     DSched::join(thr);
   }
   ASSERT_EQ(c_.ctors(), num);
-  //  ASSERT_GT(c_.dtors(), 0);
   hazptr_cleanup<Atom>();
+  ASSERT_EQ(c_.dtors(), num);
+  // tagged
   c_.clear();
   {
     hazptr_obj_batch<Atom> batch;
@@ -842,8 +844,23 @@ void batch_test() {
     DSched::join(thr);
   }
   ASSERT_EQ(c_.ctors(), num);
-  ASSERT_GT(c_.dtors(), 0);
-  hazptr_cleanup<Atom>();
+  ASSERT_EQ(c_.dtors(), num);
+  // bypass to domain
+  c_.clear();
+  {
+    hazptr_obj_batch<Atom> batch;
+    batch.set_bypass_to_domain();
+    auto thr = DSched::thread([&]() {
+      for (int i = 0; i < num; ++i) {
+        auto p = new NodeT;
+        p->set_batch_tag(&batch);
+        p->retire();
+      }
+    });
+    DSched::join(thr);
+  }
+  ASSERT_EQ(c_.ctors(), num);
+  ASSERT_EQ(c_.dtors(), num);
 }
 
 template <template <typename> class Atom = std::atomic>
