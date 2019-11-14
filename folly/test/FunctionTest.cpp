@@ -1092,6 +1092,20 @@ TEST(Function, asSharedProxy_args_const) {
   EXPECT_EQ(562, spcopy(5, 6));
 }
 
+TEST(Function, asSharedProxy_explicit_bool_conversion) {
+  folly::Function<void(void)> f = []() {};
+  auto sp = std::move(f).asSharedProxy();
+  auto spcopy = sp;
+  EXPECT_TRUE(sp);
+  EXPECT_TRUE(spcopy);
+
+  folly::Function<void(void)> emptyF;
+  auto emptySp = std::move(emptyF).asSharedProxy();
+  auto emptySpcopy = emptySp;
+  EXPECT_FALSE(emptySp);
+  EXPECT_FALSE(emptySpcopy);
+}
+
 TEST(Function, NoAllocatedMemoryAfterMove) {
   Functor<int, 100> foo;
 
