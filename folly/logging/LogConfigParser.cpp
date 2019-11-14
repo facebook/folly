@@ -145,6 +145,19 @@ LogCategoryConfig parseJsonCategoryConfig(
     config.inheritParentLevel = inherit->asBool();
   }
 
+  auto* propagate = value.get_ptr("propagate");
+  if (propagate) {
+    if (!parseJsonLevel(
+            *propagate, categoryName, config.propagateLevelMessagesToParent)) {
+      throw LogConfigParseError{to<string>(
+          "unexpected data type for propagate field of category \"",
+          categoryName,
+          "\": got ",
+          dynamicTypename(*propagate),
+          ", expected a string or integer")};
+    }
+  }
+
   auto* handlers = value.get_ptr("handlers");
   if (handlers) {
     if (!handlers->isArray()) {
@@ -580,7 +593,8 @@ dynamic logConfigToDynamic(const LogHandlerConfig& config) {
 
 dynamic logConfigToDynamic(const LogCategoryConfig& config) {
   auto value = dynamic::object("level", logLevelToString(config.level))(
-      "inherit", config.inheritParentLevel);
+      "inherit", config.inheritParentLevel)(
+      "propagate", logLevelToString(config.propagateLevelMessagesToParent));
   if (config.handlers.hasValue()) {
     auto handlers = dynamic::array();
     for (const auto& handlerName : config.handlers.value()) {

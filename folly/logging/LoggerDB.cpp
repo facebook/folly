@@ -178,6 +178,8 @@ LogConfig LoggerDB::getConfigImpl(bool includeAllCategories) const {
 
       LogCategoryConfig categoryConfig(
           levelInfo.first, levelInfo.second, handlerNames);
+      categoryConfig.propagateLevelMessagesToParent =
+          category->getPropagateLevelMessagesToParentRelaxed();
       categoryConfigs.emplace(category->getName(), std::move(categoryConfig));
     }
   }
@@ -381,6 +383,10 @@ void LoggerDB::updateConfig(const LogConfig& config) {
     // Update the level settings
     category->setLevelLocked(
         entry.second.level, entry.second.inheritParentLevel);
+
+    // Update the propagation settings
+    category->setPropagateLevelMessagesToParent(
+        entry.second.propagateLevelMessagesToParent);
   }
 
   finishConfigUpdate(handlerInfo, &handlers, &oldToNewHandlerMap);

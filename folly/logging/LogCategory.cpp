@@ -115,12 +115,9 @@ void LogCategory::processMessage(const LogMessage& message) const {
   }
 
   // Propagate the message up to our parent LogCategory.
-  //
-  // Maybe in the future it might be worth adding a flag to control if a
-  // LogCategory should propagate messages to its parent or not.  (This would
-  // be similar to log4j's "additivity" flag.)
-  // For now I don't have a strong use case for this.
-  if (parent_) {
+  if (parent_ &&
+      message.getLevel() >=
+          propagateLevelMessagesToParent_.load(std::memory_order_relaxed)) {
     parent_->processMessage(message);
   }
 }
@@ -168,6 +165,14 @@ void LogCategory::setLevel(LogLevel level, bool inherit) {
   // the LoggerDB lock to iterate through our children in case our effective
   // level changes.
   db_->setLevel(this, level, inherit);
+}
+
+void LogCategory::setPropagateLevelMessagesToParent(LogLevel level) {
+  propagateLevelMessagesToParent_.store(level, std::memory_order_relaxed);
+}
+
+LogLevel LogCategory::getPropagateLevelMessagesToParentRelaxed() {
+  return propagateLevelMessagesToParent_.load(std::memory_order_relaxed);
 }
 
 void LogCategory::setLevelLocked(LogLevel level, bool inherit) {

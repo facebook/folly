@@ -30,6 +30,7 @@ LogCategoryConfig::LogCategoryConfig(
 bool LogCategoryConfig::operator==(const LogCategoryConfig& other) const {
   return level == other.level &&
       inheritParentLevel == other.inheritParentLevel &&
+      propagateLevelMessagesToParent == other.propagateLevelMessagesToParent &&
       handlers == other.handlers;
 }
 

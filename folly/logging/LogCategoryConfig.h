@@ -52,6 +52,11 @@ class LogCategoryConfig {
   bool inheritParentLevel{true};
 
   /**
+   * Which messages at this category should propagate to its parent category.
+   */
+  LogLevel propagateLevelMessagesToParent{LogLevel::MIN_LEVEL};
+
+  /**
    * An optional list of LogHandler names to use for this category.
    *
    * When applying config changes to an existing LogCategory, the existing
