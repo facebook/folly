@@ -330,6 +330,9 @@ class FunctionTraitsSharedProxy {
   explicit FunctionTraitsSharedProxy(Function<F>&& func)
       : sp_(std::make_shared<Function<F>>(std::move(func))) {}
   R operator()(A&&... args) const {
+    if (!sp_) {
+      throw_exception<std::bad_function_call>();
+    }
     return (*sp_)(static_cast<A&&>(args)...);
   }
 

@@ -1092,6 +1092,11 @@ TEST(Function, asSharedProxy_args_const) {
   EXPECT_EQ(562, spcopy(5, 6));
 }
 
+TEST(Function, asSharedProxy_nullptr) {
+  auto sp = folly::Function<int(int, int) const>::SharedProxy(nullptr);
+  EXPECT_THROW(sp(3, 4), std::bad_function_call);
+}
+
 TEST(Function, NoAllocatedMemoryAfterMove) {
   Functor<int, 100> foo;
 
