@@ -196,6 +196,20 @@
 //  Semantically includes the inline specifier.
 #define FOLLY_ERASE FOLLY_ALWAYS_INLINE FOLLY_ATTR_VISIBILITY_HIDDEN
 
+//  FOLLY_ERASE_HACK_GCC
+//
+//  Equivalent to FOLLY_ERASE, but without hiding under gcc. Useful when applied
+//  to a function which may sometimes be hidden separately, for example by being
+//  declared in an anonymous namespace, since in such cases with -Wattributes
+//  enabled, gcc would emit: 'visibility' attribute ignored.
+//
+//  Semantically includes the inline specifier.
+#if defined(__GNUC__) && !defined(__clang__)
+#define FOLLY_ERASE_HACK_GCC FOLLY_ALWAYS_INLINE
+#else
+#define FOLLY_ERASE_HACK_GCC FOLLY_ERASE
+#endif
+
 //  FOLLY_ERASE_TRYCATCH
 //
 //  Equivalent to FOLLY_ERASE, but for code which might contain explicit

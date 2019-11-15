@@ -57,13 +57,13 @@ namespace folly {
 
 //  mimic: std::invoke, C++17
 template <typename F, typename... Args>
-constexpr auto invoke(F&& f, Args&&... args) noexcept(
+FOLLY_ERASE constexpr auto invoke(F&& f, Args&&... args) noexcept(
     noexcept(static_cast<F&&>(f)(static_cast<Args&&>(args)...)))
     -> decltype(static_cast<F&&>(f)(static_cast<Args&&>(args)...)) {
   return static_cast<F&&>(f)(static_cast<Args&&>(args)...);
 }
 template <typename M, typename C, typename... Args>
-constexpr auto invoke(M(C::*d), Args&&... args)
+FOLLY_ERASE constexpr auto invoke(M(C::*d), Args&&... args)
     -> decltype(std::mem_fn(d)(static_cast<Args&&>(args)...)) {
   return std::mem_fn(d)(static_cast<Args&&>(args)...);
 }
@@ -363,7 +363,7 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
     FOLLY_DETAIL_CREATE_FREE_INVOKE_TRAITS_USING(_, funcname, __VA_ARGS__) \
     struct __folly_detail_invoke_obj {                                     \
       template <typename... Args>                                          \
-      constexpr auto operator()(Args&&... args) const                      \
+      FOLLY_ERASE_HACK_GCC constexpr auto operator()(Args&&... args) const \
           noexcept(noexcept(funcname(static_cast<Args&&>(args)...)))       \
               -> decltype(funcname(static_cast<Args&&>(args)...)) {        \
         return funcname(static_cast<Args&&>(args)...);                     \
@@ -413,13 +413,14 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
  *    traits::is_nothrow_invocable_v<int, CanFoo, Car&&> // true
  *    traits::is_nothrow_invocable_v<char*, CanFoo, Car&&> // false
  */
-#define FOLLY_CREATE_MEMBER_INVOKER(classname, membername)                    \
-  struct classname {                                                          \
-    template <typename O, typename... Args>                                   \
-    constexpr auto operator()(O&& o, Args&&... args) const noexcept(noexcept( \
-        static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))        \
-        -> decltype(                                                          \
-            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)) {   \
-      return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...);    \
-    }                                                                         \
+#define FOLLY_CREATE_MEMBER_INVOKER(classname, membername)                 \
+  struct classname {                                                       \
+    template <typename O, typename... Args>                                \
+    FOLLY_ERASE_HACK_GCC constexpr auto operator()(O&& o, Args&&... args)  \
+        const noexcept(noexcept(                                           \
+            static_cast<O&&>(o).membername(static_cast<Args&&>(args)...))) \
+            -> decltype(static_cast<O&&>(o).membername(                    \
+                static_cast<Args&&>(args)...)) {                           \
+      return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...); \
+    }                                                                      \
   }
