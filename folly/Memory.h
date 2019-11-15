@@ -667,12 +667,12 @@ struct AllocatorHasTrivialDeallocate<CxxAllocatorAdaptor<T, Alloc>>
 namespace detail {
 // note that construct and destroy here are methods, not short names for
 // the constructor and destructor
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(AllocatorConstruct_, construct);
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(AllocatorDestroy_, destroy);
+FOLLY_CREATE_MEMBER_INVOKER(AllocatorConstruct_, construct);
+FOLLY_CREATE_MEMBER_INVOKER(AllocatorDestroy_, destroy);
 
 template <typename Void, typename Alloc, typename... Args>
 struct AllocatorCustomizesConstruct_
-    : AllocatorConstruct_::template is_invocable<Alloc, Args...> {};
+    : folly::is_invocable<AllocatorConstruct_, Alloc, Args...> {};
 
 template <typename Alloc, typename... Args>
 struct AllocatorCustomizesConstruct_<
@@ -682,7 +682,7 @@ struct AllocatorCustomizesConstruct_<
 
 template <typename Void, typename Alloc, typename... Args>
 struct AllocatorCustomizesDestroy_
-    : AllocatorDestroy_::template is_invocable<Alloc, Args...> {};
+    : folly::is_invocable<AllocatorDestroy_, Alloc, Args...> {};
 
 template <typename Alloc, typename... Args>
 struct AllocatorCustomizesDestroy_<

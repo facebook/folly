@@ -41,10 +41,10 @@ namespace folly {
 namespace detail {
 
 namespace member {
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock, lock);
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(try_lock_for, try_lock_for);
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock_shared, lock_shared);
-FOLLY_CREATE_MEMBER_INVOKE_TRAITS(lock_upgrade, lock_upgrade);
+FOLLY_CREATE_MEMBER_INVOKER(lock, lock);
+FOLLY_CREATE_MEMBER_INVOKER(try_lock_for, try_lock_for);
+FOLLY_CREATE_MEMBER_INVOKER(lock_shared, lock_shared);
+FOLLY_CREATE_MEMBER_INVOKER(lock_upgrade, lock_upgrade);
 } // namespace member
 
 /**
@@ -86,7 +86,7 @@ class LockInterfaceDispatcher {
  private:
   // assert that the mutex type has basic lock and unlock functions
   static_assert(
-      member::lock::is_invocable<Mutex>::value,
+      folly::is_invocable<member::lock, Mutex>::value,
       "The mutex type must support lock and unlock functions");
 
   using duration = std::chrono::milliseconds;
@@ -94,11 +94,11 @@ class LockInterfaceDispatcher {
  public:
   static constexpr bool has_lock_unique = true;
   static constexpr bool has_lock_timed =
-      member::try_lock_for::is_invocable<Mutex, duration>::value;
+      folly::is_invocable<member::try_lock_for, Mutex, duration>::value;
   static constexpr bool has_lock_shared =
-      member::lock_shared::is_invocable<Mutex>::value;
+      folly::is_invocable<member::lock_shared, Mutex>::value;
   static constexpr bool has_lock_upgrade =
-      member::lock_upgrade::is_invocable<Mutex>::value;
+      folly::is_invocable<member::lock_upgrade, Mutex>::value;
 };
 
 /**

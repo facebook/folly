@@ -296,41 +296,16 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
           BOOST_PP_TUPLE_TO_LIST((__VA_ARGS__))))
 
 /***
- *  FOLLY_CREATE_FREE_INVOKE_TRAITS
+ *  FOLLY_CREATE_FREE_INVOKER
  *
- *  Used to create traits container, bound to a specific free-invocable name,
- *  with the following member traits types and aliases:
- *
- *  * invoke_result
- *  * invoke_result_t
- *  * is_invocable
- *  * is_invocable_v
- *  * is_invocable_r
- *  * is_invocable_r_v
- *  * is_nothrow_invocable
- *  * is_nothrow_invocable_v
- *  * is_nothrow_invocable_r
- *  * is_nothrow_invocable_r_v
- *
- *  The container also has a static member function:
- *
- *  * invoke
- *
- *  And a member type alias:
- *
- *  * invoke_type
- *
- *  These members have behavior matching the behavior of C++17's corresponding
- *  invocation traits types, aliases, and functions, but substituting canonical
- *  invocation with member invocation.
+ *  Used to create an invoker type bound to a specific free-invocable name.
  *
  *  Example:
  *
- *    FOLLY_CREATE_FREE_INVOKE_TRAITS(foo_invoke_traits, foo);
+ *    FOLLY_CREATE_FREE_INVOKER(foo_invoker, foo);
  *
- *  The traits container type `foo_invoke_traits` is generated in the current
- *  namespace and has the listed member types and aliases. They may be used as
- *  follows:
+ *  The type `foo_invoker` is generated in the current namespace and may be used
+ *  as follows:
  *
  *    namespace Deep {
  *    struct CanFoo {};
@@ -338,7 +313,7 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
  *    int foo(CanFoo&&, Car&&) noexcept { return 2; }
  *    }
  *
- *    using traits = foo_invoke_traits;
+ *    using traits = folly::invoke_traits<foo_invoker>;
  *
  *    traits::invoke(Deep::CanFoo{}, Car{}) // 2
  *
@@ -365,7 +340,7 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
  *  and alternate definitions in the namespaces of its arguments, the primary
  *  definitions may automatically be found as follows:
  *
- *    FOLLY_CREATE_FREE_INVOKE_TRAITS(swap_invoke_traits, swap, std);
+ *    FOLLY_CREATE_FREE_INVOKER(swap_invoker, swap, std);
  *
  *  In this case, `swap_invoke_traits::invoke(int&, int&)` will use the primary
  *  definition found in `namespace std` relative to the current namespace, which
@@ -376,12 +351,12 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
  *    void swap(HasData&, HasData&) { throw 7; }
  *    }
  *
- *    using traits = swap_invoke_traits;
+ *    using traits = invoke_traits<swap_invoker>;
  *
  *    HasData a, b;
  *    traits::invoke(a, b); // throw 7
  */
-#define FOLLY_CREATE_FREE_INVOKE_TRAITS(classname, funcname, ...)          \
+#define FOLLY_CREATE_FREE_INVOKER(classname, funcname, ...)                \
   namespace classname##__folly_detail_invoke_ns {                          \
     FOLLY_MAYBE_UNUSED void funcname(                                      \
         ::folly::detail::invoke_private_overload&);                        \
@@ -396,52 +371,26 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
     };                                                                     \
   }                                                                        \
   struct classname                                                         \
-      : ::folly::invoke_traits<                                            \
-            classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj> {}
+      : classname##__folly_detail_invoke_ns::__folly_detail_invoke_obj {}
 
 /***
- *  FOLLY_CREATE_MEMBER_INVOKE_TRAITS
+ *  FOLLY_CREATE_MEMBER_INVOKER
  *
- *  Used to create traits container, bound to a specific member-invocable name,
- *  with the following member traits types and aliases:
- *
- *  * invoke_result
- *  * invoke_result_t
- *  * is_invocable
- *  * is_invocable_v
- *  * is_invocable_r
- *  * is_invocable_r_v
- *  * is_nothrow_invocable
- *  * is_nothrow_invocable_v
- *  * is_nothrow_invocable_r
- *  * is_nothrow_invocable_r_v
- *
- *  The container also has a static member function:
- *
- *  * invoke
- *
- *  And a member type alias:
- *
- *  * invoke_type
- *
- *  These members have behavior matching the behavior of C++17's corresponding
- *  invocation traits types, aliases, and functions, but substituting canonical
- *  invocation with member invocation.
+ *  Used to create an invoker type bound to a specific member-invocable name.
  *
  *  Example:
  *
- *    FOLLY_CREATE_MEMBER_INVOKE_TRAITS(foo_invoke_traits, foo);
+ *    FOLLY_CREATE_MEMBER_INVOKER(foo_invoker, foo);
  *
- *  The traits container type `foo_invoke_traits` is generated in the current
- *  namespace and has the listed member types and aliases. They may be used as
- *  follows:
+ *  The type `foo_invoker` is generated in the current namespace and may be used
+ *  as follows:
  *
  *    struct CanFoo {
  *      int foo(Bar&) { return 1; }
  *      int foo(Car&&) noexcept { return 2; }
  *    };
  *
- *    using traits = foo_invoke_traits;
+ *    using traits = folly::invoke_traits<foo_invoker>;
  *
  *    traits::invoke(CanFoo{}, Car{}) // 2
  *
@@ -464,8 +413,8 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
  *    traits::is_nothrow_invocable_v<int, CanFoo, Car&&> // true
  *    traits::is_nothrow_invocable_v<char*, CanFoo, Car&&> // false
  */
-#define FOLLY_CREATE_MEMBER_INVOKE_TRAITS(classname, membername)              \
-  struct classname##__folly_detail_member_invoke {                            \
+#define FOLLY_CREATE_MEMBER_INVOKER(classname, membername)                    \
+  struct classname {                                                          \
     template <typename O, typename... Args>                                   \
     constexpr auto operator()(O&& o, Args&&... args) const noexcept(noexcept( \
         static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)))        \
@@ -473,6 +422,4 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
             static_cast<O&&>(o).membername(static_cast<Args&&>(args)...)) {   \
       return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...);    \
     }                                                                         \
-  };                                                                          \
-  struct classname                                                            \
-      : ::folly::invoke_traits<classname##__folly_detail_member_invoke> {}
+  }
