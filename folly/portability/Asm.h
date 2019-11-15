@@ -36,7 +36,7 @@ inline void asm_volatile_memory() {
 inline void asm_volatile_pause() {
 #if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
   ::_mm_pause();
-#elif defined(__i386__) || FOLLY_X64
+#elif defined(__i386__) || FOLLY_X64 || (__mips_isa_rev > 1)
   asm volatile("pause");
 #elif FOLLY_AARCH64 || (defined(__arm__) && !(__ARM_ARCH < 7))
   asm volatile("yield");
