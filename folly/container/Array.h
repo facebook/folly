@@ -60,7 +60,7 @@ constexpr array_detail::return_type<D, TList...> make_array(TList&&... t) {
 
 namespace array_detail {
 template <typename MakeItem, std::size_t... Index>
-FOLLY_ERASE constexpr auto make_array_with(
+FOLLY_ERASE constexpr auto make_array_with_(
     MakeItem const& make,
     std::index_sequence<Index...>) {
   return std::array<decltype(make(0)), sizeof...(Index)>{{make(Index)...}};
@@ -72,7 +72,7 @@ FOLLY_ERASE constexpr auto make_array_with(
 //  Constructs a std::array<..., Size> with elements m(i) for i in [0, Size).
 template <std::size_t Size, typename MakeItem>
 constexpr auto make_array_with(MakeItem const& make) {
-  return array_detail::make_array_with(make, std::make_index_sequence<Size>{});
+  return array_detail::make_array_with_(make, std::make_index_sequence<Size>{});
 }
 
 } // namespace folly
