@@ -133,26 +133,14 @@ class hazptr_domain {
 
  public:
   /** Constructor */
-  hazptr_domain() {
-    if (std::is_same<Atom<int>, std::atomic<int>>{} &&
-        this == &default_hazptr_domain<Atom>()) {
-      set_default_hazptr_domain_alive(true);
-    }
-  }
+  hazptr_domain() = default;
 
   /** Destructor */
   ~hazptr_domain() {
     shutdown_ = true;
     reclaim_all_objects();
     free_hazptr_recs();
-    if (!tagged_.empty()) {
-      auto head = tagged_.pop_all(RetiredList::kDontLock);
-      reclaim_list_transitive(head);
-    }
-    if (std::is_same<Atom<int>, std::atomic<int>>{} &&
-        this == &default_hazptr_domain<Atom>()) {
-      set_default_hazptr_domain_alive(false);
-    }
+    DCHECK(tagged_.empty());
   }
 
   hazptr_domain(const hazptr_domain&) = delete;
@@ -595,10 +583,6 @@ class hazptr_domain {
     hcount_.fetch_add(1);
     return rec;
   }
-
-  void set_default_hazptr_domain_alive(bool b) {
-    default_hazptr_domain_alive<Atom>() = b;
-  }
 }; // hazptr_domain
 
 /**
@@ -625,12 +609,6 @@ struct hazptr_default_domain_helper<std::atomic> {
 template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE hazptr_domain<Atom>& default_hazptr_domain() {
   return hazptr_default_domain_helper<Atom>::get();
-}
-
-template <template <typename> class Atom>
-bool& default_hazptr_domain_alive() {
-  static bool alive = false;
-  return alive;
 }
 
 /** hazptr_domain_push_retired: push a list of retired objects into a domain */
