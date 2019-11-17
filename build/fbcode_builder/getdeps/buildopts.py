@@ -183,8 +183,13 @@ class BuildOptions(object):
             env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/yarn/offline-mirror"
             )
+            yarn_exe = "yarn.bat" if self.is_windows() else "yarn"
             env["YARN_PATH"] = os.path.join(
-                self.fbsource_dir, "xplat/third-party/yarn/yarn"
+                self.fbsource_dir, "xplat/third-party/yarn/", yarn_exe
+            )
+            node_exe = "node-win-x64.exe" if self.is_windows() else "node"
+            env["NODE_BIN"] = os.path.join(
+                self.fbsource_dir, "xplat/third-party/node/bin/", node_exe
             )
 
         lib_path = None
