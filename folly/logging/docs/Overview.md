@@ -83,12 +83,12 @@ This can help ensure that all logs of a certain level or above are persisted
 before a potential crash while ensuring that all logs below that level remain
 non-blocking.
 
-## Support for folly::format()
+## Support for fmt::format()
 
 The `XLOGF()` and `FB_LOGF()` macros format their arguments using
-`folly::format()`.  This allows log statements to use the powerful Python-like
+`fmt::format()`.  This allows log statements to use the powerful Python-like
 format syntax supported by
-[`folly::format()`](https://github.com/facebook/folly/blob/master/folly/docs/Format.md)
+[`fmt::format()`](https://fmt.dev/latest/syntax.html).
 
 Additionally he `XLOG()` and `FB_LOG()` macros concatenate any log arguments
 using `folly::to<string>()`, and also accept arguments via iostream-style `<<`

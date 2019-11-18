@@ -16,6 +16,7 @@
 
 #include <cstdlib>
 
+#include <folly/Format.h>
 #include <folly/init/Init.h>
 #include <folly/logging/CustomLogFormatter.h>
 #include <folly/logging/LogMessage.h>

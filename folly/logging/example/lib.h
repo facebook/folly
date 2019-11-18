@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <fmt/format.h>
 #include <folly/Range.h>
 #include <folly/logging/xlog.h>
 
@@ -26,7 +27,7 @@ class ExampleObject {
   explicit ExampleObject(folly::StringPiece str) : value_{str.str()} {
     // All XLOG() statements in this file will log to the category
     // folly.experimental.logging.example.lib
-    XLOGF(DBG1, "ExampleObject({}) constructed at {}", value_, this);
+    XLOGF(DBG1, "ExampleObject({}) constructed at {}", value_, fmt::ptr(this));
   }
   ~ExampleObject();
 

@@ -16,9 +16,9 @@
 
 #pragma once
 
+#include <fmt/core.h>
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
-#include <folly/Format.h>
 #include <folly/Portability.h>
 #include <folly/logging/LogCategory.h>
 #include <folly/logging/LogMessage.h>
@@ -336,8 +336,33 @@ class LogStreamProcessor {
     }
   }
 
+  FOLLY_NOINLINE std::string vformatLogString(
+      folly::StringPiece fmt,
+      fmt::format_args args,
+      bool& failed) noexcept {
+    try {
+      return fmt::vformat(fmt::string_view(fmt.data(), fmt.size()), args);
+    } catch (const std::exception& ex) {
+      // This most likely means that the caller had a bug in their format
+      // string/arguments.  Handle the exception here, rather than letting it
+      // propagate up, since callers generally do not expect log statements to
+      // throw.
+      //
+      // Log the format string and as much of the arguments as we can convert,
+      // to aid debugging.
+      failed = true;
+      std::string result;
+      result.append("error formatting log message: ");
+      result.append(ex.what());
+      result.append("; format string: \"");
+      result.append(fmt.data(), fmt.size());
+      result.append("\", arguments: ");
+      return result;
+    }
+  }
+
   /**
-   * Construct a log message string using folly::sformat()
+   * Construct a log message string using fmt::format()
    *
    * This function attempts to avoid throwing exceptions.  If an error occurs
    * during formatting, a message including the error details is returned
@@ -348,25 +373,13 @@ class LogStreamProcessor {
   FOLLY_NOINLINE std::string formatLogString(
       folly::StringPiece fmt,
       const Args&... args) noexcept {
-    try {
-      return folly::sformat(fmt, args...);
-    } catch (const std::exception& ex) {
-      // This most likely means that the caller had a bug in their format
-      // string/arguments.  Handle the exception here, rather than letting it
-      // propagate up, since callers generally do not expect log statements to
-      // throw.
-      //
-      // Log the format string and as much of the arguments as we can convert,
-      // to aid debugging.
-      std::string result;
-      result.append("error formatting log message: ");
-      result.append(ex.what());
-      result.append("; format string: \"");
-      result.append(fmt.data(), fmt.size());
-      result.append("\", arguments: ");
+    bool failed = false;
+    std::string result =
+        vformatLogString(fmt, fmt::make_format_args(args...), failed);
+    if (failed) {
       folly::logging::appendToString(result, args...);
-      return result;
     }
+    return result;
   }
 
   const LogCategory* const category_;

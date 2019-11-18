@@ -67,8 +67,8 @@ mechanism.
 XLOGF(DBG1, "cannot engage {} thruster: {}", thruster.name(), err.what());
 ```
 
-This uses [`folly::format()`](https://github.com/facebook/folly/blob/master/folly/docs/Format.md)
-to perform the formatting internally.
+This uses [`fmt::format()`](https://fmt.dev/latest/api.html) to perform the
+formatting internally.
 
 # Log Category Selection
 

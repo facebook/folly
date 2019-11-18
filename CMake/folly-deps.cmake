@@ -210,3 +210,6 @@ target_link_libraries(folly_deps INTERFACE
   ${FOLLY_SHINY_DEPENDENCIES}
   ${FOLLY_ASAN_FLAGS}
 )
+
+find_package(fmt CONFIG REQUIRED)
+target_link_libraries(folly_deps INTERFACE fmt::fmt)

@@ -20,6 +20,6 @@ namespace example {
 ExampleObject::~ExampleObject() {
   // All XLOG() statements in this file will log to the category
   // folly.logging.example.lib
-  XLOGF(DBG1, "ExampleObject({}) at {} destroyed", value_, this);
+  XLOGF(DBG1, "ExampleObject({}) at {} destroyed", value_, fmt::ptr(this));
 }
 } // namespace example
