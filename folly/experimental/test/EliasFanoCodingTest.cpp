@@ -108,6 +108,8 @@ class EliasFanoCodingTest : public ::testing::Test {
     using Reader = EliasFanoReader<Encoder, instructions::Default, false>;
     testAll<Reader, Encoder>({0});
     testAll<Reader, Encoder>(generateRandomList(100 * 1000, 10 * 1000 * 1000));
+    testAll<Reader, Encoder>(generateRandomList(
+        100 * 1000, 10 * 1000 * 1000, /* withDuplicates */ true));
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
     // max() cannot be read, as it is assumed an invalid value.
     // TODO(ott): It should be possible to lift this constraint.

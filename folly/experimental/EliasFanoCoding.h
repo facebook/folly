@@ -641,8 +641,14 @@ class EliasFanoReader {
     return true;
   }
 
+  /**
+   * Advances by n elements. n = 0 is allowed and has no effect. Returns false
+   * if the end of the list is reached.
+   */
   bool skip(SizeType n) {
-    CHECK_GT(n, 0);
+    if (n == 0) {
+      return valid();
+    }
 
     if (kUnchecked || LIKELY(position() + n < size_)) {
       if (LIKELY(n < kLinearScanThreshold)) {
@@ -660,8 +666,12 @@ class EliasFanoReader {
     return setDone();
   }
 
+  /**
+   * Skips to the first element >= value whose position is greater or equal to
+   * the current position. Requires that value >= value() (or that the reader is
+   * at position -1). Returns false if no such element exists.
+   */
   bool skipTo(ValueType value) {
-    // Also works when value_ == kInvalidValue.
     if (value != kInvalidValue) {
       DCHECK_GE(value + 1, value_ + 1);
     }
@@ -711,14 +721,22 @@ class EliasFanoReader {
     __builtin_prefetch(addr + kCacheLineSize);
   }
 
+  /**
+   * Jumps to the element at position n. The reader can be in any state. Returns
+   * false if n >= size().
+   */
   bool jump(SizeType n) {
-    if (LIKELY(n < size_)) { // Also checks that n != -1.
+    if (LIKELY(n < size_)) {
       value_ = readLowerPart(n) | (upper_.jump(n + 1) << numLowerBits_);
       return true;
     }
     return setDone();
   }
 
+  /**
+   * Jumps to the first element >= value. The reader can be in any
+   * state. Returns false if no such element exists.
+   */
   bool jumpTo(ValueType value) {
     if (!kUnchecked && value > lastValue_) {
       return setDone();

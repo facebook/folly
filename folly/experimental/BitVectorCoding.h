@@ -289,7 +289,9 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
   }
 
   bool skip(SizeType n) {
-    CHECK_GT(n, 0);
+    if (n == 0) {
+      return valid();
+    }
 
     if (!kUnchecked && position() + n >= size_) {
       return setDone();
