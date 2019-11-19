@@ -27,11 +27,17 @@ include(FBCMakeParseArgs)
 # If we fail to find python now we won't fail immediately, but
 # add_fb_python_executable() or add_fb_python_library() will fatal out if they
 # are used.
-if(NOT Python3_EXECUTABLE)
+if(NOT TARGET Python3::Interpreter)
   # CMake 3.12+ ships with a FindPython3.cmake module.  Try using it first.
   # We find with QUIET here, since otherwise this generates some noisy warnings
   # on versions of CMake before 3.12
-  find_package(Python3 COMPONENTS Interpreter QUIET)
+  if (WIN32)
+    # On Windows we need both the Intepreter as well as the Development
+    # libraries.
+    find_package(Python3 COMPONENTS Interpreter Development QUIET)
+  else()
+    find_package(Python3 COMPONENTS Interpreter QUIET)
+  endif()
   if(Python3_Interpreter_FOUND)
     message(STATUS "Found Python 3: ${Python3_EXECUTABLE}")
   else()
@@ -41,10 +47,15 @@ if(NOT Python3_EXECUTABLE)
     if(NOT PYTHONINTERP_FOUND)
       set(Python_ADDITIONAL_VERSIONS 3 3.6 3.5 3.4 3.3 3.2 3.1)
       find_package(PythonInterp)
+      # TODO: On Windows we require the Python libraries as well.
+      # We currently do not search for them on this code path.
+      # For now we require building with CMake 3.12+ on Windows, so that the
+      # FindPython3 code path above is available.
     endif()
     if(PYTHONINTERP_FOUND)
       if("${PYTHON_VERSION_MAJOR}" GREATER_EQUAL 3)
         set(Python3_EXECUTABLE "${PYTHON_EXECUTABLE}")
+        add_custom_target(Python3::Interpreter)
       else()
         string(
           CONCAT FBPY_FIND_PYTHON_ERR
@@ -67,6 +78,10 @@ set(
   FB_PY_TEST_DISCOVER_SCRIPT
   "${CMAKE_CURRENT_LIST_DIR}/FBPythonTestAddTests.cmake"
 )
+set(
+  FB_PY_WIN_MAIN_C
+  "${CMAKE_CURRENT_LIST_DIR}/fb_py_win_main.c"
+)
 
 # An option to control the default installation location for
 # install_fb_python_library().  This is relative to ${CMAKE_INSTALL_PREFIX}
@@ -85,7 +100,7 @@ set(
 # run.  If left unspecified, a __main__.py script must be present in the
 # manifest.
 #
-function(add_fb_python_executable EXE_NAME)
+function(add_fb_python_executable TARGET)
   fb_py_check_available()
 
   # Parse the arguments
@@ -98,7 +113,7 @@ function(add_fb_python_executable EXE_NAME)
 
   # Use add_fb_python_library() to perform most of our source handling
   add_fb_python_library(
-    "${EXE_NAME}.main_lib"
+    "${TARGET}.main_lib"
     BASE_DIR "${ARG_BASE_DIR}"
     NAMESPACE "${ARG_NAMESPACE}"
     SOURCES ${ARG_SOURCES}
@@ -107,11 +122,11 @@ function(add_fb_python_executable EXE_NAME)
 
   set(
     manifest_files
-    "$<TARGET_PROPERTY:${EXE_NAME}.main_lib.py_lib,INTERFACE_INCLUDE_DIRECTORIES>"
+    "$<TARGET_PROPERTY:${TARGET}.main_lib.py_lib,INTERFACE_INCLUDE_DIRECTORIES>"
   )
   set(
     source_files
-    "$<TARGET_PROPERTY:${EXE_NAME}.main_lib.py_lib,INTERFACE_SOURCES>"
+    "$<TARGET_PROPERTY:${TARGET}.main_lib.py_lib,INTERFACE_SOURCES>"
   )
 
   # The command to build the executable archive.
@@ -127,16 +142,25 @@ function(add_fb_python_executable EXE_NAME)
     set(make_py_args --manifest-separator "::" "$<JOIN:${manifest_files},::>")
   endif()
 
-  set(output_file "${EXE_NAME}")
+  set(output_file "${TARGET}${CMAKE_EXECUTABLE_SUFFIX}")
+  if(WIN32)
+    set(zipapp_output "${TARGET}.py_zipapp")
+  else()
+    set(zipapp_output "${output_file}")
+  endif()
+  set(zipapp_output_file "${zipapp_output}")
+
+  set(is_dir_output FALSE)
   if(DEFINED ARG_TYPE)
     list(APPEND make_py_args "--type" "${ARG_TYPE}")
     if ("${ARG_TYPE}" STREQUAL "dir")
+      set(is_dir_output TRUE)
       # CMake doesn't really seem to like having a directory specified as an
       # output; specify the __main__.py file as the output instead.
-      set(output_file "${EXE_NAME}/__main__.py")
+      set(zipapp_output_file "${zipapp_output}/__main__.py")
       list(APPEND
         extra_cmd_params
-        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${EXE_NAME}"
+        COMMAND "${CMAKE_COMMAND}" -E remove_directory "${zipapp_output}"
       )
     endif()
   endif()
@@ -146,26 +170,51 @@ function(add_fb_python_executable EXE_NAME)
   endif()
 
   add_custom_command(
-    OUTPUT "${output_file}"
+    OUTPUT "${zipapp_output_file}"
     ${extra_cmd_params}
     COMMAND
       "${Python3_EXECUTABLE}" "${FB_MAKE_PYTHON_ARCHIVE}"
-      -o "${EXE_NAME}"
+      -o "${zipapp_output}"
       ${make_py_args}
     DEPENDS
       ${source_files}
-      "${EXE_NAME}.main_lib.py_sources_built"
+      "${TARGET}.main_lib.py_sources_built"
       "${FB_MAKE_PYTHON_ARCHIVE}"
   )
 
-  # Add an "ALL" target that depends on force ${EXE_NAME},
-  # so that ${EXE_NAME} will be included in the default list of build targets.
-  add_custom_target("${EXE_NAME}.GEN_PY_EXE" ALL DEPENDS "${output_file}")
+  if(WIN32)
+    if(is_dir_output)
+      # TODO: generate a main executable that will invoke Python3
+      # with the correct main module inside the output directory
+    else()
+      add_executable("${TARGET}.winmain" "${FB_PY_WIN_MAIN_C}")
+      target_link_libraries("${TARGET}.winmain" Python3::Python)
+      # The Python3::Python target doesn't seem to be set up completely
+      # correctly on Windows for some reason, and we have to explicitly add
+      # ${Python3_LIBRARY_DIRS} to the target link directories.
+      target_link_directories(
+        "${TARGET}.winmain"
+        PUBLIC ${Python3_LIBRARY_DIRS}
+      )
+      add_custom_command(
+        OUTPUT "${output_file}"
+        DEPENDS "${TARGET}.winmain" "${zipapp_output_file}"
+        COMMAND
+          "cmd.exe" "/c" "copy" "/b"
+          "${TARGET}.winmain${CMAKE_EXECUTABLE_SUFFIX}+${zipapp_output}"
+          "${output_file}"
+      )
+    endif()
+  endif()
+
+  # Add an "ALL" target that depends on force ${TARGET},
+  # so that ${TARGET} will be included in the default list of build targets.
+  add_custom_target("${TARGET}.GEN_PY_EXE" ALL DEPENDS "${output_file}")
 
   # Allow resolving the executable path for the target that we generate
   # via a generator expression like:
   # "WATCHMAN_WAIT_PATH=$<TARGET_PROPERTY:watchman-wait.GEN_PY_EXE,EXECUTABLE>"
-  set_property(TARGET "${EXE_NAME}.GEN_PY_EXE"
+  set_property(TARGET "${TARGET}.GEN_PY_EXE"
       PROPERTY EXECUTABLE "${CMAKE_CURRENT_BINARY_DIR}/${output_file}")
 endfunction()
 
