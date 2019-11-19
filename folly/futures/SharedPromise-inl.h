@@ -19,13 +19,13 @@
 namespace folly {
 
 template <class T>
-size_t SharedPromise<T>::size() {
+size_t SharedPromise<T>::size() const {
   std::lock_guard<std::mutex> g(mutex_);
   return size_.value;
 }
 
 template <class T>
-SemiFuture<T> SharedPromise<T>::getSemiFuture() {
+SemiFuture<T> SharedPromise<T>::getSemiFuture() const {
   std::lock_guard<std::mutex> g(mutex_);
   size_.value++;
   if (hasResult()) {
@@ -40,7 +40,7 @@ SemiFuture<T> SharedPromise<T>::getSemiFuture() {
 }
 
 template <class T>
-Future<T> SharedPromise<T>::getFuture() {
+Future<T> SharedPromise<T>::getFuture() const {
   return getSemiFuture().via(&InlineExecutor::instance());
 }
 
@@ -100,7 +100,7 @@ void SharedPromise<T>::setTry(Try<T>&& t) {
 }
 
 template <class T>
-bool SharedPromise<T>::isFulfilled() {
+bool SharedPromise<T>::isFulfilled() const {
   std::lock_guard<std::mutex> g(mutex_);
   return hasResult();
 }

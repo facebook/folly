@@ -44,7 +44,7 @@ class SharedPromise {
    * Return a Future tied to the shared core state. Unlike Promise::getFuture,
    * this can be called an unlimited number of times per SharedPromise.
    */
-  SemiFuture<T> getSemiFuture();
+  SemiFuture<T> getSemiFuture() const;
 
   /**
    * Return a Future tied to the shared core state. Unlike Promise::getFuture,
@@ -53,10 +53,10 @@ class SharedPromise {
    *       appropriate executor to .via on the returned SemiFuture to get a
    *       valid Future where necessary.
    */
-  Future<T> getFuture();
+  Future<T> getFuture() const;
 
   /** Return the number of Futures associated with this SharedPromise */
-  size_t size();
+  size_t size() const;
 
   /** Fulfill the SharedPromise with an exception_wrapper */
   void setException(exception_wrapper ew);
@@ -97,7 +97,7 @@ class SharedPromise {
   template <class F>
   void setWith(F&& func);
 
-  bool isFulfilled();
+  bool isFulfilled() const;
 
  private:
   // this allows SharedPromise move-ctor/move-assign to be defaulted
@@ -125,14 +125,14 @@ class SharedPromise {
     }
   };
 
-  bool hasResult() {
+  bool hasResult() const {
     return try_.value.hasValue() || try_.value.hasException();
   }
 
-  Mutex mutex_;
-  Defaulted<size_t> size_;
+  mutable Mutex mutex_;
+  mutable Defaulted<size_t> size_;
   Defaulted<Try<T>> try_;
-  std::vector<Promise<T>> promises_;
+  mutable std::vector<Promise<T>> promises_;
   std::function<void(exception_wrapper const&)> interruptHandler_;
 };
 
