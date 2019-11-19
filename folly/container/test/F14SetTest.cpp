@@ -292,7 +292,6 @@ TEST(F14Set, equalityRefinement) {
 #include <string>
 #include <unordered_set>
 
-#include <folly/Range.h>
 
 using namespace folly;
 using namespace folly::f14;

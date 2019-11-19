@@ -28,7 +28,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-using namespace folly::detail;
 
 namespace folly {
 namespace test {

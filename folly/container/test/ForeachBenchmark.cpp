@@ -24,7 +24,6 @@
 #include <folly/init/Init.h>
 
 using namespace folly;
-using namespace folly::detail;
 
 // Benchmarks:
 // 1. Benchmark iterating through the man with FOR_EACH, and also assign

@@ -25,7 +25,6 @@
 #include <folly/portability/GTest.h>
 
 using namespace folly;
-using namespace folly::bititerator_detail;
 
 namespace {
 

@@ -300,7 +300,6 @@ TEST(F14Map, equalityRefinement) {
 #include <typeinfo>
 #include <unordered_map>
 
-#include <folly/Range.h>
 #include <folly/hash/Hash.h>
 
 using namespace folly;
