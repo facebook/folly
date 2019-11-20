@@ -147,7 +147,7 @@ cmake ..
 make -j$(nproc)
 sudo make install
 ```
-git
+
 If advanced debugging functionality is required, use:
 
 ```
