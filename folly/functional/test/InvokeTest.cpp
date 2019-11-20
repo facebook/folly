@@ -278,3 +278,38 @@ TEST_F(InvokeTest, member_is_nothrow_invocable_r) {
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, Obj, int, char*>));
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, Obj, int>));
 }
+
+FOLLY_CREATE_STATIC_MEMBER_INVOKER(stat_invoker, stat);
+
+TEST_F(InvokeTest, static_member_invoke) {
+  struct HasStat {
+    static char stat(int, int) noexcept {
+      return 'a';
+    }
+    static int volatile&& stat(int, char const*) {
+      static int volatile x_ = 17;
+      return std::move(x_);
+    }
+    static float stat(float, float) {
+      return 3.14;
+    }
+  };
+  using traits = folly::invoke_traits<stat_invoker<HasStat>>;
+
+  EXPECT_TRUE((traits::is_invocable_v<int, char>));
+  EXPECT_TRUE((traits::is_invocable_v<int, char>));
+  EXPECT_TRUE((traits::is_invocable_v<int, char*>));
+  EXPECT_FALSE((traits::is_invocable_v<int>));
+
+  EXPECT_TRUE((traits::is_invocable_r_v<int, int, char>));
+  EXPECT_TRUE((traits::is_invocable_r_v<int, int, char*>));
+  EXPECT_FALSE((traits::is_invocable_r_v<int, int>));
+
+  EXPECT_TRUE((traits::is_nothrow_invocable_v<int, char>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<int, char*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<int>));
+
+  EXPECT_TRUE((traits::is_nothrow_invocable_r_v<int, int, char>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int, char*>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
+}

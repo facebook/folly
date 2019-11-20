@@ -424,3 +424,55 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
       return static_cast<O&&>(o).membername(static_cast<Args&&>(args)...); \
     }                                                                      \
   }
+
+/***
+ *  FOLLY_CREATE_STATIC_MEMBER_INVOKER
+ *
+ *  Used to create an invoker type template bound to a specific static-member-
+ *  invocable name.
+ *
+ *  Example:
+ *
+ *    FOLLY_CREATE_STATIC_MEMBER_INVOKER(foo_invoker, foo);
+ *
+ *  The type template `foo_invoker` is generated in the current namespace and
+ *  may be used as follows:
+ *
+ *    struct CanFoo {
+ *      static int foo(Bar&) { return 1; }
+ *      static int foo(Car&&) noexcept { return 2; }
+ *    };
+ *
+ *    using traits = folly::invoke_traits<foo_invoker<CanFoo>>;
+ *
+ *    traits::invoke(Car{}) // 2
+ *
+ *    traits::invoke_result<Bar&> // has member
+ *    traits::invoke_result_t<Bar&> // int
+ *    traits::invoke_result<Bar&&> // empty
+ *    traits::invoke_result_t<Bar&&> // error
+ *
+ *    traits::is_invocable_v<Bar&> // true
+ *    traits::is_invocable_v<Bar&&> // false
+ *
+ *    traits::is_invocable_r_v<int, Bar&> // true
+ *    traits::is_invocable_r_v<char*, Bar&> // false
+ *
+ *    traits::is_nothrow_invocable_v<Bar&> // false
+ *    traits::is_nothrow_invocable_v<Car&&> // true
+ *
+ *    traits::is_nothrow_invocable_v<int, Bar&> // false
+ *    traits::is_nothrow_invocable_v<char*, Bar&> // false
+ *    traits::is_nothrow_invocable_v<int, Car&&> // true
+ *    traits::is_nothrow_invocable_v<char*, Car&&> // false
+ */
+#define FOLLY_CREATE_STATIC_MEMBER_INVOKER(classname, membername)       \
+  template <typename T>                                                 \
+  struct classname {                                                    \
+    template <typename... Args>                                         \
+    FOLLY_ERASE constexpr auto operator()(Args&&... args) const         \
+        noexcept(noexcept(T::membername(static_cast<Args&&>(args)...))) \
+            -> decltype(T::membername(static_cast<Args&&>(args)...)) {  \
+      return T::membername(static_cast<Args&&>(args)...);               \
+    }                                                                   \
+  }
