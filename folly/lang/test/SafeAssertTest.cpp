@@ -21,7 +21,6 @@
 #include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 
-using namespace folly;
 
 // clang-format off
 [[noreturn]] void fail() {

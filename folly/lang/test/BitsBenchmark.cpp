@@ -26,7 +26,6 @@
 
 #include <folly/Benchmark.h>
 
-using namespace folly;
 
 BENCHMARK(nextPowTwoClz, iters) {
   for (unsigned long i = 0; i < iters; ++i) {

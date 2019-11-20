@@ -17,7 +17,6 @@
 #include <folly/lang/Launder.h>
 #include <folly/portability/GTest.h>
 
-using namespace ::testing;
 using namespace folly;
 
 TEST(LaunderTest, Basics) {
