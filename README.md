@@ -135,6 +135,19 @@ sudo apt-get install \
     pkg-config
 ```
 
+Folly relies on [fmt](https://github.com/fmtlib/fmt) which needs to be installed from source.
+The following commands will download, compile, and install fmt.
+
+```
+git clone https://github.com/fmtlib/fmt.git && cd fmt
+
+mkdir _build && cd _build
+cmake ..
+
+make -j$(nproc)
+sudo make install
+```
+
 If advanced debugging functionality is required, use:
 
 ```
