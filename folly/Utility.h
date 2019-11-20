@@ -305,6 +305,43 @@ constexpr auto to_unsigned(T const& t) -> typename std::make_unsigned<T>::type {
   return static_cast<U>(t);
 }
 
+template <typename Src>
+class to_narrow_convertible {
+ public:
+  static_assert(std::is_integral<Src>::value, "not an integer");
+
+  explicit constexpr to_narrow_convertible(Src const& value) noexcept
+      : value_(value) {}
+  explicit to_narrow_convertible(to_narrow_convertible const&) = default;
+  explicit to_narrow_convertible(to_narrow_convertible&&) = default;
+  to_narrow_convertible& operator=(to_narrow_convertible const&) = default;
+  to_narrow_convertible& operator=(to_narrow_convertible&&) = default;
+
+  template <
+      typename Dst,
+      std::enable_if_t<
+          std::is_integral<Dst>::value &&
+              std::is_signed<Dst>::value == std::is_signed<Src>::value,
+          int> = 0>
+  /* implicit */ constexpr operator Dst() const noexcept {
+    return static_cast<Dst>(value_);
+  }
+
+ private:
+  Src value_;
+};
+
+//  to_narrow
+//
+//  A utility for performing explicit possibly-narrowing integral conversion
+//  without specifying the destination type. Does not permit changing signs.
+//  Sometimes preferable to static_cast<Dst>(src) to document the intended
+//  semantics of the cast.
+template <typename Src>
+constexpr auto to_narrow(Src const& src) -> to_narrow_convertible<Src> {
+  return to_narrow_convertible<Src>{src};
+}
+
 template <class E>
 constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
   static_assert(std::is_enum<E>::value, "not an enum type");

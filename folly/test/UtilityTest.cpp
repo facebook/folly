@@ -136,3 +136,10 @@ TEST_F(UtilityTest, to_unsigned) {
     EXPECT_EQ(-12, actual);
   }
 }
+
+TEST_F(UtilityTest, to_narrow) {
+  {
+    constexpr uint32_t actual = folly::to_narrow(uint64_t(100));
+    EXPECT_EQ(100, actual);
+  }
+}
