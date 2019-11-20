@@ -505,31 +505,23 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return position;
   }
 
-  ValueType jump(size_t n) {
-    if (Encoder::forwardQuantum == 0 || n <= Encoder::forwardQuantum) {
-      reset();
-    } else {
-      // Avoid reading the head, skip() will reposition.
-      position_ = std::numeric_limits<SizeType>::max();
-    }
-    return skip(n);
-  }
-
-  ValueType jumpToNext(ValueType v) {
-    if (Encoder::skipQuantum == 0 || v < Encoder::skipQuantum) {
-      reset();
-    } else {
-      value_ = 0; // Avoid reading the head, skipToNext() will reposition.
-    }
-    return skipToNext(v);
-  }
-
   ValueType previousValue() const {
     block_t block;
     size_t inner;
     OuterType outer;
     getPreviousInfo(block, inner, outer);
     return static_cast<ValueType>(8 * outer + inner - (position_ - 1));
+  }
+
+  // Returns true if we're at the beginning of the list, or previousValue() !=
+  // value().
+  bool isAtBeginningOfRun() const {
+    DCHECK_NE(position(), static_cast<SizeType>(-1));
+    if (position_ == 0) {
+      return true;
+    }
+    size_t bitPos = size_t(value_) + position_ - 1;
+    return (start_[bitPos / 8] & (1 << (bitPos % 8))) == 0;
   }
 
   void setDone(SizeType endPos) {
@@ -726,25 +718,44 @@ class EliasFanoReader {
    * false if n >= size().
    */
   bool jump(SizeType n) {
-    if (LIKELY(n < size_)) {
-      value_ = readLowerPart(n) | (upper_.jump(n + 1) << numLowerBits_);
-      return true;
+    if (n + 1 < upper_.position() + 1) { // Also works if position() == -1.
+      reset();
+      n += 1; // Initial position is -1.
+    } else {
+      n -= upper_.position();
     }
-    return setDone();
+    return skip(n);
   }
 
   /**
    * Jumps to the first element >= value. The reader can be in any
    * state. Returns false if no such element exists.
+   *
+   * If all the values in the list can be assumed distinct, setting
+   * assumeDistinct = true can enable some optimizations.
    */
-  bool jumpTo(ValueType value) {
-    if (!kUnchecked && value > lastValue_) {
-      return setDone();
+  bool jumpTo(ValueType value, bool assumeDistinct = false) {
+    if (value == value_) {
+      if (assumeDistinct == true) {
+        return true;
+      }
+
+      // We might be in the middle of a run, iterate backwards to the beginning.
+      auto valueLower = Instructions::bzhi(value_, numLowerBits_);
+      while (!upper_.isAtBeginningOfRun() &&
+             readLowerPart(upper_.position() - 1) == valueLower) {
+        upper_.previous();
+      }
+      return true;
     }
 
-    upper_.jumpToNext(value >> numLowerBits_);
-    iterateTo(value);
-    return true;
+    // We need to reset if we're not in the initial state and the jump is
+    // backwards.
+    if (position() != static_cast<SizeType>(-1) &&
+        value < value_) { // If position() == size() value_ is kInvalidValue.
+      reset();
+    }
+    return skipTo(value);
   }
 
   ValueType lastValue() const {
