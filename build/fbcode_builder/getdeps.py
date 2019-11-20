@@ -729,7 +729,13 @@ def parse_args():
         "--facebook-internal",
         help="Setup the build context as an FB internal build",
         action="store_true",
-        default=False,
+        default=None,
+    )
+    add_common_arg(
+        "--no-facebook-internal",
+        help="Perform a non-FB internal build, even when in an fbsource repository",
+        action="store_false",
+        dest="facebook_internal",
     )
 
     ap = argparse.ArgumentParser(
