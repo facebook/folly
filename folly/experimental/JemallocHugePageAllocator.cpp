@@ -69,7 +69,7 @@ static void print_error(int err, const char* msg) {
 
 class HugePageArena {
  public:
-  int init(int nr_pages, const JemallocHugePageAllocator::Options& options);
+  int init(int nr_pages);
   void* reserve(size_t size, size_t alignment);
 
   bool addressInArena(void* address) {
@@ -181,9 +181,7 @@ void* HugePageArena::allocHook(
   return res;
 }
 
-int HugePageArena::init(
-    int nr_pages,
-    const JemallocHugePageAllocator::Options& options) {
+int HugePageArena::init(int nr_pages) {
   DCHECK(start_ == 0);
   DCHECK(usingJEMalloc());
 
@@ -246,21 +244,30 @@ int HugePageArena::init(
     return 0;
   }
 
-  if (options.noDecay) {
-    // Set decay time to 0, which will cause jemalloc to free memory
-    // back to kernel immediately.
-    ssize_t decay_ms = 0;
-    std::ostringstream dirty_decay_key;
-    dirty_decay_key << "arena." << arenaIndex_ << ".dirty_decay_ms";
-    if (auto ret = mallctl(
-            dirty_decay_key.str().c_str(),
-            nullptr,
-            nullptr,
-            &decay_ms,
-            sizeof(decay_ms))) {
-      print_error(ret, "Unable to set decay time");
-      return 0;
-    }
+  // Set dirty decay and muzzy decay time to -1, which will cause jemalloc
+  // to never free memory to kernel.
+  ssize_t decay_ms = -1;
+  std::ostringstream dirty_decay_key;
+  dirty_decay_key << "arena." << arenaIndex_ << ".dirty_decay_ms";
+  if (auto ret = mallctl(
+          dirty_decay_key.str().c_str(),
+          nullptr,
+          nullptr,
+          &decay_ms,
+          sizeof(decay_ms))) {
+    print_error(ret, "Unable to set dirty decay time");
+    return 0;
+  }
+  std::ostringstream muzzy_decay_key;
+  muzzy_decay_key << "arena." << arenaIndex_ << ".muzzy_decay_ms";
+  if (auto ret = mallctl(
+          muzzy_decay_key.str().c_str(),
+          nullptr,
+          nullptr,
+          &decay_ms,
+          sizeof(decay_ms))) {
+    print_error(ret, "Unable to set muzzy decay time");
+    return 0;
   }
 
   start_ = freePtr_ = map_pages(nr_pages);
@@ -287,14 +294,14 @@ void* HugePageArena::reserve(size_t size, size_t alignment) {
 
 int JemallocHugePageAllocator::flags_{0};
 
-bool JemallocHugePageAllocator::init(int nr_pages, const Options& options) {
+bool JemallocHugePageAllocator::init(int nr_pages) {
   if (!usingJEMalloc()) {
     LOG(ERROR) << "Not linked with jemalloc?";
     hugePagesSupported = false;
   }
   if (hugePagesSupported) {
     if (flags_ == 0) {
-      flags_ = arena.init(nr_pages, options);
+      flags_ = arena.init(nr_pages);
     } else {
       LOG(WARNING) << "Already initialized";
     }
