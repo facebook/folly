@@ -30,6 +30,7 @@ libmnl
 libusb
 libcurl
 libnl
+libsai
 
 [shipit.pathmap]
 fbcode/fboss/github = .
