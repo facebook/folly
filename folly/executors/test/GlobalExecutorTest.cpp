@@ -15,29 +15,58 @@
  */
 
 #include <folly/executors/GlobalExecutor.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
+
+TEST(GlobalExecutorTest, GlobalImmutableCPUExecutor) {
+  folly::Baton<> b;
+
+  auto count = 0;
+  auto f = [&]() {
+    count++;
+    b.post();
+  };
+
+  // Don't explode, we should create the default global CPUExecutor lazily here.
+  getGlobalCPUExecutor()->add(f);
+  b.wait();
+  EXPECT_EQ(1, count);
+}
+
+TEST(GlobalExecutorTest, GlobalImmutableIOExecutor) {
+  folly::Baton<> b;
+
+  auto count = 0;
+  auto f = [&]() {
+    count++;
+    b.post();
+  };
+
+  // Don't explode, we should create the default global CPUExecutor lazily here.
+  getGlobalIOExecutor()->add(f);
+  b.wait();
+  EXPECT_EQ(1, count);
+}
 
 TEST(GlobalExecutorTest, GlobalCPUExecutor) {
   class DummyExecutor : public folly::Executor {
    public:
-    void add(Func f) override {
-      f();
+    void add(Func fn) override {
+      fn();
       count++;
     }
     int count{0};
   };
 
-  // The default CPU executor is a synchronous inline executor, lets verify
-  // that work we add is executed
-  auto count = 0;
-  auto f = [&]() { count++; };
+  // The default CPU executor is a thread pool
+  auto f = [&]() {};
 
   // Don't explode, we should create the default global CPUExecutor lazily here.
   getCPUExecutor()->add(f);
-  EXPECT_EQ(1, count);
 
   {
     auto dummy = std::make_shared<DummyExecutor>();
@@ -45,13 +74,11 @@ TEST(GlobalExecutorTest, GlobalCPUExecutor) {
     getCPUExecutor()->add(f);
     // Make sure we were properly installed.
     EXPECT_EQ(1, dummy->count);
-    EXPECT_EQ(2, count);
   }
 
   // Don't explode, we should restore the default global CPUExecutor because our
   // weak reference to dummy has expired
   getCPUExecutor()->add(f);
-  EXPECT_EQ(3, count);
 }
 
 TEST(GlobalExecutorTest, GlobalIOExecutor) {

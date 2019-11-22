@@ -20,53 +20,17 @@
 #include <folly/Function.h>
 #include <folly/SharedMutex.h>
 #include <folly/Singleton.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
-#include <folly/executors/InlineExecutor.h>
 #include <folly/system/HardwareConcurrency.h>
 
 using namespace folly;
 
 namespace {
 
-template <class ExecutorBase>
-class GlobalExecutor {
- public:
-  explicit GlobalExecutor(
-      Function<std::unique_ptr<ExecutorBase>()> constructDefault)
-      : constructDefault_(std::move(constructDefault)) {}
-
-  std::shared_ptr<ExecutorBase> get() {
-    {
-      SharedMutex::ReadHolder guard(mutex_);
-      if (auto executor = executor_.lock()) {
-        return executor; // Fast path.
-      }
-    }
-
-    SharedMutex::WriteHolder guard(mutex_);
-    if (auto executor = executor_.lock()) {
-      return executor;
-    }
-
-    if (!defaultExecutor_) {
-      defaultExecutor_ = constructDefault_();
-    }
-
-    return defaultExecutor_;
-  }
-
-  void set(std::weak_ptr<ExecutorBase> executor) {
-    SharedMutex::WriteHolder guard(mutex_);
-    executor_.swap(executor);
-  }
-
- private:
-  SharedMutex mutex_;
-  std::weak_ptr<ExecutorBase> executor_;
-  std::shared_ptr<ExecutorBase> defaultExecutor_;
-  Function<std::unique_ptr<ExecutorBase>()> constructDefault_;
-};
+class GlobalTag {};
 
 // aka InlineExecutor
 class DefaultCPUExecutor : public Executor {
@@ -76,50 +40,136 @@ class DefaultCPUExecutor : public Executor {
   }
 };
 
-Singleton<GlobalExecutor<Executor>> gGlobalCPUExecutor([] {
-  return new GlobalExecutor<Executor>(
-      // Default global CPU executor is an InlineExecutor.
-      [] { return std::make_unique<DefaultCPUExecutor>(); });
+Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {
+  return new std::shared_ptr<DefaultCPUExecutor>(new DefaultCPUExecutor{});
 });
 
-Singleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
+Singleton<std::shared_ptr<CPUThreadPoolExecutor>, GlobalTag>
+    gImmutableGlobalCPUExecutor([] {
+      return new std::shared_ptr<CPUThreadPoolExecutor>(
+          new CPUThreadPoolExecutor(
+              folly::hardware_concurrency(),
+              std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
+    });
+
+Singleton<std::shared_ptr<IOThreadPoolExecutor>, GlobalTag>
+    gImmutableGlobalIOExecutor([] {
+      return new std::shared_ptr<IOThreadPoolExecutor>(new IOThreadPoolExecutor(
+          folly::hardware_concurrency(),
+          std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));
+    });
+
+template <class ExecutorBase>
+std::shared_ptr<ExecutorBase> getImmutable();
+
+template <>
+std::shared_ptr<Executor> getImmutable() {
+  if (auto executorPtrPtr = gImmutableGlobalCPUExecutor.try_get()) {
+    return *executorPtrPtr;
+  }
+  return nullptr;
+}
+
+template <>
+std::shared_ptr<IOExecutor> getImmutable() {
+  if (auto executorPtrPtr = gImmutableGlobalIOExecutor.try_get()) {
+    return *executorPtrPtr;
+  }
+  return nullptr;
+}
+
+template <class ExecutorBase>
+class GlobalExecutor {
+ public:
+  explicit GlobalExecutor(
+      Function<std::shared_ptr<ExecutorBase>()> constructDefault)
+      : getDefault_(std::move(constructDefault)) {}
+
+  std::shared_ptr<ExecutorBase> get() {
+    SharedMutex::ReadHolder guard(mutex_);
+    if (auto executor = executor_.lock()) {
+      return executor; // Fast path.
+    }
+
+    return getDefault_();
+  }
+
+  void set(std::weak_ptr<ExecutorBase> executor) {
+    SharedMutex::WriteHolder guard(mutex_);
+    executor_.swap(executor);
+  }
+
+  // Replace the constructDefault function to use the immutable singleton
+  // rather than the default singleton
+  void setFromImmutable() {
+    SharedMutex::WriteHolder guard(mutex_);
+
+    getDefault_ = [] { return getImmutable<ExecutorBase>(); };
+    executor_ = std::weak_ptr<ExecutorBase>{};
+  }
+
+ private:
+  SharedMutex mutex_;
+  std::weak_ptr<ExecutorBase> executor_;
+  Function<std::shared_ptr<ExecutorBase>()> getDefault_;
+};
+
+LeakySingleton<GlobalExecutor<Executor>> gGlobalCPUExecutor([] {
+  return new GlobalExecutor<Executor>(
+      // Default global CPU executor is an InlineExecutor.
+      [] {
+        if (auto executorPtrPtr = gDefaultGlobalCPUExecutor.try_get()) {
+          return *executorPtrPtr;
+        }
+        return std::shared_ptr<DefaultCPUExecutor>{};
+      });
+});
+
+LeakySingleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
   return new GlobalExecutor<IOExecutor>(
       // Default global IO executor is an IOThreadPoolExecutor.
-      [] {
-        return std::make_unique<IOThreadPoolExecutor>(
-            folly::hardware_concurrency(),
-            std::make_shared<NamedThreadFactory>("GlobalIOThreadPool"));
-      });
+      [] { return getImmutable<IOExecutor>(); });
 });
 
 } // namespace
 
 namespace folly {
 
-std::shared_ptr<Executor> getCPUExecutor() {
-  if (auto singleton = gGlobalCPUExecutor.try_get()) {
-    return singleton->get();
+Executor::KeepAlive<> getGlobalCPUExecutor() {
+  auto executorPtr = getImmutable<Executor>();
+  if (!executorPtr) {
+    throw std::runtime_error("Requested global CPU executor during shutdown.");
   }
-  return nullptr;
+  return folly::getKeepAliveToken(executorPtr.get());
+}
+
+Executor::KeepAlive<> getGlobalIOExecutor() {
+  auto executorPtr = getImmutable<IOExecutor>();
+  if (!executorPtr) {
+    throw std::runtime_error("Requested global IO executor during shutdown.");
+  }
+  return folly::getKeepAliveToken(executorPtr.get());
+}
+
+std::shared_ptr<Executor> getCPUExecutor() {
+  auto& singleton = gGlobalCPUExecutor.get();
+  return singleton.get();
+}
+
+void setCPUExecutorToGlobalCPUExecutor() {
+  gGlobalCPUExecutor.get().setFromImmutable();
 }
 
 void setCPUExecutor(std::weak_ptr<Executor> executor) {
-  if (auto singleton = gGlobalCPUExecutor.try_get()) {
-    singleton->set(std::move(executor));
-  }
+  gGlobalCPUExecutor.get().set(std::move(executor));
 }
 
 std::shared_ptr<IOExecutor> getIOExecutor() {
-  if (auto singleton = gGlobalIOExecutor.try_get()) {
-    return singleton->get();
-  }
-  return nullptr;
+  return gGlobalIOExecutor.get().get();
 }
 
 void setIOExecutor(std::weak_ptr<IOExecutor> executor) {
-  if (auto singleton = gGlobalIOExecutor.try_get()) {
-    singleton->set(std::move(executor));
-  }
+  gGlobalIOExecutor.get().set(std::move(executor));
 }
 
 EventBase* getEventBase() {
