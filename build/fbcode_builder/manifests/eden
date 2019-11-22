@@ -18,6 +18,7 @@ fb303
 cpptoml
 rocksdb
 libgit2
+lz4
 python-toml
 
 # macOS ships with sqlite3, and some of the core system
@@ -35,9 +36,6 @@ osxfuse
 # msvc.
 [dependencies.not(os=windows)]
 libcurl
-
-[dependencies.fb=on]
-fb-mercurial
 
 [shipit.pathmap]
 fbcode/eden/oss = .
