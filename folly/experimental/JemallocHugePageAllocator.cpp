@@ -115,8 +115,7 @@ static inline T align_up(T val, U alignment) {
 }
 
 // mmap enough memory to hold the aligned huge pages, then use madvise
-// to get huge pages. Note that this is only a hint and is not guaranteed
-// to be honoured. Check /proc/<pid>/smaps to verify!
+// to get huge pages. This can be checked in /proc/<pid>/smaps.
 static uintptr_t map_pages(size_t nr_pages) {
   // Initial mmapped area is large enough to contain the aligned huge pages
   size_t alloc_size = nr_pages * kHugePageSize;
@@ -144,6 +143,22 @@ static uintptr_t map_pages(size_t nr_pages) {
   // Tell the kernel to please give us huge pages for this range
   madvise((void*)first_page, kHugePageSize * nr_pages, MADV_HUGEPAGE);
   LOG(INFO) << nr_pages << " huge pages at " << (void*)first_page;
+
+  // With THP set to madvise, page faults on these pages will block until a
+  // huge page is found to service it. However, if memory becomes fragmented
+  // before these pages are touched, then we end up blocking for kcompactd to
+  // make a page available. This increases pressure to the point that oomd comes
+  // in and kill us :(. So, preemptively touch these pages to get them backed
+  // as early as possible to prevent stalling due to no available huge pages.
+  //
+  // Note: this does not guarantee we won't be oomd killed here, it's just much
+  // more unlikely given this should be among the very first things an
+  // application does.
+  for (uintptr_t ptr = first_page; ptr < first_page + alloc_size;
+       ptr += kHugePageSize) {
+    memset((void*)ptr, 0, 1);
+  }
+
   return first_page;
 }
 
