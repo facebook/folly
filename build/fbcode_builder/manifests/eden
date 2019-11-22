@@ -38,7 +38,6 @@ libcurl
 
 [dependencies.fb=on]
 fb-mercurial
-fb-mercurial-rust
 
 [shipit.pathmap]
 fbcode/eden/oss = .
