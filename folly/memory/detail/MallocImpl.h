@@ -38,6 +38,7 @@ int mallctlnametomib(const char*, size_t*, size_t*)
 int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
     __attribute__((__nothrow__, __weak__));
 #else
+#ifdef JEMALLOC_NO_RENAME
 extern void* (*mallocx)(size_t, int);
 extern void* (*rallocx)(void*, size_t, int);
 extern size_t (*xallocx)(void*, size_t, size_t, int);
@@ -49,6 +50,7 @@ extern int (*mallctl)(const char*, void*, size_t*, void*, size_t);
 extern int (*mallctlnametomib)(const char*, size_t*, size_t*);
 extern int (
     *mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t);
+#endif
 #ifdef _MSC_VER
 // We emulate weak linkage for MSVC. The symbols we're
 // aliasing to are hiding in MallocImpl.cpp
