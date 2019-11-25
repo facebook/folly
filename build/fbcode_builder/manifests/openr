@@ -24,7 +24,8 @@ googletest
 re2
 
 [cmake.defines.test=on]
-BUILD_TESTS=OFF
+BUILD_TESTS=ON
+ADD_ROOT_TESTS=OFF
 
 [cmake.defines.test=off]
 BUILD_TESTS=OFF
