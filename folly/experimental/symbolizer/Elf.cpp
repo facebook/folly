@@ -52,19 +52,17 @@ ElfFile::ElfFile(const char* name, bool readOnly)
 }
 
 void ElfFile::open(const char* name, bool readOnly) {
-  const char* msg = "";
-  int r = openNoThrow(name, readOnly, &msg);
+  auto r = openNoThrow(name, readOnly);
   if (r == kSystemError) {
-    throwSystemError(msg);
+    throwSystemError(r.msg);
   } else {
-    CHECK_EQ(r, kSuccess) << msg;
+    CHECK_EQ(r, kSuccess) << r.msg;
   }
 }
 
-int ElfFile::openNoThrow(
+ElfFile::OpenResult ElfFile::openNoThrow(
     const char* name,
-    bool readOnly,
-    const char** msg) noexcept {
+    bool readOnly) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
@@ -73,18 +71,12 @@ int ElfFile::openNoThrow(
   strncat(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
   if (fd_ == -1) {
-    if (msg) {
-      *msg = "open";
-    }
-    return kSystemError;
+    return {kSystemError, "open"};
   }
   struct stat st;
   int r = fstat(fd_, &st);
   if (r == -1) {
-    if (msg) {
-      *msg = "fstat";
-    }
-    return kSystemError;
+    return {kSystemError, "fstat"};
   }
 
   length_ = st.st_size;
@@ -94,25 +86,22 @@ int ElfFile::openNoThrow(
   }
   file_ = static_cast<char*>(mmap(nullptr, length_, prot, MAP_SHARED, fd_, 0));
   if (file_ == MAP_FAILED) {
-    if (msg) {
-      *msg = "mmap";
-    }
-    return kSystemError;
+    return {kSystemError, "mmap"};
   }
-  if (!init(msg)) {
+  auto const initOpenResult = init();
+  if (initOpenResult != kSuccess) {
     reset();
     errno = EINVAL;
-    return kInvalidElfFile;
+    return initOpenResult;
   }
   guard.dismiss();
-  return kSuccess;
+  return {kSuccess, nullptr};
 }
 
-int ElfFile::openAndFollow(
+ElfFile::OpenResult ElfFile::openAndFollow(
     const char* name,
-    bool readOnly,
-    const char** msg) noexcept {
-  auto result = openNoThrow(name, readOnly, msg);
+    bool readOnly) noexcept {
+  auto result = openNoThrow(name, readOnly);
   if (!readOnly || result != kSuccess) {
     return result;
   }
@@ -145,11 +134,11 @@ int ElfFile::openAndFollow(
   memcpy(linkname, name, dirlen);
   memcpy(linkname + dirlen, debugFileName.begin(), debugFileLen + 1);
   reset();
-  result = openNoThrow(linkname, readOnly, msg);
+  result = openNoThrow(linkname, readOnly);
   if (result == kSuccess) {
     return result;
   }
-  return openNoThrow(name, readOnly, msg);
+  return openNoThrow(name, readOnly);
 }
 
 ElfFile::~ElfFile() {
@@ -204,32 +193,21 @@ void ElfFile::reset() {
   }
 }
 
-bool ElfFile::init(const char** msg) {
+ElfFile::OpenResult ElfFile::init() {
   if (length_ < 4) {
-    if (msg) {
-      *msg = "not an ELF file (too short)";
-    }
-    return false;
+    return {kInvalidElfFile, "not an ELF file (too short)"};
   }
 
   std::array<char, 5> elfMagBuf = {{0, 0, 0, 0, 0}};
   if (::lseek(fd_, 0, SEEK_SET) != 0 || ::read(fd_, elfMagBuf.data(), 4) != 4) {
-    if (msg) {
-      *msg = "unable to read ELF file for magic number";
-    }
-    return false;
+    return {kInvalidElfFile, "unable to read ELF file for magic number"};
   }
   if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {
-    if (msg) {
-      *msg = "invalid ELF magic";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid ELF magic"};
   }
   if (::lseek(fd_, 0, SEEK_SET) != 0) {
-    if (msg) {
-      *msg = "unable to reset file descriptor after reading ELF magic number";
-    }
-    return false;
+    return {kInvalidElfFile,
+            "unable to reset file descriptor after reading ELF magic number"};
   }
 
   auto& elfHeader = this->elfHeader();
@@ -239,10 +217,7 @@ bool ElfFile::init(const char** msg) {
 #define P2(a, b) a##b
   // Validate ELF class (32/64 bits)
   if (elfHeader.e_ident[EI_CLASS] != EXPECTED_CLASS) {
-    if (msg) {
-      *msg = "invalid ELF class";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid ELF class"};
   }
 #undef P1
 #undef P2
@@ -252,47 +227,30 @@ bool ElfFile::init(const char** msg) {
   static constexpr auto kExpectedEncoding =
       kIsLittleEndian ? ELFDATA2LSB : ELFDATA2MSB;
   if (elfHeader.e_ident[EI_DATA] != kExpectedEncoding) {
-    if (msg) {
-      *msg = "invalid ELF encoding";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid ELF encoding"};
   }
 
   // Validate ELF version (1)
   if (elfHeader.e_ident[EI_VERSION] != EV_CURRENT ||
       elfHeader.e_version != EV_CURRENT) {
-    if (msg) {
-      *msg = "invalid ELF version";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid ELF version"};
   }
 
   // We only support executable and shared object files
   if (elfHeader.e_type != ET_EXEC && elfHeader.e_type != ET_DYN) {
-    if (msg) {
-      *msg = "invalid ELF file type";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid ELF file type"};
   }
 
   if (elfHeader.e_phnum == 0) {
-    if (msg) {
-      *msg = "no program header!";
-    }
-    return false;
+    return {kInvalidElfFile, "no program header!"};
   }
 
   if (elfHeader.e_phentsize != sizeof(ElfPhdr)) {
-    if (msg) {
-      *msg = "invalid program header entry size";
-    }
-    return false;
+    return {kInvalidElfFile, "invalid program header entry size"};
   }
 
   if (elfHeader.e_shentsize != sizeof(ElfShdr)) {
-    if (msg) {
-      *msg = "invalid section header entry size";
-    }
+    return {kInvalidElfFile, "invalid section header entry size"};
   }
 
   // Program headers are sorted by load address, so the first PT_LOAD
@@ -301,14 +259,11 @@ bool ElfFile::init(const char** msg) {
       iterateProgramHeaders([](auto& h) { return h.p_type == PT_LOAD; });
 
   if (!programHeader) {
-    if (msg) {
-      *msg = "could not find base address";
-    }
-    return false;
+    return {kInvalidElfFile, "could not find base address"};
   }
   baseAddress_ = programHeader->p_vaddr;
 
-  return true;
+  return {kSuccess, nullptr};
 }
 
 const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const {

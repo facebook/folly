@@ -61,22 +61,24 @@ class ElfFile {
   // on IO error, kInvalidElfFile (and sets errno to EINVAL) for an invalid
   // Elf file. On error, if msg is not nullptr, sets *msg to a static string
   // indicating what failed.
-  enum {
+  enum OpenResultCode : int {
     kSuccess = 0,
     kSystemError = -1,
     kInvalidElfFile = -2,
   };
+  struct OpenResult {
+    OpenResultCode code{};
+    char const* msg{};
+
+    /* implicit */ constexpr operator OpenResultCode() const noexcept {
+      return code;
+    }
+  };
   // Open the ELF file. Does not throw on error.
-  int openNoThrow(
-      const char* name,
-      bool readOnly = true,
-      const char** msg = nullptr) noexcept;
+  OpenResult openNoThrow(const char* name, bool readOnly = true) noexcept;
 
   // Like openNoThrow, but follow .gnu_debuglink if present
-  int openAndFollow(
-      const char* name,
-      bool readOnly = true,
-      const char** msg = nullptr) noexcept;
+  OpenResult openAndFollow(const char* name, bool readOnly = true) noexcept;
 
   // Open the ELF file. Throws on error.
   void open(const char* name, bool readOnly = true);
@@ -231,7 +233,7 @@ class ElfFile {
   const ElfShdr* getSectionContainingAddress(ElfAddr addr) const;
 
  private:
-  bool init(const char** msg);
+  OpenResult init();
   void reset();
   ElfFile(const ElfFile&) = delete;
   ElfFile& operator=(const ElfFile&) = delete;
