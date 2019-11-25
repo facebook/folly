@@ -41,6 +41,8 @@ if (PYTHON_EXTENSIONS)
     "executor.pyx"
     "futures.pxd"
     "range.pxd"
+    "iobuf.pxd"
+    "iobuf.pyx"
     "__init__.pxd"
     "AsyncioExecutor.h")
     message(

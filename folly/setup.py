@@ -27,7 +27,7 @@ Options.fast_fail = True
 
 ext = Extension(
     "folly.executor",
-    sources=["folly/executor.pyx"],
+    sources=["folly/executor.pyx", "folly/iobuf.pyx"],
     libraries=["folly_pic", "glog", "double-conversion", "iberty"],
 )
 

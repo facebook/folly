@@ -27,8 +27,7 @@
 #define PyGILState_Check() (true)
 #endif
 
-namespace thrift {
-namespace py3 {
+namespace folly {
 
 struct PyBufferData {
   folly::Executor* executor;
@@ -93,5 +92,4 @@ bool check_iobuf_less(const folly::IOBuf* a, const folly::IOBuf* b) {
   return folly::IOBufLess{}(a, b);
 }
 
-} // namespace py3
-} // namespace thrift
+} // namespace folly

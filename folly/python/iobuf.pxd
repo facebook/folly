@@ -45,7 +45,7 @@ cdef extern from '<utility>' namespace 'std':
     unique_ptr[cIOBuf] move(unique_ptr[cIOBuf])
 
 
-cdef extern from "folly/python/iobuf.h" namespace "thrift::py3":
+cdef extern from "folly/python/iobuf.h" namespace "folly":
     unique_ptr[cIOBuf] iobuf_from_python(cFollyExecutor*, PyObject*, void*, uint64_t)
     bint check_iobuf_equal(cIOBuf*, cIOBuf*)
     bint check_iobuf_less(cIOBuf*, cIOBuf*)
