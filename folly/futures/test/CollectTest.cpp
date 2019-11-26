@@ -364,6 +364,33 @@ TEST(Collect, collectAny) {
     auto& f = idx_fut.second;
     EXPECT_EQ(42, f.value());
   }
+  {
+    std::vector<Promise<int>> promises(10);
+    std::vector<SemiFuture<int>> futures;
+
+    for (auto& p : promises) {
+      futures.push_back(p.getSemiFuture());
+    }
+
+    for (auto& f : futures) {
+      EXPECT_FALSE(f.isReady());
+    }
+
+    auto anyf = collectAnySemiFuture(futures);
+
+    /* futures were moved in, so these are invalid now */
+    EXPECT_FALSE(anyf.isReady());
+
+    promises[7].setValue(42);
+    EXPECT_TRUE(anyf.isReady());
+    auto& idx_fut = anyf.value();
+
+    auto i = idx_fut.first;
+    EXPECT_EQ(7, i);
+
+    auto& f = idx_fut.second;
+    EXPECT_EQ(42, f.value());
+  }
 
   // error
   {

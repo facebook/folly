@@ -2425,6 +2425,11 @@ template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
 }
+template <class Collection>
+auto collectAnySemiFuture(Collection&& c)
+    -> decltype(collectAnySemiFuture(c.begin(), c.end())) {
+  return collectAnySemiFuture(c.begin(), c.end());
+}
 
 /** Similar to collectAny, collectAnyWithoutException return the first Future to
  * complete without exceptions. If none of the future complete without
