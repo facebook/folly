@@ -337,6 +337,10 @@ class FunctionTraitsSharedProxy {
     return (*sp_)(static_cast<A&&>(args)...);
   }
 
+  explicit operator bool() const noexcept {
+    return sp_ != nullptr;
+  }
+
   friend bool operator==(
       FunctionTraitsSharedProxy<F, R, A...> const& proxy,
       std::nullptr_t) noexcept {
