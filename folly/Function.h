@@ -328,7 +328,8 @@ class FunctionTraitsSharedProxy {
  public:
   explicit FunctionTraitsSharedProxy(std::nullptr_t) noexcept {}
   explicit FunctionTraitsSharedProxy(Function<F>&& func)
-      : sp_(std::make_shared<Function<F>>(std::move(func))) {}
+      : sp_(func ? std::make_shared<Function<F>>(std::move(func))
+                 : std::shared_ptr<Function<F>>()) {}
   R operator()(A&&... args) const {
     if (!sp_) {
       throw_exception<std::bad_function_call>();
