@@ -18,6 +18,7 @@
 #include <folly/init/Init.h>
 
 void f(int* p) {
+  LOG(INFO) << "f()";
   // Make sure recursion is not optimized out
   int a[100];
   for (size_t i = 0; i < 100; ++i) {

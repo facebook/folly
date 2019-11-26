@@ -199,7 +199,26 @@ namespace {
 
 struct sigaction oldSigsegvAction;
 
-void sigsegvSignalHandler(int signum, siginfo_t* info, void*) {
+FOLLY_NOINLINE void FOLLY_FIBERS_STACK_OVERFLOW_DETECTED(
+    int signum,
+    siginfo_t* info,
+    void* ucontext) {
+  std::cerr << "folly::fibers Fiber stack overflow detected." << std::endl;
+  // Let the old signal handler handle the signal, but make this function name
+  // present in the stack trace.
+  if (oldSigsegvAction.sa_flags & SA_SIGINFO) {
+    oldSigsegvAction.sa_sigaction(signum, info, ucontext);
+  } else {
+    oldSigsegvAction.sa_handler(signum);
+  }
+  // Prevent tail call optimization.
+  std::cerr << "";
+}
+
+void sigsegvSignalHandler(int signum, siginfo_t* info, void* ucontext) {
+  // Restore old signal handler
+  sigaction(signum, &oldSigsegvAction, nullptr);
+
   if (signum != SIGSEGV) {
     std::cerr << "GuardPageAllocator signal handler called for signal: "
               << signum;
@@ -208,11 +227,11 @@ void sigsegvSignalHandler(int signum, siginfo_t* info, void*) {
 
   if (info &&
       StackCache::isProtected(reinterpret_cast<intptr_t>(info->si_addr))) {
-    std::cerr << "folly::fibers Fiber stack overflow detected." << std::endl;
+    FOLLY_FIBERS_STACK_OVERFLOW_DETECTED(signum, info, ucontext);
+    return;
   }
 
-  // Restore old signal handler and let it handle the signal.
-  sigaction(signum, &oldSigsegvAction, nullptr);
+  // Let the old signal handler handle the signal.
   raise(signum);
 }
 
