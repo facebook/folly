@@ -306,7 +306,7 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   std::chrono::microseconds busy;
   std::chrono::microseconds idle;
 
-  loopThread_.store(std::this_thread::get_id(), std::memory_order_release);
+  loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
 
   if (!name_.empty()) {
     setThreadName(name_);
