@@ -216,7 +216,7 @@ void EventBase::checkIsInEventBaseThread() const {
   // Using getThreadName(evbTid) instead of name_ will work also if
   // the thread name is set outside of EventBase (and name_ is empty).
   auto curTid = std::this_thread::get_id();
-  CHECK(evbTid == curTid)
+  CHECK_EQ(evbTid, curTid)
       << "This logic must be executed in the event base thread. "
       << "Event base thread name: \""
       << folly::getThreadName(evbTid).value_or("")
@@ -306,7 +306,12 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
   std::chrono::microseconds busy;
   std::chrono::microseconds idle;
 
-  loopThread_.store(std::this_thread::get_id(), std::memory_order_relaxed);
+  auto const prevLoopThread = loopThread_.exchange(
+      std::this_thread::get_id(), std::memory_order_relaxed);
+  CHECK_EQ(std::thread::id(), prevLoopThread)
+      << "Driving an EventBase in one thread (" << std::this_thread::get_id()
+      << ") while it is already being driven in another thread ("
+      << prevLoopThread << ") is forbidden.";
 
   if (!name_.empty()) {
     setThreadName(name_);
