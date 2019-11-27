@@ -40,13 +40,10 @@ namespace ssl {
 bool OpenSSLUtils::getTLSMasterKey(
     const SSL_SESSION* session,
     MutableByteRange keyOut) {
-#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
-  if (session &&
-      session->master_key_length == static_cast<int>(keyOut.size())) {
-    auto masterKey = session->master_key;
-    std::copy(
-        masterKey, masterKey + session->master_key_length, keyOut.begin());
-    return true;
+#if FOLLY_OPENSSL_IS_110
+  auto size = SSL_SESSION_get_master_key(session, nullptr, 0);
+  if (size == keyOut.size()) {
+    return SSL_SESSION_get_master_key(session, keyOut.begin(), keyOut.size());
   }
 #else
   (void)session;
@@ -58,12 +55,10 @@ bool OpenSSLUtils::getTLSMasterKey(
 bool OpenSSLUtils::getTLSClientRandom(
     const SSL* ssl,
     MutableByteRange randomOut) {
-#if FOLLY_OPENSSL_IS_101 || FOLLY_OPENSSL_IS_102
-  if ((SSL_version(ssl) >> 8) == TLS1_VERSION_MAJOR && ssl->s3 &&
-      randomOut.size() == SSL3_RANDOM_SIZE) {
-    auto clientRandom = ssl->s3->client_random;
-    std::copy(clientRandom, clientRandom + SSL3_RANDOM_SIZE, randomOut.begin());
-    return true;
+#if FOLLY_OPENSSL_IS_110
+  auto size = SSL_get_client_random(ssl, nullptr, 0);
+  if (size == randomOut.size()) {
+    return SSL_get_client_random(ssl, randomOut.begin(), randomOut.size());
   }
 #else
   (void)ssl;
