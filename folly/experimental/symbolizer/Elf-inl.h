@@ -22,7 +22,8 @@ namespace folly {
 namespace symbolizer {
 
 template <class Fn>
-const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const {
+const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, ElfPhdr const&>) {
   // there exist ELF binaries which execute correctly, but have invalid internal
   // offset(s) to program/section headers; most probably due to invalid
   // stripping of symbols
@@ -40,7 +41,8 @@ const ElfPhdr* ElfFile::iterateProgramHeaders(Fn fn) const {
 }
 
 template <class Fn>
-const ElfShdr* ElfFile::iterateSections(Fn fn) const {
+const ElfShdr* ElfFile::iterateSections(Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
   // there exist ELF binaries which execute correctly, but have invalid internal
   // offset(s) to program/section headers; most probably due to invalid
   // stripping of symbols
@@ -58,7 +60,8 @@ const ElfShdr* ElfFile::iterateSections(Fn fn) const {
 }
 
 template <class Fn>
-const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const {
+const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
   return iterateSections(
       [&](const ElfShdr& sh) { return sh.sh_type == type && fn(sh); });
 }
@@ -66,7 +69,7 @@ const ElfShdr* ElfFile::iterateSectionsWithType(uint32_t type, Fn fn) const {
 template <class Fn>
 const ElfShdr* ElfFile::iterateSectionsWithTypes(
     std::initializer_list<uint32_t> types,
-    Fn fn) const {
+    Fn fn) const noexcept(is_nothrow_invocable_v<Fn, ElfShdr const&>) {
   return iterateSections([&](const ElfShdr& sh) {
     auto const it = std::find(types.begin(), types.end(), sh.sh_type);
     return it != types.end() && fn(sh);
@@ -74,7 +77,8 @@ const ElfShdr* ElfFile::iterateSectionsWithTypes(
 }
 
 template <class Fn>
-const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const {
+const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, const char*>) {
   validateStringTable(stringTable);
 
   const char* start = file_ + stringTable.sh_offset;
@@ -89,7 +93,8 @@ const char* ElfFile::iterateStrings(const ElfShdr& stringTable, Fn fn) const {
 }
 
 template <class Fn>
-const ElfSym* ElfFile::iterateSymbols(const ElfShdr& section, Fn fn) const {
+const ElfSym* ElfFile::iterateSymbols(const ElfShdr& section, Fn fn) const
+    noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
   FOLLY_SAFE_CHECK(
       section.sh_entsize == sizeof(ElfSym),
       "invalid entry size in symbol table");
@@ -112,7 +117,7 @@ template <class Fn>
 const ElfSym* ElfFile::iterateSymbolsWithType(
     const ElfShdr& section,
     uint32_t type,
-    Fn fn) const {
+    Fn fn) const noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
   // N.B. st_info has the same representation on 32- and 64-bit platforms
   return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
     return ELF32_ST_TYPE(sym.st_info) == type && fn(sym);
@@ -123,7 +128,7 @@ template <class Fn>
 const ElfSym* ElfFile::iterateSymbolsWithTypes(
     const ElfShdr& section,
     std::initializer_list<uint32_t> types,
-    Fn fn) const {
+    Fn fn) const noexcept(is_nothrow_invocable_v<Fn, ElfSym const&>) {
   // N.B. st_info has the same representation on 32- and 64-bit platforms
   return iterateSymbols(section, [&](const ElfSym& sym) -> bool {
     auto const elfType = ELF32_ST_TYPE(sym.st_info);

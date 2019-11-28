@@ -159,7 +159,7 @@ ElfFile::ElfFile(ElfFile&& other) noexcept
   other.baseAddress_ = 0;
 }
 
-ElfFile& ElfFile::operator=(ElfFile&& other) {
+ElfFile& ElfFile::operator=(ElfFile&& other) noexcept {
   assert(this != &other);
   reset();
 
@@ -179,7 +179,7 @@ ElfFile& ElfFile::operator=(ElfFile&& other) {
   return *this;
 }
 
-void ElfFile::reset() {
+void ElfFile::reset() noexcept {
   filepath_[0] = 0;
 
   if (file_ != MAP_FAILED) {
@@ -193,7 +193,7 @@ void ElfFile::reset() {
   }
 }
 
-ElfFile::OpenResult ElfFile::init() {
+ElfFile::OpenResult ElfFile::init() noexcept {
   if (length_ < 4) {
     return {kInvalidElfFile, "not an ELF file (too short)"};
   }
@@ -266,16 +266,17 @@ ElfFile::OpenResult ElfFile::init() {
   return {kSuccess, nullptr};
 }
 
-const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const {
+const ElfShdr* ElfFile::getSectionByIndex(size_t idx) const noexcept {
   FOLLY_SAFE_CHECK(idx < elfHeader().e_shnum, "invalid section index");
   return &at<ElfShdr>(elfHeader().e_shoff + idx * sizeof(ElfShdr));
 }
 
-folly::StringPiece ElfFile::getSectionBody(const ElfShdr& section) const {
+folly::StringPiece ElfFile::getSectionBody(const ElfShdr& section) const
+    noexcept {
   return folly::StringPiece(file_ + section.sh_offset, section.sh_size);
 }
 
-void ElfFile::validateStringTable(const ElfShdr& stringTable) const {
+void ElfFile::validateStringTable(const ElfShdr& stringTable) const noexcept {
   FOLLY_SAFE_CHECK(
       stringTable.sh_type == SHT_STRTAB, "invalid type for string table");
 
@@ -287,8 +288,8 @@ void ElfFile::validateStringTable(const ElfShdr& stringTable) const {
       "invalid string table");
 }
 
-const char* ElfFile::getString(const ElfShdr& stringTable, size_t offset)
-    const {
+const char* ElfFile::getString(const ElfShdr& stringTable, size_t offset) const
+    noexcept {
   validateStringTable(stringTable);
   FOLLY_SAFE_CHECK(
       offset < stringTable.sh_size, "invalid offset in string table");
@@ -296,7 +297,7 @@ const char* ElfFile::getString(const ElfShdr& stringTable, size_t offset)
   return file_ + stringTable.sh_offset + offset;
 }
 
-const char* ElfFile::getSectionName(const ElfShdr& section) const {
+const char* ElfFile::getSectionName(const ElfShdr& section) const noexcept {
   if (elfHeader().e_shstrndx == SHN_UNDEF) {
     return nullptr; // no section name string table
   }
@@ -305,7 +306,7 @@ const char* ElfFile::getSectionName(const ElfShdr& section) const {
   return getString(sectionNames, section.sh_name);
 }
 
-const ElfShdr* ElfFile::getSectionByName(const char* name) const {
+const ElfShdr* ElfFile::getSectionByName(const char* name) const noexcept {
   if (elfHeader().e_shstrndx == SHN_UNDEF) {
     return nullptr; // no section name string table
   }
@@ -323,7 +324,8 @@ const ElfShdr* ElfFile::getSectionByName(const char* name) const {
   return foundSection;
 }
 
-ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const {
+ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const
+    noexcept {
   Symbol foundSymbol{nullptr, nullptr};
 
   auto findSection = [&](const ElfShdr& section) {
@@ -351,7 +353,7 @@ ElfFile::Symbol ElfFile::getDefinitionByAddress(uintptr_t address) const {
   return foundSymbol;
 }
 
-ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const {
+ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const noexcept {
   Symbol foundSymbol{nullptr, nullptr};
 
   auto findSection = [&](const ElfShdr& section) -> bool {
@@ -390,13 +392,14 @@ ElfFile::Symbol ElfFile::getSymbolByName(const char* name) const {
   return foundSymbol;
 }
 
-const ElfShdr* ElfFile::getSectionContainingAddress(ElfAddr addr) const {
+const ElfShdr* ElfFile::getSectionContainingAddress(ElfAddr addr) const
+    noexcept {
   return iterateSections([&](const ElfShdr& sh) -> bool {
     return (addr >= sh.sh_addr) && (addr < (sh.sh_addr + sh.sh_size));
   });
 }
 
-const char* ElfFile::getSymbolName(Symbol symbol) const {
+const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
   if (!symbol.first || !symbol.second) {
     return nullptr;
   }
