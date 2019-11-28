@@ -12,6 +12,7 @@ import os
 from .builder import (
     AutoconfBuilder,
     Boost,
+    CargoBuilder,
     CMakeBuilder,
     Iproute2Builder,
     MakeBuilder,
@@ -67,6 +68,7 @@ SCHEMA = {
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
+    "cargo": {"optional_section": True, "fields": {"build_doc": OPTIONAL}},
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
     "b2.args": {"optional_section": True},
@@ -414,6 +416,12 @@ class ManifestParser(object):
         if builder == "iproute2":
             return Iproute2Builder(
                 build_options, ctx, self, src_dir, build_dir, inst_dir
+            )
+
+        if builder == "cargo":
+            build_doc = self.get("cargo", "build_doc", False, ctx)
+            return CargoBuilder(
+                build_options, ctx, self, src_dir, build_dir, inst_dir, build_doc
             )
 
         raise KeyError("project %s has no known builder" % (self.name))

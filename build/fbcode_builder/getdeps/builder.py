@@ -5,7 +5,6 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
-import glob
 import json
 import os
 import shutil
@@ -789,3 +788,62 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
             ],
             env=env,
         )
+
+
+class CargoBuilder(BuilderBase):
+    def __init__(
+        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, build_doc
+    ):
+        super(CargoBuilder, self).__init__(
+            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+        )
+        self.build_doc = build_doc
+
+    def run_cargo(self, install_dirs, operation, args=None):
+        args = args or []
+        env = self._compute_env(install_dirs)
+        cmd = ["cargo", operation, "-j%s" % self.build_opts.num_jobs] + args
+        self._run_cmd(cmd, cwd=self.build_source_dir(), env=env)
+
+    def build_source_dir(self):
+        return os.path.join(self.build_dir, "source")
+
+    def recreate_dir(self, src, dst):
+        if os.path.isdir(dst):
+            shutil.rmtree(dst)
+        shutil.copytree(src, dst)
+
+    def _build(self, install_dirs, reconfigure):
+        build_source_dir = self.build_source_dir()
+        self.recreate_dir(self.src_dir, build_source_dir)
+
+        dot_cargo_dir = os.path.join(build_source_dir, ".cargo")
+        if not os.path.isdir(dot_cargo_dir):
+            os.mkdir(dot_cargo_dir)
+
+        with open(os.path.join(dot_cargo_dir, "config"), "w+") as f:
+            f.write(
+                """\
+[build]
+target-dir = '''{}'''
+""".format(
+                    self.build_dir.replace("\\", "\\\\")
+                )
+            )
+
+        try:
+            from getdeps.facebook.lfs import crates_io_download
+
+            crates_io_download(self.build_opts, self.build_dir, build_source_dir)
+        except ImportError:
+            # This FB internal module isn't shippped to github,
+            # so just rely on cargo downloading crates on it's own
+            pass
+
+        self.run_cargo(install_dirs, "build")
+        self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
+
+    def run_tests(self, install_dirs, schedule_type, owner):
+        self.run_cargo(install_dirs, "test")
+        if self.build_doc:
+            self.run_cargo(install_dirs, "doc", ["--no-deps"])

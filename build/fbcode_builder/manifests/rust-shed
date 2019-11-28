@@ -1,0 +1,21 @@
+[manifest]
+name = rust-shed
+fbsource_path = fbcode/common/rust/shed
+shipit_project = rust-shed
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/rust-shed.git
+
+[build]
+builder = cargo
+
+[cargo]
+build_doc = true
+
+[shipit.pathmap]
+fbcode/common/rust/shed = .
+fbcode/common/rust/shed/public_tld = .
+
+[dependencies]
+fbthrift
