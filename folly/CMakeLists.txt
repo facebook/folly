@@ -35,53 +35,47 @@ if (PYTHON_EXTENSIONS)
 
   set(_cybld "${CMAKE_CURRENT_BINARY_DIR}/cybld")
 
-  file(MAKE_DIRECTORY "${_cybld}/folly")
-  foreach(_src
-    "executor.pxd"
-    "executor.pyx"
-    "futures.pxd"
-    "range.pxd"
-    "iobuf.pxd"
-    "iobuf.pyx"
-    "optional.pyx"
-    "__init__.pxd"
-    "AsyncioExecutor.h")
+  add_custom_target(create_binding_symlink ALL)
+  file(GLOB BindingFiles
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pyx"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.pxd"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.h"
+    "${CMAKE_CURRENT_SOURCE_DIR}/python/*.cpp"
+  )
+  file(MAKE_DIRECTORY "${_cybld}/folly/")
+
+  foreach(_src ${BindingFiles})
+    get_filename_component(_target_file "${_src}" NAME)
+
   message(
     STATUS
-    "Linking ${CMAKE_CURRENT_SOURCE_DIR}/python/lang/cast.pxd "
-    "to ${_cybld}/folly/cast.pxd"
+    "Linking ${_src} "
+    "to ${_cybld}/folly/${_target_file}"
   )
-  add_custom_target("create_folly_link_cast.pxd" ALL
+  add_custom_command(TARGET create_binding_symlink PRE_BUILD
     COMMAND
       ${CMAKE_COMMAND} -E create_symlink
-      ${CMAKE_CURRENT_SOURCE_DIR}/python/lang/cast.pxd
-      "${_cybld}/folly/cast.pxd"
+      "${_src}"
+      "${_cybld}/folly/${_target_file}"
   )
-    message(
-      STATUS
-      "Linking ${CMAKE_CURRENT_SOURCE_DIR}/python/${_src} "
-      "to ${_cybld}/folly/${_src}"
-    )
-    add_custom_target("create_folly_link_${_src}" ALL
-      COMMAND
-        ${CMAKE_COMMAND} -E create_symlink
-        ${CMAKE_CURRENT_SOURCE_DIR}/python/${_src}
-        "${_cybld}/folly/${_src}"
-    )
   endforeach()
 
-  # Tell setup.py where to find includes and libfolly_pic.a
+  # Tell setup.py where to find includes and libfolly.so
   set(prop "$<TARGET_PROPERTY:folly_base,INCLUDE_DIRECTORIES>")
   set(incs "$<$<BOOL:${prop}>:-I$<JOIN:${prop},:>>")
   set(libs "-L${CMAKE_BINARY_DIR}")
 
   add_custom_target(folly_python_bindings ALL
+    DEPENDS folly create_binding_symlink
+    WORKING_DIRECTORY ${_cybld})
+
+  add_custom_command(TARGET folly_python_bindings POST_BUILD
     COMMAND
-      python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
       build_ext -f ${incs} ${libs}
     BYPRODUCTS ${_cybld}/folly/executor_api.h
-    DEPENDS folly_pic
-    WORKING_DIRECTORY ${_cybld})
+    WORKING_DIRECTORY ${_cybld}
+    )
 
   install(
     FILES ${_cybld}/folly/executor_api.h
@@ -91,8 +85,7 @@ if (PYTHON_EXTENSIONS)
 
   # Install Folly Python Bindings
   install(CODE "
-    string(REGEX REPLACE \"^(..*)$\" \"--root=\\\\1\" PYROOT \"\$ENV{DESTDIR}\")
     execute_process(COMMAND
-    python3 ${CMAKE_CURRENT_SOURCE_DIR}/setup.py install \${PYROOT}
+    python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py install
     WORKING_DIRECTORY ${_cybld})")
 endif ()
