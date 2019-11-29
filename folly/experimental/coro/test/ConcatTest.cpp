@@ -27,6 +27,8 @@
 using namespace ::testing;
 using namespace folly::coro;
 
+namespace {
+
 AsyncGenerator<int> generateInts(int begin, int end) {
   for (int i = begin; i < end; i++) {
     co_await co_reschedule_on_current_executor;
@@ -41,6 +43,8 @@ Task<std::vector<int>> toVector(AsyncGenerator<int> generator) {
   }
   co_return result;
 }
+
+} // namespace
 
 TEST(ConcatTest, ConcatSingle) {
   auto gen = concat(generateInts(0, 5));

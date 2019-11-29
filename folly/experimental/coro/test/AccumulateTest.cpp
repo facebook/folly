@@ -25,12 +25,16 @@
 
 using namespace folly::coro;
 
+namespace {
+
 AsyncGenerator<int> generateInts(int begin, int end) {
   for (int i = begin; i < end; i++) {
     co_await co_reschedule_on_current_executor;
     co_yield i;
   }
 }
+
+} // namespace
 
 TEST(AccumulateTest, NoOperationProvided) {
   auto result = blockingWait(accumulate(generateInts(0, 5), 0));
