@@ -19,21 +19,13 @@
 namespace folly {
 namespace coro {
 
-template <typename Head>
-detail::enable_if_async_generator_t<Head> concat(Head head) {
-  return std::move(head);
-}
-
 template <typename Head, typename... Tail>
 detail::enable_if_async_generator_t<Head> concat(Head head, Tail... tail) {
-  using Reference = typename Head::reference;
-  while (auto val = co_await head.next()) {
-    co_yield std::move(val).value();
-  }
-
-  auto tailGen = concat(std::move(tail)...);
-  while (auto val = co_await tailGen.next()) {
-    co_yield std::move(val).value();
+  using list = Head[];
+  for (auto& gen : list{std::move(head), std::move(tail)...}) {
+    while (auto val = co_await gen.next()) {
+      co_yield std::move(val).value();
+    }
   }
 }
 

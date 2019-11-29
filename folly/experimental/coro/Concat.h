@@ -42,9 +42,6 @@ namespace coro {
 //
 //    return result;
 //  }
-template <typename Head>
-detail::enable_if_async_generator_t<Head> concat(Head head);
-
 template <typename Head, typename... Tail>
 detail::enable_if_async_generator_t<Head> concat(Head head, Tail... tail);
 
