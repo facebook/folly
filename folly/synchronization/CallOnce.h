@@ -57,6 +57,30 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
   flag.call_once(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
+//  try_call_once
+//
+//  Like call_once, but using a boolean return type to signal pass/fail rather
+//  than throwing exceptions.
+//
+//  Returns true if any previous call to try_call_once with the same once_flag
+//  has returned true or if any previous call to call_once with the same
+//  once_flag has completed without throwing an exception or if the function
+//  passed as an argument returns true; otherwise returns false.
+//
+//  Note: This has no parallel in the std::once_flag interface.
+template <
+    typename Mutex,
+    template <typename> class Atom,
+    typename F,
+    typename... Args>
+FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
+    basic_once_flag<Mutex, Atom>& flag,
+    F&& f,
+    Args&&... args) noexcept {
+  static_assert(is_nothrow_invocable_v<F, Args...>, "must be noexcept");
+  return flag.try_call_once(std::forward<F>(f), std::forward<Args>(args)...);
+}
+
 //  test_once
 //
 //  Tests whether any invocation to call_once with the given flag has succeeded.
@@ -110,6 +134,33 @@ class basic_once_flag {
     }
     invoke(std::forward<F>(f), std::forward<Args>(args)...);
     called_.store(true, std::memory_order_release);
+  }
+
+  template <
+      typename Mutex_,
+      template <typename> class Atom_,
+      typename F,
+      typename... Args>
+  friend bool
+  try_call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...) noexcept;
+
+  template <typename F, typename... Args>
+  FOLLY_ALWAYS_INLINE bool try_call_once(F&& f, Args&&... args) noexcept {
+    if (LIKELY(called_.load(std::memory_order_acquire))) {
+      return true;
+    }
+    return try_call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
+  }
+
+  template <typename F, typename... Args>
+  FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
+    std::lock_guard<Mutex> lock(mutex_);
+    if (called_.load(std::memory_order_relaxed)) {
+      return true;
+    }
+    auto const pass = invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    called_.store(pass, std::memory_order_release);
+    return pass;
   }
 
   Atom<bool> called_{false};

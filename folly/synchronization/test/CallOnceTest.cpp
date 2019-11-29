@@ -116,3 +116,11 @@ TEST(FollyCallOnce, Lazy) {
   auto& num = *lazy.construct_or_fetch(false).check;
   EXPECT_EQ(7, num);
 }
+
+TEST(FollyTryCallOnce, example) {
+  folly::once_flag once;
+  EXPECT_FALSE(folly::try_call_once(once, []() noexcept { return false; }));
+  EXPECT_FALSE(folly::test_once(once));
+  EXPECT_TRUE(folly::try_call_once(once, []() noexcept { return true; }));
+  EXPECT_TRUE(folly::test_once(once));
+}
