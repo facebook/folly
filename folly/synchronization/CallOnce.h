@@ -66,7 +66,8 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
 //
 //  Note: This has no parallel in the std::once_flag interface.
 template <typename Mutex, template <typename> class Atom>
-FOLLY_ALWAYS_INLINE bool test_once(basic_once_flag<Mutex, Atom> const& flag) {
+FOLLY_ALWAYS_INLINE bool test_once(
+    basic_once_flag<Mutex, Atom> const& flag) noexcept {
   return flag.called_.load(std::memory_order_acquire);
 }
 
@@ -91,7 +92,7 @@ class basic_once_flag {
   friend void call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...);
 
   template <typename Mutex_, template <typename> class Atom_>
-  friend bool test_once(basic_once_flag<Mutex_, Atom_> const& flag);
+  friend bool test_once(basic_once_flag<Mutex_, Atom_> const& flag) noexcept;
 
   template <typename F, typename... Args>
   FOLLY_ALWAYS_INLINE void call_once(F&& f, Args&&... args) {
