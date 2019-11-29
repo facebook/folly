@@ -248,8 +248,8 @@ class ElfFile {
   void validateStringTable(const ElfShdr& stringTable) const noexcept;
 
   template <class T>
-  const typename std::enable_if<std::is_pod<T>::value, T>::type& at(
-      ElfOff offset) const noexcept {
+  const T& at(ElfOff offset) const noexcept {
+    static_assert(std::is_pod<T>::value, "non-pod");
     if (offset + sizeof(T) > length_) {
       char msg[kFilepathMaxLen + 128];
       snprintf(
