@@ -43,8 +43,20 @@ if (PYTHON_EXTENSIONS)
     "range.pxd"
     "iobuf.pxd"
     "iobuf.pyx"
+    "optional.pyx"
     "__init__.pxd"
     "AsyncioExecutor.h")
+  message(
+    STATUS
+    "Linking ${CMAKE_CURRENT_SOURCE_DIR}/python/lang/cast.pxd "
+    "to ${_cybld}/folly/cast.pxd"
+  )
+  add_custom_target("create_folly_link_cast.pxd" ALL
+    COMMAND
+      ${CMAKE_COMMAND} -E create_symlink
+      ${CMAKE_CURRENT_SOURCE_DIR}/python/lang/cast.pxd
+      "${_cybld}/folly/cast.pxd"
+  )
     message(
       STATUS
       "Linking ${CMAKE_CURRENT_SOURCE_DIR}/python/${_src} "
