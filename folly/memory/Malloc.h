@@ -39,59 +39,8 @@
 #endif
 #endif
 
-// If using fbstring from libstdc++ (see comment in FBString.h), then
-// just define stub code here to typedef the fbstring type into the
-// folly namespace.
-// This provides backwards compatibility for code that explicitly
-// includes and uses fbstring.
-#if defined(_GLIBCXX_USE_FB) && !defined(_LIBSTDCXX_FBSTRING)
-
-#include <folly/lang/Exception.h>
-#include <folly/memory/detail/MallocImpl.h>
-
-#include <string>
-
-namespace folly {
-using std::checkedCalloc;
-using std::checkedMalloc;
-using std::checkedRealloc;
-using std::goodMallocSize;
-using std::jemallocMinInPlaceExpandable;
-using std::smartRealloc;
-using std::usingJEMalloc;
-} // namespace folly
-
-#else // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)
-
-#ifdef _LIBSTDCXX_FBSTRING
-#pragma GCC system_header
-
-/**
- * Declare *allocx() and mallctl*() as weak symbols. These will be provided by
- * jemalloc if we are using jemalloc, or will be nullptr if we are using another
- * malloc implementation.
- */
-extern "C" void* mallocx(size_t, int) __attribute__((__weak__));
-extern "C" void* rallocx(void*, size_t, int) __attribute__((__weak__));
-extern "C" size_t xallocx(void*, size_t, size_t, int) __attribute__((__weak__));
-extern "C" size_t sallocx(const void*, int) __attribute__((__weak__));
-extern "C" void dallocx(void*, int) __attribute__((__weak__));
-extern "C" void sdallocx(void*, size_t, int) __attribute__((__weak__));
-extern "C" size_t nallocx(size_t, int) __attribute__((__weak__));
-extern "C" int mallctl(const char*, void*, size_t*, void*, size_t)
-    __attribute__((__weak__));
-extern "C" int mallctlnametomib(const char*, size_t*, size_t*)
-    __attribute__((__weak__));
-extern "C" int
-mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
-    __attribute__((__weak__));
-
-#else // !defined(_LIBSTDCXX_FBSTRING)
-
 #include <folly/lang/Exception.h> /* nolint */
 #include <folly/memory/detail/MallocImpl.h> /* nolint */
-
-#endif
 
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
@@ -111,26 +60,14 @@ mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
 
 // clang-format off
 
-#ifdef _LIBSTDCXX_FBSTRING
-namespace std _GLIBCXX_VISIBILITY(default) {
-  _GLIBCXX_BEGIN_NAMESPACE_VERSION
-#else
 namespace folly {
-#endif
 
-// Cannot depend on Portability.h when _LIBSTDCXX_FBSTRING.
 #if defined(__GNUC__)
-#define FOLLY_MALLOC_NOINLINE __attribute__((__noinline__))
-#if (__GNUC__ * 10000 + __GNUC_MINOR__ * 100 + __GNUC_PATCHLEVEL) >= 40900
 // This is for checked malloc-like functions (returns non-null pointer
 // which cannot alias any outstanding pointer).
 #define FOLLY_MALLOC_CHECKED_MALLOC \
   __attribute__((__returns_nonnull__, __malloc__))
 #else
-#define FOLLY_MALLOC_CHECKED_MALLOC __attribute__((__malloc__))
-#endif
-#else
-#define FOLLY_MALLOC_NOINLINE
 #define FOLLY_MALLOC_CHECKED_MALLOC
 #endif
 
@@ -146,7 +83,7 @@ namespace folly {
     return true;
   }
 #else
-FOLLY_MALLOC_NOINLINE inline bool usingJEMalloc() noexcept {
+FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
   // Checking for rallocx != nullptr is not sufficient; we may be in a
   // dlopen()ed module that depends on libjemalloc, so rallocx is resolved, but
   // the main program might be using a different memory allocator.
@@ -260,7 +197,7 @@ inline void* checkedRealloc(void* ptr, size_t size) {
  * jemalloc, realloc() almost always ends up doing a copy, because
  * there is little fragmentation / slack space to take advantage of.
  */
-FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
+FOLLY_MALLOC_CHECKED_MALLOC FOLLY_NOINLINE inline void* smartRealloc(
     void* p,
     const size_t currentSize,
     const size_t currentCapacity,
@@ -281,12 +218,6 @@ FOLLY_MALLOC_CHECKED_MALLOC FOLLY_MALLOC_NOINLINE inline void* smartRealloc(
   return checkedRealloc(p, newCapacity);
 }
 
-#ifdef _LIBSTDCXX_FBSTRING
-  _GLIBCXX_END_NAMESPACE_VERSION
-#endif
-
 } // namespace folly
 
 // clang-format on
-
-#endif // !defined(_GLIBCXX_USE_FB) || defined(_LIBSTDCXX_FBSTRING)

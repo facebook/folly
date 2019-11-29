@@ -160,24 +160,6 @@ template struct MakeUnsafeStringSetLargerSize<
     void (std::string::*)(std::size_t),
     &std::string::__set_size>;
 
-#elif defined(_GLIBCXX_USE_FB)
-// FBString
-
-template <typename Tag, typename T, typename A, A Ptrstore_>
-struct MakeUnsafeStringSetLargerSize {
-  friend void unsafeStringSetLargerSize(
-      std::basic_string<T>& s,
-      std::size_t n) {
-    // s.store_.expandNoinit(n - s.size(), false);
-    (s.*Ptrstore_).expandNoinit(n - s.size(), false);
-  }
-};
-template struct MakeUnsafeStringSetLargerSize<
-    FollyMemoryDetailTranslationUnitTag,
-    char,
-    std::fbstring_core<char>(std::string::*),
-    &std::string::store_>;
-
 #elif defined(_GLIBCXX_STRING) && _GLIBCXX_USE_CXX11_ABI
 // libstdc++ new implementation with SSO
 

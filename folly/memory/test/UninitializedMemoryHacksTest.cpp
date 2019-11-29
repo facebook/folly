@@ -33,8 +33,6 @@ void describePlatform() {
   LOG(INFO) << "std::string from libc++";
 #elif defined(_STLP_STRING)
   LOG(INFO) << "std::string from STLport";
-#elif defined(_GLIBCXX_USE_FB)
-  LOG(INFO) << "std::string from FBString";
 #elif defined(_GLIBCXX_STRING) && _GLIBCXX_USE_CXX11_ABI
   LOG(INFO) << "std::string from libstdc++ with SSO";
 #elif defined(_GLIBCXX_STRING)
