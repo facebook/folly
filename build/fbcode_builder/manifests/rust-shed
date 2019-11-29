@@ -15,7 +15,11 @@ build_doc = true
 
 [shipit.pathmap]
 fbcode/common/rust/shed = .
+fbcode/common/rust/shed/public_autocargo = .
 fbcode/common/rust/shed/public_tld = .
+
+[shipit.strip]
+^fbcode/common/rust/shed/(?!public_autocargo|public_tld).+/Cargo\.toml$
 
 [dependencies]
 fbthrift
