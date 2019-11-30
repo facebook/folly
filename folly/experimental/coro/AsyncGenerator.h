@@ -496,10 +496,6 @@ template <typename Reference, typename Value>
 inline constexpr bool is_async_generator_v<AsyncGenerator<Reference, Value>> =
     true;
 
-template <typename T>
-using enable_if_async_generator_t =
-    std::enable_if_t<detail::is_async_generator_v<T>, T>;
-
 } // namespace detail
 
 // Helper for immediately invoking a lambda with captures that returns an

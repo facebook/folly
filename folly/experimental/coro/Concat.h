@@ -42,8 +42,14 @@ namespace coro {
 //
 //    return result;
 //  }
-template <typename Head, typename... Tail>
-detail::enable_if_async_generator_t<Head> concat(Head head, Tail... tail);
+template <
+    typename HReference,
+    typename... TReference,
+    typename HValue,
+    typename... TValue>
+AsyncGenerator<HReference, HValue> concat(
+    AsyncGenerator<HReference, HValue> head,
+    AsyncGenerator<TReference, TValue>... tail);
 
 } // namespace coro
 } // namespace folly

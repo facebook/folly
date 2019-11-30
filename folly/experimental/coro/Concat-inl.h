@@ -19,9 +19,16 @@
 namespace folly {
 namespace coro {
 
-template <typename Head, typename... Tail>
-detail::enable_if_async_generator_t<Head> concat(Head head, Tail... tail) {
-  using list = Head[];
+template <
+    typename HReference,
+    typename... TReference,
+    typename HValue,
+    typename... TValue>
+AsyncGenerator<HReference, HValue> concat(
+    AsyncGenerator<HReference, HValue> head,
+    AsyncGenerator<TReference, TValue>... tail) {
+  static_assert((std::is_same_v<decltype(head), decltype(tail)> && ...));
+  using list = AsyncGenerator<HReference, HValue>[];
   for (auto& gen : list{std::move(head), std::move(tail)...}) {
     while (auto val = co_await gen.next()) {
       co_yield std::move(val).value();
