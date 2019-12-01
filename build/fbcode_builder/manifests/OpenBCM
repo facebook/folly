@@ -1,0 +1,12 @@
+[manifest]
+name = OpenBCM
+
+[git]
+repo_url = https://github.com/Broadcom-Network-Switching-Software/OpenBCM.git
+
+[build]
+builder = nop
+
+[install.files]
+lib/x86-64 = lib
+include = include
