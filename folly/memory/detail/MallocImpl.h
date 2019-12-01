@@ -38,6 +38,8 @@ int mallctlnametomib(const char*, size_t*, size_t*)
 int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
     __attribute__((__nothrow__, __weak__));
 #else
+// Here the make external declarations consistent with those from jemalloc
+// to avoid issues with different symbol kinds
 #define je_mallocx mallocx
 #define je_rallocx rallocx
 #define je_xallocx xallocx
