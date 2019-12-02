@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env )python
 # Copyright (c) Facebook, Inc. and its affiliates.
 from __future__ import absolute_import
 from __future__ import division
@@ -51,7 +51,7 @@ class ShellFBCodeBuilder(FBCodeBuilder):
     def setup(self):
         steps = [
             ShellQuoted('set -exo pipefail'),
-        ] + [self.create_python_venv(), self.python_venv()]
+        ] + self.create_python_venv() + self.python_venv()
         if self.has_option('ccache_dir'):
             ccache_dir = self.option('ccache_dir')
             steps += [

@@ -47,10 +47,12 @@ class DockerFBCodeBuilder(FBCodeBuilder):
             ShellQuoted('FROM {}'.format(self.option('os_image'))),
             # /bin/sh syntax is a pain
             ShellQuoted('SHELL ["/bin/bash", "-c"]'),
-        ] + self.install_debian_deps() + [self._change_user()]
-            + [self.workdir(self.option('prefix')),
-            self.create_python_venv(),
-            self.python_venv()])
+        ]
+            + self.install_debian_deps() + [self._change_user()]
+            + [self.workdir(self.option('prefix'))]
+            + self.create_python_venv()
+            + self.python_venv()
+        )
 
     def python_venv(self):
         # To both avoid calling venv activate on each RUN command AND to ensure
