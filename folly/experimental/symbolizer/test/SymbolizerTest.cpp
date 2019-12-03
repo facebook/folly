@@ -16,6 +16,7 @@
 
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#include <array>
 #include <cstdlib>
 
 #include <folly/Range.h>
@@ -46,10 +47,11 @@ TEST(Symbolizer, Single) {
   EXPECT_EQ("SymbolizerTest.cpp", basename.str());
 }
 
-FrameArray<100>* framesToFill{nullptr};
+void* framesToFill{nullptr};
 
+template <size_t kNumFrames = 100>
 int comparator(const void* ap, const void* bp) {
-  getStackTrace(*framesToFill);
+  getStackTrace(*static_cast<FrameArray<kNumFrames>*>(framesToFill));
 
   int a = *static_cast<const int*>(ap);
   int b = *static_cast<const int*>(bp);
@@ -61,9 +63,9 @@ FOLLY_NOINLINE void bar();
 
 void bar(FrameArray<100>& frames) {
   framesToFill = &frames;
-  int a[2] = {1, 2};
+  std::array<int, 2> a = {1, 2};
   // Use qsort, which is in a different library
-  qsort(a, 2, sizeof(int), comparator);
+  qsort(a.data(), 2, sizeof(int), comparator<100>);
   framesToFill = nullptr;
 }
 
@@ -122,6 +124,69 @@ TEST(SymbolizerTest, SymbolCache) {
   FrameArray<100> frames2;
   bar(frames2);
   symbolizer.symbolize(frames2);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
+}
+
+namespace {
+
+template <size_t kNumFrames = 100>
+FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames) {
+  framesToFill = &frames;
+  std::array<int, 2> a = {1, 2};
+  // Use qsort, which is in a different library
+  qsort(a.data(), 2, sizeof(int), comparator<kNumFrames>);
+  framesToFill = nullptr;
+}
+
+template <size_t kNumFrames = 100>
+FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames) {
+  inlineFoo(frames);
+}
+
+} // namespace
+
+TEST(SymbolizerTest, InlineFunctionBasic) {
+  Symbolizer symbolizer(
+      nullptr, Dwarf::LocationInfoMode::FULL_WITH_INLINE, 100);
+
+  FrameArray<100> frames;
+  inlineBar<100>(frames);
+  symbolizer.symbolize(frames);
+
+  EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[5].location.file.toString()));
+  EXPECT_EQ(139, frames.frames[5].location.line);
+  EXPECT_EQ("inlineBar<100>", std::string(frames.frames[6].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[6].location.file.toString()));
+  EXPECT_EQ(145, frames.frames[6].location.line);
+
+  FrameArray<100> frames2;
+  inlineBar<100>(frames2);
+  symbolizer.symbolize(frames2);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
+}
+
+// No inline frames should be filled because of no extra frames.
+TEST(SymbolizerTest, InlineFunctionBasicNoExtraFrames) {
+  Symbolizer symbolizer(
+      nullptr, Dwarf::LocationInfoMode::FULL_WITH_INLINE, 100);
+  FrameArray<8> frames;
+  inlineBar<8>(frames);
+  symbolizer.symbolize(frames);
+
+  Symbolizer symbolizer2(nullptr, Dwarf::LocationInfoMode::FULL, 100);
+  FrameArray<8> frames2;
+  inlineBar<8>(frames2);
+  symbolizer2.symbolize(frames2);
+
   for (size_t i = 0; i < frames.frameCount; i++) {
     EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
   }

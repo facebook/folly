@@ -16,20 +16,78 @@
 
 #include <folly/experimental/symbolizer/Dwarf.h>
 
-#include <type_traits>
+#include <array>
 
 #include <dwarf.h>
+#include <type_traits>
 
 namespace folly {
 namespace symbolizer {
 
-Dwarf::Dwarf(const ElfFile* elf) : elf_(elf) {
-  init();
-}
+namespace detail {
 
-Dwarf::Section::Section(folly::StringPiece d) : is64Bit_(false), data_(d) {}
+// Abbreviation for a Debugging Information Entry.
+struct DIEAbbreviation {
+  uint64_t code;
+  uint64_t tag;
+  bool hasChildren = false;
+
+  folly::StringPiece attributes;
+};
+
+struct CompilationUnit {
+  bool is64Bit;
+  uint8_t version;
+  uint8_t addrSize;
+  // Offset in .debug_info of this compilation unit.
+  uint32_t offset;
+  uint32_t size;
+  // Offset in .debug_info for the first DIE in this compilation unit.
+  uint32_t firstDie;
+  uint64_t abbrevOffset;
+  // Only the CompilationUnit that contains the caller functions needs this
+  // cache.
+  // Indexed by (abbr.code - 1) if (abbr.code - 1) < abbrCache.size();
+  folly::Range<DIEAbbreviation*> abbrCache;
+};
+
+struct Die {
+  bool is64Bit;
+  // Offset from start to first attribute
+  uint8_t attrOffset;
+  // Offset within debug info.
+  uint32_t offset;
+  uint64_t code;
+  DIEAbbreviation abbr;
+};
+
+struct AttributeSpec {
+  uint64_t name = 0;
+  uint64_t form = 0;
+
+  explicit operator bool() const {
+    return name != 0 || form != 0;
+  }
+};
+
+struct Attribute {
+  AttributeSpec spec;
+  const Die& die;
+  boost::variant<uint64_t, folly::StringPiece> attrValue;
+};
+
+struct CodeLocation {
+  Die die;
+  uint64_t line;
+};
+
+} // namespace detail
 
 namespace {
+
+// Maximum number of DIEAbbreviation to cache in a compilation unit. Used to
+// speed up inline function lookup.
+static const uint32_t kMaxAbbreviationEntries = 1000;
 
 // All following read* functions read from a StringPiece, advancing the
 // StringPiece, and aborting if there's not enough room.
@@ -83,7 +141,7 @@ uint64_t readOffset(folly::StringPiece& sp, bool is64Bit) {
 
 // Read "len" bytes
 folly::StringPiece readBytes(folly::StringPiece& sp, uint64_t len) {
-  FOLLY_SAFE_CHECK(len >= sp.size(), "invalid string length");
+  FOLLY_SAFE_CHECK(len <= sp.size(), "invalid string length");
   folly::StringPiece ret(sp.data(), len);
   sp.advance(len);
   return ret;
@@ -104,6 +162,176 @@ void skipPadding(folly::StringPiece& sp, const char* start, size_t alignment) {
   if (remainder) {
     FOLLY_SAFE_CHECK(alignment - remainder <= sp.size(), "invalid padding");
     sp.advance(alignment - remainder);
+  }
+}
+
+detail::AttributeSpec readAttributeSpec(folly::StringPiece& sp) {
+  return {readULEB(sp), readULEB(sp)};
+}
+
+// Reads an abbreviation from a StringPiece, return true if at end; advance sp
+bool readAbbreviation(
+    folly::StringPiece& section,
+    detail::DIEAbbreviation& abbr) {
+  // Abbreviation code
+  abbr.code = readULEB(section);
+  if (abbr.code == 0) {
+    return false;
+  }
+
+  // Abbreviation tag
+  abbr.tag = readULEB(section);
+
+  // does this entry have children?
+  abbr.hasChildren = (read<uint8_t>(section) != DW_CHILDREN_no);
+
+  // attributes
+  const char* attributeBegin = section.data();
+  for (;;) {
+    FOLLY_SAFE_CHECK(!section.empty(), "invalid attribute section");
+    auto spec = readAttributeSpec(section);
+    if (!spec) {
+      break;
+    }
+  }
+  abbr.attributes.assign(attributeBegin, section.data());
+  return true;
+}
+
+folly::StringPiece getStringFromStringSection(
+    folly::StringPiece str,
+    uint64_t offset) {
+  FOLLY_SAFE_CHECK(offset < str.size(), "invalid string offset");
+  str.advance(offset);
+  return readNullTerminated(str);
+}
+
+detail::Attribute readAttribute(
+    const detail::Die& die,
+    detail::AttributeSpec spec,
+    folly::StringPiece& info,
+    folly::StringPiece str) {
+  switch (spec.form) {
+    case DW_FORM_addr:
+      return {spec, die, read<uintptr_t>(info)};
+    case DW_FORM_block1:
+      return {spec, die, readBytes(info, read<uint8_t>(info))};
+    case DW_FORM_block2:
+      return {spec, die, readBytes(info, read<uint16_t>(info))};
+    case DW_FORM_block4:
+      return {spec, die, readBytes(info, read<uint32_t>(info))};
+    case DW_FORM_block:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_exprloc:
+      return {spec, die, readBytes(info, readULEB(info))};
+    case DW_FORM_data1:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref1:
+      return {spec, die, read<uint8_t>(info)};
+    case DW_FORM_data2:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref2:
+      return {spec, die, read<uint16_t>(info)};
+    case DW_FORM_data4:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref4:
+      return {spec, die, read<uint32_t>(info)};
+    case DW_FORM_data8:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref8:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref_sig8:
+      return {spec, die, read<uint64_t>(info)};
+    case DW_FORM_sdata:
+      return {spec, die, readSLEB(info)};
+    case DW_FORM_udata:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref_udata:
+      return {spec, die, readULEB(info)};
+    case DW_FORM_flag:
+      return {spec, die, read<uint8_t>(info)};
+    case DW_FORM_flag_present:
+      return {spec, die, 1};
+    case DW_FORM_sec_offset:
+      FOLLY_FALLTHROUGH;
+    case DW_FORM_ref_addr:
+      return {spec, die, readOffset(info, die.is64Bit)};
+    case DW_FORM_string:
+      return {spec, die, readNullTerminated(info)};
+    case DW_FORM_strp:
+      return {spec,
+              die,
+              getStringFromStringSection(str, readOffset(info, die.is64Bit))};
+    case DW_FORM_indirect: // form is explicitly specified
+      // Update spec with the actual FORM.
+      spec.form = readULEB(info);
+      return readAttribute(die, spec, info, str);
+    default:
+      FOLLY_SAFE_CHECK(false, "invalid attribute form");
+  }
+  return {spec, die, 0};
+}
+
+detail::CompilationUnit getCompilationUnit(
+    folly::StringPiece info,
+    uint64_t offset) {
+  FOLLY_SAFE_DCHECK(offset < info.size(), "unexpected offset");
+  detail::CompilationUnit cu;
+  folly::StringPiece chunk(info);
+  cu.offset = offset;
+  chunk.advance(offset);
+
+  auto initialLength = read<uint32_t>(chunk);
+  cu.is64Bit = (initialLength == (uint32_t)-1);
+  cu.size = cu.is64Bit ? read<uint64_t>(chunk) : initialLength;
+  FOLLY_SAFE_CHECK(cu.size <= chunk.size(), "invalid chunk size");
+  cu.size += cu.is64Bit ? 12 : 4;
+
+  cu.version = read<uint16_t>(chunk);
+  FOLLY_SAFE_CHECK(cu.version >= 2 && cu.version <= 4, "invalid info version");
+  cu.abbrevOffset = readOffset(chunk, cu.is64Bit);
+  cu.addrSize = read<uint8_t>(chunk);
+  FOLLY_SAFE_CHECK(cu.addrSize == sizeof(uintptr_t), "invalid address size");
+
+  cu.firstDie = chunk.data() - info.data();
+  return cu;
+}
+
+// Finds the Compilation Unit starting at offset.
+detail::CompilationUnit findCompilationUnit(
+    folly::StringPiece info,
+    uint64_t targetOffset) {
+  FOLLY_SAFE_DCHECK(targetOffset < info.size(), "unexpected target address");
+  uint64_t offset = 0;
+  while (offset < info.size()) {
+    folly::StringPiece chunk(info);
+    chunk.advance(offset);
+
+    auto initialLength = read<uint32_t>(chunk);
+    auto is64Bit = (initialLength == (uint32_t)-1);
+    auto size = is64Bit ? read<uint64_t>(chunk) : initialLength;
+    FOLLY_SAFE_CHECK(size <= chunk.size(), "invalid chunk size");
+    size += is64Bit ? 12 : 4;
+
+    if (offset + size > targetOffset) {
+      break;
+    }
+    offset += size;
+  }
+  return getCompilationUnit(info, offset);
+}
+
+void readCompilationUnitAbbrs(
+    folly::StringPiece abbrev,
+    detail::CompilationUnit& cu) {
+  abbrev.advance(cu.abbrevOffset);
+
+  detail::DIEAbbreviation abbr;
+  while (readAbbreviation(abbrev, abbr)) {
+    // Abbreviation code 0 is reserved for null debugging information entries.
+    if (abbr.code != 0 && abbr.code <= kMaxAbbreviationEntries) {
+      cu.abbrCache.data()[abbr.code - 1] = abbr;
+    }
   }
 }
 
@@ -157,6 +385,23 @@ void simplifyPath(folly::StringPiece& sp) {
 }
 
 } // namespace
+
+Dwarf::Dwarf(const ElfFile* elf)
+    : elf_(elf),
+      debugInfo_(getSection(".debug_info")),
+      debugAbbrev_(getSection(".debug_abbrev")),
+      debugLine_(getSection(".debug_line")),
+      debugStr_(getSection(".debug_str")),
+      debugAranges_(getSection(".debug_aranges")) {
+  // NOTE: debugAranges_ is for fast address range lookup.
+  // If missing .debug_info can be used - but it's much slower (linear scan).
+  if (debugInfo_.empty() || debugAbbrev_.empty() || debugLine_.empty() ||
+      debugStr_.empty()) {
+    elf_ = nullptr;
+  }
+}
+
+Dwarf::Section::Section(folly::StringPiece d) : is64Bit_(false), data_(d) {}
 
 Dwarf::Path::Path(
     folly::StringPiece baseDir,
@@ -293,75 +538,26 @@ bool Dwarf::Section::next(folly::StringPiece& chunk) {
   return true;
 }
 
-bool Dwarf::getSection(const char* name, folly::StringPiece* section) const {
+folly::StringPiece Dwarf::getSection(const char* name) const {
   const ElfW(Shdr)* elfSection = elf_->getSectionByName(name);
   if (!elfSection) {
-    return false;
+    return {};
   }
 #ifdef SHF_COMPRESSED
   if (elfSection->sh_flags & SHF_COMPRESSED) {
-    return false;
+    return {};
   }
 #endif
-  *section = elf_->getSectionBody(*elfSection);
-  return true;
+  return elf_->getSectionBody(*elfSection);
 }
 
-void Dwarf::init() {
-  // Make sure that all .debug_* sections exist
-  if (!getSection(".debug_info", &info_) ||
-      !getSection(".debug_abbrev", &abbrev_) ||
-      !getSection(".debug_line", &line_) ||
-      !getSection(".debug_str", &strings_)) {
-    elf_ = nullptr;
-    return;
-  }
-
-  // Optional: fast address range lookup. If missing .debug_info can
-  // be used - but it's much slower (linear scan).
-  getSection(".debug_aranges", &aranges_);
-}
-
-bool Dwarf::readAbbreviation(
-    folly::StringPiece& section,
-    DIEAbbreviation& abbr) {
-  // abbreviation code
-  abbr.code = readULEB(section);
-  if (abbr.code == 0) {
-    return false;
-  }
-
-  // abbreviation tag
-  abbr.tag = readULEB(section);
-
-  // does this entry have children?
-  abbr.hasChildren = (read<uint8_t>(section) != DW_CHILDREN_no);
-
-  // attributes
-  const char* attributeBegin = section.data();
-  for (;;) {
-    FOLLY_SAFE_CHECK(!section.empty(), "invalid attribute section");
-    auto attr = readAttribute(section);
-    if (attr.name == 0 && attr.form == 0) {
-      break;
-    }
-  }
-
-  abbr.attributes.assign(attributeBegin, section.data());
-  return true;
-}
-
-Dwarf::DIEAbbreviation::Attribute Dwarf::readAttribute(folly::StringPiece& sp) {
-  return {readULEB(sp), readULEB(sp)};
-}
-
-Dwarf::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
+detail::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
     const {
   // Linear search in the .debug_abbrev section, starting at offset
-  folly::StringPiece section = abbrev_;
+  folly::StringPiece section = debugAbbrev_;
   section.advance(offset);
 
-  Dwarf::DIEAbbreviation abbr;
+  detail::DIEAbbreviation abbr;
   while (readAbbreviation(section, abbr)) {
     if (abbr.code == code) {
       return abbr;
@@ -369,64 +565,6 @@ Dwarf::DIEAbbreviation Dwarf::getAbbreviation(uint64_t code, uint64_t offset)
   }
 
   FOLLY_SAFE_CHECK(false, "could not find abbreviation code");
-}
-
-Dwarf::AttributeValue Dwarf::readAttributeValue(
-    folly::StringPiece& sp,
-    uint64_t form,
-    bool is64Bit) const {
-  switch (form) {
-    case DW_FORM_addr:
-      return read<uintptr_t>(sp);
-    case DW_FORM_block1:
-      return readBytes(sp, read<uint8_t>(sp));
-    case DW_FORM_block2:
-      return readBytes(sp, read<uint16_t>(sp));
-    case DW_FORM_block4:
-      return readBytes(sp, read<uint32_t>(sp));
-    case DW_FORM_block: // fallthrough
-    case DW_FORM_exprloc:
-      return readBytes(sp, readULEB(sp));
-    case DW_FORM_data1: // fallthrough
-    case DW_FORM_ref1:
-      return read<uint8_t>(sp);
-    case DW_FORM_data2: // fallthrough
-    case DW_FORM_ref2:
-      return read<uint16_t>(sp);
-    case DW_FORM_data4: // fallthrough
-    case DW_FORM_ref4:
-      return read<uint32_t>(sp);
-    case DW_FORM_data8: // fallthrough
-    case DW_FORM_ref8:
-      return read<uint64_t>(sp);
-    case DW_FORM_sdata:
-      return readSLEB(sp);
-    case DW_FORM_udata: // fallthrough
-    case DW_FORM_ref_udata:
-      return readULEB(sp);
-    case DW_FORM_flag:
-      return read<uint8_t>(sp);
-    case DW_FORM_flag_present:
-      return 1;
-    case DW_FORM_sec_offset: // fallthrough
-    case DW_FORM_ref_addr:
-      return readOffset(sp, is64Bit);
-    case DW_FORM_string:
-      return readNullTerminated(sp);
-    case DW_FORM_strp:
-      return getStringFromStringSection(readOffset(sp, is64Bit));
-    case DW_FORM_indirect: // form is explicitly specified
-      return readAttributeValue(sp, readULEB(sp), is64Bit);
-    default:
-      FOLLY_SAFE_CHECK(false, "invalid attribute form");
-  }
-}
-
-folly::StringPiece Dwarf::getStringFromStringSection(uint64_t offset) const {
-  FOLLY_SAFE_CHECK(offset < strings_.size(), "invalid strp offset");
-  folly::StringPiece sp(strings_);
-  sp.advance(offset);
-  return readNullTerminated(sp);
 }
 
 /**
@@ -478,74 +616,41 @@ bool Dwarf::findDebugInfoOffset(
  */
 bool Dwarf::findLocation(
     uintptr_t address,
-    StringPiece& infoEntry,
-    LocationInfo& locationInfo) const {
-  // For each compilation unit compiled with a DWARF producer, a
-  // contribution is made to the .debug_info section of the object
-  // file. Each such contribution consists of a compilation unit
-  // header (see Section 7.5.1.1) followed by a single
-  // DW_TAG_compile_unit or DW_TAG_partial_unit debugging information
-  // entry, together with its children.
-
-  // 7.5.1.1 Compilation Unit Header
-  //  1. unit_length (4B or 12B): read by Section::next
-  //  2. version (2B)
-  //  3. debug_abbrev_offset (4B or 8B): offset into the .debug_abbrev section
-  //  4. address_size (1B)
-
-  Section debugInfoSection(infoEntry);
-  folly::StringPiece chunk;
-  FOLLY_SAFE_CHECK(debugInfoSection.next(chunk), "invalid debug info");
-
-  auto version = read<uint16_t>(chunk);
-  FOLLY_SAFE_CHECK(version >= 2 && version <= 4, "invalid info version");
-  uint64_t abbrevOffset = readOffset(chunk, debugInfoSection.is64Bit());
-  auto addressSize = read<uint8_t>(chunk);
-  FOLLY_SAFE_CHECK(addressSize == sizeof(uintptr_t), "invalid address size");
-
-  // We survived so far. The first (and only) DIE should be DW_TAG_compile_unit
-  // NOTE: - binutils <= 2.25 does not issue DW_TAG_partial_unit.
-  //       - dwarf compression tools like `dwz` may generate it.
-  // TODO(tudorb): Handle DW_TAG_partial_unit?
-  auto code = readULEB(chunk);
-  FOLLY_SAFE_CHECK(code != 0, "invalid code");
-  auto abbr = getAbbreviation(code, abbrevOffset);
+    const LocationInfoMode mode,
+    detail::CompilationUnit& cu,
+    LocationInfo& locationInfo,
+    folly::Range<Dwarf::LocationInfo*> inlineLocationInfo) const {
+  detail::Die die = getDieAtOffset(cu, cu.firstDie);
   FOLLY_SAFE_CHECK(
-      abbr.tag == DW_TAG_compile_unit, "expecting compile unit entry");
-  // Skip children entries, advance to the next compilation unit entry.
-  infoEntry.advance(chunk.end() - infoEntry.begin());
+      die.abbr.tag == DW_TAG_compile_unit, "expecting compile unit entry");
 
-  // Read attributes, extracting the few we care about
+  // Offset in .debug_line for the line number VM program for this
+  // compilation unit
   bool foundLineOffset = false;
   uint64_t lineOffset = 0;
   folly::StringPiece compilationDirectory;
   folly::StringPiece mainFileName;
 
-  DIEAbbreviation::Attribute attr;
-  folly::StringPiece attributes = abbr.attributes;
-  for (;;) {
-    attr = readAttribute(attributes);
-    if (attr.name == 0 && attr.form == 0) {
-      break;
-    }
-    auto val = readAttributeValue(chunk, attr.form, debugInfoSection.is64Bit());
-    switch (attr.name) {
+  forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
+    switch (attr.spec.name) {
       case DW_AT_stmt_list:
         // Offset in .debug_line for the line number VM program for this
         // compilation unit
-        lineOffset = boost::get<uint64_t>(val);
+        lineOffset = boost::get<uint64_t>(attr.attrValue);
         foundLineOffset = true;
         break;
       case DW_AT_comp_dir:
         // Compilation directory
-        compilationDirectory = boost::get<folly::StringPiece>(val);
+        compilationDirectory = boost::get<folly::StringPiece>(attr.attrValue);
         break;
       case DW_AT_name:
         // File name of main file being compiled
-        mainFileName = boost::get<folly::StringPiece>(val);
+        mainFileName = boost::get<folly::StringPiece>(attr.attrValue);
         break;
     }
-  }
+    // Iterate through all attributes until find all above.
+    return true;
+  });
 
   if (!mainFileName.empty()) {
     locationInfo.hasMainFile = true;
@@ -556,22 +661,78 @@ bool Dwarf::findLocation(
     return false;
   }
 
-  folly::StringPiece lineSection(line_);
+  folly::StringPiece lineSection(debugLine_);
   lineSection.advance(lineOffset);
   LineNumberVM lineVM(lineSection, compilationDirectory);
 
   // Execute line number VM program to find file and line
   locationInfo.hasFileAndLine =
       lineVM.findAddress(address, locationInfo.file, locationInfo.line);
+
+  // Look up whether inline function.
+  if (mode == Dwarf::LocationInfoMode::FULL_WITH_INLINE &&
+      !inlineLocationInfo.empty() && locationInfo.hasFileAndLine) {
+    // Re-get the compilation unit with abbreviation cached.
+    std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
+    cu.abbrCache = folly::range(abbrs);
+    readCompilationUnitAbbrs(debugAbbrev_, cu);
+    detail::Die subprogram;
+    findSubProgramDieForAddress(cu, die, address, subprogram);
+    // Subprogram is the DIE of caller function.
+    if (subprogram.abbr.hasChildren) {
+      size_t size = std::min<size_t>(
+          Dwarf::kMaxInlineLocationInfoPerFrame, inlineLocationInfo.size());
+      detail::CodeLocation isrLocs[size];
+      auto isrLocsRange = folly::Range<detail::CodeLocation*>(isrLocs, size);
+      findInlinedSubroutineDieForAddress(cu, subprogram, address, isrLocsRange);
+      uint32_t numFound = isrLocsRange.data() - isrLocs;
+      auto* prevLocation = &locationInfo;
+      auto* nextLocation = inlineLocationInfo.data();
+      auto* isrLoc = isrLocs;
+      // The line in locationInfo is the line in the deepest inline functions,
+      // and the lines in inlineLocationInfo are the line of callers in call
+      // sequence. A shuffle is needed to match lines with their function name.
+      uint64_t callerLine = locationInfo.line;
+      while (numFound > 0) {
+        prevLocation->line = isrLoc->line;
+        folly::Optional<folly::StringPiece> name;
+        folly::Optional<uint64_t> file;
+
+        forEachAttribute(cu, isrLoc->die, [&](const detail::Attribute& attr) {
+          switch (attr.spec.name) {
+            case DW_AT_name:
+              name = boost::get<StringPiece>(attr.attrValue);
+              break;
+            case DW_AT_decl_file:
+              file = boost::get<uint64_t>(attr.attrValue);
+              break;
+          }
+          return !file.has_value() || !name.has_value();
+        });
+
+        if (!name.has_value() || !file.has_value()) {
+          break;
+        }
+        nextLocation->hasFileAndLine = true;
+        nextLocation->name = name.value();
+        nextLocation->file = lineVM.getFullFileName(file.value());
+        prevLocation = nextLocation;
+        nextLocation++;
+        isrLoc++;
+        numFound--;
+      }
+      prevLocation->line = callerLine;
+    }
+  }
+
   return locationInfo.hasFileAndLine;
 }
 
 bool Dwarf::findAddress(
     uintptr_t address,
+    LocationInfoMode mode,
     LocationInfo& locationInfo,
-    LocationInfoMode mode) const {
-  locationInfo = LocationInfo();
-
+    folly::Range<Dwarf::LocationInfo*> inlineLocationInfo) const {
   if (mode == LocationInfoMode::DISABLED) {
     return false;
   }
@@ -580,15 +741,14 @@ bool Dwarf::findAddress(
     return false;
   }
 
-  if (!aranges_.empty()) {
+  if (!debugAranges_.empty()) {
     // Fast path: find the right .debug_info entry by looking up the
     // address in .debug_aranges.
     uint64_t offset = 0;
-    if (findDebugInfoOffset(address, aranges_, offset)) {
+    if (findDebugInfoOffset(address, debugAranges_, offset)) {
       // Read compilation unit header from .debug_info
-      folly::StringPiece infoEntry(info_);
-      infoEntry.advance(offset);
-      findLocation(address, infoEntry, locationInfo);
+      auto unit = getCompilationUnit(debugInfo_, offset);
+      findLocation(address, mode, unit, locationInfo, inlineLocationInfo);
       return locationInfo.hasFileAndLine;
     } else if (mode == LocationInfoMode::FAST) {
       // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
@@ -597,18 +757,201 @@ bool Dwarf::findAddress(
       // it only if such behavior is requested via LocationInfoMode.
       return false;
     } else {
-      FOLLY_SAFE_DCHECK(mode == LocationInfoMode::FULL, "unexpected mode");
+      FOLLY_SAFE_DCHECK(
+          mode == LocationInfoMode::FULL ||
+              mode == LocationInfoMode::FULL_WITH_INLINE,
+          "unexpected mode");
       // Fall back to the linear scan.
     }
   }
 
   // Slow path (linear scan): Iterate over all .debug_info entries
   // and look for the address in each compilation unit.
-  folly::StringPiece infoEntry(info_);
-  while (!infoEntry.empty() && !locationInfo.hasFileAndLine) {
-    findLocation(address, infoEntry, locationInfo);
+  uint64_t offset = 0;
+  while (offset < debugInfo_.size() && !locationInfo.hasFileAndLine) {
+    auto unit = getCompilationUnit(debugInfo_, offset);
+    offset += unit.size;
+    findLocation(address, mode, unit, locationInfo, inlineLocationInfo);
   }
   return locationInfo.hasFileAndLine;
+}
+
+detail::Die Dwarf::getDieAtOffset(
+    const detail::CompilationUnit& cu,
+    uint64_t offset) const {
+  FOLLY_SAFE_DCHECK(offset < debugInfo_.size(), "unexpected offset");
+  detail::Die die;
+  folly::StringPiece sp = folly::StringPiece{
+      debugInfo_.data() + offset, debugInfo_.data() + cu.offset + cu.size};
+  die.offset = offset;
+  die.is64Bit = cu.is64Bit;
+  auto code = readULEB(sp);
+  die.code = code;
+  if (code == 0) {
+    return die;
+  }
+  die.attrOffset = sp.data() - debugInfo_.data() - offset;
+  die.abbr = !cu.abbrCache.empty() && die.code < kMaxAbbreviationEntries
+      ? cu.abbrCache[die.code - 1]
+      : getAbbreviation(die.code, cu.abbrevOffset);
+  return die;
+}
+
+size_t Dwarf::forEachChild(
+    const detail::CompilationUnit& cu,
+    const detail::Die& die,
+    folly::FunctionRef<bool(const detail::Die& die)> f) const {
+  size_t nextDieOffset =
+      forEachAttribute(cu, die, [&](const detail::Attribute&) { return true; });
+  if (!die.abbr.hasChildren) {
+    return nextDieOffset;
+  }
+
+  auto childDie = getDieAtOffset(cu, nextDieOffset);
+  while (childDie.code != 0) {
+    if (!f(childDie)) {
+      return childDie.offset;
+    }
+
+    // NOTE: Don't run `f` over grandchildren, just skip over them.
+    size_t siblingOffset =
+        forEachChild(cu, childDie, [](const detail::Die&) { return true; });
+    childDie = getDieAtOffset(cu, siblingOffset);
+  }
+
+  // childDie is now a dummy die whose offset is to the code 0 marking the
+  // end of the children. Need to add one to get the offset of the next die.
+  return childDie.offset + 1;
+}
+
+/*
+ * Iterate over all attributes of the given DIE, calling the given callable
+ * for each. Iteration is stopped early if any of the calls return false.
+ */
+size_t Dwarf::forEachAttribute(
+    const detail::CompilationUnit& cu,
+    const detail::Die& die,
+    folly::FunctionRef<bool(const detail::Attribute& die)> f) const {
+  auto attrs = die.abbr.attributes;
+  auto values =
+      folly::StringPiece{debugInfo_.data() + die.offset + die.attrOffset,
+                         debugInfo_.data() + cu.offset + cu.size};
+  while (auto spec = readAttributeSpec(attrs)) {
+    auto attr = readAttribute(die, spec, values, debugStr_);
+    if (!f(attr)) {
+      return static_cast<size_t>(-1);
+    }
+  }
+  return values.data() - debugInfo_.data();
+}
+
+void Dwarf::findSubProgramDieForAddress(
+    const detail::CompilationUnit& cu,
+    const detail::Die& die,
+    uint64_t address,
+    detail::Die& subprogram) const {
+  forEachChild(cu, die, [&](const detail::Die& childDie) {
+    if (childDie.abbr.tag == DW_TAG_subprogram) {
+      uint64_t lowPc = 0;
+      uint64_t highPc = 0;
+      bool isHighPcAddr = false;
+      StringPiece name;
+      forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
+        switch (attr.spec.name) {
+          // Here DW_AT_ranges is not supported since it requires looking up
+          // in a different section (.debug_ranges).
+          case DW_AT_low_pc:
+            lowPc = boost::get<uint64_t>(attr.attrValue);
+            break;
+          case DW_AT_high_pc:
+            // Value of DW_AT_high_pc attribute can be an address
+            // (DW_FORM_addr) or an offset (DW_FORM_data).
+            isHighPcAddr = (attr.spec.form == DW_FORM_addr);
+            highPc = boost::get<uint64_t>(attr.attrValue);
+            break;
+          case DW_AT_name:
+            name = boost::get<StringPiece>(attr.attrValue);
+            break;
+        }
+        // Iterate through all attributes until find all above.
+        return true;
+      });
+      if (address > lowPc &&
+          address < (isHighPcAddr ? highPc : lowPc + highPc)) {
+        subprogram = childDie;
+        return false;
+      }
+    } else if (
+        childDie.abbr.tag == DW_TAG_namespace ||
+        childDie.abbr.tag == DW_TAG_class_type) {
+      findSubProgramDieForAddress(cu, childDie, address, subprogram);
+    }
+    // Iterates through children until find the inline subprogram.
+    return true;
+  });
+}
+
+void Dwarf::findInlinedSubroutineDieForAddress(
+    const detail::CompilationUnit& cu,
+    const detail::Die& die,
+    uint64_t address,
+    folly::Range<detail::CodeLocation*>& isrLoc) const {
+  if (isrLoc.empty()) {
+    return;
+  }
+  forEachChild(cu, die, [&](const detail::Die& childDie) {
+    if (childDie.abbr.tag != DW_TAG_inlined_subroutine) {
+      return true; // Skip DIE that is not inlined_subroutine.
+    }
+    uint64_t lowPc = 0;
+    uint64_t highPc = 0;
+    bool isHighPcAddr = false;
+    uint64_t origin = 0;
+    uint64_t originRefType = 0;
+    uint64_t callLine = 0;
+    forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
+      switch (attr.spec.name) {
+        // Here DW_AT_ranges is not supported since it requires looking up
+        // in a different section (.debug_ranges).
+        case DW_AT_low_pc:
+          lowPc = boost::get<uint64_t>(attr.attrValue);
+          break;
+        case DW_AT_high_pc:
+          // Value of DW_AT_high_pc attribute can be an address
+          // (DW_FORM_addr) or an offset (DW_FORM_data).
+          isHighPcAddr = (attr.spec.form == DW_FORM_addr);
+          highPc = boost::get<uint64_t>(attr.attrValue);
+          break;
+        case DW_AT_abstract_origin:
+          originRefType = attr.spec.form;
+          origin = boost::get<uint64_t>(attr.attrValue);
+          break;
+        case DW_AT_call_line:
+          callLine = boost::get<uint64_t>(attr.attrValue);
+          break;
+      }
+      // Iterate through all until find all above attributes.
+      return true;
+    });
+    if (address < lowPc || address > (isHighPcAddr ? highPc : lowPc + highPc)) {
+      // Address doesn't match. Keep searching other children.
+      return true;
+    }
+    isrLoc[0].line = callLine;
+    if (originRefType == DW_FORM_ref1 || originRefType == DW_FORM_ref2 ||
+        originRefType == DW_FORM_ref4 || originRefType == DW_FORM_ref8 ||
+        originRefType == DW_FORM_ref_udata) {
+      isrLoc[0].die = getDieAtOffset(cu, cu.offset + origin);
+      isrLoc.advance(1);
+      findInlinedSubroutineDieForAddress(cu, childDie, address, isrLoc);
+    } else if (originRefType == DW_FORM_ref_addr) {
+      auto srcu = findCompilationUnit(debugInfo_, origin);
+      isrLoc[0].die = getDieAtOffset(cu, origin);
+      isrLoc.advance(1);
+      findInlinedSubroutineDieForAddress(srcu, childDie, address, isrLoc);
+    }
+    return false;
+  });
 }
 
 Dwarf::LineNumberVM::LineNumberVM(

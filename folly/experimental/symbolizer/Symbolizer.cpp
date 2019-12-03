@@ -65,7 +65,8 @@ ElfCache* defaultElfCache() {
 void SymbolizedFrame::set(
     const std::shared_ptr<ElfFile>& file,
     uintptr_t address,
-    Dwarf::LocationInfoMode mode) {
+    Dwarf::LocationInfoMode mode,
+    folly::Range<Dwarf::LocationInfo*> inlineLocations) {
   clear();
   found = true;
 
@@ -77,7 +78,7 @@ void SymbolizedFrame::set(
   file_ = file;
   name = file->getSymbolName(sym);
 
-  Dwarf(file.get()).findAddress(address, location, mode);
+  Dwarf(file.get()).findAddress(address, mode, location, inlineLocations);
 }
 
 Symbolizer::Symbolizer(
@@ -91,9 +92,10 @@ Symbolizer::Symbolizer(
 }
 
 void Symbolizer::symbolize(
-    const uintptr_t* addresses,
-    SymbolizedFrame* frames,
-    size_t addrCount) {
+    folly::Range<const uintptr_t*> addrs,
+    folly::Range<SymbolizedFrame*> frames) {
+  size_t addrCount = addrs.size();
+  size_t frameCount = frames.size();
   size_t remaining = 0;
   for (size_t i = 0; i < addrCount; ++i) {
     auto& frame = frames[i];
@@ -119,6 +121,10 @@ void Symbolizer::symbolize(
   }
   selfPath[selfSize] = '\0';
 
+  for (size_t i = 0; i < addrCount; i++) {
+    frames[i].addr = addrs[i];
+  }
+
   for (auto lmap = _r_debug.r_map; lmap != nullptr && remaining != 0;
        lmap = lmap->l_next) {
     // The empty string is used in place of the filename for the link_map
@@ -139,8 +145,10 @@ void Symbolizer::symbolize(
         continue;
       }
 
-      auto const addr = addresses[i];
-      if (symbolCache_) {
+      auto const addr = frame.addr;
+      // Mode FULL_WITH_INLINE (may have multiple frames for an address) is not
+      // supported in symbolCache_.
+      if (symbolCache_ && mode_ != Dwarf::LocationInfoMode::FULL_WITH_INLINE) {
         // Need a write lock, because EvictingCacheMap brings found item to
         // front of eviction list.
         auto lockedSymbolCache = symbolCache_->wlock();
@@ -157,9 +165,49 @@ void Symbolizer::symbolize(
       auto const adjusted = addr - lmap->l_addr;
 
       if (elfFile->getSectionContainingAddress(adjusted)) {
-        frame.set(elfFile, adjusted, mode_);
+        if (mode_ == Dwarf::LocationInfoMode::FULL_WITH_INLINE &&
+            frameCount > addrCount) {
+          size_t maxInline = std::min<size_t>(
+              Dwarf::kMaxInlineLocationInfoPerFrame, frameCount - addrCount);
+          Dwarf::LocationInfo inlineLocations[maxInline];
+          folly::Range<Dwarf::LocationInfo*> inlineLocRange(
+              inlineLocations, maxInline);
+          frame.set(elfFile, adjusted, mode_, inlineLocRange);
+
+          // Find out how many LocationInfo were filled in.
+          size_t numInlined = std::distance(
+              inlineLocRange.begin(),
+              std::find_if(
+                  inlineLocRange.begin(), inlineLocRange.end(), [&](auto loc) {
+                    return !loc.hasFileAndLine;
+                  }));
+
+          // Move the rest of the frames to make space for inlined location info
+          std::move_backward(
+              frames.begin() + i,
+              frames.begin() + addrCount,
+              frames.begin() + addrCount + numInlined);
+
+          // Insert inlined location info in the space we opened up above. The
+          // inlineLocations contains inline functions in call sequence, and
+          // here we store them reversely in frames (caller in later frame).
+          for (size_t k = 0; k < numInlined; k++) {
+            frames[i + k].found = true;
+            frames[i + k].addr = addr;
+            frames[i + k].location = inlineLocations[numInlined - k - 1];
+            frames[i + k].name =
+                inlineLocations[numInlined - k - 1].name.data();
+          }
+
+          // Skip over the newly added inlined items.
+          i += numInlined;
+          addrCount += numInlined;
+        } else {
+          frame.set(elfFile, adjusted, mode_);
+        }
         --remaining;
-        if (symbolCache_) {
+        if (symbolCache_ &&
+            mode_ != Dwarf::LocationInfoMode::FULL_WITH_INLINE) {
           // frame may already have been set here.  That's ok, we'll just
           // overwrite, which doesn't cause a correctness problem.
           symbolCache_->wlock()->set(addr, frame);
@@ -198,9 +246,9 @@ folly::StringPiece AddressFormatter::format(uintptr_t address) {
   return folly::StringPiece(buf_, end);
 }
 
-void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
+void SymbolizePrinter::print(const SymbolizedFrame& frame) {
   if (options_ & TERSE) {
-    printTerse(address, frame);
+    printTerse(frame);
     return;
   }
 
@@ -212,7 +260,7 @@ void SymbolizePrinter::print(uintptr_t address, const SymbolizedFrame& frame) {
     color(kAddressColor);
 
     AddressFormatter formatter;
-    doPrint(formatter.format(address));
+    doPrint(formatter.format(frame.addr));
   }
 
   const char padBuf[] = "                       ";
@@ -274,16 +322,12 @@ void SymbolizePrinter::color(SymbolizePrinter::Color color) {
   doPrint(kColorMap[color]);
 }
 
-void SymbolizePrinter::println(
-    uintptr_t address,
-    const SymbolizedFrame& frame) {
-  print(address, frame);
+void SymbolizePrinter::println(const SymbolizedFrame& frame) {
+  print(frame);
   doPrint("\n");
 }
 
-void SymbolizePrinter::printTerse(
-    uintptr_t address,
-    const SymbolizedFrame& frame) {
+void SymbolizePrinter::printTerse(const SymbolizedFrame& frame) {
   if (frame.found && frame.name && frame.name[0] != '\0') {
     char demangledBuf[2048] = {0};
     demangle(frame.name, demangledBuf, sizeof(demangledBuf));
@@ -295,6 +339,7 @@ void SymbolizePrinter::printTerse(
     char* end = buf + sizeof(buf) - 1 - (16 - 2 * sizeof(uintptr_t));
     char* p = end;
     *p-- = '\0';
+    auto address = frame.addr;
     while (address != 0) {
       *p-- = kHexChars[address & 0xf];
       address >>= 4;
@@ -304,11 +349,10 @@ void SymbolizePrinter::printTerse(
 }
 
 void SymbolizePrinter::println(
-    const uintptr_t* addresses,
     const SymbolizedFrame* frames,
     size_t frameCount) {
   for (size_t i = 0; i < frameCount; ++i) {
-    println(addresses[i], frames[i]);
+    println(frames[i]);
   }
 }
 

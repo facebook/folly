@@ -47,13 +47,15 @@ struct SymbolizedFrame {
   void set(
       const std::shared_ptr<ElfFile>& file,
       uintptr_t address,
-      Dwarf::LocationInfoMode mode);
+      Dwarf::LocationInfoMode mode,
+      folly::Range<Dwarf::LocationInfo*> inlineLocations = {});
 
   void clear() {
     *this = SymbolizedFrame();
   }
 
   bool found = false;
+  uintptr_t addr = 0;
   const char* name = nullptr;
   Dwarf::LocationInfo location;
 
@@ -127,24 +129,45 @@ class Symbolizer {
       ElfCacheBase* cache,
       Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode,
       size_t symbolCacheSize = 0);
+
   /**
-   * Symbolize given addresses.
+   *  Symbolize given addresses.
+   *
+   * - all entries in @addrs will be symbolized (if possible, e.g. if they're
+   *   valid code addresses)
+   *
+   * - if `mode_ == FULL_WITH_INLINE` and `frames.size() > addrs.size()` then at
+   *   most `frames.size() - addrs.size()` additional inlined functions will
+   *   also be symbolized (at most `kMaxInlineLocationInfoPerFrame` per @addr
+   *   entry).
    */
+  void symbolize(
+      folly::Range<const uintptr_t*> addrs,
+      folly::Range<SymbolizedFrame*> frames);
+
   void symbolize(
       const uintptr_t* addresses,
       SymbolizedFrame* frames,
-      size_t frameCount);
+      size_t frameCount) {
+    symbolize(
+        folly::Range<const uintptr_t*>(addresses, frameCount),
+        folly::Range<SymbolizedFrame*>(frames, frameCount));
+  }
 
   template <size_t N>
   void symbolize(FrameArray<N>& fa) {
-    symbolize(fa.addresses, fa.frames, fa.frameCount);
+    symbolize(
+        folly::Range<const uintptr_t*>(fa.addresses, fa.frameCount),
+        folly::Range<SymbolizedFrame*>(fa.frames, N));
   }
 
   /**
    * Shortcut to symbolize one address.
    */
   bool symbolize(uintptr_t address, SymbolizedFrame& frame) {
-    symbolize(&address, &frame, 1);
+    symbolize(
+        folly::Range<const uintptr_t*>(&address, 1),
+        folly::Range<SymbolizedFrame*>(&frame, 1));
     return frame.found;
   }
 
@@ -180,22 +203,19 @@ class AddressFormatter {
 class SymbolizePrinter {
  public:
   /**
-   * Print one address, no ending newline.
+   * Print one frame, no ending newline.
    */
-  void print(uintptr_t address, const SymbolizedFrame& frame);
+  void print(const SymbolizedFrame& frame);
 
   /**
-   * Print one address with ending newline.
+   * Print one frame with ending newline.
    */
-  void println(uintptr_t address, const SymbolizedFrame& frame);
+  void println(const SymbolizedFrame& frame);
 
   /**
-   * Print multiple addresses on separate lines.
+   * Print multiple frames on separate lines.
    */
-  void println(
-      const uintptr_t* addresses,
-      const SymbolizedFrame* frames,
-      size_t frameCount);
+  void println(const SymbolizedFrame* frames, size_t frameCount);
 
   /**
    * Print a string, no endling newline.
@@ -205,13 +225,13 @@ class SymbolizePrinter {
   }
 
   /**
-   * Print multiple addresses on separate lines, skipping the first
+   * Print multiple frames on separate lines, skipping the first
    * skip addresses.
    */
   template <size_t N>
   void println(const FrameArray<N>& fa, size_t skip = 0) {
     if (skip < fa.frameCount) {
-      println(fa.addresses + skip, fa.frames + skip, fa.frameCount - skip);
+      println(fa.frames + skip, fa.frameCount - skip);
     }
   }
 
@@ -252,7 +272,7 @@ class SymbolizePrinter {
   const bool isTty_;
 
  private:
-  void printTerse(uintptr_t address, const SymbolizedFrame& frame);
+  void printTerse(const SymbolizedFrame& frame);
   virtual void doPrint(StringPiece sp) = 0;
 
   static constexpr std::array<const char*, Color::NUM> kColorMap = {{

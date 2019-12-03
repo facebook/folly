@@ -15,6 +15,7 @@
  */
 
 #include <folly/Benchmark.h>
+#include <folly/Range.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/portability/GFlags.h>
 
@@ -33,7 +34,9 @@ void run(Dwarf::LocationInfoMode mode, size_t n) {
   suspender.dismiss();
   for (size_t i = 0; i < n; i++) {
     Dwarf::LocationInfo info;
-    dwarf.findAddress(uintptr_t(&dummy), info, mode);
+    auto inlineInfo = std::
+        array<Dwarf::LocationInfo, Dwarf::kMaxInlineLocationInfoPerFrame>();
+    dwarf.findAddress(uintptr_t(&dummy), mode, info, folly::range(inlineInfo));
   }
 }
 
@@ -45,6 +48,10 @@ BENCHMARK(DwarfFindAddressFast, n) {
 
 BENCHMARK(DwarfFindAddressFull, n) {
   run(folly::symbolizer::Dwarf::LocationInfoMode::FULL, n);
+}
+
+BENCHMARK(DwarfFindAddressFullWithInline, n) {
+  run(folly::symbolizer::Dwarf::LocationInfoMode::FULL_WITH_INLINE, n);
 }
 
 int main(int argc, char* argv[]) {

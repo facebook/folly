@@ -20,11 +20,32 @@
 
 #include <boost/variant.hpp>
 
+#include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 
 namespace folly {
 namespace symbolizer {
+
+namespace detail {
+
+// A top level chunk in the .debug_info that contains a compilation unit.
+struct CompilationUnit;
+
+// Debugging information entry to define a low-level representation of a
+// source program. Each debugging information entry consists of an identifying
+// tag and a series of attributes. An entry, or group of entries together,
+// provide a description of a corresponding entity in the source program.
+struct Die;
+
+// Abbreviation for a Debugging Information Entry.
+struct DIEAbbreviation;
+
+struct AttributeSpec;
+struct Attribute;
+struct CodeLocation;
+
+} // namespace detail
 
 /**
  * DWARF record parser.
@@ -50,9 +71,11 @@ namespace symbolizer {
  * DW_LNE_define_file instructions, etc.
  */
 class Dwarf {
-  // Note that Dwarf uses (and returns) StringPiece a lot.
-  // The StringPieces point within sections in the ELF file, and so will
-  // be live for as long as the passed-in ElfFile is live.
+  /**
+   * Note that Dwarf uses (and returns) StringPiece a lot.
+   * The StringPieces point within sections in the ELF file, and so will
+   * be live for as long as the passed-in ElfFile is live.
+   */
  public:
   /** Create a DWARF parser around an ELF file. */
   explicit Dwarf(const ElfFile* elf);
@@ -61,52 +84,7 @@ class Dwarf {
    * Represent a file path a s collection of three parts (base directory,
    * subdirectory, and file).
    */
-  class Path {
-   public:
-    Path() {}
-
-    Path(
-        folly::StringPiece baseDir,
-        folly::StringPiece subDir,
-        folly::StringPiece file);
-
-    folly::StringPiece baseDir() const {
-      return baseDir_;
-    }
-    folly::StringPiece subDir() const {
-      return subDir_;
-    }
-    folly::StringPiece file() const {
-      return file_;
-    }
-
-    size_t size() const;
-
-    /**
-     * Copy the Path to a buffer of size bufSize.
-     *
-     * toBuffer behaves like snprintf: It will always null-terminate the
-     * buffer (so it will copy at most bufSize-1 bytes), and it will return
-     * the number of bytes that would have been written if there had been
-     * enough room, so, if toBuffer returns a value >= bufSize, the output
-     * was truncated.
-     */
-    size_t toBuffer(char* buf, size_t bufSize) const;
-
-    void toString(std::string& dest) const;
-    std::string toString() const {
-      std::string s;
-      toString(s);
-      return s;
-    }
-
-    // TODO(tudorb): Implement operator==, operator!=; not as easy as it
-    // seems as the same path can be represented in multiple ways
-   private:
-    folly::StringPiece baseDir_;
-    folly::StringPiece subDir_;
-    folly::StringPiece file_;
-  };
+  class Path;
 
   enum class LocationInfoMode {
     // Don't resolve location info.
@@ -115,178 +93,281 @@ class Dwarf {
     FAST,
     // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
     FULL,
-  };
-
-  struct LocationInfo {
-    bool hasMainFile = false;
-    Path mainFile;
-
-    bool hasFileAndLine = false;
-    Path file;
-    uint64_t line = 0;
+    // Scan .debug_info (super slower, use with caution) for inline functions in
+    // addition to FULL.
+    FULL_WITH_INLINE,
   };
 
   /**
-   * Find the file and line number information corresponding to address.
+   * More than one location info may exist if current frame is an inline
+   * function call.
    */
-  bool findAddress(uintptr_t address, LocationInfo& info, LocationInfoMode mode)
-      const;
+  static const uint32_t kMaxInlineLocationInfoPerFrame = 3;
+
+  /** Contains location info like file name, line number, etc. */
+  struct LocationInfo;
+
+  /** Find the file and line number information corresponding to address. */
+  bool findAddress(
+      uintptr_t address,
+      LocationInfoMode mode,
+      LocationInfo& info,
+      folly::Range<Dwarf::LocationInfo*> inlineInfo = {}) const;
 
  private:
+  using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
+
+  /**
+   * DWARF section made up of chunks, each prefixed with a length header. The
+   * length indicates whether the chunk is DWARF-32 or DWARF-64, which guides
+   * interpretation of "section offset" records. (yes, DWARF-32 and DWARF-64
+   * sections may coexist in the same file).
+   */
+  class Section;
+
+  /** Interpreter for the line number bytecode VM */
+  class LineNumberVM;
+
+  /**
+   * Finds location info (file and line) for a given address in the given
+   * compilation unit.
+   */
+  bool findLocation(
+      uintptr_t address,
+      const LocationInfoMode mode,
+      detail::CompilationUnit& unit,
+      LocationInfo& info,
+      folly::Range<Dwarf::LocationInfo*> inlineInfo = {}) const;
+
+  /**
+   * Finds a subprogram debugging info entry that contains a given address among
+   * children of given die. Depth first search.
+   */
+  void findSubProgramDieForAddress(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      uint64_t address,
+      detail::Die& subprogram) const;
+
+  /**
+   * Finds inlined subroutine DIEs and their caller lines that contains a given
+   * address among children of given die. Depth first search.
+   */
+  void findInlinedSubroutineDieForAddress(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      uint64_t address,
+      folly::Range<detail::CodeLocation*>& isrLoc) const;
+
   static bool
   findDebugInfoOffset(uintptr_t address, StringPiece aranges, uint64_t& offset);
 
-  void init();
-  bool findLocation(
-      uintptr_t address,
-      StringPiece& infoEntry,
-      LocationInfo& info) const;
+  /** Get an ELF section by name. */
+  folly::StringPiece getSection(const char* name) const;
+
+  /** cu must exist during the life cycle of created detail::Die. */
+  detail::Die getDieAtOffset(const detail::CompilationUnit& cu, uint64_t offset)
+      const;
+
+  /**
+   * Iterates over all children of a debugging info entry, calling the given
+   * callable for each. Iteration is stopped early if any of the calls return
+   * false. Returns the offset of next DIE after iterations.
+   */
+  size_t forEachChild(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      folly::FunctionRef<bool(const detail::Die& die)> f) const;
+
+  /**
+   * Gets abbreviation corresponding to a code, in the chunk starting at
+   * offset in the .debug_abbrev section
+   */
+  detail::DIEAbbreviation getAbbreviation(uint64_t code, uint64_t offset) const;
+
+  /**
+   * Iterates over all attributes of a debugging info entry,  calling the given
+   * callable for each. If all attributes are visited, then return the offset of
+   * next DIE, or else iteration is stopped early and return size_t(-1) if any
+   * of the calls return false.
+   */
+  size_t forEachAttribute(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      folly::FunctionRef<bool(const detail::Attribute& die)> f) const;
 
   const ElfFile* elf_;
+  const folly::StringPiece debugInfo_; // .debug_info
+  const folly::StringPiece debugAbbrev_; // .debug_abbrev
+  const folly::StringPiece debugLine_; // .debug_line
+  const folly::StringPiece debugStr_; // .debug_str
+  const folly::StringPiece debugAranges_; // .debug_aranges
+};
 
-  // DWARF section made up of chunks, each prefixed with a length header.
-  // The length indicates whether the chunk is DWARF-32 or DWARF-64, which
-  // guides interpretation of "section offset" records.
-  // (yes, DWARF-32 and DWARF-64 sections may coexist in the same file)
-  class Section {
-   public:
-    Section() : is64Bit_(false) {}
+class Dwarf::Section {
+ public:
+  Section() : is64Bit_(false) {}
 
-    explicit Section(folly::StringPiece d);
+  explicit Section(folly::StringPiece d);
 
-    // Return next chunk, if any; the 4- or 12-byte length was already
-    // parsed and isn't part of the chunk.
-    bool next(folly::StringPiece& chunk);
+  /**
+   * Return next chunk, if any; the 4- or 12-byte length was already
+   * parsed and isn't part of the chunk.
+   */
+  bool next(folly::StringPiece& chunk);
 
-    // Is the current chunk 64 bit?
-    bool is64Bit() const {
-      return is64Bit_;
-    }
+  /** Is the current chunk 64 bit? */
+  bool is64Bit() const {
+    return is64Bit_;
+  }
 
-   private:
-    // Yes, 32- and 64- bit sections may coexist.  Yikes!
-    bool is64Bit_;
-    folly::StringPiece data_;
+ private:
+  // Yes, 32- and 64- bit sections may coexist.  Yikes!
+  bool is64Bit_;
+  folly::StringPiece data_;
+};
+
+class Dwarf::Path {
+ public:
+  Path() {}
+
+  Path(
+      folly::StringPiece baseDir,
+      folly::StringPiece subDir,
+      folly::StringPiece file);
+
+  folly::StringPiece baseDir() const {
+    return baseDir_;
+  }
+  folly::StringPiece subDir() const {
+    return subDir_;
+  }
+  folly::StringPiece file() const {
+    return file_;
+  }
+
+  size_t size() const;
+
+  /**
+   * Copy the Path to a buffer of size bufSize.
+   *
+   * toBuffer behaves like snprintf: It will always null-terminate the
+   * buffer (so it will copy at most bufSize-1 bytes), and it will return
+   * the number of bytes that would have been written if there had been
+   * enough room, so, if toBuffer returns a value >= bufSize, the output
+   * was truncated.
+   */
+  size_t toBuffer(char* buf, size_t bufSize) const;
+
+  void toString(std::string& dest) const;
+  std::string toString() const {
+    std::string s;
+    toString(s);
+    return s;
+  }
+
+ private:
+  folly::StringPiece baseDir_;
+  folly::StringPiece subDir_;
+  folly::StringPiece file_;
+};
+
+struct Dwarf::LocationInfo {
+  bool hasFileAndLine = false;
+  bool hasMainFile = false;
+  // Function name in call stack.
+  folly::StringPiece name;
+  Path mainFile;
+  Path file;
+  uint64_t line = 0;
+};
+
+class Dwarf::LineNumberVM {
+ public:
+  LineNumberVM(
+      folly::StringPiece data,
+      folly::StringPiece compilationDirectory);
+
+  bool findAddress(uintptr_t address, Path& file, uint64_t& line);
+
+  /** Gets full file name at given index including directory. */
+  Path getFullFileName(uint64_t index) const {
+    auto fn = getFileName(index);
+    return Path({}, getIncludeDirectory(fn.directoryIndex), fn.relativeName);
+  }
+
+ private:
+  void init();
+  void reset();
+
+  /** Execute until we commit one new row to the line number matrix */
+  bool next(folly::StringPiece& program);
+  enum StepResult {
+    CONTINUE, // Continue feeding opcodes
+    COMMIT, // Commit new <address, file, line> tuple
+    END, // End of sequence
+  };
+  /** Execute one opcode */
+  StepResult step(folly::StringPiece& program);
+
+  struct FileName {
+    folly::StringPiece relativeName;
+    // 0 = current compilation directory
+    // otherwise, 1-based index in the list of include directories
+    uint64_t directoryIndex;
   };
 
-  // Abbreviation for a Debugging Information Entry.
-  struct DIEAbbreviation {
-    uint64_t code;
-    uint64_t tag;
-    bool hasChildren;
+  /** Read one FileName object, advance sp */
+  static bool readFileName(folly::StringPiece& sp, FileName& fn);
 
-    struct Attribute {
-      uint64_t name;
-      uint64_t form;
-    };
+  /**
+   * Get file name at given index; may be in the initial table
+   * (fileNames_) or defined using DW_LNE_define_file (and we reexecute
+   * enough of the program to find it, if so)
+   */
+  FileName getFileName(uint64_t index) const;
 
-    folly::StringPiece attributes;
-  };
+  /** Get include directory at given index */
+  folly::StringPiece getIncludeDirectory(uint64_t index) const;
 
-  // Interpreter for the line number bytecode VM
-  class LineNumberVM {
-   public:
-    LineNumberVM(
-        folly::StringPiece data,
-        folly::StringPiece compilationDirectory);
+  /**
+   * Execute opcodes until finding a DW_LNE_define_file and return true;
+   * return file at the end.
+   */
+  bool nextDefineFile(folly::StringPiece& program, FileName& fn) const;
 
-    bool findAddress(uintptr_t address, Path& file, uint64_t& line);
+  // Initialization
+  bool is64Bit_;
+  folly::StringPiece data_;
+  folly::StringPiece compilationDirectory_;
 
-   private:
-    void init();
-    void reset();
+  // Header
+  uint16_t version_;
+  uint8_t minLength_;
+  bool defaultIsStmt_;
+  int8_t lineBase_;
+  uint8_t lineRange_;
+  uint8_t opcodeBase_;
+  const uint8_t* standardOpcodeLengths_;
 
-    // Execute until we commit one new row to the line number matrix
-    bool next(folly::StringPiece& program);
-    enum StepResult {
-      CONTINUE, // Continue feeding opcodes
-      COMMIT, // Commit new <address, file, line> tuple
-      END, // End of sequence
-    };
-    // Execute one opcode
-    StepResult step(folly::StringPiece& program);
+  folly::StringPiece includeDirectories_;
+  size_t includeDirectoryCount_;
 
-    struct FileName {
-      folly::StringPiece relativeName;
-      // 0 = current compilation directory
-      // otherwise, 1-based index in the list of include directories
-      uint64_t directoryIndex;
-    };
-    // Read one FileName object, advance sp
-    static bool readFileName(folly::StringPiece& sp, FileName& fn);
+  folly::StringPiece fileNames_;
+  size_t fileNameCount_;
 
-    // Get file name at given index; may be in the initial table
-    // (fileNames_) or defined using DW_LNE_define_file (and we reexecute
-    // enough of the program to find it, if so)
-    FileName getFileName(uint64_t index) const;
-
-    // Get include directory at given index
-    folly::StringPiece getIncludeDirectory(uint64_t index) const;
-
-    // Execute opcodes until finding a DW_LNE_define_file and return true;
-    // return file at the end.
-    bool nextDefineFile(folly::StringPiece& program, FileName& fn) const;
-
-    // Initialization
-    bool is64Bit_;
-    folly::StringPiece data_;
-    folly::StringPiece compilationDirectory_;
-
-    // Header
-    uint16_t version_;
-    uint8_t minLength_;
-    bool defaultIsStmt_;
-    int8_t lineBase_;
-    uint8_t lineRange_;
-    uint8_t opcodeBase_;
-    const uint8_t* standardOpcodeLengths_;
-
-    folly::StringPiece includeDirectories_;
-    size_t includeDirectoryCount_;
-
-    folly::StringPiece fileNames_;
-    size_t fileNameCount_;
-
-    // State machine registers
-    uint64_t address_;
-    uint64_t file_;
-    uint64_t line_;
-    uint64_t column_;
-    bool isStmt_;
-    bool basicBlock_;
-    bool endSequence_;
-    bool prologueEnd_;
-    bool epilogueBegin_;
-    uint64_t isa_;
-    uint64_t discriminator_;
-  };
-
-  // Read an abbreviation from a StringPiece, return true if at end; advance sp
-  static bool readAbbreviation(folly::StringPiece& sp, DIEAbbreviation& abbr);
-
-  // Get abbreviation corresponding to a code, in the chunk starting at
-  // offset in the .debug_abbrev section
-  DIEAbbreviation getAbbreviation(uint64_t code, uint64_t offset) const;
-
-  // Read one attribute <name, form> pair, advance sp; returns <0, 0> at end.
-  static DIEAbbreviation::Attribute readAttribute(folly::StringPiece& sp);
-
-  // Read one attribute value, advance sp
-  typedef boost::variant<uint64_t, folly::StringPiece> AttributeValue;
-  AttributeValue
-  readAttributeValue(folly::StringPiece& sp, uint64_t form, bool is64Bit) const;
-
-  // Get an ELF section by name, return true if found
-  bool getSection(const char* name, folly::StringPiece* section) const;
-
-  // Get a string from the .debug_str section
-  folly::StringPiece getStringFromStringSection(uint64_t offset) const;
-
-  folly::StringPiece info_; // .debug_info
-  folly::StringPiece abbrev_; // .debug_abbrev
-  folly::StringPiece aranges_; // .debug_aranges
-  folly::StringPiece line_; // .debug_line
-  folly::StringPiece strings_; // .debug_str
+  // State machine registers
+  uint64_t address_;
+  uint64_t file_;
+  uint64_t line_;
+  uint64_t column_;
+  bool isStmt_;
+  bool basicBlock_;
+  bool endSequence_;
+  bool prologueEnd_;
+  bool epilogueBegin_;
+  uint64_t isa_;
+  uint64_t discriminator_;
 };
 
 inline std::ostream& operator<<(std::ostream& out, const Dwarf::Path& path) {
