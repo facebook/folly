@@ -59,18 +59,26 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     size_t numThreads,
     std::shared_ptr<ThreadFactory> threadFactory)
-    : CPUThreadPoolExecutor(
+    : ThreadPoolExecutor(
           numThreads,
-          std::make_unique<UnboundedBlockingQueue<CPUTask>>(),
-          std::move(threadFactory)) {}
+          FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
+          std::move(threadFactory)),
+      taskQueue_(std::make_unique<UnboundedBlockingQueue<CPUTask>>()) {
+  setNumThreads(numThreads);
+  registerThreadPoolExecutor(this);
+}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
     std::pair<size_t, size_t> numThreads,
     std::shared_ptr<ThreadFactory> threadFactory)
-    : CPUThreadPoolExecutor(
-          numThreads,
-          std::make_unique<UnboundedBlockingQueue<CPUTask>>(),
-          std::move(threadFactory)) {}
+    : ThreadPoolExecutor(
+          numThreads.first,
+          numThreads.second,
+          std::move(threadFactory)),
+      taskQueue_(std::make_unique<UnboundedBlockingQueue<CPUTask>>()) {
+  setNumThreads(numThreads.first);
+  registerThreadPoolExecutor(this);
+}
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(size_t numThreads)
     : CPUThreadPoolExecutor(
