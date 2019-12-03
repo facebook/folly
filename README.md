@@ -132,7 +132,8 @@ sudo apt-get install \
     binutils-dev \
     libjemalloc-dev \
     libssl-dev \
-    pkg-config
+    pkg-config \
+    libunwind-dev
 ```
 
 Folly relies on [fmt](https://github.com/fmtlib/fmt) which needs to be installed from source.
