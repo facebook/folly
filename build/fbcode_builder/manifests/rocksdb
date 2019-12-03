@@ -23,6 +23,8 @@ WITH_GFLAGS=OFF
 # rocksdb enables by default; ask it to disable their use even
 # when building on new hardware
 PORTABLE = ON
+# Disable the use of -Werror
+FAIL_ON_WARNINGS = OFF
 
 [cmake.defines.os=windows]
 ROCKSDB_INSTALL_ON_WINDOWS=ON
