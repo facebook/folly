@@ -433,9 +433,13 @@ struct IndexedMemPool {
   void localPush(AtomicStruct<TaggedPtr, Atom>& head, uint32_t idx) {
     Slot& s = slot(idx);
     TaggedPtr h = head.load(std::memory_order_acquire);
+    bool recycled = false;
     while (true) {
       s.localNext.store(h.idx, std::memory_order_release);
-      Traits::onRecycle(&slot(idx).elem);
+      if (!recycled) {
+        Traits::onRecycle(&slot(idx).elem);
+        recycled = true;
+      }
 
       if (h.size() == LocalListLimit) {
         // push will overflow local list, steal it instead
