@@ -76,6 +76,7 @@
 #if FOLLY_NEON
 #include <arm_neon.h> // uint8x16t intrinsics
 #else // SSE2
+#include <emmintrin.h> // _mm_set1_epi8
 #include <immintrin.h> // __m128i intrinsics
 #include <xmmintrin.h> // _mm_prefetch
 #endif
