@@ -98,6 +98,29 @@ TEST(SSLContextInitializationTest, SSLContextLocksSetAfterInitIgnored) {
       ::testing::ExitedWithCode(0),
       "SSLContextLocksSetAfterInitIgnored passed");
 }
+
+TEST(SSLContextInitializationTest, SSLContext_SSL_CTX_constructor) {
+  folly::ssl::init();
+
+  SSL_CTX* ctx = SSL_CTX_new(TLS_method());
+  EXPECT_NE(ctx, nullptr) << "SSL_CTX* creation for test failed";
+
+  {
+    folly::SSLContext sslContext(ctx);
+    SSL_CTX_free(ctx);
+    // Shouldn't be fully freed because SSLContext should've added to the
+    // refcount. up_ref should succed
+    EXPECT_EQ(SSL_CTX_up_ref(ctx), 1)
+        << "Incrementing ctx refcount failed, SSLContext isn't grabbing a ref on creation";
+  }
+  // Last reference, ctx should no longer be valid
+  SSL_CTX_free(ctx);
+
+  // Should throw because ctx is no longer valid, and the constructor should
+  // fail on incrementing ctx refcount
+  EXPECT_THROW(folly::SSLContext sslContext(ctx), std::runtime_error);
+}
+
 } // namespace folly
 
 int main(int argc, char* argv[]) {

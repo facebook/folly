@@ -144,6 +144,11 @@ class SSLContext {
    * @param version The lowest or oldest SSL version to support.
    */
   explicit SSLContext(SSLVersion version = TLSv1);
+  /**
+   * Constructor that helps ease migrations by directly wrapping a provided
+   * SSL_CTX*
+   */
+  explicit SSLContext(SSL_CTX* ctx);
   virtual ~SSLContext();
 
   /**

@@ -143,6 +143,12 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
 #endif
 }
 
+SSLContext::SSLContext(SSL_CTX* ctx) : ctx_(ctx) {
+  if (SSL_CTX_up_ref(ctx) == 0) {
+    throw std::runtime_error("Failed to increment SSL_CTX refcount");
+  }
+}
+
 void SSLContext::setX509VerifyParam(
     const ssl::X509VerifyParam& x509VerifyParam) {
   if (!x509VerifyParam) {
