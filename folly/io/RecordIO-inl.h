@@ -31,6 +31,9 @@ class RecordIOReader::Iterator : public detail::IteratorFacade<
       IteratorFacade<Iterator, value_type, std::forward_iterator_tag>;
   friend class RecordIOReader;
 
+ public:
+  Iterator() = default;
+
  private:
   Iterator(ByteRange range, uint32_t fileId, off_t pos);
 
@@ -49,7 +52,7 @@ class RecordIOReader::Iterator : public detail::IteratorFacade<
 
   void advanceToValid();
   ByteRange range_;
-  uint32_t fileId_;
+  uint32_t fileId_ = 0;
   // stored as a pair so we can return by reference in dereference()
   std::pair<ByteRange, off_t> recordAndPos_;
 };
