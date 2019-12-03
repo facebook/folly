@@ -75,7 +75,14 @@ if (PYTHON_EXTENSIONS)
       build_ext -f ${incs} ${libs}
     BYPRODUCTS ${_cybld}/folly/executor_api.h
     WORKING_DIRECTORY ${_cybld}
-    )
+  )
+
+  add_custom_command(TARGET folly_python_bindings POST_BUILD
+    COMMAND
+      python3 ${CMAKE_CURRENT_SOURCE_DIR}/python/setup.py
+      bdist_wheel
+    WORKING_DIRECTORY ${_cybld}
+  )
 
   install(
     FILES ${_cybld}/folly/executor_api.h
