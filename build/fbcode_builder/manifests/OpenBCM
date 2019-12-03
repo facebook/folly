@@ -4,8 +4,14 @@ name = OpenBCM
 [git]
 repo_url = https://github.com/Broadcom-Network-Switching-Software/OpenBCM.git
 
-[build]
+[build.os=linux]
+builder = OpenBCM
+
+[build.not(os=linux)]
 builder = nop
+
+[dependencies]
+git-lfs
 
 [install.files]
 lib/x86-64 = lib
