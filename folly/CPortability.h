@@ -117,11 +117,29 @@
 #endif
 
 /**
- * Define a convenience macro to test when ASAN, UBSAN or TSAN sanitizer are
- * being used
+ * Define a convenience macro to test when memory sanitizer is being used
+ * across the different compilers (e.g. clang, gcc)
+ */
+#ifndef FOLLY_SANITIZE_MEMORY
+#if FOLLY_HAS_FEATURE(memory_sanitizer) || __SANITIZE_MEMORY__
+#define FOLLY_SANITIZE_MEMORY 1
+#endif
+#endif
+
+#if FOLLY_SANITIZE_MEMORY
+#define FOLLY_DISABLE_MEMORY_SANITIZER \
+  __attribute__((no_sanitize_memory, noinline))
+#else
+#define FOLLY_DISABLE_MEMORY_SANITIZER
+#endif
+
+/**
+ * Define a convenience macro to test when ASAN, UBSAN, TSAN or MSAN sanitizer
+ * are being used
  */
 #ifndef FOLLY_SANITIZE
-#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD)
+#if defined(FOLLY_SANITIZE_ADDRESS) || defined(FOLLY_SANITIZE_THREAD) || \
+    defined(FOLLY_SANITIZE_MEMORY)
 #define FOLLY_SANITIZE 1
 #endif
 #endif
