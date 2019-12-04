@@ -19,6 +19,7 @@
 #include <folly/CancellationToken.h>
 #include <folly/Traits.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
+#include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
@@ -470,6 +471,15 @@ class FOLLY_NODISCARD AsyncGenerator {
     return NextSemiAwaitable{coro_};
   }
 
+  template <typename F, typename... A, typename F_, typename... A_>
+  friend AsyncGenerator
+  folly_co_invoke(tag_t<AsyncGenerator, F, A...>, F_ f, A_... a) {
+    auto r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+    while (auto v = co_await r.next()) {
+      co_yield std::move(v).value();
+    }
+  }
+
  private:
   friend class detail::AsyncGeneratorPromise<Reference, Value>;
 
@@ -489,34 +499,7 @@ AsyncGeneratorPromise<Reference, Value>::get_return_object() noexcept {
       AsyncGeneratorPromise<Reference, Value>>::from_promise(*this)};
 }
 
-template <typename T>
-inline constexpr bool is_async_generator_v = false;
-
-template <typename Reference, typename Value>
-inline constexpr bool is_async_generator_v<AsyncGenerator<Reference, Value>> =
-    true;
-
 } // namespace detail
-
-// Helper for immediately invoking a lambda with captures that returns an
-// AsyncGenerator to keep the lambda alive until the generator completes.
-//
-// Example:
-//   auto gen = co_invoke([min, max]() -> AsyncGenerator<T> {
-//     for (int i = min; i <= max; ++i) {
-//       co_yield co_await doSomething(i);
-//     }
-//   });
-template <typename Func, typename... Args>
-auto co_invoke(Func func, Args... args) -> std::enable_if_t<
-    detail::is_async_generator_v<invoke_result_t<Func, Args...>>,
-    invoke_result_t<Func, Args...>> {
-  auto asyncRange =
-      folly::invoke(static_cast<Func&&>(func), static_cast<Args&&>(args)...);
-  while (auto result = co_await asyncRange.next()) {
-    co_yield* std::move(result);
-  }
-}
 
 } // namespace coro
 } // namespace folly

@@ -21,6 +21,7 @@
 
 #include <folly/Optional.h>
 #include <folly/experimental/coro/Baton.h>
+#include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/detail/Helpers.h>

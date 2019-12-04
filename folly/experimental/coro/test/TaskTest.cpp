@@ -22,6 +22,7 @@
 #include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/SharedMutex.h>
 #include <folly/experimental/coro/Task.h>

@@ -24,6 +24,7 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
+#include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/WithCancellation.h>

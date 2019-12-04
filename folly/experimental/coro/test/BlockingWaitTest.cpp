@@ -22,6 +22,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
