@@ -20,6 +20,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/EventUtil.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Event.h>
@@ -110,7 +111,7 @@ class EventHandler {
    * Returns true if the handler is currently registered.
    */
   bool isHandlerRegistered() const {
-    return EventUtil::isEventRegistered(&event_);
+    return event_.isEventRegistered();
   }
 
   /**
@@ -155,7 +156,7 @@ class EventHandler {
    * Return the set of events that we're currently registered for.
    */
   uint16_t getRegisteredEvents() const {
-    return (isHandlerRegistered()) ? uint16_t(event_.ev_events) : 0u;
+    return (isHandlerRegistered()) ? (uint16_t)(event_.eb_ev_events()) : 0u;
   }
 
   /**
@@ -186,7 +187,7 @@ class EventHandler {
 
   static void libeventCallback(libevent_fd_t fd, short events, void* arg);
 
-  struct event event_;
+  EventBaseBackendBase::Event event_;
   EventBase* eventBase_;
 };
 

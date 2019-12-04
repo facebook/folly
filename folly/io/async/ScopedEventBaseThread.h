@@ -42,6 +42,10 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
   explicit ScopedEventBaseThread(StringPiece name);
   explicit ScopedEventBaseThread(EventBaseManager* ebm);
   explicit ScopedEventBaseThread(EventBaseManager* ebm, StringPiece name);
+  explicit ScopedEventBaseThread(
+      std::unique_ptr<EventBaseBackendBase>&& backend,
+      EventBaseManager* ebm,
+      StringPiece name);
   ~ScopedEventBaseThread();
 
   EventBase* getEventBase() const {

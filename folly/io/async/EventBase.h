@@ -51,6 +51,7 @@
 #include <folly/synchronization/CallOnce.h>
 
 namespace folly {
+class EventBaseBackendBase;
 
 using Cob = Func; // defined in folly/Executor.h
 template <typename MessageT>
@@ -323,6 +324,9 @@ class EventBase : public TimeoutManager,
    *                              observer, max latency and avg loop time.
    */
   explicit EventBase(event_base* evb, bool enableTimeMeasurement = true);
+  explicit EventBase(
+      std::unique_ptr<EventBaseBackendBase>&& evb,
+      bool enableTimeMeasurement = true);
   ~EventBase() override;
 
   /**
@@ -667,13 +671,15 @@ class EventBase : public TimeoutManager,
     return *wheelTimer_.get();
   }
 
+  EventBaseBackendBase* getBackend() {
+    return evb_.get();
+  }
   // --------- interface to underlying libevent base ------------
   // Avoid using these functions if possible.  These functions are not
   // guaranteed to always be present if we ever provide alternative EventBase
   // implementations that do not use libevent internally.
-  event_base* getLibeventBase() const {
-    return evb_;
-  }
+  event_base* getLibeventBase() const;
+
   static const char* getLibeventVersion();
   static const char* getLibeventMethod();
 
@@ -802,6 +808,8 @@ class EventBase : public TimeoutManager,
   /// Implements the IOExecutor interface
   EventBase* getEventBase() override;
 
+  static std::unique_ptr<EventBaseBackendBase> getDefaultBackend();
+
  protected:
   bool keepAliveAcquire() override {
     if (inRunningEventBaseThread()) {
@@ -864,9 +872,6 @@ class EventBase : public TimeoutManager,
   // std::thread::id{} if loop is not running.
   std::atomic<std::thread::id> loopThread_;
 
-  // pointer to underlying event_base class doing the heavy lifting
-  event_base* evb_;
-
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
   std::unique_ptr<NotificationQueue<Func>> queue_;
@@ -923,6 +928,9 @@ class EventBase : public TimeoutManager,
 
   folly::once_flag virtualEventBaseInitFlag_;
   std::unique_ptr<VirtualEventBase> virtualEventBase_;
+
+  // pointer to underlying backend class doing the heavy lifting
+  std::unique_ptr<EventBaseBackendBase> evb_;
 };
 
 template <typename T>

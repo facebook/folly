@@ -23,14 +23,14 @@
 namespace folly {
 
 EventHandler::EventHandler(EventBase* eventBase, NetworkSocket fd) {
-  event_set(&event_, fd.data, 0, &EventHandler::libeventCallback, this);
+  event_.eb_event_set(fd.data, 0, &EventHandler::libeventCallback, this);
   if (eventBase != nullptr) {
     setEventBase(eventBase);
   } else {
     // Callers must set the EventBase and fd before using this timeout.
     // Set event_->ev_base to nullptr to ensure that this happens.
     // (otherwise libevent will initialize it to the "default" event_base)
-    event_.ev_base = nullptr;
+    event_.eb_ev_base(nullptr);
     eventBase_ = nullptr;
   }
 }
@@ -40,36 +40,32 @@ EventHandler::~EventHandler() {
 }
 
 bool EventHandler::registerImpl(uint16_t events, bool internal) {
-  assert(event_.ev_base != nullptr);
+  assert(event_.eb_ev_base() != nullptr);
 
   // We have to unregister the event before we can change the event flags
   if (isHandlerRegistered()) {
     // If the new events are the same are the same as the already registered
     // flags, we don't have to do anything.  Just return.
-    auto flags = event_ref_flags(&event_);
-    if (events == event_.ev_events &&
+    auto flags = folly::event_ref_flags(event_.getEvent());
+    if (events == event_.eb_ev_events() &&
         static_cast<bool>(flags & EVLIST_INTERNAL) == internal) {
       return true;
     }
 
-    event_del(&event_);
+    event_.eb_event_del();
   }
 
   // Update the event flags
   // Unfortunately, event_set() resets the event_base, so we have to remember
   // it before hand, then pass it back into event_base_set() afterwards
-  struct event_base* evb = event_.ev_base;
-  event_set(
-      &event_,
-      event_.ev_fd,
-      short(events),
-      &EventHandler::libeventCallback,
-      this);
-  event_base_set(evb, &event_);
+  auto* evb = event_.eb_ev_base();
+  event_.eb_event_set(
+      event_.eb_ev_fd(), short(events), &EventHandler::libeventCallback, this);
+  event_.eb_event_base_set(evb);
 
   // Set EVLIST_INTERNAL if this is an internal event
   if (internal) {
-    event_ref_flags(&event_) |= EVLIST_INTERNAL;
+    folly::event_ref_flags(event_.getEvent()) |= EVLIST_INTERNAL;
   }
 
   // Add the event.
@@ -89,11 +85,11 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
   // if the I/O event flags haven't changed.  Using a separate event struct is
   // therefore slightly more efficient in this case (although it does take up
   // more space).
-  if (event_add(&event_, nullptr) < 0) {
+  if (event_.eb_event_add(nullptr) < 0) {
     LOG(ERROR) << "EventBase: failed to register event handler for fd "
-               << event_.ev_fd << ": " << errnoStr(errno);
+               << event_.eb_ev_fd() << ": " << errnoStr(errno);
     // Call event_del() to make sure the event is completely uninstalled
-    event_del(&event_);
+    event_.eb_event_del();
     return false;
   }
 
@@ -102,13 +98,13 @@ bool EventHandler::registerImpl(uint16_t events, bool internal) {
 
 void EventHandler::unregisterHandler() {
   if (isHandlerRegistered()) {
-    event_del(&event_);
+    event_.eb_event_del();
   }
 }
 
 void EventHandler::attachEventBase(EventBase* eventBase) {
   // attachEventBase() may only be called on detached handlers
-  assert(event_.ev_base == nullptr);
+  assert(event_.eb_ev_base() == nullptr);
   assert(!isHandlerRegistered());
   // This must be invoked from the EventBase's thread
   eventBase->dcheckIsInEventBaseThread();
@@ -118,20 +114,21 @@ void EventHandler::attachEventBase(EventBase* eventBase) {
 
 void EventHandler::detachEventBase() {
   ensureNotRegistered(__func__);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
 }
 
 void EventHandler::changeHandlerFD(NetworkSocket fd) {
   ensureNotRegistered(__func__);
   // event_set() resets event_base.ev_base, so manually restore it afterwards
-  struct event_base* evb = event_.ev_base;
-  event_set(&event_, fd.data, 0, &EventHandler::libeventCallback, this);
-  event_.ev_base = evb; // don't use event_base_set(), since evb may be nullptr
+  auto* evb = event_.eb_ev_base();
+  event_.eb_event_set(fd.data, 0, &EventHandler::libeventCallback, this);
+  event_.eb_ev_base(
+      evb); // don't use event_base_set(), since evb may be nullptr
 }
 
 void EventHandler::initHandler(EventBase* eventBase, NetworkSocket fd) {
   ensureNotRegistered(__func__);
-  event_set(&event_, fd.data, 0, &EventHandler::libeventCallback, this);
+  event_.eb_event_set(fd.data, 0, &EventHandler::libeventCallback, this);
   setEventBase(eventBase);
 }
 
@@ -147,7 +144,7 @@ void EventHandler::ensureNotRegistered(const char* fn) {
 
 void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   auto handler = reinterpret_cast<EventHandler*>(arg);
-  assert(fd == handler->event_.ev_fd);
+  assert(fd == handler->event_.eb_ev_fd());
   (void)fd; // prevent unused variable warnings
 
   auto observer = handler->eventBase_->getExecutionObserver();
@@ -166,13 +163,13 @@ void EventHandler::libeventCallback(libevent_fd_t fd, short events, void* arg) {
 }
 
 void EventHandler::setEventBase(EventBase* eventBase) {
-  event_base_set(eventBase->getLibeventBase(), &event_);
+  event_.eb_event_base_set(eventBase);
   eventBase_ = eventBase;
 }
 
 bool EventHandler::isPending() const {
-  if (event_ref_flags(&event_) & EVLIST_ACTIVE) {
-    if (event_.ev_res & EV_READ) {
+  if (folly::event_ref_flags(event_.getEvent()) & EVLIST_ACTIVE) {
+    if (event_.eb_ev_res() & EV_READ) {
       return true;
     }
   }

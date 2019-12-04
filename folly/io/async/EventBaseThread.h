@@ -22,6 +22,7 @@
 namespace folly {
 
 class EventBase;
+class EventBaseBackendBase;
 class EventBaseManager;
 class ScopedEventBaseThread;
 
@@ -30,6 +31,11 @@ class EventBaseThread {
   EventBaseThread();
   explicit EventBaseThread(
       bool autostart,
+      EventBaseManager* ebm = nullptr,
+      folly::StringPiece threadName = folly::StringPiece());
+  EventBaseThread(
+      bool autostart,
+      std::unique_ptr<EventBaseBackendBase>&& evb,
       EventBaseManager* ebm = nullptr,
       folly::StringPiece threadName = folly::StringPiece());
   explicit EventBaseThread(EventBaseManager* ebm);
@@ -48,6 +54,7 @@ class EventBaseThread {
 
  private:
   EventBaseManager* ebm_;
+  std::unique_ptr<EventBaseBackendBase> evb_;
   std::unique_ptr<ScopedEventBaseThread> th_;
 };
 } // namespace folly

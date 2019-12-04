@@ -33,6 +33,17 @@ EventBaseThread::EventBaseThread(
   }
 }
 
+EventBaseThread::EventBaseThread(
+    bool autostart,
+    std::unique_ptr<EventBaseBackendBase>&& evb,
+    EventBaseManager* ebm,
+    folly::StringPiece threadName)
+    : ebm_(ebm), evb_(std::move(evb)) {
+  if (autostart) {
+    start(threadName);
+  }
+}
+
 EventBaseThread::EventBaseThread(EventBaseManager* ebm)
     : EventBaseThread(true, ebm) {}
 
@@ -54,7 +65,8 @@ void EventBaseThread::start(folly::StringPiece threadName) {
   if (th_) {
     return;
   }
-  th_ = std::make_unique<ScopedEventBaseThread>(ebm_, threadName);
+  th_ = std::make_unique<ScopedEventBaseThread>(
+      std::move(evb_), ebm_, threadName);
 }
 
 void EventBaseThread::stop() {

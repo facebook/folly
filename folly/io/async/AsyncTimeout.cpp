@@ -27,25 +27,23 @@ namespace folly {
 
 AsyncTimeout::AsyncTimeout(TimeoutManager* timeoutManager)
     : timeoutManager_(timeoutManager) {
-  event_set(
-      &event_,
+  event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
       EV_TIMEOUT,
       &AsyncTimeout::libeventCallback,
       this);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
   timeoutManager_->attachTimeoutManager(
       this, TimeoutManager::InternalEnum::NORMAL);
 }
 
 AsyncTimeout::AsyncTimeout(EventBase* eventBase) : timeoutManager_(eventBase) {
-  event_set(
-      &event_,
+  event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
       EV_TIMEOUT,
       &AsyncTimeout::libeventCallback,
       this);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
   if (eventBase) {
     timeoutManager_->attachTimeoutManager(
         this, TimeoutManager::InternalEnum::NORMAL);
@@ -56,36 +54,33 @@ AsyncTimeout::AsyncTimeout(
     TimeoutManager* timeoutManager,
     InternalEnum internal)
     : timeoutManager_(timeoutManager) {
-  event_set(
-      &event_,
+  event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
       EV_TIMEOUT,
       &AsyncTimeout::libeventCallback,
       this);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
   timeoutManager_->attachTimeoutManager(this, internal);
 }
 
 AsyncTimeout::AsyncTimeout(EventBase* eventBase, InternalEnum internal)
     : timeoutManager_(eventBase) {
-  event_set(
-      &event_,
+  event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
       EV_TIMEOUT,
       &AsyncTimeout::libeventCallback,
       this);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
   timeoutManager_->attachTimeoutManager(this, internal);
 }
 
 AsyncTimeout::AsyncTimeout() : timeoutManager_(nullptr) {
-  event_set(
-      &event_,
+  event_.eb_event_set(
       NetworkSocket::invalid_handle_value,
       EV_TIMEOUT,
       &AsyncTimeout::libeventCallback,
       this);
-  event_.ev_base = nullptr;
+  event_.eb_ev_base(nullptr);
 }
 
 AsyncTimeout::~AsyncTimeout() {
@@ -117,7 +112,7 @@ void AsyncTimeout::cancelTimeout() {
 }
 
 bool AsyncTimeout::isScheduled() const {
-  return EventUtil::isEventRegistered(&event_);
+  return event_.isEventRegistered();
 }
 
 void AsyncTimeout::attachTimeoutManager(
@@ -164,7 +159,9 @@ void AsyncTimeout::libeventCallback(libevent_fd_t fd, short events, void* arg) {
   (void)events;
 
   // double check that ev_flags gets reset when the timeout is not running
-  assert((event_ref_flags(&timeout->event_) & ~EVLIST_INTERNAL) == EVLIST_INIT);
+  assert(
+      (event_ref_flags(timeout->event_.getEvent()) & ~EVLIST_INTERNAL) ==
+      EVLIST_INIT);
 
   // this can't possibly fire if timeout->eventBase_ is nullptr
   timeout->timeoutManager_->bumpHandlingTime();

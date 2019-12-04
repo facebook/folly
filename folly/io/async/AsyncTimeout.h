@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/TimeoutManager.h>
 
 #include <folly/portability/Event.h>
@@ -149,7 +150,7 @@ class AsyncTimeout {
   /**
    * Returns the internal handle to the event
    */
-  struct event* getEvent() {
+  EventBaseBackendBase::Event* getEvent() {
     return &event_;
   }
 
@@ -220,7 +221,7 @@ class AsyncTimeout {
  private:
   static void libeventCallback(libevent_fd_t fd, short events, void* arg);
 
-  struct event event_;
+  EventBaseBackendBase::Event event_;
 
   /*
    * Store a pointer to the TimeoutManager.  We only use this

@@ -29,11 +29,11 @@ STTimerFDTimeoutManager::~STTimerFDTimeoutManager() {
 
 void STTimerFDTimeoutManager::setActive(AsyncTimeout* obj, bool active) {
   if (obj) {
-    struct event* ev = obj->getEvent();
+    auto* ev = obj->getEvent();
     if (active) {
-      event_ref_flags(ev) |= EVLIST_ACTIVE;
+      event_ref_flags(ev->getEvent()) |= EVLIST_ACTIVE;
     } else {
-      event_ref_flags(ev) &= ~EVLIST_ACTIVE;
+      event_ref_flags(ev->getEvent()) &= ~EVLIST_ACTIVE;
     }
   }
 }

@@ -42,6 +42,7 @@ void TimerFD::close() {
   unregisterHandler();
 
   if (fd_ > 0) {
+    detachEventBase();
     changeHandlerFD(NetworkSocket());
     ::close(fd_);
     fd_ = -1;
