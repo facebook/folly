@@ -23,7 +23,7 @@
 #include <pthread.h>
 
 #if defined(__FreeBSD__)
-#include <sys/thr.h>
+#include <sys/thr.h> // @manual
 #endif
 
 #elif !FOLLY_HAVE_PTHREAD
