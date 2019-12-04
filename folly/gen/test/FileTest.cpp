@@ -27,7 +27,6 @@
 
 using namespace folly::gen;
 using namespace folly;
-using std::string;
 using std::vector;
 
 TEST(FileGen, ByLine) {

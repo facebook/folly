@@ -24,7 +24,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 
-using namespace folly;
 using namespace folly::gen;
 
 TEST(Pmap, InfiniteEquivalent) {

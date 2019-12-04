@@ -23,9 +23,6 @@
 
 using namespace folly::gen;
 using folly::fbstring;
-using std::pair;
-using std::set;
-using std::tuple;
 using std::vector;
 
 static std::atomic<int> testSize(1000);

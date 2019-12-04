@@ -1218,7 +1218,6 @@ TEST(Gen, DISABLED_GuardThroughBuffers) {
   // clang-format on
 }
 TEST(Gen, eachTryTo) {
-  using std::runtime_error;
   // clang-format off
   EXPECT_EQ(
       4,

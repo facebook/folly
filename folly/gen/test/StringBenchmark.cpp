@@ -26,9 +26,6 @@
 
 using namespace folly;
 using namespace folly::gen;
-using std::pair;
-using std::set;
-using std::tuple;
 using std::vector;
 
 namespace {

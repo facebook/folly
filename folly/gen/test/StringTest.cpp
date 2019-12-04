@@ -25,11 +25,8 @@
 using namespace folly::gen;
 using namespace folly;
 using std::make_tuple;
-using std::ostream;
-using std::pair;
 using std::string;
 using std::tuple;
-using std::unique_ptr;
 using std::vector;
 
 using vec = vector<string>;
