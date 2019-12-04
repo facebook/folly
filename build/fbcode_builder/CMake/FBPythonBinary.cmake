@@ -548,6 +548,30 @@ function(add_fb_python_library LIB_NAME)
 endfunction()
 
 #
+# Install an FB-style packaged python binary.
+#
+# - DESTINATION <export-name>:
+#   Associate the installed target files with the given export-name.
+#
+function(install_fb_python_executable TARGET)
+  # Parse the arguments
+  set(one_value_args DESTINATION)
+  set(multi_value_args)
+  fb_cmake_parse_args(
+    ARG "" "${one_value_args}" "${multi_value_args}" "${ARGN}"
+  )
+
+  if(NOT DEFINED ARG_DESTINATION)
+    set(ARG_DESTINATION bin)
+  endif()
+
+  install(
+    PROGRAMS "$<TARGET_PROPERTY:${TARGET}.GEN_PY_EXE,EXECUTABLE>"
+    DESTINATION "${ARG_DESTINATION}"
+  )
+endfunction()
+
+#
 # Install a python library.
 #
 # - EXPORT <export-name>:
