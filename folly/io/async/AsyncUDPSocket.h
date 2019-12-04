@@ -60,6 +60,24 @@ class AsyncUDPSocket : public EventHandler {
         bool truncated) noexcept = 0;
 
     /**
+     * Notifies when data is available. This is only invoked when
+     * shouldNotifyOnly() returns true.
+     */
+    virtual void onNotifyDataAvailable() noexcept {}
+
+    /**
+     * Returns whether or not the read callback should only notify
+     * but not call getReadBuffer.
+     * If shouldNotifyOnly() returns true, AsyncUDPSocket will invoke
+     * onNotifyDataAvailable() instead of getReadBuffer().
+     * If shouldNotifyOnly() returns false, AsyncUDPSocket will invoke
+     * getReadBuffer() and onDataAvailable().
+     */
+    virtual bool shouldOnlyNotify() {
+      return false;
+    }
+
+    /**
      * Invoked when there is an error reading from the socket.
      *
      * NOTE: Since UDP is connectionless, you can still read from the socket.
@@ -176,6 +194,8 @@ class AsyncUDPSocket : public EventHandler {
       const folly::SocketAddress& address,
       const struct iovec* vec,
       size_t veclen);
+
+  virtual ssize_t recvmsg(struct msghdr* msg, int flags);
 
   /**
    * Start reading datagrams

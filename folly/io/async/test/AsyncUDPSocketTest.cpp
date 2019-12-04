@@ -172,6 +172,8 @@ class UDPServer {
 
 class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
  public:
+  ~UDPClient() override = default;
+
   explicit UDPClient(EventBase* evb) : AsyncTimeout(evb), evb_(evb) {}
 
   void start(const folly::SocketAddress& server, int n) {
@@ -297,6 +299,57 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   char buf_[1024];
 };
 
+class UDPNotifyClient : public UDPClient {
+ public:
+  ~UDPNotifyClient() override = default;
+
+  explicit UDPNotifyClient(EventBase* evb) : UDPClient(evb) {}
+
+  bool shouldOnlyNotify() override {
+    return true;
+  }
+
+  void onNotifyDataAvailable() noexcept override {
+    notifyInvoked = true;
+
+    struct msghdr msg;
+    memset(&msg, 0, sizeof(msg));
+
+    void* buf{};
+    size_t len{};
+    getReadBuffer(&buf, &len);
+
+    iovec vec;
+    vec.iov_base = buf;
+    vec.iov_len = len;
+    struct sockaddr_storage addrStorage;
+    socklen_t addrLen = sizeof(addrStorage);
+    memset(&addrStorage, 0, size_t(addrLen));
+    auto rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
+    rawAddr->sa_family = socket_->address().getFamily();
+
+    msg.msg_name = rawAddr;
+    msg.msg_namelen = addrLen;
+    msg.msg_iov = &vec;
+    msg.msg_iovlen = 1;
+
+    ssize_t ret = socket_->recvmsg(&msg, 0);
+    if (ret < 0) {
+      if (errno != EAGAIN || errno != EWOULDBLOCK) {
+        onReadError(folly::AsyncSocketException(
+            folly::AsyncSocketException::NETWORK_ERROR, "error"));
+        return;
+      }
+    }
+    SocketAddress addr;
+    addr.setFromSockaddr(rawAddr, addrLen);
+
+    onDataAvailable(addr, size_t(read), false);
+  }
+
+  bool notifyInvoked{false};
+};
+
 class AsyncSocketIntegrationTest : public Test {
  public:
   void SetUp() override {
@@ -332,17 +385,20 @@ class AsyncSocketIntegrationTest : public Test {
       folly::SocketAddress writeAddress,
       folly::Optional<folly::SocketAddress> connectedAddress);
 
+  std::unique_ptr<UDPNotifyClient> performPingPongNotifyTest(
+      folly::SocketAddress writeAddress,
+      folly::Optional<folly::SocketAddress> connectedAddress);
+
   folly::EventBase sevb;
   folly::EventBase cevb;
   std::unique_ptr<std::thread> serverThread;
   std::unique_ptr<UDPServer> server;
-  std::unique_ptr<UDPClient> client;
 };
 
 std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
     folly::SocketAddress writeAddress,
     folly::Optional<folly::SocketAddress> connectedAddress) {
-  client = std::make_unique<UDPClient>(&cevb);
+  auto client = std::make_unique<UDPClient>(&cevb);
   if (connectedAddress) {
     client->setShouldConnect(*connectedAddress);
   }
@@ -357,7 +413,29 @@ std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
 
   // Wait for client to finish
   clientThread.join();
-  return std::move(client);
+  return client;
+}
+
+std::unique_ptr<UDPNotifyClient>
+AsyncSocketIntegrationTest::performPingPongNotifyTest(
+    folly::SocketAddress writeAddress,
+    folly::Optional<folly::SocketAddress> connectedAddress) {
+  auto client = std::make_unique<UDPNotifyClient>(&cevb);
+  if (connectedAddress) {
+    client->setShouldConnect(*connectedAddress);
+  }
+  // Start event loop in a separate thread
+  auto clientThread = std::thread([this]() { cevb.loopForever(); });
+
+  // Wait for event loop to start
+  cevb.waitUntilRunning();
+
+  // Send ping
+  cevb.runInEventBaseThread([&]() { client->start(writeAddress, 100); });
+
+  // Wait for client to finish
+  clientThread.join();
+  return client;
 }
 
 TEST_F(AsyncSocketIntegrationTest, PingPong) {
@@ -365,6 +443,14 @@ TEST_F(AsyncSocketIntegrationTest, PingPong) {
   auto pingClient = performPingPongTest(server->address(), folly::none);
   // This should succeed.
   ASSERT_GT(pingClient->pongRecvd(), 0);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongNotify) {
+  startServer();
+  auto pingClient = performPingPongNotifyTest(server->address(), folly::none);
+  // This should succeed.
+  ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_TRUE(pingClient->notifyInvoked);
 }
 
 TEST_F(AsyncSocketIntegrationTest, ConnectedPingPong) {
@@ -444,6 +530,12 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
   MOCK_METHOD2(getReadBuffer_, void(void**, size_t*));
   void getReadBuffer(void** buf, size_t* len) noexcept override {
     getReadBuffer_(buf, len);
+  }
+
+  MOCK_METHOD0(shouldOnlyNotify, bool());
+  MOCK_METHOD0(onNotifyDataAvailable_, void());
+  void onNotifyDataAvailable() noexcept override {
+    onNotifyDataAvailable_();
   }
 
   MOCK_METHOD3(

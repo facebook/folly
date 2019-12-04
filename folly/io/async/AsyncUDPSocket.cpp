@@ -451,6 +451,10 @@ int AsyncUDPSocket::writeImpl(
   return ret;
 }
 
+ssize_t AsyncUDPSocket::recvmsg(struct msghdr* msg, int flags) {
+  return netops::recvmsg(fd_, msg, flags);
+}
+
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
   CHECK(!readCallback_) << "Another read callback already installed";
   CHECK_NE(NetworkSocket(), fd_)
@@ -589,6 +593,9 @@ void AsyncUDPSocket::handleRead() noexcept {
   if (fd_ == NetworkSocket()) {
     // The socket may have been closed by the error callbacks.
     return;
+  }
+  if (readCallback_->shouldOnlyNotify()) {
+    return readCallback_->onNotifyDataAvailable();
   }
 
   readCallback_->getReadBuffer(&buf, &len);
