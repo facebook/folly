@@ -79,7 +79,7 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
 
   auto& f = slots_[n];
 
-  int r = f->openAndFollow(scratchpad_.data(), true);
+  int r = f->openAndFollow(scratchpad_.data());
   if (r != ElfFile::kSuccess) {
     return nullptr;
   }
@@ -107,7 +107,7 @@ std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   auto& path = entry->path;
 
   // No negative caching
-  int r = entry->file.openAndFollow(path.c_str(), true);
+  int r = entry->file.openAndFollow(path.c_str());
   if (r != ElfFile::kSuccess) {
     return nullptr;
   }

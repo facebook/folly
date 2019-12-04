@@ -51,10 +51,27 @@ using ElfSym = ElfW(Sym);
  */
 class ElfFile {
  public:
+  class Options {
+   public:
+    constexpr Options() noexcept {}
+
+    constexpr bool writable() const noexcept {
+      return writable_;
+    }
+
+    constexpr Options& writable(bool const value) noexcept {
+      writable_ = value;
+      return *this;
+    }
+
+   private:
+    bool writable_ = false;
+  };
+
   ElfFile() noexcept;
 
   // Note: may throw, call openNoThrow() explicitly if you don't want to throw
-  explicit ElfFile(const char* name, bool readOnly = true);
+  explicit ElfFile(const char* name, Options const& options = Options());
 
   // Open the ELF file.
   // Returns 0 on success, kSystemError (guaranteed to be -1) (and sets errno)
@@ -75,13 +92,17 @@ class ElfFile {
     }
   };
   // Open the ELF file. Does not throw on error.
-  OpenResult openNoThrow(const char* name, bool readOnly = true) noexcept;
+  OpenResult openNoThrow(
+      const char* name,
+      Options const& options = Options()) noexcept;
 
   // Like openNoThrow, but follow .gnu_debuglink if present
-  OpenResult openAndFollow(const char* name, bool readOnly = true) noexcept;
+  OpenResult openAndFollow(
+      const char* name,
+      Options const& options = Options()) noexcept;
 
   // Open the ELF file. Throws on error.
-  void open(const char* name, bool readOnly = true);
+  void open(const char* name, Options const& options = Options());
 
   ~ElfFile();
 

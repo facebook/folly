@@ -43,16 +43,16 @@ ElfFile::ElfFile() noexcept
       length_(0),
       baseAddress_(0) {}
 
-ElfFile::ElfFile(const char* name, bool readOnly)
+ElfFile::ElfFile(const char* name, Options const& options)
     : fd_(-1),
       file_(static_cast<char*>(MAP_FAILED)),
       length_(0),
       baseAddress_(0) {
-  open(name, readOnly);
+  open(name, options);
 }
 
-void ElfFile::open(const char* name, bool readOnly) {
-  auto r = openNoThrow(name, readOnly);
+void ElfFile::open(const char* name, Options const& options) {
+  auto r = openNoThrow(name, options);
   if (r == kSystemError) {
     throwSystemError(r.msg);
   } else {
@@ -62,14 +62,14 @@ void ElfFile::open(const char* name, bool readOnly) {
 
 ElfFile::OpenResult ElfFile::openNoThrow(
     const char* name,
-    bool readOnly) noexcept {
+    Options const& options) noexcept {
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
   // like it is inside SignalSafeElfCache
   auto guard = makeGuard([&] { reset(); });
   strncat(filepath_, name, kFilepathMaxLen - 1);
-  fd_ = ::open(name, readOnly ? O_RDONLY : O_RDWR);
+  fd_ = ::open(name, options.writable() ? O_RDWR : O_RDONLY);
   if (fd_ == -1) {
     return {kSystemError, "open"};
   }
@@ -81,7 +81,7 @@ ElfFile::OpenResult ElfFile::openNoThrow(
 
   length_ = st.st_size;
   int prot = PROT_READ;
-  if (!readOnly) {
+  if (options.writable()) {
     prot |= PROT_WRITE;
   }
   file_ = static_cast<char*>(mmap(nullptr, length_, prot, MAP_SHARED, fd_, 0));
@@ -100,9 +100,9 @@ ElfFile::OpenResult ElfFile::openNoThrow(
 
 ElfFile::OpenResult ElfFile::openAndFollow(
     const char* name,
-    bool readOnly) noexcept {
-  auto result = openNoThrow(name, readOnly);
-  if (!readOnly || result != kSuccess) {
+    Options const& options) noexcept {
+  auto result = openNoThrow(name, options);
+  if (options.writable() || result != kSuccess) {
     return result;
   }
 
@@ -134,11 +134,11 @@ ElfFile::OpenResult ElfFile::openAndFollow(
   memcpy(linkname, name, dirlen);
   memcpy(linkname + dirlen, debugFileName.begin(), debugFileLen + 1);
   reset();
-  result = openNoThrow(linkname, readOnly);
+  result = openNoThrow(linkname, options);
   if (result == kSuccess) {
     return result;
   }
-  return openNoThrow(name, readOnly);
+  return openNoThrow(name, options);
 }
 
 ElfFile::~ElfFile() {

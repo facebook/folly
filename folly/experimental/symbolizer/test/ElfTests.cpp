@@ -58,7 +58,7 @@ TEST_F(ElfTest, TinyNonElfFile) {
   folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
 
   ElfFile elfFile;
-  auto res = elfFile.openNoThrow(tmpFile.path().c_str(), true);
+  auto res = elfFile.openNoThrow(tmpFile.path().c_str());
   EXPECT_EQ(ElfFile::kInvalidElfFile, res.code);
   EXPECT_STREQ("not an ELF file (too short)", res.msg);
 }
@@ -70,7 +70,7 @@ TEST_F(ElfTest, NonElfScript) {
   folly::writeFull(tmpFile.fd(), contents.data(), contents.size());
 
   ElfFile elfFile;
-  auto res = elfFile.openNoThrow(tmpFile.path().c_str(), true);
+  auto res = elfFile.openNoThrow(tmpFile.path().c_str());
   EXPECT_EQ(ElfFile::kInvalidElfFile, res.code);
   EXPECT_STREQ("invalid ELF magic", res.msg);
 }
