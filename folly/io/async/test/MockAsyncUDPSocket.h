@@ -54,6 +54,7 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   MOCK_CONST_METHOD0(isBound, bool());
   MOCK_METHOD0(getGSO, int());
   MOCK_METHOD1(setGSO, bool(int));
+  MOCK_METHOD2(recvmsg, ssize_t(struct msghdr*, int));
 };
 
 } // namespace test
