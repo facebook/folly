@@ -173,12 +173,7 @@ struct EliasFanoEncoderV2 {
       writeBits56(lower_, size_ * numLowerBits, numLowerBits, lowerBits);
     }
 
-    if /* constexpr */ (skipQuantum != 0) {
-      while ((skipPointersSize_ + 1) * skipQuantum <= upperBits) {
-        // Store the number of preceding 1-bits.
-        skipPointers_[skipPointersSize_++] = SkipValue(size_);
-      }
-    }
+    fillSkipPointersUpTo(upperBits);
 
     if /* constexpr */ (forwardQuantum != 0) {
       if ((size_ + 1) % forwardQuantum == 0) {
@@ -192,12 +187,26 @@ struct EliasFanoEncoderV2 {
     ++size_;
   }
 
-  const MutableCompressedList& finish() const {
+  const MutableCompressedList& finish() {
     CHECK_EQ(size_, result_.size);
+    const ValueType upperBitsUniverse =
+        (8 * result_.upperSizeBytes - result_.size);
+    if (upperBitsUniverse > 0) {
+      // Populate skip pointers up to the universe upper bound.
+      fillSkipPointersUpTo(upperBitsUniverse - 1);
+    }
     return result_;
   }
 
  private:
+  void fillSkipPointersUpTo(ValueType fillBoundary) {
+    if /* constexpr */ (skipQuantum != 0) {
+      while ((skipPointersSize_ + 1) * skipQuantum <= fillBoundary) {
+        // Store the number of preceding 1-bits.
+        skipPointers_[skipPointersSize_++] = static_cast<SkipValueType>(size_);
+      }
+    }
+  }
   // Writes value (with len up to 56 bits) to data starting at pos-th bit.
   static void
   writeBits56(unsigned char* data, size_t pos, uint8_t len, uint64_t value) {
