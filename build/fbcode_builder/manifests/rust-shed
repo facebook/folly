@@ -14,9 +14,10 @@ builder = cargo
 build_doc = true
 
 [shipit.pathmap]
-fbcode/common/rust/shed = .
-fbcode/common/rust/shed/public_autocargo = .
+fbcode/common/rust/shed = shed
+fbcode/common/rust/shed/public_autocargo = shed
 fbcode/common/rust/shed/public_tld = .
+tools/rust/ossconfigs = .
 
 [shipit.strip]
 ^fbcode/common/rust/shed/(?!public_autocargo|public_tld).+/Cargo\.toml$
