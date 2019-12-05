@@ -18,6 +18,8 @@
 
 #include <cstdlib>
 
+#include <folly/portability/Config.h>
+
 #if defined(__APPLE__)
 #if __has_include(<crt_externs.h>)
 #include <crt_externs.h> // @manual
