@@ -18,11 +18,17 @@
 
 #include <atomic>
 
+#include <folly/Portability.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/io/async/EventBaseManager.h>
 
 namespace folly {
+
+FOLLY_PUSH_WARNING
+// Suppress "IOThreadPoolExecutor inherits DefaultKeepAliveExecutor
+// keepAliveAcquire/keepAliveRelease via dominance"
+FOLLY_MSVC_DISABLE_WARNING(4250)
 
 /**
  * A Thread Pool for IO bound tasks
@@ -92,5 +98,7 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
   folly::ThreadLocal<std::shared_ptr<IOThread>> thisThread_;
   folly::EventBaseManager* eventBaseManager_;
 };
+
+FOLLY_POP_WARNING
 
 } // namespace folly
