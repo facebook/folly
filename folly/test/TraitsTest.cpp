@@ -402,6 +402,12 @@ TEST(Traits, is_instantiation_of) {
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
 }
 
+namespace folly_traits_test_detail {
+template <typename... T>
+FOLLY_ATTR_WEAK void sink(T&&...) noexcept;
+} // namespace folly_traits_test_detail
+using folly_traits_test_detail::sink;
+
 TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
 
@@ -409,7 +415,9 @@ TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<Empty>);
 
   struct NonTrivialDtor {
-    ~NonTrivialDtor() {}
+    ~NonTrivialDtor() {
+      sink();
+    }
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
 
@@ -421,7 +429,9 @@ TEST(Traits, is_constexpr_default_constructible) {
 
   struct NonConstexprCtor {
     int x, y;
-    NonConstexprCtor() noexcept : x(7), y(11) {}
+    NonConstexprCtor() noexcept : x(7), y(11) {
+      sink();
+    }
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NonConstexprCtor>);
 
