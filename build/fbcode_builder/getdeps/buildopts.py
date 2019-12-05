@@ -234,6 +234,19 @@ class BuildOptions(object):
             if os.path.exists(bindir):
                 add_path_entry(env, "PATH", bindir, append=False)
 
+            # If rustc is present in the `bin` directory, set RUSTC to prevent
+            # cargo uses the rustc installed in the system.
+            if self.is_windows():
+                rustc_path = os.path.join(bindir, "rustc.bat")
+                rustdoc_path = os.path.join(bindir, "rustdoc.bat")
+            else:
+                rustc_path = os.path.join(bindir, "rustc")
+                rustdoc_path = os.path.join(bindir, "rustdoc")
+
+            if os.path.isfile(rustc_path):
+                env["RUSTC"] = rustc_path
+                env["RUSTDOC"] = rustdoc_path
+
         return env
 
 
