@@ -10,8 +10,14 @@
 
 @PACKAGE_INIT@
 
+include(CMakeFindDependencyMacro)
+
 set_and_check(FOLLY_INCLUDE_DIR "@PACKAGE_INCLUDE_INSTALL_DIR@")
 set_and_check(FOLLY_CMAKE_DIR "@PACKAGE_CMAKE_INSTALL_DIR@")
+
+# find_dependency() ends up changing PACKAGE_PREFIX_DIR, so save
+# folly's prefix directory in the FOLLY_PREFIX_DIR variable
+set(FOLLY_PREFIX_DIR "${PACKAGE_PREFIX_DIR}")
 
 # Include the folly-targets.cmake file, which is generated from our CMake rules
 if (NOT TARGET Folly::folly)
@@ -21,6 +27,9 @@ endif()
 # Set FOLLY_LIBRARIES from our Folly::folly target
 set(FOLLY_LIBRARIES Folly::folly)
 
+# Find folly's dependencies
+find_dependency(fmt)
+
 if (NOT folly_FIND_QUIETLY)
-  message(STATUS "Found folly: ${PACKAGE_PREFIX_DIR}")
+  message(STATUS "Found folly: ${FOLLY_PREFIX_DIR}")
 endif()
