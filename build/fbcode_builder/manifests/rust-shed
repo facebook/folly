@@ -26,4 +26,4 @@ tools/rust/ossconfigs = .
 fbthrift
 
 [dependencies.fb=on]
-rust-nightly
+rust

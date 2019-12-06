@@ -822,6 +822,8 @@ class CargoBuilder(BuilderBase):
     def run_cargo(self, install_dirs, operation, args=None):
         args = args or []
         env = self._compute_env(install_dirs)
+        # Enable using nightly features with stable compiler
+        env["RUSTC_BOOTSTRAP"] = "1"
         cmd = ["cargo", operation, "-j%s" % self.build_opts.num_jobs] + args
         self._run_cmd(cmd, cwd=self.build_source_dir(), env=env)
 
