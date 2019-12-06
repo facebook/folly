@@ -50,7 +50,7 @@ namespace folly {
 ///
 template <typename Key, typename Value>
 class SingleWriterFixedHashMap {
-#if !FOLLY_MOBILE
+#if __cpp_lib_atomic_is_always_lock_free
   static_assert(
       std::atomic<Value>::is_always_lock_free,
       "This implementation depends on having fast atomic "
