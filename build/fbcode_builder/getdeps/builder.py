@@ -59,7 +59,8 @@ class BuilderBase(object):
         if cmd_prefix:
             cmd = cmd_prefix + cmd
 
-        run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir)
+        log_file = os.path.join(self.build_dir, "getdeps_build.log")
+        run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir, log_file=log_file)
 
     def build(self, install_dirs, reconfigure):
         print("Building %s..." % self.manifest.name)
