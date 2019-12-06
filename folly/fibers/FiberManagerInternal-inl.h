@@ -46,6 +46,11 @@ inline FiberManager::Options preprocessOptions(FiberManager::Options opts) {
   return opts;
 }
 
+template <class F>
+FOLLY_NOINLINE invoke_result_t<F> runNoInline(F&& func) {
+  return func();
+}
+
 } // namespace
 
 inline void FiberManager::ensureLoopScheduled() {
@@ -512,7 +517,7 @@ void FiberManager::addTaskFinallyEager(F&& func, G&& finally) {
 template <typename F>
 invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
   if (UNLIKELY(activeFiber_ == nullptr)) {
-    return func();
+    return runNoInline(std::forward<F>(func));
   }
 
   typedef invoke_result_t<F> Result;
@@ -607,5 +612,15 @@ typename FirstArgOf<F>::type::value_type inline await(F&& func) {
 
   return Promise<Result, BatonT>::await(std::forward<F>(func));
 }
+
+template <typename F>
+invoke_result_t<F> inline runInMainContext(F&& func) {
+  auto fm = FiberManager::getFiberManagerUnsafe();
+  if (UNLIKELY(fm == nullptr)) {
+    return runNoInline(std::forward<F>(func));
+  }
+  return fm->runInMainContext(std::forward<F>(func));
+}
+
 } // namespace fibers
 } // namespace folly

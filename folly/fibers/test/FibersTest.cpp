@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <array>
 #include <atomic>
 #include <thread>
 #include <vector>
@@ -976,6 +977,39 @@ TEST(FiberManager, runInMainContext) {
     EXPECT_TRUE(checkRan);
     EXPECT_EQ(42, ret.value);
   });
+
+  loopController.loop([&]() { loopController.stop(); });
+
+  EXPECT_TRUE(checkRan);
+}
+
+namespace {
+
+FOLLY_NOINLINE int runHugeStackInMainContext(bool& checkRan) {
+  auto ret = runInMainContext([&checkRan]() {
+    std::array<unsigned char, 1 << 20> buf;
+    buf.fill(42);
+    checkRan = true;
+    return buf[time(nullptr) % buf.size()];
+  });
+  EXPECT_TRUE(checkRan);
+  EXPECT_EQ(42, ret);
+  return ret;
+}
+
+} // namespace
+
+TEST(FiberManager, runInMainContextNoInline) {
+  FiberManager::Options opts;
+  opts.recordStackEvery = 1;
+  FiberManager manager(std::make_unique<SimpleLoopController>(), opts);
+  auto& loopController =
+      dynamic_cast<SimpleLoopController&>(manager.loopController());
+
+  bool checkRan = false;
+  manager.addTask([&] { return runHugeStackInMainContext(checkRan); });
+
+  EXPECT_TRUE(manager.stackHighWatermark() < 100000);
 
   loopController.loop([&]() { loopController.stop(); });
 

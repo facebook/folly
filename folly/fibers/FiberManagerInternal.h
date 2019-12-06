@@ -675,13 +675,7 @@ typename FirstArgOf<F>::type::value_type inline await(F&& func);
  * @return value returned by func().
  */
 template <typename F>
-invoke_result_t<F> inline runInMainContext(F&& func) {
-  auto fm = FiberManager::getFiberManagerUnsafe();
-  if (UNLIKELY(fm == nullptr)) {
-    return func();
-  }
-  return fm->runInMainContext(std::forward<F>(func));
-}
+invoke_result_t<F> inline runInMainContext(F&& func);
 
 /**
  * Returns a refference to a fiber-local context for given Fiber. Should be
