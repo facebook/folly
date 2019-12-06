@@ -21,13 +21,7 @@
 
 #pragma once
 
-#ifndef FOLLY_NO_CONFIG
-#include <folly/folly-config.h>
-#endif
-
-#if __has_include(<features.h>)
-#include <features.h>
-#endif
+#include <folly/portability/Config.h>
 
 #if defined(__GLIBC__) && !defined(__APPLE__)
 #if __GLIBC_PREREQ(2, 9)

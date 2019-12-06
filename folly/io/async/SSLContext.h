@@ -26,10 +26,6 @@
 
 #include <glog/logging.h>
 
-#ifndef FOLLY_NO_CONFIG
-#include <folly/folly-config.h>
-#endif
-
 #include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
