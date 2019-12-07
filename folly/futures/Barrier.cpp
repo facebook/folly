@@ -17,6 +17,8 @@
 #include <folly/futures/Barrier.h>
 #include <folly/lang/Exception.h>
 
+#include <glog/logging.h>
+
 namespace folly {
 namespace futures {
 
