@@ -206,17 +206,21 @@ endif()
 if (NOT ${LIBURING_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/IoUring.cpp
+    ${FOLLY_DIR}/experimental/io/IoUringBackend.cpp
   )
   list(REMOVE_ITEM hfiles
     ${FOLLY_DIR}/experimental/io/IoUring.h
+    ${FOLLY_DIR}/experimental/io/IoUringBackend.h
   )
 endif()
 if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/AsyncBase.cpp
+    ${FOLLY_DIR}/experimental/io/PollIoBackend.cpp
   )
   list(REMOVE_ITEM hfiles
     ${FOLLY_DIR}/experimental/io/AsyncBase.h
+    ${FOLLY_DIR}/experimental/io/PollIoBackend.h
   )
 endif()
 

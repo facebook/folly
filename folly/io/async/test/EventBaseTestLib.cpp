@@ -606,16 +606,17 @@ TEST_F(EventBaseTest, ReadWriteSimultaneous) {
   TimePoint end;
 
   // It's not strictly required that the EventBase register us about both
-  // events in the same call.  So, it's possible that if the EventBase
-  // implementation changes this test could start failing, and it wouldn't be
-  // considered breaking the API.  However for now it's nice to exercise this
-  // code path.
+  // events in the same call or thw read/write notifications are delievered at
+  // the same. So, it's possible that if the EventBase implementation changes
+  // this test could start failing, and it wouldn't be considered breaking the
+  // API.  However for now it's nice to exercise this code path.
   ASSERT_EQ(handler.log.size(), 1);
-  ASSERT_EQ(handler.log[0].events, EventHandler::READ | EventHandler::WRITE);
+  if (handler.log[0].events & EventHandler::READ) {
+    ASSERT_EQ(handler.log[0].bytesRead, sock0WriteLength);
+    ASSERT_GT(handler.log[0].bytesWritten, 0);
+  }
   T_CHECK_TIMEOUT(
       start, handler.log[0].timestamp, milliseconds(events[0].milliseconds));
-  ASSERT_EQ(handler.log[0].bytesRead, sock0WriteLength);
-  ASSERT_GT(handler.log[0].bytesWritten, 0);
   T_CHECK_TIMEOUT(start, end, milliseconds(events[0].milliseconds));
 }
 
