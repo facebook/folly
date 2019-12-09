@@ -507,6 +507,10 @@ constexpr auto kCpplibVer = 0;
 #endif
 #endif // __cplusplus >= 201703L
 
+#ifndef FOLLY_HAS_COROUTINES
+#define FOLLY_HAS_COROUTINES 0
+#endif
+
 // MSVC 2017.5 && C++17
 #if __cpp_noexcept_function_type >= 201510 || \
     (_MSC_FULL_VER >= 191225816 && _MSVC_LANG > 201402)
