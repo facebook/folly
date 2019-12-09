@@ -719,6 +719,21 @@ class AsyncWriter {
       std::unique_ptr<IOBuf>&& buf,
       WriteFlags flags = WriteFlags::NONE) = 0;
 
+  /** zero copy related
+   * */
+  virtual bool setZeroCopy(bool /*enable*/) {
+    return false;
+  }
+
+  virtual bool getZeroCopy() const {
+    return false;
+  }
+
+  using ZeroCopyEnableFunc =
+      std::function<bool(const std::unique_ptr<folly::IOBuf>& buf)>;
+
+  virtual void setZeroCopyEnableFunc(ZeroCopyEnableFunc /*func*/) {}
+
  protected:
   virtual ~AsyncWriter() = default;
 };

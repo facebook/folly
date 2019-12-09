@@ -332,11 +332,18 @@ void AsyncServerSocket::bindSocket(
 
 bool AsyncServerSocket::setZeroCopy(bool enable) {
   if (msgErrQueueSupported) {
+    // save the enable flag here
+    zeroCopyVal_ = enable;
     int val = enable ? 1 : 0;
-    int ret = netops::setsockopt(
-        getNetworkSocket(), SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
+    size_t num = 0;
+    for (auto& s : sockets_) {
+      int ret = netops::setsockopt(
+          s.socket_, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
 
-    return (0 == ret);
+      num += (0 == ret) ? 1 : 0;
+    }
+
+    return num != 0;
   }
 
   return false;
@@ -821,6 +828,16 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
                  << folly::errnoStr(errno);
   }
 #endif
+
+  if (zeroCopyVal_) {
+    int val = 1;
+    int ret =
+        netops::setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
+    if (ret) {
+      LOG(WARNING) << "failed to set SO_ZEROCOPY on async server socket: "
+                   << folly::errnoStr(errno);
+    }
+  }
 
   if (const auto shutdownSocketSet = wShutdownSocketSet_.lock()) {
     shutdownSocketSet->add(fd);

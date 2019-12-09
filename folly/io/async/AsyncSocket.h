@@ -81,7 +81,7 @@ namespace folly {
 #endif
 class AsyncSocket : virtual public AsyncTransportWrapper {
  public:
-  typedef std::unique_ptr<AsyncSocket, Destructor> UniquePtr;
+  using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
 
   class ConnectCallback {
    public:
@@ -245,11 +245,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param address         The address to connect to.
    * @param connectTimeout  Optional timeout in milliseconds for the connection
    *                        attempt.
+   * @param useZeroCopy     Optional zerocopy socket mode
    */
   AsyncSocket(
       EventBase* evb,
       const folly::SocketAddress& address,
-      uint32_t connectTimeout = 0);
+      uint32_t connectTimeout = 0,
+      bool useZeroCopy = false);
 
   /**
    * Create a new AsyncSocket and begin the connection process.
@@ -259,12 +261,14 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * @param port            Destination port in host byte order.
    * @param connectTimeout  Optional timeout in milliseconds for the connection
    *                        attempt.
+   * @param useZeroCopy     Optional zerocopy socket mode
    */
   AsyncSocket(
       EventBase* evb,
       const std::string& ip,
       uint16_t port,
-      uint32_t connectTimeout = 0);
+      uint32_t connectTimeout = 0,
+      bool useZeroCopy = false);
 
   /**
    * Create a AsyncSocket from an already connected socket file descriptor.
@@ -305,9 +309,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   static std::shared_ptr<AsyncSocket> newSocket(
       EventBase* evb,
       const folly::SocketAddress& address,
-      uint32_t connectTimeout = 0) {
+      uint32_t connectTimeout = 0,
+      bool useZeroCopy = false) {
     return std::shared_ptr<AsyncSocket>(
-        new AsyncSocket(evb, address, connectTimeout), Destructor());
+        new AsyncSocket(evb, address, connectTimeout, useZeroCopy),
+        Destructor());
   }
 
   /**
@@ -317,9 +323,11 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       EventBase* evb,
       const std::string& ip,
       uint16_t port,
-      uint32_t connectTimeout = 0) {
+      uint32_t connectTimeout = 0,
+      bool useZeroCopy = false) {
     return std::shared_ptr<AsyncSocket>(
-        new AsyncSocket(evb, ip, port, connectTimeout), Destructor());
+        new AsyncSocket(evb, ip, port, connectTimeout, useZeroCopy),
+        Destructor());
   }
 
   /**
@@ -392,7 +400,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   };
 
   // Maps from a socket option key to its value
-  typedef std::map<OptionKey, int> OptionMap;
+  using OptionMap = std::map<OptionKey, int>;
 
   static const OptionMap emptyOptionMap;
   static const folly::SocketAddress& anyAddress();
@@ -519,8 +527,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
 
-  bool setZeroCopy(bool enable);
-  bool getZeroCopy() const {
+  bool setZeroCopy(bool enable) override;
+  bool getZeroCopy() const override {
     return zeroCopyEnabled_;
   }
 
@@ -531,6 +539,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   size_t getZeroCopyReenableThreshold() const {
     return zeroCopyReenableThreshold_;
   }
+
+  void setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) override;
 
   void setZeroCopyReenableThreshold(size_t threshold);
 
@@ -1257,6 +1267,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
+
+  AsyncWriter::ZeroCopyEnableFunc zeroCopyEnableFunc_;
 
   // a folly::IOBuf can be used in multiple partial requests
   // there is a that maps a buffer id to a raw folly::IOBuf ptr

@@ -305,8 +305,10 @@ AsyncSocket::AsyncSocket(EventBase* evb)
 AsyncSocket::AsyncSocket(
     EventBase* evb,
     const folly::SocketAddress& address,
-    uint32_t connectTimeout)
+    uint32_t connectTimeout,
+    bool useZeroCopy)
     : AsyncSocket(evb) {
+  setZeroCopy(useZeroCopy);
   connect(nullptr, address, connectTimeout);
 }
 
@@ -314,8 +316,10 @@ AsyncSocket::AsyncSocket(
     EventBase* evb,
     const std::string& ip,
     uint16_t port,
-    uint32_t connectTimeout)
+    uint32_t connectTimeout,
+    bool useZeroCopy)
     : AsyncSocket(evb) {
+  setZeroCopy(useZeroCopy);
   connect(nullptr, ip, port, connectTimeout);
 }
 
@@ -911,6 +915,10 @@ bool AsyncSocket::setZeroCopy(bool enable) {
   return false;
 }
 
+void AsyncSocket::setZeroCopyEnableFunc(AsyncWriter::ZeroCopyEnableFunc func) {
+  zeroCopyEnableFunc_ = func;
+}
+
 void AsyncSocket::setZeroCopyReenableThreshold(size_t threshold) {
   zeroCopyReenableThreshold_ = threshold;
 }
@@ -1041,6 +1049,12 @@ void AsyncSocket::writeChain(
     unique_ptr<IOBuf>&& buf,
     WriteFlags flags) {
   adjustZeroCopyFlags(flags);
+
+  // adjustZeroCopyFlags can set zeroCopyEnabled_ to true
+  if (zeroCopyEnabled_ && !isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY) &&
+      zeroCopyEnableFunc_ && zeroCopyEnableFunc_(buf)) {
+    flags |= WriteFlags::WRITE_MSG_ZEROCOPY;
+  }
 
   constexpr size_t kSmallSizeMax = 64;
   size_t count = buf->countChainElements();
