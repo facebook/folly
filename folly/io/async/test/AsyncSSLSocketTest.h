@@ -556,6 +556,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
 
   // Functions inherited from AsyncSSLSocketHandshakeCallback
   void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
+    isResumed_ = sock->getSSLSessionReused();
     std::lock_guard<std::mutex> g(mutex_);
     cv_.notify_all();
     EXPECT_EQ(sock, socket_.get());
@@ -567,6 +568,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
   void handshakeErr(
       AsyncSSLSocket* /* sock */,
       const AsyncSocketException& ex) noexcept override {
+    isResumed_ = false;
     std::lock_guard<std::mutex> g(mutex_);
     cv_.notify_all();
     std::cerr << "HandshakeCallback::handshakeError " << ex.what() << std::endl;
@@ -596,6 +598,10 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
     return socket_;
   }
 
+  bool isResumed() const {
+    return isResumed_;
+  }
+
   StateEnum state;
   std::shared_ptr<AsyncSSLSocket> socket_;
   ReadCallbackBase* rcb_;
@@ -603,6 +609,7 @@ class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
   std::mutex mutex_;
   std::condition_variable cv_;
   std::string errorString_;
+  bool isResumed_{false};
 };
 
 class SSLServerAcceptCallback : public SSLServerAcceptCallbackBase {
