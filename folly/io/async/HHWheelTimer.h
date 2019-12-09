@@ -299,7 +299,10 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
     return t.count() / interval_.count();
   }
 
-  bool cascadeTimers(int bucket, int tick);
+  bool cascadeTimers(
+      int bucket,
+      int tick,
+      std::chrono::steady_clock::time_point curTime);
   void scheduleTimeoutInternal(Duration timeout);
 
   int64_t expireTick_;

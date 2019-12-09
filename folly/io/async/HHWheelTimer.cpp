@@ -205,17 +205,19 @@ void HHWheelTimerBase<Duration>::scheduleTimeout(Callback* callback) {
 }
 
 template <class Duration>
-bool HHWheelTimerBase<Duration>::cascadeTimers(int bucket, int tick) {
+bool HHWheelTimerBase<Duration>::cascadeTimers(
+    int bucket,
+    int tick,
+    const std::chrono::steady_clock::time_point curTime) {
   CallbackList cbs;
   cbs.swap(buckets_[bucket][tick]);
-  auto now = getCurTime();
-  auto nextTick = calcNextTick(now);
+  auto nextTick = calcNextTick(curTime);
   while (!cbs.empty()) {
     auto* cb = &cbs.front();
     cbs.pop_front();
     scheduleTimeoutImpl(
         cb,
-        nextTick + timeToWheelTicks(cb->getTimeRemaining(now)),
+        nextTick + timeToWheelTicks(cb->getTimeRemaining(curTime)),
         expireTick_,
         nextTick);
   }
@@ -231,7 +233,8 @@ void HHWheelTimerBase<Duration>::scheduleTimeoutInternal(Duration timeout) {
 
 template <class Duration>
 void HHWheelTimerBase<Duration>::timeoutExpired() noexcept {
-  auto nextTick = calcNextTick();
+  auto curTime = getCurTime();
+  auto nextTick = calcNextTick(curTime);
 
   // If the last smart pointer for "this" is reset inside the callback's
   // timeoutExpired(), then the guard will detect that it is time to bail from
@@ -256,9 +259,11 @@ void HHWheelTimerBase<Duration>::timeoutExpired() noexcept {
 
     if (idx == 0) {
       // Cascade timers
-      if (cascadeTimers(1, (expireTick_ >> WHEEL_BITS) & WHEEL_MASK) &&
-          cascadeTimers(2, (expireTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK)) {
-        cascadeTimers(3, (expireTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK);
+      if (cascadeTimers(1, (expireTick_ >> WHEEL_BITS) & WHEEL_MASK, curTime) &&
+          cascadeTimers(
+              2, (expireTick_ >> (2 * WHEEL_BITS)) & WHEEL_MASK, curTime)) {
+        cascadeTimers(
+            3, (expireTick_ >> (3 * WHEEL_BITS)) & WHEEL_MASK, curTime);
       }
     }
 
