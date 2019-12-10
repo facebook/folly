@@ -134,13 +134,25 @@ template <typename F, typename Tuple>
 using apply_result_t = invoke_result_t<ApplyInvoke, F, Tuple>;
 template <typename F, typename Tuple>
 struct is_applicable : is_invocable<ApplyInvoke, F, Tuple> {};
+template <typename F, typename Tuple>
+FOLLY_INLINE_VARIABLE constexpr bool is_applicable_v =
+    is_applicable<F, Tuple>::value;
 template <typename R, typename F, typename Tuple>
 struct is_applicable_r : is_invocable_r<R, ApplyInvoke, F, Tuple> {};
+template <typename R, typename F, typename Tuple>
+FOLLY_INLINE_VARIABLE constexpr bool is_applicable_r_v =
+    is_applicable_r<R, F, Tuple>::value;
 template <typename F, typename Tuple>
 struct is_nothrow_applicable : is_nothrow_invocable<ApplyInvoke, F, Tuple> {};
+template <typename F, typename Tuple>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_applicable_v =
+    is_nothrow_applicable<F, Tuple>::value;
 template <typename R, typename F, typename Tuple>
 struct is_nothrow_applicable_r
     : is_nothrow_invocable_r<R, ApplyInvoke, F, Tuple> {};
+template <typename R, typename F, typename Tuple>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_applicable_r_v =
+    is_nothrow_applicable_r<R, F, Tuple>::value;
 
 namespace detail {
 namespace apply_tuple {
