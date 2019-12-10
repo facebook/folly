@@ -42,16 +42,20 @@ class DockerFBCodeBuilder(FBCodeBuilder):
         # To allow exercising non-root installs -- we change users after the
         # system packages are installed.  TODO: For users not defined in the
         # image, we should probably `useradd`.
-        return self.step('Setup', [
-            # Docker's FROM does not understand shell quoting.
-            ShellQuoted('FROM {}'.format(self.option('os_image'))),
-            # /bin/sh syntax is a pain
-            ShellQuoted('SHELL ["/bin/bash", "-c"]'),
-        ]
-            + self.install_debian_deps() + [self._change_user()]
-            + [self.workdir(self.option('prefix'))]
+        return self.step(
+            "Setup",
+            [
+                # Docker's FROM does not understand shell quoting.
+                ShellQuoted("FROM {}".format(self.option("os_image"))),
+                # /bin/sh syntax is a pain
+                ShellQuoted('SHELL ["/bin/bash", "-c"]'),
+            ]
+            + self.install_debian_deps()
+            + [self._change_user()]
+            + [self.workdir(self.option("prefix"))]
             + self.create_python_venv()
             + self.python_venv()
+            + self.rust_toolchain(),
         )
 
     def python_venv(self):
@@ -70,6 +74,9 @@ class DockerFBCodeBuilder(FBCodeBuilder):
 
     def run(self, shell_cmd):
         return ShellQuoted('RUN {cmd}').format(cmd=shell_cmd)
+
+    def set_env(self, key, value):
+        return ShellQuoted("ENV {key}={val}").format(key=key, val=value)
 
     def workdir(self, dir):
         return [

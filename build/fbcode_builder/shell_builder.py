@@ -33,6 +33,9 @@ class ShellFBCodeBuilder(FBCodeBuilder):
     def _render_impl(self, steps):
         return raw_shell(shell_join('\n', recursively_flatten_list(steps)))
 
+    def set_env(self, key, value):
+        return ShellQuoted("export {key}={val}").format(key=key, val=value)
+
     def workdir(self, dir):
         return [
             ShellQuoted('mkdir -p {d} && cd {d}').format(
