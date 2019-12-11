@@ -61,6 +61,22 @@ BENCHMARK(TLRefCountFourThreads, n) {
   benchmark<TLRefCount, 4>(n);
 }
 
+BENCHMARK(TLRefCountTwentyFourThreads, n) {
+  benchmark<TLRefCount, 24>(n);
+}
+
+BENCHMARK(AtomicOneThread, n) {
+  benchmark<std::atomic<size_t>, 1>(n);
+}
+
+BENCHMARK(AtomicFourThreads, n) {
+  benchmark<std::atomic<size_t>, 4>(n);
+}
+
+BENCHMARK(AtomicTwentyFourThreads, n) {
+  benchmark<std::atomic<size_t>, 24>(n);
+}
+
 } // namespace folly
 
 int main(int argc, char** argv) {
