@@ -504,12 +504,13 @@ constexpr auto kCpplibVer = 0;
 #elif _MSC_VER && _RESUMABLE_FUNCTIONS_SUPPORTED
 // NOTE: MSVC 2017 does not currently support the full Coroutines TS since it
 // does not yet support symmetric-transfer.
-#endif
-#endif // __cplusplus >= 201703L
-
-#ifndef FOLLY_HAS_COROUTINES
+#define FOLLY_HAS_COROUTINES 0
+#else
 #define FOLLY_HAS_COROUTINES 0
 #endif
+#else
+#define FOLLY_HAS_COROUTINES 0
+#endif // __cplusplus >= 201703L
 
 // MSVC 2017.5 && C++17
 #if __cpp_noexcept_function_type >= 201510 || \
