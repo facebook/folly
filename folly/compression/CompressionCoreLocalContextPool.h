@@ -96,6 +96,10 @@ class CompressionCoreLocalContextPool {
     return Ref(ptr, get_deleter());
   }
 
+  Ref getNull() {
+    return Ref(nullptr, get_deleter());
+  }
+
  private:
   ReturnToPoolDeleter get_deleter() {
     return ReturnToPoolDeleter(this);

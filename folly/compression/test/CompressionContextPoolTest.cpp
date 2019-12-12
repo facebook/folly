@@ -19,6 +19,7 @@
 #include <folly/portability/GTest.h>
 
 #include <folly/compression/CompressionContextPool.h>
+#include <folly/compression/CompressionContextPoolSingletons.h>
 #include <folly/compression/CompressionCoreLocalContextPool.h>
 
 using namespace testing;
@@ -257,6 +258,16 @@ TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {
   }
 
   EXPECT_LE(numFoos.load(), numThreads);
+}
+
+TEST(CompressionContextPoolSingletonsTest, testSingletons) {
+  EXPECT_NE(contexts::getZSTD_CCtx(), nullptr);
+  EXPECT_NE(contexts::getZSTD_DCtx(), nullptr);
+}
+
+TEST(CompressionContextPoolSingletonsTest, testSingletonsNull) {
+  EXPECT_EQ(contexts::getNULL_ZSTD_CCtx(), nullptr);
+  EXPECT_EQ(contexts::getNULL_ZSTD_DCtx(), nullptr);
 }
 } // namespace compression
 } // namespace folly
