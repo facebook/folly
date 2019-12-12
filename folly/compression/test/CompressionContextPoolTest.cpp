@@ -19,6 +19,7 @@
 #include <folly/portability/GTest.h>
 
 #include <folly/compression/CompressionContextPool.h>
+#include <folly/compression/CompressionCoreLocalContextPool.h>
 
 using namespace testing;
 
@@ -177,6 +178,85 @@ TEST_F(CompressionContextPoolTest, testMultithread) {
 TEST_F(CompressionContextPoolTest, testBadCreate) {
   BadPool pool;
   EXPECT_THROW(pool.get(), std::bad_alloc);
+}
+
+class CompressionCoreLocalContextPoolTest : public testing::Test {
+ protected:
+  using Pool = CompressionCoreLocalContextPool<Foo, FooCreator, FooDeleter, 8>;
+
+  void SetUp() override {
+    pool_ = std::make_unique<Pool>();
+  }
+
+  void TearDown() override {
+    pool_.reset();
+  }
+
+  std::unique_ptr<Pool> pool_;
+};
+
+TEST_F(CompressionCoreLocalContextPoolTest, testGet) {
+  auto ptr = pool_->get();
+  EXPECT_TRUE(ptr);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testSame) {
+  Pool::Object* tmp;
+  {
+    auto ptr = pool_->get();
+    tmp = ptr.get();
+  }
+  {
+    auto ptr = pool_->get();
+    EXPECT_EQ(tmp, ptr.get());
+  }
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testDifferent) {
+  auto ptr1 = pool_->get();
+  auto ptr2 = pool_->get();
+  EXPECT_NE(ptr1.get(), ptr2.get());
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testSwap) {
+  auto ptr1 = pool_->get();
+  auto ptr2 = pool_->get();
+  EXPECT_NE(ptr1.get(), ptr2.get());
+  auto tmp1 = ptr1.get();
+  auto tmp2 = ptr2.get();
+  ptr2.reset();
+  ptr1.reset();
+  ptr2 = pool_->get();
+  EXPECT_EQ(ptr2.get(), tmp2);
+  ptr1 = pool_->get();
+  EXPECT_EQ(ptr1.get(), tmp1);
+  ptr1.reset();
+  ptr2.reset();
+  ptr1 = pool_->get();
+  EXPECT_EQ(ptr1.get(), tmp1);
+  ptr2 = pool_->get();
+  EXPECT_EQ(ptr2.get(), tmp2);
+}
+
+TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {
+  constexpr size_t numThreads = 64;
+  constexpr size_t numIters = 1 << 14;
+  std::vector<std::thread> ts;
+  for (size_t i = 0; i < numThreads; i++) {
+    ts.emplace_back([& pool = *pool_]() {
+      for (size_t n = 0; n < numIters; n++) {
+        auto ref = pool.get();
+        CHECK(ref);
+        ref.reset();
+      }
+    });
+  }
+
+  for (auto& t : ts) {
+    t.join();
+  }
+
+  EXPECT_LE(numFoos.load(), numThreads);
 }
 } // namespace compression
 } // namespace folly
