@@ -29,6 +29,7 @@
 
 #include <stdexcept>
 
+#include <folly/Range.h>
 #include <folly/Traits.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/SafeAssert.h>
@@ -1138,6 +1139,12 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
     return this->table_.riter(it);
   }
 };
+
+template <typename K, typename M, typename H, typename E, typename A>
+Range<typename F14VectorMap<K, M, H, E, A>::const_reverse_iterator>
+order_preserving_reinsertion_view(const F14VectorMap<K, M, H, E, A>& c) {
+  return {c.rbegin(), c.rend()};
+}
 
 template <
     typename Key,

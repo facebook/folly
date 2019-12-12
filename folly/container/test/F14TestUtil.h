@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <ostream>
+#include <type_traits>
 #include <vector>
 
 #include <folly/container/detail/F14Policy.h>
@@ -104,6 +105,12 @@ inline std::ostream& operator<<(std::ostream& xo, F14TableStats const& stats) {
   }
   xo << "}";
   return xo;
+}
+
+template <typename Container>
+std::vector<typename std::decay_t<Container>::value_type> asVector(
+    const Container& c) {
+  return {c.begin(), c.end()};
 }
 
 } // namespace f14

@@ -764,6 +764,20 @@ TEST(F14VectorMap, reverse_iterator) {
   }
 }
 
+TEST(F14VectorSet, OrderPreservingReinsertionView) {
+  F14VectorSet<int> s1;
+  for (size_t i = 0; i < 5; ++i) {
+    s1.emplace(i);
+  }
+
+  F14VectorSet<int> s2;
+  for (const auto& k : order_preserving_reinsertion_view(s1)) {
+    s2.insert(k);
+  }
+
+  EXPECT_EQ(asVector(s1), asVector(s2));
+}
+
 TEST(F14ValueSet, eraseWhileIterating) {
   runEraseWhileIterating<F14ValueSet<int>>();
 }

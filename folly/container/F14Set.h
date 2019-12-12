@@ -975,6 +975,12 @@ class F14VectorSet
   }
 };
 
+template <typename K, typename H, typename E, typename A>
+Range<typename F14VectorSet<K, H, E, A>::const_reverse_iterator>
+order_preserving_reinsertion_view(const F14VectorSet<K, H, E, A>& c) {
+  return {c.rbegin(), c.rend()};
+}
+
 template <typename Key, typename Hasher, typename KeyEqual, typename Alloc>
 class F14FastSet
     : public std::conditional_t<
