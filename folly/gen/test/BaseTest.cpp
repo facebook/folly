@@ -31,6 +31,8 @@
 #include <folly/gen/Base.h>
 #include <folly/portability/GTest.h>
 
+#include <gflags/gflags.h>
+
 using namespace folly::gen;
 using namespace folly;
 using std::make_tuple;

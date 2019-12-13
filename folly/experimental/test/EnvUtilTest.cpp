@@ -27,6 +27,8 @@
 #include <spawn.h>
 #include <system_error>
 
+#include <gflags/gflags.h>
+
 using namespace folly;
 using folly::experimental::EnvironmentState;
 using folly::experimental::MalformedEnvironment;
