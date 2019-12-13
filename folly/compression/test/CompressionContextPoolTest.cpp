@@ -260,6 +260,8 @@ TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {
   EXPECT_LE(numFoos.load(), numThreads);
 }
 
+#ifdef FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS
+
 TEST(CompressionContextPoolSingletonsTest, testSingletons) {
   EXPECT_NE(contexts::getZSTD_CCtx(), nullptr);
   EXPECT_NE(contexts::getZSTD_DCtx(), nullptr);
@@ -269,5 +271,8 @@ TEST(CompressionContextPoolSingletonsTest, testSingletonsNull) {
   EXPECT_EQ(contexts::getNULL_ZSTD_CCtx(), nullptr);
   EXPECT_EQ(contexts::getNULL_ZSTD_DCtx(), nullptr);
 }
+
+#endif // FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS
+
 } // namespace compression
 } // namespace folly

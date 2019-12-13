@@ -20,6 +20,7 @@ namespace folly {
 namespace compression {
 namespace contexts {
 
+#if FOLLY_HAVE_LIBZSTD
 namespace {
 // These objects have no static dependencies and therefore no SIOF issues.
 ZSTD_CCtx_Pool zstd_cctx_pool_singleton;
@@ -57,6 +58,8 @@ ZSTD_CCtx_Pool::Ref getNULL_ZSTD_CCtx() {
 ZSTD_DCtx_Pool::Ref getNULL_ZSTD_DCtx() {
   return zstd_dctx_pool_singleton.getNull();
 }
+#endif // FOLLY_HAVE_LIBZSTD
+
 } // namespace contexts
 } // namespace compression
 } // namespace folly

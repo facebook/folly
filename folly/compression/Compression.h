@@ -548,11 +548,10 @@ bool hasCodec(CodecType type);
 bool hasStreamCodec(CodecType type);
 
 /**
- * Added here so users of folly can figure out whether the singletons are
- * usable, and therefore whether to even try to include the header.
- *
- * 1 means that the header exists and ZSTD_CCtx and ZSTD_DCtx pools are defined.
+ * Added here so users of folly can figure out whether the header
+ * folly/compression/CompressionContextPoolSingletons.h is present, and
+ * therefore whether it can be included.
  */
-#define FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS 1
+#define FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS
 } // namespace io
 } // namespace folly

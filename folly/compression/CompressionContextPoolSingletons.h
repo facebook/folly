@@ -16,13 +16,25 @@
 
 #pragma once
 
+#include <folly/folly-config.h>
+
+#if FOLLY_HAVE_LIBZSTD
 #include <zstd.h>
+#endif
 
 #include <folly/compression/CompressionCoreLocalContextPool.h>
+
+// When this header is present, folly/compression/Compression.h defines
+// FOLLY_COMPRESSION_HAS_CONTEXT_POOL_SINGLETONS.
 
 namespace folly {
 namespace compression {
 namespace contexts {
+
+#if FOLLY_HAVE_LIBZSTD
+
+// Additional feature test macro for zstd singletons.
+#define FOLLY_COMPRESSION_HAS_ZSTD_CONTEXT_POOL_SINGLETONS
 
 struct ZSTD_CCtx_Creator {
   ZSTD_CCtx* operator()() const noexcept;
@@ -58,6 +70,8 @@ ZSTD_DCtx_Pool::Ref getZSTD_DCtx();
 ZSTD_CCtx_Pool::Ref getNULL_ZSTD_CCtx();
 
 ZSTD_DCtx_Pool::Ref getNULL_ZSTD_DCtx();
+
+#endif // FOLLY_HAVE_LIBZSTD
 
 } // namespace contexts
 } // namespace compression
