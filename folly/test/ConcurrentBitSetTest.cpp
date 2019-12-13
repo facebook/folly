@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/AtomicBitSet.h>
+#include <folly/ConcurrentBitSet.h>
 
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -24,9 +24,9 @@
 namespace folly {
 namespace test {
 
-TEST(AtomicBitSet, Simple) {
+TEST(ConcurrentBitSet, Simple) {
   constexpr size_t kSize = 1000;
-  AtomicBitSet<kSize> bs;
+  ConcurrentBitSet<kSize> bs;
 
   EXPECT_EQ(kSize, bs.size());
 
@@ -50,6 +50,16 @@ TEST(AtomicBitSet, Simple) {
   }
 
   bs.reset(43);
+  for (size_t i = 0; i < kSize; ++i) {
+    EXPECT_FALSE(bs[i]);
+  }
+
+  bs.set(268);
+  for (size_t i = 0; i < kSize; ++i) {
+    EXPECT_EQ(i == 268, bs[i]);
+  }
+
+  bs.reset(268);
   for (size_t i = 0; i < kSize; ++i) {
     EXPECT_FALSE(bs[i]);
   }

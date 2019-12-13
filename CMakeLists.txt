@@ -803,7 +803,6 @@ if (BUILD_TESTS)
       TEST ahm_int_stress_test SOURCES AHMIntStressTest.cpp
       TEST arena_smartptr_test SOURCES ArenaSmartPtrTest.cpp
       TEST ascii_check_test SOURCES AsciiCaseInsensitiveTest.cpp
-      TEST atomic_bit_set_test SOURCES AtomicBitSetTest.cpp
       TEST atomic_hash_array_test SOURCES AtomicHashArrayTest.cpp
       TEST atomic_hash_map_test HANGING
         SOURCES AtomicHashMapTest.cpp
@@ -811,6 +810,7 @@ if (BUILD_TESTS)
       TEST atomic_unordered_map_test SOURCES AtomicUnorderedMapTest.cpp
       TEST cacheline_padded_test SOURCES CachelinePaddedTest.cpp
       TEST clock_gettime_wrappers_test SOURCES ClockGettimeWrappersTest.cpp
+      TEST concurrent_bit_set_test SOURCES ConcurrentBitSetTest.cpp
       TEST concurrent_skip_list_test SOURCES ConcurrentSkipListTest.cpp
       TEST conv_test SOURCES ConvTest.cpp
       TEST cpu_id_test SOURCES CpuIdTest.cpp

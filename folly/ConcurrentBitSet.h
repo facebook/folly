@@ -28,17 +28,20 @@ namespace folly {
 
 /**
  * An atomic bitset of fixed size (specified at compile time).
+ *
+ * Formerly known as AtomicBitSet. It was renamed while fixing a bug
+ * to avoid any silent breakages during run time.
  */
 template <size_t N>
-class AtomicBitSet {
+class ConcurrentBitSet {
  public:
   /**
-   * Construct an AtomicBitSet; all bits are initially false.
+   * Construct a ConcurrentBitSet; all bits are initially false.
    */
-  AtomicBitSet();
+  ConcurrentBitSet();
 
-  AtomicBitSet(const AtomicBitSet&) = delete;
-  AtomicBitSet& operator=(const AtomicBitSet&) = delete;
+  ConcurrentBitSet(const ConcurrentBitSet&) = delete;
+  ConcurrentBitSet& operator=(const ConcurrentBitSet&) = delete;
 
   /**
    * Set bit idx to true, using the given memory order. Returns the
@@ -116,43 +119,44 @@ class AtomicBitSet {
 
   // avoid casts
   static constexpr BlockType kOne = 1;
-
-  std::array<AtomicBlockType, N> data_;
+  static constexpr size_t kNumBlocks = (N + kBitsPerBlock - 1) / kBitsPerBlock;
+  std::array<AtomicBlockType, kNumBlocks> data_;
 };
 
 // value-initialize to zero
 template <size_t N>
-inline AtomicBitSet<N>::AtomicBitSet() : data_() {}
+inline ConcurrentBitSet<N>::ConcurrentBitSet() : data_() {}
 
 template <size_t N>
-inline bool AtomicBitSet<N>::set(size_t idx, std::memory_order order) {
-  assert(idx < N * kBitsPerBlock);
+inline bool ConcurrentBitSet<N>::set(size_t idx, std::memory_order order) {
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].fetch_or(mask, order) & mask;
 }
 
 template <size_t N>
-inline bool AtomicBitSet<N>::reset(size_t idx, std::memory_order order) {
-  assert(idx < N * kBitsPerBlock);
+inline bool ConcurrentBitSet<N>::reset(size_t idx, std::memory_order order) {
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].fetch_and(~mask, order) & mask;
 }
 
 template <size_t N>
 inline bool
-AtomicBitSet<N>::set(size_t idx, bool value, std::memory_order order) {
+ConcurrentBitSet<N>::set(size_t idx, bool value, std::memory_order order) {
   return value ? set(idx, order) : reset(idx, order);
 }
 
 template <size_t N>
-inline bool AtomicBitSet<N>::test(size_t idx, std::memory_order order) const {
-  assert(idx < N * kBitsPerBlock);
+inline bool ConcurrentBitSet<N>::test(size_t idx, std::memory_order order)
+    const {
+  assert(idx < N);
   BlockType mask = kOne << bitOffset(idx);
   return data_[blockIndex(idx)].load(order) & mask;
 }
 
 template <size_t N>
-inline bool AtomicBitSet<N>::operator[](size_t idx) const {
+inline bool ConcurrentBitSet<N>::operator[](size_t idx) const {
   return test(idx);
 }
 
