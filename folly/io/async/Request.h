@@ -148,6 +148,13 @@ class RequestData {
 class RequestContext {
  public:
   RequestContext();
+  RequestContext(RequestContext&& ctx) = delete;
+  RequestContext& operator=(const RequestContext&) = delete;
+  RequestContext& operator=(RequestContext&&) = delete;
+
+  // copy ctor is disabled, use copyAsRoot/copyAsChild instead.
+  static std::shared_ptr<RequestContext> copyAsRoot(const RequestContext& ctx);
+  static std::shared_ptr<RequestContext> copyAsChild(const RequestContext& ctx);
 
   // Create a unique request context for this request.
   // It will be passed between queues / threads (where implemented),
@@ -158,6 +165,12 @@ class RequestContext {
 
   // Get the current context.
   static RequestContext* get();
+
+  intptr_t getRootId() const {
+    return rootId_;
+  }
+
+  static std::vector<intptr_t> getRootIdsFromAllThreads();
 
   // The following APIs are used to add, remove and access RequestData instance
   // in the RequestContext instance, normally used for per-RequestContext
@@ -238,18 +251,28 @@ class RequestContext {
       std::shared_ptr<RequestContext>&& ctx);
 
   static std::shared_ptr<RequestContext> saveContext() {
-    return getStaticContext();
+    return getStaticContext().first;
   }
 
  private:
-  static std::shared_ptr<RequestContext>& getStaticContext();
+  struct ChildTag {};
+  struct RootTag {};
+  RequestContext(const RequestContext& ctx) = default;
+
+ public:
+  RequestContext(const RequestContext& ctx, RootTag tag);
+  RequestContext(const RequestContext& ctx, ChildTag tag);
+  using StaticContext = std::pair<std::shared_ptr<RequestContext>, intptr_t>;
+
+ private:
+  static StaticContext& getStaticContext();
 
   static std::shared_ptr<RequestContext> setContextLock(
       std::shared_ptr<RequestContext>& newCtx,
-      std::shared_ptr<RequestContext>& staticCtx);
+      StaticContext& staticCtx);
   static std::shared_ptr<RequestContext> setContextHazptr(
       std::shared_ptr<RequestContext>& newCtx,
-      std::shared_ptr<RequestContext>& staticCtx);
+      StaticContext& staticCtx);
 
   // Start shallow copy guard implementation details:
   // All methods are private to encourage proper use
@@ -388,6 +411,8 @@ class RequestContext {
   }; // StateHazptr
   StateHazptr stateHazptr_;
   bool useHazptr_;
+  // Shallow copies keep a note of the root context
+  intptr_t rootId_;
 };
 
 /**
