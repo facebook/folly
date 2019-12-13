@@ -67,7 +67,6 @@ void ThreadEntryNode::eraseZero() {
 
 StaticMetaBase::StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict)
     : nextId_(1), threadEntry_(threadEntry), strict_(strict) {
-  head_.next = head_.prev = &head_;
   int ret = pthread_key_create(&pthreadKey_, &onThreadExit);
   checkPosixError(ret, "pthread_key_create failed");
   PthreadKeyUnregister::registerKey(pthreadKey_);
@@ -135,7 +134,6 @@ void StaticMetaBase::onThreadExit(void* ptr) {
       std::lock_guard<std::mutex> g(meta.lock_);
       // mark it as removed
       threadEntry->removed_ = true;
-      meta.erase(&(*threadEntry));
       auto elementsCapacity = threadEntry->getElementsCapacity();
       for (size_t i = 0u; i < elementsCapacity; ++i) {
         threadEntry->elements[i].node.eraseZero();
@@ -405,10 +403,6 @@ void StaticMetaBase::reserve(EntryID* id) {
   // Success, update the entry
   {
     std::lock_guard<std::mutex> g(meta.lock_);
-
-    if (prevCapacity == 0) {
-      meta.push_back(threadEntry);
-    }
 
     if (reallocated) {
       /*

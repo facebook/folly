@@ -210,8 +210,6 @@ struct ThreadEntryList;
 struct ThreadEntry {
   ElementWrapper* elements{nullptr};
   std::atomic<size_t> elementsCapacity{0};
-  ThreadEntry* next{nullptr};
-  ThreadEntry* prev{nullptr};
   ThreadEntryList* list{nullptr};
   ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
@@ -346,19 +344,6 @@ struct StaticMetaBase {
   };
 
   StaticMetaBase(ThreadEntry* (*threadEntry)(), bool strict);
-
-  void push_back(ThreadEntry* t) {
-    t->next = &head_;
-    t->prev = head_.prev;
-    head_.prev->next = t;
-    head_.prev = t;
-  }
-
-  void erase(ThreadEntry* t) {
-    t->next->prev = t->prev;
-    t->prev->next = t->next;
-    t->next = t->prev = t;
-  }
 
   FOLLY_EXPORT static ThreadEntryList* getThreadEntryList();
 
@@ -519,8 +504,6 @@ struct StaticMeta final : StaticMetaBase {
   static void onForkChild() {
     // only the current thread survives
     auto& head = instance().head_;
-    // init the head list
-    head.next = head.prev = &head;
     // init the circular lists
     auto elementsCapacity = head.getElementsCapacity();
     for (size_t i = 0u; i < elementsCapacity; ++i) {
@@ -537,10 +520,6 @@ struct StaticMeta final : StaticMetaBase {
       }
     }
 
-    // If this thread was in the list before the fork, add it back.
-    if (elementsCapacity != 0) {
-      instance().push_back(threadEntry);
-    }
     instance().lock_.unlock();
   }
 };
