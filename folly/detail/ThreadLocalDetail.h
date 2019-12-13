@@ -22,6 +22,7 @@
 #include <functional>
 #include <mutex>
 #include <string>
+#include <thread>
 #include <vector>
 
 #include <glog/logging.h>
@@ -215,6 +216,7 @@ struct ThreadEntry {
   ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
   bool removed_{false};
+  aligned_storage_for_t<std::thread::id> tid_data{};
 
   size_t getElementsCapacity() const noexcept {
     return elementsCapacity.load(std::memory_order_relaxed);
@@ -222,6 +224,10 @@ struct ThreadEntry {
 
   void setElementsCapacity(size_t capacity) noexcept {
     elementsCapacity.store(capacity, std::memory_order_relaxed);
+  }
+
+  std::thread::id& tid() {
+    return *reinterpret_cast<std::thread::id*>(&tid_data);
   }
 };
 
@@ -487,6 +493,8 @@ struct StaticMeta final : StaticMetaBase {
         threadEntry->listNext = threadEntryList->head;
         threadEntryList->head = threadEntry;
       }
+
+      threadEntry->tid() = std::this_thread::get_id();
 
       // if we're adding a thread entry
       // we need to increment the list count

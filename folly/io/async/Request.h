@@ -170,7 +170,8 @@ class RequestContext {
     return rootId_;
   }
 
-  static std::vector<intptr_t> getRootIdsFromAllThreads();
+  static std::vector<std::pair<std::thread::id, intptr_t>>
+  getRootIdsFromAllThreads();
 
   // The following APIs are used to add, remove and access RequestData instance
   // in the RequestContext instance, normally used for per-RequestContext

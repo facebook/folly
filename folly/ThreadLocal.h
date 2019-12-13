@@ -41,6 +41,7 @@
 #pragma once
 
 #include <iterator>
+#include <thread>
 #include <type_traits>
 #include <utility>
 
@@ -367,6 +368,10 @@ class ThreadLocalPtr {
 
       bool operator!=(Iterator const& rhs) const {
         return !equal(rhs);
+      }
+
+      std::thread::id getThreadId() const {
+        return e_->getThreadEntry()->tid();
       }
     };
 

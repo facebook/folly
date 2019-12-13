@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <thread>
 #include <type_traits>
 #include <unordered_map>
 #include <unordered_set>
@@ -195,6 +196,10 @@ class SingletonThreadLocal {
 
       T& dereference() const {
         return const_cast<Iterator*>(this)->base()->object;
+      }
+
+      std::thread::id getThreadId() const {
+        return this->base().getThreadId();
       }
     };
 
