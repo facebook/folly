@@ -25,6 +25,7 @@
 
 #include <folly/Optional.h>
 #include <folly/Traits.h>
+#include <folly/detail/AsyncTrace.h>
 #include <folly/executors/ExecutorWithPriority.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
@@ -720,6 +721,8 @@ SemiFuture<T>& SemiFuture<T>::operator=(Future<T>&& other) noexcept {
 
 template <class T>
 Future<T> SemiFuture<T>::via(Executor::KeepAlive<> executor) && {
+  folly::async_tracing::logSemiFutureVia(this->getExecutor(), executor.get());
+
   if (!executor) {
     throw_exception<FutureNoExecutor>();
   }
@@ -906,6 +909,8 @@ typename std::
 
 template <class T>
 Future<T> Future<T>::via(Executor::KeepAlive<> executor) && {
+  folly::async_tracing::logFutureVia(this->getExecutor(), executor.get());
+
   this->setExecutor(std::move(executor));
 
   auto newFuture = Future<T>(this->core_);
@@ -921,6 +926,8 @@ Future<T> Future<T>::via(Executor::KeepAlive<> executor, int8_t priority) && {
 
 template <class T>
 Future<T> Future<T>::via(Executor::KeepAlive<> executor) & {
+  folly::async_tracing::logFutureVia(this->getExecutor(), executor.get());
+
   this->throwIfInvalid();
   Promise<T> p;
   auto sf = p.getSemiFuture();
