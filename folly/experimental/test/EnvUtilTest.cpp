@@ -21,13 +21,12 @@
 #include <folly/Subprocess.h>
 #include <folly/container/Array.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Stdlib.h>
 #include <glog/logging.h>
 #include <spawn.h>
 #include <system_error>
-
-#include <gflags/gflags.h>
 
 using namespace folly;
 using folly::experimental::EnvironmentState;

@@ -29,9 +29,8 @@
 #include <folly/dynamic.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/gen/Base.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-
-#include <gflags/gflags.h>
 
 using namespace folly::gen;
 using namespace folly;
