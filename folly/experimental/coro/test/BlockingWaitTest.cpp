@@ -60,11 +60,13 @@ static_assert(
     "object stored inside the Awaiter which would have been destructed "
     "by the time blockingWait returns.");
 
-TEST(BlockingWait, SynchronousCompletionVoidResult) {
+class BlockingWaitTest : public testing::Test {};
+
+TEST_F(BlockingWaitTest, SynchronousCompletionVoidResult) {
   folly::coro::blockingWait(folly::coro::AwaitableReady<void>{});
 }
 
-TEST(BlockingWait, SynchronousCompletionPRValueResult) {
+TEST_F(BlockingWaitTest, SynchronousCompletionPRValueResult) {
   EXPECT_EQ(
       123, folly::coro::blockingWait(folly::coro::AwaitableReady<int>{123}));
   EXPECT_EQ(
@@ -73,7 +75,7 @@ TEST(BlockingWait, SynchronousCompletionPRValueResult) {
           folly::coro::AwaitableReady<std::string>("hello")));
 }
 
-TEST(BlockingWait, SynchronousCompletionLValueResult) {
+TEST_F(BlockingWaitTest, SynchronousCompletionLValueResult) {
   int value = 123;
   int& result =
       folly::coro::blockingWait(folly::coro::AwaitableReady<int&>{value});
@@ -81,7 +83,7 @@ TEST(BlockingWait, SynchronousCompletionLValueResult) {
   EXPECT_EQ(123, result);
 }
 
-TEST(BlockingWait, SynchronousCompletionRValueResult) {
+TEST_F(BlockingWaitTest, SynchronousCompletionRValueResult) {
   auto p = std::make_unique<int>(123);
   auto* ptr = p.get();
 
@@ -117,7 +119,7 @@ struct TrickyAwaitable {
   }
 };
 
-TEST(BlockingWait, ReturnRvalueReferenceFromAwaiter) {
+TEST_F(BlockingWaitTest, ReturnRvalueReferenceFromAwaiter) {
   // This awaitable stores the result in the temporary Awaiter object that
   // is placed on the coroutine frame as part of the co_await expression.
   // It then returns an rvalue-reference to the value inside this temporary
@@ -128,7 +130,7 @@ TEST(BlockingWait, ReturnRvalueReferenceFromAwaiter) {
   CHECK_EQ(42, *result);
 }
 
-TEST(BlockingWait, AsynchronousCompletionOnAnotherThread) {
+TEST_F(BlockingWaitTest, AsynchronousCompletionOnAnotherThread) {
   folly::coro::Baton baton;
   std::thread t{[&] { baton.post(); }};
   SCOPE_EXIT {
@@ -183,7 +185,7 @@ class SimplePromise {
   folly::Optional<T> value_;
 };
 
-TEST(BlockingWait, WaitOnSimpleAsyncPromise) {
+TEST_F(BlockingWaitTest, WaitOnSimpleAsyncPromise) {
   SimplePromise<std::string> p;
   std::thread t{[&] { p.emplace("hello coroutines!"); }};
   SCOPE_EXIT {
@@ -200,7 +202,7 @@ struct MoveCounting {
   MoveCounting& operator=(MoveCounting&& other) = delete;
 };
 
-TEST(BlockingWait, WaitOnMoveOnlyAsyncPromise) {
+TEST_F(BlockingWaitTest, WaitOnMoveOnlyAsyncPromise) {
   SimplePromise<MoveCounting> p;
   std::thread t{[&] { p.emplace(); }};
   SCOPE_EXIT {
@@ -216,7 +218,7 @@ TEST(BlockingWait, WaitOnMoveOnlyAsyncPromise) {
   EXPECT_GE(2, result.count_);
 }
 
-TEST(BlockingWait, moveCountingAwaitableReady) {
+TEST_F(BlockingWaitTest, moveCountingAwaitableReady) {
   folly::coro::AwaitableReady<MoveCounting> awaitable{MoveCounting{}};
   auto result = folly::coro::blockingWait(awaitable);
 
@@ -228,7 +230,7 @@ TEST(BlockingWait, moveCountingAwaitableReady) {
   EXPECT_GE(4, result.count_);
 }
 
-TEST(BlockingWait, WaitInFiber) {
+TEST_F(BlockingWaitTest, WaitInFiber) {
   SimplePromise<int> promise;
   folly::EventBase evb;
   auto& fm = folly::fibers::getFiberManager(evb);
@@ -246,7 +248,7 @@ TEST(BlockingWait, WaitInFiber) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
-TEST(BlockingWait, WaitTaskInFiber) {
+TEST_F(BlockingWaitTest, WaitTaskInFiber) {
   SimplePromise<int> promise;
   folly::EventBase evb;
   auto& fm = folly::fibers::getFiberManager(evb);
@@ -266,12 +268,12 @@ TEST(BlockingWait, WaitTaskInFiber) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
-TEST(BlockingWait, WaitOnSemiFuture) {
+TEST_F(BlockingWaitTest, WaitOnSemiFuture) {
   int result = folly::coro::blockingWait(folly::makeSemiFuture(123));
   CHECK_EQ(result, 123);
 }
 
-TEST(BlockingWait, RequestContext) {
+TEST_F(BlockingWaitTest, RequestContext) {
   folly::RequestContext::create();
   std::shared_ptr<folly::RequestContext> ctx1, ctx2;
   ctx1 = folly::RequestContext::saveContext();

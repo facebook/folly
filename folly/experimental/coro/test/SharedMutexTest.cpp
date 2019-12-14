@@ -30,7 +30,9 @@
 
 using namespace folly;
 
-TEST(SharedMutex, TryLock) {
+class SharedMutexTest : public testing::Test {};
+
+TEST_F(SharedMutexTest, TryLock) {
   coro::SharedMutex m;
 
   CHECK(m.try_lock());
@@ -52,7 +54,7 @@ TEST(SharedMutex, TryLock) {
   m.unlock();
 }
 
-TEST(SharedMutex, ManualLockAsync) {
+TEST_F(SharedMutexTest, ManualLockAsync) {
   coro::SharedMutex mutex;
   int value = 0;
 
@@ -111,7 +113,7 @@ TEST(SharedMutex, ManualLockAsync) {
   }
 }
 
-TEST(SharedMutex, ScopedLockAsync) {
+TEST_F(SharedMutexTest, ScopedLockAsync) {
   coro::SharedMutex mutex;
   int value = 0;
 
@@ -166,7 +168,7 @@ TEST(SharedMutex, ScopedLockAsync) {
   }
 }
 
-TEST(SharedMutex, ThreadSafety) {
+TEST_F(SharedMutexTest, ThreadSafety) {
   // Spin up a thread-pool with 3 threads and 6 coroutines
   // (2 writers, 4 readers) that are constantly spinning in a loop reading
   // and modifying some shared state.

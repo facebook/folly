@@ -54,7 +54,9 @@ SemiFuture<int> semifuture_task42() {
   return task42().semi();
 }
 
-TEST(Coro, Basic) {
+class CoroTest : public testing::Test {};
+
+TEST_F(CoroTest, Basic) {
   ManualExecutor executor;
   auto future = task42().scheduleOn(&executor).start();
 
@@ -66,7 +68,7 @@ TEST(Coro, Basic) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
-TEST(Coro, BasicSemiFuture) {
+TEST_F(CoroTest, BasicSemiFuture) {
   ManualExecutor executor;
   auto future = semifuture_task42().via(&executor);
 
@@ -79,7 +81,7 @@ TEST(Coro, BasicSemiFuture) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
-TEST(Coro, BasicFuture) {
+TEST_F(CoroTest, BasicFuture) {
   ManualExecutor executor;
 
   auto future = task42().scheduleOn(&executor).start();
@@ -94,7 +96,7 @@ coro::Task<void> taskVoid() {
   co_return;
 }
 
-TEST(Coro, Basic2) {
+TEST_F(CoroTest, Basic2) {
   ManualExecutor executor;
   auto future = taskVoid().scheduleOn(&executor).start();
 
@@ -105,7 +107,7 @@ TEST(Coro, Basic2) {
   EXPECT_TRUE(future.isReady());
 }
 
-TEST(Coro, TaskOfMoveOnly) {
+TEST_F(CoroTest, TaskOfMoveOnly) {
   auto f = []() -> coro::Task<std::unique_ptr<int>> {
     co_return std::make_unique<int>(123);
   };
@@ -120,7 +122,7 @@ coro::Task<void> taskSleep() {
   co_return;
 }
 
-TEST(Coro, Sleep) {
+TEST_F(CoroTest, Sleep) {
   ScopedEventBaseThread evbThread;
 
   auto startTime = std::chrono::steady_clock::now();
@@ -136,7 +138,7 @@ TEST(Coro, Sleep) {
       chrono::round<std::chrono::seconds>(totalTime), std::chrono::seconds{1});
 }
 
-TEST(Coro, ExecutorKeepAlive) {
+TEST_F(CoroTest, ExecutorKeepAlive) {
   auto future = [] {
     ScopedEventBaseThread evbThread;
 
@@ -173,7 +175,7 @@ coro::Task<void> executorRec(int depth) {
   co_await executorRec(depth - 1);
 }
 
-TEST(Coro, ExecutorKeepAliveDummy) {
+TEST_F(CoroTest, ExecutorKeepAliveDummy) {
   CountingExecutor executor;
   executorRec(42).scheduleOn(&executor).start().via(&executor).getVia(
       &executor);
@@ -184,7 +186,7 @@ coro::Task<int> taskException() {
   co_return 42;
 }
 
-TEST(Coro, FutureThrow) {
+TEST_F(CoroTest, FutureThrow) {
   ManualExecutor executor;
   auto future = taskException().scheduleOn(&executor).start();
 
@@ -206,7 +208,7 @@ coro::Task<int> taskRecursion(int depth) {
   co_return depth;
 }
 
-TEST(Coro, LargeStack) {
+TEST_F(CoroTest, LargeStack) {
   ScopedEventBaseThread evbThread;
   auto task = taskRecursion(5000).scheduleOn(evbThread.getEventBase());
 
@@ -238,7 +240,7 @@ coro::Task<int> taskThread() {
   co_return 42;
 }
 
-TEST(Coro, NestedThreads) {
+TEST_F(CoroTest, NestedThreads) {
   ScopedEventBaseThread evbThread;
   auto task = taskThread().scheduleOn(evbThread.getEventBase());
   EXPECT_EQ(42, coro::blockingWait(std::move(task)));
@@ -250,7 +252,7 @@ coro::Task<int> taskGetCurrentExecutor(Executor* executor) {
   co_return co_await task42().scheduleOn(current);
 }
 
-TEST(Coro, CurrentExecutor) {
+TEST_F(CoroTest, CurrentExecutor) {
   ScopedEventBaseThread evbThread;
   auto task = taskGetCurrentExecutor(evbThread.getEventBase())
                   .scheduleOn(evbThread.getEventBase());
@@ -301,7 +303,7 @@ coro::Task<void> taskTimedWaitFuture() {
   co_return;
 }
 
-TEST(Coro, TimedWaitFuture) {
+TEST_F(CoroTest, TimedWaitFuture) {
   coro::blockingWait(taskTimedWaitFuture());
 }
 
@@ -339,11 +341,11 @@ coro::Task<void> taskTimedWaitTask() {
   co_return;
 }
 
-TEST(Coro, TimedWaitTask) {
+TEST_F(CoroTest, TimedWaitTask) {
   coro::blockingWait(taskTimedWaitTask());
 }
 
-TEST(Coro, TimedWaitKeepAlive) {
+TEST_F(CoroTest, TimedWaitKeepAlive) {
   auto start = std::chrono::steady_clock::now();
   coro::blockingWait([]() -> coro::Task<void> {
     co_await coro::timed_wait(
@@ -379,7 +381,7 @@ coro::Task<int> taskAwaitableWithOperator() {
   co_return co_await AwaitableWithOperator();
 }
 
-TEST(Coro, AwaitableWithOperator) {
+TEST_F(CoroTest, AwaitableWithOperator) {
   EXPECT_EQ(42, coro::blockingWait(taskAwaitableWithOperator()));
 }
 
@@ -397,7 +399,7 @@ coro::Task<int> taskAwaitableWithMemberOperator() {
   co_return co_await AwaitableWithMemberOperator();
 }
 
-TEST(Coro, AwaitableWithMemberOperator) {
+TEST_F(CoroTest, AwaitableWithMemberOperator) {
   EXPECT_EQ(42, coro::blockingWait(taskAwaitableWithMemberOperator()));
 }
 
@@ -406,7 +408,7 @@ coro::Task<int> taskBaton(fibers::Baton& baton) {
   co_return 42;
 }
 
-TEST(Coro, Baton) {
+TEST_F(CoroTest, Baton) {
   ManualExecutor executor;
   fibers::Baton baton;
   auto future = taskBaton(baton).scheduleOn(&executor).start();
@@ -429,15 +431,15 @@ coro::Task<Type> taskFuture(Type value) {
   co_return co_await folly::makeFuture<Type>(std::move(value));
 }
 
-TEST(Coro, FulfilledFuture) {
+TEST_F(CoroTest, FulfilledFuture) {
   EXPECT_EQ(42, coro::blockingWait(taskFuture(42)));
 }
 
-TEST(Coro, MoveOnlyReturn) {
+TEST_F(CoroTest, MoveOnlyReturn) {
   EXPECT_EQ(42, *coro::blockingWait(taskFuture(std::make_unique<int>(42))));
 }
 
-TEST(Coro, co_invoke) {
+TEST_F(CoroTest, co_invoke) {
   ManualExecutor executor;
   Promise<folly::Unit> p;
   auto coroFuture =
@@ -456,7 +458,7 @@ TEST(Coro, co_invoke) {
   EXPECT_TRUE(coroFuture.isReady());
 }
 
-TEST(Coro, Semaphore) {
+TEST_F(CoroTest, Semaphore) {
   static constexpr size_t kTasks = 10;
   static constexpr size_t kIterations = 10000;
   static constexpr size_t kNumTokens = 10;
@@ -513,7 +515,7 @@ TEST(Coro, Semaphore) {
   }
 }
 
-TEST(Coro, FutureTry) {
+TEST_F(CoroTest, FutureTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     {
       auto result = co_await folly::coro::co_awaitTry(task42().semi());
@@ -542,7 +544,7 @@ TEST(Coro, FutureTry) {
   }());
 }
 
-TEST(Coro, CancellableSleep) {
+TEST_F(CoroTest, CancellableSleep) {
   using namespace std::chrono;
   using namespace std::chrono_literals;
 
@@ -566,7 +568,7 @@ TEST(Coro, CancellableSleep) {
   CHECK((end - start) < 1s);
 }
 
-TEST(Coro, DefaultConstructible) {
+TEST_F(CoroTest, DefaultConstructible) {
   coro::blockingWait([]() -> coro::Task<void> {
     auto s = co_await taskS();
     EXPECT_EQ(42, s.x);

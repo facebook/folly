@@ -26,12 +26,14 @@
 namespace folly {
 namespace coro {
 
-TEST(GeneratorTest, DefaultConstructed_EmptySequence) {
+class GeneratorTest : public testing::Test {};
+
+TEST_F(GeneratorTest, DefaultConstructed_EmptySequence) {
   Generator<std::uint32_t> ints;
   EXPECT_EQ(ints.begin(), ints.end());
 }
 
-TEST(GeneratorTest, NonRecursiveUse) {
+TEST_F(GeneratorTest, NonRecursiveUse) {
   auto f = []() -> Generator<float> {
     co_yield 1.0f;
     co_yield 2.0f;
@@ -46,7 +48,7 @@ TEST(GeneratorTest, NonRecursiveUse) {
   EXPECT_EQ(iter, gen.end());
 }
 
-TEST(GeneratorTest, ThrowsBeforeYieldingFirstElement_RethrowsFromBegin) {
+TEST_F(GeneratorTest, ThrowsBeforeYieldingFirstElement_RethrowsFromBegin) {
   class MyException : public std::exception {};
 
   auto f = []() -> Generator<std::uint32_t> {
@@ -58,7 +60,7 @@ TEST(GeneratorTest, ThrowsBeforeYieldingFirstElement_RethrowsFromBegin) {
   EXPECT_THROW(gen.begin(), MyException);
 }
 
-TEST(GeneratorTest, ThrowsAfterYieldingFirstElement_RethrowsFromIncrement) {
+TEST_F(GeneratorTest, ThrowsAfterYieldingFirstElement_RethrowsFromIncrement) {
   class MyException : public std::exception {};
 
   auto f = []() -> Generator<std::uint32_t> {
@@ -72,7 +74,7 @@ TEST(GeneratorTest, ThrowsAfterYieldingFirstElement_RethrowsFromIncrement) {
   EXPECT_THROW(++iter, MyException);
 }
 
-TEST(GeneratorTest, NotStartedUntilCalled) {
+TEST_F(GeneratorTest, NotStartedUntilCalled) {
   bool reachedA = false;
   bool reachedB = false;
   bool reachedC = false;
@@ -99,7 +101,7 @@ TEST(GeneratorTest, NotStartedUntilCalled) {
   EXPECT_EQ(iter, gen.end());
 }
 
-TEST(GeneratorTest, DestroyedBeforeCompletion_DestructsObjectsOnStack) {
+TEST_F(GeneratorTest, DestroyedBeforeCompletion_DestructsObjectsOnStack) {
   bool destructed = false;
   bool completed = false;
   auto f = [&]() -> Generator<std::uint32_t> {
@@ -125,7 +127,7 @@ TEST(GeneratorTest, DestroyedBeforeCompletion_DestructsObjectsOnStack) {
   EXPECT_TRUE(destructed);
 }
 
-TEST(GeneratorTest, SimpleRecursiveYield) {
+TEST_F(GeneratorTest, SimpleRecursiveYield) {
   auto f = [](int n, auto& f) -> Generator<const std::uint32_t> {
     co_yield n;
     if (n > 0) {
@@ -165,7 +167,7 @@ TEST(GeneratorTest, SimpleRecursiveYield) {
   }
 }
 
-TEST(GeneratorTest, NestedEmptyYield) {
+TEST_F(GeneratorTest, NestedEmptyYield) {
   auto f = []() -> Generator<std::uint32_t> { co_return; };
 
   auto g = [&f]() -> Generator<std::uint32_t> {
@@ -183,7 +185,7 @@ TEST(GeneratorTest, NestedEmptyYield) {
   EXPECT_EQ(iter, gen.end());
 }
 
-TEST(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
+TEST_F(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
   class SomeException : public std::exception {};
 
   auto f = [](std::uint32_t depth, auto&& f) -> Generator<std::uint32_t> {
@@ -210,7 +212,7 @@ TEST(GeneratorTest, ExceptionThrownFromRecursiveCall_CanBeCaughtByCaller) {
   EXPECT_EQ(iter, gen.end());
 }
 
-TEST(GeneratorTest, ExceptionThrownFromNestedCall_CanBeCaughtByCaller) {
+TEST_F(GeneratorTest, ExceptionThrownFromNestedCall_CanBeCaughtByCaller) {
   class SomeException : public std::exception {};
 
   auto f = [](std::uint32_t depth, auto&& f) -> Generator<std::uint32_t> {
@@ -277,7 +279,7 @@ Generator<std::uint32_t> iterate_range(std::uint32_t begin, std::uint32_t end) {
 }
 } // namespace
 
-TEST(GeneratorTest, UsageInStandardAlgorithms) {
+TEST_F(GeneratorTest, UsageInStandardAlgorithms) {
   {
     auto a = iterate_range(5, 30);
     auto b = iterate_range(5, 30);

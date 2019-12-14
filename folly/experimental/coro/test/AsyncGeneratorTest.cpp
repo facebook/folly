@@ -37,7 +37,9 @@
 #include <string>
 #include <tuple>
 
-TEST(AsyncGenerator, DefaultConstructedGeneratorIsEmpty) {
+class AsyncGeneratorTest : public testing::Test {};
+
+TEST_F(AsyncGeneratorTest, DefaultConstructedGeneratorIsEmpty) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::coro::AsyncGenerator<int> g;
     auto result = co_await g.next();
@@ -45,7 +47,7 @@ TEST(AsyncGenerator, DefaultConstructedGeneratorIsEmpty) {
   }());
 }
 
-TEST(AsyncGenerator, GeneratorDestroyedBeforeCallingBegin) {
+TEST_F(AsyncGeneratorTest, GeneratorDestroyedBeforeCallingBegin) {
   bool started = false;
   auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<int> {
     started = true;
@@ -60,7 +62,7 @@ TEST(AsyncGenerator, GeneratorDestroyedBeforeCallingBegin) {
   CHECK(!started);
 }
 
-TEST(AsyncGenerator, PartiallyConsumingSequenceDestroysObjectsInScope) {
+TEST_F(AsyncGeneratorTest, PartiallyConsumingSequenceDestroysObjectsInScope) {
   bool started = false;
   bool destroyed = false;
   auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<int> {
@@ -88,7 +90,7 @@ TEST(AsyncGenerator, PartiallyConsumingSequenceDestroysObjectsInScope) {
   }());
 }
 
-TEST(AsyncGenerator, FullyConsumeSequence) {
+TEST_F(AsyncGeneratorTest, FullyConsumeSequence) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<int> {
     for (int i = 0; i < 4; ++i) {
       co_yield i;
@@ -118,7 +120,7 @@ namespace {
 struct SomeError : std::exception {};
 } // namespace
 
-TEST(AsyncGenerator, ThrowExceptionBeforeFirstYield) {
+TEST_F(AsyncGeneratorTest, ThrowExceptionBeforeFirstYield) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<int> {
     if (true) {
       throw SomeError{};
@@ -139,7 +141,7 @@ TEST(AsyncGenerator, ThrowExceptionBeforeFirstYield) {
   }());
 }
 
-TEST(AsyncGenerator, ThrowExceptionAfterFirstYield) {
+TEST_F(AsyncGeneratorTest, ThrowExceptionAfterFirstYield) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<int> {
     co_yield 42;
     throw SomeError{};
@@ -161,7 +163,9 @@ TEST(AsyncGenerator, ThrowExceptionAfterFirstYield) {
   }());
 }
 
-TEST(AsyncGenerator, ConsumingManySynchronousElementsDoesNotOverflowStack) {
+TEST_F(
+    AsyncGeneratorTest,
+    ConsumingManySynchronousElementsDoesNotOverflowStack) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<std::uint64_t> {
     for (std::uint64_t i = 0; i < 1'000'000; ++i) {
       co_yield i;
@@ -178,7 +182,7 @@ TEST(AsyncGenerator, ConsumingManySynchronousElementsDoesNotOverflowStack) {
   }());
 }
 
-TEST(AsyncGenerator, ProduceResultsAsynchronously) {
+TEST_F(AsyncGeneratorTest, ProduceResultsAsynchronously) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     folly::Executor* executor = co_await folly::coro::co_current_executor;
     auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<int> {
@@ -213,7 +217,7 @@ struct ConvertibleToIntReference {
   }
 };
 
-TEST(AsyncGenerator, GeneratorOfLValueReference) {
+TEST_F(AsyncGeneratorTest, GeneratorOfLValueReference) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<int&> {
     int value = 10;
     co_yield value;
@@ -244,7 +248,7 @@ struct ConvertibleToInt {
   }
 };
 
-TEST(AsyncGenerator, GeneratorOfConstLValueReference) {
+TEST_F(AsyncGeneratorTest, GeneratorOfConstLValueReference) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<const int&> {
     int value = 10;
     co_yield value;
@@ -269,7 +273,7 @@ TEST(AsyncGenerator, GeneratorOfConstLValueReference) {
   }());
 }
 
-TEST(AsyncGenerator, GeneratorOfRValueReference) {
+TEST_F(AsyncGeneratorTest, GeneratorOfRValueReference) {
   auto makeGenerator =
       []() -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
     co_yield std::make_unique<int>(10);
@@ -309,7 +313,7 @@ struct MoveOnly {
   int value_;
 };
 
-TEST(AsyncGenerator, GeneratorOfMoveOnlyType) {
+TEST_F(AsyncGeneratorTest, GeneratorOfMoveOnlyType) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<MoveOnly> {
     MoveOnly rvalue(1);
     co_yield std::move(rvalue);
@@ -334,7 +338,7 @@ TEST(AsyncGenerator, GeneratorOfMoveOnlyType) {
   }());
 }
 
-TEST(AsyncGenerator, GeneratorOfConstValue) {
+TEST_F(AsyncGeneratorTest, GeneratorOfConstValue) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<const int> {
     // OK to yield prvalue
     co_yield 42;
@@ -360,7 +364,7 @@ TEST(AsyncGenerator, GeneratorOfConstValue) {
   }());
 }
 
-TEST(AsyncGenerator, ExplicitValueType) {
+TEST_F(AsyncGeneratorTest, ExplicitValueType) {
   std::map<std::string, std::string> items;
   items["foo"] = "hello";
   items["bar"] = "goodbye";
@@ -390,7 +394,7 @@ TEST(AsyncGenerator, ExplicitValueType) {
   CHECK_EQ("au revoir", items["bar"]);
 }
 
-TEST(AsyncGenerator, InvokeLambda) {
+TEST_F(AsyncGeneratorTest, InvokeLambda) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto ptr = std::make_unique<int>(123);
     auto gen = folly::coro::co_invoke(
@@ -416,7 +420,7 @@ folly::coro::AsyncGenerator<Ref, Value> neverStream() {
   co_await baton;
 }
 
-TEST(AsyncGenerator, CancellationTokenPropagatesFromConsumer) {
+TEST_F(AsyncGeneratorTest, CancellationTokenPropagatesFromConsumer) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::CancellationSource cancelSource;
     bool suspended = false;

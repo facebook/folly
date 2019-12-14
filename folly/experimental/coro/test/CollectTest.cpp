@@ -35,10 +35,9 @@
 #include <string>
 #include <vector>
 
-////////////////////////////////////////////////////////
-// folly::coro::collectAll() tests
+class CollectAllTest : public testing::Test {};
 
-TEST(CollectAll, WithNoArgs) {
+TEST_F(CollectAllTest, WithNoArgs) {
   bool completed = false;
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     std::tuple<> result = co_await folly::coro::collectAll();
@@ -48,7 +47,7 @@ TEST(CollectAll, WithNoArgs) {
   CHECK(completed);
 }
 
-TEST(CollectAll, OneTaskWithValue) {
+TEST_F(CollectAllTest, OneTaskWithValue) {
   folly::coro::Baton baton;
   auto f = [&]() -> folly::coro::Task<std::string> {
     co_await baton;
@@ -83,7 +82,7 @@ TEST(CollectAll, OneTaskWithValue) {
   CHECK(future.isReady());
 }
 
-TEST(CollectAll, OneVoidTask) {
+TEST_F(CollectAllTest, OneVoidTask) {
   bool completed = false;
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     // Checks that the task actually runs and that 'void' results are
@@ -98,7 +97,7 @@ TEST(CollectAll, OneVoidTask) {
   CHECK(completed);
 }
 
-TEST(CollectAll, CollectAllDoesntCompleteUntilAllTasksComplete) {
+TEST_F(CollectAllTest, CollectAllDoesntCompleteUntilAllTasksComplete) {
   folly::coro::Baton baton1;
   folly::coro::Baton baton2;
   bool task1Started = false;
@@ -145,7 +144,7 @@ struct ErrorA : std::exception {};
 struct ErrorB : std::exception {};
 struct ErrorC : std::exception {};
 
-TEST(CollectAll, ThrowsOneOfMultipleErrors) {
+TEST_F(CollectAllTest, ThrowsOneOfMultipleErrors) {
   bool caughtException = false;
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     try {
@@ -184,7 +183,7 @@ TEST(CollectAll, ThrowsOneOfMultipleErrors) {
   CHECK(caughtException);
 }
 
-TEST(CollectAll, SynchronousCompletionInLoopDoesntCauseStackOverflow) {
+TEST_F(CollectAllTest, SynchronousCompletionInLoopDoesntCauseStackOverflow) {
   // This test checks that collectAll() is using symmetric transfer to
   // resume the awaiting coroutine without consume stack-space.
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
@@ -224,7 +223,7 @@ folly::coro::Task<InitialValue> parallelAccumulate(
   }
 }
 
-TEST(CollectAll, ParallelAccumulate) {
+TEST_F(CollectAllTest, ParallelAccumulate) {
   folly::CPUThreadPoolExecutor threadPool{
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
@@ -245,7 +244,7 @@ TEST(CollectAll, ParallelAccumulate) {
                   .scheduleOn(&threadPool));
 }
 
-TEST(CollectAll, CollectAllCancelsSubtasksWhenASubtaskFails) {
+TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenASubtaskFails) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -276,7 +275,7 @@ TEST(CollectAll, CollectAllCancelsSubtasksWhenASubtaskFails) {
   }());
 }
 
-TEST(CollectAll, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
+TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -321,7 +320,7 @@ class TestRequestData : public folly::RequestData {
 
 } // namespace
 
-TEST(CollectAll, CollectAllKeepsRequestContextOfChildTasksIndependent) {
+TEST_F(CollectAllTest, CollectAllKeepsRequestContextOfChildTasksIndependent) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::RequestContextScopeGuard requestScope;
 
@@ -357,7 +356,7 @@ TEST(CollectAll, CollectAllKeepsRequestContextOfChildTasksIndependent) {
   }());
 }
 
-TEST(CollectAll, TaskWithExecutorUsage) {
+TEST_F(CollectAllTest, TaskWithExecutorUsage) {
   folly::CPUThreadPoolExecutor threadPool{
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
@@ -372,10 +371,9 @@ TEST(CollectAll, TaskWithExecutorUsage) {
   }());
 }
 
-/////////////////////////////////////////////////////////
-// folly::coro::collectAllTry() tests
+class CollectAllTryTest : public testing::Test {};
 
-TEST(CollectAllTry, WithNoArgs) {
+TEST_F(CollectAllTryTest, WithNoArgs) {
   bool completed = false;
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     std::tuple<> result = co_await folly::coro::collectAllTry();
@@ -385,7 +383,7 @@ TEST(CollectAllTry, WithNoArgs) {
   CHECK(completed);
 }
 
-TEST(CollectAllTry, OneTaskWithValue) {
+TEST_F(CollectAllTryTest, OneTaskWithValue) {
   folly::coro::Baton baton;
   auto f = [&]() -> folly::coro::Task<std::string> {
     co_await baton;
@@ -420,7 +418,7 @@ TEST(CollectAllTry, OneTaskWithValue) {
   CHECK(future.isReady());
 }
 
-TEST(CollectAllTry, OneTaskWithError) {
+TEST_F(CollectAllTryTest, OneTaskWithError) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto [result] =
         co_await folly::coro::collectAllTry([&]() -> folly::coro::Task<void> {
@@ -435,7 +433,7 @@ TEST(CollectAllTry, OneTaskWithError) {
   }());
 }
 
-TEST(CollectAllTry, PartialFailure) {
+TEST_F(CollectAllTryTest, PartialFailure) {
   folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
     auto [aRes, bRes, cRes, dRes] = co_await folly::coro::collectAllTry(
         []() -> folly::coro::Task<int> { co_return 123; }(),
@@ -459,7 +457,7 @@ TEST(CollectAllTry, PartialFailure) {
   }());
 }
 
-TEST(CollectAllTry, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
+TEST_F(CollectAllTryTest, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -497,7 +495,7 @@ TEST(CollectAllTry, CollectAllTryDoesNotCancelSubtasksWhenASubtaskFails) {
   }());
 }
 
-TEST(CollectAllTry, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
+TEST_F(CollectAllTryTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -529,7 +527,7 @@ TEST(CollectAllTry, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
   }());
 }
 
-TEST(CollectAllTry, CollectAllTryKeepsRequestContextOfChildTasksIndependent) {
+TEST_F(CollectAllTryTest, KeepsRequestContextOfChildTasksIndependent) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::RequestContextScopeGuard requestScope;
 
@@ -565,10 +563,9 @@ TEST(CollectAllTry, CollectAllTryKeepsRequestContextOfChildTasksIndependent) {
   }());
 }
 
-/////////////////////////////////////////////////////////////
-// collectAllRange() tests
+class CollectAllRangeTest : public testing::Test {};
 
-TEST(CollectAllRange, EmptyRangeOfVoidTask) {
+TEST_F(CollectAllRangeTest, EmptyRangeOfVoidTask) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     std::vector<folly::coro::Task<void>> tasks;
     auto collectTask = folly::coro::collectAllRange(std::move(tasks));
@@ -580,7 +577,7 @@ TEST(CollectAllRange, EmptyRangeOfVoidTask) {
   }());
 }
 
-TEST(CollectAllRange, RangeOfVoidAllSucceeding) {
+TEST_F(CollectAllRangeTest, RangeOfVoidAllSucceeding) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int count = 0;
     auto makeTask = [&]() -> folly::coro::Task<void> {
@@ -599,7 +596,7 @@ TEST(CollectAllRange, RangeOfVoidAllSucceeding) {
   }());
 }
 
-TEST(CollectAllRange, RangeOfVoidSomeFailing) {
+TEST_F(CollectAllRangeTest, RangeOfVoidSomeFailing) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int count = 0;
     auto makeTask = [&]() -> folly::coro::Task<void> {
@@ -626,7 +623,7 @@ TEST(CollectAllRange, RangeOfVoidSomeFailing) {
   }());
 }
 
-TEST(CollectAllRange, RangeOfNonVoid) {
+TEST_F(CollectAllRangeTest, RangeOfNonVoid) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int count = 0;
     auto makeTask = [&]() -> folly::coro::Task<int> {
@@ -659,7 +656,7 @@ TEST(CollectAllRange, RangeOfNonVoid) {
   }());
 }
 
-TEST(CollectAllRange, SubtasksCancelledWhenASubtaskFails) {
+TEST_F(CollectAllRangeTest, SubtasksCancelledWhenASubtaskFails) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -696,7 +693,7 @@ TEST(CollectAllRange, SubtasksCancelledWhenASubtaskFails) {
   }());
 }
 
-TEST(CollectAllRange, SubtasksCancelledWhenParentTaskCancelled) {
+TEST_F(CollectAllRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -734,9 +731,7 @@ TEST(CollectAllRange, SubtasksCancelledWhenParentTaskCancelled) {
   }());
 }
 
-TEST(
-    CollectAllRange,
-    CollectAllRangeKeepsRequestContextOfChildTasksIndependent) {
+TEST_F(CollectAllRangeTest, KeepsRequestContextOfChildTasksIndependent) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::RequestContextScopeGuard requestScope;
 
@@ -777,7 +772,7 @@ TEST(
   }());
 }
 
-TEST(CollectAllRange, VectorOfTaskWithExecutorUsage) {
+TEST_F(CollectAllRangeTest, VectorOfTaskWithExecutorUsage) {
   folly::CPUThreadPoolExecutor threadPool{
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
@@ -798,10 +793,9 @@ TEST(CollectAllRange, VectorOfTaskWithExecutorUsage) {
   }());
 }
 
-////////////////////////////////////////////////////////////////////
-// folly::coro::collectAllTryRange() tests
+class CollectAllTryRangeTest : public testing::Test {};
 
-TEST(CollectAllTryRange, RangeOfVoidSomeFailing) {
+TEST_F(CollectAllTryRangeTest, RangeOfVoidSomeFailing) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int count = 0;
     auto makeTask = [&]() -> folly::coro::Task<void> {
@@ -829,7 +823,7 @@ TEST(CollectAllTryRange, RangeOfVoidSomeFailing) {
   }());
 }
 
-TEST(CollectAllTryRange, RangeOfValueSomeFailing) {
+TEST_F(CollectAllTryRangeTest, RangeOfValueSomeFailing) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int count = 0;
     auto makeTask = [&]() -> folly::coro::Task<std::string> {
@@ -863,7 +857,7 @@ TEST(CollectAllTryRange, RangeOfValueSomeFailing) {
   }());
 }
 
-TEST(CollectAllTryRange, NotCancelledWhenSubtaskFails) {
+TEST_F(CollectAllTryRangeTest, NotCancelledWhenSubtaskFails) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto generateTasks = [&]()
         -> folly::coro::Generator<folly::coro::Task<void>&&> {
@@ -898,7 +892,7 @@ TEST(CollectAllTryRange, NotCancelledWhenSubtaskFails) {
   }());
 }
 
-TEST(CollectAllTryRange, SubtasksCancelledWhenParentTaskCancelled) {
+TEST_F(CollectAllTryRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -941,9 +935,7 @@ TEST(CollectAllTryRange, SubtasksCancelledWhenParentTaskCancelled) {
   }());
 }
 
-TEST(
-    CollectAllTryRange,
-    CollectAllTryRangeKeepsRequestContextOfChildTasksIndependent) {
+TEST_F(CollectAllTryRangeTest, KeepsRequestContextOfChildTasksIndependent) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::RequestContextScopeGuard requestScope;
 
@@ -984,10 +976,9 @@ TEST(
   }());
 }
 
-////////////////////////////////////////////////////////////////////
-// folly::coro::collectAllWindowed() tests
+class CollectAllWindowedTest : public testing::Test {};
 
-TEST(CollectAllWindowed, ConcurrentTasks) {
+TEST_F(CollectAllWindowedTest, ConcurrentTasks) {
   folly::CPUThreadPoolExecutor threadPool{
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
@@ -1011,7 +1002,7 @@ TEST(CollectAllWindowed, ConcurrentTasks) {
   }
 }
 
-TEST(CollectAllWindowed, WithGeneratorOfTaskOfValue) {
+TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfValue) {
   using namespace std::literals::chrono_literals;
 
   const std::size_t maxConcurrency = 10;
@@ -1053,7 +1044,7 @@ TEST(CollectAllWindowed, WithGeneratorOfTaskOfValue) {
   CHECK_EQ(100, completedCount);
 }
 
-TEST(CollectAllWindowed, WithGeneratorOfTaskOfVoid) {
+TEST_F(CollectAllWindowedTest, WithGeneratorOfTaskOfVoid) {
   using namespace std::literals::chrono_literals;
 
   const std::size_t maxConcurrency = 10;
@@ -1083,7 +1074,7 @@ TEST(CollectAllWindowed, WithGeneratorOfTaskOfVoid) {
   CHECK_EQ(100, completedCount);
 }
 
-TEST(CollectAllWindowed, VectorOfVoidTask) {
+TEST_F(CollectAllWindowedTest, VectorOfVoidTask) {
   using namespace std::literals::chrono_literals;
 
   int count = 0;
@@ -1103,7 +1094,7 @@ TEST(CollectAllWindowed, VectorOfVoidTask) {
   CHECK_EQ(10, count);
 }
 
-TEST(CollectAllWindowed, VectorOfValueTask) {
+TEST_F(CollectAllWindowedTest, VectorOfValueTask) {
   using namespace std::literals::chrono_literals;
 
   int count = 0;
@@ -1128,7 +1119,7 @@ TEST(CollectAllWindowed, VectorOfValueTask) {
   }
 }
 
-TEST(CollectAllWindowed, PartialFailure) {
+TEST_F(CollectAllWindowedTest, PartialFailure) {
   try {
     [[maybe_unused]] auto results =
         folly::coro::blockingWait(folly::coro::collectAllWindowed(
@@ -1158,7 +1149,7 @@ TEST(CollectAllWindowed, PartialFailure) {
   }
 }
 
-TEST(CollectAllWindowed, SubtasksCancelledWhenASubtaskFails) {
+TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenASubtaskFails) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -1191,7 +1182,7 @@ TEST(CollectAllWindowed, SubtasksCancelledWhenASubtaskFails) {
   }());
 }
 
-TEST(CollectAllWindowed, SubtasksCancelledWhenParentTaskCancelled) {
+TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
@@ -1232,9 +1223,7 @@ TEST(CollectAllWindowed, SubtasksCancelledWhenParentTaskCancelled) {
   }());
 }
 
-TEST(
-    CollectAllWindowed,
-    CollectAllWindowedKeepsRequestContextOfChildTasksIndependent) {
+TEST_F(CollectAllWindowedTest, KeepsRequestContextOfChildTasksIndependent) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::RequestContextScopeGuard requestScope;
 
@@ -1275,7 +1264,7 @@ TEST(
   }());
 }
 
-TEST(CollectAllWindowed, VectorOfTaskWithExecutorUsage) {
+TEST_F(CollectAllWindowedTest, VectorOfTaskWithExecutorUsage) {
   folly::CPUThreadPoolExecutor threadPool{
       4, std::make_shared<folly::NamedThreadFactory>("TestThreadPool")};
 
@@ -1297,10 +1286,9 @@ TEST(CollectAllWindowed, VectorOfTaskWithExecutorUsage) {
   }());
 }
 
-////////////////////////////////////////////////////////////////////
-// folly::coro::collectAllTryWindowed() tests
+class CollectAllTryWindowedTest : public testing::Test {};
 
-TEST(CollectAllTryWindowed, PartialFailure) {
+TEST_F(CollectAllTryWindowedTest, PartialFailure) {
   auto results = folly::coro::blockingWait(folly::coro::collectAllTryWindowed(
       []() -> folly::coro::Generator<folly::coro::Task<int>&&> {
         for (int i = 0; i < 10; ++i) {
@@ -1336,7 +1324,7 @@ TEST(CollectAllTryWindowed, PartialFailure) {
   }
 }
 
-TEST(CollectAllTryWindowed, GeneratorFailure) {
+TEST_F(CollectAllTryWindowedTest, GeneratorFailure) {
   int active = 0;
   int started = 0;
   auto makeTask = [&](int i) -> folly::coro::Task<void> {
@@ -1369,7 +1357,7 @@ TEST(CollectAllTryWindowed, GeneratorFailure) {
   CHECK_EQ(0, active);
 }
 
-TEST(CollectAllTryWindowed, NotCancelledWhenSubtaskFails) {
+TEST_F(CollectAllTryWindowedTest, NotCancelledWhenSubtaskFails) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto generateTasks = [&]()
         -> folly::coro::Generator<folly::coro::Task<void>&&> {
@@ -1400,7 +1388,7 @@ TEST(CollectAllTryWindowed, NotCancelledWhenSubtaskFails) {
   }());
 }
 
-TEST(CollectAllTryWindowed, SubtasksCancelledWhenParentTaskCancelled) {
+TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
   using namespace std::chrono_literals;
 
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {

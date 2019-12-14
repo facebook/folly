@@ -27,7 +27,9 @@
 template <typename T>
 using InlineTask = folly::coro::detail::InlineTask<T>;
 
-TEST(InlineTask, CallVoidTaskWithoutAwaitingNeverRuns) {
+class InlineTaskTest : public testing::Test {};
+
+TEST_F(InlineTaskTest, CallVoidTaskWithoutAwaitingNeverRuns) {
   bool hasStarted = false;
   auto f = [&]() -> InlineTask<void> {
     hasStarted = true;
@@ -40,7 +42,7 @@ TEST(InlineTask, CallVoidTaskWithoutAwaitingNeverRuns) {
   EXPECT_FALSE(hasStarted);
 }
 
-TEST(InlineTask, CallValueTaskWithoutAwaitingNeverRuns) {
+TEST_F(InlineTaskTest, CallValueTaskWithoutAwaitingNeverRuns) {
   bool hasStarted = false;
   auto f = [&]() -> InlineTask<int> {
     hasStarted = true;
@@ -53,7 +55,7 @@ TEST(InlineTask, CallValueTaskWithoutAwaitingNeverRuns) {
   EXPECT_FALSE(hasStarted);
 }
 
-TEST(InlineTask, CallRefTaskWithoutAwaitingNeverRuns) {
+TEST_F(InlineTaskTest, CallRefTaskWithoutAwaitingNeverRuns) {
   bool hasStarted = false;
   int value;
   auto f = [&]() -> InlineTask<int&> {
@@ -67,7 +69,7 @@ TEST(InlineTask, CallRefTaskWithoutAwaitingNeverRuns) {
   EXPECT_FALSE(hasStarted);
 }
 
-TEST(InlineTask, SimpleVoidTask) {
+TEST_F(InlineTaskTest, SimpleVoidTask) {
   bool hasRun = false;
   auto f = [&]() -> InlineTask<void> {
     hasRun = true;
@@ -79,7 +81,7 @@ TEST(InlineTask, SimpleVoidTask) {
   EXPECT_TRUE(hasRun);
 }
 
-TEST(InlineTask, SimpleValueTask) {
+TEST_F(InlineTaskTest, SimpleValueTask) {
   bool hasRun = false;
   auto f = [&]() -> InlineTask<int> {
     hasRun = true;
@@ -91,7 +93,7 @@ TEST(InlineTask, SimpleValueTask) {
   EXPECT_TRUE(hasRun);
 }
 
-TEST(InlineTask, SimpleRefTask) {
+TEST_F(InlineTaskTest, SimpleRefTask) {
   bool hasRun = false;
   auto f = [&]() -> InlineTask<bool&> {
     hasRun = true;
@@ -128,7 +130,7 @@ struct TypeWithImplicitSingleValueConstructor {
   /* implicit */ TypeWithImplicitSingleValueConstructor(float x) : value_(x) {}
 };
 
-TEST(InlineTask, ReturnValueWithInitializerListSyntax) {
+TEST_F(InlineTaskTest, ReturnValueWithInitializerListSyntax) {
   auto f = []() -> InlineTask<TypeWithImplicitSingleValueConstructor> {
     co_return{1.23f};
   };
@@ -146,7 +148,7 @@ struct TypeWithImplicitMultiValueConstructor {
       : s_(s), x_(x) {}
 };
 
-TEST(InlineTask, ReturnValueWithInitializerListSyntax2) {
+TEST_F(InlineTaskTest, ReturnValueWithInitializerListSyntax2) {
   auto f = []() -> InlineTask<TypeWithImplicitMultiValueConstructor> {
 #if 0
     // Under clang:
@@ -162,7 +164,7 @@ TEST(InlineTask, ReturnValueWithInitializerListSyntax2) {
   EXPECT_EQ(3.1415f, result.x_);
 }
 
-TEST(InlineTask, TaskOfMoveOnlyType) {
+TEST_F(InlineTaskTest, TaskOfMoveOnlyType) {
   auto f = []() -> InlineTask<MoveOnlyType> { co_return MoveOnlyType{42}; };
 
   auto x = folly::coro::blockingWait(f());
@@ -180,7 +182,7 @@ TEST(InlineTask, TaskOfMoveOnlyType) {
   EXPECT_TRUE(executed);
 }
 
-TEST(InlineTask, MoveOnlyTypeNRVO) {
+TEST_F(InlineTaskTest, MoveOnlyTypeNRVO) {
   auto f = []() -> InlineTask<MoveOnlyType> {
     MoveOnlyType x{10};
     co_return x;
@@ -190,7 +192,7 @@ TEST(InlineTask, MoveOnlyTypeNRVO) {
   EXPECT_EQ(10, x.value_);
 }
 
-TEST(InlineTask, ReturnLvalueReference) {
+TEST_F(InlineTaskTest, ReturnLvalueReference) {
   int value = 0;
   auto f = [&]() -> InlineTask<int&> { co_return value; };
 
@@ -200,7 +202,7 @@ TEST(InlineTask, ReturnLvalueReference) {
 
 struct MyException : std::exception {};
 
-TEST(InlineTask, ExceptionsPropagateFromVoidTask) {
+TEST_F(InlineTaskTest, ExceptionsPropagateFromVoidTask) {
   auto f = []() -> InlineTask<void> {
     co_await std::experimental::suspend_never{};
     throw MyException{};
@@ -208,7 +210,7 @@ TEST(InlineTask, ExceptionsPropagateFromVoidTask) {
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
 }
 
-TEST(InlineTask, ExceptionsPropagateFromValueTask) {
+TEST_F(InlineTaskTest, ExceptionsPropagateFromValueTask) {
   auto f = []() -> InlineTask<int> {
     co_await std::experimental::suspend_never{};
     throw MyException{};
@@ -216,7 +218,7 @@ TEST(InlineTask, ExceptionsPropagateFromValueTask) {
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
 }
 
-TEST(InlineTask, ExceptionsPropagateFromRefTask) {
+TEST_F(InlineTaskTest, ExceptionsPropagateFromRefTask) {
   auto f = []() -> InlineTask<int&> {
     co_await std::experimental::suspend_never{};
     throw MyException{};
@@ -235,7 +237,7 @@ struct ThrowingCopyConstructor {
   ThrowingCopyConstructor& operator=(const ThrowingCopyConstructor&) = delete;
 };
 
-TEST(InlineTask, ExceptionsPropagateFromReturnValueConstructor) {
+TEST_F(InlineTaskTest, ExceptionsPropagateFromReturnValueConstructor) {
   auto f = []() -> InlineTask<ThrowingCopyConstructor> { co_return{}; };
   EXPECT_THROW(folly::coro::blockingWait(f()), MyException);
 }
@@ -246,7 +248,7 @@ InlineTask<void> recursiveTask(int depth) {
   }
 }
 
-TEST(InlineTask, DeepRecursionDoesntStackOverflow) {
+TEST_F(InlineTaskTest, DeepRecursionDoesntStackOverflow) {
   folly::coro::blockingWait(recursiveTask(500000));
 }
 
@@ -257,7 +259,7 @@ InlineTask<int> recursiveValueTask(int depth) {
   co_return 0;
 }
 
-TEST(InlineTask, DeepRecursionOfValueTaskDoesntStackOverflow) {
+TEST_F(InlineTaskTest, DeepRecursionOfValueTaskDoesntStackOverflow) {
   EXPECT_EQ(500000, folly::coro::blockingWait(recursiveValueTask(500000)));
 }
 
@@ -269,7 +271,7 @@ InlineTask<void> recursiveThrowingTask(int depth) {
   throw MyException{};
 }
 
-TEST(InlineTask, DeepRecursionOfExceptions) {
+TEST_F(InlineTaskTest, DeepRecursionOfExceptions) {
   EXPECT_THROW(
       folly::coro::blockingWait(recursiveThrowingTask(50000)), MyException);
 }

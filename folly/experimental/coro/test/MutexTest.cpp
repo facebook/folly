@@ -31,7 +31,9 @@
 
 using namespace folly;
 
-TEST(Mutex, TryLock) {
+class MutexTest : public testing::Test {};
+
+TEST_F(MutexTest, TryLock) {
   coro::Mutex m;
   CHECK(m.try_lock());
   CHECK(!m.try_lock());
@@ -39,7 +41,7 @@ TEST(Mutex, TryLock) {
   CHECK(m.try_lock());
 }
 
-TEST(Mutex, ScopedLock) {
+TEST_F(MutexTest, ScopedLock) {
   coro::Mutex m;
   {
     std::unique_lock<coro::Mutex> lock{m, std::try_to_lock};
@@ -55,7 +57,7 @@ TEST(Mutex, ScopedLock) {
   m.unlock();
 }
 
-TEST(Mutex, LockAsync) {
+TEST_F(MutexTest, LockAsync) {
   coro::Mutex m;
   coro::Baton b1;
   coro::Baton b2;
@@ -97,7 +99,7 @@ TEST(Mutex, LockAsync) {
   CHECK(m.try_lock());
 }
 
-TEST(Mutex, ScopedLockAsync) {
+TEST_F(MutexTest, ScopedLockAsync) {
   coro::Mutex m;
   coro::Baton b1;
   coro::Baton b2;
@@ -138,7 +140,7 @@ TEST(Mutex, ScopedLockAsync) {
   CHECK(m.try_lock());
 }
 
-TEST(Mutex, ThreadSafety) {
+TEST_F(MutexTest, ThreadSafety) {
   CPUThreadPoolExecutor threadPool{
       2, std::make_shared<NamedThreadFactory>("CPUThreadPool")};
 

@@ -32,7 +32,9 @@
 
 using namespace folly::coro;
 
-TEST(Merge, SimpleMerge) {
+class MergeTest : public testing::Test {};
+
+TEST_F(MergeTest, SimpleMerge) {
   blockingWait([]() -> Task<void> {
     auto generator = merge(
         co_await co_current_executor,
@@ -60,7 +62,7 @@ TEST(Merge, SimpleMerge) {
   }());
 }
 
-TEST(Merge, TruncateStream) {
+TEST_F(MergeTest, TruncateStream) {
   blockingWait([]() -> Task<void> {
     int started = 0;
     int completed = 0;
@@ -101,7 +103,7 @@ TEST(Merge, TruncateStream) {
   }());
 }
 
-TEST(Merge, SequencesOfRValueReferences) {
+TEST_F(MergeTest, SequencesOfRValueReferences) {
   blockingWait([]() -> Task<void> {
     auto makeStreamOfStreams =
         []() -> AsyncGenerator<AsyncGenerator<std::vector<int>&&>> {
@@ -126,7 +128,7 @@ TEST(Merge, SequencesOfRValueReferences) {
   }());
 }
 
-TEST(Merge, SequencesOfLValueReferences) {
+TEST_F(MergeTest, SequencesOfLValueReferences) {
   blockingWait([]() -> Task<void> {
     auto makeStreamOfStreams =
         []() -> AsyncGenerator<AsyncGenerator<std::vector<int>&>> {
@@ -175,7 +177,7 @@ folly::coro::AsyncGenerator<Ref, Value> neverStream() {
   co_await baton;
 }
 
-TEST(Merge, CancellationTokenPropagatesToOuterFromConsumer) {
+TEST_F(MergeTest, CancellationTokenPropagatesToOuterFromConsumer) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::CancellationSource cancelSource;
     bool suspended = false;
@@ -204,7 +206,7 @@ TEST(Merge, CancellationTokenPropagatesToOuterFromConsumer) {
   }());
 }
 
-TEST(Merge, CancellationTokenPropagatesToInnerFromConsumer) {
+TEST_F(MergeTest, CancellationTokenPropagatesToInnerFromConsumer) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::CancellationSource cancelSource;
     bool suspended = false;

@@ -27,7 +27,9 @@
 
 using namespace folly;
 
-TEST(Baton, Ready) {
+class BatonTest : public testing::Test {};
+
+TEST_F(BatonTest, Ready) {
   coro::Baton b;
   CHECK(!b.ready());
   b.post();
@@ -36,14 +38,14 @@ TEST(Baton, Ready) {
   CHECK(!b.ready());
 }
 
-TEST(Baton, InitiallyReady) {
+TEST_F(BatonTest, InitiallyReady) {
   coro::Baton b{true};
   CHECK(b.ready());
   b.reset();
   CHECK(!b.ready());
 }
 
-TEST(Baton, AwaitBaton) {
+TEST_F(BatonTest, AwaitBaton) {
   coro::Baton baton;
   bool reachedBeforeAwait = false;
   bool reachedAfterAwait = false;
@@ -72,7 +74,7 @@ TEST(Baton, AwaitBaton) {
   CHECK(reachedAfterAwait);
 }
 
-TEST(Baton, MultiAwaitBaton) {
+TEST_F(BatonTest, MultiAwaitBaton) {
   coro::Baton baton;
 
   bool reachedBeforeAwait1 = false;

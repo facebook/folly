@@ -26,7 +26,9 @@
 
 #include <folly/portability/GTest.h>
 
-TEST(Task, CoRescheduleOnCurrentExecutor) {
+class CoRescheduleOnCurrentExecutorTest : public testing::Test {};
+
+TEST_F(CoRescheduleOnCurrentExecutorTest, example) {
   std::vector<int> results;
   folly::coro::blockingWait(folly::coro::collectAll(
       folly::coro::co_invoke([&]() -> folly::coro::Task<void> {

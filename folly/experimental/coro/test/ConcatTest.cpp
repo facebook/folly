@@ -24,7 +24,6 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace ::testing;
 using namespace folly::coro;
 
 namespace {
@@ -46,7 +45,9 @@ Task<std::vector<int>> toVector(AsyncGenerator<int> generator) {
 
 } // namespace
 
-TEST(ConcatTest, ConcatSingle) {
+class ConcatTest : public testing::Test {};
+
+TEST_F(ConcatTest, ConcatSingle) {
   auto gen = concat(generateInts(0, 5));
   auto result = blockingWait(toVector(std::move(gen)));
   std::vector<int> expected{0, 1, 2, 3, 4};
@@ -54,7 +55,7 @@ TEST(ConcatTest, ConcatSingle) {
   EXPECT_EQ(result, expected);
 }
 
-TEST(ConcatTest, ConcatMultiple) {
+TEST_F(ConcatTest, ConcatMultiple) {
   auto gen =
       concat(generateInts(0, 5), generateInts(7, 10), generateInts(12, 15));
   auto result = blockingWait(toVector(std::move(gen)));

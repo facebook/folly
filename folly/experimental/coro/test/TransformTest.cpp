@@ -31,7 +31,9 @@
 
 using namespace folly::coro;
 
-TEST(Transform, SimpleStream) {
+class TransformTest : public testing::Test {};
+
+TEST_F(TransformTest, SimpleStream) {
   struct MyError : std::exception {};
 
   const float seenEndOfStream = 100.0f;
@@ -112,7 +114,7 @@ folly::coro::AsyncGenerator<Ref, Value> neverStream() {
   co_await baton;
 }
 
-TEST(Transform, CancellationTokenPropagatesFromConsumer) {
+TEST_F(TransformTest, CancellationTokenPropagatesFromConsumer) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     folly::CancellationSource cancelSource;
     bool suspended = false;

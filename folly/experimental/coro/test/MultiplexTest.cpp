@@ -28,7 +28,9 @@
 
 using namespace folly::coro;
 
-TEST(Multiplex, SimpleStream) {
+class MultiplexTest : public testing::Test {};
+
+TEST_F(MultiplexTest, SimpleStream) {
   struct MyError : std::exception {};
 
   blockingWait([]() -> Task<void> {

@@ -28,7 +28,9 @@
 
 using namespace folly::coro;
 
-TEST(Materialize, SimpleStream) {
+class MaterializeTest : public testing::Test {};
+
+TEST_F(MaterializeTest, SimpleStream) {
   struct MyError : std::exception {};
 
   const int seenEndOfStream = 100;

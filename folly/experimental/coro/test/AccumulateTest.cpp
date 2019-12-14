@@ -36,14 +36,16 @@ AsyncGenerator<int> generateInts(int begin, int end) {
 
 } // namespace
 
-TEST(AccumulateTest, NoOperationProvided) {
+class AccumulateTest : public testing::Test {};
+
+TEST_F(AccumulateTest, NoOperationProvided) {
   auto result = blockingWait(accumulate(generateInts(0, 5), 0));
   auto expected = 0 + 1 + 2 + 3 + 4;
 
   EXPECT_EQ(result, expected);
 }
 
-TEST(AccumulateTest, OperationProvided) {
+TEST_F(AccumulateTest, OperationProvided) {
   auto result =
       blockingWait(accumulate(generateInts(1, 5), 1, std::multiplies{}));
   auto expected = 1 * 2 * 3 * 4;

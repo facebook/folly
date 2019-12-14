@@ -28,7 +28,9 @@
 
 using namespace folly::coro;
 
-TEST(Dematerialize, SimpleStream) {
+class DematerializeTest : public testing::Test {};
+
+TEST_F(DematerializeTest, SimpleStream) {
   struct MyError : std::exception {};
 
   const int seenEndOfStream = 100;
@@ -95,7 +97,7 @@ TEST(Dematerialize, SimpleStream) {
   blockingWait(test(2));
 }
 
-TEST(Dematerialize, GeneratorOfRValueReference) {
+TEST_F(DematerializeTest, GeneratorOfRValueReference) {
   auto makeGenerator =
       []() -> folly::coro::AsyncGenerator<std::unique_ptr<int>&&> {
     co_yield std::make_unique<int>(10);
@@ -135,7 +137,7 @@ struct MoveOnly {
   int value_;
 };
 
-TEST(Dematerialize, GeneratorOfMoveOnlyType) {
+TEST_F(DematerializeTest, GeneratorOfMoveOnlyType) {
   auto makeGenerator = []() -> folly::coro::AsyncGenerator<MoveOnly> {
     MoveOnly rvalue(1);
     co_yield std::move(rvalue);

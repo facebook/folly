@@ -188,7 +188,9 @@ static coro::Task<void> parentRequest(int id) {
   CHECK(RequestContext::get()->getContextData(testToken2) == nullptr);
 }
 
-TEST(Task, RequestContextIsPreservedAcrossSuspendResume) {
+class TaskTest : public testing::Test {};
+
+TEST_F(TaskTest, RequestContextIsPreservedAcrossSuspendResume) {
   ManualExecutor executor;
 
   RequestContextScopeGuard requestScope;
@@ -238,7 +240,7 @@ TEST(Task, RequestContextIsPreservedAcrossSuspendResume) {
   }
 }
 
-TEST(Task, ContextPreservedAcrossMutexLock) {
+TEST_F(TaskTest, ContextPreservedAcrossMutexLock) {
   folly::coro::Mutex mutex;
 
   auto handleRequest =
@@ -291,7 +293,7 @@ TEST(Task, ContextPreservedAcrossMutexLock) {
   EXPECT_FALSE(t2.hasException());
 }
 
-TEST(Task, RequestContextSideEffectsArePreserved) {
+TEST_F(TaskTest, RequestContextSideEffectsArePreserved) {
   auto f =
       [&](folly::coro::Baton& baton) -> folly::coro::detail::InlineTask<void> {
     RequestContext::create();
@@ -337,7 +339,7 @@ TEST(Task, RequestContextSideEffectsArePreserved) {
   EXPECT_FALSE(t.hasException());
 }
 
-TEST(Task, FutureTailCall) {
+TEST_F(TaskTest, FutureTailCall) {
   EXPECT_EQ(
       42,
       folly::coro::blockingWait(
@@ -361,14 +363,14 @@ folly::coro::Task<int&> returnIntRef(int& value) {
   co_return value;
 }
 
-TEST(Task, TaskOfLvalueReference) {
+TEST_F(TaskTest, TaskOfLvalueReference) {
   int value = 123;
   auto&& result = folly::coro::blockingWait(returnIntRef(value));
   static_assert(std::is_same_v<decltype(result), int&>);
   CHECK_EQ(&value, &result);
 }
 
-TEST(Task, TaskOfLvalueReferenceAsTry) {
+TEST_F(TaskTest, TaskOfLvalueReferenceAsTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int value = 123;
     auto&& result = co_await co_awaitTry(returnIntRef(value));
@@ -380,7 +382,7 @@ TEST(Task, TaskOfLvalueReferenceAsTry) {
   }());
 }
 
-TEST(Task, CancellationPropagation) {
+TEST_F(TaskTest, CancellationPropagation) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto token = co_await folly::coro::co_current_cancellation_token;
     CHECK(!token.canBeCancelled());
@@ -407,7 +409,7 @@ TEST(Task, CancellationPropagation) {
   }());
 }
 
-TEST(Task, StartInlineUnsafe) {
+TEST_F(TaskTest, StartInlineUnsafe) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto executor = co_await folly::coro::co_current_executor;
     bool hasStarted = false;
