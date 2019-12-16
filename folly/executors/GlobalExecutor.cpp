@@ -20,6 +20,7 @@
 #include <folly/Function.h>
 #include <folly/SharedMutex.h>
 #include <folly/Singleton.h>
+#include <folly/detail/AsyncTrace.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/IOExecutor.h>
@@ -140,6 +141,7 @@ Executor::KeepAlive<> getGlobalCPUExecutor() {
   if (!executorPtr) {
     throw std::runtime_error("Requested global CPU executor during shutdown.");
   }
+  async_tracing::logGetImmutableCPUExecutor(executorPtr.get());
   return folly::getKeepAliveToken(executorPtr.get());
 }
 
@@ -148,27 +150,36 @@ Executor::KeepAlive<> getGlobalIOExecutor() {
   if (!executorPtr) {
     throw std::runtime_error("Requested global IO executor during shutdown.");
   }
+  async_tracing::logGetImmutableIOExecutor(executorPtr.get());
   return folly::getKeepAliveToken(executorPtr.get());
 }
 
 std::shared_ptr<Executor> getCPUExecutor() {
   auto& singleton = gGlobalCPUExecutor.get();
-  return singleton.get();
+  auto executor = singleton.get();
+  async_tracing::logGetGlobalCPUExecutor(executor.get());
+  return executor;
 }
 
 void setCPUExecutorToGlobalCPUExecutor() {
+  async_tracing::logSetGlobalCPUExecutorToImmutable();
   gGlobalCPUExecutor.get().setFromImmutable();
 }
 
 void setCPUExecutor(std::weak_ptr<Executor> executor) {
+  async_tracing::logSetGlobalCPUExecutor(executor.lock().get());
   gGlobalCPUExecutor.get().set(std::move(executor));
 }
 
 std::shared_ptr<IOExecutor> getIOExecutor() {
-  return gGlobalIOExecutor.get().get();
+  auto& singleton = gGlobalIOExecutor.get();
+  auto executor = singleton.get();
+  async_tracing::logGetGlobalCPUExecutor(executor.get());
+  return executor;
 }
 
 void setIOExecutor(std::weak_ptr<IOExecutor> executor) {
+  async_tracing::logSetGlobalIOExecutor(executor.lock().get());
   gGlobalIOExecutor.get().set(std::move(executor));
 }
 
