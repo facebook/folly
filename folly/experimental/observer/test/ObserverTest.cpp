@@ -16,6 +16,7 @@
 
 #include <thread>
 
+#include <folly/Singleton.h>
 #include <folly/experimental/observer/SimpleObservable.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
@@ -473,4 +474,10 @@ TEST(Observer, GetSnapshotOnManagerThread) {
   }
   finishBaton.post();
   destructorBaton.wait();
+}
+
+TEST(Observer, Shutdown) {
+  folly::SingletonVault::singleton()->destroyInstances();
+  auto observer = folly::observer::makeObserver([] { return 42; });
+  EXPECT_EQ(42, **observer);
 }

@@ -43,7 +43,7 @@ constexpr StringPiece kObserverManagerThreadNamePrefix{"ObserverMngr"};
 constexpr size_t kNextBatchSize{1024};
 } // namespace
 
-class ObserverManager::CurrentQueue {
+class ObserverManager::UpdatesManager::CurrentQueue {
  public:
   CurrentQueue() {
     if (FLAGS_observer_manager_pool_size < 1) {
@@ -96,10 +96,12 @@ class ObserverManager::CurrentQueue {
   std::vector<std::thread> threads_;
 };
 
-class ObserverManager::NextQueue {
+class ObserverManager::UpdatesManager::NextQueue {
  public:
-  explicit NextQueue(ObserverManager& manager) : manager_(manager) {
+  NextQueue() {
     thread_ = std::thread([&]() {
+      auto& manager = getInstance();
+
       folly::setThreadName(
           folly::sformat("{}NQ", kObserverManagerThreadNamePrefix));
 
@@ -119,7 +121,7 @@ class ObserverManager::NextQueue {
         }
 
         {
-          SharedMutexReadPriority::WriteHolder wh(manager_.versionMutex_);
+          SharedMutexReadPriority::WriteHolder wh(manager.versionMutex_);
 
           // We can't pick more tasks from the queue after we bumped the
           // version, so we have to do this while holding the lock.
@@ -137,11 +139,11 @@ class ObserverManager::NextQueue {
             corePtr->setForceRefresh();
           }
 
-          ++manager_.version_;
+          ++manager.version_;
         }
 
         for (auto& core : cores) {
-          manager_.scheduleRefresh(std::move(core), manager_.version_);
+          manager.scheduleRefresh(std::move(core), manager.version_);
         }
 
         {
@@ -182,60 +184,66 @@ class ObserverManager::NextQueue {
   }
 
  private:
-  ObserverManager& manager_;
   UMPSCQueue<Core::WeakPtr, true> queue_;
   std::thread thread_;
   std::atomic<bool> stop_{false};
   folly::Synchronized<std::vector<std::promise<void>>> emptyWaiters_;
 };
 
-ObserverManager::ObserverManager() {
+ObserverManager::UpdatesManager::UpdatesManager() {
   currentQueue_ = std::make_unique<CurrentQueue>();
-  nextQueue_ = std::make_unique<NextQueue>(*this);
+  nextQueue_ = std::make_unique<NextQueue>();
 }
 
-ObserverManager::~ObserverManager() {
+ObserverManager::UpdatesManager::~UpdatesManager() {
   // Destroy NextQueue, before the rest of this object, since it expects
   // ObserverManager to be alive.
   nextQueue_.reset();
   currentQueue_.reset();
 }
 
-void ObserverManager::scheduleCurrent(Function<void()> task) {
+void ObserverManager::UpdatesManager::scheduleCurrent(Function<void()> task) {
   currentQueue_->add(std::move(task));
 }
 
-void ObserverManager::scheduleNext(Core::WeakPtr core) {
+void ObserverManager::UpdatesManager::scheduleNext(Core::WeakPtr core) {
   nextQueue_->add(std::move(core));
 }
 
 void ObserverManager::waitForAllUpdates() {
-  auto instance = getInstance();
-
-  if (!instance) {
-    return;
+  if (auto updatesManager = getUpdatesManager()) {
+    return updatesManager->waitForAllUpdates();
   }
+}
 
-  instance->nextQueue_->waitForEmpty();
+void ObserverManager::UpdatesManager::waitForAllUpdates() {
+  auto& instance = ObserverManager::getInstance();
+  nextQueue_->waitForEmpty();
   // Wait for all readers to release the lock.
-  SharedMutexReadPriority::WriteHolder wh(instance->versionMutex_);
+  SharedMutexReadPriority::WriteHolder wh(instance.versionMutex_);
 }
 
 struct ObserverManager::Singleton {
-  static folly::Singleton<ObserverManager> instance;
+  static folly::Singleton<UpdatesManager> instance;
   // MSVC 2015 doesn't let us access ObserverManager's constructor if we
   // try to use a lambda to initialize instance, so we have to create
   // an actual function instead.
-  static ObserverManager* createManager() {
-    return new ObserverManager();
+  static UpdatesManager* createManager() {
+    return new UpdatesManager();
   }
 };
 
-folly::Singleton<ObserverManager> ObserverManager::Singleton::instance(
-    createManager);
+folly::Singleton<ObserverManager::UpdatesManager>
+    ObserverManager::Singleton::instance(createManager);
 
-std::shared_ptr<ObserverManager> ObserverManager::getInstance() {
+std::shared_ptr<ObserverManager::UpdatesManager>
+ObserverManager::getUpdatesManager() {
   return Singleton::instance.try_get();
+}
+
+ObserverManager& ObserverManager::getInstance() {
+  static auto instance = new ObserverManager();
+  return *instance;
 }
 } // namespace observer_detail
 } // namespace folly
