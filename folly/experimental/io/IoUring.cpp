@@ -265,12 +265,7 @@ Range<AsyncBase::Op**> IoUring::doWait(
       result.push_back(op);
     } else {
       if (count < minRequests) {
-        io_uring_enter(
-            ioRing_.ring_fd,
-            0,
-            minRequests - count,
-            IORING_ENTER_GETEVENTS,
-            nullptr);
+        io_uring_wait_cqe(&ioRing_, &cqe);
       } else {
         break;
       }
