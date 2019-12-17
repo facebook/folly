@@ -27,6 +27,12 @@ namespace folly {
 
 class IoUringBackend : public PollIoBackend {
  public:
+  class NotAvailable : public std::runtime_error {
+   public:
+    explicit NotAvailable(const std::string& what) noexcept
+        : std::runtime_error(what) {}
+  };
+
   explicit IoUringBackend(
       size_t capacity,
       size_t maxSubmit = 128,

@@ -37,7 +37,7 @@ IoUringBackend::IoUringBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
                << params_.cq_entries << ") "
                << "failed errno = " << errno << ":\"" << folly::errnoStr(errno)
                << "\" " << this;
-    throw std::runtime_error("io_uring_queue_init error");
+    throw NotAvailable("io_uring_queue_init error");
   }
 
   sqRingMask_ = *ioRing_.sq.kring_mask;
@@ -63,7 +63,7 @@ IoUringBackend::IoUringBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
   if (!addTimerFd()) {
     cleanup();
     entries_.reset();
-    throw std::runtime_error("io_uring_submit error");
+    throw NotAvailable("io_uring_submit error");
   }
 }
 
@@ -87,7 +87,7 @@ bool IoUringBackend::isAvailable() {
   folly::call_once(initFlag, [&]() {
     try {
       IoUringBackend backend(1024, 128);
-    } catch (const std::runtime_error&) {
+    } catch (const NotAvailable&) {
       sAvailable = false;
     }
   });
