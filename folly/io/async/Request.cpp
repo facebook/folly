@@ -772,12 +772,12 @@ RequestContext::StaticContext& RequestContext::getStaticContext() {
   return SingletonT::get();
 }
 
-/* static */ std::vector<std::pair<std::thread::id, intptr_t>>
+/* static */ std::vector<RequestContext::RootIdInfo>
 RequestContext::getRootIdsFromAllThreads() {
-  std::vector<std::pair<std::thread::id, intptr_t>> result;
+  std::vector<RootIdInfo> result;
   auto accessor = SingletonT::accessAllThreads();
   for (auto it = accessor.begin(); it != accessor.end(); ++it) {
-    result.push_back({it.getThreadId(), it->second});
+    result.push_back({it->second, it.getThreadId(), it.getOSThreadId()});
   }
   return result;
 }

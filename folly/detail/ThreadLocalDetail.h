@@ -37,6 +37,7 @@
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
+#include <folly/system/ThreadId.h>
 
 #include <folly/detail/StaticSingletonManager.h>
 
@@ -214,6 +215,7 @@ struct ThreadEntry {
   ThreadEntry* listNext{nullptr};
   StaticMetaBase* meta{nullptr};
   bool removed_{false};
+  uint64_t tid_os{};
   aligned_storage_for_t<std::thread::id> tid_data{};
 
   size_t getElementsCapacity() const noexcept {
@@ -480,6 +482,7 @@ struct StaticMeta final : StaticMetaBase {
       }
 
       threadEntry->tid() = std::this_thread::get_id();
+      threadEntry->tid_os = folly::getOSThreadID();
 
       // if we're adding a thread entry
       // we need to increment the list count

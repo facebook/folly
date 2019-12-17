@@ -201,6 +201,10 @@ class SingletonThreadLocal {
       std::thread::id getThreadId() const {
         return this->base().getThreadId();
       }
+
+      uint64_t getOSThreadId() const {
+        return this->base().getOSThreadId();
+      }
     };
 
     Accessor(const Accessor&) = delete;

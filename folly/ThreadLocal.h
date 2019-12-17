@@ -373,6 +373,10 @@ class ThreadLocalPtr {
       std::thread::id getThreadId() const {
         return e_->getThreadEntry()->tid();
       }
+
+      uint64_t getOSThreadId() const {
+        return e_->getThreadEntry()->tid_os;
+      }
     };
 
     ~Accessor() {

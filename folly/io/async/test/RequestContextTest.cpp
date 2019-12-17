@@ -77,7 +77,7 @@ class RequestContextTest : public ::testing::Test {
     std::vector<intptr_t> result;
     std::transform(
         rootids.begin(), rootids.end(), std::back_inserter(result), [](auto e) {
-          return e.second;
+          return e.id;
         });
     return result;
   }
@@ -373,7 +373,8 @@ TEST_F(RequestContextTest, ThreadId) {
   RequestContextScopeGuard g;
   auto ctxBase = std::make_shared<RequestContext>();
   auto rootids = RequestContext::getRootIdsFromAllThreads();
-  EXPECT_EQ(*folly::getThreadName(rootids[0].first), "DummyThread");
+  EXPECT_EQ(*folly::getThreadName(rootids[0].tid), "DummyThread");
+  EXPECT_EQ(rootids[0].tidOS, folly::getOSThreadID());
 
   EventBase base;
   base.runInEventBaseThread([&]() {
@@ -387,11 +388,11 @@ TEST_F(RequestContextTest, ThreadId) {
   th.join();
 
   std::sort(rootids.begin(), rootids.end(), [](const auto& a, const auto& b) {
-    auto aname = folly::getThreadName(a.first);
-    auto bname = folly::getThreadName(b.first);
+    auto aname = folly::getThreadName(a.tid);
+    auto bname = folly::getThreadName(b.tid);
     return (aname ? *aname : "zzz") < (bname ? *bname : "zzz");
   });
 
-  EXPECT_EQ(*folly::getThreadName(rootids[0].first), "DummyThread");
-  EXPECT_FALSE(folly::getThreadName(rootids[1].first));
+  EXPECT_EQ(*folly::getThreadName(rootids[0].tid), "DummyThread");
+  EXPECT_FALSE(folly::getThreadName(rootids[1].tid));
 }
