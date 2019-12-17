@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/ConstexprMath.h>
 #include <glog/logging.h>
 
 namespace folly {
@@ -86,8 +87,14 @@ void MultiLevelTimeSeries<VT, CT>::addValueAggregated(
     flush();
     cachedTime_ = now;
   }
-  cachedSum_ += total;
-  cachedCount_ += nsamples;
+  // We have no control over how many different values get added to a time
+  // series.
+  // We also have no control over their value. We also want to keep some partial
+  // ordering; meaning large numbers should stay large, and negative numbers
+  // should stay negative. So use the constexpr_add_overflow_clamped so that
+  // this never overflows
+  cachedSum_ = constexpr_add_overflow_clamped(cachedSum_, total);
+  cachedCount_ = constexpr_add_overflow_clamped(cachedCount_, nsamples);
 }
 
 template <typename VT, typename CT>
