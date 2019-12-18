@@ -225,7 +225,7 @@ size_t PollIoBackend::processActiveEvents() {
   size_t ret = 0;
   IoCb* ioCb;
 
-  while (!activeEvents_.empty()) {
+  while (!activeEvents_.empty() && !loopBreak_) {
     bool release = true;
     ioCb = &activeEvents_.front();
     activeEvents_.pop_front();
@@ -261,14 +261,17 @@ size_t PollIoBackend::processActiveEvents() {
 int PollIoBackend::eb_event_base_loop(int flags) {
   // schedule the timers
   bool done = false;
+  auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT
+                                                 : WaitForEventsMode::WAIT;
   while (!done) {
     scheduleTimeout();
-    submitList(submitList_);
     // check if we need to break here
     if (loopBreak_) {
       loopBreak_ = false;
       break;
     }
+
+    submitList(submitList_, waitForEvents);
 
     if (!numInsertedEvents_ && timers_.empty()) {
       return 1;
@@ -279,7 +282,8 @@ int PollIoBackend::eb_event_base_loop(int flags) {
       eb_poll_loop_pre_hook(&call_time);
     }
 
-    int ret = getActiveEvents();
+    // do not wait for events if EVLOOP_NONBLOCK is set
+    int ret = getActiveEvents(waitForEvents);
 
     if (eb_poll_loop_post_hook) {
       eb_poll_loop_post_hook(call_time, ret);
@@ -287,12 +291,12 @@ int PollIoBackend::eb_event_base_loop(int flags) {
 
     size_t numProcessedTimers = 0;
 
-    if (processTimers_) {
+    if (processTimers_ && !loopBreak_) {
       numProcessedTimers = processTimers();
       processTimers_ = false;
     }
 
-    if (!activeEvents_.empty()) {
+    if (!activeEvents_.empty() && !loopBreak_) {
       processActiveEvents();
       if (flags & EVLOOP_ONCE) {
         done = true;

@@ -46,8 +46,8 @@ class IoUringBackend : public PollIoBackend {
  protected:
   // from PollIoBackend
   void* allocSubmissionEntry() override;
-  int getActiveEvents(bool waitForEvents = true) override;
-  size_t submitList(IoCbList& ioCbs) override;
+  int getActiveEvents(WaitForEventsMode waitForEvents) override;
+  size_t submitList(IoCbList& ioCbs, WaitForEventsMode waitForEvents) override;
   int submitOne(IoCb* ioCb) override;
   int cancelOne(IoCb* ioCb) override;
 

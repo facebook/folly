@@ -124,11 +124,12 @@ int IoUringBackend::cancelOne(IoCb* ioCb) {
   return ret;
 }
 
-int IoUringBackend::getActiveEvents(bool waitForEvents) {
+int IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   size_t i = 0;
   struct io_uring_cqe* cqe = nullptr;
   // we can be called from the submitList() method
-  if (FOLLY_LIKELY(waitForEvents)) {
+  // or with non blocking flags
+  if (FOLLY_LIKELY(waitForEvents == WaitForEventsMode::WAIT)) {
     ::io_uring_wait_cqe(&ioRing_, &cqe);
   } else {
     ::io_uring_peek_cqe(&ioRing_, &cqe);
@@ -154,7 +155,7 @@ int IoUringBackend::submitBusyCheck() {
   int num;
   while ((num = ::io_uring_submit(&ioRing_)) == -EBUSY) {
     // if we get EBUSY, try to consume some CQ entries
-    getActiveEvents(false);
+    getActiveEvents(WaitForEventsMode::DONT_WAIT);
   };
   return num;
 }
@@ -163,12 +164,14 @@ int IoUringBackend::submitBusyCheckAndWait() {
   int num;
   while ((num = ::io_uring_submit_and_wait(&ioRing_, 1)) == -EBUSY) {
     // if we get EBUSY, try to consume some CQ entries
-    getActiveEvents(false);
+    getActiveEvents(WaitForEventsMode::DONT_WAIT);
   };
   return num;
 }
 
-size_t IoUringBackend::submitList(IoCbList& ioCbs) {
+size_t IoUringBackend::submitList(
+    IoCbList& ioCbs,
+    WaitForEventsMode waitForEvents) {
   int i = 0;
   size_t ret = 0;
 
@@ -182,7 +185,9 @@ size_t IoUringBackend::submitList(IoCbList& ioCbs) {
     entry->prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
     i++;
     if (ioCbs.empty()) {
-      int num = submitBusyCheckAndWait();
+      int num = (waitForEvents == WaitForEventsMode::WAIT)
+          ? submitBusyCheckAndWait()
+          : submitBusyCheck();
       CHECK_EQ(num, i);
       ret += i;
     } else {

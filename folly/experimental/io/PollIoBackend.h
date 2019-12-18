@@ -48,6 +48,8 @@ class PollIoBackend : public EventBaseBackendBase {
   int eb_event_del(Event& event) override;
 
  protected:
+  enum class WaitForEventsMode { WAIT, DONT_WAIT };
+
   struct IoCb
       : public boost::intrusive::list_base_hook<
             boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
@@ -161,8 +163,10 @@ class PollIoBackend : public EventBaseBackendBase {
   virtual IoCb* allocNewIoCb() = 0;
 
   virtual void* allocSubmissionEntry() = 0;
-  virtual int getActiveEvents(bool waitForEvents = true) = 0;
-  virtual size_t submitList(IoCbList& ioCbs) = 0;
+  virtual int getActiveEvents(WaitForEventsMode waitForEvents) = 0;
+  virtual size_t submitList(
+      IoCbList& ioCbs,
+      WaitForEventsMode waitForEvents) = 0;
   virtual int submitOne(IoCb* ioCb) = 0;
   virtual int cancelOne(IoCb* ioCb) = 0;
 
