@@ -162,8 +162,9 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   symbolizer.symbolize(frames);
 
   // clang-fromat off
-  // Expected full stack trace:
-  //  Frame:
+  // Expected full stack trace with @mode/dev. The last frame is missing in opt
+  // mode.
+  //  Frame: _ZN5folly10symbolizer13getStackTraceEPmm
   //  Frame: getStackTrace<100>
   //  Frame: _ZN5folly10symbolizer4test10comparatorILm100EEEiPKvS4_
   //  Frame: msort_with_tmp.part.0
@@ -172,12 +173,14 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   //  Frame: inlineBar<100>
   //  Frame: _ZN5folly10symbolizer4test43SymbolizerTest_InlineFunctionWithCache_Test8TestBodyEv
   //  Frame: _ZN7testing8internal35HandleExceptionsInMethodIfSupportedINS_4TestEvEET0_PT_MS4_FS3_vEPKc
-  //  Frame: _ZN7testing4Test3RunEv 2490 Frame: _ZN7testing8TestInfo3RunEv
+  //  Frame: _ZN7testing4Test3RunEv
+  //  Frame: _ZN7testing8TestInfo3RunEv
   //  Frame: _ZN7testing8TestCase3RunEv
   //  Frame: _ZN7testing8internal12UnitTestImpl11RunAllTestsEv
-  //  Frame: _ZN7testing8UnitTest3RunEv 2473 Frame: _Z13RUN_ALL_TESTSv
+  //  Frame: _ZN7testing8UnitTest3RunEv
+  //  Frame: _Z13RUN_ALL_TESTSv
   // clang-fromat on
-  EXPECT_EQ(15, frames.frameCount);
+  EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
   EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
   EXPECT_EQ(
       "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
@@ -192,6 +195,7 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
+  EXPECT_EQ(frames.frameCount, frames2.frameCount);
   for (size_t i = 0; i < frames.frameCount; i++) {
     EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
   }
@@ -221,7 +225,7 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   inlineBar<100>(frames);
   symbolizer.symbolize(frames);
 
-  EXPECT_EQ(15, frames.frameCount);
+  EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
   EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
   EXPECT_EQ(
       "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
@@ -236,6 +240,7 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
+  EXPECT_EQ(frames.frameCount, frames2.frameCount);
   for (size_t i = 0; i < frames.frameCount; i++) {
     EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
   }

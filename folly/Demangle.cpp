@@ -34,6 +34,9 @@ namespace folly {
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
 
 fbstring demangle(const char* name) {
+  if (!name) {
+    return fbstring();
+  }
 #ifdef FOLLY_DEMANGLE_MAX_SYMBOL_SIZE
   // GCC's __cxa_demangle() uses on-stack data structures for the
   // parser state which are linear in the number of components of the
