@@ -575,4 +575,49 @@ TEST_F(CoroTest, DefaultConstructible) {
   }());
 }
 
+TEST(Coro, CoReturnTry) {
+  EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+              co_return folly::Try<int>(42);
+            }()));
+
+  struct ExpectedException : public std::runtime_error {
+    ExpectedException() : std::runtime_error("ExpectedException") {}
+  };
+  EXPECT_THROW(
+      folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+        co_return folly::Try<int>(ExpectedException());
+      }()),
+      ExpectedException);
+
+  EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+              folly::Try<int> t(42);
+              co_return t;
+            }()));
+
+  EXPECT_EQ(42, folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+              const folly::Try<int> tConst(42);
+              co_return tConst;
+            }()));
+}
+
+TEST(Coro, CoThrow) {
+  struct ExpectedException : public std::runtime_error {
+    ExpectedException() : std::runtime_error("ExpectedException") {}
+  };
+  EXPECT_THROW(
+      folly::coro::blockingWait([]() -> folly::coro::Task<int> {
+        co_await folly::coro::co_throw(ExpectedException());
+        EXPECT_TRUE(false) << "unreachable";
+        co_return 42;
+      }()),
+      ExpectedException);
+
+  EXPECT_THROW(
+      folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+        co_await folly::coro::co_throw(ExpectedException());
+        EXPECT_TRUE(false) << "unreachable";
+      }()),
+      ExpectedException);
+}
+
 #endif

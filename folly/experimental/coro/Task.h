@@ -29,6 +29,7 @@
 #include <folly/Try.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
+#include <folly/experimental/coro/Throw.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -156,6 +157,13 @@ class TaskPromise : public TaskPromiseBase {
     return result_;
   }
 
+  using TaskPromiseBase::await_transform;
+
+  auto await_transform(co_throw ex) {
+    result_.emplaceException(std::move(ex.exception()));
+    return final_suspend();
+  }
+
  private:
   Try<StorageType> result_;
 };
@@ -180,6 +188,13 @@ class TaskPromise<void> : public TaskPromiseBase {
 
   Try<void>& result() {
     return result_;
+  }
+
+  using TaskPromiseBase::await_transform;
+
+  auto await_transform(co_throw ex) {
+    result_.emplaceException(std::move(ex.exception()));
+    return final_suspend();
   }
 
  private:
