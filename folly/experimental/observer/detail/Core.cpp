@@ -172,11 +172,12 @@ void Core::addDependent(Core::WeakPtr dependent) {
 void Core::removeStaleDependents() {
   // This is inefficient, the assumption is that we won't have many dependents
   dependents_.withWLock([](Dependents& dependents) {
-    for (size_t i = 0; i < dependents.size(); ++i) {
+    for (size_t i = 0; i < dependents.size();) {
       if (dependents[i].expired()) {
         std::swap(dependents[i], dependents.back());
         dependents.pop_back();
-        --i;
+      } else {
+        ++i;
       }
     }
   });
