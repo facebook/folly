@@ -18,15 +18,20 @@
 #include <folly/io/async/test/EventBaseTestLib.h>
 #include <folly/portability/GTest.h>
 
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
-
-  folly::test::EventBaseBackendProvider::GetBackendFunc func = []() {
+namespace folly {
+namespace test {
+struct DefaultBackendProvider {
+  static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     return folly::EventBase::getDefaultBackend();
-  };
-
-  folly::test::EventBaseBackendProvider::setGetBackendFunc(std::move(func));
-
-  return RUN_ALL_TESTS();
-}
+  }
+};
+INSTANTIATE_TYPED_TEST_CASE_P(
+    EventBaseTest,
+    EventBaseTest,
+    DefaultBackendProvider);
+INSTANTIATE_TYPED_TEST_CASE_P(
+    EventBaseTest1,
+    EventBaseTest1,
+    DefaultBackendProvider);
+} // namespace test
+} // namespace folly

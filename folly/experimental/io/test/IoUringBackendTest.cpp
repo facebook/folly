@@ -102,8 +102,17 @@ void testOverflow(bool overflow) {
   static constexpr size_t kEventFdCount = 16;
   auto total = kNumEventFds * kEventFdCount;
 
-  folly::EventBase evb(std::make_unique<folly::IoUringBackend>(
-      kBackendCapacity, kBackendMaxSubmit));
+  std::unique_ptr<folly::EventBaseBackendBase> backend;
+
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        kBackendCapacity, kBackendMaxSubmit);
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+  }
+
+  SKIP_IF(!backend) << "Backend not available";
+
+  folly::EventBase evb(std::move(backend));
 
   std::vector<std::unique_ptr<EventFD>> eventsVec;
   eventsVec.reserve(kNumEventFds);
@@ -128,26 +137,27 @@ TEST(IoUringBackend, Overflow) {
   testOverflow(true);
 }
 
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
-
-  bool avail = folly::IoUringBackend::isAvailable();
-  LOG(INFO) << "folly::IoUringBackend::isAvailable() returned " << avail;
-  if (!avail) {
-    LOG(INFO)
-        << "Not running tests since IoUringBackend is not available on this kernel version";
-    return 0;
+namespace folly {
+namespace test {
+static constexpr size_t kCapacity = 16 * 1024;
+static constexpr size_t kMaxSubmit = 128;
+struct IoUringBackendProvider {
+  static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
+    try {
+      return std::make_unique<folly::IoUringBackend>(kCapacity, kMaxSubmit);
+    } catch (const IoUringBackend::NotAvailable&) {
+      return nullptr;
+    }
   }
+};
 
-  static constexpr size_t kCapacity = 16 * 1024;
-  static constexpr size_t kMaxSubmit = 128;
-  folly::test::EventBaseBackendProvider::GetBackendFunc func;
-  func = []() {
-    return std::make_unique<folly::IoUringBackend>(kCapacity, kMaxSubmit);
-  };
-
-  folly::test::EventBaseBackendProvider::setGetBackendFunc(std::move(func));
-
-  return RUN_ALL_TESTS();
-}
+INSTANTIATE_TYPED_TEST_CASE_P(
+    EventBaseTest,
+    EventBaseTest,
+    IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_CASE_P(
+    EventBaseTest1,
+    EventBaseTest1,
+    IoUringBackendProvider);
+} // namespace test
+} // namespace folly
