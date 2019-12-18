@@ -21,9 +21,9 @@
 namespace folly {
 namespace coro {
 
-class co_throw {
+class co_error {
  public:
-  explicit co_throw(exception_wrapper ex) : ex_(std::move(ex)) {}
+  explicit co_error(exception_wrapper ex) : ex_(std::move(ex)) {}
 
   const exception_wrapper& exception() const {
     return ex_;
