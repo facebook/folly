@@ -28,7 +28,7 @@ struct __cxa_eh_globals;
 extern "C" __cxa_eh_globals* __cxa_get_globals() noexcept;
 #else
 // Signature mismatch with FreeBSD case
-extern "C" __cxa_eh_globals* __cxa_get_globals();
+extern "C" __cxa_eh_globals* __cxa_get_globals(void);
 #endif
 } // namespace __cxxabiv1
 #elif defined(FOLLY_FORCE_EXCEPTION_COUNT_USE_STD) || defined(_MSC_VER)

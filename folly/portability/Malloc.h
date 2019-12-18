@@ -30,8 +30,10 @@
 // malloc_usable_size, and that's what we should be using.
 #include <jemalloc/jemalloc.h> // @manual
 #else
+#if !defined(__FreeBSD__)
 #if __has_include(<malloc.h>)
 #include <malloc.h>
+#endif
 #endif
 
 #if defined(__APPLE__) && !defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)

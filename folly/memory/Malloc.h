@@ -45,8 +45,11 @@
 // for malloc_usable_size
 // NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
 // are found in stdlib.h.
+// However FreeBSD 11 and so does have it.
+#if !defined(__FreeBSD__)
 #if __has_include(<malloc.h>)
 #include <malloc.h>
+#endif
 #endif
 
 #include <cassert>
