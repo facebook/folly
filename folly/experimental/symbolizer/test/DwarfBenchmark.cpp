@@ -17,6 +17,7 @@
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/portability/GFlags.h>
 
 void dummy() {}
@@ -25,7 +26,7 @@ namespace {
 
 using namespace folly::symbolizer;
 
-void run(Dwarf::LocationInfoMode mode, size_t n) {
+void run(LocationInfoMode mode, size_t n) {
   folly::BenchmarkSuspender suspender;
   // NOTE: Using '/proc/self/exe' only works if the code for @dummy is
   // statically linked into the binary.
@@ -33,25 +34,26 @@ void run(Dwarf::LocationInfoMode mode, size_t n) {
   Dwarf dwarf(&elf);
   suspender.dismiss();
   for (size_t i = 0; i < n; i++) {
-    Dwarf::LocationInfo info;
-    auto inlineInfo = std::
-        array<Dwarf::LocationInfo, Dwarf::kMaxInlineLocationInfoPerFrame>();
-    dwarf.findAddress(uintptr_t(&dummy), mode, info, folly::range(inlineInfo));
+    LocationInfo info;
+    auto inlineFrames =
+        std::array<SymbolizedFrame, Dwarf::kMaxInlineLocationInfoPerFrame>();
+    dwarf.findAddress(
+        uintptr_t(&dummy), mode, info, folly::range(inlineFrames));
   }
 }
 
 } // namespace
 
 BENCHMARK(DwarfFindAddressFast, n) {
-  run(folly::symbolizer::Dwarf::LocationInfoMode::FAST, n);
+  run(folly::symbolizer::LocationInfoMode::FAST, n);
 }
 
 BENCHMARK(DwarfFindAddressFull, n) {
-  run(folly::symbolizer::Dwarf::LocationInfoMode::FULL, n);
+  run(folly::symbolizer::LocationInfoMode::FULL, n);
 }
 
 BENCHMARK(DwarfFindAddressFullWithInline, n) {
-  run(folly::symbolizer::Dwarf::LocationInfoMode::FULL_WITH_INLINE, n);
+  run(folly::symbolizer::LocationInfoMode::FULL_WITH_INLINE, n);
 }
 
 int main(int argc, char* argv[]) {

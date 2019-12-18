@@ -60,30 +60,33 @@ ElfCache* defaultElfCache() {
   return cache;
 }
 
-} // namespace
-
-void SymbolizedFrame::set(
+void setSymbolizedFrame(
+    SymbolizedFrame& frame,
     const std::shared_ptr<ElfFile>& file,
     uintptr_t address,
-    Dwarf::LocationInfoMode mode,
-    folly::Range<Dwarf::LocationInfo*> inlineLocations) {
-  clear();
-  found = true;
+    LocationInfoMode mode,
+    folly::Range<SymbolizedFrame*> extraInlineFrames = {}) {
+  frame.clear();
+  frame.found = true;
 
   auto sym = file->getDefinitionByAddress(address);
   if (!sym.first) {
     return;
   }
 
-  file_ = file;
-  name = file->getSymbolName(sym);
+  frame.addr = address;
+  frame.file = file;
+  frame.name = file->getSymbolName(sym);
 
-  Dwarf(file.get()).findAddress(address, mode, location, inlineLocations);
+  Dwarf(file.get())
+      .findAddress(address, mode, frame.location, extraInlineFrames);
 }
+
+} // namespace
 
 Symbolizer::Symbolizer(
     ElfCacheBase* cache,
-    Dwarf::LocationInfoMode mode,
+    LocationInfoMode mode,
     size_t symbolCacheSize)
     : cache_(cache ? cache : defaultElfCache()), mode_(mode) {
   if (symbolCacheSize > 0) {
@@ -125,6 +128,15 @@ void Symbolizer::symbolize(
     frames[i].addr = addrs[i];
   }
 
+  // Find out how many frames were filled in.
+  auto countFrames = [](folly::Range<SymbolizedFrame*> framesRange) {
+    return std::distance(
+        framesRange.begin(),
+        std::find_if(framesRange.begin(), framesRange.end(), [&](auto frame) {
+          return !frame.found;
+        }));
+  };
+
   for (auto lmap = _r_debug.r_map; lmap != nullptr && remaining != 0;
        lmap = lmap->l_next) {
     // The empty string is used in place of the filename for the link_map
@@ -146,16 +158,31 @@ void Symbolizer::symbolize(
       }
 
       auto const addr = frame.addr;
-      // Mode FULL_WITH_INLINE (may have multiple frames for an address) is not
-      // supported in symbolCache_.
-      if (symbolCache_ && mode_ != Dwarf::LocationInfoMode::FULL_WITH_INLINE) {
+      if (symbolCache_) {
         // Need a write lock, because EvictingCacheMap brings found item to
         // front of eviction list.
         auto lockedSymbolCache = symbolCache_->wlock();
 
         auto const iter = lockedSymbolCache->find(addr);
         if (iter != lockedSymbolCache->end()) {
-          frame = iter->second;
+          size_t numCachedFrames = countFrames(folly::range(iter->second));
+          // 1 entry in cache is the non-inlined function call and that one
+          // already has space reserved at `frames[i]`
+          auto numInlineFrames = numCachedFrames - 1;
+          if (numInlineFrames <= frameCount - addrCount) {
+            // Move the rest of the frames to make space for inlined frames.
+            std::move_backward(
+                frames.begin() + i + 1,
+                frames.begin() + addrCount,
+                frames.begin() + addrCount + numInlineFrames);
+            // Overwrite frames[i] too (the non-inlined function call entry).
+            std::copy(
+                iter->second.begin(),
+                iter->second.begin() + numInlineFrames + 1,
+                frames.begin() + i);
+            i += numInlineFrames;
+            addrCount += numInlineFrames;
+          }
           continue;
         }
       }
@@ -163,55 +190,43 @@ void Symbolizer::symbolize(
       // Get the unrelocated, ELF-relative address by normalizing via the
       // address at which the object is loaded.
       auto const adjusted = addr - lmap->l_addr;
-
+      size_t numInlined = 0;
       if (elfFile->getSectionContainingAddress(adjusted)) {
-        if (mode_ == Dwarf::LocationInfoMode::FULL_WITH_INLINE &&
+        if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&
             frameCount > addrCount) {
           size_t maxInline = std::min<size_t>(
               Dwarf::kMaxInlineLocationInfoPerFrame, frameCount - addrCount);
-          Dwarf::LocationInfo inlineLocations[maxInline];
-          folly::Range<Dwarf::LocationInfo*> inlineLocRange(
-              inlineLocations, maxInline);
-          frame.set(elfFile, adjusted, mode_, inlineLocRange);
+          // First use the trailing empty frames (index starting from addrCount)
+          // to get the inline call stack, then rotate these inline functions
+          // before the caller at `frame[i]`.
+          folly::Range<SymbolizedFrame*> inlineFrameRange(
+              frames.begin() + addrCount,
+              frames.begin() + addrCount + maxInline);
+          setSymbolizedFrame(frame, elfFile, adjusted, mode_, inlineFrameRange);
 
-          // Find out how many LocationInfo were filled in.
-          size_t numInlined = std::distance(
-              inlineLocRange.begin(),
-              std::find_if(
-                  inlineLocRange.begin(), inlineLocRange.end(), [&](auto loc) {
-                    return !loc.hasFileAndLine;
-                  }));
-
-          // Move the rest of the frames to make space for inlined location info
-          std::move_backward(
+          numInlined = countFrames(inlineFrameRange);
+          // Rotate inline frames right before its caller frame.
+          std::rotate(
               frames.begin() + i,
               frames.begin() + addrCount,
               frames.begin() + addrCount + numInlined);
-
-          // Insert inlined location info in the space we opened up above. The
-          // inlineLocations contains inline functions in call sequence, and
-          // here we store them reversely in frames (caller in later frame).
-          for (size_t k = 0; k < numInlined; k++) {
-            frames[i + k].found = true;
-            frames[i + k].addr = addr;
-            frames[i + k].location = inlineLocations[numInlined - k - 1];
-            frames[i + k].name =
-                inlineLocations[numInlined - k - 1].name.data();
-          }
-
-          // Skip over the newly added inlined items.
-          i += numInlined;
           addrCount += numInlined;
         } else {
-          frame.set(elfFile, adjusted, mode_);
+          setSymbolizedFrame(frame, elfFile, adjusted, mode_);
         }
         --remaining;
-        if (symbolCache_ &&
-            mode_ != Dwarf::LocationInfoMode::FULL_WITH_INLINE) {
+        if (symbolCache_) {
           // frame may already have been set here.  That's ok, we'll just
           // overwrite, which doesn't cause a correctness problem.
-          symbolCache_->wlock()->set(addr, frame);
+          CachedSymbolizedFrames cacheFrames;
+          std::copy(
+              frames.begin() + i,
+              frames.begin() + i + std::min(numInlined + 1, cacheFrames.size()),
+              cacheFrames.begin());
+          symbolCache_->wlock()->set(addr, cacheFrames);
         }
+        // Skip over the newly added inlined items.
+        i += numInlined;
       }
     }
   }
@@ -466,7 +481,7 @@ void SafeStackTracePrinter::printSymbolizedStackTrace() {
 
   // Do our best to populate location info, process is going to terminate,
   // so performance isn't critical.
-  Symbolizer symbolizer(&elfCache_, Dwarf::LocationInfoMode::FULL);
+  Symbolizer symbolizer(&elfCache_, LocationInfoMode::FULL);
   symbolizer.symbolize(*addresses_);
 
   // Skip the top 2 frames captured by printStackTrace:
@@ -508,7 +523,7 @@ FastStackTracePrinter::FastStackTracePrinter(
       printer_(std::move(printer)),
       symbolizer_(
           elfCache_ ? elfCache_.get() : defaultElfCache(),
-          Dwarf::LocationInfoMode::FULL,
+          LocationInfoMode::FULL,
           symbolCacheSize) {}
 
 FastStackTracePrinter::~FastStackTracePrinter() {}

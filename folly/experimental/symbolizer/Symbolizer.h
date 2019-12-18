@@ -31,53 +31,13 @@
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/io/IOBuf.h>
 
 namespace folly {
 namespace symbolizer {
 
 class Symbolizer;
-
-/**
- * Frame information: symbol name and location.
- */
-struct SymbolizedFrame {
-  SymbolizedFrame() {}
-
-  void set(
-      const std::shared_ptr<ElfFile>& file,
-      uintptr_t address,
-      Dwarf::LocationInfoMode mode,
-      folly::Range<Dwarf::LocationInfo*> inlineLocations = {});
-
-  void clear() {
-    *this = SymbolizedFrame();
-  }
-
-  bool found = false;
-  uintptr_t addr = 0;
-  const char* name = nullptr;
-  Dwarf::LocationInfo location;
-
-  /**
-   * Demangle the name and return it. Not async-signal-safe; allocates memory.
-   */
-  fbstring demangledName() const {
-    return name ? demangle(name) : fbstring();
-  }
-
- private:
-  std::shared_ptr<ElfFile> file_;
-};
-
-template <size_t N>
-struct FrameArray {
-  FrameArray() {}
-
-  size_t frameCount = 0;
-  uintptr_t addresses[N];
-  SymbolizedFrame frames[N];
-};
 
 /**
  * Get stack trace into a given FrameArray, return true on success (and
@@ -119,15 +79,14 @@ inline bool getStackTraceSafe(FrameArray<N>& fa) {
 
 class Symbolizer {
  public:
-  static constexpr Dwarf::LocationInfoMode kDefaultLocationInfoMode =
-      Dwarf::LocationInfoMode::FAST;
+  static constexpr auto kDefaultLocationInfoMode = LocationInfoMode::FAST;
 
-  explicit Symbolizer(Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode)
+  explicit Symbolizer(LocationInfoMode mode = kDefaultLocationInfoMode)
       : Symbolizer(nullptr, mode) {}
 
   explicit Symbolizer(
       ElfCacheBase* cache,
-      Dwarf::LocationInfoMode mode = kDefaultLocationInfoMode,
+      LocationInfoMode mode = kDefaultLocationInfoMode,
       size_t symbolCacheSize = 0);
 
   /**
@@ -173,9 +132,14 @@ class Symbolizer {
 
  private:
   ElfCacheBase* const cache_;
-  const Dwarf::LocationInfoMode mode_;
+  const LocationInfoMode mode_;
 
-  using SymbolCache = EvictingCacheMap<uintptr_t, SymbolizedFrame>;
+  // SymbolCache contains mapping between an address and its frames. The first
+  // frame is the normal function call, and the following are stacked inline
+  // function calls if any.
+  using CachedSymbolizedFrames =
+      std::array<SymbolizedFrame, 1 + Dwarf::kMaxInlineLocationInfoPerFrame>;
+  using SymbolCache = EvictingCacheMap<uintptr_t, CachedSymbolizedFrames>;
   folly::Optional<Synchronized<SymbolCache>> symbolCache_;
 };
 

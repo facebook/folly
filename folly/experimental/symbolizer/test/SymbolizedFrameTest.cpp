@@ -14,13 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/symbolizer/Dwarf.h>
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
 
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
 
-using folly::symbolizer::Dwarf;
+using namespace folly::symbolizer;
 
 void checkPath(
     std::string expectedPath,
@@ -30,7 +30,7 @@ void checkPath(
     std::string rawBaseDir,
     std::string rawSubDir,
     std::string rawFile) {
-  Dwarf::Path path(rawBaseDir, rawSubDir, rawFile);
+  Path path(rawBaseDir, rawSubDir, rawFile);
 
   CHECK_EQ(expectedBaseDir, path.baseDir())
       << "Path(" << rawBaseDir << ", " << rawSubDir << ", " << rawFile << ")";
@@ -48,7 +48,7 @@ void checkPath(
   CHECK_EQ(expectedPath, std::string(buf, len));
 }
 
-TEST(Dwarf, Path) {
+TEST(SymbolizedFrame, Path) {
   checkPath("hello.cpp", "", "", "hello.cpp", "", "", "hello.cpp");
   checkPath("foo/hello.cpp", "foo", "", "hello.cpp", "foo", "", "hello.cpp");
   checkPath("foo/hello.cpp", "foo", "", "hello.cpp", "", "foo", "hello.cpp");

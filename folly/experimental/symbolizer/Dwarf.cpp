@@ -335,55 +335,6 @@ void readCompilationUnitAbbrs(
   }
 }
 
-// Simplify a path -- as much as we can while not moving data around...
-void simplifyPath(folly::StringPiece& sp) {
-  // Strip leading slashes and useless patterns (./), leaving one initial
-  // slash.
-  for (;;) {
-    if (sp.empty()) {
-      return;
-    }
-
-    // Strip leading slashes, leaving one.
-    while (sp.startsWith("//")) {
-      sp.advance(1);
-    }
-
-    if (sp.startsWith("/./")) {
-      // Note 2, not 3, to keep it absolute
-      sp.advance(2);
-      continue;
-    }
-
-    if (sp.removePrefix("./")) {
-      // Also remove any subsequent slashes to avoid making this path absolute.
-      while (sp.startsWith('/')) {
-        sp.advance(1);
-      }
-      continue;
-    }
-
-    break;
-  }
-
-  // Strip trailing slashes and useless patterns (/.).
-  for (;;) {
-    if (sp.empty()) {
-      return;
-    }
-
-    // Strip trailing slashes, except when this is the root path.
-    while (sp.size() > 1 && sp.removeSuffix('/')) {
-    }
-
-    if (sp.removeSuffix("/.")) {
-      continue;
-    }
-
-    break;
-  }
-}
-
 } // namespace
 
 Dwarf::Dwarf(const ElfFile* elf)
@@ -402,122 +353,6 @@ Dwarf::Dwarf(const ElfFile* elf)
 }
 
 Dwarf::Section::Section(folly::StringPiece d) : is64Bit_(false), data_(d) {}
-
-Dwarf::Path::Path(
-    folly::StringPiece baseDir,
-    folly::StringPiece subDir,
-    folly::StringPiece file)
-    : baseDir_(baseDir), subDir_(subDir), file_(file) {
-  using std::swap;
-
-  // Normalize
-  if (file_.empty()) {
-    baseDir_.clear();
-    subDir_.clear();
-    return;
-  }
-
-  if (file_[0] == '/') {
-    // file_ is absolute
-    baseDir_.clear();
-    subDir_.clear();
-  }
-
-  if (!subDir_.empty() && subDir_[0] == '/') {
-    baseDir_.clear(); // subDir_ is absolute
-  }
-
-  simplifyPath(baseDir_);
-  simplifyPath(subDir_);
-  simplifyPath(file_);
-
-  // Make sure it's never the case that baseDir_ is empty, but subDir_ isn't.
-  if (baseDir_.empty()) {
-    swap(baseDir_, subDir_);
-  }
-}
-
-size_t Dwarf::Path::size() const {
-  size_t size = 0;
-  bool needsSlash = false;
-
-  if (!baseDir_.empty()) {
-    size += baseDir_.size();
-    needsSlash = !baseDir_.endsWith('/');
-  }
-
-  if (!subDir_.empty()) {
-    size += needsSlash;
-    size += subDir_.size();
-    needsSlash = !subDir_.endsWith('/');
-  }
-
-  if (!file_.empty()) {
-    size += needsSlash;
-    size += file_.size();
-  }
-
-  return size;
-}
-
-size_t Dwarf::Path::toBuffer(char* buf, size_t bufSize) const {
-  size_t totalSize = 0;
-  bool needsSlash = false;
-
-  auto append = [&](folly::StringPiece sp) {
-    if (bufSize >= 2) {
-      size_t toCopy = std::min(sp.size(), bufSize - 1);
-      memcpy(buf, sp.data(), toCopy);
-      buf += toCopy;
-      bufSize -= toCopy;
-    }
-    totalSize += sp.size();
-  };
-
-  if (!baseDir_.empty()) {
-    append(baseDir_);
-    needsSlash = !baseDir_.endsWith('/');
-  }
-  if (!subDir_.empty()) {
-    if (needsSlash) {
-      append("/");
-    }
-    append(subDir_);
-    needsSlash = !subDir_.endsWith('/');
-  }
-  if (!file_.empty()) {
-    if (needsSlash) {
-      append("/");
-    }
-    append(file_);
-  }
-  if (bufSize) {
-    *buf = '\0';
-  }
-  assert(totalSize == size());
-  return totalSize;
-}
-
-void Dwarf::Path::toString(std::string& dest) const {
-  size_t initialSize = dest.size();
-  dest.reserve(initialSize + size());
-  if (!baseDir_.empty()) {
-    dest.append(baseDir_.begin(), baseDir_.end());
-  }
-  if (!subDir_.empty()) {
-    if (!dest.empty() && dest.back() != '/') {
-      dest.push_back('/');
-    }
-    dest.append(subDir_.begin(), subDir_.end());
-  }
-  if (!file_.empty()) {
-    if (!dest.empty() && dest.back() != '/') {
-      dest.push_back('/');
-    }
-    dest.append(file_.begin(), file_.end());
-  }
-  assert(dest.size() == initialSize + size());
-}
 
 // Next chunk in section
 bool Dwarf::Section::next(folly::StringPiece& chunk) {
@@ -619,7 +454,7 @@ bool Dwarf::findLocation(
     const LocationInfoMode mode,
     detail::CompilationUnit& cu,
     LocationInfo& locationInfo,
-    folly::Range<Dwarf::LocationInfo*> inlineLocationInfo) const {
+    folly::Range<SymbolizedFrame*> inlineFrames) const {
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
   FOLLY_SAFE_CHECK(
       die.abbr.tag == DW_TAG_compile_unit, "expecting compile unit entry");
@@ -670,8 +505,8 @@ bool Dwarf::findLocation(
       lineVM.findAddress(address, locationInfo.file, locationInfo.line);
 
   // Look up whether inline function.
-  if (mode == Dwarf::LocationInfoMode::FULL_WITH_INLINE &&
-      !inlineLocationInfo.empty() && locationInfo.hasFileAndLine) {
+  if (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty() &&
+      locationInfo.hasFileAndLine) {
     // Re-get the compilation unit with abbreviation cached.
     std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
     cu.abbrCache = folly::range(abbrs);
@@ -681,47 +516,55 @@ bool Dwarf::findLocation(
     // Subprogram is the DIE of caller function.
     if (subprogram.abbr.hasChildren) {
       size_t size = std::min<size_t>(
-          Dwarf::kMaxInlineLocationInfoPerFrame, inlineLocationInfo.size());
-      detail::CodeLocation isrLocs[size];
-      auto isrLocsRange = folly::Range<detail::CodeLocation*>(isrLocs, size);
-      findInlinedSubroutineDieForAddress(cu, subprogram, address, isrLocsRange);
-      uint32_t numFound = isrLocsRange.data() - isrLocs;
-      auto* prevLocation = &locationInfo;
-      auto* nextLocation = inlineLocationInfo.data();
-      auto* isrLoc = isrLocs;
+          Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size());
+      detail::CodeLocation inlineLocs[size];
+      auto inlineLocsRange =
+          folly::Range<detail::CodeLocation*>(inlineLocs, size);
+      findInlinedSubroutineDieForAddress(
+          cu, subprogram, address, inlineLocsRange);
+      size_t numFound = inlineLocsRange.data() - inlineLocs;
+
       // The line in locationInfo is the line in the deepest inline functions,
       // and the lines in inlineLocationInfo are the line of callers in call
       // sequence. A shuffle is needed to match lines with their function name.
       uint64_t callerLine = locationInfo.line;
-      while (numFound > 0) {
-        prevLocation->line = isrLoc->line;
+      inlineLocsRange =
+          folly::Range<detail::CodeLocation*>(inlineLocs, numFound);
+      // Put inline frames from inside to outside (callee is before caller).
+      std::reverse(inlineLocsRange.begin(), inlineLocsRange.end());
+      auto inlineFrameIter = inlineFrames.begin();
+      for (auto inlineLocIter = inlineLocsRange.begin();
+           inlineLocIter != inlineLocsRange.end();
+           inlineLocIter++, inlineFrameIter++) {
+        inlineFrameIter->location.line = callerLine;
+        callerLine = inlineLocIter->line;
         folly::Optional<folly::StringPiece> name;
         folly::Optional<uint64_t> file;
-
-        forEachAttribute(cu, isrLoc->die, [&](const detail::Attribute& attr) {
-          switch (attr.spec.name) {
-            case DW_AT_name:
-              name = boost::get<StringPiece>(attr.attrValue);
-              break;
-            case DW_AT_decl_file:
-              file = boost::get<uint64_t>(attr.attrValue);
-              break;
-          }
-          return !file.has_value() || !name.has_value();
-        });
+        forEachAttribute(
+            cu, inlineLocIter->die, [&](const detail::Attribute& attr) {
+              switch (attr.spec.name) {
+                case DW_AT_name:
+                  name = boost::get<StringPiece>(attr.attrValue);
+                  break;
+                case DW_AT_decl_file:
+                  file = boost::get<uint64_t>(attr.attrValue);
+                  break;
+              }
+              return !file.has_value() || !name.has_value();
+            });
 
         if (!name.has_value() || !file.has_value()) {
           break;
         }
-        nextLocation->hasFileAndLine = true;
-        nextLocation->name = name.value();
-        nextLocation->file = lineVM.getFullFileName(file.value());
-        prevLocation = nextLocation;
-        nextLocation++;
-        isrLoc++;
-        numFound--;
+
+        inlineFrameIter->found = true;
+        inlineFrameIter->addr = address;
+        inlineFrameIter->name = name.value().data();
+        inlineFrameIter->location.hasFileAndLine = true;
+        inlineFrameIter->location.name = name.value();
+        inlineFrameIter->location.file = lineVM.getFullFileName(file.value());
       }
-      prevLocation->line = callerLine;
+      locationInfo.line = callerLine;
     }
   }
 
@@ -732,7 +575,7 @@ bool Dwarf::findAddress(
     uintptr_t address,
     LocationInfoMode mode,
     LocationInfo& locationInfo,
-    folly::Range<Dwarf::LocationInfo*> inlineLocationInfo) const {
+    folly::Range<SymbolizedFrame*> inlineFrames) const {
   if (mode == LocationInfoMode::DISABLED) {
     return false;
   }
@@ -748,7 +591,7 @@ bool Dwarf::findAddress(
     if (findDebugInfoOffset(address, debugAranges_, offset)) {
       // Read compilation unit header from .debug_info
       auto unit = getCompilationUnit(debugInfo_, offset);
-      findLocation(address, mode, unit, locationInfo, inlineLocationInfo);
+      findLocation(address, mode, unit, locationInfo, inlineFrames);
       return locationInfo.hasFileAndLine;
     } else if (mode == LocationInfoMode::FAST) {
       // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
@@ -771,7 +614,7 @@ bool Dwarf::findAddress(
   while (offset < debugInfo_.size() && !locationInfo.hasFileAndLine) {
     auto unit = getCompilationUnit(debugInfo_, offset);
     offset += unit.size;
-    findLocation(address, mode, unit, locationInfo, inlineLocationInfo);
+    findLocation(address, mode, unit, locationInfo, inlineFrames);
   }
   return locationInfo.hasFileAndLine;
 }

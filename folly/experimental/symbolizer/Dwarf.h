@@ -23,6 +23,7 @@
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
 
 namespace folly {
 namespace symbolizer {
@@ -81,38 +82,17 @@ class Dwarf {
   explicit Dwarf(const ElfFile* elf);
 
   /**
-   * Represent a file path a s collection of three parts (base directory,
-   * subdirectory, and file).
-   */
-  class Path;
-
-  enum class LocationInfoMode {
-    // Don't resolve location info.
-    DISABLED,
-    // Perform CU lookup using .debug_aranges (might be incomplete).
-    FAST,
-    // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
-    FULL,
-    // Scan .debug_info (super slower, use with caution) for inline functions in
-    // addition to FULL.
-    FULL_WITH_INLINE,
-  };
-
-  /**
    * More than one location info may exist if current frame is an inline
    * function call.
    */
   static const uint32_t kMaxInlineLocationInfoPerFrame = 3;
-
-  /** Contains location info like file name, line number, etc. */
-  struct LocationInfo;
 
   /** Find the file and line number information corresponding to address. */
   bool findAddress(
       uintptr_t address,
       LocationInfoMode mode,
       LocationInfo& info,
-      folly::Range<Dwarf::LocationInfo*> inlineInfo = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
 
  private:
   using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
@@ -137,7 +117,7 @@ class Dwarf {
       const LocationInfoMode mode,
       detail::CompilationUnit& unit,
       LocationInfo& info,
-      folly::Range<Dwarf::LocationInfo*> inlineInfo = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among
@@ -227,61 +207,6 @@ class Dwarf::Section {
   folly::StringPiece data_;
 };
 
-class Dwarf::Path {
- public:
-  Path() {}
-
-  Path(
-      folly::StringPiece baseDir,
-      folly::StringPiece subDir,
-      folly::StringPiece file);
-
-  folly::StringPiece baseDir() const {
-    return baseDir_;
-  }
-  folly::StringPiece subDir() const {
-    return subDir_;
-  }
-  folly::StringPiece file() const {
-    return file_;
-  }
-
-  size_t size() const;
-
-  /**
-   * Copy the Path to a buffer of size bufSize.
-   *
-   * toBuffer behaves like snprintf: It will always null-terminate the
-   * buffer (so it will copy at most bufSize-1 bytes), and it will return
-   * the number of bytes that would have been written if there had been
-   * enough room, so, if toBuffer returns a value >= bufSize, the output
-   * was truncated.
-   */
-  size_t toBuffer(char* buf, size_t bufSize) const;
-
-  void toString(std::string& dest) const;
-  std::string toString() const {
-    std::string s;
-    toString(s);
-    return s;
-  }
-
- private:
-  folly::StringPiece baseDir_;
-  folly::StringPiece subDir_;
-  folly::StringPiece file_;
-};
-
-struct Dwarf::LocationInfo {
-  bool hasFileAndLine = false;
-  bool hasMainFile = false;
-  // Function name in call stack.
-  folly::StringPiece name;
-  Path mainFile;
-  Path file;
-  uint64_t line = 0;
-};
-
 class Dwarf::LineNumberVM {
  public:
   LineNumberVM(
@@ -369,10 +294,6 @@ class Dwarf::LineNumberVM {
   uint64_t isa_;
   uint64_t discriminator_;
 };
-
-inline std::ostream& operator<<(std::ostream& out, const Dwarf::Path& path) {
-  return out << path.toString();
-}
 
 } // namespace symbolizer
 } // namespace folly

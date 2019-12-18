@@ -78,7 +78,7 @@ void printExceptionInfo(
 
       Symbolizer symbolizer(
           (options & SymbolizePrinter::NO_FILE_AND_LINE)
-              ? Dwarf::LocationInfoMode::DISABLED
+              ? LocationInfoMode::DISABLED
               : Symbolizer::kDefaultLocationInfoMode);
       symbolizer.symbolize(addresses, frames.data(), frameCount);
 
