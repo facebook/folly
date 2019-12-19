@@ -237,7 +237,8 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   }
 
   // We only support executable and shared object files
-  if (elfHeader.e_type != ET_EXEC && elfHeader.e_type != ET_DYN) {
+  if (elfHeader.e_type != ET_EXEC && elfHeader.e_type != ET_DYN &&
+      elfHeader.e_type != ET_CORE) {
     return {kInvalidElfFile, "invalid ELF file type"};
   }
 
@@ -250,7 +251,9 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   }
 
   if (elfHeader.e_shentsize != sizeof(ElfShdr)) {
-    return {kInvalidElfFile, "invalid section header entry size"};
+    if (elfHeader.e_shentsize != 0 || elfHeader.e_type != ET_CORE) {
+      return {kInvalidElfFile, "invalid section header entry size"};
+    }
   }
 
   // Program headers are sorted by load address, so the first PT_LOAD

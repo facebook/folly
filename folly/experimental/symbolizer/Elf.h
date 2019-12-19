@@ -46,8 +46,8 @@ using ElfSym = ElfW(Sym);
  * ELF file parser.
  *
  * We handle native files only (32-bit files on a 32-bit platform, 64-bit files
- * on a 64-bit platform), and only executables (ET_EXEC) and shared objects
- * (ET_DYN).
+ * on a 64-bit platform), and only executables (ET_EXEC) shared objects
+ * (ET_DYN) and core files (ET_CORE).
  */
 class ElfFile {
  public:
@@ -300,8 +300,9 @@ class ElfFile {
     //       I don't have a use-case for that right now, just assert that
     //       nobody wants this. We can always add it later.
     FOLLY_SAFE_CHECK(
-        elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN,
-        "Only exectuables and shared objects are supported");
+        elfHeader().e_type == ET_EXEC || elfHeader().e_type == ET_DYN ||
+            elfHeader().e_type == ET_CORE,
+        "Only exectuables, shared objects and cores are supported");
     FOLLY_SAFE_CHECK(
         addr >= section.sh_addr &&
             (addr + sizeof(T)) <= (section.sh_addr + section.sh_size),
