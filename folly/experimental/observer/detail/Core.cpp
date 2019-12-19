@@ -171,15 +171,9 @@ void Core::addDependent(Core::WeakPtr dependent) {
 
 void Core::removeStaleDependents() {
   // This is inefficient, the assumption is that we won't have many dependents
-  dependents_.withWLock([](Dependents& dependents) {
-    for (size_t i = 0; i < dependents.size();) {
-      if (dependents[i].expired()) {
-        std::swap(dependents[i], dependents.back());
-        dependents.pop_back();
-      } else {
-        ++i;
-      }
-    }
+  dependents_.withWLock([](Dependents& deps) {
+    auto const pred = [](auto const& d) { return d.expired(); };
+    deps.erase(std::remove_if(deps.begin(), deps.end(), pred), deps.end());
   });
 }
 } // namespace observer_detail
