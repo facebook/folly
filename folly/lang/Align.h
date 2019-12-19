@@ -23,6 +23,20 @@
 
 namespace folly {
 
+//  has_extended_alignment
+//
+//  True if it may be presumed that the platform has static extended alignment;
+//  false if it may not be so presumed, even when the platform might actually
+//  have it. Static extended alignment refers to extended alignment of objects
+//  with automatic, static, or thread storage. Whether the there is support for
+//  dynamic extended alignment is a property of the allocator which is used for
+//  each given dynamic allocation.
+//
+//  Currently, very heuristical - only non-mobile 64-bit linux gets the extended
+//  alignment treatment. Theoretically, this could be tuned better.
+constexpr bool has_extended_alignment =
+    kIsLinux && sizeof(void*) >= sizeof(std::uint64_t);
+
 namespace detail {
 
 // Implemented this way because of a bug in Clang for ARMv7, which gives the
@@ -122,11 +136,7 @@ static_assert(hardware_constructive_interference_size >= max_align_v, "math?");
 //  A value corresponding to hardware_constructive_interference_size but which
 //  may be used with alignas, since hardware_constructive_interference_size may
 //  be too large on some platforms to be used with alignas.
-//
-//  Currently, very heuristical - only non-mobile 64-bit linux gets the extended
-//  alignment treatment. Theoretically, this could be tuned better.
-constexpr std::size_t cacheline_align_v =
-    kIsLinux && sizeof(void*) >= sizeof(std::uint64_t)
+constexpr std::size_t cacheline_align_v = has_extended_alignment
     ? hardware_constructive_interference_size
     : max_align_v;
 struct alignas(cacheline_align_v) cacheline_align_t {};
