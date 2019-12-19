@@ -541,7 +541,7 @@ struct DataTracker : Tracker {
     }
     print("~Data()");
     uid = 0xdeadbeef;
-    self = (DataTracker*)0xfeebdaed;
+    self = (DataTracker*)0xfeebdaed0;
   }
 
   DataTracker& operator=(const DataTracker& o) noexcept {
