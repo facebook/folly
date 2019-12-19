@@ -312,8 +312,13 @@ class to_narrow_convertible {
 
   explicit constexpr to_narrow_convertible(Src const& value) noexcept
       : value_(value) {}
+#if __cplusplus >= 201703L
   explicit to_narrow_convertible(to_narrow_convertible const&) = default;
   explicit to_narrow_convertible(to_narrow_convertible&&) = default;
+#else
+  to_narrow_convertible(to_narrow_convertible const&) = default;
+  to_narrow_convertible(to_narrow_convertible&&) = default;
+#endif
   to_narrow_convertible& operator=(to_narrow_convertible const&) = default;
   to_narrow_convertible& operator=(to_narrow_convertible&&) = default;
 
