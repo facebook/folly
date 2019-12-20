@@ -98,10 +98,10 @@ constexpr poly_table<Deg> make_poly_table() {
   for (uint16_t x = 0; x < 256; x++) {
     FingerprintPolynomial<Deg> t;
     t.setHigh8Bits(uint8_t(x));
-    for (int i = 0; i < 8; i++) {
+    for (auto& entry : table) {
       t.mulXkmod(8, poly);
       for (size_t j = 0; j < poly_size(Deg); ++j) {
-        table[i][x][j] = t.get(j);
+        entry[x][j] = t.get(j);
       }
     }
   }

@@ -918,15 +918,13 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
 
   // Make sure the read callback received all of the data
   size_t bytesRead = 0;
-  for (vector<ReadCallback::Buffer>::const_iterator it = rcb.buffers.begin();
-       it != rcb.buffers.end();
-       ++it) {
+  for (const auto& buffer : rcb.buffers) {
     size_t start = bytesRead;
-    bytesRead += it->length;
+    bytesRead += buffer.length;
     size_t end = bytesRead;
     if (start < size1) {
       size_t cmpLen = min(size1, end) - start;
-      ASSERT_EQ(memcmp(it->buffer, buf1.get() + start, cmpLen), 0);
+      ASSERT_EQ(memcmp(buffer.buffer, buf1.get() + start, cmpLen), 0);
     }
     if (end > size1 && end <= size1 + size2) {
       size_t itOffset;
@@ -942,7 +940,7 @@ void testConnectOptWrite(size_t size1, size_t size2, bool close = false) {
         cmpLen = end - size1;
       }
       ASSERT_EQ(
-          memcmp(it->buffer + itOffset, buf2.get() + buf2Offset, cmpLen), 0);
+          memcmp(buffer.buffer + itOffset, buf2.get() + buf2Offset, cmpLen), 0);
     }
   }
   ASSERT_EQ(bytesRead, size1 + size2);
@@ -1509,10 +1507,8 @@ TEST(AsyncSocketTest, ClosePendingWritesWhileClosing) {
   socket->closeNow();
 
   // Make sure writeError() was invoked on all of the pending write callbacks
-  for (WriteCallbackVector::const_iterator it = writeCallbacks.begin();
-       it != writeCallbacks.end();
-       ++it) {
-    ASSERT_EQ((*it)->state, STATE_FAILED);
+  for (const auto& writeCallback : writeCallbacks) {
+    ASSERT_EQ((writeCallback)->state, STATE_FAILED);
   }
 
   ASSERT_TRUE(socket->isClosedBySelf());

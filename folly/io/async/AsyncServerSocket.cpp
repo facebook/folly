@@ -212,16 +212,14 @@ int AsyncServerSocket::stopAccepting(int shutdownFlags) {
   // removeAcceptCallback().
   std::vector<CallbackInfo> callbacksCopy;
   callbacks_.swap(callbacksCopy);
-  for (auto it = callbacksCopy.begin();
-       it != callbacksCopy.end();
-       ++it) {
+  for (const auto& callback : callbacksCopy) {
     // consumer may not be set if we are running in primary event base
-    if (it->consumer) {
-      DCHECK(it->eventBase);
-      it->consumer->stop(it->eventBase, it->callback);
+    if (callback.consumer) {
+      DCHECK(callback.eventBase);
+      callback.consumer->stop(callback.eventBase, callback.callback);
     } else {
-      DCHECK(it->callback);
-      it->callback->acceptStopped();
+      DCHECK(callback.callback);
+      callback.callback->acceptStopped();
     }
   }
 

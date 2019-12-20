@@ -1300,11 +1300,9 @@ TYPED_TEST_P(EventBaseTest, RunInThread) {
   for (uint32_t n = 0; n < numThreads; ++n) {
     expectedValues[n] = 0;
   }
-  for (std::deque<std::pair<int, int>>::const_iterator it = data.values.begin();
-       it != data.values.end();
-       ++it) {
-    int threadID = it->first;
-    int value = it->second;
+  for (const auto& dataValue : data.values) {
+    int threadID = dataValue.first;
+    int value = dataValue.second;
     ASSERT_EQ(expectedValues[threadID], value);
     ++expectedValues[threadID];
   }
