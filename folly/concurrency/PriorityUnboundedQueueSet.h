@@ -19,6 +19,7 @@
 #include <atomic>
 #include <vector>
 
+#include <folly/Memory.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/lang/Align.h>
 
@@ -137,7 +138,12 @@ class PriorityUnboundedQueueSet {
   }
 
  private:
-  std::vector<queue> queues_;
+  //  queue_alloc custom allocator is necessary until C++17
+  //    http://open-std.org/JTC1/SC22/WG21/docs/papers/2012/n3396.htm
+  //    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65122
+  //    https://bugs.llvm.org/show_bug.cgi?id=22634
+  using queue_alloc = AlignedSysAllocator<queue, FixedAlign<alignof(queue)>>;
+  std::vector<queue, queue_alloc> queues_;
 }; // PriorityUnboundedQueueSet
 
 /* Aliases */
