@@ -92,3 +92,138 @@ TEST(Interrupt, semiFutureWithinTimedOut) {
   // Give it 100ms to time out and call the interrupt handler
   EXPECT_TRUE(done.try_wait_for(std::chrono::milliseconds(100)));
 }
+
+TEST(Interrupt, futureThenValue) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture().thenValue([](folly::Unit&&) {}).cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferValue) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture().deferValue([](folly::Unit&&) {}).cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, futureThenValueFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture()
+      .thenValue([](folly::Unit&&) { return folly::makeFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferValueSemiFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture()
+      .deferValue([](folly::Unit&&) { return folly::makeSemiFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, futureThenError) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture().thenError([](const exception_wrapper& /* e */) {}).cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferError) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture()
+      .deferError([](const exception_wrapper& /* e */) {})
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, futureThenErrorTagged) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture()
+      .thenError(
+          folly::tag_t<std::runtime_error>{},
+          [](const exception_wrapper& /* e */) {})
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferErrorTagged) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture()
+      .deferError(
+          folly::tag_t<std::runtime_error>{},
+          [](const exception_wrapper& /* e */) {})
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, futureThenErrorFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture()
+      .thenError([](const exception_wrapper& /* e */) { return makeFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferErrorSemiFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture()
+      .deferError(
+          [](const exception_wrapper& /* e */) { return makeSemiFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, futureThenErrorTaggedFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getFuture()
+      .thenError(
+          folly::tag_t<std::runtime_error>{},
+          [](const exception_wrapper& /* e */) { return makeFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
+
+TEST(Interrupt, semiFutureDeferErrorTaggedSemiFuture) {
+  folly::TestExecutor ex(1);
+  Promise<folly::Unit> p;
+  bool flag = false;
+  p.setInterruptHandler([&](const exception_wrapper& /* e */) { flag = true; });
+  p.getSemiFuture()
+      .deferError(
+          folly::tag_t<std::runtime_error>{},
+          [](const exception_wrapper& /* e */) { return makeSemiFuture(); })
+      .cancel();
+  EXPECT_TRUE(flag);
+}
