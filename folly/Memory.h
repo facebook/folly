@@ -474,12 +474,6 @@ class AlignedSysAllocator : private Align {
 
   using Align::Align;
 
-  // TODO: remove this ctor, which is required only by gcc49
-  template <
-      typename S = Align,
-      std::enable_if_t<std::is_default_constructible<S>::value, int> = 0>
-  constexpr AlignedSysAllocator() noexcept(noexcept(Align())) : Align() {}
-
   template <typename U>
   constexpr explicit AlignedSysAllocator(
       AlignedSysAllocator<U, Align> const& other) noexcept
