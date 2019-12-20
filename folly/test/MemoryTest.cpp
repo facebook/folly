@@ -138,6 +138,18 @@ TEST(AlignedSysAllocator, allocate_unique_fixed) {
   EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
 }
 
+TEST(AlignedSysAllocator, undersized_fixed) {
+  constexpr auto align = has_extended_alignment ? 1024 : max_align_v;
+  struct alignas(align) Big {
+    float value;
+  };
+  using Alloc = AlignedSysAllocator<Big, FixedAlign<sizeof(void*)>>;
+  Alloc const alloc;
+  auto ptr = allocate_unique<Big>(alloc, Big{3.});
+  EXPECT_EQ(3., ptr->value);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % align);
+}
+
 TEST(AlignedSysAllocator, vector_fixed) {
   using Alloc = AlignedSysAllocator<float, FixedAlign<1024>>;
   Alloc const alloc;
@@ -172,6 +184,18 @@ TEST(AlignedSysAllocator, allocate_unique_default) {
   auto ptr = allocate_unique<float>(alloc, 3.);
   EXPECT_EQ(3., *ptr);
   EXPECT_EQ(0, std::uintptr_t(ptr.get()) % 1024);
+}
+
+TEST(AlignedSysAllocator, undersized_default) {
+  constexpr auto align = has_extended_alignment ? 1024 : max_align_v;
+  struct alignas(align) Big {
+    float value;
+  };
+  using Alloc = AlignedSysAllocator<Big, DefaultAlign>;
+  Alloc const alloc(sizeof(void*));
+  auto ptr = allocate_unique<Big>(alloc, Big{3.});
+  EXPECT_EQ(3., ptr->value);
+  EXPECT_EQ(0, std::uintptr_t(ptr.get()) % align);
 }
 
 TEST(AlignedSysAllocator, vector_default) {

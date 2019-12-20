@@ -403,8 +403,8 @@ class DefaultAlign {
     assert(!(align_ < sizeof(void*)) && bool("bad align: too small"));
     assert(!(align_ & (align_ - 1)) && bool("bad align: not power-of-two"));
   }
-  std::size_t operator()() const noexcept {
-    return align_;
+  std::size_t operator()(std::size_t align) const noexcept {
+    return align_ < align ? align : align_;
   }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {
@@ -423,8 +423,8 @@ class FixedAlign {
   using Self = FixedAlign<Align>;
 
  public:
-  constexpr std::size_t operator()() const noexcept {
-    return Align;
+  constexpr std::size_t operator()(std::size_t align) const noexcept {
+    return Align < align ? align : Align;
   }
 
   friend bool operator==(Self const&, Self const&) noexcept {
@@ -442,7 +442,8 @@ class FixedAlign {
  * aligned_free.
  *
  * Accepts a policy parameter for providing the alignment, which must:
- *   * be invocable as std::size_t() noexcept, returning the alignment
+ *   * be invocable as std::size_t(std::size_t) noexcept
+ *     * taking the type alignment and returning the allocation alignment
  *   * be noexcept-copy-constructible
  *   * have noexcept operator==
  *   * have noexcept operator!=
@@ -464,7 +465,9 @@ class AlignedSysAllocator : private Align {
 
  public:
   static_assert(std::is_nothrow_copy_constructible<Align>::value, "");
-  static_assert(is_nothrow_invocable_r<std::size_t, Align>::value, "");
+  static_assert(
+      is_nothrow_invocable_r<std::size_t, Align, std::size_t>::value,
+      "");
 
   using value_type = T;
 
@@ -481,7 +484,8 @@ class AlignedSysAllocator : private Align {
 
   T* allocate(size_t count) {
     using lifted = typename detail::lift_void_to_char<T>::type;
-    auto const p = aligned_malloc(sizeof(lifted) * count, align()());
+    auto const a = align()(alignof(lifted));
+    auto const p = aligned_malloc(sizeof(lifted) * count, a);
     if (!p) {
       if (FOLLY_UNLIKELY(errno != ENOMEM)) {
         std::terminate();
