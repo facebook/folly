@@ -14,37 +14,31 @@
  * limitations under the License.
  */
 
-#pragma once
+#include <folly/Portability.h>
+
+#if FOLLY_HAS_COROUTINES
+
+#include <folly/experimental/coro/Error.h>
 
 #include <type_traits>
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/Utility.h>
+#include <folly/portability/GTest.h>
 
-namespace folly {
-namespace coro {
+class CoErrorTest : public testing::Test {};
 
-class co_error {
- public:
-  template <
-      typename... A,
-      std::enable_if_t<
-          sizeof...(A) && std::is_constructible<exception_wrapper, A...>::value,
-          int> = 0>
-  explicit co_error(A&&... a) noexcept(
-      std::is_nothrow_constructible<exception_wrapper, A...>::value)
-      : ex_(static_cast<A&&>(a)...) {}
+TEST_F(CoErrorTest, constructible) {
+  using namespace folly;
+  using namespace folly::coro;
 
-  const exception_wrapper& exception() const {
-    return ex_;
-  }
+  EXPECT_TRUE((std::is_constructible_v<co_error, exception_wrapper>));
+  EXPECT_TRUE((std::is_constructible_v<co_error, std::runtime_error>));
+  EXPECT_TRUE((std::is_constructible_v<
+               co_error,
+               in_place_type_t<std::runtime_error>,
+               std::string>));
+  EXPECT_FALSE((std::is_constructible_v<co_error, int>));
+}
 
-  exception_wrapper& exception() {
-    return ex_;
-  }
-
- private:
-  exception_wrapper ex_;
-};
-
-} // namespace coro
-} // namespace folly
+#endif
