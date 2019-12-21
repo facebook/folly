@@ -31,7 +31,7 @@ namespace detail {
 namespace {
 
 struct AtForkTask {
-  void* handle;
+  void const* handle;
   folly::Function<bool()> prepare;
   folly::Function<void()> parent;
   folly::Function<void()> child;
@@ -115,7 +115,7 @@ void AtFork::init() {
 }
 
 void AtFork::registerHandler(
-    void* handle,
+    void const* handle,
     folly::Function<bool()> prepare,
     folly::Function<void()> parent,
     folly::Function<void()> child) {
@@ -124,7 +124,7 @@ void AtFork::registerHandler(
       {handle, std::move(prepare), std::move(parent), std::move(child)});
 }
 
-void AtFork::unregisterHandler(void* handle) {
+void AtFork::unregisterHandler(void const* handle) {
   if (!handle) {
     return;
   }
