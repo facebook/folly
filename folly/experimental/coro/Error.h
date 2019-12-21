@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <cassert>
 #include <type_traits>
 
 #include <folly/ExceptionWrapper.h>
@@ -32,7 +33,9 @@ class co_error {
           int> = 0>
   explicit co_error(A&&... a) noexcept(
       std::is_nothrow_constructible<exception_wrapper, A...>::value)
-      : ex_(static_cast<A&&>(a)...) {}
+      : ex_(static_cast<A&&>(a)...) {
+    assert(ex_);
+  }
 
   const exception_wrapper& exception() const {
     return ex_;
