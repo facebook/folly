@@ -25,11 +25,11 @@ namespace detail {
 struct AtFork {
   static void init();
   static void registerHandler(
-      void* object,
+      void* handle,
       folly::Function<bool()> prepare,
       folly::Function<void()> parent,
       folly::Function<void()> child);
-  static void unregisterHandler(void* object);
+  static void unregisterHandler(void* handle);
 };
 
 } // namespace detail

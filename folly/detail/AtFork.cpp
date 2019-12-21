@@ -31,7 +31,7 @@ namespace detail {
 namespace {
 
 struct AtForkTask {
-  void* object;
+  void* handle;
   folly::Function<bool()> prepare;
   folly::Function<void()> parent;
   folly::Function<void()> child;
@@ -115,23 +115,23 @@ void AtFork::init() {
 }
 
 void AtFork::registerHandler(
-    void* object,
+    void* handle,
     folly::Function<bool()> prepare,
     folly::Function<void()> parent,
     folly::Function<void()> child) {
   std::lock_guard<std::mutex> lg(AtForkList::instance().tasksLock);
   AtForkList::instance().tasks.push_back(
-      {object, std::move(prepare), std::move(parent), std::move(child)});
+      {handle, std::move(prepare), std::move(parent), std::move(child)});
 }
 
-void AtFork::unregisterHandler(void* object) {
-  if (!object) {
+void AtFork::unregisterHandler(void* handle) {
+  if (!handle) {
     return;
   }
   auto& list = AtForkList::instance();
   std::lock_guard<std::mutex> lg(list.tasksLock);
   for (auto it = list.tasks.begin(); it != list.tasks.end(); ++it) {
-    if (it->object == object) {
+    if (it->handle == handle) {
       list.tasks.erase(it);
       return;
     }
