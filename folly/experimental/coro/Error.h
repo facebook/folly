@@ -24,7 +24,7 @@
 namespace folly {
 namespace coro {
 
-class co_error {
+class co_error final {
  public:
   template <
       typename... A,
