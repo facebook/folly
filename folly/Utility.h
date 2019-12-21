@@ -329,7 +329,10 @@ class to_narrow_convertible {
               std::is_signed<Dst>::value == std::is_signed<Src>::value,
           int> = 0>
   /* implicit */ constexpr operator Dst() const noexcept {
-    return static_cast<Dst>(value_);
+    FOLLY_PUSH_WARNING
+    FOLLY_GNU_DISABLE_WARNING("-Wconversion")
+    return value_;
+    FOLLY_POP_WARNING
   }
 
  private:
@@ -342,6 +345,13 @@ class to_narrow_convertible {
 //  without specifying the destination type. Does not permit changing signs.
 //  Sometimes preferable to static_cast<Dst>(src) to document the intended
 //  semantics of the cast.
+//
+//  Models explicit conversion with an elided destination type. Sits in between
+//  a stricter explicit conversion with a named destination type and a more
+//  lenient implicit conversion. Implemented with implicit conversion in order
+//  to take advantage of the undefined-behavior sanitizer's inspection of all
+//  implicit conversions - it checks for truncation, with suppressions in place
+//  for warnings which guard against narrowing implicit conversions.
 template <typename Src>
 constexpr auto to_narrow(Src const& src) -> to_narrow_convertible<Src> {
   return to_narrow_convertible<Src>{src};
