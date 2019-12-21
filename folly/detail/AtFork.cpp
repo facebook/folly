@@ -125,6 +125,9 @@ void AtFork::registerHandler(
 }
 
 void AtFork::unregisterHandler(void* object) {
+  if (!object) {
+    return;
+  }
   auto& list = AtForkList::instance();
   std::lock_guard<std::mutex> lg(list.tasksLock);
   for (auto it = list.tasks.begin(); it != list.tasks.end(); ++it) {
