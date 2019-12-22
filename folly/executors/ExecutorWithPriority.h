@@ -18,6 +18,7 @@
 
 #include <folly/Executor.h>
 #include <atomic>
+#include <sys/types.h>
 
 namespace folly {
 class ExecutorWithPriority {
