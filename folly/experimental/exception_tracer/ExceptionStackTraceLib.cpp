@@ -30,13 +30,16 @@ namespace {
 // trace at all because in could be bogus
 FOLLY_TLS bool invalid;
 
-FOLLY_TLS StackTraceStack activeExceptions;
+FOLLY_TLS StackTraceStack uncaughtExceptions;
 FOLLY_TLS StackTraceStack caughtExceptions;
 
 } // namespace
 
-// This function is exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" StackTraceStack* getExceptionStackTraceStack() {
+// These functions are exported and may be found via dlsym(RTLD_NEXT, ...)
+extern "C" StackTraceStack* getUncaughtExceptionStackTraceStack() {
+  return invalid ? nullptr : &uncaughtExceptions;
+}
+extern "C" StackTraceStack* getCaughtExceptionStackTraceStack() {
   return invalid ? nullptr : &caughtExceptions;
 }
 
@@ -45,8 +48,8 @@ namespace {
 void addActiveException() {
   // Capture stack trace
   if (!invalid) {
-    if (!activeExceptions.pushCurrent()) {
-      activeExceptions.clear();
+    if (!uncaughtExceptions.pushCurrent()) {
+      uncaughtExceptions.clear();
       caughtExceptions.clear();
       invalid = true;
     }
@@ -72,11 +75,11 @@ struct Initializer {
         });
 
     registerCxaBeginCatchCallback([](void*) noexcept {
-      moveTopException(activeExceptions, caughtExceptions);
+      moveTopException(uncaughtExceptions, caughtExceptions);
     });
 
     registerCxaRethrowCallback([]() noexcept {
-      moveTopException(caughtExceptions, activeExceptions);
+      moveTopException(caughtExceptions, uncaughtExceptions);
     });
 
     registerCxaEndCatchCallback([]() noexcept {
@@ -95,7 +98,7 @@ struct Initializer {
       // For Lua interop, we see the handlerCount = 0
       if ((top->handlerCount == 1) || (top->handlerCount == 0)) {
         if (!caughtExceptions.pop()) {
-          activeExceptions.clear();
+          uncaughtExceptions.clear();
           invalid = true;
         }
       }

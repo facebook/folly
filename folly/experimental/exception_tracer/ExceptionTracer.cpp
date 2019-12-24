@@ -37,9 +37,10 @@ using namespace ::folly::symbolizer;
 using namespace __cxxabiv1;
 
 extern "C" {
-StackTraceStack* getExceptionStackTraceStack(void) __attribute__((__weak__));
-typedef StackTraceStack* (*GetExceptionStackTraceStackType)();
-GetExceptionStackTraceStackType getExceptionStackTraceStackFn;
+StackTraceStack* getCaughtExceptionStackTraceStack(void)
+    __attribute__((__weak__));
+typedef StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
+GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
 }
 
 } // namespace
@@ -130,13 +131,14 @@ bool isAbiCppException(const __cxa_exception* exc) {
 std::vector<ExceptionInfo> getCurrentExceptions() {
   struct Once {
     Once() {
-      // See if linked in with us (getExceptionStackTraceStack is weak)
-      getExceptionStackTraceStackFn = getExceptionStackTraceStack;
+      // See if linked in with us (getCaughtExceptionStackTraceStack is weak)
+      getCaughtExceptionStackTraceStackFn = getCaughtExceptionStackTraceStack;
 
-      if (!getExceptionStackTraceStackFn) {
+      if (!getCaughtExceptionStackTraceStackFn) {
         // Nope, see if it's in a shared library
-        getExceptionStackTraceStackFn = (GetExceptionStackTraceStackType)dlsym(
-            RTLD_NEXT, "getExceptionStackTraceStack");
+        getCaughtExceptionStackTraceStackFn =
+            (GetCaughtExceptionStackTraceStackType)dlsym(
+                RTLD_NEXT, "getCaughtExceptionStackTraceStack");
       }
     }
   };
@@ -149,14 +151,14 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   }
 
   StackTraceStack* traceStack = nullptr;
-  if (!getExceptionStackTraceStackFn) {
+  if (!getCaughtExceptionStackTraceStackFn) {
     static bool logged = false;
     if (!logged) {
       LOG(WARNING)
           << "Exception tracer library not linked, stack traces not available";
       logged = true;
     }
-  } else if ((traceStack = getExceptionStackTraceStackFn()) == nullptr) {
+  } else if ((traceStack = getCaughtExceptionStackTraceStackFn()) == nullptr) {
     static bool logged = false;
     if (!logged) {
       LOG(WARNING)
