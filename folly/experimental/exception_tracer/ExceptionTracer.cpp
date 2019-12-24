@@ -37,9 +37,9 @@ using namespace ::folly::symbolizer;
 using namespace __cxxabiv1;
 
 extern "C" {
-StackTraceStack* getCaughtExceptionStackTraceStack(void)
+const StackTraceStack* getCaughtExceptionStackTraceStack(void)
     __attribute__((__weak__));
-typedef StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
+typedef const StackTraceStack* (*GetCaughtExceptionStackTraceStackType)();
 GetCaughtExceptionStackTraceStackType getCaughtExceptionStackTraceStackFn;
 }
 
@@ -150,7 +150,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     return exceptions;
   }
 
-  StackTraceStack* traceStack = nullptr;
+  const StackTraceStack* traceStack = nullptr;
   if (!getCaughtExceptionStackTraceStackFn) {
     static bool logged = false;
     if (!logged) {
@@ -167,7 +167,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
     }
   }
 
-  StackTrace* trace = traceStack ? traceStack->top() : nullptr;
+  const StackTrace* trace = traceStack ? traceStack->top() : nullptr;
   while (currentException) {
     ExceptionInfo info;
     // Dependent exceptions (thrown via std::rethrow_exception) aren't

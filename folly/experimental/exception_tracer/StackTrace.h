@@ -76,12 +76,14 @@ class StackTraceStack {
    * Return the top stack trace, or nullptr if the stack is empty.
    */
   StackTrace* top();
+  const StackTrace* top() const;
 
   /**
    * Return the stack trace following p, or nullptr if p is the bottom of
    * the stack.
    */
   StackTrace* next(StackTrace* p);
+  const StackTrace* next(const StackTrace* p) const;
 
  private:
   static constexpr size_t kTopIdx = kIsDebug ? 1 : 0;

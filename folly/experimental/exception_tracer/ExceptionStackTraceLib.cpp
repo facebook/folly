@@ -36,10 +36,10 @@ FOLLY_TLS StackTraceStack caughtExceptions;
 } // namespace
 
 // These functions are exported and may be found via dlsym(RTLD_NEXT, ...)
-extern "C" StackTraceStack* getUncaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack* getUncaughtExceptionStackTraceStack() {
   return invalid ? nullptr : &uncaughtExceptions;
 }
-extern "C" StackTraceStack* getCaughtExceptionStackTraceStack() {
+extern "C" const StackTraceStack* getCaughtExceptionStackTraceStack() {
   return invalid ? nullptr : &caughtExceptions;
 }
 

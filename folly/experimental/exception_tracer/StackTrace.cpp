@@ -103,10 +103,21 @@ StackTrace* StackTraceStack::top() {
   return state_[kTopIdx];
 }
 
+const StackTrace* StackTraceStack::top() const {
+  checkGuard();
+  return state_[kTopIdx];
+}
+
 StackTrace* StackTraceStack::next(StackTrace* p) {
   checkGuard();
   assert(p);
   return static_cast<Node*>(p)->next;
+}
+
+const StackTrace* StackTraceStack::next(const StackTrace* p) const {
+  checkGuard();
+  assert(p);
+  return static_cast<const Node*>(p)->next;
 }
 } // namespace exception_tracer
 } // namespace folly
