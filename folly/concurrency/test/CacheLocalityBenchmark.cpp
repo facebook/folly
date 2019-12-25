@@ -105,7 +105,7 @@ BENCHMARK(CachedAccessSpreaderAtomicIncrement, iters) {
 // Getcpu refers to the vdso getcpu implementation.  ThreadLocal refers
 // to execution using SequentialThreadId, the fallback if the vdso
 // getcpu isn't available.  PthreadSelf hashes the value returned from
-// pthread_self() as a fallback-fallback for systems that don't have
+// getCurrentThreadID() as a fallback-fallback for systems that don't have
 // thread-local support.
 //
 // At 16_stripe_0_work and 32_stripe_0_work there is only L1 traffic,
