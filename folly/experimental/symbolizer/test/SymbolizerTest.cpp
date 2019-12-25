@@ -161,7 +161,7 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   inlineBar<100>(frames);
   symbolizer.symbolize(frames);
 
-  // clang-fromat off
+  // clang-format off
   // Expected full stack trace with @mode/dev. The last frame is missing in opt
   // mode.
   //  Frame: _ZN5folly10symbolizer13getStackTraceEPmm
@@ -179,7 +179,7 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   //  Frame: _ZN7testing8internal12UnitTestImpl11RunAllTestsEv
   //  Frame: _ZN7testing8UnitTest3RunEv
   //  Frame: _Z13RUN_ALL_TESTSv
-  // clang-fromat on
+  // clang-format on
   EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
   EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
   EXPECT_EQ(
