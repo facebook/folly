@@ -24,6 +24,7 @@
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/Stdlib.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/ThreadName.h>
 
 #include <folly/futures/Promise.h>
 
@@ -1872,11 +1873,7 @@ TYPED_TEST_P(EventBaseTest, EventBaseThreadName) {
   base.setName("foo");
   base.loop();
 
-#if (__GLIBC__ >= 2) && (__GLIBC_MINOR__ >= 12)
-  char name[16];
-  pthread_getname_np(pthread_self(), name, 16);
-  ASSERT_EQ(0, strcmp("foo", name));
-#endif
+  ASSERT_EQ("foo", *getCurrentThreadName());
 }
 
 TYPED_TEST_P(EventBaseTest, RunBeforeLoop) {
