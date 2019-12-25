@@ -63,7 +63,7 @@ constexpr size_t constexpr_strlen(const char* s) {
 #if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins)
   // clang provides a constexpr builtin
   return __builtin_strlen(s);
-#elif defined(__GNUC__) && !defined(__clang__)
+#elif defined(__GLIBCXX__) && !defined(__clang__)
   // strlen() happens to already be constexpr under gcc
   return std::strlen(s);
 #else
@@ -81,7 +81,7 @@ constexpr int constexpr_strcmp(const char* s1, const char* s2) {
 #if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins)
   // clang provides a constexpr builtin
   return __builtin_strcmp(s1, s2);
-#elif defined(__GNUC__) && !defined(__clang__)
+#elif defined(__GLIBCXX__) && !defined(__clang__)
   // strcmp() happens to already be constexpr under gcc
   return std::strcmp(s1, s2);
 #else
