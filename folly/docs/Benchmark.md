@@ -6,10 +6,6 @@ executing benchmarks. Currently the framework targets only
 single-threaded testing (though you can internally use fork-join
 parallelism and measure total run time).
 
-To use this library, you need to be using gcc 4.6 or later. Include
-`folly/Benchmark.h` and make sure `folly/benchmark.cpp` is part of the
-build (either directly or packaged with a library).
-
 ### Overview
 ***
 

@@ -8,9 +8,6 @@ C++, similar to the way languages with runtime type systems work
 `boost::variant`, but the syntax is intended to be a little more like
 using the native type directly.
 
-To use `dynamic`, you need to be using gcc 4.6 or later. You'll want to
-include `folly/dynamic.h` (or perhaps also `folly/json.h`).
-
 ### Overview
 ***
 

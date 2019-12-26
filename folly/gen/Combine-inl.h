@@ -194,8 +194,7 @@ class MergeTuples {
 
 } // namespace detail
 
-// TODO(mcurtiss): support zip() for N>1 operands. Because of variadic problems,
-// this might not be easily possible until gcc4.8 is available.
+// TODO(mcurtiss): support zip() for N>1 operands.
 template <
     class Source,
     class Zip = detail::Zip<typename std::decay<Source>::type>>

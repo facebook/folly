@@ -9,9 +9,6 @@ and dynamically-typed `folly::dynamic` objects, and can extract values from
 random-access containers and string-keyed maps.  In many cases, `format` is
 faster than `sprintf` as well as being fully type-safe.
 
-To use `format`, you need to be using gcc 4.6 or later.  You'll want to include
-`folly/Format.h`.
-
 ### Overview
 ***
 

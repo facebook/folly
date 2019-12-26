@@ -21,8 +21,6 @@
 This file contains an extensive STL compliance test suite for an STL vector
 implementation (such as FBVector).
 
-GCC 4.7 is required.
-
 */
 
 #if 0

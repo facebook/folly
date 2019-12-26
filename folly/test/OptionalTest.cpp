@@ -715,8 +715,6 @@ class ContainsOptional {
 
 /**
  * Test that a class containing an Optional can be copy and move assigned.
- * This was broken under gcc 4.7 until assignment operators were explicitly
- * defined.
  */
 TEST(Optional, AssignmentContained) {
   {

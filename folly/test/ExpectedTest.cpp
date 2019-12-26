@@ -549,8 +549,6 @@ class ContainsExpected {
 
 /**
  * Test that a class containing an Expected can be copy and move assigned.
- * This was broken under gcc 4.7 until assignment operators were explicitly
- * defined.
  */
 TEST(Expected, AssignmentContained) {
   {
