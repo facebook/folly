@@ -25,6 +25,7 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/CPortability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
 #include <folly/functional/ApplyTuple.h>
@@ -42,6 +43,7 @@ namespace hash {
 // This is the Hash128to64 function from Google's cityhash (available
 // under the MIT License).  We use it to reduce multiple 64 bit hashes
 // into a single hash.
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 inline uint64_t hash_128_to_64(
     const uint64_t upper,
     const uint64_t lower) noexcept {
@@ -61,6 +63,7 @@ inline uint64_t hash_128_to_64(
  * Thomas Wang 64 bit mix hash function
  */
 
+FOLLY_DISABLE_UNDEFINED_BEHAVIOR_SANITIZER("unsigned-integer-overflow")
 inline uint64_t twang_mix64(uint64_t key) noexcept {
   key = (~key) + (key << 21); // key *= (1 << 21) - 1; key -= 1;
   key = key ^ (key >> 24);
