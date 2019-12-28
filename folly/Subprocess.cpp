@@ -20,7 +20,7 @@
 
 #include <folly/Subprocess.h>
 
-#if __linux__
+#if defined(__linux__)
 #include <sys/prctl.h>
 #endif
 #include <fcntl.h>
@@ -546,7 +546,7 @@ int Subprocess::prepareChild(
     }
   }
 
-#if __linux__
+#if defined(__linux__)
   // Opt to receive signal on parent death, if requested
   if (options.parentDeathSignal_ != 0) {
     const auto parentDeathSignal =

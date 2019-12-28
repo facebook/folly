@@ -3751,7 +3751,7 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
 }
 #endif
 
-#if __linux__
+#if defined(__linux__)
 TEST(AsyncSocketTest, getBufInUse) {
   EventBase eventBase;
   std::shared_ptr<AsyncServerSocket> server(

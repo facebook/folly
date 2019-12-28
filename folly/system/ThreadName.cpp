@@ -25,7 +25,7 @@
 
 // Android only, prctl is only used when pthread_setname_np
 // and pthread_getname_np are not avilable.
-#if __linux__
+#if defined(__linux__)
 #define FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME 1
 #else
 #define FOLLY_DETAIL_HAS_PRCTL_PR_SET_NAME 0

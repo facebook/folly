@@ -383,7 +383,7 @@ class Subprocess {
       return *this;
     }
 
-#if __linux__
+#if defined(__linux__)
     /**
      * Child will receive a signal when the parent *thread* exits.
      *
@@ -463,7 +463,7 @@ class Subprocess {
       return *this;
     }
 
-#if __linux__
+#if defined(__linux__)
     /**
      * This is an experimental feature, it is best you don't use it at this
      * point of time.
@@ -494,12 +494,12 @@ class Subprocess {
     bool processGroupLeader_{false};
     bool detach_{false};
     std::string childDir_; // "" keeps the parent's working directory
-#if __linux__
+#if defined(__linux__)
     int parentDeathSignal_{0};
 #endif
     DangerousPostForkPreExecCallback* dangerousPostForkPreExecCallback_{
         nullptr};
-#if __linux__
+#if defined(__linux__)
     // none means `vfork()` instead of a custom `clone()`
     // Optional<> is used because value of '0' means do clone without any flags.
     Optional<clone_flags_t> cloneFlags_;

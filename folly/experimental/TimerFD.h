@@ -16,7 +16,7 @@
 
 #pragma once
 
-#if __linux__ && !__ANDROID__
+#if defined(__linux__) && !defined(__ANDROID__)
 #define FOLLY_HAVE_TIMERFD
 #endif
 

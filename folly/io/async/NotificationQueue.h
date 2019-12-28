@@ -40,7 +40,7 @@
 
 #include <glog/logging.h>
 
-#if __linux__ && !__ANDROID__
+#if defined(__linux__) && !defined(__ANDROID__)
 #define FOLLY_HAVE_EVENTFD
 #include <folly/io/async/EventFDWrapper.h>
 #endif

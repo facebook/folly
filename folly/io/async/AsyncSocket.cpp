@@ -36,7 +36,7 @@
 #include <sstream>
 #include <thread>
 
-#if __linux__
+#if defined(__linux__)
 #include <linux/sockios.h>
 #include <sys/ioctl.h>
 #endif
@@ -268,7 +268,7 @@ void disableTransparentFunctions(
   (void)fd;
   (void)noTransparentTls;
   (void)noTSocks;
-#if __linux__
+#if defined(__linux__)
   if (noTransparentTls) {
     // Ignore return value, errors are ok
     VLOG(5) << "Disabling TTLS for fd " << fd;
@@ -1731,7 +1731,7 @@ int AsyncSocket::setRecvBufSize(size_t bufsize) {
   return 0;
 }
 
-#if __linux__
+#if defined(__linux__)
 size_t AsyncSocket::getSendBufInUse() const {
   if (fd_ == NetworkSocket()) {
     std::stringstream issueString;

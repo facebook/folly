@@ -277,7 +277,7 @@ void AsyncServerSocket::useExistingSockets(
     SocketAddress address;
     address.setFromLocalAddress(fd);
 
-#if __linux__
+#if defined(__linux__)
     if (noTransparentTls_) {
       // Ignore return value, errors are ok
       netops::setsockopt(fd, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
@@ -315,7 +315,7 @@ void AsyncServerSocket::bindSocket(
     }
   }
 
-#if __linux__
+#if defined(__linux__)
   if (noTransparentTls_) {
     // Ignore return value, errors are ok
     netops::setsockopt(fd, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);
@@ -451,7 +451,7 @@ void AsyncServerSocket::bind(uint16_t port) {
           SocketAddress::getFamilyNameFrom(res->ai_addr, "<unknown>"));
     }
 
-#if __linux__
+#if defined(__linux__)
     if (noTransparentTls_) {
       // Ignore return value, errors are ok
       netops::setsockopt(s, SOL_SOCKET, SO_NO_TRANSPARENT_TLS, nullptr, 0);

@@ -727,7 +727,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   int setRecvBufSize(size_t bufsize);
 
-#if __linux__
+#if defined(__linux__)
   /**
    * @brief This method is used to get the number of bytes that are currently
    *        stored in the TCP send/tx buffer
