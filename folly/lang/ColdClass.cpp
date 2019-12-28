@@ -16,4 +16,4 @@
 
 #include <folly/lang/ColdClass.h>
 
-folly::cold_detail::ColdClass::ColdClass() noexcept {}
+folly::cold_detail::ColdClass::ColdClass() noexcept = default;

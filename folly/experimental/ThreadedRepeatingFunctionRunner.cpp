@@ -22,7 +22,7 @@
 
 namespace folly {
 
-ThreadedRepeatingFunctionRunner::ThreadedRepeatingFunctionRunner() {}
+ThreadedRepeatingFunctionRunner::ThreadedRepeatingFunctionRunner() = default;
 
 ThreadedRepeatingFunctionRunner::~ThreadedRepeatingFunctionRunner() {
   if (stopImpl()) {

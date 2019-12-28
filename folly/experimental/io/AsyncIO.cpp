@@ -96,8 +96,7 @@ void AsyncIOOp::reset(NotificationCallback cb) {
   memset(&iocb_, 0, sizeof(iocb_));
 }
 
-AsyncIOOp::~AsyncIOOp() {
-}
+AsyncIOOp::~AsyncIOOp() = default;
 
 void AsyncIOOp::pread(int fd, void* buf, size_t size, off_t start) {
   init();

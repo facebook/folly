@@ -34,7 +34,7 @@ class StackTraceStack::Node : public StackTrace {
 
  private:
   Node() : next(nullptr) {}
-  ~Node() {}
+  ~Node() = default;
 };
 
 auto StackTraceStack::Node::allocate() -> Node* {

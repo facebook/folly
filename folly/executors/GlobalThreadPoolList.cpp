@@ -35,14 +35,14 @@ class ThreadListHook {
   ~ThreadListHook();
 
  private:
-  ThreadListHook() {}
+  ThreadListHook() = default;
   ThreadPoolListHook* poolId_;
   std::thread::id threadId_;
 };
 
 class GlobalThreadPoolListImpl {
  public:
-  GlobalThreadPoolListImpl() {}
+  GlobalThreadPoolListImpl() = default;
 
   void registerThreadPool(ThreadPoolListHook* threadPoolId, std::string name);
 
@@ -89,7 +89,7 @@ class GlobalThreadPoolListImpl {
 
 class GlobalThreadPoolList {
  public:
-  GlobalThreadPoolList() {}
+  GlobalThreadPoolList() = default;
 
   static GlobalThreadPoolList& instance();
 

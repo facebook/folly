@@ -52,5 +52,5 @@ LogStream::LogStream(LogStreamProcessor* processor)
   rdbuf(&buffer_);
 }
 
-LogStream::~LogStream() {}
+LogStream::~LogStream() = default;
 } // namespace folly

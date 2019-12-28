@@ -32,7 +32,7 @@ StandardLogHandler::StandardLogHandler(
       writer_{std::move(writer)},
       config_{config} {}
 
-StandardLogHandler::~StandardLogHandler() {}
+StandardLogHandler::~StandardLogHandler() = default;
 
 void StandardLogHandler::handleMessage(
     const LogMessage& message,

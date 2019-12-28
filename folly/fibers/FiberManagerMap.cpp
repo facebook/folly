@@ -51,7 +51,7 @@ class GlobalCache {
   }
 
  private:
-  GlobalCache() {}
+  GlobalCache() = default;
 
   // Leak this intentionally. During shutdown, we may call getFiberManager,
   // and want access to the fiber managers during that time.
@@ -126,7 +126,7 @@ class ThreadLocalCache {
   }
 
  private:
-  ThreadLocalCache() {}
+  ThreadLocalCache() = default;
 
   struct ThreadLocalCacheTag {};
   using ThreadThreadLocalCache =
