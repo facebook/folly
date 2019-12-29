@@ -12,8 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from folly.iobuf import IOBuf
 from typing import List
+
+from folly.iobuf import IOBuf
 
 def get_empty_chain() -> IOBuf: ...
 def make_chain(data: List[IOBuf]) -> IOBuf: ...

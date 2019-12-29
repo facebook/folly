@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from typing import Any, Union, Optional, Iterator, Hashable, Iterable
+from typing import Any, Hashable, Iterable, Iterator, Optional, Union
 
 class IOBuf(Hashable):
     def __init__(self, buffer: Union[IOBuf, bytes, bytearray, memoryview]) -> None: ...
