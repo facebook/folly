@@ -809,12 +809,16 @@ struct LargePODConstructTo {
 struct NonPODConstructTo {
   explicit NonPODConstructTo(Source) {}
   NonPODConstructTo(NonPODConstructTo const&) {}
-  NonPODConstructTo& operator=(NonPODConstructTo const&) { return *this; }
+  NonPODConstructTo& operator=(NonPODConstructTo const&) {
+    return *this;
+  }
 };
 
 struct ConvertTo {
   explicit ConvertTo(Source) {}
-  ConvertTo& operator=(Source) { return *this; }
+  ConvertTo& operator=(Source) {
+    return *this;
+  }
 };
 
 static_assert(
@@ -840,7 +844,8 @@ static_assert(constructibleNotConvertible<SmallPODConstructTo>(), "");
 static_assert(constructibleNotConvertible<LargePODConstructTo>(), "");
 static_assert(constructibleNotConvertible<NonPODConstructTo>(), "");
 
-static_assert(expected_detail::IsConvertible<Source, ConvertTo>(),
+static_assert(
+    expected_detail::IsConvertible<Source, ConvertTo>(),
     "convertible");
 } // namespace
 

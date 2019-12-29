@@ -292,7 +292,6 @@ TEST(F14Set, equalityRefinement) {
 #include <string>
 #include <unordered_set>
 
-
 using namespace folly;
 using namespace folly::f14;
 using namespace folly::string_piece_literals;

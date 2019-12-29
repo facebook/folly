@@ -21,7 +21,6 @@
 #include <folly/Benchmark.h>
 #include <folly/portability/GTest.h>
 
-
 // clang-format off
 [[noreturn]] void fail() {
   FOLLY_SAFE_CHECK(0 + 0, "hello");

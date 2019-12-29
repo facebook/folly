@@ -28,7 +28,6 @@
 #include <folly/portability/SysMman.h>
 #include <folly/synchronization/test/Barrier.h>
 
-
 using namespace folly::test;
 
 namespace {

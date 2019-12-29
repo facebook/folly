@@ -1911,8 +1911,7 @@ void AsyncSSLSocket::clientHelloParsingCallback(
                     uint8_t>::value,
                 "unexpected underlying type");
 
-            auto typ =
-                static_cast<ssl::NameType>(cursor.readBE<uint8_t>());
+            auto typ = static_cast<ssl::NameType>(cursor.readBE<uint8_t>());
             auto nameLength = cursor.readBE<uint16_t>();
 
             if (typ == NameType::HOST_NAME &&
