@@ -1754,7 +1754,7 @@ bool Bzip2StreamCodec::doCompressStream(
     case StreamCodec::FlushOp::FLUSH:
       if (rc == BZ_RUN_OK) {
         DCHECK_EQ(cstream_->avail_in, 0);
-        DCHECK(input.size() == 0 || cstream_->avail_out != output.size());
+        DCHECK(input.empty() || cstream_->avail_out != output.size());
         return true;
       }
       return false;

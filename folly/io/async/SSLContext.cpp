@@ -102,7 +102,7 @@ void SSLContext::ciphers(const std::string& ciphers) {
 
 void SSLContext::setClientECCurvesList(
     const std::vector<std::string>& ecCurves) {
-  if (ecCurves.size() == 0) {
+  if (ecCurves.empty()) {
     return;
   }
 #if OPENSSL_VERSION_NUMBER >= 0x1000200fL
@@ -472,12 +472,12 @@ bool SSLContext::setAdvertisedNextProtocols(
 bool SSLContext::setRandomizedAdvertisedNextProtocols(
     const std::list<NextProtocolsItem>& items) {
   unsetNextProtocols();
-  if (items.size() == 0) {
+  if (items.empty()) {
     return false;
   }
   int total_weight = 0;
   for (const auto& item : items) {
-    if (item.protocols.size() == 0) {
+    if (item.protocols.empty()) {
       continue;
     }
     AdvertisedNextProtocolsItem advertised_item;

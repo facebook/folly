@@ -417,7 +417,7 @@ double prettyToDouble(
     folly::StringPiece* const prettyString,
     const PrettyType type) {
   auto value = folly::to<double>(prettyString);
-  while (prettyString->size() > 0 && std::isspace(prettyString->front())) {
+  while (!prettyString->empty() && std::isspace(prettyString->front())) {
     prettyString->advance(1); // Skipping spaces between number and suffix
   }
   const PrettySuffix* suffixes = kPrettySuffixes[type];

@@ -326,7 +326,7 @@ void DeterministicSchedule::beforeThreadExit() {
   }
   sems_.erase(std::find(sems_.begin(), sems_.end(), tls.sem));
   active_.erase(std::this_thread::get_id());
-  if (sems_.size() > 0) {
+  if (!sems_.empty()) {
     FOLLY_TEST_DSCHED_VLOG("exiting");
     /* Wait here so that parent thread can control when the thread
      * enters the thread local destructors. */

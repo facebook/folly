@@ -157,8 +157,7 @@ folly::dynamic& DynamicParser::ParserStack::errors(
 }
 
 folly::dynamic DynamicParser::ParserStack::releaseErrors() {
-  if (key_ || unmaterializedSubErrorKeys_.size() != 0 ||
-      subErrors_.size() != 1) {
+  if (key_ || !unmaterializedSubErrorKeys_.empty() || subErrors_.size() != 1) {
     throw DynamicParserLogicError(
         "Do not releaseErrors() while parsing: ",
         key_ != nullptr,
