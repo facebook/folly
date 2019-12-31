@@ -16,13 +16,13 @@
 
 #include <folly/experimental/JemallocHugePageAllocator.h>
 
+#include <folly/portability/Malloc.h>
 #include <folly/portability/String.h>
 #include <glog/logging.h>
 
 #include <sstream>
 
 #if defined(MADV_HUGEPAGE) && defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
-#include <jemalloc/jemalloc.h>
 #if (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1
 bool folly::JemallocHugePageAllocator::hugePagesSupported{true};

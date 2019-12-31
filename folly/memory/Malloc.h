@@ -21,6 +21,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/Malloc.h>
 
 /**
  * Define various MALLOCX_* macros normally provided by jemalloc.  We define
@@ -29,7 +30,6 @@
  */
 #if (defined(USE_JEMALLOC) || defined(FOLLY_USE_JEMALLOC)) && !FOLLY_SANITIZE
 // We have JEMalloc, so use it.
-#include <jemalloc/jemalloc.h> // @manual
 #else
 #ifndef MALLOCX_LG_ALIGN
 #define MALLOCX_LG_ALIGN(la) (la)
@@ -41,16 +41,6 @@
 
 #include <folly/lang/Exception.h> /* nolint */
 #include <folly/memory/detail/MallocImpl.h> /* nolint */
-
-// for malloc_usable_size
-// NOTE: FreeBSD 9 doesn't have malloc.h.  Its definitions
-// are found in stdlib.h.
-// However FreeBSD 11 and so does have it.
-#if !defined(__FreeBSD__)
-#if __has_include(<malloc.h>)
-#include <malloc.h>
-#endif
-#endif
 
 #include <cassert>
 #include <cstddef>
