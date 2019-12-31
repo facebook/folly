@@ -20,7 +20,11 @@ include(CheckSymbolExists)
 include(CheckTypeSize)
 include(CheckCXXCompilerFlag)
 
-CHECK_INCLUDE_FILE_CXX(jemalloc/jemalloc.h FOLLY_USE_JEMALLOC)
+if (CMAKE_SYSTEM_NAME STREQUAL "FreeBSD")
+  CHECK_INCLUDE_FILE_CXX(malloc_np.h FOLLY_USE_JEMALLOC)
+else()
+  CHECK_INCLUDE_FILE_CXX(jemalloc/jemalloc.h FOLLY_USE_JEMALLOC)
+endif()
 
 if(NOT CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # clang only rejects unknown warning flags if -Werror=unknown-warning-option

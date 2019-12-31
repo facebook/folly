@@ -22,13 +22,15 @@
 
 #include <sstream>
 
-#if defined(MADV_HUGEPAGE) && defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
-#if (JEMALLOC_VERSION_MAJOR >= 5)
+#if (defined(MADV_HUGEPAGE) || defined(MAP_ALIGNED_SUPER)) && \
+    defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+#if defined(__FreeBSD__) || (JEMALLOC_VERSION_MAJOR >= 5)
 #define FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED 1
 bool folly::JemallocHugePageAllocator::hugePagesSupported{true};
 #endif
 
-#endif // MADV_HUGEPAGE && defined(FOLLY_USE_JEMALLOC) && !FOLLY_SANITIZE
+#endif // MADV_HUGEPAGE || MAP_ALIGNED_SUPER && defined(FOLLY_USE_JEMALLOC) &&
+       // !FOLLY_SANITIZE
 
 #ifndef FOLLY_JEMALLOC_HUGE_PAGE_ALLOCATOR_SUPPORTED
 // Some mocks when jemalloc.h is not included or version too old
@@ -119,11 +121,15 @@ static inline T align_up(T val, U alignment) {
 static uintptr_t map_pages(size_t nr_pages) {
   // Initial mmapped area is large enough to contain the aligned huge pages
   size_t alloc_size = nr_pages * kHugePageSize;
+  int mflags = MAP_PRIVATE | MAP_ANONYMOUS;
+#if defined(__FreeBSD__)
+  mflags |= MAP_ALIGNED_SUPER;
+#endif
   void* p = mmap(
       nullptr,
       alloc_size + kHugePageSize,
       PROT_READ | PROT_WRITE,
-      MAP_PRIVATE | MAP_ANONYMOUS,
+      mflags,
       -1,
       0);
 
@@ -134,6 +140,7 @@ static uintptr_t map_pages(size_t nr_pages) {
   // Aligned start address
   uintptr_t first_page = align_up((uintptr_t)p, kHugePageSize);
 
+#if !defined(__FreeBSD__)
   // Unmap left-over 4k pages
   munmap(p, first_page - (uintptr_t)p);
   munmap(
@@ -158,6 +165,7 @@ static uintptr_t map_pages(size_t nr_pages) {
        ptr += kHugePageSize) {
     memset((void*)ptr, 0, 1);
   }
+#endif
 
   return first_page;
 }

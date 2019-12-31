@@ -23,6 +23,7 @@
 extern "C" {
 
 #if FOLLY_HAVE_WEAK_SYMBOLS
+#if !defined(__FreeBSD__)
 void* mallocx(size_t, int) __attribute__((__nothrow__, __weak__));
 void* rallocx(void*, size_t, int) __attribute__((__nothrow__, __weak__));
 size_t xallocx(void*, size_t, size_t, int)
@@ -37,6 +38,7 @@ int mallctlnametomib(const char*, size_t*, size_t*)
     __attribute__((__nothrow__, __weak__));
 int mallctlbymib(const size_t*, size_t, void*, size_t*, void*, size_t)
     __attribute__((__nothrow__, __weak__));
+#endif
 #else
 extern void* (*mallocx)(size_t, int);
 extern void* (*rallocx)(void*, size_t, int);
