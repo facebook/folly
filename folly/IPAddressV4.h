@@ -251,7 +251,7 @@ class IPAddressV4 {
    * @throws abort if numBits == 0 or numBits > bitCount()
    * @return mask associated with numBits
    */
-  static const ByteArray4 fetchMask(size_t numBits);
+  static ByteArray4 fetchMask(size_t numBits);
 
   // Given 2 IPAddressV4, mask pairs extract the longest common IPAddress,
   // mask pair

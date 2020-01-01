@@ -45,7 +45,7 @@ std::string decodeOpenSSLError(
   }
 }
 
-const StringPiece getSSLErrorString(SSLError error) {
+StringPiece getSSLErrorString(SSLError error) {
   StringPiece ret;
   switch (error) {
     case SSLError::CLIENT_RENEGOTIATION:
