@@ -270,7 +270,7 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   ThreadPoolExecutor::PoolStats stats;
   size_t activeTasks = 0;
   size_t idleAlive = 0;
-  for (auto thread : threadList_.get()) {
+  for (const auto& thread : threadList_.get()) {
     if (thread->idle) {
       const std::chrono::nanoseconds idleTime = now - thread->lastActiveTime;
       stats.maxIdleTime = std::max(stats.maxIdleTime, idleTime);
