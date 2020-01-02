@@ -18,7 +18,6 @@
 
 #include <algorithm>
 #include <cerrno>
-#include <functional>
 #include <utility>
 
 #include <glog/logging.h>
@@ -244,8 +243,9 @@ off_t memOpChunkSize(off_t length, off_t pageSize) {
  * - success: true + amountSucceeded == bufSize (op success on whole buffer)
  * - failure: false + amountSucceeded == nr bytes on which op succeeded.
  */
+template <typename Op>
 bool memOpInChunks(
-    std::function<int(void*, size_t)> op,
+    Op op,
     void* mem,
     size_t bufSize,
     off_t pageSize,
