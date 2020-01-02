@@ -849,6 +849,8 @@ class CargoBuilder(BuilderBase):
                 """\
 [build]
 target-dir = '''{}'''
+[net]
+git-fetch-with-cli = true
 """.format(
                     self.build_dir.replace("\\", "\\\\")
                 )
