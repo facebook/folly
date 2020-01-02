@@ -183,7 +183,7 @@
 #endif
 
 // attribute hidden
-#if _MSC_VER
+#if defined(_MSC_VER)
 #define FOLLY_ATTR_VISIBILITY_HIDDEN
 #elif defined(__GNUC__)
 #define FOLLY_ATTR_VISIBILITY_HIDDEN __attribute__((__visibility__("hidden")))

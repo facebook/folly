@@ -306,7 +306,7 @@ template <
         !std::is_reference<To>::value || std::is_reference<From>::value>::type>
 using SafeResultOf = decltype(static_cast<To>(std::declval<From>()));
 
-#if _MSC_VER
+#if defined(_MSC_VER)
 //  Need a workaround for MSVC to avoid the inscrutable error:
 //
 //      folly\function.h(...) : fatal error C1001: An internal error has

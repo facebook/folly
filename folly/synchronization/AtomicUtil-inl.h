@@ -126,7 +126,7 @@ constexpr auto is_atomic<std::atomic<Integer>> = true;
 
 #if FOLLY_X64
 
-#if _MSC_VER
+#if defined(_MSC_VER)
 
 template <typename Integer>
 inline bool atomic_fetch_set_x86(
