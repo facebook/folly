@@ -117,8 +117,8 @@ void ThreadSyncVar::acq_rel() {
 }
 
 DeterministicSchedule::DeterministicSchedule(
-    const std::function<size_t(size_t)>& scheduler)
-    : scheduler_(scheduler), nextThreadId_(0), step_(0) {
+    std::function<size_t(size_t)>  scheduler)
+    : scheduler_(std::move(scheduler)), nextThreadId_(0), step_(0) {
   auto& tls = TLState::get();
   assert(tls.sem == nullptr);
   assert(tls.sched == nullptr);

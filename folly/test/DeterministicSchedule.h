@@ -154,7 +154,7 @@ class DeterministicSchedule {
    * schedule) to participate in a deterministic schedule.
    */
   explicit DeterministicSchedule(
-      const std::function<size_t(size_t)>& scheduler);
+      std::function<size_t(size_t)>  scheduler);
 
   DeterministicSchedule(const DeterministicSchedule&) = delete;
   DeterministicSchedule& operator=(const DeterministicSchedule&) = delete;
