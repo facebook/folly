@@ -21,9 +21,9 @@
 #include <folly/synchronization/test/Barrier.h>
 
 #include <folly/Singleton.h>
-#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/HazptrThreadPoolExecutor.h>
 #include <folly/test/DeterministicSchedule.h>
 
 #include <atomic>
@@ -899,18 +899,8 @@ void recursive_destruction_test() {
   ASSERT_EQ(c_.dtors(), total);
 }
 
-struct TPETag {};
-folly::Singleton<folly::CPUThreadPoolExecutor, TPETag> cputpe_([] {
-  return new folly::CPUThreadPoolExecutor(1);
-});
-
-folly::Executor* get_cputpe() {
-  auto ex = cputpe_.try_get();
-  return ex ? ex.get() : nullptr;
-}
-
 void fork_test() {
-  folly::default_hazptr_domain().set_executor(&get_cputpe);
+  folly::start_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
     hazptr_obj_batch b;
     for (int i = 0; i < 2001; ++i) {
