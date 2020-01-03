@@ -54,14 +54,14 @@ class PollIoBackend : public EventBaseBackendBase {
   struct IoCb
       : public boost::intrusive::list_base_hook<
             boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
-    using BackendCb = std::function<void(PollIoBackend*, IoCb*, int64_t)>;
+    using BackendCb = void(PollIoBackend*, IoCb*, int64_t);
 
     explicit IoCb(PollIoBackend* backend, bool poolAlloc = true)
         : backend_(backend), poolAlloc_(poolAlloc) {}
     virtual ~IoCb() = default;
 
     PollIoBackend* backend_;
-    BackendCb backendCb_;
+    BackendCb* backendCb_{nullptr};
     const bool poolAlloc_;
     IoCb* next_{nullptr}; // this is for the free list
     Event* event_{nullptr};
