@@ -1054,9 +1054,8 @@ bool AsyncSSLSocket::willBlock(
           AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
       auto asyncPipeReaderPtr = asyncPipeReader.get();
       if (!asyncOperationFinishCallback_) {
-        asyncOperationFinishCallback_.reset(
-            new DefaultOpenSSLAsyncFinishCallback(
-                std::move(asyncPipeReader), this, DestructorGuard(this)));
+        asyncOperationFinishCallback_ = std::make_unique<DefaultOpenSSLAsyncFinishCallback>(
+                std::move(asyncPipeReader), this, DestructorGuard(this));
       }
       asyncPipeReaderPtr->setReadCB(asyncOperationFinishCallback_.get());
     }
