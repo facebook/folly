@@ -375,6 +375,14 @@ TEST(Observer, SetCallback) {
   EXPECT_EQ(2, callbackCallsCount);
 }
 
+TEST(Observer, CallbackMemoryLeak) {
+  folly::observer::SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+  auto callbackHandle = observer.addCallback([](auto) {});
+  // should not leak
+  callbackHandle = observer.addCallback([](auto) {});
+}
+
 int makeObserverRecursion(int n) {
   if (n == 0) {
     return 0;

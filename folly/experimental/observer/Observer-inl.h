@@ -98,6 +98,13 @@ CallbackHandle::CallbackHandle(
   });
 }
 
+inline CallbackHandle& CallbackHandle::operator=(
+    CallbackHandle&& handle) noexcept {
+  cancel();
+  context_ = std::move(handle.context_);
+  return *this;
+}
+
 inline CallbackHandle::~CallbackHandle() {
   cancel();
 }

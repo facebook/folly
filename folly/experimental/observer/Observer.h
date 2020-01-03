@@ -129,7 +129,7 @@ class CallbackHandle {
   CallbackHandle(const CallbackHandle&) = delete;
   CallbackHandle(CallbackHandle&&) = default;
   CallbackHandle& operator=(const CallbackHandle&) = delete;
-  CallbackHandle& operator=(CallbackHandle&&) = default;
+  CallbackHandle& operator=(CallbackHandle&&) noexcept;
   ~CallbackHandle();
 
   // If callback is currently running, waits until it completes.
