@@ -88,7 +88,7 @@ void FatalSignalCallbackRegistry::run() {
 
 std::atomic<FatalSignalCallbackRegistry*> gFatalSignalCallbackRegistry{};
 
-static FatalSignalCallbackRegistry* getFatalSignalCallbackRegistry() {
+FatalSignalCallbackRegistry* getFatalSignalCallbackRegistry() {
   // Leak it so we don't have to worry about destruction order
   static FatalSignalCallbackRegistry* fatalSignalCallbackRegistry =
       new FatalSignalCallbackRegistry();

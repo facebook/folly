@@ -109,7 +109,7 @@ class ZlibStreamCodec final : public StreamCodec {
   int level_;
   bool needReset_{true};
 };
-static constexpr uint16_t kGZIPMagicLE = 0x8B1F;
+constexpr uint16_t kGZIPMagicLE = 0x8B1F;
 
 std::vector<std::string> ZlibStreamCodec::validPrefixes() const {
   if (type() == CodecType::ZLIB) {
@@ -194,11 +194,11 @@ std::unique_ptr<StreamCodec> ZlibStreamCodec::createStream(
   return std::make_unique<ZlibStreamCodec>(options, level);
 }
 
-static bool inBounds(int value, int low, int high) {
+bool inBounds(int value, int low, int high) {
   return (value >= low) && (value <= high);
 }
 
-static int zlibConvertLevel(int level) {
+int zlibConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
       return 1;
@@ -310,7 +310,7 @@ void ZlibStreamCodec::resetInflateStream() {
   }
 }
 
-static int zlibTranslateFlush(StreamCodec::FlushOp flush) {
+int zlibTranslateFlush(StreamCodec::FlushOp flush) {
   switch (flush) {
     case StreamCodec::FlushOp::NONE:
       return Z_NO_FLUSH;
@@ -323,7 +323,7 @@ static int zlibTranslateFlush(StreamCodec::FlushOp flush) {
   }
 }
 
-static int zlibThrowOnError(int rc) {
+int zlibThrowOnError(int rc) {
   switch (rc) {
     case Z_OK:
     case Z_BUF_ERROR:

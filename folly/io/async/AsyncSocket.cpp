@@ -258,7 +258,7 @@ int AsyncSocket::SendMsgParamsCallback::getDefaultFlags(
 }
 
 namespace {
-static AsyncSocket::SendMsgParamsCallback defaultSendMsgParamsCallback;
+AsyncSocket::SendMsgParamsCallback defaultSendMsgParamsCallback;
 
 // Based on flags, signal the transparent handler to disable certain functions
 void disableTransparentFunctions(

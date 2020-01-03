@@ -61,8 +61,8 @@ using folly::ssl::OpenSSLUtils;
 
 // We have one single dummy SSL context so that we can implement attach
 // and detach methods in a thread safe fashion without modifying opnessl.
-static SSLContext* dummyCtx = nullptr;
-static SpinLock dummyCtxLock;
+SSLContext* dummyCtx = nullptr;
+SpinLock dummyCtxLock;
 
 // If given min write size is less than this, buffer will be allocated on
 // stack, otherwise it is allocated on heap
@@ -192,7 +192,7 @@ void setup_SSL_CTX(SSL_CTX* ctx) {
 // thing is because we will be setting this BIO_METHOD* inside BIOs owned by
 // various SSL objects which may get callbacks even during teardown. We may
 // eventually try to fix this
-static BIO_METHOD* getSSLBioMethod() {
+BIO_METHOD* getSSLBioMethod() {
   static auto const instance = OpenSSLUtils::newSocketBioMethod().release();
   return instance;
 }

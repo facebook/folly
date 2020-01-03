@@ -63,7 +63,7 @@ bool folly::JemallocHugePageAllocator::hugePagesSupported{false};
 namespace folly {
 namespace {
 
-static void print_error(int err, const char* msg) {
+void print_error(int err, const char* msg) {
   int cur_errno = std::exchange(errno, err);
   PLOG(ERROR) << msg;
   errno = cur_errno;
@@ -108,7 +108,7 @@ class HugePageArena {
 constexpr size_t kHugePageSize = 2 * 1024 * 1024;
 
 // Singleton arena instance
-static HugePageArena arena;
+HugePageArena arena;
 
 template <typename T, typename U>
 static inline T align_up(T val, U alignment) {
@@ -118,7 +118,7 @@ static inline T align_up(T val, U alignment) {
 
 // mmap enough memory to hold the aligned huge pages, then use madvise
 // to get huge pages. This can be checked in /proc/<pid>/smaps.
-static uintptr_t map_pages(size_t nr_pages) {
+uintptr_t map_pages(size_t nr_pages) {
   // Initial mmapped area is large enough to contain the aligned huge pages
   size_t alloc_size = nr_pages * kHugePageSize;
   int mflags = MAP_PRIVATE | MAP_ANONYMOUS;
