@@ -208,7 +208,13 @@
 //  - Restrictions on retired()ed functions:
 //    Any operation is safe from within a retired function's
 //    execution; you can retire additional functions or add a new domain call to
-//    the domain.
+//    the domain.  However, when using the default domain or the default
+//    executor, it is not legal to hold a lock across rcu_retire or call
+//    that is acquired by the deleter.  This is normally not a problem when
+//    using the default deleter delete, which does not acquire any user locks.
+//    However, even when using the default deleter, an object having a
+//    user-defined destructor that acquires locks held across the corresponding
+//    call to rcu_retire can still deadlock.
 //  - rcu_domain destruction:
 //    Destruction of a domain assumes previous synchronization: all remaining
 //    call and retire calls are immediately added to the executor.
@@ -307,8 +313,23 @@ class rcu_token {
   uint64_t epoch_;
 };
 
-// For most usages, rcu_domain is unnecessary, and you can use
-// rcu_reader and rcu_retire/synchronize_rcu directly.
+// Defines an RCU domain.  RCU readers within a given domain block updaters
+// (synchronize_rcu, call, retire, or rcu_retire) only within that same
+// domain, and have no effect on updaters associated with other rcu_domains.
+//
+// Custom domains are normally not necessary because the default domain works
+// in most cases.  But it makes sense to create a separate domain for uses
+// having unusually long read-side critical sections (many milliseconds)
+// or uses that cannot tolerate moderately long read-side critical sections
+// from others.
+//
+// The executor runs grace-period processing and invokes deleters.
+// The default of QueuedImmediateExecutor is very light weight (compared
+// to, say, a thread pool).  However, the flip side of this light weight
+// is that the overhead of this processing and invocation is incurred within
+// the executor invoking the RCU primitive, for example, rcu_retire().
+//
+// The domain must survive all its readers.
 template <typename Tag>
 class rcu_domain {
   using list_head = typename detail::ThreadCachedLists<Tag>::ListHead;
