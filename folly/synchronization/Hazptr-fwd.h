@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <folly/portability/GFlags.h>
+
 #include <atomic>
 #include <memory>
 
@@ -30,6 +32,8 @@
 #else
 #define FOLLY_HAZPTR_THR_LOCAL true
 #endif
+
+DECLARE_bool(folly_hazptr_use_executor);
 
 namespace folly {
 

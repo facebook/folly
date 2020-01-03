@@ -22,6 +22,7 @@
 #include <folly/synchronization/HazptrThrLocal.h>
 
 #include <folly/Portability.h>
+#include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 #include <atomic>
@@ -107,11 +108,16 @@ class hazptr_domain {
   using ObjList = hazptr_obj_list<Atom>;
   using RetiredList = hazptr_obj_retired_list<Atom>;
   using Set = std::unordered_set<const void*>;
+  using ExecFn = folly::Executor* (*)();
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
+
+  static folly::Executor* get_default_executor() {
+    return &folly::QueuedImmediateExecutor::instance();
+  }
 
   Atom<hazptr_rec<Atom>*> hazptrs_{nullptr};
   Atom<hazptr_obj<Atom>*> retired_{nullptr};
@@ -123,13 +129,14 @@ class hazptr_domain {
   Atom<int> rcount_{0};
   Atom<uint16_t> num_bulk_reclaims_{0};
   bool shutdown_{false};
-
   RetiredList untagged_;
   RetiredList tagged_;
   Obj* unprotected_; // List of unprotected objects being reclaimed
   ObjList children_; // Children of unprotected objects being reclaimed
   Atom<uint64_t> tagged_sync_time_{0};
   Atom<uint64_t> untagged_sync_time_{0};
+  Atom<ExecFn> exec_fn_{nullptr};
+  Atom<int> exec_backlog_{0};
 
  public:
   /** Constructor */
@@ -147,6 +154,14 @@ class hazptr_domain {
   hazptr_domain(hazptr_domain&&) = delete;
   hazptr_domain& operator=(const hazptr_domain&) = delete;
   hazptr_domain& operator=(hazptr_domain&&) = delete;
+
+  void set_executor(ExecFn exfn) {
+    exec_fn_.store(exfn, std::memory_order_release);
+  }
+
+  void clear_executor() {
+    exec_fn_.store(nullptr, std::memory_order_release);
+  }
 
   /** retire - nonintrusive - allocates memory */
   template <typename T, typename D = std::default_delete<T>>
@@ -287,7 +302,13 @@ class hazptr_domain {
     if (!(lock && rlist.check_lock()) &&
         (rlist.check_threshold_try_zero_count(threshold()) ||
          check_sync_time(sync_time))) {
-      do_reclamation(rlist, lock);
+      if (std::is_same<Atom<int>, std::atomic<int>>{} &&
+          this == &default_hazptr_domain<Atom>() &&
+          FLAGS_folly_hazptr_use_executor) {
+        invoke_reclamation_in_executor();
+      } else {
+        do_reclamation(rlist, lock);
+      }
     }
   }
 
@@ -302,6 +323,13 @@ class hazptr_domain {
   /** do_reclamation */
   void do_reclamation(RetiredList& rlist, bool lock) {
     auto obj = rlist.pop_all(lock == RetiredList::kAlsoLock);
+    if (!obj) {
+      if (lock) {
+        ObjList l;
+        rlist.push_unlock(l);
+      }
+      return;
+    }
     /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
     auto hprec = hazptrs_.load(std::memory_order_acquire);
     /* Read hazard pointer values into private search structure */
@@ -582,6 +610,36 @@ class hazptr_domain {
     }
     hcount_.fetch_add(1);
     return rec;
+  }
+
+  void invoke_reclamation_in_executor() {
+    auto fn = exec_fn_.load(std::memory_order_acquire);
+    auto ex = fn ? fn() : get_default_executor();
+    auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
+    if (ex) {
+      ex->add([this] {
+        exec_backlog_.store(0, std::memory_order_relaxed);
+        reclamation_by_executor();
+      });
+    } else {
+      LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
+    }
+    if (backlog >= 10) {
+      LOG(WARNING) << backlog
+                   << " request backlog for hazptr reclamation executora";
+    }
+  }
+
+  /** reclamation_by_executor */
+  void reclamation_by_executor() {
+    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count() +
+        kSyncTimePeriod;
+    tagged_sync_time_.store(time, std::memory_order_relaxed);
+    untagged_sync_time_.store(time, std::memory_order_relaxed);
+    do_reclamation(tagged_, RetiredList::kAlsoLock);
+    do_reclamation(untagged_, RetiredList::kDontLock);
   }
 }; // hazptr_domain
 

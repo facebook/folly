@@ -16,7 +16,14 @@
 
 #include <folly/synchronization/Hazptr.h>
 
+#include <folly/portability/GFlags.h>
+
 #include <atomic>
+
+DEFINE_bool(
+    folly_hazptr_use_executor,
+    true,
+    "Use an executor for hazptr asynchronous reclamation");
 
 namespace folly {
 

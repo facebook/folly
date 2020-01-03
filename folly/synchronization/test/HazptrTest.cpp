@@ -20,6 +20,8 @@
 #include <folly/synchronization/example/HazptrWideCAS.h>
 #include <folly/synchronization/test/Barrier.h>
 
+#include <folly/Singleton.h>
+#include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
@@ -897,6 +899,49 @@ void recursive_destruction_test() {
   ASSERT_EQ(c_.dtors(), total);
 }
 
+struct TPETag {};
+folly::Singleton<folly::CPUThreadPoolExecutor, TPETag> cputpe_([] {
+  return new folly::CPUThreadPoolExecutor(1);
+});
+
+folly::Executor* get_cputpe() {
+  auto ex = cputpe_.try_get();
+  return ex ? ex.get() : nullptr;
+}
+
+void fork_test() {
+  folly::default_hazptr_domain().set_executor(&get_cputpe);
+  auto trigger_reclamation = [] {
+    hazptr_obj_batch b;
+    for (int i = 0; i < 2001; ++i) {
+      auto p = new Node;
+      p->set_batch_no_tag(&b);
+      p->retire();
+    }
+  };
+  std::thread t1(trigger_reclamation);
+  t1.join();
+  folly::SingletonVault::singleton()->destroyInstances();
+  auto pid = fork();
+  folly::SingletonVault::singleton()->reenableInstances();
+  if (pid > 0) {
+    // parent
+    int status = -1;
+    auto pid2 = waitpid(pid, &status, 0);
+    EXPECT_EQ(status, 0);
+    EXPECT_EQ(pid, pid2);
+    trigger_reclamation();
+  } else if (pid == 0) {
+    // child
+    c_.clear();
+    std::thread t2(trigger_reclamation);
+    t2.join();
+    exit(0); // Do not print gtest results
+  } else {
+    PLOG(FATAL) << "Failed to fork()";
+  }
+}
+
 template <template <typename> class Atom = std::atomic>
 void lifo_test() {
   for (int i = 0; i < FLAGS_num_reps; ++i) {
@@ -1167,6 +1212,10 @@ TEST(HazptrTest, recursive_destruction) {
 
 TEST(HazptrTest, dsched_recursive_destruction) {
   recursive_destruction_test<DeterministicAtomic>();
+}
+
+TEST(HazptrTest, fork) {
+  fork_test();
 }
 
 TEST(HazptrTest, lifo) {
