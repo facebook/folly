@@ -153,8 +153,7 @@ class DeterministicSchedule {
    * DeterministicSchedule::thread on a thread participating in this
    * schedule) to participate in a deterministic schedule.
    */
-  explicit DeterministicSchedule(
-      const std::function<size_t(size_t)>& scheduler);
+  explicit DeterministicSchedule(std::function<size_t(size_t)> scheduler);
 
   DeterministicSchedule(const DeterministicSchedule&) = delete;
   DeterministicSchedule& operator=(const DeterministicSchedule&) = delete;

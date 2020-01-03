@@ -195,7 +195,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * Create a client AsyncSSLSocket
    */
   AsyncSSLSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      std::shared_ptr<folly::SSLContext> ctx,
       EventBase* evb,
       bool deferSecurityNegotiation = false);
 
@@ -217,7 +217,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    *          unencrypted data can be sent before sslConn/Accept
    */
   AsyncSSLSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      std::shared_ptr<folly::SSLContext> ctx,
       EventBase* evb,
       NetworkSocket fd,
       bool server = true,
@@ -228,7 +228,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * AsyncSocket.
    */
   AsyncSSLSocket(
-      const std::shared_ptr<folly::SSLContext>& ctx,
+      std::shared_ptr<folly::SSLContext> ctx,
       AsyncSocket::UniquePtr oldAsyncSocket,
       bool server = true,
       bool deferSecurityNegotiation = false);

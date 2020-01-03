@@ -20,6 +20,8 @@
 #include <folly/logging/LogMessage.h>
 #include <folly/logging/LogWriter.h>
 
+#include <utility>
+
 namespace folly {
 
 StandardLogHandler::StandardLogHandler(
@@ -30,7 +32,7 @@ StandardLogHandler::StandardLogHandler(
     : syncLevel_(syncLevel),
       formatter_{std::move(formatter)},
       writer_{std::move(writer)},
-      config_{config} {}
+      config_{std::move(config)} {}
 
 StandardLogHandler::~StandardLogHandler() = default;
 

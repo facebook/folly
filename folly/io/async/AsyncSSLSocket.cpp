@@ -24,6 +24,7 @@
 #include <cerrno>
 #include <chrono>
 #include <memory>
+#include <utility>
 
 #include <folly/Format.h>
 #include <folly/Indestructible.h>
@@ -220,11 +221,11 @@ namespace folly {
  * Create a client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    const shared_ptr<SSLContext>& ctx,
+    shared_ptr<SSLContext> ctx,
     EventBase* evb,
     bool deferSecurityNegotiation)
     : AsyncSocket(evb),
-      ctx_(ctx),
+      ctx_(std::move(ctx)),
       handshakeTimeout_(this, evb),
       connectionTimeout_(this, evb) {
   init();
@@ -237,14 +238,14 @@ AsyncSSLSocket::AsyncSSLSocket(
  * Create a server/client AsyncSSLSocket
  */
 AsyncSSLSocket::AsyncSSLSocket(
-    const shared_ptr<SSLContext>& ctx,
+    shared_ptr<SSLContext> ctx,
     EventBase* evb,
     NetworkSocket fd,
     bool server,
     bool deferSecurityNegotiation)
     : AsyncSocket(evb, fd),
       server_(server),
-      ctx_(ctx),
+      ctx_(std::move(ctx)),
       handshakeTimeout_(this, evb),
       connectionTimeout_(this, evb) {
   noTransparentTls_ = true;
@@ -259,13 +260,13 @@ AsyncSSLSocket::AsyncSSLSocket(
 }
 
 AsyncSSLSocket::AsyncSSLSocket(
-    const shared_ptr<SSLContext>& ctx,
+    shared_ptr<SSLContext> ctx,
     AsyncSocket::UniquePtr oldAsyncSocket,
     bool server,
     bool deferSecurityNegotiation)
     : AsyncSocket(std::move(oldAsyncSocket)),
       server_(server),
-      ctx_(ctx),
+      ctx_(std::move(ctx)),
       handshakeTimeout_(this, AsyncSocket::getEventBase()),
       connectionTimeout_(this, AsyncSocket::getEventBase()) {
   noTransparentTls_ = true;
