@@ -18,6 +18,7 @@
 
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
+#include <folly/portability/GFlags.h>
 #include <folly/sorted_vector_types.h>
 #include <folly/synchronization/Hazptr.h>
 
@@ -25,6 +26,8 @@
 #include <memory>
 #include <mutex>
 #include <string>
+
+DECLARE_bool(folly_reqctx_use_hazptr);
 
 namespace folly {
 

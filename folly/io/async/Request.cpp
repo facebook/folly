@@ -23,10 +23,9 @@
 
 #include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
-#include <folly/portability/GFlags.h>
 
 DEFINE_bool(
-    reqctx_use_hazptr,
+    folly_reqctx_use_hazptr,
     false,
     "RequestContext implementation using hazard pointers");
 
@@ -461,7 +460,7 @@ RequestContext::StateHazptr::Combined* RequestContext::StateHazptr::expand(
 }
 
 RequestContext::RequestContext()
-    : useHazptr_(FLAGS_reqctx_use_hazptr),
+    : useHazptr_(FLAGS_folly_reqctx_use_hazptr),
       rootId_(reinterpret_cast<intptr_t>(this)) {}
 
 RequestContext::RequestContext(const RequestContext& ctx, RootTag)
