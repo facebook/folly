@@ -69,7 +69,7 @@ void initStateFromParams(
 #endif
   auto p = reinterpret_cast<const uint64_t*>(&param);
   for (int i = 0; i < 8; ++i) {
-    state->h[i] = kBlake2bIV.data()[i] ^ Endian::little(p[i]);
+    state->h[i] = kBlake2bIV[i] ^ Endian::little(p[i]);
   }
   std::memset(
       reinterpret_cast<uint8_t*>(state) + sizeof(state->h),
