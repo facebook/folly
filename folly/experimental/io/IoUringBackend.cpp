@@ -49,14 +49,17 @@ IoUringBackend::IoUringBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
 
   timerEntry_ = &entries_[0];
   timerEntry_->backend_ = this;
+  timerEntry_->backendCb_ = PollIoBackend::processTimerIoCb;
 
   // build the free list - first entry is the timer entry
   for (size_t i = 2; i < numEntries_; i++) {
     entries_[i - 1].next_ = &entries_[i];
     entries_[i - 1].backend_ = this;
+    entries_[i - 1].backendCb_ = PollIoBackend::processPollIoCb;
   }
 
   entries_[numEntries_ - 1].backend_ = this;
+  entries_[numEntries_ - 1].backendCb_ = PollIoBackend::processPollIoCb;
   freeHead_ = &entries_[1];
 
   // add the timer fd
@@ -137,12 +140,7 @@ int IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   while (cqe && (i < maxGet_)) {
     i++;
     IoSqe* sqe = reinterpret_cast<IoSqe*>(io_uring_cqe_get_data(cqe));
-    if (FOLLY_UNLIKELY(static_cast<PollIoBackend::IoCb*>(sqe) == timerEntry_)) {
-      // just set the flag here
-      processTimers_ = true;
-    } else {
-      processIoCb(sqe, cqe->res);
-    }
+    sqe->backendCb_(this, sqe, cqe->res);
     ::io_uring_cqe_seen(&ioRing_, cqe);
     cqe = nullptr;
     ::io_uring_peek_cqe(&ioRing_, &cqe);

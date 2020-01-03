@@ -49,15 +49,19 @@ class PollIoBackend : public EventBaseBackendBase {
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
+  struct IoCb;
 
   struct IoCb
       : public boost::intrusive::list_base_hook<
             boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
+    using BackendCb = std::function<void(PollIoBackend*, IoCb*, int64_t)>;
+
     explicit IoCb(PollIoBackend* backend, bool poolAlloc = true)
         : backend_(backend), poolAlloc_(poolAlloc) {}
     virtual ~IoCb() = default;
 
     PollIoBackend* backend_;
+    BackendCb backendCb_;
     const bool poolAlloc_;
     IoCb* next_{nullptr}; // this is for the free list
     Event* event_{nullptr};
@@ -152,10 +156,24 @@ class PollIoBackend : public EventBaseBackendBase {
   void addTimerEvent(Event& event, const struct timeval* timeout);
   void removeTimerEvent(Event& event);
   size_t processTimers();
+  FOLLY_ALWAYS_INLINE void setProcessTimers() {
+    processTimers_ = true;
+  }
 
   size_t processActiveEvents();
 
-  void processIoCb(IoCb* ioCb, int64_t res) noexcept;
+  static void processPollIoCb(PollIoBackend* backend, IoCb* ioCb, int64_t res) {
+    backend->processPollIo(ioCb, res);
+  }
+
+  static void processTimerIoCb(
+      PollIoBackend* backend,
+      IoCb* /*unused*/,
+      int64_t /*unused*/) {
+    backend->setProcessTimers();
+  }
+
+  void processPollIo(IoCb* ioCb, int64_t res) noexcept;
 
   IoCb* FOLLY_NULLABLE allocIoCb();
   void releaseIoCb(IoCb* aioIoCb);

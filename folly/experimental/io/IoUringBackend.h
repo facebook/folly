@@ -75,7 +75,10 @@ class IoUringBackend : public PollIoBackend {
   };
 
   PollIoBackend::IoCb* allocNewIoCb() override {
-    return new IoSqe(this, false);
+    auto* ret = new IoSqe(this, false);
+    ret->backendCb_ = PollIoBackend::processPollIoCb;
+
+    return ret;
   }
 
   void cleanup();

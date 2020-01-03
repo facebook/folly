@@ -198,7 +198,7 @@ void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
   }
 }
 
-void PollIoBackend::processIoCb(IoCb* ioCb, int64_t res) noexcept {
+void PollIoBackend::processPollIo(IoCb* ioCb, int64_t res) noexcept {
   auto* ev = ioCb->event_ ? (ioCb->event_->getEvent()) : nullptr;
   if (ev) {
     if (~event_ref_flags(ev) & EVLIST_INTERNAL) {
