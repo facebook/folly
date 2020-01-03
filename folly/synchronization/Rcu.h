@@ -469,12 +469,29 @@ inline void swap(
   a.swap(b);
 }
 
+// Waits for all pre-existing RCU readers to complete.
+// RCU readers will normally be marked using the RAII interface rcu_reader,
+// as in folly::rcu_reader rcuGuard.
+//
+// Note that synchronize_rcu is not obligated to wait for RCU readers that
+// start after synchronize_rcu starts.  Note also that holding a lock across
+// synchronize_rcu that is acquired by any deleter (as in is passed to
+// rcu_retire, retire, or call) will result in deadlock.  Note that such
+// deadlock will normally only occur with user-written deleters, as in the
+// default of delele will normally be immune to such deadlocks.
 template <typename Tag = RcuTag>
 inline void synchronize_rcu(
     rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
   domain->synchronize();
 }
 
+// Waits for all in-flight deleters to complete.
+//
+// An in-flight deleter is one that has already been passed to rcu_retire,
+// retire, or call.  In other words, rcu_barrier is not obligated to wait
+// on any deleters passed to later calls to rcu_retire, retire, or call.
+//
+// And yes, the current implementation is buggy, and will be fixed.
 template <typename Tag = RcuTag>
 inline void rcu_barrier(
     rcu_domain<Tag>* domain = rcu_default_domain()) noexcept {
