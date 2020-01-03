@@ -1009,14 +1009,16 @@ bool AsyncSSLSocket::willBlock(
     // Register for read event if not already.
     updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
     return true;
-  } else if (error == SSL_ERROR_WANT_WRITE) {
+  }
+  if (error == SSL_ERROR_WANT_WRITE) {
     VLOG(3) << "AsyncSSLSocket(fd=" << fd_ << ", state=" << int(state_)
             << ", sslState=" << sslState_ << ", events=" << eventFlags_ << "): "
             << "SSL_ERROR_WANT_WRITE";
     // Register for write event if not already.
     updateEventRegistration(EventHandler::WRITE, EventHandler::READ);
     return true;
-  } else if ((false
+  }
+  if ((false
 #ifdef SSL_ERROR_WANT_ASYNC // OpenSSL 1.1.0 Async API
               || error == SSL_ERROR_WANT_ASYNC
 #endif
@@ -1953,7 +1955,7 @@ void AsyncSSLSocket::getSSLClientCiphers(
     bool convertToString) const {
   std::string ciphers;
 
-  if (parseClientHello_ == false ||
+  if (!parseClientHello_ ||
       clientHelloInfo_->clientHelloCipherSuites_.empty()) {
     clientCiphers = "";
     return;

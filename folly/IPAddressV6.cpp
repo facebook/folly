@@ -282,10 +282,7 @@ bool IPAddressV6::isIPv4Mapped() const {
     }
   }
   // check if bytes 11 and 12 are 255
-  if (by[10] == 0xff && by[11] == 0xff) {
-    return true;
-  }
-  return false;
+  return by[10] == 0xff && by[11] == 0xff;
 }
 
 // public

@@ -733,7 +733,7 @@ NetworkSocket AsyncServerSocket::createSocket(int family) {
  * TOS derived from the client's connect request
  */
 void AsyncServerSocket::setTosReflect(bool enable) {
-  if (!kIsLinux || enable == false) {
+  if (!kIsLinux || !enable) {
     tosReflect_ = false;
     return;
   }

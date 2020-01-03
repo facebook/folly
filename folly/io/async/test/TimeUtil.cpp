@@ -288,11 +288,7 @@ bool checkTimeout(
   // On x86 Linux, sleep calls generally have precision only to the nearest
   // millisecond.  The tolerance parameter lets users allow a few ms of slop.
   auto overrun = effectiveElapsedTime - expected;
-  if (overrun > tolerance) {
-    return false;
-  }
-
-  return true;
+  return overrun <= tolerance;
 }
 
 } // namespace folly
