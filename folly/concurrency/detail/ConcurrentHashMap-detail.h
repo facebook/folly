@@ -244,7 +244,22 @@ class alignas(64) BucketTable {
   }
 
   size_t size() {
-    return size_;
+    return size_.load(std::memory_order_acquire);
+  }
+
+  void clearSize() {
+    size_.store(0, std::memory_order_release);
+  }
+
+  void incSize() {
+    auto sz = size_.load(std::memory_order_relaxed);
+    size_.store(sz + 1, std::memory_order_release);
+  }
+
+  void decSize() {
+    auto sz = size_.load(std::memory_order_relaxed);
+    DCHECK_GT(sz, 0);
+    size_.store(sz - 1, std::memory_order_release);
   }
 
   bool empty() {
@@ -391,7 +406,7 @@ class alignas(64) BucketTable {
                 idx);
             iter->next();
           }
-          size_--;
+          decSize();
           break;
         }
         prev = node;
@@ -415,7 +430,7 @@ class alignas(64) BucketTable {
       std::lock_guard<Mutex> g(m_);
       buckets = buckets_.load(std::memory_order_relaxed);
       buckets_.store(newbuckets, std::memory_order_release);
-      size_ = 0;
+      clearSize();
     }
     buckets->retire(concurrenthashmap::HazptrTableDeleter(bcount));
   }
@@ -622,8 +637,8 @@ class alignas(64) BucketTable {
     size_t bcount = bucket_count_.load(std::memory_order_relaxed);
     auto buckets = buckets_.load(std::memory_order_relaxed);
     // Check for rehash needed for DOES_NOT_EXIST
-    if (size_ >= load_factor_nodes_ && type == InsertType::DOES_NOT_EXIST) {
-      if (max_size_ && size_ << 1 > max_size_) {
+    if (size() >= load_factor_nodes_ && type == InsertType::DOES_NOT_EXIST) {
+      if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
         throw std::bad_alloc();
       }
@@ -679,8 +694,8 @@ class alignas(64) BucketTable {
       return false;
     }
     // Node not found, check for rehash on ANY
-    if (size_ >= load_factor_nodes_ && type == InsertType::ANY) {
-      if (max_size_ && size_ << 1 > max_size_) {
+    if (size() >= load_factor_nodes_ && type == InsertType::ANY) {
+      if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
         throw std::bad_alloc();
       }
@@ -696,7 +711,7 @@ class alignas(64) BucketTable {
     }
 
     // We found a slot to put the node.
-    size_++;
+    incSize();
     if (!cur) {
       // InsertType::ANY
       // OR DOES_NOT_EXIST, but only in the try_emplace case
@@ -713,7 +728,7 @@ class alignas(64) BucketTable {
   Mutex m_;
   float load_factor_;
   size_t load_factor_nodes_;
-  size_t size_{0};
+  Atom<size_t> size_{0};
   size_t const max_size_;
 
   // Fields needed for read-only access, on separate cacheline.
@@ -1139,7 +1154,22 @@ class alignas(64) SIMDTable {
   }
 
   size_t size() {
-    return size_;
+    return size_.load(std::memory_order_acquire);
+  }
+
+  void clearSize() {
+    size_.store(0, std::memory_order_release);
+  }
+
+  void incSize() {
+    auto sz = size_.load(std::memory_order_relaxed);
+    size_.store(sz + 1, std::memory_order_release);
+  }
+
+  void decSize() {
+    auto sz = size_.load(std::memory_order_relaxed);
+    DCHECK_GT(sz, 0);
+    size_.store(sz - 1, std::memory_order_release);
   }
 
   bool empty() {
@@ -1185,7 +1215,7 @@ class alignas(64) SIMDTable {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
       it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
-      size_++;
+      incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
@@ -1236,7 +1266,7 @@ class alignas(64) SIMDTable {
       std::tie(chunk_idx, tag_idx) =
           findEmptyInsertLocation(chunks, ccount, hp);
       it.setNode(cur, chunks, ccount, chunk_idx, tag_idx);
-      size_++;
+      incSize();
     }
 
     Chunk* chunk = chunks->getChunk(chunk_idx, ccount);
@@ -1331,7 +1361,7 @@ class alignas(64) SIMDTable {
 
     chunk->clearNodeAndTag(tag_idx);
 
-    size_--;
+    decSize();
     if (iter) {
       iter->hazptrs_[0].reset(chunks);
       iter->setNode(nullptr, chunks, ccount, chunk_idx, tag_idx + 1);
@@ -1351,7 +1381,7 @@ class alignas(64) SIMDTable {
       std::lock_guard<Mutex> g(m_);
       chunks = chunks_.load(std::memory_order_relaxed);
       chunks_.store(newchunks, std::memory_order_release);
-      size_ = 0;
+      clearSize();
     }
     chunks->reclaim_nodes(ccount);
     chunks->retire(HazptrTableDeleter(ccount));
@@ -1441,8 +1471,8 @@ class alignas(64) SIMDTable {
     ccount = chunk_count_.load(std::memory_order_relaxed);
     chunks = chunks_.load(std::memory_order_relaxed);
 
-    if (size_ >= grow_threshold_ && type == InsertType::DOES_NOT_EXIST) {
-      if (max_size_ && size_ << 1 > max_size_) {
+    if (size() >= grow_threshold_ && type == InsertType::DOES_NOT_EXIST) {
+      if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
         throw std::bad_alloc();
       }
@@ -1470,8 +1500,8 @@ class alignas(64) SIMDTable {
         return false;
       }
       // Already checked for rehash on DOES_NOT_EXIST, now check on ANY
-      if (size_ >= grow_threshold_ && type == InsertType::ANY) {
-        if (max_size_ && size_ << 1 > max_size_) {
+      if (size() >= grow_threshold_ && type == InsertType::ANY) {
+        if (max_size_ && size() << 1 > max_size_) {
           // Would exceed max size.
           throw std::bad_alloc();
         }
@@ -1559,7 +1589,7 @@ class alignas(64) SIMDTable {
   Mutex m_;
   float load_factor_; // ceil of 1.0
   size_t grow_threshold_;
-  size_t size_{0};
+  Atom<size_t> size_{0};
   size_t const max_size_;
 
   // Fields needed for read-only access, on separate cacheline.
