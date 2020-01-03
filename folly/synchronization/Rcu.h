@@ -409,7 +409,10 @@ inline rcu_domain<RcuTag>* rcu_default_domain() {
   return *rcu_default_domain_;
 }
 
-// Main reader guard class.
+// Main reader guard class.  Use rcu_reader instead unless you need to
+// specify a custom domain.  Note that the default domain will work
+// in almost all use cases.  Please see rcu_domain for more information on
+// custom domains.
 template <typename Tag = RcuTag>
 class rcu_reader_domain {
  public:
@@ -460,6 +463,11 @@ class rcu_reader_domain {
   rcu_domain<Tag>* domain_;
 };
 
+// Mark an RCU read-side critical section using RAII style, as in
+// folly::rcu_reader rcuGuard.
+//
+// This uses the default RCU domain, which suffices for most use cases.
+// Please see the rcu_domain documentation for more information.
 using rcu_reader = rcu_reader_domain<RcuTag>;
 
 template <typename Tag = RcuTag>
