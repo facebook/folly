@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/Conv.h>
 #include <folly/portability/GTest.h>
 
 // clang-format off
@@ -35,4 +36,13 @@ TEST(SafeAssert, AssertionFailure) {
   succeed();
   EXPECT_DEATH(fail(), "Assertion failure: 0 \\+ 0");
   EXPECT_DEATH(fail(), "Message: hello");
+}
+
+TEST(SafeAssert, AssertionFailureErrno) {
+  EXPECT_DEATH(
+      FOLLY_SAFE_PCHECK((errno = EINVAL) && false, "hello"),
+      folly::to<std::string>("Error: ", EINVAL, " \\(EINVAL\\)"));
+  EXPECT_DEATH(
+      FOLLY_SAFE_PCHECK((errno = 999) && false, "hello"),
+      folly::to<std::string>("Error: 999 \\(<unknown>\\)"));
 }
