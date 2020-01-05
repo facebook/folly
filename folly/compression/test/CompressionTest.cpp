@@ -108,7 +108,7 @@ RandomDataHolder::RandomDataHolder(size_t sizeLog2) : DataHolder(sizeLog2) {
       size_t countLog2 = sizeLog2 - numThreadsLog2;
       size_t start = size_t(t) << countLog2;
       for (size_t i = 0; i < countLog2; ++i) {
-        this->data_[start + i] = rng();
+        this->data_[start + i] = static_cast<uint8_t>(rng());
       }
     });
   }
