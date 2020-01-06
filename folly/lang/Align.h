@@ -41,16 +41,16 @@ namespace detail {
 
 // Implemented this way because of a bug in Clang for ARMv7, which gives the
 // wrong result for `alignof` a `union` with a field of each scalar type.
-constexpr size_t max_align_(std::size_t a) {
-  return a;
-}
-template <typename... Es>
-constexpr std::size_t max_align_(std::size_t a, std::size_t e, Es... es) {
-  return !(a < e) ? max_align_(a, es...) : max_align_(e, es...);
-}
 template <typename... Ts>
 struct max_align_t_ {
-  static constexpr std::size_t value = max_align_(0u, alignof(Ts)...);
+  static constexpr std::size_t value() {
+    std::size_t const values[] = {0u, alignof(Ts)...};
+    std::size_t r = 0u;
+    for (auto const v : values) {
+      r = r < v ? v : r;
+    }
+    return r;
+  }
 };
 using max_align_v_ = max_align_t_<
     long double,
@@ -102,7 +102,7 @@ using max_align_v_ = max_align_t_<
 // crashes on 32-bit iOS apps that use `double`.
 //
 // Apple's allocation reference: http://bit.ly/malloc-small
-constexpr std::size_t max_align_v = detail::max_align_v_::value;
+constexpr std::size_t max_align_v = detail::max_align_v_::value();
 struct alignas(max_align_v) max_align_t {};
 
 //  Memory locations within the same cache line are subject to destructive
