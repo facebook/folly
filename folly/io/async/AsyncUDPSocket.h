@@ -165,7 +165,7 @@ class AsyncUDPSocket : public EventHandler {
   virtual int writem(
       const folly::SocketAddress& address,
       const std::unique_ptr<folly::IOBuf>* bufs,
-      size_t num);
+      size_t count);
 
   /**
    * Send the data in buffer to destination. Returns the return code from
@@ -187,13 +187,13 @@ class AsyncUDPSocket : public EventHandler {
   virtual ssize_t writev(
       const folly::SocketAddress& address,
       const struct iovec* vec,
-      size_t veclen,
+      size_t iovec_len,
       int gso);
 
   virtual ssize_t writev(
       const folly::SocketAddress& address,
       const struct iovec* vec,
-      size_t veclen);
+      size_t iovec_len);
 
   virtual ssize_t recvmsg(struct msghdr* msg, int flags);
 

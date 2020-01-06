@@ -34,8 +34,8 @@ class LogHandlerConfig {
   LogHandlerConfig();
   explicit LogHandlerConfig(StringPiece type);
   explicit LogHandlerConfig(Optional<StringPiece> type);
-  LogHandlerConfig(StringPiece type, Options options);
-  LogHandlerConfig(Optional<StringPiece> type, Options options);
+  LogHandlerConfig(StringPiece type, Options opts);
+  LogHandlerConfig(Optional<StringPiece> type, Options opts);
 
   /**
    * Update this LogHandlerConfig object by merging in settings from another

@@ -36,7 +36,7 @@ class LogName {
    * '.' characters are removed, and all sequences of consecutive '.'
    * characters are replaced with a single '.'
    */
-  static std::string canonicalize(folly::StringPiece name);
+  static std::string canonicalize(folly::StringPiece input);
 
   /**
    * Hash a log name.

@@ -24,7 +24,7 @@ namespace folly {
 
 class AsyncIOOp : public AsyncBaseOp {
   friend class AsyncIO;
-  friend std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& o);
+  friend std::ostream& operator<<(std::ostream& os, const AsyncIOOp& o);
 
  public:
   explicit AsyncIOOp(NotificationCallback cb = NotificationCallback());
@@ -60,7 +60,7 @@ class AsyncIOOp : public AsyncBaseOp {
   iocb iocb_;
 };
 
-std::ostream& operator<<(std::ostream& stream, const AsyncIOOp& op);
+std::ostream& operator<<(std::ostream& os, const AsyncIOOp& op);
 
 /**
  * C++ interface around Linux Async IO.

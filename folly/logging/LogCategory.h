@@ -149,7 +149,7 @@ class LogCategory {
    * choice if you've attached a Handler to this category and you don't want
    * any of these logs to also appear in the parent's Handler.
    */
-  void setPropagateLevelMessagesToParent(LogLevel propagate);
+  void setPropagateLevelMessagesToParent(LogLevel level);
 
   /**
    * Get which messages processed by this category will be processed by the

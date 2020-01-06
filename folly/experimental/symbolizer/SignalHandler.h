@@ -41,7 +41,7 @@ void installFatalSignalHandler();
  * installFatalSignalCallbacks(), below.
  */
 typedef void (*SignalCallback)();
-void addFatalSignalCallback(SignalCallback callback);
+void addFatalSignalCallback(SignalCallback cb);
 
 /**
  * Install the fatal signal callbacks; fatal signals will call these

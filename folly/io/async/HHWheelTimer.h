@@ -170,7 +170,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
    */
   static int DEFAULT_TICK_INTERVAL;
   explicit HHWheelTimerBase(
-      folly::TimeoutManager* timeoutManager,
+      folly::TimeoutManager* timeoutMananger,
       Duration intervalDuration = Duration(DEFAULT_TICK_INTERVAL),
       AsyncTimeout::InternalEnum internal = AsyncTimeout::InternalEnum::NORMAL,
       Duration defaultTimeoutDuration = Duration(-1));

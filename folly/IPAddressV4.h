@@ -122,7 +122,7 @@ class IPAddressV4 {
 
   // Create an IPAddressV4 from a string
   // @throws IPAddressFormatException
-  explicit IPAddressV4(StringPiece ip);
+  explicit IPAddressV4(StringPiece addr);
 
   // ByteArray4 constructor
   explicit IPAddressV4(const ByteArray4& src) noexcept;

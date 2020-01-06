@@ -100,7 +100,7 @@ class Random {
   /**
    * Get secure random bytes. (On Linux and OSX, this means /dev/urandom).
    */
-  static void secureRandom(void* data, size_t len);
+  static void secureRandom(void* data, size_t size);
 
   /**
    * Shortcut to get a secure random value of integral type.

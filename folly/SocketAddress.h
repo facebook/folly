@@ -581,8 +581,8 @@ class SocketAddress {
 
   struct addrinfo* getAddrInfo(const char* host, uint16_t port, int flags);
   struct addrinfo* getAddrInfo(const char* host, const char* port, int flags);
-  void setFromAddrInfo(const struct addrinfo* results);
-  void setFromLocalAddr(const struct addrinfo* results);
+  void setFromAddrInfo(const struct addrinfo* info);
+  void setFromLocalAddr(const struct addrinfo* info);
   void setFromSocket(
       NetworkSocket socket,
       int (*fn)(NetworkSocket, struct sockaddr*, socklen_t*));
