@@ -79,7 +79,7 @@ vector<detail::BenchmarkRegistration>& benchmarks() {
 }
 
 #define FB_FOLLY_GLOBAL_BENCHMARK_BASELINE fbFollyGlobalBenchmarkBaseline
-#define FB_STRINGIZE_X2(x) FB_STRINGIZE(x)
+#define FB_STRINGIZE_X2(x) FOLLY_PP_STRINGIZE(x)
 
 // Add the global baseline
 BENCHMARK(FB_FOLLY_GLOBAL_BENCHMARK_BASELINE) {

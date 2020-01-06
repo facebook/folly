@@ -22,7 +22,7 @@
   static bool FB_ANONYMOUS_VARIABLE(benchGen) = \
       (::folly::addBenchmark(                   \
            __FILE__,                            \
-           prefix FB_STRINGIZE(gen),            \
+           prefix FOLLY_PP_STRINGIZE(gen),      \
            [](unsigned iters) {                 \
              const unsigned num = iters;        \
              while (iters--) {                  \

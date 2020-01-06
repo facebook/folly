@@ -105,10 +105,10 @@
 #endif
 
 /**
- * Use FB_STRINGIZE(x) when you'd want to do what #x does inside
+ * Use FOLLY_PP_STRINGIZE(x) when you'd want to do what #x does inside
  * another macro expansion.
  */
-#define FB_STRINGIZE(x) #x
+#define FOLLY_PP_STRINGIZE(x) #x
 
 #define FOLLY_PP_DETAIL_NARGS_1(dummy, _7, _6, _5, _4, _3, _2, _1, _0, ...) _0
 #define FOLLY_PP_DETAIL_NARGS(...) \

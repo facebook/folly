@@ -24,7 +24,7 @@
 #define FOLLY_SAFE_CHECK_IMPL(expr, expr_s, msg, error) \
   ((expr) ? static_cast<void>(0)                        \
           : ::folly::detail::assertionFailure(          \
-                FB_STRINGIZE(expr_s),                   \
+                FOLLY_PP_STRINGIZE(expr_s),             \
                 (msg),                                  \
                 __FILE__,                               \
                 __LINE__,                               \

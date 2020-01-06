@@ -439,7 +439,7 @@ void printResultComparison(
 #define BENCHMARK(name, ...)                   \
   BENCHMARK_IMPL(                              \
       name,                                    \
-      FB_STRINGIZE(name),                      \
+      FOLLY_PP_STRINGIZE(name),                \
       FB_ARG_2_OR_1(1, ##__VA_ARGS__),         \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__), \
       __VA_ARGS__)
@@ -461,7 +461,7 @@ void printResultComparison(
 #define BENCHMARK_COUNTERS(name, counters, ...) \
   BENCHMARK_IMPL_COUNTERS(                      \
       name,                                     \
-      FB_STRINGIZE(name),                       \
+      FOLLY_PP_STRINGIZE(name),                 \
       counters,                                 \
       FB_ARG_2_OR_1(1, ##__VA_ARGS__),          \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__),  \
@@ -484,7 +484,7 @@ void printResultComparison(
 #define BENCHMARK_MULTI(name, ...)             \
   BENCHMARK_MULTI_IMPL(                        \
       name,                                    \
-      FB_STRINGIZE(name),                      \
+      FOLLY_PP_STRINGIZE(name),                \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__), \
       __VA_ARGS__)
 
@@ -542,27 +542,27 @@ void printResultComparison(
  * BENCHMARK_NAMED_PARAM(addValue, 0_to_1000, 10, 0, 1000)
  * BENCHMARK_NAMED_PARAM(addValue, 5k_to_20k, 250, 5000, 20000)
  */
-#define BENCHMARK_NAMED_PARAM(name, param_name, ...)       \
-  BENCHMARK_IMPL(                                          \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)), \
-      FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")", \
-      iters,                                               \
-      unsigned,                                            \
-      iters) {                                             \
-    name(iters, ##__VA_ARGS__);                            \
+#define BENCHMARK_NAMED_PARAM(name, param_name, ...)                   \
+  BENCHMARK_IMPL(                                                      \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),             \
+      FOLLY_PP_STRINGIZE(name) "(" FOLLY_PP_STRINGIZE(param_name) ")", \
+      iters,                                                           \
+      unsigned,                                                        \
+      iters) {                                                         \
+    name(iters, ##__VA_ARGS__);                                        \
   }
 
 /**
  * Same as BENCHMARK_NAMED_PARAM, but allows one to return the actual number
  * of iterations that have been run.
  */
-#define BENCHMARK_NAMED_PARAM_MULTI(name, param_name, ...) \
-  BENCHMARK_MULTI_IMPL(                                    \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)), \
-      FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")", \
-      unsigned,                                            \
-      iters) {                                             \
-    return name(iters, ##__VA_ARGS__);                     \
+#define BENCHMARK_NAMED_PARAM_MULTI(name, param_name, ...)             \
+  BENCHMARK_MULTI_IMPL(                                                \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),             \
+      FOLLY_PP_STRINGIZE(name) "(" FOLLY_PP_STRINGIZE(param_name) ")", \
+      unsigned,                                                        \
+      iters) {                                                         \
+    return name(iters, ##__VA_ARGS__);                                 \
   }
 
 /**
@@ -592,7 +592,7 @@ void printResultComparison(
 #define BENCHMARK_RELATIVE(name, ...)          \
   BENCHMARK_IMPL(                              \
       name,                                    \
-      "%" FB_STRINGIZE(name),                  \
+      "%" FOLLY_PP_STRINGIZE(name),            \
       FB_ARG_2_OR_1(1, ##__VA_ARGS__),         \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__), \
       __VA_ARGS__)
@@ -600,7 +600,7 @@ void printResultComparison(
 #define BENCHMARK_COUNTERS_RELATIVE(name, counters, ...) \
   BENCHMARK_IMPL_COUNTERS(                               \
       name,                                              \
-      "%" FB_STRINGIZE(name),                            \
+      "%" FOLLY_PP_STRINGIZE(name),                      \
       counters,                                          \
       FB_ARG_2_OR_1(1, ##__VA_ARGS__),                   \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__),           \
@@ -612,7 +612,7 @@ void printResultComparison(
 #define BENCHMARK_RELATIVE_MULTI(name, ...)    \
   BENCHMARK_MULTI_IMPL(                        \
       name,                                    \
-      "%" FB_STRINGIZE(name),                  \
+      "%" FOLLY_PP_STRINGIZE(name),            \
       FB_ONE_OR_NONE(unsigned, ##__VA_ARGS__), \
       __VA_ARGS__)
 
@@ -632,27 +632,27 @@ void printResultComparison(
 /**
  * A combination of BENCHMARK_RELATIVE and BENCHMARK_NAMED_PARAM.
  */
-#define BENCHMARK_RELATIVE_NAMED_PARAM(name, param_name, ...)  \
-  BENCHMARK_IMPL(                                              \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),     \
-      "%" FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")", \
-      iters,                                                   \
-      unsigned,                                                \
-      iters) {                                                 \
-    name(iters, ##__VA_ARGS__);                                \
+#define BENCHMARK_RELATIVE_NAMED_PARAM(name, param_name, ...)              \
+  BENCHMARK_IMPL(                                                          \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),                 \
+      "%" FOLLY_PP_STRINGIZE(name) "(" FOLLY_PP_STRINGIZE(param_name) ")", \
+      iters,                                                               \
+      unsigned,                                                            \
+      iters) {                                                             \
+    name(iters, ##__VA_ARGS__);                                            \
   }
 
 /**
  * Same as BENCHMARK_RELATIVE_NAMED_PARAM, but allows one to return the
  * actual number of iterations that have been run.
  */
-#define BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(name, param_name, ...) \
-  BENCHMARK_MULTI_IMPL(                                             \
-      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),          \
-      "%" FB_STRINGIZE(name) "(" FB_STRINGIZE(param_name) ")",      \
-      unsigned,                                                     \
-      iters) {                                                      \
-    return name(iters, ##__VA_ARGS__);                              \
+#define BENCHMARK_RELATIVE_NAMED_PARAM_MULTI(name, param_name, ...)        \
+  BENCHMARK_MULTI_IMPL(                                                    \
+      FB_CONCATENATE(name, FB_CONCATENATE(_, param_name)),                 \
+      "%" FOLLY_PP_STRINGIZE(name) "(" FOLLY_PP_STRINGIZE(param_name) ")", \
+      unsigned,                                                            \
+      iters) {                                                             \
+    return name(iters, ##__VA_ARGS__);                                     \
   }
 
 /**

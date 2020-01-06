@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
   std::deque<std::string> names; // Backing for benchmark names.
 
 #define BENCHMARK_HASH(HASHER) \
-  detail::addHashBenchmark<detail::HASHER>(FB_STRINGIZE(HASHER));
+  detail::addHashBenchmark<detail::HASHER>(FOLLY_PP_STRINGIZE(HASHER));
 
   BENCHMARK_HASH(SpookyHashV2);
   BENCHMARK_HASH(FNV64);
