@@ -614,8 +614,6 @@ std::unique_ptr<IOBuf> NoCompressionCodec::doUncompress(
 
 #if (FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA)
 
-namespace {
-
 void encodeVarintToIOBuf(uint64_t val, folly::IOBuf* out) {
   DCHECK_GE(out->tailroom(), kMaxVarintLength64);
   out->append(encodeVarint(val, out->writableTail()));
@@ -637,8 +635,6 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
   return val;
 }
 
-} // namespace
-
 #endif // FOLLY_HAVE_LIBLZ4 || FOLLY_HAVE_LIBLZMA
 
 #if FOLLY_HAVE_LIBLZ4
@@ -649,7 +645,6 @@ inline uint64_t decodeVarintFromCursor(folly::io::Cursor& cursor) {
 #endif
 
 #ifdef FOLLY_USE_LZ4_FAST_RESET
-namespace {
 void lz4_stream_t_deleter(LZ4_stream_t* ctx) {
   LZ4_freeStream(ctx);
 }
@@ -657,7 +652,6 @@ void lz4_stream_t_deleter(LZ4_stream_t* ctx) {
 void lz4_streamhc_t_deleter(LZ4_streamHC_t* ctx) {
   LZ4_freeStreamHC(ctx);
 }
-} // namespace
 #endif
 
 /**
