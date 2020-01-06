@@ -63,7 +63,7 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
 // event_init() should only ever be called once.  Subsequent calls
 // should be made to event_base_new().  We can recognise that
 // event_init() has already been called by simply inspecting current_base.
-static std::mutex libevent_mutex_;
+std::mutex libevent_mutex_;
 
 EventBaseBackend::EventBaseBackend() {
   struct event ev;

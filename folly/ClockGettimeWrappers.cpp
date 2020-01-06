@@ -81,7 +81,7 @@ struct VdsoInitializer {
   void* m_handle;
 };
 
-static const VdsoInitializer vdso_initializer;
+const VdsoInitializer vdso_initializer;
 } // namespace
 
 #endif

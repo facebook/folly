@@ -87,7 +87,7 @@ namespace {
 
 // Maximum number of DIEAbbreviation to cache in a compilation unit. Used to
 // speed up inline function lookup.
-static const uint32_t kMaxAbbreviationEntries = 1000;
+const uint32_t kMaxAbbreviationEntries = 1000;
 
 // All following read* functions read from a StringPiece, advancing the
 // StringPiece, and aborting if there's not enough room.

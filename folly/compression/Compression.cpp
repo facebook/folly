@@ -700,7 +700,7 @@ std::unique_ptr<Codec> LZ4Codec::create(int level, CodecType type) {
   return std::make_unique<LZ4Codec>(level, type);
 }
 
-static int lz4ConvertLevel(int level) {
+int lz4ConvertLevel(int level) {
   switch (level) {
     case 1:
     case COMPRESSION_LEVEL_FASTEST:
@@ -871,7 +871,7 @@ class LZ4FrameCodec final : public Codec {
   return std::make_unique<LZ4FrameCodec>(level, type);
 }
 
-static constexpr uint32_t kLZ4FrameMagicLE = 0x184D2204;
+constexpr uint32_t kLZ4FrameMagicLE = 0x184D2204;
 
 std::vector<std::string> LZ4FrameCodec::validPrefixes() const {
   return {prefixToStringLE(kLZ4FrameMagicLE)};
@@ -889,7 +889,7 @@ uint64_t LZ4FrameCodec::doMaxCompressedLength(
   return LZ4F_compressFrameBound(uncompressedLength, &prefs);
 }
 
-static size_t lz4FrameThrowOnError(size_t code) {
+size_t lz4FrameThrowOnError(size_t code) {
   if (LZ4F_isError(code)) {
     throw std::runtime_error(
         to<std::string>("LZ4Frame error: ", LZ4F_getErrorName(code)));
@@ -908,7 +908,7 @@ void LZ4FrameCodec::resetDCtx() {
   dirty_ = false;
 }
 
-static int lz4fConvertLevel(int level) {
+int lz4fConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
     case COMPRESSION_LEVEL_DEFAULT:
@@ -1224,8 +1224,8 @@ class LZMA2StreamCodec final : public StreamCodec {
   bool needDecodeSize_{false};
 };
 
-static constexpr uint64_t kLZMA2MagicLE = 0x005A587A37FD;
-static constexpr unsigned kLZMA2MagicBytes = 6;
+constexpr uint64_t kLZMA2MagicLE = 0x005A587A37FD;
+constexpr unsigned kLZMA2MagicBytes = 6;
 
 std::vector<std::string> LZMA2StreamCodec::validPrefixes() const {
   if (type() == CodecType::LZMA2_VARINT_SIZE) {
@@ -1331,7 +1331,7 @@ void LZMA2StreamCodec::resetDStream() {
   }
 }
 
-static lzma_ret lzmaThrowOnError(lzma_ret const rc) {
+lzma_ret lzmaThrowOnError(lzma_ret const rc) {
   switch (rc) {
     case LZMA_OK:
     case LZMA_STREAM_END:
@@ -1352,7 +1352,7 @@ static lzma_ret lzmaThrowOnError(lzma_ret const rc) {
   }
 }
 
-static lzma_action lzmaTranslateFlush(StreamCodec::FlushOp flush) {
+lzma_action lzmaTranslateFlush(StreamCodec::FlushOp flush) {
   switch (flush) {
     case StreamCodec::FlushOp::NONE:
       return LZMA_RUN;
@@ -1516,7 +1516,7 @@ bool LZMA2StreamCodec::doUncompressStream(
 
 #if FOLLY_HAVE_LIBZSTD
 
-static int zstdConvertLevel(int level) {
+int zstdConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
       return 1;
@@ -1532,7 +1532,7 @@ static int zstdConvertLevel(int level) {
   return level;
 }
 
-static int zstdFastConvertLevel(int level) {
+int zstdFastConvertLevel(int level) {
   switch (level) {
     case COMPRESSION_LEVEL_FASTEST:
       return -5;
@@ -1640,8 +1640,8 @@ Bzip2StreamCodec::Bzip2StreamCodec(int level, CodecType type)
   level_ = level;
 }
 
-static uint32_t constexpr kBzip2MagicLE = 0x685a42;
-static uint64_t constexpr kBzip2MagicBytes = 3;
+uint32_t constexpr kBzip2MagicLE = 0x685a42;
+uint64_t constexpr kBzip2MagicBytes = 3;
 
 std::vector<std::string> Bzip2StreamCodec::validPrefixes() const {
   return {prefixToStringLE(kBzip2MagicLE, kBzip2MagicBytes)};
@@ -1661,7 +1661,7 @@ uint64_t Bzip2StreamCodec::doMaxCompressedLength(
   return uncompressedLength + uncompressedLength / 100 + 600;
 }
 
-static bz_stream createBzStream() {
+bz_stream createBzStream() {
   bz_stream stream;
   stream.bzalloc = nullptr;
   stream.bzfree = nullptr;
@@ -1672,7 +1672,7 @@ static bz_stream createBzStream() {
 }
 
 // Throws on error condition, otherwise returns the code.
-static int bzCheck(int const rc) {
+int bzCheck(int const rc) {
   switch (rc) {
     case BZ_OK:
     case BZ_RUN_OK:

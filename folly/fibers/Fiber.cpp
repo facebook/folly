@@ -31,14 +31,14 @@ namespace folly {
 namespace fibers {
 
 namespace {
-static const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
+const uint64_t kMagic8Bytes = 0xfaceb00cfaceb00c;
 
 std::thread::id localThreadId() {
   return std::this_thread::get_id();
 }
 
 /* Size of the region from p + nBytes down to the last non-magic value */
-static size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
+size_t nonMagicInBytes(unsigned char* stackLimit, size_t stackSize) {
   CHECK_EQ(reinterpret_cast<intptr_t>(stackLimit) % sizeof(uint64_t), 0u);
   CHECK_EQ(stackSize % sizeof(uint64_t), 0u);
   auto begin = reinterpret_cast<uint64_t*>(stackLimit);
