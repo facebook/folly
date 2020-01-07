@@ -315,9 +315,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * the flag should be reset.
    */
 
-  // Inherit TAsyncTransport methods from AsyncSocket except the
+  // Inherit AsyncTransportWrapper methods from AsyncSocket except the
   // following.
-  // See the documentation in TAsyncTransport.h
+  // See the documentation in AsyncTransport.h
   // TODO: implement graceful shutdown in close()
   // TODO: implement detachSSL() that returns the SSL connection
   void closeNow() override;
