@@ -27,14 +27,6 @@
 #include <folly/portability/SysUio.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 
-constexpr bool kOpenSslModeMoveBufferOwnership =
-#ifdef SSL_MODE_MOVE_BUFFER_OWNERSHIP
-    true
-#else
-    false
-#endif
-    ;
-
 namespace folly {
 
 class AsyncSocketException;

@@ -2019,7 +2019,7 @@ void AsyncSocket::handleRead() noexcept {
           "non-exception type");
       return failRead(__func__, ex);
     }
-    if (!isBufferMovable_ && (buf == nullptr || buflen == 0)) {
+    if (buf == nullptr || buflen == 0) {
       AsyncSocketException ex(
           AsyncSocketException::BAD_ARGS,
           "ReadCallback::getReadBuffer() returned "
@@ -2033,18 +2033,7 @@ void AsyncSocket::handleRead() noexcept {
     VLOG(4) << "this=" << this << ", AsyncSocket::handleRead() got "
             << bytesRead << " bytes";
     if (bytesRead > 0) {
-      if (!isBufferMovable_) {
-        readCallback_->readDataAvailable(size_t(bytesRead));
-      } else {
-        CHECK(kOpenSslModeMoveBufferOwnership);
-        VLOG(5) << "this=" << this << ", AsyncSocket::handleRead() got "
-                << "buf=" << buf << ", " << bytesRead << "/" << buflen
-                << ", offset=" << offset;
-        auto readBuf = folly::IOBuf::takeOwnership(buf, buflen);
-        readBuf->trimStart(offset);
-        readBuf->trimEnd(buflen - offset - bytesRead);
-        readCallback_->readBufferAvailable(std::move(readBuf));
-      }
+      readCallback_->readDataAvailable(size_t(bytesRead));
 
       // Fall through and continue around the loop if the read
       // completely filled the available buffer.

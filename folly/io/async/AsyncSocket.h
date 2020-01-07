@@ -1294,8 +1294,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   uint32_t sendTimeout_; ///< The send timeout, in milliseconds
   uint16_t maxReadsPerEvent_; ///< Max reads per event loop iteration
 
-  bool isBufferMovable_{false};
-
   int8_t readErr_{READ_NO_ERROR}; ///< The read error encountered, if any
 
   EventBase* eventBase_; ///< The EventBase
