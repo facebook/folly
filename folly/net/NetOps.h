@@ -72,7 +72,7 @@
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif
 
-#ifndef MSG_WAITFORONE
+#if !defined(MSG_WAITFORONE) && !defined(__wasm32__)
 struct mmsghdr {
   struct msghdr msg_hdr;
   unsigned int msg_len;
