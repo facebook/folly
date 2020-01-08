@@ -83,6 +83,51 @@ inline bool zero_return(int error, int rc, int errno_copy) {
   return false;
 }
 
+void setup_SSL_CTX(SSL_CTX* ctx) {
+#ifdef SSL_MODE_RELEASE_BUFFERS
+  SSL_CTX_set_mode(
+      ctx,
+      SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE |
+          SSL_MODE_RELEASE_BUFFERS);
+#else
+  SSL_CTX_set_mode(
+      ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE);
+#endif
+// SSL_CTX_set_mode is a Macro
+#ifdef SSL_MODE_WRITE_IOVEC
+  SSL_CTX_set_mode(ctx, SSL_CTX_get_mode(ctx) | SSL_MODE_WRITE_IOVEC);
+#endif
+}
+
+// Note: This is a Leaky Meyer's Singleton. The reason we can't use a non-leaky
+// thing is because we will be setting this BIO_METHOD* inside BIOs owned by
+// various SSL objects which may get callbacks even during teardown. We may
+// eventually try to fix this
+BIO_METHOD* getSSLBioMethod() {
+  static auto const instance = OpenSSLUtils::newSocketBioMethod().release();
+  return instance;
+}
+
+void* initsslBioMethod() {
+  auto sslBioMethod = getSSLBioMethod();
+  // override the bwrite method for MSG_EOR support
+  OpenSSLUtils::setCustomBioWriteMethod(sslBioMethod, AsyncSSLSocket::bioWrite);
+  OpenSSLUtils::setCustomBioReadMethod(sslBioMethod, AsyncSSLSocket::bioRead);
+
+  // Note that the sslBioMethod.type and sslBioMethod.name are not
+  // set here. openssl code seems to be checking ".type == BIO_TYPE_SOCKET" and
+  // then have specific handlings. The sslWriteBioWrite should be compatible
+  // with the one in openssl.
+
+  // Return something here to enable AsyncSSLSocket to call this method using
+  // a function-scoped static.
+  return nullptr;
+}
+
+} // namespace
+
+namespace folly {
+
 class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
                                 public AsyncSSLSocket::HandshakeCB {
  private:
@@ -90,9 +135,6 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
   AsyncSSLSocket::ConnectCallback* callback_;
   std::chrono::milliseconds timeout_;
   std::chrono::steady_clock::time_point startTime_;
-
- protected:
-  ~AsyncSSLSocketConnector() override = default;
 
  public:
   AsyncSSLSocketConnector(
@@ -103,6 +145,8 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
         callback_(callback),
         timeout_(timeout),
         startTime_(std::chrono::steady_clock::now()) {}
+
+  ~AsyncSSLSocketConnector() override = default;
 
   void preConnect(folly::NetworkSocket fd) override {
     VLOG(7) << "client preConnect hook is invoked";
@@ -171,51 +215,6 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
     }
   }
 };
-
-void setup_SSL_CTX(SSL_CTX* ctx) {
-#ifdef SSL_MODE_RELEASE_BUFFERS
-  SSL_CTX_set_mode(
-      ctx,
-      SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE |
-          SSL_MODE_RELEASE_BUFFERS);
-#else
-  SSL_CTX_set_mode(
-      ctx, SSL_MODE_ACCEPT_MOVING_WRITE_BUFFER | SSL_MODE_ENABLE_PARTIAL_WRITE);
-#endif
-// SSL_CTX_set_mode is a Macro
-#ifdef SSL_MODE_WRITE_IOVEC
-  SSL_CTX_set_mode(ctx, SSL_CTX_get_mode(ctx) | SSL_MODE_WRITE_IOVEC);
-#endif
-}
-
-// Note: This is a Leaky Meyer's Singleton. The reason we can't use a non-leaky
-// thing is because we will be setting this BIO_METHOD* inside BIOs owned by
-// various SSL objects which may get callbacks even during teardown. We may
-// eventually try to fix this
-BIO_METHOD* getSSLBioMethod() {
-  static auto const instance = OpenSSLUtils::newSocketBioMethod().release();
-  return instance;
-}
-
-void* initsslBioMethod() {
-  auto sslBioMethod = getSSLBioMethod();
-  // override the bwrite method for MSG_EOR support
-  OpenSSLUtils::setCustomBioWriteMethod(sslBioMethod, AsyncSSLSocket::bioWrite);
-  OpenSSLUtils::setCustomBioReadMethod(sslBioMethod, AsyncSSLSocket::bioRead);
-
-  // Note that the sslBioMethod.type and sslBioMethod.name are not
-  // set here. openssl code seems to be checking ".type == BIO_TYPE_SOCKET" and
-  // then have specific handlings. The sslWriteBioWrite should be compatible
-  // with the one in openssl.
-
-  // Return something here to enable AsyncSSLSocket to call this method using
-  // a function-scoped static.
-  return nullptr;
-}
-
-} // namespace
-
-namespace folly {
 
 /**
  * Create a client AsyncSSLSocket
@@ -704,10 +703,22 @@ void AsyncSSLSocket::connect(
   noTransparentTls_ = true;
   totalConnectTimeout_ = totalConnectTimeout;
   if (sslState_ != STATE_UNENCRYPTED) {
-    callback = new AsyncSSLSocketConnector(this, callback, totalConnectTimeout);
+    allocatedConnectCallback_ =
+        new AsyncSSLSocketConnector(this, callback, totalConnectTimeout);
+    callback = allocatedConnectCallback_;
   }
   AsyncSocket::connect(
       callback, address, int(connectTimeout.count()), options, bindAddr);
+}
+
+void AsyncSSLSocket::cancelConnect() {
+  if (connectCallback_ && allocatedConnectCallback_) {
+    // Since the connect callback won't be called, clean it up.
+    delete allocatedConnectCallback_;
+    allocatedConnectCallback_ = nullptr;
+    connectCallback_ = nullptr;
+  }
+  AsyncSocket::cancelConnect();
 }
 
 bool AsyncSSLSocket::needsPeerVerification() const {

@@ -436,7 +436,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    * This does not invoke any connection related callbacks. Call this to
    * prevent any connect callback while cleaning up, etc.
    */
-  void cancelConnect();
+  virtual void cancelConnect();
 
   /**
    * Set the send timeout.

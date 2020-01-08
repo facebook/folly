@@ -37,6 +37,8 @@
 
 namespace folly {
 
+class AsyncSSLSocketConnector;
+
 /**
  * A class for performing asynchronous I/O on an SSL connection.
  *
@@ -401,6 +403,15 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
 
   using AsyncSocket::connect;
+
+  /**
+   * If a connect request is in-flight, cancels it and closes the socket
+   * immediately. Otherwise, this is a no-op.
+   *
+   * This does not invoke any connection related callbacks. Call this to
+   * prevent any connect callback while cleaning up, etc.
+   */
+  void cancelConnect() override;
 
   /**
    * Initiate an SSL connection on the socket
@@ -784,6 +795,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void handleReturnFromSSLAccept(int ret);
 
   void init();
+
+  // Need to clean this up during a cancel if callback hasn't fired yet.
+  AsyncSSLSocketConnector* allocatedConnectCallback_;
 
  protected:
   /**
