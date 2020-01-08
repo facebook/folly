@@ -79,6 +79,10 @@ struct mmsghdr {
 };
 #endif
 
+#ifndef IP_BIND_ADDRESS_NO_PORT
+#define IP_BIND_ADDRESS_NO_PORT 24
+#endif
+
 #else
 #include <WS2tcpip.h> // @manual
 
@@ -91,6 +95,7 @@ using sa_family_t = ADDRESS_FAMILY;
 #define MSG_ZEROCOPY 0x0
 #define SOL_UDP 0x0
 #define UDP_SEGMENT 0x0
+#define IP_BIND_ADDRESS_NO_PORT 0
 
 // We don't actually support either of these flags
 // currently.

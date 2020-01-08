@@ -528,6 +528,9 @@ void AsyncSocket::connect(
       setZeroCopy(zeroCopyVal_);
     }
 
+    // Apply the additional PRE_BIND options if any.
+    applyOptions(options, OptionKey::ApplyPos::PRE_BIND);
+
     VLOG(5) << "AsyncSocket::connect(this=" << this << ", evb=" << eventBase_
             << ", fd=" << fd_ << ", host=" << address.describe().c_str();
 
@@ -556,17 +559,8 @@ void AsyncSocket::connect(
       }
     }
 
-    // Apply the additional options if any.
-    for (const auto& opt : options) {
-      rv = opt.first.apply(fd_, opt.second);
-      if (rv != 0) {
-        auto errnoCopy = errno;
-        throw AsyncSocketException(
-            AsyncSocketException::INTERNAL_ERROR,
-            withAddr("failed to set socket option"),
-            errnoCopy);
-      }
-    }
+    // Apply the additional POST_BIND options if any.
+    applyOptions(options, OptionKey::ApplyPos::POST_BIND);
 
     // Call preConnect hook if any.
     if (connectCallback_) {
@@ -1599,6 +1593,23 @@ void AsyncSocket::cacheLocalAddress() const {
 void AsyncSocket::cachePeerAddress() const {
   if (!addr_.isInitialized()) {
     addr_.setFromPeerAddress(fd_);
+  }
+}
+
+void AsyncSocket::applyOptions(
+    const OptionMap& options,
+    OptionKey::ApplyPos pos) {
+  for (const auto& opt : options) {
+    if (opt.first.applyPos_ == pos) {
+      auto rv = opt.first.apply(fd_, opt.second);
+      if (rv != 0) {
+        auto errnoCopy = errno;
+        throw AsyncSocketException(
+            AsyncSocketException::INTERNAL_ERROR,
+            withAddr("failed to set socket option"),
+            errnoCopy);
+      }
+    }
   }
 }
 

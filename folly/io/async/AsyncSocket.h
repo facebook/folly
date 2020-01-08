@@ -386,6 +386,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   class OptionKey {
    public:
+    enum class ApplyPos { POST_BIND = 0, PRE_BIND = 1 };
     bool operator<(const OptionKey& other) const {
       if (level == other.level) {
         return optname < other.optname;
@@ -397,6 +398,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
     }
     int level;
     int optname;
+    ApplyPos applyPos_{ApplyPos::POST_BIND};
   };
 
   // Maps from a socket option key to its value
@@ -1252,6 +1254,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   void cacheLocalAddress() const;
   void cachePeerAddress() const;
+
+  void applyOptions(const OptionMap& options, OptionKey::ApplyPos pos);
 
   bool isZeroCopyRequest(WriteFlags flags);
 
