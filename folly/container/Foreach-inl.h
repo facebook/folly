@@ -269,14 +269,14 @@ void for_each_tuple_impl(index_constant<1>, Sequence&& seq, Func& func) {
  * range rather than as a tuple
  */
 template <typename Sequence, typename Func>
-static void for_each_impl(TupleTag, Sequence&& range, Func& func) {
+void for_each_impl(TupleTag, Sequence&& range, Func& func) {
   using type = decltype(get_impl<0>(std::declval<Sequence>()));
   using tag = ForEachImplTag<Func, type, void>;
   static_assert(!std::is_same<tag, void>::value, "unknown invocability");
   for_each_tuple_impl(tag{}, std::forward<Sequence>(range), func);
 }
 template <typename Sequence, typename Func>
-static void for_each_impl(RangeTag, Sequence&& range, Func& func) {
+void for_each_impl(RangeTag, Sequence&& range, Func& func) {
   using iter = decltype(adl::adl_begin(std::declval<Sequence>()));
   using type = decltype(*std::declval<iter>());
   using tag = ForEachImplTag<Func, type, iter>;
