@@ -181,14 +181,21 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
   if (FOLLY_LIKELY(freeHead_ != nullptr)) {
     auto* ret = freeHead_;
     freeHead_ = freeHead_->next_;
+    numIoCbInUse_++;
     return ret;
   }
 
   // alloc a new IoCb
-  return allocNewIoCb();
+  auto* ret = allocNewIoCb();
+  if (FOLLY_LIKELY(!!ret)) {
+    numIoCbInUse_++;
+  }
+
+  return ret;
 }
 
 void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
+  numIoCbInUse_--;
   if (FOLLY_LIKELY(aioIoCb->poolAlloc_)) {
     aioIoCb->event_ = nullptr;
     aioIoCb->next_ = freeHead_;

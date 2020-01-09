@@ -190,6 +190,10 @@ class PollIoBackend : public EventBaseBackendBase {
 
   int eb_event_modify_inserted(Event& event, IoCb* ioCb);
 
+  FOLLY_ALWAYS_INLINE size_t numIoCbInUse() const {
+    return numIoCbInUse_;
+  }
+
   size_t capacity_;
   size_t numEntries_;
   IoCb* timerEntry_{nullptr};
@@ -218,5 +222,7 @@ class PollIoBackend : public EventBaseBackendBase {
   bool processTimers_{false};
   size_t numInsertedEvents_{0};
   IoCbList activeEvents_;
+  // number of IoCb instances in use
+  size_t numIoCbInUse_{0};
 };
 } // namespace folly

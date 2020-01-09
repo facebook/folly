@@ -78,6 +78,25 @@ IoUringBackend::~IoUringBackend() {
 
 void IoUringBackend::cleanup() {
   if (ioRing_.ring_fd > 0) {
+    // release the active events
+    while (!activeEvents_.empty()) {
+      auto* ioCb = &activeEvents_.front();
+      activeEvents_.pop_front();
+      releaseIoCb(ioCb);
+    }
+
+    // wait for the outstanding events to finish
+    while (numIoCbInUse()) {
+      struct io_uring_cqe* cqe = nullptr;
+      ::io_uring_wait_cqe(&ioRing_, &cqe);
+      if (cqe) {
+        IoSqe* sqe = reinterpret_cast<IoSqe*>(io_uring_cqe_get_data(cqe));
+        releaseIoCb(sqe);
+        ::io_uring_cqe_seen(&ioRing_, cqe);
+      }
+    }
+
+    // exit now
     ::io_uring_queue_exit(&ioRing_);
     ioRing_.ring_fd = -1;
   }
