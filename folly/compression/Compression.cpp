@@ -68,76 +68,8 @@ using folly::io::compression::detail::prefixToStringLE;
 namespace folly {
 namespace io {
 
-Codec::Codec(
-    CodecType type,
-    Optional<int> level,
-    StringPiece name,
-    bool counters)
-    : type_(type) {
-  if (counters) {
-    bytesBeforeCompression_ = {type,
-                               name,
-                               level,
-                               CompressionCounterKey::BYTES_BEFORE_COMPRESSION,
-                               CompressionCounterType::SUM};
-    bytesAfterCompression_ = {type,
-                              name,
-                              level,
-                              CompressionCounterKey::BYTES_AFTER_COMPRESSION,
-                              CompressionCounterType::SUM};
-    bytesBeforeDecompression_ = {
-        type,
-        name,
-        level,
-        CompressionCounterKey::BYTES_BEFORE_DECOMPRESSION,
-        CompressionCounterType::SUM};
-    bytesAfterDecompression_ = {
-        type,
-        name,
-        level,
-        CompressionCounterKey::BYTES_AFTER_DECOMPRESSION,
-        CompressionCounterType::SUM};
-    compressions_ = {type,
-                     name,
-                     level,
-                     CompressionCounterKey::COMPRESSIONS,
-                     CompressionCounterType::SUM};
-    decompressions_ = {type,
-                       name,
-                       level,
-                       CompressionCounterKey::DECOMPRESSIONS,
-                       CompressionCounterType::SUM};
-    compressionMilliseconds_ = {type,
-                                name,
-                                level,
-                                CompressionCounterKey::COMPRESSION_MILLISECONDS,
-                                CompressionCounterType::SUM};
-    decompressionMilliseconds_ = {
-        type,
-        name,
-        level,
-        CompressionCounterKey::DECOMPRESSION_MILLISECONDS,
-        CompressionCounterType::SUM};
-  }
-}
-
-namespace {
-constexpr uint32_t kLoggingRate = 50;
-
-class Timer {
- public:
-  explicit Timer(folly::detail::CompressionCounter& counter)
-      : counter_(&counter) {}
-
-  ~Timer() {
-    *counter_ += timer_.elapsed().count();
-  }
-
- private:
-  folly::detail::CompressionCounter* counter_;
-  stop_watch<std::chrono::milliseconds> timer_;
-};
-} // namespace
+Codec::Codec(CodecType type, Optional<int> /* level */, StringPiece /* name */)
+    : type_(type) {}
 
 // Ensure consistent behavior in the nullptr case
 std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
@@ -148,16 +80,7 @@ std::unique_ptr<IOBuf> Codec::compress(const IOBuf* data) {
   if (len > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
-  bool const logging = folly::Random::oneIn(kLoggingRate);
-  folly::Optional<Timer> const timer =
-      logging ? Timer(compressionMilliseconds_) : folly::Optional<Timer>();
-  auto result = doCompress(data);
-  if (logging) {
-    compressions_++;
-    bytesBeforeCompression_ += len;
-    bytesAfterCompression_ += result->computeChainDataLength();
-  }
-  return result;
+  return doCompress(data);
 }
 
 std::string Codec::compress(const StringPiece data) {
@@ -165,16 +88,7 @@ std::string Codec::compress(const StringPiece data) {
   if (len > maxUncompressedLength()) {
     throw std::runtime_error("Codec: uncompressed length too large");
   }
-  bool const logging = folly::Random::oneIn(kLoggingRate);
-  folly::Optional<Timer> const timer =
-      logging ? Timer(compressionMilliseconds_) : folly::Optional<Timer>();
-  auto result = doCompressString(data);
-  if (logging) {
-    compressions_++;
-    bytesBeforeCompression_ += len;
-    bytesAfterCompression_ += result.size();
-  }
-  return result;
+  return doCompressString(data);
 }
 
 std::unique_ptr<IOBuf> Codec::uncompress(
@@ -198,16 +112,7 @@ std::unique_ptr<IOBuf> Codec::uncompress(
     return IOBuf::create(0);
   }
 
-  bool const logging = folly::Random::oneIn(kLoggingRate);
-  folly::Optional<Timer> const timer =
-      logging ? Timer(decompressionMilliseconds_) : folly::Optional<Timer>();
-  auto result = doUncompress(data, uncompressedLength);
-  if (logging) {
-    decompressions_++;
-    bytesBeforeDecompression_ += data->computeChainDataLength();
-    bytesAfterDecompression_ += result->computeChainDataLength();
-  }
-  return result;
+  return doUncompress(data, uncompressedLength);
 }
 
 std::string Codec::uncompress(
@@ -228,16 +133,7 @@ std::string Codec::uncompress(
     return "";
   }
 
-  bool const logging = folly::Random::oneIn(kLoggingRate);
-  folly::Optional<Timer> const timer =
-      logging ? Timer(decompressionMilliseconds_) : folly::Optional<Timer>();
-  auto result = doUncompressString(data, uncompressedLength);
-  if (logging) {
-    decompressions_++;
-    bytesBeforeDecompression_ += data.size();
-    bytesAfterDecompression_ += result.size();
-  }
-  return result;
+  return doUncompressString(data, uncompressedLength);
 }
 
 bool Codec::needsUncompressedLength() const {

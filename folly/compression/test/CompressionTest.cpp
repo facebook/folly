@@ -464,35 +464,6 @@ static bool codecHasFlush(CodecType type) {
   return type != CodecType::BZIP2;
 }
 
-namespace {
-class NoCountersCodec : public Codec {
- public:
-  NoCountersCodec()
-      : Codec(CodecType::NO_COMPRESSION, {}, {}, /* counters */ false) {}
-
- private:
-  uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override {
-    return uncompressedLength;
-  }
-
-  std::unique_ptr<IOBuf> doCompress(const IOBuf* buf) override {
-    return buf->clone();
-  }
-
-  std::unique_ptr<IOBuf> doUncompress(const IOBuf* buf, Optional<uint64_t>)
-      override {
-    return buf->clone();
-  }
-};
-} // namespace
-
-TEST(CodecTest, NoCounters) {
-  NoCountersCodec codec;
-  for (size_t i = 0; i < 1000; ++i) {
-    EXPECT_EQ("hello", codec.uncompress(codec.compress("hello")));
-  }
-}
-
 class StreamingUnitTest : public testing::TestWithParam<CodecType> {
  protected:
   void SetUp() override {
