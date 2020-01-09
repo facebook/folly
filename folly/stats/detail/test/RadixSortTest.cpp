@@ -19,7 +19,6 @@
 #include <folly/Random.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
-using namespace folly;
 using namespace folly::detail;
 
 TEST(DoubleRadixSort, Basic) {

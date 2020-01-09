@@ -18,7 +18,6 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace folly;
 using namespace folly::detail;
 
 class SlidingWindowTest : public ::testing::Test {

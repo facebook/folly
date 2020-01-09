@@ -20,7 +20,6 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace std;
 using namespace folly;
 using std::chrono::seconds;
 
