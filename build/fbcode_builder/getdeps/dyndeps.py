@@ -251,7 +251,10 @@ class MachDeps(DepBase):
         with open(objfile, "rb") as f:
             # mach stores the magic number in native endianness,
             # so unpack as native here and compare
-            magic = unpack("I", f.read(4))[0]
+            header = f.read(4)
+            if len(header) != 4:
+                return False
+            magic = unpack("I", header)[0]
             return magic == MACH_MAGIC
 
     def list_dynamic_deps(self, objfile):
