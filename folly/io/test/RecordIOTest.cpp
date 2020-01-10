@@ -277,11 +277,11 @@ TEST(RecordIOTest, validateRecordAPI) {
     buf->append(testSize);
     EXPECT_NE(buf, nullptr);
     auto wData = buf->writableData();
-    if (testSize > hdrSize) {
-      // if the testSize is more than header size, populate databytes with
-      // testChar
+    if (testSize >= hdrSize) {
+      // if the testSize is greater or equal than header size, populate buffer
+      // bytes with testChar
       buf->trimStart(hdrSize);
-      memset(wData, testChar, buf->length());
+      memset(wData, testChar, buf->capacity());
       recordio_helpers::prependHeader(buf, kTestFileId);
       buf->unshare();
       buf->coalesce();
