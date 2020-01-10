@@ -16,11 +16,18 @@
 
 #pragma once
 
+#include <Python.h>
 #include <folly/ExceptionString.h>
 #include <folly/Function.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/SequencedExecutor.h>
 #include <folly/io/async/NotificationQueue.h>
+
+#if PY_VERSION_HEX <= 0x03070000
+#define FOLLY_DETAIL_PY_ISFINALIZING() false
+#else
+#define FOLLY_DETAIL_PY_ISFINALIZING() _Py_IsFinalizing()
+#endif
 
 namespace folly {
 namespace python {
@@ -31,8 +38,12 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
 
   ~AsyncioExecutor() override {
     keepAliveRelease();
-    while (keepAliveCounter_ > 0) {
-      drive();
+    if (!FOLLY_DETAIL_PY_ISFINALIZING()) {
+      // if Python is finalizing calling drive() WILL segfault.
+      // any code that could have been called is now inconsequential.
+      while (keepAliveCounter_ > 0) {
+        drive();
+      }
     }
   }
 
