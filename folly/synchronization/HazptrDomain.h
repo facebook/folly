@@ -305,7 +305,7 @@ class hazptr_domain {
       if (std::is_same<Atom<int>, std::atomic<int>>{} &&
           this == &default_hazptr_domain<Atom>() &&
           FLAGS_folly_hazptr_use_executor) {
-        invoke_reclamation_in_executor();
+        invoke_reclamation_in_executor(rlist, lock);
       } else {
         do_reclamation(rlist, lock);
       }
@@ -612,14 +612,14 @@ class hazptr_domain {
     return rec;
   }
 
-  void invoke_reclamation_in_executor() {
+  void invoke_reclamation_in_executor(RetiredList& rlist, bool lock) {
     auto fn = exec_fn_.load(std::memory_order_acquire);
     auto ex = fn ? fn() : get_default_executor();
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
     if (ex) {
-      ex->add([this] {
+      ex->add([this, &rlist, lock] {
         exec_backlog_.store(0, std::memory_order_relaxed);
-        reclamation_by_executor();
+        do_reclamation(rlist, lock);
       });
     } else {
       LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
@@ -628,18 +628,6 @@ class hazptr_domain {
       LOG(WARNING) << backlog
                    << " request backlog for hazptr reclamation executora";
     }
-  }
-
-  /** reclamation_by_executor */
-  void reclamation_by_executor() {
-    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
-                        std::chrono::steady_clock::now().time_since_epoch())
-                        .count() +
-        kSyncTimePeriod;
-    tagged_sync_time_.store(time, std::memory_order_relaxed);
-    untagged_sync_time_.store(time, std::memory_order_relaxed);
-    do_reclamation(tagged_, RetiredList::kAlsoLock);
-    do_reclamation(untagged_, RetiredList::kDontLock);
   }
 }; // hazptr_domain
 
