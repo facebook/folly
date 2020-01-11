@@ -1348,13 +1348,13 @@ template <typename... Ts>
 void stealDeferredExecutorsVariadic(
     std::vector<futures::detail::DeferredWrapper>& executors,
     Ts&... ts) {
-  auto foreach = [&](auto& future) {
-    if (auto executor = stealDeferredExecutor(future)) {
-      executors.push_back(std::move(executor));
-    }
-    return folly::unit;
-  };
-  [](...) {}(foreach(ts)...);
+  foreach(
+      [&](auto, auto& future) {
+        if (auto executor = stealDeferredExecutor(future)) {
+          executors.push_back(std::move(executor));
+        }
+      },
+      ts...);
 }
 
 template <class InputIterator>
