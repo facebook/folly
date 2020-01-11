@@ -653,7 +653,7 @@ void testDualLockingWithConst() {
 template <class Mutex>
 void testTimed() {
   folly::Synchronized<std::vector<int>, Mutex> v;
-  folly::Synchronized<uint64_t, Mutex> numTimeouts;
+  folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 
   auto worker = [&](size_t threadIdx) {
     // Test directly using operator-> on the lock result
@@ -711,7 +711,7 @@ void testTimed() {
 template <class Mutex>
 void testTimedShared() {
   folly::Synchronized<std::vector<int>, Mutex> v;
-  folly::Synchronized<uint64_t, Mutex> numTimeouts;
+  folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 
   auto worker = [&](size_t threadIdx) {
     // Test directly using operator-> on the lock result
@@ -764,7 +764,7 @@ void testTimedShared() {
 template <class Mutex>
 void testTimedSynchronized() {
   folly::Synchronized<std::vector<int>, Mutex> v;
-  folly::Synchronized<uint64_t, Mutex> numTimeouts;
+  folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 
   auto worker = [&](size_t threadIdx) {
     // Test contextualLock()
@@ -811,7 +811,7 @@ void testTimedSynchronized() {
 template <class Mutex>
 void testTimedSynchronizedWithConst() {
   folly::Synchronized<std::vector<int>, Mutex> v;
-  folly::Synchronized<uint64_t, Mutex> numTimeouts;
+  folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 
   auto worker = [&](size_t threadIdx) {
     // Test contextualLock()
