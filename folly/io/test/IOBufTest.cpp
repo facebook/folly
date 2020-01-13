@@ -74,24 +74,24 @@ TEST(IOBuf, Simple) {
 }
 
 void testAllocSize(uint32_t requestedCapacity) {
+  auto expectedSize = IOBuf::goodSize(requestedCapacity);
   unique_ptr<IOBuf> iobuf(IOBuf::create(requestedCapacity));
   EXPECT_GE(iobuf->capacity(), requestedCapacity);
+  EXPECT_EQ(iobuf->capacity(), expectedSize);
 }
 
 TEST(IOBuf, AllocSizes) {
-  // Try with a small allocation size that should fit in the internal buffer
-  testAllocSize(28);
+  // cover small evil values exhaustively, including the
+  // kDefaultCombinedBufSize transition.
+  for (uint32_t i = 0; i < 1234; i++) {
+    testAllocSize(i);
+  }
 
-  // Try with a large allocation size that will require an external buffer.
+  // Try with large allocation sizes that will require an external buffer.
   testAllocSize(9000);
-
-  // 220 bytes is currently the cutoff
-  // (It would be nice to use the IOBuf::kMaxInternalDataSize constant,
-  // but it's private and it doesn't seem worth making it public just for this
-  // test code.)
-  testAllocSize(220);
-  testAllocSize(219);
-  testAllocSize(221);
+  testAllocSize(1048575);
+  testAllocSize(1048576);
+  testAllocSize(1048577);
 }
 
 void deleteArrayBuffer(void* buf, void* arg) {

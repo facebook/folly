@@ -312,6 +312,24 @@ unique_ptr<IOBuf> IOBuf::createChain(
   return out;
 }
 
+size_t IOBuf::goodSize(size_t minCapacity, CombinedOption combined) {
+  if (combined == CombinedOption::DEFAULT) {
+    combined = minCapacity <= kDefaultCombinedBufSize
+        ? CombinedOption::COMBINED
+        : CombinedOption::SEPARATE;
+  }
+  size_t overhead;
+  if (combined == CombinedOption::COMBINED) {
+    overhead = offsetof(HeapFullStorage, align);
+  } else {
+    // Pad minCapacity to a multiple of 8
+    minCapacity = (minCapacity + 7) & ~7;
+    overhead = sizeof(SharedInfo);
+  }
+  size_t goodSize = folly::goodMallocSize(minCapacity + overhead);
+  return goodSize - overhead;
+}
+
 IOBuf::IOBuf(
     TakeOwnershipOp,
     void* buf,

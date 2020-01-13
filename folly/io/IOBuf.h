@@ -228,6 +228,8 @@ class IOBuf {
   enum TakeOwnershipOp { TAKE_OWNERSHIP };
   enum CopyBufferOp { COPY_BUFFER };
 
+  enum class CombinedOption { DEFAULT, COMBINED, SEPARATE };
+
   typedef ByteRange value_type;
   typedef Iterator iterator;
   typedef Iterator const_iterator;
@@ -277,6 +279,20 @@ class IOBuf {
   static std::unique_ptr<IOBuf> createChain(
       size_t totalCapacity,
       std::size_t maxBufCapacity);
+
+  /**
+   * Uses folly::goodMallocSize() to figure out what the largest capacity would
+   * be that would trigger the same underlying allocation size as would be
+   * triggered by the given capacity.
+   *
+   * Note that IOBufs do this up-sizing for you: they will round up to the full
+   * allocation size and make that capacity available to you without your using
+   * this function. This just lets you introspect into that process, so you can
+   * for example figure out whether a given IOBuf can be usefully compacted.
+   */
+  static size_t goodSize(
+      size_t minCapacity,
+      CombinedOption combined = CombinedOption::DEFAULT);
 
   /**
    * Create a new IOBuf pointing to an existing data buffer.
