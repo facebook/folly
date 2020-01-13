@@ -119,3 +119,28 @@
 #else
 #define FOLLY_COLD
 #endif
+
+/**
+ *  no_unique_address indicates that a member variable can be optimized to
+ * occupy no space, rather than the minimum 1-byte used by default.
+ *
+ *  class Empty {};
+ *
+ *  class NonEmpty1 {
+ *    FOLLY_NO_UNIQUE_ADDRESS Empty e;
+ *    int f;
+ *  };
+ *
+ *  class NonEmpty2 {
+ *    Empty e;
+ *    int f;
+ *  };
+ *
+ *  sizeof(NonEmpty1); // may be == sizeof(int)
+ *  sizeof(NonEmpty2); // must be > sizeof(int)
+ */
+#if FOLLY_HAS_CPP_ATTRIBUTE(no_unique_address)
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS [[no_unique_address]]
+#else
+#define FOLLY_ATTR_NO_UNIQUE_ADDRESS
+#endif
