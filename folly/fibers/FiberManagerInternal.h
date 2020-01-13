@@ -143,8 +143,8 @@ class FiberManager : public ::folly::Executor {
    * with different Option, on the same EventBase.
    */
   struct FrozenOptions {
-    explicit FrozenOptions(Options options_)
-        : options(std::move(options_)), token(create(options)) {}
+    explicit FrozenOptions(Options opts)
+        : options(std::move(opts)), token(create(options)) {}
 
     const Options options;
     const ssize_t token;
