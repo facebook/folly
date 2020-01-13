@@ -29,8 +29,6 @@ namespace folly {
 /// threadsafe.
 class DefaultKeepAliveExecutor : public virtual Executor {
  public:
-  DefaultKeepAliveExecutor() : Executor() {}
-
   virtual ~DefaultKeepAliveExecutor() {
     DCHECK(!keepAlive_);
   }
