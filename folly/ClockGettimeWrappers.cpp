@@ -15,6 +15,7 @@
  */
 
 #include <folly/ClockGettimeWrappers.h>
+#include <folly/CPortability.h>
 #include <folly/Likely.h>
 #include <folly/portability/Time.h>
 
@@ -48,7 +49,9 @@ static int64_t clock_gettime_ns_fallback(clockid_t clock) {
 int (*clock_gettime)(clockid_t, timespec* ts) = &::clock_gettime;
 int64_t (*clock_gettime_ns)(clockid_t) = &clock_gettime_ns_fallback;
 
-#ifdef FOLLY_HAVE_LINUX_VDSO
+// In MSAN mode use glibc's versions as they are intercepted by the MSAN
+// runtime which properly tracks memory initialization.
+#if defined(FOLLY_HAVE_LINUX_VDSO) && !defined(FOLLY_SANITIZE_MEMORY)
 
 namespace {
 
