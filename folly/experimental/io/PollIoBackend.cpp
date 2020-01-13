@@ -407,7 +407,6 @@ int PollIoBackend::eb_event_del(Event& event) {
     event_ref_flags(ev) &= ~EVLIST_INSERTED;
 
     // not in use  - we can cancel it
-    // TBD- batching
     if (!iocb->useCount_ && !wasLinked) {
       // io_cancel will attempt to cancel the event. the result is
       // EINVAL - usually the event has already been delivered
@@ -432,6 +431,11 @@ int PollIoBackend::eb_event_del(Event& event) {
     }
 
     return 0;
+  } else {
+    // we can have an EVLIST_ACTIVE event
+    // which does not have the EVLIST_INSERTED flag set
+    // so we need to release it here
+    releaseIoCb(iocb);
   }
 
   return -1;

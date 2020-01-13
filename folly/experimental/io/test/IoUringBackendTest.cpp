@@ -48,15 +48,11 @@ class EventFD : public folly::EventHandler {
     if (!persist_) {
       registerHandler(folly::EventHandler::READ);
     }
-    size_t data;
-    if (sizeof(data) == folly::readNoInt(fd_, &data, sizeof(data))) {
-      CHECK_EQ(data, 1);
-      ++num_;
-      if (total_ > 0) {
-        --total_;
-        if (total_ == 0) {
-          evb_->terminateLoopSoon();
-        }
+    ++num_;
+    if (total_ > 0) {
+      --total_;
+      if (total_ == 0) {
+        evb_->terminateLoopSoon();
       }
     }
   }
@@ -93,14 +89,14 @@ class EventFD : public folly::EventHandler {
   folly::EventBase* evb_;
 };
 
-void testOverflow(bool overflow) {
+void testOverflow(bool overflow, bool persist) {
   static constexpr size_t kBackendCapacity = 64;
   static constexpr size_t kBackendMaxSubmit = 32;
   // for overflow == true  we use a greater than kBackendCapacity number of
   // EventFD instances and lower when overflow == false
   size_t kNumEventFds = overflow ? 2048 : 32;
   static constexpr size_t kEventFdCount = 16;
-  auto total = kNumEventFds * kEventFdCount;
+  auto total = kNumEventFds * kEventFdCount + kEventFdCount / 2;
 
   std::unique_ptr<folly::EventBaseBackendBase> backend;
 
@@ -118,23 +114,31 @@ void testOverflow(bool overflow) {
   eventsVec.reserve(kNumEventFds);
   for (size_t i = 0; i < kNumEventFds; i++) {
     eventsVec.emplace_back(
-        std::make_unique<EventFD>(kEventFdCount, total, true, &evb));
+        std::make_unique<EventFD>(kEventFdCount, total, persist, &evb));
   }
 
   evb.loopForever();
 
   for (size_t i = 0; i < kNumEventFds; i++) {
-    CHECK_EQ(eventsVec[i]->getNum(), kEventFdCount);
+    CHECK_GE(eventsVec[i]->getNum(), kEventFdCount);
   }
 }
 } // namespace
 
-TEST(IoUringBackend, NoOverflow) {
-  testOverflow(false);
+TEST(IoUringBackend, NoOverflowNoPersist) {
+  testOverflow(false, false);
 }
 
-TEST(IoUringBackend, Overflow) {
-  testOverflow(true);
+TEST(IoUringBackend, OverflowNoPersist) {
+  testOverflow(true, false);
+}
+
+TEST(IoUringBackend, NoOverflowPersist) {
+  testOverflow(false, true);
+}
+
+TEST(IoUringBackend, OverflowPersist) {
+  testOverflow(true, true);
 }
 
 namespace folly {

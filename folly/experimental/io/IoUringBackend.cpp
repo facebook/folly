@@ -78,6 +78,13 @@ IoUringBackend::~IoUringBackend() {
 
 void IoUringBackend::cleanup() {
   if (ioRing_.ring_fd > 0) {
+    // release the nonsubmitted items from the submitList
+    while (!submitList_.empty()) {
+      auto* ioCb = &submitList_.front();
+      submitList_.pop_front();
+      releaseIoCb(ioCb);
+    }
+
     // release the active events
     while (!activeEvents_.empty()) {
       auto* ioCb = &activeEvents_.front();
