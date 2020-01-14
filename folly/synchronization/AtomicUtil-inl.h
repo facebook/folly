@@ -112,7 +112,7 @@ bool atomic_fetch_reset_default(
     std::memory_order order) {
   using Integer = decltype(atomic.load());
   auto mask = Integer{0b1} << static_cast<Integer>(bit);
-  return (atomic.fetch_and(~mask, order) & mask);
+  return (atomic.fetch_and(static_cast<Integer>(~mask), order) & mask);
 }
 
 /**
