@@ -895,7 +895,7 @@ bool AsyncSocket::setZeroCopy(bool enable) {
       ret = netops::getsockopt(fd_, SOL_SOCKET, SO_ZEROCOPY, &val, &optlen);
 
       if (!ret) {
-        enable = val ? true : false;
+        enable = val != 0;
       }
     }
 

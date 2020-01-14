@@ -517,13 +517,10 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
   // Client cannot really use randomized alpn
   // Note that this function reverses the typical return value convention
   // of openssl and returns 0 on success.
-  if (SSL_CTX_set_alpn_protos(
+  return SSL_CTX_set_alpn_protos(
           ctx_,
           advertisedNextProtocols_[0].protocols,
-          advertisedNextProtocols_[0].length) != 0) {
-    return false;
-  }
-  return true;
+          advertisedNextProtocols_[0].length) == 0;
 }
 
 void SSLContext::deleteNextProtocolsStrings() {

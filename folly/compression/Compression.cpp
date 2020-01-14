@@ -312,10 +312,7 @@ bool StreamCodec::uncompressStream(
     MutableByteRange& output,
     StreamCodec::FlushOp flushOp) {
   if (state_ == State::RESET && input.empty()) {
-    if (uncompressedLength().value_or(0) == 0) {
-      return true;
-    }
-    return false;
+    return uncompressedLength().value_or(0) == 0;
   }
   // Handle input state transitions
   if (state_ == State::RESET) {
