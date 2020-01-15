@@ -25,12 +25,12 @@ googletest
 zstd
 fbthrift
 iproute2
-OpenNSL
 libmnl
 libusb
 libcurl
 libnl
 libsai
+OpenNSA
 
 [shipit.pathmap]
 fbcode/fboss/github = .
