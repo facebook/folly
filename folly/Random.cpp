@@ -26,12 +26,18 @@
 #include <folly/FileUtil.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/ThreadLocal.h>
+#include <folly/detail/FileUtilDetail.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/SysTime.h>
 #include <folly/portability/Unistd.h>
 #include <glog/logging.h>
 
 #ifdef _MSC_VER
 #include <wincrypt.h> // @manual
+#endif
+
+#if FOLLY_HAVE_GETRANDOM
+#include <sys/random.h>
 #endif
 
 namespace folly {
@@ -58,10 +64,24 @@ void readRandomDevice(void* data, size_t size) {
   CHECK(size <= std::numeric_limits<DWORD>::max());
   PCHECK(CryptGenRandom(cryptoProv, (DWORD)size, (BYTE*)data));
 #else
-  // Keep the random device open for the duration of the program.
-  static int randomFd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
-  PCHECK(randomFd >= 0);
-  auto bytesRead = readFull(randomFd, data, size);
+  ssize_t bytesRead = 0;
+  auto gen = [](int, void* buf, size_t buflen) {
+#if FOLLY_HAVE_GETRANDOM
+    auto flags = 0u;
+    return ::getrandom(buf, buflen, flags);
+#else
+    [](...) {}(buf, buflen);
+    errno = ENOSYS;
+    return -1;
+#endif
+  };
+  bytesRead = fileutil_detail::wrapFull(gen, -1, data, size);
+  if (bytesRead == -1 && errno == ENOSYS) {
+    // Keep the random device open for the duration of the program.
+    static int randomFd = ::open("/dev/urandom", O_RDONLY | O_CLOEXEC);
+    PCHECK(randomFd >= 0);
+    bytesRead = readFull(randomFd, data, size);
+  }
   PCHECK(bytesRead >= 0);
   CHECK_EQ(size_t(bytesRead), size);
 #endif
