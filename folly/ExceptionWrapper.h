@@ -498,7 +498,7 @@ class exception_wrapper final {
   //! \note The non-const overload of this function mutates `*this` to cache the
   //!     computed `std::exception_ptr`; that is, this function may cause
   //!     `has_exception_ptr()` to change from `false` to `true`.
-  std::exception_ptr const& to_exception_ptr() noexcept;
+  std::exception_ptr to_exception_ptr() noexcept;
   //! \overload
   std::exception_ptr to_exception_ptr() const noexcept;
 

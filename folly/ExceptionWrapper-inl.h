@@ -425,10 +425,12 @@ inline Ex const* exception_wrapper::get_exception() const noexcept {
   return object;
 }
 
-inline std::exception_ptr const&
-exception_wrapper::to_exception_ptr() noexcept {
-  // Computing an exception_ptr is expensive so cache the result.
-  return (*this = vptr_->get_exception_ptr_(this)).eptr_.ptr_;
+inline std::exception_ptr exception_wrapper::to_exception_ptr() noexcept {
+  if (*this) {
+    // Computing an exception_ptr is expensive so cache the result.
+    return (*this = vptr_->get_exception_ptr_(this)).eptr_.ptr_;
+  }
+  return {};
 }
 inline std::exception_ptr exception_wrapper::to_exception_ptr() const noexcept {
   return vptr_->get_exception_ptr_(this).eptr_.ptr_;
