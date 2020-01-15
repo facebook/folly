@@ -50,8 +50,6 @@ namespace folly {
       return "SSL error";
     case COULD_NOT_BIND:
       return "Could not bind";
-    case SASL_HANDSHAKE_TIMEOUT:
-      return "SASL handshake timeout";
     case NETWORK_ERROR:
       return "Network error";
     case EARLY_DATA_REJECTED:

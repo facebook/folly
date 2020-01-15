@@ -40,7 +40,7 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
     INVALID_STATE = 10,
     SSL_ERROR = 12,
     COULD_NOT_BIND = 13,
-    SASL_HANDSHAKE_TIMEOUT = 14,
+    // SASL_HANDSHAKE_TIMEOUT = 14, // no longer used
     NETWORK_ERROR = 15,
     EARLY_DATA_REJECTED = 16,
   };
