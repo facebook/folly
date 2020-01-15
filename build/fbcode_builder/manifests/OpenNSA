@@ -1,11 +1,11 @@
 [manifest]
-name = OpenBCM
+name = OpenNSA
 
 [git]
-repo_url = https://github.com/Broadcom-Network-Switching-Software/OpenBCM.git
+repo_url = https://github.com/Broadcom-Network-Switching-Software/OpenNSA.git
 
 [build.os=linux]
-builder = OpenBCM
+builder = OpenNSA
 
 [build.not(os=linux)]
 builder = nop
