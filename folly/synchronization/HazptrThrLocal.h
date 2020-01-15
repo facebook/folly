@@ -149,10 +149,11 @@ class hazptr_tc {
   }
 }; // hazptr_tc
 
+struct hazptr_tc_tls_tag {};
 /** hazptr_tc_tls */
 template <template <typename> class Atom>
 FOLLY_ALWAYS_INLINE hazptr_tc<Atom>& hazptr_tc_tls() {
-  return folly::SingletonThreadLocal<hazptr_tc<Atom>, void>::get();
+  return folly::SingletonThreadLocal<hazptr_tc<Atom>, hazptr_tc_tls_tag>::get();
 }
 
 /**
