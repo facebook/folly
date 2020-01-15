@@ -176,7 +176,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   explicit UDPClient(EventBase* evb) : AsyncTimeout(evb), evb_(evb) {}
 
-  void start(const folly::SocketAddress& server, int n) {
+  void
+  start(const folly::SocketAddress& server, int n, bool sendClustered = false) {
     CHECK(evb_->isInEventBaseThread());
     server_ = server;
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
@@ -196,7 +197,11 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     n_ = n;
 
     // Start playing ping pong
-    sendPing();
+    if (sendClustered) {
+      sendPingsClustered();
+    } else {
+      sendPing();
+    }
   }
 
   void connect() {
@@ -225,6 +230,14 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     --n_;
     scheduleTimeout(5);
     writePing(folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
+  }
+
+  void sendPingsClustered() {
+    scheduleTimeout(5);
+    while (n_ > 0) {
+      --n_;
+      writePing(folly::IOBuf::copyBuffer(folly::to<std::string>("PING ", n_)));
+    }
   }
 
   virtual void writePing(std::unique_ptr<folly::IOBuf> buf) {
@@ -284,6 +297,10 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     return error_;
   }
 
+  void incrementPongCount(int n) {
+    pongRecvd_ += n;
+  }
+
  protected:
   folly::Optional<folly::SocketAddress> connectAddr_;
   EventBase* const evb_{nullptr};
@@ -303,15 +320,17 @@ class UDPNotifyClient : public UDPClient {
  public:
   ~UDPNotifyClient() override = default;
 
-  explicit UDPNotifyClient(EventBase* evb) : UDPClient(evb) {}
+  explicit UDPNotifyClient(
+      EventBase* evb,
+      bool useRecvmmsg = false,
+      unsigned int numMsgs = 1)
+      : UDPClient(evb), useRecvmmsg_(useRecvmmsg), numMsgs_(numMsgs) {}
 
   bool shouldOnlyNotify() override {
     return true;
   }
 
-  void onNotifyDataAvailable() noexcept override {
-    notifyInvoked = true;
-
+  void onRecvMsg() {
     struct msghdr msg;
     memset(&msg, 0, sizeof(msg));
 
@@ -347,7 +366,72 @@ class UDPNotifyClient : public UDPClient {
     onDataAvailable(addr, size_t(read), false);
   }
 
+  void onRecvMmsg() {
+    std::vector<struct mmsghdr> msgs;
+    msgs.reserve(numMsgs_);
+    memset(msgs.data(), 0, sizeof(struct mmsghdr) * numMsgs_);
+
+    const socklen_t addrLen = sizeof(struct sockaddr_storage);
+
+    const size_t dataSize = 1024;
+    std::vector<char> buf;
+    buf.reserve(numMsgs_ * dataSize);
+    memset(buf.data(), 0, numMsgs_ * dataSize);
+
+    std::vector<struct sockaddr_storage> addrs;
+    addrs.reserve(numMsgs_);
+    memset(addrs.data(), 0, sizeof(struct sockaddr_storage) * numMsgs_);
+
+    std::vector<struct iovec> iovecs;
+    iovecs.reserve(numMsgs_);
+    memset(iovecs.data(), 0, sizeof(struct iovec) * numMsgs_);
+
+    for (unsigned int i = 0; i < numMsgs_; ++i) {
+      struct msghdr* msg = &msgs[i].msg_hdr;
+
+      auto rawAddr = reinterpret_cast<sockaddr*>(&addrs[i]);
+      rawAddr->sa_family = socket_->address().getFamily();
+
+      iovecs[i].iov_base = &buf[i * dataSize];
+      iovecs[i].iov_len = dataSize;
+
+      msg->msg_name = rawAddr;
+      msg->msg_namelen = addrLen;
+      msg->msg_iov = &iovecs[i];
+      msg->msg_iovlen = 1;
+    }
+
+    int ret = socket_->recvmmsg(
+        msgs.data(), numMsgs_, 0x10000 /* MSG_WAITFORONE */, nullptr);
+    if (ret < 0) {
+      if (errno != EAGAIN || errno != EWOULDBLOCK) {
+        onReadError(folly::AsyncSocketException(
+            folly::AsyncSocketException::NETWORK_ERROR, "error"));
+      }
+      return;
+    }
+
+    incrementPongCount(ret);
+
+    if (pongRecvd() == (int)numMsgs_) {
+      shutdown();
+    } else {
+      onRecvMmsg();
+    }
+  }
+
+  void onNotifyDataAvailable() noexcept override {
+    notifyInvoked = true;
+    if (useRecvmmsg_) {
+      onRecvMmsg();
+    } else {
+      onRecvMsg();
+    }
+  }
+
   bool notifyInvoked{false};
+  bool useRecvmmsg_{false};
+  unsigned int numMsgs_{1};
 };
 
 class AsyncSocketIntegrationTest : public Test {
@@ -387,6 +471,11 @@ class AsyncSocketIntegrationTest : public Test {
 
   std::unique_ptr<UDPNotifyClient> performPingPongNotifyTest(
       folly::SocketAddress writeAddress,
+      folly::Optional<folly::SocketAddress> connectedAddress);
+
+  std::unique_ptr<UDPNotifyClient> performPingPongNotifyMmsgTest(
+      folly::SocketAddress writeAddress,
+      unsigned int numMsgs,
       folly::Optional<folly::SocketAddress> connectedAddress);
 
   folly::EventBase sevb;
@@ -438,6 +527,30 @@ AsyncSocketIntegrationTest::performPingPongNotifyTest(
   return client;
 }
 
+std::unique_ptr<UDPNotifyClient>
+AsyncSocketIntegrationTest::performPingPongNotifyMmsgTest(
+    folly::SocketAddress writeAddress,
+    unsigned int numMsgs,
+    folly::Optional<folly::SocketAddress> connectedAddress) {
+  auto client = std::make_unique<UDPNotifyClient>(&cevb, true, numMsgs);
+  if (connectedAddress) {
+    client->setShouldConnect(*connectedAddress);
+  }
+  // Start event loop in a separate thread
+  auto clientThread = std::thread([this]() { cevb.loopForever(); });
+
+  // Wait for event loop to start
+  cevb.waitUntilRunning();
+
+  // Send ping
+  cevb.runInEventBaseThread(
+      [&]() { client->start(writeAddress, numMsgs, true); });
+
+  // Wait for client to finish
+  clientThread.join();
+  return client;
+}
+
 TEST_F(AsyncSocketIntegrationTest, PingPong) {
   startServer();
   auto pingClient = performPingPongTest(server->address(), folly::none);
@@ -450,6 +563,15 @@ TEST_F(AsyncSocketIntegrationTest, PingPongNotify) {
   auto pingClient = performPingPongNotifyTest(server->address(), folly::none);
   // This should succeed.
   ASSERT_GT(pingClient->pongRecvd(), 0);
+  ASSERT_TRUE(pingClient->notifyInvoked);
+}
+
+TEST_F(AsyncSocketIntegrationTest, PingPongNotifyMmsg) {
+  startServer();
+  auto pingClient =
+      performPingPongNotifyMmsgTest(server->address(), 10, folly::none);
+  // This should succeed.
+  ASSERT_EQ(pingClient->pongRecvd(), 10);
   ASSERT_TRUE(pingClient->notifyInvoked);
 }
 

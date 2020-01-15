@@ -197,6 +197,12 @@ class AsyncUDPSocket : public EventHandler {
 
   virtual ssize_t recvmsg(struct msghdr* msg, int flags);
 
+  virtual int recvmmsg(
+      struct mmsghdr* msgvec,
+      unsigned int vlen,
+      unsigned int flags,
+      struct timespec* timeout);
+
   /**
    * Start reading datagrams
    */

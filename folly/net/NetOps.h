@@ -22,6 +22,7 @@
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/IOVec.h>
 #include <folly/portability/SysTypes.h>
+#include <folly/portability/Time.h>
 #include <folly/portability/Windows.h>
 
 #ifndef _WIN32
@@ -173,6 +174,12 @@ ssize_t recvfrom(
     sockaddr* from,
     socklen_t* fromlen);
 ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags);
+int recvmmsg(
+    NetworkSocket s,
+    mmsghdr* msgvec,
+    unsigned int vlen,
+    unsigned int flags,
+    timespec* timeout);
 ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags);
 ssize_t sendto(
     NetworkSocket s,

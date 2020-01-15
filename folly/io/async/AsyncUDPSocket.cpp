@@ -455,6 +455,14 @@ ssize_t AsyncUDPSocket::recvmsg(struct msghdr* msg, int flags) {
   return netops::recvmsg(fd_, msg, flags);
 }
 
+int AsyncUDPSocket::recvmmsg(
+    struct mmsghdr* msgvec,
+    unsigned int vlen,
+    unsigned int flags,
+    struct timespec* timeout) {
+  return netops::recvmmsg(fd_, msgvec, vlen, flags, timeout);
+}
+
 void AsyncUDPSocket::resumeRead(ReadCallback* cob) {
   CHECK(!readCallback_) << "Another read callback already installed";
   CHECK_NE(NetworkSocket(), fd_)

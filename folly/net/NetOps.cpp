@@ -316,6 +316,32 @@ ssize_t recvmsg(NetworkSocket s, msghdr* message, int flags) {
 #endif
 }
 
+int recvmmsg(
+    NetworkSocket s,
+    mmsghdr* msgvec,
+    unsigned int vlen,
+    unsigned int flags,
+    timespec* timeout) {
+#if FOLLY_HAVE_RECVMMSG
+  return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
+#else
+  // implement via recvmsg
+  for (unsigned int i = 0; i < vlen; i++) {
+    ssize_t ret = recvmsg(s, &msgvec[i].msg_hdr, flags);
+    // in case of an error
+    // we return the number of msgs received if > 0
+    // or an error if no msg was sent
+    if (ret < 0) {
+      if (i) {
+        return static_cast<int>(i);
+      }
+      return static_cast<int>(ret);
+    }
+  }
+  return static_cast<int>(vlen);
+#endif
+}
+
 ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
 #ifdef _WIN32
   return wrapSocketFunction<ssize_t>(
