@@ -63,7 +63,7 @@ class AsyncUDPSocket : public EventHandler {
      * Notifies when data is available. This is only invoked when
      * shouldNotifyOnly() returns true.
      */
-    virtual void onNotifyDataAvailable() noexcept {}
+    virtual void onNotifyDataAvailable(AsyncUDPSocket&) noexcept {}
 
     /**
      * Returns whether or not the read callback should only notify

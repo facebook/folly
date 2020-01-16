@@ -330,7 +330,7 @@ class UDPNotifyClient : public UDPClient {
     return true;
   }
 
-  void onRecvMsg() {
+  void onRecvMsg(AsyncUDPSocket& sock) {
     struct msghdr msg;
     memset(&msg, 0, sizeof(msg));
 
@@ -352,7 +352,7 @@ class UDPNotifyClient : public UDPClient {
     msg.msg_iov = &vec;
     msg.msg_iovlen = 1;
 
-    ssize_t ret = socket_->recvmsg(&msg, 0);
+    ssize_t ret = sock.recvmsg(&msg, 0);
     if (ret < 0) {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
         onReadError(folly::AsyncSocketException(
@@ -366,7 +366,7 @@ class UDPNotifyClient : public UDPClient {
     onDataAvailable(addr, size_t(read), false);
   }
 
-  void onRecvMmsg() {
+  void onRecvMmsg(AsyncUDPSocket& sock) {
     std::vector<struct mmsghdr> msgs;
     msgs.reserve(numMsgs_);
     memset(msgs.data(), 0, sizeof(struct mmsghdr) * numMsgs_);
@@ -401,7 +401,7 @@ class UDPNotifyClient : public UDPClient {
       msg->msg_iovlen = 1;
     }
 
-    int ret = socket_->recvmmsg(
+    int ret = sock.recvmmsg(
         msgs.data(), numMsgs_, 0x10000 /* MSG_WAITFORONE */, nullptr);
     if (ret < 0) {
       if (errno != EAGAIN || errno != EWOULDBLOCK) {
@@ -416,16 +416,16 @@ class UDPNotifyClient : public UDPClient {
     if (pongRecvd() == (int)numMsgs_) {
       shutdown();
     } else {
-      onRecvMmsg();
+      onRecvMmsg(sock);
     }
   }
 
-  void onNotifyDataAvailable() noexcept override {
+  void onNotifyDataAvailable(AsyncUDPSocket& sock) noexcept override {
     notifyInvoked = true;
     if (useRecvmmsg_) {
-      onRecvMmsg();
+      onRecvMmsg(sock);
     } else {
-      onRecvMsg();
+      onRecvMsg(sock);
     }
   }
 
@@ -655,9 +655,9 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
   }
 
   MOCK_METHOD0(shouldOnlyNotify, bool());
-  MOCK_METHOD0(onNotifyDataAvailable_, void());
-  void onNotifyDataAvailable() noexcept override {
-    onNotifyDataAvailable_();
+  MOCK_METHOD1(onNotifyDataAvailable_, void(folly::AsyncUDPSocket&));
+  void onNotifyDataAvailable(folly::AsyncUDPSocket& sock) noexcept override {
+    onNotifyDataAvailable_(sock);
   }
 
   MOCK_METHOD3(

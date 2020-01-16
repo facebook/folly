@@ -603,7 +603,7 @@ void AsyncUDPSocket::handleRead() noexcept {
     return;
   }
   if (readCallback_->shouldOnlyNotify()) {
-    return readCallback_->onNotifyDataAvailable();
+    return readCallback_->onNotifyDataAvailable(*this);
   }
 
   readCallback_->getReadBuffer(&buf, &len);
