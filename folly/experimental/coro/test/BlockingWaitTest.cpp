@@ -20,6 +20,7 @@
 
 #include <folly/Optional.h>
 #include <folly/ScopeGuard.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Invoke.h>
@@ -287,6 +288,17 @@ TEST_F(BlockingWaitTest, RequestContext) {
     co_return;
   }());
   EXPECT_EQ(ctx1.get(), folly::RequestContext::get());
+}
+
+TEST_F(BlockingWaitTest, DrivableExecutor) {
+  folly::ManualExecutor executor;
+  folly::coro::blockingWait(
+      [&]() -> folly::coro::Task<void> {
+        folly::Executor* taskExecutor =
+            co_await folly::coro::co_current_executor;
+        EXPECT_EQ(&executor, taskExecutor);
+      }(),
+      &executor);
 }
 
 #endif

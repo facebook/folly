@@ -359,19 +359,25 @@ auto blockingWait(Awaitable&& awaitable)
           .get());
 }
 
-template <
-    typename SemiAwaitable,
-    std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
-auto blockingWait(SemiAwaitable&& awaitable)
+template <typename SemiAwaitable>
+auto blockingWait(SemiAwaitable&& awaitable, folly::DrivableExecutor* executor)
     -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
-  detail::BlockingWaitExecutor executor;
   return static_cast<
       std::add_rvalue_reference_t<semi_await_result_t<SemiAwaitable>>>(
       detail::makeRefBlockingWaitTask(
           folly::coro::co_viaIfAsync(
               folly::getKeepAliveToken(executor),
               static_cast<SemiAwaitable&&>(awaitable)))
-          .getVia(&executor));
+          .getVia(executor));
+}
+
+template <
+    typename SemiAwaitable,
+    std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
+auto blockingWait(SemiAwaitable&& awaitable)
+    -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
+  detail::BlockingWaitExecutor executor;
+  return blockingWait(static_cast<SemiAwaitable&&>(awaitable), &executor);
 }
 
 } // namespace coro
