@@ -23,8 +23,73 @@
 #include <glog/logging.h>
 
 namespace folly {
-IoUringBackend::IoUringBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
-    : PollIoBackend(capacity, maxSubmit, maxGet) {
+IoUringBackend::FdRegistry::FdRegistry(struct io_uring& ioRing, size_t n)
+    : ioRing_(ioRing), files_(n, -1), inUse_(n), records_(n) {}
+
+int IoUringBackend::FdRegistry::init() {
+  if (inUse_) {
+    int ret = ::io_uring_register_files(&ioRing_, files_.data(), inUse_);
+
+    if (!ret) {
+      // build and set the free list head if we succeed
+      for (size_t i = 0; i < records_.size(); i++) {
+        records_[i].idx_ = i;
+        free_.push_front(records_[i]);
+      }
+    } else {
+      LOG(ERROR) << "io_uring_register_files(" << inUse_ << ") "
+                 << "failed errno = " << errno << ":\""
+                 << folly::errnoStr(errno) << "\" " << this;
+    }
+
+    return ret;
+  }
+
+  return 0;
+}
+
+IoUringBackend::FdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
+    int fd) {
+  if (FOLLY_UNLIKELY(free_.empty())) {
+    return nullptr;
+  }
+
+  auto& ret = free_.front();
+
+  // now we have an idx
+  if (::io_uring_register_files_update(&ioRing_, ret.idx_, &fd, 1) != 1) {
+    return nullptr;
+  }
+
+  ret.fd_ = fd;
+  ret.count_ = 1;
+  free_.pop_front();
+  return &ret;
+}
+
+bool IoUringBackend::FdRegistry::free(
+    IoUringBackend::FdRegistrationRecord* record) {
+  if (record && (--record->count_ == 0)) {
+    record->fd_ = -1;
+    int ret = ::io_uring_register_files_update(
+        &ioRing_, record->idx_, &record->fd_, 1);
+
+    // we add it to the free list anyway here
+    free_.push_front(*record);
+
+    return (ret == 1);
+  }
+
+  return false;
+}
+
+IoUringBackend::IoUringBackend(
+    size_t capacity,
+    size_t maxSubmit,
+    size_t maxGet,
+    bool useRegisteredFds)
+    : PollIoBackend(capacity, maxSubmit, maxGet),
+      fdRegistry_(ioRing_, useRegisteredFds ? capacity : 0) {
   ::memset(&ioRing_, 0, sizeof(ioRing_));
   ::memset(&params_, 0, sizeof(params_));
 
@@ -61,6 +126,15 @@ IoUringBackend::IoUringBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
   entries_[numEntries_ - 1].backend_ = this;
   entries_[numEntries_ - 1].backendCb_ = PollIoBackend::processPollIoCb;
   freeHead_ = &entries_[1];
+
+  // we need to call the init before adding the timer fd
+  // so we avoid a deadlock - waiting for the queue to be drained
+  if (useRegisteredFds) {
+    // now init the file registry
+    // if this fails, we still continue since we
+    // can run without registered fds
+    fdRegistry_.init();
+  }
 
   // add the timer fd
   if (!addTimerFd()) {
@@ -206,7 +280,11 @@ size_t IoUringBackend::submitList(
     CHECK(sqe); // this should not happen
 
     auto* ev = entry->event_->getEvent();
-    entry->prepPollAdd(sqe, ev->ev_fd, getPollFlags(ev->ev_events));
+    entry->prepPollAdd(
+        sqe,
+        ev->ev_fd,
+        getPollFlags(ev->ev_events),
+        (ev->ev_events & EV_PERSIST) != 0);
     i++;
     if (ioCbs.empty()) {
       int num = (waitForEvents == WaitForEventsMode::WAIT)

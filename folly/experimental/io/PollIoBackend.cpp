@@ -57,7 +57,7 @@ PollIoBackend::~PollIoBackend() {
 
 bool PollIoBackend::addTimerFd() {
   auto* entry = allocSubmissionEntry(); // this can be nullptr
-  timerEntry_->prepPollAdd(entry, timerFd_, POLLIN);
+  timerEntry_->prepPollAdd(entry, timerFd_, POLLIN, true /*registerFd*/);
   return (1 == submitOne(timerEntry_));
 }
 
@@ -196,6 +196,12 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
 
 void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
   numIoCbInUse_--;
+  // unregister the file descriptor record
+  if (aioIoCb->fdRecord_) {
+    unregisterFd(aioIoCb->fdRecord_);
+    aioIoCb->fdRecord_ = nullptr;
+  }
+
   if (FOLLY_LIKELY(aioIoCb->poolAlloc_)) {
     aioIoCb->event_ = nullptr;
     aioIoCb->next_ = freeHead_;
@@ -356,7 +362,11 @@ int PollIoBackend::eb_event_add(Event& event, const struct timeval* timeout) {
       return 0;
     } else {
       auto* entry = allocSubmissionEntry(); // this can be nullptr
-      iocb->prepPollAdd(entry, ev->ev_fd, getPollFlags(ev->ev_events));
+      iocb->prepPollAdd(
+          entry,
+          ev->ev_fd,
+          getPollFlags(ev->ev_events),
+          (ev->ev_events & EV_PERSIST) != 0);
       int ret = submitOne(iocb);
       if (ret == 1) {
         if (~event_ref_flags(ev) & EVLIST_INTERNAL) {

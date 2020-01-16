@@ -35,14 +35,43 @@ class IoUringBackend : public PollIoBackend {
   explicit IoUringBackend(
       size_t capacity,
       size_t maxSubmit = 128,
-      size_t maxGet = static_cast<size_t>(-1));
+      size_t maxGet = static_cast<size_t>(-1),
+      bool useRegisteredFds = false);
   ~IoUringBackend() override;
 
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
 
+  // from PollIoBackend
+  FdRegistrationRecord* registerFd(int fd) override {
+    return fdRegistry_.alloc(fd);
+  }
+
+  bool unregisterFd(FdRegistrationRecord* rec) override {
+    return fdRegistry_.free(rec);
+  }
+
  protected:
+  struct FdRegistry {
+    FdRegistry() = delete;
+    FdRegistry(struct io_uring& ioRing, size_t n);
+
+    FdRegistrationRecord* alloc(int fd);
+    bool free(FdRegistrationRecord* record);
+
+    int init();
+    size_t update();
+
+    struct io_uring& ioRing_;
+    std::vector<int> files_;
+    size_t inUse_;
+    std::vector<FdRegistrationRecord> records_;
+    boost::intrusive::
+        slist<FdRegistrationRecord, boost::intrusive::cache_last<false>>
+            free_;
+  };
+
   // from PollIoBackend
   void* allocSubmissionEntry() override;
   int getActiveEvents(WaitForEventsMode waitForEvents) override;
@@ -58,10 +87,20 @@ class IoUringBackend : public PollIoBackend {
         : PollIoBackend::IoCb(backend, poolAlloc) {}
     ~IoSqe() override = default;
 
-    void prepPollAdd(void* entry, int fd, uint32_t events) override {
+    void prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd)
+        override {
       CHECK(entry);
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
-      ::io_uring_prep_poll_add(sqe, fd, events);
+      if (registerFd && !fdRecord_) {
+        fdRecord_ = backend_->registerFd(fd);
+      }
+
+      if (fdRecord_) {
+        ::io_uring_prep_poll_add(sqe, fdRecord_->idx_, events);
+        sqe->flags |= IOSQE_FIXED_FILE;
+      } else {
+        ::io_uring_prep_poll_add(sqe, fd, events);
+      }
       ::io_uring_sqe_set_data(sqe, this);
     }
 
@@ -93,5 +132,7 @@ class IoUringBackend : public PollIoBackend {
 
   uint32_t sqRingMask_{0};
   uint32_t cqRingMask_{0};
+
+  FdRegistry fdRegistry_;
 };
 } // namespace folly

@@ -141,27 +141,106 @@ TEST(IoUringBackend, OverflowPersist) {
   testOverflow(true, true);
 }
 
+TEST(IoUringBackend, RegisteredFds) {
+  static constexpr size_t kBackendCapacity = 64;
+  static constexpr size_t kBackendMaxSubmit = 32;
+  static constexpr size_t kBackendMaxGet = 32;
+
+  std::unique_ptr<folly::IoUringBackend> backendReg;
+  std::unique_ptr<folly::IoUringBackend> backendNoReg;
+
+  try {
+    backendReg = std::make_unique<folly::IoUringBackend>(
+        kBackendCapacity,
+        kBackendMaxSubmit,
+        kBackendMaxGet,
+        true /*useRegisteredFds*/);
+
+    backendNoReg = std::make_unique<folly::IoUringBackend>(
+        kBackendCapacity,
+        kBackendMaxSubmit,
+        kBackendMaxGet,
+        false /*useRegisteredFds*/);
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+  }
+
+  SKIP_IF(!backendReg) << "Backend not available";
+  SKIP_IF(!backendNoReg) << "Backend not available";
+
+  int eventFd = ::eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE | EFD_NONBLOCK);
+  CHECK_GT(eventFd, 0);
+
+  SCOPE_EXIT {
+    ::close(eventFd);
+  };
+
+  // verify for useRegisteredFds = false we get a nullptr FdRegistrationRecord
+  auto* record = backendNoReg->registerFd(eventFd);
+  CHECK(!record);
+
+  std::vector<folly::IoUringBackend::FdRegistrationRecord*> records;
+  // we use kBackendCapacity -1 since we can have the timerFd
+  // already using one fd
+  records.reserve(kBackendCapacity - 1);
+  for (size_t i = 0; i < kBackendCapacity - 1; i++) {
+    record = backendReg->registerFd(eventFd);
+    CHECK(record);
+    records.emplace_back(record);
+  }
+
+  // try to allocate one more and check if we get a nullptr
+  record = backendReg->registerFd(eventFd);
+  CHECK(!record);
+
+  // deallocate and allocate again
+  for (size_t i = 0; i < records.size(); i++) {
+    CHECK(backendReg->unregisterFd(records[i]));
+    record = backendReg->registerFd(eventFd);
+    CHECK(record);
+    records[i] = record;
+  }
+}
+
 namespace folly {
 namespace test {
 static constexpr size_t kCapacity = 16 * 1024;
 static constexpr size_t kMaxSubmit = 128;
+static constexpr size_t kMaxGet = static_cast<size_t>(-1);
+
 struct IoUringBackendProvider {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
-      return std::make_unique<folly::IoUringBackend>(kCapacity, kMaxSubmit);
+      return std::make_unique<folly::IoUringBackend>(
+          kCapacity, kMaxSubmit, kMaxGet, false /* useRegisteredFds */);
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }
   }
 };
 
+struct IoUringRegFdBackendProvider {
+  static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
+    try {
+      return std::make_unique<folly::IoUringBackend>(
+          kCapacity, kMaxSubmit, kMaxGet, true /* useRegisteredFds */);
+    } catch (const IoUringBackend::NotAvailable&) {
+      return nullptr;
+    }
+  }
+};
+
+// Instantiate the non registered fd tests
+INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest, IoUringBackendProvider);
+INSTANTIATE_TYPED_TEST_CASE_P(IoUring, EventBaseTest1, IoUringBackendProvider);
+
+// Instantiate the registered fd tests
 INSTANTIATE_TYPED_TEST_CASE_P(
+    IoUringRegFd,
     EventBaseTest,
-    EventBaseTest,
-    IoUringBackendProvider);
+    IoUringRegFdBackendProvider);
 INSTANTIATE_TYPED_TEST_CASE_P(
+    IoUringRegFd,
     EventBaseTest1,
-    EventBaseTest1,
-    IoUringBackendProvider);
+    IoUringRegFdBackendProvider);
 } // namespace test
 } // namespace folly

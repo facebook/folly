@@ -24,6 +24,7 @@
 #include <vector>
 
 #include <boost/intrusive/list.hpp>
+#include <boost/intrusive/slist.hpp>
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
@@ -47,6 +48,21 @@ class PollIoBackend : public EventBaseBackendBase {
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(Event& event) override;
 
+  struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
+                                    boost::intrusive::cache_last<false>> {
+    int count_{0};
+    int fd_{-1};
+    size_t idx_{0};
+  };
+
+  virtual FdRegistrationRecord* registerFd(int /*fd*/) {
+    return nullptr;
+  }
+
+  virtual bool unregisterFd(FdRegistrationRecord* /*rec*/) {
+    return false;
+  }
+
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
   struct IoCb;
@@ -65,6 +81,7 @@ class PollIoBackend : public EventBaseBackendBase {
     const bool poolAlloc_;
     IoCb* next_{nullptr}; // this is for the free list
     Event* event_{nullptr};
+    FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
 
     FOLLY_ALWAYS_INLINE void resetEvent() {
@@ -76,7 +93,8 @@ class PollIoBackend : public EventBaseBackendBase {
       }
     }
 
-    virtual void prepPollAdd(void* entry, int fd, uint32_t events) = 0;
+    virtual void
+    prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd) = 0;
   };
 
   using IoCbList =
