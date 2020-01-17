@@ -26,7 +26,7 @@
 
 namespace folly {
 inline void asm_volatile_memory() {
-#if defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
   asm volatile("" : : : "memory");
 #elif defined(_MSC_VER)
   ::_ReadWriteBarrier();
