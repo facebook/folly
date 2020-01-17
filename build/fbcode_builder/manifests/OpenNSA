@@ -1,17 +1,13 @@
 [manifest]
 name = OpenNSA
 
-[git]
-repo_url = https://github.com/Broadcom-Network-Switching-Software/OpenNSA.git
+[download]
+url = https://bitbucket.org/fboss/opennsa-fork/get/release/v1.0.tar.gz
+sha256 = 40e56460b85a8be4cfdc4591569453eb19aea3344f3c297b1d8b5a9ebf29bdf0
 
-[build.os=linux]
-builder = OpenNSA
-
-[build.not(os=linux)]
+[build]
 builder = nop
-
-[dependencies]
-git-lfs
+subdir = fboss-opennsa-fork-1e7cd6e7f059
 
 [install.files]
 lib/x86-64 = lib
