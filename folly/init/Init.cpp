@@ -21,6 +21,7 @@
 #include <folly/Singleton.h>
 #include <folly/logging/Init.h>
 #include <folly/portability/Config.h>
+#include <folly/synchronization/HazptrThreadPoolExecutor.h>
 
 #if FOLLY_USE_SYMBOLIZER
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
@@ -57,6 +58,9 @@ void init(int* argc, char*** argv, bool removeFlags) {
   // Actually install the callbacks into the handler.
   folly::symbolizer::installFatalSignalCallbacks();
 #endif
+  // Set the default hazard pointer domain to use a thread pool executor
+  // for asynchronous reclamation
+  folly::start_hazptr_thread_pool_executor();
 }
 
 Init::Init(int* argc, char*** argv, bool removeFlags) {
