@@ -12,3 +12,5 @@ subdir = fboss-opennsa-fork-1e7cd6e7f059
 [install.files]
 lib/x86-64 = lib
 include = include
+src/sdk/gpl-modules/systems/bde/linux/include = include/systems/bde/linux
+src/sdk/gpl-modules/include/ibde.h = include/ibde.h
