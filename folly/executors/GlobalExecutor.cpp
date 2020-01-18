@@ -174,7 +174,7 @@ void setCPUExecutor(std::weak_ptr<Executor> executor) {
 std::shared_ptr<IOExecutor> getIOExecutor() {
   auto& singleton = gGlobalIOExecutor.get();
   auto executor = singleton.get();
-  async_tracing::logGetGlobalCPUExecutor(executor.get());
+  async_tracing::logGetGlobalIOExecutor(executor.get());
   return executor;
 }
 
