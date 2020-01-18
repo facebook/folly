@@ -29,7 +29,7 @@
 // JEMalloc provides it's own implementation of
 // malloc_usable_size, and that's what we should be using.
 #if defined(__FreeBSD__)
-#include <malloc_np.h>
+#include <malloc_np.h> // @manual
 #else
 #include <jemalloc/jemalloc.h> // @manual
 #endif
