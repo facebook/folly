@@ -22,8 +22,6 @@
 #include <folly/compression/CompressionContextPoolSingletons.h>
 #include <folly/compression/CompressionCoreLocalContextPool.h>
 
-using namespace testing;
-
 namespace folly {
 namespace compression {
 
