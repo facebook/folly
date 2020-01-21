@@ -364,7 +364,7 @@ class ManifestParser(object):
             "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
 
-    def create_builder(self, build_options, src_dir, build_dir, inst_dir, ctx):
+    def create_builder(self, build_options, src_dir, build_dir, inst_dir, ctx, loader):
         builder = self.get("build", "builder", ctx=ctx)
         if not builder:
             raise Exception("project %s has no builder for %r" % (self.name, ctx))
@@ -422,7 +422,14 @@ class ManifestParser(object):
         if builder == "cargo":
             build_doc = self.get("cargo", "build_doc", False, ctx)
             return CargoBuilder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir, build_doc
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+                build_doc,
+                loader,
             )
 
         if builder == "OpenNSA":

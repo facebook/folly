@@ -415,7 +415,7 @@ class BuildCmd(ProjectCmdBase):
                         os.unlink(built_marker)
                     src_dir = fetcher.get_src_dir()
                     builder = m.create_builder(
-                        loader.build_opts, src_dir, build_dir, inst_dir, ctx
+                        loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
@@ -544,7 +544,7 @@ class TestCmd(ProjectCmdBase):
                 ctx = loader.ctx_gen.get_context(m.name)
                 build_dir = loader.get_project_build_dir(m)
                 builder = m.create_builder(
-                    loader.build_opts, src_dir, build_dir, inst_dir, ctx
+                    loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
                 )
                 builder.run_tests(
                     install_dirs,
