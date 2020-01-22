@@ -183,6 +183,12 @@ class Dwarf {
       const detail::Die& die,
       folly::FunctionRef<bool(const detail::Attribute& die)> f) const;
 
+  template <class T>
+  folly::Optional<T> getAttribute(
+      const detail::CompilationUnit& cu,
+      const detail::Die& die,
+      uint64_t attrName) const;
+
   const ElfFile* elf_;
   const folly::StringPiece debugInfo_; // .debug_info
   const folly::StringPiece debugAbbrev_; // .debug_abbrev
