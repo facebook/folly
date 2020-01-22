@@ -1065,17 +1065,17 @@ bool AsyncSSLSocket::willBlock(
       // Our NetworkSocket::native_handle_type is type SOCKET on
       // win32, which means that we need to explicitly construct
       // a native handle type to pass to the constructor.
-      auto native_handle = NetworkSocket::native_handle_type(ofd);
-
-      auto asyncPipeReader =
-          AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
-      auto asyncPipeReaderPtr = asyncPipeReader.get();
       if (!asyncOperationFinishCallback_) {
-        asyncOperationFinishCallback_.reset(
-            new DefaultOpenSSLAsyncFinishCallback(
-                std::move(asyncPipeReader), this, DestructorGuard(this)));
+          auto native_handle = NetworkSocket::native_handle_type(ofd);
+
+          auto asyncPipeReader =
+              AsyncPipeReader::newReader(eventBase_, NetworkSocket(native_handle));
+          auto asyncPipeReaderPtr = asyncPipeReader.get();
+          asyncOperationFinishCallback_.reset(
+                  new DefaultOpenSSLAsyncFinishCallback(
+                      std::move(asyncPipeReader), this, DestructorGuard(this)));
+          asyncPipeReaderPtr->setReadCB(asyncOperationFinishCallback_.get());
       }
-      asyncPipeReaderPtr->setReadCB(asyncOperationFinishCallback_.get());
     }
 #endif
 

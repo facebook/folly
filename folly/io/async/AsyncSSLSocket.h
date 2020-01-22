@@ -173,8 +173,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     void readDataAvailable(size_t len) noexcept override {
       CHECK_EQ(len, 1);
       sslSocket_->restartSSLAccept();
-      pipeReader_->setReadCB(nullptr);
-      sslSocket_->setAsyncOperationFinishCallback(nullptr);
+      SSL *s = sslSocket_->ssl_.get();
+      if(SSL_get_state(s) == TLS_ST_SW_SRVR_DONE) {
+        pipeReader_->setReadCB(nullptr);
+        sslSocket_->setAsyncOperationFinishCallback(nullptr);
+      }
     }
 
     void getReadBuffer(void** bufReturn, size_t* lenReturn) noexcept override {

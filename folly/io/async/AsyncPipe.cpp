@@ -73,7 +73,7 @@ void AsyncPipeReader::handlerReady(uint16_t events) noexcept {
   VLOG(5) << "AsyncPipeReader::handlerReady() this=" << this << ", fd=" << fd_;
   assert(readCallback_ != nullptr);
 
-  while (readCallback_) {
+  if (readCallback_) {
     // - What API does callback support?
     const auto movable = readCallback_->isBufferMovable(); // noexcept
 
