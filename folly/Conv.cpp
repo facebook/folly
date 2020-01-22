@@ -575,7 +575,7 @@ inline Expected<Tgt, ConversionCode> digits_to(
   UT result = 0;
 
   for (; e - b >= 4; b += 4) {
-    result *= static_cast<UT>(10000);
+    result *= UT(10000);
     const int32_t r0 = shift1000[static_cast<size_t>(b[0])];
     const int32_t r1 = shift100[static_cast<size_t>(b[1])];
     const int32_t r2 = shift10[static_cast<size_t>(b[2])];
