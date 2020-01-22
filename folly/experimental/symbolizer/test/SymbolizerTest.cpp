@@ -159,12 +159,15 @@ void verifyStackTrace(
     const std::string& barName,
     size_t barLine) {
   EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
-  EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
+  EXPECT_EQ(
+      "void folly::symbolizer::test::(anonymous namespace)::inlineFoo<100ul>("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      std::string(folly::demangle(frames.frames[5].name)));
   EXPECT_EQ(
       "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
       std::string(frames.frames[5].location.file.toString()));
   EXPECT_EQ(kQsortCallLineNo, frames.frames[5].location.line);
-  EXPECT_EQ(barName, std::string(frames.frames[6].name));
+  EXPECT_EQ(barName, std::string(folly::demangle(frames.frames[6].name)));
   EXPECT_EQ(
       "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
       std::string(frames.frames[6].location.file.toString()));
@@ -213,14 +216,13 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   // clang-format off
   // Expected full stack trace with @mode/dev. The last frame is missing in opt
   // mode.
-  //  Frame: _ZN5folly10symbolizer13getStackTraceEPmm
-  //  Frame: getStackTrace<100>
+  //  Frame: _ZN5folly10symbolizer13getStackTraceILm100EEEbRNS0_10FrameArrayIXT_EEE
   //  Frame: _ZN5folly10symbolizer4test10comparatorILm100EEEiPKvS4_
   //  Frame: msort_with_tmp.part.0
   //  Frame: __GI___qsort_r
-  //  Frame: inlineFoo<100>
-  //  Frame: inlineBar<100>
-  //  Frame: _ZN5folly10symbolizer4test43SymbolizerTest_InlineFunctionWithCache_Test8TestBodyEv
+  //  Frame: _ZN5folly10symbolizer4test12_GLOBAL__N_19inlineFooILm100EEEvRNS0_10FrameArrayIXT_EEE
+  //  Frame: _ZN5folly10symbolizer4test12_GLOBAL__N_19inlineBarILm100EEEvRNS0_10FrameArrayIXT_EEE
+  //  Frame: _ZN5folly10symbolizer4test39SymbolizerTest_InlineFunctionBasic_Test8TestBodyEv
   //  Frame: _ZN7testing8internal35HandleExceptionsInMethodIfSupportedINS_4TestEvEET0_PT_MS4_FS3_vEPKc
   //  Frame: _ZN7testing4Test3RunEv
   //  Frame: _ZN7testing8TestInfo3RunEv
@@ -229,7 +231,11 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   //  Frame: _ZN7testing8UnitTest3RunEv
   //  Frame: _Z13RUN_ALL_TESTSv
   // clang-format on
-  verifyStackTrace(frames, "inlineBar<100>", kFooCallByStandaloneBarLineNo);
+  verifyStackTrace(
+      frames,
+      "void folly::symbolizer::test::(anonymous namespace)::inlineBar<100ul>("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      kFooCallByStandaloneBarLineNo);
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
@@ -246,7 +252,11 @@ TEST(SymbolizerTest, InlineClassMemberFunction) {
   obj.inlineBar(frames);
   symbolizer.symbolize(frames);
 
-  verifyStackTrace(frames, "inlineBar", kFooCallByClassBarLineNo);
+  verifyStackTrace(
+      frames,
+      "folly::symbolizer::test::ClassWithInlineFunctions::inlineBar("
+      "folly::symbolizer::FrameArray<100ul>&) const",
+      kFooCallByClassBarLineNo);
 }
 
 TEST(SymbolizerTest, StaticInlineClassMemberFunction) {
@@ -256,7 +266,11 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunction) {
   ClassWithInlineFunctions::staticInlineBar(frames);
   symbolizer.symbolize(frames);
 
-  verifyStackTrace(frames, "staticInlineBar", kFooCallByClassStaticBarLineNo);
+  verifyStackTrace(
+      frames,
+      "folly::symbolizer::test::ClassWithInlineFunctions::staticInlineBar("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      kFooCallByClassStaticBarLineNo);
 }
 
 // No inline frames should be filled because of no extra frames.
@@ -281,7 +295,11 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   inlineBar<100>(frames);
   symbolizer.symbolize(frames);
 
-  verifyStackTrace(frames, "inlineBar<100>", kFooCallByStandaloneBarLineNo);
+  verifyStackTrace(
+      frames,
+      "void folly::symbolizer::test::(anonymous namespace)::inlineBar<100ul>("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      kFooCallByStandaloneBarLineNo);
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
