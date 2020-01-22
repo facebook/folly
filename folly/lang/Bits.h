@@ -317,6 +317,8 @@ struct Unaligned;
 /**
  * Representation of an unaligned value of a POD type.
  */
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wpacked")
 FOLLY_PACK_PUSH
 template <class T>
 struct Unaligned<T, typename std::enable_if<std::is_pod<T>::value>::type> {
@@ -325,6 +327,7 @@ struct Unaligned<T, typename std::enable_if<std::is_pod<T>::value>::type> {
   T value;
 } FOLLY_PACK_ATTR;
 FOLLY_PACK_POP
+FOLLY_POP_WARNING
 
 /**
  * Read an unaligned value of type T and return it.
