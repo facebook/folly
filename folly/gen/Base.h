@@ -156,7 +156,7 @@ class ConstMemberFunction {
 template <class Class, class FieldType>
 class Field {
  public:
-  typedef FieldType(Class::*FieldPtr);
+  typedef FieldType Class::*FieldPtr;
 
  private:
   FieldPtr field_;
