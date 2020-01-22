@@ -107,10 +107,10 @@ size_t getGlobalBenchmarkBaselineIndex() {
 
 void detail::addBenchmarkImpl(
     const char* file,
-    const char* name,
+    StringPiece name,
     BenchmarkFun fun,
     bool useCounter) {
-  benchmarks().push_back({file, name, std::move(fun), useCounter});
+  benchmarks().push_back({file, name.str(), std::move(fun), useCounter});
 }
 
 static std::pair<double, UserCounters> runBenchmarkGetNSPerIteration(

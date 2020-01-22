@@ -362,6 +362,7 @@ BENCHMARK(BenchmarkSuspender_dismissing_value, iter) {
 
 int main(int argc, char** argv) {
   gflags::ParseCommandLineFlags(&argc, &argv, true);
+  folly::addBenchmark("-", std::string("string_name"), [] { return 0; });
   runBenchmarks();
   runBenchmarksOnFlag();
 }

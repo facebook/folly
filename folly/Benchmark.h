@@ -18,6 +18,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
+#include <folly/Range.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/functional/Invoke.h>
@@ -96,7 +97,7 @@ struct BenchmarkResult {
  */
 void addBenchmarkImpl(
     const char* file,
-    const char* name,
+    StringPiece name,
     BenchmarkFun,
     bool useCounter);
 
@@ -188,7 +189,7 @@ struct BenchmarkSuspender {
  */
 template <typename Lambda>
 typename std::enable_if<folly::is_invocable<Lambda, unsigned>::value>::type
-addBenchmark(const char* file, const char* name, Lambda&& lambda) {
+addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
     unsigned int niter;
@@ -213,7 +214,7 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
  */
 template <typename Lambda>
 typename std::enable_if<folly::is_invocable<Lambda>::value>::type
-addBenchmark(const char* file, const char* name, Lambda&& lambda) {
+addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](unsigned int times) {
     unsigned int niter = 0;
     while (times-- > 0) {
@@ -230,7 +231,7 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
 template <typename Lambda>
 typename std::enable_if<
     folly::is_invocable<Lambda, UserCounters&, unsigned>::value>::type
-addBenchmark(const char* file, const char* name, Lambda&& lambda) {
+addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
     unsigned int niter;
@@ -254,7 +255,7 @@ addBenchmark(const char* file, const char* name, Lambda&& lambda) {
 
 template <typename Lambda>
 typename std::enable_if<folly::is_invocable<Lambda, UserCounters&>::value>::type
-addBenchmark(const char* file, const char* name, Lambda&& lambda) {
+addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
     unsigned int niter = 0;
     while (times-- > 0) {
