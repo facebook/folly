@@ -356,12 +356,15 @@ class rcu_domain {
   FOLLY_ALWAYS_INLINE rcu_token<Tag> lock_shared();
   FOLLY_ALWAYS_INLINE void unlock_shared(rcu_token<Tag>&&);
 
-  // Call a function after concurrent critical sections have finished.
-  // Does not block unless the queue is full, then may block to wait
-  // for scheduler thread, but generally does not wait for full
-  // synchronization.
+  // Invokes cbin(this) and then deletes this some time after all pre-existing
+  // RCU readers have completed.  See synchronize_rcu() for more information
+  // about RCU readers and domains.
   template <typename T>
   void call(T&& cbin);
+
+  // Invokes node->cb_(node) some time after all pre-existing RCU readers
+  // have completed.  See synchronize_rcu() for more information about RCU
+  // readers and domains.
   void retire(list_node* node) noexcept;
 
   // Ensure concurrent critical sections have finished.
@@ -507,6 +510,10 @@ inline void rcu_barrier(
 }
 
 // Free-function retire.  Always allocates.
+//
+// This will invoke the deleter d(p) asynchronously some time after all
+// pre-existing RCU readers have completed.  See synchronize_rcu() for more
+// information about RCU readers and domains.
 template <
     typename T,
     typename D = std::default_delete<T>,
