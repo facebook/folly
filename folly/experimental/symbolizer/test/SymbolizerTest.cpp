@@ -134,9 +134,7 @@ TEST(SymbolizerTest, SymbolCache) {
 namespace {
 
 size_t kQsortCallLineNo = 0;
-size_t kFooCallByStandaloneBarLineNo = 0;
-size_t kFooCallByClassBarLineNo = 0;
-size_t kFooCallByClassStaticBarLineNo = 0;
+size_t kFooCallLineNo = 0;
 
 template <size_t kNumFrames = 100>
 FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames) {
@@ -150,58 +148,11 @@ FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames) {
 
 template <size_t kNumFrames = 100>
 FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames) {
-  kFooCallByStandaloneBarLineNo = __LINE__ + 1;
+  kFooCallLineNo = __LINE__ + 1;
   inlineFoo(frames);
 }
 
-void verifyStackTrace(
-    const FrameArray<100>& frames,
-    const std::string& barName,
-    size_t barLine) {
-  EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
-  EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
-  EXPECT_EQ(
-      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
-      std::string(frames.frames[5].location.file.toString()));
-  EXPECT_EQ(kQsortCallLineNo, frames.frames[5].location.line);
-  EXPECT_EQ(barName, std::string(frames.frames[6].name));
-  EXPECT_EQ(
-      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
-      std::string(frames.frames[6].location.file.toString()));
-  EXPECT_EQ(barLine, frames.frames[6].location.line);
-}
-
-template <size_t kNumFrames = 100>
-void compareFrames(
-    const FrameArray<kNumFrames>& frames1,
-    const FrameArray<kNumFrames>& frames2) {
-  EXPECT_EQ(frames1.frameCount, frames2.frameCount);
-  for (size_t i = 0; i < frames1.frameCount; i++) {
-    EXPECT_STREQ(frames1.frames[i].name, frames2.frames[i].name);
-  }
-}
-
 } // namespace
-
-class ClassWithInlineFunctions {
- public:
-  FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<100>& frames) const {
-    kFooCallByClassBarLineNo = __LINE__ + 1;
-    inlineFoo(frames);
-  }
-
-  FOLLY_ALWAYS_INLINE static void staticInlineBar(FrameArray<100>& frames) {
-    kFooCallByClassStaticBarLineNo = __LINE__ + 1;
-    inlineFoo(frames);
-  }
-
-  // Dummy non-inline function.
-  size_t dummy() const {
-    return dummy_;
-  }
-
-  size_t dummy_ = 0;
-};
 
 TEST(SymbolizerTest, InlineFunctionBasic) {
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
@@ -229,34 +180,25 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   //  Frame: _ZN7testing8UnitTest3RunEv
   //  Frame: _Z13RUN_ALL_TESTSv
   // clang-format on
-  verifyStackTrace(frames, "inlineBar<100>", kFooCallByStandaloneBarLineNo);
+  EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
+  EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[5].location.file.toString()));
+  EXPECT_EQ(kQsortCallLineNo, frames.frames[5].location.line);
+  EXPECT_EQ("inlineBar<100>", std::string(frames.frames[6].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[6].location.file.toString()));
+  EXPECT_EQ(kFooCallLineNo, frames.frames[6].location.line);
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
-
-  compareFrames(frames, frames2);
-}
-
-TEST(SymbolizerTest, InlineClassMemberFunction) {
-  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
-
-  FrameArray<100> frames;
-  ClassWithInlineFunctions obj;
-  obj.inlineBar(frames);
-  symbolizer.symbolize(frames);
-
-  verifyStackTrace(frames, "inlineBar", kFooCallByClassBarLineNo);
-}
-
-TEST(SymbolizerTest, StaticInlineClassMemberFunction) {
-  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
-
-  FrameArray<100> frames;
-  ClassWithInlineFunctions::staticInlineBar(frames);
-  symbolizer.symbolize(frames);
-
-  verifyStackTrace(frames, "staticInlineBar", kFooCallByClassStaticBarLineNo);
+  EXPECT_EQ(frames.frameCount, frames2.frameCount);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
 }
 
 // No inline frames should be filled because of no extra frames.
@@ -271,7 +213,9 @@ TEST(SymbolizerTest, InlineFunctionBasicNoExtraFrames) {
   inlineBar<8>(frames2);
   symbolizer2.symbolize(frames2);
 
-  compareFrames<8>(frames, frames2);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
 }
 
 TEST(SymbolizerTest, InlineFunctionWithCache) {
@@ -281,12 +225,25 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   inlineBar<100>(frames);
   symbolizer.symbolize(frames);
 
-  verifyStackTrace(frames, "inlineBar<100>", kFooCallByStandaloneBarLineNo);
+  EXPECT_TRUE(frames.frameCount == 14 || frames.frameCount == 15);
+  EXPECT_EQ("inlineFoo<100>", std::string(frames.frames[5].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[5].location.file.toString()));
+  EXPECT_EQ(kQsortCallLineNo, frames.frames[5].location.line);
+  EXPECT_EQ("inlineBar<100>", std::string(frames.frames[6].name));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[6].location.file.toString()));
+  EXPECT_EQ(kFooCallLineNo, frames.frames[6].location.line);
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
-  compareFrames(frames, frames2);
+  EXPECT_EQ(frames.frameCount, frames2.frameCount);
+  for (size_t i = 0; i < frames.frameCount; i++) {
+    EXPECT_STREQ(frames.frames[i].name, frames2.frames[i].name);
+  }
 }
 
 } // namespace test

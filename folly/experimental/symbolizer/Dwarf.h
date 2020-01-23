@@ -150,13 +150,6 @@ class Dwarf {
       const;
 
   /**
-   * Find the actual definition DIE instead of declaration for the given die.
-   */
-  detail::Die findDefinitionDie(
-      const detail::CompilationUnit& cu,
-      const detail::Die& die) const;
-
-  /**
    * Iterates over all children of a debugging info entry, calling the given
    * callable for each. Iteration is stopped early if any of the calls return
    * false. Returns the offset of next DIE after iterations.
