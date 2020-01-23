@@ -21,6 +21,7 @@
 #include <folly/synchronization/HazptrRec.h>
 #include <folly/synchronization/HazptrThrLocal.h>
 
+#include <folly/Memory.h>
 #include <folly/Portability.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
@@ -222,6 +223,10 @@ class hazptr_domain {
   }
 
  private:
+  using hazptr_rec_alloc = AlignedSysAllocator<
+      hazptr_rec<Atom>,
+      FixedAlign<alignof(hazptr_rec<Atom>)>>;
+
   friend void hazptr_domain_push_list<Atom>(
       hazptr_obj_list<Atom>&,
       hazptr_domain<Atom>&) noexcept;
@@ -463,7 +468,8 @@ class hazptr_domain {
     while (rec) {
       auto next = rec->next();
       DCHECK(!rec->active());
-      delete rec;
+      rec->~hazptr_rec<Atom>();
+      hazptr_rec_alloc{}.deallocate(rec, 1);
       rec = next;
     }
   }
@@ -597,7 +603,8 @@ class hazptr_domain {
   }
 
   hazptr_rec<Atom>* acquire_new_hprec() {
-    auto rec = new hazptr_rec<Atom>;
+    auto rec = hazptr_rec_alloc{}.allocate(1);
+    new (rec) hazptr_rec<Atom>();
     rec->set_active();
     rec->set_domain(this);
     while (true) {
