@@ -538,35 +538,30 @@ bool Dwarf::findLocation(
            inlineLocIter++, inlineFrameIter++) {
         inlineFrameIter->location.line = callerLine;
         callerLine = inlineLocIter->line;
-        folly::Optional<folly::StringPiece> linkageName;
         folly::Optional<folly::StringPiece> name;
         folly::Optional<uint64_t> file;
         forEachAttribute(
             cu, inlineLocIter->die, [&](const detail::Attribute& attr) {
               switch (attr.spec.name) {
-                case DW_AT_linkage_name:
-                  linkageName = boost::get<folly::StringPiece>(attr.attrValue);
-                  break;
                 case DW_AT_name:
-                  name = boost::get<folly::StringPiece>(attr.attrValue);
+                  name = boost::get<StringPiece>(attr.attrValue);
                   break;
                 case DW_AT_decl_file:
                   file = boost::get<uint64_t>(attr.attrValue);
                   break;
               }
-              return !file || !name || !linkageName;
+              return !file.has_value() || !name.has_value();
             });
-        if (!(name || linkageName) || !file) {
+
+        if (!name.has_value() || !file.has_value()) {
           break;
         }
 
         inlineFrameIter->found = true;
         inlineFrameIter->addr = address;
-        inlineFrameIter->name =
-            linkageName ? linkageName.value().data() : name.value().data();
+        inlineFrameIter->name = name.value().data();
         inlineFrameIter->location.hasFileAndLine = true;
-        inlineFrameIter->location.name =
-            linkageName ? linkageName.value() : name.value();
+        inlineFrameIter->location.name = name.value();
         inlineFrameIter->location.file = lineVM.getFullFileName(file.value());
       }
       locationInfo.line = callerLine;
@@ -661,7 +656,7 @@ detail::Die Dwarf::findDefinitionDie(
     return true;
   });
 
-  if (!offset) {
+  if (!offset.hasValue()) {
     return die;
   }
   return getDieAtOffset(cu, cu.offset + offset.value());
