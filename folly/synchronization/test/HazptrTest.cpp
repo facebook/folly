@@ -42,7 +42,7 @@ using folly::hazptr_holder;
 using folly::hazptr_local;
 using folly::hazptr_obj_base;
 using folly::hazptr_obj_base_linked;
-using folly::hazptr_obj_batch;
+using folly::hazptr_obj_cohort;
 using folly::hazptr_retire;
 using folly::hazptr_root;
 using folly::hazptr_tc;
@@ -813,16 +813,16 @@ void priv_dtor_test() {
 }
 
 template <template <typename> class Atom = std::atomic>
-void batch_test() {
+void cohort_test() {
   int num = 10001;
   using NodeT = Node<Atom>;
   c_.clear();
   {
-    hazptr_obj_batch<Atom> batch;
+    hazptr_obj_cohort<Atom> cohort;
     auto thr = DSched::thread([&]() {
       for (int i = 0; i < num; ++i) {
         auto p = new NodeT;
-        p->set_batch_no_tag(&batch);
+        p->set_cohort_no_tag(&cohort);
         p->retire();
       }
     });
@@ -833,11 +833,11 @@ void batch_test() {
   hazptr_cleanup<Atom>();
   c_.clear();
   {
-    hazptr_obj_batch<Atom> batch;
+    hazptr_obj_cohort<Atom> cohort;
     auto thr = DSched::thread([&]() {
       for (int i = 0; i < num; ++i) {
         auto p = new NodeT;
-        p->set_batch_tag(&batch);
+        p->set_cohort_tag(&cohort);
         p->retire();
       }
     });
@@ -851,10 +851,10 @@ void batch_test() {
 template <template <typename> class Atom = std::atomic>
 void recursive_destruction_test() {
   struct Foo : public hazptr_obj_base<Foo, Atom> {
-    hazptr_obj_batch<Atom> batch_;
+    hazptr_obj_cohort<Atom> cohort_;
     Foo* foo_{nullptr};
-    explicit Foo(hazptr_obj_batch<Atom>* b) {
-      this->set_batch_tag(b);
+    explicit Foo(hazptr_obj_cohort<Atom>* b) {
+      this->set_cohort_tag(b);
       c_.inc_ctors();
     }
     ~Foo() {
@@ -867,8 +867,8 @@ void recursive_destruction_test() {
       }
       foo_ = foo;
     }
-    hazptr_obj_batch<Atom>* batch() {
-      return &batch_;
+    hazptr_obj_cohort<Atom>* cohort() {
+      return &cohort_;
     }
   };
 
@@ -879,13 +879,13 @@ void recursive_destruction_test() {
   std::vector<std::thread> threads(nthr);
   for (int tid = 0; tid < nthr; ++tid) {
     threads[tid] = DSched::thread([&, tid]() {
-      hazptr_obj_batch<Atom> b0;
+      hazptr_obj_cohort<Atom> b0;
       Foo* foo0 = new Foo(&b0);
       for (int i = tid; i < num1; i += nthr) {
-        Foo* foo1 = new Foo(foo0->batch());
+        Foo* foo1 = new Foo(foo0->cohort());
         foo0->set(foo1);
         for (int j = 0; j < num2; ++j) {
-          foo1->set(new Foo(foo1->batch()));
+          foo1->set(new Foo(foo1->cohort()));
         }
       }
       foo0->retire();
@@ -902,10 +902,10 @@ void recursive_destruction_test() {
 void fork_test() {
   folly::start_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
-    hazptr_obj_batch b;
+    hazptr_obj_cohort b;
     for (int i = 0; i < 2001; ++i) {
       auto p = new Node;
-      p->set_batch_no_tag(&b);
+      p->set_cohort_no_tag(&b);
       p->retire();
     }
   };
@@ -1187,13 +1187,13 @@ TEST_F(HazptrPreInitTest, dsched_priv_dtor) {
   priv_dtor_test<DeterministicAtomic>();
 }
 
-TEST(HazptrTest, batch) {
-  batch_test();
+TEST(HazptrTest, cohort) {
+  cohort_test();
 }
 
-TEST(HazptrTest, dsched_batch) {
+TEST(HazptrTest, dsched_cohort) {
   DSched sched(DSched::uniform(0));
-  batch_test<DeterministicAtomic>();
+  cohort_test<DeterministicAtomic>();
 }
 
 TEST(HazptrTest, recursive_destruction) {
@@ -1446,20 +1446,20 @@ uint64_t cleanup_bench(std::string name, int nthreads) {
   return bench(name, ops, repFn);
 }
 
-uint64_t batch_bench(std::string name, int nthreads) {
+uint64_t cohort_bench(std::string name, int nthreads) {
   struct Foo : public hazptr_obj_base<Foo> {};
   // Push unrelated objects into the domain tagged list
-  hazptr_obj_batch batch;
+  hazptr_obj_cohort cohort;
   for (int i = 0; i < 999; ++i) {
     auto p = new Foo;
-    p->set_batch_tag(&batch);
+    p->set_cohort_tag(&cohort);
     p->retire();
   }
   auto repFn = [&] {
     auto init = [] {};
     auto fn = [&](int tid) {
       for (int j = tid; j < ops; j += nthreads) {
-        hazptr_obj_batch b;
+        hazptr_obj_cohort b;
       }
     };
     auto endFn = [] {};
@@ -1504,8 +1504,8 @@ void benches() {
     }
     std::cout << "1/1000 hazptr_cleanup                         ";
     cleanup_bench("", i);
-    std::cout << "Life cycle of unused tagged obj batch         ";
-    batch_bench("", i);
+    std::cout << "Life cycle of unused tagged obj cohort        ";
+    cohort_bench("", i);
   }
 }
 
@@ -1536,7 +1536,7 @@ allocate/retire/reclaim object                     70 ns     68 ns     67 ns
 20-item list protect all - own hazptr              28 ns     28 ns     28 ns
 20-item list protect all                           31 ns     29 ns     29 ns
 1/1000 hazptr_cleanup                               2 ns      1 ns      1 ns
-Life cycle of unused tagged obj batch               1 ns      1 ns      1 ns
+Life cycle of unused tagged obj cohort              1 ns      1 ns      1 ns
 ================================ 10 threads ================================
 10x construct/destruct hazptr_holder               11 ns      8 ns      8 ns
 10x construct/destruct hazptr_array<1>              8 ns      7 ns      7 ns
@@ -1555,5 +1555,5 @@ allocate/retire/reclaim object                     20 ns     17 ns     16 ns
 20-item list protect all - own hazptr               4 ns      4 ns      4 ns
 20-item list protect all                            5 ns      4 ns      4 ns
 1/1000 hazptr_cleanup                             119 ns    113 ns     97 ns
-Life cycle of unused tagged obj batch               0 ns      0 ns      0 ns
+Life cycle of unused tagged obj cohort              0 ns      0 ns      0 ns
 */

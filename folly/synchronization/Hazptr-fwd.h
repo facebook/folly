@@ -59,9 +59,9 @@ class hazptr_obj;
 template <template <typename> class Atom = std::atomic>
 class hazptr_obj_list;
 
-/** hazptr_obj_batch */
+/** hazptr_obj_cohort */
 template <template <typename> class Atom = std::atomic>
-class hazptr_obj_batch;
+class hazptr_obj_cohort;
 
 /** hazptr_obj_retired_list */
 template <template <typename> class Atom = std::atomic>

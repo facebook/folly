@@ -237,9 +237,9 @@ class UnboundedQueue {
   struct Consumer {
     Atom<Segment*> head;
     Atom<Ticket> ticket;
-    hazptr_obj_batch<Atom> batch;
+    hazptr_obj_cohort<Atom> cohort;
     explicit Consumer(Segment* s) : head(s), ticket(0) {
-      s->set_batch_no_tag(&batch); // defined in hazptr_obj
+      s->set_cohort_no_tag(&cohort); // defined in hazptr_obj
     }
   };
   struct Producer {
@@ -559,7 +559,7 @@ class UnboundedQueue {
   Segment* allocNextSegment(Segment* s) {
     auto t = s->minTicket() + SegmentSize;
     Segment* next = new Segment(t);
-    next->set_batch_no_tag(&c_.batch); // defined in hazptr_obj
+    next->set_cohort_no_tag(&c_.cohort); // defined in hazptr_obj
     next->acquire_ref_safe(); // defined in hazptr_obj_base_linked
     if (!s->casNextSegment(next)) {
       delete next;

@@ -366,7 +366,7 @@ class RequestContext {
     // Hazard pointer-protected combined structure for request data
     // and callbacks.
     struct Combined;
-    hazptr_obj_batch<> batch_; // For destruction order
+    hazptr_obj_cohort<> cohort_; // For destruction order
     std::atomic<Combined*> combined_{nullptr};
     std::mutex mutex_;
 

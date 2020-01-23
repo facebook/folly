@@ -42,42 +42,42 @@ namespace folly {
  *  Data members:
  *  - next_: link to next object in private singly linked lists.
  *  - reclaim_: reclamation function for this object.
- *  - batch_tag_: A pointer to a batch (a linked list where the object
- *    is to be pushed when retired). It can also be used as a tag (see
- *    below). See details below.
+ *  - cohort_tag_: A pointer to a cohort (a linked list where the
+ *    object is to be pushed when retired). It can also be used as a
+ *    tag (see below). See details below.
  *
- *  Batches, Tags, Tagged Objects, and Untagged Objects:
+ *  Cohorts, Tags, Tagged Objects, and Untagged Objects:
  *
- *  - Batches: Batches (instances of hazptr_obj_batch) are sets of
- *    retired hazptr_obj-s. Batches are used to keep related objects
+ *  - Cohorts: Cohorts (instances of hazptr_obj_cohort) are sets of
+ *    retired hazptr_obj-s. Cohorts are used to keep related objects
  *    together instead of being spread across thread local structures
  *    and/or mixed with unrelated objects.
  *
  *  - Tags: A tag is a unique identifier used for fast identification
  *    of related objects. Tags are implemented as addresses of
- *    batches, with the lowest bit set (to save the space of separate
- *    batch and tag data members and to differentiate from batches of
+ *    cohorts, with the lowest bit set (to save the space of separate
+ *    cohort and tag data members and to differentiate from cohorts of
  *    untagged objects.
  *
  *  - Tagged objects: Objects are tagged for fast identification. The
  *    primary use case is for guaranteeing the destruction of all
  *    objects with a certain tag (e.g., the destruction of all Key and
  *    Value objects that were part of a Folly ConcurrentHashMap
- *    instance). Member function set_batch_tag makes an object tagged.
+ *    instance). Member function set_cohort_tag makes an object tagged.
  *
  *  - Untagged objects: Objects that do not need to be identified
  *    separately from unrelated objects are not tagged (to keep tagged
  *    objects uncluttered). Untagged objects may or may not be
- *    associated with batches. An example of untagged objects
- *    associated with batches are Segment-s of Folly UnboundedQueue.
+ *    associated with cohorts. An example of untagged objects
+ *    associated with cohorts are Segment-s of Folly UnboundedQueue.
  *    Although such objects do not need to be tagged, keeping them in
- *    batches helps avoid cases of a few missing objects delaying the
+ *    cohorts helps avoid cases of a few missing objects delaying the
  *    reclamation of large numbers of link-counted objects. Objects
  *    are untagged either by default or after calling
- *    set_batch_no_tag.
+ *    set_cohort_no_tag.
  *
- *  - Thread Safety: Member functions set_batch_tag and
- *    set_batch_no_tag are not thread-safe. Thread safety must be
+ *  - Thread Safety: Member functions set_cohort_tag and
+ *    set_cohort_no_tag are not thread-safe. Thread safety must be
  *    ensured by the calling thread.
  */
 template <template <typename> class Atom>
@@ -102,21 +102,21 @@ class hazptr_obj {
 
   ReclaimFnPtr reclaim_;
   hazptr_obj<Atom>* next_;
-  uintptr_t batch_tag_;
+  uintptr_t cohort_tag_;
 
  public:
   /** Constructors */
   /* All constructors set next_ to this in order to catch misuse bugs
      such as double retire. By default, objects are untagged and not
-     associated with a batch. */
+     associated with a cohort. */
 
-  hazptr_obj() noexcept : next_(this), batch_tag_(0) {}
+  hazptr_obj() noexcept : next_(this), cohort_tag_(0) {}
 
   hazptr_obj(const hazptr_obj<Atom>& o) noexcept
-      : next_(this), batch_tag_(o.batch_tag_) {}
+      : next_(this), cohort_tag_(o.cohort_tag_) {}
 
   hazptr_obj(hazptr_obj<Atom>&& o) noexcept
-      : next_(this), batch_tag_(o.batch_tag_) {}
+      : next_(this), cohort_tag_(o.cohort_tag_) {}
 
   /** Copy operator */
   hazptr_obj<Atom>& operator=(const hazptr_obj<Atom>&) noexcept {
@@ -128,31 +128,31 @@ class hazptr_obj {
     return *this;
   }
 
-  /** batch_tag */
-  uintptr_t batch_tag() {
-    return batch_tag_;
+  /** cohort_tag */
+  uintptr_t cohort_tag() {
+    return cohort_tag_;
   }
 
-  /** batch */
-  hazptr_obj_batch<Atom>* batch() {
-    uintptr_t btag = batch_tag_;
+  /** cohort */
+  hazptr_obj_cohort<Atom>* cohort() {
+    uintptr_t btag = cohort_tag_;
     btag -= btag & kTagBit;
-    return reinterpret_cast<hazptr_obj_batch<Atom>*>(btag);
+    return reinterpret_cast<hazptr_obj_cohort<Atom>*>(btag);
   }
 
   /** tagged */
   bool tagged() {
-    return (batch_tag_ & kTagBit) == kTagBit;
+    return (cohort_tag_ & kTagBit) == kTagBit;
   }
 
-  /** set_batch_tag: Set batch and make object tagged. */
-  void set_batch_tag(hazptr_obj_batch<Atom>* batch) {
-    batch_tag_ = reinterpret_cast<uintptr_t>(batch) + kTagBit;
+  /** set_cohort_tag: Set cohort and make object tagged. */
+  void set_cohort_tag(hazptr_obj_cohort<Atom>* cohort) {
+    cohort_tag_ = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
   }
 
-  /** set_batch_no_tag: Set batch and make object untagged.  */
-  void set_batch_no_tag(hazptr_obj_batch<Atom>* batch) {
-    batch_tag_ = reinterpret_cast<uintptr_t>(batch);
+  /** set_cohort_no_tag: Set cohort and make object untagged.  */
+  void set_cohort_no_tag(hazptr_obj_cohort<Atom>* cohort) {
+    cohort_tag_ = reinterpret_cast<uintptr_t>(cohort);
   }
 
  private:
@@ -161,7 +161,7 @@ class hazptr_obj {
   friend class hazptr_obj_base;
   template <typename, template <typename> class, typename>
   friend class hazptr_obj_base_refcounted;
-  friend class hazptr_obj_batch<Atom>;
+  friend class hazptr_obj_cohort<Atom>;
   friend class hazptr_priv<Atom>;
 
   hazptr_obj<Atom>* next() const noexcept {
@@ -188,10 +188,10 @@ class hazptr_obj {
   }
 
   void push_obj(hazptr_domain<Atom>& domain) {
-    auto b = batch();
-    if (b) {
+    auto coh = cohort();
+    if (coh) {
       DCHECK_EQ(&domain, &default_hazptr_domain<Atom>());
-      b->push_obj(this);
+      coh->push_obj(this);
     } else {
       push_to_retired(domain);
     }
@@ -277,19 +277,19 @@ class hazptr_obj_list {
 }; // hazptr_obj_list
 
 /**
- *  hazptr_obj_batch
+ *  hazptr_obj_cohort
  *
- *  List of retired objects. For objects to be retred to a batch,
- *  either of the hazptr_obj member functions set_batch_tag or
- *  set_batch_no_tag needs to be called before the object is retired.
+ *  List of retired objects. For objects to be retred to a cohort,
+ *  either of the hazptr_obj member functions set_cohort_tag or
+ *  set_cohort_no_tag needs to be called before the object is retired.
  *
- *  See description of hazptr_obj for notes on batches, tags, and
+ *  See description of hazptr_obj for notes on cohorts, tags, and
  *  tageed and untagged objects.
  *
  *  [Note: For now supports only the default domain.]
  */
 template <template <typename> class Atom>
-class hazptr_obj_batch {
+class hazptr_obj_cohort {
   using Obj = hazptr_obj<Atom>;
   using List = hazptr_detail::linked_list<Obj>;
   using SharedList = hazptr_detail::shared_head_tail_list<Obj, Atom>;
@@ -303,17 +303,17 @@ class hazptr_obj_batch {
 
  public:
   /** Constructor */
-  hazptr_obj_batch() noexcept
+  hazptr_obj_cohort() noexcept
       : l_(), count_(0), active_(true), pushed_to_domain_tagged_{false} {}
 
   /** Not copyable or moveable */
-  hazptr_obj_batch(const hazptr_obj_batch& o) = delete;
-  hazptr_obj_batch(hazptr_obj_batch&& o) = delete;
-  hazptr_obj_batch& operator=(const hazptr_obj_batch&& o) = delete;
-  hazptr_obj_batch& operator=(hazptr_obj_batch&& o) = delete;
+  hazptr_obj_cohort(const hazptr_obj_cohort& o) = delete;
+  hazptr_obj_cohort(hazptr_obj_cohort&& o) = delete;
+  hazptr_obj_cohort& operator=(const hazptr_obj_cohort&& o) = delete;
+  hazptr_obj_cohort& operator=(hazptr_obj_cohort&& o) = delete;
 
   /** Destructor */
-  ~hazptr_obj_batch() {
+  ~hazptr_obj_cohort() {
     if (active_) {
       shutdown_and_reclaim();
     }
@@ -332,7 +332,7 @@ class hazptr_obj_batch {
       reclaim_list(obj);
     }
     if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
-      default_hazptr_domain<Atom>().cleanup_batch_tag(this);
+      default_hazptr_domain<Atom>().cleanup_cohort_tag(this);
     }
     DCHECK(l_.empty());
   }
@@ -403,7 +403,7 @@ class hazptr_obj_batch {
       }
     }
   }
-}; // hazptr_obj_batch
+}; // hazptr_obj_cohort
 
 /**
  *  hazptr_obj_retired_list

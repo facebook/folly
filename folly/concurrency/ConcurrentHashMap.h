@@ -193,8 +193,8 @@ class ConcurrentHashMap {
           std::memory_order_relaxed);
       o.segments_[i].store(nullptr, std::memory_order_relaxed);
     }
-    batch_.store(o.batch(), std::memory_order_relaxed);
-    o.batch_.store(nullptr, std::memory_order_relaxed);
+    cohort_.store(o.cohort(), std::memory_order_relaxed);
+    o.cohort_.store(nullptr, std::memory_order_relaxed);
   }
 
   ConcurrentHashMap& operator=(ConcurrentHashMap&& o) {
@@ -211,9 +211,9 @@ class ConcurrentHashMap {
     }
     size_ = o.size_;
     max_size_ = o.max_size_;
-    batch_shutdown_cleanup();
-    batch_.store(o.batch(), std::memory_order_relaxed);
-    o.batch_.store(nullptr, std::memory_order_relaxed);
+    cohort_shutdown_cleanup();
+    cohort_.store(o.cohort(), std::memory_order_relaxed);
+    o.cohort_.store(nullptr, std::memory_order_relaxed);
     return *this;
   }
 
@@ -225,7 +225,7 @@ class ConcurrentHashMap {
         Allocator().deallocate((uint8_t*)seg, sizeof(SegmentT));
       }
     }
-    batch_shutdown_cleanup();
+    cohort_shutdown_cleanup();
   }
 
   bool empty() const noexcept {
@@ -305,7 +305,7 @@ class ConcurrentHashMap {
   std::pair<ConstIterator, bool> emplace(Args&&... args) {
     using Node = typename SegmentT::Node;
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(ensureBatch(), std::forward<Args>(args)...);
+    new (node) Node(ensureCohort(), std::forward<Args>(args)...);
     auto segment = pickSegment(node->getItem().first);
     std::pair<ConstIterator, bool> res(
         std::piecewise_construct,
@@ -568,7 +568,7 @@ class ConcurrentHashMap {
   SegmentT* ensureSegment(uint64_t i) const {
     SegmentT* seg = segments_[i].load(std::memory_order_acquire);
     if (!seg) {
-      auto b = ensureBatch();
+      auto b = ensureCohort();
       SegmentT* newseg = (SegmentT*)Allocator().allocate(sizeof(SegmentT));
       newseg = new (newseg)
           SegmentT(size_ >> ShardBits, load_factor_, max_size_ >> ShardBits, b);
@@ -583,37 +583,37 @@ class ConcurrentHashMap {
     return seg;
   }
 
-  hazptr_obj_batch<Atom>* batch() const noexcept {
-    return batch_.load(std::memory_order_acquire);
+  hazptr_obj_cohort<Atom>* cohort() const noexcept {
+    return cohort_.load(std::memory_order_acquire);
   }
 
-  hazptr_obj_batch<Atom>* ensureBatch() const {
-    auto b = batch();
+  hazptr_obj_cohort<Atom>* ensureCohort() const {
+    auto b = cohort();
     if (!b) {
-      auto storage = Allocator().allocate(sizeof(hazptr_obj_batch<Atom>));
-      auto newbatch = new (storage) hazptr_obj_batch<Atom>();
-      if (batch_.compare_exchange_strong(b, newbatch)) {
-        b = newbatch;
+      auto storage = Allocator().allocate(sizeof(hazptr_obj_cohort<Atom>));
+      auto newcohort = new (storage) hazptr_obj_cohort<Atom>();
+      if (cohort_.compare_exchange_strong(b, newcohort)) {
+        b = newcohort;
       } else {
-        newbatch->~hazptr_obj_batch<Atom>();
-        Allocator().deallocate(storage, sizeof(hazptr_obj_batch<Atom>));
+        newcohort->~hazptr_obj_cohort<Atom>();
+        Allocator().deallocate(storage, sizeof(hazptr_obj_cohort<Atom>));
       }
     }
     return b;
   }
 
-  void batch_shutdown_cleanup() {
-    auto b = batch();
+  void cohort_shutdown_cleanup() {
+    auto b = cohort();
     if (b) {
-      b->~hazptr_obj_batch<Atom>();
-      Allocator().deallocate((uint8_t*)b, sizeof(hazptr_obj_batch<Atom>));
+      b->~hazptr_obj_cohort<Atom>();
+      Allocator().deallocate((uint8_t*)b, sizeof(hazptr_obj_cohort<Atom>));
     }
   }
 
   mutable Atom<SegmentT*> segments_[NumShards];
   size_t size_{0};
   size_t max_size_{0};
-  mutable Atom<hazptr_obj_batch<Atom>*> batch_{nullptr};
+  mutable Atom<hazptr_obj_cohort<Atom>*> cohort_{nullptr};
 };
 
 #if FOLLY_SSE_PREREQ(4, 2) && !FOLLY_MOBILE

@@ -190,7 +190,7 @@ RequestContext::StateHazptr::StateHazptr(const StateHazptr& o) {
 }
 
 RequestContext::StateHazptr::~StateHazptr() {
-  batch_.shutdown_and_reclaim();
+  cohort_.shutdown_and_reclaim();
   auto p = combined();
   if (p) {
     delete p;
@@ -214,7 +214,7 @@ RequestContext::StateHazptr::ensureCombined() {
 }
 
 void RequestContext::StateHazptr::setCombined(Combined* p) {
-  p->set_batch_tag(&batch_);
+  p->set_cohort_tag(&cohort_);
   combined_.store(p, std::memory_order_release);
 }
 

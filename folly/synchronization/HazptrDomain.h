@@ -53,7 +53,7 @@ constexpr int hazptr_domain_rcount_threshold() {
  *  Notes on destruction order, tagged objects, locking and deadlock
  *  avoidance:
  *  - Tagged objects support reclamation order guarantees. A call to
- *    cleanup_batch_tag(tag) guarantees that all objects with the
+ *    cleanup_cohort_tag(tag) guarantees that all objects with the
  *    specified tag are reclaimed before the function returns.
  *  - Due to the strict order, access to the set of tagged objects
  *    needs synchronization and care must be taken to avoid deadlock.
@@ -66,7 +66,7 @@ constexpr int hazptr_domain_rcount_threshold() {
  *     reclaimed objects. This type is needed to guarantee an upper
  *     bound on unreclaimed reclaimable objects.
  *   - Type B: A Type B reclamation operation is triggered by a call
- *     to the function cleanup_batch_tag for a specific tag. All
+ *     to the function cleanup_cohort_tag for a specific tag. All
  *     objects with the specified tag must be reclaimed
  *     unconditionally before returning from such a function
  *     call. Hazard pointers are not checked. This type of reclamation
@@ -187,9 +187,9 @@ class hazptr_domain {
     wait_for_zero_bulk_reclaims(); // wait for concurrent bulk_reclaim-s
   }
 
-  /** cleanup_batch_tag */
-  void cleanup_batch_tag(const hazptr_obj_batch<Atom>* batch) noexcept {
-    auto tag = reinterpret_cast<uintptr_t>(batch) + kTagBit;
+  /** cleanup_cohort_tag */
+  void cleanup_cohort_tag(const hazptr_obj_cohort<Atom>* cohort) noexcept {
+    auto tag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
     auto obj = tagged_.pop_all(RetiredList::kAlsoLock);
     ObjList match, nomatch;
     list_match_tag(tag, obj, match, nomatch);
@@ -219,7 +219,7 @@ class hazptr_domain {
   void
   list_match_tag(uintptr_t tag, Obj* obj, ObjList& match, ObjList& nomatch) {
     list_match_condition(
-        obj, match, nomatch, [tag](Obj* o) { return o->batch_tag() == tag; });
+        obj, match, nomatch, [tag](Obj* o) { return o->cohort_tag() == tag; });
   }
 
  private:
@@ -236,7 +236,7 @@ class hazptr_domain {
       hazptr_domain<Atom>&) noexcept;
   friend class hazptr_holder<Atom>;
   friend class hazptr_obj<Atom>;
-  friend class hazptr_obj_batch<Atom>;
+  friend class hazptr_obj_cohort<Atom>;
 #if FOLLY_HAZPTR_THR_LOCAL
   friend class hazptr_tc<Atom>;
 #endif
@@ -277,7 +277,7 @@ class hazptr_domain {
     if (l.empty()) {
       return;
     }
-    uintptr_t btag = l.head()->batch_tag();
+    uintptr_t btag = l.head()->cohort_tag();
     bool tagged = ((btag & kTagBit) == kTagBit);
     RetiredList& rlist = tagged ? tagged_ : untagged_;
     Atom<uint64_t>& sync_time =
@@ -285,7 +285,7 @@ class hazptr_domain {
     /*** Full fence ***/ asymmetricLightBarrier();
     /* Only tagged lists need to be locked because tagging is used to
      * guarantee the identification of all objects with a specific
-     * tag. Locking pcrotects against concurrent hazptr_cleanup_tag()
+     * tag. Locking protects against concurrent hazptr_cleanup_tag()
      * calls missing tagged objects. */
     bool lock =
         tagged ? RetiredList::kMayBeLocked : RetiredList::kMayNotBeLocked;
@@ -342,7 +342,7 @@ class hazptr_domain {
     for (; hprec; hprec = hprec->next()) {
       hs.insert(hprec->hazptr());
     }
-    /* Check objets against hazard pointer values */
+    /* Check objects against hazard pointer values */
     ObjList match, nomatch;
     list_match_condition(obj, match, nomatch, [&](Obj* o) {
       return hs.count(o->raw_ptr()) > 0;

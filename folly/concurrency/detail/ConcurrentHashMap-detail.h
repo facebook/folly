@@ -148,18 +148,18 @@ class NodeT : public hazptr_obj_base_linked<
  public:
   typedef std::pair<const KeyType, ValueType> value_type;
 
-  explicit NodeT(hazptr_obj_batch<Atom>* batch, NodeT* other)
+  explicit NodeT(hazptr_obj_cohort<Atom>* cohort, NodeT* other)
       : item_(other->item_) {
-    init(batch);
+    init(cohort);
   }
 
   template <typename Arg, typename... Args>
-  NodeT(hazptr_obj_batch<Atom>* batch, Arg&& k, Args&&... args)
+  NodeT(hazptr_obj_cohort<Atom>* cohort, Arg&& k, Args&&... args)
       : item_(
             std::piecewise_construct,
             std::forward<Arg>(k),
             std::forward<Args>(args)...) {
-    init(batch);
+    init(cohort);
   }
 
   void release() {
@@ -183,11 +183,11 @@ class NodeT : public hazptr_obj_base_linked<
   Atom<NodeT*> next_{nullptr};
 
  private:
-  void init(hazptr_obj_batch<Atom>* batch) {
-    DCHECK(batch);
+  void init(hazptr_obj_cohort<Atom>* cohort) {
+    DCHECK(cohort);
     this->set_deleter( // defined in hazptr_obj
         concurrenthashmap::HazptrDeleter<Allocator>());
-    this->set_batch_tag(batch); // defined in hazptr_obj
+    this->set_cohort_tag(cohort); // defined in hazptr_obj
     this->acquire_link_safe(); // defined in hazptr_obj_base_linked
   }
 
@@ -220,15 +220,15 @@ class alignas(64) BucketTable {
       size_t initial_buckets,
       float load_factor,
       size_t max_size,
-      hazptr_obj_batch<Atom>* batch)
+      hazptr_obj_cohort<Atom>* cohort)
       : load_factor_(load_factor), max_size_(max_size) {
-    DCHECK(batch);
+    DCHECK(cohort);
     initial_buckets = folly::nextPowTwo(initial_buckets);
     DCHECK(
         max_size_ == 0 ||
         (isPowTwo(max_size_) &&
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
-    auto buckets = Buckets::create(initial_buckets, batch);
+    auto buckets = Buckets::create(initial_buckets, cohort);
     buckets_.store(buckets, std::memory_order_release);
     load_factor_nodes_ = initial_buckets * load_factor_;
     bucket_count_.store(initial_buckets, std::memory_order_relaxed);
@@ -272,10 +272,10 @@ class alignas(64) BucketTable {
       const KeyType& k,
       InsertType type,
       MatchFunc match,
-      hazptr_obj_batch<Atom>* batch,
+      hazptr_obj_cohort<Atom>* cohort,
       Args&&... args) {
     return doInsert(
-        it, k, type, match, nullptr, batch, std::forward<Args>(args)...);
+        it, k, type, match, nullptr, cohort, std::forward<Args>(args)...);
   }
 
   template <typename MatchFunc, typename... Args>
@@ -285,14 +285,14 @@ class alignas(64) BucketTable {
       InsertType type,
       MatchFunc match,
       Node* cur,
-      hazptr_obj_batch<Atom>* batch) {
-    return doInsert(it, k, type, match, cur, batch, cur);
+      hazptr_obj_cohort<Atom>* cohort) {
+    return doInsert(it, k, type, match, cur, cohort, cur);
   }
 
   // Must hold lock.
-  void rehash(size_t bucket_count, hazptr_obj_batch<Atom>* batch) {
+  void rehash(size_t bucket_count, hazptr_obj_cohort<Atom>* cohort) {
     auto buckets = buckets_.load(std::memory_order_relaxed);
-    auto newbuckets = Buckets::create(bucket_count, batch);
+    auto newbuckets = Buckets::create(bucket_count, cohort);
 
     load_factor_nodes_ = bucket_count * load_factor_;
 
@@ -330,7 +330,7 @@ class alignas(64) BucketTable {
       for (; node != lastrun;
            node = node->next_.load(std::memory_order_relaxed)) {
         auto newnode = (Node*)Allocator().allocate(sizeof(Node));
-        new (newnode) Node(batch, node);
+        new (newnode) Node(cohort, node);
         auto k = getIdx(bucket_count, HashFn()(node->getItem().first));
         auto prevhead = &newbuckets->buckets_[k]();
         newnode->next_.store(prevhead->load(std::memory_order_relaxed));
@@ -422,10 +422,10 @@ class alignas(64) BucketTable {
     return 0;
   }
 
-  void clear(hazptr_obj_batch<Atom>* batch) {
+  void clear(hazptr_obj_cohort<Atom>* cohort) {
     size_t bcount = bucket_count_.load(std::memory_order_relaxed);
     Buckets* buckets;
-    auto newbuckets = Buckets::create(bcount, batch);
+    auto newbuckets = Buckets::create(bcount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -469,12 +469,12 @@ class alignas(64) BucketTable {
     ~Buckets() {}
 
    public:
-    static Buckets* create(size_t count, hazptr_obj_batch<Atom>* batch) {
+    static Buckets* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
       auto buf =
           Allocator().allocate(sizeof(Buckets) + sizeof(BucketRoot) * count);
       auto buckets = new (buf) Buckets();
-      DCHECK(batch);
-      buckets->set_batch_tag(batch); // defined in hazptr_obj
+      DCHECK(cohort);
+      buckets->set_cohort_tag(cohort); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
         new (&buckets->buckets_[i]) BucketRoot;
       }
@@ -629,7 +629,7 @@ class alignas(64) BucketTable {
       InsertType type,
       MatchFunc match,
       Node* cur,
-      hazptr_obj_batch<Atom>* batch,
+      hazptr_obj_cohort<Atom>* cohort,
       Args&&... args) {
     auto h = HashFn()(k);
     std::unique_lock<Mutex> g(m_);
@@ -642,7 +642,7 @@ class alignas(64) BucketTable {
         // Would exceed max size.
         throw std::bad_alloc();
       }
-      rehash(bcount << 1, batch);
+      rehash(bcount << 1, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
       bcount = bucket_count_.load(std::memory_order_relaxed);
     }
@@ -670,7 +670,7 @@ class alignas(64) BucketTable {
         } else {
           if (!cur) {
             cur = (Node*)Allocator().allocate(sizeof(Node));
-            new (cur) Node(batch, std::forward<Args>(args)...);
+            new (cur) Node(cohort, std::forward<Args>(args)...);
           }
           auto next = node->next_.load(std::memory_order_relaxed);
           cur->next_.store(next, std::memory_order_relaxed);
@@ -699,7 +699,7 @@ class alignas(64) BucketTable {
         // Would exceed max size.
         throw std::bad_alloc();
       }
-      rehash(bcount << 1, batch);
+      rehash(bcount << 1, cohort);
 
       // Reload correct bucket.
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -717,7 +717,7 @@ class alignas(64) BucketTable {
       // OR DOES_NOT_EXIST, but only in the try_emplace case
       DCHECK(type == InsertType::ANY || type == InsertType::DOES_NOT_EXIST);
       cur = (Node*)Allocator().allocate(sizeof(Node));
-      new (cur) Node(batch, std::forward<Args>(args)...);
+      new (cur) Node(cohort, std::forward<Args>(args)...);
     }
     cur->next_.store(headnode, std::memory_order_relaxed);
     head->store(cur, std::memory_order_release);
@@ -750,7 +750,7 @@ using folly::f14::detail::MaskType;
 using folly::f14::detail::SparseMaskIter;
 
 using folly::hazptr_obj_base;
-using folly::hazptr_obj_batch;
+using folly::hazptr_obj_cohort;
 
 template <
     typename KeyType,
@@ -765,12 +765,12 @@ class NodeT : public hazptr_obj_base<
   typedef std::pair<const KeyType, ValueType> value_type;
 
   template <typename Arg, typename... Args>
-  NodeT(hazptr_obj_batch<Atom>* batch, Arg&& k, Args&&... args)
+  NodeT(hazptr_obj_cohort<Atom>* cohort, Arg&& k, Args&&... args)
       : item_(
             std::piecewise_construct,
             std::forward_as_tuple(std::forward<Arg>(k)),
             std::forward_as_tuple(std::forward<Args>(args)...)) {
-    init(batch);
+    init(cohort);
   }
 
   value_type& getItem() {
@@ -778,11 +778,11 @@ class NodeT : public hazptr_obj_base<
   }
 
  private:
-  void init(hazptr_obj_batch<Atom>* batch) {
-    DCHECK(batch);
+  void init(hazptr_obj_cohort<Atom>* cohort) {
+    DCHECK(cohort);
     this->set_deleter( // defined in hazptr_obj
         HazptrDeleter<Allocator>());
-    this->set_batch_tag(batch); // defined in hazptr_obj
+    this->set_cohort_tag(cohort); // defined in hazptr_obj
   }
 
   value_type item_;
@@ -962,11 +962,11 @@ class alignas(64) SIMDTable {
     ~Chunks() {}
 
    public:
-    static Chunks* create(size_t count, hazptr_obj_batch<Atom>* batch) {
+    static Chunks* create(size_t count, hazptr_obj_cohort<Atom>* cohort) {
       auto buf = Allocator().allocate(sizeof(Chunks) + sizeof(Chunk) * count);
       auto chunks = new (buf) Chunks();
-      DCHECK(batch);
-      chunks->set_batch_tag(batch); // defined in hazptr_obj
+      DCHECK(cohort);
+      chunks->set_cohort_tag(cohort); // defined in hazptr_obj
       for (size_t i = 0; i < count; i++) {
         new (&chunks->chunks_[i]) Chunk;
         chunks->chunks_[i].clear();
@@ -1129,19 +1129,19 @@ class alignas(64) SIMDTable {
       size_t initial_size,
       float load_factor,
       size_t max_size,
-      hazptr_obj_batch<Atom>* batch)
+      hazptr_obj_cohort<Atom>* cohort)
       : load_factor_(load_factor),
         max_size_(max_size),
         chunks_(nullptr),
         chunk_count_(0) {
-    DCHECK(batch);
+    DCHECK(cohort);
     DCHECK(
         max_size_ == 0 ||
         (isPowTwo(max_size_) &&
          (folly::popcount(max_size_ - 1) + ShardBits <= 32)));
     DCHECK(load_factor_ > 0.0);
     load_factor_ = std::min<float>(load_factor_, 1.0);
-    rehash(initial_size, batch);
+    rehash(initial_size, cohort);
   }
 
   ~SIMDTable() {
@@ -1182,7 +1182,7 @@ class alignas(64) SIMDTable {
       const KeyType& k,
       InsertType type,
       MatchFunc match,
-      hazptr_obj_batch<Atom>* batch,
+      hazptr_obj_cohort<Atom>* cohort,
       Args&&... args) {
     Node* node;
     Chunks* chunks;
@@ -1198,7 +1198,7 @@ class alignas(64) SIMDTable {
             k,
             type,
             match,
-            batch,
+            cohort,
             chunk_idx,
             tag_idx,
             node,
@@ -1209,7 +1209,7 @@ class alignas(64) SIMDTable {
     }
 
     auto cur = (Node*)Allocator().allocate(sizeof(Node));
-    new (cur) Node(batch, std::forward<Args>(args)...);
+    new (cur) Node(cohort, std::forward<Args>(args)...);
 
     if (!node) {
       std::tie(chunk_idx, tag_idx) =
@@ -1236,7 +1236,7 @@ class alignas(64) SIMDTable {
       InsertType type,
       MatchFunc match,
       Node* cur,
-      hazptr_obj_batch<Atom>* batch) {
+      hazptr_obj_cohort<Atom>* cohort) {
     DCHECK(cur != nullptr);
     Node* node;
     Chunks* chunks;
@@ -1252,7 +1252,7 @@ class alignas(64) SIMDTable {
             k,
             type,
             match,
-            batch,
+            cohort,
             chunk_idx,
             tag_idx,
             node,
@@ -1280,9 +1280,9 @@ class alignas(64) SIMDTable {
     return true;
   }
 
-  void rehash(size_t size, hazptr_obj_batch<Atom>* batch) {
+  void rehash(size_t size, hazptr_obj_cohort<Atom>* cohort) {
     size_t new_chunk_count = size == 0 ? 0 : (size - 1) / Chunk::kCapacity + 1;
-    rehash_internal(folly::nextPowTwo(new_chunk_count), batch);
+    rehash_internal(folly::nextPowTwo(new_chunk_count), cohort);
   }
 
   bool find(Iterator& res, const KeyType& k) {
@@ -1373,10 +1373,10 @@ class alignas(64) SIMDTable {
     return 1;
   }
 
-  void clear(hazptr_obj_batch<Atom>* batch) {
+  void clear(hazptr_obj_cohort<Atom>* cohort) {
     size_t ccount = chunk_count_.load(std::memory_order_relaxed);
     Chunks* chunks;
-    auto newchunks = Chunks::create(ccount, batch);
+    auto newchunks = Chunks::create(ccount, cohort);
     {
       std::lock_guard<Mutex> g(m_);
       chunks = chunks_.load(std::memory_order_relaxed);
@@ -1461,7 +1461,7 @@ class alignas(64) SIMDTable {
       const KeyType& k,
       InsertType type,
       MatchFunc match,
-      hazptr_obj_batch<Atom>* batch,
+      hazptr_obj_cohort<Atom>* cohort,
       size_t& chunk_idx,
       size_t& tag_idx,
       Node*& node,
@@ -1476,7 +1476,7 @@ class alignas(64) SIMDTable {
         // Would exceed max size.
         throw std::bad_alloc();
       }
-      rehash_internal(ccount << 1, batch);
+      rehash_internal(ccount << 1, cohort);
       ccount = chunk_count_.load(std::memory_order_relaxed);
       chunks = chunks_.load(std::memory_order_relaxed);
     }
@@ -1505,7 +1505,7 @@ class alignas(64) SIMDTable {
           // Would exceed max size.
           throw std::bad_alloc();
         }
-        rehash_internal(ccount << 1, batch);
+        rehash_internal(ccount << 1, cohort);
         ccount = chunk_count_.load(std::memory_order_relaxed);
         chunks = chunks_.load(std::memory_order_relaxed);
         it.hazptrs_[0].reset(chunks);
@@ -1514,13 +1514,15 @@ class alignas(64) SIMDTable {
     return true;
   }
 
-  void rehash_internal(size_t new_chunk_count, hazptr_obj_batch<Atom>* batch) {
+  void rehash_internal(
+      size_t new_chunk_count,
+      hazptr_obj_cohort<Atom>* cohort) {
     DCHECK(isPowTwo(new_chunk_count));
     auto old_chunk_count = chunk_count_.load(std::memory_order_relaxed);
     if (old_chunk_count >= new_chunk_count) {
       return;
     }
-    auto new_chunks = Chunks::create(new_chunk_count, batch);
+    auto new_chunks = Chunks::create(new_chunk_count, cohort);
     auto old_chunks = chunks_.load(std::memory_order_relaxed);
     grow_threshold_ = new_chunk_count * Chunk::kCapacity * load_factor_;
 
@@ -1670,9 +1672,9 @@ class alignas(64) ConcurrentHashMapSegment {
       size_t initial_buckets,
       float load_factor,
       size_t max_size,
-      hazptr_obj_batch<Atom>* batch)
-      : impl_(initial_buckets, load_factor, max_size, batch), batch_(batch) {
-    DCHECK(batch);
+      hazptr_obj_cohort<Atom>* cohort)
+      : impl_(initial_buckets, load_factor, max_size, cohort), cohort_(cohort) {
+    DCHECK(cohort);
   }
 
   ~ConcurrentHashMapSegment() = default;
@@ -1692,7 +1694,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool insert(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -1732,7 +1734,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool insert_or_assign(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -1749,7 +1751,7 @@ class alignas(64) ConcurrentHashMapSegment {
   template <typename Key, typename Value>
   bool assign(Iterator& it, Key&& k, Value&& v) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(v));
+    new (node) Node(cohort_, std::forward<Key>(k), std::forward<Value>(v));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -1770,7 +1772,8 @@ class alignas(64) ConcurrentHashMapSegment {
       const ValueType& expected,
       Value&& desired) {
     auto node = (Node*)Allocator().allocate(sizeof(Node));
-    new (node) Node(batch_, std::forward<Key>(k), std::forward<Value>(desired));
+    new (node)
+        Node(cohort_, std::forward<Key>(k), std::forward<Value>(desired));
     auto res = insert_internal(
         it,
         node->getItem().first,
@@ -1792,7 +1795,7 @@ class alignas(64) ConcurrentHashMapSegment {
       MatchFunc match,
       Args&&... args) {
     return impl_.insert(
-        it, k, type, match, batch_, std::forward<Args>(args)...);
+        it, k, type, match, cohort_, std::forward<Args>(args)...);
   }
 
   template <typename MatchFunc, typename... Args>
@@ -1802,12 +1805,12 @@ class alignas(64) ConcurrentHashMapSegment {
       InsertType type,
       MatchFunc match,
       Node* cur) {
-    return impl_.insert(it, k, type, match, cur, batch_);
+    return impl_.insert(it, k, type, match, cur, cohort_);
   }
 
   // Must hold lock.
   void rehash(size_t bucket_count) {
-    impl_.rehash(bucket_count, batch_);
+    impl_.rehash(bucket_count, cohort_);
   }
 
   bool find(Iterator& res, const KeyType& k) {
@@ -1844,7 +1847,7 @@ class alignas(64) ConcurrentHashMapSegment {
   }
 
   void clear() {
-    impl_.clear(batch_);
+    impl_.clear(cohort_);
   }
 
   void max_load_factor(float factor) {
@@ -1861,7 +1864,7 @@ class alignas(64) ConcurrentHashMapSegment {
 
  private:
   ImplT impl_;
-  hazptr_obj_batch<Atom>* batch_;
+  hazptr_obj_cohort<Atom>* cohort_;
 };
 } // namespace detail
 } // namespace folly
