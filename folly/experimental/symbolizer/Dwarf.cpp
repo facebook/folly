@@ -344,14 +344,9 @@ Dwarf::Dwarf(const ElfFile* elf)
       debugAbbrev_(getSection(".debug_abbrev")),
       debugLine_(getSection(".debug_line")),
       debugStr_(getSection(".debug_str")),
-      debugAranges_(getSection(".debug_aranges")),
-      debugRanges_(getSection(".debug_ranges")) {
-  // Optional sections:
-  //  - debugAranges_: for fast address range lookup.
-  //     If missing .debug_info can be used - but it's much slower (linear
-  //     scan).
-  //  - debugRanges_: contains non-contiguous address ranges of debugging
-  //    information entries. Used for inline function address lookup.
+      debugAranges_(getSection(".debug_aranges")) {
+  // NOTE: debugAranges_ is for fast address range lookup.
+  // If missing .debug_info can be used - but it's much slower (linear scan).
   if (debugInfo_.empty() || debugAbbrev_.empty() || debugLine_.empty() ||
       debugStr_.empty()) {
     elf_ = nullptr;
@@ -462,7 +457,6 @@ bool Dwarf::findLocation(
     LocationInfo& locationInfo,
     folly::Range<SymbolizedFrame*> inlineFrames) const {
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
-  // Partial compilation unit (DW_TAG_partial_unit) is not supported.
   FOLLY_SAFE_CHECK(
       die.abbr.tag == DW_TAG_compile_unit, "expecting compile unit entry");
 
@@ -740,40 +734,6 @@ folly::Optional<T> Dwarf::getAttribute(
   return result;
 }
 
-bool Dwarf::isAddrInRangeList(uint64_t address, size_t offset, uint8_t addrSize)
-    const {
-  FOLLY_SAFE_CHECK(addrSize == 4 || addrSize == 8, "wrong address size");
-  if (debugRanges_.empty()) {
-    return false;
-  }
-
-  const bool is64BitAddr = addrSize == 8;
-  folly::StringPiece sp = debugRanges_;
-  sp.advance(offset);
-  const uint64_t maxAddr = is64BitAddr ? std::numeric_limits<uint64_t>::max()
-                                       : std::numeric_limits<uint32_t>::max();
-  uint64_t baseAddr = 0;
-  while (!sp.empty()) {
-    uint64_t begin = readOffset(sp, is64BitAddr);
-    uint64_t end = readOffset(sp, is64BitAddr);
-    // The range list entry is a base address selection entry.
-    if (begin == maxAddr) {
-      baseAddr = end;
-      continue;
-    }
-    // The range list entry is an end of list entry.
-    if (begin == 0 && end == 0) {
-      break;
-    }
-    // Check if the given address falls in the range list entry.
-    if (address >= begin + baseAddr && address < end + baseAddr) {
-      return true;
-    }
-  };
-
-  return false;
-}
-
 void Dwarf::findSubProgramDieForAddress(
     const detail::CompilationUnit& cu,
     const detail::Die& die,
@@ -784,12 +744,10 @@ void Dwarf::findSubProgramDieForAddress(
       uint64_t lowPc = 0;
       uint64_t highPc = 0;
       bool isHighPcAddr = false;
-      folly::Optional<uint64_t> rangeOffset;
       forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
         switch (attr.spec.name) {
-          case DW_AT_ranges:
-            rangeOffset = boost::get<uint64_t>(attr.attrValue);
-            break;
+          // Here DW_AT_ranges is not supported since it requires looking up
+          // in a different section (.debug_ranges).
           case DW_AT_low_pc:
             lowPc = boost::get<uint64_t>(attr.attrValue);
             break;
@@ -803,10 +761,8 @@ void Dwarf::findSubProgramDieForAddress(
         // Iterate through all attributes until find all above.
         return true;
       });
-      if ((address >= lowPc &&
-           address < (isHighPcAddr ? highPc : lowPc + highPc)) ||
-          (rangeOffset &&
-           isAddrInRangeList(address, rangeOffset.value(), cu.addrSize))) {
+      if (address > lowPc &&
+          address < (isHighPcAddr ? highPc : lowPc + highPc)) {
         subprogram = childDie;
         return false;
       }
@@ -835,15 +791,13 @@ void Dwarf::findInlinedSubroutineDieForAddress(
     uint64_t lowPc = 0;
     uint64_t highPc = 0;
     bool isHighPcAddr = false;
-    folly::Optional<uint64_t> rangeOffset;
     uint64_t origin = 0;
     uint64_t originRefType = 0;
     folly::Optional<uint64_t> callLine = 0;
     forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
       switch (attr.spec.name) {
-        case DW_AT_ranges:
-          rangeOffset = boost::get<uint64_t>(attr.attrValue);
-          break;
+        // Here DW_AT_ranges is not supported since it requires looking up
+        // in a different section (.debug_ranges).
         case DW_AT_low_pc:
           lowPc = boost::get<uint64_t>(attr.attrValue);
           break;
@@ -864,10 +818,7 @@ void Dwarf::findInlinedSubroutineDieForAddress(
       // Iterate through all until find all above attributes.
       return true;
     });
-    if ((address < lowPc ||
-         address >= (isHighPcAddr ? highPc : lowPc + highPc)) &&
-        (!rangeOffset ||
-         !isAddrInRangeList(address, rangeOffset.value(), cu.addrSize))) {
+    if (address < lowPc || address > (isHighPcAddr ? highPc : lowPc + highPc)) {
       // Address doesn't match. Keep searching other children.
       return true;
     }
