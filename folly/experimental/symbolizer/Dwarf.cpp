@@ -78,8 +78,7 @@ struct Attribute {
 
 struct CodeLocation {
   Die die;
-  folly::Optional<uint64_t> file;
-  folly::Optional<uint64_t> line;
+  uint64_t line;
 };
 
 } // namespace detail
@@ -538,13 +537,10 @@ bool Dwarf::findLocation(
            inlineLocIter != inlineLocsRange.end();
            inlineLocIter++, inlineFrameIter++) {
         inlineFrameIter->location.line = callerLine;
-        if (!inlineLocIter->line) {
-          break;
-        }
-        callerLine = inlineLocIter->line.value();
-
+        callerLine = inlineLocIter->line;
         folly::Optional<folly::StringPiece> linkageName;
         folly::Optional<folly::StringPiece> name;
+        folly::Optional<uint64_t> file;
         forEachAttribute(
             cu, inlineLocIter->die, [&](const detail::Attribute& attr) {
               switch (attr.spec.name) {
@@ -555,18 +551,12 @@ bool Dwarf::findLocation(
                   name = boost::get<folly::StringPiece>(attr.attrValue);
                   break;
                 case DW_AT_decl_file:
-                  // If the inline function is declared and defined in the same
-                  // file, the declaration subprogram may not have attribute
-                  // DW_AT_decl_file, then we need to find decl_file in the
-                  // definition subprogram.
-                  if (!inlineLocIter->file) {
-                    inlineLocIter->file = boost::get<uint64_t>(attr.attrValue);
-                  }
+                  file = boost::get<uint64_t>(attr.attrValue);
                   break;
               }
-              return !inlineLocIter->file || !name || !linkageName;
+              return !file || !name || !linkageName;
             });
-        if (!(name || linkageName) || !inlineLocIter->file) {
+        if (!(name || linkageName) || !file) {
           break;
         }
 
@@ -577,8 +567,7 @@ bool Dwarf::findLocation(
         inlineFrameIter->location.hasFileAndLine = true;
         inlineFrameIter->location.name =
             linkageName ? linkageName.value() : name.value();
-        inlineFrameIter->location.file =
-            lineVM.getFullFileName(inlineLocIter->file.value());
+        inlineFrameIter->location.file = lineVM.getFullFileName(file.value());
       }
       locationInfo.line = callerLine;
     }
@@ -661,9 +650,17 @@ detail::Die Dwarf::findDefinitionDie(
     const detail::CompilationUnit& cu,
     const detail::Die& die) const {
   // Find the real definition instead of declaration.
-  // DW_AT_specification: Incomplete, non-defining, or separate declaration
-  // corresponding to a declaration
-  auto offset = getAttribute<uint64_t>(cu, die, DW_AT_specification);
+  folly::Optional<uint64_t> offset;
+  forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
+    // Incomplete, non-defining, or separate declaration corresponding to
+    // a declaration
+    if (attr.spec.name == DW_AT_specification) {
+      offset = boost::get<uint64_t>(attr.attrValue);
+      return false;
+    }
+    return true;
+  });
+
   if (!offset) {
     return die;
   }
@@ -716,22 +713,6 @@ size_t Dwarf::forEachAttribute(
     }
   }
   return values.data() - debugInfo_.data();
-}
-
-template <class T>
-folly::Optional<T> Dwarf::getAttribute(
-    const detail::CompilationUnit& cu,
-    const detail::Die& die,
-    uint64_t attrName) const {
-  folly::Optional<T> result;
-  forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
-    if (attr.spec.name == attrName) {
-      result = boost::get<T>(attr.attrValue);
-      return false;
-    }
-    return true;
-  });
-  return result;
 }
 
 void Dwarf::findSubProgramDieForAddress(
@@ -793,7 +774,7 @@ void Dwarf::findInlinedSubroutineDieForAddress(
     bool isHighPcAddr = false;
     uint64_t origin = 0;
     uint64_t originRefType = 0;
-    folly::Optional<uint64_t> callLine = 0;
+    uint64_t callLine = 0;
     forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
       switch (attr.spec.name) {
         // Here DW_AT_ranges is not supported since it requires looking up
@@ -822,30 +803,22 @@ void Dwarf::findInlinedSubroutineDieForAddress(
       // Address doesn't match. Keep searching other children.
       return true;
     }
-
     isrLoc[0].line = callLine;
-    auto setLocationInfo = [&](uint64_t dieOffset) {
-      auto declDie = getDieAtOffset(cu, dieOffset);
-      // If the inline function is declared and defined in different file, then
-      // DW_AT_decl_file attribute of the declaration may contain the definition
-      // file name.
-      isrLoc[0].file = getAttribute<uint64_t>(cu, declDie, DW_AT_decl_file);
-      // Jump to the actual function definition instead of declaration for name
-      // and line info.
-      isrLoc[0].die = findDefinitionDie(cu, declDie);
-      isrLoc.advance(1);
-    };
     if (originRefType == DW_FORM_ref1 || originRefType == DW_FORM_ref2 ||
         originRefType == DW_FORM_ref4 || originRefType == DW_FORM_ref8 ||
         originRefType == DW_FORM_ref_udata) {
-      setLocationInfo(cu.offset + origin);
+      // Jump to the actual function definition instead of declaration for name
+      // and line info.
+      isrLoc[0].die =
+          findDefinitionDie(cu, getDieAtOffset(cu, cu.offset + origin));
+      isrLoc.advance(1);
       findInlinedSubroutineDieForAddress(cu, childDie, address, isrLoc);
     } else if (originRefType == DW_FORM_ref_addr) {
-      setLocationInfo(origin);
       auto srcu = findCompilationUnit(debugInfo_, origin);
+      isrLoc[0].die = findDefinitionDie(cu, getDieAtOffset(cu, origin));
+      isrLoc.advance(1);
       findInlinedSubroutineDieForAddress(srcu, childDie, address, isrLoc);
     }
-
     return false;
   });
 }
