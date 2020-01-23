@@ -16,7 +16,6 @@
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
-#include <folly/Memory.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
@@ -29,16 +28,6 @@ DEFINE_bool(
 
 namespace folly {
 
-namespace {
-//  queue_alloc custom allocator is necessary until C++17
-//    http://open-std.org/JTC1/SC22/WG21/docs/papers/2012/n3396.htm
-//    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65122
-//    https://bugs.llvm.org/show_bug.cgi?id=22634
-using default_queue = UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>;
-using default_queue_alloc =
-    AlignedSysAllocator<default_queue, FixedAlign<alignof(default_queue)>>;
-} // namespace
-
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
 
 CPUThreadPoolExecutor::CPUThreadPoolExecutor(
@@ -49,7 +38,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
           std::move(threadFactory)),
-      taskQueue_(taskQueue.release()) {
+      taskQueue_(std::move(taskQueue)) {
   setNumThreads(numThreads);
   registerThreadPoolExecutor(this);
 }
@@ -62,7 +51,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads.first,
           numThreads.second,
           std::move(threadFactory)),
-      taskQueue_(taskQueue.release()) {
+      taskQueue_(std::move(taskQueue)) {
   setNumThreads(numThreads.first);
   registerThreadPoolExecutor(this);
 }
@@ -74,7 +63,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads,
           FLAGS_dynamic_cputhreadpoolexecutor ? 0 : numThreads,
           std::move(threadFactory)),
-      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
+      taskQueue_(std::make_unique<UnboundedBlockingQueue<CPUTask>>()) {
   setNumThreads(numThreads);
   registerThreadPoolExecutor(this);
 }
@@ -86,7 +75,7 @@ CPUThreadPoolExecutor::CPUThreadPoolExecutor(
           numThreads.first,
           numThreads.second,
           std::move(threadFactory)),
-      taskQueue_(std::allocate_shared<default_queue>(default_queue_alloc{})) {
+      taskQueue_(std::make_unique<UnboundedBlockingQueue<CPUTask>>()) {
   setNumThreads(numThreads.first);
   registerThreadPoolExecutor(this);
 }
