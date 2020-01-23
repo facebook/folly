@@ -1873,14 +1873,22 @@ void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
   }
 }
 
-TEST(F14Map, continuousCapacitySmall) {
+TEST(F14Map, continuousCapacitySmall0) {
   runContinuousCapacityTest<folly::F14NodeMap<std::size_t, std::string>>(1, 14);
+}
+
+TEST(F14Map, continuousCapacitySmall1) {
   runContinuousCapacityTest<folly::F14ValueMap<std::size_t, std::string>>(
       1, 14);
+}
+
+TEST(F14Map, continuousCapacitySmall2) {
   runContinuousCapacityTest<folly::F14VectorMap<std::size_t, std::string>>(
       1, 100);
-  runContinuousCapacityTest<folly::F14FastMap<std::size_t, std::string>>(
-      1, 100);
+}
+
+TEST(F14Map, continuousCapacitySmall3) {
+  runContinuousCapacityTest<folly::F14FastMap<std::size_t, std::string>>(1, 14);
 }
 
 TEST(F14Map, continuousCapacityBig0) {
