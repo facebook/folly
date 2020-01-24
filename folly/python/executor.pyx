@@ -36,10 +36,10 @@ cdef class AsyncioExecutor:
     def __dealloc__(AsyncioExecutor self):
         # We drive it one last time
         deref(self.cQ).drive()
-        # We are Explicitly releasing here, otherwise it is possible
+        # We are Explicitly reset here, otherwise it is possible
         # that self.cQ dstor runs after python finalize
         # Cython deletes these after __dealloc__ returns.
-        self.cQ.release()
+        self.cQ.reset()
 
 
 cdef cAsyncioExecutor* get_executor():
