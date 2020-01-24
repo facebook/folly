@@ -163,16 +163,7 @@ constexpr bool kIsSanitize = false;
 #endif
 
 // Generalize warning push/pop.
-#if defined(_MSC_VER)
-#define FOLLY_PUSH_WARNING __pragma(warning(push))
-#define FOLLY_POP_WARNING __pragma(warning(pop))
-// Disable the GCC warnings.
-#define FOLLY_GNU_DISABLE_WARNING(warningName)
-#define FOLLY_GCC_DISABLE_WARNING(warningName)
-#define FOLLY_CLANG_DISABLE_WARNING(warningName)
-#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
-  __pragma(warning(disable : warningNumber))
-#elif defined(__GNUC__)
+#if defined(__GNUC__) || defined(__clang__)
 // Clang & GCC
 #define FOLLY_PUSH_WARNING _Pragma("GCC diagnostic push")
 #define FOLLY_POP_WARNING _Pragma("GCC diagnostic pop")
@@ -190,6 +181,15 @@ constexpr bool kIsSanitize = false;
   FOLLY_GNU_DISABLE_WARNING(warningName)
 #endif
 #define FOLLY_MSVC_DISABLE_WARNING(warningNumber)
+#elif defined(_MSC_VER)
+#define FOLLY_PUSH_WARNING __pragma(warning(push))
+#define FOLLY_POP_WARNING __pragma(warning(pop))
+// Disable the GCC warnings.
+#define FOLLY_GNU_DISABLE_WARNING(warningName)
+#define FOLLY_GCC_DISABLE_WARNING(warningName)
+#define FOLLY_CLANG_DISABLE_WARNING(warningName)
+#define FOLLY_MSVC_DISABLE_WARNING(warningNumber) \
+  __pragma(warning(disable : warningNumber))
 #else
 #define FOLLY_PUSH_WARNING
 #define FOLLY_POP_WARNING
