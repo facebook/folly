@@ -52,8 +52,8 @@ class Core : public std::enable_shared_from_this<Core> {
   struct VersionedData {
     VersionedData() {}
 
-    VersionedData(std::shared_ptr<const void> data_, size_t version_)
-        : data(std::move(data_)), version(version_) {}
+    VersionedData(std::shared_ptr<const void> dat, size_t ver)
+        : data(std::move(dat)), version(ver) {}
 
     std::shared_ptr<const void> data;
     size_t version{0};
