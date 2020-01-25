@@ -21,6 +21,8 @@
 #else
 #include <limits.h>
 
+#include <folly/Portability.h>
+
 #define SEM_VALUE_MAX INT_MAX
 namespace folly::portability::semaphore {
 using sem_t = struct sem_t_*;
@@ -31,5 +33,8 @@ int sem_trywait(sem_t* s);
 int sem_wait(sem_t* s);
 } // namespace folly::portability::semaphore
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::semaphore;
+FOLLY_POP_WARNING
 #endif

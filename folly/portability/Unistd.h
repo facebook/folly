@@ -91,5 +91,4 @@ ssize_t write(int fh, void const* buf, size_t count);
 } // namespace folly
 
 /* using override */ using namespace folly::portability::unistd;
-
 #endif

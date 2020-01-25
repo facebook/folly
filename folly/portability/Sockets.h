@@ -18,6 +18,8 @@
 
 #include <folly/net/NetOps.h>
 
+#include <folly/Portability.h>
+
 namespace folly {
 namespace portability {
 namespace sockets {
@@ -144,6 +146,9 @@ int setsockopt(
 
 #ifdef _WIN32
 // Add our helpers to the overload set.
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */
 using namespace folly::portability::sockets;
+FOLLY_POP_WARNING
 #endif
