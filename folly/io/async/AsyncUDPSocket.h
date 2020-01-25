@@ -182,6 +182,21 @@ class AsyncUDPSocket : public EventHandler {
       int gso);
 
   /**
+   * Send the data in buffers to destination. Returns the return code from
+   * ::sendmmsg.
+   * bufs is an array of std::unique_ptr<folly::IOBuf>
+   * of size num
+   * gso is an array with the generic segmentation offload values or nullptr
+   *  Before calling writeGSO with a positive value
+   *  verify GSO is supported on this platform by calling getGSO
+   */
+  virtual int writemGSO(
+      const folly::SocketAddress& address,
+      const std::unique_ptr<folly::IOBuf>* bufs,
+      size_t count,
+      const int* gso);
+
+  /**
    * Send data in iovec to destination. Returns the return code from sendmsg.
    */
   virtual ssize_t writev(
@@ -354,13 +369,17 @@ class AsyncUDPSocket : public EventHandler {
       size_t count,
       struct mmsghdr* msgvec,
       struct iovec* iov,
-      size_t iov_count);
+      size_t iov_count,
+      const int* gso,
+      char* gsoControl);
 
   virtual int writeImpl(
       const folly::SocketAddress& address,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
-      struct mmsghdr* msgvec);
+      struct mmsghdr* msgvec,
+      const int* gso,
+      char* gsoControl);
 
   size_t handleErrMessages() noexcept;
 

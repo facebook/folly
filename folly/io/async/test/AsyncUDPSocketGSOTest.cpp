@@ -41,21 +41,48 @@ struct TestData {
       bool useSocketGSO,
       int* in,
       size_t inLen,
-      int* expected,
+      const int* expected,
       size_t expectedLen)
       : gso_(gso), useSocketGSO_(useSocketGSO) {
-    in_.assign(in, in + inLen);
+    std::vector<int> inVec;
+    inVec.assign(in, in + inLen);
+    in_.emplace_back(std::move(inVec));
+    expected_.assign(expected, expected + expectedLen);
+
+    expectedSize_ = std::accumulate(expected_.begin(), expected_.end(), 0);
+  }
+
+  TestData(
+      const std::vector<int>& gsoVec,
+      bool useSocketGSO,
+      const std::vector<std::vector<int>>& in,
+      const int* expected,
+      size_t expectedLen)
+      : gsoVec_(gsoVec), useSocketGSO_(useSocketGSO), in_(in) {
     expected_.assign(expected, expected + expectedLen);
 
     expectedSize_ = std::accumulate(expected_.begin(), expected_.end(), 0);
   }
 
   bool checkIn() const {
-    return (expectedSize_ == std::accumulate(in_.begin(), in_.end(), 0));
+    int expected = 0;
+    for (const auto& in : in_) {
+      expected += std::accumulate(in.begin(), in.end(), 0);
+    }
+    return (expectedSize_ == expected);
   }
 
   bool checkOut() const {
-    return (expectedSize_ == std::accumulate(out_.begin(), out_.end(), 0));
+    auto size = std::accumulate(out_.begin(), out_.end(), 0);
+    auto ret = (expectedSize_ == size);
+    if (!ret) {
+      LOG(ERROR) << "expected = " << expectedSize_ << " actual = " << size;
+      for (const auto& out : out_) {
+        LOG(ERROR) << out;
+      }
+    }
+
+    return ret;
   }
 
   bool appendOut(int num) {
@@ -65,26 +92,61 @@ struct TestData {
     return (outSize_ >= expectedSize_);
   }
 
+  bool isMulti() const {
+    return (in_.size() > 1);
+  }
+
+  const int* getGSOVec() const {
+    return (!gsoVec_.empty()) ? gsoVec_.data() : nullptr;
+  }
+
   std::unique_ptr<folly::IOBuf> getInBuf() {
     if (!in_.size()) {
       return nullptr;
     }
 
-    std::string str(in_[0], 'A');
+    auto& in = in_[0];
+
+    std::string str(in[0], 'A');
     std::unique_ptr<folly::IOBuf> ret =
         folly::IOBuf::copyBuffer(str.data(), str.size());
 
-    for (size_t i = 1; i < in_.size(); i++) {
-      str = std::string(in_[i], 'A');
+    for (size_t i = 1; i < in.size(); i++) {
+      str = std::string(in[i], 'A');
       ret->prependChain(folly::IOBuf::copyBuffer(str.data(), str.size()));
     }
 
     return ret;
   }
 
+  std::vector<std::unique_ptr<folly::IOBuf>> getInBufs() {
+    if (!in_.size()) {
+      return std::vector<std::unique_ptr<folly::IOBuf>>();
+    }
+
+    std::vector<std::unique_ptr<folly::IOBuf>> ret;
+    ret.reserve(in_.size());
+
+    for (const auto& in : in_) {
+      std::string str(in[0], 'A');
+      std::unique_ptr<folly::IOBuf> buf =
+          folly::IOBuf::copyBuffer(str.data(), str.size());
+
+      for (size_t i = 1; i < in.size(); i++) {
+        str = std::string(in[i], 'A');
+        buf->prependChain(folly::IOBuf::copyBuffer(str.data(), str.size()));
+      }
+
+      ret.emplace_back(std::move(buf));
+    }
+
+    return ret;
+  }
+
   int gso_{0};
+  std::vector<int> gsoVec_;
   bool useSocketGSO_{false};
-  std::vector<int> in_;
+  std::vector<std::vector<int>> in_;
   std::vector<int> expected_; // expected
   int expectedSize_;
   std::vector<int> out_;
@@ -244,12 +306,22 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   void sendPing() {
     scheduleTimeout(5);
-    writePing(
-        testData_.getInBuf(), testData_.useSocketGSO_ ? -1 : testData_.gso_);
+    if (testData_.isMulti()) {
+      writePing(testData_.getInBufs(), testData_.getGSOVec());
+    } else {
+      writePing(
+          testData_.getInBuf(), testData_.useSocketGSO_ ? -1 : testData_.gso_);
+    }
   }
 
   virtual void writePing(std::unique_ptr<folly::IOBuf> buf, int gso) {
     socket_->writeGSO(server_, std::move(buf), gso);
+  }
+
+  virtual void writePing(
+      const std::vector<std::unique_ptr<folly::IOBuf>>& vec,
+      const int* gso) {
+    socket_->writemGSO(server_, vec.data(), vec.size(), gso);
   }
 
   void getReadBuffer(void** buf, size_t* len) noexcept override {
@@ -398,6 +470,67 @@ TEST_F(AsyncSocketGSOIntegrationTest, PingPongRequestGSO) {
       sizeof(in) / sizeof(in[0]),
       expected,
       sizeof(expected) / sizeof(expected[0]));
+  ASSERT_TRUE(testData.checkIn());
+  startServer();
+  auto pingClient = performPingPongTest(testData, folly::none);
+  ASSERT_TRUE(testData.checkOut());
+}
+
+TEST_F(AsyncSocketGSOIntegrationTest, MultiPingPongGlobalGSO) {
+  std::vector<int> gsoVec = {1000, 800, 1100, 1200};
+  std::vector<std::vector<int>> inVec;
+  inVec.reserve(gsoVec.size());
+  std::vector<int> in = {100, 1200, 3000, 200, 100, 300};
+  int total = std::accumulate(in.begin(), in.end(), 0);
+  std::vector<int> expected;
+  for (size_t i = 0; i < gsoVec.size(); i++) {
+    inVec.push_back(in);
+
+    auto remaining = total;
+    while (remaining) {
+      if (remaining > gsoVec[i]) {
+        expected.push_back(gsoVec[i]);
+        remaining -= gsoVec[i];
+      } else {
+        expected.push_back(remaining);
+        remaining = 0;
+      }
+    }
+  }
+
+  TestData testData(
+      gsoVec, true /*useSocketGSO*/, inVec, expected.data(), expected.size());
+  ASSERT_TRUE(testData.checkIn());
+  startServer();
+  auto pingClient = performPingPongTest(testData, folly::none);
+  ASSERT_TRUE(testData.checkOut());
+}
+
+TEST_F(AsyncSocketGSOIntegrationTest, MultiPingPongRequestGSO) {
+  std::vector<int> gsoVec = {421, 300, 528, 680};
+  std::vector<std::vector<int>> inVec;
+  inVec.reserve(gsoVec.size());
+
+  std::vector<int> in = {100, 1200, 3000, 200, 100, 300};
+  int total = std::accumulate(in.begin(), in.end(), 0);
+  std::vector<int> expected;
+  for (size_t i = 0; i < gsoVec.size(); i++) {
+    inVec.push_back(in);
+
+    auto remaining = total;
+    while (remaining) {
+      if (remaining > gsoVec[i]) {
+        expected.push_back(gsoVec[i]);
+        remaining -= gsoVec[i];
+      } else {
+        expected.push_back(remaining);
+        remaining = 0;
+      }
+    }
+  }
+
+  TestData testData(
+      gsoVec, false /*useSocketGSO*/, inVec, expected.data(), expected.size());
   ASSERT_TRUE(testData.checkIn());
   startServer();
   auto pingClient = performPingPongTest(testData, folly::none);
