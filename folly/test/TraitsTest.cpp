@@ -173,10 +173,31 @@ TEST(Traits, relational) {
   EXPECT_FALSE((folly::less_than<uint8_t, 255u, uint8_t>(255u)));
   EXPECT_TRUE((folly::less_than<uint8_t, 255u, uint8_t>(254u)));
 
+  // Making sure signed to unsigned comparisons are not truncated.
+  EXPECT_TRUE((folly::less_than<uint8_t, 0, int8_t>(-1)));
+  EXPECT_TRUE((folly::less_than<uint16_t, 0, int16_t>(-1)));
+  EXPECT_TRUE((folly::less_than<uint32_t, 0, int32_t>(-1)));
+  EXPECT_TRUE((folly::less_than<uint64_t, 0, int64_t>(-1)));
+
+  EXPECT_FALSE((folly::less_than<int8_t, -1, uint8_t>(0)));
+  EXPECT_FALSE((folly::less_than<int16_t, -1, uint16_t>(0)));
+  EXPECT_FALSE((folly::less_than<int32_t, -1, uint32_t>(0)));
+  EXPECT_FALSE((folly::less_than<int64_t, -1, uint64_t>(0)));
+
   EXPECT_FALSE((folly::greater_than<uint8_t, 0u, uint8_t>(0u)));
   EXPECT_TRUE((folly::greater_than<uint8_t, 0u, uint8_t>(254u)));
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(255u)));
   EXPECT_FALSE((folly::greater_than<uint8_t, 255u, uint8_t>(254u)));
+
+  EXPECT_FALSE((folly::greater_than<uint8_t, 0, int8_t>(-1)));
+  EXPECT_FALSE((folly::greater_than<uint16_t, 0, int16_t>(-1)));
+  EXPECT_FALSE((folly::greater_than<uint32_t, 0, int32_t>(-1)));
+  EXPECT_FALSE((folly::greater_than<uint64_t, 0, int64_t>(-1)));
+
+  EXPECT_TRUE((folly::greater_than<int8_t, -1, uint8_t>(0)));
+  EXPECT_TRUE((folly::greater_than<int16_t, -1, uint16_t>(0)));
+  EXPECT_TRUE((folly::greater_than<int32_t, -1, uint32_t>(0)));
+  EXPECT_TRUE((folly::greater_than<int64_t, -1, uint64_t>(0)));
 }
 
 #if FOLLY_HAVE_INT128_T

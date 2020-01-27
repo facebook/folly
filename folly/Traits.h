@@ -688,43 +688,6 @@ using IsOneOf = StrictDisjunction<std::is_same<T, Ts>...>;
  * @author: Marcelo Juchem <marcelo@fb.com>
  */
 
-namespace detail {
-
-// folly::to integral specializations can end up generating code
-// inside what are really static ifs (not executed because of the templated
-// types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
-// in order to not prevent all calling code from using it.
-FOLLY_PUSH_WARNING
-FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
-FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
-FOLLY_MSVC_DISABLE_WARNING(4287) // unsigned/negative constant mismatch
-FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
-FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
-
-template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(LHS const lhs) {
-  // clang-format off
-  return
-      rhs > std::numeric_limits<LHS>::max() ? true :
-      rhs <= std::numeric_limits<LHS>::min() ? false :
-      lhs < rhs;
-  // clang-format on
-}
-
-template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(LHS const lhs) {
-  // clang-format off
-  return
-      rhs > std::numeric_limits<LHS>::max() ? false :
-      rhs < std::numeric_limits<LHS>::min() ? true :
-      lhs > rhs;
-  // clang-format on
-}
-
-FOLLY_POP_WARNING
-
-} // namespace detail
-
 // same as `x < 0`
 template <typename T>
 constexpr bool is_negative(T x) {
@@ -748,6 +711,49 @@ template <typename T>
 constexpr bool is_non_negative(T x) {
   return !x || is_positive(x);
 }
+
+namespace detail {
+
+// folly::to integral specializations can end up generating code
+// inside what are really static ifs (not executed because of the templated
+// types) that violate -Wsign-compare and/or -Wbool-compare so suppress them
+// in order to not prevent all calling code from using it.
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wsign-compare")
+FOLLY_GCC_DISABLE_WARNING("-Wbool-compare")
+FOLLY_MSVC_DISABLE_WARNING(4287) // unsigned/negative constant mismatch
+FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
+FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
+
+template <typename RHS, RHS rhs, typename LHS>
+bool less_than_impl(LHS const lhs) {
+  // clang-format off
+  return
+      // Ensure signed and unsigned values won't be compared directly.
+      (!std::is_signed<RHS>::value && is_negative(lhs)) ? true :
+      (!std::is_signed<LHS>::value && is_negative(rhs)) ? false :
+      rhs > std::numeric_limits<LHS>::max() ? true :
+      rhs <= std::numeric_limits<LHS>::min() ? false :
+      lhs < rhs;
+  // clang-format on
+}
+
+template <typename RHS, RHS rhs, typename LHS>
+bool greater_than_impl(LHS const lhs) {
+  // clang-format off
+  return
+      // Ensure signed and unsigned values won't be compared directly.
+      (!std::is_signed<RHS>::value && is_negative(lhs)) ? false :
+      (!std::is_signed<LHS>::value && is_negative(rhs)) ? true :
+      rhs > std::numeric_limits<LHS>::max() ? false :
+      rhs < std::numeric_limits<LHS>::min() ? true :
+      lhs > rhs;
+  // clang-format on
+}
+
+FOLLY_POP_WARNING
+
+} // namespace detail
 
 template <typename RHS, RHS rhs, typename LHS>
 bool less_than(LHS const lhs) {

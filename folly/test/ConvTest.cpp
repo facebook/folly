@@ -1041,9 +1041,59 @@ std::string prefixWithType(V value) {
   EXPECT_CONV_ERROR_QUOTE(                       \
       to<type>(val), code, prefixWithType<type>(val).c_str(), false)
 
+template <typename TUnsigned>
+void unsignedUnderflow() {
+  EXPECT_CONV_ERROR_ARITH(
+      TUnsigned, std::numeric_limits<int8_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      TUnsigned, std::numeric_limits<int16_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      TUnsigned, std::numeric_limits<int32_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      TUnsigned, std::numeric_limits<int64_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+}
+
 TEST(Conv, ConversionErrorIntToInt) {
-  EXPECT_CONV_ERROR_ARITH(signed char, 128, ARITH_POSITIVE_OVERFLOW);
-  EXPECT_CONV_ERROR_ARITH(unsigned char, -1, ARITH_NEGATIVE_OVERFLOW);
+  // Test overflow upper bound. First unsigned to signed.
+  EXPECT_CONV_ERROR_ARITH(
+      int8_t, std::numeric_limits<uint8_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int16_t, std::numeric_limits<uint16_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int32_t, std::numeric_limits<uint32_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int64_t, std::numeric_limits<uint64_t>::max(), ARITH_POSITIVE_OVERFLOW);
+
+  // Signed to signed.
+  EXPECT_CONV_ERROR_ARITH(
+      int8_t, std::numeric_limits<int16_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int16_t, std::numeric_limits<int32_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int32_t, std::numeric_limits<int64_t>::max(), ARITH_POSITIVE_OVERFLOW);
+
+  // Unsigned to unsigned.
+  EXPECT_CONV_ERROR_ARITH(
+      uint8_t, std::numeric_limits<uint16_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      uint16_t, std::numeric_limits<uint32_t>::max(), ARITH_POSITIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      uint32_t, std::numeric_limits<uint64_t>::max(), ARITH_POSITIVE_OVERFLOW);
+
+  // Test underflows from signed to unsigned data types. Make sure we test all
+  // combinations.
+  unsignedUnderflow<uint8_t>();
+  unsignedUnderflow<uint16_t>();
+  unsignedUnderflow<uint32_t>();
+  unsignedUnderflow<uint64_t>();
+
+  // Signed to signed.
+  EXPECT_CONV_ERROR_ARITH(
+      int8_t, std::numeric_limits<int16_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int16_t, std::numeric_limits<int32_t>::min(), ARITH_NEGATIVE_OVERFLOW);
+  EXPECT_CONV_ERROR_ARITH(
+      int32_t, std::numeric_limits<int64_t>::min(), ARITH_NEGATIVE_OVERFLOW);
 }
 
 TEST(Conv, ConversionErrorFloatToFloat) {
