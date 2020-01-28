@@ -74,7 +74,7 @@ class SingletonRelaxedCounter {
     auto const& global = Global::instance();
     auto count = global.fallback.load(std::memory_order_relaxed);
     auto const tracking = global.tracking.rlock();
-    for (auto const kvp : tracking->locals) {
+    for (auto const& kvp : tracking->locals) {
       count += kvp.first->load(std::memory_order_relaxed);
     }
     return std::is_unsigned<Int>::value
