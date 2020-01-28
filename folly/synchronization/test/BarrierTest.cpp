@@ -22,7 +22,6 @@
 
 #include <folly/portability/GTest.h>
 
-using namespace folly;
 using namespace folly::test;
 
 class BarrierTest : public testing::Test {};
