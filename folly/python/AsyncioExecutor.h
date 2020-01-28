@@ -38,12 +38,8 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
 
   ~AsyncioExecutor() override {
     keepAliveRelease();
-    if (!FOLLY_DETAIL_PY_ISFINALIZING()) {
-      // if Python is finalizing calling drive() WILL segfault.
-      // any code that could have been called is now inconsequential.
-      while (keepAliveCounter_ > 0) {
-        drive();
-      }
+    while (keepAliveCounter_ > 0) {
+      drive();
     }
   }
 
@@ -57,6 +53,11 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
 
   void drive() noexcept override {
     consumer_.consumeUntilDrained([](Func&& func) {
+      if (FOLLY_DETAIL_PY_ISFINALIZING()) {
+        // if Python is finalizing calling scheduled functions MAY segfault.
+        // any code that could have been called is now inconsequential.
+        return;
+      }
       try {
         func();
       } catch (...) {
