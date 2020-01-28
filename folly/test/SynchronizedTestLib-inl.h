@@ -458,7 +458,7 @@ testUnlock() {
 
 // Testing the deprecated SYNCHRONIZED and SYNCHRONIZED_CONST APIs
 template <class Mutex>
-void testDeprecated() {
+[[deprecated]] void testDeprecated() {
   folly::Synchronized<std::vector<int>, Mutex> obj;
 
   obj.contextualLock()->resize(1000);
@@ -585,7 +585,7 @@ void testAcquireLockedWithConst() {
 
 // Testing the deprecated SYNCHRONIZED_DUAL API
 template <class Mutex>
-void testDualLocking() {
+[[deprecated]] void testDualLocking() {
   folly::Synchronized<std::vector<int>, Mutex> v;
   folly::Synchronized<std::map<int, int>, Mutex> m;
 
@@ -618,7 +618,7 @@ void testDualLocking() {
 
 // Testing the deprecated SYNCHRONIZED_DUAL API
 template <class Mutex>
-void testDualLockingWithConst() {
+[[deprecated]] void testDualLockingWithConst() {
   folly::Synchronized<std::vector<int>, Mutex> v;
   folly::Synchronized<std::map<int, int>, Mutex> m;
 
@@ -762,7 +762,7 @@ void testTimedShared() {
 
 // Testing the deprecated TIMED_SYNCHRONIZED API
 template <class Mutex>
-void testTimedSynchronized() {
+[[deprecated]] void testTimedSynchronized() {
   folly::Synchronized<std::vector<int>, Mutex> v;
   folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 
@@ -809,7 +809,7 @@ void testTimedSynchronized() {
 
 // Testing the deprecated TIMED_SYNCHRONIZED_CONST API
 template <class Mutex>
-void testTimedSynchronizedWithConst() {
+[[deprecated]] void testTimedSynchronizedWithConst() {
   folly::Synchronized<std::vector<int>, Mutex> v;
   folly::Synchronized<uint64_t, Mutex> numTimeouts{0};
 

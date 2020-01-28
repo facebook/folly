@@ -28,6 +28,8 @@
 #include <folly/synchronization/RWSpinLock.h>
 #include <folly/test/SynchronizedTestLib.h>
 
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
+
 using namespace folly::sync_tests;
 
 namespace folly {

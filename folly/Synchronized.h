@@ -1774,6 +1774,11 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  */
 #define SYNCHRONIZED_VAR(var) FB_CONCATENATE(SYNCHRONIZED_##var##_, __LINE__)
 
+namespace detail {
+struct [[deprecated(
+    "use explicit lock(), wlock(), or rlock() instead")]] SYNCHRONIZED_macro_is_deprecated{};
+}
+
 /**
  * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
  * functions instead.  In the future it will be marked with a deprecation
@@ -1805,6 +1810,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
   FOLLY_MSVC_DISABLE_WARNING(4459) /* declaration hides global */         \
   FOLLY_GCC_DISABLE_NEW_SHADOW_WARNINGS                                   \
   if (bool SYNCHRONIZED_VAR(state) = false) {                             \
+    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                  \
   } else                                                                  \
     for (auto SYNCHRONIZED_VAR(lockedPtr) =                               \
              (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).contextualLock(); \
@@ -1823,6 +1829,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  */
 #define TIMED_SYNCHRONIZED(timeout, ...)                                       \
   if (bool SYNCHRONIZED_VAR(state) = false) {                                  \
+    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                       \
   } else                                                                       \
     for (auto SYNCHRONIZED_VAR(lockedPtr) =                                    \
              (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).timedAcquire(timeout); \
@@ -1871,6 +1878,7 @@ void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
  */
 #define SYNCHRONIZED_DUAL(n1, e1, n2, e2)                                      \
   if (bool SYNCHRONIZED_VAR(state) = false) {                                  \
+    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                       \
   } else                                                                       \
     for (auto SYNCHRONIZED_VAR(ptrs) = acquireLockedPair(e1, e2);              \
          !SYNCHRONIZED_VAR(state);                                             \
