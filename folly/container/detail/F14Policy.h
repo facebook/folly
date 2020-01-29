@@ -1027,16 +1027,16 @@ class VectorContainerPolicy : public BasePolicy<
       KeyEqualOrVoid,
       AllocOrVoid,
       uint32_t>;
-  using Alloc = typename Super::Alloc;
+  using Value = typename Super::Value;
+  using Alloc = Defaulted<AllocOrVoid, DefaultAlloc<Value>>;
   using AllocTraits = typename Super::AllocTraits;
   using ByteAlloc = typename Super::ByteAlloc;
   using ByteAllocTraits = typename Super::ByteAllocTraits;
   using BytePtr = typename Super::BytePtr;
-  using Hasher = typename Super::Hasher;
+  using Hasher = Defaulted<HasherOrVoid, DefaultHasher<Key>>;
   using Item = typename Super::Item;
   using ItemIter = typename Super::ItemIter;
-  using KeyEqual = typename Super::KeyEqual;
-  using Value = typename Super::Value;
+  using KeyEqual = Defaulted<KeyEqualOrVoid, DefaultKeyEqual<Key>>;
 
   using Super::kAllocIsAlwaysEqual;
 

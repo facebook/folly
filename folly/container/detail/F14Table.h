@@ -1724,8 +1724,8 @@ class F14Table : public Policy {
 
     // Use the source's capacity, unless it is oversized.
     auto upperLimit = computeChunkCountAndScale(src.size(), false, false);
-    auto ccas =
-        std::make_pair(src.chunkMask_ + 1, src.chunks_->capacityScale());
+    auto ccas = std::make_pair(
+        std::size_t{src.chunkMask_} + 1, src.chunks_->capacityScale());
     FOLLY_SAFE_DCHECK(
         ccas.first >= upperLimit.first,
         "rounded chunk count can't be bigger than actual");
