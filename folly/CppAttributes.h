@@ -22,6 +22,8 @@
 
 #pragma once
 
+#include <folly/Portability.h>
+
 #ifndef __has_attribute
 #define FOLLY_HAS_ATTRIBUTE(x) 0
 #else
@@ -99,10 +101,19 @@
  *   }
  *   return nullptr;
  * }
+ *
+ * Ignores Clang's -Wnullability-extension since it correctly handles the case
+ * where the extension is not present.
  */
 #if FOLLY_HAS_EXTENSION(nullability)
-#define FOLLY_NULLABLE _Nullable
-#define FOLLY_NONNULL _Nonnull
+#define FOLLY_NULLABLE                                   \
+  FOLLY_PUSH_WARNING                                     \
+  FOLLY_CLANG_DISABLE_WARNING("-Wnullability-extension") \
+  _Nullable FOLLY_POP_WARNING
+#define FOLLY_NONNULL                                    \
+  FOLLY_PUSH_WARNING                                     \
+  FOLLY_CLANG_DISABLE_WARNING("-Wnullability-extension") \
+  _Nonnull FOLLY_POP_WARNING
 #else
 #define FOLLY_NULLABLE
 #define FOLLY_NONNULL
