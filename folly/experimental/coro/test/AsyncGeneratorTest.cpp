@@ -447,4 +447,30 @@ TEST_F(AsyncGeneratorTest, CancellationTokenPropagatesFromConsumer) {
   }());
 }
 
+TEST_F(AsyncGeneratorTest, BlockingWaitOnFinalNextDoesNotDeadlock) {
+  auto gen = []() -> folly::coro::AsyncGenerator<int> { co_yield 42; };
+
+  auto g = gen();
+  auto val1 = folly::coro::blockingWait(g.next());
+  CHECK_EQ(42, val1.value());
+  auto val2 = folly::coro::blockingWait(g.next());
+  CHECK(!val2.has_value());
+}
+
+TEST_F(AsyncGeneratorTest, BlockingWaitOnThrowingFinalNextDoesNotDeadlock) {
+  auto gen = []() -> folly::coro::AsyncGenerator<int> {
+    co_yield 42;
+    throw SomeError{};
+  };
+
+  auto g = gen();
+  auto val1 = folly::coro::blockingWait(g.next());
+  CHECK_EQ(42, val1.value());
+  try {
+    folly::coro::blockingWait(g.next());
+    CHECK(false);
+  } catch (const SomeError&) {
+  }
+}
+
 #endif

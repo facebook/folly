@@ -68,6 +68,7 @@ class AsyncGeneratorPromise {
 
   YieldAwaiter final_suspend() noexcept {
     DCHECK(!hasValue_);
+    clearContext();
     return {};
   }
 
