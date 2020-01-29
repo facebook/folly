@@ -749,6 +749,7 @@ if (BUILD_TESTS)
 
     DIRECTORY memory/test/
       TEST arena_test SOURCES ArenaTest.cpp
+      TEST mmap_allocator_test SOURCES MmapAllocatorTest.cpp
       TEST thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
       TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
