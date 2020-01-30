@@ -38,15 +38,16 @@ class InlineFunctionRefTest : public ::testing::Test {
 
 TEST_F(InlineFunctionRefTest, BasicInvoke) {
   {
-    auto func = [](auto integer) { return integer; };
+    auto func = [dummy = int{0}](auto integer) { return integer + dummy; };
     auto copy = func;
-    auto fref = InlineFunctionRef<int(int), 24>{std::move(func)};
+    auto fref =
+        InlineFunctionRef<int(int), 2 * sizeof(uintptr_t)>{std::move(func)};
     EXPECT_EQ(fref(1), 1);
     EXPECT_EQ(fref(2), 2);
     EXPECT_EQ(fref(3), 3);
 
-    EXPECT_EQ(sizeof(copy), 1);
-    EXPECT_EQ(std::memcmp(&storage(fref), &copy, 1), 0);
+    static_assert(sizeof(copy) == sizeof(int), "Make sure no padding");
+    EXPECT_EQ(std::memcmp(&storage(fref), &copy, sizeof(copy)), 0);
   }
 }
 
