@@ -26,9 +26,9 @@
 #include <google/base/spinlock.h>
 
 #include <folly/Benchmark.h>
-#include <folly/CachelinePadded.h>
 #include <folly/SharedMutex.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
+#include <folly/lang/Aligned.h>
 #include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/SmallLocks.h>
 #include <folly/synchronization/Utility.h>
@@ -185,7 +185,7 @@ void initialize(std::uint64_t& value) {
 
 class alignas(folly::hardware_destructive_interference_size) Ints {
  public:
-  std::array<folly::CachelinePadded<std::uint64_t>, 5> ints_;
+  std::array<folly::cacheline_aligned<std::uint64_t>, 5> ints_;
 };
 std::uint64_t write(Ints& vec) {
   auto sum = std::uint64_t{0};
@@ -198,7 +198,7 @@ void initialize(Ints&) {}
 
 class alignas(folly::hardware_destructive_interference_size) AtomicsAdd {
  public:
-  std::array<folly::CachelinePadded<std::atomic<std::uint64_t>>, 5> ints_;
+  std::array<folly::cacheline_aligned<std::atomic<std::uint64_t>>, 5> ints_;
 };
 std::uint64_t write(AtomicsAdd& atomics) {
   auto sum = 0;
