@@ -16,8 +16,8 @@
 
 #pragma once
 
+#include <folly/fibers/ExecutorBasedLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
-#include <folly/fibers/LoopController.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <atomic>
 #include <memory>
@@ -25,7 +25,7 @@
 namespace folly {
 namespace fibers {
 
-class EventBaseLoopController : public LoopController {
+class EventBaseLoopController : public ExecutorBasedLoopController {
  public:
   explicit EventBaseLoopController();
   ~EventBaseLoopController() override;
@@ -42,6 +42,10 @@ class EventBaseLoopController : public LoopController {
 
   void setLoopRunner(InlineFunctionRunner* loopRunner) {
     loopRunner_ = loopRunner;
+  }
+
+  folly::Executor* executor() const override {
+    return eventBase_;
   }
 
  private:

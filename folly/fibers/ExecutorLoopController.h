@@ -19,8 +19,8 @@
 #include <memory>
 
 #include <folly/Executor.h>
+#include <folly/fibers/ExecutorBasedLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
-#include <folly/fibers/LoopController.h>
 
 namespace folly {
 namespace fibers {
@@ -72,12 +72,12 @@ class ExecutorTimeoutManager : public TimeoutManager {
 /**
  * A fiber loop controller that works for arbitrary folly::Executor
  */
-class ExecutorLoopController : public fibers::LoopController {
+class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
  public:
   explicit ExecutorLoopController(folly::Executor* executor);
   ~ExecutorLoopController() override;
 
-  folly::Executor* executor() const {
+  folly::Executor* executor() const override {
     return executor_;
   }
 
