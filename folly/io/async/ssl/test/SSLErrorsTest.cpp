@@ -19,7 +19,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/OpenSSL.h>
 
-using namespace testing;
 using namespace folly;
 
 TEST(SSLErrorsTest, TestMessage) {

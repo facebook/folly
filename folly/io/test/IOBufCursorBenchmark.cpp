@@ -23,10 +23,7 @@
 
 DECLARE_bool(benchmark);
 
-using folly::ByteRange;
-using folly::format;
 using folly::IOBuf;
-using folly::StringPiece;
 using std::unique_ptr;
 using namespace folly::io;
 

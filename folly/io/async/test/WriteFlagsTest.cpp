@@ -19,8 +19,6 @@
 //#include <folly/io/async/test/MockAsyncTransport.h>
 #include <folly/portability/GTest.h>
 
-using namespace testing;
-
 namespace folly {
 
 TEST(WriteFlagsTest, isSet) {

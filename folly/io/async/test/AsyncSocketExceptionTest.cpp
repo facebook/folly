@@ -25,8 +25,6 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/Init.h>
 
-using namespace testing;
-
 namespace folly {
 
 TEST(AsyncSocketException, SimpleTest) {

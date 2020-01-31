@@ -32,7 +32,6 @@ using folly::AsyncUDPServerSocket;
 using folly::AsyncUDPSocket;
 using folly::EventBase;
 using folly::IOBuf;
-using folly::SocketAddress;
 using namespace testing;
 
 struct TestData {

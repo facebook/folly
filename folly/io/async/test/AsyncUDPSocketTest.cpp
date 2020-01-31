@@ -34,7 +34,6 @@ using folly::AsyncUDPServerSocket;
 using folly::AsyncUDPSocket;
 using folly::errnoStr;
 using folly::EventBase;
-using folly::IOBuf;
 using folly::SocketAddress;
 using namespace testing;
 

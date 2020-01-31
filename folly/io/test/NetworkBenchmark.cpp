@@ -23,7 +23,6 @@
 
 using folly::IOBuf;
 using std::unique_ptr;
-using namespace folly::io;
 using namespace std;
 
 size_t buf_size = 0;

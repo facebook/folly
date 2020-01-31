@@ -24,7 +24,6 @@
 #include <string>
 #include <vector>
 
-using std::string;
 using namespace testing;
 
 namespace folly {

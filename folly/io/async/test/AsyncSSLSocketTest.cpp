@@ -57,10 +57,7 @@
 
 using std::cerr;
 using std::endl;
-using std::list;
-using std::min;
 using std::string;
-using std::vector;
 
 using namespace testing;
 

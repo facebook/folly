@@ -23,7 +23,6 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/system/ThreadName.h>
 
-using namespace std;
 using namespace std::chrono;
 using namespace folly;
 

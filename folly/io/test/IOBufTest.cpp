@@ -26,7 +26,6 @@
 
 using folly::ByteRange;
 using folly::fbstring;
-using folly::fbvector;
 using folly::IOBuf;
 using folly::ordering;
 using folly::StringPiece;

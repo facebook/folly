@@ -20,8 +20,6 @@
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/io/async/AsyncSocketException.h>
 
-using folly::IOBuf;
-using folly::IOBufQueue;
 using std::string;
 using std::unique_ptr;
 

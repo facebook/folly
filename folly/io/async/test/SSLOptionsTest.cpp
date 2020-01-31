@@ -22,7 +22,6 @@
 #include <folly/io/async/test/SSLUtil.h>
 
 using namespace std;
-using namespace testing;
 
 namespace folly {
 

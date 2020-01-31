@@ -30,7 +30,6 @@
 namespace folly {
 //
 // For OpenSSL portability API
-using namespace folly::ssl;
 
 // SSLContext implementation
 SSLContext::SSLContext(SSLVersion version) {
@@ -518,9 +517,9 @@ bool SSLContext::setRandomizedAdvertisedNextProtocols(
   // Note that this function reverses the typical return value convention
   // of openssl and returns 0 on success.
   return SSL_CTX_set_alpn_protos(
-          ctx_,
-          advertisedNextProtocols_[0].protocols,
-          advertisedNextProtocols_[0].length) == 0;
+             ctx_,
+             advertisedNextProtocols_[0].protocols,
+             advertisedNextProtocols_[0].length) == 0;
 }
 
 void SSLContext::deleteNextProtocolsStrings() {

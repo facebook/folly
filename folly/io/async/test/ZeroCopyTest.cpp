@@ -17,7 +17,6 @@
 #include <folly/io/async/test/ZeroCopy.h>
 #include <folly/portability/GTest.h>
 
-using namespace testing;
 using namespace folly;
 
 static auto constexpr kMaxLoops = 20;

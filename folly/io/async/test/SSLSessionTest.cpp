@@ -23,8 +23,6 @@
 
 #include <memory>
 
-using namespace std;
-using namespace testing;
 using folly::ssl::SSLSession;
 
 namespace folly {

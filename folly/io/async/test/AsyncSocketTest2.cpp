@@ -40,8 +40,6 @@
 #include <memory>
 #include <thread>
 
-using std::cerr;
-using std::endl;
 using std::min;
 using std::string;
 using std::unique_ptr;

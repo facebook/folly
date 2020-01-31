@@ -21,7 +21,6 @@
 #include <folly/ssl/Init.h>
 #include <folly/ssl/OpenSSLCertUtils.h>
 
-using namespace testing;
 using namespace folly;
 using namespace folly::ssl;
 

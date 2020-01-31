@@ -36,24 +36,13 @@
 #include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
 
-using folly::SocketAddress;
-using folly::SSLContext;
 using std::shared_ptr;
-using std::string;
 
-using folly::Endian;
-using folly::IOBuf;
 using folly::SpinLock;
-using folly::SpinLockGuard;
 using folly::io::Cursor;
-using std::bind;
-using std::unique_ptr;
 
 namespace {
-using folly::AsyncSocket;
-using folly::AsyncSocketException;
 using folly::AsyncSSLSocket;
-using folly::Optional;
 using folly::SSLContext;
 // For OpenSSL portability API
 using namespace folly::ssl;
@@ -1031,9 +1020,9 @@ bool AsyncSSLSocket::willBlock(
   }
   if ((false
 #ifdef SSL_ERROR_WANT_ASYNC // OpenSSL 1.1.0 Async API
-              || error == SSL_ERROR_WANT_ASYNC
+       || error == SSL_ERROR_WANT_ASYNC
 #endif
-              )) {
+       )) {
     // An asynchronous request has been kicked off. On completion, it will
     // invoke a callback to re-call handleAccept
     sslState_ = STATE_ASYNC_PENDING;

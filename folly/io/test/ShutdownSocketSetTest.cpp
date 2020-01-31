@@ -26,8 +26,6 @@
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/GTest.h>
 
-using folly::ShutdownSocketSet;
-
 namespace folly {
 namespace test {
 
