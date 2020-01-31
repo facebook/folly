@@ -71,14 +71,14 @@ constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
     Value&&);
 
 /**
- * Alias for an Expected type's assiciated value_type
+ * Alias for an Expected type's associated value_type
  */
 template <class Expected>
 using ExpectedValueType =
     typename std::remove_reference<Expected>::type::value_type;
 
 /**
- * Alias for an Expected type's assiciated error_type
+ * Alias for an Expected type's associated error_type
  */
 template <class Expected>
 using ExpectedErrorType =
