@@ -102,23 +102,37 @@ TEST(SSLContextInitializationTest, SSLContextLocksSetAfterInitIgnored) {
 TEST(SSLContextInitializationTest, SSLContext_SSL_CTX_constructor) {
   folly::ssl::init();
 
+  // Used to determine when SSL_CTX is freed.
+  auto onFree = [](void*, void* arg, CRYPTO_EX_DATA*, int, long, void*) {
+    bool* freed = static_cast<bool*>(arg);
+    *freed = true;
+  };
+  static int idx = SSL_CTX_get_ex_new_index(
+      0 /*argl */,
+      nullptr /*argp*/,
+      nullptr /*new_func*/,
+      nullptr /*dup_func*/,
+      onFree /*free_func*/);
+
+  bool freed = false;
   SSL_CTX* ctx = SSL_CTX_new(TLS_method());
   EXPECT_NE(ctx, nullptr) << "SSL_CTX* creation for test failed";
 
-  {
-    folly::SSLContext sslContext(ctx);
-    SSL_CTX_free(ctx);
-    // Shouldn't be fully freed because SSLContext should've added to the
-    // refcount. up_ref should succed
-    EXPECT_EQ(SSL_CTX_up_ref(ctx), 1)
-        << "Incrementing ctx refcount failed, SSLContext isn't grabbing a ref on creation";
-  }
-  // Last reference, ctx should no longer be valid
-  SSL_CTX_free(ctx);
+  (void)SSL_CTX_set_ex_data(ctx, idx, &freed);
 
-  // Should throw because ctx is no longer valid, and the constructor should
-  // fail on incrementing ctx refcount
-  EXPECT_THROW(folly::SSLContext sslContext(ctx), std::runtime_error);
+  {
+    // SSLContext takes "ownership" (read: increments the ref count), and will
+    // free ctx on destruction.
+    folly::SSLContext sslContext(ctx);
+  }
+  // Shouldn't be fully freed because SSLContext should've added to the
+  // refcount. up_ref should succed
+  EXPECT_EQ(freed, false);
+
+  // Last reference, ctx should no longer be valid. Should trigger the ex_data
+  // free func.
+  SSL_CTX_free(ctx);
+  EXPECT_EQ(freed, true);
 }
 
 } // namespace folly
