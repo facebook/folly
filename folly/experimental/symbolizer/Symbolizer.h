@@ -77,6 +77,14 @@ inline bool getStackTraceSafe(FrameArray<N>& fa) {
   return detail::fixFrameArray(fa, getStackTraceSafe(fa.addresses, N));
 }
 
+template <size_t N>
+FOLLY_ALWAYS_INLINE bool getStackTraceHeap(FrameArray<N>& fa);
+
+template <size_t N>
+inline bool getStackTraceHeap(FrameArray<N>& fa) {
+  return detail::fixFrameArray(fa, getStackTraceHeap(fa.addresses, N));
+}
+
 class Symbolizer {
  public:
   static constexpr auto kDefaultLocationInfoMode = LocationInfoMode::FAST;

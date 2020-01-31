@@ -38,7 +38,11 @@ void verifyStackTraces() {
   FrameArray<kMaxAddresses> faSafe;
   CHECK(getStackTraceSafe(faSafe));
 
+  FrameArray<kMaxAddresses> faHeap;
+  CHECK(getStackTraceHeap(faHeap));
+
   CHECK_EQ(fa.frameCount, faSafe.frameCount);
+  CHECK_EQ(fa.frameCount, faHeap.frameCount);
 
   if (VLOG_IS_ON(1)) {
     Symbolizer symbolizer;
@@ -51,14 +55,19 @@ void verifyStackTraces() {
     symbolizer.symbolize(faSafe);
     VLOG(1) << "getStackTraceSafe\n";
     printer.println(faSafe);
+
+    symbolizer.symbolize(faHeap);
+    VLOG(1) << "getStackTraceHeap\n";
+    printer.println(faHeap);
   }
 
   // Other than the top 2 frames (this one and getStackTrace /
   // getStackTraceSafe), the stack traces should be identical
   for (size_t i = 2; i < fa.frameCount; ++i) {
     LOG(INFO) << "i=" << i << " " << std::hex << "0x" << fa.addresses[i]
-              << " 0x" << faSafe.addresses[i];
+              << " 0x" << faSafe.addresses[i] << " 0x" << faHeap.addresses[i];
     EXPECT_EQ(fa.addresses[i], faSafe.addresses[i]);
+    EXPECT_EQ(fa.addresses[i], faHeap.addresses[i]);
   }
 }
 

@@ -44,5 +44,17 @@ ssize_t getStackTrace(uintptr_t* addresses, size_t maxAddresses);
  * Async-signal-safe, but likely slower.
  */
 ssize_t getStackTraceSafe(uintptr_t* addresses, size_t maxAddresses);
+
+/**
+ * Get the current stack trace into addresses, which has room for at least
+ * maxAddresses frames.
+ *
+ * Returns the number of frames written in the array.
+ * Returns -1 on failure.
+ *
+ * Heap allocates its context. Likely slower than getStackTrace but
+ * avoids large stack allocations.
+ */
+ssize_t getStackTraceHeap(uintptr_t* addresses, size_t maxAddresses);
 } // namespace symbolizer
 } // namespace folly
