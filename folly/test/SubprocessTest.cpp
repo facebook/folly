@@ -338,6 +338,25 @@ TEST(SimpleSubprocessTest, DetachExecFails) {
       "/no/such/file");
 }
 
+TEST(SimpleSubprocessTest, FromExistingProcess) {
+  // Manually fork a child process using fork() without exec(), and test waiting
+  // for it using the Subprocess API in the parent process.
+  static int constexpr kReturnCode = 123;
+
+  auto pid = fork();
+  ASSERT_NE(pid, -1) << "fork failed";
+  if (pid == 0) {
+    // child process
+    _exit(kReturnCode);
+  }
+
+  auto child = Subprocess::fromExistingProcess(pid);
+  EXPECT_TRUE(child.returnCode().running());
+  auto retCode = child.wait();
+  EXPECT_TRUE(retCode.exited());
+  EXPECT_EQ(kReturnCode, retCode.exitStatus());
+}
+
 TEST(ParentDeathSubprocessTest, ParentDeathSignal) {
   // Find out where we are.
   const auto basename = "subprocess_test_parent_death_helper";

@@ -537,6 +537,15 @@ class Subprocess {
   ~Subprocess();
 
   /**
+   * Create a Subprocess object for an existing child process ID.
+   *
+   * The process ID must refer to an immediate child process of the current
+   * process.  This allows using the poll() and wait() APIs on a process ID
+   * that was not originally spawned by Subprocess.
+   */
+  static Subprocess fromExistingProcess(pid_t pid);
+
+  /**
    * Create a subprocess run as a shell command (as shell -c 'command')
    *
    * The shell to use is taken from the environment variable $SHELL,

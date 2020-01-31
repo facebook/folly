@@ -214,6 +214,13 @@ Subprocess::Subprocess(
   spawn(cloneStrings(argv), argv[0].c_str(), options, env);
 }
 
+Subprocess Subprocess::fromExistingProcess(pid_t pid) {
+  Subprocess sp;
+  sp.pid_ = pid;
+  sp.returnCode_ = ProcessReturnCode::makeRunning();
+  return sp;
+}
+
 Subprocess::~Subprocess() {
   CHECK_NE(returnCode_.state(), ProcessReturnCode::RUNNING)
       << "Subprocess destroyed without reaping child";
