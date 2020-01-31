@@ -224,7 +224,7 @@ class InlineFunctionRef<ReturnType(Args...), Size> {
   }
 
   Call call_;
-  Storage storage_;
+  Storage storage_{};
 };
 
 } // namespace detail
