@@ -146,7 +146,8 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   bool tryDecrToStop();
   bool taskShouldStop(folly::Optional<CPUTask>&);
 
-  std::unique_ptr<BlockingQueue<CPUTask>> taskQueue_;
+  // shared_ptr for type erased dtor to handle extended alignment.
+  std::shared_ptr<BlockingQueue<CPUTask>> taskQueue_;
   std::atomic<ssize_t> threadsToStop_{0};
 };
 
