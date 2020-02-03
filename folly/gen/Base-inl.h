@@ -1076,7 +1076,7 @@ class Order : public Operator<Order<Selector, Comparer>> {
       };
       auto vals = source_ | as<VectorType>();
       std::sort(vals.begin(), vals.end(), comparer);
-      return std::move(vals);
+      return vals;
     }
 
    public:
