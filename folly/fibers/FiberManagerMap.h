@@ -23,17 +23,22 @@
 namespace folly {
 namespace fibers {
 
-FiberManager& getFiberManager(
+template <typename Local>
+static inline FiberManager& getFiberManagerT(
     folly::EventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options());
 
-FiberManager& getFiberManager(
+static inline FiberManager& getFiberManager(
+    folly::EventBase& evb,
+    const FiberManager::Options& opts = FiberManager::Options());
+
+static inline FiberManager& getFiberManager(
     folly::VirtualEventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options());
 
-FiberManager& getFiberManager(
+static inline FiberManager& getFiberManager(
     folly::EventBase& evb,
     const FiberManager::FrozenOptions& opts);
-
 } // namespace fibers
 } // namespace folly
+#include <folly/fibers/FiberManagerMap-inl.h>

@@ -852,13 +852,20 @@ def fiber_manager_active_fibers(fm):
 
 
 def get_fiber_manager_map(evb_type):
-    try:
-        # Exception thrown if unable to find type
-        # Probably because of missing debug symbols
-        global_cache_type = gdb.lookup_type(
-            "folly::fibers::(anonymous namespace)::GlobalCache<" + evb_type + ">"
-        )
-    except gdb.error:
+    # global cache was moved from anonymous namespace to "detail", we want to
+    # work in both cases.
+    for ns in ("detail", "(anonymous namespace)"):
+        try:
+            # Exception thrown if unable to find type
+            global_cache_type = gdb.lookup_type(
+                "folly::fibers::{ns}::GlobalCache<{evb_type}>".format(
+                    ns=ns, evb_type=evb_type
+                )
+            )
+            break
+        except gdb.error:
+            pass
+    else:
         raise gdb.GdbError(
             "Unable to find types. "
             "Please make sure debug info is available for this binary.\n"
@@ -936,8 +943,8 @@ def load():
     FiberNameCommand()
     Shortcut("get_fiber_manager_map_evb", get_fiber_manager_map_evb)
     Shortcut("get_fiber_manager_map_vevb", get_fiber_manager_map_vevb)
-    Shortcut("clear_fiber_caches", clear_fiber_caches)
-    gdb.events.cont.connect(clear_fiber_caches)
+    Shortcut("clear_fiber_caches", lambda _: clear_fiber_caches())
+    gdb.events.cont.connect(lambda _: clear_fiber_caches())
 
 
 def info():

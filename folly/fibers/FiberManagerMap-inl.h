@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/fibers/FiberManagerMap.h>
+#pragma once
 
 #include <memory>
 #include <unordered_map>
@@ -27,11 +27,11 @@
 namespace folly {
 namespace fibers {
 
-namespace {
+namespace detail {
 
 // ssize_t is a hash of FiberManager::Options
 template <typename EventBaseT>
-using Key = std::pair<EventBaseT*, ssize_t>;
+using Key = std::tuple<EventBaseT*, ssize_t, std::type_index>;
 
 template <typename EventBaseT>
 Function<void()> makeOnEventBaseDestructionCallback(const Key<EventBaseT>& key);
@@ -39,11 +39,12 @@ Function<void()> makeOnEventBaseDestructionCallback(const Key<EventBaseT>& key);
 template <typename EventBaseT>
 class GlobalCache {
  public:
+  template <typename LocalT>
   static FiberManager& get(
       const Key<EventBaseT>& key,
       EventBaseT& evb,
       const FiberManager::Options& opts) {
-    return instance().getImpl(key, evb, opts);
+    return instance().template getImpl<LocalT>(key, evb, opts);
   }
 
   static std::unique_ptr<FiberManager> erase(const Key<EventBaseT>& key) {
@@ -60,6 +61,7 @@ class GlobalCache {
     return *ret;
   }
 
+  template <typename LocalT>
   FiberManager& getImpl(
       const Key<EventBaseT>& key,
       EventBaseT& evb,
@@ -79,8 +81,8 @@ class GlobalCache {
       constructed = true;
       auto loopController = std::make_unique<EventBaseLoopController>();
       loopController->attachEventBase(evb);
-      fmPtrRef =
-          std::make_unique<FiberManager>(std::move(loopController), opts);
+      fmPtrRef = std::make_unique<FiberManager>(
+          LocalType<LocalT>(), std::move(loopController), opts);
     }
 
     return *fmPtrRef;
@@ -105,11 +107,10 @@ constexpr size_t kEraseListMaxSize = 64;
 template <typename EventBaseT>
 class ThreadLocalCache {
  public:
-  static FiberManager& get(
-      const Key<EventBaseT>& key,
-      EventBaseT& evb,
-      const FiberManager::Options& opts) {
-    return instance()->getImpl(key, evb, opts);
+  template <typename LocalT>
+  static FiberManager&
+  get(uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
+    return instance()->template getImpl<LocalT>(token, evb, opts);
   }
 
   static void erase(const Key<EventBaseT>& key) {
@@ -140,15 +141,15 @@ class ThreadLocalCache {
     return *ret;
   }
 
-  FiberManager& getImpl(
-      const Key<EventBaseT>& key,
-      EventBaseT& evb,
-      const FiberManager::Options& opts) {
+  template <typename LocalT>
+  FiberManager&
+  getImpl(uint64_t token, EventBaseT& evb, const FiberManager::Options& opts) {
     eraseImpl();
 
+    auto key = make_tuple(&evb, token, std::type_index(typeid(LocalT)));
     auto& fmPtrRef = map_[key];
     if (!fmPtrRef) {
-      fmPtrRef = &GlobalCache<EventBaseT>::get(key, evb, opts);
+      fmPtrRef = &GlobalCache<EventBaseT>::template get<LocalT>(key, evb, opts);
     }
 
     DCHECK(fmPtrRef != nullptr);
@@ -197,26 +198,32 @@ Function<void()> makeOnEventBaseDestructionCallback(
   };
 }
 
-} // namespace
+} // namespace detail
 
-FiberManager& getFiberManager(
+template <typename LocalT>
+FiberManager& getFiberManagerT(
     EventBase& evb,
     const FiberManager::Options& opts) {
-  return ThreadLocalCache<EventBase>::get(std::make_pair(&evb, 0), evb, opts);
+  return detail::ThreadLocalCache<EventBase>::get<LocalT>(0, evb, opts);
+}
+
+FiberManager& getFiberManager(
+    folly::EventBase& evb,
+    const FiberManager::Options& opts) {
+  return detail::ThreadLocalCache<EventBase>::get<void>(0, evb, opts);
 }
 
 FiberManager& getFiberManager(
     VirtualEventBase& evb,
     const FiberManager::Options& opts) {
-  return ThreadLocalCache<VirtualEventBase>::get(
-      std::make_pair(&evb, 0), evb, opts);
+  return detail::ThreadLocalCache<VirtualEventBase>::get<void>(0, evb, opts);
 }
 
 FiberManager& getFiberManager(
     folly::EventBase& evb,
     const FiberManager::FrozenOptions& opts) {
-  return ThreadLocalCache<EventBase>::get(
-      std::make_pair(&evb, opts.token), evb, opts.options);
+  return detail::ThreadLocalCache<EventBase>::get<void>(
+      opts.token, evb, opts.options);
 }
 
 } // namespace fibers
