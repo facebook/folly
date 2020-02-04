@@ -21,12 +21,13 @@
 #include <string>
 #include <typeindex>
 
-#include <folly/CachelinePadded.h>
 #include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
+#include <folly/Utility.h>
 #include <folly/experimental/settings/SettingsMetadata.h>
+#include <folly/lang/Aligned.h>
 
 namespace folly {
 namespace settings {
@@ -340,8 +341,9 @@ class SettingCore : public SettingCoreBase {
         defaultValue_(std::move(defaultValue)),
         trivialStorage_(trivialStorage),
         localValue_([]() {
-          return new CachelinePadded<
-              std::pair<Version, std::shared_ptr<Contents>>>(0, nullptr);
+          return new cacheline_aligned<
+              std::pair<Version, std::shared_ptr<Contents>>>(
+              in_place, 0, nullptr);
         }) {
     set(defaultValue_, "default");
     registerSetting(*this);
@@ -358,9 +360,9 @@ class SettingCore : public SettingCoreBase {
 
   /* Thread local versions start at 0, this will force a read on first access.
    */
-  CachelinePadded<std::atomic<Version>> settingVersion_{1};
+  cacheline_aligned<std::atomic<Version>> settingVersion_{in_place, 1};
 
-  ThreadLocal<CachelinePadded<std::pair<Version, std::shared_ptr<Contents>>>>
+  ThreadLocal<cacheline_aligned<std::pair<Version, std::shared_ptr<Contents>>>>
       localValue_;
 
   FOLLY_ALWAYS_INLINE const std::shared_ptr<Contents>& tlValue() const {
