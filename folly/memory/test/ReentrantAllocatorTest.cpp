@@ -59,13 +59,15 @@ TEST_F(ReentrantAllocatorTest, small) {
 
 TEST_F(ReentrantAllocatorTest, large) {
   constexpr size_t const large_size_lg = 6;
-  struct alignas(1u << large_size_lg) type : std::tuple<size_t> {};
+  struct alignas(1u << large_size_lg) type : std::tuple<size_t> {
+    using std::tuple<size_t>::tuple;
+  };
   auto const opts = folly::reentrant_allocator_options{} //
                         .large_size_lg(large_size_lg);
   folly::reentrant_allocator<void> alloc{opts};
   std::vector<type, folly::reentrant_allocator<type>> vec{alloc};
   for (auto i = 0u; i < (1u << 16); ++i) {
-    vec.push_back(type{i});
+    vec.push_back({i});
   }
   for (auto i = 0u; i < (1u << 16); ++i) {
     EXPECT_EQ(i, std::get<0>(vec.at(i)));
