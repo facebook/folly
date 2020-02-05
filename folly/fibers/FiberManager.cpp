@@ -87,10 +87,7 @@ auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
 FiberManager::FiberManager(
     std::unique_ptr<LoopController> loopController,
     Options options)
-    : FiberManager(
-          LocalType<void>(),
-          std::move(loopController),
-          std::move(options)) {}
+    : FiberManager(LocalType<void>(), std::move(loopController), options) {}
 
 FiberManager::~FiberManager() {
   loopController_.reset();

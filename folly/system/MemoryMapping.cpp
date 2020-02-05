@@ -74,7 +74,7 @@ MemoryMapping::MemoryMapping(
     off_t offset,
     off_t length,
     Options options)
-    : file_(std::move(file)), options_(std::move(options)) {
+    : file_(std::move(file)), options_(options) {
   CHECK(file_);
   init(offset, length);
 }
@@ -98,7 +98,7 @@ MemoryMapping::MemoryMapping(
     : MemoryMapping(File(fd), offset, length, options) {}
 
 MemoryMapping::MemoryMapping(AnonymousType, off_t length, Options options)
-    : options_(std::move(options)) {
+    : options_(options) {
   init(0, length);
 }
 

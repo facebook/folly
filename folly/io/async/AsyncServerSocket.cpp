@@ -1059,7 +1059,7 @@ void AsyncServerSocket::dispatchError(const char* msgstr, int errnoValue) {
   QueueMessage msg;
   msg.type = MessageType::MSG_ERROR;
   msg.err = errnoValue;
-  msg.msg = std::move(msgstr);
+  msg.msg = msgstr;
 
   while (true) {
     // Short circuit if the callback is in the primary EventBase thread
