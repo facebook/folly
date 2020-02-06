@@ -393,11 +393,6 @@ struct StaticMetaBase {
   ThreadEntry head_;
   ThreadEntry* (*threadEntry_)();
   bool strict_;
-
- protected:
-  [[noreturn]] ~StaticMetaBase() {
-    std::terminate();
-  }
 };
 
 // Held in a singleton to track our global instances.
