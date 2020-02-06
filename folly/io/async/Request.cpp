@@ -463,6 +463,9 @@ RequestContext::RequestContext()
     : useHazptr_(FLAGS_folly_reqctx_use_hazptr),
       rootId_(reinterpret_cast<intptr_t>(this)) {}
 
+RequestContext::RequestContext(intptr_t rootid)
+    : useHazptr_(FLAGS_folly_reqctx_use_hazptr), rootId_(rootid) {}
+
 RequestContext::RequestContext(const RequestContext& ctx, RootTag)
     : RequestContext(ctx) {
   rootId_ = reinterpret_cast<intptr_t>(this);
@@ -798,7 +801,7 @@ RequestContext::setShallowCopyContext() {
 RequestContext* RequestContext::get() {
   auto& context = getStaticContext().first;
   if (!context) {
-    static RequestContext defaultContext;
+    static RequestContext defaultContext(0);
     return std::addressof(defaultContext);
   }
   return context.get();

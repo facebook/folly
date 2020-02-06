@@ -88,6 +88,8 @@ TEST_F(RequestContextTest, SimpleTest) {
 
   // There should always be a default context with get()
   EXPECT_TRUE(RequestContext::get() != nullptr);
+  // but fallback context should have rootid set to 0
+  EXPECT_EQ(RequestContext::get()->getRootId(), 0);
 
   // but not with saveContext()
   EXPECT_EQ(RequestContext::saveContext(), nullptr);
@@ -97,6 +99,7 @@ TEST_F(RequestContextTest, SimpleTest) {
   EXPECT_EQ(1, rootids.size());
   EXPECT_EQ(RequestContext::get()->getRootId(), rootids[0]);
   EXPECT_EQ(reinterpret_cast<intptr_t>(RequestContext::get()), rootids[0]);
+  EXPECT_NE(RequestContext::get()->getRootId(), 0);
   RequestContext::create();
   EXPECT_NE(RequestContext::saveContext(), nullptr);
   EXPECT_NE(RequestContext::get()->getRootId(), rootids[0]);
