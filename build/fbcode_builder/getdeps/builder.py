@@ -865,9 +865,9 @@ git-fetch-with-cli = true
         self._patchup_workspace(build_source_dir)
 
         try:
-            from getdeps.facebook.lfs import crates_io_download
+            from getdeps.facebook.rust import vendored_crates
 
-            crates_io_download(self.build_opts, self.build_dir, build_source_dir)
+            vendored_crates(self.build_opts, build_source_dir)
         except ImportError:
             # This FB internal module isn't shippped to github,
             # so just rely on cargo downloading crates on it's own
