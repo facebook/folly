@@ -84,7 +84,8 @@ ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
  * is unspecified.
  */
 FOLLY_NODISCARD ssize_t readFull(int fd, void* buf, size_t count);
-FOLLY_NODISCARD ssize_t preadFull(int fd, void* buf, size_t count, off_t offset);
+FOLLY_NODISCARD ssize_t
+preadFull(int fd, void* buf, size_t count, off_t offset);
 FOLLY_NODISCARD ssize_t readvFull(int fd, iovec* iov, int count);
 FOLLY_NODISCARD ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
 
@@ -223,6 +224,12 @@ bool writeFile(
   return closeNoInt(fd) == 0 && ok;
 }
 
+/* For atomic writes, do we sync to guarantee ordering or not? */
+enum class SyncType {
+  WITH_SYNC,
+  WITHOUT_SYNC,
+};
+
 /**
  * Write file contents "atomically".
  *
@@ -233,20 +240,33 @@ bool writeFile(
  *
  * Note that on platforms that do not provide atomic filesystem rename
  * functionality (e.g., Windows) this behavior may not be truly atomic.
+ *
+ * The default implementation does not sync the data to storage before
+ * the rename.  Therefore, the write is *not* atomic in the event of a
+ * power failure or OS crash.  To guarantee atomicity in these cases,
+ * specify syncType = WITH_SYNC, which will incur a performance cost
+ * of waiting for the data to be persisted to storage.  Note that the
+ * return of the function does not guarantee the directory
+ * modifications have been written to disk; a further sync of the
+ * directory after the function returns is required to ensure the
+ * modification is durable.
  */
 void writeFileAtomic(
     StringPiece filename,
     iovec* iov,
     int count,
-    mode_t permissions = 0644);
+    mode_t permissions = 0644,
+    SyncType syncType = SyncType::WITHOUT_SYNC);
 void writeFileAtomic(
     StringPiece filename,
     ByteRange data,
-    mode_t permissions = 0644);
+    mode_t permissions = 0644,
+    SyncType syncType = SyncType::WITHOUT_SYNC);
 void writeFileAtomic(
     StringPiece filename,
     StringPiece data,
-    mode_t permissions = 0644);
+    mode_t permissions = 0644,
+    SyncType syncType = SyncType::WITHOUT_SYNC);
 
 /**
  * A version of writeFileAtomic() that returns an errno value instead of
@@ -258,6 +278,7 @@ int writeFileAtomicNoThrow(
     StringPiece filename,
     iovec* iov,
     int count,
-    mode_t permissions = 0644);
+    mode_t permissions = 0644,
+    SyncType syncType = SyncType::WITHOUT_SYNC);
 
 } // namespace folly

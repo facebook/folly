@@ -403,6 +403,19 @@ TEST_F(WriteFileAtomic, writeNew) {
   EXPECT_EQ(0644, getPerms(path));
 }
 
+TEST_F(WriteFileAtomic, withSync) {
+  // Call writeFileAtomic() to create a new file
+  auto path = tmpPath("foo");
+  auto contents = StringPiece{"contents\n"};
+  auto permissions = mode_t{0644};
+  writeFileAtomic(path, contents, permissions, SyncType::WITH_SYNC);
+
+  // The directory should contain exactly 1 file now, with the correct contents
+  EXPECT_EQ(set<string>{"foo"}, listTmpDir());
+  EXPECT_EQ(contents, readData(path));
+  EXPECT_EQ(0644, getPerms(path));
+}
+
 TEST_F(WriteFileAtomic, overwrite) {
   // Call writeFileAtomic() to create a new file
   auto path = tmpPath("foo");

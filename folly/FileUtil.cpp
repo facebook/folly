@@ -167,7 +167,8 @@ int writeFileAtomicNoThrow(
     StringPiece filename,
     iovec* iov,
     int count,
-    mode_t permissions) {
+    mode_t permissions,
+    SyncType syncType) {
   // We write the data to a temporary file name first, then atomically rename
   // it into place.  This ensures that the file contents will always be valid,
   // even if we crash or are killed partway through writing out data.
@@ -213,6 +214,15 @@ int writeFileAtomicNoThrow(
     return errno;
   }
 
+  // To guarantee atomicity across power failues on POSIX file systems,
+  // the temporary file must be explicitly sync'ed before the rename.
+  if (syncType == SyncType::WITH_SYNC) {
+    rc = fsyncNoInt(tmpFD);
+    if (rc == -1) {
+      return errno;
+    }
+  }
+
   // Close the file before renaming to make sure all data has
   // been successfully written.
   rc = close(tmpFD);
@@ -233,26 +243,32 @@ void writeFileAtomic(
     StringPiece filename,
     iovec* iov,
     int count,
-    mode_t permissions) {
-  auto rc = writeFileAtomicNoThrow(filename, iov, count, permissions);
+    mode_t permissions,
+    SyncType syncType) {
+  auto rc = writeFileAtomicNoThrow(filename, iov, count, permissions, syncType);
   if (rc != 0) {
     auto msg = std::string(__func__) + "() failed to update " + filename.str();
     throw std::system_error(rc, std::generic_category(), msg);
   }
 }
 
-void writeFileAtomic(StringPiece filename, ByteRange data, mode_t permissions) {
+void writeFileAtomic(
+    StringPiece filename,
+    ByteRange data,
+    mode_t permissions,
+    SyncType syncType) {
   iovec iov;
   iov.iov_base = const_cast<unsigned char*>(data.data());
   iov.iov_len = data.size();
-  writeFileAtomic(filename, &iov, 1, permissions);
+  writeFileAtomic(filename, &iov, 1, permissions, syncType);
 }
 
 void writeFileAtomic(
     StringPiece filename,
     StringPiece data,
-    mode_t permissions) {
-  writeFileAtomic(filename, ByteRange(data), permissions);
+    mode_t permissions,
+    SyncType syncType) {
+  writeFileAtomic(filename, ByteRange(data), permissions, syncType);
 }
 
 } // namespace folly
