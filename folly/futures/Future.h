@@ -134,7 +134,8 @@ class FutureBase {
       class T2 = T,
       typename = typename std::enable_if<
           !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
+          !isSemiFuture<typename std::decay<T2>::type>::value &&
+          std::is_constructible<Try<T>, T2>::value>::type>
   /* implicit */ FutureBase(T2&& val);
 
   /// Construct a (logical) FutureBase-of-void.
@@ -511,7 +512,8 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       class T2 = T,
       typename = typename std::enable_if<
           !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
+          !isSemiFuture<typename std::decay<T2>::type>::value &&
+          std::is_constructible<Try<T>, T2>::value>::type>
   /* implicit */ SemiFuture(T2&& val) : Base(std::forward<T2>(val)) {}
 
   /// Construct a (logical) SemiFuture-of-void.
@@ -1014,7 +1016,8 @@ class Future : private futures::detail::FutureBase<T> {
       class T2 = T,
       typename = typename std::enable_if<
           !isFuture<typename std::decay<T2>::type>::value &&
-          !isSemiFuture<typename std::decay<T2>::type>::value>::type>
+          !isSemiFuture<typename std::decay<T2>::type>::value &&
+          std::is_constructible<Try<T>, T2>::value>::type>
   /* implicit */ Future(T2&& val) : Base(std::forward<T2>(val)) {}
 
   /// Construct a (logical) Future-of-void.
