@@ -30,6 +30,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/SysResource.h>
+#include <folly/synchronization/AtomicRef.h>
 #include <folly/synchronization/SanitizeThread.h>
 
 // SharedMutex is a reader-writer lock.  It is small, very fast, scalable
@@ -1605,13 +1606,15 @@ bool SharedMutexImpl<
     Atom,
     BlockImmediately,
     AnnotateForThreadSanitizer>::tryUnlockTokenlessSharedDeferred() {
-  auto bestSlot = tls_lastTokenlessSlot;
+  auto bestSlot =
+      make_atomic_ref(tls_lastTokenlessSlot).load(std::memory_order_relaxed);
   for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
     auto slotPtr = deferredReader(bestSlot ^ i);
     auto slotValue = slotPtr->load(std::memory_order_relaxed);
     if (slotValue == tokenlessSlotValue() &&
         slotPtr->compare_exchange_strong(slotValue, 0)) {
-      tls_lastTokenlessSlot = bestSlot ^ i;
+      make_atomic_ref(tls_lastTokenlessSlot)
+          .store(bestSlot ^ i, std::memory_order_relaxed);
       return true;
     }
   }
@@ -1638,7 +1641,8 @@ bool SharedMutexImpl<
       return false;
     }
 
-    uint32_t slot = tls_lastDeferredReaderSlot;
+    uint32_t slot = make_atomic_ref(tls_lastDeferredReaderSlot)
+                        .load(std::memory_order_relaxed);
     uintptr_t slotValue = 1; // any non-zero value will do
 
     bool canAlreadyDefer = (state & kMayDefer) != 0;
@@ -1662,7 +1666,8 @@ bool SharedMutexImpl<
           slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
           if (slotValue == 0) {
             // found empty slot
-            tls_lastDeferredReaderSlot = slot;
+            make_atomic_ref(tls_lastDeferredReaderSlot)
+                .store(slot, std::memory_order_relaxed);
             break;
           }
         }
@@ -1713,7 +1718,8 @@ bool SharedMutexImpl<
     }
 
     if (token == nullptr) {
-      tls_lastTokenlessSlot = slot;
+      make_atomic_ref(tls_lastTokenlessSlot)
+          .store(slot, std::memory_order_relaxed);
     }
 
     if ((state & kMayDefer) != 0) {
