@@ -317,7 +317,7 @@ struct StaticMetaBase {
       other.value = kEntryIDInvalid;
     }
 
-    EntryID& operator=(EntryID&& other) {
+    EntryID& operator=(EntryID&& other) noexcept {
       assert(this != &other);
       value = other.value.load();
       other.value = kEntryIDInvalid;

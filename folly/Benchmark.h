@@ -122,7 +122,7 @@ struct BenchmarkSuspender {
   }
 
   BenchmarkSuspender& operator=(const BenchmarkSuspender&) = delete;
-  BenchmarkSuspender& operator=(BenchmarkSuspender&& rhs) {
+  BenchmarkSuspender& operator=(BenchmarkSuspender&& rhs) noexcept {
     if (start != TimePoint{}) {
       tally();
     }
