@@ -450,7 +450,6 @@ TEST(SemiFuture, MakeFutureFromSemiFutureReturnSemiFuture) {
   EXPECT_FALSE(future.isReady());
   p.setValue(42);
   e.loopOnce();
-  e.loopOnce();
   EXPECT_TRUE(future.isReady());
   ASSERT_EQ(future.value(), 42);
   ASSERT_EQ(result, 42);

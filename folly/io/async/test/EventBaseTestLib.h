@@ -1721,6 +1721,33 @@ TYPED_TEST_P(EventBaseTest, AlwaysEnqueueCallbackOrderTest) {
   EXPECT_EQ(num, 2);
 }
 
+TYPED_TEST_P(EventBaseTest1, InternalExternalCallbackOrderTest) {
+  size_t counter = 0;
+
+  FOLLY_SKIP_IF_NULLPTR_BACKEND(evb);
+
+  std::vector<size_t> calls;
+
+  folly::Function<void(size_t)> runInLoopRecursive = [&](size_t left) {
+    evb.runInLoop([&, left]() mutable {
+      calls.push_back(counter++);
+      if (--left == 0) {
+        evb.terminateLoopSoon();
+        return;
+      }
+      runInLoopRecursive(left);
+    });
+  };
+
+  evb.runInEventBaseThread([&] { runInLoopRecursive(5); });
+  for (size_t i = 0; i < 49; ++i) {
+    evb.runInEventBaseThread([&] { ++counter; });
+  }
+  evb.loopForever();
+
+  EXPECT_EQ(std::vector<size_t>({9, 20, 31, 42, 53}), calls);
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // Tests for latency calculations
 ///////////////////////////////////////////////////////////////////////////
@@ -2317,6 +2344,7 @@ REGISTER_TYPED_TEST_CASE_P(
     RunOnDestructionBasic,
     RunOnDestructionCancelled,
     RunOnDestructionAfterHandleDestroyed,
-    RunOnDestructionAddCallbackWithinCallback);
+    RunOnDestructionAddCallbackWithinCallback,
+    InternalExternalCallbackOrderTest);
 } // namespace test
 } // namespace folly

@@ -132,19 +132,6 @@ class EventBase::FunctionRunner
     : public NotificationQueue<EventBase::Func>::Consumer {
  public:
   void messageAvailable(Func&& msg) noexcept override {
-    // In libevent2, internal events do not break the loop.
-    // Most users would expect loop(), followed by runInEventBaseThread(),
-    // to break the loop and check if it should exit or not.
-    // To have similar bejaviour to libevent1.4, tell the loop to break here.
-    // Note that loop() may still continue to loop, but it will also check the
-    // stop_ flag as well as runInLoop callbacks, etc.
-    getEventBase()->getBackend()->eb_event_base_loopbreak();
-
-    if (!msg) {
-      // terminateLoopSoon() sends a null message just to
-      // wake up the loop.  We can ignore these messages.
-      return;
-    }
     msg();
   }
 };
@@ -574,24 +561,15 @@ void EventBase::terminateLoopSoon() {
   // Set stop to true, so the event loop will know to exit.
   stop_.store(true, std::memory_order_relaxed);
 
-  // Call event_base_loopbreak() so that libevent will exit the next time
-  // around the loop.
-  evb_->eb_event_base_loopbreak();
-
   // If terminateLoopSoon() is called from another thread,
   // the EventBase thread might be stuck waiting for events.
   // In this case, it won't wake up and notice that stop_ is set until it
   // receives another event.  Send an empty frame to the notification queue
   // so that the event loop will wake up even if there are no other events.
-  //
-  // We don't care about the return value of trySendFrame().  If it fails
-  // this likely means the EventBase already has lots of events waiting
-  // anyway.
   try {
-    queue_->putMessage(nullptr);
+    queue_->putMessage([&] { evb_->eb_event_base_loopbreak(); });
   } catch (...) {
-    // We don't care if putMessage() fails.  This likely means
-    // the EventBase already has lots of events waiting anyway.
+    // putMessage() can only fail when the queue is draining in ~EventBase.
   }
 }
 
