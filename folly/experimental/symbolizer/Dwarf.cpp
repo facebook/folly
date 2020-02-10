@@ -637,7 +637,29 @@ detail::Die Dwarf::getDieAtOffset(
   die.abbr = !cu.abbrCache.empty() && die.code < kMaxAbbreviationEntries
       ? cu.abbrCache[die.code - 1]
       : getAbbreviation(die.code, cu.abbrevOffset);
+
   return die;
+}
+
+detail::Die Dwarf::findDefinitionDie(
+    const detail::CompilationUnit& cu,
+    const detail::Die& die) const {
+  // Find the real definition instead of declaration.
+  folly::Optional<uint64_t> offset;
+  forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
+    // Incomplete, non-defining, or separate declaration corresponding to
+    // a declaration
+    if (attr.spec.name == DW_AT_specification) {
+      offset = boost::get<uint64_t>(attr.attrValue);
+      return false;
+    }
+    return true;
+  });
+
+  if (!offset.hasValue()) {
+    return die;
+  }
+  return getDieAtOffset(cu, cu.offset + offset.value());
 }
 
 size_t Dwarf::forEachChild(
@@ -695,10 +717,9 @@ void Dwarf::findSubProgramDieForAddress(
     detail::Die& subprogram) const {
   forEachChild(cu, die, [&](const detail::Die& childDie) {
     if (childDie.abbr.tag == DW_TAG_subprogram) {
-      uint64_t lowPc = 0;
-      uint64_t highPc = 0;
-      bool isHighPcAddr = false;
-      StringPiece name;
+      folly::Optional<uint64_t> lowPc;
+      folly::Optional<uint64_t> highPc;
+      folly::Optional<bool> isHighPcAddr;
       forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
         switch (attr.spec.name) {
           // Here DW_AT_ranges is not supported since it requires looking up
@@ -712,15 +733,16 @@ void Dwarf::findSubProgramDieForAddress(
             isHighPcAddr = (attr.spec.form == DW_FORM_addr);
             highPc = boost::get<uint64_t>(attr.attrValue);
             break;
-          case DW_AT_name:
-            name = boost::get<StringPiece>(attr.attrValue);
-            break;
         }
         // Iterate through all attributes until find all above.
         return true;
       });
-      if (address > lowPc &&
-          address < (isHighPcAddr ? highPc : lowPc + highPc)) {
+      if (!lowPc || !highPc || !isHighPcAddr) {
+        // Missing required fields. Keep searching other children.
+        return true;
+      }
+      if (address >= *lowPc &&
+          address < (*isHighPcAddr ? *highPc : *lowPc + *highPc)) {
         subprogram = childDie;
         return false;
       }
@@ -746,12 +768,12 @@ void Dwarf::findInlinedSubroutineDieForAddress(
     if (childDie.abbr.tag != DW_TAG_inlined_subroutine) {
       return true; // Skip DIE that is not inlined_subroutine.
     }
-    uint64_t lowPc = 0;
-    uint64_t highPc = 0;
-    bool isHighPcAddr = false;
-    uint64_t origin = 0;
-    uint64_t originRefType = 0;
-    uint64_t callLine = 0;
+    folly::Optional<uint64_t> lowPc;
+    folly::Optional<uint64_t> highPc;
+    folly::Optional<bool> isHighPcAddr;
+    folly::Optional<uint64_t> origin;
+    folly::Optional<uint64_t> originRefType;
+    folly::Optional<uint64_t> callLine;
     forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
       switch (attr.spec.name) {
         // Here DW_AT_ranges is not supported since it requires looking up
@@ -776,20 +798,35 @@ void Dwarf::findInlinedSubroutineDieForAddress(
       // Iterate through all until find all above attributes.
       return true;
     });
-    if (address < lowPc || address > (isHighPcAddr ? highPc : lowPc + highPc)) {
+    if (!lowPc || !highPc || !isHighPcAddr || !origin || !originRefType ||
+        !callLine) {
+      // Missing required fields. Keep searching other children.
+      return true;
+    }
+    if (address < *lowPc ||
+        address >= (*isHighPcAddr ? *highPc : *lowPc + *highPc)) {
       // Address doesn't match. Keep searching other children.
       return true;
     }
-    isrLoc[0].line = callLine;
-    if (originRefType == DW_FORM_ref1 || originRefType == DW_FORM_ref2 ||
-        originRefType == DW_FORM_ref4 || originRefType == DW_FORM_ref8 ||
-        originRefType == DW_FORM_ref_udata) {
-      isrLoc[0].die = getDieAtOffset(cu, cu.offset + origin);
+    isrLoc[0].line = *callLine;
+    if (*originRefType == DW_FORM_ref1 || *originRefType == DW_FORM_ref2 ||
+        *originRefType == DW_FORM_ref4 || *originRefType == DW_FORM_ref8 ||
+        *originRefType == DW_FORM_ref_udata) {
+      // These reference types identify any debugging information entry within
+      // the containing unit. This type of reference is an offset from the first
+      // byte of the compilation header for the compilation unit containing the
+      // reference.
+      isrLoc[0].die =
+          findDefinitionDie(cu, getDieAtOffset(cu, cu.offset + *origin));
       isrLoc.advance(1);
       findInlinedSubroutineDieForAddress(cu, childDie, address, isrLoc);
-    } else if (originRefType == DW_FORM_ref_addr) {
-      auto srcu = findCompilationUnit(debugInfo_, origin);
-      isrLoc[0].die = getDieAtOffset(cu, origin);
+    } else if (*originRefType == DW_FORM_ref_addr) {
+      // DW_FORM_ref_addr identifies any debugging information entry
+      // within a .debug_info section; in particular, it may refer to an entry
+      // in a different compilation unit from the unit containing the reference,
+      // and may refer to an entry in a different shared object.
+      auto srcu = findCompilationUnit(debugInfo_, *origin);
+      isrLoc[0].die = findDefinitionDie(srcu, getDieAtOffset(cu, *origin));
       isrLoc.advance(1);
       findInlinedSubroutineDieForAddress(srcu, childDie, address, isrLoc);
     }
