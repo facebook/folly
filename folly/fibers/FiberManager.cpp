@@ -78,10 +78,13 @@ struct hash<folly::fibers::FiberManager::Options> {
 namespace folly {
 namespace fibers {
 
-FOLLY_TLS FiberManager* FiberManager::currentFiberManager_ = nullptr;
-
 auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
   return std::hash<Options>()(options);
+}
+
+/* static */ FiberManager*& FiberManager::getCurrentFiberManager() {
+  static FOLLY_TLS FiberManager* currentFiberManager;
+  return currentFiberManager;
 }
 
 FiberManager::FiberManager(

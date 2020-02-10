@@ -202,7 +202,7 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
 #endif
 
   // Support nested FiberManagers
-  auto originalFiberManager = std::exchange(currentFiberManager_, this);
+  auto originalFiberManager = std::exchange(getCurrentFiberManager(), this);
 
   numUncaughtExceptions_ = uncaught_exceptions();
   currentException_ = std::current_exception();
@@ -227,7 +227,7 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
     if (!readyFibers_.empty()) {
       ensureLoopScheduled();
     }
-    std::swap(currentFiberManager_, originalFiberManager);
+    std::swap(getCurrentFiberManager(), originalFiberManager);
     CHECK_EQ(this, originalFiberManager);
   };
 
@@ -534,12 +534,12 @@ invoke_result_t<F> FiberManager::runInMainContext(F&& func) {
 }
 
 inline FiberManager& FiberManager::getFiberManager() {
-  assert(currentFiberManager_ != nullptr);
-  return *currentFiberManager_;
+  assert(getCurrentFiberManager() != nullptr);
+  return *getCurrentFiberManager();
 }
 
 inline FiberManager* FiberManager::getFiberManagerUnsafe() {
-  return currentFiberManager_;
+  return getCurrentFiberManager();
 }
 
 inline bool FiberManager::hasActiveFiber() const {
@@ -547,7 +547,7 @@ inline bool FiberManager::hasActiveFiber() const {
 }
 
 inline void FiberManager::yield() {
-  assert(currentFiberManager_ == this);
+  assert(getCurrentFiberManager() == this);
   assert(activeFiber_ != nullptr);
   assert(activeFiber_->state_ == Fiber::RUNNING);
   activeFiber_->preempt(Fiber::YIELDED);

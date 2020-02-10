@@ -490,7 +490,7 @@ class FiberManager : public ::folly::Executor {
    * When we are inside FiberManager loop this points to FiberManager. Otherwise
    * it's nullptr
    */
-  static FOLLY_TLS FiberManager* currentFiberManager_;
+  static FiberManager*& getCurrentFiberManager();
 
   /**
    * Allocator used to allocate stack for Fibers in the pool.
