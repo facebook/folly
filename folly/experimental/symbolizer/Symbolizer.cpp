@@ -458,11 +458,8 @@ void StringSymbolizePrinter::doPrint(StringPiece sp) {
   buf_.append(sp.data(), sp.size());
 }
 
-SafeStackTracePrinter::SafeStackTracePrinter(
-    size_t minSignalSafeElfCacheSize,
-    int fd)
+SafeStackTracePrinter::SafeStackTracePrinter(int fd)
     : fd_(fd),
-      elfCache_(std::max(countLoadedElfFiles(), minSignalSafeElfCacheSize)),
       printer_(
           fd,
           SymbolizePrinter::COLOR_IF_TTY,
@@ -481,6 +478,7 @@ void SafeStackTracePrinter::printSymbolizedStackTrace() {
 
   // Do our best to populate location info, process is going to terminate,
   // so performance isn't critical.
+  SignalSafeElfCache elfCache_;
   Symbolizer symbolizer(&elfCache_, LocationInfoMode::FULL);
   symbolizer.symbolize(*addresses_);
 

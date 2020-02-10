@@ -159,7 +159,7 @@ void testStackTracePrinter(StackTracePrinter& printer, int fd) {
 TEST(StackTraceTest, SafeStackTracePrinter) {
   test::TemporaryFile file;
 
-  SafeStackTracePrinter printer{10, file.fd()};
+  SafeStackTracePrinter printer{file.fd()};
 
   testStackTracePrinter<SafeStackTracePrinter>(printer, file.fd());
 }

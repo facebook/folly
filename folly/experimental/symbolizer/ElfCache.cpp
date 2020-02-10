@@ -17,6 +17,10 @@
 #include <folly/experimental/symbolizer/ElfCache.h>
 
 #include <link.h>
+#include <signal.h>
+
+#include <folly/ScopeGuard.h>
+#include <folly/portability/SysMman.h>
 
 /*
  * This is declared in `link.h' on Linux platforms, but apparently not on the
@@ -50,42 +54,44 @@ size_t countLoadedElfFiles() {
   return count;
 }
 
-SignalSafeElfCache::SignalSafeElfCache(size_t capacity) {
-  map_.reserve(capacity);
-  slots_.reserve(capacity);
-
-  // Preallocate
-  for (size_t i = 0; i < capacity; ++i) {
-    slots_.push_back(std::make_shared<ElfFile>());
-  }
-}
-
 std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
-  if (p.size() > Path::kMaxSize) {
+  struct cmp {
+    bool operator()(Entry const& a, StringPiece b) const noexcept {
+      return a.path < b;
+    }
+    bool operator()(StringPiece a, Entry const& b) const noexcept {
+      return a < b.path;
+    }
+  };
+
+  sigset_t newsigs;
+  sigfillset(&newsigs);
+  sigset_t oldsigs;
+  sigemptyset(&oldsigs);
+  sigprocmask(SIG_SETMASK, &newsigs, &oldsigs);
+  SCOPE_EXIT {
+    sigprocmask(SIG_SETMASK, &oldsigs, nullptr);
+  };
+
+  if (!state_) {
+    state_.emplace();
+  }
+
+  auto pos = state_->map.find(p, cmp{});
+  if (pos == state_->map.end()) {
+    state_->list.emplace_front(p, state_->alloc);
+    pos = state_->map.insert(state_->list.front()).first;
+  }
+
+  if (!pos->init) {
+    int r = pos->file->openAndFollow(pos->path.c_str());
+    pos->init = r == ElfFile::kSuccess;
+  }
+  if (!pos->init) {
     return nullptr;
   }
 
-  scratchpad_.assign(p);
-  auto pos = map_.find(scratchpad_);
-  if (pos != map_.end()) {
-    return slots_[pos->second];
-  }
-
-  size_t n = map_.size();
-  if (n >= slots_.size()) {
-    DCHECK_EQ(map_.size(), slots_.size());
-    return nullptr;
-  }
-
-  auto& f = slots_[n];
-
-  int r = f->openAndFollow(scratchpad_.data());
-  if (r != ElfFile::kSuccess) {
-    return nullptr;
-  }
-
-  map_[scratchpad_] = n;
-  return f;
+  return pos->file;
 }
 
 ElfCache::ElfCache(size_t capacity) : capacity_(capacity) {}

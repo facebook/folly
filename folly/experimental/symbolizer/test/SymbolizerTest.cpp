@@ -109,7 +109,7 @@ TEST_F(ElfCacheTest, TinyElfCache) {
 }
 
 TEST_F(ElfCacheTest, SignalSafeElfCache) {
-  SignalSafeElfCache cache(100);
+  SignalSafeElfCache cache;
   Symbolizer symbolizer(&cache);
   for (size_t i = 0; i < 2; ++i) {
     runElfCacheTest(symbolizer);

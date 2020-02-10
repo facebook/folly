@@ -18,13 +18,14 @@
 
 #include <climits> // for PATH_MAX
 #include <cstring>
+#include <forward_list>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 #include <boost/container/flat_map.hpp>
+#include <boost/intrusive/avl_set.hpp>
 #include <boost/intrusive/list.hpp>
 #include <boost/operators.hpp>
 #include <glog/logging.h>
@@ -32,6 +33,7 @@
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/hash/Hash.h>
+#include <folly/memory/ReentrantAllocator.h>
 
 namespace folly {
 namespace symbolizer {
@@ -48,66 +50,43 @@ class ElfCacheBase {
 };
 
 /**
- * Cache ELF files. Async-signal-safe: does memory allocation upfront.
- *
- * Will not grow; once the capacity is reached, lookups for files that
- * aren't already in the cache will fail (return nullptr).
+ * Cache ELF files. Async-signal-safe: does memory allocation via mmap.
  *
  * Not MT-safe. May not be used concurrently from multiple threads.
- *
- * NOTE that async-signal-safety is preserved only as long as the
- * SignalSafeElfCache object exists; after the SignalSafeElfCache object
- * is destroyed, destroying returned shared_ptr<ElfFile> objects may
- * cause ElfFile objects to be destroyed, and that's not async-signal-safe.
  */
 class SignalSafeElfCache : public ElfCacheBase {
  public:
-  explicit SignalSafeElfCache(size_t capacity);
-
   std::shared_ptr<ElfFile> getFile(StringPiece path) override;
 
- private:
-  // We can't use std::string (allocating memory is bad!) so we roll our
-  // own wrapper around a fixed-size, null-terminated string.
-  class Path : private boost::totally_ordered<Path> {
-   public:
-    Path() {
-      assign(folly::StringPiece());
+  using Path = std::basic_string< //
+      char,
+      std::char_traits<char>,
+      reentrant_allocator<char>>;
+
+  struct Entry : boost::intrusive::avl_set_base_hook<> {
+    Path path;
+    std::shared_ptr<ElfFile> file;
+    bool init = false;
+
+    explicit Entry(StringPiece p, reentrant_allocator<char> alloc) noexcept
+        : path{p.data(), p.size(), alloc},
+          file{std::allocate_shared<ElfFile>(alloc)} {}
+    Entry(Entry const&) = delete;
+    Entry& operator=(Entry const& that) = delete;
+
+    friend bool operator<(Entry const& a, Entry const& b) noexcept {
+      return a.path < b.path;
     }
-
-    explicit Path(StringPiece s) {
-      assign(s);
-    }
-
-    void assign(StringPiece s) {
-      DCHECK_LE(s.size(), kMaxSize);
-      if (!s.empty()) {
-        memcpy(data_, s.data(), s.size());
-      }
-      data_[s.size()] = '\0';
-    }
-
-    bool operator<(const Path& other) const {
-      return strcmp(data_, other.data_) < 0;
-    }
-
-    bool operator==(const Path& other) const {
-      return strcmp(data_, other.data_) == 0;
-    }
-
-    const char* data() const {
-      return data_;
-    }
-
-    static constexpr size_t kMaxSize = PATH_MAX - 1;
-
-   private:
-    char data_[kMaxSize + 1];
   };
 
-  Path scratchpad_; // Preallocated key for map_ lookups.
-  boost::container::flat_map<Path, int> map_;
-  std::vector<std::shared_ptr<ElfFile>> slots_;
+  struct State {
+    reentrant_allocator<void> alloc{
+        reentrant_allocator_options().block_size_lg(16).large_size_lg(12)};
+    std::forward_list<Entry, reentrant_allocator<Entry>> list{alloc};
+    // note: map entry dtors check that they have already been unlinked
+    boost::intrusive::avl_set<Entry> map; // must follow list
+  };
+  Optional<State> state_;
 };
 
 /**

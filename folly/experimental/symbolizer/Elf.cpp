@@ -66,7 +66,6 @@ ElfFile::OpenResult ElfFile::openNoThrow(
   FOLLY_SAFE_CHECK(fd_ == -1, "File already open");
   // Always close fd and unmap in case of failure along the way to avoid
   // check failure above if we leave fd != -1 and the object is recycled
-  // like it is inside SignalSafeElfCache
   auto guard = makeGuard([&] { reset(); });
   strncat(filepath_, name, kFilepathMaxLen - 1);
   fd_ = ::open(name, options.writable() ? O_RDWR : O_RDONLY);

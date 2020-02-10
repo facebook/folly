@@ -342,11 +342,7 @@ class StringSymbolizePrinter : public SymbolizePrinter {
  */
 class SafeStackTracePrinter {
  public:
-  static constexpr size_t kDefaultMinSignalSafeElfCacheSize = 500;
-
-  explicit SafeStackTracePrinter(
-      size_t minSignalSafeElfCacheSize = kDefaultMinSignalSafeElfCacheSize,
-      int fd = STDERR_FILENO);
+  explicit SafeStackTracePrinter(int fd = STDERR_FILENO);
 
   virtual ~SafeStackTracePrinter() {}
 
@@ -374,7 +370,6 @@ class SafeStackTracePrinter {
   static constexpr size_t kMaxStackTraceDepth = 100;
 
   int fd_;
-  SignalSafeElfCache elfCache_;
   FDSymbolizePrinter printer_;
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
