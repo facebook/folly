@@ -56,7 +56,8 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
 
   void open(
       std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {
-    sock_->connect(this, address_, timeout.count());
+    DCHECK_LE(timeout.count(), std::numeric_limits<int>::max());
+    sock_->connect(this, address_, folly::to_narrow(timeout.count()));
     eventBase_.loop();
     if (err_.hasValue()) {
       throw err_.value();
@@ -79,7 +80,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     if (err_.hasValue()) {
       throw err_.value();
     }
-    return len;
+    return folly::to_narrow(folly::to_signed(len));
   }
 
   void flush() {}
@@ -160,6 +161,6 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
       throw folly::AsyncSocketException(
           folly::AsyncSocketException::UNKNOWN, "eof");
     }
-    return len - readLen_;
+    return folly::to_narrow(folly::to_signed(len - readLen_));
   }
 };
