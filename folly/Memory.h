@@ -373,6 +373,13 @@ class SysAllocator {
  public:
   using value_type = T;
 
+  constexpr SysAllocator() = default;
+
+  constexpr SysAllocator(SysAllocator const&) = default;
+
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
+  constexpr SysAllocator(SysAllocator<U> const&) noexcept {}
+
   T* allocate(size_t count) {
     using lifted = typename detail::lift_void_to_char<T>::type;
     auto const p = std::malloc(sizeof(lifted) * count);
@@ -483,8 +490,10 @@ class AlignedSysAllocator : private Align {
       std::enable_if_t<std::is_default_constructible<S>::value, int> = 0>
   constexpr AlignedSysAllocator() noexcept(noexcept(Align())) : Align() {}
 
-  template <typename U>
-  constexpr explicit AlignedSysAllocator(
+  constexpr AlignedSysAllocator(AlignedSysAllocator const&) = default;
+
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
+  constexpr AlignedSysAllocator(
       AlignedSysAllocator<U, Align> const& other) noexcept
       : Align(other.align()) {}
 
@@ -540,10 +549,12 @@ class CxxAllocatorAdaptor {
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap = std::true_type;
 
-  explicit CxxAllocatorAdaptor(Inner& ref) : ref_(ref) {}
+  constexpr explicit CxxAllocatorAdaptor(Inner& ref) : ref_(ref) {}
 
-  template <typename U>
-  explicit CxxAllocatorAdaptor(CxxAllocatorAdaptor<U, Inner> const& other)
+  constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor const&) = default;
+
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
+  constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor<U, Inner> const& other)
       : ref_(other.ref_) {}
 
   T* allocate(std::size_t n) {

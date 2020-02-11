@@ -158,7 +158,7 @@ class reentrant_allocator : private detail::reentrant_allocator_base {
 
   using base::base;
 
-  template <typename U>
+  template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
   /* implicit */ reentrant_allocator(
       reentrant_allocator<U> const& that) noexcept
       : base{that} {}
