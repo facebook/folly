@@ -133,29 +133,27 @@ struct IndexingTag {};
 
 template <typename Func, typename Item, typename Iter>
 using ForEachImplTag = std::conditional_t<
-    is_invocable<Func, Item, index_constant<0>, Iter>::value,
+    is_invocable_v<Func, Item, index_constant<0>, Iter>,
     index_constant<3>,
     std::conditional_t<
-        is_invocable<Func, Item, index_constant<0>>::value,
+        is_invocable_v<Func, Item, index_constant<0>>,
         index_constant<2>,
         std::conditional_t<
-            is_invocable<Func, Item>::value,
+            is_invocable_v<Func, Item>,
             index_constant<1>,
             void>>>;
 
 template <
     typename Func,
     typename... Args,
-    std::enable_if_t<is_invocable_r<LoopControl, Func, Args...>::value, int> =
-        0>
+    std::enable_if_t<is_invocable_r_v<LoopControl, Func, Args...>, int> = 0>
 LoopControl invoke_returning_loop_control(Func&& f, Args&&... a) {
   return static_cast<Func&&>(f)(static_cast<Args&&>(a)...);
 }
 template <
     typename Func,
     typename... Args,
-    std::enable_if_t<!is_invocable_r<LoopControl, Func, Args...>::value, int> =
-        0>
+    std::enable_if_t<!is_invocable_r_v<LoopControl, Func, Args...>, int> = 0>
 LoopControl invoke_returning_loop_control(Func&& f, Args&&... a) {
   static_assert(
       std::is_void<invoke_result_t<Func, Args...>>::value,

@@ -86,7 +86,7 @@ class LockInterfaceDispatcher {
  private:
   // assert that the mutex type has basic lock and unlock functions
   static_assert(
-      folly::is_invocable<member::lock_invoker, Mutex>::value,
+      folly::is_invocable_v<member::lock_invoker, Mutex>,
       "The mutex type must support lock and unlock functions");
 
   using duration = std::chrono::milliseconds;
@@ -94,11 +94,11 @@ class LockInterfaceDispatcher {
  public:
   static constexpr bool has_lock_unique = true;
   static constexpr bool has_lock_timed =
-      folly::is_invocable<member::try_lock_for_invoker, Mutex, duration>::value;
+      folly::is_invocable_v<member::try_lock_for_invoker, Mutex, duration>;
   static constexpr bool has_lock_shared =
-      folly::is_invocable<member::lock_shared_invoker, Mutex>::value;
+      folly::is_invocable_v<member::lock_shared_invoker, Mutex>;
   static constexpr bool has_lock_upgrade =
-      folly::is_invocable<member::lock_upgrade_invoker, Mutex>::value;
+      folly::is_invocable_v<member::lock_upgrade_invoker, Mutex>;
 };
 
 /**

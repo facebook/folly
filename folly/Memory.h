@@ -472,9 +472,7 @@ class AlignedSysAllocator : private Align {
 
  public:
   static_assert(std::is_nothrow_copy_constructible<Align>::value, "");
-  static_assert(
-      is_nothrow_invocable_r<std::size_t, Align, std::size_t>::value,
-      "");
+  static_assert(is_nothrow_invocable_r_v<std::size_t, Align, std::size_t>, "");
 
   using value_type = T;
 

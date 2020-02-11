@@ -36,7 +36,7 @@ template <
     class Map,
     typename Key = typename Map::key_type,
     typename Value = typename Map::mapped_type,
-    typename std::enable_if<!is_invocable<Value>::value>::type* = nullptr>
+    typename std::enable_if<!is_invocable_v<Value>>::type* = nullptr>
 typename Map::mapped_type
 get_default(const Map& map, const Key& key, Value&& dflt) {
   using M = typename Map::mapped_type;
@@ -53,7 +53,7 @@ template <
     typename Key = typename Map::key_type,
     typename Func,
     typename = typename std::enable_if<
-        is_invocable_r<typename Map::mapped_type, Func>::value>::type>
+        is_invocable_r_v<typename Map::mapped_type, Func>>::type>
 typename Map::mapped_type
 get_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
@@ -152,7 +152,7 @@ template <
     typename Key = typename Map::key_type,
     typename Func,
     typename = typename std::enable_if<
-        is_invocable_r<const typename Map::mapped_type&, Func>::value>::type,
+        is_invocable_r_v<const typename Map::mapped_type&, Func>>::type,
     typename = typename std::enable_if<
         std::is_reference<invoke_result_t<Func>>::value>::type>
 const typename Map::mapped_type&

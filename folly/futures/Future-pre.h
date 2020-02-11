@@ -116,10 +116,10 @@ struct argResult {
 template <typename T, typename F>
 struct callableResult {
   typedef typename std::conditional<
-      is_invocable<F>::value,
+      is_invocable_v<F>,
       detail::argResult<false, F>,
       typename std::conditional<
-          is_invocable<F, T&&>::value,
+          is_invocable_v<F, T&&>,
           detail::argResult<false, F, T&&>,
           detail::argResult<true, F, Try<T>&&>>::type>::type Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
@@ -129,10 +129,10 @@ struct callableResult {
 template <typename T, typename F>
 struct executorCallableResult {
   typedef typename std::conditional<
-      is_invocable<F, Executor::KeepAlive<>&&>::value,
+      is_invocable_v<F, Executor::KeepAlive<>&&>,
       detail::argResult<false, F, Executor::KeepAlive<>&&>,
       typename std::conditional<
-          is_invocable<F, Executor::KeepAlive<>&&, T&&>::value,
+          is_invocable_v<F, Executor::KeepAlive<>&&, T&&>,
           detail::argResult<false, F, Executor::KeepAlive<>&&, T&&>,
           detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&>>::
           type>::type Arg;
@@ -143,7 +143,7 @@ struct executorCallableResult {
 template <
     typename T,
     typename F,
-    typename = std::enable_if_t<is_invocable<F, Try<T>&&>::value>>
+    typename = std::enable_if_t<is_invocable_v<F, Try<T>&&>>>
 struct tryCallableResult {
   typedef detail::argResult<true, F, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
@@ -154,7 +154,7 @@ struct tryCallableResult {
 template <
     typename T,
     typename F,
-    typename = std::enable_if_t<is_invocable<F, Executor*, Try<T>&&>::value>>
+    typename = std::enable_if_t<is_invocable_v<F, Executor*, Try<T>&&>>>
 struct tryExecutorCallableResult {
   typedef detail::argResult<true, F, Executor::KeepAlive<>&&, Try<T>&&> Arg;
   typedef isFutureOrSemiFuture<typename Arg::Result> ReturnsFuture;
@@ -220,7 +220,7 @@ class DeferredExecutor;
 template <class T, class F>
 auto makeExecutorLambda(
     F&& func,
-    typename std::enable_if<is_invocable<F>::value, int>::type = 0) {
+    typename std::enable_if<is_invocable_v<F>, int>::type = 0) {
   return
       [func = std::forward<F>(func)](Executor::KeepAlive<>&&, auto&&) mutable {
         return std::forward<F>(func)();
@@ -230,7 +230,7 @@ auto makeExecutorLambda(
 template <class T, class F>
 auto makeExecutorLambda(
     F&& func,
-    typename std::enable_if<!is_invocable<F>::value, int>::type = 0) {
+    typename std::enable_if<!is_invocable_v<F>, int>::type = 0) {
   using R = futures::detail::callableResult<T, F&&>;
   return [func = std::forward<F>(func)](
              Executor::KeepAlive<>&&,

@@ -61,7 +61,7 @@ class ThreadLocal {
  public:
   constexpr ThreadLocal() : constructor_([]() { return new T(); }) {}
 
-  template <typename F, std::enable_if_t<is_invocable_r<T*, F>::value, int> = 0>
+  template <typename F, std::enable_if_t<is_invocable_r_v<T*, F>, int> = 0>
   explicit ThreadLocal(F&& constructor)
       : constructor_(std::forward<F>(constructor)) {}
 

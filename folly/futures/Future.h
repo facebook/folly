@@ -1525,7 +1525,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated(
       "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
-      !is_invocable<F, exception_wrapper>::value &&
+      !is_invocable_v<F, exception_wrapper> &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func) && = delete;
@@ -1545,7 +1545,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated(
       "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
-      !is_invocable<F, exception_wrapper>::value &&
+      !is_invocable_v<F, exception_wrapper> &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func) && = delete;
@@ -1565,7 +1565,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated(
       "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
-      is_invocable<F, exception_wrapper>::value &&
+      is_invocable_v<F, exception_wrapper> &&
           futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func) && = delete;
@@ -1585,7 +1585,7 @@ class Future : private futures::detail::FutureBase<T> {
   [[deprecated(
       "onError loses the attached executor and is weakly typed. Please move to thenError instead.")]]
   typename std::enable_if<
-      is_invocable<F, exception_wrapper>::value &&
+      is_invocable_v<F, exception_wrapper> &&
           !futures::detail::Extract<F>::ReturnsFuture::value,
       Future<T>>::type
   onError(F&& func) && = delete;
@@ -2043,8 +2043,7 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag =
-        std::enable_if_t<is_invocable<F, typename ItT::value_type&&>::value>,
+    class Tag = std::enable_if_t<is_invocable_v<F, typename ItT::value_type&&>>,
     class Result = typename decltype(
         std::declval<ItT>().thenValue(std::declval<F>()))::value_type>
 std::vector<Future<Result>> mapValue(It first, It last, F func);
@@ -2058,7 +2057,7 @@ template <
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
     class Tag =
-        std::enable_if_t<!is_invocable<F, typename ItT::value_type&&>::value>,
+        std::enable_if_t<!is_invocable_v<F, typename ItT::value_type&&>>,
     class Result = typename decltype(
         std::declval<ItT>().thenTry(std::declval<F>()))::value_type>
 std::vector<Future<Result>> mapTry(It first, It last, F func, int = 0);
@@ -2072,8 +2071,7 @@ template <
     class It,
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
-    class Tag =
-        std::enable_if_t<is_invocable<F, typename ItT::value_type&&>::value>,
+    class Tag = std::enable_if_t<is_invocable_v<F, typename ItT::value_type&&>>,
     class Result =
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
@@ -2090,7 +2088,7 @@ template <
     class F,
     class ItT = typename std::iterator_traits<It>::value_type,
     class Tag =
-        std::enable_if_t<!is_invocable<F, typename ItT::value_type&&>::value>,
+        std::enable_if_t<!is_invocable_v<F, typename ItT::value_type&&>>,
     class Result =
         typename decltype(std::move(std::declval<ItT>())
                               .via(std::declval<Executor*>())
@@ -2497,7 +2495,7 @@ window(Executor::KeepAlive<> executor, Collection input, F func, size_t n);
 
 template <typename F, typename T, typename ItT>
 using MaybeTryArg = typename std::
-    conditional<is_invocable<F, T&&, Try<ItT>&&>::value, Try<ItT>, ItT>::type;
+    conditional<is_invocable_v<F, T&&, Try<ItT>&&>, Try<ItT>, ItT>::type;
 
 /** repeatedly calls func on every result, e.g.
     reduce(reduce(reduce(T initial, result of first), result of second), ...)

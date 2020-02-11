@@ -188,7 +188,7 @@ struct BenchmarkSuspender {
  * function).
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable<Lambda, unsigned>::value>::type
+typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
@@ -213,7 +213,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  * (iteration occurs outside the function).
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable<Lambda>::value>::type
+typename std::enable_if<folly::is_invocable_v<Lambda>>::type
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](unsigned int times) {
     unsigned int niter = 0;
@@ -230,7 +230,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  */
 template <typename Lambda>
 typename std::enable_if<
-    folly::is_invocable<Lambda, UserCounters&, unsigned>::value>::type
+    folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
@@ -254,7 +254,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
 }
 
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable<Lambda, UserCounters&>::value>::type
+typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
     unsigned int niter = 0;

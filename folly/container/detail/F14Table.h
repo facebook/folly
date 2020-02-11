@@ -180,7 +180,7 @@ struct StdNodeReplica<
     V,
     H,
     std::enable_if_t<
-        !StdIsFastHash<H>::value || !is_nothrow_invocable<H, K>::value>> {
+        !StdIsFastHash<H>::value || !is_nothrow_invocable_v<H, K>>> {
   void* next;
   V value;
   std::size_t hash;

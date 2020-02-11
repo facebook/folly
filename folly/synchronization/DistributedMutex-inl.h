@@ -645,7 +645,7 @@ void throwIfExceptionOccurred(Request&, Waiter& waiter, bool exception) {
   // avoid leaks.  If we don't destroy the exception_ptr in storage, the
   // refcount for the internal exception will never hit zero, thereby leaking
   // memory
-  if (UNLIKELY(!folly::is_nothrow_invocable<const F&>{} && exception)) {
+  if (UNLIKELY(!folly::is_nothrow_invocable_v<const F&> && exception)) {
     auto storage = &waiter.storage_;
     auto exc = folly::launder(reinterpret_cast<std::exception_ptr*>(storage));
     auto copy = std::move(*exc);
