@@ -83,8 +83,8 @@ auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
 }
 
 /* static */ FiberManager*& FiberManager::getCurrentFiberManager() {
-  static FOLLY_TLS FiberManager* currentFiberManager;
-  return currentFiberManager;
+  struct Tag {};
+  return SingletonThreadLocal<FiberManager*, Tag>::get();
 }
 
 FiberManager::FiberManager(
