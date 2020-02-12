@@ -1098,8 +1098,8 @@ DistributedMutex<Atomic, TimePublishing>::lock() {
 }
 
 template <template <typename> class Atomic, bool TimePublishing>
-template <typename Rep, typename Period, typename Func, typename ReturnType>
-folly::Optional<ReturnType>
+template <typename Rep, typename Period, typename Func>
+folly::Optional<invoke_result_t<Func&>>
 DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
     const std::chrono::duration<Rep, Period>& duration,
     Func func) {
@@ -1115,8 +1115,8 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
 }
 
 template <template <typename> class Atomic, bool TimePublishing>
-template <typename Clock, typename Duration, typename Func, typename ReturnType>
-folly::Optional<ReturnType>
+template <typename Clock, typename Duration, typename Func>
+folly::Optional<invoke_result_t<Func&>>
 DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
     const std::chrono::time_point<Clock, Duration>& deadline,
     Func func) {
