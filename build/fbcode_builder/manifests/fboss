@@ -31,6 +31,7 @@ libcurl
 libnl
 libsai
 OpenNSA
+re2
 
 [shipit.pathmap]
 fbcode/fboss/github = .
