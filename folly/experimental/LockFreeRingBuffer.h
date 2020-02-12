@@ -59,10 +59,6 @@ class LockFreeRingBuffer {
       std::is_nothrow_default_constructible<T>::value,
       "Element type must be nothrow default constructible");
 
-  static_assert(
-      folly::is_trivially_copyable<T>::value,
-      "Element type must be trivially copyable");
-
  public:
   /// Opaque pointer to a past or future write.
   /// Can be moved relative to its current location but not in absolute terms.
@@ -185,10 +181,6 @@ class LockFreeRingBuffer {
 namespace detail {
 template <typename T, template <typename> class Atom>
 class RingBufferSlot {
-  void copy(T& dest, T& src) {
-    memcpy(&dest, &src, sizeof(T));
-  }
-
   template <typename V>
   void copy(V& dest, T& src) {
     dest = src;
