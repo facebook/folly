@@ -189,7 +189,7 @@ void Symbolizer::symbolize(
 
       // Get the unrelocated, ELF-relative address by normalizing via the
       // address at which the object is loaded.
-      auto const adjusted = addr - lmap->l_addr;
+      auto const adjusted = addr - (uintptr_t)lmap->l_addr;
       size_t numInlined = 0;
       if (elfFile->getSectionContainingAddress(adjusted)) {
         if (mode_ == LocationInfoMode::FULL_WITH_INLINE &&
@@ -374,7 +374,7 @@ void SymbolizePrinter::println(
 namespace {
 
 int getFD(const std::ios& stream) {
-#if defined(__GNUC__) && FOLLY_HAS_RTTI
+#if (defined(__GNUC__) && !defined(__clang__)) && FOLLY_HAS_RTTI
   std::streambuf* buf = stream.rdbuf();
   using namespace __gnu_cxx;
 

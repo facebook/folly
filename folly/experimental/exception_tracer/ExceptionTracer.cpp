@@ -18,6 +18,7 @@
 
 #include <exception>
 #include <iostream>
+#include <cstdlib>
 
 #include <dlfcn.h>
 
@@ -200,6 +201,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   return exceptions;
 }
 
+#if !defined(__clang__)
 namespace {
 
 std::terminate_handler origTerminate = abort;
@@ -238,6 +240,7 @@ void installHandlers() {
   };
   static Once once;
 }
+#endif
 
 } // namespace exception_tracer
 } // namespace folly

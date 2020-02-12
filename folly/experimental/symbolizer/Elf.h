@@ -35,12 +35,26 @@
 namespace folly {
 namespace symbolizer {
 
+#if !defined(__FreeBSD__)
 using ElfAddr = ElfW(Addr);
 using ElfEhdr = ElfW(Ehdr);
 using ElfOff = ElfW(Off);
 using ElfPhdr = ElfW(Phdr);
 using ElfShdr = ElfW(Shdr);
 using ElfSym = ElfW(Sym);
+#else
+using ElfAddr = Elf_Addr;
+using ElfEhdr = Elf_Ehdr;
+using ElfOff = Elf_Off;
+using ElfPhdr = Elf_Phdr;
+using ElfShdr = Elf_Shdr;
+using ElfSym = Elf_Sym;
+#if !defined(__LP64__)
+#define __ELF_NATIVE_CLASS 32
+#else
+#define __ELF_NATIVE_CLASS 64
+#endif
+#endif
 
 /**
  * ELF file parser.

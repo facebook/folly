@@ -26,6 +26,7 @@
 
 namespace __cxxabiv1 {
 
+#if !defined(__FreeBSD__)
 struct __cxa_exception {
   std::type_info* exceptionType;
   void (*exceptionDestructor)(void*);
@@ -52,5 +53,6 @@ extern "C" {
 __cxa_eh_globals* __cxa_get_globals(void) noexcept;
 __cxa_eh_globals* __cxa_get_globals_fast(void) noexcept;
 }
+#endif
 
 } // namespace __cxxabiv1

@@ -361,8 +361,15 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printDec(getpid());
   print(" (pthread TID ");
   printHex((uint64_t)pthread_self());
+#if !defined(__FreeBSD__)
   print(") (linux TID ");
   printDec(syscall(__NR_gettid));
+#else
+  long tid;
+  thr_self(&tid);
+  print(") (freebsd TID ");
+  printDec(tid);
+#endif
 
   // Kernel-sourced signals don't give us useful info for pid/uid.
   if (siginfo->si_code <= 0) {
