@@ -498,8 +498,10 @@ ssize_t EventBase::loopKeepAliveCount() {
 void EventBase::applyLoopKeepAlive() {
   auto keepAliveCount = loopKeepAliveCount();
   // Make sure default VirtualEventBase won't hold EventBase::loop() forever.
-  if (virtualEventBase_ && virtualEventBase_->keepAliveCount() == 1) {
-    --keepAliveCount;
+  if (auto virtualEventBase = tryGetVirtualEventBase()) {
+    if (virtualEventBase->keepAliveCount() == 1) {
+      --keepAliveCount;
+    }
   }
 
   if (loopKeepAliveActive_ && keepAliveCount == 0) {
@@ -842,6 +844,13 @@ VirtualEventBase& EventBase::getVirtualEventBase() {
   });
 
   return *virtualEventBase_;
+}
+
+VirtualEventBase* EventBase::tryGetVirtualEventBase() {
+  if (folly::test_once(virtualEventBaseInitFlag_)) {
+    return virtualEventBase_.get();
+  }
+  return nullptr;
 }
 
 EventBase* EventBase::getEventBase() {

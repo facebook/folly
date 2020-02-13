@@ -828,6 +828,8 @@ class EventBase : public TimeoutManager,
   }
 
  private:
+  folly::VirtualEventBase* tryGetVirtualEventBase();
+
   void applyLoopKeepAlive();
 
   ssize_t loopKeepAliveCount();
