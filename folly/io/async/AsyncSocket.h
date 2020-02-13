@@ -906,6 +906,13 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   }
 
   /**
+   * Whether socket should be closed on write failure (true by default).
+   */
+  void setCloseOnFailedWrite(bool closeOnFailedWrite) {
+    closeOnFailedWrite_ = closeOnFailedWrite;
+  }
+
+  /**
    * writeReturn is the total number of bytes written, or WRITE_ERROR on error.
    * If no data has been written, 0 is returned.
    * exception is a more specific exception that cause a write error.
@@ -1349,6 +1356,8 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       nullptr};
   mutable std::unique_ptr<const AsyncTransportCertificate> selfCertData_{
       nullptr};
+
+  bool closeOnFailedWrite_{true};
 };
 #ifdef _MSC_VER
 #pragma vtordisp(pop)

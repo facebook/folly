@@ -2747,13 +2747,17 @@ void AsyncSocket::failWrite(
   VLOG(4) << "AsyncSocket(this=" << this << ", fd=" << fd_
           << ", state=" << state_ << " host=" << addr_.describe()
           << "): failed while writing in " << fn << "(): " << ex.what();
-  startFail();
+  if (closeOnFailedWrite_) {
+    startFail();
+  }
 
   if (callback != nullptr) {
     callback->writeErr(bytesWritten, ex);
   }
 
-  finishFail();
+  if (closeOnFailedWrite_) {
+    finishFail();
+  }
 }
 
 void AsyncSocket::failAllWrites(const AsyncSocketException& ex) {
