@@ -813,12 +813,22 @@ install(FILES sqlite3.h sqlite3ext.h DESTINATION include)
 
 class CargoBuilder(BuilderBase):
     def __init__(
-        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, build_doc, loader
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        build_doc,
+        workspace_dir,
+        loader,
     ):
         super(CargoBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
         self.build_doc = build_doc
+        self.ws_dir = workspace_dir
         self.loader = loader
 
     def run_cargo(self, install_dirs, operation, args=None):
@@ -832,10 +842,13 @@ class CargoBuilder(BuilderBase):
             "--workspace",
             "-j%s" % self.build_opts.num_jobs,
         ] + args
-        self._run_cmd(cmd, cwd=self.build_source_dir(), env=env)
+        self._run_cmd(cmd, cwd=self.workspace_dir(), env=env)
 
     def build_source_dir(self):
         return os.path.join(self.build_dir, "source")
+
+    def workspace_dir(self):
+        return os.path.join(self.build_source_dir(), self.ws_dir)
 
     def recreate_dir(self, src, dst):
         if os.path.isdir(dst):
@@ -862,7 +875,7 @@ git-fetch-with-cli = true
                 )
             )
 
-        self._patchup_workspace(build_source_dir)
+        self._patchup_workspace()
 
         try:
             from getdeps.facebook.rust import vendored_crates
@@ -881,15 +894,14 @@ git-fetch-with-cli = true
         if self.build_doc:
             self.run_cargo(install_dirs, "doc", ["--no-deps"])
 
-    def _patchup_workspace(self, build_source_dir):
+    def _patchup_workspace(self):
         """
-        This method makes a lot of assumptions about the state of the project
-        and its cargo dependendies:
-        1. There is a virtual manifest with workspace in the root of this project
-        2. Crates from cargo dependencies can be extracted from Cargo.toml files
+        This method makes some assumptions about the state of the project and
+        its cargo dependendies:
+        1. Crates from cargo dependencies can be extracted from Cargo.toml files
            using _extract_crates function. It is using a heuristic so check its
            code to understand how it is done.
-        3. The extracted cargo dependencies crates can be found in the
+        2. The extracted cargo dependencies crates can be found in the
            dependency's install dir using _resolve_crate_to_path function
            which again is using a heuristic.
 
@@ -902,9 +914,10 @@ git-fetch-with-cli = true
         Exception. There migh be more cases where the code will silently pass
         producing bad results.
         """
-        config = self._resolve_config(build_source_dir)
+        workspace_dir = self.workspace_dir()
+        config = self._resolve_config()
         if config:
-            with open(os.path.join(build_source_dir, "Cargo.toml"), "a") as f:
+            with open(os.path.join(workspace_dir, "Cargo.toml"), "a") as f:
                 # A fake manifest has to be crated to change the virtual
                 # manifest into a non-virtual. The virtual manifests are limited
                 # in many ways and the inability to define patches on them is
@@ -923,7 +936,7 @@ path = "/dev/null"
                 )
                 f.write(config)
 
-    def _resolve_config(self, build_source_dir):
+    def _resolve_config(self):
         """
         Returns a configuration to be put inside root Cargo.toml file which
         patches the dependencies git code with local getdeps versions.
@@ -931,7 +944,7 @@ path = "/dev/null"
         """
         dep_to_git = self._resolve_dep_to_git()
         dep_to_crates = CargoBuilder._resolve_dep_to_crates(
-            build_source_dir, dep_to_git
+            self.build_source_dir(), dep_to_git
         )
 
         config = []
@@ -960,7 +973,7 @@ path = "/dev/null"
         """
         For each direct dependency of the currently build manifest check if it
         is also cargo-builded and if yes then extract it's git configs and
-    install dir
+        install dir
         """
         dependencies = self.manifest.get_section_as_dict("dependencies", ctx=self.ctx)
         if not dependencies:
