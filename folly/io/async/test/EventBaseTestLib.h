@@ -840,23 +840,25 @@ TYPED_TEST_P(EventBaseTest, WritePartial) {
   }
 }
 
+namespace {
+class DestroyHandler : public AsyncTimeout {
+ public:
+  DestroyHandler(EventBase* eb, EventHandler* h)
+      : AsyncTimeout(eb), handler_(h) {}
+
+  void timeoutExpired() noexcept override {
+    delete handler_;
+  }
+
+ private:
+  EventHandler* handler_;
+};
+} // namespace
+
 /**
  * Test destroying a registered EventHandler
  */
-TYPED_TEST_P(EventBaseTest, DestroyHandler) {
-  class DestroyHandler : public AsyncTimeout {
-   public:
-    DestroyHandler(EventBase* eb, EventHandler* h)
-        : AsyncTimeout(eb), handler_(h) {}
-
-    void timeoutExpired() noexcept override {
-      delete handler_;
-    }
-
-   private:
-    EventHandler* handler_;
-  };
-
+TYPED_TEST_P(EventBaseTest, DestroyingHandler) {
   FOLLY_SKIP_IF_NULLPTR_BACKEND(eb);
   SocketPair sp;
 
@@ -1115,23 +1117,25 @@ TYPED_TEST_P(EventBaseTest, CancelTimeout) {
   T_CHECK_TIMEOUT(start, end, std::chrono::milliseconds(50));
 }
 
+namespace {
+class DestroyTimeout : public AsyncTimeout {
+ public:
+  DestroyTimeout(EventBase* eb, AsyncTimeout* t)
+      : AsyncTimeout(eb), timeout_(t) {}
+
+  void timeoutExpired() noexcept override {
+    delete timeout_;
+  }
+
+ private:
+  AsyncTimeout* timeout_;
+};
+} // namespace
+
 /**
  * Test destroying a scheduled timeout object
  */
-TYPED_TEST_P(EventBaseTest, DestroyTimeout) {
-  class DestroyTimeout : public AsyncTimeout {
-   public:
-    DestroyTimeout(EventBase* eb, AsyncTimeout* t)
-        : AsyncTimeout(eb), timeout_(t) {}
-
-    void timeoutExpired() noexcept override {
-      delete timeout_;
-    }
-
-   private:
-    AsyncTimeout* timeout_;
-  };
-
+TYPED_TEST_P(EventBaseTest, DestroyingTimeout) {
   FOLLY_SKIP_IF_NULLPTR_BACKEND(eb);
 
   TestTimeout* t1 = new TestTimeout(&eb);
@@ -2295,14 +2299,14 @@ REGISTER_TYPED_TEST_CASE_P(
     ReadWritePersist,
     ReadPartial,
     WritePartial,
-    DestroyHandler,
+    DestroyingHandler,
     RunAfterDelay,
     RunAfterDelayDestruction,
     BasicTimeouts,
     ReuseTimeout,
     RescheduleTimeout,
     CancelTimeout,
-    DestroyTimeout,
+    DestroyingTimeout,
     ScheduledFn,
     ScheduledFnAt,
     RunInThread,
