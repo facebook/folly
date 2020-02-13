@@ -322,12 +322,22 @@ class BlockingWaitExecutor final : public folly::DrivableExecutor {
   }
 
   void keepAliveRelease() override {
-    auto keepAliveCount =
-        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
-    DCHECK(keepAliveCount > 0);
-    if (keepAliveCount == 1) {
-      add([] {});
-    }
+    auto keepAliveCount = keepAliveCount_.load(std::memory_order_relaxed);
+    do {
+      DCHECK(keepAliveCount > 0);
+      if (keepAliveCount == 1) {
+        add([this] {
+          // the final count *must* be released from this executor or else if we
+          // are mid-destructor we have a data race
+          keepAliveCount_.fetch_sub(1, std::memory_order_relaxed);
+        });
+        return;
+      }
+    } while (!keepAliveCount_.compare_exchange_weak(
+        keepAliveCount,
+        keepAliveCount - 1,
+        std::memory_order_release,
+        std::memory_order_relaxed));
   }
 
   folly::Synchronized<std::vector<Func>> queue_;

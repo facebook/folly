@@ -301,4 +301,32 @@ TEST_F(BlockingWaitTest, DrivableExecutor) {
       &executor);
 }
 
+TEST_F(BlockingWaitTest, ReleaseExecutorFromAnotherThread) {
+  auto fn = []() {
+    auto c1 = folly::makePromiseContract<folly::Executor::KeepAlive<>>();
+    auto c2 = folly::makePromiseContract<folly::Unit>();
+    std::thread t{[&] {
+      auto e = std::move(c1.second).get();
+      c2.first.setValue(folly::Unit{});
+      std::this_thread::sleep_for(std::chrono::microseconds(1));
+      e = {};
+    }};
+    folly::ManualExecutor executor;
+    folly::coro::blockingWait([&]() -> folly::coro::Task<void> {
+      folly::Executor::KeepAlive<> taskExecutor =
+          co_await folly::coro::co_current_executor;
+      c1.first.setValue(std::move(taskExecutor));
+      co_await std::move(c2.second);
+    }());
+    t.join();
+  };
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 100; ++i) {
+    threads.emplace_back(fn);
+  }
+  for (auto& t : threads) {
+    t.join();
+  }
+}
+
 #endif
