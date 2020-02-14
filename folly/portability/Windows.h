@@ -26,6 +26,12 @@
 // These have to be this way because we define our own versions
 // of close(), because the normal Windows versions don't handle
 // sockets at all.
+
+// There are some ordering issues internally in the SDK; we need to ensure
+// stdio.h is included prior to including direct.h and io.h with internal names
+// disabled to ensure all of the normal names get declared properly.
+#include <stdio.h>
+
 #ifndef __STDC__
 /* nolint */
 #define __STDC__ 1
