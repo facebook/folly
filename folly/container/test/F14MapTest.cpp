@@ -1446,6 +1446,72 @@ TEST(F14FastMap, moveOnly) {
       F14FastMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
 }
 
+template <typename M>
+void runEraseIntoTest() {
+  M t0;
+  M t1;
+
+  auto emplaceIntoT0 = [&t0](auto&& key, auto&& value) {
+    EXPECT_FALSE(key.destroyed);
+    t0.emplace(std::move(key), std::move(value));
+  };
+  auto emplaceIntoT0Mut = [&](typename M::key_type&& key,
+                              typename M::mapped_type&& value) mutable {
+    emplaceIntoT0(std::move(key), std::move(value));
+  };
+
+  t0.emplace(10, 0);
+  t1.emplace(20, 0);
+  t1.eraseInto(t1.begin(), emplaceIntoT0);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 2);
+  EXPECT_TRUE(t0.find(10) != t0.end());
+  EXPECT_TRUE(t0.find(20) != t0.end());
+
+  t1.emplace(20, 0);
+  t1.emplace(30, 0);
+  t1.emplace(40, 0);
+  t1.eraseInto(t1.begin(), t1.end(), emplaceIntoT0Mut);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 4);
+  EXPECT_TRUE(t0.find(30) != t0.end());
+  EXPECT_TRUE(t0.find(40) != t0.end());
+
+  t1.emplace(50, 0);
+  size_t erased = t1.eraseInto(t1.find(50)->first, emplaceIntoT0);
+  EXPECT_EQ(erased, 1);
+  EXPECT_TRUE(t1.empty());
+  EXPECT_EQ(t0.size(), 5);
+  EXPECT_TRUE(t0.find(50) != t0.end());
+
+  typename M::key_type key{60};
+  erased = t1.eraseInto(key, emplaceIntoT0Mut);
+  EXPECT_EQ(erased, 0);
+  EXPECT_EQ(t0.size(), 5);
+}
+
+TEST(F14ValueMap, eraseInto) {
+  runEraseIntoTest<F14ValueMap<
+      folly::test::MoveOnlyTestInt,
+      folly::test::MoveOnlyTestInt>>();
+}
+
+TEST(F14NodeMap, eraseInto) {
+  runEraseIntoTest<
+      F14NodeMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
+}
+
+TEST(F14VectorMap, eraseInto) {
+  runEraseIntoTest<F14VectorMap<
+      folly::test::MoveOnlyTestInt,
+      folly::test::MoveOnlyTestInt>>();
+}
+
+TEST(F14FastMap, eraseInto) {
+  runEraseIntoTest<
+      F14FastMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
+}
+
 TEST(F14ValueMap, heterogeneousLookup) {
   using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
   using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
@@ -1614,6 +1680,13 @@ void runHeterogeneousInsertTest() {
 
   resetTracking();
   map.erase(10);
+  EXPECT_EQ(map.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts;
+
+  map.emplace(10, 40);
+  resetTracking();
+  map.eraseInto(10, [](auto&&, auto&&) {});
   EXPECT_EQ(map.size(), 0);
   EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
       << Tracked<1>::counts;

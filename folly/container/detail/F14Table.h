@@ -2155,13 +2155,6 @@ class F14Table : public Policy {
  public:
   // The item needs to still be hashable during this call.  If you want
   // to intercept the value before it is destroyed (to extract it, for
-  // example), use eraseIterInto(pos, beforeDestroy).
-  void eraseIter(ItemIter pos) {
-    eraseIterInto(pos, [](value_type&&) {});
-  }
-
-  // The item needs to still be hashable during this call.  If you want
-  // to intercept the value before it is destroyed (to extract it, for
   // example), do so in the beforeDestroy callback.
   template <typename BeforeDestroy>
   void eraseIterInto(ItemIter pos, BeforeDestroy&& beforeDestroy) {
@@ -2171,11 +2164,6 @@ class F14Table : public Policy {
     }
     beforeDestroy(this->valueAtItemForExtract(pos.item()));
     eraseImpl(pos, hp);
-  }
-
-  template <typename K>
-  std::size_t eraseKey(K const& key) {
-    return eraseKeyInto(key, [](value_type&&) {});
   }
 
   template <typename K, typename BeforeDestroy>

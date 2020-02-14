@@ -477,40 +477,90 @@ class F14BasicMap {
   }
 
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    // If we are inlined then gcc and clang can optimize away all of the
-    // work of itemPos.advance() if our return value is discarded.
-    auto itemPos = table_.unwrapIter(pos);
-    table_.eraseIter(itemPos);
-    itemPos.advanceLikelyDead();
-    return table_.makeIter(itemPos);
+    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
   }
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
+    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
+  }
+
+  iterator erase(const_iterator first, const_iterator last) {
+    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+  }
+
+  size_type erase(key_type const& key) {
+    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+  }
+
+  template <typename K>
+  EnableHeterogeneousErase<K, size_type> erase(K const& key) {
+    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+  }
+
+ protected:
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE void tableEraseIterInto(
+      ItemIter pos,
+      BeforeDestroy&& beforeDestroy) {
+    table_.eraseIterInto(pos, [&](value_type&& v) {
+      auto p = Policy::moveValue(v);
+      beforeDestroy(std::move(p.first), std::move(p.second));
+    });
+  }
+
+  template <typename K, typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE std::size_t tableEraseKeyInto(
+      K const& key,
+      BeforeDestroy&& beforeDestroy) {
+    return table_.eraseKeyInto(key, [&](value_type&& v) {
+      auto p = Policy::moveValue(v);
+      beforeDestroy(std::move(p.first), std::move(p.second));
+    });
+  }
+
+ public:
+  // eraseInto contains the same overloads as erase but provides
+  // an additional callback argument which is called with an rvalue
+  // reference (not const) to the key and an rvalue reference to the
+  // mapped value directly before it is destroyed. This can be used
+  // to extract an entry out of a F14Map while avoiding a copy.
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
+    // If we are inlined then gcc and clang can optimize away all of the
+    // work of itemPos.advance() if our return value is discarded.
     auto itemPos = table_.unwrapIter(pos);
-    table_.eraseIter(itemPos);
+    tableEraseIterInto(itemPos, beforeDestroy);
     itemPos.advanceLikelyDead();
     return table_.makeIter(itemPos);
   }
 
-  iterator erase(const_iterator first, const_iterator last) {
+  template <typename BeforeDestroy>
+  iterator eraseInto(
+      const_iterator first,
+      const_iterator last,
+      BeforeDestroy&& beforeDestroy) {
     auto itemFirst = table_.unwrapIter(first);
     auto itemLast = table_.unwrapIter(last);
     while (itemFirst != itemLast) {
-      table_.eraseIter(itemFirst);
+      tableEraseIterInto(itemFirst, beforeDestroy);
       itemFirst.advance();
     }
     return table_.makeIter(itemFirst);
   }
 
-  size_type erase(key_type const& key) {
-    return table_.eraseKey(key);
+  template <typename BeforeDestroy>
+  size_type eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
+    return tableEraseKeyInto(key, beforeDestroy);
   }
 
-  template <typename K>
-  EnableHeterogeneousErase<K, size_type> erase(K const& key) {
-    return table_.eraseKey(key);
+  template <typename K, typename BeforeDestroy>
+  EnableHeterogeneousErase<K, size_type> eraseInto(
+      K const& key,
+      BeforeDestroy&& beforeDestroy) {
+    return tableEraseKeyInto(key, beforeDestroy);
   }
 
   //// PUBLIC - Lookup
@@ -930,6 +980,7 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
   using typename Super::const_iterator;
   using typename Super::iterator;
   using typename Super::key_type;
+  using typename Super::mapped_type;
   using typename Super::value_type;
 
   F14VectorMapImpl() = default;
@@ -963,7 +1014,10 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
   }
 
  private:
-  void eraseUnderlying(typename Policy::ItemIter underlying) {
+  template <typename BeforeDestroy>
+  void eraseUnderlying(
+      typename Policy::ItemIter underlying,
+      BeforeDestroy&& beforeDestroy) {
     Alloc& a = this->table_.alloc();
     auto values = this->table_.values_;
 
@@ -971,7 +1025,7 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
     auto index = underlying.item();
     // The item still needs to be hashable during this call, so we must destroy
     // the value _afterwards_.
-    this->table_.eraseIter(underlying);
+    this->tableEraseIterInto(underlying, beforeDestroy);
     Policy::AllocTraits::destroy(a, std::addressof(values[index]));
 
     // move the last element in values_ down and fix up the inbound index
@@ -986,47 +1040,81 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
     }
   }
 
-  template <typename K>
-  std::size_t eraseUnderlyingKey(K const& key) {
+  template <typename K, typename BeforeDestroy>
+  std::size_t eraseUnderlyingKey(K const& key, BeforeDestroy&& beforeDestroy) {
     auto underlying = this->table_.find(key);
     if (underlying.atEnd()) {
       return 0;
     } else {
-      eraseUnderlying(underlying);
+      eraseUnderlying(underlying, beforeDestroy);
       return 1;
     }
   }
 
  public:
   FOLLY_ALWAYS_INLINE iterator erase(const_iterator pos) {
-    auto index = this->table_.iterToIndex(pos);
-    auto underlying = this->table_.find(VectorContainerIndexSearch{index});
-    eraseUnderlying(underlying);
-    return index == 0 ? end() : this->table_.indexToIter(index - 1);
+    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
   }
 
   // This form avoids ambiguity when key_type has a templated constructor
   // that accepts const_iterator
   FOLLY_ALWAYS_INLINE iterator erase(iterator pos) {
-    const_iterator cpos{pos};
-    return erase(cpos);
+    return eraseInto(pos, [](key_type&&, mapped_type&&) {});
   }
 
   iterator erase(const_iterator first, const_iterator last) {
+    return eraseInto(first, last, [](key_type&&, mapped_type&&) {});
+  }
+
+  std::size_t erase(key_type const& key) {
+    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+  }
+
+  template <typename K>
+  EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
+    return eraseInto(key, [](key_type&&, mapped_type&&) {});
+  }
+
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(const_iterator pos, BeforeDestroy&& beforeDestroy) {
+    auto index = this->table_.iterToIndex(pos);
+    auto underlying = this->table_.find(VectorContainerIndexSearch{index});
+    eraseUnderlying(underlying, beforeDestroy);
+    return index == 0 ? end() : this->table_.indexToIter(index - 1);
+  }
+
+  // This form avoids ambiguity when key_type has a templated constructor
+  // that accepts const_iterator
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(iterator pos, BeforeDestroy&& beforeDestroy) {
+    const_iterator cpos{pos};
+    return eraseInto(cpos, beforeDestroy);
+  }
+
+  template <typename BeforeDestroy>
+  iterator eraseInto(
+      const_iterator first,
+      const_iterator last,
+      BeforeDestroy&& beforeDestroy) {
     while (first != last) {
-      first = erase(first);
+      first = eraseInto(first, beforeDestroy);
     }
     auto index = this->table_.iterToIndex(first);
     return index == 0 ? end() : this->table_.indexToIter(index - 1);
   }
 
-  std::size_t erase(key_type const& key) {
-    return eraseUnderlyingKey(key);
+  template <typename BeforeDestroy>
+  std::size_t eraseInto(key_type const& key, BeforeDestroy&& beforeDestroy) {
+    return eraseUnderlyingKey(key, beforeDestroy);
   }
 
-  template <typename K>
-  EnableHeterogeneousVectorErase<K, std::size_t> erase(K const& key) {
-    return eraseUnderlyingKey(key);
+  template <typename K, typename BeforeDestroy>
+  EnableHeterogeneousVectorErase<K, std::size_t> eraseInto(
+      K const& key,
+      BeforeDestroy&& beforeDestroy) {
+    return eraseUnderlyingKey(key, beforeDestroy);
   }
 
   template <typename V>

@@ -24,6 +24,7 @@
 #include <folly/Function.h>
 #include <folly/hash/Hash.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Asm.h>
 
 namespace folly {
 namespace test {
@@ -37,17 +38,21 @@ struct MoveOnlyTestInt {
   MoveOnlyTestInt(MoveOnlyTestInt&& rhs) noexcept : x(rhs.x) {}
   MoveOnlyTestInt(MoveOnlyTestInt const&) = delete;
   MoveOnlyTestInt& operator=(MoveOnlyTestInt&& rhs) noexcept {
+    FOLLY_SAFE_CHECK(!rhs.destroyed, "");
     x = rhs.x;
-    destroyed = rhs.destroyed;
     return *this;
   }
   MoveOnlyTestInt& operator=(MoveOnlyTestInt const&) = delete;
 
   ~MoveOnlyTestInt() {
+    FOLLY_SAFE_CHECK(!destroyed, "");
     destroyed = true;
+    asm_volatile_memory(); // try to keep compiler from eliding the store
   }
 
   bool operator==(MoveOnlyTestInt const& rhs) const {
+    FOLLY_SAFE_CHECK(!destroyed, "");
+    FOLLY_SAFE_CHECK(!rhs.destroyed, "");
     return x == rhs.x && destroyed == rhs.destroyed;
   }
   bool operator!=(MoveOnlyTestInt const& rhs) const {
@@ -538,6 +543,7 @@ namespace std {
 template <>
 struct hash<folly::test::MoveOnlyTestInt> {
   std::size_t operator()(folly::test::MoveOnlyTestInt const& val) const {
+    FOLLY_SAFE_CHECK(!val.destroyed, "");
     return val.x;
   }
 };
