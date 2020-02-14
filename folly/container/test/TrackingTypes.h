@@ -83,6 +83,35 @@ struct ThrowOnCopyTestInt {
   }
 };
 
+struct PermissiveConstructorTestInt {
+  int x;
+
+  PermissiveConstructorTestInt() noexcept : x(0) {}
+  /* implicit */ PermissiveConstructorTestInt(int x0) : x(x0) {}
+
+  template <typename T>
+  /* implicit */ PermissiveConstructorTestInt(T&& src)
+      : x(std::forward<T>(src)) {}
+
+  PermissiveConstructorTestInt(PermissiveConstructorTestInt&& rhs) noexcept
+      : x(rhs.x) {}
+  PermissiveConstructorTestInt(PermissiveConstructorTestInt const&) = delete;
+  PermissiveConstructorTestInt& operator=(
+      PermissiveConstructorTestInt&& rhs) noexcept {
+    x = rhs.x;
+    return *this;
+  }
+  PermissiveConstructorTestInt& operator=(PermissiveConstructorTestInt const&) =
+      delete;
+
+  bool operator==(PermissiveConstructorTestInt const& rhs) const {
+    return x == rhs.x;
+  }
+  bool operator!=(PermissiveConstructorTestInt const& rhs) const {
+    return !(*this == rhs);
+  }
+};
+
 // Tracked is implicitly constructible across tags
 struct Counts {
   uint64_t copyConstruct{0};
@@ -551,6 +580,14 @@ struct hash<folly::test::MoveOnlyTestInt> {
 template <>
 struct hash<folly::test::ThrowOnCopyTestInt> {
   std::size_t operator()(folly::test::ThrowOnCopyTestInt const& val) const {
+    return val.x;
+  }
+};
+
+template <>
+struct hash<folly::test::PermissiveConstructorTestInt> {
+  std::size_t operator()(
+      folly::test::PermissiveConstructorTestInt const& val) const {
     return val.x;
   }
 };

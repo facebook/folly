@@ -1512,6 +1512,52 @@ TEST(F14FastMap, eraseInto) {
       F14FastMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
 }
 
+template <typename M>
+void runPermissiveConstructorTest() {
+  M t;
+  M const& ct{t};
+
+  for (int i = 10; i <= 100; i += 10) {
+    t[i] = i;
+  }
+  t.erase(10);
+  EXPECT_EQ(t.size(), 9);
+  t.erase(t.find(20));
+  EXPECT_EQ(t.size(), 8);
+  t.erase(ct.find(30));
+  EXPECT_EQ(t.size(), 7);
+  t.eraseInto(40, [](auto&&, auto&&) {});
+  EXPECT_EQ(t.size(), 6);
+  t.eraseInto(t.find(50), [](auto&&, auto&&) {});
+  EXPECT_EQ(t.size(), 5);
+  t.eraseInto(ct.find(60), [](auto&&, auto&&) {});
+  EXPECT_EQ(t.size(), 4);
+}
+
+TEST(F14ValueMap, permissiveConstructor) {
+  runPermissiveConstructorTest<F14ValueMap<
+      folly::test::PermissiveConstructorTestInt,
+      folly::test::PermissiveConstructorTestInt>>();
+}
+
+TEST(F14NodeMap, permissiveConstructor) {
+  runPermissiveConstructorTest<F14NodeMap<
+      folly::test::PermissiveConstructorTestInt,
+      folly::test::PermissiveConstructorTestInt>>();
+}
+
+TEST(F14VectorMap, permissiveConstructor) {
+  runPermissiveConstructorTest<F14VectorMap<
+      folly::test::PermissiveConstructorTestInt,
+      folly::test::PermissiveConstructorTestInt>>();
+}
+
+TEST(F14FastMap, permissiveConstructor) {
+  runPermissiveConstructorTest<F14FastMap<
+      folly::test::PermissiveConstructorTestInt,
+      folly::test::PermissiveConstructorTestInt>>();
+}
+
 TEST(F14ValueMap, heterogeneousLookup) {
   using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
   using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;

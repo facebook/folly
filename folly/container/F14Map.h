@@ -537,6 +537,15 @@ class F14BasicMap {
     return table_.makeIter(itemPos);
   }
 
+  // This form avoids ambiguity when key_type has a templated constructor
+  // that accepts const_iterator
+  template <typename BeforeDestroy>
+  FOLLY_ALWAYS_INLINE iterator
+  eraseInto(iterator pos, BeforeDestroy&& beforeDestroy) {
+    const_iterator cpos{pos};
+    return eraseInto(cpos, beforeDestroy);
+  }
+
   template <typename BeforeDestroy>
   iterator eraseInto(
       const_iterator first,
