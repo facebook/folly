@@ -23,7 +23,6 @@
 #include <folly/lang/SafeAssert.h>
 #include <folly/logging/LogName.h>
 
-using std::shared_ptr;
 using std::string;
 
 namespace folly {

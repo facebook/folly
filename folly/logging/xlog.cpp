@@ -22,8 +22,6 @@
 #include <folly/Synchronized.h>
 #include <folly/portability/PThread.h>
 
-using folly::StringPiece;
-
 namespace folly {
 
 namespace detail {

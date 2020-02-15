@@ -22,9 +22,6 @@
 #include <folly/logging/LoggerDB.h>
 #include <folly/system/ThreadName.h>
 
-using folly::File;
-using folly::StringPiece;
-
 namespace folly {
 
 constexpr size_t AsyncLogWriter::kDefaultMaxBufferSize;

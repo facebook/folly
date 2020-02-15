@@ -23,8 +23,6 @@
 #include <iostream>
 
 using namespace folly;
-using namespace std::literals::chrono_literals;
-using testing::ContainsRegex;
 
 namespace {
 static bool* expectedMessage;

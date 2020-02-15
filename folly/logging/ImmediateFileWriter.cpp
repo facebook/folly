@@ -21,8 +21,6 @@
 #include <folly/logging/LoggerDB.h>
 #include <folly/portability/Unistd.h>
 
-using folly::StringPiece;
-
 namespace folly {
 
 ImmediateFileWriter::ImmediateFileWriter(StringPiece path)

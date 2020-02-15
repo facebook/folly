@@ -28,7 +28,6 @@
 #include <folly/test/TestUtils.h>
 
 using namespace folly;
-using ::testing::Pair;
 using ::testing::UnorderedElementsAre;
 
 namespace {

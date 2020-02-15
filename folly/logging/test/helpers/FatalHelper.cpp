@@ -67,8 +67,6 @@ DEFINE_bool(
     false,
     "Test an XCHECK_EQ() statement with pointer arguments");
 
-using folly::LogLevel;
-
 namespace {
 /**
  * Helper class to optionally log a fatal message during static initialization

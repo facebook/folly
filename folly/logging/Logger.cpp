@@ -22,8 +22,6 @@
 #include <folly/logging/LogMessage.h>
 #include <folly/logging/LoggerDB.h>
 
-using std::string;
-
 namespace folly {
 
 Logger::Logger(StringPiece name) : Logger{LoggerDB::get().getCategory(name)} {}
