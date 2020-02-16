@@ -1523,6 +1523,14 @@ constexpr Range<char const*> operator"" _sp(
   return Range<char const*>(str, len);
 }
 
+#if __cpp_char8_t >= 201811L
+constexpr Range<char8_t const*> operator"" _sp(
+    char8_t const* str,
+    size_t len) noexcept {
+  return Range<char8_t const*>(str, len);
+}
+#endif
+
 constexpr Range<char16_t const*> operator"" _sp(
     char16_t const* str,
     size_t len) noexcept {

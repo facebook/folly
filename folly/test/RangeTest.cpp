@@ -1430,7 +1430,11 @@ TEST(Range, LiteralSuffix) {
   constexpr StringPiece piece = "hello";
   EXPECT_EQ(literalPiece, piece);
   constexpr auto literalPiece8 = u8"hello"_sp;
+#if __cpp_char8_t >= 201811L
+  constexpr Range<char8_t const*> piece8 = u8"hello";
+#else
   constexpr Range<char const*> piece8 = u8"hello";
+#endif
   EXPECT_EQ(literalPiece8, piece8);
   constexpr auto literalPiece16 = u"hello"_sp;
   constexpr Range<char16_t const*> piece16{u"hello", 5};
