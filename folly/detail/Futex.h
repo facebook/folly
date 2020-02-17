@@ -56,7 +56,7 @@ using Futex = Atom<std::uint32_t>;
  * other return (signal, this->load() != expected, or spurious wakeup).
  */
 template <typename Futex>
-FutexResult
+FutexResult __cdecl
 futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
 
 /**
@@ -70,7 +70,7 @@ futexWait(const Futex* futex, uint32_t expected, uint32_t waitMask = -1);
  * For any other clock type, now() will be invoked twice.
  */
 template <typename Futex, class Clock, class Duration>
-FutexResult futexWaitUntil(
+FutexResult __cdecl futexWaitUntil(
     const Futex* futex,
     uint32_t expected,
     std::chrono::time_point<Clock, Duration> const& deadline,
@@ -86,7 +86,7 @@ FutexResult futexWaitUntil(
  * https://sourceware.org/bugzilla/show_bug.cgi?id=13690
  */
 template <typename Futex>
-int futexWake(
+int __cdecl futexWake(
     const Futex* futex,
     int count = std::numeric_limits<int>::max(),
     uint32_t wakeMask = -1);

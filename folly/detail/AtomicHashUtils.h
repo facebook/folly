@@ -27,7 +27,7 @@ namespace folly {
 namespace detail {
 
 template <typename Cond>
-void atomic_hash_spin_wait(Cond condition) {
+void __cdecl atomic_hash_spin_wait(Cond condition) {
   constexpr size_t kPauseLimit = 10000;
   for (size_t i = 0; condition(); ++i) {
     if (i < kPauseLimit) {

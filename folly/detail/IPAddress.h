@@ -25,9 +25,9 @@
 namespace folly {
 namespace detail {
 
-std::string familyNameStrDefault(sa_family_t family);
+std::string __cdecl familyNameStrDefault(sa_family_t family);
 
-inline std::string familyNameStr(sa_family_t family) {
+inline std::string __cdecl familyNameStr(sa_family_t family) {
   switch (family) {
     case AF_INET:
       return "AF_INET";
@@ -42,11 +42,11 @@ inline std::string familyNameStr(sa_family_t family) {
   }
 }
 
-[[noreturn]] void getNthMSBitImplThrow(size_t bitCount, sa_family_t family);
+[[noreturn]] void __cdecl getNthMSBitImplThrow(size_t bitCount, sa_family_t family);
 
 template <typename IPAddrType>
 inline bool
-getNthMSBitImpl(const IPAddrType& ip, size_t bitIndex, sa_family_t family) {
+__cdecl getNthMSBitImpl(const IPAddrType& ip, size_t bitIndex, sa_family_t family) {
   if (bitIndex >= ip.bitCount()) {
     getNthMSBitImplThrow(ip.bitCount(), family);
   }

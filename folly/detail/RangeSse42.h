@@ -24,7 +24,7 @@ namespace folly {
 
 namespace detail {
 
-size_t qfind_first_byte_of_sse42(
+size_t __cdecl qfind_first_byte_of_sse42(
     const StringPieceLite haystack,
     const StringPieceLite needles);
 } // namespace detail

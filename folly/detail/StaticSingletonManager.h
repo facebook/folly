@@ -93,7 +93,7 @@ using StaticSingletonManager = std::conditional_t<
     StaticSingletonManagerSansRtti>;
 
 template <typename T, typename Tag>
-FOLLY_ERASE T& createGlobal() {
+FOLLY_ERASE T& __cdecl createGlobal() {
   return StaticSingletonManager::create<T, Tag>();
 }
 

@@ -68,7 +68,7 @@ class StringPieceLite {
   const char* e_;
 };
 
-inline size_t qfind_first_byte_of_std(
+inline size_t __cdecl qfind_first_byte_of_std(
     const StringPieceLite haystack,
     const StringPieceLite needles) {
   auto ret = std::find_first_of(
@@ -80,15 +80,15 @@ inline size_t qfind_first_byte_of_std(
   return ret == haystack.end() ? std::string::npos : ret - haystack.begin();
 }
 
-size_t qfind_first_byte_of_bitset(
+size_t __cdecl qfind_first_byte_of_bitset(
     const StringPieceLite haystack,
     const StringPieceLite needles);
 
-size_t qfind_first_byte_of_byteset(
+size_t __cdecl qfind_first_byte_of_byteset(
     const StringPieceLite haystack,
     const StringPieceLite needles);
 
-inline size_t qfind_first_byte_of_nosse(
+inline size_t __cdecl qfind_first_byte_of_nosse(
     const StringPieceLite haystack,
     const StringPieceLite needles) {
   if (UNLIKELY(needles.empty() || haystack.empty())) {

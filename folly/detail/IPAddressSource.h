@@ -182,7 +182,7 @@ template <
         std::is_integral<IntegralType>::value &&
             std::is_unsigned<IntegralType>::value,
         bool>::type>
-inline void writeIntegerString(IntegralType val, char** buffer) {
+inline void __cdecl writeIntegerString(IntegralType val, char** buffer) {
   char* buf = *buffer;
 
   if (!PrintAllDigits && val == 0) {
@@ -216,7 +216,7 @@ inline void writeIntegerString(IntegralType val, char** buffer) {
   *buffer = buf;
 }
 
-inline size_t fastIpV4ToBufferUnsafe(const in_addr& inAddr, char* str) {
+inline size_t __cdecl fastIpV4ToBufferUnsafe(const in_addr& inAddr, char* str) {
   const uint8_t* octets = reinterpret_cast<const uint8_t*>(&inAddr.s_addr);
   char* buf = str;
 
@@ -231,17 +231,17 @@ inline size_t fastIpV4ToBufferUnsafe(const in_addr& inAddr, char* str) {
   return buf - str;
 }
 
-inline std::string fastIpv4ToString(const in_addr& inAddr) {
+inline std::string __cdecl fastIpv4ToString(const in_addr& inAddr) {
   char str[sizeof("255.255.255.255")];
   return std::string(str, fastIpV4ToBufferUnsafe(inAddr, str));
 }
 
-inline void fastIpv4AppendToString(const in_addr& inAddr, std::string& out) {
+inline void __cdecl fastIpv4AppendToString(const in_addr& inAddr, std::string& out) {
   char str[sizeof("255.255.255.255")];
   out.append(str, fastIpV4ToBufferUnsafe(inAddr, str));
 }
 
-inline size_t fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
+inline size_t __cdecl fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
 #ifdef _MSC_VER
   const uint16_t* bytes = reinterpret_cast<const uint16_t*>(&in6Addr.u.Word);
 #else
@@ -264,12 +264,12 @@ inline size_t fastIpv6ToBufferUnsafe(const in6_addr& in6Addr, char* str) {
   return buf - str;
 }
 
-inline std::string fastIpv6ToString(const in6_addr& in6Addr) {
+inline std::string __cdecl fastIpv6ToString(const in6_addr& in6Addr) {
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   return std::string(str, fastIpv6ToBufferUnsafe(in6Addr, str));
 }
 
-inline void fastIpv6AppendToString(const in6_addr& in6Addr, std::string& out) {
+inline void __cdecl fastIpv6AppendToString(const in6_addr& in6Addr, std::string& out) {
   char str[sizeof("2001:0db8:0000:0000:0000:ff00:0042:8329")];
   out.append(str, fastIpv6ToBufferUnsafe(in6Addr, str));
 }

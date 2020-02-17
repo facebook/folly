@@ -31,7 +31,7 @@ namespace fileutil_detail {
 
 // Wrap call to f(args) in loop to retry on EINTR
 template <class F, class... Args>
-ssize_t wrapNoInt(F f, Args... args) {
+ssize_t __cdecl wrapNoInt(F f, Args... args) {
   ssize_t r;
   do {
     r = f(args...);
@@ -39,8 +39,8 @@ ssize_t wrapNoInt(F f, Args... args) {
   return r;
 }
 
-inline void incr(ssize_t /* n */) {}
-inline void incr(ssize_t n, off_t& offset) {
+inline void __cdecl incr(ssize_t /* n */) {}
+inline void __cdecl incr(ssize_t n, off_t& offset) {
   offset += off_t(n);
 }
 
@@ -50,7 +50,7 @@ inline void incr(ssize_t n, off_t& offset) {
 // above which do nothing if the offset is not present and increment it if it
 // is.
 template <class F, class... Offset>
-ssize_t wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
+ssize_t __cdecl wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
   char* b = static_cast<char*>(buf);
   ssize_t totalBytes = 0;
   ssize_t r;
@@ -75,7 +75,7 @@ ssize_t wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
 // Wrap call to readv/preadv/writev/pwritev(fd, iov, count, offset?) to
 // retry on incomplete reads / writes.
 template <class F, class... Offset>
-ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
+ssize_t __cdecl wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
   ssize_t r;
   do {

@@ -34,16 +34,16 @@ namespace detail {
  * tfo_sendto has the same semantics as sendmsg, but is used to
  * send with TFO data.
  */
-ssize_t tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags);
+ssize_t __cdecl tfo_sendmsg(NetworkSocket sockfd, const struct msghdr* msg, int flags);
 
 /**
  * Enable TFO on a listening socket.
  */
-int tfo_enable(NetworkSocket sockfd, size_t max_queue_size);
+int __cdecl tfo_enable(NetworkSocket sockfd, size_t max_queue_size);
 
 /**
  * Check if TFO succeeded in being used.
  */
-bool tfo_succeeded(NetworkSocket sockfd);
+bool __cdecl tfo_succeeded(NetworkSocket sockfd);
 } // namespace detail
 } // namespace folly
