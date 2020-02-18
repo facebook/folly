@@ -40,29 +40,29 @@ namespace folly {
 
 #if defined(__GNUC__) && !defined(__clang__)
 
-constexpr float nextafter(float x, float y) {
+constexpr float __cdecl nextafter(float x, float y) {
   return __builtin_nextafterf(x, y);
 }
 
-constexpr double nextafter(double x, double y) {
+constexpr double __cdecl nextafter(double x, double y) {
   return __builtin_nextafter(x, y);
 }
 
-constexpr long double nextafter(long double x, long double y) {
+constexpr long double __cdecl nextafter(long double x, long double y) {
   return __builtin_nextafterl(x, y);
 }
 
 #else // __GNUC__
 
-inline float nextafter(float x, float y) {
+inline float __cdecl nextafter(float x, float y) {
   return ::nextafterf(x, y);
 }
 
-inline double nextafter(double x, double y) {
+inline double __cdecl nextafter(double x, double y) {
   return ::nextafter(x, y);
 }
 
-inline long double nextafter(long double x, long double y) {
+inline long double __cdecl nextafter(long double x, long double y) {
   return ::nextafterl(x, y);
 }
 
@@ -73,15 +73,15 @@ inline long double nextafter(long double x, long double y) {
  * Implement it using builtin versions
  */
 #ifdef __UCLIBC__
-constexpr float remainder(float x, float y) {
+constexpr float __cdecl remainder(float x, float y) {
   return __builtin_remainderf(x, y);
 }
 
-constexpr double remainder(double x, double y) {
+constexpr double __cdecl remainder(double x, double y) {
   return __builtin_remainder(x, y);
 }
 
-constexpr long double remainder(long double x, long double y) {
+constexpr long double __cdecl remainder(long double x, long double y) {
   return __builtin_remainderl(x, y);
 }
 #endif // __UCLIBC__

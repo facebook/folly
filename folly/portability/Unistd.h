@@ -59,34 +59,34 @@
 namespace folly {
 namespace portability {
 namespace unistd {
-int access(char const* fn, int am);
-int chdir(const char* path);
-int close(int fh);
-int dup(int fh);
-int dup2(int fhs, int fhd);
-int fsync(int fd);
-int ftruncate(int fd, off_t len);
-char* getcwd(char* buf, int sz);
-int getdtablesize();
-int getgid();
-pid_t getpid();
-pid_t getppid();
-int getuid();
-int isatty(int fh);
-int lockf(int fd, int cmd, off_t len);
-off_t lseek(int fh, off_t off, int orig);
-ssize_t read(int fh, void* buf, size_t mcc);
-int rmdir(const char* path);
-int pipe(int pth[2]);
-ssize_t pread(int fd, void* buf, size_t count, off_t offset);
-ssize_t pwrite(int fd, const void* buf, size_t count, off_t offset);
-ssize_t readlink(const char* path, char* buf, size_t buflen);
-void* sbrk(intptr_t i);
-unsigned int sleep(unsigned int seconds);
-long sysconf(int tp);
-int truncate(const char* path, off_t len);
-int usleep(unsigned int ms);
-ssize_t write(int fh, void const* buf, size_t count);
+int __cdecl access(char const* fn, int am);
+int __cdecl chdir(const char* path);
+int __cdecl close(int fh);
+int __cdecl dup(int fh);
+int __cdecl dup2(int fhs, int fhd);
+int __cdecl fsync(int fd);
+int __cdecl ftruncate(int fd, off_t len);
+char* __cdecl getcwd(char* buf, int sz);
+int __cdecl getdtablesize();
+int __cdecl getgid();
+pid_t __cdecl getpid();
+pid_t __cdecl getppid();
+int __cdecl getuid();
+int __cdecl isatty(int fh);
+int __cdecl lockf(int fd, int cmd, off_t len);
+off_t __cdecl lseek(int fh, off_t off, int orig);
+ssize_t __cdecl read(int fh, void* buf, size_t mcc);
+int __cdecl rmdir(const char* path);
+int __cdecl pipe(int pth[2]);
+ssize_t __cdecl pread(int fd, void* buf, size_t count, off_t offset);
+ssize_t __cdecl pwrite(int fd, const void* buf, size_t count, off_t offset);
+ssize_t __cdecl readlink(const char* path, char* buf, size_t buflen);
+void* __cdecl sbrk(intptr_t i);
+unsigned int __cdecl sleep(unsigned int seconds);
+long __cdecl sysconf(int tp);
+int __cdecl truncate(const char* path, off_t len);
+int __cdecl usleep(unsigned int ms);
+ssize_t __cdecl write(int fh, void const* buf, size_t count);
 } // namespace unistd
 } // namespace portability
 } // namespace folly

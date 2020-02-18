@@ -61,11 +61,11 @@ struct rusage {
 };
 
 extern "C" {
-int getrlimit(int type, rlimit* dst);
-int getrusage(int who, rusage* usage);
-int setrlimit(int type, rlimit* src);
+int __cdecl getrlimit(int type, rlimit* dst);
+int __cdecl getrusage(int who, rusage* usage);
+int __cdecl setrlimit(int type, rlimit* src);
 
-int getpriority(int which, int who);
-int setpriority(int which, int who, int value);
+int __cdecl getpriority(int which, int who);
+int __cdecl setpriority(int which, int who, int value);
 }
 #endif

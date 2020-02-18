@@ -36,12 +36,12 @@ extern "C" {
 #define PATH_MAX _MAX_PATH
 #define MAXPATHLEN _MAX_PATH
 
-char* mktemp(char* tn);
-char* mkdtemp(char* tn);
-int mkstemp(char* tn);
-char* realpath(const char* path, char* resolved_path);
-int setenv(const char* name, const char* value, int overwrite);
-int unsetenv(const char* name);
+char* __cdecl mktemp(char* tn);
+char* __cdecl mkdtemp(char* tn);
+int __cdecl mkstemp(char* tn);
+char* __cdecl realpath(const char* path, char* resolved_path);
+int __cdecl setenv(const char* name, const char* value, int overwrite);
+int __cdecl unsetenv(const char* name);
 #elif defined(__APPLE__)
 // environ doesn't work well with dylibs, so use _NSGetEnviron instead.
 #if !__has_include(<crt_externs.h>)

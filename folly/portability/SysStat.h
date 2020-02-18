@@ -41,10 +41,10 @@
 #define MAXSYMLINKS 255
 
 extern "C" {
-int chmod(char const* fn, int am);
-int fchmod(int fd, mode_t mode);
-int lstat(const char* path, struct stat* st);
-int mkdir(const char* fn, int mode);
-int umask(int md);
+int __cdecl chmod(char const* fn, int am);
+int __cdecl fchmod(int fd, mode_t mode);
+int __cdecl lstat(const char* path, struct stat* st);
+int __cdecl mkdir(const char* fn, int mode);
+int __cdecl umask(int md);
 }
 #endif

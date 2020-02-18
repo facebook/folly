@@ -17,7 +17,7 @@
 #include <folly/portability/String.h>
 
 #if !FOLLY_HAVE_MEMRCHR
-extern "C" void* memrchr(const void* s, int c, size_t n) {
+extern "C" void* __cdecl memrchr(const void* s, int c, size_t n) {
   for (auto p = ((const char*)s) + n - 1; p >= (const char*)s; p--) {
     if (*p == (char)c) {
       return (void*)p;
@@ -28,7 +28,7 @@ extern "C" void* memrchr(const void* s, int c, size_t n) {
 #endif
 
 #if defined(_WIN32) || defined(__FreeBSD__)
-extern "C" char* strndup(const char* a, size_t len) {
+extern "C" char* __cdecl strndup(const char* a, size_t len) {
   auto neededLen = strlen(a);
   if (neededLen > len) {
     neededLen = len;
@@ -45,19 +45,19 @@ extern "C" char* strndup(const char* a, size_t len) {
 
 #ifdef _WIN32
 extern "C" {
-void bzero(void* s, size_t n) {
+void __cdecl bzero(void* s, size_t n) {
   memset(s, 0, n);
 }
 
-int strcasecmp(const char* a, const char* b) {
+int __cdecl strcasecmp(const char* a, const char* b) {
   return _stricmp(a, b);
 }
 
-int strncasecmp(const char* a, const char* b, size_t c) {
+int __cdecl strncasecmp(const char* a, const char* b, size_t c) {
   return _strnicmp(a, b, c);
 }
 
-char* strtok_r(char* str, char const* delim, char** ctx) {
+char* __cdecl strtok_r(char* str, char const* delim, char** ctx) {
   return strtok_s(str, delim, ctx);
 }
 }

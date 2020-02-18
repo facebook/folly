@@ -46,10 +46,10 @@
 namespace folly {
 namespace portability {
 namespace fcntl {
-int creat(char const* fn, int pm);
-int fcntl(int fd, int cmd, ...);
-int posix_fallocate(int fd, off_t offset, off_t len);
-int open(char const* fn, int of, int pm = 0);
+int __cdecl creat(char const* fn, int pm);
+int __cdecl fcntl(int fd, int cmd, ...);
+int __cdecl posix_fallocate(int fd, off_t offset, off_t len);
+int __cdecl open(char const* fn, int of, int pm = 0);
 } // namespace fcntl
 } // namespace portability
 } // namespace folly

@@ -18,12 +18,12 @@
 
 namespace folly {
 namespace portability {
-char* internal_dirname(char* path);
+char* __cdecl internal_dirname(char* path);
 } // namespace portability
 } // namespace folly
 
 #ifndef _WIN32
 #include <libgen.h>
 #else
-extern "C" char* dirname(char* path);
+extern "C" char* __cdecl dirname(char* path);
 #endif

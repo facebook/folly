@@ -27,7 +27,7 @@ namespace folly {
 namespace detail {
 
 template <typename Char>
-constexpr size_t constexpr_strlen_internal(const Char* s, size_t len) {
+constexpr size_t __cdecl constexpr_strlen_internal(const Char* s, size_t len) {
   // clang-format off
   return
       *(s + 0) == Char(0) ? len + 0 :
@@ -46,7 +46,7 @@ static_assert(
     "Someone appears to have broken constexpr_strlen...");
 
 template <typename Char>
-constexpr int constexpr_strcmp_internal(const Char* s1, const Char* s2) {
+constexpr int __cdecl constexpr_strcmp_internal(const Char* s1, const Char* s2) {
   return (*s1 == '\0' || *s1 != *s2)
       ? (static_cast<int>(*s1 - *s2))
       : constexpr_strcmp_internal(s1 + 1, s2 + 1);
@@ -54,12 +54,12 @@ constexpr int constexpr_strcmp_internal(const Char* s1, const Char* s2) {
 } // namespace detail
 
 template <typename Char>
-constexpr size_t constexpr_strlen(const Char* s) {
+constexpr size_t __cdecl constexpr_strlen(const Char* s) {
   return detail::constexpr_strlen_internal(s, 0);
 }
 
 template <>
-constexpr size_t constexpr_strlen(const char* s) {
+constexpr size_t __cdecl constexpr_strlen(const char* s) {
 #if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins)
   // clang provides a constexpr builtin
   return __builtin_strlen(s);
@@ -72,12 +72,12 @@ constexpr size_t constexpr_strlen(const char* s) {
 }
 
 template <typename Char>
-constexpr int constexpr_strcmp(const Char* s1, const Char* s2) {
+constexpr int __cdecl constexpr_strcmp(const Char* s1, const Char* s2) {
   return detail::constexpr_strcmp_internal(s1, s2);
 }
 
 template <>
-constexpr int constexpr_strcmp(const char* s1, const char* s2) {
+constexpr int __cdecl constexpr_strcmp(const char* s1, const char* s2) {
 #if FOLLY_HAS_FEATURE(cxx_constexpr_string_builtins)
   // clang provides a constexpr builtin
   return __builtin_strcmp(s1, s2);

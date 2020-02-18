@@ -19,7 +19,7 @@
 namespace folly {
 namespace detail {
 
-int sysMembarrier();
-bool sysMembarrierAvailable();
+int __cdecl sysMembarrier();
+bool __cdecl sysMembarrierAvailable();
 } // namespace detail
 } // namespace folly

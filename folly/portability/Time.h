@@ -49,24 +49,24 @@
 #define CLOCK_THREAD_CPUTIME_ID 3
 
 typedef uint8_t clockid_t;
-extern "C" int clock_gettime(clockid_t clk_id, struct timespec* ts);
-extern "C" int clock_getres(clockid_t clk_id, struct timespec* ts);
+extern "C" int __cdecl clock_gettime(clockid_t clk_id, struct timespec* ts);
+extern "C" int __cdecl clock_getres(clockid_t clk_id, struct timespec* ts);
 #endif
 
 #ifdef _WIN32
 #define TM_YEAR_BASE (1900)
 
 extern "C" {
-char* asctime_r(const tm* tm, char* buf);
-char* ctime_r(const time_t* t, char* buf);
-tm* gmtime_r(const time_t* t, tm* res);
-tm* localtime_r(const time_t* t, tm* o);
-int nanosleep(const struct timespec* request, struct timespec* remain);
-char* strptime(
+char* __cdecl asctime_r(const tm* tm, char* buf);
+char* __cdecl ctime_r(const time_t* t, char* buf);
+tm* __cdecl gmtime_r(const time_t* t, tm* res);
+tm* __cdecl localtime_r(const time_t* t, tm* o);
+int __cdecl nanosleep(const struct timespec* request, struct timespec* remain);
+char* __cdecl strptime(
     const char* __restrict buf,
     const char* __restrict fmt,
     struct tm* __restrict tm);
-time_t timelocal(tm* tm);
-time_t timegm(tm* tm);
+time_t __cdecl timelocal(tm* tm);
+time_t __cdecl timegm(tm* tm);
 }
 #endif

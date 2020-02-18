@@ -23,10 +23,10 @@
 #include <cstdint>
 
 extern "C" {
-int dprintf(int fd, const char* fmt, ...);
-int pclose(FILE* f);
-FILE* popen(const char* name, const char* mode);
-void setbuffer(FILE* f, char* buf, size_t size);
-int vasprintf(char** dest, const char* format, va_list ap);
+int __cdecl dprintf(int fd, const char* fmt, ...);
+int __cdecl pclose(FILE* f);
+FILE* __cdecl popen(const char* name, const char* mode);
+void __cdecl setbuffer(FILE* f, char* buf, size_t size);
+int __cdecl vasprintf(char** dest, const char* format, va_list ap);
 }
 #endif

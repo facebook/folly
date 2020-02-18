@@ -35,8 +35,8 @@ extern "C" {
 // Note that this will break if `gettimeofday` ever becomes declared as anything
 // other than `extern "C"`, as the mangled name would be dependent on whether
 // python had been included before this header.
-int gettimeofday(timeval* tv, struct timezone*);
-void timeradd(timeval* a, timeval* b, timeval* res);
-void timersub(timeval* a, timeval* b, timeval* res);
+int __cdecl gettimeofday(timeval* tv, struct timezone*);
+void __cdecl timeradd(timeval* a, timeval* b, timeval* res);
+void __cdecl timersub(timeval* a, timeval* b, timeval* res);
 }
 #endif

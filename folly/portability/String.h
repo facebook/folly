@@ -26,18 +26,18 @@
 #endif
 
 #if !FOLLY_HAVE_MEMRCHR
-extern "C" void* memrchr(const void* s, int c, size_t n);
+extern "C" void* __cdecl memrchr(const void* s, int c, size_t n);
 #endif
 
 #if defined(_WIN32) || defined(__FreeBSD__)
-extern "C" char* strndup(const char* a, size_t len);
+extern "C" char* __cdecl strndup(const char* a, size_t len);
 #endif
 
 #ifdef _WIN32
 extern "C" {
-void bzero(void* s, size_t n);
-int strcasecmp(const char* a, const char* b);
-int strncasecmp(const char* a, const char* b, size_t c);
-char* strtok_r(char* str, char const* delim, char** ctx);
+void __cdecl bzero(void* s, size_t n);
+int __cdecl strcasecmp(const char* a, const char* b);
+int __cdecl strncasecmp(const char* a, const char* b, size_t c);
+char* __cdecl strtok_r(char* str, char const* delim, char** ctx);
 }
 #endif

@@ -21,15 +21,15 @@
 #include <folly/portability/SysTypes.h>
 
 #if !FOLLY_HAVE_PREADV
-extern "C" ssize_t preadv(int fd, const iovec* iov, int count, off_t offset);
+extern "C" ssize_t __cdecl preadv(int fd, const iovec* iov, int count, off_t offset);
 #endif
 #if !FOLLY_HAVE_PWRITEV
-extern "C" ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset);
+extern "C" ssize_t __cdecl pwritev(int fd, const iovec* iov, int count, off_t offset);
 #endif
 
 #ifdef _WIN32
-extern "C" ssize_t readv(int fd, const iovec* iov, int count);
-extern "C" ssize_t writev(int fd, const iovec* iov, int count);
+extern "C" ssize_t __cdecl readv(int fd, const iovec* iov, int count);
+extern "C" ssize_t __cdecl writev(int fd, const iovec* iov, int count);
 #endif
 
 namespace folly {

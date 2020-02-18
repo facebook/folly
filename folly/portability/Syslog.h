@@ -31,9 +31,9 @@
 
 extern "C" {
 // Do nothing for the system log for now.
-inline void openlog(const char*, int, int) {}
-inline void closelog() {}
-inline void syslog(int, const char*, ...) {}
+inline void __cdecl openlog(const char*, int, int) {}
+inline void __cdecl closelog() {}
+inline void __cdecl syslog(int, const char*, ...) {}
 }
 
 #endif

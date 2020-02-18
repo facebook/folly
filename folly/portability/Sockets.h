@@ -43,97 +43,97 @@ using ::shutdown;
 using ::socket;
 #else
 // Some Windows specific helper functions.
-bool is_fh_socket(int fh);
-SOCKET fd_to_socket(int fd);
-int socket_to_fd(SOCKET s);
-int translate_wsa_error(int wsaErr);
+bool __cdecl is_fh_socket(int fh);
+SOCKET __cdecl fd_to_socket(int fd);
+int __cdecl socket_to_fd(SOCKET s);
+int __cdecl translate_wsa_error(int wsaErr);
 
 // These aren't additional overloads, but rather other functions that
 // are referenced that we need to wrap, or, in the case of inet_aton,
 // implement.
-int accept(int s, struct sockaddr* addr, socklen_t* addrlen);
-int inet_aton(const char* cp, struct in_addr* inp);
-int socketpair(int domain, int type, int protocol, int sv[2]);
+int __cdecl accept(int s, struct sockaddr* addr, socklen_t* addrlen);
+int __cdecl inet_aton(const char* cp, struct in_addr* inp);
+int __cdecl socketpair(int domain, int type, int protocol, int sv[2]);
 
 // Unless you have a case where you would normally have
 // to reference the function as being explicitly in the
 // global scope, then you shouldn't be calling these directly.
-int bind(int s, const struct sockaddr* name, socklen_t namelen);
-int connect(int s, const struct sockaddr* name, socklen_t namelen);
-int getpeername(int s, struct sockaddr* name, socklen_t* namelen);
-int getsockname(int s, struct sockaddr* name, socklen_t* namelen);
-int getsockopt(int s, int level, int optname, void* optval, socklen_t* optlen);
-const char* inet_ntop(int af, const void* src, char* dst, socklen_t size);
-int listen(int s, int backlog);
-int poll(struct pollfd fds[], nfds_t nfds, int timeout);
-ssize_t recv(int s, void* buf, size_t len, int flags);
-ssize_t recvfrom(
+int __cdecl bind(int s, const struct sockaddr* name, socklen_t namelen);
+int __cdecl connect(int s, const struct sockaddr* name, socklen_t namelen);
+int __cdecl getpeername(int s, struct sockaddr* name, socklen_t* namelen);
+int __cdecl getsockname(int s, struct sockaddr* name, socklen_t* namelen);
+int __cdecl getsockopt(int s, int level, int optname, void* optval, socklen_t* optlen);
+const char* __cdecl inet_ntop(int af, const void* src, char* dst, socklen_t size);
+int __cdecl listen(int s, int backlog);
+int __cdecl poll(struct pollfd fds[], nfds_t nfds, int timeout);
+ssize_t __cdecl recv(int s, void* buf, size_t len, int flags);
+ssize_t __cdecl recvfrom(
     int s,
     void* buf,
     size_t len,
     int flags,
     struct sockaddr* from,
     socklen_t* fromlen);
-ssize_t send(int s, const void* buf, size_t len, int flags);
-ssize_t sendto(
+ssize_t __cdecl send(int s, const void* buf, size_t len, int flags);
+ssize_t __cdecl sendto(
     int s,
     const void* buf,
     size_t len,
     int flags,
     const sockaddr* to,
     socklen_t tolen);
-ssize_t sendmsg(int socket, const struct msghdr* message, int flags);
-int setsockopt(
+ssize_t __cdecl sendmsg(int socket, const struct msghdr* message, int flags);
+int __cdecl setsockopt(
     int s,
     int level,
     int optname,
     const void* optval,
     socklen_t optlen);
-int shutdown(int s, int how);
+int __cdecl shutdown(int s, int how);
 
 // This is the only function that _must_ be referenced via the namespace
 // because there is no difference in parameter types to overload
 // on.
-int socket(int af, int type, int protocol);
+int __cdecl socket(int af, int type, int protocol);
 
 // Windows needs a few extra overloads of some of the functions in order to
 // resolve to our portability functions rather than the SOCKET accepting
 // ones.
-int getsockopt(int s, int level, int optname, char* optval, socklen_t* optlen);
-ssize_t recv(int s, char* buf, int len, int flags);
-ssize_t recv(int s, void* buf, int len, int flags);
-ssize_t recvfrom(
+int __cdecl getsockopt(int s, int level, int optname, char* optval, socklen_t* optlen);
+ssize_t __cdecl recv(int s, char* buf, int len, int flags);
+ssize_t __cdecl recv(int s, void* buf, int len, int flags);
+ssize_t __cdecl recvfrom(
     int s,
     char* buf,
     int len,
     int flags,
     struct sockaddr* from,
     socklen_t* fromlen);
-ssize_t recvfrom(
+ssize_t __cdecl recvfrom(
     int s,
     void* buf,
     int len,
     int flags,
     struct sockaddr* from,
     socklen_t* fromlen);
-ssize_t recvmsg(int s, struct msghdr* message, int fl);
-ssize_t send(int s, const char* buf, int len, int flags);
-ssize_t send(int s, const void* buf, int len, int flags);
-ssize_t sendto(
+ssize_t __cdecl recvmsg(int s, struct msghdr* message, int fl);
+ssize_t __cdecl send(int s, const char* buf, int len, int flags);
+ssize_t __cdecl send(int s, const void* buf, int len, int flags);
+ssize_t __cdecl sendto(
     int s,
     const char* buf,
     int len,
     int flags,
     const sockaddr* to,
     socklen_t tolen);
-ssize_t sendto(
+ssize_t __cdecl sendto(
     int s,
     const void* buf,
     int len,
     int flags,
     const sockaddr* to,
     socklen_t tolen);
-int setsockopt(
+int __cdecl setsockopt(
     int s,
     int level,
     int optname,

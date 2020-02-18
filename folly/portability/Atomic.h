@@ -24,7 +24,7 @@
 #include <folly/Portability.h>
 
 FOLLY_ALWAYS_INLINE
-int64_t __sync_fetch_and_add(volatile int64_t* ptr, int64_t value) {
+int64_t __cdecl __sync_fetch_and_add(volatile int64_t* ptr, int64_t value) {
   return _InterlockedExchangeAdd64(ptr, value);
 }
 
