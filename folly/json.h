@@ -142,21 +142,21 @@ struct serialization_opts {
  * for use in the serialization_opts extra_ascii_to_escape_bitmap option. If any
  * characters are not valid ASCII, they are ignored.
  */
-std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars);
+std::array<uint64_t, 2> __cdecl buildExtraAsciiToEscapeBitmap(StringPiece chars);
 
 /*
  * Main JSON serialization routine taking folly::dynamic parameters.
  * For the most common use cases there are simpler functions in the
  * main folly namespace below.
  */
-std::string serialize(dynamic const&, serialization_opts const&);
+std::string __cdecl serialize(dynamic const&, serialization_opts const&);
 
 /*
  * Escape a string so that it is legal to print it in JSON text and
  * append the result to out.
  */
 
-void escapeString(
+void __cdecl escapeString(
     StringPiece input,
     std::string& out,
     const serialization_opts& opts);
@@ -164,7 +164,7 @@ void escapeString(
 /*
  * Strip all C99-like comments (i.e. // and / * ... * /)
  */
-std::string stripComments(StringPiece jsonC);
+std::string __cdecl stripComments(StringPiece jsonC);
 
 class FOLLY_EXPORT parse_error : public std::runtime_error {
  public:
@@ -196,11 +196,11 @@ using metadata_map = std::unordered_map<dynamic const*, parse_metadata>;
  * Parse a json blob out of a range and produce a dynamic representing
  * it.
  */
-dynamic parseJson(StringPiece, json::serialization_opts const&);
-dynamic parseJson(StringPiece);
+dynamic __cdecl parseJson(StringPiece, json::serialization_opts const&);
+dynamic __cdecl parseJson(StringPiece);
 
-dynamic parseJsonWithMetadata(StringPiece range, json::metadata_map* map);
-dynamic parseJsonWithMetadata(
+dynamic __cdecl parseJsonWithMetadata(StringPiece range, json::metadata_map* map);
+dynamic __cdecl parseJsonWithMetadata(
     StringPiece range,
     json::serialization_opts const& opts,
     json::metadata_map* map);
@@ -208,19 +208,19 @@ dynamic parseJsonWithMetadata(
 /*
  * Serialize a dynamic into a json string.
  */
-std::string toJson(dynamic const&);
+std::string __cdecl toJson(dynamic const&);
 
 /*
  * Same as the above, except format the json with some minimal
  * indentation.
  */
-std::string toPrettyJson(dynamic const&);
+std::string __cdecl toPrettyJson(dynamic const&);
 
 /*
  * Printer for GTest.
  * Uppercase name to fill GTest's API, which calls this method through ADL.
  */
-void PrintTo(const dynamic&, std::ostream*);
+void __cdecl PrintTo(const dynamic&, std::ostream*);
 //////////////////////////////////////////////////////////////////////
 
 } // namespace folly

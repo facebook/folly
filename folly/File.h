@@ -153,6 +153,6 @@ class File {
   bool ownsFd_;
 };
 
-void swap(File& a, File& b) noexcept;
+void __cdecl swap(File& a, File& b) noexcept;
 
 } // namespace folly

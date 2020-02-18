@@ -38,28 +38,28 @@ namespace folly {
  * until all data is written.  Note that *Full wrappers weaken the thread
  * semantics of underlying system calls.
  */
-int openNoInt(const char* name, int flags, mode_t mode = 0666);
+int __cdecl openNoInt(const char* name, int flags, mode_t mode = 0666);
 // Two overloads, as we may be closing either a file or a socket.
-int closeNoInt(int fd);
-int closeNoInt(NetworkSocket fd);
-int dupNoInt(int fd);
-int dup2NoInt(int oldfd, int newfd);
-int fsyncNoInt(int fd);
-int fdatasyncNoInt(int fd);
-int ftruncateNoInt(int fd, off_t len);
-int truncateNoInt(const char* path, off_t len);
-int flockNoInt(int fd, int operation);
-int shutdownNoInt(NetworkSocket fd, int how);
+int __cdecl closeNoInt(int fd);
+int __cdecl closeNoInt(NetworkSocket fd);
+int __cdecl dupNoInt(int fd);
+int __cdecl dup2NoInt(int oldfd, int newfd);
+int __cdecl fsyncNoInt(int fd);
+int __cdecl fdatasyncNoInt(int fd);
+int __cdecl ftruncateNoInt(int fd, off_t len);
+int __cdecl truncateNoInt(const char* path, off_t len);
+int __cdecl flockNoInt(int fd, int operation);
+int __cdecl shutdownNoInt(NetworkSocket fd, int how);
 
-ssize_t readNoInt(int fd, void* buf, size_t count);
-ssize_t preadNoInt(int fd, void* buf, size_t count, off_t offset);
-ssize_t readvNoInt(int fd, const iovec* iov, int count);
-ssize_t preadvNoInt(int fd, const iovec* iov, int count, off_t offset);
+ssize_t __cdecl readNoInt(int fd, void* buf, size_t count);
+ssize_t __cdecl preadNoInt(int fd, void* buf, size_t count, off_t offset);
+ssize_t __cdecl readvNoInt(int fd, const iovec* iov, int count);
+ssize_t __cdecl preadvNoInt(int fd, const iovec* iov, int count, off_t offset);
 
-ssize_t writeNoInt(int fd, const void* buf, size_t count);
-ssize_t pwriteNoInt(int fd, const void* buf, size_t count, off_t offset);
-ssize_t writevNoInt(int fd, const iovec* iov, int count);
-ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
+ssize_t __cdecl writeNoInt(int fd, const void* buf, size_t count);
+ssize_t __cdecl pwriteNoInt(int fd, const void* buf, size_t count, off_t offset);
+ssize_t __cdecl writevNoInt(int fd, const iovec* iov, int count);
+ssize_t __cdecl pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
 
 /**
  * Wrapper around read() (and pread()) that, in addition to retrying on
@@ -83,11 +83,11 @@ ssize_t pwritevNoInt(int fd, const iovec* iov, int count, off_t offset);
  * readv and preadv.  The contents of iov after these functions return
  * is unspecified.
  */
-FOLLY_NODISCARD ssize_t readFull(int fd, void* buf, size_t count);
-FOLLY_NODISCARD ssize_t
+FOLLY_NODISCARD ssize_t __cdecl readFull(int fd, void* buf, size_t count);
+FOLLY_NODISCARD ssize_t __cdecl
 preadFull(int fd, void* buf, size_t count, off_t offset);
-FOLLY_NODISCARD ssize_t readvFull(int fd, iovec* iov, int count);
-FOLLY_NODISCARD ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
+FOLLY_NODISCARD ssize_t __cdecl readvFull(int fd, iovec* iov, int count);
+FOLLY_NODISCARD ssize_t __cdecl preadvFull(int fd, iovec* iov, int count, off_t offset);
 
 /**
  * Similar to readFull and preadFull above, wrappers around write() and
@@ -106,10 +106,10 @@ FOLLY_NODISCARD ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset);
  * These functions return -1 on error, or the total number of bytes written
  * (which is always the same as the number of requested bytes) on success.
  */
-ssize_t writeFull(int fd, const void* buf, size_t count);
-ssize_t pwriteFull(int fd, const void* buf, size_t count, off_t offset);
-ssize_t writevFull(int fd, iovec* iov, int count);
-ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
+ssize_t __cdecl writeFull(int fd, const void* buf, size_t count);
+ssize_t __cdecl pwriteFull(int fd, const void* buf, size_t count, off_t offset);
+ssize_t __cdecl writevFull(int fd, iovec* iov, int count);
+ssize_t __cdecl pwritevFull(int fd, iovec* iov, int count, off_t offset);
 
 /**
  * Read entire file (if num_bytes is defaulted) or no more than
@@ -122,7 +122,7 @@ ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset);
  * errno will be set appropriately by the failing system primitive.
  */
 template <class Container>
-bool readFile(
+bool __cdecl readFile(
     int fd,
     Container& out,
     size_t num_bytes = std::numeric_limits<size_t>::max()) {
@@ -172,7 +172,7 @@ bool readFile(
  * Same as above, but takes in a file name instead of fd
  */
 template <class Container>
-bool readFile(
+bool __cdecl readFile(
     const char* file_name,
     Container& out,
     size_t num_bytes = std::numeric_limits<size_t>::max()) {
@@ -208,7 +208,7 @@ bool readFile(
  * state will be unchanged on error.
  */
 template <class Container>
-bool writeFile(
+bool __cdecl writeFile(
     const Container& data,
     const char* filename,
     int flags = O_WRONLY | O_CREAT | O_TRUNC,
@@ -251,18 +251,18 @@ enum class SyncType {
  * directory after the function returns is required to ensure the
  * modification is durable.
  */
-void writeFileAtomic(
+void __cdecl writeFileAtomic(
     StringPiece filename,
     iovec* iov,
     int count,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
-void writeFileAtomic(
+void __cdecl writeFileAtomic(
     StringPiece filename,
     ByteRange data,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
-void writeFileAtomic(
+void __cdecl writeFileAtomic(
     StringPiece filename,
     StringPiece data,
     mode_t permissions = 0644,
@@ -274,7 +274,7 @@ void writeFileAtomic(
  *
  * Returns 0 on success or an errno value on error.
  */
-int writeFileAtomicNoThrow(
+int __cdecl writeFileAtomicNoThrow(
     StringPiece filename,
     iovec* iov,
     int count,

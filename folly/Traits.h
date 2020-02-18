@@ -740,7 +740,7 @@ FOLLY_MSVC_DISABLE_WARNING(4388) // sign-compare
 FOLLY_MSVC_DISABLE_WARNING(4804) // bool-compare
 
 template <typename RHS, RHS rhs, typename LHS>
-bool less_than_impl(LHS const lhs) {
+bool __cdecl less_than_impl(LHS const lhs) {
   // clang-format off
   return
       // Ensure signed and unsigned values won't be compared directly.
@@ -753,7 +753,7 @@ bool less_than_impl(LHS const lhs) {
 }
 
 template <typename RHS, RHS rhs, typename LHS>
-bool greater_than_impl(LHS const lhs) {
+bool __cdecl greater_than_impl(LHS const lhs) {
   // clang-format off
   return
       // Ensure signed and unsigned values won't be compared directly.
@@ -770,13 +770,13 @@ FOLLY_POP_WARNING
 } // namespace detail
 
 template <typename RHS, RHS rhs, typename LHS>
-bool less_than(LHS const lhs) {
+bool __cdecl less_than(LHS const lhs) {
   return detail::
       less_than_impl<RHS, rhs, typename std::remove_reference<LHS>::type>(lhs);
 }
 
 template <typename RHS, RHS rhs, typename LHS>
-bool greater_than(LHS const lhs) {
+bool __cdecl greater_than(LHS const lhs) {
   return detail::
       greater_than_impl<RHS, rhs, typename std::remove_reference<LHS>::type>(
           lhs);

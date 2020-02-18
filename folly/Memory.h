@@ -40,11 +40,11 @@ namespace folly {
 
 /// allocateBytes and deallocateBytes work like a checkedMalloc/free pair,
 /// but take advantage of sized deletion when available
-inline void* allocateBytes(size_t n) {
+inline void* __cdecl allocateBytes(size_t n) {
   return ::operator new(n);
 }
 
-inline void deallocateBytes(void* p, size_t n) {
+inline void __cdecl deallocateBytes(void* p, size_t n) {
 #if __cpp_sized_deallocation
   return ::operator delete(p, n);
 #else
@@ -60,34 +60,34 @@ inline void deallocateBytes(void* p, size_t n) {
       __IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_3_0)) || \
     defined(__FreeBSD__) || defined(__wasm32__)
 
-inline void* aligned_malloc(size_t size, size_t align) {
+inline void* __cdecl aligned_malloc(size_t size, size_t align) {
   // use posix_memalign, but mimic the behaviour of memalign
   void* ptr = nullptr;
   int rc = posix_memalign(&ptr, align, size);
   return rc == 0 ? (errno = 0, ptr) : (errno = rc, nullptr);
 }
 
-inline void aligned_free(void* aligned_ptr) {
+inline void __cdecl aligned_free(void* aligned_ptr) {
   free(aligned_ptr);
 }
 
 #elif defined(_WIN32)
 
-inline void* aligned_malloc(size_t size, size_t align) {
+inline void* __cdecl aligned_malloc(size_t size, size_t align) {
   return _aligned_malloc(size, align);
 }
 
-inline void aligned_free(void* aligned_ptr) {
+inline void __cdecl aligned_free(void* aligned_ptr) {
   _aligned_free(aligned_ptr);
 }
 
 #else
 
-inline void* aligned_malloc(size_t size, size_t align) {
+inline void* __cdecl aligned_malloc(size_t size, size_t align) {
   return memalign(align, size);
 }
 
-inline void aligned_free(void* aligned_ptr) {
+inline void __cdecl aligned_free(void* aligned_ptr) {
   free(aligned_ptr);
 }
 
@@ -95,7 +95,7 @@ inline void aligned_free(void* aligned_ptr) {
 
 namespace detail {
 template <typename Alloc, size_t kAlign, bool kAllocate>
-void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
+void __cdecl rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
   static_assert((kAlign & (kAlign - 1)) == 0, "Align must be a power of 2");
 
   using AllocTraits = std::allocator_traits<Alloc>;
@@ -196,7 +196,7 @@ void rawOverAlignedImpl(Alloc const& alloc, size_t n, void*& raw) {
 template <
     typename Alloc,
     size_t kAlign = alignof(typename std::allocator_traits<Alloc>::value_type)>
-typename std::allocator_traits<Alloc>::pointer allocateOverAligned(
+typename std::allocator_traits<Alloc>::pointer __cdecl allocateOverAligned(
     Alloc const& alloc,
     size_t n) {
   void* raw = nullptr;
@@ -210,7 +210,7 @@ typename std::allocator_traits<Alloc>::pointer allocateOverAligned(
 template <
     typename Alloc,
     size_t kAlign = alignof(typename std::allocator_traits<Alloc>::value_type)>
-void deallocateOverAligned(
+void __cdecl deallocateOverAligned(
     Alloc const& alloc,
     typename std::allocator_traits<Alloc>::pointer ptr,
     size_t n) {
@@ -221,7 +221,7 @@ void deallocateOverAligned(
 template <
     typename Alloc,
     size_t kAlign = alignof(typename std::allocator_traits<Alloc>::value_type)>
-size_t allocationBytesForOverAligned(size_t n) {
+size_t __cdecl allocationBytesForOverAligned(size_t n) {
   static_assert((kAlign & (kAlign - 1)) == 0, "Align must be a power of 2");
 
   using AllocTraits = std::allocator_traits<Alloc>;
@@ -256,21 +256,21 @@ size_t allocationBytesForOverAligned(size_t n) {
 #else
 
 template <typename T, typename... Args>
-typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type
+typename std::enable_if<!std::is_array<T>::value, std::unique_ptr<T>>::type __cdecl
 make_unique(Args&&... args) {
   return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
 }
 
 // Allows 'make_unique<T[]>(10)'. (N3690 s20.9.1.4 p3-4)
 template <typename T>
-typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type
+typename std::enable_if<std::is_array<T>::value, std::unique_ptr<T>>::type __cdecl
 make_unique(const size_t n) {
   return std::unique_ptr<T>(new typename std::remove_extent<T>::type[n]());
 }
 
 // Disallows 'make_unique<T[10]>()'. (N3690 s20.9.1.4 p5)
 template <typename T, typename... Args>
-typename std::enable_if<std::extent<T>::value != 0, std::unique_ptr<T>>::type
+typename std::enable_if<std::extent<T>::value != 0, std::unique_ptr<T>>::type __cdecl
 make_unique(Args&&...) = delete;
 
 #endif
@@ -321,7 +321,7 @@ struct static_function_deleter {
  *      using T = foobar::FooBarAsyncClient;
  */
 template <typename T, typename D>
-std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
+std::shared_ptr<T> __cdecl to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
   return std::shared_ptr<T>(std::move(ptr));
 }
 
@@ -344,7 +344,7 @@ std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
  *      using T = foobar::FooBarAsyncClient;
  */
 template <typename T>
-std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
+std::weak_ptr<T> __cdecl to_weak_ptr(const std::shared_ptr<T>& ptr) {
   return std::weak_ptr<T>(ptr);
 }
 
@@ -620,7 +620,7 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
  * allocate_unique, like std::allocate_shared but for std::unique_ptr
  */
 template <typename T, typename Alloc, typename... Args>
-std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
+std::unique_ptr<T, allocator_delete<Alloc>> __cdecl allocate_unique(
     Alloc const& alloc,
     Args&&... args) {
   using traits = std::allocator_traits<Alloc>;
@@ -652,7 +652,7 @@ struct SysBufferDeleter {
 };
 using SysBufferUniquePtr = std::unique_ptr<void, SysBufferDeleter>;
 
-inline SysBufferUniquePtr allocate_sys_buffer(std::size_t size) {
+inline SysBufferUniquePtr __cdecl allocate_sys_buffer(std::size_t size) {
   auto p = std::malloc(size);
   if (!p) {
     throw_exception<std::bad_alloc>();

@@ -187,13 +187,13 @@ class ConversionError : public ConversionErrorBase {
  *   return YourConversionError(messageString);
  * }
  ******************************************************************************/
-ConversionError makeConversionError(ConversionCode code, StringPiece input);
+ConversionError __cdecl makeConversionError(ConversionCode code, StringPiece input);
 
 namespace detail {
 /**
  * Enforce that the suffix following a number is made up only of whitespace.
  */
-inline ConversionCode enforceWhitespaceErr(StringPiece sp) {
+inline ConversionCode __cdecl enforceWhitespaceErr(StringPiece sp) {
   for (auto c : sp) {
     if (UNLIKELY(!std::isspace(c))) {
       return ConversionCode::NON_WHITESPACE_AFTER_END;
@@ -205,7 +205,7 @@ inline ConversionCode enforceWhitespaceErr(StringPiece sp) {
 /**
  * Keep this implementation around for prettyToDouble().
  */
-inline void enforceWhitespace(StringPiece sp) {
+inline void __cdecl enforceWhitespace(StringPiece sp) {
   auto err = enforceWhitespaceErr(sp);
   if (err != ConversionCode::SUCCESS) {
     throw_exception(makeConversionError(err, sp));
@@ -220,7 +220,7 @@ inline void enforceWhitespace(StringPiece sp) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_same<Tgt, typename std::decay<Src>::type>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(Src&& value) {
   return std::forward<Src>(value);
 }
@@ -228,7 +228,7 @@ tryTo(Src&& value) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_same<Tgt, typename std::decay<Src>::type>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(Src&& value) {
   return std::forward<Src>(value);
 }
@@ -246,7 +246,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_arithmetic<Src>::value && !std::is_same<Tgt, Src>::value &&
         std::is_same<Tgt, bool>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(const Src& value) {
   return value != Src();
 }
@@ -255,7 +255,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_arithmetic<Src>::value && !std::is_same<Tgt, Src>::value &&
         std::is_same<Tgt, bool>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(const Src& value) {
   return value != Src();
 }
@@ -273,13 +273,13 @@ namespace detail {
 // though the runtime performance is the same.
 
 template <typename... Ts>
-auto getLastElement(Ts&&... ts) -> decltype(std::get<sizeof...(Ts) - 1>(
+auto __cdecl getLastElement(Ts&&... ts) -> decltype(std::get<sizeof...(Ts) - 1>(
     std::forward_as_tuple(std::forward<Ts>(ts)...))) {
   return std::get<sizeof...(Ts) - 1>(
       std::forward_as_tuple(std::forward<Ts>(ts)...));
 }
 
-inline void getLastElement() {}
+inline void __cdecl getLastElement() {}
 
 template <size_t size, typename... Ts>
 struct LastElementType : std::tuple_element<size - 1, std::tuple<Ts...>> {};
@@ -307,7 +307,7 @@ struct LastElementImpl<Head, Ts...> {
 };
 
 template <typename... Ts>
-auto getLastElement(const Ts&... ts)
+auto __cdecl getLastElement(const Ts&... ts)
     -> decltype(LastElementImpl<Ts...>::call(ts...)) {
   return LastElementImpl<Ts...>::call(ts...);
 }
@@ -328,11 +328,11 @@ struct LastElement : std::decay<decltype(
 namespace detail {
 
 template <typename IntegerType>
-constexpr unsigned int digitsEnough() {
+constexpr unsigned int __cdecl digitsEnough() {
   return (unsigned int)(ceil(sizeof(IntegerType) * CHAR_BIT * M_LN2 / M_LN10));
 }
 
-inline size_t
+inline size_t __cdecl
 unsafeTelescope128(char* buffer, size_t room, unsigned __int128 x) {
   typedef unsigned __int128 Usrc;
   size_t p = room - 1;
@@ -370,7 +370,7 @@ unsafeTelescope128(char* buffer, size_t room, unsigned __int128 x) {
  * separate overload for 32-bit integers is not worthwhile.
  */
 
-inline uint32_t digits10(uint64_t v) {
+inline uint32_t __cdecl digits10(uint64_t v) {
 #ifdef __x86_64__
 
   // For this arch we can get a little help from specialized CPU instructions
@@ -458,7 +458,7 @@ inline uint32_t digits10(uint64_t v) {
  * because it does not add a terminating \0.
  */
 
-inline uint32_t uint64ToBufferUnsafe(uint64_t v, char* const buffer) {
+inline uint32_t __cdecl uint64ToBufferUnsafe(uint64_t v, char* const buffer) {
   auto const result = digits10(v);
   // WARNING: using size_t or pointer arithmetic for pos slows down
   // the loop below 20x. This is because several 32-bit ops can be
@@ -481,18 +481,18 @@ inline uint32_t uint64ToBufferUnsafe(uint64_t v, char* const buffer) {
  * A single char gets appended.
  */
 template <class Tgt>
-void toAppend(char value, Tgt* result) {
+void __cdecl toAppend(char value, Tgt* result) {
   *result += value;
 }
 
 template <class T>
-constexpr typename std::enable_if<std::is_same<T, char>::value, size_t>::type
+constexpr typename std::enable_if<std::is_same<T, char>::value, size_t>::type __cdecl
 estimateSpaceNeeded(T) {
   return 1;
 }
 
 template <size_t N>
-constexpr size_t estimateSpaceNeeded(const char (&)[N]) {
+constexpr size_t __cdecl estimateSpaceNeeded(const char (&)[N]) {
   return N;
 }
 
@@ -502,7 +502,7 @@ constexpr size_t estimateSpaceNeeded(const char (&)[N]) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_convertible<Src, const char*>::value &&
-    IsSomeString<Tgt>::value>::type
+    IsSomeString<Tgt>::value>::type __cdecl
 toAppend(Src value, Tgt* result) {
   // Treat null pointers like an empty string, as in:
   // operator<<(std::ostream&, const char*).
@@ -514,7 +514,7 @@ toAppend(Src value, Tgt* result) {
 
 template <class Src>
 typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
-    type
+    type __cdecl
     estimateSpaceNeeded(Src value) {
   const char* c = value;
   if (c) {
@@ -524,7 +524,7 @@ typename std::enable_if<std::is_convertible<Src, const char*>::value, size_t>::
 }
 
 template <class Src>
-typename std::enable_if<IsSomeString<Src>::value, size_t>::type
+typename std::enable_if<IsSomeString<Src>::value, size_t>::type __cdecl
 estimateSpaceNeeded(Src const& value) {
   return value.size();
 }
@@ -534,13 +534,13 @@ typename std::enable_if<
     std::is_convertible<Src, folly::StringPiece>::value &&
         !IsSomeString<Src>::value &&
         !std::is_convertible<Src, const char*>::value,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   return folly::StringPiece(value).size();
 }
 
 template <>
-inline size_t estimateSpaceNeeded(std::nullptr_t /* value */) {
+inline size_t __cdecl estimateSpaceNeeded(std::nullptr_t /* value */) {
   return 0;
 }
 
@@ -548,7 +548,7 @@ template <class Src>
 typename std::enable_if<
     std::is_pointer<Src>::value &&
         IsSomeString<std::remove_pointer<Src>>::value,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   return value->size();
 }
@@ -558,7 +558,7 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-    IsSomeString<Src>::value && IsSomeString<Tgt>::value>::type
+    IsSomeString<Src>::value && IsSomeString<Tgt>::value>::type __cdecl
 toAppend(const Src& value, Tgt* result) {
   result->append(value);
 }
@@ -567,7 +567,7 @@ toAppend(const Src& value, Tgt* result) {
  * and StringPiece objects too
  */
 template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl toAppend(
     StringPiece value,
     Tgt* result) {
   result->append(value.data(), value.size());
@@ -578,7 +578,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
  * so make a specialization.
  */
 template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl toAppend(
     const fbstring& value,
     Tgt* result) {
   result->append(value.data(), value.size());
@@ -590,7 +590,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
  */
 
 template <class Tgt>
-void toAppend(__int128 value, Tgt* result) {
+void __cdecl toAppend(__int128 value, Tgt* result) {
   typedef unsigned __int128 Usrc;
   char buffer[detail::digitsEnough<unsigned __int128>() + 1];
   size_t p;
@@ -606,7 +606,7 @@ void toAppend(__int128 value, Tgt* result) {
 }
 
 template <class Tgt>
-void toAppend(unsigned __int128 value, Tgt* result) {
+void __cdecl toAppend(unsigned __int128 value, Tgt* result) {
   char buffer[detail::digitsEnough<unsigned __int128>()];
   size_t p;
 
@@ -617,14 +617,14 @@ void toAppend(unsigned __int128 value, Tgt* result) {
 
 template <class T>
 constexpr
-    typename std::enable_if<std::is_same<T, __int128>::value, size_t>::type
+    typename std::enable_if<std::is_same<T, __int128>::value, size_t>::type __cdecl
     estimateSpaceNeeded(T) {
   return detail::digitsEnough<__int128>();
 }
 
 template <class T>
 constexpr typename std::
-    enable_if<std::is_same<T, unsigned __int128>::value, size_t>::type
+    enable_if<std::is_same<T, unsigned __int128>::value, size_t>::type __cdecl
     estimateSpaceNeeded(T) {
   return detail::digitsEnough<unsigned __int128>();
 }
@@ -642,7 +642,7 @@ constexpr typename std::
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && std::is_signed<Src>::value &&
-    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type __cdecl
 toAppend(Src value, Tgt* result) {
   char buffer[20];
   if (value < 0) {
@@ -659,7 +659,7 @@ template <class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && std::is_signed<Src>::value &&
         sizeof(Src) >= 4 && sizeof(Src) < 16,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   if (value < 0) {
     // When "value" is the smallest negative, negating it would evoke
@@ -677,7 +677,7 @@ estimateSpaceNeeded(Src value) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && !std::is_signed<Src>::value &&
-    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type
+    IsSomeString<Tgt>::value && sizeof(Src) >= 4>::type __cdecl
 toAppend(Src value, Tgt* result) {
   char buffer[20];
   result->append(buffer, uint64ToBufferUnsafe(value, buffer));
@@ -687,7 +687,7 @@ template <class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && !std::is_signed<Src>::value &&
         sizeof(Src) >= 4 && sizeof(Src) < 16,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   return digits10(value);
 }
@@ -699,7 +699,7 @@ estimateSpaceNeeded(Src value) {
 template <class Tgt, class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && IsSomeString<Tgt>::value &&
-    sizeof(Src) < 4>::type
+    sizeof(Src) < 4>::type __cdecl
 toAppend(Src value, Tgt* result) {
   typedef
       typename std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::
@@ -711,7 +711,7 @@ template <class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && sizeof(Src) < 4 &&
         !std::is_same<Src, char>::value,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   typedef
       typename std::conditional<std::is_signed<Src>::value, int64_t, uint64_t>::
@@ -724,13 +724,13 @@ estimateSpaceNeeded(Src value) {
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type
+    std::is_enum<Src>::value && IsSomeString<Tgt>::value>::type __cdecl
 toAppend(Src value, Tgt* result) {
   toAppend(to_underlying(value), result);
 }
 
 template <class Src>
-typename std::enable_if<std::is_enum<Src>::value, size_t>::type
+typename std::enable_if<std::is_enum<Src>::value, size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   return estimateSpaceNeeded(to_underlying(value));
 }
@@ -747,7 +747,7 @@ constexpr int kConvMaxDecimalInShortestHigh = 21;
 /** Wrapper around DoubleToStringConverter **/
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
+    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type __cdecl
 toAppend(
     Src value,
     Tgt* result,
@@ -791,7 +791,7 @@ toAppend(
  */
 template <class Tgt, class Src>
 typename std::enable_if<
-    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type
+    std::is_floating_point<Src>::value && IsSomeString<Tgt>::value>::type __cdecl
 toAppend(Src value, Tgt* result) {
   toAppend(
       value, result, double_conversion::DoubleToStringConverter::SHORTEST, 0);
@@ -803,7 +803,7 @@ toAppend(Src value, Tgt* result) {
  * as used in toAppend(double, string*).
  */
 template <class Src>
-typename std::enable_if<std::is_floating_point<Src>::value, size_t>::type
+typename std::enable_if<std::is_floating_point<Src>::value, size_t>::type __cdecl
 estimateSpaceNeeded(Src value) {
   // kBase10MaximalLength is 17. We add 1 for decimal point,
   // e.g. 10.0/9 is 17 digits and 18 characters, including the decimal point.
@@ -846,7 +846,7 @@ constexpr typename std::enable_if<
         !std::is_convertible<Src, const char*>::value &&
         !std::is_convertible<Src, StringPiece>::value &&
         !std::is_enum<Src>::value && !HasLengthEstimator<Src>::value,
-    size_t>::type
+    size_t>::type __cdecl
 estimateSpaceNeeded(const Src&) {
   return sizeof(Src) + 1; // dumbest best effort ever?
 }
@@ -854,23 +854,23 @@ estimateSpaceNeeded(const Src&) {
 namespace detail {
 
 template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value, size_t>::type
+typename std::enable_if<IsSomeString<Tgt>::value, size_t>::type __cdecl
 estimateSpaceToReserve(size_t sofar, Tgt*) {
   return sofar;
 }
 
 template <class T, class... Ts>
-size_t estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
+size_t __cdecl estimateSpaceToReserve(size_t sofar, const T& v, const Ts&... vs) {
   return estimateSpaceToReserve(sofar + estimateSpaceNeeded(v), vs...);
 }
 
 template <class... Ts>
-void reserveInTarget(const Ts&... vs) {
+void __cdecl reserveInTarget(const Ts&... vs) {
   getLastElement(vs...)->reserve(estimateSpaceToReserve(0, vs...));
 }
 
 template <class Delimiter, class... Ts>
-void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
+void __cdecl reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
   static_assert(sizeof...(vs) >= 2, "Needs at least 2 args");
   size_t fordelim = (sizeof...(vs) - 2) *
       estimateSpaceToReserve(0, d, static_cast<std::string*>(nullptr));
@@ -882,7 +882,7 @@ void reserveInTargetDelim(const Delimiter& d, const Ts&... vs) {
  */
 template <class T, class Tgt>
 typename std::enable_if<
-    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
+    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type __cdecl
 toAppendStrImpl(const T& v, Tgt result) {
   toAppend(v, result);
 }
@@ -891,7 +891,7 @@ template <class T, class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 2 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppendStrImpl(const T& v, const Ts&... vs) {
   toAppend(v, getLastElement(vs...));
   toAppendStrImpl(vs...);
@@ -899,7 +899,7 @@ toAppendStrImpl(const T& v, const Ts&... vs) {
 
 template <class Delimiter, class T, class Tgt>
 typename std::enable_if<
-    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type
+    IsSomeString<typename std::remove_pointer<Tgt>::type>::value>::type __cdecl
 toAppendDelimStrImpl(const Delimiter& /* delim */, const T& v, Tgt result) {
   toAppend(v, result);
 }
@@ -908,7 +908,7 @@ template <class Delimiter, class T, class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 2 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppendDelimStrImpl(const Delimiter& delim, const T& v, const Ts&... vs) {
   // we are really careful here, calling toAppend with just one element does
   // not try to estimate space needed (as we already did that). If we call
@@ -944,7 +944,7 @@ template <class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 3 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppend(const Ts&... vs) {
   ::folly::detail::toAppendStrImpl(vs...);
 }
@@ -955,7 +955,7 @@ toAppend(const Ts&... vs) {
 // dangerous enough (as most pointers will implicitly convert to a void*)
 // just doing it for MSVC.
 template <class Tgt>
-void toAppend(const pid_t a, Tgt* res) {
+void __cdecl toAppend(const pid_t a, Tgt* res) {
   toAppend(uint64_t(a), res);
 }
 #endif
@@ -971,27 +971,27 @@ void toAppend(const pid_t a, Tgt* res) {
  */
 template <class... Ts>
 typename std::enable_if<IsSomeString<typename std::remove_pointer<
-    typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+    typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppendFit(const Ts&... vs) {
   ::folly::detail::reserveInTarget(vs...);
   toAppend(vs...);
 }
 
 template <class Ts>
-void toAppendFit(const Ts&) {}
+void __cdecl toAppendFit(const Ts&) {}
 
 /**
  * Variadic base case: do nothing.
  */
 template <class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl toAppend(
     Tgt* /* result */) {}
 
 /**
  * Variadic base case: do nothing.
  */
 template <class Delimiter, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl toAppendDelim(
     const Delimiter& /* delim */,
     Tgt* /* result */) {}
 
@@ -999,7 +999,7 @@ typename std::enable_if<IsSomeString<Tgt>::value>::type toAppendDelim(
  * 1 element: same as toAppend.
  */
 template <class Delimiter, class T, class Tgt>
-typename std::enable_if<IsSomeString<Tgt>::value>::type
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl
 toAppendDelim(const Delimiter& /* delim */, const T& v, Tgt* tgt) {
   toAppend(v, tgt);
 }
@@ -1012,7 +1012,7 @@ template <class Delimiter, class... Ts>
 typename std::enable_if<
     sizeof...(Ts) >= 3 &&
     IsSomeString<typename std::remove_pointer<
-        typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+        typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppendDelim(const Delimiter& delim, const Ts&... vs) {
   detail::toAppendDelimStrImpl(delim, vs...);
 }
@@ -1022,14 +1022,14 @@ toAppendDelim(const Delimiter& delim, const Ts&... vs) {
  */
 template <class Delimiter, class... Ts>
 typename std::enable_if<IsSomeString<typename std::remove_pointer<
-    typename detail::LastElement<const Ts&...>::type>::type>::value>::type
+    typename detail::LastElement<const Ts&...>::type>::type>::value>::type __cdecl
 toAppendDelimFit(const Delimiter& delim, const Ts&... vs) {
   detail::reserveInTargetDelim(delim, vs...);
   toAppendDelim(delim, vs...);
 }
 
 template <class De, class Ts>
-void toAppendDelimFit(const De&, const Ts&) {}
+void __cdecl toAppendDelimFit(const De&, const Ts&) {}
 
 /**
  * to<SomeString>(v1, v2, ...) uses toAppend() (see below) as back-end
@@ -1041,7 +1041,7 @@ typename std::enable_if<
         (sizeof...(Ts) != 1 ||
          !std::is_same<Tgt, typename detail::LastElement<const Ts&...>::type>::
              value),
-    Tgt>::type
+    Tgt>::type __cdecl
 to(const Ts&... vs) {
   Tgt result;
   toAppendFit(vs..., &result);
@@ -1062,7 +1062,7 @@ to(const Ts&... vs) {
 template <class Tgt, class Src>
 typename std::enable_if<
     IsSomeString<Tgt>::value && std::is_floating_point<Src>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(Src value) {
   Tgt result;
   toAppend(value, &result);
@@ -1076,7 +1076,7 @@ template <class Tgt, class Delim, class Src>
 typename std::enable_if<
     IsSomeString<Tgt>::value &&
         std::is_same<Tgt, typename std::decay<Src>::type>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 toDelim(const Delim& /* delim */, Src&& value) {
   return std::forward<Src>(value);
 }
@@ -1091,7 +1091,7 @@ typename std::enable_if<
         (sizeof...(Ts) != 1 ||
          !std::is_same<Tgt, typename detail::LastElement<const Ts&...>::type>::
              value),
-    Tgt>::type
+    Tgt>::type __cdecl
 toDelim(const Delim& delim, const Ts&... vs) {
   Tgt result;
   toAppendDelimFit(delim, vs..., &result);
@@ -1104,101 +1104,101 @@ toDelim(const Delim& delim, const Ts&... vs) {
 
 namespace detail {
 
-Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept;
+Expected<bool, ConversionCode> __cdecl str_to_bool(StringPiece* src) noexcept;
 
 template <typename T>
-Expected<T, ConversionCode> str_to_floating(StringPiece* src) noexcept;
+Expected<T, ConversionCode> __cdecl str_to_floating(StringPiece* src) noexcept;
 
-extern template Expected<float, ConversionCode> str_to_floating<float>(
+extern template Expected<float, ConversionCode> __cdecl str_to_floating<float>(
     StringPiece* src) noexcept;
-extern template Expected<double, ConversionCode> str_to_floating<double>(
+extern template Expected<double, ConversionCode> __cdecl str_to_floating<double>(
     StringPiece* src) noexcept;
 
 template <class Tgt>
-Expected<Tgt, ConversionCode> digits_to(const char* b, const char* e) noexcept;
+Expected<Tgt, ConversionCode> __cdecl digits_to(const char* b, const char* e) noexcept;
 
-extern template Expected<char, ConversionCode> digits_to<char>(
+extern template Expected<char, ConversionCode> __cdecl digits_to<char>(
     const char*,
     const char*) noexcept;
-extern template Expected<signed char, ConversionCode> digits_to<signed char>(
+extern template Expected<signed char, ConversionCode> __cdecl digits_to<signed char>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned char, ConversionCode>
+extern template Expected<unsigned char, ConversionCode> __cdecl
 digits_to<unsigned char>(const char*, const char*) noexcept;
 
-extern template Expected<short, ConversionCode> digits_to<short>(
+extern template Expected<short, ConversionCode> __cdecl digits_to<short>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned short, ConversionCode>
+extern template Expected<unsigned short, ConversionCode> __cdecl
 digits_to<unsigned short>(const char*, const char*) noexcept;
 
-extern template Expected<int, ConversionCode> digits_to<int>(
+extern template Expected<int, ConversionCode> __cdecl digits_to<int>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
+extern template Expected<unsigned int, ConversionCode> __cdecl digits_to<unsigned int>(
     const char*,
     const char*) noexcept;
 
-extern template Expected<long, ConversionCode> digits_to<long>(
+extern template Expected<long, ConversionCode> __cdecl digits_to<long>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned long, ConversionCode>
+extern template Expected<unsigned long, ConversionCode> __cdecl
 digits_to<unsigned long>(const char*, const char*) noexcept;
 
-extern template Expected<long long, ConversionCode> digits_to<long long>(
+extern template Expected<long long, ConversionCode> __cdecl digits_to<long long>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned long long, ConversionCode>
+extern template Expected<unsigned long long, ConversionCode> __cdecl
 digits_to<unsigned long long>(const char*, const char*) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-extern template Expected<__int128, ConversionCode> digits_to<__int128>(
+extern template Expected<__int128, ConversionCode> __cdecl digits_to<__int128>(
     const char*,
     const char*) noexcept;
-extern template Expected<unsigned __int128, ConversionCode>
+extern template Expected<unsigned __int128, ConversionCode> __cdecl
 digits_to<unsigned __int128>(const char*, const char*) noexcept;
 #endif
 
 template <class T>
-Expected<T, ConversionCode> str_to_integral(StringPiece* src) noexcept;
+Expected<T, ConversionCode> __cdecl str_to_integral(StringPiece* src) noexcept;
 
-extern template Expected<char, ConversionCode> str_to_integral<char>(
+extern template Expected<char, ConversionCode> __cdecl str_to_integral<char>(
     StringPiece* src) noexcept;
-extern template Expected<signed char, ConversionCode>
+extern template Expected<signed char, ConversionCode> __cdecl
 str_to_integral<signed char>(StringPiece* src) noexcept;
-extern template Expected<unsigned char, ConversionCode>
+extern template Expected<unsigned char, ConversionCode> __cdecl
 str_to_integral<unsigned char>(StringPiece* src) noexcept;
 
-extern template Expected<short, ConversionCode> str_to_integral<short>(
+extern template Expected<short, ConversionCode> __cdecl str_to_integral<short>(
     StringPiece* src) noexcept;
-extern template Expected<unsigned short, ConversionCode>
+extern template Expected<unsigned short, ConversionCode> __cdecl
 str_to_integral<unsigned short>(StringPiece* src) noexcept;
 
-extern template Expected<int, ConversionCode> str_to_integral<int>(
+extern template Expected<int, ConversionCode> __cdecl str_to_integral<int>(
     StringPiece* src) noexcept;
 extern template Expected<unsigned int, ConversionCode>
 str_to_integral<unsigned int>(StringPiece* src) noexcept;
 
-extern template Expected<long, ConversionCode> str_to_integral<long>(
+extern template Expected<long, ConversionCode> __cdecl str_to_integral<long>(
     StringPiece* src) noexcept;
 extern template Expected<unsigned long, ConversionCode>
 str_to_integral<unsigned long>(StringPiece* src) noexcept;
 
-extern template Expected<long long, ConversionCode> str_to_integral<long long>(
+extern template Expected<long long, ConversionCode> __cdecl str_to_integral<long long>(
     StringPiece* src) noexcept;
-extern template Expected<unsigned long long, ConversionCode>
+extern template Expected<unsigned long long, ConversionCode> __cdecl
 str_to_integral<unsigned long long>(StringPiece* src) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-extern template Expected<__int128, ConversionCode> str_to_integral<__int128>(
+extern template Expected<__int128, ConversionCode> __cdecl str_to_integral<__int128>(
     StringPiece* src) noexcept;
-extern template Expected<unsigned __int128, ConversionCode>
+extern template Expected<unsigned __int128, ConversionCode> __cdecl
 str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
 
 template <typename T>
 typename std::
-    enable_if<std::is_same<T, bool>::value, Expected<T, ConversionCode>>::type
+    enable_if<std::is_same<T, bool>::value, Expected<T, ConversionCode>>::type __cdecl
     convertTo(StringPiece* src) noexcept {
   return str_to_bool(src);
 }
@@ -1206,7 +1206,7 @@ typename std::
 template <typename T>
 typename std::enable_if<
     std::is_floating_point<T>::value,
-    Expected<T, ConversionCode>>::type
+    Expected<T, ConversionCode>>::type __cdecl
 convertTo(StringPiece* src) noexcept {
   return str_to_floating<T>(src);
 }
@@ -1214,7 +1214,7 @@ convertTo(StringPiece* src) noexcept {
 template <typename T>
 typename std::enable_if<
     std::is_integral<T>::value && !std::is_same<T, bool>::value,
-    Expected<T, ConversionCode>>::type
+    Expected<T, ConversionCode>>::type __cdecl
 convertTo(StringPiece* src) noexcept {
   return str_to_integral<T>(src);
 }
@@ -1228,7 +1228,7 @@ convertTo(StringPiece* src) noexcept {
 template <typename Tgt>
 typename std::enable_if<
     std::is_integral<Tgt>::value && !std::is_same<Tgt, bool>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(const char* b, const char* e) {
   return detail::digits_to<Tgt>(b, e);
 }
@@ -1236,7 +1236,7 @@ tryTo(const char* b, const char* e) {
 template <typename Tgt>
 typename std::enable_if<
     std::is_integral<Tgt>::value && !std::is_same<Tgt, bool>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(const char* b, const char* e) {
   return tryTo<Tgt>(b, e).thenOrThrow(
       [](Tgt res) { return res; },
@@ -1255,7 +1255,7 @@ to(const char* b, const char* e) {
 template <typename Tgt>
 FOLLY_NODISCARD inline typename std::enable_if<
     std::is_arithmetic<Tgt>::value,
-    Expected<StringPiece, ConversionCode>>::type
+    Expected<StringPiece, ConversionCode>>::type __cdecl
 parseTo(StringPiece src, Tgt& out) {
   return detail::convertTo<Tgt>(&src).then(
       [&](Tgt res) { return void(out = res), src; });
@@ -1276,7 +1276,7 @@ template <class Tgt>
 typename std::enable_if<
     !std::is_same<Tgt, bool>::value &&
         (std::is_integral<Tgt>::value || std::is_floating_point<Tgt>::value),
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 convertTo(const bool& value) noexcept {
   return static_cast<Tgt>(value ? 1 : 0);
 }
@@ -1290,7 +1290,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_integral<Src>::value && !std::is_same<Tgt, Src>::value &&
         !std::is_same<Tgt, bool>::value && std::is_integral<Tgt>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 convertTo(const Src& value) noexcept {
   if /* constexpr */ (
       std::make_unsigned_t<Tgt>(std::numeric_limits<Tgt>::max()) <
@@ -1318,7 +1318,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_floating_point<Tgt>::value && std::is_floating_point<Src>::value &&
         !std::is_same<Tgt, Src>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 convertTo(const Src& value) noexcept {
   if /* constexpr */ (
       std::numeric_limits<Tgt>::max() < std::numeric_limits<Src>::max()) {
@@ -1340,7 +1340,7 @@ template <typename Tgt, typename Src>
 inline typename std::enable_if<
     std::is_floating_point<Src>::value && std::is_integral<Tgt>::value &&
         !std::is_same<Tgt, bool>::value,
-    bool>::type
+    bool>::type __cdecl
 checkConversion(const Src& value) {
   constexpr Src tgtMaxAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::max());
   constexpr Src tgtMinAsSrc = static_cast<Src>(std::numeric_limits<Tgt>::min());
@@ -1370,7 +1370,7 @@ checkConversion(const Src& value) {
 template <typename Tgt, typename Src>
 constexpr typename std::enable_if<
     std::is_integral<Src>::value && std::is_floating_point<Tgt>::value,
-    bool>::type
+    bool>::type __cdecl
 checkConversion(const Src&) {
   return true;
 }
@@ -1380,7 +1380,7 @@ checkConversion(const Src&) {
 template <typename Tgt, typename Src>
 constexpr typename std::enable_if<
     std::is_floating_point<Src>::value && std::is_same<Tgt, bool>::value,
-    bool>::type
+    bool>::type __cdecl
 checkConversion(const Src&) {
   return true;
 }
@@ -1396,7 +1396,7 @@ template <typename Tgt, typename Src>
 typename std::enable_if<
     (std::is_integral<Src>::value && std::is_floating_point<Tgt>::value) ||
         (std::is_floating_point<Src>::value && std::is_integral<Tgt>::value),
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 convertTo(const Src& value) noexcept {
   if (LIKELY(checkConversion<Tgt>(value))) {
     Tgt result = static_cast<Tgt>(value);
@@ -1411,7 +1411,7 @@ convertTo(const Src& value) noexcept {
 }
 
 template <typename Tgt, typename Src>
-inline std::string errorValue(const Src& value) {
+inline std::string __cdecl errorValue(const Src& value) {
   return to<std::string>("(", pretty_name<Tgt>(), ") ", value);
 }
 
@@ -1425,13 +1425,13 @@ using IsArithToArith = bool_constant<
 template <typename Tgt, typename Src>
 typename std::enable_if<
     detail::IsArithToArith<Tgt, Src>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(const Src& value) noexcept {
   return detail::convertTo<Tgt>(value);
 }
 
 template <typename Tgt, typename Src>
-typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type to(
+typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type __cdecl to(
     const Src& value) {
   return tryTo<Tgt>(value).thenOrThrow(
       [](Tgt res) { return res; },
@@ -1455,7 +1455,7 @@ typename std::enable_if<detail::IsArithToArith<Tgt, Src>::value, Tgt>::type to(
 template <class T>
 FOLLY_NODISCARD typename std::enable_if<
     std::is_enum<T>::value,
-    Expected<StringPiece, ConversionCode>>::type
+    Expected<StringPiece, ConversionCode>>::type __cdecl
 parseTo(StringPiece in, T& out) noexcept {
   typename std::underlying_type<T>::type tmp{};
   auto restOrError = parseTo(in, tmp);
@@ -1464,7 +1464,7 @@ parseTo(StringPiece in, T& out) noexcept {
 }
 
 FOLLY_NODISCARD
-inline Expected<StringPiece, ConversionCode> parseTo(
+inline Expected<StringPiece, ConversionCode> __cdecl parseTo(
     StringPiece in,
     StringPiece& out) noexcept {
   out = in;
@@ -1472,7 +1472,7 @@ inline Expected<StringPiece, ConversionCode> parseTo(
 }
 
 FOLLY_NODISCARD
-inline Expected<StringPiece, ConversionCode> parseTo(
+inline Expected<StringPiece, ConversionCode> __cdecl parseTo(
     StringPiece in,
     std::string& out) {
   out.clear();
@@ -1481,7 +1481,7 @@ inline Expected<StringPiece, ConversionCode> parseTo(
 }
 
 FOLLY_NODISCARD
-inline Expected<StringPiece, ConversionCode> parseTo(
+inline Expected<StringPiece, ConversionCode> __cdecl parseTo(
     StringPiece in,
     fbstring& out) {
   out.clear();
@@ -1516,7 +1516,7 @@ struct ReturnUnit {
 template <class Tgt>
 inline typename std::enable_if<
     std::is_void<ParseToResult<Tgt>>::value,
-    Expected<StringPiece, ConversionCode>>::type
+    Expected<StringPiece, ConversionCode>>::type __cdecl
 parseToWrap(StringPiece sp, Tgt& out) {
   parseTo(sp, out);
   return StringPiece(sp.end(), sp.end());
@@ -1525,7 +1525,7 @@ parseToWrap(StringPiece sp, Tgt& out) {
 template <class Tgt>
 inline typename std::enable_if<
     !std::is_void<ParseToResult<Tgt>>::value,
-    ParseToResult<Tgt>>::type
+    ParseToResult<Tgt>>::type __cdecl
 parseToWrap(StringPiece sp, Tgt& out) {
   return parseTo(sp, out);
 }
@@ -1544,7 +1544,7 @@ using ParseToError = ExpectedErrorType<decltype(
 template <class Tgt>
 inline typename std::enable_if<
     !std::is_same<StringPiece, Tgt>::value,
-    Expected<Tgt, detail::ParseToError<Tgt>>>::type
+    Expected<Tgt, detail::ParseToError<Tgt>>>::type __cdecl
 tryTo(StringPiece src) {
   Tgt result{};
   using Error = detail::ParseToError<Tgt>;
@@ -1560,14 +1560,14 @@ tryTo(StringPiece src) {
 template <class Tgt, class Src>
 inline typename std::enable_if<
     IsSomeString<Src>::value && !std::is_same<StringPiece, Tgt>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(Src const& src) {
   return to<Tgt>(StringPiece(src.data(), src.size()));
 }
 
 template <class Tgt>
 inline
-    typename std::enable_if<!std::is_same<StringPiece, Tgt>::value, Tgt>::type
+    typename std::enable_if<!std::is_same<StringPiece, Tgt>::value, Tgt>::type __cdecl
     to(StringPiece src) {
   Tgt result{};
   using Error = detail::ParseToError<Tgt>;
@@ -1593,7 +1593,7 @@ inline
  * check for trailing whitepsace.
  */
 template <class Tgt>
-Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) {
+Expected<Tgt, detail::ParseToError<Tgt>> __cdecl tryTo(StringPiece* src) {
   Tgt result;
   return parseTo(*src, result).then([&, src](StringPiece sp) -> Tgt {
     *src = sp;
@@ -1602,7 +1602,7 @@ Expected<Tgt, detail::ParseToError<Tgt>> tryTo(StringPiece* src) {
 }
 
 template <class Tgt>
-Tgt to(StringPiece* src) {
+Tgt __cdecl to(StringPiece* src) {
   Tgt result{};
   using Error = detail::ParseToError<Tgt>;
   return parseTo(*src, result)
@@ -1622,7 +1622,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value &&
         !std::is_convertible<Tgt, StringPiece>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(const Src& value) {
   return tryTo<Tgt>(to_underlying(value));
 }
@@ -1631,7 +1631,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     !std::is_convertible<Src, StringPiece>::value && std::is_enum<Tgt>::value &&
         !std::is_same<Src, Tgt>::value,
-    Expected<Tgt, ConversionCode>>::type
+    Expected<Tgt, ConversionCode>>::type __cdecl
 tryTo(const Src& value) {
   using I = typename std::underlying_type<Tgt>::type;
   return tryTo<I>(value).then([](I i) { return static_cast<Tgt>(i); });
@@ -1641,7 +1641,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     std::is_enum<Src>::value && !std::is_same<Src, Tgt>::value &&
         !std::is_convertible<Tgt, StringPiece>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(const Src& value) {
   return to<Tgt>(to_underlying(value));
 }
@@ -1650,7 +1650,7 @@ template <class Tgt, class Src>
 typename std::enable_if<
     !std::is_convertible<Src, StringPiece>::value && std::is_enum<Tgt>::value &&
         !std::is_same<Src, Tgt>::value,
-    Tgt>::type
+    Tgt>::type __cdecl
 to(const Src& value) {
   return static_cast<Tgt>(to<typename std::underlying_type<Tgt>::type>(value));
 }

@@ -31,7 +31,7 @@ namespace folly {
 namespace detail {
 
 template <typename T>
-inline constexpr T divFloorBranchless(T num, T denom) {
+inline constexpr T __cdecl divFloorBranchless(T num, T denom) {
   // floor != trunc when the answer isn't exact and truncation went the
   // wrong way (truncation went toward positive infinity).  That happens
   // when the true answer is negative, which happens when num and denom
@@ -43,7 +43,7 @@ inline constexpr T divFloorBranchless(T num, T denom) {
 }
 
 template <typename T>
-inline constexpr T divFloorBranchful(T num, T denom) {
+inline constexpr T __cdecl divFloorBranchful(T num, T denom) {
   // First case handles negative result by preconditioning numerator.
   // Preconditioning decreases the magnitude of the numerator, which is
   // itself sign-dependent.  Second case handles zero or positive rational
@@ -54,7 +54,7 @@ inline constexpr T divFloorBranchful(T num, T denom) {
 }
 
 template <typename T>
-inline constexpr T divCeilBranchless(T num, T denom) {
+inline constexpr T __cdecl divCeilBranchless(T num, T denom) {
   // ceil != trunc when the answer isn't exact (truncation occurred)
   // and truncation went away from positive infinity.  That happens when
   // the true answer is positive, which happens when num and denom have
@@ -65,7 +65,7 @@ inline constexpr T divCeilBranchless(T num, T denom) {
 }
 
 template <typename T>
-inline constexpr T divCeilBranchful(T num, T denom) {
+inline constexpr T __cdecl divCeilBranchful(T num, T denom) {
   // First case handles negative or zero rational result, where trunc and ceil
   // are the same.
   // Second case handles positive result by preconditioning numerator.
@@ -77,7 +77,7 @@ inline constexpr T divCeilBranchful(T num, T denom) {
 }
 
 template <typename T>
-inline constexpr T divRoundAwayBranchless(T num, T denom) {
+inline constexpr T __cdecl divRoundAwayBranchless(T num, T denom) {
   // away != trunc whenever truncation actually occurred, which is when
   // there is a non-zero remainder.  If the unrounded result is negative
   // then fixup moves it toward negative infinity.  If the unrounded
@@ -88,7 +88,7 @@ inline constexpr T divRoundAwayBranchless(T num, T denom) {
 }
 
 template <typename T>
-inline constexpr T divRoundAwayBranchful(T num, T denom) {
+inline constexpr T __cdecl divRoundAwayBranchful(T num, T denom) {
   // First case of second ternary operator handles negative rational
   // result, which is the same as divFloor.  Second case of second ternary
   // operator handles positive result, which is the same as divCeil.
@@ -129,7 +129,7 @@ constexpr auto kIntegerDivisionGivesRemainder = true;
  * and denom is equal to -1 after conversion to the result type.
  */
 template <typename N, typename D>
-inline constexpr detail::IdivResultType<N, D> divFloor(N num, D denom) {
+inline constexpr detail::IdivResultType<N, D> __cdecl divFloor(N num, D denom) {
   using R = decltype(num / denom);
   return detail::IdivResultType<N, D>(
       kIntegerDivisionGivesRemainder && std::is_signed<R>::value
@@ -149,7 +149,7 @@ inline constexpr detail::IdivResultType<N, D> divFloor(N num, D denom) {
  * and denom is equal to -1 after conversion to the result type.
  */
 template <typename N, typename D>
-inline constexpr detail::IdivResultType<N, D> divCeil(N num, D denom) {
+inline constexpr detail::IdivResultType<N, D> __cdecl divCeil(N num, D denom) {
   using R = decltype(num / denom);
   return detail::IdivResultType<N, D>(
       kIntegerDivisionGivesRemainder && std::is_signed<R>::value
@@ -175,7 +175,7 @@ inline constexpr detail::IdivResultType<N, D> divCeil(N num, D denom) {
  * and denom is equal to -1 after conversion to the result type.
  */
 template <typename N, typename D>
-inline constexpr detail::IdivResultType<N, D> divTrunc(N num, D denom) {
+inline constexpr detail::IdivResultType<N, D> __cdecl divTrunc(N num, D denom) {
   return detail::IdivResultType<N, D>(num / denom);
 }
 
@@ -192,7 +192,7 @@ inline constexpr detail::IdivResultType<N, D> divTrunc(N num, D denom) {
  * and denom is equal to -1 after conversion to the result type.
  */
 template <typename N, typename D>
-inline constexpr detail::IdivResultType<N, D> divRoundAway(N num, D denom) {
+inline constexpr detail::IdivResultType<N, D> __cdecl divRoundAway(N num, D denom) {
   using R = decltype(num / denom);
   return detail::IdivResultType<N, D>(
       kIntegerDivisionGivesRemainder && std::is_signed<R>::value

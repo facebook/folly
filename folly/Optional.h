@@ -417,35 +417,35 @@ class Optional {
 };
 
 template <class T>
-const T* get_pointer(const Optional<T>& opt) {
+const T* __cdecl get_pointer(const Optional<T>& opt) {
   return opt.get_pointer();
 }
 
 template <class T>
-T* get_pointer(Optional<T>& opt) {
+T* __cdecl get_pointer(Optional<T>& opt) {
   return opt.get_pointer();
 }
 
 template <class T>
-void swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
+void __cdecl swap(Optional<T>& a, Optional<T>& b) noexcept(noexcept(a.swap(b))) {
   a.swap(b);
 }
 
 template <class T>
-constexpr Optional<std::decay_t<T>> make_optional(T&& v) {
+constexpr Optional<std::decay_t<T>> __cdecl make_optional(T&& v) {
   using PrivateConstructor =
       typename folly::Optional<std::decay_t<T>>::PrivateConstructor;
   return {PrivateConstructor{}, std::forward<T>(v)};
 }
 
 template <class T, class... Args>
-constexpr folly::Optional<T> make_optional(Args&&... args) {
+constexpr folly::Optional<T> __cdecl make_optional(Args&&... args) {
   using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;
   return {PrivateConstructor{}, std::forward<Args>(args)...};
 }
 
 template <class T, class U, class... Args>
-constexpr folly::Optional<T> make_optional(
+constexpr folly::Optional<T> __cdecl make_optional(
     std::initializer_list<U> il,
     Args&&... args) {
   using PrivateConstructor = typename folly::Optional<T>::PrivateConstructor;

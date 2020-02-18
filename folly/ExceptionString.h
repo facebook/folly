@@ -30,7 +30,7 @@ namespace folly {
  * Debug string for an exception: include type and what(), if
  * defined.
  */
-inline fbstring exceptionStr(const std::exception& e) {
+inline fbstring __cdecl exceptionStr(const std::exception& e) {
 #if FOLLY_HAS_RTTI
   fbstring rv(demangle(typeid(e)));
   rv += ": ";
@@ -41,7 +41,7 @@ inline fbstring exceptionStr(const std::exception& e) {
   return rv;
 }
 
-inline fbstring exceptionStr(std::exception_ptr ep) {
+inline fbstring __cdecl exceptionStr(std::exception_ptr ep) {
   if (!kHasExceptions) {
     return "Exception (catch unavailable)";
   }
@@ -55,7 +55,7 @@ inline fbstring exceptionStr(std::exception_ptr ep) {
 }
 
 template <typename E>
-auto exceptionStr(const E& e) -> typename std::
+auto __cdecl exceptionStr(const E& e) -> typename std::
     enable_if<!std::is_base_of<std::exception, E>::value, fbstring>::type {
 #if FOLLY_HAS_RTTI
   return demangle(typeid(e));

@@ -155,7 +155,7 @@ struct Destroy {
  * double, or throws if either is not a numeric type.
  */
 template <template <class> class Op>
-dynamic numericOp(dynamic const& a, dynamic const& b) {
+dynamic __cdecl numericOp(dynamic const& a, dynamic const& b) {
   if (!a.isNumber() || !b.isNumber()) {
     throw_exception<TypeError>("numeric", a.type(), b.type());
   }

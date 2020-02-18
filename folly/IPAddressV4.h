@@ -305,11 +305,11 @@ class IPAddressV4 {
 
 // boost::hash uses hash_value() so this allows boost::hash to work
 // automatically for IPAddressV4
-size_t hash_value(const IPAddressV4& addr);
+size_t __cdecl hash_value(const IPAddressV4& addr);
 std::ostream& operator<<(std::ostream& os, const IPAddressV4& addr);
 // Define toAppend() to allow IPAddressV4 to be used with to<string>
-void toAppend(IPAddressV4 addr, std::string* result);
-void toAppend(IPAddressV4 addr, fbstring* result);
+void __cdecl toAppend(IPAddressV4 addr, std::string* result);
+void __cdecl toAppend(IPAddressV4 addr, fbstring* result);
 
 /**
  * Return true if two addresses are equal.

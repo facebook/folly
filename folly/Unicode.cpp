@@ -21,7 +21,7 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-std::string codePointToUtf8(char32_t cp) {
+std::string __cdecl codePointToUtf8(char32_t cp) {
   std::string result;
 
   // Based on description from http://en.wikipedia.org/wiki/UTF-8.
@@ -49,7 +49,7 @@ std::string codePointToUtf8(char32_t cp) {
   return result;
 }
 
-char32_t utf8ToCodePoint(
+char32_t __cdecl utf8ToCodePoint(
     const unsigned char*& p,
     const unsigned char* const e,
     bool skipOnError) {

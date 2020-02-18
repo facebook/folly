@@ -55,21 +55,21 @@ constexpr size_t kMaxVarintLength64 = 10;
  * buf must have enough space to represent the value (at least
  * kMaxVarintLength64 bytes to encode arbitrary 64-bit values)
  */
-size_t encodeVarint(uint64_t val, uint8_t* buf);
+size_t __cdecl encodeVarint(uint64_t val, uint8_t* buf);
 
 /**
  * Determine the number of bytes needed to represent "val".
  * 32-bit values need at most 5 bytes.
  * 64-bit values need at most 10 bytes.
  */
-int encodeVarintSize(uint64_t val);
+int __cdecl encodeVarintSize(uint64_t val);
 
 /**
  * Decode a value from a given buffer, advances data past the returned value.
  * Throws on error.
  */
 template <class T>
-uint64_t decodeVarint(Range<T*>& data);
+uint64_t __cdecl decodeVarint(Range<T*>& data);
 
 enum class DecodeVarintError {
   TooManyBytes = 0,
@@ -82,7 +82,7 @@ enum class DecodeVarintError {
  * when a serialized varint arrives on the boundary of a network packet.
  */
 template <class T>
-Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data);
+Expected<uint64_t, DecodeVarintError> __cdecl tryDecodeVarint(Range<T*>& data);
 
 /**
  * ZigZag encoding that maps signed integers with a small absolute value
@@ -93,20 +93,20 @@ Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data);
  * if x <  0, encodeZigZag(x) == -2*x + 1
  */
 
-inline uint64_t encodeZigZag(int64_t val) {
+inline uint64_t __cdecl encodeZigZag(int64_t val) {
   // Bit-twiddling magic stolen from the Google protocol buffer document;
   // val >> 63 is an arithmetic shift because val is signed
   auto uval = static_cast<uint64_t>(val);
   return static_cast<uint64_t>((uval << 1) ^ (val >> 63));
 }
 
-inline int64_t decodeZigZag(uint64_t val) {
+inline int64_t __cdecl decodeZigZag(uint64_t val) {
   return static_cast<int64_t>((val >> 1) ^ -(val & 1));
 }
 
 // Implementation below
 
-inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
+inline size_t __cdecl encodeVarint(uint64_t val, uint8_t* buf) {
   uint8_t* p = buf;
   while (val >= 128) {
     *p++ = 0x80 | (val & 0x7f);
@@ -116,7 +116,7 @@ inline size_t encodeVarint(uint64_t val, uint8_t* buf) {
   return size_t(p - buf);
 }
 
-inline int encodeVarintSize(uint64_t val) {
+inline int __cdecl encodeVarintSize(uint64_t val) {
   if (folly::kIsArchAmd64) {
     // __builtin_clzll is undefined for 0
     int highBit = 64 - __builtin_clzll(val | 1);
@@ -132,7 +132,7 @@ inline int encodeVarintSize(uint64_t val) {
 }
 
 template <class T>
-inline uint64_t decodeVarint(Range<T*>& data) {
+inline uint64_t __cdecl decodeVarint(Range<T*>& data) {
   auto expected = tryDecodeVarint(data);
   if (!expected) {
     throw std::invalid_argument(
@@ -144,7 +144,7 @@ inline uint64_t decodeVarint(Range<T*>& data) {
 }
 
 template <class T>
-inline Expected<uint64_t, DecodeVarintError> tryDecodeVarint(Range<T*>& data) {
+inline Expected<uint64_t, DecodeVarintError> __cdecl tryDecodeVarint(Range<T*>& data) {
   static_assert(
       std::is_same<typename std::remove_cv<T>::type, char>::value ||
           std::is_same<typename std::remove_cv<T>::type, unsigned char>::value,

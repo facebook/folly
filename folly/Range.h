@@ -75,7 +75,7 @@ class Range;
 template <
     class Iter,
     class Comp = std::equal_to<typename Range<Iter>::value_type>>
-inline size_t
+inline size_t __cdecl
 qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq = Comp());
 
 /**
@@ -84,7 +84,7 @@ qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq = Comp());
  * needle wasn't found.
  */
 template <class Iter>
-size_t qfind(
+size_t __cdecl qfind(
     const Range<Iter>& haystack,
     const typename Range<Iter>::value_type& needle);
 
@@ -94,7 +94,7 @@ size_t qfind(
  * needle wasn't found.
  */
 template <class Iter>
-size_t rfind(
+size_t __cdecl rfind(
     const Range<Iter>& haystack,
     const typename Range<Iter>::value_type& needle);
 
@@ -103,7 +103,7 @@ size_t rfind(
  * haystack. The algorithm is O(haystack.size() * needle.size()).
  */
 template <class Iter>
-inline size_t qfind_first_of(
+inline size_t __cdecl qfind_first_of(
     const Range<Iter>& haystack,
     const Range<Iter>& needle);
 
@@ -1102,7 +1102,7 @@ template <class Iter>
 const typename Range<Iter>::size_type Range<Iter>::npos = std::string::npos;
 
 template <class Iter>
-void swap(Range<Iter>& lhs, Range<Iter>& rhs) {
+void __cdecl swap(Range<Iter>& lhs, Range<Iter>& rhs) {
   lhs.swap(rhs);
 }
 
@@ -1110,7 +1110,7 @@ void swap(Range<Iter>& lhs, Range<Iter>& rhs) {
  * Create a range from two iterators, with type deduction.
  */
 template <class Iter>
-constexpr Range<Iter> range(Iter first, Iter last) {
+constexpr Range<Iter> __cdecl range(Iter first, Iter last) {
   return Range<Iter>(first, last);
 }
 
@@ -1119,41 +1119,41 @@ constexpr Range<Iter> range(Iter first, Iter last) {
  */
 // Use pointers for types with '.data()' member
 template <class Collection>
-constexpr auto range(Collection& v) -> Range<decltype(v.data())> {
+constexpr auto __cdecl range(Collection& v) -> Range<decltype(v.data())> {
   return Range<decltype(v.data())>(v.data(), v.data() + v.size());
 }
 template <class Collection>
-constexpr auto range(Collection const& v) -> Range<decltype(v.data())> {
+constexpr auto __cdecl range(Collection const& v) -> Range<decltype(v.data())> {
   return Range<decltype(v.data())>(v.data(), v.data() + v.size());
 }
 template <class Collection>
-constexpr auto crange(Collection const& v) -> Range<decltype(v.data())> {
+constexpr auto __cdecl crange(Collection const& v) -> Range<decltype(v.data())> {
   return Range<decltype(v.data())>(v.data(), v.data() + v.size());
 }
 
 template <class T, size_t n>
-constexpr Range<T*> range(T (&array)[n]) {
+constexpr Range<T*> __cdecl range(T (&array)[n]) {
   return Range<T*>(array, array + n);
 }
 template <class T, size_t n>
-constexpr Range<T const*> range(T const (&array)[n]) {
+constexpr Range<T const*> __cdecl range(T const (&array)[n]) {
   return Range<T const*>(array, array + n);
 }
 template <class T, size_t n>
-constexpr Range<T const*> crange(T const (&array)[n]) {
+constexpr Range<T const*> __cdecl crange(T const (&array)[n]) {
   return Range<T const*>(array, array + n);
 }
 
 template <class T, size_t n>
-constexpr Range<T*> range(std::array<T, n>& array) {
+constexpr Range<T*> __cdecl range(std::array<T, n>& array) {
   return Range<T*>{array};
 }
 template <class T, size_t n>
-constexpr Range<T const*> range(std::array<T, n> const& array) {
+constexpr Range<T const*> __cdecl range(std::array<T, n> const& array) {
   return Range<T const*>{array};
 }
 template <class T, size_t n>
-constexpr Range<T const*> crange(std::array<T, n> const& array) {
+constexpr Range<T const*> __cdecl crange(std::array<T, n> const& array) {
   return Range<T const*>{array};
 }
 
@@ -1294,7 +1294,7 @@ std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
  * Finds substrings faster than brute force by borrowing from Boyer-Moore
  */
 template <class Iter, class Comp>
-size_t qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq) {
+size_t __cdecl qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq) {
   // Don't use std::search, use a Boyer-Moore-like trick by comparing
   // the last characters first
   auto const nsize = needle.size();
@@ -1351,7 +1351,7 @@ size_t qfind(const Range<Iter>& haystack, const Range<Iter>& needle, Comp eq) {
 
 namespace detail {
 
-inline size_t qfind_first_byte_of(
+inline size_t __cdecl qfind_first_byte_of(
     const StringPiece haystack,
     const StringPiece needles) {
   static auto const qfind_first_byte_of_fn = folly::CpuId().sse42()
@@ -1363,7 +1363,7 @@ inline size_t qfind_first_byte_of(
 } // namespace detail
 
 template <class Iter, class Comp>
-size_t qfind_first_of(
+size_t __cdecl qfind_first_of(
     const Range<Iter>& haystack,
     const Range<Iter>& needles,
     Comp eq) {
@@ -1398,7 +1398,7 @@ struct AsciiCaseInsensitive {
 };
 
 template <class Iter>
-size_t qfind(
+size_t __cdecl qfind(
     const Range<Iter>& haystack,
     const typename Range<Iter>::value_type& needle) {
   auto pos = std::find(haystack.begin(), haystack.end(), needle);
@@ -1406,7 +1406,7 @@ size_t qfind(
 }
 
 template <class Iter>
-size_t rfind(
+size_t __cdecl rfind(
     const Range<Iter>& haystack,
     const typename Range<Iter>::value_type& needle) {
   for (auto i = haystack.size(); i-- > 0;) {
@@ -1419,7 +1419,7 @@ size_t rfind(
 
 // specialization for StringPiece
 template <>
-inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
+inline size_t __cdecl qfind(const Range<const char*>& haystack, const char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
@@ -1430,7 +1430,7 @@ inline size_t qfind(const Range<const char*>& haystack, const char& needle) {
 }
 
 template <>
-inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
+inline size_t __cdecl rfind(const Range<const char*>& haystack, const char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
   if (haystack.empty()) {
     return std::string::npos;
@@ -1442,7 +1442,7 @@ inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
 
 // specialization for ByteRange
 template <>
-inline size_t qfind(
+inline size_t __cdecl qfind(
     const Range<const unsigned char*>& haystack,
     const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
@@ -1455,7 +1455,7 @@ inline size_t qfind(
 }
 
 template <>
-inline size_t rfind(
+inline size_t __cdecl rfind(
     const Range<const unsigned char*>& haystack,
     const unsigned char& needle) {
   // memchr expects a not-null pointer, early return if the range is empty.
@@ -1468,13 +1468,13 @@ inline size_t rfind(
 }
 
 template <class Iter>
-size_t qfind_first_of(const Range<Iter>& haystack, const Range<Iter>& needles) {
+size_t __cdecl qfind_first_of(const Range<Iter>& haystack, const Range<Iter>& needles) {
   return qfind_first_of(haystack, needles, AsciiCaseSensitive());
 }
 
 // specialization for StringPiece
 template <>
-inline size_t qfind_first_of(
+inline size_t __cdecl qfind_first_of(
     const Range<const char*>& haystack,
     const Range<const char*>& needles) {
   return detail::qfind_first_byte_of(haystack, needles);
@@ -1482,7 +1482,7 @@ inline size_t qfind_first_of(
 
 // specialization for ByteRange
 template <>
-inline size_t qfind_first_of(
+inline size_t __cdecl qfind_first_of(
     const Range<const unsigned char*>& haystack,
     const Range<const unsigned char*>& needles) {
   return detail::qfind_first_byte_of(

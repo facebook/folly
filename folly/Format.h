@@ -40,9 +40,9 @@ namespace folly {
 template <bool containerMode, class... Args>
 class Formatter;
 template <class... Args>
-Formatter<false, Args...> format(StringPiece fmt, Args&&... args);
+Formatter<false, Args...> __cdecl format(StringPiece fmt, Args&&... args);
 template <class C>
-Formatter<true, C> vformat(StringPiece fmt, C&& container);
+Formatter<true, C> __cdecl vformat(StringPiece fmt, C&& container);
 template <class T, class Enable = void>
 class FormatValue;
 
@@ -234,9 +234,9 @@ class Formatter : public BaseFormatter<
       Args...>;
 
   template <class... A>
-  friend Formatter<false, A...> format(StringPiece fmt, A&&... arg);
+  friend Formatter<false, A...> __cdecl format(StringPiece fmt, A&&... arg);
   template <class C>
-  friend Formatter<true, C> vformat(StringPiece fmt, C&& container);
+  friend Formatter<true, C> __cdecl vformat(StringPiece fmt, C&& container);
 };
 
 /**
@@ -257,7 +257,7 @@ std::ostream& operator<<(
  * Formatter objects can be written to stdio FILEs.
  */
 template <class Derived, bool containerMode, class... Args>
-void writeTo(
+void __cdecl writeTo(
     FILE* fp,
     const BaseFormatter<Derived, containerMode, Args...>& formatter);
 
@@ -269,7 +269,7 @@ void writeTo(
  * writeTo(stdout, format("{} {}", 23, 42));
  */
 template <class... Args>
-Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
+Formatter<false, Args...> __cdecl format(StringPiece fmt, Args&&... args) {
   return Formatter<false, Args...>(fmt, std::forward<Args>(args)...);
 }
 
@@ -278,7 +278,7 @@ Formatter<false, Args...> format(StringPiece fmt, Args&&... args) {
  * intermediate format object.
  */
 template <class... Args>
-inline std::string sformat(StringPiece fmt, Args&&... args) {
+inline std::string __cdecl sformat(StringPiece fmt, Args&&... args) {
   return format(fmt, std::forward<Args>(args)...).str();
 }
 
@@ -296,7 +296,7 @@ inline std::string sformat(StringPiece fmt, Args&&... args) {
  * but the latter is cleaner.
  */
 template <class Container>
-Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
+Formatter<true, Container> __cdecl vformat(StringPiece fmt, Container&& container) {
   return Formatter<true, Container>(fmt, std::forward<Container>(container));
 }
 
@@ -305,7 +305,7 @@ Formatter<true, Container> vformat(StringPiece fmt, Container&& container) {
  * intermediate format object.
  */
 template <class Container>
-inline std::string svformat(StringPiece fmt, Container&& container) {
+inline std::string __cdecl svformat(StringPiece fmt, Container&& container) {
   return vformat(fmt, std::forward<Container>(container)).str();
 }
 
@@ -351,7 +351,7 @@ struct DefaultValueWrapper {
 } // namespace detail
 
 template <class Container, class Value>
-detail::DefaultValueWrapper<Container, Value> defaulted(
+detail::DefaultValueWrapper<Container, Value> __cdecl defaulted(
     const Container& c,
     const Value& v) {
   return detail::DefaultValueWrapper<Container, Value>(c, v);
@@ -366,7 +366,7 @@ detail::DefaultValueWrapper<Container, Value> defaulted(
  * Shortcut for toAppend(format(...), &foo);
  */
 template <class Str, class... Args>
-typename std::enable_if<IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type __cdecl
 format(Str* out, StringPiece fmt, Args&&... args) {
   format(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
@@ -375,7 +375,7 @@ format(Str* out, StringPiece fmt, Args&&... args) {
  * Append vformatted output to a string.
  */
 template <class Str, class Container>
-typename std::enable_if<IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type __cdecl
 vformat(Str* out, StringPiece fmt, Container&& container) {
   vformat(fmt, std::forward<Container>(container)).appendTo(*out);
 }
@@ -392,7 +392,7 @@ namespace format_value {
  * number-specific formatting.
  */
 template <class FormatCallback>
-void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb);
+void __cdecl formatString(StringPiece val, FormatArg& arg, FormatCallback& cb);
 
 /**
  * Format a number in "val"; the first prefixLen characters form the prefix
@@ -402,7 +402,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb);
  * field width")
  */
 template <class FormatCallback>
-void formatNumber(
+void __cdecl formatNumber(
     StringPiece val,
     int prefixLen,
     FormatArg& arg,
@@ -418,7 +418,7 @@ template <
     class Derived,
     bool containerMode,
     class... Args>
-void formatFormatter(
+void __cdecl formatFormatter(
     const BaseFormatter<Derived, containerMode, Args...>& formatter,
     FormatArg& arg,
     FormatCallback& cb);
@@ -463,30 +463,30 @@ struct IsFormatter<
 // Deprecated API. formatChecked() et. al. now behave identically to their
 // non-Checked counterparts.
 template <class... Args>
-Formatter<false, Args...> formatChecked(StringPiece fmt, Args&&... args) {
+Formatter<false, Args...> __cdecl formatChecked(StringPiece fmt, Args&&... args) {
   return format(fmt, std::forward<Args>(args)...);
 }
 template <class... Args>
-inline std::string sformatChecked(StringPiece fmt, Args&&... args) {
+inline std::string __cdecl sformatChecked(StringPiece fmt, Args&&... args) {
   return formatChecked(fmt, std::forward<Args>(args)...).str();
 }
 template <class Container>
-Formatter<true, Container> vformatChecked(
+Formatter<true, Container> __cdecl vformatChecked(
     StringPiece fmt,
     Container&& container) {
   return vformat(fmt, std::forward<Container>(container));
 }
 template <class Container>
-inline std::string svformatChecked(StringPiece fmt, Container&& container) {
+inline std::string __cdecl svformatChecked(StringPiece fmt, Container&& container) {
   return vformatChecked(fmt, std::forward<Container>(container)).str();
 }
 template <class Str, class... Args>
-typename std::enable_if<IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type __cdecl
 formatChecked(Str* out, StringPiece fmt, Args&&... args) {
   formatChecked(fmt, std::forward<Args>(args)...).appendTo(*out);
 }
 template <class Str, class Container>
-typename std::enable_if<IsSomeString<Str>::value>::type
+typename std::enable_if<IsSomeString<Str>::value>::type __cdecl
 vformatChecked(Str* out, StringPiece fmt, Container&& container) {
   vformatChecked(fmt, std::forward<Container>(container)).appendTo(*out);
 }

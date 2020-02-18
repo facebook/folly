@@ -236,12 +236,12 @@ template <typename FunctionType>
 class Function;
 
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const> constCastFunction(
+Function<ReturnType(Args...) const> __cdecl constCastFunction(
     Function<ReturnType(Args...)>&&) noexcept;
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const noexcept> constCastFunction(
+Function<ReturnType(Args...) const noexcept> __cdecl constCastFunction(
     Function<ReturnType(Args...) noexcept>&&) noexcept;
 #endif
 
@@ -286,12 +286,12 @@ struct IsFunctionNullptrTestable<
 template <typename T>
 constexpr std::enable_if_t< //
     !IsFunctionNullptrTestable<void, T>::value,
-    std::false_type>
+    std::false_type> __cdecl
 isEmptyFunction(T const&) {
   return {};
 }
 template <typename T>
-constexpr std::enable_if_t<IsFunctionNullptrTestable<void, T>::value, bool>
+constexpr std::enable_if_t<IsFunctionNullptrTestable<void, T>::value, bool> __cdecl
 isEmptyFunction(T const& t) {
   return static_cast<bool>(t == nullptr);
 }
@@ -582,7 +582,7 @@ struct FunctionTraits<ReturnType(Args...) const noexcept> {
 #endif
 
 template <typename Fun>
-std::size_t execSmall(Op o, Data* src, Data* dst) {
+std::size_t __cdecl execSmall(Op o, Data* src, Data* dst) {
   switch (o) {
     case Op::MOVE:
       ::new (static_cast<void*>(&dst->tiny))
@@ -598,7 +598,7 @@ std::size_t execSmall(Op o, Data* src, Data* dst) {
 }
 
 template <typename Fun>
-std::size_t execBig(Op o, Data* src, Data* dst) {
+std::size_t __cdecl execBig(Op o, Data* src, Data* dst) {
   switch (o) {
     case Op::MOVE:
       dst->big = src->big;
@@ -919,7 +919,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
 };
 
 template <typename FunctionType>
-void swap(Function<FunctionType>& lhs, Function<FunctionType>& rhs) noexcept {
+void __cdecl swap(Function<FunctionType>& lhs, Function<FunctionType>& rhs) noexcept {
   lhs.swap(rhs);
 }
 
@@ -948,28 +948,28 @@ bool operator!=(std::nullptr_t, const Function<FunctionType>& fn) {
  * This is potentially dangerous and requires the equivalent of a `const_cast`.
  */
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const> constCastFunction(
+Function<ReturnType(Args...) const> __cdecl constCastFunction(
     Function<ReturnType(Args...)>&& that) noexcept {
   return Function<ReturnType(Args...) const>{std::move(that),
                                              detail::function::CoerceTag{}};
 }
 
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const> constCastFunction(
+Function<ReturnType(Args...) const> __cdecl constCastFunction(
     Function<ReturnType(Args...) const>&& that) noexcept {
   return std::move(that);
 }
 
 #if FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const noexcept> constCastFunction(
+Function<ReturnType(Args...) const noexcept>__cdecl  constCastFunction(
     Function<ReturnType(Args...) noexcept>&& that) noexcept {
   return Function<ReturnType(Args...) const noexcept>{
       std::move(that), detail::function::CoerceTag{}};
 }
 
 template <typename ReturnType, typename... Args>
-Function<ReturnType(Args...) const noexcept> constCastFunction(
+Function<ReturnType(Args...) const noexcept> __cdecl constCastFunction(
     Function<ReturnType(Args...) const noexcept>&& that) noexcept {
   return std::move(that);
 }

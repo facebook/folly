@@ -52,7 +52,7 @@ namespace folly {
 
 namespace detail {
 
-constexpr size_t poly_size(size_t bits) {
+constexpr size_t __cdecl poly_size(size_t bits) {
   return 1 + (bits - 1) / 64;
 }
 
@@ -191,7 +191,7 @@ class Fingerprint {
 /**
  * Return the 64-bit Rabin fingerprint of a string.
  */
-inline uint64_t fingerprint64(StringPiece str) {
+inline uint64_t __cdecl fingerprint64(StringPiece str) {
   uint64_t fp;
   Fingerprint<64>().update(str).write(&fp);
   return fp;
@@ -202,7 +202,7 @@ inline uint64_t fingerprint64(StringPiece str) {
  * Return the 64 most significant bits in *msb, and the 32 least significant
  * bits in *lsb.
  */
-inline void fingerprint96(StringPiece str, uint64_t* msb, uint32_t* lsb) {
+inline void __cdecl fingerprint96(StringPiece str, uint64_t* msb, uint32_t* lsb) {
   uint64_t fp[2];
   Fingerprint<96>().update(str).write(fp);
   *msb = fp[0];
@@ -214,7 +214,7 @@ inline void fingerprint96(StringPiece str, uint64_t* msb, uint32_t* lsb) {
  * Return the 64 most significant bits in *msb, and the 64 least significant
  * bits in *lsb.
  */
-inline void fingerprint128(StringPiece str, uint64_t* msb, uint64_t* lsb) {
+inline void __cdecl fingerprint128(StringPiece str, uint64_t* msb, uint64_t* lsb) {
   uint64_t fp[2];
   Fingerprint<128>().update(str).write(fp);
   *msb = fp[0];

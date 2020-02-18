@@ -264,7 +264,7 @@ inline bool bool_str_cmp(const char** b, size_t len, const char* value) {
 
 } // namespace
 
-Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
+Expected<bool, ConversionCode> __cdecl str_to_bool(StringPiece* src) noexcept {
   auto b = src->begin(), e = src->end();
   for (;; ++b) {
     if (b >= e) {
@@ -341,7 +341,7 @@ Expected<bool, ConversionCode> str_to_bool(StringPiece* src) noexcept {
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
+Expected<Tgt, ConversionCode> __cdecl str_to_floating(StringPiece* src) noexcept {
   using namespace double_conversion;
   static StringToDoubleConverter conv(
       StringToDoubleConverter::ALLOW_TRAILING_JUNK |
@@ -452,9 +452,9 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   return Tgt(result);
 }
 
-template Expected<float, ConversionCode> str_to_floating<float>(
+template Expected<float, ConversionCode> __cdecl str_to_floating<float>(
     StringPiece* src) noexcept;
-template Expected<double, ConversionCode> str_to_floating<double>(
+template Expected<double, ConversionCode> __cdecl str_to_floating<double>(
     StringPiece* src) noexcept;
 
 /**
@@ -531,7 +531,7 @@ class SignedValueHandler<T, false> {
  * an appropriate error.
  */
 template <class Tgt>
-inline Expected<Tgt, ConversionCode> digits_to(
+inline Expected<Tgt, ConversionCode> __cdecl digits_to(
     const char* b,
     const char* const e) noexcept {
   using UT = typename std::make_unsigned<Tgt>::type;
@@ -631,48 +631,48 @@ outOfRange:
   return makeUnexpected(ConversionCode::NON_DIGIT_CHAR);
 }
 
-template Expected<char, ConversionCode> digits_to<char>(
+template Expected<char, ConversionCode> __cdecl digits_to<char>(
     const char*,
     const char*) noexcept;
-template Expected<signed char, ConversionCode> digits_to<signed char>(
+template Expected<signed char, ConversionCode> __cdecl digits_to<signed char>(
     const char*,
     const char*) noexcept;
-template Expected<unsigned char, ConversionCode> digits_to<unsigned char>(
-    const char*,
-    const char*) noexcept;
-
-template Expected<short, ConversionCode> digits_to<short>(
-    const char*,
-    const char*) noexcept;
-template Expected<unsigned short, ConversionCode> digits_to<unsigned short>(
+template Expected<unsigned char, ConversionCode> __cdecl digits_to<unsigned char>(
     const char*,
     const char*) noexcept;
 
-template Expected<int, ConversionCode> digits_to<int>(
+template Expected<short, ConversionCode> __cdecl digits_to<short>(
     const char*,
     const char*) noexcept;
-template Expected<unsigned int, ConversionCode> digits_to<unsigned int>(
-    const char*,
-    const char*) noexcept;
-
-template Expected<long, ConversionCode> digits_to<long>(
-    const char*,
-    const char*) noexcept;
-template Expected<unsigned long, ConversionCode> digits_to<unsigned long>(
+template Expected<unsigned short, ConversionCode> __cdecl digits_to<unsigned short>(
     const char*,
     const char*) noexcept;
 
-template Expected<long long, ConversionCode> digits_to<long long>(
+template Expected<int, ConversionCode> __cdecl digits_to<int>(
     const char*,
     const char*) noexcept;
-template Expected<unsigned long long, ConversionCode>
+template Expected<unsigned int, ConversionCode> __cdecl digits_to<unsigned int>(
+    const char*,
+    const char*) noexcept;
+
+template Expected<long, ConversionCode> __cdecl digits_to<long>(
+    const char*,
+    const char*) noexcept;
+template Expected<unsigned long, ConversionCode> __cdecl digits_to<unsigned long>(
+    const char*,
+    const char*) noexcept;
+
+template Expected<long long, ConversionCode> __cdecl digits_to<long long>(
+    const char*,
+    const char*) noexcept;
+template Expected<unsigned long long, ConversionCode> __cdecl
 digits_to<unsigned long long>(const char*, const char*) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-template Expected<__int128, ConversionCode> digits_to<__int128>(
+template Expected<__int128, ConversionCode> __cdecl digits_to<__int128>(
     const char*,
     const char*) noexcept;
-template Expected<unsigned __int128, ConversionCode>
+template Expected<unsigned __int128, ConversionCode> __cdecl
 digits_to<unsigned __int128>(const char*, const char*) noexcept;
 #endif
 
@@ -681,7 +681,7 @@ digits_to<unsigned __int128>(const char*, const char*) noexcept;
  * StringPiece parameter to munch the already-parsed characters.
  */
 template <class Tgt>
-Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
+Expected<Tgt, ConversionCode> __cdecl str_to_integral(StringPiece* src) noexcept {
   using UT = typename std::make_unsigned<Tgt>::type;
 
   auto b = src->data(), past = src->data() + src->size();
@@ -727,43 +727,43 @@ Expected<Tgt, ConversionCode> str_to_integral(StringPiece* src) noexcept {
   return res;
 }
 
-template Expected<char, ConversionCode> str_to_integral<char>(
+template Expected<char, ConversionCode> __cdecl str_to_integral<char>(
     StringPiece* src) noexcept;
-template Expected<signed char, ConversionCode> str_to_integral<signed char>(
+template Expected<signed char, ConversionCode> __cdecl str_to_integral<signed char>(
     StringPiece* src) noexcept;
-template Expected<unsigned char, ConversionCode> str_to_integral<unsigned char>(
+template Expected<unsigned char, ConversionCode> __cdecl str_to_integral<unsigned char>(
     StringPiece* src) noexcept;
 
-template Expected<short, ConversionCode> str_to_integral<short>(
+template Expected<short, ConversionCode> __cdecl str_to_integral<short>(
     StringPiece* src) noexcept;
-template Expected<unsigned short, ConversionCode>
+template Expected<unsigned short, ConversionCode> __cdecl
 str_to_integral<unsigned short>(StringPiece* src) noexcept;
 
-template Expected<int, ConversionCode> str_to_integral<int>(
+template Expected<int, ConversionCode> __cdecl str_to_integral<int>(
     StringPiece* src) noexcept;
-template Expected<unsigned int, ConversionCode> str_to_integral<unsigned int>(
-    StringPiece* src) noexcept;
-
-template Expected<long, ConversionCode> str_to_integral<long>(
-    StringPiece* src) noexcept;
-template Expected<unsigned long, ConversionCode> str_to_integral<unsigned long>(
+template Expected<unsigned int, ConversionCode> __cdecl str_to_integral<unsigned int>(
     StringPiece* src) noexcept;
 
-template Expected<long long, ConversionCode> str_to_integral<long long>(
+template Expected<long, ConversionCode> __cdecl str_to_integral<long>(
     StringPiece* src) noexcept;
-template Expected<unsigned long long, ConversionCode>
+template Expected<unsigned long, ConversionCode> __cdecl str_to_integral<unsigned long>(
+    StringPiece* src) noexcept;
+
+template Expected<long long, ConversionCode> __cdecl str_to_integral<long long>(
+    StringPiece* src) noexcept;
+template Expected<unsigned long long, ConversionCode> __cdecl
 str_to_integral<unsigned long long>(StringPiece* src) noexcept;
 
 #if FOLLY_HAVE_INT128_T
-template Expected<__int128, ConversionCode> str_to_integral<__int128>(
+template Expected<__int128, ConversionCode> __cdecl str_to_integral<__int128>(
     StringPiece* src) noexcept;
-template Expected<unsigned __int128, ConversionCode>
+template Expected<unsigned __int128, ConversionCode> __cdecl
 str_to_integral<unsigned __int128>(StringPiece* src) noexcept;
 #endif
 
 } // namespace detail
 
-ConversionError makeConversionError(ConversionCode code, StringPiece input) {
+ConversionError __cdecl makeConversionError(ConversionCode code, StringPiece input) {
   using namespace detail;
   static_assert(
       std::is_unsigned<std::underlying_type<ConversionCode>::type>::value,

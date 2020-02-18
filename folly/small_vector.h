@@ -108,7 +108,7 @@ namespace detail {
  * extra copies and moves for non-trivial types.
  */
 template <class T, class Create>
-typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type __cdecl
 moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
@@ -164,7 +164,7 @@ moveObjectsRightAndCreate(
 // memory may be uninitialized, and std::move_backward() won't work when it
 // can't memmove().
 template <class T, class Create>
-typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+typename std::enable_if<folly::is_trivially_copyable<T>::value>::type __cdecl
 moveObjectsRightAndCreate(
     T* const first,
     T* const lastConstructed,
@@ -183,7 +183,7 @@ moveObjectsRightAndCreate(
  * anything throws, undo what we did.
  */
 template <class T, class Function>
-void populateMemForward(T* mem, std::size_t n, Function const& op) {
+void __cdecl populateMemForward(T* mem, std::size_t n, Function const& op) {
   std::size_t idx = 0;
   {
     auto rollback = makeGuard([&] {
@@ -257,7 +257,7 @@ struct IntegralSizePolicy<SizeType, true>
    * ranges don't overlap.
    */
   template <class T>
-  typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type
+  typename std::enable_if<!folly::is_trivially_copyable<T>::value>::type __cdecl
   moveToUninitialized(T* first, T* last, T* out) {
     std::size_t idx = 0;
     {
@@ -280,7 +280,7 @@ struct IntegralSizePolicy<SizeType, true>
 
   // Specialization for trivially copyable types.
   template <class T>
-  typename std::enable_if<folly::is_trivially_copyable<T>::value>::type
+  typename std::enable_if<folly::is_trivially_copyable<T>::value>::type __cdecl
   moveToUninitialized(T* first, T* last, T* out) {
     std::memmove(
         static_cast<void*>(out),
@@ -295,7 +295,7 @@ struct IntegralSizePolicy<SizeType, true>
    * none on failure. If emplaceFunc() throws [begin, end) is unmodified.
    */
   template <class T, class EmplaceFunc>
-  void moveToUninitializedEmplace(
+  void __cdecl moveToUninitializedEmplace(
       T* begin,
       T* end,
       T* out,
@@ -413,18 +413,18 @@ struct small_vector_base {
 };
 
 template <class T>
-T* pointerFlagSet(T* p) {
+T* __cdecl pointerFlagSet(T* p) {
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) | 1);
 }
 template <class T>
-bool pointerFlagGet(T* p) {
+bool __cdecl pointerFlagGet(T* p) {
   return reinterpret_cast<uintptr_t>(p) & 1;
 }
 template <class T>
-T* pointerFlagClear(T* p) {
+T* __cdecl pointerFlagClear(T* p) {
   return reinterpret_cast<T*>(reinterpret_cast<uintptr_t>(p) & ~uintptr_t(1));
 }
-inline void* shiftPointer(void* p, size_t sizeBytes) {
+inline void* __cdecl shiftPointer(void* p, size_t sizeBytes) {
   return static_cast<char*>(p) + sizeBytes;
 }
 } // namespace detail
@@ -1266,14 +1266,14 @@ FOLLY_SV_PACK_POP
 // Basic guarantee only, or provides the nothrow guarantee iff T has a
 // nothrow move or copy constructor.
 template <class T, std::size_t MaxInline, class A, class B, class C>
-void swap(
+void __cdecl swap(
     small_vector<T, MaxInline, A, B, C>& a,
     small_vector<T, MaxInline, A, B, C>& b) {
   a.swap(b);
 }
 
 template <class T, std::size_t MaxInline, class A, class B, class C, class U>
-void erase(small_vector<T, MaxInline, A, B, C>& v, U value) {
+void __cdecl erase(small_vector<T, MaxInline, A, B, C>& v, U value) {
   v.erase(std::remove(v.begin(), v.end(), value), v.end());
 }
 
@@ -1284,7 +1284,7 @@ template <
     class B,
     class C,
     class Predicate>
-void erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
+void __cdecl erase_if(small_vector<T, MaxInline, A, B, C>& v, Predicate predicate) {
   v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
 }
 

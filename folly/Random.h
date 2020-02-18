@@ -364,7 +364,7 @@ class Random {
  * is too small to be useful as a "real" RNG seed. Use the functions in class
  * Random instead.
  */
-inline uint32_t randomNumberSeed() {
+inline uint32_t __cdecl randomNumberSeed() {
   return Random::rand32();
 }
 

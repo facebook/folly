@@ -905,7 +905,7 @@ template <
     typename LockFunc,
     typename TryLockFunc,
     typename... Args>
-auto makeSynchronizedLocker(
+auto __cdecl makeSynchronizedLocker(
     Synchronized& synchronized,
     LockFunc&& lockFunc,
     TryLockFunc&& tryLockFunc,
@@ -939,7 +939,7 @@ auto makeSynchronizedLocker(
  * See the benchmarks in folly/test/SynchronizedBenchmark.cpp for more.
  */
 template <typename... SynchronizedLocker>
-auto lock(SynchronizedLocker... lockersIn)
+auto __cdecl lock(SynchronizedLocker... lockersIn)
     -> std::tuple<typename SynchronizedLocker::LockedPtr...> {
   // capture the list of lockers as a tuple
   auto lockers = std::forward_as_tuple(lockersIn...);
@@ -993,7 +993,7 @@ auto lock(SynchronizedLocker... lockersIn)
 }
 
 template <typename Synchronized, typename... Args>
-auto wlock(Synchronized& synchronized, Args&&... args) {
+auto __cdecl wlock(Synchronized& synchronized, Args&&... args) {
   return detail::makeSynchronizedLocker(
       synchronized,
       [](auto& s, auto&&... a) {
@@ -1003,7 +1003,7 @@ auto wlock(Synchronized& synchronized, Args&&... args) {
       std::forward<Args>(args)...);
 }
 template <typename Synchronized, typename... Args>
-auto rlock(Synchronized& synchronized, Args&&... args) {
+auto __cdecl rlock(Synchronized& synchronized, Args&&... args) {
   return detail::makeSynchronizedLocker(
       synchronized,
       [](auto& s, auto&&... a) {
@@ -1013,7 +1013,7 @@ auto rlock(Synchronized& synchronized, Args&&... args) {
       std::forward<Args>(args)...);
 }
 template <typename Synchronized, typename... Args>
-auto ulock(Synchronized& synchronized, Args&&... args) {
+auto __cdecl ulock(Synchronized& synchronized, Args&&... args) {
   return detail::makeSynchronizedLocker(
       synchronized,
       [](auto& s, auto&&... a) {
@@ -1023,7 +1023,7 @@ auto ulock(Synchronized& synchronized, Args&&... args) {
       std::forward<Args>(args)...);
 }
 template <typename Synchronized, typename... Args>
-auto lock(Synchronized& synchronized, Args&&... args) {
+auto __cdecl lock(Synchronized& synchronized, Args&&... args) {
   return detail::makeSynchronizedLocker(
       synchronized,
       [](auto& s, auto&&... a) {
@@ -1620,27 +1620,27 @@ class LockedPtr : public LockedPtrBase<
  * many times
  */
 template <typename D, typename M, typename... Args>
-auto wlock(Synchronized<D, M>& synchronized, Args&&... args) {
+auto __cdecl wlock(Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::wlock(synchronized, std::forward<Args>(args)...);
 }
 template <typename D, typename M, typename... Args>
-auto wlock(const Synchronized<D, M>& synchronized, Args&&... args) {
+auto __cdecl wlock(const Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::wlock(synchronized, std::forward<Args>(args)...);
 }
 template <typename Data, typename Mutex, typename... Args>
-auto rlock(const Synchronized<Data, Mutex>& synchronized, Args&&... args) {
+auto __cdecl rlock(const Synchronized<Data, Mutex>& synchronized, Args&&... args) {
   return detail::rlock(synchronized, std::forward<Args>(args)...);
 }
 template <typename D, typename M, typename... Args>
-auto ulock(Synchronized<D, M>& synchronized, Args&&... args) {
+auto __cdecl ulock(Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::ulock(synchronized, std::forward<Args>(args)...);
 }
 template <typename D, typename M, typename... Args>
-auto lock(Synchronized<D, M>& synchronized, Args&&... args) {
+auto __cdecl lock(Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::lock(synchronized, std::forward<Args>(args)...);
 }
 template <typename D, typename M, typename... Args>
-auto lock(const Synchronized<D, M>& synchronized, Args&&... args) {
+auto __cdecl lock(const Synchronized<D, M>& synchronized, Args&&... args) {
   return detail::lock(synchronized, std::forward<Args>(args)...);
 }
 
@@ -1658,7 +1658,7 @@ auto lock(const Synchronized<D, M>& synchronized, Args&&... args) {
  * LockedPtr instances in the order that they were passed to the function
  */
 template <typename Func, typename... SynchronizedLockers>
-decltype(auto) synchronized(Func&& func, SynchronizedLockers&&... lockers) {
+decltype(auto) __cdecl synchronized(Func&& func, SynchronizedLockers&&... lockers) {
   return apply(
       std::forward<Func>(func),
       lock(std::forward<SynchronizedLockers>(lockers)...));
@@ -1697,7 +1697,7 @@ decltype(auto) synchronized(Func&& func, SynchronizedLockers&&... lockers) {
  * for a and a read lock for b
  */
 template <typename LockableOne, typename LockableTwo, typename... Lockables>
-void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
+void __cdecl lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
   auto locker = [](auto& lockable) {
     using Lockable = std::remove_reference_t<decltype(lockable)>;
     return detail::makeSynchronizedLocker(
@@ -1730,7 +1730,7 @@ void lock(LockableOne& one, LockableTwo& two, Lockables&... lockables) {
  * same effects as std::lock()
  */
 template <class Sync1, class Sync2>
-std::tuple<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>>
+std::tuple<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>> __cdecl
 acquireLocked(Sync1& l1, Sync2& l2) {
   if (static_cast<const void*>(&l1) < static_cast<const void*>(&l2)) {
     auto p1 = l1.contextualLock();
@@ -1748,7 +1748,7 @@ acquireLocked(Sync1& l1, Sync2& l2) {
  * std::tuple, which is easier to use in many places.
  */
 template <class Sync1, class Sync2>
-std::pair<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>>
+std::pair<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>> __cdecl
 acquireLockedPair(Sync1& l1, Sync2& l2) {
   auto lockedPtrs = acquireLocked(l1, l2);
   return {std::move(std::get<0>(lockedPtrs)),
@@ -1761,7 +1761,7 @@ acquireLockedPair(Sync1& l1, Sync2& l2) {
 
 // Non-member swap primitive
 template <class T, class M>
-void swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
+void __cdecl swap(Synchronized<T, M>& lhs, Synchronized<T, M>& rhs) {
   lhs.swap(rhs);
 }
 

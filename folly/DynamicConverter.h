@@ -33,9 +33,9 @@
 
 namespace folly {
 template <typename T>
-T convertTo(const dynamic&);
+T __cdecl convertTo(const dynamic&);
 template <typename T>
-dynamic toDynamic(const T&);
+dynamic __cdecl toDynamic(const T&);
 } // namespace folly
 
 /**
@@ -167,7 +167,7 @@ class Transformer
 
 // conversion factory
 template <typename T, typename It>
-inline std::move_iterator<Transformer<T, It>> conversionIterator(const It& it) {
+inline std::move_iterator<Transformer<T, It>> __cdecl conversionIterator(const It& it) {
   return std::make_move_iterator(Transformer<T, It>(it));
 }
 
@@ -403,12 +403,12 @@ struct DynamicConstructor<std::vector<bool>, void> {
 // implementation
 
 template <typename T>
-T convertTo(const dynamic& d) {
+T __cdecl convertTo(const dynamic& d) {
   return DynamicConverter<typename std::remove_cv<T>::type>::convert(d);
 }
 
 template <typename T>
-dynamic toDynamic(const T& x) {
+dynamic __cdecl toDynamic(const T& x) {
   return DynamicConstructor<typename std::remove_cv<T>::type>::construct(x);
 }
 

@@ -262,7 +262,7 @@ struct SharedMutexToken {
 namespace detail {
 // Returns a guard that gives permission for the current thread to
 // annotate, and adjust the annotation bits in, the SharedMutex at ptr.
-std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr);
+std::unique_lock<std::mutex> __cdecl sharedMutexAnnotationGuard(void* ptr);
 } // namespace detail
 
 template <

@@ -125,7 +125,7 @@ struct growth_policy_wrapper<void> {
  * -1.
  */
 template <class Iterator>
-int distance_if_multipass(Iterator first, Iterator last) {
+int __cdecl distance_if_multipass(Iterator first, Iterator last) {
   typedef typename std::iterator_traits<Iterator>::iterator_category categ;
   if (std::is_same<categ, std::input_iterator_tag>::value) {
     return -1;
@@ -134,7 +134,7 @@ int distance_if_multipass(Iterator first, Iterator last) {
 }
 
 template <class OurContainer, class Vector, class GrowthPolicy, class Value>
-typename OurContainer::iterator insert_with_hint(
+typename OurContainer::iterator __cdecl insert_with_hint(
     OurContainer& sorted,
     Vector& cont,
     typename OurContainer::const_iterator hint,
@@ -164,7 +164,7 @@ typename OurContainer::iterator insert_with_hint(
 }
 
 template <class OurContainer, class Vector, class InputIterator>
-void bulk_insert(
+void __cdecl bulk_insert(
     OurContainer& sorted,
     Vector& cont,
     InputIterator first,
@@ -202,7 +202,7 @@ void bulk_insert(
 }
 
 template <typename Container, typename Compare>
-bool is_sorted_unique(Container const& container, Compare const& comp) {
+bool __cdecl is_sorted_unique(Container const& container, Compare const& comp) {
   if (container.empty()) {
     return true;
   }
@@ -216,7 +216,7 @@ bool is_sorted_unique(Container const& container, Compare const& comp) {
 }
 
 template <typename Container, typename Compare>
-Container&& as_sorted_unique(Container&& container, Compare const& comp) {
+Container&& __cdecl as_sorted_unique(Container&& container, Compare const& comp) {
   std::sort(container.begin(), container.end(), comp);
   container.erase(
       std::unique(
@@ -723,7 +723,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
 
 // Swap function that can be found using ADL.
 template <class T, class C, class A, class G>
-inline void swap(
+inline void __cdecl swap(
     sorted_vector_set<T, C, A, G>& a,
     sorted_vector_set<T, C, A, G>& b) {
   return a.swap(b);
@@ -1291,7 +1291,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
 
 // Swap function that can be found using ADL.
 template <class K, class V, class C, class A, class G>
-inline void swap(
+inline void __cdecl swap(
     sorted_vector_map<K, V, C, A, G>& a,
     sorted_vector_map<K, V, C, A, G>& b) {
   return a.swap(b);

@@ -135,7 +135,7 @@ struct Lazy {
 //////////////////////////////////////////////////////////////////////
 
 template <class Func>
-auto lazy(Func&& fun) {
+auto __cdecl lazy(Func&& fun) {
   return detail::Lazy<remove_cvref_t<Func>>(std::forward<Func>(fun));
 }
 

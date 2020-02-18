@@ -42,7 +42,7 @@ namespace folly {
 namespace detail {
 
 // Updates the end of the buffer after the comma separators have been added.
-void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer);
+void __cdecl insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer);
 
 extern const std::array<std::array<char, 2>, 256> formatHexUpper;
 extern const std::array<std::array<char, 2>, 256> formatHexLower;
@@ -63,7 +63,7 @@ const size_t kMaxBinaryLength = 8 * sizeof(uintmax_t);
  * [buf+begin, buf+bufLen).
  */
 template <class Uint>
-size_t uintToHex(
+size_t __cdecl uintToHex(
     char* buffer,
     size_t bufLen,
     Uint v,
@@ -88,7 +88,7 @@ size_t uintToHex(
  * above 9.  See the comments for uintToHex.
  */
 template <class Uint>
-inline size_t uintToHexLower(char* buffer, size_t bufLen, Uint v) {
+inline size_t __cdecl uintToHexLower(char* buffer, size_t bufLen, Uint v) {
   return uintToHex(buffer, bufLen, v, formatHexLower);
 }
 
@@ -97,7 +97,7 @@ inline size_t uintToHexLower(char* buffer, size_t bufLen, Uint v) {
  * above 9.  See the comments for uintToHex.
  */
 template <class Uint>
-inline size_t uintToHexUpper(char* buffer, size_t bufLen, Uint v) {
+inline size_t __cdecl uintToHexUpper(char* buffer, size_t bufLen, Uint v) {
   return uintToHex(buffer, bufLen, v, formatHexUpper);
 }
 
@@ -110,7 +110,7 @@ inline size_t uintToHexUpper(char* buffer, size_t bufLen, Uint v) {
  * [buf+begin, buf+bufLen).
  */
 template <class Uint>
-size_t uintToOctal(char* buffer, size_t bufLen, Uint v) {
+size_t __cdecl uintToOctal(char* buffer, size_t bufLen, Uint v) {
   auto& repr = formatOctal;
   // 'v >>= 7, v >>= 2' is no more than a work around to get rid of shift size
   // warning when Uint = uint8_t (it's false as v >= 512 implies sizeof(v) > 1).
@@ -140,7 +140,7 @@ size_t uintToOctal(char* buffer, size_t bufLen, Uint v) {
  * [buf+begin, buf+bufLen).
  */
 template <class Uint>
-size_t uintToBinary(char* buffer, size_t bufLen, Uint v) {
+size_t __cdecl uintToBinary(char* buffer, size_t bufLen, Uint v) {
   auto& repr = formatBinary;
   if (v == 0) {
     buffer[--bufLen] = '0';
@@ -279,7 +279,7 @@ void BaseFormatter<Derived, containerMode, Args...>::operator()(
 }
 
 template <class Derived, bool containerMode, class... Args>
-void writeTo(
+void __cdecl writeTo(
     FILE* fp,
     const BaseFormatter<Derived, containerMode, Args...>& formatter) {
   auto writer = [fp](StringPiece sp) {
@@ -294,7 +294,7 @@ void writeTo(
 namespace format_value {
 
 template <class FormatCallback>
-void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
+void __cdecl formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
   if (arg.width != FormatArg::kDefaultWidth && arg.width < 0) {
     throw_exception<BadFormatArg>("folly::format: invalid width");
   }
@@ -354,7 +354,7 @@ void formatString(StringPiece val, FormatArg& arg, FormatCallback& cb) {
 }
 
 template <class FormatCallback>
-void formatNumber(
+void __cdecl formatNumber(
     StringPiece val,
     int prefixLen,
     FormatArg& arg,
@@ -377,7 +377,7 @@ template <
     class Derived,
     bool containerMode,
     class... Args>
-void formatFormatter(
+void __cdecl formatFormatter(
     const BaseFormatter<Derived, containerMode, Args...>& formatter,
     FormatArg& arg,
     FormatCallback& cb) {
@@ -1128,7 +1128,7 @@ class FormatValue<
  * compatible with folly::toAppend and folly::to.
  */
 template <class Tgt, class Derived, bool containerMode, class... Args>
-typename std::enable_if<IsSomeString<Tgt>::value>::type toAppend(
+typename std::enable_if<IsSomeString<Tgt>::value>::type __cdecl toAppend(
     const BaseFormatter<Derived, containerMode, Args...>& value,
     Tgt* result) {
   value.appendTo(*result);

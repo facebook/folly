@@ -79,7 +79,7 @@ class MoveWrapper {
 /// is already quite transparent in its intent, this will work for lvalues as
 /// if you had wrapped them in std::move.
 template <class T, class T0 = typename std::remove_reference<T>::type>
-MoveWrapper<T0> makeMoveWrapper(T&& t) {
+MoveWrapper<T0> __cdecl makeMoveWrapper(T&& t) {
   return MoveWrapper<T0>(std::forward<T0>(t));
 }
 

@@ -600,7 +600,7 @@ struct isTry<Try<T>> : std::true_type {};
 template <typename F>
 typename std::enable_if<
     !std::is_same<invoke_result_t<F>, void>::value,
-    Try<invoke_result_t<F>>>::type
+    Try<invoke_result_t<F>>>::type __cdecl
 makeTryWithNoUnwrap(F&& f);
 
 /*
@@ -612,7 +612,7 @@ makeTryWithNoUnwrap(F&& f);
  */
 template <typename F>
 typename std::
-    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type __cdecl
     makeTryWithNoUnwrap(F&& f);
 
 /*
@@ -622,7 +622,7 @@ typename std::
  */
 template <typename F>
 typename std::
-    enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type
+    enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type __cdecl
     makeTryWith(F&& f);
 
 /*
@@ -636,7 +636,7 @@ typename std::
  */
 template <typename F>
 typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
-    type
+    type __cdecl
     makeTryWith(F&& f);
 
 /*
@@ -648,12 +648,12 @@ typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
  * @param args Are passed to T's constructor.
  */
 template <typename T, typename... Args>
-T* tryEmplace(Try<T>& t, Args&&... args) noexcept;
+T* __cdecl tryEmplace(Try<T>& t, Args&&... args) noexcept;
 
 /*
  * Overload of tryEmplace() for Try<void>.
  */
-inline void tryEmplace(Try<void>& t) noexcept;
+inline void __cdecl tryEmplace(Try<void>& t) noexcept;
 
 /*
  * Try to in-place construct a new value from the result of a function.
@@ -670,7 +670,7 @@ inline void tryEmplace(Try<void>& t) noexcept;
  * an exception.
  */
 template <typename T, typename Func>
-T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept;
+T* __cdecl tryEmplaceWith(Try<T>& t, Func&& func) noexcept;
 
 /*
  * Specialization of tryEmplaceWith() for Try<void>.
@@ -684,7 +684,7 @@ T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept;
  * threw an exception.
  */
 template <typename Func>
-bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept;
+bool __cdecl tryEmplaceWith(Try<void>& t, Func&& func) noexcept;
 
 /**
  * Tuple<Try<Type>...> -> std::tuple<Type...>
@@ -693,7 +693,7 @@ bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept;
  * std::tuple<Type>
  */
 template <typename Tuple>
-auto unwrapTryTuple(Tuple&&);
+auto __cdecl unwrapTryTuple(Tuple&&);
 
 } // namespace folly
 

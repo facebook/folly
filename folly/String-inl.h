@@ -36,7 +36,7 @@ extern const std::array<char, 256> cEscapeTable;
 } // namespace detail
 
 template <class String>
-void cEscape(StringPiece str, String& out) {
+void __cdecl cEscape(StringPiece str, String& out) {
   char esc[4];
   esc[0] = '\\';
   out.reserve(out.size() + str.size());
@@ -83,7 +83,7 @@ extern const std::array<unsigned char, 256> hexTable;
 } // namespace detail
 
 template <class String>
-void cUnescape(StringPiece str, String& out, bool strict) {
+void __cdecl cUnescape(StringPiece str, String& out, bool strict) {
   out.reserve(out.size() + str.size());
   auto p = str.begin();
   auto last = p; // last regular character (not part of an escape sequence)
@@ -164,7 +164,7 @@ extern const std::array<unsigned char, 256> uriEscapeTable;
 } // namespace detail
 
 template <class String>
-void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
+void __cdecl uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
   static const char hexValues[] = "0123456789abcdef";
   char esc[3];
   esc[0] = '%';
@@ -199,7 +199,7 @@ void uriEscape(StringPiece str, String& out, UriEscapeMode mode) {
 }
 
 template <class String>
-void uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
+void __cdecl uriUnescape(StringPiece str, String& out, UriEscapeMode mode) {
   out.reserve(out.size() + str.size());
   auto p = str.begin();
   auto last = p;
@@ -249,27 +249,27 @@ namespace detail {
  * The following functions are type-overloaded helpers for
  * internalSplit().
  */
-inline size_t delimSize(char) {
+inline size_t __cdecl delimSize(char) {
   return 1;
 }
-inline size_t delimSize(StringPiece s) {
+inline size_t __cdecl delimSize(StringPiece s) {
   return s.size();
 }
-inline bool atDelim(const char* s, char c) {
+inline bool __cdecl atDelim(const char* s, char c) {
   return *s == c;
 }
-inline bool atDelim(const char* s, StringPiece sp) {
+inline bool __cdecl atDelim(const char* s, StringPiece sp) {
   return !std::memcmp(s, sp.start(), sp.size());
 }
 
 // These are used to short-circuit internalSplit() in the case of
 // 1-character strings.
-inline char delimFront(char c) {
+inline char __cdecl delimFront(char c) {
   // This one exists only for compile-time; it should never be called.
   std::abort();
   return c;
 }
-inline char delimFront(StringPiece s) {
+inline char __cdecl delimFront(StringPiece s) {
   assert(!s.empty() && s.start() != nullptr);
   return *s.start();
 }
@@ -284,7 +284,7 @@ inline char delimFront(StringPiece s) {
  * @param ignoreEmpty iff true, don't copy empty segments to output
  */
 template <class OutStringT, class DelimT, class OutputIterator>
-void internalSplit(
+void __cdecl internalSplit(
     DelimT delim,
     StringPiece sp,
     OutputIterator out,
@@ -328,22 +328,22 @@ void internalSplit(
 }
 
 template <class String>
-StringPiece prepareDelim(const String& s) {
+StringPiece __cdecl prepareDelim(const String& s) {
   return StringPiece(s);
 }
-inline char prepareDelim(char c) {
+inline char __cdecl prepareDelim(char c) {
   return c;
 }
 
 template <class OutputType>
-void toOrIgnore(StringPiece input, OutputType& output) {
+void __cdecl toOrIgnore(StringPiece input, OutputType& output) {
   output = folly::to<OutputType>(input);
 }
 
-inline void toOrIgnore(StringPiece, decltype(std::ignore)&) {}
+inline void __cdecl toOrIgnore(StringPiece, decltype(std::ignore)&) {}
 
 template <bool exact, class Delim, class OutputType>
-bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
+bool __cdecl splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
   static_assert(
       exact || std::is_same<OutputType, StringPiece>::value ||
           IsSomeString<OutputType>::value ||
@@ -358,7 +358,7 @@ bool splitFixed(const Delim& delimiter, StringPiece input, OutputType& output) {
 }
 
 template <bool exact, class Delim, class OutputType, class... OutputTypes>
-bool splitFixed(
+bool __cdecl splitFixed(
     const Delim& delimiter,
     StringPiece input,
     OutputType& outHead,
@@ -382,7 +382,7 @@ bool splitFixed(
 //////////////////////////////////////////////////////////////////////
 
 template <class Delim, class String, class OutputType>
-void split(
+void __cdecl split(
     const Delim& delimiter,
     const String& input,
     std::vector<OutputType>& out,
@@ -395,7 +395,7 @@ void split(
 }
 
 template <class Delim, class String, class OutputType>
-void split(
+void __cdecl split(
     const Delim& delimiter,
     const String& input,
     fbvector<OutputType, std::allocator<OutputType>>& out,
@@ -412,7 +412,7 @@ template <
     class Delim,
     class String,
     class OutputIterator>
-void splitTo(
+void __cdecl splitTo(
     const Delim& delimiter,
     const String& input,
     OutputIterator out,
@@ -425,7 +425,7 @@ template <bool exact, class Delim, class... OutputTypes>
 typename std::enable_if<
     StrictConjunction<IsConvertible<OutputTypes>...>::value &&
         sizeof...(OutputTypes) >= 1,
-    bool>::type
+    bool>::type __cdecl
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs) {
   return detail::splitFixed<exact>(
       detail::prepareDelim(delimiter), input, outputs...);
@@ -451,7 +451,7 @@ struct IsSizableStringContainerIterator
     : IsSizableString<typename std::iterator_traits<Iterator>::value_type> {};
 
 template <class Delim, class Iterator, class String>
-void internalJoinAppend(
+void __cdecl internalJoinAppend(
     Delim delimiter,
     Iterator begin,
     Iterator end,
@@ -468,7 +468,7 @@ void internalJoinAppend(
 }
 
 template <class Delim, class Iterator, class String>
-typename std::enable_if<IsSizableStringContainerIterator<Iterator>::value>::type
+typename std::enable_if<IsSizableStringContainerIterator<Iterator>::value>::type __cdecl
 internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
@@ -486,7 +486,7 @@ internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
 
 template <class Delim, class Iterator, class String>
 typename std::enable_if<
-    !IsSizableStringContainerIterator<Iterator>::value>::type
+    !IsSizableStringContainerIterator<Iterator>::value>::type __cdecl
 internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
   output.clear();
   if (begin == end) {
@@ -498,7 +498,7 @@ internalJoin(Delim delimiter, Iterator begin, Iterator end, String& output) {
 } // namespace detail
 
 template <class Delim, class Iterator, class String>
-void join(
+void __cdecl join(
     const Delim& delimiter,
     Iterator begin,
     Iterator end,
@@ -507,7 +507,7 @@ void join(
 }
 
 template <class OutputString>
-void backslashify(
+void __cdecl backslashify(
     folly::StringPiece input,
     OutputString& output,
     bool hex_style) {
@@ -552,7 +552,7 @@ void backslashify(
 }
 
 template <class String1, class String2>
-void humanify(const String1& input, String2& output) {
+void __cdecl humanify(const String1& input, String2& output) {
   size_t numUnprintable = 0;
   size_t numPrintablePrefix = 0;
   for (unsigned char c : input) {
@@ -596,7 +596,7 @@ void humanify(const String1& input, String2& output) {
 }
 
 template <class InputString, class OutputString>
-bool hexlify(
+bool __cdecl hexlify(
     const InputString& input,
     OutputString& output,
     bool append_output) {
@@ -616,7 +616,7 @@ bool hexlify(
 }
 
 template <class InputString, class OutputString>
-bool unhexlify(const InputString& input, OutputString& output) {
+bool __cdecl unhexlify(const InputString& input, OutputString& output) {
   if (input.size() % 2 != 0) {
     return false;
   }
@@ -640,12 +640,12 @@ namespace detail {
  * Hex-dump at most 16 bytes starting at offset from a memory area of size
  * bytes.  Return the number of bytes actually dumped.
  */
-size_t
+size_t __cdecl
 hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line);
 } // namespace detail
 
 template <class OutIt>
-void hexDump(const void* ptr, size_t size, OutIt out) {
+void __cdecl hexDump(const void* ptr, size_t size, OutIt out) {
   size_t offset = 0;
   std::string line;
   while (offset < size) {

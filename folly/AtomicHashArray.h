@@ -63,14 +63,14 @@ struct AtomicHashArrayQuadraticProbeFcn {
 // Enables specializing checkLegalKey without specializing its class.
 namespace detail {
 template <typename NotKeyT, typename KeyT>
-inline void checkLegalKeyIfKeyTImpl(
+inline void __cdecl checkLegalKeyIfKeyTImpl(
     NotKeyT /* ignored */,
     KeyT /* emptyKey */,
     KeyT /* lockedKey */,
     KeyT /* erasedKey */) {}
 
 template <typename KeyT>
-inline void checkLegalKeyIfKeyTImpl(
+inline void __cdecl checkLegalKeyIfKeyTImpl(
     KeyT key_in,
     KeyT emptyKey,
     KeyT lockedKey,

@@ -37,17 +37,17 @@
 // with very little overhead if s was already std::string
 namespace folly {
 
-inline std::string toStdString(const folly::fbstring& s) {
+inline std::string __cdecl toStdString(const folly::fbstring& s) {
   return std::string(s.data(), s.size());
 }
 
-inline const std::string& toStdString(const std::string& s) {
+inline const std::string& __cdecl toStdString(const std::string& s) {
   return s;
 }
 
 // If called with a temporary, the compiler will select this overload instead
 // of the above, so we don't return a (lvalue) reference to a temporary.
-inline std::string&& toStdString(std::string&& s) {
+inline std::string&& __cdecl toStdString(std::string&& s) {
   return std::move(s);
 }
 
@@ -70,13 +70,13 @@ inline std::string&& toStdString(std::string&& s) {
  * to implementation-defined behavior).
  */
 template <class String>
-void cEscape(StringPiece str, String& out);
+void __cdecl cEscape(StringPiece str, String& out);
 
 /**
  * Similar to cEscape above, but returns the escaped string.
  */
 template <class String>
-String cEscape(StringPiece str) {
+String __cdecl cEscape(StringPiece str) {
   String out;
   cEscape(str, out);
   return out;
@@ -97,13 +97,13 @@ String cEscape(StringPiece str) {
  * the escape sequence unchanged.
  */
 template <class String>
-void cUnescape(StringPiece str, String& out, bool strict = true);
+void __cdecl cUnescape(StringPiece str, String& out, bool strict = true);
 
 /**
  * Similar to cUnescape above, but returns the escaped string.
  */
 template <class String>
-String cUnescape(StringPiece str, bool strict = true) {
+String __cdecl cUnescape(StringPiece str, bool strict = true) {
   String out;
   cUnescape(str, out, strict);
   return out;
@@ -124,7 +124,7 @@ enum class UriEscapeMode : unsigned char {
   PATH = 2
 };
 template <class String>
-void uriEscape(
+void __cdecl uriEscape(
     StringPiece str,
     String& out,
     UriEscapeMode mode = UriEscapeMode::ALL);
@@ -133,7 +133,7 @@ void uriEscape(
  * Similar to uriEscape above, but returns the escaped string.
  */
 template <class String>
-String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
+String __cdecl uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
   String out;
   uriEscape(str, out, mode);
   return out;
@@ -146,7 +146,7 @@ String uriEscape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * XX is a valid hex sequence, otherwise we throw invalid_argument.
  */
 template <class String>
-void uriUnescape(
+void __cdecl uriUnescape(
     StringPiece str,
     String& out,
     UriEscapeMode mode = UriEscapeMode::ALL);
@@ -155,7 +155,7 @@ void uriUnescape(
  * Similar to uriUnescape above, but returns the unescaped string.
  */
 template <class String>
-String uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
+String __cdecl uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
   String out;
   uriUnescape(str, out, mode);
   return out;
@@ -167,14 +167,14 @@ String uriUnescape(StringPiece str, UriEscapeMode mode = UriEscapeMode::ALL) {
  * resulting string, and the second appends the produced characters to
  * the specified string and returns a reference to it.
  */
-std::string stringPrintf(FOLLY_PRINTF_FORMAT const char* format, ...)
+std::string __cdecl stringPrintf(FOLLY_PRINTF_FORMAT const char* format, ...)
     FOLLY_PRINTF_FORMAT_ATTR(1, 2);
 
 /* Similar to stringPrintf, with different signature. */
-void stringPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, ...)
+void __cdecl stringPrintf(std::string* out, FOLLY_PRINTF_FORMAT const char* format, ...)
     FOLLY_PRINTF_FORMAT_ATTR(2, 3);
 
-std::string& stringAppendf(
+std::string& __cdecl stringAppendf(
     std::string* output,
     FOLLY_PRINTF_FORMAT const char* format,
     ...) FOLLY_PRINTF_FORMAT_ATTR(2, 3);
@@ -185,9 +185,9 @@ std::string& stringAppendf(
  * As with vsnprintf() itself, the value of ap is undefined after the call.
  * These functions do not call va_end() on ap.
  */
-std::string stringVPrintf(const char* format, va_list ap);
-void stringVPrintf(std::string* out, const char* format, va_list ap);
-std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
+std::string __cdecl stringVPrintf(const char* format, va_list ap);
+void __cdecl stringVPrintf(std::string* out, const char* format, va_list ap);
+std::string& __cdecl stringVAppendf(std::string* out, const char* format, va_list ap);
 
 /**
  * Backslashify a string, that is, replace non-printable characters
@@ -209,13 +209,13 @@ std::string& stringVAppendf(std::string* out, const char* format, va_list ap);
  * only.
  */
 template <class OutputString>
-void backslashify(
+void __cdecl backslashify(
     folly::StringPiece input,
     OutputString& output,
     bool hex_style = false);
 
 template <class OutputString = std::string>
-OutputString backslashify(StringPiece input, bool hex_style = false) {
+OutputString __cdecl backslashify(StringPiece input, bool hex_style = false) {
   OutputString output;
   backslashify(input, output, hex_style);
   return output;
@@ -233,10 +233,10 @@ OutputString backslashify(StringPiece input, bool hex_style = false) {
  * most of the time.
  */
 template <class String1, class String2>
-void humanify(const String1& input, String2& output);
+void __cdecl humanify(const String1& input, String2& output);
 
 template <class String>
-String humanify(const String& input) {
+String __cdecl humanify(const String& input) {
   String output;
   humanify(input, output);
   return output;
@@ -250,13 +250,13 @@ String humanify(const String& input) {
  * replace it.
  */
 template <class InputString, class OutputString>
-bool hexlify(
+bool __cdecl hexlify(
     const InputString& input,
     OutputString& output,
     bool append = false);
 
 template <class OutputString = std::string>
-OutputString hexlify(ByteRange input) {
+OutputString __cdecl hexlify(ByteRange input) {
   OutputString output;
   if (!hexlify(input, output)) {
     // hexlify() currently always returns true, so this can't really happen
@@ -266,7 +266,7 @@ OutputString hexlify(ByteRange input) {
 }
 
 template <class OutputString = std::string>
-OutputString hexlify(StringPiece input) {
+OutputString __cdecl hexlify(StringPiece input) {
   return hexlify<OutputString>(ByteRange{input});
 }
 
@@ -275,10 +275,10 @@ OutputString hexlify(StringPiece input) {
  * on successful conversion.
  */
 template <class InputString, class OutputString>
-bool unhexlify(const InputString& input, OutputString& output);
+bool __cdecl unhexlify(const InputString& input, OutputString& output);
 
 template <class OutputString = std::string>
-OutputString unhexlify(StringPiece input) {
+OutputString __cdecl unhexlify(StringPiece input) {
   OutputString output;
   if (!unhexlify(input, output)) {
     // unhexlify() fails if the input has non-hexidecimal characters,
@@ -328,7 +328,7 @@ enum PrettyType {
   PRETTY_NUM_TYPES,
 };
 
-std::string prettyPrint(double val, PrettyType, bool addSpace = true);
+std::string __cdecl prettyPrint(double val, PrettyType, bool addSpace = true);
 
 /**
  * This utility converts StringPiece in pretty format (look above) to double,
@@ -346,7 +346,7 @@ std::string prettyPrint(double val, PrettyType, bool addSpace = true);
  * '10 Mx' => 10 000 000, prettyString == "x"
  * 'abc' => throws std::range_error
  */
-double prettyToDouble(
+double __cdecl prettyToDouble(
     folly::StringPiece* const prettyString,
     const PrettyType type);
 
@@ -355,7 +355,7 @@ double prettyToDouble(
  * expects whole string to be correctly parseable. Throws std::range_error
  * otherwise
  */
-double prettyToDouble(folly::StringPiece prettyString, const PrettyType type);
+double __cdecl prettyToDouble(folly::StringPiece prettyString, const PrettyType type);
 
 /**
  * Write a hex dump of size bytes starting at ptr to out.
@@ -372,19 +372,19 @@ double prettyToDouble(folly::StringPiece prettyString, const PrettyType type);
  * delimiters.
  */
 template <class OutIt>
-void hexDump(const void* ptr, size_t size, OutIt out);
+void __cdecl hexDump(const void* ptr, size_t size, OutIt out);
 
 /**
  * Return the hex dump of size bytes starting at ptr as a string.
  */
-std::string hexDump(const void* ptr, size_t size);
+std::string __cdecl hexDump(const void* ptr, size_t size);
 
 /**
  * Return a fbstring containing the description of the given errno value.
  * Takes care not to overwrite the actual system errno, so calling
  * errnoStr(errno) is valid.
  */
-fbstring errnoStr(int err);
+fbstring __cdecl errnoStr(int err);
 
 /*
  * Split a string into a list of tokens by delimiter.
@@ -416,7 +416,7 @@ fbstring errnoStr(int err);
  */
 
 template <class Delim, class String, class OutputType>
-void split(
+void __cdecl split(
     const Delim& delimiter,
     const String& input,
     std::vector<OutputType>& out,
@@ -426,7 +426,7 @@ template <class T, class Allocator>
 class fbvector;
 
 template <class Delim, class String, class OutputType>
-void split(
+void __cdecl split(
     const Delim& delimiter,
     const String& input,
     folly::fbvector<OutputType, std::allocator<OutputType>>& out,
@@ -437,7 +437,7 @@ template <
     class Delim,
     class String,
     class OutputIterator>
-void splitTo(
+void __cdecl splitTo(
     const Delim& delimiter,
     const String& input,
     OutputIterator out,
@@ -496,7 +496,7 @@ template <bool exact = true, class Delim, class... OutputTypes>
 typename std::enable_if<
     StrictConjunction<IsConvertible<OutputTypes>...>::value &&
         sizeof...(OutputTypes) >= 1,
-    bool>::type
+    bool>::type __cdecl
 split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
 
 /*
@@ -507,15 +507,15 @@ split(const Delim& delimiter, StringPiece input, OutputTypes&... outputs);
  */
 
 template <class Delim, class Iterator, class String>
-void join(const Delim& delimiter, Iterator begin, Iterator end, String& output);
+void __cdecl join(const Delim& delimiter, Iterator begin, Iterator end, String& output);
 
 template <class Delim, class Container, class String>
-void join(const Delim& delimiter, const Container& container, String& output) {
+void __cdecl join(const Delim& delimiter, const Container& container, String& output) {
   join(delimiter, container.begin(), container.end(), output);
 }
 
 template <class Delim, class Value, class String>
-void join(
+void __cdecl join(
     const Delim& delimiter,
     const std::initializer_list<Value>& values,
     String& output) {
@@ -523,14 +523,14 @@ void join(
 }
 
 template <class Delim, class Container>
-std::string join(const Delim& delimiter, const Container& container) {
+std::string __cdecl join(const Delim& delimiter, const Container& container) {
   std::string output;
   join(delimiter, container.begin(), container.end(), output);
   return output;
 }
 
 template <class Delim, class Value>
-std::string join(
+std::string __cdecl join(
     const Delim& delimiter,
     const std::initializer_list<Value>& values) {
   std::string output;
@@ -545,7 +545,7 @@ template <
         std::forward_iterator_tag,
         typename std::iterator_traits<Iterator>::iterator_category>::value>::
         type* = nullptr>
-std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
+std::string __cdecl join(const Delim& delimiter, Iterator begin, Iterator end) {
   std::string output;
   join(delimiter, begin, end, output);
   return output;
@@ -555,19 +555,19 @@ std::string join(const Delim& delimiter, Iterator begin, Iterator end) {
  * Returns a subpiece with all whitespace removed from the front of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  */
-StringPiece ltrimWhitespace(StringPiece sp);
+StringPiece __cdecl ltrimWhitespace(StringPiece sp);
 
 /**
  * Returns a subpiece with all whitespace removed from the back of @sp.
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  */
-StringPiece rtrimWhitespace(StringPiece sp);
+StringPiece __cdecl rtrimWhitespace(StringPiece sp);
 
 /**
  * Returns a subpiece with all whitespace removed from the back and front of
  * @sp. Whitespace means any of [' ', '\n', '\r', '\t'].
  */
-inline StringPiece trimWhitespace(StringPiece sp) {
+inline StringPiece __cdecl trimWhitespace(StringPiece sp) {
   return ltrimWhitespace(rtrimWhitespace(sp));
 }
 
@@ -576,7 +576,7 @@ inline StringPiece trimWhitespace(StringPiece sp) {
  * Whitespace means any of [' ', '\n', '\r', '\t'].
  * DEPRECATED: @see ltrimWhitespace @see rtrimWhitespace
  */
-inline StringPiece skipWhitespace(StringPiece sp) {
+inline StringPiece __cdecl skipWhitespace(StringPiece sp) {
   return ltrimWhitespace(sp);
 }
 
@@ -624,7 +624,7 @@ StringPiece trim(StringPiece sp, ToTrim toTrim) {
  *  Purpose: including a multiline string literal in source code, indented to
  *  the level expected from context.
  */
-std::string stripLeftMargin(std::string s);
+std::string __cdecl stripLeftMargin(std::string s);
 
 /**
  * Fast, in-place lowercasing of ASCII alphabetic characters in strings.
@@ -633,13 +633,13 @@ std::string stripLeftMargin(std::string s);
  * @param str String to convert
  * @param length Length of str, in bytes
  */
-void toLowerAscii(char* str, size_t length);
+void __cdecl toLowerAscii(char* str, size_t length);
 
-inline void toLowerAscii(MutableStringPiece str) {
+inline void __cdecl toLowerAscii(MutableStringPiece str) {
   toLowerAscii(str.begin(), str.size());
 }
 
-inline void toLowerAscii(std::string& str) {
+inline void __cdecl toLowerAscii(std::string& str) {
   // str[0] is legal also if the string is empty.
   toLowerAscii(&str[0], str.size());
 }

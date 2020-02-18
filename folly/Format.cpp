@@ -390,7 +390,7 @@ void FormatArg::validate(Type type) const {
 }
 
 namespace detail {
-void insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
+void __cdecl insertThousandsGroupingUnsafe(char* start_buffer, char** end_buffer) {
   auto remaining_digits = uint32_t(*end_buffer - start_buffer);
   uint32_t separator_size = (remaining_digits - 1) / 3;
   uint32_t result_size = remaining_digits + separator_size;

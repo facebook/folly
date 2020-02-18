@@ -426,11 +426,11 @@ class IPAddressV6 {
 
 // boost::hash uses hash_value() so this allows boost::hash to work
 // automatically for IPAddressV6
-std::size_t hash_value(const IPAddressV6& addr);
+std::size_t __cdecl hash_value(const IPAddressV6& addr);
 std::ostream& operator<<(std::ostream& os, const IPAddressV6& addr);
 // Define toAppend() to allow IPAddressV6 to be used with to<string>
-void toAppend(IPAddressV6 addr, std::string* result);
-void toAppend(IPAddressV6 addr, fbstring* result);
+void __cdecl toAppend(IPAddressV6 addr, std::string* result);
+void __cdecl toAppend(IPAddressV6 addr, fbstring* result);
 
 } // namespace folly
 

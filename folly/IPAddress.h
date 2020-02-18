@@ -519,11 +519,11 @@ class IPAddress {
 
 // boost::hash uses hash_value() so this allows boost::hash to work
 // automatically for IPAddress
-std::size_t hash_value(const IPAddress& addr);
+std::size_t __cdecl hash_value(const IPAddress& addr);
 std::ostream& operator<<(std::ostream& os, const IPAddress& addr);
 // Define toAppend() to allow IPAddress to be used with folly::to<string>
-void toAppend(IPAddress addr, std::string* result);
-void toAppend(IPAddress addr, fbstring* result);
+void __cdecl toAppend(IPAddress addr, std::string* result);
+void __cdecl toAppend(IPAddress addr, fbstring* result);
 
 /**
  * Return true if two addresses are equal.

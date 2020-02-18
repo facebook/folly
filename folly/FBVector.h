@@ -1676,7 +1676,7 @@ class fbvector {
 // specialized functions
 
 template <class T, class A>
-void swap(fbvector<T, A>& lhs, fbvector<T, A>& rhs) noexcept {
+void __cdecl swap(fbvector<T, A>& lhs, fbvector<T, A>& rhs) noexcept {
   lhs.swap(rhs);
 }
 
@@ -1694,7 +1694,7 @@ struct IndexableTraits<fbvector<T, A>>
 } // namespace detail
 
 template <class T, class A>
-void compactResize(fbvector<T, A>* v, size_t sz) {
+void __cdecl compactResize(fbvector<T, A>* v, size_t sz) {
   v->resize(sz);
   v->shrink_to_fit();
 }
@@ -1723,14 +1723,14 @@ void compactResize(fbvector<T, A>* v, size_t sz) {
 //
 
 template <class T, class A>
-T* relinquish(fbvector<T, A>& v) {
+T* __cdecl relinquish(fbvector<T, A>& v) {
   T* ret = v.data();
   v.impl_.b_ = v.impl_.e_ = v.impl_.z_ = nullptr;
   return ret;
 }
 
 template <class T, class A>
-void attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
+void __cdecl attach(fbvector<T, A>& v, T* data, size_t sz, size_t cap) {
   assert(v.data() == nullptr);
   v.impl_.b_ = data;
   v.impl_.e_ = data + sz;
@@ -1747,12 +1747,12 @@ fbvector(InputIt, InputIt, Allocator = Allocator())
 #endif
 
 template <class T, class A, class U>
-void erase(fbvector<T, A>& v, U value) {
+void __cdecl erase(fbvector<T, A>& v, U value) {
   v.erase(std::remove(v.begin(), v.end(), value), v.end());
 }
 
 template <class T, class A, class Predicate>
-void erase_if(fbvector<T, A>& v, Predicate predicate) {
+void __cdecl erase_if(fbvector<T, A>& v, Predicate predicate) {
   v.erase(std::remove_if(v.begin(), v.end(), predicate), v.end());
 }
 } // namespace folly

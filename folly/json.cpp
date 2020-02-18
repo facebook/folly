@@ -662,7 +662,7 @@ dynamic parseValue(Input& in, json::metadata_map* map) {
 
 //////////////////////////////////////////////////////////////////////
 
-std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
+std::array<uint64_t, 2> __cdecl buildExtraAsciiToEscapeBitmap(StringPiece chars) {
   std::array<uint64_t, 2> escapes{{0, 0}};
   for (auto b : ByteRange(chars)) {
     if (b >= 0x20 && b < 0x80) {
@@ -672,7 +672,7 @@ std::array<uint64_t, 2> buildExtraAsciiToEscapeBitmap(StringPiece chars) {
   return escapes;
 }
 
-std::string serialize(dynamic const& dyn, serialization_opts const& opts) {
+std::string __cdecl serialize(dynamic const& dyn, serialization_opts const& opts) {
   std::string ret;
   unsigned indentLevel = 0;
   Printer p(ret, opts.pretty_formatting ? &indentLevel : nullptr, &opts);
@@ -875,7 +875,7 @@ void escapeStringImpl(
   out.push_back('\"');
 }
 
-void escapeString(
+void __cdecl escapeString(
     StringPiece input,
     std::string& out,
     const serialization_opts& opts) {
@@ -888,7 +888,7 @@ void escapeString(
   }
 }
 
-std::string stripComments(StringPiece jsonC) {
+std::string __cdecl stripComments(StringPiece jsonC) {
   std::string result;
   enum class State {
     None,
@@ -951,11 +951,11 @@ std::string stripComments(StringPiece jsonC) {
 
 //////////////////////////////////////////////////////////////////////
 
-dynamic parseJsonWithMetadata(StringPiece range, json::metadata_map* map) {
+dynamic __cdecl parseJsonWithMetadata(StringPiece range, json::metadata_map* map) {
   return parseJsonWithMetadata(range, json::serialization_opts(), map);
 }
 
-dynamic parseJsonWithMetadata(
+dynamic __cdecl parseJsonWithMetadata(
     StringPiece range,
     json::serialization_opts const& opts,
     json::metadata_map* map) {
@@ -974,11 +974,11 @@ dynamic parseJsonWithMetadata(
   return ret;
 }
 
-dynamic parseJson(StringPiece range) {
+dynamic __cdecl parseJson(StringPiece range) {
   return parseJson(range, json::serialization_opts());
 }
 
-dynamic parseJson(StringPiece range, json::serialization_opts const& opts) {
+dynamic __cdecl parseJson(StringPiece range, json::serialization_opts const& opts) {
   json::Input in(range, &opts);
 
   auto ret = parseValue(in, nullptr);
@@ -989,11 +989,11 @@ dynamic parseJson(StringPiece range, json::serialization_opts const& opts) {
   return ret;
 }
 
-std::string toJson(dynamic const& dyn) {
+std::string __cdecl toJson(dynamic const& dyn) {
   return json::serialize(dyn, json::serialization_opts());
 }
 
-std::string toPrettyJson(dynamic const& dyn) {
+std::string __cdecl toPrettyJson(dynamic const& dyn) {
   json::serialization_opts opts;
   opts.pretty_formatting = true;
   opts.sort_keys = true;
@@ -1012,7 +1012,7 @@ void dynamic::print_as_pseudo_json(std::ostream& out) const {
   out << json::serialize(*this, opts);
 }
 
-void PrintTo(const dynamic& dyn, std::ostream* os) {
+void __cdecl PrintTo(const dynamic& dyn, std::ostream* os) {
   json::serialization_opts opts;
   opts.allow_nan_inf = true;
   opts.allow_non_string_keys = true;

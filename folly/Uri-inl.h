@@ -38,7 +38,7 @@ using UriTuple = std::tuple<
     const std::string&,
     const std::string&>;
 
-inline UriTuple as_tuple(const folly::Uri& k) {
+inline UriTuple __cdecl as_tuple(const folly::Uri& k) {
   return UriTuple(
       k.scheme(),
       k.username(),

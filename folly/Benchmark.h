@@ -42,13 +42,13 @@ namespace folly {
 /**
  * Runs all benchmarks defined. Usually put in main().
  */
-void runBenchmarks();
+void __cdecl runBenchmarks();
 
 /**
  * Runs all benchmarks defined if and only if the --benchmark flag has
  * been passed to the program. Usually put in main().
  */
-inline bool runBenchmarksOnFlag() {
+inline bool __cdecl runBenchmarksOnFlag() {
   if (FLAGS_benchmark) {
     runBenchmarks();
   }
@@ -96,7 +96,7 @@ struct BenchmarkResult {
  * Adds a benchmark wrapped in a std::function. Only used
  * internally. Pass by value is intentional.
  */
-void addBenchmarkImpl(
+void __cdecl addBenchmarkImpl(
     const char* file,
     StringPiece name,
     BenchmarkFun,
@@ -189,7 +189,7 @@ struct BenchmarkSuspender {
  * function).
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type
+typename std::enable_if<folly::is_invocable_v<Lambda, unsigned>>::type  __cdecl
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
@@ -214,7 +214,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  * (iteration occurs outside the function).
  */
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda>>::type
+typename std::enable_if<folly::is_invocable_v<Lambda>>::type __cdecl
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](unsigned int times) {
     unsigned int niter = 0;
@@ -231,7 +231,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  */
 template <typename Lambda>
 typename std::enable_if<
-    folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type
+    folly::is_invocable_v<Lambda, UserCounters&, unsigned>>::type __cdecl
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   auto execute = [=](unsigned int times) {
     BenchmarkSuspender::timeSpent = {};
@@ -255,7 +255,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
 }
 
 template <typename Lambda>
-typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type
+typename std::enable_if<folly::is_invocable_v<Lambda, UserCounters&>>::type __cdecl
 addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
   addBenchmark(file, name, [=](UserCounters& counters, unsigned int times) {
     unsigned int niter = 0;
@@ -283,17 +283,17 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
 
 #pragma optimize("", off)
 
-inline void doNotOptimizeDependencySink(const void*) {}
+inline void __cdecl doNotOptimizeDependencySink(const void*) {}
 
 #pragma optimize("", on)
 
 template <class T>
-void doNotOptimizeAway(const T& datum) {
+void __cdecl doNotOptimizeAway(const T& datum) {
   doNotOptimizeDependencySink(&datum);
 }
 
 template <typename T>
-void makeUnpredictable(T& datum) {
+void __cdecl makeUnpredictable(T& datum) {
   doNotOptimizeDependencySink(&datum);
 }
 
@@ -355,15 +355,15 @@ auto makeUnpredictable(T& datum) -> typename std::enable_if<
 
 struct dynamic;
 
-void benchmarkResultsToDynamic(
+void __cdecl benchmarkResultsToDynamic(
     const std::vector<detail::BenchmarkResult>& data,
     dynamic&);
 
-void benchmarkResultsFromDynamic(
+void __cdecl benchmarkResultsFromDynamic(
     const dynamic&,
     std::vector<detail::BenchmarkResult>&);
 
-void printResultComparison(
+void __cdecl printResultComparison(
     const std::vector<detail::BenchmarkResult>& base,
     const std::vector<detail::BenchmarkResult>& test);
 
@@ -375,7 +375,7 @@ void printResultComparison(
  */
 
 #define BENCHMARK_IMPL(funName, stringName, rv, paramType, paramName)          \
-  static void funName(paramType);                                              \
+  static void __cdecl funName(paramType);                                              \
   FOLLY_MAYBE_UNUSED static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = \
       (::folly::addBenchmark(                                                  \
            __FILE__,                                                           \
@@ -401,7 +401,7 @@ void printResultComparison(
              return rv;                                                        \
            }),                                                                 \
        true);                                                                  \
-  static void funName(::folly::UserCounters& counters                          \
+  static void __cdecl funName(::folly::UserCounters& counters                          \
                           FOLLY_PP_DETAIL_APPEND_VA_ARG(paramType paramName))
 
 /**
@@ -410,14 +410,14 @@ void printResultComparison(
  * below.
  */
 #define BENCHMARK_MULTI_IMPL(funName, stringName, paramType, paramName)        \
-  static unsigned funName(paramType);                                          \
+  static unsigned __cdecl funName(paramType);                                          \
   FOLLY_MAYBE_UNUSED static bool FB_ANONYMOUS_VARIABLE(follyBenchmarkUnused) = \
       (::folly::addBenchmark(                                                  \
            __FILE__,                                                           \
            stringName,                                                         \
            [](paramType paramName) { return funName(paramName); }),            \
        true);                                                                  \
-  static unsigned funName(paramType paramName)
+  static unsigned __cdecl funName(paramType paramName)
 
 /**
  * Introduces a benchmark function. Use with either one or two arguments.

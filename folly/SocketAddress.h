@@ -615,7 +615,7 @@ class SocketAddress {
  * boost::hash uses hash_value(), so this allows boost::hash to automatically
  * work for SocketAddress.
  */
-size_t hash_value(const SocketAddress& address);
+size_t __cdecl hash_value(const SocketAddress& address);
 
 std::ostream& operator<<(std::ostream& os, const SocketAddress& addr);
 } // namespace folly

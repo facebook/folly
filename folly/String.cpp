@@ -128,7 +128,7 @@ static inline bool is_oddspace(char c) {
   return c == '\n' || c == '\t' || c == '\r';
 }
 
-StringPiece ltrimWhitespace(StringPiece sp) {
+StringPiece __cdecl ltrimWhitespace(StringPiece sp) {
   // Spaces other than ' ' characters are less common but should be
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
@@ -146,7 +146,7 @@ StringPiece ltrimWhitespace(StringPiece sp) {
   }
 }
 
-StringPiece rtrimWhitespace(StringPiece sp) {
+StringPiece __cdecl rtrimWhitespace(StringPiece sp) {
   // Spaces other than ' ' characters are less common but should be
   // checked.  This configuration where we loop on the ' '
   // separately from oddspaces was empirically fastest.
@@ -229,7 +229,7 @@ std::string stringPrintf(const char* format, ...) {
   return stringVPrintf(format, ap);
 }
 
-std::string stringVPrintf(const char* format, va_list ap) {
+std::string __cdecl stringVPrintf(const char* format, va_list ap) {
   std::string ret;
   stringAppendfImpl(ret, format, ap);
   return ret;
@@ -246,7 +246,7 @@ std::string& stringAppendf(std::string* output, const char* format, ...) {
   return stringVAppendf(output, format, ap);
 }
 
-std::string&
+std::string& __cdecl
 stringVAppendf(std::string* output, const char* format, va_list ap) {
   stringAppendfImpl(*output, format, ap);
   return *output;
@@ -261,7 +261,7 @@ void stringPrintf(std::string* output, const char* format, ...) {
   return stringVPrintf(output, format, ap);
 }
 
-void stringVPrintf(std::string* output, const char* format, va_list ap) {
+void __cdecl stringVPrintf(std::string* output, const char* format, va_list ap) {
   output->clear();
   stringAppendfImpl(*output, format, ap);
 }
@@ -383,7 +383,7 @@ const PrettySuffix* const kPrettySuffixes[PRETTY_NUM_TYPES] = {
 
 } // namespace
 
-std::string prettyPrint(double val, PrettyType type, bool addSpace) {
+std::string __cdecl prettyPrint(double val, PrettyType type, bool addSpace) {
   char buf[100];
 
   // pick the suffixes to use
@@ -413,7 +413,7 @@ std::string prettyPrint(double val, PrettyType type, bool addSpace) {
 
 // TODO:
 // 1) Benchmark & optimize
-double prettyToDouble(
+double __cdecl prettyToDouble(
     folly::StringPiece* const prettyString,
     const PrettyType type) {
   auto value = folly::to<double>(prettyString);
@@ -448,13 +448,13 @@ double prettyToDouble(
                                     : value;
 }
 
-double prettyToDouble(folly::StringPiece prettyString, const PrettyType type) {
+double __cdecl prettyToDouble(folly::StringPiece prettyString, const PrettyType type) {
   double result = prettyToDouble(&prettyString, type);
   detail::enforceWhitespace(prettyString);
   return result;
 }
 
-std::string hexDump(const void* ptr, size_t size) {
+std::string __cdecl hexDump(const void* ptr, size_t size) {
   std::ostringstream os;
   hexDump(ptr, size, std::ostream_iterator<StringPiece>(os, "\n"));
   return os.str();
@@ -499,7 +499,7 @@ static fbstring invoke_strerror_r(
   return strerror_r(err, buf, buflen);
 }
 
-fbstring errnoStr(int err) {
+fbstring __cdecl errnoStr(int err) {
   int savedErrno = errno;
 
   // Ensure that we reset errno upon exit.
@@ -625,7 +625,7 @@ void toLowerAscii64(uint64_t& c) {
 
 } // namespace
 
-void toLowerAscii(char* str, size_t length) {
+void __cdecl toLowerAscii(char* str, size_t length) {
   static const size_t kAlignMask64 = 7;
   static const size_t kAlignMask32 = 3;
 
@@ -674,7 +674,7 @@ void toLowerAscii(char* str, size_t length) {
 
 namespace detail {
 
-size_t
+size_t __cdecl
 hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line) {
   static char hexValues[] = "0123456789abcdef";
   // Line layout:
@@ -728,7 +728,7 @@ hexDumpLine(const void* ptr, size_t offset, size_t size, std::string& line) {
 
 } // namespace detail
 
-std::string stripLeftMargin(std::string s) {
+std::string __cdecl stripLeftMargin(std::string s) {
   std::vector<StringPiece> pieces;
   split("\n", s, pieces);
   auto piecer = range(pieces);

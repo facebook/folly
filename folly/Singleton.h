@@ -225,33 +225,33 @@ class TypeDescriptorHasher {
   }
 };
 
-[[noreturn]] void singletonWarnLeakyDoubleRegistrationAndAbort(
+[[noreturn]] void __cdecl singletonWarnLeakyDoubleRegistrationAndAbort(
     const TypeDescriptor& type);
 
-[[noreturn]] void singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
+[[noreturn]] void __cdecl singletonWarnLeakyInstantiatingNotRegisteredAndAbort(
     const TypeDescriptor& type);
 
-[[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
+[[noreturn]] void __cdecl singletonWarnRegisterMockEarlyAndAbort(
     const TypeDescriptor& type);
 
-void singletonWarnDestroyInstanceLeak(
+void __cdecl singletonWarnDestroyInstanceLeak(
     const TypeDescriptor& type,
     const void* ptr);
 
-[[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
+[[noreturn]] void __cdecl singletonWarnCreateCircularDependencyAndAbort(
     const TypeDescriptor& type);
 
-[[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
+[[noreturn]] void __cdecl singletonWarnCreateUnregisteredAndAbort(
     const TypeDescriptor& type);
 
-[[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
+[[noreturn]] void __cdecl singletonWarnCreateBeforeRegistrationCompleteAndAbort(
     const TypeDescriptor& type);
 
-void singletonPrintDestructionStackTrace(const TypeDescriptor& type);
+void __cdecl singletonPrintDestructionStackTrace(const TypeDescriptor& type);
 
-[[noreturn]] void singletonThrowNullCreator(const std::type_info& type);
+[[noreturn]] void __cdecl singletonThrowNullCreator(const std::type_info& type);
 
-[[noreturn]] void singletonThrowGetInvokedAfterDestruction(
+[[noreturn]] void __cdecl singletonThrowGetInvokedAfterDestruction(
     const TypeDescriptor& type);
 
 struct SingletonVaultState {

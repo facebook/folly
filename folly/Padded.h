@@ -176,7 +176,7 @@ struct padded_emplace_back_or_push_back_<
 };
 
 template <typename Container, typename... Args>
-decltype(auto) padded_emplace_back_or_push_back(
+decltype(auto) __cdecl padded_emplace_back_or_push_back(
     Container& container,
     Args&&... args) {
   using impl = padded_emplace_back_or_push_back_<void, Container, Args...>;
@@ -316,32 +316,32 @@ class Iterator : public detail::IteratorBase<Iter>::type {
  */
 
 template <class Container>
-Iterator<typename Container::const_iterator> cbegin(const Container& c) {
+Iterator<typename Container::const_iterator> __cdecl cbegin(const Container& c) {
   return Iterator<typename Container::const_iterator>(std::begin(c));
 }
 
 template <class Container>
-Iterator<typename Container::const_iterator> cend(const Container& c) {
+Iterator<typename Container::const_iterator> __cdecl cend(const Container& c) {
   return Iterator<typename Container::const_iterator>(std::end(c));
 }
 
 template <class Container>
-Iterator<typename Container::const_iterator> begin(const Container& c) {
+Iterator<typename Container::const_iterator> __cdecl begin(const Container& c) {
   return cbegin(c);
 }
 
 template <class Container>
-Iterator<typename Container::const_iterator> end(const Container& c) {
+Iterator<typename Container::const_iterator> __cdecl end(const Container& c) {
   return cend(c);
 }
 
 template <class Container>
-Iterator<typename Container::iterator> begin(Container& c) {
+Iterator<typename Container::iterator> __cdecl begin(Container& c) {
   return Iterator<typename Container::iterator>(std::begin(c));
 }
 
 template <class Container>
-Iterator<typename Container::iterator> end(Container& c) {
+Iterator<typename Container::iterator> __cdecl end(Container& c) {
   return Iterator<typename Container::iterator>(std::end(c));
 }
 

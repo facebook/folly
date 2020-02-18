@@ -61,13 +61,13 @@ template <class Error>
 class Unexpected;
 
 template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(Error&&);
+constexpr Unexpected<typename std::decay<Error>::type> __cdecl makeUnexpected(Error&&);
 
 template <class Value, class Error>
 class Expected;
 
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
+constexpr Expected<typename std::decay<Value>::type, Error> __cdecl makeExpected(
     Value&&);
 
 /**
@@ -119,26 +119,26 @@ using IsConvertible = StrictConjunction<
     std::is_assignable<To&, From>>;
 
 template <class T, class U>
-auto doEmplaceAssign(int, T& t, U&& u)
+auto __cdecl doEmplaceAssign(int, T& t, U&& u)
     -> decltype(void(t = static_cast<U&&>(u))) {
   t = static_cast<U&&>(u);
 }
 
 template <class T, class U>
-auto doEmplaceAssign(long, T& t, U&& u)
+auto __cdecl doEmplaceAssign(long, T& t, U&& u)
     -> decltype(void(T(static_cast<U&&>(u)))) {
   t.~T();
   ::new ((void*)std::addressof(t)) T(static_cast<U&&>(u));
 }
 
 template <class T, class... Us>
-auto doEmplaceAssign(int, T& t, Us&&... us)
+auto __cdecl doEmplaceAssign(int, T& t, Us&&... us)
     -> decltype(void(t = T(static_cast<Us&&>(us)...))) {
   t = T(static_cast<Us&&>(us)...);
 }
 
 template <class T, class... Us>
-auto doEmplaceAssign(long, T& t, Us&&... us)
+auto __cdecl doEmplaceAssign(long, T& t, Us&&... us)
     -> decltype(void(T(static_cast<Us&&>(us)...))) {
   t.~T();
   ::new ((void*)std::addressof(t)) T(static_cast<Us&&>(us)...);
@@ -151,7 +151,7 @@ enum class Which : unsigned char { eEmpty, eValue, eError };
 enum class StorageType { ePODStruct, ePODUnion, eUnion };
 
 template <class Value, class Error>
-constexpr StorageType getStorageType() {
+constexpr StorageType __cdecl getStorageType() {
   return StrictAllOf<is_trivially_copyable, Value, Error>::value
       ? (sizeof(std::pair<Value, Error>) <= sizeof(void * [2]) &&
                  StrictAllOf<std::is_trivial, Value, Error>::value
@@ -627,7 +627,7 @@ struct UnexpectedTag {};
 using unexpected_t =
     expected_detail::UnexpectedTag (&)(expected_detail::UnexpectedTag);
 
-inline expected_detail::UnexpectedTag unexpected(
+inline expected_detail::UnexpectedTag __cdecl unexpected(
     expected_detail::UnexpectedTag = {}) {
   return {};
 }
@@ -758,7 +758,7 @@ inline bool operator!=(
  * }
  */
 template <class Error>
-constexpr Unexpected<typename std::decay<Error>::type> makeUnexpected(
+constexpr Unexpected<typename std::decay<Error>::type> __cdecl makeUnexpected(
     Error&& err) {
   return Unexpected<typename std::decay<Error>::type>{
       static_cast<Error&&>(err)};
@@ -1341,18 +1341,18 @@ inline bool operator>=(
  * swap Expected values
  */
 template <class Value, class Error>
-void swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
+void __cdecl swap(Expected<Value, Error>& lhs, Expected<Value, Error>& rhs) noexcept(
     expected_detail::StrictAllOf<IsNothrowSwappable, Value, Error>::value) {
   lhs.swap(rhs);
 }
 
 template <class Value, class Error>
-const Value* get_pointer(const Expected<Value, Error>& ex) noexcept {
+const Value* __cdecl get_pointer(const Expected<Value, Error>& ex) noexcept {
   return ex.get_pointer();
 }
 
 template <class Value, class Error>
-Value* get_pointer(Expected<Value, Error>& ex) noexcept {
+Value* __cdecl get_pointer(Expected<Value, Error>& ex) noexcept {
   return ex.get_pointer();
 }
 
@@ -1367,7 +1367,7 @@ Value* get_pointer(Expected<Value, Error>& ex) noexcept {
  * }
  */
 template <class Error, class Value>
-constexpr Expected<typename std::decay<Value>::type, Error> makeExpected(
+constexpr Expected<typename std::decay<Value>::type, Error> __cdecl makeExpected(
     Value&& val) {
   return Expected<typename std::decay<Value>::type, Error>{
       in_place, static_cast<Value&&>(val)};

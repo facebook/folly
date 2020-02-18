@@ -28,7 +28,7 @@ namespace folly {
  * or a given default value if the key doesn't exist in the map.
  */
 template <typename Map, typename Key>
-typename Map::mapped_type get_default(const Map& map, const Key& key) {
+typename Map::mapped_type __cdecl get_default(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end()) ? (pos->second) : (typename Map::mapped_type{});
 }
@@ -37,7 +37,7 @@ template <
     typename Key = typename Map::key_type,
     typename Value = typename Map::mapped_type,
     typename std::enable_if<!is_invocable_v<Value>>::type* = nullptr>
-typename Map::mapped_type
+typename Map::mapped_type __cdecl
 get_default(const Map& map, const Key& key, Value&& dflt) {
   using M = typename Map::mapped_type;
   auto pos = map.find(key);
@@ -54,7 +54,7 @@ template <
     typename Func,
     typename = typename std::enable_if<
         is_invocable_r_v<typename Map::mapped_type, Func>>::type>
-typename Map::mapped_type
+typename Map::mapped_type __cdecl
 get_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
   return pos != map.end() ? pos->second : dflt();
@@ -68,7 +68,7 @@ template <
     class E = std::out_of_range,
     class Map,
     typename Key = typename Map::key_type>
-const typename Map::mapped_type& get_or_throw(
+const typename Map::mapped_type& __cdecl get_or_throw(
     const Map& map,
     const Key& key,
     const std::string& exceptionStrPrefix = std::string()) {
@@ -83,7 +83,7 @@ template <
     class E = std::out_of_range,
     class Map,
     typename Key = typename Map::key_type>
-typename Map::mapped_type& get_or_throw(
+typename Map::mapped_type& __cdecl get_or_throw(
     Map& map,
     const Key& key,
     const std::string& exceptionStrPrefix = std::string()) {
@@ -99,7 +99,7 @@ typename Map::mapped_type& get_or_throw(
  * key does not exist in the map.
  */
 template <class Map, typename Key = typename Map::key_type>
-folly::Optional<typename Map::mapped_type> get_optional(
+folly::Optional<typename Map::mapped_type> __cdecl get_optional(
     const Map& map,
     const Key& key) {
   auto pos = map.find(key);
@@ -116,7 +116,7 @@ folly::Optional<typename Map::mapped_type> get_optional(
  * the map.
  */
 template <class Map, typename Key = typename Map::key_type>
-const typename Map::mapped_type& get_ref_default(
+const typename Map::mapped_type& __cdecl get_ref_default(
     const Map& map,
     const Key& key,
     const typename Map::mapped_type& dflt) {
@@ -131,13 +131,13 @@ const typename Map::mapped_type& get_ref_default(
  * by get_ref_default().
  */
 template <class Map, typename Key = typename Map::key_type>
-const typename Map::mapped_type& get_ref_default(
+const typename Map::mapped_type& __cdecl get_ref_default(
     const Map& map,
     const Key& key,
     typename Map::mapped_type&& dflt) = delete;
 
 template <class Map, typename Key = typename Map::key_type>
-const typename Map::mapped_type& get_ref_default(
+const typename Map::mapped_type& __cdecl get_ref_default(
     const Map& map,
     const Key& key,
     const typename Map::mapped_type&& dflt) = delete;
@@ -155,7 +155,7 @@ template <
         is_invocable_r_v<const typename Map::mapped_type&, Func>>::type,
     typename = typename std::enable_if<
         std::is_reference<invoke_result_t<Func>>::value>::type>
-const typename Map::mapped_type&
+const typename Map::mapped_type& __cdecl
 get_ref_default(const Map& map, const Key& key, Func&& dflt) {
   auto pos = map.find(key);
   return (pos != map.end() ? pos->second : dflt());
@@ -166,7 +166,7 @@ get_ref_default(const Map& map, const Key& key, Func&& dflt) {
  * key in the map, or nullptr if the key doesn't exist in the map.
  */
 template <class Map, typename Key = typename Map::key_type>
-const typename Map::mapped_type* get_ptr(const Map& map, const Key& key) {
+const typename Map::mapped_type* __cdecl get_ptr(const Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
@@ -175,7 +175,7 @@ const typename Map::mapped_type* get_ptr(const Map& map, const Key& key) {
  * Non-const overload of the above.
  */
 template <class Map, typename Key = typename Map::key_type>
-typename Map::mapped_type* get_ptr(Map& map, const Key& key) {
+typename Map::mapped_type* __cdecl get_ptr(Map& map, const Key& key) {
   auto pos = map.find(key);
   return (pos != map.end() ? &pos->second : nullptr);
 }
@@ -210,7 +210,7 @@ struct DefaultType<Key, KeysDefault...> {
 };
 
 template <class... KeysDefault>
-auto extract_default(const KeysDefault&... keysDefault) ->
+auto __cdecl extract_default(const KeysDefault&... keysDefault) ->
     typename DefaultType<KeysDefault...>::type const& {
   return std::get<sizeof...(KeysDefault) - 1>(std::tie(keysDefault...));
 }
@@ -221,7 +221,7 @@ auto extract_default(const KeysDefault&... keysDefault) ->
  * key exists and None if the nested keys does not exist in the map.
  */
 template <class Map, class Key1, class Key2, class... Keys>
-auto get_optional(
+auto __cdecl get_optional(
     const Map& map,
     const Key1& key1,
     const Key2& key2,
@@ -238,7 +238,7 @@ auto get_optional(
  * or nullptr if the key doesn't exist in the map.
  */
 template <class Map, class Key1, class Key2, class... Keys>
-auto get_ptr(
+auto __cdecl get_ptr(
     const Map& map,
     const Key1& key1,
     const Key2& key2,
@@ -249,7 +249,7 @@ auto get_ptr(
 }
 
 template <class Map, class Key1, class Key2, class... Keys>
-auto get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
+auto __cdecl get_ptr(Map& map, const Key1& key1, const Key2& key2, const Keys&... keys)
     -> typename detail::NestedMapType<Map, 2 + sizeof...(Keys)>::type* {
   auto pos = map.find(key1);
   return pos != map.end() ? get_ptr(pos->second, key2, keys...) : nullptr;
@@ -266,7 +266,7 @@ template <
     class Key2,
     class... KeysDefault,
     typename = typename std::enable_if<sizeof...(KeysDefault) != 0>::type>
-auto get_default(
+auto __cdecl get_default(
     const Map& map,
     const Key1& key1,
     const Key2& key2,
@@ -292,7 +292,7 @@ template <
     typename = typename std::enable_if<sizeof...(KeysDefault) != 0>::type,
     typename = typename std::enable_if<std::is_lvalue_reference<
         typename detail::DefaultType<KeysDefault...>::type>::value>::type>
-auto get_ref_default(
+auto __cdecl get_ref_default(
     const Map& map,
     const Key1& key1,
     const Key2& key2,

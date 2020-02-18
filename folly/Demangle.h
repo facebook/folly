@@ -31,8 +31,8 @@ namespace folly {
  *
  * This function may allocate memory (and therefore throw std::bad_alloc).
  */
-fbstring demangle(const char* name);
-inline fbstring demangle(const std::type_info& type) {
+fbstring __cdecl demangle(const char* name);
+inline fbstring __cdecl demangle(const std::type_info& type) {
   return demangle(type.name());
 }
 
@@ -54,8 +54,8 @@ inline fbstring demangle(const std::type_info& type) {
  * libiberty), so it is possible for the fbstring version to work, while this
  * version returns the original, mangled name.
  */
-size_t demangle(const char* name, char* out, size_t outSize);
-inline size_t demangle(const std::type_info& type, char* buf, size_t bufSize) {
+size_t __cdecl demangle(const char* name, char* out, size_t outSize);
+inline size_t __cdecl demangle(const std::type_info& type, char* buf, size_t bufSize) {
   return demangle(type.name(), buf, bufSize);
 }
 

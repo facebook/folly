@@ -221,7 +221,7 @@ void Try<void>::throwIfFailed() const {
 template <typename F>
 typename std::enable_if<
     !std::is_same<invoke_result_t<F>, void>::value,
-    Try<invoke_result_t<F>>>::type
+    Try<invoke_result_t<F>>>::type __cdecl
 makeTryWithNoUnwrap(F&& f) {
   using ResultType = invoke_result_t<F>;
   try {
@@ -235,7 +235,7 @@ makeTryWithNoUnwrap(F&& f) {
 
 template <typename F>
 typename std::
-    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type
+    enable_if<std::is_same<invoke_result_t<F>, void>::value, Try<void>>::type __cdecl
     makeTryWithNoUnwrap(F&& f) {
   try {
     f();
@@ -249,14 +249,14 @@ typename std::
 
 template <typename F>
 typename std::
-    enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type
+    enable_if<!isTry<invoke_result_t<F>>::value, Try<invoke_result_t<F>>>::type __cdecl
     makeTryWith(F&& f) {
   return makeTryWithNoUnwrap(std::forward<F>(f));
 }
 
 template <typename F>
 typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
-    type
+    type __cdecl
     makeTryWith(F&& f) {
   using ResultType = invoke_result_t<F>;
   try {
@@ -269,7 +269,7 @@ typename std::enable_if<isTry<invoke_result_t<F>>::value, invoke_result_t<F>>::
 }
 
 template <typename T, typename... Args>
-T* tryEmplace(Try<T>& t, Args&&... args) noexcept {
+T* __cdecl tryEmplace(Try<T>& t, Args&&... args) noexcept {
   try {
     return std::addressof(t.emplace(static_cast<Args&&>(args)...));
   } catch (const std::exception& ex) {
@@ -281,12 +281,12 @@ T* tryEmplace(Try<T>& t, Args&&... args) noexcept {
   }
 }
 
-void tryEmplace(Try<void>& t) noexcept {
+void __cdecl tryEmplace(Try<void>& t) noexcept {
   t.emplace();
 }
 
 template <typename T, typename Func>
-T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
+T* __cdecl tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
   static_assert(
       std::is_constructible<T, folly::invoke_result_t<Func>>::value,
       "Unable to initialise a value of type T with the result of 'func'");
@@ -302,7 +302,7 @@ T* tryEmplaceWith(Try<T>& t, Func&& func) noexcept {
 }
 
 template <typename Func>
-bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept {
+bool __cdecl tryEmplaceWith(Try<void>& t, Func&& func) noexcept {
   static_assert(
       std::is_void<folly::invoke_result_t<Func>>::value,
       "Func returns non-void. Cannot be used to emplace Try<void>");
@@ -332,7 +332,7 @@ struct RemoveTry<TupleType<folly::Try<Types>...>> {
 };
 
 template <std::size_t... Indices, typename Tuple>
-auto unwrapTryTupleImpl(std::index_sequence<Indices...>, Tuple&& instance) {
+auto __cdecl unwrapTryTupleImpl(std::index_sequence<Indices...>, Tuple&& instance) {
   using std::get;
   using ReturnType = typename RemoveTry<typename std::decay<Tuple>::type>::type;
   return ReturnType{(get<Indices>(std::forward<Tuple>(instance)).value())...};
@@ -340,7 +340,7 @@ auto unwrapTryTupleImpl(std::index_sequence<Indices...>, Tuple&& instance) {
 } // namespace try_detail
 
 template <typename Tuple>
-auto unwrapTryTuple(Tuple&& instance) {
+auto __cdecl unwrapTryTuple(Tuple&& instance) {
   using TupleDecayed = typename std::decay<Tuple>::type;
   using Seq = std::make_index_sequence<std::tuple_size<TupleDecayed>::value>;
   return try_detail::unwrapTryTupleImpl(Seq{}, std::forward<Tuple>(instance));

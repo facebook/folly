@@ -66,12 +66,12 @@ template <bool If, class T>
 using AddConstIf = std::conditional_t<If, const T, T>;
 
 template <class Fn, class A>
-FOLLY_ERASE auto fold(Fn&&, A&& a) {
+FOLLY_ERASE auto __cdecl fold(Fn&&, A&& a) {
   return static_cast<A&&>(a);
 }
 
 template <class Fn, class A, class B, class... Bs>
-FOLLY_ERASE auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
+FOLLY_ERASE auto __cdecl fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
   return fold(
       // This looks like a use of fn after a move of fn, but in reality, this is
       // just a cast and not a move. That's because regardless of which fold
@@ -623,7 +623,7 @@ constexpr exception_wrapper::VTable exception_wrapper::InPlace<Ex>::ops_;
  *     that has been constructed with arguments `std::forward<As>(as)...`.
  */
 template <class Ex, typename... As>
-exception_wrapper make_exception_wrapper(As&&... as) {
+exception_wrapper __cdecl make_exception_wrapper(As&&... as) {
   return exception_wrapper{in_place_type<Ex>, std::forward<As>(as)...};
 }
 
@@ -641,21 +641,21 @@ std::basic_ostream<Ch>& operator<<(
 /**
  * Swaps the value of `a` with the value of `b`.
  */
-inline void swap(exception_wrapper& a, exception_wrapper& b) noexcept {
+inline void __cdecl swap(exception_wrapper& a, exception_wrapper& b) noexcept {
   a.swap(b);
 }
 
 // For consistency with exceptionStr() functions in ExceptionString.h
-fbstring exceptionStr(exception_wrapper const& ew);
+fbstring __cdecl exceptionStr(exception_wrapper const& ew);
 
 namespace detail {
 template <typename F>
-inline exception_wrapper try_and_catch_(F&& f) {
+inline exception_wrapper __cdecl try_and_catch_(F&& f) {
   return (f(), exception_wrapper());
 }
 
 template <typename F, typename Ex, typename... Exs>
-inline exception_wrapper try_and_catch_(F&& f) {
+inline exception_wrapper __cdecl try_and_catch_(F&& f) {
   try {
     return try_and_catch_<F, Exs...>(std::forward<F>(f));
   } catch (Ex& ex) {
@@ -700,7 +700,7 @@ inline exception_wrapper try_and_catch_(F&& f) {
 //! });
 //! \endcode
 template <typename... Exceptions, typename F>
-exception_wrapper try_and_catch(F&& fn) {
+exception_wrapper __cdecl try_and_catch(F&& fn) {
   return detail::try_and_catch_<F, Exceptions...>(std::forward<F>(fn));
 }
 } // namespace folly

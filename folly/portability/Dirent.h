@@ -32,10 +32,10 @@ struct dirent {
 struct DIR;
 
 extern "C" {
-int closedir(DIR* dir);
-DIR* opendir(const char* name);
-dirent* readdir(DIR* dir);
-int readdir_r(DIR* dir, dirent* buf, dirent** ent);
-void rewinddir(DIR* dir);
+int __cdecl closedir(DIR* dir);
+DIR* __cdecl opendir(const char* name);
+dirent* __cdecl readdir(DIR* dir);
+int __cdecl readdir_r(DIR* dir, dirent* buf, dirent** ent);
+void __cdecl rewinddir(DIR* dir);
 }
 #endif
