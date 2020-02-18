@@ -337,11 +337,11 @@ class Optional {
 
  private:
   template <class T>
-  friend constexpr Optional<std::decay_t<T>> make_optional(T&&);
+  friend constexpr Optional<std::decay_t<T>> __cdecl make_optional(T&&);
   template <class T, class... Args>
-  friend constexpr Optional<T> make_optional(Args&&... args);
+  friend constexpr Optional<T> __cdecl make_optional(Args&&... args);
   template <class T, class U, class... As>
-  friend constexpr Optional<T> make_optional(std::initializer_list<U>, As&&...);
+  friend constexpr Optional<T> __cdecl make_optional(std::initializer_list<U>, As&&...);
 
   /**
    * Construct the optional in place, this is duplicated as a non-explicit
