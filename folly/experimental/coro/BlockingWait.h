@@ -386,8 +386,16 @@ template <
     std::enable_if_t<!is_awaitable_v<SemiAwaitable>, int> = 0>
 auto blockingWait(SemiAwaitable&& awaitable)
     -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
-  detail::BlockingWaitExecutor executor;
-  return blockingWait(static_cast<SemiAwaitable&&>(awaitable), &executor);
+  std::exception_ptr eptr;
+  {
+    detail::BlockingWaitExecutor executor;
+    try {
+      return blockingWait(static_cast<SemiAwaitable&&>(awaitable), &executor);
+    } catch (...) {
+      eptr = std::current_exception();
+    }
+  }
+  std::rethrow_exception(eptr);
 }
 
 } // namespace coro

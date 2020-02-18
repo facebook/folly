@@ -269,6 +269,24 @@ TEST_F(BlockingWaitTest, WaitTaskInFiber) {
   EXPECT_EQ(42, std::move(future).get());
 }
 
+struct ExpectedException {};
+
+TEST_F(BlockingWaitTest, WaitTaskInFiberException) {
+  folly::EventBase evb;
+  auto& fm = folly::fibers::getFiberManager(evb);
+  fm.addTask([] {
+    try {
+      folly::coro::blockingWait(
+          folly::coro::co_invoke([&]() -> folly::coro::Task<void> {
+            folly::via(co_await folly::coro::co_current_executor, []() {});
+            throw ExpectedException();
+          }));
+    } catch (const ExpectedException&) {
+    }
+  });
+  evb.loop();
+}
+
 TEST_F(BlockingWaitTest, WaitOnSemiFuture) {
   int result = folly::coro::blockingWait(folly::makeSemiFuture(123));
   CHECK_EQ(result, 123);
