@@ -180,6 +180,14 @@ inline void* checkedRealloc(void* ptr, size_t size) {
   return p;
 }
 
+inline void sizedFree(void* ptr, size_t size) {
+  if (usingJEMalloc()) {
+    sdallocx(ptr, size, 0);
+  } else {
+    free(ptr);
+  }
+}
+
 /**
  * This function tries to reallocate a buffer of which only the first
  * currentSize bytes are used. The problem with using realloc is that
