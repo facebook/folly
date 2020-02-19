@@ -1171,11 +1171,11 @@ LZMA2StreamCodec::LZMA2StreamCodec(int level, CodecType type)
 LZMA2StreamCodec::~LZMA2StreamCodec() {
   if (cstream_) {
     lzma_end(cstream_.get_pointer());
-    cstream_.clear();
+    cstream_.reset();
   }
   if (dstream_) {
     lzma_end(dstream_.get_pointer());
-    dstream_.clear();
+    dstream_.reset();
   }
 }
 
@@ -1578,11 +1578,11 @@ int bzCheck(int const rc) {
 Bzip2StreamCodec::~Bzip2StreamCodec() {
   if (cstream_) {
     BZ2_bzCompressEnd(cstream_.get_pointer());
-    cstream_.clear();
+    cstream_.reset();
   }
   if (dstream_) {
     BZ2_bzDecompressEnd(dstream_.get_pointer());
-    dstream_.clear();
+    dstream_.reset();
   }
 }
 

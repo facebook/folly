@@ -80,7 +80,7 @@ TEST(Optional, NoDefault) {
   EXPECT_FALSE(x);
   x.emplace(4, 5);
   EXPECT_TRUE(bool(x));
-  x.clear();
+  x.reset();
   EXPECT_FALSE(x);
 }
 
@@ -121,7 +121,7 @@ TEST(Optional, Const) {
     EXPECT_EQ(*opt, 4);
     opt.emplace(5);
     EXPECT_EQ(*opt, 5);
-    opt.clear();
+    opt.reset();
     EXPECT_FALSE(bool(opt));
   }
   { // copy-constructed
@@ -147,7 +147,7 @@ TEST(Optional, Simple) {
   EXPECT_EQ(4, opt.value_or(42));
   opt = 5;
   EXPECT_EQ(5, *opt);
-  opt.clear();
+  opt.reset();
   EXPECT_FALSE(bool(opt));
 }
 
@@ -260,14 +260,14 @@ TEST(Optional, InPlaceNestedConstruct) {
 TEST(Optional, Unique) {
   Optional<unique_ptr<int>> opt;
 
-  opt.clear();
+  opt.reset();
   EXPECT_FALSE(bool(opt));
   // empty->emplaced
   opt.emplace(new int(5));
   EXPECT_TRUE(bool(opt));
   EXPECT_EQ(5, **opt);
 
-  opt.clear();
+  opt.reset();
   // empty->moved
   opt = std::make_unique<int>(6);
   EXPECT_EQ(6, **opt);
@@ -298,13 +298,13 @@ TEST(Optional, Shared) {
   ptr = opt.value();
   EXPECT_EQ(ptr.get(), opt->get());
   EXPECT_EQ(2, ptr.use_count());
-  opt.clear();
+  opt.reset();
   EXPECT_EQ(1, ptr.use_count());
   // full->copied
   opt = ptr;
   EXPECT_EQ(2, ptr.use_count());
   EXPECT_EQ(ptr.get(), opt->get());
-  opt.clear();
+  opt.reset();
   EXPECT_EQ(1, ptr.use_count());
   // full->moved
   opt = std::move(ptr);

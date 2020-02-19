@@ -182,7 +182,7 @@ void destroy<IOThreadPoolExecutor>() {
   for (int i = 0; i < 10; i++) {
     tpe->add(f);
   }
-  tpe.clear();
+  tpe.reset();
   EXPECT_EQ(10, completed);
 }
 

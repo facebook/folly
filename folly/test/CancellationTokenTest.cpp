@@ -183,7 +183,7 @@ TEST(CancellationTokenTest, CallbackThatDeregistersItself) {
   // Check that this doesn't deadlock when a callback tries to deregister
   // itself from within the callback.
   folly::Optional<CancellationCallback> callback;
-  callback.emplace(src.getToken(), [&] { callback.clear(); });
+  callback.emplace(src.getToken(), [&] { callback.reset(); });
   src.requestCancellation();
 }
 TEST(CancellationTokenTest, ManyCallbacks) {

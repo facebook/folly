@@ -44,7 +44,7 @@ class SimpleLoopController::SimpleTimeoutManager : public TimeoutManager {
 
   void cancelTimeout(AsyncTimeout* obj) final {
     CHECK(timeout_ && timeout_->first == obj);
-    timeout_.clear();
+    timeout_.reset();
   }
 
   void bumpHandlingTime() final {}
@@ -60,7 +60,7 @@ class SimpleLoopController::SimpleTimeoutManager : public TimeoutManager {
     }
 
     auto* timeout = timeout_->first;
-    timeout_.clear();
+    timeout_.reset();
     timeout->timeoutExpired();
   }
 

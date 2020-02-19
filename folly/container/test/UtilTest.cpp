@@ -413,7 +413,7 @@ TEST(Util, callWithConstructedKey) {
     Tracked<0> k1{0};
     Tracked<0> k2{0};
     uint64_t k3 = 0;
-    sink.clear();
+    sink.reset();
     resetTracking();
     detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k1);
     // copy is expected on successful emplace
@@ -429,7 +429,7 @@ TEST(Util, callWithConstructedKey) {
     // copy convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 1, 0}), 0);
 
-    sink.clear();
+    sink.reset();
     resetTracking();
     detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k3);
     // copy convert + move expected for successful emplace with wrong type
@@ -439,7 +439,7 @@ TEST(Util, callWithConstructedKey) {
     Tracked<0> k1{0};
     Tracked<0> k2{0};
     uint64_t k3 = 0;
-    sink.clear();
+    sink.reset();
     resetTracking();
     detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k1));
@@ -458,7 +458,7 @@ TEST(Util, callWithConstructedKey) {
     // move convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 1}), 0);
 
-    sink.clear();
+    sink.reset();
     resetTracking();
     detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
         a, sinkFunc, std::move(k3));
@@ -468,7 +468,7 @@ TEST(Util, callWithConstructedKey) {
 
   // Calling the default pair constructor via emplace is valid, but not
   // very useful in real life.  Verify that it works.
-  sink.clear();
+  sink.reset();
   detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc);
   EXPECT_TRUE(sink.hasValue());
 }

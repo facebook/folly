@@ -1393,7 +1393,7 @@ TEST(Gen, Unwrap) {
   // oup's still-valid nullptr value wins here, the pointer to 7 doesn't apply
   EXPECT_FALSE(moved2);
 
-  oup.clear();
+  oup.reset();
   auto moved3 = std::move(oup) | unwrapOr(std::make_unique<int>(8));
   // oup is empty now, so the unwrapOr comes into play.
   EXPECT_TRUE(bool(moved3));
@@ -1444,7 +1444,7 @@ TEST(Gen, Unwrap) {
     EXPECT_TRUE(bool(opt)); // gutted value still present
     EXPECT_TRUE(bool(fallback.value())); // fallback value not needed
 
-    opt.clear();
+    opt.reset();
 
     EXPECT_FALSE(opt); // opt is empty now
     EXPECT_EQ(9, *(std::move(opt) | std::move(fallback)));

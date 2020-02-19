@@ -74,10 +74,10 @@ TEST(EnvVarSaverTest, Movable) {
   auto value = std::string{getenv(key)};
   Optional<EnvVarSaver> pSaver2;
   pSaver2.emplace(std::move(*pSaver1));
-  pSaver1.clear();
+  pSaver1.reset();
   PCHECK(0 == setenv(key, "blah", true));
   EXPECT_STREQ("blah", getenv(key));
-  pSaver2.clear();
+  pSaver2.reset();
   EXPECT_EQ(value, getenv(key));
 }
 

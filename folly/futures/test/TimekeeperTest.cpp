@@ -486,7 +486,7 @@ TEST_F(TimekeeperFixture, destruction) {
   tk.emplace();
   auto f = tk->after(std::chrono::seconds(10));
   EXPECT_FALSE(f.isReady());
-  tk.clear();
+  tk.reset();
   EXPECT_TRUE(f.isReady());
   EXPECT_TRUE(f.hasException());
 }
