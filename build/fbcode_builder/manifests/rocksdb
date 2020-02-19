@@ -6,6 +6,7 @@ url = https://github.com/facebook/rocksdb/archive/v5.18.3.tar.gz
 sha256 = 7fb6738263d3f2b360d7468cf2ebe333f3109f3ba1ff80115abd145d75287254
 
 [dependencies]
+lz4
 snappy
 
 [build]
@@ -14,6 +15,7 @@ subdir = rocksdb-5.18.3
 
 [cmake.defines]
 WITH_SNAPPY=ON
+WITH_LZ4=ON
 WITH_TESTS=OFF
 # We get relocation errors with the static gflags lib,
 # and there's no clear way to make it pick the shared gflags
@@ -35,4 +37,4 @@ ROCKSDB_INSTALL_ON_WINDOWS=ON
 # connect the snappy build outputs to rocksdb's custom logic here.
 # Let's just turn it off on windows.
 WITH_SNAPPY=OFF
-
+WITH_LZ4=OFF
