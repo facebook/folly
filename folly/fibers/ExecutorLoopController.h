@@ -21,6 +21,7 @@
 #include <folly/Executor.h>
 #include <folly/fibers/ExecutorBasedLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
+#include <folly/futures/Future.h>
 
 namespace folly {
 namespace fibers {

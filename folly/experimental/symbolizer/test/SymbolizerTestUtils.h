@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 
 namespace folly {
 namespace symbolizer {

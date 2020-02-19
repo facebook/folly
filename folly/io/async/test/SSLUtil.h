@@ -17,8 +17,11 @@
 #pragma once
 
 #include <algorithm>
+#include <set>
 #include <string>
 #include <vector>
+
+#include <folly/ssl/OpenSSLPtrTypes.h>
 
 namespace folly {
 namespace test {
