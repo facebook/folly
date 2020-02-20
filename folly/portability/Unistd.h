@@ -26,6 +26,7 @@
 
 #include <sys/locking.h> // @manual
 
+#include <folly/Portability.h>
 #include <folly/portability/SysTypes.h>
 
 // This is different from the normal headers because there are a few cases,
@@ -90,5 +91,8 @@ ssize_t write(int fh, void const* buf, size_t count);
 } // namespace portability
 } // namespace folly
 
+FOLLY_PUSH_WARNING
+FOLLY_CLANG_DISABLE_WARNING("-Wheader-hygiene")
 /* using override */ using namespace folly::portability::unistd;
+FOLLY_POP_WARNING
 #endif
