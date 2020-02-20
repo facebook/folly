@@ -85,8 +85,13 @@ void takeOwnershipError(
 
 namespace folly {
 
+// use free for size >= 4GB
+// since we can store only 32 bits in the size var
 struct IOBuf::HeapPrefix {
-  explicit HeapPrefix(uint16_t flg) : magic(kHeapMagic), flags(flg) {}
+  HeapPrefix(uint16_t flg, size_t sz)
+      : magic(kHeapMagic),
+        flags(flg),
+        size((sz == ((size_t)(uint32_t)sz)) ? static_cast<uint32_t>(sz) : 0) {}
   ~HeapPrefix() {
     // Reset magic to 0 on destruction.  This is solely for debugging purposes
     // to help catch bugs where someone tries to use HeapStorage after it has
@@ -96,6 +101,7 @@ struct IOBuf::HeapPrefix {
 
   uint16_t magic;
   std::atomic<uint16_t> flags;
+  uint32_t size;
 };
 
 struct IOBuf::HeapStorage {
@@ -160,7 +166,7 @@ void* IOBuf::operator new(size_t size) {
   size_t fullSize = offsetof(HeapStorage, buf) + size;
   auto storage = static_cast<HeapStorage*>(checkedMalloc(fullSize));
 
-  new (&storage->prefix) HeapPrefix(kIOBufInUse);
+  new (&storage->prefix) HeapPrefix(kIOBufInUse, fullSize);
   return &(storage->buf);
 }
 
@@ -192,9 +198,15 @@ void IOBuf::releaseStorage(HeapStorage* storage, uint16_t freeFlags) noexcept {
   while (true) {
     auto newFlags = uint16_t(flags & ~freeFlags);
     if (newFlags == 0) {
+      // save the size
+      size_t size = storage->prefix.size;
       // The storage space is now unused.  Free it.
       storage->prefix.HeapPrefix::~HeapPrefix();
-      free(storage);
+      if (FOLLY_LIKELY(size)) {
+        sizedFree(storage, size);
+      } else {
+        free(storage);
+      }
       return;
     }
 
@@ -275,7 +287,7 @@ unique_ptr<IOBuf> IOBuf::createCombined(std::size_t capacity) {
   size_t mallocSize = goodMallocSize(requiredStorage);
   auto storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
-  new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kDataInUse);
+  new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kDataInUse, mallocSize);
   new (&storage->shared) SharedInfo(freeInternalBuf, storage);
 
   auto bufAddr = reinterpret_cast<uint8_t*>(&storage->align);
@@ -372,7 +384,8 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
   size_t mallocSize = goodMallocSize(requiredStorage);
   storage = static_cast<HeapFullStorage*>(checkedMalloc(mallocSize));
 
-  new (&storage->hs.prefix) HeapPrefix(kIOBufInUse | kSharedInfoInUse);
+  new (&storage->hs.prefix)
+      HeapPrefix(kIOBufInUse | kSharedInfoInUse, mallocSize);
   new (&storage->shared)
       SharedInfo(freeFn, userData, true /*useHeapFullStorage*/);
 
