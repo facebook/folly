@@ -2,12 +2,12 @@
 name = libsai
 
 [download]
-url = https://github.com/opencomputeproject/SAI/archive/v1.4.0.tar.gz
-sha256 = 3eb65724b053886236c6cc408853a419fea9a0db19081e38209c2e8718b724b3
+url = https://github.com/opencomputeproject/SAI/archive/v1.5.0.tar.gz
+sha256 = f7f1ab22350de6fff4032d1a604c12c76b591d02afbc36471b79ae9edd3ad8ab
 
 [build]
 builder = nop
-subdir = SAI-1.4.0
+subdir = SAI-1.5.0
 
 [install.files]
 inc = include
