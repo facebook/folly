@@ -15,7 +15,6 @@
  */
 
 #pragma once
-//sal;dfk
 
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h> // for FB_ANONYMOUS_VARIABLE
