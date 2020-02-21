@@ -134,7 +134,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 
   if (sndBuf_ > 0) {
     // Set the size of the buffer for the sent messages in tx_queues.
-    int value = rcvBuf_;
+    int value = sndBuf_;
     if (netops::setsockopt(
             socket, SOL_SOCKET, SO_SNDBUF, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
