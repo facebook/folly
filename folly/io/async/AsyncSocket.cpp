@@ -24,6 +24,7 @@
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/IOBufQueue.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/SysUio.h>
@@ -450,7 +451,7 @@ void AsyncSocket::connect(
     ConnectCallback* callback,
     const folly::SocketAddress& address,
     int timeout,
-    const OptionMap& options,
+    const SocketOptionMap& options,
     const folly::SocketAddress& bindAddr) noexcept {
   DestructorGuard dg(this);
   eventBase_->dcheckIsInEventBaseThread();
@@ -529,7 +530,7 @@ void AsyncSocket::connect(
     }
 
     // Apply the additional PRE_BIND options if any.
-    applyOptions(options, OptionKey::ApplyPos::PRE_BIND);
+    applyOptions(options, SocketOptionKey::ApplyPos::PRE_BIND);
 
     VLOG(5) << "AsyncSocket::connect(this=" << this << ", evb=" << eventBase_
             << ", fd=" << fd_ << ", host=" << address.describe().c_str();
@@ -560,7 +561,7 @@ void AsyncSocket::connect(
     }
 
     // Apply the additional POST_BIND options if any.
-    applyOptions(options, OptionKey::ApplyPos::POST_BIND);
+    applyOptions(options, SocketOptionKey::ApplyPos::POST_BIND);
 
     // Call preConnect hook if any.
     if (connectCallback_) {
@@ -655,7 +656,7 @@ void AsyncSocket::connect(
     const string& ip,
     uint16_t port,
     int timeout,
-    const OptionMap& options) noexcept {
+    const SocketOptionMap& options) noexcept {
   DestructorGuard dg(this);
   try {
     connectCallback_ = callback;
@@ -1597,8 +1598,8 @@ void AsyncSocket::cachePeerAddress() const {
 }
 
 void AsyncSocket::applyOptions(
-    const OptionMap& options,
-    OptionKey::ApplyPos pos) {
+    const SocketOptionMap& options,
+    SocketOptionKey::ApplyPos pos) {
   for (const auto& opt : options) {
     if (opt.first.applyPos_ == pos) {
       auto rv = opt.first.apply(fd_, opt.second);

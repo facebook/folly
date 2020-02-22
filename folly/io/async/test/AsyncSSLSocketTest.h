@@ -22,6 +22,7 @@
 #include <folly/SocketAddress.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/fibers/FiberManagerMap.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncServerSocket.h>
 #include <folly/io/async/AsyncSocket.h>
@@ -236,7 +237,7 @@ class WriteCheckTimestampCallback : public WriteCallbackBase {
     EXPECT_NE(socket_->getNetworkSocket(), NetworkSocket());
     int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
         SOF_TIMESTAMPING_SOFTWARE;
-    AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
+    SocketOptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
     int ret = tstampingOpt.apply(socket_->getNetworkSocket(), flags);
     EXPECT_EQ(ret, 0);
   }

@@ -32,6 +32,7 @@
 #include <folly/SpinLock.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
@@ -673,7 +674,7 @@ void AsyncSSLSocket::connect(
     ConnectCallback* callback,
     const folly::SocketAddress& address,
     int timeout,
-    const OptionMap& options,
+    const SocketOptionMap& options,
     const folly::SocketAddress& bindAddr) noexcept {
   auto timeoutChrono = std::chrono::milliseconds(timeout);
   connect(callback, address, timeoutChrono, timeoutChrono, options, bindAddr);
@@ -684,7 +685,7 @@ void AsyncSSLSocket::connect(
     const folly::SocketAddress& address,
     std::chrono::milliseconds connectTimeout,
     std::chrono::milliseconds totalConnectTimeout,
-    const OptionMap& options,
+    const SocketOptionMap& options,
     const folly::SocketAddress& bindAddr) noexcept {
   assert(!server_);
   assert(state_ == StateEnum::UNINIT);

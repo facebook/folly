@@ -21,6 +21,7 @@
 #include <folly/detail/SocketFastOpen.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/ShutdownSocketSet.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncTransport.h>
@@ -379,32 +380,10 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   virtual NetworkSocket detachNetworkSocket();
 
-  /**
-   * Uniquely identifies a handle to a socket option value. Each
-   * combination of level and option name corresponds to one socket
-   * option value.
-   */
-  class OptionKey {
-   public:
-    enum class ApplyPos { POST_BIND = 0, PRE_BIND = 1 };
-    bool operator<(const OptionKey& other) const {
-      if (level == other.level) {
-        return optname < other.optname;
-      }
-      return level < other.level;
-    }
-    int apply(NetworkSocket fd, int val) const {
-      return netops::setsockopt(fd, level, optname, &val, sizeof(val));
-    }
-    int level;
-    int optname;
-    ApplyPos applyPos_{ApplyPos::POST_BIND};
-  };
-
-  // Maps from a socket option key to its value
-  using OptionMap = std::map<OptionKey, int>;
-
+  using OptionKey = SocketOptionKey;
+  using OptionMap = SocketOptionMap;
   static const OptionMap emptyOptionMap;
+
   static const folly::SocketAddress& anyAddress();
 
   /**
@@ -421,7 +400,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout = 0,
-      const OptionMap& options = emptyOptionMap,
+      const SocketOptionMap& options = emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
 
   void connect(
@@ -429,7 +408,7 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
       const std::string& ip,
       uint16_t port,
       int timeout = 0,
-      const OptionMap& options = emptyOptionMap) noexcept;
+      const SocketOptionMap& options = emptySocketOptionMap) noexcept;
 
   /**
    * If a connect request is in-flight, cancels it and closes the socket
@@ -1262,7 +1241,9 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
   void cacheLocalAddress() const;
   void cachePeerAddress() const;
 
-  void applyOptions(const OptionMap& options, OptionKey::ApplyPos pos);
+  void applyOptions(
+      const SocketOptionMap& options,
+      SocketOptionKey::ApplyPos pos);
 
   bool isZeroCopyRequest(WriteFlags flags);
 

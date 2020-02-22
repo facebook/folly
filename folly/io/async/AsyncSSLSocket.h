@@ -22,6 +22,7 @@
 #include <folly/String.h>
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -376,7 +377,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout = 0,
-      const OptionMap& options = emptyOptionMap,
+      const SocketOptionMap& options = emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = anyAddress()) noexcept override;
 
   /**
@@ -399,7 +400,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
       const folly::SocketAddress& address,
       std::chrono::milliseconds connectTimeout,
       std::chrono::milliseconds totalConnectTimeout,
-      const OptionMap& options = emptyOptionMap,
+      const SocketOptionMap& options = emptySocketOptionMap,
       const folly::SocketAddress& bindAddr = anyAddress()) noexcept;
 
   using AsyncSocket::connect;

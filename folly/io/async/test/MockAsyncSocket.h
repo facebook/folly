@@ -36,13 +36,13 @@ class MockAsyncSocket : public AsyncSocket {
           AsyncSocket::ConnectCallback*,
           const folly::SocketAddress&,
           int,
-          const OptionMap&,
+          const folly::SocketOptionMap&,
           const folly::SocketAddress&));
   void connect(
       AsyncSocket::ConnectCallback* callback,
       const folly::SocketAddress& address,
       int timeout,
-      const OptionMap& options,
+      const folly::SocketOptionMap& options,
       const folly::SocketAddress& bindAddr) noexcept override {
     connect_(callback, address, timeout, options, bindAddr);
   }

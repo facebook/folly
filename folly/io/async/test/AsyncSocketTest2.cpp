@@ -19,6 +19,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/SocketAddress.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
@@ -1148,7 +1149,7 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
 
   TestServer server(false, kSockBufSize);
 
-  AsyncSocket::OptionMap options{
+  SocketOptionMap options{
       {{SOL_SOCKET, SO_SNDBUF}, int(kSockBufSize)},
       {{SOL_SOCKET, SO_RCVBUF}, int(kSockBufSize)},
       {{IPPROTO_TCP, TCP_NODELAY}, 1},
@@ -2330,7 +2331,7 @@ TEST(AsyncSocketTest, BufferTest) {
   TestServer server;
 
   EventBase evb;
-  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30, option);
@@ -2360,7 +2361,7 @@ TEST(AsyncSocketTest, BufferTestChain) {
   TestServer server;
 
   EventBase evb;
-  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30, option);
@@ -2399,7 +2400,7 @@ TEST(AsyncSocketTest, BufferTestChain) {
 TEST(AsyncSocketTest, BufferCallbackKill) {
   TestServer server;
   EventBase evb;
-  AsyncSocket::OptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
+  SocketOptionMap option{{{SOL_SOCKET, SO_SNDBUF}, 128}};
   std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
   ConnCallback ccb;
   socket->connect(&ccb, server.getAddress(), 30, option);
@@ -3211,7 +3212,7 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
   int flags = SOF_TIMESTAMPING_OPT_ID | SOF_TIMESTAMPING_OPT_TSONLY |
       SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_OPT_CMSG |
       SOF_TIMESTAMPING_TX_SCHED;
-  AsyncSocket::OptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
+  SocketOptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
   EXPECT_EQ(tstampingOpt.apply(socket->getNetworkSocket(), flags), 0);
 
   // write()
@@ -3640,8 +3641,8 @@ TEST(AsyncSocketTest, V6TosReflectTest) {
                          EventBase* evb,
                          folly::SocketAddress sAddr) {
     clientSock = AsyncSocket::newSocket(evb);
-    AsyncSocket::OptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
-    AsyncSocket::OptionMap optionMap;
+    SocketOptionKey v6Opts = {IPPROTO_IPV6, IPV6_TCLASS};
+    SocketOptionMap optionMap;
     optionMap.insert({v6Opts, 0x2c});
     SocketAddress bindAddr("0.0.0.0", 0);
     clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
@@ -3724,8 +3725,8 @@ TEST(AsyncSocketTest, V4TosReflectTest) {
                          EventBase* evb,
                          folly::SocketAddress sAddr) {
     clientSock = AsyncSocket::newSocket(evb);
-    AsyncSocket::OptionKey v4Opts = {IPPROTO_IP, IP_TOS};
-    AsyncSocket::OptionMap optionMap;
+    SocketOptionKey v4Opts = {IPPROTO_IP, IP_TOS};
+    SocketOptionMap optionMap;
     optionMap.insert({v4Opts, 0x2c});
     SocketAddress bindAddr("0.0.0.0", 0);
     clientSock->connect(ccb, sAddr, 30, optionMap, bindAddr);
