@@ -380,10 +380,6 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
    */
   virtual NetworkSocket detachNetworkSocket();
 
-  using OptionKey = SocketOptionKey;
-  using OptionMap = SocketOptionMap;
-  static const OptionMap emptyOptionMap;
-
   static const folly::SocketAddress& anyAddress();
 
   /**

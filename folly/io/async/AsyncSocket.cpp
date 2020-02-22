@@ -62,9 +62,6 @@ static constexpr bool msgErrQueueSupported =
     false;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
-// static members initializers
-const AsyncSocket::OptionMap AsyncSocket::emptyOptionMap;
-
 const AsyncSocketException socketClosedLocallyEx(
     AsyncSocketException::END_OF_FILE,
     "socket closed locally");
