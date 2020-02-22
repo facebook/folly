@@ -17,6 +17,7 @@
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <folly/Likely.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
@@ -763,6 +764,18 @@ void AsyncUDPSocket::setTrafficClass(int tclass) {
           fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(int)) != 0) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IPV6_TCLASS", errno);
+  }
+}
+
+void AsyncUDPSocket::applyOptions(
+    const SocketOptionMap& options,
+    SocketOptionKey::ApplyPos pos) {
+  auto result = applySocketOptions(fd_, options, pos);
+  if (result != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        "failed to set socket option",
+        result);
   }
 }
 

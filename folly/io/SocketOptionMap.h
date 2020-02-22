@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
 
 #include <map>
@@ -49,5 +50,10 @@ class SocketOptionKey {
 using SocketOptionMap = std::map<SocketOptionKey, int>;
 
 extern const SocketOptionMap emptySocketOptionMap;
+
+int applySocketOptions(
+    NetworkSocket fd,
+    const SocketOptionMap& options,
+    SocketOptionKey::ApplyPos pos);
 
 } // namespace folly

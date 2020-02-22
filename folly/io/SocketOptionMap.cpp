@@ -17,6 +17,8 @@
 #include <folly/io/SocketOptionMap.h>
 #include <folly/net/NetworkSocket.h>
 
+#include <errno.h>
+
 namespace folly {
 
 const SocketOptionMap emptySocketOptionMap;
@@ -24,4 +26,20 @@ const SocketOptionMap emptySocketOptionMap;
 int SocketOptionKey::apply(NetworkSocket fd, int val) const {
   return netops::setsockopt(fd, level, optname, &val, sizeof(val));
 }
+
+int applySocketOptions(
+    NetworkSocket fd,
+    const SocketOptionMap& options,
+    SocketOptionKey::ApplyPos pos) {
+  for (const auto& opt : options) {
+    if (opt.first.applyPos_ == pos) {
+      auto rv = opt.first.apply(fd, opt.second);
+      if (rv != 0) {
+        return errno;
+      }
+    }
+  }
+  return 0;
+}
+
 } // namespace folly

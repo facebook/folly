@@ -21,6 +21,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
+#include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncSocketException.h>
 #include <folly/io/async/EventBase.h>
@@ -347,6 +348,10 @@ class AsyncUDPSocket : public EventHandler {
   bool setGSO(int val);
 
   void setTrafficClass(int tclass);
+
+  void applyOptions(
+      const SocketOptionMap& options,
+      SocketOptionKey::ApplyPos pos);
 
  protected:
   virtual ssize_t

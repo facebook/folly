@@ -1597,17 +1597,12 @@ void AsyncSocket::cachePeerAddress() const {
 void AsyncSocket::applyOptions(
     const SocketOptionMap& options,
     SocketOptionKey::ApplyPos pos) {
-  for (const auto& opt : options) {
-    if (opt.first.applyPos_ == pos) {
-      auto rv = opt.first.apply(fd_, opt.second);
-      if (rv != 0) {
-        auto errnoCopy = errno;
-        throw AsyncSocketException(
-            AsyncSocketException::INTERNAL_ERROR,
-            withAddr("failed to set socket option"),
-            errnoCopy);
-      }
-    }
+  auto result = applySocketOptions(fd_, options, pos);
+  if (result != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::INTERNAL_ERROR,
+        withAddr("failed to set socket option"),
+        result);
   }
 }
 
