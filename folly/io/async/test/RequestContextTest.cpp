@@ -359,15 +359,15 @@ TEST_F(RequestContextTest, ShallowCopyClear) {
 }
 
 TEST_F(RequestContextTest, RootIdOnCopy) {
-  auto ctxBase = std::make_shared<RequestContext>();
-  EXPECT_EQ(reinterpret_cast<intptr_t>(ctxBase.get()), ctxBase->getRootId());
+  auto ctxBase = std::make_shared<RequestContext>(0xab);
+  EXPECT_EQ(0xab, ctxBase->getRootId());
   {
-    auto ctx = RequestContext::copyAsRoot(*ctxBase);
-    EXPECT_EQ(reinterpret_cast<intptr_t>(ctx.get()), ctx->getRootId());
+    auto ctx = RequestContext::copyAsRoot(*ctxBase, 0xabc);
+    EXPECT_EQ(0xabc, ctx->getRootId());
   }
   {
     auto ctx = RequestContext::copyAsChild(*ctxBase);
-    EXPECT_EQ(reinterpret_cast<intptr_t>(ctxBase.get()), ctx->getRootId());
+    EXPECT_EQ(0xab, ctx->getRootId());
   }
 }
 

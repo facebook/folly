@@ -156,7 +156,9 @@ class RequestContext {
   RequestContext& operator=(RequestContext&&) = delete;
 
   // copy ctor is disabled, use copyAsRoot/copyAsChild instead.
-  static std::shared_ptr<RequestContext> copyAsRoot(const RequestContext& ctx);
+  static std::shared_ptr<RequestContext> copyAsRoot(
+      const RequestContext& ctx,
+      intptr_t rootid);
   static std::shared_ptr<RequestContext> copyAsChild(const RequestContext& ctx);
 
   // Create a unique request context for this request.
@@ -263,13 +265,12 @@ class RequestContext {
   }
 
  private:
-  struct ChildTag {};
-  struct RootTag {};
+  struct Tag {};
   RequestContext(const RequestContext& ctx) = default;
 
  public:
-  RequestContext(const RequestContext& ctx, RootTag tag);
-  RequestContext(const RequestContext& ctx, ChildTag tag);
+  RequestContext(const RequestContext& ctx, intptr_t rootid, Tag tag);
+  RequestContext(const RequestContext& ctx, Tag tag);
   explicit RequestContext(intptr_t rootId);
   using StaticContext = std::pair<std::shared_ptr<RequestContext>, intptr_t>;
 

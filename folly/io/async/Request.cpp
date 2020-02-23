@@ -466,22 +466,23 @@ RequestContext::RequestContext()
 RequestContext::RequestContext(intptr_t rootid)
     : useHazptr_(FLAGS_folly_reqctx_use_hazptr), rootId_(rootid) {}
 
-RequestContext::RequestContext(const RequestContext& ctx, RootTag)
+RequestContext::RequestContext(const RequestContext& ctx, intptr_t rootid, Tag)
     : RequestContext(ctx) {
-  rootId_ = reinterpret_cast<intptr_t>(this);
+  rootId_ = rootid;
 }
 
-RequestContext::RequestContext(const RequestContext& ctx, ChildTag)
+RequestContext::RequestContext(const RequestContext& ctx, Tag)
     : RequestContext(ctx) {}
 
 /* static */ std::shared_ptr<RequestContext> RequestContext::copyAsRoot(
-    const RequestContext& ctx) {
-  return std::make_shared<RequestContext>(ctx, RootTag{});
+    const RequestContext& ctx,
+    intptr_t rootid) {
+  return std::make_shared<RequestContext>(ctx, rootid, Tag{});
 }
 
 /* static */ std::shared_ptr<RequestContext> RequestContext::copyAsChild(
     const RequestContext& ctx) {
-  return std::make_shared<RequestContext>(ctx, ChildTag{});
+  return std::make_shared<RequestContext>(ctx, Tag{});
 }
 
 bool RequestContext::doSetContextDataLock(
