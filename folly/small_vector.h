@@ -1103,16 +1103,24 @@ class small_vector : public detail::small_vector_base<
 
     newSize = std::max(newSize, computeNewSize());
 
-    auto needBytes = newSize * sizeof(value_type);
+    const auto needBytes = newSize * sizeof(value_type);
     // If the capacity isn't explicitly stored inline, but the heap
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
-    bool heapifyCapacity =
+    const bool heapifyCapacity =
         !kHasInlineCapacity && needBytes > kHeapifyCapacityThreshold;
-    if (heapifyCapacity) {
-      needBytes += kHeapifyCapacitySize;
-    }
-    auto const sizeBytes = goodMallocSize(needBytes);
+    const size_t allocationExtraBytes =
+        heapifyCapacity ? kHeapifyCapacitySize : 0;
+    const size_t goodAllocationSizeBytes =
+        goodMallocSize(needBytes + allocationExtraBytes);
+    const size_t newCapacity =
+        (goodAllocationSizeBytes - allocationExtraBytes) / sizeof(value_type);
+    // Make sure that the allocation request has a size computable from the
+    // capacity, instead of using goodAllocationSizeBytes, so that we can do
+    // sized deallocation. If goodMallocSize() gives us extra bytes that are not
+    // a multiple of the value size we cannot use them anyway.
+    const size_t sizeBytes =
+        newCapacity * sizeof(value_type) + allocationExtraBytes;
     void* newh = checkedMalloc(sizeBytes);
     // We expect newh to be at least 2-aligned, because we want to
     // use its least significant bit as a flag.
@@ -1124,7 +1132,7 @@ class small_vector : public detail::small_vector_base<
 
     {
       auto rollback = makeGuard([&] { //
-        free(newh);
+        sizedFree(newh, sizeBytes);
       });
       if (insert) {
         // move and insert the new element
@@ -1143,15 +1151,13 @@ class small_vector : public detail::small_vector_base<
     if (this->isExtern()) {
       u.freeHeap();
     }
-    auto availableSizeBytes = sizeBytes;
     if (heapifyCapacity) {
       u.pdata_.heap_ = detail::pointerFlagSet(newh);
-      availableSizeBytes -= kHeapifyCapacitySize;
     } else {
       u.pdata_.heap_ = newh;
     }
     this->setExtern(true);
-    this->setCapacity(availableSizeBytes / sizeof(value_type));
+    this->setCapacity(newCapacity);
   }
 
   /*
@@ -1177,6 +1183,9 @@ class small_vector : public detail::small_vector_base<
     void setCapacity(InternalSizeType c) {
       capacity_ = c;
     }
+    size_t allocationExtraBytes() const {
+      return 0;
+    }
   } FOLLY_SV_PACK_ATTR;
 
   struct HeapPtr {
@@ -1190,6 +1199,10 @@ class small_vector : public detail::small_vector_base<
     }
     void setCapacity(InternalSizeType c) {
       *static_cast<InternalSizeType*>(detail::pointerFlagClear(heap_)) = c;
+    }
+    size_t allocationExtraBytes() const {
+      assert(detail::pointerFlagGet(heap_));
+      return kHeapifyCapacitySize;
     }
   } FOLLY_SV_PACK_ATTR;
 
@@ -1255,7 +1268,14 @@ class small_vector : public detail::small_vector_base<
 
     void freeHeap() {
       auto vp = detail::pointerFlagClear(pdata_.heap_);
-      free(vp);
+      if (hasCapacity()) {
+        sizedFree(
+            vp,
+            pdata_.getCapacity() * sizeof(value_type) +
+                pdata_.allocationExtraBytes());
+      } else {
+        free(vp);
+      }
     }
   } u;
 };
