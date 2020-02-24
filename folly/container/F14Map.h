@@ -27,7 +27,10 @@
  * @author Xiao Shi       <xshi@fb.com>
  */
 
+#include <cstddef>
+#include <initializer_list>
 #include <stdexcept>
+#include <tuple>
 
 #include <folly/Range.h>
 #include <folly/Traits.h>
@@ -1291,162 +1294,8 @@ class F14FastMap : public std::conditional_t<
 #else // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 //////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
+#include <folly/container/detail/F14MapFallback.h>
 
-#include <string>
-#include <unordered_map>
-
-namespace folly {
-
-namespace f14 {
-namespace detail {
-template <typename K, typename M, typename H, typename E, typename A>
-class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
-  using Super = std::unordered_map<K, M, H, E, A>;
-
- public:
-  using typename Super::pointer;
-  using typename Super::value_type;
-
-  F14BasicMap() = default;
-
-  using Super::Super;
-
-  //// PUBLIC - F14 Extensions
-
-  bool containsEqualValue(value_type const& value) const {
-    auto slot = this->bucket(value.first);
-    auto e = this->end(slot);
-    for (auto b = this->begin(slot); b != e; ++b) {
-      if (b->first == value.first) {
-        return b->second == value.second;
-      }
-    }
-    return false;
-  }
-
-  // exact for libstdc++, approximate for others
-  std::size_t getAllocatedMemorySize() const {
-    std::size_t rv = 0;
-    visitAllocationClasses(
-        [&](std::size_t bytes, std::size_t n) { rv += bytes * n; });
-    return rv;
-  }
-
-  // exact for libstdc++, approximate for others
-  template <typename V>
-  void visitAllocationClasses(V&& visitor) const {
-    auto bc = this->bucket_count();
-    if (bc > 1) {
-      visitor(bc * sizeof(pointer), 1);
-    }
-    if (this->size() > 0) {
-      visitor(sizeof(StdNodeReplica<K, value_type, H>), this->size());
-    }
-  }
-
-  template <typename V>
-  void visitContiguousRanges(V&& visitor) const {
-    for (value_type const& entry : *this) {
-      value_type const* b = std::addressof(entry);
-      visitor(b, b + 1);
-    }
-  }
-};
-} // namespace detail
-} // namespace f14
-
-template <
-    typename Key,
-    typename Mapped,
-    typename Hasher,
-    typename KeyEqual,
-    typename Alloc>
-class F14ValueMap
-    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
-  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
-
- public:
-  using typename Super::value_type;
-
-  F14ValueMap() = default;
-
-  using Super::Super;
-
-  F14ValueMap& operator=(std::initializer_list<value_type> ilist) {
-    Super::operator=(ilist);
-    return *this;
-  }
-};
-
-template <
-    typename Key,
-    typename Mapped,
-    typename Hasher,
-    typename KeyEqual,
-    typename Alloc>
-class F14NodeMap
-    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
-  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
-
- public:
-  using typename Super::value_type;
-
-  F14NodeMap() = default;
-
-  using Super::Super;
-
-  F14NodeMap& operator=(std::initializer_list<value_type> ilist) {
-    Super::operator=(ilist);
-    return *this;
-  }
-};
-
-template <
-    typename Key,
-    typename Mapped,
-    typename Hasher,
-    typename KeyEqual,
-    typename Alloc>
-class F14VectorMap
-    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
-  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
-
- public:
-  using typename Super::value_type;
-
-  F14VectorMap() = default;
-
-  using Super::Super;
-
-  F14VectorMap& operator=(std::initializer_list<value_type> ilist) {
-    Super::operator=(ilist);
-    return *this;
-  }
-};
-
-template <
-    typename Key,
-    typename Mapped,
-    typename Hasher,
-    typename KeyEqual,
-    typename Alloc>
-class F14FastMap
-    : public f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc> {
-  using Super = f14::detail::F14BasicMap<Key, Mapped, Hasher, KeyEqual, Alloc>;
-
- public:
-  using typename Super::value_type;
-
-  F14FastMap() = default;
-
-  using Super::Super;
-
-  F14FastMap& operator=(std::initializer_list<value_type> ilist) {
-    Super::operator=(ilist);
-    return *this;
-  }
-};
-} // namespace folly
 #endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE else
 
 namespace folly {
