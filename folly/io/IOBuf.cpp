@@ -358,6 +358,10 @@ IOBuf::IOBuf(
       capacity_(capacity),
       flagsAndSharedInfo_(
           packFlagsAndSharedInfo(kFlagFreeSharedInfo, nullptr)) {
+  // do not allow only user data without a freeFn
+  // since we use that for folly::sizedFree
+  DCHECK(!userData || (userData && freeFn));
+
   auto rollback = makeGuard([&] { //
     takeOwnershipError(freeOnError, buf, freeFn, userData);
   });
@@ -372,6 +376,10 @@ unique_ptr<IOBuf> IOBuf::takeOwnership(
     FreeFunction freeFn,
     void* userData,
     bool freeOnError) {
+  // do not allow only user data without a freeFn
+  // since we use that for folly::sizedFree
+  DCHECK(!userData || (userData && freeFn));
+
   HeapFullStorage* storage = nullptr;
   auto rollback = makeGuard([&] {
     if (storage) {
@@ -940,6 +948,8 @@ void IOBuf::reserveSlow(std::size_t minHeadroom, std::size_t minTailroom) {
           if (xallocx(p, newAllocatedCapacity, 0, 0) == newAllocatedCapacity) {
             newBuffer = static_cast<uint8_t*>(p);
             newHeadroom = oldHeadroom;
+            // update the userData
+            info->userData = reinterpret_cast<void*>(newAllocatedCapacity);
           }
           // if xallocx failed, do nothing, fall back to malloc/memcpy/free
         }
@@ -1005,9 +1015,14 @@ void IOBuf::freeExtBuffer() noexcept {
   if (info->freeFn) {
     info->freeFn(buf_, info->userData);
   } else {
-    free(buf_);
+    // this will invoke free if info->userData is 0
+    size_t size = reinterpret_cast<size_t>(info->userData);
+    if (size) {
+      folly::sizedFree(buf_, size);
+    } else {
+      free(buf_);
+    }
   }
-
   SharedInfo::invokeAndDeleteEachObserver(
       observerListHead, [](auto& entry) { entry.afterFreeExtBuffer(); });
 }
@@ -1020,6 +1035,11 @@ void IOBuf::allocExtBuffer(
   size_t mallocSize = goodExtBufferSize(minCapacity);
   auto buf = static_cast<uint8_t*>(checkedMalloc(mallocSize));
   initExtBuffer(buf, mallocSize, infoReturn, capacityReturn);
+
+  // the userData and the freeFn are nullptr here
+  // just store the mallocSize in userData
+  (*infoReturn)->userData = reinterpret_cast<void*>(mallocSize);
+
   *bufReturn = buf;
 }
 
