@@ -309,7 +309,7 @@ void AsyncServerSocket::bindSocket(
       if (!isExistingSocket) {
         closeNoInt(fd);
       }
-      folly::throwSystemError(
+      folly::throwSystemErrorExplicit(
           errnoCopy,
           "failed to bind to async server socket: " + address.describe());
     }
@@ -766,8 +766,10 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   int one = 1;
   if (netops::setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &one, sizeof(one)) !=
       0) {
+    auto errnoCopy = errno;
     // This isn't a fatal error; just log an error message and continue
-    LOG(ERROR) << "failed to set SO_REUSEADDR on async server socket " << errno;
+    LOG(ERROR) << "failed to set SO_REUSEADDR on async server socket "
+               << errnoCopy;
   }
 
   // Set reuseport to support multiple accept threads
@@ -775,15 +777,19 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   if (reusePortEnabled_ &&
       netops::setsockopt(fd, SOL_SOCKET, SO_REUSEPORT, &one, sizeof(int)) !=
           0) {
+    auto errnoCopy = errno;
     LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
-               << errnoStr(errno);
+               << errnoStr(errnoCopy);
 #ifdef WIN32
-    folly::throwSystemError(errno, "failed to bind to the async server socket");
+    folly::throwSystemErrorExplicit(
+        errnoCopy, "failed to set SO_REUSEPORT on async server socket");
 #else
     SocketAddress address;
     address.setFromLocalAddress(fd);
-    folly::throwSystemError(
-        errno, "failed to bind to async server socket: " + address.describe());
+    folly::throwSystemErrorExplicit(
+        errnoCopy,
+        "failed to set SO_REUSEPORT on async server socket: " +
+            address.describe());
 #endif
   }
 
@@ -794,14 +800,16 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
           SO_KEEPALIVE,
           (keepAliveEnabled_) ? &one : &zero,
           sizeof(int)) != 0) {
+    auto errnoCopy = errno;
     LOG(ERROR) << "failed to set SO_KEEPALIVE on async server socket: "
-               << errnoStr(errno);
+               << errnoStr(errnoCopy);
   }
 
   // Setup FD_CLOEXEC flag
   if (closeOnExec_ && (-1 == netops::set_socket_close_on_exec(fd))) {
+    auto errnoCopy = errno;
     LOG(ERROR) << "failed to set FD_CLOEXEC on async server socket: "
-               << errnoStr(errno);
+               << errnoStr(errnoCopy);
   }
 
   // Set TCP nodelay if available, MAC OS X Hack
@@ -810,9 +818,10 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
   if (family != AF_UNIX) {
     if (netops::setsockopt(fd, IPPROTO_TCP, TCP_NODELAY, &one, sizeof(one)) !=
         0) {
+      auto errnoCopy = errno;
       // This isn't a fatal error; just log an error message and continue
       LOG(ERROR) << "failed to set TCP_NODELAY on async server socket: "
-                 << errnoStr(errno);
+                 << errnoStr(errnoCopy);
     }
   }
 #else
@@ -821,9 +830,10 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
 
 #if FOLLY_ALLOW_TFO
   if (tfo_ && detail::tfo_enable(fd, tfoMaxQueueSize_) != 0) {
+    auto errnoCopy = errno;
     // This isn't a fatal error; just log an error message and continue
     LOG(WARNING) << "failed to set TCP_FASTOPEN on async server socket: "
-                 << folly::errnoStr(errno);
+                 << folly::errnoStr(errnoCopy);
   }
 #endif
 
@@ -832,8 +842,9 @@ void AsyncServerSocket::setupSocket(NetworkSocket fd, int family) {
     int ret =
         netops::setsockopt(fd, SOL_SOCKET, SO_ZEROCOPY, &val, sizeof(val));
     if (ret) {
+      auto errnoCopy = errno;
       LOG(WARNING) << "failed to set SO_ZEROCOPY on async server socket: "
-                   << folly::errnoStr(errno);
+                   << folly::errnoStr(errnoCopy);
     }
   }
 

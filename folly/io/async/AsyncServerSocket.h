@@ -666,9 +666,11 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
       if (netops::setsockopt(
               handler.socket_, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)) !=
           0) {
+        auto errnoCopy = errno;
         LOG(ERROR) << "failed to set SO_REUSEPORT on async server socket "
-                   << errno;
-        folly::throwSystemError(errno, "failed to bind to async server socket");
+                   << errnoCopy;
+        folly::throwSystemErrorExplicit(
+            errnoCopy, "failed to set SO_REUSEPORT on async server socket");
       }
     }
   }
@@ -802,10 +804,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
   class BackoffTimeout;
 
-  virtual void handlerReady(
-      uint16_t events,
-      NetworkSocket fd,
-      sa_family_t family) noexcept;
+  virtual void
+  handlerReady(uint16_t events, NetworkSocket fd, sa_family_t family) noexcept;
 
   NetworkSocket createSocket(int family);
   void setupSocket(NetworkSocket fd, int family);
