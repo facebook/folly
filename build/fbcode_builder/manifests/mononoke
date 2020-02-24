@@ -27,10 +27,11 @@ tools/rust/ossconfigs = .
 
 [shipit.strip]
 # strip all code unrelated to mononoke to prevent triggering unnecessary checks
-^fbcode/eden/(?!mononoke)/.*$
+^fbcode/eden/(?!mononoke|scm/lib/xdiff.*)/.*$
 ^fbcode/eden/mononoke/(?!public_autocargo).+/Cargo\.toml$
 
 [dependencies]
+fbthrift-rust
 rust-shed
 
 [dependencies.fb=on]

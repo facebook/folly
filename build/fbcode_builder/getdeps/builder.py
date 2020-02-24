@@ -982,9 +982,12 @@ path = "/dev/null"
         dep_to_git = {}
         for dep in dependencies.keys():
             dep_manifest = self.loader.load_manifest(dep)
-            if dep_manifest.get("build", "builder", ctx=self.ctx) != "cargo":
+            dep_builder = dep_manifest.get("build", "builder", ctx=self.ctx)
+            if dep_builder not in ["cargo", "nop"] or dep == "rust":
                 # This is a direct dependency, but it is not build with cargo
-                # so ignore it.
+                # and it is not simply copying files with nop, so ignore it.
+                # The "rust" dependency is an exception since it contains the
+                # toolchain.
                 continue
 
             git_conf = dep_manifest.get_section_as_dict("git", ctx=self.ctx)
@@ -992,7 +995,10 @@ path = "/dev/null"
                 raise Exception(
                     "A cargo dependency requires git.repo_url to be defined."
                 )
-            git_conf["inst_dir"] = self.loader.get_project_install_dir(dep_manifest)
+            source_dir = self.loader.get_project_install_dir(dep_manifest)
+            if dep_builder == "cargo":
+                source_dir = os.path.join(source_dir, "source")
+            git_conf["source_dir"] = source_dir
             dep_to_git[dep] = git_conf
         return dep_to_git
 
@@ -1042,7 +1048,7 @@ path = "/dev/null"
         Tries to find <crate> in git_conf["inst_dir"] by searching a [package]
         keyword followed by name = "<crate>".
         """
-        source_dir = os.path.join(git_conf["inst_dir"], "source")
+        source_dir = git_conf["source_dir"]
         search_pattern = '[package]\nname = "{}"'.format(crate)
 
         for root, _, files in os.walk(source_dir):
