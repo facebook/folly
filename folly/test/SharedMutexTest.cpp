@@ -17,6 +17,7 @@
 #include <folly/SharedMutex.h>
 
 #include <stdlib.h>
+#include <random>
 #include <thread>
 #include <vector>
 
@@ -664,8 +665,9 @@ static void runMixed(
   BENCHMARK_SUSPEND {
     for (size_t t = 0; t < numThreads; ++t) {
       threads[t] = DSched::thread([&, t, numThreads] {
-        struct drand48_data buffer;
-        srand48_r(t, &buffer);
+        std::minstd_rand engine;
+        engine.seed(t);
+
         long writeThreshold = writeFraction * 0x7fffffff;
         Lock privateLock;
         Lock* lock = useSeparateLocks ? &privateLock : &(padded.globalLock);
@@ -674,8 +676,7 @@ static void runMixed(
           this_thread::yield();
         }
         for (size_t op = t; op < numOps; op += numThreads) {
-          long randVal;
-          lrand48_r(&buffer, &randVal);
+          long randVal = engine();
           bool writeOp = randVal < writeThreshold;
           if (writeOp) {
             locker.lock(lock);
@@ -801,8 +802,8 @@ static void runAllAndValidate(size_t numOps, size_t numThreads) {
   BENCHMARK_SUSPEND {
     for (size_t t = 0; t < numThreads; ++t) {
       threads[t] = DSched::thread([&, t, numThreads] {
-        struct drand48_data buffer;
-        srand48_r(t, &buffer);
+        std::minstd_rand engine;
+        engine.seed(t);
 
         bool exclusive = false;
         bool upgrade = false;
@@ -818,8 +819,7 @@ static void runAllAndValidate(size_t numOps, size_t numThreads) {
         }
         for (size_t op = t; op < numOps; op += numThreads) {
           // randVal in [0,1000)
-          long randVal;
-          lrand48_r(&buffer, &randVal);
+          long randVal = engine();
           randVal = (long)((randVal * (uint64_t)1000) / 0x7fffffff);
 
           // make as many assertions as possible about the global state
@@ -1216,15 +1216,14 @@ static void runRemoteUnlock(
         }
         // else we're a sender
 
-        struct drand48_data buffer;
-        srand48_r(t, &buffer);
+        std::minstd_rand engine;
+        engine.seed(t);
 
         while (!goPtr->load()) {
           this_thread::yield();
         }
         for (size_t op = t; op < numOps; op += numSendingThreads) {
-          long unscaledRandVal;
-          lrand48_r(&buffer, &unscaledRandVal);
+          long unscaledRandVal = engine();
 
           // randVal in [0,1]
           double randVal = ((double)unscaledRandVal) / 0x7fffffff;
