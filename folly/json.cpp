@@ -29,6 +29,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/Unicode.h>
+#include <folly/Utility.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/Constexpr.h>
 
@@ -758,7 +759,7 @@ void escapeStringImpl(
     // it literally into the output string.
     auto firstEsc = p;
     while (firstEsc < e) {
-      auto avail = e - firstEsc;
+      auto avail = to_unsigned(e - firstEsc);
       uint64_t word = 0;
       if (avail >= 8) {
         word = folly::loadUnaligned<uint64_t>(firstEsc);
