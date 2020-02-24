@@ -19,6 +19,7 @@
 #include <glog/logging.h>
 
 #include <folly/Singleton.h>
+#include <folly/init/Phase.h>
 #include <folly/logging/Init.h>
 #include <folly/portability/Config.h>
 #include <folly/synchronization/HazptrThreadPoolExecutor.h>
@@ -40,6 +41,10 @@ void init(int* argc, char*** argv, bool removeFlags) {
 #elif !defined(_WIN32)
   google::InstallFailureSignalHandler();
 #endif
+
+  // Indicate ProcessPhase::Regular and register handler to
+  // indicate ProcessPhase::Exit.
+  folly::set_process_phases();
 
   // Move from the registration phase to the "you can actually instantiate
   // things now" phase.
