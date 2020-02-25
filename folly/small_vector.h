@@ -897,7 +897,12 @@ class small_vector : public detail::small_vector_base<
   }
 
   void clear() {
-    erase(begin(), end());
+    // Equivalent to erase(begin(), end()), but neither Clang or GCC are able to
+    // optimize away the abstraction.
+    for (auto it = begin(); it != end(); ++it) {
+      it->~value_type();
+    }
+    this->setSize(0);
   }
 
   template <class Arg>
