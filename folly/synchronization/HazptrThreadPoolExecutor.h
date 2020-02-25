@@ -20,6 +20,6 @@
 
 namespace folly {
 
-void start_hazptr_thread_pool_executor();
+void enable_hazptr_thread_pool_executor();
 
 } // namespace folly

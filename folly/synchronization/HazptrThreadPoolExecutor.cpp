@@ -35,7 +35,7 @@ folly::Executor* get_hazptr_tpe() {
 
 namespace folly {
 
-void start_hazptr_thread_pool_executor() {
+void enable_hazptr_thread_pool_executor() {
   if (FLAGS_folly_hazptr_use_executor) {
     default_hazptr_domain().set_executor(&get_hazptr_tpe);
   }

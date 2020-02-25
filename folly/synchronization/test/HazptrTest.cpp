@@ -900,7 +900,7 @@ void recursive_destruction_test() {
 }
 
 void fork_test() {
-  folly::start_hazptr_thread_pool_executor();
+  folly::enable_hazptr_thread_pool_executor();
   auto trigger_reclamation = [] {
     hazptr_obj_cohort b;
     for (int i = 0; i < 2001; ++i) {

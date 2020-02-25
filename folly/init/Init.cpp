@@ -65,7 +65,7 @@ void init(int* argc, char*** argv, bool removeFlags) {
 #endif
   // Set the default hazard pointer domain to use a thread pool executor
   // for asynchronous reclamation
-  folly::start_hazptr_thread_pool_executor();
+  folly::enable_hazptr_thread_pool_executor();
 }
 
 Init::Init(int* argc, char*** argv, bool removeFlags) {
