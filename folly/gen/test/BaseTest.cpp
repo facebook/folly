@@ -491,7 +491,7 @@ TEST(Gen, Composed) {
   // Operator, Operator
   // clang-format off
   auto valuesOf
-    = filter([](Optional<int>& o) { return o.hasValue(); })
+    = filter([](Optional<int>& o) { return o.has_value(); })
     | map([](Optional<int>& o) -> int& { return o.value(); });
   // clang-format on
   std::vector<Optional<int>> opts{none, 4, none, 6, none};
@@ -1378,13 +1378,13 @@ TEST(Gen, Unwrap) {
   // optional has a value, and that value is non-null
   EXPECT_TRUE(bool(oup | unwrap));
   EXPECT_EQ(5, *(oup | unwrap));
-  EXPECT_TRUE(oup.hasValue()); // still has a pointer (null or not)
+  EXPECT_TRUE(oup.has_value()); // still has a pointer (null or not)
   EXPECT_TRUE(bool(oup.value())); // that value isn't null
 
   auto moved1 = std::move(oup) | unwrapOr(std::make_unique<int>(6));
   // oup still has a value, but now it's now nullptr since the pointer was moved
   // into moved1
-  EXPECT_TRUE(oup.hasValue());
+  EXPECT_TRUE(oup.has_value());
   EXPECT_FALSE(oup.value());
   EXPECT_TRUE(bool(moved1));
   EXPECT_EQ(5, *moved1);

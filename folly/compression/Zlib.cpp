@@ -342,7 +342,7 @@ bool ZlibStreamCodec::doCompressStream(
     resetDeflateStream();
     needReset_ = false;
   }
-  DCHECK(deflateStream_.hasValue());
+  DCHECK(deflateStream_.has_value());
   // zlib will return Z_STREAM_ERROR if output.data() is null.
   if (output.data() == nullptr) {
     return false;
@@ -377,7 +377,7 @@ bool ZlibStreamCodec::doUncompressStream(
     resetInflateStream();
     needReset_ = false;
   }
-  DCHECK(inflateStream_.hasValue());
+  DCHECK(inflateStream_.has_value());
   // zlib will return Z_STREAM_ERROR if output.data() is null.
   if (output.data() == nullptr) {
     return false;

@@ -33,7 +33,7 @@ void LogConfig::update(const LogConfig& other) {
   // Update handlerConfigs_ with all of the entries from the other LogConfig.
   // Any entries already present in our handlerConfigs_ are replaced wholesale.
   for (const auto& entry : other.handlerConfigs_) {
-    if (entry.second.type.hasValue()) {
+    if (entry.second.type.has_value()) {
       // This is a complete LogHandlerConfig that should be inserted
       // or completely replace an existing handler config with this name.
       auto result = handlerConfigs_.insert(entry);
@@ -65,7 +65,7 @@ void LogConfig::update(const LogConfig& other) {
       auto* existingEntry = &result.first->second;
       auto oldHandlers = std::move(existingEntry->handlers);
       *existingEntry = entry.second;
-      if (!existingEntry->handlers.hasValue()) {
+      if (!existingEntry->handlers.has_value()) {
         existingEntry->handlers = std::move(oldHandlers);
       }
     }

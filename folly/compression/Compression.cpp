@@ -700,7 +700,7 @@ std::unique_ptr<IOBuf> LZ4Codec::doUncompress(
     }
   } else {
     // Invariants
-    DCHECK(uncompressedLength.hasValue());
+    DCHECK(uncompressedLength.has_value());
     DCHECK(*uncompressedLength <= maxUncompressedLength());
     actualUncompressedLength = *uncompressedLength;
   }

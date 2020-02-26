@@ -3200,10 +3200,10 @@ TEST_P(AsyncSocketErrMessageCallbackTest, ErrMessageCallback) {
   // set the number of error messages before socket is closed or callback reset
   const auto testParams = GetParam();
   errMsgCB.socket_ = socket.get();
-  if (testParams.resetCallbackAfter.hasValue()) {
+  if (testParams.resetCallbackAfter.has_value()) {
     errMsgCB.resetCallbackAfter_ = testParams.resetCallbackAfter.value();
   }
-  if (testParams.closeSocketAfter.hasValue()) {
+  if (testParams.closeSocketAfter.has_value()) {
     errMsgCB.closeSocketAfter_ = testParams.closeSocketAfter.value();
   }
 

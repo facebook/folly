@@ -742,7 +742,7 @@ bool AsyncUDPSocket::setGSO(int val) {
 
 int AsyncUDPSocket::getGSO() {
   // check if we can return the cached value
-  if (FOLLY_UNLIKELY(!gso_.hasValue())) {
+  if (FOLLY_UNLIKELY(!gso_.has_value())) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
     int gso = -1;
     socklen_t optlen = sizeof(gso);

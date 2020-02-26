@@ -29,7 +29,7 @@ TEST(Poll, ready) {
 TEST(Poll, notReady) {
   Promise<int> p;
   auto f = p.getFuture();
-  EXPECT_FALSE(f.poll().hasValue());
+  EXPECT_FALSE(f.poll().has_value());
 }
 
 TEST(Poll, exception) {

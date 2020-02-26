@@ -402,7 +402,7 @@ std::pair<std::string, LogHandlerConfig> parseHandlerConfig(StringPiece value) {
         handlerName,
         "\": name cannot contain a comma when using the basic config format")};
   }
-  if (handlerType.hasValue()) {
+  if (handlerType.has_value()) {
     if (handlerType->empty()) {
       throw LogConfigParseError{to<string>(
           "error parsing configuration for log handler \"",
@@ -584,7 +584,7 @@ dynamic logConfigToDynamic(const LogHandlerConfig& config) {
     options.insert(opt.first, opt.second);
   }
   auto result = dynamic::object("options", options);
-  if (config.type.hasValue()) {
+  if (config.type.has_value()) {
     result("type", config.type.value());
   }
   return result;
@@ -594,7 +594,7 @@ dynamic logConfigToDynamic(const LogCategoryConfig& config) {
   auto value = dynamic::object("level", logLevelToString(config.level))(
       "inherit", config.inheritParentLevel)(
       "propagate", logLevelToString(config.propagateLevelMessagesToParent));
-  if (config.handlers.hasValue()) {
+  if (config.handlers.has_value()) {
     auto handlers = dynamic::array();
     for (const auto& handlerName : config.handlers.value()) {
       handlers.push_back(handlerName);

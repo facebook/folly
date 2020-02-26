@@ -266,7 +266,7 @@ json_patch::apply(dynamic& obj) {
         break;
       }
       case op_code::add: {
-        DCHECK(op.value.hasValue());
+        DCHECK(op.value.has_value());
         auto ret = do_add(resolved_path, *op.value, op.path.tokens().back());
         if (ret.hasError()) {
           return makeUnexpected(error{ret.error(), index});
@@ -283,7 +283,7 @@ json_patch::apply(dynamic& obj) {
         break;
       }
       case op_code::move: {
-        DCHECK(op.from.hasValue());
+        DCHECK(op.from.has_value());
         auto resolved_from = obj.try_get_ptr(*op.from);
         if (!resolved_from.hasValue()) {
           return makeUnexpected(error{error_code::from_not_found, index});
@@ -304,7 +304,7 @@ json_patch::apply(dynamic& obj) {
         break;
       }
       case op_code::copy: {
-        DCHECK(op.from.hasValue());
+        DCHECK(op.from.has_value());
         auto const resolved_from = obj.try_get_ptr(*op.from);
         if (!resolved_from.hasValue()) {
           return makeUnexpected(error{error_code::from_not_found, index});

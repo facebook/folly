@@ -59,7 +59,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     DCHECK_LE(timeout.count(), std::numeric_limits<int>::max());
     sock_->connect(this, address_, folly::to_narrow(timeout.count()));
     eventBase_.loop();
-    if (err_.hasValue()) {
+    if (err_.has_value()) {
       throw err_.value();
     }
   }
@@ -77,7 +77,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
       folly::WriteFlags flags = folly::WriteFlags::NONE) {
     sock_->write(this, buf, len, flags);
     eventBase_.loop();
-    if (err_.hasValue()) {
+    if (err_.has_value()) {
       throw err_.value();
     }
     return folly::to_narrow(folly::to_signed(len));
@@ -154,7 +154,7 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
       }
     }
     sock_->setReadCB(nullptr);
-    if (err_.hasValue()) {
+    if (err_.has_value()) {
       throw err_.value();
     }
     if (all && readLen_ > 0) {

@@ -1113,8 +1113,8 @@ TEST(FiberManager, remoteFiberBasic) {
 
   manager.loopUntilNoReady();
 
-  EXPECT_TRUE(savedPromise[0].hasValue());
-  EXPECT_TRUE(savedPromise[1].hasValue());
+  EXPECT_TRUE(savedPromise[0].has_value());
+  EXPECT_TRUE(savedPromise[1].has_value());
   EXPECT_EQ(0, result[0]);
   EXPECT_EQ(0, result[1]);
 
@@ -1156,8 +1156,8 @@ TEST(FiberManager, addTaskRemoteBasic) {
 
   manager.loopUntilNoReady();
 
-  EXPECT_TRUE(savedPromise[0].hasValue());
-  EXPECT_TRUE(savedPromise[1].hasValue());
+  EXPECT_TRUE(savedPromise[0].has_value());
+  EXPECT_TRUE(savedPromise[1].has_value());
   EXPECT_EQ(0, result[0]);
   EXPECT_EQ(0, result[1]);
 

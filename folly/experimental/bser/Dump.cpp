@@ -38,7 +38,7 @@ serialization_opts::serialization_opts()
 static const dynamic* getTemplate(
     const serialization_opts& opts,
     dynamic const& dynArray) {
-  if (!opts.templates.hasValue()) {
+  if (!opts.templates.has_value()) {
     return nullptr;
   }
   const auto& templates = opts.templates.value();

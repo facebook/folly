@@ -68,7 +68,7 @@ std::ostream& operator<<(std::ostream& os, const LogCategoryConfig& config) {
   if (config.propagateLevelMessagesToParent > LogLevel::MIN_LEVEL) {
     os << "[" << config.propagateLevelMessagesToParent << "]";
   }
-  if (config.handlers.hasValue()) {
+  if (config.handlers.has_value()) {
     os << ":" << join(",", config.handlers.value());
   }
   return os;

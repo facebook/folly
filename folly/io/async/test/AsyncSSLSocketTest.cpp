@@ -512,16 +512,16 @@ class NextProtocolTest : public Test {
   }
 
   void expectHandshakeSuccess() {
-    EXPECT_FALSE(client->except.hasValue())
+    EXPECT_FALSE(client->except.has_value())
         << "client handshake error: " << client->except->what();
-    EXPECT_FALSE(server->except.hasValue())
+    EXPECT_FALSE(server->except.has_value())
         << "server handshake error: " << server->except->what();
   }
 
   void expectHandshakeError() {
-    EXPECT_TRUE(client->except.hasValue())
+    EXPECT_TRUE(client->except.has_value())
         << "Expected client handshake error!";
-    EXPECT_TRUE(server->except.hasValue())
+    EXPECT_TRUE(server->except.has_value())
         << "Expected server handshake error!";
   }
 

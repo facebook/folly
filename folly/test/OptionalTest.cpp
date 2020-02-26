@@ -346,26 +346,26 @@ TEST(Optional, Swap) {
   Optional<std::string> b;
 
   swap(a, b);
-  EXPECT_FALSE(a.hasValue());
-  EXPECT_FALSE(b.hasValue());
+  EXPECT_FALSE(a.has_value());
+  EXPECT_FALSE(b.has_value());
 
   a = "hello";
-  EXPECT_TRUE(a.hasValue());
-  EXPECT_FALSE(b.hasValue());
+  EXPECT_TRUE(a.has_value());
+  EXPECT_FALSE(b.has_value());
   EXPECT_EQ("hello", a.value());
 
   swap(a, b);
-  EXPECT_FALSE(a.hasValue());
-  EXPECT_TRUE(b.hasValue());
+  EXPECT_FALSE(a.has_value());
+  EXPECT_TRUE(b.has_value());
   EXPECT_EQ("hello", b.value());
 
   a = "bye";
-  EXPECT_TRUE(a.hasValue());
+  EXPECT_TRUE(a.has_value());
   EXPECT_EQ("bye", a.value());
 
   swap(a, b);
-  EXPECT_TRUE(a.hasValue());
-  EXPECT_TRUE(b.hasValue());
+  EXPECT_TRUE(a.has_value());
+  EXPECT_TRUE(b.has_value());
   EXPECT_EQ("hello", a.value());
   EXPECT_EQ("bye", b.value());
 }
@@ -620,7 +620,7 @@ TEST(Optional, MakeOptional) {
   // const L-value version
   const std::string s("abc");
   auto optStr = folly::make_optional(s);
-  ASSERT_TRUE(optStr.hasValue());
+  ASSERT_TRUE(optStr.has_value());
   EXPECT_EQ(*optStr, "abc");
   *optStr = "cde";
   EXPECT_EQ(s, "abc");
@@ -629,7 +629,7 @@ TEST(Optional, MakeOptional) {
   // L-value version
   std::string s2("abc");
   auto optStr2 = folly::make_optional(s2);
-  ASSERT_TRUE(optStr2.hasValue());
+  ASSERT_TRUE(optStr2.has_value());
   EXPECT_EQ(*optStr2, "abc");
   *optStr2 = "cde";
   // it's vital to check that s2 wasn't clobbered
@@ -638,7 +638,7 @@ TEST(Optional, MakeOptional) {
   // L-value reference version
   std::string& s3(s2);
   auto optStr3 = folly::make_optional(s3);
-  ASSERT_TRUE(optStr3.hasValue());
+  ASSERT_TRUE(optStr3.has_value());
   EXPECT_EQ(*optStr3, "abc");
   *optStr3 = "cde";
   EXPECT_EQ(s3, "abc");
@@ -647,7 +647,7 @@ TEST(Optional, MakeOptional) {
   unique_ptr<int> pInt(new int(3));
   auto optIntPtr = folly::make_optional(std::move(pInt));
   EXPECT_TRUE(pInt.get() == nullptr);
-  ASSERT_TRUE(optIntPtr.hasValue());
+  ASSERT_TRUE(optIntPtr.has_value());
   EXPECT_EQ(**optIntPtr, 3);
 
   // variadic version
@@ -682,11 +682,11 @@ TEST(Optional, TestDisambiguationMakeOptionalVariants) {
 TEST(Optional, SelfAssignment) {
   Optional<int> a = 42;
   a = static_cast<decltype(a)&>(a); // suppress self-assign warning
-  ASSERT_TRUE(a.hasValue() && a.value() == 42);
+  ASSERT_TRUE(a.has_value() && a.value() == 42);
 
   Optional<int> b = 23333333;
   b = static_cast<decltype(b)&&>(b); // suppress self-move warning
-  ASSERT_TRUE(b.hasValue() && b.value() == 23333333);
+  ASSERT_TRUE(b.has_value() && b.value() == 23333333);
 }
 
 namespace {
@@ -696,7 +696,7 @@ class ContainsOptional {
   ContainsOptional() {}
   explicit ContainsOptional(int x) : opt_(x) {}
   bool hasValue() const {
-    return opt_.hasValue();
+    return opt_.has_value();
   }
   int value() const {
     return opt_.value();

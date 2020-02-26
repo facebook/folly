@@ -27,18 +27,18 @@ LogHandlerConfig::LogHandlerConfig() = default;
 LogHandlerConfig::LogHandlerConfig(StringPiece t) : type{t.str()} {}
 
 LogHandlerConfig::LogHandlerConfig(Optional<StringPiece> t)
-    : type{t.hasValue() ? Optional<string>{t->str()} : Optional<string>{}} {}
+    : type{t.has_value() ? Optional<string>{t->str()} : Optional<string>{}} {}
 
 LogHandlerConfig::LogHandlerConfig(StringPiece t, Options opts)
     : type{t.str()}, options{std::move(opts)} {}
 
 LogHandlerConfig::LogHandlerConfig(Optional<StringPiece> t, Options opts)
-    : type{t.hasValue() ? Optional<string>{t->str()} : Optional<string>{}},
+    : type{t.has_value() ? Optional<string>{t->str()} : Optional<string>{}},
       options{std::move(opts)} {}
 
 void LogHandlerConfig::update(const LogHandlerConfig& other) {
   FOLLY_SAFE_DCHECK(
-      !other.type.hasValue(), "LogHandlerConfig type cannot be updated");
+      !other.type.has_value(), "LogHandlerConfig type cannot be updated");
   for (const auto& option : other.options) {
     options[option.first] = option.second;
   }

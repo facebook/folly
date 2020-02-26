@@ -46,12 +46,12 @@ std::shared_ptr<LogWriter> FileWriterFactory::createWriter(File file) {
   // Determine whether we should use ImmediateFileWriter or AsyncFileWriter
   if (async_) {
     auto asyncWriter = make_shared<AsyncFileWriter>(std::move(file));
-    if (maxBufferSize_.hasValue()) {
+    if (maxBufferSize_.has_value()) {
       asyncWriter->setMaxBufferSize(maxBufferSize_.value());
     }
     return asyncWriter;
   } else {
-    if (maxBufferSize_.hasValue()) {
+    if (maxBufferSize_.has_value()) {
       throw std::invalid_argument(to<string>(
           "the \"max_buffer_size\" option is only valid for async file "
           "handlers"));

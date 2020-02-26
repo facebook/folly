@@ -470,7 +470,7 @@ TEST(Util, callWithConstructedKey) {
   // very useful in real life.  Verify that it works.
   sink.reset();
   detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc);
-  EXPECT_TRUE(sink.hasValue());
+  EXPECT_TRUE(sink.has_value());
 }
 
 // We're deliberately allowing only a subset of the desired heterogeneous
