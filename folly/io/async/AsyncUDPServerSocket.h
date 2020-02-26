@@ -97,13 +97,23 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     }
   }
 
-  void bind(const folly::SocketAddress& addy) {
+  void bind(
+      const folly::SocketAddress& addy,
+      const SocketOptionMap& options = emptySocketOptionMap) {
     CHECK(!socket_);
 
     socket_ = std::make_shared<AsyncUDPSocket>(evb_);
     socket_->setReusePort(reusePort_);
     socket_->setReuseAddr(reuseAddr_);
+    socket_->applyOptions(
+        validateSocketOptions(
+            options, addy.getFamily(), SocketOptionKey::ApplyPos::PRE_BIND),
+        SocketOptionKey::ApplyPos::PRE_BIND);
     socket_->bind(addy);
+    socket_->applyOptions(
+        validateSocketOptions(
+            options, addy.getFamily(), SocketOptionKey::ApplyPos::POST_BIND),
+        SocketOptionKey::ApplyPos::POST_BIND);
   }
 
   void setReusePort(bool reusePort) {

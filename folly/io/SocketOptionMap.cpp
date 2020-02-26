@@ -42,4 +42,23 @@ int applySocketOptions(
   return 0;
 }
 
+SocketOptionMap validateSocketOptions(
+    const SocketOptionMap& options,
+    sa_family_t family,
+    SocketOptionKey::ApplyPos pos) {
+  SocketOptionMap validOptions;
+  for (const auto& option : options) {
+    if (pos != option.first.applyPos_) {
+      continue;
+    }
+    if ((family == AF_INET && option.first.level == IPPROTO_IP) ||
+        (family == AF_INET6 && option.first.level == IPPROTO_IPV6) ||
+        option.first.level == IPPROTO_UDP || option.first.level == SOL_SOCKET ||
+        option.first.level == SOL_UDP) {
+      validOptions.insert(option);
+    }
+  }
+  return validOptions;
+}
+
 } // namespace folly

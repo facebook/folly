@@ -56,4 +56,9 @@ int applySocketOptions(
     const SocketOptionMap& options,
     SocketOptionKey::ApplyPos pos);
 
+SocketOptionMap validateSocketOptions(
+    const SocketOptionMap& options,
+    sa_family_t family,
+    SocketOptionKey::ApplyPos pos);
+
 } // namespace folly
