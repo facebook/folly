@@ -30,6 +30,7 @@
 #include <folly/SingletonThreadLocal.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
+#include <folly/synchronization/SanitizeThread.h>
 
 #ifdef FOLLY_SANITIZE_ADDRESS
 
@@ -84,6 +85,7 @@ auto FiberManager::FrozenOptions::create(const Options& options) -> ssize_t {
 
 /* static */ FiberManager*& FiberManager::getCurrentFiberManager() {
   struct Tag {};
+  folly::annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
   return SingletonThreadLocal<FiberManager*, Tag>::get();
 }
 
