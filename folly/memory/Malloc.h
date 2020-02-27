@@ -116,11 +116,13 @@ FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
 
     uint64_t origAllocated = *counter;
 
-    static const void* volatile ptr = malloc(1);
+    static void* volatile ptr = malloc(1);
     if (!ptr) {
       // wtf, failing to allocate 1 byte
       return false;
     }
+
+    free(ptr);
 
     return (origAllocated != *counter);
   }
