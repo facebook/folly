@@ -17,6 +17,7 @@ builder = nop
 
 [dependencies]
 boost
+fb303
 fbthrift
 fbzmq
 folly
