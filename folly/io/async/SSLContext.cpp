@@ -63,8 +63,8 @@ SSLContext::SSLContext(SSLVersion version) {
     // on getSession() returning a resumable session, SSL_CTX_set_ciphersuites,
     // etc.)
     //
-#if FOLLY_OPENSSL_HAS_TLS13
-  opt |= SSL_OP_NO_TLSv1_3;
+#if FOLLY_OPENSSL_IS_110
+  SSL_CTX_set_max_proto_version(ctx_, TLS1_2_VERSION);
 #endif
 
   int newOpt = SSL_CTX_set_options(ctx_, opt);
@@ -647,6 +647,12 @@ std::string SSLContext::getErrors(int errnoCopy) {
     errors = "error code: " + folly::to<std::string>(errnoCopy);
   }
   return errors;
+}
+
+void SSLContext::enableTLS13() {
+#if FOLLY_OPENSSL_IS_110
+  SSL_CTX_set_max_proto_version(ctx_, 0);
+#endif
 }
 
 std::ostream& operator<<(std::ostream& os, const PasswordCollector& collector) {
