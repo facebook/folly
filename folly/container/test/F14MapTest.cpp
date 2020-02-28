@@ -21,6 +21,7 @@
 
 #include <glog/logging.h>
 
+#include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
@@ -138,6 +139,7 @@ void runVisitContiguousRangesTest(int n) {
   M map;
 
   for (int i = 0; i < n; ++i) {
+    folly::makeUnpredictable(i);
     map[i] = i;
     map.erase(i / 2);
   }
@@ -1964,12 +1966,14 @@ void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
     m2 = m1;
     EXPECT_LE(m2.bucket_count(), 2);
     for (K i = 1; i < n; ++i) {
+      folly::makeUnpredictable(i);
       m1[i];
     }
     EXPECT_EQ(m1.bucket_count(), cap);
     M m3 = m1;
     EXPECT_EQ(m3.bucket_count(), cap);
     for (K i = n; i <= cap; ++i) {
+      folly::makeUnpredictable(i);
       m1[i];
     }
     EXPECT_GT(m1.bucket_count(), cap);
@@ -1977,6 +1981,7 @@ void runContinuousCapacityTest(std::size_t minSize, std::size_t maxSize) {
 
     M m4;
     for (K i = 0; i < n; ++i) {
+      folly::makeUnpredictable(i);
       m4[i];
     }
     // reserve(0) works like shrink_to_fit.  Note that tight fit (1/8

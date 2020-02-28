@@ -26,6 +26,7 @@ FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
 #include <glog/logging.h>
 
+#include <folly/Benchmark.h>
 #include <folly/Conv.h>
 #include <folly/FBString.h>
 #include <folly/container/test/F14TestUtil.h>
@@ -141,6 +142,7 @@ void runVisitContiguousRangesTest(int n) {
   S set;
 
   for (int i = 0; i < n; ++i) {
+    folly::makeUnpredictable(i);
     set.insert(i);
     set.erase(i / 2);
   }
