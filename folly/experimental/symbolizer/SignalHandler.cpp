@@ -361,10 +361,10 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printDec(getpid());
   print(" (pthread TID ");
   printHex((uint64_t)pthread_self());
-#if !defined(__FreeBSD__)
+#if defined(__linux__)
   print(") (linux TID ");
   printDec(syscall(__NR_gettid));
-#else
+#elif defined(__FreeBSD__)
   long tid;
   thr_self(&tid);
   print(") (freebsd TID ");
