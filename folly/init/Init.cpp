@@ -50,7 +50,11 @@ void init(int* argc, char*** argv, bool removeFlags) {
   // things now" phase.
   folly::SingletonVault::singleton()->registrationComplete();
 
+#if !FOLLY_HAVE_LIBGFLAGS
+  (void)removeFlags;
+#else
   gflags::ParseCommandLineFlags(argc, argv, removeFlags);
+#endif
 
   folly::initLoggingOrDie(FLAGS_logging);
   auto programName = argc && argv && *argc > 0 ? (*argv)[0] : "unknown";
