@@ -107,7 +107,7 @@ void runKeyExtractCases(
 
   {
     std::pair<Tracked<0> const, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, p);
     // fresh key, value_type const& ->
@@ -121,7 +121,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0> const, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, std::move(p));
     // fresh key, value_type&& ->
@@ -135,7 +135,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, p);
     // fresh key, pair<key_type,mapped_type> const& ->
@@ -149,7 +149,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, std::move(p));
     // fresh key, pair<key_type,mapped_type>&& ->
@@ -163,7 +163,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, p);
     // fresh key, convertible const& ->
@@ -198,7 +198,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
-    sink.clear();
+    sink.reset();
     resetTracking();
     func(sinkFunc, std::move(p));
     // fresh key, convertible&& ->
@@ -215,7 +215,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0> const, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, p);
@@ -227,7 +227,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0> const, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, std::move(p));
@@ -239,7 +239,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, p);
@@ -251,7 +251,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, std::move(p));
@@ -263,7 +263,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, p);
@@ -281,7 +281,7 @@ void runKeyExtractCases(
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
-    sink.clear();
+    sink.reset();
     sink.emplace(0, 0);
     resetTracking();
     func(sinkFunc, std::move(p));

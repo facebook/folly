@@ -118,7 +118,7 @@ class Optional {
       std::is_nothrow_move_constructible<Value>::value) {
     if (src.hasValue()) {
       construct(std::move(src.value()));
-      src.clear();
+      src.reset();
     }
   }
 
@@ -157,16 +157,16 @@ class Optional {
   }
 
   void assign(const None&) {
-    clear();
+    reset();
   }
 
   void assign(Optional&& src) {
     if (this != &src) {
       if (src.hasValue()) {
         assign(std::move(src.value()));
-        src.clear();
+        src.reset();
       } else {
-        clear();
+        reset();
       }
     }
   }
@@ -175,7 +175,7 @@ class Optional {
     if (src.hasValue()) {
       assign(src.value());
     } else {
-      clear();
+      reset();
     }
   }
 
@@ -220,7 +220,7 @@ class Optional {
 
   template <class... Args>
   Value& emplace(Args&&... args) {
-    clear();
+    reset();
     construct(std::forward<Args>(args)...);
     return value();
   }
@@ -230,7 +230,7 @@ class Optional {
       std::is_constructible<Value, std::initializer_list<U>&, Args&&...>::value,
       Value&>::type
   emplace(std::initializer_list<U> ilist, Args&&... args) {
-    clear();
+    reset();
     construct(ilist, std::forward<Args>(args)...);
     return value();
   }
