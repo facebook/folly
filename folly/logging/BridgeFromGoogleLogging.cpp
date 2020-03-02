@@ -18,6 +18,7 @@
 
 #include <folly/logging/Logger.h>
 #include <folly/logging/xlog.h>
+#include <gflags/gflags.h>
 
 namespace folly {
 namespace logging {
