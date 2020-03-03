@@ -20,7 +20,7 @@ namespace folly {
 
 ManualTimekeeper::ManualTimekeeper() : now_{std::chrono::steady_clock::now()} {}
 
-SemiFuture<Unit> ManualTimekeeper::after(Duration dur) {
+SemiFuture<Unit> ManualTimekeeper::after(HighResDuration dur) {
   auto contract = folly::makePromiseContract<Unit>();
   if (dur.count() == 0) {
     contract.first.setValue(folly::unit);

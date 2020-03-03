@@ -35,7 +35,7 @@ class ManualTimekeeper : public folly::Timekeeper {
 
   /// The returned future is completed when someone calls advance and pushes the
   /// executor's clock to a value greater than or equal to (now() + dur)
-  SemiFuture<Unit> after(folly::Duration dur) override;
+  SemiFuture<Unit> after(folly::HighResDuration dur) override;
 
   /// Advance the timekeeper's clock to (now() + dur).  All futures with target
   /// time points less than or equal to (now() + dur) are fulfilled after the

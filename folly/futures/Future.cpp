@@ -22,7 +22,7 @@
 namespace folly {
 namespace futures {
 
-SemiFuture<Unit> sleep(Duration dur, Timekeeper* tk) {
+SemiFuture<Unit> sleep(HighResDuration dur, Timekeeper* tk) {
   std::shared_ptr<Timekeeper> tks;
   if (LIKELY(!tk)) {
     tks = folly::detail::getTimekeeperSingleton();
@@ -36,7 +36,7 @@ SemiFuture<Unit> sleep(Duration dur, Timekeeper* tk) {
   return tk->after(dur);
 }
 
-Future<Unit> sleepUnsafe(Duration dur, Timekeeper* tk) {
+Future<Unit> sleepUnsafe(HighResDuration dur, Timekeeper* tk) {
   return sleep(dur, tk).toUnsafeFuture();
 }
 

@@ -16,6 +16,7 @@
 
 #include <folly/futures/ThreadWheelTimekeeper.h>
 
+#include <folly/Chrono.h>
 #include <folly/Singleton.h>
 #include <folly/futures/Future.h>
 #include <future>
@@ -121,7 +122,7 @@ ThreadWheelTimekeeper::~ThreadWheelTimekeeper() {
   thread_.join();
 }
 
-SemiFuture<Unit> ThreadWheelTimekeeper::after(Duration dur) {
+SemiFuture<Unit> ThreadWheelTimekeeper::after(HighResDuration dur) {
   auto cob = WTCallback::create(&eventBase_);
   auto f = cob->getSemiFuture();
   //
@@ -138,8 +139,9 @@ SemiFuture<Unit> ThreadWheelTimekeeper::after(Duration dur) {
   // callback has either been executed, or will never be executed. So we are
   // fine here.
   //
-  eventBase_.runInEventBaseThread(
-      [this, cob, dur] { wheelTimer_->scheduleTimeout(cob.get(), dur); });
+  eventBase_.runInEventBaseThread([this, cob, dur] {
+    wheelTimer_->scheduleTimeout(cob.get(), folly::chrono::ceil<Duration>(dur));
+  });
   return f;
 }
 

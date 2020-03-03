@@ -870,7 +870,7 @@ SemiFuture<Unit> SemiFuture<T>::unit() && {
 }
 
 template <typename T>
-SemiFuture<T> SemiFuture<T>::delayed(Duration dur, Timekeeper* tk) && {
+SemiFuture<T> SemiFuture<T>::delayed(HighResDuration dur, Timekeeper* tk) && {
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
       .toUnsafeFuture()
       .thenValue([](std::tuple<Try<T>, Try<Unit>> tup) {
@@ -1228,7 +1228,8 @@ Future<T> Future<T>::ensure(F&& func) && {
 
 template <class T>
 template <class F>
-Future<T> Future<T>::onTimeout(Duration dur, F&& func, Timekeeper* tk) && {
+Future<T>
+Future<T>::onTimeout(HighResDuration dur, F&& func, Timekeeper* tk) && {
   return std::move(*this).within(dur, tk).thenError(
       tag_t<FutureTimeout>{},
       [funcw = std::forward<F>(func)](auto const&) mutable {
@@ -1999,13 +2000,13 @@ Future<T> unorderedReduce(It first, It last, T initial, F func) {
 // within
 
 template <class T>
-Future<T> Future<T>::within(Duration dur, Timekeeper* tk) && {
+Future<T> Future<T>::within(HighResDuration dur, Timekeeper* tk) && {
   return std::move(*this).within(dur, FutureTimeout(), tk);
 }
 
 template <class T>
 template <class E>
-Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) && {
+Future<T> Future<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
   if (this->isReady()) {
     return std::move(*this);
   }
@@ -2018,7 +2019,8 @@ Future<T> Future<T>::within(Duration dur, E e, Timekeeper* tk) && {
 
 template <class T>
 template <typename E>
-SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
+SemiFuture<T>
+SemiFuture<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
   if (this->isReady()) {
     return std::move(*this);
   }
@@ -2103,7 +2105,7 @@ SemiFuture<T> SemiFuture<T>::within(Duration dur, E e, Timekeeper* tk) && {
 // delayed
 
 template <class T>
-Future<T> Future<T>::delayed(Duration dur, Timekeeper* tk) && {
+Future<T> Future<T>::delayed(HighResDuration dur, Timekeeper* tk) && {
   auto e = this->getExecutor();
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
       .via(e ? e : &InlineExecutor::instance())
@@ -2153,7 +2155,7 @@ SemiFuture<T> convertFuture(SemiFuture<T>&& sf, const SemiFuture<T>&) {
 }
 
 template <class FutureType, typename T = typename FutureType::value_type>
-void waitImpl(FutureType& f, Duration dur) {
+void waitImpl(FutureType& f, HighResDuration dur) {
   if (std::is_base_of<Future<T>, FutureType>::value) {
     f = std::move(f).via(&InlineExecutor::instance());
   }
@@ -2252,7 +2254,7 @@ SemiFuture<T>&& SemiFuture<T>::wait() && {
 }
 
 template <class T>
-SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
+SemiFuture<T>& SemiFuture<T>::wait(HighResDuration dur) & {
   if (auto deferredExecutor = this->getDeferredExecutor()) {
     // Make sure that the last callback in the future chain will be run on the
     // WaitExecutor.
@@ -2280,7 +2282,7 @@ SemiFuture<T>& SemiFuture<T>::wait(Duration dur) & {
 }
 
 template <class T>
-bool SemiFuture<T>::wait(Duration dur) && {
+bool SemiFuture<T>::wait(HighResDuration dur) && {
   auto future = std::move(*this);
   future.wait(dur);
   return future.isReady();
@@ -2292,7 +2294,7 @@ T SemiFuture<T>::get() && {
 }
 
 template <class T>
-T SemiFuture<T>::get(Duration dur) && {
+T SemiFuture<T>::get(HighResDuration dur) && {
   return std::move(*this).getTry(dur).value();
 }
 
@@ -2305,7 +2307,7 @@ Try<T> SemiFuture<T>::getTry() && {
 }
 
 template <class T>
-Try<T> SemiFuture<T>::getTry(Duration dur) && {
+Try<T> SemiFuture<T>::getTry(HighResDuration dur) && {
   wait(dur);
   auto future = folly::Future<T>(this->core_);
   this->core_ = nullptr;
@@ -2329,13 +2331,13 @@ Future<T>&& Future<T>::wait() && {
 }
 
 template <class T>
-Future<T>& Future<T>::wait(Duration dur) & {
+Future<T>& Future<T>::wait(HighResDuration dur) & {
   futures::detail::waitImpl(*this, dur);
   return *this;
 }
 
 template <class T>
-Future<T>&& Future<T>::wait(Duration dur) && {
+Future<T>&& Future<T>::wait(HighResDuration dur) && {
   futures::detail::waitImpl(*this, dur);
   return std::move(*this);
 }
@@ -2353,13 +2355,15 @@ Future<T>&& Future<T>::waitVia(DrivableExecutor* e) && {
 }
 
 template <class T>
-Future<T>& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) & {
+Future<T>& Future<T>::waitVia(TimedDrivableExecutor* e, HighResDuration dur) & {
   futures::detail::waitViaImpl(*this, e, dur);
   return *this;
 }
 
 template <class T>
-Future<T>&& Future<T>::waitVia(TimedDrivableExecutor* e, Duration dur) && {
+Future<T>&& Future<T>::waitVia(
+    TimedDrivableExecutor* e,
+    HighResDuration dur) && {
   futures::detail::waitViaImpl(*this, e, dur);
   return std::move(*this);
 }
@@ -2371,7 +2375,7 @@ T Future<T>::get() && {
 }
 
 template <class T>
-T Future<T>::get(Duration dur) && {
+T Future<T>::get(HighResDuration dur) && {
   wait(dur);
   auto future = copy(std::move(*this));
   if (!future.isReady()) {
@@ -2391,7 +2395,7 @@ T Future<T>::getVia(DrivableExecutor* e) {
 }
 
 template <class T>
-T Future<T>::getVia(TimedDrivableExecutor* e, Duration dur) {
+T Future<T>::getVia(TimedDrivableExecutor* e, HighResDuration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
     throw_exception<FutureTimeout>();
@@ -2405,7 +2409,7 @@ Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
 }
 
 template <class T>
-Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, Duration dur) {
+Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, HighResDuration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
     throw_exception<FutureTimeout>();
@@ -2557,7 +2561,7 @@ SemiFuture<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
     return makeSemiFuture();
   }
 
-  return after(std::chrono::duration_cast<Duration>(when - now));
+  return after(std::chrono::duration_cast<HighResDuration>(when - now));
 }
 
 } // namespace folly

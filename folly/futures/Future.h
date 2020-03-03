@@ -589,7 +589,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  T get(Duration dur) &&;
+  T get(HighResDuration dur) &&;
 
   /// Blocks until the future is fulfilled. Returns the Try of the result
   ///   (moved-out).
@@ -614,7 +614,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  Try<T> getTry(Duration dur) &&;
+  Try<T> getTry(HighResDuration dur) &&;
 
   /// Blocks the caller's thread until this Future `isReady()`, i.e., until the
   ///   asynchronous producer has stored a result or exception.
@@ -655,7 +655,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  bool wait(Duration dur) &&;
+  bool wait(HighResDuration dur) &&;
 
   /// Returns a Future which will call back on the other side of executor.
   Future<T> via(Executor::KeepAlive<> executor) &&;
@@ -852,7 +852,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  SemiFuture<T> within(Duration dur, Timekeeper* tk = nullptr) && {
+  SemiFuture<T> within(HighResDuration dur, Timekeeper* tk = nullptr) && {
     return std::move(*this).within(dur, FutureTimeout(), tk);
   }
 
@@ -871,7 +871,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class E>
-  SemiFuture<T> within(Duration dur, E e, Timekeeper* tk = nullptr) &&;
+  SemiFuture<T> within(HighResDuration dur, E e, Timekeeper* tk = nullptr) &&;
 
   /// Delay the completion of this SemiFuture for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
@@ -884,7 +884,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
-  SemiFuture<T> delayed(Duration dur, Timekeeper* tk = nullptr) &&;
+  SemiFuture<T> delayed(HighResDuration dur, Timekeeper* tk = nullptr) &&;
 
   /// Returns a future that completes inline, as if the future had no executor.
   /// Intended for porting legacy code without behavioral change, and for rare
@@ -955,7 +955,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   /// - `valid() == true`
   /// - `&RESULT == this`
   /// - `isReady()` will be indeterminate - may or may not be true
-  SemiFuture<T>& wait(Duration dur) &;
+  SemiFuture<T>& wait(HighResDuration dur) &;
 
   static void releaseDeferredExecutor(Core* core);
 };
@@ -1122,7 +1122,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// Returns the fulfilled value (moved-out), throws the fulfilled exception,
   /// or on timeout throws FutureTimeout.
-  T getVia(TimedDrivableExecutor* e, Duration dur);
+  T getVia(TimedDrivableExecutor* e, HighResDuration dur);
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
@@ -1131,7 +1131,7 @@ class Future : private futures::detail::FutureBase<T> {
 
   /// getTryVia but will wait only until `dur` elapses. Returns the
   /// Try of the value (moved-out) or may throw a FutureTimeout exception.
-  Try<T>& getTryVia(TimedDrivableExecutor* e, Duration dur);
+  Try<T>& getTryVia(TimedDrivableExecutor* e, HighResDuration dur);
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.
@@ -1641,7 +1641,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class F>
-  Future<T> onTimeout(Duration, F&& func, Timekeeper* = nullptr) &&;
+  Future<T> onTimeout(HighResDuration, F&& func, Timekeeper* = nullptr) &&;
 
   /// If this Future completes within duration dur from now, propagate its
   /// value. Otherwise satisfy the returned SemiFuture with a FutureTimeout
@@ -1658,7 +1658,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<T> within(Duration dur, Timekeeper* tk = nullptr) &&;
+  Future<T> within(HighResDuration dur, Timekeeper* tk = nullptr) &&;
 
   /// If this SemiFuture completes within duration dur from now, propagate its
   /// value. Otherwise satisfy the returned SemiFuture with exception e.
@@ -1675,7 +1675,8 @@ class Future : private futures::detail::FutureBase<T> {
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
   template <class E>
-  Future<T> within(Duration dur, E exception, Timekeeper* tk = nullptr) &&;
+  Future<T>
+  within(HighResDuration dur, E exception, Timekeeper* tk = nullptr) &&;
 
   /// Delay the completion of this Future for at least this duration from
   /// now. The optional Timekeeper is as with futures::sleep().
@@ -1688,7 +1689,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == false`
   /// - `RESULT.valid() == true`
-  Future<T> delayed(Duration, Timekeeper* = nullptr) &&;
+  Future<T> delayed(HighResDuration, Timekeeper* = nullptr) &&;
 
   /// Blocks until the future is fulfilled. Returns the value (moved-out), or
   /// throws the exception. The future must not already have a continuation.
@@ -1713,7 +1714,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// Postconditions:
   ///
   /// - `valid() == false`
-  T get(Duration dur) &&;
+  T get(HighResDuration dur) &&;
 
   /// A reference to the Try of the value
   ///
@@ -1761,7 +1762,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == true` (so you may call `wait(...)` repeatedly)
   /// - `&RESULT == this`
   /// - `isReady()` will be indeterminate - may or may not be true
-  Future<T>& wait(Duration dur) &;
+  Future<T>& wait(HighResDuration dur) &;
 
   /// Blocks until this Future is complete or until `dur` passes.
   ///
@@ -1775,7 +1776,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///   by assigning or constructing the result into a distinct object).
   /// - `&RESULT == this`
   /// - `isReady()` will be indeterminate - may or may not be true
-  Future<T>&& wait(Duration dur) &&;
+  Future<T>&& wait(HighResDuration dur) &&;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
@@ -1815,7 +1816,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `valid() == true` (does not move-out `*this`)
   /// - `&RESULT == this`
-  Future<T>& waitVia(TimedDrivableExecutor* e, Duration dur) &;
+  Future<T>& waitVia(TimedDrivableExecutor* e, HighResDuration dur) &;
 
   /// Overload of waitVia() for rvalue Futures
   /// As waitVia but may return early after dur passes.
@@ -1829,7 +1830,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == true` (but the calling code can trivially move-out `*this`
   ///   by assigning or constructing the result into a distinct object).
   /// - `&RESULT == this`
-  Future<T>&& waitVia(TimedDrivableExecutor* e, Duration dur) &&;
+  Future<T>&& waitVia(TimedDrivableExecutor* e, HighResDuration dur) &&;
 
   /// If the value in this Future is equal to the given Future, when they have
   /// both completed, the value of the resulting Future<bool> will be true. It
@@ -1929,8 +1930,8 @@ class Future : private futures::detail::FutureBase<T> {
 /// Delays that are used to trigger timeouts of async operations), then you
 /// can and should cancel them to reclaim resources.
 ///
-/// Users will typically get one of these via Future::sleep(Duration dur) or
-/// use them implicitly behind the scenes by passing a timeout to some Future
+/// Users will typically get one of these via Future::sleep(HighResDuration dur)
+/// or use them implicitly behind the scenes by passing a timeout to some Future
 /// operation.
 ///
 /// Although we don't formally alias Delay = Future<Unit>,
@@ -1938,14 +1939,14 @@ class Future : private futures::detail::FutureBase<T> {
 /// Timeouts, and that's ok I guess, but that term is so overloaded I thought
 /// it made sense to introduce a cleaner term.
 ///
-/// Remember that Duration is a std::chrono duration (millisecond resolution
-/// at the time of writing). When writing code that uses specific durations,
-/// prefer using the explicit std::chrono type, e.g. std::chrono::milliseconds
-/// over Duration. This makes the code more legible and means you won't be
-/// unpleasantly surprised if we redefine Duration to microseconds, or
-/// something.
+/// Remember that HighResDuration is a std::chrono duration (millisecond
+/// resolution at the time of writing). When writing code that uses specific
+/// durations, prefer using the explicit std::chrono type, e.g.
+/// std::chrono::milliseconds over HighResDuration. This makes the code more
+/// legible and means you won't be unpleasantly surprised if we redefine
+/// HighResDuration to microseconds, or something.
 ///
-///   timekeeper.after(std::chrono::duration_cast<Duration>(someNanoseconds))
+///   timekeeper.after(std::chrono::duration_cast<HighResDuration>(someNanoseconds))
 class Timekeeper {
  public:
   virtual ~Timekeeper() = default;
@@ -1955,7 +1956,7 @@ class Timekeeper {
   /// exceptional. Use the steady (monotonic) clock.
   ///
   /// The consumer thread may cancel this Future to reclaim resources.
-  virtual SemiFuture<Unit> after(Duration dur) = 0;
+  virtual SemiFuture<Unit> after(HighResDuration dur) = 0;
 
   /// Unsafe version of after that returns an inline Future.
   /// Any work added to this future will run inline on the Timekeeper's thread.
@@ -1963,7 +1964,7 @@ class Timekeeper {
   ///
   /// Please migrate to use after + a call to via with a valid, non-inline
   /// executor.
-  Future<Unit> afterUnsafe(Duration dur) {
+  Future<Unit> afterUnsafe(HighResDuration dur) {
     return after(dur).toUnsafeFuture();
   }
 
@@ -2018,7 +2019,7 @@ auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
 /// and "sleep".
 namespace futures {
 /// Returns a Future that will complete after the specified duration. The
-/// Duration typedef of a `std::chrono` duration type indicates the
+/// HighResDuration typedef of a `std::chrono` duration type indicates the
 /// resolution you can expect to be meaningful (milliseconds at the time of
 /// writing). Normally you wouldn't need to specify a Timekeeper, we will
 /// use the global futures timekeeper (we run a thread whose job it is to
@@ -2028,12 +2029,12 @@ namespace futures {
 /// The Timekeeper thread will be lazily created the first time it is
 /// needed. If your program never uses any timeouts or other time-based
 /// Futures you will pay no Timekeeper thread overhead.
-SemiFuture<Unit> sleep(Duration, Timekeeper* = nullptr);
+SemiFuture<Unit> sleep(HighResDuration, Timekeeper* = nullptr);
 [[deprecated(
     "futures::sleep now returns a SemiFuture<Unit>. "
     "sleepUnsafe is deprecated. "
     "Please call futures::sleep and apply an executor with .via")]] Future<Unit>
-sleepUnsafe(Duration, Timekeeper* = nullptr);
+sleepUnsafe(HighResDuration, Timekeeper* = nullptr);
 
 /**
  * Set func as the callback for each input Future and return a vector of
