@@ -84,6 +84,7 @@ StringPiece LogMessage::getFileBaseName() const {
 void LogMessage::sanitizeMessage() {
   // Compute how long the sanitized string will be.
   size_t sanitizedLength = 0;
+  size_t numNewlines = 0;
   for (const char c : rawMessage_) {
     if (c == '\\') {
       // Backslashes are escaped as two backslashes
@@ -93,7 +94,7 @@ void LogMessage::sanitizeMessage() {
       // All other control characters are emitted as \xNN (4 characters)
       if (c == '\n') {
         sanitizedLength += 1;
-        containsNewlines_ = true;
+        ++numNewlines;
       } else if (c == '\t') {
         sanitizedLength += 1;
       } else {
@@ -107,7 +108,7 @@ void LogMessage::sanitizeMessage() {
       ++sanitizedLength;
     }
   }
-
+  numNewlines_ = numNewlines;
   // If nothing is different, just use rawMessage_ directly,
   // and don't populate message_.
   if (sanitizedLength == rawMessage_.size()) {

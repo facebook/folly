@@ -116,7 +116,11 @@ class LogMessage {
   }
 
   bool containsNewlines() const {
-    return containsNewlines_;
+    return numNewlines_ > 0;
+  }
+
+  size_t getNumNewlines() const {
+    return numNewlines_;
   }
 
  private:
@@ -143,12 +147,13 @@ class LogMessage {
   folly::StringPiece const functionName_;
 
   /**
-   * containsNewlines_ will be true if the message contains internal newlines.
+   * containedNewlines_ counts the number of internal newlines in the message.
    *
    * This allows log handlers that perform special handling of multi-line
-   * messages to easily detect if a message contains multiple lines or not.
+   * messages to easily detect if a message contains multiple lines or not and
+   * size their buffers appropriately.
    */
-  bool containsNewlines_{false};
+  size_t numNewlines_{0};
 
   /**
    * rawMessage_ contains the original message.

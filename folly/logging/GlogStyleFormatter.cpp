@@ -96,12 +96,8 @@ std::string GlogStyleFormatter::formatMessage(
     header.reserve(headerLengthGuess);
     headerFormatter.appendTo(header);
 
-    // Make a guess at how many lines will be in the message, just to make an
-    // initial buffer allocation.  If the guess is too small then the string
-    // will reallocate and grow as necessary, it will just be slightly less
-    // efficient than if we had guessed enough space.
-    size_t numLinesGuess = 4;
-    buffer.reserve(((header.size() + 1) * numLinesGuess) + msgData.size());
+    buffer.reserve(
+        ((header.size() + 1) * message.getNumNewlines()) + msgData.size());
 
     size_t idx = 0;
     while (true) {
