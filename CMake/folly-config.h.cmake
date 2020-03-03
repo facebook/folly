@@ -26,16 +26,6 @@
 #endif
 #endif // FOLLY_MOBILE
 
-#if defined(__linux__)
-#define FOLLY_ELF_NATIVE_CLASS __ELF_NATIVE_CLASS
-#elif defined(__FreeBSD__)
-#if defined(__LP64__)
-#define FOLLY_ELF_NATIVE_CLASS 64
-#else
-#define FOLLY_ELF_NATIVE_CLASS 32
-#endif
-#endif
-
 #cmakedefine FOLLY_HAVE_PTHREAD 1
 #cmakedefine FOLLY_HAVE_PTHREAD_ATFORK 1
 

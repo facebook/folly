@@ -201,7 +201,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   return exceptions;
 }
 
-#if !defined(__clang__)
+#if FOLLY_USE_LIBSTDCPP
 namespace {
 
 std::terminate_handler origTerminate = abort;
