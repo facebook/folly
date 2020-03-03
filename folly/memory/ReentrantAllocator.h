@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <type_traits>
 
 namespace folly {
 
