@@ -55,7 +55,7 @@ void BridgeFromGoogleLogging::send(
     const struct ::tm* pTime,
     const char* message,
     size_t message_len,
-    ::gflags::int32 usecs) {
+    int32_t usecs) {
   struct ::tm time = *pTime;
   folly::Logger const logger{full_filename};
   auto follyLevel = asFollyLogLevel(severity);

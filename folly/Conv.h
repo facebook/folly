@@ -449,7 +449,7 @@ inline uint32_t digits10(uint64_t v) {
  * Copies the ASCII base 10 representation of v into buffer and
  * returns the number of bytes written. Does NOT append a \0. Assumes
  * the buffer points to digits10(v) bytes of valid memory. Note that
- * uint64 needs at most 20 bytes, uint32_t needs at most 10 bytes,
+ * uint64_t needs at most 20 bytes, uint32_t needs at most 10 bytes,
  * uint16_t needs at most 5 bytes, and so on. Measurements suggest
  * that defining a separate overload for 32-bit integers is not
  * worthwhile.

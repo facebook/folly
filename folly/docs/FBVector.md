@@ -125,7 +125,7 @@ One particularly sensitive topic about handling C++ values is
 that they are all conservatively considered <i>non-
 relocatable</i>. In contrast, a relocatable value would preserve
 its invariant even if its bits were moved arbitrarily in memory.
-For example, an `int32` is relocatable because moving its 4 bytes
+For example, an `int32_t` is relocatable because moving its 4 bytes
 would preserve its actual value, so the address of that value
 does not "matter" to its integrity.
 

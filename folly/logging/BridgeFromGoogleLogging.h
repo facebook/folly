@@ -17,6 +17,8 @@
 #pragma once
 #define GLOG_NO_ABBREVIATED_SEVERITIES
 
+#include <cstdint>
+
 #include <glog/logging.h>
 
 namespace folly {
@@ -42,7 +44,7 @@ struct BridgeFromGoogleLogging : ::google::LogSink {
       const struct ::tm* pTime,
       const char* message,
       size_t message_len,
-      ::google::int32 usecs);
+      int32_t usecs);
 
   void send(
       ::google::LogSeverity severity,
