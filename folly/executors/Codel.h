@@ -102,15 +102,39 @@ class Codel {
   /// Return:  0 = no delay, 100 = At the queueing limit
   int getLoad();
 
+  /// Update the target delay and interval parameters by passing them
+  /// in as an Options instance. Note that target delay must be strictly
+  /// smaller than the interval. This is a no-op if invalid arguments are
+  /// provided.
+  ///
+  /// NOTE : Calls to setOptions must be externally synchronized since there
+  /// is no internal locking for parameter updates. Codel only guarantees
+  /// internal synchronization between calls to getOptions() and other members
+  /// but not between concurrent calls to getOptions().
+  ///
+  /// Throws std::runtime_error if arguments are invalid.
+  void setOptions(Options const& options);
+
+  /// Return a consistent snapshot of the two parameters used by Codel. Since
+  /// parameters may be updated with the setOptions() method provided above,
+  /// it is necessary to ensure that reads of the parameters return a consistent
+  /// pair in which the invariant of targetDelay <= interval is guaranteed; the
+  /// targetDelay value that is returned is the minimum of targetDelay and
+  /// interval.
+  const Options getOptions() const;
+
   std::chrono::nanoseconds getMinDelay();
-  std::chrono::milliseconds getInterval();
-  std::chrono::milliseconds getTargetDelay();
-  std::chrono::milliseconds getSloughTimeout();
+
+  /// Returns the timeout condition for overload given a target delay period.
+  std::chrono::milliseconds getSloughTimeout(
+      std::chrono::milliseconds delay) const;
 
  private:
-  Options options_;
   std::atomic<uint64_t> codelMinDelayNs_;
   std::atomic<uint64_t> codelIntervalTimeNs_;
+
+  std::atomic<std::chrono::milliseconds> targetDelay_;
+  std::atomic<std::chrono::milliseconds> interval_;
 
   // flag to make overloaded() thread-safe, since we only want
   // to reset the delay once per time period

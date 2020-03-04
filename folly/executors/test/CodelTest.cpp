@@ -87,3 +87,95 @@ TEST(CodelTest, getLoadSanity) {
   // this test demonstrates how silly getLoad() is, but silly isn't
   // necessarily useless
 }
+
+TEST(CodelTest, updateTargetDelay) {
+  folly::Codel c;
+  folly::Codel::Options opts;
+  c.overloaded(milliseconds(40));
+  EXPECT_EQ(100, c.getLoad());
+  EXPECT_EQ(milliseconds(5), c.getOptions().targetDelay());
+
+  // Increase the target delay and test again.
+  opts.setTargetDelay(std::chrono::milliseconds(40));
+  opts.setInterval(std::chrono::milliseconds(100));
+  c.setOptions(opts);
+  EXPECT_EQ(milliseconds(40), c.getOptions().targetDelay());
+  EXPECT_FALSE(c.overloaded(milliseconds(40)));
+
+  // Decrease the target delay and test again.
+  opts.setTargetDelay(std::chrono::milliseconds(5));
+  c.setOptions(opts);
+  EXPECT_EQ(milliseconds(5), c.getOptions().targetDelay());
+  sleep_for(milliseconds(110));
+  EXPECT_FALSE(c.overloaded(milliseconds(40)));
+  EXPECT_TRUE(c.overloaded(milliseconds(40)));
+}
+
+TEST(CodelTest, updateInterval) {
+  folly::Codel c;
+  folly::Codel::Options opts;
+  c.overloaded(milliseconds(50));
+  EXPECT_EQ(100, c.getLoad());
+
+  // Make sure the default interval is correct.
+  EXPECT_EQ(milliseconds(100), c.getOptions().interval());
+  sleep_for(milliseconds(110));
+
+  // Two delayed requests lead to overload.
+  EXPECT_FALSE(c.overloaded(milliseconds(50)));
+  EXPECT_TRUE(c.overloaded(milliseconds(50)));
+
+  // Increase the interval to 200 ms and test again.
+  opts.setInterval(std::chrono::milliseconds(200));
+  opts.setTargetDelay(std::chrono::milliseconds(FLAGS_codel_target_delay));
+
+  c.setOptions(opts);
+  EXPECT_EQ(milliseconds(200), c.getOptions().interval());
+  sleep_for(milliseconds(100));
+  EXPECT_FALSE(c.overloaded(milliseconds(20)));
+  EXPECT_TRUE(c.overloaded(milliseconds(20)));
+}
+
+TEST(CodelTest, invalidParamUpdates) {
+  folly::Codel c;
+  folly::Codel::Options opts;
+  EXPECT_EQ(milliseconds(5), c.getOptions().targetDelay());
+  EXPECT_EQ(milliseconds(100), c.getOptions().interval());
+
+  // Set target delay to an invalid value.
+  // Can't be greater than the existing interval period.
+  opts.setTargetDelay(std::chrono::milliseconds(110));
+  try {
+    c.setOptions(opts);
+    FAIL() << "Expected a std::runtime_error";
+  } catch (std::invalid_argument const& err) {
+    std::string error = err.what();
+    EXPECT_EQ("Invalid arguments provided", error);
+  }
+  EXPECT_EQ(milliseconds(5), c.getOptions().targetDelay());
+
+  // Set the target delay to a valid value.
+  opts.setTargetDelay(std::chrono::milliseconds(20));
+  opts.setInterval(std::chrono::milliseconds(100));
+  c.setOptions(opts);
+  EXPECT_EQ(milliseconds(20), c.getOptions().targetDelay());
+
+  // Set the interval to a value smaller than the target delay.
+  opts.setInterval(std::chrono::milliseconds(5));
+  try {
+    c.setOptions(opts);
+    FAIL() << "Expected a std::runtime_error";
+  } catch (std::invalid_argument const& err) {
+    std::string error = err.what();
+    EXPECT_EQ("Invalid arguments provided", error);
+  }
+  EXPECT_EQ(milliseconds(100), c.getOptions().interval());
+
+  // Set the params to a valid combination.
+  opts.setInterval(std::chrono::milliseconds(200));
+  opts.setTargetDelay(std::chrono::milliseconds(10));
+
+  c.setOptions(opts);
+  EXPECT_EQ(milliseconds(10), c.getOptions().targetDelay());
+  EXPECT_EQ(milliseconds(200), c.getOptions().interval());
+}
