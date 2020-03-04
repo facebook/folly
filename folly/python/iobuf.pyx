@@ -54,6 +54,9 @@ cdef class IOBuf:
         self._hash = None
         __cache[(<unsigned long>self._this, id(self))] = self
 
+    def __dealloc__(self):
+        self._ours.reset()
+
     @staticmethod
     cdef IOBuf create(cIOBuf* this, object parent):
         key = (<unsigned long>this, id(parent))
@@ -64,6 +67,9 @@ cdef class IOBuf:
             inst._parent = parent
             __cache[key] = inst
         return inst
+
+    cdef void cleanup(self):
+        self._ours.reset()
 
     cdef unique_ptr[cIOBuf] c_clone(self):
         return move(self._this.clone())

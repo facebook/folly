@@ -64,6 +64,7 @@ cdef class IOBuf:
     cdef Py_ssize_t strides[1]
     @staticmethod
     cdef IOBuf create(cIOBuf* this, object parent)
+    cdef void cleanup(self)
     cdef unique_ptr[cIOBuf] c_clone(self)
 
 cdef unique_ptr[cIOBuf] from_python_buffer(memoryview view)
