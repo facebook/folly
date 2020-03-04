@@ -376,6 +376,16 @@ TEST(small_vector, InsertNontrivial) {
   EXPECT_EQ(v3[11].s, "asd");
 }
 
+TEST(small_vecctor, InsertFromBidirectionalList) {
+  folly::small_vector<std::string> v(6, "asd");
+  std::list<std::string> l(6, "wat");
+  v.insert(v.end(), l.begin(), l.end());
+  EXPECT_EQ(v[0], "asd");
+  EXPECT_EQ(v[5], "asd");
+  EXPECT_EQ(v[6], "wat");
+  EXPECT_EQ(v[11], "wat");
+}
+
 TEST(small_vector, Swap) {
   folly::small_vector<int, 10> somethingVec, emptyVec;
   somethingVec.push_back(1);

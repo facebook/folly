@@ -97,9 +97,8 @@ class small_vector;
 namespace detail {
 
 /*
- * Move objects in memory to the right into some uninitialized
- * memory, where the region overlaps. Then call create(size_t) for each
- * "hole" passing it the offset of the hole from first.
+ * Move objects in memory to the right into some uninitialized memory, where
+ * the region overlaps. Then call create() for each hole in reverse order.
  *
  * This doesn't just use std::move_backward because move_backward only works
  * if all the memory is initialized to type T already.
@@ -148,11 +147,11 @@ moveObjectsRightAndCreate(
     }
     for (; out > lastConstructed;) {
       --out;
-      new (out) T(create(out - first));
+      new (out) T(create());
     }
     for (; out != first;) {
       --out;
-      *out = create(out - first);
+      *out = create();
     }
     rollback.dismiss();
   }
@@ -174,7 +173,7 @@ moveObjectsRightAndCreate(
   T* const end = first - 1;
   T* out = first + (realLast - lastConstructed) - 1;
   for (; out != end; --out) {
-    *out = create(out - first);
+    *out = create();
   }
 }
 
@@ -833,11 +832,7 @@ class small_vector : public detail::small_vector_base<
           data() + offset,
           data() + size(),
           data() + size() + 1,
-          [&](size_t i) -> value_type&& {
-            assert(i == 0);
-            (void)i;
-            return std::move(t);
-          });
+          [&]() mutable -> value_type&& { return std::move(t); });
       this->setSize(size() + 1);
     }
     return begin() + offset;
@@ -856,11 +851,7 @@ class small_vector : public detail::small_vector_base<
         data() + offset,
         data() + size(),
         data() + size() + n,
-        [&](size_t i) -> value_type const& {
-          assert(i < n);
-          (void)i;
-          return val;
-        });
+        [&]() mutable -> value_type const& { return val; });
     this->setSize(size() + n);
     return begin() + offset;
   }
@@ -990,10 +981,7 @@ class small_vector : public detail::small_vector_base<
         data() + offset,
         data() + size(),
         data() + size() + distance,
-        [&](size_t i) -> it_ref {
-          assert(i < size_t(distance));
-          return *(first + i);
-        });
+        [&, in = last]() mutable -> it_ref { return *--in; });
     this->setSize(size() + distance);
     return begin() + offset;
   }
