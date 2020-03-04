@@ -1954,12 +1954,12 @@ class Future : private futures::detail::FutureBase<T> {
 /// Timeouts, and that's ok I guess, but that term is so overloaded I thought
 /// it made sense to introduce a cleaner term.
 ///
-/// Remember that HighResDuration is a std::chrono duration (millisecond
+/// Remember that HighResDuration is a std::chrono duration (microsecond
 /// resolution at the time of writing). When writing code that uses specific
 /// durations, prefer using the explicit std::chrono type, e.g.
-/// std::chrono::milliseconds over HighResDuration. This makes the code more
+/// std::chrono::microseconds over HighResDuration. This makes the code more
 /// legible and means you won't be unpleasantly surprised if we redefine
-/// HighResDuration to microseconds, or something.
+/// HighResDuration to nanoseconds, or something.
 ///
 ///   timekeeper.after(std::chrono::duration_cast<HighResDuration>(someNanoseconds))
 class Timekeeper {
