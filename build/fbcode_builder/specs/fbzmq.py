@@ -10,7 +10,6 @@ import specs.fmt as fmt
 import specs.folly as folly
 import specs.gmock as gmock
 import specs.sodium as sodium
-import specs.sigar as sigar
 
 from shell_quoting import ShellQuoted
 
@@ -18,7 +17,7 @@ from shell_quoting import ShellQuoted
 def fbcode_builder_spec(builder):
     builder.add_option('zeromq/libzmq:git_hash', 'v4.2.2')
     return {
-        'depends_on': [fmt, folly, fbthrift, gmock, sodium, sigar],
+        'depends_on': [fmt, folly, fbthrift, gmock, sodium],
         'steps': [
             builder.github_project_workdir('zeromq/libzmq', '.'),
             builder.step('Build and install zeromq/libzmq', [
@@ -39,4 +38,3 @@ def fbcode_builder_spec(builder):
             ]),
         ],
     }
-
