@@ -31,6 +31,7 @@ const char* nallocxWeak = nullptr;
 const char* mallctlWeak = nullptr;
 const char* mallctlnametomibWeak = nullptr;
 const char* mallctlbymibWeak = nullptr;
+const char* MallocExtension_Internal_GetNumericPropertyWeak = nullptr;
 #elif !FOLLY_HAVE_WEAK_SYMBOLS
 void* (*mallocx)(size_t, int) = nullptr;
 void* (*rallocx)(void*, size_t, int) = nullptr;
@@ -43,5 +44,9 @@ int (*mallctl)(const char*, void*, size_t*, void*, size_t) = nullptr;
 int (*mallctlnametomib)(const char*, size_t*, size_t*) = nullptr;
 int (*mallctlbymib)(const size_t*, size_t, void*, size_t*, void*, size_t) =
     nullptr;
+bool (*MallocExtension_Internal_GetNumericProperty)(
+    const char*,
+    size_t,
+    size_t*) = nullptr;
 #endif
 }

@@ -132,13 +132,69 @@ FOLLY_NOINLINE inline bool usingJEMalloc() noexcept {
 }
 #endif
 
+inline bool getTCMallocNumericProperty(const char* name, size_t* out) noexcept {
+  return MallocExtension_Internal_GetNumericProperty(name, strlen(name), out);
+}
+
+#if defined(FOLLY_ASSUME_NO_TCMALLOC) || FOLLY_SANITIZE
+  inline bool usingTCMalloc() noexcept {
+    return false;
+  }
+#elif defined(USE_TCMALLOC) && !FOLLY_SANITIZE
+  inline bool usingTCMalloc() noexcept {
+    return true;
+  }
+#else
+FOLLY_NOINLINE inline bool usingTCMalloc() noexcept {
+  static const bool result = []() noexcept {
+    // Some platforms (*cough* OSX *cough*) require weak symbol checks to be
+    // in the form if (mallctl != nullptr). Not if (mallctl) or if (!mallctl)
+    // (!!). http://goo.gl/xpmctm
+    if (MallocExtension_Internal_GetNumericProperty == nullptr ||
+        sdallocx == nullptr || nallocx == nullptr) {
+      return false;
+    }
+    static const char kAllocBytes[] = "generic.current_allocated_bytes";
+
+    size_t before_bytes = 0;
+    getTCMallocNumericProperty(kAllocBytes, &before_bytes);
+
+    static void* volatile ptr = malloc(1);
+    if (!ptr) {
+      // wtf, failing to allocate 1 byte
+      return false;
+    }
+
+    size_t after_bytes = 0;
+    getTCMallocNumericProperty(kAllocBytes, &after_bytes);
+    
+    free(ptr);
+
+    return (before_bytes != after_bytes);
+  }
+  ();
+
+  return result;
+}
+#endif
+
+FOLLY_NOINLINE inline bool canSdallocx() noexcept {
+  static bool rv = usingJEMalloc() || usingTCMalloc();
+  return rv;
+}
+
+FOLLY_NOINLINE inline bool canNallocx() noexcept {
+  static bool rv = usingJEMalloc() || usingTCMalloc();
+  return rv;
+}
+
 inline size_t goodMallocSize(size_t minSize) noexcept {
   if (minSize == 0) {
     return 0;
   }
 
-  if (!usingJEMalloc()) {
-    // Not using jemalloc - no smarts
+  if (!canNallocx()) {
+    // No nallocx - no smarts
     return minSize;
   }
 
@@ -183,7 +239,7 @@ inline void* checkedRealloc(void* ptr, size_t size) {
 }
 
 inline void sizedFree(void* ptr, size_t size) {
-  if (usingJEMalloc()) {
+  if (canSdallocx()) {
     sdallocx(ptr, size, 0);
   } else {
     free(ptr);
