@@ -489,7 +489,14 @@ class SignedValueHandler<T, true> {
   Expected<T, ConversionCode> finalize(U value) {
     T rv;
     if (negative_) {
+      FOLLY_PUSH_WARNING
+      FOLLY_MSVC_DISABLE_WARNING(4146)
+
+      // unary minus operator applied to unsigned type, result still unsigned
       rv = T(-value);
+
+      FOLLY_POP_WARNING
+
       if (UNLIKELY(rv > 0)) {
         return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
       }
