@@ -16,7 +16,6 @@
 
 #include <folly/futures/Future.h>
 #include <folly/Likely.h>
-#include <folly/SingletonThreadLocal.h>
 #include <folly/futures/ThreadWheelTimekeeper.h>
 
 namespace folly {
