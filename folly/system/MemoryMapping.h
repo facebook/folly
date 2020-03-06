@@ -285,4 +285,12 @@ void alignedForwardMemcpy(void* dst, const void* src, size_t size);
  */
 void mmapFileCopy(const char* src, const char* dest, mode_t mode = 0666);
 
+/**
+ * mlock2 is Linux-only and exists since Linux 4.4
+ * On Linux pre-4.4 and other platforms fail with ENOSYS.
+ * glibc added the mlock2 wrapper in 2.27
+ * https://lists.gnu.org/archive/html/info-gnu/2018-02/msg00000.html
+ */
+int mlock2wrapper(const void* addr, size_t len, MemoryMapping::LockFlags flags);
+
 } // namespace folly
