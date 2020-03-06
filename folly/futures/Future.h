@@ -2366,6 +2366,17 @@ auto collectAllSemiFuture(Collection&& c)
 template <class InputIterator>
 Future<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAllUnsafe(InputIterator first, InputIterator last);
+
+template <class Collection>
+auto collectAllUnsafe(Collection&& c)
+    -> decltype(collectAllUnsafe(c.begin(), c.end())) {
+  return collectAllUnsafe(c.begin(), c.end());
+}
+
+template <class InputIterator>
+Future<std::vector<
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAll(InputIterator first, InputIterator last);
 
 template <class Collection>
@@ -2382,11 +2393,28 @@ SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs);
 
 template <typename... Fs>
+Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
+collectAllUnsafe(Fs&&... fs);
+
+template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
     Fs&&... fs);
+
 /// Like collectAll, but will short circuit on the first exception. Thus, the
 /// type of the returned Future is std::vector<T> instead of
 /// std::vector<Try<T>>
+template <class InputIterator>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectUnsafe(InputIterator first, InputIterator last);
+
+/// Sugar for the most common case
+template <class Collection>
+auto collectUnsafe(Collection&& c)
+    -> decltype(collectUnsafe(c.begin(), c.end())) {
+  return collectUnsafe(c.begin(), c.end());
+}
+
 template <class InputIterator>
 Future<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
@@ -2417,6 +2445,11 @@ Future<std::pair<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
 template <class InputIterator>
+Future<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAnyUnsafe(InputIterator first, InputIterator last);
+template <class InputIterator>
 SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
@@ -2426,6 +2459,11 @@ collectAnySemiFuture(InputIterator first, InputIterator last);
 template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
+}
+template <class Collection>
+auto collectAnyUnsafe(Collection&& c)
+    -> decltype(collectAnyUnsafe(c.begin(), c.end())) {
+  return collectAnyUnsafe(c.begin(), c.end());
 }
 template <class Collection>
 auto collectAnySemiFuture(Collection&& c)

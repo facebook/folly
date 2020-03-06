@@ -1416,6 +1416,12 @@ Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
   return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
+template <typename... Fs>
+Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
+collectAllUnsafe(Fs&&... fs) {
+  return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+}
+
 // collectAll (iterator)
 
 template <class InputIterator>
@@ -1463,6 +1469,13 @@ collectAllSemiFuture(InputIterator first, InputIterator last) {
     deferredExecutor->setNestedExecutors(std::move(executors));
   }
   return future;
+}
+
+template <class InputIterator>
+Future<std::vector<
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAllUnsafe(InputIterator first, InputIterator last) {
+  return collectAllSemiFuture(first, last).toUnsafeFuture();
 }
 
 template <class InputIterator>
@@ -1534,6 +1547,13 @@ collectSemiFuture(InputIterator first, InputIterator last) {
 template <class InputIterator>
 Future<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectUnsafe(InputIterator first, InputIterator last) {
+  return collectSemiFuture(first, last).toUnsafeFuture();
+}
+
+template <class InputIterator>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collect(InputIterator first, InputIterator last) {
   return collectSemiFuture(first, last).toUnsafeFuture();
 }
@@ -1592,6 +1612,12 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
   return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
+template <typename... Fs>
+Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
+    Fs&&... fs) {
+  return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+}
+
 template <class Collection>
 auto collectSemiFuture(Collection&& c)
     -> decltype(collectSemiFuture(c.begin(), c.end())) {
@@ -1606,6 +1632,14 @@ Future<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last) {
+  return collectAnySemiFuture(first, last).via(&InlineExecutor::instance());
+}
+
+template <class InputIterator>
+Future<std::pair<
+    size_t,
+    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+collectAnyUnsafe(InputIterator first, InputIterator last) {
   return collectAnySemiFuture(first, last).via(&InlineExecutor::instance());
 }
 
