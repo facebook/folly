@@ -138,7 +138,7 @@ struct group_varint_table_sse_mask_make_item
   }
 };
 
-#if FOLLY_SSE >= 3
+#if FOLLY_SSE >= 4
 alignas(16) FOLLY_STORAGE_CONSTEXPR
     decltype(groupVarintSSEMasks) groupVarintSSEMasks =
         make_array_with<256>(group_varint_table_sse_mask_make_item{});
