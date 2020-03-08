@@ -448,6 +448,7 @@ option(BUILD_SLOW_TESTS "If enabled, compile tests that take a while to run in d
 if (BUILD_TESTS)
   option(USE_CMAKE_GOOGLE_TEST_INTEGRATION "If enabled, use the google test integration included in CMake." ON)
   find_package(GMock MODULE REQUIRED)
+  find_package(GTest MODULE REQUIRED)
   if (USE_CMAKE_GOOGLE_TEST_INTEGRATION)
     include(GoogleTest OPTIONAL RESULT_VARIABLE HAVE_CMAKE_GTEST)
     enable_testing()
@@ -512,6 +513,7 @@ if (BUILD_TESTS)
     SYSTEM
     PUBLIC
       ${LIBGMOCK_INCLUDE_DIR}
+      ${GTEST_INCLUDE_DIRS}
   )
   target_link_libraries(folly_test_support
     PUBLIC
