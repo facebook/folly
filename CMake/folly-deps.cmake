@@ -206,6 +206,14 @@ if (FOLLY_LIBRARY_SANITIZE_ADDRESS)
 endif()
 
 add_library(folly_deps INTERFACE)
+
+find_package(fmt CONFIG)
+if (NOT DEFINED fmt_CONFIG)
+    # Fallback on a normal search on the current system
+    find_package(fmt MODULE REQUIRED)
+endif()
+target_link_libraries(folly_deps INTERFACE fmt::fmt)
+
 list(REMOVE_DUPLICATES FOLLY_INCLUDE_DIRECTORIES)
 target_include_directories(folly_deps INTERFACE ${FOLLY_INCLUDE_DIRECTORIES})
 target_link_libraries(folly_deps INTERFACE
@@ -214,5 +222,3 @@ target_link_libraries(folly_deps INTERFACE
   ${FOLLY_ASAN_FLAGS}
 )
 
-find_package(fmt CONFIG REQUIRED)
-target_link_libraries(folly_deps INTERFACE fmt::fmt)
