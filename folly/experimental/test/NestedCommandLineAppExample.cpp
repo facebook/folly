@@ -57,11 +57,11 @@ class Concatenator {
 
 // clang-format off
 [[noreturn]] void throwOutputError() {
-  throw OutputError(folly::errnoStr(errno).toStdString());
+  throw OutputError(folly::errnoStr(errno));
 }
 
 [[noreturn]] void throwInputError() {
-  throw InputError(folly::errnoStr(errno).toStdString());
+  throw InputError(folly::errnoStr(errno));
 }
 // clang-format on
 
@@ -146,13 +146,13 @@ void runEcho(
     const char* sep = "";
     for (auto& arg : args) {
       if (printf("%s%s", sep, arg.c_str()) < 0) {
-        throw OutputError(folly::errnoStr(errno).toStdString());
+        throw OutputError(folly::errnoStr(errno));
       }
       sep = " ";
     }
     if (!options["-n"].as<bool>()) {
       if (putchar('\n') == EOF) {
-        throw OutputError(folly::errnoStr(errno).toStdString());
+        throw OutputError(folly::errnoStr(errno));
       }
     }
   } catch (const OutputError& e) {

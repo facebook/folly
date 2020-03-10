@@ -380,11 +380,11 @@ void hexDump(const void* ptr, size_t size, OutIt out);
 std::string hexDump(const void* ptr, size_t size);
 
 /**
- * Return a fbstring containing the description of the given errno value.
+ * Return a string containing the description of the given errno value.
  * Takes care not to overwrite the actual system errno, so calling
  * errnoStr(errno) is valid.
  */
-fbstring errnoStr(int err);
+std::string errnoStr(int err);
 
 /*
  * Split a string into a list of tokens by delimiter.
