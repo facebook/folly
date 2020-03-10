@@ -68,6 +68,7 @@ namespace folly {
 
 #if __cpp_lib_bit_cast
 
+#include <bit>
 using std::bit_cast;
 
 #else
