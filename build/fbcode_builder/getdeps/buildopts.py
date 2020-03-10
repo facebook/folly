@@ -376,9 +376,13 @@ def setup_build_options(args, host_type=None):
                 munged = fbcode_builder_dir.replace("Z", "zZ")
                 for s in ["/", "\\", ":"]:
                     munged = munged.replace(s, "Z")
-                scratch_dir = os.path.join(
-                    tempfile.gettempdir(), "fbcode_builder_getdeps-%s" % munged
-                )
+
+                if is_windows() and os.path.isdir("c:/open"):
+                    temp = "c:/open/scratch"
+                else:
+                    temp = tempfile.gettempdir()
+
+                scratch_dir = os.path.join(temp, "fbcode_builder_getdeps-%s" % munged)
 
         if not os.path.exists(scratch_dir):
             os.makedirs(scratch_dir)
