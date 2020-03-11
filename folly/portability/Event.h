@@ -31,9 +31,5 @@
 #include <folly/net/detail/SocketFileDescriptorMap.h>
 
 namespace folly {
-#ifdef _MSC_VER
-using libevent_fd_t = evutil_socket_t;
-#else
-using libevent_fd_t = int;
-#endif
+using libevent_fd_t = decltype(event::ev_fd);
 } // namespace folly
