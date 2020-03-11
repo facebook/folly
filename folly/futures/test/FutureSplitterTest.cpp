@@ -179,13 +179,13 @@ TEST(FutureSplitter, splitFutureFailure) {
 
 TEST(FutureSplitter, keepInterruptHandlers)
 {
-  auto[p, f] = folly::makePromiseContract<folly::Unit>(&InlineExecutor::instance());
+  auto[p, f] = folly::makePromiseContract<folly::Unit>(&folly::InlineExecutor::instance());
   std::atomic<bool> flag = false;
   p.setInterruptHandler([&](const folly::exception_wrapper &) {
       flag = true;
   });
 
-  auto f2 = folly::FutureSplitter(std::move(f));
+  auto f2 = folly::splitFuture(std::move(f));
   f2.getFuture().cancel();
   ASSERT_TRUE(flag);
 }
