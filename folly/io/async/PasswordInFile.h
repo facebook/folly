@@ -33,7 +33,7 @@ class PasswordInFile : public PasswordCollector {
     return password_.c_str();
   }
 
-  std::string describe() const override {
+  const std::string& describe() const override {
     return fileName_;
   }
 

@@ -58,7 +58,7 @@ class PasswordCollector {
   /**
    * Return a description of this collector for logging purposes
    */
-  virtual std::string describe() const = 0;
+  virtual const std::string& describe() const = 0;
 };
 
 /**
