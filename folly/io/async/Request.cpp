@@ -75,14 +75,40 @@ Synchronized<F14FastMap<std::string, uint32_t>>& RequestToken::getCache() {
 }
 
 void RequestData::acquireRef() {
-  auto rc = keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
+  auto rc = keepAliveCounter_.fetch_add(
+      kClearCount + kDeleteCount, std::memory_order_relaxed);
   DCHECK_GE(rc, 0);
 }
 
-void RequestData::releaseRefDeleteIfNoRefs() {
-  auto rc = keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
+void RequestData::releaseRefClearOnly() {
+  auto rc =
+      keepAliveCounter_.fetch_sub(kClearCount, std::memory_order_acq_rel) -
+      kClearCount;
   DCHECK_GT(rc, 0);
-  if (rc == 1) {
+  if (rc < kClearCount) {
+    this->onClear();
+  }
+}
+
+void RequestData::releaseRefDeleteOnly() {
+  auto rc =
+      keepAliveCounter_.fetch_sub(kDeleteCount, std::memory_order_acq_rel) -
+      kDeleteCount;
+  DCHECK_GE(rc, 0);
+  if (rc == 0) {
+    delete this;
+  }
+}
+
+void RequestData::releaseRefClearDelete() {
+  auto rc = keepAliveCounter_.fetch_sub(
+                kClearCount + kDeleteCount, std::memory_order_acq_rel) -
+      (kClearCount + kDeleteCount);
+  DCHECK_GE(rc, 0);
+  if (rc < kClearCount) {
+    this->onClear();
+  }
+  if (rc == 0) {
     delete this;
   }
 }
@@ -94,6 +120,7 @@ void RequestData::DestructPtr::operator()(RequestData* ptr) {
     // Note: this is the value before decrement, hence == 1 check
     DCHECK(keepAliveCounter > 0);
     if (keepAliveCounter == 1) {
+      ptr->onClear();
       delete ptr;
     }
   }
@@ -121,6 +148,12 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
   SingleWriterFixedHashMap<RequestToken, RequestData*> requestData_;
   // This must be optimized for iteration, its hot path is setContext
   SingleWriterFixedHashMap<RequestData*, bool> callbackData_;
+  // Hash map to keep track of Clear and Delete counts. The presence
+  // of a key indicates holding a Delete count for the request data
+  // (i.e., delete when the Delete count goes to zero). A value of
+  // true indicates holding a Clear counts for the request data (i.e.,
+  // call onClear() when the Clear count goes to zero).
+  F14FastMap<RequestData*, bool> refs_;
 
   Combined()
       : requestData_(kInitialCapacity), callbackData_(kInitialCapacity) {}
@@ -145,6 +178,7 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
     for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
       auto p = it.value();
       if (p) {
+        refs_.insert({p, true});
         p->acquireRef();
       }
     }
@@ -152,10 +186,11 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
 
   /* releaseDataRefs - Called only once from ~Combined */
   void releaseDataRefs() {
-    for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
-      auto p = it.value();
-      if (p) {
-        p->releaseRefDeleteIfNoRefs();
+    for (auto pair : refs_) {
+      if (pair.second) {
+        pair.first->releaseRefClearDelete();
+      } else {
+        pair.first->releaseRefDeleteOnly();
       }
     }
   }
@@ -315,7 +350,8 @@ RequestContext::StateHazptr::eraseOldData(
     // If the caller guarantees thread-safety, then erase the
     // entry in the current version.
     cur->requestData_.erase(token);
-    olddata->releaseRefDeleteIfNoRefs();
+    cur->refs_.erase(olddata);
+    olddata->releaseRefClearDelete();
   } else {
     // If there may be concurrent readers, then copy-on-erase.
     // Update the data reference counts to account for the
@@ -347,6 +383,7 @@ RequestContext::StateHazptr::insertNewData(
     data->onSet();
   }
   if (data) {
+    cur->refs_.insert({data.get(), true});
     data->acquireRef();
   }
   cur->requestData_.insert(token, data.release());
@@ -416,6 +453,7 @@ void RequestContext::StateHazptr::onUnset() {
 }
 
 void RequestContext::StateHazptr::clearContextData(const RequestToken& token) {
+  RequestData* data;
   Combined* replaced = nullptr;
   { // Lock mutex_
     std::lock_guard<std::mutex> g(mutex_);
@@ -427,7 +465,7 @@ void RequestContext::StateHazptr::clearContextData(const RequestToken& token) {
     if (it == cur->requestData_.end()) {
       return;
     }
-    RequestData* data = it.value();
+    data = it.value();
     if (!data) {
       cur->requestData_.erase(token);
       return;
@@ -442,6 +480,9 @@ void RequestContext::StateHazptr::clearContextData(const RequestToken& token) {
     cur->acquireDataRefs();
     setCombined(cur);
   } // Unlock mutex_
+  DCHECK(data);
+  data->releaseRefClearOnly();
+  replaced->refs_[data] = false; // Clear reference already released
   DCHECK(replaced);
   replaced->retire();
 }

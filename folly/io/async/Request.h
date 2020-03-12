@@ -93,6 +93,8 @@ class RequestData {
   // could fix these deadlocks, but only at significant performance penalty, so
   // just don't do it!
 
+  // hasCallback() applies only to onSet() and onUnset().
+  // onClear() is always executed exactly once.
   virtual bool hasCallback() = 0;
   // Callback executed when setting RequestContext. Make sure your RequestData
   // instance overrides the hasCallback method to return true otherwise
@@ -102,6 +104,13 @@ class RequestData {
   // instance overrides the hasCallback method to return true otherwise
   // the callback will not be executed
   virtual void onUnset() {}
+  // Callback executed exactly once upon the release of the last
+  // reference to the request data (as a result of either a call to
+  // clearContextData or the destruction of a request context that
+  // contains a reference to the data). It can be overridden in
+  // derived classes. There may be concurrent executions of onSet()
+  // and onUnset() with that of onClear().
+  virtual void onClear() {}
   // For debugging
   int refCount() {
     return keepAliveCounter_.load(std::memory_order_acquire);
@@ -116,11 +125,18 @@ class RequestData {
 
   friend class RequestContext;
 
+  static constexpr int kDeleteCount = 0x1;
+  static constexpr int kClearCount = 0x1000;
+
   // Reference-counting functions used by the hazptr-based implementation.
   // Increment the reference count
   void acquireRef();
-  // Decrement the reference count and delete if zero
-  void releaseRefDeleteIfNoRefs();
+  // Decrement the reference count. Clear only if last.
+  void releaseRefClearOnly();
+  // Decrement the reference count. Delete only if last.
+  void releaseRefDeleteOnly();
+  // Decrement the reference count. Clear and delete if last.
+  void releaseRefClearDelete();
 
   // Unique ptr with custom destructor, decrement the counter
   // and only free if 0
@@ -379,11 +395,19 @@ class RequestContext {
     StateHazptr& operator=(StateHazptr&&) = delete;
     ~StateHazptr();
 
+   private:
+    friend class RequestContext;
+
+    struct SetContextDataResult {
+      bool changed; // Changes were made
+      bool unexpected; // Update was unexpected
+      Combined* replaced; // The combined structure was replaced
+    };
+
     Combined* combined() const;
     Combined* ensureCombined(); // Lazy allocation if needed
     void setCombined(Combined* p);
     Combined* expand(Combined* combined);
-
     bool doSetContextData(
         const RequestToken& token,
         std::unique_ptr<RequestData>& data,
@@ -395,14 +419,6 @@ class RequestContext {
     void onSet();
     void onUnset();
     void clearContextData(const RequestToken& token);
-
-   private:
-    struct SetContextDataResult {
-      bool changed; // Changes were made
-      bool unexpected; // Update was unexpected
-      Combined* replaced; // The combined structure was replaced
-    };
-
     SetContextDataResult doSetContextDataHelper(
         const RequestToken& token,
         std::unique_ptr<RequestData>& data,

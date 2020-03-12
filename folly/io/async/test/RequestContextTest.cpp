@@ -233,7 +233,7 @@ TEST_F(RequestContextTest, deadlockTest) {
   };
 
   RequestContext::get()->setContextData(
-      "test", std::make_unique<DeadlockTestData>("test2"));
+      "test", std::make_unique<DeadlockTestData>("test1"));
   RequestContext::get()->clearContextData(testtoken);
 }
 
@@ -398,4 +398,51 @@ TEST_F(RequestContextTest, ThreadId) {
 
   EXPECT_EQ(*folly::getThreadName(rootids[0].tid), "DummyThread");
   EXPECT_FALSE(folly::getThreadName(rootids[1].tid));
+}
+
+TEST_F(RequestContextTest, Clear) {
+  struct Foo : public RequestData {
+    bool& cleared;
+    bool& deleted;
+    Foo(bool& c, bool& d) : cleared(c), deleted(d) {}
+    ~Foo() override {
+      EXPECT_TRUE(cleared);
+      deleted = true;
+    }
+    bool hasCallback() override {
+      return false;
+    }
+    void onClear() override {
+      EXPECT_FALSE(cleared);
+      cleared = true;
+    }
+  };
+
+  std::string key = "clear";
+  {
+    bool cleared = false;
+    bool deleted = false;
+    {
+      RequestContextScopeGuard g;
+      RequestContext::get()->setContextData(
+          key, std::make_unique<Foo>(cleared, deleted));
+      EXPECT_FALSE(cleared);
+      RequestContext::get()->clearContextData(key);
+      EXPECT_TRUE(cleared);
+    }
+    EXPECT_TRUE(deleted);
+  }
+  {
+    bool cleared = false;
+    bool deleted = false;
+    {
+      RequestContextScopeGuard g;
+      RequestContext::get()->setContextData(
+          key, std::make_unique<Foo>(cleared, deleted));
+      EXPECT_FALSE(cleared);
+      EXPECT_FALSE(deleted);
+    }
+    EXPECT_TRUE(cleared);
+    EXPECT_TRUE(deleted);
+  }
 }
