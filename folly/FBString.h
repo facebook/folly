@@ -2806,6 +2806,23 @@ typedef basic_fbstring<char> fbstring;
 template <class T, class R, class A, class S>
 FOLLY_ASSUME_RELOCATABLE(basic_fbstring<T, R, A, S>);
 
+// Compatibility function, to make sure toStdString(s) can be called
+// to convert a std::string or fbstring variable s into type std::string
+// with very little overhead if s was already std::string
+inline std::string toStdString(const folly::fbstring& s) {
+  return std::string(s.data(), s.size());
+}
+
+inline const std::string& toStdString(const std::string& s) {
+  return s;
+}
+
+// If called with a temporary, the compiler will select this overload instead
+// of the above, so we don't return a (lvalue) reference to a temporary.
+inline std::string&& toStdString(std::string&& s) {
+  return std::move(s);
+}
+
 } // namespace folly
 
 // Hash functions to make fbstring usable with e.g. unordered_map
