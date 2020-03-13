@@ -682,8 +682,48 @@ void AsyncUDPSocket::handleRead() noexcept {
   auto rawAddr = reinterpret_cast<sockaddr*>(&addrStorage);
   rawAddr->sa_family = localAddress_.getFamily();
 
-  ssize_t bytesRead =
-      netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  ssize_t bytesRead;
+  ReadCallback::OnDataAvailableParams params;
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (gro_.has_value() && (gro_ != 0)) {
+    char control[CMSG_SPACE(sizeof(uint16_t))] = {};
+    struct msghdr msg = {};
+    struct iovec iov = {};
+    struct cmsghdr* cmsg;
+    uint16_t* grosizeptr;
+
+    iov.iov_base = buf;
+    iov.iov_len = len;
+
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    msg.msg_name = rawAddr;
+    msg.msg_namelen = addrLen;
+
+    msg.msg_control = control;
+    msg.msg_controllen = sizeof(control);
+
+    bytesRead = netops::recvmsg(fd_, &msg, MSG_TRUNC);
+
+    if (bytesRead >= 0) {
+      addrLen = msg.msg_namelen;
+      for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
+           cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+        if (cmsg->cmsg_level == SOL_UDP && cmsg->cmsg_type == UDP_GRO) {
+          grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
+          params.gro_ = *grosizeptr;
+          break;
+        }
+      }
+    }
+  } else {
+    bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+  }
+#else
+  bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);
+#endif
   if (bytesRead >= 0) {
     clientAddress_.setFromSockaddr(rawAddr, addrLen);
 
@@ -695,7 +735,7 @@ void AsyncUDPSocket::handleRead() noexcept {
       }
 
       readCallback_->onDataAvailable(
-          clientAddress_, size_t(bytesRead), truncated);
+          clientAddress_, size_t(bytesRead), truncated, params);
     }
   } else {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
@@ -757,6 +797,39 @@ int AsyncUDPSocket::getGSO() {
   }
 
   return gso_.value();
+}
+
+bool AsyncUDPSocket::setGRO(bool bVal) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  int val = bVal ? 1 : 0;
+  int ret = netops::setsockopt(fd_, SOL_UDP, UDP_GRO, &val, sizeof(val));
+
+  gro_ = ret ? -1 : val;
+
+  return !ret;
+#else
+  (void)bVal;
+  return false;
+#endif
+}
+
+int AsyncUDPSocket::getGRO() {
+  // check if we can return the cached value
+  if (FOLLY_UNLIKELY(!gro_.has_value())) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+    int gro = -1;
+    socklen_t optlen = sizeof(gro);
+    if (!netops::getsockopt(fd_, SOL_UDP, UDP_GRO, &gro, &optlen)) {
+      gro_ = gro;
+    } else {
+      gro_ = -1;
+    }
+#else
+    gro_ = -1;
+#endif
+  }
+
+  return gro_.value();
 }
 
 void AsyncUDPSocket::setTrafficClass(int tclass) {

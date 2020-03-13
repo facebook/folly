@@ -164,9 +164,23 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       std::shared_ptr<folly::AsyncUDPSocket> socket,
       const folly::SocketAddress& client,
       std::unique_ptr<folly::IOBuf> data,
-      bool /*unused*/) noexcept override {
-    // send pong
-    socket->write(client, data->clone());
+      bool /*unused*/,
+      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
+          params) noexcept override {
+    // send pong(s)
+    if (params.gro_ == -1) {
+      socket->write(client, data->clone());
+    } else {
+      int total = data->length();
+      size_t offset = 0;
+      while (total > 0) {
+        auto size = (total > params.gro_) ? params.gro_ : total;
+        auto sendData = IOBuf::copyBuffer(data->data() + offset, size);
+        offset += size;
+        total -= size;
+        socket->write(client, sendData);
+      }
+    }
   }
 
  private:
@@ -181,7 +195,7 @@ class UDPServer {
   void start() {
     CHECK(evb_->isInEventBaseThread());
 
-    socket_ = std::make_unique<AsyncUDPServerSocket>(evb_, 1500);
+    socket_ = std::make_unique<AsyncUDPServerSocket>(evb_, 64 * 1024);
 
     try {
       socket_->bind(addr_);
@@ -189,6 +203,9 @@ class UDPServer {
     } catch (const std::exception& ex) {
       LOG(FATAL) << ex.what();
     }
+
+    auto s = socket_->getSocket();
+    s->setGRO(true);
 
     acceptors_.reserve(evbs_.size());
     threads_.reserve(evbs_.size());
@@ -331,7 +348,11 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   void onDataAvailable(
       const folly::SocketAddress& /*unused*/,
       size_t len,
-      bool /*unused*/) noexcept override {
+      bool /*unused*/,
+      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
+          params) noexcept override {
+    // no GRO on the client side
+    CHECK_EQ(params.gro_, -1);
     VLOG(0) << "Got " << len << " bytes";
     if (testData_.appendOut(len)) {
       shutdown();
@@ -595,30 +616,6 @@ TEST(AsyncSocketGSOTest, send) {
 
   folly::AsyncUDPSocket server(&evb);
   server.bind(folly::SocketAddress("127.0.0.1", 0));
-
-  // send less than GSO in a single IOBuf
-  {
-    GSOSendTest test(client, server.address(), kGSO, kGSO - 1);
-    CHECK_LT(test.get(), 0);
-  }
-
-  // send less than GSO in multiple IOBufs
-  {
-    GSOSendTest test(client, server.address(), kGSO, kGSO1 - 1, kGSO2);
-    CHECK_LT(test.get(), 0);
-  }
-
-  // send  GSO in a single IOBuf
-  {
-    GSOSendTest test(client, server.address(), kGSO, kGSO);
-    CHECK_LT(test.get(), 0);
-  }
-
-  // send GSO in multiple IOBuf
-  {
-    GSOSendTest test(client, server.address(), kGSO, kGSO1, kGSO2);
-    CHECK_LT(test.get(), 0);
-  }
 
   // send more than GSO in a single IOBuf
   {

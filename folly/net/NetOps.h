@@ -69,6 +69,10 @@
 #define UDP_SEGMENT 103
 #endif
 
+#ifndef UDP_GRO
+#define UDP_GRO 104
+#endif
+
 #ifndef UDP_MAX_SEGMENTS
 #define UDP_MAX_SEGMENTS (1 << 6UL)
 #endif

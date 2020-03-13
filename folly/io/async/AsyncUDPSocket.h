@@ -40,6 +40,9 @@ class AsyncUDPSocket : public EventHandler {
 
   class ReadCallback {
    public:
+    struct OnDataAvailableParams {
+      int gro_ = -1;
+    };
     /**
      * Invoked when the socket becomes readable and we want buffer
      * to write to.
@@ -51,14 +54,16 @@ class AsyncUDPSocket : public EventHandler {
     virtual void getReadBuffer(void** buf, size_t* len) noexcept = 0;
 
     /**
-     * Invoked when a new datagraom is available on the socket. `len`
+     * Invoked when a new datagram is available on the socket. `len`
      * is the number of bytes read and `truncated` is true if we had
      * to drop few bytes because of running out of buffer space.
+     *  OnDataAvailableParams::gro is the GRO segment size
      */
     virtual void onDataAvailable(
         const folly::SocketAddress& client,
         size_t len,
-        bool truncated) noexcept = 0;
+        bool truncated,
+        OnDataAvailableParams params) noexcept = 0;
 
     /**
      * Notifies when data is available. This is only invoked when
@@ -347,6 +352,12 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGSO(int val);
 
+  // generic receive offload get/set
+  // negative return value means GRO is not available
+  int getGRO();
+
+  bool setGRO(bool bVal);
+
   void setTrafficClass(int tclass);
 
   void applyOptions(
@@ -425,6 +436,10 @@ class AsyncUDPSocket : public EventHandler {
   // generic segmentation offload value, if available
   // See https://lwn.net/Articles/188489/ for more details
   folly::Optional<int> gso_;
+
+  // generic receive offload value, if available
+  // See https://lwn.net/Articles/770978/ for more details
+  folly::Optional<int> gro_;
 
   ErrMessageCallback* errMessageCallback_{nullptr};
 };

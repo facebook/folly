@@ -50,7 +50,9 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       std::shared_ptr<folly::AsyncUDPSocket> socket,
       const folly::SocketAddress& client,
       std::unique_ptr<folly::IOBuf> data,
-      bool truncated) noexcept override {
+      bool truncated,
+      folly::AsyncUDPSocket::ReadCallback::
+          OnDataAvailableParams) noexcept override {
     lastClient_ = client;
     lastMsg_ = data->clone()->moveToFbString().toStdString();
 
@@ -254,7 +256,9 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   void onDataAvailable(
       const folly::SocketAddress& client,
       size_t len,
-      bool truncated) noexcept override {
+      bool truncated,
+      folly::AsyncUDPSocket::ReadCallback::
+          OnDataAvailableParams) noexcept override {
     VLOG(4) << "Read " << len << " bytes (trun:" << truncated << ") from "
             << client.describe() << " - " << std::string(buf_, len);
     VLOG(4) << n_ << " left";
@@ -362,7 +366,11 @@ class UDPNotifyClient : public UDPClient {
     SocketAddress addr;
     addr.setFromSockaddr(rawAddr, addrLen);
 
-    onDataAvailable(addr, size_t(read), false);
+    onDataAvailable(
+        addr,
+        size_t(read),
+        false,
+        folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams());
   }
 
   void onRecvMmsg(AsyncUDPSocket& sock) {
@@ -659,14 +667,20 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
     onNotifyDataAvailable_(sock);
   }
 
-  MOCK_METHOD3(
+  MOCK_METHOD4(
       onDataAvailable_,
-      void(const folly::SocketAddress&, size_t, bool));
+      void(
+          const folly::SocketAddress&,
+          size_t,
+          bool,
+          folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams));
   void onDataAvailable(
       const folly::SocketAddress& client,
       size_t len,
-      bool truncated) noexcept override {
-    onDataAvailable_(client, len, truncated);
+      bool truncated,
+      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
+          params) noexcept override {
+    onDataAvailable_(client, len, truncated, params);
   }
 
   MOCK_METHOD1(onReadError_, void(const folly::AsyncSocketException&));
@@ -821,9 +835,14 @@ TEST_F(AsyncUDPSocketTest, TestDetachAttach) {
         *buf = data.data();
         *len = 1024;
       }));
-  EXPECT_CALL(readCb, onDataAvailable_(_, _, _))
+  EXPECT_CALL(readCb, onDataAvailable_(_, _, _, _))
       .WillRepeatedly(Invoke(
-          [&](const folly::SocketAddress&, size_t, bool) { packetsRecvd++; }));
+          [&](const folly::SocketAddress&,
+              size_t,
+              bool,
+              folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams) {
+            packetsRecvd++;
+          }));
   socket_->resumeRead(&readCb);
   writeSocket->write(socket_->address(), folly::IOBuf::copyBuffer("hello"));
   while (packetsRecvd != 1) {

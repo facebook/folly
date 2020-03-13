@@ -71,7 +71,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
         std::shared_ptr<AsyncUDPSocket> socket,
         const folly::SocketAddress& addr,
         std::unique_ptr<folly::IOBuf> buf,
-        bool truncated) noexcept = 0;
+        bool truncated,
+        AsyncUDPSocket::ReadCallback::OnDataAvailableParams) noexcept = 0;
 
     virtual ~Callback() = default;
   };
@@ -214,7 +215,9 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   void onDataAvailable(
       const folly::SocketAddress& clientAddress,
       size_t len,
-      bool truncated) noexcept override {
+      bool truncated,
+      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
+          params) noexcept override {
     buf_.postallocate(len);
     auto data = buf_.split(len);
 
@@ -254,8 +257,10 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
               client = clientAddress,
               callback,
               data = std::move(data),
-              truncated]() mutable {
-      callback->onDataAvailable(socket, client, std::move(data), truncated);
+              truncated,
+              params]() mutable {
+      callback->onDataAvailable(
+          socket, client, std::move(data), truncated, params);
     };
 
     listeners_[listenerId].first->runInEventBaseThread(std::move(f));
