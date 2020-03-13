@@ -64,6 +64,10 @@
 #include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
 
+#if __has_include(<bit>)
+#include <bit>
+#endif
+
 namespace folly {
 
 #if __cpp_lib_bit_cast
