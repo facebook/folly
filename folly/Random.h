@@ -317,8 +317,8 @@ class Random {
    */
   template <class RNG = ThreadLocalPRNG, class /* EnableIf */ = ValidRNG<RNG>>
   static bool oneIn(uint32_t n, RNG&& rng) {
-    if (n == 0) {
-      return false;
+    if (n < 2) {
+      return n;
     }
     return rand32(0, n, rng) == 0;
   }

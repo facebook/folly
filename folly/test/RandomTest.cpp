@@ -138,6 +138,27 @@ TEST(Random, sanity) {
   }
 }
 
+TEST(Random, oneIn) {
+  for (auto i = 0; i < 10; ++i) {
+    EXPECT_FALSE(folly::Random::oneIn(0));
+    EXPECT_TRUE(folly::Random::oneIn(1));
+  }
+
+  // When using higher sampling rates, we'll just ensure that we see both
+  // outcomes. We won't worry about statistical validity since we defer that to
+  // folly::Random.
+  auto constexpr kSeenTrue{1};
+  auto constexpr kSeenFalse{2};
+  auto constexpr kSeenBoth{kSeenTrue | kSeenFalse};
+
+  auto seenSoFar{0};
+  for (auto i = 0; i < 1000 && seenSoFar != kSeenBoth; ++i) {
+    seenSoFar |= (folly::Random::oneIn(10) ? kSeenTrue : kSeenFalse);
+  }
+
+  EXPECT_EQ(kSeenBoth, seenSoFar);
+}
+
 #ifndef _WIN32
 TEST(Random, SecureFork) {
   // Random buffer size is 128, must be less than that.
