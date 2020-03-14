@@ -93,11 +93,9 @@ class IteratorFacade {
    * this and the `operator==(D const&) const` method above.
    */
 
-  template <
-      class D2,
-      std::enable_if_t<!std::is_same<D, D2>::value, int> = 0,
-      std::enable_if_t<std::is_convertible<D, D2>::value, int> = 0>
-  bool operator==(D2 const& rhs) const {
+  template <class D2>
+  typename std::enable_if<std::is_convertible<D, D2>::value, bool>::type
+  operator==(D2 const& rhs) const {
     return D2(asDerivedConst()) == rhs;
   }
 
