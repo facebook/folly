@@ -2551,12 +2551,12 @@ Future<T> reduce(It first, It last, T&& initial, F&& func);
 
 /// Sugar for the most common case
 template <class Collection, class T, class F>
-auto reduce(Collection&& c, T&& initial, F&& func) -> decltype(reduce(
+auto reduce(Collection&& c, T&& initial, F&& func) -> decltype(folly::reduce(
     c.begin(),
     c.end(),
     std::forward<T>(initial),
     std::forward<F>(func))) {
-  return reduce(
+  return folly::reduce(
       c.begin(), c.end(), std::forward<T>(initial), std::forward<F>(func));
 }
 
@@ -2569,12 +2569,12 @@ Future<T> unorderedReduce(It first, It last, T initial, F func);
 /// Sugar for the most common case
 template <class Collection, class T, class F>
 auto unorderedReduce(Collection&& c, T&& initial, F&& func)
-    -> decltype(unorderedReduce(
+    -> decltype(folly::unorderedReduce(
         c.begin(),
         c.end(),
         std::forward<T>(initial),
         std::forward<F>(func))) {
-  return unorderedReduce(
+  return folly::unorderedReduce(
       c.begin(), c.end(), std::forward<T>(initial), std::forward<F>(func));
 }
 
