@@ -352,6 +352,14 @@ constexpr auto kIsBigEndian = !kIsLittleEndian;
 #endif
 #endif
 
+#ifndef FOLLY_SSSE
+#if defined(__SSSE3__)
+#define FOLLY_SSSE 3
+#else
+#define FOLLY_SSSE 0
+#endif
+#endif
+
 #define FOLLY_SSE_PREREQ(major, minor) \
   (FOLLY_SSE > major || FOLLY_SSE == major && FOLLY_SSE_MINOR >= minor)
 
