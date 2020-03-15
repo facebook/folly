@@ -24,6 +24,20 @@
 namespace folly {
 namespace coro {
 
+/**
+ * A type trait to unwrap a std::reference_wrapper<T> to a type T
+ */
+template <typename T>
+struct remove_reference_wrapper {
+  using type = T;
+};
+template <typename T>
+struct remove_reference_wrapper<std::reference_wrapper<T>> {
+  using type = T;
+};
+template <typename T>
+using remove_reference_wrapper_t = typename remove_reference_wrapper<T>::type;
+
 namespace detail {
 
 template <typename T>
