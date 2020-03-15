@@ -366,7 +366,7 @@ void dumpSignalInfo(int signum, siginfo_t* siginfo) {
   printDec(syscall(__NR_gettid));
 #elif defined(__FreeBSD__)
   long tid;
-  thr_self(&tid);
+  syscall(432, &tid);
   print(") (freebsd TID ");
   printDec(tid);
 #endif
