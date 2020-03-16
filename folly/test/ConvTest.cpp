@@ -215,9 +215,6 @@ void test128Bit2String() {
   svalue = (Uint(1) << 127) - 1;
   EXPECT_EQ(to<String>(svalue), "170141183460469231731687303715884105727");
 
-  // TODO: the following do not compile to<__int128> ...
-
-#if 0
   value = numeric_limits<Uint>::min();
   EXPECT_EQ(to<Uint>(to<String>(value)), value);
   value = numeric_limits<Uint>::max();
@@ -227,7 +224,6 @@ void test128Bit2String() {
   EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
   value = numeric_limits<Sint>::max();
   EXPECT_EQ(to<Sint>(to<String>(svalue)), svalue);
-#endif
 }
 
 #endif

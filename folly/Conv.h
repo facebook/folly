@@ -329,7 +329,12 @@ namespace detail {
 
 template <typename IntegerType>
 constexpr unsigned int digitsEnough() {
-  return (unsigned int)(ceil(sizeof(IntegerType) * CHAR_BIT * M_LN2 / M_LN10));
+  // digits10 returns the number of decimal digits that this type can represent,
+  // not the number of characters required for the max value, so we need to add
+  // one. ex: char digits10 returns 2, because 256-999 cannot be represented,
+  // but we need 3.
+  auto const digits10 = std::numeric_limits<IntegerType>::digits10;
+  return static_cast<unsigned int>(digits10) + 1;
 }
 
 inline size_t
