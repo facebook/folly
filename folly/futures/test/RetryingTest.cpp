@@ -59,9 +59,14 @@ TEST(RetryingTest, has_op_call) {
   using ew = exception_wrapper;
   auto policy_raw = [](size_t n, const ew&) { return n < 3; };
   auto policy_fut = [](size_t n, const ew&) { return makeFuture(n < 3); };
+  auto policy_semi_fut = [](size_t n, const ew&) {
+    return makeSemiFuture(n < 3);
+  };
   using namespace futures::detail;
   EXPECT_TRUE(retrying_policy_traits<decltype(policy_raw)>::is_raw::value);
   EXPECT_TRUE(retrying_policy_traits<decltype(policy_fut)>::is_fut::value);
+  EXPECT_TRUE(
+      retrying_policy_traits<decltype(policy_semi_fut)>::is_semi_fut::value);
 }
 
 TEST(RetryingTest, basic) {
@@ -118,6 +123,23 @@ TEST(RetryingTest, policy_future) {
                          : makeFuture(n);
           })
           .wait();
+  EXPECT_EQ(2, r.value());
+  EXPECT_EQ(2, sleeps);
+}
+
+TEST(RetryingTest, policy_semi_future) {
+  atomic<size_t> sleeps{0};
+  auto r = futures::retrying(
+               [&](size_t n, const exception_wrapper&) {
+                 return n < 3 ? makeSemiFuture(++sleeps).deferValue(
+                                    [](auto&&) { return true; })
+                              : makeSemiFuture(false);
+               },
+               [](size_t n) {
+                 return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
+                              : makeFuture(n);
+               })
+               .wait();
   EXPECT_EQ(2, r.value());
   EXPECT_EQ(2, sleeps);
 }
