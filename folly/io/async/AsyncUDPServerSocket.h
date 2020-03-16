@@ -40,6 +40,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
  public:
   class Callback {
    public:
+    using OnDataAvailableParams =
+        AsyncUDPSocket::ReadCallback::OnDataAvailableParams;
     /**
      * Invoked when we start reading data from socket. It is invoked in
      * each acceptors/listeners event base thread.
@@ -72,7 +74,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
         const folly::SocketAddress& addr,
         std::unique_ptr<folly::IOBuf> buf,
         bool truncated,
-        AsyncUDPSocket::ReadCallback::OnDataAvailableParams) noexcept = 0;
+        OnDataAvailableParams) noexcept = 0;
 
     virtual ~Callback() = default;
   };
@@ -216,8 +218,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
       const folly::SocketAddress& clientAddress,
       size_t len,
       bool truncated,
-      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
-          params) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     buf_.postallocate(len);
     auto data = buf_.split(len);
 

@@ -165,8 +165,7 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       const folly::SocketAddress& client,
       std::unique_ptr<folly::IOBuf> data,
       bool /*unused*/,
-      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
-          params) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     // send pong(s)
     if (params.gro_ == -1) {
       socket->write(client, data->clone());
@@ -349,8 +348,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
       const folly::SocketAddress& /*unused*/,
       size_t len,
       bool /*unused*/,
-      folly::AsyncUDPSocket::ReadCallback::OnDataAvailableParams
-          params) noexcept override {
+      OnDataAvailableParams params) noexcept override {
     // no GRO on the client side
     CHECK_EQ(params.gro_, -1);
     VLOG(0) << "Got " << len << " bytes";
