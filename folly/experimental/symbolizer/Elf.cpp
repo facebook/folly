@@ -211,7 +211,7 @@ ElfFile::OpenResult ElfFile::init() noexcept {
 
   auto& elfHeader = this->elfHeader();
 
-#define EXPECTED_CLASS P1(ELFCLASS, __ELF_NATIVE_CLASS)
+#define EXPECTED_CLASS P1(ELFCLASS, FOLLY_ELF_NATIVE_CLASS)
 #define P1(a, b) P2(a, b)
 #define P2(a, b) a##b
   // Validate ELF class (32/64 bits)

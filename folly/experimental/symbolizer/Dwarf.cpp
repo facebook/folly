@@ -380,7 +380,7 @@ bool Dwarf::Section::next(folly::StringPiece& chunk) {
 }
 
 folly::StringPiece Dwarf::getSection(const char* name) const {
-  const ElfW(Shdr)* elfSection = elf_->getSectionByName(name);
+  const ElfShdr* elfSection = elf_->getSectionByName(name);
   if (!elfSection) {
     return {};
   }

@@ -16,6 +16,7 @@
 
 #include <folly/experimental/exception_tracer/ExceptionTracer.h>
 
+#include <cstdlib>
 #include <exception>
 #include <iostream>
 
@@ -200,6 +201,7 @@ std::vector<ExceptionInfo> getCurrentExceptions() {
   return exceptions;
 }
 
+#if FOLLY_USE_LIBSTDCPP
 namespace {
 
 std::terminate_handler origTerminate = abort;
@@ -238,6 +240,7 @@ void installHandlers() {
   };
   static Once once;
 }
+#endif
 
 } // namespace exception_tracer
 } // namespace folly

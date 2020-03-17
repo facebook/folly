@@ -550,3 +550,13 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAS_STRING_VIEW 0
 #endif
 #endif // __has_include
+
+#if defined(__linux__)
+#define FOLLY_ELF_NATIVE_CLASS __ELF_NATIVE_CLASS
+#elif defined(__FreeBSD__)
+#if defined(__LP64__)
+#define FOLLY_ELF_NATIVE_CLASS 64
+#else // __linux__
+#define FOLLY_ELF_NATIVE_CLASS 32
+#endif
+#endif // __linux__
