@@ -150,13 +150,7 @@ struct TypeWithImplicitMultiValueConstructor {
 
 TEST_F(InlineTaskTest, ReturnValueWithInitializerListSyntax2) {
   auto f = []() -> InlineTask<TypeWithImplicitMultiValueConstructor> {
-#if 0
-    // Under clang:
-    // error: cannot compile this scalar expression yet.
     co_return{"hello", 3.1415f};
-#else
-    co_return TypeWithImplicitMultiValueConstructor{"hello", 3.1415f};
-#endif
   };
 
   auto result = folly::coro::blockingWait(f());
