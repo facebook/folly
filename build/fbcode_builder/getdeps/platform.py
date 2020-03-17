@@ -42,7 +42,11 @@ def get_linux_type():
         name = re.sub("linux", "", name)
         name = name.strip()
 
-    return "linux", name, os_vars.get("VERSION_ID").lower()
+    version_id = os_vars.get("VERSION_ID")
+    if version_id:
+        version_id = version_id.lower()
+
+    return "linux", name, version_id
 
 
 class HostType(object):
