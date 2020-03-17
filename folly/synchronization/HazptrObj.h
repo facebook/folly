@@ -394,7 +394,8 @@ class hazptr_obj_cohort {
         if (kIsDebug) {
           Obj* p = ll.head();
           for (int i = 1; p; ++i, p = p->next()) {
-            DCHECK_EQ(reinterpret_cast<uintptr_t>(p) & 7, 0) << p << " " << i;
+            DCHECK_EQ(reinterpret_cast<uintptr_t>(p) & 7, uintptr_t{0})
+                << p << " " << i;
           }
         }
         hazptr_obj_list<Atom> l(ll.head(), ll.tail(), c);
