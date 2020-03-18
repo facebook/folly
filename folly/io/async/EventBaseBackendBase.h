@@ -83,6 +83,17 @@ class EventBaseEvent {
     event_set(&event_, fd, events, callback, arg);
   }
 
+  void eb_signal_set(
+      int signum,
+      void (*callback)(libevent_fd_t, short, void*),
+      void* arg) {
+    event_set(&event_, signum, EV_SIGNAL | EV_PERSIST, callback, arg);
+  }
+
+  void eb_timer_set(void (*callback)(libevent_fd_t, short, void*), void* arg) {
+    event_set(&event_, -1, 0, callback, arg);
+  }
+
   void eb_ev_base(EventBase* evb);
   EventBase* eb_ev_base() const {
     return evb_;
