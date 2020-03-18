@@ -21,6 +21,8 @@
 #include <utility>
 
 #include <folly/Function.h>
+#include <folly/Optional.h>
+#include <folly/Range.h>
 #include <folly/Utility.h>
 
 namespace folly {
@@ -296,5 +298,33 @@ Executor::KeepAlive<ExecutorT> getKeepAliveToken(
     Executor::KeepAlive<ExecutorT>& ka) {
   return ka.copy();
 }
+
+struct BlockingContext {
+  folly::StringPiece executorName;
+};
+
+class BlockingGuard;
+
+BlockingGuard makeBlockingDisallowedGuard(folly::StringPiece executorName);
+BlockingGuard makeBlockingAllowedGuard();
+
+class [[nodiscard]] BlockingGuard {
+ public:
+  ~BlockingGuard();
+
+ private:
+  // Disallow blocking
+  BlockingGuard(folly::StringPiece executorName);
+  // Empty guard treated as temporarily allowing blocking
+  BlockingGuard();
+
+  friend BlockingGuard makeBlockingDisallowedGuard(
+      folly::StringPiece executorName);
+  friend BlockingGuard makeBlockingAllowedGuard();
+
+  folly::Optional<BlockingContext> previousContext_;
+};
+
+folly::Optional<BlockingContext> getBlockingContext();
 
 } // namespace folly

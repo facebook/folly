@@ -15,6 +15,7 @@
  */
 
 #include <folly/Executor.h>
+#include <folly/SingletonThreadLocal.h>
 
 #include <stdexcept>
 
@@ -35,4 +36,36 @@ void Executor::keepAliveRelease() {
   LOG(FATAL) << __func__ << "() should not be called for folly::Executor types "
              << "which do not override keepAliveAcquire()";
 }
+
+namespace {
+using BlockingContextSingletonT =
+    SingletonThreadLocal<folly::Optional<BlockingContext>>;
+} // namespace
+
+folly::Optional<BlockingContext> getBlockingContext() {
+  return BlockingContextSingletonT::get();
+}
+
+BlockingGuard::BlockingGuard(folly::StringPiece executorName)
+    : previousContext_{BlockingContextSingletonT::get()} {
+  BlockingContextSingletonT::get() = BlockingContext{executorName};
+}
+
+BlockingGuard::BlockingGuard()
+    : previousContext_{BlockingContextSingletonT::get()} {
+  BlockingContextSingletonT::get() = folly::none;
+}
+
+BlockingGuard::~BlockingGuard() {
+  BlockingContextSingletonT::get() = std::move(previousContext_);
+}
+
+BlockingGuard makeBlockingDisallowedGuard(folly::StringPiece executorName) {
+  return BlockingGuard{executorName};
+}
+
+BlockingGuard makeBlockingAllowedGuard() {
+  return BlockingGuard{};
+}
+
 } // namespace folly

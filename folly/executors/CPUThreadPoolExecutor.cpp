@@ -37,6 +37,8 @@ namespace {
 using default_queue = UnboundedBlockingQueue<CPUThreadPoolExecutor::CPUTask>;
 using default_queue_alloc =
     AlignedSysAllocator<default_queue, FixedAlign<alignof(default_queue)>>;
+
+constexpr folly::StringPiece executorName = "CPUThreadPoolExecutor";
 } // namespace
 
 const size_t CPUThreadPoolExecutor::kDefaultMaxQueueSize = 1 << 14;
@@ -194,10 +196,12 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
+  auto guard = folly::makeBlockingDisallowedGuard(executorName);
 
   thread->startupBaton.post();
   while (true) {
     auto task = taskQueue_->try_take_for(threadTimeout_);
+
     // Handle thread stopping, either by task timeout, or
     // by 'poison' task added in join() or stop().
     if (UNLIKELY(!task || task.value().poison)) {

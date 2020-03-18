@@ -1002,3 +1002,47 @@ TEST(ThreadPoolExecutorTest, VirtualExecutorTestCPU) {
 TEST(ThreadPoolExecutorTest, VirtualExecutorTestEDF) {
   virtualExecutorTest<EDFThreadPoolExecutor>();
 }
+
+// Test use of guard inside executors
+template <class TPE>
+static void currentThreadTest(folly::StringPiece executorName) {
+  folly::Optional<BlockingContext> blockingContext{};
+  TPE tpe(1);
+  tpe.add([&blockingContext]() { blockingContext = getBlockingContext(); });
+  tpe.join();
+  EXPECT_EQ(blockingContext->executorName, executorName);
+}
+
+// Test the nesting of the allowing guard
+template <class TPE>
+static void currentThreadTestDisabled(folly::StringPiece executorName) {
+  folly::Optional<BlockingContext> blockingContextAllowed{};
+  folly::Optional<BlockingContext> blockingContextDisallowed{};
+  TPE tpe(1);
+  tpe.add([&]() {
+    {
+      // Nest the guard that reallows blocking
+      auto guard = folly::makeBlockingAllowedGuard();
+      blockingContextAllowed = getBlockingContext();
+    }
+    blockingContextDisallowed = getBlockingContext();
+  });
+  tpe.join();
+  EXPECT_TRUE(!blockingContextAllowed.has_value());
+  EXPECT_EQ(blockingContextDisallowed->executorName, executorName);
+}
+
+TEST(ThreadPoolExecutorTest, CPUCurrentThreadExecutor) {
+  currentThreadTest<CPUThreadPoolExecutor>("CPUThreadPoolExecutor");
+  currentThreadTestDisabled<CPUThreadPoolExecutor>("CPUThreadPoolExecutor");
+}
+
+TEST(ThreadPoolExecutorTest, IOCurrentThreadExecutor) {
+  currentThreadTest<IOThreadPoolExecutor>("EventBase");
+  currentThreadTestDisabled<IOThreadPoolExecutor>("EventBase");
+}
+
+TEST(ThreadPoolExecutorTest, EDFCurrentThreadExecutor) {
+  currentThreadTest<EDFThreadPoolExecutor>("EDFThreadPoolExecutor");
+  currentThreadTestDisabled<EDFThreadPoolExecutor>("EDFThreadPoolExecutor");
+}
