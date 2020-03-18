@@ -39,6 +39,9 @@ class EventBaseManager {
   // encouraged. You should instead use the global singleton if possible.
   EventBaseManager() {}
 
+  explicit EventBaseManager(folly::EventBaseBackendBase::FactoryFunc func)
+      : func_(func) {}
+
   ~EventBaseManager() {}
 
   explicit EventBaseManager(const std::shared_ptr<EventBaseObserver>& observer)
@@ -111,7 +114,8 @@ class EventBaseManager {
  private:
   struct EventBaseInfo {
     EventBaseInfo(EventBase* evb, bool owned) : eventBase(evb), owned_(owned) {}
-
+    explicit EventBaseInfo(std::unique_ptr<EventBaseBackendBase>&& evb)
+        : eventBase(new EventBase(std::move(evb))), owned_(true) {}
     EventBaseInfo() : eventBase(new EventBase), owned_(true) {}
 
     EventBase* eventBase;
@@ -136,6 +140,8 @@ class EventBaseManager {
     std::lock_guard<std::mutex> g(*&eventBaseSetMutex_);
     eventBaseSet_.erase(evb);
   }
+
+  folly::EventBaseBackendBase::FactoryFunc func_;
 
   mutable folly::ThreadLocalPtr<EventBaseInfo> localStore_;
 

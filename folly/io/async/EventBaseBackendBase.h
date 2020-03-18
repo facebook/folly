@@ -115,6 +115,8 @@ class EventBaseEvent {
 class EventBaseBackendBase {
  public:
   using Event = EventBaseEvent;
+  using FactoryFunc =
+      std::function<std::unique_ptr<folly::EventBaseBackendBase>()>;
 
   EventBaseBackendBase() = default;
   virtual ~EventBaseBackendBase() = default;

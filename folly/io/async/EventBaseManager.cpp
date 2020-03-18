@@ -66,7 +66,7 @@ EventBase* EventBaseManager::getEventBase() const {
   // have one?
   auto* info = localStore_.get();
   if (!info) {
-    info = new EventBaseInfo();
+    info = func_ ? new EventBaseInfo(func_()) : new EventBaseInfo();
     localStore_.reset(info);
 
     if (observer_) {
