@@ -30,7 +30,7 @@ int EventBaseEvent::eb_event_base_set(EventBase* evb) {
     return ::event_base_set(base, &event_);
   }
 
-  return -1;
+  return 0;
 }
 
 int EventBaseEvent::eb_event_add(const struct timeval* timeout) {
