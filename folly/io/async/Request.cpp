@@ -26,7 +26,7 @@
 
 DEFINE_bool(
     folly_reqctx_use_hazptr,
-    false,
+    true,
     "RequestContext implementation using hazard pointers");
 
 namespace folly {
