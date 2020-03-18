@@ -1003,21 +1003,21 @@ inline dynamic::dynamic(Array&& r) : type_(ARRAY) {
   new (&u_.array) Array(std::move(r));
 }
 
-#define FOLLY_DYNAMIC_DEC_TYPEINFO(T, str, val) \
-  template <>                                   \
-  struct dynamic::TypeInfo<T> {                 \
-    static constexpr const char* name = str;    \
-    static constexpr dynamic::Type type = val;  \
-  };                                            \
+#define FOLLY_DYNAMIC_DEC_TYPEINFO(T, val)     \
+  template <>                                  \
+  struct dynamic::TypeInfo<T> {                \
+    static const char* const name;             \
+    static constexpr dynamic::Type type = val; \
+  };                                           \
   //
 
-FOLLY_DYNAMIC_DEC_TYPEINFO(std::nullptr_t, "null", dynamic::NULLT)
-FOLLY_DYNAMIC_DEC_TYPEINFO(bool, "boolean", dynamic::BOOL)
-FOLLY_DYNAMIC_DEC_TYPEINFO(std::string, "string", dynamic::STRING)
-FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::Array, "array", dynamic::ARRAY)
-FOLLY_DYNAMIC_DEC_TYPEINFO(double, "double", dynamic::DOUBLE)
-FOLLY_DYNAMIC_DEC_TYPEINFO(int64_t, "int64", dynamic::INT64)
-FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::ObjectImpl, "object", dynamic::OBJECT)
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::nullptr_t, dynamic::NULLT)
+FOLLY_DYNAMIC_DEC_TYPEINFO(bool, dynamic::BOOL)
+FOLLY_DYNAMIC_DEC_TYPEINFO(std::string, dynamic::STRING)
+FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::Array, dynamic::ARRAY)
+FOLLY_DYNAMIC_DEC_TYPEINFO(double, dynamic::DOUBLE)
+FOLLY_DYNAMIC_DEC_TYPEINFO(int64_t, dynamic::INT64)
+FOLLY_DYNAMIC_DEC_TYPEINFO(dynamic::ObjectImpl, dynamic::OBJECT)
 
 #undef FOLLY_DYNAMIC_DEC_TYPEINFO
 

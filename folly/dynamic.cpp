@@ -30,18 +30,17 @@ namespace folly {
 
 //////////////////////////////////////////////////////////////////////
 
-#define FOLLY_DYNAMIC_DEF_TYPEINFO(T)                 \
-  constexpr const char* dynamic::TypeInfo<T>::name;   \
-  constexpr dynamic::Type dynamic::TypeInfo<T>::type; \
+#define FOLLY_DYNAMIC_DEF_TYPEINFO(T, str)            \
+  const char* const dynamic::TypeInfo<T>::name = str; \
   //
 
-FOLLY_DYNAMIC_DEF_TYPEINFO(std::nullptr_t)
-FOLLY_DYNAMIC_DEF_TYPEINFO(bool)
-FOLLY_DYNAMIC_DEF_TYPEINFO(std::string)
-FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array)
-FOLLY_DYNAMIC_DEF_TYPEINFO(double)
-FOLLY_DYNAMIC_DEF_TYPEINFO(int64_t)
-FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::ObjectImpl)
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::nullptr_t, "null")
+FOLLY_DYNAMIC_DEF_TYPEINFO(bool, "boolean")
+FOLLY_DYNAMIC_DEF_TYPEINFO(std::string, "string")
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::Array, "array")
+FOLLY_DYNAMIC_DEF_TYPEINFO(double, "double")
+FOLLY_DYNAMIC_DEF_TYPEINFO(int64_t, "int64")
+FOLLY_DYNAMIC_DEF_TYPEINFO(dynamic::ObjectImpl, "object")
 
 #undef FOLLY_DYNAMIC_DEF_TYPEINFO
 
