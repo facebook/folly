@@ -138,7 +138,7 @@ TEST(CodelTest, updateInterval) {
 
 TEST(CodelTest, invalidParamUpdates) {
   folly::Codel c;
-  folly::Codel::Options opts;
+  folly::Codel::Options opts = c.getOptions();
   EXPECT_EQ(milliseconds(5), c.getOptions().targetDelay());
   EXPECT_EQ(milliseconds(100), c.getOptions().interval());
 
