@@ -21,9 +21,9 @@
 
 namespace folly {
 // Our Callback object for HHWheelTimer
-template <class TDuration>
-struct WTCallback : public std::enable_shared_from_this<WTCallback<TDuration>>,
-                    public folly::HHWheelTimerBase<TDuration>::Callback {
+template <class TBase>
+struct WTCallback : public std::enable_shared_from_this<WTCallback<TBase>>,
+                    public TBase::Callback {
   struct PrivateConstructorTag {};
 
  public:
@@ -84,17 +84,16 @@ struct WTCallback : public std::enable_shared_from_this<WTCallback<TDuration>>,
     // This is not racing with timeoutExpired anymore because this is called
     // through Future, which means Core is still alive and keeping a ref count
     // on us, so what timeouExpired is doing won't make the object go away
-    (*rBase)->runInEventBaseThread(
-        [me = std::enable_shared_from_this<
-             WTCallback<TDuration>>::shared_from_this(),
-         ew = std::move(ew)]() mutable {
-          me->cancelTimeout();
-          // Don't need Promise anymore, break the circular reference
-          auto promise = me->stealPromise();
-          if (!promise.isFulfilled()) {
-            promise.setException(std::move(ew));
-          }
-        });
+    (*rBase)->runInEventBaseThread([me = std::enable_shared_from_this<
+                                        WTCallback<TBase>>::shared_from_this(),
+                                    ew = std::move(ew)]() mutable {
+      me->cancelTimeout();
+      // Don't need Promise anymore, break the circular reference
+      auto promise = me->stealPromise();
+      if (!promise.isFulfilled()) {
+        promise.setException(std::move(ew));
+      }
+    });
   }
 };
 

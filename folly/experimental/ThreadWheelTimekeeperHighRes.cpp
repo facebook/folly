@@ -46,7 +46,7 @@ ThreadWheelTimekeeperHighRes::~ThreadWheelTimekeeperHighRes() {
 }
 
 SemiFuture<Unit> ThreadWheelTimekeeperHighRes::after(HighResDuration dur) {
-  auto cob = WTCallback<HighResDuration>::create(&eventBase_);
+  auto cob = WTCallback<HHWheelTimerHighRes>::create(&eventBase_);
   auto f = cob->getSemiFuture();
   //
   // Even shared_ptr of cob is captured in lambda this is still somewhat *racy*
