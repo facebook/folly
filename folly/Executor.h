@@ -308,7 +308,7 @@ class BlockingGuard;
 BlockingGuard makeBlockingDisallowedGuard(folly::StringPiece executorName);
 BlockingGuard makeBlockingAllowedGuard();
 
-class [[nodiscard]] BlockingGuard {
+class FOLLY_NODISCARD BlockingGuard {
  public:
   ~BlockingGuard();
 
