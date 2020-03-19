@@ -444,6 +444,8 @@ void AsyncUDPSocket::fillMsgVec(
       msg.msg_controllen = 0;
     }
 #else
+    (void)gso;
+    (void)gsoControl;
     msg.msg_control = nullptr;
     msg.msg_controllen = 0;
 #endif
