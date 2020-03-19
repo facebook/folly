@@ -16,19 +16,14 @@
 
 #pragma once
 
-#include <climits> // for PATH_MAX
-#include <cstring>
 #include <forward_list>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <unordered_map>
 
-#include <boost/container/flat_map.hpp>
 #include <boost/intrusive/avl_set.hpp>
 #include <boost/intrusive/list.hpp>
-#include <boost/operators.hpp>
-#include <glog/logging.h>
 
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
