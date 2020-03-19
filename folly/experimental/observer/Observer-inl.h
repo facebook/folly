@@ -123,5 +123,32 @@ CallbackHandle Observer<T>::addCallback(
     folly::Function<void(Snapshot<T>)> callback) const {
   return CallbackHandle(*this, std::move(callback));
 }
+
+template <typename T>
+Observer<T> makeValueObserver(Observer<T> observer) {
+  return makeValueObserver(
+      [observer] { return observer.getSnapshot().getShared(); });
+}
+
+template <typename F>
+Observer<observer_detail::ResultOf<F>> makeValueObserver(F&& creator) {
+  return makeValueObserver([creator = std::forward<F>(creator)]() mutable {
+    return std::make_shared<observer_detail::ResultOf<F>>(creator());
+  });
+}
+
+template <typename F>
+Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
+    F&& creator) {
+  auto activeValue = creator();
+  return makeObserver([activeValue = std::move(activeValue),
+                       creator = std::forward<F>(creator)]() mutable {
+    auto newValue = creator();
+    if (!(*activeValue == *newValue)) {
+      activeValue = newValue;
+    }
+    return activeValue;
+  });
+}
 } // namespace observer
 } // namespace folly

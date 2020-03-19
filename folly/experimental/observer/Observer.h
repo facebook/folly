@@ -189,6 +189,24 @@ Observer<observer_detail::ResultOf<F>> makeObserver(F&& creator);
 template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(F&& creator);
 
+/**
+ * The returned Observer will proxy updates from the input observer, but will
+ * skip updates that contain the same (according to operator==) value even if
+ * the actual object in the update is different.
+ */
+template <typename T>
+Observer<T> makeValueObserver(Observer<T> observer);
+
+/**
+ * A more efficient short-cut for makeValueObserver(makeObserver(...)).
+ */
+template <typename F>
+Observer<observer_detail::ResultOf<F>> makeValueObserver(F&& creator);
+
+template <typename F>
+Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
+    F&& creator);
+
 template <typename T>
 class TLObserver {
  public:

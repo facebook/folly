@@ -489,3 +489,50 @@ TEST(Observer, Shutdown) {
   auto observer = folly::observer::makeObserver([] { return 42; });
   EXPECT_EQ(42, **observer);
 }
+
+TEST(Observer, MakeValueObserver) {
+  struct ValueStruct {
+    ValueStruct(int value, int id) : value_(value), id_(id) {}
+    bool operator==(const ValueStruct& other) const {
+      return value_ == other.value_;
+    }
+
+    const int value_;
+    const int id_;
+  };
+
+  SimpleObservable<ValueStruct> observable(ValueStruct(1, 1));
+
+  std::vector<int> observedIds;
+  std::vector<int> observedValues;
+  std::vector<int> observedValues2;
+
+  auto ch1 = observable.getObserver().addCallback(
+      [&](auto snapshot) { observedIds.push_back(snapshot->id_); });
+  auto ch2 = makeValueObserver(observable.getObserver())
+                 .addCallback([&](auto snapshot) {
+                   observedValues.push_back(snapshot->value_);
+                 });
+  auto ch3 = makeValueObserver(
+                 [observer = observable.getObserver()] { return **observer; })
+                 .addCallback([&](auto snapshot) {
+                   observedValues2.push_back(snapshot->value_);
+                 });
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  observable.setValue(ValueStruct(1, 2));
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  observable.setValue(ValueStruct(2, 3));
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  observable.setValue(ValueStruct(2, 4));
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  observable.setValue(ValueStruct(3, 5));
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(observedIds, std::vector<int>({1, 2, 3, 4, 5}));
+  EXPECT_EQ(observedValues, std::vector<int>({1, 2, 3}));
+  EXPECT_EQ(observedValues2, std::vector<int>({1, 2, 3}));
+}
