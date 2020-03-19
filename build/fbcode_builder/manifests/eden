@@ -48,7 +48,7 @@ fbcode/tools/lfs = tools/lfs
 [shipit.strip]
 ^fbcode/eden/fs/eden-config\.h$
 ^fbcode/eden/hg/.*$
-^fbcode/eden/mononoke/.*$
+^fbcode/eden/mononoke/(?!lfs_protocol)
 
 [cmake.defines.all(fb=on,os=windows)]
 INSTALL_PYTHON_LIB=ON
