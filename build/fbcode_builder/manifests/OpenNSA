@@ -14,3 +14,4 @@ lib/x86-64 = lib
 include = include
 src/gpl-modules/systems/bde/linux/include = include/systems/bde/linux
 src/gpl-modules/include/ibde.h = include/ibde.h
+src/gpl-modules = src/gpl-modules
