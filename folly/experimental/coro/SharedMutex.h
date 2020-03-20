@@ -163,7 +163,7 @@ class SharedMutexFair {
   /// .unlock_shared() to release the lock.
   [[nodiscard]] LockOperation<LockSharedAwaiter> co_lock_shared() noexcept;
 
-  /// Asynchronously acquire an exclusive lock on the mutex and return an object
+  /// Asynchronously acquire a shared lock on the mutex and return an object
   /// that will release the lock when it goes out of scope.
   ///
   /// Returns a SemiAwaitable<std::shared_lock<SharedMutexFair>> that, once
