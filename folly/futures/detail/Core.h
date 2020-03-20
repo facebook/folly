@@ -579,14 +579,13 @@ class Core final {
   /// If it transitions to Done, synchronously initiates a call to the callback,
   /// and might also synchronously execute that callback (e.g., if there is no
   /// executor or if the executor is inline).
-  template <typename F>
   void setCallback(
-      F&& func,
+      Callback&& func,
       std::shared_ptr<folly::RequestContext>&& context,
       futures::detail::InlineContinuation allowInline) {
     DCHECK(!hasCallback());
 
-    ::new (&callback_) Callback(std::forward<F>(func));
+    ::new (&callback_) Callback(std::move(func));
     ::new (&context_) Context(std::move(context));
 
     auto state = state_.load(std::memory_order_acquire);

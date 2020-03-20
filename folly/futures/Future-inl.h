@@ -309,13 +309,12 @@ void FutureBase<T>::raise(exception_wrapper exception) {
 }
 
 template <class T>
-template <class F>
 void FutureBase<T>::setCallback_(
-    F&& func,
+    CoreCallback&& func,
     futures::detail::InlineContinuation allowInline) {
   throwIfContinued();
   getCore().setCallback(
-      std::forward<F>(func), RequestContext::saveContext(), allowInline);
+      std::move(func), RequestContext::saveContext(), allowInline);
 }
 
 template <class T>
