@@ -175,15 +175,11 @@ struct MakeUnsafeStringSetLargerSize {
 
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)            \
   template void std::basic_string<TYPE>::__set_size(std::size_t); \
-  namespace folly {                                               \
-  namespace detail {                                              \
-  template struct MakeUnsafeStringSetLargerSize<                  \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize<   \
     FollyMemoryDetailTranslationUnitTag,                          \
     TYPE,                                                         \
     void (std::basic_string<TYPE>::*)(std::size_t),               \
     &std::basic_string<TYPE>::__set_size>;                        \
-  }                                                               \
-  }                                                               \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #elif defined(_GLIBCXX_STRING) && _GLIBCXX_USE_CXX11_ABI
@@ -201,15 +197,11 @@ struct MakeUnsafeStringSetLargerSize {
 
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)               \
   template void std::basic_string<TYPE>::_M_set_length(std::size_t); \
-  namespace folly {                                                  \
-  namespace detail {                                                 \
-  template struct MakeUnsafeStringSetLargerSize<                     \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize<      \
     FollyMemoryDetailTranslationUnitTag,                             \
     TYPE,                                                            \
     void (std::basic_string<TYPE>::*)(std::size_t),                  \
     &std::basic_string<TYPE>::_M_set_length>;                        \
-  }                                                                  \
-  }                                                                  \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 
@@ -236,17 +228,13 @@ struct MakeUnsafeStringSetLargerSize {
 #define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)                                  \
   template std::basic_string<TYPE>::_Rep* std::basic_string<TYPE>::_M_rep() const;      \
   template void std::basic_string<TYPE>::_Rep::_M_set_length_and_sharable(std::size_t); \
-  namespace folly {                                                                     \
-  namespace detail {                                                                    \
-  template struct MakeUnsafeStringSetLargerSize<                                        \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize<                         \
     FollyMemoryDetailTranslationUnitTag,                                                \
     TYPE,                                                                               \
     std::basic_string<TYPE>::_Rep* (std::basic_string<TYPE>::*)() const,                \
     &std::basic_string<TYPE>::_M_rep,                                                   \
     void (std::basic_string<TYPE>::_Rep::*)(std::size_t),                               \
     &std::basic_string<TYPE>::_Rep::_M_set_length_and_sharable>;                        \
-  }                                                                                     \
-  }                                                                                     \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #elif defined(_MSC_VER)
