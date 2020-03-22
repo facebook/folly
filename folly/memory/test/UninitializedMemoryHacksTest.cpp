@@ -282,6 +282,14 @@ TEST(UninitializedMemoryHacks, simpleString) {
   testSimple<std::string>();
 }
 
+TEST(UninitializedMemoryHacks, simpleStringWChar) {
+  testSimple<std::wstring>();
+}
+
+TEST(UninitializedMemoryHacks, simpleStringSChar) {
+  testSimple<std::basic_string<signed char>>();
+}
+
 TEST(UninitializedMemoryHacks, simpleVectorChar) {
   testSimple<std::vector<char>>();
 }
@@ -298,6 +306,14 @@ TEST(UninitializedMemoryHacks, randomString) {
   testRandom<std::string>();
 }
 
+TEST(UninitializedMemoryHacks, randomStringWChar) {
+  testRandom<std::wstring>();
+}
+
+TEST(UninitializedMemoryHacks, randomStringSChar) {
+  testRandom<std::basic_string<signed char>>();
+}
+
 TEST(UninitializedMemoryHacks, randomVectorChar) {
   testRandom<std::vector<char>>();
 }
@@ -311,4 +327,5 @@ TEST(UninitializedMemoryHacks, randomVectorInt) {
 }
 
 // We are deliberately putting this at the bottom to make sure it can follow use
+FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(signed char)
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(int)
