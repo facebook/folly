@@ -92,8 +92,12 @@ class Snapshot {
     return data_.get();
   }
 
-  std::shared_ptr<const T> getShared() const {
+  std::shared_ptr<const T> getShared() const& {
     return data_;
+  }
+
+  std::shared_ptr<const T> getShared() && {
+    return std::move(data_);
   }
 
   /**
