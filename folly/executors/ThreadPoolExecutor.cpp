@@ -200,7 +200,8 @@ void ThreadPoolExecutor::addThreads(size_t n) {
     threadList_.add(thread);
   }
   for (auto& thread : newThreads) {
-    thread->startupBaton.wait();
+    thread->startupBaton.wait(
+        folly::Baton<>::wait_options().logging_enabled(false));
   }
   for (auto& o : observers_) {
     for (auto& thread : newThreads) {

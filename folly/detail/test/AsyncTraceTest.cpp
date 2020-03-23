@@ -34,4 +34,6 @@ TEST(FollyCountersTest, Trivial) {
 
   folly::async_tracing::logSemiFutureVia(lastExec, exec);
   folly::async_tracing::logFutureVia(lastExec, exec);
+
+  folly::async_tracing::logBlockingOperation(std::chrono::milliseconds{100});
 }

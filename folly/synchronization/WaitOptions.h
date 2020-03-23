@@ -53,6 +53,7 @@ class WaitOptions {
     /// nsec is the pause instruction.
     static constexpr std::chrono::nanoseconds spin_max =
         std::chrono::microseconds(2);
+    static constexpr bool logging_enabled = true;
   };
 
   constexpr std::chrono::nanoseconds spin_max() const {
@@ -62,9 +63,17 @@ class WaitOptions {
     spin_max_ = dur;
     return *this;
   }
+  constexpr bool logging_enabled() const {
+    return logging_enabled_;
+  }
+  constexpr WaitOptions& logging_enabled(bool enable) {
+    logging_enabled_ = enable;
+    return *this;
+  }
 
  private:
   std::chrono::nanoseconds spin_max_ = Defaults::spin_max;
+  bool logging_enabled_ = Defaults::logging_enabled;
 };
 
 } // namespace folly

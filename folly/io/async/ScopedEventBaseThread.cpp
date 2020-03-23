@@ -42,7 +42,7 @@ static void run(
   // must destruct in io thread for on-destruction callbacks
   eb->runOnDestruction([=] { ebm->clearEventBase(); });
   // wait until terminateLoopSoon() is complete
-  stop->wait();
+  stop->wait(folly::Baton<>::wait_options().logging_enabled(false));
   eb->~EventBase();
 }
 

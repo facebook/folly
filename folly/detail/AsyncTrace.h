@@ -15,6 +15,9 @@
  */
 
 #pragma once
+
+#include <chrono>
+
 #include <folly/Optional.h>
 
 namespace folly {
@@ -30,5 +33,6 @@ void logGetGlobalIOExecutor(IOExecutor*) noexcept;
 void logGetImmutableIOExecutor(IOExecutor*) noexcept;
 void logSemiFutureVia(Executor*, Executor*) noexcept;
 void logFutureVia(Executor*, Executor*) noexcept;
+void logBlockingOperation(std::chrono::milliseconds) noexcept;
 } // namespace async_tracing
 } // namespace folly

@@ -670,7 +670,7 @@ void EventBase::runInEventBaseThreadAndWait(Func fn) noexcept {
     // before posting the baton and waking the waiting thread.
     copy(std::move(fn))();
   });
-  ready.wait();
+  ready.wait(folly::Baton<>::wait_options().logging_enabled(false));
 }
 
 void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
