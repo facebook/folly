@@ -17,6 +17,7 @@
 #include <folly/io/async/AsyncUDPSocket.h>
 
 #include <folly/Likely.h>
+#include <folly/Utility.h>
 #include <folly/io/SocketOptionMap.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Fcntl.h>
@@ -482,7 +483,7 @@ int AsyncUDPSocket::writeImpl(
     FOLLY_POP_WARNING
     fillMsgVec(
         &addrStorage,
-        address.getActualSize(),
+        folly::to_narrow(address.getActualSize()),
         bufs,
         count,
         msgvec,
@@ -495,7 +496,7 @@ int AsyncUDPSocket::writeImpl(
     std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
     fillMsgVec(
         &addrStorage,
-        address.getActualSize(),
+        folly::to_narrow(address.getActualSize()),
         bufs,
         count,
         msgvec,

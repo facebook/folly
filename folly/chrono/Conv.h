@@ -31,6 +31,7 @@
 
 #include <folly/Conv.h>
 #include <folly/Expected.h>
+#include <folly/Utility.h>
 #include <folly/portability/SysTime.h>
 #include <folly/portability/SysTypes.h>
 
@@ -134,10 +135,10 @@ static Expected<std::pair<time_t, long>, ConversionCode> durationToPosixTime(
   if (sec.hasError()) {
     return makeUnexpected(sec.error());
   }
-  auto secTimeT = sec.value();
+  auto secTimeT = static_cast<time_t>(sec.value());
 
   auto remainder = duration.count() - (secTimeT * Denominator);
-  auto subsec = (remainder * SubsecondRatio::den) / Denominator;
+  long subsec = (remainder * SubsecondRatio::den) / Denominator;
   if (UNLIKELY(duration.count() < 0) && remainder != 0) {
     if (secTimeT == std::numeric_limits<time_t>::lowest()) {
       return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
@@ -569,7 +570,7 @@ Expected<Tgt, ConversionCode> tryPosixTimeToDuration(
       return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
     }
     seconds = seconds - 1 + overflowSeconds;
-    subseconds = remainder + SubsecondRatio::den;
+    subseconds = to_narrow(remainder + SubsecondRatio::den);
   } else if (UNLIKELY(subseconds >= SubsecondRatio::den)) {
     const auto overflowSeconds = (subseconds / SubsecondRatio::den);
     const auto remainder = (subseconds % SubsecondRatio::den);
@@ -577,7 +578,7 @@ Expected<Tgt, ConversionCode> tryPosixTimeToDuration(
       return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
     }
     seconds += overflowSeconds;
-    subseconds = remainder;
+    subseconds = to_narrow(remainder);
   }
 
   return posixTimeToDuration<SubsecondRatio>(seconds, subseconds, Tgt{});

@@ -17,6 +17,7 @@
 #include <folly/io/async/AsyncPipe.h>
 
 #include <folly/FileUtil.h>
+#include <folly/Utility.h>
 #include <folly/detail/FileUtilDetail.h>
 #include <folly/io/async/AsyncSocketException.h>
 
@@ -60,7 +61,7 @@ static int recv_internal(NetworkSocket s, void* buf, size_t count) {
   if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
     errno = EAGAIN;
   }
-  return r;
+  return folly::to_narrow(r);
 }
 #endif
 
@@ -242,7 +243,7 @@ static int send_internal(NetworkSocket s, const void* buf, size_t count) {
   if (r == -1 && WSAGetLastError() == WSAEWOULDBLOCK) {
     errno = EAGAIN;
   }
-  return r;
+  return folly::to_narrow(r);
 }
 #endif
 

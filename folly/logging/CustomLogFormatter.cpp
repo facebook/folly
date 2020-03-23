@@ -96,7 +96,7 @@ constexpr std::array<FormatKeys, 11> formatKeys{{
     FormatKeys(/* key */ "USECS", /*  argIndex  */ 6, /* width */ 6),
     FormatKeys(/* key */ "m", /*      argIndex  */ 1, /* width */ 2),
 }};
-constexpr int messageIndex = formatKeys.size();
+constexpr size_t messageIndex = formatKeys.size();
 
 } // namespace
 

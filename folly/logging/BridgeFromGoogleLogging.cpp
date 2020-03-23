@@ -16,6 +16,7 @@
 
 #include <folly/logging/BridgeFromGoogleLogging.h>
 
+#include <folly/Utility.h>
 #include <folly/logging/Logger.h>
 #include <folly/logging/xlog.h>
 
@@ -93,7 +94,7 @@ void BridgeFromGoogleLogging::send(
       pTime,
       message,
       message_len,
-      usecs.count());
+      folly::to_narrow(usecs.count()));
 }
 
 } // namespace logging

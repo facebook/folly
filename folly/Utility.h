@@ -330,6 +330,8 @@ class to_narrow_convertible {
           int> = 0>
   /* implicit */ constexpr operator Dst() const noexcept {
     FOLLY_PUSH_WARNING
+    FOLLY_MSVC_DISABLE_WARNING(4244) // lossy conversion: arguments
+    FOLLY_MSVC_DISABLE_WARNING(4267) // lossy conversion: variables
     FOLLY_GNU_DISABLE_WARNING("-Wconversion")
     return value_;
     FOLLY_POP_WARNING
