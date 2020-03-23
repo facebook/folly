@@ -240,11 +240,21 @@ struct MakeUnsafeStringSetLargerSize {
 #elif defined(_MSC_VER)
 // MSVC
 
-#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE) \
-  extern inline void unsafeStringSetLargerSizeImpl(    \
-      std::basic_string<TYPE>& s, std::size_t n) {     \
-    s._Eos(n);                                         \
-  }                                                    \
+template <
+    typename Tag,
+    typename T>
+struct MakeUnsafeStringSetLargerSize {
+  friend void unsafeStringSetLargerSizeImpl(
+      std::basic_string<T>& s,
+      std::size_t n) {
+    s._Eos(n);
+  }
+};
+
+#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize< \
+    FollyMemoryDetailTranslationUnitTag,                        \
+    TYPE>;                                                      \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #else
@@ -351,11 +361,19 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
 #elif defined(_MSC_VER)
 // MSVC
 
-#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE) \
-  extern inline void unsafeVectorSetLargerSizeImpl(    \
-      std::vector<TYPE>& v, std::size_t n) {           \
-    v._Mylast() += (n - v.size());                     \
-  }                                                    \
+template <
+    typename Tag,
+    typename T>
+struct MakeUnsafeVectorSetLargerSize {
+  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
+    v._Mylast() += (n - v.size());
+  }
+};
+
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
+      FollyMemoryDetailTranslationUnitTag,                      \
+      TYPE>;                                                    \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #else
