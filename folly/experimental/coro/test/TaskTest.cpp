@@ -409,6 +409,20 @@ TEST_F(TaskTest, CancellationPropagation) {
   }());
 }
 
+TEST_F(TaskTest, CancellationPropagatesThroughCoAwaitTry) {
+  folly::CancellationSource source;
+  folly::Try<int> result =
+      folly::coro::blockingWait(folly::coro::co_withCancellation(
+          source.getToken(),
+          folly::coro::co_awaitTry([&]() -> folly::coro::Task<int> {
+            auto cancelToken =
+                co_await folly::coro::co_current_cancellation_token;
+            EXPECT_TRUE(cancelToken == source.getToken());
+            co_return 42;
+          }())));
+  EXPECT_EQ(42, result.value());
+}
+
 TEST_F(TaskTest, StartInlineUnsafe) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     auto executor = co_await folly::coro::co_current_executor;

@@ -22,6 +22,7 @@
 #include <folly/Executor.h>
 #include <folly/Traits.h>
 #include <folly/experimental/coro/Traits.h>
+#include <folly/experimental/coro/WithCancellation.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
 
@@ -429,6 +430,16 @@ class TrySemiAwaitable {
       TrySemiAwaitable&& self) noexcept {
     return makeTryAwaiter(get_awaiter(
         co_viaIfAsync(std::move(executor), std::move(self.semiAwaitable_))));
+  }
+
+  friend auto co_withCancellation(
+      const CancellationToken& cancelToken,
+      TrySemiAwaitable&& awaitable) {
+    auto cancelAwaitable = folly::coro::co_withCancellation(
+        std::move(cancelToken),
+        static_cast<SemiAwaitable&&>(awaitable.semiAwaitable_));
+    return TrySemiAwaitable<decltype(cancelAwaitable)>(
+        std::move(cancelAwaitable));
   }
 
  private:
