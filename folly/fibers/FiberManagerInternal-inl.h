@@ -281,6 +281,10 @@ inline void FiberManager::loopUntilNoReadyImpl() {
 }
 
 inline void FiberManager::runEagerFiber(Fiber* fiber) {
+  loopController_->runEagerFiber(fiber);
+}
+
+inline void FiberManager::runEagerFiberImpl(Fiber* fiber) {
   runInMainContext([&] {
     auto prevCurrentFiber = std::exchange(currentFiber_, fiber);
     SCOPE_EXIT {

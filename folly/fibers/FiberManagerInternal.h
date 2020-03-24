@@ -204,6 +204,11 @@ class FiberManager : public ::folly::Executor {
   /**
    * This should only be called by a LoopController.
    */
+  void runEagerFiberImpl(Fiber*);
+
+  /**
+   * This should only be called by a LoopController.
+   */
   bool shouldRunLoopRemote();
 
   /**

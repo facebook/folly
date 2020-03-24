@@ -24,6 +24,7 @@
 namespace folly {
 namespace fibers {
 
+class Fiber;
 class FiberManager;
 
 class LoopController {
@@ -49,6 +50,12 @@ class LoopController {
    * to a LoopController.
    */
   virtual void runLoop() = 0;
+
+  /**
+   * Run FiberManager runEagerFiberImpl(fiber). May have additional logic
+   * specific to a LoopController.
+   */
+  virtual void runEagerFiber(Fiber*) = 0;
 
   /**
    * Same as schedule(), but safe to call from any thread.

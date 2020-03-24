@@ -2585,3 +2585,16 @@ TEST(FiberManager, addTaskRemoteFutureTry) {
           .getVia(&evb)
           .value());
 }
+
+TEST(FiberManager, addTaskEagerKeepAlive) {
+  auto f = [&] {
+    folly::EventBase evb;
+    return getFiberManager(evb).addTaskEagerFuture([&] {
+      folly::futures::sleep(std::chrono::milliseconds{100}).get();
+      return 42;
+    });
+  }();
+
+  EXPECT_TRUE(f.isReady());
+  EXPECT_EQ(42, std::move(f).get());
+}

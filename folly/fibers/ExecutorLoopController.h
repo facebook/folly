@@ -92,6 +92,7 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   void setFiberManager(fibers::FiberManager* fm) override;
   void schedule() override;
   void runLoop() override;
+  void runEagerFiber(Fiber*) override;
   void scheduleThreadSafe() override;
   HHWheelTimer& timer() override;
 

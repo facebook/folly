@@ -52,6 +52,16 @@ inline void ExecutorLoopController::runLoop() {
   }
 }
 
+inline void ExecutorLoopController::runEagerFiber(Fiber* fiber) {
+  if (!executorKeepAlive_) {
+    executorKeepAlive_ = getKeepAliveToken(executor_);
+  }
+  fm_->runEagerFiberImpl(fiber);
+  if (!fm_->hasTasks()) {
+    executorKeepAlive_.reset();
+  }
+}
+
 inline void ExecutorLoopController::scheduleThreadSafe() {
   executor_->add(
       [this, executorKeepAlive = getKeepAliveToken(executor_)]() mutable {

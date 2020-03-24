@@ -75,6 +75,7 @@ class EventBaseLoopController : public ExecutorBasedLoopController {
   void setFiberManager(FiberManager* fm) override;
   void schedule() override;
   void runLoop() override;
+  void runEagerFiber(Fiber*) override;
   void scheduleThreadSafe() override;
   HHWheelTimer& timer() override;
 

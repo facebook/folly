@@ -84,6 +84,10 @@ class SimpleLoopController : public LoopController {
     } while (remoteLoopRun_ < remoteScheduleCalled_);
   }
 
+  void runEagerFiber(Fiber* fiber) override {
+    fm_->runEagerFiberImpl(fiber);
+  }
+
   void schedule() override {
     scheduled_ = true;
   }
