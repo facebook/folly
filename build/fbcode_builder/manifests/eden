@@ -56,3 +56,6 @@ fbcode/tools/lfs = tools/lfs
 
 [cmake.defines.all(fb=on,os=windows)]
 INSTALL_PYTHON_LIB=ON
+
+[cmake.defines.fb=on]
+USE_CARGO_VENDOR=ON
