@@ -103,7 +103,10 @@ class AsyncSignalHandler {
   virtual void signalReceived(int signum) noexcept = 0;
 
  private:
-  typedef std::map<int, struct event> SignalEventMap;
+  // we cannot copy the EventBaseEvent instances
+  // so we need to store ptrs to them
+  // Also some backends store ptrs to the EventBaseEvent instances
+  using SignalEventMap = std::map<int, std::unique_ptr<EventBaseEvent>>;
 
   // Forbidden copy constructor and assignment operator
   AsyncSignalHandler(AsyncSignalHandler const&);
