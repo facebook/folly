@@ -1007,13 +1007,13 @@ class basic_fbstring {
   typedef T traits_type;
   typedef typename traits_type::char_type value_type;
   typedef A allocator_type;
-  typedef typename A::size_type size_type;
-  typedef typename A::difference_type difference_type;
+  typedef typename std::allocator_traits<A>::size_type size_type;
+  typedef typename std::allocator_traits<A>::difference_type difference_type;
 
-  typedef typename A::reference reference;
-  typedef typename A::const_reference const_reference;
-  typedef typename A::pointer pointer;
-  typedef typename A::const_pointer const_pointer;
+  typedef typename std::allocator_traits<A>::value_type& reference;
+  typedef typename std::allocator_traits<A>::value_type const& const_reference;
+  typedef typename std::allocator_traits<A>::pointer pointer;
+  typedef typename std::allocator_traits<A>::const_pointer const_pointer;
 
   typedef E* iterator;
   typedef const E* const_iterator;
