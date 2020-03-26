@@ -403,7 +403,8 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
             scale < (std::size_t{1} << kCapacityScaleBits),
         "");
     if (kCapacityScaleBits == 4) {
-      control_ = (control_ & ~0xf) | static_cast<uint8_t>(scale);
+      control_ =
+          static_cast<uint8_t>((control_ & ~0xf) | static_cast<uint8_t>(scale));
     } else {
       uint16_t v = static_cast<uint16_t>(scale);
       std::memcpy(&tags_[12], &v, 2);
