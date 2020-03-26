@@ -640,7 +640,7 @@ class ValueContainerPolicy : public BasePolicy<
     }
   }
 
-  void destroyItem(Item& item) {
+  void destroyItem(Item& item) noexcept {
     Alloc& a = this->alloc();
     auto ptr = std::addressof(item);
     AllocTraits::destroy(a, ptr);
@@ -876,7 +876,7 @@ class NodeContainerPolicy
     prefetchAddr(std::addressof(*item));
   }
 
-  void destroyItem(Item& item) {
+  void destroyItem(Item& item) noexcept {
     if (item != nullptr) {
       Alloc& a = this->alloc();
       AllocTraits::destroy(a, std::addressof(*item));
@@ -1252,7 +1252,7 @@ class VectorContainerPolicy : public BasePolicy<
     prefetchAddr(std::addressof(values_[item]));
   }
 
-  void destroyItem(Item&) {}
+  void destroyItem(Item&) noexcept {}
 
   template <typename T>
   std::enable_if_t<std::is_nothrow_move_constructible<T>::value>
