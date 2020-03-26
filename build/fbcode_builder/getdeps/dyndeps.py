@@ -203,9 +203,11 @@ class ElfDeps(DepBase):
         subprocess.check_call([sys.executable, sys.argv[0], "build", "patchelf"])
         # ... and that we know where it lives
         self.patchelf = os.path.join(
-            subprocess.check_output(
-                [sys.executable, sys.argv[0], "show-inst-dir", "patchelf"]
-            ).strip(),
+            os.fsdecode(
+                subprocess.check_output(
+                    [sys.executable, sys.argv[0], "show-inst-dir", "patchelf"]
+                ).strip()
+            ),
             "bin/patchelf",
         )
 
@@ -221,8 +223,11 @@ class ElfDeps(DepBase):
         return lines
 
     def rewrite_dep(self, objfile, depname, old_dep, new_dep, final_lib_dir):
+        final_dep = os.path.join(
+            final_lib_dir, os.path.relpath(new_dep, self.munged_lib_dir)
+        )
         subprocess.check_call(
-            [self.patchelf, "--replace-needed", depname, new_dep, objfile]
+            [self.patchelf, "--replace-needed", depname, final_dep, objfile]
         )
 
     def is_objfile(self, objfile):
