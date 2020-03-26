@@ -135,6 +135,8 @@ jobs:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v1
+    - name: Fix Git config
+      run: git config --system core.longpaths true
     - name: Fetch boost
       run: python3 build/fbcode_builder/getdeps.py fetch --no-tests boost
     - name: Fetch perl

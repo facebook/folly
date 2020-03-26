@@ -629,6 +629,12 @@ jobs:
         out.write("    steps:\n")
         out.write("    - uses: actions/checkout@v1\n")
 
+        if build_opts.is_windows():
+            # The git installation may not like long filenames, so tell it
+            # that we want it to use them!
+            out.write("    - name: Fix Git config\n")
+            out.write("      run: git config --system core.longpaths true\n")
+
         projects = loader.manifests_in_dependency_order()
 
         for m in projects:
