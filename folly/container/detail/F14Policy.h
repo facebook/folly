@@ -50,6 +50,11 @@ using SetOrMapValueType = std::conditional_t<
     KeyType,
     MapValueType<KeyType, MappedTypeOrVoid>>;
 
+template <typename T>
+using IsNothrowMoveAndDestroy = Conjunction<
+    std::is_nothrow_move_constructible<T>,
+    std::is_nothrow_destructible<T>>;
+
 // Used to enable EBO for Hasher, KeyEqual, and Alloc.  std::tuple of
 // all empty objects is empty in libstdc++ but not libc++.
 template <
@@ -611,18 +616,18 @@ class ValueContainerPolicy : public BasePolicy<
   }
 
   template <typename T>
-  std::enable_if_t<std::is_nothrow_move_constructible<T>::value>
-  complainUnlessNothrowMove() {}
+  std::enable_if_t<IsNothrowMoveAndDestroy<T>::value>
+  complainUnlessNothrowMoveAndDestroy() {}
 
   template <typename T>
   [[deprecated(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]] std::
-      enable_if_t<!std::is_nothrow_move_constructible<T>::value>
-      complainUnlessNothrowMove() {}
+      "mark {key_type,mapped_type} {move constructor,destructor} noexcept, or use F14Node* if they aren't")]] std::
+      enable_if_t<!IsNothrowMoveAndDestroy<T>::value>
+      complainUnlessNothrowMoveAndDestroy() {}
 
   void moveItemDuringRehash(Item* itemAddr, Item& src) {
-    complainUnlessNothrowMove<Key>();
-    complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
+    complainUnlessNothrowMoveAndDestroy<Key>();
+    complainUnlessNothrowMoveAndDestroy<lift_unit_t<MappedTypeOrVoid>>();
 
     constructValueAtItem(0, itemAddr, Super::moveValue(src));
     if (destroyItemOnClear()) {
@@ -1255,18 +1260,18 @@ class VectorContainerPolicy : public BasePolicy<
   void destroyItem(Item&) noexcept {}
 
   template <typename T>
-  std::enable_if_t<std::is_nothrow_move_constructible<T>::value>
-  complainUnlessNothrowMove() {}
+  std::enable_if_t<IsNothrowMoveAndDestroy<T>::value>
+  complainUnlessNothrowMoveAndDestroy() {}
 
   template <typename T>
   [[deprecated(
-      "use F14NodeMap/Set or mark key and mapped type move constructor nothrow")]] std::
-      enable_if_t<!std::is_nothrow_move_constructible<T>::value>
-      complainUnlessNothrowMove() {}
+      "mark {key_type,mapped_type} {move constructor,destructor} noexcept, or use F14Node* if they aren't")]] std::
+      enable_if_t<!IsNothrowMoveAndDestroy<T>::value>
+      complainUnlessNothrowMoveAndDestroy() {}
 
   void transfer(Alloc& a, Value* src, Value* dst, std::size_t n) {
-    complainUnlessNothrowMove<Key>();
-    complainUnlessNothrowMove<lift_unit_t<MappedTypeOrVoid>>();
+    complainUnlessNothrowMoveAndDestroy<Key>();
+    complainUnlessNothrowMoveAndDestroy<lift_unit_t<MappedTypeOrVoid>>();
 
     auto origSrc = src;
     if (valueIsTriviallyCopyable()) {
