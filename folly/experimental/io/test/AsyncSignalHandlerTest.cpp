@@ -14,19 +14,29 @@
  * limitations under the License.
  */
 
+#include <folly/experimental/io/IoUringBackend.h>
 #include <folly/io/async/test/AsyncSignalHandlerTestLib.h>
 
 namespace folly {
 namespace test {
-struct DefaultBackendProvider {
+static constexpr size_t kCapacity = 16 * 1024;
+static constexpr size_t kMaxSubmit = 128;
+static constexpr size_t kMaxGet = static_cast<size_t>(-1);
+
+struct IoUringBackendProvider {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
-    return folly::EventBase::getDefaultBackend();
+    try {
+      return std::make_unique<folly::IoUringBackend>(
+          kCapacity, kMaxSubmit, kMaxGet, false /* useRegisteredFds */);
+    } catch (const IoUringBackend::NotAvailable&) {
+      return nullptr;
+    }
   }
 };
 
 INSTANTIATE_TYPED_TEST_CASE_P(
     AsyncSignalHandlerTest,
     AsyncSignalHandlerTest,
-    DefaultBackendProvider);
+    IoUringBackendProvider);
 } // namespace test
 } // namespace folly

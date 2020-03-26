@@ -21,6 +21,7 @@
 
 #include <chrono>
 #include <map>
+#include <set>
 #include <vector>
 
 #include <boost/intrusive/list.hpp>
@@ -135,6 +136,27 @@ class PollIoBackend : public EventBaseBackendBase {
     }
   };
 
+  class SocketPair {
+   public:
+    SocketPair();
+
+    SocketPair(const SocketPair&) = delete;
+    SocketPair& operator=(const SocketPair&) = delete;
+
+    ~SocketPair();
+
+    int readFd() const {
+      return fds_[1];
+    }
+
+    int writeFd() const {
+      return fds_[0];
+    }
+
+   private:
+    std::array<int, 2> fds_ = {-1, -1};
+  };
+
   static FOLLY_ALWAYS_INLINE uint32_t getPollFlags(short events) {
     uint32_t ret = 0;
     if (events & EV_READ) {
@@ -191,6 +213,22 @@ class PollIoBackend : public EventBaseBackendBase {
     backend->setProcessTimers();
   }
 
+  // signal handling
+  void addSignalEvent(Event& event);
+  void removeSignalEvent(Event& event);
+  bool addSignalFds();
+  size_t processSignals();
+  FOLLY_ALWAYS_INLINE void setProcessSignals() {
+    processSignals_ = true;
+  }
+
+  static void processSignalReadIoCb(
+      PollIoBackend* backend,
+      IoCb* /*unused*/,
+      int64_t /*unused*/) {
+    backend->setProcessSignals();
+  }
+
   void processPollIo(IoCb* ioCb, int64_t res) noexcept;
 
   IoCb* FOLLY_NULLABLE allocIoCb();
@@ -215,6 +253,7 @@ class PollIoBackend : public EventBaseBackendBase {
   size_t capacity_;
   size_t numEntries_;
   IoCb* timerEntry_{nullptr};
+  IoCb* signalReadEntry_{nullptr};
   IoCb* freeHead_{nullptr};
 
   // timer related
@@ -227,6 +266,10 @@ class PollIoBackend : public EventBaseBackendBase {
   std::map<Event*, std::chrono::time_point<std::chrono::steady_clock>>
       eventToTimers_;
 
+  // signal related
+  SocketPair signalFds_;
+  std::map<int, std::set<Event*>> signals_;
+
   // submit
   size_t maxSubmit_;
   IoCbList submitList_;
@@ -238,6 +281,7 @@ class PollIoBackend : public EventBaseBackendBase {
   bool loopBreak_{false};
   bool shuttingDown_{false};
   bool processTimers_{false};
+  bool processSignals_{false};
   size_t numInsertedEvents_{0};
   IoCbList activeEvents_;
   // number of IoCb instances in use

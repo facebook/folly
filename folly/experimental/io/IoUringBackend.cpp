@@ -112,20 +112,24 @@ IoUringBackend::IoUringBackend(
 
   entries_.reset(new IoSqe[numEntries_]);
 
+  // timer entry
   timerEntry_ = &entries_[0];
   timerEntry_->backend_ = this;
   timerEntry_->backendCb_ = PollIoBackend::processTimerIoCb;
 
-  // build the free list - first entry is the timer entry
-  for (size_t i = 2; i < numEntries_; i++) {
-    entries_[i - 1].next_ = &entries_[i];
-    entries_[i - 1].backend_ = this;
-    entries_[i - 1].backendCb_ = PollIoBackend::processPollIoCb;
+  // signal entry
+  signalReadEntry_ = &entries_[1];
+  signalReadEntry_->backend_ = this;
+  signalReadEntry_->backendCb_ = PollIoBackend::processSignalReadIoCb;
+
+  // build the free list - first 2 entres are reserved
+  for (size_t i = 2; i < numEntries_; ++i) {
+    entries_[i].next_ = (i == (numEntries_ - 1)) ? nullptr : &entries_[i + 1];
+    entries_[i].backend_ = this;
+    entries_[i].backendCb_ = PollIoBackend::processPollIoCb;
   }
 
-  entries_[numEntries_ - 1].backend_ = this;
-  entries_[numEntries_ - 1].backendCb_ = PollIoBackend::processPollIoCb;
-  freeHead_ = &entries_[1];
+  freeHead_ = &entries_[2];
 
   // we need to call the init before adding the timer fd
   // so we avoid a deadlock - waiting for the queue to be drained
@@ -137,7 +141,7 @@ IoUringBackend::IoUringBackend(
   }
 
   // add the timer fd
-  if (!addTimerFd()) {
+  if (!addTimerFd() || !addSignalFds()) {
     cleanup();
     entries_.reset();
     throw NotAvailable("io_uring_submit error");

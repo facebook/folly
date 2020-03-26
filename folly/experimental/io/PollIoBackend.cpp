@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <signal.h>
 #include <sys/timerfd.h>
 
 #include <atomic>
 
 #include <folly/FileUtil.h>
 #include <folly/Likely.h>
+#include <folly/SpinLock.h>
 #include <folly/experimental/io/PollIoBackend.h>
 #include <folly/portability/Sockets.h>
 #include <folly/synchronization/CallOnce.h>
@@ -31,12 +33,111 @@ extern "C" FOLLY_ATTR_WEAK void eb_poll_loop_post_hook(
     uint64_t call_time,
     int ret);
 
+namespace {
+struct SignalRegistry {
+  struct SigInfo {
+    struct sigaction sa_ {};
+    size_t count_{0};
+  };
+  using SignalMap = std::map<int, SigInfo>;
+
+  constexpr SignalRegistry() {}
+  ~SignalRegistry() {}
+
+  void notify(int sig);
+  void setNotifyFd(int sig, int fd);
+
+  // lock protecting the signal map
+  folly::MicroSpinLock mapLock_ = {0};
+  std::unique_ptr<SignalMap> map_;
+  std::atomic<int> notifyFd_{-1};
+};
+
+SignalRegistry sSignalRegistry;
+
+static void __cdecl evSigHandler(int sig) {
+  sSignalRegistry.notify(sig);
+}
+
+void SignalRegistry::notify(int sig) {
+  // use try_lock in case somebody already has the lock
+  if (mapLock_.try_lock()) {
+    int fd = notifyFd_.load();
+    if (fd >= 0) {
+      uint8_t sigNum = static_cast<uint8_t>(sig);
+      ::write(fd, &sigNum, 1);
+    }
+    mapLock_.unlock();
+  }
+}
+
+void SignalRegistry::setNotifyFd(int sig, int fd) {
+  folly::MSLGuard g(mapLock_);
+  if (fd >= 0) {
+    if (!map_) {
+      map_ = std::make_unique<SignalMap>();
+    }
+    // switch the fd
+    notifyFd_.store(fd);
+
+    auto iter = (*map_).find(sig);
+    if (iter != (*map_).end()) {
+      iter->second.count_++;
+    } else {
+      auto& entry = (*map_)[sig];
+      entry.count_ = 1;
+      struct sigaction sa = {};
+      sa.sa_handler = evSigHandler;
+      sa.sa_flags |= SA_RESTART;
+      ::sigfillset(&sa.sa_mask);
+
+      if (::sigaction(sig, &sa, &entry.sa_) == -1) {
+        (*map_).erase(sig);
+      }
+    }
+  } else {
+    notifyFd_.store(fd);
+
+    if (map_) {
+      auto iter = (*map_).find(sig);
+      if ((iter != (*map_).end()) && (--iter->second.count_ == 0)) {
+        auto entry = iter->second;
+        (*map_).erase(iter);
+        // just restore
+        ::sigaction(sig, &entry.sa_, nullptr);
+      }
+    }
+  }
+}
+
+} // namespace
+
 namespace folly {
 PollIoBackend::TimerEntry::TimerEntry(
     Event* event,
     const struct timeval& timeout)
     : event_(event) {
   setExpireTime(timeout);
+}
+
+PollIoBackend::SocketPair::SocketPair() {
+  if (::socketpair(AF_UNIX, SOCK_STREAM, 0, fds_.data())) {
+    throw std::runtime_error("socketpair error");
+  }
+
+  // set the sockets to non blocking mode
+  for (auto fd : fds_) {
+    auto flags = ::fcntl(fd, F_GETFL, 0);
+    ::fcntl(fd, F_SETFL, flags | O_NONBLOCK);
+  }
+}
+
+PollIoBackend::SocketPair::~SocketPair() {
+  for (auto fd : fds_) {
+    if (fd >= 0) {
+      ::close(fd);
+    }
+  }
 }
 
 PollIoBackend::PollIoBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
@@ -59,6 +160,14 @@ bool PollIoBackend::addTimerFd() {
   auto* entry = allocSubmissionEntry(); // this can be nullptr
   timerEntry_->prepPollAdd(entry, timerFd_, POLLIN, true /*registerFd*/);
   return (1 == submitOne(timerEntry_));
+}
+
+bool PollIoBackend::addSignalFds() {
+  auto* entry = allocSubmissionEntry(); // this can be nullptr
+  signalReadEntry_->prepPollAdd(
+      entry, signalFds_.readFd(), POLLIN, false /*registerFd*/);
+
+  return (1 == submitOne(signalReadEntry_));
 }
 
 void PollIoBackend::scheduleTimeout() {
@@ -176,6 +285,56 @@ size_t PollIoBackend::processTimers() {
   return ret;
 }
 
+void PollIoBackend::addSignalEvent(Event& event) {
+  auto* ev = event.getEvent();
+  signals_[ev->ev_fd].insert(&event);
+
+  // we pass the write fd for notifications
+  sSignalRegistry.setNotifyFd(ev->ev_fd, signalFds_.writeFd());
+}
+
+void PollIoBackend::removeSignalEvent(Event& event) {
+  auto* ev = event.getEvent();
+  auto iter = signals_.find(ev->ev_fd);
+  if (iter != signals_.end()) {
+    sSignalRegistry.setNotifyFd(ev->ev_fd, -1);
+  }
+}
+
+size_t PollIoBackend::processSignals() {
+  size_t ret = 0;
+  static constexpr auto kNumEntries = NSIG * 2;
+  static_assert(
+      NSIG < 256, "Use a different data type to cover all the signal values");
+  std::array<bool, NSIG> processed{};
+  std::array<uint8_t, kNumEntries> signals;
+
+  ssize_t num =
+      folly::readNoInt(signalFds_.readFd(), signals.data(), signals.size());
+  for (ssize_t i = 0; i < num; i++) {
+    int signum = static_cast<int>(signals[i]);
+    if ((signum >= 0) && (signum < static_cast<int>(processed.size())) &&
+        !processed[signum]) {
+      processed[signum] = true;
+      auto iter = signals_.find(signum);
+      if (iter != signals_.end()) {
+        auto& set = iter->second;
+        for (auto& event : set) {
+          auto* ev = event->getEvent();
+          ev->ev_res = 0;
+          event_ref_flags(ev) |= EVLIST_ACTIVE;
+          (*event_ref_callback(ev))(
+              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+          event_ref_flags(ev) &= ~EVLIST_ACTIVE;
+        }
+      }
+    }
+  }
+  // add the signal fd(s) back
+  addSignalFds();
+  return ret;
+}
+
 PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
   // try to allocate from the pool first
   if (FOLLY_LIKELY(freeHead_ != nullptr)) {
@@ -286,7 +445,7 @@ int PollIoBackend::eb_event_base_loop(int flags) {
 
     submitList(submitList_, waitForEvents);
 
-    if (!numInsertedEvents_ && timers_.empty()) {
+    if (!numInsertedEvents_ && timers_.empty() && signals_.empty()) {
       return 1;
     }
 
@@ -309,16 +468,26 @@ int PollIoBackend::eb_event_base_loop(int flags) {
       processTimers_ = false;
     }
 
+    size_t numProcessedSignals = 0;
+
+    if (processSignals_ && !loopBreak_) {
+      numProcessedSignals = processSignals();
+      processSignals_ = false;
+    }
+
     if (!activeEvents_.empty() && !loopBreak_) {
       processActiveEvents();
       if (flags & EVLOOP_ONCE) {
         done = true;
       }
     } else if (flags & EVLOOP_NONBLOCK) {
-      done = true;
+      if (signals_.empty()) {
+        done = true;
+      }
     }
 
-    if (!done && numProcessedTimers && (flags & EVLOOP_ONCE)) {
+    if (!done && (numProcessedTimers || numProcessedSignals) &&
+        (flags & EVLOOP_ONCE)) {
       done = true;
     }
   }
@@ -343,8 +512,13 @@ int PollIoBackend::eb_event_add(Event& event, const struct timeval* timeout) {
     return 0;
   }
 
-  // TBD - signal later
-  if ((ev->ev_events & (EV_READ | EV_WRITE | EV_SIGNAL)) &&
+  if (ev->ev_events & EV_SIGNAL) {
+    event_ref_flags(ev) |= EVLIST_INSERTED;
+    addSignalEvent(event);
+    return 0;
+  }
+
+  if ((ev->ev_events & (EV_READ | EV_WRITE)) &&
       !(event_ref_flags(ev) & (EVLIST_INSERTED | EVLIST_ACTIVE))) {
     auto* iocb = allocIoCb();
     CHECK(iocb);
@@ -401,6 +575,12 @@ int PollIoBackend::eb_event_del(Event& event) {
 
   if (!(event_ref_flags(ev) & (EVLIST_ACTIVE | EVLIST_INSERTED))) {
     return -1;
+  }
+
+  if (ev->ev_events & EV_SIGNAL) {
+    event_ref_flags(ev) &= ~(EVLIST_INSERTED | EVLIST_ACTIVE);
+    removeSignalEvent(event);
+    return 0;
   }
 
   auto* iocb = reinterpret_cast<IoCb*>(event.getUserData());
