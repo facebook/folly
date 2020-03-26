@@ -881,7 +881,18 @@ class NodeContainerPolicy
     prefetchAddr(std::addressof(*item));
   }
 
+  template <typename T>
+  std::enable_if_t<std::is_nothrow_destructible<T>::value>
+  complainUnlessNothrowDestroy() {}
+
+  template <typename T>
+  [[deprecated("Mark key and mapped type destructor nothrow")]] std::
+      enable_if_t<!std::is_nothrow_destructible<T>::value>
+      complainUnlessNothrowDestroy() {}
+
   void destroyItem(Item& item) noexcept {
+    complainUnlessNothrowDestroy<Key>();
+    complainUnlessNothrowDestroy<lift_unit_t<MappedTypeOrVoid>>();
     if (item != nullptr) {
       Alloc& a = this->alloc();
       AllocTraits::destroy(a, std::addressof(*item));
