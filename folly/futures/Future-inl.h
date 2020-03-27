@@ -871,8 +871,7 @@ SemiFuture<Unit> SemiFuture<T>::unit() && {
 template <typename T>
 SemiFuture<T> SemiFuture<T>::delayed(HighResDuration dur, Timekeeper* tk) && {
   return collectAllSemiFuture(*this, futures::sleep(dur, tk))
-      .toUnsafeFuture()
-      .thenValue([](std::tuple<Try<T>, Try<Unit>> tup) {
+      .deferValue([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
         return makeFuture<T>(std::move(t));
       });
