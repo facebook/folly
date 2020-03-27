@@ -55,7 +55,7 @@ struct SignalRegistry {
 
 SignalRegistry sSignalRegistry;
 
-static void __cdecl evSigHandler(int sig) {
+void evSigHandler(int sig) {
   sSignalRegistry.notify(sig);
 }
 
