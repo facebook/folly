@@ -19,6 +19,8 @@ build_doc = true
 workspace_dir = eden/mononoke
 
 [shipit.pathmap]
+fbcode/configerator/structs/scm/mononoke/public_autocargo = eden/mononoke/config_structs
+fbcode/configerator/structs/scm/mononoke/repos = eden/mononoke/config_structs/repos
 fbcode/eden/oss = .
 fbcode/eden = eden
 fbcode/eden/mononoke/public_autocargo = eden/mononoke
