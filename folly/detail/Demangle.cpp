@@ -23,7 +23,11 @@
 // So we extract the inclusion of `<demangle.h>` which includes `<libiberty.h>`
 // to here, isolating it.
 #if FOLLY_DETAIL_HAVE_DEMANGLE_H
+// Work around an issue with conflicting `basename` definitions in glibc and
+// binutils headers.
+#define HAVE_DECL_BASENAME 1
 #include <demangle.h> // @manual
+#undef HAVE_DECL_BASENAME
 #endif
 
 namespace folly {
