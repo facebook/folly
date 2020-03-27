@@ -23,12 +23,6 @@ libsodium
 python-six
 zstd
 
-[cmake.defines.test=on]
-BUILD_TESTS=ON
-
-[cmake.defines.test=off]
-BUILD_TESTS=OFF
-
 [shipit.pathmap]
 fbcode/thrift/public_tld = .
 fbcode/thrift = thrift
