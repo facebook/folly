@@ -76,7 +76,7 @@ struct ObjectHolder {
 };
 
 template <char Tag, typename T>
-struct ObjectHolder<Tag, T, true> : private T {
+struct ObjectHolder<Tag, T, true> : T {
   template <typename... Args>
   ObjectHolder(Args&&... args) : T{std::forward<Args>(args)...} {}
 
@@ -1044,15 +1044,15 @@ class VectorContainerPolicy : public BasePolicy<
       AllocOrVoid,
       uint32_t>;
   using Value = typename Super::Value;
-  using Alloc = Defaulted<AllocOrVoid, DefaultAlloc<Value>>;
+  using Alloc = typename Super::Alloc;
   using AllocTraits = typename Super::AllocTraits;
   using ByteAlloc = typename Super::ByteAlloc;
   using ByteAllocTraits = typename Super::ByteAllocTraits;
   using BytePtr = typename Super::BytePtr;
-  using Hasher = Defaulted<HasherOrVoid, DefaultHasher<Key>>;
+  using Hasher = typename Super::Hasher;
   using Item = typename Super::Item;
   using ItemIter = typename Super::ItemIter;
-  using KeyEqual = Defaulted<KeyEqualOrVoid, DefaultKeyEqual<Key>>;
+  using KeyEqual = typename Super::KeyEqual;
 
   using Super::kAllocIsAlwaysEqual;
 
