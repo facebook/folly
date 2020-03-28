@@ -1556,3 +1556,13 @@ constexpr Range<wchar_t const*> operator"" _sp(
 FOLLY_POP_WARNING
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(folly::Range)
+
+// Tell the range-v3 library that this type should satisfy
+// the view concept (a lightweight, non-owning range).
+namespace ranges {
+template <class T>
+extern const bool enable_view;
+
+template <class Iter>
+FOLLY_INLINE_VARIABLE constexpr bool enable_view<::folly::Range<Iter>> = true;
+} // namespace ranges
