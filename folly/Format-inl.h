@@ -481,14 +481,18 @@ class FormatValue<
           "sign specifications not allowed for unsigned values");
     }
 
-    // max of:
-    // #x: 0x prefix + 16 bytes = 18 bytes
-    // #o: 0 prefix + 22 bytes = 23 bytes
-    // #b: 0b prefix + 64 bytes = 65 bytes
+    // 1 byte for sign, plus max of:
+    // #x: two byte "0x" prefix + kMaxHexLength
+    // #o: one byte "0" prefix + kMaxOctalLength
+    // #b: two byte "0b" prefix + kMaxBinaryLength
+    // n: 19 bytes + 1 NUL
     // ,d: 26 bytes (including thousands separators!)
-    // + nul terminator
-    // + 3 for sign and prefix shenanigans (see below)
-    constexpr size_t valBufSize = 69;
+    //
+    // Binary format must take the most space, so we use that.
+    //
+    // Note that we produce a StringPiece rather than NUL-terminating,
+    // so we don't need an extra byte for a NUL.
+    constexpr size_t valBufSize = 1 + 2 + detail::kMaxBinaryLength;
     char valBuf[valBufSize];
     char* valBufBegin = nullptr;
     char* valBufEnd = nullptr;
@@ -508,7 +512,7 @@ class FormatValue<
             presentation,
             "' specifier");
 
-        valBufBegin = valBuf + 3; // room for sign and base prefix
+        valBufBegin = valBuf + 1; // room for sign
 #if defined(__ANDROID__)
         int len = snprintf(
             valBufBegin,
@@ -534,7 +538,7 @@ class FormatValue<
             "base prefix not allowed with '",
             presentation,
             "' specifier");
-        valBufBegin = valBuf + 3; // room for sign and base prefix
+        valBufBegin = valBuf + 1; // room for sign
 
         // Use uintToBuffer, faster than sprintf
         valBufEnd = valBufBegin + uint64ToBufferUnsafe(uval, valBufBegin);
@@ -553,7 +557,7 @@ class FormatValue<
             "thousands separator (',') not allowed with '",
             presentation,
             "' specifier");
-        valBufBegin = valBuf + 3;
+        valBufBegin = valBuf + 1; // room for sign
         *valBufBegin = static_cast<char>(uval);
         valBufEnd = valBufBegin + 1;
         break;
@@ -564,9 +568,8 @@ class FormatValue<
             "thousands separator (',') not allowed with '",
             presentation,
             "' specifier");
-        valBufEnd = valBuf + valBufSize - 1;
-        valBufBegin =
-            valBuf + detail::uintToOctal(valBuf, valBufSize - 1, uval);
+        valBufEnd = valBuf + valBufSize;
+        valBufBegin = valBuf + detail::uintToOctal(valBuf, valBufSize, uval);
         if (arg.basePrefix) {
           *--valBufBegin = '0';
           prefixLen = 1;
@@ -578,9 +581,8 @@ class FormatValue<
             "thousands separator (',') not allowed with '",
             presentation,
             "' specifier");
-        valBufEnd = valBuf + valBufSize - 1;
-        valBufBegin =
-            valBuf + detail::uintToHexLower(valBuf, valBufSize - 1, uval);
+        valBufEnd = valBuf + valBufSize;
+        valBufBegin = valBuf + detail::uintToHexLower(valBuf, valBufSize, uval);
         if (arg.basePrefix) {
           *--valBufBegin = 'x';
           *--valBufBegin = '0';
@@ -593,9 +595,8 @@ class FormatValue<
             "thousands separator (',') not allowed with '",
             presentation,
             "' specifier");
-        valBufEnd = valBuf + valBufSize - 1;
-        valBufBegin =
-            valBuf + detail::uintToHexUpper(valBuf, valBufSize - 1, uval);
+        valBufEnd = valBuf + valBufSize;
+        valBufBegin = valBuf + detail::uintToHexUpper(valBuf, valBufSize, uval);
         if (arg.basePrefix) {
           *--valBufBegin = 'X';
           *--valBufBegin = '0';
@@ -609,9 +610,8 @@ class FormatValue<
             "thousands separator (',') not allowed with '",
             presentation,
             "' specifier");
-        valBufEnd = valBuf + valBufSize - 1;
-        valBufBegin =
-            valBuf + detail::uintToBinary(valBuf, valBufSize - 1, uval);
+        valBufEnd = valBuf + valBufSize;
+        valBufBegin = valBuf + detail::uintToBinary(valBuf, valBufSize, uval);
         if (arg.basePrefix) {
           *--valBufBegin = presentation; // 0b or 0B
           *--valBufBegin = '0';
