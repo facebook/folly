@@ -610,6 +610,13 @@ jobs:
         if manifest.get("build", "builder", ctx=manifest_ctx) == "nop":
             return None
 
+        # We want to be sure that we're running things with python 3
+        # but python versioning is honestly a bit of a frustrating mess.
+        # `python` may be version 2 or version 3 depending on the system.
+        # python3 may not be a thing at all!
+        # Assume an optimistic default
+        py3 = "python3"
+
         if build_opts.is_linux():
             job_name = "linux"
             runs_on = "ubuntu-18.04"
@@ -620,9 +627,14 @@ jobs:
             # buildable with Visual Studio 2019
             job_name = "windows"
             runs_on = "windows-2016"
+            # The windows runners are python 3 by default; python2.exe
+            # is available if needed.
+            py3 = "python"
         else:
             job_name = "mac"
             runs_on = "macOS-latest"
+
+        getdeps = f"{py3} build/fbcode_builder/getdeps.py"
 
         out.write("  %s:\n" % job_name)
         out.write("    runs-on: %s\n" % runs_on)
@@ -640,29 +652,20 @@ jobs:
         for m in projects:
             if m != manifest:
                 out.write("    - name: Fetch %s\n" % m.name)
-                out.write(
-                    "      run: python3 build/fbcode_builder/getdeps.py fetch "
-                    "--no-tests %s\n" % m.name
-                )
+                out.write(f"      run: {getdeps} fetch --no-tests {m.name}\n")
 
         for m in projects:
             if m != manifest:
                 out.write("    - name: Build %s\n" % m.name)
-                out.write(
-                    "      run: python3 build/fbcode_builder/getdeps.py build "
-                    "--no-tests %s\n" % m.name
-                )
+                out.write(f"      run: {getdeps} build --no-tests {m.name}\n")
 
         out.write("    - name: Build %s\n" % manifest.name)
-        out.write(
-            "      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. %s\n"
-            % manifest.name
-        )
+        out.write(f"      run: {getdeps} build --src-dir=. {manifest.name}\n")
 
         out.write("    - name: Copy artifacts\n")
         out.write(
-            "      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps "
-            "--src-dir=. %s _artifacts/%s\n" % (manifest.name, job_name)
+            f"      run: {getdeps} fixup-dyn-deps "
+            f"--src-dir=. {manifest.name} _artifacts/{job_name}\n"
         )
         out.write("    - uses: actions/upload-artifact@master\n")
         out.write("      with:\n")
@@ -670,10 +673,7 @@ jobs:
         out.write("        path: _artifacts\n")
 
         out.write("    - name: Test %s\n" % manifest.name)
-        out.write(
-            "      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. %s\n"
-            % manifest.name
-        )
+        out.write(f"      run: {getdeps} test --src-dir=. {manifest.name}\n")
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument("--output-file", help="The name of the yaml file")
