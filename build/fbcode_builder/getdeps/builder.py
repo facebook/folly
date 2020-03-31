@@ -19,7 +19,15 @@ from .runcmd import run_cmd
 
 class BuilderBase(object):
     def __init__(
-        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, env=None
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        env=None,
+        final_install_prefix=None,
     ):
         self.env = Env()
         if env:
@@ -35,6 +43,7 @@ class BuilderBase(object):
         self.inst_dir = inst_dir
         self.build_opts = build_opts
         self.manifest = manifest
+        self.final_install_prefix = final_install_prefix
 
     def _get_cmd_prefix(self):
         if self.build_opts.is_windows():
@@ -286,10 +295,24 @@ if __name__ == "__main__":
 """
 
     def __init__(
-        self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, defines
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        defines,
+        final_install_prefix=None,
     ):
         super(CMakeBuilder, self).__init__(
-            build_opts, ctx, manifest, src_dir, build_dir, inst_dir
+            build_opts,
+            ctx,
+            manifest,
+            src_dir,
+            build_dir,
+            inst_dir,
+            final_install_prefix=final_install_prefix,
         )
         self.defines = defines or {}
 
@@ -337,7 +360,7 @@ if __name__ == "__main__":
 
     def _compute_cmake_define_args(self, env):
         defines = {
-            "CMAKE_INSTALL_PREFIX": self.inst_dir,
+            "CMAKE_INSTALL_PREFIX": self.final_install_prefix or self.inst_dir,
             "BUILD_SHARED_LIBS": "OFF",
             # Some of the deps (rsocket) default to UBSAN enabled if left
             # unspecified.  Some of the deps fail to compile in release mode
@@ -393,6 +416,8 @@ if __name__ == "__main__":
         reconfigure = reconfigure or self._needs_reconfigure()
 
         env = self._compute_env(install_dirs)
+        if not self.build_opts.is_windows() and self.final_install_prefix:
+            env["DESTDIR"] = self.inst_dir
 
         # Resolve the cmake that we installed
         cmake = path_search(env, "cmake")

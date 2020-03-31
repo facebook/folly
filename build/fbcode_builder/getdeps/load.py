@@ -134,6 +134,7 @@ class ManifestLoader(object):
         self._fetcher_overrides = {}
         self._build_dir_overrides = {}
         self._install_dir_overrides = {}
+        self._install_prefix_overrides = {}
 
     def load_manifest(self, name):
         manifest = self.manifests_by_name.get(name)
@@ -238,6 +239,9 @@ class ManifestLoader(object):
     def set_project_install_dir(self, project_name, path):
         self._install_dir_overrides[project_name] = path
 
+    def set_project_install_prefix(self, project_name, path):
+        self._install_prefix_overrides[project_name] = path
+
     def create_fetcher(self, manifest):
         override = self._fetcher_overrides.get(manifest.name)
         if override is not None:
@@ -284,7 +288,10 @@ class ManifestLoader(object):
             hasher.update(name.encode("utf-8"))
             value = env.get(name)
             if value is not None:
-                hasher.update(value.encode("utf-8"))
+                try:
+                    hasher.update(value.encode("utf-8"))
+                except AttributeError as exc:
+                    raise AttributeError("name=%r, value=%r: %s" % (name, value, exc))
 
         manifest.update_hash(hasher, ctx)
 
@@ -327,3 +334,13 @@ class ManifestLoader(object):
 
         project_dir_name = self._get_project_dir_name(manifest)
         return os.path.join(self.build_opts.scratch_dir, "build", project_dir_name)
+
+    def get_project_install_prefix(self, manifest):
+        return self._install_prefix_overrides.get(manifest.name)
+
+    def get_project_install_dir_respecting_install_prefix(self, manifest):
+        inst_dir = self.get_project_install_dir(manifest)
+        prefix = self.get_project_install_prefix(manifest)
+        if prefix:
+            return inst_dir + prefix
+        return inst_dir

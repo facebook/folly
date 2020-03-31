@@ -366,7 +366,16 @@ class ManifestParser(object):
             "project %s has no fetcher configuration matching %s" % (self.name, ctx)
         )
 
-    def create_builder(self, build_options, src_dir, build_dir, inst_dir, ctx, loader):
+    def create_builder(  # noqa:C901
+        self,
+        build_options,
+        src_dir,
+        build_dir,
+        inst_dir,
+        ctx,
+        loader,
+        final_install_prefix=None,
+    ):
         builder = self.get("build", "builder", ctx=ctx)
         if not builder:
             raise Exception("project %s has no builder for %r" % (self.name, ctx))
@@ -392,7 +401,14 @@ class ManifestParser(object):
         if builder == "cmake":
             defines = self.get_section_as_dict("cmake.defines", ctx)
             return CMakeBuilder(
-                build_options, ctx, self, src_dir, build_dir, inst_dir, defines
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                build_dir,
+                inst_dir,
+                defines,
+                final_install_prefix,
             )
 
         if builder == "python-wheel":

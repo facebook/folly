@@ -183,6 +183,7 @@ class PythonWheelBuilder(BuilderBase):
             build_dir=self.build_dir,
             inst_dir=self.inst_dir,
             defines={},
+            final_install_prefix=None,
         )
         cmake_builder.build(install_dirs=install_dirs, reconfigure=reconfigure)
 

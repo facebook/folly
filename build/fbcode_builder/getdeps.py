@@ -133,6 +133,10 @@ class ProjectCmdBase(SubCmd):
             project, path = parse_project_arg(arg, "--install-dir")
             loader.set_project_install_dir(project, path)
 
+        for arg in args.project_install_prefix:
+            project, path = parse_project_arg(arg, "--install-prefix")
+            loader.set_project_install_prefix(project, path)
+
     def setup_parser(self, parser):
         parser.add_argument(
             "project",
@@ -182,6 +186,12 @@ class ProjectCmdBase(SubCmd):
             help="Explicitly specify the install directory to use for the "
             "project, instead of the default location in the scratch path. "
             "This only affects the project specified, and not its dependencies.",
+        )
+        parser.add_argument(
+            "--project-install-prefix",
+            default=[],
+            action="append",
+            help="Specify the final deployment installation path for a project",
         )
 
         self.setup_project_cmd_parser(parser)
@@ -341,7 +351,7 @@ class ShowInstDirCmd(ProjectCmdBase):
             manifests = [manifest]
 
         for m in manifests:
-            inst_dir = loader.get_project_install_dir(m)
+            inst_dir = loader.get_project_install_dir_respecting_install_prefix(m)
             print(inst_dir)
 
     def setup_project_cmd_parser(self, parser):
@@ -415,7 +425,13 @@ class BuildCmd(ProjectCmdBase):
                         os.unlink(built_marker)
                     src_dir = fetcher.get_src_dir()
                     builder = m.create_builder(
-                        loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
+                        loader.build_opts,
+                        src_dir,
+                        build_dir,
+                        inst_dir,
+                        ctx,
+                        loader,
+                        final_install_prefix=loader.get_project_install_prefix(m),
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
@@ -505,7 +521,7 @@ class FixupDeps(ProjectCmdBase):
         install_dirs = []
 
         for m in projects:
-            inst_dir = loader.get_project_install_dir(m)
+            inst_dir = loader.get_project_install_dir_respecting_install_prefix(m)
             install_dirs.append(inst_dir)
 
             if m == manifest:
@@ -660,20 +676,30 @@ jobs:
                 out.write(f"      run: {getdeps} build --no-tests {m.name}\n")
 
         out.write("    - name: Build %s\n" % manifest.name)
-        out.write(f"      run: {getdeps} build --src-dir=. {manifest.name}\n")
+
+        project_prefix = ""
+        if not build_opts.is_windows():
+            project_prefix = " --project-install-prefix %s:/usr/local" % manifest.name
+
+        out.write(
+            f"      run: {getdeps} build --src-dir=. {manifest.name} {project_prefix}\n"
+        )
 
         out.write("    - name: Copy artifacts\n")
         out.write(
             f"      run: {getdeps} fixup-dyn-deps "
-            f"--src-dir=. {manifest.name} _artifacts/{job_name}\n"
+            f"--src-dir=. {manifest.name} _artifacts/{job_name} --final-install-prefix /usr/local\n"
         )
+
         out.write("    - uses: actions/upload-artifact@master\n")
         out.write("      with:\n")
         out.write("        name: %s\n" % manifest.name)
         out.write("        path: _artifacts\n")
 
         out.write("    - name: Test %s\n" % manifest.name)
-        out.write(f"      run: {getdeps} test --src-dir=. {manifest.name}\n")
+        out.write(
+            f"      run: {getdeps} test --src-dir=. {manifest.name} {project_prefix}\n"
+        )
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument("--output-file", help="The name of the yaml file")

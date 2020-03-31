@@ -60,15 +60,15 @@ jobs:
     - name: Build zstd
       run: python3 build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly
+      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/linux
+      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/linux --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: folly
         path: _artifacts
     - name: Test folly
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly
+      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly  --project-install-prefix folly:/usr/local
   mac:
     runs-on: macOS-latest
     steps:
@@ -122,15 +122,15 @@ jobs:
     - name: Build zstd
       run: python3 build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build folly
-      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly
+      run: python3 build/fbcode_builder/getdeps.py build --src-dir=. folly  --project-install-prefix folly:/usr/local
     - name: Copy artifacts
-      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/mac
+      run: python3 build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/mac --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: folly
         path: _artifacts
     - name: Test folly
-      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly
+      run: python3 build/fbcode_builder/getdeps.py test --src-dir=. folly  --project-install-prefix folly:/usr/local
   windows:
     runs-on: windows-2016
     steps:
@@ -194,12 +194,12 @@ jobs:
     - name: Build zstd
       run: python build/fbcode_builder/getdeps.py build --no-tests zstd
     - name: Build folly
-      run: python build/fbcode_builder/getdeps.py build --src-dir=. folly
+      run: python build/fbcode_builder/getdeps.py build --src-dir=. folly 
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/windows
+      run: python build/fbcode_builder/getdeps.py fixup-dyn-deps --src-dir=. folly _artifacts/windows --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: folly
         path: _artifacts
     - name: Test folly
-      run: python build/fbcode_builder/getdeps.py test --src-dir=. folly
+      run: python build/fbcode_builder/getdeps.py test --src-dir=. folly 
