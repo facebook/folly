@@ -12,6 +12,7 @@ builder = cmake
 
 [dependencies]
 boost
+cpptoml
 fb303
 fbthrift
 folly
