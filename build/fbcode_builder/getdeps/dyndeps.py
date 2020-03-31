@@ -5,15 +5,20 @@
 
 from __future__ import absolute_import, division, print_function, unicode_literals
 
+import errno
 import glob
 import os
 import re
 import shutil
+import stat
 import subprocess
 import sys
 from struct import unpack
 
 from .envfuncs import path_search
+
+
+OBJECT_SUBDIRS = ("bin", "lib", "lib64")
 
 
 def copyfile(src, dest):
@@ -56,7 +61,7 @@ class DepBase(object):
         inst_dir = self.install_dirs[-1]
         print("Process deps under %s" % inst_dir, file=sys.stderr)
 
-        for dir in ["bin", "lib", "lib64"]:
+        for dir in OBJECT_SUBDIRS:
             src_dir = os.path.join(inst_dir, dir)
             if not os.path.isdir(src_dir):
                 continue
@@ -69,6 +74,23 @@ class DepBase(object):
                 dest_obj = os.path.join(dest_dir, objfile)
                 copyfile(os.path.join(src_dir, objfile), dest_obj)
                 self.munge_in_place(dest_obj, final_lib_dir)
+
+    def find_all_dependencies(self, build_dir):
+        all_deps = set()
+        for objfile in self.list_objs_in_dir(
+            build_dir, recurse=True, output_prefix=build_dir
+        ):
+            for d in self.list_dynamic_deps(objfile):
+                all_deps.add(d)
+
+        interesting_deps = {d for d in all_deps if self.interesting_dep(d)}
+        dep_paths = []
+        for dep in interesting_deps:
+            dep_path = self.resolve_loader_path(dep)
+            if dep_path:
+                dep_paths.append(dep_path)
+
+        return dep_paths
 
     def munge_in_place(self, objfile, final_lib_dir):
         print("Munging %s" % objfile)
@@ -97,19 +119,26 @@ class DepBase(object):
             return dep
         d = os.path.basename(dep)
         for inst_dir in self.install_dirs:
-            for libdir in ["bin", "lib", "lib64"]:
+            for libdir in OBJECT_SUBDIRS:
                 candidate = os.path.join(inst_dir, libdir, d)
                 if os.path.exists(candidate):
                     return candidate
         return None
 
-    def list_objs_in_dir(self, dir):
-        objs = []
-        for d in os.listdir(dir):
-            if self.is_objfile(os.path.join(dir, d)):
-                objs.append(os.path.normcase(d))
-
-        return objs
+    def list_objs_in_dir(self, dir, recurse=False, output_prefix=""):
+        for entry in os.listdir(dir):
+            entry_path = os.path.join(dir, entry)
+            st = os.lstat(entry_path)
+            if stat.S_ISREG(st.st_mode):
+                if self.is_objfile(entry_path):
+                    relative_result = os.path.join(output_prefix, entry)
+                    yield os.path.normcase(relative_result)
+            elif recurse and stat.S_ISDIR(st.st_mode):
+                child_prefix = os.path.join(output_prefix, entry)
+                for result in self.list_objs_in_dir(
+                    entry_path, recurse=recurse, output_prefix=child_prefix
+                ):
+                    yield result
 
     def is_objfile(self, objfile):
         return True
@@ -193,6 +222,89 @@ class WinDeps(DepBase):
         if objfile.lower().endswith(".exe"):
             return True
         return False
+
+    def emit_dev_run_script(self, script_path, dep_dirs):
+        """Emit a script that can be used to run build artifacts directly from the
+        build directory, without installing them.
+
+        The dep_dirs parameter should be a list of paths that need to be added to $PATH.
+        This can be computed by calling compute_dependency_paths() or
+        compute_dependency_paths_fast().
+
+        This is only necessary on Windows, which does not have RPATH, and instead
+        requires the $PATH environment variable be updated in order to find the proper
+        library dependencies.
+        """
+        contents = self._get_dev_run_script_contents(dep_dirs)
+        with open(script_path, "w") as f:
+            f.write(contents)
+
+    def compute_dependency_paths(self, build_dir):
+        """Return a list of all directories that need to be added to $PATH to ensure
+        that library dependencies can be found correctly.  This is computed by scanning
+        binaries to determine exactly the right list of dependencies.
+
+        The compute_dependency_paths_fast() is a alternative function that runs faster
+        but may return additional extraneous paths.
+        """
+        dep_dirs = set()
+        # Find paths by scanning the binaries.
+        for dep in self.find_all_dependencies(build_dir):
+            dep_dirs.add(os.path.dirname(dep))
+
+        dep_dirs.update(self.read_custom_dep_dirs(build_dir))
+        return sorted(dep_dirs)
+
+    def compute_dependency_paths_fast(self, build_dir):
+        """Similar to compute_dependency_paths(), but rather than actually scanning
+        binaries, just add all library paths from the specified installation
+        directories.  This is much faster than scanning the binaries, but may result in
+        more paths being returned than actually necessary.
+        """
+        dep_dirs = set()
+        for inst_dir in self.install_dirs:
+            for subdir in OBJECT_SUBDIRS:
+                path = os.path.join(inst_dir, subdir)
+                if os.path.exists(path):
+                    dep_dirs.add(path)
+
+        dep_dirs.update(self.read_custom_dep_dirs(build_dir))
+        return sorted(dep_dirs)
+
+    def read_custom_dep_dirs(self, build_dir):
+        # The build system may also have included libraries from other locations that
+        # we might not be able to find normally in find_all_dependencies().
+        # To handle this situation we support reading additional library paths
+        # from a LIBRARY_DEP_DIRS.txt file that may have been generated in the build
+        # output directory.
+        dep_dirs = set()
+        try:
+            explicit_dep_dirs_path = os.path.join(build_dir, "LIBRARY_DEP_DIRS.txt")
+            with open(explicit_dep_dirs_path, "r") as f:
+                for line in f.read().splitlines():
+                    dep_dirs.add(line)
+        except OSError as ex:
+            if ex.errno != errno.ENOENT:
+                raise
+
+        return dep_dirs
+
+    def _get_dev_run_script_contents(self, path_dirs):
+        path_entries = ["$env:PATH"] + path_dirs
+        path_str = ";".join(path_entries)
+        return """\
+$orig_env = $env:PATH
+$env:PATH = "{path_str}"
+
+try {{
+    $cmd_args = $args[1..$args.length]
+    & $args[0] @cmd_args
+}} finally {{
+    $env:PATH = $orig_env
+}}
+""".format(
+            path_str=path_str
+        )
 
 
 class ElfDeps(DepBase):

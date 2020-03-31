@@ -12,6 +12,7 @@ import stat
 import subprocess
 import sys
 
+from .dyndeps import create_dyn_dep_munger
 from .envfuncs import Env, add_path_entry, path_search
 from .fetcher import copy_if_different
 from .runcmd import run_cmd
@@ -56,7 +57,7 @@ class BuilderBase(object):
                 return [vcvarsall, "amd64", "&&"]
         return []
 
-    def _run_cmd(self, cmd, cwd=None, env=None):
+    def _run_cmd(self, cmd, cwd=None, env=None, use_cmd_prefix=True):
         if env:
             e = self.env.copy()
             e.update(env)
@@ -64,9 +65,10 @@ class BuilderBase(object):
         else:
             env = self.env
 
-        cmd_prefix = self._get_cmd_prefix()
-        if cmd_prefix:
-            cmd = cmd_prefix + cmd
+        if use_cmd_prefix:
+            cmd_prefix = self._get_cmd_prefix()
+            if cmd_prefix:
+                cmd = cmd_prefix + cmd
 
         log_file = os.path.join(self.build_dir, "getdeps_build.log")
         run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir, log_file=log_file)
@@ -80,6 +82,16 @@ class BuilderBase(object):
                 reconfigure = True
 
         self._build(install_dirs=install_dirs, reconfigure=reconfigure)
+
+        # On Windows, emit a wrapper script that can be used to run build artifacts
+        # directly from the build directory, without installing them.  On Windows $PATH
+        # needs to be updated to include all of the directories containing the runtime
+        # library dependencies in order to run the binaries.
+        if self.build_opts.is_windows():
+            script_path = self.get_dev_run_script_path()
+            dep_munger = create_dyn_dep_munger(self.build_opts, install_dirs)
+            dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
+            dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
     def run_tests(self, install_dirs, schedule_type, owner):
         """ Execute any tests that we know how to run.  If they fail,
@@ -99,6 +111,16 @@ class BuilderBase(object):
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
         return self.build_opts.compute_env_for_install_dirs(install_dirs, env=self.env)
+
+    def get_dev_run_script_path(self):
+        assert self.build_opts.is_windows()
+        return os.path.join(self.build_dir, "run.ps1")
+
+    def get_dev_run_extra_path_dirs(self, install_dirs, dep_munger=None):
+        assert self.build_opts.is_windows()
+        if dep_munger is None:
+            dep_munger = create_dyn_dep_munger(self.build_opts, install_dirs)
+        return dep_munger.compute_dependency_paths(self.build_dir)
 
 
 class MakeBuilder(BuilderBase):
@@ -280,7 +302,7 @@ def main():
                 "Release",
         ] + args.cmake_args
     elif args.mode == "test":
-        full_cmd = CMD_PREFIX + [CTEST] + args.cmake_args
+        full_cmd = CMD_PREFIX + [{dev_run_script}CTEST] + args.cmake_args
     else:
         ap.error("unknown invocation mode: %s" % (args.mode,))
 
@@ -334,6 +356,13 @@ if __name__ == "__main__":
     def _write_build_script(self, **kwargs):
         env_lines = ["    {!r}: {!r},".format(k, v) for k, v in kwargs["env"].items()]
         kwargs["env_str"] = "\n".join(["{"] + env_lines + ["}"])
+
+        if self.build_opts.is_windows():
+            kwargs["dev_run_script"] = '"powershell.exe", {!r}, '.format(
+                self.get_dev_run_script_path()
+            )
+        else:
+            kwargs["dev_run_script"] = ""
 
         define_arg_lines = ["["]
         for arg in kwargs["define_args"]:
@@ -461,6 +490,23 @@ if __name__ == "__main__":
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
 
+        # On Windows, we also need to update $PATH to include the directories that
+        # contain runtime library dependencies.  This is not needed on other platforms
+        # since CMake will emit RPATH properly in the binary so they can find these
+        # dependencies.
+        if self.build_opts.is_windows():
+            path_entries = self.get_dev_run_extra_path_dirs(install_dirs)
+            path = env.get("PATH")
+            if path:
+                path_entries.insert(0, path)
+            env["PATH"] = ";".join(path_entries)
+
+        # Don't use the cmd_prefix when running tests.  This is vcvarsall.bat on
+        # Windows.  vcvarsall.bat is only needed for the build, not tests.  It
+        # unfortunately fails if invoked with a long PATH environment variable when
+        # running the tests.
+        use_cmd_prefix = False
+
         def get_property(test, propname, defval=None):
             """ extracts a named property from a cmake test info json blob.
             The properties look like:
@@ -581,11 +627,13 @@ if __name__ == "__main__":
                     testpilot_args + run,
                     cwd=self.build_opts.fbcode_builder_dir,
                     env=env,
+                    use_cmd_prefix=use_cmd_prefix,
                 )
         else:
             self._run_cmd(
                 [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)],
                 env=env,
+                use_cmd_prefix=use_cmd_prefix,
             )
 
 
