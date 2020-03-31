@@ -17,4 +17,5 @@
 #include <folly/memory/UninitializedMemoryHacks.h>
 
 // Verify that this is okay to put in multiple translation units
+FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(signed char)
 FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(int)
