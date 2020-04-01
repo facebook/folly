@@ -271,6 +271,7 @@ class ManifestLoader(object):
         env = {}
         env["install_dir"] = self.build_opts.install_dir
         env["scratch_dir"] = self.build_opts.scratch_dir
+        env["vcvars_path"] = self.build_opts.vcvars_path
         env["os"] = self.build_opts.host_type.ostype
         env["distro"] = self.build_opts.host_type.distro
         env["distro_vers"] = self.build_opts.host_type.distrovers
