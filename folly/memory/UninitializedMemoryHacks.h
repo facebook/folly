@@ -240,8 +240,8 @@ struct MakeUnsafeStringSetLargerSize {
       &std::basic_string<TYPE>::_Rep::_M_set_length_and_sharable>;          \
   FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
-#elif defined(_MSC_VER)
-// MSVC
+#elif defined(_MSC_VER) && _MSC_VER <= 1916
+// MSVC old implementation
 
 template <typename Tag, typename T>
 struct MakeUnsafeStringSetLargerSize {
@@ -249,6 +249,34 @@ struct MakeUnsafeStringSetLargerSize {
       std::basic_string<T>& s,
       std::size_t n) {
     s._Eos(n);
+  }
+};
+
+#define FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeStringSetLargerSize< \
+      FollyMemoryDetailTranslationUnitTag,                      \
+      TYPE>;                                                    \
+  FOLLY_DECLARE_STRING_RESIZE_WITHOUT_INIT_IMPL(TYPE)
+
+#elif defined(_MSC_VER) && _MSC_VER > 1916
+// MSVC new implementation
+
+template <
+    typename Tag,
+    typename T>
+struct MakeUnsafeStringSetLargerSize {
+  friend void unsafeStringSetLargerSizeImpl(
+      std::basic_string<T>& s,
+      std::size_t n) {
+    using Pair = decltype(std::basic_string<T>::_Mypair);
+    using Elem = std::basic_string<T>::value_type;
+    using Traits = std::basic_string<T>::traits_type;
+    static_assert(
+        std::is_standard_layout<std::basic_string<T>>::value &&
+            sizeof(std::basic_string<T>) == sizeof(Pair),
+        "reinterpret_cast safety conditions not met");
+    auto& pair = *reinterpret_cast<Pair *>(&s);
+    Traits::assign(pair._Myval2._Myptr()[pair._Myval2._Mysize = n], Elem());
   }
 };
 
@@ -360,14 +388,46 @@ struct MakeUnsafeVectorSetLargerSize : std::vector<T> {
       &std::vector<TYPE>::_Vector_impl::_M_finish>;             \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
-#elif defined(_MSC_VER)
-// MSVC
+#elif defined(_MSC_VER) && _MSC_VER <= 1916
+// MSVC old implementation
 
-#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE) \
-  extern inline void unsafeVectorSetLargerSizeImpl(    \
-      std::vector<TYPE>& v, std::size_t n) {           \
-    v._Mylast() += (n - v.size());                     \
-  }                                                    \
+template <
+    typename Tag,
+    typename T>
+struct MakeUnsafeVectorSetLargerSize {
+  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
+    v._Mylast() += (n - v.size());
+  }
+};
+
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
+      FollyMemoryDetailTranslationUnitTag,                      \
+      TYPE>;                                                    \
+  FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
+
+#elif defined(_MSC_VER) && _MSC_VER > 1916
+// MSVC new implementation
+
+template <
+    typename Tag,
+    typename T>
+struct MakeUnsafeVectorSetLargerSize {
+  friend void unsafeVectorSetLargerSizeImpl(std::vector<T>& v, std::size_t n) {
+    using Pair = decltype(std::vector<T>::_Mypair);
+    static_assert(
+        std::is_standard_layout<std::vector<T>>::value &&
+            sizeof(std::vector<T>) == sizeof(Pair),
+        "reinterpret_cast safety conditions not met");
+    auto& pair = *reinterpret_cast<Pair *>(&v);
+    pair._Myval2._Mylast += (n - v.size());
+  }
+};
+
+#define FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT(TYPE)          \
+  template struct folly::detail::MakeUnsafeVectorSetLargerSize< \
+      FollyMemoryDetailTranslationUnitTag,                      \
+      TYPE>;                                                    \
   FOLLY_DECLARE_VECTOR_RESIZE_WITHOUT_INIT_IMPL(TYPE)
 
 #else
