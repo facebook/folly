@@ -209,8 +209,9 @@ class DeferredExecutor final {
     }
     DCHECK(state == State::EMPTY);
     func_ = std::move(func);
-    if (state_.compare_exchange_strong(
-            state,
+    if (folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
             State::HAS_FUNCTION,
             std::memory_order_release,
             std::memory_order_acquire)) {
@@ -240,8 +241,9 @@ class DeferredExecutor final {
     executor_ = std::move(executor);
     auto state = state_.load(std::memory_order_acquire);
     if (state == State::EMPTY &&
-        state_.compare_exchange_strong(
-            state,
+        folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
             State::HAS_EXECUTOR,
             std::memory_order_release,
             std::memory_order_acquire)) {
@@ -269,8 +271,9 @@ class DeferredExecutor final {
     }
     auto state = state_.load(std::memory_order_acquire);
     if (state == State::EMPTY &&
-        state_.compare_exchange_strong(
-            state,
+        folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
             State::DETACHED,
             std::memory_order_release,
             std::memory_order_acquire)) {
