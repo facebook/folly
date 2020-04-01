@@ -88,6 +88,22 @@ foreach(flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
   endif()
 endforeach()
 
+# When building with Ninja, or with /MP enabled, there is the potential
+# for multiple processes to need to lock the same pdb file.
+# The /FS option (which is implicitly enabled by /MP) is widely believed
+# to be the solution for this, but even with /FS enabled the problem can
+# still randomly occur.
+# https://stackoverflow.com/a/58020501/149111 suggests that /Z7 should be
+# used; rather than placing the debug info into a .pdb file it embeds it
+# into the object files in a similar way to gcc/clang which should reduce
+# contention and potentially make the build faster... but at the cost of
+# larger object files
+foreach(flag_var CMAKE_C_FLAGS_DEBUG CMAKE_CXX_FLAGS_DEBUG)
+  if (${flag_var} MATCHES "/Zi")
+    string(REGEX REPLACE "/Zi" "/Z7" ${flag_var} "${${flag_var}}")
+  endif()
+endforeach()
+
 # Apply the option set for Folly to the specified target.
 function(apply_folly_compile_options_to_target THETARGET)
   # The general options passed:
