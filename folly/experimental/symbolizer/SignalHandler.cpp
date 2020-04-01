@@ -40,6 +40,10 @@
 namespace folly {
 namespace symbolizer {
 
+const unsigned long kAllFatalSignals = (1UL << SIGSEGV) | (1UL << SIGILL) |
+    (1UL << SIGFPE) | (1UL << SIGABRT) | (1UL << SIGBUS) | (1UL << SIGTERM) |
+    (1UL << SIGQUIT);
+
 namespace {
 
 /**
@@ -489,7 +493,7 @@ bool isSmallSigAltStackEnabled() {
 
 } // namespace
 
-void installFatalSignalHandler() {
+void installFatalSignalHandler(std::bitset<64> signals) {
   if (gAlreadyInstalled.exchange(true)) {
     // Already done.
     return;
@@ -530,7 +534,10 @@ void installFatalSignalHandler() {
   sa.sa_sigaction = &signalHandler;
 
   for (auto p = kFatalSignals; p->name; ++p) {
-    CHECK_ERR(sigaction(p->number, &sa, &p->oldAction));
+    if ((p->number < static_cast<int>(signals.size())) &&
+        signals.test(p->number)) {
+      CHECK_ERR(sigaction(p->number, &sa, &p->oldAction));
+    }
   }
 }
 } // namespace symbolizer

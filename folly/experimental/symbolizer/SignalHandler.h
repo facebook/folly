@@ -16,10 +16,13 @@
 
 #pragma once
 
+#include <bitset>
 #include <functional>
 
 namespace folly {
 namespace symbolizer {
+
+extern const unsigned long kAllFatalSignals;
 
 /**
  * Install handler for fatal signals. The list of signals being handled is in
@@ -27,8 +30,13 @@ namespace symbolizer {
  *
  * The handler will dump signal and time information followed by a stack trace
  * to stderr, and then call the callbacks registered below.
+ *
+ * The signals parameter can be used to specify only specific fatal signals for
+ * which the handler should be installed.  Only signals from kAllFatalSignals
+ * are honored in this list, other signals are ignored.
  */
-void installFatalSignalHandler();
+void installFatalSignalHandler(
+    std::bitset<64> signals = std::bitset<64>(kAllFatalSignals));
 
 /**
  * Add a callback to be run when receiving a fatal signal. They will also

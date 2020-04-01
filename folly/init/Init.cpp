@@ -32,12 +32,26 @@
 DEFINE_string(logging, "", "Logging configuration");
 
 namespace folly {
+const unsigned long kAllFatalSignals =
+#if FOLLY_USE_SYMBOLIZER
+    symbolizer::kAllFatalSignals;
+#else
+    0;
+#endif
+
+InitOptions::InitOptions() noexcept : fatal_signals(kAllFatalSignals) {}
 
 void init(int* argc, char*** argv, bool removeFlags) {
+  InitOptions options;
+  options.removeFlags(removeFlags);
+  init(argc, argv, options);
+}
+
+void init(int* argc, char*** argv, InitOptions options) {
 #if FOLLY_USE_SYMBOLIZER
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
-  folly::symbolizer::installFatalSignalHandler();
+  folly::symbolizer::installFatalSignalHandler(options.fatal_signals);
 #elif !defined(_WIN32)
   google::InstallFailureSignalHandler();
 #endif
@@ -51,9 +65,9 @@ void init(int* argc, char*** argv, bool removeFlags) {
   folly::SingletonVault::singleton()->registrationComplete();
 
 #if !FOLLY_HAVE_LIBGFLAGS
-  (void)removeFlags;
+  (void)options;
 #else
-  gflags::ParseCommandLineFlags(argc, argv, removeFlags);
+  gflags::ParseCommandLineFlags(argc, argv, options.remove_flags);
 #endif
 
   folly::initLoggingOrDie(FLAGS_logging);
@@ -74,6 +88,10 @@ void init(int* argc, char*** argv, bool removeFlags) {
 
 Init::Init(int* argc, char*** argv, bool removeFlags) {
   init(argc, argv, removeFlags);
+}
+
+Init::Init(int* argc, char*** argv, InitOptions options) {
+  init(argc, argv, options);
 }
 
 Init::~Init() {

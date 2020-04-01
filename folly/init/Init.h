@@ -15,8 +15,34 @@
  */
 
 #pragma once
-
 #include <folly/CPortability.h>
+#include <bitset>
+
+namespace folly {
+class InitOptions {
+ public:
+  InitOptions() noexcept;
+
+  bool remove_flags{true};
+
+  // mask of all fatal (default handler of terminating the process) signals for
+  // which `init()` will install handler that print stack traces and invokes
+  // previously established handler  (or terminate if there were none).
+  // Signals that are not in `symbolizer::kAllFatalSignals` will be ignored
+  // if passed here
+  // Defaults to all signal in `symbolizer::kAllFatalSignals`
+  std::bitset<64> fatal_signals;
+
+  InitOptions& removeFlags(bool remove) {
+    remove_flags = remove;
+    return *this;
+  }
+
+  InitOptions& fatalSignals(unsigned long val) {
+    fatal_signals = val;
+    return *this;
+  }
+};
 
 /*
  * Calls common init functions in the necessary order
@@ -27,10 +53,12 @@
  * @param argc, argv   arguments to your main
  * @param removeFlags  if true, will update argc,argv to remove recognized
  *                     gflags passed on the command line
+ * @param options      options
  */
-namespace folly {
 
 void init(int* argc, char*** argv, bool removeFlags = true);
+
+void init(int* argc, char*** argv, InitOptions options);
 
 /*
  * An RAII object to be constructed at the beginning of main() and destructed
@@ -48,6 +76,9 @@ class Init {
  public:
   // Force ctor & dtor out of line for better stack traces even with LTO.
   FOLLY_NOINLINE Init(int* argc, char*** argv, bool removeFlags = true);
+
+  FOLLY_NOINLINE Init(int* argc, char*** argv, InitOptions options);
+
   FOLLY_NOINLINE ~Init();
 
   Init(Init const&) = delete;
