@@ -79,7 +79,7 @@ TEST(Collect, collectAll) {
     promises[3].setException(eggs);
 
     EXPECT_TRUE(allf.isReady());
-    EXPECT_FALSE(allf.getTry().hasException());
+    EXPECT_FALSE(allf.result().hasException());
 
     auto& results = allf.value();
     EXPECT_EQ(42, results[0].value());
@@ -160,7 +160,7 @@ TEST(Collect, collectAllUnsafe) {
     promises[3].setException(eggs);
 
     EXPECT_TRUE(allf.isReady());
-    EXPECT_FALSE(allf.getTry().hasException());
+    EXPECT_FALSE(allf.result().hasException());
 
     auto& results = allf.value();
     EXPECT_EQ(42, results[0].value());
@@ -531,7 +531,7 @@ TEST(Collect, collectAny) {
       futures.push_back(p.getFuture());
     }
 
-    auto anyf = collectAny(futures).thenValue(
+    auto anyf = collectAnyUnsafe(futures).thenValue(
         [](std::pair<size_t, Try<int>> p) { EXPECT_EQ(42, p.second.value()); });
 
     promises[3].setValue(42);
@@ -656,9 +656,10 @@ TEST(Collect, alreadyCompleted) {
       fs.push_back(makeFuture(i));
     }
 
-    collectAny(fs).thenValue([&](std::pair<size_t, Try<int>> p) {
-      EXPECT_EQ(p.first, p.second.value());
-    });
+    collectAny(fs).toUnsafeFuture().thenValue(
+        [&](std::pair<size_t, Try<int>> p) {
+          EXPECT_EQ(p.first, p.second.value());
+        });
   }
 }
 
@@ -974,6 +975,7 @@ TEST(Collect, collectVariadic) {
   Future<int> fi = pi.getFuture();
   bool flag = false;
   collect(std::move(fb), std::move(fi))
+      .toUnsafeFuture()
       .thenValue([&](std::tuple<bool, int> tup) {
         flag = true;
         EXPECT_EQ(std::get<0>(tup), true);
@@ -1013,7 +1015,7 @@ TEST(Collect, collectVariadicWithException) {
   EXPECT_FALSE(f.isReady());
   pi.setException(eggs);
   EXPECT_TRUE(f.isReady());
-  EXPECT_TRUE(f.getTry().hasException());
+  EXPECT_TRUE(f.result().hasException());
   EXPECT_THROW(std::move(f).get(), eggs_t);
 }
 

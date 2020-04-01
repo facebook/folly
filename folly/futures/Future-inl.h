@@ -1374,7 +1374,7 @@ void stealDeferredExecutors(
 
 template <typename... Fs>
 SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
-collectAllSemiFuture(Fs&&... fs) {
+collectAll(Fs&&... fs) {
   using Result = std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>;
   struct Context {
     ~Context() {
@@ -1409,9 +1409,9 @@ collectAllSemiFuture(Fs&&... fs) {
 }
 
 template <typename... Fs>
-Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
-    Fs&&... fs) {
-  return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
+collectAllSemiFuture(Fs&&... fs) {
+  return collectAll(std::forward<Fs>(fs)...);
 }
 
 template <typename... Fs>
@@ -1425,7 +1425,7 @@ collectAllUnsafe(Fs&&... fs) {
 template <class InputIterator>
 SemiFuture<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAllSemiFuture(InputIterator first, InputIterator last) {
+collectAll(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
 
@@ -1473,23 +1473,22 @@ template <class InputIterator>
 Future<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAllUnsafe(InputIterator first, InputIterator last) {
-  return collectAllSemiFuture(first, last).toUnsafeFuture();
+  return collectAll(first, last).toUnsafeFuture();
 }
 
 template <class InputIterator>
-Future<std::vector<
+SemiFuture<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAll(InputIterator first, InputIterator last) {
-  return collectAllSemiFuture(first, last).toUnsafeFuture();
+collectAllSemiFuture(InputIterator first, InputIterator last) {
+  return collectAll(first, last);
 }
 
 // collect (iterator)
 
-// TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
 SemiFuture<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
-collectSemiFuture(InputIterator first, InputIterator last) {
+collect(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
 
@@ -1546,22 +1545,21 @@ template <class InputIterator>
 Future<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collectUnsafe(InputIterator first, InputIterator last) {
-  return collectSemiFuture(first, last).toUnsafeFuture();
+  return collect(first, last).toUnsafeFuture();
 }
 
 template <class InputIterator>
-Future<std::vector<
+SemiFuture<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
-collect(InputIterator first, InputIterator last) {
-  return collectSemiFuture(first, last).toUnsafeFuture();
+collectSemiFuture(InputIterator first, InputIterator last) {
+  return collect(first, last);
 }
 
 // collect (variadic)
 
-// TODO(T26439406): Make return SemiFuture
 template <typename... Fs>
-SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>>
-collectSemiFuture(Fs&&... fs) {
+SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
+    Fs&&... fs) {
   using Result = std::tuple<typename remove_cvref_t<Fs>::value_type...>;
   struct Context {
     ~Context() {
@@ -1605,15 +1603,15 @@ collectSemiFuture(Fs&&... fs) {
 }
 
 template <typename... Fs>
-Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
-    Fs&&... fs) {
-  return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>>
+collectSemiFuture(Fs&&... fs) {
+  return collect(std::forward<Fs>(fs)...);
 }
 
 template <typename... Fs>
 Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
     Fs&&... fs) {
-  return collectSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+  return collect(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
 template <class Collection>
@@ -1626,11 +1624,11 @@ auto collectSemiFuture(Collection&& c)
 
 // TODO(T26439406): Make return SemiFuture
 template <class InputIterator>
-Future<std::pair<
+SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAny(InputIterator first, InputIterator last) {
-  return collectAnySemiFuture(first, last).via(&InlineExecutor::instance());
+collectAnySemiFuture(InputIterator first, InputIterator last) {
+  return collectAny(first, last);
 }
 
 template <class InputIterator>
@@ -1638,14 +1636,14 @@ Future<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAnyUnsafe(InputIterator first, InputIterator last) {
-  return collectAnySemiFuture(first, last).via(&InlineExecutor::instance());
+  return collectAny(first, last).toUnsafeFuture();
 }
 
 template <class InputIterator>
 SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAnySemiFuture(InputIterator first, InputIterator last) {
+collectAny(InputIterator first, InputIterator last) {
   using F = typename std::iterator_traits<InputIterator>::value_type;
   using T = typename F::value_type;
 

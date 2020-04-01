@@ -148,7 +148,7 @@ TEST(Wait, waitWithDuration) {
     vector<Future<bool>> v_fb;
     v_fb.push_back(makeFuture(true));
     v_fb.push_back(makeFuture(false));
-    auto f = collectAll(v_fb);
+    auto f = collectAll(v_fb).toUnsafeFuture();
     f.wait(milliseconds(1));
     EXPECT_TRUE(f.isReady());
     EXPECT_EQ(2, f.value().size());
@@ -159,7 +159,7 @@ TEST(Wait, waitWithDuration) {
     Promise<bool> p2;
     v_fb.push_back(p1.getFuture());
     v_fb.push_back(p2.getFuture());
-    auto f = collectAll(v_fb);
+    auto f = collectAll(v_fb).toUnsafeFuture();
     f.wait(milliseconds(1));
     EXPECT_FALSE(f.isReady());
     p1.setValue(true);

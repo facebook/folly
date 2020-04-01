@@ -95,14 +95,16 @@ TEST(Reduce, chain) {
   };
 
   {
-    auto f = collectAll(makeFutures(3)).reduce(0, [](int a, Try<int>&& b) {
-      return a + *b;
-    });
+    auto f = collectAll(makeFutures(3))
+                 .toUnsafeFuture()
+                 .reduce(0, [](int a, Try<int>&& b) { return a + *b; });
     EXPECT_EQ(6, std::move(f).get());
   }
   {
     auto f =
-        collect(makeFutures(3)).reduce(0, [](int a, int&& b) { return a + b; });
+        collect(makeFutures(3)).toUnsafeFuture().reduce(0, [](int a, int&& b) {
+          return a + b;
+        });
     EXPECT_EQ(6, std::move(f).get());
   }
 }

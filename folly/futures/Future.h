@@ -2352,7 +2352,12 @@ auto via(Executor::KeepAlive<>, Func&& func) -> Future<
   follow with `via(executor)` because it will complete in whichever thread the
   last Future completes in.
 
-  The return type for Future<T> input is a Future<std::vector<Try<T>>>
+  The return type for Future<T> input is a SemiFuture<std::vector<Try<T>>>
+  for collectX and collectXSemiFuture.
+
+  collectXUnsafe returns an inline Future that erases the executor from the
+  incoming Futures/SemiFutures. collectXUnsafe should be phased out and
+  replaced with collectX(...).via(e) where e is a valid non-inline executor.
   */
 template <class InputIterator>
 SemiFuture<std::vector<
@@ -2366,11 +2371,13 @@ auto collectAllSemiFuture(Collection&& c)
   return collectAllSemiFuture(c.begin(), c.end());
 }
 
+// Unsafe variant, see above comment for details
 template <class InputIterator>
 Future<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAllUnsafe(InputIterator first, InputIterator last);
 
+// Unsafe variant sugar, see above comment for details
 template <class Collection>
 auto collectAllUnsafe(Collection&& c)
     -> decltype(collectAllUnsafe(c.begin(), c.end())) {
@@ -2378,7 +2385,7 @@ auto collectAllUnsafe(Collection&& c)
 }
 
 template <class InputIterator>
-Future<std::vector<
+SemiFuture<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAll(InputIterator first, InputIterator last);
 
@@ -2389,37 +2396,27 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 
 /// This version takes a varying number of Futures instead of an iterator.
 /// The return type for (Future<T1>, Future<T2>, ...) input
-/// is a Future<std::tuple<Try<T1>, Try<T2>, ...>>.
+/// is a SemiFuture<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
 SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs);
 
+// Unsafe variant of collectAll, see coment above for details. Returns
+// a Future<std::tuple<Try<T1>, Try<T2>, ...>> on the Inline executor.
 template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllUnsafe(Fs&&... fs);
 
 template <typename... Fs>
-Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>> collectAll(
-    Fs&&... fs);
+SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
+collectAll(Fs&&... fs);
 
 /// Like collectAll, but will short circuit on the first exception. Thus, the
-/// type of the returned Future is std::vector<T> instead of
+/// type of the returned SemiFuture is std::vector<T> instead of
 /// std::vector<Try<T>>
 template <class InputIterator>
-Future<std::vector<
-    typename std::iterator_traits<InputIterator>::value_type::value_type>>
-collectUnsafe(InputIterator first, InputIterator last);
-
-/// Sugar for the most common case
-template <class Collection>
-auto collectUnsafe(Collection&& c)
-    -> decltype(collectUnsafe(c.begin(), c.end())) {
-  return collectUnsafe(c.begin(), c.end());
-}
-
-template <class InputIterator>
-Future<std::vector<
+SemiFuture<std::vector<
     typename std::iterator_traits<InputIterator>::value_type::value_type>>
 collect(InputIterator first, InputIterator last);
 
@@ -2429,11 +2426,26 @@ auto collect(Collection&& c) -> decltype(collect(c.begin(), c.end())) {
   return collect(c.begin(), c.end());
 }
 
+// Unsafe variant of collect. Returns a Future<std::vector<T>> that
+// completes inline.
+template <class InputIterator>
+Future<std::vector<
+    typename std::iterator_traits<InputIterator>::value_type::value_type>>
+collectUnsafe(InputIterator first, InputIterator last);
+
+/// Sugar for the most common unsafe case. Returns a Future<std::vector<T>>
+// that completes inline.
+template <class Collection>
+auto collectUnsafe(Collection&& c)
+    -> decltype(collectUnsafe(c.begin(), c.end())) {
+  return collectUnsafe(c.begin(), c.end());
+}
+
 /// Like collectAll, but will short circuit on the first exception. Thus, the
-/// type of the returned Future is std::tuple<T1, T2, ...> instead of
+/// type of the returned SemiFuture is std::tuple<T1, T2, ...> instead of
 /// std::tuple<Try<T1>, Try<T2>, ...>
 template <typename... Fs>
-Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
+SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
     Fs&&... fs);
 
 /** The result is a pair of the index of the first Future to complete and
@@ -2443,10 +2455,11 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
   This function is thread-safe for Futures running on different threads.
   */
 template <class InputIterator>
-Future<std::pair<
+SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
+// Unsafe variant of collectAny, Returns a Future that completes inline.
 template <class InputIterator>
 Future<std::pair<
     size_t,
@@ -2463,6 +2476,8 @@ template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
 }
+// Unsafe variant of common form of collectAny, Returns a Future that completes
+// inline.
 template <class Collection>
 auto collectAnyUnsafe(Collection&& c)
     -> decltype(collectAnyUnsafe(c.begin(), c.end())) {
