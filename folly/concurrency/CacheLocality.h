@@ -275,12 +275,18 @@ struct AccessSpreader {
   }
 #endif
 
+  /// Returns the maximum stripe value that can be returned under any
+  /// dynamic configuration, based on the current compile-time platform
+  static constexpr size_t maxStripeValue() {
+    return kMaxCpus;
+  }
+
  private:
   /// If there are more cpus than this nothing will crash, but there
   /// might be unnecessary sharing
   enum {
     // Android phones with 8 cores exist today; 16 for future-proofing.
-    kMaxCpus = kIsMobile ? 16 : 128,
+    kMaxCpus = kIsMobile ? 16 : 256,
   };
 
   typedef uint8_t CompactStripe;
@@ -368,18 +374,24 @@ struct AccessSpreader {
     auto& cacheLocality = CacheLocality::system<Atom>();
     auto n = cacheLocality.numCpus;
     for (size_t width = 0; width <= kMaxCpus; ++width) {
+      auto& row = widthAndCpuToStripe[width];
       auto numStripes = std::max(size_t{1}, width);
       for (size_t cpu = 0; cpu < kMaxCpus && cpu < n; ++cpu) {
         auto index = cacheLocality.localityIndexByCpu[cpu];
         assert(index < n);
         // as index goes from 0..n, post-transform value goes from
         // 0..numStripes
-        widthAndCpuToStripe[width][cpu] =
-            CompactStripe((index * numStripes) / n);
-        assert(widthAndCpuToStripe[width][cpu] < numStripes);
+        row[cpu] = static_cast<CompactStripe>((index * numStripes) / n);
+        assert(row[cpu] < numStripes);
+      }
+      size_t filled = n;
+      while (filled < kMaxCpus) {
+        size_t len = std::min(filled, kMaxCpus - filled);
+        std::memcpy(&row[filled], &row[0], len);
+        filled += len;
       }
       for (size_t cpu = n; cpu < kMaxCpus; ++cpu) {
-        widthAndCpuToStripe[width][cpu] = widthAndCpuToStripe[width][cpu - n];
+        assert(row[cpu] == row[cpu - n]);
       }
     }
     return true;

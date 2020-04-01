@@ -1144,6 +1144,7 @@ TEST(AccessSpreader, Wrapping) {
       auto expected = AccessSpreader<ManualTag>::current(s);
       EXPECT_EQ(expected, observed)
           << "numCpus=" << numCpus << ", s=" << s << ", c=" << c;
+      EXPECT_LE(observed, AccessSpreader<ManualTag>::maxStripeValue());
     }
   }
 }
