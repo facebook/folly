@@ -452,6 +452,12 @@ DeferredExecutor* getDeferredExecutor(SemiFuture<T>& future);
 template <typename T>
 futures::detail::DeferredWrapper stealDeferredExecutor(SemiFuture<T>& future);
 } // namespace detail
+
+template <class T>
+void detachOn(folly::Executor::KeepAlive<> exec, folly::SemiFuture<T>&& fut);
+
+template <class T>
+void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut);
 } // namespace futures
 
 /// The interface (along with Future) for the consumer-side of a
@@ -1923,6 +1929,12 @@ class Future : private futures::detail::FutureBase<T> {
   friend Future<FT> futures::detail::convertFuture(
       SemiFuture<FT>&& sf,
       const Future<FT>& f);
+
+  using Base::detach;
+  template <class T2>
+  friend void futures::detachOn(
+      folly::Executor::KeepAlive<> exec,
+      folly::SemiFuture<T2>&& fut);
 };
 
 /// A Timekeeper handles the details of keeping time and fulfilling delay

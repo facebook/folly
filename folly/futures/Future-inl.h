@@ -27,6 +27,7 @@
 #include <folly/Traits.h>
 #include <folly/detail/AsyncTrace.h>
 #include <folly/executors/ExecutorWithPriority.h>
+#include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/detail/Core.h>
@@ -2579,6 +2580,16 @@ auto ensure(F&& f, Ensure&& ensure) {
         ensure();
         return std::move(resultTry).value();
       });
+}
+
+template <class T>
+void detachOn(folly::Executor::KeepAlive<> exec, folly::SemiFuture<T>&& fut) {
+  std::move(fut).via(exec).detach();
+}
+
+template <class T>
+void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut) {
+  detachOn(folly::getGlobalCPUExecutor(), std::move(fut));
 }
 
 } // namespace futures

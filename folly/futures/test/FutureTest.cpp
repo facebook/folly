@@ -1440,6 +1440,28 @@ TEST(Future, NoThrow) {
   }
 }
 
+TEST(Future, DetachTest) {
+  folly::Baton<> b1, b2;
+  folly::ManualExecutor exec;
+  std::atomic<int> result(0);
+
+  folly::futures::detachOn(&exec, makeSemiFuture().deferValue([&](auto&&) {
+    result++;
+    b1.post();
+  }));
+
+  folly::futures::detachOnGlobalCPUExecutor(
+      makeSemiFuture().deferValue([&](auto&&) {
+        result++;
+        b2.post();
+      }));
+
+  exec.drain();
+  b1.wait();
+  b2.wait();
+  EXPECT_TRUE(result == 2);
+}
+
 #if FOLLY_FUTURE_USING_FIBER
 
 TEST(Future, BatonWait) {
