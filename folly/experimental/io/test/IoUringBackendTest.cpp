@@ -28,15 +28,16 @@ namespace {
 class EventFD : public folly::EventHandler {
  public:
   EventFD(
+      bool valid,
       uint64_t num,
       uint64_t& total,
       bool persist,
       folly::EventBase* eventBase)
-      : EventFD(total, createFd(num), persist, eventBase) {}
+      : EventFD(total, valid ? createFd(num) : -1, persist, eventBase) {}
   ~EventFD() override {
     unregisterHandler();
 
-    if (fd_ > 0) {
+    if (fd_ >= 0) {
       ::close(fd_);
       fd_ = -1;
     }
@@ -114,13 +115,47 @@ void testOverflow(bool overflow, bool persist) {
   eventsVec.reserve(kNumEventFds);
   for (size_t i = 0; i < kNumEventFds; i++) {
     eventsVec.emplace_back(
-        std::make_unique<EventFD>(kEventFdCount, total, persist, &evb));
+        std::make_unique<EventFD>(true, kEventFdCount, total, persist, &evb));
   }
 
   evb.loopForever();
 
   for (size_t i = 0; i < kNumEventFds; i++) {
     CHECK_GE(eventsVec[i]->getNum(), kEventFdCount);
+  }
+}
+
+void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
+  static constexpr size_t kBackendCapacity = 128;
+  static constexpr size_t kBackendMaxSubmit = 64;
+
+  auto total = numTotal;
+
+  std::unique_ptr<folly::EventBaseBackendBase> backend;
+
+  try {
+    backend = std::make_unique<folly::IoUringBackend>(
+        kBackendCapacity, kBackendMaxSubmit);
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+  }
+
+  SKIP_IF(!backend) << "Backend not available";
+
+  folly::EventBase evb(std::move(backend));
+
+  std::vector<std::unique_ptr<EventFD>> eventsVec;
+  eventsVec.reserve(numTotal);
+
+  for (size_t i = 0; i < numTotal; i++) {
+    bool valid = (i % (numValid + numInvalid)) < numValid;
+    eventsVec.emplace_back(
+        std::make_unique<EventFD>(valid, 1, total, false /*persist*/, &evb));
+  }
+
+  evb.loopForever();
+
+  for (size_t i = 0; i < numTotal; i++) {
+    CHECK_GE(eventsVec[i]->getNum(), 1);
   }
 }
 } // namespace
@@ -139,6 +174,21 @@ TEST(IoUringBackend, NoOverflowPersist) {
 
 TEST(IoUringBackend, OverflowPersist) {
   testOverflow(true, true);
+}
+
+// 9 valid fds followed by an invalid one
+TEST(IoUringBackend, Invalid_fd_9_1) {
+  testInvalidFd(32, 10, 1);
+}
+
+// only invalid fds
+TEST(IoUringBackend, Invalid_fd_0_10) {
+  testInvalidFd(32, 0, 10);
+}
+
+// equal distribution
+TEST(IoUringBackend, Invalid_fd_5_5) {
+  testInvalidFd(32, 10, 10);
 }
 
 TEST(IoUringBackend, RegisteredFds) {

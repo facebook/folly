@@ -207,7 +207,7 @@ void* IoUringBackend::allocSubmissionEntry() {
 }
 
 int IoUringBackend::submitOne(IoCb* /*unused*/) {
-  return submitBusyCheck();
+  return submitBusyCheck(1, WaitForEventsMode::DONT_WAIT);
 }
 
 int IoUringBackend::cancelOne(IoCb* ioCb) {
@@ -221,7 +221,7 @@ int IoUringBackend::cancelOne(IoCb* ioCb) {
 
   rentry->prepPollRemove(sqe, ioCb); // prev entry
 
-  int ret = submitBusyCheck();
+  int ret = submitBusyCheck(1, WaitForEventsMode::DONT_WAIT);
 
   if (ret < 0) {
     // release the sqe
@@ -253,21 +253,33 @@ int IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   return static_cast<int>(i);
 }
 
-int IoUringBackend::submitBusyCheck() {
-  int num;
-  while ((num = ::io_uring_submit(&ioRing_)) == -EBUSY) {
-    // if we get EBUSY, try to consume some CQ entries
-    getActiveEvents(WaitForEventsMode::DONT_WAIT);
-  };
-  return num;
-}
+int IoUringBackend::submitBusyCheck(int num, WaitForEventsMode waitForEvents) {
+  int i = 0;
+  int res;
+  while (i < num) {
+    res = ::io_uring_submit(&ioRing_);
+    if (res == -EBUSY) {
+      // if we get EBUSY, try to consume some CQ entries
+      getActiveEvents(waitForEvents);
+      continue;
+    }
+    if (res < 0) {
+      // continue if interrupted
+      if (errno == EINTR) {
+        continue;
+      }
 
-int IoUringBackend::submitBusyCheckAndWait() {
-  int num;
-  while ((num = ::io_uring_submit_and_wait(&ioRing_, 1)) == -EBUSY) {
-    // if we get EBUSY, try to consume some CQ entries
-    getActiveEvents(WaitForEventsMode::DONT_WAIT);
-  };
+      return res;
+    }
+
+    // we do not have any other entries to submit
+    if (res == 0) {
+      break;
+    }
+
+    i += res;
+  }
+
   return num;
 }
 
@@ -291,14 +303,12 @@ size_t IoUringBackend::submitList(
         (ev->ev_events & EV_PERSIST) != 0);
     i++;
     if (ioCbs.empty()) {
-      int num = (waitForEvents == WaitForEventsMode::WAIT)
-          ? submitBusyCheckAndWait()
-          : submitBusyCheck();
+      int num = submitBusyCheck(i, waitForEvents);
       CHECK_EQ(num, i);
       ret += i;
     } else {
       if (static_cast<size_t>(i) == maxSubmit_) {
-        int num = submitBusyCheck();
+        int num = submitBusyCheck(i, waitForEvents);
         CHECK_EQ(num, i);
         ret += i;
         i = 0;

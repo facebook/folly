@@ -79,8 +79,7 @@ class IoUringBackend : public PollIoBackend {
   int submitOne(IoCb* ioCb) override;
   int cancelOne(IoCb* ioCb) override;
 
-  int submitBusyCheck();
-  int submitBusyCheckAndWait();
+  int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
 
   struct IoSqe : public PollIoBackend::IoCb {
     explicit IoSqe(PollIoBackend* backend = nullptr, bool poolAlloc = true)
