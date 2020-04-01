@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Executor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/SharedPromise.h>
 
@@ -23,14 +24,16 @@ namespace folly {
 
 class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
  public:
-  static std::shared_ptr<FutureDAG> create() {
-    return std::shared_ptr<FutureDAG>(new FutureDAG());
+  static std::shared_ptr<FutureDAG> create(
+      Executor::KeepAlive<> defaultExecutor) {
+    return std::shared_ptr<FutureDAG>(
+        new FutureDAG(std::move(defaultExecutor)));
   }
 
   typedef size_t Handle;
   typedef std::function<Future<Unit>()> FutureFunc;
 
-  Handle add(FutureFunc func, Executor* executor = nullptr) {
+  Handle add(FutureFunc func, Executor::KeepAlive<> executor) {
     nodes.emplace_back(std::move(func), executor);
     return nodes.size() - 1;
   }
@@ -106,12 +109,12 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
       }
     }
 
-    auto sinkHandle = add([] { return Future<Unit>(); });
+    auto sinkHandle = add([] { return Future<Unit>(); }, defaultExecutor_);
     for (auto handle : leafNodes) {
       dependency(handle, sinkHandle);
     }
 
-    auto sourceHandle = add(nullptr);
+    auto sourceHandle = add(nullptr, defaultExecutor_);
     for (auto handle : rootNodes) {
       dependency(sourceHandle, handle);
     }
@@ -142,7 +145,8 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   }
 
  private:
-  FutureDAG() = default;
+  FutureDAG(Executor::KeepAlive<> defaultExecutor)
+      : defaultExecutor_{std::move(defaultExecutor)} {}
 
   bool hasCycle() {
     // Perform a modified topological sort to detect cycles
@@ -187,11 +191,11 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   }
 
   struct Node {
-    Node(FutureFunc&& funcArg, Executor* executorArg)
-        : func(std::move(funcArg)), executor(executorArg) {}
+    Node(FutureFunc&& funcArg, Executor::KeepAlive<> executorArg)
+        : func(std::move(funcArg)), executor(std::move(executorArg)) {}
 
     FutureFunc func{nullptr};
-    Executor* executor{nullptr};
+    Executor::KeepAlive<> executor;
     SharedPromise<Unit> promise;
     std::vector<Handle> dependencies;
     bool hasDependents{false};
@@ -199,13 +203,14 @@ class FutureDAG : public std::enable_shared_from_this<FutureDAG> {
   };
 
   std::vector<Node> nodes;
+  Executor::KeepAlive<> defaultExecutor_;
 };
 
 // Polymorphic functor implementation
 template <typename T>
 class FutureDAGFunctor {
  public:
-  std::shared_ptr<FutureDAG> dag = FutureDAG::create();
+  std::shared_ptr<FutureDAG> dag;
   T state;
   std::vector<T> dep_states;
   T result() {
@@ -220,8 +225,10 @@ class FutureDAGFunctor {
     this->dag->go().get();
   }
   virtual void operator()() {}
-  explicit FutureDAGFunctor(T init_val) : state(init_val) {}
-  FutureDAGFunctor() : state() {}
+  explicit FutureDAGFunctor(T init_val, Executor::KeepAlive<> defaultExecutor)
+      : dag(FutureDAG::create(std::move(defaultExecutor))), state(init_val) {}
+  FutureDAGFunctor(Executor::KeepAlive<> defaultExecutor)
+      : dag(FutureDAG::create(std::move(defaultExecutor))), state() {}
   virtual ~FutureDAGFunctor() {}
 };
 
