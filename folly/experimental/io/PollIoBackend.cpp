@@ -411,7 +411,12 @@ size_t PollIoBackend::processActiveEvents() {
 
       // prevent the callback from freeing the aioIoCb
       ioCb->useCount_++;
-      (*event_ref_callback(ev))((int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+      // handle spurious poll events that return 0
+      // this can happen during high load on process startup
+      if (ev->ev_res) {
+        (*event_ref_callback(ev))(
+            (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+      }
       // get the event again
       event = ioCb->event_;
       ev = event ? event->getEvent() : nullptr;
