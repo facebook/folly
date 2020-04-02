@@ -569,7 +569,7 @@ class FormatValue<
             presentation,
             "' specifier");
         valBufEnd = valBuf + valBufSize;
-        valBufBegin = valBuf + detail::uintToOctal(valBuf, valBufSize, uval);
+        valBufBegin = &valBuf[detail::uintToOctal(valBuf, valBufSize, uval)];
         if (arg.basePrefix) {
           *--valBufBegin = '0';
           prefixLen = 1;
@@ -582,7 +582,7 @@ class FormatValue<
             presentation,
             "' specifier");
         valBufEnd = valBuf + valBufSize;
-        valBufBegin = valBuf + detail::uintToHexLower(valBuf, valBufSize, uval);
+        valBufBegin = &valBuf[detail::uintToHexLower(valBuf, valBufSize, uval)];
         if (arg.basePrefix) {
           *--valBufBegin = 'x';
           *--valBufBegin = '0';
@@ -596,7 +596,7 @@ class FormatValue<
             presentation,
             "' specifier");
         valBufEnd = valBuf + valBufSize;
-        valBufBegin = valBuf + detail::uintToHexUpper(valBuf, valBufSize, uval);
+        valBufBegin = &valBuf[detail::uintToHexUpper(valBuf, valBufSize, uval)];
         if (arg.basePrefix) {
           *--valBufBegin = 'X';
           *--valBufBegin = '0';
@@ -611,7 +611,7 @@ class FormatValue<
             presentation,
             "' specifier");
         valBufEnd = valBuf + valBufSize;
-        valBufBegin = valBuf + detail::uintToBinary(valBuf, valBufSize, uval);
+        valBufBegin = &valBuf[detail::uintToBinary(valBuf, valBufSize, uval)];
         if (arg.basePrefix) {
           *--valBufBegin = presentation; // 0b or 0B
           *--valBufBegin = '0';
