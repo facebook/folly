@@ -97,11 +97,11 @@ class DebugWipeFinder(object):
         try:
             fd, pypath, (_, _, kind) = imp.find_module(basename, path)
         except Exception:
-            # Maybe it's a top level module
-            try:
-                fd, pypath, (_, _, kind) = imp.find_module(basename, None)
-            except Exception:
-                return None
+            # Finding without hooks using the imp module failed. One reason
+            # could be that there is a zip file on sys.path. The imp module
+            # does not support loading from there. Leave finding this module to
+            # the others finders in sys.meta_path.
+            return None
 
         if hasattr(fd, "close"):
             fd.close()
