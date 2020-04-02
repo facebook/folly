@@ -2,12 +2,12 @@
 name = openssl
 
 [download]
-url = https://www.openssl.org/source/openssl-1.1.1b.tar.gz
-sha256 = 5c557b023230413dfb0756f3137a13e6d726838ccd1430888ad15bfb2b43ea4b
+url = https://www.openssl.org/source/openssl-1.1.1f.tar.gz
+sha256 = 186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629975da3f35
 
 [build]
 builder = openssl
-subdir = openssl-1.1.1b
+subdir = openssl-1.1.1f
 
 [dependencies.os=windows]
 perl
