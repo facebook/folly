@@ -187,7 +187,9 @@ void PollIoBackend::scheduleTimeout() {
     scheduleTimeout(std::chrono::microseconds(0)); // disable
   }
 
-  addTimerFd();
+  // we do not call addTimerFd() here
+  // since it has to be added only once, after
+  // we process a poll callback
 }
 
 void PollIoBackend::scheduleTimeout(const std::chrono::microseconds& us) {
@@ -468,6 +470,10 @@ int PollIoBackend::eb_event_base_loop(int flags) {
 
     size_t numProcessedTimers = 0;
 
+    // save the processTimers_
+    // this means we've received a notification
+    // and we need to add the timer fd back
+    bool processTimersFlag = processTimers_;
     if (processTimers_ && !loopBreak_) {
       numProcessedTimers = processTimers();
       processTimers_ = false;
@@ -494,6 +500,10 @@ int PollIoBackend::eb_event_base_loop(int flags) {
     if (!done && (numProcessedTimers || numProcessedSignals) &&
         (flags & EVLOOP_ONCE)) {
       done = true;
+    }
+
+    if (processTimersFlag) {
+      addTimerFd();
     }
   }
 
