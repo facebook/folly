@@ -112,11 +112,11 @@ template <bool V>
 struct Cond {
   template <typename K = std::string>
   static auto fun_std(std::conditional_t<V, K, std::string>&& arg) {
-    return std::is_same<remove_cvref_t<decltype(arg)>, std::string>{};
+    return std::is_same<folly::remove_cvref_t<decltype(arg)>, std::string>{};
   }
   template <typename K = std::string>
   static auto fun_folly(folly::conditional_t<V, K, std::string>&& arg) {
-    return std::is_same<remove_cvref_t<decltype(arg)>, std::string>{};
+    return std::is_same<folly::remove_cvref_t<decltype(arg)>, std::string>{};
   }
 };
 

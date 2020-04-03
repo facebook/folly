@@ -91,9 +91,9 @@ TEST_F(AtomicCompareExchangeSuccTest, examples) {
 
   // properties
   for (auto succ : {relaxed, consume, acquire, release, acq_rel, seq_cst}) {
-    SCOPED_TRACE(succ);
+    SCOPED_TRACE(static_cast<int>(succ));
     for (auto fail : {relaxed, consume, acquire, seq_cst}) {
-      SCOPED_TRACE(fail);
+      SCOPED_TRACE(static_cast<int>(fail));
       EXPECT_EQ(succ, atomic_compare_exchange_succ(false, succ, fail));
       auto const sfix = atomic_compare_exchange_succ(true, succ, fail);
       EXPECT_GE(sfix, succ);
