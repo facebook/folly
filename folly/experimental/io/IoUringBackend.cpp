@@ -50,21 +50,30 @@ int IoUringBackend::FdRegistry::init() {
 
 IoUringBackend::FdRegistrationRecord* IoUringBackend::FdRegistry::alloc(
     int fd) {
-  if (FOLLY_UNLIKELY(free_.empty())) {
+  if (FOLLY_UNLIKELY(err_ || free_.empty())) {
     return nullptr;
   }
 
-  auto& ret = free_.front();
+  auto& record = free_.front();
 
   // now we have an idx
-  if (::io_uring_register_files_update(&ioRing_, ret.idx_, &fd, 1) != 1) {
+  int ret = ::io_uring_register_files_update(&ioRing_, record.idx_, &fd, 1);
+  if (ret != 1) {
+    // set the err_ flag so we do not retry again
+    // this usually happens when we hit the file desc limit
+    // and retrying this operation for every request is expensive
+    err_ = true;
+    LOG(ERROR) << "io_uring_register_files(1) "
+               << "failed errno = " << errno << ":\"" << folly::errnoStr(errno)
+               << "\" " << this;
     return nullptr;
   }
 
-  ret.fd_ = fd;
-  ret.count_ = 1;
+  record.fd_ = fd;
+  record.count_ = 1;
   free_.pop_front();
-  return &ret;
+
+  return &record;
 }
 
 bool IoUringBackend::FdRegistry::free(

@@ -63,6 +63,7 @@ class IoUringBackend : public PollIoBackend {
     int init();
     size_t update();
 
+    bool err_{false};
     struct io_uring& ioRing_;
     std::vector<int> files_;
     size_t inUse_;
