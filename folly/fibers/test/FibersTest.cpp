@@ -961,14 +961,15 @@ TEST(FiberManager, runInMainContext) {
 
   checkRan = false;
 
-  manager.addTask([&]() {
-    struct A {
-      explicit A(int value_) : value(value_) {}
-      A(const A&) = delete;
-      A(A&&) = default;
+  struct A {
+    explicit A(int value_) : value(value_) {}
+    A(const A&) = delete;
+    A(A&&) = default;
 
-      int value;
-    };
+    int value;
+  };
+
+  manager.addTask([&]() {
     int stackLocation;
     auto ret = runInMainContext([&]() {
       expectMainContext(checkRan, &mainLocation, &stackLocation);
