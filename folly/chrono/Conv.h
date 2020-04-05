@@ -74,7 +74,7 @@ struct is_chrono_conversion {
  */
 template <typename Src>
 Expected<time_t, ConversionCode> chronoRangeCheck(Src value) {
-  if (value > std::numeric_limits<time_t>::max()) {
+  if (value > static_cast<Src>(std::numeric_limits<time_t>::max())) {
     return makeUnexpected(ConversionCode::POSITIVE_OVERFLOW);
   }
   if (std::is_signed<Src>::value) {

@@ -236,7 +236,7 @@ class SkipListRandomHeight {
       p *= kProb;
       sizeLimit *= kProbInv;
       lookupTable_[i] = lookupTable_[i - 1] + p;
-      sizeLimitTable_[i] = sizeLimit > kMaxSizeLimit
+      sizeLimitTable_[i] = sizeLimit > static_cast<double>(kMaxSizeLimit)
           ? kMaxSizeLimit
           : static_cast<size_t>(sizeLimit);
     }
