@@ -208,12 +208,17 @@ uint64_t bench_RequestContextScopeGuard(int nthr, uint64_t ops, bool nonempty) {
 uint64_t bench_ShallowCopyRequestContextScopeGuard(
     int nthr,
     uint64_t ops,
-    bool nonempty) {
+    int keep,
+    bool replace) {
   auto fn = [&](int tid) {
     RequestContextScopeGuard g1;
-    if (nonempty) {
-      RequestContext::get()->setContextData(
-          token, std::make_unique<TestData>(1));
+    auto ctx = RequestContext::get();
+    for (int i = 0; i < keep; ++i) {
+      ctx->setContextData(
+          folly::to<std::string>(1000 + i), std::make_unique<TestData>(i));
+    }
+    if (replace) {
+      ctx->setContextData(token, std::make_unique<TestData>(1));
       for (uint64_t i = tid; i < ops; i += nthr) {
         ShallowCopyRequestContextScopeGuard g2(
             token, std::make_unique<TestData>(2));
@@ -256,36 +261,22 @@ void benches() {
               << " threads "
               << "==============================" << std::endl;
     const uint64_t ops = FLAGS_ops;
-    std::cout << "set/clearContextData            ";
-    bench_set_clearContextData(i, ops);
-    std::cout << "hasContextData-empty            ";
-    bench_hasContextData(i, ops, false);
-    std::cout << "hasContextData-hit              ";
+    std::cout << "hasContextData                  ";
     bench_hasContextData(i, ops, true);
-    std::cout << "getContextData-empty            ";
-    bench_getContextData(i, ops, false);
-    std::cout << "getContextData-hit              ";
+    std::cout << "getContextData                  ";
     bench_getContextData(i, ops, true);
-    std::cout << "onSet-empty                     ";
-    bench_onSet(i, ops, false);
-    std::cout << "onSet-nonempty                  ";
+    std::cout << "onSet                           ";
     bench_onSet(i, ops, true);
-    std::cout << "onUnset-empty                   ";
-    bench_onUnset(i, ops, false);
-    std::cout << "onUnset-nonempty                ";
+    std::cout << "onUnset                         ";
     bench_onUnset(i, ops, true);
-    std::cout << "setContext-empty                ";
-    bench_setContext(i, ops, false);
-    std::cout << "setContext-nonempty             ";
+    std::cout << "setContext                      ";
     bench_setContext(i, ops, true);
-    std::cout << "RequestContextScopeGuard-empty  ";
-    bench_RequestContextScopeGuard(i, ops, false);
-    std::cout << "RequestContextScopeG...-nonempty";
+    std::cout << "RequestContextScopeGuard        ";
     bench_RequestContextScopeGuard(i, ops, true);
-    std::cout << "ShallowCopyRequestCon...-empty  ";
-    bench_ShallowCopyRequestContextScopeGuard(i, ops, false);
-    std::cout << "ShallowCopyRequest...-nonempty  ";
-    bench_ShallowCopyRequestContextScopeGuard(i, ops, true);
+    std::cout << "ShallowCopyRequestC...-replace  ";
+    bench_ShallowCopyRequestContextScopeGuard(i, ops, 0, true);
+    std::cout << "ShallowCopyReq...-keep&replace  ";
+    bench_ShallowCopyRequestContextScopeGuard(i, ops, 12, true);
   }
   doubleLine();
 }
@@ -303,36 +294,22 @@ $ numactl -N 1 $dir/request_context_benchmark
 ========================================================================
 Test name                         Max time  Avg time  Dev time  Min time
 ==============================  1 threads ==============================
-set/clearContextData                127 ns    116 ns      5 ns    105 ns
-hasContextData-empty                 23 ns     21 ns      0 ns     20 ns
-hasContextData-hit                   30 ns     28 ns      1 ns     27 ns
-getContextData-empty                 24 ns     22 ns      0 ns     22 ns
-getContextData-hit                   32 ns     30 ns      1 ns     28 ns
-onSet-empty                          22 ns     21 ns      0 ns     20 ns
-onSet-nonempty                       24 ns     22 ns      0 ns     21 ns
-onUnset-empty                        22 ns     21 ns      0 ns     21 ns
-onUnset-nonempty                     23 ns     23 ns      0 ns     21 ns
-setContext-empty                     72 ns     69 ns      1 ns     67 ns
-setContext-nonempty                  79 ns     76 ns      2 ns     72 ns
-RequestContextScopeGuard-empty      158 ns    149 ns      4 ns    143 ns
-RequestContextScopeG...-nonempty    164 ns    158 ns      3 ns    152 ns
-ShallowCopyRequestCon...-empty      127 ns    121 ns      2 ns    118 ns
-ShallowCopyRequest...-nonempty      256 ns    240 ns      8 ns    231 ns
+hasContextData                        7 ns      7 ns      0 ns      7 ns
+getContextData                        7 ns      7 ns      0 ns      7 ns
+onSet                                12 ns     12 ns      0 ns     12 ns
+onUnset                              12 ns     12 ns      0 ns     12 ns
+setContext                           46 ns     44 ns      1 ns     42 ns
+RequestContextScopeGuard            113 ns    103 ns      3 ns    101 ns
+ShallowCopyRequestC...-replace      310 ns    291 ns      8 ns    283 ns
+ShallowCopyReq...-keep&replace     1562 ns   1444 ns     45 ns   1405 ns
 ============================== 10 threads ==============================
-set/clearContextData                 11 ns     11 ns      0 ns     10 ns
-hasContextData-empty                  3 ns      2 ns      0 ns      2 ns
-hasContextData-hit                    3 ns      3 ns      0 ns      2 ns
-getContextData-empty                  3 ns      2 ns      0 ns      2 ns
-getContextData-hit                    4 ns      3 ns      0 ns      2 ns
-onSet-empty                           3 ns      3 ns      0 ns      2 ns
-onSet-nonempty                        3 ns      3 ns      0 ns      2 ns
-onUnset-empty                         3 ns      2 ns      0 ns      2 ns
-onUnset-nonempty                      3 ns      3 ns      0 ns      2 ns
-setContext-empty                     12 ns      8 ns      2 ns      7 ns
-setContext-nonempty                  14 ns     10 ns      2 ns      7 ns
-RequestContextScopeGuard-empty       27 ns     19 ns      5 ns     15 ns
-RequestContextScopeG...-nonempty     28 ns     20 ns      5 ns     16 ns
-ShallowCopyRequestCon...-empty       21 ns     14 ns      3 ns     12 ns
-ShallowCopyRequest...-nonempty       42 ns     30 ns      7 ns     25 ns
+hasContextData                        1 ns      1 ns      0 ns      1 ns
+getContextData                        2 ns      1 ns      0 ns      1 ns
+onSet                                 2 ns      2 ns      0 ns      1 ns
+onUnset                               2 ns      2 ns      0 ns      1 ns
+setContext                           11 ns      7 ns      2 ns      5 ns
+RequestContextScopeGuard             22 ns     15 ns      5 ns     11 ns
+ShallowCopyRequestC...-replace       64 ns     36 ns     10 ns     31 ns
+ShallowCopyReq...-keep&replace      161 ns    156 ns      3 ns    152 ns
 ========================================================================
  */
