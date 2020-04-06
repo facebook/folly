@@ -349,10 +349,10 @@ class IOBufQueue {
    * @return The starting address of the block and the length in bytes.
    *
    * @note The point of the preallocate()/postallocate() mechanism is
-   *       to support I/O APIs such as Thrift's TAsyncSocket::ReadCallback
-   *       that request a buffer from the application and then, in a later
-   *       callback, tell the application how much of the buffer they've
-   *       filled with data.
+   *       to support I/O APIs such as AsyncSocket::ReadCallback that
+   *       request a buffer from the application and then, in a later
+   *       callback, tell the application how much of the buffer they
+   *       have filled with data.
    */
   std::pair<void*, std::size_t> preallocate(
       std::size_t min,
