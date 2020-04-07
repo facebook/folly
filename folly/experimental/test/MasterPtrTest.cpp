@@ -64,3 +64,60 @@ TEST(MasterPtrTest, Basic) {
       joinFuture.wait_for(std::chrono::milliseconds{100}),
       std::future_status::ready);
 }
+
+struct Mastered : folly::EnableMasterFromThis<Mastered> {
+  std::shared_ptr<Mastered> get_shared() {
+    return masterLockFromThis();
+  }
+};
+
+TEST(MasterPtrTest, EnableMasterFromThis) {
+  auto ptr = std::make_unique<Mastered>();
+  auto rawPtr = ptr.get();
+
+  auto masterPtr = folly::MasterPtr<Mastered>{std::move(ptr)};
+  auto masterPtrRef = masterPtr.ref();
+
+  auto lockedPtr1 = masterPtr.lock();
+  auto lockedPtr2 = masterPtrRef.lock();
+  EXPECT_EQ(lockedPtr1.get(), rawPtr);
+  EXPECT_EQ(lockedPtr2.get(), rawPtr);
+
+  EXPECT_EQ(lockedPtr1.use_count(), 3);
+  EXPECT_EQ(lockedPtr2.use_count(), 3);
+
+  auto lockedPtr3 = lockedPtr1->get_shared();
+  EXPECT_EQ(lockedPtr3.use_count(), 4);
+  EXPECT_EQ(lockedPtr3.get(), rawPtr);
+
+  auto joinFuture = std::async(std::launch::async, [&] { masterPtr.join(); });
+
+  auto lockFailFuture = std::async(std::launch::async, [&] {
+    while (masterPtr.lock()) {
+      std::this_thread::yield();
+    }
+  });
+
+  EXPECT_EQ(
+      lockFailFuture.wait_for(std::chrono::milliseconds{100}),
+      std::future_status::ready);
+
+  EXPECT_EQ(lockedPtr1.use_count(), 3);
+  EXPECT_EQ(lockedPtr2.use_count(), 3);
+  EXPECT_EQ(lockedPtr3.use_count(), 3);
+
+  EXPECT_EQ(masterPtr.lock().get(), nullptr);
+  EXPECT_EQ(masterPtrRef.lock().get(), nullptr);
+
+  EXPECT_EQ(
+      joinFuture.wait_for(std::chrono::milliseconds{100}),
+      std::future_status::timeout);
+
+  lockedPtr1.reset();
+  lockedPtr2.reset();
+  lockedPtr3.reset();
+
+  EXPECT_EQ(
+      joinFuture.wait_for(std::chrono::milliseconds{100}),
+      std::future_status::ready);
+}
