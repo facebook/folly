@@ -537,6 +537,9 @@ if __name__ == "__main__":
             machine_suffix = self.build_opts.host_type.as_tuple_string()
             for test in data["tests"]:
                 working_dir = get_property(test, "WORKING_DIRECTORY")
+                labels = []
+                if get_property(test, "DISABLED"):
+                    labels.append("disabled")
                 command = test["command"]
                 if working_dir:
                     command = [cmake, "-E", "chdir", working_dir] + command
@@ -546,6 +549,7 @@ if __name__ == "__main__":
                         "target": "%s-%s-getdeps-%s"
                         % (self.manifest.name, test["name"], machine_suffix),
                         "command": command,
+                        "labels": labels,
                     }
                 )
             return tests
