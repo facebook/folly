@@ -745,8 +745,7 @@ if (BUILD_TESTS)
       TEST ScopedEventBaseThreadTest SOURCES ScopedEventBaseThreadTest.cpp
       TEST ssl_session_test
         CONTENT_DIR certs/
-        SOURCES
-          SSLSessionTest.cpp
+        SOURCES SSLSessionTest.cpp
       TEST writechain_test SOURCES WriteChainAsyncTransportWrapperTest.cpp
 
     DIRECTORY io/async/ssl/test/
@@ -765,6 +764,8 @@ if (BUILD_TESTS)
       TEST thread_cached_arena_test WINDOWS_DISABLED
         SOURCES ThreadCachedArenaTest.cpp
       TEST mallctl_helper_test SOURCES MallctlHelperTest.cpp
+      TEST uninitialized_memory_hacks_test
+        SOURCES UninitializedMemoryHacksTest.cpp
 
     DIRECTORY net/detail/test/
       TEST socket_file_descriptor_map_test SOURCES SocketFileDescriptorMapTest.cpp
