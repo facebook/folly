@@ -300,8 +300,8 @@ onSet                                12 ns     12 ns      0 ns     12 ns
 onUnset                              12 ns     12 ns      0 ns     12 ns
 setContext                           46 ns     44 ns      1 ns     42 ns
 RequestContextScopeGuard            113 ns    103 ns      3 ns    101 ns
-ShallowCopyRequestC...-replace      310 ns    291 ns      8 ns    283 ns
-ShallowCopyReq...-keep&replace     1562 ns   1444 ns     45 ns   1405 ns
+ShallowCopyRequestC...-replace      287 ns    279 ns      5 ns    270 ns
+ShallowCopyReq...-keep&replace     1191 ns   1149 ns     21 ns   1121 ns
 ============================== 10 threads ==============================
 hasContextData                        1 ns      1 ns      0 ns      1 ns
 getContextData                        2 ns      1 ns      0 ns      1 ns
@@ -309,7 +309,7 @@ onSet                                 2 ns      2 ns      0 ns      1 ns
 onUnset                               2 ns      2 ns      0 ns      1 ns
 setContext                           11 ns      7 ns      2 ns      5 ns
 RequestContextScopeGuard             22 ns     15 ns      5 ns     11 ns
-ShallowCopyRequestC...-replace       64 ns     36 ns     10 ns     31 ns
-ShallowCopyReq...-keep&replace      161 ns    156 ns      3 ns    152 ns
+ShallowCopyRequestC...-replace       61 ns     43 ns     14 ns     30 ns
+ShallowCopyReq...-keep&replace      123 ns    121 ns      0 ns    120 ns
 ========================================================================
  */

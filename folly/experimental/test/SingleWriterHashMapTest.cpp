@@ -296,6 +296,20 @@ uint64_t bench_copy_nonempty_dtor(const int nthr, const uint64_t ops) {
   return runBench(ops, repFn);
 }
 
+uint64_t bench_copy_resize_dtor(const int nthr, const uint64_t ops) {
+  auto repFn = [&] {
+    SWFHM m0(16);
+    m0.insert(10, 10);
+    auto fn = [&](int tid) {
+      for (uint64_t i = tid; i < ops; i += nthr) {
+        SWFHM m(2 * m0.capacity(), m0);
+      }
+    };
+    return run_once(nthr, fn);
+  };
+  return runBench(ops, repFn);
+}
+
 void dottedLine() {
   std::cout
       << "........................................................................"
@@ -336,6 +350,8 @@ TEST(SingleWriterFixedHashMapBench, Bench) {
     bench_copy_empty_dtor(i, ops);
     std::cout << "copy nonempty / destruct       ";
     bench_copy_nonempty_dtor(i, ops);
+    std::cout << "copy resize / destruct         ";
+    bench_copy_resize_dtor(i, ops);
   }
   std::cout
       << "========================================================================"
@@ -354,12 +370,14 @@ Test name                         Max time  Avg time  Dev time  Min time
 iterate 10-element 32-slot map      20 ns     19 ns      0 ns     19 ns
 construct / destruct                 1 ns      1 ns      0 ns      1 ns
 copy empty / destruct                5 ns      4 ns      0 ns      4 ns
-copy nonempty / destruct            39 ns     38 ns      0 ns     37 ns
+copy nonempty / destruct            25 ns     24 ns      0 ns     23 ns
+copy resize / destruct              40 ns     38 ns      0 ns     37 ns
 ============================== 10 threads ==============================
 10x find                             6 ns      4 ns      1 ns      3 ns
 iterate 10-element 32-slot map       3 ns      3 ns      0 ns      1 ns
 construct / destruct                 0 ns      0 ns      0 ns      0 ns
 copy empty / destruct                0 ns      0 ns      0 ns      0 ns
-copy nonempty / destruct             7 ns      5 ns      1 ns      3 ns
+copy nonempty / destruct             4 ns      3 ns      0 ns      2 ns
+copy resize / destruct               8 ns      6 ns      1 ns      4 ns
 ========================================================================
  */
