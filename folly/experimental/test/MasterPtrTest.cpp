@@ -71,8 +71,10 @@ struct Mastered : folly::EnableMasterFromThis<Mastered> {
   }
 };
 
+struct Derived : Mastered {};
+
 TEST(MasterPtrTest, EnableMasterFromThis) {
-  auto ptr = std::make_unique<Mastered>();
+  auto ptr = std::make_unique<Derived>();
   auto rawPtr = ptr.get();
 
   auto masterPtr = folly::MasterPtr<Mastered>{std::move(ptr)};

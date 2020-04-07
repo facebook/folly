@@ -19,6 +19,7 @@
 #include <memory>
 #include <mutex>
 
+#include <folly/Function.h>
 #include <folly/synchronization/Baton.h>
 
 #include <glog/logging.h>
@@ -89,7 +90,8 @@ class EnableMasterFromThis {
   }
 
  private:
-  friend class MasterPtr<T>;
+  template <class>
+  friend class MasterPtr;
 
   std::weak_ptr<std::shared_ptr<T>> outerPtrWeak_;
   std::weak_ptr<T> lockedPtrWeak_;
@@ -108,7 +110,8 @@ template <typename T>
 class MasterPtr {
  public:
   MasterPtr() = delete;
-  MasterPtr(std::unique_ptr<T> ptr) {
+  template <class T2, class Deleter>
+  MasterPtr(std::unique_ptr<T2, Deleter> ptr) {
     set(std::move(ptr));
   }
   ~MasterPtr() {
@@ -148,7 +151,8 @@ class MasterPtr {
 
   // Sets the pointer. Can not be called concurrently with lock() or join() or
   // ref().
-  void set(std::unique_ptr<T> ptr) {
+  template <class T2, class Deleter>
+  void set(std::unique_ptr<T2, Deleter> ptr) {
     if (*this) {
       LOG(FATAL) << "MasterPtr has to be joined before being set.";
     }
@@ -157,14 +161,17 @@ class MasterPtr {
       return;
     }
 
-    innerPtr_ = std::move(ptr);
+    auto rawPtr = ptr.get();
+    innerPtr_ = std::unique_ptr<T, folly::Function<void(T*)>>{
+        ptr.release(),
+        [d = ptr.get_deleter(), rawPtr](T*) mutable { d(rawPtr); }};
     joinBaton_.reset();
     auto innerPtrShared =
-        std::shared_ptr<T>(innerPtr_.get(), [&](T*) { joinBaton_.post(); });
+        std::shared_ptr<T>(rawPtr, [&](T*) { joinBaton_.post(); });
     outerPtrShared_ =
         std::make_shared<std::shared_ptr<T>>(std::move(innerPtrShared));
     outerPtrWeak_ = outerPtrShared_;
-    EnableMasterFromThis<T>::set(innerPtr_.get(), outerPtrShared_);
+    EnableMasterFromThis<T>::set(rawPtr, outerPtrShared_);
   }
 
   // Gets a non-owning reference to the pointer. join() does *NOT* wait for
@@ -175,22 +182,21 @@ class MasterPtr {
 
  private:
   friend class MasterPtrRef<T>;
-
   folly::Baton<> joinBaton_;
   std::shared_ptr<std::shared_ptr<T>> outerPtrShared_;
   std::weak_ptr<std::shared_ptr<T>> outerPtrWeak_;
-  std::unique_ptr<T> innerPtr_;
+  std::unique_ptr<T, folly::Function<void(T*)>> innerPtr_;
 };
 
 /**
- * MasterPtrRef is a non-owning reference to the pointer. MasterPtr::join() does
- * *NOT* wait for outstanding MasterPtrRef objects to be released.
+ * MasterPtrRef is a non-owning reference to the pointer. MasterPtr::join()
+ * does *NOT* wait for outstanding MasterPtrRef objects to be released.
  */
 template <typename T>
 class MasterPtrRef {
  public:
-  // Attempts to lock a pointer. Returns null if pointer is not set or if join()
-  // was called (even if the call to join() hasn't returned yet).
+  // Attempts to lock a pointer. Returns null if pointer is not set or if
+  // join() was called (even if the call to join() hasn't returned yet).
   std::shared_ptr<T> lock() const {
     if (auto outerPtr = outerPtrWeak_.lock()) {
       return *outerPtr;
@@ -199,8 +205,10 @@ class MasterPtrRef {
   }
 
  private:
-  friend class EnableMasterFromThis<T>;
-  friend class MasterPtr<T>;
+  template <class>
+  friend class EnableMasterFromThis;
+  template <class>
+  friend class MasterPtr;
   /* implicit */ MasterPtrRef(std::weak_ptr<std::shared_ptr<T>> outerPtrWeak)
       : outerPtrWeak_(std::move(outerPtrWeak)) {}
 
