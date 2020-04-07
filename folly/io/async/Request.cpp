@@ -74,6 +74,7 @@ Synchronized<F14FastMap<std::string, uint32_t>>& RequestToken::getCache() {
   return *cache;
 }
 
+FOLLY_ALWAYS_INLINE
 void RequestData::acquireRef() {
   auto rc = keepAliveCounter_.fetch_add(
       kClearCount + kDeleteCount, std::memory_order_relaxed);
@@ -100,6 +101,7 @@ void RequestData::releaseRefDeleteOnly() {
   }
 }
 
+FOLLY_ALWAYS_INLINE
 void RequestData::releaseRefClearDelete() {
   auto rc = keepAliveCounter_.fetch_sub(
                 kClearCount + kDeleteCount, std::memory_order_acq_rel) -
@@ -148,12 +150,8 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
   SingleWriterFixedHashMap<RequestToken, RequestData*> requestData_;
   // This must be optimized for iteration, its hot path is setContext
   SingleWriterFixedHashMap<RequestData*, bool> callbackData_;
-  // Hash map to keep track of Clear and Delete counts. The presence
-  // of a key indicates holding a Delete count for the request data
-  // (i.e., delete when the Delete count goes to zero). A value of
-  // true indicates holding a Clear counts for the request data (i.e.,
-  // call onClear() when the Clear count goes to zero).
-  F14FastMap<RequestData*, bool> refs_;
+  // Vector of cleared data. Accessed only sequentially by writers.
+  std::vector<std::pair<RequestToken, RequestData*>> cleared_;
 
   Combined()
       : requestData_(kInitialCapacity), callbackData_(kInitialCapacity) {}
@@ -178,7 +176,6 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
     for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
       auto p = it.value();
       if (p) {
-        refs_.insert({p, true});
         p->acquireRef();
       }
     }
@@ -186,11 +183,16 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
 
   /* releaseDataRefs - Called only once from ~Combined */
   void releaseDataRefs() {
-    for (auto pair : refs_) {
-      if (pair.second) {
-        pair.first->releaseRefClearDelete();
-      } else {
-        pair.first->releaseRefDeleteOnly();
+    if (!cleared_.empty()) {
+      for (auto& pair : cleared_) {
+        pair.second->releaseRefDeleteOnly();
+        requestData_.erase(pair.first);
+      }
+    }
+    for (auto it = requestData_.begin(); it != requestData_.end(); ++it) {
+      RequestData* data = it.value();
+      if (data) {
+        data->releaseRefClearDelete();
       }
     }
   }
@@ -215,6 +217,7 @@ struct RequestContext::StateHazptr::Combined : hazptr_obj_base<Combined> {
 
 RequestContext::StateHazptr::StateHazptr() = default;
 
+FOLLY_ALWAYS_INLINE
 RequestContext::StateHazptr::StateHazptr(const StateHazptr& o) {
   Combined* oc = o.combined();
   if (oc) {
@@ -238,6 +241,7 @@ RequestContext::StateHazptr::Combined* RequestContext::StateHazptr::combined()
   return combined_.load(std::memory_order_acquire);
 }
 
+FOLLY_ALWAYS_INLINE
 RequestContext::StateHazptr::Combined*
 RequestContext::StateHazptr::ensureCombined() {
   auto c = combined();
@@ -248,11 +252,13 @@ RequestContext::StateHazptr::ensureCombined() {
   return c;
 }
 
+FOLLY_ALWAYS_INLINE
 void RequestContext::StateHazptr::setCombined(Combined* p) {
   p->set_cohort_tag(&cohort_);
   combined_.store(p, std::memory_order_release);
 }
 
+FOLLY_ALWAYS_INLINE
 bool RequestContext::StateHazptr::doSetContextData(
     const RequestToken& token,
     std::unique_ptr<RequestData>& data,
@@ -276,6 +282,7 @@ bool RequestContext::StateHazptr::doSetContextData(
   return result.changed;
 }
 
+FOLLY_ALWAYS_INLINE
 RequestContext::StateHazptr::SetContextDataResult
 RequestContext::StateHazptr::doSetContextDataHelper(
     const RequestToken& token,
@@ -333,6 +340,7 @@ RequestContext::StateHazptr::doSetContextDataHelper(
           replaced};
 }
 
+FOLLY_ALWAYS_INLINE
 RequestContext::StateHazptr::Combined* FOLLY_NULLABLE
 RequestContext::StateHazptr::eraseOldData(
     RequestContext::StateHazptr::Combined* cur,
@@ -350,7 +358,6 @@ RequestContext::StateHazptr::eraseOldData(
     // If the caller guarantees thread-safety, then erase the
     // entry in the current version.
     cur->requestData_.erase(token);
-    cur->refs_.erase(olddata);
     olddata->releaseRefClearDelete();
   } else {
     // If there may be concurrent readers, then copy-on-erase.
@@ -363,6 +370,7 @@ RequestContext::StateHazptr::eraseOldData(
   return newCombined;
 }
 
+FOLLY_ALWAYS_INLINE
 RequestContext::StateHazptr::Combined* FOLLY_NULLABLE
 RequestContext::StateHazptr::insertNewData(
     RequestContext::StateHazptr::Combined* cur,
@@ -383,7 +391,6 @@ RequestContext::StateHazptr::insertNewData(
     data->onSet();
   }
   if (data) {
-    cur->refs_.insert({data.get(), true});
     data->acquireRef();
   }
   cur->requestData_.insert(token, data.release());
@@ -482,8 +489,8 @@ void RequestContext::StateHazptr::clearContextData(const RequestToken& token) {
   } // Unlock mutex_
   DCHECK(data);
   data->releaseRefClearOnly();
-  replaced->refs_[data] = false; // Clear reference already released
   DCHECK(replaced);
+  replaced->cleared_.emplace_back(std::make_pair(token, data));
   replaced->retire();
 }
 
