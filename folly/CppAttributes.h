@@ -33,7 +33,7 @@
 #ifndef __has_cpp_attribute
 #define FOLLY_HAS_CPP_ATTRIBUTE(x) 0
 #else
-#define FOLLY_HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x)
+#define FOLLY_HAS_CPP_ATTRIBUTE(x) __has_cpp_attribute(x) <= __cplusplus
 #endif
 
 #ifndef __has_extension
