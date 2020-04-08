@@ -40,7 +40,8 @@ class ViaCoroutine {
  public:
   class promise_type {
    public:
-    promise_type(folly::Executor::KeepAlive<> executor) noexcept
+    // Passed as lvalue by compiler, but should have no other dependencies
+    promise_type(folly::Executor::KeepAlive<>& executor) noexcept
         : executor_(std::move(executor)) {}
 
     ViaCoroutine get_return_object() noexcept {
