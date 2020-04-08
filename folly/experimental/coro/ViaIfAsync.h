@@ -172,7 +172,7 @@ class ViaIfAsyncAwaiter {
   explicit ViaIfAsyncAwaiter(
       folly::Executor::KeepAlive<> executor,
       Awaitable&& awaitable)
-      : viaCoroutine_(detail::ViaCoroutine::create(executor)),
+      : viaCoroutine_(detail::ViaCoroutine::create(std::move(executor))),
         awaiter_(
             folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))) {}
 
@@ -282,7 +282,8 @@ template <typename Awaitable>
 auto operator co_await(ViaIfAsyncAwaitable<Awaitable>&& awaitable)
     -> ViaIfAsyncAwaiter<folly::coro::awaiter_type_t<Awaitable>> {
   return ViaIfAsyncAwaiter<folly::coro::awaiter_type_t<Awaitable>>{
-      awaitable.executor_, static_cast<Awaitable&&>(awaitable.awaitable_)};
+      std::move(awaitable.executor_),
+      static_cast<Awaitable&&>(awaitable.awaitable_)};
 }
 
 template <typename Awaitable>
@@ -296,7 +297,7 @@ template <typename Awaitable>
 auto operator co_await(const ViaIfAsyncAwaitable<Awaitable>&& awaitable)
     -> ViaIfAsyncAwaiter<folly::coro::awaiter_type_t<const Awaitable&&>> {
   return ViaIfAsyncAwaiter<folly::coro::awaiter_type_t<const Awaitable&&>>{
-      awaitable.executor_,
+      std::move(awaitable.executor_),
       static_cast<const Awaitable&&>(awaitable.awaitable_)};
 }
 
