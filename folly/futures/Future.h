@@ -2372,13 +2372,16 @@ auto via(Executor::KeepAlive<>, Func&& func) -> Future<
   replaced with collectX(...).via(e) where e is a valid non-inline executor.
   */
 template <class InputIterator>
-SemiFuture<std::vector<
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] SemiFuture<
+    std::vector<Try<
+        typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAllSemiFuture(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
 template <class Collection>
-auto collectAllSemiFuture(Collection&& c)
+[[deprecated(
+    "collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] auto
+collectAllSemiFuture(Collection&& c)
     -> decltype(collectAllSemiFuture(c.begin(), c.end())) {
   return collectAllSemiFuture(c.begin(), c.end());
 }
@@ -2411,7 +2414,8 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 /// is a SemiFuture<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
+[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] SemiFuture<
+    std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs);
 
 // Unsafe variant of collectAll, see coment above for details. Returns
@@ -2477,10 +2481,13 @@ Future<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAnyUnsafe(InputIterator first, InputIterator last);
+
 template <class InputIterator>
-SemiFuture<std::pair<
-    size_t,
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
+[[deprecated("collectAnySemiFuture is deprecated and identical to plain collectAny. Please use collectAny instead.")]] SemiFuture<
+    std::pair<
+        size_t,
+        Try<typename std::iterator_traits<
+            InputIterator>::value_type::value_type>>>
 collectAnySemiFuture(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
@@ -2496,7 +2503,9 @@ auto collectAnyUnsafe(Collection&& c)
   return collectAnyUnsafe(c.begin(), c.end());
 }
 template <class Collection>
-auto collectAnySemiFuture(Collection&& c)
+[[deprecated(
+    "collectAnySemiFuture is deprecated and identical to plain collectAny. Please use collectAny instead.")]] auto
+collectAnySemiFuture(Collection&& c)
     -> decltype(collectAnySemiFuture(c.begin(), c.end())) {
   return collectAnySemiFuture(c.begin(), c.end());
 }

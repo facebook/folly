@@ -871,7 +871,7 @@ SemiFuture<Unit> SemiFuture<T>::unit() && {
 
 template <typename T>
 SemiFuture<T> SemiFuture<T>::delayed(HighResDuration dur, Timekeeper* tk) && {
-  return collectAllSemiFuture(*this, futures::sleep(dur, tk))
+  return collectAll(*this, futures::sleep(dur, tk))
       .deferValue([](std::tuple<Try<T>, Try<Unit>> tup) {
         Try<T>& t = std::get<0>(tup);
         return makeFuture<T>(std::move(t));
@@ -1418,7 +1418,7 @@ collectAllSemiFuture(Fs&&... fs) {
 template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllUnsafe(Fs&&... fs) {
-  return collectAllSemiFuture(std::forward<Fs>(fs)...).toUnsafeFuture();
+  return collectAll(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
 // collectAll (iterator)
@@ -1604,7 +1604,8 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
 }
 
 template <typename... Fs>
-SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>>
+[[deprecated("collectSemiFuture is deprecated and identical to plain collect. Please use collectAny instead.")]] SemiFuture<
+    std::tuple<typename remove_cvref_t<Fs>::value_type...>>
 collectSemiFuture(Fs&&... fs) {
   return collect(std::forward<Fs>(fs)...);
 }
@@ -1616,7 +1617,9 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
 }
 
 template <class Collection>
-auto collectSemiFuture(Collection&& c)
+[[deprecated(
+    "collectSemiFuture is deprecated and identical to plain collect. Please use collectAny instead.")]] auto
+collectSemiFuture(Collection&& c)
     -> decltype(collectSemiFuture(c.begin(), c.end())) {
   return collectSemiFuture(c.begin(), c.end());
 }
@@ -1822,7 +1825,7 @@ Future<T> reduce(It first, It last, T&& initial, F&& func) {
       });
 
   for (++first; first != last; ++first) {
-    f = collectAllSemiFuture(f, *first).toUnsafeFuture().thenValue(
+    f = collectAllUnsafe(f, *first).thenValue(
         [sfunc](std::tuple<Try<T>, Try<ItT>>&& t) {
           return (*sfunc)(
               std::move(std::get<0>(t).value()),
@@ -2138,7 +2141,7 @@ SemiFuture<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
 template <class T>
 Future<T> Future<T>::delayed(HighResDuration dur, Timekeeper* tk) && {
   auto e = this->getExecutor();
-  return collectAllSemiFuture(*this, futures::sleep(dur, tk))
+  return collectAll(*this, futures::sleep(dur, tk))
       .via(e ? e : &InlineExecutor::instance())
       .thenValue([](std::tuple<Try<T>, Try<Unit>>&& tup) {
         return makeFuture<T>(std::get<0>(std::move(tup)));
@@ -2461,7 +2464,7 @@ struct TryEquals {
 
 template <class T>
 Future<bool> Future<T>::willEqual(Future<T>& f) {
-  return collectAllSemiFuture(*this, f).toUnsafeFuture().thenValue(
+  return collectAllUnsafe(*this, f).thenValue(
       [](const std::tuple<Try<T>, Try<T>>& t) {
         if (std::get<0>(t).hasValue() && std::get<1>(t).hasValue()) {
           return futures::detail::TryEquals<T>::equals(

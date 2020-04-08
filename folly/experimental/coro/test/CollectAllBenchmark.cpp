@@ -43,14 +43,6 @@ void collectAllFutureInline(size_t batchSize) {
   folly::collectAll(std::move(futures)).get();
 }
 
-void collectAllSemiFuture(size_t batchSize) {
-  std::vector<folly::SemiFuture<folly::Unit>> futures;
-  for (size_t i = 0; i < batchSize; ++i) {
-    futures.emplace_back(folly::via(&executor, [] { doWork(); }));
-  }
-  folly::collectAllSemiFuture(std::move(futures)).get();
-}
-
 folly::coro::Task<void> co_doWork() {
   co_await folly::coro::co_reschedule_on_current_executor;
   doWork();
@@ -91,12 +83,6 @@ BENCHMARK(collectAllFutureInline10000, iters) {
   }
 }
 
-BENCHMARK(collectAllSemiFuture10000, iters) {
-  for (size_t i = 0; i < iters; ++i) {
-    collectAllSemiFuture(10000);
-  }
-}
-
 BENCHMARK(collectAllCoro10000, iters) {
   for (size_t i = 0; i < iters; ++i) {
     collectAllCoro(10000);
@@ -118,12 +104,6 @@ BENCHMARK(collectAllFuture100, iters) {
 BENCHMARK(collectAllFutureInline100, iters) {
   for (size_t i = 0; i < iters; ++i) {
     collectAllFutureInline(100);
-  }
-}
-
-BENCHMARK(collectAllSemiFuture100, iters) {
-  for (size_t i = 0; i < iters; ++i) {
-    collectAllSemiFuture(100);
   }
 }
 

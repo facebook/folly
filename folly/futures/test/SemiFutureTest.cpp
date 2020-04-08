@@ -976,6 +976,8 @@ TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
   std::move(f).get();
 }
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
   {
     Promise<int> promise1;
@@ -1050,7 +1052,10 @@ TEST(SemiFuture, collectAllSemiFutureDeferredWork) {
     EXPECT_TRUE(deferredDestroyed);
   }
 }
+FOLLY_POP_WARNING
 
+FOLLY_PUSH_WARNING
+FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(SemiFuture, collectSemiFutureDeferredWork) {
   {
     Promise<int> promise1;
@@ -1125,6 +1130,7 @@ TEST(SemiFuture, collectSemiFutureDeferredWork) {
     EXPECT_TRUE(deferredDestroyed);
   }
 }
+FOLLY_POP_WARNING
 
 TEST(SemiFuture, collectNDeferredWork) {
   Promise<int> promise1;

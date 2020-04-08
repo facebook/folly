@@ -40,7 +40,7 @@ TEST(Wait, waitImmediate) {
   vector<Future<Unit>> v_f;
   v_f.push_back(makeFuture());
   v_f.push_back(makeFuture());
-  auto done_v_f = collectAllSemiFuture(v_f).toUnsafeFuture().wait().value();
+  auto done_v_f = collectAll(v_f).wait().value();
   EXPECT_EQ(2, done_v_f.size());
 
   vector<Future<bool>> v_fb;
