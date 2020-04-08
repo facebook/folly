@@ -144,18 +144,18 @@ typename OurContainer::iterator insert_with_hint(
   if (hint == cont.end() || cmp(value, *hint)) {
     if (hint == cont.begin() || cmp(*(hint - 1), value)) {
       hint = po.increase_capacity(cont, hint);
-      return cont.insert(hint, std::forward<Value>(value));
+      return cont.emplace(hint, std::forward<Value>(value));
     } else {
-      return sorted.insert(std::forward<Value>(value)).first;
+      return sorted.emplace(std::forward<Value>(value)).first;
     }
   }
 
   if (cmp(*hint, value)) {
     if (hint + 1 == cont.end() || cmp(value, *(hint + 1))) {
       hint = po.increase_capacity(cont, hint + 1);
-      return cont.insert(hint, std::forward<Value>(value));
+      return cont.emplace(hint, std::forward<Value>(value));
     } else {
-      return sorted.insert(std::forward<Value>(value)).first;
+      return sorted.emplace(std::forward<Value>(value)).first;
     }
   }
 
@@ -459,7 +459,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     iterator it = lower_bound(value);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, value), true);
+      return std::make_pair(m_.cont_.emplace(it, value), true);
     }
     return std::make_pair(it, false);
   }
@@ -468,7 +468,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
     iterator it = lower_bound(value);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, std::move(value)), true);
+      return std::make_pair(m_.cont_.emplace(it, std::move(value)), true);
     }
     return std::make_pair(it, false);
   }
@@ -986,7 +986,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     iterator it = lower_bound(value.first);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, value), true);
+      return std::make_pair(m_.cont_.emplace(it, value), true);
     }
     return std::make_pair(it, false);
   }
@@ -995,7 +995,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
     iterator it = lower_bound(value.first);
     if (it == end() || value_comp()(value, *it)) {
       it = get_growth_policy().increase_capacity(m_.cont_, it);
-      return std::make_pair(m_.cont_.insert(it, std::move(value)), true);
+      return std::make_pair(m_.cont_.emplace(it, std::move(value)), true);
     }
     return std::make_pair(it, false);
   }

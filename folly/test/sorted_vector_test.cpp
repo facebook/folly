@@ -85,6 +85,55 @@ struct CountCopyCtor {
 
 int CountCopyCtor::gCount_ = 0;
 
+struct KeyCopiedException : public std::exception {};
+/**
+ * Key that may throw on copy when throwOnCopy is set, but never on move.
+ * Use clone() to copy without throwing.
+ */
+struct KeyThatThrowsOnCopies {
+  int32_t key{};
+  bool throwOnCopy{};
+
+  KeyThatThrowsOnCopies() {}
+
+  /* implicit */ KeyThatThrowsOnCopies(int32_t key) noexcept
+      : key(key), throwOnCopy(false) {}
+  KeyThatThrowsOnCopies(int32_t key, bool throwOnCopy) noexcept
+      : key(key), throwOnCopy(throwOnCopy) {}
+
+  ~KeyThatThrowsOnCopies() noexcept {}
+
+  KeyThatThrowsOnCopies(KeyThatThrowsOnCopies const& other)
+      : key(other.key), throwOnCopy(other.throwOnCopy) {
+    if (throwOnCopy) {
+      throw KeyCopiedException{};
+    }
+  }
+
+  KeyThatThrowsOnCopies(KeyThatThrowsOnCopies&& other) noexcept = default;
+
+  KeyThatThrowsOnCopies& operator=(KeyThatThrowsOnCopies const& other) {
+    key = other.key;
+    throwOnCopy = other.throwOnCopy;
+    if (throwOnCopy) {
+      throw KeyCopiedException{};
+    }
+    return *this;
+  }
+
+  KeyThatThrowsOnCopies& operator=(KeyThatThrowsOnCopies&& other) noexcept =
+      default;
+
+  bool operator<(const KeyThatThrowsOnCopies& other) const {
+    return key < other.key;
+  }
+};
+
+static_assert(
+    std::is_nothrow_move_constructible<KeyThatThrowsOnCopies>::value &&
+        std::is_nothrow_move_assignable<KeyThatThrowsOnCopies>::value,
+    "non-noexcept move-constructible or move-assignable");
+
 } // namespace
 
 TEST(SortedVectorTypes, SetAssignmentInitListTest) {
@@ -860,6 +909,39 @@ TEST(SortedVectorTypes, TestEmplaceHint) {
     check_invariant(set);
     check_invariant(map);
   }
+}
+
+TEST(SortedVectorTypes, TestExceptionSafety) {
+  std::initializer_list<KeyThatThrowsOnCopies> const sortedUnique = {
+      0, 1, 4, 7, 9, 11, 15};
+  sorted_vector_set<KeyThatThrowsOnCopies> set = {sortedUnique};
+  EXPECT_EQ(set.size(), 7);
+
+  // Verify that we successfully insert when no exceptions are thrown.
+  KeyThatThrowsOnCopies key1(96, false);
+  auto hint1 = set.find(96);
+  set.insert(hint1, key1);
+  EXPECT_EQ(set.size(), 8);
+
+  // Verify that we don't add a key at the end if copying throws
+  KeyThatThrowsOnCopies key2(99, true);
+  auto hint2 = set.find(99);
+  try {
+    set.insert(hint2, key2);
+  } catch (const KeyCopiedException&) {
+    // swallow
+  }
+  EXPECT_EQ(set.size(), 8);
+
+  // Verify that we don't add a key in the middle if copying throws
+  KeyThatThrowsOnCopies key3(47, true);
+  auto hint3 = set.find(47);
+  try {
+    set.insert(hint3, key3);
+  } catch (const KeyCopiedException&) {
+    // swallow
+  }
+  EXPECT_EQ(set.size(), 8);
 }
 
 #if FOLLY_HAS_MEMORY_RESOURCE
