@@ -37,7 +37,14 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
 
+#if __has_include(<range/v3/range/concepts.hpp>)
 #include <range/v3/range/concepts.hpp>
+
+// Check conformance with the C++20 range concepts as specified
+// by the range-v3 library.
+CPP_assert(ranges::range<folly::StringPiece>);
+CPP_assert(ranges::view_<folly::StringPiece>);
+#endif
 
 using namespace folly;
 using namespace folly::detail;
@@ -46,11 +53,6 @@ using namespace std;
 static_assert(std::is_literal_type<StringPiece>::value, "");
 
 BOOST_CONCEPT_ASSERT((boost::RandomAccessRangeConcept<StringPiece>));
-
-// Check conformance with the C++20 range concepts as specified
-// by the range-v3 library.
-CPP_assert(ranges::range<StringPiece>);
-CPP_assert(ranges::view_<StringPiece>);
 
 TEST(StringPiece, All) {
   const char* foo = "foo";
