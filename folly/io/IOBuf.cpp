@@ -600,11 +600,26 @@ void IOBuf::prependChain(unique_ptr<IOBuf>&& iobuf) {
 }
 
 unique_ptr<IOBuf> IOBuf::clone() const {
-  return std::make_unique<IOBuf>(cloneAsValue());
+  auto tmp = cloneOne();
+
+  for (IOBuf* current = next_; current != this; current = current->next_) {
+    tmp->prependChain(current->cloneOne());
+  }
+
+  return tmp;
 }
 
 unique_ptr<IOBuf> IOBuf::cloneOne() const {
-  return std::make_unique<IOBuf>(cloneOneAsValue());
+  if (SharedInfo* info = sharedInfo()) {
+    info->refcount.fetch_add(1, std::memory_order_acq_rel);
+  }
+  return std::unique_ptr<IOBuf>(new IOBuf(
+      InternalConstructor(),
+      flagsAndSharedInfo_,
+      buf_,
+      capacity_,
+      data_,
+      length_));
 }
 
 unique_ptr<IOBuf> IOBuf::cloneCoalesced() const {
