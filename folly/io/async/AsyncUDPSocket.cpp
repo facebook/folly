@@ -689,7 +689,7 @@ void AsyncUDPSocket::handleRead() noexcept {
   ReadCallback::OnDataAvailableParams params;
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  if (gro_.has_value() && (gro_ != 0)) {
+  if (gro_.has_value() && (gro_.value() > 0)) {
     char control[CMSG_SPACE(sizeof(uint16_t))] = {};
     struct msghdr msg = {};
     struct iovec iov = {};
