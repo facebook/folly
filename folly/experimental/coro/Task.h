@@ -35,6 +35,7 @@
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
+#include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/Traits.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
@@ -73,6 +74,14 @@ class TaskPromiseBase {
   TaskPromiseBase() noexcept {}
 
  public:
+  static void* operator new(std::size_t size) {
+    return ::folly_coro_async_malloc(size);
+  }
+
+  static void operator delete(void* ptr, std::size_t size) {
+    ::folly_coro_async_free(ptr, size);
+  }
+
   std::experimental::suspend_always initial_suspend() noexcept {
     return {};
   }

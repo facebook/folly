@@ -26,6 +26,14 @@ class Wait {
  public:
   class promise_type {
    public:
+    static void* operator new(std::size_t size) {
+      return ::folly_coro_async_malloc(size);
+    }
+
+    void operator delete(void* ptr, std::size_t size) {
+      ::folly_coro_async_malloc(ptr, size);
+    }
+
     Wait get_return_object() {
       return Wait(promise_.get_future());
     }

@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/experimental/coro/detail/Barrier.h>
+#include <folly/experimental/coro/detail/Malloc.h>
 
 #include <cassert>
 #include <experimental/coroutine>
@@ -43,6 +44,14 @@ class BarrierTask {
     };
 
    public:
+    static void* operator new(std::size_t size) {
+      return ::folly_coro_async_malloc(size);
+    }
+
+    static void operator delete(void* ptr, std::size_t size) {
+      ::folly_coro_async_free(ptr, size);
+    }
+
     BarrierTask get_return_object() noexcept {
       return BarrierTask{
           std::experimental::coroutine_handle<promise_type>::from_promise(

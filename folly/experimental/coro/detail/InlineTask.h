@@ -18,6 +18,7 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/detail/Malloc.h>
 
 #include <cassert>
 #include <experimental/coroutine>
@@ -67,6 +68,14 @@ class InlineTaskPromiseBase {
   InlineTaskPromiseBase& operator=(InlineTaskPromiseBase&&) = delete;
 
  public:
+  static void* operator new(std::size_t size) {
+    return ::folly_coro_async_malloc(size);
+  }
+
+  static void operator delete(void* ptr, std::size_t size) {
+    ::folly_coro_async_free(ptr, size);
+  }
+
   std::experimental::suspend_always initial_suspend() noexcept {
     return {};
   }

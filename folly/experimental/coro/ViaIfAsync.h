@@ -23,6 +23,7 @@
 #include <folly/Traits.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/WithCancellation.h>
+#include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/io/async/Request.h>
 #include <folly/lang/CustomizationPoint.h>
 
@@ -43,6 +44,14 @@ class ViaCoroutine {
     // Passed as lvalue by compiler, but should have no other dependencies
     promise_type(folly::Executor::KeepAlive<>& executor) noexcept
         : executor_(std::move(executor)) {}
+
+    static void* operator new(std::size_t size) {
+      return ::folly_coro_async_malloc(size);
+    }
+
+    static void operator delete(void* ptr, std::size_t size) {
+      ::folly_coro_async_free(ptr, size);
+    }
 
     ViaCoroutine get_return_object() noexcept {
       return ViaCoroutine{

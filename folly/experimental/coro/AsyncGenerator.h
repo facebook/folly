@@ -23,6 +23,7 @@
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
+#include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/ManualLifetime.h>
 
 #include <glog/logging.h>
@@ -58,6 +59,14 @@ class AsyncGeneratorPromise {
     if (hasValue_) {
       value_.destruct();
     }
+  }
+
+  static void* operator new(std::size_t size) {
+    return ::folly_coro_async_malloc(size);
+  }
+
+  static void operator delete(void* ptr, std::size_t size) {
+    ::folly_coro_async_free(ptr, size);
   }
 
   AsyncGenerator<Reference, Value> get_return_object() noexcept;
