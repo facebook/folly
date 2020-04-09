@@ -29,6 +29,7 @@
 #include <folly/Random.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/GFlags.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Unistd.h>
@@ -85,10 +86,7 @@ void splock_test() {
     folly::asm_volatile_pause();
     MSLGuard g(v.lock);
 
-    int first = v.ar[0];
-    for (size_t j = 1; j < sizeof v.ar / sizeof j; ++j) {
-      EXPECT_EQ(first, v.ar[j]);
-    }
+    EXPECT_THAT(v.ar, testing::Each(testing::Eq(v.ar[0])));
 
     int byte = folly::Random::rand32(rng);
     memset(v.ar, char(byte), sizeof v.ar);
