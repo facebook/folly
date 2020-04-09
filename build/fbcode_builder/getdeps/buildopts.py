@@ -14,6 +14,7 @@ import sys
 import tempfile
 
 from .envfuncs import Env, add_path_entry
+from .fetcher import get_fbsource_repo_data
 from .manifest import ContextGenerator
 from .platform import HostType, is_windows
 
@@ -205,6 +206,9 @@ class BuildOptions(object):
             env["NODE_BIN"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/node/bin/", node_exe
             )
+            hash_data = get_fbsource_repo_data(self)
+            env["FBSOURCE_HASH"] = hash_data.hash
+            env["FBSOURCE_DATE"] = hash_data.date
 
         lib_path = None
         if self.is_darwin():

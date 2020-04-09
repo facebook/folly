@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -16,6 +17,8 @@ import sys
 import tarfile
 import time
 import zipfile
+from datetime import datetime
+from typing import Dict, NamedTuple
 
 from .copytree import prefetch_dir_if_eden
 from .envfuncs import Env
@@ -424,29 +427,41 @@ class ShipitPathMap(object):
         return change_status
 
 
-FBSOURCE_REPO_HASH = {}
+class FbsourceRepoData(NamedTuple):
+    hash: str
+    date: str
 
 
-def get_fbsource_repo_hash(build_options):
-    """ Returns the hash for the fbsource repo.
+FBSOURCE_REPO_DATA: Dict[str, FbsourceRepoData] = {}
+
+
+def get_fbsource_repo_data(build_options):
+    """ Returns the commit metadata for the fbsource repo.
     Since we may have multiple first party projects to
     hash, and because we don't mutate the repo, we cache
     this hash in a global. """
-    global FBSOURCE_REPO_HASH
-    cached_hash = FBSOURCE_REPO_HASH.get(build_options.fbsource_dir)
-    if cached_hash:
-        return cached_hash
+    cached_data = FBSOURCE_REPO_DATA.get(build_options.fbsource_dir)
+    if cached_data:
+        return cached_data
 
-    cmd = ["hg", "log", "-r.", "-T{node}"]
+    cmd = ["hg", "log", "-r.", "-T{node}\n{date|hgdate}"]
     env = Env()
     env.set("HGPLAIN", "1")
-    cached_hash = subprocess.check_output(
+    log_data = subprocess.check_output(
         cmd, cwd=build_options.fbsource_dir, env=dict(env.items())
     ).decode("ascii")
 
-    FBSOURCE_REPO_HASH[build_options.fbsource_dir] = cached_hash
+    (hash, datestr) = log_data.split("\n")
 
-    return cached_hash
+    # datestr is like "seconds fractionalseconds"
+    # We want "20200324.113140"
+    (unixtime, _fractional) = datestr.split(" ")
+    date = datetime.fromtimestamp(int(unixtime)).strftime("%Y%m%d.%H%M%S")
+    cached_data = FbsourceRepoData(hash=hash, date=date)
+
+    FBSOURCE_REPO_DATA[build_options.fbsource_dir] = cached_data
+
+    return cached_data
 
 
 class SimpleShipitTransformerFetcher(Fetcher):
@@ -576,7 +591,7 @@ def download_url_to_file_with_progress(url, file_name):
     start = time.time()
     try:
         (_filename, headers) = urlretrieve(url, file_name, reporthook=progress.progress)
-    except (OSError, IOError) as exc:
+    except (OSError, IOError) as exc:  # noqa: B014
         raise TransientFailure(
             "Failed to download %s to %s: %s" % (url, file_name, str(exc))
         )
