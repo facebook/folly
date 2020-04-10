@@ -154,7 +154,7 @@ class PollIoBackend : public EventBaseBackendBase {
     }
 
    private:
-    std::array<int, 2> fds_ = {-1, -1};
+    std::array<int, 2> fds_{{-1, -1}};
   };
 
   static FOLLY_ALWAYS_INLINE uint32_t getPollFlags(short events) {
