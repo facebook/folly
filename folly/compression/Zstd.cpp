@@ -26,6 +26,7 @@
 #include <folly/Conv.h>
 #include <folly/Range.h>
 #include <folly/ScopeGuard.h>
+#include <folly/compression/CompressionContextPoolSingletons.h>
 #include <folly/compression/Utils.h>
 
 static_assert(
@@ -34,6 +35,8 @@ static_assert(
 
 using folly::io::compression::detail::dataStartsWithLE;
 using folly::io::compression::detail::prefixToStringLE;
+
+using namespace folly::compression::contexts;
 
 namespace folly {
 namespace io {
@@ -73,14 +76,6 @@ void resetDCtxSessionAndParameters(ZSTD_DCtx* dctx) {
 }
 
 #endif
-
-void zstdFreeCCtx(ZSTD_CCtx* zc) {
-  ZSTD_freeCCtx(zc);
-}
-
-void zstdFreeDCtx(ZSTD_DCtx* zd) {
-  ZSTD_freeDCtx(zd);
-}
 
 size_t zstdThrowIfError(size_t rc) {
   if (!ZSTD_isError(rc)) {
@@ -133,14 +128,8 @@ class ZSTDStreamCodec final : public StreamCodec {
 
   Options options_;
   bool needReset_{true};
-  std::unique_ptr<
-      ZSTD_CCtx,
-      folly::static_function_deleter<ZSTD_CCtx, &zstdFreeCCtx>>
-      cctx_{nullptr};
-  std::unique_ptr<
-      ZSTD_DCtx,
-      folly::static_function_deleter<ZSTD_DCtx, &zstdFreeDCtx>>
-      dctx_{nullptr};
+  ZSTD_CCtx_Pool::Ref cctx_{getNULL_ZSTD_CCtx()};
+  ZSTD_DCtx_Pool::Ref dctx_{getNULL_ZSTD_DCtx()};
 };
 
 constexpr uint32_t kZSTDMagicLE = 0xFD2FB528;
@@ -195,7 +184,7 @@ void ZSTDStreamCodec::doResetStream() {
 
 void ZSTDStreamCodec::resetCCtx() {
   if (!cctx_) {
-    cctx_.reset(ZSTD_createCCtx());
+    cctx_ = getZSTD_CCtx();
     if (!cctx_) {
       throw std::bad_alloc{};
     }
@@ -236,7 +225,7 @@ bool ZSTDStreamCodec::doCompressStream(
 
 void ZSTDStreamCodec::resetDCtx() {
   if (!dctx_) {
-    dctx_.reset(ZSTD_createDCtx());
+    dctx_ = getZSTD_DCtx();
     if (!dctx_) {
       throw std::bad_alloc{};
     }
