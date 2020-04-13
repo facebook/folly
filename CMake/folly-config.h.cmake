@@ -26,6 +26,10 @@
 #endif
 #endif // FOLLY_MOBILE
 
+#if defined(__FreeBSD__)
+#define FOLLY_ASSUME_NO_TCMALLOC 1
+#endif
+
 #cmakedefine FOLLY_HAVE_PTHREAD 1
 #cmakedefine FOLLY_HAVE_PTHREAD_ATFORK 1
 
