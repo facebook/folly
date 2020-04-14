@@ -78,7 +78,6 @@ class EDFThreadPoolExecutor::Task {
   std::atomic<int> iter_{0};
   int total_;
   uint64_t deadline_;
-  TaskStats stats_;
   std::shared_ptr<RequestContext> context_ = RequestContext::saveContext();
   std::chrono::steady_clock::time_point enqueueTime_ =
       std::chrono::steady_clock::now();
@@ -369,7 +368,13 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
 
     thread->idle = false;
     auto startTime = std::chrono::steady_clock::now();
-    task->stats_.waitTime = startTime - task->enqueueTime_;
+    TaskStats stats;
+    stats.enqueueTime = task->enqueueTime_;
+    if (task->context_) {
+      stats.requestId = task->context_->getRootId();
+    }
+
+    stats.waitTime = startTime - stats.enqueueTime;
     try {
       task->run(iter);
     } catch (const std::exception& e) {
@@ -379,7 +384,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
       LOG(ERROR)
           << "EDFThreadPoolExecutor: func threw unhandled non-exception object";
     }
-    task->stats_.runTime = std::chrono::steady_clock::now() - startTime;
+    stats.runTime = std::chrono::steady_clock::now() - startTime;
     thread->idle = true;
     thread->lastActiveTime = std::chrono::steady_clock::now();
     thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
@@ -389,7 +394,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
       };
       try {
         for (auto& callback : callbacks) {
-          callback(task->stats_);
+          callback(stats);
         }
       } catch (const std::exception& e) {
         LOG(ERROR) << "EDFThreadPoolExecutor: task stats callback threw "

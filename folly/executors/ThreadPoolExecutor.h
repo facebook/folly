@@ -125,10 +125,12 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   std::string getName() const;
 
   struct TaskStats {
-    TaskStats() : expired(false), waitTime(0), runTime(0) {}
+    TaskStats() : expired(false), waitTime(0), runTime(0), requestId(0) {}
     bool expired;
     std::chrono::nanoseconds waitTime;
     std::chrono::nanoseconds runTime;
+    std::chrono::steady_clock::time_point enqueueTime;
+    uint64_t requestId;
   };
 
   using TaskStatsCallback = std::function<void(TaskStats)>;
@@ -204,7 +206,6 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
         std::chrono::milliseconds expiration,
         Func&& expireCallback);
     Func func_;
-    TaskStats stats_;
     std::chrono::steady_clock::time_point enqueueTime_;
     std::chrono::milliseconds expiration_;
     Func expireCallback_;

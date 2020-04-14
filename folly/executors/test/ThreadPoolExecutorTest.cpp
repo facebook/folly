@@ -266,14 +266,20 @@ template <class TPE>
 static void taskStats() {
   TPE tpe(1);
   std::atomic<int> c(0);
+  auto now = std::chrono::steady_clock::now();
   tpe.subscribeToTaskStats([&](ThreadPoolExecutor::TaskStats stats) {
     int i = c++;
+    EXPECT_LT(now, stats.enqueueTime);
     EXPECT_LT(milliseconds(0), stats.runTime);
     if (i == 1) {
       EXPECT_LT(milliseconds(0), stats.waitTime);
+      EXPECT_NE(0, stats.requestId);
+    } else {
+      EXPECT_EQ(0, stats.requestId);
     }
   });
   tpe.add(burnMs(10));
+  RequestContextScopeGuard rctx;
   tpe.add(burnMs(10));
   tpe.join();
   EXPECT_EQ(2, c);

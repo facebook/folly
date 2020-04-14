@@ -76,10 +76,16 @@ ThreadPoolExecutor::Task::Task(
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
   thread->idle = false;
   auto startTime = std::chrono::steady_clock::now();
-  task.stats_.waitTime = startTime - task.enqueueTime_;
+  TaskStats stats;
+  stats.enqueueTime = task.enqueueTime_;
+  if (task.context_) {
+    stats.requestId = task.context_->getRootId();
+  }
+  stats.waitTime = startTime - task.enqueueTime_;
+
   if (task.expiration_ > std::chrono::milliseconds(0) &&
-      task.stats_.waitTime >= task.expiration_) {
-    task.stats_.expired = true;
+      stats.waitTime >= task.expiration_) {
+    stats.expired = true;
     if (task.expireCallback_ != nullptr) {
       task.expireCallback_();
     }
@@ -94,7 +100,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       LOG(ERROR) << "ThreadPoolExecutor: func threw unhandled non-exception "
                     "object";
     }
-    task.stats_.runTime = std::chrono::steady_clock::now() - startTime;
+    stats.runTime = std::chrono::steady_clock::now() - startTime;
   }
   thread->idle = true;
   thread->lastActiveTime = std::chrono::steady_clock::now();
@@ -105,7 +111,7 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
     };
     try {
       for (auto& callback : callbacks) {
-        callback(task.stats_);
+        callback(stats);
       }
     } catch (const std::exception& e) {
       LOG(ERROR) << "ThreadPoolExecutor: task stats callback threw "
