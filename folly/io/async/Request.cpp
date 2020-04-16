@@ -301,23 +301,20 @@ RequestContext::StateHazptr::doSetContextDataHelper(
               nullptr /* combined not replaced */};
     }
     RequestData* oldData = it.value();
-    if (oldData) {
-      // Always erase non-null old data (and run its onUnset callback,
-      // if any). Non-null old data will always be overwritten either
-      // by the new data (if behavior is OVERWRITE) or by nullptr (if
-      // behavior is SET).
-      Combined* newCombined = eraseOldData(cur, token, oldData, safe);
-      if (newCombined) {
-        replaced = cur;
-        cur = newCombined;
-      }
+    // Always erase old data (and run onUnset callback, if any).
+    // Old data will always be overwritten either by the new data
+    // (if behavior is OVERWRITE) or by nullptr (if behavior is SET).
+    Combined* newCombined = eraseOldData(cur, token, oldData, safe);
+    DCHECK(oldData != nullptr || newCombined == nullptr);
+    if (newCombined) {
+      replaced = cur;
+      cur = newCombined;
     }
     if (behaviour == DoSetBehaviour::SET) {
       // The expected behavior for SET when found is to reset the
       // pointer and warn, without updating to the new data.
-      if (oldData) {
-        cur->requestData_.insert(token, nullptr);
-      }
+      bool inserted = cur->requestData_.insert(token, nullptr);
+      DCHECK(inserted);
       unexpected = true;
     } else {
       DCHECK(behaviour == DoSetBehaviour::OVERWRITE);
@@ -349,22 +346,26 @@ RequestContext::StateHazptr::eraseOldData(
     bool safe) {
   Combined* newCombined = nullptr;
   // Call onUnset, if any.
-  if (olddata->hasCallback()) {
+  if (olddata && olddata->hasCallback()) {
     olddata->onUnset();
     bool erased = cur->callbackData_.erase(olddata);
     DCHECK(erased);
   }
-  if (safe) {
-    // If the caller guarantees thread-safety, then erase the
-    // entry in the current version.
-    cur->requestData_.erase(token);
-    olddata->releaseRefClearDelete();
+  if (safe || olddata == nullptr) {
+    // If the caller guarantees thread-safety or the old data is null,
+    // then erase the entry in the current version.
+    bool erased = cur->requestData_.erase(token);
+    DCHECK(erased);
+    if (olddata) {
+      olddata->releaseRefClearDelete();
+    }
   } else {
     // If there may be concurrent readers, then copy-on-erase.
     // Update the data reference counts to account for the
     // existence of the new copy.
     newCombined = new Combined(*cur);
-    newCombined->requestData_.erase(token);
+    bool erased = newCombined->requestData_.erase(token);
+    DCHECK(erased);
     newCombined->acquireDataRefs();
   }
   return newCombined;
@@ -387,13 +388,15 @@ RequestContext::StateHazptr::insertNewData(
   }
   if (data && data->hasCallback()) {
     // If data has callback, insert in callback structure, call onSet
-    cur->callbackData_.insert(data.get(), true);
+    bool inserted = cur->callbackData_.insert(data.get(), true);
+    DCHECK(inserted);
     data->onSet();
   }
   if (data) {
     data->acquireRef();
   }
-  cur->requestData_.insert(token, data.release());
+  bool inserted = cur->requestData_.insert(token, data.release());
+  DCHECK(inserted);
   return newCombined;
 }
 
@@ -474,16 +477,19 @@ void RequestContext::StateHazptr::clearContextData(const RequestToken& token) {
     }
     data = it.value();
     if (!data) {
-      cur->requestData_.erase(token);
+      bool erased = cur->requestData_.erase(token);
+      DCHECK(erased);
       return;
     }
     if (data->hasCallback()) {
       data->onUnset();
-      cur->callbackData_.erase(data);
+      bool erased = cur->callbackData_.erase(data);
+      DCHECK(erased);
     }
     replaced = cur;
     cur = new Combined(*replaced);
-    cur->requestData_.erase(token);
+    bool erased = cur->requestData_.erase(token);
+    DCHECK(erased);
     cur->acquireDataRefs();
     setCombined(cur);
   } // Unlock mutex_

@@ -446,3 +446,12 @@ TEST_F(RequestContextTest, Clear) {
     EXPECT_TRUE(deleted);
   }
 }
+
+TEST_F(RequestContextTest, OverwriteNullData) {
+  folly::ShallowCopyRequestContextScopeGuard g0("token", nullptr);
+  {
+    folly::ShallowCopyRequestContextScopeGuard g1(
+        "token", std::make_unique<TestData>(0));
+    EXPECT_NE(folly::RequestContext::get()->getContextData("token"), nullptr);
+  }
+}
