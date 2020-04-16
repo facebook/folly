@@ -35,6 +35,7 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/SSLSession.h>
 
 namespace folly {
 
@@ -461,6 +462,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * refcount and must be deallocated by the caller.
    */
   SSL_SESSION* getSSLSession();
+
+  /**
+   * Currently unsupported. Eventually intended to replace getSSLSession()
+   * once TLS 1.3 is enabled by default.
+   * Get an abstracted SSL Session.
+   */
+  std::shared_ptr<ssl::SSLSession> getSSLSessionV2();
 
   /**
    * Get a handle to the SSL struct.
@@ -972,6 +980,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
   // Whether this socket is currently waiting on SSL_accept
   bool waitingOnAccept_{false};
+
+  // Unsupported. Currently used for getSSLSessionV2().
+  std::shared_ptr<ssl::SSLSession> sslSessionV2_{nullptr};
 };
 
 } // namespace folly

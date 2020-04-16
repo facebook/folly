@@ -36,6 +36,8 @@
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/ssl/SSLSession.h>
+#include <folly/ssl/detail/OpenSSLSession.h>
 
 using std::shared_ptr;
 
@@ -312,6 +314,7 @@ void AsyncSSLSocket::init() {
   (void)sslBioMethodInitializer;
 
   setup_SSL_CTX(ctx_->getSSLCtx());
+  sslSessionV2_ = std::make_shared<ssl::detail::OpenSSLSession>();
 }
 
 void AsyncSSLSocket::closeNow() {
@@ -859,6 +862,10 @@ SSL_SESSION* AsyncSSLSocket::getSSLSession() {
   }
 
   return sslSession_;
+}
+
+std::shared_ptr<ssl::SSLSession> AsyncSSLSocket::getSSLSessionV2() {
+  return sslSessionV2_;
 }
 
 const SSL* AsyncSSLSocket::getSSL() const {

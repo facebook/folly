@@ -14,34 +14,36 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <folly/Range.h>
-
+#include <folly/ssl/detail/OpenSSLSession.h>
 #include <folly/portability/OpenSSL.h>
-
-#include <string>
+#include <folly/ssl/OpenSSLPtrTypes.h>
+#include <atomic>
 
 namespace folly {
 namespace ssl {
 namespace detail {
 
-class SSLSessionImpl {
- public:
-  explicit SSLSessionImpl(SSL_SESSION* session, bool takeOwnership = true);
-  explicit SSLSessionImpl(const std::string& serializedSession);
-  virtual ~SSLSessionImpl();
-  std::string serialize() const;
-  std::string getSessionID() const;
-  const SSL_SESSION* getRawSSLSession() const;
-  SSL_SESSION* getRawSSLSessionDangerous();
+OpenSSLSession::~OpenSSLSession() {
+  SSL_SESSION* session = activeSession_.load();
+  if (session) {
+    SSL_SESSION_free(session);
+  }
+}
 
- private:
-  void upRef();
-  void downRef();
+void OpenSSLSession::setActiveSession(SSLSessionUniquePtr s) {
+  SSL_SESSION* oldSession = activeSession_.exchange(s.release());
+  if (oldSession) {
+    SSL_SESSION_free(oldSession);
+  }
+}
 
-  SSL_SESSION* session_{nullptr};
-};
+SSLSessionUniquePtr OpenSSLSession::getActiveSession() {
+  SSL_SESSION* session = activeSession_.load();
+  if (session) {
+    SSL_SESSION_up_ref(session);
+  }
+  return SSLSessionUniquePtr(session);
+}
 
 } // namespace detail
 } // namespace ssl

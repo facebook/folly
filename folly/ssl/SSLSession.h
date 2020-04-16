@@ -16,49 +16,24 @@
 
 #pragma once
 
-#include <folly/Memory.h>
-#include <folly/portability/OpenSSL.h>
-#include <folly/ssl/detail/SSLSessionImpl.h>
-
 namespace folly {
 namespace ssl {
 
+/**
+ * An abstraction for SSL sessions.
+ *
+ * SSLSession allows users to store and pass SSL sessions (e.g for
+ * resumption) while abstracting away implementation-specific
+ * details.
+ *
+ * SSLSession is intended to be used by deriving a new class
+ * which handles the implementation details, and downcasting
+ * whenever access is needed to the underlying implementation.
+ */
+
 class SSLSession {
  public:
-  // Holds and takes ownership of an SSL_SESSION object by incrementing refcount
-  explicit SSLSession(SSL_SESSION* session, bool takeOwnership = true)
-      : impl_(
-            std::make_unique<detail::SSLSessionImpl>(session, takeOwnership)) {}
-
-  // Deserialize from a string
-  explicit SSLSession(const std::string& serializedSession)
-      : impl_(std::make_unique<detail::SSLSessionImpl>(serializedSession)) {}
-
-  // Serialize to a string that is suitable to store in a persistent cache
-  std::string serialize() const {
-    return impl_->serialize();
-  }
-
-  // Get Session ID. Returns an empty container if session isn't set
-  std::string getSessionID() const {
-    return impl_->getSessionID();
-  }
-
-  // Get a const raw SSL_SESSION ptr without incrementing referecnce count
-  // (Warning: do not use)
-  const SSL_SESSION* getRawSSLSession() const {
-    return impl_->getRawSSLSession();
-  }
-
-  // Get raw SSL_SESSION pointer
-  // Warning: do not use unless you know what you're doing - caller needs to
-  // decrement refcount using SSL_SESSION_free or this will leak
-  SSL_SESSION* getRawSSLSessionDangerous() {
-    return impl_->getRawSSLSessionDangerous();
-  }
-
- private:
-  std::unique_ptr<detail::SSLSessionImpl> impl_;
+  virtual ~SSLSession() = default;
 };
 
 } // namespace ssl
