@@ -19,6 +19,7 @@ cpptoml
 rocksdb
 libgit2
 lz4
+pexpect
 python-toml
 
 [dependencies.fb=on]
@@ -47,6 +48,7 @@ fbcode/tools/lfs = tools/lfs
 
 [shipit.strip]
 ^fbcode/eden/fs/eden-config\.h$
+^fbcode/eden/fs/py/eden/config\.py$
 ^fbcode/eden/hg/.*$
 ^fbcode/eden/mononoke/(?!lfs_protocol)
 ^fbcode/eden/scm/build/.*$
@@ -59,3 +61,6 @@ INSTALL_PYTHON_LIB=ON
 
 [cmake.defines.fb=on]
 USE_CARGO_VENDOR=ON
+
+[depends.environment]
+EDEN_VERSION_OVERRIDE
