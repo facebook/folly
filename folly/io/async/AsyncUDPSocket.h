@@ -269,7 +269,7 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   /**
-   * Set SO_SNDBUG option on the socket, if not zero. Default is zero.
+   * Set SO_SNDBUF option on the socket, if not zero. Default is zero.
    */
   virtual void setSndBuf(int sndBuf) {
     sndBuf_ = sndBuf;
