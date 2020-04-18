@@ -289,7 +289,7 @@ class IPAddress {
   // Populate sockaddr_storage with an appropriate value
   int toSockaddrStorage(sockaddr_storage* dest, uint16_t port = 0) const {
     if (dest == nullptr) {
-      throw IPAddressFormatException("dest must not be null");
+      throw_exception<IPAddressFormatException>("dest must not be null");
     }
     memset(dest, 0, sizeof(sockaddr_storage));
     dest->ss_family = family();
@@ -312,7 +312,7 @@ class IPAddress {
 #endif
       return sizeof(*sin);
     } else {
-      throw InvalidAddressFamilyException(family());
+      throw_exception<InvalidAddressFamilyException>(family());
     }
   }
 
