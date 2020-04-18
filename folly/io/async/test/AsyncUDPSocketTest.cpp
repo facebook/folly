@@ -728,6 +728,8 @@ TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
       }));
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
   socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.timer().scheduleTimeoutFn([&] { evb_.terminateLoopSoon(); },
+                                 std::chrono::milliseconds(30));
   evb_.loopForever();
   EXPECT_TRUE(errRecvd);
 }
@@ -756,6 +758,8 @@ TEST_F(AsyncUDPSocketTest, CloseInErrorCallback) {
   }));
   socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
   socket_->write(addr, folly::IOBuf::copyBuffer("hey"));
+  evb_.timer().scheduleTimeoutFn([&] { evb_.terminateLoopSoon(); },
+                                 std::chrono::milliseconds(30));
   evb_.loopForever();
   EXPECT_TRUE(errRecvd);
 }
