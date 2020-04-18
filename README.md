@@ -72,7 +72,12 @@ Folly is published on GitHub at https://github.com/facebook/folly
 
 #### Dependencies
 
-folly requires gcc 5.1+ and a version of boost compiled with C++14 support.
+folly supports gcc (5.1+), clang, or MSVC. It should run on Linux (x86-32,
+x86-64, and ARM), iOS, macOS, and Windows (x86-64). The CMake build is only
+tested on some of these platforms; at a minimum, we aim to support macOS and
+Linux (on the latest Ubuntu LTS release or newer.)
+
+folly requires a version of boost compiled with C++14 support.
 
 googletest is required to build and run folly's tests.  You can download
 it from https://github.com/google/googletest/archive/release-1.8.0.tar.gz
