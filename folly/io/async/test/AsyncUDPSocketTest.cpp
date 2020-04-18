@@ -692,7 +692,7 @@ class AsyncUDPSocketTest : public Test {
  public:
   void SetUp() override {
     socket_ = std::make_shared<AsyncUDPSocket>(&evb_);
-    addr_ = folly::SocketAddress("127.0.0.1", 0);
+    addr_ = folly::SocketAddress("127.0.0.1", 9999);
     socket_->bind(addr_);
   }
 
