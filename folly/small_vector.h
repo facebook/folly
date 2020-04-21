@@ -539,7 +539,8 @@ class small_vector : public detail::small_vector_base<
     return *this;
   }
 
-  small_vector& operator=(small_vector&& o) {
+  small_vector& operator=(small_vector&& o) noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
     // TODO: optimization:
     // if both are internal, use move assignment where possible
     if (FOLLY_LIKELY(this != &o)) {
@@ -618,11 +619,10 @@ class small_vector : public detail::small_vector_base<
    * Usually one of the simplest functions in a Container-like class
    * but a bit more complex here.  We have to handle all combinations
    * of in-place vs. heap between this and o.
-   *
-   * Basic guarantee only.  Provides the nothrow guarantee iff our
-   * value_type has a nothrow move or copy constructor.
    */
-  void swap(small_vector& o) {
+  void swap(small_vector& o) noexcept(
+      std::is_nothrow_move_constructible<Value>::value&&
+          IsNothrowSwappable<Value>::value) {
     using std::swap; // Allow ADL on swap for our value_type.
 
     if (this->isExtern() && o.isExtern()) {
