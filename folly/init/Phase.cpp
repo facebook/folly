@@ -17,6 +17,7 @@
 #include <folly/init/Phase.h>
 
 #include <atomic>
+#include <cstdlib>
 #include <stdexcept>
 
 namespace folly {
