@@ -1040,6 +1040,10 @@ void IOBuf::freeExtBuffer() noexcept {
   }
   SharedInfo::invokeAndDeleteEachObserver(
       observerListHead, [](auto& entry) { entry.afterFreeExtBuffer(); });
+
+#if FOLLY_MOBILE
+  buf_ = nullptr;
+#endif
 }
 
 void IOBuf::allocExtBuffer(
