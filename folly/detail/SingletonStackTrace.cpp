@@ -30,19 +30,20 @@ std::string getSingletonStackTrace() {
 
   // Get and symbolize stack trace
   constexpr size_t kMaxStackTraceDepth = 100;
-  symbolizer::FrameArray<kMaxStackTraceDepth> addresses;
+  auto addresses =
+      std::make_unique<symbolizer::FrameArray<kMaxStackTraceDepth>>();
 
-  if (!getStackTraceSafe(addresses)) {
+  if (!getStackTraceSafe(*addresses)) {
     return "";
   } else {
     constexpr size_t kDefaultCapacity = 500;
     symbolizer::ElfCache elfCache(kDefaultCapacity);
 
     symbolizer::Symbolizer symbolizer(&elfCache);
-    symbolizer.symbolize(addresses);
+    symbolizer.symbolize(*addresses);
 
     symbolizer::StringSymbolizePrinter printer;
-    printer.println(addresses);
+    printer.println(*addresses);
     return printer.str();
   }
 
