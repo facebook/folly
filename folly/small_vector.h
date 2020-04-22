@@ -50,6 +50,7 @@
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
@@ -764,11 +765,18 @@ class small_vector : public detail::small_vector_base<
   }
 
   size_type capacity() const {
+    struct Unreachable {
+      size_t operator()(void*) const {
+        assume_unreachable();
+      }
+    };
+    using AllocationSizeOrUnreachable =
+        conditional_t<kMustTrackHeapifiedCapacity, Unreachable, AllocationSize>;
     if (this->isExtern()) {
       if (u.hasCapacity()) {
         return u.getCapacity();
       }
-      return malloc_usable_size(u.pdata_.heap_) / sizeof(value_type);
+      return AllocationSizeOrUnreachable{}(u.pdata_.heap_) / sizeof(value_type);
     }
     return MaxInline;
   }
@@ -1112,7 +1120,7 @@ class small_vector : public detail::small_vector_base<
     // allocation is grown to over some threshold, we should store
     // a capacity at the front of the heap allocation.
     const bool heapifyCapacity =
-        !kHasInlineCapacity && needBytes > kHeapifyCapacityThreshold;
+        !kHasInlineCapacity && needBytes >= kHeapifyCapacityThreshold;
     const size_t allocationExtraBytes =
         heapifyCapacity ? kHeapifyCapacitySize : 0;
     const size_t goodAllocationSizeBytes =
@@ -1225,9 +1233,28 @@ class small_vector : public detail::small_vector_base<
       typename std::
           aligned_storage<sizeof(InternalSizeType), alignof(value_type)>::type);
 
+  struct AllocationSize {
+    auto operator()(void* ptr) const {
+      (void)ptr;
+#if defined(FOLLY_HAVE_MALLOC_USABLE_SIZE)
+      return malloc_usable_size(ptr);
+#endif
+      // it is important that this method not return a size_t if we can't call
+      // malloc_usable_size! kMustTrackHeapifiedCapacity uses the deduced return
+      // type of this function in order to decide whether small_vector must
+      // track its own capacity or not.
+    }
+  };
+
+  static bool constexpr kMustTrackHeapifiedCapacity =
+      !is_invocable_r_v<size_t, AllocationSize, void*>;
+
   // Threshold to control capacity heapifying.
   static size_t constexpr kHeapifyCapacityThreshold =
-      100 * kHeapifyCapacitySize;
+      (kMustTrackHeapifiedCapacity ? 0 : 100) * kHeapifyCapacitySize;
+
+  static bool constexpr kAlwaysHasCapacity =
+      kHasInlineCapacity || kMustTrackHeapifiedCapacity;
 
   typedef typename std::
       conditional<kHasInlineCapacity, HeapPtrWithCapacity, HeapPtr>::type
@@ -1261,7 +1288,7 @@ class small_vector : public detail::small_vector_base<
     }
 
     bool hasCapacity() const {
-      return kHasInlineCapacity || detail::pointerFlagGet(pdata_.heap_);
+      return kAlwaysHasCapacity || detail::pointerFlagGet(pdata_.heap_);
     }
     InternalSizeType getCapacity() const {
       return pdata_.getCapacity();
