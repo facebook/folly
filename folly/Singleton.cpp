@@ -99,12 +99,14 @@ std::string TypeDescriptor::name() const {
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnRegisterMockEarlyAndAbort(
     const TypeDescriptor& type) {
   LOG(FATAL) << "Registering mock before singleton was registered: "
              << type.name();
+  folly::assume_unreachable();
 }
 
 void singletonWarnDestroyInstanceLeak(
@@ -123,6 +125,7 @@ void singletonWarnDestroyInstanceLeak(
 [[noreturn]] void singletonWarnCreateCircularDependencyAndAbort(
     const TypeDescriptor& type) {
   LOG(FATAL) << "circular singleton dependency: " << type.name();
+  folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnCreateUnregisteredAndAbort(
@@ -131,6 +134,7 @@ void singletonWarnDestroyInstanceLeak(
   LOG(FATAL) << "Creating instance for unregistered singleton: " << type.name()
              << "\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  folly::assume_unreachable();
 }
 
 [[noreturn]] void singletonWarnCreateBeforeRegistrationCompleteAndAbort(
@@ -142,6 +146,7 @@ void singletonWarnDestroyInstanceLeak(
              << "folly::init, or singleton was requested before main() "
              << "(which is not allowed).\n"
              << "Stacktrace:\n" << (!trace.empty() ? trace : "(not available)");
+  folly::assume_unreachable();
 }
 
 void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
