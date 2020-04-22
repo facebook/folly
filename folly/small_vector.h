@@ -704,8 +704,8 @@ class small_vector : public detail::small_vector_base<
   }
 
   void resize(size_type sz) {
-    if (sz < size()) {
-      erase(begin() + sz, end());
+    if (sz <= size()) {
+      downsize(sz);
       return;
     }
     makeSize(sz);
@@ -808,7 +808,11 @@ class small_vector : public detail::small_vector_base<
   }
 
   void pop_back() {
-    erase(end() - 1);
+    // ideally this would be implemented in terms of erase(end() - 1) to reuse
+    // the higher-level abstraction, but neither Clang or GCC are able to
+    // optimize it away. if you change this, please verify (with disassembly)
+    // that the generated code on -O3 (and ideally -O2) stays short
+    downsize(size() - 1);
   }
 
   iterator insert(const_iterator constp, value_type&& t) {
@@ -869,9 +873,12 @@ class small_vector : public detail::small_vector_base<
   }
 
   iterator erase(const_iterator q) {
+    // ideally this would be implemented in terms of erase(q, q + 1) to reuse
+    // the higher-level abstraction, but neither Clang or GCC are able to
+    // optimize it away. if you change this, please verify (with disassembly)
+    // that the generated code on -O3 (and ideally -O2) stays short
     std::move(unconst(q) + 1, end(), unconst(q));
-    (data() + size() - 1)->~value_type();
-    this->setSize(size() - 1);
+    downsize(size() - 1);
     return unconst(q);
   }
 
@@ -880,20 +887,16 @@ class small_vector : public detail::small_vector_base<
       return unconst(q1);
     }
     std::move(unconst(q2), end(), unconst(q1));
-    for (auto it = (end() - std::distance(q1, q2)); it != end(); ++it) {
-      it->~value_type();
-    }
-    this->setSize(size() - (q2 - q1));
+    downsize(size() - std::distance(q1, q2));
     return unconst(q1);
   }
 
   void clear() {
-    // Equivalent to erase(begin(), end()), but neither Clang or GCC are able to
-    // optimize away the abstraction.
-    for (auto it = begin(); it != end(); ++it) {
-      it->~value_type();
-    }
-    this->setSize(0);
+    // ideally this would be implemented in terms of erase(begin(), end()) to
+    // reuse the higher-level abstraction, but neither Clang or GCC are able to
+    // optimize it away. if you change this, please verify (with disassembly)
+    // that the generated code on -O3 (and ideally -O2) stays short
+    downsize(0);
   }
 
   template <class Arg>
@@ -955,6 +958,14 @@ class small_vector : public detail::small_vector_base<
  private:
   static iterator unconst(const_iterator it) {
     return const_cast<iterator>(it);
+  }
+
+  void downsize(size_type sz) {
+    assert(sz <= size());
+    for (auto it = (begin() + sz); it != end(); ++it) {
+      it->~value_type();
+    }
+    this->setSize(sz);
   }
 
   // The std::false_type argument is part of disambiguating the

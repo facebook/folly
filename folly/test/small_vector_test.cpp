@@ -1174,6 +1174,20 @@ TEST(small_vector, SelfCopyAssignmentForVectorOfPair) {
   EXPECT_EQ(test[0].first, 13);
 }
 
+namespace {
+struct NonAssignableType {
+  int const i_{};
+};
+} // namespace
+
+TEST(small_vector, PopBackNonAssignableType) {
+  small_vector<NonAssignableType> v;
+  v.emplace_back();
+  EXPECT_EQ(1, v.size());
+  v.pop_back();
+  EXPECT_EQ(0, v.size());
+}
+
 TEST(small_vector, erase) {
   small_vector<int> v(3);
   std::iota(v.begin(), v.end(), 1);
