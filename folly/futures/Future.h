@@ -2414,7 +2414,7 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
 /// is a SemiFuture<std::tuple<Try<T1>, Try<T2>, ...>>.
 /// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
-[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] SemiFuture<
+[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] SemiFuture<
     std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllSemiFuture(Fs&&... fs);
 

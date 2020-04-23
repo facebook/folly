@@ -1604,7 +1604,7 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
 }
 
 template <typename... Fs>
-[[deprecated("collectSemiFuture is deprecated and identical to plain collect. Please use collectAny instead.")]] SemiFuture<
+[[deprecated("collectSemiFuture is deprecated and identical to plain collect. Please use collect instead.")]] SemiFuture<
     std::tuple<typename remove_cvref_t<Fs>::value_type...>>
 collectSemiFuture(Fs&&... fs) {
   return collect(std::forward<Fs>(fs)...);
@@ -1618,7 +1618,7 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
 
 template <class Collection>
 [[deprecated(
-    "collectSemiFuture is deprecated and identical to plain collect. Please use collectAny instead.")]] auto
+    "collectSemiFuture is deprecated and identical to plain collect. Please use collect instead.")]] auto
 collectSemiFuture(Collection&& c)
     -> decltype(collectSemiFuture(c.begin(), c.end())) {
   return collectSemiFuture(c.begin(), c.end());
