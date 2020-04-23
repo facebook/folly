@@ -16,6 +16,7 @@
 
 #include <folly/detail/ThreadLocalDetail.h>
 #include <folly/synchronization/CallOnce.h>
+#include <folly/synchronization/SanitizeThread.h>
 
 #include <list>
 #include <mutex>
@@ -118,6 +119,17 @@ bool StaticMetaBase::dying() {
 }
 
 void StaticMetaBase::onThreadExit(void* ptr) {
+  // Disable TSAN instrumentation for the duration of this method.  This is
+  // called from pthread_exit(), as a thread-specific data destructor.  On
+  // Linux, TSAN also uses that mechanism to intercept thread exit.  There
+  // is no defined order for TSD destructor invocation.  TSAN can therefore
+  // be informed of the thread's demise before this routine runs, which can
+  // later confuse TSAN when another thread running in ld-linux calls free()
+  // on this thread's TLS (not TSD) memory block, which is written to here.
+  Optional<annotate_ignore_thread_sanitizer_guard> tsanGuard;
+  if (kIsLinux) {
+    tsanGuard.emplace(__FILE__, __LINE__);
+  }
   auto threadEntry = static_cast<ThreadEntry*>(ptr);
 
   {
