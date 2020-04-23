@@ -2372,7 +2372,7 @@ auto via(Executor::KeepAlive<>, Func&& func) -> Future<
   replaced with collectX(...).via(e) where e is a valid non-inline executor.
   */
 template <class InputIterator>
-[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] SemiFuture<
+[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] SemiFuture<
     std::vector<Try<
         typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAllSemiFuture(InputIterator first, InputIterator last);
@@ -2380,7 +2380,7 @@ collectAllSemiFuture(InputIterator first, InputIterator last);
 /// Sugar for the most common case
 template <class Collection>
 [[deprecated(
-    "collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAny instead.")]] auto
+    "collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] auto
 collectAllSemiFuture(Collection&& c)
     -> decltype(collectAllSemiFuture(c.begin(), c.end())) {
   return collectAllSemiFuture(c.begin(), c.end());
