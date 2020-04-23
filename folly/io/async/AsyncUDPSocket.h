@@ -169,7 +169,7 @@ class AsyncUDPSocket : public EventHandler {
    * of size num
    */
   virtual int writem(
-      const folly::SocketAddress& address,
+      Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count);
 
@@ -197,7 +197,7 @@ class AsyncUDPSocket : public EventHandler {
    *  verify GSO is supported on this platform by calling getGSO
    */
   virtual int writemGSO(
-      const folly::SocketAddress& address,
+      Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
       const int* gso);
@@ -365,6 +365,11 @@ class AsyncUDPSocket : public EventHandler {
       SocketOptionKey::ApplyPos pos);
 
  protected:
+  struct full_sockaddr_storage {
+    sockaddr_storage storage;
+    socklen_t len;
+  };
+
   virtual ssize_t
   sendmsg(NetworkSocket socket, const struct msghdr* message, int flags) {
     return netops::sendmsg(socket, message, flags);
@@ -379,8 +384,7 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   void fillMsgVec(
-      sockaddr_storage* addr,
-      socklen_t addr_len,
+      Range<full_sockaddr_storage*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
       struct mmsghdr* msgvec,
@@ -390,7 +394,7 @@ class AsyncUDPSocket : public EventHandler {
       char* gsoControl);
 
   virtual int writeImpl(
-      const folly::SocketAddress& address,
+      Range<SocketAddress const*> addrs,
       const std::unique_ptr<folly::IOBuf>* bufs,
       size_t count,
       struct mmsghdr* msgvec,

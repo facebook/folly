@@ -23,6 +23,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
+#include <folly/small_vector.h>
 
 #include <boost/preprocessor/control/if.hpp>
 #include <cerrno>
@@ -357,14 +358,14 @@ ssize_t AsyncUDPSocket::writev(
  * ::sendmmsg.
  */
 int AsyncUDPSocket::writem(
-    const folly::SocketAddress& address,
+    Range<SocketAddress const*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count) {
-  return writemGSO(address, bufs, count, nullptr);
+  return writemGSO(addrs, bufs, count, nullptr);
 }
 
 int AsyncUDPSocket::writemGSO(
-    const folly::SocketAddress& address,
+    Range<SocketAddress const*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
     const int* gso) {
@@ -390,7 +391,7 @@ int AsyncUDPSocket::writemGSO(
     }
 #endif
     FOLLY_POP_WARNING
-    ret = writeImpl(address, bufs, count, vec, gso, gsoControl);
+    ret = writeImpl(addrs, bufs, count, vec, gso, gsoControl);
   } else {
     std::unique_ptr<mmsghdr[]> vec(new mmsghdr[count]);
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
@@ -400,15 +401,14 @@ int AsyncUDPSocket::writemGSO(
       gsoControl = control.get();
     }
 #endif
-    ret = writeImpl(address, bufs, count, vec.get(), gso, gsoControl);
+    ret = writeImpl(addrs, bufs, count, vec.get(), gso, gsoControl);
   }
 
   return ret;
 }
 
 void AsyncUDPSocket::fillMsgVec(
-    sockaddr_storage* addr,
-    socklen_t addr_len,
+    Range<full_sockaddr_storage*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
     struct mmsghdr* msgvec,
@@ -416,6 +416,8 @@ void AsyncUDPSocket::fillMsgVec(
     size_t iov_count,
     const int* gso,
     char* gsoControl) {
+  auto addr_count = addrs.size();
+  DCHECK(addr_count);
   size_t remaining = iov_count;
 
   size_t iov_pos = 0;
@@ -425,8 +427,15 @@ void AsyncUDPSocket::fillMsgVec(
     size_t iovec_len = ret.numIovecs;
     remaining -= iovec_len;
     auto& msg = msgvec[i].msg_hdr;
-    msg.msg_name = reinterpret_cast<void*>(addr);
-    msg.msg_namelen = addr_len;
+    // if we have less addrs compared to count
+    // we use the last addr
+    if (i < addr_count) {
+      msg.msg_name = reinterpret_cast<void*>(&addrs[i].storage);
+      msg.msg_namelen = addrs[i].len;
+    } else {
+      msg.msg_name = reinterpret_cast<void*>(&addrs[addr_count - 1].storage);
+      msg.msg_namelen = addrs[addr_count - 1].len;
+    }
     msg.msg_iov = &iov[iov_pos];
     msg.msg_iovlen = iovec_len;
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
@@ -459,14 +468,21 @@ void AsyncUDPSocket::fillMsgVec(
 }
 
 int AsyncUDPSocket::writeImpl(
-    const folly::SocketAddress& address,
+    Range<SocketAddress const*> addrs,
     const std::unique_ptr<folly::IOBuf>* bufs,
     size_t count,
     struct mmsghdr* msgvec,
     const int* gso,
     char* gsoControl) {
-  sockaddr_storage addrStorage;
-  address.getAddress(&addrStorage);
+  // most times we have a single destination addr
+  auto addr_count = addrs.size();
+  constexpr size_t kAddrCountMax = 1;
+  small_vector<full_sockaddr_storage, kAddrCountMax> addrStorage(addr_count);
+
+  for (size_t i = 0; i < addr_count; i++) {
+    addrs[i].getAddress(&addrStorage[i].storage);
+    addrStorage[i].len = folly::to_narrow(addrs[i].getActualSize());
+  }
 
   size_t iov_count = 0;
   for (size_t i = 0; i < count; i++) {
@@ -482,8 +498,7 @@ int AsyncUDPSocket::writeImpl(
     iovec iov[BOOST_PP_IF(FOLLY_HAVE_VLA_01, iov_count, kSmallSizeMax)];
     FOLLY_POP_WARNING
     fillMsgVec(
-        &addrStorage,
-        folly::to_narrow(address.getActualSize()),
+        range(addrStorage),
         bufs,
         count,
         msgvec,
@@ -495,8 +510,7 @@ int AsyncUDPSocket::writeImpl(
   } else {
     std::unique_ptr<iovec[]> iov(new iovec[iov_count]);
     fillMsgVec(
-        &addrStorage,
-        folly::to_narrow(address.getActualSize()),
+        range(addrStorage),
         bufs,
         count,
         msgvec,

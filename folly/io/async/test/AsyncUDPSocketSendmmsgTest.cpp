@@ -235,7 +235,8 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   virtual void writePing(IOBufVec& bufs) {
-    socket_->writem(server_, bufs.data(), bufs.size());
+    socket_->writem(
+        folly::range(&server_, &server_ + 1), bufs.data(), bufs.size());
   }
 
   void getReadBuffer(void** buf, size_t* len) noexcept override {
