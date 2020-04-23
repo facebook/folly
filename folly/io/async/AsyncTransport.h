@@ -732,9 +732,9 @@ class AsyncWriter {
 
 // Transitional intermediate interface. This is deprecated.
 // Wrapper around folly::AsyncTransport, that includes read/write callbacks
-class AsyncTransportWrapper : virtual public AsyncTransport,
-                              virtual public AsyncReader,
-                              virtual public AsyncWriter {
+class AsyncTransportWrapper : public AsyncTransport,
+                              public AsyncReader,
+                              public AsyncWriter {
  public:
   using UniquePtr = std::unique_ptr<AsyncTransportWrapper, Destructor>;
 

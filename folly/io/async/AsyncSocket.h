@@ -73,14 +73,7 @@ namespace folly {
 #define SO_NO_TSOCKS 201
 #endif
 
-#ifdef _MSC_VER
-// We do a dynamic_cast on this, in
-// AsyncTransportWrapper::getUnderlyingTransport so be safe and
-// force displacements for it. See:
-// https://msdn.microsoft.com/en-us/library/7sf3txa8.aspx
-#pragma vtordisp(push, 2)
-#endif
-class AsyncSocket : virtual public AsyncTransportWrapper {
+class AsyncSocket : public AsyncTransportWrapper {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
 
@@ -1336,8 +1329,5 @@ class AsyncSocket : virtual public AsyncTransportWrapper {
 
   bool closeOnFailedWrite_{true};
 };
-#ifdef _MSC_VER
-#pragma vtordisp(pop)
-#endif
 
 } // namespace folly
