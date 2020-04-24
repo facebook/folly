@@ -50,7 +50,7 @@ TEST_F(MergeTest, SimpleMerge) {
           co_yield makeGenerator(3, 2);
         }());
 
-    const std::array<int, 5> expectedValues = {0, 3, 1, 4, 2};
+    const std::array<int, 5> expectedValues = {{0, 3, 1, 4, 2}};
 
     auto item = co_await generator.next();
     for (int expectedValue : expectedValues) {

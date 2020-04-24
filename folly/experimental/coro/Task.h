@@ -466,6 +466,10 @@ class FOLLY_NODISCARD Task {
   class Awaiter;
   using handle_t = std::experimental::coroutine_handle<promise_type>;
 
+  void setExecutor(folly::Executor::KeepAlive<>&& e) noexcept {
+    coro_.promise().executor_ = std::move(e);
+  }
+
  public:
   Task(const Task& t) = delete;
 
@@ -492,7 +496,7 @@ class FOLLY_NODISCARD Task {
   /// task on the specified executor.
   FOLLY_NODISCARD
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
-    coro_.promise().executor_ = std::move(executor);
+    setExecutor(std::move(executor));
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
@@ -508,7 +512,7 @@ class FOLLY_NODISCARD Task {
       Executor::KeepAlive<> executor,
       Task<T>&& t) noexcept {
     // Child task inherits the awaiting task's executor
-    t.coro_.promise().executor_ = std::move(executor);
+    t.setExecutor(std::move(executor));
     return Awaiter{std::exchange(t.coro_, {})};
   }
 

@@ -21,6 +21,7 @@
 #include <folly/experimental/coro/Baton.h>
 
 #include <cassert>
+#include <utility>
 
 using namespace folly::coro;
 

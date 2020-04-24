@@ -227,7 +227,8 @@ class ViaIfAsyncAwaiter {
           int> = 0>
   auto
   await_suspend(std::experimental::coroutine_handle<> continuation) noexcept(
-      noexcept(awaiter_.await_suspend(continuation))) -> Result {
+      noexcept(std::declval<Awaiter&>().await_suspend(continuation)))
+      -> Result {
     return awaiter_.await_suspend(
         viaCoroutine_.getWrappedCoroutine(continuation));
   }
@@ -239,7 +240,8 @@ class ViaIfAsyncAwaiter {
           int> = 0>
   auto
   await_suspend(std::experimental::coroutine_handle<> continuation) noexcept(
-      noexcept(awaiter_.await_suspend(continuation))) -> Result {
+      noexcept(std::declval<Awaiter&>().await_suspend(continuation)))
+      -> Result {
     return awaiter_.await_suspend(
         viaCoroutine_.getWrappedCoroutineWithSavedContext(continuation));
   }
