@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 
+from .copytree import containing_repo_type
 from .envfuncs import Env, add_path_entry
 from .fetcher import get_fbsource_repo_data
 from .manifest import ContextGenerator
@@ -23,19 +24,6 @@ try:
     import typing  # noqa: F401
 except ImportError:
     pass
-
-
-def containing_repo_type(path):
-    while True:
-        if os.path.exists(os.path.join(path, ".git")):
-            return ("git", path)
-        if os.path.exists(os.path.join(path, ".hg")):
-            return ("hg", path)
-
-        parent = os.path.dirname(path)
-        if parent == path:
-            return None, None
-        path = parent
 
 
 def detect_project(path):
