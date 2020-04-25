@@ -91,7 +91,7 @@ class TaskPromiseBase {
   }
 
   template <typename Awaitable>
-  auto await_transform(Awaitable&& awaitable) noexcept {
+  auto await_transform(Awaitable&& awaitable) {
     return folly::coro::co_viaIfAsync(
         executor_.get_alias(),
         folly::coro::co_withCancellation(
@@ -106,7 +106,7 @@ class TaskPromiseBase {
     return AwaitableReady<const folly::CancellationToken&>{cancelToken_};
   }
 
-  void setCancelToken(const folly::CancellationToken& cancelToken) {
+  void setCancelToken(const folly::CancellationToken& cancelToken) noexcept {
     if (!hasCancelTokenOverride_) {
       cancelToken_ = cancelToken;
       hasCancelTokenOverride_ = true;
