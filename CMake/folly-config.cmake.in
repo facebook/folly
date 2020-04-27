@@ -30,6 +30,18 @@ set(FOLLY_LIBRARIES Folly::folly)
 # Find folly's dependencies
 find_dependency(fmt)
 
+set(Boost_USE_STATIC_LIBS "@FOLLY_BOOST_LINK_STATIC@")
+find_dependency(Boost 1.51.0 MODULE
+  COMPONENTS
+    context
+    filesystem
+    program_options
+    regex
+    system
+    thread
+  REQUIRED
+)
+
 if (NOT folly_FIND_QUIETLY)
   message(STATUS "Found folly: ${FOLLY_PREFIX_DIR}")
 endif()

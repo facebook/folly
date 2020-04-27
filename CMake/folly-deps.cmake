@@ -16,9 +16,23 @@ include(CheckCXXSourceCompiles)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
-if(MSVC)
-  set(Boost_USE_STATIC_LIBS ON) #Force static lib in msvc
-endif(MSVC)
+set(
+  BOOST_LINK_STATIC "auto"
+  CACHE STRING
+  "Whether to link against boost statically or dynamically."
+)
+if("${BOOST_LINK_STATIC}" STREQUAL "auto")
+  # Default to linking boost statically on Windows with MSVC
+  if(MSVC)
+    set(FOLLY_BOOST_LINK_STATIC ON)
+  else()
+    set(FOLLY_BOOST_LINK_STATIC OFF)
+  endif()
+else()
+  set(FOLLY_BOOST_LINK_STATIC "${BOOST_LINK_STATIC}")
+endif()
+set(Boost_USE_STATIC_LIBS "${FOLLY_BOOST_LINK_STATIC}")
+
 find_package(Boost 1.51.0 MODULE
   COMPONENTS
     context
