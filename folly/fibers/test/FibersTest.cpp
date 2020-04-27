@@ -37,6 +37,7 @@
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/TimedMutex.h>
 #include <folly/fibers/WhenN.h>
+#include <folly/fibers/async/Async.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -2597,4 +2598,48 @@ TEST(FiberManager, addTaskEagerKeepAlive) {
 
   EXPECT_TRUE(f.isReady());
   EXPECT_EQ(42, std::move(f).get());
+}
+
+namespace {
+std::string getString() {
+  return "foo";
+}
+async::Async<void> getAsyncNothing() {
+  return {};
+}
+async::Async<std::string> getAsyncString() {
+  return getString();
+}
+async::Async<folly::Optional<std::string>> getOptionalAsyncString() {
+  // use move constructor to convert Async<std::string> to
+  // Async<folly::Optional<std::string>>
+  return getAsyncString();
+}
+} // namespace
+
+TEST(FiberManager, asyncAwait) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  EXPECT_NO_THROW(fm.addTaskFuture([&]() {
+                      EXPECT_NO_THROW(async::await(getAsyncNothing()));
+                      EXPECT_EQ(getString(), async::await(getAsyncString()));
+                      EXPECT_EQ(
+                          getString(), *async::await(getOptionalAsyncString()));
+                    })
+                      .getVia(&evb));
+}
+
+TEST(FiberManager, asyncInitAwait) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  EXPECT_NO_THROW(
+      fm.addTaskFuture([&]() { async::init_await(getAsyncNothing()); })
+          .getVia(&evb));
+
+  EXPECT_EQ(
+      getString(),
+      fm.addTaskFuture([&]() { return async::init_await(getAsyncString()); })
+          .getVia(&evb));
 }
