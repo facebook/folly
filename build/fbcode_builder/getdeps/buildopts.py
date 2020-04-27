@@ -194,6 +194,9 @@ class BuildOptions(object):
             env["NODE_BIN"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/node/bin/", node_exe
             )
+            env["RUST_VENDORED_CRATES_DIR"] = os.path.join(
+                self.fbsource_dir, "third-party/rust/vendor"
+            )
             hash_data = get_fbsource_repo_data(self)
             env["FBSOURCE_HASH"] = hash_data.hash
             env["FBSOURCE_DATE"] = hash_data.date
