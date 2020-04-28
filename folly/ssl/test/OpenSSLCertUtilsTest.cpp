@@ -309,18 +309,18 @@ TEST_P(OpenSSLCertUtilsTest, TestReadCertsFromMixedBuffer) {
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509Digest) {
-  auto x509 = readCertFromFile(kTestCertWithoutSan);
+  auto x509 = readCertFromData(kTestCertWithSan);
   EXPECT_NE(x509, nullptr);
 
   auto sha1Digest = folly::ssl::OpenSSLCertUtils::getDigestSha1(*x509);
   EXPECT_EQ(
       folly::hexlify(folly::range(sha1Digest)),
-      "b84e951d6c4e6cc70346357fab43d7ed73a07b0f");
+      "692c24cbc0f595b668480a8b62e5cd6bf5041c64");
 
   auto sha2Digest = folly::ssl::OpenSSLCertUtils::getDigestSha256(*x509);
   EXPECT_EQ(
       folly::hexlify(folly::range(sha2Digest)),
-      "364d3a6a0b10d0635ce59b40c0b7f505ab2cd9fd0a06661cdc61d9cb8c9c9821");
+      "82f800877c004fc8e5d89d6646b15d135d2d4677d56dfcdf29a4698fce1c257f");
 }
 
 TEST_P(OpenSSLCertUtilsTest, TestX509Store) {
