@@ -125,7 +125,9 @@ struct growth_policy_wrapper<void> {
  * -1.
  */
 template <class Iterator>
-int distance_if_multipass(Iterator first, Iterator last) {
+typename std::iterator_traits<Iterator>::difference_type distance_if_multipass(
+    Iterator first,
+    Iterator last) {
   typedef typename std::iterator_traits<Iterator>::iterator_category categ;
   if (std::is_same<categ, std::input_iterator_tag>::value) {
     return -1;
@@ -176,7 +178,7 @@ void bulk_insert(
 
   auto const& cmp(sorted.value_comp());
 
-  int const d = distance_if_multipass(first, last);
+  auto const d = distance_if_multipass(first, last);
   if (d != -1) {
     cont.reserve(cont.size() + d);
   }
