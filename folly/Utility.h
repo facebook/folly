@@ -247,25 +247,27 @@ struct transparent : T {
  * Example:
  *
  *   int i = 42;
- *   int &j = Identity()(i);
+ *   int &j = identity(i);
  *   assert(&i == &j);
  *
- * Warning: passing a prvalue through Identity turns it into an xvalue,
+ * Warning: passing a prvalue through identity turns it into an xvalue,
  * which can effect whether lifetime extension occurs or not. For instance:
  *
  *   auto&& x = std::make_unique<int>(42);
  *   cout << *x ; // OK, x refers to a valid unique_ptr.
  *
- *   auto&& y = Identity()(std::make_unique<int>(42));
+ *   auto&& y = identity(std::make_unique<int>(42));
  *   cout << *y ; // ERROR: y did not lifetime-extend the unique_ptr. It
  *                // is no longer valid
  */
-struct Identity {
+struct identity_fn {
   template <class T>
   constexpr T&& operator()(T&& x) const noexcept {
     return static_cast<T&&>(x);
   }
 };
+using Identity = identity_fn;
+FOLLY_INLINE_VARIABLE constexpr identity_fn identity;
 
 namespace moveonly_ { // Protection from unintended ADL.
 

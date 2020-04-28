@@ -171,17 +171,17 @@ static void validateTestCertBundle(
     const std::vector<folly::ssl::X509UniquePtr>& certs) {
   EXPECT_EQ(certs.size(), 3);
   for (auto i : folly::enumerate(certs)) {
-    auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(**i);
-    EXPECT_TRUE(identity);
-    EXPECT_EQ(*identity, folly::sformat("test cert {}", i.index + 1));
+    auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(**i);
+    EXPECT_TRUE(cn);
+    EXPECT_EQ(*cn, folly::sformat("test cert {}", i.index + 1));
   }
 }
 
 // Validate parsed cert from kTestCertWithSan.
 static void validateTestCertWithSAN(X509* x509) {
   ASSERT_NE(nullptr, x509);
-  auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
-  EXPECT_EQ("127.0.0.1", identity.value());
+  auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
+  EXPECT_EQ("127.0.0.1", cn.value());
   auto altNames = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
   EXPECT_EQ(2, altNames.size());
   EXPECT_EQ("anotherexample.com", altNames[0]);
@@ -191,8 +191,8 @@ static void validateTestCertWithSAN(X509* x509) {
 TEST_P(OpenSSLCertUtilsTest, TestX509CN) {
   auto x509 = readCertFromFile(kTestCertWithoutSan);
   EXPECT_NE(x509, nullptr);
-  auto identity = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
-  EXPECT_EQ(identity.value(), "Asox Company");
+  auto cn = folly::ssl::OpenSSLCertUtils::getCommonName(*x509);
+  EXPECT_EQ(cn.value(), "Asox Company");
   auto sans = folly::ssl::OpenSSLCertUtils::getSubjectAltNames(*x509);
   EXPECT_EQ(sans.size(), 0);
 }
