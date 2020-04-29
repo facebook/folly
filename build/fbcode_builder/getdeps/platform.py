@@ -87,6 +87,15 @@ class HostType(object):
             self.distrovers or "none",
         )
 
+    def get_package_manager(self):
+        if not self.is_linux():
+            return None
+        if self.distro in ("fedora", "centos"):
+            return "rpm"
+        if self.distro in ("debian", "ubuntu"):
+            return "deb"
+        return None
+
     @staticmethod
     def from_tuple_string(s):
         ostype, distro, distrovers = s.split("-")

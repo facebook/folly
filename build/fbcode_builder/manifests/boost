@@ -9,6 +9,45 @@ sha256 = 8f32d4617390d1c2d16f26a27ab60d97807b35440d45891fa340fc2648b04406
 url = https://versaweb.dl.sourceforge.net/project/boost/boost/1.69.0/boost_1_69_0.zip
 sha256 = d074bcbcc0501c4917b965fc890e303ee70d8b01ff5712bae4a6c54f2b6b4e52
 
+[preinstalled.env]
+BOOST_ROOT_1_69_0
+
+[debs]
+libboost-all-dev
+
+[rpms]
+boost
+boost-math
+boost-test
+boost-fiber
+boost-graph
+boost-log
+boost-openmpi
+boost-timer
+boost-chrono
+boost-locale
+boost-thread
+boost-atomic
+boost-random
+boost-static
+boost-contract
+boost-date-time
+boost-iostreams
+boost-container
+boost-coroutine
+boost-filesystem
+boost-system
+boost-stacktrace
+boost-regex
+boost-devel
+boost-context
+boost-python3-devel
+boost-type_erasure
+boost-wave
+boost-python3
+boost-serialization
+boost-program-options
+
 [build]
 builder = boost
 

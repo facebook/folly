@@ -151,6 +151,46 @@ class LocalDirFetcher(object):
         return self.path
 
 
+class SystemPackageFetcher(object):
+    def __init__(self, build_options, packages):
+        self.manager = build_options.host_type.get_package_manager()
+        self.packages = packages.get(self.manager)
+        if self.packages:
+            self.installed = None
+        else:
+            self.installed = False
+
+    def packages_are_installed(self):
+        if self.installed is not None:
+            return self.installed
+
+        if self.manager == "rpm":
+            result = run_cmd(["rpm", "-q"] + self.packages, allow_fail=True)
+            self.installed = result == 0
+        elif self.manager == "deb":
+            result = run_cmd(["dpkg", "-s"] + self.packages, allow_fail=True)
+            self.installed = result == 0
+        else:
+            self.installed = False
+
+        return self.installed
+
+    def update(self):
+        assert self.installed
+        return ChangeStatus(all_changed=False)
+
+    def hash(self):
+        return "0" * 40
+
+    def get_src_dir(self):
+        return None
+
+
+class PreinstalledNopFetcher(SystemPackageFetcher):
+    def __init__(self):
+        self.installed = True
+
+
 class GitFetcher(Fetcher):
     DEFAULT_DEPTH = 100
 

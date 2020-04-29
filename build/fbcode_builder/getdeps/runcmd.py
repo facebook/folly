@@ -54,9 +54,13 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
                 log.write(msg)
                 sys.stdout.write(msg)
 
-            _run_cmd(cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_function)
+            return _run_cmd(
+                cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_function
+            )
     else:
-        _run_cmd(cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=sys.stdout.write)
+        return _run_cmd(
+            cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=sys.stdout.write
+        )
 
 
 def _run_cmd(cmd, env, cwd, allow_fail, log_fn):

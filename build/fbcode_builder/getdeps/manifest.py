@@ -25,8 +25,10 @@ from .expr import parse_expr
 from .fetcher import (
     ArchiveFetcher,
     GitFetcher,
+    PreinstalledNopFetcher,
     ShipitTransformerFetcher,
     SimpleShipitTransformerFetcher,
+    SystemPackageFetcher,
 )
 from .py_wheel_builder import PythonWheelBuilder
 
@@ -74,6 +76,9 @@ SCHEMA = {
     },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
+    "rpms": {"optional_section": True},
+    "debs": {"optional_section": True},
+    "preinstalled.env": {"optional_section": True},
     "b2.args": {"optional_section": True},
     "make.args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
@@ -318,6 +323,27 @@ class ManifestParser(object):
         """ returns true if this is an FB first-party project """
         return self.shipit_project is not None
 
+    def get_required_system_packages(self, ctx):
+        """ Returns dictionary of packager system -> list of packages """
+        return {
+            "rpm": self.get_section_as_args("rpms", ctx),
+            "deb": self.get_section_as_args("debs", ctx),
+        }
+
+    def _is_satisfied_by_preinstalled_environment(self, ctx):
+        envs = self.get_section_as_args("preinstalled.env", ctx)
+        if not envs:
+            return False
+        for key in envs:
+            val = os.environ.get(key, None)
+            print(f"Testing ENV[{key}]: {repr(val)}")
+            if val is None:
+                return False
+            if len(val) == 0:
+                return False
+
+        return True
+
     def create_fetcher(self, build_options, ctx):
         use_real_shipit = (
             ShipitTransformerFetcher.available() and build_options.use_shipit
@@ -338,6 +364,16 @@ class ManifestParser(object):
         ):
             # We can use the code from fbsource
             return ShipitTransformerFetcher(build_options, self.shipit_project)
+
+        # Can we satisfy this dep with system packages?
+        if build_options.allow_system_packages:
+            if self._is_satisfied_by_preinstalled_environment(ctx):
+                return PreinstalledNopFetcher()
+
+            packages = self.get_required_system_packages(ctx)
+            package_fetcher = SystemPackageFetcher(build_options, packages)
+            if package_fetcher.packages_are_installed():
+                return package_fetcher
 
         repo_url = self.get("git", "repo_url", ctx=ctx)
         if repo_url:

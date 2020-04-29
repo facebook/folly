@@ -1,6 +1,13 @@
 [manifest]
 name = zstd
 
+[rpms]
+libzstd-devel
+libzstd
+
+[debs]
+libzstd1-dev
+
 [git]
 repo_url = https://github.com/facebook/zstd.git
 rev = v1.3.8

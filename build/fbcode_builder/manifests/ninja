@@ -1,6 +1,12 @@
 [manifest]
 name = ninja
 
+[rpms]
+ninja-build
+
+[debs]
+ninja-build
+
 [download.os=windows]
 url = https://github.com/ninja-build/ninja/releases/download/v1.9.0/ninja-win.zip
 sha256 = 2d70010633ddaacc3af4ffbd21e22fae90d158674a09e132e06424ba3ab036e9

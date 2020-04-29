@@ -1,6 +1,12 @@
 [manifest]
 name = libgit2
 
+[rpms]
+libgit2-devel
+
+[debs]
+libgit2-dev
+
 [download]
 url = https://github.com/libgit2/libgit2/archive/v0.28.1.tar.gz
 sha256 = 0ca11048795b0d6338f2e57717370208c2c97ad66c6d5eac0c97a8827d13936b

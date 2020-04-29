@@ -21,9 +21,11 @@ import getdeps.cache as cache_module
 from getdeps.buildopts import setup_build_options
 from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
+from getdeps.fetcher import SystemPackageFetcher
 from getdeps.load import ManifestLoader
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType
+from getdeps.runcmd import run_cmd
 from getdeps.subcmd import SubCmd, add_subcommands, cmd
 
 
@@ -310,6 +312,45 @@ class FetchCmd(ProjectCmdBase):
             fetcher.update()
 
 
+@cmd("install-system-deps", "Install system packages to satisfy the deps for a project")
+class InstallSysDepsCmd(ProjectCmdBase):
+    def setup_project_cmd_parser(self, parser):
+        parser.add_argument(
+            "--recursive",
+            help="install the transitive deps also",
+            action="store_true",
+            default=False,
+        )
+
+    def run_project_cmd(self, args, loader, manifest):
+        if args.recursive:
+            projects = loader.manifests_in_dependency_order()
+        else:
+            projects = [manifest]
+
+        cache = cache_module.create_cache()
+        all_packages = {}
+        for m in projects:
+            ctx = loader.ctx_gen.get_context(m.name)
+            packages = m.get_required_system_packages(ctx)
+            for k, v in packages.items():
+                merged = all_packages.get(k, [])
+                merged += v
+                all_packages[k] = merged
+
+        manager = loader.build_opts.host_type.get_package_manager()
+        if manager == "rpm":
+            packages = sorted(list(set(all_packages["rpm"])))
+            if packages:
+                run_cmd(["dnf", "install", "-y"] + packages)
+        elif manager == "deb":
+            packages = sorted(list(set(all_packages["deb"])))
+            if packages:
+                run_cmd(["apt", "install", "-y"] + packages)
+        else:
+            print("I don't know how to install any packages on this system")
+
+
 @cmd("list-deps", "lists the transitive deps for a given project")
 class ListDepsCmd(ProjectCmdBase):
     def run_project_cmd(self, args, loader, manifest):
@@ -401,6 +442,12 @@ class BuildCmd(ProjectCmdBase):
 
         for m in projects:
             fetcher = loader.create_fetcher(m)
+
+            if isinstance(fetcher, SystemPackageFetcher):
+                # We are guaranteed that if the fetcher is set to
+                # SystemPackageFetcher then this item is completely
+                # satisfied by the appropriate system packages
+                continue
 
             if args.clean:
                 fetcher.clean()
@@ -650,7 +697,7 @@ jobs:
             job_name = "mac"
             runs_on = "macOS-latest"
 
-        getdeps = f"{py3} build/fbcode_builder/getdeps.py"
+        getdeps = f"{py3} build/fbcode_builder/getdeps.py --allow-system-packages"
 
         out.write("  %s:\n" % job_name)
         out.write("    runs-on: %s\n" % runs_on)
@@ -662,6 +709,11 @@ jobs:
             # that we want it to use them!
             out.write("    - name: Fix Git config\n")
             out.write("      run: git config --system core.longpaths true\n")
+        else:
+            out.write("    - name: Install system deps\n")
+            out.write(
+                f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n"
+            )
 
         projects = loader.manifests_in_dependency_order()
 
@@ -768,6 +820,12 @@ def parse_args():
         help="Perform a non-FB internal build, even when in an fbsource repository",
         action="store_false",
         dest="facebook_internal",
+    )
+    add_common_arg(
+        "--allow-system-packages",
+        help="Allow satisfying third party deps from installed system packages",
+        action="store_true",
+        default=False,
     )
 
     ap = argparse.ArgumentParser(

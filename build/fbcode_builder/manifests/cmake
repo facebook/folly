@@ -1,6 +1,13 @@
 [manifest]
 name = cmake
 
+[rpms]
+cmake
+
+# All current deb based distros have a cmake that is too old
+#[debs]
+#cmake
+
 [dependencies]
 ninja
 

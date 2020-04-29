@@ -1,6 +1,12 @@
 [manifest]
 name = libevent
 
+[rpms]
+libevent-devel
+
+[debs]
+libevent-dev
+
 # Note that the CMakeLists.txt file is present only in
 # git repo and not in the release tarball, so take care
 # to use the github generated source tarball rather than

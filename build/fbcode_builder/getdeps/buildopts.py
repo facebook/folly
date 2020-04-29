@@ -54,6 +54,7 @@ class BuildOptions(object):
         num_jobs=0,
         use_shipit=False,
         vcvars_path=None,
+        allow_system_packages=False,
     ):
         """ fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                                  or for shipit-transformed repos, the build dir that
@@ -107,6 +108,7 @@ class BuildOptions(object):
         self.fbcode_builder_dir = fbcode_builder_dir
         self.host_type = host_type
         self.use_shipit = use_shipit
+        self.allow_system_packages = allow_system_packages
         if vcvars_path is None and is_windows():
 
             # On Windows, the compiler is not available in the PATH by
@@ -386,6 +388,13 @@ def setup_build_options(args, host_type=None):
                     temp = tempfile.gettempdir()
 
                 scratch_dir = os.path.join(temp, "fbcode_builder_getdeps-%s" % munged)
+                if not is_windows() and os.geteuid() == 0:
+                    # Running as root; in the case where someone runs
+                    # sudo getdeps.py install-system-deps
+                    # and then runs as build without privs, we want to avoid creating
+                    # a scratch dir that the second stage cannot write to.
+                    # So we generate a different path if we are root.
+                    scratch_dir += "-root"
 
         if not os.path.exists(scratch_dir):
             os.makedirs(scratch_dir)
@@ -415,4 +424,5 @@ def setup_build_options(args, host_type=None):
         num_jobs=args.num_jobs,
         use_shipit=args.use_shipit,
         vcvars_path=args.vcvars_path,
+        allow_system_packages=args.allow_system_packages,
     )

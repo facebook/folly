@@ -1,5 +1,12 @@
 [manifest]
-name = Python-3.7.6
+name = python
+
+[rpms]
+python3
+python3-devel
+
+[debs]
+python3-all-dev
 
 [download.os=linux]
 url = https://www.python.org/ftp/python/3.7.6/Python-3.7.6.tgz

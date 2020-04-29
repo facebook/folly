@@ -1,6 +1,13 @@
 [manifest]
 name = openssl
 
+[rpms]
+openssl-devel
+openssl
+
+[debs]
+libssl-dev
+
 [download]
 url = https://www.openssl.org/source/openssl-1.1.1f.tar.gz
 sha256 = 186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629975da3f35
