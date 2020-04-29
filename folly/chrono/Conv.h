@@ -138,7 +138,8 @@ static Expected<std::pair<time_t, long>, ConversionCode> durationToPosixTime(
   auto secTimeT = static_cast<time_t>(sec.value());
 
   auto remainder = duration.count() - (secTimeT * Denominator);
-  long subsec = (remainder * SubsecondRatio::den) / Denominator;
+  long subsec =
+      static_cast<long>((remainder * SubsecondRatio::den) / Denominator);
   if (UNLIKELY(duration.count() < 0) && remainder != 0) {
     if (secTimeT == std::numeric_limits<time_t>::lowest()) {
       return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
