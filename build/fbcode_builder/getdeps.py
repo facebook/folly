@@ -705,6 +705,20 @@ jobs:
         out.write("    - uses: actions/checkout@v1\n")
 
         if build_opts.is_windows():
+            # cmake relies on BOOST_ROOT but GH deliberately don't set it in order
+            # to avoid versioning issues:
+            # https://github.com/actions/virtual-environments/issues/319
+            # Instead, set the version we think we need; this is effectively
+            # coupled with the boost manifest
+            # This is the unusual syntax for setting an env var for the rest of
+            # the steps in a workflow:
+            # https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+            out.write("    - name: Export boost environment\n")
+            out.write(
+                '      run: "echo ::set-env name=BOOST_ROOT::%BOOST_ROOT_1_69_0%"\n'
+            )
+            out.write("      shell: cmd\n")
+
             # The git installation may not like long filenames, so tell it
             # that we want it to use them!
             out.write("    - name: Fix Git config\n")
