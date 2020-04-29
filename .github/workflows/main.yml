@@ -139,6 +139,9 @@ jobs:
     runs-on: windows-2016
     steps:
     - uses: actions/checkout@v1
+    - name: Export boost environment
+      run: "echo ::set-env name=BOOST_ROOT::%BOOST_ROOT_1_69_0%"
+      shell: cmd
     - name: Fix Git config
       run: git config --system core.longpaths true
     - name: Fetch boost
