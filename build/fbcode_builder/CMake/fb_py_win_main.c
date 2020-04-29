@@ -19,9 +19,49 @@ int wmain() {
     fprintf(stderr, "error: failed to allocate argument vector\n");
     return 1;
   }
-  pyargv[0] = __wargv[0];
-  for (int n = 0; n < __argc; ++n) {
+
+  /* Py_Main wants the wide character version of the argv so we pull those
+   * values from the global __wargv array that has been prepared by MSVCRT.
+   *
+   * In order for the zipapp to run we need to insert an extra argument in
+   * the front of the argument vector that points to ourselves.
+   *
+   * An additional complication is that, depending on who prepared the argument
+   * string used to start our process, the computed __wargv[0] can be a simple
+   * shell word like `watchman-wait` which is normally resolved together with
+   * the PATH by the shell.
+   * That unresolved path isn't sufficient to start the zipapp on windows;
+   * we need the fully qualified path.
+   *
+   * Given:
+   * __wargv == {"watchman-wait", "-h"}
+   *
+   * we want to pass the following to Py_Main:
+   *
+   * {
+   *   "z:\build\watchman\python\watchman-wait.exe",
+   *   "z:\build\watchman\python\watchman-wait.exe",
+   *   "-h"
+   * }
+   */
+
+#define PATH_SIZE 1024
+  wchar_t full_path_to_argv0[PATH_SIZE];
+  DWORD len = GetModuleFileNameW(NULL, full_path_to_argv0, PATH_SIZE);
+  if (len == 0 ||
+      len == PATH_SIZE && GetLastError() == ERROR_INSUFFICIENT_BUFFER) {
+    fprintf(
+        stderr,
+        "error: %d while retrieving full path to this executable\n",
+        GetLastError());
+    return 1;
+  }
+
+  for (int n = 1; n < __argc; ++n) {
     pyargv[n + 1] = __wargv[n];
   }
+  pyargv[0] = full_path_to_argv0;
+  pyargv[1] = full_path_to_argv0;
+
   return Py_Main(__argc + 1, pyargv);
 }
