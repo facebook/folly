@@ -2,12 +2,12 @@
 name = googletest
 
 [download]
-url = https://github.com/google/googletest/archive/release-1.8.1.tar.gz
-sha256 = 9bf1fe5182a604b4135edc1a425ae356c9ad15e9b23f9f12a02e80184c3a249c
+url = https://github.com/google/googletest/archive/release-1.10.0.tar.gz
+sha256 = 9dc9157a9a1551ec7a7e43daea9a694a0bb5fb8bec81235d8a1e6ef64c716dcb
 
 [build]
 builder = cmake
-subdir = googletest-release-1.8.1
+subdir = googletest-release-1.10.0
 
 [cmake.defines]
 # Everything else defaults to the shared runtime, so tell gtest that
