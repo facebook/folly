@@ -759,7 +759,8 @@ jobs:
             out.write("    - name: Copy artifacts\n")
             out.write(
                 f"      run: {getdeps} fixup-dyn-deps "
-                f"--src-dir=. {manifest.name} _artifacts/{job_name} --final-install-prefix /usr/local\n"
+                f"--src-dir=. {manifest.name} _artifacts/{job_name} {project_prefix} "
+                f"--final-install-prefix /usr/local\n"
             )
 
             out.write("    - uses: actions/upload-artifact@master\n")

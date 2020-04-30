@@ -79,7 +79,7 @@ jobs:
     - name: Build folly
       run: python build/fbcode_builder/getdeps.py --allow-system-packages build --src-dir=. folly 
     - name: Copy artifacts
-      run: python build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. folly _artifacts/windows --final-install-prefix /usr/local
+      run: python build/fbcode_builder/getdeps.py --allow-system-packages fixup-dyn-deps --src-dir=. folly _artifacts/windows  --final-install-prefix /usr/local
     - uses: actions/upload-artifact@master
       with:
         name: folly
