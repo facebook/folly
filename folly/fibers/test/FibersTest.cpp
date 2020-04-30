@@ -2615,31 +2615,21 @@ async::Async<folly::Optional<std::string>> getOptionalAsyncString() {
   // Async<folly::Optional<std::string>>
   return getAsyncString();
 }
+async::Async<std::tuple<int, float, std::string>> getTuple() {
+  return {0, 0.0, "0"};
+}
 } // namespace
 
 TEST(FiberManager, asyncAwait) {
   folly::EventBase evb;
   auto& fm = getFiberManager(evb);
 
-  EXPECT_NO_THROW(fm.addTaskFuture([&]() {
-                      EXPECT_NO_THROW(async::await(getAsyncNothing()));
-                      EXPECT_EQ(getString(), async::await(getAsyncString()));
-                      EXPECT_EQ(
-                          getString(), *async::await(getOptionalAsyncString()));
-                    })
-                      .getVia(&evb));
-}
-
-TEST(FiberManager, asyncInitAwait) {
-  folly::EventBase evb;
-  auto& fm = getFiberManager(evb);
-
   EXPECT_NO_THROW(
-      fm.addTaskFuture([&]() { async::init_await(getAsyncNothing()); })
-          .getVia(&evb));
-
-  EXPECT_EQ(
-      getString(),
-      fm.addTaskFuture([&]() { return async::init_await(getAsyncString()); })
+      fm.addTaskFuture([&]() {
+          async::init_await(getAsyncNothing());
+          EXPECT_EQ(getString(), async::init_await(getAsyncString()));
+          EXPECT_EQ(getString(), *async::init_await(getOptionalAsyncString()));
+          async::init_await(getTuple());
+        })
           .getVia(&evb));
 }

@@ -66,8 +66,8 @@ template <typename T>
 class [[nodiscard]] Async {
  public:
   // General use constructor
-  template <typename U>
-  /* implicit */ Async(U && val) : val_(std::forward<U>(val)) {}
+  template <typename... Us>
+  /* implicit */ Async(Us && ... val) : val_(std::forward<Us>(val)...) {}
 
   // Move constructor to allow eager-return of async without using await
   template <typename U>
