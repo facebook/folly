@@ -194,6 +194,18 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
     return transport_->getSelfCertificate();
   }
 
+  bool setZeroCopy(bool enable) override {
+    return transport_->setZeroCopy(enable);
+  }
+
+  bool getZeroCopy() const override {
+    return transport_->getZeroCopy();
+  }
+
+  void setZeroCopyEnableFunc(ZeroCopyEnableFunc func) override {
+    transport_->setZeroCopyEnableFunc(func);
+  }
+
  protected:
   ~DecoratedAsyncTransportWrapper() override {}
 
