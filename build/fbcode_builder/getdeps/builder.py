@@ -244,6 +244,17 @@ CMAKE_ENV = {env_str}
 CMAKE_DEFINE_ARGS = {define_args_str}
 
 
+def get_jobs_argument(num_jobs_arg: int) -> str:
+    if num_jobs_arg > 0:
+        return "-j" + str(num_jobs_arg)
+
+    import multiprocessing
+    num_jobs = multiprocessing.cpu_count()
+    if sys.platform == "win32":
+        num_jobs //= 2
+    return "-j" + str(num_jobs)
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument(
@@ -265,6 +276,14 @@ def main():
       const="build",
       dest="mode",
       help="An alias for --mode=build",
+    )
+    ap.add_argument(
+      "-j",
+      "--num-jobs",
+      action="store",
+      type=int,
+      default=0,
+      help="Run the build or tests with the specified number of parallel jobs",
     )
     ap.add_argument(
       "--install",
@@ -300,9 +319,14 @@ def main():
                 target,
                 "--config",
                 "Release",
+                get_jobs_argument(args.num_jobs),
         ] + args.cmake_args
     elif args.mode == "test":
-        full_cmd = CMD_PREFIX + [{dev_run_script}CTEST] + args.cmake_args
+        full_cmd = CMD_PREFIX + [
+            {dev_run_script}CTEST,
+            "--output-on-failure",
+            get_jobs_argument(args.num_jobs),
+        ] + args.cmake_args
     else:
         ap.error("unknown invocation mode: %s" % (args.mode,))
 
