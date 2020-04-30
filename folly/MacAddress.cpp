@@ -72,7 +72,28 @@ string MacAddress::toString() const {
   return result;
 }
 
-void MacAddress::parse(StringPiece str) {
+Expected<Unit, MacAddressFormatError> MacAddress::trySetFromString(
+    StringPiece value) {
+  return setFromString(value, [](auto _, auto) { return makeUnexpected(_); });
+}
+
+void MacAddress::setFromString(StringPiece value) {
+  setFromString(value, [](auto, auto _) { return _(), unit; });
+}
+
+Expected<Unit, MacAddressFormatError> MacAddress::trySetFromBinary(
+    ByteRange value) {
+  return setFromBinary(value, [](auto _, auto) { return makeUnexpected(_); });
+}
+
+void MacAddress::setFromBinary(ByteRange value) {
+  setFromBinary(value, [](auto, auto _) { return _(), unit; });
+}
+
+template <typename OnError>
+Expected<Unit, MacAddressFormatError> MacAddress::setFromString(
+    StringPiece str,
+    OnError err) {
   // Helper function to convert a single hex char into an integer
   auto isSeparatorChar = [](char c) { return c == ':' || c == '-'; };
 
@@ -80,24 +101,30 @@ void MacAddress::parse(StringPiece str) {
   auto p = str.begin();
   for (unsigned int byteIndex = 0; byteIndex < SIZE; ++byteIndex) {
     if (p == str.end()) {
-      throw invalid_argument(
-          sformat("invalid MAC address '{}': not enough digits", str));
+      return err(MacAddressFormatError::Invalid, [&] {
+        throw invalid_argument(
+            sformat("invalid MAC address '{}': not enough digits", str));
+      });
     }
 
     // Skip over ':' or '-' separators between bytes
     if (byteIndex != 0 && isSeparatorChar(*p)) {
       ++p;
       if (p == str.end()) {
-        throw invalid_argument(
-            sformat("invalid MAC address '{}': not enough digits", str));
+        return err(MacAddressFormatError::Invalid, [&] {
+          throw invalid_argument(
+              sformat("invalid MAC address '{}': not enough digits", str));
+        });
       }
     }
 
     // Parse the upper nibble
     uint8_t upper = detail::hexTable[static_cast<uint8_t>(*p)];
     if (upper & 0x10) {
-      throw invalid_argument(
-          sformat("invalid MAC address '{}': contains non-hex digit", str));
+      return err(MacAddressFormatError::Invalid, [&] {
+        throw invalid_argument(
+            sformat("invalid MAC address '{}': contains non-hex digit", str));
+      });
     }
     ++p;
 
@@ -115,8 +142,10 @@ void MacAddress::parse(StringPiece str) {
           lower = upper;
           upper = 0;
         } else {
-          throw invalid_argument(
-              sformat("invalid MAC address '{}': contains non-hex digit", str));
+          return err(MacAddressFormatError::Invalid, [&] {
+            throw invalid_argument(sformat(
+                "invalid MAC address '{}': contains non-hex digit", str));
+          });
         }
       }
       ++p;
@@ -128,21 +157,29 @@ void MacAddress::parse(StringPiece str) {
 
   if (p != str.end()) {
     // String is too long to be a MAC address
-    throw invalid_argument(
-        sformat("invalid MAC address '{}': found trailing characters", str));
+    return err(MacAddressFormatError::Invalid, [&] {
+      throw invalid_argument(
+          sformat("invalid MAC address '{}': found trailing characters", str));
+    });
   }
 
   // Only update now that we have successfully parsed the entire
   // string.  This way we remain unchanged on error.
-  setFromBinary(ByteRange(parsed, SIZE));
+  return setFromBinary(ByteRange(parsed, SIZE), err);
 }
 
-void MacAddress::setFromBinary(ByteRange value) {
+template <typename OnError>
+Expected<Unit, MacAddressFormatError> MacAddress::setFromBinary(
+    ByteRange value,
+    OnError err) {
   if (value.size() != SIZE) {
-    throw invalid_argument(
-        sformat("MAC address must be 6 bytes long, got ", value.size()));
+    return err(MacAddressFormatError::Invalid, [&] {
+      throw invalid_argument(
+          sformat("MAC address must be 6 bytes long, got ", value.size()));
+    });
   }
   memcpy(bytes_ + 2, value.begin(), SIZE);
+  return unit;
 }
 
 std::ostream& operator<<(std::ostream& os, MacAddress address) {
