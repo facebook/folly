@@ -572,13 +572,21 @@ class FixupDeps(ProjectCmdBase):
             install_dirs.append(inst_dir)
 
             if m == manifest:
-                dep_munger = create_dyn_dep_munger(loader.build_opts, install_dirs)
+                dep_munger = create_dyn_dep_munger(
+                    loader.build_opts, install_dirs, args.strip
+                )
                 dep_munger.process_deps(args.destdir, args.final_install_prefix)
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument("destdir", help=("Where to copy the fixed up executables"))
         parser.add_argument(
             "--final-install-prefix", help=("specify the final installation prefix")
+        )
+        parser.add_argument(
+            "--strip",
+            action="store_true",
+            default=False,
+            help="Strip debug info while processing executables",
         )
 
 
@@ -757,8 +765,17 @@ jobs:
             )
 
             out.write("    - name: Copy artifacts\n")
+            if build_opts.is_linux():
+                # Strip debug info from the binaries, but only on linux.
+                # While the `strip` utility is also available on macOS,
+                # attempting to strip there results in an error.
+                # The `strip` utility is not available on Windows.
+                strip = " --strip"
+            else:
+                strip = ""
+
             out.write(
-                f"      run: {getdeps} fixup-dyn-deps "
+                f"      run: {getdeps} fixup-dyn-deps{strip} "
                 f"--src-dir=. {manifest.name} _artifacts/{job_name} {project_prefix} "
                 f"--final-install-prefix /usr/local\n"
             )
