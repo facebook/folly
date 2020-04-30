@@ -337,9 +337,9 @@ size_t PollIoBackend::processSignals() {
   return ret;
 }
 
-PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
+PollIoBackend::IoCb* PollIoBackend::allocIoCb(const EventCallback& cb) {
   // try to allocate from the pool first
-  if (FOLLY_LIKELY(freeHead_ != nullptr)) {
+  if ((cb.type_ == EventCallback::Type::TYPE_NONE) && (freeHead_ != nullptr)) {
     auto* ret = freeHead_;
     freeHead_ = freeHead_->next_;
     numIoCbInUse_++;
@@ -347,7 +347,7 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
   }
 
   // alloc a new IoCb
-  auto* ret = allocNewIoCb();
+  auto* ret = allocNewIoCb(cb);
   if (FOLLY_LIKELY(!!ret)) {
     numIoCbInUse_++;
   }
@@ -357,6 +357,7 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb() {
 
 void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
   numIoCbInUse_--;
+  aioIoCb->cbData_.releaseData();
   // unregister the file descriptor record
   if (aioIoCb->fdRecord_) {
     unregisterFd(aioIoCb->fdRecord_);
@@ -388,7 +389,7 @@ void PollIoBackend::processPollIo(IoCb* ioCb, int64_t res) noexcept {
 
     // add it to the active list
     event_ref_flags(ev) |= EVLIST_ACTIVE;
-    ev->ev_res = getPollEvents(res, ev->ev_events);
+    ev->ev_res = res;
     activeEvents_.push_back(*ioCb);
   } else {
     releaseIoCb(ioCb);
@@ -413,11 +414,15 @@ size_t PollIoBackend::processActiveEvents() {
 
       // prevent the callback from freeing the aioIoCb
       ioCb->useCount_++;
-      // handle spurious poll events that return 0
-      // this can happen during high load on process startup
-      if (ev->ev_res) {
-        (*event_ref_callback(ev))(
-            (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+      if (!ioCb->cbData_.processCb(ev->ev_res)) {
+        // adjust the ev_res for the poll case
+        ev->ev_res = getPollEvents(ev->ev_res, ev->ev_events);
+        // handle spurious poll events that return 0
+        // this can happen during high load on process startup
+        if (ev->ev_res) {
+          (*event_ref_callback(ev))(
+              (int)ev->ev_fd, ev->ev_res, event_ref_arg(ev));
+        }
       }
       // get the event again
       event = ioCb->event_;
@@ -535,7 +540,7 @@ int PollIoBackend::eb_event_add(Event& event, const struct timeval* timeout) {
 
   if ((ev->ev_events & (EV_READ | EV_WRITE)) &&
       !(event_ref_flags(ev) & (EVLIST_INSERTED | EVLIST_ACTIVE))) {
-    auto* iocb = allocIoCb();
+    auto* iocb = allocIoCb(event.getCallback());
     CHECK(iocb);
     iocb->event_ = &event;
 

@@ -117,6 +117,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
         validateSocketOptions(
             options, addy.getFamily(), SocketOptionKey::ApplyPos::POST_BIND),
         SocketOptionKey::ApplyPos::POST_BIND);
+
+    applyEventCallback();
   }
 
   void setReusePort(bool reusePort) {
@@ -208,6 +210,11 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     }
   }
 
+  void setEventCallback(EventRecvmsgCallback* cb) {
+    eventCb_ = cb;
+    applyEventCallback();
+  }
+
  private:
   // AsyncUDPSocket::ReadCallback
   void getReadBuffer(void** buf, size_t* len) noexcept override {
@@ -283,6 +290,16 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     }
   }
 
+  void applyEventCallback() {
+    if (socket_) {
+      if (eventCb_) {
+        socket_->setEventCallback(eventCb_);
+      } else {
+        socket_->resetEventCallback();
+      }
+    }
+  }
+
   EventBase* const evb_;
   const size_t packetSize_;
 
@@ -302,6 +319,8 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
   bool reusePort_{false};
   bool reuseAddr_{false};
+
+  EventRecvmsgCallback* eventCb_{nullptr};
 };
 
 } // namespace folly

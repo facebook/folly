@@ -179,6 +179,18 @@ class EventHandler {
 
   bool isPending() const;
 
+  void setEventCallback(EventReadCallback* cb) {
+    event_.setCallback(cb);
+  }
+
+  void setEventCallback(EventRecvmsgCallback* cb) {
+    event_.setCallback(cb);
+  }
+
+  void resetEventCallback() {
+    event_.resetCallback();
+  }
+
  private:
   bool registerImpl(uint16_t events, bool internal);
   void ensureNotRegistered(const char* fn);

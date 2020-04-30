@@ -220,7 +220,7 @@ int IoUringBackend::submitOne(IoCb* /*unused*/) {
 }
 
 int IoUringBackend::cancelOne(IoCb* ioCb) {
-  auto* rentry = static_cast<IoSqe*>(allocIoCb());
+  auto* rentry = static_cast<IoSqe*>(allocIoCb(EventCallback()));
   if (!rentry) {
     return 0;
   }
@@ -228,7 +228,7 @@ int IoUringBackend::cancelOne(IoCb* ioCb) {
   auto* sqe = ::io_uring_get_sqe(&ioRing_);
   CHECK(sqe);
 
-  rentry->prepPollRemove(sqe, ioCb); // prev entry
+  rentry->prepCancel(sqe, ioCb); // prev entry
 
   int ret = submitBusyCheck(1, WaitForEventsMode::DONT_WAIT);
 
@@ -305,11 +305,37 @@ size_t IoUringBackend::submitList(
     CHECK(sqe); // this should not happen
 
     auto* ev = entry->event_->getEvent();
-    entry->prepPollAdd(
-        sqe,
-        ev->ev_fd,
-        getPollFlags(ev->ev_events),
-        (ev->ev_events & EV_PERSIST) != 0);
+    const auto& cb = entry->event_->getCallback();
+    bool processed = false;
+    switch (cb.type_) {
+      case EventCallback::Type::TYPE_NONE:
+        break;
+      case EventCallback::Type::TYPE_READ:
+        if (auto* iov = cb.readCb_->allocateData()) {
+          processed = true;
+          entry->prepRead(
+              sqe, ev->ev_fd, &iov->data_, (ev->ev_events & EV_PERSIST) != 0);
+          entry->cbData_.set(iov);
+        }
+        break;
+      case EventCallback::Type::TYPE_RECVMSG:
+        if (auto* msg = cb.recvmsgCb_->allocateData()) {
+          processed = true;
+          entry->prepRecvmsg(
+              sqe, ev->ev_fd, &msg->data_, (ev->ev_events & EV_PERSIST) != 0);
+          entry->cbData_.set(msg);
+        }
+        break;
+    }
+
+    if (!processed) {
+      entry->cbData_.reset();
+      entry->prepPollAdd(
+          sqe,
+          ev->ev_fd,
+          getPollFlags(ev->ev_events),
+          (ev->ev_events & EV_PERSIST) != 0);
+    }
     i++;
     if (ioCbs.empty()) {
       int num = submitBusyCheck(i, waitForEvents);

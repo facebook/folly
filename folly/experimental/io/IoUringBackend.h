@@ -104,16 +104,52 @@ class IoUringBackend : public PollIoBackend {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    FOLLY_ALWAYS_INLINE void prepPollRemove(
+    void prepRead(void* entry, int fd, const struct iovec* iov, bool registerFd)
+        override {
+      CHECK(entry);
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      if (registerFd && !fdRecord_) {
+        fdRecord_ = backend_->registerFd(fd);
+      }
+
+      if (fdRecord_) {
+        ::io_uring_prep_read(
+            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, 0 /*offset*/);
+        sqe->flags |= IOSQE_FIXED_FILE;
+      } else {
+        ::io_uring_prep_read(
+            sqe, fd, iov->iov_base, iov->iov_len, 0 /*offset*/);
+      }
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    void prepRecvmsg(void* entry, int fd, struct msghdr* msg, bool registerFd)
+        override {
+      CHECK(entry);
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      if (registerFd && !fdRecord_) {
+        fdRecord_ = backend_->registerFd(fd);
+      }
+
+      if (fdRecord_) {
+        ::io_uring_prep_recvmsg(sqe, fdRecord_->idx_, msg, MSG_TRUNC);
+        sqe->flags |= IOSQE_FIXED_FILE;
+      } else {
+        ::io_uring_prep_recvmsg(sqe, fd, msg, 0);
+      }
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    FOLLY_ALWAYS_INLINE void prepCancel(
         struct io_uring_sqe* sqe,
         void* user_data) {
       CHECK(sqe);
-      ::io_uring_prep_poll_remove(sqe, user_data);
+      ::io_uring_prep_cancel(sqe, user_data, 0);
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
 
-  PollIoBackend::IoCb* allocNewIoCb() override {
+  PollIoBackend::IoCb* allocNewIoCb(const EventCallback& /*cb*/) override {
     auto* ret = new IoSqe(this, false);
     ret->backendCb_ = PollIoBackend::processPollIoCb;
 

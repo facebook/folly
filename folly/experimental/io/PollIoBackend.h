@@ -96,6 +96,83 @@ class PollIoBackend : public EventBaseBackendBase {
 
     virtual void
     prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd) = 0;
+
+    virtual void prepRead(
+        void* /*entry*/,
+        int /*fd*/,
+        const struct iovec* /*iov*/,
+        bool /*registerFd*/) {}
+
+    virtual void prepRecvmsg(
+        void* /*entry*/,
+        int /*fd*/,
+        struct msghdr* /*msg*/,
+        bool /*registerFd*/) {}
+
+    struct EventCallbackData {
+      EventCallback::Type type_{EventCallback::Type::TYPE_NONE};
+      union {
+        EventReadCallback::IoVec* ioVec_;
+        EventRecvmsgCallback::MsgHdr* msgHdr_;
+      };
+
+      void set(EventReadCallback::IoVec* ioVec) {
+        type_ = EventCallback::Type::TYPE_READ;
+        ioVec_ = ioVec;
+      }
+
+      void set(EventRecvmsgCallback::MsgHdr* msgHdr) {
+        type_ = EventCallback::Type::TYPE_RECVMSG;
+        msgHdr_ = msgHdr;
+      }
+
+      void reset() {
+        type_ = EventCallback::Type::TYPE_NONE;
+      }
+
+      bool processCb(int res) {
+        bool ret = false;
+        switch (type_) {
+          case EventCallback::Type::TYPE_READ: {
+            ret = true;
+            auto cbFunc = ioVec_->cbFunc_;
+            cbFunc(ioVec_, res);
+            break;
+          }
+          case EventCallback::Type::TYPE_RECVMSG: {
+            ret = true;
+            auto cbFunc = msgHdr_->cbFunc_;
+            cbFunc(msgHdr_, res);
+            break;
+          }
+          case EventCallback::Type::TYPE_NONE:
+            break;
+        }
+        type_ = EventCallback::Type::TYPE_NONE;
+
+        return ret;
+      }
+
+      void releaseData() {
+        switch (type_) {
+          case EventCallback::Type::TYPE_READ: {
+            auto freeFunc = ioVec_->freeFunc_;
+            freeFunc(ioVec_);
+            break;
+          }
+          case EventCallback::Type::TYPE_RECVMSG: {
+            auto freeFunc = msgHdr_->freeFunc_;
+            freeFunc(msgHdr_);
+            break;
+          }
+          case EventCallback::Type::TYPE_NONE:
+            break;
+        }
+        type_ = EventCallback::Type::TYPE_NONE;
+      }
+    };
+
+    EventCallbackData cbData_;
   };
 
   using IoCbList =
@@ -231,10 +308,10 @@ class PollIoBackend : public EventBaseBackendBase {
 
   void processPollIo(IoCb* ioCb, int64_t res) noexcept;
 
-  IoCb* FOLLY_NULLABLE allocIoCb();
+  IoCb* FOLLY_NULLABLE allocIoCb(const EventCallback& cb);
   void releaseIoCb(IoCb* aioIoCb);
 
-  virtual IoCb* allocNewIoCb() = 0;
+  virtual IoCb* allocNewIoCb(const EventCallback& cb) = 0;
 
   virtual void* allocSubmissionEntry() = 0;
   virtual int getActiveEvents(WaitForEventsMode waitForEvents) = 0;
