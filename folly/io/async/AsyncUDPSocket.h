@@ -348,7 +348,7 @@ class AsyncUDPSocket : public EventHandler {
 
   // generic segmentation offload get/set
   // negative return value means GSO is not available
-  int getGSO();
+  virtual int getGSO();
 
   bool setGSO(int val);
 
