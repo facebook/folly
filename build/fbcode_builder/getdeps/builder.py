@@ -428,6 +428,10 @@ if __name__ == "__main__":
             ccache = path_search(env, "ccache")
             if ccache:
                 defines["CMAKE_CXX_COMPILER_LAUNCHER"] = ccache
+        else:
+            # rocksdb does its own probing for ccache.
+            # Ensure that it is disabled on sandcastle
+            env["CCACHE_DISABLE"] = "1"
 
         if "GITHUB_ACTIONS" in os.environ and self.build_opts.is_windows():
             # GitHub actions: the host has both gcc and msvc installed, and

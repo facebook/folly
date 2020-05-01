@@ -2,8 +2,8 @@
 name = rocksdb
 
 [download]
-url = https://github.com/facebook/rocksdb/archive/v5.18.3.tar.gz
-sha256 = 7fb6738263d3f2b360d7468cf2ebe333f3109f3ba1ff80115abd145d75287254
+url = https://github.com/facebook/rocksdb/archive/v6.8.1.tar.gz
+sha256 = ca192a06ed3bcb9f09060add7e9d0daee1ae7a8705a3d5ecbe41867c5e2796a2
 
 [dependencies]
 lz4
@@ -11,12 +11,13 @@ snappy
 
 [build]
 builder = cmake
-subdir = rocksdb-5.18.3
+subdir = rocksdb-6.8.1
 
 [cmake.defines]
 WITH_SNAPPY=ON
-WITH_LZ4=ON
+WITH_LZ4=OFF
 WITH_TESTS=OFF
+WITH_BENCHMARK_TOOLS=OFF
 # We get relocation errors with the static gflags lib,
 # and there's no clear way to make it pick the shared gflags
 # so just turn it off.
