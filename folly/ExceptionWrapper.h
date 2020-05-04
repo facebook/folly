@@ -302,7 +302,7 @@ class exception_wrapper final {
   struct SharedPtr {
     struct Base {
       std::type_info const* info_;
-      Base() = default;
+      Base() = delete;
       explicit Base(std::type_info const& info) : info_(&info) {}
       virtual ~Base() {}
       virtual void throw_() const = 0;
@@ -313,7 +313,7 @@ class exception_wrapper final {
     struct Impl final : public Base {
       static_assert(IsStdException<Ex>::value, "only deriving std::exception");
       Ex ex_;
-      Impl() = default;
+      Impl() : Base{typeid(Ex)}, ex_() {}
       // clang-format off
       template <typename... As>
       explicit Impl(As&&... as)

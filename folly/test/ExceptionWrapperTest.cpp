@@ -547,6 +547,36 @@ TEST(ExceptionWrapper, base_derived_non_std_exception_test) {
 }
 
 namespace {
+struct ThrownException {};
+struct InSituException : std::exception {
+  InSituException() = default;
+  InSituException(const InSituException&) throw() {}
+};
+struct OnHeapException : std::exception {
+  OnHeapException() = default;
+  OnHeapException(const OnHeapException&) {}
+};
+} // namespace
+
+TEST(ExceptionWrapper, make_wrapper_no_args) {
+  EXPECT_TRUE(
+      folly::StringPiece(folly::make_exception_wrapper<ThrownException>()
+                             .class_name()
+                             .toStdString())
+          .endsWith("ThrownException"));
+  EXPECT_TRUE(
+      folly::StringPiece(folly::make_exception_wrapper<InSituException>()
+                             .class_name()
+                             .toStdString())
+          .endsWith("InSituException"));
+  EXPECT_TRUE(
+      folly::StringPiece(folly::make_exception_wrapper<OnHeapException>()
+                             .class_name()
+                             .toStdString())
+          .endsWith("OnHeapException"));
+}
+
+namespace {
 // Cannot be stored within an exception_wrapper
 struct BigRuntimeError : std::runtime_error {
   using std::runtime_error::runtime_error;
