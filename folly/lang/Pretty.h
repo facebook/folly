@@ -20,15 +20,14 @@
 #include <type_traits>
 
 #include <folly/Portability.h>
+#include <folly/lang/CArray.h>
 
 namespace folly {
 
 namespace detail {
 
 template <std::size_t S>
-struct pretty_carray {
-  char data[S];
-};
+using pretty_carray = c_array<char, S>;
 
 template <std::size_t S>
 static constexpr pretty_carray<S> pretty_carray_from(char const (&in)[S]) {
