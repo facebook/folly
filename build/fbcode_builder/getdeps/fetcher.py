@@ -363,6 +363,15 @@ def copy_if_different(src_name, dest_name):
     return True
 
 
+def list_files_under_dir_newer_than_timestamp(dir_to_scan, ts):
+    for root, _dirs, files in os.walk(dir_to_scan):
+        for src_file in files:
+            full_name = os.path.join(root, src_file)
+            st = os.lstat(full_name)
+            if st.st_mtime > ts:
+                yield full_name
+
+
 class ShipitPathMap(object):
     def __init__(self):
         self.roots = []

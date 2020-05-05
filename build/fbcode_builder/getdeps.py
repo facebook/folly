@@ -21,7 +21,11 @@ import getdeps.cache as cache_module
 from getdeps.buildopts import setup_build_options
 from getdeps.dyndeps import create_dyn_dep_munger
 from getdeps.errors import TransientFailure
-from getdeps.fetcher import SystemPackageFetcher
+from getdeps.fetcher import (
+    SystemPackageFetcher,
+    file_name_is_cmake_file,
+    list_files_under_dir_newer_than_timestamp,
+)
 from getdeps.load import ManifestLoader
 from getdeps.manifest import ManifestParser
 from getdeps.platform import HostType
@@ -467,6 +471,17 @@ class BuildCmd(ProjectCmdBase):
                     cached_project, fetcher, m, built_marker, project_hash
                 )
 
+                if os.path.exists(built_marker):
+                    # We've previously built this. We may need to reconfigure if
+                    # our deps have changed, so let's check them.
+                    dep_reconfigure, dep_build = self.compute_dep_change_status(
+                        m, built_marker, loader
+                    )
+                    if dep_reconfigure:
+                        reconfigure = True
+                    if dep_build:
+                        sources_changed = True
+
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
@@ -490,6 +505,42 @@ class BuildCmd(ProjectCmdBase):
                         cached_project.upload()
 
             install_dirs.append(inst_dir)
+
+    def compute_dep_change_status(self, m, built_marker, loader):
+        reconfigure = False
+        sources_changed = False
+        st = os.lstat(built_marker)
+
+        ctx = loader.ctx_gen.get_context(m.name)
+        dep_list = sorted(m.get_section_as_dict("dependencies", ctx).keys())
+        for dep in dep_list:
+            if reconfigure and sources_changed:
+                break
+
+            dep_manifest = loader.load_manifest(dep)
+            dep_root = loader.get_project_install_dir(dep_manifest)
+            for dep_file in list_files_under_dir_newer_than_timestamp(
+                dep_root, st.st_mtime
+            ):
+                if os.path.basename(dep_file) == ".built-by-getdeps":
+                    continue
+                if file_name_is_cmake_file(dep_file):
+                    if not reconfigure:
+                        reconfigure = True
+                        print(
+                            f"Will reconfigure cmake because {dep_file} is newer than {built_marker}"
+                        )
+                else:
+                    if not sources_changed:
+                        sources_changed = True
+                        print(
+                            f"Will run build because {dep_file} is newer than {built_marker}"
+                        )
+
+                if reconfigure and sources_changed:
+                    break
+
+        return reconfigure, sources_changed
 
     def compute_source_change_status(
         self, cached_project, fetcher, m, built_marker, project_hash
