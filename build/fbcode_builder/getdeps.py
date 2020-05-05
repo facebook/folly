@@ -578,9 +578,9 @@ class FixupDeps(ProjectCmdBase):
                 dep_munger.process_deps(args.destdir, args.final_install_prefix)
 
     def setup_project_cmd_parser(self, parser):
-        parser.add_argument("destdir", help=("Where to copy the fixed up executables"))
+        parser.add_argument("destdir", help="Where to copy the fixed up executables")
         parser.add_argument(
-            "--final-install-prefix", help=("specify the final installation prefix")
+            "--final-install-prefix", help="specify the final installation prefix"
         )
         parser.add_argument(
             "--strip",

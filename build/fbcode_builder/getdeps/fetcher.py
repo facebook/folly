@@ -639,7 +639,7 @@ def download_url_to_file_with_progress(url, file_name):
     end = time.time()
     sys.stdout.write(" [Complete in %f seconds]\n" % (end - start))
     sys.stdout.flush()
-    print("%s" % (headers))
+    print(f"{headers}")
 
 
 class ArchiveFetcher(Fetcher):
