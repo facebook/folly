@@ -18,6 +18,7 @@ boost
 libevent
 double-conversion
 fmt
+lz4
 snappy
 zstd
 # no openssl or zlib in the linux case, why?
