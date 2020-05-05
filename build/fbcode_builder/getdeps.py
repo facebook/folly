@@ -568,6 +568,10 @@ class BuildCmd(ProjectCmdBase):
                     os.unlink(built_marker)
                     reconfigure = True
                     sources_changed = True
+                    # While we don't need to consult the fetcher for the
+                    # status in this case, we may still need to have eg: shipit
+                    # run in order to have a correct source tree.
+                    fetcher.update()
 
             if check_fetcher:
                 change_status = fetcher.update()
