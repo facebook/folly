@@ -178,7 +178,7 @@ class IPAddress {
 
   /**
    * Return a string representation of a CIDR block created with createNetwork.
-   * @param [in] network, pair of address and cidr
+   * @param [in] network pair of address and cidr
    *
    * @return string representing the netblock
    */
@@ -326,7 +326,7 @@ class IPAddress {
    *
    * @note This is slower than the below counterparts. If perf is important use
    *       one of the two argument variations below.
-   * @param [in] ipSlashCidr address in "192.168.1.0/24" format
+   * @param [in] cidrNetwork address in "192.168.1.0/24" format
    * @throws IPAddressFormatException if no /mask
    * @return true if address is part of specified subnet with cidr
    */
