@@ -363,7 +363,11 @@ if __name__ == "__main__":
         self.defines = defines or {}
 
     def _invalidate_cache(self):
-        for name in ["CMakeCache.txt", "CMakeFiles"]:
+        for name in [
+            "CMakeCache.txt",
+            "CMakeFiles/CMakeError.log",
+            "CMakeFiles/CMakeOutput.log",
+        ]:
             name = os.path.join(self.build_dir, name)
             if os.path.isdir(name):
                 shutil.rmtree(name)
