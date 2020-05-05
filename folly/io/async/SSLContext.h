@@ -84,6 +84,11 @@ class SSLAcceptRunner {
  */
 class SSLContext {
  public:
+  struct SessionLifecycleCallbacks {
+    virtual void onNewSession(SSL*, folly::ssl::SSLSessionUniquePtr) = 0;
+    virtual ~SessionLifecycleCallbacks() = default;
+  };
+
   enum SSLVersion {
     SSLv2,
     SSLv3,
@@ -564,6 +569,11 @@ class SSLContext {
    */
   static SSLContext* getFromSSLCtx(const SSL_CTX* ctx);
 
+  void attachSessionLifecycleCallbacks(
+      std::unique_ptr<SessionLifecycleCallbacks> cb);
+
+  void removeSessionLifecycleCallbacks();
+
   [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 
  protected:
@@ -638,6 +648,13 @@ class SSLContext {
 #endif
 
   std::string providedCiphersString_;
+
+  void setupCtx(SSL_CTX* ctx);
+
+  std::unique_ptr<SessionLifecycleCallbacks> sessionLifecycleCallbacks_{
+      nullptr};
+
+  static int newSessionCallback(SSL* ssl, SSL_SESSION* session);
 };
 
 typedef std::shared_ptr<SSLContext> SSLContextPtr;
