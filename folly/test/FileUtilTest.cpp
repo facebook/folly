@@ -93,7 +93,20 @@ ssize_t Reader::operator()(int /* fd */, void* buf, size_t count) {
     return n;
   }
   if (size_t(n) > count) {
+#ifndef _WIN32
     throw std::runtime_error("requested count too small");
+#else
+    // On Windows the code does not use readv(), so it will perform
+    // individual reads for each separate iovec element.  These reads may arrive
+    // in smaller chunks than we were asked to return.
+    //
+    // Return the partial read data, and push the remaining size back onto the
+    // front of spec_ so we will return that on the next call.
+    auto remainder = n - count;
+    spec_.push_front(remainder);
+    offset_ -= remainder;
+    n = count;
+#endif
   }
   memcpy(buf, data_.data(), n);
   data_.advance(n);
@@ -256,7 +269,11 @@ TEST(FileUtilTest2, wrapv) {
   IovecBuffers buf(sizes);
   ASSERT_EQ(sum, buf.size());
   auto iov = buf.iov();
+#ifndef _WIN32
   EXPECT_EQ(sum, wrapvFull(writev, tempFile.fd(), iov.data(), iov.size()));
+#else
+  EXPECT_EQ(sum, wrapvFull(write, tempFile.fd(), iov.data(), iov.size()));
+#endif
 }
 
 TEST_F(FileUtilTest, preadv) {
@@ -271,6 +288,26 @@ TEST_F(FileUtilTest, preadv) {
       EXPECT_EQ(in_.substr(0, p.first), buf.join().substr(0, p.first));
     }
   }
+}
+
+TEST_F(FileUtilTest, writeVStderr) {
+  // Test writing to stderr with writevFull(), and verify that it succeeds.
+  // Previously this would fail on Windows, as folly's writev() implementation
+  // would call lockf(), and this would hang and eventually fail for stderr.
+  std::vector<iovec> iov;
+  size_t totalSize = 0;
+  auto addBuf = [&](StringPiece str) {
+    iov.emplace_back();
+    iov.back().iov_base = const_cast<char*>(str.data());
+    iov.back().iov_len = str.size();
+    totalSize += str.size();
+  };
+
+  addBuf("this");
+  addBuf(" is ");
+  addBuf("a test\n ");
+  auto rc = writevFull(STDERR_FILENO, iov.data(), iov.size());
+  EXPECT_EQ(rc, totalSize);
 }
 
 TEST(String, readFile) {

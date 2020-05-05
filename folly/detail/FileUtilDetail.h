@@ -72,14 +72,24 @@ ssize_t wrapFull(F f, int fd, void* buf, size_t count, Offset... offset) {
   return totalBytes;
 }
 
-// Wrap call to readv/preadv/writev/pwritev(fd, iov, count, offset?) to
-// retry on incomplete reads / writes.
+// Retry reading/writing iovec objects.
+// On POSIX platforms this wraps readv/preadv/writev/pwritev to
+// retry on incomplete reads / writes.  On Windows this wraps
+// read/pread/write/pwrite.  Note that pread and pwrite are not native calls on
+// Windows and are provided by folly/portability/Unistd.cpp
 template <class F, class... Offset>
 ssize_t wrapvFull(F f, int fd, iovec* iov, int count, Offset... offset) {
   ssize_t totalBytes = 0;
   ssize_t r;
   do {
+#ifndef _WIN32
     r = f(fd, iov, std::min<int>(count, kIovMax), offset...);
+#else // _WIN32
+    // On Windows the caller will pass in just the simple
+    // read/write/pread/pwrite function, since the OS does not provide *v()
+    // versions.
+    r = f(fd, iov->iov_base, iov->iov_len, offset...);
+#endif // _WIN32
     if (r == -1) {
       if (errno == EINTR) {
         continue;

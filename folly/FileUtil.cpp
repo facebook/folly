@@ -147,6 +147,7 @@ ssize_t pwriteFull(int fd, const void* buf, size_t count, off_t offset) {
   return wrapFull(pwrite, fd, const_cast<void*>(buf), count, offset);
 }
 
+#ifndef _WIN32
 ssize_t readvFull(int fd, iovec* iov, int count) {
   return wrapvFull(readv, fd, iov, count);
 }
@@ -162,6 +163,30 @@ ssize_t writevFull(int fd, iovec* iov, int count) {
 ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
   return wrapvFull(pwritev, fd, iov, count, offset);
 }
+#else // _WIN32
+
+// On Windows, the *vFull() functions wrap the simple read/pread/write/pwrite
+// functions.  While folly/portability/SysUio.cpp does define readv() and
+// writev() implementations for Windows, these attempt to lock the file to
+// provide atomicity.  The *vFull() functions do not provide any atomicity
+// guarantees, so we can avoid the locking logic.
+
+ssize_t readvFull(int fd, iovec* iov, int count) {
+  return wrapvFull(read, fd, iov, count);
+}
+
+ssize_t preadvFull(int fd, iovec* iov, int count, off_t offset) {
+  return wrapvFull(pread, fd, iov, count, offset);
+}
+
+ssize_t writevFull(int fd, iovec* iov, int count) {
+  return wrapvFull(write, fd, iov, count);
+}
+
+ssize_t pwritevFull(int fd, iovec* iov, int count, off_t offset) {
+  return wrapvFull(pwrite, fd, iov, count, offset);
+}
+#endif // _WIN32
 
 int writeFileAtomicNoThrow(
     StringPiece filename,
