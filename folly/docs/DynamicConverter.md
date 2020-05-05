@@ -12,7 +12,7 @@ format.
 
 Simply pass a dynamic into a templated convertTo:
 
-```
+```cpp
     dynamic d = { { 1, 2, 3 }, { 4, 5 } }; // a vector of vector of int
     auto vvi = convertTo<fbvector<fbvector<int>>>(d);
 ```
