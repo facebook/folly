@@ -19,6 +19,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/Sockets.h>
 
+#include <boost/variant.hpp>
 #include <fcntl.h>
 #include <sys/types.h>
 #include <cerrno>
@@ -43,6 +44,8 @@ using std::shared_ptr;
 
 using folly::SpinLock;
 using folly::io::Cursor;
+using folly::ssl::SSLSessionUniquePtr;
+using folly::ssl::detail::OpenSSLSession;
 
 namespace {
 using folly::AsyncSSLSocket;
@@ -119,6 +122,48 @@ void* initsslBioMethod() {
 } // namespace
 
 namespace folly {
+
+/**
+ * Variant visitors. Will be removed once sslSession_ is converted
+ * to a non-variant type.
+ */
+
+class RawSessionRetrievalVisitor : boost::static_visitor<SSLSessionUniquePtr> {
+ public:
+  SSLSessionUniquePtr operator()(const SSLSessionUniquePtr& sessionPtr) const {
+    if (!sessionPtr) {
+      return SSLSessionUniquePtr();
+    }
+
+    SSL_SESSION* session = sessionPtr.get();
+    if (session) {
+      SSL_SESSION_up_ref(session);
+    }
+    return SSLSessionUniquePtr(session);
+  }
+
+  SSLSessionUniquePtr operator()(
+      const shared_ptr<OpenSSLSession>& session) const {
+    if (!session) {
+      return ssl::SSLSessionUniquePtr();
+    }
+
+    return session->getActiveSession();
+  }
+};
+
+class SSLSessionRetrievalVisitor
+    : boost::static_visitor<shared_ptr<OpenSSLSession>> {
+ public:
+  shared_ptr<OpenSSLSession> operator()(const SSLSessionUniquePtr&) const {
+    return nullptr;
+  }
+
+  shared_ptr<OpenSSLSession> operator()(
+      const shared_ptr<OpenSSLSession>& session) const {
+    return session;
+  }
+};
 
 class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
                                 public AsyncSSLSocket::HandshakeCB {
@@ -314,7 +359,7 @@ void AsyncSSLSocket::init() {
   (void)sslBioMethodInitializer;
 
   setup_SSL_CTX(ctx_->getSSLCtx());
-  sslSessionV2_ = std::make_shared<ssl::detail::OpenSSLSession>();
+  sslSession_ = std::make_shared<OpenSSLSession>();
 }
 
 void AsyncSSLSocket::closeNow() {
@@ -327,11 +372,6 @@ void AsyncSSLSocket::closeNow() {
     if (rc < 0) {
       ERR_clear_error();
     }
-  }
-
-  if (sslSession_ != nullptr) {
-    SSL_SESSION_free(sslSession_);
-    sslSession_ = nullptr;
   }
 
   sslState_ = STATE_CLOSED;
@@ -826,11 +866,10 @@ void AsyncSSLSocket::sslConn(
     return failHandshake(__func__, *ex);
   }
 
-  if (sslSession_ != nullptr) {
+  SSLSessionUniquePtr sessionPtr = getRawSSLSession();
+  if (sessionPtr) {
     sessionResumptionAttempted_ = true;
-    SSL_set_session(ssl_.get(), sslSession_);
-    SSL_SESSION_free(sslSession_);
-    sslSession_ = nullptr;
+    SSL_set_session(ssl_.get(), sessionPtr.get());
   }
 #if FOLLY_OPENSSL_HAS_SNI
   if (!tlsextHostname_.empty()) {
@@ -861,11 +900,11 @@ SSL_SESSION* AsyncSSLSocket::getSSLSession() {
     return SSL_get1_session(ssl_.get());
   }
 
-  return sslSession_;
+  return getRawSSLSession().release();
 }
 
-std::shared_ptr<ssl::SSLSession> AsyncSSLSocket::getSSLSessionV2() {
-  return sslSessionV2_;
+shared_ptr<ssl::SSLSession> AsyncSSLSocket::getSSLSessionV2() {
+  return getAbstractSSLSession();
 }
 
 const SSL* AsyncSSLSocket::getSSL() const {
@@ -873,14 +912,18 @@ const SSL* AsyncSSLSocket::getSSL() const {
 }
 
 void AsyncSSLSocket::setSSLSession(SSL_SESSION* session, bool takeOwnership) {
-  if (sslSession_) {
-    SSL_SESSION_free(sslSession_);
-  }
-  sslSession_ = session;
   if (!takeOwnership && session != nullptr) {
     // Increment the reference count
     // This API exists in BoringSSL and OpenSSL 1.1.0
     SSL_SESSION_up_ref(session);
+  }
+  sslSession_ = SSLSessionUniquePtr(session);
+}
+
+void AsyncSSLSocket::setSSLSessionV2(shared_ptr<ssl::SSLSession> session) {
+  auto openSSLSession = std::dynamic_pointer_cast<OpenSSLSession>(session);
+  if (openSSLSession) {
+    sslSession_ = openSSLSession;
   }
 }
 
@@ -2080,6 +2123,16 @@ void AsyncSSLSocket::getSSLServerCiphers(std::string& serverCiphers) const {
     serverCiphers.append(cipher);
     i++;
   }
+}
+
+SSLSessionUniquePtr AsyncSSLSocket::getRawSSLSession() const {
+  static auto visitor = RawSessionRetrievalVisitor();
+  return boost::apply_visitor(visitor, sslSession_);
+}
+
+shared_ptr<OpenSSLSession> AsyncSSLSocket::getAbstractSSLSession() const {
+  static auto visitor = SSLSessionRetrievalVisitor();
+  return boost::apply_visitor(visitor, sslSession_);
 }
 
 } // namespace folly

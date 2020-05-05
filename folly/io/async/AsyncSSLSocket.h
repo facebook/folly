@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <boost/variant.hpp>
 #include <iomanip>
 
 #include <folly/Optional.h>
@@ -40,6 +41,12 @@
 namespace folly {
 
 class AsyncSSLSocketConnector;
+
+namespace ssl {
+namespace detail {
+class OpenSSLSession;
+} // namespace detail
+} // namespace ssl
 
 /**
  * A class for performing asynchronous I/O on an SSL connection.
@@ -486,6 +493,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void setSSLSession(SSL_SESSION* session, bool takeOwnership = false);
 
   /**
+   * Currently unsupported. Eventually intended to replace setSSLSession()
+   * once TLS 1.3 is enabled by default.
+   * Set the abstracted SSL session to be used during sslConn.
+   */
+  void setSSLSessionV2(std::shared_ptr<ssl::SSLSession> session);
+
+  /**
    * Get the name of the protocol selected by the client during
    * Application Layer Protocol Negotiation (ALPN)
    *
@@ -900,6 +914,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   static void sslInfoCallback(const SSL* ssl, int where, int ret);
 
+  folly::ssl::SSLSessionUniquePtr getRawSSLSession() const;
+  std::shared_ptr<folly::ssl::detail::OpenSSLSession> getAbstractSSLSession()
+      const;
+
   // Whether the current write to the socket should use MSG_MORE.
   bool corkCurrentWrite_{false};
   // SSL related members.
@@ -915,7 +933,13 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
   ssl::SSLUniquePtr ssl_;
-  SSL_SESSION* sslSession_{nullptr};
+  // The SSL session. Which type the variant contains depends on the
+  // session API that is used. Is only intended to temporarily be a variant.
+  // Will be converted to a non-variant once SSL session APIs are merged.
+  boost::variant<
+      folly::ssl::SSLSessionUniquePtr,
+      std::shared_ptr<folly::ssl::detail::OpenSSLSession>>
+      sslSession_;
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
 
@@ -980,9 +1004,6 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   std::unique_ptr<ReadCallback> asyncOperationFinishCallback_;
   // Whether this socket is currently waiting on SSL_accept
   bool waitingOnAccept_{false};
-
-  // Unsupported. Currently used for getSSLSessionV2().
-  std::shared_ptr<ssl::SSLSession> sslSessionV2_{nullptr};
 };
 
 } // namespace folly
