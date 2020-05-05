@@ -10,14 +10,14 @@ dramatic, and occasionally spectacular.
 
 ### Sample
 ***
-
+```cpp
     folly::fbvector<int> numbers({0, 1, 2, 3});
     numbers.reserve(10);
     for (int i = 4; i < 10; i++) {
       numbers.push_back(i * 2);
     }
     assert(numbers[6] == 12);
-
+```
 ### Motivation
 ***
 
@@ -148,7 +148,7 @@ times. A bloody mess, that's what it was."
 Only a tiny minority of objects are genuinely non-relocatable:
 
 * Objects that use internal pointers, e.g.:
-
+```cpp
     class Ew {
       char buffer[1024];
       char * pointerInsideBuffer;
@@ -156,7 +156,7 @@ Only a tiny minority of objects are genuinely non-relocatable:
       Ew() : pointerInsideBuffer(buffer) {}
       ...
     }
-
+```
 * Objects that need to update "observers" that store pointers to them.
 
 The first class of designs can always be redone at small or no
@@ -180,12 +180,12 @@ trait `folly::IsRelocatable` defined in `"folly/Traits.h"`. By default,
 `folly::IsRelocatable::value` conservatively yields false. If
 you know that your type `Widget` is in fact relocatable, go right
 after `Widget`'s definition and write this:
-
+```cpp
     // at global namespace level
     namespace folly {
       struct IsRelocatable<Widget> : boost::true_type {};
     }
-
+```
 If you don't do this, `fbvector<Widget>` will fail to compile
 with a `static_assert`.
 
