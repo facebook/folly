@@ -1044,7 +1044,7 @@ void AsyncSocket::writeChain(
 
   // adjustZeroCopyFlags can set zeroCopyEnabled_ to true
   if (zeroCopyEnabled_ && !isSet(flags, WriteFlags::WRITE_MSG_ZEROCOPY) &&
-      zeroCopyEnableFunc_ && zeroCopyEnableFunc_(buf)) {
+      zeroCopyEnableFunc_ && zeroCopyEnableFunc_(buf) && buf->isManaged()) {
     flags |= WriteFlags::WRITE_MSG_ZEROCOPY;
   }
 
