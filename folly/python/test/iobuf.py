@@ -42,7 +42,9 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(len(chain), len(control[0]))
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
-        self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
+        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
+        #  param but got `Optional[IOBuf]`.
+        self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
 
     def test_cyclic_chain(self) -> None:
@@ -54,7 +56,9 @@ class IOBufTests(unittest.TestCase):
         self.assertEqual(len(chain), len(control[0]))
         self.assertEqual(chain.chain_size(), sum(len(x) for x in control))
         self.assertEqual(chain.chain_count(), len(control))
-        self.assertEqual(memoryview(chain.next), control[1])  # type: ignore
+        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
+        #  param but got `Optional[IOBuf]`.
+        self.assertEqual(memoryview(chain.next), control[1])
         self.assertEqual(b"".join(chain), b"".join(control))
 
     def test_hash(self) -> None:
@@ -69,7 +73,9 @@ class IOBufTests(unittest.TestCase):
     def test_empty(self) -> None:
         x = b""
         xb = IOBuf(x)
-        self.assertEqual(memoryview(xb), x)  # type: ignore
+        # pyre-fixme[6]: Expected `Union[bytearray, bytes, memoryview]` for 1st
+        #  param but got `IOBuf`.
+        self.assertEqual(memoryview(xb), x)
         self.assertEqual(bytes(xb), x)
         self.assertFalse(xb)
         self.assertEqual(len(xb), len(x))
@@ -97,13 +103,15 @@ class IOBufTests(unittest.TestCase):
         self.assertGreaterEqual(y, x)
 
     def test_typed(self) -> None:
-        x = IOBuf(array.array("l", [1, 2, 3, 4, 5]))  # type: ignore
+        # pyre-fixme[6]: Expected `Union[IOBuf, bytearray, bytes, memoryview]` for
+        #  1st param but got `array[int]`.
+        x = IOBuf(array.array("l", [1, 2, 3, 4, 5]))
         self.assertEqual(x.chain_size(), 5 * struct.calcsize("l"))
 
     def test_unshaped(self) -> None:
-        x = IOBuf(memoryview(b"a").cast("B", shape=[]))  # type: ignore
+        x = IOBuf(memoryview(b"a").cast("B", shape=[]))
         self.assertEqual(x.chain_size(), 1)
 
     def test_multidimensional(self) -> None:
-        x = IOBuf(memoryview(b"abcdef").cast("B", shape=[3, 2]))  # type: ignore
+        x = IOBuf(memoryview(b"abcdef").cast("B", shape=[3, 2]))
         self.assertEqual(x.chain_size(), 6)
