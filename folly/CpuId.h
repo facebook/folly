@@ -204,6 +204,8 @@ class CpuId {
 #define FOLLY_DETAIL_CPUID_C(name, bit) FOLLY_DETAIL_CPUID_X(name, f7c_, bit)
   FOLLY_DETAIL_CPUID_C(prefetchwt1, 0)
   FOLLY_DETAIL_CPUID_C(avx512vbmi, 1)
+  FOLLY_DETAIL_CPUID_C(vaes, 9)
+  FOLLY_DETAIL_CPUID_C(vpclmulqdq, 10)
 #undef FOLLY_DETAIL_CPUID_C
 
 #undef FOLLY_DETAIL_CPUID_X
