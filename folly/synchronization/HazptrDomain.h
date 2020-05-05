@@ -113,6 +113,7 @@ class hazptr_domain {
 
   static constexpr int kThreshold = detail::hazptr_domain_rcount_threshold();
   static constexpr int kMultiplier = 2;
+  static constexpr int kListTooLarge = 100000;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
 
@@ -304,6 +305,10 @@ class hazptr_domain {
       RetiredList& rlist,
       bool lock,
       Atom<uint64_t>& sync_time) {
+    int rcount = rlist.count();
+    if (rcount > kListTooLarge) {
+      warning_list_too_large(rlist, lock, rcount);
+    }
     if (!(lock && rlist.check_lock()) &&
         (rlist.check_threshold_try_zero_count(threshold()) ||
          check_sync_time(sync_time))) {
@@ -314,6 +319,17 @@ class hazptr_domain {
       } else {
         do_reclamation(rlist, lock);
       }
+    }
+  }
+
+  /** warning_list_too_large **/
+  FOLLY_NOINLINE void
+  warning_list_too_large(RetiredList& rlist, bool lock, int rcount) {
+    static std::atomic<uint64_t> warning_count{0};
+    if ((warning_count++ % 10000) == 0) {
+      LOG(WARNING) << "Hazptr retired list too large:"
+                   << " rlist=" << &rlist << " lock=" << lock
+                   << " rcount=" << rcount;
     }
   }
 
@@ -632,11 +648,18 @@ class hazptr_domain {
       LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
     }
     if (backlog >= 10) {
+      warning_executor_backlog(backlog);
+    }
+  }
+
+  FOLLY_NOINLINE void warning_executor_backlog(int backlog) {
+    static std::atomic<uint64_t> warning_count{0};
+    if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << backlog
                    << " request backlog for hazptr reclamation executora";
     }
   }
-}; // hazptr_domain
+}; // namespace folly
 
 /**
  *  Free functions related to hazptr domains
