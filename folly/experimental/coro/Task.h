@@ -453,9 +453,10 @@ class FOLLY_NODISCARD TaskWithExecutor {
 /// always resumes on the executor.
 ///
 /// The Task coroutine is RequestContext-aware and will capture the
-/// current RequestContext at the time the coroutine function is called and
-/// will save/restore the current RequestContext whenever the coroutine
-/// suspends and resumes at a co_await expression.
+/// current RequestContext at the time the coroutine function is either
+/// awaited or explicitly started and will save/restore the current
+/// RequestContext whenever the coroutine suspends and resumes at a co_await
+/// expression.
 template <typename T>
 class FOLLY_NODISCARD Task {
  public:
