@@ -27,6 +27,20 @@
 // ---------------------------------------------------------------------
 // SSLContext implementation
 // ---------------------------------------------------------------------
+namespace {
+
+int getExDataIndex() {
+  static auto index =
+      SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  return index;
+}
+
+void setExData(folly::SSLContext* context, SSL_CTX* ctx) {
+  SSL_CTX_set_ex_data(ctx, getExDataIndex(), context);
+}
+
+} // namespace
+
 namespace folly {
 //
 // For OpenSSL portability API
@@ -77,6 +91,8 @@ SSLContext::SSLContext(SSLVersion version) {
   SSL_CTX_set_options(ctx_, SSL_OP_NO_COMPRESSION);
 
   sslAcceptRunner_ = std::make_unique<SSLAcceptRunner>();
+
+  setExData(this, ctx_);
 
 #if FOLLY_OPENSSL_HAS_SNI
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
@@ -143,6 +159,7 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
 }
 
 SSLContext::SSLContext(SSL_CTX* ctx) : ctx_(ctx) {
+  setExData(this, ctx);
   if (SSL_CTX_up_ref(ctx) == 0) {
     throw std::runtime_error("Failed to increment SSL_CTX refcount");
   }
@@ -653,6 +670,10 @@ void SSLContext::enableTLS13() {
 #if FOLLY_OPENSSL_IS_110
   SSL_CTX_set_max_proto_version(ctx_, 0);
 #endif
+}
+
+SSLContext* SSLContext::getFromSSLCtx(const SSL_CTX* ctx) {
+  return static_cast<SSLContext*>(SSL_CTX_get_ex_data(ctx, getExDataIndex()));
 }
 
 std::ostream& operator<<(std::ostream& os, const PasswordCollector& collector) {

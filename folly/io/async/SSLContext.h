@@ -559,6 +559,11 @@ class SSLContext {
    */
   void enableTLS13();
 
+  /**
+   * Get SSLContext from the ex data of a SSL_CTX.
+   */
+  static SSLContext* getFromSSLCtx(const SSL_CTX* ctx);
+
   [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 
  protected:

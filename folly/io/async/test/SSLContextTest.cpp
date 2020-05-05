@@ -179,4 +179,15 @@ TEST_F(SSLContextTest, TestLoadCertificateChain) {
   EXPECT_EQ(1, sk_X509_num(stack));
 }
 
+TEST_F(SSLContextTest, TestGetFromSSLCtx) {
+  // Positive test
+  SSLContext* contextPtr = SSLContext::getFromSSLCtx(ctx.getSSLCtx());
+  EXPECT_EQ(contextPtr, &ctx);
+
+  // Negative test
+  SSL_CTX* randomCtx = SSL_CTX_new(SSLv23_method());
+  EXPECT_EQ(nullptr, SSLContext::getFromSSLCtx(randomCtx));
+  SSL_CTX_free(randomCtx);
+}
+
 } // namespace folly
