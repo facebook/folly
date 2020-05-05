@@ -35,6 +35,16 @@ except ImportError:
     from urllib.request import urlretrieve
 
 
+def file_name_is_cmake_file(file_name):
+    file_name = file_name.lower()
+    base = os.path.basename(file_name)
+    return (
+        base.endswith(".cmake")
+        or base.endswith(".cmake.in")
+        or base == "cmakelists.txt"
+    )
+
+
 class ChangeStatus(object):
     """ Indicates the nature of changes that happened while updating
     the source directory.  There are two broad uses:
@@ -71,12 +81,13 @@ class ChangeStatus(object):
         might need to rebuild, so we ignore it.
         Otherwise we record the file as a source file change. """
 
-        if "cmake" in file_name.lower():
+        file_name = file_name.lower()
+        if file_name_is_cmake_file(file_name):
             self.make_files += 1
-            return
-        if "/fbcode_builder/" in file_name:
-            return
-        self.source_files += 1
+        elif "/fbcode_builder/cmake" in file_name:
+            self.source_files += 1
+        elif "/fbcode_builder/" not in file_name:
+            self.source_files += 1
 
     def sources_changed(self):
         """ Returns true if any source files were changed during
