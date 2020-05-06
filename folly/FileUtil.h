@@ -230,6 +230,20 @@ enum class SyncType {
   WITHOUT_SYNC,
 };
 
+/*
+ * writeFileAtomic() does not currently work on Windows.
+ * Windows does not provide atomic file renames, which makes implementing this
+ * tricky.  Windows does have a MoveFileTransactedA() API which could
+ * potentially be used, but according to the Microsoft documentation this API is
+ * discouraged and may be removed in a future version.
+ *
+ * In order to implement this properly on Windows we would probably need a pair
+ * of functions: one for writing the file, and one for reading the contents,
+ * where the two functions synchronize with each other.  We can probably only
+ * provide atomic update behavior with cooperation from the reader.
+ */
+#ifndef _WIN32
+
 /**
  * Write file contents "atomically".
  *
@@ -280,5 +294,7 @@ int writeFileAtomicNoThrow(
     int count,
     mode_t permissions = 0644,
     SyncType syncType = SyncType::WITHOUT_SYNC);
+
+#endif // !_WIN32
 
 } // namespace folly

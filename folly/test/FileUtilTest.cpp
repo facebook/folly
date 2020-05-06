@@ -385,6 +385,7 @@ TEST_F(ReadFileFd, InvalidFd) {
   PLOG(INFO);
 }
 
+#ifndef _WIN32
 class WriteFileAtomic : public ::testing::Test {
  protected:
   WriteFileAtomic() {}
@@ -547,6 +548,8 @@ TEST_F(WriteFileAtomic, multipleFiles) {
   EXPECT_EQ(0440, getPerms(tmpPath("foo_txt")));
   EXPECT_EQ(0444, getPerms(tmpPath("foo.txt2")));
 }
+#endif // !_WIN32
+
 } // namespace test
 } // namespace folly
 
