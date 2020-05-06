@@ -578,7 +578,7 @@ int PollIoBackend::eb_event_add(Event& event, const struct timeval* timeout) {
     }
   }
 
-  return -1;
+  return 0;
 }
 
 int PollIoBackend::eb_event_del(Event& event) {
