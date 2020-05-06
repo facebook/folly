@@ -841,8 +841,7 @@ if (BUILD_TESTS)
       TEST file_test SOURCES FileTest.cpp
       # Open-source linux build can't handle running this.
       #TEST file_lock_test SOURCES FileLockTest.cpp
-      TEST file_util_test HANGING
-        SOURCES FileUtilTest.cpp
+      TEST file_util_test SOURCES FileUtilTest.cpp
       TEST fingerprint_test SOURCES FingerprintTest.cpp
       TEST fixed_string_test SOURCES FixedStringTest.cpp
       TEST format_other_test SOURCES FormatOtherTest.cpp
