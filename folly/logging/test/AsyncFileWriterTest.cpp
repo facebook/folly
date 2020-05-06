@@ -618,6 +618,7 @@ TEST(AsyncFileWriter, discard) {
   readStats.check();
 }
 
+#ifndef _WIN32
 /**
  * Test that AsyncFileWriter operates correctly after a fork() in both the
  * parent and child processes.
@@ -803,3 +804,4 @@ TEST(AsyncFileWriter, crazyForks) {
   SKIP() << "pthread_atfork() is not supported on this platform";
 #endif // FOLLY_HAVE_PTHREAD_ATFORK
 }
+#endif // !_WIN32
