@@ -233,6 +233,10 @@ class CachedProject(object):
         """ We only cache third party projects """
         return self.cache and self.m.shipit_project is None
 
+    def was_cached(self):
+        cached_marker = os.path.join(self.inst_dir, ".getdeps-cached-build")
+        return os.path.exists(cached_marker)
+
     def download(self):
         if self.is_cacheable() and not os.path.exists(self.inst_dir):
             print("check cache for %s" % self.cache_file_name)
@@ -247,6 +251,11 @@ class CachedProject(object):
                         "Extracting %s -> %s..." % (self.cache_file_name, self.inst_dir)
                     )
                     tf.extractall(self.inst_dir)
+
+                    cached_marker = os.path.join(self.inst_dir, ".getdeps-cached-build")
+                    with open(cached_marker, "w") as f:
+                        f.write("\n")
+
                     return True
             except Exception as exc:
                 print("%s" % str(exc))
@@ -471,7 +480,7 @@ class BuildCmd(ProjectCmdBase):
                     cached_project, fetcher, m, built_marker, project_hash
                 )
 
-                if os.path.exists(built_marker):
+                if os.path.exists(built_marker) and not cached_project.was_cached():
                     # We've previously built this. We may need to reconfigure if
                     # our deps have changed, so let's check them.
                     dep_reconfigure, dep_build = self.compute_dep_change_status(
