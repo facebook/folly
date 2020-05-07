@@ -255,8 +255,13 @@ TEST_F(BlockingWaitTest, WaitTaskInFiber) {
   auto& fm = folly::fibers::getFiberManager(evb);
 
   auto future = fm.addTaskFuture([&] {
-    return folly::coro::blockingWait(folly::coro::co_invoke(
-        [&]() -> folly::coro::Task<int> { co_return co_await promise; }));
+    return folly::coro::blockingWait(
+        folly::coro::co_invoke([&]() -> folly::coro::Task<int> {
+          EXPECT_FALSE(folly::fibers::onFiber());
+          auto ret = co_await promise;
+          EXPECT_FALSE(folly::fibers::onFiber());
+          co_return ret;
+        }));
   });
 
   evb.loopOnce();

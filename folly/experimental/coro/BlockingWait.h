@@ -222,10 +222,11 @@ class BlockingWaitTask {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;
     auto& promise = coro_.promise();
     promise.setTry(&result);
-    {
-      RequestContextScopeGuard guard{RequestContext::saveContext()};
-      coro_.resume();
-    }
+    executor->add(
+        [coro = coro_, rctx = RequestContext::saveContext()]() mutable {
+          RequestContextScopeGuard guard{std::move(rctx)};
+          coro.resume();
+        });
     while (!promise.done()) {
       executor->drive();
     }
