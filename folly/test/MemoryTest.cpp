@@ -91,6 +91,16 @@ TEST(to_weak_ptr, example) {
   EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
 }
 
+TEST(copy_to_unique_ptr, example) {
+  std::unique_ptr<int> s = copy_to_unique_ptr(17);
+  EXPECT_EQ(17, *s);
+}
+
+TEST(copy_to_shared_ptr, example) {
+  std::shared_ptr<int> s = copy_to_shared_ptr(17);
+  EXPECT_EQ(17, *s);
+}
+
 TEST(SysAllocator, equality) {
   using Alloc = SysAllocator<float>;
   Alloc const a, b;
