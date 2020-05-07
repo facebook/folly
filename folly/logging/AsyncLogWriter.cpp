@@ -78,7 +78,7 @@ void AsyncLogWriter::cleanup() {
 
   // If there are still any pending messages, flush them now.
   if (!ioQueue->empty()) {
-    performIO(ioQueue, numDiscarded);
+    performIO(*ioQueue, numDiscarded);
   }
 }
 
@@ -169,7 +169,7 @@ void AsyncLogWriter::ioThread() {
     ioCV_.notify_all();
 
     // Write the log messages now that we have released the lock
-    performIO(ioQueue, numDiscarded);
+    performIO(*ioQueue, numDiscarded);
 
     // clear() empties the vector, but the allocated capacity remains so we can
     // just reuse it without having to re-allocate in most cases.

@@ -36,7 +36,7 @@ bool AsyncFileWriter::ttyOutput() const {
 }
 
 void AsyncFileWriter::writeToFile(
-    std::vector<std::string>* ioQueue,
+    const std::vector<std::string>& ioQueue,
     size_t numDiscarded) {
   // kNumIovecs controls the maximum number of strings we write at once in a
   // single writev() call.
@@ -44,10 +44,10 @@ void AsyncFileWriter::writeToFile(
   std::array<iovec, kNumIovecs> iovecs;
 
   size_t idx = 0;
-  while (idx < ioQueue->size()) {
+  while (idx < ioQueue.size()) {
     int numIovecs = 0;
-    while (numIovecs < kNumIovecs && idx < ioQueue->size()) {
-      const auto& str = (*ioQueue)[idx];
+    while (numIovecs < kNumIovecs && idx < ioQueue.size()) {
+      const auto& str = ioQueue[idx];
       iovecs[numIovecs].iov_base = const_cast<char*>(str.data());
       iovecs[numIovecs].iov_len = str.size();
       ++numIovecs;
@@ -70,7 +70,7 @@ void AsyncFileWriter::writeToFile(
 }
 
 void AsyncFileWriter::performIO(
-    std::vector<std::string>* ioQueue,
+    const std::vector<std::string>& ioQueue,
     size_t numDiscarded) {
   try {
     writeToFile(ioQueue, numDiscarded);

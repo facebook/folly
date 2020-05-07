@@ -38,7 +38,7 @@ void handleLoggingError(
 }
 
 class NoCleanUpLogWriter : public AsyncLogWriter {
-  void performIO(std::vector<std::string>*, size_t) override {}
+  void performIO(const std::vector<std::string>&, size_t) override {}
 
   bool ttyOutput() const override {
     return false;
