@@ -40,7 +40,6 @@ function(apply_folly_compile_options_to_target THETARGET)
     PRIVATE
       _REENTRANT
       _GNU_SOURCE
-      "FOLLY_XLOG_STRIP_PREFIXES=\"${FOLLY_DIR_PREFIXES}\""
   )
   target_compile_options(${THETARGET}
     PRIVATE

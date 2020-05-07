@@ -117,6 +117,19 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/folly/folly-config.h
 )
 
+# Define FOLLY_XLOG_STRIP_PREFIXES when compiling our sources so that
+# folly/logging will automatically choose the correct log category names,
+# using only the relative portion of the source file name inside the
+# folly repository.
+set_property(
+  DIRECTORY
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  APPEND
+  PROPERTY
+  COMPILE_DEFINITIONS
+  "FOLLY_XLOG_STRIP_PREFIXES=\"${CMAKE_SOURCE_DIR}:${CMAKE_BINARY_DIR}\""
+)
+
 # We currently build the main libfolly library by finding all sources
 # and header files.  We then exclude specific files below.
 #
