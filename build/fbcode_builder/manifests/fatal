@@ -1,0 +1,15 @@
+[manifest]
+name = fatal
+fbsource_path = fbcode/fatal
+shipit_project = fatal
+
+[git]
+repo_url = https://github.com/facebook/fatal.git
+
+[shipit.pathmap]
+fbcode/fatal = .
+fbcode/fatal/public_tld = .
+
+[build]
+builder = nop
+subdir = .
