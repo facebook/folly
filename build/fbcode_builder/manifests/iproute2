@@ -1,13 +1,13 @@
 [manifest]
 name = iproute2
 
-[git]
-repo_url = https://git.kernel.org/pub/scm/linux/kernel/git/shemminger/iproute2.git
-rev = 92a0236a3cdf3438000834121b7ea8a09f1f52b1
-depth = 1500
+[download]
+url = https://mirrors.edge.kernel.org/pub/linux/utils/net/iproute2/iproute2-4.12.0.tar.gz
+sha256 = 46612a1e2d01bb31932557bccdb1b8618cae9a439dfffc08ef35ed8e197f14ce
 
 [build.os=linux]
 builder = iproute2
+subdir = iproute2-4.12.0
 
 [build.not(os=linux)]
 builder = nop
