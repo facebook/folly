@@ -7,10 +7,10 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebookexperimental/eden.git
 
-[build.os=linux]
+[build.not(os=windows)]
 builder = cargo
 
-[build.not(os=linux)]
+[build.os=windows]
 # building Mononoke on windows is not supported
 builder = nop
 
