@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 # Copyright (c) Facebook, Inc. and its affiliates.
 #
 # This source code is licensed under the MIT license found in the
@@ -436,6 +437,12 @@ if __name__ == "__main__":
             # rocksdb does its own probing for ccache.
             # Ensure that it is disabled on sandcastle
             env["CCACHE_DISABLE"] = "1"
+            # Some sandcastle hosts have broken ccache related dirs, and
+            # even though we've asked for it to be disabled ccache is
+            # still invoked by rocksdb's cmake.
+            # Redirect its config directory to somewhere that is guaranteed
+            # fresh to us, and that won't have any ccache data inside.
+            env["CCACHE_DIR"] = f"{self.build_opts.scratch_dir}/ccache"
 
         if "GITHUB_ACTIONS" in os.environ and self.build_opts.is_windows():
             # GitHub actions: the host has both gcc and msvc installed, and
