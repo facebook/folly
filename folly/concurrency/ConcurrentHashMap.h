@@ -35,8 +35,13 @@ namespace folly {
  *      atomic maps (AtomicUnorderedMap, AtomicHashMap), BUT only
  *      if you can perfectly size the atomic maps, and you don't
  *      need erase().  If you don't know the size in advance or
- *      your workload frequently calls erase(), this is the
- *      better choice.
+ *      your workload needs erase(), this is the better choice.
+ *
+ * [Note on performance under frequent removal: Sustained frequent
+ * removal from this map may lead to high contention (on the hazptr
+ * domain list of tagged objects which include structures used in this
+ * map). Planned redesign of the reclamation algorithm for such
+ * objects will eliminate this potential bottleneck.]
  *
  * The interface is as close to std::unordered_map as possible, but there
  * are a handful of changes:
@@ -99,7 +104,7 @@ namespace folly {
  * old value until the new value is completely constructed and
  * inserted.
  *
- * Q: Why does map.erase() not actually destroy elements?
+ * Q: Why do map.erase() and clear() not actually destroy elements?
  *
  * A: Hazard Pointers are used to improve the performance of
  * concurrent access.  They can be thought of as a simple Garbage
