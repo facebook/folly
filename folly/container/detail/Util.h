@@ -84,6 +84,31 @@ struct TemporaryEmplaceKey {
 // about heterogeneous lookup you can just pass a single-arg template
 // that extends std::false_type.
 
+template <typename Func, typename KeyType, typename Arg1, typename Arg2>
+auto callWithKeyAndPairArgs(
+    Func&& f,
+    KeyType const& key,
+    std::tuple<Arg1>&& first_args,
+    std::tuple<Arg2>&& second_args) {
+  return f(
+      key,
+      std::forward<Arg1>(std::get<0>(first_args)),
+      std::forward<Arg2>(std::get<0>(second_args)));
+}
+
+template <typename Func, typename KeyType, typename... Args1, typename... Args2>
+auto callWithKeyAndPairArgs(
+    Func&& f,
+    KeyType const& key,
+    std::tuple<Args1...>&& first_args,
+    std::tuple<Args2...>&& second_args) {
+  return f(
+      key,
+      std::piecewise_construct,
+      std::move(first_args),
+      std::move(second_args));
+}
+
 template <
     typename KeyType,
     template <typename> class UsableAsKey,
@@ -103,9 +128,9 @@ auto callWithExtractedKey(
     std::tuple<Args2...>&& second_args) {
   // we found a usable key in the args :)
   auto const& key = std::get<0>(first_args);
-  return f(
+  return callWithKeyAndPairArgs(
+      std::forward<Func>(f),
       key,
-      std::piecewise_construct,
       std::tuple<Arg1&&>(std::move(first_args)),
       std::tuple<Args2&&...>(std::move(second_args)));
 }
@@ -126,9 +151,9 @@ auto callWithExtractedKey(
   // we will need to materialize a temporary key :(
   TemporaryEmplaceKey<KeyType, Alloc> key(
       a, std::tuple<Args1&&...>(std::move(first_args)));
-  return f(
+  return callWithKeyAndPairArgs(
+      std::forward<Func>(f),
       const_cast<KeyType const&>(key.value()),
-      std::piecewise_construct,
       std::forward_as_tuple(std::move(key.value())),
       std::tuple<Args2&&...>(std::move(second_args)));
 }
@@ -187,12 +212,15 @@ template <
     typename U1,
     typename U2>
 auto callWithExtractedKey(Alloc& a, Func&& f, std::pair<U1, U2>&& p) {
+  // std::move(p.first) is wrong because if U1 is an lvalue reference the
+  // result will incorrectly be an rvalue ref.  static_cast here allows
+  // proper ref collapsing
   return callWithExtractedKey<KeyType, UsableAsKey>(
       a,
       std::forward<Func>(f),
       std::piecewise_construct,
-      std::forward_as_tuple(std::move(p.first)),
-      std::forward_as_tuple(std::move(p.second)));
+      std::forward_as_tuple(static_cast<U1&&>(p.first)),
+      std::forward_as_tuple(static_cast<U2&&>(p.second)));
 }
 
 // callWithConstructedKey is the set container analogue of

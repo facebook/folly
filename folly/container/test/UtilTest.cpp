@@ -16,6 +16,8 @@
 
 #include <folly/container/detail/Util.h>
 
+#include <glog/logging.h>
+
 #include <folly/Optional.h>
 #include <folly/Range.h>
 #include <folly/container/test/TrackingTypes.h>
@@ -116,8 +118,8 @@ void runKeyExtractCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{1, 0, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<0> const, Tracked<1>> p{0, 0};
@@ -130,8 +132,8 @@ void runKeyExtractCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{0, 1, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -144,8 +146,8 @@ void runKeyExtractCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{1, 0, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -158,8 +160,8 @@ void runKeyExtractCases(
         Tracked<0>::counts().dist(Counts{0, 1, 0, 0}) +
             Tracked<1>::counts().dist(Counts{0, 1, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
@@ -170,7 +172,7 @@ void runKeyExtractCases(
     //   key_type ops: Tracked<0>::counts
     //   mapped_type ops: Tracked<1>::counts
     //   key_src ops: Tracked<2>::counts
-    //   mapped_src ops: Tracked<3>::counts;
+    //   mapped_src ops: Tracked<3>::counts();
 
     // There are three strategies that could be optimal for particular
     // ratios of cost:
@@ -205,7 +207,7 @@ void runKeyExtractCases(
     //   key_type ops: Tracked<0>::counts
     //   mapped_type ops: Tracked<1>::counts
     //   key_src ops: Tracked<2>::counts
-    //   mapped_src ops: Tracked<3>::counts;
+    //   mapped_src ops: Tracked<3>::counts();
     EXPECT_EQ(
         Tracked<0>::counts().dist(Counts{0, 1, 0, 1}) +
             Tracked<1>::counts().dist(Counts{0, 0, 0, 1}) +
@@ -271,7 +273,7 @@ void runKeyExtractCases(
     //   key_type ops: Tracked<0>::counts
     //   mapped_type ops: Tracked<1>::counts
     //   key_src ops: Tracked<2>::counts
-    //   mapped_src ops: Tracked<3>::counts;
+    //   mapped_src ops: Tracked<3>::counts();
     EXPECT_EQ(
         Tracked<0>::counts().dist(Counts{0, 0, 1, 0}) +
             Tracked<1>::counts().dist(Counts{0, 0, 0, 0}) +
@@ -289,7 +291,7 @@ void runKeyExtractCases(
     //   key_type ops: Tracked<0>::counts
     //   mapped_type ops: Tracked<1>::counts
     //   key_src ops: Tracked<2>::counts
-    //   mapped_src ops: Tracked<3>::counts;
+    //   mapped_src ops: Tracked<3>::counts();
     EXPECT_EQ(
         Tracked<0>::counts().dist(Counts{0, 0, 0, 1}) +
             Tracked<1>::counts().dist(Counts{0, 0, 0, 0}) +
@@ -479,66 +481,87 @@ TEST(Util, callWithConstructedKey) {
 template <typename T>
 using IsStringPiece = std::is_same<T, StringPiece>;
 
+template <typename KeyType, typename Arg1, typename Arg2>
+struct ExpectArgTypes {
+  int which{0};
+  KeyType const* expectedAddr{nullptr};
+
+  template <typename K, typename... Args>
+  void operator()(K const&, Args&&... args) {
+    // avoid static_assert to ensure we don't affect SFINAE
+    EXPECT_TRUE((std::is_same<K, KeyType>::value)) << which;
+    using T = std::tuple<Args&&...>;
+    EXPECT_EQ(std::tuple_size<T>::value, 2) << which;
+    EXPECT_TRUE((std::is_same<std::tuple_element_t<0, T>, Arg1>::value))
+        << which;
+    EXPECT_TRUE((std::is_same<std::tuple_element_t<1, T>, Arg2>::value))
+        << which;
+
+    auto t = std::forward_as_tuple(std::forward<Args>(args)...);
+    EXPECT_TRUE(expectedAddr == nullptr || expectedAddr == &std::get<0>(t))
+        << which;
+  }
+};
+
 TEST(Util, callWithExtractedHeterogeneousKey) {
   std::allocator<char> a;
   std::string str{"key"};
   StringPiece sp{"key"};
   char const* ptr{"key"};
+  auto strPair = std::make_pair(str, 0);
+  std::pair<std::string&, int> strLRefPair(str, 0);
+  std::pair<std::string&&, int> strRRefPair(std::move(str), 0);
+  auto spPair = std::make_pair(sp, 0);
+  auto ptrPair = std::make_pair(ptr, 0);
+
+  // none of the std::move below actually get consumed
+
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a, ExpectArgTypes<std::string, std::string&, int&&>{0, &str}, str, 0);
   detail::callWithExtractedKey<std::string, IsStringPiece>(
       a,
-      [](auto const& key, auto&&... args) {
-        // avoid static_assert to ensure we don't affect SFINAE
-        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
-        using T = std::tuple<decltype(args)&&...>;
-        EXPECT_EQ(std::tuple_size<T>::value, 3);
-        EXPECT_TRUE((std::is_same<
-                     std::tuple_element_t<1, T>,
-                     std::tuple<std::string&>&&>::value));
-        EXPECT_TRUE(
-            (std::is_same<std::tuple_element_t<2, T>, std::tuple<int&&>&&>::
-                 value));
-      },
-      str,
-      0);
+      ExpectArgTypes<std::string, std::string const&, int const&>{
+          1, &strPair.first},
+      strPair);
   detail::callWithExtractedKey<std::string, IsStringPiece>(
       a,
-      [](auto const& key, auto&&... args) {
-        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
-        using T = std::tuple<decltype(args)&&...>;
-        EXPECT_EQ(std::tuple_size<T>::value, 3);
-        EXPECT_TRUE((std::is_same<
-                     std::tuple_element_t<1, T>,
-                     std::tuple<std::string&&>&&>::value));
-      },
+      ExpectArgTypes<std::string, std::string&, int&&>{2, &str},
+      std::move(strLRefPair));
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      ExpectArgTypes<std::string, std::string&, int const&>{10, &str},
+      strLRefPair);
+
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      ExpectArgTypes<std::string, std::string&&, int&&>{3, &str},
       std::move(str),
       0);
   detail::callWithExtractedKey<std::string, IsStringPiece>(
       a,
-      [](auto const& key, auto&&... args) {
-        EXPECT_TRUE((std::is_same<decltype(key), StringPiece const&>::value));
-        using T = std::tuple<decltype(args)&&...>;
-        EXPECT_EQ(std::tuple_size<T>::value, 3);
-        EXPECT_TRUE((std::is_same<
-                     std::tuple_element_t<1, T>,
-                     std::tuple<StringPiece&>&&>::value));
-      },
-      sp,
-      0);
+      ExpectArgTypes<std::string, std::string&&, int&&>{4, &strPair.first},
+      std::move(strPair));
   detail::callWithExtractedKey<std::string, IsStringPiece>(
       a,
-      [](auto const& key, auto&&... args) {
-        // avoid static_assert to ensure we don't affect SFINAE
-        EXPECT_TRUE((std::is_same<decltype(key), std::string const&>::value));
-        using T = std::tuple<decltype(args)&&...>;
-        EXPECT_EQ(std::tuple_size<T>::value, 3);
-        EXPECT_TRUE((std::is_same<
-                     std::tuple_element_t<1, T>,
-                     std::tuple<std::string&&>&&>::value));
-        auto t = std::forward_as_tuple(std::forward<decltype(args)>(args)...);
-        EXPECT_EQ(&key, &std::get<0>(std::get<1>(t)));
-      },
-      ptr,
-      0);
+      ExpectArgTypes<std::string, std::string&, int const&>{5, &str},
+      strRRefPair);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      ExpectArgTypes<std::string, std::string&&, int&&>{11, &str},
+      std::move(strRRefPair));
+
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a, ExpectArgTypes<StringPiece, StringPiece&, int&&>{6, &sp}, sp, 0);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a,
+      ExpectArgTypes<StringPiece, StringPiece const&, int const&>{
+          7, &spPair.first},
+      spPair);
+
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a, ExpectArgTypes<std::string, std::string&&, int&&>{8}, ptr, 0);
+  detail::callWithExtractedKey<std::string, IsStringPiece>(
+      a, ExpectArgTypes<std::string, std::string&&, int const&>{9}, ptrPair);
 }
 
 TEST(Util, callWithConstructedHeterogeneousKey) {
