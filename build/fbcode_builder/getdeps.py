@@ -468,7 +468,12 @@ class BuildCmd(ProjectCmdBase):
             build_dir = loader.get_project_build_dir(m)
             inst_dir = loader.get_project_install_dir(m)
 
-            if m == manifest or not args.no_deps:
+            if (
+                m == manifest
+                and not args.only_deps
+                or m != manifest
+                and not args.no_deps
+            ):
                 print("Assessing %s..." % m.name)
                 project_hash = loader.get_project_hash(m)
                 ctx = loader.ctx_gen.get_context(m.name)
@@ -608,6 +613,16 @@ class BuildCmd(ProjectCmdBase):
                 "This is most useful after you've built all of the deps, "
                 "and helps to avoid waiting for relatively "
                 "slow up-to-date-ness checks"
+            ),
+        )
+        parser.add_argument(
+            "--only-deps",
+            action="store_true",
+            default=False,
+            help=(
+                "Only build the named project's deps. "
+                "This is most useful when you want to separate out building "
+                "of all of the deps and your project"
             ),
         )
         parser.add_argument(
