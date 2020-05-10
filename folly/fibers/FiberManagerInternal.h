@@ -422,6 +422,10 @@ class FiberManager : public ::folly::Executor {
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
+  const Options& getOptions() const {
+    return options_;
+  }
+
  private:
   friend class Baton;
   friend class Fiber;
