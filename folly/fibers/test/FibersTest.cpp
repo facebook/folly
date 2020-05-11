@@ -2618,6 +2618,20 @@ async::Async<folly::Optional<std::string>> getOptionalAsyncString() {
 async::Async<std::tuple<int, float, std::string>> getTuple() {
   return {0, 0.0, "0"};
 }
+
+struct NonCopyableNonMoveable {
+  NonCopyableNonMoveable(const NonCopyableNonMoveable&) = delete;
+  NonCopyableNonMoveable(NonCopyableNonMoveable&&) = delete;
+  NonCopyableNonMoveable& operator=(NonCopyableNonMoveable const&) = delete;
+  NonCopyableNonMoveable& operator=(NonCopyableNonMoveable&&) = delete;
+};
+
+async::Async<NonCopyableNonMoveable const&> getReference() {
+  thread_local NonCopyableNonMoveable const value{};
+
+  return value;
+}
+
 } // namespace
 
 TEST(FiberManager, asyncAwait) {
@@ -2630,6 +2644,10 @@ TEST(FiberManager, asyncAwait) {
           EXPECT_EQ(getString(), async::init_await(getAsyncString()));
           EXPECT_EQ(getString(), *async::init_await(getOptionalAsyncString()));
           async::init_await(getTuple());
+          decltype(auto) ref = async::init_await(getReference());
+          static_assert(
+              std::is_same<decltype(ref), NonCopyableNonMoveable const&>::value,
+              "");
         })
           .getVia(&evb));
 }

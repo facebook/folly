@@ -103,7 +103,7 @@ class [[nodiscard]] Async<void> {
 template <typename T>
 T&& await(Async<T>&& async) {
   DCHECK(detail::onFiber());
-  return std::move(async.val_);
+  return static_cast<T&&>(async.val_);
 }
 
 inline void await(Async<void>&&) {
