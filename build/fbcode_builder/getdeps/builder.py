@@ -94,7 +94,7 @@ class BuilderBase(object):
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
-    def run_tests(self, install_dirs, schedule_type, owner):
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -524,7 +524,7 @@ if __name__ == "__main__":
             env=env,
         )
 
-    def run_tests(self, install_dirs, schedule_type, owner):
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -665,6 +665,9 @@ if __name__ == "__main__":
             else:
                 runs.append(["--collection", "oss-diff", "--purpose", "diff"])
 
+            if test_filter:
+                testpilot_args += [test_filter]
+
             for run in runs:
                 self._run_cmd(
                     testpilot_args + run,
@@ -673,11 +676,10 @@ if __name__ == "__main__":
                     use_cmd_prefix=use_cmd_prefix,
                 )
         else:
-            self._run_cmd(
-                [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)],
-                env=env,
-                use_cmd_prefix=use_cmd_prefix,
-            )
+            args = [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)]
+            if test_filter:
+                args += ["-R", test_filter]
+            self._run_cmd(args, env=env, use_cmd_prefix=use_cmd_prefix)
 
 
 class NinjaBootstrap(BuilderBase):
@@ -1005,8 +1007,13 @@ git-fetch-with-cli = true
         self.run_cargo(install_dirs, "build")
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
-    def run_tests(self, install_dirs, schedule_type, owner):
-        self.run_cargo(install_dirs, "test")
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
+        if test_filter:
+            args = ["--", test_filter]
+        else:
+            args = None
+
+        self.run_cargo(install_dirs, "test", args)
         if self.build_doc:
             self.run_cargo(install_dirs, "doc", ["--no-deps"])
 

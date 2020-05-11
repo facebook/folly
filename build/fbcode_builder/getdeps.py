@@ -700,6 +700,7 @@ class TestCmd(ProjectCmdBase):
                     install_dirs,
                     schedule_type=args.schedule_type,
                     owner=args.test_owner,
+                    test_filter=args.filter,
                 )
 
             install_dirs.append(inst_dir)
@@ -709,6 +710,7 @@ class TestCmd(ProjectCmdBase):
             "--schedule-type", help="Indicates how the build was activated"
         )
         parser.add_argument("--test-owner", help="Owner for testpilot")
+        parser.add_argument("--filter", help="Only run the tests matching the regex")
 
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
