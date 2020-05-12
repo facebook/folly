@@ -412,6 +412,8 @@ int sendmmsg(
       }
 
       return static_cast<int>(ret);
+    } else {
+      msgvec[i].msg_len = ret;
     }
   }
 
