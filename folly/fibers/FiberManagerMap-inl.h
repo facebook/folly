@@ -226,5 +226,12 @@ FiberManager& getFiberManager(
       opts.token, evb, opts.options);
 }
 
+FiberManager& getFiberManager(
+    VirtualEventBase& evb,
+    const FiberManager::FrozenOptions& opts) {
+  return detail::ThreadLocalCache<VirtualEventBase>::get<void>(
+      opts.token, evb, opts.options);
+}
+
 } // namespace fibers
 } // namespace folly

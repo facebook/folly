@@ -1675,6 +1675,31 @@ TEST(FiberManager, nestedFiberManagersSameEvb) {
       .waitVia(&evb);
 }
 
+TEST(FiberManager, virtualEvbFiberManager) {
+  folly::EventBase evb;
+  auto& vevb = evb.getVirtualEventBase();
+  // Eventbase vs VirtualEventBase used for multiplexing
+  auto& fm1 = getFiberManager(evb);
+  auto& fm2 = getFiberManager(vevb);
+  EXPECT_NE(&fm1, &fm2);
+
+  FiberManager::Options opt;
+  opt.stackSize = 1024;
+
+  // Option is not used in multiplexing
+  auto& fm3 = getFiberManager(evb, opt);
+  auto& fm4 = getFiberManager(vevb, opt);
+  EXPECT_EQ(&fm1, &fm3);
+  EXPECT_EQ(&fm2, &fm4);
+
+  // Frozen option used in multiplexing
+  FiberManager::FrozenOptions fopt(opt);
+  auto& fm5 = getFiberManager(evb, fopt);
+  auto& fm6 = getFiberManager(vevb, fopt);
+  EXPECT_NE(&fm1, &fm5);
+  EXPECT_NE(&fm2, &fm6);
+}
+
 TEST(FiberManager, semaphore) {
   static constexpr size_t kTasks = 10;
   static constexpr size_t kIterations = 10000;

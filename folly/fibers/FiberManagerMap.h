@@ -39,6 +39,10 @@ static inline FiberManager& getFiberManager(
 static inline FiberManager& getFiberManager(
     folly::EventBase& evb,
     const FiberManager::FrozenOptions& opts);
+
+static inline FiberManager& getFiberManager(
+    folly::VirtualEventBase& evb,
+    const FiberManager::FrozenOptions& opts);
 } // namespace fibers
 } // namespace folly
 #include <folly/fibers/FiberManagerMap-inl.h>
