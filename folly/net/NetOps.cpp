@@ -336,6 +336,8 @@ int recvmmsg(
         return static_cast<int>(i);
       }
       return static_cast<int>(ret);
+    } else {
+      msgvec[i].msg_len = ret;
     }
   }
   return static_cast<int>(vlen);
