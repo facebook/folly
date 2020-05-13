@@ -55,6 +55,9 @@ class RequestToken {
 
   uint32_t token_;
 };
+static_assert(
+    std::is_trivially_destructible<RequestToken>::value,
+    "must be trivially destructible");
 
 } // namespace folly
 
