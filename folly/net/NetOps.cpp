@@ -32,6 +32,24 @@
 #include <folly/ScopeGuard.h>
 #endif
 
+#if !FOLLY_HAVE_RECVMMSG
+#if FOLLY_HAVE_WEAK_SYMBOLS
+extern "C" FOLLY_ATTR_WEAK int recvmmsg(
+    int sockfd,
+    struct mmsghdr* msgvec,
+    unsigned int vlen,
+    unsigned int flags,
+    struct timespec* timeout);
+#else
+static int (*recvmmsg)(
+    int sockfd,
+    struct mmsghdr* msgvec,
+    unsigned int vlen,
+    unsigned int flags,
+    struct timespec* timeout) = nullptr;
+#endif // FOLLY_HAVE_WEAK_SYMBOLS
+#endif // FOLLY_HAVE_RECVMMSG
+
 namespace folly {
 namespace netops {
 
@@ -322,9 +340,9 @@ int recvmmsg(
     unsigned int vlen,
     unsigned int flags,
     timespec* timeout) {
-#if FOLLY_HAVE_RECVMMSG
-  return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
-#else
+  if (reinterpret_cast<void*>(::recvmmsg) != nullptr) {
+    return wrapSocketFunction<int>(::recvmmsg, s, msgvec, vlen, flags, timeout);
+  }
   // implement via recvmsg
   for (unsigned int i = 0; i < vlen; i++) {
     ssize_t ret = recvmsg(s, &msgvec[i].msg_hdr, flags);
@@ -341,7 +359,6 @@ int recvmmsg(
     }
   }
   return static_cast<int>(vlen);
-#endif
 }
 
 ssize_t send(NetworkSocket s, const void* buf, size_t len, int flags) {
