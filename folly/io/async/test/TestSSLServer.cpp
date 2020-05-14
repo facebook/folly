@@ -15,6 +15,7 @@
  */
 
 #include <folly/io/async/test/TestSSLServer.h>
+#include <folly/portability/OpenSSL.h>
 
 namespace folly {
 
@@ -42,6 +43,9 @@ TestSSLServer::TestSSLServer(SSLServerAcceptCallbackBase* acb, bool enableTFO)
   ctx_->loadCertificate(kTestCert);
   ctx_->loadPrivateKey(kTestKey);
   ctx_->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  // By default, SSLContext disables OpenSSL's internal session cache.
+  // Enable it here on the server for testing session reuse.
+  SSL_CTX_set_session_cache_mode(ctx_->getSSLCtx(), SSL_SESS_CACHE_SERVER);
 
   init(enableTFO);
 }

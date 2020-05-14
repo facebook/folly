@@ -30,18 +30,18 @@ using folly::ssl::detail::OpenSSLSession;
 
 namespace folly {
 
-class SimpleCallbackManager {
+class SimpleCallbackManager
+    : public folly::SSLContext::SessionLifecycleCallbacks {
  public:
-  static int sessionCallback(SSL* ssl, SSL_SESSION* session) {
-    auto sessionPtr = folly::ssl::SSLSessionUniquePtr(session);
+  void onNewSession(SSL* ssl, folly::ssl::SSLSessionUniquePtr session)
+      override {
     auto socket = folly::AsyncSSLSocket::getFromSSL(ssl);
     auto sslSession =
         std::dynamic_pointer_cast<folly::ssl::detail::OpenSSLSession>(
             socket->getSSLSessionV2());
     if (sslSession) {
-      sslSession->setActiveSession(std::move(sessionPtr));
+      sslSession->setActiveSession(std::move(session));
     }
-    return 1;
   }
 };
 
@@ -62,13 +62,8 @@ void getctx(
     std::shared_ptr<folly::SSLContext> serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
-  auto clientCtx_ = clientCtx->getSSLCtx();
-
-  // The following two actions (setting session cache mode and
-  // setting the session callback) will eventually be done in
-  // SSLContext instead
-  SSL_CTX_set_session_cache_mode(clientCtx_, SSL_SESS_CACHE_CLIENT);
-  SSL_CTX_sess_set_new_cb(clientCtx_, SimpleCallbackManager::sessionCallback);
+  clientCtx->setSessionLifecycleCallbacks(
+      std::make_unique<SimpleCallbackManager>());
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
@@ -176,7 +171,6 @@ TEST_F(SSLSessionTest, BasicRegressionTest) {
 
     sslSession = clientPtr->getSSLSession();
     ASSERT_NE(sslSession, nullptr);
-    SSL_SESSION_free(sslSession);
   }
 
   // Session resumption
@@ -198,6 +192,7 @@ TEST_F(SSLSessionTest, BasicRegressionTest) {
     eventBase.loop();
     ASSERT_TRUE(client.handshakeSuccess_);
     ASSERT_TRUE(clientPtr->getSSLSessionReused());
+    SSL_SESSION_free(sslSession);
   }
 }
 

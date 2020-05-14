@@ -35,10 +35,6 @@ int getExDataIndex() {
   return index;
 }
 
-void setExData(folly::SSLContext* context, SSL_CTX* ctx) {
-  SSL_CTX_set_ex_data(ctx, getExDataIndex(), context);
-}
-
 } // namespace
 
 namespace folly {
@@ -92,7 +88,7 @@ SSLContext::SSLContext(SSLVersion version) {
 
   sslAcceptRunner_ = std::make_unique<SSLAcceptRunner>();
 
-  setExData(this, ctx_);
+  setupCtx(ctx_);
 
 #if FOLLY_OPENSSL_HAS_SNI
   SSL_CTX_set_tlsext_servername_callback(ctx_, baseServerNameOpenSSLCallback);
@@ -159,7 +155,7 @@ void SSLContext::setServerECCurve(const std::string& curveName) {
 }
 
 SSLContext::SSLContext(SSL_CTX* ctx) : ctx_(ctx) {
-  setExData(this, ctx);
+  setupCtx(ctx);
   if (SSL_CTX_up_ref(ctx) == 0) {
     throw std::runtime_error("Failed to increment SSL_CTX refcount");
   }
@@ -672,8 +668,40 @@ void SSLContext::enableTLS13() {
 #endif
 }
 
+void SSLContext::setupCtx(SSL_CTX* ctx) {
+  // Client caching required for receiving sessions in TLS 1.3
+  // Default value from OpenSSL is SSL_SESS_CACHE_SERVER
+  SSL_CTX_set_session_cache_mode(
+      ctx,
+      SSL_SESS_CACHE_BOTH | SSL_SESS_CACHE_NO_INTERNAL |
+          SSL_SESS_CACHE_NO_AUTO_CLEAR);
+
+  SSL_CTX_set_ex_data(ctx, getExDataIndex(), this);
+  SSL_CTX_sess_set_new_cb(ctx, SSLContext::newSessionCallback);
+}
+
 SSLContext* SSLContext::getFromSSLCtx(const SSL_CTX* ctx) {
   return static_cast<SSLContext*>(SSL_CTX_get_ex_data(ctx, getExDataIndex()));
+}
+
+int SSLContext::newSessionCallback(SSL* ssl, SSL_SESSION* session) {
+  SSL_CTX* ctx = SSL_get_SSL_CTX(ssl);
+  SSLContext* context = getFromSSLCtx(ctx);
+
+  auto& cb = context->sessionLifecycleCallbacks_;
+  if (cb != nullptr && cb) {
+    SSL_SESSION_up_ref(session);
+    auto sessionPtr = folly::ssl::SSLSessionUniquePtr(session);
+    cb->onNewSession(ssl, std::move(sessionPtr));
+  }
+
+  SSL_SESSION_free(session);
+  return 1;
+}
+
+void SSLContext::setSessionLifecycleCallbacks(
+    std::unique_ptr<SessionLifecycleCallbacks> cb) {
+  sessionLifecycleCallbacks_ = std::move(cb);
 }
 
 std::ostream& operator<<(std::ostream& os, const PasswordCollector& collector) {
