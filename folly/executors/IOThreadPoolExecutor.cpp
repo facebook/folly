@@ -38,24 +38,33 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
   explicit MemoryIdlerTimeout(EventBase* b) : AsyncTimeout(b), base_(b) {}
 
   void timeoutExpired() noexcept override {
-    idled = true;
+    idled_ = true;
+    timerRunning_ = false;
   }
 
   void runLoopCallback() noexcept override {
-    if (idled) {
-      MemoryIdler::flushLocalMallocCaches();
-      MemoryIdler::unmapUnusedStack(MemoryIdler::kDefaultStackToRetain);
+    if (idled_) {
+      if (num_ == 0) {
+        MemoryIdler::flushLocalMallocCaches();
+        MemoryIdler::unmapUnusedStack(MemoryIdler::kDefaultStackToRetain);
+      }
 
-      idled = false;
+      idled_ = false;
+      num_ = 0;
     } else {
-      std::chrono::steady_clock::duration idleTimeout =
-          MemoryIdler::defaultIdleTimeout.load(std::memory_order_acquire);
+      if (!timerRunning_) {
+        timerRunning_ = true;
+        std::chrono::steady_clock::duration idleTimeout =
+            MemoryIdler::defaultIdleTimeout.load(std::memory_order_acquire);
 
-      idleTimeout = MemoryIdler::getVariationTimeout(idleTimeout);
+        idleTimeout = MemoryIdler::getVariationTimeout(idleTimeout);
 
-      scheduleTimeout(static_cast<uint32_t>(
-          std::chrono::duration_cast<std::chrono::milliseconds>(idleTimeout)
-              .count()));
+        scheduleTimeout(static_cast<uint32_t>(
+            std::chrono::duration_cast<std::chrono::milliseconds>(idleTimeout)
+                .count()));
+      } else {
+        num_++;
+      }
     }
 
     // reschedule this callback for the next event loop.
@@ -64,7 +73,9 @@ class MemoryIdlerTimeout : public AsyncTimeout, public EventBase::LoopCallback {
 
  private:
   EventBase* base_;
-  bool idled{false};
+  bool idled_{false};
+  bool timerRunning_{false};
+  size_t num_{0};
 };
 
 IOThreadPoolExecutor::IOThreadPoolExecutor(
