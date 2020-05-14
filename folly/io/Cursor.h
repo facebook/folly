@@ -710,7 +710,7 @@ class CursorBase {
     return val;
   }
 
-  void readFixedStringSlow(std::string* str, size_t len) {
+  FOLLY_NOINLINE void readFixedStringSlow(std::string* str, size_t len) {
     for (size_t available; (available = length()) < len;) {
       str->append(reinterpret_cast<const char*>(data()), available);
       if (UNLIKELY(!tryAdvanceBuffer())) {
@@ -723,7 +723,7 @@ class CursorBase {
     advanceBufferIfEmpty();
   }
 
-  size_t pullAtMostSlow(void* buf, size_t len) {
+  FOLLY_NOINLINE size_t pullAtMostSlow(void* buf, size_t len) {
     // If the length of this buffer is 0 try advancing it.
     // Otherwise on the first iteration of the following loop memcpy is called
     // with a null source pointer.
@@ -747,13 +747,13 @@ class CursorBase {
     return copied + len;
   }
 
-  void pullSlow(void* buf, size_t len) {
+  FOLLY_NOINLINE void pullSlow(void* buf, size_t len) {
     if (UNLIKELY(pullAtMostSlow(buf, len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
 
-  size_t skipAtMostSlow(size_t len) {
+  FOLLY_NOINLINE size_t skipAtMostSlow(size_t len) {
     size_t skipped = 0;
     for (size_t available; (available = length()) < len;) {
       skipped += available;
@@ -767,13 +767,13 @@ class CursorBase {
     return skipped + len;
   }
 
-  void skipSlow(size_t len) {
+  FOLLY_NOINLINE void skipSlow(size_t len) {
     if (UNLIKELY(skipAtMostSlow(len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
   }
 
-  size_t retreatAtMostSlow(size_t len) {
+  FOLLY_NOINLINE size_t retreatAtMostSlow(size_t len) {
     size_t retreated = 0;
     for (size_t available; (available = crtPos_ - crtBegin_) < len;) {
       retreated += available;
@@ -786,7 +786,7 @@ class CursorBase {
     return retreated + len;
   }
 
-  void retreatSlow(size_t len) {
+  FOLLY_NOINLINE void retreatSlow(size_t len) {
     if (UNLIKELY(retreatAtMostSlow(len) != len)) {
       throw_exception<std::out_of_range>("underflow");
     }
