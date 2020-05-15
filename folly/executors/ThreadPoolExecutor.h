@@ -80,6 +80,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   void setThreadFactory(std::shared_ptr<ThreadFactory> threadFactory) {
     CHECK(numThreads() == 0);
     threadFactory_ = std::move(threadFactory);
+    namePrefix_ = getNameHelper();
   }
 
   std::shared_ptr<ThreadFactory> getThreadFactory() const {
@@ -122,7 +123,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   PoolStats getPoolStats() const;
   size_t getPendingTaskCount() const;
-  std::string getName() const;
+  const std::string& getName() const;
 
   struct TaskStats {
     TaskStats() : expired(false), waitTime(0), runTime(0), requestId(0) {}
@@ -212,7 +213,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     std::shared_ptr<folly::RequestContext> context_;
   };
 
-  static void runTask(const ThreadPtr& thread, Task&& task);
+  void runTask(const ThreadPtr& thread, Task&& task);
 
   // The function that will be bound to pool threads. It must call
   // thread->startupBaton.post() when it's ready to consume work.
@@ -298,7 +299,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     std::queue<ThreadPtr> queue_;
   };
 
+  std::string getNameHelper() const;
+
   std::shared_ptr<ThreadFactory> threadFactory_;
+  std::string namePrefix_;
   const bool isWaitForAll_; // whether to wait till event base loop exits
 
   ThreadList threadList_;

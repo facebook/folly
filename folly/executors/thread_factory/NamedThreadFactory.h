@@ -45,7 +45,7 @@ class NamedThreadFactory : public ThreadFactory {
     prefix_ = prefix.str();
   }
 
-  std::string getNamePrefix() {
+  const std::string& getNamePrefix() {
     return prefix_;
   }
 

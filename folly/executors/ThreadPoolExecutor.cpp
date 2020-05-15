@@ -18,6 +18,7 @@
 
 #include <folly/executors/GlobalThreadPoolList.h>
 #include <folly/synchronization/AsymmetricMemoryBarrier.h>
+#include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
 
@@ -54,7 +55,9 @@ ThreadPoolExecutor::ThreadPoolExecutor(
       taskStatsCallbacks_(std::make_shared<TaskStatsCallbackRegistry>()),
       threadPoolHook_("folly::ThreadPoolExecutor"),
       minThreads_(minThreads),
-      threadTimeout_(FLAGS_threadtimeout_ms) {}
+      threadTimeout_(FLAGS_threadtimeout_ms) {
+  namePrefix_ = getNameHelper();
+}
 
 ThreadPoolExecutor::~ThreadPoolExecutor() {
   joinKeepAliveOnce();
@@ -102,6 +105,21 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
     }
     stats.runTime = std::chrono::steady_clock::now() - startTime;
   }
+
+  // Times in this USDT use granularity of std::chrono::steady_clock::duration,
+  // which is platform dependent. On Facebook servers, the granularity is
+  // nanoseconds. We explicitly do not perform any unit conversions to avoid
+  // unneccessary costs and leave it to consumers of this data to know what
+  // effective clock resolution is.
+  FOLLY_SDT(
+      folly,
+      thread_pool_executor_task_stats,
+      namePrefix_.c_str(),
+      stats.requestId,
+      stats.enqueueTime.time_since_epoch().count(),
+      stats.waitTime.count(),
+      stats.runTime.count());
+
   thread->idle = true;
   thread->lastActiveTime = std::chrono::steady_clock::now();
   thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
@@ -301,12 +319,15 @@ size_t ThreadPoolExecutor::getPendingTaskCount() const {
   return getPendingTaskCountImpl();
 }
 
-std::string ThreadPoolExecutor::getName() const {
+const std::string& ThreadPoolExecutor::getName() const {
+  return namePrefix_;
+}
+
+std::string ThreadPoolExecutor::getNameHelper() const {
   auto ntf = dynamic_cast<NamedThreadFactory*>(threadFactory_.get());
   if (ntf == nullptr) {
     return folly::demangle(typeid(*this).name()).toStdString();
   }
-
   return ntf->getNamePrefix();
 }
 

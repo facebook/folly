@@ -115,7 +115,7 @@ void IOThreadPoolExecutor::add(
   auto ioThread = pickThread();
 
   auto task = Task(std::move(func), expiration, std::move(expireCallback));
-  auto wrappedFunc = [ioThread, task = std::move(task)]() mutable {
+  auto wrappedFunc = [this, ioThread, task = std::move(task)]() mutable {
     runTask(ioThread, std::move(task));
     ioThread->pendingTasks--;
   };
