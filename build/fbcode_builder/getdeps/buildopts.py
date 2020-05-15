@@ -412,7 +412,10 @@ def setup_build_options(args, host_type=None):
     # Make sure we normalize the scratch path.  This path is used as part of the hash
     # computation for detecting if projects have been updated, so we need to always
     # use the exact same string to refer to a given directory.
-    scratch_dir = os.path.realpath(scratch_dir)
+    # But! realpath in some combinations of Windows/Python3 versions can expand the
+    # drive substitutions on Windows, so avoid that!
+    if not is_windows():
+        scratch_dir = os.path.realpath(scratch_dir)
 
     host_type = _check_host_type(args, host_type)
 
