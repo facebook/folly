@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <cstddef>
+#include <limits>
 #include <type_traits>
 
 namespace folly {
@@ -121,6 +122,32 @@ class reentrant_allocator_base {
   meta_t* meta_{nullptr};
 };
 
+template <typename T>
+class reentrant_allocator_base_non_void : public reentrant_allocator_base {
+ private:
+  using base = reentrant_allocator_base;
+
+ public:
+  using base::base;
+
+  /* implicit */ reentrant_allocator_base_non_void(
+      reentrant_allocator_base const& that) noexcept
+      : base{that} {}
+
+  T* address(T& v) const {
+    return std::addressof(v);
+  }
+  T const* address(T const& v) const {
+    return std::addressof(v);
+  }
+};
+
+template <typename T>
+using reentrant_allocator_base_for = std::conditional_t<
+    std::is_void<T>::value,
+    reentrant_allocator_base,
+    reentrant_allocator_base_non_void<T>>;
+
 } // namespace detail
 
 //  reentrant_allocator
@@ -147,15 +174,26 @@ class reentrant_allocator_base {
 //  * The instances of std::atomic over size_t and pointer types are lock-free
 //    and operations on them are async-signal-safe.
 template <typename T>
-class reentrant_allocator : private detail::reentrant_allocator_base {
+class reentrant_allocator : private detail::reentrant_allocator_base_for<T> {
  private:
   template <typename>
   friend class reentrant_allocator;
 
-  using base = detail::reentrant_allocator_base;
+  using base = detail::reentrant_allocator_base_for<T>;
 
  public:
   using value_type = T;
+  using pointer = T*;
+  using const_pointer = T const*;
+  using reference = std::add_lvalue_reference_t<T>;
+  using const_reference = std::add_lvalue_reference_t<T const>;
+  using size_type = std::size_t;
+  using difference_type = std::ptrdiff_t;
+
+  template <typename U>
+  struct rebind {
+    using other = reentrant_allocator<U>;
+  };
 
   using base::base;
 
@@ -169,6 +207,10 @@ class reentrant_allocator : private detail::reentrant_allocator_base {
   }
   void deallocate(T* p, std::size_t n) {
     base::deallocate(p, n * sizeof(T));
+  }
+
+  std::size_t max_size() const {
+    return std::numeric_limits<std::size_t>::max();
   }
 
   template <typename A, typename B>
