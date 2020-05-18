@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <folly/Memory.h>
 #include <folly/SpinLock.h>
 
 namespace folly {
@@ -60,7 +61,13 @@ class DigestBuilder {
     std::unique_ptr<DigestT> digest;
   };
 
-  std::vector<CpuLocalBuffer> cpuLocalBuffers_;
+  //  cpulocalbuffer_alloc custom allocator is necessary until C++17
+  //    http://open-std.org/JTC1/SC22/WG21/docs/papers/2012/n3396.htm
+  //    https://gcc.gnu.org/bugzilla/show_bug.cgi?id=65122
+  //    https://bugs.llvm.org/show_bug.cgi?id=22634
+  using cpulocalbuffer_alloc =
+      AlignedSysAllocator<CpuLocalBuffer, FixedAlign<alignof(CpuLocalBuffer)>>;
+  std::vector<CpuLocalBuffer, cpulocalbuffer_alloc> cpuLocalBuffers_;
   size_t bufferSize_;
   size_t digestSize_;
 };
