@@ -35,6 +35,12 @@ FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames) {
   framesToFill = nullptr;
 }
 
+template <size_t kNumFrames>
+FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames) {
+  kFooCallByStandaloneBarLineNo = __LINE__ + 1;
+  inlineFoo(frames);
+}
+
 FOLLY_ALWAYS_INLINE void InlineFunctionsWrapper::inlineBar(
     FrameArray<100>& frames) const {
   kFooCallByClassInDifferentFileBarLineNo = __LINE__ + 1;

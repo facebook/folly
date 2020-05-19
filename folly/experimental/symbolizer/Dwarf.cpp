@@ -19,6 +19,7 @@
 #include <array>
 
 #include <dwarf.h>
+#include <folly/Optional.h>
 #include <type_traits>
 
 namespace folly {
@@ -76,10 +77,11 @@ struct Attribute {
   boost::variant<uint64_t, folly::StringPiece> attrValue;
 };
 
-struct CodeLocation {
-  Die die;
-  folly::Optional<uint64_t> file;
-  folly::Optional<uint64_t> line;
+// Indicates inline funtion `name` is called  at `line@file`.
+struct CallLocation {
+  Path file = {};
+  uint64_t line;
+  folly::StringPiece name;
 };
 
 } // namespace detail
@@ -468,18 +470,15 @@ bool Dwarf::findLocation(
 
   // Offset in .debug_line for the line number VM program for this
   // compilation unit
-  bool foundLineOffset = false;
-  uint64_t lineOffset = 0;
+  folly::Optional<uint64_t> lineOffset;
   folly::StringPiece compilationDirectory;
-  folly::StringPiece mainFileName;
-
+  folly::Optional<folly::StringPiece> mainFileName;
   forEachAttribute(cu, die, [&](const detail::Attribute& attr) {
     switch (attr.spec.name) {
       case DW_AT_stmt_list:
         // Offset in .debug_line for the line number VM program for this
         // compilation unit
         lineOffset = boost::get<uint64_t>(attr.attrValue);
-        foundLineOffset = true;
         break;
       case DW_AT_comp_dir:
         // Compilation directory
@@ -494,17 +493,17 @@ bool Dwarf::findLocation(
     return true;
   });
 
-  if (!mainFileName.empty()) {
+  if (mainFileName) {
     locationInfo.hasMainFile = true;
-    locationInfo.mainFile = Path(compilationDirectory, "", mainFileName);
+    locationInfo.mainFile = Path(compilationDirectory, "", *mainFileName);
   }
 
-  if (!foundLineOffset) {
+  if (!lineOffset) {
     return false;
   }
 
   folly::StringPiece lineSection(debugLine_);
-  lineSection.advance(lineOffset);
+  lineSection.advance(*lineOffset);
   LineNumberVM lineVM(lineSection, compilationDirectory);
 
   // Execute line number VM program to find file and line
@@ -518,75 +517,85 @@ bool Dwarf::findLocation(
     std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
     cu.abbrCache = folly::range(abbrs);
     readCompilationUnitAbbrs(debugAbbrev_, cu);
+
+    // Find the subprogram that matches the given address.
     detail::Die subprogram;
     findSubProgramDieForAddress(cu, die, address, subprogram);
+
     // Subprogram is the DIE of caller function.
     if (subprogram.abbr.hasChildren) {
-      size_t size = std::min<size_t>(
-          Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size());
-      detail::CodeLocation inlineLocs[size];
-      auto inlineLocsRange =
-          folly::Range<detail::CodeLocation*>(inlineLocs, size);
+      // Use an extra location and get its call file and call line, so that
+      // they can be used for the second last location when we don't have
+      // enough inline frames for all inline functions call stack.
+      size_t size =
+          std::min<size_t>(
+              Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size()) +
+          1;
+      detail::CallLocation callLocations[size];
+      size_t numFound = 0;
       findInlinedSubroutineDieForAddress(
-          cu, subprogram, address, inlineLocsRange);
-      size_t numFound = inlineLocsRange.data() - inlineLocs;
+          cu,
+          subprogram,
+          lineVM,
+          address,
+          folly::Range<detail::CallLocation*>(callLocations, size),
+          numFound);
 
-      // The line in locationInfo is the line in the deepest inline functions,
-      // and the lines in inlineLocationInfo are the line of callers in call
-      // sequence. A shuffle is needed to match lines with their function name.
-      uint64_t callerLine = locationInfo.line;
-      inlineLocsRange =
-          folly::Range<detail::CodeLocation*>(inlineLocs, numFound);
-      // Put inline frames from inside to outside (callee is before caller).
-      std::reverse(inlineLocsRange.begin(), inlineLocsRange.end());
-      auto inlineFrameIter = inlineFrames.begin();
-      for (auto inlineLocIter = inlineLocsRange.begin();
-           inlineLocIter != inlineLocsRange.end();
-           inlineLocIter++, inlineFrameIter++) {
-        inlineFrameIter->location.line = callerLine;
-        if (!inlineLocIter->line) {
-          break;
+      if (numFound > 0) {
+        folly::Range<detail::CallLocation*> inlineLocations(
+            callLocations, numFound);
+
+        const auto innerMostFile = locationInfo.file;
+        const auto innerMostLine = locationInfo.line;
+
+        // Earlier we filled in locationInfo:
+        // - mainFile: the path to the CU -- the file where the non-inlined
+        //   call is made from.
+        // - file + line: the location of the inner-most inlined call.
+        // Here we already find inlined info so mainFile would be redundant.
+        locationInfo.hasMainFile = false;
+        locationInfo.mainFile = Path{};
+        // @findInlinedSubroutineDieForAddress fills inlineLocations[0] with the
+        // file+line of the non-inlined outer function making the call.
+        // locationInfo.name is already set by the caller by looking up the
+        // non-inlined function @address belongs to.
+        locationInfo.hasFileAndLine = true;
+        locationInfo.file = inlineLocations[0].file;
+        locationInfo.line = inlineLocations[0].line;
+
+        // The next inlined subroutine's call file and call line is the current
+        // caller's location.
+        for (size_t i = 0; i < numFound - 1; i++) {
+          inlineLocations[i].file = inlineLocations[i + 1].file;
+          inlineLocations[i].line = inlineLocations[i + 1].line;
         }
-        callerLine = inlineLocIter->line.value();
+        // CallLocation for the inner-most inlined function:
+        // - will be computed if enough space was available in the passed
+        //   buffer.
+        // - will have a .name, but no !.file && !.line
+        // - its corresponding file+line is the one returned by LineVM based
+        //   on @address.
+        // Use the inner-most inlined file+line info we got from the LineVM.
+        inlineLocations[numFound - 1].file = innerMostFile;
+        inlineLocations[numFound - 1].line = innerMostLine;
 
-        folly::Optional<folly::StringPiece> linkageName;
-        folly::Optional<folly::StringPiece> name;
-        forEachAttribute(
-            cu, inlineLocIter->die, [&](const detail::Attribute& attr) {
-              switch (attr.spec.name) {
-                case DW_AT_linkage_name:
-                  linkageName = boost::get<folly::StringPiece>(attr.attrValue);
-                  break;
-                case DW_AT_name:
-                  name = boost::get<folly::StringPiece>(attr.attrValue);
-                  break;
-                case DW_AT_decl_file:
-                  // If the inline function is declared and defined in the same
-                  // file, the declaration subprogram may not have attribute
-                  // DW_AT_decl_file, then we need to find decl_file in the
-                  // definition subprogram.
-                  if (!inlineLocIter->file) {
-                    inlineLocIter->file = boost::get<uint64_t>(attr.attrValue);
-                  }
-                  break;
-              }
-              return !inlineLocIter->file || !name || !linkageName;
-            });
-        if (!(name || linkageName) || !inlineLocIter->file) {
-          break;
+        // Skip the extra location when actual inline function calls are more
+        // than provided frames.
+        inlineLocations = inlineLocations.subpiece(
+            0, std::min(numFound, inlineFrames.size()));
+
+        // Fill in inline frames in reverse order (as
+        // expected by the caller).
+        std::reverse(inlineLocations.begin(), inlineLocations.end());
+        for (size_t i = 0; i < inlineLocations.size(); i++) {
+          inlineFrames[i].found = true;
+          inlineFrames[i].addr = address;
+          inlineFrames[i].name = inlineLocations[i].name.data();
+          inlineFrames[i].location.hasFileAndLine = true;
+          inlineFrames[i].location.file = inlineLocations[i].file;
+          inlineFrames[i].location.line = inlineLocations[i].line;
         }
-
-        inlineFrameIter->found = true;
-        inlineFrameIter->addr = address;
-        inlineFrameIter->name =
-            linkageName ? linkageName.value().data() : name.value().data();
-        inlineFrameIter->location.hasFileAndLine = true;
-        inlineFrameIter->location.name =
-            linkageName ? linkageName.value() : name.value();
-        inlineFrameIter->location.file =
-            lineVM.getFullFileName(inlineLocIter->file.value());
       }
-      locationInfo.line = callerLine;
     }
   }
 
@@ -820,23 +829,34 @@ void Dwarf::findSubProgramDieForAddress(
   });
 }
 
+/**
+ * Find DW_TAG_inlined_subroutine child DIEs that contain @address and
+ * then extract:
+ * - Where was it called from (DW_AT_call_file & DW_AT_call_line):
+ *   the statement or expression that caused the inline expansion.
+ * - The inlined function's name. As a function may be inlined multiple
+ *   times, common attributes like DW_AT_linkage_name or DW_AT_name
+ *   are only stored in its "concrete out-of-line instance" (a
+ *   DW_TAG_subprogram) which we find using DW_AT_abstract_origin.
+ */
 void Dwarf::findInlinedSubroutineDieForAddress(
     const detail::CompilationUnit& cu,
     const detail::Die& die,
+    const LineNumberVM& lineVM,
     uint64_t address,
-    folly::Range<detail::CodeLocation*>& isrLoc) const {
-  if (isrLoc.empty()) {
+    folly::Range<detail::CallLocation*> locations,
+    size_t& numFound) const {
+  if (numFound >= locations.size()) {
     return;
   }
+
   forEachChild(cu, die, [&](const detail::Die& childDie) {
-    if (childDie.abbr.tag != DW_TAG_inlined_subroutine) {
-      return true; // Skip DIE that is not inlined_subroutine.
-    }
     folly::Optional<uint64_t> lowPc;
     folly::Optional<uint64_t> highPc;
     folly::Optional<bool> isHighPcAddr;
-    folly::Optional<uint64_t> origin;
-    folly::Optional<uint64_t> originRefType;
+    folly::Optional<uint64_t> abstractOrigin;
+    folly::Optional<uint64_t> abstractOriginRefType;
+    folly::Optional<uint64_t> callFile;
     folly::Optional<uint64_t> callLine;
     folly::Optional<uint64_t> rangeOffset;
     forEachAttribute(cu, childDie, [&](const detail::Attribute& attr) {
@@ -854,59 +874,115 @@ void Dwarf::findInlinedSubroutineDieForAddress(
           highPc = boost::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_abstract_origin:
-          originRefType = attr.spec.form;
-          origin = boost::get<uint64_t>(attr.attrValue);
+          abstractOriginRefType = attr.spec.form;
+          abstractOrigin = boost::get<uint64_t>(attr.attrValue);
           break;
         case DW_AT_call_line:
           callLine = boost::get<uint64_t>(attr.attrValue);
+          break;
+        case DW_AT_call_file:
+          callFile = boost::get<uint64_t>(attr.attrValue);
           break;
       }
       // Iterate through all until find all above attributes.
       return true;
     });
-    if (!origin || !originRefType || !callLine) {
-      // Missing required fields. Keep searching other children.
-      return true;
-    }
-    if ((!lowPc || !highPc || !isHighPcAddr || address < *lowPc ||
-         address >= (*isHighPcAddr ? *highPc : *lowPc + *highPc)) &&
-        (!rangeOffset ||
-         !isAddrInRangeList(address, rangeOffset.value(), cu.addrSize))) {
+
+    // 2.17 Code Addresses and Ranges
+    // Any debugging information entry describing an entity that has a
+    // machine code address or range of machine code addresses,
+    // which includes compilation units, module initialization, subroutines,
+    // ordinary blocks, try/catch blocks, labels and the like, may have
+    //  - A DW_AT_low_pc attribute for a single address,
+    //  - A DW_AT_low_pc and DW_AT_high_pc pair of attributes for a
+    //    single contiguous range of addresses, or
+    //  - A DW_AT_ranges attribute for a non-contiguous range of addresses.
+    // TODO: Support DW_TAG_entry_point and DW_TAG_common_block that don't
+    // have DW_AT_low_pc/DW_AT_high_pc pairs and DW_AT_ranges.
+    bool pcMatch = lowPc && highPc && isHighPcAddr && address >= *lowPc &&
+        (address < (*isHighPcAddr ? *highPc : *lowPc + *highPc));
+    bool rangeMatch = rangeOffset &&
+        isAddrInRangeList(address, rangeOffset.value(), cu.addrSize);
+    if (!pcMatch && !rangeMatch) {
       // Address doesn't match. Keep searching other children.
       return true;
     }
 
-    isrLoc[0].line = *callLine;
-    auto setLocationInfo = [&](const detail::CompilationUnit& srcu,
+    // Between a DW_TAG_subprogram and and DW_TAG_inlined_subroutine we might
+    // have arbitrary intermediary "nodes", including DW_TAG_common_block,
+    // DW_TAG_lexical_block, DW_TAG_try_block, DW_TAG_catch_block and
+    // DW_TAG_with_stmt, etc.
+    if (childDie.abbr.tag == DW_TAG_try_block ||
+        childDie.abbr.tag == DW_TAG_catch_block ||
+        childDie.abbr.tag == DW_TAG_entry_point ||
+        childDie.abbr.tag == DW_TAG_common_block ||
+        childDie.abbr.tag == DW_TAG_lexical_block) {
+      findInlinedSubroutineDieForAddress(
+          cu, childDie, lineVM, address, locations, numFound);
+      // We expect a single sibling DIE to match on addr. Stop searching for
+      // other DIEs.
+      return false;
+    }
+
+    if (!abstractOrigin || !abstractOriginRefType || !callLine || !callFile) {
+      // We expect a single sibling DIE to match on addr, but it's missing
+      // required fields. Stop searching for other DIEs.
+      return false;
+    }
+
+    locations[numFound].file = lineVM.getFullFileName(*callFile);
+    locations[numFound].line = *callLine;
+
+    auto getFunctionName = [&](const detail::CompilationUnit& srcu,
                                uint64_t dieOffset) {
       auto declDie = getDieAtOffset(srcu, dieOffset);
-      // If the inline function is declared and defined in different file, then
-      // DW_AT_decl_file attribute of the declaration may contain the definition
-      // file name.
-      isrLoc[0].file = getAttribute<uint64_t>(srcu, declDie, DW_AT_decl_file);
       // Jump to the actual function definition instead of declaration for name
       // and line info.
-      isrLoc[0].die = findDefinitionDie(srcu, declDie);
-      isrLoc.advance(1);
+      auto defDie = findDefinitionDie(srcu, declDie);
+
+      folly::StringPiece name;
+      // The file and line will be set in the next inline subroutine based on
+      // its DW_AT_call_file and DW_AT_call_line.
+      forEachAttribute(srcu, defDie, [&](const detail::Attribute& attr) {
+        switch (attr.spec.name) {
+          case DW_AT_linkage_name:
+            name = boost::get<folly::StringPiece>(attr.attrValue);
+            break;
+          case DW_AT_name:
+            // NOTE: when DW_AT_linkage_name and DW_AT_name match, dwarf
+            // emitters omit DW_AT_linkage_name (to save space). If present
+            // DW_AT_linkage_name should always be preferred (mangled C++ name
+            // vs just the function name).
+            if (name.empty()) {
+              name = boost::get<folly::StringPiece>(attr.attrValue);
+            }
+            break;
+        }
+        return true;
+      });
+      return name;
     };
-    if (*originRefType == DW_FORM_ref1 || *originRefType == DW_FORM_ref2 ||
-        *originRefType == DW_FORM_ref4 || *originRefType == DW_FORM_ref8 ||
-        *originRefType == DW_FORM_ref_udata) {
-      // These reference types identify any debugging information entry within
-      // the containing unit. This type of reference is an offset from the first
-      // byte of the compilation header for the compilation unit containing the
-      // reference.
-      setLocationInfo(cu, cu.offset + *origin);
-      findInlinedSubroutineDieForAddress(cu, childDie, address, isrLoc);
-    } else if (*originRefType == DW_FORM_ref_addr) {
-      // DW_FORM_ref_addr identifies any debugging information entry
-      // within a .debug_info section; in particular, it may refer to an entry
-      // in a different compilation unit from the unit containing the reference,
-      // and may refer to an entry in a different shared object.
-      auto srcu = findCompilationUnit(debugInfo_, *origin);
-      setLocationInfo(srcu, *origin);
-      findInlinedSubroutineDieForAddress(srcu, childDie, address, isrLoc);
-    }
+
+    // DW_AT_abstract_origin is a reference. There a 3 types of references:
+    // - the reference can identify any debugging information entry within the
+    //   compilation unit (DW_FORM_ref1, DW_FORM_ref2, DW_FORM_ref4,
+    //   DW_FORM_ref8, DW_FORM_ref_udata). This type of reference is an offset
+    //   from the first byte of the compilation header for the compilation unit
+    //   containing the reference.
+    // - the reference can identify any debugging information entry within a
+    //   .debug_info section; in particular, it may refer to an entry in a
+    //   different compilation unit (DW_FORM_ref_addr)
+    // - the reference can identify any debugging information type entry that
+    //   has been placed in its own type unit.
+    //   Not applicable for DW_AT_abstract_origin.
+    locations[numFound].name = (*abstractOriginRefType != DW_FORM_ref_addr)
+        ? getFunctionName(cu, cu.offset + *abstractOrigin)
+        : getFunctionName(
+              findCompilationUnit(debugInfo_, *abstractOrigin),
+              *abstractOrigin);
+
+    findInlinedSubroutineDieForAddress(
+        cu, childDie, lineVM, address, locations, ++numFound);
 
     return false;
   });

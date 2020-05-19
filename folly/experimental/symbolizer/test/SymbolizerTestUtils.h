@@ -23,7 +23,7 @@ namespace folly {
 namespace symbolizer {
 namespace test {
 
-void* framesToFill{nullptr};
+extern void* framesToFill;
 
 template <size_t kNumFrames = 100>
 int comparator(const void* ap, const void* bp) {
@@ -34,15 +34,22 @@ int comparator(const void* ap, const void* bp) {
   return a < b ? -1 : a > b ? 1 : 0;
 }
 
-size_t kQsortCallLineNo = 0;
-size_t kFooCallByStandaloneBarLineNo = 0;
-size_t kFooCallByClassBarLineNo = 0;
-size_t kFooCallByClassStaticBarLineNo = 0;
-size_t kFooCallByClassInDifferentFileBarLineNo = 0;
-size_t kFooCallByClassInDifferentFileStaticBarLineNo = 0;
+extern size_t kQsortCallLineNo;
+extern size_t kFooCallByStandaloneBarLineNo;
+extern size_t kFooCallByStandaloneBazLineNo;
+extern size_t kFooCallByClassBarLineNo;
+extern size_t kFooCallByClassStaticBarLineNo;
+extern size_t kFooCallByClassInDifferentFileBarLineNo;
+extern size_t kFooCallByClassInDifferentFileStaticBarLineNo;
+extern size_t kInlineBarCallByLexicalBarLineNo;
 
 template <size_t kNumFrames = 100>
 FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames);
+
+template <size_t kNumFrames = 100>
+FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames);
+
+extern void inlineBaz(FrameArray<100>& frames);
 
 class InlineFunctionsWrapper {
  public:

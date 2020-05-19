@@ -123,10 +123,14 @@ TEST(SymbolizerTest, SymbolCache) {
 
 namespace {
 
-template <size_t kNumFrames = 100>
-FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames) {
-  kFooCallByStandaloneBarLineNo = __LINE__ + 1;
-  inlineFoo(frames);
+template <size_t kNumFrames>
+FOLLY_NOINLINE void lexicalBlockBar(FrameArray<kNumFrames>& frames) try {
+  size_t unused = 0;
+  unused++;
+  kInlineBarCallByLexicalBarLineNo = __LINE__ + 1;
+  inlineBar(frames);
+} catch (...) {
+  folly::assume_unreachable();
 }
 
 void verifyStackTrace(
@@ -139,7 +143,7 @@ void verifyStackTrace(
       "folly::symbolizer::FrameArray<100ul>&)",
       std::string(folly::demangle(frames.frames[5].name)));
   EXPECT_EQ(
-      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      "./folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
       std::string(frames.frames[5].location.file.toString()));
   EXPECT_EQ(kQsortCallLineNo, frames.frames[5].location.line);
   EXPECT_EQ(barName, std::string(folly::demangle(frames.frames[6].name)));
@@ -205,16 +209,90 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
   // clang-format on
   verifyStackTrace(
       frames,
-      "void folly::symbolizer::test::(anonymous namespace)::inlineBar<100ul>("
+      "void folly::symbolizer::test::inlineBar<100ul>("
       "folly::symbolizer::FrameArray<100ul>&)",
       kFooCallByStandaloneBarLineNo,
-      "folly/experimental/symbolizer/test/SymbolizerTest.cpp");
+      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h");
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
 
   compareFrames(frames, frames2);
+}
+
+TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
+  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
+
+  FrameArray<100> frames;
+  lexicalBlockBar<100>(frames);
+  symbolizer.symbolize(frames);
+
+  // The address of the line where lexicalBlockBar calls inlineBar.
+  uintptr_t address = frames.frames[7].addr;
+  std::array<SymbolizedFrame, 2> limitedFrames;
+  symbolizer.symbolize(
+      folly::Range<const uintptr_t*>(&address, 1), folly::range(limitedFrames));
+
+  EXPECT_EQ(
+      "void folly::symbolizer::test::inlineBar<100ul>("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      std::string(folly::demangle(limitedFrames[0].name)));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h",
+      std::string(limitedFrames[0].location.file.toString()));
+  EXPECT_EQ(kFooCallByStandaloneBarLineNo, limitedFrames[0].location.line);
+
+  EXPECT_EQ(
+      "void folly::symbolizer::test::(anonymous namespace)::lexicalBlockBar"
+      "<100ul>(folly::symbolizer::FrameArray<100ul>&)",
+      std::string(folly::demangle(limitedFrames[1].name)));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(limitedFrames[1].location.file.toString()));
+  EXPECT_EQ(kInlineBarCallByLexicalBarLineNo, limitedFrames[1].location.line);
+}
+
+TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
+  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
+
+  FrameArray<100> frames;
+  lexicalBlockBar<100>(frames);
+  symbolizer.symbolize(frames);
+
+  verifyStackTrace(
+      frames,
+      "void folly::symbolizer::test::inlineBar<100ul>("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      kFooCallByStandaloneBarLineNo,
+      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h");
+
+  EXPECT_EQ(
+      "void folly::symbolizer::test::(anonymous namespace)::lexicalBlockBar"
+      "<100ul>(folly::symbolizer::FrameArray<100ul>&)",
+      std::string(folly::demangle(frames.frames[7].name)));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTest.cpp",
+      std::string(frames.frames[7].location.file.toString()));
+  EXPECT_EQ(kInlineBarCallByLexicalBarLineNo, frames.frames[7].location.line);
+}
+
+TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
+  Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
+
+  FrameArray<100> frames;
+  // NOTE: inlineBaz is only inlined with thinlto compilation mode enabled.
+  inlineBaz(frames);
+  symbolizer.symbolize(frames);
+
+  EXPECT_EQ(
+      "folly::symbolizer::test::inlineBaz("
+      "folly::symbolizer::FrameArray<100ul>&)",
+      std::string(folly::demangle(frames.frames[6].name)));
+  EXPECT_EQ(
+      "folly/experimental/symbolizer/test/SymbolizerTestUtils.cpp",
+      std::string(frames.frames[6].location.file.toString()));
+  EXPECT_EQ(kFooCallByStandaloneBazLineNo, frames.frames[6].location.line);
 }
 
 TEST(SymbolizerTest, InlineClassMemberFunction) {
@@ -303,10 +381,10 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
 
   verifyStackTrace(
       frames,
-      "void folly::symbolizer::test::(anonymous namespace)::inlineBar<100ul>("
+      "void folly::symbolizer::test::inlineBar<100ul>("
       "folly::symbolizer::FrameArray<100ul>&)",
       kFooCallByStandaloneBarLineNo,
-      "folly/experimental/symbolizer/test/SymbolizerTest.cpp");
+      "folly/experimental/symbolizer/test/SymbolizerTestUtils-inl.h");
 
   FrameArray<100> frames2;
   inlineBar<100>(frames2);

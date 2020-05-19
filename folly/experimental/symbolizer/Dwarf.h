@@ -44,7 +44,7 @@ struct DIEAbbreviation;
 
 struct AttributeSpec;
 struct Attribute;
-struct CodeLocation;
+struct CallLocation;
 
 } // namespace detail
 
@@ -85,7 +85,7 @@ class Dwarf {
    * More than one location info may exist if current frame is an inline
    * function call.
    */
-  static const uint32_t kMaxInlineLocationInfoPerFrame = 3;
+  static const uint32_t kMaxInlineLocationInfoPerFrame = 10;
 
   /** Find the file and line number information corresponding to address. */
   bool findAddress(
@@ -136,8 +136,10 @@ class Dwarf {
   void findInlinedSubroutineDieForAddress(
       const detail::CompilationUnit& cu,
       const detail::Die& die,
+      const LineNumberVM& lineVM,
       uint64_t address,
-      folly::Range<detail::CodeLocation*>& isrLoc) const;
+      folly::Range<detail::CallLocation*> locations,
+      size_t& numFound) const;
 
   static bool
   findDebugInfoOffset(uintptr_t address, StringPiece aranges, uint64_t& offset);
