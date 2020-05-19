@@ -20,6 +20,8 @@
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#include <boost/regex.hpp>
+
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
@@ -171,4 +173,56 @@ TEST(StackTraceTest, FastStackTracePrinter) {
       std::make_unique<FDSymbolizePrinter>(file.fd())};
 
   testStackTracePrinter<FastStackTracePrinter>(printer, file.fd());
+}
+
+TEST(StackTraceTest, TerseStackTracePrinter) {
+  test::TemporaryFile file;
+
+  FastStackTracePrinter printer{
+      std::make_unique<FDSymbolizePrinter>(file.fd(), SymbolizePrinter::TERSE)};
+
+  testStackTracePrinter<FastStackTracePrinter>(printer, file.fd());
+}
+
+TEST(StackTraceTest, TerseFileAndLineStackTracePrinter) {
+  test::TemporaryFile file;
+
+  FastStackTracePrinter printer{std::make_unique<FDSymbolizePrinter>(
+      file.fd(), SymbolizePrinter::TERSE_FILE_AND_LINE)};
+
+  testStackTracePrinter<FastStackTracePrinter>(printer, file.fd());
+}
+
+namespace {
+constexpr int frames = 5;
+FOLLY_NOINLINE void foo(FrameArray<frames>& addresses) {
+  getStackTraceSafe(addresses);
+}
+
+FOLLY_NOINLINE void bar(FrameArray<frames>& addresses) {
+  foo(addresses);
+}
+
+FOLLY_NOINLINE void baz(FrameArray<frames>& addresses) {
+  bar(addresses);
+}
+} // namespace
+
+TEST(StackTraceTest, TerseFileAndLineStackTracePrinterOutput) {
+  Symbolizer symbolizer(LocationInfoMode::FULL);
+  FrameArray<frames> addresses;
+  StringSymbolizePrinter printer(SymbolizePrinter::TERSE_FILE_AND_LINE);
+  baz(addresses);
+  symbolizer.symbolize(addresses);
+  printer.println(addresses, 0);
+
+  // Match a sequence of file+line results that should appear as:
+  // ./folly/experimental/symbolizer/test/StackTraceTest.cpp:202
+  // or:
+  // (unknown)
+  boost::regex regex("((([^:]*:[0-9]*)|(\\(unknown\\)))\n)+");
+  auto match = boost::regex_match(
+      printer.str(), regex, boost::regex_constants::match_not_dot_newline);
+
+  ASSERT_TRUE(match);
 }

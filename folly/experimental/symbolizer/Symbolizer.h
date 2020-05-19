@@ -230,6 +230,9 @@ class SymbolizePrinter {
 
     // Skip frame address information
     NO_FRAME_ADDRESS = 1 << 4,
+
+    // Simple file and line output
+    TERSE_FILE_AND_LINE = 1 << 5,
   };
 
   // NOTE: enum values used as indexes in kColorMap.

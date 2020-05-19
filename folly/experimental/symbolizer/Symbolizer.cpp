@@ -271,7 +271,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     color(Color::DEFAULT);
   };
 
-  if (!(options_ & NO_FRAME_ADDRESS)) {
+  if (!(options_ & NO_FRAME_ADDRESS) && !(options_ & TERSE_FILE_AND_LINE)) {
     color(kAddressColor);
 
     AddressFormatter formatter;
@@ -288,13 +288,15 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     return;
   }
 
-  if (!frame.name || frame.name[0] == '\0') {
-    doPrint(" (unknown)");
-  } else {
-    char demangledBuf[2048];
-    demangle(frame.name, demangledBuf, sizeof(demangledBuf));
-    doPrint(" ");
-    doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
+  if (!(options_ & TERSE_FILE_AND_LINE)) {
+    if (!frame.name || frame.name[0] == '\0') {
+      doPrint(" (unknown)");
+    } else {
+      char demangledBuf[2048];
+      demangle(frame.name, demangledBuf, sizeof(demangledBuf));
+      doPrint(" ");
+      doPrint(demangledBuf[0] == '\0' ? frame.name : demangledBuf);
+    }
   }
 
   if (!(options_ & NO_FILE_AND_LINE)) {
@@ -303,17 +305,23 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     fileBuf[0] = '\0';
     if (frame.location.hasFileAndLine) {
       frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
-      doPrint("\n");
-      doPrint(pad);
+      if (!(options_ & TERSE_FILE_AND_LINE)) {
+        doPrint("\n");
+        doPrint(pad);
+      }
       doPrint(fileBuf);
 
       char buf[22];
       uint32_t n = uint64ToBufferUnsafe(frame.location.line, buf);
       doPrint(":");
       doPrint(StringPiece(buf, n));
+    } else {
+      if ((options_ & TERSE_FILE_AND_LINE)) {
+        doPrint("(unknown)");
+      }
     }
 
-    if (frame.location.hasMainFile) {
+    if (frame.location.hasMainFile && !(options_ & TERSE_FILE_AND_LINE)) {
       char mainFileBuf[PATH_MAX];
       mainFileBuf[0] = '\0';
       frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
