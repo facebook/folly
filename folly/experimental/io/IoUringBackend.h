@@ -156,12 +156,6 @@ class IoUringBackend : public PollIoBackend {
 
   size_t submit_internal();
 
-  // submit
-  size_t maxSubmit_;
-
-  // process
-  size_t maxGet_;
-
   std::unique_ptr<IoSqe[]> entries_;
 
   // io_uring related

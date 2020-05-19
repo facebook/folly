@@ -102,8 +102,9 @@ IoUringBackend::IoUringBackend(Options options)
   params_.cq_entries = options.capacity;
 
   // allocate entries both for poll add and cancel
-  if (::io_uring_queue_init_params(2 * maxSubmit_, &ioRing_, &params_)) {
-    LOG(ERROR) << "io_uring_queue_init_params(" << 2 * maxSubmit_ << ","
+  if (::io_uring_queue_init_params(
+          2 * options_.maxSubmit, &ioRing_, &params_)) {
+    LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
                << params_.cq_entries << ") "
                << "failed errno = " << errno << ":\"" << folly::errnoStr(errno)
                << "\" " << this;
@@ -248,7 +249,7 @@ int IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   } else {
     ::io_uring_peek_cqe(&ioRing_, &cqe);
   }
-  while (cqe && (i < maxGet_)) {
+  while (cqe && (i < options_.maxGet)) {
     i++;
     IoSqe* sqe = reinterpret_cast<IoSqe*>(io_uring_cqe_get_data(cqe));
     sqe->backendCb_(this, sqe, cqe->res);
@@ -340,7 +341,7 @@ size_t IoUringBackend::submitList(
       CHECK_EQ(num, i);
       ret += i;
     } else {
-      if (static_cast<size_t>(i) == maxSubmit_) {
+      if (static_cast<size_t>(i) == options_.maxSubmit) {
         int num = submitBusyCheck(i, waitForEvents);
         CHECK_EQ(num, i);
         ret += i;
