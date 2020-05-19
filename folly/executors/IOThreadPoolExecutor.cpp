@@ -240,7 +240,7 @@ size_t IOThreadPoolExecutor::getPendingTaskCountImpl() const {
   for (const auto& thread : threadList_.get()) {
     auto ioThread = std::static_pointer_cast<IOThread>(thread);
     size_t pendingTasks = ioThread->pendingTasks;
-    if (pendingTasks > 0 && !ioThread->idle) {
+    if (pendingTasks > 0 && !ioThread->idle.load(std::memory_order_relaxed)) {
       pendingTasks--;
     }
     count += pendingTasks;

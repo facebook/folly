@@ -366,7 +366,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
       continue;
     }
 
-    thread->idle = false;
+    thread->idle.store(false, std::memory_order_relaxed);
     auto startTime = std::chrono::steady_clock::now();
     TaskStats stats;
     stats.enqueueTime = task->enqueueTime_;
@@ -385,8 +385,9 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
           << "EDFThreadPoolExecutor: func threw unhandled non-exception object";
     }
     stats.runTime = std::chrono::steady_clock::now() - startTime;
-    thread->idle = true;
-    thread->lastActiveTime = std::chrono::steady_clock::now();
+    thread->idle.store(true, std::memory_order_relaxed);
+    thread->lastActiveTime.store(
+        std::chrono::steady_clock::now(), std::memory_order_relaxed);
     thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
       *thread->taskStatsCallbacks->inCallback = true;
       SCOPE_EXIT {

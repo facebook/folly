@@ -28,6 +28,7 @@
 #include <folly/executors/thread_factory/NamedThreadFactory.h>
 #include <folly/io/async/Request.h>
 #include <folly/portability/GFlags.h>
+#include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/Baton.h>
 
 #include <glog/logging.h>
@@ -180,7 +181,10 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
 
   struct TaskStatsCallbackRegistry;
 
-  struct alignas(folly::cacheline_align_v) Thread : public ThreadHandle {
+  struct //
+      alignas(folly::cacheline_align_v) //
+      alignas(folly::AtomicStruct<std::chrono::steady_clock::time_point>) //
+      Thread : public ThreadHandle {
     explicit Thread(ThreadPoolExecutor* pool)
         : id(nextId++),
           handle(),
@@ -193,8 +197,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
     static std::atomic<uint64_t> nextId;
     uint64_t id;
     std::thread handle;
-    bool idle;
-    std::chrono::steady_clock::time_point lastActiveTime;
+    std::atomic<bool> idle;
+    folly::AtomicStruct<std::chrono::steady_clock::time_point> lastActiveTime;
     folly::Baton<> startupBaton;
     std::shared_ptr<TaskStatsCallbackRegistry> taskStatsCallbacks;
   };

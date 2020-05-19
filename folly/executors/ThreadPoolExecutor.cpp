@@ -77,7 +77,7 @@ ThreadPoolExecutor::Task::Task(
 }
 
 void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
-  thread->idle = false;
+  thread->idle.store(false, std::memory_order_relaxed);
   auto startTime = std::chrono::steady_clock::now();
   TaskStats stats;
   stats.enqueueTime = task.enqueueTime_;
@@ -120,8 +120,9 @@ void ThreadPoolExecutor::runTask(const ThreadPtr& thread, Task&& task) {
       stats.waitTime.count(),
       stats.runTime.count());
 
-  thread->idle = true;
-  thread->lastActiveTime = std::chrono::steady_clock::now();
+  thread->idle.store(true, std::memory_order_relaxed);
+  thread->lastActiveTime.store(
+      std::chrono::steady_clock::now(), std::memory_order_relaxed);
   thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
     *thread->taskStatsCallbacks->inCallback = true;
     SCOPE_EXIT {
@@ -296,8 +297,9 @@ ThreadPoolExecutor::PoolStats ThreadPoolExecutor::getPoolStats() const {
   size_t activeTasks = 0;
   size_t idleAlive = 0;
   for (const auto& thread : threadList_.get()) {
-    if (thread->idle) {
-      const std::chrono::nanoseconds idleTime = now - thread->lastActiveTime;
+    if (thread->idle.load(std::memory_order_relaxed)) {
+      const std::chrono::nanoseconds idleTime =
+          now - thread->lastActiveTime.load(std::memory_order_relaxed);
       stats.maxIdleTime = std::max(stats.maxIdleTime, idleTime);
       idleAlive++;
     } else {
