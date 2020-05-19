@@ -62,6 +62,34 @@ TEST(CleanupTest, Basic) {
   EXPECT_EQ(index, 0);
 }
 
+TEST(CleanupTest, EnsureCleanupAfterTaskBasic) {
+  Cleaned cleaned;
+  int phase = 0;
+  int index = 0;
+
+  cleaned.addCleanup(
+      folly::makeSemiFuture().deferValue([&, expected = index++](folly::Unit) {
+        EXPECT_EQ(phase, 1);
+        EXPECT_EQ(--index, expected);
+      }));
+
+  auto task =
+      folly::makeSemiFuture().deferValue([&, expected = index++](folly::Unit) {
+        EXPECT_EQ(phase, 1);
+        EXPECT_EQ(--index, expected);
+      });
+  EXPECT_EQ(index, 2);
+
+  folly::ManualExecutor exec;
+  phase = 1;
+  folly::ensureCleanupAfterTask(std::move(task), cleaned.cleanup())
+      .within(1s)
+      .via(folly::getKeepAliveToken(exec))
+      .getVia(&exec);
+  phase = 2;
+  EXPECT_EQ(index, 0);
+}
+
 TEST(CleanupTest, Errors) {
   auto cleaned = std::make_unique<Cleaned>();
 

@@ -52,6 +52,36 @@ using is_cleanup = std::bool_constant<is_cleanup_v<T>>;
 
 // Structured Async Cleanup
 //
+// This helps compose a task with async cleanup
+// The task result is stored until cleanup completes and is then produced
+// The cleanup task is not allowed to fail.
+//
+// This can be used with collectAll to combine multiple async resources
+//
+// ensureCleanupAfterTask(collectAll(a.run(), b.run()), collectAll(a.cleanup(),
+// b.cleanup())).wait();
+//
+template <typename T>
+folly::SemiFuture<T> ensureCleanupAfterTask(
+    folly::SemiFuture<T> task,
+    folly::SemiFuture<folly::Unit> cleanup) {
+  return folly::makeSemiFuture()
+      .deferValue([task_ = std::move(task)](folly::Unit) mutable {
+        return std::move(task_);
+      })
+      .defer([cleanup_ = std::move(cleanup)](folly::Try<T> taskResult) mutable {
+        return std::move(cleanup_).defer(
+            [taskResult_ = std::move(taskResult)](folly::Try<folly::Unit> t) {
+              if (t.hasException()) {
+                terminate_with<std::logic_error>("cleanup must not throw");
+              }
+              return std::move(taskResult_).value();
+            });
+      });
+}
+
+// Structured Async Cleanup
+//
 // This implementation is a base class that collects a set of cleanup tasks
 // and runs them in reverse order.
 //
