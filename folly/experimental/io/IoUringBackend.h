@@ -32,11 +32,7 @@ class IoUringBackend : public PollIoBackend {
     using std::runtime_error::runtime_error;
   };
 
-  explicit IoUringBackend(
-      size_t capacity,
-      size_t maxSubmit = 128,
-      size_t maxGet = static_cast<size_t>(-1),
-      bool useRegisteredFds = false);
+  explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
 
   // returns true if the current Linux kernel version
@@ -159,6 +155,12 @@ class IoUringBackend : public PollIoBackend {
   void cleanup();
 
   size_t submit_internal();
+
+  // submit
+  size_t maxSubmit_;
+
+  // process
+  size_t maxGet_;
 
   std::unique_ptr<IoSqe[]> entries_;
 

@@ -92,18 +92,14 @@ bool IoUringBackend::FdRegistry::free(
   return false;
 }
 
-IoUringBackend::IoUringBackend(
-    size_t capacity,
-    size_t maxSubmit,
-    size_t maxGet,
-    bool useRegisteredFds)
-    : PollIoBackend(capacity, maxSubmit, maxGet),
-      fdRegistry_(ioRing_, useRegisteredFds ? capacity : 0) {
+IoUringBackend::IoUringBackend(Options options)
+    : PollIoBackend(options),
+      fdRegistry_(ioRing_, options.useRegisteredFds ? options.capacity : 0) {
   ::memset(&ioRing_, 0, sizeof(ioRing_));
   ::memset(&params_, 0, sizeof(params_));
 
   params_.flags |= IORING_SETUP_CQSIZE;
-  params_.cq_entries = capacity;
+  params_.cq_entries = options.capacity;
 
   // allocate entries both for poll add and cancel
   if (::io_uring_queue_init_params(2 * maxSubmit_, &ioRing_, &params_)) {
@@ -142,7 +138,7 @@ IoUringBackend::IoUringBackend(
 
   // we need to call the init before adding the timer fd
   // so we avoid a deadlock - waiting for the queue to be drained
-  if (useRegisteredFds) {
+  if (options.useRegisteredFds) {
     // now init the file registry
     // if this fails, we still continue since we
     // can run without registered fds
@@ -202,7 +198,9 @@ bool IoUringBackend::isAvailable() {
   static folly::once_flag initFlag;
   folly::call_once(initFlag, [&]() {
     try {
-      IoUringBackend backend(1024, 128);
+      Options options;
+      options.setCapacity(1024);
+      IoUringBackend backend(options);
     } catch (const NotAvailable&) {
       sAvailable = false;
     }

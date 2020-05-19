@@ -35,7 +35,40 @@ namespace folly {
 
 class PollIoBackend : public EventBaseBackendBase {
  public:
-  explicit PollIoBackend(size_t capacity, size_t maxSubmit, size_t maxGet);
+  struct Options {
+    Options() = default;
+
+    Options& setCapacity(size_t v) {
+      capacity = v;
+
+      return *this;
+    }
+
+    Options& setMaxSubmit(size_t v) {
+      maxSubmit = v;
+
+      return *this;
+    }
+
+    Options& setMaxGet(size_t v) {
+      maxGet = v;
+
+      return *this;
+    }
+
+    Options& setUseRegisteredFds(bool v) {
+      useRegisteredFds = v;
+
+      return *this;
+    }
+
+    size_t capacity{0};
+    size_t maxSubmit{128};
+    size_t maxGet{static_cast<size_t>(-1)};
+    bool useRegisteredFds{false};
+  };
+
+  explicit PollIoBackend(Options options);
   ~PollIoBackend() override;
 
   // from EventBaseBackendBase
@@ -327,7 +360,7 @@ class PollIoBackend : public EventBaseBackendBase {
     return numIoCbInUse_;
   }
 
-  size_t capacity_;
+  Options options_;
   size_t numEntries_;
   IoCb* timerEntry_{nullptr};
   IoCb* signalReadEntry_{nullptr};
@@ -348,11 +381,7 @@ class PollIoBackend : public EventBaseBackendBase {
   std::map<int, std::set<Event*>> signals_;
 
   // submit
-  size_t maxSubmit_;
   IoCbList submitList_;
-
-  // process
-  size_t maxGet_;
 
   // loop related
   bool loopBreak_{false};

@@ -140,11 +140,8 @@ PollIoBackend::SocketPair::~SocketPair() {
   }
 }
 
-PollIoBackend::PollIoBackend(size_t capacity, size_t maxSubmit, size_t maxGet)
-    : capacity_(capacity),
-      numEntries_(capacity),
-      maxSubmit_(maxSubmit),
-      maxGet_(maxGet) {
+PollIoBackend::PollIoBackend(Options options)
+    : options_(options), numEntries_(options.capacity) {
   // create the timer fd
   timerFd_ = ::timerfd_create(CLOCK_MONOTONIC, TFD_NONBLOCK | TFD_CLOEXEC);
   if (timerFd_ < 0) {
@@ -544,38 +541,13 @@ int PollIoBackend::eb_event_add(Event& event, const struct timeval* timeout) {
     CHECK(iocb);
     iocb->event_ = &event;
 
-    if (maxSubmit_) {
-      // just append it
-      submitList_.push_back(*iocb);
-      if (~event_ref_flags(ev) & EVLIST_INTERNAL) {
-        numInsertedEvents_++;
-      }
-      event_ref_flags(ev) |= EVLIST_INSERTED;
-      event.setUserData(iocb);
-
-      return 0;
-    } else {
-      auto* entry = allocSubmissionEntry(); // this can be nullptr
-      iocb->prepPollAdd(
-          entry,
-          ev->ev_fd,
-          getPollFlags(ev->ev_events),
-          (ev->ev_events & EV_PERSIST) != 0);
-      int ret = submitOne(iocb);
-      if (ret == 1) {
-        if (~event_ref_flags(ev) & EVLIST_INTERNAL) {
-          numInsertedEvents_++;
-        }
-        event_ref_flags(ev) |= EVLIST_INSERTED;
-        event.setUserData(iocb);
-      } else {
-        releaseIoCb(iocb);
-      }
-      if (ret != 1) {
-        throw std::runtime_error("io_submit error");
-      }
-      return (ret == 1) ? 0 : -1;
+    // just append it
+    submitList_.push_back(*iocb);
+    if (~event_ref_flags(ev) & EVLIST_INTERNAL) {
+      numInsertedEvents_++;
     }
+    event_ref_flags(ev) |= EVLIST_INSERTED;
+    event.setUserData(iocb);
   }
 
   return 0;

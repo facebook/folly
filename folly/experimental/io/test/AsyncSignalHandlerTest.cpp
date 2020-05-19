@@ -26,8 +26,13 @@ static constexpr size_t kMaxGet = static_cast<size_t>(-1);
 struct IoUringBackendProvider {
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend() {
     try {
-      return std::make_unique<folly::IoUringBackend>(
-          kCapacity, kMaxSubmit, kMaxGet, false /* useRegisteredFds */);
+      folly::PollIoBackend::Options options;
+      options.setCapacity(kCapacity)
+          .setMaxSubmit(kMaxSubmit)
+          .setMaxGet(kMaxGet)
+          .setUseRegisteredFds(false);
+
+      return std::make_unique<folly::IoUringBackend>(options);
     } catch (const IoUringBackend::NotAvailable&) {
       return nullptr;
     }
