@@ -1998,9 +1998,9 @@ void AsyncSocket::handleRead() noexcept {
   // AsyncSocket between threads properly.  This will be sufficient to ensure
   // that this thread sees the updated eventBase_ variable after
   // readDataAvailable() returns.)
-  uint16_t numReads = 0;
+  size_t numReads = maxReadsPerEvent_ ? maxReadsPerEvent_ : size_t(-1);
   EventBase* originalEventBase = eventBase_;
-  while (readCallback_ && eventBase_ == originalEventBase) {
+  while (readCallback_ && eventBase_ == originalEventBase && numReads--) {
     // Get the buffer to read into.
     void* buf = nullptr;
     size_t buflen = 0, offset = 0;
@@ -2077,14 +2077,11 @@ void AsyncSocket::handleRead() noexcept {
       callback->readEOF();
       return;
     }
-    if (maxReadsPerEvent_ && (++numReads >= maxReadsPerEvent_)) {
-      if (readCallback_ != nullptr) {
-        // We might still have data in the socket.
-        // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
-        scheduleImmediateRead();
-      }
-      return;
-    }
+  }
+  if (readCallback_ != nullptr) {
+    // We might still have data in the socket.
+    // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
+    scheduleImmediateRead();
   }
 }
 
