@@ -111,12 +111,12 @@ TEST_F(LoggerTest, formatError) {
   ASSERT_EQ(1, messages.size());
   // Use a regex match here, since the type IDs are reported slightly
   // differently on different platforms.
-  EXPECT_EQ(
-      R"(error formatting log message: )"
-      R"(invalid type specifier; )"
-      R"(format string: "param1: {:06d}, param2: {:6.3f}", )"
-      R"(arguments: 1234, hello world!)",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(R"(error formatting log message: )"
+                   R"(.*invalid type specifier; )"
+                   R"(format string: "param1: \{:06d\}, param2: \{:6.3f\}", )"
+                   R"(arguments: 1234, hello world!)"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -185,10 +185,10 @@ TEST_F(LoggerTest, toStringError) {
 
   auto& messages = handler_->getMessages();
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      "error constructing log message: "
-      "error converting ToStringFailure object to a string",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex("error constructing log message: .*"
+                   "error converting ToStringFailure object to a string"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(expectedLine, messages[0].first.getLineNumber());
   EXPECT_EQ(LogLevel::DBG1, messages[0].first.getLevel());
@@ -207,7 +207,7 @@ TEST_F(LoggerTest, formatFallbackError) {
   EXPECT_THAT(
       messages[0].first.getMessage(),
       MatchesRegex(
-          R"(error formatting log message: argument index out of range; )"
+          R"(error formatting log message: .*argument index out of range; )"
           R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
           R"(arguments: 1234, )"
           R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
@@ -225,7 +225,7 @@ TEST_F(LoggerTest, formatFallbackUnsupported) {
 
   std::string objectHex = kIsLittleEndian ? "ef cd 34 12" : "12 34 cd ef";
   auto expectedRegex =
-      R"(error formatting log message: test; )"
+      R"(error formatting log message: .*test; )"
       R"(format string: "param1: \{\}, param2: \{\}", )"
       R"(arguments: 1234, )"
       R"(\[(.*FormattableButNoToString.*|object) of size 4: )" +
@@ -343,10 +343,11 @@ TEST_F(LoggerTest, logMacros) {
   // Bad format arguments should not throw
   FB_LOGF(footest1234, ERR, "whoops: {}, {}", getValue());
   ASSERT_EQ(1, messages.size());
-  EXPECT_EQ(
-      R"(error formatting log message: argument index out of range; )"
-      R"(format string: "whoops: {}, {}", arguments: 5)",
-      messages[0].first.getMessage());
+  EXPECT_THAT(
+      messages[0].first.getMessage(),
+      MatchesRegex(
+          R"(error formatting log message: .*argument index out of range; )"
+          R"(format string: "whoops: \{\}, \{\}", arguments: 5)"));
   messages.clear();
 }
 

@@ -258,7 +258,7 @@ TEST(AsyncFileWriter, flush) {
   EXPECT_EQ(bytesRead, paddingSize);
 
   // Make sure flush completes successfully now
-  std::move(future).get(10ms);
+  std::move(future).get(50ms);
 }
 
 // A large-ish message suffix, just to consume space and help fill up

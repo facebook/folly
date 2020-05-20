@@ -19,6 +19,7 @@
 #include <fmt/core.h>
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
+#include <folly/ExceptionString.h>
 #include <folly/Portability.h>
 #include <folly/lang/Exception.h>
 #include <folly/logging/LogCategory.h>
@@ -333,7 +334,7 @@ class LogStreamProcessor {
           // Just log an error message letting indicating that something went
           // wrong formatting the log message.
           return folly::to<std::string>(
-              "error constructing log message: ", ex.what());
+              "error constructing log message: ", exceptionStr(ex));
         });
   }
 
@@ -356,7 +357,7 @@ class LogStreamProcessor {
           failed = true;
           std::string result;
           result.append("error formatting log message: ");
-          result.append(ex.what());
+          result.append(exceptionStr(ex).c_str());
           result.append("; format string: \"");
           result.append(fmt.data(), fmt.size());
           result.append("\", arguments: ");
