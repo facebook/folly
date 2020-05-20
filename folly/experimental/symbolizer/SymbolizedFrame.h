@@ -98,8 +98,6 @@ enum class LocationInfoMode {
 struct LocationInfo {
   bool hasFileAndLine = false;
   bool hasMainFile = false;
-  // Function name in call stack.
-  folly::StringPiece name;
   Path mainFile;
   Path file;
   uint64_t line = 0;
