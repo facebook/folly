@@ -100,7 +100,7 @@ struct pthread_startup_info {
   void* startupArgument;
 };
 
-DWORD internal_pthread_thread_start(void* arg) {
+DWORD __stdcall internal_pthread_thread_start(void* arg) {
   // We are now in the new thread.
   auto startupInfo = reinterpret_cast<pthread_startup_info*>(arg);
   current_thread_self = startupInfo->thread;
