@@ -70,6 +70,11 @@ TemporaryFile::TemporaryFile(size_t size)
     PCHECK(written == n);
     size -= written;
   }
+  // make sure the buffers are flushed
+  int ret = ::fflush(fp);
+  PCHECK(ret == 0);
+  ret = ::fdatasync(::fileno(fp));
+  PCHECK(ret == 0);
   PCHECK(::fclose(fp) == 0);
 }
 
