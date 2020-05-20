@@ -265,10 +265,14 @@ int IoUringBackend::submitBusyCheck(int num, WaitForEventsMode waitForEvents) {
   int i = 0;
   int res;
   while (i < num) {
-    res = ::io_uring_submit(&ioRing_);
+    if (waitForEvents == WaitForEventsMode::WAIT) {
+      res = ::io_uring_submit_and_wait(&ioRing_, 1);
+    } else {
+      res = ::io_uring_submit(&ioRing_);
+    }
     if (res == -EBUSY) {
       // if we get EBUSY, try to consume some CQ entries
-      getActiveEvents(waitForEvents);
+      getActiveEvents(WaitForEventsMode::DONT_WAIT);
       continue;
     }
     if (res < 0) {
@@ -342,7 +346,7 @@ size_t IoUringBackend::submitList(
       ret += i;
     } else {
       if (static_cast<size_t>(i) == options_.maxSubmit) {
-        int num = submitBusyCheck(i, waitForEvents);
+        int num = submitBusyCheck(i, WaitForEventsMode::DONT_WAIT);
         CHECK_EQ(num, i);
         ret += i;
         i = 0;
