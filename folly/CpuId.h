@@ -82,7 +82,7 @@ class CpuId {
       __asm__(
           "pushl %%ebx\n\t"
           "cpuid\n\t"
-          "movl %%ebx, %%eax\n\r"
+          "movl %%ebx, %%eax\n\t"
           "popl %%ebx"
           : "=a"(f7b_), "=c"(f7c_)
           : "a"(7), "c"(0)
