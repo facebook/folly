@@ -237,4 +237,17 @@ FOLLY_ERASE_TRYCATCH auto catch_exception(Try&& t, Catch&& c, CatchA&&... a) ->
 #endif
 }
 
+/// rethrow_current_exception
+///
+/// Equivalent to:
+///
+///   throw;
+[[noreturn]] FOLLY_ERASE void rethrow_current_exception() {
+#if FOLLY_HAS_EXCEPTIONS
+  throw;
+#else
+  std::terminate();
+#endif
+}
+
 } // namespace folly

@@ -115,3 +115,15 @@ TEST_F(ExceptionTest, catch_exception) {
   EXPECT_EQ(4, folly::catch_exception(thrower(3), returner(4)));
   EXPECT_EQ(3, folly::catch_exception<int>(thrower(3), identity));
 }
+
+TEST_F(ExceptionTest, rethrow_current_exception) {
+  EXPECT_THROW(
+      folly::invoke_noreturn_cold([] {
+        try {
+          throw std::runtime_error("bad");
+        } catch (...) {
+          folly::rethrow_current_exception();
+        }
+      }),
+      std::runtime_error);
+}
