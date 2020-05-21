@@ -193,9 +193,7 @@ TEST(Collect, collectAllUnsafe) {
   }
 }
 
-FOLLY_PUSH_WARNING
-FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
-TEST(Collect, collectAllSemiFutureInline) {
+TEST(Collect, collectAllInline) {
   // inline future collection on same executor
   {
     ManualExecutor x;
@@ -204,8 +202,7 @@ TEST(Collect, collectAllSemiFutureInline) {
     futures.emplace_back(makeFuture(42).via(&x));
     futures.emplace_back(makeFuture(42).via(&x));
 
-    auto allf =
-        collectAllSemiFuture(futures).via(&x).thenTryInline([](auto&&) {});
+    auto allf = collectAll(futures).via(&x).thenTryInline([](auto&&) {});
     EXPECT_FALSE(allf.isReady());
     EXPECT_EQ(3, x.run());
     EXPECT_TRUE(allf.isReady());
@@ -218,7 +215,7 @@ TEST(Collect, collectAllSemiFutureInline) {
     futures.emplace_back(makeSemiFuture(42).defer([](auto&&) { return 42; }));
     futures.emplace_back(makeSemiFuture(42).defer([](auto&&) { return 42; }));
 
-    auto allf = collectAllSemiFuture(futures).defer([](auto&&) {}).via(&x);
+    auto allf = collectAll(futures).defer([](auto&&) {}).via(&x);
     EXPECT_FALSE(allf.isReady());
     EXPECT_EQ(3, x.run());
     EXPECT_TRUE(allf.isReady());
@@ -230,7 +227,7 @@ TEST(Collect, collectAllSemiFutureInline) {
     futures.emplace_back(makeFuture(42).via(&x1));
     futures.emplace_back(makeFuture(42).via(&x2));
 
-    auto allf = collectAllSemiFuture(futures).defer([](auto&&) {}).via(&x1);
+    auto allf = collectAll(futures).defer([](auto&&) {}).via(&x1);
     EXPECT_FALSE(allf.isReady());
     EXPECT_EQ(1, x2.run());
     EXPECT_FALSE(allf.isReady());
@@ -255,7 +252,6 @@ TEST(Collect, collectAllSemiFutureInline) {
     EXPECT_TRUE(allf.isReady());
   }
 }
-FOLLY_POP_WARNING
 
 TEST(Collect, collect) {
   // success case
@@ -420,8 +416,6 @@ TEST(Collect, collectNotDefaultConstructible) {
   }
 }
 
-FOLLY_PUSH_WARNING
-FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 TEST(Collect, collectAny) {
   {
     std::vector<Promise<int>> promises(10);
@@ -489,7 +483,7 @@ TEST(Collect, collectAny) {
       EXPECT_FALSE(f.isReady());
     }
 
-    auto anyf = collectAnySemiFuture(futures);
+    auto anyf = collectAny(futures);
 
     /* futures were moved in, so these are invalid now */
     EXPECT_FALSE(anyf.isReady());
@@ -543,7 +537,6 @@ TEST(Collect, collectAny) {
     EXPECT_TRUE(anyf.isReady());
   }
 }
-FOLLY_POP_WARNING
 
 TEST(Collect, collectAnyWithoutException) {
   auto& executor = folly::InlineExecutor::instance();

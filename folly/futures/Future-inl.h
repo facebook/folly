@@ -1410,12 +1410,6 @@ collectAll(Fs&&... fs) {
 }
 
 template <typename... Fs>
-SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
-collectAllSemiFuture(Fs&&... fs) {
-  return collectAll(std::forward<Fs>(fs)...);
-}
-
-template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllUnsafe(Fs&&... fs) {
   return collectAll(std::forward<Fs>(fs)...).toUnsafeFuture();
@@ -1475,13 +1469,6 @@ Future<std::vector<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAllUnsafe(InputIterator first, InputIterator last) {
   return collectAll(first, last).toUnsafeFuture();
-}
-
-template <class InputIterator>
-SemiFuture<std::vector<
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAllSemiFuture(InputIterator first, InputIterator last) {
-  return collectAll(first, last);
 }
 
 // collect (iterator)
@@ -1549,13 +1536,6 @@ collectUnsafe(InputIterator first, InputIterator last) {
   return collect(first, last).toUnsafeFuture();
 }
 
-template <class InputIterator>
-SemiFuture<std::vector<
-    typename std::iterator_traits<InputIterator>::value_type::value_type>>
-collectSemiFuture(InputIterator first, InputIterator last) {
-  return collect(first, last);
-}
-
 // collect (variadic)
 
 template <typename... Fs>
@@ -1604,36 +1584,12 @@ SemiFuture<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collect(
 }
 
 template <typename... Fs>
-[[deprecated("collectSemiFuture is deprecated and identical to plain collect. Please use collect instead.")]] SemiFuture<
-    std::tuple<typename remove_cvref_t<Fs>::value_type...>>
-collectSemiFuture(Fs&&... fs) {
-  return collect(std::forward<Fs>(fs)...);
-}
-
-template <typename... Fs>
 Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
     Fs&&... fs) {
   return collect(std::forward<Fs>(fs)...).toUnsafeFuture();
 }
 
-template <class Collection>
-[[deprecated(
-    "collectSemiFuture is deprecated and identical to plain collect. Please use collect instead.")]] auto
-collectSemiFuture(Collection&& c)
-    -> decltype(collectSemiFuture(c.begin(), c.end())) {
-  return collectSemiFuture(c.begin(), c.end());
-}
-
 // collectAny (iterator)
-
-// TODO(T26439406): Make return SemiFuture
-template <class InputIterator>
-SemiFuture<std::pair<
-    size_t,
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAnySemiFuture(InputIterator first, InputIterator last) {
-  return collectAny(first, last);
-}
 
 template <class InputIterator>
 Future<std::pair<

@@ -2365,27 +2365,12 @@ auto via(Executor::KeepAlive<>, Func&& func) -> Future<
   last Future completes in.
 
   The return type for Future<T> input is a SemiFuture<std::vector<Try<T>>>
-  for collectX and collectXSemiFuture.
+  for collectX.
 
   collectXUnsafe returns an inline Future that erases the executor from the
   incoming Futures/SemiFutures. collectXUnsafe should be phased out and
   replaced with collectX(...).via(e) where e is a valid non-inline executor.
   */
-template <class InputIterator>
-[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] SemiFuture<
-    std::vector<Try<
-        typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAllSemiFuture(InputIterator first, InputIterator last);
-
-/// Sugar for the most common case
-template <class Collection>
-[[deprecated(
-    "collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] auto
-collectAllSemiFuture(Collection&& c)
-    -> decltype(collectAllSemiFuture(c.begin(), c.end())) {
-  return collectAllSemiFuture(c.begin(), c.end());
-}
-
 // Unsafe variant, see above comment for details
 template <class InputIterator>
 Future<std::vector<
@@ -2409,21 +2394,16 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
   return collectAll(c.begin(), c.end());
 }
 
-/// This version takes a varying number of Futures instead of an iterator.
-/// The return type for (Future<T1>, Future<T2>, ...) input
-/// is a SemiFuture<std::tuple<Try<T1>, Try<T2>, ...>>.
-/// The Futures are moved in, so your copies are invalid.
-template <typename... Fs>
-[[deprecated("collectAllSemiFuture is deprecated and identical to plain collectAll. Please use collectAll instead.")]] SemiFuture<
-    std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
-collectAllSemiFuture(Fs&&... fs);
-
 // Unsafe variant of collectAll, see coment above for details. Returns
 // a Future<std::tuple<Try<T1>, Try<T2>, ...>> on the Inline executor.
 template <typename... Fs>
 Future<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAllUnsafe(Fs&&... fs);
 
+/// This version takes a varying number of Futures instead of an iterator.
+/// The return type for (Future<T1>, Future<T2>, ...) input
+/// is a SemiFuture<std::tuple<Try<T1>, Try<T2>, ...>>.
+/// The Futures are moved in, so your copies are invalid.
 template <typename... Fs>
 SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAll(Fs&&... fs);
@@ -2482,14 +2462,6 @@ Future<std::pair<
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAnyUnsafe(InputIterator first, InputIterator last);
 
-template <class InputIterator>
-[[deprecated("collectAnySemiFuture is deprecated and identical to plain collectAny. Please use collectAny instead.")]] SemiFuture<
-    std::pair<
-        size_t,
-        Try<typename std::iterator_traits<
-            InputIterator>::value_type::value_type>>>
-collectAnySemiFuture(InputIterator first, InputIterator last);
-
 /// Sugar for the most common case
 template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
@@ -2501,13 +2473,6 @@ template <class Collection>
 auto collectAnyUnsafe(Collection&& c)
     -> decltype(collectAnyUnsafe(c.begin(), c.end())) {
   return collectAnyUnsafe(c.begin(), c.end());
-}
-template <class Collection>
-[[deprecated(
-    "collectAnySemiFuture is deprecated and identical to plain collectAny. Please use collectAny instead.")]] auto
-collectAnySemiFuture(Collection&& c)
-    -> decltype(collectAnySemiFuture(c.begin(), c.end())) {
-  return collectAnySemiFuture(c.begin(), c.end());
 }
 
 /** Similar to collectAny, collectAnyWithoutException return the first Future to
