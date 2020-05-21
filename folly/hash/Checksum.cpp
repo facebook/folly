@@ -169,7 +169,7 @@ uint32_t crc32c_combine(uint32_t crc1, uint32_t crc2, size_t crc2len) {
     crc1 = crc32c(data, len, crc1);
   }
 
-  if (detail::crc32_hw_supported()) {
+  if (detail::crc32c_hw_supported()) {
     return detail::crc32c_combine_hw(crc1, crc2, crc2len - len);
   } else {
     return detail::crc32c_combine_sw(crc1, crc2, crc2len - len);
