@@ -84,7 +84,7 @@ class RequestEventBase : public RequestData {
  public:
   static EventBase* get() {
     auto data = dynamic_cast<RequestEventBase*>(
-        RequestContext::get()->getContextData(kContextDataName));
+        RequestContext::get()->getContextData(token()));
     if (!data) {
       return nullptr;
     }
@@ -93,8 +93,7 @@ class RequestEventBase : public RequestData {
 
   static void set(EventBase* eb) {
     RequestContext::get()->setContextData(
-        kContextDataName,
-        std::unique_ptr<RequestEventBase>(new RequestEventBase(eb)));
+        token(), std::unique_ptr<RequestEventBase>(new RequestEventBase(eb)));
   }
 
   bool hasCallback() override {
@@ -102,6 +101,11 @@ class RequestEventBase : public RequestData {
   }
 
  private:
+  FOLLY_EXPORT static RequestToken const& token() {
+    static RequestToken const token(kContextDataName);
+    return token;
+  }
+
   explicit RequestEventBase(EventBase* eb) : eb_(eb) {}
   EventBase* eb_;
   static constexpr const char* kContextDataName{"EventBase"};
