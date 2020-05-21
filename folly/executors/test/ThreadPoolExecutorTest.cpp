@@ -1012,30 +1012,30 @@ TEST(ThreadPoolExecutorTest, VirtualExecutorTestEDF) {
 // Test use of guard inside executors
 template <class TPE>
 static void currentThreadTest(folly::StringPiece executorName) {
-  folly::Optional<BlockingContext> blockingContext{};
+  folly::Optional<ExecutorBlockingContext> ctx{};
   TPE tpe(1);
-  tpe.add([&blockingContext]() { blockingContext = getBlockingContext(); });
+  tpe.add([&ctx]() { ctx = getExecutorBlockingContext(); });
   tpe.join();
-  EXPECT_EQ(blockingContext->executorName, executorName);
+  EXPECT_EQ(ctx->name, executorName);
 }
 
-// Test the nesting of the allowing guard
+// Test the nesting of the permit guard
 template <class TPE>
 static void currentThreadTestDisabled(folly::StringPiece executorName) {
-  folly::Optional<BlockingContext> blockingContextAllowed{};
-  folly::Optional<BlockingContext> blockingContextDisallowed{};
+  folly::Optional<ExecutorBlockingContext> ctxPermit{};
+  folly::Optional<ExecutorBlockingContext> ctxForbid{};
   TPE tpe(1);
   tpe.add([&]() {
     {
-      // Nest the guard that reallows blocking
-      auto guard = folly::makeBlockingAllowedGuard();
-      blockingContextAllowed = getBlockingContext();
+      // Nest the guard that permits blocking
+      ExecutorBlockingGuard guard{ExecutorBlockingGuard::PermitTag{}};
+      ctxPermit = getExecutorBlockingContext();
     }
-    blockingContextDisallowed = getBlockingContext();
+    ctxForbid = getExecutorBlockingContext();
   });
   tpe.join();
-  EXPECT_TRUE(!blockingContextAllowed.has_value());
-  EXPECT_EQ(blockingContextDisallowed->executorName, executorName);
+  EXPECT_TRUE(!ctxPermit.has_value());
+  EXPECT_EQ(ctxForbid->name, executorName);
 }
 
 TEST(ThreadPoolExecutorTest, CPUCurrentThreadExecutor) {

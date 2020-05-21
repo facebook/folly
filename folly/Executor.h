@@ -299,32 +299,43 @@ Executor::KeepAlive<ExecutorT> getKeepAliveToken(
   return ka.copy();
 }
 
-struct BlockingContext {
-  folly::StringPiece executorName;
+struct ExecutorBlockingContext {
+  StringPiece name;
 };
+static_assert(
+    std::is_standard_layout<ExecutorBlockingContext>::value,
+    "non-standard layout");
 
-class BlockingGuard;
+struct ExecutorBlockingList {
+  bool forbid;
+  ExecutorBlockingList* prev;
+  ExecutorBlockingContext curr;
+};
+static_assert(
+    std::is_standard_layout<ExecutorBlockingList>::value,
+    "non-standard layout");
 
-BlockingGuard makeBlockingDisallowedGuard(folly::StringPiece executorName);
-BlockingGuard makeBlockingAllowedGuard();
-
-class FOLLY_NODISCARD BlockingGuard {
+class ExecutorBlockingGuard {
  public:
-  ~BlockingGuard();
+  struct PermitTag {};
+  struct ForbidTag {};
+
+  ~ExecutorBlockingGuard();
+  ExecutorBlockingGuard() = delete;
+
+  explicit ExecutorBlockingGuard(PermitTag) noexcept;
+  explicit ExecutorBlockingGuard(ForbidTag, StringPiece name) noexcept;
+
+  ExecutorBlockingGuard(ExecutorBlockingGuard&&) = delete;
+  ExecutorBlockingGuard(ExecutorBlockingGuard const&) = delete;
+
+  ExecutorBlockingGuard& operator=(ExecutorBlockingGuard const&) = delete;
+  ExecutorBlockingGuard& operator=(ExecutorBlockingGuard&&) = delete;
 
  private:
-  // Disallow blocking
-  BlockingGuard(folly::StringPiece executorName);
-  // Empty guard treated as temporarily allowing blocking
-  BlockingGuard();
-
-  friend BlockingGuard makeBlockingDisallowedGuard(
-      folly::StringPiece executorName);
-  friend BlockingGuard makeBlockingAllowedGuard();
-
-  folly::Optional<BlockingContext> previousContext_;
+  ExecutorBlockingList list_;
 };
 
-folly::Optional<BlockingContext> getBlockingContext();
+Optional<ExecutorBlockingContext> getExecutorBlockingContext() noexcept;
 
 } // namespace folly

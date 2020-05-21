@@ -196,7 +196,7 @@ bool CPUThreadPoolExecutor::taskShouldStop(folly::Optional<CPUTask>& task) {
 
 void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
   this->threadPoolHook_.registerThread();
-  auto guard = folly::makeBlockingDisallowedGuard(executorName);
+  ExecutorBlockingGuard guard{ExecutorBlockingGuard::ForbidTag{}, executorName};
 
   thread->startupBaton.post();
   while (true) {
