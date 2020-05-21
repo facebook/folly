@@ -180,7 +180,7 @@ class GenImpl : public FBounded<Self> {
 
   // Child classes should override if the sequence generated is *definitely*
   // infinite. 'infinite' may be false_type for some infinite sequences
-  // (due the the Halting Problem).
+  // (due to the Halting Problem).
   //
   // In general, almost all sources are finite (only seq(n) produces an infinite
   // source), almost all operators keep the finiteness of the source (only cycle

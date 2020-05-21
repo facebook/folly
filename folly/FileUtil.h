@@ -249,7 +249,7 @@ enum class SyncType {
  *
  * This writes the data to a temporary file in the destination directory, and
  * then renames it to the specified path.  This guarantees that the specified
- * file will be replaced the the specified contents on success, or will not be
+ * file will be replaced the specified contents on success, or will not be
  * modified on failure.
  *
  * Note that on platforms that do not provide atomic filesystem rename

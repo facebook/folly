@@ -260,7 +260,7 @@ void LoggerDB::startConfigUpdate(
         handler = factory->createHandler(handlerConfig->options);
       }
     } catch (const std::exception& ex) {
-      // Errors creating or updating the the log handler are generally due to
+      // Errors creating or updating the log handler are generally due to
       // bad configuration options.  It is useful to update the exception
       // message to include the name of the log handler we were trying to
       // update or create.

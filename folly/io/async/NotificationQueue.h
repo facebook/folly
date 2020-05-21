@@ -185,7 +185,7 @@ class NotificationQueue {
 
    private:
     /**
-     * Consume messages off the the queue until
+     * Consume messages off the queue until
      *   - the queue is empty (1), or
      *   - until the consumer is destroyed, or
      *   - until the consumer is uninstalled, or

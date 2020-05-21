@@ -313,7 +313,7 @@ following fields:
 Custom Configuration Mechanisms
 -------------------------------
 
-Internally the the `LogConfig` class represents configuration settings for the
+Internally the `LogConfig` class represents configuration settings for the
 folly logging library.  Users of the logging library can also programmatically
 construct their own `LogConfig` objects and use the `LoggerDB::updateConfig()`
 and `LoggerDB::resetConfig()` APIs to apply the configuration changes.

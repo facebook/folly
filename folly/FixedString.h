@@ -1564,7 +1564,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * Compare two strings for lexicographical ordering.
    *
-   * Let `A` be the the
+   * Let `A` be the
    *   character sequence {`(*this)[this_pos]`, ...
    *   `(*this)[this_pos + this_count - 1]`}. Let `B` be the character sequence
    *   {`that[0]`, ...`that[count - 1]`}. Then...

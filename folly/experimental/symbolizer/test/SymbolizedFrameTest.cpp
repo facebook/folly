@@ -41,7 +41,7 @@ void checkPath(
 
   CHECK_EQ(expectedPath, path.toString());
 
-  // Check the the `toBuffer` function.
+  // Check the `toBuffer` function.
   char buf[1024];
   size_t len;
   len = path.toBuffer(buf, 1024);

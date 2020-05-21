@@ -1071,7 +1071,7 @@ using PolyValOrRef = If<std::is_reference<I>::value, PolyRef<I>, PolyVal<I>>;
  * added? Adding requires _two_ objects, both of which are type-erased. This
  * interface requires dispatching on both objects, doing the addition only
  * if the types are the same. For this we make use of the `PolySelf` template
- * alias to define an interface that takes more than one object of the the
+ * alias to define an interface that takes more than one object of the
  * erased type.
  *
  *     struct IAddable {

@@ -387,7 +387,7 @@ TEST(Ahm, basicErase) {
     EXPECT_TRUE(success);
     EXPECT_EQ(s->size(), numEntries);
 
-    // Delete every key in the map and verify that the key is gone and the the
+    // Delete every key in the map and verify that the key is gone and the
     // size is correct.
     success = true;
     for (size_t i = 0; i < numEntries; ++i) {

@@ -74,7 +74,7 @@ class Baton {
     // requirement in which the caller must _know_ that this is true, they
     // are not allowed to be merely lucky.  If two threads are involved,
     // the destroying thread must actually have synchronized with the
-    // waiting thread after wait() returned.  To convey causality the the
+    // waiting thread after wait() returned.  To convey causality the
     // waiting thread must have used release semantics and the destroying
     // thread must have used acquire semantics for that communication,
     // so we are guaranteed to see the post-wait() value of state_,

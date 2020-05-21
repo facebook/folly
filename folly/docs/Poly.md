@@ -446,7 +446,7 @@ What if you want to create an `IAddable` interface for things that can be
 added? Adding requires _two_ objects, both of which are type-erased. This
 interface requires dispatching on both objects, doing the addition only
 if the types are the same. For this we make use of the `PolySelf` template
-alias to define an interface that takes more than one object of the the
+alias to define an interface that takes more than one object of the
 erased type.
 
 ``` Cpp

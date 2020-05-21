@@ -36,7 +36,7 @@ struct PrivateTag {};
 using Counter = SingletonRelaxedCounter<size_t, PrivateTag>;
 
 // small wrappers around the functions being benchmarked
-// useful for looking at the the inlined native code of the fast path
+// useful for looking at the inlined native code of the fast path
 extern "C" void check() noexcept {
   Counter::add(1);
 }
