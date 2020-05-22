@@ -54,10 +54,6 @@ def prefetch_dir_if_eden(dirpath):
     so we help accelerate things by performing a prefetch on the
     source directory """
     global PREFETCHED_DIRS
-    if is_windows():
-        # prefetch takes longer than not prefetching our opensource
-        # projects until we cut over to the new globfiles implementation
-        return
     if dirpath in PREFETCHED_DIRS:
         return
     root = find_eden_root(dirpath)
