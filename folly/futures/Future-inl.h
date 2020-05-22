@@ -678,7 +678,11 @@ void SemiFuture<T>::releaseDeferredExecutor(Core* core) {
   if (!core || core->hasCallback()) {
     return;
   }
-  if (auto executor = core->stealDeferredExecutor()) {
+  auto executor = core->stealDeferredExecutor();
+  async_tracing::logSemiFutureDiscard(
+      executor.get() ? async_tracing::DiscardHasDeferred::DEFERRED_EXECUTOR
+                     : async_tracing::DiscardHasDeferred::NO_EXECUTOR);
+  if (executor) {
     executor.get()->detach();
   }
 }
