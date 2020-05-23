@@ -558,24 +558,24 @@ std::string decodeUnicodeEscape(Input& in) {
     return ret;
   };
 
-  /*
-   * If the value encoded is in the surrogate pair range, we need to
-   * make sure there is another escape that we can use also.
-   */
-  uint32_t codePoint = readHex();
-  if (codePoint >= 0xd800 && codePoint <= 0xdbff) {
+  //  If the value encoded is in the surrogate pair range, we need to make
+  //  sure there is another escape that we can use also.
+  //
+  //  See the explanation in folly/Unicode.h.
+  uint16_t prefix = readHex();
+  char32_t codePoint = prefix;
+  if (utf16_code_unit_is_high_surrogate(prefix)) {
     if (!in.consume("\\u")) {
       in.error(
           "expected another unicode escape for second half of "
           "surrogate pair");
     }
-    uint16_t second = readHex();
-    if (second >= 0xdc00 && second <= 0xdfff) {
-      codePoint = 0x10000 + ((codePoint & 0x3ff) << 10) + (second & 0x3ff);
-    } else {
+    uint16_t suffix = readHex();
+    if (!utf16_code_unit_is_low_surrogate(suffix)) {
       in.error("second character in surrogate pair is invalid");
     }
-  } else if (codePoint >= 0xdc00 && codePoint <= 0xdfff) {
+    codePoint = unicode_code_point_from_utf16_surrogate_pair(prefix, suffix);
+  } else if (!utf16_code_unit_is_bmp(prefix)) {
     in.error("invalid unicode code point (in range [0xdc00,0xdfff])");
   }
 
