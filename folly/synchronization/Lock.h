@@ -24,6 +24,23 @@
 
 namespace folly {
 
+//  upgrade_lock
+//
+//  A lock-holder type which holds upgrade locks, usable with any shared mutex
+//  type which supports the upgrade state. Similar to std::unique_lock vis-a-vis
+//  all mutex types or to std::shared_lock vis-a-vis all shared mutex types.
+//
+//  As long as the associated mutex type exposes members in the style:
+//  - lock_upgrade void()
+//  - try_lock_upgrade bool()
+//  - try_lock_upgrade_for bool(std::chrono::duration<...> const&)
+//  - try_lock_upgrade_until bool(std::chrono::time_point<...> const&)
+//  - unlock_upgrade
+//
+//  Upgrade locks are not useful by themselves; they are primarily useful since
+//  upgrade locks may be transitioned atomically to exclusive locks. This lock-
+//  holder type works with the transition_to_... functions below to facilitate
+//  atomic transition from ugprade lock to exclusive lock.
 template <typename Mutex>
 class upgrade_lock {
  public:
@@ -177,6 +194,12 @@ To<Mutex> transition_lock_(From<Mutex>& lock, Transition transition) {
 
 } // namespace detail
 
+//  transition_to_shared_lock(unique_lock)
+//
+//  Wraps mutex member function unlock_and_lock_shared.
+//
+//  Represents an immediate atomic downgrade transition from exclusive lock to
+//  to shared lock.
 template <typename Mutex>
 std::shared_lock<Mutex> transition_to_shared_lock(
     std::unique_lock<Mutex>& lock) {
@@ -185,6 +208,12 @@ std::shared_lock<Mutex> transition_to_shared_lock(
   });
 }
 
+//  transition_to_shared_lock(upgrade_lock)
+//
+//  Wraps mutex member function unlock_upgrade_and_lock_shared.
+//
+//  Represents an immediate atomic downgrade transition from upgrade lock to
+//  shared lock.
 template <typename Mutex>
 std::shared_lock<Mutex> transition_to_shared_lock( //
     upgrade_lock<Mutex>& lock) {
@@ -193,6 +222,12 @@ std::shared_lock<Mutex> transition_to_shared_lock( //
   });
 }
 
+//  transition_to_upgrade_lock(unique_lock)
+//
+//  Wraps mutex member function unlock_and_lock_upgrade.
+//
+//  Represents an immediate atomic downgrade transition from unique lock to
+//  upgrade lock.
 template <typename Mutex>
 upgrade_lock<Mutex> transition_to_upgrade_lock( //
     std::unique_lock<Mutex>& lock) {
@@ -201,6 +236,12 @@ upgrade_lock<Mutex> transition_to_upgrade_lock( //
   });
 }
 
+//  transition_to_unique_lock(upgrade_lock)
+//
+//  Wraps mutex member function unlock_upgrade_and_lock.
+//
+//  Represents an eventual atomic upgrade transition from upgrade lock to unique
+//  lock.
 template <typename Mutex>
 std::unique_lock<Mutex> transition_to_unique_lock( //
     upgrade_lock<Mutex>& lock) {
@@ -209,6 +250,12 @@ std::unique_lock<Mutex> transition_to_unique_lock( //
   });
 }
 
+//  try_transition_to_unique_lock(upgrade_lock)
+//
+//  Wraps mutex member function try_unlock_upgrade_and_lock.
+//
+//  Represents an immediate attempted atomic upgrade transition from upgrade
+//  lock to unique lock.
 template <typename Mutex>
 std::unique_lock<Mutex> try_transition_to_unique_lock(
     upgrade_lock<Mutex>& lock) {
@@ -217,6 +264,12 @@ std::unique_lock<Mutex> try_transition_to_unique_lock(
   });
 }
 
+//  try_transition_to_unique_lock_for(upgrade_lock)
+//
+//  Wraps mutex member function try_unlock_upgrade_and_lock_for.
+//
+//  Represents an eventual attempted atomic upgrade transition from upgrade
+//  lock to unique lock.
 template <typename Mutex, typename Rep, typename Period>
 std::unique_lock<Mutex> try_transition_to_unique_lock_for(
     upgrade_lock<Mutex>& lock,
@@ -226,6 +279,12 @@ std::unique_lock<Mutex> try_transition_to_unique_lock_for(
   });
 }
 
+//  try_transition_to_unique_lock_until(upgrade_lock)
+//
+//  Wraps mutex member function try_unlock_upgrade_and_lock_until.
+//
+//  Represents an eventual attemped atomic upgrade transition from upgrade
+//  lock to unique lock.
 template <typename Mutex, typename Clock, typename Duration>
 std::unique_lock<Mutex> try_transition_to_unique_lock_until(
     upgrade_lock<Mutex>& lock,
