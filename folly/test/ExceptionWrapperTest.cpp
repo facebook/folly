@@ -18,6 +18,7 @@
 
 #include <folly/Conv.h>
 #include <folly/ExceptionWrapper.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
@@ -559,21 +560,21 @@ struct OnHeapException : std::exception {
 } // namespace
 
 TEST(ExceptionWrapper, make_wrapper_no_args) {
-  EXPECT_TRUE(
-      folly::StringPiece(folly::make_exception_wrapper<ThrownException>()
-                             .class_name()
-                             .toStdString())
-          .endsWith("ThrownException"));
-  EXPECT_TRUE(
-      folly::StringPiece(folly::make_exception_wrapper<InSituException>()
-                             .class_name()
-                             .toStdString())
-          .endsWith("InSituException"));
-  EXPECT_TRUE(
-      folly::StringPiece(folly::make_exception_wrapper<OnHeapException>()
-                             .class_name()
-                             .toStdString())
-          .endsWith("OnHeapException"));
+  EXPECT_THAT(
+      folly::make_exception_wrapper<ThrownException>()
+          .class_name()
+          .toStdString(),
+      testing::EndsWith("ThrownException"));
+  EXPECT_THAT(
+      folly::make_exception_wrapper<InSituException>()
+          .class_name()
+          .toStdString(),
+      testing::EndsWith("InSituException"));
+  EXPECT_THAT(
+      folly::make_exception_wrapper<OnHeapException>()
+          .class_name()
+          .toStdString(),
+      testing::EndsWith("OnHeapException"));
 }
 
 namespace {
