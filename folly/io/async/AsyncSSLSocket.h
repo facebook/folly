@@ -838,6 +838,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   void handleWrite() noexcept override;
   void handleAccept() noexcept;
   void handleConnect() noexcept override;
+#if FOLLY_OPENSSL_HAS_TLS13
+  int handleReadEarlyData() noexcept;
+#endif
 
   void invalidState(HandshakeCB* callback);
   bool
@@ -928,6 +931,9 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   // to disable client-initiated renegotiation.
   bool handshakeComplete_{false};
   bool renegotiateAttempted_{false};
+#if FOLLY_OPENSSL_HAS_TLS13
+  bool earlyDataPhaseComplete_{false};
+#endif
   SSLStateEnum sslState_{STATE_UNINIT};
   std::shared_ptr<folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()

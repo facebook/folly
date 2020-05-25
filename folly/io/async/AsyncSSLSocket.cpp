@@ -94,6 +94,34 @@ void setup_SSL_CTX(SSL_CTX* ctx) {
 #endif
 }
 
+#if FOLLY_OPENSSL_HAS_TLS13
+// This function is used for logging OpenSSL's early data status
+static std::string earlyDataStatusString(SSL *ssl) {
+  switch(SSL_get_early_data_status(ssl)) {
+    case SSL_EARLY_DATA_REJECTED:
+      return "SSL_EARLY_DATA_REJECTED";
+    case SSL_EARLY_DATA_ACCEPTED:
+      return "SSL_EARLY_DATA_ACCEPTED";
+    default:
+      return "SSL_EARLY_DATA_NOT_SENT";
+  }
+}
+
+// This function is used for logging OpenSSL's early data err code
+static std::string earlyDataErrCodeString(int errCode) {
+  switch(errCode) {
+    case SSL_READ_EARLY_DATA_ERROR:
+      return "SSL_READ_EARLY_DATA_ERROR";
+    case SSL_READ_EARLY_DATA_SUCCESS:
+      return "SSL_READ_EARLY_DATA_SUCCESS";
+    case SSL_READ_EARLY_DATA_FINISH:
+      return "SSL_READ_EARLY_DATA_FINISH";
+    default:
+      return std::to_string(errCode);
+  }
+}
+#endif
+
 // Note: This is a Leaky Meyer's Singleton. The reason we can't use a non-leaky
 // thing is because we will be setting this BIO_METHOD* inside BIOs owned by
 // various SSL objects which may get callbacks even during teardown. We may
@@ -1218,6 +1246,13 @@ void AsyncSSLSocket::handleAccept() noexcept {
     SSL_set_msg_callback_arg(ssl_.get(), this);
   }
 
+#if FOLLY_OPENSSL_HAS_TLS13
+  if (!earlyDataPhaseComplete_ &&
+      handleReadEarlyData() != SSL_READ_EARLY_DATA_FINISH) {
+    return;
+  }
+#endif
+
   DCHECK(ctx_->sslAcceptRunner());
   updateEventRegistration(
       EventHandler::NONE, EventHandler::READ | EventHandler::WRITE);
@@ -1252,6 +1287,9 @@ void AsyncSSLSocket::handleReturnFromSSLAccept(int ret) {
     }
   }
 
+#if FOLLY_OPENSSL_HAS_TLS13
+  earlyDataPhaseComplete_ = false;
+#endif
   handshakeComplete_ = true;
   updateEventRegistration(0, EventHandler::READ | EventHandler::WRITE);
 
@@ -1358,6 +1396,63 @@ void AsyncSSLSocket::handleConnect() noexcept {
 
   AsyncSocket::handleInitialReadWrite();
 }
+
+#if FOLLY_OPENSSL_HAS_TLS13
+int AsyncSSLSocket::handleReadEarlyData() noexcept {
+  VLOG(3) << "AsyncSSLSocket::handleReadEarlyData() this=" << this
+          << ", fd=" << fd_ << ", state=" << int(state_) << ", "
+          << "sslState=" << sslState_ << ", events=" << eventFlags_;
+  size_t bufSize = SSL_CTX_get_max_early_data(ctx_->getSSLCtx());
+  unsigned char buf[bufSize];
+  size_t readBytes;
+  int edRet = SSL_READ_EARLY_DATA_ERROR;
+  int sslErr = SSL_ERROR_NONE;
+
+  edRet = SSL_read_early_data(ssl_.get(), buf, bufSize, &readBytes);
+  VLOG(3) << "AsyncSSLSocket::handleReadEarlyData()"
+          << " SSL_read_early_data return Code: "
+          << earlyDataErrCodeString(edRet)
+          << ", Early data OpenSSL Status: "
+          << earlyDataStatusString(ssl_.get());
+  switch(edRet) {
+    case SSL_READ_EARLY_DATA_ERROR:
+      sslErr = SSL_get_error(ssl_.get(), 0);
+      VLOG(3) << "SSL Error: " << sslErr;
+      if (SSL_ERROR_SSL == sslErr || SSL_ERROR_SYSCALL == sslErr) {
+        // Unrecoverable error in OpenSSL lib occured due to abrupt EOF sent
+        // by peer. Aborting the early data phase.
+        earlyDataPhaseComplete_ = true;
+        break;
+      }
+      // Either SSL_accept or SSL_read_ex inside SSL_read_early_data() returned
+      // SSL_ERROR_WANT_READ. Retry the operation by calling
+      // SSL_read_early_data again in next read event
+      updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
+      sslState_ = STATE_ACCEPTING;
+      break;
+    case SSL_READ_EARLY_DATA_SUCCESS:
+      if (ctx_->parseEarlyDataCb_ &&
+          !ctx_->parseEarlyDataCb_(buf, readBytes)) {
+        VLOG(3) << "Early data content rejected ";
+        sslState_ = STATE_ERROR;
+        AsyncSocketException ex(AsyncSocketException::EARLY_DATA_REJECTED,
+                                "Invalid Early data content");
+        failHandshake(__func__, ex);
+        break;
+      }
+      updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
+      sslState_ = STATE_ACCEPTING;
+      break;
+    case SSL_READ_EARLY_DATA_FINISH:
+      // Finished Early data processing
+    default:
+      // Unknown Error. This should not happen. Aborting the early data phase
+      earlyDataPhaseComplete_ = true;
+      break;
+  }
+  return edRet;
+}
+#endif
 
 void AsyncSSLSocket::invokeConnectErr(const AsyncSocketException& ex) {
   connectionTimeout_.cancelTimeout();
