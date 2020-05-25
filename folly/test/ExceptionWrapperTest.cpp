@@ -561,20 +561,14 @@ struct OnHeapException : std::exception {
 
 TEST(ExceptionWrapper, make_wrapper_no_args) {
   EXPECT_THAT(
-      folly::make_exception_wrapper<ThrownException>()
-          .class_name()
-          .toStdString(),
-      testing::EndsWith("ThrownException"));
+      folly::make_exception_wrapper<ThrownException>().class_name(),
+      testing::Eq(demangle(typeid(ThrownException))));
   EXPECT_THAT(
-      folly::make_exception_wrapper<InSituException>()
-          .class_name()
-          .toStdString(),
-      testing::EndsWith("InSituException"));
+      folly::make_exception_wrapper<InSituException>().class_name(),
+      testing::Eq(demangle(typeid(InSituException))));
   EXPECT_THAT(
-      folly::make_exception_wrapper<OnHeapException>()
-          .class_name()
-          .toStdString(),
-      testing::EndsWith("OnHeapException"));
+      folly::make_exception_wrapper<OnHeapException>().class_name(),
+      testing::Eq(demangle(typeid(OnHeapException))));
 }
 
 namespace {
