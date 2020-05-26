@@ -27,6 +27,7 @@
 #include <folly/system/ThreadName.h>
 
 #include <folly/futures/Promise.h>
+#include <folly/synchronization/Baton.h>
 
 #include <atomic>
 #include <future>

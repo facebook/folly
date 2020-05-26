@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/experimental/observer/Observer.h>
+#include <folly/synchronization/Baton.h>
 
 namespace folly {
 namespace observer {
