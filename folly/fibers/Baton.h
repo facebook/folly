@@ -216,7 +216,7 @@ class Baton {
    * scheduleTimeout() may only be called once prior to the end of the
    * associated Baton's life.
    */
-  class TimeoutHandler final : private HHWheelTimer::Callback {
+  class TimeoutHandler final : public HHWheelTimer::Callback {
    public:
     void scheduleTimeout(std::chrono::milliseconds timeout);
 
