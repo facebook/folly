@@ -15,7 +15,7 @@
 from cpython.ref cimport PyObject
 from folly cimport cFollyExecutor, cFollyTry
 
-cdef extern from "folly/experimental/coro/Task.h" namespace "folly::coro" nogil:
+cdef extern from "folly/python/coro.h" namespace "folly::coro" nogil:
     cdef cppclass cFollyCoroTask "folly::coro::Task"[T]:
         pass
 

@@ -23,6 +23,10 @@
 
 #include <Python.h>
 #include <folly/Executor.h>
+#include <folly/Portability.h>
+
+#if FOLLY_HAS_COROUTINES
+
 #include <folly/experimental/coro/Task.h>
 #include <folly/python/AsyncioExecutor.h>
 #include <folly/python/executor.h>
@@ -58,3 +62,5 @@ void bridgeCoroTask(
 
 } // namespace python
 } // namespace folly
+
+#endif

@@ -14,7 +14,7 @@
 
 from folly.coro cimport cFollyCoroTask
 
-cdef extern from "folly/experimental/coro/AsyncGenerator.h" namespace "folly::coro":
+cdef extern from "folly/python/async_generator.h" namespace "folly::coro":
     cdef cppclass cAsyncGenerator "folly::coro::AsyncGenerator"[T]:
         pass
 
