@@ -342,6 +342,30 @@ class AsyncUDPSocket : public EventHandler {
     return readCallback_ != nullptr;
   }
 
+  /**
+   * Set the maximum number of reads to execute from the underlying
+   * socket each time the EventBase detects that new ingress data is
+   * available. The default is kMaxReadsPerEvent
+   *
+   * @param maxReads  Maximum number of reads per data-available event;
+   *                  a value of zero means unlimited.
+   */
+  void setMaxReadsPerEvent(uint16_t maxReads) {
+    maxReadsPerEvent_ = maxReads;
+  }
+
+  /**
+   * Get the maximum number of reads this object will execute from
+   * the underlying socket each time the EventBase detects that new
+   * ingress data is available.
+   *
+   * @returns Maximum number of reads per data-available event; a value
+   *          of zero means unlimited.
+   */
+  uint16_t getMaxReadsPerEvent() const {
+    return maxReadsPerEvent_;
+  }
+
   virtual void detachEventBase();
 
   virtual void attachEventBase(folly::EventBase* evb);
@@ -404,6 +428,10 @@ class AsyncUDPSocket : public EventHandler {
   size_t handleErrMessages() noexcept;
 
   void failErrMessageRead(const AsyncSocketException& ex);
+
+  static auto constexpr kDefaultReadsPerEvent = 1;
+  uint16_t maxReadsPerEvent_{
+      kDefaultReadsPerEvent}; ///< Max reads per event loop iteration
 
   // Non-null only when we are reading
   ReadCallback* readCallback_;
