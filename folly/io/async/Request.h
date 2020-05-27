@@ -140,6 +140,7 @@ class RequestData {
   void releaseRefDeleteOnly();
   // Decrement the reference count. Clear and delete if last.
   void releaseRefClearDelete();
+  void releaseRefClearDeleteSlow();
 
   // Unique ptr with custom destructor, decrement the counter
   // and only free if 0

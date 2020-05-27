@@ -455,3 +455,47 @@ TEST_F(RequestContextTest, OverwriteNullData) {
     EXPECT_NE(folly::RequestContext::get()->getContextData("token"), nullptr);
   }
 }
+
+TEST_F(RequestContextTest, ConcurrentDataRefRelease) {
+  for (int i = 0; i < 100; ++i) {
+    std::atomic<int> step{0};
+    std::shared_ptr<folly::RequestContext> sp1;
+    auto th1 = std::thread([&]() {
+      folly::RequestContextScopeGuard g0; // Creates ctx0.
+      setData(); // Creates data0 with one reference in ctx0.
+      {
+        folly::ShallowCopyRequestContextScopeGuard g1;
+        // g1 created ctx1 with second reference to data0.
+        EXPECT_NE(&getData(), nullptr);
+        // Keep shared_ptr to ctx1 to pass to th2
+        sp1 = folly::RequestContext::saveContext();
+        step.store(1); // sp1 is ready.
+        while (step.load() < 2)
+          /* Wait for th2 to clear reference to data0. */;
+      }
+      // End of g2 released shared_ptr to ctx1, switched back to ctx0
+      // At this point:
+      // - One shared_ptr to ctx0, held by th1.
+      // - One shared_ptr to ctx1, help by th2.
+      // - data0 has one clear count (for reference from ctx0) and
+      //   two delete counts (one each from ctx0 and ctx1).
+      step.store(3);
+      // End of g1 will destroy ctx0, release clear/delete counts for data0.
+    });
+    auto th2 = std::thread([&]() {
+      while (step.load() < 1)
+        /* Wait for th1 to set sp1. */;
+      folly::RequestContextScopeGuard g2(std::move(sp1));
+      // g2 set context to ctx1.
+      EXPECT_EQ(sp1.get(), nullptr);
+      EXPECT_NE(&getData(), nullptr);
+      clearData();
+      step.store(2); // th2 cleared reference to data0 in ctx1.
+      while (step.load() < 3)
+        /* Wait for th1 to release shared_ptr to ctx1. */;
+      // End of g2 will destroy ctx1, release delete count for data0.
+    });
+    th1.join();
+    th2.join();
+  }
+}

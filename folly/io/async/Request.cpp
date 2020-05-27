@@ -103,16 +103,19 @@ void RequestData::releaseRefDeleteOnly() {
 
 FOLLY_ALWAYS_INLINE
 void RequestData::releaseRefClearDelete() {
-  auto rc = keepAliveCounter_.fetch_sub(
-                kClearCount + kDeleteCount, std::memory_order_acq_rel) -
-      (kClearCount + kDeleteCount);
-  DCHECK_GE(rc, 0);
-  if (rc < kClearCount) {
+  auto rc = keepAliveCounter_.load(std::memory_order_acquire);
+  if (FOLLY_LIKELY(rc == (kClearCount + kDeleteCount))) {
     this->onClear();
-  }
-  if (rc == 0) {
     delete this;
+  } else {
+    releaseRefClearDeleteSlow();
   }
+}
+
+FOLLY_NOINLINE
+void RequestData::releaseRefClearDeleteSlow() {
+  releaseRefClearOnly();
+  releaseRefDeleteOnly();
 }
 
 void RequestData::DestructPtr::operator()(RequestData* ptr) {
