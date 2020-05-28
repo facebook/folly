@@ -1737,10 +1737,10 @@ TEST(FiberManager, semaphore) {
 #endif
                   break;
                 case 2: {
-                  Baton baton;
-                  bool acquired = sem.try_wait(baton);
+                  Semaphore::Waiter waiter;
+                  bool acquired = sem.try_wait(waiter);
                   if (!acquired) {
-                    baton.wait();
+                    waiter.baton.wait();
                   }
                   break;
                 }

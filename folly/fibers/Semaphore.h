@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/IntrusiveList.h>
 #include <folly/Synchronized.h>
 #include <folly/fibers/Baton.h>
 #include <folly/futures/Future.h>
@@ -50,13 +51,24 @@ class Semaphore {
    */
   void wait();
 
+  struct Waiter {
+    Waiter() noexcept {}
+
+    // The baton will be signalled when this waiter acquires the semaphore.
+    Baton baton;
+
+   private:
+    friend Semaphore;
+    folly::SafeIntrusiveListHook hook_;
+  };
+
   /**
    * Try to wait on the semaphore.
    * Return true on success.
-   * On failure, the passed baton is enqueued, it will be posted once the
+   * On failure, the passed waiter is enqueued, its baton will be posted once
    * semaphore has capacity. Caller is responsible to wait then signal.
    */
-  bool try_wait(Baton& waitBaton);
+  bool try_wait(Waiter& waiter);
 
 #if FOLLY_HAS_COROUTINES
 
@@ -79,13 +91,16 @@ class Semaphore {
   size_t getCapacity() const;
 
  private:
-  bool waitSlow(folly::fibers::Baton& waitBaton);
+  bool waitSlow(Waiter& waiter);
   bool signalSlow();
 
   size_t capacity_;
   // Atomic counter
   std::atomic<int64_t> tokens_;
-  folly::Synchronized<std::queue<folly::fibers::Baton*>> waitList_;
+
+  using WaiterList = folly::SafeIntrusiveList<Waiter, &Waiter::hook_>;
+
+  folly::Synchronized<WaiterList> waitList_;
 };
 
 } // namespace fibers
