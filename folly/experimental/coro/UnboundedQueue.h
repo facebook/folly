@@ -35,9 +35,14 @@ class UnboundedQueue {
   }
 
   folly::coro::Task<T> dequeue() {
-    co_await sem_.co_wait();
+    folly::Try<void> result = co_await folly::coro::co_awaitTry(sem_.co_wait());
+    if (result.hasException()) {
+      co_yield co_error(std::move(result).exception());
+    }
+
     co_return queue_.dequeue();
   }
+
   folly::coro::Task<void> dequeue(T& out) {
     co_await sem_.co_wait();
     queue_.dequeue(out);
@@ -46,6 +51,7 @@ class UnboundedQueue {
   folly::Optional<T> try_dequeue() {
     return queue_.try_dequeue();
   }
+
   bool try_dequeue(T& out) {
     return queue_.try_dequeue(out);
   }
@@ -53,6 +59,7 @@ class UnboundedQueue {
   bool empty() {
     return queue_.empty();
   }
+
   size_t size() {
     return queue_.size();
   }

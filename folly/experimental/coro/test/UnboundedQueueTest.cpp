@@ -18,7 +18,9 @@
 
 #if FOLLY_HAS_COROUTINES
 
+#include <folly/CancellationToken.h>
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/UnboundedQueue.h>
 
 #include <folly/portability/GTest.h>
@@ -148,6 +150,44 @@ TEST(UnboundedQueueTest, EnqueueDequeMPMC) {
   }
 
   EXPECT_TRUE(queue.empty());
+}
+
+TEST(UnboundedQueueTest, CancelledDequeueThrowsOperationCancelled) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    // Cancellation currently only supported on SingleConsumer variants of
+    // UnboundedQueue.
+    folly::coro::UnboundedQueue<int> queue;
+    folly::CancellationSource cancelSource;
+
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<void> {
+          EXPECT_THROW(
+              (co_await folly::coro::co_withCancellation(
+                  cancelSource.getToken(), queue.dequeue())),
+              folly::OperationCancelled);
+        }(),
+        [&]() -> folly::coro::Task<void> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          co_await folly::coro::co_reschedule_on_current_executor;
+          cancelSource.requestCancellation();
+        }());
+  }());
+}
+
+TEST(UnboundedQueueTest, CancelledDequeueCompletesNormallyIfAnItemIsAvailable) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    // Cancellation currently only supported on SingleConsumer variants of
+    // UnboundedQueue.
+    folly::coro::UnboundedQueue<int> queue;
+    folly::CancellationSource cancelSource;
+    cancelSource.requestCancellation();
+
+    queue.enqueue(123);
+
+    int result = co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), queue.dequeue());
+    EXPECT_EQ(123, result);
+  }());
 }
 
 #endif
