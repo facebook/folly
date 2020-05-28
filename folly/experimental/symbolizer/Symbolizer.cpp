@@ -34,10 +34,10 @@
 #include <folly/Memory.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
-
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/LineReader.h>
+#include <folly/lang/SafeAssert.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
@@ -94,33 +94,23 @@ Symbolizer::Symbolizer(
   }
 }
 
-void Symbolizer::symbolize(
+size_t Symbolizer::symbolize(
     folly::Range<const uintptr_t*> addrs,
     folly::Range<SymbolizedFrame*> frames) {
   size_t addrCount = addrs.size();
   size_t frameCount = frames.size();
-  size_t remaining = 0;
-  for (size_t i = 0; i < addrCount; ++i) {
-    auto& frame = frames[i];
-    if (!frame.found) {
-      ++remaining;
-      frame.clear();
-    }
-  }
-
-  if (remaining == 0) { // we're done
-    return;
-  }
+  FOLLY_SAFE_CHECK(addrCount <= frameCount, "Not enough frames.");
+  size_t remaining = addrCount;
 
   if (_r_debug.r_version != 1) {
-    return;
+    return 0;
   }
 
   char selfPath[PATH_MAX + 8];
   ssize_t selfSize;
   if ((selfSize = readlink("/proc/self/exe", selfPath, PATH_MAX + 1)) == -1) {
     // Something has gone terribly wrong.
-    return;
+    return 0;
   }
   selfPath[selfSize] = '\0';
 
@@ -230,6 +220,8 @@ void Symbolizer::symbolize(
       }
     }
   }
+
+  return addrCount;
 }
 
 namespace {

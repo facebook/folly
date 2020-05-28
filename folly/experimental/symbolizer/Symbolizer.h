@@ -98,32 +98,32 @@ class Symbolizer {
       size_t symbolCacheSize = 0);
 
   /**
-   *  Symbolize given addresses.
+   *  Symbolize given addresses and return the number of @frames filled:
    *
    * - all entries in @addrs will be symbolized (if possible, e.g. if they're
-   *   valid code addresses)
+   *   valid code addresses and if frames.size() >= addrs.size())
    *
    * - if `mode_ == FULL_WITH_INLINE` and `frames.size() > addrs.size()` then at
    *   most `frames.size() - addrs.size()` additional inlined functions will
    *   also be symbolized (at most `kMaxInlineLocationInfoPerFrame` per @addr
    *   entry).
    */
-  void symbolize(
+  size_t symbolize(
       folly::Range<const uintptr_t*> addrs,
       folly::Range<SymbolizedFrame*> frames);
 
-  void symbolize(
+  size_t symbolize(
       const uintptr_t* addresses,
       SymbolizedFrame* frames,
       size_t frameCount) {
-    symbolize(
+    return symbolize(
         folly::Range<const uintptr_t*>(addresses, frameCount),
         folly::Range<SymbolizedFrame*>(frames, frameCount));
   }
 
   template <size_t N>
-  void symbolize(FrameArray<N>& fa) {
-    symbolize(
+  size_t symbolize(FrameArray<N>& fa) {
+    return symbolize(
         folly::Range<const uintptr_t*>(fa.addresses, fa.frameCount),
         folly::Range<SymbolizedFrame*>(fa.frames, N));
   }
