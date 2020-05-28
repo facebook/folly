@@ -82,9 +82,8 @@ using range_reference_t = iterator_reference_t<range_iterator_t<Range>>;
 // request cancellation of any outstanding tasks and the whole collectAll()
 // operation will complete with an exception once all of the operations
 // have completed.  Any partial results will be discarded. If multiple
-// operations fail with an exception then one of the exceptions will be rethrown
-// to the caller (which one is unspecified) and the other exceptions are
-// discarded.
+// operations fail with an exception then the exception from the first task
+// to fail will be rethrown and subsequent errors are discarded.
 //
 // If you need to know which operation failed or you want to handle partial
 // failures then you can use the folly::coro::collectAllTry() instead which
@@ -148,7 +147,7 @@ auto collectAllTry(SemiAwaitables&&... awaitables)
         remove_cvref_t<SemiAwaitables>>...>>;
 
 ////////////////////////////////////////////////////////////////////////
-// rangeCollectAll(RangeOf<SemiAwaitable<T>>&&)
+// collectAllRange(RangeOf<SemiAwaitable<T>>&&)
 //   -> SemiAwaitable<std::vector<T>>
 //
 // The collectAllRange() function can be used to concurrently await a collection
@@ -158,8 +157,8 @@ auto collectAllTry(SemiAwaitables&&... awaitables)
 // If any of the operations fail with an exception then requests cancellation of
 // any outstanding operations and the entire operation fails with an exception,
 // discarding any partial results. If more than one operation fails with an
-// exception then the exception from the first failed operation in the input
-// range is rethrown. Other results and exceptions are discarded.
+// exception then the exception from task that failed first (in time) is
+// rethrown. Other results and exceptions are discarded.
 //
 // If you need to be able to distinguish which operation failed or handle
 // partial failures then use collectAllTryRange() instead.
@@ -242,13 +241,13 @@ auto collectAllTryRange(std::vector<SemiAwaitable> awaitables)
 // If any of the input awaitables fail with an exception then requests
 // cancellation of any incomplete operations and fails the whole
 // operation with an exception. If multiple input awaitables fail with
-// an exception then one of these exceptions will be rethrown and the rest
-// of the results will be discarded.
+// an exception then the exeception from the first task to fail (in time)
+// will be rethrown and the rest of the results will be discarded.
 //
 // If there is an exception thrown while iterating over the input-range then
 // it will still guarantee that any prior awaitables in the input-range will
 // run to completion before completing the collectAllWindowed() operation with
-// an exception.
+// the exception thrown during iteration.
 //
 // The resulting std::vector will contain the results in the corresponding
 // order of their respective awaitables in the input range.
