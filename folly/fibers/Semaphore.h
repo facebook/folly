@@ -24,6 +24,8 @@
 #include <folly/experimental/coro/Task.h>
 #endif
 
+#include <deque>
+
 namespace folly {
 namespace fibers {
 
@@ -74,6 +76,19 @@ class Semaphore {
 
   /*
    * Wait for capacity in the semaphore.
+   *
+   * Note that this wait-operation can be cancelled by requesting cancellation
+   * on the awaiting coroutine's associated CancellationToken.
+   * If the operation is successfully cancelled then it will complete with
+   * an error of type folly::OperationCancelled.
+   *
+   * Note that requesting cancellation of the operation will only have an
+   * effect if the operation does not complete synchronously (ie. was not
+   * already in a signalled state).
+   *
+   * If the semaphore was already in a signalled state prior to awaiting the
+   * returned Task then the operation will complete successfully regardless
+   * of whether cancellation was requested.
    */
   coro::Task<void> co_wait();
 

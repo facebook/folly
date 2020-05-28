@@ -129,7 +129,37 @@ coro::Task<void> Semaphore::co_wait() {
       // If waitSlow fails it is because the token is non-zero by the time
       // the lock is taken, so we can just continue round the loop
       if (waitSlow(waiter)) {
-        co_await waiter.baton;
+        bool cancelled = false;
+        {
+          const auto& ct = co_await folly::coro::co_current_cancellation_token;
+          folly::CancellationCallback cb{
+              ct, [&] {
+                {
+                  auto waitListLock = waitList_.wlock();
+                  auto& waitList = *waitListLock;
+
+                  if (!waiter.hook_.is_linked()) {
+                    // Already dequeued by signalSlow()
+                    return;
+                  }
+
+                  cancelled = true;
+                  waitList.erase(waitList.iterator_to(waiter));
+                }
+
+                waiter.baton.post();
+              }};
+
+          co_await waiter.baton;
+        }
+
+        // Check 'cancelled' flag only after deregistering the callback so we're
+        // sure that we aren't reading it concurrently with a potential write
+        // from a thread requesting cancellation.
+        if (cancelled) {
+          co_yield folly::coro::co_error(folly::OperationCancelled{});
+        }
+
         co_return;
       }
       oldVal = tokens_.load(std::memory_order_acquire);

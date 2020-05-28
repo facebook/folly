@@ -43,7 +43,7 @@ struct S {
 };
 
 coro::Task<S> taskS() {
-  co_return {};
+  co_return{};
 }
 
 coro::Task<int> task42() {
@@ -515,6 +515,72 @@ TEST_F(CoroTest, Semaphore) {
   }
 }
 
+TEST_F(CoroTest, SemaphoreWaitWhenCancellationAlreadyRequested) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    folly::CancellationSource cancelSource;
+    cancelSource.requestCancellation();
+
+    // Run some logic while in an already-cancelled state.
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), []() -> folly::coro::Task<> {
+          folly::fibers::Semaphore sem{1};
+
+          // If in a signalled state then should complete normally
+          co_await sem.co_wait();
+
+          // And the semaphore should no longer be in the signalled state.
+
+          // But if not signalled then should complete with cancellation
+          // immediately.
+          EXPECT_THROW(co_await sem.co_wait(), folly::OperationCancelled);
+        }());
+  }());
+}
+
+TEST_F(CoroTest, CancelOutstandingSemaphoreWait) {
+  struct ExpectedError : std::exception {};
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    folly::fibers::Semaphore sem{0};
+    try {
+      co_await folly::coro::collectAll(
+          [&]() -> folly::coro::Task<> {
+            EXPECT_THROW(co_await sem.co_wait(), OperationCancelled);
+          }(),
+          []() -> folly::coro::Task<> {
+            co_await folly::coro::co_reschedule_on_current_executor;
+            // Completing the second task with an error will cause
+            // collectAll() to request cancellation of the other task
+            // whcih should reqeust cancellation of sem.co_wait().
+            co_yield folly::coro::co_error(ExpectedError{});
+          }());
+    } catch (ExpectedError) {
+    }
+  }());
+}
+
+TEST_F(CoroTest, CancelOneSemaphoreWaitDoesNotAffectOthers) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::fibers::Semaphore sem{0};
+
+    folly::CancellationSource cancelSource;
+
+    co_await folly::coro::collectAll(
+        [&]() -> folly::coro::Task<> {
+          EXPECT_THROW(
+              (co_await folly::coro::co_withCancellation(
+                  cancelSource.getToken(), sem.co_wait())),
+              OperationCancelled);
+        }(),
+        [&]() -> folly::coro::Task<> { co_await sem.co_wait(); }(),
+        [&]() -> folly::coro::Task<> {
+          co_await folly::coro::co_reschedule_on_current_executor;
+          cancelSource.requestCancellation();
+          sem.signal();
+        }());
+  }());
+}
+
 TEST_F(CoroTest, FutureTry) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     {
@@ -619,5 +685,4 @@ TEST(Coro, CoThrow) {
       }()),
       ExpectedException);
 }
-
 #endif
