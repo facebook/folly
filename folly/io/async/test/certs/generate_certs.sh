@@ -91,6 +91,7 @@ selfsign() {
     -in "$incsr" \
     -outform PEM \
     -out "$outfile" \
+    -days "$CERT_LIFETIME_DAYS" \
     -extfile <(extensions) \
     -extensions "ca" \
 
