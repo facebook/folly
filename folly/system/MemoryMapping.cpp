@@ -276,8 +276,8 @@ bool memOpInChunks(
 } // namespace
 
 int mlock2wrapper(
-    const void* addr,
-    size_t len,
+    FOLLY_MAYBE_UNUSED const void* addr,
+    FOLLY_MAYBE_UNUSED size_t len,
     MemoryMapping::LockFlags flags) {
   int intFlags = 0;
   if (flags.lockOnFault) {
