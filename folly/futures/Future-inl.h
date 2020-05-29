@@ -2022,8 +2022,8 @@ SemiFuture<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
   struct Context {
     explicit Context(E ex) : exception(std::move(ex)) {}
     E exception;
-    SemiFuture<Unit> thisFuture;
-    SemiFuture<Unit> afterFuture;
+    SemiFuture<Unit> thisFuture{SemiFuture<Unit>::makeEmpty()};
+    SemiFuture<Unit> afterFuture{SemiFuture<Unit>::makeEmpty()};
     Promise<T> promise;
     std::atomic<bool> token{false};
   };
@@ -2091,6 +2091,9 @@ SemiFuture<T>::within(HighResDuration dur, E e, Timekeeper* tk) && {
   std::vector<folly::futures::detail::DeferredWrapper> nestedExecutors;
   nestedExecutors.emplace_back(ctx->thisFuture.stealDeferredExecutor());
   nestedExecutors.emplace_back(ctx->afterFuture.stealDeferredExecutor());
+  // Set trivial callbacks to treat the futures as consumed
+  ctx->thisFuture.setCallback_([](Executor::KeepAlive<>&&, Try<Unit>&&) {});
+  ctx->afterFuture.setCallback_([](Executor::KeepAlive<>&&, Try<Unit>&&) {});
   futures::detail::getDeferredExecutor(fut)->setNestedExecutors(
       std::move(nestedExecutors));
   return fut;
