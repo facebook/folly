@@ -50,7 +50,11 @@ using namespace folly;
 
 struct Widget {
   static int totalVal_;
+  static int totalMade_;
   int val_;
+  Widget() : val_(0) {
+    totalMade_++;
+  }
   ~Widget() {
     totalVal_ += val_;
   }
@@ -61,6 +65,7 @@ struct Widget {
   }
 };
 int Widget::totalVal_ = 0;
+int Widget::totalMade_ = 0;
 
 struct MultiWidget {
   int val_{0};
@@ -240,6 +245,36 @@ TEST(ThreadLocalPtr, CustomDeleter2) {
   t.join();
 
   EXPECT_EQ(1010, Widget::totalVal_);
+}
+
+TEST(ThreadLocal, GetWithoutCreateUncreated) {
+  Widget::totalVal_ = 0;
+  Widget::totalMade_ = 0;
+  ThreadLocal<Widget> w;
+  std::thread([&w]() {
+    auto ptr = w.getIfExist();
+    if (ptr) {
+      ptr->val_++;
+    }
+  })
+      .join();
+  EXPECT_EQ(0, Widget::totalMade_);
+}
+
+TEST(ThreadLocal, GetWithoutCreateGets) {
+  Widget::totalVal_ = 0;
+  Widget::totalMade_ = 0;
+  ThreadLocal<Widget> w;
+  std::thread([&w]() {
+    w->val_++;
+    auto ptr = w.getIfExist();
+    if (ptr) {
+      ptr->val_++;
+    }
+  })
+      .join();
+  EXPECT_EQ(1, Widget::totalMade_);
+  EXPECT_EQ(2, Widget::totalVal_);
 }
 
 TEST(ThreadLocal, BasicDestructor) {

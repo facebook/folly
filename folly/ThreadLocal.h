@@ -70,6 +70,11 @@ class ThreadLocal {
     return FOLLY_LIKELY(!!ptr) ? ptr : makeTlp();
   }
 
+  // may return null
+  FOLLY_ERASE T* getIfExist() const {
+    return tlp_.get();
+  }
+
   T* operator->() const {
     return get();
   }
