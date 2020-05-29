@@ -30,7 +30,7 @@ T&& getValueOrUnit(Try<T>&& value) {
   return std::move(value).value();
 }
 
-inline Unit getValueOrUnit(Try<void>&& value) {
+inline Unit getValueOrUnit([[maybe_unused]] Try<void>&& value) {
   assert(value.hasValue());
   return Unit{};
 }
