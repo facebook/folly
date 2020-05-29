@@ -27,9 +27,10 @@
 // solve that by pretending we have it here in the header and
 // then enable our implementation on the source side so that
 // gets linked in instead.
-#if __MACH__ &&                                                \
-    (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12 || \
-     __IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0)
+#if __MACH__ &&                                                       \
+        ((!defined(TARGET_OS_OSX) || TARGET_OS_OSX) &&                \
+         (MAC_OS_X_VERSION_MIN_REQUIRED < MAC_OS_X_VERSION_10_12)) || \
+    (TARGET_OS_IPHONE && (__IPHONE_OS_VERSION_MIN_REQUIRED < __IPHONE_10_0))
 
 #ifdef FOLLY_HAVE_CLOCK_GETTIME
 #undef FOLLY_HAVE_CLOCK_GETTIME
