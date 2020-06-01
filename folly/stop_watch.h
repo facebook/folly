@@ -181,7 +181,7 @@ struct custom_stop_watch {
    *
    *  do_something();
    *
-   *  std::cout << "has the TTL expired? " std::boolalpha<< watch.elapsed(ttl);
+   *  std::cout << "ttl expired? " << std::boolalpha << watch.elapsed(ttl);
    *
    * @author: Marcelo Juchem <marcelo@fb.com>
    */
