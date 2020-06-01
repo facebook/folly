@@ -308,36 +308,45 @@ size_t IoUringBackend::submitList(
     CHECK(sqe); // this should not happen
 
     auto* ev = entry->event_->getEvent();
-    const auto& cb = entry->event_->getCallback();
-    bool processed = false;
-    switch (cb.type_) {
-      case EventCallback::Type::TYPE_NONE:
-        break;
-      case EventCallback::Type::TYPE_READ:
-        if (auto* iov = cb.readCb_->allocateData()) {
-          processed = true;
-          entry->prepRead(
-              sqe, ev->ev_fd, &iov->data_, (ev->ev_events & EV_PERSIST) != 0);
-          entry->cbData_.set(iov);
-        }
-        break;
-      case EventCallback::Type::TYPE_RECVMSG:
-        if (auto* msg = cb.recvmsgCb_->allocateData()) {
-          processed = true;
-          entry->prepRecvmsg(
-              sqe, ev->ev_fd, &msg->data_, (ev->ev_events & EV_PERSIST) != 0);
-          entry->cbData_.set(msg);
-        }
-        break;
-    }
+    if (ev) {
+      const auto& cb = entry->event_->getCallback();
+      bool processed = false;
+      switch (cb.type_) {
+        case EventCallback::Type::TYPE_NONE:
+          processed = entry->processSubmit(sqe);
+          break;
+        case EventCallback::Type::TYPE_READ:
+          if (auto* iov = cb.readCb_->allocateData()) {
+            processed = true;
+            entry->prepRead(
+                sqe,
+                ev->ev_fd,
+                &iov->data_,
+                0,
+                (ev->ev_events & EV_PERSIST) != 0);
+            entry->cbData_.set(iov);
+          }
+          break;
+        case EventCallback::Type::TYPE_RECVMSG:
+          if (auto* msg = cb.recvmsgCb_->allocateData()) {
+            processed = true;
+            entry->prepRecvmsg(
+                sqe, ev->ev_fd, &msg->data_, (ev->ev_events & EV_PERSIST) != 0);
+            entry->cbData_.set(msg);
+          }
+          break;
+      }
 
-    if (!processed) {
-      entry->cbData_.reset();
-      entry->prepPollAdd(
-          sqe,
-          ev->ev_fd,
-          getPollFlags(ev->ev_events),
-          (ev->ev_events & EV_PERSIST) != 0);
+      if (!processed) {
+        entry->cbData_.reset();
+        entry->prepPollAdd(
+            sqe,
+            ev->ev_fd,
+            getPollFlags(ev->ev_events),
+            (ev->ev_events & EV_PERSIST) != 0);
+      }
+    } else {
+      entry->processSubmit(sqe);
     }
     i++;
     if (ioCbs.empty()) {
@@ -356,4 +365,73 @@ size_t IoUringBackend::submitList(
 
   return ret;
 }
+
+void IoUringBackend::queueRead(
+    int fd,
+    void* buf,
+    unsigned int nbytes,
+    off_t offset,
+    FileOpCallback&& cb) {
+  struct iovec iov {
+    buf, nbytes
+  };
+  auto* iocb = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
+  iocb->backendCb_ = processReadWriteCB;
+  incNumIoCbInUse();
+
+  submitList_.push_back(*iocb);
+  numInsertedEvents_++;
+}
+
+void IoUringBackend::queueWrite(
+    int fd,
+    const void* buf,
+    unsigned int nbytes,
+    off_t offset,
+    FileOpCallback&& cb) {
+  struct iovec iov {
+    const_cast<void*>(buf), nbytes
+  };
+  auto* iocb = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
+  iocb->backendCb_ = processReadWriteCB;
+  incNumIoCbInUse();
+
+  submitList_.push_back(*iocb);
+  numInsertedEvents_++;
+}
+
+void IoUringBackend::queueReadv(
+    int fd,
+    Range<const struct iovec*> iovecs,
+    off_t offset,
+    FileOpCallback&& cb) {
+  auto* iocb = new ReadvIoSqe(this, fd, iovecs, offset, std::move(cb));
+  iocb->backendCb_ = processReadWriteCB;
+  incNumIoCbInUse();
+
+  submitList_.push_back(*iocb);
+  numInsertedEvents_++;
+}
+
+void IoUringBackend::queueWritev(
+    int fd,
+    Range<const struct iovec*> iovecs,
+    off_t offset,
+    FileOpCallback&& cb) {
+  auto* iocb = new WritevIoSqe(this, fd, iovecs, offset, std::move(cb));
+  iocb->backendCb_ = processReadWriteCB;
+  incNumIoCbInUse();
+
+  submitList_.push_back(*iocb);
+  numInsertedEvents_++;
+}
+
+void IoUringBackend::processReadWrite(IoCb* ioCb, int64_t res) noexcept {
+  auto* ioSqe = reinterpret_cast<ReadWriteIoSqe*>(ioCb);
+  // save the res
+  ioSqe->res_ = res;
+  activeEvents_.push_back(*ioCb);
+  numInsertedEvents_--;
+}
+
 } // namespace folly

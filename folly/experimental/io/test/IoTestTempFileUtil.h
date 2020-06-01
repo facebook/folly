@@ -14,15 +14,24 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/io/AsyncIO.h>
-#include <folly/experimental/io/test/AsyncBaseTestLib.h>
+#include <glog/logging.h>
 
-using folly::AsyncIO;
+#include <folly/experimental/TestUtil.h>
+#include <folly/experimental/io/FsUtil.h>
 
 namespace folly {
 namespace test {
-namespace async_base_test_lib_detail {
-INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, AsyncIO);
-} // namespace async_base_test_lib_detail
+
+class TempFileUtil {
+ public:
+  // Returns a temporary file that is NOT kept open
+  // but is deleted on destruction
+  // Generate random-looking but reproduceable data.
+  static TemporaryFile getTempFile(size_t size);
+
+ private:
+  TempFileUtil() = delete;
+};
+
 } // namespace test
 } // namespace folly

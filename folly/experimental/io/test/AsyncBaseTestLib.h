@@ -36,11 +36,14 @@
 #include <folly/test/TestUtils.h>
 
 #include <folly/experimental/io/AsyncBase.h>
+#include <folly/experimental/io/test/IoTestTempFileUtil.h>
 
 namespace folly {
 namespace test {
+namespace async_base_test_lib_detail {
 
-constexpr size_t kAlign = 4096; // align reads to 4096 B (for O_DIRECT)
+constexpr size_t kODirectAlign = 4096; // align reads to 4096 B (for O_DIRECT)
+constexpr size_t kDefaultFileSize = 6 << 20; // 6MiB
 
 struct TestSpec {
   off_t start;
@@ -55,31 +58,14 @@ struct TestUtil {
   static ManagedBuffer allocateAligned(size_t size);
 };
 
-// Temporary file that is NOT kept open but is deleted on exit.
-// Generate random-looking but reproduceable data.
-class TemporaryFile {
- public:
-  explicit TemporaryFile(size_t size);
-  ~TemporaryFile();
-
-  const folly::fs::path path() const {
-    return path_;
-  }
-
-  static TemporaryFile& getTempFile();
-
- private:
-  folly::fs::path path_;
-};
-
 template <typename TAsync>
 void testReadsSerially(
     const std::vector<TestSpec>& specs,
     folly::AsyncBase::PollMode pollMode) {
   TAsync aioReader(1, pollMode);
   typename TAsync::Op op;
-  int fd =
-      ::open(TemporaryFile::getTempFile().path().c_str(), O_DIRECT | O_RDONLY);
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
   SCOPE_EXIT {
@@ -92,7 +78,8 @@ void testReadsSerially(
     aioReader.submit(&op);
     EXPECT_EQ((i + 1), aioReader.totalSubmits());
     EXPECT_EQ(aioReader.pending(), 1);
-    auto ops = test::TestUtil::readerWait(&aioReader);
+    auto ops =
+        test::async_base_test_lib_detail::TestUtil::readerWait(&aioReader);
     EXPECT_EQ(1, ops.size());
     EXPECT_TRUE(ops[0] == &op);
     EXPECT_EQ(aioReader.pending(), 0);
@@ -115,8 +102,8 @@ void testReadsParallel(
   std::vector<TestUtil::ManagedBuffer> bufs;
   bufs.reserve(specs.size());
 
-  int fd =
-      ::open(TemporaryFile::getTempFile().path().c_str(), O_DIRECT | O_RDONLY);
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
   SCOPE_EXIT {
@@ -149,7 +136,8 @@ void testReadsParallel(
   size_t remaining = specs.size();
   while (remaining != 0) {
     EXPECT_EQ(remaining, aioReader.pending());
-    auto completed = test::TestUtil::readerWait(&aioReader);
+    auto completed =
+        test::async_base_test_lib_detail::TestUtil::readerWait(&aioReader);
     size_t nrRead = completed.size();
     EXPECT_NE(nrRead, 0);
     remaining -= nrRead;
@@ -187,8 +175,8 @@ void testReadsQueued(
   uintptr_t sizeOf = sizeof(typename TAsync::Op);
   std::vector<TestUtil::ManagedBuffer> bufs;
 
-  int fd =
-      ::open(TemporaryFile::getTempFile().path().c_str(), O_DIRECT | O_RDONLY);
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
   SCOPE_EXIT {
@@ -210,7 +198,8 @@ void testReadsQueued(
       EXPECT_EQ(remaining, aioReader.pending());
       EXPECT_EQ(0, aioQueue.queued());
     }
-    auto completed = test::TestUtil::readerWait(&aioReader);
+    auto completed =
+        test::async_base_test_lib_detail::TestUtil::readerWait(&aioReader);
     size_t nrRead = completed.size();
     EXPECT_NE(nrRead, 0);
     remaining -= nrRead;
@@ -251,111 +240,143 @@ class AsyncTest : public ::testing::Test {};
 TYPED_TEST_CASE_P(AsyncTest);
 
 TYPED_TEST_P(AsyncTest, ZeroAsyncDataNotPollable) {
-  test::testReads<TypeParam>({{0, 0}}, folly::AsyncBase::NOT_POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, 0}}, folly::AsyncBase::NOT_POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, ZeroAsyncDataPollable) {
-  test::testReads<TypeParam>({{0, 0}}, folly::AsyncBase::POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, 0}}, folly::AsyncBase::POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, SingleAsyncDataNotPollable) {
-  test::testReads<TypeParam>(
-      {{0, test::kAlign}}, folly::AsyncBase::NOT_POLLABLE);
-  test::testReads<TypeParam>(
-      {{0, test::kAlign}}, folly::AsyncBase::NOT_POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, test::async_base_test_lib_detail::kODirectAlign}},
+      folly::AsyncBase::NOT_POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, test::async_base_test_lib_detail::kODirectAlign}},
+      folly::AsyncBase::NOT_POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, SingleAsyncDataPollable) {
-  test::testReads<TypeParam>({{0, test::kAlign}}, folly::AsyncBase::POLLABLE);
-  test::testReads<TypeParam>({{0, test::kAlign}}, folly::AsyncBase::POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, test::async_base_test_lib_detail::kODirectAlign}},
+      folly::AsyncBase::POLLABLE);
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, test::async_base_test_lib_detail::kODirectAlign}},
+      folly::AsyncBase::POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, MultipleAsyncDataNotPollable) {
-  test::testReads<TypeParam>(
-      {{test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 4 * test::kAlign}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        4 * test::async_base_test_lib_detail::kODirectAlign}},
       folly::AsyncBase::NOT_POLLABLE);
-  test::testReads<TypeParam>(
-      {{test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 4 * test::kAlign}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        4 * test::async_base_test_lib_detail::kODirectAlign}},
       folly::AsyncBase::NOT_POLLABLE);
 
-  test::testReads<TypeParam>(
-      {{0, 5 * 1024 * 1024}, {test::kAlign, 5 * 1024 * 1024}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, 5 * 1024 * 1024},
+       {test::async_base_test_lib_detail::kODirectAlign, 5 * 1024 * 1024}},
       folly::AsyncBase::NOT_POLLABLE);
 
-  test::testReads<TypeParam>(
+  test::async_base_test_lib_detail::testReads<TypeParam>(
       {
-          {test::kAlign, 0},
-          {test::kAlign, test::kAlign},
-          {test::kAlign, 2 * test::kAlign},
-          {test::kAlign, 20 * test::kAlign},
-          {test::kAlign, 1024 * 1024},
+          {test::async_base_test_lib_detail::kODirectAlign, 0},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           2 * test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           20 * test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign, 1024 * 1024},
       },
       folly::AsyncBase::NOT_POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, MultipleAsyncDataPollable) {
-  test::testReads<TypeParam>(
-      {{test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 4 * test::kAlign}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        4 * test::async_base_test_lib_detail::kODirectAlign}},
       folly::AsyncBase::POLLABLE);
-  test::testReads<TypeParam>(
-      {{test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 2 * test::kAlign},
-       {test::kAlign, 4 * test::kAlign}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        2 * test::async_base_test_lib_detail::kODirectAlign},
+       {test::async_base_test_lib_detail::kODirectAlign,
+        4 * test::async_base_test_lib_detail::kODirectAlign}},
       folly::AsyncBase::POLLABLE);
 
-  test::testReads<TypeParam>(
-      {{0, 5 * 1024 * 1024}, {test::kAlign, 5 * 1024 * 1024}},
+  test::async_base_test_lib_detail::testReads<TypeParam>(
+      {{0, 5 * 1024 * 1024},
+       {test::async_base_test_lib_detail::kODirectAlign, 5 * 1024 * 1024}},
       folly::AsyncBase::NOT_POLLABLE);
 
-  test::testReads<TypeParam>(
+  test::async_base_test_lib_detail::testReads<TypeParam>(
       {
-          {test::kAlign, 0},
-          {test::kAlign, test::kAlign},
-          {test::kAlign, 2 * test::kAlign},
-          {test::kAlign, 20 * test::kAlign},
-          {test::kAlign, 1024 * 1024},
+          {test::async_base_test_lib_detail::kODirectAlign, 0},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           2 * test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign,
+           20 * test::async_base_test_lib_detail::kODirectAlign},
+          {test::async_base_test_lib_detail::kODirectAlign, 1024 * 1024},
       },
       folly::AsyncBase::NOT_POLLABLE);
 }
 
 TYPED_TEST_P(AsyncTest, ManyAsyncDataNotPollable) {
   {
-    std::vector<test::TestSpec> v;
+    std::vector<test::async_base_test_lib_detail::TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({off_t(test::kAlign * i), test::kAlign});
+      v.push_back({off_t(test::async_base_test_lib_detail::kODirectAlign * i),
+                   test::async_base_test_lib_detail::kODirectAlign});
     }
-    test::testReads<TypeParam>(v, folly::AsyncBase::NOT_POLLABLE);
+    test::async_base_test_lib_detail::testReads<TypeParam>(
+        v, folly::AsyncBase::NOT_POLLABLE);
   }
 }
 
 TYPED_TEST_P(AsyncTest, ManyAsyncDataPollable) {
   {
-    std::vector<test::TestSpec> v;
+    std::vector<test::async_base_test_lib_detail::TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({off_t(test::kAlign * i), test::kAlign});
+      v.push_back({off_t(test::async_base_test_lib_detail::kODirectAlign * i),
+                   test::async_base_test_lib_detail::kODirectAlign});
     }
-    test::testReads<TypeParam>(v, folly::AsyncBase::POLLABLE);
+    test::async_base_test_lib_detail::testReads<TypeParam>(
+        v, folly::AsyncBase::POLLABLE);
   }
 }
 
 TYPED_TEST_P(AsyncTest, NonBlockingWait) {
   TypeParam aioReader(1, folly::AsyncBase::NOT_POLLABLE);
   typename TypeParam::Op op;
-  int fd = ::open(
-      test::TemporaryFile::getTempFile().path().c_str(), O_DIRECT | O_RDONLY);
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
   SCOPE_EXIT {
     ::close(fd);
   };
-  size_t size = 2 * test::kAlign;
-  auto buf = test::TestUtil::allocateAligned(size);
+  size_t size = 2 * test::async_base_test_lib_detail::kODirectAlign;
+  auto buf = test::async_base_test_lib_detail::TestUtil::allocateAligned(size);
   op.pread(fd, buf.get(), size, 0);
   aioReader.submit(&op);
   EXPECT_EQ(aioReader.pending(), 1);
@@ -380,8 +401,8 @@ TYPED_TEST_P(AsyncTest, Cancel) {
 
   TypeParam aioReader(
       kNumOpsBatch1 + kNumOpsBatch2, folly::AsyncBase::NOT_POLLABLE);
-  int fd = ::open(
-      test::TemporaryFile::getTempFile().path().c_str(), O_DIRECT | O_RDONLY);
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
   SCOPE_EXIT {
@@ -391,11 +412,12 @@ TYPED_TEST_P(AsyncTest, Cancel) {
   size_t completed = 0;
 
   std::vector<std::unique_ptr<folly::AsyncBase::Op>> ops;
-  std::vector<test::TestUtil::ManagedBuffer> bufs;
+  std::vector<test::async_base_test_lib_detail::TestUtil::ManagedBuffer> bufs;
   const auto schedule = [&](size_t n) {
     for (size_t i = 0; i < n; ++i) {
-      const size_t size = 2 * test::kAlign;
-      bufs.push_back(test::TestUtil::allocateAligned(size));
+      const size_t size = 2 * test::async_base_test_lib_detail::kODirectAlign;
+      bufs.push_back(
+          test::async_base_test_lib_detail::TestUtil::allocateAligned(size));
 
       ops.push_back(std::make_unique<typename TypeParam::Op>());
       auto& op = *ops.back();
@@ -452,5 +474,6 @@ REGISTER_TYPED_TEST_CASE_P(
     NonBlockingWait,
     Cancel);
 
+} // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly

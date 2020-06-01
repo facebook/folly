@@ -18,6 +18,7 @@
 
 namespace folly {
 namespace test {
+namespace async_base_test_lib_detail {
 void TestUtil::waitUntilReadable(int fd) {
   pollfd pfd;
   pfd.fd = fd;
@@ -44,51 +45,11 @@ folly::Range<folly::AsyncBase::Op**> TestUtil::readerWait(
 
 TestUtil::ManagedBuffer TestUtil::allocateAligned(size_t size) {
   void* buf;
-  int rc = posix_memalign(&buf, kAlign, size);
+  int rc = posix_memalign(&buf, kODirectAlign, size);
   CHECK_EQ(rc, 0) << folly::errnoStr(rc);
   return ManagedBuffer(reinterpret_cast<char*>(buf), free);
 }
 
-TemporaryFile::TemporaryFile(size_t size)
-    : path_(folly::fs::temp_directory_path() / folly::fs::unique_path()) {
-  CHECK_EQ(size % sizeof(uint32_t), 0);
-  size /= sizeof(uint32_t);
-  const uint32_t seed = 42;
-  std::mt19937 rnd(seed);
-
-  const size_t bufferSize = 1U << 16;
-  uint32_t buffer[bufferSize];
-
-  FILE* fp = ::fopen(path_.c_str(), "wb");
-  PCHECK(fp != nullptr);
-  while (size) {
-    size_t n = std::min(size, bufferSize);
-    for (size_t i = 0; i < n; ++i) {
-      buffer[i] = rnd();
-    }
-    size_t written = ::fwrite(buffer, sizeof(uint32_t), n, fp);
-    PCHECK(written == n);
-    size -= written;
-  }
-  // make sure the buffers are flushed
-  int ret = ::fflush(fp);
-  PCHECK(ret == 0);
-  ret = ::fdatasync(::fileno(fp));
-  PCHECK(ret == 0);
-  PCHECK(::fclose(fp) == 0);
-}
-
-TemporaryFile::~TemporaryFile() {
-  try {
-    folly::fs::remove(path_);
-  } catch (const folly::fs::filesystem_error& e) {
-    LOG(ERROR) << "fs::remove: " << folly::exceptionStr(e);
-  }
-}
-
-TemporaryFile& TemporaryFile::getTempFile() {
-  static TemporaryFile sTempFile(6 << 20); // 6MiB
-  return sTempFile;
-}
+} // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly

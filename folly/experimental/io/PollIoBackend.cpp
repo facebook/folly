@@ -353,6 +353,7 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb(const EventCallback& cb) {
 }
 
 void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
+  CHECK_GT(numIoCbInUse_, 0);
   numIoCbInUse_--;
   aioIoCb->cbData_.releaseData();
   // unregister the file descriptor record
@@ -430,6 +431,8 @@ size_t PollIoBackend::processActiveEvents() {
         eb_event_modify_inserted(*event, ioCb);
       }
       ioCb->useCount_--;
+    } else {
+      ioCb->processActive();
     }
     if (release) {
       releaseIoCb(ioCb);

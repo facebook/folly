@@ -20,7 +20,11 @@ extern "C" {
 #include <liburing.h>
 }
 
+#include <folly/Function.h>
+#include <folly/Range.h>
 #include <folly/experimental/io/PollIoBackend.h>
+#include <folly/small_vector.h>
+
 #include <glog/logging.h>
 
 namespace folly {
@@ -47,6 +51,37 @@ class IoUringBackend : public PollIoBackend {
   bool unregisterFd(FdRegistrationRecord* rec) override {
     return fdRegistry_.free(rec);
   }
+
+  // read/write file operation callback
+  // int param is the io_uring_cqe res field
+  // i.e. the result of the read/write operation
+  using FileOpCallback = folly::Function<void(int)>;
+
+  void queueRead(
+      int fd,
+      void* buf,
+      unsigned int nbytes,
+      off_t offset,
+      FileOpCallback&& cb);
+
+  void queueWrite(
+      int fd,
+      const void* buf,
+      unsigned int nbytes,
+      off_t offset,
+      FileOpCallback&& cb);
+
+  void queueReadv(
+      int fd,
+      Range<const struct iovec*> iovecs,
+      off_t offset,
+      FileOpCallback&& cb);
+
+  void queueWritev(
+      int fd,
+      Range<const struct iovec*> iovecs,
+      off_t offset,
+      FileOpCallback&& cb);
 
  protected:
   struct FdRegistry {
@@ -100,8 +135,12 @@ class IoUringBackend : public PollIoBackend {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    void prepRead(void* entry, int fd, const struct iovec* iov, bool registerFd)
-        override {
+    void prepRead(
+        void* entry,
+        int fd,
+        const struct iovec* iov,
+        off_t offset,
+        bool registerFd) override {
       CHECK(entry);
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       if (registerFd && !fdRecord_) {
@@ -110,11 +149,32 @@ class IoUringBackend : public PollIoBackend {
 
       if (fdRecord_) {
         ::io_uring_prep_read(
-            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, 0 /*offset*/);
+            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, offset);
         sqe->flags |= IOSQE_FIXED_FILE;
       } else {
-        ::io_uring_prep_read(
-            sqe, fd, iov->iov_base, iov->iov_len, 0 /*offset*/);
+        ::io_uring_prep_read(sqe, fd, iov->iov_base, iov->iov_len, offset);
+      }
+      ::io_uring_sqe_set_data(sqe, this);
+    }
+
+    void prepWrite(
+        void* entry,
+        int fd,
+        const struct iovec* iov,
+        off_t offset,
+        bool registerFd) override {
+      CHECK(entry);
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      if (registerFd && !fdRecord_) {
+        fdRecord_ = backend_->registerFd(fd);
+      }
+
+      if (fdRecord_) {
+        ::io_uring_prep_write(
+            sqe, fdRecord_->idx_, iov->iov_base, iov->iov_len, offset);
+        sqe->flags |= IOSQE_FIXED_FILE;
+      } else {
+        ::io_uring_prep_write(sqe, fd, iov->iov_base, iov->iov_len, offset);
       }
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -144,6 +204,100 @@ class IoUringBackend : public PollIoBackend {
       ::io_uring_sqe_set_data(sqe, this);
     }
   };
+
+  struct ReadWriteIoSqe : public IoSqe {
+    ReadWriteIoSqe(
+        PollIoBackend* backend,
+        int fd,
+        const struct iovec* iov,
+        off_t offset,
+        FileOpCallback&& cb)
+        : IoSqe(backend, false),
+          fd_(fd),
+          iov_(iov, iov + 1),
+          offset_(offset),
+          cb_(std::move(cb)) {}
+
+    ReadWriteIoSqe(
+        PollIoBackend* backend,
+        int fd,
+        Range<const struct iovec*> iov,
+        off_t offset,
+        FileOpCallback&& cb)
+        : IoSqe(backend, false),
+          fd_(fd),
+          iov_(iov),
+          offset_(offset),
+          cb_(std::move(cb)) {}
+
+    ~ReadWriteIoSqe() override = default;
+
+    void processActive() override {
+      cb_(res_);
+    }
+
+    int fd_{-1};
+    int res_{-1};
+
+    static constexpr size_t kNumInlineIoVec = 4;
+    folly::small_vector<struct iovec> iov_;
+    off_t offset_;
+    FileOpCallback cb_;
+  };
+
+  struct ReadIoSqe : public ReadWriteIoSqe {
+    using ReadWriteIoSqe::ReadWriteIoSqe;
+
+    ~ReadIoSqe() override = default;
+
+    bool processSubmit(void* entry) override {
+      prepRead(entry, fd_, iov_.data(), offset_, false);
+      return true;
+    }
+  };
+
+  struct WriteIoSqe : public ReadWriteIoSqe {
+    using ReadWriteIoSqe::ReadWriteIoSqe;
+    ~WriteIoSqe() override = default;
+
+    bool processSubmit(void* entry) override {
+      prepWrite(entry, fd_, iov_.data(), offset_, false);
+      return true;
+    }
+  };
+
+  struct ReadvIoSqe : public ReadWriteIoSqe {
+    using ReadWriteIoSqe::ReadWriteIoSqe;
+
+    ~ReadvIoSqe() override = default;
+
+    bool processSubmit(void* entry) override {
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      ::io_uring_prep_readv(sqe, fd_, iov_.data(), iov_.size(), offset_);
+      ::io_uring_sqe_set_data(sqe, this);
+
+      return true;
+    }
+  };
+
+  struct WritevIoSqe : public ReadWriteIoSqe {
+    using ReadWriteIoSqe::ReadWriteIoSqe;
+    ~WritevIoSqe() override = default;
+
+    bool processSubmit(void* entry) override {
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      ::io_uring_prep_writev(sqe, fd_, iov_.data(), iov_.size(), offset_);
+      ::io_uring_sqe_set_data(sqe, this);
+      return true;
+    }
+  };
+
+  void processReadWrite(IoCb* ioCb, int64_t res) noexcept;
+
+  static void
+  processReadWriteCB(PollIoBackend* backend, IoCb* ioCb, int64_t res) {
+    static_cast<IoUringBackend*>(backend)->processReadWrite(ioCb, res);
+  }
 
   PollIoBackend::IoCb* allocNewIoCb(const EventCallback& /*cb*/) override {
     auto* ret = new IoSqe(this, false);

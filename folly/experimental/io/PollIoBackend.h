@@ -110,6 +110,12 @@ class PollIoBackend : public EventBaseBackendBase {
         : backend_(backend), poolAlloc_(poolAlloc) {}
     virtual ~IoCb() = default;
 
+    virtual bool processSubmit(void* /*entry*/) {
+      return false;
+    }
+
+    virtual void processActive() {}
+
     PollIoBackend* backend_;
     BackendCb* backendCb_{nullptr};
     const bool poolAlloc_;
@@ -134,6 +140,14 @@ class PollIoBackend : public EventBaseBackendBase {
         void* /*entry*/,
         int /*fd*/,
         const struct iovec* /*iov*/,
+        off_t /*offset*/,
+        bool /*registerFd*/) {}
+
+    virtual void prepWrite(
+        void* /*entry*/,
+        int /*fd*/,
+        const struct iovec* /*iov*/,
+        off_t /*offset*/,
         bool /*registerFd*/) {}
 
     virtual void prepRecvmsg(
@@ -343,6 +357,9 @@ class PollIoBackend : public EventBaseBackendBase {
 
   IoCb* FOLLY_NULLABLE allocIoCb(const EventCallback& cb);
   void releaseIoCb(IoCb* aioIoCb);
+  void incNumIoCbInUse() {
+    numIoCbInUse_++;
+  }
 
   virtual IoCb* allocNewIoCb(const EventCallback& cb) = 0;
 
