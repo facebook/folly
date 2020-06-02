@@ -811,6 +811,10 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     asyncOperationFinishCallback_ = std::move(cb);
   }
 
+  void enableKTLS(bool enabled) {
+    ktlsEnabled_ = enabled;
+  }
+
  private:
   /**
    * Handle the return from invoking SSL_accept
@@ -943,6 +947,8 @@ class AsyncSSLSocket : public virtual AsyncSocket {
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;
 
+  // Enable if kTLS support is needed
+  bool ktlsEnabled_{false};
   // The app byte num that we are tracking for EOR.
   //
   // Only one app EOR byte can be tracked.
