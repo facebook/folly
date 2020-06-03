@@ -47,19 +47,22 @@ def _print_env_diff(env):
 
 
 def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
+    def log_to_stdout(msg):
+        sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
+
     if log_file is not None:
-        with open(log_file, "a") as log:
+        with open(log_file, "a", errors="surrogateescape") as log:
 
             def log_function(msg):
                 log.write(msg)
-                sys.stdout.write(msg)
+                log_to_stdout(msg)
 
             return _run_cmd(
                 cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_function
             )
     else:
         return _run_cmd(
-            cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=sys.stdout.write
+            cmd, env=env, cwd=cwd, allow_fail=allow_fail, log_fn=log_to_stdout
         )
 
 
