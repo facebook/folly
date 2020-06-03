@@ -183,6 +183,19 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   }
 }
 
+int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
+  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
+  sockaddr_storage addrStorage;
+  address.getAddress(&addrStorage);
+  int ret = netops::connect(
+      fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
+  if (ret == 0) {
+    connected_ = true;
+    connectedAddress_ = address;
+  }
+  return ret;
+}
+
 void AsyncUDPSocket::dontFragment(bool df) {
   (void)df; // to avoid potential unused variable warning
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO) && \
@@ -648,19 +661,6 @@ void AsyncUDPSocket::failErrMessageRead(const AsyncSocketException& ex) {
     errMessageCallback_ = nullptr;
     callback->errMessageError(ex);
   }
-}
-
-int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
-  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
-  sockaddr_storage addrStorage;
-  address.getAddress(&addrStorage);
-  int ret = netops::connect(
-      fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
-  if (ret == 0) {
-    connected_ = true;
-    connectedAddress_ = address;
-  }
-  return ret;
 }
 
 void AsyncUDPSocket::handleRead() noexcept {

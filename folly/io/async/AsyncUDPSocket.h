@@ -147,6 +147,26 @@ class AsyncUDPSocket : public EventHandler {
   virtual void bind(const folly::SocketAddress& address);
 
   /**
+   * Connects the UDP socket to a remote destination address provided in
+   * address. This can speed up UDP writes on linux because it will cache flow
+   * state on connects.
+   * Using connect has many quirks, and you should be aware of them before using
+   * this API:
+   * 1. This must only be called after binding the socket.
+   * 2. Normally UDP can use the 2 tuple (src ip, src port) to steer packets
+   * sent by the peer to the socket, however after connecting the socket, only
+   * packets destined to the destination address specified in connect() will be
+   * forwarded and others will be dropped. If the server can send a packet
+   * from a different destination port / IP then you probably do not want to use
+   * this API.
+   * 3. It can be called repeatedly on either the client or server however it's
+   * normally only useful on the client and not server.
+   *
+   * Returns the result of calling the connect syscall.
+   */
+  virtual int connect(const folly::SocketAddress& address);
+
+  /**
    * Use an already bound file descriptor. You can either transfer ownership
    * of this FD by using ownership = FDOwnership::OWNS or share it using
    * FDOwnership::SHARED. In case FD is shared, it will not be `close`d in
@@ -313,26 +333,6 @@ class AsyncUDPSocket : public EventHandler {
    * Callback for receiving errors on the UDP sockets
    */
   virtual void setErrMessageCallback(ErrMessageCallback* errMessageCallback);
-
-  /**
-   * Connects the UDP socket to a remote destination address provided in
-   * address. This can speed up UDP writes on linux because it will cache flow
-   * state on connects.
-   * Using connect has many quirks, and you should be aware of them before using
-   * this API:
-   * 1. This must only be called after binding the socket.
-   * 2. Normally UDP can use the 2 tuple (src ip, src port) to steer packets
-   * sent by the peer to the socket, however after connecting the socket, only
-   * packets destined to the destination address specified in connect() will be
-   * forwarded and others will be dropped. If the server can send a packet
-   * from a different destination port / IP then you probably do not want to use
-   * this API.
-   * 3. It can be called repeatedly on either the client or server however it's
-   * normally only useful on the client and not server.
-   *
-   * Returns the result of calling the connect syscall.
-   */
-  virtual int connect(const folly::SocketAddress& address);
 
   virtual bool isBound() const {
     return fd_ != NetworkSocket();
