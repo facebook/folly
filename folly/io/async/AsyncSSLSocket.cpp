@@ -833,6 +833,7 @@ void AsyncSSLSocket::sslConn(
 #endif
 
   SSL_set_ex_data(ssl_.get(), getSSLExDataIndex(), this);
+  sslSessionManager_.attachToSSL(ssl_.get());
 
   handshakeConnectTimeout_ = timeout;
   startSSLConnect();

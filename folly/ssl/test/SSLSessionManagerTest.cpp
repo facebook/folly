@@ -64,4 +64,20 @@ TEST(SSLSessionManagerTest, SetRawSesionTest) {
   EXPECT_EQ(nullptr, manager.getRawSession().get());
 }
 
+TEST(SSLSessionManagerTest, GetFromSSLTest) {
+  SSLSessionManager manager;
+  SSL_CTX* ctx = SSL_CTX_new(SSLv23_method());
+
+  SSL* ssl1 = SSL_new(ctx);
+  EXPECT_EQ(nullptr, SSLSessionManager::getFromSSL(ssl1));
+  SSL_free(ssl1);
+
+  SSL* ssl2 = SSL_new(ctx);
+  manager.attachToSSL(ssl2);
+  EXPECT_EQ(&manager, SSLSessionManager::getFromSSL(ssl2));
+  SSL_free(ssl2);
+
+  SSL_CTX_free(ctx);
+}
+
 } // namespace folly

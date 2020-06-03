@@ -30,21 +30,6 @@ using folly::ssl::detail::OpenSSLSession;
 
 namespace folly {
 
-class SimpleCallbackManager
-    : public folly::SSLContext::SessionLifecycleCallbacks {
- public:
-  void onNewSession(SSL* ssl, folly::ssl::SSLSessionUniquePtr session)
-      override {
-    auto socket = folly::AsyncSSLSocket::getFromSSL(ssl);
-    auto sslSession =
-        std::dynamic_pointer_cast<folly::ssl::detail::OpenSSLSession>(
-            socket->getSSLSessionV2());
-    if (sslSession) {
-      sslSession->setActiveSession(std::move(session));
-    }
-  }
-};
-
 void getfds(NetworkSocket fds[2]) {
   if (netops::socketpair(PF_LOCAL, SOCK_STREAM, 0, fds) != 0) {
     FAIL() << "failed to create socketpair: " << errnoStr(errno);
@@ -62,12 +47,12 @@ void getctx(
     std::shared_ptr<folly::SSLContext> serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
-  clientCtx->setSessionLifecycleCallbacks(
-      std::make_unique<SimpleCallbackManager>());
+  clientCtx->enableTLS13();
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->enableTLS13();
 }
 
 class SSLSessionTest : public testing::Test {
@@ -98,9 +83,19 @@ TEST_F(SSLSessionTest, BasicTest) {
   {
     NetworkSocket fds[2];
     getfds(fds);
+
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
+    sslSession = clientPtr->getSSLSessionV2();
+    ASSERT_NE(sslSession, nullptr);
+    {
+      auto opensslSession =
+          std::dynamic_pointer_cast<OpenSSLSession>(sslSession);
+      auto sessionPtr = opensslSession->getActiveSession();
+      ASSERT_EQ(sessionPtr.get(), nullptr);
+    }
+
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
     SSLHandshakeClient client(std::move(clientSock), false, false);
@@ -110,16 +105,12 @@ TEST_F(SSLSessionTest, BasicTest) {
     eventBase.loop();
     ASSERT_TRUE(client.handshakeSuccess_);
     ASSERT_FALSE(clientPtr->getSSLSessionReused());
-
-    sslSession = clientPtr->getSSLSessionV2();
-    ASSERT_NE(sslSession, nullptr);
-
-    // The underlying SSL_SESSION is set in the session callback
-    // that is attached to the SSL_CTX. The session is guaranteed to
-    // be resumable here in TLS 1.2, but not in TLS 1.3
-    auto opensslSession = std::dynamic_pointer_cast<OpenSSLSession>(sslSession);
-    auto sessionPtr = opensslSession->getActiveSession();
-    ASSERT_NE(sessionPtr.get(), nullptr);
+    {
+      auto opensslSession =
+          std::dynamic_pointer_cast<OpenSSLSession>(sslSession);
+      auto sessionPtr = opensslSession->getActiveSession();
+      ASSERT_NE(sessionPtr.get(), nullptr);
+    }
   }
 
   // Session resumption

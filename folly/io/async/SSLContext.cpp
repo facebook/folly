@@ -22,6 +22,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 #include <folly/ssl/Init.h>
+#include <folly/ssl/SSLSessionManager.h>
 #include <folly/system/ThreadId.h>
 
 // ---------------------------------------------------------------------
@@ -38,6 +39,7 @@ int getExDataIndex() {
 } // namespace
 
 namespace folly {
+
 //
 // For OpenSSL portability API
 
@@ -709,7 +711,14 @@ int SSLContext::newSessionCallback(SSL* ssl, SSL_SESSION* session) {
     cb->onNewSession(ssl, std::move(sessionPtr));
   }
 
-  SSL_SESSION_free(session);
+  // Session will either be moved to session manager or
+  // freed when the unique_ptr goes out of scope
+  auto sessionPtr = folly::ssl::SSLSessionUniquePtr(session);
+  auto sessionManager = folly::ssl::SSLSessionManager::getFromSSL(ssl);
+  if (sessionManager) {
+    sessionManager->onNewSession(std::move(sessionPtr));
+  }
+
   return 1;
 }
 

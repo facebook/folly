@@ -17,10 +17,14 @@
 #pragma once
 
 #include <boost/variant.hpp>
+#include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/ssl/SSLSession.h>
 
 namespace folly {
+
+class SSLContext;
+
 namespace ssl {
 
 namespace detail {
@@ -51,9 +55,32 @@ class SSLSessionManager {
 
   folly::ssl::SSLSessionUniquePtr getRawSession() const;
 
+  /**
+   * Add SSLSessionManager instance to the ex data of ssl.
+   * Needs to be called for SSLSessionManager::getFromSSL to return
+   * a non-null pointer.
+   */
+  void attachToSSL(SSL* ssl);
+
+  /**
+   * Get pointer to a SSLSessionManager instance that was added to
+   * the ex data of ssl through attachToSSL()
+   */
+  static SSLSessionManager* getFromSSL(const SSL* ssl);
+
  private:
-  // The SSL session. Which type the variant contains depends on the
-  // session API that is used.
+  friend class folly::SSLContext;
+
+  /**
+   * Called by SSLContext when a new session is negotiated for the
+   * SSL connection that SSLSessionManager is attached to.
+   */
+  void onNewSession(folly::ssl::SSLSessionUniquePtr session);
+
+  /**
+   * The SSL session. Which type the variant contains depends on the
+   * session API that is used.
+   */
   boost::variant<
       folly::ssl::SSLSessionUniquePtr,
       std::shared_ptr<folly::ssl::detail::OpenSSLSession>>

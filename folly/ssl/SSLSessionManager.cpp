@@ -15,6 +15,7 @@
  */
 
 #include <folly/ssl/SSLSessionManager.h>
+#include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
 
@@ -61,6 +62,29 @@ class SSLSessionRetrievalVisitor
   }
 };
 
+class SessionForwarderVisitor : boost::static_visitor<> {
+ public:
+  explicit SessionForwarderVisitor(SSLSessionUniquePtr sessionArg)
+      : sessionArg_{std::move(sessionArg)} {}
+
+  void operator()(const SSLSessionUniquePtr&) {}
+
+  void operator()(const std::shared_ptr<OpenSSLSession>& session) {
+    if (session) {
+      session->setActiveSession(std::move(sessionArg_));
+    }
+  }
+
+ private:
+  SSLSessionUniquePtr sessionArg_{nullptr};
+};
+
+int getSSLExDataIndex() {
+  static auto index =
+      SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+  return index;
+}
+
 } // namespace
 
 namespace folly {
@@ -94,6 +118,20 @@ SSLSessionUniquePtr SSLSessionManager::getRawSession() const {
 shared_ptr<SSLSession> SSLSessionManager::getSession() const {
   auto visitor = SSLSessionRetrievalVisitor();
   return boost::apply_visitor(visitor, session_);
+}
+
+void SSLSessionManager::attachToSSL(SSL* ssl) {
+  SSL_set_ex_data(ssl, getSSLExDataIndex(), this);
+}
+
+SSLSessionManager* SSLSessionManager::getFromSSL(const SSL* ssl) {
+  return static_cast<SSLSessionManager*>(
+      SSL_get_ex_data(ssl, getSSLExDataIndex()));
+}
+
+void SSLSessionManager::onNewSession(SSLSessionUniquePtr session) {
+  auto visitor = SessionForwarderVisitor(std::move(session));
+  boost::apply_visitor(visitor, session_);
 }
 
 } // namespace ssl
