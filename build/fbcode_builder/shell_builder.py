@@ -99,9 +99,8 @@ if __name__ == '__main__':
     temp = persistent_temp_dir(repo_root)
 
     config = read_fbcode_builder_config('fbcode_builder_config.py')
-    builder = ShellFBCodeBuilder()
+    builder = ShellFBCodeBuilder(projects_dir=temp)
 
-    builder.add_option('projects_dir', temp)
     if distutils.spawn.find_executable('ccache'):
         builder.add_option('ccache_dir',
             os.environ.get('CCACHE_DIR', os.path.join(temp, '.ccache')))
