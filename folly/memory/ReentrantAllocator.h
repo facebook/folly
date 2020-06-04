@@ -20,6 +20,7 @@
 #include <cstddef>
 #include <limits>
 #include <type_traits>
+#include <memory>
 
 namespace folly {
 
