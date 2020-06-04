@@ -1478,6 +1478,10 @@ TEST(FiberManager, resizePeriodically) {
   evb.loopOnce();
   EXPECT_EQ(5, manager.fibersAllocated());
   EXPECT_EQ(5, manager.fibersPoolSize());
+
+  // Sleep again before destruction to force the case where the
+  // resize timer fires during destruction of the EventBase.
+  std::this_thread::sleep_for(std::chrono::milliseconds(400));
 }
 
 TEST(FiberManager, batonWaitTimeoutHandler) {

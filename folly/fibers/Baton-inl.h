@@ -134,7 +134,7 @@ bool Baton::try_wait_until(
   const auto now = Clock::now();
   const auto timeoutMs = std::chrono::duration_cast<std::chrono::milliseconds>(
       FOLLY_LIKELY(now <= deadline) ? deadline - now : Duration{});
-  fm->loopController_->timer().scheduleTimeout(&handler, timeoutMs);
+  fm->loopController_->timer()->scheduleTimeout(&handler, timeoutMs);
   waitFiber(*fm, static_cast<F&&>(mainContextFunc));
 
   return waiter_ == POSTED;

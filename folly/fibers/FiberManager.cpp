@@ -199,10 +199,12 @@ void FiberManager::doFibersPoolResizing() {
 
 void FiberManager::FibersPoolResizer::run() {
   fiberManager_.doFibersPoolResizing();
-  fiberManager_.loopController_->timer().scheduleTimeout(
-      this,
-      std::chrono::milliseconds(
-          fiberManager_.options_.fibersPoolResizePeriodMs));
+  if (auto timer = fiberManager_.loopController_->timer()) {
+    timer->scheduleTimeout(
+        this,
+        std::chrono::milliseconds(
+            fiberManager_.options_.fibersPoolResizePeriodMs));
+  }
 }
 
 #ifdef FOLLY_SANITIZE_ADDRESS

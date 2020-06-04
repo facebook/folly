@@ -132,7 +132,7 @@ void Baton::TimeoutHandler::scheduleTimeout(std::chrono::milliseconds timeout) {
   assert(timeoutFunc_ != nullptr);
 
   if (timeout.count() > 0) {
-    fiberManager_->loopController_->timer().scheduleTimeout(this, timeout);
+    fiberManager_->loopController_->timer()->scheduleTimeout(this, timeout);
   }
 }
 

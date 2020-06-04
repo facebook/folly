@@ -64,8 +64,10 @@ class LoopController {
 
   /**
    * Used by FiberManager to schedule some function to be run at some time.
+   * May return null, but only if called outside of runLoop() call (e.g. if
+   * Executor backing the timer is already destroyed).
    */
-  virtual HHWheelTimer& timer() = 0;
+  virtual HHWheelTimer* timer() = 0;
 };
 } // namespace fibers
 } // namespace folly

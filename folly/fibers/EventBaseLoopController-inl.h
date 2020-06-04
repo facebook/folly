@@ -33,12 +33,17 @@ inline void EventBaseLoopController::attachEventBase(EventBase& eventBase) {
 
 inline void EventBaseLoopController::attachEventBase(
     VirtualEventBase& eventBase) {
-  if (eventBase_ != nullptr) {
+  if (eventBaseAttached_.exchange(true)) {
     LOG(ERROR) << "Attempt to reattach EventBase to LoopController";
+    return;
   }
 
   eventBase_ = &eventBase;
-  eventBaseAttached_ = true;
+
+  CancellationSource source;
+  eventBaseShutdownToken_ = source.getToken();
+  eventBase_->runOnDestruction(
+      [source = std::move(source)] { source.requestCancellation(); });
 
   if (awaitingScheduling_) {
     schedule();
@@ -119,10 +124,14 @@ inline void EventBaseLoopController::scheduleThreadSafe() {
       });
 }
 
-inline HHWheelTimer& EventBaseLoopController::timer() {
+inline HHWheelTimer* EventBaseLoopController::timer() {
   assert(eventBaseAttached_);
 
-  return eventBase_->timer();
+  if (UNLIKELY(eventBaseShutdownToken_.isCancellationRequested())) {
+    return nullptr;
+  }
+
+  return &eventBase_->timer();
 }
 } // namespace fibers
 } // namespace folly

@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/CancellationToken.h>
 #include <folly/fibers/ExecutorBasedLoopController.h>
 #include <folly/fibers/FiberManagerInternal.h>
 #include <folly/io/async/VirtualEventBase.h>
@@ -62,6 +63,8 @@ class EventBaseLoopController : public ExecutorBasedLoopController {
     EventBaseLoopController& controller_;
   };
 
+  folly::CancellationToken eventBaseShutdownToken_;
+
   bool awaitingScheduling_{false};
   VirtualEventBase* eventBase_{nullptr};
   Executor::KeepAlive<VirtualEventBase> eventBaseKeepAlive_;
@@ -77,7 +80,7 @@ class EventBaseLoopController : public ExecutorBasedLoopController {
   void runLoop() override;
   void runEagerFiber(Fiber*) override;
   void scheduleThreadSafe() override;
-  HHWheelTimer& timer() override;
+  HHWheelTimer* timer() override;
 
   friend class FiberManager;
 };

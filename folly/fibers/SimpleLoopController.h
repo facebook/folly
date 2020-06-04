@@ -92,8 +92,8 @@ class SimpleLoopController : public LoopController {
     scheduled_ = true;
   }
 
-  HHWheelTimer& timer() override {
-    return *timer_;
+  HHWheelTimer* timer() override {
+    return timer_.get();
   }
 
   bool isInLoopThread() const {

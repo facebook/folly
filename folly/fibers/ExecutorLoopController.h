@@ -94,7 +94,7 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   void runLoop() override;
   void runEagerFiber(Fiber*) override;
   void scheduleThreadSafe() override;
-  HHWheelTimer& timer() override;
+  HHWheelTimer* timer() override;
 
   friend class fibers::FiberManager;
 };

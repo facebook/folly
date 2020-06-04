@@ -71,8 +71,8 @@ inline void ExecutorLoopController::scheduleThreadSafe() {
       });
 }
 
-inline HHWheelTimer& ExecutorLoopController::timer() {
-  return *timer_;
+inline HHWheelTimer* ExecutorLoopController::timer() {
+  return timer_.get();
 }
 
 } // namespace fibers
