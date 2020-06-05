@@ -94,17 +94,13 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   return pos->file;
 }
 
-ElfCache::ElfCache(size_t capacity) : capacity_(capacity) {}
-
 std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
   std::lock_guard<std::mutex> lock(mutex_);
 
   auto pos = files_.find(p);
   if (pos != files_.end()) {
-    // Found, move to back (MRU)
+    // Found
     auto& entry = pos->second;
-    lruList_.erase(lruList_.iterator_to(*entry));
-    lruList_.push_back(*entry);
     return filePtr(entry);
   }
 
@@ -118,16 +114,9 @@ std::shared_ptr<ElfFile> ElfCache::getFile(StringPiece p) {
     return nullptr;
   }
 
-  if (files_.size() == capacity_) {
-    auto& e = lruList_.front();
-    lruList_.pop_front();
-    files_.erase(e.path);
-  }
+  pos = files_.emplace(path, std::move(entry)).first;
 
-  files_.emplace(entry->path, entry);
-  lruList_.push_back(*entry);
-
-  return filePtr(entry);
+  return filePtr(pos->second);
 }
 
 std::shared_ptr<ElfFile> ElfCache::filePtr(const std::shared_ptr<Entry>& e) {

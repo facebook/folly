@@ -89,10 +89,9 @@ void runElfCacheTest(Symbolizer& symbolizer) {
   }
 }
 
-TEST_F(ElfCacheTest, TinyElfCache) {
-  ElfCache cache(1);
+TEST_F(ElfCacheTest, ElfCache) {
+  ElfCache cache;
   Symbolizer symbolizer(&cache);
-  // Run twice, in case the wrong stuff gets evicted?
   for (size_t i = 0; i < 2; ++i) {
     runElfCacheTest(symbolizer);
   }

@@ -36,8 +36,7 @@ std::string getSingletonStackTrace() {
   if (!getStackTraceSafe(*addresses)) {
     return "";
   } else {
-    constexpr size_t kDefaultCapacity = 500;
-    symbolizer::ElfCache elfCache(kDefaultCapacity);
+    symbolizer::ElfCache elfCache;
 
     symbolizer::Symbolizer symbolizer(&elfCache);
     symbolizer.symbolize(*addresses);

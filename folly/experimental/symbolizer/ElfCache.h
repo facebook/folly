@@ -23,7 +23,6 @@
 #include <unordered_map>
 
 #include <boost/intrusive/avl_set.hpp>
-#include <boost/intrusive/list.hpp>
 
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
@@ -91,32 +90,19 @@ class SignalSafeElfCache : public ElfCacheBase {
  */
 class ElfCache : public ElfCacheBase {
  public:
-  explicit ElfCache(size_t capacity);
-
   std::shared_ptr<ElfFile> getFile(StringPiece path) override;
 
  private:
   std::mutex mutex_;
 
-  typedef boost::intrusive::list_member_hook<> LruLink;
-
   struct Entry {
     std::string path;
     ElfFile file;
-    LruLink lruLink;
   };
 
   static std::shared_ptr<ElfFile> filePtr(const std::shared_ptr<Entry>& e);
 
-  size_t capacity_;
   std::unordered_map<StringPiece, std::shared_ptr<Entry>, Hash> files_;
-
-  typedef boost::intrusive::list<
-      Entry,
-      boost::intrusive::member_hook<Entry, LruLink, &Entry::lruLink>,
-      boost::intrusive::constant_time_size<false>>
-      LruList;
-  LruList lruList_;
 };
 } // namespace symbolizer
 } // namespace folly

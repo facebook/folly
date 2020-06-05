@@ -390,7 +390,6 @@ class FastStackTracePrinter {
 
   explicit FastStackTracePrinter(
       std::unique_ptr<SymbolizePrinter> printer,
-      size_t elfCacheSize = 0, // 0 means "use the default elf cache instance."
       size_t symbolCacheSize = kDefaultSymbolCacheSize);
 
   ~FastStackTracePrinter();
@@ -406,7 +405,6 @@ class FastStackTracePrinter {
  private:
   static constexpr size_t kMaxStackTraceDepth = 100;
 
-  const std::unique_ptr<ElfCache> elfCache_;
   const std::unique_ptr<SymbolizePrinter> printer_;
   Symbolizer symbolizer_;
 };

@@ -55,8 +55,7 @@ namespace symbolizer {
 namespace {
 
 ElfCache* defaultElfCache() {
-  static constexpr size_t defaultCapacity = 500;
-  static auto cache = new ElfCache(defaultCapacity);
+  static auto cache = new ElfCache();
   return cache;
 }
 
@@ -512,17 +511,9 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
 
 FastStackTracePrinter::FastStackTracePrinter(
     std::unique_ptr<SymbolizePrinter> printer,
-    size_t elfCacheSize,
     size_t symbolCacheSize)
-    : elfCache_(
-          elfCacheSize == 0
-              ? nullptr
-              : new ElfCache{std::max(countLoadedElfFiles(), elfCacheSize)}),
-      printer_(std::move(printer)),
-      symbolizer_(
-          elfCache_ ? elfCache_.get() : defaultElfCache(),
-          LocationInfoMode::FULL,
-          symbolCacheSize) {}
+    : printer_(std::move(printer)),
+      symbolizer_(defaultElfCache(), LocationInfoMode::FULL, symbolCacheSize) {}
 
 FastStackTracePrinter::~FastStackTracePrinter() = default;
 
