@@ -16,43 +16,13 @@
 
 #include <folly/experimental/symbolizer/ElfCache.h>
 
-#include <link.h>
 #include <signal.h>
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/SysMman.h>
 
-/*
- * This is declared in `link.h' on Linux platforms, but apparently not on the
- * Mac version of the file.  It's harmless to declare again, in any case.
- *
- * Note that declaring it with `extern "C"` results in linkage conflicts.
- */
-extern struct r_debug _r_debug;
-
 namespace folly {
 namespace symbolizer {
-
-size_t countLoadedElfFiles() {
-  // _r_debug synchronization is... lacking to say the least. It's
-  // meant as an aid for debuggers and synchronization is done by
-  // calling dl_debug_state() which debuggers are supposed to
-  // intercept by setting a breakpoint on.
-
-  // Can't really do that here, so we apply the hope-and-pray strategy.
-  if (_r_debug.r_version != 1 || _r_debug.r_state != r_debug::RT_CONSISTENT) {
-    // computo ergo sum
-    return 1;
-  }
-
-  //     r_map       -> head of a linked list of 'link_map_t' entries,
-  //                    one per ELF 'binary' in the process address space.
-  size_t count = 0;
-  for (auto lmap = _r_debug.r_map; lmap != nullptr; lmap = lmap->l_next) {
-    ++count;
-  }
-  return count;
-}
 
 std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   struct cmp {

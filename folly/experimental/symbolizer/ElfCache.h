@@ -32,11 +32,6 @@
 namespace folly {
 namespace symbolizer {
 
-/**
- * Number of ELF files loaded by the dynamic loader.
- */
-size_t countLoadedElfFiles();
-
 class ElfCacheBase {
  public:
   virtual std::shared_ptr<ElfFile> getFile(StringPiece path) = 0;
