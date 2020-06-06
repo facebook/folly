@@ -19,6 +19,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
+#include <folly/test/TestUtils.h>
 
 #include <boost/regex.hpp>
 
@@ -209,6 +210,8 @@ FOLLY_NOINLINE void baz(FrameArray<frames>& addresses) {
 } // namespace
 
 TEST(StackTraceTest, TerseFileAndLineStackTracePrinterOutput) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(LocationInfoMode::FULL);
   FrameArray<frames> addresses;
   StringSymbolizePrinter printer(SymbolizePrinter::TERSE_FILE_AND_LINE);

@@ -89,6 +89,8 @@ class Symbolizer {
  public:
   static constexpr auto kDefaultLocationInfoMode = LocationInfoMode::FAST;
 
+  static bool isAvailable();
+
   explicit Symbolizer(LocationInfoMode mode = kDefaultLocationInfoMode)
       : Symbolizer(nullptr, mode) {}
 

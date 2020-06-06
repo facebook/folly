@@ -47,7 +47,7 @@
  *
  * Note that declaring it with `extern "C"` results in linkage conflicts.
  */
-extern struct r_debug _r_debug;
+FOLLY_ATTR_WEAK extern struct r_debug _r_debug;
 
 namespace folly {
 namespace symbolizer {
@@ -83,6 +83,10 @@ void setSymbolizedFrame(
 
 } // namespace
 
+bool Symbolizer::isAvailable() {
+  return &_r_debug != nullptr;
+}
+
 Symbolizer::Symbolizer(
     ElfCacheBase* cache,
     LocationInfoMode mode,
@@ -101,6 +105,9 @@ size_t Symbolizer::symbolize(
   FOLLY_SAFE_CHECK(addrCount <= frameCount, "Not enough frames.");
   size_t remaining = addrCount;
 
+  if (&_r_debug == nullptr) {
+    return 0;
+  }
   if (_r_debug.r_version != 1) {
     return 0;
   }

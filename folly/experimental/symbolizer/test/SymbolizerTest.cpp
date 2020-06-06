@@ -25,6 +25,7 @@
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 namespace folly {
 namespace symbolizer {
@@ -33,6 +34,8 @@ namespace test {
 void foo() {}
 
 TEST(Symbolizer, Single) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   // It looks like we could only use .debug_aranges with "-g2", with
   // "-g1 -gdwarf-aranges", the code has to fallback to line-tables to
   // get the file name.
@@ -70,6 +73,8 @@ class ElfCacheTest : public testing::Test {
 FrameArray<100> goldenFrames;
 
 void ElfCacheTest::SetUp() {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   bar(goldenFrames);
   Symbolizer symbolizer;
   symbolizer.symbolize(goldenFrames);
@@ -106,6 +111,8 @@ TEST_F(ElfCacheTest, SignalSafeElfCache) {
 }
 
 TEST(SymbolizerTest, SymbolCache) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL, 100);
 
   FrameArray<100> frames;
@@ -190,6 +197,8 @@ class ClassWithInlineFunctions {
 };
 
 TEST(SymbolizerTest, InlineFunctionBasic) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -229,6 +238,8 @@ TEST(SymbolizerTest, InlineFunctionBasic) {
 }
 
 TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -261,6 +272,8 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
 }
 
 TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -286,6 +299,8 @@ TEST(SymbolizerTest, InlineFunctionInLexicalBlock) {
 }
 
 TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -304,6 +319,8 @@ TEST(SymbolizerTest, InlineFunctionInDifferentCompilationUnit) {
 }
 
 TEST(SymbolizerTest, InlineClassMemberFunction) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -321,6 +338,8 @@ TEST(SymbolizerTest, InlineClassMemberFunction) {
 }
 
 TEST(SymbolizerTest, StaticInlineClassMemberFunction) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -337,6 +356,8 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunction) {
 }
 
 TEST(SymbolizerTest, InlineClassMemberFunctionInDifferentFile) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -354,6 +375,8 @@ TEST(SymbolizerTest, InlineClassMemberFunctionInDifferentFile) {
 }
 
 TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 0);
 
   FrameArray<100> frames;
@@ -371,6 +394,8 @@ TEST(SymbolizerTest, StaticInlineClassMemberFunctionInDifferentFile) {
 
 // No inline frames should be filled because of no extra frames.
 TEST(SymbolizerTest, InlineFunctionBasicNoExtraFrames) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 100);
   FrameArray<8> frames;
   inlineBar<8>(frames);
@@ -385,6 +410,8 @@ TEST(SymbolizerTest, InlineFunctionBasicNoExtraFrames) {
 }
 
 TEST(SymbolizerTest, InlineFunctionWithCache) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
   Symbolizer symbolizer(nullptr, LocationInfoMode::FULL_WITH_INLINE, 100);
 
   FrameArray<100> frames;
