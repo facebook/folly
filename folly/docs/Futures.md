@@ -10,7 +10,7 @@ The primary difference from std::future is that you can attach callbacks to Futu
 
 # Brief Synopsis
 
-```
+```cpp
 #include <folly/futures/Future.h>
 #include <folly/executors/ThreadedExecutor.h>
 using namespace folly;
@@ -39,13 +39,11 @@ void foo(int x) {
 
 This would print:
 
-```
 making Promise
 Future chain made
 fulfilling Promise
 foo(42)
 Promise fulfilled
-```
 
 ## Blog Post
 
@@ -57,7 +55,7 @@ This brief guide covers the basics. For a more in-depth coverage skip to the app
 
 Let's begin with an example using an imaginary simplified Memcache client interface:
 
-```
+```cpp
 using std::string;
 class MemcacheClient {
  public:
@@ -83,7 +81,7 @@ This API is synchronous, i.e. when you call `get()` you have to wait for the res
 
 Now, consider this traditional asynchronous signature for the same operation:
 
-```
+```cpp
 int async_get(string key, std::function<void(GetReply)> callback);
 ```
 
@@ -91,27 +89,27 @@ When you call `async_get()`, your asynchronous operation begins and when it fini
 
 The Future-based API looks like this:
 
-```
+```cpp
 SemiFuture<GetReply> future_get(string key);
 ```
 
 A `SemiFuture<GetReply>` or `Future<GetReply>` is a placeholder for the `GetReply` that we will eventually get. For most of the descriptive text below, Future can refer to either `folly::SemiFuture` or `folly::Future` as the former is a safe subset of the latter. A Future usually starts life out "unfulfilled", or incomplete, i.e.:
 
-```
+```cpp
 fut.isReady() == false
 fut.value()  // will throw an exception because the Future is not ready
 ```
 
 At some point in the future, the `Future` will have been fulfilled, and we can access its value.
 
-```
+```cpp
 fut.isReady() == true
 GetReply& reply = fut.value();
 ```
 
 Futures support exceptions. If the asynchronous producer fails with an exception, your Future may represent an exception instead of a value. In that case:
 
-```
+```cpp
 fut.isReady() == true
 fut.value() // will rethrow the exception
 ```
@@ -122,7 +120,7 @@ So far we have described a way to initiate an asynchronous operation via an API 
 
 First, we can aggregate Futures, to define a new Future that completes after some or all of the aggregated Futures complete. Consider two examples: fetching a batch of requests and waiting for all of them, and fetching a group of requests and waiting for only one of them.
 
-```
+```cpp
 MemcacheClient mc;
 
 vector<SemiFuture<GetReply>> futs;
@@ -144,7 +142,7 @@ Second, we can associate a Future with an executor. An executor specifies where 
 
 For example:
 
-```
+```cpp
 folly::ThreadedExecutor executor;
 SemiFuture<GetReply> semiFut = mc.future_get("foo");
 Future<GetReply> fut1 = std::move(semiFut).via(&executor);
@@ -152,7 +150,7 @@ Future<GetReply> fut1 = std::move(semiFut).via(&executor);
 
 Once an executor is attached, a `Future` allows continuations to be attached and chained together monadically. An example will clarify:
 
-```
+```cpp
 SemiFuture<GetReply> semiFut = mc.future_get("foo");
 Future<GetReply> fut1 = std::move(semiFut).via(&executor);
 
@@ -185,7 +183,7 @@ Up to this point we have skirted around the matter of waiting for Futures. You m
 
 Futures are partially threadsafe. A Promise or Future can migrate between threads as long as there's a full memory barrier of some sort. `Future::thenValue` and `Promise::setValue` (and all variants that boil down to those two calls) can be called from different threads. **But**, be warned that you might be surprised about which thread your callback executes on. Let's consider an example, where we take a future straight from a promise, without going via the safer SemiFuture, and where we therefore have a `Future` that does not carry an executor. This is in general something to avoid.
 
-```
+```cpp
 // Thread A
 Promise<Unit> p;
 auto f = p.getFuture();
@@ -201,7 +199,7 @@ This is legal and technically threadsafe. However, it is important to realize th
 
 For safety, `.via` should be preferred. We can chain `.via` operations to give very strong control over where callbacks run:
 
-```
+```cpp
 std::move(aFuture)
   .thenValue(x)
   .via(e1).thenValue(y1).thenValue(y2)
@@ -210,7 +208,7 @@ std::move(aFuture)
 
 `x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the context of `e1`, and `z` will execute in the context of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor. Another way to express this is using an overload of `then` that takes an Executor:
 
-```
+```cpp
 std::move(aFuture)
   .thenValue(x)
   .thenValue(e1, y1, y2)
@@ -221,7 +219,7 @@ Either way, there is no ambiguity about which executor will run `y1`, `y2`, or `
 
 You can still have a race after `via` if you break it into multiple statements, e.g. in this counterexample:
 
-```
+```cpp
 f2 = std::move(f).via(e1).thenValue(y1).thenValue(y2); // nothing racy here
 std::move(f2).thenValue(y3); // racy
 ```
@@ -230,7 +228,7 @@ std::move(f2).thenValue(y3); // racy
 
 If you are wrapping an asynchronous operation, or providing an asynchronous API to users, then you will want to make `Promise`s. Every Future has a corresponding Promise (except Futures that spring into existence already completed, with `makeFuture()`). Promises are simple: you make one, you extract the Future, and you fulfill it with a value or an exception. Example:
 
-```
+```cpp
 Promise<int> p;
 SemiFuture<int> f = p.getSemiFuture();
 
@@ -244,7 +242,7 @@ f.value() == 42
 
 and an exception example:
 
-```
+```cpp
 Promise<int> p;
 SemiFuture<int> f = p.getSemiFuture();
 
@@ -258,7 +256,7 @@ f.value() // throws the exception
 
 It's good practice to use setWith which takes a function and automatically captures exceptions, e.g.
 
-```
+```cpp
 Promise<int> p;
 p.setWith([]{
   try {
