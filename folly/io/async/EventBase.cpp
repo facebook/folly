@@ -215,6 +215,8 @@ EventBase::~EventBase() {
     virtualEventBaseDestroyFuture.get();
   }
 
+  bumpHandlingTime();
+
   // Call all destruction callbacks, before we start cleaning up our state.
   while (!onDestructionCallbacks_.rlock()->empty()) {
     OnDestructionCallback::List callbacks;
@@ -381,6 +383,8 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
     }
     ++nextLoopCnt_;
 
+    bumpHandlingTime();
+
     // Run the before loop callbacks
     LoopCallbackList callbacks;
     callbacks.swap(runBeforeLoopCallbacks_);
@@ -402,11 +406,12 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
     ranLoopCallbacks = runLoopCallbacks();
 
     if (enableTimeMeasurement_) {
+      assert(startWork_);
       auto now = std::chrono::steady_clock::now();
       busy = std::chrono::duration_cast<std::chrono::microseconds>(
-          now - startWork_);
+          now - *startWork_);
       idle = std::chrono::duration_cast<std::chrono::microseconds>(
-          startWork_ - idleStart);
+          *startWork_ - idleStart);
       auto loop_time = busy + idle;
 
       avgLoopTime_.addSample(loop_time, busy);
@@ -556,7 +561,7 @@ void EventBase::bumpHandlingTime() {
     startWork_ = std::chrono::steady_clock::now();
 
     VLOG(11) << "EventBase " << this << " " << __PRETTY_FUNCTION__
-             << " (loop) startWork_ " << startWork_.time_since_epoch().count();
+             << " (loop) startWork_ " << startWork_->time_since_epoch().count();
   }
 }
 
@@ -682,7 +687,6 @@ void EventBase::runImmediatelyOrRunInEventBaseThreadAndWait(Func fn) noexcept {
 }
 
 bool EventBase::runLoopCallbacks() {
-  bumpHandlingTime();
   if (!loopCallbacks_.empty()) {
     // Swap the loopCallbacks_ list with a temporary list on our stack.
     // This way we will only run callbacks scheduled at the time
