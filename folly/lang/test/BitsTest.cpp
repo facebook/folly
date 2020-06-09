@@ -137,6 +137,29 @@ TEST(Bits, nextPowTwoClz) {
   EXPECT_EQ(1ull << 63, nextPowTwo((1ull << 62) + 1));
 }
 
+TEST(Bits, strictNextPowTwoClz) {
+  EXPECT_EQ(1, strictNextPowTwo(0u));
+  EXPECT_EQ(2, strictNextPowTwo(1u));
+  EXPECT_EQ(4, strictNextPowTwo(2u));
+  EXPECT_EQ(4, strictNextPowTwo(3u));
+  EXPECT_EQ(8, strictNextPowTwo(4u));
+  EXPECT_EQ(8, strictNextPowTwo(5u));
+  EXPECT_EQ(8, strictNextPowTwo(6u));
+  EXPECT_EQ(8, strictNextPowTwo(7u));
+  EXPECT_EQ(16, strictNextPowTwo(8u));
+  EXPECT_EQ(16, strictNextPowTwo(9u));
+  EXPECT_EQ(16, strictNextPowTwo(13u));
+  EXPECT_EQ(32, strictNextPowTwo(16u));
+  EXPECT_EQ(512, strictNextPowTwo(510u));
+  EXPECT_EQ(512, strictNextPowTwo(511u));
+  EXPECT_EQ(1024, strictNextPowTwo(512u));
+  EXPECT_EQ(1024, strictNextPowTwo(513u));
+  EXPECT_EQ(1024, strictNextPowTwo(777u));
+  EXPECT_EQ(1ul << 31, strictNextPowTwo((1ul << 31) - 1));
+  EXPECT_EQ(1ull << 32, strictNextPowTwo((1ull << 32) - 1));
+  EXPECT_EQ(1ull << 63, strictNextPowTwo((1ull << 62) + 1));
+}
+
 TEST(Bits, prevPowTwoClz) {
   EXPECT_EQ(0, prevPowTwo(0u));
   EXPECT_EQ(1, prevPowTwo(1u));
@@ -158,6 +181,29 @@ TEST(Bits, prevPowTwoClz) {
   EXPECT_EQ(1ul << 30, prevPowTwo((1ul << 31) - 1));
   EXPECT_EQ(1ull << 31, prevPowTwo((1ull << 32) - 1));
   EXPECT_EQ(1ull << 62, prevPowTwo((1ull << 62) + 1));
+}
+
+TEST(Bits, strictPrevPowTwoClz) {
+  EXPECT_EQ(0, strictPrevPowTwo(0u));
+  EXPECT_EQ(0, strictPrevPowTwo(1u));
+  EXPECT_EQ(1, strictPrevPowTwo(2u));
+  EXPECT_EQ(2, strictPrevPowTwo(3u));
+  EXPECT_EQ(2, strictPrevPowTwo(4u));
+  EXPECT_EQ(4, strictPrevPowTwo(5u));
+  EXPECT_EQ(4, strictPrevPowTwo(6u));
+  EXPECT_EQ(4, strictPrevPowTwo(7u));
+  EXPECT_EQ(4, strictPrevPowTwo(8u));
+  EXPECT_EQ(8, strictPrevPowTwo(9u));
+  EXPECT_EQ(8, strictPrevPowTwo(13u));
+  EXPECT_EQ(8, strictPrevPowTwo(16u));
+  EXPECT_EQ(256, strictPrevPowTwo(510u));
+  EXPECT_EQ(256, strictPrevPowTwo(511u));
+  EXPECT_EQ(256, strictPrevPowTwo(512u));
+  EXPECT_EQ(512, strictPrevPowTwo(513u));
+  EXPECT_EQ(512, strictPrevPowTwo(777u));
+  EXPECT_EQ(1ul << 30, strictPrevPowTwo((1ul << 31) - 1));
+  EXPECT_EQ(1ull << 31, strictPrevPowTwo((1ull << 32) - 1));
+  EXPECT_EQ(1ull << 62, strictPrevPowTwo((1ull << 62) + 1));
 }
 
 TEST(Bits, isPowTwo) {

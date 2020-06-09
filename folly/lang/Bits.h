@@ -33,6 +33,9 @@
  * nextPowTwo(x)  [constexpr]
  *    Finds the next power of two >= x.
  *
+ * strictNextPowTwo(x)  [constexpr]
+ *    Finds the next power of two > x.
+ *
  * isPowTwo(x)  [constexpr]
  *    return true iff x is a power of two
  *
@@ -206,6 +209,18 @@ inline constexpr bool isPowTwo(T const v) {
   static_assert(std::is_unsigned<T>::value, "signed type");
   static_assert(!std::is_same<T, bool>::value, "bool type");
   return (v != 0) && !(v & (v - 1));
+}
+
+template <class T>
+inline constexpr T strictNextPowTwo(T const v) {
+  static_assert(std::is_unsigned<T>::value, "signed type");
+  return nextPowTwo(T(v + 1));
+}
+
+template <class T>
+inline constexpr T strictPrevPowTwo(T const v) {
+  static_assert(std::is_unsigned<T>::value, "signed type");
+  return v > 1 ? prevPowTwo(T(v - 1)) : T(0);
 }
 
 /**
