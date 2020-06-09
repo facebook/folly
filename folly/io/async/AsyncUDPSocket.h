@@ -152,7 +152,8 @@ class AsyncUDPSocket : public EventHandler {
    * state on connects.
    * Using connect has many quirks, and you should be aware of them before using
    * this API:
-   * 1. This must only be called after binding the socket.
+   * 1. If this is called before bind, the socket will be automatically bound to
+   * the IP address of the current default network interface.
    * 2. Normally UDP can use the 2 tuple (src ip, src port) to steer packets
    * sent by the peer to the socket, however after connecting the socket, only
    * packets destined to the destination address specified in connect() will be
@@ -164,7 +165,7 @@ class AsyncUDPSocket : public EventHandler {
    *
    * Returns the result of calling the connect syscall.
    */
-  virtual int connect(const folly::SocketAddress& address);
+  virtual void connect(const folly::SocketAddress& address);
 
   /**
    * Use an already bound file descriptor. You can either transfer ownership
@@ -439,6 +440,8 @@ class AsyncUDPSocket : public EventHandler {
  private:
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
+
+  void init(sa_family_t family);
 
   // EventHandler
   void handlerReady(uint16_t events) noexcept override;

@@ -303,11 +303,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
   }
 
   void connect() {
-    int ret = socket_->connect(*connectAddr_);
-    if (ret != 0) {
-      throw folly::AsyncSocketException(
-          folly::AsyncSocketException::NOT_OPEN, "ConnectFail", errno);
-    }
+    socket_->connect(*connectAddr_);
     VLOG(2) << "Client connected to address=" << *connectAddr_;
   }
 

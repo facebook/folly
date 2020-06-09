@@ -58,11 +58,9 @@ AsyncUDPSocket::~AsyncUDPSocket() {
   }
 }
 
-void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  NetworkSocket socket = netops::socket(
-      address.getFamily(),
-      SOCK_DGRAM,
-      address.getFamily() != AF_UNIX ? IPPROTO_UDP : 0);
+void AsyncUDPSocket::init(sa_family_t family) {
+  NetworkSocket socket =
+      netops::socket(family, SOCK_DGRAM, family != AF_UNIX ? IPPROTO_UDP : 0);
   if (socket == NetworkSocket()) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN,
@@ -148,24 +146,13 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   }
 
   // If we're using IPv6, make sure we don't accept V4-mapped connections
-  if (address.getFamily() == AF_INET6) {
+  if (family == AF_INET6) {
     int flag = 1;
     if (netops::setsockopt(
             socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN, "Failed to set IPV6_V6ONLY", errno);
     }
-  }
-
-  // bind to the address
-  sockaddr_storage addrStorage;
-  address.getAddress(&addrStorage);
-  auto& saddr = reinterpret_cast<sockaddr&>(addrStorage);
-  if (netops::bind(socket, &saddr, address.getActualSize()) != 0) {
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN,
-        "failed to bind the async udp socket for:" + address.describe(),
-        errno);
   }
 
   // success
@@ -175,6 +162,21 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 
   // attach to EventHandler
   EventHandler::changeHandlerFD(fd_);
+}
+
+void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
+  init(address.getFamily());
+
+  // bind to the address
+  sockaddr_storage addrStorage;
+  address.getAddress(&addrStorage);
+  auto& saddr = reinterpret_cast<sockaddr&>(addrStorage);
+  if (netops::bind(fd_, &saddr, address.getActualSize()) != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN,
+        "failed to bind the async udp socket for:" + address.describe(),
+        errno);
+  }
 
   if (address.getFamily() == AF_UNIX || address.getPort() != 0) {
     localAddress_ = address;
@@ -183,17 +185,29 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
   }
 }
 
-int AsyncUDPSocket::connect(const folly::SocketAddress& address) {
-  CHECK_NE(NetworkSocket(), fd_) << "Socket not yet bound";
+void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
+  // not bound yet
+  if (fd_ == NetworkSocket()) {
+    init(address.getFamily());
+  }
+
   sockaddr_storage addrStorage;
   address.getAddress(&addrStorage);
-  int ret = netops::connect(
-      fd_, reinterpret_cast<sockaddr*>(&addrStorage), address.getActualSize());
-  if (ret == 0) {
-    connected_ = true;
-    connectedAddress_ = address;
+  if (netops::connect(
+          fd_,
+          reinterpret_cast<sockaddr*>(&addrStorage),
+          address.getActualSize()) != 0) {
+    throw AsyncSocketException(
+        AsyncSocketException::NOT_OPEN,
+        "Failed to connect the udp socket to:" + address.describe(),
+        errno);
   }
-  return ret;
+  connected_ = true;
+  connectedAddress_ = address;
+
+  if (!localAddress_.isInitialized()) {
+    localAddress_.setFromLocalAddress(fd_);
+  }
 }
 
 void AsyncUDPSocket::dontFragment(bool df) {

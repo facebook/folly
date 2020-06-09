@@ -415,7 +415,7 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
     serverSocketVec.emplace_back(std::move(serverSock));
 
     // connect the client
-    CHECK_EQ(clientSock->connect(addr), 0);
+    clientSock->connect(addr);
     for (size_t j = 0; j < kNumPackets; j++) {
       auto buf = folly::IOBuf::copyBuffer(data.c_str(), data.size());
       CHECK_EQ(clientSock->write(addr, std::move(buf)), data.size());

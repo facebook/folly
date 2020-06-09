@@ -173,6 +173,8 @@ class UDPServer {
   bool changePortForWrites_{true};
 };
 
+enum class BindSocket { YES, NO };
+
 class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
  public:
   using AsyncUDPSocket::ReadCallback::OnDataAvailableParams;
@@ -188,9 +190,12 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     socket_ = std::make_unique<AsyncUDPSocket>(evb_);
 
     try {
-      socket_->bind(folly::SocketAddress("127.0.0.1", 0));
+      if (bindSocket_ == BindSocket::YES) {
+        socket_->bind(folly::SocketAddress("127.0.0.1", 0));
+      }
       if (connectAddr_) {
-        connect();
+        socket_->connect(*connectAddr_);
+        VLOG(2) << "Client connected to address=" << *connectAddr_;
       }
       VLOG(2) << "Client bound to " << socket_->address().describe();
     } catch (const std::exception& ex) {
@@ -207,15 +212,6 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     } else {
       sendPing();
     }
-  }
-
-  void connect() {
-    int ret = socket_->connect(*connectAddr_);
-    if (ret != 0) {
-      throw folly::AsyncSocketException(
-          folly::AsyncSocketException::NOT_OPEN, "ConnectFail", errno);
-    }
-    VLOG(2) << "Client connected to address=" << *connectAddr_;
   }
 
   void shutdown() {
@@ -295,8 +291,11 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     return *socket_;
   }
 
-  void setShouldConnect(const folly::SocketAddress& connectAddr) {
+  void setShouldConnect(
+      const folly::SocketAddress& connectAddr,
+      BindSocket bindSocket) {
     connectAddr_ = connectAddr;
+    bindSocket_ = bindSocket;
   }
 
   bool error() const {
@@ -309,6 +308,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
  protected:
   folly::Optional<folly::SocketAddress> connectAddr_;
+  BindSocket bindSocket_{BindSocket::YES};
   EventBase* const evb_{nullptr};
 
   folly::SocketAddress server_;
@@ -473,16 +473,19 @@ class AsyncSocketIntegrationTest : public Test {
 
   std::unique_ptr<UDPClient> performPingPongTest(
       folly::SocketAddress writeAddress,
-      folly::Optional<folly::SocketAddress> connectedAddress);
+      folly::Optional<folly::SocketAddress> connectedAddress,
+      BindSocket bindSocket = BindSocket::YES);
 
   std::unique_ptr<UDPNotifyClient> performPingPongNotifyTest(
       folly::SocketAddress writeAddress,
-      folly::Optional<folly::SocketAddress> connectedAddress);
+      folly::Optional<folly::SocketAddress> connectedAddress,
+      BindSocket bindSocket = BindSocket::YES);
 
   std::unique_ptr<UDPNotifyClient> performPingPongNotifyMmsgTest(
       folly::SocketAddress writeAddress,
       unsigned int numMsgs,
-      folly::Optional<folly::SocketAddress> connectedAddress);
+      folly::Optional<folly::SocketAddress> connectedAddress,
+      BindSocket bindSocket = BindSocket::YES);
 
   folly::EventBase sevb;
   folly::EventBase cevb;
@@ -492,10 +495,11 @@ class AsyncSocketIntegrationTest : public Test {
 
 std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
     folly::SocketAddress writeAddress,
-    folly::Optional<folly::SocketAddress> connectedAddress) {
+    folly::Optional<folly::SocketAddress> connectedAddress,
+    BindSocket bindSocket) {
   auto client = std::make_unique<UDPClient>(&cevb);
   if (connectedAddress) {
-    client->setShouldConnect(*connectedAddress);
+    client->setShouldConnect(*connectedAddress, bindSocket);
   }
   // Start event loop in a separate thread
   auto clientThread = std::thread([this]() { cevb.loopForever(); });
@@ -514,10 +518,11 @@ std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
 std::unique_ptr<UDPNotifyClient>
 AsyncSocketIntegrationTest::performPingPongNotifyTest(
     folly::SocketAddress writeAddress,
-    folly::Optional<folly::SocketAddress> connectedAddress) {
+    folly::Optional<folly::SocketAddress> connectedAddress,
+    BindSocket bindSocket) {
   auto client = std::make_unique<UDPNotifyClient>(&cevb);
   if (connectedAddress) {
-    client->setShouldConnect(*connectedAddress);
+    client->setShouldConnect(*connectedAddress, bindSocket);
   }
   // Start event loop in a separate thread
   auto clientThread = std::thread([this]() { cevb.loopForever(); });
@@ -537,10 +542,11 @@ std::unique_ptr<UDPNotifyClient>
 AsyncSocketIntegrationTest::performPingPongNotifyMmsgTest(
     folly::SocketAddress writeAddress,
     unsigned int numMsgs,
-    folly::Optional<folly::SocketAddress> connectedAddress) {
+    folly::Optional<folly::SocketAddress> connectedAddress,
+    BindSocket bindSocket) {
   auto client = std::make_unique<UDPNotifyClient>(&cevb, true, numMsgs);
   if (connectedAddress) {
-    client->setShouldConnect(*connectedAddress);
+    client->setShouldConnect(*connectedAddress, bindSocket);
   }
   // Start event loop in a separate thread
   auto clientThread = std::thread([this]() { cevb.loopForever(); });
@@ -581,43 +587,62 @@ TEST_F(AsyncSocketIntegrationTest, PingPongNotifyMmsg) {
   ASSERT_TRUE(pingClient->notifyInvoked);
 }
 
-TEST_F(AsyncSocketIntegrationTest, ConnectedPingPong) {
+class ConnectedAsyncSocketIntegrationTest
+    : public AsyncSocketIntegrationTest,
+      public WithParamInterface<BindSocket> {};
+
+TEST_P(ConnectedAsyncSocketIntegrationTest, ConnectedPingPong) {
   server->setChangePortForWrites(false);
   startServer();
-  auto pingClient = performPingPongTest(server->address(), server->address());
+  auto pingClient =
+      performPingPongTest(server->address(), server->address(), GetParam());
   // This should succeed
   ASSERT_GT(pingClient->pongRecvd(), 0);
 }
 
-TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongServerWrongAddress) {
+TEST_P(
+    ConnectedAsyncSocketIntegrationTest,
+    ConnectedPingPongServerWrongAddress) {
   server->setChangePortForWrites(true);
   startServer();
-  auto pingClient = performPingPongTest(server->address(), server->address());
+  auto pingClient =
+      performPingPongTest(server->address(), server->address(), GetParam());
   // This should fail.
   ASSERT_EQ(pingClient->pongRecvd(), 0);
 }
 
-TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongClientWrongAddress) {
+TEST_P(
+    ConnectedAsyncSocketIntegrationTest,
+    ConnectedPingPongClientWrongAddress) {
   server->setChangePortForWrites(false);
   startServer();
   folly::SocketAddress connectAddr(
       server->address().getIPAddress(), server->address().getPort() + 1);
-  auto pingClient = performPingPongTest(server->address(), connectAddr);
+  auto pingClient =
+      performPingPongTest(server->address(), connectAddr, GetParam());
   // This should fail.
   ASSERT_EQ(pingClient->pongRecvd(), 0);
   EXPECT_TRUE(pingClient->error());
 }
 
-TEST_F(AsyncSocketIntegrationTest, ConnectedPingPongDifferentWriteAddress) {
+TEST_P(
+    ConnectedAsyncSocketIntegrationTest,
+    ConnectedPingPongDifferentWriteAddress) {
   server->setChangePortForWrites(false);
   startServer();
   folly::SocketAddress connectAddr(
       server->address().getIPAddress(), server->address().getPort() + 1);
-  auto pingClient = performPingPongTest(connectAddr, server->address());
+  auto pingClient =
+      performPingPongTest(connectAddr, server->address(), GetParam());
   // This should fail.
   ASSERT_EQ(pingClient->pongRecvd(), 0);
   EXPECT_TRUE(pingClient->error());
 }
+
+INSTANTIATE_TEST_CASE_P(
+    ConnectedAsyncSocketIntegrationTests,
+    ConnectedAsyncSocketIntegrationTest,
+    Values(BindSocket::YES, BindSocket::NO));
 
 TEST_F(AsyncSocketIntegrationTest, PingPongPauseResumeListening) {
   startServer();
@@ -703,8 +728,20 @@ class AsyncUDPSocketTest : public Test {
   folly::SocketAddress addr_;
 };
 
+TEST_F(AsyncUDPSocketTest, TestConnectAfterBind) {
+  socket_->connect(addr_);
+}
+
 TEST_F(AsyncUDPSocketTest, TestConnect) {
-  EXPECT_EQ(socket_->connect(addr_), 0);
+  AsyncUDPSocket socket(&evb_);
+  EXPECT_FALSE(socket.isBound());
+  folly::SocketAddress address("127.0.0.1", 443);
+  socket.connect(address);
+  EXPECT_TRUE(socket.isBound());
+
+  const auto& localAddr = socket.address();
+  EXPECT_TRUE(localAddr.isInitialized());
+  EXPECT_GT(localAddr.getPort(), 0);
 }
 
 TEST_F(AsyncUDPSocketTest, TestErrToNonExistentServer) {
