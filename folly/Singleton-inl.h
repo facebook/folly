@@ -181,7 +181,9 @@ void SingletonHolder<T>::destroyInstance() {
     auto last_reference_released =
         destroy_baton_->try_wait_for(kDestroyWaitTime, wait_options);
     if (last_reference_released) {
+      vault_.addToShutdownLog("Destroying " + type().name());
       teardown_(instance_ptr_);
+      vault_.addToShutdownLog(type().name() + " destroyed.");
     } else {
       print_destructor_stack_trace_->store(true);
       detail::singletonWarnDestroyInstanceLeak(type(), instance_ptr_);

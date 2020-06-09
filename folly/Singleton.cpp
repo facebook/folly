@@ -15,10 +15,11 @@
  */
 
 #include <folly/Singleton.h>
-#include <folly/portability/Config.h>
 
 #ifndef _WIN32
 #include <dlfcn.h>
+#include <signal.h>
+#include <time.h>
 #endif
 
 #include <atomic>
@@ -31,12 +32,15 @@
 #include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/SingletonStackTrace.h>
+#include <folly/portability/Config.h>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
 #define FOLLY_SINGLETON_HAVE_DLSYM 1
 #endif
 
 namespace folly {
+
+constexpr std::chrono::seconds SingletonVault::kDefaultShutdownTimeout_;
 
 #if FOLLY_SINGLETON_HAVE_DLSYM
 namespace detail {
@@ -365,7 +369,58 @@ void SingletonVault::scheduleDestroyInstances() {
   // Add a dependency on folly::ThreadLocal to make sure all its static
   // singletons are initalized first.
   threadlocal_detail::StaticMeta<void, void>::instance();
-  std::atexit([] { SingletonVault::singleton()->destroyInstances(); });
+  std::atexit([] {
+    SingletonVault::singleton()->startShutdownTimer();
+    SingletonVault::singleton()->destroyInstances();
+  });
+}
+
+void SingletonVault::addToShutdownLog(std::string message) {
+  shutdownLog_.wlock()->push_back(std::move(message));
+}
+
+#if FOLLY_HAVE_LIBRT
+namespace {
+[[noreturn]] void fireShutdownSignalHelper(sigval_t sigval) {
+  static_cast<SingletonVault*>(sigval.sival_ptr)->fireShutdownTimer();
+}
+} // namespace
+#endif
+
+void SingletonVault::startShutdownTimer() {
+#if FOLLY_HAVE_LIBRT
+  if (shutdownTimerStarted_.exchange(true)) {
+    return;
+  }
+
+  struct sigevent sig;
+  sig.sigev_notify = SIGEV_THREAD;
+  sig.sigev_notify_function = fireShutdownSignalHelper;
+  sig.sigev_value.sival_ptr = this;
+  sig.sigev_notify_attributes = nullptr;
+  timer_t timerId;
+  PCHECK(timer_create(CLOCK_MONOTONIC, &sig, &timerId) == 0);
+
+  struct itimerspec newValue, oldValue;
+  newValue.it_value.tv_sec =
+      std::chrono::milliseconds(shutdownTimeout_).count() / 1000;
+  newValue.it_value.tv_nsec =
+      std::chrono::milliseconds(shutdownTimeout_).count() % 1000 * 1000000;
+  newValue.it_interval.tv_sec = 0;
+  newValue.it_interval.tv_nsec = 0;
+  PCHECK(timer_settime(timerId, 0, &newValue, &oldValue) == 0);
+#endif
+}
+
+[[noreturn]] void SingletonVault::fireShutdownTimer() {
+  std::string shutdownLog;
+  for (auto& logMessage : shutdownLog_.copy()) {
+    shutdownLog += logMessage + "\n";
+  }
+  LOG(FATAL) << "Failed to complete shutdown within "
+             << std::chrono::milliseconds(shutdownTimeout_).count()
+             << "ms. Shutdown log:\n"
+             << shutdownLog;
 }
 
 } // namespace folly

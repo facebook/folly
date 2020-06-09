@@ -95,6 +95,7 @@ Init::Init(int* argc, char*** argv, InitOptions options) {
 }
 
 Init::~Init() {
+  SingletonVault::singleton()->startShutdownTimer();
   SingletonVault::singleton()->destroyInstances();
 }
 } // namespace folly

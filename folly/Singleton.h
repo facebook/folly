@@ -516,6 +516,16 @@ class SingletonVault {
     type_ = type;
   }
 
+  void setShutdownTimeout(std::chrono::milliseconds shutdownTimeout) {
+    shutdownTimeout_ = shutdownTimeout;
+  }
+
+  void addToShutdownLog(std::string message);
+
+  void startShutdownTimer();
+
+  [[noreturn]] void fireShutdownTimer();
+
  private:
   template <typename T>
   friend struct detail::SingletonHolder;
@@ -556,6 +566,12 @@ class SingletonVault {
   Synchronized<detail::SingletonVaultState, SharedMutexReadPriority> state_;
 
   Type type_;
+
+  std::atomic<bool> shutdownTimerStarted_{false};
+  static constexpr std::chrono::seconds kDefaultShutdownTimeout_{
+      std::chrono::seconds{5 * 60}};
+  std::chrono::milliseconds shutdownTimeout_{kDefaultShutdownTimeout_};
+  Synchronized<std::vector<std::string>> shutdownLog_;
 };
 
 // This is the wrapper class that most users actually interact with.
