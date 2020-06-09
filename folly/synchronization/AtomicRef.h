@@ -94,6 +94,13 @@ class atomic_ref : public detail::atomic_ref_select<T> {
   using base::base;
 };
 
+#if __cpp_deduction_guides >= 201703
+
+template <typename T>
+atomic_ref(T&)->atomic_ref<T>;
+
+#endif
+
 struct make_atomic_ref_t {
   template <
       typename T,
@@ -102,6 +109,9 @@ struct make_atomic_ref_t {
               alignof(T) == alignof(std::atomic<T>),
           int> = 0>
   atomic_ref<T> operator()(T& ref) const {
+#if __cpp_deduction_guides >= 201703
+    return atomic_ref{ref};
+#endif
     return atomic_ref<T>{ref};
   }
 };
