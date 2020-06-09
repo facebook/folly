@@ -138,7 +138,6 @@ Optional<std::string> getCurrentThreadName() {
 }
 
 bool setThreadName(std::thread::id tid, StringPiece name) {
-  auto trimmedName = name.subpiece(0, kMaxThreadNameLength - 1).str();
 #ifdef _WIN32
   static_assert(
       sizeof(unsigned int) == sizeof(std::thread::id),
@@ -165,6 +164,8 @@ bool setThreadName(std::thread::id tid, StringPiece name) {
   // so just extract the ID.
   unsigned int id;
   std::memcpy(&id, &tid, sizeof(id));
+
+  auto trimmedName = name.subpiece(0, kMaxThreadNameLength - 1).str();
 
   TNIUnion tniUnion = {0x1000, trimmedName.data(), id, 0};
   // This has to be in a separate stack frame from trimmedName, which requires
