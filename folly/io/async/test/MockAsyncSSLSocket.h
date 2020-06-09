@@ -28,8 +28,7 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
       const std::shared_ptr<SSLContext>& ctx,
       EventBase* base,
       bool deferSecurityNegotiation = false)
-      : AsyncSocket(base),
-        AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {}
+      : AsyncSSLSocket(ctx, base, deferSecurityNegotiation) {}
 
   MOCK_METHOD5(
       connect_,

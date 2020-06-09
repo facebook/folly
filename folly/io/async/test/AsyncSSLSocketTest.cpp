@@ -2340,7 +2340,7 @@ class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
   explicit MockAsyncTFOSSLSocket(
       std::shared_ptr<folly::SSLContext> sslCtx,
       EventBase* evb)
-      : AsyncSocket(evb), AsyncSSLSocket(sslCtx, evb) {}
+      : AsyncSSLSocket(sslCtx, evb) {}
 
   MOCK_METHOD3(
       tfoSendMsg,

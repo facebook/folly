@@ -72,7 +72,7 @@ class AsyncSSLSocketConnector;
  * want to give up if the remote end stops responding and no further
  * progress can be made sending the data.
  */
-class AsyncSSLSocket : public virtual AsyncSocket {
+class AsyncSSLSocket : public AsyncSocket {
  public:
   typedef std::unique_ptr<AsyncSSLSocket, Destructor> UniquePtr;
   using X509_deleter = folly::static_function_deleter<X509, &X509_free>;

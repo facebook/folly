@@ -43,7 +43,7 @@ class MockAsyncSSLSocket : public AsyncSSLSocket {
   // Fake constructor sets the state to established without call to connect
   // or accept
   MockAsyncSSLSocket(const std::shared_ptr<SSLContext>& ctx, EventBase* evb)
-      : AsyncSocket(evb), AsyncSSLSocket(ctx, evb) {
+      : AsyncSSLSocket(ctx, evb) {
     state_ = AsyncSocket::StateEnum::ESTABLISHED;
     sslState_ = AsyncSSLSocket::SSLStateEnum::STATE_ESTABLISHED;
   }
