@@ -805,7 +805,7 @@ TEST(AsyncSSLSocketTest, SSLClientTimeoutTest) {
   cerr << "SSLClientTimeoutTest test completed" << endl;
 }
 
-class PerLoopReadCallback : public AsyncTransportWrapper::ReadCallback {
+class PerLoopReadCallback : public AsyncTransport::ReadCallback {
  public:
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
     *bufReturn = buf_.data();

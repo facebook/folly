@@ -368,7 +368,7 @@ bool AsyncSSLSocket::good() const {
        sslState_ == STATE_UNINIT));
 }
 
-// The AsyncTransportWrapper definition of 'good' states that the transport is
+// The AsyncTransport definition of 'good' states that the transport is
 // ready to perform reads and writes, so sslState_ == UNINIT must report !good.
 // connecting can be true when the sslState_ == UNINIT because the AsyncSocket
 // is connected but we haven't initiated the call to SSL_connect.

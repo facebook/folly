@@ -73,7 +73,7 @@ namespace folly {
 #define SO_NO_TSOCKS 201
 #endif
 
-class AsyncSocket : public AsyncTransportWrapper {
+class AsyncSocket : public AsyncTransport {
  public:
   using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
 

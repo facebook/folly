@@ -55,7 +55,7 @@ class ConnCallback : public folly::AsyncSocket::ConnectCallback {
   VoidCallback errorCallback;
 };
 
-class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
+class WriteCallback : public folly::AsyncTransport::WriteCallback {
  public:
   WriteCallback()
       : state(STATE_WAITING),
@@ -88,7 +88,7 @@ class WriteCallback : public folly::AsyncTransportWrapper::WriteCallback {
   VoidCallback errorCallback;
 };
 
-class ReadCallback : public folly::AsyncTransportWrapper::ReadCallback {
+class ReadCallback : public folly::AsyncTransport::ReadCallback {
  public:
   explicit ReadCallback(size_t _maxBufferSz = 4096)
       : state(STATE_WAITING),

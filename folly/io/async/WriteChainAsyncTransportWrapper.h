@@ -32,7 +32,7 @@ class WriteChainAsyncTransportWrapper
   using DecoratedAsyncTransportWrapper<T>::DecoratedAsyncTransportWrapper;
 
   void write(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      AsyncTransport::WriteCallback* callback,
       const void* buf,
       size_t bytes,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
@@ -41,7 +41,7 @@ class WriteChainAsyncTransportWrapper
   }
 
   void writev(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      AsyncTransport::WriteCallback* callback,
       const iovec* vec,
       size_t count,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
@@ -54,7 +54,7 @@ class WriteChainAsyncTransportWrapper
    * derived classes to do that.
    */
   void writeChain(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      AsyncTransport::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override = 0;
 };

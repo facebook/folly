@@ -320,7 +320,7 @@ class AsyncSSLSocket : public virtual AsyncSocket {
    * the flag should be reset.
    */
 
-  // Inherit AsyncTransportWrapper methods from AsyncSocket except the
+  // Inherit AsyncTransport methods from AsyncSocket except the
   // following.
   // See the documentation in AsyncTransport.h
   // TODO: implement graceful shutdown in close()

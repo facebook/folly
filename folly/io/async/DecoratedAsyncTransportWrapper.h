@@ -21,31 +21,30 @@
 namespace folly {
 
 /**
- * Convenience class so that AsyncTransportWrapper can be decorated without
+ * Convenience class so that AsyncTransport can be decorated without
  * having to redefine every single method.
  */
 template <class T>
-class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
+class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
  public:
   explicit DecoratedAsyncTransportWrapper(typename T::UniquePtr transport)
       : transport_(std::move(transport)) {}
 
-  const AsyncTransportWrapper* getWrappedTransport() const override {
+  const AsyncTransport* getWrappedTransport() const override {
     return transport_.get();
   }
 
-  // folly::AsyncTransportWrapper
+  // folly::AsyncTransport
   ReadCallback* getReadCallback() const override {
     return transport_->getReadCallback();
   }
 
-  void setReadCB(
-      folly::AsyncTransportWrapper::ReadCallback* callback) override {
+  void setReadCB(folly::AsyncTransport::ReadCallback* callback) override {
     transport_->setReadCB(callback);
   }
 
   void write(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      folly::AsyncTransport::WriteCallback* callback,
       const void* buf,
       size_t bytes,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
@@ -53,14 +52,14 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransportWrapper {
   }
 
   void writeChain(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      folly::AsyncTransport::WriteCallback* callback,
       std::unique_ptr<folly::IOBuf>&& buf,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {
     transport_->writeChain(callback, std::move(buf), flags);
   }
 
   void writev(
-      folly::AsyncTransportWrapper::WriteCallback* callback,
+      folly::AsyncTransport::WriteCallback* callback,
       const iovec* vec,
       size_t bytes,
       folly::WriteFlags flags = folly::WriteFlags::NONE) override {

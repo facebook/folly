@@ -25,16 +25,15 @@ namespace folly {
 namespace test {
 
 class TestWriteChainAsyncTransportWrapper
-    : public WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper> {
+    : public WriteChainAsyncTransportWrapper<folly::AsyncTransport> {
  public:
   TestWriteChainAsyncTransportWrapper()
-      : WriteChainAsyncTransportWrapper<folly::AsyncTransportWrapper>(nullptr) {
-  }
+      : WriteChainAsyncTransportWrapper<folly::AsyncTransport>(nullptr) {}
 
   MOCK_METHOD3(
       writeChain,
       void(
-          folly::AsyncTransportWrapper::WriteCallback*,
+          folly::AsyncTransport::WriteCallback*,
           std::shared_ptr<folly::IOBuf>,
           folly::WriteFlags));
 

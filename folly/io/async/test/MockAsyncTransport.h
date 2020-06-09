@@ -23,7 +23,7 @@
 namespace folly {
 namespace test {
 
-class MockAsyncTransport : public AsyncTransportWrapper {
+class MockAsyncTransport : public AsyncTransport {
  public:
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
@@ -64,7 +64,7 @@ class MockAsyncTransport : public AsyncTransportWrapper {
   MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
-  MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransportWrapper*());
+  MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransport*());
   MOCK_CONST_METHOD0(isReplaySafe, bool());
   MOCK_METHOD1(
       setReplaySafetyCallback,
@@ -80,7 +80,7 @@ class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
   }
 };
 
-class MockReadCallback : public AsyncTransportWrapper::ReadCallback {
+class MockReadCallback : public AsyncTransport::ReadCallback {
  public:
   MOCK_METHOD2(getReadBuffer, void(void**, size_t*));
 
@@ -111,7 +111,7 @@ class MockReadCallback : public AsyncTransportWrapper::ReadCallback {
   }
 };
 
-class MockWriteCallback : public AsyncTransportWrapper::WriteCallback {
+class MockWriteCallback : public AsyncTransport::WriteCallback {
  public:
   MOCK_METHOD0(writeSuccess_, void());
   void writeSuccess() noexcept override {
