@@ -159,35 +159,6 @@ constexpr decltype(auto) fetch(Sequence&& sequence, Index&& index);
     for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = true) \
       for (auto i = _FE_ANON(s2_).rbegin(); i != _FE_ANON(s2_).rend(); ++i)
 
-/**
- * If you just want the keys, please use this (ranges-v3) construct:
- *
- *    for (auto&& element : collection | views::keys)
- *
- * If you just want the values, please use this (ranges-v3) construct:
- *
- *    for (auto&& element : collection | views::values)
- *
- * If you need to see both, use:
- *
- *    for (auto&& element : collection) {
- *      auto const& key = element.first;
- *      auto& value = element.second;
- *      ......
- *    }
- *
- */
-#define FOR_EACH_KV(k, v, c)                                                  \
-  if (unsigned int _FE_ANON(s1_) = 0) {                                       \
-  } else                                                                      \
-    for (auto&& _FE_ANON(s2_) = (c); !_FE_ANON(s1_); _FE_ANON(s1_) = 1)       \
-      for (auto _FE_ANON(s3_) = _FE_ANON(s2_).begin();                        \
-           _FE_ANON(s3_) != _FE_ANON(s2_).end();                              \
-           _FE_ANON(s1_) == 2 ? ((_FE_ANON(s1_) = 0), ++_FE_ANON(s3_))        \
-                              : (_FE_ANON(s3_) = _FE_ANON(s2_).end()))        \
-        for (auto& k = _FE_ANON(s3_)->first; !_FE_ANON(s1_); ++_FE_ANON(s1_)) \
-          for (auto& v = _FE_ANON(s3_)->second; !_FE_ANON(s1_); ++_FE_ANON(s1_))
-
 namespace folly {
 namespace detail {
 
