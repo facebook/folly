@@ -88,11 +88,13 @@ class FiberManager : public ::folly::Executor {
 
     /**
      * Sanitizers need a lot of extra stack space. 16x is a conservative
-     * estimate, but 8x also worked with tests where it mattered. Note that
-     * over-allocating here does not necessarily increase RSS, since unused
-     * memory is pretty much free.
+     * estimate, but 8x also worked with tests where it mattered. Similarly,
+     * debug builds need extra stack space due to reduced inlining.
+     *
+     * Note that over-allocating here does not necessarily increase RSS, since
+     * unused memory is pretty much free.
      */
-    size_t stackSizeMultiplier{kIsSanitize ? 16 : 1};
+    size_t stackSizeMultiplier{kIsSanitize ? 16 : (kIsDebug ? 2 : 1)};
 
     /**
      * Record exact amount of stack used.
