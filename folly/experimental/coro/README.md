@@ -332,7 +332,7 @@ folly::coro::Task<void> example(int count) {
   for (int i = 0; i < count; ++i) {
     tasks.push_back(doWork(i).semi());
   }
-  co_await folly::collectSemiFuture(tasks.begin(), tasks.end());
+  co_await folly::collectAllSemiFuture(tasks.begin(), tasks.end());
 }
 ```
 
@@ -348,7 +348,7 @@ folly::coro::Task<void> example(int count) {
 
   // Concurrently wait for all of these tasks.
   std::vector<std::string> strings =
-      co_await folly::collectSemiFuture(tasks.begin(), tasks.end());
+      co_await folly::collectAllSemiFuture(tasks.begin(), tasks.end());
 
   // ... use 'strings'
 }
