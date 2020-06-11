@@ -62,28 +62,26 @@ constexpr std::memory_order atomic_compare_exchange_succ(
 
 } // namespace detail
 
-template <typename T>
+template <template <typename> class Atom, typename T>
 bool atomic_compare_exchange_weak_explicit(
-    std::atomic<T>* obj,
+    Atom<T>* obj,
     T* expected,
     T desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);
-  return std::atomic_compare_exchange_weak_explicit(
-      obj, expected, desired, succ, fail);
+  return obj->compare_exchange_weak(*expected, desired, succ, fail);
 }
 
-template <typename T>
+template <template <typename> class Atom, typename T>
 bool atomic_compare_exchange_strong_explicit(
-    std::atomic<T>* obj,
+    Atom<T>* obj,
     T* expected,
     T desired,
     std::memory_order succ,
     std::memory_order fail) {
   succ = detail::atomic_compare_exchange_succ(succ, fail);
-  return std::atomic_compare_exchange_strong_explicit(
-      obj, expected, desired, succ, fail);
+  return obj->compare_exchange_strong(*expected, desired, succ, fail);
 }
 
 namespace detail {
