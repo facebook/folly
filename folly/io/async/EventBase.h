@@ -781,12 +781,6 @@ class EventBase : public TimeoutManager,
     loopOnce();
   }
 
-  Optional<std::chrono::steady_clock::time_point> getRecentSteadyTime() const
-      noexcept {
-    dcheckIsInEventBaseThread();
-    return startWork_;
-  }
-
   // Implements the ScheduledExecutor interface
   void scheduleAt(Func&& fn, TimePoint const& timeout) override;
 
@@ -914,7 +908,7 @@ class EventBase : public TimeoutManager,
   // Wrap-around loop counter to detect beginning of each loop
   std::size_t nextLoopCnt_;
   std::size_t latestLoopCnt_;
-  Optional<std::chrono::steady_clock::time_point> startWork_;
+  std::chrono::steady_clock::time_point startWork_;
   // Prevent undefined behavior from invoking event_base_loop() reentrantly.
   // This is needed since many projects use libevent-1.4, which lacks commit
   // b557b175c00dc462c1fce25f6e7dd67121d2c001 from

@@ -2286,27 +2286,6 @@ TYPED_TEST_P(EventBaseTest1, RunOnDestructionAddCallbackWithinCallback) {
   EXPECT_EQ(2, callbacksCalled);
 }
 
-TYPED_TEST_P(EventBaseTest1, RecentSteadyTime) {
-  using namespace std::literals::chrono_literals;
-  using tp = std::chrono::steady_clock::time_point;
-  FOLLY_SKIP_IF_NULLPTR_BACKEND(evb);
-  tp a;
-  tp b;
-  tp c;
-  evb.runInEventBaseThread([&] {
-    a = evb.getRecentSteadyTime().value();
-    /* sleep override */ std::this_thread::sleep_for(10ms);
-    b = evb.getRecentSteadyTime().value();
-  });
-  evb.loop();
-  evb.runInEventBaseThread([&] { //
-    c = evb.getRecentSteadyTime().value();
-  });
-  evb.loop();
-  EXPECT_EQ(a, b);
-  EXPECT_LT(a, c);
-}
-
 REGISTER_TYPED_TEST_CASE_P(
     EventBaseTest,
     ReadEvent,
@@ -2371,7 +2350,6 @@ REGISTER_TYPED_TEST_CASE_P(
     RunOnDestructionCancelled,
     RunOnDestructionAfterHandleDestroyed,
     RunOnDestructionAddCallbackWithinCallback,
-    InternalExternalCallbackOrderTest,
-    RecentSteadyTime);
+    InternalExternalCallbackOrderTest);
 } // namespace test
 } // namespace folly
