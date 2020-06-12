@@ -41,13 +41,20 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-/*
- * This is declared in `link.h' on Linux platforms, but apparently not on the
- * Mac version of the file.  It's harmless to declare again, in any case.
- *
- * Note that declaring it with `extern "C"` results in linkage conflicts.
- */
-FOLLY_ATTR_WEAK extern struct r_debug _r_debug;
+#if defined(__linux__)
+static struct r_debug* get_r_debug() {
+  return &_r_debug;
+}
+#elif defined(__APPLE__)
+extern struct r_debug _r_debug;
+static struct r_debug* get_r_debug() {
+  return &_r_debug;
+}
+#else
+static struct r_debug* get_r_debug() {
+  return nullptr;
+}
+#endif
 
 namespace folly {
 namespace symbolizer {
@@ -84,7 +91,7 @@ void setSymbolizedFrame(
 } // namespace
 
 bool Symbolizer::isAvailable() {
-  return &_r_debug != nullptr;
+  return get_r_debug();
 }
 
 Symbolizer::Symbolizer(
@@ -105,10 +112,11 @@ size_t Symbolizer::symbolize(
   FOLLY_SAFE_CHECK(addrCount <= frameCount, "Not enough frames.");
   size_t remaining = addrCount;
 
-  if (&_r_debug == nullptr) {
+  auto const dbg = get_r_debug();
+  if (dbg == nullptr) {
     return 0;
   }
-  if (_r_debug.r_version != 1) {
+  if (dbg->r_version != 1) {
     return 0;
   }
 
@@ -133,7 +141,7 @@ size_t Symbolizer::symbolize(
         }));
   };
 
-  for (auto lmap = _r_debug.r_map; lmap != nullptr && remaining != 0;
+  for (auto lmap = dbg->r_map; lmap != nullptr && remaining != 0;
        lmap = lmap->l_next) {
     // The empty string is used in place of the filename for the link_map
     // corresponding to the running executable.  Additionally, the `l_addr' is
