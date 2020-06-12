@@ -18,7 +18,6 @@
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
-#include <folly/experimental/symbolizer/SymbolizerMode.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GFlags.h>
 

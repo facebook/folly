@@ -80,6 +80,18 @@ inline std::ostream& operator<<(std::ostream& out, const Path& path) {
   return out << path.toString();
 }
 
+enum class LocationInfoMode {
+  // Don't resolve location info.
+  DISABLED,
+  // Perform CU lookup using .debug_aranges (might be incomplete).
+  FAST,
+  // Scan all CU in .debug_info (slow!) on .debug_aranges lookup failure.
+  FULL,
+  // Scan .debug_info (super slower, use with caution) for inline functions in
+  // addition to FULL.
+  FULL_WITH_INLINE,
+};
+
 /**
  * Contains location info like file name, line number, etc.
  */

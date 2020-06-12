@@ -19,7 +19,6 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
-#include <folly/experimental/symbolizer/SymbolizerMode.h>
 #include <folly/test/TestUtils.h>
 
 #include <boost/regex.hpp>
