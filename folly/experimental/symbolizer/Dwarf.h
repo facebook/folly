@@ -24,6 +24,7 @@
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/SymbolizerMode.h>
 
 namespace folly {
 namespace symbolizer {

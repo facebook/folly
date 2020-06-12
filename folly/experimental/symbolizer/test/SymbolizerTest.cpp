@@ -23,6 +23,7 @@
 #include <folly/Range.h>
 #include <folly/String.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/SymbolizerMode.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>

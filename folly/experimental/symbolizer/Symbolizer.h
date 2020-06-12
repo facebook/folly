@@ -32,6 +32,7 @@
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/StackTrace.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/SymbolizerMode.h>
 #include <folly/io/IOBuf.h>
 
 namespace folly {
@@ -125,9 +126,10 @@ class Symbolizer {
 
   template <size_t N>
   size_t symbolize(FrameArray<N>& fa) {
-    return symbolize(
+    fa.frameCount = symbolize(
         folly::Range<const uintptr_t*>(fa.addresses, fa.frameCount),
         folly::Range<SymbolizedFrame*>(fa.frames, N));
+    return fa.frameCount;
   }
 
   /**
@@ -347,7 +349,9 @@ class StringSymbolizePrinter : public SymbolizePrinter {
  */
 class SafeStackTracePrinter {
  public:
-  explicit SafeStackTracePrinter(int fd = STDERR_FILENO);
+  explicit SafeStackTracePrinter(
+      int fd = STDERR_FILENO,
+      LocationInfoMode mode = LocationInfoMode::FULL);
 
   virtual ~SafeStackTracePrinter() {}
 
@@ -374,7 +378,8 @@ class SafeStackTracePrinter {
  private:
   static constexpr size_t kMaxStackTraceDepth = 100;
 
-  int fd_;
+  const int fd_;
+  const LocationInfoMode mode_;
   FDSymbolizePrinter printer_;
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
@@ -422,6 +427,12 @@ class FastStackTracePrinter {
  * Note it's still unsafe even with that.
  */
 class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
+ public:
+  explicit UnsafeSelfAllocateStackTracePrinter(
+      int fd = STDERR_FILENO,
+      LocationInfoMode mode = LocationInfoMode::FULL)
+      : SafeStackTracePrinter(fd, mode) {}
+
  protected:
   void printSymbolizedStackTrace() override;
   const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);

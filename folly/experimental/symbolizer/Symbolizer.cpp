@@ -472,8 +472,9 @@ void StringSymbolizePrinter::doPrint(StringPiece sp) {
   buf_.append(sp.data(), sp.size());
 }
 
-SafeStackTracePrinter::SafeStackTracePrinter(int fd)
+SafeStackTracePrinter::SafeStackTracePrinter(int fd, LocationInfoMode mode)
     : fd_(fd),
+      mode_(mode),
       printer_(
           fd,
           SymbolizePrinter::COLOR_IF_TTY,
@@ -493,15 +494,19 @@ void SafeStackTracePrinter::printSymbolizedStackTrace() {
   // Do our best to populate location info, process is going to terminate,
   // so performance isn't critical.
   SignalSafeElfCache elfCache_;
-  Symbolizer symbolizer(&elfCache_, LocationInfoMode::FULL);
+  Symbolizer symbolizer(&elfCache_, mode_);
   symbolizer.symbolize(*addresses_);
 
-  // Skip the top 2 frames captured by printStackTrace:
-  // getStackTraceSafe
+  // Skip the top 2 frames (4 frames if inline functions are included) captured
+  // by printStackTrace:
+  // * getStackTraceInPlace (marked as inline in StackTrace.cpp)
+  // getStackTraceSafe (in StackTrace.cpp)
+  // * getStackTraceSafe<N> (marked as inline in Symbolizer.h)
   // SafeStackTracePrinter::printStackTrace (captured stack)
   //
   // Leaving signalHandler on the stack for clarity, I think.
-  printer_.println(*addresses_, 2);
+  printer_.println(
+      *addresses_, mode_ == LocationInfoMode::FULL_WITH_INLINE ? 4 : 2);
 }
 
 void SafeStackTracePrinter::printStackTrace(bool symbolize) {
