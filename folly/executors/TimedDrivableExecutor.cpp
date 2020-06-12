@@ -23,6 +23,14 @@
 
 namespace folly {
 
+TimedDrivableExecutor::TimedDrivableExecutor() = default;
+
+TimedDrivableExecutor::~TimedDrivableExecutor() noexcept {
+  // Drain on destruction so that if work is added here during the collapse
+  // of a future train, it will propagate.
+  drain();
+}
+
 void TimedDrivableExecutor::add(Func callback) {
   queue_.enqueue(std::move(callback));
 }
@@ -30,6 +38,10 @@ void TimedDrivableExecutor::add(Func callback) {
 void TimedDrivableExecutor::drive() noexcept {
   wait();
   run();
+}
+
+bool TimedDrivableExecutor::try_drive() noexcept {
+  return try_wait() && run() > 0;
 }
 
 size_t TimedDrivableExecutor::run() noexcept {
@@ -65,6 +77,10 @@ void TimedDrivableExecutor::wait() noexcept {
   if (!func_) {
     queue_.dequeue(func_);
   }
+}
+
+bool TimedDrivableExecutor::try_wait() noexcept {
+  return func_ || queue_.try_dequeue(func_);
 }
 
 } // namespace folly

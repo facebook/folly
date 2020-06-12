@@ -29,20 +29,15 @@ namespace folly {
  */
 class TimedDrivableExecutor : public DrivableExecutor {
  public:
-  ~TimedDrivableExecutor() noexcept {
-    // Drain on destruction so that if work is added here during the collapse
-    // of a future train, it will propagate.
-    drain();
-  }
+  TimedDrivableExecutor();
+  ~TimedDrivableExecutor() noexcept override;
 
   /// Implements DrivableExecutor
   void drive() noexcept override;
 
   // Make progress if there is work to do and return true. Otherwise return
   // false.
-  bool try_drive() noexcept {
-    return try_wait() && run() > 0;
-  }
+  bool try_drive() noexcept;
 
   // Make progress on this Executor's work. Acts as drive, except it will only
   // wait for a period of timeout for work to be enqueued. If no work is
@@ -84,9 +79,7 @@ class TimedDrivableExecutor : public DrivableExecutor {
   void wait() noexcept;
 
   // Return true if there is work to do, false otherwise
-  bool try_wait() noexcept {
-    return func_ || queue_.try_dequeue(func_);
-  }
+  bool try_wait() noexcept;
 
   /// Wait for work to do or for a period of timeout, whichever is sooner.
   template <typename Rep, typename Period>
