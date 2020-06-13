@@ -1504,8 +1504,10 @@ struct hasher<
     // suitable hash of T.  Something like absl::is_uniquely_represented<T>
     // would be better.  std::is_pod is not enough, because POD types
     // can contain pointers and padding.  Also, floating point numbers
-    // may be == without being bit-identical.
-    return hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0);
+    // may be == without being bit-identical.  size_t is less than 64
+    // bits on some platforms.
+    return static_cast<size_t>(
+        hash::SpookyHashV2::Hash64(r.begin(), r.size() * sizeof(T), 0));
   }
 };
 
