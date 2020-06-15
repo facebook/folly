@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/Traits.h>
 #include <glog/logging.h>
 #include <utility>
 
@@ -65,6 +66,8 @@ T&& await(Async<T>&&);
 template <typename T>
 class [[nodiscard]] Async {
  public:
+  typedef T inner_type;
+
   // General use constructor
   template <typename... Us>
   /* implicit */ Async(Us && ... val) : val_(std::forward<Us>(val)...) {}
@@ -87,6 +90,8 @@ class [[nodiscard]] Async {
 template <>
 class [[nodiscard]] Async<void> {
  public:
+  typedef void inner_type;
+
   /* implicit */ Async() {}
   Async(const Async&) = delete;
   Async(Async && other) = default;
@@ -123,6 +128,24 @@ T&& init_await(Async<T>&& async) {
 inline void init_await(Async<void>&& async) {
   await(std::move(async));
 }
+
+// is_async
+template <typename T>
+constexpr bool is_async_v = folly::detail::is_instantiation_of_v<Async, T>;
+
+// async_inner_type
+template <typename T>
+struct async_inner_type {
+  using type = T;
+};
+
+template <typename T>
+struct async_inner_type<Async<T>> {
+  using type = T;
+};
+
+template <typename T>
+using async_inner_type_t = typename async_inner_type<T>::type;
 
 } // namespace async
 } // namespace fibers

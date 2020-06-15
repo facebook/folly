@@ -2791,3 +2791,12 @@ TEST(FiberManager, asyncTask) {
       .getVia(&evb);
 }
 #endif
+
+TEST(FiberManager, asyncTraits) {
+  static_assert(!async::is_async_v<int>);
+  static_assert(async::is_async_v<async::Async<int>>);
+  static_assert(
+      std::is_same<int, async::async_inner_type_t<async::Async<int>>>::value);
+  static_assert(
+      std::is_same<int&, async::async_inner_type_t<async::Async<int&>>>::value);
+}
