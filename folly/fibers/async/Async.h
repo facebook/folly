@@ -99,6 +99,15 @@ class [[nodiscard]] Async<void> {
   Async operator=(Async&&) = delete;
 };
 
+#if __cpp_deduction_guides >= 201703
+/**
+ * Deduction guide to make it easier to construct and return Async objects.
+ * The guide doesn't permit constructing and returning by reference.
+ */
+template <typename T>
+explicit Async(T)->Async<T>;
+#endif
+
 /**
  * Function to retrieve the result from the Async wrapper
  * A function calling await must return an Async wrapper itself

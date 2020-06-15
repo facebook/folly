@@ -2800,3 +2800,33 @@ TEST(FiberManager, asyncTraits) {
   static_assert(
       std::is_same<int&, async::async_inner_type_t<async::Async<int&>>>::value);
 }
+
+#if __cpp_deduction_guides >= 201703
+TEST(FiberManager, asyncConstructorGuides) {
+  auto getLiteral = []() { return async::Async(1); };
+  // int&& -> int
+  static_assert(
+      std::is_same<int, async::async_inner_type_t<decltype(getLiteral())>>::
+          value);
+
+  int i = 0;
+  auto tryGetRef = [&]() { return async::Async(static_cast<int&>(i)); };
+  // int& -> int
+  static_assert(
+      std::is_same<int, async::async_inner_type_t<decltype(tryGetRef())>>::
+          value);
+
+  auto tryGetConstRef = [&]() {
+    return async::Async(static_cast<const int&>(i));
+  };
+  // const int& -> int
+  static_assert(
+      std::is_same<int, async::async_inner_type_t<decltype(tryGetConstRef())>>::
+          value);
+
+  // int& explicitly constructed
+  auto getRef = [&]() { return async::Async<int&>(i); };
+  static_assert(
+      std::is_same<int&, async::async_inner_type_t<decltype(getRef())>>::value);
+}
+#endif
