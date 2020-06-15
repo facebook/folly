@@ -15,7 +15,7 @@ subdir = rocksdb-6.8.1
 
 [cmake.defines]
 WITH_SNAPPY=ON
-WITH_LZ4=OFF
+WITH_LZ4=ON
 WITH_TESTS=OFF
 WITH_BENCHMARK_TOOLS=OFF
 # We get relocation errors with the static gflags lib,
