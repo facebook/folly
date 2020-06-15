@@ -99,8 +99,7 @@ class F14BasicSet {
  public:
   //// PUBLIC - Member functions
 
-  F14BasicSet() noexcept(Policy::kDefaultConstructIsNoexcept)
-      : F14BasicSet(0) {}
+  F14BasicSet() noexcept(Policy::kDefaultConstructIsNoexcept) : table_{} {}
 
   explicit F14BasicSet(
       std::size_t initialCapacity,
