@@ -39,6 +39,7 @@
 #include <folly/fibers/WhenN.h>
 #include <folly/fibers/async/Async.h>
 #include <folly/fibers/async/Baton.h>
+#include <folly/fibers/async/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 
@@ -2712,4 +2713,53 @@ TEST(FiberManager, asyncBaton) {
           }
         })
           .getVia(&evb));
+}
+
+TEST(FiberManager, asyncFuture) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  // Return format: Info about where continuation runs (thread_id,
+  // in_fiber_loop, on_active_fiber)
+  auto getSemiFuture = []() {
+    return folly::futures::sleep(std::chrono::milliseconds(1))
+        .defer([](auto&&) {
+          return std::make_tuple(
+              std::this_thread::get_id(),
+              FiberManager::getFiberManagerUnsafe() != nullptr,
+              onFiber());
+        });
+  };
+
+  fm.addTaskFuture([&]() {
+      auto this_thread_id = std::this_thread::get_id();
+      {
+        // Unspecified executor: Deferred work will be executed inline on
+        // producer thread
+        auto res = async::init_await(
+            async::futureWait(getSemiFuture().toUnsafeFuture()));
+        EXPECT_NE(this_thread_id, std::get<0>(res));
+        EXPECT_FALSE(std::get<1>(res));
+        EXPECT_FALSE(std::get<2>(res));
+      }
+
+      {
+        // Specified executor: Deferred work will be executed on evb
+        auto res =
+            async::init_await(async::futureWait(getSemiFuture().via(&evb)));
+        EXPECT_EQ(this_thread_id, std::get<0>(res));
+        EXPECT_FALSE(std::get<1>(res));
+        EXPECT_FALSE(std::get<2>(res));
+      }
+
+      {
+        // Unspecified executor: Deferred work will be executed inline on
+        // consumer thread main-context
+        auto res = async::init_await(async::futureWait(getSemiFuture()));
+        EXPECT_EQ(this_thread_id, std::get<0>(res));
+        EXPECT_TRUE(std::get<1>(res));
+        EXPECT_FALSE(std::get<2>(res));
+      }
+    })
+      .getVia(&evb);
 }
