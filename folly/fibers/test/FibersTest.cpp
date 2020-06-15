@@ -42,6 +42,10 @@
 #include <folly/fibers/async/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Sleep.h>
+#include <folly/fibers/async/Task.h>
+#endif
 
 using namespace folly::fibers;
 
@@ -2763,3 +2767,27 @@ TEST(FiberManager, asyncFuture) {
     })
       .getVia(&evb);
 }
+
+#if FOLLY_HAS_COROUTINES
+TEST(FiberManager, asyncTask) {
+  auto coroFn =
+      []() -> folly::coro::Task<std::tuple<std::thread::id, bool, bool>> {
+    co_await folly::coro::sleep(std::chrono::milliseconds(1));
+    co_return std::make_tuple(
+        std::this_thread::get_id(),
+        FiberManager::getFiberManagerUnsafe() != nullptr,
+        onFiber());
+  };
+
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  fm.addTaskFuture([&]() {
+      // Coroutine should run to completion on fiber main context
+      EXPECT_EQ(
+          std::make_tuple(std::this_thread::get_id(), true, false),
+          async::init_await(async::taskWait(coroFn())));
+    })
+      .getVia(&evb);
+}
+#endif
