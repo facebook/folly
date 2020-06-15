@@ -367,4 +367,37 @@ constexpr std::underlying_type_t<E> to_underlying(E e) noexcept {
   return static_cast<std::underlying_type_t<E>>(e);
 }
 
+/*
+ * FOLLY_DECLVAL(T)
+ *
+ * This macro works like std::declval<T>() but does the same thing in a way
+ * that does not require instantiating a function template.
+ *
+ * Use this macro instead of std::declval<T>() in places that are widely
+ * instantiated to reduce compile-time overhead of instantiating function
+ * templates.
+ *
+ * Note that, like std::declval<T>(), this macro can only be used in
+ * unevaluated contexts.
+ *
+ * There are some small differences between this macro and std::declval<T>().
+ * - This macro results in a value of type 'T' instead of 'T&&'.
+ * - This macro requires the type T to be a complete type at the
+ *   point of use.
+ *   If this is a problem then use FOLLY_DECLVAL(T&&) instead, or if T might
+ *   be 'void', then use FOLLY_DECLVAL(std::add_rvalue_reference_t<T>).
+ */
+#if __cplusplus >= 201703L
+#define FOLLY_DECLVAL(...) static_cast<__VA_ARGS__ (*)() noexcept>(nullptr)()
+#else
+// Don't have noexcept-qualified function types prior to C++17
+// so just fall back to a function-template.
+namespace detail {
+template <typename T>
+T declval() noexcept;
+} // namespace detail
+
+#define FOLLY_DECLVAL(...) ::folly::detail::declval<__VA_ARGS__>()
+#endif
+
 } // namespace folly

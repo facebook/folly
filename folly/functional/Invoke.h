@@ -28,6 +28,8 @@
 #include <folly/Portability.h>
 #include <folly/Preprocessor.h>
 #include <folly/Traits.h>
+#include <folly/Utility.h>
+#include <folly/lang/CustomizationPoint.h>
 
 /**
  *  include or backport:
@@ -476,3 +478,140 @@ struct invoke_traits : detail::invoke_traits_base<Invoke> {
       return T::membername(static_cast<Args&&>(args)...);               \
     }                                                                   \
   }
+
+namespace folly {
+
+namespace detail_tag_invoke_fn {
+
+void tag_invoke();
+
+struct tag_invoke_fn {
+  template <typename Tag, typename... Args>
+  constexpr auto operator()(Tag tag, Args&&... args) const noexcept(noexcept(
+      tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...)))
+      -> decltype(
+          tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...)) {
+    return tag_invoke(static_cast<Tag&&>(tag), static_cast<Args&&>(args)...);
+  }
+};
+
+// Manually implement the traits here rather than defining them in terms of
+// the corresponding std::invoke_result/is_invocable/is_nothrow_invocable
+// traits to improve compile-times. We don't need all of the generality of
+// the std:: traits and the tag_invoke traits can be used heavily in CPO-based
+// code so optimising them for compile times can make a big difference.
+
+// Use the immediately-invoked function-pointer trick here to avoid
+// instantiating the std::declval<T>() template.
+
+template <typename Tag, typename... Args>
+using tag_invoke_result_t = decltype(tag_invoke(
+    static_cast<Tag && (*)() noexcept>(nullptr)(),
+    static_cast<Args && (*)() noexcept>(nullptr)()...));
+
+template <typename Tag, typename... Args>
+auto try_tag_invoke(int) noexcept(
+    noexcept(tag_invoke(FOLLY_DECLVAL(Tag&&), FOLLY_DECLVAL(Args&&)...)))
+    -> decltype(
+        static_cast<void>(
+            tag_invoke(FOLLY_DECLVAL(Tag &&), FOLLY_DECLVAL(Args&&)...)),
+        std::true_type{});
+
+template <typename Tag, typename... Args>
+std::false_type try_tag_invoke(...) noexcept(false);
+
+template <template <typename...> class T, typename... Args>
+struct defer {
+  using type = T<Args...>;
+};
+
+struct empty {};
+
+} // namespace detail_tag_invoke_fn
+
+// The expression folly::tag_invoke(tag, args...) is equivalent to performing
+// a call to the expression tag_invoke(tag, args...) using argument-dependent
+// lookup (ADL).
+//
+// This is intended to be used by customization-point objects, which dispatch
+// a call to the CPO to an ADL call to tag_invoke(cpo, args...), using the type
+// of the first argument to disambiguate between customisations for different
+// CPOs rather than using different ADL names for this.
+//
+// For example: Defining a new CPO in terms of tag_invoke.
+//   struct FooCpo {
+//     template<typename A, typename B>
+//     auto operator()(A&& a, B&& b) const
+//         noexcept(folly::is_nothrow_tag_invocable_v<FooCpo, A, B>)
+//         -> folly::tag_invoke_result_t<FooCpo, A, B> {
+//       return folly::tag_invoke(*this, (A&&)a, (B&&)b);
+//     }
+//   };
+//   FOLLY_DEFINE_CPO(FooCpo, Foo)
+//
+// And then customising the Foo CPO for a particular type:
+//   class SomeType {
+//     ...
+//     template<typename B>
+//     friend int tag_invoke(folly::cpo_t<Foo>, const SomeType& a, B&& b) {
+//       // implementation goes here
+//     }
+//   };
+//
+// For more details see the C++ standards proposal: https://wg21.link/P1895R0.
+FOLLY_DEFINE_CPO(detail_tag_invoke_fn::tag_invoke_fn, tag_invoke)
+
+// Query if the 'folly::tag_invoke()' CPO can be invoked with a tag and
+// arguments of the the specified types.
+//
+// This checks whether an overload of the free-function tag_invoke() found
+// by ADL can be invoked with the specified types.
+
+template <typename Tag, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_tag_invocable_v =
+    decltype(detail_tag_invoke_fn::try_tag_invoke<Tag, Args...>(0))::value;
+
+template <typename Tag, typename... Args>
+struct is_tag_invocable : bool_constant<is_tag_invocable_v<Tag, Args...>> {};
+
+// Query whether the 'folly::tag_invoke()' CPO can be invoked with a tag
+// and arguments of the specified type and that such an invocation is
+// noexcept.
+
+template <typename Tag, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_tag_invocable_v =
+    noexcept(detail_tag_invoke_fn::try_tag_invoke<Tag, Args...>(0));
+
+template <typename Tag, typename... Args>
+struct is_nothrow_tag_invocable
+    : bool_constant<is_nothrow_tag_invocable_v<Tag, Args...>> {};
+
+// Versions of the above that check in addition that the result is
+// convertible to the given return type R.
+
+template <typename R, typename Tag, typename... Args>
+using is_tag_invocable_r =
+    folly::is_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>;
+
+template <typename R, typename Tag, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_tag_invocable_r_v =
+    is_tag_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>::value;
+
+template <typename R, typename Tag, typename... Args>
+using is_nothrow_tag_invocable_r =
+    folly::is_nothrow_invocable_r<R, decltype(folly::tag_invoke), Tag, Args...>;
+
+template <typename R, typename Tag, typename... Args>
+FOLLY_INLINE_VARIABLE constexpr bool is_nothrow_tag_invocable_r_v =
+    is_nothrow_tag_invocable_r<R, Tag, Args...>::value;
+
+using detail_tag_invoke_fn::tag_invoke_result_t;
+
+template <typename Tag, typename... Args>
+struct tag_invoke_result
+    : conditional_t<
+          is_tag_invocable_v<Tag, Args...>,
+          detail_tag_invoke_fn::defer<tag_invoke_result_t, Tag, Args...>,
+          detail_tag_invoke_fn::empty> {};
+
+} // namespace folly

@@ -44,3 +44,31 @@
   constexpr auto& Name = ::folly::StaticConst<Type>::value; \
   }
 #endif
+
+namespace folly {
+
+// Using 'auto' for non-type template parameters is only possible from C++17
+#if __cplusplus >= 201703L
+
+//  cpo_t<CPO>
+//
+//  Helper type-trait for obtaining the type of customisation point object.
+//
+//  This can be useful for defining overloads of tag_invoke() where CPOs
+//  are defined in terms of ADL calls to tag_invoke().
+//
+//  For example:
+//   FOLLY_DEFINE_CPO(DoSomething_fn, doSomething)
+//
+//   class SomeClass {
+//     ...
+//     friend void tag_invoke(folly::cpo_t<doSomething>, const SomeClass& x);
+//   };
+//
+//  See <folly/functional/Invoke.h> for more details.
+template <const auto& Tag>
+using cpo_t = std::decay_t<decltype(Tag)>;
+
+#endif // __cplusplus >= 201703L
+
+} // namespace folly

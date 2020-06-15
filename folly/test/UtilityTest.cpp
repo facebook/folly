@@ -143,3 +143,10 @@ TEST_F(UtilityTest, to_narrow) {
     EXPECT_EQ(100, actual);
   }
 }
+
+// Tests for FOLLY_DECLVAL macro:
+
+static_assert(std::is_same<decltype(FOLLY_DECLVAL(int)), int>::value);
+static_assert(std::is_same<decltype(FOLLY_DECLVAL(int&)), int&>::value);
+static_assert(std::is_same<decltype(FOLLY_DECLVAL(int&&)), int&&>::value);
+static_assert(noexcept(FOLLY_DECLVAL(int)));
