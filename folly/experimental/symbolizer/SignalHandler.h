@@ -19,6 +19,9 @@
 #include <bitset>
 #include <functional>
 
+#include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/SymbolizerMode.h>
+
 namespace folly {
 namespace symbolizer {
 
@@ -36,7 +39,8 @@ extern const unsigned long kAllFatalSignals;
  * are honored in this list, other signals are ignored.
  */
 void installFatalSignalHandler(
-    std::bitset<64> signals = std::bitset<64>(kAllFatalSignals));
+    std::bitset<64> signals = std::bitset<64>(kAllFatalSignals),
+    LocationInfoMode symbolizerMode = LocationInfoMode::FULL);
 
 /**
  * Add a callback to be run when receiving a fatal signal. They will also

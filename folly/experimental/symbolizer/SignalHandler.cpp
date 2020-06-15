@@ -493,7 +493,9 @@ bool isSmallSigAltStackEnabled() {
 
 } // namespace
 
-void installFatalSignalHandler(std::bitset<64> signals) {
+void installFatalSignalHandler(
+    std::bitset<64> signals,
+    LocationInfoMode symbolizerMode) {
   if (gAlreadyInstalled.exchange(true)) {
     // Already done.
     return;
@@ -509,9 +511,11 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   // stack overflow. Replace it with the unsafe self-allocate printer.
   bool useUnsafePrinter = isSmallSigAltStackEnabled();
   if (useUnsafePrinter) {
-    gStackTracePrinter = new UnsafeSelfAllocateStackTracePrinter();
+    gStackTracePrinter =
+        new UnsafeSelfAllocateStackTracePrinter(STDERR_FILENO, symbolizerMode);
   } else {
-    gStackTracePrinter = new SafeStackTracePrinter();
+    gStackTracePrinter =
+        new SafeStackTracePrinter(STDERR_FILENO, symbolizerMode);
   }
 
   struct sigaction sa;
