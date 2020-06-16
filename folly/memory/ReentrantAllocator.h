@@ -19,6 +19,7 @@
 #include <atomic>
 #include <cstddef>
 #include <limits>
+#include <memory>
 #include <type_traits>
 
 namespace folly {
