@@ -20,6 +20,7 @@
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
 #include <folly/portability/Asm.h>
+#include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/WaitOptions.h>
 #include <folly/synchronization/detail/Spin.h>
 
@@ -302,14 +303,13 @@ FOLLY_NOINLINE bool SaturatingSemaphore<MayBlock, Atom>::tryWaitSlow(
 
   auto before = state_.load(std::memory_order_relaxed);
   while (before == NOTREADY &&
-         !state_.compare_exchange_strong(
-             before,
-             BLOCKED,
+         !folly::atomic_compare_exchange_weak_explicit<Atom>(
+             &state_,
+             &before,
+             static_cast<std::uint32_t>(BLOCKED),
              std::memory_order_relaxed,
-             std::memory_order_relaxed)) {
+             std::memory_order_acquire)) {
     if (before == READY) {
-      // TODO: move the acquire to the compare_exchange failure load after C++17
-      std::atomic_thread_fence(std::memory_order_acquire);
       return true;
     }
   }
