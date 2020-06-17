@@ -30,7 +30,6 @@
 #include <folly/experimental/exception_tracer/ExceptionAbi.h>
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
-#include <folly/experimental/symbolizer/SymbolizerMode.h>
 
 namespace {
 

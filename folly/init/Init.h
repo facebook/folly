@@ -15,11 +15,8 @@
  */
 
 #pragma once
-
-#include <bitset>
-
 #include <folly/CPortability.h>
-#include <folly/experimental/symbolizer/SymbolizerMode.h>
+#include <bitset>
 
 namespace folly {
 class InitOptions {
@@ -28,17 +25,13 @@ class InitOptions {
 
   bool remove_flags{true};
 
-  // Mask of all fatal (default handler of terminating the process) signals for
+  // mask of all fatal (default handler of terminating the process) signals for
   // which `init()` will install handler that print stack traces and invokes
   // previously established handler  (or terminate if there were none).
   // Signals that are not in `symbolizer::kAllFatalSignals` will be ignored
-  // if passed here.
-  // Defaults to all signal in `symbolizer::kAllFatalSignals`.
-  // Both fatal_signals and symbolizerMode are only used when folly symbolizer
-  // is enabled.
+  // if passed here
+  // Defaults to all signal in `symbolizer::kAllFatalSignals`
   std::bitset<64> fatal_signals;
-  folly::symbolizer::LocationInfoMode fatalSignalsSymbolizerMode =
-      folly::symbolizer::LocationInfoMode::FULL;
 
   InitOptions& removeFlags(bool remove) {
     remove_flags = remove;

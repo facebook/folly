@@ -25,10 +25,7 @@
 #include <folly/synchronization/HazptrThreadPoolExecutor.h>
 
 #if FOLLY_USE_SYMBOLIZER
-// @manual because autodeps doesn't understand `os_deps` and suggests
-// adding dep to `deps`.
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
-#include <folly/experimental/symbolizer/SymbolizedFrame.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>
 
@@ -54,8 +51,7 @@ void init(int* argc, char*** argv, InitOptions options) {
 #if FOLLY_USE_SYMBOLIZER
   // Install the handler now, to trap errors received during startup.
   // The callbacks, if any, can be installed later
-  folly::symbolizer::installFatalSignalHandler(
-      options.fatal_signals, options.fatalSignalsSymbolizerMode);
+  folly::symbolizer::installFatalSignalHandler(options.fatal_signals);
 #elif !defined(_WIN32)
   google::InstallFailureSignalHandler();
 #endif
