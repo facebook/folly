@@ -35,7 +35,6 @@ multiplex(
     SelectIdFn&& selectId) {
   using EventType = CallbackRecord<Reference>;
   using ReferenceType = Enumerated<KeyType, EventType>;
-  using ValueType = Enumerated<KeyType, CallbackRecord<Value>>;
 
   return merge(
       std::move(exec),
