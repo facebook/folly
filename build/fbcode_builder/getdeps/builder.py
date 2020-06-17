@@ -724,6 +724,9 @@ class OpenSSLBuilder(BuilderBase):
         elif self.build_opts.is_darwin():
             make = "make"
             args = ["darwin64-x86_64-cc"]
+        elif self.build_opts.is_linux():
+            make = "make"
+            args = ["linux-x86_64"]
         else:
             raise Exception("don't know how to build openssl for %r" % self.ctx)
 
@@ -955,6 +958,7 @@ class CargoBuilder(BuilderBase):
         self.add_openssl_to_env(env, install_dirs)
         # Enable using nightly features with stable compiler
         env["RUSTC_BOOTSTRAP"] = "1"
+        env["LIBZ_SYS_STATIC"] = "1"
         cmd = [
             "cargo",
             operation,
@@ -1052,23 +1056,27 @@ git-fetch-with-cli = true
         workspace_dir = self.workspace_dir()
         config = self._resolve_config()
         if config:
-            with open(os.path.join(workspace_dir, "Cargo.toml"), "a") as f:
-                # A fake manifest has to be crated to change the virtual
-                # manifest into a non-virtual. The virtual manifests are limited
-                # in many ways and the inability to define patches on them is
-                # one. Check https://github.com/rust-lang/cargo/issues/4934 to
-                # see if it is resolved.
-                f.write(
-                    """
-[package]
-name = "fake_manifest_of_{}"
-version = "0.0.0"
-[lib]
-path = "/dev/null"
-""".format(
-                        self.manifest.name
+            with open(os.path.join(workspace_dir, "Cargo.toml"), "r+") as f:
+                manifest_content = f.read()
+                if "[package]" not in manifest_content:
+                    # A fake manifest has to be crated to change the virtual
+                    # manifest into a non-virtual. The virtual manifests are limited
+                    # in many ways and the inability to define patches on them is
+                    # one. Check https://github.com/rust-lang/cargo/issues/4934 to
+                    # see if it is resolved.
+                    f.write(
+                        """
+    [package]
+    name = "fake_manifest_of_{}"
+    version = "0.0.0"
+    [lib]
+    path = "/dev/null"
+    """.format(
+                            self.manifest.name
+                        )
                     )
-                )
+                else:
+                    f.write("\n")
                 f.write(config)
 
     def _resolve_config(self):
