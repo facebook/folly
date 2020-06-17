@@ -938,11 +938,6 @@ class F14Table : public Policy {
   }
 
  public:
-  // Equivalent to F14Table(0, ...), but implemented separately to avoid forcing
-  // a reserve() instantiation in the common case.
-  F14Table() noexcept(Policy::kDefaultConstructIsNoexcept)
-      : Policy{Hasher{}, KeyEqual{}, Alloc{}} {}
-
   F14Table(
       std::size_t initialCapacity,
       Hasher const& hasher,

@@ -105,7 +105,8 @@ class F14BasicMap {
  public:
   //// PUBLIC - Member functions
 
-  F14BasicMap() noexcept(Policy::kDefaultConstructIsNoexcept) : table_{} {}
+  F14BasicMap() noexcept(Policy::kDefaultConstructIsNoexcept)
+      : F14BasicMap(0) {}
 
   explicit F14BasicMap(
       std::size_t initialCapacity,
