@@ -132,6 +132,32 @@ void run_wait_until_tests<DeterministicAtomic>() {
   deterministicAtomicWaitUntilTests<coarse_steady_clock>();
 }
 
+template <template <typename> class Atom>
+void run_wake_blocked_test() {
+  for (auto delay = std::chrono::milliseconds(1);; delay *= 2) {
+    bool success = false;
+    Futex<Atom> f(0);
+    auto thr = DSched::thread(
+        [&] { success = FutexResult::AWOKEN == futexWait(&f, 0); });
+    /* sleep override */ std::this_thread::sleep_for(delay);
+    f.store(1);
+    futexWake(&f, 1);
+    DSched::join(thr);
+    LOG(INFO) << "delay=" << delay.count() << "_ms, success=" << success;
+    if (success) {
+      break;
+    }
+  }
+}
+
+// Only Linux platforms currently use the futex() syscall.
+// This syscall requires timeouts to either use CLOCK_REALTIME or
+// CLOCK_MONOTONIC but the API we expose takes a std::chrono::system_clock or
+// steady_clock. These just happen to be thin wrappers over
+// CLOCK_REALTIME/CLOCK_MONOTONIC in current implementations, and we assume that
+// this is the case. Check here that this is a valid assumption.
+#ifdef __linux__
+
 uint64_t diff(uint64_t a, uint64_t b) {
   return a > b ? a - b : b - a;
 }
@@ -188,24 +214,6 @@ void run_steady_clock_test() {
   EXPECT_TRUE(A <= B && B <= C);
 }
 
-template <template <typename> class Atom>
-void run_wake_blocked_test() {
-  for (auto delay = std::chrono::milliseconds(1);; delay *= 2) {
-    bool success = false;
-    Futex<Atom> f(0);
-    auto thr = DSched::thread(
-        [&] { success = FutexResult::AWOKEN == futexWait(&f, 0); });
-    /* sleep override */ std::this_thread::sleep_for(delay);
-    f.store(1);
-    futexWake(&f, 1);
-    DSched::join(thr);
-    LOG(INFO) << "delay=" << delay.count() << "_ms, success=" << success;
-    if (success) {
-      break;
-    }
-  }
-}
-
 TEST(Futex, clock_source) {
   run_system_clock_test();
 
@@ -215,6 +223,8 @@ TEST(Futex, clock_source) {
     run_steady_clock_test();
   }
 }
+
+#endif // __linux__
 
 TEST(Futex, basic_live) {
   run_basic_tests<std::atomic>();
