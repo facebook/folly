@@ -393,6 +393,10 @@ void SingletonVault::startShutdownTimer() {
     return;
   }
 
+  if (!shutdownTimeout_.count()) {
+    return;
+  }
+
   struct sigevent sig;
   sig.sigev_notify = SIGEV_THREAD;
   sig.sigev_notify_function = fireShutdownSignalHelper;

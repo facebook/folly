@@ -520,6 +520,10 @@ class SingletonVault {
     shutdownTimeout_ = shutdownTimeout;
   }
 
+  void disableShutdownTimeout() {
+    shutdownTimeout_ = std::chrono::milliseconds::zero();
+  }
+
   void addToShutdownLog(std::string message);
 
   void startShutdownTimer();

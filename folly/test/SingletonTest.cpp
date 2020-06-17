@@ -1053,3 +1053,25 @@ TEST(Singleton, ShutdownTimer) {
   vault.startShutdownTimer();
   vault.destroyInstances();
 }
+
+TEST(Singleton, ShutdownTimerDisable) {
+  struct VaultTag {};
+  struct PrivateTag {};
+  struct Object {
+    ~Object() {
+      /* sleep override */ std::this_thread::sleep_for(shutdownDuration);
+    }
+
+    std::chrono::milliseconds shutdownDuration;
+  };
+  using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
+
+  auto& vault = *SingletonVault::singleton<VaultTag>();
+  SingletonObject object;
+  vault.registrationComplete();
+
+  vault.disableShutdownTimeout();
+  SingletonObject::try_get()->shutdownDuration = 100ms;
+  vault.startShutdownTimer();
+  vault.destroyInstances();
+}
