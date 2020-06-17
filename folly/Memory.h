@@ -562,7 +562,7 @@ class CxxAllocatorAdaptor {
   template <typename U, typename UAlloc>
   friend class CxxAllocatorAdaptor;
 
-  std::reference_wrapper<Inner> ref_;
+  Inner* inner_ = nullptr;
 
  public:
   using value_type = T;
@@ -571,28 +571,34 @@ class CxxAllocatorAdaptor {
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap = std::true_type;
 
-  constexpr explicit CxxAllocatorAdaptor(Inner& ref) : ref_(ref) {}
+  constexpr explicit CxxAllocatorAdaptor() = default;
+
+  constexpr explicit CxxAllocatorAdaptor(Inner& ref) : inner_(&ref) {}
 
   constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor const&) = default;
 
   template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
   constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor<U, Inner> const& other)
-      : ref_(other.ref_) {}
+      : inner_(other.inner_) {}
 
   T* allocate(std::size_t n) {
     using lifted = typename detail::lift_void_to_char<T>::type;
-    return static_cast<T*>(ref_.get().allocate(sizeof(lifted) * n));
+    if (inner_ == nullptr) {
+      throw_exception<std::bad_alloc>();
+    }
+    return static_cast<T*>(inner_->allocate(sizeof(lifted) * n));
   }
   void deallocate(T* p, std::size_t n) {
     using lifted = typename detail::lift_void_to_char<T>::type;
-    ref_.get().deallocate(p, sizeof(lifted) * n);
+    assert(inner_);
+    inner_->deallocate(p, sizeof(lifted) * n);
   }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {
-    return std::addressof(a.ref_.get()) == std::addressof(b.ref_.get());
+    return a.inner_ == b.inner_;
   }
   friend bool operator!=(Self const& a, Self const& b) noexcept {
-    return std::addressof(a.ref_.get()) != std::addressof(b.ref_.get());
+    return a.inner_ != b.inner_;
   }
 };
 

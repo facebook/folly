@@ -147,6 +147,24 @@ TEST(Arena, Vector) {
   }
 }
 
+TEST(Arena, DefaultConstructible) {
+  std::vector<size_t, SysArenaAllocator<size_t>> vec;
+  EXPECT_THROW(vec.push_back(42), std::bad_alloc);
+}
+
+TEST(Arena, Compare) {
+  SysArena arena1;
+  SysArenaAllocator<size_t> alloc1(arena1);
+  SysArenaAllocator<size_t> alloc2(arena1);
+
+  EXPECT_EQ(alloc1, alloc2);
+
+  SysArena arena2;
+  SysArenaAllocator<size_t> alloc3(arena2);
+
+  EXPECT_NE(alloc1, alloc3);
+}
+
 TEST(Arena, SizeLimit) {
   static const size_t requestedBlockSize = sizeof(size_t);
   static const size_t maxSize = 10 * requestedBlockSize;
