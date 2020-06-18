@@ -754,11 +754,11 @@ FOLLY_ALWAYS_INLINE
 /* static */ std::shared_ptr<RequestContext> RequestContext::setContextLock(
     std::shared_ptr<RequestContext>& newCtx,
     StaticContext& staticCtx) {
-  auto curCtx = staticCtx;
-  if (newCtx && curCtx.first) {
+  auto curCtx = staticCtx.first;
+  if (newCtx && curCtx) {
     // Only call set/unset for all request data that differs
     auto ret = folly::acquireLocked(
-        as_const(newCtx->state_), as_const(curCtx.first->state_));
+        as_const(newCtx->state_), as_const(curCtx->state_));
     auto& newLock = std::get<0>(ret);
     auto& curLock = std::get<1>(ret);
     auto& newData = newLock->callbackData_;
@@ -766,34 +766,34 @@ FOLLY_ALWAYS_INLINE
     exec_set_difference(
         curData, newData, [](RequestData* data) { data->onUnset(); });
     staticCtx.first = newCtx;
-    staticCtx.second = newCtx->rootId_;
+    staticCtx.second.store(newCtx->rootId_, std::memory_order_relaxed);
     exec_set_difference(
         newData, curData, [](RequestData* data) { data->onSet(); });
   } else {
-    if (curCtx.first) {
-      curCtx.first->onUnset();
+    if (curCtx) {
+      curCtx->onUnset();
     }
     staticCtx.first = newCtx;
     if (newCtx) {
-      staticCtx.second = newCtx->rootId_;
+      staticCtx.second.store(newCtx->rootId_, std::memory_order_relaxed);
       newCtx->onSet();
     } else {
-      staticCtx.second = 0;
+      staticCtx.second.store(0, std::memory_order_relaxed);
     }
   }
-  return curCtx.first;
+  return curCtx;
 }
 
 FOLLY_ALWAYS_INLINE
 /* static */ std::shared_ptr<RequestContext> RequestContext::setContextHazptr(
     std::shared_ptr<RequestContext>& newCtx,
     StaticContext& staticCtx) {
-  auto curCtx = std::move(staticCtx);
-  bool checkCur = curCtx.first && curCtx.first->stateHazptr_.combined();
+  auto curCtx = std::move(staticCtx.first);
+  bool checkCur = curCtx && curCtx->stateHazptr_.combined();
   bool checkNew = newCtx && newCtx->stateHazptr_.combined();
   if (checkCur && checkNew) {
     hazptr_array<2> h;
-    auto curc = h[0].get_protected(curCtx.first->stateHazptr_.combined_);
+    auto curc = h[0].get_protected(curCtx->stateHazptr_.combined_);
     auto newc = h[1].get_protected(newCtx->stateHazptr_.combined_);
     auto& curcb = curc->callbackData_;
     auto& newcb = newc->callbackData_;
@@ -805,7 +805,7 @@ FOLLY_ALWAYS_INLINE
       }
     }
     staticCtx.first = std::move(newCtx);
-    staticCtx.second = staticCtx.first->rootId_;
+    staticCtx.second.store(staticCtx.first->rootId_, std::memory_order_relaxed);
     for (auto it = newcb.begin(); it != newcb.end(); ++it) {
       DCHECK(it.key());
       auto data = it.key();
@@ -814,18 +814,19 @@ FOLLY_ALWAYS_INLINE
       }
     }
   } else {
-    if (curCtx.first) {
-      curCtx.first->stateHazptr_.onUnset();
+    if (curCtx) {
+      curCtx->stateHazptr_.onUnset();
     }
     staticCtx.first = std::move(newCtx);
     if (staticCtx.first) {
       staticCtx.first->stateHazptr_.onSet();
-      staticCtx.second = staticCtx.first->rootId_;
+      staticCtx.second.store(
+          staticCtx.first->rootId_, std::memory_order_relaxed);
     } else {
-      staticCtx.second = 0;
+      staticCtx.second.store(0, std::memory_order_relaxed);
     }
   }
-  return curCtx.first;
+  return curCtx;
 }
 
 RequestContext::StaticContext& RequestContext::getStaticContext() {
@@ -837,7 +838,9 @@ RequestContext::getRootIdsFromAllThreads() {
   std::vector<RootIdInfo> result;
   auto accessor = SingletonT::accessAllThreads();
   for (auto it = accessor.begin(); it != accessor.end(); ++it) {
-    result.push_back({it->second, it.getThreadId(), it.getOSThreadId()});
+    result.push_back({it->second.load(std::memory_order_relaxed),
+                      it.getThreadId(),
+                      it.getOSThreadId()});
   }
   return result;
 }

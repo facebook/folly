@@ -292,7 +292,8 @@ class RequestContext {
   RequestContext(const RequestContext& ctx, intptr_t rootid, Tag tag);
   RequestContext(const RequestContext& ctx, Tag tag);
   explicit RequestContext(intptr_t rootId);
-  using StaticContext = std::pair<std::shared_ptr<RequestContext>, intptr_t>;
+  using StaticContext =
+      std::pair<std::shared_ptr<RequestContext>, std::atomic<intptr_t>>;
 
  private:
   static StaticContext& getStaticContext();
