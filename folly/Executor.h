@@ -80,7 +80,7 @@ class Executor {
    * For any Executor that supports KeepAlive functionality, Executor's
    * destructor will block until all the KeepAlive objects associated with that
    * Executor are destroyed.
-   * For Executors that don't support the KeepAlive funcionality, KeepAlive
+   * For Executors that don't support the KeepAlive functionality, KeepAlive
    * doesn't provide such protection.
    *
    * KeepAlive should *always* be used instead of Executor*. KeepAlive can be
