@@ -51,10 +51,6 @@ void testTimed();
 template <class Mutex>
 void testTimedShared();
 template <class Mutex>
-void testTimedSynchronizedDeprecated();
-template <class Mutex>
-void testTimedSynchronizedWithConst();
-template <class Mutex>
 void testConstCopy();
 template <class Mutex>
 void testInPlaceConstruction();

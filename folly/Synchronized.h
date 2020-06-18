@@ -1826,45 +1826,12 @@ struct [[deprecated(
  * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
  * functions instead.  In the future it will be marked with a deprecation
  * attribute to emit build-time warnings, and then it will be removed entirely.
- */
-#define TIMED_SYNCHRONIZED(timeout, ...)                                       \
-  if (bool SYNCHRONIZED_VAR(state) = false) {                                  \
-    ::folly::detail::SYNCHRONIZED_macro_is_deprecated{};                       \
-  } else                                                                       \
-    for (auto SYNCHRONIZED_VAR(lockedPtr) =                                    \
-             (FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))).timedAcquire(timeout); \
-         !SYNCHRONIZED_VAR(state);                                             \
-         SYNCHRONIZED_VAR(state) = true)                                       \
-      for (auto FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)) =                          \
-               (!SYNCHRONIZED_VAR(lockedPtr)                                   \
-                    ? nullptr                                                  \
-                    : SYNCHRONIZED_VAR(lockedPtr).operator->());               \
-           !SYNCHRONIZED_VAR(state);                                           \
-           SYNCHRONIZED_VAR(state) = true)
-
-/**
- * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
- * functions instead.  In the future it will be marked with a deprecation
- * attribute to emit build-time warnings, and then it will be removed entirely.
  *
  * Similar to SYNCHRONIZED, but only uses a read lock.
  */
 #define SYNCHRONIZED_CONST(...)            \
   SYNCHRONIZED(                            \
       FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)), \
-      as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
-
-/**
- * NOTE: This API is deprecated.  Use lock(), wlock(), rlock() or the withLock
- * functions instead.  In the future it will be marked with a deprecation
- * attribute to emit build-time warnings, and then it will be removed entirely.
- *
- * Similar to TIMED_SYNCHRONIZED, but only uses a read lock.
- */
-#define TIMED_SYNCHRONIZED_CONST(timeout, ...) \
-  TIMED_SYNCHRONIZED(                          \
-      timeout,                                 \
-      FB_VA_GLUE(FB_ARG_1, (__VA_ARGS__)),     \
       as_const(FB_VA_GLUE(FB_ARG_2_OR_1, (__VA_ARGS__))))
 
 /**

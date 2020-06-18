@@ -121,10 +121,6 @@ TYPED_TEST(SynchronizedTimedTest, Timed) {
   testTimed<TypeParam>();
 }
 
-TYPED_TEST(SynchronizedTimedTest, TimedSynchronized) {
-  testTimedSynchronized<TypeParam>();
-}
-
 template <class Mutex>
 class SynchronizedTimedWithConstTest : public testing::Test {};
 
@@ -141,10 +137,6 @@ TYPED_TEST_CASE(
 
 TYPED_TEST(SynchronizedTimedWithConstTest, TimedShared) {
   testTimedShared<TypeParam>();
-}
-
-TYPED_TEST(SynchronizedTimedWithConstTest, TimedSynchronizeWithConst) {
-  testTimedSynchronizedWithConst<TypeParam>();
 }
 
 using CountPair = std::pair<int, int>;
