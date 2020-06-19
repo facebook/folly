@@ -654,13 +654,7 @@ class EliasFanoReader {
     }
 
     if (kUnchecked || LIKELY(position() + n < size_)) {
-      if (LIKELY(n < kLinearScanThreshold)) {
-        for (SizeType i = 0; i < n; ++i) {
-          upper_.next();
-        }
-      } else {
-        upper_.skip(n);
-      }
+      upper_.skip(n);
       value_ =
           readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
       return true;
@@ -685,18 +679,8 @@ class EliasFanoReader {
       return true;
     }
 
-    ValueType upperValue = (value >> numLowerBits_);
-    ValueType upperSkip = upperValue - upper_.value();
-    // The average density of ones in upper bits is 1/2.
-    // LIKELY here seems to make things worse, even for small skips.
-    if (upperSkip < 2 * kLinearScanThreshold) {
-      do {
-        upper_.next();
-      } while (UNLIKELY(upper_.value() < upperValue));
-    } else {
-      upper_.skipToNext(upperValue);
-    }
-
+    ValueType upperValue = value >> numLowerBits_;
+    upper_.skipToNext(upperValue);
     iterateTo(value);
     return true;
   }
@@ -828,8 +812,6 @@ class EliasFanoReader {
       upper_.next();
     }
   }
-
-  constexpr static size_t kLinearScanThreshold = 8;
 
   detail::UpperBitsReader<Encoder, Instructions, SizeType> upper_;
   const uint8_t* lower_;
