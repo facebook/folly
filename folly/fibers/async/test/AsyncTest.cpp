@@ -21,6 +21,7 @@
 #include <folly/fibers/async/Async.h>
 #include <folly/fibers/async/Baton.h>
 #include <folly/fibers/async/Future.h>
+#include <folly/fibers/async/Promise.h>
 #include <folly/io/async/EventBase.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -112,6 +113,18 @@ TEST(AsyncTest, asyncBaton) {
           }
         })
           .getVia(&evb));
+}
+
+TEST(AsyncTest, asyncPromise) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  fm.addTaskFuture([&]() {
+      auto res = async::await(
+          async::promiseWait([](Promise<int> p) { p.setValue(42); }));
+      EXPECT_EQ(res, 42);
+    })
+      .getVia(&evb);
 }
 
 TEST(AsyncTest, asyncFuture) {
