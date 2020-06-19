@@ -377,14 +377,14 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     value_ = 0;
   }
 
-  SizeType position() const {
+  FOLLY_ALWAYS_INLINE SizeType position() const {
     return position_;
   }
-  ValueType value() const {
+  FOLLY_ALWAYS_INLINE ValueType value() const {
     return value_;
   }
 
-  ValueType previous() {
+  FOLLY_ALWAYS_INLINE ValueType previous() {
     size_t inner;
     block_t block;
     getPreviousInfo(block, inner, outer_);
@@ -394,7 +394,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return setValue(inner);
   }
 
-  ValueType next() {
+  FOLLY_ALWAYS_INLINE ValueType next() {
     // Skip to the first non-zero block.
     while (block_ == 0) {
       outer_ += sizeof(block_t);
@@ -408,13 +408,13 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return setValue(inner);
   }
 
-  ValueType skip(SizeType n) {
+  FOLLY_ALWAYS_INLINE ValueType skip(SizeType n) {
     DCHECK_GT(n, 0);
 
     position_ += n; // n 1-bits will be read.
 
     // Use forward pointer.
-    if (Encoder::forwardQuantum > 0 && n > Encoder::forwardQuantum) {
+    if (Encoder::forwardQuantum > 0 && UNLIKELY(n > Encoder::forwardQuantum)) {
       const size_t steps = position_ / Encoder::forwardQuantum;
       const size_t dest = folly::loadUnaligned<SkipValueType>(
           this->forwardPointers_ + (steps - 1) * sizeof(SkipValueType));
@@ -441,11 +441,12 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
   // Skip to the first element that is >= v and located *after* the current
   // one (so even if current value equals v, position will be increased by 1).
-  ValueType skipToNext(ValueType v) {
+  FOLLY_ALWAYS_INLINE ValueType skipToNext(ValueType v) {
     DCHECK_GE(v, value_);
 
     // Use skip pointer.
-    if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
+    if (Encoder::skipQuantum > 0 &&
+        UNLIKELY(v >= value_ + Encoder::skipQuantum)) {
       const size_t steps = v / Encoder::skipQuantum;
       const size_t dest = folly::loadUnaligned<SkipValueType>(
           this->skipPointers_ + (steps - 1) * sizeof(SkipValueType));
@@ -488,7 +489,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
    *
    * @return position of reader
    */
-  SizeType prepareSkipTo(ValueType v) const {
+  FOLLY_ALWAYS_INLINE SizeType prepareSkipTo(ValueType v) const {
     auto position = position_;
 
     if (Encoder::skipQuantum > 0 && v >= value_ + Encoder::skipQuantum) {
@@ -514,7 +515,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return position;
   }
 
-  ValueType previousValue() const {
+  FOLLY_ALWAYS_INLINE ValueType previousValue() const {
     block_t block;
     size_t inner;
     OuterType outer;
@@ -524,7 +525,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
   // Returns true if we're at the beginning of the list, or previousValue() !=
   // value().
-  bool isAtBeginningOfRun() const {
+  FOLLY_ALWAYS_INLINE bool isAtBeginningOfRun() const {
     DCHECK_NE(position(), static_cast<SizeType>(-1));
     if (position_ == 0) {
       return true;
@@ -533,17 +534,17 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return (start_[bitPos / 8] & (1 << (bitPos % 8))) == 0;
   }
 
-  void setDone(SizeType endPos) {
+  FOLLY_ALWAYS_INLINE void setDone(SizeType endPos) {
     position_ = endPos;
   }
 
  private:
-  ValueType setValue(size_t inner) {
+  FOLLY_ALWAYS_INLINE ValueType setValue(size_t inner) {
     value_ = static_cast<ValueType>(8 * outer_ + inner - position_);
     return value_;
   }
 
-  void reposition(SizeType dest) {
+  FOLLY_ALWAYS_INLINE void reposition(SizeType dest) {
     outer_ = dest / 8;
     block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     block_ &= ~((block_t(1) << (dest % 8)) - 1);
@@ -554,7 +555,8 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   // so a type that can hold either sizes or values is sufficient.
   using OuterType = typename std::common_type<ValueType, SizeType>::type;
 
-  void getPreviousInfo(block_t& block, size_t& inner, OuterType& outer) const {
+  FOLLY_ALWAYS_INLINE void
+  getPreviousInfo(block_t& block, size_t& inner, OuterType& outer) const {
     DCHECK_NE(position(), std::numeric_limits<SizeType>::max());
     DCHECK_GT(position(), 0);
 
@@ -677,9 +679,9 @@ class EliasFanoReader {
       DCHECK_GE(value + 1, value_ + 1);
     }
 
-    if (!kUnchecked && value > lastValue_) {
+    if (!kUnchecked && UNLIKELY(value > lastValue_)) {
       return setDone();
-    } else if (value == value_) {
+    } else if (UNLIKELY(value == value_)) {
       return true;
     }
 
@@ -799,13 +801,13 @@ class EliasFanoReader {
   // Must hold kInvalidValue + 1 == 0.
   constexpr static ValueType kInvalidValue = -1;
 
-  bool setDone() {
+  FOLLY_ALWAYS_INLINE bool setDone() {
     value_ = kInvalidValue;
     upper_.setDone(size_);
     return false;
   }
 
-  ValueType readLowerPart(SizeType i) const {
+  FOLLY_ALWAYS_INLINE ValueType readLowerPart(SizeType i) const {
     DCHECK_LT(i, size_);
     const size_t pos = i * numLowerBits_;
     const unsigned char* ptr = lower_ + (pos / 8);
@@ -816,7 +818,7 @@ class EliasFanoReader {
     return Instructions::bzhi(ptrv >> (pos % 8), numLowerBits_);
   }
 
-  void iterateTo(ValueType value) {
+  FOLLY_ALWAYS_INLINE void iterateTo(ValueType value) {
     while (true) {
       value_ =
           readLowerPart(upper_.position()) | (upper_.value() << numLowerBits_);
