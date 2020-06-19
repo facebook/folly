@@ -35,7 +35,8 @@ EventBaseLocalBase::~EventBaseLocalBase() {
 void* EventBaseLocalBase::getVoid(EventBase& evb) {
   evb.dcheckIsInEventBaseThread();
 
-  return folly::get_default(evb.localStorage_, key_, {}).get();
+  auto ptr = folly::get_ptr(evb.localStorage_, key_);
+  return ptr ? ptr->get() : nullptr;
 }
 
 void EventBaseLocalBase::erase(EventBase& evb) {
