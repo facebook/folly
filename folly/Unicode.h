@@ -26,7 +26,7 @@
 
 namespace folly {
 
-class FOLLY_EXPORT unicode_error : std::runtime_error {
+class FOLLY_EXPORT unicode_error : public std::runtime_error {
  public:
   using std::runtime_error::runtime_error;
 };
