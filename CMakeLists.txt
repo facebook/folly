@@ -939,7 +939,7 @@ if (BUILD_TESTS)
   if (${LIBAIO_FOUND})
     folly_define_tests(
       DIRECTORY experimental/io/test/
-        TEST async_io_test SOURCES AsyncIOTest.cpp AsyncBaseTestLib.cpp
+        TEST async_io_test SOURCES AsyncIOTest.cpp AsyncBaseTestLib.cpp IoTestTempFileUtil.cpp
     )
   endif()
 
