@@ -2,12 +2,12 @@
 name = OpenNSA
 
 [download]
-url = https://bitbucket.org/fboss/opennsa-fork/get/release/v6.5.17-3.tar.gz
-sha256 = c83a0a580d2a30bfdd930a4d47c58ac767fb6cdd1ac7ab343a8fcb25cd5c2a6b
+url = https://docs.broadcom.com/docs-and-downloads/csg/opennsa-6.5.17.tgz
+sha256 = 611a33bbe3b9308202a5c51bffea8c397a843ab0617b89121ad1bbadb024fed7
 
 [build]
 builder = nop
-subdir = fboss-opennsa-fork-b29d77d61123
+subdir = opennsa-6.5.17
 
 [install.files]
 lib/x86-64 = lib
