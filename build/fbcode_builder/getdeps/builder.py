@@ -412,8 +412,8 @@ if __name__ == "__main__":
         # CMake manually.
         build_script_path = os.path.join(self.build_dir, "run_cmake.py")
         script_contents = self.MANUAL_BUILD_SCRIPT.format(**kwargs)
-        with open(build_script_path, "w") as f:
-            f.write(script_contents)
+        with open(build_script_path, "wb") as f:
+            f.write(script_contents.encode())
         os.chmod(build_script_path, 0o755)
 
     def _compute_cmake_define_args(self, env):
