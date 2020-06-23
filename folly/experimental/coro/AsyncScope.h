@@ -103,7 +103,7 @@ class AsyncScope {
   ////////
   // Implement the async-cleanup pattern.
 
-  // Implement the async cleanup 'cleanup()' pattern used by MasterPtr.
+  // Implement the async cleanup 'cleanup()' pattern used by PrimaryPtr.
   //
   // If you have previuosly called add() then you must call cleanup()
   // and wait for the retuned future to complete before the AsyncScope

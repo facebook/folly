@@ -28,44 +28,44 @@
 namespace folly {
 
 template <typename T>
-class EnableMasterFromThis;
+class EnablePrimaryFromThis;
 
 template <typename T>
-class MasterPtr;
+class PrimaryPtr;
 
 template <typename T>
-class MasterPtrRef;
+class PrimaryPtrRef;
 
 namespace detail {
-struct publicallyDerivedFromEnableMasterFromThis_fn {
+struct publicallyDerivedFromEnablePrimaryFromThis_fn {
   template <class T>
-  void operator()(const EnableMasterFromThis<T>&) const {}
+  void operator()(const EnablePrimaryFromThis<T>&) const {}
 };
 } // namespace detail
 
 template <class T>
 constexpr bool is_enable_master_from_this_v = folly::
-    is_invocable_v<detail::publicallyDerivedFromEnableMasterFromThis_fn, T>;
+    is_invocable_v<detail::publicallyDerivedFromEnablePrimaryFromThis_fn, T>;
 
 template <typename T>
 using is_enable_master_from_this =
     std::bool_constant<is_enable_master_from_this_v<T>>;
 
 /**
- * EnableMasterFromThis provides an object with appropriate access to the
- * functionality of the MasterPtr holding this.
+ * EnablePrimaryFromThis provides an object with appropriate access to the
+ * functionality of the PrimaryPtr holding this.
  */
 template <typename T>
-class EnableMasterFromThis {
-  // initializes members when the MasterPtr for this is constructed
+class EnablePrimaryFromThis {
+  // initializes members when the PrimaryPtr for this is constructed
   //
-  // used by the MasterPtr for this, to invoke the EnableMasterFromThis base of
-  // T, if it exists.
+  // used by the PrimaryPtr for this, to invoke the EnablePrimaryFromThis base
+  // of T, if it exists.
   template <
       class O,
       class Master,
       std::enable_if_t<is_enable_master_from_this_v<O>, int> = 0>
-  static void set(EnableMasterFromThis<O>* that, Master& m) {
+  static void set(EnablePrimaryFromThis<O>* that, Master& m) {
     that->outerPtrWeak_ = m.outerPtrWeak_;
   }
 
@@ -76,24 +76,24 @@ class EnableMasterFromThis {
   static void set(O*, Master&) {}
 
  public:
-  // Gets a non-owning reference to the pointer. MasterPtr::join() and the
-  // MasterPtr::cleanup() work do *NOT* wait for outstanding MasterPtrRef
+  // Gets a non-owning reference to the pointer. PrimaryPtr::join() and the
+  // PrimaryPtr::cleanup() work do *NOT* wait for outstanding PrimaryPtrRef
   // objects to be released.
-  MasterPtrRef<T> masterRefFromThis() {
-    return MasterPtrRef<T>(outerPtrWeak_);
+  PrimaryPtrRef<T> masterRefFromThis() {
+    return PrimaryPtrRef<T>(outerPtrWeak_);
   }
 
-  // Gets a non-owning const reference to the pointer. MasterPtr::join() and the
-  // MasterPtr::cleanup() work do *NOT* wait for outstanding MasterPtrRef
+  // Gets a non-owning const reference to the pointer. PrimaryPtr::join() and
+  // the PrimaryPtr::cleanup() work do *NOT* wait for outstanding PrimaryPtrRef
   // objects to be released.
-  MasterPtrRef<const T> masterRefFromThis() const {
-    return MasterPtrRef<const T>(outerPtrWeak_);
+  PrimaryPtrRef<const T> masterRefFromThis() const {
+    return PrimaryPtrRef<const T>(outerPtrWeak_);
   }
 
   // Attempts to lock a pointer. Returns null if pointer is not set or if
-  // MasterPtr::join() was called or the MasterPtr::cleanup() task was started
-  // (even if the call to MasterPtr::join() hasn't returned yet and the
-  // MasterPtr::cleanup() task has not completed yet).
+  // PrimaryPtr::join() was called or the PrimaryPtr::cleanup() task was started
+  // (even if the call to PrimaryPtr::join() hasn't returned yet and the
+  // PrimaryPtr::cleanup() task has not completed yet).
   std::shared_ptr<T> masterLockFromThis() {
     if (auto outerPtr = outerPtrWeak_.lock()) {
       return *outerPtr;
@@ -102,9 +102,9 @@ class EnableMasterFromThis {
   }
 
   // Attempts to lock a pointer. Returns null if pointer is not set or if
-  // MasterPtr::join() was called or the MasterPtr::cleanup() task was started
-  // (even if the call to MasterPtr::join() hasn't returned yet and the
-  // MasterPtr::cleanup() task has not completed yet).
+  // PrimaryPtr::join() was called or the PrimaryPtr::cleanup() task was started
+  // (even if the call to PrimaryPtr::join() hasn't returned yet and the
+  // PrimaryPtr::cleanup() task has not completed yet).
   std::shared_ptr<T const> masterLockFromThis() const {
     if (!*this) {
       return nullptr;
@@ -117,24 +117,23 @@ class EnableMasterFromThis {
 
  private:
   template <class>
-  friend class MasterPtr;
+  friend class PrimaryPtr;
 
   std::weak_ptr<std::shared_ptr<T>> outerPtrWeak_;
 };
 
 /**
- * MasterPtr should be used to achieve deterministic destruction of objects with
- * shared ownership.
- * Once an object is managed by a MasterPtr, shared_ptrs can be obtained
- * pointing to that object. However destroying those shared_ptrs will never call
- * the object destructor inline. To destroy the object, join() method must be
- * called on MasterPtr or the task returned from cleanup() must be completed,
- * which will wait for all shared_ptrs to be released and then call the object
- * destructor on the caller supplied execution context.
+ * PrimaryPtr should be used to achieve deterministic destruction of objects
+ * with shared ownership. Once an object is managed by a PrimaryPtr, shared_ptrs
+ * can be obtained pointing to that object. However destroying those shared_ptrs
+ * will never call the object destructor inline. To destroy the object, join()
+ * method must be called on PrimaryPtr or the task returned from cleanup() must
+ * be completed, which will wait for all shared_ptrs to be released and then
+ * call the object destructor on the caller supplied execution context.
  */
 template <typename T>
-class MasterPtr {
-  // retrieves nested cleanup() work from innerPtr_. Called when the MasterPtr
+class PrimaryPtr {
+  // retrieves nested cleanup() work from innerPtr_. Called when the PrimaryPtr
   // cleanup() task has finished waiting for outstanding references
   //
   template <class Cleanup, std::enable_if_t<is_cleanup_v<Cleanup>, int> = 0>
@@ -148,14 +147,14 @@ class MasterPtr {
   }
 
  public:
-  MasterPtr() = delete;
+  PrimaryPtr() = delete;
   template <class T2, class Deleter>
-  MasterPtr(std::unique_ptr<T2, Deleter> ptr) {
+  PrimaryPtr(std::unique_ptr<T2, Deleter> ptr) {
     set(std::move(ptr));
   }
-  ~MasterPtr() {
+  ~PrimaryPtr() {
     if (*this) {
-      LOG(FATAL) << "MasterPtr has to be joined explicitly.";
+      LOG(FATAL) << "PrimaryPtr has to be joined explicitly.";
     }
   }
 
@@ -223,7 +222,7 @@ class MasterPtr {
   template <class T2, class Deleter>
   void set(std::unique_ptr<T2, Deleter> ptr) {
     if (*this) {
-      LOG(FATAL) << "MasterPtr has to be joined before being set.";
+      LOG(FATAL) << "PrimaryPtr has to be joined before being set.";
     }
 
     if (!ptr) {
@@ -246,21 +245,21 @@ class MasterPtr {
     outerPtrWeak_ = outerPtrShared_ =
         std::make_shared<std::shared_ptr<T>>(innerPtrShared);
 
-    // attaches optional EnableMasterFromThis base of innerPtr_ to this
-    // MasterPtr
-    EnableMasterFromThis<T>::set(innerPtr_.get(), *this);
+    // attaches optional EnablePrimaryFromThis base of innerPtr_ to this
+    // PrimaryPtr
+    EnablePrimaryFromThis<T>::set(innerPtr_.get(), *this);
   }
 
   // Gets a non-owning reference to the pointer. join() and the cleanup() work
-  // do *NOT* wait for outstanding MasterPtrRef objects to be released.
-  MasterPtrRef<T> ref() const {
-    return MasterPtrRef<T>(outerPtrWeak_);
+  // do *NOT* wait for outstanding PrimaryPtrRef objects to be released.
+  PrimaryPtrRef<T> ref() const {
+    return PrimaryPtrRef<T>(outerPtrWeak_);
   }
 
  private:
   template <class>
-  friend class EnableMasterFromThis;
-  friend class MasterPtrRef<T>;
+  friend class EnablePrimaryFromThis;
+  friend class PrimaryPtrRef<T>;
 
   folly::SemiFuture<folly::Unit> unreferenced_;
   std::shared_ptr<std::shared_ptr<T>> outerPtrShared_;
@@ -269,12 +268,12 @@ class MasterPtr {
 };
 
 /**
- * MasterPtrRef is a non-owning reference to the pointer. MasterPtr::join()
- * and the MasterPtr::cleanup() work do *NOT* wait for outstanding MasterPtrRef
- * objects to be released.
+ * PrimaryPtrRef is a non-owning reference to the pointer. PrimaryPtr::join()
+ * and the PrimaryPtr::cleanup() work do *NOT* wait for outstanding
+ * PrimaryPtrRef objects to be released.
  */
 template <typename T>
-class MasterPtrRef {
+class PrimaryPtrRef {
  public:
   // Attempts to lock a pointer. Returns null if pointer is not set or if
   // join() was called or cleanup() work was started (even if the call to join()
@@ -288,10 +287,10 @@ class MasterPtrRef {
 
  private:
   template <class>
-  friend class EnableMasterFromThis;
+  friend class EnablePrimaryFromThis;
   template <class>
-  friend class MasterPtr;
-  /* implicit */ MasterPtrRef(std::weak_ptr<std::shared_ptr<T>> outerPtrWeak)
+  friend class PrimaryPtr;
+  /* implicit */ PrimaryPtrRef(std::weak_ptr<std::shared_ptr<T>> outerPtrWeak)
       : outerPtrWeak_(std::move(outerPtrWeak)) {}
 
   std::weak_ptr<std::shared_ptr<T>> outerPtrWeak_;

@@ -18,39 +18,39 @@
 
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/executors/ManualExecutor.h>
-#include <folly/experimental/MasterPtr.h>
+#include <folly/experimental/PrimaryPtr.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 
 using namespace std::literals::chrono_literals;
 
-TEST(MasterPtrTest, Basic) {
-  EXPECT_TRUE(folly::is_cleanup_v<folly::MasterPtr<int>>);
+TEST(PrimaryPtrTest, Basic) {
+  EXPECT_TRUE(folly::is_cleanup_v<folly::PrimaryPtr<int>>);
 
   auto ptr = std::make_unique<int>(42);
   auto rawPtr = ptr.get();
 
-  folly::MasterPtr<int> masterPtr(std::move(ptr));
-  auto masterPtrRef = masterPtr.ref();
-  EXPECT_TRUE(!!masterPtr);
+  folly::PrimaryPtr<int> primaryPtr(std::move(ptr));
+  auto primaryPtrRef = primaryPtr.ref();
+  EXPECT_TRUE(!!primaryPtr);
 
-  auto lockedPtr1 = masterPtr.lock();
-  auto lockedPtr2 = masterPtrRef.lock();
+  auto lockedPtr1 = primaryPtr.lock();
+  auto lockedPtr2 = primaryPtrRef.lock();
   EXPECT_EQ(lockedPtr1.get(), rawPtr);
   EXPECT_EQ(lockedPtr2.get(), rawPtr);
 
   EXPECT_EQ(lockedPtr1.use_count(), 3);
   EXPECT_EQ(lockedPtr2.use_count(), 3);
 
-  EXPECT_TRUE(!!masterPtr);
+  EXPECT_TRUE(!!primaryPtr);
 
   auto joinFuture = std::async(std::launch::async, [&] {
-    masterPtr.join();
-    EXPECT_TRUE(!masterPtr);
+    primaryPtr.join();
+    EXPECT_TRUE(!primaryPtr);
   });
 
   auto lockFailFuture = std::async(std::launch::async, [&] {
-    while (masterPtr.lock()) {
+    while (primaryPtr.lock()) {
       std::this_thread::yield();
     }
   });
@@ -62,8 +62,8 @@ TEST(MasterPtrTest, Basic) {
   EXPECT_EQ(lockedPtr1.use_count(), 2);
   EXPECT_EQ(lockedPtr2.use_count(), 2);
 
-  EXPECT_EQ(masterPtr.lock().get(), nullptr);
-  EXPECT_EQ(masterPtrRef.lock().get(), nullptr);
+  EXPECT_EQ(primaryPtr.lock().get(), nullptr);
+  EXPECT_EQ(primaryPtrRef.lock().get(), nullptr);
 
   EXPECT_EQ(
       joinFuture.wait_for(std::chrono::milliseconds{100}),
@@ -76,47 +76,47 @@ TEST(MasterPtrTest, Basic) {
       joinFuture.wait_for(std::chrono::milliseconds{100}),
       std::future_status::ready);
 
-  EXPECT_TRUE(!masterPtr);
+  EXPECT_TRUE(!primaryPtr);
 
   ptr = std::make_unique<int>(42);
   rawPtr = ptr.get();
-  masterPtr.set(std::move(ptr));
-  EXPECT_TRUE(!!masterPtr);
-  lockedPtr1 = masterPtr.lock();
+  primaryPtr.set(std::move(ptr));
+  EXPECT_TRUE(!!primaryPtr);
+  lockedPtr1 = primaryPtr.lock();
   EXPECT_EQ(lockedPtr1.get(), rawPtr);
   lockedPtr1.reset();
-  masterPtr.join();
-  EXPECT_EQ(masterPtr.lock().get(), nullptr);
-  EXPECT_TRUE(!masterPtr);
+  primaryPtr.join();
+  EXPECT_EQ(primaryPtr.lock().get(), nullptr);
+  EXPECT_TRUE(!primaryPtr);
 }
 
-struct Mastered : folly::Cleanup, folly::EnableMasterFromThis<Mastered> {
-  folly::MasterPtr<int> nested_;
+struct Primed : folly::Cleanup, folly::EnablePrimaryFromThis<Primed> {
+  folly::PrimaryPtr<int> nested_;
   folly::CPUThreadPoolExecutor pool_;
-  Mastered() : nested_(std::make_unique<int>(42)), pool_(4) {
+  Primed() : nested_(std::make_unique<int>(42)), pool_(4) {
     addCleanup(nested_);
     addCleanup(
         folly::makeSemiFuture().defer([this](auto&&) { this->pool_.join(); }));
   }
   using folly::Cleanup::addCleanup;
-  std::shared_ptr<Mastered> get_shared() {
+  std::shared_ptr<Primed> get_shared() {
     return masterLockFromThis();
   }
 };
 
-TEST(MasterPtrTest, BasicCleanup) {
-  auto ptr = std::make_unique<Mastered>();
+TEST(PrimaryPtrTest, BasicCleanup) {
+  auto ptr = std::make_unique<Primed>();
 
-  folly::MasterPtr<Mastered> masterPtr(std::move(ptr));
+  folly::PrimaryPtr<Primed> primaryPtr(std::move(ptr));
   int phase = 0;
   int index = 0;
 
-  masterPtr.lock()->addCleanup(
+  primaryPtr.lock()->addCleanup(
       folly::makeSemiFuture().deferValue([&, expected = index++](folly::Unit) {
         EXPECT_EQ(phase, 1);
         EXPECT_EQ(--index, expected);
       }));
-  masterPtr.lock()->addCleanup(
+  primaryPtr.lock()->addCleanup(
       folly::makeSemiFuture().deferValue([&, expected = index++](folly::Unit) {
         EXPECT_EQ(phase, 1);
         EXPECT_EQ(--index, expected);
@@ -125,7 +125,7 @@ TEST(MasterPtrTest, BasicCleanup) {
 
   folly::ManualExecutor exec;
   phase = 1;
-  masterPtr.cleanup()
+  primaryPtr.cleanup()
       .within(1s)
       .via(folly::getKeepAliveToken(exec))
       .getVia(&exec);
@@ -135,25 +135,25 @@ TEST(MasterPtrTest, BasicCleanup) {
 
 #if defined(__has_feature)
 #if !__has_feature(address_sanitizer)
-TEST(MasterPtrTest, Errors) {
-  auto ptr = std::make_unique<Mastered>();
+TEST(PrimaryPtrTest, Errors) {
+  auto ptr = std::make_unique<Primed>();
 
-  auto masterPtr = std::make_unique<folly::MasterPtr<Mastered>>(std::move(ptr));
+  auto primaryPtr = std::make_unique<folly::PrimaryPtr<Primed>>(std::move(ptr));
 
-  masterPtr->lock()->addCleanup(folly::makeSemiFuture().deferValue(
+  primaryPtr->lock()->addCleanup(folly::makeSemiFuture().deferValue(
       [](folly::Unit) { EXPECT_TRUE(false); }));
 
-  masterPtr->lock()->addCleanup(
+  primaryPtr->lock()->addCleanup(
       folly::makeSemiFuture<folly::Unit>(std::runtime_error("failed cleanup")));
 
   EXPECT_EXIT(
-      masterPtr->set(std::unique_ptr<Mastered>{}),
+      primaryPtr->set(std::unique_ptr<Primed>{}),
       testing::KilledBySignal(SIGABRT),
       ".*joined before.*");
 
   folly::ManualExecutor exec;
   EXPECT_EXIT(
-      masterPtr->cleanup()
+      primaryPtr->cleanup()
           .within(1s)
           .via(folly::getKeepAliveToken(exec))
           .getVia(&exec),
@@ -161,16 +161,16 @@ TEST(MasterPtrTest, Errors) {
       ".*noexcept.*");
 
   EXPECT_EXIT(
-      masterPtr.reset(), testing::KilledBySignal(SIGABRT), ".*MasterPtr.*");
+      primaryPtr.reset(), testing::KilledBySignal(SIGABRT), ".*PrimaryPtr.*");
 
-  // must leak the MasterPtr as its destructor will abort.
-  (void)masterPtr.release();
+  // must leak the PrimaryPtr as its destructor will abort.
+  (void)primaryPtr.release();
 }
 #endif
 #endif
 
-TEST(MasterPtrTest, Invariants) {
-  struct BadDerived : Mastered {
+TEST(PrimaryPtrTest, Invariants) {
+  struct BadDerived : Primed {
     ~BadDerived() {
       EXPECT_EXIT(
           addCleanup(folly::makeSemiFuture().deferValue(
@@ -187,17 +187,17 @@ TEST(MasterPtrTest, Invariants) {
   };
   auto ptr = std::make_unique<BadDerived>();
 
-  folly::MasterPtr<Mastered> masterPtr(std::move(ptr));
+  folly::PrimaryPtr<Primed> primaryPtr(std::move(ptr));
 
   auto ranCleanup = false;
-  masterPtr.lock()->addCleanup(folly::makeSemiFuture().deferValue(
+  primaryPtr.lock()->addCleanup(folly::makeSemiFuture().deferValue(
       [&](folly::Unit) { ranCleanup = true; }));
 
   EXPECT_FALSE(ranCleanup);
 
   {
     folly::ManualExecutor exec;
-    masterPtr.cleanup()
+    primaryPtr.cleanup()
         .within(1s)
         .via(folly::getKeepAliveToken(exec))
         .getVia(&exec);
@@ -208,23 +208,23 @@ TEST(MasterPtrTest, Invariants) {
   {
     folly::ManualExecutor exec;
     EXPECT_EXIT(
-        masterPtr.cleanup().via(folly::getKeepAliveToken(exec)).getVia(&exec),
+        primaryPtr.cleanup().via(folly::getKeepAliveToken(exec)).getVia(&exec),
         testing::KilledBySignal(SIGABRT),
         ".*already.*");
   }
 }
 
-struct Derived : Mastered {};
+struct Derived : Primed {};
 
-TEST(MasterPtrTest, EnableMasterFromThis) {
+TEST(PrimaryPtrTest, EnablePrimaryFromThis) {
   auto ptr = std::make_unique<Derived>();
   auto rawPtr = ptr.get();
 
-  auto masterPtr = folly::MasterPtr<Mastered>{std::move(ptr)};
-  auto masterPtrRef = masterPtr.ref();
+  auto primaryPtr = folly::PrimaryPtr<Primed>{std::move(ptr)};
+  auto primaryPtrRef = primaryPtr.ref();
 
-  auto lockedPtr1 = masterPtr.lock();
-  auto lockedPtr2 = masterPtrRef.lock();
+  auto lockedPtr1 = primaryPtr.lock();
+  auto lockedPtr2 = primaryPtrRef.lock();
   EXPECT_EQ(lockedPtr1.get(), rawPtr);
   EXPECT_EQ(lockedPtr2.get(), rawPtr);
 
@@ -237,11 +237,11 @@ TEST(MasterPtrTest, EnableMasterFromThis) {
 
   auto cleanupFuture = std::async(std::launch::async, [&] {
     folly::ManualExecutor exec;
-    masterPtr.cleanup()
+    primaryPtr.cleanup()
         .within(1s)
         .via(folly::getKeepAliveToken(exec))
         .getVia(&exec);
-    EXPECT_TRUE(!masterPtr);
+    EXPECT_TRUE(!primaryPtr);
   });
 
   EXPECT_EQ(
@@ -252,8 +252,8 @@ TEST(MasterPtrTest, EnableMasterFromThis) {
   EXPECT_EQ(lockedPtr2.use_count(), 3);
   EXPECT_EQ(lockedPtr3.use_count(), 3);
 
-  EXPECT_EQ(masterPtr.lock().get(), nullptr);
-  EXPECT_EQ(masterPtrRef.lock().get(), nullptr);
+  EXPECT_EQ(primaryPtr.lock().get(), nullptr);
+  EXPECT_EQ(primaryPtrRef.lock().get(), nullptr);
 
   EXPECT_EQ(
       cleanupFuture.wait_for(std::chrono::milliseconds{100}),
@@ -267,5 +267,5 @@ TEST(MasterPtrTest, EnableMasterFromThis) {
       cleanupFuture.wait_for(std::chrono::milliseconds{100}),
       std::future_status::ready);
 
-  EXPECT_TRUE(!masterPtr);
+  EXPECT_TRUE(!primaryPtr);
 }
