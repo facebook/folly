@@ -62,12 +62,17 @@ static constexpr bool msgErrQueueSupported =
     false;
 #endif // FOLLY_HAVE_MSG_ERRQUEUE
 
-const AsyncSocketException socketClosedLocallyEx(
-    AsyncSocketException::END_OF_FILE,
-    "socket closed locally");
-const AsyncSocketException socketShutdownForWritesEx(
-    AsyncSocketException::END_OF_FILE,
-    "socket shutdown for writes");
+static AsyncSocketException const& getSocketClosedLocallyEx() {
+  static auto& ex = *new AsyncSocketException(
+      AsyncSocketException::END_OF_FILE, "socket closed locally");
+  return ex;
+}
+
+static AsyncSocketException const& getSocketShutdownForWritesEx() {
+  static auto& ex = *new AsyncSocketException(
+      AsyncSocketException::END_OF_FILE, "socket shutdown for writes");
+  return ex;
+}
 
 // TODO: It might help performance to provide a version of BytesWriteRequest
 // that users could derive from, so we can avoid the extra allocation for each
@@ -1314,9 +1319,9 @@ void AsyncSocket::closeNow() {
         doClose();
       }
 
-      invokeConnectErr(socketClosedLocallyEx);
+      invokeConnectErr(getSocketClosedLocallyEx());
 
-      failAllWrites(socketClosedLocallyEx);
+      failAllWrites(getSocketClosedLocallyEx());
 
       if (readCallback_) {
         ReadCallback* callback = readCallback_;
@@ -1424,7 +1429,7 @@ void AsyncSocket::shutdownWriteNow() {
       netops::shutdown(fd_, SHUT_WR);
 
       // Immediately fail all write requests
-      failAllWrites(socketShutdownForWritesEx);
+      failAllWrites(getSocketShutdownForWritesEx());
       return;
     }
     case StateEnum::CONNECTING: {
@@ -1434,7 +1439,7 @@ void AsyncSocket::shutdownWriteNow() {
       shutdownFlags_ |= SHUT_WRITE_PENDING;
 
       // Immediately fail all write requests
-      failAllWrites(socketShutdownForWritesEx);
+      failAllWrites(getSocketShutdownForWritesEx());
       return;
     }
     case StateEnum::UNINIT:
@@ -1449,7 +1454,7 @@ void AsyncSocket::shutdownWriteNow() {
       // the writes, we will never try to call connect, so shut everything down
       shutdownFlags_ |= SHUT_WRITE;
       // Immediately fail all write requests
-      failAllWrites(socketShutdownForWritesEx);
+      failAllWrites(getSocketShutdownForWritesEx());
       return;
     case StateEnum::CLOSED:
     case StateEnum::ERROR:
