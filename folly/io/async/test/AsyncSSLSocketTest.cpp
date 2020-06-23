@@ -1525,6 +1525,79 @@ static int kRSAEvbExIndex = -1;
 static int kRSASocketExIndex = -1;
 static constexpr StringPiece kEngineId = "AsyncSSLSocketTest";
 
+int customRsaPubDec(int flen, const unsigned char *from, unsigned char *to, RSA *rsa,
+                                          int padding) {
+
+  ScopedEventBaseThread jobEvbThread;
+  EventBase* asyncJobEvb = jobEvbThread.getEventBase();
+  AsyncSSLSocket* socket = reinterpret_cast<AsyncSSLSocket*>(
+      RSA_get_ex_data(rsa, kRSASocketExIndex));
+  ASYNC_JOB* job = ASYNC_get_current_job();
+  if (job == nullptr) {
+    throw std::runtime_error("Expected call in job context");
+  }
+
+  ASYNC_WAIT_CTX* waitctx = ASYNC_get_wait_ctx(job);
+  OSSL_ASYNC_FD pipefds[2] = {0, 0};
+  ASYNC_WAIT_CTX_clear_fd(waitctx, kEngineId.data());
+  makeNonBlockingPipe(pipefds);
+  if (!ASYNC_WAIT_CTX_set_wait_fd(
+          waitctx, kEngineId.data(), pipefds[0], nullptr, nullptr)) {
+    throw std::runtime_error("Cannot set wait fd");
+  }
+
+  int ret = 0;
+  int* retptr = &ret;
+
+  auto hand = folly::NetworkSocket::native_handle_type(pipefds[1]);
+  auto asyncPipeWriter = folly::AsyncPipeWriter::newWriter(
+      asyncJobEvb, folly::NetworkSocket(hand));
+  asyncJobEvb->runInEventBaseThread([retptr = retptr,
+                                     flen = flen,
+                                     from = from,
+                                     to = to,
+                                     padding = padding,
+                                     actualRSA = rsa,
+                                     writer = std::move(asyncPipeWriter),
+                                     socket = socket]() {
+    LOG(INFO) << "Running job";
+    if (socket) {
+      LOG(INFO) << "Got a socket passed in, closing it...";
+      socket->closeNow();
+    }
+    *retptr = RSA_meth_get_pub_dec(RSA_PKCS1_OpenSSL())(
+        flen, from, to, actualRSA, padding);
+    LOG(INFO) << "Finished job, writing to pipe";
+    uint8_t byte = *retptr > 0 ? 1 : 0;
+    writer->write(nullptr, &byte, 1);
+  });
+
+  LOG(INFO) << "About to pause job";
+  ASYNC_pause_job();
+  LOG(INFO) << "Resumed job with ret: " << ret;
+  return ret;
+}
+
+int verifyCb(X509_STORE_CTX *ctx, void *arg) {
+  int ok = 1;
+  X509 *cert = X509_STORE_CTX_get0_cert(ctx);
+  CHECK(cert);
+
+  ssl::EvpPkeyUniquePtr publicEvpPkey(X509_get_pubkey(cert));
+  EVP_PKEY *pkey = publicEvpPkey.get();
+  RSA* rsa = EVP_PKEY_get1_RSA(publicEvpPkey.get());
+  RSA_METHOD* meth = RSA_meth_dup(RSA_get_default_method());
+
+  if (meth == nullptr || RSA_meth_set1_name(meth, "Async RSA method>>") == 0 ||
+      RSA_meth_set_pub_dec(meth, customRsaPubDec) == 0) {
+    throw std::runtime_error("Cannot create async RSA_METHOD");
+  }
+
+  RSA_set_method(rsa, meth);
+  ok = X509_verify_cert(ctx);
+  return ok;
+}
+
 static int customRsaPrivEnc(
     int flen,
     const unsigned char* from,
@@ -1718,6 +1791,49 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTest) {
 
   SSLHandshakeClient client(std::move(clientSock), false, false);
   SSLHandshakeServer server(std::move(serverSock), false, false);
+
+  eventBase.loop();
+
+  EXPECT_TRUE(server.handshakeSuccess_);
+  EXPECT_TRUE(client.handshakeSuccess_);
+  ASYNC_cleanup_thread();
+}
+
+TEST(AsyncSSLSocketTest, OpenSSL110MultipleAsyncTest) {
+  ASYNC_init_thread(1, 1);
+  EventBase eventBase;
+  ScopedEventBaseThread jobEvbThread;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kClientTestCA);
+  serverCtx->loadClientCAList(kClientTestCA);
+  serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+
+  auto rsaPointers =
+      setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
+  CHECK(rsaPointers->dummyrsa);
+  // up-refs dummyrsa
+  SSL_CTX_use_RSAPrivateKey(serverCtx->getSSLCtx(), rsaPointers->dummyrsa);
+  SSL_CTX_set_mode(serverCtx->getSSLCtx(), SSL_MODE_ASYNC);
+  SSL_CTX_set_cert_verify_callback(serverCtx->getSSLCtx(), verifyCb, nullptr);
+
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+  clientCtx->loadPrivateKey(kClientTestKey);
+  clientCtx->loadCertificate(kClientTestCert);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSSLSocket::UniquePtr clientSock(
+      new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+  AsyncSSLSocket::UniquePtr serverSock(
+      new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+  SSLHandshakeClient client(std::move(clientSock), true, true);
+  SSLHandshakeServer server(std::move(serverSock), true, true);
 
   eventBase.loop();
 
