@@ -37,6 +37,13 @@ auto addFiberFuture(F&& func, FiberManager& fm) {
 }
 } // namespace detail
 
+/**
+ * Schedule an async-annotated functor to run on a fiber manager.
+ */
+template <typename F>
+void addFiber(F&& func, FiberManager& fm) {
+  fm.addTask([func = std::forward<F>(func)] { return init_await(func()); });
+}
 } // namespace async
 } // namespace fibers
 } // namespace folly

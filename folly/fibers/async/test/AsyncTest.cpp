@@ -263,4 +263,21 @@ TEST(FiberManager, asyncFiberManager) {
     });
     EXPECT_TRUE(completed);
   }
+
+  {
+    bool outerCompleted = false;
+    bool innerCompleted = false;
+    async::executeOnFiberAndWait([&]() -> async::Async<void> {
+      outerCompleted = true;
+      async::addFiber(
+          [&]() -> async::Async<void> {
+            innerCompleted = true;
+            return {};
+          },
+          FiberManager::getFiberManager());
+      return {};
+    });
+    EXPECT_TRUE(outerCompleted);
+    EXPECT_TRUE(innerCompleted);
+  }
 }
