@@ -14,12 +14,14 @@
  * limitations under the License.
  */
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/fibers/async/Async.h>
 #include <folly/fibers/async/Baton.h>
+#include <folly/fibers/async/Collect.h>
 #include <folly/fibers/async/FiberManager.h>
 #include <folly/fibers/async/Future.h>
 #include <folly/fibers/async/Promise.h>
@@ -31,6 +33,7 @@
 #include <folly/fibers/async/Task.h>
 #endif
 
+using namespace ::testing;
 using namespace folly::fibers;
 
 namespace {
@@ -280,4 +283,51 @@ TEST(FiberManager, asyncFiberManager) {
     EXPECT_TRUE(outerCompleted);
     EXPECT_TRUE(innerCompleted);
   }
+}
+
+TEST(AsyncTest, collect) {
+  auto makeVoidTask = [](bool& ref) {
+    return [&]() -> async::Async<void> {
+      ref = true;
+      return {};
+    };
+  };
+  auto makeRetTask = [](int val) {
+    return [=]() -> async::Async<int> { return val; };
+  };
+  async::executeOnFiberAndWait([&]() -> async::Async<void> {
+    {
+      std::array<bool, 3> cs{false, false, false};
+      std::vector<folly::Function<async::Async<void>()>> tasks;
+      tasks.emplace_back(makeVoidTask(cs[0]));
+      tasks.emplace_back(makeVoidTask(cs[1]));
+      tasks.emplace_back(makeVoidTask(cs[2]));
+      async::await(async::collectAll(tasks));
+      EXPECT_THAT(cs, ElementsAre(true, true, true));
+    }
+
+    {
+      std::vector<folly::Function<async::Async<int>()>> tasks;
+      tasks.emplace_back(makeRetTask(1));
+      tasks.emplace_back(makeRetTask(2));
+      tasks.emplace_back(makeRetTask(3));
+      EXPECT_THAT(async::await(async::collectAll(tasks)), ElementsAre(1, 2, 3));
+    }
+
+    {
+      std::array<bool, 3> cs{false, false, false};
+      async::await(async::collectAll(
+          makeVoidTask(cs[0]), makeVoidTask(cs[1]), makeVoidTask(cs[2])));
+      EXPECT_THAT(cs, ElementsAre(true, true, true));
+    }
+
+    {
+      EXPECT_EQ(
+          std::make_tuple(1, 2, 3),
+          async::await(async::collectAll(
+              makeRetTask(1), makeRetTask(2), makeRetTask(3))));
+    }
+
+    return {};
+  });
 }
