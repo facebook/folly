@@ -20,8 +20,10 @@
 #include <folly/fibers/FiberManagerMap.h>
 #include <folly/fibers/async/Async.h>
 #include <folly/fibers/async/Baton.h>
+#include <folly/fibers/async/FiberManager.h>
 #include <folly/fibers/async/Future.h>
 #include <folly/fibers/async/Promise.h>
+#include <folly/fibers/async/WaitUtils.h>
 #include <folly/io/async/EventBase.h>
 
 #if FOLLY_HAS_COROUTINES
@@ -238,3 +240,27 @@ TEST(AsyncTest, asyncConstructorGuides) {
       std::is_same<int&, async::async_inner_type_t<decltype(getRef())>>::value);
 }
 #endif
+
+TEST(FiberManager, asyncFiberManager) {
+  {
+    folly::EventBase evb;
+    bool completed = false;
+    async::detail::addFiberFuture(
+        [&]() -> async::Async<void> {
+          completed = true;
+          return {};
+        },
+        getFiberManager(evb))
+        .getVia(&evb);
+    EXPECT_TRUE(completed);
+  }
+
+  {
+    bool completed = false;
+    async::executeOnFiberAndWait([&]() -> async::Async<void> {
+      completed = true;
+      return {};
+    });
+    EXPECT_TRUE(completed);
+  }
+}
