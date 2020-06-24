@@ -35,11 +35,6 @@
 namespace folly {
 namespace compression {
 
-template <typename ValueType, class List>
-folly::Optional<std::size_t> getUniverseUpperBound(const List& /* list */) {
-  return folly::none;
-}
-
 template <class URNG>
 std::vector<uint64_t> generateRandomList(
     size_t n,
@@ -273,15 +268,6 @@ void testSkipTo(const std::vector<uint64_t>& data, const List& list) {
     EXPECT_EQ(reader.position(), reader.size());
     EXPECT_FALSE(reader.next());
   }
-  // Skip past the last element and before the upperBound.
-  using ValueType = typename Reader::ValueType;
-  if (const auto upperBound = getUniverseUpperBound<ValueType>(list)) {
-    Reader reader(list);
-    EXPECT_FALSE(reader.skipTo(*upperBound));
-    EXPECT_FALSE(reader.valid());
-    EXPECT_EQ(reader.position(), reader.size());
-    EXPECT_FALSE(reader.next());
-  }
 }
 
 template <class Reader, class List>
@@ -376,19 +362,9 @@ void testEmpty() {
   }
 }
 
-// `upperBoundExtension` is required to inject additional 0-blocks
-// at the end of the list. This allows us to test lists with a large gap between
-// last element and universe upper bound, to exercise bounds-checking when
-// skipping past the last element
 template <class Reader, class Encoder>
-void testAll(
-    const std::vector<uint64_t>& data,
-    uint64_t upperBoundExtension = 0) {
-  Encoder encoder(data.size(), data.back() + upperBoundExtension);
-  for (const auto value : data) {
-    encoder.add(value);
-  }
-  auto list = encoder.finish();
+void testAll(const std::vector<uint64_t>& data) {
+  auto list = Encoder::encode(data.begin(), data.end());
   testNext<Reader>(data, list);
   testSkip<Reader>(data, list);
   testSkipTo<Reader>(data, list);
