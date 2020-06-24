@@ -45,38 +45,38 @@ Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {
   return new std::shared_ptr<DefaultCPUExecutor>(new DefaultCPUExecutor{});
 });
 
-Singleton<std::shared_ptr<CPUThreadPoolExecutor>, GlobalTag>
-    gImmutableGlobalCPUExecutor([] {
-      return new std::shared_ptr<CPUThreadPoolExecutor>(
-          new CPUThreadPoolExecutor(
-              folly::hardware_concurrency(),
-              std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
-    });
+Singleton<std::shared_ptr<Executor>, GlobalTag> gImmutableGlobalCPUExecutor([] {
+  return new std::shared_ptr<Executor>(new CPUThreadPoolExecutor(
+      folly::hardware_concurrency(),
+      std::make_shared<NamedThreadFactory>("GlobalCPUThreadPool")));
+});
 
-Singleton<std::shared_ptr<IOThreadPoolExecutor>, GlobalTag>
-    gImmutableGlobalIOExecutor([] {
-      return new std::shared_ptr<IOThreadPoolExecutor>(new IOThreadPoolExecutor(
+Singleton<std::shared_ptr<IOExecutor>, GlobalTag> gImmutableGlobalIOExecutor(
+    [] {
+      return new std::shared_ptr<IOExecutor>(new IOThreadPoolExecutor(
           folly::hardware_concurrency(),
           std::make_shared<NamedThreadFactory>("GlobalIOThreadPool")));
     });
 
 template <class ExecutorBase>
-std::shared_ptr<ExecutorBase> getImmutable();
+std::shared_ptr<std::shared_ptr<ExecutorBase>> getImmutablePtrPtr();
 
-template <>
-std::shared_ptr<Executor> getImmutable() {
-  if (auto executorPtrPtr = gImmutableGlobalCPUExecutor.try_get()) {
+template <class ExecutorBase>
+std::shared_ptr<ExecutorBase> getImmutable() {
+  if (auto executorPtrPtr = getImmutablePtrPtr<ExecutorBase>()) {
     return *executorPtrPtr;
   }
   return nullptr;
 }
 
 template <>
-std::shared_ptr<IOExecutor> getImmutable() {
-  if (auto executorPtrPtr = gImmutableGlobalIOExecutor.try_get()) {
-    return *executorPtrPtr;
-  }
-  return nullptr;
+std::shared_ptr<std::shared_ptr<Executor>> getImmutablePtrPtr() {
+  return gImmutableGlobalCPUExecutor.try_get();
+}
+
+template <>
+std::shared_ptr<std::shared_ptr<IOExecutor>> getImmutablePtrPtr() {
+  return gImmutableGlobalIOExecutor.try_get();
 }
 
 template <class ExecutorBase>
@@ -137,21 +137,21 @@ LeakySingleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
 namespace folly {
 
 Executor::KeepAlive<> getGlobalCPUExecutor() {
-  auto executorPtr = getImmutable<Executor>();
-  if (!executorPtr) {
+  auto executorPtrPtr = getImmutablePtrPtr<Executor>();
+  if (!executorPtrPtr) {
     throw std::runtime_error("Requested global CPU executor during shutdown.");
   }
-  async_tracing::logGetImmutableCPUExecutor(executorPtr.get());
-  return folly::getKeepAliveToken(executorPtr.get());
+  async_tracing::logGetImmutableCPUExecutor(executorPtrPtr->get());
+  return folly::getKeepAliveToken(executorPtrPtr->get());
 }
 
 Executor::KeepAlive<> getGlobalIOExecutor() {
-  auto executorPtr = getImmutable<IOExecutor>();
-  if (!executorPtr) {
+  auto executorPtrPtr = getImmutablePtrPtr<IOExecutor>();
+  if (!executorPtrPtr) {
     throw std::runtime_error("Requested global IO executor during shutdown.");
   }
-  async_tracing::logGetImmutableIOExecutor(executorPtr.get());
-  return folly::getKeepAliveToken(executorPtr.get());
+  async_tracing::logGetImmutableIOExecutor(executorPtrPtr->get());
+  return folly::getKeepAliveToken(executorPtrPtr->get());
 }
 
 std::shared_ptr<Executor> getCPUExecutor() {
