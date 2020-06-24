@@ -83,6 +83,19 @@ collectAll(Ts&&... tasks) {
   return Async(folly::unwrapTryTuple(std::move(tuple)));
 }
 
+/*
+ * Run an async-annotated functor on a new fiber, blocking the current fiber.
+ *
+ * Should be used sparingly to reset the fiber stack usage and avoid fiber stack
+ * overflows
+ */
+template <typename F>
+auto executeOnNewFiber(F&& func) {
+  DCHECK(detail::onFiber());
+  return futureWait(detail::addFiberFuture(
+      std::forward<F>(func), FiberManager::getFiberManager()));
+}
+
 } // namespace async
 } // namespace fibers
 } // namespace folly
