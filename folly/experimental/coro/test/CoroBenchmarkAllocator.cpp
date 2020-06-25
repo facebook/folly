@@ -28,11 +28,11 @@ class Wait {
       return Wait(promise_.get_future());
     }
 
-    std::experimental::suspend_never initial_suspend() {
+    std::experimental::suspend_never initial_suspend() noexcept {
       return {};
     }
 
-    std::experimental::suspend_never final_suspend() {
+    std::experimental::suspend_never final_suspend() noexcept {
       return {};
     }
 
@@ -118,25 +118,20 @@ class InlineTask {
 
     class FinalSuspender {
      public:
-      explicit FinalSuspender(std::experimental::coroutine_handle<> awaiter)
-          : awaiter_(std::move(awaiter)) {}
-
-      bool await_ready() {
+      bool await_ready() noexcept {
         return false;
       }
 
-      void await_suspend(std::experimental::coroutine_handle<>) {
-        awaiter_();
+      auto await_suspend(
+          std::experimental::coroutine_handle<promise_type> h) noexcept {
+        return h.promise().awaiter_;
       }
 
-      void await_resume() {}
-
-     private:
-      std::experimental::coroutine_handle<> awaiter_;
+      void await_resume() noexcept {}
     };
 
-    FinalSuspender final_suspend() {
-      return FinalSuspender(std::move(awaiter_));
+    FinalSuspender final_suspend() noexcept {
+      return FinalSuspender{};
     }
 
    private:
@@ -238,35 +233,30 @@ class InlineTaskAllocator {
       *valuePtr_ = std::forward<U>(value);
     }
 
-    void unhandled_exception() {
+    [[noreturn]] void unhandled_exception() noexcept {
       std::terminate();
     }
 
-    std::experimental::suspend_always initial_suspend() {
+    std::experimental::suspend_always initial_suspend() noexcept {
       return {};
     }
 
     class FinalSuspender {
      public:
-      explicit FinalSuspender(std::experimental::coroutine_handle<> awaiter)
-          : awaiter_(std::move(awaiter)) {}
-
-      bool await_ready() {
+      bool await_ready() noexcept {
         return false;
       }
 
-      void await_suspend(std::experimental::coroutine_handle<>) {
-        awaiter_();
+      auto await_suspend(
+          std::experimental::coroutine_handle<promise_type> h) noexcept {
+        return h.promise().awaiter_;
       }
 
-      void await_resume() {}
-
-     private:
-      std::experimental::coroutine_handle<> awaiter_;
+      void await_resume() noexcept {}
     };
 
-    FinalSuspender final_suspend() {
-      return FinalSuspender(std::move(awaiter_));
+    FinalSuspender final_suspend() noexcept {
+      return FinalSuspender{};
     }
 
    private:

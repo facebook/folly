@@ -59,11 +59,11 @@ class ViaCoroutine {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() {
+    std::experimental::suspend_always initial_suspend() noexcept {
       return {};
     }
 
-    auto final_suspend() {
+    auto final_suspend() noexcept {
       struct Awaiter {
         bool await_ready() noexcept {
           return false;

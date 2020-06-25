@@ -38,11 +38,11 @@ class Wait {
       return Wait(promise_.get_future());
     }
 
-    std::experimental::suspend_never initial_suspend() {
+    std::experimental::suspend_never initial_suspend() noexcept {
       return {};
     }
 
-    std::experimental::suspend_never final_suspend() {
+    std::experimental::suspend_never final_suspend() noexcept {
       return {};
     }
 

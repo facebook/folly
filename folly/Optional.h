@@ -635,7 +635,7 @@ struct OptionalPromise {
   std::experimental::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  std::experimental::suspend_never final_suspend() const {
+  std::experimental::suspend_never final_suspend() const noexcept {
     return {};
   }
   template <typename U>

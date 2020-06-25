@@ -156,17 +156,17 @@ class DetachedBarrierTask {
 
     auto final_suspend() noexcept {
       struct awaiter {
-        bool await_ready() {
+        bool await_ready() noexcept {
           return false;
         }
         auto await_suspend(
-            std::experimental::coroutine_handle<promise_type> h) {
+            std::experimental::coroutine_handle<promise_type> h) noexcept {
           assert(h.promise().barrier_ != nullptr);
           auto continuation = h.promise().barrier_->arrive();
           h.destroy();
           return continuation;
         }
-        void await_resume() {}
+        void await_resume() noexcept {}
       };
       return awaiter{};
     }

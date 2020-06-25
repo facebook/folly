@@ -254,21 +254,21 @@ inline InlineTask<void> InlineTaskPromise<void>::get_return_object() noexcept {
 struct InlineTaskDetached {
   class promise_type {
    public:
-    InlineTaskDetached get_return_object() {
+    InlineTaskDetached get_return_object() noexcept {
       return {};
     }
 
-    std::experimental::suspend_never initial_suspend() {
+    std::experimental::suspend_never initial_suspend() noexcept {
       return {};
     }
 
-    std::experimental::suspend_never final_suspend() {
+    std::experimental::suspend_never final_suspend() noexcept {
       return {};
     }
 
-    void return_void() {}
+    void return_void() noexcept {}
 
-    [[noreturn]] void unhandled_exception() {
+    [[noreturn]] void unhandled_exception() noexcept {
       std::terminate();
     }
   };
