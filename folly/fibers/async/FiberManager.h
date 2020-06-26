@@ -33,7 +33,7 @@ namespace detail {
 template <typename F>
 auto addFiberFuture(F&& func, FiberManager& fm) {
   return fm.addTaskFuture(
-      [func = std::forward<F>(func)] { return init_await(func()); });
+      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
 } // namespace detail
 
@@ -42,7 +42,8 @@ auto addFiberFuture(F&& func, FiberManager& fm) {
  */
 template <typename F>
 void addFiber(F&& func, FiberManager& fm) {
-  fm.addTask([func = std::forward<F>(func)] { return init_await(func()); });
+  fm.addTask(
+      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
 } // namespace async
 } // namespace fibers

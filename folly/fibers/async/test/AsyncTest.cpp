@@ -256,6 +256,14 @@ TEST(FiberManager, asyncFiberManager) {
         getFiberManager(evb))
         .getVia(&evb);
     EXPECT_TRUE(completed);
+
+    size_t count = 0;
+    EXPECT_EQ(
+        1,
+        async::detail::addFiberFuture(
+            [count]() mutable -> async::Async<int> { return ++count; },
+            getFiberManager(evb))
+            .getVia(&evb));
   }
 
   {
