@@ -24,19 +24,23 @@ namespace folly {
 namespace fibers {
 namespace async {
 
+template <typename T>
+class Async;
+
 namespace detail {
 /**
  * Define in source to avoid including FiberManager header and keep this file
  * cheap to include
  */
 bool onFiber();
+
+struct await_fn {
+  template <typename T>
+  T&& operator()(Async<T>&&) const noexcept;
+
+  void operator()(Async<void>&&) const noexcept {}
+};
 } // namespace detail
-
-template <typename T>
-class Async;
-
-template <typename T>
-T&& await(Async<T>&&);
 
 /**
  * Asynchronous fiber result wrapper
@@ -75,7 +79,7 @@ class [[nodiscard]] Async {
   // Move constructor to allow eager-return of async without using await
   template <typename U>
   /* implicit */ Async(Async<U> && async) noexcept
-      : val_(await(std::move(async))) {}
+      : val_(static_cast<U&&>(async.val_)) {}
 
   Async(const Async&) = delete;
   Async(Async && other) = default;
@@ -84,7 +88,11 @@ class [[nodiscard]] Async {
 
  private:
   T val_;
-  friend T&& await<T>(Async<T> &&);
+
+  template <typename U>
+  friend class Async;
+
+  friend struct detail::await_fn;
 };
 
 template <>
@@ -108,21 +116,20 @@ template <typename T>
 explicit Async(T)->Async<T>;
 #endif
 
+namespace detail {
+template <typename T>
+T&& await_fn::operator()(Async<T>&& async) const noexcept {
+  return static_cast<T&&>(async.val_);
+}
+} // namespace detail
+
 /**
  * Function to retrieve the result from the Async wrapper
  * A function calling await must return an Async wrapper itself
  * for the wrapper to serve its intended purpose (the best way to enforce this
  * is static analysis)
  */
-template <typename T>
-T&& await(Async<T>&& async) {
-  DCHECK(detail::onFiber());
-  return static_cast<T&&>(async.val_);
-}
-
-inline void await(Async<void>&&) {
-  DCHECK(detail::onFiber());
-}
+constexpr detail::await_fn await;
 
 /**
  * A utility to start annotating at top of stack (eg. the task which is added to
