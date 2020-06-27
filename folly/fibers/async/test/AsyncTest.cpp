@@ -248,7 +248,7 @@ TEST(FiberManager, asyncFiberManager) {
   {
     folly::EventBase evb;
     bool completed = false;
-    async::detail::addFiberFuture(
+    async::addFiberFuture(
         [&]() -> async::Async<void> {
           completed = true;
           return {};
@@ -260,7 +260,7 @@ TEST(FiberManager, asyncFiberManager) {
     size_t count = 0;
     EXPECT_EQ(
         1,
-        async::detail::addFiberFuture(
+        async::addFiberFuture(
             [count]() mutable -> async::Async<int> { return ++count; },
             getFiberManager(evb))
             .getVia(&evb));

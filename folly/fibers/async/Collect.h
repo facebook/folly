@@ -77,7 +77,7 @@ template <typename... Ts>
 Async<
     std::tuple<folly::lift_unit_t<async_inner_type_t<invoke_result_t<Ts>>>...>>
 collectAll(Ts&&... tasks) {
-  auto future = folly::collectAllUnsafe(detail::addFiberFuture(
+  auto future = folly::collectAllUnsafe(addFiberFuture(
       std::forward<Ts>(tasks), FiberManager::getFiberManager())...);
   auto tuple = await(futureWait(std::move(future)));
   return Async(folly::unwrapTryTuple(std::move(tuple)));
@@ -92,8 +92,8 @@ collectAll(Ts&&... tasks) {
 template <typename F>
 auto executeOnNewFiber(F&& func) {
   DCHECK(detail::onFiber());
-  return futureWait(detail::addFiberFuture(
-      std::forward<F>(func), FiberManager::getFiberManager()));
+  return futureWait(
+      addFiberFuture(std::forward<F>(func), FiberManager::getFiberManager()));
 }
 
 } // namespace async

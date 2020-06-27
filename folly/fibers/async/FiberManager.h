@@ -23,19 +23,20 @@ namespace folly {
 namespace fibers {
 namespace async {
 
-namespace detail {
-/**
- * Schedule an async-annotated functor to run on a fiber manager. Returns a
- * future for the result.
- *
- * In most cases, you probably want to use executeOnFiberAndWait instead
- */
-template <typename F>
-auto addFiberFuture(F&& func, FiberManager& fm) {
-  return fm.addTaskFuture(
-      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
-}
-} // namespace detail
+// These functions wrap the corresponding FiberManager members.
+// The difference is that these functions accept callables which
+// return Async results.
+//
+// Implementation notes:
+// These functions don't respect some design principles of the library:
+// - Strict separation of functions running on main context and fiber context
+// - Avoid using the Awaitable of the other async frameworks in the public
+//   interface, under long-term goal of decoupling the frameworks
+// - Keep FiberManager as an implementation detail, in favor of Executor in
+//   the public interface
+//
+// These functions should ultimately live in detail::, but are public to
+// enable early adoption of the library.
 
 /**
  * Schedule an async-annotated functor to run on a fiber manager.
@@ -45,6 +46,22 @@ void addFiber(F&& func, FiberManager& fm) {
   fm.addTask(
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
+
+/**
+ * Schedule an async-annotated functor to run on a fiber manager.
+ * Returns a Future for the result.
+ *
+ * In most cases, prefer those options instead:
+ * - executeOnNewFiber: reset fiber stack usage from fiber context
+ * - executeOnFiberAndWait: initialize fiber context from main context
+ *   then block thread
+ */
+template <typename F>
+auto addFiberFuture(F&& func, FiberManager& fm) {
+  return fm.addTaskFuture(
+      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
+}
+
 } // namespace async
 } // namespace fibers
 } // namespace folly
