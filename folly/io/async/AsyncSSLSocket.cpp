@@ -1669,7 +1669,8 @@ int AsyncSSLSocket::eorAwareSSLWrite(
     minEorRawByteNo_ = getRawBytesWritten() + n;
   }
 
-  n = sslWriteImpl(ssl.get(), buf, n);
+  n = ktlsEnabled_ ? send(fd_.toFd(), buf, n, 0) :
+                     sslWriteImpl(ssl.get(), buf, n);
   if (n > 0) {
     appBytesWritten_ += n;
     if (appEorByteNo_) {
