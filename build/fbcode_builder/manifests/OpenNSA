@@ -3,7 +3,7 @@ name = OpenNSA
 
 [download]
 url = https://docs.broadcom.com/docs-and-downloads/csg/opennsa-6.5.19.tgz
-sha256 = 7f3f97f53afc2299bb68f34c695c8984f5cdcf9fd416225b070d348a89ea1884 
+sha256 = 80c3a26f688dd7fc08880fdbbad9ac3424b435697b0ccb889487f55f2bc425c4
 
 [build]
 builder = nop
