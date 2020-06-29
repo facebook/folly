@@ -62,6 +62,21 @@ auto addFiberFuture(F&& func, FiberManager& fm) {
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
 
+/**
+ * Schedule an async-annotated functor to run on a remote thread's
+ * fiber manager.
+ * Returns a future for the result.
+ *
+ * In most cases, prefer those options instead:
+ * - executeOnRemoteFiber: wait on remote fiber from (local) fiber context
+ * - executeOnRemoteFiberAndWait: wait on remote fiber from (local) main context
+ */
+template <typename F>
+auto addFiberRemoteFuture(F&& func, FiberManager& fm) {
+  return fm.addTaskRemoteFuture(
+      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
+}
+
 } // namespace async
 } // namespace fibers
 } // namespace folly

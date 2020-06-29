@@ -76,6 +76,22 @@ auto executeOnFiberAndWait(
       std::forward<F>(func), evb, getFiberManager(evb, opts));
 }
 
+/**
+ * Run an async-annotated functor `func`, to completion on a remote
+ * fiber manager, blocking the current thread.
+ *
+ * Should not be called from fiber context.
+ *
+ * This is similar to the above functions (sugar to initialize
+ * Async annotated fiber context) but handle the case where the
+ * library uses a dedicated thread pool to run fibers.
+ */
+template <typename F>
+auto executeOnRemoteFiberAndWait(F&& func, FiberManager& fm) {
+  DCHECK(!detail::onFiber());
+  return addFiberRemoteFuture(std::forward<F>(func), fm).get();
+}
+
 } // namespace async
 } // namespace fibers
 } // namespace folly

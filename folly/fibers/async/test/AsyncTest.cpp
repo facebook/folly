@@ -345,3 +345,39 @@ TEST(AsyncTest, collect) {
     return {};
   });
 }
+
+TEST(FiberManager, remoteFiberManager) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  bool test1Finished = false;
+  bool test2Finished = false;
+  std::atomic<bool> remoteFinished = false;
+  std::thread remote([&]() {
+    async::executeOnRemoteFiberAndWait(
+        [&]() -> async::Async<void> {
+          test1Finished = true;
+          return {};
+        },
+        fm);
+
+    async::executeOnFiberAndWait([&] {
+      return async::executeOnRemoteFiber(
+          [&]() -> async::Async<void> {
+            test2Finished = true;
+            return {};
+          },
+          fm);
+    });
+
+    remoteFinished = true;
+  });
+
+  while (!remoteFinished) {
+    evb.loopOnce();
+  }
+  remote.join();
+
+  EXPECT_TRUE(test1Finished);
+  EXPECT_TRUE(test2Finished);
+}

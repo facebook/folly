@@ -96,6 +96,16 @@ auto executeOnNewFiber(F&& func) {
       addFiberFuture(std::forward<F>(func), FiberManager::getFiberManager()));
 }
 
+/*
+ * Run an async-annotated functor on a new fiber on remote thread,
+ * blocking the current fiber.
+ */
+template <typename F>
+auto executeOnRemoteFiber(F&& func, FiberManager& fm) {
+  DCHECK(detail::onFiber());
+  return futureWait(addFiberRemoteFuture(std::forward<F>(func), fm));
+}
+
 } // namespace async
 } // namespace fibers
 } // namespace folly
