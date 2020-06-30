@@ -48,6 +48,16 @@ void addFiber(F&& func, FiberManager& fm) {
 }
 
 /**
+ * Schedule an async-annotated functor to run on a remote thread's
+ * fiber manager.
+ */
+template <typename F>
+void addFiberRemote(F&& func, FiberManager& fm) {
+  fm.addTaskRemote(
+      [func = std::forward<F>(func)]() mutable { return init_await(func()); });
+}
+
+/**
  * Schedule an async-annotated functor to run on a fiber manager.
  * Returns a Future for the result.
  *
