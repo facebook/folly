@@ -151,9 +151,7 @@ constexpr bool is_async_v = folly::detail::is_instantiation_of_v<Async, T>;
 
 // async_inner_type
 template <typename T>
-struct async_inner_type {
-  using type = T;
-};
+struct async_inner_type;
 
 template <typename T>
 struct async_inner_type<Async<T>> {
