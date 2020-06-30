@@ -74,9 +74,8 @@ auto collectAll(Collection&& c) -> decltype(collectAll(c.begin(), c.end())) {
  * container or iterators
  */
 template <typename... Ts>
-Async<
-    std::tuple<folly::lift_unit_t<async_inner_type_t<invoke_result_t<Ts>>>...>>
-collectAll(Ts&&... tasks) {
+Async<std::tuple<lift_unit_t<async_invocable_inner_type_t<Ts>>...>> collectAll(
+    Ts&&... tasks) {
   auto future = folly::collectAllUnsafe(addFiberFuture(
       std::forward<Ts>(tasks), FiberManager::getFiberManager())...);
   auto tuple = await(futureWait(std::move(future)));
@@ -90,7 +89,7 @@ collectAll(Ts&&... tasks) {
  * overflows
  */
 template <typename F>
-auto executeOnNewFiber(F&& func) {
+Async<async_invocable_inner_type_t<F>> executeOnNewFiber(F&& func) {
   DCHECK(detail::onFiber());
   return futureWait(
       addFiberFuture(std::forward<F>(func), FiberManager::getFiberManager()));
@@ -101,7 +100,9 @@ auto executeOnNewFiber(F&& func) {
  * blocking the current fiber.
  */
 template <typename F>
-auto executeOnRemoteFiber(F&& func, FiberManager& fm) {
+Async<async_invocable_inner_type_t<F>> executeOnRemoteFiber(
+    F&& func,
+    FiberManager& fm) {
   DCHECK(detail::onFiber());
   return futureWait(addFiberRemoteFuture(std::forward<F>(func), fm));
 }

@@ -27,7 +27,8 @@ namespace async {
 
 namespace detail {
 template <typename F>
-auto executeOnFiberAndWait(F&& func, folly::EventBase& evb, FiberManager& fm) {
+lift_unit_t<async_invocable_inner_type_t<F>>
+executeOnFiberAndWait(F&& func, folly::EventBase& evb, FiberManager& fm) {
   DCHECK(!detail::onFiber());
   return addFiberFuture(std::forward<F>(func), fm).getVia(&evb);
 }
@@ -43,7 +44,7 @@ auto executeOnFiberAndWait(F&& func, folly::EventBase& evb, FiberManager& fm) {
  * options
  */
 template <typename F>
-auto executeOnFiberAndWait(
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
     F&& func,
     const FiberManager::Options& opts = FiberManager::Options()) {
   folly::EventBase evb;
@@ -52,14 +53,16 @@ auto executeOnFiberAndWait(
 }
 
 template <typename F>
-auto executeOnFiberAndWait(F&& func, const FiberManager::FrozenOptions& opts) {
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
+    F&& func,
+    const FiberManager::FrozenOptions& opts) {
   folly::EventBase evb;
   return detail::executeOnFiberAndWait(
       std::forward<F>(func), evb, getFiberManager(evb, opts));
 }
 
 template <typename F>
-auto executeOnFiberAndWait(
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
     F&& func,
     folly::EventBase& evb,
     const FiberManager::Options& opts = FiberManager::Options()) {
@@ -68,7 +71,7 @@ auto executeOnFiberAndWait(
 }
 
 template <typename F>
-auto executeOnFiberAndWait(
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnFiberAndWait(
     F&& func,
     folly::EventBase& evb,
     const FiberManager::FrozenOptions& opts) {
@@ -87,7 +90,9 @@ auto executeOnFiberAndWait(
  * library uses a dedicated thread pool to run fibers.
  */
 template <typename F>
-auto executeOnRemoteFiberAndWait(F&& func, FiberManager& fm) {
+lift_unit_t<async_invocable_inner_type_t<F>> executeOnRemoteFiberAndWait(
+    F&& func,
+    FiberManager& fm) {
   DCHECK(!detail::onFiber());
   return addFiberRemoteFuture(std::forward<F>(func), fm).get();
 }

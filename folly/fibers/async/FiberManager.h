@@ -57,7 +57,9 @@ void addFiber(F&& func, FiberManager& fm) {
  *   then block thread
  */
 template <typename F>
-auto addFiberFuture(F&& func, FiberManager& fm) {
+Future<lift_unit_t<async_invocable_inner_type_t<F>>> addFiberFuture(
+    F&& func,
+    FiberManager& fm) {
   return fm.addTaskFuture(
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }
@@ -72,7 +74,9 @@ auto addFiberFuture(F&& func, FiberManager& fm) {
  * - executeOnRemoteFiberAndWait: wait on remote fiber from (local) main context
  */
 template <typename F>
-auto addFiberRemoteFuture(F&& func, FiberManager& fm) {
+Future<lift_unit_t<async_invocable_inner_type_t<F>>> addFiberRemoteFuture(
+    F&& func,
+    FiberManager& fm) {
   return fm.addTaskRemoteFuture(
       [func = std::forward<F>(func)]() mutable { return init_await(func()); });
 }

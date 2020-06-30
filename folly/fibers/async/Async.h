@@ -17,6 +17,8 @@
 #pragma once
 
 #include <folly/Traits.h>
+#include <folly/Unit.h>
+#include <folly/functional/Invoke.h>
 #include <glog/logging.h>
 #include <utility>
 
@@ -101,6 +103,9 @@ class [[nodiscard]] Async<void> {
   typedef void inner_type;
 
   /* implicit */ Async() {}
+  /* implicit */ Async(Unit) {}
+  /* implicit */ Async(Async<Unit> &&) {}
+
   Async(const Async&) = delete;
   Async(Async && other) = default;
   Async& operator=(const Async&) = delete;
@@ -160,6 +165,14 @@ struct async_inner_type<Async<T>> {
 
 template <typename T>
 using async_inner_type_t = typename async_inner_type<T>::type;
+
+// async_invocable_inner_type
+template <typename F>
+using async_invocable_inner_type = async_inner_type<invoke_result_t<F>>;
+
+template <typename F>
+using async_invocable_inner_type_t =
+    typename async_invocable_inner_type<F>::type;
 
 } // namespace async
 } // namespace fibers

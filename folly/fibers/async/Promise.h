@@ -26,9 +26,9 @@ namespace async {
  * Async annotated wrapper around fibers::await
  */
 template <typename F>
-auto promiseWait(F&& func) {
+Async<typename FirstArgOf<F>::type::value_type> promiseWait(F&& func) {
   // Call into blocking API
-  return Async{folly::fibers::await(std::forward<F>(func))};
+  return fibers::await(std::forward<F>(func));
 }
 
 } // namespace async
