@@ -214,6 +214,20 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadClose) {
 }
 
 /**
+ * Check that zero copy options are a noop under AsyncSSLSocket since they
+ * aren't supported.
+ */
+TEST(AsyncSSLSocketTest, ZeroCopy) {
+  // Set up SSL context.
+  std::shared_ptr<SSLContext> sslContext(new SSLContext());
+  sslContext->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
+
+  auto socket = AsyncSSLSocket::newSocket(sslContext, /*evb=*/nullptr);
+  EXPECT_FALSE(socket->setZeroCopy(true));
+  EXPECT_FALSE(socket->getZeroCopy());
+}
+
+/**
  * Same as above simple test, but with a large read len to test
  * clamping behavior.
  */
