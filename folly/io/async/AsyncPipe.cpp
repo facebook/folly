@@ -48,6 +48,8 @@ void AsyncPipeReader::close() {
 
     if (closeCb_) {
       closeCb_(fd_);
+    } else {
+      netops::close(fd_);
     }
     fd_ = NetworkSocket();
   }
