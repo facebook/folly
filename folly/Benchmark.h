@@ -278,7 +278,7 @@ addBenchmark(const char* file, StringPiece name, Lambda&& lambda) {
  * benchmark but not in real use cases.
  */
 
-#ifdef _MSC_VER
+#if defined(_MSC_VER) && !defined(__clang__)
 
 #pragma optimize("", off)
 
