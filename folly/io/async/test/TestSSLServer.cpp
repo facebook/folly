@@ -24,9 +24,9 @@ const char* kTestKey = "folly/io/async/test/certs/tests-key.pem";
 const char* kTestCA = "folly/io/async/test/certs/ca-cert.pem";
 const char* kTestCertCN = "Asox Company";
 
-const char* kClientTestCert = "folly/io/async/test/certs/client_cert_1.pem";
-const char* kClientTestKey = "folly/io/async/test/certs/client_key_1.pem";
-const char* kClientTestCA = "folly/io/async/test/certs/client_ca_cert_1.pem";
+const char* kClientTestCert = "folly/io/async/test/certs/client_cert.pem";
+const char* kClientTestKey = "folly/io/async/test/certs/client_key.pem";
+const char* kClientTestCA = "folly/io/async/test/certs/client_ca_cert.pem";
 
 TestSSLServer::~TestSSLServer() {
   if (thread_.joinable()) {
