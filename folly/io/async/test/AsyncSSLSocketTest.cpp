@@ -2296,6 +2296,73 @@ TEST(AsyncSSLSocketTest, TestSSLCipherCodeToNameMap) {
   EXPECT_EQ(OpenSSLUtils::getCipherName(0x00ff), "");
 }
 
+TEST(AsyncSSLSocketTest, TestSSLSessionResumptionEarlyData) {
+  EventBase eventBase;
+  SSL_SESSION* resumptionSession = nullptr;
+  auto clientCtx = std::make_shared<SSLContext>();
+  auto serverCtx = std::make_shared<SSLContext>();
+  serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  serverCtx->ciphers("ECDHE-RSA-AES128-SHA:AES128-SHA:AES256-SHA");
+  serverCtx->loadPrivateKey(kTestKey);
+  serverCtx->loadCertificate(kTestCert);
+  serverCtx->loadTrustedCertificates(kTestCA);
+  serverCtx->loadClientCAList(kTestCA);
+
+  clientCtx->setSessionCacheContext("test context");
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
+  clientCtx->ciphers("AES256-SHA:AES128-SHA");
+  clientCtx->loadPrivateKey(kTestKey);
+  clientCtx->loadCertificate(kTestCert);
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  {
+    NetworkSocket fds[2];
+    getfds(fds);
+
+    AsyncSSLSocket::UniquePtr clientSock(
+        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+    auto clientPtr = clientSock.get();
+    AsyncSSLSocket::UniquePtr serverSock(
+        new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+    SSLHandshakeClient client(std::move(clientSock), false, false);
+    SSLHandshakeServer server(std::move(serverSock), false, false);
+
+    eventBase.loop();
+    EXPECT_TRUE(client.handshakeSuccess_);
+    EXPECT_TRUE(!client.handshakeError_);
+    EXPECT_TRUE(server.handshakeSuccess_);
+    EXPECT_TRUE(!server.handshakeError_);
+    resumptionSession = clientPtr->getSSLSession();
+  }
+  {
+    NetworkSocket fds[2];
+    getfds(fds);
+    char buf[512];
+    size_t writtenBytes = 0;
+    bool isWritten = false;
+
+    AsyncSSLSocket::UniquePtr clientSock(
+        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], false));
+    auto clientPtr = clientSock.get();
+    clientPtr->setSSLSession(resumptionSession);
+    AsyncSSLSocket::UniquePtr serverSock(
+        new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
+
+    SSLHandshakeServer server(std::move(serverSock), false, false);
+    SSLHandshakeClient client(std::move(clientSock), false, false, true);
+
+    eventBase.loop();
+
+    EXPECT_TRUE(client.handshakeSuccess_);
+    EXPECT_TRUE(!client.handshakeError_);
+    EXPECT_TRUE(server.handshakeSuccess_);
+    EXPECT_TRUE(!server.handshakeError_);
+    EXPECT_TRUE(clientPtr->getSSLSessionReused());
+    SSL_SESSION_free(resumptionSession);
+  }
+}
+
 #if defined __linux__
 /**
  * Ensure TransparentTLS flag is disabled with AsyncSSLSocket

@@ -132,6 +132,36 @@ class AsyncSSLSocket : public virtual AsyncSocket {
     virtual void handshakeErr(
         AsyncSSLSocket* sock,
         const AsyncSocketException& ex) noexcept = 0;
+
+#if FOLLY_OPENSSL_HAS_TLS13
+    /**
+     * Callback to parse 0-RTT early data.
+     * handshakeEarlyData() is called if 0-RTT early data arrives at the server
+     * as extension of handshake's clientHello
+     * @param  buf       The data chunk to be parsed.
+     * @param  bufSize   The size of the data chunk to be parsed.
+     * @param  finished  If finished == false, then it means that the data chunk
+     *                   passed to the callback is not final. More data might
+     *                   come in subsequent invocation of callback.
+     *                   If finished == true, then it means this invocation is
+     *                   the final invocation of the callback.
+     * @return true      On Success
+     *         false     On Failure
+     */
+    virtual bool handshakeEarlyData(
+        const unsigned char *buf,
+        size_t bufSize,
+        bool finished) noexcept {
+      return true;
+    }
+
+    /*
+     * Callback for writing early data before performing SSL_connect.
+     */
+    virtual int handshakeWriteEarlyData(SSL *ssl) noexcept {
+      return 1;
+    }
+#endif
   };
 
   class Timeout : public AsyncTimeout {
@@ -908,6 +938,11 @@ class AsyncSSLSocket : public virtual AsyncSocket {
 
   void invokeHandshakeErr(const AsyncSocketException& ex);
   void invokeHandshakeCB();
+  bool invokeHandshakeEarlyDataCB(
+      const unsigned char *buf,
+      size_t bufSize,
+      bool finished);
+  int invokeHandshakeWriteEarlyDataCB(SSL *ssl);
 
   void invokeConnectErr(const AsyncSocketException& ex) override;
   void invokeConnectSuccess() override;

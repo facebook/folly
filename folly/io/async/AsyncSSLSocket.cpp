@@ -96,19 +96,21 @@ void setup_SSL_CTX(SSL_CTX* ctx) {
 
 #if FOLLY_OPENSSL_HAS_TLS13
 // This function is used for logging OpenSSL's early data status
-static std::string earlyDataStatusString(SSL *ssl) {
+static const char* earlyDataStatusString(SSL *ssl) {
   switch(SSL_get_early_data_status(ssl)) {
     case SSL_EARLY_DATA_REJECTED:
       return "SSL_EARLY_DATA_REJECTED";
     case SSL_EARLY_DATA_ACCEPTED:
       return "SSL_EARLY_DATA_ACCEPTED";
-    default:
+    case SSL_EARLY_DATA_NOT_SENT:
       return "SSL_EARLY_DATA_NOT_SENT";
+    default:
+      return "(unknown)";
   }
 }
 
 // This function is used for logging OpenSSL's early data err code
-static std::string earlyDataErrCodeString(int errCode) {
+static const char* earlyDataErrCodeString(int errCode) {
   switch(errCode) {
     case SSL_READ_EARLY_DATA_ERROR:
       return "SSL_READ_EARLY_DATA_ERROR";
@@ -117,7 +119,7 @@ static std::string earlyDataErrCodeString(int errCode) {
     case SSL_READ_EARLY_DATA_FINISH:
       return "SSL_READ_EARLY_DATA_FINISH";
     default:
-      return std::to_string(errCode);
+      return "(unknown)";
   }
 }
 #endif
@@ -741,6 +743,30 @@ void AsyncSSLSocket::invokeHandshakeCB() {
   }
 }
 
+bool AsyncSSLSocket::invokeHandshakeEarlyDataCB(
+    const unsigned char *buf,
+    size_t bufSize,
+    bool finished) {
+#if FOLLY_OPENSSL_HAS_TLS13
+  if (handshakeCallback_ != nullptr) {
+    HandshakeCB* callback = handshakeCallback_;
+    return callback->handshakeEarlyData(buf, bufSize, finished);
+  }
+#endif
+  return true;
+}
+
+int AsyncSSLSocket::invokeHandshakeWriteEarlyDataCB(SSL *ssl) {
+#if FOLLY_OPENSSL_HAS_TLS13
+  if (handshakeCallback_ != nullptr) {
+    HandshakeCB* callback = handshakeCallback_;
+    return callback->handshakeWriteEarlyData(ssl);
+  }
+#endif
+  return 1;
+}
+
+
 void AsyncSSLSocket::connect(
     ConnectCallback* callback,
     const folly::SocketAddress& address,
@@ -1340,6 +1366,27 @@ void AsyncSSLSocket::handleConnect() noexcept {
   assert(ssl_);
 
   auto originalState = state_;
+  int edRet = invokeHandshakeWriteEarlyDataCB(ssl_.get());
+  if (edRet <= 0) {
+    int sslError;
+    unsigned long errError;
+    int errnoCopy = errno;
+    if (willBlock(edRet, &sslError, &errError)) {
+      // We fell back to connecting state due to TFO
+      if (state_ == StateEnum::CONNECTING) {
+        DCHECK_EQ(StateEnum::FAST_OPEN, originalState);
+        if (handshakeTimeout_.isScheduled()) {
+          handshakeTimeout_.cancelTimeout();
+        }
+      }
+      return;
+    } else {
+      sslState_ = STATE_ERROR;
+      SSLException ex(sslError, errError, edRet, errnoCopy);
+      return failHandshake(__func__, ex);
+    }
+  }
+
   int ret = SSL_connect(ssl_.get());
   if (ret <= 0) {
     int sslError;
@@ -1402,11 +1449,13 @@ int AsyncSSLSocket::handleReadEarlyData() noexcept {
   VLOG(3) << "AsyncSSLSocket::handleReadEarlyData() this=" << this
           << ", fd=" << fd_ << ", state=" << int(state_) << ", "
           << "sslState=" << sslState_ << ", events=" << eventFlags_;
-  size_t bufSize = SSL_CTX_get_max_early_data(ctx_->getSSLCtx());
-  unsigned char buf[bufSize];
-  size_t readBytes;
+  unsigned char buf[512];
+  const size_t bufSize = 512;
+  size_t readBytes = 0;
   int edRet = SSL_READ_EARLY_DATA_ERROR;
   int sslErr = SSL_ERROR_NONE;
+  unsigned long errError = 0;
+  int errnoCopy = 0;
 
   edRet = SSL_read_early_data(ssl_.get(), buf, bufSize, &readBytes);
   VLOG(3) << "AsyncSSLSocket::handleReadEarlyData()"
@@ -1418,21 +1467,25 @@ int AsyncSSLSocket::handleReadEarlyData() noexcept {
     case SSL_READ_EARLY_DATA_ERROR:
       sslErr = SSL_get_error(ssl_.get(), 0);
       VLOG(3) << "SSL Error: " << sslErr;
-      if (SSL_ERROR_SSL == sslErr || SSL_ERROR_SYSCALL == sslErr) {
-        // Unrecoverable error in OpenSSL lib occured due to abrupt EOF sent
-        // by peer. Aborting the early data phase.
+      if (sslErr != SSL_ERROR_WANT_READ && sslErr != SSL_ERROR_WANT_WRITE) {
+        VLOG(3) << "Unrecoverable Error occured in SSL_read_early_data. "
+                << "Aborting the early data phase.";
         earlyDataPhaseComplete_ = true;
+        sslState_ = STATE_ERROR;
+        errError = ERR_get_error();
+        errnoCopy = errno;
+        SSLException ex(sslErr, errError, 0, errnoCopy);
+        failHandshake(__func__, ex);
         break;
       }
-      // Either SSL_accept or SSL_read_ex inside SSL_read_early_data() returned
-      // SSL_ERROR_WANT_READ. Retry the operation by calling
+      // SSL_read_early_data() returned SSL_ERROR_WANT_READ/
+      // SSL_ERROR_WANT_WRITE. Retry the operation by calling
       // SSL_read_early_data again in next read event
       updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
       sslState_ = STATE_ACCEPTING;
       break;
     case SSL_READ_EARLY_DATA_SUCCESS:
-      if (ctx_->parseEarlyDataCb_ &&
-          !ctx_->parseEarlyDataCb_(buf, readBytes)) {
+      if (!invokeHandshakeEarlyDataCB(buf, readBytes, false)) {
         VLOG(3) << "Early data content rejected ";
         sslState_ = STATE_ERROR;
         AsyncSocketException ex(AsyncSocketException::EARLY_DATA_REJECTED,
@@ -1445,6 +1498,17 @@ int AsyncSSLSocket::handleReadEarlyData() noexcept {
       break;
     case SSL_READ_EARLY_DATA_FINISH:
       // Finished Early data processing
+      earlyDataPhaseComplete_ = true;
+      if (!invokeHandshakeEarlyDataCB(nullptr, 0, true)) {
+        VLOG(3) << "Early data content rejected ";
+        sslState_ = STATE_ERROR;
+        AsyncSocketException ex(AsyncSocketException::EARLY_DATA_REJECTED,
+                                "Invalid Early data content");
+        failHandshake(__func__, ex);
+        break;
+      }
+      sslState_ = STATE_ACCEPTING;
+      break;
     default:
       // Unknown Error. This should not happen. Aborting the early data phase
       earlyDataPhaseComplete_ = true;

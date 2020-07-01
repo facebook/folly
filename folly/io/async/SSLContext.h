@@ -574,15 +574,6 @@ class SSLContext {
 
   [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 
-#if FOLLY_OPENSSL_HAS_TLS13
-  /**
-   * Callback to parse 0-RTT early data.
-   */
-  std::function<bool(
-      const unsigned char *buf,
-      size_t bufSize)> parseEarlyDataCb_;
-#endif
-
  protected:
   SSL_CTX* ctx_;
 
