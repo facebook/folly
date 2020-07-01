@@ -1,11 +1,71 @@
 // Copyright (c) Facebook, Inc. and its affiliates.
 
-#define Py_LIMITED_API 1
 #define WIN32_LEAN_AND_MEAN
 
 #include <Windows.h>
-#include <Python.h>
+#include <stdlib.h>
 #include <stdio.h>
+
+#define PATH_SIZE 1024
+
+typedef int (*Py_Main)(int, wchar_t**);
+
+// Add the given path to Windows's DLL search path.
+// For Windows DLL search path resolution, see:
+// https://docs.microsoft.com/en-us/windows/win32/dlls/dynamic-link-library-search-order
+void add_search_path(const wchar_t* path) {
+  wchar_t buffer[PATH_SIZE];
+  wchar_t** lppPart = NULL;
+
+  if (!GetFullPathNameW(path, PATH_SIZE, buffer, lppPart)) {
+    fwprintf(stderr, L"warning: %d unable to expand path %s\n", GetLastError(), path);
+    return;
+  }
+
+  if (!AddDllDirectory(buffer)) {
+    DWORD error = GetLastError();
+    if (error != ERROR_FILE_NOT_FOUND) {
+      fwprintf(stderr, L"warning: %d unable to set DLL search path for %s\n", GetLastError(), path);
+    }
+  }
+}
+
+int locate_py_main(int argc, wchar_t **argv) {
+  /*
+   * We have to dynamically locate Python3.dll because we may be loading a
+   * Python native module while running. If that module is built with a
+   * different Python version, we will end up a DLL import error. To resolve
+   * this, we can either ship an embedded version of Python with us or
+   * dynamically look up existing Python distribution installed on user's
+   * machine. This way, we should be able to get a consistent version of
+   * Python3.dll and .pyd modules.
+   */
+  HINSTANCE python_dll;
+  Py_Main pymain;
+
+  // last added directory has highest priority
+  add_search_path(L"C:\\Python36\\");
+  add_search_path(L"C:\\Python37\\");
+  add_search_path(L"..\\python\\");
+
+  python_dll = LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
+
+  if (python_dll != NULL) {
+    pymain = (Py_Main) GetProcAddress(python_dll, "Py_Main");
+
+    if (pymain != NULL) {
+      (pymain)(argc, argv);
+    } else {
+      fprintf(stderr, "error: %d unable to load Py_Main\n", GetLastError());
+    }
+
+    FreeLibrary(python_dll);
+  } else {
+    fprintf(stderr, "error: %d unable to locate python3.dll\n", GetLastError());
+    return 1;
+  }
+  return 0;
+}
 
 int wmain() {
   /*
@@ -44,8 +104,6 @@ int wmain() {
    *   "-h"
    * }
    */
-
-#define PATH_SIZE 1024
   wchar_t full_path_to_argv0[PATH_SIZE];
   DWORD len = GetModuleFileNameW(NULL, full_path_to_argv0, PATH_SIZE);
   if (len == 0 ||
@@ -63,5 +121,5 @@ int wmain() {
   pyargv[0] = full_path_to_argv0;
   pyargv[1] = full_path_to_argv0;
 
-  return Py_Main(__argc + 1, pyargv);
+  return locate_py_main(__argc + 1, pyargv);
 }
