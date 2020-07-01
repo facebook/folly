@@ -17,7 +17,6 @@ builder = nop
 folly
 fb303
 wangle
-rsocket-cpp
 fizz
 fmt
 libsodium
