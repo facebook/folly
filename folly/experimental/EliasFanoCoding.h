@@ -87,8 +87,8 @@ struct EliasFanoCompressedListBase {
   Pointer upper = nullptr;
 };
 
-typedef EliasFanoCompressedListBase<const uint8_t*> EliasFanoCompressedList;
-typedef EliasFanoCompressedListBase<uint8_t*> MutableEliasFanoCompressedList;
+using EliasFanoCompressedList = EliasFanoCompressedListBase<const uint8_t*>;
+using MutableEliasFanoCompressedList = EliasFanoCompressedListBase<uint8_t*>;
 
 template <
     class Value,
@@ -102,11 +102,12 @@ struct EliasFanoEncoderV2 {
       std::is_integral<Value>::value && std::is_unsigned<Value>::value,
       "Value should be unsigned integral");
 
-  typedef EliasFanoCompressedList CompressedList;
-  typedef MutableEliasFanoCompressedList MutableCompressedList;
+  using CompressedList = EliasFanoCompressedList;
+  using MutableCompressedList = MutableEliasFanoCompressedList;
 
-  typedef Value ValueType;
-  typedef SkipValue SkipValueType;
+  using ValueType = Value;
+  using SkipValueType = SkipValue;
+
   struct Layout;
 
   static constexpr size_t skipQuantum = kSkipQuantum;
@@ -373,7 +374,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
         SkipPointers<Encoder::skipQuantum>(list.skipPointers),
         start_(list.upper),
         size_(list.size),
-        upperBound_(8 * list.upperSizeBytes - size_) {
+        upperBound_(estimateUpperBound(list)) {
     reset();
   }
 
@@ -506,7 +507,8 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
       skip -= cnt;
       position_ += kBitsPerBlock - cnt;
       outer_ += sizeof(block_t);
-      DCHECK_LT(outer_, (static_cast<size_t>(upperBound_) + size()) / 8);
+      DCHECK_LT(outer_, (static_cast<size_t>(upperBound_) + size() + 7) / 8)
+          << upperBound_ << " " << size() << " " << v;
       block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     }
 
@@ -590,21 +592,33 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
   }
 
  private:
+  using block_t = uint64_t;
+  // The size in bytes of the upper bits is limited by n + universe / 8,
+  // so a type that can hold either sizes or values is sufficient.
+  using OuterType = typename std::common_type<ValueType, SizeType>::type;
+
+  static ValueType estimateUpperBound(
+      const typename Encoder::CompressedList& list) {
+    size_t upperBound = 8 * list.upperSizeBytes - list.size;
+    // The bitvector is byte-aligned, so we may be overestimating the universe
+    // size. Make sure it fits in ValueType.
+    return static_cast<ValueType>(std::min<size_t>(
+        upperBound,
+        std::numeric_limits<ValueType>::max() >> list.numLowerBits));
+  }
+
   FOLLY_ALWAYS_INLINE bool setValue(size_t inner) {
     value_ = static_cast<ValueType>(8 * outer_ + inner - position_);
     return true;
   }
 
-  FOLLY_ALWAYS_INLINE void reposition(SizeType dest) {
+  // dest is a position in the bit vector, so SizeType may not be
+  // sufficient here.
+  FOLLY_ALWAYS_INLINE void reposition(size_t dest) {
     outer_ = dest / 8;
     block_ = folly::loadUnaligned<block_t>(start_ + outer_);
     block_ &= ~((block_t(1) << (dest % 8)) - 1);
   }
-
-  using block_t = uint64_t;
-  // The size in bytes of the upper bits is limited by n + universe / 8,
-  // so a type that can hold either sizes or values is sufficient.
-  using OuterType = typename std::common_type<ValueType, SizeType>::type;
 
   FOLLY_ALWAYS_INLINE void
   getPreviousInfo(block_t& block, size_t& inner, OuterType& outer) const {
@@ -647,8 +661,8 @@ template <
     class SizeType = typename Encoder::SkipValueType>
 class EliasFanoReader {
  public:
-  typedef Encoder EncoderType;
-  typedef typename Encoder::ValueType ValueType;
+  using EncoderType = Encoder;
+  using ValueType = typename Encoder::ValueType;
 
   explicit EliasFanoReader(const typename Encoder::CompressedList& list)
       : upper_(list), lower_(list.lower), numLowerBits_(list.numLowerBits) {
@@ -774,7 +788,8 @@ class EliasFanoReader {
         return true;
       }
 
-      // We might be in the middle of a run, iterate backwards to the beginning.
+      // We might be in the middle of a run of equal values, reposition by
+      // iterating backwards to its first element.
       auto valueLower = Instructions::bzhi(value_, numLowerBits_);
       while (!upper_.isAtBeginningOfRun() &&
              readLowerPart(position() - 1) == valueLower) {

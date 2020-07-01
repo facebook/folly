@@ -249,6 +249,7 @@ void testSkipTo(const std::vector<uint64_t>& data, const List& list) {
     testSkipTo<Reader, List>(data, list, steps);
   }
   testSkipTo<Reader, List>(data, list, std::numeric_limits<size_t>::max());
+
   {
     // Skip to the first element.
     Reader reader(list);
@@ -256,29 +257,32 @@ void testSkipTo(const std::vector<uint64_t>& data, const List& list) {
     EXPECT_EQ(reader.value(), data[0]);
     EXPECT_EQ(reader.position(), 0);
   }
-  {
-    // Skip past the last element.
-    Reader reader(list);
-    EXPECT_FALSE(reader.skipTo(data.back() + 1));
-    EXPECT_FALSE(reader.valid());
-    EXPECT_EQ(reader.position(), reader.size());
-    EXPECT_FALSE(reader.next());
-  }
-  {
-    // Skip to maximum integer.
-    Reader reader(list);
-    using ValueType = typename Reader::ValueType;
-    EXPECT_FALSE(reader.skipTo(std::numeric_limits<ValueType>::max()));
-    EXPECT_FALSE(reader.valid());
-    EXPECT_EQ(reader.position(), reader.size());
-    EXPECT_FALSE(reader.next());
-  }
-  // Skip past the last element and before the upperBound.
+
+  // Skip past the last element.
   using ValueType = typename Reader::ValueType;
-  if (const auto upperBound = getUniverseUpperBound<ValueType>(list);
-      upperBound && *upperBound != data.back()) {
+  std::vector<ValueType> valuesPastTheEnd = {
+      // max() is not representable, so both values are past the end.
+      static_cast<ValueType>(data.back() + 1),
+      std::numeric_limits<ValueType>::max(),
+  };
+
+  // Exercise skipping past the last element but before the inferred upper
+  // bound.
+  if (const auto upperBound =
+          getUniverseUpperBound<ValueType>(list).value_or(data.back() + 1);
+      upperBound != data.back()) {
+    ValueType base = data.back() + 1;
+    for (ValueType value = base + 1;
+         // Stop for overflow.
+         value > base && value < upperBound;
+         value += value - base) {
+      valuesPastTheEnd.push_back(value);
+    }
+  }
+
+  for (auto value : valuesPastTheEnd) {
     Reader reader(list);
-    EXPECT_FALSE(reader.skipTo(*upperBound));
+    EXPECT_FALSE(reader.skipTo(value));
     EXPECT_FALSE(reader.valid());
     EXPECT_EQ(reader.position(), reader.size());
     EXPECT_FALSE(reader.next());

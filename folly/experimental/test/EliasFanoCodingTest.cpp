@@ -34,16 +34,16 @@ namespace compression {
 // Overload to help CodingTestUtils retrieve the universe upperbound
 // of the list for certain test cases.
 template <typename ValueType, typename T>
-folly::Optional<std::size_t> getUniverseUpperBound(
+folly::Optional<ValueType> getUniverseUpperBound(
     const EliasFanoCompressedListBase<T>& list) {
-  constexpr ValueType maxUpperValue = std::numeric_limits<ValueType>::max();
-  const ValueType maxUpperBits = maxUpperValue >> list.numLowerBits;
-  const ValueType upperBitsUniverse = std::min(
-      static_cast<ValueType>(8 * list.upperSizeBytes - list.size),
-      maxUpperBits);
+  constexpr size_t kMaxUpperValue = std::numeric_limits<ValueType>::max();
+  const size_t maxUpperBits = kMaxUpperValue >> list.numLowerBits;
+  const ValueType upperBitsUniverse = static_cast<ValueType>(
+      std::min(8 * list.upperSizeBytes - list.size, maxUpperBits));
   return (upperBitsUniverse << list.numLowerBits) |
-      ((1 << list.numLowerBits) - 1);
+      ((ValueType(1) << list.numLowerBits) - 1);
 }
+
 } // namespace compression
 } // namespace folly
 
@@ -134,7 +134,7 @@ class EliasFanoCodingTest : public ::testing::Test {
     testAll<Reader, Encoder>(generateSeqList(1, 100000, 100));
     // max() cannot be read, as it is assumed an invalid value.
     // TODO(ott): It should be possible to lift this constraint.
-    testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max() - 1});
+    testAll<Reader, Encoder>({0, 1, std::numeric_limits<ValueType>::max() - 1});
     // Test data with additional trailing 0s in the upperBits by extending
     // the upper bound.
     constexpr uint64_t minUpperBoundExtension = 2;
