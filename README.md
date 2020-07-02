@@ -232,6 +232,67 @@ folly is available in [Vcpkg](https://github.com/Microsoft/vcpkg#vcpkg) and rele
 
 You may also use `vcpkg install folly:x64-windows --head` to build against `master`.
 
+#### Fedora 32
+
+Install the required packages:
+
+```
+  sudo dnf install \
+    gcc \
+    gcc-c++ \
+    cmake \
+    automake \
+    boost-devel \
+    libtool \
+    libunwind \
+    lz4-devel \
+    lzma-devel \
+    snappy-devel \
+    zlib-devel \
+    glog-devel \
+    gflags-devel \
+    scons \
+    double-conversion-devel \
+    openssl-devel \
+    libevent-devel
+```
+
+Optionally, install the following packages:
+
+```
+  sudo dnf install jemalloc-devel \
+    bzip2-devel \
+    libaio-devel \
+    binutils-devel \
+    libdwarf-devel \
+    liburing-devel \
+    libsodium-devel \
+    xz-devel \
+    bzip2-devel \
+    libzstd-devel
+```
+
+Download and install folly with the parameters listed below:
+
+```
+  git clone https://github.com/facebook/folly.git
+  cd folly
+  mkdir _build
+  cd _build
+  cmake "-DFPHSA_NAME_MISMATCHED=true"  ..
+  make -j $(nproc)
+  make install # with either sudo or DESTDIR as necessary
+```
+
+Note that we use FPHSA_NAME_MISMATCHED=true here because the package names
+used in several find_package function calls in folly_deps.cmake do not match
+the names of the xxx_FOUND variables used later in the cmake file and this
+causes cmake to output several warnings to this effect when it is executed.
+For instance, cmake expects that Zstd_FOUND would be used to report the state
+of a find_package(Zstd MODULE) function call, but in folly-deps.cmake,
+ZSTD_FOUND is used instead. When set to true, the FPHSA_NAME_MISMATCHED variable
+(or the NAME_MISMATCHED variable for newer signatures) mutes these warnings.
+
 #### Other Linux distributions
 
 - double-conversion (https://github.com/google/double-conversion)
@@ -248,7 +309,6 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
 
 - additional platform specific dependencies:
 
-  Fedora >= 21 64-bit (last tested on Fedora 28 64-bit)
     - gcc
     - gcc-c++
     - cmake
