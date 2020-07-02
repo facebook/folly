@@ -57,6 +57,10 @@ set(BIN_INSTALL_DIR bin CACHE STRING
 set(CMAKE_INSTALL_DIR lib/cmake/folly CACHE STRING
     "The subdirectory where CMake package config files should be installed")
 
+option(FOLLY_PACKAGE_RPM
+       "Build an rpm using the 'package' target."
+       OFF)
+
 option(BUILD_SHARED_LIBS
   "If enabled, build folly as a shared library.  \
   This is generally discouraged, since folly does not commit to having \
@@ -957,3 +961,11 @@ if (BUILD_TESTS)
 endif()
 
 add_subdirectory(folly)
+
+if(UNIX)
+    if (FOLLY_PACKAGE_RPM)
+        include(CMake/Version.cmake)
+        include(CMake/PackageRPM.cmake)
+        include(CPack)
+    endif()
+endif()
