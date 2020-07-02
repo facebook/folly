@@ -21,31 +21,10 @@
 #include <vector>
 
 #include <folly/Benchmark.h>
-#include <folly/Optional.h>
-#include <folly/Random.h>
 #include <folly/experimental/EliasFanoCoding.h>
 #include <folly/experimental/Select64.h>
 #include <folly/experimental/test/CodingTestUtils.h>
 #include <folly/init/Init.h>
-
-namespace folly {
-namespace compression {
-
-// Overload to help CodingTestUtils retrieve the universe upperbound
-// of the list for certain test cases.
-template <typename ValueType, typename T>
-folly::Optional<std::size_t> getUniverseUpperBound(
-    const EliasFanoCompressedListBase<T>& list) {
-  constexpr ValueType maxUpperValue = std::numeric_limits<ValueType>::max();
-  const ValueType maxUpperBits = maxUpperValue >> list.numLowerBits;
-  const ValueType upperBitsUniverse = std::min(
-      static_cast<ValueType>(8 * list.upperSizeBytes - list.size),
-      maxUpperBits);
-  return (upperBitsUniverse << list.numLowerBits) |
-      ((1 << list.numLowerBits) - 1);
-}
-} // namespace compression
-} // namespace folly
 
 using namespace folly::compression;
 
@@ -135,13 +114,6 @@ class EliasFanoCodingTest : public ::testing::Test {
     // max() cannot be read, as it is assumed an invalid value.
     // TODO(ott): It should be possible to lift this constraint.
     testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max() - 1});
-    // Test data with additional trailing 0s in the upperBits by extending
-    // the upper bound.
-    constexpr uint64_t minUpperBoundExtension = 2;
-    constexpr uint64_t maxUpperBoundExtension = 1024;
-    testAll<Reader, Encoder>(
-        generateRandomList(100 * 1000, 10 * 1000 * 1000),
-        folly::Random::rand32(minUpperBoundExtension, maxUpperBoundExtension));
   }
 };
 
