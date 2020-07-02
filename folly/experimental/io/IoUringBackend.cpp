@@ -376,7 +376,7 @@ void IoUringBackend::queueRead(
     buf, nbytes
   };
   auto* iocb = new ReadIoSqe(this, fd, &iov, offset, std::move(cb));
-  iocb->backendCb_ = processReadWriteCB;
+  iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
   submitList_.push_back(*iocb);
@@ -393,7 +393,7 @@ void IoUringBackend::queueWrite(
     const_cast<void*>(buf), nbytes
   };
   auto* iocb = new WriteIoSqe(this, fd, &iov, offset, std::move(cb));
-  iocb->backendCb_ = processReadWriteCB;
+  iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
   submitList_.push_back(*iocb);
@@ -406,7 +406,7 @@ void IoUringBackend::queueReadv(
     off_t offset,
     FileOpCallback&& cb) {
   auto* iocb = new ReadvIoSqe(this, fd, iovecs, offset, std::move(cb));
-  iocb->backendCb_ = processReadWriteCB;
+  iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
   submitList_.push_back(*iocb);
@@ -419,15 +419,32 @@ void IoUringBackend::queueWritev(
     off_t offset,
     FileOpCallback&& cb) {
   auto* iocb = new WritevIoSqe(this, fd, iovecs, offset, std::move(cb));
-  iocb->backendCb_ = processReadWriteCB;
+  iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
   submitList_.push_back(*iocb);
   numInsertedEvents_++;
 }
 
-void IoUringBackend::processReadWrite(IoCb* ioCb, int64_t res) noexcept {
-  auto* ioSqe = reinterpret_cast<ReadWriteIoSqe*>(ioCb);
+void IoUringBackend::queueFsync(int fd, FileOpCallback&& cb) {
+  queueFsync(fd, FSyncFlags::FLAGS_FSYNC, std::move(cb));
+}
+
+void IoUringBackend::queueFdatasync(int fd, FileOpCallback&& cb) {
+  queueFsync(fd, FSyncFlags::FLAGS_FDATASYNC, std::move(cb));
+}
+
+void IoUringBackend::queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb) {
+  auto* iocb = new FSyncIoSqe(this, fd, flags, std::move(cb));
+  iocb->backendCb_ = processFileOpCB;
+  incNumIoCbInUse();
+
+  submitList_.push_back(*iocb);
+  numInsertedEvents_++;
+}
+
+void IoUringBackend::processFileOp(IoCb* ioCb, int64_t res) noexcept {
+  auto* ioSqe = reinterpret_cast<FileOpIoSqe*>(ioCb);
   // save the res
   ioSqe->res_ = res;
   activeEvents_.push_back(*ioCb);

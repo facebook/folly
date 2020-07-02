@@ -896,11 +896,22 @@ TEST(IoUringBackend, FileWriteMany) {
 
   AlignedBuf bigWriteData(kBigBlockSize, 'A');
 
+  bool bFdatasync = false;
+
   for (size_t i = 0; i < kNumBlocks; i++) {
     folly::IoUringBackend::FileOpCallback writeCb = [&, i](int res) {
       CHECK_EQ(res, writeDataVec[i].size());
       ++num;
+
+      if (num == kNumBlocks) {
+        folly::IoUringBackend::FileOpCallback fdatasyncCb = [&](int res) {
+          CHECK_EQ(res, 0);
+          bFdatasync = true;
+        };
+        backendPtr->queueFdatasync(fd, std::move(fdatasyncCb));
+      }
     };
+
     backendPtr->queueWrite(
         fd,
         writeDataVec[i].data(),
@@ -908,8 +919,21 @@ TEST(IoUringBackend, FileWriteMany) {
         i * kBlockSize,
         std::move(writeCb));
   }
+
+  evb.loop();
+  EXPECT_EQ(num, kNumBlocks);
+  EXPECT_EQ(bFdatasync, true);
+
+  bool bFsync = false;
   folly::IoUringBackend::FileOpCallback bigWriteCb = [&](int res) {
     CHECK_EQ(res, bigWriteData.size());
+
+    folly::IoUringBackend::FileOpCallback fsyncCb = [&](int res) {
+      CHECK_EQ(res, 0);
+      bFsync = true;
+    };
+
+    backendPtr->queueFsync(fd, std::move(fsyncCb));
   };
 
   backendPtr->queueWrite(
@@ -917,7 +941,7 @@ TEST(IoUringBackend, FileWriteMany) {
 
   evb.loop();
 
-  EXPECT_EQ(num, kNumBlocks);
+  EXPECT_EQ(bFsync, true);
 }
 
 namespace folly {

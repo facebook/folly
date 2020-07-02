@@ -52,9 +52,9 @@ class IoUringBackend : public PollIoBackend {
     return fdRegistry_.free(rec);
   }
 
-  // read/write file operation callback
+  // read/write/fsync/fdatasync file operation callback
   // int param is the io_uring_cqe res field
-  // i.e. the result of the read/write operation
+  // i.e. the result of the file operation
   using FileOpCallback = folly::Function<void(int)>;
 
   void queueRead(
@@ -82,6 +82,14 @@ class IoUringBackend : public PollIoBackend {
       Range<const struct iovec*> iovecs,
       off_t offset,
       FileOpCallback&& cb);
+
+  // there is no ordering between the prev submitted write
+  // requests and the sync ops
+  // ordering can be achieved by calling queue*sync from one of
+  // the prev write callbacks, once all the write operations
+  // we have to wait for are done
+  void queueFsync(int fd, FileOpCallback&& cb);
+  void queueFdatasync(int fd, FileOpCallback&& cb);
 
  protected:
   struct FdRegistry {
@@ -205,32 +213,11 @@ class IoUringBackend : public PollIoBackend {
     }
   };
 
-  struct ReadWriteIoSqe : public IoSqe {
-    ReadWriteIoSqe(
-        PollIoBackend* backend,
-        int fd,
-        const struct iovec* iov,
-        off_t offset,
-        FileOpCallback&& cb)
-        : IoSqe(backend, false),
-          fd_(fd),
-          iov_(iov, iov + 1),
-          offset_(offset),
-          cb_(std::move(cb)) {}
+  struct FileOpIoSqe : public IoSqe {
+    FileOpIoSqe(PollIoBackend* backend, int fd, FileOpCallback&& cb)
+        : IoSqe(backend, false), fd_(fd), cb_(std::move(cb)) {}
 
-    ReadWriteIoSqe(
-        PollIoBackend* backend,
-        int fd,
-        Range<const struct iovec*> iov,
-        off_t offset,
-        FileOpCallback&& cb)
-        : IoSqe(backend, false),
-          fd_(fd),
-          iov_(iov),
-          offset_(offset),
-          cb_(std::move(cb)) {}
-
-    ~ReadWriteIoSqe() override = default;
+    ~FileOpIoSqe() override = default;
 
     void processActive() override {
       cb_(res_);
@@ -239,10 +226,37 @@ class IoUringBackend : public PollIoBackend {
     int fd_{-1};
     int res_{-1};
 
+    FileOpCallback cb_;
+  };
+
+  struct ReadWriteIoSqe : public FileOpIoSqe {
+    ReadWriteIoSqe(
+        PollIoBackend* backend,
+        int fd,
+        const struct iovec* iov,
+        off_t offset,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)),
+          iov_(iov, iov + 1),
+          offset_(offset) {}
+
+    ReadWriteIoSqe(
+        PollIoBackend* backend,
+        int fd,
+        Range<const struct iovec*> iov,
+        off_t offset,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)), iov_(iov), offset_(offset) {}
+
+    ~ReadWriteIoSqe() override = default;
+
+    void processActive() override {
+      cb_(res_);
+    }
+
     static constexpr size_t kNumInlineIoVec = 4;
     folly::small_vector<struct iovec> iov_;
     off_t offset_;
-    FileOpCallback cb_;
   };
 
   struct ReadIoSqe : public ReadWriteIoSqe {
@@ -292,11 +306,48 @@ class IoUringBackend : public PollIoBackend {
     }
   };
 
-  void processReadWrite(IoCb* ioCb, int64_t res) noexcept;
+  enum class FSyncFlags {
+    FLAGS_FSYNC = 0,
+    FLAGS_FDATASYNC = 1,
+  };
 
-  static void
-  processReadWriteCB(PollIoBackend* backend, IoCb* ioCb, int64_t res) {
-    static_cast<IoUringBackend*>(backend)->processReadWrite(ioCb, res);
+  struct FSyncIoSqe : public FileOpIoSqe {
+    FSyncIoSqe(
+        PollIoBackend* backend,
+        int fd,
+        FSyncFlags flags,
+        FileOpCallback&& cb)
+        : FileOpIoSqe(backend, fd, std::move(cb)), flags_(flags) {}
+
+    ~FSyncIoSqe() override = default;
+
+    bool processSubmit(void* entry) override {
+      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+
+      unsigned int fsyncFlags = 0;
+      switch (flags_) {
+        case FSyncFlags::FLAGS_FSYNC:
+          fsyncFlags = 0;
+          break;
+        case FSyncFlags::FLAGS_FDATASYNC:
+          fsyncFlags = IORING_FSYNC_DATASYNC;
+          break;
+      }
+
+      ::io_uring_prep_fsync(sqe, fd_, fsyncFlags);
+      ::io_uring_sqe_set_data(sqe, this);
+      return true;
+    }
+
+    FSyncFlags flags_;
+  };
+
+  void queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb);
+
+  void processFileOp(IoCb* ioCb, int64_t res) noexcept;
+
+  static void processFileOpCB(PollIoBackend* backend, IoCb* ioCb, int64_t res) {
+    static_cast<IoUringBackend*>(backend)->processFileOp(ioCb, res);
   }
 
   PollIoBackend::IoCb* allocNewIoCb(const EventCallback& /*cb*/) override {
