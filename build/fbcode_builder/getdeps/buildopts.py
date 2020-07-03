@@ -178,7 +178,7 @@ class BuildOptions(object):
             }
         )
 
-    def compute_env_for_install_dirs(self, install_dirs, env=None):
+    def compute_env_for_install_dirs(self, install_dirs, env=None, manifest=None):
         if env is not None:
             env = env.copy()
         else:
@@ -214,30 +214,35 @@ class BuildOptions(object):
             lib_path = None
 
         for d in install_dirs:
-            add_path_entry(env, "CMAKE_PREFIX_PATH", d)
-
-            pkgconfig = os.path.join(d, "lib/pkgconfig")
-            if os.path.exists(pkgconfig):
-                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
-
-            pkgconfig = os.path.join(d, "lib64/pkgconfig")
-            if os.path.exists(pkgconfig):
-                add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
-
-            # Allow resolving shared objects built earlier (eg: zstd
-            # doesn't include the full path to the dylib in its linkage
-            # so we need to give it an assist)
-            if lib_path:
-                for lib in ["lib", "lib64"]:
-                    libdir = os.path.join(d, lib)
-                    if os.path.exists(libdir):
-                        add_path_entry(env, lib_path, libdir)
-
-            # Allow resolving binaries (eg: cmake, ninja) and dlls
-            # built by earlier steps
             bindir = os.path.join(d, "bin")
-            if os.path.exists(bindir):
-                add_path_entry(env, "PATH", bindir, append=False)
+
+            if not (
+                manifest and manifest.get("build", "disable_env_override_pkgconfig")
+            ):
+                pkgconfig = os.path.join(d, "lib/pkgconfig")
+                if os.path.exists(pkgconfig):
+                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
+                pkgconfig = os.path.join(d, "lib64/pkgconfig")
+                if os.path.exists(pkgconfig):
+                    add_path_entry(env, "PKG_CONFIG_PATH", pkgconfig)
+
+            if not (manifest and manifest.get("build", "disable_env_override_path")):
+                add_path_entry(env, "CMAKE_PREFIX_PATH", d)
+
+                # Allow resolving shared objects built earlier (eg: zstd
+                # doesn't include the full path to the dylib in its linkage
+                # so we need to give it an assist)
+                if lib_path:
+                    for lib in ["lib", "lib64"]:
+                        libdir = os.path.join(d, lib)
+                        if os.path.exists(libdir):
+                            add_path_entry(env, lib_path, libdir)
+
+                # Allow resolving binaries (eg: cmake, ninja) and dlls
+                # built by earlier steps
+                if os.path.exists(bindir):
+                    add_path_entry(env, "PATH", bindir, append=False)
 
             # If rustc is present in the `bin` directory, set RUSTC to prevent
             # cargo uses the rustc installed in the system.

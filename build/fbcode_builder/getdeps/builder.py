@@ -111,7 +111,9 @@ class BuilderBase(object):
     def _compute_env(self, install_dirs):
         # CMAKE_PREFIX_PATH is only respected when passed through the
         # environment, so we construct an appropriate path to pass down
-        return self.build_opts.compute_env_for_install_dirs(install_dirs, env=self.env)
+        return self.build_opts.compute_env_for_install_dirs(
+            install_dirs, env=self.env, manifest=self.manifest
+        )
 
     def get_dev_run_script_path(self):
         assert self.build_opts.is_windows()
@@ -125,11 +127,22 @@ class BuilderBase(object):
 
 
 class MakeBuilder(BuilderBase):
-    def __init__(self, build_opts, ctx, manifest, src_dir, build_dir, inst_dir, args):
+    def __init__(
+        self,
+        build_opts,
+        ctx,
+        manifest,
+        src_dir,
+        build_dir,
+        inst_dir,
+        build_args,
+        install_args,
+    ):
         super(MakeBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
-        self.args = args or []
+        self.build_args = build_args or []
+        self.install_args = install_args or []
 
     def _build(self, install_dirs, reconfigure):
         env = self._compute_env(install_dirs)
@@ -138,12 +151,12 @@ class MakeBuilder(BuilderBase):
         # libbpf uses it when generating its pkg-config file
         cmd = (
             ["make", "-j%s" % self.build_opts.num_jobs]
-            + self.args
+            + self.build_args
             + ["PREFIX=" + self.inst_dir]
         )
         self._run_cmd(cmd, env=env)
 
-        install_cmd = ["make", "install"] + self.args + ["PREFIX=" + self.inst_dir]
+        install_cmd = ["make"] + self.install_args + ["PREFIX=" + self.inst_dir]
         self._run_cmd(install_cmd, env=env)
 
 

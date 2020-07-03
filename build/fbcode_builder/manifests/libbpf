@@ -13,7 +13,11 @@ builder = nop
 builder = make
 subdir = libbpf-0.0.4/src
 
-[make.args]
+[make.build_args]
+BUILD_STATIC_ONLY=y
+
+[make.install_args]
+install
 BUILD_STATIC_ONLY=y
 
 [dependencies]

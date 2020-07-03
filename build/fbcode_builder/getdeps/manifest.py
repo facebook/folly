@@ -67,6 +67,8 @@ SCHEMA = {
             "builder": REQUIRED,
             "subdir": OPTIONAL,
             "build_in_src_dir": OPTIONAL,
+            "disable_env_override_pkgconfig": OPTIONAL,
+            "disable_env_override_path": OPTIONAL,
         },
     },
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
@@ -80,7 +82,8 @@ SCHEMA = {
     "debs": {"optional_section": True},
     "preinstalled.env": {"optional_section": True},
     "b2.args": {"optional_section": True},
-    "make.args": {"optional_section": True},
+    "make.build_args": {"optional_section": True},
+    "make.install_args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
     "shipit.pathmap": {"optional_section": True},
     "shipit.strip": {"optional_section": True},
@@ -94,7 +97,8 @@ ALLOWED_EXPR_SECTIONS = [
     "build",
     "cmake.defines",
     "dependencies",
-    "make.args",
+    "make.build_args",
+    "make.install_args",
     "b2.args",
     "download",
     "git",
@@ -234,8 +238,8 @@ class ManifestParser(object):
         return defval
 
     def get_section_as_args(self, section, ctx=None):
-        """ Intended for use with the make.args and autoconf.args
-        sections, this method collects the entries and returns an
+        """ Intended for use with the make.[build_args/install_args] and
+        autoconf.args sections, this method collects the entries and returns an
         array of strings.
         If the manifest contains conditional sections, ctx is used to
         evaluate the condition and merge in the values.
@@ -421,8 +425,18 @@ class ManifestParser(object):
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
         if builder == "make":
-            args = self.get_section_as_args("make.args", ctx)
-            return MakeBuilder(build_options, ctx, self, src_dir, None, inst_dir, args)
+            build_args = self.get_section_as_args("make.build_args", ctx)
+            install_args = self.get_section_as_args("make.install_args", ctx)
+            return MakeBuilder(
+                build_options,
+                ctx,
+                self,
+                src_dir,
+                None,
+                inst_dir,
+                build_args,
+                install_args,
+            )
 
         if builder == "autoconf":
             args = self.get_section_as_args("autoconf.args", ctx)
