@@ -464,6 +464,10 @@ class IOBufQueue {
     return res;
   }
 
+  folly::IOBuf moveAsValue() {
+    return std::move(*move());
+  }
+
   /**
    * Access the front IOBuf.
    *
