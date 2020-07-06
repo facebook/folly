@@ -71,6 +71,79 @@ struct await_iterator {
  private:
   InnerIterator it_;
 };
+
+template <typename Func, typename... Ts, std::size_t... I>
+void foreach(std::index_sequence<I...>, Func&& func, Ts&&... ts) {
+  (func(index_constant<I>{}, std::forward<Ts>(ts)), ...);
+}
+
+template <typename Out, typename T>
+typename std::enable_if<
+    !std::is_same<invoke_result_t<T>, Async<void>>::value,
+    Async<void>>::type
+executeAndMaybeAssign(Out& outref, T&& task) {
+  tryEmplaceWith(
+      outref, [task = static_cast<T&&>(task)] { return init_await(task()); });
+  return {};
+}
+
+template <typename Out, typename T>
+typename std::enable_if<
+    std::is_same<invoke_result_t<T>, Async<void>>::value,
+    Async<void>>::type
+executeAndMaybeAssign(Out& outref, T&& task) {
+  tryEmplaceWith(outref, [task = static_cast<T&&>(task)] {
+    init_await(task());
+    return unit;
+  });
+  return {};
+}
+
+template <typename T>
+using collected_result_t = lift_unit_t<async_inner_type_t<invoke_result_t<T>>>;
+
+template <
+    typename T,
+    typename... Ts,
+    typename TResult =
+        std::tuple<collected_result_t<T>, collected_result_t<Ts>...>>
+Async<TResult> collectAllImpl(T&& firstTask, Ts&&... tasks) {
+  std::tuple<Try<collected_result_t<T>>, Try<collected_result_t<Ts>>...> result;
+  size_t numPending{std::tuple_size<TResult>::value};
+  Baton b;
+
+  auto taskFunc = [&](auto& outref, auto&& task) -> Async<void> {
+    await(executeAndMaybeAssign(outref, std::forward<decltype(task)>(task)));
+
+    --numPending;
+    if (numPending == 0) {
+      b.post();
+    }
+
+    return {};
+  };
+
+  auto& fm = FiberManager::getFiberManager();
+  detail::foreach(
+      std::index_sequence_for<Ts...>{},
+      [&](auto i, auto&& task) {
+        addFiber(
+            [&]() {
+              return taskFunc(
+                  std::get<i + 1>(result), std::forward<decltype(task)>(task));
+            },
+            fm);
+      },
+      std::forward<Ts>(tasks)...);
+
+  // Use the current fiber to execute first task
+  await(taskFunc(std::get<0>(result), std::forward<T>(firstTask)));
+
+  // Wait for other tasks to complete
+  b.wait();
+
+  return unwrapTryTuple(result);
+}
 } // namespace detail
 
 template <class InputIterator, typename FuncType, typename ResultType>
@@ -93,6 +166,12 @@ typename std::
       detail::await_iterator<InputIterator>(last));
 
   return {};
+}
+
+template <typename... Ts, typename TResult>
+Async<TResult> collectAll(Ts&&... tasks) {
+  static_assert(sizeof...(Ts) > 0);
+  return detail::collectAllImpl(std::forward<Ts>(tasks)...);
 }
 
 } // namespace async

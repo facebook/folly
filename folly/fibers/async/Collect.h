@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/Traits.h>
 #include <folly/Try.h>
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/WhenN.h>
