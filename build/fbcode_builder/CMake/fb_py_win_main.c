@@ -6,7 +6,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 
-#define PATH_SIZE 1024
+#define PATH_SIZE 32768
 
 typedef int (*Py_Main)(int, wchar_t**);
 
@@ -46,7 +46,7 @@ int locate_py_main(int argc, wchar_t **argv) {
   // last added directory has highest priority
   add_search_path(L"C:\\Python36\\");
   add_search_path(L"C:\\Python37\\");
-  add_search_path(L"..\\python\\");
+  add_search_path(L"C:\\Python38\\");
 
   python_dll = LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 
