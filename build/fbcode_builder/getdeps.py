@@ -701,6 +701,7 @@ class TestCmd(ProjectCmdBase):
                     schedule_type=args.schedule_type,
                     owner=args.test_owner,
                     test_filter=args.filter,
+                    retry=args.retry,
                 )
 
             install_dirs.append(inst_dir)
@@ -711,6 +712,13 @@ class TestCmd(ProjectCmdBase):
         )
         parser.add_argument("--test-owner", help="Owner for testpilot")
         parser.add_argument("--filter", help="Only run the tests matching the regex")
+        parser.add_argument(
+            "--retry",
+            type=int,
+            default=3,
+            help="Number of immediate retries for failed tests "
+            "(noop in continuous and testwarden runs)",
+        )
 
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")

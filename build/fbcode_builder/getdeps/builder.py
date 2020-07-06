@@ -58,7 +58,7 @@ class BuilderBase(object):
                 return [vcvarsall, "amd64", "&&"]
         return []
 
-    def _run_cmd(self, cmd, cwd=None, env=None, use_cmd_prefix=True):
+    def _run_cmd(self, cmd, cwd=None, env=None, use_cmd_prefix=True, allow_fail=False):
         if env:
             e = self.env.copy()
             e.update(env)
@@ -72,7 +72,13 @@ class BuilderBase(object):
                 cmd = cmd_prefix + cmd
 
         log_file = os.path.join(self.build_dir, "getdeps_build.log")
-        run_cmd(cmd=cmd, env=env, cwd=cwd or self.build_dir, log_file=log_file)
+        return run_cmd(
+            cmd=cmd,
+            env=env,
+            cwd=cwd or self.build_dir,
+            log_file=log_file,
+            allow_fail=allow_fail,
+        )
 
     def build(self, install_dirs, reconfigure):
         print("Building %s..." % self.manifest.name)
@@ -94,7 +100,7 @@ class BuilderBase(object):
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -537,7 +543,7 @@ if __name__ == "__main__":
             env=env,
         )
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -606,6 +612,11 @@ if __name__ == "__main__":
                 )
             return tests
 
+        if schedule_type == "continuous" or schedule_type == "testwarden":
+            # for continuous and testwarden runs, disabling retry can give up
+            # better signals for flaky tests.
+            retry = 0
+
         testpilot = path_search(env, "testpilot")
         if testpilot:
             buck_test_info = list_tests()
@@ -629,7 +640,7 @@ if __name__ == "__main__":
                 self.build_opts.fbsource_dir,
                 "--buck-test-info",
                 buck_test_info_name,
-                "--retry=3",
+                "--retry=%d" % retry,
                 "-j=%s" % str(self.build_opts.num_jobs),
                 "--test-config",
                 "platform=%s" % machine_suffix,
@@ -692,7 +703,18 @@ if __name__ == "__main__":
             args = [ctest, "--output-on-failure", "-j", str(self.build_opts.num_jobs)]
             if test_filter:
                 args += ["-R", test_filter]
-            self._run_cmd(args, env=env, use_cmd_prefix=use_cmd_prefix)
+
+            count = 0
+            while count < retry:
+                retcode = self._run_cmd(
+                    args, env=env, use_cmd_prefix=use_cmd_prefix, allow_fail=True
+                )
+                if retcode == 0:
+                    break
+                if count == 0:
+                    # Only add this option in the second run.
+                    args += ["--rerun-failed"]
+                count += 1
 
 
 class NinjaBootstrap(BuilderBase):
@@ -1041,7 +1063,7 @@ incremental = false
         self.run_cargo(install_dirs, "build")
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter):
+    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
         if test_filter:
             args = ["--", test_filter]
         else:
