@@ -48,7 +48,7 @@ int main(int argc, char** argv) {
 /*
  * Output:
 ============================================================================
-folly/experimental/test/AtomicReadMostlyMainPtrBenchmark.cpprelative  time/iter  iters/s
+AtomicReadMostlyMainPtrBenchmark.cpp            relative  time/iter  iters/s
 ============================================================================
 SingleThreadedLoads                                         14.36ns   69.65M
 SingleThreadedStores                                         5.88us  170.15K
