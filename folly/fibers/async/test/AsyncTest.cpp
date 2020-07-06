@@ -192,6 +192,10 @@ TEST(AsyncTest, asyncTask) {
         onFiber());
   };
 
+  auto voidCoroFn = []() -> folly::coro::Task<void> {
+    co_await folly::coro::sleep(std::chrono::milliseconds(1));
+  };
+
   folly::EventBase evb;
   auto& fm = getFiberManager(evb);
 
@@ -200,6 +204,7 @@ TEST(AsyncTest, asyncTask) {
       EXPECT_EQ(
           std::make_tuple(std::this_thread::get_id(), true, false),
           async::init_await(async::taskWait(coroFn())));
+      async::init_await(async::taskWait(voidCoroFn()));
     })
       .getVia(&evb);
 }
