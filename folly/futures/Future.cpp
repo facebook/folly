@@ -79,4 +79,16 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
 #endif
 
 } // namespace futures
+
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+namespace futures {
+namespace detail {
+template class FutureBase<Unit>;
+} // namespace detail
+} // namespace futures
+
+template class Future<Unit>;
+template class SemiFuture<Unit>;
+#endif
+
 } // namespace folly

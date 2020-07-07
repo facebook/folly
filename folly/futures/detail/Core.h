@@ -1027,6 +1027,12 @@ class Core final {
   std::unique_ptr<exception_wrapper> interrupt_{};
   std::function<void(exception_wrapper const&)> interruptHandler_{nullptr};
 };
+
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+extern template class Core<folly::Unit>;
+#endif
+
 } // namespace detail
 } // namespace futures
 

@@ -346,4 +346,7 @@ auto unwrapTryTuple(Tuple&& instance) {
   return try_detail::unwrapTryTupleImpl(Seq{}, std::forward<Tuple>(instance));
 }
 
+// limited to the instances unconditionally forced by the futures library
+extern template class Try<Unit>;
+
 } // namespace folly

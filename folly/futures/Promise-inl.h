@@ -159,4 +159,9 @@ bool Promise<T>::isFulfilled() const noexcept {
   return true;
 }
 
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+extern template class Promise<Unit>;
+#endif
+
 } // namespace folly

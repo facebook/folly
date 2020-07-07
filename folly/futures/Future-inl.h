@@ -2571,4 +2571,14 @@ SemiFuture<Unit> Timekeeper::at(std::chrono::time_point<Clock> when) {
   return after(std::chrono::duration_cast<HighResDuration>(when - now));
 }
 
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+namespace futures {
+namespace detail {
+extern template class FutureBase<Unit>;
+} // namespace detail
+} // namespace futures
+extern template class Future<Unit>;
+extern template class SemiFuture<Unit>;
+#endif
 } // namespace folly

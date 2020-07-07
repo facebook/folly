@@ -105,4 +105,9 @@ bool SharedPromise<T>::isFulfilled() const {
   return hasResult();
 }
 
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+extern template class SharedPromise<Unit>;
+#endif
+
 } // namespace folly
