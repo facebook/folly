@@ -172,6 +172,7 @@ check_cxx_source_compiles("
 if(NOT FOLLY_CPP_ATOMIC_BUILTIN)
   list(APPEND CMAKE_REQUIRED_LIBRARIES atomic)
   list(APPEND FOLLY_LINK_LIBRARIES atomic)
+  set(ATOMIC_LIBRARY "atomic")
   check_cxx_source_compiles("
     #include <atomic>
     int main(int argc, char** argv) {
