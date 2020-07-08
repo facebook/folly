@@ -117,7 +117,6 @@ class PollIoBackend : public EventBaseBackendBase {
     PollIoBackend* backend_;
     BackendCb* backendCb_{nullptr};
     const bool poolAlloc_;
-    IoCb* next_{nullptr}; // this is for the free list
     Event* event_{nullptr};
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
@@ -357,9 +356,9 @@ class PollIoBackend : public EventBaseBackendBase {
 
   Options options_;
   size_t numEntries_;
-  IoCb* timerEntry_{nullptr};
-  IoCb* signalReadEntry_{nullptr};
-  IoCb* freeHead_{nullptr};
+  std::unique_ptr<IoCb> timerEntry_;
+  std::unique_ptr<IoCb> signalReadEntry_;
+  IoCbList freeList_;
 
   // timer related
   int timerFd_{-1};

@@ -122,7 +122,7 @@ class IoUringBackend : public PollIoBackend {
   int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
 
   struct IoSqe : public PollIoBackend::IoCb {
-    explicit IoSqe(PollIoBackend* backend = nullptr, bool poolAlloc = true)
+    explicit IoSqe(PollIoBackend* backend = nullptr, bool poolAlloc = false)
         : PollIoBackend::IoCb(backend, poolAlloc) {}
     ~IoSqe() override = default;
 
@@ -386,7 +386,8 @@ class IoUringBackend : public PollIoBackend {
   }
 
   PollIoBackend::IoCb* allocNewIoCb(const EventCallback& /*cb*/) override {
-    auto* ret = new IoSqe(this, false);
+    // allow pool alloc if numIoCbInUse_ < numEntries_
+    auto* ret = new IoSqe(this, numIoCbInUse_ < numEntries_);
     ret->backendCb_ = PollIoBackend::processPollIoCb;
 
     return ret;
@@ -395,8 +396,6 @@ class IoUringBackend : public PollIoBackend {
   void cleanup();
 
   size_t submit_internal();
-
-  std::unique_ptr<IoSqe[]> entries_;
 
   // io_uring related
   struct io_uring_params params_;

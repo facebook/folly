@@ -113,26 +113,13 @@ IoUringBackend::IoUringBackend(Options options)
 
   numEntries_ *= 2;
 
-  entries_.reset(new IoSqe[numEntries_]);
-
   // timer entry
-  timerEntry_ = &entries_[0];
-  timerEntry_->backend_ = this;
+  timerEntry_ = std::make_unique<IoSqe>(this, false);
   timerEntry_->backendCb_ = PollIoBackend::processTimerIoCb;
 
   // signal entry
-  signalReadEntry_ = &entries_[1];
-  signalReadEntry_->backend_ = this;
+  signalReadEntry_ = std::make_unique<IoSqe>(this, false);
   signalReadEntry_->backendCb_ = PollIoBackend::processSignalReadIoCb;
-
-  // build the free list - first 2 entres are reserved
-  for (size_t i = 2; i < numEntries_; ++i) {
-    entries_[i].next_ = (i == (numEntries_ - 1)) ? nullptr : &entries_[i + 1];
-    entries_[i].backend_ = this;
-    entries_[i].backendCb_ = PollIoBackend::processPollIoCb;
-  }
-
-  freeHead_ = &entries_[2];
 
   // we need to call the init before adding the timer fd
   // so we avoid a deadlock - waiting for the queue to be drained
@@ -146,7 +133,6 @@ IoUringBackend::IoUringBackend(Options options)
   // add the timer fd
   if (!addTimerFd() || !addSignalFds()) {
     cleanup();
-    entries_.reset();
     throw NotAvailable("io_uring_submit error");
   }
 }
@@ -182,6 +168,15 @@ void IoUringBackend::cleanup() {
         releaseIoCb(sqe);
         ::io_uring_cqe_seen(&ioRing_, cqe);
       }
+    }
+
+    // free the entries
+    timerEntry_.reset();
+    signalReadEntry_.reset();
+    while (!freeList_.empty()) {
+      auto* ioCb = &freeList_.front();
+      freeList_.pop_front();
+      delete ioCb;
     }
 
     // exit now
