@@ -111,9 +111,6 @@ IoUringBackend::IoUringBackend(Options options)
     throw NotAvailable("io_uring_queue_init error");
   }
 
-  sqRingMask_ = *ioRing_.sq.kring_mask;
-  cqRingMask_ = *ioRing_.cq.kring_mask;
-
   numEntries_ *= 2;
 
   entries_.reset(new IoSqe[numEntries_]);
@@ -307,48 +304,9 @@ size_t IoUringBackend::submitList(
     auto* sqe = ::io_uring_get_sqe(&ioRing_);
     CHECK(sqe); // this should not happen
 
-    auto* ev = entry->event_->getEvent();
-    if (ev) {
-      const auto& cb = entry->event_->getCallback();
-      bool processed = false;
-      switch (cb.type_) {
-        case EventCallback::Type::TYPE_NONE:
-          processed = entry->processSubmit(sqe);
-          break;
-        case EventCallback::Type::TYPE_READ:
-          if (auto* iov = cb.readCb_->allocateData()) {
-            processed = true;
-            entry->prepRead(
-                sqe,
-                ev->ev_fd,
-                &iov->data_,
-                0,
-                (ev->ev_events & EV_PERSIST) != 0);
-            entry->cbData_.set(iov);
-          }
-          break;
-        case EventCallback::Type::TYPE_RECVMSG:
-          if (auto* msg = cb.recvmsgCb_->allocateData()) {
-            processed = true;
-            entry->prepRecvmsg(
-                sqe, ev->ev_fd, &msg->data_, (ev->ev_events & EV_PERSIST) != 0);
-            entry->cbData_.set(msg);
-          }
-          break;
-      }
-
-      if (!processed) {
-        entry->cbData_.reset();
-        entry->prepPollAdd(
-            sqe,
-            ev->ev_fd,
-            getPollFlags(ev->ev_events),
-            (ev->ev_events & EV_PERSIST) != 0);
-      }
-    } else {
-      entry->processSubmit(sqe);
-    }
+    entry->processSubmit(sqe);
     i++;
+
     if (ioCbs.empty()) {
       int num = submitBusyCheck(i, waitForEvents);
       CHECK_EQ(num, i);

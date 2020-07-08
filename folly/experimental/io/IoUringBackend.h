@@ -126,6 +126,48 @@ class IoUringBackend : public PollIoBackend {
         : PollIoBackend::IoCb(backend, poolAlloc) {}
     ~IoSqe() override = default;
 
+    void processSubmit(void* entry) override {
+      auto* ev = event_->getEvent();
+      if (ev) {
+        struct io_uring_sqe* sqe =
+            reinterpret_cast<struct io_uring_sqe*>(entry);
+        const auto& cb = event_->getCallback();
+        switch (cb.type_) {
+          case EventCallback::Type::TYPE_NONE:
+            break;
+          case EventCallback::Type::TYPE_READ:
+            if (auto* iov = cb.readCb_->allocateData()) {
+              prepRead(
+                  sqe,
+                  ev->ev_fd,
+                  &iov->data_,
+                  0,
+                  (ev->ev_events & EV_PERSIST) != 0);
+              cbData_.set(iov);
+              return;
+            }
+            break;
+          case EventCallback::Type::TYPE_RECVMSG:
+            if (auto* msg = cb.recvmsgCb_->allocateData()) {
+              prepRecvmsg(
+                  sqe,
+                  ev->ev_fd,
+                  &msg->data_,
+                  (ev->ev_events & EV_PERSIST) != 0);
+              cbData_.set(msg);
+              return;
+            }
+            break;
+        }
+
+        prepPollAdd(
+            sqe,
+            ev->ev_fd,
+            getPollFlags(ev->ev_events),
+            (ev->ev_events & EV_PERSIST) != 0);
+      }
+    }
+
     void prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd)
         override {
       CHECK(entry);
@@ -148,7 +190,7 @@ class IoUringBackend : public PollIoBackend {
         int fd,
         const struct iovec* iov,
         off_t offset,
-        bool registerFd) override {
+        bool registerFd) {
       CHECK(entry);
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       if (registerFd && !fdRecord_) {
@@ -170,7 +212,7 @@ class IoUringBackend : public PollIoBackend {
         int fd,
         const struct iovec* iov,
         off_t offset,
-        bool registerFd) override {
+        bool registerFd) {
       CHECK(entry);
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       if (registerFd && !fdRecord_) {
@@ -187,8 +229,7 @@ class IoUringBackend : public PollIoBackend {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    void prepRecvmsg(void* entry, int fd, struct msghdr* msg, bool registerFd)
-        override {
+    void prepRecvmsg(void* entry, int fd, struct msghdr* msg, bool registerFd) {
       CHECK(entry);
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       if (registerFd && !fdRecord_) {
@@ -264,9 +305,8 @@ class IoUringBackend : public PollIoBackend {
 
     ~ReadIoSqe() override = default;
 
-    bool processSubmit(void* entry) override {
+    void processSubmit(void* entry) override {
       prepRead(entry, fd_, iov_.data(), offset_, false);
-      return true;
     }
   };
 
@@ -274,9 +314,8 @@ class IoUringBackend : public PollIoBackend {
     using ReadWriteIoSqe::ReadWriteIoSqe;
     ~WriteIoSqe() override = default;
 
-    bool processSubmit(void* entry) override {
+    void processSubmit(void* entry) override {
       prepWrite(entry, fd_, iov_.data(), offset_, false);
-      return true;
     }
   };
 
@@ -285,12 +324,10 @@ class IoUringBackend : public PollIoBackend {
 
     ~ReadvIoSqe() override = default;
 
-    bool processSubmit(void* entry) override {
+    void processSubmit(void* entry) override {
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       ::io_uring_prep_readv(sqe, fd_, iov_.data(), iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
-
-      return true;
     }
   };
 
@@ -298,11 +335,10 @@ class IoUringBackend : public PollIoBackend {
     using ReadWriteIoSqe::ReadWriteIoSqe;
     ~WritevIoSqe() override = default;
 
-    bool processSubmit(void* entry) override {
+    void processSubmit(void* entry) override {
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
       ::io_uring_prep_writev(sqe, fd_, iov_.data(), iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
-      return true;
     }
   };
 
@@ -321,7 +357,7 @@ class IoUringBackend : public PollIoBackend {
 
     ~FSyncIoSqe() override = default;
 
-    bool processSubmit(void* entry) override {
+    void processSubmit(void* entry) override {
       struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
 
       unsigned int fsyncFlags = 0;
@@ -336,7 +372,6 @@ class IoUringBackend : public PollIoBackend {
 
       ::io_uring_prep_fsync(sqe, fd_, fsyncFlags);
       ::io_uring_sqe_set_data(sqe, this);
-      return true;
     }
 
     FSyncFlags flags_;
@@ -366,9 +401,6 @@ class IoUringBackend : public PollIoBackend {
   // io_uring related
   struct io_uring_params params_;
   struct io_uring ioRing_;
-
-  uint32_t sqRingMask_{0};
-  uint32_t cqRingMask_{0};
 
   FdRegistry fdRegistry_;
 };

@@ -110,9 +110,7 @@ class PollIoBackend : public EventBaseBackendBase {
         : backend_(backend), poolAlloc_(poolAlloc) {}
     virtual ~IoCb() = default;
 
-    virtual bool processSubmit(void* /*entry*/) {
-      return false;
-    }
+    virtual void processSubmit(void* entry) = 0;
 
     virtual void processActive() {}
 
@@ -135,26 +133,6 @@ class PollIoBackend : public EventBaseBackendBase {
 
     virtual void
     prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd) = 0;
-
-    virtual void prepRead(
-        void* /*entry*/,
-        int /*fd*/,
-        const struct iovec* /*iov*/,
-        off_t /*offset*/,
-        bool /*registerFd*/) {}
-
-    virtual void prepWrite(
-        void* /*entry*/,
-        int /*fd*/,
-        const struct iovec* /*iov*/,
-        off_t /*offset*/,
-        bool /*registerFd*/) {}
-
-    virtual void prepRecvmsg(
-        void* /*entry*/,
-        int /*fd*/,
-        struct msghdr* /*msg*/,
-        bool /*registerFd*/) {}
 
     struct EventCallbackData {
       EventCallback::Type type_{EventCallback::Type::TYPE_NONE};
