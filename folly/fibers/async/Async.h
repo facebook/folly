@@ -19,6 +19,7 @@
 #include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/functional/Invoke.h>
+#include <folly/lang/CustomizationPoint.h>
 #include <glog/logging.h>
 #include <utility>
 
@@ -35,14 +36,23 @@ namespace detail {
  * cheap to include
  */
 bool onFiber();
+} // namespace detail
 
 struct await_fn {
   template <typename T>
-  T&& operator()(Async<T>&&) const noexcept;
-
-  void operator()(Async<void>&&) const noexcept {}
+  auto operator()(Async<T>&& async) const
+      noexcept(is_nothrow_tag_invocable<await_fn, Async<T>&&>::value)
+          -> tag_invoke_result_t<await_fn, Async<T>&&> {
+    return tag_invoke(*this, static_cast<Async<T>&&>(async));
+  }
 };
-} // namespace detail
+/**
+ * Function to retrieve the result from the Async wrapper
+ * A function calling await must return an Async wrapper itself
+ * for the wrapper to serve its intended purpose (the best way to enforce this
+ * is static analysis)
+ */
+FOLLY_DEFINE_CPO(await_fn, await)
 
 /**
  * Asynchronous fiber result wrapper
@@ -88,13 +98,16 @@ class [[nodiscard]] Async {
   Async& operator=(const Async&) = delete;
   Async& operator=(Async&&) = delete;
 
+  friend T&& tag_invoke(await_fn, Async && async) noexcept {
+    DCHECK(detail::onFiber());
+    return static_cast<T&&>(async.val_);
+  }
+
  private:
   T val_;
 
   template <typename U>
   friend class Async;
-
-  friend struct detail::await_fn;
 };
 
 template <>
@@ -110,6 +123,10 @@ class [[nodiscard]] Async<void> {
   Async(Async && other) = default;
   Async& operator=(const Async&) = delete;
   Async operator=(Async&&) = delete;
+
+  friend void tag_invoke(await_fn, Async &&) noexcept {
+    DCHECK(detail::onFiber());
+  }
 };
 
 #if __cpp_deduction_guides >= 201703
@@ -120,21 +137,6 @@ class [[nodiscard]] Async<void> {
 template <typename T>
 explicit Async(T)->Async<T>;
 #endif
-
-namespace detail {
-template <typename T>
-T&& await_fn::operator()(Async<T>&& async) const noexcept {
-  return static_cast<T&&>(async.val_);
-}
-} // namespace detail
-
-/**
- * Function to retrieve the result from the Async wrapper
- * A function calling await must return an Async wrapper itself
- * for the wrapper to serve its intended purpose (the best way to enforce this
- * is static analysis)
- */
-constexpr detail::await_fn await;
 
 /**
  * A utility to start annotating at top of stack (eg. the task which is added to
