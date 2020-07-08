@@ -91,87 +91,41 @@ using DeferredWrapper = std::unique_ptr<DeferredExecutor, UniqueDeleter>;
  */
 class KeepAliveOrDeferred {
  public:
-  KeepAliveOrDeferred(Executor::KeepAlive<> ka) : storage_{std::move(ka)} {
-    DCHECK(!isDeferred());
-  }
+  KeepAliveOrDeferred();
+  /* implicit */ KeepAliveOrDeferred(Executor::KeepAlive<> ka);
+  /* implicit */ KeepAliveOrDeferred(DeferredWrapper deferred);
+  KeepAliveOrDeferred(KeepAliveOrDeferred&& other) noexcept;
 
-  KeepAliveOrDeferred(DeferredWrapper deferred)
-      : storage_{std::move(deferred)} {}
+  ~KeepAliveOrDeferred();
 
-  KeepAliveOrDeferred() {}
+  KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other);
 
-  ~KeepAliveOrDeferred() {}
+  DeferredExecutor* getDeferredExecutor() const;
 
-  KeepAliveOrDeferred(KeepAliveOrDeferred&& other)
-      : storage_{std::move(other.storage_)} {}
+  Executor* getKeepAliveExecutor() const;
 
-  KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other) {
-    storage_ = std::move(other.storage_);
-    return *this;
-  }
+  Executor::KeepAlive<> stealKeepAlive() &&;
 
-  DeferredExecutor* getDeferredExecutor() const {
-    if (!isDeferred()) {
-      return nullptr;
-    }
-    return asDeferred().get();
-  }
+  std::unique_ptr<DeferredExecutor, UniqueDeleter> stealDeferred() &&;
 
-  Executor* getKeepAliveExecutor() const {
-    if (isDeferred()) {
-      return nullptr;
-    }
-    return asKeepAlive().get();
-  }
+  bool isDeferred() const;
 
-  Executor::KeepAlive<> stealKeepAlive() && {
-    if (isDeferred()) {
-      return Executor::KeepAlive<>{};
-    }
-    return std::move(asKeepAlive());
-  }
-
-  std::unique_ptr<DeferredExecutor, UniqueDeleter> stealDeferred() && {
-    if (!isDeferred()) {
-      return std::unique_ptr<DeferredExecutor, UniqueDeleter>{};
-    }
-    return std::move(asDeferred());
-  }
-
-  bool isDeferred() const {
-    return boost::get<DeferredWrapper>(&storage_) != nullptr;
-  }
-
-  bool isKeepAlive() const {
-    return !isDeferred();
-  }
+  bool isKeepAlive() const;
 
   KeepAliveOrDeferred copy() const;
 
-  explicit operator bool() const {
-    return getDeferredExecutor() || getKeepAliveExecutor();
-  }
+  explicit operator bool() const;
 
  private:
-  boost::variant<DeferredWrapper, Executor::KeepAlive<>> storage_;
-
   friend class DeferredExecutor;
 
-  Executor::KeepAlive<>& asKeepAlive() {
-    return boost::get<Executor::KeepAlive<>>(storage_);
-  }
+  Executor::KeepAlive<>& asKeepAlive();
+  const Executor::KeepAlive<>& asKeepAlive() const;
 
-  const Executor::KeepAlive<>& asKeepAlive() const {
-    return boost::get<Executor::KeepAlive<>>(storage_);
-  }
+  DeferredWrapper& asDeferred();
+  const DeferredWrapper& asDeferred() const;
 
-  DeferredWrapper& asDeferred() {
-    return boost::get<DeferredWrapper>(storage_);
-  }
-
-  const DeferredWrapper& asDeferred() const {
-    return boost::get<DeferredWrapper>(storage_);
-  }
+  boost::variant<DeferredWrapper, Executor::KeepAlive<>> storage_;
 };
 
 /**
@@ -186,159 +140,37 @@ class DeferredExecutor final {
   //  * store func until an executor is set otherwise
   void addFrom(
       Executor::KeepAlive<>&& completingKA,
-      Executor::KeepAlive<>::KeepAliveFunc func) {
-    auto state = state_.load(std::memory_order_acquire);
-    if (state == State::DETACHED) {
-      return;
-    }
+      Executor::KeepAlive<>::KeepAliveFunc func);
 
-    // If we are completing on the current executor, call inline, otherwise
-    // add
-    auto addWithInline =
-        [&](Executor::KeepAlive<>::KeepAliveFunc&& addFunc) mutable {
-          if (completingKA.get() == executor_.get()) {
-            addFunc(std::move(completingKA));
-          } else {
-            executor_.copy().add(std::move(addFunc));
-          }
-        };
+  Executor* getExecutor() const;
 
-    if (state == State::HAS_EXECUTOR) {
-      addWithInline(std::move(func));
-      return;
-    }
-    DCHECK(state == State::EMPTY);
-    func_ = std::move(func);
-    if (folly::atomic_compare_exchange_strong_explicit(
-            &state_,
-            &state,
-            State::HAS_FUNCTION,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
-      return;
-    }
-    DCHECK(state == State::DETACHED || state == State::HAS_EXECUTOR);
-    if (state == State::DETACHED) {
-      std::exchange(func_, nullptr);
-      return;
-    }
-    addWithInline(std::exchange(func_, nullptr));
-  }
+  void setExecutor(folly::Executor::KeepAlive<> executor);
 
-  Executor* getExecutor() const {
-    assert(executor_.get());
-    return executor_.get();
-  }
+  void setNestedExecutors(std::vector<DeferredWrapper> executors);
 
-  void setExecutor(folly::Executor::KeepAlive<> executor) {
-    if (nestedExecutors_) {
-      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
-      for (auto& nestedExecutor : *nestedExecutors) {
-        assert(nestedExecutor.get());
-        nestedExecutor.get()->setExecutor(executor.copy());
-      }
-    }
-    executor_ = std::move(executor);
-    auto state = state_.load(std::memory_order_acquire);
-    if (state == State::EMPTY &&
-        folly::atomic_compare_exchange_strong_explicit(
-            &state_,
-            &state,
-            State::HAS_EXECUTOR,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
-      return;
-    }
+  void detach();
 
-    DCHECK(state == State::HAS_FUNCTION);
-    state_.store(State::HAS_EXECUTOR, std::memory_order_release);
-    executor_.copy().add(std::exchange(func_, nullptr));
-  }
+  DeferredWrapper copy();
 
-  void setNestedExecutors(std::vector<DeferredWrapper> executors) {
-    DCHECK(!nestedExecutors_);
-    nestedExecutors_ =
-        std::make_unique<std::vector<DeferredWrapper>>(std::move(executors));
-  }
-
-  void detach() {
-    if (nestedExecutors_) {
-      auto nestedExecutors = std::exchange(nestedExecutors_, nullptr);
-      for (auto& nestedExecutor : *nestedExecutors) {
-        assert(nestedExecutor.get());
-        nestedExecutor.get()->detach();
-      }
-    }
-    auto state = state_.load(std::memory_order_acquire);
-    if (state == State::EMPTY &&
-        folly::atomic_compare_exchange_strong_explicit(
-            &state_,
-            &state,
-            State::DETACHED,
-            std::memory_order_release,
-            std::memory_order_acquire)) {
-      return;
-    }
-
-    DCHECK(state == State::HAS_FUNCTION);
-    state_.store(State::DETACHED, std::memory_order_release);
-    std::exchange(func_, nullptr);
-  }
-
-  DeferredWrapper copy() {
-    acquire();
-    return DeferredWrapper(this);
-  }
-
-  static DeferredWrapper create() {
-    return DeferredWrapper(new DeferredExecutor{});
-  }
+  static DeferredWrapper create();
 
  private:
-  DeferredExecutor() {}
   friend class UniqueDeleter;
 
-  bool acquire() {
-    auto keepAliveCount =
-        keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-    DCHECK(keepAliveCount > 0);
-    return true;
-  }
+  DeferredExecutor();
 
-  void release() {
-    auto keepAliveCount =
-        keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
-    DCHECK(keepAliveCount > 0);
-    if (keepAliveCount == 1) {
-      delete this;
-    }
-  }
+  bool acquire();
+
+  void release();
 
   enum class State { EMPTY, HAS_FUNCTION, HAS_EXECUTOR, DETACHED };
+
   std::atomic<State> state_{State::EMPTY};
   Executor::KeepAlive<>::KeepAliveFunc func_;
   folly::Executor::KeepAlive<> executor_;
   std::unique_ptr<std::vector<DeferredWrapper>> nestedExecutors_;
   std::atomic<ssize_t> keepAliveCount_{1};
 };
-
-inline void UniqueDeleter::operator()(DeferredExecutor* ptr) {
-  if (ptr) {
-    ptr->release();
-  }
-}
-
-inline KeepAliveOrDeferred KeepAliveOrDeferred::copy() const {
-  if (isDeferred()) {
-    if (auto def = getDeferredExecutor()) {
-      return KeepAliveOrDeferred{def->copy()};
-    } else {
-      return KeepAliveOrDeferred{};
-    }
-  } else {
-    return KeepAliveOrDeferred{asKeepAlive()};
-  }
-}
 
 /// The shared state object for Future and Promise.
 ///
