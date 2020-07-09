@@ -173,11 +173,7 @@ void IoUringBackend::cleanup() {
     // free the entries
     timerEntry_.reset();
     signalReadEntry_.reset();
-    while (!freeList_.empty()) {
-      auto* ioCb = &freeList_.front();
-      freeList_.pop_front();
-      delete ioCb;
-    }
+    freeList_.clear_and_dispose([](auto _) { delete _; });
 
     // exit now
     ::io_uring_queue_exit(&ioRing_);
