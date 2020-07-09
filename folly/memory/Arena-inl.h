@@ -23,26 +23,7 @@
 namespace folly {
 
 template <class Alloc>
-std::pair<typename Arena<Alloc>::Block*, size_t>
-Arena<Alloc>::Block::allocate(Alloc& alloc, size_t size, bool allowSlack) {
-  size_t allocSize = sizeof(Block) + size;
-  if (allowSlack) {
-    allocSize = ArenaAllocatorTraits<Alloc>::goodSize(alloc, allocSize);
-  }
-
-  void* mem = std::allocator_traits<Alloc>::allocate(alloc, allocSize);
-  return std::make_pair(new (mem) Block(), allocSize - sizeof(Block));
-}
-
-template <class Alloc>
-void Arena<Alloc>::Block::deallocate(Alloc& alloc) {
-  this->~Block();
-  std::allocator_traits<Alloc>::deallocate(alloc, this, 1);
-}
-
-template <class Alloc>
 void* Arena<Alloc>::allocateSlow(size_t size) {
-  std::pair<Block*, size_t> p;
   char* start;
 
   size_t allocSize;
@@ -55,31 +36,41 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
   }
 
   if (size > minBlockSize()) {
-    // Allocate a large block for this chunk only, put it at the back of the
-    // list so it doesn't get used for small allocations; don't change ptr_
-    // and end_, let them point into a normal block (or none, if they're
-    // null)
-    p = Block::allocate(alloc(), size, false);
-    start = p.first->start();
-    blocks_.push_back(*p.first);
+    // Allocate a large block for this chunk only; don't change ptr_ and end_,
+    // let them point into a normal block (or none, if they're null)
+    allocSize = sizeof(LargeBlock) + size;
+    void* mem = AllocTraits::allocate(alloc(), allocSize);
+    auto blk = new (mem) LargeBlock(allocSize);
+    start = blk->start();
+    largeBlocks_.push_front(*blk);
   } else {
     // Allocate a normal sized block and carve out size bytes from it
-    p = Block::allocate(alloc(), minBlockSize(), true);
-    start = p.first->start();
-    blocks_.push_front(*p.first);
+    // Will allocate more than size bytes if convenient
+    // (via ArenaAllocatorTraits::goodSize()) as we'll try to pack small
+    // allocations in this block.
+    allocSize = blockGoodAllocSize();
+    void* mem = AllocTraits::allocate(alloc(), allocSize);
+    auto blk = new (mem) Block();
+    start = blk->start();
+    blocks_.push_front(*blk);
     ptr_ = start + size;
-    end_ = start + p.second;
+    end_ = start + allocSize - sizeof(Block);
+    assert(ptr_ <= end_);
   }
 
-  assert(p.second >= size);
-  totalAllocatedSize_ += p.second + sizeof(Block);
+  totalAllocatedSize_ += allocSize;
   return start;
 }
 
 template <class Alloc>
 void Arena<Alloc>::merge(Arena<Alloc>&& other) {
+  FOLLY_SAFE_CHECK(
+      blockGoodAllocSize() == other.blockGoodAllocSize(),
+      "cannot merge arenas of different minBlockSize");
   blocks_.splice_after(blocks_.before_begin(), other.blocks_);
   other.blocks_.clear();
+  largeBlocks_.splice_after(largeBlocks_.before_begin(), other.largeBlocks_);
+  other.largeBlocks_.clear();
   other.ptr_ = other.end_ = nullptr;
   totalAllocatedSize_ += other.totalAllocatedSize_;
   other.totalAllocatedSize_ = 0;
@@ -87,7 +78,15 @@ void Arena<Alloc>::merge(Arena<Alloc>&& other) {
 
 template <class Alloc>
 Arena<Alloc>::~Arena() {
-  blocks_.clear_and_dispose([this](Block* b) { b->deallocate(this->alloc()); });
+  blocks_.clear_and_dispose([this](Block* b) {
+    b->~Block();
+    AllocTraits::deallocate(alloc(), b, blockGoodAllocSize());
+  });
+  largeBlocks_.clear_and_dispose([this](LargeBlock* b) {
+    auto size = b->allocSize;
+    b->~LargeBlock();
+    AllocTraits::deallocate(alloc(), b, size);
+  });
 }
 
 } // namespace folly
