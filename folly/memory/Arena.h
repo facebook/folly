@@ -126,35 +126,28 @@ class Arena {
   Arena& operator=(Arena&&) = delete;
 
  private:
-  using AllocTraits = std::allocator_traits<Alloc>;
-  using BlockLink = boost::intrusive::slist_member_hook<>;
+  struct Block;
+  typedef boost::intrusive::slist_member_hook<boost::intrusive::tag<Arena>>
+      BlockLink;
 
   struct alignas(max_align_v) Block {
     BlockLink link;
 
+    // Allocate a block with at least size bytes of storage.
+    // If allowSlack is true, allocate more than size bytes if convenient
+    // (via ArenaAllocatorTraits::goodSize()) as we'll try to pack small
+    // allocations in this block.
+    static std::pair<Block*, size_t>
+    allocate(Alloc& alloc, size_t size, bool allowSlack);
+    void deallocate(Alloc& alloc);
+
     char* start() {
       return reinterpret_cast<char*>(this + 1);
     }
 
+   private:
     Block() = default;
     ~Block() = default;
-  };
-
-  constexpr size_t blockGoodAllocSize() {
-    return ArenaAllocatorTraits<Alloc>::goodSize(
-        alloc(), sizeof(Block) + minBlockSize());
-  }
-
-  struct alignas(max_align_v) LargeBlock {
-    BlockLink link;
-    const size_t allocSize;
-
-    char* start() {
-      return reinterpret_cast<char*>(this + 1);
-    }
-
-    LargeBlock(size_t s) : allocSize(s) {}
-    ~LargeBlock() = default;
   };
 
  public:
@@ -190,13 +183,6 @@ class Arena {
       boost::intrusive::cache_last<true>>
       BlockList;
 
-  typedef boost::intrusive::slist<
-      LargeBlock,
-      boost::intrusive::member_hook<LargeBlock, BlockLink, &LargeBlock::link>,
-      boost::intrusive::constant_time_size<false>,
-      boost::intrusive::cache_last<true>>
-      LargeBlockList;
-
   void* allocateSlow(size_t size);
 
   // Empty member optimization: package Alloc with a non-empty member
@@ -220,7 +206,6 @@ class Arena {
 
   AllocAndSize allocAndSize_;
   BlockList blocks_;
-  LargeBlockList largeBlocks_;
   char* ptr_;
   char* end_;
   size_t totalAllocatedSize_;

@@ -33,7 +33,6 @@
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Align.h>
 #include <folly/lang/Exception.h>
-#include <folly/memory/Malloc.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/Malloc.h>
 
@@ -413,9 +412,8 @@ class SysAllocator {
     }
     return static_cast<T*>(p);
   }
-  void deallocate(T* p, size_t count) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
-    sizedFree(p, count * sizeof(lifted));
+  void deallocate(T* p, size_t /* count */) {
+    std::free(p);
   }
 
   friend bool operator==(Self const&, Self const&) noexcept {
