@@ -87,12 +87,18 @@ class Dwarf {
    */
   static const uint32_t kMaxInlineLocationInfoPerFrame = 10;
 
-  /** Find the file and line number information corresponding to address. */
+  /**
+   * Find the file and line number information corresponding to address.
+   * If `eachParameterName` is provided, the callback will be invoked once
+   * for each parameter of the function.
+   */
   bool findAddress(
       uintptr_t address,
       LocationInfoMode mode,
       LocationInfo& info,
-      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {},
+      folly::FunctionRef<void(const folly::StringPiece name)>
+          eachParameterName = {}) const;
 
  private:
   using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
@@ -110,14 +116,17 @@ class Dwarf {
 
   /**
    * Finds location info (file and line) for a given address in the given
-   * compilation unit.
+   * compilation unit. Invokes `eachParameterName`, if set, for each parameter
+   * of the given function.
    */
   bool findLocation(
       uintptr_t address,
       const LocationInfoMode mode,
       detail::CompilationUnit& cu,
       LocationInfo& info,
-      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {},
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName = {})
+      const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among

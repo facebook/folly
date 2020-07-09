@@ -432,6 +432,34 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   compareFrames(frames, frames2);
 }
 
+int64_t functionWithTwoParameters(size_t a, int32_t b) {
+  return a + b;
+}
+
+TEST(Dwarf, FindParameterNames) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
+  auto address = reinterpret_cast<uintptr_t>(functionWithTwoParameters);
+  Symbolizer symbolizer;
+  SymbolizedFrame frame;
+  ASSERT_TRUE(symbolizer.symbolize(address, frame));
+
+  std::vector<folly::StringPiece> names;
+  Dwarf dwarf(frame.file.get());
+  LocationInfo info;
+  folly::Range<SymbolizedFrame*> extraInlineFrames = {};
+  dwarf.findAddress(
+      address,
+      LocationInfoMode::FAST,
+      info,
+      extraInlineFrames,
+      [&](const folly::StringPiece name) { names.push_back(name); });
+
+  ASSERT_EQ(2, names.size());
+  ASSERT_EQ("a", names[0]);
+  ASSERT_EQ("b", names[1]);
+}
+
 } // namespace test
 } // namespace symbolizer
 } // namespace folly

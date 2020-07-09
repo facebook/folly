@@ -462,7 +462,8 @@ bool Dwarf::findLocation(
     const LocationInfoMode mode,
     detail::CompilationUnit& cu,
     LocationInfo& locationInfo,
-    folly::Range<SymbolizedFrame*> inlineFrames) const {
+    folly::Range<SymbolizedFrame*> inlineFrames,
+    folly::FunctionRef<void(folly::StringPiece)> eachParameterName) const {
   detail::Die die = getDieAtOffset(cu, cu.firstDie);
   // Partial compilation unit (DW_TAG_partial_unit) is not supported.
   FOLLY_SAFE_CHECK(
@@ -511,8 +512,10 @@ bool Dwarf::findLocation(
       lineVM.findAddress(address, locationInfo.file, locationInfo.line);
 
   // Look up whether inline function.
-  if (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty() &&
-      locationInfo.hasFileAndLine) {
+  bool checkInline =
+      (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty());
+
+  if (locationInfo.hasFileAndLine && (checkInline || eachParameterName)) {
     // Re-get the compilation unit with abbreviation cached.
     std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
     cu.abbrCache = folly::range(abbrs);
@@ -522,8 +525,23 @@ bool Dwarf::findLocation(
     detail::Die subprogram;
     findSubProgramDieForAddress(cu, die, address, subprogram);
 
+    if (eachParameterName) {
+      forEachChild(cu, subprogram, [&](const detail::Die& child) {
+        if (child.abbr.tag == DW_TAG_formal_parameter) {
+          forEachAttribute(cu, child, [&](const detail::Attribute& attribute) {
+            if (attribute.spec.name == DW_AT_name) {
+              eachParameterName(
+                  boost::get<folly::StringPiece>(attribute.attrValue));
+            }
+            return true;
+          });
+        }
+        return true;
+      });
+    }
+
     // Subprogram is the DIE of caller function.
-    if (subprogram.abbr.hasChildren) {
+    if (checkInline && subprogram.abbr.hasChildren) {
       // Use an extra location and get its call file and call line, so that
       // they can be used for the second last location when we don't have
       // enough inline frames for all inline functions call stack.
@@ -606,7 +624,9 @@ bool Dwarf::findAddress(
     uintptr_t address,
     LocationInfoMode mode,
     LocationInfo& locationInfo,
-    folly::Range<SymbolizedFrame*> inlineFrames) const {
+    folly::Range<SymbolizedFrame*> inlineFrames,
+    folly::FunctionRef<void(const folly::StringPiece name)> eachParameterName)
+    const {
   if (mode == LocationInfoMode::DISABLED) {
     return false;
   }
@@ -622,7 +642,8 @@ bool Dwarf::findAddress(
     if (findDebugInfoOffset(address, debugAranges_, offset)) {
       // Read compilation unit header from .debug_info
       auto unit = getCompilationUnit(debugInfo_, offset);
-      findLocation(address, mode, unit, locationInfo, inlineFrames);
+      findLocation(
+          address, mode, unit, locationInfo, inlineFrames, eachParameterName);
       return locationInfo.hasFileAndLine;
     } else if (mode == LocationInfoMode::FAST) {
       // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
@@ -645,7 +666,8 @@ bool Dwarf::findAddress(
   while (offset < debugInfo_.size() && !locationInfo.hasFileAndLine) {
     auto unit = getCompilationUnit(debugInfo_, offset);
     offset += unit.size;
-    findLocation(address, mode, unit, locationInfo, inlineFrames);
+    findLocation(
+        address, mode, unit, locationInfo, inlineFrames, eachParameterName);
   }
   return locationInfo.hasFileAndLine;
 }
