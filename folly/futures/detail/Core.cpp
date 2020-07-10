@@ -243,6 +243,321 @@ void DeferredExecutor::release() {
   }
 }
 
+bool CoreBase::hasResult() const noexcept {
+  constexpr auto allowed = State::OnlyResult | State::Done;
+  auto core = this;
+  auto state = core->state_.load(std::memory_order_acquire);
+  while (state == State::Proxy) {
+    core = core->proxy_;
+    state = core->state_.load(std::memory_order_acquire);
+  }
+  return State() != (state & allowed);
+}
+
+Executor* CoreBase::getExecutor() const {
+  if (!executor_.isKeepAlive()) {
+    return nullptr;
+  }
+  return executor_.getKeepAliveExecutor();
+}
+
+DeferredExecutor* CoreBase::getDeferredExecutor() const {
+  if (!executor_.isDeferred()) {
+    return {};
+  }
+
+  return executor_.getDeferredExecutor();
+}
+
+DeferredWrapper CoreBase::stealDeferredExecutor() {
+  if (executor_.isKeepAlive()) {
+    return {};
+  }
+
+  return std::move(executor_).stealDeferred();
+}
+
+void CoreBase::raise(exception_wrapper e) {
+  std::lock_guard<SpinLock> lock(interruptLock_);
+  if (!interrupt_ && !hasResult()) {
+    interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
+    if (interruptHandler_) {
+      interruptHandler_(*interrupt_);
+    }
+  }
+}
+
+std::function<void(exception_wrapper const&)> CoreBase::getInterruptHandler() {
+  if (!interruptHandlerSet_.load(std::memory_order_acquire)) {
+    return nullptr;
+  }
+  std::lock_guard<SpinLock> lock(interruptLock_);
+  return interruptHandler_;
+}
+
+class CoreBase::CoreAndCallbackReference {
+ public:
+  explicit CoreAndCallbackReference(CoreBase* core) noexcept : core_(core) {}
+
+  ~CoreAndCallbackReference() noexcept {
+    detach();
+  }
+
+  CoreAndCallbackReference(CoreAndCallbackReference const& o) = delete;
+  CoreAndCallbackReference& operator=(CoreAndCallbackReference const& o) =
+      delete;
+  CoreAndCallbackReference& operator=(CoreAndCallbackReference&&) = delete;
+
+  CoreAndCallbackReference(CoreAndCallbackReference&& o) noexcept
+      : core_(std::exchange(o.core_, nullptr)) {}
+
+  CoreBase* getCore() const noexcept {
+    return core_;
+  }
+
+ private:
+  void detach() noexcept {
+    if (core_) {
+      core_->derefCallback();
+      core_->detachOne();
+    }
+  }
+
+  CoreBase* core_{nullptr};
+};
+
+CoreBase::CoreBase(State state, unsigned char attached)
+    : state_(state), attached_(attached) {}
+
+CoreBase::~CoreBase() {}
+
+void CoreBase::setCallback_(
+    Callback&& callback,
+    std::shared_ptr<folly::RequestContext>&& context,
+    futures::detail::InlineContinuation allowInline) {
+  DCHECK(!hasCallback());
+  auto state = state_.load(std::memory_order_acquire);
+
+  CoreBase* proxy = nullptr;
+  if (state == State::Proxy) {
+    // proxy_ and callback_ share the storage, retrieve the pointer before we
+    // construct callback_.
+    proxy = proxy_;
+  }
+
+  ::new (&callback_) Callback(std::move(callback));
+  ::new (&context_) Context(std::move(context));
+
+  State nextState = allowInline == futures::detail::InlineContinuation::permit
+      ? State::OnlyCallbackAllowInline
+      : State::OnlyCallback;
+
+  if (state == State::Start) {
+    if (folly::atomic_compare_exchange_strong_explicit(
+            &state_,
+            &state,
+            nextState,
+            std::memory_order_release,
+            std::memory_order_acquire)) {
+      return;
+    }
+    assume(state == State::OnlyResult || state == State::Proxy);
+  }
+
+  if (state == State::OnlyResult) {
+    state_.store(State::Done, std::memory_order_relaxed);
+    doCallback(Executor::KeepAlive<>{}, state);
+    return;
+  }
+
+  if (state == State::Proxy) {
+    return proxyCallback(proxy, state);
+  }
+
+  terminate_with<std::logic_error>("setCallback unexpected state");
+}
+
+void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
+  DCHECK(!hasResult());
+
+  auto state = state_.load(std::memory_order_acquire);
+  switch (state) {
+    case State::Start:
+      if (folly::atomic_compare_exchange_strong_explicit(
+              &state_,
+              &state,
+              State::OnlyResult,
+              std::memory_order_release,
+              std::memory_order_acquire)) {
+        return;
+      }
+      assume(
+          state == State::OnlyCallback ||
+          state == State::OnlyCallbackAllowInline);
+      FOLLY_FALLTHROUGH;
+
+    case State::OnlyCallback:
+    case State::OnlyCallbackAllowInline:
+      state_.store(State::Done, std::memory_order_relaxed);
+      doCallback(std::move(completingKA), state);
+      return;
+    case State::OnlyResult:
+    case State::Proxy:
+    case State::Done:
+    case State::Empty:
+    default:
+      terminate_with<std::logic_error>("setResult unexpected state");
+  }
+}
+
+void CoreBase::setProxy_(CoreBase* proxy) {
+  DCHECK(!hasResult());
+
+  auto state = state_.load(std::memory_order_acquire);
+  switch (state) {
+    case State::Start:
+      if (folly::atomic_compare_exchange_strong_explicit(
+              &state_,
+              &state,
+              State::Proxy,
+              std::memory_order_release,
+              std::memory_order_acquire)) {
+        break;
+      }
+      assume(
+          state == State::OnlyCallback ||
+          state == State::OnlyCallbackAllowInline);
+      FOLLY_FALLTHROUGH;
+
+    case State::OnlyCallback:
+    case State::OnlyCallbackAllowInline:
+      proxyCallback(proxy, state);
+      break;
+    case State::OnlyResult:
+    case State::Proxy:
+    case State::Done:
+    case State::Empty:
+    default:
+      terminate_with<std::logic_error>("setCallback unexpected state");
+  }
+
+  // proxy_ and callback_ share the storage, so this needs to be done after
+  // proxyCallback() is called.
+  proxy_ = proxy;
+
+  detachOne();
+}
+
+// May be called at most once.
+void CoreBase::doCallback(
+    Executor::KeepAlive<>&& completingKA,
+    State priorState) {
+  DCHECK(state_ == State::Done);
+
+  auto executor = std::exchange(executor_, KeepAliveOrDeferred{});
+
+  // Customise inline behaviour
+  // If addCompletingKA is non-null, then we are allowing inline execution
+  auto doAdd = [](Executor::KeepAlive<>&& addCompletingKA,
+                  KeepAliveOrDeferred&& currentExecutor,
+                  auto&& keepAliveFunc) mutable {
+    if (auto deferredExecutorPtr = currentExecutor.getDeferredExecutor()) {
+      deferredExecutorPtr->addFrom(
+          std::move(addCompletingKA), std::move(keepAliveFunc));
+    } else {
+      // If executors match call inline
+      auto currentKeepAlive = std::move(currentExecutor).stealKeepAlive();
+      if (addCompletingKA.get() == currentKeepAlive.get()) {
+        keepAliveFunc(std::move(currentKeepAlive));
+      } else {
+        std::move(currentKeepAlive).add(std::move(keepAliveFunc));
+      }
+    }
+  };
+
+  if (executor) {
+    // If we are not allowing inline, clear the completing KA to disallow
+    if (!(priorState == State::OnlyCallbackAllowInline)) {
+      completingKA = Executor::KeepAlive<>{};
+    }
+    exception_wrapper ew;
+    // We need to reset `callback_` after it was executed (which can happen
+    // through the executor or, if `Executor::add` throws, below). The
+    // executor might discard the function without executing it (now or
+    // later), in which case `callback_` also needs to be reset.
+    // The `Core` has to be kept alive throughout that time, too. Hence we
+    // increment `attached_` and `callbackReferences_` by two, and construct
+    // exactly two `CoreAndCallbackReference` objects, which call
+    // `derefCallback` and `detachOne` in their destructor. One will guard
+    // this scope, the other one will guard the lambda passed to the executor.
+    attached_.fetch_add(2, std::memory_order_relaxed);
+    callbackReferences_.fetch_add(2, std::memory_order_relaxed);
+    CoreAndCallbackReference guard_local_scope(this);
+    CoreAndCallbackReference guard_lambda(this);
+    try {
+      doAdd(
+          std::move(completingKA),
+          std::move(executor),
+          [core_ref =
+               std::move(guard_lambda)](Executor::KeepAlive<>&& ka) mutable {
+            auto cr = std::move(core_ref);
+            CoreBase* const core = cr.getCore();
+            RequestContextScopeGuard rctx(std::move(core->context_));
+            core->callback_(*core, std::move(ka), nullptr);
+          });
+    } catch (const std::exception& e) {
+      ew = exception_wrapper(std::current_exception(), e);
+    } catch (...) {
+      ew = exception_wrapper(std::current_exception());
+    }
+    if (ew) {
+      RequestContextScopeGuard rctx(std::move(context_));
+      callback_(*this, Executor::KeepAlive<>{}, &ew);
+    }
+  } else {
+    attached_.fetch_add(1, std::memory_order_relaxed);
+    SCOPE_EXIT {
+      context_.~Context();
+      callback_.~Callback();
+      detachOne();
+    };
+    RequestContextScopeGuard rctx(std::move(context_));
+    callback_(*this, std::move(completingKA), nullptr);
+  }
+}
+
+void CoreBase::proxyCallback(CoreBase* proxy, State priorState) {
+  // If the state of the core being proxied had a callback that allows inline
+  // execution, maintain this information in the proxy
+  futures::detail::InlineContinuation allowInline =
+      (priorState == State::OnlyCallbackAllowInline
+           ? futures::detail::InlineContinuation::permit
+           : futures::detail::InlineContinuation::forbid);
+  state_.store(State::Empty, std::memory_order_relaxed);
+  proxy->setExecutor(std::move(executor_));
+  proxy->setCallback_(std::move(callback_), std::move(context_), allowInline);
+  proxy->detachFuture();
+  context_.~Context();
+  callback_.~Callback();
+}
+
+void CoreBase::detachOne() noexcept {
+  auto a = attached_.fetch_sub(1, std::memory_order_acq_rel);
+  assert(a >= 1);
+  if (a == 1) {
+    delete this;
+  }
+}
+
+void CoreBase::derefCallback() noexcept {
+  auto c = callbackReferences_.fetch_sub(1, std::memory_order_acq_rel);
+  assert(c >= 1);
+  if (c == 1) {
+    context_.~Context();
+    callback_.~Callback();
+  }
+}
+
 #if FOLLY_USE_EXTERN_FUTURE_UNIT
 template class Core<folly::Unit>;
 #endif
