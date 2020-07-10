@@ -28,6 +28,8 @@
 // ---------------------------------------------------------------------
 // SSLContext implementation
 // ---------------------------------------------------------------------
+namespace folly {
+
 namespace {
 
 int getExDataIndex() {
@@ -36,9 +38,69 @@ int getExDataIndex() {
   return index;
 }
 
-} // namespace
+/**
+ * Configure the given SSL context to use the given version.
+ */
+void configureProtocolVersion(SSL_CTX* ctx, SSLContext::SSLVersion version) {
+#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
+  // Disable TLS 1.3 by default, for now, if this version of OpenSSL
+  // supports it. There are some semantic differences (e.g. assumptions
+  // on getSession() returning a resumable session, SSL_CTX_set_ciphersuites,
+  // etc.)
+  //
+  SSL_CTX_set_max_proto_version(ctx, TLS1_2_VERSION);
 
-namespace folly {
+  /*
+   * From the OpenSSL docs https://fburl.com/ii9k29qw:
+   * Setting the minimum or maximum version to 0, will enable protocol versions
+   * down to the lowest version, or up to the highest version supported by the
+   * library, respectively.
+   *
+   * We can use that as the default/fallback.
+   */
+  int minVersion = 0;
+  switch (version) {
+    case SSLContext::SSLVersion::TLSv1:
+      minVersion = TLS1_VERSION;
+      break;
+    case SSLContext::SSLVersion::SSLv3:
+      minVersion = SSL3_VERSION;
+      break;
+    case SSLContext::SSLVersion::TLSv1_2:
+      minVersion = TLS1_2_VERSION;
+      break;
+    case SSLContext::SSLVersion::SSLv2:
+    default:
+      // do nothing
+      break;
+  }
+  int setMinProtoResult = SSL_CTX_set_min_proto_version(ctx, minVersion);
+  DCHECK(setMinProtoResult == 1)
+      << sformat("unsupported min TLS protocol version: 0x{:04x}", minVersion);
+#else
+  int opt = 0;
+  switch (version) {
+    case SSLContext::SSLVersion::TLSv1:
+      opt = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
+      break;
+    case SSLContext::SSLVersion::SSLv3:
+      opt = SSL_OP_NO_SSLv2;
+      break;
+    case SSLContext::SSLVersion::TLSv1_2:
+      opt = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
+          SSL_OP_NO_TLSv1_1;
+      break;
+    case SSLContext::SSLVersion::SSLv2:
+    default:
+      // do nothing
+      break;
+  }
+  int newOpt = SSL_CTX_set_options(ctx, opt);
+  DCHECK((newOpt & opt) == opt);
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 0)
+}
+
+} // namespace
 
 //
 // For OpenSSL portability API
@@ -52,35 +114,8 @@ SSLContext::SSLContext(SSLVersion version) {
     throw std::runtime_error("SSL_CTX_new: " + getErrors());
   }
 
-  int opt = 0;
-  switch (version) {
-    case TLSv1:
-      opt = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3;
-      break;
-    case SSLv3:
-      opt = SSL_OP_NO_SSLv2;
-      break;
-    case TLSv1_2:
-      opt = SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3 | SSL_OP_NO_TLSv1 |
-          SSL_OP_NO_TLSv1_1;
-      break;
-    case SSLv2:
-    default:
-      // do nothing
-      break;
-  }
-
-    // Disable TLS 1.3 by default, for now, if this version of OpenSSL
-    // supports it. There are some semantic differences (e.g. assumptions
-    // on getSession() returning a resumable session, SSL_CTX_set_ciphersuites,
-    // etc.)
-    //
-#if FOLLY_OPENSSL_IS_110
-  SSL_CTX_set_max_proto_version(ctx_, TLS1_2_VERSION);
-#endif
-
-  int newOpt = SSL_CTX_set_options(ctx_, opt);
-  DCHECK((newOpt & opt) == opt);
+  // configure the TLS version used
+  configureProtocolVersion(ctx_, version);
 
   SSL_CTX_set_mode(ctx_, SSL_MODE_AUTO_RETRY);
 
