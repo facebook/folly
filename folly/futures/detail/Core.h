@@ -433,14 +433,13 @@ class CoreBase {
   void setResult_(Executor::KeepAlive<>&& completingKA);
   void setProxy_(CoreBase* proxy);
   void doCallback(Executor::KeepAlive<>&& completingKA, State priorState);
-  void proxyCallback(CoreBase* proxy, State priorState);
+  void proxyCallback(State priorState);
 
   void detachOne() noexcept;
 
   void derefCallback() noexcept;
 
   union {
-    CoreBase* proxy_;
     Callback callback_;
   };
   std::atomic<State> state_;
@@ -454,6 +453,7 @@ class CoreBase {
   };
   std::unique_ptr<exception_wrapper> interrupt_{};
   std::function<void(exception_wrapper const&)> interruptHandler_{nullptr};
+  CoreBase* proxy_;
 };
 
 template <typename T>

@@ -336,18 +336,11 @@ void CoreBase::setCallback_(
     std::shared_ptr<folly::RequestContext>&& context,
     futures::detail::InlineContinuation allowInline) {
   DCHECK(!hasCallback());
-  auto state = state_.load(std::memory_order_acquire);
-
-  CoreBase* proxy = nullptr;
-  if (state == State::Proxy) {
-    // proxy_ and callback_ share the storage, retrieve the pointer before we
-    // construct callback_.
-    proxy = proxy_;
-  }
 
   ::new (&callback_) Callback(std::move(callback));
   ::new (&context_) Context(std::move(context));
 
+  auto state = state_.load(std::memory_order_acquire);
   State nextState = allowInline == futures::detail::InlineContinuation::permit
       ? State::OnlyCallbackAllowInline
       : State::OnlyCallback;
@@ -371,7 +364,7 @@ void CoreBase::setCallback_(
   }
 
   if (state == State::Proxy) {
-    return proxyCallback(proxy, state);
+    return proxyCallback(state);
   }
 
   terminate_with<std::logic_error>("setCallback unexpected state");
@@ -413,6 +406,8 @@ void CoreBase::setResult_(Executor::KeepAlive<>&& completingKA) {
 void CoreBase::setProxy_(CoreBase* proxy) {
   DCHECK(!hasResult());
 
+  proxy_ = proxy;
+
   auto state = state_.load(std::memory_order_acquire);
   switch (state) {
     case State::Start:
@@ -431,7 +426,7 @@ void CoreBase::setProxy_(CoreBase* proxy) {
 
     case State::OnlyCallback:
     case State::OnlyCallbackAllowInline:
-      proxyCallback(proxy, state);
+      proxyCallback(state);
       break;
     case State::OnlyResult:
     case State::Proxy:
@@ -440,10 +435,6 @@ void CoreBase::setProxy_(CoreBase* proxy) {
     default:
       terminate_with<std::logic_error>("setCallback unexpected state");
   }
-
-  // proxy_ and callback_ share the storage, so this needs to be done after
-  // proxyCallback() is called.
-  proxy_ = proxy;
 
   detachOne();
 }
@@ -526,7 +517,7 @@ void CoreBase::doCallback(
   }
 }
 
-void CoreBase::proxyCallback(CoreBase* proxy, State priorState) {
+void CoreBase::proxyCallback(State priorState) {
   // If the state of the core being proxied had a callback that allows inline
   // execution, maintain this information in the proxy
   futures::detail::InlineContinuation allowInline =
@@ -534,9 +525,9 @@ void CoreBase::proxyCallback(CoreBase* proxy, State priorState) {
            ? futures::detail::InlineContinuation::permit
            : futures::detail::InlineContinuation::forbid);
   state_.store(State::Empty, std::memory_order_relaxed);
-  proxy->setExecutor(std::move(executor_));
-  proxy->setCallback_(std::move(callback_), std::move(context_), allowInline);
-  proxy->detachFuture();
+  proxy_->setExecutor(std::move(executor_));
+  proxy_->setCallback_(std::move(callback_), std::move(context_), allowInline);
+  proxy_->detachFuture();
   context_.~Context();
   callback_.~Callback();
 }
