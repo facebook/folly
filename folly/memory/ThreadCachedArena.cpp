@@ -21,7 +21,9 @@
 namespace folly {
 
 ThreadCachedArena::ThreadCachedArena(size_t minBlockSize, size_t maxAlign)
-    : minBlockSize_(minBlockSize), maxAlign_(maxAlign) {}
+    : minBlockSize_(minBlockSize),
+      maxAlign_(maxAlign),
+      zombies_(folly::in_place, minBlockSize) {}
 
 SysArena* ThreadCachedArena::allocateThreadLocalArena() {
   auto arena = new SysArena(minBlockSize_, SysArena::kNoSizeLimit, maxAlign_);
