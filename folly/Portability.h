@@ -511,7 +511,15 @@ constexpr auto kCpplibVer = 0;
 
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
-#if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
+#if defined(_WIN32) && defined(__clang__)
+// LLVM and MSVC coroutines are ABI incompatible and <experimental/coroutine>
+// is the MSVC implementation on windows, so we *don't* have coroutines.
+//
+// Worse, if we define FOLLY_HAS_COROUTINES 1 we will include
+// <experimental/coroutine> which will conflict with anyone who wants to load
+// the LLVM implementation of coroutines on Windows.
+#define FOLLY_HAS_COROUTINES 0
+#elif __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 // This is mainly to workaround bugs triggered by LTO, when stack allocated
 // variables in await_suspend end up on a coroutine frame.
