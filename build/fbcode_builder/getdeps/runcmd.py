@@ -24,13 +24,13 @@ class RunCommandError(Exception):
     pass
 
 
-def _print_env_diff(env):
+def _print_env_diff(env, log_fn):
     current_keys = set(os.environ.keys())
     wanted_env = set(env.keys())
 
     unset_keys = current_keys.difference(wanted_env)
     for k in sorted(unset_keys):
-        print("+ unset %s" % k)
+        log_fn("+ unset %s\n" % k)
 
     added_keys = wanted_env.difference(current_keys)
     for k in wanted_env.intersection(current_keys):
@@ -39,11 +39,11 @@ def _print_env_diff(env):
 
     for k in sorted(added_keys):
         if ("PATH" in k) and (os.pathsep in env[k]):
-            print("+ %s=\\" % k)
+            log_fn("+ %s=\\\n" % k)
             for elem in env[k].split(os.pathsep):
-                print("+      %s%s\\" % (shellquote(elem), os.pathsep))
+                log_fn("+      %s%s\\\n" % (shellquote(elem), os.pathsep))
         else:
-            print("+ %s=%s \\" % (k, shellquote(env[k])))
+            log_fn("+ %s=%s \\\n" % (k, shellquote(env[k])))
 
 
 def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
@@ -76,7 +76,7 @@ def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
 
     if env:
         assert isinstance(env, Env)
-        _print_env_diff(env)
+        _print_env_diff(env, log_fn)
 
         # Convert from our Env type to a regular dict.
         # This is needed because python3 looks up b'PATH' and 'PATH'

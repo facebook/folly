@@ -43,8 +43,10 @@ fbcode/fboss/common = common
 \.pyc$
 
 [dependencies]
-fb303
+fb303-source
 fbthrift
+fbthrift-source
+openssl
 rust-shed
 
 [dependencies.fb=on]

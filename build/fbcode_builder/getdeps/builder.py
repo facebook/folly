@@ -990,7 +990,6 @@ class CargoBuilder(BuilderBase):
     def run_cargo(self, install_dirs, operation, args=None):
         args = args or []
         env = self._compute_env(install_dirs)
-        self.add_openssl_to_env(env, install_dirs)
         # Enable using nightly features with stable compiler
         env["RUSTC_BOOTSTRAP"] = "1"
         env["LIBZ_SYS_STATIC"] = "1"
@@ -1001,17 +1000,6 @@ class CargoBuilder(BuilderBase):
             "-j%s" % self.build_opts.num_jobs,
         ] + args
         self._run_cmd(cmd, cwd=self.workspace_dir(), env=env)
-
-    def add_openssl_to_env(self, env, install_dirs):
-        openssl_candidates = [d for d in install_dirs if "openssl" in d]
-        if len(openssl_candidates) > 1:
-            raise Exception(
-                "Found more than one candidate for openssl directory: {}.".format(
-                    openssl_candidates
-                )
-            )
-        elif len(openssl_candidates) == 1:
-            env["OPENSSL_DIR"] = openssl_candidates[0]
 
     def build_source_dir(self):
         return os.path.join(self.build_dir, "source")

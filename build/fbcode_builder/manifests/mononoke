@@ -36,7 +36,7 @@ tools/rust/ossconfigs = .
 ^fbcode/configerator/structs/scm/mononoke/(?!public_autocargo).+/Cargo\.toml$
 
 [dependencies]
-fbthrift-rust
+fbthrift-source
 rust-shed
 
 [dependencies.fb=on]

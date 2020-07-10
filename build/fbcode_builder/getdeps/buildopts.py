@@ -184,6 +184,9 @@ class BuildOptions(object):
         else:
             env = Env()
 
+        env["GETDEPS_BUILD_DIR"] = os.path.join(self.scratch_dir, "build")
+        env["GETDEPS_INSTALL_DIR"] = self.install_dir
+
         if self.fbsource_dir:
             env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/yarn/offline-mirror"
@@ -247,15 +250,27 @@ class BuildOptions(object):
             # If rustc is present in the `bin` directory, set RUSTC to prevent
             # cargo uses the rustc installed in the system.
             if self.is_windows():
+                cargo_path = os.path.join(bindir, "cargo.bat")
                 rustc_path = os.path.join(bindir, "rustc.bat")
                 rustdoc_path = os.path.join(bindir, "rustdoc.bat")
             else:
+                cargo_path = os.path.join(bindir, "cargo")
                 rustc_path = os.path.join(bindir, "rustc")
                 rustdoc_path = os.path.join(bindir, "rustdoc")
 
             if os.path.isfile(rustc_path):
+                env["CARGO_BIN"] = cargo_path
                 env["RUSTC"] = rustc_path
                 env["RUSTDOC"] = rustdoc_path
+
+            if self.is_windows():
+                libcrypto = os.path.join(d, "lib/libcrypto.lib")
+            else:
+                libcrypto = os.path.join(d, "lib/libcrypto.so")
+            openssl_include = os.path.join(d, "include/openssl")
+            if os.path.isfile(libcrypto) and os.path.isdir(openssl_include):
+                # This must be the openssl library, let Rust know about it
+                env["OPENSSL_DIR"] = d
 
         return env
 

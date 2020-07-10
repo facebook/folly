@@ -1,5 +1,5 @@
 [manifest]
-name = fbthrift-rust
+name = fbthrift-source
 fbsource_path = fbcode/thrift
 shipit_project = fbthrift
 shipit_fbcode_builder = true
