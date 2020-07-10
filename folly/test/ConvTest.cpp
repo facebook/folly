@@ -318,7 +318,7 @@ void testString2Integral() {
         (Uint)4147483648U,
         (Uint)4000000000U,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(uStrings2)) {
+    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(*uStrings2)) {
       EXPECT_EQ(to<Uint>(uStrings2[i]), uValues2[i]);
       if (sizeof(Int) == 4) {
         EXPECT_THROW(to<Sint>(uStrings2[i]), std::range_error);
