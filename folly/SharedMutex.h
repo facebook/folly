@@ -259,11 +259,22 @@ struct SharedMutexToken {
   uint16_t slot_;
 };
 
-namespace detail {
+namespace shared_mutex_detail {
 // Returns a guard that gives permission for the current thread to
 // annotate, and adjust the annotation bits in, the SharedMutex at ptr.
-std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr);
-} // namespace detail
+std::unique_lock<std::mutex> annotationGuard(void* ptr);
+
+constexpr uint32_t kMaxDeferredReadersAllocated = 256 * 2;
+
+FOLLY_NOINLINE uint32_t getMaxDeferredReadersSlow(std::atomic<uint32_t>& cache);
+
+// kMaxDeferredReaders
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE uint32_t getMaxDeferredReaders() {
+  static std::atomic<uint32_t> cache{0};
+  auto const value = cache.load(std::memory_order_acquire);
+  return FOLLY_LIKELY(!!value) ? value : getMaxDeferredReadersSlow(cache);
+}
+} // namespace shared_mutex_detail
 
 template <
     bool ReaderPriority,
@@ -314,7 +325,9 @@ class SharedMutexImpl {
       // possible they will be set here in a correct system
       assert((state & ~(kWaitingAny | kMayDefer | kAnnotationCreated)) == 0);
       if ((state & kMayDefer) != 0) {
-        for (uint32_t slot = 0; slot < kMaxDeferredReaders; ++slot) {
+        const uint32_t maxDeferredReaders =
+            shared_mutex_detail::getMaxDeferredReaders();
+        for (uint32_t slot = 0; slot < maxDeferredReaders; ++slot) {
           auto slotValue =
               deferredReader(slot)->load(std::memory_order_relaxed);
           assert(!slotValueIsThis(slotValue));
@@ -703,7 +716,7 @@ class SharedMutexImpl {
   void annotateLazyCreate() {
     if (AnnotateForThreadSanitizer &&
         (state_.load() & kAnnotationCreated) == 0) {
-      auto guard = detail::sharedMutexAnnotationGuard(this);
+      auto guard = shared_mutex_detail::annotationGuard(this);
       // check again
       if ((state_.load() & kAnnotationCreated) == 0) {
         state_.fetch_or(kAnnotationCreated);
@@ -868,25 +881,26 @@ class SharedMutexImpl {
   // without managing our own spreader if kMaxDeferredReaders <=
   // AccessSpreader::kMaxCpus, which is currently 128.
   //
-  // Our 2-socket E5-2660 machines have 8 L1 caches on each chip,
-  // with 64 byte cache lines.  That means we need 64*16 bytes of
-  // deferredReaders[] to give each L1 its own playground.  On x86_64
-  // each DeferredReaderSlot is 8 bytes, so we need kMaxDeferredReaders
-  // * kDeferredSeparationFactor >= 64 * 16 / 8 == 128.  If
+  // In order to give each L1 cache its own playground, we need
+  // kMaxDeferredReaders >= #L1 caches. We double it, making it
+  // essentially the number of cores, so it doesn't easily run
+  // out of deferred reader slots and start inlining the readers.
+  // We do not know the number of cores at compile time, as the code
+  // can be compiled from different server types than the one running
+  // the service. So we allocate the static storage large enough to
+  // hold all the slots (256).
+  //
+  // On x86_64 each DeferredReaderSlot is 8 bytes, so we need
+  // kMaxDeferredReaders
+  // * kDeferredSeparationFactor >= 64 * #L1 caches / 8 == 128.  If
   // kDeferredSearchDistance * kDeferredSeparationFactor <=
   // 64 / 8 then we will search only within a single cache line, which
-  // guarantees we won't have inter-L1 contention.  We give ourselves
-  // a factor of 2 on the core count, which should hold us for a couple
-  // processor generations.  deferredReaders[] is 2048 bytes currently.
+  // guarantees we won't have inter-L1 contention.
  public:
-  static constexpr uint32_t kMaxDeferredReaders = 64;
   static constexpr uint32_t kDeferredSearchDistance = 2;
   static constexpr uint32_t kDeferredSeparationFactor = 4;
 
  private:
-  static_assert(
-      !(kMaxDeferredReaders & (kMaxDeferredReaders - 1)),
-      "kMaxDeferredReaders must be a power of 2");
   static_assert(
       !(kDeferredSearchDistance & (kDeferredSearchDistance - 1)),
       "kDeferredSearchDistance must be a power of 2");
@@ -924,7 +938,9 @@ class SharedMutexImpl {
 
  private:
   alignas(hardware_destructive_interference_size) static DeferredReaderSlot
-      deferredReaders[kMaxDeferredReaders * kDeferredSeparationFactor];
+      deferredReaders
+          [shared_mutex_detail::kMaxDeferredReadersAllocated *
+           kDeferredSeparationFactor];
 
   // Performs an exclusive lock, waiting for state_ & waitMask to be
   // zero first
@@ -1179,10 +1195,12 @@ class SharedMutexImpl {
     uint32_t slot = 0;
 
     uint32_t spinCount = 0;
+    const uint32_t maxDeferredReaders =
+        shared_mutex_detail::getMaxDeferredReaders();
     while (true) {
       while (!slotValueIsThis(
           deferredReader(slot)->load(std::memory_order_acquire))) {
-        if (++slot == kMaxDeferredReaders) {
+        if (++slot == maxDeferredReaders) {
           return;
         }
       }
@@ -1201,6 +1219,8 @@ class SharedMutexImpl {
     std::memset(&usage, 0, sizeof(usage));
     long before = -1;
 #endif
+    const uint32_t maxDeferredReaders =
+        shared_mutex_detail::getMaxDeferredReaders();
     for (uint32_t yieldCount = 0; yieldCount < kMaxSoftYieldCount;
          ++yieldCount) {
       for (int softState = 0; softState < 3; ++softState) {
@@ -1213,7 +1233,7 @@ class SharedMutexImpl {
         }
         while (!slotValueIsThis(
             deferredReader(slot)->load(std::memory_order_acquire))) {
-          if (++slot == kMaxDeferredReaders) {
+          if (++slot == maxDeferredReaders) {
             return;
           }
         }
@@ -1232,7 +1252,7 @@ class SharedMutexImpl {
     }
 
     uint32_t movedSlotCount = 0;
-    for (; slot < kMaxDeferredReaders; ++slot) {
+    for (; slot < maxDeferredReaders; ++slot) {
       auto slotPtr = deferredReader(slot);
       auto slotValue = slotPtr->load(std::memory_order_acquire);
       if (slotValueIsThis(slotValue) &&
@@ -1284,7 +1304,9 @@ class SharedMutexImpl {
   // Updates the state in/out argument as if the locks were made inline,
   // but does not update state_
   void cleanupTokenlessSharedDeferred(uint32_t& state) {
-    for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
+    const uint32_t maxDeferredReaders =
+        shared_mutex_detail::getMaxDeferredReaders();
+    for (uint32_t i = 0; i < maxDeferredReaders; ++i) {
       auto slotPtr = deferredReader(i);
       auto slotValue = slotPtr->load(std::memory_order_relaxed);
       if (slotValue == tokenlessSlotValue()) {
@@ -1300,7 +1322,7 @@ class SharedMutexImpl {
   bool tryUnlockTokenlessSharedDeferred();
 
   bool tryUnlockSharedDeferred(uint32_t slot) {
-    assert(slot < kMaxDeferredReaders);
+    assert(slot < shared_mutex_detail::getMaxDeferredReaders());
     auto slotValue = tokenfulSlotValue();
     return deferredReader(slot)->compare_exchange_strong(slotValue, 0);
   }
@@ -1566,7 +1588,8 @@ alignas(hardware_destructive_interference_size) typename SharedMutexImpl<
         Atom,
         BlockImmediately,
         AnnotateForThreadSanitizer>::deferredReaders
-        [kMaxDeferredReaders * kDeferredSeparationFactor] = {};
+        [shared_mutex_detail::kMaxDeferredReadersAllocated *
+         kDeferredSeparationFactor] = {};
 
 template <
     bool ReaderPriority,
@@ -1608,7 +1631,10 @@ bool SharedMutexImpl<
     AnnotateForThreadSanitizer>::tryUnlockTokenlessSharedDeferred() {
   auto bestSlot =
       make_atomic_ref(tls_lastTokenlessSlot).load(std::memory_order_relaxed);
-  for (uint32_t i = 0; i < kMaxDeferredReaders; ++i) {
+  // use do ... while to avoid calling
+  // shared_mutex_detail::getMaxDeferredReaders() unless necessary
+  uint32_t i = 0;
+  do {
     auto slotPtr = deferredReader(bestSlot ^ i);
     auto slotValue = slotPtr->load(std::memory_order_relaxed);
     if (slotValue == tokenlessSlotValue() &&
@@ -1617,7 +1643,8 @@ bool SharedMutexImpl<
           .store(bestSlot ^ i, std::memory_order_relaxed);
       return true;
     }
-  }
+    ++i;
+  } while (i < shared_mutex_detail::getMaxDeferredReaders());
   return false;
 }
 
@@ -1635,6 +1662,8 @@ bool SharedMutexImpl<
     BlockImmediately,
     AnnotateForThreadSanitizer>::
     lockSharedImpl(uint32_t& state, Token* token, WaitContext& ctx) {
+  const uint32_t maxDeferredReaders =
+      shared_mutex_detail::getMaxDeferredReaders();
   while (true) {
     if (UNLIKELY((state & kHasE) != 0) &&
         !waitForZeroBits(state, kHasE, kWaitingS, ctx) && ctx.canTimeOut()) {
@@ -1656,13 +1685,13 @@ bool SharedMutexImpl<
         // starting point for our empty-slot search, can change after
         // calling waitForZeroBits
         uint32_t bestSlot =
-            (uint32_t)folly::AccessSpreader<Atom>::current(kMaxDeferredReaders);
+            (uint32_t)folly::AccessSpreader<Atom>::current(maxDeferredReaders);
 
         // deferred readers are already enabled, or it is time to
         // enable them if we can find a slot
         for (uint32_t i = 0; i < kDeferredSearchDistance; ++i) {
           slot = bestSlot ^ i;
-          assert(slot < kMaxDeferredReaders);
+          assert(slot < maxDeferredReaders);
           slotValue = deferredReader(slot)->load(std::memory_order_relaxed);
           if (slotValue == 0) {
             // found empty slot
