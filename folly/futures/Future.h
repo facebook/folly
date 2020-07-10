@@ -122,7 +122,6 @@ template <class T>
 class FutureBase {
  protected:
   using Core = futures::detail::Core<T>;
-  using CoreCallback = typename Core::Callback;
 
  public:
   typedef T value_type;
@@ -269,9 +268,8 @@ class FutureBase {
   /// This needs to be public because it's used by make* and when*, and it's
   /// not worth listing all those and their fancy template signatures as
   /// friends. But it's not for public consumption.
-  void setCallback_(
-      CoreCallback&& func,
-      InlineContinuation = InlineContinuation::forbid);
+  template <class F>
+  void setCallback_(F&& func, InlineContinuation = InlineContinuation::forbid);
 
   /// Provides a threadsafe back-channel so the consumer's thread can send an
   ///   interrupt-object to the producer's thread.
