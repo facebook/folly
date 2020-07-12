@@ -1441,7 +1441,7 @@ TEST(Future, NoThrow) {
 }
 
 TEST(Future, DetachTest) {
-  folly::Baton<> b1, b2;
+  folly::Baton<> b1, b2, b3;
   folly::ManualExecutor exec;
   std::atomic<int> result(0);
 
@@ -1456,10 +1456,22 @@ TEST(Future, DetachTest) {
         b2.post();
       }));
 
+  // This will run correctly, but cleanly detach because we know for sure
+  // this is safe
+  folly::futures::detachWithoutExecutor( //
+      makeSemiFuture()
+          .via(&exec)
+          .thenValue([&](auto&&) {
+            result++;
+            b3.post();
+          })
+          .semi());
+
   exec.drain();
   b1.wait();
   b2.wait();
-  EXPECT_TRUE(result == 2);
+  b3.wait();
+  EXPECT_TRUE(result == 3);
 }
 
 #if FOLLY_FUTURE_USING_FIBER

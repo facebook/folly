@@ -2559,6 +2559,16 @@ void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut) {
   detachOn(folly::getGlobalCPUExecutor(), std::move(fut));
 }
 
+template <class T>
+void detachWithoutExecutor(folly::SemiFuture<T>&& fut) {
+  auto executor = futures::detail::stealDeferredExecutor(fut);
+  // Fail if we try to detach a SemiFuture with deferred work
+  DCHECK(executor.get() == nullptr);
+  if (executor) {
+    executor.get()->detach();
+  }
+}
+
 } // namespace futures
 
 template <class Clock>

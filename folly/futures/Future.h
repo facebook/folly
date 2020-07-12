@@ -451,11 +451,20 @@ template <typename T>
 futures::detail::DeferredWrapper stealDeferredExecutor(SemiFuture<T>& future);
 } // namespace detail
 
+// Detach the SemiFuture by scheduling work onto exec.
 template <class T>
 void detachOn(folly::Executor::KeepAlive<> exec, folly::SemiFuture<T>&& fut);
 
+// Detach the SemiFuture by detaching work onto the global CPU executor.
 template <class T>
 void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut);
+
+// Detach the SemiFuture with no executor.
+// NOTE: If there is deferred work of any sort on this SemiFuture
+// will leak and not be run.
+// Use at your own risk.
+template <class T>
+void detachWithoutExecutor(folly::SemiFuture<T>&& fut);
 } // namespace futures
 
 /// The interface (along with Future) for the consumer-side of a
