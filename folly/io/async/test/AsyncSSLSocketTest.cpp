@@ -1525,7 +1525,7 @@ static int kRSAEvbExIndex = -1;
 static int kRSASocketExIndex = -1;
 static constexpr StringPiece kEngineId = "AsyncSSLSocketTest";
 
-int customRsaPubDec(int flen, const unsigned char *from, unsigned char *to, RSA *rsa,
+static int customRsaPubDec(int flen, const unsigned char *from, unsigned char *to, RSA *rsa,
                                           int padding) {
 
   ScopedEventBaseThread jobEvbThread;
@@ -1578,15 +1578,15 @@ int customRsaPubDec(int flen, const unsigned char *from, unsigned char *to, RSA 
   return ret;
 }
 
-int verifyCb(X509_STORE_CTX *ctx, void *arg) {
+static int verifyCb(X509_STORE_CTX *ctx, void *arg) {
   int ok = 1;
   X509 *cert = X509_STORE_CTX_get0_cert(ctx);
   CHECK(cert);
 
   ssl::EvpPkeyUniquePtr publicEvpPkey(X509_get_pubkey(cert));
   EVP_PKEY *pkey = publicEvpPkey.get();
-  RSA* rsa = EVP_PKEY_get1_RSA(publicEvpPkey.get());
-  RSA_METHOD* meth = RSA_meth_dup(RSA_get_default_method());
+  RSA* rsa = EVP_PKEY_get0_RSA(publicEvpPkey.get());
+  RSA_METHOD* meth = (RSA_METHOD *)arg;
 
   if (meth == nullptr || RSA_meth_set1_name(meth, "Async RSA method>>") == 0 ||
       RSA_meth_set_pub_dec(meth, customRsaPubDec) == 0) {
@@ -1817,7 +1817,9 @@ TEST(AsyncSSLSocketTest, OpenSSL110MultipleAsyncTest) {
   // up-refs dummyrsa
   SSL_CTX_use_RSAPrivateKey(serverCtx->getSSLCtx(), rsaPointers->dummyrsa);
   SSL_CTX_set_mode(serverCtx->getSSLCtx(), SSL_MODE_ASYNC);
-  SSL_CTX_set_cert_verify_callback(serverCtx->getSSLCtx(), verifyCb, nullptr);
+  RSA_METHOD *meth = RSA_meth_dup(RSA_get_default_method());
+  CHECK(meth);
+  SSL_CTX_set_cert_verify_callback(serverCtx->getSSLCtx(), verifyCb, meth);
 
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
@@ -1839,6 +1841,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110MultipleAsyncTest) {
 
   EXPECT_TRUE(server.handshakeSuccess_);
   EXPECT_TRUE(client.handshakeSuccess_);
+  RSA_meth_free(meth);
   ASYNC_cleanup_thread();
 }
 
