@@ -22,8 +22,6 @@
 #include <utility>
 #include <vector>
 
-#include <boost/variant.hpp>
-
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
@@ -90,43 +88,53 @@ using DeferredWrapper = std::unique_ptr<DeferredExecutor, UniqueDeleter>;
  * can safely be distinguished.
  */
 class KeepAliveOrDeferred {
+ private:
+  using KA = Executor::KeepAlive<>;
+  using DW = DeferredWrapper;
+
  public:
-  KeepAliveOrDeferred();
-  /* implicit */ KeepAliveOrDeferred(Executor::KeepAlive<> ka);
-  /* implicit */ KeepAliveOrDeferred(DeferredWrapper deferred);
+  KeepAliveOrDeferred() noexcept;
+  /* implicit */ KeepAliveOrDeferred(KA ka) noexcept;
+  /* implicit */ KeepAliveOrDeferred(DW deferred) noexcept;
   KeepAliveOrDeferred(KeepAliveOrDeferred&& other) noexcept;
 
   ~KeepAliveOrDeferred();
 
-  KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other);
+  KeepAliveOrDeferred& operator=(KeepAliveOrDeferred&& other) noexcept;
 
-  DeferredExecutor* getDeferredExecutor() const;
+  DeferredExecutor* getDeferredExecutor() const noexcept;
 
-  Executor* getKeepAliveExecutor() const;
+  Executor* getKeepAliveExecutor() const noexcept;
 
-  Executor::KeepAlive<> stealKeepAlive() &&;
+  KA stealKeepAlive() && noexcept;
 
-  std::unique_ptr<DeferredExecutor, UniqueDeleter> stealDeferred() &&;
+  DW stealDeferred() && noexcept;
 
-  bool isDeferred() const;
+  bool isDeferred() const noexcept;
 
-  bool isKeepAlive() const;
+  bool isKeepAlive() const noexcept;
 
   KeepAliveOrDeferred copy() const;
 
-  explicit operator bool() const;
+  explicit operator bool() const noexcept;
 
  private:
   friend class DeferredExecutor;
 
-  Executor::KeepAlive<>& asKeepAlive();
-  const Executor::KeepAlive<>& asKeepAlive() const;
-
-  DeferredWrapper& asDeferred();
-  const DeferredWrapper& asDeferred() const;
-
-  boost::variant<DeferredWrapper, Executor::KeepAlive<>> storage_;
+  enum class State { Deferred, KeepAlive } state_;
+  union {
+    DW deferred_;
+    KA keepAlive_;
+  };
 };
+
+inline bool KeepAliveOrDeferred::isDeferred() const noexcept {
+  return state_ == State::Deferred;
+}
+
+inline bool KeepAliveOrDeferred::isKeepAlive() const noexcept {
+  return state_ == State::KeepAlive;
+}
 
 /**
  * Defer work until executor is actively boosted.

@@ -14,7 +14,10 @@
  * limitations under the License.
  */
 
+#include <new>
+
 #include <folly/futures/detail/Core.h>
+#include <folly/lang/Assume.h>
 
 namespace folly {
 namespace futures {
@@ -26,94 +29,108 @@ void UniqueDeleter::operator()(DeferredExecutor* ptr) {
   }
 }
 
-KeepAliveOrDeferred::KeepAliveOrDeferred() = default;
-
-KeepAliveOrDeferred::KeepAliveOrDeferred(Executor::KeepAlive<> ka)
-    : storage_{std::move(ka)} {
-  DCHECK(!isDeferred());
+KeepAliveOrDeferred::KeepAliveOrDeferred() noexcept : state_(State::Deferred) {
+  ::new (&deferred_) DW{};
 }
 
-KeepAliveOrDeferred::KeepAliveOrDeferred(DeferredWrapper deferred)
-    : storage_{std::move(deferred)} {}
+KeepAliveOrDeferred::KeepAliveOrDeferred(KA ka) noexcept
+    : state_(State::KeepAlive) {
+  ::new (&keepAlive_) KA{std::move(ka)};
+}
+
+KeepAliveOrDeferred::KeepAliveOrDeferred(DW deferred) noexcept
+    : state_(State::Deferred) {
+  ::new (&deferred_) DW{std::move(deferred)};
+}
 
 KeepAliveOrDeferred::KeepAliveOrDeferred(KeepAliveOrDeferred&& other) noexcept
-    : storage_{std::move(other.storage_)} {}
+    : state_(other.state_) {
+  switch (state_) {
+    case State::Deferred:
+      ::new (&deferred_) DW{std::move(other.deferred_)};
+      break;
+    case State::KeepAlive:
+      ::new (&keepAlive_) KA{std::move(other.keepAlive_)};
+      break;
+  }
+}
 
-KeepAliveOrDeferred::~KeepAliveOrDeferred() = default;
+KeepAliveOrDeferred::~KeepAliveOrDeferred() {
+  switch (state_) {
+    case State::Deferred:
+      deferred_.~DW();
+      break;
+    case State::KeepAlive:
+      keepAlive_.~KA();
+      break;
+  }
+}
 
 KeepAliveOrDeferred& KeepAliveOrDeferred::operator=(
-    KeepAliveOrDeferred&& other) {
-  storage_ = std::move(other.storage_);
+    KeepAliveOrDeferred&& other) noexcept {
+  // This is safe to do because KeepAliveOrDeferred is nothrow
+  // move-constructible.
+  this->~KeepAliveOrDeferred();
+  ::new (this) KeepAliveOrDeferred{std::move(other)};
   return *this;
 }
 
-DeferredExecutor* KeepAliveOrDeferred::getDeferredExecutor() const {
-  if (!isDeferred()) {
-    return nullptr;
+DeferredExecutor* KeepAliveOrDeferred::getDeferredExecutor() const noexcept {
+  switch (state_) {
+    case State::Deferred:
+      return deferred_.get();
+    case State::KeepAlive:
+      return nullptr;
   }
-  return asDeferred().get();
+  assume_unreachable();
 }
 
-Executor* KeepAliveOrDeferred::getKeepAliveExecutor() const {
-  if (isDeferred()) {
-    return nullptr;
+Executor* KeepAliveOrDeferred::getKeepAliveExecutor() const noexcept {
+  switch (state_) {
+    case State::Deferred:
+      return nullptr;
+    case State::KeepAlive:
+      return keepAlive_.get();
   }
-  return asKeepAlive().get();
+  assume_unreachable();
 }
 
-Executor::KeepAlive<> KeepAliveOrDeferred::stealKeepAlive() && {
-  if (isDeferred()) {
-    return Executor::KeepAlive<>{};
+KeepAliveOrDeferred::KA KeepAliveOrDeferred::stealKeepAlive() && noexcept {
+  switch (state_) {
+    case State::Deferred:
+      return KA{};
+    case State::KeepAlive:
+      return std::move(keepAlive_);
   }
-  return std::move(asKeepAlive());
+  assume_unreachable();
 }
 
-std::unique_ptr<DeferredExecutor, UniqueDeleter>
-KeepAliveOrDeferred::stealDeferred() && {
-  if (!isDeferred()) {
-    return std::unique_ptr<DeferredExecutor, UniqueDeleter>{};
+KeepAliveOrDeferred::DW KeepAliveOrDeferred::stealDeferred() && noexcept {
+  switch (state_) {
+    case State::Deferred:
+      return std::move(deferred_);
+    case State::KeepAlive:
+      return DW{};
   }
-  return std::move(asDeferred());
-}
-
-bool KeepAliveOrDeferred::isDeferred() const {
-  return boost::get<DeferredWrapper>(&storage_) != nullptr;
-}
-
-bool KeepAliveOrDeferred::isKeepAlive() const {
-  return !isDeferred();
+  assume_unreachable();
 }
 
 KeepAliveOrDeferred KeepAliveOrDeferred::copy() const {
-  if (isDeferred()) {
-    if (auto def = getDeferredExecutor()) {
-      return KeepAliveOrDeferred{def->copy()};
-    } else {
-      return KeepAliveOrDeferred{};
-    }
-  } else {
-    return KeepAliveOrDeferred{asKeepAlive()};
+  switch (state_) {
+    case State::Deferred:
+      if (auto def = getDeferredExecutor()) {
+        return KeepAliveOrDeferred{def->copy()};
+      } else {
+        return KeepAliveOrDeferred{};
+      }
+    case State::KeepAlive:
+      return KeepAliveOrDeferred{keepAlive_};
   }
+  assume_unreachable();
 }
 
-/* explicit */ KeepAliveOrDeferred::operator bool() const {
+/* explicit */ KeepAliveOrDeferred::operator bool() const noexcept {
   return getDeferredExecutor() || getKeepAliveExecutor();
-}
-
-Executor::KeepAlive<>& KeepAliveOrDeferred::asKeepAlive() {
-  return boost::get<Executor::KeepAlive<>>(storage_);
-}
-
-const Executor::KeepAlive<>& KeepAliveOrDeferred::asKeepAlive() const {
-  return boost::get<Executor::KeepAlive<>>(storage_);
-}
-
-DeferredWrapper& KeepAliveOrDeferred::asDeferred() {
-  return boost::get<DeferredWrapper>(storage_);
-}
-
-const DeferredWrapper& KeepAliveOrDeferred::asDeferred() const {
-  return boost::get<DeferredWrapper>(storage_);
 }
 
 void DeferredExecutor::addFrom(
