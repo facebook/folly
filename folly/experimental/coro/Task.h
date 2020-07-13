@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <exception>
 #include <experimental/coroutine>
 #include <type_traits>
 
@@ -39,6 +40,7 @@
 #include <folly/experimental/coro/detail/Traits.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/Request.h>
+#include <folly/lang/Assume.h>
 
 namespace folly {
 namespace coro {
@@ -65,7 +67,9 @@ class TaskPromiseBase {
       return promise.continuation_;
     }
 
-    void await_resume() noexcept {}
+    [[noreturn]] void await_resume() noexcept {
+      folly::assume_unreachable();
+    }
   };
 
   friend class FinalAwaiter;

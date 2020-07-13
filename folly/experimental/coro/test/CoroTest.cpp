@@ -673,15 +673,17 @@ TEST(Coro, CoThrow) {
   EXPECT_THROW(
       folly::coro::blockingWait([]() -> folly::coro::Task<int> {
         co_yield folly::coro::co_error(ExpectedException());
-        EXPECT_TRUE(false) << "unreachable";
-        co_return 42;
+        ADD_FAILURE() << "unreachable";
+        // Intential lack of co_return statement to check
+        // that compiler treats code after co_yield co_error()
+        // as unreachable.
       }()),
       ExpectedException);
 
   EXPECT_THROW(
       folly::coro::blockingWait([]() -> folly::coro::Task<void> {
         co_yield folly::coro::co_error(ExpectedException());
-        EXPECT_TRUE(false) << "unreachable";
+        ADD_FAILURE() << "unreachable";
       }()),
       ExpectedException);
 }
