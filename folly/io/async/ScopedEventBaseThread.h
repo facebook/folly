@@ -65,11 +65,11 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
   }
 
  protected:
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     return getEventBase()->keepAliveAcquire();
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     getEventBase()->keepAliveRelease();
   }
 

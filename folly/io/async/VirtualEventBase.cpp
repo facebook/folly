@@ -27,7 +27,7 @@ std::future<void> VirtualEventBase::destroy() {
   return std::move(destroyFuture_);
 }
 
-void VirtualEventBase::destroyImpl() {
+void VirtualEventBase::destroyImpl() noexcept {
   try {
     {
       // After destroyPromise_ is posted this object may be destroyed, so make

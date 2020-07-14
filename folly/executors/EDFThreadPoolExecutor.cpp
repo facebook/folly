@@ -311,14 +311,14 @@ folly::Executor::KeepAlive<> EDFThreadPoolExecutor::deadlineExecutor(
       executor_->add(std::move(f), deadline_);
     }
 
-    bool keepAliveAcquire() override {
+    bool keepAliveAcquire() noexcept override {
       const auto count =
           keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
       DCHECK_GT(count, 0);
       return true;
     }
 
-    void keepAliveRelease() override {
+    void keepAliveRelease() noexcept override {
       const auto count =
           keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
       DCHECK_GT(count, 0);

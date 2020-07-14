@@ -553,14 +553,14 @@ class WaitExecutor final : public folly::Executor {
  private:
   WaitExecutor() {}
 
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     auto keepAliveCount =
         keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     DCHECK(keepAliveCount > 0);
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     auto keepAliveCount =
         keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
     DCHECK(keepAliveCount > 0);

@@ -51,8 +51,8 @@ class TimekeeperScheduledExecutor : public ScheduledExecutor {
       override;
 
  protected:
-  bool keepAliveAcquire() override;
-  void keepAliveRelease() override;
+  bool keepAliveAcquire() noexcept override;
+  void keepAliveRelease() noexcept override;
 
  private:
   TimekeeperScheduledExecutor(

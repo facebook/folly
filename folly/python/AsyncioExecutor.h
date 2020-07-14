@@ -69,7 +69,7 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
   }
 
  protected:
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     auto keepAliveCounter =
         keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
     // We should never increment from 0
@@ -77,7 +77,7 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     auto keepAliveCounter = --keepAliveCounter_;
     DCHECK(keepAliveCounter >= 0);
   }

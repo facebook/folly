@@ -126,7 +126,7 @@ class Executor {
       *this = getKeepAliveToken(executor);
     }
 
-    KeepAlive& operator=(KeepAlive&& other) {
+    KeepAlive& operator=(KeepAlive&& other) noexcept {
       reset();
       storage_ = std::exchange(other.storage_, 0);
       return *this;
@@ -140,7 +140,7 @@ class Executor {
         typename OtherExecutor,
         typename = typename std::enable_if<
             std::is_convertible<OtherExecutor*, ExecutorT*>::value>::type>
-    KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) {
+    KeepAlive& operator=(KeepAlive<OtherExecutor>&& other) noexcept {
       return *this = KeepAlive(std::move(other));
     }
 
@@ -152,7 +152,7 @@ class Executor {
       return *this = KeepAlive(other);
     }
 
-    void reset() {
+    void reset() noexcept {
       if (Executor* executor = get()) {
         auto const flags = std::exchange(storage_, 0) & kFlagMask;
         if (!(flags & (kDummyFlag | kAliasFlag))) {
@@ -251,10 +251,10 @@ class Executor {
 
   // Acquire a keep alive token. Should return false if keep-alive mechanism
   // is not supported.
-  virtual bool keepAliveAcquire();
+  virtual bool keepAliveAcquire() noexcept;
   // Release a keep alive token previously acquired by keepAliveAcquire().
   // Will never be called if keepAliveAcquire() returns false.
-  virtual void keepAliveRelease();
+  virtual void keepAliveRelease() noexcept;
 
   template <typename ExecutorT>
   static KeepAlive<ExecutorT> makeKeepAlive(ExecutorT* executor) {

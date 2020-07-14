@@ -27,12 +27,12 @@ class KeepAliveTestExecutor : public Executor {
     // this executor does nothing
   }
 
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     ++refCount;
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     --refCount;
   }
 

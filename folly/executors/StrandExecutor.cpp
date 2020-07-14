@@ -196,14 +196,14 @@ uint8_t StrandExecutor::getNumPriorities() const {
   return parent_->getNumPriorities();
 }
 
-bool StrandExecutor::keepAliveAcquire() {
+bool StrandExecutor::keepAliveAcquire() noexcept {
   [[maybe_unused]] auto oldCount =
       refCount_.fetch_add(1, std::memory_order_relaxed);
   DCHECK(oldCount > 0);
   return true;
 }
 
-void StrandExecutor::keepAliveRelease() {
+void StrandExecutor::keepAliveRelease() noexcept {
   const auto oldCount = refCount_.fetch_sub(1, std::memory_order_acq_rel);
   DCHECK(oldCount > 0);
   if (oldCount == 1) {

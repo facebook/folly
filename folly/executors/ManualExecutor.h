@@ -124,12 +124,12 @@ class ManualExecutor : public DrivableExecutor,
     return funcs.size() + scheduled_funcs.size();
   }
 
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     if (keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel) == 1) {
       add([] {});
     }

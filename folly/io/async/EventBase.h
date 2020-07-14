@@ -815,7 +815,7 @@ class EventBase : public TimeoutManager,
   static std::unique_ptr<EventBaseBackendBase> getDefaultBackend();
 
  protected:
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     if (inRunningEventBaseThread()) {
       loopKeepAliveCount_++;
     } else {
@@ -824,7 +824,7 @@ class EventBase : public TimeoutManager,
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     if (!inRunningEventBaseThread()) {
       return add([this] { loopKeepAliveCount_--; });
     }

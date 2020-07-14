@@ -324,14 +324,14 @@ class BlockingWaitExecutor final : public folly::DrivableExecutor {
   }
 
  private:
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     auto keepAliveCount =
         keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     DCHECK(keepAliveCount >= 0);
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     auto keepAliveCount = keepAliveCount_.load(std::memory_order_relaxed);
     do {
       DCHECK(keepAliveCount > 0);

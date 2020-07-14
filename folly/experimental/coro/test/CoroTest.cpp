@@ -148,12 +148,12 @@ TEST_F(CoroTest, ExecutorKeepAlive) {
 }
 
 struct CountingExecutor : public ManualExecutor {
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     ++keepAliveCounter;
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     --keepAliveCounter;
   }
 

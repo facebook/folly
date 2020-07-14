@@ -101,9 +101,9 @@ class SerialExecutor : public SequencedExecutor {
   }
 
  protected:
-  bool keepAliveAcquire() override;
+  bool keepAliveAcquire() noexcept override;
 
-  void keepAliveRelease() override;
+  void keepAliveRelease() noexcept override;
 
  private:
   struct Task {

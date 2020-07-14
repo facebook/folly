@@ -153,8 +153,8 @@ class StrandExecutor final : public SequencedExecutor {
   uint8_t getNumPriorities() const override;
 
  protected:
-  bool keepAliveAcquire() override;
-  void keepAliveRelease() override;
+  bool keepAliveAcquire() noexcept override;
+  void keepAliveRelease() noexcept override;
 
  private:
   explicit StrandExecutor(
