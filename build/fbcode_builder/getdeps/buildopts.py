@@ -250,9 +250,9 @@ class BuildOptions(object):
             # If rustc is present in the `bin` directory, set RUSTC to prevent
             # cargo uses the rustc installed in the system.
             if self.is_windows():
-                cargo_path = os.path.join(bindir, "cargo.bat")
-                rustc_path = os.path.join(bindir, "rustc.bat")
-                rustdoc_path = os.path.join(bindir, "rustdoc.bat")
+                cargo_path = os.path.join(bindir, "cargo.exe")
+                rustc_path = os.path.join(bindir, "rustc.exe")
+                rustdoc_path = os.path.join(bindir, "rustdoc.exe")
             else:
                 cargo_path = os.path.join(bindir, "cargo")
                 rustc_path = os.path.join(bindir, "rustc")
