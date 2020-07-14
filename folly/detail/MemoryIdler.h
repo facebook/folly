@@ -83,8 +83,10 @@ struct MemoryIdler {
 
     // multiplying the duration by a floating point doesn't work, grr
     auto extraFrac = timeoutVariationFrac /
-        static_cast<float>(std::numeric_limits<uint64_t>::max()) * h;
-    auto tics = uint64_t(idleTimeout.count() * (1 + extraFrac));
+        static_cast<float>(std::numeric_limits<uint64_t>::max()) *
+        static_cast<float>(h);
+    auto tics =
+        uint64_t(static_cast<float>(idleTimeout.count()) * (1 + extraFrac));
     return IdleTime(tics);
   }
 
