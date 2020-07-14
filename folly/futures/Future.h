@@ -2462,24 +2462,11 @@ SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
 collectAny(InputIterator first, InputIterator last);
-// Unsafe variant of collectAny, Returns a Future that completes inline.
-template <class InputIterator>
-Future<std::pair<
-    size_t,
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAnyUnsafe(InputIterator first, InputIterator last);
 
 /// Sugar for the most common case
 template <class Collection>
 auto collectAny(Collection&& c) -> decltype(collectAny(c.begin(), c.end())) {
   return collectAny(c.begin(), c.end());
-}
-// Unsafe variant of common form of collectAny, Returns a Future that completes
-// inline.
-template <class Collection>
-auto collectAnyUnsafe(Collection&& c)
-    -> decltype(collectAnyUnsafe(c.begin(), c.end())) {
-  return collectAnyUnsafe(c.begin(), c.end());
 }
 
 /** Similar to collectAny, collectAnyWithoutException return the first Future to

@@ -446,33 +446,6 @@ TEST(Collect, collectAny) {
   }
   {
     std::vector<Promise<int>> promises(10);
-    std::vector<Future<int>> futures;
-
-    for (auto& p : promises) {
-      futures.push_back(p.getFuture());
-    }
-
-    for (auto& f : futures) {
-      EXPECT_FALSE(f.isReady());
-    }
-
-    auto anyf = collectAnyUnsafe(futures);
-
-    /* futures were moved in, so these are invalid now */
-    EXPECT_FALSE(anyf.isReady());
-
-    promises[7].setValue(42);
-    EXPECT_TRUE(anyf.isReady());
-    auto& idx_fut = anyf.value();
-
-    auto i = idx_fut.first;
-    EXPECT_EQ(7, i);
-
-    auto& f = idx_fut.second;
-    EXPECT_EQ(42, f.value());
-  }
-  {
-    std::vector<Promise<int>> promises(10);
     std::vector<SemiFuture<int>> futures;
 
     for (auto& p : promises) {
@@ -519,22 +492,6 @@ TEST(Collect, collectAny) {
     promises[3].setException(eggs);
     EXPECT_TRUE(anyf.isReady());
     EXPECT_TRUE(anyf.value().second.hasException());
-  }
-
-  // thenValue()
-  {
-    std::vector<Promise<int>> promises(10);
-    std::vector<Future<int>> futures;
-
-    for (auto& p : promises) {
-      futures.push_back(p.getFuture());
-    }
-
-    auto anyf = collectAnyUnsafe(futures).thenValue(
-        [](std::pair<size_t, Try<int>> p) { EXPECT_EQ(42, p.second.value()); });
-
-    promises[3].setValue(42);
-    EXPECT_TRUE(anyf.isReady());
   }
 }
 

@@ -1597,14 +1597,6 @@ Future<std::tuple<typename remove_cvref_t<Fs>::value_type...>> collectUnsafe(
 // collectAny (iterator)
 
 template <class InputIterator>
-Future<std::pair<
-    size_t,
-    Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
-collectAnyUnsafe(InputIterator first, InputIterator last) {
-  return collectAny(first, last).toUnsafeFuture();
-}
-
-template <class InputIterator>
 SemiFuture<std::pair<
     size_t,
     Try<typename std::iterator_traits<InputIterator>::value_type::value_type>>>
