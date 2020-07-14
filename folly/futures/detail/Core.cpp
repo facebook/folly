@@ -246,16 +246,30 @@ DeferredWrapper DeferredExecutor::copy() {
 
 DeferredExecutor::DeferredExecutor() {}
 
-bool DeferredExecutor::acquire() {
+void DeferredExecutor::acquire() {
   auto keepAliveCount = keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
-  DCHECK(keepAliveCount > 0);
-  return true;
+  DCHECK_GT(keepAliveCount, 0);
 }
 
 void DeferredExecutor::release() {
   auto keepAliveCount = keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
-  DCHECK(keepAliveCount > 0);
+  DCHECK_GT(keepAliveCount, 0);
   if (keepAliveCount == 1) {
+    delete this;
+  }
+}
+
+InterruptHandler::~InterruptHandler() = default;
+
+void InterruptHandler::acquire() {
+  auto refCount = refCount_.fetch_add(1, std::memory_order_relaxed);
+  DCHECK_GT(refCount, 0);
+}
+
+void InterruptHandler::release() {
+  auto refCount = refCount_.fetch_sub(1, std::memory_order_acq_rel);
+  DCHECK_GT(refCount, 0);
+  if (refCount == 1) {
     delete this;
   }
 }
@@ -298,18 +312,22 @@ void CoreBase::raise(exception_wrapper e) {
   std::lock_guard<SpinLock> lock(interruptLock_);
   if (!interrupt_ && !hasResult()) {
     interrupt_ = std::make_unique<exception_wrapper>(std::move(e));
-    if (interruptHandler_) {
-      interruptHandler_(*interrupt_);
+    auto interruptHandler = interruptHandler_.load(std::memory_order_relaxed);
+    if (interruptHandler) {
+      interruptHandler->handle(*interrupt_);
     }
   }
 }
 
-std::function<void(exception_wrapper const&)> CoreBase::getInterruptHandler() {
-  if (!interruptHandlerSet_.load(std::memory_order_acquire)) {
-    return nullptr;
+void CoreBase::initCopyInterruptHandlerFrom(const CoreBase& other) {
+  auto interruptHandler =
+      other.interruptHandler_.load(std::memory_order_acquire);
+  if (interruptHandler != nullptr) {
+    interruptHandler->acquire();
   }
-  std::lock_guard<SpinLock> lock(interruptLock_);
-  return interruptHandler_;
+  auto oldInterruptHandler =
+      interruptHandler_.exchange(interruptHandler, std::memory_order_release);
+  DCHECK(oldInterruptHandler == nullptr);
 }
 
 class CoreBase::CoreAndCallbackReference {
@@ -346,7 +364,12 @@ class CoreBase::CoreAndCallbackReference {
 CoreBase::CoreBase(State state, unsigned char attached)
     : state_(state), attached_(attached) {}
 
-CoreBase::~CoreBase() {}
+CoreBase::~CoreBase() {
+  auto interruptHandler = interruptHandler_.load(std::memory_order_relaxed);
+  if (interruptHandler != nullptr) {
+    interruptHandler->release();
+  }
+}
 
 void CoreBase::setCallback_(
     Callback&& callback,

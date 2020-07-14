@@ -167,8 +167,7 @@ class DeferredExecutor final {
 
   DeferredExecutor();
 
-  bool acquire();
-
+  void acquire();
   void release();
 
   enum class State { EMPTY, HAS_FUNCTION, HAS_EXECUTOR, DETACHED };
@@ -178,6 +177,32 @@ class DeferredExecutor final {
   folly::Executor::KeepAlive<> executor_;
   std::unique_ptr<std::vector<DeferredWrapper>> nestedExecutors_;
   std::atomic<ssize_t> keepAliveCount_{1};
+};
+
+class InterruptHandler {
+ public:
+  virtual ~InterruptHandler();
+
+  virtual void handle(const folly::exception_wrapper& ew) const = 0;
+
+  void acquire();
+  void release();
+
+ private:
+  std::atomic<ssize_t> refCount_{1};
+};
+
+template <class F>
+class InterruptHandlerImpl : public InterruptHandler {
+ public:
+  explicit InterruptHandlerImpl(F f) : f_(std::move(f)) {}
+
+  void handle(const folly::exception_wrapper& ew) const override {
+    f_(ew);
+  }
+
+ private:
+  F f_;
 };
 
 /// The shared state object for Future and Promise.
@@ -393,7 +418,12 @@ class CoreBase {
   /// Has no effect if State is OnlyResult or Done.
   void raise(exception_wrapper e);
 
-  std::function<void(exception_wrapper const&)> getInterruptHandler();
+  /// Copy the interrupt handler from another core. This should be done only
+  /// when initializing a new core:
+  ///
+  /// - interruptHandler_ must be nullptr
+  /// - interruptLock_ is not acquired.
+  void initCopyInterruptHandlerFrom(const CoreBase& other);
 
   /// Call only from producer thread
   ///
@@ -413,15 +443,15 @@ class CoreBase {
       if (interrupt_) {
         fn(as_const(*interrupt_));
       } else {
-        setInterruptHandlerNoLock(std::forward<F>(fn));
+        auto oldInterruptHandler = interruptHandler_.exchange(
+            new InterruptHandlerImpl<typename std::decay<F>::type>(
+                std::forward<F>(fn)),
+            std::memory_order_relaxed);
+        if (oldInterruptHandler) {
+          oldInterruptHandler->release();
+        }
       }
     }
-  }
-
-  void setInterruptHandlerNoLock(
-      std::function<void(exception_wrapper const&)> fn) {
-    interruptHandlerSet_.store(true, std::memory_order_relaxed);
-    interruptHandler_ = std::move(fn);
   }
 
  protected:
@@ -453,14 +483,13 @@ class CoreBase {
   std::atomic<State> state_;
   std::atomic<unsigned char> attached_;
   std::atomic<unsigned char> callbackReferences_{0};
-  std::atomic<bool> interruptHandlerSet_{false};
   SpinLock interruptLock_;
   KeepAliveOrDeferred executor_;
   union {
     Context context_;
   };
   std::unique_ptr<exception_wrapper> interrupt_{};
-  std::function<void(exception_wrapper const&)> interruptHandler_{nullptr};
+  std::atomic<InterruptHandler*> interruptHandler_{};
   CoreBase* proxy_;
 };
 

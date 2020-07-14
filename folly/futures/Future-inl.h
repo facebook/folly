@@ -370,7 +370,7 @@ FutureBase<T>::thenImplementation(
   typedef typename R::ReturnsFuture::Inner B;
 
   Promise<B> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
@@ -453,7 +453,7 @@ FutureBase<T>::thenImplementation(
   typedef typename R::ReturnsFuture::Inner B;
 
   Promise<B> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
 
   // grab the Future now before we lose our handle on the Promise
   auto sf = p.getSemiFuture();
@@ -1098,7 +1098,7 @@ typename std::enable_if<
     Future<T>>::type
 Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
   Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
@@ -1133,7 +1133,7 @@ typename std::enable_if<
     Future<T>>::type
 Future<T>::thenError(tag_t<ExceptionType>, F&& func) && {
   Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   auto* ePtr = this->getExecutor();
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
@@ -1164,7 +1164,7 @@ Future<T>::thenError(F&& func) && {
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
   Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   this->setCallback_([state = futures::detail::makeCoreCallbackState(
                           std::move(p), std::forward<F>(func))](
@@ -1198,7 +1198,7 @@ Future<T>::thenError(F&& func) && {
   auto e = folly::getKeepAliveToken(ePtr ? *ePtr : InlineExecutor::instance());
 
   Promise<T> p;
-  p.core_->setInterruptHandlerNoLock(this->getCore().getInterruptHandler());
+  p.core_->initCopyInterruptHandlerFrom(this->getCore());
   auto sf = p.getSemiFuture();
   this->setCallback_([state = futures::detail::makeCoreCallbackState(
                           std::move(p), std::forward<F>(func))](
@@ -2143,7 +2143,7 @@ Future<T> convertFuture(SemiFuture<T>&& sf, const Future<T>& f) {
   // Carry executor from f, inserting an inline executor if it did not have one
   auto* exe = f.getExecutor();
   auto newFut = std::move(sf).via(exe ? exe : &InlineExecutor::instance());
-  newFut.core_->setInterruptHandlerNoLock(f.core_->getInterruptHandler());
+  newFut.core_->initCopyInterruptHandlerFrom(*f.core_);
   return newFut;
 }
 
