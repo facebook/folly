@@ -70,9 +70,11 @@ String cEscape(StringPiece str) {
  *
  * Recognizes the standard C escape sequences:
  *
+ * \code
  * \' \" \? \\ \a \b \f \n \r \t \v
  * \[0-7]+
  * \x[0-9a-fA-F]+
+ * \endcode
  *
  * In strict mode (default), throws std::invalid_argument if it encounters
  * an unrecognized escape sequence.  In non-strict mode, it leaves
