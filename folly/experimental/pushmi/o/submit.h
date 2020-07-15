@@ -326,7 +326,7 @@ struct get_fn {
       *ep_ = std::make_exception_ptr(e);
     }
     void operator()(std::exception_ptr ep) const noexcept {
-      *ep_ = ep;
+      *ep_ = std::move(ep);
     }
   };
 
