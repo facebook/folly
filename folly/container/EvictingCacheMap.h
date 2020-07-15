@@ -256,8 +256,7 @@ class EvictingCacheMap {
     if (it == index_.end()) {
       return end();
     }
-    lru_.erase(lru_.iterator_to(*it));
-    lru_.push_front(*it);
+    lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
     return iterator(lru_.iterator_to(*it));
   }
 
@@ -343,8 +342,7 @@ class EvictingCacheMap {
     if (it != index_.end()) {
       it->pr.second = std::move(value);
       if (promote) {
-        lru_.erase(lru_.iterator_to(*it));
-        lru_.push_front(*it);
+        lru_.splice(lru_.begin(), lru_, lru_.iterator_to(*it));
       }
     } else {
       auto node = new Node(key, std::move(value));
