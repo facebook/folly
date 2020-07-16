@@ -638,6 +638,9 @@ class hazptr_domain {
   void invoke_reclamation_in_executor(RetiredList& rlist, bool lock) {
     auto fn = exec_fn_.load(std::memory_order_acquire);
     auto ex = fn ? fn() : get_default_executor();
+    if (ex == get_default_executor()) {
+      hazptr_warning_using_inline_executor();
+    }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
     if (ex) {
       ex->add([this, &rlist, lock] {
@@ -648,15 +651,27 @@ class hazptr_domain {
       LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
     }
     if (backlog >= 10) {
-      warning_executor_backlog(backlog);
+      hazptr_warning_executor_backlog(backlog);
     }
   }
 
-  FOLLY_NOINLINE void warning_executor_backlog(int backlog) {
+  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_executor_backlog(
+      int backlog) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << backlog
-                   << " request backlog for hazptr reclamation executora";
+                   << " request backlog for hazptr asynchronous "
+                      "reclamation executor";
+    }
+  }
+
+  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_using_inline_executor() {
+    static std::atomic<uint64_t> warning_count{0};
+    if ((warning_count++ % 10000) == 0) {
+      LOG(WARNING)
+          << "Using the default inline executor for asynchronous reclamation "
+             "may be susceptible to deadlock if the current thread happens to "
+             "hold a resource needed by the deleter of a reclaimbale object";
     }
   }
 }; // namespace folly

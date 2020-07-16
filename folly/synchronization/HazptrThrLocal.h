@@ -113,14 +113,16 @@ class hazptr_tc {
       entry_[count_++].fill(hprec);
       return true;
     }
-    warning_tc_overflow();
+    hazptr_warning_tc_overflow();
     return false;
   }
 
-  FOLLY_NOINLINE void warning_tc_overflow() {
+  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_tc_overflow() {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING) << "Hazptr thread cache overflow " << this;
+      LOG(WARNING) << "Hazptr thread cache overflow "
+                   << std::this_thread::get_id();
+      ;
     }
   }
 
