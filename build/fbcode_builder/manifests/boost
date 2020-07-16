@@ -81,6 +81,3 @@ builder = boost
 --with-timer
 --with-type_erasure
 --with-wave
-
-[b2.args.os=darwin]
-toolset=clang
