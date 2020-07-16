@@ -28,6 +28,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/portability/Sockets.h>
+#include <folly/small_vector.h>
 
 #include <sys/types.h>
 
@@ -966,6 +967,90 @@ class AsyncSocket : public AsyncTransport {
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
 
+  class LifecycleObserver : public AsyncTransport::LifecycleObserver {
+   public:
+    using AsyncTransport::LifecycleObserver::LifecycleObserver;
+
+    /**
+     * fdDetach() is invoked if the socket file descriptor is detached.
+     *
+     * detachNetworkSocket() will be triggered when a new AsyncSocket is being
+     * constructed from an old one. See the moved() event for details about
+     * this special case.
+     *
+     * @param socket      Socket for which detachNetworkSocket was invoked.
+     */
+    virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
+
+    /**
+     * move() will be invoked when a new AsyncSocket is being constructed via
+     * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
+     * that has an observer attached.
+     *
+     * This type of construction is common during TLS/SSL accept process.
+     * wangle::Acceptor may transform an AsyncSocket to an AsyncFizzServer, and
+     * then transform the AsyncFizzServer to an AsyncSSLSocket on fallback.
+     * AsyncFizzServer and AsyncSSLSocket derive from AsyncSocket and at each
+     * stage the aforementioned constructor will be called.
+     *
+     * Observers may be attached when the initial AsyncSocket is created, before
+     * TLS/SSL accept handling has completed. As a result, AsyncSocket must
+     * notify the observer during each transformation so that:
+     *   (1) The observer can track these transformations for debugging.
+     *   (2) The observer does not become separated from the underlying
+     *        operating system socket and corresponding file descriptor.
+     *
+     * When a new AsyncSocket is being constructed via the aforementioned
+     * constructor, the following observer events will be triggered:
+     *   (1) fdDetach
+     *   (2) move
+     *
+     * When move is triggered, the observer can CHOOSE to detach the old socket
+     * and attach to the new socket. This process will not happen automatically;
+     * the observer must explicitly perform these steps.
+     *
+     * @param oldSocket   Old socket that fd was detached from.
+     * @param newSocket   New socket being constructed with fd attached.
+     */
+    virtual void move(
+        AsyncSocket* /* oldSocket */,
+        AsyncSocket* /* newSocket */) noexcept = 0;
+  };
+
+  /**
+   * Adds a lifecycle observer.
+   *
+   * Observers can tie their lifetime to aspects of this socket's lifecycle /
+   * lifetime and perform inspection at various states.
+   *
+   * This enables instrumentation to be added without changing / interfering
+   * with how the application uses the socket.
+   *
+   * Observer should implement AsyncTransport::LifecycleObserver to receive
+   * additional lifecycle events specific to AsyncSocket.
+   *
+   * @param observer     Observer to add (implements LifecycleObserver).
+   */
+  void addLifecycleObserver(
+      AsyncTransport::LifecycleObserver* observer) override;
+
+  /**
+   * Removes a lifecycle observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether observer found and removed from list.
+   */
+  bool removeLifecycleObserver(
+      AsyncTransport::LifecycleObserver* observer) override;
+
+  /**
+   * Returns installed lifecycle observers.
+   *
+   * @return             Vector with installed observers.
+   */
+  FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
+  getLifecycleObservers() const override;
+
  protected:
   enum ReadResultEnum {
     READ_EOF = 0,
@@ -1292,6 +1377,19 @@ class AsyncSocket : public AsyncTransport {
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;
+
+  // Lifecycle observers.
+  //
+  // Use small_vector to avoid heap allocation for up to two observers, unless
+  // mobile, in which case we fallback to std::vector to prioritize code size.
+#if !FOLLY_MOBILE
+  using LifecycleObserverVecImpl =
+      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>;
+#else
+  using LifecycleObserverVecImpl =
+      std::vector<AsyncTransport::LifecycleObserver*>;
+#endif
+  LifecycleObserverVecImpl lifecycleObservers_;
 
   // Pre-received data, to be returned to read callback before any data from the
   // socket.

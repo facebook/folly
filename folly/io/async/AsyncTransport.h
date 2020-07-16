@@ -732,6 +732,92 @@ class AsyncTransport : public DelayedDestruction,
     }
   }
 
+  class LifecycleObserver {
+   public:
+    virtual ~LifecycleObserver() = default;
+
+    /**
+     * observerAttach() will be invoked when an observer is added.
+     *
+     * @param transport   Transport where observer was installed.
+     */
+    virtual void observerAttach(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * observerDetached() will be invoked if the observer is uninstalled prior
+     * to transport destruction.
+     *
+     * No further events will be invoked after observerDetach().
+     *
+     * @param transport   Transport where observer was uninstalled.
+     */
+    virtual void observerDetach(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * destroy() will be invoked when the transport's destructor is invoked.
+     *
+     * No further events will be invoked after destroy().
+     *
+     * @param transport   Transport being destroyed.
+     */
+    virtual void destroy(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * close() will be invoked when the transport is being closed.
+     *
+     * Can be called multiple times during shutdown / destruction for the same
+     * transport. Observers may detach after first call or track if event
+     * previously observed.
+     *
+     * @param transport   Transport being closed.
+     */
+    virtual void close(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * connect() will be invoked when connect() returns successfully.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that has connected.
+     */
+    virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
+  };
+
+  /**
+   * Adds a lifecycle observer.
+   *
+   * Observers can tie their lifetime to aspects of this socket's lifecycle /
+   * lifetime and perform inspection at various states.
+   *
+   * This enables instrumentation to be added without changing / interfering
+   * with how the application uses the socket.
+   *
+   * @param observer     Observer to add (implements LifecycleObserver).
+   */
+  virtual void addLifecycleObserver(LifecycleObserver* /* observer */) {
+    CHECK(false) << "addLifecycleObserver() not supported";
+  }
+
+  /**
+   * Removes a lifecycle observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether observer found and removed from list.
+   */
+  virtual bool removeLifecycleObserver(LifecycleObserver* /* observer */) {
+    CHECK(false) << "removeLifecycleObserver() not supported";
+  }
+
+  /**
+   * Returns installed lifecycle observers.
+   *
+   * @return             Vector with installed observers.
+   */
+  FOLLY_NODISCARD virtual std::vector<LifecycleObserver*>
+  getLifecycleObservers() const {
+    CHECK(false) << "getLifecycleObservers() not supported";
+  }
+
   /**
    * AsyncTransports may wrap other AsyncTransport. This returns the
    * transport that is wrapped. It returns nullptr if there is no wrapped
