@@ -44,10 +44,15 @@ enum class WriteFlags : uint32_t {
    */
   CORK = 0x01,
   /*
-   * Used to request timestamping when entire buffer ACKed by remote endpoint.
+   * Set MSG_EOR flag when writing the last byte of the buffer to the socket.
    *
-   * How timestamping is performed is implementation specific and may rely on
-   * software or hardware timestamps
+   * EOR tracking may need to be enabled to ensure that the MSG_EOR flag is only
+   * set when the final byte is being written.
+   *
+   *  - If the MSG_EOR flag is set, it is marked in the corresponding
+   *    tcp_skb_cb; this can be useful when debugging.
+   *  - The kernel uses it to decide whether socket buffers can be collapsed
+   *    together (see tcp_skb_can_collapse_to).
    */
   EOR = 0x02,
   /*
@@ -59,12 +64,23 @@ enum class WriteFlags : uint32_t {
    */
   WRITE_MSG_ZEROCOPY = 0x08,
   /*
-   * Used to request timestamping when entire buffer transmitted by the NIC.
+   * Request timestamp when entire buffer transmitted by the NIC.
    *
    * How timestamping is performed is implementation specific and may rely on
    * software or hardware timestamps
    */
   TIMESTAMP_TX = 0x10,
+  /*
+   * Request timestamp when entire buffer ACKed by remote endpoint.
+   *
+   * How timestamping is performed is implementation specific and may rely on
+   * software or hardware timestamps
+   */
+  TIMESTAMP_ACK = 0x20,
+  /*
+   * Request timestamp when entire buffer has entered packet scheduler.
+   */
+  TIMESTAMP_SCHED = 0x40,
 };
 
 /*
