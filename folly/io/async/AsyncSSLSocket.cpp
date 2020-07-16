@@ -390,12 +390,7 @@ std::string AsyncSSLSocket::getApplicationProtocol() const noexcept {
 }
 
 void AsyncSSLSocket::setEorTracking(bool track) {
-  if (isEorTrackingEnabled() != track) {
-    AsyncSocket::setEorTracking(track);
-    appEorByteNo_ = 0;
-    appEorByteWriteFlags_ = {};
-    minEorRawByteNo_ = 0;
-  }
+  AsyncSocket::setEorTracking(track);
 }
 
 size_t AsyncSSLSocket::getRawBytesWritten() const {
@@ -1008,7 +1003,7 @@ bool AsyncSSLSocket::willBlock(
     int* sslErrorOut,
     unsigned long* errErrorOut) noexcept {
   *errErrorOut = 0;
-  int error = *sslErrorOut = SSL_get_error(ssl_.get(), ret);
+  int error = *sslErrorOut = sslGetErrorImpl(ssl_.get(), ret);
   if (error == SSL_ERROR_WANT_READ) {
     // Register for read event if not already.
     updateEventRegistration(EventHandler::READ, EventHandler::WRITE);
@@ -1408,7 +1403,7 @@ AsyncSSLSocket::performRead(void** buf, size_t* buflen, size_t* offset) {
         std::make_unique<SSLException>(SSLError::CLIENT_RENEGOTIATION));
   }
   if (bytes <= 0) {
-    int error = SSL_get_error(ssl_.get(), bytes);
+    int error = sslGetErrorImpl(ssl_.get(), bytes);
     if (error == SSL_ERROR_WANT_READ) {
       // The caller will register for read event if not already.
       if (errno == EWOULDBLOCK || errno == EAGAIN) {
@@ -1603,22 +1598,61 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
       }
     }
 
-    // cork the current write if the original flags included CORK or if there
-    // are remaining iovec to write
-    corkCurrentWrite_ =
-        isSet(flags, WriteFlags::CORK) || (i + buffersStolen + 1 < count);
+    // From here, the write flow is as follows:
+    //   - sslWriteImpl calls SSL_write, which encrypts the passed buffer.
+    //   - SSL_write calls AsyncSSLSocket::bioWrite with the encrypted buffer.
+    //   - AsyncSSLSocket::bioWrite calls AsyncSocket::sendSocketMessage(...).
+    //
+    // When sendSocketMessage calls sendMsg, WriteFlags are transformed into
+    // ancillary data and/or sendMsg flags. If WriteFlag::EOR is in flags and
+    // trackEor_ is set, then we should ensure that MSG_EOR is only passed to
+    // sendmsg when the final byte of the orginally passed in buffer is being
+    // written. Since the buffer originally passed to performWrite may be split
+    // up and written over multiple calls to sendmsg, we have to take care to
+    // unset the EOR flag if it was included in the WriteFlags passed in and
+    // we're writing a buffer that does _not_ contain the final byte of the
+    // orignally passed buffer.
+    //
+    // We handle EOR as follows:
+    //   - We set currWriteFlags_ to the passed in WriteFlags.
+    //   - If sslWriteBuf does NOT contain the last byte of the passed in iovec,
+    //     then we set currBytesToFinalByte_ to folly::none. In bioWrite, we
+    //     unset WriteFlags::EOR if it is set in currWriteFlags_.
+    //   - If sslWriteBuf DOES contain the last byte of the passed in iovec,
+    //     then we set bytesToFinalByte_ to int(len). In bioWrite, if the length
+    //     of the passed in buffer >= currBytesToFinalByte_, then we leave the
+    //     flags in currWriteFlags_ alone.
+    //
+    // What about timestamp flags?
+    //   - We don't do any special handling for timestamping flags.
+    //   - This may mean that more timestamps than necessary get generated, but
+    //     that's OK; you already have to deal with that for timestamping due to
+    //     the possibility of partial writes.
+    //   - MSG_EOR used to be used for timestamping, but hasn't been for years.
+    //
+    // Finally, why even care about MSG_EOR, if not for timestamping?
+    //   - If set, it is marked in the corresponding tcp_skb_cb; this can be
+    //     useful when debugging.
+    //   - The kernel uses it to decide whether socket buffers can be collapsed
+    //     together (see tcp_skb_can_collapse_to).
+    currWriteFlags_ = flags;
+    uint32_t iovecWrittenToSslWriteBuf = i + buffersStolen + 1;
+    CHECK_LE(iovecWrittenToSslWriteBuf, count);
+    if (iovecWrittenToSslWriteBuf == count) { // last byte is in sslWriteBuf
+      currBytesToFinalByte_ = len; // length of current buffer
+    } else { // there are still remaining buffers / iovec to write
+      currBytesToFinalByte_ = folly::none;
+      currWriteFlags_ |= WriteFlags::CORK;
+    }
 
-    // track the EoR if:
-    //  (1) there are write flags that require EoR tracking (EOR / TIMESTAMP_TX)
-    //  (2) if the buffer includes the EOR byte
-    appEorByteWriteFlags_ = flags & kEorRelevantWriteFlags;
-    bool trackEor = appEorByteWriteFlags_ != folly::WriteFlags::NONE &&
-        (i + buffersStolen + 1 == count);
-    bytes = eorAwareSSLWrite(ssl_, sslWriteBuf, int(len), trackEor);
-
+    bytes = sslWriteImpl(ssl_.get(), sslWriteBuf, int(len));
     if (bytes <= 0) {
-      int error = SSL_get_error(ssl_.get(), int(bytes));
+      int error = sslGetErrorImpl(ssl_.get(), int(bytes));
       if (error == SSL_ERROR_WANT_WRITE) {
+        // The entire buffer needs to be passed in again, so *partialWritten
+        // is set to the original offset where we started for this call to
+        // performWrite(); see SSL_ERROR_WANT_WRITE documentation for details.
+        //
         // The caller will register for write event if not already.
         *partialWritten = uint32_t(offset);
         return WriteResult(totalWritten);
@@ -1651,42 +1685,6 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
   return WriteResult(totalWritten);
 }
 
-int AsyncSSLSocket::eorAwareSSLWrite(
-    const ssl::SSLUniquePtr& ssl,
-    const void* buf,
-    int n,
-    bool eor) {
-  if (eor && isEorTrackingEnabled()) {
-    if (appEorByteNo_) {
-      // cannot track for more than one app byte EOR
-      CHECK(appEorByteNo_ == appBytesWritten_ + n);
-    } else {
-      appEorByteNo_ = appBytesWritten_ + n;
-    }
-
-    // 1. It is fine to keep updating minEorRawByteNo_.
-    // 2. It is _min_ in the sense that SSL record will add some overhead.
-    minEorRawByteNo_ = getRawBytesWritten() + n;
-  }
-
-  n = sslWriteImpl(ssl.get(), buf, n);
-  if (n > 0) {
-    appBytesWritten_ += n;
-    if (appEorByteNo_) {
-      if (getRawBytesWritten() >= minEorRawByteNo_) {
-        minEorRawByteNo_ = 0;
-      }
-      if (appBytesWritten_ == appEorByteNo_) {
-        appEorByteNo_ = 0;
-        appEorByteWriteFlags_ = {};
-      } else {
-        CHECK(appBytesWritten_ < appEorByteNo_);
-      }
-    }
-  }
-  return n;
-}
-
 void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int ret) {
   AsyncSSLSocket* sslSocket = AsyncSSLSocket::getFromSSL(ssl);
   if (sslSocket->handshakeComplete_ && (where & SSL_CB_HANDSHAKE_START)) {
@@ -1709,46 +1707,42 @@ void AsyncSSLSocket::sslInfoCallback(const SSL* ssl, int where, int ret) {
 }
 
 int AsyncSSLSocket::bioWrite(BIO* b, const char* in, int inl) {
+  // get pointer to AsyncSSLSocket from BioAppData
+  auto appData = OpenSSLUtils::getBioAppData(b);
+  CHECK(appData);
+  AsyncSSLSocket* sslSock = reinterpret_cast<AsyncSSLSocket*>(appData);
+  CHECK(sslSock);
+
+  // if EOR is tracked, correct if needed
+  WriteFlags flags = sslSock->currWriteFlags_;
+  if (sslSock->trackEor_ &&
+      (!sslSock->currBytesToFinalByte_.has_value() ||
+       *(sslSock->currBytesToFinalByte_) > (size_t)inl)) {
+    // unset EOR if set, since we're not writing the last byte yet
+    flags = unSet(flags, folly::WriteFlags::EOR);
+  }
+
   struct msghdr msg;
   struct iovec iov;
-  AsyncSSLSocket* tsslSock;
-
   iov.iov_base = const_cast<char*>(in);
   iov.iov_len = size_t(inl);
   memset(&msg, 0, sizeof(msg));
   msg.msg_iov = &iov;
   msg.msg_iovlen = 1;
-
-  auto appData = OpenSSLUtils::getBioAppData(b);
-  CHECK(appData);
-
-  tsslSock = reinterpret_cast<AsyncSSLSocket*>(appData);
-  CHECK(tsslSock);
-
-  WriteFlags flags = WriteFlags::NONE;
-  if (tsslSock->isEorTrackingEnabled() && tsslSock->minEorRawByteNo_ &&
-      tsslSock->minEorRawByteNo_ <= BIO_number_written(b) + inl) {
-    flags |= tsslSock->appEorByteWriteFlags_;
-  }
-
-  if (tsslSock->corkCurrentWrite_) {
-    flags |= WriteFlags::CORK;
-  }
-
-  int msg_flags = tsslSock->getSendMsgParamsCB()->getFlags(
-      flags, false /*zeroCopyEnabled*/);
+  int msg_flags =
+      sslSock->getSendMsgParamsCB()->getFlags(flags, false /*zeroCopyEnabled*/);
   msg.msg_controllen =
-      tsslSock->getSendMsgParamsCB()->getAncillaryDataSize(flags);
+      sslSock->getSendMsgParamsCB()->getAncillaryDataSize(flags);
   CHECK_GE(
       AsyncSocket::SendMsgParamsCallback::maxAncillaryDataSize,
       msg.msg_controllen);
   if (msg.msg_controllen != 0) {
     msg.msg_control = reinterpret_cast<char*>(alloca(msg.msg_controllen));
-    tsslSock->getSendMsgParamsCB()->getAncillaryData(flags, msg.msg_control);
+    sslSock->getSendMsgParamsCB()->getAncillaryData(flags, msg.msg_control);
   }
 
   auto result =
-      tsslSock->sendSocketMessage(OpenSSLUtils::getBioFd(b), &msg, msg_flags);
+      sslSock->sendSocketMessage(OpenSSLUtils::getBioFd(b), &msg, msg_flags);
   BIO_clear_retry_flags(b);
   if (!result.exception && result.writeReturn <= 0) {
     if (OpenSSLUtils::getBioShouldRetryWrite(int(result.writeReturn))) {

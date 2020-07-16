@@ -120,19 +120,6 @@ constexpr bool isSet(WriteFlags a, WriteFlags b) {
   return (a & b) == b;
 }
 
-/**
- * Write flags that are specifically for the final write call of a buffer.
- *
- * In some cases, buffers passed to send may be coalesced or split by the socket
- * write handling logic. For instance, a buffer passed to AsyncSSLSocket may be
- * split across multiple TLS records (and therefore multiple calls to write).
- *
- * When a buffer is split up, these flags will only be applied for the final
- * call to write for that buffer.
- */
-constexpr WriteFlags kEorRelevantWriteFlags =
-    WriteFlags::EOR | WriteFlags::TIMESTAMP_TX;
-
 class AsyncReader {
  public:
   class ReadCallback {

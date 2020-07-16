@@ -1169,7 +1169,7 @@ class AsyncSocket : public AsyncTransport {
    * @param msg       Message to send
    * @param msg_flags Flags to pass to sendmsg
    */
-  AsyncSocket::WriteResult
+  virtual AsyncSocket::WriteResult
   sendSocketMessage(NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
   virtual ssize_t
