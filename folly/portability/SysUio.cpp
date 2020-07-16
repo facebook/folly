@@ -68,6 +68,7 @@ ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
   using sig = ssize_t(int, const iovec*, int, off_t);
   static auto the_preadv = []() -> sig* {
 #if defined(__APPLE__) && FOLLY_HAS_BUILTIN(__builtin_available) && \
+    !TARGET_OS_SIMULATOR &&                                         \
     (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
      __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
     if (__builtin_available(iOS 14.0, macOS 11.0, *)) {
@@ -86,6 +87,7 @@ ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
   using sig = ssize_t(int, const iovec*, int, off_t);
   static auto the_pwritev = []() -> sig* {
 #if defined(__APPLE__) && FOLLY_HAS_BUILTIN(__builtin_available) && \
+    !TARGET_OS_SIMULATOR &&                                         \
     (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
      __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
     if (__builtin_available(iOS 14.0, macOS 11.0, *)) {
