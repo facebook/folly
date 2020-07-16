@@ -289,6 +289,15 @@ class AsyncSocket : public AsyncTransport {
   explicit AsyncSocket(AsyncSocket::UniquePtr);
 
   /**
+   * Create an AsyncSocket from a different, already connected AsyncSocket.
+   *
+   * Similar to AsyncSocket(evb, fd) when fd was previously owned by an
+   * AsyncSocket. Caller must call destroy on old AsyncSocket unless it is
+   * in a smart pointer with appropriate destructor.
+   */
+  explicit AsyncSocket(AsyncSocket*);
+
+  /**
    * Helper function to create an AsyncSocket..
    *
    * This passes in the correct destructor object, since AsyncSocket's

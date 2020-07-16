@@ -253,10 +253,10 @@ AsyncSSLSocket::AsyncSSLSocket(
 
 AsyncSSLSocket::AsyncSSLSocket(
     shared_ptr<SSLContext> ctx,
-    AsyncSocket::UniquePtr oldAsyncSocket,
+    AsyncSocket* oldAsyncSocket,
     bool server,
     bool deferSecurityNegotiation)
-    : AsyncSocket(std::move(oldAsyncSocket)),
+    : AsyncSocket(oldAsyncSocket),
       server_(server),
       ctx_(std::move(ctx)),
       handshakeTimeout_(this, AsyncSocket::getEventBase()),
@@ -271,6 +271,17 @@ AsyncSSLSocket::AsyncSSLSocket(
     sslState_ = STATE_UNENCRYPTED;
   }
 }
+
+AsyncSSLSocket::AsyncSSLSocket(
+    shared_ptr<SSLContext> ctx,
+    AsyncSocket::UniquePtr oldAsyncSocket,
+    bool server,
+    bool deferSecurityNegotiation)
+    : AsyncSSLSocket(
+          ctx,
+          oldAsyncSocket.get(),
+          server,
+          deferSecurityNegotiation) {}
 
 #if FOLLY_OPENSSL_HAS_SNI
 /**

@@ -234,6 +234,16 @@ class AsyncSSLSocket : public AsyncSocket {
    */
   AsyncSSLSocket(
       std::shared_ptr<folly::SSLContext> ctx,
+      AsyncSocket* oldAsyncSocket,
+      bool server = true,
+      bool deferSecurityNegotiation = false);
+
+  /**
+   * Create a server/client AsyncSSLSocket from an already connected
+   * AsyncSocket.
+   */
+  AsyncSSLSocket(
+      std::shared_ptr<folly::SSLContext> ctx,
       AsyncSocket::UniquePtr oldAsyncSocket,
       bool server = true,
       bool deferSecurityNegotiation = false);

@@ -344,7 +344,7 @@ AsyncSocket::AsyncSocket(
   state_ = StateEnum::ESTABLISHED;
 }
 
-AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
+AsyncSocket::AsyncSocket(AsyncSocket* oldAsyncSocket)
     : AsyncSocket(
           oldAsyncSocket->getEventBase(),
           oldAsyncSocket->detachNetworkSocket(),
@@ -357,10 +357,13 @@ AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
   for (const auto& cb : oldAsyncSocket->lifecycleObservers_) {
     // only available for observers derived from AsyncSocket::LifecycleObserver
     if (auto dCb = dynamic_cast<AsyncSocket::LifecycleObserver*>(cb)) {
-      dCb->move(oldAsyncSocket.get(), this);
+      dCb->move(oldAsyncSocket, this);
     }
   }
 }
+
+AsyncSocket::AsyncSocket(AsyncSocket::UniquePtr oldAsyncSocket)
+    : AsyncSocket(oldAsyncSocket.get()) {}
 
 // init() method, since constructor forwarding isn't supported in most
 // compilers yet.
