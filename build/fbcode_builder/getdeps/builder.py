@@ -1048,7 +1048,11 @@ incremental = false
             # so just rely on cargo downloading crates on it's own
             pass
 
-        self.run_cargo(install_dirs, "build")
+        self.run_cargo(
+            install_dirs,
+            "build",
+            ["--out-dir", os.path.join(self.inst_dir, "bin"), "-Zunstable-options"],
+        )
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
     def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
