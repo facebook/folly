@@ -41,7 +41,6 @@ FOLLY_ALWAYS_INLINE void __builtin___clear_cache(char* begin, char* end) {
   }
 }
 
-#if !defined(_MSC_VER) || (_MSC_VER < 1923)
 FOLLY_ALWAYS_INLINE int __builtin_clz(unsigned int x) {
   unsigned long index;
   return int(_BitScanReverse(&index, (unsigned long)x) ? 31 - index : 32);
@@ -93,7 +92,6 @@ FOLLY_ALWAYS_INLINE int __builtin_ctzll(unsigned long long x) {
   return int(_BitScanForward64(&index, x) ? index : 64);
 }
 #endif
-#endif // !defined(_MSC_VER) || (_MSC_VER < 1923)
 
 FOLLY_ALWAYS_INLINE int __builtin_ffs(int x) {
   unsigned long index;
@@ -119,15 +117,12 @@ FOLLY_ALWAYS_INLINE int __builtin_popcount(unsigned int x) {
   return int(__popcnt(x));
 }
 
-#if !defined(_MSC_VER) || (_MSC_VER < 1923)
 FOLLY_ALWAYS_INLINE int __builtin_popcountl(unsigned long x) {
   static_assert(sizeof(x) == 4, "");
   return int(__popcnt(x));
 }
-#endif // !defined(_MSC_VER) || (_MSC_VER < 1923)
 #endif
 
-#if !defined(_MSC_VER) || (_MSC_VER < 1923)
 #if defined(_M_IX86)
 FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
   return int(__popcnt((unsigned int)(x >> 32))) +
@@ -138,7 +133,6 @@ FOLLY_ALWAYS_INLINE int __builtin_popcountll(unsigned long long x) {
   return int(__popcnt64(x));
 }
 #endif
-#endif // !defined(_MSC_VER) || (_MSC_VER < 1923)
 
 FOLLY_ALWAYS_INLINE void* __builtin_return_address(unsigned int frame) {
   // I really hope frame is zero...
