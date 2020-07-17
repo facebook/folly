@@ -16,6 +16,7 @@
 
 #include <folly/detail/StaticSingletonManager.h>
 
+#include <folly/lang/Keep.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {
@@ -35,16 +36,16 @@ struct MayThrow {
 };
 } // namespace
 
-extern "C" int* check() {
+extern "C" FOLLY_KEEP int* check() {
   return &createGlobal<int, void>();
 }
 
-extern "C" void* check_throw() {
+extern "C" FOLLY_KEEP void* check_throw() {
   MayThrow<false> obj;
   return &createGlobal<MayThrow<false>, void>();
 }
 
-extern "C" void* check_nothrow() {
+extern "C" FOLLY_KEEP void* check_nothrow() {
   MayThrow<false> obj;
   return &createGlobal<MayThrow<true>, void>();
 }
