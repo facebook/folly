@@ -123,6 +123,10 @@ class LogMessage {
     return numNewlines_;
   }
 
+  const std::string& getContextString() const {
+    return contextString_;
+  }
+
  private:
   void sanitizeMessage();
 
@@ -154,6 +158,14 @@ class LogMessage {
    * size their buffers appropriately.
    */
   size_t numNewlines_{0};
+
+  /**
+   * contextString_ contains user defined context information.
+   *
+   * This can be customized by adding new callback through
+   * addLogMessageContextCallback().
+   */
+  std::string contextString_;
 
   /**
    * rawMessage_ contains the original message.

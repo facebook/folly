@@ -83,7 +83,8 @@ struct FormatKeys {
  *
  * TODO: Support including thread names and thread context info.
  */
-constexpr std::array<FormatKeys, 11> formatKeys{{
+constexpr std::array<FormatKeys, 12> formatKeys{{
+    FormatKeys(/* key */ "CTX", /*    argIndex  */ 11),
     FormatKeys(/* key */ "D", /*      argIndex  */ 2, /* width */ 2),
     FormatKeys(/* key */ "FILE", /*   argIndex  */ 8),
     FormatKeys(/* key */ "FUN", /*    argIndex  */ 9),
@@ -263,6 +264,7 @@ std::string CustomLogFormatter::formatMessage(
         basename,
         message.getFunctionName(),
         message.getLineNumber(),
+        message.getContextString(),
         // NOTE: THE FOLLOWING ARGUMENTS ALWAYS NEED TO BE THE LAST 3:
         message.getMessage(),
         // If colored logs are enabled, the singleLineLogFormat_ will contain
@@ -286,7 +288,8 @@ std::string CustomLogFormatter::formatMessage(
         message.getThreadID(),
         basename,
         message.getFunctionName(),
-        message.getLineNumber());
+        message.getLineNumber(),
+        message.getContextString());
 
     // Estimate header length. If this still isn't long enough the string will
     // grow as necessary, so the code will still be correct, but just slightly

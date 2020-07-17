@@ -599,6 +599,87 @@ LogCategory* LoggerDB::xlogInitCategory(
   return category;
 }
 
+class LoggerDB::ContextCallbackList::CallbacksObj {
+  using StorageBlock = std::array<ContextCallback, 16>;
+
+ public:
+  CallbacksObj() : end_(block_.begin()) {}
+
+  template <typename F>
+  void forEach(F&& f) const {
+    auto end = end_.load(std::memory_order_acquire);
+
+    for (auto it = block_.begin(); it != end; it = std::next(it)) {
+      f(*it);
+    }
+  }
+
+  /**
+   * Callback list is implemented as an unsynchronized array, so an atomic
+   * end flag is used for list readers to get a synchronized view of the
+   * list with concurrent writers, protecting the underlying array.
+   * There can be also race condition between list writers, because the end
+   * flag is firstly tested before written, which should be serialized with
+   * another global mutex to prevent TOCTOU bug.
+   */
+  void push(ContextCallback callback) {
+    auto end = end_.load(std::memory_order_relaxed);
+    if (end == block_.end()) {
+      folly::throw_exception(std::length_error(
+          "Exceeding limit for the number of pushed context callbacks."));
+    }
+    *end = std::move(callback);
+    end_.store(std::next(end), std::memory_order_release);
+  }
+
+ private:
+  StorageBlock block_;
+  std::atomic<StorageBlock::iterator> end_;
+};
+
+LoggerDB::ContextCallbackList::~ContextCallbackList() {
+  auto callback = callbacks_.load(std::memory_order_relaxed);
+  if (callback != nullptr) {
+    delete callback;
+  }
+}
+
+void LoggerDB::ContextCallbackList::addCallback(ContextCallback callback) {
+  std::lock_guard<std::mutex> g(writeMutex_);
+  auto callbacks = callbacks_.load(std::memory_order_relaxed);
+  if (!callbacks) {
+    callbacks = new CallbacksObj();
+    callbacks_.store(callbacks, std::memory_order_relaxed);
+  }
+  callbacks->push(std::move(callback));
+}
+
+std::string LoggerDB::ContextCallbackList::getContextString() const {
+  auto callbacks = callbacks_.load(std::memory_order_relaxed);
+  if (callbacks == nullptr) {
+    return {};
+  }
+
+  std::string ret;
+  callbacks->forEach([&](const auto& callback) {
+    ret += ' ';
+    try {
+      ret += callback();
+    } catch (const std::exception& e) {
+      folly::toAppend("[error:", folly::exceptionStr(e), "]", &ret);
+    };
+  });
+  return ret;
+}
+
+void LoggerDB::addContextCallback(ContextCallback callback) {
+  contextCallbacks_.addCallback(std::move(callback));
+}
+
+std::string LoggerDB::getContextString() const {
+  return contextCallbacks_.getContextString();
+}
+
 std::atomic<LoggerDB::InternalWarningHandler> LoggerDB::warningHandler_;
 
 void LoggerDB::internalWarningImpl(

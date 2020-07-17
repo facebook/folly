@@ -61,7 +61,7 @@ std::string GlogStyleFormatter::formatMessage(
 
   auto basename = message.getFileBaseName();
   auto headerFormatter = folly::format(
-      "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} {}:{}] ",
+      "{}{:02d}{:02d} {:02d}:{:02d}:{:02d}.{:06d} {:5d} {}:{}{}] ",
       getGlogLevelName(message.getLevel())[0],
       ltime.tm_mon + 1,
       ltime.tm_mday,
@@ -71,7 +71,8 @@ std::string GlogStyleFormatter::formatMessage(
       usecs.count(),
       message.getThreadID(),
       basename,
-      message.getLineNumber());
+      message.getLineNumber(),
+      message.getContextString());
 
   // TODO: Support including thread names and thread context info.
 

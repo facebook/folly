@@ -16,9 +16,17 @@
 
 #include <folly/logging/LogMessage.h>
 
+#include <folly/logging/LogCategory.h>
+#include <folly/logging/LoggerDB.h>
 #include <folly/system/ThreadId.h>
 
 using std::chrono::system_clock;
+
+namespace {
+std::string getContextStringFromCategory(const folly::LogCategory* category) {
+  return category->getDB()->getContextString();
+}
+} // namespace
 
 namespace folly {
 
@@ -36,6 +44,7 @@ LogMessage::LogMessage(
       filename_{filename},
       lineNumber_{lineNumber},
       functionName_{functionName},
+      contextString_{getContextStringFromCategory(category_)},
       rawMessage_{std::move(msg)} {
   sanitizeMessage();
 }
@@ -55,6 +64,7 @@ LogMessage::LogMessage(
       filename_{filename},
       lineNumber_{lineNumber},
       functionName_{functionName},
+      contextString_{getContextStringFromCategory(category_)},
       rawMessage_{std::move(msg)} {
   sanitizeMessage();
 }
