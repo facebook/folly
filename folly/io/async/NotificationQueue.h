@@ -729,6 +729,9 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       messageAvailable(std::move(data->msg_));
       destroyedFlagPtr_ = nullptr;
 
+      // Make sure message destructor is called with the correct RequestContext.
+      data.reset();
+
       // If the callback was destroyed before it returned, we are done
       if (callbackDestroyed) {
         return;
