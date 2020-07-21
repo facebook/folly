@@ -301,14 +301,11 @@ void runKeyExtractCases(
   }
 }
 
-template <typename T>
-using FalseFunc1 = std::false_type;
-
 struct DoEmplace1 {
   template <typename F, typename P>
   void operator()(F&& f, P&& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a, std::forward<F>(f), std::forward<P>(p));
   }
 };
@@ -317,14 +314,14 @@ struct DoEmplace2 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a, std::forward<F>(f), p.first, p.second);
   }
 
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a, std::forward<F>(f), std::move(p.first), std::move(p.second));
   }
 };
@@ -333,7 +330,7 @@ struct DoEmplace3 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -344,7 +341,7 @@ struct DoEmplace3 {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -361,7 +358,7 @@ struct DoEmplace3Value {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2> const& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -372,7 +369,7 @@ struct DoEmplace3Value {
   template <typename F, typename U1, typename U2>
   void operator()(F&& f, std::pair<U1, U2>&& p) const {
     std::allocator<char> a;
-    detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+    detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
         a,
         std::forward<F>(f),
         std::piecewise_construct,
@@ -390,7 +387,7 @@ TEST(Util, callWithExtractedKey) {
   // Calling the default pair constructor via emplace is valid, but not
   // very useful in real life.  Verify that it works.
   std::allocator<char> a;
-  detail::callWithExtractedKey<Tracked<0>, FalseFunc1>(
+  detail::callWithExtractedKey<Tracked<0>, Tracked<1>>(
       a, [](Tracked<0> const& key, auto&&... args) {
         EXPECT_TRUE(key == 0);
         std::pair<Tracked<0> const, Tracked<1>> p(
@@ -417,23 +414,23 @@ TEST(Util, callWithConstructedKey) {
     uint64_t k3 = 0;
     sink.reset();
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k1);
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, k1);
     // copy is expected on successful emplace
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{1, 0, 0, 0}), 0);
 
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k2);
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, k2);
     // no copies or moves on failing emplace with value_type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 0}), 0);
 
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k3);
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, k3);
     // copy convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 1, 0}), 0);
 
     sink.reset();
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc, k3);
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, k3);
     // copy convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 1, 0}), 0);
   }
@@ -443,27 +440,23 @@ TEST(Util, callWithConstructedKey) {
     uint64_t k3 = 0;
     sink.reset();
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, std::move(k1));
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, std::move(k1));
     // move is expected on successful emplace
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 0, 0}), 0);
 
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, std::move(k2));
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, std::move(k2));
     // no copies or moves on failing emplace with value_type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 0}), 0);
 
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, std::move(k3));
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, std::move(k3));
     // move convert expected for failing emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 0, 0, 1}), 0);
 
     sink.reset();
     resetTracking();
-    detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(
-        a, sinkFunc, std::move(k3));
+    detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc, std::move(k3));
     // move convert + move expected for successful emplace with wrong type
     EXPECT_EQ(Tracked<0>::counts().dist(Counts{0, 1, 0, 1}), 0);
   }
@@ -471,7 +464,7 @@ TEST(Util, callWithConstructedKey) {
   // Calling the default pair constructor via emplace is valid, but not
   // very useful in real life.  Verify that it works.
   sink.reset();
-  detail::callWithConstructedKey<Tracked<0>, FalseFunc1>(a, sinkFunc);
+  detail::callWithConstructedKey<Tracked<0>>(a, sinkFunc);
   EXPECT_TRUE(sink.has_value());
 }
 
@@ -516,51 +509,51 @@ TEST(Util, callWithExtractedHeterogeneousKey) {
 
   // none of the std::move below actually get consumed
 
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a, ExpectArgTypes<std::string, std::string&, int&&>{0, &str}, str, 0);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string const&, int const&>{
           1, &strPair.first},
       strPair);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&, int&&>{2, &str},
       std::move(strLRefPair));
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&, int const&>{10, &str},
       strLRefPair);
 
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&&, int&&>{3, &str},
       std::move(str),
       0);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&&, int&&>{4, &strPair.first},
       std::move(strPair));
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&, int const&>{5, &str},
       strRRefPair);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<std::string, std::string&&, int&&>{11, &str},
       std::move(strRRefPair));
 
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a, ExpectArgTypes<StringPiece, StringPiece&, int&&>{6, &sp}, sp, 0);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a,
       ExpectArgTypes<StringPiece, StringPiece const&, int const&>{
           7, &spPair.first},
       spPair);
 
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a, ExpectArgTypes<std::string, std::string&&, int&&>{8}, ptr, 0);
-  detail::callWithExtractedKey<std::string, IsStringPiece>(
+  detail::callWithExtractedKey<std::string, int, IsStringPiece>(
       a, ExpectArgTypes<std::string, std::string&&, int const&>{9}, ptrPair);
 }
 

@@ -414,13 +414,14 @@ class F14BasicMap {
  public:
   template <typename... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    auto rv = folly::detail::callWithExtractedKey<key_type, UsableAsKey>(
-        table_.alloc(),
-        [&](auto&&... inner) {
-          return table_.tryEmplaceValue(
-              std::forward<decltype(inner)>(inner)...);
-        },
-        std::forward<Args>(args)...);
+    auto rv =
+        folly::detail::callWithExtractedKey<key_type, mapped_type, UsableAsKey>(
+            table_.alloc(),
+            [&](auto&&... inner) {
+              return table_.tryEmplaceValue(
+                  std::forward<decltype(inner)>(inner)...);
+            },
+            std::forward<Args>(args)...);
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
