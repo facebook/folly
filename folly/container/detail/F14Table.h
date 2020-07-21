@@ -81,11 +81,17 @@
 #include <xmmintrin.h> // _mm_prefetch
 #endif
 
-#endif
-
 #ifndef FOLLY_F14_PERTURB_INSERTION_ORDER
 #define FOLLY_F14_PERTURB_INSERTION_ORDER folly::kIsDebug
 #endif
+
+#else // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+
+#ifndef FOLLY_F14_PERTURB_INSERTION_ORDER
+#define FOLLY_F14_PERTURB_INSERTION_ORDER false
+#endif
+
+#endif // FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 namespace folly {
 

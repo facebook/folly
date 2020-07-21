@@ -66,14 +66,18 @@ class F14BasicSet {
           K>::value,
       T>;
 
+  template <typename K>
+  using IsIter = std::is_same<typename Policy::Iter, remove_cvref_t<K>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
           typename Policy::Value,
           typename Policy::Hasher,
           typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value,
+          std::conditional_t<IsIter<K>::value, typename Policy::Value, K>>::
+              value &&
+          !IsIter<K>::value,
       T>;
 
  public:
@@ -743,15 +747,20 @@ class F14VectorSetImpl : public F14BasicSet<SetPolicyWithDefaults<
  private:
   using Super = F14BasicSet<Policy>;
 
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousVectorErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
           typename Policy::Value,
           typename Policy::Hasher,
           typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>::value,
+          std::conditional_t<IsIter<K>::value, typename Policy::Value, K>>::
+              value &&
+          !IsIter<K>::value,
       T>;
 
  public:

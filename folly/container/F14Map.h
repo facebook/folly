@@ -70,15 +70,20 @@ class F14BasicMap {
           K>::value,
       T>;
 
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
-          typename Policy::Value,
+          typename Policy::Key,
           typename Policy::Hasher,
           typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value,
+          std::conditional_t<IsIter<K>::value, typename Policy::Key, K>>::
+              value &&
+          !IsIter<K>::value,
       T>;
 
  public:
@@ -973,19 +978,21 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
  private:
   using Super = F14BasicMap<Policy>;
 
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstReverseIter, remove_cvref_t<K>>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousVectorErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
-          typename Policy::Value,
-          typename Policy::Hasher,
-          typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>::
-              value &&
-          !std::is_same<typename Policy::ConstReverseIter, remove_cvref_t<K>>::
-              value,
+          Key,
+          Hasher,
+          KeyEqual,
+          std::conditional_t<IsIter<K>::value, Key, K>>::value &&
+          !IsIter<K>::value,
       T>;
 
  public:
