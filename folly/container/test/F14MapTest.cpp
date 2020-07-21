@@ -28,6 +28,11 @@
 #include <folly/container/test/TrackingTypes.h>
 #include <folly/portability/GTest.h>
 
+using namespace folly;
+using namespace folly::f14;
+using namespace folly::string_piece_literals;
+using namespace folly::test;
+
 template <template <typename, typename, typename, typename, typename>
           class TMap>
 void testCustomSwap() {
@@ -292,6 +297,232 @@ TEST(F14Map, equalityRefinement) {
   testEqualityRefinement<folly::F14FastMap>();
 }
 
+template <typename M>
+void runHeterogeneousInsertTest() {
+  M map;
+
+  resetTracking();
+  EXPECT_EQ(map.count(10), 0);
+  EXPECT_FALSE(map.contains(10));
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
+
+  resetTracking();
+  map[10] = 20;
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 1}), 0)
+      << Tracked<1>::counts();
+
+  resetTracking();
+  std::pair<int, int> p(10, 30);
+  std::vector<std::pair<int, int>> v({p});
+  map[10] = 30;
+  map.insert(std::pair<int, int>(10, 30));
+  map.insert(std::pair<int const, int>(10, 30));
+  map.insert(p);
+  map.insert(v.begin(), v.end());
+  map.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+  map.insert_or_assign(10, 40);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
+
+  resetTracking();
+  map.emplace(10, 30);
+  map.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(10),
+      std::forward_as_tuple(30));
+  map.emplace(p);
+  map.try_emplace(10, 30);
+  map.try_emplace(10);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
+
+  resetTracking();
+  map.erase(10);
+  EXPECT_EQ(map.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
+
+#if FOLLY_F14_ERASE_INTO_AVAILABLE
+  map.emplace(10, 40);
+  resetTracking();
+  map.eraseInto(10, [](auto&&, auto&&) {});
+  EXPECT_EQ(map.size(), 0);
+  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
+      << Tracked<1>::counts();
+#endif
+}
+
+template <typename M>
+void runHeterogeneousInsertStringTest() {
+  using P = std::pair<StringPiece, std::string>;
+  using CP = std::pair<const StringPiece, std::string>;
+
+  M map;
+  P p{"foo", "hello"};
+  std::vector<P> v{p};
+  StringPiece foo{"foo"};
+
+  map.insert(P("foo", "hello"));
+  // TODO(T31574848): the list-initialization below does not work on libstdc++
+  // versions (e.g., GCC < 6) with no implementation of N4387 ("perfect
+  // initialization" for pairs and tuples).
+  //   StringPiece sp{"foo"};
+  //   map.insert({sp, "hello"});
+  map.insert({"foo", "hello"});
+  map.insert(CP("foo", "hello"));
+  map.insert(p);
+  map.insert(v.begin(), v.end());
+  map.insert(
+      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
+  map.insert_or_assign("foo", "hello");
+  map.insert_or_assign(StringPiece{"foo"}, "hello");
+  EXPECT_EQ(map["foo"], "hello");
+
+  map.emplace(StringPiece{"foo"}, "hello");
+  map.emplace("foo", "hello");
+  map.emplace(p);
+  map.emplace();
+  map.emplace(
+      std::piecewise_construct,
+      std::forward_as_tuple(StringPiece{"foo"}),
+      std::forward_as_tuple(/* count */ 20, 'x'));
+  map.try_emplace(StringPiece{"foo"}, "hello");
+  map.try_emplace(foo, "hello");
+  map.try_emplace(foo);
+  map.try_emplace("foo");
+  map.try_emplace("foo", "hello");
+  map.try_emplace("foo", /* count */ 20, 'x');
+
+  map.erase(StringPiece{"foo"});
+  map.erase(foo);
+  map.erase("");
+  EXPECT_TRUE(map.empty());
+}
+
+TEST(F14ValueMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14ValueMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14ValueMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14ValueMap<std::string, std::string>>();
+}
+
+TEST(F14NodeMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14NodeMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14NodeMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14NodeMap<std::string, std::string>>();
+}
+
+TEST(F14VectorMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14VectorMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14VectorMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14VectorMap<std::string, std::string>>();
+}
+
+TEST(F14FastMap, heterogeneousInsert) {
+  runHeterogeneousInsertTest<F14FastMap<
+      Tracked<1>,
+      int,
+      TransparentTrackedHash<1>,
+      TransparentTrackedEqual<1>>>();
+  runHeterogeneousInsertStringTest<F14FastMap<
+      std::string,
+      std::string,
+      transparent<hasher<StringPiece>>,
+      transparent<DefaultKeyEqual<StringPiece>>>>();
+  runHeterogeneousInsertStringTest<F14FastMap<std::string, std::string>>();
+}
+
+namespace {
+
+// std::is_convertible is not transitive :( Problem scenario: B<T> is
+// implicitly convertible to A, so hasher that takes A can be used as a
+// transparent hasher for a map with key of type B<T>. C is implicitly
+// convertible to any B<T>, but we have to disable heterogeneous find
+// for C.  There is no way to infer the T of the intermediate type so C
+// can't be used to explicitly construct A.
+
+struct A {
+  int value;
+
+  bool operator==(A const& rhs) const {
+    return value == rhs.value;
+  }
+  bool operator!=(A const& rhs) const {
+    return !(*this == rhs);
+  }
+};
+
+struct AHasher {
+  std::size_t operator()(A const& v) const {
+    return v.value;
+  }
+};
+
+template <typename T>
+struct B {
+  int value;
+
+  explicit B(int v) : value(v) {}
+
+  /* implicit */ B(A const& v) : value(v.value) {}
+
+  /* implicit */ operator A() const {
+    return A{value};
+  }
+};
+
+struct C {
+  int value;
+
+  template <typename T>
+  /* implicit */ operator B<T>() const {
+    return B<T>{value};
+  }
+};
+} // namespace
+
+TEST(F14FastMap, disabledDoubleTransparent) {
+  static_assert(std::is_convertible<B<char>, A>::value, "");
+  static_assert(std::is_convertible<C, B<char>>::value, "");
+  static_assert(!std::is_convertible<C, A>::value, "");
+
+  F14FastMap<
+      B<char>,
+      int,
+      folly::transparent<AHasher>,
+      folly::transparent<std::equal_to<A>>>
+      map;
+  map[A{10}] = 10;
+
+  EXPECT_TRUE(map.find(C{10}) != map.end());
+  EXPECT_TRUE(map.find(C{20}) == map.end());
+}
+
 ///////////////////////////////////
 #if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 ///////////////////////////////////
@@ -306,8 +537,6 @@ TEST(F14Map, equalityRefinement) {
 
 using namespace folly;
 using namespace folly::f14;
-using namespace folly::string_piece_literals;
-using namespace folly::test;
 
 namespace {
 std::string s(char const* p) {
@@ -1075,8 +1304,8 @@ void runInsertCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{1, 0, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     typename M::value_type p{0, 0};
@@ -1089,8 +1318,8 @@ void runInsertCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{0, 1, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -1103,8 +1332,8 @@ void runInsertCases(
         Tracked<0>::counts().dist(Counts{1, 0, 0, 0}) +
             Tracked<1>::counts().dist(Counts{1, 0, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<0>, Tracked<1>> p{0, 0};
@@ -1117,8 +1346,8 @@ void runInsertCases(
         Tracked<0>::counts().dist(Counts{0, 1, 0, 0}) +
             Tracked<1>::counts().dist(Counts{0, 1, 0, 0}),
         expectedDist)
-        << name << "\n0 -> " << Tracked<0>::counts << "\n1 -> "
-        << Tracked<1>::counts;
+        << name << "\n0 -> " << Tracked<0>::counts() << "\n1 -> "
+        << Tracked<1>::counts();
   }
   {
     std::pair<Tracked<2>, Tracked<3>> p{0, 0};
@@ -1448,6 +1677,7 @@ TEST(F14FastMap, moveOnly) {
       F14FastMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
 }
 
+#if FOLLY_F14_ERASE_INTO_AVAILABLE
 template <typename M>
 void runEraseIntoTest() {
   M t0;
@@ -1513,6 +1743,7 @@ TEST(F14FastMap, eraseInto) {
   runEraseIntoTest<
       F14FastMap<folly::test::MoveOnlyTestInt, folly::test::MoveOnlyTestInt>>();
 }
+#endif
 
 template <typename M>
 void runPermissiveConstructorTest() {
@@ -1528,12 +1759,14 @@ void runPermissiveConstructorTest() {
   EXPECT_EQ(t.size(), 8);
   t.erase(ct.find(30));
   EXPECT_EQ(t.size(), 7);
+#if FOLLY_F14_ERASE_INTO_AVAILABLE
   t.eraseInto(40, [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 6);
   t.eraseInto(t.find(50), [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 5);
   t.eraseInto(ct.find(60), [](auto&&, auto&&) {});
   EXPECT_EQ(t.size(), 4);
+#endif
 }
 
 TEST(F14ValueMap, permissiveConstructor) {
@@ -1683,230 +1916,6 @@ TEST(F14FastMap, statefulFunctors) {
       GenericHasher<int>,
       GenericEqual<int>,
       GenericAlloc<std::pair<int const, int>>>>();
-}
-
-template <typename M>
-void runHeterogeneousInsertTest() {
-  M map;
-
-  resetTracking();
-  EXPECT_EQ(map.count(10), 0);
-  EXPECT_FALSE(map.contains(10));
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
-      << Tracked<1>::counts;
-
-  resetTracking();
-  map[10] = 20;
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 1}), 0)
-      << Tracked<1>::counts;
-
-  resetTracking();
-  std::pair<int, int> p(10, 30);
-  std::vector<std::pair<int, int>> v({p});
-  map[10] = 30;
-  map.insert(std::pair<int, int>(10, 30));
-  map.insert(std::pair<int const, int>(10, 30));
-  map.insert(p);
-  map.insert(v.begin(), v.end());
-  map.insert(
-      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
-  map.insert_or_assign(10, 40);
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
-      << Tracked<1>::counts;
-
-  resetTracking();
-  map.emplace(10, 30);
-  map.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(10),
-      std::forward_as_tuple(30));
-  map.emplace(p);
-  map.try_emplace(10, 30);
-  map.try_emplace(10);
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
-      << Tracked<1>::counts;
-
-  resetTracking();
-  map.erase(10);
-  EXPECT_EQ(map.size(), 0);
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
-      << Tracked<1>::counts;
-
-  map.emplace(10, 40);
-  resetTracking();
-  map.eraseInto(10, [](auto&&, auto&&) {});
-  EXPECT_EQ(map.size(), 0);
-  EXPECT_EQ(Tracked<1>::counts().dist(Counts{0, 0, 0, 0}), 0)
-      << Tracked<1>::counts;
-}
-
-template <typename M>
-void runHeterogeneousInsertStringTest() {
-  using P = std::pair<StringPiece, std::string>;
-  using CP = std::pair<const StringPiece, std::string>;
-
-  M map;
-  P p{"foo", "hello"};
-  std::vector<P> v{p};
-  StringPiece foo{"foo"};
-
-  map.insert(P("foo", "hello"));
-  // TODO(T31574848): the list-initialization below does not work on libstdc++
-  // versions (e.g., GCC < 6) with no implementation of N4387 ("perfect
-  // initialization" for pairs and tuples).
-  //   StringPiece sp{"foo"};
-  //   map.insert({sp, "hello"});
-  map.insert({"foo", "hello"});
-  map.insert(CP("foo", "hello"));
-  map.insert(p);
-  map.insert(v.begin(), v.end());
-  map.insert(
-      std::make_move_iterator(v.begin()), std::make_move_iterator(v.end()));
-  map.insert_or_assign("foo", "hello");
-  map.insert_or_assign(StringPiece{"foo"}, "hello");
-  EXPECT_EQ(map["foo"], "hello");
-
-  map.emplace(StringPiece{"foo"}, "hello");
-  map.emplace("foo", "hello");
-  map.emplace(p);
-  map.emplace();
-  map.emplace(
-      std::piecewise_construct,
-      std::forward_as_tuple(StringPiece{"foo"}),
-      std::forward_as_tuple(/* count */ 20, 'x'));
-  map.try_emplace(StringPiece{"foo"}, "hello");
-  map.try_emplace(foo, "hello");
-  map.try_emplace(foo);
-  map.try_emplace("foo");
-  map.try_emplace("foo", "hello");
-  map.try_emplace("foo", /* count */ 20, 'x');
-
-  map.erase(StringPiece{"foo"});
-  map.erase(foo);
-  map.erase("");
-  EXPECT_TRUE(map.empty());
-}
-
-TEST(F14ValueMap, heterogeneousInsert) {
-  runHeterogeneousInsertTest<F14ValueMap<
-      Tracked<1>,
-      int,
-      TransparentTrackedHash<1>,
-      TransparentTrackedEqual<1>>>();
-  runHeterogeneousInsertStringTest<F14ValueMap<
-      std::string,
-      std::string,
-      transparent<hasher<StringPiece>>,
-      transparent<DefaultKeyEqual<StringPiece>>>>();
-  runHeterogeneousInsertStringTest<F14ValueMap<std::string, std::string>>();
-}
-
-TEST(F14NodeMap, heterogeneousInsert) {
-  runHeterogeneousInsertTest<F14NodeMap<
-      Tracked<1>,
-      int,
-      TransparentTrackedHash<1>,
-      TransparentTrackedEqual<1>>>();
-  runHeterogeneousInsertStringTest<F14NodeMap<
-      std::string,
-      std::string,
-      transparent<hasher<StringPiece>>,
-      transparent<DefaultKeyEqual<StringPiece>>>>();
-  runHeterogeneousInsertStringTest<F14NodeMap<std::string, std::string>>();
-}
-
-TEST(F14VectorMap, heterogeneousInsert) {
-  runHeterogeneousInsertTest<F14VectorMap<
-      Tracked<1>,
-      int,
-      TransparentTrackedHash<1>,
-      TransparentTrackedEqual<1>>>();
-  runHeterogeneousInsertStringTest<F14VectorMap<
-      std::string,
-      std::string,
-      transparent<hasher<StringPiece>>,
-      transparent<DefaultKeyEqual<StringPiece>>>>();
-  runHeterogeneousInsertStringTest<F14VectorMap<std::string, std::string>>();
-}
-
-TEST(F14FastMap, heterogeneousInsert) {
-  runHeterogeneousInsertTest<F14FastMap<
-      Tracked<1>,
-      int,
-      TransparentTrackedHash<1>,
-      TransparentTrackedEqual<1>>>();
-  runHeterogeneousInsertStringTest<F14FastMap<
-      std::string,
-      std::string,
-      transparent<hasher<StringPiece>>,
-      transparent<DefaultKeyEqual<StringPiece>>>>();
-  runHeterogeneousInsertStringTest<F14FastMap<std::string, std::string>>();
-}
-
-namespace {
-
-// std::is_convertible is not transitive :( Problem scenario: B<T> is
-// implicitly convertible to A, so hasher that takes A can be used as a
-// transparent hasher for a map with key of type B<T>. C is implicitly
-// convertible to any B<T>, but we have to disable heterogeneous find
-// for C.  There is no way to infer the T of the intermediate type so C
-// can't be used to explicitly construct A.
-
-struct A {
-  int value;
-
-  bool operator==(A const& rhs) const {
-    return value == rhs.value;
-  }
-  bool operator!=(A const& rhs) const {
-    return !(*this == rhs);
-  }
-};
-
-struct AHasher {
-  std::size_t operator()(A const& v) const {
-    return v.value;
-  }
-};
-
-template <typename T>
-struct B {
-  int value;
-
-  explicit B(int v) : value(v) {}
-
-  /* implicit */ B(A const& v) : value(v.value) {}
-
-  /* implicit */ operator A() const {
-    return A{value};
-  }
-};
-
-struct C {
-  int value;
-
-  template <typename T>
-  /* implicit */ operator B<T>() const {
-    return B<T>{value};
-  }
-};
-} // namespace
-
-TEST(F14FastMap, disabledDoubleTransparent) {
-  static_assert(std::is_convertible<B<char>, A>::value, "");
-  static_assert(std::is_convertible<C, B<char>>::value, "");
-  static_assert(!std::is_convertible<C, A>::value, "");
-
-  F14FastMap<
-      B<char>,
-      int,
-      folly::transparent<AHasher>,
-      folly::transparent<std::equal_to<A>>>
-      map;
-  map[A{10}] = 10;
-
-  EXPECT_TRUE(map.find(C{10}) != map.end());
-  EXPECT_TRUE(map.find(C{20}) == map.end());
 }
 
 template <typename M>

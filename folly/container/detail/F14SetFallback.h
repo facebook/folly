@@ -43,6 +43,10 @@ class F14BasicSet : public std::unordered_set<K, H, E, A> {
   //// PUBLIC - F14 Extensions
 
   bool containsEqualValue(value_type const& value) const {
+    // bucket is only valid if bucket_count is non-zero
+    if (this->empty()) {
+      return false;
+    }
     auto slot = this->bucket(value);
     auto e = this->end(slot);
     for (auto b = this->begin(slot); b != e; ++b) {

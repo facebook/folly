@@ -198,6 +198,27 @@ void erase_if_impl(Container& c, Predicate& predicate) {
   }
 }
 
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+struct EligibleForHeterogeneousFind
+    : Conjunction<
+          is_transparent<Hasher>,
+          is_transparent<KeyEqual>,
+          is_invocable<Hasher, ArgKey const&>,
+          is_invocable<KeyEqual, ArgKey const&, TableKey const&>> {};
+
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+using EligibleForHeterogeneousInsert = Conjunction<
+    EligibleForHeterogeneousFind<TableKey, Hasher, KeyEqual, ArgKey>,
+    std::is_constructible<TableKey, ArgKey>>;
+
 } // namespace detail
 } // namespace f14
 
@@ -238,27 +259,6 @@ using VoidDefault =
 template <typename Arg, typename Default>
 using Defaulted =
     std::conditional_t<std::is_same<Arg, void>::value, Default, Arg>;
-
-template <
-    typename TableKey,
-    typename Hasher,
-    typename KeyEqual,
-    typename ArgKey>
-struct EligibleForHeterogeneousFind
-    : Conjunction<
-          is_transparent<Hasher>,
-          is_transparent<KeyEqual>,
-          is_invocable<Hasher, ArgKey const&>,
-          is_invocable<KeyEqual, ArgKey const&, TableKey const&>> {};
-
-template <
-    typename TableKey,
-    typename Hasher,
-    typename KeyEqual,
-    typename ArgKey>
-using EligibleForHeterogeneousInsert = Conjunction<
-    EligibleForHeterogeneousFind<TableKey, Hasher, KeyEqual, ArgKey>,
-    std::is_constructible<TableKey, ArgKey>>;
 
 ////////////////
 
