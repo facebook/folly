@@ -20,6 +20,12 @@
 
 class AtomicRefTest : public testing::Test {};
 
+TEST_F(AtomicRefTest, deduction) {
+  long value = 17;
+  auto ref = folly::atomic_ref{value}; // use deduction guide
+  EXPECT_EQ(17, ref.load(std::memory_order_relaxed));
+}
+
 TEST_F(AtomicRefTest, integer) {
   {
     long value = 17;
