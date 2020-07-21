@@ -186,6 +186,42 @@ TEST(Arena, ExtremeSize) {
   EXPECT_THROW(arena.allocate(SIZE_MAX - 2), std::bad_alloc);
 }
 
+TEST(Arena, Clear) {
+  static const size_t blockSize = 1024;
+  SysArena arena(blockSize);
+
+  for (int i = 0; i < 10; ++i) {
+    std::vector<size_t> sizes(1000);
+    std::generate(sizes.begin(), sizes.end(), []() {
+      return std::rand() % blockSize * 2;
+    });
+
+    std::vector<void*> addresses;
+    for (auto s : sizes) {
+      addresses.push_back(arena.allocate(s));
+    }
+
+    const size_t totalSize = arena.totalSize();
+    const size_t bytesUsed = arena.bytesUsed();
+
+    arena.clear();
+
+    int j = 0;
+    for (auto s : sizes) {
+      auto addr = arena.allocate(s);
+      if (s <= blockSize) {
+        EXPECT_EQ(addr, addresses[j]);
+      }
+      j++;
+    }
+
+    EXPECT_EQ(arena.bytesUsed(), bytesUsed);
+    EXPECT_GT(arena.totalSize(), totalSize);
+
+    arena.clear();
+  }
+}
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

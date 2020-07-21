@@ -66,6 +66,7 @@ class Arena {
       size_t sizeLimit = kNoSizeLimit,
       size_t maxAlign = kDefaultMaxAlign)
       : allocAndSize_(alloc, minBlockSize),
+        currentBlock_(blocks_.last()),
         ptr_(nullptr),
         end_(nullptr),
         totalAllocatedSize_(0),
@@ -78,7 +79,10 @@ class Arena {
     }
   }
 
-  ~Arena();
+  ~Arena() {
+    freeBlocks();
+    freeLargeBlocks();
+  }
 
   void* allocate(size_t size) {
     size = roundUp(size);
@@ -89,6 +93,16 @@ class Arena {
       // Fast path: there's enough room in the current block
       char* r = ptr_;
       ptr_ += size;
+      assert(isAligned(r));
+      return r;
+    }
+
+    if (canReuseExistingBlock(size)) {
+      currentBlock_++;
+      char* r = currentBlock_->start();
+      ptr_ = r + size;
+      end_ = r + blockGoodAllocSize() - sizeof(Block);
+      assert(ptr_ <= end_);
       assert(isAligned(r));
       return r;
     }
@@ -105,6 +119,19 @@ class Arena {
 
   // Transfer ownership of all memory allocated from "other" to "this".
   void merge(Arena&& other);
+
+  void clear() {
+    freeLargeBlocks(); // We don't reuse large blocks
+    if (blocks_.empty()) {
+      return;
+    }
+    bytesUsed_ = 0;
+    currentBlock_ = blocks_.begin();
+    char* start = currentBlock_->start();
+    ptr_ = start;
+    end_ = start + blockGoodAllocSize() - sizeof(Block);
+    assert(ptr_ <= end_);
+  }
 
   // Gets the total memory used by the arena
   size_t totalSize() const {
@@ -156,6 +183,33 @@ class Arena {
     LargeBlock(size_t s) : allocSize(s) {}
     ~LargeBlock() = default;
   };
+
+  bool canReuseExistingBlock(size_t size) {
+    if (size > minBlockSize()) {
+      // We don't reuse large blocks
+      return false;
+    }
+    if (blocks_.empty() || currentBlock_ == blocks_.last()) {
+      // No regular blocks to reuse
+      return false;
+    }
+    return true;
+  }
+
+  void freeBlocks() {
+    blocks_.clear_and_dispose([this](Block* b) {
+      b->~Block();
+      AllocTraits::deallocate(alloc(), b, blockGoodAllocSize());
+    });
+  }
+
+  void freeLargeBlocks() {
+    largeBlocks_.clear_and_dispose([this](LargeBlock* b) {
+      auto size = b->allocSize;
+      b->~LargeBlock();
+      AllocTraits::deallocate(alloc(), b, size);
+    });
+  }
 
  public:
   static constexpr size_t kDefaultMinBlockSize = 4096 - sizeof(Block);
@@ -220,6 +274,7 @@ class Arena {
 
   AllocAndSize allocAndSize_;
   BlockList blocks_;
+  typename BlockList::iterator currentBlock_;
   LargeBlockList largeBlocks_;
   char* ptr_;
   char* end_;
