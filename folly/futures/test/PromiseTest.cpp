@@ -365,7 +365,7 @@ TEST(Promise, brokenOnDelete) {
 
   EXPECT_TRUE(f.isReady());
 
-  auto t = f.getTry();
+  auto t = f.result();
 
   EXPECT_TRUE(t.hasException<BrokenPromise>());
 }
@@ -380,8 +380,8 @@ TEST(Promise, brokenPromiseHasTypeInfo) {
   pInt.reset();
   pFloat.reset();
 
-  auto whatInt = fInt.getTry().exception().what();
-  auto whatFloat = fFloat.getTry().exception().what();
+  auto whatInt = fInt.result().exception().what();
+  auto whatFloat = fFloat.result().exception().what();
 
   EXPECT_NE(whatInt, whatFloat);
 }

@@ -97,7 +97,7 @@ TEST(RetryingTest, future_factory_throws) {
                       }
                     })
                     .wait()
-                    .getTry();
+                    .result();
   EXPECT_THROW(result.throwIfFailed(), ThrownException);
 }
 

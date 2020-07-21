@@ -2293,7 +2293,7 @@ Try<T> SemiFuture<T>::getTry() && {
   wait();
   auto future = folly::Future<T>(this->core_);
   this->core_ = nullptr;
-  return std::move(std::move(future).getTry());
+  return std::move(std::move(future).result());
 }
 
 template <class T>
@@ -2305,7 +2305,7 @@ Try<T> SemiFuture<T>::getTry(HighResDuration dur) && {
   if (!future.isReady()) {
     throw_exception<FutureTimeout>();
   }
-  return std::move(std::move(future).getTry());
+  return std::move(std::move(future).result());
 }
 
 template <class T>
@@ -2375,11 +2375,6 @@ T Future<T>::get(HighResDuration dur) && {
 }
 
 template <class T>
-Try<T>& Future<T>::getTry() {
-  return result();
-}
-
-template <class T>
 T Future<T>::getVia(DrivableExecutor* e) {
   return std::move(waitVia(e).value());
 }
@@ -2395,7 +2390,7 @@ T Future<T>::getVia(TimedDrivableExecutor* e, HighResDuration dur) {
 
 template <class T>
 Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
-  return waitVia(e).getTry();
+  return waitVia(e).result();
 }
 
 template <class T>

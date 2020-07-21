@@ -1732,14 +1732,6 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get(HighResDuration dur) &&;
 
-  /// A reference to the Try of the value
-  ///
-  /// Preconditions:
-  ///
-  /// - `valid() == true` (else throws FutureInvalid)
-  /// - `isReady() == true` (else throws FutureNotReady)
-  Try<T>& getTry();
-
   /// Blocks until this Future is complete.
   ///
   /// Preconditions:
@@ -2615,7 +2607,7 @@ class FutureAwaitable {
 
   bool await_ready() {
     if (future_.isReady()) {
-      result_ = std::move(future_.getTry());
+      result_ = std::move(future_.result());
       return true;
     }
     return false;

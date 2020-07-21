@@ -221,7 +221,6 @@ TEST(Future, hasPreconditionValid) {
   DOIT(f.result());
   DOIT(std::move(f).get());
   DOIT(std::move(f).get(std::chrono::milliseconds(10)));
-  DOIT(f.getTry());
   DOIT(f.hasValue());
   DOIT(f.hasException());
   DOIT(f.value());
@@ -249,11 +248,9 @@ TEST(Future, hasPostconditionValid) {
   DOIT(swallow(f.hasValue()));
   DOIT(swallow(f.hasException()));
   DOIT(swallow(f.value()));
-  DOIT(swallow(f.getTry()));
   DOIT(swallow(f.poll()));
   DOIT(f.raise(std::logic_error("foo")));
   DOIT(f.cancel());
-  DOIT(swallow(f.getTry()));
   DOIT(f.wait());
   DOIT(std::move(f.wait()));
 
@@ -915,13 +912,13 @@ TEST(Future, futureNotReady) {
 }
 
 TEST(Future, hasException) {
-  EXPECT_TRUE(makeFuture<int>(eggs).getTry().hasException());
-  EXPECT_FALSE(makeFuture(42).getTry().hasException());
+  EXPECT_TRUE(makeFuture<int>(eggs).result().hasException());
+  EXPECT_FALSE(makeFuture(42).result().hasException());
 }
 
 TEST(Future, hasValue) {
-  EXPECT_TRUE(makeFuture(42).getTry().hasValue());
-  EXPECT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
+  EXPECT_TRUE(makeFuture(42).result().hasValue());
+  EXPECT_FALSE(makeFuture<int>(eggs).result().hasValue());
 }
 
 TEST(Future, makeFuture) {
@@ -1418,7 +1415,7 @@ TEST(Future, NoThrow) {
               ADD_FAILURE() << "This code should be unreachable";
               return std::move(value);
             })
-            .getTry();
+            .result();
 
     EXPECT_TRUE(t.hasException());
     EXPECT_EQ(t.exception().get_exception()->what(), kErrorMessage);
@@ -1433,7 +1430,7 @@ TEST(Future, NoThrow) {
               return std::move(value);
             })
             .via(&InlineExecutor::instance())
-            .getTry();
+            .result();
 
     EXPECT_TRUE(t.hasException());
     EXPECT_EQ(t.exception().get_exception()->what(), kErrorMessage);
