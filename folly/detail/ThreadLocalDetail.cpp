@@ -227,7 +227,7 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   auto& meta = *this;
   std::lock_guard<std::mutex> g(meta.lock_);
 
-  id = ent->value.load();
+  id = ent->value.load(std::memory_order_relaxed);
   if (id != kEntryIDInvalid) {
     return id;
   }
@@ -239,7 +239,7 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
     id = meta.nextId_++;
   }
 
-  uint32_t old_id = ent->value.exchange(id);
+  uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
   DCHECK_EQ(old_id, kEntryIDInvalid);
 
   reserveHeadUnlocked(id);
@@ -269,7 +269,8 @@ void StaticMetaBase::destroy(EntryID* ent) {
 
       {
         std::lock_guard<std::mutex> g(meta.lock_);
-        uint32_t id = ent->value.exchange(kEntryIDInvalid);
+        uint32_t id =
+            ent->value.exchange(kEntryIDInvalid, std::memory_order_relaxed);
         if (id == kEntryIDInvalid) {
           return;
         }

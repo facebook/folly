@@ -328,11 +328,7 @@ struct StaticMetaBase {
     EntryID& operator=(const EntryID& other) = delete;
 
     uint32_t getOrInvalid() {
-      // It's OK for this to be relaxed, even though we're effectively doing
-      // double checked locking in using this value. We only care about the
-      // uniqueness of IDs, getOrAllocate does not modify any other memory
-      // this thread will use.
-      return value.load(std::memory_order_relaxed);
+      return value.load(std::memory_order_acquire);
     }
 
     uint32_t getOrAllocate(StaticMetaBase& meta) {
