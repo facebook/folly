@@ -2014,15 +2014,15 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
 
 template <class F>
 auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
-  return
-      [func = std::forward<F>(func), ka = std::move(ka)](auto&& param) mutable {
-        return via(
-            ka,
-            [func = std::move(func),
-             param = std::forward<decltype(param)>(param)]() mutable {
-              return func(std::forward<decltype(param)>(param));
-            });
-      };
+  return [func = std::forward<F>(func),
+          ka = std::move(ka)](auto&& param) mutable {
+    return via(
+        ka,
+        [func = std::move(func),
+         param = std::forward<decltype(param)>(param)]() mutable {
+          return std::forward<F>(func)(std::forward<decltype(param)>(param));
+        });
+  };
 }
 
 /// This namespace is for utility functions that would usually be static
