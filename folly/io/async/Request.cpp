@@ -738,7 +738,9 @@ void exec_set_difference(const TData& data, const TData& other, TExec&& exec) {
       folly,
       request_context_switch_before,
       staticCtx.first.get(),
-      newCtx.get());
+      newCtx.get(),
+      staticCtx.first ? staticCtx.first->getRootId() : 0,
+      newCtx ? newCtx->getRootId() : 0);
 
   if ((newCtx.get() && newCtx->useHazptr()) ||
       (staticCtx.first.get() && staticCtx.first->useHazptr())) {
