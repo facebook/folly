@@ -1330,27 +1330,29 @@ TEST(Future, makePromiseContract) {
   EXPECT_EQ(4, std::move(c.second).get());
 }
 
-Future<bool> call(int depth, Executor* executor) {
-  return makeFuture().thenValueInline(
-      makeAsyncTask(executor, [=](auto&&) { return depth == 0; }));
-}
-
-Future<int> recursion(Executor* executor, int depth) {
-  return makeFuture().thenValue([=](auto) {
-    return call(depth, executor).thenValue([=](auto result) {
-      if (result) {
-        return folly::makeFuture(42);
-      }
-
-      return recursion(executor, depth - 1);
-    });
-  });
-}
-
 TEST(Future, ThenRecursion) {
+  struct Helpers {
+    static Future<bool> call(int depth, Executor* executor) {
+      return makeFuture().thenValueInline(
+          makeAsyncTask(executor, [=](auto&&) { return depth == 0; }));
+    }
+
+    static Future<int> recursion(Executor* executor, int depth) {
+      return makeFuture().thenValue([=](auto) {
+        return call(depth, executor).thenValue([=](auto result) {
+          if (result) {
+            return folly::makeFuture(42);
+          }
+
+          return recursion(executor, depth - 1);
+        });
+      });
+    }
+  };
+
   ManualExecutor executor;
 
-  EXPECT_EQ(42, recursion(&executor, 100000).getVia(&executor));
+  EXPECT_EQ(42, Helpers::recursion(&executor, 100000).getVia(&executor));
 }
 
 // We want to detect if the Try value is being dereferenced before being
