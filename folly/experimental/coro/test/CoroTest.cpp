@@ -25,6 +25,7 @@
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Collect.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
+#include <folly/experimental/coro/DetachOnCancel.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
@@ -686,5 +687,46 @@ TEST(Coro, CoThrow) {
         ADD_FAILURE() << "unreachable";
       }()),
       ExpectedException);
+}
+
+TEST_F(CoroTest, DetachOnCancel) {
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    folly::CancellationSource cancelSource;
+    cancelSource.requestCancellation();
+
+    // Run some logic while in an already-cancelled state.
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), []() -> folly::coro::Task<> {
+          EXPECT_THROW(
+              co_await folly::coro::detachOnCancel(
+                  folly::futures::sleep(std::chrono::seconds{1})
+                      .deferValue([](auto) { return 42; })),
+              folly::OperationCancelled);
+        }());
+  }());
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    folly::CancellationSource cancelSource;
+
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), []() -> folly::coro::Task<> {
+          EXPECT_EQ(
+              42,
+              co_await folly::coro::detachOnCancel(
+                  folly::futures::sleep(std::chrono::milliseconds{10})
+                      .deferValue([](auto) { return 42; })));
+        }());
+  }());
+
+  folly::coro::blockingWait([&]() -> folly::coro::Task<> {
+    folly::CancellationSource cancelSource;
+
+    co_await folly::coro::co_withCancellation(
+        cancelSource.getToken(), []() -> folly::coro::Task<> {
+          co_await folly::coro::detachOnCancel([]() -> folly::coro::Task<void> {
+            co_await folly::futures::sleep(std::chrono::milliseconds{10});
+          }());
+        }());
+  }());
 }
 #endif

@@ -346,6 +346,17 @@ auto unwrapTryTuple(Tuple&& instance) {
   return try_detail::unwrapTryTupleImpl(Seq{}, std::forward<Tuple>(instance));
 }
 
+template <typename T>
+void tryAssign(Try<T>& t, Try<T>&& other) noexcept {
+  try {
+    t = std::move(other);
+  } catch (const std::exception& ex) {
+    t.emplaceException(std::current_exception(), ex);
+  } catch (...) {
+    t.emplaceException(std::current_exception());
+  }
+}
+
 // limited to the instances unconditionally forced by the futures library
 extern template class Try<Unit>;
 

@@ -695,6 +695,15 @@ bool tryEmplaceWith(Try<void>& t, Func&& func) noexcept;
 template <typename Tuple>
 auto unwrapTryTuple(Tuple&&);
 
+/*
+ * Try to move the value/exception from another Try object.
+ *
+ * If T's constructor throws an exception then this is caught and the Try<T>
+ * object is initialised to hold that exception.
+ */
+template <typename T>
+void tryAssign(Try<T>& t, Try<T>&& other) noexcept;
+
 } // namespace folly
 
 #include <folly/Try-inl.h>
