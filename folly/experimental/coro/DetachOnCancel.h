@@ -41,9 +41,9 @@ Task<semi_await_result_t<Awaitable>> detachOnCancel(Awaitable awaitable) {
       .scheduleOn(co_await co_current_executor)
       .startInlineUnsafe(
           [postedPtr = posted.get(), &baton, &result](auto&& r) {
-            std::unique_ptr<std::atomic<bool>> posted(postedPtr);
-            if (!posted->exchange(true, std::memory_order_relaxed)) {
-              posted.release();
+            std::unique_ptr<std::atomic<bool>> p(postedPtr);
+            if (!p->exchange(true, std::memory_order_relaxed)) {
+              p.release();
               tryAssign(result, std::move(r));
               baton.post();
             }
