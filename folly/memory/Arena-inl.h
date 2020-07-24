@@ -20,6 +20,8 @@
 
 // Implementation of Arena.h functions
 
+#include <folly/lang/SafeAssert.h>
+
 namespace folly {
 
 template <class Alloc>
