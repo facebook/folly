@@ -16,11 +16,15 @@
 
 #pragma once
 
+#include <folly/container/detail/F14IntrinsicsAvailability.h>
+
 /**
  * This file is intended to be included only by F14Set.h. It contains fallback
  * implementations of F14Set types for platforms that do not support the
  * required SIMD instructions, based on std::unordered_set.
  */
+
+#if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 #include <algorithm>
 #include <unordered_set>
@@ -431,3 +435,5 @@ class F14FastSet
 };
 
 } // namespace folly
+
+#endif // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

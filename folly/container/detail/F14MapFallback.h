@@ -16,11 +16,15 @@
 
 #pragma once
 
+#include <folly/container/detail/F14IntrinsicsAvailability.h>
+
 /**
  * This file is intended to be included only by F14Map.h. It contains fallback
  * implementations of F14Map types for platforms that do not support the
  * required SIMD instructions, based on std::unordered_map.
  */
+
+#if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 #include <unordered_map>
 
@@ -638,3 +642,5 @@ class F14FastMap
 };
 
 } // namespace folly
+
+#endif // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE

@@ -1298,12 +1298,10 @@ class F14FastMap : public std::conditional_t<
 };
 } // namespace folly
 
-#else // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 //////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
 #include <folly/container/detail/F14MapFallback.h>
-
-#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE else
 
 namespace folly {
 namespace f14 {
