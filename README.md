@@ -5,7 +5,7 @@ Folly: Facebook Open-source Library
 
 ### What is `folly`?
 
-<img src="https://scontent-sin6-2.xx.fbcdn.net/v/t39.2365-6/50922256_339783480208021_8427063616749961216_n.svg?_nc_cat=102&_nc_sid=ad8a9d&_nc_eui2=AeEDnfi21yi_tFF69NppzerM3DcAUq5S17LcNwBSrlLXsnXEV2s1NqVmy7VG7HklWY9yS2biv40gzyb0aS7Slct5&_nc_ohc=jo3cEKrzz80AX-4R9na&_nc_ht=scontent-sin6-2.xx&oh=302b47141328f1fa7870b6b0144cf77e&oe=5F412EFC" alt="Logo Folly" width="20%" align="right" />
+<img src="static/img/Folly-Logo.svg" alt="Logo Folly" width="15%" align="right" />
 
 Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++14 components designed with practicality and efficiency
