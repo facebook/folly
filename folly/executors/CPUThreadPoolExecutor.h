@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <limits.h>
+#include <array>
+
+#include <folly/concurrency/QueueObserver.h>
 #include <folly/executors/ThreadPoolExecutor.h>
 
 DECLARE_bool(dynamic_cputhreadpoolexecutor);
@@ -124,13 +128,29 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
     explicit CPUTask(
         Func&& f,
         std::chrono::milliseconds expiration,
-        Func&& expireCallback)
+        Func&& expireCallback,
+        int8_t pri)
         : Task(std::move(f), expiration, std::move(expireCallback)),
-          poison(false) {}
+          poison(false),
+          priority_(pri) {}
     CPUTask()
-        : Task(nullptr, std::chrono::milliseconds(0), nullptr), poison(true) {}
+        : Task(nullptr, std::chrono::milliseconds(0), nullptr),
+          poison(true),
+          priority_(0) {}
+
+    size_t queuePriority() const {
+      return priority_;
+    }
+
+    intptr_t& queueObserverPayload() {
+      return queueObserverPayload_;
+    }
 
     bool poison;
+
+   private:
+    int8_t priority_;
+    intptr_t queueObserverPayload_;
   };
 
   static const size_t kDefaultMaxQueueSize;
@@ -146,8 +166,15 @@ class CPUThreadPoolExecutor : public ThreadPoolExecutor {
   bool tryDecrToStop();
   bool taskShouldStop(folly::Optional<CPUTask>&);
 
+  std::unique_ptr<folly::QueueObserverFactory> createQueueObserverFactory();
+  QueueObserver* FOLLY_NULLABLE getQueueObserver(int8_t pri);
+
   // shared_ptr for type erased dtor to handle extended alignment.
   std::shared_ptr<BlockingQueue<CPUTask>> taskQueue_;
+  // It is possible to have as many detectors as there are priorities,
+  std::array<std::atomic<folly::QueueObserver*>, UCHAR_MAX + 1> queueObservers_;
+  std::unique_ptr<folly::QueueObserverFactory> queueObserverFactory_{
+      createQueueObserverFactory()};
   std::atomic<ssize_t> threadsToStop_{0};
 };
 
