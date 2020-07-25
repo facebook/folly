@@ -572,9 +572,7 @@ class SingletonVault {
   Type type_;
 
   std::atomic<bool> shutdownTimerStarted_{false};
-  static constexpr std::chrono::seconds kDefaultShutdownTimeout_{
-      std::chrono::seconds{5 * 60}};
-  std::chrono::milliseconds shutdownTimeout_{kDefaultShutdownTimeout_};
+  std::chrono::milliseconds shutdownTimeout_{std::chrono::minutes{5}};
   Synchronized<std::vector<std::string>> shutdownLog_;
 };
 

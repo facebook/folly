@@ -40,8 +40,6 @@
 
 namespace folly {
 
-constexpr std::chrono::seconds SingletonVault::kDefaultShutdownTimeout_;
-
 #if FOLLY_SINGLETON_HAVE_DLSYM
 namespace detail {
 static void singleton_hs_init_weak(int* argc, char** argv[])
