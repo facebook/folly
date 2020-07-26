@@ -16,9 +16,7 @@
 
 #pragma once
 
-extern "C" {
 #include <liburing.h>
-}
 
 #include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
