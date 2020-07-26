@@ -802,8 +802,16 @@ class Boost(BuilderBase):
         linkage = ["static"]
         if self.build_opts.is_windows():
             linkage.append("shared")
+
+        args = []
+        if self.build_opts.is_darwin():
+            clang = subprocess.check_output(["xcrun", "--find", "clang"])
+            user_config = os.path.join(self.build_dir, "project-config.jam")
+            with open(user_config, "w") as jamfile:
+                jamfile.write("using clang : : %s ;\n" % clang.decode().strip())
+            args.append("--user-config=%s" % user_config)
+
         for link in linkage:
-            args = []
             if self.build_opts.is_windows():
                 bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
                 self._run_cmd([bootstrap], cwd=self.src_dir)
