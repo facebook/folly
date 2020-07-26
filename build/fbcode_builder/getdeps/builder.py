@@ -799,6 +799,7 @@ class Boost(BuilderBase):
         self.b2_args = b2_args
 
     def _build(self, install_dirs, reconfigure):
+        env = self._compute_env(install_dirs)
         linkage = ["static"]
         if self.build_opts.is_windows():
             linkage.append("shared")
@@ -814,12 +815,14 @@ class Boost(BuilderBase):
         for link in linkage:
             if self.build_opts.is_windows():
                 bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
-                self._run_cmd([bootstrap], cwd=self.src_dir)
+                self._run_cmd([bootstrap], cwd=self.src_dir, env=env)
                 args += ["address-model=64"]
             else:
                 bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
                 self._run_cmd(
-                    [bootstrap, "--prefix=%s" % self.inst_dir], cwd=self.src_dir
+                    [bootstrap, "--prefix=%s" % self.inst_dir],
+                    cwd=self.src_dir,
+                    env=env,
                 )
 
             b2 = os.path.join(self.src_dir, "b2")
@@ -843,6 +846,7 @@ class Boost(BuilderBase):
                     "install",
                 ],
                 cwd=self.src_dir,
+                env=env,
             )
 
 

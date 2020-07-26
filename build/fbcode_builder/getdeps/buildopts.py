@@ -187,6 +187,12 @@ class BuildOptions(object):
         env["GETDEPS_BUILD_DIR"] = os.path.join(self.scratch_dir, "build")
         env["GETDEPS_INSTALL_DIR"] = self.install_dir
 
+        # On macOS we need to set `SDKROOT` when we use clang for system
+        # header files.
+        if self.is_darwin() and "SDKROOT" not in env:
+            sdkroot = subprocess.check_output(["xcrun", "--show-sdk-path"])
+            env["SDKROOT"] = sdkroot.decode().strip()
+
         if self.fbsource_dir:
             env["YARN_YARN_OFFLINE_MIRROR"] = os.path.join(
                 self.fbsource_dir, "xplat/third-party/yarn/offline-mirror"
