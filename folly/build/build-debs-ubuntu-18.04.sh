@@ -13,13 +13,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# Note: this script was written on Ubuntu 14.04 and will need work in order to
+# Note: this script was written on Ubuntu 18.04 and will need work in order to
 # work on additional platforms. This is left as an exercise for the reader.
 
 set -e
 
 BUILD_DIR=${BUILD_DIR:-_build}
-BOOST_VERSION=${BOOST_VERSION:-1.54.0}
+BOOST_VERSION=${BOOST_VERSION:-1.65.1}
 LIBEVENT_VERSION=${LIBEVENT_VERSION:-2.0-5}
 SSL_VERSION=${SSL_VERSION:-1.0.0}
 
