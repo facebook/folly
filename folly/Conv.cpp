@@ -407,7 +407,11 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
     negative = true;
     ++b;
     --size;
+    if (size == 0) {
+      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+    }
   }
+  assert(size > 0);
 
   result = 0.0;
 

@@ -1201,6 +1201,10 @@ TEST(Conv, TryStringToFloat) {
   auto rv2 = folly::tryTo<float>("3.14");
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
+  // No trailing '\0' to expose 1-byte buffer over-read
+  char x = '-';
+  auto rv3 = folly::tryTo<float>(folly::StringPiece(&x, 1));
+  EXPECT_FALSE(rv3.hasValue());
 }
 
 TEST(Conv, TryStringToDouble) {
