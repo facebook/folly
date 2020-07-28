@@ -1822,10 +1822,9 @@ class alignas(64) ConcurrentHashMapSegment {
     return erase_internal(key, nullptr, [](const ValueType&) { return true; });
   }
 
-  size_type erase_if_equal(const key_type& key, const ValueType& expected) {
-    return erase_internal(key, nullptr, [&expected](const ValueType& v) {
-      return v == expected;
-    });
+  template <typename Predicate>
+  size_type erase_key_if(const key_type& key, Predicate&& predicate) {
+    return erase_internal(key, nullptr, std::forward<Predicate>(predicate));
   }
 
   template <typename MatchFunc>

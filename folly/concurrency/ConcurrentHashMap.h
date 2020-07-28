@@ -419,12 +419,19 @@ class ConcurrentHashMap {
 
   // Erase if and only if key k is equal to expected
   size_type erase_if_equal(const key_type& k, const ValueType& expected) {
+    return erase_key_if(
+        k, [&expected](const ValueType& v) { return v == expected; });
+  }
+
+  // Erase if predicate evaluates to true on the existing value
+  template <typename Predicate>
+  size_type erase_key_if(const key_type& k, Predicate&& predicate) {
     auto segment = pickSegment(k);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return 0;
     }
-    return seg->erase_if_equal(k, expected);
+    return seg->erase_key_if(k, std::forward<Predicate>(predicate));
   }
 
   // NOT noexcept, initializes new shard segments vs.

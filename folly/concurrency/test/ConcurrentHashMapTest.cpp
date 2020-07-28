@@ -328,6 +328,31 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseIfEqualTest) {
   EXPECT_EQ(foomap.find(1), foomap.cend());
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, EraseIfTest) {
+  CHM<uint64_t, uint64_t> foomap(3);
+  foomap.insert(1, 0);
+  EXPECT_FALSE(
+      foomap.erase_key_if(1, [](const uint64_t& value) { return value == 1; }));
+  auto f1 = foomap.find(1);
+  EXPECT_EQ(0, f1->second);
+  EXPECT_TRUE(
+      foomap.erase_key_if(1, [](const uint64_t& value) { return value == 0; }));
+  EXPECT_EQ(foomap.find(1), foomap.cend());
+
+  CHM<std::string, std::weak_ptr<uint64_t>> barmap(3);
+  auto shared = std::make_shared<uint64_t>(123);
+  barmap.insert("test", shared);
+  EXPECT_FALSE(barmap.erase_key_if(
+      "test",
+      [](const std::weak_ptr<uint64_t>& ptr) { return ptr.expired(); }));
+  EXPECT_EQ(*barmap.find("test")->second.lock(), 123);
+  shared.reset();
+  EXPECT_TRUE(barmap.erase_key_if(
+      "test",
+      [](const std::weak_ptr<uint64_t>& ptr) { return ptr.expired(); }));
+  EXPECT_EQ(barmap.find("test"), barmap.cend());
+}
+
 TYPED_TEST_P(ConcurrentHashMapTest, CopyIterator) {
   CHM<int, int> map;
   map.insert(0, 0);
@@ -850,6 +875,7 @@ REGISTER_TYPED_TEST_CASE_P(
     DeletionWithForLoop,
     DeletionWithIterator,
     EraseIfEqualTest,
+    EraseIfTest,
     EraseInIterateTest,
     EraseStressTest,
     EraseTest,
