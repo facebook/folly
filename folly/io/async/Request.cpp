@@ -790,7 +790,8 @@ FOLLY_ALWAYS_INLINE
 /* static */ std::shared_ptr<RequestContext> RequestContext::setContextHazptr(
     std::shared_ptr<RequestContext>& newCtx,
     StaticContext& staticCtx) {
-  auto curCtx = std::move(staticCtx.first);
+  std::shared_ptr<RequestContext> prevCtx;
+  auto curCtx = staticCtx.first.get();
   bool checkCur = curCtx && curCtx->stateHazptr_.combined();
   bool checkNew = newCtx && newCtx->stateHazptr_.combined();
   if (checkCur && checkNew) {
@@ -806,6 +807,7 @@ FOLLY_ALWAYS_INLINE
         data->onUnset();
       }
     }
+    prevCtx = std::move(staticCtx.first);
     staticCtx.first = std::move(newCtx);
     staticCtx.second.store(staticCtx.first->rootId_, std::memory_order_relaxed);
     for (auto it = newcb.begin(); it != newcb.end(); ++it) {
@@ -819,16 +821,17 @@ FOLLY_ALWAYS_INLINE
     if (curCtx) {
       curCtx->stateHazptr_.onUnset();
     }
+    prevCtx = std::move(staticCtx.first);
     staticCtx.first = std::move(newCtx);
     if (staticCtx.first) {
-      staticCtx.first->stateHazptr_.onSet();
       staticCtx.second.store(
           staticCtx.first->rootId_, std::memory_order_relaxed);
+      staticCtx.first->stateHazptr_.onSet();
     } else {
       staticCtx.second.store(0, std::memory_order_relaxed);
     }
   }
-  return curCtx;
+  return prevCtx;
 }
 
 RequestContext::StaticContext& RequestContext::getStaticContext() {
