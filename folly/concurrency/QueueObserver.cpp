@@ -18,16 +18,17 @@
 
 namespace {
 std::unique_ptr<folly::QueueObserverFactory>
-make_queue_observer_factory_fallback() noexcept {
-  return {};
+make_queue_observer_factory_fallback(const std::string&, size_t) noexcept {
+  return std::unique_ptr<folly::QueueObserverFactory>();
 }
 } // namespace
 
 namespace folly {
-/* static */ std::unique_ptr<QueueObserverFactory>
-QueueObserverFactory::make() {
+/* static */ std::unique_ptr<QueueObserverFactory> QueueObserverFactory::make(
+    const std::string& context,
+    size_t numPriorities) {
   auto f = make_queue_observer_factory ? make_queue_observer_factory
                                        : make_queue_observer_factory_fallback;
-  return f();
+  return f(context, numPriorities);
 }
 } // namespace folly

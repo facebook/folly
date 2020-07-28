@@ -18,6 +18,7 @@
 
 #include <stdint.h>
 #include <memory>
+#include <string>
 
 #include <folly/Portability.h>
 
@@ -34,12 +35,15 @@ class QueueObserver {
 class QueueObserverFactory {
  public:
   virtual ~QueueObserverFactory() {}
-  virtual std::unique_ptr<QueueObserver> create() = 0;
+  virtual std::unique_ptr<QueueObserver> create(size_t pri) = 0;
 
-  static std::unique_ptr<QueueObserverFactory> make();
+  static std::unique_ptr<QueueObserverFactory> make(
+      const std::string& context,
+      size_t numPriorities);
 };
 
-using MakeQueueObserverFactory = std::unique_ptr<QueueObserverFactory>();
+using MakeQueueObserverFactory =
+    std::unique_ptr<QueueObserverFactory>(const std::string&, size_t);
 #if FOLLY_HAVE_WEAK_SYMBOLS
 FOLLY_ATTR_WEAK MakeQueueObserverFactory make_queue_observer_factory;
 #else

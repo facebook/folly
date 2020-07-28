@@ -146,7 +146,7 @@ CPUThreadPoolExecutor::getQueueObserver(int8_t pri) {
     return getQueueObserver(0);
   }
   QueueObserver* existingObserver = nullptr;
-  QueueObserver* newObserver = queueObserverFactory_->create().release();
+  QueueObserver* newObserver = queueObserverFactory_->create(pri).release();
   if (!slot.compare_exchange_strong(existingObserver, newObserver)) {
     delete newObserver;
     return existingObserver;
@@ -287,7 +287,8 @@ CPUThreadPoolExecutor::createQueueObserverFactory() {
   for (auto& observer : queueObservers_) {
     observer.store(nullptr, std::memory_order_release);
   }
-  return QueueObserverFactory::make();
+  return QueueObserverFactory::make(
+      "cpu." + getName(), taskQueue_->getNumPriorities());
 }
 
 } // namespace folly
