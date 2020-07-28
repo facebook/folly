@@ -758,7 +758,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
         if build_opts.is_linux():
             job_name = "linux"
-            runs_on = "ubuntu-18.04"
+            runs_on = f"ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
             # We're targeting the windows-2016 image because it has
             # Visual Studio 2017 installed, and at the time of writing,
@@ -797,7 +797,9 @@ jobs:
 """
             )
 
-            getdeps = f"{py3} build/fbcode_builder/getdeps.py --allow-system-packages"
+            getdeps = f"{py3} build/fbcode_builder/getdeps.py"
+            if not args.disallow_system_packages:
+                getdeps += " --allow-system-packages"
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
@@ -823,7 +825,7 @@ jobs:
                 # that we want it to use them!
                 out.write("    - name: Fix Git config\n")
                 out.write("      run: git config --system core.longpaths true\n")
-            else:
+            elif not args.disallow_system_packages:
                 out.write("    - name: Install system deps\n")
                 out.write(
                     f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n"
@@ -881,7 +883,16 @@ jobs:
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
+            "--disallow-system-packages",
+            help="Disallow satisfying third party deps from installed system packages",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
             "--output-dir", help="The directory that will contain the yml files"
+        )
+        parser.add_argument(
+            "--ubuntu-version", default="18.04", help="Version of Ubuntu to use"
         )
 
 
