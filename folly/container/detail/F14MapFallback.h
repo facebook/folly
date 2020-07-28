@@ -211,7 +211,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
               return std::make_pair(it, false);
             }
             auto rv = Super::emplace(std::forward<decltype(inner)>(inner)...);
-            FOLLY_SAFE_CHECK(
+            FOLLY_SAFE_DCHECK(
                 rv.second, "post-find emplace should always insert");
             return rv;
           } else {
@@ -289,7 +289,6 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   template <typename K2>
   struct BottomKeyEqual {
     [[noreturn]] bool operator()(K2 const&, K2 const&) const {
-      FOLLY_SAFE_CHECK(false, "bucket should not invoke key equality");
       assume_unreachable();
     }
   };
@@ -379,19 +378,33 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   }
 
  private:
+  template <typename Iter, typename LocalIter>
+  static std::
+      enable_if_t<std::is_constructible<Iter, LocalIter const&>::value, Iter>
+      fromLocal(LocalIter const& src, int = 0) {
+    return Iter(src);
+  }
+
+  template <typename Iter, typename LocalIter>
+  static std::
+      enable_if_t<!std::is_constructible<Iter, LocalIter const&>::value, Iter>
+      fromLocal(LocalIter const& src) {
+    Iter dst;
+    static_assert(sizeof(dst) <= sizeof(src), "");
+    std::memcpy(std::addressof(dst), std::addressof(src), sizeof(dst));
+    FOLLY_SAFE_CHECK(
+        std::addressof(*src) == std::addressof(*dst),
+        "ABI-assuming local_iterator to iterator conversion failed");
+    return dst;
+  }
+
   template <typename Iter, typename Self, typename K2>
   static Iter findImpl(Self& self, K2 const& key) {
     auto optLocalIt = findLocal(self, key);
     if (!optLocalIt) {
       return self.end();
     } else {
-      Iter it;
-      static_assert(sizeof(it) <= sizeof(*optLocalIt), "");
-      std::memcpy(&it, &*optLocalIt, sizeof(it));
-      FOLLY_SAFE_CHECK(
-          std::addressof(**optLocalIt) == std::addressof(*it),
-          "ABI-assuming local_iterator to iterator conversion failed");
-      return it;
+      return fromLocal<Iter>(*optLocalIt);
     }
   }
 
