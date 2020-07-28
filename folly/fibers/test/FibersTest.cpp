@@ -28,6 +28,7 @@
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>
+#include <folly/fibers/BatchSemaphore.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/ExecutorLoopController.h>
 #include <folly/fibers/FiberManager.h>
@@ -1761,6 +1762,84 @@ TEST(FiberManager, semaphore) {
     }
 
     Semaphore& sem;
+    int counter{0};
+    std::thread t;
+  };
+
+  std::vector<Worker> workers;
+  workers.reserve(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    workers.emplace_back(sem);
+  }
+
+  for (auto& worker : workers) {
+    worker.t.join();
+  }
+
+  for (auto& worker : workers) {
+    EXPECT_EQ(0, worker.counter);
+  }
+}
+
+TEST(FiberManager, batchSemaphore) {
+  static constexpr size_t kTasks = 10;
+  static constexpr size_t kIterations = 10000;
+  static constexpr size_t kNumTokens = 60;
+  static constexpr size_t kNumThreads = 16;
+
+  BatchSemaphore sem(kNumTokens);
+
+  struct Worker {
+    explicit Worker(BatchSemaphore& s) : sem(s), t([&] { run(); }) {}
+
+    void run() {
+      FiberManager manager(std::make_unique<EventBaseLoopController>());
+      folly::EventBase evb;
+      dynamic_cast<EventBaseLoopController&>(manager.loopController())
+          .attachEventBase(evb);
+
+      {
+        std::shared_ptr<folly::EventBase> completionCounter(
+            &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
+
+        for (size_t i = 0; i < kTasks; ++i) {
+          manager.addTask([&, completionCounter]() {
+            for (size_t j = 0; j < kIterations; ++j) {
+              int tokens = j % 3 + 1;
+              switch (j % 3) {
+                case 0:
+                  sem.wait(tokens);
+                  break;
+                case 1:
+#if FOLLY_FUTURE_USING_FIBER
+                  sem.future_wait(tokens).get();
+#else
+                  sem.wait(tokens);
+#endif
+                  break;
+                case 2: {
+                  BatchSemaphore::Waiter waiter{tokens};
+                  bool acquired = sem.try_wait(waiter, tokens);
+                  if (!acquired) {
+                    waiter.baton.wait();
+                  }
+                  break;
+                }
+              }
+              counter += tokens;
+              sem.signal(tokens);
+              counter -= tokens;
+
+              EXPECT_LT(counter, kNumTokens);
+              EXPECT_GE(counter, 0);
+            }
+          });
+        }
+      }
+      evb.loopForever();
+    }
+
+    BatchSemaphore& sem;
     int counter{0};
     std::thread t;
   };
