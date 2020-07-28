@@ -723,6 +723,15 @@ class TestCmd(ProjectCmdBase):
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
 class GenerateGitHubActionsCmd(ProjectCmdBase):
+    RUN_ON_ALL = """ [push, pull_request]"""
+    RUN_ON_DEFAULT = """
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master"""
+
     def run_project_cmd(self, args, loader, manifest):
         platforms = [
             HostType("linux", "ubuntu", "18"),
@@ -733,15 +742,17 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         for p in platforms:
             self.write_job_for_platform(p, args)
 
-    def write_job_for_platform(self, platform, args):
+    # TODO: Break up complex function
+    def write_job_for_platform(self, platform, args):  # noqa: C901
         build_opts = setup_build_options(args, platform)
         ctx_gen = build_opts.get_context_generator()
         loader = ManifestLoader(build_opts, ctx_gen)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
+        run_on = self.RUN_ON_ALL if args.run_on_all_branches else self.RUN_ON_DEFAULT
 
         # Some projects don't do anything "useful" as a leaf project, only
-        # as a dep for a leaf project.  Check for those here; we don't want
+        # as a dep for a leaf project. Check for those here; we don't want
         # to waste the effort scheduling them on CI.
         # We do this by looking at the builder type in the manifest file
         # rather than creating a builder and checking its type because we
@@ -785,13 +796,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
                 f"""
 name: {job_name}
 
-on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+on:{run_on}
 
 jobs:
 """
@@ -890,6 +895,11 @@ jobs:
         )
         parser.add_argument(
             "--output-dir", help="The directory that will contain the yml files"
+        )
+        parser.add_argument(
+            "--run-on-all-branches",
+            action="store_true",
+            help="Allow CI to fire on all branches - Handy for testing",
         )
         parser.add_argument(
             "--ubuntu-version", default="18.04", help="Version of Ubuntu to use"
