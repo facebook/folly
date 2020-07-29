@@ -16,7 +16,15 @@
 
 #pragma once
 
-#include <folly/container/detail/F14IntrinsicsAvailability.h>
+#include <algorithm>
+#include <type_traits>
+#include <unordered_map>
+
+#include <folly/Optional.h>
+#include <folly/lang/Assume.h>
+
+#include <folly/container/detail/F14Table.h>
+#include <folly/container/detail/Util.h>
 
 /**
  * This file is intended to be included only by F14Map.h. It contains fallback
@@ -25,13 +33,6 @@
  */
 
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-
-#include <unordered_map>
-
-#include <algorithm>
-
-#include <folly/Optional.h>
-#include <folly/lang/Assume.h>
 
 namespace folly {
 
