@@ -14,15 +14,7 @@
  * limitations under the License.
  */
 
-#pragma once
-
-#include <exception>
-#include <string>
-#include <type_traits>
-
-#include <folly/Demangle.h>
-#include <folly/FBString.h>
-#include <folly/Portability.h>
+#include <folly/ExceptionString.h>
 
 namespace folly {
 
@@ -30,19 +22,28 @@ namespace folly {
  * Debug string for an exception: include type and what(), if
  * defined.
  */
-fbstring exceptionStr(const std::exception& e);
-
-fbstring exceptionStr(std::exception_ptr ep);
-
-template <typename E>
-auto exceptionStr(const E& e) -> typename std::
-    enable_if<!std::is_base_of<std::exception, E>::value, fbstring>::type {
+fbstring exceptionStr(const std::exception& e) {
 #if FOLLY_HAS_RTTI
-  return demangle(typeid(e));
+  fbstring rv(demangle(typeid(e)));
+  rv += ": ";
 #else
-  (void)e;
-  return "Exception (no RTTI available)";
+  fbstring rv("Exception (no RTTI available): ");
 #endif
+  rv += e.what();
+  return rv;
+}
+
+fbstring exceptionStr(std::exception_ptr ep) {
+  if (!kHasExceptions) {
+    return "Exception (catch unavailable)";
+  }
+  return catch_exception(
+      [&]() -> fbstring {
+        return catch_exception<std::exception const&>(
+            [&]() -> fbstring { std::rethrow_exception(ep); },
+            [](auto&& e) { return exceptionStr(e); });
+      },
+      []() -> fbstring { return "<unknown exception>"; });
 }
 
 } // namespace folly
