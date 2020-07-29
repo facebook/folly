@@ -19,7 +19,8 @@
 #include <algorithm>
 
 #include <folly/Conv.h>
-#include <folly/FileUtil.h>
+#include <folly/detail/FileUtilDetail.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace detail {
@@ -442,10 +443,13 @@ constexpr std::pair<int, const char*> errors[] = {
 #undef FOLLY_DETAIL_ERROR
 
 void writeStderr(const char* s, size_t len) {
-  writeFull(STDERR_FILENO, s, len);
+  fileutil_detail::wrapFull(write, STDERR_FILENO, const_cast<char*>(s), len);
 }
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
+}
+void flushStderr() {
+  fileutil_detail::wrapNoInt(fsync, STDERR_FILENO);
 }
 
 } // namespace
@@ -484,7 +488,7 @@ void assertionFailure(
     writeStderr(")");
   }
   writeStderr("\n");
-  fsyncNoInt(STDERR_FILENO);
+  flushStderr();
   abort();
 }
 
