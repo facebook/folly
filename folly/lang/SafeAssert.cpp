@@ -466,7 +466,7 @@ void assertionFailure(
   writeStderr("\nLine: ");
   char buf[20];
   uint32_t n = uint64ToBufferUnsafe(line, buf);
-  writeFull(STDERR_FILENO, buf, n);
+  writeStderr(buf, n);
   writeStderr("\nFunction: ");
   writeStderr(function);
   if (error) {
@@ -475,7 +475,7 @@ void assertionFailure(
     // for simplicity, do not attempt to mimic strerror printing descriptions
     writeStderr("\nError: ");
     n = uint64ToBufferUnsafe(error, buf);
-    writeFull(STDERR_FILENO, buf, n);
+    writeStderr(buf, n);
     writeStderr(" (");
     // the list is not required to be sorted; but the program is about to die
     auto const pred = [=](auto const e) { return e.first == error; };
