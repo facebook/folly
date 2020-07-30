@@ -16,6 +16,8 @@
 
 #include <folly/ExceptionString.h>
 
+#include <utility>
+
 namespace folly {
 
 /**
@@ -40,7 +42,7 @@ fbstring exceptionStr(std::exception_ptr ep) {
   return catch_exception(
       [&]() -> fbstring {
         return catch_exception<std::exception const&>(
-            [&]() -> fbstring { std::rethrow_exception(ep); },
+            [&]() -> fbstring { std::rethrow_exception(std::move(ep)); },
             [](auto&& e) { return exceptionStr(e); });
       },
       []() -> fbstring { return "<unknown exception>"; });
