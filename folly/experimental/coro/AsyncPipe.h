@@ -50,6 +50,7 @@ class AsyncPipe {
   AsyncPipe& operator=(AsyncPipe&& pipe) {
     std::move(*this).close();
     queue_ = std::move(pipe.queue_);
+    return *this;
   }
 
   static std::pair<folly::coro::AsyncGenerator<T&&>, AsyncPipe<T>> create() {

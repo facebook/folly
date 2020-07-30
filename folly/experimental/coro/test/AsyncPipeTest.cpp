@@ -115,6 +115,33 @@ TEST(AsyncPipeTest, PublishConsumeDestroy) {
   }());
 }
 
+TEST(AsyncPipeTest, PublishConsumeWithMoves) {
+  auto [generator, pipe1] = folly::coro::AsyncPipe<int>::create();
+  for (int i = 0; i < 2; ++i) {
+    EXPECT_TRUE(pipe1.write(i));
+  }
+  // Move constructor
+  auto pipe2 = std::move(pipe1);
+  for (int i = 2; i < 4; ++i) {
+    EXPECT_TRUE(pipe2.write(i));
+  }
+  // Move assignment (optional forces the assignment)
+  std::optional<folly::coro::AsyncPipe<int>> pipe3;
+  pipe3 = std::move(pipe2);
+  for (int i = 4; i < 6; ++i) {
+    EXPECT_TRUE(pipe3->write(i));
+  }
+  // Should still read all values
+  folly::coro::blockingWait(
+      [generator = std::move(generator)]() mutable -> folly::coro::Task<void> {
+        for (int i = 0; i < 6; ++i) {
+          auto val = co_await generator.next();
+          EXPECT_TRUE(val);
+          EXPECT_EQ(*val, i);
+        }
+      }());
+}
+
 TEST(AsyncPipeTest, BrokenPipe) {
   auto pipe = folly::coro::AsyncPipe<int>::create();
   EXPECT_TRUE(pipe.second.write(0));
