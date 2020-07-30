@@ -48,8 +48,10 @@ class AsyncPipe {
     queue_ = std::move(pipe.queue_);
   }
   AsyncPipe& operator=(AsyncPipe&& pipe) {
-    std::move(*this).close();
-    queue_ = std::move(pipe.queue_);
+    if (this != &pipe) {
+      std::move(*this).close();
+      queue_ = std::move(pipe.queue_);
+    }
     return *this;
   }
 
