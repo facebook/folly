@@ -200,6 +200,7 @@ void FiberManager::doFibersPoolResizing() {
 void FiberManager::FibersPoolResizer::run() {
   fiberManager_.doFibersPoolResizing();
   if (auto timer = fiberManager_.loopController_->timer()) {
+    RequestContextScopeGuard rctxGuard(std::shared_ptr<RequestContext>{});
     timer->scheduleTimeout(
         this,
         std::chrono::milliseconds(
