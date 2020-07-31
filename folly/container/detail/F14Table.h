@@ -129,6 +129,11 @@ struct F14TableStats {
 namespace f14 {
 namespace detail {
 
+inline constexpr char const* invariantFailurePossibleRaceCondition() {
+  return "F14 internal invariant violated, most likely due to a race condition, "
+         "use-after-free, or heap corruption";
+}
+
 template <F14IntrinsicsMode>
 struct F14LinkCheck {};
 
@@ -444,12 +449,14 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   void setTag(std::size_t index, std::size_t tag) {
     FOLLY_SAFE_DCHECK(
         this != emptyInstance() && tag >= 0x80 && tag <= 0xff, "");
-    FOLLY_SAFE_CHECK(tags_[index] == 0, "");
+    FOLLY_SAFE_CHECK(
+        tags_[index] == 0, invariantFailurePossibleRaceCondition());
     tags_[index] = static_cast<uint8_t>(tag);
   }
 
   void clearTag(std::size_t index) {
-    FOLLY_SAFE_CHECK((tags_[index] & 0x80) != 0, "");
+    FOLLY_SAFE_CHECK(
+        (tags_[index] & 0x80) != 0, invariantFailurePossibleRaceCondition());
     tags_[index] = 0;
   }
 
@@ -534,7 +541,9 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
   bool occupied(std::size_t index) const {
-    FOLLY_SAFE_DCHECK(tags_[index] == 0 || (tags_[index] & 0x80) != 0, "");
+    FOLLY_SAFE_DCHECK(
+        tags_[index] == 0 || (tags_[index] & 0x80) != 0,
+        invariantFailurePossibleRaceCondition());
     return tags_[index] != 0;
   }
 
@@ -544,12 +553,14 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
   }
 
   Item& item(std::size_t i) {
-    FOLLY_SAFE_DCHECK(this->occupied(i), "");
+    FOLLY_SAFE_DCHECK(
+        this->occupied(i), invariantFailurePossibleRaceCondition());
     return *launder(itemAddr(i));
   }
 
   Item const& citem(std::size_t i) const {
-    FOLLY_SAFE_DCHECK(this->occupied(i), "");
+    FOLLY_SAFE_DCHECK(
+        this->occupied(i), invariantFailurePossibleRaceCondition());
     return *launder(itemAddr(i));
   }
 
@@ -1523,7 +1534,8 @@ class F14Table : public Policy {
       index += delta;
     }
     unsigned itemIndex = fullness[index]++;
-    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
+    FOLLY_SAFE_DCHECK(
+        !chunk->occupied(itemIndex), invariantFailurePossibleRaceCondition());
     chunk->setTag(itemIndex, hp.second);
     chunk->adjustHostedOverflowCount(hostedOp);
     return ItemIter{chunk, itemIndex};
@@ -1710,7 +1722,9 @@ class F14Table : public Policy {
           auto&& srcArg = std::forward<T>(src).buildArgForItem(srcItem);
           auto const& srcKey = src.keyForValue(srcArg);
           auto hp = splitHash(this->computeKeyHash(srcKey));
-          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(i), "");
+          FOLLY_SAFE_CHECK(
+              hp.second == srcChunk->tag(i),
+              invariantFailurePossibleRaceCondition());
           insertAtBlank(
               allocateTag(fullness, hp),
               hp,
@@ -1942,7 +1956,9 @@ class F14Table : public Policy {
           Item& srcItem = srcChunk->item(srcI);
           auto hp = splitHash(
               this->computeItemHash(const_cast<Item const&>(srcItem)));
-          FOLLY_SAFE_CHECK(hp.second == srcChunk->tag(srcI), "");
+          FOLLY_SAFE_CHECK(
+              hp.second == srcChunk->tag(srcI),
+              invariantFailurePossibleRaceCondition());
 
           auto dstIter = allocateTag(fullness, hp);
           this->moveItemDuringRehash(dstIter.itemAddr(), srcItem);
@@ -2007,7 +2023,8 @@ class F14Table : public Policy {
   FOLLY_ALWAYS_INLINE void debugModePerturbSlotInsertOrder(
       ChunkPtr chunk,
       std::size_t& itemIndex) {
-    FOLLY_SAFE_DCHECK(!chunk->occupied(itemIndex), "");
+    FOLLY_SAFE_DCHECK(
+        !chunk->occupied(itemIndex), invariantFailurePossibleRaceCondition());
     constexpr bool perturbSlot = FOLLY_F14_PERTURB_INSERTION_ORDER;
     if (perturbSlot && !tlsPendingSafeInserts()) {
       std::size_t e = chunkMask_ == 0 ? bucket_count() : Chunk::kCapacity;
