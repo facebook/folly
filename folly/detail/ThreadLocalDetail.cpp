@@ -27,7 +27,7 @@ namespace folly {
 namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
-  if (UNLIKELY(!next)) {
+  if (UNLIKELY(isZero)) {
     if (LIKELY(locked)) {
       parent->meta->pushBackLocked(parent, id);
     } else {
@@ -43,6 +43,7 @@ void ThreadEntryNode::push_back(ThreadEntry* head) {
   // update current
   next = head;
   prev = hnode->prev;
+  isZero = false;
 
   // hprev
   ThreadEntryNode* hprev = &hnode->prev->elements[id].node;
@@ -62,6 +63,7 @@ void ThreadEntryNode::eraseZero() {
 
     // set the prev and next to nullptr
     next = prev = nullptr;
+    isZero = true;
   }
 }
 
