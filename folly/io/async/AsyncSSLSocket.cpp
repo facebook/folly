@@ -1672,6 +1672,7 @@ AsyncSocket::WriteResult AsyncSSLSocket::performWrite(
     }
 
     totalWritten += bytes;
+    appBytesWritten_ += bytes;
 
     if (bytes == (ssize_t)len) {
       // The full iovec is written.
