@@ -32,15 +32,10 @@
 namespace folly {
 namespace sync_tests {
 
-inline std::mt19937& getRNG() {
-  static const auto seed = folly::randomNumberSeed();
-  static std::mt19937 rng(seed);
-  return rng;
-}
-
 void randomSleep(std::chrono::milliseconds min, std::chrono::milliseconds max) {
   std::uniform_int_distribution<> range(min.count(), max.count());
-  std::chrono::milliseconds duration(range(getRNG()));
+  folly::ThreadLocalPRNG prng;
+  std::chrono::milliseconds duration(range(prng));
   /* sleep override */
   std::this_thread::sleep_for(duration);
 }
