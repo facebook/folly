@@ -222,8 +222,8 @@ auto makeExecutorLambda(
     F&& func,
     typename std::enable_if<is_invocable_v<F>, int>::type = 0) {
   return
-      [func = std::forward<F>(func)](Executor::KeepAlive<>&&, auto&&) mutable {
-        return std::forward<F>(func)();
+      [func = static_cast<F&&>(func)](Executor::KeepAlive<>&&, auto&&) mutable {
+        return static_cast<F&&>(func)();
       };
 }
 
@@ -232,10 +232,10 @@ auto makeExecutorLambda(
     F&& func,
     typename std::enable_if<!is_invocable_v<F>, int>::type = 0) {
   using R = futures::detail::callableResult<T, F&&>;
-  return [func = std::forward<F>(func)](
+  return [func = static_cast<F&&>(func)](
              Executor::KeepAlive<>&&,
              typename R::Arg::ArgList::FirstArg&& param) mutable {
-    return std::forward<F>(func)(std::forward<decltype(param)>(param));
+    return static_cast<F&&>(func)(static_cast<decltype(param)>(param));
   };
 }
 

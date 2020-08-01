@@ -157,7 +157,7 @@ class FutureBase {
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
   explicit FutureBase(in_place_t, Args&&... args)
-      : core_(Core::make(in_place, std::forward<Args>(args)...)) {}
+      : core_(Core::make(in_place, static_cast<Args&&>(args)...)) {}
 
   FutureBase(FutureBase<T> const&) = delete;
   FutureBase(SemiFuture<T>&&) noexcept;
@@ -344,7 +344,7 @@ class FutureBase {
   template <class E>
   void raise(E&& exception) {
     raise(make_exception_wrapper<typename std::remove_reference<E>::type>(
-        std::forward<E>(exception)));
+        static_cast<E&&>(exception)));
   }
 
   /// Raises a FutureCancellation interrupt.
@@ -530,7 +530,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
           !isFuture<typename std::decay<T2>::type>::value &&
           !isSemiFuture<typename std::decay<T2>::type>::value &&
           std::is_constructible<Try<T>, T2>::value>::type>
-  /* implicit */ SemiFuture(T2&& val) : Base(std::forward<T2>(val)) {}
+  /* implicit */ SemiFuture(T2&& val) : Base(static_cast<T2&&>(val)) {}
 
   /// Construct a (logical) SemiFuture-of-void.
   ///
@@ -558,7 +558,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
   explicit SemiFuture(in_place_t, Args&&... args)
-      : Base(in_place, std::forward<Args>(args)...) {}
+      : Base(in_place, static_cast<Args&&>(args)...) {}
 
   SemiFuture(SemiFuture<T> const&) = delete;
   // movable
@@ -802,7 +802,7 @@ class SemiFuture : private futures::detail::FutureBase<T> {
   template <class ExceptionType, class F>
   SemiFuture<T> deferError(F&& func) && {
     return std::move(*this).deferError(
-        tag_t<ExceptionType>{}, std::forward<F>(func));
+        tag_t<ExceptionType>{}, static_cast<F&&>(func));
   }
 
   /// Set an error continuation for this SemiFuture where the continuation can
@@ -1034,7 +1034,7 @@ class Future : private futures::detail::FutureBase<T> {
           !isFuture<typename std::decay<T2>::type>::value &&
           !isSemiFuture<typename std::decay<T2>::type>::value &&
           std::is_constructible<Try<T>, T2>::value>::type>
-  /* implicit */ Future(T2&& val) : Base(std::forward<T2>(val)) {}
+  /* implicit */ Future(T2&& val) : Base(static_cast<T2&&>(val)) {}
 
   /// Construct a (logical) Future-of-void.
   ///
@@ -1062,7 +1062,7 @@ class Future : private futures::detail::FutureBase<T> {
       typename std::enable_if<std::is_constructible<T, Args&&...>::value, int>::
           type = 0>
   explicit Future(in_place_t, Args&&... args)
-      : Base(in_place, std::forward<Args>(args)...) {}
+      : Base(in_place, static_cast<Args&&>(args)...) {}
 
   Future(Future<T> const&) = delete;
   // movable
@@ -1225,12 +1225,12 @@ class Future : private futures::detail::FutureBase<T> {
   template <typename F>
   Future<typename futures::detail::tryCallableResult<T, F>::value_type> then(
       F&& func) && {
-    return std::move(*this).thenTry(std::forward<F>(func));
+    return std::move(*this).thenTry(static_cast<F&&>(func));
   }
   template <typename F>
   Future<typename futures::detail::tryCallableResult<T, F>::value_type>
   thenInline(F&& func) && {
-    return std::move(*this).thenTryInline(std::forward<F>(func));
+    return std::move(*this).thenTryInline(static_cast<F&&>(func));
   }
 
   /// Variant where func is an member function
@@ -1435,7 +1435,7 @@ class Future : private futures::detail::FutureBase<T> {
   template <class ExceptionType, class F>
   Future<T> thenError(F&& func) && {
     return std::move(*this).thenError(
-        tag_t<ExceptionType>{}, std::forward<F>(func));
+        tag_t<ExceptionType>{}, static_cast<F&&>(func));
   }
 
   /// Set an error continuation for this Future where the continuation can
@@ -2014,13 +2014,13 @@ std::pair<Promise<T>, Future<T>> makePromiseContract(Executor::KeepAlive<> e) {
 
 template <class F>
 auto makeAsyncTask(folly::Executor::KeepAlive<> ka, F&& func) {
-  return [func = std::forward<F>(func),
+  return [func = static_cast<F&&>(func),
           ka = std::move(ka)](auto&& param) mutable {
     return via(
         ka,
         [func = std::move(func),
-         param = std::forward<decltype(param)>(param)]() mutable {
-          return std::forward<F>(func)(std::forward<decltype(param)>(param));
+         param = static_cast<decltype(param)>(param)]() mutable {
+          return static_cast<F&&>(func)(static_cast<decltype(param)&&>(param));
         });
   };
 }
@@ -2115,26 +2115,26 @@ mapTry(Executor& exec, It first, It last, F func, int = 0);
 template <class Collection, class F>
 auto mapValue(Collection&& c, F&& func)
     -> decltype(mapValue(c.begin(), c.end(), func)) {
-  return mapValue(c.begin(), c.end(), std::forward<F>(func));
+  return mapValue(c.begin(), c.end(), static_cast<F&&>(func));
 }
 
 template <class Collection, class F>
 auto mapTry(Collection&& c, F&& func)
     -> decltype(mapTry(c.begin(), c.end(), func)) {
-  return mapTry(c.begin(), c.end(), std::forward<F>(func));
+  return mapTry(c.begin(), c.end(), static_cast<F&&>(func));
 }
 
 // Sugar for the most common case
 template <class Collection, class F>
 auto mapValue(Executor& exec, Collection&& c, F&& func)
     -> decltype(mapValue(exec, c.begin(), c.end(), func)) {
-  return mapValue(exec, c.begin(), c.end(), std::forward<F>(func));
+  return mapValue(exec, c.begin(), c.end(), static_cast<F&&>(func));
 }
 
 template <class Collection, class F>
 auto mapTry(Executor& exec, Collection&& c, F&& func)
     -> decltype(mapTry(exec, c.begin(), c.end(), func)) {
-  return mapTry(exec, c.begin(), c.end(), std::forward<F>(func));
+  return mapTry(exec, c.begin(), c.end(), static_cast<F&&>(func));
 }
 
 /// Carry out the computation contained in the given future if
@@ -2544,10 +2544,10 @@ template <class Collection, class T, class F>
 auto reduce(Collection&& c, T&& initial, F&& func) -> decltype(folly::reduce(
     c.begin(),
     c.end(),
-    std::forward<T>(initial),
-    std::forward<F>(func))) {
+    static_cast<T&&>(initial),
+    static_cast<F&&>(func))) {
   return folly::reduce(
-      c.begin(), c.end(), std::forward<T>(initial), std::forward<F>(func));
+      c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func));
 }
 
 /** like reduce, but calls func on finished futures as they complete
@@ -2562,10 +2562,10 @@ auto unorderedReduce(Collection&& c, T&& initial, F&& func)
     -> decltype(folly::unorderedReduce(
         c.begin(),
         c.end(),
-        std::forward<T>(initial),
-        std::forward<F>(func))) {
+        static_cast<T&&>(initial),
+        static_cast<F&&>(func))) {
   return folly::unorderedReduce(
-      c.begin(), c.end(), std::forward<T>(initial), std::forward<F>(func));
+      c.begin(), c.end(), static_cast<T&&>(initial), static_cast<F&&>(func));
 }
 
 /// Carry out the computation contained in the given future if

@@ -445,7 +445,7 @@ class CoreBase {
       } else {
         auto oldInterruptHandler = interruptHandler_.exchange(
             new InterruptHandlerImpl<typename std::decay<F>::type>(
-                std::forward<F>(fn)),
+                static_cast<F&&>(fn)),
             std::memory_order_relaxed);
         if (oldInterruptHandler) {
           oldInterruptHandler->release();
@@ -530,7 +530,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
   /// Result held will be the `T` constructed from forwarded `args`
   template <typename... Args>
   static Core<T>* make(in_place_t, Args&&... args) {
-    return new Core<T>(in_place, std::forward<Args>(args)...);
+    return new Core<T>(in_place, static_cast<Args&&>(args)...);
   }
 
   /// Call only from consumer thread (since the consumer thread can modify the
@@ -582,7 +582,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
       F&& func,
       std::shared_ptr<folly::RequestContext>&& context,
       futures::detail::InlineContinuation allowInline) {
-    Callback callback = [func = std::forward<F>(func)](
+    Callback callback = [func = static_cast<F&&>(func)](
                             CoreBase& coreBase,
                             Executor::KeepAlive<>&& ka,
                             exception_wrapper* ew) mutable {
@@ -645,7 +645,7 @@ class Core final : private ResultHolder<T>, public CoreBase {
   explicit Core(in_place_t, Args&&... args) noexcept(
       std::is_nothrow_constructible<T, Args&&...>::value)
       : CoreBase(State::OnlyResult, 1) {
-    new (&this->result_) Result(in_place, std::forward<Args>(args)...);
+    new (&this->result_) Result(in_place, static_cast<Args&&>(args)...);
   }
 
   ~Core() override {
