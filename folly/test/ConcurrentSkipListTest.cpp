@@ -328,7 +328,9 @@ void testConcurrentAdd(int numThreads) {
 
 TEST(ConcurrentSkipList, ConcurrentAdd) {
   // test it many times
-  for (int numThreads = 10; numThreads < 10000; numThreads += 1000) {
+  // TSAN has a thread limit around 8k.
+  auto maxNumThreads = folly::kIsSanitizeThread ? 8000 : 10000;
+  for (int numThreads = 10; numThreads < maxNumThreads; numThreads += 1000) {
     testConcurrentAdd(numThreads);
   }
 }
