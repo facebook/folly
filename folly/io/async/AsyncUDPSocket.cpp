@@ -869,6 +869,36 @@ int AsyncUDPSocket::getGRO() {
   return gro_.value();
 }
 
+bool AsyncUDPSocket::setRxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (address().getFamily() != AF_INET6) {
+    return false;
+  }
+
+  int val = bVal ? 1 : 0;
+  int ret =
+      netops::setsockopt(fd_, SOL_UDP, UDP_NO_CHECK6_RX, &val, sizeof(val));
+  return !ret;
+#else
+  return false;
+#endif
+}
+
+bool AsyncUDPSocket::setTxZeroChksum6(FOLLY_MAYBE_UNUSED bool bVal) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  if (address().getFamily() != AF_INET6) {
+    return false;
+  }
+
+  int val = bVal ? 1 : 0;
+  int ret =
+      netops::setsockopt(fd_, SOL_UDP, UDP_NO_CHECK6_TX, &val, sizeof(val));
+  return !ret;
+#else
+  return false;
+#endif
+}
+
 void AsyncUDPSocket::setTrafficClass(int tclass) {
   if (netops::setsockopt(
           fd_, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(int)) != 0) {
