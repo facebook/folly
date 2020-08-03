@@ -465,6 +465,8 @@ class FiberManager : public ::folly::Executor {
   template <typename LoopFunc>
   void runFibersHelper(LoopFunc&& loopFunc);
 
+  size_t recordStackPosition(size_t position);
+
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
   typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>
       GlobalFiberTailQueue;
@@ -483,8 +485,10 @@ class FiberManager : public ::folly::Executor {
 
   GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
 
-  size_t fibersAllocated_{0}; /**< total number of fibers allocated */
-  size_t fibersPoolSize_{0}; /**< total number of fibers in the free pool */
+  // total number of fibers allocated
+  std::atomic<size_t> fibersAllocated_{0};
+  // total number of fibers in the free pool
+  std::atomic<size_t> fibersPoolSize_{0};
   size_t fibersActive_{0}; /**< number of running or blocked fibers */
   size_t fiberId_{0}; /**< id of last fiber used */
 
@@ -514,7 +518,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Largest observed individual Fiber stack usage in bytes.
    */
-  size_t stackHighWatermark_{0};
+  std::atomic<size_t> stackHighWatermark_{0};
 
   /**
    * Schedules a loop with loopController (unless already scheduled before).

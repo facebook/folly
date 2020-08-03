@@ -127,12 +127,13 @@ Fiber* FiberManager::getFiber() {
 
   if (fibersPool_.empty()) {
     fiber = new Fiber(*this);
-    ++fibersAllocated_;
+    fibersAllocated_.store(fibersAllocated() + 1, std::memory_order_relaxed);
   } else {
     fiber = &fibersPool_.front();
     fibersPool_.pop_front();
-    assert(fibersPoolSize_ > 0);
-    --fibersPoolSize_;
+    auto fibersPoolSize = fibersPoolSize_.load(std::memory_order_relaxed);
+    assert(fibersPoolSize > 0);
+    fibersPoolSize_.store(fibersPoolSize - 1, std::memory_order_relaxed);
   }
   assert(fiber);
   if (++fibersActive_ > maxFibersActiveLastPeriod_) {
@@ -151,15 +152,15 @@ void FiberManager::setExceptionCallback(FiberManager::ExceptionCallback ec) {
 }
 
 size_t FiberManager::fibersAllocated() const {
-  return fibersAllocated_;
+  return fibersAllocated_.load(std::memory_order_relaxed);
 }
 
 size_t FiberManager::fibersPoolSize() const {
-  return fibersPoolSize_;
+  return fibersPoolSize_.load(std::memory_order_relaxed);
 }
 
 size_t FiberManager::stackHighWatermark() const {
-  return stackHighWatermark_;
+  return stackHighWatermark_.load(std::memory_order_relaxed);
 }
 
 void FiberManager::remoteReadyInsert(Fiber* fiber) {
@@ -184,14 +185,19 @@ void FiberManager::setPreemptRunner(InlineFunctionRunner* preemptRunner) {
 }
 
 void FiberManager::doFibersPoolResizing() {
-  while (fibersAllocated_ > maxFibersActiveLastPeriod_ &&
-         fibersPoolSize_ > options_.maxFibersPoolSize) {
+  while (true) {
+    auto fibersAllocated = this->fibersAllocated();
+    auto fibersPoolSize = this->fibersPoolSize();
+    if (!(fibersAllocated > maxFibersActiveLastPeriod_ &&
+          fibersPoolSize > options_.maxFibersPoolSize)) {
+      break;
+    }
     auto fiber = &fibersPool_.front();
     assert(fiber != nullptr);
     fibersPool_.pop_front();
     delete fiber;
-    --fibersPoolSize_;
-    --fibersAllocated_;
+    fibersPoolSize_.store(fibersPoolSize - 1, std::memory_order_relaxed);
+    fibersAllocated_.store(fibersAllocated - 1, std::memory_order_relaxed);
   }
 
   maxFibersActiveLastPeriod_ = fibersActive_;

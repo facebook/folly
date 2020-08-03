@@ -234,6 +234,12 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
   loopFunc();
 }
 
+inline size_t FiberManager::recordStackPosition(size_t position) {
+  auto newPosition = std::max(stackHighWatermark(), position);
+  stackHighWatermark_.store(newPosition, std::memory_order_relaxed);
+  return newPosition;
+}
+
 inline void FiberManager::loopUntilNoReadyImpl() {
   runFibersHelper([&] {
     SCOPE_EXIT {
