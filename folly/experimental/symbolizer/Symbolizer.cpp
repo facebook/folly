@@ -36,6 +36,7 @@
 #include <folly/String.h>
 #include <folly/experimental/symbolizer/Dwarf.h>
 #include <folly/experimental/symbolizer/Elf.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/LineReader.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/SysMman.h>

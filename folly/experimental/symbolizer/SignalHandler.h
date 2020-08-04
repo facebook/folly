@@ -17,7 +17,6 @@
 #pragma once
 
 #include <bitset>
-#include <functional>
 
 namespace folly {
 namespace symbolizer {
