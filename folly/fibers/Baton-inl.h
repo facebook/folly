@@ -87,7 +87,7 @@ bool Baton::timedWaitThread(
       if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
         return false;
       }
-      waiter = waiter_.load(std::memory_order_relaxed);
+      waiter = waiter_.load(std::memory_order_acquire);
     } while (waiter == THREAD_WAITING);
   }
 
