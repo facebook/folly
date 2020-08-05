@@ -194,6 +194,12 @@ option(
   "Build folly with Address Sanitizer enabled."
   OFF
 )
+
+if ($ENV{WITH_ASAN})
+  message(STATUS "ENV WITH_ASAN is set")
+  set (FOLLY_LIBRARY_SANITIZE_ADDRESS ON)
+endif()
+
 if (FOLLY_LIBRARY_SANITIZE_ADDRESS)
   if ("${CMAKE_CXX_COMPILER_ID}" MATCHES GNU)
     set(FOLLY_LIBRARY_SANITIZE_ADDRESS ON)
