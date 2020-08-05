@@ -1535,6 +1535,7 @@ TEST(FiberManager, batonWaitTimeoutHandlerExecutor) {
   };
   manager.addTask([&]() { task(300); });
   baton2.wait();
+  executor.join();
 }
 
 TEST(FiberManager, batonWaitTimeoutMany) {
@@ -1544,7 +1545,10 @@ TEST(FiberManager, batonWaitTimeoutMany) {
   dynamic_cast<EventBaseLoopController&>(manager.loopController())
       .attachEventBase(evb);
 
-  constexpr size_t kNumTimeoutTasks = 10000;
+  // TODO(T71050527): It appears that TSAN does not yet maintain the shadow
+  // stack correctly upon fiber switches, resulting in a shadow stack overflow
+  // if we push too many tasks here. Cap it in the meantime.
+  constexpr size_t kNumTimeoutTasks = folly::kIsSanitizeThread ? 1000 : 10000;
   size_t tasksCount = kNumTimeoutTasks;
 
   // We add many tasks to hit timeout queue deallocation logic.
