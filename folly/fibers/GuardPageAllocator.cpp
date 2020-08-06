@@ -74,6 +74,7 @@ class StackCache {
     storage_ = reinterpret_cast<unsigned char*>(p);
 
     /* Protect the bottommost page of every stack allocation */
+    freeList_.reserve(kNumGuarded);
     for (size_t i = 0; i < kNumGuarded; ++i) {
       auto allocBegin = storage_ + allocSize_ * i;
       freeList_.emplace_back(allocBegin, /* protected= */ false);
