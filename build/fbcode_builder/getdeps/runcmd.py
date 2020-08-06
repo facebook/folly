@@ -95,9 +95,15 @@ def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
 
     log_fn("+ %s\n" % cmd_str)
 
+    isinteractive = os.isatty(sys.stdout.fileno())
+    if isinteractive:
+        stdout = None
+    else:
+        stdout = subprocess.PIPE
+
     try:
         p = subprocess.Popen(
-            cmd, env=env, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.STDOUT
+            cmd, env=env, cwd=cwd, stdout=stdout, stderr=subprocess.STDOUT
         )
     except (TypeError, ValueError, OSError) as exc:
         log_fn("error running `%s`: %s" % (cmd_str, exc))
@@ -106,7 +112,8 @@ def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
             % (str(exc), cmd_str, env, os.environ)
         )
 
-    _pipe_output(p, log_fn)
+    if not isinteractive:
+        _pipe_output(p, log_fn)
 
     p.wait()
     if p.returncode != 0 and not allow_fail:
