@@ -18,6 +18,7 @@
 #include <folly/experimental/TestUtil.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/portability/GTest.h>
+#include <sys/auxv.h>
 
 using folly::symbolizer::ElfFile;
 
@@ -41,8 +42,24 @@ TEST_F(ElfTest, PointerValue) {
   auto sym = elfFile_.getSymbolByName("kStringValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kStringValue";
   ElfW(Addr) addr = elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
-  const char* str = &elfFile_.getAddressValue<const char>(addr);
-  EXPECT_STREQ(kStringValue, str);
+  // Let's check the address for the symbol against our own copy of
+  // kStringValue.
+  auto binaryBase = getauxval(AT_PHDR) - 0x40; // address of our own image
+  EXPECT_EQ(
+      static_cast<const void*>(&kStringValue),
+      reinterpret_cast<const void*>(
+          binaryBase +
+          (sym.second->st_value - sym.first->sh_addr + sym.first->sh_offset)));
+  if (addr != 0) {
+    // Only do this check if we have a non-PIE. For the PIE case, the compiler
+    // could put a 0 in the .data section for kStringValue, and then rely on
+    // the dynamic linker to fill in the actual pointer to the .rodata section
+    // via relocation; the actual offset of the string is encoded in the
+    // .rela.dyn section, which isn't parsed in the current implementation of
+    // ElfFile.
+    const char* str = &elfFile_.getAddressValue<const char>(addr);
+    EXPECT_STREQ(kStringValue, str);
+  }
 }
 
 TEST_F(ElfTest, iterateProgramHeaders) {
