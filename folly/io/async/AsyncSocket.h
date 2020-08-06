@@ -1398,13 +1398,10 @@ class AsyncSocket : public AsyncTransport {
   //
   // Use small_vector to avoid heap allocation for up to two observers, unless
   // mobile, in which case we fallback to std::vector to prioritize code size.
-#if !FOLLY_MOBILE
-  using LifecycleObserverVecImpl =
-      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>;
-#else
-  using LifecycleObserverVecImpl =
-      std::vector<AsyncTransport::LifecycleObserver*>;
-#endif
+  using LifecycleObserverVecImpl = conditional_t<
+      !kIsMobile,
+      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>,
+      std::vector<AsyncTransport::LifecycleObserver*>>;
   LifecycleObserverVecImpl lifecycleObservers_;
 
   // Pre-received data, to be returned to read callback before any data from the
