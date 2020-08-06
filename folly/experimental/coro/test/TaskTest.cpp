@@ -449,4 +449,39 @@ TEST_F(TaskTest, StartInlineUnsafe) {
   }());
 }
 
+TEST_F(TaskTest, YieldTry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto innerTaskVoid = []() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_error(std::runtime_error(""));
+    }();
+    auto retVoid = co_await co_awaitTry([&]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(
+          co_await co_awaitTry(std::move(innerTaskVoid)));
+    }());
+    EXPECT_TRUE(retVoid.hasException());
+
+    innerTaskVoid = []() -> folly::coro::Task<void> { co_return; }();
+    retVoid = co_await co_awaitTry([&]() -> folly::coro::Task<void> {
+      co_yield folly::coro::co_result(
+          co_await co_awaitTry(std::move(innerTaskVoid)));
+    }());
+    EXPECT_FALSE(retVoid.hasException());
+
+    auto innerTaskInt = []() -> folly::coro::Task<int> {
+      co_yield folly::coro::co_error(std::runtime_error(""));
+    }();
+    auto retInt = co_await co_awaitTry([&]() -> folly::coro::Task<int> {
+      co_yield folly::coro::co_result(
+          co_await co_awaitTry(std::move(innerTaskInt)));
+    }());
+    EXPECT_TRUE(retInt.hasException());
+
+    innerTaskInt = []() -> folly::coro::Task<int> { co_return 0; }();
+    retInt = co_await co_awaitTry([&]() -> folly::coro::Task<int> {
+      co_yield folly::coro::co_result(
+          co_await co_awaitTry(std::move(innerTaskInt)));
+    }());
+    EXPECT_TRUE(retInt.hasValue());
+  }());
+}
 #endif

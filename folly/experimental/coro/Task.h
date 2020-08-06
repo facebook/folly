@@ -51,6 +51,25 @@ class Task;
 template <typename T = void>
 class TaskWithExecutor;
 
+template <typename T>
+class co_result final {
+ public:
+  explicit co_result(Try<T>&& result) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : result_(std::move(result)) {}
+
+  const Try<T>& result() const {
+    return result_;
+  }
+
+  Try<T>& result() {
+    return result_;
+  }
+
+ private:
+  Try<T> result_;
+};
+
 namespace detail {
 
 class TaskPromiseBase {
@@ -175,6 +194,11 @@ class TaskPromise : public TaskPromiseBase {
     return final_suspend();
   }
 
+  auto yield_value(co_result<StorageType>&& result) {
+    result_ = std::move(result.result());
+    return final_suspend();
+  }
+
  private:
   Try<StorageType> result_;
 };
@@ -203,6 +227,11 @@ class TaskPromise<void> : public TaskPromiseBase {
 
   auto yield_value(co_error ex) {
     result_.emplaceException(std::move(ex.exception()));
+    return final_suspend();
+  }
+
+  auto yield_value(co_result<void>&& result) {
+    result_ = std::move(result.result());
     return final_suspend();
   }
 
