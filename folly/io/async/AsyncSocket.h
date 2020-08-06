@@ -503,6 +503,13 @@ class AsyncSocket : public AsyncTransport {
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
+  void setEventCallback(EventRecvmsgCallback* cb) override {
+    if (cb) {
+      ioHandler_.setEventCallback(cb);
+    } else {
+      ioHandler_.resetEventCallback();
+    }
+  }
 
   bool setZeroCopy(bool enable) override;
   bool getZeroCopy() const override {
