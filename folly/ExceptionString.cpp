@@ -18,6 +18,8 @@
 
 #include <utility>
 
+#include <folly/lang/Exception.h>
+
 namespace folly {
 
 /**

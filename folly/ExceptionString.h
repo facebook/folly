@@ -19,6 +19,7 @@
 #include <exception>
 #include <string>
 #include <type_traits>
+#include <typeinfo>
 
 #include <folly/Demangle.h>
 #include <folly/FBString.h>
