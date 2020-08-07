@@ -136,7 +136,7 @@ CPUThreadPoolExecutor::getQueueObserver(int8_t pri) {
     return nullptr;
   }
 
-  auto& slot = queueObservers_[static_cast<uint64_t>(pri)];
+  auto& slot = queueObservers_[static_cast<uint8_t>(pri)];
   if (auto observer = slot.load(std::memory_order_acquire)) {
     return observer;
   }
