@@ -265,8 +265,10 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
     - double-conversion-devel
     - openssl-devel
     - libevent-devel
-
+    - fmt-devel
+    - libsodium-devel
+    
   Optional
-    - libdwarf-dev
-    - libelf-dev
-    - libunwind8-dev
+    - libdwarf-devel
+    - elfutils-libelf-devel
+    - libunwind-devel
