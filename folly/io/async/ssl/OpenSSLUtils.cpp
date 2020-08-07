@@ -312,11 +312,15 @@ std::string OpenSSLUtils::getCommonName(X509* x509) {
     return "";
   }
   X509_NAME* subject = X509_get_subject_name(x509);
-  std::string cn;
-  cn.resize(ub_common_name);
-  X509_NAME_get_text_by_NID(
-      subject, NID_commonName, const_cast<char*>(cn.data()), ub_common_name);
-  return cn;
+  char buf[ub_common_name + 1];
+  int length =
+      X509_NAME_get_text_by_NID(subject, NID_commonName, buf, sizeof(buf));
+  if (length == -1) {
+    // no CN
+    return "";
+  }
+  // length tells us where the name ends
+  return std::string(buf, length);
 }
 
 } // namespace ssl
