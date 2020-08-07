@@ -32,6 +32,7 @@
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/StaticTracepoint.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
+#include <sys/auxv.h>
 
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;
 static const int kUSDTNoteType = FOLLY_SDT_NOTE_TYPE;
@@ -229,7 +230,14 @@ static bool getTracepointArguments(
     align4Bytes(pos);
 
     if (provider == expectedProvider && probe == expectedProbe) {
-      CHECK_EQ(expectedSemaphore, semaphoreAddr);
+      // If the binary is not PIE, then the addresses should match.
+      if (expectedSemaphore == static_cast<uintptr_t>(semaphoreAddr)) {
+        return true;
+      }
+      // If the test is built as PIE, then the semaphore address listed in the
+      // notes section is relative to the beginning of the binary image.
+      auto binaryBase = getauxval(AT_PHDR) - 0x40;
+      CHECK_EQ(expectedSemaphore, binaryBase + semaphoreAddr);
       return true;
     }
   }
