@@ -1040,7 +1040,7 @@ TEST(Singleton, ShutdownTimer) {
   vault.registrationComplete();
 
   vault.setShutdownTimeout(10ms);
-  SingletonObject::try_get()->shutdownDuration = 1s;
+  SingletonObject::try_get()->shutdownDuration = 10s;
   EXPECT_DEATH(
       [&]() {
         vault.startShutdownTimer();
@@ -1048,7 +1048,7 @@ TEST(Singleton, ShutdownTimer) {
       }(),
       "Failed to complete shutdown within 10ms.");
 
-  vault.setShutdownTimeout(1s);
+  vault.setShutdownTimeout(10s);
   SingletonObject::try_get()->shutdownDuration = 10ms;
   vault.startShutdownTimer();
   vault.destroyInstances();
