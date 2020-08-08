@@ -125,8 +125,12 @@ CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
   CHECK(threadsToStop_ == 0);
-  for (auto& observer : queueObservers_) {
-    delete observer.load(std::memory_order_relaxed);
+  if (getNumPriorities() == 1) {
+    delete queueObservers_[0];
+  } else {
+    for (auto& observer : queueObservers_) {
+      delete observer.load(std::memory_order_relaxed);
+    }
   }
 }
 
@@ -136,22 +140,23 @@ CPUThreadPoolExecutor::getQueueObserver(int8_t pri) {
     return nullptr;
   }
 
-  auto& slot = queueObservers_[static_cast<uint8_t>(pri)];
+  auto& slot = queueObservers_[folly::to_unsigned(pri)];
   if (auto observer = slot.load(std::memory_order_acquire)) {
     return observer;
   }
 
   // common case is only one queue, need only one observer
   if (getNumPriorities() == 1 && pri != 0) {
-    return getQueueObserver(0);
+    auto sharedObserver = getQueueObserver(0);
+    slot.store(sharedObserver, std::memory_order_release);
+    return sharedObserver;
   }
   QueueObserver* existingObserver = nullptr;
-  QueueObserver* newObserver = queueObserverFactory_->create(pri).release();
-  if (!slot.compare_exchange_strong(existingObserver, newObserver)) {
-    delete newObserver;
+  auto newObserver = queueObserverFactory_->create(pri);
+  if (!slot.compare_exchange_strong(existingObserver, newObserver.get())) {
     return existingObserver;
   } else {
-    return newObserver;
+    return newObserver.release();
   }
 }
 
