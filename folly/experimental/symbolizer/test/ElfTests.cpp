@@ -39,6 +39,7 @@ TEST_F(ElfTest, IntegerValue) {
 }
 
 TEST_F(ElfTest, PointerValue) {
+  auto rawBaseAddress = elfFile_.getBaseAddress();
   auto sym = elfFile_.getSymbolByName("kStringValue");
   EXPECT_NE(nullptr, sym.first) << "Failed to look up symbol kStringValue";
   ElfW(Addr) addr = elfFile_.getSymbolValue<ElfW(Addr)>(sym.second);
@@ -48,9 +49,8 @@ TEST_F(ElfTest, PointerValue) {
   EXPECT_EQ(
       static_cast<const void*>(&kStringValue),
       reinterpret_cast<const void*>(
-          binaryBase +
-          (sym.second->st_value - sym.first->sh_addr + sym.first->sh_offset)));
-  if (addr != 0) {
+          binaryBase + (sym.second->st_value - rawBaseAddress)));
+  if (rawBaseAddress != 0) { // non-PIE
     // Only do this check if we have a non-PIE. For the PIE case, the compiler
     // could put a 0 in the .data section for kStringValue, and then rely on
     // the dynamic linker to fill in the actual pointer to the .rodata section
