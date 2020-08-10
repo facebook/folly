@@ -63,11 +63,16 @@ std::exception const* get_std_exception_(std::exception_ptr eptr) noexcept {
 
 exception_wrapper exception_wrapper::from_exception_ptr(
     std::exception_ptr const& ptr) noexcept {
+  return from_exception_ptr(folly::copy(ptr));
+}
+
+exception_wrapper exception_wrapper::from_exception_ptr(
+    std::exception_ptr&& ptr) noexcept {
   if (!ptr) {
     return exception_wrapper();
   }
   try {
-    std::rethrow_exception(ptr);
+    std::rethrow_exception(std::move(ptr));
   } catch (std::exception& e) {
     return exception_wrapper(std::current_exception(), e);
   } catch (...) {

@@ -379,6 +379,8 @@ class exception_wrapper final {
  public:
   static exception_wrapper from_exception_ptr(
       std::exception_ptr const& eptr) noexcept;
+  static exception_wrapper from_exception_ptr(
+      std::exception_ptr&& eptr) noexcept;
 
   //! Default-constructs an empty `exception_wrapper`
   //! \post `type() == none()`
