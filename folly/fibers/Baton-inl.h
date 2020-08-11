@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/detail/AsyncTrace.h>
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/FiberManagerInternal.h>
 
@@ -76,6 +77,10 @@ template <typename Clock, typename Duration>
 bool Baton::timedWaitThread(
     const std::chrono::time_point<Clock, Duration>& deadline) {
   auto waiter = waiter_.load();
+
+  folly::async_tracing::logBlockingOperation(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          deadline - Clock::now()));
 
   if (LIKELY(
           waiter == NO_WAITER &&
