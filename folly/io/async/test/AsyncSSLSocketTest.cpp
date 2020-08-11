@@ -22,6 +22,7 @@
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseThread.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -1574,19 +1575,18 @@ static int customRsaPrivEnc(
   auto asyncPipeWriter = folly::AsyncPipeWriter::newWriter(
       asyncJobEvb, folly::NetworkSocket(hand));
 
+  if (socket) {
+    LOG(INFO) << "Got a socket passed in, closing it...";
+    socket->closeNow();
+  }
   asyncJobEvb->runInEventBaseThread([retptr = retptr,
                                      flen = flen,
                                      from = from,
                                      to = to,
                                      padding = padding,
                                      actualRSA = actualRSA,
-                                     writer = std::move(asyncPipeWriter),
-                                     socket = socket]() {
+                                     writer = std::move(asyncPipeWriter)]() {
     LOG(INFO) << "Running job";
-    if (socket) {
-      LOG(INFO) << "Got a socket passed in, closing it...";
-      socket->closeNow();
-    }
     *retptr = RSA_meth_get_priv_enc(RSA_PKCS1_OpenSSL())(
         flen, from, to, actualRSA, padding);
     LOG(INFO) << "Finished job, writing to pipe";
@@ -1781,7 +1781,8 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestFailure) {
 TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   ASYNC_init_thread(1, 1);
   EventBase eventBase;
-  ScopedEventBaseThread jobEvbThread;
+  std::optional<EventBaseThread> jobEvbThread;
+  jobEvbThread.emplace();
   auto clientCtx = std::make_shared<SSLContext>();
   auto serverCtx = std::make_shared<SSLContext>();
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
@@ -1790,7 +1791,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   serverCtx->loadClientCAList(kTestCA);
 
   auto rsaPointers =
-      setupCustomRSA(kTestCert, kTestKey, jobEvbThread.getEventBase());
+      setupCustomRSA(kTestCert, kTestKey, jobEvbThread->getEventBase());
   CHECK(rsaPointers->dummyrsa);
   // up-refs dummyrsa
   SSL_CTX_use_RSAPrivateKey(serverCtx->getSSLCtx(), rsaPointers->dummyrsa);
@@ -1817,6 +1818,7 @@ TEST(AsyncSSLSocketTest, OpenSSL110AsyncTestClosedWithCallbackPending) {
   EXPECT_TRUE(server.handshakeError_);
   EXPECT_TRUE(client.handshakeError_);
   ASYNC_cleanup_thread();
+  jobEvbThread.reset();
 }
 #endif // FOLLY_SANITIZE_ADDRESS
 
