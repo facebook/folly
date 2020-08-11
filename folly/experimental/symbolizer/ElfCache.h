@@ -24,7 +24,6 @@
 
 #include <boost/intrusive/avl_set.hpp>
 
-#include <folly/FBString.h>
 #include <folly/Range.h>
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/hash/Hash.h>
@@ -48,8 +47,8 @@ class SignalSafeElfCache : public ElfCacheBase {
  public:
   std::shared_ptr<ElfFile> getFile(StringPiece path) override;
 
-  using Path =
-      basic_fbstring<char, std::char_traits<char>, reentrant_allocator<char>>;
+  using Path = std::
+      basic_string<char, std::char_traits<char>, reentrant_allocator<char>>;
 
   struct Entry : boost::intrusive::avl_set_base_hook<> {
     Path path;
