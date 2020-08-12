@@ -671,7 +671,7 @@ class hazptr_domain {
       LOG(WARNING)
           << "Using the default inline executor for asynchronous reclamation "
              "may be susceptible to deadlock if the current thread happens to "
-             "hold a resource needed by the deleter of a reclaimbale object";
+             "hold a resource needed by the deleter of a reclaimable object";
     }
   }
 }; // namespace folly
