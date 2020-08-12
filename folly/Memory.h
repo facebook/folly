@@ -373,17 +373,6 @@ std::shared_ptr<remove_cvref_t<T>> copy_to_shared_ptr(T&& t) {
   return std::make_shared<remove_cvref_t<T>>(static_cast<T&&>(t));
 }
 
-namespace detail {
-template <typename T>
-struct lift_void_to_char {
-  using type = T;
-};
-template <>
-struct lift_void_to_char<void> {
-  using type = char;
-};
-} // namespace detail
-
 /**
  * SysAllocator
  *
@@ -406,16 +395,14 @@ class SysAllocator {
   constexpr SysAllocator(SysAllocator<U> const&) noexcept {}
 
   T* allocate(size_t count) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
-    auto const p = std::malloc(sizeof(lifted) * count);
+    auto const p = std::malloc(sizeof(T) * count);
     if (!p) {
       throw_exception<std::bad_alloc>();
     }
     return static_cast<T*>(p);
   }
   void deallocate(T* p, size_t count) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
-    sizedFree(p, count * sizeof(lifted));
+    sizedFree(p, count * sizeof(T));
   }
 
   friend bool operator==(Self const&, Self const&) noexcept {
@@ -522,9 +509,8 @@ class AlignedSysAllocator : private Align {
       : Align(other.align()) {}
 
   T* allocate(size_t count) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
-    auto const a = align()() < alignof(lifted) ? alignof(lifted) : align()();
-    auto const p = aligned_malloc(sizeof(lifted) * count, a);
+    auto const a = align()() < alignof(T) ? alignof(T) : align()();
+    auto const p = aligned_malloc(sizeof(T) * count, a);
     if (!p) {
       if (FOLLY_UNLIKELY(errno != ENOMEM)) {
         std::terminate();
@@ -584,16 +570,14 @@ class CxxAllocatorAdaptor {
       : inner_(other.inner_) {}
 
   T* allocate(std::size_t n) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
     if (inner_ == nullptr) {
       throw_exception<std::bad_alloc>();
     }
-    return static_cast<T*>(inner_->allocate(sizeof(lifted) * n));
+    return static_cast<T*>(inner_->allocate(sizeof(T) * n));
   }
   void deallocate(T* p, std::size_t n) {
-    using lifted = typename detail::lift_void_to_char<T>::type;
     assert(inner_);
-    inner_->deallocate(p, sizeof(lifted) * n);
+    inner_->deallocate(p, sizeof(T) * n);
   }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {

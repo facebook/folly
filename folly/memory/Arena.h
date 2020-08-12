@@ -153,7 +153,8 @@ class Arena {
   Arena& operator=(Arena&&) = delete;
 
  private:
-  using AllocTraits = std::allocator_traits<Alloc>;
+  using AllocTraits =
+      typename std::allocator_traits<Alloc>::template rebind_traits<char>;
   using BlockLink = boost::intrusive::slist_member_hook<>;
 
   struct alignas(max_align_v) Block {
@@ -199,7 +200,8 @@ class Arena {
   void freeBlocks() {
     blocks_.clear_and_dispose([this](Block* b) {
       b->~Block();
-      AllocTraits::deallocate(alloc(), b, blockGoodAllocSize());
+      AllocTraits::deallocate(
+          alloc(), reinterpret_cast<char*>(b), blockGoodAllocSize());
     });
   }
 
@@ -207,7 +209,7 @@ class Arena {
     largeBlocks_.clear_and_dispose([this](LargeBlock* b) {
       auto size = b->allocSize;
       b->~LargeBlock();
-      AllocTraits::deallocate(alloc(), b, size);
+      AllocTraits::deallocate(alloc(), reinterpret_cast<char*>(b), size);
     });
   }
 
@@ -298,8 +300,8 @@ struct ArenaAllocatorTraits {
 };
 
 template <>
-struct ArenaAllocatorTraits<SysAllocator<void>> {
-  static size_t goodSize(const SysAllocator<void>& /* alloc */, size_t size) {
+struct ArenaAllocatorTraits<SysAllocator<char>> {
+  static size_t goodSize(const SysAllocator<char>& /* alloc */, size_t size) {
     return goodMallocSize(size);
   }
 };
@@ -307,13 +309,13 @@ struct ArenaAllocatorTraits<SysAllocator<void>> {
 /**
  * Arena that uses the system allocator (malloc / free)
  */
-class SysArena : public Arena<SysAllocator<void>> {
+class SysArena : public Arena<SysAllocator<char>> {
  public:
   explicit SysArena(
       size_t minBlockSize = kDefaultMinBlockSize,
       size_t sizeLimit = kNoSizeLimit,
       size_t maxAlign = kDefaultMaxAlign)
-      : Arena<SysAllocator<void>>({}, minBlockSize, sizeLimit, maxAlign) {}
+      : Arena<SysAllocator<char>>({}, minBlockSize, sizeLimit, maxAlign) {}
 };
 
 template <>
@@ -323,7 +325,7 @@ template <typename T, typename Alloc>
 using ArenaAllocator = CxxAllocatorAdaptor<T, Arena<Alloc>>;
 
 template <typename T>
-using SysArenaAllocator = ArenaAllocator<T, SysAllocator<void>>;
+using SysArenaAllocator = ArenaAllocator<T, SysAllocator<char>>;
 
 } // namespace folly
 
