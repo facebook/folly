@@ -392,12 +392,12 @@ class F14BasicMap {
   template <typename M>
   iterator
   insert_or_assign(const_iterator /*hint*/, key_type const& key, M&& obj) {
-    return insert_or_assign(key, std::move(obj)).first;
+    return insert_or_assign(key, std::forward<M>(obj)).first;
   }
 
   template <typename M>
   iterator insert_or_assign(const_iterator /*hint*/, key_type&& key, M&& obj) {
-    return insert_or_assign(std::move(key), std::move(obj)).first;
+    return insert_or_assign(std::move(key), std::forward<M>(obj)).first;
   }
 
   template <typename K, typename M>
