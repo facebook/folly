@@ -59,7 +59,7 @@ class FiberImpl {
     auto transfer =
         boost::context::detail::jump_fcontext(mainContext_, nullptr);
     mainContext_ = transfer.fctx;
-    fixStackUnwinding(true);
+    fixStackUnwinding();
     auto context = reinterpret_cast<intptr_t>(transfer.data);
     DCHECK_EQ(this, reinterpret_cast<FiberImpl*>(context));
   }
@@ -68,26 +68,15 @@ class FiberImpl {
   static void fiberFunc(boost::context::detail::transfer_t transfer) {
     auto fiberImpl = reinterpret_cast<FiberImpl*>(transfer.data);
     fiberImpl->mainContext_ = transfer.fctx;
-    fiberImpl->fixStackUnwinding(false);
+    fiberImpl->fixStackUnwinding();
     fiberImpl->func_();
   }
 
-  void fixStackUnwinding(bool deactivate) {
-    if (!kIsLinux) {
-      return;
-    }
-    auto stackBase = reinterpret_cast<void**>(stackBase_);
-    // Write a nullptr to the saved return address, when deactivating. Otherwise
-    // backtrace will point to the main context's stack. These pointers will no
-    // longer be valid once we switch to the main context.
-    if (deactivate) {
-      stackBase[-1] = nullptr;
-      return;
-    }
-
-    if (kIsArchAmd64) {
+  void fixStackUnwinding() {
+    if (kIsArchAmd64 && kIsLinux) {
       // Extract RBP and RIP from main context to stitch main context stack and
       // fiber stack.
+      auto stackBase = reinterpret_cast<void**>(stackBase_);
       auto mainContext = reinterpret_cast<void**>(mainContext_);
       stackBase[-2] = mainContext[6];
       stackBase[-1] = mainContext[7];
