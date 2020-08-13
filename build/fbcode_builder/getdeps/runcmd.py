@@ -98,6 +98,7 @@ def _run_cmd(cmd, env, cwd, allow_fail, log_fn):
     isinteractive = os.isatty(sys.stdout.fileno())
     if isinteractive:
         stdout = None
+        sys.stdout.buffer.flush()
     else:
         stdout = subprocess.PIPE
 
