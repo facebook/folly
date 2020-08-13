@@ -542,12 +542,12 @@ class AlignedSysAllocator : private Align {
  *
  * Note that Inner is *not* a C++ Allocator.
  */
-template <typename T, class Inner>
-class CxxAllocatorAdaptor {
+template <typename T, class Inner, bool FallbackToStdAlloc = false>
+class CxxAllocatorAdaptor : private std::allocator<T> {
  private:
-  using Self = CxxAllocatorAdaptor<T, Inner>;
+  using Self = CxxAllocatorAdaptor<T, Inner, FallbackToStdAlloc>;
 
-  template <typename U, typename UAlloc>
+  template <typename U, typename UInner, bool UFallback>
   friend class CxxAllocatorAdaptor;
 
   Inner* inner_ = nullptr;
@@ -559,25 +559,32 @@ class CxxAllocatorAdaptor {
   using propagate_on_container_move_assignment = std::true_type;
   using propagate_on_container_swap = std::true_type;
 
-  constexpr explicit CxxAllocatorAdaptor() = default;
+  template <bool X = FallbackToStdAlloc, std::enable_if_t<X, int> = 0>
+  constexpr explicit CxxAllocatorAdaptor() {}
 
   constexpr explicit CxxAllocatorAdaptor(Inner& ref) : inner_(&ref) {}
 
   constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor const&) = default;
 
   template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
-  constexpr CxxAllocatorAdaptor(CxxAllocatorAdaptor<U, Inner> const& other)
+  constexpr CxxAllocatorAdaptor(
+      CxxAllocatorAdaptor<U, Inner, FallbackToStdAlloc> const& other)
       : inner_(other.inner_) {}
 
   T* allocate(std::size_t n) {
-    if (inner_ == nullptr) {
-      throw_exception<std::bad_alloc>();
+    if (FallbackToStdAlloc && inner_ == nullptr) {
+      return std::allocator<T>::allocate(n);
     }
     return static_cast<T*>(inner_->allocate(sizeof(T) * n));
   }
+
   void deallocate(T* p, std::size_t n) {
-    assert(inner_);
-    inner_->deallocate(p, sizeof(T) * n);
+    if (inner_ != nullptr) {
+      inner_->deallocate(p, sizeof(T) * n);
+    } else {
+      assert(FallbackToStdAlloc);
+      std::allocator<T>::deallocate(p, n);
+    }
   }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {
@@ -586,6 +593,11 @@ class CxxAllocatorAdaptor {
   friend bool operator!=(Self const& a, Self const& b) noexcept {
     return a.inner_ != b.inner_;
   }
+
+  template <typename U>
+  struct rebind {
+    using other = CxxAllocatorAdaptor<U, Inner, FallbackToStdAlloc>;
+  };
 };
 
 /*

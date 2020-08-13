@@ -148,8 +148,8 @@ TEST(Arena, Vector) {
 }
 
 TEST(Arena, DefaultConstructible) {
-  std::vector<size_t, SysArenaAllocator<size_t>> vec;
-  EXPECT_THROW(vec.push_back(42), std::bad_alloc);
+  std::vector<size_t, FallbackSysArenaAllocator<size_t>> vec;
+  EXPECT_NO_THROW(vec.push_back(42));
 }
 
 TEST(Arena, Compare) {

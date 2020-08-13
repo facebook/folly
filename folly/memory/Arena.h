@@ -327,6 +327,13 @@ using ArenaAllocator = CxxAllocatorAdaptor<T, Arena<Alloc>>;
 template <typename T>
 using SysArenaAllocator = ArenaAllocator<T, SysAllocator<char>>;
 
+template <typename T, typename Alloc>
+using FallbackArenaAllocator =
+    CxxAllocatorAdaptor<T, Arena<Alloc>, /* FallbackToStdAlloc */ true>;
+
+template <typename T>
+using FallbackSysArenaAllocator = FallbackArenaAllocator<T, SysAllocator<char>>;
+
 } // namespace folly
 
 #include <folly/memory/Arena-inl.h>
