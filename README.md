@@ -9,7 +9,7 @@ Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++14 components designed with practicality and efficiency
 in mind. **Folly contains a variety of core library components used extensively
 at Facebook**. In particular, it's often a dependency of Facebook's other
-open source C++ efforts and place where those projects can share code.
+open source C++ efforts and places where those projects code can be shared.
 
 It complements (as opposed to competing against) offerings
 such as Boost and of course `std`. In fact, we embark on defining our
@@ -17,7 +17,13 @@ own component only when something we need is either not available, or
 does not meet the needed performance profile. We endeavor to remove
 things from folly if or when `std` or Boost obsoletes them.
 
-Performance concerns permeate much of Folly, sometimes leading to
+Folly is fast - The utilities contained in Folly are things we use 
+heavily in production—this is code that runs on thousands of servers 
+doing work on behalf of 900 million users every day. These utilities
+are loosely connected, but the over-arching theme for all of the
+components is high performance at scale.
+
+Performance concerns permeate much of Folly, sometimes leading to 
 designs that are more idiosyncratic than they would otherwise be (see
 e.g. `PackedSyncPtr.h`, `SmallLocks.h`). Good performance at large
 scale is a unifying theme in all of Folly.
@@ -62,7 +68,7 @@ documentation.
 ### What's in it?
 
 Because of folly's fairly flat structure, the best way to see what's in it
-is to look at the headers in [top level `folly/` directory](https://github.com/facebook/folly/tree/master/folly). You can also
+is to look at the headers in the [top level `folly/` directory](https://github.com/facebook/folly/tree/master/folly). You can also
 check the [`docs` folder](folly/docs) for documentation, starting with the
 [overview](folly/docs/Overview.md).
 
