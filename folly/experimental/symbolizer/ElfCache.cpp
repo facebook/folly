@@ -24,6 +24,16 @@
 namespace folly {
 namespace symbolizer {
 
+SignalSafeElfCache::Path::Path(
+    char const* const data,
+    std::size_t const size,
+    reentrant_allocator<char> const& alloc) noexcept
+    : data_{alloc} {
+  data_.reserve(size + 1);
+  data_.insert(data_.end(), data, data + size);
+  data_.insert(data_.end(), '\0');
+}
+
 std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   struct cmp {
     bool operator()(Entry const& a, StringPiece b) const noexcept {
