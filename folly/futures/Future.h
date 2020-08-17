@@ -2617,8 +2617,8 @@ class FutureAwaitable {
     return std::move(result_).value();
   }
 
-  Try<T> await_resume_try() {
-    return std::move(result_);
+  Try<drop_unit_t<T>> await_resume_try() {
+    return static_cast<Try<drop_unit_t<T>>>(std::move(result_));
   }
 
   FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(

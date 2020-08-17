@@ -50,6 +50,12 @@ Try<T>::Try(typename std::enable_if<
   }
 }
 
+Try<void>::Try(const Try<Unit>& t) noexcept : hasValue_(!t.hasException()) {
+  if (t.hasException()) {
+    new (&e_) exception_wrapper(t.exception());
+  }
+}
+
 template <class T>
 Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
     std::is_nothrow_move_constructible<T>::value) {

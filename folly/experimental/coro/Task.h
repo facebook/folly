@@ -177,6 +177,12 @@ class TaskPromise : public TaskPromiseBase {
     if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
       DCHECK(value.hasValue() || value.hasException());
       result_ = static_cast<U&&>(value);
+    } else if constexpr (
+        std::is_same_v<remove_cvref_t<U>, Try<void>> &&
+        std::is_same_v<remove_cvref_t<T>, Unit>) {
+      // special-case to make task -> semifuture -> task preserve void type
+      DCHECK(value.hasValue() || value.hasException());
+      result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
     } else {
       static_assert(
           std::is_convertible<U&&, StorageType>::value,
@@ -231,6 +237,10 @@ class TaskPromise<void> : public TaskPromiseBase {
   }
 
   auto yield_value(co_result<void>&& result) {
+    result_ = std::move(result.result());
+    return final_suspend();
+  }
+  auto yield_value(co_result<Unit>&& result) {
     result_ = std::move(result.result());
     return final_suspend();
   }

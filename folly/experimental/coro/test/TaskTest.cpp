@@ -349,6 +349,26 @@ TEST_F(TaskTest, FutureTailCall) {
           })));
 }
 
+TEST_F(TaskTest, FutureRoundtrip) {
+  auto task = []() -> folly::coro::Task<void> { co_return; }();
+  auto semi = std::move(task).semi();
+  task = [&]() -> folly::coro::Task<void> {
+    co_yield folly::coro::co_result(
+        co_await folly::coro::co_awaitTry(std::move(semi)));
+  }();
+  folly::coro::blockingWait(std::move(task));
+
+  task = []() -> folly::coro::Task<void> {
+    co_yield folly::coro::co_error(std::runtime_error(""));
+  }();
+  semi = std::move(task).semi();
+  task = [&]() -> folly::coro::Task<void> {
+    co_yield folly::coro::co_result(
+        co_await folly::coro::co_awaitTry(std::move(semi)));
+  }();
+  EXPECT_THROW(folly::coro::blockingWait(std::move(task)), std::runtime_error);
+}
+
 // NOTE: This function is unused.
 // We just want to make sure this compiles without errors or warnings.
 folly::coro::Task<void>

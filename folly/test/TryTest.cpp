@@ -371,6 +371,11 @@ TEST(Try, nothrow) {
   EXPECT_TRUE((std::is_nothrow_constructible<Try<Unit>, Try<void>&&>::value));
   EXPECT_TRUE(
       (std::is_nothrow_constructible<Try<Unit>, Try<void> const&>::value));
+
+  // conversion ctor - unit to void
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<void>, Try<Unit>&&>::value));
+  EXPECT_TRUE(
+      (std::is_nothrow_constructible<Try<void>, Try<Unit> const&>::value));
 }
 
 TEST(Try, MoveDereference) {
