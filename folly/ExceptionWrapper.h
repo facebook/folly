@@ -118,7 +118,6 @@ FOLLY_ERASE auto fold(Fn&& fn, A&& a, B&& b, Bs&&... bs) {
 //! little overhead.
 //!
 //! \par Example usage:
-//! \par
 //! \code
 //! exception_wrapper globalExceptionWrapper;
 //!
@@ -540,7 +539,7 @@ class exception_wrapper final {
 
   //! Throws the wrapped expression nested into another exception.
   //! \pre `bool(*this)`
-  //! \tparam ex Exception in *this will be thrown nested into ex;
+  //! \param ex Exception in *this will be thrown nested into ex;
   //      see std::throw_with_nested() for details on this semantic.
   template <class Ex>
   [[noreturn]] void throw_with_nested(Ex&& ex) const;
@@ -601,7 +600,7 @@ class exception_wrapper final {
   //! ew.handle(/*...* /, [](...) { /* handle unknown exception */ } )
   //! \endcode
   //! \pre `!*this`
-  //! \tparam CatchFns... A pack of unary monomorphic function object types.
+  //! \tparam CatchFns A pack of unary monomorphic function object types.
   //! \param fns A pack of unary monomorphic function objects to be treated as
   //!     an ordered list of potential exception handlers.
   //! \note The handlers may or may not be invoked with an active exception.
