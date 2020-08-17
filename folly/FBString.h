@@ -975,6 +975,10 @@ template <
     class A = std::allocator<E>,
     class Storage = fbstring_core<E>>
 class basic_fbstring {
+  static_assert(
+      std::is_same<A, std::allocator<E>>::value,
+      "fbstring ignores custom allocators");
+
   template <typename Ex, typename... Args>
   FOLLY_ALWAYS_INLINE static void enforce(bool condition, Args&&... args) {
     if (!condition) {
