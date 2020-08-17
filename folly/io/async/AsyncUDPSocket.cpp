@@ -117,7 +117,7 @@ void AsyncUDPSocket::init(sa_family_t family) {
     }
 #else /* SO_BUSY_POLL is not supported*/
     throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "SO_BUSY_POLL is not supported", errno);
+        AsyncSocketException::NOT_OPEN, "SO_BUSY_POLL is not supported");
 #endif
   }
 
