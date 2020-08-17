@@ -26,6 +26,7 @@
 #include <utility>
 
 #include <folly/Random.h>
+#include <folly/SingletonThreadLocal.h>
 
 namespace folly {
 namespace test {
@@ -116,6 +117,30 @@ void ThreadSyncVar::acq_rel() {
   order_.sync(threadInfo.acqRelOrder_);
 }
 
+namespace {
+
+struct PerThreadState {
+  // delete the constructors and assignment operators for sanity
+  //
+  // but... we can't delete the move constructor and assignment operators
+  // because those are required before C++17 in the implementation of
+  // SingletonThreadLocal
+  PerThreadState(const PerThreadState&) = delete;
+  PerThreadState& operator=(const PerThreadState&) = delete;
+  PerThreadState(PerThreadState&&) = default;
+  PerThreadState& operator=(PerThreadState&&) = default;
+  PerThreadState() = default;
+
+  Sem* sem{nullptr};
+  DeterministicSchedule* sched{nullptr};
+  bool exiting{false};
+  DSchedThreadId threadId{};
+  AuxAct aux_act{};
+};
+using TLState = SingletonThreadLocal<PerThreadState>;
+
+} // namespace
+
 DeterministicSchedule::DeterministicSchedule(
     std::function<size_t(size_t)> scheduler)
     : scheduler_(std::move(scheduler)), nextThreadId_(0), step_(0) {
@@ -199,6 +224,27 @@ struct UniformSubset {
     }
   }
 };
+
+bool DeterministicSchedule::isCurrentThreadExiting() {
+  auto& tls = TLState::get();
+  return tls.exiting;
+}
+
+bool DeterministicSchedule::isActive() {
+  auto& tls = TLState::get();
+  return tls.sched != nullptr;
+}
+
+DSchedThreadId DeterministicSchedule::getThreadId() {
+  auto& tls = TLState::get();
+  assert(tls.sched != nullptr);
+  return tls.threadId;
+}
+
+DeterministicSchedule* DeterministicSchedule::getCurrentSchedule() {
+  auto& tls = TLState::get();
+  return tls.sched;
+}
 
 std::function<size_t(size_t)>
 DeterministicSchedule::uniformSubset(uint64_t seed, size_t n, size_t m) {
