@@ -209,4 +209,122 @@ TEST(AsyncPipeTest, DestroyWhileBlocking) {
   EXPECT_TRUE(fut.isReady());
   EXPECT_FALSE(std::move(fut).get());
 }
+
+TEST(AsyncPipeTest, OnClosedCallbackCalledWhenGeneratorDestroyed) {
+  auto onCloseCallbackBaton = folly::Baton<>();
+  auto pipe = folly::coro::AsyncPipe<int>::create(
+      [&]() { onCloseCallbackBaton.post(); } /* onClosed */);
+
+  auto ex = folly::ManualExecutor();
+  auto cancellationSource = folly::CancellationSource();
+  auto fut = folly::coro::co_withCancellation(
+                 cancellationSource.getToken(),
+                 folly::coro::co_invoke(
+                     [gen = std::move(pipe.first)]() mutable
+                     -> folly::coro::Task<
+                         folly::coro::AsyncGenerator<int&&>::NextResult> {
+                       co_return co_await gen.next();
+                     }))
+                 .scheduleOn(&ex)
+                 .start();
+  ex.drain();
+  EXPECT_FALSE(fut.isReady());
+  EXPECT_FALSE(onCloseCallbackBaton.ready());
+
+  cancellationSource.requestCancellation();
+
+  ex.drain();
+  EXPECT_TRUE(onCloseCallbackBaton.ready());
+}
+
+TEST(AsyncPipeTest, OnClosedCallbackCalledWhenPublisherClosesPipe) {
+  auto onCloseCallbackBaton = folly::Baton<>();
+  auto pipe = folly::coro::AsyncPipe<int>::create(
+      [&]() { onCloseCallbackBaton.post(); } /* onClosed */);
+
+  EXPECT_FALSE(onCloseCallbackBaton.ready());
+
+  std::move(pipe.second).close();
+
+  EXPECT_TRUE(onCloseCallbackBaton.ready());
+}
+
+TEST(AsyncPipeTest, OnClosedCallbackCalledWhenPublisherClosesPipeWithError) {
+  auto onCloseCallbackExecuted = folly::Promise<folly::Unit>();
+  auto pipe = folly::coro::AsyncPipe<int>::create(
+      [&]() { onCloseCallbackExecuted.setValue(); } /* onClosed */);
+
+  EXPECT_FALSE(onCloseCallbackExecuted.isFulfilled());
+
+  std::move(pipe.second).close(std::runtime_error("error"));
+
+  EXPECT_TRUE(onCloseCallbackExecuted.isFulfilled());
+}
+
+TEST(
+    AsyncPipeTest,
+    OnClosedCallbackJoinedWhenPublisherClosesPipeWhileGeneratorDestructing) {
+  auto onCloseCallbackStartedBaton = folly::Baton<>();
+  auto onCloseCallbackCompletionBaton = folly::Baton<>();
+  auto pipe = folly::coro::AsyncPipe<int>::create([&]() {
+    onCloseCallbackStartedBaton.post();
+    onCloseCallbackCompletionBaton.wait();
+  } /* onClosed */);
+
+  auto ex = folly::ManualExecutor();
+  auto cancellationSource = folly::CancellationSource();
+  auto fut = folly::coro::co_withCancellation(
+                 cancellationSource.getToken(),
+                 folly::coro::co_invoke(
+                     [gen = std::move(pipe.first)]() mutable
+                     -> folly::coro::Task<
+                         folly::coro::AsyncGenerator<int&&>::NextResult> {
+                       co_return co_await gen.next();
+                     }))
+                 .scheduleOn(&ex)
+                 .start();
+  ex.drain();
+  EXPECT_FALSE(fut.isReady());
+  EXPECT_FALSE(onCloseCallbackStartedBaton.ready());
+
+  auto cancelThread = std::thread([&]() {
+    cancellationSource.requestCancellation();
+    ex.drain();
+  });
+  onCloseCallbackStartedBaton.wait();
+
+  auto pipeClosedBaton = folly::Baton<>();
+  auto closePipeThread = std::thread([&]() {
+    std::move(pipe.second).close();
+    pipeClosedBaton.post();
+  });
+  /* sleep override */
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+
+  EXPECT_FALSE(pipeClosedBaton.ready());
+
+  onCloseCallbackCompletionBaton.post();
+  pipeClosedBaton.wait();
+  cancelThread.join();
+  closePipeThread.join();
+}
+
+TEST(AsyncPipeTest, PublisherMustCloseIfCallbackSetAndGeneratorAlive) {
+  EXPECT_DEATH(
+      ([&]() {
+        auto pipe = folly::coro::AsyncPipe<int>::create([]() {} /* onClosed */);
+      })(),
+      "If an onClosed callback is specified and the generator still exists, "
+      "the publisher must explicitly close the pipe prior to destruction.");
+
+  EXPECT_DEATH(
+      ([&]() {
+        auto pipe1 =
+            folly::coro::AsyncPipe<int>::create([]() {} /* onClosed */);
+        auto pipe2 = folly::coro::AsyncPipe<int>::create();
+        pipe1.second = std::move(pipe2.second);
+      })(),
+      "If an onClosed callback is specified and the generator still exists, "
+      "the publisher must explicitly close the pipe prior to destruction.");
+}
 #endif

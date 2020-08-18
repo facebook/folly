@@ -37,38 +37,73 @@ namespace coro {
 //  write() returns false if the read end has been destroyed
 //  The generator is completed when the write end is destroyed or on close()
 //  close() can also be passed an exception, which is thrown when read
+//
+//  An optional onClosed callback can be passed to create(). This callback will
+//  be called either when the generator is destroyed by the consumer, or when
+//  the pipe is closed by the publisher (whichever comes first). The onClosed
+//  callback may destroy the AsyncPipe object inline, and must not call close()
+//  on the AsyncPipe object inline. If an onClosed callback is specified and the
+//  publisher would like to destroy the pipe outside of the callback, it must
+//  first close the pipe.
 
 template <typename T>
 class AsyncPipe {
  public:
   ~AsyncPipe() {
+    CHECK(!onClosed_ || onClosed_->wasInvokeRequested())
+        << "If an onClosed callback is specified and the generator still "
+        << "exists, the publisher must explicitly close the pipe prior to "
+        << "destruction.";
     std::move(*this).close();
   }
+
   AsyncPipe(AsyncPipe&& pipe) noexcept {
     queue_ = std::move(pipe.queue_);
+    onClosed_ = std::move(pipe.onClosed_);
   }
+
   AsyncPipe& operator=(AsyncPipe&& pipe) {
     if (this != &pipe) {
+      CHECK(!onClosed_ || onClosed_->wasInvokeRequested())
+          << "If an onClosed callback is specified and the generator still "
+          << "exists, the publisher must explicitly close the pipe prior to "
+          << "destruction.";
       std::move(*this).close();
       queue_ = std::move(pipe.queue_);
+      onClosed_ = std::move(pipe.onClosed_);
     }
     return *this;
   }
 
-  static std::pair<folly::coro::AsyncGenerator<T&&>, AsyncPipe<T>> create() {
+  static std::pair<folly::coro::AsyncGenerator<T&&>, AsyncPipe<T>> create(
+      folly::Function<void()> onClosed = nullptr) {
     auto queue = std::make_shared<Queue>();
+    auto cancellationSource = std::shared_ptr<folly::CancellationSource>();
+    auto onClosedCallback = std::unique_ptr<OnClosedCallback>();
+    if (onClosed != nullptr) {
+      cancellationSource = std::make_shared<folly::CancellationSource>();
+      onClosedCallback = std::make_unique<OnClosedCallback>(
+          cancellationSource, std::move(onClosed));
+    }
+    auto guard = folly::makeGuard([cancellationSource] {
+      if (cancellationSource != nullptr) {
+        cancellationSource->requestCancellation();
+      }
+    });
     return {
-        folly::coro::co_invoke([queue]() -> folly::coro::AsyncGenerator<T&&> {
-          while (true) {
-            auto val = co_await queue->dequeue();
-            if (val.hasValue() || val.hasException()) {
-              co_yield std::move(*val);
-            } else {
-              co_return;
-            }
-          }
-        }),
-        AsyncPipe(queue)};
+        folly::coro::co_invoke(
+            [ queue,
+              guard = std::move(guard) ]() -> folly::coro::AsyncGenerator<T&&> {
+              while (true) {
+                auto val = co_await queue->dequeue();
+                if (val.hasValue() || val.hasException()) {
+                  co_yield std::move(*val);
+                } else {
+                  co_return;
+                }
+              }
+            }),
+        AsyncPipe(queue, std::move(onClosedCallback))};
   }
 
   template <typename U = T>
@@ -85,18 +120,56 @@ class AsyncPipe {
       queue->enqueue(folly::Try<T>(std::move(ew)));
       queue_.reset();
     }
+    if (onClosed_ != nullptr) {
+      onClosed_->requestInvoke();
+      onClosed_.reset();
+    }
   }
+
   void close() && {
     if (auto queue = queue_.lock()) {
       queue->enqueue(folly::Try<T>());
       queue_.reset();
     }
+    if (onClosed_ != nullptr) {
+      onClosed_->requestInvoke();
+      onClosed_.reset();
+    }
   }
 
  private:
   using Queue = folly::coro::UnboundedQueue<folly::Try<T>, true, true>;
-  explicit AsyncPipe(std::weak_ptr<Queue> queue) : queue_(std::move(queue)) {}
+
+  class OnClosedCallback {
+   public:
+    OnClosedCallback(
+        std::shared_ptr<folly::CancellationSource> cancellationSource,
+        folly::Function<void()> onClosedFunc)
+        : cancellationSource_(std::move(cancellationSource)),
+          cancellationCallback_(
+              cancellationSource_->getToken(),
+              std::move(onClosedFunc)) {}
+
+    void requestInvoke() {
+      cancellationSource_->requestCancellation();
+    }
+
+    bool wasInvokeRequested() {
+      return cancellationSource_->isCancellationRequested();
+    }
+
+   private:
+    std::shared_ptr<folly::CancellationSource> cancellationSource_;
+    folly::CancellationCallback cancellationCallback_;
+  };
+
+  explicit AsyncPipe(
+      std::weak_ptr<Queue> queue,
+      std::unique_ptr<OnClosedCallback> onClosed)
+      : queue_(std::move(queue)), onClosed_(std::move(onClosed)) {}
+
   std::weak_ptr<Queue> queue_;
+  std::unique_ptr<OnClosedCallback> onClosed_;
 };
 
 } // namespace coro
