@@ -696,12 +696,14 @@ class TestCmd(ProjectCmdBase):
                 builder = m.create_builder(
                     loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
                 )
+
                 builder.run_tests(
                     install_dirs,
                     schedule_type=args.schedule_type,
                     owner=args.test_owner,
                     test_filter=args.filter,
                     retry=args.retry,
+                    no_testpilot=args.no_testpilot,
                 )
 
             install_dirs.append(inst_dir)
@@ -718,6 +720,11 @@ class TestCmd(ProjectCmdBase):
             default=3,
             help="Number of immediate retries for failed tests "
             "(noop in continuous and testwarden runs)",
+        )
+        parser.add_argument(
+            "--no-testpilot",
+            help="Do not use Test Pilot even when available",
+            action="store_true",
         )
 
 
