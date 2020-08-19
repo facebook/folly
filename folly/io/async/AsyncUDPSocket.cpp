@@ -104,21 +104,24 @@ void AsyncUDPSocket::init(sa_family_t family) {
   }
 
   if (busyPollUs_ > 0) {
-#ifdef SO_BUSY_POLL
+    int optname = 0;
+#if defined(SO_BUSY_POLL)
+    optname = SO_BUSY_POLL;
+#endif
+    if (!optname) {
+      throw AsyncSocketException(
+          AsyncSocketException::NOT_OPEN, "SO_BUSY_POLL is not supported");
+    }
     // Set busy_poll time in microseconds on the socket.
     // It sets how long socket will be in busy_poll mode when no event occurs.
     int value = busyPollUs_;
     if (netops::setsockopt(
-            socket, SOL_SOCKET, SO_BUSY_POLL, &value, sizeof(value)) != 0) {
+            socket, SOL_SOCKET, optname, &value, sizeof(value)) != 0) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "failed to set SO_BUSY_POLL on the socket",
           errno);
     }
-#else /* SO_BUSY_POLL is not supported*/
-    throw AsyncSocketException(
-        AsyncSocketException::NOT_OPEN, "SO_BUSY_POLL is not supported");
-#endif
   }
 
   if (rcvBuf_ > 0) {
@@ -211,81 +214,95 @@ void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
 }
 
 void AsyncUDPSocket::dontFragment(bool df) {
-  (void)df; // to avoid potential unused variable warning
+  int optname4 = 0;
+  int optval4 = df ? 0 : 0;
+  int optname6 = 0;
+  int optval6 = df ? 0 : 0;
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_DO) && \
     defined(IP_PMTUDISC_WANT)
-  if (address().getFamily() == AF_INET) {
-    int v4 = df ? IP_PMTUDISC_DO : IP_PMTUDISC_WANT;
-    if (netops::setsockopt(fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
+  optname4 = IP_MTU_DISCOVER;
+  optval4 = df ? IP_PMTUDISC_DO : IP_PMTUDISC_WANT;
+#endif
+#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && \
+    defined(IPV6_PMTUDISC_WANT)
+  optname6 = IPV6_MTU_DISCOVER;
+  optval6 = df ? IPV6_PMTUDISC_DO : IPV6_PMTUDISC_WANT;
+#endif
+  if (optname4 && optval4 && address().getFamily() == AF_INET) {
+    if (netops::setsockopt(
+            fd_, IPPROTO_IP, optname4, &optval4, sizeof(optval4))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "Failed to set DF with IP_MTU_DISCOVER",
           errno);
     }
   }
-#endif
-#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_DO) && \
-    defined(IPV6_PMTUDISC_WANT)
-  if (address().getFamily() == AF_INET6) {
-    int v6 = df ? IPV6_PMTUDISC_DO : IPV6_PMTUDISC_WANT;
+  if (optname6 && optval6 && address().getFamily() == AF_INET6) {
     if (netops::setsockopt(
-            fd_, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &v6, sizeof(v6))) {
+            fd_, IPPROTO_IPV6, optname6, &optval6, sizeof(optval6))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "Failed to set DF with IPV6_MTU_DISCOVER",
           errno);
     }
   }
-#endif
 }
 
 void AsyncUDPSocket::setDFAndTurnOffPMTU() {
+  int optname4 = 0;
+  int optval4 = 0;
+  int optname6 = 0;
+  int optval6 = 0;
 #if defined(IP_MTU_DISCOVER) && defined(IP_PMTUDISC_PROBE)
-  if (address().getFamily() == AF_INET) {
-    int v4 = IP_PMTUDISC_PROBE;
+  optname4 = IP_MTU_DISCOVER;
+  optval4 = IP_PMTUDISC_PROBE;
+#endif
+#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_PROBE)
+  optname6 = IPV6_MTU_DISCOVER;
+  optval6 = IPV6_PMTUDISC_PROBE;
+#endif
+  if (optname4 && optval4 && address().getFamily() == AF_INET) {
     if (folly::netops::setsockopt(
-            fd_, IPPROTO_IP, IP_MTU_DISCOVER, &v4, sizeof(v4))) {
+            fd_, IPPROTO_IP, optname4, &optval4, sizeof(optval4))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "Failed to set PMTUDISC_PROBE with IP_MTU_DISCOVER",
           errno);
     }
   }
-
-#endif
-#if defined(IPV6_MTU_DISCOVER) && defined(IPV6_PMTUDISC_PROBE)
-  if (address().getFamily() == AF_INET6) {
-    int v6 = IPV6_PMTUDISC_PROBE;
+  if (optname6 && optval6 && address().getFamily() == AF_INET6) {
     if (folly::netops::setsockopt(
-            fd_, IPPROTO_IPV6, IPV6_MTU_DISCOVER, &v6, sizeof(v6))) {
+            fd_, IPPROTO_IPV6, optname6, &optval6, sizeof(optval6))) {
       throw AsyncSocketException(
           AsyncSocketException::NOT_OPEN,
           "Failed to set PMTUDISC_PROBE with IPV6_MTU_DISCOVER",
           errno);
     }
   }
-#endif
 }
 
 void AsyncUDPSocket::setErrMessageCallback(
     ErrMessageCallback* errMessageCallback) {
+  int optname4 = 0;
+  int optname6 = 0;
+#if defined(IP_RECVERR)
+  optname4 = IP_RECVERR;
+#endif
+#if defined(IPV6_RECVERR)
+  optname6 = IPV6_RECVERR;
+#endif
   errMessageCallback_ = errMessageCallback;
   int err = (errMessageCallback_ != nullptr);
-#if defined(IP_RECVERR)
-  if (address().getFamily() == AF_INET &&
-      netops::setsockopt(fd_, IPPROTO_IP, IP_RECVERR, &err, sizeof(err))) {
+  if (optname4 && address().getFamily() == AF_INET &&
+      netops::setsockopt(fd_, IPPROTO_IP, optname4, &err, sizeof(err))) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IP_RECVERR", errno);
   }
-#endif
-#if defined(IPV6_RECVERR)
-  if (address().getFamily() == AF_INET6 &&
-      netops::setsockopt(fd_, IPPROTO_IPV6, IPV6_RECVERR, &err, sizeof(err))) {
+  if (optname6 && address().getFamily() == AF_INET6 &&
+      netops::setsockopt(fd_, IPPROTO_IPV6, optname6, &err, sizeof(err))) {
     throw AsyncSocketException(
         AsyncSocketException::NOT_OPEN, "Failed to set IPV6_RECVERR", errno);
   }
-#endif
-  (void)err;
 }
 
 void AsyncUDPSocket::setFD(NetworkSocket fd, FDOwnership ownership) {
