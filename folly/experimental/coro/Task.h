@@ -70,6 +70,9 @@ class co_result final {
   Try<T> result_;
 };
 
+template <class T>
+co_result(Try<T>)->co_result<T>;
+
 namespace detail {
 
 class TaskPromiseBase {
