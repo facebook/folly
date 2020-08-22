@@ -228,7 +228,7 @@ bool HHWheelTimerBase<Duration>::cascadeTimers(
 
 template <class Duration>
 void HHWheelTimerBase<Duration>::scheduleTimeoutInternal(Duration timeout) {
-  this->AsyncTimeout::scheduleTimeout(timeout);
+  this->AsyncTimeout::scheduleTimeout(timeout, {});
 }
 
 template <class Duration>
@@ -390,7 +390,7 @@ int64_t HHWheelTimerBase<Duration>::calcNextTick(
 template <>
 void HHWheelTimerBase<std::chrono::microseconds>::scheduleTimeoutInternal(
     std::chrono::microseconds timeout) {
-  this->AsyncTimeout::scheduleTimeoutHighRes(timeout);
+  this->AsyncTimeout::scheduleTimeoutHighRes(timeout, {});
 }
 
 // std::chrono::milliseconds
