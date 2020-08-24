@@ -18,7 +18,6 @@
 
 #include <folly/Synchronized.h>
 #include <folly/container/F14Map.h>
-#include <folly/sorted_vector_types.h>
 #include <folly/synchronization/Hazptr.h>
 
 #include <atomic>
