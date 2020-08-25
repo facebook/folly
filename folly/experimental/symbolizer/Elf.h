@@ -35,21 +35,18 @@
 namespace folly {
 namespace symbolizer {
 
-#if defined(__linux__)
-using ElfAddr = ElfW(Addr);
-using ElfEhdr = ElfW(Ehdr);
-using ElfOff = ElfW(Off);
-using ElfPhdr = ElfW(Phdr);
-using ElfShdr = ElfW(Shdr);
-using ElfSym = ElfW(Sym);
+#if defined(ElfW)
+#define FOLLY_ELF_ELFW(name) ElfW(name)
 #elif defined(__FreeBSD__)
-using ElfAddr = Elf_Addr;
-using ElfEhdr = Elf_Ehdr;
-using ElfOff = Elf_Off;
-using ElfPhdr = Elf_Phdr;
-using ElfShdr = Elf_Shdr;
-using ElfSym = Elf_Sym;
+#define FOLLY_ELF_ELFW(...) Elf_##name
 #endif
+
+using ElfAddr = FOLLY_ELF_ELFW(Addr);
+using ElfEhdr = FOLLY_ELF_ELFW(Ehdr);
+using ElfOff = FOLLY_ELF_ELFW(Off);
+using ElfPhdr = FOLLY_ELF_ELFW(Phdr);
+using ElfShdr = FOLLY_ELF_ELFW(Shdr);
+using ElfSym = FOLLY_ELF_ELFW(Sym);
 
 /**
  * ELF file parser.
