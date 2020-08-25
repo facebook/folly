@@ -71,7 +71,7 @@ ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
     !TARGET_OS_SIMULATOR &&                                         \
     (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
      __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
-    if (__builtin_available(iOS 14.0, macOS 11.0, *)) {
+    if (__builtin_available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)) {
       return &::preadv;
     }
 #endif
@@ -90,7 +90,7 @@ ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
     !TARGET_OS_SIMULATOR &&                                         \
     (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
      __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
-    if (__builtin_available(iOS 14.0, macOS 11.0, *)) {
+    if (__builtin_available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)) {
       return &::pwritev;
     }
 #endif
