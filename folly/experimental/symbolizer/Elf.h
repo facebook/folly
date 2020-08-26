@@ -19,9 +19,6 @@
 #pragma once
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
-#include <elf.h>
-#include <link.h> // For ElfW()
-
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
@@ -31,6 +28,12 @@
 #include <folly/Likely.h>
 #include <folly/Range.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Config.h>
+
+#if FOLLY_HAVE_ELF
+
+#include <elf.h>
+#include <link.h> // For ElfW()
 
 namespace folly {
 namespace symbolizer {
@@ -284,7 +287,7 @@ class ElfFile {
           sizeof(msg),
           "Offset (%zu + %zu) is not contained within our mmapped"
           " file (%s) of length %zu",
-          offset,
+          static_cast<size_t>(offset),
           sizeof(T),
           filepath_,
           length_);
@@ -330,3 +333,5 @@ class ElfFile {
 } // namespace folly
 
 #include <folly/experimental/symbolizer/Elf-inl.h>
+
+#endif // FOLLY_HAVE_ELF

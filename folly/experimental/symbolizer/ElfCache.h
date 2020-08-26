@@ -29,9 +29,12 @@
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/hash/Hash.h>
 #include <folly/memory/ReentrantAllocator.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 namespace symbolizer {
+
+#if FOLLY_HAVE_ELF
 
 class ElfCacheBase {
  public:
@@ -132,5 +135,8 @@ class ElfCache : public ElfCacheBase {
 
   std::unordered_map<StringPiece, std::shared_ptr<Entry>, Hash> files_;
 };
+
+#endif // FOLLY_HAVE_ELF
+
 } // namespace symbolizer
 } // namespace folly

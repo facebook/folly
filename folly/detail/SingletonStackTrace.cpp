@@ -16,12 +16,9 @@
 
 #include <folly/detail/SingletonStackTrace.h>
 
+#include <folly/experimental/symbolizer/ElfCache.h>
+#include <folly/experimental/symbolizer/Symbolizer.h>
 #include <folly/portability/Config.h>
-
-#if FOLLY_USE_SYMBOLIZER
-#include <folly/experimental/symbolizer/ElfCache.h> // @manual
-#include <folly/experimental/symbolizer/Symbolizer.h> // @manual
-#endif
 
 namespace folly {
 namespace detail {

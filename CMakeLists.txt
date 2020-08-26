@@ -198,15 +198,6 @@ list(APPEND hfiles
 
 # Exclude specific sources if we do not have third-party libraries
 # required to build them.
-if (NOT FOLLY_USE_SYMBOLIZER)
-  REMOVE_MATCHES_FROM_LISTS(files hfiles
-    MATCHES
-      "^${FOLLY_DIR}/experimental/symbolizer/"
-  )
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/SingletonStackTrace.cpp
-  )
-endif()
 if (NOT ${LIBAIO_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/AsyncIO.cpp

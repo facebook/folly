@@ -32,6 +32,7 @@
 #include <folly/experimental/symbolizer/SymbolizePrinter.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/io/IOBuf.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 namespace symbolizer {
@@ -85,6 +86,8 @@ template <size_t N>
 inline bool getStackTraceHeap(FrameArray<N>& fa) {
   return detail::fixFrameArray(fa, getStackTraceHeap(fa.addresses, N));
 }
+
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 class Symbolizer {
  public:
@@ -249,6 +252,8 @@ class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
   void printSymbolizedStackTrace() override;
   const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);
 };
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 } // namespace symbolizer
 } // namespace folly

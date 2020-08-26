@@ -19,7 +19,10 @@
 #include <signal.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
+
+#if FOLLY_HAVE_ELF
 
 namespace folly {
 namespace symbolizer {
@@ -105,3 +108,5 @@ std::shared_ptr<ElfFile> ElfCache::filePtr(const std::shared_ptr<Entry>& e) {
 }
 } // namespace symbolizer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF

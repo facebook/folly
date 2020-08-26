@@ -156,10 +156,13 @@ if (LIBUNWIND_FOUND)
 endif()
 find_package(Backtrace)
 set(FOLLY_HAVE_BACKTRACE ${Backtrace_FOUND})
-if (FOLLY_HAVE_ELF AND FOLLY_HAVE_BACKTRACE AND LIBUNWIND_FOUND AND LIBDWARF_FOUND)
+set(FOLLY_HAVE_DWARF ${LIBDWARF_FOUND})
+if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF AND FOLLY_HAVE_BACKTRACE AND LIBUNWIND_FOUND)
   set(FOLLY_USE_SYMBOLIZER ON)
 endif()
 message(STATUS "Setting FOLLY_USE_SYMBOLIZER: ${FOLLY_USE_SYMBOLIZER}")
+message(STATUS "Setting FOLLY_HAVE_ELF: ${FOLLY_HAVE_ELF}")
+message(STATUS "Setting FOLLY_HAVE_DWARF: ${FOLLY_HAVE_DWARF}")
 
 # Using clang with libstdc++ requires explicitly linking against libatomic
 check_cxx_source_compiles("
