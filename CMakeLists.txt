@@ -71,6 +71,9 @@ set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
 include(FBBuildOptions)
 fb_activate_static_library_option()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
