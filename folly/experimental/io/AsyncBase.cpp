@@ -100,9 +100,9 @@ AsyncBase::~AsyncBase() {
   }
 }
 
-void AsyncBase::decrementPending() {
+void AsyncBase::decrementPending(size_t n) {
   auto p =
-      pending_.fetch_add(static_cast<size_t>(-1), std::memory_order_acq_rel);
+      pending_.fetch_add(static_cast<size_t>(-n), std::memory_order_acq_rel);
   DCHECK_GE(p, 1);
 }
 
@@ -126,6 +126,34 @@ void AsyncBase::submit(Op* op) {
   submitted_++;
   DCHECK_EQ(rc, 1);
   op->start();
+}
+
+int AsyncBase::submit(Range<Op**> ops) {
+  for (auto& op : ops) {
+    CHECK_EQ(op->state(), Op::State::INITIALIZED);
+  }
+  initializeContext(); // on demand
+
+  // We can increment past capacity, but we'll clean up after ourselves.
+  auto p = pending_.fetch_add(ops.size(), std::memory_order_acq_rel);
+  if (p >= capacity_) {
+    decrementPending(ops.size());
+    throw std::range_error("AsyncBase: too many pending requests");
+  }
+
+  int rc = submitRange(ops);
+
+  if (rc < 0) {
+    decrementPending(ops.size());
+    throwSystemErrorExplicit(-rc, "AsyncBase: io_submit failed");
+  }
+  submitted_ += rc;
+  DCHECK_LE(rc, ops.size());
+  for (int i = 0; i < rc; i++) {
+    ops[i]->start();
+  }
+
+  return rc;
 }
 
 Range<AsyncBase::Op**> AsyncBase::wait(size_t minRequests) {

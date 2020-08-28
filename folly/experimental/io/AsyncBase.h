@@ -234,6 +234,11 @@ class AsyncBase {
    */
   void submit(Op* op);
 
+  /**
+   * Submit a range of ops for execution
+   */
+  int submit(Range<Op**> ops);
+
  protected:
   void complete(Op* op, ssize_t result) {
     op->complete(result);
@@ -247,9 +252,10 @@ class AsyncBase {
     return init_.load(std::memory_order_relaxed);
   }
 
-  void decrementPending();
+  void decrementPending(size_t num = 1);
   virtual void initializeContext() = 0;
   virtual int submitOne(AsyncBase::Op* op) = 0;
+  virtual int submitRange(Range<AsyncBase::Op**> ops) = 0;
 
   enum class WaitType { COMPLETE, CANCEL };
   virtual Range<AsyncBase::Op**> doWait(

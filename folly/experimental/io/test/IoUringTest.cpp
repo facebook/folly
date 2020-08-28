@@ -24,6 +24,15 @@ namespace folly {
 namespace test {
 namespace async_base_test_lib_detail {
 INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, IoUring);
+
+class BatchIoUring : public IoUring {
+ public:
+  static constexpr size_t kMaxSubmit = 64;
+  BatchIoUring()
+      : IoUring(kBatchNumEntries, folly::AsyncBase::NOT_POLLABLE, kMaxSubmit) {}
+};
+INSTANTIATE_TYPED_TEST_CASE_P(AsyncBatchTest, AsyncBatchTest, BatchIoUring);
+
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly

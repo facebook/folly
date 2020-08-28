@@ -199,6 +199,27 @@ int AsyncIO::submitOne(AsyncBase::Op* op) {
   return io_submit(ctx_, 1, &cb);
 }
 
+int AsyncIO::submitRange(Range<AsyncBase::Op**> ops) {
+  std::vector<iocb*> vec;
+  vec.reserve(ops.size());
+  for (auto& op : ops) {
+    AsyncIOOp* aop = op->getAsyncIOOp();
+    if (!aop) {
+      continue;
+    }
+
+    iocb* cb = &aop->iocb_;
+    cb->data = nullptr; // unused
+    if (pollFd_ != -1) {
+      io_set_eventfd(cb, pollFd_);
+    }
+
+    vec.push_back(cb);
+  }
+
+  return vec.size() ? io_submit(ctx_, vec.size(), vec.data()) : -1;
+}
+
 Range<AsyncBase::Op**> AsyncIO::doWait(
     WaitType type,
     size_t minRequests,

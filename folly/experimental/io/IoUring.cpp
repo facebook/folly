@@ -237,6 +237,36 @@ int IoUring::submitOne(AsyncBase::Op* op) {
   return io_uring_submit(&ioRing_);
 }
 
+int IoUring::submitRange(Range<AsyncBase::Op**> ops) {
+  size_t num = 0;
+  int total = 0;
+  SharedMutex::WriteHolder lk(submitMutex_);
+  for (size_t i = 0; i < ops.size(); i++) {
+    IoUringOp* iop = ops[i]->getIoUringOp();
+    if (!iop) {
+      continue;
+    }
+
+    auto* sqe = io_uring_get_sqe(&ioRing_);
+    if (!sqe) {
+      break;
+    }
+
+    *sqe = iop->getSqe();
+    ++num;
+    if (num % maxSubmit_ == 0 || (i + 1 == ops.size())) {
+      auto ret = io_uring_submit(&ioRing_);
+      if (ret <= 0) {
+        return total;
+      }
+
+      total += ret;
+    }
+  }
+
+  return total ? total : -1;
+}
+
 Range<AsyncBase::Op**> IoUring::doWait(
     WaitType type,
     size_t minRequests,

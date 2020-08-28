@@ -45,6 +45,10 @@ namespace async_base_test_lib_detail {
 constexpr size_t kODirectAlign = 4096; // align reads to 4096 B (for O_DIRECT)
 constexpr size_t kDefaultFileSize = 6 << 20; // 6MiB
 
+constexpr size_t kBatchNumEntries = 1024;
+constexpr size_t kBatchSize = 192;
+constexpr size_t kBatchBlockSize = 4096;
+
 struct TestSpec {
   off_t start;
   size_t size;
@@ -474,6 +478,50 @@ REGISTER_TYPED_TEST_CASE_P(
     NonBlockingWait,
     Cancel);
 
+// batch tests
+template <typename T>
+class AsyncBatchTest : public ::testing::Test {};
+TYPED_TEST_CASE_P(AsyncBatchTest);
+
+TYPED_TEST_P(AsyncBatchTest, BatchRead) {
+  TypeParam aioReader;
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDONLY);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << folly::errnoStr(errno);
+  SCOPE_EXIT {
+    ::close(fd);
+  };
+
+  using OpPtr = folly::AsyncBaseOp*;
+  std::unique_ptr<typename TypeParam::Op[]> ops(
+      new typename TypeParam::Op[kBatchNumEntries]);
+
+  std::unique_ptr<OpPtr[]> opPtrs(new OpPtr[kBatchNumEntries]);
+  std::vector<folly::test::async_base_test_lib_detail::TestUtil::ManagedBuffer>
+      bufs;
+
+  bufs.reserve(kBatchNumEntries);
+
+  size_t completed = 0;
+
+  for (size_t i = 0; i < kBatchNumEntries; i++) {
+    bufs.push_back(
+        folly::test::async_base_test_lib_detail::TestUtil::allocateAligned(
+            kBatchBlockSize));
+    auto& op = ops[i];
+    opPtrs[i] = &op;
+
+    op.setNotificationCallback([&](folly::AsyncBaseOp*) { ++completed; });
+    op.pread(fd, bufs[i].get(), kBatchBlockSize, i * kBatchBlockSize);
+  }
+  aioReader.submit(
+      Range<AsyncBase::Op**>(opPtrs.get(), opPtrs.get() + kBatchNumEntries));
+  aioReader.wait(kBatchNumEntries);
+  CHECK_EQ(completed, kBatchNumEntries);
+}
+
+REGISTER_TYPED_TEST_CASE_P(AsyncBatchTest, BatchRead);
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly
