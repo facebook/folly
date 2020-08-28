@@ -127,12 +127,8 @@ namespace folly {
 template <typename...>
 struct tag_t {};
 
-#if __cplusplus >= 201703L
-
 template <typename... T>
-inline constexpr tag_t<T...> tag;
-
-#endif
+FOLLY_INLINE_VARIABLE constexpr tag_t<T...> tag{};
 
 #if __cpp_lib_bool_constant || _MSC_VER
 
