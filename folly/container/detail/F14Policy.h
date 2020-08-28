@@ -412,13 +412,17 @@ struct BasePolicy
 
 // BaseIter is a convenience for concrete set and map implementations
 template <typename ValuePtr, typename Item>
-class BaseIter : public std::iterator<
-                     std::forward_iterator_tag,
-                     std::remove_const_t<
-                         typename std::pointer_traits<ValuePtr>::element_type>,
-                     std::ptrdiff_t,
-                     ValuePtr,
-                     decltype(*std::declval<ValuePtr>())> {
+class BaseIter {
+ private:
+  using pointee = typename std::pointer_traits<ValuePtr>::element_type;
+
+ public:
+  using iterator_category = std::forward_iterator_tag;
+  using value_type = std::remove_const_t<pointee>;
+  using difference_type = std::ptrdiff_t;
+  using pointer = ValuePtr;
+  using reference = pointee&;
+
  protected:
   using Chunk = F14Chunk<Item>;
   using ChunkPtr =
