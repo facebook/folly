@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 namespace coro {
@@ -39,6 +40,26 @@ class UnsafeResumeInlineSemiAwaitable {
  private:
   Awaitable awaitable_;
 };
+
+template <typename Promise>
+FOLLY_ALWAYS_INLINE folly::conditional_t<
+    kIsSanitizeThread,
+    std::experimental::coroutine_handle<>,
+    std::experimental::coroutine_handle<Promise>>
+symmetricTransferMaybeReschedule(
+    std::experimental::coroutine_handle<Promise> ch,
+    const Executor::KeepAlive<>& ex) {
+  if constexpr (kIsSanitizeThread) {
+    copy(ex).add([ch, rctx = RequestContext::saveContext()](
+                     Executor::KeepAlive<>&&) mutable {
+      RequestContextScopeGuard guard(std::move(rctx));
+      ch.resume();
+    });
+    return std::experimental::noop_coroutine();
+  } else {
+    return ch;
+  }
+}
 } // namespace detail
 } // namespace coro
 } // namespace folly

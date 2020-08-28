@@ -35,6 +35,7 @@
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
+#include <folly/experimental/coro/detail/Helpers.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/Traits.h>
@@ -86,7 +87,8 @@ class TaskPromiseBase {
     std::experimental::coroutine_handle<> await_suspend(
         std::experimental::coroutine_handle<Promise> coro) noexcept {
       TaskPromiseBase& promise = coro.promise();
-      return promise.continuation_;
+      return symmetricTransferMaybeReschedule(
+          promise.continuation_, promise.executor_);
     }
 
     [[noreturn]] void await_resume() noexcept {
@@ -597,10 +599,10 @@ class FOLLY_NODISCARD Task {
       return false;
     }
 
-    handle_t await_suspend(
+    auto await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
       coro_.promise().continuation_ = continuation;
-      return coro_;
+      return symmetricTransferMaybeReschedule(coro_, coro_.promise().executor_);
     }
 
     T await_resume() {

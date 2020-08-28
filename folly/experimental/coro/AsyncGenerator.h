@@ -23,6 +23,7 @@
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
+#include <folly/experimental/coro/detail/Helpers.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/ManualLifetime.h>
 
@@ -49,7 +50,8 @@ class AsyncGeneratorPromise {
     }
     std::experimental::coroutine_handle<> await_suspend(
         std::experimental::coroutine_handle<AsyncGeneratorPromise> h) noexcept {
-      return h.promise().continuation_;
+      return symmetricTransferMaybeReschedule(
+          h.promise().continuation_, h.promise().clearContext());
     }
     void await_resume() noexcept {}
   };
@@ -77,7 +79,6 @@ class AsyncGeneratorPromise {
 
   YieldAwaiter final_suspend() noexcept {
     DCHECK(!hasValue_);
-    clearContext();
     return {};
   }
 
@@ -86,8 +87,7 @@ class AsyncGeneratorPromise {
     DCHECK(!hasValue_);
     value_.construct(static_cast<Reference&&>(value));
     hasValue_ = true;
-    clearContext();
-    return YieldAwaiter{};
+    return {};
   }
 
   // In the case where 'Reference' is not actually a reference-type we
@@ -106,7 +106,6 @@ class AsyncGeneratorPromise {
     DCHECK(!hasValue_);
     value_.construct(static_cast<U&&>(value));
     hasValue_ = true;
-    clearContext();
     return {};
   }
 
@@ -177,10 +176,12 @@ class AsyncGeneratorPromise {
   }
 
  private:
-  void clearContext() noexcept {
-    executor_ = {};
+  folly::Executor::KeepAlive<> clearContext() noexcept {
+    auto executor = std::exchange(executor_, {});
     cancelToken_ = {};
     hasCancelTokenOverride_ = false;
+
+    return executor;
   }
 
   std::experimental::coroutine_handle<> continuation_;
