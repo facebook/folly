@@ -30,6 +30,7 @@
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
+#include <folly/small_vector.h>
 
 // debugging helpers
 namespace {
@@ -203,7 +204,8 @@ Range<AsyncBase::Op**> AsyncIO::doWait(
     size_t minRequests,
     size_t maxRequests,
     std::vector<AsyncBase::Op*>& result) {
-  io_event events[maxRequests];
+  size_t constexpr kNumInlineRequests = 16;
+  folly::small_vector<io_event, kNumInlineRequests> events(maxRequests);
 
   // Unfortunately, Linux AIO doesn't implement io_cancel, so even for
   // WaitType::CANCEL we have to wait for IO completion.
@@ -218,7 +220,7 @@ Range<AsyncBase::Op**> AsyncIO::doWait(
           ctx_,
           minRequests - count,
           maxRequests - count,
-          events + count,
+          events.data() + count,
           /* timeout */ nullptr); // wait forever
     } while (ret == -EINTR);
     // Check as may not be able to recover without leaking events.
