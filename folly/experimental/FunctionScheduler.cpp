@@ -25,7 +25,7 @@
 #include <folly/String.h>
 #include <folly/system/ThreadName.h>
 
-using std::chrono::microseconds;
+using std::chrono::milliseconds;
 using std::chrono::steady_clock;
 
 namespace folly {
@@ -33,11 +33,11 @@ namespace folly {
 namespace {
 
 struct ConsistentDelayFunctor {
-  const microseconds constInterval;
+  const milliseconds constInterval;
 
-  explicit ConsistentDelayFunctor(microseconds interval)
+  explicit ConsistentDelayFunctor(milliseconds interval)
       : constInterval(interval) {
-    if (interval < microseconds::zero()) {
+    if (interval < milliseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
@@ -53,18 +53,18 @@ struct ConsistentDelayFunctor {
 };
 
 struct ConstIntervalFunctor {
-  const microseconds constInterval;
+  const milliseconds constInterval;
 
-  explicit ConstIntervalFunctor(microseconds interval)
+  explicit ConstIntervalFunctor(milliseconds interval)
       : constInterval(interval) {
-    if (interval < microseconds::zero()) {
+    if (interval < milliseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
     }
   }
 
-  microseconds operator()() const {
+  milliseconds operator()() const {
     return constInterval;
   }
 };
@@ -82,16 +82,16 @@ struct PoissonDistributionFunctor {
     }
   }
 
-  microseconds operator()() {
-    return microseconds(poissonRandom(generator));
+  milliseconds operator()() {
+    return milliseconds(poissonRandom(generator));
   }
 };
 
 struct UniformDistributionFunctor {
   std::default_random_engine generator;
-  std::uniform_int_distribution<microseconds::rep> dist;
+  std::uniform_int_distribution<milliseconds::rep> dist;
 
-  UniformDistributionFunctor(microseconds minInterval, microseconds maxInterval)
+  UniformDistributionFunctor(milliseconds minInterval, milliseconds maxInterval)
       : generator(Random::rand32()),
         dist(minInterval.count(), maxInterval.count()) {
     if (minInterval > maxInterval) {
@@ -99,15 +99,15 @@ struct UniformDistributionFunctor {
           "FunctionScheduler: "
           "min time interval must be less or equal than max interval");
     }
-    if (minInterval < microseconds::zero()) {
+    if (minInterval < milliseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
     }
   }
 
-  microseconds operator()() {
-    return microseconds(dist(generator));
+  milliseconds operator()() {
+    return milliseconds(dist(generator));
   }
 };
 
@@ -122,9 +122,9 @@ FunctionScheduler::~FunctionScheduler() {
 
 void FunctionScheduler::addFunction(
     Function<void()>&& cb,
-    microseconds interval,
+    milliseconds interval,
     StringPiece nameID,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       ConstIntervalFunctor(interval),
@@ -136,10 +136,10 @@ void FunctionScheduler::addFunction(
 
 void FunctionScheduler::addFunction(
     Function<void()>&& cb,
-    microseconds interval,
+    milliseconds interval,
     const LatencyDistribution& latencyDistr,
     StringPiece nameID,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   if (latencyDistr.isPoisson) {
     addFunctionInternal(
         std::move(cb),
@@ -156,10 +156,10 @@ void FunctionScheduler::addFunction(
 void FunctionScheduler::addFunctionOnce(
     Function<void()>&& cb,
     StringPiece nameID,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
-      ConstIntervalFunctor(microseconds::zero()),
+      ConstIntervalFunctor(milliseconds::zero()),
       nameID.str(),
       "once",
       startDelay,
@@ -168,10 +168,10 @@ void FunctionScheduler::addFunctionOnce(
 
 void FunctionScheduler::addFunctionUniformDistribution(
     Function<void()>&& cb,
-    microseconds minInterval,
-    microseconds maxInterval,
+    milliseconds minInterval,
+    milliseconds maxInterval,
     StringPiece nameID,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       UniformDistributionFunctor(minInterval, maxInterval),
@@ -184,9 +184,9 @@ void FunctionScheduler::addFunctionUniformDistribution(
 
 void FunctionScheduler::addFunctionConsistentDelay(
     Function<void()>&& cb,
-    microseconds interval,
+    milliseconds interval,
     StringPiece nameID,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       ConsistentDelayFunctor(interval),
@@ -201,7 +201,7 @@ void FunctionScheduler::addFunctionGenericDistribution(
     IntervalDistributionFunc&& intervalFunc,
     const std::string& nameID,
     const std::string& intervalDescr,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       std::move(intervalFunc),
@@ -216,7 +216,7 @@ void FunctionScheduler::addFunctionGenericNextRunTimeFunctor(
     NextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    microseconds startDelay) {
+    milliseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       std::move(fn),
@@ -232,7 +232,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
     RepeatFuncNextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    microseconds startDelay,
+    milliseconds startDelay,
     bool runOnce) {
   if (!cb) {
     throw std::invalid_argument(
@@ -243,7 +243,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
         "FunctionScheduler: "
         "interval distribution or next run time function must be set");
   }
-  if (startDelay < microseconds::zero()) {
+  if (startDelay < milliseconds::zero()) {
     throw std::invalid_argument(
         "FunctionScheduler: start delay must be non-negative");
   }
@@ -277,7 +277,7 @@ void FunctionScheduler::addFunctionInternal(
     NextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    microseconds startDelay,
+    milliseconds startDelay,
     bool runOnce) {
   return addFunctionToHeapChecked(
       std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
@@ -288,7 +288,7 @@ void FunctionScheduler::addFunctionInternal(
     IntervalDistributionFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    microseconds startDelay,
+    milliseconds startDelay,
     bool runOnce) {
   return addFunctionToHeapChecked(
       std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
@@ -465,7 +465,7 @@ void FunctionScheduler::run() {
     }
 
     auto sleepTime = functions_.back()->getNextRunTime() - now;
-    if (sleepTime < microseconds::zero()) {
+    if (sleepTime < milliseconds::zero()) {
       // We need to run this function now
       runOneFunction(lock, now);
       runningCondvar_.notify_all();
