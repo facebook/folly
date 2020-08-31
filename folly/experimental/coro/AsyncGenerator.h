@@ -48,7 +48,7 @@ class AsyncGeneratorPromise {
     bool await_ready() noexcept {
       return false;
     }
-    std::experimental::coroutine_handle<> await_suspend(
+    auto await_suspend(
         std::experimental::coroutine_handle<AsyncGeneratorPromise> h) noexcept {
       return symmetricTransferMaybeReschedule(
           h.promise().continuation_, h.promise().clearContext());

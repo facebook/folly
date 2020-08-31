@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/SingletonThreadLocal.h>
 #include <folly/io/async/Request.h>
 
 namespace folly {
@@ -41,21 +42,46 @@ class UnsafeResumeInlineSemiAwaitable {
   Awaitable awaitable_;
 };
 
+class NestingCounter {
+ public:
+  struct GuardDestructor {
+    void operator()(NestingCounter* counter) {
+      --counter->counter_;
+    }
+  };
+  using Guard = std::unique_ptr<NestingCounter, GuardDestructor>;
+  Guard guard() {
+    const size_t maxNestingDepth = 128;
+    if (counter_ + 1 == maxNestingDepth) {
+      return nullptr;
+    }
+    ++counter_;
+    return Guard{this};
+  }
+
+ private:
+  size_t counter_{0};
+};
+using NestingCounterSingleton = SingletonThreadLocal<NestingCounter>;
+
 template <typename Promise>
 FOLLY_ALWAYS_INLINE folly::conditional_t<
     kIsSanitizeThread,
-    std::experimental::coroutine_handle<>,
+    void,
     std::experimental::coroutine_handle<Promise>>
 symmetricTransferMaybeReschedule(
     std::experimental::coroutine_handle<Promise> ch,
     const Executor::KeepAlive<>& ex) {
   if constexpr (kIsSanitizeThread) {
-    copy(ex).add([ch, rctx = RequestContext::saveContext()](
-                     Executor::KeepAlive<>&&) mutable {
-      RequestContextScopeGuard guard(std::move(rctx));
+    if (auto nestingGuard = NestingCounterSingleton::get().guard()) {
       ch.resume();
-    });
-    return std::experimental::noop_coroutine();
+    } else {
+      copy(ex).add([ch, rctx = RequestContext::saveContext()](
+                       Executor::KeepAlive<>&&) mutable {
+        RequestContextScopeGuard guard(std::move(rctx));
+        ch.resume();
+      });
+    }
   } else {
     return ch;
   }

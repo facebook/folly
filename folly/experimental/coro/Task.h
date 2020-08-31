@@ -84,7 +84,7 @@ class TaskPromiseBase {
     }
 
     template <typename Promise>
-    std::experimental::coroutine_handle<> await_suspend(
+    auto await_suspend(
         std::experimental::coroutine_handle<Promise> coro) noexcept {
       TaskPromiseBase& promise = coro.promise();
       return symmetricTransferMaybeReschedule(
