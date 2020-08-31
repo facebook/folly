@@ -50,11 +50,12 @@ int locate_py_main(int argc, wchar_t **argv) {
 
   python_dll = LoadLibraryExW(L"python3.dll", NULL, LOAD_LIBRARY_SEARCH_DEFAULT_DIRS);
 
+  int returncode = 0;
   if (python_dll != NULL) {
     pymain = (Py_Main) GetProcAddress(python_dll, "Py_Main");
 
     if (pymain != NULL) {
-      (pymain)(argc, argv);
+      returncode = (pymain)(argc, argv);
     } else {
       fprintf(stderr, "error: %d unable to load Py_Main\n", GetLastError());
     }
@@ -64,7 +65,7 @@ int locate_py_main(int argc, wchar_t **argv) {
     fprintf(stderr, "error: %d unable to locate python3.dll\n", GetLastError());
     return 1;
   }
-  return 0;
+  return returncode;
 }
 
 int wmain() {
