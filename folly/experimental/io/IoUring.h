@@ -44,12 +44,16 @@ class IoUringOp : public AsyncBaseOp {
    */
   void pread(int fd, void* buf, size_t size, off_t start) override;
   void preadv(int fd, const iovec* iov, int iovcnt, off_t start) override;
+  void pread(int fd, void* buf, size_t size, off_t start, int buf_index)
+      override;
 
   /**
    * Initiate a write request.
    */
   void pwrite(int fd, const void* buf, size_t size, off_t start) override;
   void pwritev(int fd, const iovec* iov, int iovcnt, off_t start) override;
+  void pwrite(int fd, const void* buf, size_t size, off_t start, int buf_index)
+      override;
 
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
@@ -95,6 +99,10 @@ class IoUring : public AsyncBase {
   ~IoUring() override;
 
   static bool isAvailable();
+
+  int register_buffers(const struct iovec* iovecs, unsigned int nr_iovecs);
+
+  int unregister_buffers();
 
  private:
   void initializeContext() override;

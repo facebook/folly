@@ -67,6 +67,10 @@ class AsyncBaseOp {
     pread(fd, range.begin(), range.size(), start);
   }
   virtual void preadv(int fd, const iovec* iov, int iovcnt, off_t start) = 0;
+  virtual void
+  pread(int fd, void* buf, size_t size, off_t start, int /*buf_index*/) {
+    pread(fd, buf, size, start);
+  }
 
   /**
    * Initiate a write request.
@@ -76,6 +80,10 @@ class AsyncBaseOp {
     pwrite(fd, range.begin(), range.size(), start);
   }
   virtual void pwritev(int fd, const iovec* iov, int iovcnt, off_t start) = 0;
+  virtual void
+  pwrite(int fd, const void* buf, size_t size, off_t start, int /*buf_index*/) {
+    pwrite(fd, buf, size, start);
+  }
 
   // we support only these subclasses
   virtual AsyncIOOp* getAsyncIOOp() = 0;
