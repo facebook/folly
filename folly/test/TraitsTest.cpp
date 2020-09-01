@@ -418,9 +418,14 @@ TEST(Traits, like) {
            value));
 }
 
-TEST(Traits, is_instantiation_of) {
+TEST(Traits, is_instantiation_of_v) {
   EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
+}
+
+TEST(Traits, is_instantiation_of) {
+  EXPECT_TRUE((detail::is_instantiation_of<A, A<int>>::value));
+  EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
 }
 
 TEST(Traits, is_constexpr_default_constructible) {
