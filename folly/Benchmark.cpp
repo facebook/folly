@@ -16,9 +16,14 @@
 
 // @author Andrei Alexandrescu (andrei.alexandrescu@fb.com)
 
+#ifndef __STDC_FORMAT_MACROS
+#define __STDC_FORMAT_MACROS 1
+#endif
+
 #include <folly/Benchmark.h>
 
 #include <algorithm>
+#include <cinttypes>
 #include <cmath>
 #include <cstring>
 #include <iostream>
