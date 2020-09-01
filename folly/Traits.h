@@ -356,6 +356,28 @@ using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
+namespace detail {
+template <typename Void, template <typename...> class, typename...>
+FOLLY_INLINE_VARIABLE constexpr bool //
+    is_detected_ = false;
+template <template <typename...> class T, typename... A>
+FOLLY_INLINE_VARIABLE constexpr bool //
+    is_detected_<void_t<T<A...>>, T, A...> = true;
+} // namespace detail
+
+//  is_detected_v
+//  is_detected
+//
+//  A trait variable and type to test whether some metafunction from types to
+//  types would succeed or fail in substitution over a given set of arguments.
+//
+//  mimic: std::is_detected, std::is_detected_v, Library Fundamentals TS v2
+template <template <typename...> class T, typename... A>
+FOLLY_INLINE_VARIABLE constexpr bool is_detected_v =
+    detail::is_detected_<void, T, A...>;
+template <template <typename...> class T, typename... A>
+struct is_detected : bool_constant<is_detected_v<T, A...>> {};
+
 template <typename T>
 using aligned_storage_for_t =
     typename std::aligned_storage<sizeof(T), alignof(T)>::type;

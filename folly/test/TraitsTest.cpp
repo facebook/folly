@@ -337,6 +337,21 @@ TEST(Traits, type_t) {
            value));
 }
 
+namespace {
+template <typename T, typename V>
+using detector_find = decltype(std::declval<T>().find(std::declval<V>()));
+}
+
+TEST(Traits, is_detected) {
+  EXPECT_TRUE((folly::is_detected<detector_find, std::string, char>::value));
+  EXPECT_FALSE((folly::is_detected<detector_find, double, char>::value));
+}
+
+TEST(Traits, is_detected_v) {
+  EXPECT_TRUE((folly::is_detected_v<detector_find, std::string, char>));
+  EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
+}
+
 TEST(Traits, aligned_storage_for_t) {
   struct alignas(2) Foo {
     char data[4];
