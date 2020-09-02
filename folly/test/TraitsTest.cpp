@@ -43,9 +43,6 @@ TEST(Traits, has_member_type) {
   EXPECT_TRUE((is_same<true_type, has_member_type_x<membership_yes>>::value));
 }
 
-//  Note: FOLLY_CREATE_HAS_MEMBER_FN_TRAITS tests are in
-//  folly/test/HasMemberFnTraitsTest.cpp.
-
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 {
