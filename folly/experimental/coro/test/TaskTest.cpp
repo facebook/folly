@@ -504,4 +504,39 @@ TEST_F(TaskTest, YieldTry) {
     EXPECT_TRUE(retInt.hasValue());
   }());
 }
+
+TEST_F(TaskTest, MakeTask) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto ret = co_await folly::coro::makeTask(42);
+    EXPECT_EQ(ret, 42);
+
+    co_await folly::coro::makeTask();
+    co_await folly::coro::makeTask(folly::unit);
+
+    auto err = co_await co_awaitTry(folly::coro::makeErrorTask<int>(
+        folly::make_exception_wrapper<std::runtime_error>("")));
+    EXPECT_TRUE(err.hasException());
+
+    err = co_await co_awaitTry(folly::coro::makeResultTask(folly::Try<int>(
+        folly::make_exception_wrapper<std::runtime_error>(""))));
+    EXPECT_TRUE(err.hasException());
+
+    auto try1 = co_await co_awaitTry(
+        folly::coro::makeResultTask(folly::Try<folly::Unit>(
+            folly::make_exception_wrapper<std::runtime_error>(""))));
+    EXPECT_TRUE(try1.hasException());
+    try1 = co_await co_awaitTry(
+        folly::coro::makeResultTask(folly::Try<folly::Unit>(folly::unit)));
+    EXPECT_TRUE(try1.hasValue());
+
+    // test move happens immediately (i.e. no dangling reference)
+    struct {
+      int i{0};
+    } s;
+    auto t = folly::coro::makeTask(std::move(s));
+    s.i = 1;
+    auto s2 = co_await std::move(t);
+    EXPECT_EQ(s2.i, 0);
+  }());
+}
 #endif

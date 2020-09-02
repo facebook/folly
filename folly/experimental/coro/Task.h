@@ -625,6 +625,33 @@ class FOLLY_NODISCARD Task {
   handle_t coro_;
 };
 
+// By analogy to folly::makeSemiFuture
+// Make a completed Task by moving in a value.
+template <class T>
+Task<T> makeTask(T t) {
+  co_return t;
+}
+
+// Make a completed void Task.
+inline Task<void> makeTask() {
+  co_return;
+}
+inline Task<void> makeTask(Unit) {
+  co_return;
+}
+
+// Make a failed Task from an exception_wrapper.
+template <class T>
+Task<T> makeErrorTask(exception_wrapper ew) {
+  co_yield co_error(std::move(ew));
+}
+
+// Make a Task out of a Try.
+template <class T>
+Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
+  co_yield co_result(std::move(t));
+}
+
 template <typename T>
 Task<T> detail::TaskPromise<T>::get_return_object() noexcept {
   return Task<T>{
