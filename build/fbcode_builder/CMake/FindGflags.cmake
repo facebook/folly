@@ -45,16 +45,6 @@ if (gflags_FOUND)
   # cmake module compat
   set(GFLAGS_FOUND ${gflags_FOUND})
   set(Gflags_FOUND ${gflags_FOUND})
-  set(FOLLY_HAVE_LIBGFLAGS ${gflags_FOUND})
-  if (TARGET gflags-shared)
-    list(APPEND FOLLY_SHINY_DEPENDENCIES gflags-shared)
-  elseif (TARGET gflags)
-    list(APPEND FOLLY_SHINY_DEPENDENCIES gflags)
-  else()
-    message(FATAL_ERROR "Unable to determine the target name for the GFlags package.")
-  endif()
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${GFLAGS_LIBRARIES})
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${GFLAGS_INCLUDE_DIR})
 else()
   FIND_PATH(LIBGFLAGS_INCLUDE_DIR gflags/gflags.h)
 
@@ -81,11 +71,6 @@ else()
   set(gflags_TARGET ${LIBGFLAGS_LIBRARY})
 
   MARK_AS_ADVANCED(LIBGFLAGS_LIBRARY LIBGFLAGS_INCLUDE_DIR)
-  set(FOLLY_HAVE_LIBGFLAGS ${LIBGFLAGS_FOUND})
-  list(APPEND FOLLY_LINK_LIBRARIES ${LIBGFLAGS_LIBRARY})
-  list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBGFLAGS_INCLUDE_DIR})
-  list(APPEND CMAKE_REQUIRED_LIBRARIES ${LIBGFLAGS_LIBRARY})
-  list(APPEND CMAKE_REQUIRED_INCLUDES ${LIBGFLAGS_INCLUDE_DIR})
 endif()
 
 # Compat with the gflags CONFIG based detection
