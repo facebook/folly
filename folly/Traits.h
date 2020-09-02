@@ -599,19 +599,21 @@ struct StrictDisjunction
           std::is_same<Bools<Ts::value...>, Bools<(Ts::value && false)...>>> {};
 
 namespace detail {
-template <typename, typename>
-struct is_transparent_ : std::false_type {};
 template <typename T>
-struct is_transparent_<void_t<typename T::is_transparent>, T> : std::true_type {
-};
+using is_transparent_ = typename T::is_transparent;
 } // namespace detail
 
+//  is_transparent_v
 //  is_transparent
 //
-//  To test whether a less, equal-to, or hash type follows the is-transparent
-//  protocol used by containers with optional heterogeneous access.
+//  A trait variable and type to test whether a less, equal-to, or hash type
+//  follows the is-transparent protocol used by containers with optional
+//  heterogeneous access.
 template <typename T>
-struct is_transparent : detail::is_transparent_<void, T> {};
+FOLLY_INLINE_VARIABLE constexpr bool is_transparent_v =
+    is_detected_v<detail::is_transparent_, T>;
+template <typename T>
+struct is_transparent : bool_constant<is_transparent_v<T>> {};
 
 } // namespace folly
 
