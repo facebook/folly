@@ -28,21 +28,6 @@
 using namespace folly;
 using namespace std;
 
-namespace {
-
-FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
-} // namespace
-
-TEST(Traits, has_member_type) {
-  struct membership_no {};
-  struct membership_yes {
-    using x = void;
-  };
-
-  EXPECT_TRUE((is_same<false_type, has_member_type_x<membership_no>>::value));
-  EXPECT_TRUE((is_same<true_type, has_member_type_x<membership_yes>>::value));
-}
-
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 {

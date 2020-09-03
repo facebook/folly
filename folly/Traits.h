@@ -26,25 +26,6 @@
 
 #include <folly/Portability.h>
 
-#define FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(classname, type_name)              \
-  template <typename TTheClass_>                                               \
-  struct classname##__folly_traits_impl__ {                                    \
-    template <typename UTheClass_>                                             \
-    static constexpr bool test(typename UTheClass_::type_name*) {              \
-      return true;                                                             \
-    }                                                                          \
-    template <typename>                                                        \
-    static constexpr bool test(...) {                                          \
-      return false;                                                            \
-    }                                                                          \
-  };                                                                           \
-  template <typename TTheClass_>                                               \
-  using classname = typename std::conditional<                                 \
-      classname##__folly_traits_impl__<TTheClass_>::template test<TTheClass_>( \
-          nullptr),                                                            \
-      std::true_type,                                                          \
-      std::false_type>::type
-
 namespace folly {
 
 template <typename...>
@@ -363,12 +344,13 @@ FOLLY_INLINE_VARIABLE constexpr bool is_trivially_copyable_v =
 namespace traits_detail {
 
 #define FOLLY_HAS_TRUE_XXX(name)                                             \
-  FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_##name, name);                     \
+  template <typename T>                                                      \
+  using detect_##name = typename T::name;                                    \
   template <class T>                                                         \
   struct name##_is_true : std::is_same<typename T::name, std::true_type> {}; \
   template <class T>                                                         \
   struct has_true_##name : std::conditional<                                 \
-                               has_##name<T>::value,                         \
+                               is_detected_v<detect_##name, T>,              \
                                name##_is_true<T>,                            \
                                std::false_type>::type {}
 
@@ -444,18 +426,19 @@ struct IsNothrowSwappable
 /* using override */ using traits_detail_IsNothrowSwappable::IsNothrowSwappable;
 
 template <class T>
-struct IsRelocatable : std::conditional<
-                           traits_detail::has_IsRelocatable<T>::value,
-                           traits_detail::has_true_IsRelocatable<T>,
-                           // TODO add this line (and some tests for it) when we
-                           // upgrade to gcc 4.7
-                           // std::is_trivially_move_constructible<T>::value ||
-                           is_trivially_copyable<T>>::type {};
+struct IsRelocatable
+    : std::conditional<
+          is_detected_v<traits_detail::detect_IsRelocatable, T>,
+          traits_detail::has_true_IsRelocatable<T>,
+          // TODO add this line (and some tests for it) when we
+          // upgrade to gcc 4.7
+          // std::is_trivially_move_constructible<T>::value ||
+          is_trivially_copyable<T>>::type {};
 
 template <class T>
 struct IsZeroInitializable
     : std::conditional<
-          traits_detail::has_IsZeroInitializable<T>::value,
+          is_detected_v<traits_detail::detect_IsZeroInitializable, T>,
           traits_detail::has_true_IsZeroInitializable<T>,
           bool_constant<!std::is_class<T>::value>>::type {};
 
