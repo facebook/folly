@@ -426,33 +426,36 @@ TEST(Traits, is_instantiation_of) {
 }
 
 TEST(Traits, is_constexpr_default_constructible) {
-  constexpr auto const broken = kGnuc == 7 && !kIsClang;
-
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
+  EXPECT_TRUE(is_constexpr_default_constructible<int>{});
 
   struct Empty {};
   EXPECT_TRUE(is_constexpr_default_constructible_v<Empty>);
+  EXPECT_TRUE(is_constexpr_default_constructible<Empty>{});
 
   struct NonTrivialDtor {
     ~NonTrivialDtor() {}
   };
-  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor> && !broken);
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});
 
   struct ConstexprCtor {
     int x, y;
     constexpr ConstexprCtor() noexcept : x(7), y(11) {}
   };
   EXPECT_TRUE(is_constexpr_default_constructible_v<ConstexprCtor>);
+  EXPECT_TRUE(is_constexpr_default_constructible<ConstexprCtor>{});
 
   struct NonConstexprCtor {
     int x, y;
     NonConstexprCtor() noexcept : x(7), y(11) {}
   };
-  EXPECT_FALSE(
-      is_constexpr_default_constructible_v<NonConstexprCtor> && !broken);
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonConstexprCtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NonConstexprCtor>{});
 
   struct NoDefaultCtor {
     constexpr NoDefaultCtor(int, int) noexcept {}
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NoDefaultCtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NoDefaultCtor>{});
 }
