@@ -96,10 +96,8 @@ template <class Char, std::size_t N>
 constexpr const Char (&checkNullTerminated(const Char (&a)[N]) noexcept)[N] {
   // Strange decltype(a)(a) used to make MSVC happy.
   return a[N - 1u] == Char(0)
-#ifndef NDEBUG
           // In Debug mode, guard against embedded nulls:
-          && N - 1u == folly::constexpr_strlen(a)
-#endif
+          && (!kIsDebug || N - 1u == folly::constexpr_strlen(a))
       ? decltype(a)(a)
       : (assertNotNullTerminated(), decltype(a)(a));
 }
