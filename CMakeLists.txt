@@ -436,10 +436,18 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
   @ONLY
 )
+
+# Specify target to allow resolving generator expressions requiring
+# a target for CMake >=3.19. See #1414.
+if(CMAKE_VERSION VERSION_GREATER 3.18)
+  set(target_arg TARGET folly_deps)
+endif()
+
 file(
   GENERATE
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
   INPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
+  ${target_arg}
 )
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
