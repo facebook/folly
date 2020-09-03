@@ -98,7 +98,7 @@ constexpr const Char (&checkNullTerminated(const Char (&a)[N]) noexcept)[N] {
   return a[N - 1u] == Char(0)
 #ifndef NDEBUG
           // In Debug mode, guard against embedded nulls:
-          && N - 1u == folly::detail::constexpr_strlen_internal(a, 0u)
+          && N - 1u == folly::detail::constexpr_strlen_fallback(a)
 #endif
       ? decltype(a)(a)
       : (assertNotNullTerminated(), decltype(a)(a));

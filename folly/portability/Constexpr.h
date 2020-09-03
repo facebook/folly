@@ -27,24 +27,12 @@ namespace folly {
 namespace detail {
 
 template <typename Char>
-constexpr size_t constexpr_strlen_internal(const Char* s, size_t len) {
-  // clang-format off
-  return
-      *(s + 0) == Char(0) ? len + 0 :
-      *(s + 1) == Char(0) ? len + 1 :
-      *(s + 2) == Char(0) ? len + 2 :
-      *(s + 3) == Char(0) ? len + 3 :
-      *(s + 4) == Char(0) ? len + 4 :
-      *(s + 5) == Char(0) ? len + 5 :
-      *(s + 6) == Char(0) ? len + 6 :
-      *(s + 7) == Char(0) ? len + 7 :
-      constexpr_strlen_internal(s + 8, len + 8);
-  // clang-format on
-}
-
-template <typename Char>
 constexpr size_t constexpr_strlen_fallback(const Char* s) {
-  return constexpr_strlen_internal(s, 0);
+  size_t ret = 0;
+  while (*s++) {
+    ++ret;
+  }
+  return ret;
 }
 
 static_assert(
@@ -53,9 +41,10 @@ static_assert(
 
 template <typename Char>
 constexpr int constexpr_strcmp_fallback(const Char* s1, const Char* s2) {
-  return (*s1 == '\0' || *s1 != *s2)
-      ? (static_cast<int>(*s1 - *s2))
-      : constexpr_strcmp_fallback(s1 + 1, s2 + 1);
+  while (*s1 && *s1 == *s2) {
+    ++s1, ++s2;
+  }
+  return static_cast<int>(*s1 - *s2);
 }
 
 } // namespace detail
