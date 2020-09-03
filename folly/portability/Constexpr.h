@@ -44,7 +44,7 @@ constexpr int constexpr_strcmp_fallback(const Char* s1, const Char* s2) {
   while (*s1 && *s1 == *s2) {
     ++s1, ++s2;
   }
-  return static_cast<int>(*s1 - *s2);
+  return int(*s2 < *s1) - int(*s1 < *s2);
 }
 
 } // namespace detail
