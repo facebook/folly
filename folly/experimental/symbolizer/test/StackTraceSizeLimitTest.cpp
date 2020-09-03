@@ -74,30 +74,30 @@ TEST(StackTraceSizeLimitTest, FiberLimit) {
   // Initial run
   t(fBaseline, 10000);
 
-#ifdef NDEBUG
-  // Baseline
-  t(fBaseline, 1600);
-  // Standard version
-  t(fStack, 6800);
-  // Heap version
-  t(fHeap, 2200);
-#else
-  // Values for opt builds
-
-#ifndef FOLLY_SANITIZE_ADDRESS
-  // Baseline
-  t(fBaseline, 3700);
-  // Standard version
-  t(fStack, 8000);
-  // Heap version
-  t(fHeap, 3700);
-#else
-  // Baseline
-  t(fBaseline, 0);
-  // Standard version
-  t(fStack, 0);
-  // Heap version
-  t(fHeap, 0);
-#endif
-#endif
+  // The amount of stack needed varies based on compilation modes.
+  if (folly::kIsDebug) {
+    if (folly::kIsSanitizeAddress) {
+      t(fBaseline, 0);
+      t(fStack, 0);
+      t(fHeap, 0);
+    } else if (folly::kIsSanitizeThread) {
+      t(fBaseline, 3700);
+      t(fStack, 9000);
+      t(fHeap, 5000);
+    } else {
+      t(fBaseline, 3700);
+      t(fStack, 8000);
+      t(fHeap, 3700);
+    }
+  } else {
+    if (folly::kIsSanitizeThread) {
+      t(fBaseline, 2500);
+      t(fStack, 6800);
+      t(fHeap, 3500);
+    } else {
+      t(fBaseline, 1600);
+      t(fStack, 6800);
+      t(fHeap, 2200);
+    }
+  }
 }
