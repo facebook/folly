@@ -125,6 +125,9 @@ void runTAsyncIOTest(
     }
     aio->wait(numEntries);
     CHECK_EQ(completed, numEntries);
+    for (size_t i = 0; i < numEntries; i++) {
+      CHECK_EQ(bmData.ops[i]->result(), kBlockSize);
+    }
     if (!persist) {
       aio.reset();
     }
