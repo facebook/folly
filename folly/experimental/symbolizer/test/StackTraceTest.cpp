@@ -95,6 +95,11 @@ TEST(StackTraceTest, Simple) {
 }
 
 TEST(StackTraceTest, Signal) {
+  if (folly::kIsSanitizeThread) {
+    // TSAN doesn't like signal-unsafe functions in a signal handler regardless
+    // of how the signal is raised. So skip the test in that case.
+    SKIP() << "Not supported for TSAN";
+  }
   struct sigaction sa;
   memset(&sa, 0, sizeof(sa));
   sa.sa_sigaction = handler;
