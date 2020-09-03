@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 //
 // Author: andrei.alexandrescu@fb.com
 

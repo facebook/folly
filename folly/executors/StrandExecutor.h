@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <folly/Optional.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/SequencedExecutor.h>
