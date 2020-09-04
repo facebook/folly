@@ -17,6 +17,7 @@ fbthrift
 fb303
 cpptoml
 rocksdb
+re2
 libgit2
 lz4
 pexpect

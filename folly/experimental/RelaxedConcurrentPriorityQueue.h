@@ -484,11 +484,11 @@ class RelaxedConcurrentPriorityQueue {
   }
 
   FOLLY_ALWAYS_INLINE Node* getList(const Position& pos) {
-    return levels_[pos.level][pos.index].head.load(std::memory_order_relaxed);
+    return levels_[pos.level][pos.index].head.load(std::memory_order_acquire);
   }
 
   FOLLY_ALWAYS_INLINE void setTreeNode(const Position& pos, Node* t) {
-    levels_[pos.level][pos.index].head.store(t, std::memory_order_relaxed);
+    levels_[pos.level][pos.index].head.store(t, std::memory_order_release);
   }
 
   // Merge two sorted lists

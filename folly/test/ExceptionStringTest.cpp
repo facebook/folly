@@ -16,6 +16,7 @@
 
 #include <folly/ExceptionString.h>
 
+#include <folly/Portability.h>
 #include <folly/portability/GTest.h>
 
 class ExceptionStringTest : public testing::Test {};
@@ -23,6 +24,13 @@ class ExceptionStringTest : public testing::Test {};
 TEST_F(ExceptionStringTest, exception_ptr) {
   auto ptr = std::make_exception_ptr(std::out_of_range("foo"));
   auto expected = "std::out_of_range: foo";
+  auto actual = folly::exceptionStr(ptr).toStdString();
+  EXPECT_EQ(expected, actual);
+}
+
+TEST_F(ExceptionStringTest, exception_ptr_unknown) {
+  auto ptr = std::make_exception_ptr(7);
+  auto expected = folly::kIsLibstdcpp ? "int" : "<unknown exception>";
   auto actual = folly::exceptionStr(ptr).toStdString();
   EXPECT_EQ(expected, actual);
 }

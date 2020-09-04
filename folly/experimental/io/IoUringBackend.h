@@ -16,9 +16,7 @@
 
 #pragma once
 
-extern "C" {
 #include <liburing.h>
-}
 
 #include <folly/Function.h>
 #include <folly/Range.h>

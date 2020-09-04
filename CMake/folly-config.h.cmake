@@ -67,6 +67,9 @@
 #cmakedefine FOLLY_USE_LIBCPP 1
 #cmakedefine HAVE_VSNPRINTF_ERRORS 1
 
+#cmakedefine FOLLY_HAVE_LIBUNWIND 1
+#cmakedefine FOLLY_HAVE_DWARF 1
+#cmakedefine FOLLY_HAVE_ELF 1
 #cmakedefine FOLLY_USE_SYMBOLIZER 1
 #define FOLLY_DEMANGLE_MAX_SYMBOL_SIZE 1024
 

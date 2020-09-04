@@ -63,7 +63,7 @@ TEST_F(CoroTest, Basic) {
 
   EXPECT_FALSE(future.isReady());
 
-  executor.drive();
+  executor.drain();
 
   EXPECT_TRUE(future.isReady());
   EXPECT_EQ(42, std::move(future).get());
@@ -75,8 +75,7 @@ TEST_F(CoroTest, BasicSemiFuture) {
 
   EXPECT_FALSE(future.isReady());
 
-  executor.drive();
-  executor.drive();
+  executor.drain();
 
   EXPECT_TRUE(future.isReady());
   EXPECT_EQ(42, std::move(future).get());
@@ -103,7 +102,7 @@ TEST_F(CoroTest, Basic2) {
 
   EXPECT_FALSE(future.isReady());
 
-  executor.drive();
+  executor.drain();
 
   EXPECT_TRUE(future.isReady());
 }
@@ -193,7 +192,7 @@ TEST_F(CoroTest, FutureThrow) {
 
   EXPECT_FALSE(future.isReady());
 
-  executor.drive();
+  executor.drain();
 
   EXPECT_TRUE(future.isReady());
   EXPECT_THROW(std::move(future).get(), std::runtime_error);
@@ -211,9 +210,9 @@ coro::Task<int> taskRecursion(int depth) {
 
 TEST_F(CoroTest, LargeStack) {
   ScopedEventBaseThread evbThread;
-  auto task = taskRecursion(5000).scheduleOn(evbThread.getEventBase());
+  auto task = taskRecursion(50000).scheduleOn(evbThread.getEventBase());
 
-  EXPECT_EQ(5000, coro::blockingWait(std::move(task)));
+  EXPECT_EQ(50000, coro::blockingWait(std::move(task)));
 }
 
 coro::Task<void> taskThreadNested(std::thread::id threadId) {
@@ -416,12 +415,12 @@ TEST_F(CoroTest, Baton) {
 
   EXPECT_FALSE(future.isReady());
 
-  executor.run();
+  executor.drain();
 
   EXPECT_FALSE(future.isReady());
 
   baton.post();
-  executor.run();
+  executor.drain();
 
   EXPECT_TRUE(future.isReady());
   EXPECT_EQ(42, std::move(future).get());
@@ -450,12 +449,12 @@ TEST_F(CoroTest, co_invoke) {
       })
           .scheduleOn(&executor)
           .start();
-  executor.run();
+  executor.drain();
   EXPECT_FALSE(coroFuture.isReady());
 
   p.setValue(folly::unit);
 
-  executor.run();
+  executor.drain();
   EXPECT_TRUE(coroFuture.isReady());
 }
 

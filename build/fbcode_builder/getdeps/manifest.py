@@ -181,13 +181,13 @@ class ManifestParser(object):
 
         if fp is None:
             with open(file_name, "r") as fp:
-                config.readfp(fp)
+                config.read_file(fp)
         elif isinstance(fp, type("")):
             # For testing purposes, parse from a string (str
             # or unicode)
-            config.readfp(io.StringIO(fp))
+            config.read_file(io.StringIO(fp))
         else:
-            config.readfp(fp)
+            config.read_file(fp)
 
         # validate against the schema
         seen_sections = set()

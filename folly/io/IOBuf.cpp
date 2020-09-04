@@ -1041,9 +1041,9 @@ void IOBuf::freeExtBuffer() noexcept {
   SharedInfo::invokeAndDeleteEachObserver(
       observerListHead, [](auto& entry) { entry.afterFreeExtBuffer(); });
 
-#if FOLLY_MOBILE
-  buf_ = nullptr;
-#endif
+  if (kIsMobile) {
+    buf_ = nullptr;
+  }
 }
 
 void IOBuf::allocExtBuffer(

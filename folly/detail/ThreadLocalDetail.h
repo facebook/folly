@@ -73,7 +73,8 @@ struct ThreadEntry;
  * StaticMetaBase::lock_
  */
 struct ThreadEntryNode {
-  uint32_t id;
+  uint32_t id : 31; // Note: this will never be kEntryIDInvalid.
+  bool isZero : 1; // equivalent to !next, but used only in one thread
   ThreadEntry* parent;
   ThreadEntry* prev;
   ThreadEntry* next;
@@ -82,11 +83,13 @@ struct ThreadEntryNode {
 
   void init(ThreadEntry* entry, uint32_t newId) {
     id = newId;
+    isZero = false;
     parent = prev = next = entry;
   }
 
   void initZero(ThreadEntry* entry, uint32_t newId) {
     id = newId;
+    isZero = true;
     parent = entry;
     prev = next = nullptr;
   }
@@ -97,7 +100,7 @@ struct ThreadEntryNode {
   }
 
   FOLLY_ALWAYS_INLINE bool zero() const {
-    return (!prev);
+    return isZero;
   }
 
   FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() {

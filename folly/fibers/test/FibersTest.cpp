@@ -28,6 +28,7 @@
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
 #include <folly/fibers/BatchDispatcher.h>
+#include <folly/fibers/BatchSemaphore.h>
 #include <folly/fibers/EventBaseLoopController.h>
 #include <folly/fibers/ExecutorLoopController.h>
 #include <folly/fibers/FiberManager.h>
@@ -1534,6 +1535,7 @@ TEST(FiberManager, batonWaitTimeoutHandlerExecutor) {
   };
   manager.addTask([&]() { task(300); });
   baton2.wait();
+  executor.join();
 }
 
 TEST(FiberManager, batonWaitTimeoutMany) {
@@ -1543,7 +1545,10 @@ TEST(FiberManager, batonWaitTimeoutMany) {
   dynamic_cast<EventBaseLoopController&>(manager.loopController())
       .attachEventBase(evb);
 
-  constexpr size_t kNumTimeoutTasks = 10000;
+  // TODO(T71050527): It appears that TSAN does not yet maintain the shadow
+  // stack correctly upon fiber switches, resulting in a shadow stack overflow
+  // if we push too many tasks here. Cap it in the meantime.
+  constexpr size_t kNumTimeoutTasks = folly::kIsSanitizeThread ? 1000 : 10000;
   size_t tasksCount = kNumTimeoutTasks;
 
   // We add many tasks to hit timeout queue deallocation logic.
@@ -1727,7 +1732,7 @@ TEST(FiberManager, semaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              switch (j % 3) {
+              switch (j % 4) {
                 case 0:
                   sem.wait();
                   break;
@@ -1746,6 +1751,11 @@ TEST(FiberManager, semaphore) {
                   }
                   break;
                 }
+                case 3:
+                  if (!sem.try_wait()) {
+                    sem.wait();
+                  }
+                  break;
               }
               ++counter;
               sem.signal();
@@ -1761,6 +1771,84 @@ TEST(FiberManager, semaphore) {
     }
 
     Semaphore& sem;
+    int counter{0};
+    std::thread t;
+  };
+
+  std::vector<Worker> workers;
+  workers.reserve(kNumThreads);
+  for (size_t i = 0; i < kNumThreads; ++i) {
+    workers.emplace_back(sem);
+  }
+
+  for (auto& worker : workers) {
+    worker.t.join();
+  }
+
+  for (auto& worker : workers) {
+    EXPECT_EQ(0, worker.counter);
+  }
+}
+
+TEST(FiberManager, batchSemaphore) {
+  static constexpr size_t kTasks = 10;
+  static constexpr size_t kIterations = 10000;
+  static constexpr size_t kNumTokens = 60;
+  static constexpr size_t kNumThreads = 16;
+
+  BatchSemaphore sem(kNumTokens);
+
+  struct Worker {
+    explicit Worker(BatchSemaphore& s) : sem(s), t([&] { run(); }) {}
+
+    void run() {
+      FiberManager manager(std::make_unique<EventBaseLoopController>());
+      folly::EventBase evb;
+      dynamic_cast<EventBaseLoopController&>(manager.loopController())
+          .attachEventBase(evb);
+
+      {
+        std::shared_ptr<folly::EventBase> completionCounter(
+            &evb, [](folly::EventBase* evb_) { evb_->terminateLoopSoon(); });
+
+        for (size_t i = 0; i < kTasks; ++i) {
+          manager.addTask([&, completionCounter]() {
+            for (size_t j = 0; j < kIterations; ++j) {
+              int tokens = j % 3 + 1;
+              switch (j % 3) {
+                case 0:
+                  sem.wait(tokens);
+                  break;
+                case 1:
+#if FOLLY_FUTURE_USING_FIBER
+                  sem.future_wait(tokens).get();
+#else
+                  sem.wait(tokens);
+#endif
+                  break;
+                case 2: {
+                  BatchSemaphore::Waiter waiter{tokens};
+                  bool acquired = sem.try_wait(waiter, tokens);
+                  if (!acquired) {
+                    waiter.baton.wait();
+                  }
+                  break;
+                }
+              }
+              counter += tokens;
+              sem.signal(tokens);
+              counter -= tokens;
+
+              EXPECT_LT(counter, kNumTokens);
+              EXPECT_GE(counter, 0);
+            }
+          });
+        }
+      }
+      evb.loopForever();
+    }
+
+    BatchSemaphore& sem;
     int counter{0};
     std::thread t;
   };

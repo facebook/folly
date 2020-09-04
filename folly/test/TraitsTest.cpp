@@ -28,24 +28,6 @@
 using namespace folly;
 using namespace std;
 
-namespace {
-
-FOLLY_CREATE_HAS_MEMBER_TYPE_TRAITS(has_member_type_x, x);
-} // namespace
-
-TEST(Traits, has_member_type) {
-  struct membership_no {};
-  struct membership_yes {
-    using x = void;
-  };
-
-  EXPECT_TRUE((is_same<false_type, has_member_type_x<membership_no>>::value));
-  EXPECT_TRUE((is_same<true_type, has_member_type_x<membership_yes>>::value));
-}
-
-//  Note: FOLLY_CREATE_HAS_MEMBER_FN_TRAITS tests are in
-//  folly/test/HasMemberFnTraitsTest.cpp.
-
 struct T1 {}; // old-style IsRelocatable, below
 struct T2 {}; // old-style IsRelocatable, below
 struct T3 {
@@ -337,6 +319,21 @@ TEST(Traits, type_t) {
            value));
 }
 
+namespace {
+template <typename T, typename V>
+using detector_find = decltype(std::declval<T>().find(std::declval<V>()));
+}
+
+TEST(Traits, is_detected) {
+  EXPECT_TRUE((folly::is_detected<detector_find, std::string, char>::value));
+  EXPECT_FALSE((folly::is_detected<detector_find, double, char>::value));
+}
+
+TEST(Traits, is_detected_v) {
+  EXPECT_TRUE((folly::is_detected_v<detector_find, std::string, char>));
+  EXPECT_FALSE((folly::is_detected_v<detector_find, double, char>));
+}
+
 TEST(Traits, aligned_storage_for_t) {
   struct alignas(2) Foo {
     char data[4];
@@ -418,39 +415,47 @@ TEST(Traits, like) {
            value));
 }
 
-TEST(Traits, is_instantiation_of) {
+TEST(Traits, is_instantiation_of_v) {
   EXPECT_TRUE((detail::is_instantiation_of_v<A, A<int>>));
   EXPECT_FALSE((detail::is_instantiation_of_v<A, B>));
 }
 
-TEST(Traits, is_constexpr_default_constructible) {
-  constexpr auto const broken = kGnuc == 7 && !kIsClang;
+TEST(Traits, is_instantiation_of) {
+  EXPECT_TRUE((detail::is_instantiation_of<A, A<int>>::value));
+  EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
+}
 
+TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
+  EXPECT_TRUE(is_constexpr_default_constructible<int>{});
 
   struct Empty {};
   EXPECT_TRUE(is_constexpr_default_constructible_v<Empty>);
+  EXPECT_TRUE(is_constexpr_default_constructible<Empty>{});
 
   struct NonTrivialDtor {
     ~NonTrivialDtor() {}
   };
-  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor> && !broken);
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});
 
   struct ConstexprCtor {
     int x, y;
     constexpr ConstexprCtor() noexcept : x(7), y(11) {}
   };
   EXPECT_TRUE(is_constexpr_default_constructible_v<ConstexprCtor>);
+  EXPECT_TRUE(is_constexpr_default_constructible<ConstexprCtor>{});
 
   struct NonConstexprCtor {
     int x, y;
     NonConstexprCtor() noexcept : x(7), y(11) {}
   };
-  EXPECT_FALSE(
-      is_constexpr_default_constructible_v<NonConstexprCtor> && !broken);
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonConstexprCtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NonConstexprCtor>{});
 
   struct NoDefaultCtor {
     constexpr NoDefaultCtor(int, int) noexcept {}
   };
   EXPECT_FALSE(is_constexpr_default_constructible_v<NoDefaultCtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NoDefaultCtor>{});
 }

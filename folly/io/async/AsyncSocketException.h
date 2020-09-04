@@ -43,6 +43,7 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
     // SASL_HANDSHAKE_TIMEOUT = 14, // no longer used
     NETWORK_ERROR = 15,
     EARLY_DATA_REJECTED = 16,
+    CANCELED = 17,
   };
 
   AsyncSocketException(

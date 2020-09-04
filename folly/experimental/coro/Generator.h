@@ -22,6 +22,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/experimental/coro/Invoke.h>
+
 namespace folly {
 namespace coro {
 
@@ -267,6 +269,14 @@ class Generator {
 
   void swap(Generator& other) noexcept {
     std::swap(m_promise, other.m_promise);
+  }
+
+  template <typename F, typename... A, typename F_, typename... A_>
+  friend Generator folly_co_invoke(tag_t<Generator, F, A...>, F_ f, A_... a) {
+    auto&& r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+    for (auto&& v : r) {
+      co_yield std::move(v);
+    }
   }
 
  private:

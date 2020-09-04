@@ -22,6 +22,7 @@
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GTest.h>

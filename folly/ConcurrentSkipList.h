@@ -140,7 +140,7 @@ template <
     typename Comp = std::less<T>,
     // All nodes are allocated using provided SysAllocator,
     // it should be thread-safe.
-    typename NodeAlloc = SysAllocator<void>,
+    typename NodeAlloc = SysAllocator<char>,
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler

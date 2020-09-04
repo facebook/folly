@@ -34,6 +34,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Sockets.h>
+#include <folly/portability/String.h>
 #include <folly/portability/Unistd.h>
 
 #include <fcntl.h>

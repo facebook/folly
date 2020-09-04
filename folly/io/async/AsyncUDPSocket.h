@@ -383,6 +383,12 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGRO(bool bVal);
 
+  // disable/enable RX zero checksum check for UDP over IPv6
+  bool setRxZeroChksum6(bool bVal);
+
+  // disable/enable TX zero checksum for UDP over IPv6
+  bool setTxZeroChksum6(bool bVal);
+
   void setTrafficClass(int tclass);
 
   void applyOptions(

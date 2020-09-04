@@ -298,7 +298,7 @@ class hazptr_obj_cohort {
 
   SharedList l_;
   Atom<int> count_;
-  bool active_;
+  Atom<bool> active_;
   Atom<bool> pushed_to_domain_tagged_;
 
  public:
@@ -314,17 +314,17 @@ class hazptr_obj_cohort {
 
   /** Destructor */
   ~hazptr_obj_cohort() {
-    if (active_) {
+    if (active()) {
       shutdown_and_reclaim();
     }
-    DCHECK(!active_);
+    DCHECK(!active());
     DCHECK(l_.empty());
   }
 
   /** shutdown_and_reclaim */
   void shutdown_and_reclaim() {
-    DCHECK(active_);
-    active_ = false;
+    DCHECK(active());
+    clear_active();
     if (!l_.empty()) {
       List l = l_.pop_all();
       clear_count();
@@ -339,6 +339,14 @@ class hazptr_obj_cohort {
 
  private:
   friend class hazptr_obj<Atom>;
+
+  bool active() {
+    return active_.load(std::memory_order_relaxed);
+  }
+
+  void clear_active() {
+    active_.store(false, std::memory_order_relaxed);
+  }
 
   int count() const noexcept {
     return count_.load(std::memory_order_acquire);
@@ -359,7 +367,7 @@ class hazptr_obj_cohort {
 
   /** push_obj */
   void push_obj(Obj* obj) {
-    if (active_) {
+    if (active()) {
       l_.push(obj);
       inc_count();
       check_threshold_push();

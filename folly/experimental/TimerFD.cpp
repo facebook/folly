@@ -28,6 +28,7 @@ TimerFD::TimerFD(folly::EventBase* eventBase)
 
 TimerFD::TimerFD(folly::EventBase* eventBase, int fd)
     : folly::EventHandler(eventBase, NetworkSocket::fromFd(fd)), fd_(fd) {
+  setEventCallback(this);
   if (fd_ > 0) {
     registerHandler(folly::EventHandler::READ | folly::EventHandler::PERSIST);
   }
@@ -85,6 +86,18 @@ void TimerFD::handlerReady(uint16_t events) noexcept {
     if (num == sizeof(data)) {
       onTimeout();
     }
+  }
+}
+
+void TimerFD::eventReadCallback(IoVec* ioVec, int res) {
+  // reset it
+  ioVec->timerData_ = 0;
+  // save it for future use
+  ioVecPtr_.reset(ioVec);
+
+  if (res == sizeof(ioVec->timerData_)) {
+    DestructorGuard dg(this);
+    onTimeout();
   }
 }
 

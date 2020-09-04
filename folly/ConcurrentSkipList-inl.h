@@ -76,7 +76,8 @@ class SkipListNode {
     size_t size = sizeof(SkipListNode) +
         node->height_ * sizeof(std::atomic<SkipListNode*>);
     node->~SkipListNode();
-    std::allocator_traits<NodeAlloc>::deallocate(alloc, node, size);
+    std::allocator_traits<NodeAlloc>::deallocate(
+        alloc, typename std::allocator_traits<NodeAlloc>::pointer(node), size);
   }
 
   template <typename NodeAlloc>

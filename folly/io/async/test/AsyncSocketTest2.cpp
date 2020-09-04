@@ -2293,8 +2293,8 @@ TEST(AsyncSocketTest, NumPendingMessagesInQueue) {
   serverSocket->getAddress(&serverAddress);
 
   // Add a callback to accept connections
-  folly::ScopedEventBaseThread cobThread("ioworker_test");
   TestAcceptCallback acceptCallback;
+  folly::ScopedEventBaseThread cobThread("ioworker_test");
   acceptCallback.setConnectionAcceptedFn(
       [&](NetworkSocket /* fd */, const folly::SocketAddress& /* addr */) {
         count++;

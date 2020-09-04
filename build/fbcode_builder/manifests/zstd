@@ -6,7 +6,7 @@ libzstd-devel
 libzstd
 
 [debs]
-libzstd1-dev
+libzstd-dev
 
 [download]
 url = https://github.com/facebook/zstd/releases/download/v1.4.4/zstd-1.4.4.tar.gz

@@ -17,6 +17,7 @@
 #include <folly/executors/CPUThreadPoolExecutor.h>
 
 #include <folly/Memory.h>
+#include <folly/concurrency/QueueObserver.h>
 #include <folly/executors/task_queue/PriorityLifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
@@ -124,6 +125,39 @@ CPUThreadPoolExecutor::~CPUThreadPoolExecutor() {
   deregisterThreadPoolExecutor(this);
   stop();
   CHECK(threadsToStop_ == 0);
+  if (getNumPriorities() == 1) {
+    delete queueObservers_[0];
+  } else {
+    for (auto& observer : queueObservers_) {
+      delete observer.load(std::memory_order_relaxed);
+    }
+  }
+}
+
+QueueObserver* FOLLY_NULLABLE
+CPUThreadPoolExecutor::getQueueObserver(int8_t pri) {
+  if (!queueObserverFactory_) {
+    return nullptr;
+  }
+
+  auto& slot = queueObservers_[folly::to_unsigned(pri)];
+  if (auto observer = slot.load(std::memory_order_acquire)) {
+    return observer;
+  }
+
+  // common case is only one queue, need only one observer
+  if (getNumPriorities() == 1 && pri != 0) {
+    auto sharedObserver = getQueueObserver(0);
+    slot.store(sharedObserver, std::memory_order_release);
+    return sharedObserver;
+  }
+  QueueObserver* existingObserver = nullptr;
+  auto newObserver = queueObserverFactory_->create(pri);
+  if (!slot.compare_exchange_strong(existingObserver, newObserver.get())) {
+    return existingObserver;
+  } else {
+    return newObserver.release();
+  }
 }
 
 void CPUThreadPoolExecutor::add(Func func) {
@@ -134,8 +168,11 @@ void CPUThreadPoolExecutor::add(
     Func func,
     std::chrono::milliseconds expiration,
     Func expireCallback) {
-  auto result = taskQueue_->add(
-      CPUTask(std::move(func), expiration, std::move(expireCallback)));
+  CPUTask task{std::move(func), expiration, std::move(expireCallback), 0};
+  if (auto queueObserver = getQueueObserver(0)) {
+    task.queueObserverPayload() = queueObserver->onEnqueued();
+  }
+  auto result = taskQueue_->add(std::move(task));
   if (!result.reusedThread) {
     ensureActiveThreads();
   }
@@ -151,9 +188,12 @@ void CPUThreadPoolExecutor::add(
     std::chrono::milliseconds expiration,
     Func expireCallback) {
   CHECK(getNumPriorities() > 0);
-  auto result = taskQueue_->addWithPriority(
-      CPUTask(std::move(func), expiration, std::move(expireCallback)),
-      priority);
+  CPUTask task(
+      std::move(func), expiration, std::move(expireCallback), priority);
+  if (auto queueObserver = getQueueObserver(priority)) {
+    task.queueObserverPayload() = queueObserver->onEnqueued();
+  }
+  auto result = taskQueue_->addWithPriority(std::move(task), priority);
   if (!result.reusedThread) {
     ensureActiveThreads();
   }
@@ -219,6 +259,9 @@ void CPUThreadPoolExecutor::threadRun(ThreadPtr thread) {
       }
     }
 
+    if (auto queueObserver = getQueueObserver(task->queuePriority())) {
+      queueObserver->onDequeued(task->queueObserverPayload());
+    }
     runTask(thread, std::move(task.value()));
 
     if (UNLIKELY(threadsToStop_ > 0 && !isJoin_)) {
@@ -242,6 +285,15 @@ void CPUThreadPoolExecutor::stopThreads(size_t n) {
 // threadListLock_ is read (or write) locked.
 size_t CPUThreadPoolExecutor::getPendingTaskCountImpl() const {
   return taskQueue_->size();
+}
+
+std::unique_ptr<folly::QueueObserverFactory>
+CPUThreadPoolExecutor::createQueueObserverFactory() {
+  for (auto& observer : queueObservers_) {
+    observer.store(nullptr, std::memory_order_release);
+  }
+  return QueueObserverFactory::make(
+      "cpu." + getName(), taskQueue_->getNumPriorities());
 }
 
 } // namespace folly

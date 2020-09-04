@@ -3,6 +3,8 @@ cdef extern from "folly/Range.h" namespace "folly":
         Range()
         Range(T, int)
         T data()
+        T begin()
+        T end()
         int size()
 
 ctypedef Range[const char*] StringPiece

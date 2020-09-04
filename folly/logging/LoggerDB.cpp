@@ -662,9 +662,12 @@ std::string LoggerDB::ContextCallbackList::getContextString() const {
 
   std::string ret;
   callbacks->forEach([&](const auto& callback) {
-    ret += ' ';
     try {
-      ret += callback();
+      auto ctx = callback();
+      if (ctx.empty()) {
+        return;
+      }
+      folly::toAppend(' ', std::move(ctx), &ret);
     } catch (const std::exception& e) {
       folly::toAppend("[error:", folly::exceptionStr(e), "]", &ret);
     };

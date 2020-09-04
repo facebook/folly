@@ -28,6 +28,8 @@
 namespace folly {
 namespace symbolizer {
 
+#if FOLLY_HAVE_DWARF
+
 namespace detail {
 
 // A top level chunk in the .debug_info that contains a compilation unit.
@@ -325,6 +327,8 @@ class Dwarf::LineNumberVM {
   uint64_t isa_;
   uint64_t discriminator_;
 };
+
+#endif
 
 } // namespace symbolizer
 } // namespace folly

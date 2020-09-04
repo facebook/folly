@@ -100,7 +100,9 @@ class BuilderBase(object):
             dep_dirs = self.get_dev_run_extra_path_dirs(install_dirs, dep_munger)
             dep_munger.emit_dev_run_script(script_path, dep_dirs)
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         """ Execute any tests that we know how to run.  If they fail,
         raise an exception. """
         pass
@@ -543,7 +545,9 @@ if __name__ == "__main__":
             env=env,
         )
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         env = self._compute_env(install_dirs)
         ctest = path_search(env, "ctest")
         cmake = path_search(env, "cmake")
@@ -618,7 +622,7 @@ if __name__ == "__main__":
             retry = 0
 
         testpilot = path_search(env, "testpilot")
-        if testpilot:
+        if testpilot and not no_testpilot:
             buck_test_info = list_tests()
             buck_test_info_name = os.path.join(self.build_dir, ".buck-test-info.json")
             with open(buck_test_info_name, "w") as f:
@@ -709,12 +713,17 @@ if __name__ == "__main__":
                 retcode = self._run_cmd(
                     args, env=env, use_cmd_prefix=use_cmd_prefix, allow_fail=True
                 )
+
                 if retcode == 0:
                     break
                 if count == 0:
                     # Only add this option in the second run.
                     args += ["--rerun-failed"]
                 count += 1
+            if retcode != 0:
+                # Allow except clause in getdeps.main to catch and exit gracefully
+                # This allows non-testpilot runs to fail through the same logic as failed testpilot runs, which may become handy in case if post test processing is needed in the future
+                raise subprocess.CalledProcessError(retcode, args)
 
 
 class NinjaBootstrap(BuilderBase):
@@ -799,19 +808,30 @@ class Boost(BuilderBase):
         self.b2_args = b2_args
 
     def _build(self, install_dirs, reconfigure):
+        env = self._compute_env(install_dirs)
         linkage = ["static"]
         if self.build_opts.is_windows():
             linkage.append("shared")
+
+        args = []
+        if self.build_opts.is_darwin():
+            clang = subprocess.check_output(["xcrun", "--find", "clang"])
+            user_config = os.path.join(self.build_dir, "project-config.jam")
+            with open(user_config, "w") as jamfile:
+                jamfile.write("using clang : : %s ;\n" % clang.decode().strip())
+            args.append("--user-config=%s" % user_config)
+
         for link in linkage:
-            args = []
             if self.build_opts.is_windows():
                 bootstrap = os.path.join(self.src_dir, "bootstrap.bat")
-                self._run_cmd([bootstrap], cwd=self.src_dir)
+                self._run_cmd([bootstrap], cwd=self.src_dir, env=env)
                 args += ["address-model=64"]
             else:
                 bootstrap = os.path.join(self.src_dir, "bootstrap.sh")
                 self._run_cmd(
-                    [bootstrap, "--prefix=%s" % self.inst_dir], cwd=self.src_dir
+                    [bootstrap, "--prefix=%s" % self.inst_dir],
+                    cwd=self.src_dir,
+                    env=env,
                 )
 
             b2 = os.path.join(self.src_dir, "b2")
@@ -835,6 +855,7 @@ class Boost(BuilderBase):
                     "install",
                 ],
                 cwd=self.src_dir,
+                env=env,
             )
 
 
@@ -1055,7 +1076,9 @@ incremental = false
         )
         self.recreate_dir(build_source_dir, os.path.join(self.inst_dir, "source"))
 
-    def run_tests(self, install_dirs, schedule_type, owner, test_filter, retry):
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
         if test_filter:
             args = ["--", test_filter]
         else:

@@ -17,10 +17,14 @@
 #include <folly/experimental/symbolizer/Dwarf.h>
 
 #include <array>
+#include <type_traits>
+
+#include <folly/Optional.h>
+#include <folly/portability/Config.h>
+
+#if FOLLY_HAVE_DWARF
 
 #include <dwarf.h>
-#include <folly/Optional.h>
-#include <type_traits>
 
 namespace folly {
 namespace symbolizer {
@@ -1357,3 +1361,5 @@ bool Dwarf::LineNumberVM::findAddress(
 
 } // namespace symbolizer
 } // namespace folly
+
+#endif // FOLLY_HAVE_DWARF

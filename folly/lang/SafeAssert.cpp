@@ -19,7 +19,8 @@
 #include <algorithm>
 
 #include <folly/Conv.h>
-#include <folly/FileUtil.h>
+#include <folly/detail/FileUtilDetail.h>
+#include <folly/portability/Unistd.h>
 
 namespace folly {
 namespace detail {
@@ -442,10 +443,13 @@ constexpr std::pair<int, const char*> errors[] = {
 #undef FOLLY_DETAIL_ERROR
 
 void writeStderr(const char* s, size_t len) {
-  writeFull(STDERR_FILENO, s, len);
+  fileutil_detail::wrapFull(write, STDERR_FILENO, const_cast<char*>(s), len);
 }
 void writeStderr(const char* s) {
   writeStderr(s, strlen(s));
+}
+void flushStderr() {
+  fileutil_detail::wrapNoInt(fsync, STDERR_FILENO);
 }
 
 } // namespace
@@ -466,7 +470,7 @@ void assertionFailure(
   writeStderr("\nLine: ");
   char buf[20];
   uint32_t n = uint64ToBufferUnsafe(line, buf);
-  writeFull(STDERR_FILENO, buf, n);
+  writeStderr(buf, n);
   writeStderr("\nFunction: ");
   writeStderr(function);
   if (error) {
@@ -475,7 +479,7 @@ void assertionFailure(
     // for simplicity, do not attempt to mimic strerror printing descriptions
     writeStderr("\nError: ");
     n = uint64ToBufferUnsafe(error, buf);
-    writeFull(STDERR_FILENO, buf, n);
+    writeStderr(buf, n);
     writeStderr(" (");
     // the list is not required to be sorted; but the program is about to die
     auto const pred = [=](auto const e) { return e.first == error; };
@@ -484,7 +488,7 @@ void assertionFailure(
     writeStderr(")");
   }
   writeStderr("\n");
-  fsyncNoInt(STDERR_FILENO);
+  flushStderr();
   abort();
 }
 

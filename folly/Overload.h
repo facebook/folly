@@ -19,6 +19,9 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
+
 /**
  * folly implementation of `std::overload` like functionality
  *
@@ -64,15 +67,33 @@ decltype(auto) overload(Cases&&... cases) {
       std::forward<Cases>(cases)...};
 }
 
+namespace overload_detail {
+FOLLY_CREATE_MEMBER_INVOKER(valueless_by_exception, valueless_by_exception);
+FOLLY_CREATE_FREE_INVOKER(visit, visit);
+FOLLY_CREATE_FREE_INVOKER(apply_visitor, apply_visitor);
+} // namespace overload_detail
+
 /*
  * Match `Variant` with one of the `Cases`
  *
  * Note: you can also use `[] (const auto&) {...}` as default case
  *
+ * Selects `visit` if `v.valueless_by_exception()` available and the call to
+ * `visit` is valid (e.g. `std::variant`). Otherwise, selects `apply_visitor`
+ * (e.g. `boost::variant`, `folly::DiscriminatedPtr`).
  */
 template <typename Variant, typename... Cases>
 decltype(auto) variant_match(Variant&& variant, Cases&&... cases) {
-  return apply_visitor(
+  using invoker = std::conditional_t<
+      folly::Conjunction<
+          is_invocable<overload_detail::valueless_by_exception, Variant>,
+          is_invocable<
+              overload_detail::visit,
+              decltype(overload(std::forward<Cases>(cases)...)),
+              Variant>>::value,
+      overload_detail::visit,
+      overload_detail::apply_visitor>;
+  return invoker{}(
       overload(std::forward<Cases>(cases)...), std::forward<Variant>(variant));
 }
 

@@ -187,6 +187,7 @@ THOUGHTS:
 #include <folly/lang/Pretty.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
+#include <folly/test/TestUtils.h>
 
 // We use some pre-processor magic to auto-generate setup and destruct code,
 // but it also means we have some parameters that may not be used.
@@ -2380,6 +2381,12 @@ STL_TEST(
     a,
     p,
     t) {
+  if (folly::kIsSanitizeThread) {
+    // This test is too slow when running under TSAN that it times out.
+    // There's little value of running under TSAN as this test is
+    // single-threaded.
+    SKIP();
+  }
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
   int tval = convertToInt(t);
@@ -2400,6 +2407,12 @@ STL_TEST(
     a,
     p,
     t) {
+  if (folly::kIsSanitizeThread) {
+    // This test is too slow when running under TSAN that it times out.
+    // There's little value of running under TSAN as this test is
+    // single-threaded.
+    SKIP();
+  }
   // rvalue-references cannot have their address checked for aliased inserts
   if (a.data() <= addressof(t) && addressof(t) < a.data() + a.size()) {
     return;
@@ -2425,6 +2438,12 @@ STL_TEST(
     p,
     n,
     t) {
+  if (folly::kIsSanitizeThread) {
+    // This test is too slow when running under TSAN that it times out.
+    // There's little value of running under TSAN as this test is
+    // single-threaded.
+    SKIP();
+  }
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
   int tval = convertToInt(t);
@@ -2473,6 +2492,12 @@ STL_TEST(
     p,
     i,
     j) {
+  if (folly::kIsSanitizeThread) {
+    // This test is too slow when running under TSAN that it times out.
+    // There's little value of running under TSAN as this test is
+    // single-threaded.
+    SKIP();
+  }
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
 
@@ -2504,6 +2529,12 @@ STL_TEST(
     p,
     i,
     j) {
+  if (folly::kIsSanitizeThread) {
+    // This test is too slow when running under TSAN that it times out.
+    // There's little value of running under TSAN as this test is
+    // single-threaded.
+    SKIP();
+  }
   DataState<Vector> dsa(a);
   int idx = distance(a.begin(), p);
 

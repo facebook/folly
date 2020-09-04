@@ -22,6 +22,8 @@
 #include <memory>
 #include <type_traits>
 
+#include <folly/Portability.h>
+
 namespace folly {
 
 class reentrant_allocator_options {
@@ -68,6 +70,10 @@ class reentrant_allocator_base {
 
   void* allocate(std::size_t n, std::size_t a) noexcept;
   void deallocate(void* p, std::size_t n) noexcept;
+
+  std::size_t max_size() const noexcept {
+    return std::numeric_limits<std::size_t>::max();
+  }
 
   friend bool operator==(
       reentrant_allocator_base const& a,
@@ -123,32 +129,6 @@ class reentrant_allocator_base {
   meta_t* meta_{nullptr};
 };
 
-template <typename T>
-class reentrant_allocator_base_non_void : public reentrant_allocator_base {
- private:
-  using base = reentrant_allocator_base;
-
- public:
-  using base::base;
-
-  /* implicit */ reentrant_allocator_base_non_void(
-      reentrant_allocator_base const& that) noexcept
-      : base{that} {}
-
-  T* address(T& v) const {
-    return std::addressof(v);
-  }
-  T const* address(T const& v) const {
-    return std::addressof(v);
-  }
-};
-
-template <typename T>
-using reentrant_allocator_base_for = std::conditional_t<
-    std::is_void<T>::value,
-    reentrant_allocator_base,
-    reentrant_allocator_base_non_void<T>>;
-
 } // namespace detail
 
 //  reentrant_allocator
@@ -175,12 +155,18 @@ using reentrant_allocator_base_for = std::conditional_t<
 //  * The instances of std::atomic over size_t and pointer types are lock-free
 //    and operations on them are async-signal-safe.
 template <typename T>
-class reentrant_allocator : private detail::reentrant_allocator_base_for<T> {
+class reentrant_allocator : private detail::reentrant_allocator_base {
  private:
   template <typename>
   friend class reentrant_allocator;
 
-  using base = detail::reentrant_allocator_base_for<T>;
+  using base = detail::reentrant_allocator_base;
+
+  template <typename S>
+  using if_is_not_void = std::enable_if_t<!std::is_void<S>::value, int>;
+
+  template <typename S>
+  using undeducible = std::enable_if_t<true, S>;
 
  public:
   using value_type = T;
@@ -199,19 +185,58 @@ class reentrant_allocator : private detail::reentrant_allocator_base_for<T> {
   using base::base;
 
   template <typename U, std::enable_if_t<!std::is_same<U, T>::value, int> = 0>
-  /* implicit */ reentrant_allocator(
+  FOLLY_ERASE /* implicit */ reentrant_allocator(
       reentrant_allocator<U> const& that) noexcept
       : base{that} {}
 
-  T* allocate(std::size_t n) {
+  //  The following members make use of a few clever tricks in order to match
+  //  the availabilities of the corresponding members of std::allocator:
+  //  * allocate
+  //  * deallocate
+  //  * max_size
+  //  * address
+  //
+  //  The clever tricks include:
+  //  * typename... to make it impossible for call-sites to override the
+  //    defaults for the following template params.
+  //  * typename S = T to enable member SFINAE over S since T is not a member
+  //    template param and therefore SFINAE over T is not possible.
+  //  * if_is_not_void<S> = 0 to enable members only for non-void instances.
+  //    A method being enabled when C is shorthand for the method participating
+  //    in overload resolution when C.
+  //  * undeducible<S>& to enforce that S, a member template param defaulted to
+  //    T, is not deducible from the template arg and therefore must only be T.
+
+  //  allocate
+  template <typename..., typename S = T, if_is_not_void<S> = 0>
+  FOLLY_NODISCARD FOLLY_ERASE T* allocate(std::size_t n) {
     return static_cast<T*>(base::allocate(n * sizeof(T), alignof(T)));
   }
-  void deallocate(T* p, std::size_t n) {
+
+  //  deallocate
+  template <typename..., typename S = T, if_is_not_void<S> = 0>
+  FOLLY_ERASE void deallocate(T* p, std::size_t n) {
     base::deallocate(p, n * sizeof(T));
   }
 
-  std::size_t max_size() const {
-    return std::numeric_limits<std::size_t>::max();
+  //  max_size
+  //
+  //  Deprecated in C++17. Removed in C++20.
+  template <typename..., typename S = T, if_is_not_void<S> = 0>
+  FOLLY_ERASE std::size_t max_size() const noexcept {
+    return base::max_size() / sizeof(T);
+  }
+
+  //  address
+  //
+  //  Deprecated in C++17. Removed in C++20.
+  template <typename..., typename S = T>
+  FOLLY_ERASE T* address(undeducible<S>& v) const noexcept {
+    return std::addressof(v);
+  }
+  template <typename..., typename S = T>
+  FOLLY_ERASE T const* address(undeducible<S> const& v) const noexcept {
+    return std::addressof(v);
   }
 
   template <typename A, typename B>
@@ -225,14 +250,14 @@ class reentrant_allocator : private detail::reentrant_allocator_base_for<T> {
 };
 
 template <typename A, typename B>
-bool operator==(
+FOLLY_ERASE bool operator==(
     reentrant_allocator<A> const& a,
     reentrant_allocator<B> const& b) noexcept {
   using base = detail::reentrant_allocator_base;
   return static_cast<base const&>(a) == static_cast<base const&>(b);
 }
 template <typename A, typename B>
-bool operator!=(
+FOLLY_ERASE bool operator!=(
     reentrant_allocator<A> const& a,
     reentrant_allocator<B> const& b) noexcept {
   using base = detail::reentrant_allocator_base;

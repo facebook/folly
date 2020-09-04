@@ -419,10 +419,13 @@ void SingletonVault::startShutdownTimer() {
   for (auto& logMessage : shutdownLog_.copy()) {
     shutdownLog += logMessage + "\n";
   }
-  LOG(FATAL) << "Failed to complete shutdown within "
-             << std::chrono::milliseconds(shutdownTimeout_).count()
-             << "ms. Shutdown log:\n"
-             << shutdownLog;
+
+  auto msg = folly::to<std::string>(
+      "Failed to complete shutdown within ",
+      std::chrono::milliseconds(shutdownTimeout_).count(),
+      "ms. Shutdown log:\n",
+      shutdownLog);
+  folly::terminate_with<std::runtime_error>(msg);
 }
 
 } // namespace folly

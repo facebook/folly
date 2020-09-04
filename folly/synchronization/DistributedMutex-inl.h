@@ -873,7 +873,8 @@ std::uint64_t publish(
   // passes.  So we defer time publishing to the point when the current thread
   // gets preempted
   auto current = time();
-  if ((current - previous) >= kScheduledAwaySpinThreshold) {
+  if (previous != decltype(time())::zero() &&
+      (current - previous) >= kScheduledAwaySpinThreshold) {
     shouldPublish = true;
   }
   previous = current;
@@ -906,7 +907,7 @@ template <typename Waiter>
 bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
   auto spins = std::uint64_t{0};
   auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
-  auto previous = time();
+  auto previous = decltype(time())::zero();
   auto shouldPublish = false;
   while (true) {
     auto signal = publish(spins++, shouldPublish, previous, waiter, waitMode);

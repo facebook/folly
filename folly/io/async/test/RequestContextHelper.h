@@ -31,14 +31,18 @@ class TestData : public RequestData {
 
   void onSet() override {
     set_++;
+    onSetRctx = RequestContext::get();
   }
 
   void onUnset() override {
     unset_++;
+    onUnSetRctx = RequestContext::get();
   }
 
   int set_ = 0, unset_ = 0;
   int data_;
+  RequestContext* onSetRctx = nullptr;
+  RequestContext* onUnSetRctx = nullptr;
 };
 
 } // namespace folly

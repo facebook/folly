@@ -31,6 +31,9 @@ static folly::coro::Task<int> makeTask() {
 static folly::coro::AsyncGenerator<int> makeGen() {
   co_yield 42;
 }
+static folly::coro::Task<void> makeVoidTask() {
+  co_return;
+}
 
 TEST(FutureUtilTest, ToTask) {
   EXPECT_EQ(folly::coro::blockingWait(folly::coro::toTask(makeTask())), 42);
@@ -100,5 +103,13 @@ TEST(FutureUtilTest, ToFuture) {
   baton.post();
   ex.drain();
   EXPECT_TRUE(fut3.isReady());
+}
+
+TEST(FutureUtilTest, VoidRoundtrip) {
+  folly::coro::Task<void> task = makeVoidTask();
+  folly::SemiFuture<folly::Unit> semi =
+      folly::coro::toSemiFuture(std::move(task));
+  task = folly::coro::toTask(std::move(semi));
+  folly::coro::blockingWait(std::move(task));
 }
 #endif

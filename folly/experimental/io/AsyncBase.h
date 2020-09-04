@@ -67,6 +67,10 @@ class AsyncBaseOp {
     pread(fd, range.begin(), range.size(), start);
   }
   virtual void preadv(int fd, const iovec* iov, int iovcnt, off_t start) = 0;
+  virtual void
+  pread(int fd, void* buf, size_t size, off_t start, int /*buf_index*/) {
+    pread(fd, buf, size, start);
+  }
 
   /**
    * Initiate a write request.
@@ -76,6 +80,10 @@ class AsyncBaseOp {
     pwrite(fd, range.begin(), range.size(), start);
   }
   virtual void pwritev(int fd, const iovec* iov, int iovcnt, off_t start) = 0;
+  virtual void
+  pwrite(int fd, const void* buf, size_t size, off_t start, int /*buf_index*/) {
+    pwrite(fd, buf, size, start);
+  }
 
   // we support only these subclasses
   virtual AsyncIOOp* getAsyncIOOp() = 0;
@@ -234,6 +242,11 @@ class AsyncBase {
    */
   void submit(Op* op);
 
+  /**
+   * Submit a range of ops for execution
+   */
+  int submit(Range<Op**> ops);
+
  protected:
   void complete(Op* op, ssize_t result) {
     op->complete(result);
@@ -247,9 +260,10 @@ class AsyncBase {
     return init_.load(std::memory_order_relaxed);
   }
 
-  void decrementPending();
+  void decrementPending(size_t num = 1);
   virtual void initializeContext() = 0;
   virtual int submitOne(AsyncBase::Op* op) = 0;
+  virtual int submitRange(Range<AsyncBase::Op**> ops) = 0;
 
   enum class WaitType { COMPLETE, CANCEL };
   virtual Range<AsyncBase::Op**> doWait(

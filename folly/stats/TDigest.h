@@ -113,7 +113,7 @@ class TDigest {
   double estimateQuantile(double q) const;
 
   double mean() const {
-    return count_ ? sum_ / count_ : 0;
+    return count_ > 0 ? sum_ / count_ : 0;
   }
 
   double sum() const {

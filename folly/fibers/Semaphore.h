@@ -72,6 +72,12 @@ class Semaphore {
    */
   bool try_wait(Waiter& waiter);
 
+  /**
+   * If the semaphore has capacity, removes a token and returns true. Otherwise
+   * returns false and leaves the semaphore unchanged.
+   */
+  bool try_wait();
+
 #if FOLLY_HAS_COROUTINES
 
   /*

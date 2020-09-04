@@ -16,7 +16,12 @@
 
 #pragma once
 
-#include <folly/container/detail/F14IntrinsicsAvailability.h>
+#include <algorithm>
+#include <type_traits>
+#include <unordered_set>
+
+#include <folly/container/detail/F14Table.h>
+#include <folly/container/detail/Util.h>
 
 /**
  * This file is intended to be included only by F14Set.h. It contains fallback
@@ -25,9 +30,6 @@
  */
 
 #if !FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
-
-#include <algorithm>
-#include <unordered_set>
 
 namespace folly {
 
@@ -116,7 +118,7 @@ class F14BasicSet
               return std::make_pair(it, false);
             }
             auto rv = Super::emplace(std::forward<decltype(key)>(key));
-            FOLLY_SAFE_CHECK(
+            FOLLY_SAFE_DCHECK(
                 rv.second, "post-find emplace should always insert");
             return rv;
           } else {
@@ -150,10 +152,29 @@ class F14BasicSet
   template <typename K>
   struct BottomKeyEqual {
     [[noreturn]] bool operator()(K const&, K const&) const {
-      FOLLY_SAFE_CHECK(false, "bucket should not invoke key equality");
       assume_unreachable();
     }
   };
+
+  template <typename Iter, typename LocalIter>
+  static std::
+      enable_if_t<std::is_constructible<Iter, LocalIter const&>::value, Iter>
+      fromLocal(LocalIter const& src, int = 0) {
+    return Iter(src);
+  }
+
+  template <typename Iter, typename LocalIter>
+  static std::
+      enable_if_t<!std::is_constructible<Iter, LocalIter const&>::value, Iter>
+      fromLocal(LocalIter const& src) {
+    Iter dst;
+    static_assert(sizeof(dst) <= sizeof(src), "");
+    std::memcpy(std::addressof(dst), std::addressof(src), sizeof(dst));
+    FOLLY_SAFE_CHECK(
+        std::addressof(*src) == std::addressof(*dst),
+        "ABI-assuming local_iterator to iterator conversion failed");
+    return dst;
+  }
 
   template <typename Iter, typename Self, typename K>
   static Iter findImpl(Self& self, K const& key) {
@@ -171,13 +192,7 @@ class F14BasicSet
     auto e = self.end(slot);
     while (b != e) {
       if (self.key_eq()(key, *b)) {
-        Iter it;
-        static_assert(sizeof(it) <= sizeof(b), "");
-        std::memcpy(&it, &b, sizeof(it));
-        FOLLY_SAFE_CHECK(
-            std::addressof(*b) == std::addressof(*it),
-            "ABI-assuming local_iterator to iterator conversion failed");
-        return it;
+        return fromLocal<Iter>(b);
       }
       ++b;
     }

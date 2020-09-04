@@ -63,6 +63,9 @@ class AsyncScope {
   // completes before calling the destructor.
   ~AsyncScope();
 
+  // Query the number of tasks added to the scope that have not yet completed.
+  std::size_t remaining() const noexcept;
+
   // Start the specified task/awaitable by co_awaiting it.
   //
   // Exceptions
@@ -139,6 +142,11 @@ inline AsyncScope::~AsyncScope() {
   CHECK(
       (!anyTasksStarted_.load(std::memory_order_relaxed) || joined_) &&
       "cleanup() not yet complete");
+}
+
+inline std::size_t AsyncScope::remaining() const noexcept {
+  const std::size_t count = barrier_.remaining();
+  return count > 1 ? (count - 1) : 0;
 }
 
 template <typename Awaitable>

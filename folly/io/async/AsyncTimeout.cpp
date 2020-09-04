@@ -17,7 +17,6 @@
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventUtil.h>
-#include <folly/io/async/Request.h>
 #include <folly/net/NetworkSocket.h>
 
 #include <glog/logging.h>
@@ -87,21 +86,27 @@ AsyncTimeout::~AsyncTimeout() {
   cancelTimeout();
 }
 
-bool AsyncTimeout::scheduleTimeout(TimeoutManager::timeout_type timeout) {
+bool AsyncTimeout::scheduleTimeout(
+    TimeoutManager::timeout_type timeout,
+    std::shared_ptr<RequestContext>&& rctx) {
   assert(timeoutManager_ != nullptr);
-  context_ = RequestContext::saveContext();
+  context_ = std::move(rctx);
   return timeoutManager_->scheduleTimeout(this, timeout);
 }
 
 bool AsyncTimeout::scheduleTimeoutHighRes(
-    TimeoutManager::timeout_type_high_res timeout) {
+    TimeoutManager::timeout_type_high_res timeout,
+    std::shared_ptr<RequestContext>&& rctx) {
   assert(timeoutManager_ != nullptr);
-  context_ = RequestContext::saveContext();
+  context_ = std::move(rctx);
   return timeoutManager_->scheduleTimeoutHighRes(this, timeout);
 }
 
-bool AsyncTimeout::scheduleTimeout(uint32_t milliseconds) {
-  return scheduleTimeout(TimeoutManager::timeout_type(milliseconds));
+bool AsyncTimeout::scheduleTimeout(
+    uint32_t milliseconds,
+    std::shared_ptr<RequestContext>&& rctx) {
+  return scheduleTimeout(
+      TimeoutManager::timeout_type(milliseconds), std::move(rctx));
 }
 
 void AsyncTimeout::cancelTimeout() {

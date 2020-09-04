@@ -339,7 +339,7 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
       "undefined behavior in opt builds. Please fix immediately. For the "
       "common case of an inner function that needs to do some synchronous "
       "computation on an event-base, replace getEventBase() by a new, "
-      "stack-allocated EvenBase.";
+      "stack-allocated EventBase.";
 
   LOG_IF(DFATAL, invokingLoop_) << message;
 

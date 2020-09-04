@@ -81,6 +81,7 @@ class AsyncIO : public AsyncBase {
  private:
   void initializeContext() override;
   int submitOne(AsyncBase::Op* op) override;
+  int submitRange(Range<AsyncBase::Op**> ops) override;
 
   Range<AsyncBase::Op**> doWait(
       WaitType type,

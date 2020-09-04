@@ -22,6 +22,7 @@
 #include <vector>
 
 #include <folly/Utility.h>
+#include <folly/functional/Invoke.h>
 #include <folly/portability/GTest.h>
 
 class ReentrantAllocatorTest : public testing::Test {};
@@ -109,4 +110,35 @@ TEST_F(ReentrantAllocatorTest, stress) {
   for (auto& th : threads) {
     th.join();
   }
+}
+
+namespace member_invoker {
+
+namespace {
+
+FOLLY_CREATE_MEMBER_INVOKER(allocate, allocate);
+FOLLY_CREATE_MEMBER_INVOKER(deallocate, deallocate);
+FOLLY_CREATE_MEMBER_INVOKER(max_size, max_size);
+FOLLY_CREATE_MEMBER_INVOKER(address, address);
+
+} // namespace
+
+} // namespace member_invoker
+
+TEST_F(ReentrantAllocatorTest, invocability) {
+  namespace m = member_invoker;
+  using av = folly::reentrant_allocator<void>;
+  using ac = folly::reentrant_allocator<char>;
+
+  EXPECT_FALSE((folly::is_invocable_v<m::allocate, av, size_t>));
+  EXPECT_FALSE((folly::is_invocable_v<m::deallocate, av, void*, size_t>));
+  EXPECT_FALSE((folly::is_invocable_v<m::max_size, av>));
+
+  EXPECT_TRUE((folly::is_invocable_r_v<char*, m::allocate, ac, size_t>));
+  EXPECT_TRUE(
+      (folly::is_invocable_r_v<void, m::deallocate, ac, char*, size_t>));
+  EXPECT_TRUE((folly::is_invocable_r_v<size_t, m::max_size, ac>));
+  EXPECT_TRUE((folly::is_invocable_r_v<char*, m::address, ac, char&>));
+  EXPECT_TRUE(
+      (folly::is_invocable_r_v<char const*, m::address, ac, char const&>));
 }

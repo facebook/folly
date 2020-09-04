@@ -865,7 +865,7 @@ class alignas(64) SIMDTable {
       FOLLY_SAFE_DCHECK(
           index < kCapacity && (tag == 0x0 || (tag >= 0x80 && tag <= 0xff)),
           "");
-      item(index).store(node, std::memory_order_relaxed);
+      item(index).store(node, std::memory_order_release);
       setTag(index, tag);
     }
 
@@ -1441,7 +1441,7 @@ class alignas(64) SIMDTable {
       auto hits = chunk->tagMatchIter(hp.second);
       while (hits.hasNext()) {
         tag_idx = hits.next();
-        Node* node = chunk->item(tag_idx).load(std::memory_order_relaxed);
+        Node* node = chunk->item(tag_idx).load(std::memory_order_acquire);
         if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
           chunk_idx = (chunk_idx & (ccount - 1));
           return node;
@@ -1822,10 +1822,9 @@ class alignas(64) ConcurrentHashMapSegment {
     return erase_internal(key, nullptr, [](const ValueType&) { return true; });
   }
 
-  size_type erase_if_equal(const key_type& key, const ValueType& expected) {
-    return erase_internal(key, nullptr, [&expected](const ValueType& v) {
-      return v == expected;
-    });
+  template <typename Predicate>
+  size_type erase_key_if(const key_type& key, Predicate&& predicate) {
+    return erase_internal(key, nullptr, std::forward<Predicate>(predicate));
   }
 
   template <typename MatchFunc>

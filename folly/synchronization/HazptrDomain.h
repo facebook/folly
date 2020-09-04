@@ -307,7 +307,7 @@ class hazptr_domain {
       Atom<uint64_t>& sync_time) {
     int rcount = rlist.count();
     if (rcount > kListTooLarge) {
-      warning_list_too_large(rlist, lock, rcount);
+      hazptr_warning_list_too_large(rlist, lock, rcount);
     }
     if (!(lock && rlist.check_lock()) &&
         (rlist.check_threshold_try_zero_count(threshold()) ||
@@ -319,17 +319,6 @@ class hazptr_domain {
       } else {
         do_reclamation(rlist, lock);
       }
-    }
-  }
-
-  /** warning_list_too_large **/
-  FOLLY_NOINLINE void
-  warning_list_too_large(RetiredList& rlist, bool lock, int rcount) {
-    static std::atomic<uint64_t> warning_count{0};
-    if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING) << "Hazptr retired list too large:"
-                   << " rlist=" << &rlist << " lock=" << lock
-                   << " rcount=" << rcount;
     }
   }
 
@@ -655,6 +644,16 @@ class hazptr_domain {
     }
   }
 
+  FOLLY_EXPORT FOLLY_NOINLINE void
+  hazptr_warning_list_too_large(RetiredList& rlist, bool lock, int rcount) {
+    static std::atomic<uint64_t> warning_count{0};
+    if ((warning_count++ % 10000) == 0) {
+      LOG(WARNING) << "Hazptr retired list too large:"
+                   << " rlist=" << &rlist << " lock=" << lock
+                   << " rcount=" << rcount;
+    }
+  }
+
   FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_executor_backlog(
       int backlog) {
     static std::atomic<uint64_t> warning_count{0};
@@ -671,7 +670,7 @@ class hazptr_domain {
       LOG(WARNING)
           << "Using the default inline executor for asynchronous reclamation "
              "may be susceptible to deadlock if the current thread happens to "
-             "hold a resource needed by the deleter of a reclaimbale object";
+             "hold a resource needed by the deleter of a reclaimable object";
     }
   }
 }; // namespace folly

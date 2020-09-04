@@ -1076,13 +1076,10 @@ TYPED_TEST_P(EventBaseTest, RescheduleTimeout) {
   t2.scheduleTimeout(30);
   t3.scheduleTimeout(30);
 
-  auto f = static_cast<bool (AsyncTimeout::*)(uint32_t)>(
-      &AsyncTimeout::scheduleTimeout);
-
   // after 10ms, reschedule t2 to run sooner than originally scheduled
-  eb.tryRunAfterDelay(std::bind(f, &t2, 10), 10);
+  eb.tryRunAfterDelay([&] { t2.scheduleTimeout(10); }, 10);
   // after 10ms, reschedule t3 to run later than originally scheduled
-  eb.tryRunAfterDelay(std::bind(f, &t3, 40), 10);
+  eb.tryRunAfterDelay([&] { t3.scheduleTimeout(40); }, 10);
 
   eb.loop();
   TimePoint end;
