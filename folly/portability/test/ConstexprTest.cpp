@@ -23,17 +23,22 @@ using folly::constexpr_strlen;
 using folly::detail::constexpr_strcmp_fallback;
 using folly::detail::constexpr_strlen_fallback;
 
+template <typename, typename>
+struct static_assert_same;
+template <typename T>
+struct static_assert_same<T, T> {};
+
 TEST(ConstexprTest, constexpr_strlen_cstr) {
   constexpr auto v = "hello";
   {
     constexpr auto a = constexpr_strlen(v);
+    void(static_assert_same<const size_t, decltype(a)>{});
     EXPECT_EQ(5, a);
-    EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
   }
   {
     constexpr auto a = constexpr_strlen_fallback(v);
+    void(static_assert_same<const size_t, decltype(a)>{});
     EXPECT_EQ(5, a);
-    EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
   }
 }
 
@@ -41,13 +46,13 @@ TEST(ConstexprTest, constexpr_strlen_ints) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   {
     constexpr auto a = constexpr_strlen(v);
+    void(static_assert_same<const size_t, decltype(a)>{});
     EXPECT_EQ(3, a);
-    EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
   }
   {
     constexpr auto a = constexpr_strlen_fallback(v);
+    void(static_assert_same<const size_t, decltype(a)>{});
     EXPECT_EQ(3, a);
-    EXPECT_TRUE((std::is_same<const size_t, decltype(a)>::value));
   }
 }
 
