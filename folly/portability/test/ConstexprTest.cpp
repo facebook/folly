@@ -60,9 +60,12 @@ TEST(ConstexprTest, constexpr_strcmp_ints) {
   constexpr int v[] = {5, 3, 4, 0, 7};
   constexpr int v1[] = {6, 4};
   static_assert(constexpr_strcmp(v1, v) > 0, "constexpr_strcmp is broken");
+  static_assert(constexpr_strcmp(v, v1) < 0, "constexpr_strcmp is broken");
   static_assert(constexpr_strcmp(v, v) == 0, "constexpr_strcmp is broken");
   static_assert(
       constexpr_strcmp_fallback(v1, v) > 0, "constexpr_strcmp is broken");
+  static_assert(
+      constexpr_strcmp_fallback(v, v1) < 0, "constexpr_strcmp is broken");
   static_assert(
       constexpr_strcmp_fallback(v, v) == 0, "constexpr_strcmp is broken");
 }
