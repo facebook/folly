@@ -67,7 +67,7 @@ void* StaticSingletonManagerWithRtti::create_(Arg& arg) noexcept(Noexcept) {
 }
 
 template void* StaticSingletonManagerWithRtti::create_<false>(Arg& arg);
-template void* StaticSingletonManagerWithRtti::create_<true>(Arg& arg);
+template void* StaticSingletonManagerWithRtti::create_<true>(Arg& arg) noexcept;
 
 } // namespace detail
 } // namespace folly
