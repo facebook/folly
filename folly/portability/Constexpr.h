@@ -83,6 +83,7 @@ constexpr int constexpr_strcmp_internal(
   while (*s1 && *s1 == *s2) {
     ++s1, ++s2;
   }
+  // NOTE: `int(*s1 - *s2)` may cause signed arithmetics overflow which is UB.
   return int(*s2 < *s1) - int(*s1 < *s2);
 }
 
