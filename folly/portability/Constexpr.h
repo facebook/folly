@@ -43,14 +43,15 @@ namespace detail {
 // yields a compile-time constant.
 template <
     typename Char,
-    size_t = FOLLY_DETAIL_STRLEN(static_cast<const Char*>(""))>
+    std::size_t = FOLLY_DETAIL_STRLEN(static_cast<const Char*>(""))>
 constexpr std::size_t constexpr_strlen_internal(const Char* s, int) noexcept {
   return FOLLY_DETAIL_STRLEN(s);
 }
 template <typename Char>
 constexpr std::size_t constexpr_strlen_internal(
     const Char* s,
-    std::size_t ret) noexcept {
+    unsigned) noexcept {
+  std::size_t ret = 0;
   while (*s++) {
     ++ret;
   }
@@ -58,8 +59,8 @@ constexpr std::size_t constexpr_strlen_internal(
 }
 
 template <typename Char>
-constexpr size_t constexpr_strlen_fallback(const Char* s) noexcept {
-  return constexpr_strlen_internal(s, (std::size_t)0);
+constexpr std::size_t constexpr_strlen_fallback(const Char* s) noexcept {
+  return constexpr_strlen_internal(s, 0u);
 }
 
 static_assert(
@@ -76,10 +77,8 @@ constexpr_strcmp_internal(const Char* s1, const Char* s2, int) noexcept {
   return FOLLY_DETAIL_STRCMP(s1, s2);
 }
 template <typename Char>
-constexpr int constexpr_strcmp_internal(
-    const Char* s1,
-    const Char* s2,
-    std::size_t) noexcept {
+constexpr int
+constexpr_strcmp_internal(const Char* s1, const Char* s2, unsigned) noexcept {
   while (*s1 && *s1 == *s2) {
     ++s1, ++s2;
   }
@@ -91,7 +90,7 @@ template <typename Char>
 constexpr int constexpr_strcmp_fallback(
     const Char* s1,
     const Char* s2) noexcept {
-  return constexpr_strcmp_internal(s1, s2, (std::size_t)0);
+  return constexpr_strcmp_internal(s1, s2, 0u);
 }
 
 #undef FOLLY_DETAIL_STRCMP
@@ -100,12 +99,12 @@ constexpr int constexpr_strcmp_fallback(
 } // namespace detail
 
 template <typename Char>
-constexpr size_t constexpr_strlen(const Char* s) noexcept {
-  return ::folly::detail::constexpr_strlen_internal(s, 0);
+constexpr std::size_t constexpr_strlen(const Char* s) noexcept {
+  return detail::constexpr_strlen_internal(s, 0);
 }
 
 template <typename Char>
 constexpr int constexpr_strcmp(const Char* s1, const Char* s2) noexcept {
-  return ::folly::detail::constexpr_strcmp_internal(s1, s2, 0);
+  return detail::constexpr_strcmp_internal(s1, s2, 0);
 }
 } // namespace folly
