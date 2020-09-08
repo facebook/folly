@@ -1732,6 +1732,31 @@ class Future : private futures::detail::FutureBase<T> {
   /// - `valid() == false`
   T get(HighResDuration dur) &&;
 
+  /// Blocks until the future is fulfilled. Returns the Try of the result
+  ///   (moved-out).
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - `valid() == false`
+  Try<T> getTry() &&;
+
+  /// Blocks until the future is fulfilled, or until `dur` elapses.
+  /// Returns the Try of the result (moved-out), or throws FutureTimeout
+  /// exception.
+  ///
+  /// Preconditions:
+  ///
+  /// - `valid() == true` (else throws FutureInvalid)
+  ///
+  /// Postconditions:
+  ///
+  /// - `valid() == false`
+  Try<T> getTry(HighResDuration dur) &&;
+
   /// Blocks until this Future is complete.
   ///
   /// Preconditions:
