@@ -553,7 +553,8 @@ bool Dwarf::findLocation(
           std::min<size_t>(
               Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size()) +
           1;
-      detail::CallLocation callLocations[size];
+      detail::CallLocation
+          callLocations[Dwarf::kMaxInlineLocationInfoPerFrame + 1];
       size_t numFound = 0;
       findInlinedSubroutineDieForAddress(
           cu,
