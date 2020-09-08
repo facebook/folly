@@ -85,6 +85,7 @@ struct FutureDAGTest : public testing::Test {
   struct TestNode {
     explicit TestNode(FutureDAGTest* test)
         : func([this, test] {
+            std::lock_guard<std::mutex> lock(test->orderMutex);
             test->order.push_back(handle);
             return Future<Unit>();
           }),
@@ -98,6 +99,7 @@ struct FutureDAGTest : public testing::Test {
   const std::shared_ptr<FutureDAG> dag =
       FutureDAG::create(getGlobalCPUExecutor());
   std::map<Handle, std::unique_ptr<TestNode>> nodes;
+  std::mutex orderMutex;
   std::vector<Handle> order;
 };
 
