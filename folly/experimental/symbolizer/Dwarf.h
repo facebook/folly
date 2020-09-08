@@ -138,6 +138,7 @@ class Dwarf {
       const detail::CompilationUnit& cu,
       const detail::Die& die,
       uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
       detail::Die& subprogram) const;
 
   /**
@@ -149,6 +150,7 @@ class Dwarf {
       const detail::Die& die,
       const LineNumberVM& lineVM,
       uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
       folly::Range<detail::CallLocation*> locations,
       size_t& numFound) const;
 
@@ -205,8 +207,11 @@ class Dwarf {
    * Check if the given address is in the range list at the given offset in
    * .debug_ranges.
    */
-  bool isAddrInRangeList(uint64_t address, size_t offset, uint8_t addrSize)
-      const;
+  bool isAddrInRangeList(
+      uint64_t address,
+      folly::Optional<uint64_t> baseAddr,
+      size_t offset,
+      uint8_t addrSize) const;
 
   const ElfFile* elf_;
   const folly::StringPiece debugInfo_; // .debug_info
