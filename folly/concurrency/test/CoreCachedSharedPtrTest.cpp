@@ -26,6 +26,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/portability/GTest.h>
 

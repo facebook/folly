@@ -19,7 +19,6 @@
 #include <array>
 #include <memory>
 
-#include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CacheLocality.h>
 #include <folly/container/Enumerate.h>
 #include <folly/synchronization/Hazptr.h>
@@ -55,7 +54,7 @@ class CoreCachedSharedPtr {
   }
 
   std::shared_ptr<T> get() const {
-    return slots_[AccessSpreader<>::current(kNumSlots)];
+    return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)];
   }
 
  private:
@@ -77,7 +76,7 @@ class CoreCachedWeakPtr {
   }
 
   std::weak_ptr<T> get() const {
-    return slots_[AccessSpreader<>::current(kNumSlots)];
+    return slots_[AccessSpreader<>::cachedCurrent(kNumSlots)];
   }
 
  private:
@@ -135,7 +134,7 @@ class AtomicCoreCachedSharedPtr {
     if (!slots) {
       return nullptr;
     }
-    return (slots->slots_)[AccessSpreader<>::current(kNumSlots)];
+    return (slots->slots_)[AccessSpreader<>::cachedCurrent(kNumSlots)];
   }
 
  private:
