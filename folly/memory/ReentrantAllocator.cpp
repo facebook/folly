@@ -89,14 +89,14 @@ void* reentrant_allocator_base::allocate(
   if (n >= meta_->large_size) {
     return reentrant_allocate(n);
   }
-  auto const block_size = meta_->block_size;
   //  small requests are handled from the shared arena list:
   //  * if the list is empty or the list head has insufficient space, c/x a new
-  //    list head, starting over on failure
+  //    list head, starting over
   //  * then c/x the list head size to the new size, starting over on failure
+  auto const block_size = meta_->block_size;
+  //  load head - non-const because used in c/x below
+  auto head = meta_->head.load(std::memory_order_acquire);
   while (true) {
-    //  load head - non-const because used in c/x below
-    auto head = meta_->head.load(std::memory_order_acquire);
     //  load size - non-const because used in c/x below
     //  size is where the prev allocation ends, if any
     auto size = head //
@@ -112,11 +112,12 @@ void* reentrant_allocator_base::allocate(
       auto const exchanged = meta_->head.compare_exchange_weak(
           head, newhead, std::memory_order_release, std::memory_order_relaxed);
       if (!exchanged) {
-        //  lost the race - munmap the new segment and start over
+        //  lost the race - munmap the new segment
         reentrant_deallocate(newhead, block_size);
-        continue;
       }
-      head = newhead;
+      //  start over, but optimistically with a suitable head
+      head = exchanged ? newhead : meta_->head.load(std::memory_order_acquire);
+      continue;
     }
     //  compute the new size and try to c/x it in to be the head segment size
     auto const newsize = offset + n;
