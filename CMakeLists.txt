@@ -439,7 +439,8 @@ configure_file(
 
 # Specify target to allow resolving generator expressions requiring
 # a target for CMake >=3.19. See #1414.
-if(CMAKE_VERSION VERSION_GREATER 3.18)
+# VERSION_GREATER_EQUAL isn't available before CMake 3.7.
+if(NOT CMAKE_VERSION VERSION_LESS 3.19)
   set(target_arg TARGET folly_deps)
 endif()
 
