@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/portability/Config.h>
+
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
 #ifdef FOLLY_USE_LIBSTDCPP
@@ -39,6 +41,7 @@ using std::make_shared;
 using std::memory_order;
 using std::memory_order_acq_rel;
 using std::memory_order_acquire;
+using std::memory_order_consume;
 using std::memory_order_relaxed;
 using std::memory_order_release;
 using std::memory_order_seq_cst;
@@ -64,6 +67,8 @@ static const char* memoryOrder(memory_order order) {
       return "relaxed";
     case memory_order_acquire:
       return "acquire";
+    case memory_order_consume:
+      return "consume";
     case memory_order_release:
       return "release";
     case memory_order_acq_rel:

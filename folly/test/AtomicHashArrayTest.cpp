@@ -24,6 +24,7 @@
 #include <folly/Memory.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GTest.h>
+#include <folly/portability/String.h>
 #include <folly/portability/SysMman.h>
 
 using namespace std;

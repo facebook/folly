@@ -41,12 +41,10 @@ extern "C" FOLLY_KEEP int* check() {
 }
 
 extern "C" FOLLY_KEEP void* check_throw() {
-  MayThrow<false> obj;
   return &createGlobal<MayThrow<false>, void>();
 }
 
 extern "C" FOLLY_KEEP void* check_nothrow() {
-  MayThrow<false> obj;
   return &createGlobal<MayThrow<true>, void>();
 }
 

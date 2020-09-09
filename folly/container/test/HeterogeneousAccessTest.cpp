@@ -34,22 +34,16 @@ using namespace folly;
 
 namespace {
 
-template <typename T, typename Enable = void>
-struct IsTransparent : std::false_type {};
-
-template <typename T>
-struct IsTransparent<T, void_t<typename T::is_transparent>> : std::true_type {};
-
 template <typename T>
 void checkTransparent() {
-  static_assert(IsTransparent<HeterogeneousAccessEqualTo<T>>::value, "");
-  static_assert(IsTransparent<HeterogeneousAccessHash<T>>::value, "");
+  static_assert(is_transparent_v<HeterogeneousAccessEqualTo<T>>, "");
+  static_assert(is_transparent_v<HeterogeneousAccessHash<T>>, "");
 }
 
 template <typename T>
 void checkNotTransparent() {
-  static_assert(!IsTransparent<HeterogeneousAccessEqualTo<T>>::value, "");
-  static_assert(!IsTransparent<HeterogeneousAccessHash<T>>::value, "");
+  static_assert(!is_transparent_v<HeterogeneousAccessEqualTo<T>>, "");
+  static_assert(!is_transparent_v<HeterogeneousAccessHash<T>>, "");
 }
 
 struct StringVector {

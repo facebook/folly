@@ -204,7 +204,12 @@ TEST(SmallLocks, PicoSpinLockThreadSanitizer) {
     {
       std::lock_guard<Lock> gb(b);
       EXPECT_DEATH(
-          [&]() { std::lock_guard<Lock> ga(a); }(),
+          [&]() {
+            std::lock_guard<Lock> ga(a);
+            // If halt_on_error is turned off for TSAN, then death would
+            // happen on exit, so give that a chance as well.
+            std::quick_exit(1);
+          }(),
           "Cycle in lock order graph");
     }
   }
@@ -431,7 +436,12 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
     {
       std::lock_guard<MicroSpinLock> gb(b);
       EXPECT_DEATH(
-          [&]() { std::lock_guard<MicroSpinLock> ga(a); }(),
+          [&]() {
+            std::lock_guard<MicroSpinLock> ga(a);
+            // If halt_on_error is turned off for TSAN, then death would
+            // happen on exit, so give that a chance as well.
+            std::quick_exit(1);
+          }(),
           "Cycle in lock order graph");
     }
   }
@@ -452,6 +462,9 @@ TEST(SmallLocksk, MicroSpinLockThreadSanitizer) {
           [&]() {
             std::lock_guard<MicroSpinLock> ga(
                 *reinterpret_cast<MicroSpinLock*>(&a));
+            // If halt_on_error is turned off for TSAN, then death would
+            // happen on exit, so give that a chance as well.
+            std::quick_exit(1);
           }(),
           "Cycle in lock order graph");
     }

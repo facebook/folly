@@ -91,5 +91,3 @@ void DigestBuilder<DigestT>::append(double value) {
 
 } // namespace detail
 } // namespace folly
-
-#include <folly/stats/detail/DigestBuilder-inl.h>

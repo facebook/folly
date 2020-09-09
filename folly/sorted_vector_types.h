@@ -238,11 +238,11 @@ Container&& as_sorted_unique(Container&& container, Compare const& comp) {
  * A sorted_vector_set is a container similar to std::set<>, but
  * implemented as a sorted array with std::vector<>.
  *
- * @param class T               Data type to store
- * @param class Compare         Comparison function that imposes a
+ * @tparam T               Data type to store
+ * @tparam Compare         Comparison function that imposes a
  *                              strict weak ordering over instances of T
- * @param class Allocator       allocation policy
- * @param class GrowthPolicy    policy object to control growth
+ * @tparam Allocator       allocation policy
+ * @tparam GrowthPolicy    policy object to control growth
  *
  * @author Aditya Agarwal <aditya@fb.com>
  * @author Akhil Wable    <akhil@fb.com>
@@ -758,12 +758,12 @@ using sorted_vector_set = folly::sorted_vector_set<
  * A sorted_vector_map is similar to a sorted_vector_set but stores
  * <key,value> pairs instead of single elements.
  *
- * @param class Key           Key type
- * @param class Value         Value type
- * @param class Compare       Function that can compare key types and impose
+ * @tparam Key           Key type
+ * @tparam Value         Value type
+ * @tparam Compare       Function that can compare key types and impose
  *                            a strict weak ordering over them.
- * @param class Allocator     allocation policy
- * @param class GrowthPolicy  policy object to control growth
+ * @tparam Allocator     allocation policy
+ * @tparam GrowthPolicy  policy object to control growth
  *
  * @author Aditya Agarwal <aditya@fb.com>
  * @author Akhil Wable    <akhil@fb.com>

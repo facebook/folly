@@ -2138,7 +2138,8 @@ void AsyncSocket::handleRead() noexcept {
       return;
     }
   }
-  if (readCallback_ != nullptr) {
+
+  if (readCallback_ && eventBase_ == originalEventBase) {
     // We might still have data in the socket.
     // (e.g. see comment in AsyncSSLSocket::checkForImmediateRead)
     scheduleImmediateRead();

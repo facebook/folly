@@ -21,9 +21,9 @@
 
 #include <folly/Portability.h>
 #include <folly/hash/SpookyHashV2.h>
+#include <folly/lang/CString.h>
 #include <folly/lang/Exception.h>
 #include <folly/portability/Constexpr.h>
-#include <folly/portability/String.h>
 
 #include <algorithm>
 #include <array>
@@ -1436,7 +1436,7 @@ inline size_t rfind(const Range<const char*>& haystack, const char& needle) {
     return std::string::npos;
   }
   auto pos = static_cast<const char*>(
-      ::memrchr(haystack.data(), needle, haystack.size()));
+      memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 
@@ -1463,7 +1463,7 @@ inline size_t rfind(
     return std::string::npos;
   }
   auto pos = static_cast<const unsigned char*>(
-      ::memrchr(haystack.data(), needle, haystack.size()));
+      memrchr(haystack.data(), needle, haystack.size()));
   return pos == nullptr ? std::string::npos : pos - haystack.data();
 }
 

@@ -19,9 +19,6 @@
 #pragma once
 #define FOLLY_EXPERIMENTAL_SYMBOLIZER_ELF_H_
 
-#include <elf.h>
-#include <link.h> // For ElfW()
-
 #include <cstdio>
 #include <initializer_list>
 #include <stdexcept>
@@ -31,25 +28,28 @@
 #include <folly/Likely.h>
 #include <folly/Range.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Config.h>
+
+#if FOLLY_HAVE_ELF
+
+#include <elf.h>
+#include <link.h> // For ElfW()
 
 namespace folly {
 namespace symbolizer {
 
-#if defined(__linux__)
-using ElfAddr = ElfW(Addr);
-using ElfEhdr = ElfW(Ehdr);
-using ElfOff = ElfW(Off);
-using ElfPhdr = ElfW(Phdr);
-using ElfShdr = ElfW(Shdr);
-using ElfSym = ElfW(Sym);
+#if defined(ElfW)
+#define FOLLY_ELF_ELFW(name) ElfW(name)
 #elif defined(__FreeBSD__)
-using ElfAddr = Elf_Addr;
-using ElfEhdr = Elf_Ehdr;
-using ElfOff = Elf_Off;
-using ElfPhdr = Elf_Phdr;
-using ElfShdr = Elf_Shdr;
-using ElfSym = Elf_Sym;
+#define FOLLY_ELF_ELFW(...) Elf_##name
 #endif
+
+using ElfAddr = FOLLY_ELF_ELFW(Addr);
+using ElfEhdr = FOLLY_ELF_ELFW(Ehdr);
+using ElfOff = FOLLY_ELF_ELFW(Off);
+using ElfPhdr = FOLLY_ELF_ELFW(Phdr);
+using ElfShdr = FOLLY_ELF_ELFW(Shdr);
+using ElfSym = FOLLY_ELF_ELFW(Sym);
 
 /**
  * ELF file parser.
@@ -287,7 +287,7 @@ class ElfFile {
           sizeof(msg),
           "Offset (%zu + %zu) is not contained within our mmapped"
           " file (%s) of length %zu",
-          offset,
+          static_cast<size_t>(offset),
           sizeof(T),
           filepath_,
           length_);
@@ -333,3 +333,5 @@ class ElfFile {
 } // namespace folly
 
 #include <folly/experimental/symbolizer/Elf-inl.h>
+
+#endif // FOLLY_HAVE_ELF

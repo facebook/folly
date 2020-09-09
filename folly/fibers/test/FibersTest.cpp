@@ -1732,7 +1732,7 @@ TEST(FiberManager, semaphore) {
         for (size_t i = 0; i < kTasks; ++i) {
           manager.addTask([&, completionCounter]() {
             for (size_t j = 0; j < kIterations; ++j) {
-              switch (j % 3) {
+              switch (j % 4) {
                 case 0:
                   sem.wait();
                   break;
@@ -1751,6 +1751,11 @@ TEST(FiberManager, semaphore) {
                   }
                   break;
                 }
+                case 3:
+                  if (!sem.try_wait()) {
+                    sem.wait();
+                  }
+                  break;
               }
               ++counter;
               sem.signal();

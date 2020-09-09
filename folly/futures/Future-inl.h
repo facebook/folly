@@ -2360,18 +2360,22 @@ Future<T>&& Future<T>::waitVia(
 
 template <class T>
 T Future<T>::get() && {
-  wait();
-  return copy(std::move(*this)).value();
+  return std::move(*this).getTry().value();
 }
 
 template <class T>
 T Future<T>::get(HighResDuration dur) && {
-  wait(dur);
-  auto future = copy(std::move(*this));
-  if (!future.isReady()) {
-    throw_exception<FutureTimeout>();
-  }
-  return std::move(future).value();
+  return std::move(*this).getTry(dur).value();
+}
+
+template <class T>
+Try<T> Future<T>::getTry() && {
+  return std::move(*this).semi().getTry();
+}
+
+template <class T>
+Try<T> Future<T>::getTry(HighResDuration dur) && {
+  return std::move(*this).semi().getTry(dur);
 }
 
 template <class T>

@@ -24,7 +24,7 @@
 #include <folly/portability/Config.h>
 #include <folly/synchronization/HazptrThreadPoolExecutor.h>
 
-#if FOLLY_USE_SYMBOLIZER
+#ifndef _WIN32
 #include <folly/experimental/symbolizer/SignalHandler.h> // @manual
 #endif
 #include <folly/portability/GFlags.h>

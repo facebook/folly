@@ -34,6 +34,12 @@ constexpr char kHexChars[] = "0123456789abcdef";
 constexpr auto kAddressColor = SymbolizePrinter::Color::BLUE;
 constexpr auto kFunctionColor = SymbolizePrinter::Color::PURPLE;
 constexpr auto kFileColor = SymbolizePrinter::Color::DEFAULT;
+
+#ifdef _WIN32
+constexpr size_t kPathMax = 4096;
+#else
+constexpr size_t kPathMax = PATH_MAX;
+#endif
 } // namespace
 
 constexpr char AddressFormatter::bufTemplate[];
@@ -98,7 +104,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
 
   if (!(options_ & NO_FILE_AND_LINE)) {
     color(kFileColor);
-    char fileBuf[PATH_MAX];
+    char fileBuf[kPathMax];
     fileBuf[0] = '\0';
     if (frame.location.hasFileAndLine) {
       frame.location.file.toBuffer(fileBuf, sizeof(fileBuf));
@@ -119,7 +125,7 @@ void SymbolizePrinter::print(const SymbolizedFrame& frame) {
     }
 
     if (frame.location.hasMainFile && !(options_ & TERSE_FILE_AND_LINE)) {
-      char mainFileBuf[PATH_MAX];
+      char mainFileBuf[kPathMax];
       mainFileBuf[0] = '\0';
       frame.location.mainFile.toBuffer(mainFileBuf, sizeof(mainFileBuf));
       if (!frame.location.hasFileAndLine || strcmp(fileBuf, mainFileBuf)) {

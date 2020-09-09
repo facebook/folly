@@ -206,11 +206,10 @@ TEST_F(LoggerTest, formatFallbackError) {
   ASSERT_EQ(1, messages.size());
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex(
-          R"(error formatting log message: .*argument index out of range; )"
-          R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
-          R"(arguments: 1234, )"
-          R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
+      MatchesRegex(R"(error formatting log message: .*format_error.*; )"
+                   R"(format string: "param1: \{\}, param2: \{\}, \{\}", )"
+                   R"(arguments: 1234, )"
+                   R"(\[(.*ToStringFailure.*|object) of size (.*):.*\])"));
   EXPECT_EQ("LoggerTest.cpp", pathBasename(messages[0].first.getFileName()));
   EXPECT_EQ(LogLevel::WARN, messages[0].first.getLevel());
   EXPECT_FALSE(messages[0].first.containsNewlines());
@@ -345,9 +344,8 @@ TEST_F(LoggerTest, logMacros) {
   ASSERT_EQ(1, messages.size());
   EXPECT_THAT(
       messages[0].first.getMessage(),
-      MatchesRegex(
-          R"(error formatting log message: .*argument index out of range; )"
-          R"(format string: "whoops: \{\}, \{\}", arguments: 5)"));
+      MatchesRegex(R"(error formatting log message: .*format_error.*; )"
+                   R"(format string: "whoops: \{\}, \{\}", arguments: 5)"));
   messages.clear();
 }
 

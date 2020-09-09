@@ -155,7 +155,7 @@ TEST(FunctionScheduler, AddCancel2) {
 
   // Test a function that schedules another function
   atomic<int> adderCount{0};
-  int fn2Count = 0;
+  atomic<int> fn2Count = 0;
   auto fn2 = [&] { ++fn2Count; };
   auto fnAdder = [&] {
     ++adderCount;
@@ -286,8 +286,8 @@ TEST(FunctionScheduler, ResetFuncWhileRunning) {
     boost::barrier barrier_b{2};
     boost::barrier barrier_c{2};
     boost::barrier barrier_d{2};
-    bool set = false;
-    size_t count = 0;
+    atomic<bool> set = false;
+    atomic<size_t> count = 0;
   };
 
   State state; // held by ref

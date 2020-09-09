@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <folly/logging/xlog.h>
 
 class LogOnDestruction {

@@ -21,6 +21,19 @@
 
 namespace folly {
 
+namespace detail {
+
+void* memrchr_fallback(void* s, int c, std::size_t len) noexcept;
+void const* memrchr_fallback(void const* s, int c, std::size_t len) noexcept;
+
+} // namespace detail
+
+//  memrchr
+//
+//  mimic: memrchr, glibc++
+void* memrchr(void* s, int c, std::size_t len) noexcept;
+void const* memrchr(void const* s, int c, std::size_t len) noexcept;
+
 //  strlcpy
 //
 //  mimic: strlcpy, libbsd

@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <folly/Chrono.h>
 #include <folly/futures/Future.h>
 #include <folly/io/async/EventBase.h>

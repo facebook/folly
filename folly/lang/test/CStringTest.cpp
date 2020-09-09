@@ -20,6 +20,23 @@
 
 class CStringTest : public testing::Test {};
 
+TEST_F(CStringTest, memrchr) {
+  const char* const cdata = "foobar";
+  char mdata[] = "foobar";
+
+  EXPECT_EQ(cdata + 3, folly::memrchr(cdata, 'b', 6));
+  EXPECT_EQ(mdata + 3, folly::memrchr(mdata, 'b', 6));
+
+  EXPECT_EQ(nullptr, folly::memrchr(cdata, 'x', 6));
+  EXPECT_EQ(nullptr, folly::memrchr(mdata, 'x', 6));
+
+  EXPECT_EQ(cdata + 3, folly::detail::memrchr_fallback(cdata, 'b', 6));
+  EXPECT_EQ(mdata + 3, folly::detail::memrchr_fallback(mdata, 'b', 6));
+
+  EXPECT_EQ(nullptr, folly::detail::memrchr_fallback(cdata, 'x', 6));
+  EXPECT_EQ(nullptr, folly::detail::memrchr_fallback(mdata, 'x', 6));
+}
+
 TEST_F(CStringTest, strlcpy) {
   char buf[6];
 

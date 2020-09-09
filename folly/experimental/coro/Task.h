@@ -35,6 +35,7 @@
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
+#include <folly/experimental/coro/detail/Helpers.h>
 #include <folly/experimental/coro/detail/InlineTask.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/Traits.h>
@@ -70,6 +71,9 @@ class co_result final {
   Try<T> result_;
 };
 
+template <class T>
+co_result(Try<T>)->co_result<T>;
+
 namespace detail {
 
 class TaskPromiseBase {
@@ -80,10 +84,11 @@ class TaskPromiseBase {
     }
 
     template <typename Promise>
-    std::experimental::coroutine_handle<> await_suspend(
+    auto await_suspend(
         std::experimental::coroutine_handle<Promise> coro) noexcept {
       TaskPromiseBase& promise = coro.promise();
-      return promise.continuation_;
+      return symmetricTransferMaybeReschedule(
+          promise.continuation_, promise.executor_);
     }
 
     [[noreturn]] void await_resume() noexcept {
@@ -177,6 +182,12 @@ class TaskPromise : public TaskPromiseBase {
     if constexpr (std::is_same_v<remove_cvref_t<U>, Try<StorageType>>) {
       DCHECK(value.hasValue() || value.hasException());
       result_ = static_cast<U&&>(value);
+    } else if constexpr (
+        std::is_same_v<remove_cvref_t<U>, Try<void>> &&
+        std::is_same_v<remove_cvref_t<T>, Unit>) {
+      // special-case to make task -> semifuture -> task preserve void type
+      DCHECK(value.hasValue() || value.hasException());
+      result_ = static_cast<Try<Unit>>(static_cast<U&&>(value));
     } else {
       static_assert(
           std::is_convertible<U&&, StorageType>::value,
@@ -231,6 +242,10 @@ class TaskPromise<void> : public TaskPromiseBase {
   }
 
   auto yield_value(co_result<void>&& result) {
+    result_ = std::move(result.result());
+    return final_suspend();
+  }
+  auto yield_value(co_result<Unit>&& result) {
     result_ = std::move(result.result());
     return final_suspend();
   }
@@ -584,10 +599,10 @@ class FOLLY_NODISCARD Task {
       return false;
     }
 
-    handle_t await_suspend(
+    auto await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
       coro_.promise().continuation_ = continuation;
-      return coro_;
+      return symmetricTransferMaybeReschedule(coro_, coro_.promise().executor_);
     }
 
     T await_resume() {
@@ -609,6 +624,33 @@ class FOLLY_NODISCARD Task {
 
   handle_t coro_;
 };
+
+// By analogy to folly::makeSemiFuture
+// Make a completed Task by moving in a value.
+template <class T>
+Task<T> makeTask(T t) {
+  co_return t;
+}
+
+// Make a completed void Task.
+inline Task<void> makeTask() {
+  co_return;
+}
+inline Task<void> makeTask(Unit) {
+  co_return;
+}
+
+// Make a failed Task from an exception_wrapper.
+template <class T>
+Task<T> makeErrorTask(exception_wrapper ew) {
+  co_yield co_error(std::move(ew));
+}
+
+// Make a Task out of a Try.
+template <class T>
+Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
+  co_yield co_result(std::move(t));
+}
 
 template <typename T>
 Task<T> detail::TaskPromise<T>::get_return_object() noexcept {

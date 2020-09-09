@@ -71,6 +71,9 @@ set(FOLLY_SUPPORT_SHARED_LIBRARY "${BUILD_SHARED_LIBS}")
 include(FBBuildOptions)
 fb_activate_static_library_option()
 
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
 if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
   # Check target architecture
   if (NOT CMAKE_SIZEOF_VOID_P EQUAL 8)
@@ -103,7 +106,7 @@ set(FOLLY_HAVE_PTHREAD "${CMAKE_USE_PTHREADS_INIT}")
 list(APPEND CMAKE_REQUIRED_LIBRARIES Threads::Threads)
 list(APPEND FOLLY_LINK_LIBRARIES Threads::Threads)
 
-if(CMAKE_SYSTEM_NAME STREQUAL "Windows")
+if(MSVC)
   include(FollyCompilerMSVC)
 else()
   include(FollyCompilerUnix)
@@ -198,15 +201,6 @@ list(APPEND hfiles
 
 # Exclude specific sources if we do not have third-party libraries
 # required to build them.
-if (NOT FOLLY_USE_SYMBOLIZER)
-  REMOVE_MATCHES_FROM_LISTS(files hfiles
-    MATCHES
-      "^${FOLLY_DIR}/experimental/symbolizer/"
-  )
-  list(REMOVE_ITEM files
-    ${FOLLY_DIR}/SingletonStackTrace.cpp
-  )
-endif()
 if (NOT ${LIBAIO_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/AsyncIO.cpp
@@ -442,10 +436,19 @@ configure_file(
   ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
   @ONLY
 )
+
+# Specify target to allow resolving generator expressions requiring
+# a target for CMake >=3.19. See #1414.
+# VERSION_GREATER_EQUAL isn't available before CMake 3.7.
+if(NOT CMAKE_VERSION VERSION_LESS 3.19)
+  set(target_arg TARGET folly_deps)
+endif()
+
 file(
   GENERATE
   OUTPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
   INPUT ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc.gen
+  ${target_arg}
 )
 install(
   FILES ${CMAKE_CURRENT_BINARY_DIR}/libfolly.pc
@@ -865,7 +868,6 @@ if (BUILD_TESTS)
       TEST glog_test SOURCES GLogTest.cpp
       TEST group_varint_test SOURCES GroupVarintTest.cpp
       TEST group_varint_test_ssse3 SOURCES GroupVarintTest.cpp
-      TEST has_member_fn_traits_test SOURCES HasMemberFnTraitsTest.cpp
       TEST iterators_test SOURCES IteratorsTest.cpp
       TEST indestructible_test SOURCES IndestructibleTest.cpp
       TEST indexed_mem_pool_test BROKEN

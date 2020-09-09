@@ -119,6 +119,20 @@ bool Semaphore::try_wait(Waiter& waiter) {
   return true;
 }
 
+bool Semaphore::try_wait() {
+  auto oldVal = tokens_.load(std::memory_order_acquire);
+  do {
+    if (oldVal == 0) {
+      return false;
+    }
+  } while (!tokens_.compare_exchange_weak(
+      oldVal,
+      oldVal - 1,
+      std::memory_order_release,
+      std::memory_order_acquire));
+  return true;
+}
+
 #if FOLLY_HAS_COROUTINES
 
 coro::Task<void> Semaphore::co_wait() {

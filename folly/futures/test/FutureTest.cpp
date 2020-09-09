@@ -219,6 +219,7 @@ TEST(Future, hasPreconditionValid) {
 
   DOIT(f.isReady());
   DOIT(f.result());
+  DOIT(std::move(f).getTry());
   DOIT(std::move(f).get());
   DOIT(std::move(f).get(std::chrono::milliseconds(10)));
   DOIT(f.hasValue());
@@ -304,6 +305,7 @@ TEST(Future, hasPostconditionInvalid) {
   DOIT(makeValid(), swallow(std::move(f).wait()));
   DOIT(makeValid(), swallow(std::move(f.wait())));
   DOIT(makeValid(), swallow(std::move(f).get()));
+  DOIT(makeValid(), swallow(std::move(f).getTry()));
   DOIT(makeValid(), swallow(std::move(f).get(std::chrono::milliseconds(10))));
   DOIT(makeValid(), swallow(std::move(f).semi()));
 
@@ -912,13 +914,13 @@ TEST(Future, futureNotReady) {
 }
 
 TEST(Future, hasException) {
-  EXPECT_TRUE(makeFuture<int>(eggs).result().hasException());
-  EXPECT_FALSE(makeFuture(42).result().hasException());
+  EXPECT_TRUE(makeFuture<int>(eggs).getTry().hasException());
+  EXPECT_FALSE(makeFuture(42).getTry().hasException());
 }
 
 TEST(Future, hasValue) {
-  EXPECT_TRUE(makeFuture(42).result().hasValue());
-  EXPECT_FALSE(makeFuture<int>(eggs).result().hasValue());
+  EXPECT_TRUE(makeFuture(42).getTry().hasValue());
+  EXPECT_FALSE(makeFuture<int>(eggs).getTry().hasValue());
 }
 
 TEST(Future, makeFuture) {
@@ -1471,6 +1473,36 @@ TEST(Future, DetachTest) {
   b2.wait();
   b3.wait();
   EXPECT_TRUE(result == 3);
+}
+
+TEST(Future, SimpleGet) {
+  Promise<int> p;
+  auto sf = p.getFuture();
+  p.setValue(3);
+  auto v = std::move(sf).get();
+  ASSERT_EQ(v, 3);
+}
+
+TEST(Future, SimpleGetTry) {
+  Promise<int> p;
+  auto sf = p.getFuture();
+  p.setValue(3);
+  auto v = std::move(sf).getTry();
+  ASSERT_EQ(v.value(), 3);
+}
+
+TEST(Future, SimpleTimedGet) {
+  Promise<folly::Unit> p;
+  auto sf = p.getFuture();
+  EXPECT_THROW(
+      std::move(sf).get(std::chrono::milliseconds(100)), FutureTimeout);
+}
+
+TEST(Future, SimpleTimedGetTry) {
+  Promise<folly::Unit> p;
+  auto sf = p.getFuture();
+  EXPECT_THROW(
+      std::move(sf).getTry(std::chrono::milliseconds(100)), FutureTimeout);
 }
 
 #if FOLLY_FUTURE_USING_FIBER

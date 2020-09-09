@@ -190,4 +190,22 @@ TEST(UnboundedQueueTest, CancelledDequeueCompletesNormallyIfAnItemIsAvailable) {
   }());
 }
 
+TEST(UnboundedQueueTest, TryDequeue) {
+  folly::coro::UnboundedQueue<int> queue;
+
+  queue.enqueue(42);
+  EXPECT_EQ(42, queue.try_dequeue());
+
+  folly::ManualExecutor ex;
+
+  auto fut = queue.dequeue().scheduleOn(&ex).start();
+  ex.drain();
+  EXPECT_FALSE(fut.isReady());
+
+  queue.enqueue(13);
+  ex.drain();
+  EXPECT_TRUE(fut.isReady());
+  EXPECT_EQ(std::move(fut).get(), 13);
+}
+
 #endif

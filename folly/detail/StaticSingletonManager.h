@@ -81,10 +81,7 @@ class StaticSingletonManagerWithRtti {
   }
 
   template <bool Noexcept>
-  FOLLY_ERASE static void* create_(Arg& arg) noexcept(Noexcept) {
-    return create_(arg);
-  }
-  FOLLY_NOINLINE static void* create_(Arg& arg);
+  FOLLY_NOINLINE static void* create_(Arg& arg) noexcept(Noexcept);
 };
 
 using StaticSingletonManager = std::conditional_t<

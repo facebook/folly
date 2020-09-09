@@ -16,9 +16,6 @@
 
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
-#include <link.h>
-#include <ucontext.h>
-
 #include <climits>
 #include <cstdio>
 #include <cstdlib>
@@ -34,26 +31,34 @@
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/LineReader.h>
 #include <folly/lang/SafeAssert.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-#if defined(__linux__)
+#if FOLLY_HAVE_ELF
+#include <link.h>
+#include <ucontext.h>
+#endif
+
+#if defined(__linux__) && FOLLY_USE_SYMBOLIZER
 static struct r_debug* get_r_debug() {
   return &_r_debug;
 }
-#elif defined(__APPLE__)
+#elif FOLLY_USE_SYMBOLIZER
 extern struct r_debug _r_debug;
-static struct r_debug* get_r_debug() {
+FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
   return &_r_debug;
 }
 #else
-static struct r_debug* get_r_debug() {
+FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
   return nullptr;
 }
 #endif
 
 namespace folly {
 namespace symbolizer {
+
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 namespace {
 
@@ -413,6 +418,8 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
     return;
   }
 }
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
 } // namespace symbolizer
 } // namespace folly

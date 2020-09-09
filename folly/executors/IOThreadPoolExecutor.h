@@ -64,6 +64,14 @@ class IOThreadPoolExecutor : public ThreadPoolExecutor, public IOExecutor {
       folly::EventBaseManager* ebm = folly::EventBaseManager::get(),
       bool waitForAll = false);
 
+  IOThreadPoolExecutor(
+      size_t maxThreads,
+      size_t minThreads,
+      std::shared_ptr<ThreadFactory> threadFactory =
+          std::make_shared<NamedThreadFactory>("IOThreadPool"),
+      folly::EventBaseManager* ebm = folly::EventBaseManager::get(),
+      bool waitForAll = false);
+
   ~IOThreadPoolExecutor() override;
 
   void add(Func func) override;

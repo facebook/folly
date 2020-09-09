@@ -47,12 +47,10 @@ void getctx(
     std::shared_ptr<folly::SSLContext> serverCtx) {
   clientCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   clientCtx->loadTrustedCertificates(kTestCA);
-  clientCtx->enableTLS13();
 
   serverCtx->ciphers("ALL:!ADH:!LOW:!EXP:!MD5:@STRENGTH");
   serverCtx->loadCertificate(kTestCert);
   serverCtx->loadPrivateKey(kTestKey);
-  serverCtx->enableTLS13();
 }
 
 class SSLSessionTest : public testing::Test {

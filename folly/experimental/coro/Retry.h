@@ -126,12 +126,14 @@ class ExponentialBackoffWithJitter {
  public:
   template <typename URNG2>
   explicit ExponentialBackoffWithJitter(
+      Timekeeper* tk,
       uint32_t maxRetries,
       Duration minBackoff,
       Duration maxBackoff,
       double relativeJitterStdDev,
       URNG2&& rng) noexcept
-      : maxRetries_(maxRetries),
+      : timeKeeper_(tk),
+        maxRetries_(maxRetries),
         retryCount_(0),
         minBackoff_(minBackoff),
         maxBackoff_(maxBackoff),
@@ -160,7 +162,7 @@ class ExponentialBackoffWithJitter {
     }
     backoff = std::max(backoff, minBackoff_);
 
-    co_await folly::coro::sleep(backoff);
+    co_await folly::coro::sleep(backoff, timeKeeper_);
 
     // Check to see if we were cancelled during the sleep.
     const auto& cancelToken = co_await co_current_cancellation_token;
@@ -170,6 +172,7 @@ class ExponentialBackoffWithJitter {
   }
 
  private:
+  Timekeeper* timeKeeper_;
   const uint32_t maxRetries_;
   uint32_t retryCount_;
   const Duration minBackoff_;
@@ -190,16 +193,36 @@ auto retryWithExponentialBackoff(
     Duration minBackoff,
     Duration maxBackoff,
     double relativeJitterStdDev,
+    Timekeeper* timeKeeper,
     URNG&& rng,
     Func&& func) {
   return folly::coro::retryWhen(
       static_cast<Func&&>(func),
       detail::ExponentialBackoffWithJitter<remove_cvref_t<URNG>>{
+          timeKeeper,
           maxRetries,
           minBackoff,
           maxBackoff,
           relativeJitterStdDev,
           static_cast<URNG&&>(rng)});
+}
+
+template <typename Func>
+auto retryWithExponentialBackoff(
+    uint32_t maxRetries,
+    Duration minBackoff,
+    Duration maxBackoff,
+    double relativeJitterStdDev,
+    Timekeeper* timeKeeper,
+    Func&& func) {
+  return folly::coro::retryWithExponentialBackoff(
+      maxRetries,
+      minBackoff,
+      maxBackoff,
+      relativeJitterStdDev,
+      timeKeeper,
+      ThreadLocalPRNG(),
+      static_cast<Func&&>(func));
 }
 
 template <typename Func>
@@ -214,7 +237,7 @@ auto retryWithExponentialBackoff(
       minBackoff,
       maxBackoff,
       relativeJitterStdDev,
-      ThreadLocalPRNG(),
+      static_cast<Timekeeper*>(nullptr),
       static_cast<Func&&>(func));
 }
 

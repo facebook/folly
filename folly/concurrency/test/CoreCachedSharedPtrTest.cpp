@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/portability/Config.h>
+
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
 #ifdef FOLLY_USE_LIBSTDCPP
@@ -24,6 +26,7 @@
 
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
+#include <folly/concurrency/AtomicSharedPtr.h>
 #include <folly/concurrency/CoreCachedSharedPtr.h>
 #include <folly/portability/GTest.h>
 

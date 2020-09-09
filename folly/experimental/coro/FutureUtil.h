@@ -40,6 +40,16 @@ Task<semi_await_result_t<SemiAwaitable>> toTask(
         co_return co_await a.get();
       });
 }
+inline Task<void> toTask(Future<Unit> a) {
+  return co_invoke([a = std::move(a)]() mutable -> Task<void> {
+    co_yield co_result(co_await co_awaitTry(std::move(a)));
+  });
+}
+inline Task<void> toTask(SemiFuture<Unit> a) {
+  return co_invoke([a = std::move(a)]() mutable -> Task<void> {
+    co_yield co_result(co_await co_awaitTry(std::move(a)));
+  });
+}
 
 // Converts the given SemiAwaitable to a SemiFuture (without starting it)
 template <typename SemiAwaitable>
