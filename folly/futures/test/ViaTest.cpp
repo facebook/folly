@@ -465,7 +465,7 @@ TEST(Via, getTryVia) {
     ManualExecutor x;
     auto f = via(&x).thenValue([](auto&&) { return 23; });
     EXPECT_FALSE(f.isReady());
-    EXPECT_EQ(23, std::move(f).getTryVia(&x).value());
+    EXPECT_EQ(23, f.getTryVia(&x).value());
   }
 
   {
@@ -473,14 +473,14 @@ TEST(Via, getTryVia) {
     ManualExecutor x;
     auto f = via(&x).then();
     EXPECT_FALSE(f.isReady());
-    auto t = std::move(f).getTryVia(&x);
+    auto t = f.getTryVia(&x);
     EXPECT_TRUE(t.hasValue());
   }
 
   {
     DummyDrivableExecutor x;
     auto f = makeFuture(23);
-    EXPECT_EQ(23, std::move(f).getTryVia(&x).value());
+    EXPECT_EQ(23, f.getTryVia(&x).value());
     EXPECT_FALSE(x.ran);
   }
 }
@@ -489,8 +489,7 @@ TEST(Via, SimpleTimedGetTryVia) {
   TimedDrivableExecutor e2;
   Promise<folly::Unit> p;
   auto f = p.getFuture();
-  EXPECT_THROW(
-      std::move(f).getTryVia(&e2, std::chrono::seconds(1)), FutureTimeout);
+  EXPECT_THROW(f.getTryVia(&e2, std::chrono::seconds(1)), FutureTimeout);
 }
 
 TEST(Via, waitVia) {

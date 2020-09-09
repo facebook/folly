@@ -1143,11 +1143,11 @@ class Future : private futures::detail::FutureBase<T> {
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a
   /// reference to the Try of the value.
-  Try<T> getTryVia(DrivableExecutor* e) &&;
+  Try<T>& getTryVia(DrivableExecutor* e);
 
   /// getTryVia but will wait only until `dur` elapses. Returns the
   /// Try of the value (moved-out) or may throw a FutureTimeout exception.
-  Try<T> getTryVia(TimedDrivableExecutor* e, HighResDuration dur) &&;
+  Try<T>& getTryVia(TimedDrivableExecutor* e, HighResDuration dur);
 
   /// Unwraps the case of a Future<Future<T>> instance, and returns a simple
   /// Future<T> instance.

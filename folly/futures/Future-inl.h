@@ -2393,17 +2393,17 @@ T Future<T>::getVia(TimedDrivableExecutor* e, HighResDuration dur) {
 }
 
 template <class T>
-Try<T> Future<T>::getTryVia(DrivableExecutor* e) && {
-  return std::move(waitVia(e).result());
+Try<T>& Future<T>::getTryVia(DrivableExecutor* e) {
+  return waitVia(e).result();
 }
 
 template <class T>
-Try<T> Future<T>::getTryVia(TimedDrivableExecutor* e, HighResDuration dur) && {
+Try<T>& Future<T>::getTryVia(TimedDrivableExecutor* e, HighResDuration dur) {
   waitVia(e, dur);
   if (!this->isReady()) {
     throw_exception<FutureTimeout>();
   }
-  return std::move(result());
+  return result();
 }
 
 namespace futures {
