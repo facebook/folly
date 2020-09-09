@@ -196,6 +196,7 @@ class SafeStackTracePrinter {
 
  protected:
   virtual void printSymbolizedStackTrace();
+  void printUnsymbolizedStackTrace();
 
  private:
   static constexpr size_t kMaxStackTraceDepth = 100;

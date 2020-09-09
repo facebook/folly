@@ -28,7 +28,7 @@
 #include <libunwind.h>
 #endif
 
-#if FOLLY_USE_SYMBOLIZER
+#if FOLLY_HAVE_BACKTRACE
 #include <execinfo.h>
 #endif
 
@@ -54,7 +54,7 @@ ssize_t getStackTrace(
 #if FOLLY_HAVE_LIBUNWIND && defined(UNW_VERSION)
   int r = unw_backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
-#elif FOLLY_USE_SYMBOLIZER
+#elif FOLLY_HAVE_BACKTRACE
   int r = backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
 #else

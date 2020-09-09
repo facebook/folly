@@ -35,6 +35,10 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
+#if FOLLY_HAVE_BACKTRACE
+#include <execinfo.h>
+#endif
+
 #if FOLLY_HAVE_ELF
 #include <link.h>
 #include <ucontext.h>
@@ -271,6 +275,27 @@ void SafeStackTracePrinter::printSymbolizedStackTrace() {
   printer_.println(*addresses_, 2);
 }
 
+void SafeStackTracePrinter::printUnsymbolizedStackTrace() {
+  print("(safe mode, symbolizer not available)\n");
+#if FOLLY_HAVE_BACKTRACE
+  // `backtrace_symbols_fd` from execinfo.h is not explicitly
+  // documented on either macOS or Linux to be async-signal-safe, but
+  // the implementation in
+  // https://opensource.apple.com/source/Libc/Libc-1353.60.8/ appears
+  // safe.
+  ::backtrace_symbols_fd(
+      reinterpret_cast<void**>(addresses_->addresses),
+      addresses_->frameCount,
+      fd_);
+#else
+  AddressFormatter formatter;
+  for (size_t i = 0; i < addresses_->frameCount; ++i) {
+    print(formatter.format(addresses_->addresses[i]));
+    print("\n");
+  }
+#endif
+}
+
 void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   SCOPE_EXIT {
     flush();
@@ -282,12 +307,7 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   } else if (symbolize) {
     printSymbolizedStackTrace();
   } else {
-    print("(safe mode, symbolizer not available)\n");
-    AddressFormatter formatter;
-    for (size_t i = 0; i < addresses_->frameCount; ++i) {
-      print(formatter.format(addresses_->addresses[i]));
-      print("\n");
-    }
+    printUnsymbolizedStackTrace();
   }
 }
 
