@@ -82,7 +82,7 @@ ByteRange DataHolder::data(size_t size) const {
 }
 
 uint64_t hashIOBuf(const IOBuf* buf) {
-  uint64_t h = folly::hash::FNV_64_HASH_START;
+  uint64_t h = folly::hash::fnv64_hash_start;
   for (auto& range : *buf) {
     h = folly::hash::fnv64_buf(range.data(), range.size(), h);
   }
