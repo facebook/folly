@@ -119,10 +119,6 @@ int getgid() {
   return 1;
 }
 
-pid_t getpid() {
-  return (pid_t)uint64_t(GetCurrentProcessId());
-}
-
 // No major need to implement this, and getting a non-potentially
 // stale ID on windows is a bit involved.
 pid_t getppid() {
