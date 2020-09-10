@@ -319,7 +319,9 @@ class SingleWriterFixedHashMap {
     friend class SingleWriterFixedHashMap;
 
     explicit Iterator(const SingleWriterFixedHashMap& m, size_t i = 0)
-        : elem_(m.elem_.get()), capacity_(m.capacity_), index_(i) {
+        : elem_(i == m.capacity_ ? nullptr : m.elem_.get()),
+          capacity_(m.capacity_),
+          index_(i) {
       if (index_ < capacity_) {
         next();
       }
