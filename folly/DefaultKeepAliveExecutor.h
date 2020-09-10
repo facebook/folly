@@ -140,7 +140,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
 
   void keepAliveRelease() noexcept override {
     auto keepAliveCount =
-        controlBlock_->keepAliveCount_.fetch_sub(1, std::memory_order_acquire);
+        controlBlock_->keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
     DCHECK(keepAliveCount >= 1);
 
     if (keepAliveCount == 1) {
