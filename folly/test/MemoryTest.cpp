@@ -25,7 +25,9 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/String.h>
+#include <folly/lang/Keep.h>
 #include <folly/memory/Arena.h>
+#include <folly/portability/Asm.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
@@ -89,6 +91,73 @@ TEST(to_weak_ptr, example) {
   EXPECT_EQ(1, s.use_count());
   EXPECT_EQ(2, (to_weak_ptr(s).lock(), s.use_count())) << "lvalue";
   EXPECT_EQ(3, (to_weak_ptr(decltype(s)(s)).lock(), s.use_count())) << "rvalue";
+}
+
+// These are here to make it easy to double-check the assembly
+// for to_weak_ptr_aliasing
+extern "C" FOLLY_KEEP void check_to_weak_ptr_aliasing(
+    std::shared_ptr<void> const& s,
+    void* a) {
+  auto w = folly::to_weak_ptr_aliasing(s, a);
+  asm_volatile_memory();
+  asm_volatile_pause();
+}
+extern "C" FOLLY_KEEP void check_to_weak_ptr_aliasing_fallback(
+    std::shared_ptr<void> const& s,
+    void* a) {
+  auto w = folly::to_weak_ptr(std::shared_ptr<void>(s, a));
+  asm_volatile_memory();
+  asm_volatile_pause();
+}
+
+TEST(to_weak_ptr_aliasing, active) {
+  using S = std::pair<int, int>;
+
+  auto s = std::make_shared<S>();
+  s->first = 10;
+  s->second = 20;
+  EXPECT_EQ(s.use_count(), 1);
+  auto w = folly::to_weak_ptr_aliasing(s, &s->second);
+  EXPECT_EQ(s.use_count(), 1);
+  EXPECT_EQ(*w.lock(), s->second);
+  auto locked = w.lock();
+  EXPECT_EQ(s.use_count(), 2);
+  locked.reset();
+
+  auto w2 = w;
+  EXPECT_EQ(*w2.lock(), s->second);
+  w2.reset();
+
+  auto w3 = std::move(w);
+  EXPECT_EQ(*w3.lock(), s->second);
+
+  std::shared_ptr<int> s2(s, &s->second);
+  std::shared_ptr<int> s3 = w3.lock();
+  EXPECT_TRUE(s2 == s3);
+  EXPECT_FALSE(s2.owner_before(s));
+  EXPECT_FALSE(s.owner_before(s2));
+  EXPECT_FALSE(w3.owner_before(s));
+  EXPECT_FALSE(s.owner_before(w3));
+
+  s.reset();
+  s2.reset();
+  s3.reset();
+  EXPECT_TRUE(w3.expired());
+}
+
+TEST(to_weak_ptr_aliasing, inactive) {
+  using S = std::pair<int, int>;
+
+  std::shared_ptr<S> s;
+  EXPECT_EQ(s.use_count(), 0);
+  S tmp;
+  auto w = folly::to_weak_ptr_aliasing(s, &tmp.second);
+  EXPECT_EQ(s.use_count(), 0);
+  EXPECT_EQ(w.use_count(), 0);
+  EXPECT_TRUE(w.expired());
+  auto locked = w.lock();
+  EXPECT_EQ(locked.get(), nullptr);
+  EXPECT_EQ(locked.use_count(), 0);
 }
 
 TEST(copy_to_unique_ptr, example) {

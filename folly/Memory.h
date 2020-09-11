@@ -346,7 +346,55 @@ std::shared_ptr<T> to_shared_ptr(std::unique_ptr<T, D>&& ptr) {
  */
 template <typename T>
 std::weak_ptr<T> to_weak_ptr(const std::shared_ptr<T>& ptr) {
-  return std::weak_ptr<T>(ptr);
+  return ptr;
+}
+
+#if __GLIBCXX__
+namespace detail {
+void weak_ptr_set_stored_ptr(std::weak_ptr<void>& w, void* ptr);
+
+template <typename Tag, void* std::__weak_ptr<void>::*WeakPtr_Ptr_Field>
+struct GenerateWeakPtrInternalsAccessor {
+  friend void weak_ptr_set_stored_ptr(std::weak_ptr<void>& w, void* ptr) {
+    w.*WeakPtr_Ptr_Field = ptr;
+  }
+};
+
+// Each template instantiation of GenerateWeakPtrInternalsAccessor must
+// be a new type, to avoid ODR problems.  We do this by tagging it with
+// a type from an anon namespace.
+namespace {
+struct MemoryAnonTag {};
+} // namespace
+
+template struct GenerateWeakPtrInternalsAccessor<
+    MemoryAnonTag,
+    &std::__weak_ptr<void>::_M_ptr>;
+} // namespace detail
+#endif
+
+/**
+ *  to_weak_ptr_aliasing
+ *
+ *  Like to_weak_ptr, but arranges that lock().get() on the returned
+ *  pointer points to ptr rather than r.get().
+ *
+ *  Equivalent to:
+ *
+ *      to_weak_ptr(std::shared_ptr<U>(r, ptr))
+ *
+ *  For libstdc++, ABI-specific tricks are used to optimize the
+ *  implementation.
+ */
+template <typename T, typename U>
+std::weak_ptr<U> to_weak_ptr_aliasing(const std::shared_ptr<T>& r, U* ptr) {
+#if __GLIBCXX__
+  std::weak_ptr<void> wv(r);
+  detail::weak_ptr_set_stored_ptr(wv, ptr);
+  return reinterpret_cast<std::weak_ptr<U>&&>(wv);
+#else
+  return std::shared_ptr<U>(r, ptr);
+#endif
 }
 
 /**
