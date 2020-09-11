@@ -206,9 +206,3 @@ TEST(CombineGen, TupleFlatten) {
   ASSERT_EQ(zipped6.size(), 3);
   EXPECT_EQ(zipped6[0], std::make_tuple(1, "1", 'A', 1.0));
 }
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}
