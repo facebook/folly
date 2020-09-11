@@ -57,6 +57,8 @@ ssize_t getStackTrace(
 #elif FOLLY_HAVE_BACKTRACE
   int r = backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
   return r < 0 ? -1 : r;
+#elif FOLLY_HAVE_LIBUNWIND
+  return getStackTraceSafe(addresses, maxAddresses);
 #else
   return -1;
 #endif
