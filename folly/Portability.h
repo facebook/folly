@@ -383,11 +383,6 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 } // namespace gflags
 #endif
 
-// for TARGET_OS_IPHONE
-#ifdef __APPLE__
-#include <TargetConditionals.h> // @manual
-#endif
-
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
@@ -407,6 +402,30 @@ constexpr bool const kHasRtti = FOLLY_HAS_RTTI;
 // This priority is already used by JEMalloc and other memory allocators so
 // we will take the next one.
 #define FOLLY_STATIC_CTOR_PRIORITY_MAX __attribute__((__init_priority__(102)))
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_IOS
+#define FOLLY_APPLE_IOS 1
+#else
+#define FOLLY_APPLE_IOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_OSX
+#define FOLLY_APPLE_MACOS 1
+#else
+#define FOLLY_APPLE_MACOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_TV
+#define FOLLY_APPLE_TVOS 1
+#else
+#define FOLLY_APPLE_TVOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_WATCH
+#define FOLLY_APPLE_WATCHOS 1
+#else
+#define FOLLY_APPLE_WATCHOS 0
 #endif
 
 namespace folly {
@@ -434,6 +453,11 @@ constexpr auto kIsWindows = true;
 #else
 constexpr auto kIsWindows = false;
 #endif
+
+constexpr bool kIsAppleIOS = FOLLY_APPLE_IOS == 1;
+constexpr bool kIsAppleMacOS = FOLLY_APPLE_MACOS == 1;
+constexpr bool kIsAppleTVOS = FOLLY_APPLE_TVOS == 1;
+constexpr bool kIsAppleWatchOS = FOLLY_APPLE_WATCHOS == 1;
 
 #if __GLIBCXX__
 constexpr auto kIsGlibcxx = true;
