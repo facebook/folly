@@ -92,6 +92,11 @@ class Executor {
     KeepAlive() = default;
 
     ~KeepAlive() {
+      static_assert(
+          std::is_standard_layout<KeepAlive>::value, "standard-layout");
+      static_assert(sizeof(KeepAlive) == sizeof(void*), "pointer size");
+      static_assert(alignof(KeepAlive) == alignof(void*), "pointer align");
+
       reset();
     }
 
