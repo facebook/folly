@@ -521,7 +521,7 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   // If a small sigaltstack is enabled (ex. Rust stdlib might use sigaltstack
   // to set a small stack), the default SafeStackTracePrinter would likely
   // stack overflow. Replace it with the unsafe self-allocate printer.
-  bool useUnsafePrinter = isSmallSigAltStackEnabled();
+  bool useUnsafePrinter = kIsLinux && isSmallSigAltStackEnabled();
   if (useUnsafePrinter) {
     gStackTracePrinter = new UnsafeSelfAllocateStackTracePrinter();
   } else {

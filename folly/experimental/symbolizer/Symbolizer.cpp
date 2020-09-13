@@ -35,13 +35,22 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
+#ifndef _WIN32
+// folly/portability/Config.h (thus features.h) must be included
+// first, and _XOPEN_SOURCE must be defined to unable the context
+// functions on macOS.
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE
+#endif
+#include <ucontext.h>
+#endif
+
 #if FOLLY_HAVE_BACKTRACE
 #include <execinfo.h>
 #endif
 
 #if FOLLY_HAVE_ELF
 #include <link.h>
-#include <ucontext.h>
 #endif
 
 #if defined(__linux__) && FOLLY_USE_SYMBOLIZER
@@ -243,74 +252,6 @@ size_t Symbolizer::symbolize(
   return addrCount;
 }
 
-SafeStackTracePrinter::SafeStackTracePrinter(int fd)
-    : fd_(fd),
-      printer_(
-          fd,
-          SymbolizePrinter::COLOR_IF_TTY,
-          size_t(64) << 10), // 64KiB
-      addresses_(std::make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
-
-void SafeStackTracePrinter::flush() {
-  printer_.flush();
-  fsyncNoInt(fd_);
-}
-
-void SafeStackTracePrinter::printSymbolizedStackTrace() {
-  // This function might run on an alternative stack allocated by
-  // UnsafeSelfAllocateStackTracePrinter. Capturing a stack from
-  // here is probably wrong.
-
-  // Do our best to populate location info, process is going to terminate,
-  // so performance isn't critical.
-  SignalSafeElfCache elfCache_;
-  Symbolizer symbolizer(&elfCache_, LocationInfoMode::FULL);
-  symbolizer.symbolize(*addresses_);
-
-  // Skip the top 2 frames captured by printStackTrace:
-  // getStackTraceSafe
-  // SafeStackTracePrinter::printStackTrace (captured stack)
-  //
-  // Leaving signalHandler on the stack for clarity, I think.
-  printer_.println(*addresses_, 2);
-}
-
-void SafeStackTracePrinter::printUnsymbolizedStackTrace() {
-  print("(safe mode, symbolizer not available)\n");
-#if FOLLY_HAVE_BACKTRACE
-  // `backtrace_symbols_fd` from execinfo.h is not explicitly
-  // documented on either macOS or Linux to be async-signal-safe, but
-  // the implementation in
-  // https://opensource.apple.com/source/Libc/Libc-1353.60.8/ appears
-  // safe.
-  ::backtrace_symbols_fd(
-      reinterpret_cast<void**>(addresses_->addresses),
-      addresses_->frameCount,
-      fd_);
-#else
-  AddressFormatter formatter;
-  for (size_t i = 0; i < addresses_->frameCount; ++i) {
-    print(formatter.format(addresses_->addresses[i]));
-    print("\n");
-  }
-#endif
-}
-
-void SafeStackTracePrinter::printStackTrace(bool symbolize) {
-  SCOPE_EXIT {
-    flush();
-  };
-
-  // Skip the getStackTrace frame
-  if (!getStackTraceSafe(*addresses_)) {
-    print("(error retrieving stack trace)\n");
-  } else if (symbolize) {
-    printSymbolizedStackTrace();
-  } else {
-    printUnsymbolizedStackTrace();
-  }
-}
-
 FastStackTracePrinter::FastStackTracePrinter(
     std::unique_ptr<SymbolizePrinter> printer,
     size_t symbolCacheSize)
@@ -347,6 +288,89 @@ void FastStackTracePrinter::printStackTrace(bool symbolize) {
 
 void FastStackTracePrinter::flush() {
   printer_->flush();
+}
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+#if FOLLY_USE_SYMBOLIZER
+
+SafeStackTracePrinter::SafeStackTracePrinter(int fd)
+    : fd_(fd),
+      printer_(
+          fd,
+          SymbolizePrinter::COLOR_IF_TTY,
+          size_t(64) << 10), // 64KiB
+      addresses_(std::make_unique<FrameArray<kMaxStackTraceDepth>>()) {}
+
+void SafeStackTracePrinter::flush() {
+  printer_.flush();
+  fsyncNoInt(fd_);
+}
+
+void SafeStackTracePrinter::printSymbolizedStackTrace() {
+#if FOLLY_HAVE_ELF
+  // This function might run on an alternative stack allocated by
+  // UnsafeSelfAllocateStackTracePrinter. Capturing a stack from
+  // here is probably wrong.
+
+  // Do our best to populate location info, process is going to terminate,
+  // so performance isn't critical.
+  SignalSafeElfCache elfCache_;
+  Symbolizer symbolizer(&elfCache_, LocationInfoMode::FULL);
+  symbolizer.symbolize(*addresses_);
+
+  // Skip the top 2 frames captured by printStackTrace:
+  // getStackTraceSafe
+  // SafeStackTracePrinter::printStackTrace (captured stack)
+  //
+  // Leaving signalHandler on the stack for clarity, I think.
+  printer_.println(*addresses_, 2);
+#else
+  // `backtrace_symbols_fd` from execinfo.h is not explicitly
+  // documented on either macOS or Linux to be async-signal-safe, but
+  // the implementation in opensource.apple.com Libc-1353.60.8 appears
+  // safe.
+  ::backtrace_symbols_fd(
+      reinterpret_cast<void**>(addresses_->addresses),
+      addresses_->frameCount,
+      fd_);
+#endif
+}
+
+void SafeStackTracePrinter::printUnsymbolizedStackTrace() {
+  print("(safe mode, symbolizer not available)\n");
+#if FOLLY_HAVE_BACKTRACE
+  // `backtrace_symbols_fd` from execinfo.h is not explicitly
+  // documented on either macOS or Linux to be async-signal-safe, but
+  // the implementation in
+  // https://opensource.apple.com/source/Libc/Libc-1353.60.8/ appears
+  // safe.
+  ::backtrace_symbols_fd(
+      reinterpret_cast<void**>(addresses_->addresses),
+      addresses_->frameCount,
+      fd_);
+#else
+  AddressFormatter formatter;
+  for (size_t i = 0; i < addresses_->frameCount; ++i) {
+    print(formatter.format(addresses_->addresses[i]));
+    print("\n");
+  }
+#endif
+}
+
+void SafeStackTracePrinter::printStackTrace(bool symbolize) {
+  SCOPE_EXIT {
+    flush();
+  };
+
+  // Skip the getStackTrace frame
+  if (!getStackTraceSafe(*addresses_)) {
+    print("(error retrieving stack trace)\n");
+  } else if (symbolize) {
+    printSymbolizedStackTrace();
+  } else {
+    printUnsymbolizedStackTrace();
+  }
 }
 
 // Stack utilities used by UnsafeSelfAllocateStackTracePrinter
@@ -439,7 +463,7 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
   }
 }
 
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#endif // FOLLY_USE_SYMBOLIZER
 
 } // namespace symbolizer
 } // namespace folly

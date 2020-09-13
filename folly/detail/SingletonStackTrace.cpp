@@ -24,7 +24,7 @@ namespace folly {
 namespace detail {
 
 std::string getSingletonStackTrace() {
-#if FOLLY_USE_SYMBOLIZER
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
   // Get and symbolize stack trace
   constexpr size_t kMaxStackTraceDepth = 100;
@@ -48,7 +48,7 @@ std::string getSingletonStackTrace() {
 
   return "";
 
-#endif
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 }
 
 } // namespace detail

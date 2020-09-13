@@ -126,7 +126,16 @@ ssize_t getStackTraceInPlace(
 ssize_t getStackTraceSafe(
     FOLLY_MAYBE_UNUSED uintptr_t* addresses,
     FOLLY_MAYBE_UNUSED size_t maxAddresses) {
-#if FOLLY_HAVE_LIBUNWIND
+#if defined(__APPLE__) && FOLLY_USE_SYMBOLIZER
+  // While Apple platforms support libunwind, the unw_init_local,
+  // unw_step step loop does not cross the boundary from async signal
+  // handlers to the aborting code, while `backtrace` from execinfo.h
+  // does. `backtrace` is not explicitly documented on either macOS or
+  // Linux to be async-signal-safe, but the implementation in
+  // https://opensource.apple.com/source/Libc/Libc-1353.60.8/, and it is
+  // widely used in signal handlers in practice.
+  return backtrace(reinterpret_cast<void**>(addresses), maxAddresses);
+#elif FOLLY_HAVE_LIBUNWIND
   unw_context_t context;
   unw_cursor_t cursor;
   return getStackTraceInPlace(context, cursor, addresses, maxAddresses);

@@ -158,6 +158,42 @@ class Symbolizer {
 };
 
 /**
+ * Use this class to print a stack trace from normal code.  It will malloc and
+ * won't flush or sync.
+ *
+ * These methods are thread safe, through locking.  However, they are not signal
+ * safe.
+ */
+class FastStackTracePrinter {
+ public:
+  static constexpr size_t kDefaultSymbolCacheSize = 10000;
+
+  explicit FastStackTracePrinter(
+      std::unique_ptr<SymbolizePrinter> printer,
+      size_t symbolCacheSize = kDefaultSymbolCacheSize);
+
+  ~FastStackTracePrinter();
+
+  /**
+   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
+   * it easy to skip printing it.
+   */
+  FOLLY_NOINLINE void printStackTrace(bool symbolize);
+
+  void flush();
+
+ private:
+  static constexpr size_t kMaxStackTraceDepth = 100;
+
+  const std::unique_ptr<SymbolizePrinter> printer_;
+  Symbolizer symbolizer_;
+};
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
+#if FOLLY_USE_SYMBOLIZER
+
+/**
  * Use this class to print a stack trace from a signal handler, or other place
  * where you shouldn't allocate memory on the heap, and fsync()ing your file
  * descriptor is more important than performance.
@@ -207,38 +243,6 @@ class SafeStackTracePrinter {
 };
 
 /**
- * Use this class to print a stack trace from normal code.  It will malloc and
- * won't flush or sync.
- *
- * These methods are thread safe, through locking.  However, they are not signal
- * safe.
- */
-class FastStackTracePrinter {
- public:
-  static constexpr size_t kDefaultSymbolCacheSize = 10000;
-
-  explicit FastStackTracePrinter(
-      std::unique_ptr<SymbolizePrinter> printer,
-      size_t symbolCacheSize = kDefaultSymbolCacheSize);
-
-  ~FastStackTracePrinter();
-
-  /**
-   * This is NOINLINE to make sure it shows up in the stack we grab, which makes
-   * it easy to skip printing it.
-   */
-  FOLLY_NOINLINE void printStackTrace(bool symbolize);
-
-  void flush();
-
- private:
-  static constexpr size_t kMaxStackTraceDepth = 100;
-
-  const std::unique_ptr<SymbolizePrinter> printer_;
-  Symbolizer symbolizer_;
-};
-
-/**
  * Use this class in rare situations where signal handlers are running in a
  * tiny stack specified by sigaltstack.
  *
@@ -254,7 +258,7 @@ class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
   const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);
 };
 
-#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+#endif // FOLLY_USE_SYMBOLIZER
 
 } // namespace symbolizer
 } // namespace folly
