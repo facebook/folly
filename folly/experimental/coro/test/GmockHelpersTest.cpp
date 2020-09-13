@@ -14,8 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
+#include <stdexcept>
+#include <string>
+#include <vector>
 
+#include <folly/Portability.h>
+#include <gtest/gtest-death-test.h>
 #if FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/GmockHelpers.h>
@@ -34,16 +38,23 @@ class Foo {
  public:
   virtual ~Foo() = default;
   virtual folly::coro::Task<std::vector<std::string>> getValues() = 0;
+
+  virtual folly::coro::Task<std::string> getString() = 0;
+
+  virtual folly::coro::Task<void> getVoid() = 0;
 };
 
 class MockFoo : Foo {
  public:
   MOCK_METHOD0(getValues, folly::coro::Task<std::vector<std::string>>());
+
+  MOCK_METHOD0(getString, folly::coro::Task<std::string>());
+  MOCK_METHOD0(getVoid, folly::coro::Task<void>());
 };
 
 } // namespace
 
-TEST(CoroLambdaGtest, CoInvokeAvoidsDanglingReferences) {
+TEST(CoroGTestHelpers, CoInvokeAvoidsDanglingReferences) {
   MockFoo mock;
 
   const std::vector<std::string> values{"1", "2", "3"};
@@ -55,6 +66,54 @@ TEST(CoroLambdaGtest, CoInvokeAvoidsDanglingReferences) {
 
   auto ret = folly::coro::blockingWait(mock.getValues());
   EXPECT_EQ(ret, values);
+
+  auto ret2 = folly::coro::blockingWait(mock.getValues());
+  EXPECT_EQ(ret2, values);
+}
+
+TEST(CoroGTestHelpers, CoReturnTest) {
+  MockFoo mock;
+
+  EXPECT_CALL(mock, getString()).WillRepeatedly(CoReturn(std::string("abc")));
+
+  auto ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+
+  ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+}
+
+TEST(CoroGTestHelpers, CoReturnByMoveTest) {
+  MockFoo mock;
+
+  EXPECT_CALL(mock, getString())
+      .WillRepeatedly(CoReturnByMove(std::string("abc")));
+
+  auto ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+}
+
+TEST(CoroGTestHelpers, CoVoidReturnTypeTest) {
+  MockFoo mock;
+
+  EXPECT_CALL(mock, getVoid()).WillRepeatedly(CoReturn());
+
+  EXPECT_NO_THROW(folly::coro::blockingWait(mock.getVoid()));
+}
+
+TEST(CoroLambdaGtest, CoThrowTest) {
+  MockFoo mock;
+
+  std::runtime_error ex("error");
+  EXPECT_CALL(mock, getVoid())
+      .WillOnce(CoThrow<void>(ex))
+      .WillOnce(CoThrow<void>(std::out_of_range("range error")));
+
+  EXPECT_THROW(folly::coro::blockingWait(mock.getVoid()), std::runtime_error);
+  EXPECT_THROW(folly::coro::blockingWait(mock.getVoid()), std::out_of_range);
+
+  EXPECT_CALL(mock, getString()).WillOnce(CoThrow<std::string>(ex));
+  EXPECT_THROW(folly::coro::blockingWait(mock.getString()), std::runtime_error);
 }
 
 #endif // FOLLY_HAS_COROUTINES

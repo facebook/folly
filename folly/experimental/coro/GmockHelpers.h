@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <atomic>
+#include <type_traits>
+
+#include <folly/experimental/coro/Error.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GMock.h>
 
@@ -54,13 +58,115 @@ namespace gmock_helpers {
 //                                co_return x + 1;
 //                              }));
 //
-template <typename Lambda>
-auto CoInvoke(Lambda&& lambda) {
-  return ::testing::Invoke(
-      [capturedLambda = static_cast<Lambda&&>(lambda)](auto&&... args) {
-        return folly::coro::co_invoke(
-            capturedLambda, static_cast<decltype(args)>(args)...);
+template <typename F>
+auto CoInvoke(F&& f) {
+  return ::testing::Invoke([f = static_cast<F&&>(f)](auto&&... a) {
+    return co_invoke(f, static_cast<decltype(a)>(a)...);
+  });
+}
+
+namespace detail {
+template <typename Fn>
+auto makeCoAction(Fn&& fn) {
+  static_assert(
+      std::is_copy_constructible_v<remove_cvref_t<Fn>>,
+      "Fn should be copyable to allow calling mocked call multiple times.");
+
+  using Ret = std::invoke_result_t<remove_cvref_t<Fn>&&>;
+  return ::testing::InvokeWithoutArgs(
+      [fn = std::forward<Fn>(fn)]() mutable -> Ret { return co_invoke(fn); });
+}
+
+// Helper class to capture a ByMove return value for mocked coroutine function.
+// Adds a test failure if it is moved twice like:
+//    .WillRepeatedly(CoReturnByMove...)
+template <typename R>
+struct OnceForwarder {
+  static_assert(std::is_reference_v<R>);
+  using V = remove_cvref_t<R>;
+
+  explicit OnceForwarder(R r) noexcept(std::is_nothrow_constructible_v<V>)
+      : val_(static_cast<R>(r)) {}
+
+  R operator()() noexcept {
+    auto performedPreviously =
+        performed_.exchange(true, std::memory_order_relaxed);
+    if (performedPreviously) {
+      terminate_with<std::runtime_error>(
+          "a CoReturnByMove action must be performed only once");
+    }
+    return static_cast<R>(val_);
+  }
+
+ private:
+  V val_;
+  std::atomic<bool> performed_ = false;
+};
+
+} // namespace detail
+
+// Helper functions to adapt CoRoutines enabled functions to be mocked using
+// gMock. CoReturn and CoThrows are gMock Action types that mirror the Return
+// and Throws Action types used in EXPECT_CALL|ON_CALL invocations.
+//
+// Example:
+//   using namespace ::testing
+//   using namespace folly::coro::gmock_helpers;
+//
+//   MockFoo mock;
+//   std::string result = "abc";
+//
+//   EXPECT_CALL(mock, co_foo(_))
+//     .WillRepeatedly(CoReturn(result));
+//
+//   // For Task<void> return types.
+//   EXPECT_CALL(mock, co_bar(_))
+//     .WillRepeatedly(CoReturn());
+//
+//   // For returning by move.
+//   EXPECT_CALL(mock, co_bar(_))
+//     .WillRepeatedly(CoReturnByMove(std::move(result)));
+//
+//   // For returning by move.
+//   EXPECT_CALL(mock, co_bar(_))
+//     .WillRepeatedly(CoReturnByMove(std::make_unique(result)));
+//
+//
+//  EXPECT_CALL(mock, co_foo(_))
+//     .WillRepeatedly(CoThrow<std::string>(std::runtime_error("error")));
+template <typename T>
+auto CoReturn(T&& ret) {
+  return detail::makeCoAction(
+      [ret = std::forward<T>(ret)]() -> Task<remove_cvref_t<T>> {
+        co_return ret;
       });
+}
+
+inline auto CoReturn() {
+  return ::testing::InvokeWithoutArgs([]() -> Task<> { co_return; });
+}
+
+template <typename T>
+auto CoReturnByMove(T&& ret) {
+  static_assert(
+      !std::is_lvalue_reference_v<decltype(ret)>,
+      "the argument must be passed as non-const rvalue-ref");
+  static_assert(
+      !std::is_const_v<T>,
+      "the argument must be passed as non-const rvalue-ref");
+
+  auto ptr = std::make_shared<detail::OnceForwarder<T&&>>(std::move(ret));
+
+  return detail::makeCoAction(
+      [ptr = std::move(ptr)]() mutable -> Task<remove_cvref_t<T>> {
+        co_return (*ptr)();
+      });
+}
+
+template <typename T, typename Ex>
+auto CoThrow(Ex&& e) {
+  return detail::makeCoAction(
+      [ex = std::forward<Ex>(e)]() -> Task<T> { co_yield co_error(ex); });
 }
 
 } // namespace gmock_helpers
