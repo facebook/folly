@@ -181,7 +181,7 @@ TEST(ManualExecutor, getViaDoesNotDeadlock) {
                .via(&west);
   std::thread t([&] {
     baton.post();
-    f.getVia(&west);
+    std::move(f).getVia(&west);
   });
   baton.wait();
   east.run();
