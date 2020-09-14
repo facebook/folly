@@ -142,41 +142,23 @@ class EventBase::FunctionRunner
  * EventBase methods
  */
 
-EventBase::EventBase(bool enableTimeMeasurement)
-    : runOnceCallbacks_(nullptr),
-      stop_(false),
-      loopThread_(),
-      queue_(nullptr),
-      fnRunner_(nullptr),
-      maxLatency_(0),
-      avgLoopTime_(std::chrono::seconds(2)),
-      maxLatencyLoopTime_(avgLoopTime_),
-      enableTimeMeasurement_(enableTimeMeasurement),
-      nextLoopCnt_(
-          std::size_t(-40)) // Early wrap-around so bugs will manifest soon
-      ,
-      latestLoopCnt_(nextLoopCnt_),
-      startWork_(),
-      observer_(nullptr),
-      observerSampleCount_(0),
-      executionObserver_(nullptr) {
-  evb_ = getDefaultBackend();
+EventBase::EventBase(std::chrono::milliseconds tickInterval)
+    : EventBase(Options().setTimerTickInterval(tickInterval)) {}
 
-  VLOG(5) << "EventBase(): Created.";
-  initNotificationQueue();
-}
+EventBase::EventBase(bool enableTimeMeasurement)
+    : EventBase(Options().setSkipTimeMeasurement(!enableTimeMeasurement)) {}
 
 // takes ownership of the event_base
 EventBase::EventBase(event_base* evb, bool enableTimeMeasurement)
-    : EventBase(
-          std::make_unique<EventBaseBackend>(evb),
-          enableTimeMeasurement) {}
+    : EventBase(Options()
+                    .setBackendFactory([evb] {
+                      return std::make_unique<EventBaseBackend>(evb);
+                    })
+                    .setSkipTimeMeasurement(!enableTimeMeasurement)) {}
 
-// takes ownership of the backend
-EventBase::EventBase(
-    std::unique_ptr<EventBaseBackendBase>&& evb,
-    bool enableTimeMeasurement)
-    : runOnceCallbacks_(nullptr),
+EventBase::EventBase(Options options)
+    : intervalDuration_(options.timerTickInterval),
+      runOnceCallbacks_(nullptr),
       stop_(false),
       loopThread_(),
       queue_(nullptr),
@@ -184,7 +166,7 @@ EventBase::EventBase(
       maxLatency_(0),
       avgLoopTime_(std::chrono::seconds(2)),
       maxLatencyLoopTime_(avgLoopTime_),
-      enableTimeMeasurement_(enableTimeMeasurement),
+      enableTimeMeasurement_(!options.skipTimeMeasurement),
       nextLoopCnt_(
           std::size_t(-40)) // Early wrap-around so bugs will manifest soon
       ,
@@ -193,7 +175,8 @@ EventBase::EventBase(
       observer_(nullptr),
       observerSampleCount_(0),
       executionObserver_(nullptr) {
-  evb_ = evb ? std::move(evb) : getDefaultBackend();
+  evb_ =
+      options.backendFactory ? options.backendFactory() : getDefaultBackend();
   initNotificationQueue();
 }
 

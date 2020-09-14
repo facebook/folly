@@ -114,8 +114,6 @@ class EventBaseManager {
  private:
   struct EventBaseInfo {
     EventBaseInfo(EventBase* evb, bool owned) : eventBase(evb), owned_(owned) {}
-    explicit EventBaseInfo(std::unique_ptr<EventBaseBackendBase>&& evb)
-        : eventBase(new EventBase(std::move(evb))), owned_(true) {}
     EventBaseInfo() : eventBase(new EventBase), owned_(true) {}
 
     EventBase* eventBase;

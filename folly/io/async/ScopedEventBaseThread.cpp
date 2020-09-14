@@ -58,17 +58,14 @@ ScopedEventBaseThread::ScopedEventBaseThread(EventBaseManager* ebm)
 ScopedEventBaseThread::ScopedEventBaseThread(
     EventBaseManager* ebm,
     StringPiece name)
-    : ScopedEventBaseThread(
-          std::unique_ptr<EventBaseBackendBase>(),
-          ebm,
-          name) {}
+    : ScopedEventBaseThread(EventBase::Options(), ebm, name) {}
 
 ScopedEventBaseThread::ScopedEventBaseThread(
-    std::unique_ptr<EventBaseBackendBase>&& backend,
+    EventBase::Options eventBaseOptions,
     EventBaseManager* ebm,
     StringPiece name)
     : ebm_(ebm ? ebm : EventBaseManager::get()) {
-  new (&eb_) EventBase(std::move(backend));
+  new (&eb_) EventBase(std::move(eventBaseOptions));
   th_ = thread(run, ebm_, &eb_, &stop_, name);
   eb_.waitUntilRunning();
 }

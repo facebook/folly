@@ -85,7 +85,11 @@ class EventFD : public EventHandler {
 class BackendEventBase : public EventBase {
  public:
   explicit BackendEventBase(bool useRegisteredFds, size_t capacity = 32 * 1024)
-      : EventBase(getBackend(useRegisteredFds, capacity), false) {}
+      : EventBase(EventBase::Options()
+                      .setBackendFactory([useRegisteredFds, capacity] {
+                        return getBackend(useRegisteredFds, capacity);
+                      })
+                      .setSkipTimeMeasurement(true)) {}
 
  private:
   static std::unique_ptr<folly::EventBaseBackendBase> getBackend(

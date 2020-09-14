@@ -236,6 +236,19 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
   std::unique_ptr<IoVec> ioVecPtr_;
 };
 
+std::unique_ptr<folly::EventBase> getEventBase(
+    folly::PollIoBackend::Options opts) {
+  try {
+    auto factory = [opts] {
+      return std::make_unique<folly::IoUringBackend>(opts);
+    };
+    return std::make_unique<folly::EventBase>(
+        folly::EventBase::Options().setBackendFactory(std::move(factory)));
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+    return nullptr;
+  }
+}
+
 void testEventFD(bool overflow, bool persist, bool asyncRead) {
   static constexpr size_t kBackendCapacity = 64;
   static constexpr size_t kBackendMaxSubmit = 32;
@@ -245,31 +258,23 @@ void testEventFD(bool overflow, bool persist, bool asyncRead) {
   static constexpr size_t kEventFdCount = 16;
   auto total = kNumEventFds * kEventFdCount + kEventFdCount / 2;
 
-  std::unique_ptr<folly::EventBaseBackendBase> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
-
-  folly::EventBase evb(std::move(backend));
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   std::vector<std::unique_ptr<EventFD>> eventsVec;
   eventsVec.reserve(kNumEventFds);
   for (size_t i = 0; i < kNumEventFds; i++) {
     auto ev = std::make_unique<EventFD>(
-        true, 2 * kEventFdCount, total, persist, &evb);
+        true, 2 * kEventFdCount, total, persist, evbPtr.get());
 
     ev->useAsyncReadCallback(asyncRead);
 
     eventsVec.emplace_back(std::move(ev));
   }
 
-  evb.loop();
+  evbPtr->loop();
 
   for (size_t i = 0; i < kNumEventFds; i++) {
     CHECK_GE(
@@ -284,30 +289,21 @@ void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
 
   auto total = numTotal;
 
-  std::unique_ptr<folly::EventBaseBackendBase> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
-
-  folly::EventBase evb(std::move(backend));
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity).setMaxSubmit(kBackendMaxSubmit);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   std::vector<std::unique_ptr<EventFD>> eventsVec;
   eventsVec.reserve(numTotal);
 
   for (size_t i = 0; i < numTotal; i++) {
     bool valid = (i % (numValid + numInvalid)) < numValid;
-    eventsVec.emplace_back(
-        std::make_unique<EventFD>(valid, 1, total, false /*persist*/, &evb));
+    eventsVec.emplace_back(std::make_unique<EventFD>(
+        valid, 1, total, false /*persist*/, evbPtr.get()));
   }
 
-  evb.loop();
+  evbPtr->loop();
 
   for (size_t i = 0; i < numTotal; i++) {
     CHECK_GE(eventsVec[i]->getNum(), 1);
@@ -434,22 +430,13 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
   static constexpr size_t kNumPackets = 32;
   auto total = kNumPackets * kNumSockets;
 
-  std::unique_ptr<folly::EventBaseBackendBase> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
-        .setMaxSubmit(kBackendMaxSubmit)
-        .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(useRegisteredFds);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
-
-  folly::EventBase evb(std::move(backend));
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(useRegisteredFds);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   // create the server sockets
   std::vector<std::unique_ptr<folly::AsyncUDPServerSocket>> serverSocketVec;
@@ -464,13 +451,15 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
   std::string data(kNumBytes, 'A');
 
   for (size_t i = 0; i < kNumSockets; i++) {
-    auto clientSock = std::make_unique<folly::AsyncUDPSocket>(&evb);
+    auto clientSock = std::make_unique<folly::AsyncUDPSocket>(evbPtr.get());
     clientSock->bind(folly::SocketAddress("::1", 0));
 
     auto cb = std::make_unique<EventRecvmsgCallback>(
-        data, clientSock->address(), kNumBytes, total, &evb);
+        data, clientSock->address(), kNumBytes, total, evbPtr.get());
     auto serverSock = std::make_unique<folly::AsyncUDPServerSocket>(
-        &evb, 1500, folly::AsyncUDPServerSocket::DispatchMechanism::RoundRobin);
+        evbPtr.get(),
+        1500,
+        folly::AsyncUDPServerSocket::DispatchMechanism::RoundRobin);
     // set the event callback
     serverSock->setEventCallback(cb.get());
     // bind
@@ -494,7 +483,7 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
     cbVec.emplace_back(std::move(cb));
   }
 
-  evb.loopForever();
+  evbPtr->loopForever();
 
   for (size_t i = 0; i < kNumSockets; i++) {
     CHECK_GE(cbVec[i]->getAsyncNum(), kNumPackets);
@@ -608,20 +597,13 @@ TEST(IoUringBackend, FileReadWrite) {
   static constexpr size_t kBackendMaxSubmit = 32;
   static constexpr size_t kBackendMaxGet = 32;
 
-  std::unique_ptr<folly::IoUringBackend> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
-        .setMaxSubmit(kBackendMaxSubmit)
-        .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(false);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(false);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 512;
   static constexpr size_t kBlockSize = 4096;
@@ -635,9 +617,7 @@ TEST(IoUringBackend, FileReadWrite) {
     ::close(fd);
   };
 
-  folly::EventBase evb(std::move(backend));
-
-  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evb.getBackend());
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
 
   size_t num = 0;
@@ -672,7 +652,7 @@ TEST(IoUringBackend, FileReadWrite) {
         std::move(writeCb));
   }
 
-  evb.loop();
+  evbPtr->loop();
 
   EXPECT_EQ(num, kNumBlocks);
 }
@@ -682,20 +662,13 @@ TEST(IoUringBackend, FileReadvWritev) {
   static constexpr size_t kBackendMaxSubmit = 32;
   static constexpr size_t kBackendMaxGet = 32;
 
-  std::unique_ptr<folly::IoUringBackend> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
-        .setMaxSubmit(kBackendMaxSubmit)
-        .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(false);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(false);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 512;
   static constexpr size_t kNumIov = 4;
@@ -711,9 +684,7 @@ TEST(IoUringBackend, FileReadvWritev) {
     ::close(fd);
   };
 
-  folly::EventBase evb(std::move(backend));
-
-  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evb.getBackend());
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
 
   size_t num = 0;
@@ -764,7 +735,7 @@ TEST(IoUringBackend, FileReadvWritev) {
         CHECK_EQ(res, lenVec[i]);
         CHECK(readDataVecVec[i] == writeDataVecVec[i]);
         if (++num == kNumBlocks) {
-          evb.terminateLoopSoon();
+          evbPtr->terminateLoopSoon();
         }
       };
 
@@ -776,7 +747,7 @@ TEST(IoUringBackend, FileReadvWritev) {
         fd, writeDataIov[i], i * kBlockSize, std::move(writeCb));
   }
 
-  evb.loopForever();
+  evbPtr->loopForever();
 
   EXPECT_EQ(num, kNumBlocks);
 }
@@ -786,20 +757,13 @@ TEST(IoUringBackend, FileReadMany) {
   static constexpr size_t kBackendMaxSubmit = 128;
   static constexpr size_t kBackendMaxGet = 128;
 
-  std::unique_ptr<folly::IoUringBackend> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
-        .setMaxSubmit(kBackendMaxSubmit)
-        .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(false);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(false);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 8 * 1024;
   static constexpr size_t kBlockSize = 4096;
@@ -815,9 +779,7 @@ TEST(IoUringBackend, FileReadMany) {
     ::close(fd);
   };
 
-  folly::EventBase evb(std::move(backend));
-
-  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evb.getBackend());
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
 
   size_t num = 0;
@@ -846,7 +808,7 @@ TEST(IoUringBackend, FileReadMany) {
   backendPtr->queueRead(
       fd, bigReadData.data(), bigReadData.size(), 0, std::move(bigReadCb));
 
-  evb.loop();
+  evbPtr->loop();
 
   EXPECT_EQ(num, kNumBlocks);
 }
@@ -856,20 +818,13 @@ TEST(IoUringBackend, FileWriteMany) {
   static constexpr size_t kBackendMaxSubmit = 128;
   static constexpr size_t kBackendMaxGet = 128;
 
-  std::unique_ptr<folly::IoUringBackend> backend;
-
-  try {
-    folly::PollIoBackend::Options options;
-    options.setCapacity(kBackendCapacity)
-        .setMaxSubmit(kBackendMaxSubmit)
-        .setMaxGet(kBackendMaxGet)
-        .setUseRegisteredFds(false);
-
-    backend = std::make_unique<folly::IoUringBackend>(options);
-  } catch (const folly::IoUringBackend::NotAvailable&) {
-  }
-
-  SKIP_IF(!backend) << "Backend not available";
+  folly::PollIoBackend::Options options;
+  options.setCapacity(kBackendCapacity)
+      .setMaxSubmit(kBackendMaxSubmit)
+      .setMaxGet(kBackendMaxGet)
+      .setUseRegisteredFds(false);
+  auto evbPtr = getEventBase(options);
+  SKIP_IF(!evbPtr) << "Backend not available";
 
   static constexpr size_t kNumBlocks = 8 * 1024;
   static constexpr size_t kBlockSize = 4096;
@@ -885,9 +840,7 @@ TEST(IoUringBackend, FileWriteMany) {
     ::close(fd);
   };
 
-  folly::EventBase evb(std::move(backend));
-
-  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evb.getBackend());
+  auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
 
   size_t num = 0;
@@ -920,7 +873,7 @@ TEST(IoUringBackend, FileWriteMany) {
         std::move(writeCb));
   }
 
-  evb.loop();
+  evbPtr->loop();
   EXPECT_EQ(num, kNumBlocks);
   EXPECT_EQ(bFdatasync, true);
 
@@ -939,7 +892,7 @@ TEST(IoUringBackend, FileWriteMany) {
   backendPtr->queueWrite(
       fd, bigWriteData.data(), bigWriteData.size(), 0, std::move(bigWriteCb));
 
-  evb.loop();
+  evbPtr->loop();
 
   EXPECT_EQ(bFsync, true);
 }

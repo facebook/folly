@@ -282,6 +282,47 @@ class EventBase : public TimeoutManager,
     Function<void()> f_;
   };
 
+  struct Options {
+    Options() {}
+
+    /**
+     * Skip measuring event base loop durations.
+     *
+     * Disabling it would likely improve performance, but will disable some
+     * features that rely on time-measurement, including: observer, max latency
+     * and avg loop time.
+     */
+    bool skipTimeMeasurement{false};
+
+    Options& setSkipTimeMeasurement(bool skip) {
+      skipTimeMeasurement = skip;
+      return *this;
+    }
+
+    /**
+     * Factory function for creating the backend.
+     */
+    using BackendFactory =
+        folly::Function<std::unique_ptr<folly::EventBaseBackendBase>()>;
+    BackendFactory::SharedProxy backendFactory{nullptr};
+
+    Options& setBackendFactory(BackendFactory factoryFn) {
+      backendFactory = std::move(factoryFn).asSharedProxy();
+      return *this;
+    }
+
+    /**
+     * Granularity of the wheel timer in the EventBase.
+     */
+    std::chrono::milliseconds timerTickInterval{
+        HHWheelTimer::DEFAULT_TICK_INTERVAL};
+
+    Options& setTimerTickInterval(std::chrono::milliseconds interval) {
+      timerTickInterval = interval;
+      return *this;
+    }
+  };
+
   /**
    * Create a new EventBase object.
    *
@@ -289,9 +330,7 @@ class EventBase : public TimeoutManager,
    * except that this also allows the timer granularity to be specified
    */
 
-  explicit EventBase(std::chrono::milliseconds tickInterval) : EventBase(true) {
-    intervalDuration_ = tickInterval;
-  }
+  explicit EventBase(std::chrono::milliseconds tickInterval);
 
   /**
    * Create a new EventBase object.
@@ -328,9 +367,8 @@ class EventBase : public TimeoutManager,
    *                              observer, max latency and avg loop time.
    */
   explicit EventBase(event_base* evb, bool enableTimeMeasurement = true);
-  explicit EventBase(
-      std::unique_ptr<EventBaseBackendBase>&& evb,
-      bool enableTimeMeasurement = true);
+
+  explicit EventBase(Options options);
   ~EventBase() override;
 
   /**
