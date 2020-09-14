@@ -1159,7 +1159,10 @@ void AsyncSocket::writeImpl(
         // done, add the whole buffer
         if (countWritten && isZeroCopyRequest(flags)) {
           addZeroCopyBuf(std::move(ioBuf));
+        } else {
+          ioBuf.reset();
         }
+
         // We successfully wrote everything.
         // Invoke the callback and return.
         if (callback) {
