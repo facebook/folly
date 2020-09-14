@@ -26,6 +26,7 @@
 #include <folly/io/async/AsyncPipe.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/CertificateIdentityVerifier.h>
 #include <folly/io/async/SSLContext.h>
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/io/async/ssl/OpenSSLUtils.h>
@@ -195,6 +196,40 @@ class AsyncSSLSocket : public AsyncSocket {
     AsyncSSLSocket* sslSocket_{nullptr};
     DestructorGuard dg_;
   };
+
+  /**
+   * Struct to consolidate constructor arguments.
+   */
+  struct Options {
+    // If this verifier is set, it's used during the TLS handshake. It will be
+    // invoked to verify the peer's end-entity leaf certificate after OpenSSL's
+    // chain validation and after calling the HandshakeCB's handshakeVer() and
+    // only if these are successful.
+    std::shared_ptr<CertificateIdentityVerifier> verifier;
+    bool deferSecurityNegotiation{};
+    bool isServer{};
+  };
+
+  /**
+   * Initialize this AsyncSSLSocket object with the given Options.
+   *
+   * @param options optional arguments for this AsyncSSLSocket instance
+   */
+  AsyncSSLSocket(
+      std::shared_ptr<folly::SSLContext> ctx,
+      EventBase* evb,
+      Options&& options);
+
+  /**
+   * Initialize this AsyncSSLSocket object with the given Options from an
+   * already connected AsyncSocket.
+   *
+   * @param options optional arguments for this AsyncSSLSocket instance
+   */
+  AsyncSSLSocket(
+      std::shared_ptr<folly::SSLContext> ctx,
+      AsyncSocket::UniquePtr oldAsyncSocket,
+      Options&& options);
 
   /**
    * Create a client AsyncSSLSocket
@@ -927,6 +962,7 @@ class AsyncSSLSocket : public AsyncSocket {
   std::shared_ptr<folly::SSLContext> ctx_;
   // Callback for SSL_accept() or SSL_connect()
   HandshakeCB* handshakeCallback_{nullptr};
+  std::shared_ptr<CertificateIdentityVerifier> certificateIdentityVerifier_;
   ssl::SSLUniquePtr ssl_;
   Timeout handshakeTimeout_;
   Timeout connectionTimeout_;

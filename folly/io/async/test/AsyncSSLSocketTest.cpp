@@ -1262,6 +1262,354 @@ TEST(AsyncSSLSocketTest, SSLHandshakeValidationFailure) {
 }
 
 /**
+ * Verify that the client successfully handshakes when
+ * CertificateIdentityVerifier is set and returns with no exception.
+ */
+TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierReturns) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // load root certificate
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  // prepare a basic server (callbacks have a few EXPECTS to fullfil)
+  ReadCallback readCallback(nullptr);
+  // expects successful handshake
+  HandshakeCallback handshakeCallback(&readCallback);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, serverCtx);
+
+  // return success in the Try with folly::unit
+  Try<Unit> verifyResult{unit};
+
+  std::shared_ptr<MockCertificateIdentityVerifier> verifier =
+      std::make_shared<MockCertificateIdentityVerifier>();
+
+  // expecting to only verify once, with the leaf certificate
+  // (kTestCert)
+  EXPECT_CALL(
+      *verifier,
+      verifyLeafImpl(Property(
+          &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
+      .WillOnce(Return(ByMove(verifyResult)));
+
+  AsyncSSLSocket::Options opts;
+  opts.verifier = std::move(verifier);
+
+  // connect to server and handshake
+  AsyncSSLSocket::UniquePtr socket(
+      new AsyncSSLSocket(clientCtx, &eventBase, std::move(opts)));
+  socket->connect(nullptr, server.getAddress(), 0);
+
+  // write to satisfy server ReadCallback EXPECTs
+  std::array<uint8_t, 128> buf;
+  memset(buf.data(), 'a', buf.size());
+  socket->write(nullptr, buf.data(), buf.size());
+
+  eventBase.loop();
+
+  socket->close();
+}
+
+class TestCertificateIdentityVerifierException
+    : public CertificateIdentityVerifierException {
+ public:
+  explicit TestCertificateIdentityVerifierException(const char* content)
+      : CertificateIdentityVerifierException(content) {}
+};
+
+/**
+ * Verify that the client fails to connect during handshake because
+ * CertificateIdentityVerifier returns a failure while verifying the server's
+ * leaf certificate.
+ */
+TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierFailsToConnect) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // load root certificate
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  // prepare a basic server (callbacks have a few EXPECTS to fullfil)
+  ReadCallback readCallback(nullptr);
+  // expects a failed handshake
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::ExpectType::EXPECT_ERROR);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, serverCtx);
+
+  std::shared_ptr<MockCertificateIdentityVerifier> verifier =
+      std::make_shared<MockCertificateIdentityVerifier>();
+
+  // return a failed result Try
+  TestCertificateIdentityVerifierException failed{"a failed test reason"};
+  Try<Unit> result{failed};
+
+  // expecting to only verify once, with the leaf certificate (kTestCert)
+  EXPECT_CALL(
+      *verifier,
+      verifyLeafImpl(Property(
+          &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
+      .WillOnce(Return(ByMove(result)));
+
+  AsyncSSLSocket::Options opts;
+  opts.verifier = std::move(verifier);
+
+  // connect to server and handshake
+  AsyncSSLSocket::UniquePtr socket(
+      new AsyncSSLSocket(clientCtx, &eventBase, std::move(opts)));
+  socket->connect(nullptr, server.getAddress(), 0);
+
+  eventBase.loop();
+
+  socket->close();
+}
+
+/**
+ * Verify that the client's CertificateIdentityVerifier is not invoked if
+ * OpenSSL's verification fails. (With no HandshakeCB.)
+ */
+TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierNotInvokedX509Failure) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // DO NOT load root certificate, so that server certificate is rejected
+
+  // prepare a basic server (callbacks have a few EXPECTS to fullfil)
+  ReadCallback readCallback(nullptr);
+  // expects successful handshake
+  HandshakeCallback handshakeCallback(
+      &readCallback, HandshakeCallback::ExpectType::EXPECT_ERROR);
+  SSLServerAcceptCallback acceptCallback(&handshakeCallback);
+  TestSSLServer server(&acceptCallback, serverCtx);
+
+  // should not get called
+  std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> verifier =
+      std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
+
+  AsyncSSLSocket::Options opts;
+  opts.verifier = std::move(verifier);
+
+  // connect to server and handshake
+  AsyncSSLSocket::UniquePtr socket(
+      new AsyncSSLSocket(clientCtx, &eventBase, std::move(opts)));
+  socket->connect(nullptr, server.getAddress(), 0);
+
+  eventBase.loop();
+
+  socket->close();
+}
+
+/**
+ * Verify that the client CertificateIdentityVerifier is not invoked if
+ * HandshakeCB::handshakeVer verification fails.
+ */
+TEST(
+    AsyncSSLSocketTest,
+    SSLCertificateIdentityVerifierNotInvokedHandshakeCBFailure) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // load root certificate
+  clientCtx->loadTrustedCertificates(kTestCA);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSocket::UniquePtr rawClient(new AsyncSocket(&eventBase, fds[0]));
+  AsyncSocket::UniquePtr rawServer(new AsyncSocket(&eventBase, fds[1]));
+
+  // should not be invoked
+  std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> verifier =
+      std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
+
+  AsyncSSLSocket::Options clientOpts;
+  clientOpts.verifier = verifier;
+
+  AsyncSSLSocket::Options serverOpts;
+  serverOpts.isServer = true;
+
+  AsyncSSLSocket::UniquePtr clientSock(new AsyncSSLSocket(
+      clientCtx, std::move(rawClient), std::move(clientOpts)));
+  AsyncSSLSocket::UniquePtr serverSock(new AsyncSSLSocket(
+      serverCtx, std::move(rawServer), std::move(serverOpts)));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+
+  StrictMock<MockHandshakeCB> clientHandshakeCB;
+  EXPECT_CALL(clientHandshakeCB, handshakeVerImpl(clientSock.get(), true, _))
+      // CA root certificate succeeds
+      .WillOnce(Return(true))
+      // leaf fails
+      .WillOnce(Return(false));
+
+  // failure callback to verify handshake failed
+  EXPECT_CALL(clientHandshakeCB, handshakeErrImpl(clientSock.get(), _))
+      .WillOnce(Return());
+
+  clientSock->sslConn(&clientHandshakeCB);
+
+  eventBase.loop();
+
+  clientSock->close();
+  serverSock->close();
+}
+
+MATCHER_P(
+    hasError,
+    error,
+    "X509_STORE_CTX matcher to check for verification error code") {
+  return X509_STORE_CTX_get_error(arg) == error;
+}
+
+/**
+ * Verify that the client CertificateIdentityVerifier is not invoked if
+ * OpenSSL preverify fails but HandshakeCB::handshakeVer succeeds.
+ */
+TEST(
+    AsyncSSLSocketTest,
+    SSLCertificateIdentityVerifierHandshakeCBOverrideOpenSSLResult) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // DO NOT load root certificate, will cause X509 chain validation error
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSocket::UniquePtr rawClient(new AsyncSocket(&eventBase, fds[0]));
+  AsyncSocket::UniquePtr rawServer(new AsyncSocket(&eventBase, fds[1]));
+
+  // should not be invoked
+  std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> verifier =
+      std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
+
+  AsyncSSLSocket::Options clientOpts;
+  clientOpts.verifier = verifier;
+
+  AsyncSSLSocket::Options serverOpts;
+  serverOpts.isServer = true;
+
+  AsyncSSLSocket::UniquePtr clientSock(new AsyncSSLSocket(
+      clientCtx, std::move(rawClient), std::move(clientOpts)));
+  AsyncSSLSocket::UniquePtr serverSock(new AsyncSSLSocket(
+      serverCtx, std::move(rawServer), std::move(serverOpts)));
+
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+
+  StrictMock<MockHandshakeCB> clientHandshakeCB;
+  // first OpenSSL failure
+  EXPECT_CALL(
+      clientHandshakeCB,
+      handshakeVerImpl(
+          clientSock.get(),
+          false,
+          hasError(X509_V_ERR_UNABLE_TO_GET_ISSUER_CERT_LOCALLY)))
+      // overwrite OpenSSL error
+      .WillOnce(Return(true));
+  // second OpenSSL failure
+  EXPECT_CALL(
+      clientHandshakeCB,
+      handshakeVerImpl(
+          clientSock.get(),
+          false,
+          hasError(X509_V_ERR_UNABLE_TO_VERIFY_LEAF_SIGNATURE)))
+      // overwrite OpenSSL error
+      .WillOnce(Return(true));
+
+  // success callback to confirm handshake succeeded
+  EXPECT_CALL(clientHandshakeCB, handshakeSucImpl(clientSock.get()))
+      .WillOnce(Return());
+
+  clientSock->sslConn(&clientHandshakeCB);
+
+  eventBase.loop();
+
+  clientSock->close();
+  serverSock->close();
+}
+
+/**
+ * Verify that the client CertificateIdentityVerifier is invoked on a server
+ * socket when peer verification is requested.
+ */
+TEST(AsyncSSLSocketTest, SSLCertificateIdentityVerifierSucceedsOnServer) {
+  EventBase eventBase;
+  auto clientCtx = std::make_shared<folly::SSLContext>();
+  auto serverCtx = std::make_shared<folly::SSLContext>();
+  getctx(clientCtx, serverCtx);
+  // the client socket will default to USE_CTX, so set VERIFY here
+  clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  // load root certificate
+  clientCtx->loadTrustedCertificates(kTestCA);
+  // load identity and key on client, it's the same identity as server just for
+  // convenience
+  clientCtx->loadCertificate(kTestCert);
+  clientCtx->loadPrivateKey(kTestKey);
+  // instruct server to verify client
+  serverCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::VERIFY);
+  serverCtx->loadTrustedCertificates(kTestCA);
+
+  NetworkSocket fds[2];
+  getfds(fds);
+
+  AsyncSocket::UniquePtr rawClient(new AsyncSocket(&eventBase, fds[0]));
+  AsyncSocket::UniquePtr rawServer(new AsyncSocket(&eventBase, fds[1]));
+
+  // client and server verifiers should verify only once each
+  std::shared_ptr<MockCertificateIdentityVerifier> clientVerifier =
+      std::make_shared<MockCertificateIdentityVerifier>();
+  EXPECT_CALL(
+      *clientVerifier,
+      verifyLeafImpl(Property(
+          &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
+      .WillOnce(Return(Try<Unit>{unit}));
+  std::shared_ptr<StrictMock<MockCertificateIdentityVerifier>> serverVerifier =
+      std::make_shared<StrictMock<MockCertificateIdentityVerifier>>();
+  EXPECT_CALL(
+      *serverVerifier,
+      verifyLeafImpl(Property(
+          &AsyncTransportCertificate::getIdentity, StrEq("Asox Company"))))
+      .WillOnce(Return(Try<Unit>{unit}));
+
+  AsyncSSLSocket::Options clientOpts;
+  clientOpts.verifier = clientVerifier;
+
+  AsyncSSLSocket::Options serverOpts;
+  serverOpts.isServer = true;
+  serverOpts.verifier = serverVerifier;
+
+  AsyncSSLSocket::UniquePtr clientSock(new AsyncSSLSocket(
+      clientCtx, std::move(rawClient), std::move(clientOpts)));
+  AsyncSSLSocket::UniquePtr serverSock(new AsyncSSLSocket(
+      serverCtx, std::move(rawServer), std::move(serverOpts)));
+
+  // no HandshakeCBs anywhere
+  serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
+  clientSock->sslConn(nullptr);
+
+  eventBase.loop();
+
+  clientSock->close();
+  serverSock->close();
+}
+
+/**
  * Verify that the options in SSLContext can be overridden in
  * sslConnect/Accept.i.e specifying that no validation should be performed
  * allows an otherwise-invalid certificate to be accepted and doesn't fire

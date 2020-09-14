@@ -209,6 +209,47 @@ class AsyncSSLSocketConnector : public AsyncSocket::ConnectCallback,
   }
 };
 
+AsyncSSLSocket::AsyncSSLSocket(
+    shared_ptr<SSLContext> ctx,
+    EventBase* evb,
+    Options&& options)
+    : AsyncSocket(evb),
+      server_{options.isServer},
+      ctx_{std::move(ctx)},
+      certificateIdentityVerifier_{std::move(options.verifier)},
+      handshakeTimeout_{this, evb},
+      connectionTimeout_{this, evb} {
+  init();
+  if (options.isServer) {
+    SSL_CTX_set_info_callback(
+        ctx_->getSSLCtx(), AsyncSSLSocket::sslInfoCallback);
+  }
+  if (options.deferSecurityNegotiation) {
+    sslState_ = STATE_UNENCRYPTED;
+  }
+}
+
+AsyncSSLSocket::AsyncSSLSocket(
+    std::shared_ptr<folly::SSLContext> ctx,
+    AsyncSocket::UniquePtr oldAsyncSocket,
+    Options&& options)
+    : AsyncSocket(std::move(oldAsyncSocket)),
+      server_{options.isServer},
+      ctx_{std::move(ctx)},
+      certificateIdentityVerifier_{std::move(options.verifier)},
+      handshakeTimeout_{this, AsyncSocket::getEventBase()},
+      connectionTimeout_{this, AsyncSocket::getEventBase()} {
+  noTransparentTls_ = true;
+  init();
+  if (options.isServer) {
+    SSL_CTX_set_info_callback(
+        ctx_->getSSLCtx(), AsyncSSLSocket::sslInfoCallback);
+  }
+  if (options.deferSecurityNegotiation) {
+    sslState_ = STATE_UNENCRYPTED;
+  }
+}
+
 /**
  * Create a client AsyncSSLSocket
  */
@@ -1805,9 +1846,51 @@ int AsyncSSLSocket::sslVerifyCallback(
   VLOG(3) << "AsyncSSLSocket::sslVerifyCallback() this=" << self << ", "
           << "fd=" << self->fd_ << ", preverifyOk=" << preverifyOk;
 
-  return (self->handshakeCallback_)
-      ? self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx)
-      : preverifyOk;
+  if (self->handshakeCallback_) {
+    int callbackOk =
+        (self->handshakeCallback_->handshakeVer(self, preverifyOk, x509Ctx))
+        ? 1
+        : 0;
+
+    if (preverifyOk != callbackOk) {
+      // HandshakeCB overwrites result from OpenSSL. One way or another, do not
+      // call CertificateIdentityVerifier.
+      return callbackOk;
+    }
+  }
+
+  if (!preverifyOk) {
+    // OpenSSL verification failure, no need to call CertificateIdentityVerifier
+    return 0;
+  }
+
+  // only invoke the CertificateIdentityVerifier for the leaf certificate and
+  // only if OpenSSL's preverify and the HandshakeCB's handshakeVer succeeded
+
+  int currentDepth = X509_STORE_CTX_get_error_depth(x509Ctx);
+  if (currentDepth != 0 || self->certificateIdentityVerifier_ == nullptr) {
+    return 1;
+  }
+
+  X509* peerX509 = X509_STORE_CTX_get_current_cert(x509Ctx);
+  X509_up_ref(peerX509);
+  folly::ssl::X509UniquePtr peer{peerX509};
+  auto cn = OpenSSLUtils::getCommonName(peerX509);
+  auto cert = std::make_unique<BasicTransportCertificate>(
+      std::move(cn), std::move(peer));
+
+  auto certVerifyResult =
+      self->certificateIdentityVerifier_->verifyLeaf(*cert.get());
+
+  if (certVerifyResult.hasException()) {
+    LOG(ERROR) << "AsyncSSLSocket::sslVerifyCallback(this=" << self
+               << ", fd=" << self->fd_
+               << ") Failed to verify leaf certificate identity(ies): "
+               << folly::exceptionStr(certVerifyResult.exception());
+    return 0;
+  }
+
+  return 1;
 }
 
 void AsyncSSLSocket::enableClientHelloParsing() {

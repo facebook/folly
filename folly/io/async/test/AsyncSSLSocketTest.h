@@ -31,6 +31,7 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/SSLErrors.h>
 #include <folly/io/async/test/TestSSLServer.h>
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/PThread.h>
 #include <folly/portability/Sockets.h>
@@ -536,6 +537,43 @@ class EmptyReadCallback : public ReadCallback {
   }
 
   std::shared_ptr<AsyncSocket> tcpSocket_;
+};
+
+class MockCertificateIdentityVerifier : public CertificateIdentityVerifier {
+ public:
+  MOCK_CONST_METHOD1(
+      verifyLeafImpl,
+      Try<Unit>(const AsyncTransportCertificate&));
+  // decorate to add noexcept
+  virtual Try<Unit> verifyLeaf(const AsyncTransportCertificate& leafCertificate)
+      const noexcept override {
+    return verifyLeafImpl(leafCertificate);
+  }
+};
+
+class MockHandshakeCB : public AsyncSSLSocket::HandshakeCB {
+ public:
+  MOCK_METHOD3(handshakeVerImpl, bool(AsyncSSLSocket*, bool, X509_STORE_CTX*));
+  virtual bool handshakeVer(
+      AsyncSSLSocket* sock,
+      bool preverifyOk,
+      X509_STORE_CTX* ctx) noexcept override {
+    return handshakeVerImpl(sock, preverifyOk, ctx);
+  }
+
+  MOCK_METHOD1(handshakeSucImpl, void(AsyncSSLSocket*));
+  virtual void handshakeSuc(AsyncSSLSocket* sock) noexcept override {
+    handshakeSucImpl(sock);
+  }
+
+  MOCK_METHOD2(
+      handshakeErrImpl,
+      void(AsyncSSLSocket*, const AsyncSocketException&));
+  virtual void handshakeErr(
+      AsyncSSLSocket* sock,
+      const AsyncSocketException& ex) noexcept override {
+    handshakeErrImpl(sock, ex);
+  }
 };
 
 class HandshakeCallback : public AsyncSSLSocket::HandshakeCB {
