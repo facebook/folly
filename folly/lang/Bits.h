@@ -67,7 +67,7 @@
 #include <folly/lang/Assume.h>
 #include <folly/portability/Builtins.h>
 
-#if __has_include(<bit>)
+#if __has_include(<bit>) && __cplusplus >= 202002L
 #include <bit>
 #endif
 
