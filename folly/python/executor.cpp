@@ -14,14 +14,31 @@
  * limitations under the License.
  */
 
-#pragma once
+#include <folly/python/executor.h>
 
-#include <folly/Executor.h>
+#include <stdexcept>
+
+#include <folly/CppAttributes.h>
+#include <folly/python/AsyncioExecutor.h>
+#include <folly/python/executor_api.h> // @manual
 
 namespace folly {
 namespace python {
 
-folly::Executor* getExecutor();
+namespace {
+
+void do_import() {
+  if (0 != import_folly__executor()) {
+    throw std::runtime_error("import_folly__executor failed");
+  }
+}
+
+} // namespace
+
+folly::Executor* getExecutor() {
+  FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
+  return get_executor();
+}
 
 } // namespace python
 } // namespace folly
