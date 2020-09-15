@@ -15,7 +15,7 @@
  */
 
 #include <folly/Portability.h>
-#include <folly/Portability/Builtins.h>
+#include <folly/portability/Builtins.h>
 
 #if FOLLY_HAS_STRING_VIEW
 #include <string_view> // @manual
