@@ -29,6 +29,8 @@ folly
 fizz
 wangle
 mvfst
+
+[dependencies.test=on]
 googletest_1_8
 
 [shipit.pathmap]

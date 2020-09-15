@@ -24,6 +24,8 @@ BUILD_TESTS = OFF
 [dependencies]
 folly
 libsodium
+
+[dependencies.test=on]
 googletest_1_8
 
 [shipit.pathmap]

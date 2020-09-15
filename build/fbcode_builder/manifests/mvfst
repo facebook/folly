@@ -20,6 +20,8 @@ BUILD_TESTS = OFF
 [dependencies]
 folly
 fizz
+
+[dependencies.test=on]
 googletest_1_8
 
 [shipit.pathmap]
