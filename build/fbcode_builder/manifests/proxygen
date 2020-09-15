@@ -15,8 +15,13 @@ builder = cmake
 subdir = .
 
 [cmake.defines]
-BUILD_QUIC=ON
-BUILD_TESTS=OFF
+BUILD_QUIC = ON
+
+[cmake.defines.test=on]
+BUILD_TESTS = ON
+
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
 
 [dependencies]
 gperf
@@ -24,6 +29,7 @@ folly
 fizz
 wangle
 mvfst
+googletest_1_8
 
 [shipit.pathmap]
 fbcode/proxygen/public_tld = .
