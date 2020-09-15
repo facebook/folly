@@ -5,6 +5,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import specs.gmock as gmock
 import specs.fmt as fmt
 import specs.folly as folly
 import specs.fizz as fizz
@@ -27,6 +28,6 @@ def fbcode_builder_spec(builder):
     )
 
     return {
-        "depends_on": [fmt, folly, wangle, fizz, sodium, zstd, mvfst],
+        "depends_on": [gmock, fmt, folly, wangle, fizz, sodium, zstd, mvfst],
         "steps": [builder.fb_github_cmake_install("proxygen/proxygen", "..")],
     }

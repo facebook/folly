@@ -5,6 +5,7 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import specs.gmock as gmock
 import specs.fmt as fmt
 import specs.folly as folly
 import specs.fizz as fizz
@@ -14,15 +15,13 @@ import specs.sodium as sodium
 def fbcode_builder_spec(builder):
     # Projects that **depend** on wangle need not spend time on tests.
     builder.add_option(
-        'wangle/wangle/build:cmake_defines',
+        "wangle/wangle/build:cmake_defines",
         {
-            # This is set to ON in the wangle `fbcode_builder_config.py` 
-            'BUILD_TESTS': 'OFF',
-        }
+            # This is set to ON in the wangle `fbcode_builder_config.py`
+            "BUILD_TESTS": "OFF"
+        },
     )
     return {
-        'depends_on': [fmt, folly, fizz, sodium],
-        'steps': [
-            builder.fb_github_cmake_install('wangle/wangle/build'),
-        ],
+        "depends_on": [gmock, fmt, folly, fizz, sodium],
+        "steps": [builder.fb_github_cmake_install("wangle/wangle/build")],
     }
