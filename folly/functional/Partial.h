@@ -31,17 +31,18 @@ namespace partial {
 // not accidentally act as copy or move constructor
 struct PartialConstructFromCallable {};
 
-template <typename F, typename Tuple>
+template <typename F, typename... StoredArg>
 class Partial {
-  using Indexes = std::make_index_sequence<std::tuple_size<Tuple>{}>;
+  using Tuple = std::tuple<StoredArg...>;
+  using Indexes = std::index_sequence_for<StoredArg...>;
 
   template <typename Self, std::size_t... I, typename... Args>
   static auto
   invokeForward(Self&& self, std::index_sequence<I...>, Args&&... args)
-      -> decltype(invoke(
-          std::declval<Self>().f_,
-          std::get<I>(std::declval<Self>().stored_args_)...,
-          std::declval<Args>()...)) {
+      -> invoke_result_t<
+          like_t<Self&&, F>,
+          like_t<Self&&, StoredArg>...,
+          Args&&...> {
     return invoke(
         std::forward<Self>(self).f_,
         std::get<I>(std::forward<Self>(self).stored_args_)...,
@@ -117,9 +118,9 @@ class Partial {
  * and passed to the original callable.
  */
 template <typename F, typename... Args>
-auto partial(F&& f, Args&&... args) -> detail::partial::Partial<
+auto partial(F&& f, Args&&... args) -> detail::partial::Partial< //
     typename std::decay<F>::type,
-    std::tuple<typename std::decay<Args>::type...>> {
+    typename std::decay<Args>::type...> {
   return {detail::partial::PartialConstructFromCallable{},
           std::forward<F>(f),
           std::forward<Args>(args)...};
