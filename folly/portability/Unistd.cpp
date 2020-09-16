@@ -115,7 +115,7 @@ int getdtablesize() {
   return _getmaxstdio();
 }
 
-int getgid() {
+gid_t getgid() {
   return 1;
 }
 
@@ -125,7 +125,7 @@ pid_t getppid() {
   return (pid_t)1;
 }
 
-int getuid() {
+uid_t getuid() {
   return 1;
 }
 

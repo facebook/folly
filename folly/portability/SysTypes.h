@@ -25,6 +25,10 @@
 // we support, but it's far more compatible with the rest of the windows world
 // as an `int` than it would be as a `void*`
 using pid_t = int;
+
+using uid_t = int;
+using gid_t = int;
+
 // This isn't actually supposed to be defined here, but it's the most
 // appropriate place without defining a portability header for stdint.h
 // with just this single typedef.
