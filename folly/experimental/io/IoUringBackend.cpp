@@ -101,6 +101,13 @@ IoUringBackend::IoUringBackend(Options options)
   params_.flags |= IORING_SETUP_CQSIZE;
   params_.cq_entries = options.capacity;
 
+  // poll SQ options
+  if (options.flags & Options::Flags::POLL_SQ) {
+    params_.flags |= IORING_SETUP_SQPOLL;
+    params_.sq_thread_idle = options.sqIdle.count();
+    params_.sq_thread_cpu = options.sqCpu;
+  }
+
   // allocate entries both for poll add and cancel
   if (::io_uring_queue_init_params(
           2 * options_.maxSubmit, &ioRing_, &params_)) {
@@ -199,7 +206,7 @@ bool IoUringBackend::isAvailable() {
 }
 
 void* IoUringBackend::allocSubmissionEntry() {
-  return ::io_uring_get_sqe(&ioRing_);
+  return get_sqe();
 }
 
 int IoUringBackend::submitOne(IoCb* /*unused*/) {
@@ -212,7 +219,7 @@ int IoUringBackend::cancelOne(IoCb* ioCb) {
     return 0;
   }
 
-  auto* sqe = ::io_uring_get_sqe(&ioRing_);
+  auto* sqe = get_sqe();
   CHECK(sqe);
 
   rentry->prepCancel(sqe, ioCb); // prev entry
@@ -233,7 +240,21 @@ int IoUringBackend::getActiveEvents(WaitForEventsMode waitForEvents) {
   // we can be called from the submitList() method
   // or with non blocking flags
   if (FOLLY_LIKELY(waitForEvents == WaitForEventsMode::WAIT)) {
-    ::io_uring_wait_cqe(&ioRing_, &cqe);
+    // if polling the CQ, busy wait for one entry
+    if (options_.flags & Options::Flags::POLL_CQ) {
+      do {
+        ::io_uring_peek_cqe(&ioRing_, &cqe);
+        asm_volatile_pause();
+        // call the loop callback if installed
+        // we call it every time we poll for a CQE
+        // regardless of the io_uring_peek_cqe result
+        if (cqPollLoopCallback_) {
+          cqPollLoopCallback_();
+        }
+      } while (!cqe);
+    } else {
+      ::io_uring_wait_cqe(&ioRing_, &cqe);
+    }
   } else {
     ::io_uring_peek_cqe(&ioRing_, &cqe);
   }
@@ -254,7 +275,11 @@ int IoUringBackend::submitBusyCheck(int num, WaitForEventsMode waitForEvents) {
   int res;
   while (i < num) {
     if (waitForEvents == WaitForEventsMode::WAIT) {
-      res = ::io_uring_submit_and_wait(&ioRing_, 1);
+      if (options_.flags & Options::Flags::POLL_CQ) {
+        res = ::io_uring_submit(&ioRing_);
+      } else {
+        res = ::io_uring_submit_and_wait(&ioRing_, 1);
+      }
     } else {
       res = ::io_uring_submit(&ioRing_);
     }
@@ -278,6 +303,15 @@ int IoUringBackend::submitBusyCheck(int num, WaitForEventsMode waitForEvents) {
     }
 
     i += res;
+
+    // if polling the CQ, busy wait for one entry
+    if (waitForEvents == WaitForEventsMode::WAIT &&
+        options_.flags & Options::Flags::POLL_CQ && i == num) {
+      struct io_uring_cqe* cqe = nullptr;
+      while (!cqe) {
+        ::io_uring_peek_cqe(&ioRing_, &cqe);
+      }
+    }
   }
 
   return num;
@@ -292,7 +326,7 @@ size_t IoUringBackend::submitList(
   while (!ioCbs.empty()) {
     auto* entry = &ioCbs.front();
     ioCbs.pop_front();
-    auto* sqe = ::io_uring_get_sqe(&ioRing_);
+    auto* sqe = get_sqe();
     CHECK(sqe); // this should not happen
 
     entry->processSubmit(sqe);

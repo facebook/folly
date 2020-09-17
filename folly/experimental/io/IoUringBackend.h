@@ -21,6 +21,7 @@
 #include <folly/Function.h>
 #include <folly/Range.h>
 #include <folly/experimental/io/PollIoBackend.h>
+#include <folly/portability/Asm.h>
 #include <folly/small_vector.h>
 
 #include <glog/logging.h>
@@ -40,6 +41,13 @@ class IoUringBackend : public PollIoBackend {
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
+
+  // CQ poll mode loop callback
+  using CQPollLoopCallback = folly::Function<void()>;
+
+  void setCQPollLoopCallback(CQPollLoopCallback&& cb) {
+    cqPollLoopCallback_ = std::move(cb);
+  }
 
   // from PollIoBackend
   FdRegistrationRecord* registerFd(int fd) override {
@@ -393,6 +401,19 @@ class IoUringBackend : public PollIoBackend {
 
   void cleanup();
 
+  FOLLY_ALWAYS_INLINE struct io_uring_sqe* get_sqe() {
+    struct io_uring_sqe* ret = ::io_uring_get_sqe(&ioRing_);
+    // if running with SQ poll enabled
+    // we might have to wait for an sq entry to available
+    // before we can submit another one
+    while ((options_.flags & Options::Flags::POLL_SQ) && !ret) {
+      asm_volatile_pause();
+      ret = ::io_uring_get_sqe(&ioRing_);
+    }
+
+    return ret;
+  }
+
   size_t submit_internal();
 
   // io_uring related
@@ -400,5 +421,9 @@ class IoUringBackend : public PollIoBackend {
   struct io_uring ioRing_;
 
   FdRegistry fdRegistry_;
+
+  // poll callback to be invoked if POLL_CQ flag is set
+  // every time we poll for a CQE
+  CQPollLoopCallback cqPollLoopCallback_;
 };
 } // namespace folly

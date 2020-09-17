@@ -29,6 +29,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Function.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 
 namespace folly {
@@ -36,6 +37,11 @@ namespace folly {
 class PollIoBackend : public EventBaseBackendBase {
  public:
   struct Options {
+    enum Flags {
+      POLL_SQ = 0x1,
+      POLL_CQ = 0x2,
+    };
+
     Options() = default;
 
     Options& setCapacity(size_t v) {
@@ -62,10 +68,39 @@ class PollIoBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setFlags(uint32_t v) {
+      flags = v;
+
+      return *this;
+    }
+
+    Options& setSQIdle(std::chrono::milliseconds v) {
+      sqIdle = v;
+
+      return *this;
+    }
+
+    Options& setCQIdle(std::chrono::milliseconds v) {
+      cqIdle = v;
+
+      return *this;
+    }
+
+    Options& setCQCpu(uint32_t v) {
+      sqCpu = v;
+
+      return *this;
+    }
+
     size_t capacity{0};
     size_t maxSubmit{128};
     size_t maxGet{static_cast<size_t>(-1)};
     bool useRegisteredFds{false};
+    uint32_t flags{0};
+
+    std::chrono::milliseconds sqIdle{0};
+    std::chrono::milliseconds cqIdle{0};
+    uint32_t sqCpu{0};
   };
 
   explicit PollIoBackend(Options options);
