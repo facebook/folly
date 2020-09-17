@@ -103,7 +103,7 @@ void Fiber::init(bool recordStackUsed) {
 }
 
 Fiber::~Fiber() {
-#ifdef FOLLY_SANITIZE_ADDRESS
+#if FOLLY_LIBRARY_SANITIZE_ADDRESS
   if (asanFakeStack_ != nullptr) {
     fiberManager_.freeFakeStack(asanFakeStack_);
   }
@@ -115,7 +115,7 @@ Fiber::~Fiber() {
 void Fiber::recordStackPosition() {
   // For ASAN builds, functions may run on fake stack.
   // So we cannot get meaningful stack position.
-#ifndef FOLLY_SANITIZE_ADDRESS
+#if !FOLLY_LIBRARY_SANITIZE_ADDRESS
   int stackDummy;
   auto currentPosition = static_cast<size_t>(
       fiberStackLimit_ + fiberStackSize_ -
@@ -126,7 +126,7 @@ void Fiber::recordStackPosition() {
 }
 
 [[noreturn]] void Fiber::fiberFunc() {
-#ifdef FOLLY_SANITIZE_ADDRESS
+#if FOLLY_LIBRARY_SANITIZE_ADDRESS
   fiberManager_.registerFinishSwitchStackWithAsan(
       nullptr, &asanMainStackBase_, &asanMainStackSize_);
 #endif
