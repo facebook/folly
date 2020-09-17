@@ -195,11 +195,9 @@ inline void FiberManager::loopUntilNoReady() {
 
 template <typename LoopFunc>
 void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
-#ifndef _WIN32
   if (UNLIKELY(!alternateSignalStackRegistered_)) {
-    registerAlternateSignalStack();
+    maybeRegisterAlternateSignalStack();
   }
-#endif
 
   // Support nested FiberManagers
   auto originalFiberManager = std::exchange(getCurrentFiberManager(), this);

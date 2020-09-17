@@ -75,14 +75,10 @@ class BatchSemaphore : public SemaphoreBase {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
   /*
    * Wait for requested tokens in the semaphore.
    */
   SemiFuture<Unit> future_wait(int64_t tokens);
-
-#endif
 };
 
 } // namespace fibers

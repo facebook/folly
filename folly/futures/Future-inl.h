@@ -31,11 +31,6 @@
 #include <folly/executors/InlineExecutor.h>
 #include <folly/executors/QueuedImmediateExecutor.h>
 #include <folly/futures/detail/Core.h>
-#include <folly/synchronization/Baton.h>
-
-#if FOLLY_FUTURE_USING_FIBER
-#include <folly/fibers/Baton.h>
-#endif
 
 namespace folly {
 
@@ -43,11 +38,7 @@ class Timekeeper;
 
 namespace futures {
 namespace detail {
-#if FOLLY_FUTURE_USING_FIBER
 typedef folly::fibers::Baton FutureBatonType;
-#else
-typedef folly::Baton<> FutureBatonType;
-#endif
 } // namespace detail
 } // namespace futures
 
@@ -504,17 +495,13 @@ class WaitExecutor final : public folly::Executor {
 
   void drive() {
     baton_.wait();
-#if FOLLY_FUTURE_USING_FIBER
     fibers::runInMainContext([&]() {
-#endif
       baton_.reset();
       auto funcs = std::move(queue_.wlock()->funcs);
       for (auto& func : funcs) {
         std::exchange(func, nullptr)();
       }
-#if FOLLY_FUTURE_USING_FIBER
     });
-#endif
   }
 
   using Clock = std::chrono::steady_clock;
@@ -523,18 +510,14 @@ class WaitExecutor final : public folly::Executor {
     if (!baton_.try_wait_until(deadline)) {
       return false;
     }
-#if FOLLY_FUTURE_USING_FIBER
     return fibers::runInMainContext([&]() {
-#endif
       baton_.reset();
       auto funcs = std::move(queue_.wlock()->funcs);
       for (auto& func : funcs) {
         std::exchange(func, nullptr)();
       }
       return true;
-#if FOLLY_FUTURE_USING_FIBER
     });
-#endif
   }
 
   void detach() {

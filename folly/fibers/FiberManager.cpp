@@ -28,6 +28,7 @@
 
 #include <folly/ConstexprMath.h>
 #include <folly/SingletonThreadLocal.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/SysSyscall.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/SanitizeThread.h>
@@ -329,7 +330,9 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
 
 #endif // FOLLY_SANITIZE_ADDRESS
 
-#ifndef _WIN32
+// TVOS and WatchOS platforms have SIGSTKSZ but not sigaltstack
+#if defined(SIGSTKSZ) && !FOLLY_APPLE_TVOS && !FOLLY_APPLE_WATCHOS
+
 namespace {
 
 // SIGSTKSZ (8 kB on our architectures) isn't always enough for
@@ -383,11 +386,19 @@ class ScopedAlternateSignalStack {
 };
 } // namespace
 
-void FiberManager::registerAlternateSignalStack() {
+void FiberManager::maybeRegisterAlternateSignalStack() {
   SingletonThreadLocal<ScopedAlternateSignalStack>::get();
 
   alternateSignalStackRegistered_ = true;
 }
+
+#else
+
+void FiberManager::maybeRegisterAlternateSignalStack() {
+  // no-op
+}
+
 #endif
+
 } // namespace fibers
 } // namespace folly

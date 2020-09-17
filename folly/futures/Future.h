@@ -32,6 +32,7 @@
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
+#include <folly/fibers/Baton.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
@@ -107,14 +108,6 @@ class SemiFuture;
 
 template <class T>
 class FutureSplitter;
-
-#if FOLLY_FUTURE_USING_FIBER
-
-namespace fibers {
-class Baton;
-}
-
-#endif
 
 namespace futures {
 namespace detail {
@@ -2171,12 +2164,8 @@ template <class F>
 auto when(bool p, F&& thunk)
     -> decltype(std::declval<invoke_result_t<F>>().unit());
 
-#if FOLLY_FUTURE_USING_FIBER
-
 SemiFuture<Unit> wait(std::unique_ptr<fibers::Baton> baton);
 SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton);
-
-#endif
 
 /**
  * Returns a lazy SemiFuture constructed by f, which also ensures that ensure is

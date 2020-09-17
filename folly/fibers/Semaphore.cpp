@@ -187,8 +187,6 @@ coro::Task<void> Semaphore::co_wait() {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
 namespace {
 
 class FutureWaiter final : public fibers::Baton::Waiter {
@@ -229,8 +227,6 @@ SemiFuture<Unit> Semaphore::future_wait() {
       std::memory_order_acquire));
   return makeSemiFuture();
 }
-
-#endif
 
 size_t Semaphore::getCapacity() const {
   return capacity_;

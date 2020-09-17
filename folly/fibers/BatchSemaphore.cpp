@@ -49,13 +49,9 @@ coro::Task<void> BatchSemaphore::co_wait(int64_t tokens) {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
 SemiFuture<Unit> BatchSemaphore::future_wait(int64_t tokens) {
   return future_wait_common(tokens);
 }
-
-#endif
 
 } // namespace fibers
 } // namespace folly

@@ -39,8 +39,6 @@ Future<Unit> sleepUnsafe(HighResDuration dur, Timekeeper* tk) {
   return sleep(dur, tk).toUnsafeFuture();
 }
 
-#if FOLLY_FUTURE_USING_FIBER
-
 namespace {
 template <typename Ptr>
 class FutureWaiter : public fibers::Baton::Waiter {
@@ -75,8 +73,6 @@ SemiFuture<Unit> wait(std::shared_ptr<fibers::Baton> baton) {
       std::move(promise), std::move(baton));
   return sf;
 }
-
-#endif
 
 } // namespace futures
 

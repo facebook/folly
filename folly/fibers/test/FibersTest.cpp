@@ -1737,11 +1737,7 @@ TEST(FiberManager, semaphore) {
                   sem.wait();
                   break;
                 case 1:
-#if FOLLY_FUTURE_USING_FIBER
                   sem.future_wait().get();
-#else
-                  sem.wait();
-#endif
                   break;
                 case 2: {
                   Semaphore::Waiter waiter;
@@ -1820,11 +1816,7 @@ TEST(FiberManager, batchSemaphore) {
                   sem.wait(tokens);
                   break;
                 case 1:
-#if FOLLY_FUTURE_USING_FIBER
                   sem.future_wait(tokens).get();
-#else
-                  sem.wait(tokens);
-#endif
                   break;
                 case 2: {
                   BatchSemaphore::Waiter waiter{tokens};

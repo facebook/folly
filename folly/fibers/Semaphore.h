@@ -100,14 +100,10 @@ class Semaphore {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
   /*
    * Wait for capacity in the semaphore.
    */
   SemiFuture<Unit> future_wait();
-
-#endif
 
   size_t getCapacity() const;
 

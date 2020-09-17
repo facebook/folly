@@ -93,14 +93,10 @@ class SemaphoreBase {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
   /*
    * Wait for request capacity in the semaphore.
    */
   SemiFuture<Unit> future_wait_common(int64_t tokens);
-
-#endif
 
   bool waitSlow(Waiter& waiter, int64_t tokens);
   bool signalSlow(int64_t tokens, int64_t oldVal);

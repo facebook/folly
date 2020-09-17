@@ -163,8 +163,6 @@ coro::Task<void> SemaphoreBase::co_wait_common(int64_t tokens) {
 
 #endif
 
-#if FOLLY_FUTURE_USING_FIBER
-
 namespace {
 
 class FutureWaiter final : public fibers::Baton::Waiter {
@@ -206,8 +204,6 @@ SemiFuture<Unit> SemaphoreBase::future_wait_common(int64_t tokens) {
       std::memory_order_acquire));
   return makeSemiFuture();
 }
-
-#endif
 
 size_t SemaphoreBase::getCapacity() const {
   return capacity_;
