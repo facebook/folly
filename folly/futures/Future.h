@@ -1131,14 +1131,14 @@ class Future : private futures::detail::FutureBase<T> {
   /// Examples of DrivableExecutor include EventBase and ManualExecutor.
   ///
   /// Returns the fulfilled value (moved-out) or throws the fulfilled exception.
-  T getVia(DrivableExecutor* e);
+  T getVia(DrivableExecutor* e) &&;
 
   /// Call e->drive() repeatedly until the future is fulfilled, or `dur`
   /// elapses.
   ///
   /// Returns the fulfilled value (moved-out), throws the fulfilled exception,
   /// or on timeout throws FutureTimeout.
-  T getVia(TimedDrivableExecutor* e, HighResDuration dur);
+  T getVia(TimedDrivableExecutor* e, HighResDuration dur) &&;
 
   /// Call e->drive() repeatedly until the future is fulfilled. Examples
   /// of DrivableExecutor include EventBase and ManualExecutor. Returns a

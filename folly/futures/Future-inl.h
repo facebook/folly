@@ -2379,12 +2379,12 @@ Try<T> Future<T>::getTry(HighResDuration dur) && {
 }
 
 template <class T>
-T Future<T>::getVia(DrivableExecutor* e) {
+T Future<T>::getVia(DrivableExecutor* e) && {
   return std::move(waitVia(e).value());
 }
 
 template <class T>
-T Future<T>::getVia(TimedDrivableExecutor* e, HighResDuration dur) {
+T Future<T>::getVia(TimedDrivableExecutor* e, HighResDuration dur) && {
   waitVia(e, dur);
   if (!this->isReady()) {
     throw_exception<FutureTimeout>();

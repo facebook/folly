@@ -617,7 +617,7 @@ TEST(SemiFuture, DeferWithVia) {
   // Run "F" here inline in the calling thread
   auto tf = std::move(sf).via(&e2);
   p.setValue();
-  tf.getVia(&e2);
+  std::move(tf).getVia(&e2);
   ASSERT_EQ(innerResult, 17);
 }
 
@@ -630,7 +630,7 @@ TEST(SemiFuture, ChainingDefertoThen) {
   // Run "F" here inline in a task running on the eventbase
   auto tf = std::move(sf).via(&e2).thenValue([&](auto&&) { result = 42; });
   p.setValue();
-  tf.getVia(&e2);
+  std::move(tf).getVia(&e2);
   ASSERT_EQ(innerResult, 17);
   ASSERT_EQ(result, 42);
 }
@@ -671,7 +671,7 @@ TEST(SemiFuture, ChainingDefertoThenWithValue) {
   // Run "F" here inline in a task running on the eventbase
   auto tf = std::move(sf).via(&e2).thenValue([&](int a) { result = a; });
   p.setValue(7);
-  tf.getVia(&e2);
+  std::move(tf).getVia(&e2);
   ASSERT_EQ(innerResult, 7);
   ASSERT_EQ(result, 7);
 }
@@ -714,7 +714,7 @@ TEST(SemiFuture, DeferWithinContinuation) {
             });
       });
   p.setValue(7);
-  auto r = resultF.getVia(&e2);
+  auto r = std::move(resultF).getVia(&e2);
   ASSERT_EQ(r, 7);
   ASSERT_EQ(innerResult, 7);
   ASSERT_EQ(result, 7);

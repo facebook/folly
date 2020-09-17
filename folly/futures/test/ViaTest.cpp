@@ -126,7 +126,7 @@ TEST_F(ViaFixture, threadHops) {
                  EXPECT_EQ(std::this_thread::get_id(), westThreadId);
                  return t.value();
                });
-  EXPECT_EQ(f.getVia(waiter.get()), 1);
+  EXPECT_EQ(std::move(f).getVia(waiter.get()), 1);
 }
 
 TEST_F(ViaFixture, chainVias) {
@@ -158,7 +158,7 @@ TEST_F(ViaFixture, chainVias) {
                  return val + 1;
                });
 
-  EXPECT_EQ(f.getVia(waiter.get()), 4);
+  EXPECT_EQ(std::move(f).getVia(waiter.get()), 4);
 }
 
 TEST_F(ViaFixture, bareViaAssignment) {
@@ -434,20 +434,20 @@ TEST(Via, getVia) {
     // non-void
     ManualExecutor x;
     auto f = via(&x).thenValue([](auto&&) { return true; });
-    EXPECT_TRUE(f.getVia(&x));
+    EXPECT_TRUE(std::move(f).getVia(&x));
   }
 
   {
     // void
     ManualExecutor x;
     auto f = via(&x).then();
-    f.getVia(&x);
+    std::move(f).getVia(&x);
   }
 
   {
     DummyDrivableExecutor x;
     auto f = makeFuture(true);
-    EXPECT_TRUE(f.getVia(&x));
+    EXPECT_TRUE(std::move(f).getVia(&x));
     EXPECT_FALSE(x.ran);
   }
 }
@@ -456,7 +456,8 @@ TEST(Via, SimpleTimedGetVia) {
   TimedDrivableExecutor e2;
   Promise<folly::Unit> p;
   auto f = p.getFuture();
-  EXPECT_THROW(f.getVia(&e2, std::chrono::seconds(1)), FutureTimeout);
+  EXPECT_THROW(
+      std::move(f).getVia(&e2, std::chrono::seconds(1)), FutureTimeout);
 }
 
 TEST(Via, getTryVia) {
