@@ -17,8 +17,11 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
+#include <folly/ExceptionWrapper.h>
 #include <folly/Traits.h>
+#include <folly/Try.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
+#include <folly/experimental/coro/Error.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -57,9 +60,22 @@ class AsyncGeneratorPromise {
   };
 
  public:
+  AsyncGeneratorPromise() noexcept {}
+
   ~AsyncGeneratorPromise() {
-    if (hasValue_) {
-      value_.destruct();
+    switch (state_) {
+      case State::VALUE:
+        folly::coro::detail::deactivate(value_);
+        break;
+      case State::EXCEPTION_WRAPPER:
+        folly::coro::detail::deactivate(exceptionWrapper_);
+        break;
+      case State::EXCEPTION_PTR:
+        folly::coro::detail::deactivate(exceptionPtr_);
+        break;
+      case State::DONE:
+      case State::INVALID:
+        break;
     }
   }
 
@@ -78,16 +94,16 @@ class AsyncGeneratorPromise {
   }
 
   YieldAwaiter final_suspend() noexcept {
-    DCHECK(!hasValue_);
+    DCHECK(!hasValue());
     return {};
   }
 
   YieldAwaiter yield_value(Reference&& value) noexcept(
       std::is_nothrow_move_constructible<Reference>::value) {
-    DCHECK(!hasValue_);
-    value_.construct(static_cast<Reference&&>(value));
-    hasValue_ = true;
-    return {};
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(value_, static_cast<Reference&&>(value));
+    state_ = State::VALUE;
+    return YieldAwaiter{};
   }
 
   // In the case where 'Reference' is not actually a reference-type we
@@ -103,19 +119,29 @@ class AsyncGeneratorPromise {
           int> = 0>
   YieldAwaiter yield_value(U&& value) noexcept(
       std::is_nothrow_constructible_v<Reference, U>) {
-    DCHECK(!hasValue_);
-    value_.construct(static_cast<U&&>(value));
-    hasValue_ = true;
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(value_, static_cast<U&&>(value));
+    state_ = State::VALUE;
+    return {};
+  }
+
+  YieldAwaiter yield_value(co_error&& error) noexcept {
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(
+        exceptionWrapper_, std::move(error.exception()));
+    state_ = State::EXCEPTION_WRAPPER;
     return {};
   }
 
   void unhandled_exception() noexcept {
-    DCHECK(!hasValue_);
-    exception_ = std::current_exception();
+    DCHECK(state_ == State::INVALID);
+    folly::coro::detail::activate(exceptionPtr_, std::current_exception());
+    state_ = State::EXCEPTION_PTR;
   }
 
   void return_void() noexcept {
-    DCHECK(!hasValue_);
+    DCHECK(state_ == State::INVALID);
+    state_ = State::DONE;
   }
 
   template <typename U>
@@ -131,7 +157,7 @@ class AsyncGeneratorPromise {
   }
 
   auto await_transform(folly::coro::co_current_cancellation_token_t) noexcept {
-    return AwaitableReady<folly::CancellationToken>{cancelToken_};
+    return AwaitableReady<const folly::CancellationToken&>{cancelToken_};
   }
 
   void setCancellationToken(folly::CancellationToken cancelToken) noexcept {
@@ -152,27 +178,42 @@ class AsyncGeneratorPromise {
     continuation_ = continuation;
   }
 
+  bool hasException() const noexcept {
+    return state_ == State::EXCEPTION_WRAPPER || state_ == State::EXCEPTION_PTR;
+  }
+
+  folly::exception_wrapper getException() noexcept {
+    DCHECK(hasException());
+    if (state_ == State::EXCEPTION_WRAPPER) {
+      return std::move(exceptionWrapper_.get());
+    } else {
+      return exception_wrapper::from_exception_ptr(
+          std::move(exceptionPtr_.get()));
+    }
+  }
+
   void throwIfException() {
-    DCHECK(!hasValue_);
-    if (exception_) {
-      std::rethrow_exception(exception_);
+    if (state_ == State::EXCEPTION_WRAPPER) {
+      exceptionWrapper_.get().throw_exception();
+    } else if (state_ == State::EXCEPTION_PTR) {
+      std::rethrow_exception(std::move(exceptionPtr_.get()));
     }
   }
 
   decltype(auto) getRvalue() noexcept {
-    DCHECK(hasValue_);
+    DCHECK(hasValue());
     return std::move(value_).get();
   }
 
   void clearValue() noexcept {
-    if (hasValue_) {
-      hasValue_ = false;
-      value_.destruct();
+    if (hasValue()) {
+      state_ = State::INVALID;
+      folly::coro::detail::deactivate(value_);
     }
   }
 
   bool hasValue() const noexcept {
-    return hasValue_;
+    return state_ == State::VALUE;
   }
 
  private:
@@ -184,12 +225,28 @@ class AsyncGeneratorPromise {
     return executor;
   }
 
+  enum class State : std::uint8_t {
+    INVALID,
+    VALUE,
+    EXCEPTION_PTR,
+    EXCEPTION_WRAPPER,
+    DONE,
+  };
+
   std::experimental::coroutine_handle<> continuation_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
-  std::exception_ptr exception_;
-  ManualLifetime<Reference> value_;
-  bool hasValue_ = false;
+  union {
+    // Store both an exception_wrapper and an exception_ptr to
+    // avoid needing to rethrow the exception in unhandled_exception()
+    // to ensure we capture the type-information into the exception_wrapper
+    // just in case we are only going to rethrow it back into the awaiting
+    // coroutine.
+    ManualLifetime<folly::exception_wrapper> exceptionWrapper_;
+    ManualLifetime<std::exception_ptr> exceptionPtr_;
+    ManualLifetime<Reference> value_;
+  };
+  State state_ = State::INVALID;
   bool hasCancelTokenOverride_ = false;
 };
 
@@ -436,12 +493,24 @@ class FOLLY_NODISCARD AsyncGenerator {
     NextResult await_resume() {
       if (!coro_) {
         return NextResult{};
-      } else if (coro_.done()) {
+      } else if (!coro_.promise().hasValue()) {
         coro_.promise().throwIfException();
         return NextResult{};
       } else {
         return NextResult{coro_};
       }
+    }
+
+    folly::Try<Value> await_resume_try() {
+      folly::Try<Value> result;
+      if (coro_) {
+        if (coro_.promise().hasValue()) {
+          result.emplace(coro_.promise().getRvalue());
+        } else if (coro_.promise().hasException()) {
+          result.emplaceException(coro_.promise().getException());
+        }
+      }
+      return result;
     }
 
    private:

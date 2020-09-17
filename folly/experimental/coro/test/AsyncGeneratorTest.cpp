@@ -491,4 +491,48 @@ TEST_F(AsyncGeneratorTest, SymmetricTransfer) {
   }());
 }
 
+TEST(AsyncGenerator, YieldCoError) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto gen = []() -> folly::coro::AsyncGenerator<std::string> {
+      co_yield "foo";
+      co_yield "bar";
+      co_yield folly::coro::co_error(SomeError{});
+      CHECK(false);
+    }();
+
+    auto item1 = co_await gen.next();
+    CHECK(item1.value() == "foo");
+    auto item2 = co_await gen.next();
+    CHECK(item2.value() == "bar");
+
+    try {
+      (void)co_await gen.next();
+      CHECK(false);
+    } catch (SomeError) {
+    }
+  }());
+}
+
+TEST(AsyncGeneraor, CoAwaitTry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto gen = []() -> folly::coro::AsyncGenerator<std::string> {
+      co_yield "foo";
+      co_yield "bar";
+      co_yield folly::coro::co_error(SomeError{});
+      CHECK(false);
+    }();
+
+    folly::Try<std::string> item1 =
+        co_await folly::coro::co_awaitTry(gen.next());
+    CHECK(item1.hasValue());
+    CHECK(item1.value() == "foo");
+    auto item2 = co_await folly::coro::co_awaitTry(gen.next());
+    CHECK(item2.hasValue());
+    CHECK(item2.value() == "bar");
+    auto item3 = co_await folly::coro::co_awaitTry(gen.next());
+    CHECK(item3.hasException());
+    CHECK(item3.exception().is_compatible_with<SomeError>());
+  }());
+}
+
 #endif
