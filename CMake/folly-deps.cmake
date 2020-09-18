@@ -16,6 +16,7 @@ include(CheckCXXSourceCompiles)
 include(CheckCXXSymbolExists)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
+include(CMakePushCheckState)
 
 set(
   BOOST_LINK_STATIC "auto"
