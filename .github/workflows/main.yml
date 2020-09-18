@@ -30,5 +30,5 @@ jobs:
         uses: microsoft/setup-msbuild@v1.0.1
       
       - name: Build 
-        run: msbuild /p:Platform=$(arch) /p:Configuration=$(config)
+        run: msbuild /p:Platform=${{ arch }} /p:Configuration=${{ config }}
         working-directory: folly/build
