@@ -35,7 +35,7 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 
-#ifndef _WIN32
+#if FOLLY_HAVE_SWAPCONTEXT
 // folly/portability/Config.h (thus features.h) must be included
 // first, and _XOPEN_SOURCE must be defined to unable the context
 // functions on macOS.
@@ -373,6 +373,8 @@ void SafeStackTracePrinter::printStackTrace(bool symbolize) {
   }
 }
 
+#if FOLLY_HAVE_SWAPCONTEXT
+
 // Stack utilities used by UnsafeSelfAllocateStackTracePrinter
 namespace {
 // Size of mmap-allocated stack. Not to confuse with sigaltstack.
@@ -462,6 +464,8 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
     return;
   }
 }
+
+#endif // FOLLY_HAVE_SWAPCONTEXT
 
 #endif // FOLLY_USE_SYMBOLIZER
 

@@ -13,6 +13,7 @@
 # limitations under the License.
 
 include(CheckCXXSourceCompiles)
+include(CheckCXXSymbolExists)
 include(CheckIncludeFileCXX)
 include(CheckFunctionExists)
 
@@ -148,6 +149,11 @@ endif ()
 find_package(LibUnwind)
 list(APPEND FOLLY_LINK_LIBRARIES ${LIBUNWIND_LIBRARIES})
 list(APPEND FOLLY_INCLUDE_DIRECTORIES ${LIBUNWIND_INCLUDE_DIRS})
+
+cmake_push_check_state()
+set(CMAKE_REQUIRED_DEFINITIONS -D_XOPEN_SOURCE)
+check_cxx_symbol_exists(swapcontext ucontext.h FOLLY_HAVE_SWAPCONTEXT)
+cmake_pop_check_state()
 
 set(FOLLY_USE_SYMBOLIZER OFF)
 CHECK_INCLUDE_FILE_CXX(elf.h FOLLY_HAVE_ELF)

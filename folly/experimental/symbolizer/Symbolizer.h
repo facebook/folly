@@ -242,6 +242,8 @@ class SafeStackTracePrinter {
   std::unique_ptr<FrameArray<kMaxStackTraceDepth>> addresses_;
 };
 
+#if FOLLY_HAVE_SWAPCONTEXT
+
 /**
  * Use this class in rare situations where signal handlers are running in a
  * tiny stack specified by sigaltstack.
@@ -257,6 +259,8 @@ class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
   void printSymbolizedStackTrace() override;
   const long pageSizeUnchecked_ = sysconf(_SC_PAGESIZE);
 };
+
+#endif // FOLLY_HAVE_SWAPCONTEXT
 
 #endif // FOLLY_USE_SYMBOLIZER
 
