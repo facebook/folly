@@ -74,7 +74,11 @@ SCHEMA = {
     "msbuild": {"optional_section": True, "fields": {"project": REQUIRED}},
     "cargo": {
         "optional_section": True,
-        "fields": {"build_doc": OPTIONAL, "workspace_dir": OPTIONAL},
+        "fields": {
+            "build_doc": OPTIONAL,
+            "workspace_dir": OPTIONAL,
+            "manifests_to_build": OPTIONAL,
+        },
     },
     "cmake.defines": {"optional_section": True},
     "autoconf.args": {"optional_section": True},
@@ -489,7 +493,8 @@ class ManifestParser(object):
 
         if builder == "cargo":
             build_doc = self.get("cargo", "build_doc", False, ctx)
-            workspace_dir = self.get("cargo", "workspace_dir", "", ctx)
+            workspace_dir = self.get("cargo", "workspace_dir", None, ctx)
+            manifests_to_build = self.get("cargo", "manifests_to_build", None, ctx)
             return CargoBuilder(
                 build_options,
                 ctx,
@@ -499,6 +504,7 @@ class ManifestParser(object):
                 inst_dir,
                 build_doc,
                 workspace_dir,
+                manifests_to_build,
                 loader,
             )
 

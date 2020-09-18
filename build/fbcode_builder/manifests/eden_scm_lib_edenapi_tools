@@ -1,0 +1,36 @@
+[manifest]
+name = eden_scm_lib_edenapi_tools
+fbsource_path = fbcode/eden
+shipit_project = eden
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexperimental/eden.git
+
+[build]
+builder = cargo
+
+[cargo]
+build_doc = true
+manifests_to_build = eden/scm/lib/edenapi/tools/make_req/Cargo.toml,eden/scm/lib/edenapi/tools/read_res/Cargo.toml
+
+[shipit.pathmap]
+fbcode/eden/oss = .
+fbcode/eden = eden
+fbcode/tools/lfs = tools/lfs
+fbcode/fboss/common = common
+
+[shipit.strip]
+^fbcode/eden/fs/eden-config\.h$
+^fbcode/eden/fs/py/eden/config\.py$
+^fbcode/eden/hg/.*$
+^fbcode/eden/mononoke/(?!lfs_protocol)
+^fbcode/eden/scm/build/.*$
+^fbcode/eden/scm/lib/third-party/rust/.*/Cargo.toml$
+^fbcode/eden/.*/\.cargo/.*$
+^.*/fb/.*$
+/Cargo\.lock$
+\.pyc$
+
+[dependencies.fb=on]
+rust
