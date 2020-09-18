@@ -191,8 +191,6 @@ class FastStackTracePrinter {
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if FOLLY_USE_SYMBOLIZER
-
 /**
  * Use this class to print a stack trace from a signal handler, or other place
  * where you shouldn't allocate memory on the heap, and fsync()ing your file
@@ -261,8 +259,6 @@ class UnsafeSelfAllocateStackTracePrinter : public SafeStackTracePrinter {
 };
 
 #endif // FOLLY_HAVE_SWAPCONTEXT
-
-#endif // FOLLY_USE_SYMBOLIZER
 
 } // namespace symbolizer
 } // namespace folly

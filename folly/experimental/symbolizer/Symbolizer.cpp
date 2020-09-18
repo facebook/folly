@@ -53,11 +53,11 @@
 #include <link.h>
 #endif
 
-#if defined(__linux__) && FOLLY_USE_SYMBOLIZER
-static struct r_debug* get_r_debug() {
+#if defined(__linux__) && FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
   return &_r_debug;
 }
-#elif FOLLY_USE_SYMBOLIZER
+#elif defined(__APPLE__)
 extern struct r_debug _r_debug;
 FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
   return &_r_debug;
@@ -292,8 +292,6 @@ void FastStackTracePrinter::flush() {
 
 #endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
 
-#if FOLLY_USE_SYMBOLIZER
-
 SafeStackTracePrinter::SafeStackTracePrinter(int fd)
     : fd_(fd),
       printer_(
@@ -308,7 +306,7 @@ void SafeStackTracePrinter::flush() {
 }
 
 void SafeStackTracePrinter::printSymbolizedStackTrace() {
-#if FOLLY_HAVE_ELF
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
   // This function might run on an alternative stack allocated by
   // UnsafeSelfAllocateStackTracePrinter. Capturing a stack from
   // here is probably wrong.
@@ -326,14 +324,7 @@ void SafeStackTracePrinter::printSymbolizedStackTrace() {
   // Leaving signalHandler on the stack for clarity, I think.
   printer_.println(*addresses_, 2);
 #else
-  // `backtrace_symbols_fd` from execinfo.h is not explicitly
-  // documented on either macOS or Linux to be async-signal-safe, but
-  // the implementation in opensource.apple.com Libc-1353.60.8 appears
-  // safe.
-  ::backtrace_symbols_fd(
-      reinterpret_cast<void**>(addresses_->addresses),
-      addresses_->frameCount,
-      fd_);
+  printUnsymbolizedStackTrace();
 #endif
 }
 
@@ -466,8 +457,6 @@ void UnsafeSelfAllocateStackTracePrinter::printSymbolizedStackTrace() {
 }
 
 #endif // FOLLY_HAVE_SWAPCONTEXT
-
-#endif // FOLLY_USE_SYMBOLIZER
 
 } // namespace symbolizer
 } // namespace folly
