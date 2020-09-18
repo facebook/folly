@@ -37,6 +37,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/Pid.h>
 
 #include <glog/logging.h>
 
@@ -276,7 +277,7 @@ class NotificationQueue {
       : eventfd_(-1),
         pipeFds_{-1, -1},
         advisoryMaxQueueSize_(maxSize),
-        pid_(pid_t(getpid())) {
+        pid_(folly::get_cached_pid()) {
 
 #ifdef FOLLY_HAVE_EVENTFD
     if (fdType == FdType::EVENTFD) {
@@ -472,7 +473,9 @@ class NotificationQueue {
    * code, and crash before signalling the parent process.
    */
   void checkPid() const {
-    CHECK_EQ(pid_, pid_t(getpid()));
+    if (FOLLY_UNLIKELY(pid_ != folly::get_cached_pid())) {
+      checkPidFail();
+    }
   }
 
  private:
@@ -630,6 +633,13 @@ class NotificationQueue {
       }
       throw;
     }
+  }
+
+  FOLLY_NOINLINE void checkPidFail() const {
+    folly::terminate_with<std::runtime_error>(
+        "Pid mismatch. Pid = " +
+        folly::to<std::string>(folly::get_cached_pid()) + ". Expecting " +
+        folly::to<std::string>(pid_));
   }
 
   mutable folly::SpinLock spinlock_;
