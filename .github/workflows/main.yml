@@ -16,6 +16,10 @@ jobs:
   build:
     # The type of runner that the job will run on
     runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [ 'x86', 'x64', 'arm', 'arm64' ]
+        config: 'Debug'
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
@@ -25,7 +29,6 @@ jobs:
       - name: setup-msbuild
         uses: microsoft/setup-msbuild@v1.0.1
       
-      # Runs a single command using the runners shell
       - name: Build 
-        run: msbuild /p:Platform=x86,Configuration=Debug
+        run: msbuild /p:Platform=${{ arch }} /p:Configuration=${{ config }}
         working-directory: folly/build
