@@ -1295,10 +1295,13 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
   explicit SSLHandshakeBase(
       AsyncSSLSocket::UniquePtr socket,
       bool preverifyResult,
-      bool verifyResult)
+      bool verifyResult,
+      bool writeEarlyData = false)
       : handshakeVerify_(false),
         handshakeSuccess_(false),
         handshakeError_(false),
+        handshakeEarlyDataRecv_(false),
+        doWriteEarlyData_(writeEarlyData),
         socket_(std::move(socket)),
         preverifyResult_(preverifyResult),
         verifyResult_(verifyResult) {}
@@ -1310,6 +1313,8 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
   bool handshakeVerify_;
   bool handshakeSuccess_;
   bool handshakeError_;
+  bool handshakeEarlyDataRecv_;
+  bool doWriteEarlyData_;
   std::chrono::nanoseconds handshakeTime;
 
  protected:
@@ -1346,6 +1351,25 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
     }
   }
 
+  bool handshakeEarlyData(
+      const unsigned char *buf,
+      size_t bufSize,
+      bool finished) noexcept {
+    handshakeEarlyDataRecv_ = true;
+    return true; //accepting early data buffer content
+  }
+
+  int handshakeWriteEarlyData(SSL *ssl) noexcept {
+    char buf[512];
+    size_t writtenBytes = 0;
+
+    if (!doWriteEarlyData_)
+      return 1;
+
+    memset(buf, 'b', sizeof(buf));
+    return SSL_write_early_data(ssl, buf, 512, &writtenBytes);
+  }
+
   // WriteCallback
   void writeSuccess() noexcept override {
     if (socket_) {
@@ -1366,8 +1390,10 @@ class SSLHandshakeClient : public SSLHandshakeBase {
   SSLHandshakeClient(
       AsyncSSLSocket::UniquePtr socket,
       bool preverifyResult,
-      bool verifyResult)
-      : SSLHandshakeBase(std::move(socket), preverifyResult, verifyResult) {
+      bool verifyResult,
+      bool writeEarlyData = false)
+      : SSLHandshakeBase(std::move(socket), preverifyResult,
+                         verifyResult, writeEarlyData) {
     socket_->sslConn(this, std::chrono::milliseconds::zero());
   }
 };
