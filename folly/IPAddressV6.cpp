@@ -16,6 +16,7 @@
 
 #include <folly/IPAddressV6.h>
 
+#include <algorithm>
 #include <ostream>
 #include <string>
 
@@ -81,15 +82,20 @@ IPAddressV6::IPAddressV6(StringPiece addr) {
 
 Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromString(
     StringPiece str) noexcept {
-  auto ip = str.str();
+  constexpr size_t kMaxSize = 45;
 
   // Allow addresses surrounded in brackets
-  if (ip.size() < 2) {
+  if (str.size() < 2) {
     return makeUnexpected(IPAddressFormatError::INVALID_IP);
   }
-  if (ip.front() == '[' && ip.back() == ']') {
-    ip = ip.substr(1, ip.size() - 2);
-  }
+
+  auto ip = str.front() == '[' && str.back() == ']'
+      ? str.subpiece(1, std::min(str.size() - 2, kMaxSize))
+      : str.subpiece(0, std::min(str.size(), kMaxSize));
+
+  std::array<char, kMaxSize + 1> ipBuffer;
+  std::copy(ip.begin(), ip.end(), ipBuffer.begin());
+  ipBuffer[ip.size()] = '\0';
 
   struct addrinfo* result;
   struct addrinfo hints;
@@ -97,7 +103,7 @@ Expected<IPAddressV6, IPAddressFormatError> IPAddressV6::tryFromString(
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_STREAM;
   hints.ai_flags = AI_NUMERICHOST;
-  if (::getaddrinfo(ip.c_str(), nullptr, &hints, &result) == 0) {
+  if (::getaddrinfo(ipBuffer.data(), nullptr, &hints, &result) == 0) {
     SCOPE_EXIT {
       ::freeaddrinfo(result);
     };
