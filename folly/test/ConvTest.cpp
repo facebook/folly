@@ -969,6 +969,7 @@ TEST(Conv, ConversionErrorStrToFloat) {
   EXPECT_CONV_ERROR_STR_NOVAL(float, StringPiece(), EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR_NOVAL(float, "", EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR(float, "  ", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(float, "\t", EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR(float, "  junk", STRING_TO_FLOAT_ERROR);
   EXPECT_CONV_ERROR(to<float>("  1bla"), NON_WHITESPACE_AFTER_END, "bla");
 }
@@ -1213,6 +1214,10 @@ TEST(Conv, TryStringToDouble) {
   auto rv2 = folly::tryTo<double>("3.14");
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-10);
+  // No trailing '\0' to expose 1-byte buffer over-read
+  char y = '\t';
+  auto rv4 = folly::tryTo<double>(folly::StringPiece(&y, 1));
+  EXPECT_FALSE(rv4.hasValue());
 }
 
 TEST(Conv, TryIntToInt) {

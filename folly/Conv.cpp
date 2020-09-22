@@ -397,9 +397,9 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   auto* e = src->end();
   auto* b =
       std::find_if_not(src->begin(), e, [](char c) { return std::isspace(c); });
-
-  // There must be non-whitespace, otherwise we would have caught this above
-  assert(b < e);
+  if (b == e) {
+    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+  }
   auto size = size_t(e - b);
 
   bool negative = false;
