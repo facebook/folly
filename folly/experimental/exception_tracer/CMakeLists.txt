@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-if (FOLLY_USE_SYMBOLIZER)
+if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
   add_library(
     folly_exception_tracer_base
     ExceptionTracer.cpp
