@@ -536,3 +536,35 @@ TEST(Observer, MakeValueObserver) {
   EXPECT_EQ(observedValues, std::vector<int>({1, 2, 3}));
   EXPECT_EQ(observedValues2, std::vector<int>({1, 2, 3}));
 }
+
+TEST(Observer, Unwrap) {
+  SimpleObservable<bool> selectorObservable{true};
+  SimpleObservable<int> trueObservable{1};
+  SimpleObservable<int> falseObservable{2};
+
+  auto observer = makeObserver([selectorO = selectorObservable.getObserver(),
+                                trueO = trueObservable.getObserver(),
+                                falseO = falseObservable.getObserver()] {
+    if (**selectorO) {
+      return trueO;
+    }
+    return falseO;
+  });
+
+  EXPECT_EQ(**observer, 1);
+
+  selectorObservable.setValue(false);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(**observer, 2);
+
+  falseObservable.setValue(3);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(**observer, 3);
+
+  trueObservable.setValue(4);
+  selectorObservable.setValue(true);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(**observer, 4);
+}

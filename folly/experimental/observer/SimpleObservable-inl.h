@@ -70,14 +70,14 @@ struct SimpleObservable<T>::Wrapper {
 };
 
 template <typename T>
-Observer<T> SimpleObservable<T>::getObserver() {
+auto SimpleObservable<T>::getObserver() {
   std::call_once(observerInit_, [&]() {
     SimpleObservable<T>::Wrapper wrapper;
     wrapper.context = context_;
     ObserverCreator<SimpleObservable<T>::Wrapper> creator(std::move(wrapper));
     observer_ = std::move(creator).getObserver();
   });
-  return *observer_;
+  return unwrap(*observer_);
 }
 } // namespace observer
 } // namespace folly

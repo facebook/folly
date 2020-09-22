@@ -176,6 +176,18 @@ class Observer {
   observer_detail::Core::Ptr core_;
 };
 
+template <typename T>
+Observer<T> unwrap(Observer<T>);
+
+template <typename T>
+Observer<T> unwrapValue(Observer<T>);
+
+template <typename T>
+Observer<T> unwrap(Observer<Observer<T>>);
+
+template <typename T>
+Observer<T> unwrapValue(Observer<Observer<T>>);
+
 /**
  * makeObserver(...) creates a new Observer<T> object given a functor to
  * compute it. The functor can return T or std::shared_ptr<const T>.
@@ -192,6 +204,9 @@ Observer<observer_detail::ResultOf<F>> makeObserver(F&& creator);
 
 template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(F&& creator);
+
+template <typename F>
+Observer<observer_detail::ResultOfUnwrapObserver<F>> makeObserver(F&& creator);
 
 /**
  * The returned Observer will proxy updates from the input observer, but will

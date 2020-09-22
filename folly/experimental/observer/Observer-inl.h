@@ -19,6 +19,23 @@
 #include <folly/experimental/observer/detail/ObserverManager.h>
 
 namespace folly {
+namespace observer_detail {
+template <typename F>
+observer::Observer<ResultOfNoObserverUnwrap<F>> makeObserver(F&& creator) {
+  return observer::makeObserver([creator = std::forward<F>(creator)]() mutable {
+    return std::make_shared<ResultOfNoObserverUnwrap<F>>(creator());
+  });
+}
+
+template <typename F>
+observer::Observer<ResultOfNoObserverUnwrap<F>> makeValueObserver(F&& creator) {
+  return observer::makeValueObserver(
+      [creator = std::forward<F>(creator)]() mutable {
+        return std::make_shared<ResultOfNoObserverUnwrap<F>>(creator());
+      });
+}
+} // namespace observer_detail
+
 namespace observer {
 
 template <typename T>
@@ -33,6 +50,30 @@ Snapshot<T> Observer<T>::getSnapshot() const {
 template <typename T>
 Observer<T>::Observer(observer_detail::Core::Ptr core)
     : core_(std::move(core)) {}
+
+template <typename T>
+Observer<T> unwrap(Observer<T> o) {
+  return o;
+}
+
+template <typename T>
+Observer<T> unwrapValue(Observer<T> o) {
+  return makeValueObserver(std::move(o));
+}
+
+template <typename T>
+Observer<T> unwrap(Observer<Observer<T>> oo) {
+  return makeObserver([oo = std::move(oo)] {
+    return oo.getSnapshot()->getSnapshot().getShared();
+  });
+}
+
+template <typename T>
+Observer<T> unwrapValue(Observer<Observer<T>> oo) {
+  return makeValueObserver([oo = std::move(oo)] {
+    return oo.getSnapshot()->getSnapshot().getShared();
+  });
+}
 
 template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(
@@ -49,9 +90,12 @@ Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeObserver(
 
 template <typename F>
 Observer<observer_detail::ResultOf<F>> makeObserver(F&& creator) {
-  return makeObserver([creator = std::forward<F>(creator)]() mutable {
-    return std::make_shared<observer_detail::ResultOf<F>>(creator());
-  });
+  return observer_detail::makeObserver(std::forward<F>(creator));
+}
+
+template <typename F>
+Observer<observer_detail::ResultOfUnwrapObserver<F>> makeObserver(F&& creator) {
+  return unwrap(observer_detail::makeObserver(std::forward<F>(creator)));
 }
 
 template <typename T>
@@ -132,9 +176,13 @@ Observer<T> makeValueObserver(Observer<T> observer) {
 
 template <typename F>
 Observer<observer_detail::ResultOf<F>> makeValueObserver(F&& creator) {
-  return makeValueObserver([creator = std::forward<F>(creator)]() mutable {
-    return std::make_shared<observer_detail::ResultOf<F>>(creator());
-  });
+  return observer_detail::makeValueObserver(std::forward<F>(creator));
+}
+
+template <typename F>
+Observer<observer_detail::ResultOfUnwrapObserver<F>> makeValueObserver(
+    F&& creator) {
+  return unwrapValue(observer_detail::makeObserver(std::forward<F>(creator)));
 }
 
 template <typename F>

@@ -32,7 +32,7 @@ class SimpleObservable {
   void setValue(T value);
   void setValue(std::shared_ptr<const T> value);
 
-  Observer<T> getObserver();
+  auto getObserver();
 
  private:
   struct Context {
