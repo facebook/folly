@@ -58,6 +58,7 @@ class ObserverCreator {
 
  private:
   using Context = detail::ObserverCreatorContext<Observable, Traits>;
+  class ContextPrimaryPtr;
 
   std::shared_ptr<Context> context_;
 };
