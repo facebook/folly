@@ -195,13 +195,17 @@ struct StdNodeReplica<
 #endif
 
 template <class Container, class Predicate>
-void erase_if_impl(Container& c, Predicate& predicate) {
+typename Container::size_type erase_if_impl(
+    Container& c,
+    Predicate& predicate) {
+  auto const old_size = c.size();
   for (auto i = c.begin(), last = c.end(); i != last;) {
     auto prev = i++;
     if (predicate(*prev)) {
       c.erase(prev);
     }
   }
+  return old_size - c.size();
 }
 
 template <
