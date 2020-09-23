@@ -156,6 +156,6 @@ its components are.
 ***
 
 `std::is_same<T1, T2>::value` can be used to test if types of T1 and T2 are
-same. `folly::IsOneOf<T, T1, Ts...>::value` can be used to test if type of T1
+same. `folly::IsOneOf<T, T1, Ts...>::value` can be used to test if type of T
 matches the type of one of the other template parameter, T1, T2, ...Tn.
 Recursion is used to implement this type trait.
