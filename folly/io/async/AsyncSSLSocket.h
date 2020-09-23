@@ -176,9 +176,14 @@ class AsyncSSLSocket : public AsyncSocket {
 
     void readDataAvailable(size_t len) noexcept override {
       CHECK_EQ(len, 1);
-      sslSocket_->restartSSLAccept();
+      /*  restartSSLAccept should be called only after setting callback and
+       *  syncOperationFinishCallback_ to null because if restart returns
+       *  another SSL_ERROR_WANT_ASYNC, the stale entries will  persist and
+       *  further events will not be handled
+       *  */
       pipeReader_->setReadCB(nullptr);
       sslSocket_->setAsyncOperationFinishCallback(nullptr);
+      sslSocket_->restartSSLAccept();
     }
 
     void getReadBuffer(void** bufReturn, size_t* lenReturn) noexcept override {
