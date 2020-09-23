@@ -331,7 +331,6 @@ class shared_head_only_list {
   }
 
   Node* pop_all_lock() noexcept {
-    folly::detail::Sleeper s;
     while (true) {
       auto oldval = head();
       auto lockbit = oldval & kLockBit;
@@ -349,7 +348,7 @@ class shared_head_only_list {
           return reinterpret_cast<Node*>(ptrval);
         }
       }
-      s.sleep();
+      std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
     }
   }
 }; // shared_head_only_list

@@ -928,7 +928,7 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
     if (spins < kMaxSpins) {
       asm_volatile_pause();
     } else {
-      Sleeper::sleep();
+      std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
     }
   }
 }
