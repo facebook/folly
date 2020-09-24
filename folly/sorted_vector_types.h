@@ -556,21 +556,21 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   iterator find(const key_type& key) {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   template <typename K>
   if_is_transparent<K, iterator> find(const K& key) {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   template <typename K>
   if_is_transparent<K, const_iterator> find(const K& key) const {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   size_type count(const key_type& key) const {
@@ -713,7 +713,7 @@ class sorted_vector_set : detail::growth_policy_wrapper<GrowthPolicy> {
       std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
 
   template <typename Self, typename K>
-  static self_iterator_t<Self> find(Self& self, K const& key) {
+  static self_iterator_t<Self> find_(Self& self, K const& key) {
     auto end = self.end();
     auto it = self.lower_bound(key);
     if (it == end || !self.key_comp()(key, *it)) {
@@ -1083,21 +1083,21 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
   }
 
   iterator find(const key_type& key) {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   const_iterator find(const key_type& key) const {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   template <typename K>
   if_is_transparent<K, iterator> find(const K& key) {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   template <typename K>
   if_is_transparent<K, const_iterator> find(const K& key) const {
-    return find(*this, key);
+    return find_(*this, key);
   }
 
   mapped_type& at(const key_type& key) {
@@ -1255,7 +1255,7 @@ class sorted_vector_map : detail::growth_policy_wrapper<GrowthPolicy> {
       std::conditional<std::is_const<Self>::value, const_iterator, iterator>>;
 
   template <typename Self, typename K>
-  static self_iterator_t<Self> find(Self& self, K const& key) {
+  static self_iterator_t<Self> find_(Self& self, K const& key) {
     auto end = self.end();
     auto it = self.lower_bound(key);
     if (it == end || !self.key_comp()(key, it->first)) {
