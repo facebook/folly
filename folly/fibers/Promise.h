@@ -51,7 +51,7 @@ class Promise {
   /**
    * Fulfill the promise with a given try
    *
-   * @param t
+   * @param t A Try with either a value or an error.
    */
   void setTry(folly::Try<T>&& t);
 

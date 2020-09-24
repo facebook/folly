@@ -164,7 +164,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Initializes, but doesn't start FiberManager loop
    *
-   * @param loopController
+   * @param loopController A LoopController object
    * @param options FiberManager options
    */
   explicit FiberManager(
@@ -174,7 +174,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Initializes, but doesn't start FiberManager loop
    *
-   * @param loopController
+   * @param loopController A LoopController object
    * @param options FiberManager options
    * @tparam LocalT only local of this type may be stored on fibers.
    *                Locals of other types will be considered thread-locals.
@@ -236,7 +236,7 @@ class FiberManager : public ::folly::Executor {
    * Sets exception callback which will be called if any of the tasks throws an
    * exception.
    *
-   * @param ec
+   * @param ec An ExceptionCallback object.
    */
   void setExceptionCallback(ExceptionCallback ec);
 

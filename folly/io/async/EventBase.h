@@ -782,7 +782,7 @@ class EventBase : public TimeoutManager,
    * Setup execution observation/instrumentation for every EventHandler
    * executed in this EventBase.
    *
-   * @param executionObserver   EventHandle's execution observer.
+   * @param observer EventHandle's execution observer.
    */
   void setExecutionObserver(ExecutionObserver* observer) {
     executionObserver_ = observer;
