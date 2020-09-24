@@ -219,13 +219,14 @@ void AsyncBaseQueue::maybeDequeue() {
     queue_.pop_front();
 
     // Interpose our completion callback
-    auto& nextCb = op->notificationCallback();
-    op->setNotificationCallback([this, nextCb](AsyncBaseOp* op2) {
-      this->onCompleted(op2);
-      if (nextCb) {
-        nextCb(op2);
-      }
-    });
+    auto nextCb = op->getNotificationCallback();
+    op->setNotificationCallback(
+        [this, nextCb{std::move(nextCb)}](AsyncBaseOp* op2) mutable {
+          this->onCompleted(op2);
+          if (nextCb) {
+            nextCb(op2);
+          }
+        });
 
     asyncBase_->submit(op);
   }

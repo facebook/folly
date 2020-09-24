@@ -27,6 +27,7 @@
 #include <utility>
 #include <vector>
 
+#include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
 #include <folly/portability/SysUio.h>
@@ -44,7 +45,7 @@ class AsyncBaseOp {
   friend class AsyncBase;
 
  public:
-  using NotificationCallback = std::function<void(AsyncBaseOp*)>;
+  using NotificationCallback = folly::Function<void(AsyncBaseOp*)>;
 
   explicit AsyncBaseOp(NotificationCallback cb = NotificationCallback());
   AsyncBaseOp(const AsyncBaseOp&) = delete;
@@ -119,8 +120,16 @@ class AsyncBaseOp {
   void setNotificationCallback(NotificationCallback cb) {
     cb_ = std::move(cb);
   }
-  const NotificationCallback& notificationCallback() const {
-    return cb_;
+
+  /**
+   * Get the notification callback from the op.
+   *
+   * Note that this moves the callback out, leaving the callback in an
+   * uninitialized state! You must call setNotificationCallback before
+   * submitting the operation!
+   */
+  NotificationCallback getNotificationCallback() {
+    return std::move(cb_);
   }
 
   /**
