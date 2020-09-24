@@ -52,7 +52,10 @@ struct await_fn {
  * for the wrapper to serve its intended purpose (the best way to enforce this
  * is static analysis)
  */
-FOLLY_DEFINE_CPO(await_fn, await)
+FOLLY_DEFINE_CPO(await_fn, await_async)
+#if !defined(_MSC_VER)
+static constexpr auto& await = await_async;
+#endif
 
 /**
  * Asynchronous fiber result wrapper
@@ -145,11 +148,11 @@ explicit Async(T)->Async<T>;
  */
 template <typename T>
 T&& init_await(Async<T>&& async) {
-  return await(std::move(async));
+  return await_async(std::move(async));
 }
 
 inline void init_await(Async<void>&& async) {
-  await(std::move(async));
+  await_async(std::move(async));
 }
 
 // is_async

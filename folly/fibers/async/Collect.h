@@ -79,7 +79,7 @@ Async<std::tuple<lift_unit_t<async_invocable_inner_type_t<Ts>>...>> collectAll(
     Ts&&... tasks) {
   auto future = folly::collectAllUnsafe(addFiberFuture(
       std::forward<Ts>(tasks), FiberManager::getFiberManager())...);
-  auto tuple = await(futureWait(std::move(future)));
+  auto tuple = await_async(futureWait(std::move(future)));
   return Async(folly::unwrapTryTuple(std::move(tuple)));
 }
 

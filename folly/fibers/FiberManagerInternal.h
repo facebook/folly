@@ -678,7 +678,13 @@ inline void addTaskFinallyEager(F&& func, G&& finally) {
  * @return data which was used to fulfill the promise.
  */
 template <typename F>
-typename FirstArgOf<F>::type::value_type inline await(F&& func);
+typename FirstArgOf<F>::type::value_type inline await_async(F&& func);
+#if !defined(_MSC_VER)
+template <typename F>
+FOLLY_ERASE typename FirstArgOf<F>::type::value_type await(F&& func) {
+  return await_async(static_cast<F&&>(func));
+}
+#endif
 
 /**
  * If called from a fiber, immediately switches to the FiberManager's context

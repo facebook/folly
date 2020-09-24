@@ -614,11 +614,11 @@ FiberManager::FiberManager(
 }
 
 template <typename F>
-typename FirstArgOf<F>::type::value_type inline await(F&& func) {
+typename FirstArgOf<F>::type::value_type inline await_async(F&& func) {
   typedef typename FirstArgOf<F>::type::value_type Result;
   typedef typename FirstArgOf<F>::type::baton_type BatonT;
 
-  return Promise<Result, BatonT>::await(std::forward<F>(func));
+  return Promise<Result, BatonT>::await_async(std::forward<F>(func));
 }
 
 template <typename F>

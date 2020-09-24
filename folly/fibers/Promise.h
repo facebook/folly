@@ -80,7 +80,14 @@ class Promise {
    * @return data which was used to fulfill the promise.
    */
   template <class F>
-  static value_type await(F&& func);
+  static value_type await_async(F&& func);
+
+#if !defined(_MSC_VER)
+  template <class F>
+  FOLLY_ERASE static value_type await(F&& func) {
+    return await_sync(static_cast<F&&>(func));
+  }
+#endif
 
  private:
   Promise(folly::Try<T>& value, BatonT& baton);

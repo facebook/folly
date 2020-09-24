@@ -52,7 +52,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   };
   auto context = std::make_shared<Context>(n);
 
-  await([first, last, context](Promise<void> promise) mutable {
+  await_async([first, last, context](Promise<void> promise) mutable {
     context->promise = std::move(promise);
     for (size_t i = 0; first != last; ++i, ++first) {
       addTask([i, context, f = std::move(*first)]() {
@@ -106,7 +106,7 @@ collectN(InputIterator first, InputIterator last, size_t n) {
   };
   auto context = std::make_shared<Context>(n);
 
-  await([first, last, context](Promise<void> promise) mutable {
+  await_async([first, last, context](Promise<void> promise) mutable {
     context->promise = std::move(promise);
     for (size_t i = 0; first != last; ++i, ++first) {
       addTask([i, context, f = std::move(*first)]() {

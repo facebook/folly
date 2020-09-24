@@ -30,7 +30,7 @@ namespace async {
 template <typename F>
 Async<typename FirstArgOf<F>::type::value_type> promiseWait(F&& func) {
   // Call into blocking API
-  return fibers::await(std::forward<F>(func));
+  return fibers::await_async(std::forward<F>(func));
 }
 
 } // namespace async

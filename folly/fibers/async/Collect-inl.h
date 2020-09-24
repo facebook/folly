@@ -113,7 +113,8 @@ Async<TResult> collectAllImpl(T&& firstTask, Ts&&... tasks) {
   Baton b;
 
   auto taskFunc = [&](auto& outref, auto&& task) -> Async<void> {
-    await(executeAndMaybeAssign(outref, std::forward<decltype(task)>(task)));
+    await_async(
+        executeAndMaybeAssign(outref, std::forward<decltype(task)>(task)));
 
     --numPending;
     if (numPending == 0) {
@@ -137,7 +138,7 @@ Async<TResult> collectAllImpl(T&& firstTask, Ts&&... tasks) {
       std::forward<Ts>(tasks)...);
 
   // Use the current fiber to execute first task
-  await(taskFunc(std::get<0>(result), std::forward<T>(firstTask)));
+  await_async(taskFunc(std::get<0>(result), std::forward<T>(firstTask)));
 
   // Wait for other tasks to complete
   b.wait();
