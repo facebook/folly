@@ -497,8 +497,10 @@ constexpr auto kGnuc = 0;
 
 #if __clang__
 constexpr auto kIsClang = true;
+constexpr auto kClangVerMajor = __clang_major__;
 #else
 constexpr auto kIsClang = false;
+constexpr auto kClangVerMajor = 0;
 #endif
 
 #if FOLLY_MICROSOFT_ABI_VER
