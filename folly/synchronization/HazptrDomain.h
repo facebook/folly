@@ -667,10 +667,15 @@ class hazptr_domain {
   FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_using_inline_executor() {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
-      LOG(WARNING)
-          << "Using the default inline executor for asynchronous reclamation "
-             "may be susceptible to deadlock if the current thread happens to "
-             "hold a resource needed by the deleter of a reclaimable object";
+      LOG(INFO) << "Using the default inline executor. "
+                   "This is not necessarily a problem. "
+                   "But if this program encounters deadlock, "
+                   "then this may be the cause. "
+                   "Most likely this program did not call "
+                   "folly::enable_hazptr_thread_pool_executor "
+                   "(which is normally called by folly::init). "
+                   "If this is a problem check if your program is missing "
+                   "a call to folly::init or an alternative.";
     }
   }
 }; // namespace folly
