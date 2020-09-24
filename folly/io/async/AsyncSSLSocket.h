@@ -175,7 +175,7 @@ class AsyncSSLSocket : public AsyncSocket {
     }
 
     void readDataAvailable(size_t len) noexcept override {
-      CHECK_EQ(len, 1);
+      CHECK_EQ(len, 1u);
       sslSocket_->restartSSLAccept();
       pipeReader_->setReadCB(nullptr);
       sslSocket_->setAsyncOperationFinishCallback(nullptr);
