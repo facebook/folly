@@ -40,6 +40,7 @@ class PollIoBackend : public EventBaseBackendBase {
     enum Flags {
       POLL_SQ = 0x1,
       POLL_CQ = 0x2,
+      POLL_SQ_IMMEDIATE_IO = 0x4, // do not enqueue I/O operations
     };
 
     Options() = default;
@@ -380,6 +381,21 @@ class PollIoBackend : public EventBaseBackendBase {
   virtual size_t submitList(
       IoCbList& ioCbs,
       WaitForEventsMode waitForEvents) = 0;
+
+  // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
+  void submitImmediateIoCb(IoCb& iocb) {
+    if (options_.flags &
+        (Options::Flags::POLL_SQ | Options::Flags::POLL_SQ_IMMEDIATE_IO)) {
+      IoCbList s;
+      s.push_back(iocb);
+      numInsertedEvents_++;
+      submitList(s, WaitForEventsMode::DONT_WAIT);
+    } else {
+      submitList_.push_back(iocb);
+      numInsertedEvents_++;
+    }
+  }
+
   virtual int submitOne(IoCb* ioCb) = 0;
   virtual int cancelOne(IoCb* ioCb) = 0;
 

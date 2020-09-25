@@ -362,8 +362,7 @@ void IoUringBackend::queueRead(
   iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
-  submitList_.push_back(*iocb);
-  numInsertedEvents_++;
+  submitImmediateIoCb(*iocb);
 }
 
 void IoUringBackend::queueWrite(
@@ -379,8 +378,7 @@ void IoUringBackend::queueWrite(
   iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
-  submitList_.push_back(*iocb);
-  numInsertedEvents_++;
+  submitImmediateIoCb(*iocb);
 }
 
 void IoUringBackend::queueReadv(
@@ -392,8 +390,7 @@ void IoUringBackend::queueReadv(
   iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
-  submitList_.push_back(*iocb);
-  numInsertedEvents_++;
+  submitImmediateIoCb(*iocb);
 }
 
 void IoUringBackend::queueWritev(
@@ -405,8 +402,7 @@ void IoUringBackend::queueWritev(
   iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
-  submitList_.push_back(*iocb);
-  numInsertedEvents_++;
+  submitImmediateIoCb(*iocb);
 }
 
 void IoUringBackend::queueFsync(int fd, FileOpCallback&& cb) {
@@ -422,8 +418,7 @@ void IoUringBackend::queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb) {
   iocb->backendCb_ = processFileOpCB;
   incNumIoCbInUse();
 
-  submitList_.push_back(*iocb);
-  numInsertedEvents_++;
+  submitImmediateIoCb(*iocb);
 }
 
 void IoUringBackend::processFileOp(IoCb* ioCb, int64_t res) noexcept {
