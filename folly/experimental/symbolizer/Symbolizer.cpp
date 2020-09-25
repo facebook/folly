@@ -30,6 +30,7 @@
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/LineReader.h>
+#include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/lang/SafeAssert.h>
 #include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
@@ -47,25 +48,6 @@
 
 #if FOLLY_HAVE_BACKTRACE
 #include <execinfo.h>
-#endif
-
-#if FOLLY_HAVE_ELF
-#include <link.h>
-#endif
-
-#if defined(__linux__) && FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
-FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
-  return &_r_debug;
-}
-#elif defined(__APPLE__)
-extern struct r_debug _r_debug;
-FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
-  return &_r_debug;
-}
-#else
-FOLLY_MAYBE_UNUSED static struct r_debug* get_r_debug() {
-  return nullptr;
-}
 #endif
 
 namespace folly {
@@ -105,7 +87,7 @@ void setSymbolizedFrame(
 } // namespace
 
 bool Symbolizer::isAvailable() {
-  return get_r_debug();
+  return detail::get_r_debug();
 }
 
 Symbolizer::Symbolizer(
@@ -126,7 +108,7 @@ size_t Symbolizer::symbolize(
   FOLLY_SAFE_CHECK(addrCount <= frameCount, "Not enough frames.");
   size_t remaining = addrCount;
 
-  auto const dbg = get_r_debug();
+  auto const dbg = detail::get_r_debug();
   if (dbg == nullptr) {
     return 0;
   }

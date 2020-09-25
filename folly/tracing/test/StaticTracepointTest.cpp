@@ -27,12 +27,12 @@
 #include <folly/Random.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
+#include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 #include <folly/tracing/StaticTracepoint.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
-#include <sys/auxv.h>
 
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;
 static const int kUSDTNoteType = FOLLY_SDT_NOTE_TYPE;
@@ -236,8 +236,9 @@ static bool getTracepointArguments(
       }
       // If the test is built as PIE, then the semaphore address listed in the
       // notes section is relative to the beginning of the binary image.
-      auto binaryBase = getauxval(AT_PHDR) - 0x40;
-      CHECK_EQ(expectedSemaphore, binaryBase + semaphoreAddr);
+      auto binaryOffset =
+          folly::symbolizer::detail::get_r_debug()->r_map->l_addr;
+      CHECK_EQ(expectedSemaphore, binaryOffset + semaphoreAddr);
       return true;
     }
   }

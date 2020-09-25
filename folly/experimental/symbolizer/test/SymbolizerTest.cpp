@@ -24,6 +24,7 @@
 #include <folly/String.h>
 #include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
@@ -31,6 +32,12 @@
 namespace folly {
 namespace symbolizer {
 namespace test {
+
+namespace {
+uintptr_t getBinaryOffset() {
+  return detail::get_r_debug()->r_map->l_addr;
+}
+} // namespace
 
 void foo() {}
 
@@ -160,7 +167,7 @@ void verifyStackTrace(
 
   FrameArray<10> singleAddressFrames;
   singleAddressFrames.frameCount = 1;
-  singleAddressFrames.addresses[0] = frames.frames[7].addr;
+  singleAddressFrames.addresses[0] = frames.frames[7].addr + getBinaryOffset();
   // Two inline function calls are added into frames.
   EXPECT_EQ(3, symbolizer.symbolize(singleAddressFrames));
 }
@@ -248,7 +255,7 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
   symbolizer.symbolize(frames);
 
   // The address of the line where lexicalBlockBar calls inlineBar.
-  uintptr_t address = frames.frames[7].addr;
+  uintptr_t address = frames.frames[7].addr + getBinaryOffset();
   std::array<SymbolizedFrame, 2> limitedFrames;
   symbolizer.symbolize(
       folly::Range<const uintptr_t*>(&address, 1), folly::range(limitedFrames));
@@ -450,7 +457,7 @@ TEST(Dwarf, FindParameterNames) {
   LocationInfo info;
   folly::Range<SymbolizedFrame*> extraInlineFrames = {};
   dwarf.findAddress(
-      address,
+      frame.addr,
       LocationInfoMode::FAST,
       info,
       extraInlineFrames,
