@@ -1,6 +1,6 @@
 [manifest]
 name = folly
-fbsource_path = xplat/folly
+fbsource_path = fbcode/folly
 shipit_project = folly
 shipit_fbcode_builder = true
 
@@ -41,12 +41,12 @@ openssl
 zlib
 
 [shipit.pathmap]
-xplat/folly/public_tld = .
-xplat/folly = folly
+fbcode/folly/public_tld = .
+fbcode/folly = folly
 
 [shipit.strip]
-^xplat/folly/folly-config\.h$
-^xplat/folly/public_tld/build/facebook_.*
+^fbcode/folly/folly-config\.h$
+^fbcode/folly/public_tld/build/facebook_.*
 
 [cmake.defines]
 BUILD_SHARED_LIBS=OFF
