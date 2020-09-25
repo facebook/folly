@@ -625,6 +625,8 @@ TEST(AsyncFileWriter, discard) {
  */
 TEST(AsyncFileWriter, fork) {
 #if FOLLY_HAVE_PTHREAD_ATFORK
+  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+
   TemporaryFile tmpFile{"logging_test"};
 
   // The number of messages to send before the fork and from each process
@@ -727,6 +729,8 @@ TEST(AsyncFileWriter, fork) {
  */
 TEST(AsyncFileWriter, crazyForks) {
 #if FOLLY_HAVE_PTHREAD_ATFORK
+  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+
   constexpr size_t numAsyncWriterThreads = 10;
   constexpr size_t numForkThreads = 5;
   constexpr size_t numForkIterations = 20;
