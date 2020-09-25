@@ -126,7 +126,7 @@ ssize_t getStackTraceInPlace(
 ssize_t getStackTraceSafe(
     FOLLY_MAYBE_UNUSED uintptr_t* addresses,
     FOLLY_MAYBE_UNUSED size_t maxAddresses) {
-#if defined(__APPLE__) && FOLLY_USE_SYMBOLIZER
+#if defined(__APPLE__)
   // While Apple platforms support libunwind, the unw_init_local,
   // unw_step step loop does not cross the boundary from async signal
   // handlers to the aborting code, while `backtrace` from execinfo.h
