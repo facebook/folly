@@ -454,6 +454,12 @@ constexpr auto kIsWindows = true;
 constexpr auto kIsWindows = false;
 #endif
 
+#if defined(__APPLE__)
+constexpr auto kIsApple = true;
+#else
+constexpr auto kIsApple = false;
+#endif
+
 constexpr bool kIsAppleIOS = FOLLY_APPLE_IOS == 1;
 constexpr bool kIsAppleMacOS = FOLLY_APPLE_MACOS == 1;
 constexpr bool kIsAppleTVOS = FOLLY_APPLE_TVOS == 1;

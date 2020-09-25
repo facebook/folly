@@ -436,7 +436,7 @@ TEST(Traits, is_constexpr_default_constructible) {
   // under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
   // and, with assertions disabled, expectation failures showing compiler
   // deviation from the language spec
-  if (kClangVerMajor != 10) {
+  if (kClangVerMajor != (kIsApple ? 12 : 10)) {
     struct NonTrivialDtor {
       ~NonTrivialDtor() {}
     };
