@@ -1302,7 +1302,13 @@ void AsyncSSLSocket::handleConnect() noexcept {
   assert(ssl_);
 
   auto originalState = state_;
-  int ret = SSL_connect(ssl_.get());
+  int ret;
+  {
+    // If openssl is not built with TSAN then we can get a TSAN false positive
+    // when calling SSL_connect from multiple threads.
+    folly::annotate_ignore_thread_sanitizer_guard g(__FILE__, __LINE__);
+    ret = SSL_connect(ssl_.get());
+  }
   if (ret <= 0) {
     int sslError;
     unsigned long errError;
