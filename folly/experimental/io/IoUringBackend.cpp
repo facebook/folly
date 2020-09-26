@@ -17,10 +17,163 @@
 #include <folly/experimental/io/IoUringBackend.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
+#include <folly/container/F14Map.h>
+#include <folly/container/F14Set.h>
 #include <folly/portability/Sockets.h>
 #include <folly/synchronization/CallOnce.h>
 
 #include <glog/logging.h>
+
+namespace {
+class SQGroupInfoRegistry {
+ private:
+  // a group is a collection of io_uring instances
+  // that share up to numThreads SQ poll threads
+  struct SQGroupInfo {
+    struct SQSubGroupInfo {
+      folly::F14FastSet<int> fds;
+      size_t count{0};
+
+      void add(int fd) {
+        CHECK(fds.find(fd) == fds.end());
+        fds.insert(fd);
+        ++count;
+      }
+
+      size_t remove(int fd) {
+        auto iter = fds.find(fd);
+        CHECK(iter != fds.end());
+        fds.erase(fd);
+        --count;
+
+        return count;
+      }
+    };
+
+    explicit SQGroupInfo(size_t num) : subGroups(num) {}
+
+    // returns the least loaded subgroup
+    SQSubGroupInfo* getNextSubgroup() {
+      size_t min_idx = 0;
+      for (size_t i = 0; i < subGroups.size(); i++) {
+        if (subGroups[i].count == 0) {
+          return &subGroups[i];
+        }
+
+        if (subGroups[i].count < subGroups[min_idx].count) {
+          min_idx = i;
+        }
+      }
+
+      return &subGroups[min_idx];
+    }
+
+    size_t add(int fd, SQSubGroupInfo* sg) {
+      CHECK(fdSgMap.find(fd) == fdSgMap.end());
+      fdSgMap.insert(std::make_pair(fd, sg));
+      sg->add(fd);
+      ++count;
+
+      return count;
+    }
+
+    size_t remove(int fd) {
+      auto iter = fdSgMap.find(fd);
+      CHECK(fdSgMap.find(fd) != fdSgMap.end());
+      iter->second->remove(fd);
+      fdSgMap.erase(iter);
+      --count;
+
+      return count;
+    }
+
+    // file descriptor to sub group index map
+    folly::F14FastMap<int, SQSubGroupInfo*> fdSgMap;
+    // array of subgoups
+    std::vector<SQSubGroupInfo> subGroups;
+    // number of entries
+    size_t count{0};
+  };
+
+  using SQGroupInfoMap = folly::F14FastMap<std::string, SQGroupInfo>;
+  SQGroupInfoMap map_;
+  std::mutex mutex_;
+
+ public:
+  SQGroupInfoRegistry() = default;
+  ~SQGroupInfoRegistry() = default;
+
+  using FDCreateFunc = folly::Function<int(struct io_uring_params&)>;
+  using FDCloseFunc = folly::Function<void()>;
+
+  size_t addTo(
+      const std::string& groupName,
+      size_t groupNumThreads,
+      FDCreateFunc& createFd,
+      struct io_uring_params& params) {
+    if (groupName.empty()) {
+      createFd(params);
+      return 0;
+    }
+
+    size_t ret = 0;
+    std::lock_guard g(mutex_);
+
+    SQGroupInfo::SQSubGroupInfo* sg = nullptr;
+    SQGroupInfo* info = nullptr;
+    auto iter = map_.find(groupName);
+    if (iter != map_.end()) {
+      info = &iter->second;
+      sg = info->getNextSubgroup();
+      // we're adding to a non empty subgroup
+      if (sg->count) {
+        params.wq_fd = *(sg->fds.begin());
+        params.flags |= IORING_SETUP_ATTACH_WQ;
+      }
+    }
+
+    auto fd = createFd(params);
+
+    if (fd >= 0) {
+      if (!info) {
+        SQGroupInfo gr(groupNumThreads);
+        info = &map_.insert(std::make_pair(groupName, std::move(gr)))
+                    .first->second;
+        sg = info->getNextSubgroup();
+      }
+
+      ret = info->add(fd, sg);
+    }
+
+    return ret;
+  }
+
+  size_t removeFrom(const std::string& groupName, int fd, FDCloseFunc& func) {
+    if (groupName.empty()) {
+      func();
+      return 0;
+    }
+
+    size_t ret;
+
+    std::lock_guard g(mutex_);
+
+    func();
+
+    auto iter = map_.find(groupName);
+    CHECK(iter != map_.end());
+    // check for empty group
+    if ((ret = iter->second.remove(fd)) == 0) {
+      map_.erase(iter);
+    }
+
+    return ret;
+  }
+};
+
+static folly::Indestructible<SQGroupInfoRegistry> sSQGroupInfoRegistry;
+
+} // namespace
 
 namespace folly {
 IoUringBackend::FdRegistry::FdRegistry(struct io_uring& ioRing, size_t n)
@@ -108,14 +261,26 @@ IoUringBackend::IoUringBackend(Options options)
     params_.sq_thread_cpu = options.sqCpu;
   }
 
-  // allocate entries both for poll add and cancel
-  if (::io_uring_queue_init_params(
-          2 * options_.maxSubmit, &ioRing_, &params_)) {
-    LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit << ","
-               << params_.cq_entries << ") "
-               << "failed errno = " << errno << ":\"" << folly::errnoStr(errno)
-               << "\" " << this;
-    throw NotAvailable("io_uring_queue_init error");
+  SQGroupInfoRegistry::FDCreateFunc func = [&](struct io_uring_params& params) {
+    // allocate entries both for poll add and cancel
+    if (::io_uring_queue_init_params(
+            2 * options_.maxSubmit, &ioRing_, &params)) {
+      LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
+                 << "," << params.cq_entries << ") "
+                 << "failed errno = " << errno << ":\""
+                 << folly::errnoStr(errno) << "\" " << this;
+      throw NotAvailable("io_uring_queue_init error");
+    }
+
+    return ioRing_.ring_fd;
+  };
+
+  auto ret = sSQGroupInfoRegistry->addTo(
+      options_.sqGroupName, options_.sqGroupNumThreads, func, params_);
+
+  if (!options_.sqGroupName.empty()) {
+    LOG(INFO) << "Adding to SQ poll group \"" << options_.sqGroupName
+              << "\" ret = " << ret << " fd = " << ioRing_.ring_fd;
   }
 
   numEntries_ *= 2;
@@ -182,9 +347,20 @@ void IoUringBackend::cleanup() {
     signalReadEntry_.reset();
     freeList_.clear_and_dispose([](auto _) { delete _; });
 
-    // exit now
-    ::io_uring_queue_exit(&ioRing_);
-    ioRing_.ring_fd = -1;
+    int fd = ioRing_.ring_fd;
+    SQGroupInfoRegistry::FDCloseFunc func = [&]() {
+      // exit now
+      ::io_uring_queue_exit(&ioRing_);
+      ioRing_.ring_fd = -1;
+    };
+
+    auto ret = sSQGroupInfoRegistry->removeFrom(
+        options_.sqGroupName, ioRing_.ring_fd, func);
+
+    if (!options_.sqGroupName.empty()) {
+      LOG(INFO) << "Removing from SQ poll group \"" << options_.sqGroupName
+                << "\" ret = " << ret << " fd = " << fd;
+    }
   }
 }
 

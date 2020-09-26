@@ -87,8 +87,20 @@ class PollIoBackend : public EventBaseBackendBase {
       return *this;
     }
 
-    Options& setCQCpu(uint32_t v) {
+    Options& setSQCpu(uint32_t v) {
       sqCpu = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupName(const std::string& v) {
+      sqGroupName = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupNumThreads(size_t v) {
+      sqGroupNumThreads = v;
 
       return *this;
     }
@@ -102,6 +114,8 @@ class PollIoBackend : public EventBaseBackendBase {
     std::chrono::milliseconds sqIdle{0};
     std::chrono::milliseconds cqIdle{0};
     uint32_t sqCpu{0};
+    std::string sqGroupName;
+    size_t sqGroupNumThreads{1};
   };
 
   explicit PollIoBackend(Options options);
