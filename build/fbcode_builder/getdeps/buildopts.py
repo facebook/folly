@@ -269,12 +269,11 @@ class BuildOptions(object):
                 env["RUSTC"] = rustc_path
                 env["RUSTDOC"] = rustdoc_path
 
-            if self.is_windows():
-                libcrypto = os.path.join(d, "lib/libcrypto.lib")
-            else:
-                libcrypto = os.path.join(d, "lib/libcrypto.so")
             openssl_include = os.path.join(d, "include/openssl")
-            if os.path.isfile(libcrypto) and os.path.isdir(openssl_include):
+            if os.path.isdir(openssl_include) and any(
+                os.path.isfile(os.path.join(d, "lib", libcrypto))
+                for libcrypto in ("libcrypto.lib", "libcrypto.so", "libcrypto.a")
+            ):
                 # This must be the openssl library, let Rust know about it
                 env["OPENSSL_DIR"] = d
 
