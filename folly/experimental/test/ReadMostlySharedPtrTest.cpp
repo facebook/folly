@@ -346,3 +346,51 @@ TEST_F(ReadMostlySharedPtrTest, getStdShared) {
   // No conditions to check; we just wanted to ensure this compiles.
   SUCCEED();
 }
+
+struct Base {
+  virtual ~Base() = default;
+
+  virtual std::string getName() const {
+    return "Base";
+  }
+};
+
+struct Derived : public Base {
+  std::string getName() const override {
+    return "Derived";
+  }
+};
+
+TEST_F(ReadMostlySharedPtrTest, casts) {
+  ReadMostlyMainPtr<Derived> rmmp(std::make_shared<Derived>());
+  ReadMostlySharedPtr<Derived> rmsp(rmmp);
+  {
+    ReadMostlySharedPtr<Base> rmspbase(rmmp);
+    EXPECT_EQ("Derived", rmspbase->getName());
+    EXPECT_EQ("Derived", rmspbase.getStdShared()->getName());
+  }
+  {
+    ReadMostlySharedPtr<Base> rmspbase(rmsp);
+    EXPECT_EQ("Derived", rmspbase->getName());
+    EXPECT_EQ("Derived", rmspbase.getStdShared()->getName());
+  }
+  {
+    ReadMostlySharedPtr<Base> rmspbase;
+    rmspbase = rmsp;
+    EXPECT_EQ("Derived", rmspbase->getName());
+    EXPECT_EQ("Derived", rmspbase.getStdShared()->getName());
+  }
+  {
+    auto rmspcopy = rmsp;
+    ReadMostlySharedPtr<Base> rmspbase(std::move(rmspcopy));
+    EXPECT_EQ("Derived", rmspbase->getName());
+    EXPECT_EQ("Derived", rmspbase.getStdShared()->getName());
+  }
+  {
+    auto rmspcopy = rmsp;
+    ReadMostlySharedPtr<Base> rmspbase;
+    rmspbase = std::move(rmspcopy);
+    EXPECT_EQ("Derived", rmspbase->getName());
+    EXPECT_EQ("Derived", rmspbase.getStdShared()->getName());
+  }
+}
