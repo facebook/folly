@@ -23,3 +23,6 @@ subdir = zstd-1.4.5/build/cmake
 # term solution for this is just to link static on macos.
 [cmake.defines.os=darwin]
 ZSTD_BUILD_SHARED = OFF
+
+[cmake.defines.os=windows]
+ZSTD_BUILD_SHARED = OFF
