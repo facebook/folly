@@ -325,14 +325,14 @@ class hazptr_obj_cohort {
   void shutdown_and_reclaim() {
     DCHECK(active());
     clear_active();
+    if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
+      default_hazptr_domain<Atom>().cleanup_cohort_tag(this);
+    }
     if (!l_.empty()) {
       List l = l_.pop_all();
       clear_count();
       Obj* obj = l.head();
       reclaim_list(obj);
-    }
-    if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
-      default_hazptr_domain<Atom>().cleanup_cohort_tag(this);
     }
     DCHECK(l_.empty());
   }
