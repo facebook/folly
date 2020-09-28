@@ -80,7 +80,7 @@ namespace coro {
 ///    }
 ///
 ///    folly::coro::Task<bool> contains(std::string value) const {
-///      auto lock = co_await mutex_.co_scoped_shared_lock();
+///      auto lock = co_await mutex_.co_scoped_lock_shared();
 ///      co_return values_.count(value) > 0;
 ///    }
 ///  };
