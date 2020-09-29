@@ -67,6 +67,15 @@ FOLLY_INLINE_VARIABLE constexpr bool is_instantiation_of_v<C, C<T...>> = true;
 template <template <typename...> class C, typename... T>
 struct is_instantiation_of : bool_constant<is_instantiation_of_v<C, T...>> {};
 
+template <typename, typename>
+FOLLY_INLINE_VARIABLE constexpr bool is_similar_instantiation_v = false;
+template <template <typename...> class C, typename... A, typename... B>
+FOLLY_INLINE_VARIABLE constexpr bool
+    is_similar_instantiation_v<C<A...>, C<B...>> = true;
+template <typename A, typename B>
+struct is_similar_instantiation
+    : bool_constant<is_similar_instantiation_v<A, B>> {};
+
 } // namespace detail
 
 namespace detail {

@@ -263,36 +263,22 @@ using IsSmall = Conjunction<
 using SmallTag = std::true_type;
 using HeapTag = std::false_type;
 
-template <typename T>
-struct NotFunction : std::true_type {};
-template <typename T>
-struct NotFunction<Function<T>> : std::false_type {};
-
-template <typename T>
-using EnableIfNotFunction =
-    typename std::enable_if<NotFunction<T>::value>::type;
-
 struct CoerceTag {};
 
-template <typename, typename T>
-struct IsFunctionNullptrTestable : std::false_type {};
-
 template <typename T>
-struct IsFunctionNullptrTestable<
-    void_t<decltype(
-        static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr))>,
-    T> : std::true_type {};
+using FunctionNullptrTest =
+    decltype(static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr));
 
-template <typename T>
-constexpr std::enable_if_t< //
-    !IsFunctionNullptrTestable<void, T>::value,
-    std::false_type>
-isEmptyFunction(T const&) {
-  return {};
+template <
+    typename T,
+    std::enable_if_t<!is_detected_v<FunctionNullptrTest, T>, int> = 0>
+constexpr bool isEmptyFunction(T const&) {
+  return false;
 }
-template <typename T>
-constexpr std::enable_if_t<IsFunctionNullptrTestable<void, T>::value, bool>
-isEmptyFunction(T const& t) {
+template <
+    typename T,
+    std::enable_if_t<is_detected_v<FunctionNullptrTest, T>, int> = 0>
+constexpr bool isEmptyFunction(T const& t) {
   return static_cast<bool>(t == nullptr);
 }
 
@@ -739,7 +725,8 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Fun,
-      typename = detail::function::EnableIfNotFunction<Fun>,
+      typename =
+          std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
       typename = typename Traits::template ResultOf<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
       IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>())))

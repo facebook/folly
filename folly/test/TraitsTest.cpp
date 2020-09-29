@@ -425,6 +425,20 @@ TEST(Traits, is_instantiation_of) {
   EXPECT_FALSE((detail::is_instantiation_of<A, B>::value));
 }
 
+TEST(Traits, is_similar_instantiation_v) {
+  EXPECT_TRUE((detail::is_similar_instantiation_v<A<int>, A<long>>));
+  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, tag_t<int>>));
+  EXPECT_FALSE((detail::is_similar_instantiation_v<A<int>, B>));
+  EXPECT_FALSE((detail::is_similar_instantiation_v<B, B>));
+}
+
+TEST(Traits, is_similar_instantiation) {
+  EXPECT_TRUE((detail::is_similar_instantiation<A<int>, A<long>>::value));
+  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, tag_t<int>>::value));
+  EXPECT_FALSE((detail::is_similar_instantiation<A<int>, B>::value));
+  EXPECT_FALSE((detail::is_similar_instantiation<B, B>::value));
+}
+
 TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<int>);
   EXPECT_TRUE(is_constexpr_default_constructible<int>{});
