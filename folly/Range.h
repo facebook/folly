@@ -1095,7 +1095,8 @@ class Range {
   }
 
  private:
-  Iter b_, e_;
+  Iter b_;
+  Iter e_;
 };
 
 template <class Iter>
