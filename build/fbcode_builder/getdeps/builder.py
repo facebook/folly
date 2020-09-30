@@ -709,7 +709,7 @@ if __name__ == "__main__":
                 args += ["-R", test_filter]
 
             count = 0
-            while count < retry:
+            while count <= retry:
                 retcode = self._run_cmd(
                     args, env=env, use_cmd_prefix=use_cmd_prefix, allow_fail=True
                 )
