@@ -225,10 +225,12 @@ if (NOT ${LIBAIO_FOUND} AND NOT ${LIBURING_FOUND})
   list(REMOVE_ITEM files
     ${FOLLY_DIR}/experimental/io/AsyncBase.cpp
     ${FOLLY_DIR}/experimental/io/PollIoBackend.cpp
+    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.cpp
   )
   list(REMOVE_ITEM hfiles
     ${FOLLY_DIR}/experimental/io/AsyncBase.h
     ${FOLLY_DIR}/experimental/io/PollIoBackend.h
+    ${FOLLY_DIR}/experimental/io/SimpleAsyncIO.h
   )
 endif()
 
