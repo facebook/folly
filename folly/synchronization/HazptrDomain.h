@@ -352,15 +352,21 @@ class hazptr_domain {
     list_match_condition(obj, match, nomatch, [&](Obj* o) {
       return hs.count(o->raw_ptr()) > 0;
     });
-    /* Reclaim unprotected objects and push back protected objects and
-       children of reclaimed objects */
     if (lock) {
-      unprotected_ = nomatch.head();
-      DCHECK(children_.empty());
-      reclaim_unprotected_safe();
-      match.splice(children_);
+      /* Push unprotected objects into their cohorts and push protected
+         objects back into the list and unlock it */
+      obj = nomatch.head();
+      while (obj) {
+        auto next = obj->next();
+        auto cohort = obj->cohort();
+        DCHECK(cohort);
+        cohort->push_safe_obj(obj);
+        obj = next;
+      }
       rlist.push_unlock(match);
     } else {
+      /* Reclaim unprotected objects and push protected objects and
+         children of reclaimed objects into the list */
       ObjList children;
       reclaim_unprotected_unsafe(nomatch.head(), children);
       match.splice(children);

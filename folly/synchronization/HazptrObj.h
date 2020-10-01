@@ -300,11 +300,16 @@ class hazptr_obj_cohort {
   Atom<int> count_;
   Atom<bool> active_;
   Atom<bool> pushed_to_domain_tagged_;
+  Atom<Obj*> safe_list_top_;
 
  public:
   /** Constructor */
   hazptr_obj_cohort() noexcept
-      : l_(), count_(0), active_(true), pushed_to_domain_tagged_{false} {}
+      : l_(),
+        count_(0),
+        active_(true),
+        pushed_to_domain_tagged_{false},
+        safe_list_top_{nullptr} {}
 
   /** Not copyable or moveable */
   hazptr_obj_cohort(const hazptr_obj_cohort& o) = delete;
@@ -328,6 +333,7 @@ class hazptr_obj_cohort {
     if (pushed_to_domain_tagged_.load(std::memory_order_relaxed)) {
       default_hazptr_domain<Atom>().cleanup_cohort_tag(this);
     }
+    reclaim_safe_list();
     if (!l_.empty()) {
       List l = l_.pop_all();
       clear_count();
@@ -338,6 +344,7 @@ class hazptr_obj_cohort {
   }
 
  private:
+  friend class hazptr_domain<Atom>;
   friend class hazptr_obj<Atom>;
 
   bool active() {
@@ -365,15 +372,36 @@ class hazptr_obj_cohort {
         expected, newval, std::memory_order_acq_rel, std::memory_order_acquire);
   }
 
+  Obj* safe_list_top() const noexcept {
+    return safe_list_top_.load(std::memory_order_acquire);
+  }
+
+  bool cas_safe_list_top(Obj*& expected, Obj* newval) noexcept {
+    return safe_list_top_.compare_exchange_weak(
+        expected, newval, std::memory_order_acq_rel, std::memory_order_relaxed);
+  }
+
   /** push_obj */
   void push_obj(Obj* obj) {
     if (active()) {
       l_.push(obj);
       inc_count();
       check_threshold_push();
+      if (safe_list_top())
+        reclaim_safe_list();
     } else {
       obj->set_next(nullptr);
       reclaim_list(obj);
+    }
+  }
+
+  /** push_safe_obj */
+  void push_safe_obj(Obj* obj) noexcept {
+    while (true) {
+      Obj* top = safe_list_top();
+      obj->set_next(top);
+      if (cas_safe_list_top(top, obj))
+        return;
     }
   }
 
@@ -411,6 +439,12 @@ class hazptr_obj_cohort {
         return;
       }
     }
+  }
+
+  /** reclaim_safe_list */
+  void reclaim_safe_list() {
+    Obj* top = safe_list_top_.exchange(nullptr, std::memory_order_acq_rel);
+    reclaim_list(top);
   }
 }; // hazptr_obj_cohort
 
