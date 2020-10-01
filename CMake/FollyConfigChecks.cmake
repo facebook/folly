@@ -235,6 +235,8 @@ if (FOLLY_HAVE_LIBGFLAGS)
   # use "google" but also make symbols available in the deprecated "gflags"
   # namespace too.  The folly code internally uses "gflags" unless we tell it
   # otherwise.
+  list(APPEND CMAKE_REQUIRED_LIBRARIES ${FOLLY_LIBGFLAGS_LIBRARY})
+  list(APPEND CMAKE_REQUIRED_INCLUDES ${FOLLY_LIBGFLAGS_INCLUDE})
   check_cxx_source_compiles("
     #include <gflags/gflags.h>
     int main() {
@@ -244,6 +246,8 @@ if (FOLLY_HAVE_LIBGFLAGS)
     "
     GFLAGS_NAMESPACE_IS_GFLAGS
   )
+  list(REMOVE_ITEM CMAKE_REQUIRED_LIBRARIES ${FOLLY_LIBGFLAGS_LIBRARY})
+  list(REMOVE_ITEM CMAKE_REQUIRED_INCLUDES ${FOLLY_LIBGFLAGS_INCLUDE})
   if (GFLAGS_NAMESPACE_IS_GFLAGS)
     set(FOLLY_UNUSUAL_GFLAGS_NAMESPACE OFF)
     set(FOLLY_GFLAGS_NAMESPACE gflags)
