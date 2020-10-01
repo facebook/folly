@@ -14,6 +14,9 @@ subdir = .
 [cmake.defines.test=on]
 BUILD_TESTS = ON
 
+[cmake.defines.all(os=windows, test=on)]
+BUILD_TESTS = OFF
+
 [cmake.defines.test=off]
 BUILD_TESTS = OFF
 
@@ -21,7 +24,7 @@ BUILD_TESTS = OFF
 folly
 fizz
 
-[dependencies.test=on]
+[dependencies.all(test=on, not(os=windows))]
 googletest_1_8
 
 [shipit.pathmap]

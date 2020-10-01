@@ -17,15 +17,17 @@ BUILD_EXAMPLES = OFF
 [cmake.defines.test=on]
 BUILD_TESTS = ON
 
-[cmake.defines.test=off]
+[cmake.defines.all(os=windows, test=on)]
 BUILD_TESTS = OFF
 
+[cmake.defines.test=off]
+BUILD_TESTS = OFF
 
 [dependencies]
 folly
 libsodium
 
-[dependencies.test=on]
+[dependencies.all(test=on, not(os=windows))]
 googletest_1_8
 
 [shipit.pathmap]
