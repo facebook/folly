@@ -21,6 +21,7 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
+#include <folly/ssl/SSLSession.h>
 
 namespace folly {
 namespace ssl {
@@ -38,6 +39,9 @@ class OpenSSLUtils {
    */
   static bool getTLSMasterKey(
       const SSL_SESSION* session,
+      MutableByteRange keyOut);
+  static bool getTLSMasterKey(
+      const std::shared_ptr<SSLSession> session,
       MutableByteRange keyOut);
 
   /*

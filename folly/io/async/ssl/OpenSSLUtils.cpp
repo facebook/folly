@@ -24,6 +24,7 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/ssl/Init.h>
+#include <folly/ssl/detail/OpenSSLSession.h>
 
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL
@@ -49,6 +50,21 @@ bool OpenSSLUtils::getTLSMasterKey(
   (void)session;
   (void)keyOut;
 #endif
+  return false;
+}
+
+bool OpenSSLUtils::getTLSMasterKey(
+    const std::shared_ptr<SSLSession> session,
+    MutableByteRange keyOut) {
+  auto openSSLSession =
+      std::dynamic_pointer_cast<folly::ssl::detail::OpenSSLSession>(session);
+  if (openSSLSession) {
+    auto rawSessionPtr = openSSLSession->getActiveSession();
+    SSL_SESSION* rawSession = rawSessionPtr.get();
+    if (rawSession) {
+      return OpenSSLUtils::getTLSMasterKey(rawSession, keyOut);
+    }
+  }
   return false;
 }
 
