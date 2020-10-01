@@ -599,7 +599,6 @@ class ShipitTransformerFetcher(Fetcher):
                     "--skip-source-clean",
                     "--skip-push",
                     "--skip-reset",
-                    "--skip-project-specific",
                     "--destination-use-anonymous-https",
                     "--create-new-repo-output-path=" + tmp_path,
                 ]
