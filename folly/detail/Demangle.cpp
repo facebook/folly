@@ -48,5 +48,15 @@ int cplus_demangle_v3_callback_wrapper(
 #endif
 }
 
+char* cplus_demangle_v3_wrapper(const char* mangled) {
+#if FOLLY_DETAIL_HAVE_DEMANGLE_H
+  auto const options = DMGL_PARAMS | DMGL_ANSI | DMGL_TYPES;
+  return cplus_demangle_v3(mangled, options);
+#else
+  (void)mangled;
+  return 0;
+#endif
+}
+
 } // namespace detail
 } // namespace folly
