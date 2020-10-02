@@ -523,7 +523,13 @@ void installFatalSignalHandler(std::bitset<64> signals) {
   // stack overflow. Replace it with the unsafe self-allocate printer.
   bool useUnsafePrinter = kIsLinux && isSmallSigAltStackEnabled();
   if (useUnsafePrinter) {
+#if FOLLY_HAVE_SWAPCONTEXT
     gStackTracePrinter = new UnsafeSelfAllocateStackTracePrinter();
+#else
+    // This environment does not support swapcontext, so always use
+    // SafeStackTracePrinter.
+    gStackTracePrinter = new SafeStackTracePrinter();
+#endif // FOLLY_HAVE_SWAPCONTEXT
   } else {
     gStackTracePrinter = new SafeStackTracePrinter();
   }
