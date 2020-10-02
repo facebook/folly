@@ -927,6 +927,10 @@ void AsyncSSLSocket::setSSLSessionV2(shared_ptr<ssl::SSLSession> session) {
   sslSessionManager_.setSession(session);
 }
 
+void AsyncSSLSocket::setRawSSLSession(SSLSessionUniquePtr session) {
+  sslSessionManager_.setRawSession(std::move(session));
+}
+
 void AsyncSSLSocket::getSelectedNextProtocol(
     const unsigned char** protoName,
     unsigned* protoLen) const {

@@ -522,6 +522,8 @@ class AsyncSSLSocket : public AsyncSocket {
   const SSL* getSSL() const;
 
   /**
+   * DEPRECATED. Will eventually be removed. Please use setSSLSessionV2.
+   *
    * Set the SSL session to be used during sslConn.  AsyncSSLSocket will
    * hold a reference to the session until it is destroyed or released by the
    * underlying SSL structure.
@@ -532,11 +534,21 @@ class AsyncSSLSocket : public AsyncSocket {
   void setSSLSession(SSL_SESSION* session, bool takeOwnership = false);
 
   /**
-   * Currently unsupported. Eventually intended to replace setSSLSession()
-   * once TLS 1.3 is enabled by default.
-   * Set the abstracted SSL session to be used during sslConn.
+   * Set the SSL session to be used during sslConn.
    */
   void setSSLSessionV2(std::shared_ptr<ssl::SSLSession> session);
+
+  /**
+   * Note: This function exists for compatibility reasons. It is strongly
+   * recommended to use setSSLSessionV2 instead. After setRawSSLSession is
+   * called, subsequent calls to getSSLSession on the socket will return null.
+   *
+   * Set the SSL session to be used during sslConn.
+   * If the caller wishes to resume the session in TLS 1.3, the caller
+   * is responsible for ensuring that the session is resumable.
+   * If the session is not resumable, then a full handshake will be performed.
+   */
+  void setRawSSLSession(folly::ssl::SSLSessionUniquePtr session);
 
   /**
    * Get the name of the protocol selected by the client during
