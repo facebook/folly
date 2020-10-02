@@ -443,7 +443,7 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
   serverSocketVec.reserve(kNumSockets);
 
   std::vector<std::unique_ptr<folly::AsyncUDPSocket>> clientSocketVec;
-  serverSocketVec.reserve(kNumSockets);
+  clientSocketVec.reserve(kNumSockets);
 
   std::vector<std::unique_ptr<EventRecvmsgCallback>> cbVec;
   cbVec.reserve(kNumSockets);
