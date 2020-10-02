@@ -324,6 +324,28 @@ template <typename T, typename V>
 using detector_find = decltype(std::declval<T>().find(std::declval<V>()));
 }
 
+TEST(Traits, detected_or_t) {
+  EXPECT_TRUE(( //
+      std::is_same<
+          folly::detected_or_t<float, detector_find, std::string, char>,
+          std::string::size_type>::value));
+  EXPECT_TRUE(( //
+      std::is_same<
+          folly::detected_or_t<float, detector_find, double, char>,
+          float>::value));
+}
+
+TEST(Traits, detected_t) {
+  EXPECT_TRUE(( //
+      std::is_same<
+          folly::detected_t<detector_find, std::string, char>,
+          std::string::size_type>::value));
+  EXPECT_TRUE(( //
+      std::is_same<
+          folly::detected_t<detector_find, double, char>,
+          folly::nonesuch>::value));
+}
+
 TEST(Traits, is_detected) {
   EXPECT_TRUE((folly::is_detected<detector_find, std::string, char>::value));
   EXPECT_FALSE((folly::is_detected<detector_find, double, char>::value));

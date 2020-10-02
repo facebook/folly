@@ -256,14 +256,67 @@ using type_t = typename traits_detail::type_t_<T, Ts...>::type;
 template <class... Ts>
 using void_t = type_t<void, Ts...>;
 
+//  nonesuch
+//
+//  A tag type which traits may use to indicate lack of a result type.
+//
+//  Similar to void in that no values of this type may be constructed. Different
+//  from void in that no functions may be defined with this return type and no
+//  complete expressions may evaluate with this expression type.
+//
+//  mimic: std::experimental::nonesuch, Library Fundamentals TS v2
+struct nonesuch {
+  ~nonesuch() = delete;
+  nonesuch(nonesuch const&) = delete;
+  void operator=(nonesuch const&) = delete;
+};
+
 namespace detail {
-template <typename Void, template <typename...> class, typename...>
-FOLLY_INLINE_VARIABLE constexpr bool //
-    is_detected_ = false;
-template <template <typename...> class T, typename... A>
-FOLLY_INLINE_VARIABLE constexpr bool //
-    is_detected_<void_t<T<A...>>, T, A...> = true;
+
+template <typename Void, typename D, template <typename...> class, typename...>
+struct detected_ {
+  using value_t = std::false_type;
+  using type = D;
+};
+template <typename D, template <typename...> class T, typename... A>
+struct detected_<void_t<T<A...>>, D, T, A...> {
+  using value_t = std::true_type;
+  using type = T<A...>;
+};
+
 } // namespace detail
+
+//  detected_or
+//
+//  If T<A...> substitutes, has member type alias value_t as std::true_type
+//  and has member type alias type as T<A...>. Otherwise, has member type
+//  alias value_t as std::false_type and has member type alias as D.
+//
+//  mimic: std::experimental::detected_or, Library Fundamentals TS v2
+template <typename D, template <typename...> class T, typename... A>
+using detected_or = detail::detected_<void, D, T, A...>;
+
+//  detected_or_t
+//
+//  A trait type alias which results in T<A...> if substitution would succeed
+//  and in D otherwise.
+//
+//  Equivalent to detected_or<D, T, A...>::type.
+//
+//  mimic: std::experimental::detected_or_t, Library Fundamentals TS v2
+template <typename D, template <typename...> class T, typename... A>
+using detected_or_t = typename detected_or<D, T, A...>::type;
+
+//  detected_t
+//
+//  A trait type alias which results in T<A...> if substitution would succeed
+//  and in nonesuch otherwise.
+//
+//  Equivalent to detected_or_t<nonesuch, T, A...>.
+//
+//  mimic: std::experimental::detected_t, Library Fundamentals TS v2
+template <template <typename...> class T, typename... A>
+using detected_t = detected_or_t<nonesuch, T, A...>;
 
 //  is_detected_v
 //  is_detected
@@ -271,12 +324,20 @@ FOLLY_INLINE_VARIABLE constexpr bool //
 //  A trait variable and type to test whether some metafunction from types to
 //  types would succeed or fail in substitution over a given set of arguments.
 //
-//  mimic: std::is_detected, std::is_detected_v, Library Fundamentals TS v2
+//  The trait variable is_detected_v<T, A...> is equivalent to
+//  detected_or<nonesuch, T, A...>::value_t::value.
+//  The trait type is_detected<T, A...> unambiguously inherits bool_constant<V>
+//  where V is is_detected_v<T, A...>.
+//
+//  mimic: std::experimental::is_detected, std::experimental::is_detected_v,
+//    Library Fundamentals TS v2
+//
+//  Note: the trait type is_detected differs here by being deferred.
 template <template <typename...> class T, typename... A>
 FOLLY_INLINE_VARIABLE constexpr bool is_detected_v =
-    detail::is_detected_<void, T, A...>;
+    detected_or<nonesuch, T, A...>::value_t::value;
 template <template <typename...> class T, typename... A>
-struct is_detected : bool_constant<is_detected_v<T, A...>> {};
+struct is_detected : detected_or<nonesuch, T, A...>::value_t {};
 
 template <typename T>
 using aligned_storage_for_t =
