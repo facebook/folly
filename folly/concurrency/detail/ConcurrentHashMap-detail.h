@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/container/detail/F14Mask.h>
+#include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
 #include <folly/synchronization/Hazptr.h>
 #include <algorithm>
@@ -640,7 +641,7 @@ class alignas(64) BucketTable {
     if (size() >= load_factor_nodes_ && type == InsertType::DOES_NOT_EXIST) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash(bcount << 1, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -697,7 +698,7 @@ class alignas(64) BucketTable {
     if (size() >= load_factor_nodes_ && type == InsertType::ANY) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash(bcount << 1, cohort);
 
@@ -1390,7 +1391,7 @@ class alignas(64) SIMDTable {
   void max_load_factor(float factor) {
     DCHECK(factor > 0.0);
     if (factor > 1.0) {
-      throw std::invalid_argument("load factor must be <= 1.0");
+      throw_exception<std::invalid_argument>("load factor must be <= 1.0");
     }
     std::lock_guard<Mutex> g(m_);
     load_factor_ = factor;
@@ -1474,7 +1475,7 @@ class alignas(64) SIMDTable {
     if (size() >= grow_threshold_ && type == InsertType::DOES_NOT_EXIST) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash_internal(ccount << 1, cohort);
       ccount = chunk_count_.load(std::memory_order_relaxed);
@@ -1503,7 +1504,7 @@ class alignas(64) SIMDTable {
       if (size() >= grow_threshold_ && type == InsertType::ANY) {
         if (max_size_ && size() << 1 > max_size_) {
           // Would exceed max size.
-          throw std::bad_alloc();
+          throw_exception<std::bad_alloc>();
         }
         rehash_internal(ccount << 1, cohort);
         ccount = chunk_count_.load(std::memory_order_relaxed);

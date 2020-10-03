@@ -34,6 +34,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/AtFork.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -293,7 +294,8 @@ class PthreadKeyUnregister {
   void registerKeyImpl(pthread_key_t key) {
     MSLGuard lg(lock_);
     if (size_ == kMaxKeys) {
-      throw std::logic_error("pthread_key limit has already been reached");
+      throw_exception<std::logic_error>(
+          "pthread_key limit has already been reached");
     }
     keys_[size_++] = key;
   }

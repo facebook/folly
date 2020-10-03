@@ -391,7 +391,7 @@ class ConcurrentHashMap {
   const ValueType at(const KeyType& key) const {
     auto item = find(key);
     if (item == cend()) {
-      throw std::out_of_range("at(): value out of range");
+      throw_exception<std::out_of_range>("at(): value out of range");
     }
     return item->second;
   }
