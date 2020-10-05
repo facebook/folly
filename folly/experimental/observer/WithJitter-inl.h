@@ -21,6 +21,7 @@
 #include <stdexcept>
 #include <utility>
 
+#include <fmt/chrono.h>
 #include <fmt/core.h>
 #include <glog/logging.h>
 
