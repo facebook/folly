@@ -16,11 +16,11 @@
 
 #include <folly/experimental/io/SimpleAsyncIO.h>
 #include <folly/String.h>
-#if __has_include(<folly/experimental/io/AsyncIO.h>)
+#if __has_include(<folly/experimental/io/AsyncIO.h>) && __has_include(<libaio.h>)
 #define AIO_SUPPORTED
 #include <folly/experimental/io/AsyncIO.h>
 #endif
-#if __has_include(<folly/experimental/io/IoUring.h>)
+#if __has_include(<folly/experimental/io/IoUring.h>) && __has_include(<liburing.h>)
 #define IOURING_SUPPORTED
 #include <folly/experimental/io/IoUring.h>
 #endif
