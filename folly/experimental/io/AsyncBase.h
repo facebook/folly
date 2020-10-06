@@ -148,6 +148,7 @@ class AsyncBaseOp {
  protected:
   void init();
   void start();
+  void unstart();
   void complete(ssize_t result);
   void cancel();
 

@@ -52,6 +52,11 @@ void AsyncBaseOp::start() {
   state_ = State::PENDING;
 }
 
+void AsyncBaseOp::unstart() {
+  DCHECK_EQ(state_, State::PENDING);
+  state_ = State::INITIALIZED;
+}
+
 void AsyncBaseOp::complete(ssize_t result) {
   DCHECK_EQ(state_, State::PENDING);
   state_ = State::COMPLETED;
@@ -117,20 +122,24 @@ void AsyncBase::submit(Op* op) {
     throw std::range_error("AsyncBase: too many pending requests");
   }
 
+  op->start();
   int rc = submitOne(op);
 
-  if (rc < 0) {
+  if (rc <= 0) {
+    op->unstart();
     decrementPending();
-    throwSystemErrorExplicit(-rc, "AsyncBase: io_submit failed");
+    if (rc < 0) {
+      throwSystemErrorExplicit(-rc, "AsyncBase: io_submit failed");
+    }
   }
-  submitted_++;
+  submitted_ += rc;
   DCHECK_EQ(rc, 1);
-  op->start();
 }
 
 int AsyncBase::submit(Range<Op**> ops) {
   for (auto& op : ops) {
     CHECK_EQ(op->state(), Op::State::INITIALIZED);
+    op->start();
   }
   initializeContext(); // on demand
 
@@ -147,11 +156,14 @@ int AsyncBase::submit(Range<Op**> ops) {
     decrementPending(ops.size());
     throwSystemErrorExplicit(-rc, "AsyncBase: io_submit failed");
   }
+  // Any ops that did not get submitted go back to INITIALIZED state
+  // and are removed from pending count.
+  for (size_t i = rc; i < ops.size(); i++) {
+    ops[i]->unstart();
+    decrementPending(1);
+  }
   submitted_ += rc;
   DCHECK_LE(rc, ops.size());
-  for (int i = 0; i < rc; i++) {
-    ops[i]->start();
-  }
 
   return rc;
 }
