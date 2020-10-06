@@ -145,7 +145,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
       } else {
         // this happens if at least one of the prev requests were sent
         // with zero copy but not the last one
-        if (isComplete() && socket_->getZeroCopy() &&
+        if (isComplete() && zeroCopyRequest_ &&
             socket_->containsZeroCopyBuf(ioBuf_.get())) {
           socket_->setZeroCopyBuf(std::move(ioBuf_));
         }
@@ -163,8 +163,14 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     opIndex_ += opsWritten_;
     assert(opIndex_ < opCount_);
 
-    if (!socket_->isZeroCopyRequest(flags_)) {
+    bool zeroCopyReq = socket_->isZeroCopyRequest(flags_);
+    if (zeroCopyReq) {
+      zeroCopyRequest_ = true;
+    }
+
+    if (!zeroCopyRequest_) {
       // If we've finished writing any IOBufs, release them
+      // but only if we did not send any of them via zerocopy
       if (ioBuf_) {
         for (uint32_t i = opsWritten_; i != 0; --i) {
           assert(ioBuf_);
@@ -204,6 +210,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
         partialBytes_(partialBytes),
         bytesWritten_(bytesWritten) {
     memcpy(writeOps_, ops, sizeof(*ops) * opCount_);
+    zeroCopyRequest_ = socket_->isZeroCopyRequest(flags_);
   }
 
   // private destructor, to ensure callers use destroy()
@@ -222,6 +229,8 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   uint32_t opCount_; ///< number of entries in writeOps_
   uint32_t opIndex_; ///< current index into writeOps_
   WriteFlags flags_; ///< set for WriteFlags
+  bool zeroCopyRequest_{
+      false}; ///< if we sent any part of the ioBuf_ with zerocopy
   unique_ptr<IOBuf> ioBuf_; ///< underlying IOBuf, or nullptr if N/A
 
   // for consume(), how much we wrote on the last write
