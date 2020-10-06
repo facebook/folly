@@ -7,6 +7,11 @@ Folly: Facebook Open-source Library
 
 <img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
 
+Open source software is, software that users have the ability to run, copy,
+distribute, study, change, share and improve for any purpose. Open source library 
+software's does not need the initial cost of commercial software and enables
+libraries to have greater control over their working environment.
+
 Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++14 components designed with practicality and efficiency
 in mind. **Folly contains a variety of core library components used extensively
