@@ -1,0 +1,170 @@
+/*
+ * Copyright (c) Facebook, Inc. and its affiliates.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+#include <folly/tracing/AsyncStack.h>
+#include <folly/Likely.h>
+
+#include <glog/logging.h>
+
+#include <atomic>
+#include <cassert>
+#include <mutex>
+
+#if defined(__linux__)
+#define FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD 1
+#else
+#define FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD 0
+#endif
+
+#if FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
+
+#include <folly/portability/PThread.h>
+
+// Use a global TLS key variable to make it easier for profilers/debuggers
+// to lookup the current thread's AsyncStackRoot by walking the pthread
+// TLS structures.
+extern "C" {
+// Current pthread implementation has valid keys in range 0 .. 1023.
+// Initialise to some value that will be interpreted as an invalid key.
+pthread_key_t folly_async_stack_root_tls_key = 0xFFFF'FFFFu;
+}
+
+#endif // FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
+
+namespace folly {
+
+namespace {
+
+#if FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
+static pthread_once_t initialiseTlsKeyFlag = PTHREAD_ONCE_INIT;
+
+static void ensureAsyncRootTlsKeyIsInitialised() noexcept {
+  (void)pthread_once(&initialiseTlsKeyFlag, []() noexcept {
+    int result = pthread_key_create(&folly_async_stack_root_tls_key, nullptr);
+    if (UNLIKELY(result != 0)) {
+      LOG(FATAL)
+          << "Failed to initialise folly_async_stack_root_tls_key: (error:"
+          << result << ")";
+      std::terminate();
+    }
+
+    VLOG(2) << "Initialising folly_async_stack_root_tls_key at address "
+            << (void*)(&folly_async_stack_root_tls_key)
+            << " with pthread_key_t " << folly_async_stack_root_tls_key;
+  });
+}
+
+#endif
+
+struct AsyncStackRootHolder {
+#if FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD
+  AsyncStackRootHolder() noexcept {
+    ensureAsyncRootTlsKeyIsInitialised();
+    const int result =
+        pthread_setspecific(folly_async_stack_root_tls_key, this);
+    if (FOLLY_UNLIKELY(result != 0)) {
+      LOG(FATAL) << "Failed to set current thread's AsyncStackRoot";
+      std::terminate();
+    }
+  }
+#endif
+
+  AsyncStackRoot* get() const noexcept {
+    return value.load(std::memory_order_relaxed);
+  }
+
+  void set(AsyncStackRoot* root) noexcept {
+    value.store(root, std::memory_order_release);
+  }
+
+  void set_relaxed(AsyncStackRoot* root) noexcept {
+    value.store(root, std::memory_order_relaxed);
+  }
+
+  std::atomic<AsyncStackRoot*> value{nullptr};
+};
+
+static thread_local AsyncStackRootHolder currentThreadAsyncStackRoot;
+
+} // namespace
+
+AsyncStackRoot* tryGetCurrentAsyncStackRoot() noexcept {
+  return currentThreadAsyncStackRoot.get();
+}
+
+AsyncStackRoot* exchangeCurrentAsyncStackRoot(
+    AsyncStackRoot* newRoot) noexcept {
+  auto* oldStackRoot = currentThreadAsyncStackRoot.get();
+  currentThreadAsyncStackRoot.set(newRoot);
+  return oldStackRoot;
+}
+
+namespace detail {
+
+ScopedAsyncStackRoot::ScopedAsyncStackRoot(
+    void* framePointer,
+    void* returnAddress) noexcept {
+  root_.setStackFrameContext(framePointer, returnAddress);
+  root_.nextRoot = currentThreadAsyncStackRoot.get();
+  currentThreadAsyncStackRoot.set(&root_);
+}
+
+ScopedAsyncStackRoot::~ScopedAsyncStackRoot() {
+  assert(currentThreadAsyncStackRoot.get() == &root_);
+  assert(root_.topFrame.load(std::memory_order_relaxed) == nullptr);
+  currentThreadAsyncStackRoot.set_relaxed(root_.nextRoot);
+}
+
+} // namespace detail
+} // namespace folly
+
+namespace folly {
+
+[[noreturn]] static void detached_task() {
+  LOG(FATAL) << "The detached_task() dummy function should never be called";
+}
+
+AsyncStackRoot& getCurrentAsyncStackRoot() noexcept {
+  auto* root = tryGetCurrentAsyncStackRoot();
+  assert(root != nullptr);
+  return *root;
+}
+
+static AsyncStackFrame makeDetachedRootFrame() noexcept {
+  AsyncStackFrame frame;
+  frame.setReturnAddress(reinterpret_cast<char*>(&detached_task) + 2);
+  return frame;
+}
+
+static AsyncStackFrame detachedRootFrame = makeDetachedRootFrame();
+
+AsyncStackFrame& getDetachedRootAsyncStackFrame() noexcept {
+  return detachedRootFrame;
+}
+
+#if FOLLY_HAS_COROUTINES
+
+FOLLY_NOINLINE void resumeCoroutineWithNewAsyncStackRoot(
+    std::experimental::coroutine_handle<> h,
+    folly::AsyncStackFrame& frame) noexcept {
+  detail::ScopedAsyncStackRoot root;
+  root.activateFrame(frame);
+  h.resume();
+}
+
+#endif // FOLLY_HAS_COROUTINES
+
+} // namespace folly
