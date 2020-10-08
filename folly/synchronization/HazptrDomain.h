@@ -106,8 +106,9 @@ constexpr int hazptr_domain_rcount_threshold() {
 template <template <typename> class Atom>
 class hazptr_domain {
   using Obj = hazptr_obj<Atom>;
+  using List = hazptr_detail::linked_list<Obj>;
   using ObjList = hazptr_obj_list<Atom>;
-  using RetiredList = hazptr_obj_retired_list<Atom>;
+  using RetiredList = hazptr_detail::shared_head_only_list<Obj, Atom>;
   using Set = std::unordered_set<const void*>;
   using ExecFn = folly::Executor* (*)();
 
@@ -116,6 +117,12 @@ class hazptr_domain {
   static constexpr int kListTooLarge = 100000;
   static constexpr uint64_t kSyncTimePeriod{2000000000}; // nanoseconds
   static constexpr uintptr_t kTagBit = hazptr_obj<Atom>::kTagBit;
+
+  static constexpr int kNumShards = 8;
+  static constexpr int kShardMask = kNumShards - 1;
+  static_assert(
+      (kNumShards & kShardMask) == 0,
+      "kNumShards must be a power of 2");
 
   static folly::Executor* get_default_executor() {
     return &folly::QueuedImmediateExecutor::instance();
@@ -132,11 +139,11 @@ class hazptr_domain {
   Atom<uint16_t> num_bulk_reclaims_{0};
   bool shutdown_{false};
   RetiredList untagged_;
-  RetiredList tagged_;
+  RetiredList tagged_[kNumShards];
+  Atom<int> count_{0};
   Obj* unprotected_; // List of unprotected objects being reclaimed
   ObjList children_; // Children of unprotected objects being reclaimed
-  Atom<uint64_t> tagged_sync_time_{0};
-  Atom<uint64_t> untagged_sync_time_{0};
+  Atom<uint64_t> due_time_{0};
   Atom<ExecFn> exec_fn_{nullptr};
   Atom<int> exec_backlog_{0};
 
@@ -149,7 +156,7 @@ class hazptr_domain {
     shutdown_ = true;
     reclaim_all_objects();
     free_hazptr_recs();
-    DCHECK(tagged_.empty());
+    DCHECK(tagged_empty());
   }
 
   hazptr_domain(const hazptr_domain&) = delete;
@@ -191,29 +198,18 @@ class hazptr_domain {
   /** cleanup_cohort_tag */
   void cleanup_cohort_tag(const hazptr_obj_cohort<Atom>* cohort) noexcept {
     auto tag = reinterpret_cast<uintptr_t>(cohort) + kTagBit;
-    auto obj = tagged_.pop_all(RetiredList::kAlsoLock);
+    auto shard = calc_shard(tag);
+    auto obj = tagged_[shard].pop_all(RetiredList::kAlsoLock);
     ObjList match, nomatch;
     list_match_tag(tag, obj, match, nomatch);
-    if (unprotected_) { // There must be ongoing do_reclamation
-      ObjList match2, nomatch2;
-      list_match_tag(tag, unprotected_, match2, nomatch2);
-      match.splice(match2);
-      unprotected_ = nomatch2.head();
-    }
-    if (children_.head()) {
-      ObjList match2, nomatch2;
-      list_match_tag(tag, children_.head(), match2, nomatch2);
-      match.splice(match2);
-      children_ = std::move(nomatch2);
-    }
-    auto count = nomatch.count();
-    nomatch.set_count(0);
-    tagged_.push_unlock(nomatch);
+    List l(nomatch.head(), nomatch.tail());
+    tagged_[shard].push_unlock(l);
+    add_count(-match.count());
     obj = match.head();
     reclaim_list_transitive(obj);
-    if (count >= threshold()) {
-      check_threshold_and_reclaim(
-          tagged_, RetiredList::kAlsoLock, tagged_sync_time_);
+    int count = match.count() + nomatch.count();
+    if (count > kListTooLarge) {
+      hazptr_warning_list_too_large(tag, shard, count);
     }
   }
 
@@ -241,6 +237,39 @@ class hazptr_domain {
 #if FOLLY_HAZPTR_THR_LOCAL
   friend class hazptr_tc<Atom>;
 #endif
+
+  int load_count() {
+    return count_.load(std::memory_order_acquire);
+  }
+
+  void add_count(int val) {
+    count_.fetch_add(val, std::memory_order_release);
+  }
+
+  int exchange_count(int val) {
+    return count_.exchange(val, std::memory_order_acq_rel);
+  }
+
+  bool cas_count(int& expected, int newval) {
+    return count_.compare_exchange_weak(
+        expected, newval, std::memory_order_acq_rel, std::memory_order_relaxed);
+  }
+
+  uint64_t load_due_time() {
+    return due_time_.load(std::memory_order_acquire);
+  }
+
+  void set_due_time() {
+    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
+    due_time_.store(time + kSyncTimePeriod, std::memory_order_release);
+  }
+
+  bool cas_due_time(uint64_t& expected, uint64_t newval) {
+    return due_time_.compare_exchange_strong(
+        expected, newval, std::memory_order_acq_rel, std::memory_order_relaxed);
+  }
 
   /** hprec_acquire */
   hazptr_rec<Atom>* hprec_acquire() {
@@ -280,18 +309,15 @@ class hazptr_domain {
     }
     uintptr_t btag = l.head()->cohort_tag();
     bool tagged = ((btag & kTagBit) == kTagBit);
-    RetiredList& rlist = tagged ? tagged_ : untagged_;
-    Atom<uint64_t>& sync_time =
-        tagged ? tagged_sync_time_ : untagged_sync_time_;
     /*** Full fence ***/ asymmetricLightBarrier();
-    /* Only tagged lists need to be locked because tagging is used to
-     * guarantee the identification of all objects with a specific
-     * tag. Locking protects against concurrent hazptr_cleanup_tag()
-     * calls missing tagged objects. */
-    bool lock =
-        tagged ? RetiredList::kMayBeLocked : RetiredList::kMayNotBeLocked;
-    rlist.push(l, lock);
-    check_threshold_and_reclaim(rlist, lock, sync_time);
+    List ll(l.head(), l.tail());
+    if (!tagged) {
+      untagged_.push(ll, RetiredList::kMayNotBeLocked);
+    } else {
+      tagged_[calc_shard(btag)].push(ll, RetiredList::kMayBeLocked);
+    }
+    add_count(l.count());
+    check_threshold_and_reclaim();
   }
 
   /** threshold */
@@ -301,76 +327,156 @@ class hazptr_domain {
   }
 
   /** check_threshold_and_reclaim */
-  void check_threshold_and_reclaim(
-      RetiredList& rlist,
-      bool lock,
-      Atom<uint64_t>& sync_time) {
-    int rcount = rlist.count();
-    if (rcount > kListTooLarge) {
-      hazptr_warning_list_too_large(rlist, lock, rcount);
+  void check_threshold_and_reclaim() {
+    int rcount = check_count_threshold();
+    if (rcount == 0) {
+      rcount = check_due_time();
+      if (rcount == 0)
+        return;
     }
-    if (!(lock && rlist.check_lock()) &&
-        (rlist.check_threshold_try_zero_count(threshold()) ||
-         check_sync_time(sync_time))) {
-      if (std::is_same<Atom<int>, std::atomic<int>>{} &&
-          this == &default_hazptr_domain<Atom>() &&
-          FLAGS_folly_hazptr_use_executor) {
-        invoke_reclamation_in_executor(rlist, lock);
+    if (std::is_same<Atom<int>, std::atomic<int>>{} &&
+        this == &default_hazptr_domain<Atom>() &&
+        FLAGS_folly_hazptr_use_executor) {
+      invoke_reclamation_in_executor(rcount);
+    } else {
+      do_reclamation(rcount);
+    }
+  }
+
+  /** calc_shard */
+  size_t calc_shard(uintptr_t tag) {
+    size_t shard = std::hash<uintptr_t>{}(tag)&kShardMask;
+    DCHECK(shard < kNumShards);
+    return shard;
+  }
+
+  /** check_due_time */
+  int check_due_time() {
+    uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                        std::chrono::steady_clock::now().time_since_epoch())
+                        .count();
+    auto due = load_due_time();
+    if (time < due || !cas_due_time(due, time + kSyncTimePeriod))
+      return 0;
+    return exchange_count(0);
+  }
+
+  /** check_count_threshold */
+  int check_count_threshold() {
+    int rcount = load_count();
+    while (rcount >= threshold()) {
+      if (cas_count(rcount, 0)) {
+        set_due_time();
+        return rcount;
+      }
+    }
+    return 0;
+  }
+
+  /** tagged_empty */
+  bool tagged_empty() {
+    for (int s = 0; s < kNumShards; ++s) {
+      if (!tagged_[s].empty())
+        return false;
+    }
+    return true;
+  }
+
+  /** extract_retired_objects */
+  bool extract_retired_objects(Obj*& untagged, Obj* tagged[]) {
+    bool empty = true;
+    untagged = untagged_.pop_all(RetiredList::kDontLock);
+    if (untagged) {
+      empty = false;
+    }
+    for (int s = 0; s < kNumShards; ++s) {
+      /* Tagged lists need to be locked because tagging is used to
+       * guarantee the identification of all objects with a specific
+       * tag. Locking protects against concurrent hazptr_cleanup_tag()
+       * calls missing tagged objects. */
+      if (tagged_[s].check_lock()) {
+        tagged[s] = nullptr;
       } else {
-        do_reclamation(rlist, lock);
+        tagged[s] = tagged_[s].pop_all(RetiredList::kAlsoLock);
+        if (tagged[s]) {
+          empty = false;
+        } else {
+          List l;
+          tagged_[s].push_unlock(l);
+        }
       }
     }
+    return !empty;
   }
 
-  /** check_sync_time_and_reclaim **/
-  void check_sync_time_and_reclaim() {
-    if (!tagged_.check_lock() && check_sync_time()) {
-      do_reclamation(tagged_, RetiredList::kAlsoLock);
-      do_reclamation(untagged_, RetiredList::kDontLock);
-    }
-  }
-
-  /** do_reclamation */
-  void do_reclamation(RetiredList& rlist, bool lock) {
-    auto obj = rlist.pop_all(lock == RetiredList::kAlsoLock);
-    if (!obj) {
-      if (lock) {
-        ObjList l;
-        rlist.push_unlock(l);
-      }
-      return;
-    }
-    /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
-    auto hprec = hazptrs_.load(std::memory_order_acquire);
-    /* Read hazard pointer values into private search structure */
+  /** load_hazptr_vals */
+  Set load_hazptr_vals() {
     Set hs;
+    auto hprec = hazptrs_.load(std::memory_order_acquire);
     for (; hprec; hprec = hprec->next()) {
       hs.insert(hprec->hazptr());
     }
-    /* Check objects against hazard pointer values */
+    return hs;
+  }
+
+  /** match_tagged */
+  int match_tagged(Obj* tagged[], Set& hs) {
+    int count = 0;
+    for (int s = 0; s < kNumShards; ++s) {
+      if (tagged[s]) {
+        ObjList match, nomatch;
+        list_match_condition(tagged[s], match, nomatch, [&](Obj* o) {
+          return hs.count(o->raw_ptr()) > 0;
+        });
+        count += nomatch.count();
+        auto obj = nomatch.head();
+        while (obj) {
+          auto next = obj->next();
+          auto cohort = obj->cohort();
+          DCHECK(cohort);
+          cohort->push_safe_obj(obj);
+          obj = next;
+        }
+        List l(match.head(), match.tail());
+        tagged_[s].push_unlock(l);
+      }
+    }
+    return count;
+  }
+
+  /** match_reclaim_untagged */
+  int match_reclaim_untagged(Obj* untagged, Set& hs) {
     ObjList match, nomatch;
-    list_match_condition(obj, match, nomatch, [&](Obj* o) {
+    list_match_condition(untagged, match, nomatch, [&](Obj* o) {
       return hs.count(o->raw_ptr()) > 0;
     });
-    if (lock) {
-      /* Push unprotected objects into their cohorts and push protected
-         objects back into the list and unlock it */
-      obj = nomatch.head();
-      while (obj) {
-        auto next = obj->next();
-        auto cohort = obj->cohort();
-        DCHECK(cohort);
-        cohort->push_safe_obj(obj);
-        obj = next;
+    ObjList children;
+    int count = nomatch.count();
+    reclaim_unprotected_unsafe(nomatch.head(), children);
+    count -= children.count();
+    match.splice(children);
+    List l(match.head(), match.tail());
+    untagged_.push(l, RetiredList::kMayNotBeLocked);
+    return count;
+  }
+
+  /** do_reclamation */
+  void do_reclamation(int rcount) {
+    while (true) {
+      Obj* untagged;
+      Obj* tagged[kNumShards];
+      if (extract_retired_objects(untagged, tagged)) {
+        /*** Full fence ***/ asymmetricHeavyBarrier(AMBFlags::EXPEDITED);
+        Set hs = load_hazptr_vals();
+        rcount -= match_tagged(tagged, hs);
+        rcount -= match_reclaim_untagged(untagged, hs);
       }
-      rlist.push_unlock(match);
-    } else {
-      /* Reclaim unprotected objects and push protected objects and
-         children of reclaimed objects into the list */
-      ObjList children;
-      reclaim_unprotected_unsafe(nomatch.head(), children);
-      match.splice(children);
-      rlist.push(match, false);
+      if (rcount) {
+        add_count(rcount);
+      }
+      rcount = check_count_threshold();
+      if (rcount == 0)
+        return;
     }
   }
 
@@ -630,7 +736,7 @@ class hazptr_domain {
     return rec;
   }
 
-  void invoke_reclamation_in_executor(RetiredList& rlist, bool lock) {
+  void invoke_reclamation_in_executor(int rcount) {
     auto fn = exec_fn_.load(std::memory_order_acquire);
     auto ex = fn ? fn() : get_default_executor();
     if (ex == get_default_executor()) {
@@ -638,9 +744,9 @@ class hazptr_domain {
     }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
     if (ex) {
-      ex->add([this, &rlist, lock] {
+      ex->add([this, rcount] {
         exec_backlog_.store(0, std::memory_order_relaxed);
-        do_reclamation(rlist, lock);
+        do_reclamation(rcount);
       });
     } else {
       LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
@@ -651,12 +757,12 @@ class hazptr_domain {
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void
-  hazptr_warning_list_too_large(RetiredList& rlist, bool lock, int rcount) {
+  hazptr_warning_list_too_large(uintptr_t tag, int shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << "Hazptr retired list too large:"
-                   << " rlist=" << &rlist << " lock=" << lock
-                   << " rcount=" << rcount;
+                   << " tag=" << tag << " shard=" << shard
+                   << " count=" << count;
     }
   }
 
@@ -684,7 +790,7 @@ class hazptr_domain {
                    "a call to folly::init or an alternative.";
     }
   }
-}; // namespace folly
+}; // hazptr_domain
 
 /**
  *  Free functions related to hazptr domains
