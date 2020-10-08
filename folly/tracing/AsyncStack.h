@@ -173,7 +173,7 @@ namespace folly {
 struct AsyncStackRoot;
 struct AsyncStackFrame;
 namespace detail {
-  class ScopedAsyncStackRoot;
+class ScopedAsyncStackRoot;
 }
 
 // Get access to the current thread's top-most AsyncStackRoot.
