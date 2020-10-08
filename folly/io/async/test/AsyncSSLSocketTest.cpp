@@ -1449,15 +1449,22 @@ TEST(
   serverSock->sslAccept(nullptr, std::chrono::milliseconds::zero());
 
   StrictMock<MockHandshakeCB> clientHandshakeCB;
+
+  // Force the end entity certificate, which normally is successfully verified,
+  // to be considered as unsuccessful
   EXPECT_CALL(clientHandshakeCB, handshakeVerImpl(clientSock.get(), true, _))
-      // CA root certificate succeeds
-      .WillOnce(Return(true))
-      // leaf fails
-      .WillOnce(Return(false));
+      .Times(AtLeast(1))
+      .WillRepeatedly(Invoke([&](auto&&, bool preverifyOk, auto&& ctx) {
+        auto currentDepth = X509_STORE_CTX_get_error_depth(ctx);
+        if (currentDepth == 0) {
+          EXPECT_TRUE(preverifyOk);
+          return false;
+        }
+        return preverifyOk;
+      }));
 
   // failure callback to verify handshake failed
-  EXPECT_CALL(clientHandshakeCB, handshakeErrImpl(clientSock.get(), _))
-      .WillOnce(Return());
+  EXPECT_CALL(clientHandshakeCB, handshakeErrImpl(clientSock.get(), _));
 
   clientSock->sslConn(&clientHandshakeCB);
 
