@@ -2534,6 +2534,17 @@ void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut) {
 }
 
 template <class T>
+void maybeDetachOnGlobalExecutorAfter(
+    HighResDuration dur,
+    folly::SemiFuture<T>&& fut) {
+  sleep(dur).toUnsafeFuture().thenValue([fut = std::move(fut)](auto&&) mutable {
+    if (auto ptr = folly::detail::tryGetImmutableCPUPtr()) {
+      detachOn(folly::getKeepAliveToken(ptr.get()), std::move(fut));
+    }
+  });
+}
+
+template <class T>
 void detachWithoutExecutor(folly::SemiFuture<T>&& fut) {
   auto executor = futures::detail::stealDeferredExecutor(fut);
   // Fail if we try to detach a SemiFuture with deferred work

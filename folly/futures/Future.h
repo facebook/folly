@@ -452,6 +452,14 @@ void detachOn(folly::Executor::KeepAlive<> exec, folly::SemiFuture<T>&& fut);
 template <class T>
 void detachOnGlobalCPUExecutor(folly::SemiFuture<T>&& fut);
 
+// Detach the SemiFuture onto the global CPU executor after dur.
+// This will only hold a weak ref to the global executor and during
+// shutdown will cleanly drop the work.
+template <class T>
+void maybeDetachOnGlobalExecutorAfter(
+    HighResDuration dur,
+    folly::SemiFuture<T>&& fut);
+
 // Detach the SemiFuture with no executor.
 // NOTE: If there is deferred work of any sort on this SemiFuture
 // will leak and not be run.

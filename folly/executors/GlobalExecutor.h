@@ -23,6 +23,10 @@
 
 namespace folly {
 
+namespace detail {
+std::shared_ptr<Executor> tryGetImmutableCPUPtr();
+}
+
 /**
  * Return the global executor.
  * The global executor is a CPU thread pool and is immutable.

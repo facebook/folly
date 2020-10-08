@@ -131,10 +131,15 @@ LeakySingleton<GlobalExecutor<IOExecutor>> gGlobalIOExecutor([] {
       // Default global IO executor is an IOThreadPoolExecutor.
       [] { return getImmutable<IOExecutor>(); });
 });
-
 } // namespace
 
 namespace folly {
+
+namespace detail {
+std::shared_ptr<Executor> tryGetImmutableCPUPtr() {
+  return getImmutable<Executor>();
+}
+} // namespace detail
 
 Executor::KeepAlive<> getGlobalCPUExecutor() {
   auto executorPtrPtr = getImmutablePtrPtr<Executor>();

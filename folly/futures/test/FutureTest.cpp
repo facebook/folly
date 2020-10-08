@@ -1442,7 +1442,7 @@ TEST(Future, NoThrow) {
 }
 
 TEST(Future, DetachTest) {
-  folly::Baton<> b1, b2, b3;
+  folly::Baton<> b1, b2, b3, b4;
   folly::ManualExecutor exec;
   std::atomic<int> result(0);
 
@@ -1468,11 +1468,18 @@ TEST(Future, DetachTest) {
           })
           .semi());
 
+  folly::futures::maybeDetachOnGlobalExecutorAfter(
+      std::chrono::milliseconds{100}, makeSemiFuture().deferValue([&](auto&&) {
+        result++;
+        b4.post();
+      }));
+
   exec.drain();
   b1.wait();
   b2.wait();
   b3.wait();
-  EXPECT_TRUE(result == 3);
+  b4.wait();
+  EXPECT_TRUE(result == 4);
 }
 
 TEST(Future, SimpleGet) {
