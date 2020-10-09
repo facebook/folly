@@ -35,7 +35,9 @@
 
 #ifdef FOLLY_SANITIZE_ADDRESS
 
+#ifndef _WIN32
 #include <dlfcn.h>
+#endif
 
 static void __sanitizer_start_switch_fiber_weak(
     void** fake_stack_save,
@@ -280,11 +282,13 @@ static AsanStartSwitchStackFuncPtr getStartSwitchStackFunc() {
   }
 
   // Check whether we can find a dynamically linked enter function
+#ifndef _WIN32
   if (nullptr !=
       (fn = (AsanStartSwitchStackFuncPtr)dlsym(
            RTLD_DEFAULT, "__sanitizer_start_switch_fiber"))) {
     return fn;
   }
+#endif
 
   // Couldn't find the function at all
   return nullptr;
@@ -299,11 +303,13 @@ static AsanFinishSwitchStackFuncPtr getFinishSwitchStackFunc() {
   }
 
   // Check whether we can find a dynamically linked exit function
+#ifndef _WIN32
   if (nullptr !=
       (fn = (AsanFinishSwitchStackFuncPtr)dlsym(
            RTLD_DEFAULT, "__sanitizer_finish_switch_fiber"))) {
     return fn;
   }
+#endif
 
   // Couldn't find the function at all
   return nullptr;
@@ -318,11 +324,13 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
   }
 
   // Check whether we can find a dynamically linked unpoison function
+#ifndef _WIN32
   if (nullptr !=
       (fn = (AsanUnpoisonMemoryRegionFuncPtr)dlsym(
            RTLD_DEFAULT, "__asan_unpoison_memory_region"))) {
     return fn;
   }
+#endif
 
   // Couldn't find the function at all
   return nullptr;
