@@ -737,8 +737,21 @@ void AsyncUDPSocket::handleRead() noexcept {
     ReadCallback::OnDataAvailableParams params;
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-    if (gro_.has_value() && (gro_.value() > 0)) {
-      char control[CMSG_SPACE(sizeof(uint16_t))] = {};
+    bool use_gro = gro_.has_value() && (gro_.value() > 0);
+    bool use_ts = ts_.has_value() && (ts_.value() > 0);
+    if (use_gro || use_ts) {
+      char control
+          [CMSG_SPACE(sizeof(uint16_t)) +
+           CMSG_SPACE(sizeof(ReadCallback::OnDataAvailableParams::Timestamp))];
+
+      ::memset(
+          control,
+          0,
+          (use_gro ? CMSG_SPACE(sizeof(uint16_t)) : 0) +
+              (use_ts ? CMSG_SPACE(sizeof(
+                            ReadCallback::OnDataAvailableParams::Timestamp))
+                      : 0));
+
       struct msghdr msg = {};
       struct iovec iov = {};
       struct cmsghdr* cmsg;
@@ -762,10 +775,23 @@ void AsyncUDPSocket::handleRead() noexcept {
         addrLen = msg.msg_namelen;
         for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
              cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-          if (cmsg->cmsg_level == SOL_UDP && cmsg->cmsg_type == UDP_GRO) {
-            grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
-            params.gro_ = *grosizeptr;
-            break;
+          if (cmsg->cmsg_level == SOL_UDP) {
+            if (cmsg->cmsg_type == UDP_GRO) {
+              grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
+              params.gro_ = *grosizeptr;
+            }
+          } else {
+            if (cmsg->cmsg_level == SOL_SOCKET) {
+              if (cmsg->cmsg_type == SO_TIMESTAMPING ||
+                  cmsg->cmsg_type == SO_TIMESTAMPNS) {
+                ReadCallback::OnDataAvailableParams::Timestamp ts;
+                memcpy(
+                    &ts,
+                    reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+                    sizeof(ts));
+                params.ts_ = ts;
+              }
+            }
           }
         }
       }
@@ -863,6 +889,40 @@ bool AsyncUDPSocket::setGRO(bool bVal) {
   return !ret;
 #else
   (void)bVal;
+  return false;
+#endif
+}
+
+// packet timestamping
+int AsyncUDPSocket::getTimestamping() {
+  // check if we can return the cached value
+  if (FOLLY_UNLIKELY(!ts_.has_value())) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+    int ts = -1;
+    socklen_t optlen = sizeof(ts);
+    if (!netops::getsockopt(fd_, SOL_SOCKET, SO_TIMESTAMPING, &ts, &optlen)) {
+      ts_ = ts;
+    } else {
+      ts_ = -1;
+    }
+#else
+    ts_ = -1;
+#endif
+  }
+
+  return ts_.value();
+}
+
+bool AsyncUDPSocket::setTimestamping(int val) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  int ret =
+      netops::setsockopt(fd_, SOL_SOCKET, SO_TIMESTAMPING, &val, sizeof(val));
+
+  ts_ = ret ? -1 : val;
+
+  return !ret;
+#else
+  (void)val;
   return false;
 #endif
 }

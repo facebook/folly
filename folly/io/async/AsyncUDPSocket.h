@@ -42,6 +42,18 @@ class AsyncUDPSocket : public EventHandler {
    public:
     struct OnDataAvailableParams {
       int gro_ = -1;
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+      // RX timestamp if available
+      using Timestamp = std::array<struct timespec, 3>;
+      folly::Optional<Timestamp> ts_;
+
+      static std::chrono::nanoseconds to(const struct timespec& ts) {
+        auto duration = std::chrono::seconds(ts.tv_sec) +
+            std::chrono::nanoseconds(ts.tv_nsec);
+
+        return std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
+      }
+#endif
     };
     /**
      * Invoked when the socket becomes readable and we want buffer
@@ -383,6 +395,10 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGRO(bool bVal);
 
+  // packet timestamping
+  int getTimestamping();
+  bool setTimestamping(int val);
+
   // disable/enable RX zero checksum check for UDP over IPv6
   bool setRxZeroChksum6(bool bVal);
 
@@ -481,6 +497,9 @@ class AsyncUDPSocket : public EventHandler {
   // generic receive offload value, if available
   // See https://lwn.net/Articles/770978/ for more details
   folly::Optional<int> gro_;
+
+  // packet timestamping
+  folly::Optional<int> ts_;
 
   ErrMessageCallback* errMessageCallback_{nullptr};
 };
