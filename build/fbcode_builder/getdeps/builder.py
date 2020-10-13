@@ -156,15 +156,20 @@ class MakeBuilder(BuilderBase):
         env = self._compute_env(install_dirs)
 
         # Need to ensure that PREFIX is set prior to install because
-        # libbpf uses it when generating its pkg-config file
+        # libbpf uses it when generating its pkg-config file.
+        # The lowercase prefix is used by some projects.
         cmd = (
             ["make", "-j%s" % self.build_opts.num_jobs]
             + self.build_args
-            + ["PREFIX=" + self.inst_dir]
+            + ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
         )
         self._run_cmd(cmd, env=env)
 
-        install_cmd = ["make"] + self.install_args + ["PREFIX=" + self.inst_dir]
+        install_cmd = (
+            ["make"]
+            + self.install_args
+            + ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
+        )
         self._run_cmd(install_cmd, env=env)
 
 

@@ -425,7 +425,13 @@ class ManifestParser(object):
             raise Exception("project %s has no builder for %r" % (self.name, ctx))
         build_in_src_dir = self.get("build", "build_in_src_dir", "false", ctx=ctx)
         if build_in_src_dir == "true":
+            # Some scripts don't work when they are configured and build in
+            # a different directory than source (or when the build directory
+            # is not a subdir of source).
             build_dir = src_dir
+            subdir = self.get("build", "subdir", None, ctx=ctx)
+            if subdir is not None:
+                build_dir = os.path.join(build_dir, subdir)
             print("build_dir is %s" % build_dir)  # just to quiet lint
 
         if builder == "make":
