@@ -259,15 +259,15 @@ class InterruptHandlerImpl : public InterruptHandler {
 ///   |      \           (setCallback())           (setResult())       |
 ///   |       \             \                       /                  |
 ///   |        \              ---> OnlyCallback ---                    |
-///   |        \            or OnlyCallbackAllowInline                 |
-///   |         \                                   \                  |
-///   |     (setProxy())                           (setProxy())        |
-///   |           \                                   \                |
-///   |            \                                    ------> Empty  |
-///   |             \                                 /                |
-///   |              \                             (setCallback())     |
-///   |               \                             /                  |
-///   |                 ---------> Proxy ----------                    |
+///   |         \           or OnlyCallbackAllowInline                 |
+///   |          \                                  \                  |
+///   |      (setProxy())                          (setProxy())        |
+///   |            \                                  \                |
+///   |             \                                   ------> Empty  |
+///   |              \                                /                |
+///   |               \                            (setCallback())     |
+///   |                \                            /                  |
+///   |                  --------> Proxy ----------                    |
 ///   +----------------------------------------------------------------+
 ///
 /// States and the corresponding producer-to-consumer data status & ownership:
@@ -354,8 +354,8 @@ class CoreBase {
 
   /// May call from any thread
   bool hasCallback() const noexcept {
-    constexpr auto allowed =
-        State::OnlyCallback | State::OnlyCallbackAllowInline | State::Done;
+    constexpr auto allowed = State::OnlyCallback |
+        State::OnlyCallbackAllowInline | State::Done | State::Empty;
     auto const state = state_.load(std::memory_order_acquire);
     return State() != (state & allowed);
   }
