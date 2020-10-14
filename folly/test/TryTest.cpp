@@ -224,7 +224,6 @@ TEST(Try, tryEmplaceWithThrowingConstructor) {
   struct NonInheritingException {};
   struct ThrowingConstructor {
     [[noreturn]] ThrowingConstructor() noexcept(false) {
-      // @lint-ignore HOWTOEVEN CLANGTIDY CLANGTIDY
       throw NonInheritingException{};
     }
 
