@@ -250,8 +250,8 @@ std::unique_ptr<folly::EventBase> getEventBase(
 }
 
 void testEventFD(bool overflow, bool persist, bool asyncRead) {
-  static constexpr size_t kBackendCapacity = 64;
-  static constexpr size_t kBackendMaxSubmit = 32;
+  static constexpr size_t kBackendCapacity = 16;
+  static constexpr size_t kBackendMaxSubmit = 8;
   // for overflow == true  we use a greater than kBackendCapacity number of
   // EventFD instances and lower when overflow == false
   size_t kNumEventFds = overflow ? 2048 : 32;
@@ -284,8 +284,8 @@ void testEventFD(bool overflow, bool persist, bool asyncRead) {
 }
 
 void testInvalidFd(size_t numTotal, size_t numValid, size_t numInvalid) {
-  static constexpr size_t kBackendCapacity = 128;
-  static constexpr size_t kBackendMaxSubmit = 64;
+  static constexpr size_t kBackendCapacity = 32;
+  static constexpr size_t kBackendMaxSubmit = 16;
 
   auto total = numTotal;
 
@@ -422,10 +422,10 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
 };
 
 void testAsyncUDPRecvmsg(bool useRegisteredFds) {
-  static constexpr size_t kBackendCapacity = 64;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
-  static constexpr size_t kNumSockets = 32;
+  static constexpr size_t kBackendCapacity = 16;
+  static constexpr size_t kBackendMaxSubmit = 8;
+  static constexpr size_t kBackendMaxGet = 8;
+  static constexpr size_t kNumSockets = 8;
   static constexpr size_t kNumBytes = 16;
   static constexpr size_t kNumPackets = 32;
   auto total = kNumPackets * kNumSockets;
@@ -535,9 +535,9 @@ TEST(IoUringBackend, Invalid_fd_5_5) {
 }
 
 TEST(IoUringBackend, RegisteredFds) {
-  static constexpr size_t kBackendCapacity = 64;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr size_t kBackendCapacity = 16;
+  static constexpr size_t kBackendMaxSubmit = 8;
+  static constexpr size_t kBackendMaxGet = 8;
 
   std::unique_ptr<folly::IoUringBackend> backendReg;
   std::unique_ptr<folly::IoUringBackend> backendNoReg;
@@ -593,9 +593,9 @@ TEST(IoUringBackend, RegisteredFds) {
 }
 
 TEST(IoUringBackend, FileReadWrite) {
-  static constexpr size_t kBackendCapacity = 2048;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr size_t kBackendCapacity = 512;
+  static constexpr size_t kBackendMaxSubmit = 8;
+  static constexpr size_t kBackendMaxGet = 8;
 
   folly::PollIoBackend::Options options;
   options.setCapacity(kBackendCapacity)
@@ -658,9 +658,9 @@ TEST(IoUringBackend, FileReadWrite) {
 }
 
 TEST(IoUringBackend, FileReadvWritev) {
-  static constexpr size_t kBackendCapacity = 2048;
-  static constexpr size_t kBackendMaxSubmit = 32;
-  static constexpr size_t kBackendMaxGet = 32;
+  static constexpr size_t kBackendCapacity = 512;
+  static constexpr size_t kBackendMaxSubmit = 8;
+  static constexpr size_t kBackendMaxGet = 8;
 
   folly::PollIoBackend::Options options;
   options.setCapacity(kBackendCapacity)
@@ -753,9 +753,9 @@ TEST(IoUringBackend, FileReadvWritev) {
 }
 
 TEST(IoUringBackend, FileReadMany) {
-  static constexpr size_t kBackendCapacity = 1024;
-  static constexpr size_t kBackendMaxSubmit = 128;
-  static constexpr size_t kBackendMaxGet = 128;
+  static constexpr size_t kBackendCapacity = 256;
+  static constexpr size_t kBackendMaxSubmit = 32;
+  static constexpr size_t kBackendMaxGet = 32;
 
   folly::PollIoBackend::Options options;
   options.setCapacity(kBackendCapacity)
@@ -814,9 +814,9 @@ TEST(IoUringBackend, FileReadMany) {
 }
 
 TEST(IoUringBackend, FileWriteMany) {
-  static constexpr size_t kBackendCapacity = 1024;
-  static constexpr size_t kBackendMaxSubmit = 128;
-  static constexpr size_t kBackendMaxGet = 128;
+  static constexpr size_t kBackendCapacity = 256;
+  static constexpr size_t kBackendMaxSubmit = 32;
+  static constexpr size_t kBackendMaxGet = 32;
 
   folly::PollIoBackend::Options options;
   options.setCapacity(kBackendCapacity)
@@ -899,8 +899,8 @@ TEST(IoUringBackend, FileWriteMany) {
 
 namespace folly {
 namespace test {
-static constexpr size_t kCapacity = 16 * 1024;
-static constexpr size_t kMaxSubmit = 128;
+static constexpr size_t kCapacity = 4 * 1024;
+static constexpr size_t kMaxSubmit = 32;
 static constexpr size_t kMaxGet = static_cast<size_t>(-1);
 
 struct IoUringBackendProvider {
