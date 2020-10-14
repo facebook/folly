@@ -103,6 +103,42 @@ struct OnceForwarder {
   std::atomic<bool> performed_ = false;
 };
 
+// Allow to return a value by providing a convertible value.
+// This works similarly to Return(x):
+// MOCK_METHOD1(Method, T(U));
+// EXPECT_CALL(mock, Method(_)).WillOnce(Return(F()));
+// should work as long as F is convertible to T.
+template <typename T>
+class CoReturnImpl {
+ public:
+  explicit CoReturnImpl(T&& value) : value_(std::move(value)) {}
+
+  template <typename Result, typename ArgumentTuple>
+  Result Perform(const ArgumentTuple& /* unused */) const {
+    return [](T value) -> Result { co_return value; }(value_);
+  }
+
+ private:
+  T value_;
+};
+
+template <typename T>
+class CoReturnByMoveImpl {
+ public:
+  explicit CoReturnByMoveImpl(std::shared_ptr<OnceForwarder<T&&>> forwarder)
+      : forwarder_(std::move(forwarder)) {}
+
+  template <typename Result, typename ArgumentTuple>
+  Result Perform(const ArgumentTuple& /* unused */) const {
+    return [](std::shared_ptr<OnceForwarder<T&&>> forwarder) -> Result {
+      co_return (*forwarder)();
+    }(forwarder_);
+  }
+
+ private:
+  std::shared_ptr<OnceForwarder<T&&>> forwarder_;
+};
+
 } // namespace detail
 
 // Helper functions to adapt CoRoutines enabled functions to be mocked using
@@ -135,11 +171,9 @@ struct OnceForwarder {
 //  EXPECT_CALL(mock, co_foo(_))
 //     .WillRepeatedly(CoThrow<std::string>(std::runtime_error("error")));
 template <typename T>
-auto CoReturn(T&& ret) {
-  return detail::makeCoAction(
-      [ret = std::forward<T>(ret)]() -> Task<remove_cvref_t<T>> {
-        co_return ret;
-      });
+auto CoReturn(T ret) {
+  return ::testing::MakePolymorphicAction(
+      detail::CoReturnImpl<T>(std::move(ret)));
 }
 
 inline auto CoReturn() {
@@ -157,10 +191,8 @@ auto CoReturnByMove(T&& ret) {
 
   auto ptr = std::make_shared<detail::OnceForwarder<T&&>>(std::move(ret));
 
-  return detail::makeCoAction(
-      [ptr = std::move(ptr)]() mutable -> Task<remove_cvref_t<T>> {
-        co_return (*ptr)();
-      });
+  return ::testing::MakePolymorphicAction(
+      detail::CoReturnByMoveImpl<T>(std::move(ptr)));
 }
 
 template <typename T, typename Ex>

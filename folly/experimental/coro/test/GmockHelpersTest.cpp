@@ -83,11 +83,46 @@ TEST(CoroGTestHelpers, CoReturnTest) {
   EXPECT_EQ(ret, "abc");
 }
 
+TEST(CoroGTestHelpers, CoReturnWthImplicitConversionTest) {
+  MockFoo mock;
+
+  EXPECT_CALL(mock, getString()).WillRepeatedly(CoReturn("abc"));
+
+  auto ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+
+  ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+}
+
 TEST(CoroGTestHelpers, CoReturnByMoveTest) {
   MockFoo mock;
 
   EXPECT_CALL(mock, getString())
       .WillRepeatedly(CoReturnByMove(std::string("abc")));
+
+  auto ret = folly::coro::blockingWait(mock.getString());
+  EXPECT_EQ(ret, "abc");
+}
+
+TEST(CoroGTestHelpers, CoReturnByMoveWithImplicitConversionTest) {
+  MockFoo mock;
+
+  struct ImplicitToStringMoveOnly {
+    ImplicitToStringMoveOnly(const ImplicitToStringMoveOnly&) = delete;
+    ImplicitToStringMoveOnly& operator=(const ImplicitToStringMoveOnly&) =
+        delete;
+
+    ImplicitToStringMoveOnly(ImplicitToStringMoveOnly&&) = default;
+    ImplicitToStringMoveOnly& operator=(ImplicitToStringMoveOnly&&) = default;
+
+    operator std::string() {
+      return "abc";
+    }
+  };
+
+  EXPECT_CALL(mock, getString())
+      .WillRepeatedly(CoReturnByMove(ImplicitToStringMoveOnly{}));
 
   auto ret = folly::coro::blockingWait(mock.getString());
   EXPECT_EQ(ret, "abc");
