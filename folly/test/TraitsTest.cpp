@@ -469,16 +469,11 @@ TEST(Traits, is_constexpr_default_constructible) {
   EXPECT_TRUE(is_constexpr_default_constructible_v<Empty>);
   EXPECT_TRUE(is_constexpr_default_constructible<Empty>{});
 
-  // under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
-  // and, with assertions disabled, expectation failures showing compiler
-  // deviation from the language spec
-  if (kClangVerMajor != (kIsApple ? 12 : 10)) {
-    struct NonTrivialDtor {
-      ~NonTrivialDtor() {}
-    };
-    EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
-    EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});
-  }
+  struct NonTrivialDtor {
+    FOLLY_MAYBE_UNUSED ~NonTrivialDtor() {}
+  };
+  EXPECT_FALSE(is_constexpr_default_constructible_v<NonTrivialDtor>);
+  EXPECT_FALSE(is_constexpr_default_constructible<NonTrivialDtor>{});
 
   struct ConstexprCtor {
     int x, y;

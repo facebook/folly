@@ -81,7 +81,19 @@ struct is_similar_instantiation
 namespace detail {
 
 struct is_constexpr_default_constructible_ {
-  template <typename T, int = (void(T()), 0)>
+  template <typename T>
+  static constexpr auto make(tag_t<T>) -> decltype(void(T()), 0) {
+    return (void(T()), 0);
+  }
+  // second param should just be: int = (void(T()), 0)
+  // but under clang 10, crash: https://bugs.llvm.org/show_bug.cgi?id=47620
+  // and, with assertions disabled, expectation failures showing compiler
+  // deviation from the language spec
+  // xcode renumbers clang versions so detection is tricky, but, if detection
+  // were desired, a combination of __apple_build_version__ and __clang_major__
+  // may be used to reduce frontend overhead under correct compilers: clang 12
+  // under xcode and clang 10 otherwise
+  template <typename T, int = make(tag<T>)>
   static std::true_type sfinae(T*);
   static std::false_type sfinae(void*);
   template <typename T>
