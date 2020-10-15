@@ -37,12 +37,6 @@ namespace folly {
  *      need erase().  If you don't know the size in advance or
  *      your workload needs erase(), this is the better choice.
  *
- * [Note on performance under frequent removal: Sustained frequent
- * removal from this map may lead to high contention (on the hazptr
- * domain list of tagged objects which include structures used in this
- * map). Planned redesign of the reclamation algorithm for such
- * objects will eliminate this potential bottleneck.]
- *
  * The interface is as close to std::unordered_map as possible, but there
  * are a handful of changes:
  *
