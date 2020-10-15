@@ -75,9 +75,9 @@ auto SimpleObservable<T>::getObserver() {
     SimpleObservable<T>::Wrapper wrapper;
     wrapper.context = context_;
     ObserverCreator<SimpleObservable<T>::Wrapper> creator(std::move(wrapper));
-    observer_ = std::move(creator).getObserver();
+    observer_ = unwrap(std::move(creator).getObserver());
   });
-  return unwrap(*observer_);
+  return *observer_;
 }
 } // namespace observer
 } // namespace folly

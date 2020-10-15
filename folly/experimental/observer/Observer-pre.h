@@ -73,5 +73,15 @@ using ResultOfUnwrapSharedPtr =
 template <typename F>
 using ResultOfUnwrapObserver =
     typename UnwrapObserver<invoke_result_t<F>>::type;
+
+template <typename T>
+struct Unwrap {
+  using type = T;
+};
+
+template <typename T>
+struct Unwrap<observer::Observer<T>> {
+  using type = T;
+};
 } // namespace observer_detail
 } // namespace folly

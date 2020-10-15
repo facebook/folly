@@ -570,6 +570,30 @@ TEST(Observer, Unwrap) {
   EXPECT_EQ(**observer, 4);
 }
 
+TEST(Observer, UnwrapSimpleObservable) {
+  SimpleObservable<int> a{1};
+  SimpleObservable<int> b{2};
+  SimpleObservable<Observer<int>> observable{a.getObserver()};
+  auto o = observable.getObserver();
+
+  EXPECT_EQ(1, **o);
+
+  a.setValue(3);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(3, **o);
+
+  observable.setValue(b.getObserver());
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(2, **o);
+
+  b.setValue(4);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(4, **o);
+}
+
 TEST(Observer, WithJitterMonotoneProgress) {
   SimpleObservable<int> observable(0);
   auto observer = observable.getObserver();
