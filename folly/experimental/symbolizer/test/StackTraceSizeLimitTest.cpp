@@ -80,14 +80,10 @@ TEST(StackTraceSizeLimitTest, FiberLimit) {
       t(fBaseline, 0);
       t(fStack, 0);
       t(fHeap, 0);
-    } else if (folly::kIsSanitizeThread) {
-      t(fBaseline, 3700);
-      t(fStack, 9000);
-      t(fHeap, 5000);
     } else {
       t(fBaseline, 3700);
-      t(fStack, 8000);
-      t(fHeap, 3700);
+      t(fStack, 10000);
+      t(fHeap, 5000);
     }
   } else {
     if (folly::kIsSanitizeThread) {
