@@ -3189,7 +3189,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
 
   clientCtx->setSessionCacheContext("test context");
   clientCtx->setVerificationOption(SSLContext::SSLVerifyPeerEnum::NO_VERIFY);
-  SSL_SESSION* resumptionSession = nullptr;
+  std::shared_ptr<folly::ssl::SSLSession> resumptionSession = nullptr;
 
   {
     std::array<NetworkSocket, 2> fds;
@@ -3217,7 +3217,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     // create another client, resuming with the prior session, but under a
     // different common name.
     clientSock = std::move(client).moveSocket();
-    resumptionSession = clientSock->getSSLSession();
+    resumptionSession = clientSock->getSSLSessionV2();
   }
 
   {
@@ -3229,7 +3229,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
 
-    clientSock->setSSLSession(resumptionSession, true);
+    clientSock->setSSLSessionV2(resumptionSession);
     clientSock->setServerName("Baz");
     SSLHandshakeServerParseClientHello server(
         std::move(serverSock), true, true);

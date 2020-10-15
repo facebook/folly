@@ -1142,7 +1142,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
  private:
   EventBase* eventBase_;
   std::shared_ptr<AsyncSSLSocket> sslSocket_;
-  SSL_SESSION* session_;
+  std::shared_ptr<folly::ssl::SSLSession> session_;
   std::shared_ptr<folly::SSLContext> ctx_;
   uint32_t requests_;
   folly::SocketAddress address_;
@@ -1186,9 +1186,6 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   }
 
   ~SSLClient() override {
-    if (session_) {
-      SSL_SESSION_free(session_);
-    }
     if (errors_ == 0) {
       EXPECT_EQ(bytesRead_, sizeof(buf_));
     }
@@ -1213,7 +1210,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   void connect(bool writeNow = false) {
     sslSocket_ = AsyncSSLSocket::newSocket(ctx_, eventBase_);
     if (session_ != nullptr) {
-      sslSocket_->setSSLSession(session_);
+      sslSocket_->setSSLSessionV2(session_);
     }
     requests_--;
     sslSocket_->connect(this, address_, timeout_);
@@ -1229,10 +1226,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
       hit_++;
     } else {
       miss_++;
-      if (session_ != nullptr) {
-        SSL_SESSION_free(session_);
-      }
-      session_ = sslSocket_->getSSLSession();
+      session_ = sslSocket_->getSSLSessionV2();
     }
 
     // write()
