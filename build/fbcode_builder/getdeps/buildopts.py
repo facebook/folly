@@ -56,18 +56,18 @@ class BuildOptions(object):
         vcvars_path=None,
         allow_system_packages=False,
     ):
-        """ fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
-                                 or for shipit-transformed repos, the build dir that
-                                 has been mapped into that dir.
-            scratch_dir - a place where we can store repos and build bits.
-                          This path should be stable across runs and ideally
-                          should not be in the repo of the project being built,
-                          but that is ultimately where we generally fall back
-                          for builds outside of FB
-            install_dir - where the project will ultimately be installed
-            num_jobs - the level of concurrency to use while building
-            use_shipit - use real shipit instead of the simple shipit transformer
-            vcvars_path - Path to external VS toolchain's vsvarsall.bat
+        """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
+                             or for shipit-transformed repos, the build dir that
+                             has been mapped into that dir.
+        scratch_dir - a place where we can store repos and build bits.
+                      This path should be stable across runs and ideally
+                      should not be in the repo of the project being built,
+                      but that is ultimately where we generally fall back
+                      for builds outside of FB
+        install_dir - where the project will ultimately be installed
+        num_jobs - the level of concurrency to use while building
+        use_shipit - use real shipit instead of the simple shipit transformer
+        vcvars_path - Path to external VS toolchain's vsvarsall.bat
         """
         if not num_jobs:
             import multiprocessing

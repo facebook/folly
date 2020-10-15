@@ -7,9 +7,9 @@ from __future__ import absolute_import, division, print_function, unicode_litera
 
 
 class TransientFailure(Exception):
-    """ Raising this error causes getdeps to return with an error code
+    """Raising this error causes getdeps to return with an error code
     that Sandcastle will consider to be a retryable transient
-    infrastructure error """
+    infrastructure error"""
 
     pass
 

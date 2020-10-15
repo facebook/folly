@@ -242,7 +242,7 @@ class ManifestParser(object):
         return defval
 
     def get_section_as_args(self, section, ctx=None):
-        """ Intended for use with the make.[build_args/install_args] and
+        """Intended for use with the make.[build_args/install_args] and
         autoconf.args sections, this method collects the entries and returns an
         array of strings.
         If the manifest contains conditional sections, ctx is used to
@@ -267,8 +267,8 @@ class ManifestParser(object):
         return args
 
     def get_section_as_ordered_pairs(self, section, ctx=None):
-        """ Used for eg: shipit.pathmap which has strong
-        ordering requirements """
+        """Used for eg: shipit.pathmap which has strong
+        ordering requirements"""
         res = []
         ctx = ctx or {}
 
@@ -302,13 +302,13 @@ class ManifestParser(object):
         return d
 
     def update_hash(self, hasher, ctx):
-        """ Compute a hash over the configuration for the given
+        """Compute a hash over the configuration for the given
         context.  The goal is for the hash to change if the config
         for that context changes, but not if a change is made to
         the config only for a different platform than that expressed
         by ctx.  The hash is intended to be used to help invalidate
         a future cache for the third party build products.
-        The hasher argument is a hash object returned from hashlib. """
+        The hasher argument is a hash object returned from hashlib."""
         for section in sorted(SCHEMA.keys()):
             hasher.update(section.encode("utf-8"))
 
@@ -521,7 +521,7 @@ class ManifestParser(object):
 
 
 class ManifestContext(object):
-    """ ProjectContext contains a dictionary of values to use when evaluating boolean
+    """ProjectContext contains a dictionary of values to use when evaluating boolean
     expressions in a project manifest.
 
     This object should be passed as the `ctx` parameter in ManifestParser.get() calls.
@@ -551,10 +551,10 @@ class ManifestContext(object):
 
 
 class ContextGenerator(object):
-    """ ContextGenerator allows creating ManifestContext objects on a per-project basis.
+    """ContextGenerator allows creating ManifestContext objects on a per-project basis.
     This allows us to evaluate different projects with slightly different contexts.
 
-    For instance, this can be used to only enable tests for some projects. """
+    For instance, this can be used to only enable tests for some projects."""
 
     def __init__(self, default_ctx):
         self.default_ctx = ManifestContext(default_ctx)

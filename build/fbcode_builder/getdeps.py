@@ -207,8 +207,8 @@ class ProjectCmdBase(SubCmd):
 
 
 class CachedProject(object):
-    """ A helper that allows calling the cache logic for a project
-    from both the build and the fetch code """
+    """A helper that allows calling the cache logic for a project
+    from both the build and the fetch code"""
 
     def __init__(self, cache, loader, m):
         self.m = m

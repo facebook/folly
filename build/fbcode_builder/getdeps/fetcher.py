@@ -46,7 +46,7 @@ def file_name_is_cmake_file(file_name):
 
 
 class ChangeStatus(object):
-    """ Indicates the nature of changes that happened while updating
+    """Indicates the nature of changes that happened while updating
     the source directory.  There are two broad uses:
     * When extracting archives for third party software we want to
       know that we did something (eg: we either extracted code or
@@ -59,9 +59,9 @@ class ChangeStatus(object):
     """
 
     def __init__(self, all_changed=False):
-        """ Construct a ChangeStatus object.  The default is to create
+        """Construct a ChangeStatus object.  The default is to create
         a status that indicates no changes, but passing all_changed=True
-        will create one that indicates that everything changed """
+        will create one that indicates that everything changed"""
         if all_changed:
             self.source_files = 1
             self.make_files = 1
@@ -70,7 +70,7 @@ class ChangeStatus(object):
             self.make_files = 0
 
     def record_change(self, file_name):
-        """ Used by the shipit fetcher to record changes as it updates
+        """Used by the shipit fetcher to record changes as it updates
         files in the destination.  If the file name might be one used
         in the cmake build system that we use for 1st party code, then
         record that as a "make file" change.  We could broaden this
@@ -79,7 +79,7 @@ class ChangeStatus(object):
         If the file isn't a build file and is under the `fbcode_builder`
         dir then we don't class that as an interesting change that we
         might need to rebuild, so we ignore it.
-        Otherwise we record the file as a source file change. """
+        Otherwise we record the file as a source file change."""
 
         file_name = file_name.lower()
         if file_name_is_cmake_file(file_name):
@@ -90,41 +90,41 @@ class ChangeStatus(object):
             self.source_files += 1
 
     def sources_changed(self):
-        """ Returns true if any source files were changed during
+        """Returns true if any source files were changed during
         an update operation.  This will typically be used to decide
         that the build system to be run on the source dir in an
-        incremental mode """
+        incremental mode"""
         return self.source_files > 0
 
     def build_changed(self):
-        """ Returns true if any build files were changed during
+        """Returns true if any build files were changed during
         an update operation.  This will typically be used to decidfe
         that the build system should be reconfigured and re-run
-        as a full build """
+        as a full build"""
         return self.make_files > 0
 
 
 class Fetcher(object):
-    """ The Fetcher is responsible for fetching and extracting the
+    """The Fetcher is responsible for fetching and extracting the
     sources for project.  The Fetcher instance defines where the
     extracted data resides and reports this to the consumer via
-    its `get_src_dir` method. """
+    its `get_src_dir` method."""
 
     def update(self):
-        """ Brings the src dir up to date, ideally minimizing
+        """Brings the src dir up to date, ideally minimizing
         changes so that a subsequent build doesn't over-build.
         Returns a ChangeStatus object that helps the caller to
         understand the nature of the changes required during
-        the update. """
+        the update."""
         return ChangeStatus()
 
     def clean(self):
-        """ Reverts any changes that might have been made to
-        the src dir """
+        """Reverts any changes that might have been made to
+        the src dir"""
         pass
 
     def hash(self):
-        """ Returns a hash that identifies the version of the code in the
+        """Returns a hash that identifies the version of the code in the
         working copy.  For a git repo this is commit hash for the working
         copy.  For other Fetchers this should relate to the version of
         the code in the src dir.  The intent is that if a manifest
@@ -137,17 +137,17 @@ class Fetcher(object):
         pass
 
     def get_src_dir(self):
-        """ Returns the source directory that the project was
-        extracted into """
+        """Returns the source directory that the project was
+        extracted into"""
         pass
 
 
 class LocalDirFetcher(object):
-    """ This class exists to override the normal fetching behavior, and
+    """This class exists to override the normal fetching behavior, and
     use an explicit user-specified directory for the project sources.
 
     This fetcher cannot update or track changes.  It always reports that the
-    project has changed, forcing it to always be built. """
+    project has changed, forcing it to always be built."""
 
     def __init__(self, path):
         self.path = os.path.realpath(path)
@@ -337,9 +337,9 @@ def does_file_need_update(src_name, src_st, dest_name):
 
 
 def copy_if_different(src_name, dest_name):
-    """ Copy src_name -> dest_name, but only touch dest_name
+    """Copy src_name -> dest_name, but only touch dest_name
     if src_name is different from dest_name, making this a
-    more build system friendly way to copy. """
+    more build system friendly way to copy."""
     src_st = os.lstat(src_name)
     if not does_file_need_update(src_name, src_st, dest_name):
         return False
@@ -379,9 +379,9 @@ class ShipitPathMap(object):
         self.exclusion = []
 
     def add_mapping(self, fbsource_dir, target_dir):
-        """ Add a posix path or pattern.  We cannot normpath the input
+        """Add a posix path or pattern.  We cannot normpath the input
         here because that would change the paths from posix to windows
-        form and break the logic throughout this class. """
+        form and break the logic throughout this class."""
         self.roots.append(fbsource_dir)
         self.mapping.append((fbsource_dir, target_dir))
 
@@ -389,9 +389,9 @@ class ShipitPathMap(object):
         self.exclusion.append(re.compile(pattern))
 
     def _minimize_roots(self):
-        """ compute the de-duplicated set of roots within fbsource.
+        """compute the de-duplicated set of roots within fbsource.
         We take the shortest common directory prefix to make this
-        determination """
+        determination"""
         self.roots.sort(key=len)
         minimized = []
 
@@ -496,10 +496,10 @@ FBSOURCE_REPO_DATA: Dict[str, FbsourceRepoData] = {}
 
 
 def get_fbsource_repo_data(build_options):
-    """ Returns the commit metadata for the fbsource repo.
+    """Returns the commit metadata for the fbsource repo.
     Since we may have multiple first party projects to
     hash, and because we don't mutate the repo, we cache
-    this hash in a global. """
+    this hash in a global."""
     cached_data = FBSOURCE_REPO_DATA.get(build_options.fbsource_dir)
     if cached_data:
         return cached_data

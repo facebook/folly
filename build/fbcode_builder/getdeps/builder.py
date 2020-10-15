@@ -103,17 +103,17 @@ class BuilderBase(object):
     def run_tests(
         self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
     ):
-        """ Execute any tests that we know how to run.  If they fail,
-        raise an exception. """
+        """Execute any tests that we know how to run.  If they fail,
+        raise an exception."""
         pass
 
     def _build(self, install_dirs, reconfigure):
-        """ Perform the build.
+        """Perform the build.
         install_dirs contains the list of installation directories for
         the dependencies of this project.
         reconfigure will be set to true if the fetcher determined
         that the sources have changed in such a way that the build
-        system needs to regenerate its rules. """
+        system needs to regenerate its rules."""
         pass
 
     def _compute_env(self, install_dirs):
@@ -575,7 +575,7 @@ if __name__ == "__main__":
         use_cmd_prefix = False
 
         def get_property(test, propname, defval=None):
-            """ extracts a named property from a cmake test info json blob.
+            """extracts a named property from a cmake test info json blob.
             The properties look like:
             [{"name": "WORKING_DIRECTORY"},
              {"value": "something"}]
