@@ -94,7 +94,7 @@ int ShutdownSocketSet::close(NetworkSocket fd) {
         LOG(FATAL) << "Invalid prev state for fd " << fd << ": "
                    << int(prevState);
     }
-  } while (!sref.compare_exchange_weak(
+  } while (!sref.compare_exchange_strong(
       prevState, newState, std::memory_order_relaxed));
 
   return newState == FREE ? folly::closeNoInt(fd) : 0;
