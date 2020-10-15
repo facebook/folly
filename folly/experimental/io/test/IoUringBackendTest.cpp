@@ -899,8 +899,8 @@ TEST(IoUringBackend, FileWriteMany) {
 
 namespace folly {
 namespace test {
-static constexpr size_t kCapacity = 4 * 1024;
-static constexpr size_t kMaxSubmit = 32;
+static constexpr size_t kCapacity = 32;
+static constexpr size_t kMaxSubmit = 4;
 static constexpr size_t kMaxGet = static_cast<size_t>(-1);
 
 struct IoUringBackendProvider {
