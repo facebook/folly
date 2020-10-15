@@ -34,7 +34,9 @@ TEST(ThreadLocal, AtFork) {
       },
       [] {},
       [] {});
-  auto pid = fork();
+  auto pid = folly::kIsSanitizeThread
+      ? folly::detail::AtFork::forkInstrumented(fork)
+      : fork();
   if (pid) {
     int status;
     auto pid2 = wait(&status);
@@ -84,7 +86,9 @@ TEST(ThreadLocal, AtForkOrdering) {
   });
   while (!started) {
   }
-  auto pid = fork();
+  auto pid = folly::kIsSanitizeThread
+      ? folly::detail::AtFork::forkInstrumented(fork)
+      : fork();
   if (pid) {
     int status;
     auto pid2 = wait(&status);
