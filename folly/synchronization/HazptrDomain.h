@@ -747,7 +747,7 @@ class hazptr_domain {
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void
-  hazptr_warning_list_too_large(uintptr_t tag, int shard, int count) {
+  hazptr_warning_list_too_large(uintptr_t tag, size_t shard, int count) {
     static std::atomic<uint64_t> warning_count{0};
     if ((warning_count++ % 10000) == 0) {
       LOG(WARNING) << "Hazptr retired list too large:"
