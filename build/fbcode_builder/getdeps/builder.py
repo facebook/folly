@@ -145,12 +145,17 @@ class MakeBuilder(BuilderBase):
         inst_dir,
         build_args,
         install_args,
+        test_args,
     ):
         super(MakeBuilder, self).__init__(
             build_opts, ctx, manifest, src_dir, build_dir, inst_dir
         )
         self.build_args = build_args or []
         self.install_args = install_args or []
+        self.test_args = test_args
+
+    def _get_prefix(self):
+        return ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
 
     def _build(self, install_dirs, reconfigure):
         env = self._compute_env(install_dirs)
@@ -161,16 +166,23 @@ class MakeBuilder(BuilderBase):
         cmd = (
             ["make", "-j%s" % self.build_opts.num_jobs]
             + self.build_args
-            + ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
+            + self._get_prefix()
         )
         self._run_cmd(cmd, env=env)
 
-        install_cmd = (
-            ["make"]
-            + self.install_args
-            + ["PREFIX=" + self.inst_dir, "prefix=" + self.inst_dir]
-        )
+        install_cmd = ["make"] + self.install_args + self._get_prefix()
         self._run_cmd(install_cmd, env=env)
+
+    def run_tests(
+        self, install_dirs, schedule_type, owner, test_filter, retry, no_testpilot
+    ):
+        if not self.test_args:
+            return
+
+        env = self._compute_env(install_dirs)
+
+        cmd = ["make"] + self.test_args + self._get_prefix()
+        self._run_cmd(cmd, env=env)
 
 
 class AutoconfBuilder(BuilderBase):

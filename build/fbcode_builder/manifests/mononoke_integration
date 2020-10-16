@@ -18,6 +18,9 @@ build-getdeps
 [make.install_args]
 install-getdeps
 
+[make.test_args]
+test-getdeps
+
 [shipit.pathmap]
 fbcode/eden/mononoke/tests/integration = eden/mononoke/tests/integration
 
@@ -25,7 +28,10 @@ fbcode/eden/mononoke/tests/integration = eden/mononoke/tests/integration
 ^.*/facebook/.*$
 
 [dependencies]
+eden_scm
+eden_scm_lib_edenapi_tools
 jq
+mononoke
 nmap
 python-click
 python-dulwich

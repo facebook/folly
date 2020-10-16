@@ -34,6 +34,7 @@ tools/rust/ossconfigs = .
 ^fbcode/eden/mononoke/Cargo\.toml$
 ^fbcode/eden/mononoke/(?!public_autocargo).+/Cargo\.toml$
 ^fbcode/configerator/structs/scm/mononoke/(?!public_autocargo).+/Cargo\.toml$
+^.*/facebook/.*$
 
 [dependencies]
 fbthrift-source

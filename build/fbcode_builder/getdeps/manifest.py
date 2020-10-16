@@ -88,6 +88,7 @@ SCHEMA = {
     "b2.args": {"optional_section": True},
     "make.build_args": {"optional_section": True},
     "make.install_args": {"optional_section": True},
+    "make.test_args": {"optional_section": True},
     "header-only": {"optional_section": True, "fields": {"includedir": REQUIRED}},
     "shipit.pathmap": {"optional_section": True},
     "shipit.strip": {"optional_section": True},
@@ -437,6 +438,7 @@ class ManifestParser(object):
         if builder == "make":
             build_args = self.get_section_as_args("make.build_args", ctx)
             install_args = self.get_section_as_args("make.install_args", ctx)
+            test_args = self.get_section_as_args("make.test_args", ctx)
             return MakeBuilder(
                 build_options,
                 ctx,
@@ -446,6 +448,7 @@ class ManifestParser(object):
                 inst_dir,
                 build_args,
                 install_args,
+                test_args,
             )
 
         if builder == "autoconf":
