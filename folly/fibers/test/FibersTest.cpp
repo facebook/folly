@@ -321,7 +321,7 @@ TEST(FiberManager, addTasksNoncopyable) {
         std::vector<std::function<std::unique_ptr<int>()>> funcs;
         for (int i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             return std::make_unique<int>(i * 2 + 1);
@@ -357,14 +357,14 @@ TEST(FiberManager, awaitThrow) {
   getFiberManager(evb)
       .addTaskFuture([&] {
         EXPECT_THROW(
-            await([](Promise<int> p) {
+            await_async([](Promise<int> p) {
               p.setValue(42);
               throw ExpectedException();
             }),
             ExpectedException);
 
         EXPECT_THROW(
-            await([&](Promise<int> p) {
+            await_async([&](Promise<int> p) {
               evb.runInEventBaseThread(
                   [p = std::move(p)]() mutable { p.setValue(42); });
               throw ExpectedException();
@@ -388,7 +388,7 @@ TEST(FiberManager, addTasksThrow) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             if (i % 2 == 0) {
@@ -440,7 +440,7 @@ TEST(FiberManager, addTasksVoid) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
           });
@@ -482,7 +482,7 @@ TEST(FiberManager, addTasksVoidThrow) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             if (i % 2 == 0) {
@@ -532,7 +532,7 @@ TEST(FiberManager, addTasksReserve) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
           });
@@ -622,7 +622,7 @@ TEST(FiberManager, forEach) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             return i * 2 + 1;
@@ -665,7 +665,7 @@ TEST(FiberManager, collectN) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             return i * 2 + 1;
@@ -705,7 +705,7 @@ TEST(FiberManager, collectNThrow) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() -> size_t {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             throw std::runtime_error("Runtime");
@@ -744,7 +744,7 @@ TEST(FiberManager, collectNVoid) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
           });
@@ -780,7 +780,7 @@ TEST(FiberManager, collectNVoidThrow) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             throw std::runtime_error("Runtime");
@@ -819,7 +819,7 @@ TEST(FiberManager, collectAll) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             return i * 2 + 1;
@@ -858,7 +858,7 @@ TEST(FiberManager, collectAllVoid) {
         std::vector<std::function<void()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([&pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
           });
@@ -893,7 +893,7 @@ TEST(FiberManager, collectAny) {
         std::vector<std::function<int()>> funcs;
         for (size_t i = 0; i < 3; ++i) {
           funcs.push_back([i, &pendingFibers]() {
-            await([&pendingFibers](Promise<int> promise) {
+            await_async([&pendingFibers](Promise<int> promise) {
               pendingFibers.push_back(std::move(promise));
             });
             if (i == 1) {
@@ -1105,11 +1105,11 @@ TEST(FiberManager, remoteFiberBasic) {
   result[0] = result[1] = 0;
   folly::Optional<Promise<int>> savedPromise[2];
   manager.addTask([&]() {
-    result[0] = await(
+    result[0] = await_async(
         [&](Promise<int> promise) { savedPromise[0] = std::move(promise); });
   });
   manager.addTask([&]() {
-    result[1] = await(
+    result[1] = await_async(
         [&](Promise<int> promise) { savedPromise[1] = std::move(promise); });
   });
 
@@ -1143,13 +1143,13 @@ TEST(FiberManager, addTaskRemoteBasic) {
 
   std::thread remoteThread0{[&]() {
     manager.addTaskRemote([&]() {
-      result[0] = await(
+      result[0] = await_async(
           [&](Promise<int> promise) { savedPromise[0] = std::move(promise); });
     });
   }};
   std::thread remoteThread1{[&]() {
     manager.addTaskRemote([&]() {
-      result[1] = await(
+      result[1] = await_async(
           [&](Promise<int> promise) { savedPromise[1] = std::move(promise); });
     });
   }};
@@ -1195,7 +1195,7 @@ TEST(FiberManager, remoteHasReadyTasks) {
   FiberManager fm(std::make_unique<SimpleLoopController>());
   std::thread remote([&]() {
     fm.addTaskRemote([&]() {
-      result = await(
+      result = await_async(
           [&](Promise<int> promise) { savedPromise = std::move(promise); });
       EXPECT_TRUE(fm.hasTasks());
     });
