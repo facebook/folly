@@ -35,8 +35,10 @@ namespace folly {
  */
 class EventBaseManager {
  public:
-  // XXX Constructing a EventBaseManager directly is DEPRECATED and not
-  // encouraged. You should instead use the global singleton if possible.
+  /**
+   * XXX Constructing a EventBaseManager directly is DEPRECATED and not
+   * encouraged. You should instead use the global singleton if possible.
+   */
   EventBaseManager() {}
 
   explicit EventBaseManager(folly::EventBaseBackendBase::FactoryFunc func)
@@ -143,12 +145,14 @@ class EventBaseManager {
 
   mutable folly::ThreadLocalPtr<EventBaseInfo> localStore_;
 
-  // set of "active" EventBase instances
-  // (also see the mutex "eventBaseSetMutex_" below
-  // which governs access to this).
+  /**
+   * Set of "active" EventBase instances
+   * (also see the mutex "eventBaseSetMutex_" below
+   * which governs access to this).
+   */
   mutable std::set<EventBase*> eventBaseSet_;
 
-  // a mutex to use as a guard for the above set
+  /// A mutex to use as a guard for the above "eventBaseSet_"
   std::mutex eventBaseSetMutex_;
 
   std::shared_ptr<folly::EventBaseObserver> observer_;
