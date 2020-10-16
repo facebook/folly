@@ -317,9 +317,7 @@ class TestRequestData : public folly::RequestData {
  public:
   explicit TestRequestData() noexcept {}
 
-  bool hasCallback() override {
-    return false;
-  }
+  bool hasCallback() override { return false; }
 };
 
 } // namespace

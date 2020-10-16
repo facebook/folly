@@ -77,9 +77,7 @@ class CallbackRecord {
   }
 
  public:
-  ~CallbackRecord() {
-    clear(this);
-  }
+  ~CallbackRecord() { clear(this); }
 
   CallbackRecord() noexcept : selector_(CallbackRecordSelector::Invalid) {}
 

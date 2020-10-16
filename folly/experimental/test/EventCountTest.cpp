@@ -44,9 +44,7 @@ class Semaphore {
     ec_.notifyAll();
   }
 
-  int value() const {
-    return value_;
-  }
+  int value() const { return value_; }
 
  private:
   bool tryDown() {

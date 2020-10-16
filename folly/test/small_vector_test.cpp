@@ -125,13 +125,9 @@ struct NontrivialType {
   static int ctored;
   explicit NontrivialType() : a(0) {}
 
-  /* implicit */ NontrivialType(int a_) : a(a_) {
-    ++ctored;
-  }
+  /* implicit */ NontrivialType(int a_) : a(a_) { ++ctored; }
 
-  NontrivialType(NontrivialType const& /* s */) {
-    ++ctored;
-  }
+  NontrivialType(NontrivialType const& /* s */) { ++ctored; }
 
   NontrivialType& operator=(NontrivialType const& o) {
     a = o.a;
@@ -192,20 +188,12 @@ int Thrower::alive = 0;
 // construction.
 struct NoncopyableCounter {
   static int alive;
-  NoncopyableCounter() {
-    ++alive;
-  }
-  ~NoncopyableCounter() {
-    --alive;
-  }
-  NoncopyableCounter(NoncopyableCounter&&) noexcept {
-    ++alive;
-  }
+  NoncopyableCounter() { ++alive; }
+  ~NoncopyableCounter() { --alive; }
+  NoncopyableCounter(NoncopyableCounter&&) noexcept { ++alive; }
   NoncopyableCounter(NoncopyableCounter const&) = delete;
   NoncopyableCounter& operator=(NoncopyableCounter const&) const = delete;
-  NoncopyableCounter& operator=(NoncopyableCounter&&) {
-    return *this;
-  }
+  NoncopyableCounter& operator=(NoncopyableCounter&&) { return *this; }
 };
 int NoncopyableCounter::alive = 0;
 
@@ -228,9 +216,7 @@ struct TestBasicGuarantee {
     }
   }
 
-  ~TestBasicGuarantee() {
-    throwCounter = 1000;
-  }
+  ~TestBasicGuarantee() { throwCounter = 1000; }
 
   template <class Operation>
   void operator()(int insertCount, Operation const& op) {
@@ -666,9 +652,7 @@ TEST(small_vector, AllHeap) {
     double a, b, c, d, e;
     int val;
     SomeObj(int val_) : val(val_) {}
-    bool operator==(SomeObj const& o) const {
-      return o.val == val;
-    }
+    bool operator==(SomeObj const& o) const { return o.val == val; }
   };
 
   folly::small_vector<SomeObj, 0> vec = {1};

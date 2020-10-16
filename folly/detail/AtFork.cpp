@@ -41,33 +41,21 @@ struct SkipAtForkHandlers;
 
 template <>
 struct SkipAtForkHandlers<false> {
-  static bool available() {
-    return false;
-  }
+  static bool available() { return false; }
 
-  static bool get() {
-    return false;
-  }
+  static bool get() { return false; }
 
-  [[noreturn]] static void set(bool) {
-    std::terminate();
-  }
+  [[noreturn]] static void set(bool) { std::terminate(); }
 };
 
 #if FOLLY_ATFORK_USE_FOLLY_TLS
 template <>
 struct SkipAtForkHandlers<true> {
-  static bool available() {
-    return true;
-  }
+  static bool available() { return true; }
 
-  static bool get() {
-    return value_;
-  }
+  static bool get() { return value_; }
 
-  static void set(bool value) {
-    value_ = value;
-  }
+  static void set(bool value) { value_ = value; }
 
  private:
   static FOLLY_TLS bool value_;

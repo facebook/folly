@@ -739,9 +739,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
 
   /// MPMCQueue can only be safely destroyed when there are no
   /// pending enqueuers or dequeuers (this is not checked).
-  ~MPMCQueueBase() {
-    delete[] slots_;
-  }
+  ~MPMCQueueBase() { delete[] slots_; }
 
   /// Returns the number of writes (including threads that are blocked waiting
   /// to write) minus the number of reads (including threads that are blocked
@@ -779,9 +777,7 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   }
 
   /// Returns true if there are no items available for dequeue
-  bool isEmpty() const noexcept {
-    return size() <= 0;
-  }
+  bool isEmpty() const noexcept { return size() <= 0; }
 
   /// Returns true if there is currently no empty space to enqueue
   bool isFull() const noexcept {
@@ -795,19 +791,13 @@ class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   /// writers could have came before the number of reads was sampled,
   /// and this method doesn't protect against such case.
   /// The returned value can be negative.
-  ssize_t sizeGuess() const noexcept {
-    return writeCount() - readCount();
-  }
+  ssize_t sizeGuess() const noexcept { return writeCount() - readCount(); }
 
   /// Doesn't change
-  size_t capacity() const noexcept {
-    return capacity_;
-  }
+  size_t capacity() const noexcept { return capacity_; }
 
   /// Doesn't change for non-dynamic
-  size_t allocatedCapacity() const noexcept {
-    return capacity_;
-  }
+  size_t allocatedCapacity() const noexcept { return capacity_; }
 
   /// Returns the total number of calls to blockingWrite or successful
   /// calls to write, including those blockingWrite calls that are
@@ -1448,9 +1438,7 @@ struct SingleElementQueue {
   /// Even turns are pushes, odd turns are pops
   TurnSequencer<Atom> sequencer_;
 
-  T* ptr() noexcept {
-    return static_cast<T*>(static_cast<void*>(&contents_));
-  }
+  T* ptr() noexcept { return static_cast<T*>(static_cast<void*>(&contents_)); }
 
   void destroyContents() noexcept {
     try {

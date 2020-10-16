@@ -812,9 +812,7 @@ static std::string doWorkStaticValue(std::string&& t) {
 
 TEST(Future, thenFunction) {
   struct Worker {
-    std::string doWork(Try<std::string>&& t) {
-      return t.value() + ";class";
-    }
+    std::string doWork(Try<std::string>&& t) { return t.value() + ";class"; }
     static std::string doWorkStatic(Try<std::string>&& t) {
       return t.value() + ";class-static";
     }
@@ -1162,16 +1160,10 @@ TEST(Future, RequestContext) {
     void addWithPriority(Func f, int8_t /* prio */) override {
       add(std::move(f));
     }
-    uint8_t getNumPriorities() const override {
-      return numPriorities_;
-    }
+    uint8_t getNumPriorities() const override { return numPriorities_; }
 
-    void setHandlesPriorities() {
-      numPriorities_ = 2;
-    }
-    void setThrowsOnAdd() {
-      throwsOnAdd_ = true;
-    }
+    void setHandlesPriorities() { numPriorities_ = 2; }
+    void setThrowsOnAdd() { throwsOnAdd_ = true; }
 
    private:
     std::vector<std::thread> v_;
@@ -1182,9 +1174,7 @@ TEST(Future, RequestContext) {
   struct MyRequestData : RequestData {
     MyRequestData(bool value_ = false) : value(value_) {}
 
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
 
     bool value;
   };
@@ -1225,15 +1215,9 @@ TEST(Future, makeFutureNoThrow) {
 
 TEST(Future, invokeCallbackReturningValueAsRvalue) {
   struct Foo {
-    int operator()(int x) & {
-      return x + 1;
-    }
-    int operator()(int x) const& {
-      return x + 2;
-    }
-    int operator()(int x) && {
-      return x + 3;
-    }
+    int operator()(int x) & { return x + 1; }
+    int operator()(int x) const& { return x + 2; }
+    int operator()(int x) && { return x + 3; }
   };
 
   Foo foo;
@@ -1249,15 +1233,9 @@ TEST(Future, invokeCallbackReturningValueAsRvalue) {
 
 TEST(Future, invokeCallbackReturningFutureAsRvalue) {
   struct Foo {
-    Future<int> operator()(int x) & {
-      return x + 1;
-    }
-    Future<int> operator()(int x) const& {
-      return x + 2;
-    }
-    Future<int> operator()(int x) && {
-      return x + 3;
-    }
+    Future<int> operator()(int x) & { return x + 1; }
+    Future<int> operator()(int x) const& { return x + 2; }
+    Future<int> operator()(int x) && { return x + 3; }
   };
 
   Foo foo;
@@ -1309,9 +1287,7 @@ TEST(Future, makePromiseContract) {
     std::queue<Func> queue_;
 
    public:
-    void add(Func f) override {
-      queue_.push(std::move(f));
-    }
+    void add(Func f) override { queue_.push(std::move(f)); }
     void drain() {
       while (!queue_.empty()) {
         auto f = std::move(queue_.front());

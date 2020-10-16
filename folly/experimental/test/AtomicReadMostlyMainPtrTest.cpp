@@ -146,13 +146,9 @@ TEST_F(AtomicReadMostlyMainPtrSimpleTest, CompareExchangeStrongFailure) {
 class AtomicReadMostlyMainPtrCounterTest : public testing::Test {
  protected:
   struct InstanceCounter {
-    explicit InstanceCounter(int* counter_) : counter(counter_) {
-      ++*counter;
-    }
+    explicit InstanceCounter(int* counter_) : counter(counter_) { ++*counter; }
 
-    ~InstanceCounter() {
-      --*counter;
-    }
+    ~InstanceCounter() { --*counter; }
 
     int* counter;
   };
@@ -185,9 +181,7 @@ TEST(AtomicReadMostlyMainPtrTest, HandlesDestructionModifications) {
   struct RunOnDestruction {
     explicit RunOnDestruction(std::function<void()> func) : func_(func) {}
 
-    ~RunOnDestruction() {
-      func_();
-    }
+    ~RunOnDestruction() { func_(); }
     std::function<void()> func_;
   };
 

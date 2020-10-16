@@ -91,9 +91,7 @@ class AsyncUDPSocket : public EventHandler {
      * If shouldNotifyOnly() returns false, AsyncUDPSocket will invoke
      * getReadBuffer() and onDataAvailable().
      */
-    virtual bool shouldOnlyNotify() {
-      return false;
-    }
+    virtual bool shouldOnlyNotify() { return false; }
 
     /**
      * Invoked when there is an error reading from the socket.
@@ -283,42 +281,30 @@ class AsyncUDPSocket : public EventHandler {
   /**
    * Set reuse port mode to call bind() on the same address multiple times
    */
-  virtual void setReusePort(bool reusePort) {
-    reusePort_ = reusePort;
-  }
+  virtual void setReusePort(bool reusePort) { reusePort_ = reusePort; }
 
   /**
    * Set SO_REUSEADDR flag on the socket. Default is OFF.
    */
-  virtual void setReuseAddr(bool reuseAddr) {
-    reuseAddr_ = reuseAddr;
-  }
+  virtual void setReuseAddr(bool reuseAddr) { reuseAddr_ = reuseAddr; }
 
   /**
    * Set SO_RCVBUF option on the socket, if not zero. Default is zero.
    */
-  virtual void setRcvBuf(int rcvBuf) {
-    rcvBuf_ = rcvBuf;
-  }
+  virtual void setRcvBuf(int rcvBuf) { rcvBuf_ = rcvBuf; }
 
   /**
    * Set SO_SNDBUF option on the socket, if not zero. Default is zero.
    */
-  virtual void setSndBuf(int sndBuf) {
-    sndBuf_ = sndBuf;
-  }
+  virtual void setSndBuf(int sndBuf) { sndBuf_ = sndBuf; }
 
   /**
    * Set SO_BUSY_POLL option on the socket, if not zero. Default is zero.
    * Caution! The feature is not available on Apple's systems.
    */
-  virtual void setBusyPoll(int busyPollUs) {
-    busyPollUs_ = busyPollUs;
-  }
+  virtual void setBusyPoll(int busyPollUs) { busyPollUs_ = busyPollUs; }
 
-  EventBase* getEventBase() const {
-    return eventBase_;
-  }
+  EventBase* getEventBase() const { return eventBase_; }
 
   /**
    * Enable or disable fragmentation on the socket.
@@ -347,13 +333,9 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual void setErrMessageCallback(ErrMessageCallback* errMessageCallback);
 
-  virtual bool isBound() const {
-    return fd_ != NetworkSocket();
-  }
+  virtual bool isBound() const { return fd_ != NetworkSocket(); }
 
-  virtual bool isReading() const {
-    return readCallback_ != nullptr;
-  }
+  virtual bool isReading() const { return readCallback_ != nullptr; }
 
   /**
    * Set the maximum number of reads to execute from the underlying
@@ -363,9 +345,7 @@ class AsyncUDPSocket : public EventHandler {
    * @param maxReads  Maximum number of reads per data-available event;
    *                  a value of zero means unlimited.
    */
-  void setMaxReadsPerEvent(uint16_t maxReads) {
-    maxReadsPerEvent_ = maxReads;
-  }
+  void setMaxReadsPerEvent(uint16_t maxReads) { maxReadsPerEvent_ = maxReads; }
 
   /**
    * Get the maximum number of reads this object will execute from
@@ -375,9 +355,7 @@ class AsyncUDPSocket : public EventHandler {
    * @returns Maximum number of reads per data-available event; a value
    *          of zero means unlimited.
    */
-  uint16_t getMaxReadsPerEvent() const {
-    return maxReadsPerEvent_;
-  }
+  uint16_t getMaxReadsPerEvent() const { return maxReadsPerEvent_; }
 
   virtual void detachEventBase();
 

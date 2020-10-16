@@ -451,9 +451,7 @@ TEST(Singleton, SingletonDependencies) {
 // dependency.
 class Slowpoke : public Watchdog {
  public:
-  Slowpoke() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  Slowpoke() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
 };
 
 struct ConcurrencyTag {};
@@ -856,13 +854,9 @@ using SingletonMainThreadDestructor =
     Singleton<T, Tag, MainThreadDestructorTag>;
 
 struct ThreadLoggingSingleton {
-  ThreadLoggingSingleton() {
-    initThread = std::this_thread::get_id();
-  }
+  ThreadLoggingSingleton() { initThread = std::this_thread::get_id(); }
 
-  ~ThreadLoggingSingleton() {
-    destroyThread = std::this_thread::get_id();
-  }
+  ~ThreadLoggingSingleton() { destroyThread = std::this_thread::get_id(); }
 
   static std::thread::id initThread;
   static std::thread::id destroyThread;
@@ -927,12 +921,8 @@ TEST(Singleton, DoubleMakeMockAfterTryGet) {
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
-    explicit Object(Counts& counts) : counts_(counts) {
-      ++counts_.ctor;
-    }
-    ~Object() {
-      ++counts_.dtor;
-    }
+    explicit Object(Counts& counts) : counts_(counts) { ++counts_.ctor; }
+    ~Object() { ++counts_.dtor; }
     Counts& counts_;
   };
   using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
@@ -975,12 +965,8 @@ TEST(Singleton, DoubleMakeMockAfterTryGetWithApply) {
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
-    explicit Object(Counts& counts) : counts_(counts) {
-      ++counts_.ctor;
-    }
-    ~Object() {
-      ++counts_.dtor;
-    }
+    explicit Object(Counts& counts) : counts_(counts) { ++counts_.ctor; }
+    ~Object() { ++counts_.dtor; }
     Counts& counts_;
   };
   using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;

@@ -1425,18 +1425,12 @@ namespace {
 struct A {
   int value;
 
-  bool operator==(A const& rhs) const {
-    return value == rhs.value;
-  }
-  bool operator!=(A const& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator==(A const& rhs) const { return value == rhs.value; }
+  bool operator!=(A const& rhs) const { return !(*this == rhs); }
 };
 
 struct AHasher {
-  std::size_t operator()(A const& v) const {
-    return v.value;
-  }
+  std::size_t operator()(A const& v) const { return v.value; }
 };
 
 template <typename T>
@@ -1447,9 +1441,7 @@ struct B {
 
   /* implicit */ B(A const& v) : value(v.value) {}
 
-  /* implicit */ operator A() const {
-    return A{value};
-  }
+  /* implicit */ operator A() const { return A{value}; }
 };
 
 struct C {

@@ -80,9 +80,7 @@ class PriorityUnboundedQueueSet {
       delete;
   PriorityUnboundedQueueSet& operator=(PriorityUnboundedQueueSet&&) = delete;
 
-  queue& at_priority(size_t priority) {
-    return queues_.at(priority);
-  }
+  queue& at_priority(size_t priority) { return queues_.at(priority); }
 
   queue const& at_priority(size_t priority) const {
     return queues_.at(priority);
@@ -133,9 +131,7 @@ class PriorityUnboundedQueueSet {
     return true;
   }
 
-  size_t priorities() const noexcept {
-    return queues_.size();
-  }
+  size_t priorities() const noexcept { return queues_.size(); }
 
  private:
   //  queue_alloc custom allocator is necessary until C++17

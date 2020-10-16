@@ -29,9 +29,7 @@ struct DIR {
   char currentName[MAX_PATH * 3];
   std::string pattern;
 
-  int close() {
-    return FindClose(searchHandle) ? 0 : -1;
-  }
+  int close() { return FindClose(searchHandle) ? 0 : -1; }
 
   DIR* open() {
     wchar_t patternBuf[MAX_PATH + 3];

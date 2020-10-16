@@ -377,13 +377,9 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     value_ = 0;
   }
 
-  FOLLY_ALWAYS_INLINE SizeType position() const {
-    return position_;
-  }
+  FOLLY_ALWAYS_INLINE SizeType position() const { return position_; }
 
-  FOLLY_ALWAYS_INLINE ValueType value() const {
-    return value_;
-  }
+  FOLLY_ALWAYS_INLINE ValueType value() const { return value_; }
 
   FOLLY_ALWAYS_INLINE ValueType previous() {
     size_t inner;
@@ -535,9 +531,7 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
     return (start_[bitPos / 8] & (1 << (bitPos % 8))) == 0;
   }
 
-  FOLLY_ALWAYS_INLINE void setDone(SizeType endPos) {
-    position_ = endPos;
-  }
+  FOLLY_ALWAYS_INLINE void setDone(SizeType endPos) { position_ = endPos; }
 
  private:
   using block_t = uint64_t;
@@ -769,17 +763,13 @@ class EliasFanoReader {
         (upper_.previousValue() << numLowerBits_);
   }
 
-  SizeType size() const {
-    return size_;
-  }
+  SizeType size() const { return size_; }
 
   bool valid() const {
     return position() < size(); // Also checks that position() != -1.
   }
 
-  SizeType position() const {
-    return upper_.position();
-  }
+  SizeType position() const { return upper_.position(); }
 
   ValueType value() const {
     DCHECK(valid());

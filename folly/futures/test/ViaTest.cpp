@@ -29,9 +29,7 @@ using namespace folly;
 struct ManualWaiter : public DrivableExecutor {
   explicit ManualWaiter(std::shared_ptr<ManualExecutor> ex_) : ex(ex_) {}
 
-  void add(Func f) override {
-    ex->add(std::move(f));
-  }
+  void add(Func f) override { ex->add(std::move(f)); }
 
   void drive() override {
     ex->wait();
@@ -172,9 +170,7 @@ TEST_F(ViaFixture, viaAssignment) {
 }
 
 struct PriorityExecutor : public Executor {
-  void add(Func /* f */) override {
-    count1++;
-  }
+  void add(Func /* f */) override { count1++; }
 
   void addWithPriority(Func f, int8_t priority) override {
     int mid = getNumPriorities() / 2;
@@ -192,9 +188,7 @@ struct PriorityExecutor : public Executor {
     f();
   }
 
-  uint8_t getNumPriorities() const override {
-    return 3;
-  }
+  uint8_t getNumPriorities() const override { return 3; }
 
   int count0{0};
   int count1{0};
@@ -376,13 +370,9 @@ class ThreadExecutor : public Executor {
     worker.join();
   }
 
-  void add(Func fn) override {
-    funcs.blockingWrite(std::move(fn));
-  }
+  void add(Func fn) override { funcs.blockingWrite(std::move(fn)); }
 
-  void waitForStartup() {
-    baton.wait();
-  }
+  void waitForStartup() { baton.wait(); }
 };
 
 TEST(Via, viaThenGetWasRacy) {
@@ -423,9 +413,7 @@ TEST(Via, callbackRace) {
 class DummyDrivableExecutor : public DrivableExecutor {
  public:
   void add(Func /* f */) override {}
-  void drive() override {
-    ran = true;
-  }
+  void drive() override { ran = true; }
   bool ran{false};
 };
 

@@ -82,12 +82,8 @@ class JemallocNodumpAllocator {
   void* reallocate(void* p, size_t size);
   void deallocate(void* p, size_t = 0);
 
-  unsigned getArenaIndex() const {
-    return arena_index_;
-  }
-  int getFlags() const {
-    return flags_;
-  }
+  unsigned getArenaIndex() const { return arena_index_; }
+  int getFlags() const { return flags_; }
 
  private:
 #ifdef FOLLY_JEMALLOC_NODUMP_ALLOCATOR_SUPPORTED

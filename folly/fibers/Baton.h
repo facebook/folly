@@ -275,9 +275,7 @@ class BatonAwaitableWaiter : public Baton::Waiter {
     h_();
   }
 
-  bool await_ready() const {
-    return baton_.ready();
-  }
+  bool await_ready() const { return baton_.ready(); }
 
   void await_resume() {}
 

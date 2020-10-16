@@ -62,9 +62,7 @@ struct InvokeResultWrapperBase {
   static T wrapResult(F fn) {
     return T(fn());
   }
-  static T wrapException(exception_wrapper&& e) {
-    return T(std::move(e));
-  }
+  static T wrapException(exception_wrapper&& e) { return T(std::move(e)); }
 };
 template <typename T>
 struct InvokeResultWrapper : InvokeResultWrapperBase<Try<T>> {};
@@ -156,9 +154,7 @@ class CoreCallbackState {
   }
 
  private:
-  bool before_barrier() const noexcept {
-    return !promise_.isFulfilled();
-  }
+  bool before_barrier() const noexcept { return !promise_.isFulfilled(); }
 
   union {
     DF func_;
@@ -571,12 +567,8 @@ struct WindowFakeVector {
 
   WindowFakeVector(size_t size) : size_(size) {}
 
-  size_t operator[](const size_t index) const {
-    return index;
-  }
-  size_t size() const {
-    return size_;
-  }
+  size_t operator[](const size_t index) const { return index; }
+  size_t size() const { return size_; }
 
  private:
   size_t size_;
@@ -1366,9 +1358,7 @@ SemiFuture<std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>>
 collectAll(Fs&&... fs) {
   using Result = std::tuple<Try<typename remove_cvref_t<Fs>::value_type>...>;
   struct Context {
-    ~Context() {
-      p.setValue(std::move(results));
-    }
+    ~Context() { p.setValue(std::move(results)); }
     Promise<Result> p;
     Result results;
   };
@@ -1469,9 +1459,7 @@ collect(InputIterator first, InputIterator last) {
   using T = typename F::value_type;
 
   struct Context {
-    explicit Context(size_t n) : result(n) {
-      finalResult.reserve(n);
-    }
+    explicit Context(size_t n) : result(n) { finalResult.reserve(n); }
     ~Context() {
       if (!threw.load(std::memory_order_relaxed)) {
         // map Optional<T> -> T
@@ -1891,9 +1879,7 @@ SemiFuture<T> unorderedReduceSemiFuture(It first, It last, T initial, F func) {
   };
 
   struct Fulfill {
-    void operator()(Promise<T>&& p, T&& v) const {
-      p.setValue(std::move(v));
-    }
+    void operator()(Promise<T>&& p, T&& v) const { p.setValue(std::move(v)); }
     void operator()(Promise<T>&& p, Future<T>&& f) const {
       f.setCallback_(
           [p = std::move(p)](Executor::KeepAlive<>&&, Try<T>&& t) mutable {

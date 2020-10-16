@@ -77,18 +77,14 @@ class atomic_shared_ptr {
   using PackedPtr = folly::PackedSyncPtr<BasePtr>;
 
  public:
-  atomic_shared_ptr() noexcept {
-    init();
-  }
+  atomic_shared_ptr() noexcept { init(); }
   explicit atomic_shared_ptr(SharedPtr foo) /* noexcept */
       : atomic_shared_ptr() {
     store(std::move(foo));
   }
   atomic_shared_ptr(const atomic_shared_ptr<T>&) = delete;
 
-  ~atomic_shared_ptr() {
-    store(SharedPtr(nullptr));
-  }
+  ~atomic_shared_ptr() { store(SharedPtr(nullptr)); }
   void operator=(SharedPtr desired) /* noexcept */ {
     store(std::move(desired));
   }
@@ -110,9 +106,7 @@ class atomic_shared_ptr {
     return get_shared_ptr(local, false);
   }
 
-  /* implicit */ operator SharedPtr() const {
-    return load();
-  }
+  /* implicit */ operator SharedPtr() const { return load(); }
 
   void store(
       SharedPtr n,

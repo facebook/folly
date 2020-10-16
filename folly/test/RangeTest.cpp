@@ -884,12 +884,8 @@ TEST(StringPiece, split_step_with_process_range_delimiter_additional_args) {
 
 TEST(StringPiece, NoInvalidImplicitConversions) {
   struct IsString {
-    bool operator()(folly::Range<int*>) {
-      return false;
-    }
-    bool operator()(folly::StringPiece) {
-      return true;
-    }
+    bool operator()(folly::Range<int*>) { return false; }
+    bool operator()(folly::StringPiece) { return true; }
   };
 
   std::string s = "hello";
@@ -1186,12 +1182,8 @@ TEST(RangeFunc, ConstexprCollection) {
   class IntCollection {
    public:
     constexpr IntCollection(const int* d, size_t s) : data_(d), size_(s) {}
-    constexpr const int* data() const {
-      return data_;
-    }
-    constexpr size_t size() const {
-      return size_;
-    }
+    constexpr const int* data() const { return data_; }
+    constexpr size_t size() const { return size_; }
 
    private:
     const int* data_;
@@ -1234,12 +1226,8 @@ TEST(CRangeFunc, Collection) {
   class IntCollection {
    public:
     constexpr IntCollection(int* d, size_t s) : data_(d), size_(s) {}
-    constexpr int const* data() const {
-      return data_;
-    }
-    constexpr size_t size() const {
-      return size_;
-    }
+    constexpr int const* data() const { return data_; }
+    constexpr size_t size() const { return size_; }
 
    private:
     int* data_;
@@ -1471,9 +1459,7 @@ class fake_string_view {
   using size_type = std::size_t;
   explicit fake_string_view(char const* s, size_type c, fake_tag = {})
       : piece_(s, c) {}
-  /* implicit */ operator StringPiece() const {
-    return piece_;
-  }
+  /* implicit */ operator StringPiece() const { return piece_; }
   friend bool operator==(char const* rhs, fake_string_view lhs) {
     return rhs == lhs.piece_;
   }

@@ -91,9 +91,7 @@ struct TestData {
     return (outSize_ >= expectedSize_);
   }
 
-  bool isMulti() const {
-    return (in_.size() > 1);
-  }
+  bool isMulti() const { return (in_.size() > 1); }
 
   const int* getGSOVec() const {
     return (!gsoVec_.empty()) ? gsoVec_.data() : nullptr;
@@ -226,9 +224,7 @@ class UDPServer {
     socket_->listen();
   }
 
-  folly::SocketAddress address() const {
-    return socket_->address();
-  }
+  folly::SocketAddress address() const { return socket_->address(); }
 
   void shutdown() {
     CHECK(evb_->isInEventBaseThread());
@@ -244,13 +240,9 @@ class UDPServer {
     }
   }
 
-  void pauseAccepting() {
-    socket_->pauseAccepting();
-  }
+  void pauseAccepting() { socket_->pauseAccepting(); }
 
-  void resumeAccepting() {
-    socket_->resumeAccepting();
-  }
+  void resumeAccepting() { socket_->resumeAccepting(); }
 
  private:
   EventBase* const evb_{nullptr};
@@ -370,9 +362,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     shutdown();
   }
 
-  AsyncUDPSocket& getSocket() {
-    return *socket_;
-  }
+  AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(const folly::SocketAddress& connectAddr) {
     connectAddr_ = connectAddr;
@@ -570,9 +560,7 @@ class GSOBuf {
     }
   }
 
-  const std::unique_ptr<IOBuf>& get() const {
-    return ioBuf_;
-  }
+  const std::unique_ptr<IOBuf>& get() const { return ioBuf_; }
 
  private:
   std::unique_ptr<IOBuf> ioBuf_;
@@ -591,9 +579,7 @@ class GSOSendTest {
     ret_ = socket.writeGSO(address, buf.get(), gso);
   }
 
-  ssize_t get() const {
-    return ret_;
-  }
+  ssize_t get() const { return ret_; }
 
  private:
   ssize_t ret_;

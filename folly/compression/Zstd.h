@@ -62,19 +62,13 @@ class Options {
   }
 
   /// Get a reference to the ZSTD_CCtx_params.
-  ZSTD_CCtx_params const* params() const {
-    return params_.get();
-  }
+  ZSTD_CCtx_params const* params() const { return params_.get(); }
 
   /// Get the compression level.
-  int level() const {
-    return level_;
-  }
+  int level() const { return level_; }
 
   /// Get the maximum window size.
-  size_t maxWindowSize() const {
-    return maxWindowSize_;
-  }
+  size_t maxWindowSize() const { return maxWindowSize_; }
 
  private:
   static void freeCCtxParams(ZSTD_CCtx_params* params);

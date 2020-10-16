@@ -910,9 +910,7 @@ class DestroyHandler : public AsyncTimeout {
   DestroyHandler(EventBase* eb, EventHandler* h)
       : AsyncTimeout(eb), handler_(h) {}
 
-  void timeoutExpired() noexcept override {
-    delete handler_;
-  }
+  void timeoutExpired() noexcept override { delete handler_; }
 
  private:
   EventHandler* handler_;
@@ -1039,9 +1037,7 @@ class TestTimeout : public AsyncTimeout {
   explicit TestTimeout(EventBase* eventBase)
       : AsyncTimeout(eventBase), timestamp(false) {}
 
-  void timeoutExpired() noexcept override {
-    timestamp.reset();
-  }
+  void timeoutExpired() noexcept override { timestamp.reset(); }
 
   TimePoint timestamp;
 };
@@ -1075,9 +1071,7 @@ class ReschedulingTimeout : public AsyncTimeout {
   ReschedulingTimeout(EventBase* evb, const std::vector<uint32_t>& timeouts)
       : AsyncTimeout(evb), timeouts_(timeouts), iterator_(timeouts_.begin()) {}
 
-  void start() {
-    reschedule();
-  }
+  void start() { reschedule(); }
 
   void timeoutExpired() noexcept override {
     timestamps.emplace_back();
@@ -1198,9 +1192,7 @@ class DestroyTimeout : public AsyncTimeout {
   DestroyTimeout(EventBase* eb, AsyncTimeout* t)
       : AsyncTimeout(eb), timeout_(t) {}
 
-  void timeoutExpired() noexcept override {
-    delete timeout_;
-  }
+  void timeoutExpired() noexcept override { delete timeout_; }
 
  private:
   AsyncTimeout* timeout_;
@@ -1502,9 +1494,7 @@ class CountedLoopCallback : public EventBase::LoopCallback {
     }
   }
 
-  unsigned int getCount() const {
-    return count_;
-  }
+  unsigned int getCount() const { return count_; }
 
  private:
   EventBase* eventBase_;
@@ -1714,12 +1704,8 @@ class TerminateTestCallback : public EventBase::LoopCallback,
     registerHandler(READ);
   }
 
-  uint32_t getLoopInvocations() const {
-    return loopInvocations_;
-  }
-  uint32_t getEventInvocations() const {
-    return eventInvocations_;
-  }
+  uint32_t getLoopInvocations() const { return loopInvocations_; }
+  uint32_t getEventInvocations() const { return eventInvocations_; }
 
  private:
   EventBase* eventBase_;
@@ -1883,9 +1869,7 @@ class IdleTimeTimeoutSeries : public AsyncTimeout {
     }
   }
 
-  int getTimeouts() const {
-    return timeouts_;
-  }
+  int getTimeouts() const { return timeouts_; }
 
  private:
   int timeouts_;
@@ -2044,9 +2028,7 @@ class PipeHandler : public EventHandler {
   PipeHandler(EventBase* eventBase, int fd)
       : EventHandler(eventBase, NetworkSocket::fromFd(fd)) {}
 
-  void handlerReady(uint16_t /* events */) noexcept override {
-    abort();
-  }
+  void handlerReady(uint16_t /* events */) noexcept override { abort(); }
 };
 } // namespace
 
@@ -2369,9 +2351,7 @@ TYPED_TEST_P(EventBaseTest1, RunOnDestructionCancelled) {
   struct Callback : EventBase::OnDestructionCallback {
     bool ranOnDestruction{false};
 
-    void onEventBaseDestruction() noexcept final {
-      ranOnDestruction = true;
-    }
+    void onEventBaseDestruction() noexcept final { ranOnDestruction = true; }
   };
 
   auto cb = std::make_unique<Callback>();

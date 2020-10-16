@@ -42,17 +42,11 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     sock_->attachEventBase(&eventBase_);
   }
 
-  void enableTFO() {
-    sock_->enableTFO();
-  }
+  void enableTFO() { sock_->enableTFO(); }
 
-  void setEorTracking(bool track) {
-    sock_->setEorTracking(track);
-  }
+  void setEorTracking(bool track) { sock_->setEorTracking(track); }
 
-  void setAddress(folly::SocketAddress address) {
-    address_ = address;
-  }
+  void setAddress(folly::SocketAddress address) { address_ = address; }
 
   void open(
       std::chrono::milliseconds timeout = std::chrono::milliseconds::zero()) {
@@ -64,12 +58,8 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     }
   }
 
-  void close() {
-    sock_->close();
-  }
-  void closeWithReset() {
-    sock_->closeWithReset();
-  }
+  void close() { sock_->close(); }
+  void closeWithReset() { sock_->closeWithReset(); }
 
   int32_t write(
       uint8_t const* buf,
@@ -89,17 +79,13 @@ class BlockingSocket : public folly::AsyncSocket::ConnectCallback,
     return readHelper(buf, len, true);
   }
 
-  int32_t read(uint8_t* buf, size_t len) {
-    return readHelper(buf, len, false);
-  }
+  int32_t read(uint8_t* buf, size_t len) { return readHelper(buf, len, false); }
 
   folly::NetworkSocket getNetworkSocket() const {
     return sock_->getNetworkSocket();
   }
 
-  folly::AsyncSocket* getSocket() {
-    return sock_.get();
-  }
+  folly::AsyncSocket* getSocket() { return sock_.get(); }
 
   folly::AsyncSSLSocket* getSSLSocket() {
     return dynamic_cast<folly::AsyncSSLSocket*>(sock_.get());

@@ -341,9 +341,7 @@ struct ReverseIterator {
       ReverseIterator b) noexcept {
     return !(a == b);
   }
-  constexpr reference operator*() const {
-    return *(p_ - 1);
-  }
+  constexpr reference operator*() const { return *(p_ - 1); }
   constexpr ReverseIterator& operator++() noexcept {
     --p_;
     return *this;
@@ -782,9 +780,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Conversion to folly::Range
    * \return `Range<Char*>{begin(), end()}`
    */
-  constexpr Range<Char*> toRange() noexcept {
-    return {begin(), end()};
-  }
+  constexpr Range<Char*> toRange() noexcept { return {begin(), end()}; }
 
   /**
    * \overload
@@ -939,65 +935,47 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Return a pointer to a range of `size()+1` characters, the last of which
    * is `Char(0)`.
    */
-  constexpr Char* data() noexcept {
-    return data_;
-  }
+  constexpr Char* data() noexcept { return data_; }
 
   /**
    * \overload
    */
-  constexpr const Char* data() const noexcept {
-    return data_;
-  }
+  constexpr const Char* data() const noexcept { return data_; }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr const Char* c_str() const noexcept {
-    return data_;
-  }
+  constexpr const Char* c_str() const noexcept { return data_; }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr Char* begin() noexcept {
-    return data_;
-  }
+  constexpr Char* begin() noexcept { return data_; }
 
   /**
    * \overload
    */
-  constexpr const Char* begin() const noexcept {
-    return data_;
-  }
+  constexpr const Char* begin() const noexcept { return data_; }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data()`.
    */
-  constexpr const Char* cbegin() const noexcept {
-    return begin();
-  }
+  constexpr const Char* cbegin() const noexcept { return begin(); }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data() + size()`.
    */
-  constexpr Char* end() noexcept {
-    return data_ + size_;
-  }
+  constexpr Char* end() noexcept { return data_ + size_; }
 
   /**
    * \overload
    */
-  constexpr const Char* end() const noexcept {
-    return data_ + size_;
-  }
+  constexpr const Char* end() const noexcept { return data_ + size_; }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * \return `data() + size()`.
    */
-  constexpr const Char* cend() const noexcept {
-    return end();
-  }
+  constexpr const Char* cend() const noexcept { return end(); }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Returns a reverse iterator to the first character of the reversed string.
@@ -1017,17 +995,13 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `rbegin()` on a const-qualified reference to `*this`.
    */
-  constexpr const_reverse_iterator crbegin() const noexcept {
-    return rbegin();
-  }
+  constexpr const_reverse_iterator crbegin() const noexcept { return rbegin(); }
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Returns a reverse iterator to the last + 1 character of the reversed
    * string. It corresponds to the first character of the non-reversed string.
    */
-  constexpr reverse_iterator rend() noexcept {
-    return reverse_iterator{data_};
-  }
+  constexpr reverse_iterator rend() noexcept { return reverse_iterator{data_}; }
 
   /**
    * \overload
@@ -1039,44 +1013,32 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `rend()` on a const-qualified reference to `*this`.
    */
-  constexpr const_reverse_iterator crend() const noexcept {
-    return rend();
-  }
+  constexpr const_reverse_iterator crend() const noexcept { return rend(); }
 
   /**
    * \return The number of `Char` elements in the string.
    */
-  constexpr std::size_t size() const noexcept {
-    return size_;
-  }
+  constexpr std::size_t size() const noexcept { return size_; }
 
   /**
    * \return The number of `Char` elements in the string.
    */
-  constexpr std::size_t length() const noexcept {
-    return size_;
-  }
+  constexpr std::size_t length() const noexcept { return size_; }
 
   /**
    * \return True if and only if `size() == 0`.
    */
-  constexpr bool empty() const noexcept {
-    return 0u == size_;
-  }
+  constexpr bool empty() const noexcept { return 0u == size_; }
 
   /**
    * \return `N`.
    */
-  static constexpr std::size_t capacity() noexcept {
-    return N;
-  }
+  static constexpr std::size_t capacity() noexcept { return N; }
 
   /**
    * \return `N`.
    */
-  static constexpr std::size_t max_size() noexcept {
-    return N;
-  }
+  static constexpr std::size_t max_size() noexcept { return N; }
 
   // We would need to reimplement folly::Hash to make this
   // constexpr. :-(
@@ -1125,16 +1087,12 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
   /**
    * \note Equivalent to `(*this)[0]`
    */
-  constexpr Char& front() noexcept {
-    return (*this)[0u];
-  }
+  constexpr Char& front() noexcept { return (*this)[0u]; }
 
   /**
    * \overload
    */
-  constexpr const Char& front() const noexcept {
-    return (*this)[0u];
-  }
+  constexpr const Char& front() const noexcept { return (*this)[0u]; }
 
   /**
    * \note Equivalent to `at(size()-1)`
@@ -1457,9 +1415,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Create a new string by erasing all the characters from this string.
    * \note Equivalent to `BasicFixedString<Char, 0>{}`
    */
-  constexpr BasicFixedString<Char, 0u> cerase() const noexcept {
-    return {};
-  }
+  constexpr BasicFixedString<Char, 0u> cerase() const noexcept { return {}; }
 
   /**
    * Create a new string by erasing all the characters after position `pos` from
@@ -2098,9 +2054,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * Finds the first occurrence of the character `ch` in this string.
    * \note Equivalent to `find(&ch, 0, 1)`
    */
-  constexpr std::size_t find(Char ch) const noexcept {
-    return find(ch, 0u);
-  }
+  constexpr std::size_t find(Char ch) const noexcept { return find(ch, 0u); }
 
   /**
    * Finds the first occurrence of the character character `c` in this string,

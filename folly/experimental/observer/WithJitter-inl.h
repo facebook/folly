@@ -55,9 +55,7 @@ Observer<T> withJitter(
           lag_(lag),
           jitter_(jitter) {}
 
-    std::shared_ptr<const T> get() {
-      return state_->lock()->laggingValue;
-    }
+    std::shared_ptr<const T> get() { return state_->lock()->laggingValue; }
 
     void subscribe(std::function<void()> callback) {
       handle_ = observer_.addCallback([state = state_,
@@ -87,9 +85,7 @@ Observer<T> withJitter(
       });
     }
 
-    void unsubscribe() {
-      handle_.cancel();
-    }
+    void unsubscribe() { handle_.cancel(); }
 
    private:
     struct State {

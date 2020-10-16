@@ -151,16 +151,12 @@ class AsyncTimeout {
   void detachTimeoutManager();
   void detachEventBase();
 
-  const TimeoutManager* getTimeoutManager() {
-    return timeoutManager_;
-  }
+  const TimeoutManager* getTimeoutManager() { return timeoutManager_; }
 
   /**
    * Returns the internal handle to the event
    */
-  EventBaseBackendBase::Event* getEvent() {
-    return &event_;
-  }
+  EventBaseBackendBase::Event* getEvent() { return &event_; }
 
   /**
    * Convenience function that wraps a function object as

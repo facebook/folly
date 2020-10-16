@@ -101,23 +101,17 @@ struct TrickyAwaitable {
   struct Awaiter {
     std::unique_ptr<int> value_;
 
-    bool await_ready() const {
-      return false;
-    }
+    bool await_ready() const { return false; }
 
     bool await_suspend(std::experimental::coroutine_handle<>) {
       value_ = std::make_unique<int>(42);
       return false;
     }
 
-    std::unique_ptr<int>&& await_resume() {
-      return std::move(value_);
-    }
+    std::unique_ptr<int>&& await_resume() { return std::move(value_); }
   };
 
-  Awaiter operator co_await() {
-    return {};
-  }
+  Awaiter operator co_await() { return {}; }
 };
 
 TEST_F(BlockingWaitTest, ReturnRvalueReferenceFromAwaiter) {
@@ -134,9 +128,7 @@ TEST_F(BlockingWaitTest, ReturnRvalueReferenceFromAwaiter) {
 TEST_F(BlockingWaitTest, AsynchronousCompletionOnAnotherThread) {
   folly::coro::Baton baton;
   std::thread t{[&] { baton.post(); }};
-  SCOPE_EXIT {
-    t.join();
-  };
+  SCOPE_EXIT { t.join(); };
   folly::coro::blockingWait(baton);
 }
 
@@ -150,9 +142,7 @@ class SimplePromise {
         folly::Optional<T>& value) noexcept
         : awaiter_(baton), value_(value) {}
 
-    bool await_ready() {
-      return awaiter_.await_ready();
-    }
+    bool await_ready() { return awaiter_.await_ready(); }
 
     template <typename Promise>
     auto await_suspend(std::experimental::coroutine_handle<Promise> h) {
@@ -171,9 +161,7 @@ class SimplePromise {
 
   SimplePromise() = default;
 
-  WaitOperation operator co_await() {
-    return WaitOperation{baton_, value_};
-  }
+  WaitOperation operator co_await() { return WaitOperation{baton_, value_}; }
 
   template <typename... Args>
   void emplace(Args&&... args) {
@@ -189,9 +177,7 @@ class SimplePromise {
 TEST_F(BlockingWaitTest, WaitOnSimpleAsyncPromise) {
   SimplePromise<std::string> p;
   std::thread t{[&] { p.emplace("hello coroutines!"); }};
-  SCOPE_EXIT {
-    t.join();
-  };
+  SCOPE_EXIT { t.join(); };
   auto result = folly::coro::blockingWait(p);
   EXPECT_EQ("hello coroutines!", result);
 }
@@ -206,9 +192,7 @@ struct MoveCounting {
 TEST_F(BlockingWaitTest, WaitOnMoveOnlyAsyncPromise) {
   SimplePromise<MoveCounting> p;
   std::thread t{[&] { p.emplace(); }};
-  SCOPE_EXIT {
-    t.join();
-  };
+  SCOPE_EXIT { t.join(); };
   auto result = folly::coro::blockingWait(p);
 
   // Number of move-constructions:

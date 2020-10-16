@@ -621,9 +621,7 @@ namespace exception_wrapper_detail {
 template <class Ex, class Fn>
 struct catch_fn {
   Fn fn_;
-  auto operator()(Ex& ex) {
-    return fn_(ex);
-  }
+  auto operator()(Ex& ex) { return fn_(ex); }
 };
 
 template <class Ex, class Fn>

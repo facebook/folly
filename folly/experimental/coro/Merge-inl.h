@@ -154,9 +154,7 @@ AsyncGenerator<Reference, Value> merge(
 
   auto state = std::make_shared<SharedState>(executor);
 
-  SCOPE_EXIT {
-    state->cancelSource.requestCancellation();
-  };
+  SCOPE_EXIT { state->cancelSource.requestCancellation(); };
 
   // Start a task that consumes the stream of input streams.
   makeConsumerTask(state, std::move(sources))
@@ -173,9 +171,7 @@ AsyncGenerator<Reference, Value> merge(
     }
     state->recordPublished.reset();
 
-    SCOPE_EXIT {
-      state->recordConsumed.post();
-    };
+    SCOPE_EXIT { state->recordConsumed.post(); };
 
     if (state->record.hasValue()) {
       // next value

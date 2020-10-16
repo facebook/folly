@@ -43,16 +43,10 @@ class CallbackLifetimeTest : public testing::Test {
  public:
   using CounterPtr = std::unique_ptr<size_t>;
 
-  static bool kRaiseWillThrow() {
-    return true;
-  }
-  static constexpr auto kDelay() {
-    return std::chrono::milliseconds(500);
-  }
+  static bool kRaiseWillThrow() { return true; }
+  static constexpr auto kDelay() { return std::chrono::milliseconds(500); }
 
-  auto mkC() {
-    return std::make_unique<size_t>(0);
-  }
+  auto mkC() { return std::make_unique<size_t>(0); }
   auto mkCGuard(CounterPtr& ptr) {
     return makeGuard([&] {
       /* sleep override */ std::this_thread::sleep_for(kDelay());

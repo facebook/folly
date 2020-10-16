@@ -223,9 +223,7 @@ class FiberManager : public ::folly::Executor {
    * Does not include the number of remotely enqueued tasks that have not been
    * run yet.
    */
-  size_t numActiveTasks() const noexcept {
-    return fibersActive_;
-  }
+  size_t numActiveTasks() const noexcept { return fibersActive_; }
 
   /**
    * @return true if there are tasks ready to run.
@@ -305,9 +303,7 @@ class FiberManager : public ::folly::Executor {
       -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
 
   // Executor interface calls addTaskRemote
-  void add(folly::Func f) override {
-    addTaskRemote(std::move(f));
-  }
+  void add(folly::Func f) override { addTaskRemote(std::move(f)); }
 
   /**
    * Add a new task. When the task is complete, execute finally(Try<Result>&&)
@@ -377,9 +373,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * @return The currently running fiber or null if no fiber is executing.
    */
-  Fiber* currentFiber() const {
-    return currentFiber_;
-  }
+  Fiber* currentFiber() const { return currentFiber_; }
 
   /**
    * @return What was the most observed fiber stack usage (in bytes).
@@ -424,9 +418,7 @@ class FiberManager : public ::folly::Executor {
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
-  const Options& getOptions() const {
-    return options_;
-  }
+  const Options& getOptions() const { return options_; }
 
  private:
   friend class Baton;
@@ -581,9 +573,7 @@ class FiberManager : public ::folly::Executor {
 
    private:
     FiberManager& fiberManager_;
-    void timeoutExpired() noexcept {
-      run();
-    }
+    void timeoutExpired() noexcept { run(); }
     void callbackCanceled() noexcept {}
   };
 

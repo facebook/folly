@@ -96,17 +96,11 @@ struct ThreadEntryNode {
   }
 
   // if the list this node is part of is empty
-  FOLLY_ALWAYS_INLINE bool empty() const {
-    return (next == parent);
-  }
+  FOLLY_ALWAYS_INLINE bool empty() const { return (next == parent); }
 
-  FOLLY_ALWAYS_INLINE bool zero() const {
-    return isZero;
-  }
+  FOLLY_ALWAYS_INLINE bool zero() const { return isZero; }
 
-  FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() {
-    return parent;
-  }
+  FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() { return parent; }
 
   FOLLY_ALWAYS_INLINE ThreadEntryNode* getPrev();
 
@@ -278,9 +272,7 @@ class PthreadKeyUnregister {
 #endif
   }
 
-  static void registerKey(pthread_key_t key) {
-    instance_.registerKeyImpl(key);
-  }
+  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
 
  private:
   /**
@@ -332,9 +324,7 @@ struct StaticMetaBase {
     EntryID(const EntryID& other) = delete;
     EntryID& operator=(const EntryID& other) = delete;
 
-    uint32_t getOrInvalid() {
-      return value.load(std::memory_order_acquire);
-    }
+    uint32_t getOrInvalid() { return value.load(std::memory_order_acquire); }
 
     uint32_t getOrAllocate(StaticMetaBase& meta) {
       uint32_t id = getOrInvalid();
@@ -496,9 +486,7 @@ struct StaticMeta final : StaticMetaBase {
     return instance().lock_.try_lock(); // Make sure it's created
   }
 
-  static void onForkParent() {
-    instance().lock_.unlock();
-  }
+  static void onForkParent() { instance().lock_.unlock(); }
 
   static void onForkChild() {
     // only the current thread survives

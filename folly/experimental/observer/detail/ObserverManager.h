@@ -52,13 +52,9 @@ namespace observer_detail {
  */
 class ObserverManager {
  public:
-  static size_t getVersion() {
-    return getInstance().version_;
-  }
+  static size_t getVersion() { return getInstance().version_; }
 
-  static bool inManagerThread() {
-    return inManagerThread_;
-  }
+  static bool inManagerThread() { return inManagerThread_; }
 
   static void scheduleRefresh(Core::Ptr core, size_t minVersion) {
     if (core->getVersion() >= minVersion) {
@@ -97,9 +93,7 @@ class ObserverManager {
     auto& instance = getInstance();
 
     auto inManagerThread = std::exchange(inManagerThread_, true);
-    SCOPE_EXIT {
-      inManagerThread_ = inManagerThread;
-    };
+    SCOPE_EXIT { inManagerThread_ = inManagerThread; };
 
     SharedMutexReadPriority::ReadHolder rh(instance.versionMutex_);
 
@@ -125,9 +119,7 @@ class ObserverManager {
       currentDependencies_ = &dependencies_;
     }
 
-    static bool isActive() {
-      return currentDependencies_;
-    }
+    static bool isActive() { return currentDependencies_; }
 
     static void markDependency(Core::Ptr dependency) {
       DCHECK(inManagerThread());

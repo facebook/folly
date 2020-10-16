@@ -249,21 +249,13 @@ class ConcurrentHashMap {
     return res;
   }
 
-  ConstIterator cend() const noexcept {
-    return ConstIterator(NumShards);
-  }
+  ConstIterator cend() const noexcept { return ConstIterator(NumShards); }
 
-  ConstIterator cbegin() const noexcept {
-    return ConstIterator(this);
-  }
+  ConstIterator cbegin() const noexcept { return ConstIterator(this); }
 
-  ConstIterator end() const noexcept {
-    return cend();
-  }
+  ConstIterator end() const noexcept { return cend(); }
 
-  ConstIterator begin() const noexcept {
-    return cbegin();
-  }
+  ConstIterator begin() const noexcept { return cbegin(); }
 
   std::pair<ConstIterator, bool> insert(
       std::pair<key_type, mapped_type>&& foo) {
@@ -460,9 +452,7 @@ class ConcurrentHashMap {
     return res;
   }
 
-  float max_load_factor() const {
-    return load_factor_;
-  }
+  float max_load_factor() const { return load_factor_; }
 
   void max_load_factor(float factor) {
     for (uint64_t i = 0; i < NumShards; i++) {
@@ -477,13 +467,9 @@ class ConcurrentHashMap {
    public:
     friend class ConcurrentHashMap;
 
-    const value_type& operator*() const {
-      return *it_;
-    }
+    const value_type& operator*() const { return *it_; }
 
-    const value_type* operator->() const {
-      return &*it_;
-    }
+    const value_type* operator->() const { return &*it_; }
 
     ConstIterator& operator++() {
       ++it_;
@@ -495,9 +481,7 @@ class ConcurrentHashMap {
       return it_ == o.it_ && segment_ == o.segment_;
     }
 
-    bool operator!=(const ConstIterator& o) const {
-      return !(*this == o);
-    }
+    bool operator!=(const ConstIterator& o) const { return !(*this == o); }
 
     ConstIterator& operator=(const ConstIterator& o) = delete;
 

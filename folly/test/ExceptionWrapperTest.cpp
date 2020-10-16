@@ -32,12 +32,8 @@ class IntException : public AbstractIntException {
  public:
   explicit IntException(int i) : i_(i), what_(to<std::string>("int == ", i_)) {}
 
-  int getInt() const override {
-    return i_;
-  }
-  const char* what() const noexcept override {
-    return what_.c_str();
-  }
+  int getInt() const override { return i_; }
+  const char* what() const noexcept override { return what_.c_str(); }
 
  private:
   int i_;

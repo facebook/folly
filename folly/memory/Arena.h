@@ -134,17 +134,13 @@ class Arena {
   }
 
   // Gets the total memory used by the arena
-  size_t totalSize() const {
-    return totalAllocatedSize_ + sizeof(Arena);
-  }
+  size_t totalSize() const { return totalAllocatedSize_ + sizeof(Arena); }
 
   // Gets the total number of "used" bytes, i.e. bytes that the arena users
   // allocated via the calls to `allocate`. Doesn't include fragmentation, e.g.
   // if block size is 4KB and you allocate 2 objects of 3KB in size,
   // `bytesUsed()` will be 6KB, while `totalSize()` will be 8KB+.
-  size_t bytesUsed() const {
-    return bytesUsed_;
-  }
+  size_t bytesUsed() const { return bytesUsed_; }
 
   // not copyable or movable
   Arena(const Arena&) = delete;
@@ -160,9 +156,7 @@ class Arena {
   struct alignas(max_align_v) Block {
     BlockLink link;
 
-    char* start() {
-      return reinterpret_cast<char*>(this + 1);
-    }
+    char* start() { return reinterpret_cast<char*>(this + 1); }
 
     Block() = default;
     ~Block() = default;
@@ -177,9 +171,7 @@ class Arena {
     BlockLink link;
     const size_t allocSize;
 
-    char* start() {
-      return reinterpret_cast<char*>(this + 1);
-    }
+    char* start() { return reinterpret_cast<char*>(this + 1); }
 
     LargeBlock(size_t s) : allocSize(s) {}
     ~LargeBlock() = default;
@@ -264,15 +256,9 @@ class Arena {
     size_t minBlockSize;
   };
 
-  size_t minBlockSize() const {
-    return allocAndSize_.minBlockSize;
-  }
-  Alloc& alloc() {
-    return allocAndSize_;
-  }
-  const Alloc& alloc() const {
-    return allocAndSize_;
-  }
+  size_t minBlockSize() const { return allocAndSize_.minBlockSize; }
+  Alloc& alloc() { return allocAndSize_; }
+  const Alloc& alloc() const { return allocAndSize_; }
 
   AllocAndSize allocAndSize_;
   BlockList blocks_;
@@ -294,9 +280,7 @@ struct AllocatorHasTrivialDeallocate<Arena<Alloc>> : std::true_type {};
  */
 template <class Alloc>
 struct ArenaAllocatorTraits {
-  static size_t goodSize(const Alloc& /* alloc */, size_t size) {
-    return size;
-  }
+  static size_t goodSize(const Alloc& /* alloc */, size_t size) { return size; }
 };
 
 template <>

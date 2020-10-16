@@ -26,14 +26,10 @@ namespace folly {
 namespace test {
 
 struct One {
-  std::string toString() const {
-    return "One";
-  }
+  std::string toString() const { return "One"; }
 };
 struct Two {
-  std::string toString() const {
-    return "Two";
-  }
+  std::string toString() const { return "Two"; }
 };
 
 TEST(Overload, StdVariant) {

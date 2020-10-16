@@ -521,17 +521,11 @@ class SignedValueHandler<T, true> {
 template <typename T>
 class SignedValueHandler<T, false> {
  public:
-  ConversionCode init(const char*&) {
-    return ConversionCode::SUCCESS;
-  }
+  ConversionCode init(const char*&) { return ConversionCode::SUCCESS; }
 
-  ConversionCode overflow() {
-    return ConversionCode::POSITIVE_OVERFLOW;
-  }
+  ConversionCode overflow() { return ConversionCode::POSITIVE_OVERFLOW; }
 
-  Expected<T, ConversionCode> finalize(T value) {
-    return value;
-  }
+  Expected<T, ConversionCode> finalize(T value) { return value; }
 };
 
 /**

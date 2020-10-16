@@ -72,9 +72,7 @@ TEST_F(MergeTest, TruncateStream) {
           co_invoke([&]() -> AsyncGenerator<AsyncGenerator<int>> {
             auto makeGenerator = [&]() -> AsyncGenerator<int> {
               ++started;
-              SCOPE_EXIT {
-                ++completed;
-              };
+              SCOPE_EXIT { ++completed; };
               co_yield 1;
               co_await co_reschedule_on_current_executor;
               co_yield 2;

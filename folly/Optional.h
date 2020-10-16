@@ -156,9 +156,7 @@ class Optional {
     p.promise_->value_ = this;
   }
 
-  void assign(const None&) {
-    reset();
-  }
+  void assign(const None&) { reset(); }
 
   void assign(Optional&& src) {
     if (this != &src) {
@@ -235,13 +233,9 @@ class Optional {
     return value();
   }
 
-  void reset() noexcept {
-    storage_.clear();
-  }
+  void reset() noexcept { storage_.clear(); }
 
-  void clear() noexcept {
-    reset();
-  }
+  void clear() noexcept { reset(); }
 
   void swap(Optional& that) noexcept(IsNothrowSwappable<Value>::value) {
     if (hasValue() && that.hasValue()) {
@@ -284,37 +278,19 @@ class Optional {
   }
   Value* get_pointer() && = delete;
 
-  constexpr bool has_value() const noexcept {
-    return storage_.hasValue;
-  }
+  constexpr bool has_value() const noexcept { return storage_.hasValue; }
 
-  constexpr bool hasValue() const noexcept {
-    return has_value();
-  }
+  constexpr bool hasValue() const noexcept { return has_value(); }
 
-  constexpr explicit operator bool() const noexcept {
-    return has_value();
-  }
+  constexpr explicit operator bool() const noexcept { return has_value(); }
 
-  constexpr const Value& operator*() const& {
-    return value();
-  }
-  constexpr Value& operator*() & {
-    return value();
-  }
-  constexpr const Value&& operator*() const&& {
-    return std::move(value());
-  }
-  constexpr Value&& operator*() && {
-    return std::move(value());
-  }
+  constexpr const Value& operator*() const& { return value(); }
+  constexpr Value& operator*() & { return value(); }
+  constexpr const Value&& operator*() const&& { return std::move(value()); }
+  constexpr Value&& operator*() && { return std::move(value()); }
 
-  constexpr const Value* operator->() const {
-    return &value();
-  }
-  constexpr Value* operator->() {
-    return &value();
-  }
+  constexpr const Value* operator->() const { return &value(); }
+  constexpr Value* operator->() { return &value(); }
 
   // Return a copy of the value if set, or a given default if not.
   template <class U>
@@ -383,9 +359,7 @@ class Optional {
 
     constexpr StorageTriviallyDestructible()
         : emptyState('\0'), hasValue{false} {}
-    void clear() {
-      hasValue = false;
-    }
+    void clear() { hasValue = false; }
   };
 
   struct StorageNonTriviallyDestructible {
@@ -396,9 +370,7 @@ class Optional {
     bool hasValue;
 
     StorageNonTriviallyDestructible() : hasValue{false} {}
-    ~StorageNonTriviallyDestructible() {
-      clear();
-    }
+    ~StorageNonTriviallyDestructible() { clear(); }
 
     void clear() {
       if (hasValue) {
@@ -615,9 +587,7 @@ struct OptionalPromiseReturn {
   OptionalPromiseReturn(OptionalPromiseReturn&& that) noexcept
       : OptionalPromiseReturn{*that.promise_} {}
   ~OptionalPromiseReturn() {}
-  /* implicit */ operator Optional<Value>() & {
-    return std::move(storage_);
-  }
+  /* implicit */ operator Optional<Value>() & { return std::move(storage_); }
 };
 
 template <typename Value>
@@ -629,15 +599,11 @@ struct OptionalPromise {
   //    folly::Optional<Value> retobj{ p.get_return_object(); } // MSVC
   // or:
   //    auto retobj = p.get_return_object(); // clang
-  OptionalPromiseReturn<Value> get_return_object() noexcept {
-    return *this;
-  }
+  OptionalPromiseReturn<Value> get_return_object() noexcept { return *this; }
   std::experimental::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  std::experimental::suspend_never final_suspend() const noexcept {
-    return {};
-  }
+  std::experimental::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U>
   void return_value(U&& u) {
     *value_ = static_cast<U&&>(u);
@@ -652,12 +618,8 @@ struct OptionalPromise {
 template <typename Value>
 struct OptionalAwaitable {
   Optional<Value> o_;
-  bool await_ready() const noexcept {
-    return o_.hasValue();
-  }
-  Value await_resume() {
-    return std::move(o_.value());
-  }
+  bool await_ready() const noexcept { return o_.hasValue(); }
+  Value await_resume() { return std::move(o_.value()); }
 
   // Explicitly only allow suspension into an OptionalPromise
   template <typename U>

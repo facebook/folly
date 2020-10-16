@@ -164,9 +164,7 @@ class TestAcceptCallback : public AsyncServerSocket::AcceptCallback {
         acceptStoppedFn_(),
         events_() {}
 
-  std::deque<EventInfo>* getEvents() {
-    return &events_;
-  }
+  std::deque<EventInfo>* getEvents() { return &events_; }
 
   void setConnectionAcceptedFn(
       const std::function<void(NetworkSocket, const folly::SocketAddress&)>&

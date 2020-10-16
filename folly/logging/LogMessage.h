@@ -74,34 +74,22 @@ class LogMessage {
       folly::StringPiece functionName,
       std::string&& msg);
 
-  const LogCategory* getCategory() const {
-    return category_;
-  }
+  const LogCategory* getCategory() const { return category_; }
 
-  LogLevel getLevel() const {
-    return level_;
-  }
+  LogLevel getLevel() const { return level_; }
 
-  folly::StringPiece getFileName() const {
-    return filename_;
-  }
+  folly::StringPiece getFileName() const { return filename_; }
   folly::StringPiece getFileBaseName() const;
 
-  unsigned int getLineNumber() const {
-    return lineNumber_;
-  }
+  unsigned int getLineNumber() const { return lineNumber_; }
 
-  folly::StringPiece getFunctionName() const {
-    return functionName_;
-  }
+  folly::StringPiece getFunctionName() const { return functionName_; }
 
   std::chrono::system_clock::time_point getTimestamp() const {
     return timestamp_;
   }
 
-  uint64_t getThreadID() const {
-    return threadID_;
-  }
+  uint64_t getThreadID() const { return threadID_; }
 
   const std::string& getMessage() const {
     // If no characters needed to be sanitized, message_ will be empty.
@@ -111,21 +99,13 @@ class LogMessage {
     return message_;
   }
 
-  const std::string& getRawMessage() const {
-    return rawMessage_;
-  }
+  const std::string& getRawMessage() const { return rawMessage_; }
 
-  bool containsNewlines() const {
-    return numNewlines_ > 0;
-  }
+  bool containsNewlines() const { return numNewlines_ > 0; }
 
-  size_t getNumNewlines() const {
-    return numNewlines_;
-  }
+  size_t getNumNewlines() const { return numNewlines_; }
 
-  const std::string& getContextString() const {
-    return contextString_;
-  }
+  const std::string& getContextString() const { return contextString_; }
 
  private:
   void sanitizeMessage();

@@ -171,9 +171,7 @@ struct NonTrivialStruct {
     ++count;
   }
 
-  ~NonTrivialStruct() {
-    --count;
-  }
+  ~NonTrivialStruct() { --count; }
 };
 
 FOLLY_TLS size_t NonTrivialStruct::count;
@@ -252,12 +250,8 @@ std::atomic<int> dnum{0};
 
 TEST(IndexedMemPool, construction_destruction) {
   struct Foo {
-    Foo() {
-      cnum.fetch_add(1);
-    }
-    ~Foo() {
-      dnum.fetch_add(1);
-    }
+    Foo() { cnum.fetch_add(1); }
+    ~Foo() { dnum.fetch_add(1); }
   };
 
   std::atomic<bool> start{false};
@@ -308,21 +302,15 @@ TEST(IndexedMemPool, construction_destruction) {
 struct MockTraits {
   static MockTraits* instance;
 
-  MockTraits() {
-    instance = this;
-  }
+  MockTraits() { instance = this; }
 
-  ~MockTraits() {
-    instance = nullptr;
-  }
+  ~MockTraits() { instance = nullptr; }
 
   MOCK_METHOD2(onAllocate, void(std::string*, std::string));
   MOCK_METHOD1(onRecycle, void(std::string*));
 
   struct Forwarder {
-    static void initialize(std::string* ptr) {
-      new (ptr) std::string();
-    }
+    static void initialize(std::string* ptr) { new (ptr) std::string(); }
 
     static void cleanup(std::string* ptr) {
       using std::string;
@@ -333,9 +321,7 @@ struct MockTraits {
       instance->onAllocate(ptr, s);
     }
 
-    static void onRecycle(std::string* ptr) {
-      instance->onRecycle(ptr);
-    }
+    static void onRecycle(std::string* ptr) { instance->onRecycle(ptr); }
   };
 };
 

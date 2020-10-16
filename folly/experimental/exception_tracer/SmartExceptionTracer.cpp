@@ -66,9 +66,7 @@ void throwCallback(
   if (handlingThrow) {
     return;
   }
-  SCOPE_EXIT {
-    handlingThrow = false;
-  };
+  SCOPE_EXIT { handlingThrow = false; };
   handlingThrow = true;
 
   getMeta().withWLockPtr([&](auto wlock) noexcept {
@@ -90,9 +88,7 @@ void throwCallback(
 }
 
 struct Initialize {
-  Initialize() {
-    registerCxaThrowCallback(throwCallback);
-  }
+  Initialize() { registerCxaThrowCallback(throwCallback); }
 };
 
 Initialize initialize;

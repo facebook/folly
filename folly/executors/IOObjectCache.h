@@ -60,9 +60,7 @@ class IOObjectCache {
     return it->second;
   }
 
-  void setFactory(TFactory factory) {
-    factory_ = std::move(factory);
-  }
+  void setFactory(TFactory factory) { factory_ = std::move(factory); }
 
  private:
   folly::ThreadLocal<std::map<folly::EventBase*, std::shared_ptr<T>>> cache_;

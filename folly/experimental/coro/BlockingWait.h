@@ -42,9 +42,7 @@ class BlockingWaitTask;
 
 class BlockingWaitPromiseBase {
   struct FinalAwaiter {
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
     template <typename Promise>
     void await_suspend(
         std::experimental::coroutine_handle<Promise> coro) noexcept {
@@ -65,21 +63,13 @@ class BlockingWaitPromiseBase {
     ::folly_coro_async_free(ptr, size);
   }
 
-  std::experimental::suspend_always initial_suspend() {
-    return {};
-  }
+  std::experimental::suspend_always initial_suspend() { return {}; }
 
-  FinalAwaiter final_suspend() noexcept {
-    return {};
-  }
+  FinalAwaiter final_suspend() noexcept { return {}; }
 
-  bool done() const noexcept {
-    return baton_.ready();
-  }
+  bool done() const noexcept { return baton_.ready(); }
 
-  void wait() noexcept {
-    baton_.wait();
-  }
+  void wait() noexcept { baton_.wait(); }
 
  private:
   folly::fibers::Baton baton_;
@@ -107,9 +97,7 @@ class BlockingWaitPromise final : public BlockingWaitPromiseBase {
     result_->emplace(static_cast<U&&>(value));
   }
 
-  void setTry(folly::Try<T>* result) noexcept {
-    result_ = &result;
-  }
+  void setTry(folly::Try<T>* result) noexcept { result_ = &result; }
 
  private:
   folly::Try<T>* result_;
@@ -175,9 +163,7 @@ class BlockingWaitPromise<void> final : public BlockingWaitPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  void setTry(folly::Try<void>* result) noexcept {
-    result_ = result;
-  }
+  void setTry(folly::Try<void>* result) noexcept { result_ = result; }
 
  private:
   folly::Try<void>* result_;
@@ -214,9 +200,7 @@ class BlockingWaitTask {
     return result;
   }
 
-  T get() && {
-    return std::move(*this).getAsTry().value();
-  }
+  T get() && { return std::move(*this).getAsTry().value(); }
 
   T getVia(folly::DrivableExecutor* executor) && {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;

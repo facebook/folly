@@ -41,15 +41,9 @@ class Path {
       folly::StringPiece subDir,
       folly::StringPiece file);
 
-  folly::StringPiece baseDir() const {
-    return baseDir_;
-  }
-  folly::StringPiece subDir() const {
-    return subDir_;
-  }
-  folly::StringPiece file() const {
-    return file_;
-  }
+  folly::StringPiece baseDir() const { return baseDir_; }
+  folly::StringPiece subDir() const { return subDir_; }
+  folly::StringPiece file() const { return file_; }
 
   size_t size() const;
 
@@ -115,9 +109,7 @@ struct SymbolizedFrame {
   LocationInfo location;
   std::shared_ptr<ElfFile> file;
 
-  void clear() {
-    *this = SymbolizedFrame();
-  }
+  void clear() { *this = SymbolizedFrame(); }
 };
 
 template <size_t N>

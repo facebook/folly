@@ -1500,9 +1500,7 @@ struct TestStructDefaultAllocator {
 
 std::atomic<size_t> allocatorConstructedCount(0);
 struct TestStructStringAllocator : std::allocator<char> {
-  TestStructStringAllocator() {
-    ++allocatorConstructedCount;
-  }
+  TestStructStringAllocator() { ++allocatorConstructedCount; }
 };
 
 } // namespace

@@ -62,13 +62,9 @@ class SimpleLoopController : public LoopController {
   /**
    * Requests exit from loop() as soon as all waiting tasks complete.
    */
-  void stop() {
-    stopRequested_ = true;
-  }
+  void stop() { stopRequested_ = true; }
 
-  int remoteScheduleCalled() const {
-    return remoteScheduleCalled_;
-  }
+  int remoteScheduleCalled() const { return remoteScheduleCalled_; }
 
   void runLoop() override {
     do {
@@ -84,17 +80,11 @@ class SimpleLoopController : public LoopController {
     } while (remoteLoopRun_ < remoteScheduleCalled_);
   }
 
-  void runEagerFiber(Fiber* fiber) override {
-    fm_->runEagerFiberImpl(fiber);
-  }
+  void runEagerFiber(Fiber* fiber) override { fm_->runEagerFiberImpl(fiber); }
 
-  void schedule() override {
-    scheduled_ = true;
-  }
+  void schedule() override { scheduled_ = true; }
 
-  HHWheelTimer* timer() override {
-    return timer_.get();
-  }
+  HHWheelTimer* timer() override { return timer_.get(); }
 
   bool isInLoopThread() const {
     auto tid = loopThread_.load(std::memory_order_relaxed);
@@ -115,9 +105,7 @@ class SimpleLoopController : public LoopController {
 
   /* LoopController interface */
 
-  void setFiberManager(FiberManager* fm) override {
-    fm_ = fm;
-  }
+  void setFiberManager(FiberManager* fm) override { fm_ = fm; }
 
   void scheduleThreadSafe() override {
     ++remoteScheduleCalled_;

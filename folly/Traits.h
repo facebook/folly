@@ -558,9 +558,7 @@ struct Negation : bool_constant<!T::value> {};
 template <bool... Bs>
 struct Bools {
   using valid_type = bool;
-  static constexpr std::size_t size() {
-    return sizeof...(Bs);
-  }
+  static constexpr std::size_t size() { return sizeof...(Bs); }
 };
 
 // Lighter-weight than Conjunction, but evaluates all sub-conditions eagerly.

@@ -66,14 +66,10 @@ class DelayedDestruction : public DelayedDestructionBase {
    */
   class Destructor {
    public:
-    void operator()(DelayedDestruction* dd) const {
-      dd->destroy();
-    }
+    void operator()(DelayedDestruction* dd) const { dd->destroy(); }
   };
 
-  bool getDestroyPending() const {
-    return destroyPending_;
-  }
+  bool getDestroyPending() const { return destroyPending_; }
 
  protected:
   /**

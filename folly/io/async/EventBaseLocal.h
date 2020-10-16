@@ -76,9 +76,7 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
  public:
   EventBaseLocal() : EventBaseLocalBase() {}
 
-  T* get(EventBase& evb) {
-    return static_cast<T*>(getVoid(evb));
-  }
+  T* get(EventBase& evb) { return static_cast<T*>(getVoid(evb)); }
 
   void emplace(EventBase& evb, T* ptr) {
     std::shared_ptr<T> smartPtr(ptr);

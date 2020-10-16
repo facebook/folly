@@ -40,9 +40,7 @@ void handleLoggingError(
 class NoCleanUpLogWriter : public AsyncLogWriter {
   void performIO(const std::vector<std::string>&, size_t) override {}
 
-  bool ttyOutput() const override {
-    return false;
-  }
+  bool ttyOutput() const override { return false; }
 };
 } // namespace
 

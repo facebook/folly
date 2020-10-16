@@ -103,9 +103,7 @@ class shared_ptr_internals {
 
   template <typename Tag, typename Tag::type M>
   struct Rob {
-    friend typename Tag::type fieldPtr(Tag) {
-      return M;
-    }
+    friend typename Tag::type fieldPtr(Tag) { return M; }
   };
 };
 

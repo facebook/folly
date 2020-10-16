@@ -72,9 +72,7 @@ class EventHandlerTest : public Test {
     efd = 0;
   }
 
-  void efd_write(uint64_t val) {
-    write(efd, &val, sizeof(val));
-  }
+  void efd_write(uint64_t val) { write(efd, &val, sizeof(val)); }
 
   uint64_t efd_read() {
     uint64_t val = 0;
@@ -202,9 +200,7 @@ class EventHandlerOobTest : public ::testing::Test {
     clientThread = std::thread([serverPortFuture = serverReady.get_future(),
                                 clientOps]() mutable {
       int clientFd = socket(AF_INET, SOCK_STREAM, 0);
-      SCOPE_EXIT {
-        close(clientFd);
-      };
+      SCOPE_EXIT { close(clientFd); };
       struct hostent* he{nullptr};
       struct sockaddr_in server;
 
@@ -234,9 +230,7 @@ class EventHandlerOobTest : public ::testing::Test {
   void acceptConn() {
     // make the server.
     int listenfd = socket(AF_INET, SOCK_STREAM, 0);
-    SCOPE_EXIT {
-      close(listenfd);
-    };
+    SCOPE_EXIT { close(listenfd); };
     PCHECK(listenfd != -1) << "unable to open socket";
 
     struct sockaddr_in sin;

@@ -796,9 +796,7 @@ int customDeleterCount = 0;
 int destructorCount = 0;
 struct OwnershipTestClass {
   explicit OwnershipTestClass(int v = 0) : val(v) {}
-  ~OwnershipTestClass() {
-    ++destructorCount;
-  }
+  ~OwnershipTestClass() { ++destructorCount; }
   int val;
 };
 
@@ -1647,12 +1645,8 @@ TEST(IOBuf, FreeFn) {
     explicit IOBufFreeObserver(Func&& freeFunc, Func&& releaseFunc)
         : freeFunc_(std::move(freeFunc)),
           releaseFunc_(std::move(releaseFunc)) {}
-    void afterFreeExtBuffer() const noexcept {
-      freeFunc_();
-    }
-    void afterReleaseExtBuffer() const noexcept {
-      releaseFunc_();
-    }
+    void afterFreeExtBuffer() const noexcept { freeFunc_(); }
+    void afterReleaseExtBuffer() const noexcept { releaseFunc_(); }
 
    private:
     Func freeFunc_;

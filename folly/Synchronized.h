@@ -111,9 +111,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * LockedPtr offers operator -> and * to provide access to the datum.
    * The lock will be released when the LockedPtr is destroyed.
    */
-  LockedPtr wlock() {
-    return LockedPtr(static_cast<Subclass*>(this));
-  }
+  LockedPtr wlock() { return LockedPtr(static_cast<Subclass*>(this)); }
   ConstWLockedPtr wlock() const {
     return ConstWLockedPtr(static_cast<const Subclass*>(this));
   }
@@ -137,9 +135,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::SHARED> {
    * access to the data unless the lock is acquired in non-const
    * context and asNonConstUnsafe() is used.
    */
-  RLockedPtr rlock() {
-    return RLockedPtr(static_cast<Subclass*>(this));
-  }
+  RLockedPtr rlock() { return RLockedPtr(static_cast<Subclass*>(this)); }
   ConstLockedPtr rlock() const {
     return ConstLockedPtr(static_cast<const Subclass*>(this));
   }
@@ -380,9 +376,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    * Acquire a lock, and return a LockedPtr that can be used to safely access
    * the datum.
    */
-  LockedPtr lock() {
-    return LockedPtr(static_cast<Subclass*>(this));
-  }
+  LockedPtr lock() { return LockedPtr(static_cast<Subclass*>(this)); }
 
   /**
    * Acquire a lock, and return a ConstLockedPtr that can be used to safely
@@ -399,9 +393,7 @@ class SynchronizedBase<Subclass, detail::MutexLevel::UNIQUE> {
    * (Use LockedPtr::operator bool() or LockedPtr::isNull() to check for
    * validity.)
    */
-  TryLockedPtr tryLock() {
-    return TryLockedPtr{static_cast<Subclass*>(this)};
-  }
+  TryLockedPtr tryLock() { return TryLockedPtr{static_cast<Subclass*>(this)}; }
   ConstTryLockedPtr tryLock() const {
     return ConstTryLockedPtr{static_cast<const Subclass*>(this)};
   }
@@ -649,12 +641,8 @@ struct Synchronized : public SynchronizedBase<
    * contextualLock() is primarily intended for use in other template functions
    * that do not necessarily know the lock type.
    */
-  LockedPtr contextualLock() {
-    return LockedPtr(this);
-  }
-  ConstLockedPtr contextualLock() const {
-    return ConstLockedPtr(this);
-  }
+  LockedPtr contextualLock() { return LockedPtr(this); }
+  ConstLockedPtr contextualLock() const { return ConstLockedPtr(this); }
   template <class Rep, class Period>
   LockedPtr contextualLock(const std::chrono::duration<Rep, Period>& timeout) {
     return LockedPtr(this, timeout);
@@ -671,9 +659,7 @@ struct Synchronized : public SynchronizedBase<
    * contextualRLock() when you know that you prefer a read lock (if
    * available), even if the Synchronized<T> object itself is non-const.
    */
-  ConstLockedPtr contextualRLock() const {
-    return ConstLockedPtr(this);
-  }
+  ConstLockedPtr contextualRLock() const { return ConstLockedPtr(this); }
   template <class Rep, class Period>
   ConstLockedPtr contextualRLock(
       const std::chrono::duration<Rep, Period>& timeout) const {
@@ -795,12 +781,8 @@ struct Synchronized : public SynchronizedBase<
    * To be used with care - this method explicitly overrides the normal safety
    * guarantees provided by the rest of the Synchronized API.
    */
-  T& unsafeGetUnlocked() {
-    return datum_;
-  }
-  const T& unsafeGetUnlocked() const {
-    return datum_;
-  }
+  T& unsafeGetUnlocked() { return datum_; }
+  const T& unsafeGetUnlocked() const { return datum_; }
 
  private:
   template <class LockedType, class MutexType, class LockPolicy>
@@ -889,9 +871,7 @@ class SynchronizedLocker {
     auto args = std::tuple<const Args&...>{args_};
     return apply(lockFunc_, std::tuple_cat(std::tie(synchronized), args));
   }
-  auto tryLock() const {
-    return tryLockFunc_(synchronized);
-  }
+  auto tryLock() const { return tryLockFunc_(synchronized); }
 
  private:
   Synchronized& synchronized;
@@ -1159,9 +1139,7 @@ class LockedPtrBase {
    * so we return it as is.  (This function is more interesting in the
    * std::mutex specialization below.)
    */
-  static SynchronizedType* getSynchronized(UnlockerData data) {
-    return data;
-  }
+  static SynchronizedType* getSynchronized(UnlockerData data) { return data; }
 
   UnlockerData releaseLock() {
     DCHECK(parent_ != nullptr);
@@ -1257,9 +1235,7 @@ class LockedPtrBase<SynchronizedType, std::mutex, LockPolicy> {
    * manually interact with the underlying unique_lock, this is strongly
    * discouraged.
    */
-  std::unique_lock<std::mutex>& getUniqueLock() {
-    return lock_;
-  }
+  std::unique_lock<std::mutex>& getUniqueLock() { return lock_; }
 
   /**
    * Unlock the synchronized data.
@@ -1459,36 +1435,28 @@ class LockedPtr : public LockedPtrBase<
    * Methods such as scopedUnlock() reset the LockedPtr to null for the
    * duration of the unlock.
    */
-  bool isNull() const {
-    return this->parent_ == nullptr;
-  }
+  bool isNull() const { return this->parent_ == nullptr; }
 
   /**
    * Explicit boolean conversion.
    *
    * Returns !isNull()
    */
-  explicit operator bool() const {
-    return this->parent_ != nullptr;
-  }
+  explicit operator bool() const { return this->parent_ != nullptr; }
 
   /**
    * Access the locked data.
    *
    * This method should only be used if the LockedPtr is valid.
    */
-  CDataType* operator->() const {
-    return &this->parent_->datum_;
-  }
+  CDataType* operator->() const { return &this->parent_->datum_; }
 
   /**
    * Access the locked data.
    *
    * This method should only be used if the LockedPtr is valid.
    */
-  CDataType& operator*() const {
-    return this->parent_->datum_;
-  }
+  CDataType& operator*() const { return this->parent_->datum_; }
 
   /**
    * Locks that allow concurrent access (shared, upgrade) force const

@@ -921,15 +921,9 @@ TEST(SemiFuture, makePromiseContract) {
 
 TEST(SemiFuture, invokeCallbackWithOriginalCVRef) {
   struct Foo {
-    int operator()(int x) & {
-      return x + 1;
-    }
-    int operator()(int x) const& {
-      return x + 2;
-    }
-    int operator()(int x) && {
-      return x + 3;
-    }
+    int operator()(int x) & { return x + 1; }
+    int operator()(int x) const& { return x + 2; }
+    int operator()(int x) && { return x + 3; }
   };
 
   Foo foo;

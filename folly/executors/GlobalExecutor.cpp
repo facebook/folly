@@ -36,9 +36,7 @@ class GlobalTag {};
 // aka InlineExecutor
 class DefaultCPUExecutor : public Executor {
  public:
-  FOLLY_NOINLINE void add(Func f) override {
-    f();
-  }
+  FOLLY_NOINLINE void add(Func f) override { f(); }
 };
 
 Singleton<std::shared_ptr<DefaultCPUExecutor>> gDefaultGlobalCPUExecutor([] {

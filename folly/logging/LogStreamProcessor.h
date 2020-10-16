@@ -276,9 +276,7 @@ class LogStreamProcessor {
    */
   void operator&(LogStream&& stream) noexcept;
 
-  std::ostream& stream() noexcept {
-    return stream_;
-  }
+  std::ostream& stream() noexcept { return stream_; }
 
   void logNow() noexcept;
 

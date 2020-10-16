@@ -479,9 +479,7 @@ struct ExpectingAlloc {
     return std::allocator<T>{}.allocate(n);
   }
 
-  void deallocate(T* p, std::size_t n) {
-    std::allocator<T>{}.deallocate(p, n);
-  }
+  void deallocate(T* p, std::size_t n) { std::allocator<T>{}.deallocate(p, n); }
 
   std::size_t expectedSize_;
   std::size_t expectedCount_;

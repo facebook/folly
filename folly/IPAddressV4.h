@@ -139,23 +139,17 @@ class IPAddressV4 {
   IPAddressV6 getIPv6For6To4() const;
 
   // Return the long (network byte order) representation of the address.
-  uint32_t toLong() const {
-    return toAddr().s_addr;
-  }
+  uint32_t toLong() const { return toAddr().s_addr; }
 
   // Return the long (host byte order) representation of the address.
   // This is slightly slower than toLong.
-  uint32_t toLongHBO() const {
-    return ntohl(toLong());
-  }
+  uint32_t toLongHBO() const { return ntohl(toLong()); }
 
   /**
    * @see IPAddress#bitCount
    * @returns 32
    */
-  static constexpr size_t bitCount() {
-    return 32;
-  }
+  static constexpr size_t bitCount() { return 32; }
 
   /**
    * @See IPAddress#toJson
@@ -212,9 +206,7 @@ class IPAddressV4 {
   std::string toInverseArpaName() const;
 
   // return underlying in_addr structure
-  in_addr toAddr() const {
-    return addr_.inAddr_;
-  }
+  in_addr toAddr() const { return addr_.inAddr_; }
 
   sockaddr_in toSockAddr() const {
     sockaddr_in addr;
@@ -231,17 +223,13 @@ class IPAddressV4 {
   }
 
   // @see IPAddress#toFullyQualified
-  std::string toFullyQualified() const {
-    return str();
-  }
+  std::string toFullyQualified() const { return str(); }
 
   // @see IPAddress#toFullyQualifiedAppend
   void toFullyQualifiedAppend(std::string& out) const;
 
   // @see IPAddress#version
-  uint8_t version() const {
-    return 4;
-  }
+  uint8_t version() const { return 4; }
 
   /**
    * Return the mask associated with the given number of bits.
@@ -259,9 +247,7 @@ class IPAddressV4 {
       const CIDRNetworkV4& one,
       const CIDRNetworkV4& two);
   // Number of bytes in the address representation.
-  static size_t byteCount() {
-    return 4;
-  }
+  static size_t byteCount() { return 4; }
   // get nth most significant bit - 0 indexed
   bool getNthMSBit(size_t bitIndex) const {
     return detail::getNthMSBitImpl(*this, bitIndex, AF_INET);
@@ -277,9 +263,7 @@ class IPAddressV4 {
     return getNthMSByte(byteCount() - byteIndex - 1);
   }
 
-  const unsigned char* bytes() const {
-    return addr_.bytes_.data();
-  }
+  const unsigned char* bytes() const { return addr_.bytes_.data(); }
 
  private:
   union AddressStorage {
@@ -288,9 +272,7 @@ class IPAddressV4 {
         "size of in_addr and ByteArray4 are different");
     in_addr inAddr_;
     ByteArray4 bytes_;
-    AddressStorage() {
-      std::memset(this, 0, sizeof(AddressStorage));
-    }
+    AddressStorage() { std::memset(this, 0, sizeof(AddressStorage)); }
     explicit AddressStorage(const ByteArray4 bytes) : bytes_(bytes) {}
     explicit AddressStorage(const in_addr addr) : inAddr_(addr) {}
   } addr_;
@@ -340,8 +322,6 @@ inline bool operator>=(const IPAddressV4& a, const IPAddressV4& b) {
 namespace std {
 template <>
 struct hash<folly::IPAddressV4> {
-  size_t operator()(const folly::IPAddressV4 addr) const {
-    return addr.hash();
-  }
+  size_t operator()(const folly::IPAddressV4 addr) const { return addr.hash(); }
 };
 } // namespace std

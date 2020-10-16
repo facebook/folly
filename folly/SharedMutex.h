@@ -622,15 +622,9 @@ class SharedMutexImpl {
   // before the wait context is invoked.
 
   struct WaitForever {
-    bool canBlock() {
-      return true;
-    }
-    bool canTimeOut() {
-      return false;
-    }
-    bool shouldTimeOut() {
-      return false;
-    }
+    bool canBlock() { return true; }
+    bool canTimeOut() { return false; }
+    bool shouldTimeOut() { return false; }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
       detail::futexWait(&futex, expected, waitMask);
@@ -639,15 +633,9 @@ class SharedMutexImpl {
   };
 
   struct WaitNever {
-    bool canBlock() {
-      return false;
-    }
-    bool canTimeOut() {
-      return true;
-    }
-    bool shouldTimeOut() {
-      return true;
-    }
+    bool canBlock() { return false; }
+    bool canTimeOut() { return true; }
+    bool shouldTimeOut() { return true; }
 
     bool doWait(
         Futex& /* futex */,
@@ -674,12 +662,8 @@ class SharedMutexImpl {
       return deadline_;
     }
 
-    bool canBlock() {
-      return duration_.count() > 0;
-    }
-    bool canTimeOut() {
-      return true;
-    }
+    bool canBlock() { return duration_.count() > 0; }
+    bool canTimeOut() { return true; }
 
     bool shouldTimeOut() {
       return std::chrono::steady_clock::now() > deadline();
@@ -696,15 +680,9 @@ class SharedMutexImpl {
   struct WaitUntilDeadline {
     std::chrono::time_point<Clock, Duration> absDeadline_;
 
-    bool canBlock() {
-      return true;
-    }
-    bool canTimeOut() {
-      return true;
-    }
-    bool shouldTimeOut() {
-      return Clock::now() > absDeadline_;
-    }
+    bool canBlock() { return true; }
+    bool canTimeOut() { return true; }
+    bool shouldTimeOut() { return Clock::now() > absDeadline_; }
 
     bool doWait(Futex& futex, uint32_t expected, uint32_t waitMask) {
       auto result =
@@ -1174,13 +1152,9 @@ class SharedMutexImpl {
     return &deferredReaders[slot * kDeferredSeparationFactor];
   }
 
-  uintptr_t tokenfulSlotValue() {
-    return reinterpret_cast<uintptr_t>(this);
-  }
+  uintptr_t tokenfulSlotValue() { return reinterpret_cast<uintptr_t>(this); }
 
-  uintptr_t tokenlessSlotValue() {
-    return tokenfulSlotValue() | kTokenless;
-  }
+  uintptr_t tokenlessSlotValue() { return tokenfulSlotValue() | kTokenless; }
 
   bool slotValueIsThis(uintptr_t slotValue) {
     return (slotValue & ~kTokenless) == tokenfulSlotValue();
@@ -1396,9 +1370,7 @@ class SharedMutexImpl {
     ReadHolder(const ReadHolder& rhs) = delete;
     ReadHolder& operator=(const ReadHolder& rhs) = delete;
 
-    ~ReadHolder() {
-      unlock();
-    }
+    ~ReadHolder() { unlock(); }
 
     void unlock() {
       if (lock_) {
@@ -1447,9 +1419,7 @@ class SharedMutexImpl {
     UpgradeHolder(const UpgradeHolder& rhs) = delete;
     UpgradeHolder& operator=(const UpgradeHolder& rhs) = delete;
 
-    ~UpgradeHolder() {
-      unlock();
-    }
+    ~UpgradeHolder() { unlock(); }
 
     void unlock() {
       if (lock_) {
@@ -1521,9 +1491,7 @@ class SharedMutexImpl {
     WriteHolder(const WriteHolder& rhs) = delete;
     WriteHolder& operator=(const WriteHolder& rhs) = delete;
 
-    ~WriteHolder() {
-      unlock();
-    }
+    ~WriteHolder() { unlock(); }
 
     void unlock() {
       if (lock_) {
@@ -1539,18 +1507,10 @@ class SharedMutexImpl {
   };
 
   // Adapters for Synchronized<>
-  friend void acquireRead(SharedMutexImpl& lock) {
-    lock.lock_shared();
-  }
-  friend void acquireReadWrite(SharedMutexImpl& lock) {
-    lock.lock();
-  }
-  friend void releaseRead(SharedMutexImpl& lock) {
-    lock.unlock_shared();
-  }
-  friend void releaseReadWrite(SharedMutexImpl& lock) {
-    lock.unlock();
-  }
+  friend void acquireRead(SharedMutexImpl& lock) { lock.lock_shared(); }
+  friend void acquireReadWrite(SharedMutexImpl& lock) { lock.lock(); }
+  friend void releaseRead(SharedMutexImpl& lock) { lock.unlock_shared(); }
+  friend void releaseReadWrite(SharedMutexImpl& lock) { lock.unlock(); }
   friend bool acquireRead(SharedMutexImpl& lock, unsigned int ms) {
     return lock.try_lock_shared_for(std::chrono::milliseconds(ms));
   }

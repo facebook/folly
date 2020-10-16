@@ -85,12 +85,8 @@ class Enumerator {
         : index(e.idx_), element(*e.it_) {}
 
     // Non-const Proxy: Forward constness from Iterator.
-    FOLLY_ALWAYS_INLINE reference operator*() {
-      return element;
-    }
-    FOLLY_ALWAYS_INLINE pointer operator->() {
-      return std::addressof(element);
-    }
+    FOLLY_ALWAYS_INLINE reference operator*() { return element; }
+    FOLLY_ALWAYS_INLINE pointer operator->() { return std::addressof(element); }
 
     // Const Proxy: Force const references.
     FOLLY_ALWAYS_INLINE typename MakeConst<reference>::type operator*() const {
@@ -105,9 +101,7 @@ class Enumerator {
     reference element;
   };
 
-  FOLLY_ALWAYS_INLINE Proxy operator*() const {
-    return Proxy(*this);
-  }
+  FOLLY_ALWAYS_INLINE Proxy operator*() const { return Proxy(*this); }
 
   FOLLY_ALWAYS_INLINE Enumerator& operator++() {
     ++it_;

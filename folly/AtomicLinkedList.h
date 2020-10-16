@@ -44,9 +44,7 @@ class AtomicLinkedList {
     sweep([](T&&) {});
   }
 
-  bool empty() const {
-    return list_.empty();
-  }
+  bool empty() const { return list_.empty(); }
 
   /**
    * Atomically insert t at the head of the list.

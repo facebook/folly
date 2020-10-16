@@ -32,9 +32,7 @@ class KeepAliveTestExecutor : public Executor {
     return true;
   }
 
-  void keepAliveRelease() noexcept override {
-    --refCount;
-  }
+  void keepAliveRelease() noexcept override { --refCount; }
 
   std::atomic<int> refCount{0};
 };

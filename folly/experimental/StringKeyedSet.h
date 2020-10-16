@@ -176,9 +176,7 @@ class StringKeyedSetBase : private std::set<StringPiece, Compare, Alloc> {
 
   using Base::get_allocator;
 
-  void swap(StringKeyedSetBase& other) & {
-    return Base::swap(other);
-  }
+  void swap(StringKeyedSetBase& other) & { return Base::swap(other); }
 
   ~StringKeyedSetBase() {
     // Here we assume that set doesn't use keys in destructor

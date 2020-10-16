@@ -54,13 +54,9 @@ class hazptr_tc_entry {
     hprec_ = hprec;
   }
 
-  FOLLY_ALWAYS_INLINE hazptr_rec<Atom>* get() const noexcept {
-    return hprec_;
-  }
+  FOLLY_ALWAYS_INLINE hazptr_rec<Atom>* get() const noexcept { return hprec_; }
 
-  void evict() {
-    hprec_->release();
-  }
+  void evict() { hprec_->release(); }
 }; // hazptr_tc_entry
 
 /**
@@ -83,9 +79,7 @@ class hazptr_tc {
     }
   }
 
-  static constexpr uint8_t capacity() noexcept {
-    return kCapacity;
-  }
+  static constexpr uint8_t capacity() noexcept { return kCapacity; }
 
  private:
   template <uint8_t, template <typename> class>
@@ -126,13 +120,9 @@ class hazptr_tc {
     }
   }
 
-  FOLLY_ALWAYS_INLINE uint8_t count() const noexcept {
-    return count_;
-  }
+  FOLLY_ALWAYS_INLINE uint8_t count() const noexcept { return count_; }
 
-  FOLLY_ALWAYS_INLINE void set_count(uint8_t val) noexcept {
-    count_ = val;
-  }
+  FOLLY_ALWAYS_INLINE void set_count(uint8_t val) noexcept { count_ = val; }
 
   FOLLY_NOINLINE void fill(uint8_t num) {
     DCHECK_LE(count_ + num, capacity());
@@ -194,9 +184,7 @@ class hazptr_priv {
   friend class hazptr_domain<Atom>;
   friend class hazptr_obj<Atom>;
 
-  bool empty() const noexcept {
-    return head() == nullptr;
-  }
+  bool empty() const noexcept { return head() == nullptr; }
 
   void push(hazptr_obj<Atom>* obj) {
     DCHECK(!in_dtor_);

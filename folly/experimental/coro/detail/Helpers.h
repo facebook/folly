@@ -45,9 +45,7 @@ class UnsafeResumeInlineSemiAwaitable {
 class NestingCounter {
  public:
   struct GuardDestructor {
-    void operator()(NestingCounter* counter) {
-      --counter->counter_;
-    }
+    void operator()(NestingCounter* counter) { --counter->counter_; }
   };
   using Guard = std::unique_ptr<NestingCounter, GuardDestructor>;
   Guard guard() {

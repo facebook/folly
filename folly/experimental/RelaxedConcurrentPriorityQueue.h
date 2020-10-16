@@ -268,14 +268,10 @@ class RelaxedConcurrentPriorityQueue {
   }
 
   /// Returns true only if the queue was empty during the call.
-  bool empty() {
-    return isEmpty();
-  }
+  bool empty() { return isEmpty(); }
 
  private:
-  uint32_t getBottomLevel() {
-    return bottom_.load(std::memory_order_acquire);
-  }
+  uint32_t getBottomLevel() { return bottom_.load(std::memory_order_acquire); }
 
   /// This function is only called by the destructor
   void deleteSharedBuffer() {
@@ -1144,9 +1140,7 @@ class RelaxedConcurrentPriorityQueue {
     return false;
   }
 
-  FOLLY_ALWAYS_INLINE static folly::WaitOptions wait_options() {
-    return {};
-  }
+  FOLLY_ALWAYS_INLINE static folly::WaitOptions wait_options() { return {}; }
 
   template <typename Clock, typename Duration>
   FOLLY_NOINLINE bool tryWait(

@@ -29,9 +29,7 @@ class StdMutexWrapper {
     mutex_.lock();
     return 1;
   }
-  void unlock(int) {
-    mutex_.unlock();
-  }
+  void unlock(int) { mutex_.unlock(); }
 
   std::mutex mutex_{};
 };

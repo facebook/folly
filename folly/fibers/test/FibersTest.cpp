@@ -2036,9 +2036,7 @@ struct DevNullPiper {
     return *this;
   }
 
-  DevNullPiper& operator<<(std::ostream& (*)(std::ostream&)) {
-    return *this;
-  }
+  DevNullPiper& operator<<(std::ostream& (*)(std::ostream&)) { return *this; }
 } devNullPiper;
 #define OUTPUT_TRACE devNullPiper
 #endif // ENABLE_TRACE_IN_TEST

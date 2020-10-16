@@ -25,9 +25,7 @@ class TestData : public RequestData {
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
 
-  bool hasCallback() override {
-    return true;
-  }
+  bool hasCallback() override { return true; }
 
   void onSet() override {
     set_++;

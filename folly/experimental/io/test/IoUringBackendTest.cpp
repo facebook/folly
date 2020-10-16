@@ -82,17 +82,11 @@ class AlignedBuf {
     return (0 == ::memcmp(data_, buf.data_, size_));
   }
 
-  bool operator!=(const AlignedBuf& buf) const {
-    return !(*this == buf);
-  }
+  bool operator!=(const AlignedBuf& buf) const { return !(*this == buf); }
 
-  void* data() const {
-    return data_;
-  }
+  void* data() const { return data_; }
 
-  size_t size() const {
-    return size_;
-  }
+  size_t size() const { return size_; }
 
  private:
   void* data_{nullptr};
@@ -143,13 +137,9 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
     }
   }
 
-  uint64_t getAsyncNum() const {
-    return asyncNum_;
-  }
+  uint64_t getAsyncNum() const { return asyncNum_; }
 
-  uint64_t getNum() const {
-    return num_;
-  }
+  uint64_t getNum() const { return num_; }
 
   // from folly::EventReadCallback
   folly::EventReadCallback::IoVec* allocateData() override {
@@ -169,9 +159,7 @@ class EventFD : public folly::EventHandler, public folly::EventReadCallback {
       data_.iov_len = sizeof(eventData_);
     }
 
-    static void free(EventReadCallback::IoVec* ioVec) {
-      delete ioVec;
-    }
+    static void free(EventReadCallback::IoVec* ioVec) { delete ioVec; }
 
     static void cb(EventReadCallback::IoVec* ioVec, int res) {
       reinterpret_cast<EventFD*>(ioVec->arg_)
@@ -407,9 +395,7 @@ class EventRecvmsgCallback : public folly::EventRecvmsgCallback {
     return ret;
   }
 
-  uint64_t getAsyncNum() const {
-    return asyncNum_;
-  }
+  uint64_t getAsyncNum() const { return asyncNum_; }
 
  private:
   const std::string& data_;
@@ -561,9 +547,7 @@ TEST(IoUringBackend, RegisteredFds) {
   int eventFd = ::eventfd(0, EFD_CLOEXEC | EFD_SEMAPHORE | EFD_NONBLOCK);
   CHECK_GT(eventFd, 0);
 
-  SCOPE_EXIT {
-    ::close(eventFd);
-  };
+  SCOPE_EXIT { ::close(eventFd); };
 
   // verify for useRegisteredFds = false we get a nullptr FdRegistrationRecord
   auto* record = backendNoReg->registerFd(eventFd);
@@ -613,9 +597,7 @@ TEST(IoUringBackend, FileReadWrite) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT {
-    ::close(fd);
-  };
+  SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -680,9 +662,7 @@ TEST(IoUringBackend, FileReadvWritev) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT {
-    ::close(fd);
-  };
+  SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -775,9 +755,7 @@ TEST(IoUringBackend, FileReadMany) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT {
-    ::close(fd);
-  };
+  SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);
@@ -836,9 +814,7 @@ TEST(IoUringBackend, FileWriteMany) {
   int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
   SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
                     << folly::errnoStr(errno);
-  SCOPE_EXIT {
-    ::close(fd);
-  };
+  SCOPE_EXIT { ::close(fd); };
 
   auto* backendPtr = dynamic_cast<folly::IoUringBackend*>(evbPtr->getBackend());
   CHECK(!!backendPtr);

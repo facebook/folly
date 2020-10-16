@@ -29,9 +29,7 @@ struct await_iterator {
    */
   struct AwaitWrapper {
     explicit AwaitWrapper(InnerIterator it) : it_(std::move(it)) {}
-    auto operator()() {
-      return init_await((*it_)());
-    }
+    auto operator()() { return init_await((*it_)()); }
 
    private:
     InnerIterator it_;
@@ -56,17 +54,11 @@ struct await_iterator {
     return retval;
   }
 
-  bool operator==(await_iterator other) const {
-    return it_ == other.it_;
-  }
+  bool operator==(await_iterator other) const { return it_ == other.it_; }
 
-  bool operator!=(await_iterator other) const {
-    return !(*this == other);
-  }
+  bool operator!=(await_iterator other) const { return !(*this == other); }
 
-  value_type operator*() const {
-    return AwaitWrapper(it_);
-  }
+  value_type operator*() const { return AwaitWrapper(it_); }
 
  private:
   InnerIterator it_;

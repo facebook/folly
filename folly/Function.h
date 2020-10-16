@@ -323,9 +323,7 @@ class FunctionTraitsSharedProxy {
     return (*sp_)(static_cast<A&&>(args)...);
   }
 
-  explicit operator bool() const noexcept {
-    return sp_ != nullptr;
-  }
+  explicit operator bool() const noexcept { return sp_ != nullptr; }
 
   friend bool operator==(
       FunctionTraitsSharedProxy<F, R, A...> const& proxy,
@@ -764,9 +762,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     }
   }
 
-  ~Function() {
-    exec(Op::NUKE, &data_, nullptr);
-  }
+  ~Function() { exec(Op::NUKE, &data_, nullptr); }
 
   Function& operator=(const Function&) = delete;
 
@@ -840,9 +836,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Clears this `Function`.
    */
-  Function& operator=(std::nullptr_t) noexcept {
-    return (*this = Function());
-  }
+  Function& operator=(std::nullptr_t) noexcept { return (*this = Function()); }
 
   /**
    * If `ptr` is null, clears this `Function`. Otherwise, this assignment
@@ -864,17 +858,13 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Exchanges the callable objects of `*this` and `that`.
    */
-  void swap(Function& that) noexcept {
-    std::swap(*this, that);
-  }
+  void swap(Function& that) noexcept { std::swap(*this, that); }
 
   /**
    * Returns `true` if this `Function` contains a callable, i.e. is
    * non-empty.
    */
-  explicit operator bool() const noexcept {
-    return exec_ != nullptr;
-  }
+  explicit operator bool() const noexcept { return exec_ != nullptr; }
 
   /**
    * Returns the size of the allocation made to store the callable on the
@@ -891,9 +881,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * Move this `Function` into a copyable callable object, of which all copies
    * share the state.
    */
-  SharedProxy asSharedProxy() && {
-    return SharedProxy{std::move(*this)};
-  }
+  SharedProxy asSharedProxy() && { return SharedProxy{std::move(*this)}; }
 
   /**
    * Construct a `std::function` by moving in the contents of this `Function`.
@@ -1045,9 +1033,7 @@ class FunctionRef<ReturnType(Args...)> final {
     return call_(static_cast<Args&&>(args)..., object_);
   }
 
-  constexpr explicit operator bool() const noexcept {
-    return object_;
-  }
+  constexpr explicit operator bool() const noexcept { return object_; }
 
   constexpr friend bool operator==(
       FunctionRef<ReturnType(Args...)> ref,

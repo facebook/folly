@@ -58,18 +58,14 @@ class Codel {
  public:
   class Options {
    public:
-    std::chrono::milliseconds interval() const {
-      return interval_;
-    }
+    std::chrono::milliseconds interval() const { return interval_; }
 
     Options& setInterval(std::chrono::milliseconds value) {
       interval_ = value;
       return *this;
     }
 
-    std::chrono::milliseconds targetDelay() const {
-      return targetDelay_;
-    }
+    std::chrono::milliseconds targetDelay() const { return targetDelay_; }
 
     Options& setTargetDelay(std::chrono::milliseconds value) {
       targetDelay_ = value;

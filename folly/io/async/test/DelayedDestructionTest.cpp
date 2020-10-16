@@ -22,9 +22,7 @@
 using namespace folly;
 
 class DeleteGuarder : public DelayedDestruction {
-  ~DeleteGuarder() override {
-    doFoo();
-  }
+  ~DeleteGuarder() override { doFoo(); }
 
   void doFoo() {
     DelayedDestructionBase::DestructorGuard dg(this);

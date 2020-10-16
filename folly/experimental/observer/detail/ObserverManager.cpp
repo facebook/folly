@@ -87,9 +87,7 @@ class ObserverManager::UpdatesManager::CurrentQueue {
     CHECK(queue_.empty());
   }
 
-  void add(Function<void()> task) {
-    queue_.enqueue(std::move(task));
-  }
+  void add(Function<void()> task) { queue_.enqueue(std::move(task)); }
 
  private:
   UMPMCQueue<Function<void()>, true> queue_;
@@ -161,9 +159,7 @@ class ObserverManager::UpdatesManager::NextQueue {
     });
   }
 
-  void add(Core::WeakPtr core) {
-    queue_.enqueue(std::move(core));
-  }
+  void add(Core::WeakPtr core) { queue_.enqueue(std::move(core)); }
 
   ~NextQueue() {
     stop_ = true;
@@ -228,9 +224,7 @@ struct ObserverManager::Singleton {
   // MSVC 2015 doesn't let us access ObserverManager's constructor if we
   // try to use a lambda to initialize instance, so we have to create
   // an actual function instead.
-  static UpdatesManager* createManager() {
-    return new UpdatesManager();
-  }
+  static UpdatesManager* createManager() { return new UpdatesManager(); }
 };
 
 folly::Singleton<ObserverManager::UpdatesManager>

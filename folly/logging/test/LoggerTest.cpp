@@ -150,9 +150,7 @@ class FormattableButNoToString {
 namespace fmt {
 template <>
 struct formatter<ToStringFailure> : formatter<std::string> {
-  auto format(ToStringFailure, format_context& ctx) {
-    return ctx.out();
-  }
+  auto format(ToStringFailure, format_context& ctx) { return ctx.out(); }
 };
 
 template <>

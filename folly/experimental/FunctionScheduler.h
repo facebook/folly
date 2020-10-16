@@ -65,9 +65,7 @@ class FunctionScheduler {
    *
    * NOTE: it's only safe to set this before calling start()
    */
-  void setSteady(bool steady) {
-    steady_ = steady;
-  }
+  void setSteady(bool steady) { steady_ = steady; }
 
   /*
    * Parameters to control the function interval.
@@ -298,9 +296,7 @@ class FunctionScheduler {
       // Simply reset cb to an empty function.
       cb = {};
     }
-    bool isValid() const {
-      return bool(cb);
-    }
+    bool isValid() const { return bool(cb); }
   };
 
   struct RunTimeOrder {

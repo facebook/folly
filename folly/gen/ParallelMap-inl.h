@@ -113,13 +113,9 @@ class PMap : public Operator<PMap<Predicate>> {
         wake_.notify();
       }
 
-      bool read(Result& result) {
-        return pipeline_.read(result);
-      }
+      bool read(Result& result) { return pipeline_.read(result); }
 
-      void blockingRead(Result& result) {
-        pipeline_.blockingRead(result);
-      }
+      void blockingRead(Result& result) { pipeline_.blockingRead(result); }
 
      private:
       void predApplier() {

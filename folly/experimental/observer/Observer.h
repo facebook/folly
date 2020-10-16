@@ -80,32 +80,20 @@ class Observer;
 template <typename T>
 class Snapshot {
  public:
-  const T& operator*() const {
-    return *get();
-  }
+  const T& operator*() const { return *get(); }
 
-  const T* operator->() const {
-    return get();
-  }
+  const T* operator->() const { return get(); }
 
-  const T* get() const {
-    return data_.get();
-  }
+  const T* get() const { return data_.get(); }
 
-  std::shared_ptr<const T> getShared() const& {
-    return data_;
-  }
+  std::shared_ptr<const T> getShared() const& { return data_; }
 
-  std::shared_ptr<const T> getShared() && {
-    return std::move(data_);
-  }
+  std::shared_ptr<const T> getShared() && { return std::move(data_); }
 
   /**
    * Return the version of the observed object.
    */
-  size_t getVersion() const {
-    return version_;
-  }
+  size_t getVersion() const { return version_; }
 
  private:
   friend class Observer<T>;
@@ -154,9 +142,7 @@ class Observer {
   explicit Observer(observer_detail::Core::Ptr core);
 
   Snapshot<T> getSnapshot() const;
-  Snapshot<T> operator*() const {
-    return getSnapshot();
-  }
+  Snapshot<T> operator*() const { return getSnapshot(); }
 
   /**
    * Check if we have a newer version of the observed object than the snapshot.
@@ -233,9 +219,7 @@ class TLObserver {
   TLObserver(const TLObserver<T>& other);
 
   const Snapshot<T>& getSnapshotRef() const;
-  const Snapshot<T>& operator*() const {
-    return getSnapshotRef();
-  }
+  const Snapshot<T>& operator*() const { return getSnapshotRef(); }
 
  private:
   Observer<T> observer_;

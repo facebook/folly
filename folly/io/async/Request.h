@@ -99,9 +99,7 @@ class RequestData {
   // and onUnset() with that of onClear().
   virtual void onClear() {}
   // For debugging
-  int refCount() {
-    return keepAliveCounter_.load(std::memory_order_acquire);
-  }
+  int refCount() { return keepAliveCounter_.load(std::memory_order_acquire); }
 
  private:
   // For efficiency, RequestContext provides a raw ptr interface.
@@ -147,16 +145,12 @@ class RequestContext {
   // Create a unique request context for this request.
   // It will be passed between queues / threads (where implemented),
   // so it should be valid for the lifetime of the request.
-  static void create() {
-    setContext(std::make_shared<RequestContext>());
-  }
+  static void create() { setContext(std::make_shared<RequestContext>()); }
 
   // Get the current context.
   static RequestContext* get();
 
-  intptr_t getRootId() const {
-    return rootId_;
-  }
+  intptr_t getRootId() const { return rootId_; }
 
   struct RootIdInfo {
     intptr_t id;
@@ -390,9 +384,7 @@ class RequestContextScopeGuard {
   explicit RequestContextScopeGuard(std::shared_ptr<RequestContext>&& ctx)
       : prev_(RequestContext::setContext(std::move(ctx))) {}
 
-  ~RequestContextScopeGuard() {
-    RequestContext::setContext(std::move(prev_));
-  }
+  ~RequestContextScopeGuard() { RequestContext::setContext(std::move(prev_)); }
 };
 
 /**

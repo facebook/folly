@@ -243,9 +243,7 @@ FastStackTracePrinter::FastStackTracePrinter(
 FastStackTracePrinter::~FastStackTracePrinter() = default;
 
 void FastStackTracePrinter::printStackTrace(bool symbolize) {
-  SCOPE_EXIT {
-    printer_->flush();
-  };
+  SCOPE_EXIT { printer_->flush(); };
 
   FrameArray<kMaxStackTraceDepth> addresses;
 
@@ -332,9 +330,7 @@ void SafeStackTracePrinter::printUnsymbolizedStackTrace() {
 }
 
 void SafeStackTracePrinter::printStackTrace(bool symbolize) {
-  SCOPE_EXIT {
-    flush();
-  };
+  SCOPE_EXIT { flush(); };
 
   // Skip the getStackTrace frame
   if (!getStackTraceSafe(*addresses_)) {

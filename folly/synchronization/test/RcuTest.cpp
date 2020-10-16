@@ -41,9 +41,7 @@ class des {
 
  public:
   des(bool* d) : d_(d) {}
-  ~des() {
-    *d_ = true;
-  }
+  ~des() { *d_ = true; }
 };
 
 TEST(RcuTest, Guard) {
@@ -279,9 +277,7 @@ TEST(RcuTest, RcuObjBase) {
   struct base_test : rcu_obj_base<base_test> {
     bool* ret_;
     base_test(bool* ret) : ret_(ret) {}
-    ~base_test() {
-      (*ret_) = true;
-    }
+    ~base_test() { (*ret_) = true; }
   };
 
   auto foo = new base_test(&retired);

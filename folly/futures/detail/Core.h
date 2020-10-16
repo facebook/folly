@@ -197,9 +197,7 @@ class InterruptHandlerImpl : public InterruptHandler {
  public:
   explicit InterruptHandlerImpl(F f) : f_(std::move(f)) {}
 
-  void handle(const folly::exception_wrapper& ew) const override {
-    f_(ew);
-  }
+  void handle(const folly::exception_wrapper& ew) const override { f_(ew); }
 
  private:
   F f_;
@@ -372,16 +370,12 @@ class CoreBase {
   /// True if state is OnlyResult or Done.
   ///
   /// Identical to `this->hasResult()`
-  bool ready() const noexcept {
-    return hasResult();
-  }
+  bool ready() const noexcept { return hasResult(); }
 
   /// Called by a destructing Future (in the consumer thread, by definition).
   /// Calls `delete this` if there are no more references to `this`
   /// (including if `detachPromise()` is called previously or concurrently).
-  void detachFuture() noexcept {
-    detachOne();
-  }
+  void detachFuture() noexcept { detachOne(); }
 
   /// Called by a destructing Promise (in the producer thread, by definition).
   /// Calls `delete this` if there are no more references to `this`
@@ -516,15 +510,11 @@ class Core final : private ResultHolder<T>, public CoreBase {
   using Result = Try<T>;
 
   /// State will be Start
-  static Core* make() {
-    return new Core();
-  }
+  static Core* make() { return new Core(); }
 
   /// State will be OnlyResult
   /// Result held will be move-constructed from `t`
-  static Core* make(Try<T>&& t) {
-    return new Core(std::move(t));
-  }
+  static Core* make(Try<T>&& t) { return new Core(std::move(t)); }
 
   /// State will be OnlyResult
   /// Result held will be the `T` constructed from forwarded `args`

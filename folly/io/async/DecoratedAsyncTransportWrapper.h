@@ -76,13 +76,9 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     transport_->attachEventBase(eventBase);
   }
 
-  void close() override {
-    transport_->close();
-  }
+  void close() override { transport_->close(); }
 
-  void closeNow() override {
-    transport_->closeNow();
-  }
+  void closeNow() override { transport_->closeNow(); }
 
   void closeWithReset() override {
     transport_->closeWithReset();
@@ -92,17 +88,11 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     closeNow();
   }
 
-  bool connecting() const override {
-    return transport_->connecting();
-  }
+  bool connecting() const override { return transport_->connecting(); }
 
-  void detachEventBase() override {
-    transport_->detachEventBase();
-  }
+  void detachEventBase() override { transport_->detachEventBase(); }
 
-  bool error() const override {
-    return transport_->error();
-  }
+  bool error() const override { return transport_->error(); }
 
   size_t getAppBytesReceived() const override {
     return transport_->getAppBytesReceived();
@@ -132,25 +122,17 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     return transport_->getSendTimeout();
   }
 
-  bool good() const override {
-    return transport_->good();
-  }
+  bool good() const override { return transport_->good(); }
 
-  bool isDetachable() const override {
-    return transport_->isDetachable();
-  }
+  bool isDetachable() const override { return transport_->isDetachable(); }
 
   bool isEorTrackingEnabled() const override {
     return transport_->isEorTrackingEnabled();
   }
 
-  bool readable() const override {
-    return transport_->readable();
-  }
+  bool readable() const override { return transport_->readable(); }
 
-  bool writable() const override {
-    return transport_->writable();
-  }
+  bool writable() const override { return transport_->writable(); }
 
   void setEorTracking(bool track) override {
     return transport_->setEorTracking(track);
@@ -160,13 +142,9 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     transport_->setSendTimeout(timeoutInMs);
   }
 
-  void shutdownWrite() override {
-    transport_->shutdownWrite();
-  }
+  void shutdownWrite() override { transport_->shutdownWrite(); }
 
-  void shutdownWriteNow() override {
-    transport_->shutdownWriteNow();
-  }
+  void shutdownWriteNow() override { transport_->shutdownWriteNow(); }
 
   std::string getApplicationProtocol() const noexcept override {
     return transport_->getApplicationProtocol();
@@ -176,9 +154,7 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     return transport_->getSecurityProtocol();
   }
 
-  bool isReplaySafe() const override {
-    return transport_->isReplaySafe();
-  }
+  bool isReplaySafe() const override { return transport_->isReplaySafe(); }
 
   void setReplaySafetyCallback(
       folly::AsyncTransport::ReplaySafetyCallback* callback) override {
@@ -197,9 +173,7 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     return transport_->setZeroCopy(enable);
   }
 
-  bool getZeroCopy() const override {
-    return transport_->getZeroCopy();
-  }
+  bool getZeroCopy() const override { return transport_->getZeroCopy(); }
 
   void setZeroCopyEnableFunc(ZeroCopyEnableFunc func) override {
     transport_->setZeroCopyEnableFunc(func);

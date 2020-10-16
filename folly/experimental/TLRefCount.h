@@ -143,9 +143,7 @@ class TLRefCount {
       collectGuard_ = refCount.collectGuard_;
     }
 
-    ~LocalRefCount() {
-      collect();
-    }
+    ~LocalRefCount() { collect(); }
 
     void collect() {
       {
@@ -174,13 +172,9 @@ class TLRefCount {
       }
     }
 
-    bool operator++() {
-      return update(1);
-    }
+    bool operator++() { return update(1); }
 
-    bool operator--() {
-      return update(-1);
-    }
+    bool operator--() { return update(-1); }
 
    private:
     bool update(Int delta) {
@@ -194,9 +188,7 @@ class TLRefCount {
       // support.
       auto count = count_.load(std::memory_order_relaxed) + delta;
       inUpdate_.store(true, std::memory_order_relaxed);
-      SCOPE_EXIT {
-        inUpdate_.store(false, std::memory_order_release);
-      };
+      SCOPE_EXIT { inUpdate_.store(false, std::memory_order_release); };
       count_.store(count, std::memory_order_release);
 
       asymmetricLightBarrier();

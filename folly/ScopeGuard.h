@@ -35,9 +35,7 @@ namespace detail {
 
 class ScopeGuardImplBase {
  public:
-  void dismiss() noexcept {
-    dismissed_ = true;
-  }
+  void dismiss() noexcept { dismissed_ = true; }
 
  protected:
   ScopeGuardImplBase() noexcept : dismissed_(false) {}

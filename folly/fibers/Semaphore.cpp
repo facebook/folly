@@ -191,9 +191,7 @@ namespace {
 
 class FutureWaiter final : public fibers::Baton::Waiter {
  public:
-  FutureWaiter() {
-    semaphoreWaiter.baton.setWaiter(*this);
-  }
+  FutureWaiter() { semaphoreWaiter.baton.setWaiter(*this); }
 
   void post() override {
     std::unique_ptr<FutureWaiter> destroyOnReturn{this};

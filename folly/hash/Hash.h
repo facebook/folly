@@ -427,9 +427,7 @@ struct Hash {
     return hash::hash_128_to_64((*this)(t), (*this)(ts...));
   }
 
-  size_t operator()() const noexcept {
-    return 0;
-  }
+  size_t operator()() const noexcept { return 0; }
 };
 
 // IsAvalanchingHasher<H, K> extends std::integral_constant<bool, V>.
@@ -568,9 +566,7 @@ struct IsAvalanchingHasher<hasher<std::string>, K> : std::true_type {};
 
 template <typename T>
 struct hasher<T, std::enable_if_t<std::is_enum<T>::value>> {
-  size_t operator()(T key) const noexcept {
-    return Hash()(to_underlying(key));
-  }
+  size_t operator()(T key) const noexcept { return Hash()(to_underlying(key)); }
 };
 
 template <typename T, typename K>

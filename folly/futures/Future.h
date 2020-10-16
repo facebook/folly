@@ -164,9 +164,7 @@ class FutureBase {
 
   /// true if this has a shared state;
   /// false if this has been either moved-out or created without a shared state.
-  bool valid() const noexcept {
-    return core_ != nullptr;
-  }
+  bool valid() const noexcept { return core_ != nullptr; }
 
   /// Returns a reference to the result value if it is ready, with a reference
   /// category and const-qualification like those of the future.
@@ -342,9 +340,7 @@ class FutureBase {
 
   /// Raises a FutureCancellation interrupt.
   /// See `raise(exception_wrapper)` for details.
-  void cancel() {
-    raise(FutureCancellation());
-  }
+  void cancel() { raise(FutureCancellation()); }
 
  protected:
   friend class Promise<T>;
@@ -358,12 +354,8 @@ class FutureBase {
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
-  Core& getCore() {
-    return getCoreImpl(*this);
-  }
-  Core const& getCore() const {
-    return getCoreImpl(*this);
-  }
+  Core& getCore() { return getCoreImpl(*this); }
+  Core const& getCore() const { return getCoreImpl(*this); }
 
   template <typename Self>
   static decltype(auto) getCoreImpl(Self& self) {
@@ -373,12 +365,8 @@ class FutureBase {
     return *self.core_;
   }
 
-  Try<T>& getCoreTryChecked() {
-    return getCoreTryChecked(*this);
-  }
-  Try<T> const& getCoreTryChecked() const {
-    return getCoreTryChecked(*this);
-  }
+  Try<T>& getCoreTryChecked() { return getCoreTryChecked(*this); }
+  Try<T> const& getCoreTryChecked() const { return getCoreTryChecked(*this); }
 
   template <typename Self>
   static decltype(auto) getCoreTryChecked(Self& self) {
@@ -404,9 +392,7 @@ class FutureBase {
 
   void assign(FutureBase<T>&& other) noexcept;
 
-  Executor* getExecutor() const {
-    return getCore().getExecutor();
-  }
+  Executor* getExecutor() const { return getCore().getExecutor(); }
 
   DeferredExecutor* getDeferredExecutor() const {
     return getCore().getDeferredExecutor();
@@ -1508,9 +1494,7 @@ class Future : private futures::detail::FutureBase<T> {
   /// - Calling code should act as if `valid() == false`,
   ///   i.e., as if `*this` was moved into RESULT.
   /// - `RESULT.valid() == true`
-  Future<Unit> unit() && {
-    return std::move(*this).then();
-  }
+  Future<Unit> unit() && { return std::move(*this).then(); }
 
   /// Set an error continuation for this Future. The continuation should take an
   /// argument of the type that you want to catch, and should return a value of
@@ -1910,9 +1894,7 @@ class Future : private futures::detail::FutureBase<T> {
   ///
   /// - `RESULT.valid() ==` the original value of `this->valid()`
   /// - RESULT will not have an Executor regardless of whether `*this` had one
-  SemiFuture<T> semi() && {
-    return SemiFuture<T>{std::move(*this)};
-  }
+  SemiFuture<T> semi() && { return SemiFuture<T>{std::move(*this)}; }
 
 #if FOLLY_HAS_COROUTINES
 
@@ -2635,9 +2617,7 @@ class FutureAwaitable {
     return false;
   }
 
-  T await_resume() {
-    return std::move(result_).value();
-  }
+  T await_resume() { return std::move(result_).value(); }
 
   Try<drop_unit_t<T>> await_resume_try() {
     return static_cast<Try<drop_unit_t<T>>>(std::move(result_));

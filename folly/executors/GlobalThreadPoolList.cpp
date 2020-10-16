@@ -79,9 +79,7 @@ class GlobalThreadPoolListImpl {
       return nullptr;
     }
 
-    std::vector<PoolInfo>& vector() {
-      return poolsInfo_;
-    }
+    std::vector<PoolInfo>& vector() { return poolsInfo_; }
   };
 
   Pools pools_;

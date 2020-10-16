@@ -158,9 +158,7 @@ class ConversionError : public ConversionErrorBase {
   ConversionError(const char* str, ConversionCode code)
       : ConversionErrorBase(str), code_(code) {}
 
-  ConversionCode errorCode() const {
-    return code_;
-  }
+  ConversionCode errorCode() const { return code_; }
 
  private:
   ConversionCode code_;

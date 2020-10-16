@@ -63,9 +63,7 @@ class Executor {
   /// This is up to the implementation to enforce
   virtual void addWithPriority(Func, int8_t priority);
 
-  virtual uint8_t getNumPriorities() const {
-    return 1;
-  }
+  virtual uint8_t getNumPriorities() const { return 1; }
 
   static const int8_t LO_PRI = SCHAR_MIN;
   static const int8_t MID_PRI = 0;
@@ -161,21 +159,15 @@ class Executor {
       }
     }
 
-    explicit operator bool() const {
-      return storage_;
-    }
+    explicit operator bool() const { return storage_; }
 
     ExecutorT* get() const {
       return reinterpret_cast<ExecutorT*>(storage_ & kExecutorMask);
     }
 
-    ExecutorT& operator*() const {
-      return *get();
-    }
+    ExecutorT& operator*() const { return *get(); }
 
-    ExecutorT* operator->() const {
-      return get();
-    }
+    ExecutorT* operator->() const { return get(); }
 
     KeepAlive copy() const {
       return isKeepAliveDummy(*this) //
@@ -183,9 +175,7 @@ class Executor {
           : getKeepAliveToken(get());
     }
 
-    KeepAlive get_alias() const {
-      return KeepAlive(storage_ | kAliasFlag);
-    }
+    KeepAlive get_alias() const { return KeepAlive(storage_ | kAliasFlag); }
 
     template <class KAF>
     void add(KAF&& f) && {

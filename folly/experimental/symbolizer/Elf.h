@@ -64,9 +64,7 @@ class ElfFile {
    public:
     constexpr Options() noexcept {}
 
-    constexpr bool writable() const noexcept {
-      return writable_;
-    }
+    constexpr bool writable() const noexcept { return writable_; }
 
     constexpr Options& writable(bool const value) noexcept {
       writable_ = value;
@@ -119,17 +117,13 @@ class ElfFile {
   ElfFile& operator=(ElfFile&& other) noexcept;
 
   /** Retrieve the ELF header */
-  const ElfEhdr& elfHeader() const noexcept {
-    return at<ElfEhdr>(0);
-  }
+  const ElfEhdr& elfHeader() const noexcept { return at<ElfEhdr>(0); }
 
   /**
    * Get the base address, the address where the file should be loaded if
    * no relocations happened.
    */
-  uintptr_t getBaseAddress() const noexcept {
-    return baseAddress_;
-  }
+  uintptr_t getBaseAddress() const noexcept { return baseAddress_; }
 
   /** Find a section given its name */
   const ElfShdr* getSectionByName(const char* name) const noexcept;

@@ -55,9 +55,7 @@ struct MoveOnlyTestInt {
     FOLLY_SAFE_CHECK(!rhs.destroyed, "");
     return x == rhs.x && destroyed == rhs.destroyed;
   }
-  bool operator!=(MoveOnlyTestInt const& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator!=(MoveOnlyTestInt const& rhs) const { return !(*this == rhs); }
 };
 
 struct ThrowOnCopyTestInt {
@@ -159,9 +157,7 @@ struct Counts {
   bool operator==(Counts const& rhs) const {
     return dist(rhs) == 0 && destroyed == rhs.destroyed;
   }
-  bool operator!=(Counts const& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator!=(Counts const& rhs) const { return !(*this == rhs); }
 };
 
 inline std::ostream& operator<<(std::ostream& xo, Counts const& counts) {
@@ -269,12 +265,8 @@ struct Tracked {
     counts().destroyed++;
   }
 
-  bool operator==(Tracked const& rhs) const {
-    return val_ == rhs.val_;
-  }
-  bool operator!=(Tracked const& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator==(Tracked const& rhs) const { return val_ == rhs.val_; }
+  bool operator!=(Tracked const& rhs) const { return !(*this == rhs); }
 };
 
 template <int Tag>
@@ -284,21 +276,15 @@ struct TransparentTrackedHash {
   size_t operator()(Tracked<Tag> const& tracked) const {
     return tracked.val_ ^ Tag;
   }
-  size_t operator()(uint64_t v) const {
-    return v ^ Tag;
-  }
+  size_t operator()(uint64_t v) const { return v ^ Tag; }
 };
 
 template <int Tag>
 struct TransparentTrackedEqual {
   using is_transparent = void;
 
-  uint64_t unwrap(Tracked<Tag> const& v) const {
-    return v.val_;
-  }
-  uint64_t unwrap(uint64_t v) const {
-    return v;
-  }
+  uint64_t unwrap(Tracked<Tag> const& v) const { return v.val_; }
+  uint64_t unwrap(uint64_t v) const { return v; }
 
   template <typename A, typename B>
   bool operator()(A const& lhs, B const& rhs) const {
@@ -488,9 +474,7 @@ class GenericAlloc {
     return *this;
   }
 
-  T* allocate(size_t n) {
-    return static_cast<T*>((*alloc_)(n * sizeof(T)));
-  }
+  T* allocate(size_t n) { return static_cast<T*>((*alloc_)(n * sizeof(T))); }
   void deallocate(T* p, size_t n) {
     (*dealloc_)(static_cast<void*>(p), n * sizeof(T));
   }
@@ -543,9 +527,7 @@ class GenericHasher {
   /* implicit */ GenericHasher(H&& hasher)
       : hasher_{std::make_shared<HasherFunc>(std::forward<H>(hasher))} {}
 
-  std::size_t operator()(T const& val) const {
-    return (*hasher_)(val);
-  }
+  std::size_t operator()(T const& val) const { return (*hasher_)(val); }
 
  private:
   std::shared_ptr<HasherFunc> hasher_;

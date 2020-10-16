@@ -64,13 +64,9 @@ class AtomicIntrusiveLinkedList {
   /**
    * Note: list must be empty on destruction.
    */
-  ~AtomicIntrusiveLinkedList() {
-    assert(empty());
-  }
+  ~AtomicIntrusiveLinkedList() { assert(empty()); }
 
-  bool empty() const {
-    return head_.load() == nullptr;
-  }
+  bool empty() const { return head_.load() == nullptr; }
 
   /**
    * Atomically insert t at the head of the list.
@@ -145,9 +141,7 @@ class AtomicIntrusiveLinkedList {
  private:
   std::atomic<T*> head_{nullptr};
 
-  static T*& next(T* t) {
-    return (t->*HookMember).next;
-  }
+  static T*& next(T* t) { return (t->*HookMember).next; }
 
   /* Reverses a linked list, returning the pointer to the new head
      (old tail) */

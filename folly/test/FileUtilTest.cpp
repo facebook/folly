@@ -55,9 +55,7 @@ class Reader {
   // pwritev-like
   ssize_t operator()(int fd, const iovec* iov, int count, off_t offset);
 
-  const std::deque<ssize_t> spec() const {
-    return spec_;
-  }
+  const std::deque<ssize_t> spec() const { return spec_; }
 
  private:
   ssize_t nextSize();
@@ -198,12 +196,8 @@ class IovecBuffers {
   explicit IovecBuffers(std::initializer_list<size_t> sizes);
   explicit IovecBuffers(std::vector<size_t> sizes);
 
-  std::vector<iovec> iov() const {
-    return iov_;
-  } // yes, make a copy
-  std::string join() const {
-    return folly::join("", buffers_);
-  }
+  std::vector<iovec> iov() const { return iov_; } // yes, make a copy
+  std::string join() const { return folly::join("", buffers_); }
   size_t size() const;
 
  private:
@@ -561,16 +555,10 @@ namespace {
  */
 class FChmodFailure {
  public:
-  FChmodFailure() {
-    ++forceFailure_;
-  }
-  ~FChmodFailure() {
-    --forceFailure_;
-  }
+  FChmodFailure() { ++forceFailure_; }
+  ~FChmodFailure() { --forceFailure_; }
 
-  static bool shouldFail() {
-    return forceFailure_.load() > 0;
-  }
+  static bool shouldFail() { return forceFailure_.load() > 0; }
 
  private:
   static std::atomic<int> forceFailure_;

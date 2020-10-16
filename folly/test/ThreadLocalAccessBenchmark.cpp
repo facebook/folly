@@ -28,9 +28,7 @@ class SimpleThreadCachedInt {
   ThreadLocal<int, NewTag> val_;
 
  public:
-  void set() {
-    *val_ = 0;
-  }
+  void set() { *val_ = 0; }
 
   void access() {
     for (const auto& i : val_.accessAllThreads()) {

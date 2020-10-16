@@ -98,9 +98,7 @@ class BasicDynamicTokenBucket {
    *                 starting to fill. Defaults to 0, so by default token
    *                 bucket is reset to "full".
    */
-  void reset(double zeroTime = 0) noexcept {
-    zeroTime_ = zeroTime;
-  }
+  void reset(double zeroTime = 0) noexcept { zeroTime_ = zeroTime; }
 
   /**
    * Returns the current time in seconds since Epoch.
@@ -493,18 +491,14 @@ class BasicTokenBucket {
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
-  double rate() const noexcept {
-    return rate_;
-  }
+  double rate() const noexcept { return rate_; }
 
   /**
    * Returns the maximum burst size.
    *
    * Thread-safe (but returned value may immediately be outdated).
    */
-  double burst() const noexcept {
-    return burstSize_;
-  }
+  double burst() const noexcept { return burstSize_; }
 
  private:
   Impl tokenBucket_;

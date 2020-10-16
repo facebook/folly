@@ -60,13 +60,9 @@ using BadPool = CompressionContextPool<Foo, BadFooCreator, FooDeleter>;
 
 class CompressionContextPoolTest : public testing::Test {
  protected:
-  void SetUp() override {
-    pool_ = std::make_unique<Pool>();
-  }
+  void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
-  void TearDown() override {
-    pool_.reset();
-  }
+  void TearDown() override { pool_.reset(); }
 
   std::unique_ptr<Pool> pool_;
 };
@@ -183,13 +179,9 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
   using Pool = CompressionCoreLocalContextPool<Foo, FooCreator, FooDeleter, 8>;
 
-  void SetUp() override {
-    pool_ = std::make_unique<Pool>();
-  }
+  void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
-  void TearDown() override {
-    pool_.reset();
-  }
+  void TearDown() override { pool_.reset(); }
 
   std::unique_ptr<Pool> pool_;
 };

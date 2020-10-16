@@ -66,9 +66,7 @@ TEST_F(AsyncGeneratorTest, PartiallyConsumingSequenceDestroysObjectsInScope) {
   bool started = false;
   bool destroyed = false;
   auto makeGenerator = [&]() -> folly::coro::AsyncGenerator<int> {
-    SCOPE_EXIT {
-      destroyed = true;
-    };
+    SCOPE_EXIT { destroyed = true; };
     started = true;
     co_yield 1;
     co_yield 2;
@@ -212,9 +210,7 @@ TEST_F(AsyncGeneratorTest, ProduceResultsAsynchronously) {
 
 struct ConvertibleToIntReference {
   int value;
-  operator int&() {
-    return value;
-  }
+  operator int&() { return value; }
 };
 
 TEST_F(AsyncGeneratorTest, GeneratorOfLValueReference) {
@@ -243,9 +239,7 @@ TEST_F(AsyncGeneratorTest, GeneratorOfLValueReference) {
 }
 
 struct ConvertibleToInt {
-  operator int() const {
-    return 99;
-  }
+  operator int() const { return 99; }
 };
 
 TEST_F(AsyncGeneratorTest, GeneratorOfConstLValueReference) {
@@ -305,9 +299,7 @@ struct MoveOnly {
       : value_(std::exchange(other.value_, -1)) {}
   ~MoveOnly() {}
   MoveOnly& operator=(MoveOnly&&) = delete;
-  int value() const {
-    return value_;
-  }
+  int value() const { return value_; }
 
  private:
   int value_;

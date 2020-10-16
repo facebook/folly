@@ -36,9 +36,7 @@ class AsyncGeneratorWrapper {
   explicit AsyncGeneratorWrapper(coro::AsyncGenerator<T>&& gen)
       : gen_(std::move(gen)) {}
 
-  coro::Task<NextResult<T>> getNext() {
-    co_return co_await gen_.next();
-  }
+  coro::Task<NextResult<T>> getNext() { co_return co_await gen_.next(); }
 
  private:
   coro::AsyncGenerator<T> gen_;

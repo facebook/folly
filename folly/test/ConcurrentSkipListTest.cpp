@@ -57,9 +57,7 @@ struct ParanoidArenaAlloc {
     arena_.get().deallocate(ptr, n);
   }
 
-  bool isEmpty() const {
-    return allocated_.empty();
-  }
+  bool isEmpty() const { return allocated_.empty(); }
 
   std::reference_wrapper<ParentAlloc> arena_;
   std::set<void*> allocated_;
@@ -424,9 +422,7 @@ struct NonTrivialValue {
   static std::atomic<int> InstanceCounter;
   static const int kBadPayLoad;
 
-  NonTrivialValue() : payload_(kBadPayLoad) {
-    ++InstanceCounter;
-  }
+  NonTrivialValue() : payload_(kBadPayLoad) { ++InstanceCounter; }
 
   explicit NonTrivialValue(int payload) : payload_(payload) {
     ++InstanceCounter;
@@ -441,9 +437,7 @@ struct NonTrivialValue {
     return *this;
   }
 
-  ~NonTrivialValue() {
-    --InstanceCounter;
-  }
+  ~NonTrivialValue() { --InstanceCounter; }
 
   bool operator<(const NonTrivialValue& rhs) const {
     EXPECT_NE(kBadPayLoad, payload_);

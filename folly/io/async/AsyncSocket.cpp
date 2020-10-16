@@ -154,9 +154,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     return writeResult;
   }
 
-  bool isComplete() override {
-    return opsWritten_ == getOpCount();
-  }
+  bool isComplete() override { return opsWritten_ == getOpCount(); }
 
   void consume() override {
     // Advance opIndex_ forward by opsWritten_

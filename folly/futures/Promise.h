@@ -391,9 +391,7 @@ class Promise {
 
   /// true if this has a shared state;
   ///   false if this has been consumed/moved-out.
-  bool valid() const noexcept {
-    return core_ != nullptr;
-  }
+  bool valid() const noexcept { return core_ != nullptr; }
 
   /// True if either this promise was fulfilled or is invalid.
   ///
@@ -426,12 +424,8 @@ class Promise {
   //
   // Implementation methods should usually use this instead of `this->core_`.
   // The latter should be used only when you need the possibly-null pointer.
-  Core& getCore() {
-    return getCoreImpl(core_);
-  }
-  Core const& getCore() const {
-    return getCoreImpl(core_);
-  }
+  Core& getCore() { return getCoreImpl(core_); }
+  Core const& getCore() const { return getCoreImpl(core_); }
 
   template <typename CoreT>
   static CoreT& getCoreImpl(CoreT* core) {

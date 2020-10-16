@@ -218,24 +218,12 @@ struct ExpectedStorage {
         break;
     }
   }
-  Value& value() & {
-    return value_;
-  }
-  const Value& value() const& {
-    return value_;
-  }
-  Value&& value() && {
-    return std::move(value_);
-  }
-  Error& error() & {
-    return error_;
-  }
-  const Error& error() const& {
-    return error_;
-  }
-  Error&& error() && {
-    return std::move(error_);
-  }
+  Value& value() & { return value_; }
+  const Value& value() const& { return value_; }
+  Value&& value() && { return std::move(value_); }
+  Error& error() & { return error_; }
+  const Error& error() const& { return error_; }
+  Error&& error() && { return std::move(error_); }
 };
 
 template <class Value, class Error>
@@ -258,31 +246,15 @@ struct ExpectedUnion {
       : error_(static_cast<Es&&>(es)...), which_(Which::eError) {}
   ExpectedUnion(const ExpectedUnion&) {}
   ExpectedUnion(ExpectedUnion&&) noexcept {}
-  ExpectedUnion& operator=(const ExpectedUnion&) {
-    return *this;
-  }
-  ExpectedUnion& operator=(ExpectedUnion&&) noexcept {
-    return *this;
-  }
+  ExpectedUnion& operator=(const ExpectedUnion&) { return *this; }
+  ExpectedUnion& operator=(ExpectedUnion&&) noexcept { return *this; }
   ~ExpectedUnion() {}
-  Value& value() & {
-    return value_;
-  }
-  const Value& value() const& {
-    return value_;
-  }
-  Value&& value() && {
-    return std::move(value_);
-  }
-  Error& error() & {
-    return error_;
-  }
-  const Error& error() const& {
-    return error_;
-  }
-  Error&& error() && {
-    return std::move(error_);
-  }
+  Value& value() & { return value_; }
+  const Value& value() const& { return value_; }
+  Value&& value() && { return std::move(value_); }
+  Error& error() & { return error_; }
+  const Error& error() const& { return error_; }
+  Error&& error() && { return std::move(error_); }
 };
 
 template <class Derived, bool, bool Noexcept>
@@ -396,9 +368,7 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
   ExpectedStorage& operator=(const ExpectedStorage&) = default;
   ExpectedStorage& operator=(ExpectedStorage&&) = default;
   using ExpectedUnion<Value, Error>::ExpectedUnion;
-  ~ExpectedStorage() {
-    clear();
-  }
+  ~ExpectedStorage() { clear(); }
   void clear() noexcept {
     switch (this->which_) {
       case Which::eValue:
@@ -440,12 +410,8 @@ struct ExpectedStorage<Value, Error, StorageType::eUnion>
       this->which_ = Which::eError;
     }
   }
-  bool isSelfAssign(const ExpectedStorage* that) const {
-    return this == that;
-  }
-  constexpr bool isSelfAssign(const void*) const {
-    return false;
-  }
+  bool isSelfAssign(const ExpectedStorage* that) const { return this == that; }
+  constexpr bool isSelfAssign(const void*) const { return false; }
   template <class Other>
   void assign(Other&& that) {
     if (isSelfAssign(&that)) {
@@ -488,9 +454,7 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
       noexcept(Error(static_cast<Es&&>(es)...)))
       : which_(Which::eError), error_(static_cast<Es&&>(es)...), value_{} {}
   void clear() noexcept {}
-  constexpr static bool uninitializedByException() noexcept {
-    return false;
-  }
+  constexpr static bool uninitializedByException() noexcept { return false; }
   template <class... Vs>
   void assignValue(Vs&&... vs) {
     expected_detail::doEmplaceAssign(0, value_, static_cast<Vs&&>(vs)...);
@@ -516,24 +480,12 @@ struct ExpectedStorage<Value, Error, StorageType::ePODStruct> {
         break;
     }
   }
-  Value& value() & {
-    return value_;
-  }
-  const Value& value() const& {
-    return value_;
-  }
-  Value&& value() && {
-    return std::move(value_);
-  }
-  Error& error() & {
-    return error_;
-  }
-  const Error& error() const& {
-    return error_;
-  }
-  Error&& error() && {
-    return std::move(error_);
-  }
+  Value& value() & { return value_; }
+  const Value& value() const& { return value_; }
+  Value&& value() && { return std::move(value_); }
+  Error& error() & { return error_; }
+  const Error& error() const& { return error_; }
+  Error&& error() && { return std::move(error_); }
 };
 
 namespace expected_detail_ExpectedHelper {
@@ -670,9 +622,7 @@ class Unexpected final {
      * The error code that was held by the Expected object when the user
      * erroneously requested the value.
      */
-    Error error() const {
-      return error_;
-    }
+    Error error() const { return error_; }
 
    private:
     Error error_;
@@ -708,15 +658,9 @@ class Unexpected final {
   /**
    * Observers
    */
-  Error& error() & {
-    return error_;
-  }
-  const Error& error() const& {
-    return error_;
-  }
-  Error&& error() && {
-    return std::move(error_);
-  }
+  Error& error() & { return error_; }
+  const Error& error() const& { return error_; }
+  Error&& error() && { return std::move(error_); }
 
  private:
   struct MakeBadExpectedAccess {
@@ -868,15 +812,9 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
   using Base = expected_detail::ExpectedStorage<Value, Error>;
   using MakeBadExpectedAccess =
       typename Unexpected<Error>::MakeBadExpectedAccess;
-  Base& base() & {
-    return *this;
-  }
-  const Base& base() const& {
-    return *this;
-  }
-  Base&& base() && {
-    return std::move(*this);
-  }
+  Base& base() & { return *this; }
+  const Base& base() const& { return *this; }
+  Base&& base() && { return std::move(*this); }
 
  public:
   using value_type = Value;
@@ -1137,29 +1075,17 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     return static_cast<U&&>(dflt);
   }
 
-  explicit constexpr operator bool() const noexcept {
-    return hasValue();
-  }
+  explicit constexpr operator bool() const noexcept { return hasValue(); }
 
-  const Value& operator*() const& {
-    return this->value();
-  }
+  const Value& operator*() const& { return this->value(); }
 
-  Value& operator*() & {
-    return this->value();
-  }
+  Value& operator*() & { return this->value(); }
 
-  Value&& operator*() && {
-    return std::move(this->value());
-  }
+  Value&& operator*() && { return std::move(this->value()); }
 
-  const Value* operator->() const {
-    return std::addressof(this->value());
-  }
+  const Value* operator->() const { return std::addressof(this->value()); }
 
-  Value* operator->() {
-    return std::addressof(this->value());
-  }
+  Value* operator->() { return std::addressof(this->value()); }
 
   const Value* get_pointer() const& noexcept {
     return hasValue() ? std::addressof(this->value_) : nullptr;
@@ -1261,9 +1187,7 @@ class Expected final : expected_detail::ExpectedStorage<Value, Error> {
     }
   }
 
-  expected_detail::Which which() const noexcept {
-    return this->which_;
-  }
+  expected_detail::Which which() const noexcept { return this->which_; }
 };
 
 template <class Value, class Error>
@@ -1439,15 +1363,11 @@ struct Promise {
   //    folly::Expected<Value, Error> retobj{ p.get_return_object(); } // MSVC
   // or:
   //    auto retobj = p.get_return_object(); // clang
-  PromiseReturn<Value, Error> get_return_object() noexcept {
-    return *this;
-  }
+  PromiseReturn<Value, Error> get_return_object() noexcept { return *this; }
   std::experimental::suspend_never initial_suspend() const noexcept {
     return {};
   }
-  std::experimental::suspend_never final_suspend() const noexcept {
-    return {};
-  }
+  std::experimental::suspend_never final_suspend() const noexcept { return {}; }
   template <typename U>
   void return_value(U&& u) {
     value_->emplace(static_cast<U&&>(u));
@@ -1465,12 +1385,8 @@ struct Awaitable {
 
   explicit Awaitable(Expected<Value, Error> o) : o_(std::move(o)) {}
 
-  bool await_ready() const noexcept {
-    return o_.hasValue();
-  }
-  Value await_resume() {
-    return std::move(o_.value());
-  }
+  bool await_ready() const noexcept { return o_.hasValue(); }
+  Value await_resume() { return std::move(o_.value()); }
 
   // Explicitly only allow suspension into a Promise
   template <typename U>

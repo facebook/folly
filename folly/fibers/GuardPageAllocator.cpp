@@ -316,9 +316,7 @@ class StackCacheEntry {
       : stackCache_(
             std::make_unique<StackCache>(stackSize, guardPagesPerStack)) {}
 
-  StackCache& cache() const noexcept {
-    return *stackCache_;
-  }
+  StackCache& cache() const noexcept { return *stackCache_; }
 
   ~StackCacheEntry() {
     CacheManager::instance().giveBack(std::move(stackCache_));

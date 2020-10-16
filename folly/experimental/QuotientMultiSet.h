@@ -184,19 +184,13 @@ class QuotientMultiSet<Instructions>::Iterator {
   // Skip forward to the first key >= the given key.
   bool skipTo(uint64_t key);
 
-  bool done() const {
-    return pos_ == qms_->numSlots_;
-  }
+  bool done() const { return pos_ == qms_->numSlots_; }
 
   // Return current key.
-  uint64_t key() const {
-    return key_;
-  }
+  uint64_t key() const { return key_; }
 
   // Return current position in quotient multiset.
-  size_t pos() const {
-    return pos_;
-  }
+  size_t pos() const { return pos_; }
 
  private:
   // Position the iterator at the end and return false.
@@ -278,9 +272,7 @@ class QuotientMultiSetBuilder final {
   // caller.
   void close(folly::IOBufQueue& buff);
 
-  size_t numReadyBlocks() {
-    return readyBlocks_;
-  }
+  size_t numReadyBlocks() { return readyBlocks_; }
 
  private:
   using BlockPtr = QuotientMultiSet<>::BlockPtr;

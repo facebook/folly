@@ -40,9 +40,7 @@ namespace instructions {
 // use explicitly.
 
 struct Default {
-  static bool supported(const folly::CpuId& /* cpuId */ = {}) {
-    return true;
-  }
+  static bool supported(const folly::CpuId& /* cpuId */ = {}) { return true; }
   static FOLLY_ALWAYS_INLINE uint64_t popcount(uint64_t value) {
     return uint64_t(__builtin_popcountll(value));
   }

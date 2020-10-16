@@ -49,9 +49,7 @@ class VirtualEventBase : public folly::TimeoutManager,
 
   ~VirtualEventBase() override;
 
-  EventBase& getEventBase() {
-    return *evb_;
-  }
+  EventBase& getEventBase() { return *evb_; }
 
   /**
    * Adds the given callback to a queue of things run before destruction
@@ -81,9 +79,7 @@ class VirtualEventBase : public folly::TimeoutManager,
                                 f = std::forward<F>(f)]() mutable { f(); });
   }
 
-  HHWheelTimer& timer() {
-    return evb_->timer();
-  }
+  HHWheelTimer& timer() { return evb_->timer(); }
 
   void attachTimeoutManager(
       AsyncTimeout* obj,
@@ -100,13 +96,9 @@ class VirtualEventBase : public folly::TimeoutManager,
     return evb_->scheduleTimeout(obj, timeout);
   }
 
-  void cancelTimeout(AsyncTimeout* obj) override {
-    evb_->cancelTimeout(obj);
-  }
+  void cancelTimeout(AsyncTimeout* obj) override { evb_->cancelTimeout(obj); }
 
-  void bumpHandlingTime() override {
-    evb_->bumpHandlingTime();
-  }
+  void bumpHandlingTime() override { evb_->bumpHandlingTime(); }
 
   bool isInTimeoutManagerThread() override {
     return evb_->isInTimeoutManagerThread();
@@ -115,9 +107,7 @@ class VirtualEventBase : public folly::TimeoutManager,
   /**
    * @see runInEventBaseThread
    */
-  void add(folly::Func f) override {
-    runInEventBaseThread(std::move(f));
-  }
+  void add(folly::Func f) override { runInEventBaseThread(std::move(f)); }
 
   bool inRunningEventBaseThread() const {
     return evb_->inRunningEventBaseThread();

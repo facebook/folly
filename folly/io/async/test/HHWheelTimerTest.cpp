@@ -100,13 +100,9 @@ TEST_F(HHWheelTimerTest, NoRequestContextLeak) {
    public:
     TestData(int data, std::set<int>& destructed)
         : data_(data), destructed_(destructed) {}
-    ~TestData() override {
-      destructed_.insert(data_);
-    }
+    ~TestData() override { destructed_.insert(data_); }
 
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
 
    private:
     int data_;

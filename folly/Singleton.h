@@ -285,9 +285,7 @@ class SingletonHolderBase {
       : type_(typeDesc) {}
   virtual ~SingletonHolderBase() = default;
 
-  TypeDescriptor type() const {
-    return type_;
-  }
+  TypeDescriptor type() const { return type_; }
   virtual bool hasLiveInstance() = 0;
   virtual void createInstance() = 0;
   virtual bool creationStarted() = 0;
@@ -400,12 +398,8 @@ class SingletonVault {
    */
   struct ScopedExpunger {
     SingletonVault* vault;
-    explicit ScopedExpunger(SingletonVault* v) : vault(v) {
-      expunge();
-    }
-    ~ScopedExpunger() {
-      expunge();
-    }
+    explicit ScopedExpunger(SingletonVault* v) : vault(v) { expunge(); }
+    ~ScopedExpunger() { expunge(); }
     void expunge() {
       vault->destroyInstances();
       vault->reenableInstances();
@@ -501,9 +495,7 @@ class SingletonVault {
 
   // A well-known vault; you can actually have others, but this is the
   // default.
-  static SingletonVault* singleton() {
-    return singleton<>();
-  }
+  static SingletonVault* singleton() { return singleton<>(); }
 
   // Gets singleton vault for any Tag. Non-default tag should be used in unit
   // tests only.
@@ -512,9 +504,7 @@ class SingletonVault {
     return &detail::createGlobal<SingletonVault, VaultTag>();
   }
 
-  void setType(Type type) {
-    type_ = type;
-  }
+  void setType(Type type) { type_ = type; }
 
   void setShutdownTimeout(std::chrono::milliseconds shutdownTimeout) {
     shutdownTimeout_ = shutdownTimeout;
@@ -612,9 +602,7 @@ class Singleton {
   //
   // try_get() can return nullptr if the singleton was destroyed, caller is
   // responsible for handling nullptr return
-  static std::shared_ptr<T> try_get() {
-    return getEntry().try_get();
-  }
+  static std::shared_ptr<T> try_get() { return getEntry().try_get(); }
 
   static folly::ReadMostlySharedPtr<T> try_get_fast() {
     return getEntry().try_get_fast();
@@ -637,9 +625,7 @@ class Singleton {
   }
 
   // Quickly ensure the instance exists.
-  static void vivify() {
-    getEntry().vivify();
-  }
+  static void vivify() { getEntry().vivify(); }
 
   explicit Singleton(
       std::nullptr_t /* _ */ = nullptr,
@@ -740,9 +726,7 @@ class LeakySingleton {
     entry.state = State::Dead;
   }
 
-  static T& get() {
-    return instance();
-  }
+  static T& get() { return instance(); }
 
   static void make_mock(std::nullptr_t /* c */ = nullptr) {
     make_mock([]() { return new T; });
@@ -776,9 +760,7 @@ class LeakySingleton {
     detail::TypeDescriptor type_{typeid(T), typeid(Tag)};
   };
 
-  static Entry& entryInstance() {
-    return detail::createGlobal<Entry, Tag>();
-  }
+  static Entry& entryInstance() { return detail::createGlobal<Entry, Tag>(); }
 
   static T& instance() {
     auto& entry = entryInstance();

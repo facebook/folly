@@ -36,9 +36,7 @@ class HazptrWideCAS {
  public:
   HazptrWideCAS() : node_(new Node()) {}
 
-  ~HazptrWideCAS() {
-    delete node_.load(std::memory_order_relaxed);
-  }
+  ~HazptrWideCAS() { delete node_.load(std::memory_order_relaxed); }
 
   bool cas(T& u, T& v) {
     Node* n = new Node(v);

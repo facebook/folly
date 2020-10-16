@@ -695,12 +695,8 @@ class ContainsOptional {
  public:
   ContainsOptional() {}
   explicit ContainsOptional(int x) : opt_(x) {}
-  bool hasValue() const {
-    return opt_.has_value();
-  }
-  int value() const {
-    return opt_.value();
-  }
+  bool hasValue() const { return opt_.has_value(); }
+  int value() const { return opt_.value(); }
 
   ContainsOptional(const ContainsOptional& other) = default;
   ContainsOptional& operator=(const ContainsOptional& other) = default;

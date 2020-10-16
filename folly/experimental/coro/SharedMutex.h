@@ -199,9 +199,7 @@ class SharedMutexFair {
     explicit LockAwaiterBase(SharedMutexFair& mutex, LockType lockType) noexcept
         : mutex_(&mutex), nextAwaiter_(nullptr), lockType_(lockType) {}
 
-    void resume() noexcept {
-      continuation_.resume();
-    }
+    void resume() noexcept { continuation_.resume(); }
 
     SharedMutexFair* mutex_;
     LockAwaiterBase* nextAwaiter_;
@@ -215,9 +213,7 @@ class SharedMutexFair {
     explicit LockAwaiter(SharedMutexFair& mutex) noexcept
         : LockAwaiterBase(mutex, LockType::EXCLUSIVE) {}
 
-    bool await_ready() noexcept {
-      return mutex_->try_lock();
-    }
+    bool await_ready() noexcept { return mutex_->try_lock(); }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
@@ -244,9 +240,7 @@ class SharedMutexFair {
     explicit LockSharedAwaiter(SharedMutexFair& mutex) noexcept
         : LockAwaiterBase(mutex, LockType::SHARED) {}
 
-    bool await_ready() noexcept {
-      return mutex_->try_lock_shared();
-    }
+    bool await_ready() noexcept { return mutex_->try_lock_shared(); }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {

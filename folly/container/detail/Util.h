@@ -49,9 +49,7 @@ struct TemporaryEmplaceKey {
     std::allocator_traits<Alloc>::destroy(alloc_, &value());
   }
 
-  KeyType& value() {
-    return *static_cast<KeyType*>(static_cast<void*>(&raw_));
-  }
+  KeyType& value() { return *static_cast<KeyType*>(static_cast<void*>(&raw_)); }
 
   Alloc& alloc_;
   std::aligned_storage_t<sizeof(KeyType), alignof(KeyType)> raw_;

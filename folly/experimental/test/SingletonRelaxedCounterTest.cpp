@@ -44,9 +44,7 @@ TEST_F(SingletonRelaxedCounterTest, Basic) {
 
 TEST_F(SingletonRelaxedCounterTest, CompatibilityWithThreadLocal) {
   struct CounterNoOpInDtor {
-    ~CounterNoOpInDtor() {
-      Counter::add(0);
-    }
+    ~CounterNoOpInDtor() { Counter::add(0); }
   };
   ThreadLocal<CounterNoOpInDtor> tl;
   auto thread = std::thread([&] { //
@@ -58,9 +56,7 @@ TEST_F(SingletonRelaxedCounterTest, CompatibilityWithThreadLocal) {
 
 TEST_F(SingletonRelaxedCounterTest, CompatibilityWithThreadLocalMany) {
   struct CounterNoOpInDtor {
-    ~CounterNoOpInDtor() {
-      Counter::add(0);
-    }
+    ~CounterNoOpInDtor() { Counter::add(0); }
   };
   ThreadLocal<CounterNoOpInDtor> tl;
   std::vector<std::thread> threads(16);

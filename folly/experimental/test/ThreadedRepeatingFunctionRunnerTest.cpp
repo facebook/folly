@@ -23,9 +23,7 @@ using namespace std;
 
 struct Foo {
   explicit Foo(std::atomic<int>& d) : data(d) {}
-  ~Foo() {
-    runner_.stop();
-  }
+  ~Foo() { runner_.stop(); }
 
   void start() {
     runner_.add("Foo", [this]() {

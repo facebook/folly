@@ -47,22 +47,12 @@ class ManualLifetime {
         T(static_cast<Args&&>(args)...);
   }
 
-  void destruct() noexcept {
-    value_.~T();
-  }
+  void destruct() noexcept { value_.~T(); }
 
-  const T& get() const& {
-    return value_;
-  }
-  T& get() & {
-    return value_;
-  }
-  const T&& get() const&& {
-    return static_cast<const T&&>(value_);
-  }
-  T&& get() && {
-    return static_cast<T&&>(value_);
-  }
+  const T& get() const& { return value_; }
+  T& get() & { return value_; }
+  const T&& get() const&& { return static_cast<const T&&>(value_); }
+  T&& get() && { return static_cast<T&&>(value_); }
 
  private:
   union {
@@ -76,17 +66,11 @@ class ManualLifetime<T&> {
   ManualLifetime() noexcept : ptr_(nullptr) {}
   ~ManualLifetime() {}
 
-  void construct(T& value) noexcept {
-    ptr_ = std::addressof(value);
-  }
+  void construct(T& value) noexcept { ptr_ = std::addressof(value); }
 
-  void destruct() noexcept {
-    ptr_ = nullptr;
-  }
+  void destruct() noexcept { ptr_ = nullptr; }
 
-  T& get() const noexcept {
-    return *ptr_;
-  }
+  T& get() const noexcept { return *ptr_; }
 
  private:
   T* ptr_;
@@ -98,17 +82,11 @@ class ManualLifetime<T&&> {
   ManualLifetime() noexcept : ptr_(nullptr) {}
   ~ManualLifetime() {}
 
-  void construct(T&& value) noexcept {
-    ptr_ = std::addressof(value);
-  }
+  void construct(T&& value) noexcept { ptr_ = std::addressof(value); }
 
-  void destruct() noexcept {
-    ptr_ = nullptr;
-  }
+  void destruct() noexcept { ptr_ = nullptr; }
 
-  T&& get() const noexcept {
-    return static_cast<T&&>(*ptr_);
-  }
+  T&& get() const noexcept { return static_cast<T&&>(*ptr_); }
 
  private:
   T* ptr_;

@@ -214,9 +214,7 @@ class RWSpinLock {
     }
   }
 
-  void unlock_shared() {
-    bits_.fetch_add(-READER, std::memory_order_release);
-  }
+  void unlock_shared() { bits_.fetch_add(-READER, std::memory_order_release); }
 
   // Downgrade the lock from writer status to reader status.
   void unlock_and_lock_shared() {
@@ -304,9 +302,7 @@ class RWSpinLock {
   }
 
   // mainly for debugging purposes.
-  int32_t bits() const {
-    return bits_.load(std::memory_order_acquire);
-  }
+  int32_t bits() const { return bits_.load(std::memory_order_acquire); }
 
   class FOLLY_NODISCARD ReadHolder;
   class FOLLY_NODISCARD UpgradedHolder;
@@ -371,9 +367,7 @@ class RWSpinLock {
       }
     }
 
-    void swap(ReadHolder* other) {
-      std::swap(lock_, other->lock_);
-    }
+    void swap(ReadHolder* other) { std::swap(lock_, other->lock_); }
 
    private:
     friend class UpgradedHolder;
@@ -452,9 +446,7 @@ class RWSpinLock {
       }
     }
 
-    explicit WriteHolder(RWSpinLock& lock) : lock_(&lock) {
-      lock_->lock();
-    }
+    explicit WriteHolder(RWSpinLock& lock) : lock_(&lock) { lock_->lock(); }
 
     // promoted from an upgrade lock holder
     explicit WriteHolder(UpgradedHolder&& upgraded) {
@@ -739,9 +731,7 @@ class RWTicketSpinLockT {
     return __sync_bool_compare_and_swap(&ticket.whole, old.whole, t.whole);
   }
 
-  void unlock_shared() {
-    __sync_fetch_and_add(&ticket.write, 1);
-  }
+  void unlock_shared() { __sync_fetch_and_add(&ticket.write, 1); }
 
   class FOLLY_NODISCARD WriteHolder;
 
@@ -787,9 +777,7 @@ class RWTicketSpinLockT {
       }
     }
 
-    void swap(ReadHolder* other) {
-      std::swap(this->lock_, other->lock_);
-    }
+    void swap(ReadHolder* other) { std::swap(this->lock_, other->lock_); }
 
    private:
     RWSpinLock* lock_;
@@ -830,9 +818,7 @@ class RWTicketSpinLockT {
       }
     }
 
-    void swap(WriteHolder* other) {
-      std::swap(this->lock_, other->lock_);
-    }
+    void swap(WriteHolder* other) { std::swap(this->lock_, other->lock_); }
 
    private:
     friend class ReadHolder;

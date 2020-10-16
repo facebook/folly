@@ -143,9 +143,7 @@ class AsyncSSLSocket : public AsyncSocket {
       return scheduleTimeout(std::chrono::milliseconds{timeoutMs});
     }
 
-    TimeoutManager::timeout_type getTimeout() {
-      return timeout_;
-    }
+    TimeoutManager::timeout_type getTimeout() { return timeout_; }
 
     void timeoutExpired() noexcept override {
       sslSocket_->timeoutExpired(timeout_);
@@ -499,9 +497,7 @@ class AsyncSSLSocket : public AsyncSocket {
     STATE_ERROR
   };
 
-  SSLStateEnum getSSLState() const {
-    return sslState_;
-  }
+  SSLStateEnum getSSLState() const { return sslState_; }
 
   /**
    * Get a handle to the negotiated SSL session.  This increments the session
@@ -595,13 +591,9 @@ class AsyncSSLSocket : public AsyncSocket {
   /**
    * true if the session was resumed using session ID
    */
-  bool sessionIDResumed() const {
-    return sessionIDResumed_;
-  }
+  bool sessionIDResumed() const { return sessionIDResumed_; }
 
-  void setSessionIDResumed(bool resumed) {
-    sessionIDResumed_ = resumed;
-  }
+  void setSessionIDResumed(bool resumed) { sessionIDResumed_ = resumed; }
 
   /**
    * Get the negociated cipher name for this SSL connection.
@@ -805,13 +797,9 @@ class AsyncSSLSocket : public AsyncSocket {
     return handshakeEndTime_ - handshakeStartTime_;
   }
 
-  void setMinWriteSize(size_t minWriteSize) {
-    minWriteSize_ = minWriteSize;
-  }
+  void setMinWriteSize(size_t minWriteSize) { minWriteSize_ = minWriteSize; }
 
-  size_t getMinWriteSize() const {
-    return minWriteSize_;
-  }
+  size_t getMinWriteSize() const { return minWriteSize_; }
 
   const AsyncTransportCertificate* getPeerCertificate() const override;
   const AsyncTransportCertificate* getSelfCertificate() const override;
@@ -823,25 +811,17 @@ class AsyncSSLSocket : public AsyncSocket {
    * through getLocalAddress()/getPeerAddress() methods even after the socket is
    * closed.
    */
-  void forceCacheAddrOnFailure(bool force) {
-    cacheAddrOnFailure_ = force;
-  }
+  void forceCacheAddrOnFailure(bool force) { cacheAddrOnFailure_ = force; }
 
-  const std::string& getSessionKey() const {
-    return sessionKey_;
-  }
+  const std::string& getSessionKey() const { return sessionKey_; }
 
   void setSessionKey(std::string sessionKey) {
     sessionKey_ = std::move(sessionKey);
   }
 
-  void setCertCacheHit(bool hit) {
-    certCacheHit_ = hit;
-  }
+  void setCertCacheHit(bool hit) { certCacheHit_ = hit; }
 
-  bool getCertCacheHit() const {
-    return certCacheHit_;
-  }
+  bool getCertCacheHit() const { return certCacheHit_; }
 
   bool sessionResumptionAttempted() const {
     return sessionResumptionAttempted_;
@@ -863,9 +843,7 @@ class AsyncSSLSocket : public AsyncSocket {
   }
 
   // zero copy is not supported by openssl.
-  bool setZeroCopy(bool /*enable*/) override {
-    return false;
-  }
+  bool setZeroCopy(bool /*enable*/) override { return false; }
 
  private:
   /**

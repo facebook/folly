@@ -22,13 +22,9 @@ struct AtomicBatchDispatcher<InputT, ResultT>::DispatchBaton {
   DispatchBaton(DispatchFunctionT&& dispatchFunction)
       : expectedCount_(0), dispatchFunction_(std::move(dispatchFunction)) {}
 
-  ~DispatchBaton() {
-    fulfillPromises();
-  }
+  ~DispatchBaton() { fulfillPromises(); }
 
-  void reserve(size_t numEntries) {
-    optEntries_.reserve(numEntries);
-  }
+  void reserve(size_t numEntries) { optEntries_.reserve(numEntries); }
 
   void setExceptionWrapper(folly::exception_wrapper&& exWrapper) {
     exceptionWrapper_ = std::move(exWrapper);

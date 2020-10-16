@@ -96,9 +96,7 @@ class RequestEventBase : public RequestData {
         token(), std::unique_ptr<RequestEventBase>(new RequestEventBase(eb)));
   }
 
-  bool hasCallback() override {
-    return false;
-  }
+  bool hasCallback() override { return false; }
 
  private:
   FOLLY_EXPORT static RequestToken const& token() {
@@ -164,9 +162,7 @@ class EventBase : public TimeoutManager,
       unlink();
     }
 
-    bool isLoopCallbackScheduled() const {
-      return is_linked();
-    }
+    bool isLoopCallbackScheduled() const { return is_linked(); }
 
    private:
     typedef boost::intrusive::
@@ -201,9 +197,7 @@ class EventBase : public TimeoutManager,
    public:
     explicit StackFunctionLoopCallback(Func&& function)
         : function_(std::move(function)) {}
-    void runLoopCallback() noexcept override {
-      Func(std::move(function_))();
-    }
+    void runLoopCallback() noexcept override { Func(std::move(function_))(); }
 
    private:
     Func function_;
@@ -268,9 +262,7 @@ class EventBase : public TimeoutManager,
     explicit FunctionOnDestructionCallback(Function<void()> f)
         : f_(std::move(f)) {}
 
-    void onEventBaseDestruction() noexcept final {
-      f_();
-    }
+    void onEventBaseDestruction() noexcept final { f_(); }
 
    protected:
     void runCallback() noexcept override {
@@ -713,9 +705,7 @@ class EventBase : public TimeoutManager,
     return *wheelTimer_.get();
   }
 
-  EventBaseBackendBase* getBackend() {
-    return evb_.get();
-  }
+  EventBaseBackendBase* getBackend() { return evb_.get(); }
   // --------- interface to underlying libevent base ------------
   // Avoid using these functions if possible.  These functions are not
   // guaranteed to always be present if we ever provide alternative EventBase
@@ -756,9 +746,7 @@ class EventBase : public TimeoutManager,
       return value_ * (1.0 - lcoeff) + lcoeff * busy_buffer_.count();
     }
 
-    void dampen(double factor) {
-      value_ *= factor;
-    }
+    void dampen(double factor) { value_ *= factor; }
 
    private:
     double expCoeff_;
@@ -774,9 +762,7 @@ class EventBase : public TimeoutManager,
     observer_ = observer;
   }
 
-  const std::shared_ptr<EventBaseObserver>& getObserver() {
-    return observer_;
-  }
+  const std::shared_ptr<EventBaseObserver>& getObserver() { return observer_; }
 
   /**
    * Setup execution observation/instrumentation for every EventHandler
@@ -791,9 +777,7 @@ class EventBase : public TimeoutManager,
   /**
    * Gets the execution observer associated with this EventBase.
    */
-  ExecutionObserver* getExecutionObserver() {
-    return executionObserver_;
-  }
+  ExecutionObserver* getExecutionObserver() { return executionObserver_; }
 
   /**
    * Set the name of the thread that runs this event base.
@@ -806,16 +790,12 @@ class EventBase : public TimeoutManager,
   const std::string& getName();
 
   /// Implements the Executor interface
-  void add(Cob fn) override {
-    runInEventBaseThread(std::move(fn));
-  }
+  void add(Cob fn) override { runInEventBaseThread(std::move(fn)); }
 
   /// Implements the DrivableExecutor interface
   void drive() override {
     ++loopKeepAliveCount_;
-    SCOPE_EXIT {
-      --loopKeepAliveCount_;
-    };
+    SCOPE_EXIT { --loopKeepAliveCount_; };
     loopOnce();
   }
 
@@ -834,9 +814,7 @@ class EventBase : public TimeoutManager,
 
   void cancelTimeout(AsyncTimeout* obj) final;
 
-  bool isInTimeoutManagerThread() final {
-    return isInEventBaseThread();
-  }
+  bool isInTimeoutManagerThread() final { return isInEventBaseThread(); }
 
   // Returns a VirtualEventBase attached to this EventBase. Can be used to
   // pass to APIs which expect VirtualEventBase. This VirtualEventBase will be

@@ -263,22 +263,14 @@ class UnboundedQueue {
   }
 
   /** enqueue */
-  FOLLY_ALWAYS_INLINE void enqueue(const T& arg) {
-    enqueueImpl(arg);
-  }
+  FOLLY_ALWAYS_INLINE void enqueue(const T& arg) { enqueueImpl(arg); }
 
-  FOLLY_ALWAYS_INLINE void enqueue(T&& arg) {
-    enqueueImpl(std::move(arg));
-  }
+  FOLLY_ALWAYS_INLINE void enqueue(T&& arg) { enqueueImpl(std::move(arg)); }
 
   /** dequeue */
-  FOLLY_ALWAYS_INLINE void dequeue(T& item) noexcept {
-    item = dequeueImpl();
-  }
+  FOLLY_ALWAYS_INLINE void dequeue(T& item) noexcept { item = dequeueImpl(); }
 
-  FOLLY_ALWAYS_INLINE T dequeue() noexcept {
-    return dequeueImpl();
-  }
+  FOLLY_ALWAYS_INLINE T dequeue() noexcept { return dequeueImpl(); }
 
   /** try_dequeue */
   FOLLY_ALWAYS_INLINE bool try_dequeue(T& item) noexcept {
@@ -784,9 +776,7 @@ class UnboundedQueue {
       return flag_.try_wait_until(deadline, opt);
     }
 
-    FOLLY_ALWAYS_INLINE void destroyItem() noexcept {
-      itemPtr()->~T();
-    }
+    FOLLY_ALWAYS_INLINE void destroyItem() noexcept { itemPtr()->~T(); }
 
    private:
     FOLLY_ALWAYS_INLINE T getItem() noexcept {

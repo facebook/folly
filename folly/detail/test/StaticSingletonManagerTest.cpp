@@ -27,12 +27,8 @@ FOLLY_ATTR_WEAK void check_doit() {}
 namespace {
 template <bool Noexcept>
 struct MayThrow {
-  FOLLY_NOINLINE MayThrow() noexcept(Noexcept) {
-    check_doit();
-  }
-  FOLLY_NOINLINE ~MayThrow() {
-    check_doit();
-  }
+  FOLLY_NOINLINE MayThrow() noexcept(Noexcept) { check_doit(); }
+  FOLLY_NOINLINE ~MayThrow() { check_doit(); }
 };
 } // namespace
 

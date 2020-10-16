@@ -87,29 +87,19 @@ class TimeseriesHistogram {
       const ContainerType& defaultContainer);
 
   /* Return the bucket size of each bucket in the histogram. */
-  ValueType getBucketSize() const {
-    return buckets_.getBucketSize();
-  }
+  ValueType getBucketSize() const { return buckets_.getBucketSize(); }
 
   /* Return the min value at which bucketing begins. */
-  ValueType getMin() const {
-    return buckets_.getMin();
-  }
+  ValueType getMin() const { return buckets_.getMin(); }
 
   /* Return the max value at which bucketing ends. */
-  ValueType getMax() const {
-    return buckets_.getMax();
-  }
+  ValueType getMax() const { return buckets_.getMax(); }
 
   /* Return the number of levels of the Timeseries object in each bucket */
-  size_t getNumLevels() const {
-    return buckets_.getByIndex(0).numLevels();
-  }
+  size_t getNumLevels() const { return buckets_.getByIndex(0).numLevels(); }
 
   /* Return the number of buckets */
-  size_t getNumBuckets() const {
-    return buckets_.getNumBuckets();
-  }
+  size_t getNumBuckets() const { return buckets_.getNumBuckets(); }
 
   /*
    * Return the threshold of the bucket for the given index in range
@@ -306,9 +296,7 @@ class TimeseriesHistogram {
    * Prefer using the correct TimePoint-based APIs instead.  These APIs will
    * eventually be deprecated and removed.
    */
-  void update(Duration now) {
-    update(TimePoint(now));
-  }
+  void update(Duration now) { update(TimePoint(now)); }
   void addValue(Duration now, const ValueType& value) {
     addValue(TimePoint(now), value);
   }

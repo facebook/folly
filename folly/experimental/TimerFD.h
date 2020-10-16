@@ -66,9 +66,7 @@ class TimerFD : public folly::EventHandler,
       data_.iov_len = sizeof(timerData_);
     }
 
-    static void free(EventReadCallback::IoVec* ioVec) {
-      delete ioVec;
-    }
+    static void free(EventReadCallback::IoVec* ioVec) { delete ioVec; }
 
     static void cb(EventReadCallback::IoVec* ioVec, int res) {
       reinterpret_cast<TimerFD*>(ioVec->arg_)

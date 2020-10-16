@@ -158,9 +158,7 @@ class PrimaryPtr {
     }
   }
 
-  explicit operator bool() const {
-    return !!innerPtr_;
-  }
+  explicit operator bool() const { return !!innerPtr_; }
 
   // Attempts to lock a pointer. Returns null if pointer is not set or if join()
   // was called or the cleanup() task was started (even if the call to join()
@@ -252,9 +250,7 @@ class PrimaryPtr {
 
   // Gets a non-owning reference to the pointer. join() and the cleanup() work
   // do *NOT* wait for outstanding PrimaryPtrRef objects to be released.
-  PrimaryPtrRef<T> ref() const {
-    return PrimaryPtrRef<T>(outerPtrWeak_);
-  }
+  PrimaryPtrRef<T> ref() const { return PrimaryPtrRef<T>(outerPtrWeak_); }
 
  private:
   template <class>

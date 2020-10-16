@@ -54,9 +54,7 @@ struct BenchmarkData {
     }
   }
 
-  ~BenchmarkData() {
-    ::close(fd);
-  }
+  ~BenchmarkData() { ::close(fd); }
 
   void reset(bool useRegisteredBuffers) {
     ops.clear();

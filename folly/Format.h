@@ -324,9 +324,7 @@ class FOLLY_EXPORT FormatKeyNotFoundException : public std::out_of_range {
  public:
   explicit FormatKeyNotFoundException(StringPiece key);
 
-  char const* key() const noexcept {
-    return what() + kMessagePrefix.size();
-  }
+  char const* key() const noexcept { return what() + kMessagePrefix.size(); }
 
  private:
   static constexpr StringPiece const kMessagePrefix = "format key not found: ";

@@ -122,9 +122,7 @@ class PollIoBackend : public EventBaseBackendBase {
   ~PollIoBackend() override;
 
   // from EventBaseBackendBase
-  event_base* getEventBase() override {
-    return nullptr;
-  }
+  event_base* getEventBase() override { return nullptr; }
 
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
@@ -139,13 +137,9 @@ class PollIoBackend : public EventBaseBackendBase {
     size_t idx_{0};
   };
 
-  virtual FdRegistrationRecord* registerFd(int /*fd*/) {
-    return nullptr;
-  }
+  virtual FdRegistrationRecord* registerFd(int /*fd*/) { return nullptr; }
 
-  virtual bool unregisterFd(FdRegistrationRecord* /*rec*/) {
-    return false;
-  }
+  virtual bool unregisterFd(FdRegistrationRecord* /*rec*/) { return false; }
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
@@ -200,9 +194,7 @@ class PollIoBackend : public EventBaseBackendBase {
         msgHdr_ = msgHdr;
       }
 
-      void reset() {
-        type_ = EventCallback::Type::TYPE_NONE;
-      }
+      void reset() { type_ = EventCallback::Type::TYPE_NONE; }
 
       bool processCb(int res) {
         bool ret = false;
@@ -258,9 +250,7 @@ class PollIoBackend : public EventBaseBackendBase {
     Event* event_{nullptr};
     std::chrono::time_point<std::chrono::steady_clock> expireTime_;
 
-    bool operator==(const TimerEntry& other) {
-      return event_ == other.event_;
-    }
+    bool operator==(const TimerEntry& other) { return event_ == other.event_; }
 
     std::chrono::microseconds getRemainingTime() const {
       auto now = std::chrono::steady_clock::now();
@@ -296,13 +286,9 @@ class PollIoBackend : public EventBaseBackendBase {
 
     ~SocketPair();
 
-    int readFd() const {
-      return fds_[1];
-    }
+    int readFd() const { return fds_[1]; }
 
-    int writeFd() const {
-      return fds_[0];
-    }
+    int writeFd() const { return fds_[0]; }
 
    private:
     std::array<int, 2> fds_{{-1, -1}};
@@ -347,9 +333,7 @@ class PollIoBackend : public EventBaseBackendBase {
   void addTimerEvent(Event& event, const struct timeval* timeout);
   void removeTimerEvent(Event& event);
   size_t processTimers();
-  FOLLY_ALWAYS_INLINE void setProcessTimers() {
-    processTimers_ = true;
-  }
+  FOLLY_ALWAYS_INLINE void setProcessTimers() { processTimers_ = true; }
 
   size_t processActiveEvents();
 
@@ -369,9 +353,7 @@ class PollIoBackend : public EventBaseBackendBase {
   void removeSignalEvent(Event& event);
   bool addSignalFds();
   size_t processSignals();
-  FOLLY_ALWAYS_INLINE void setProcessSignals() {
-    processSignals_ = true;
-  }
+  FOLLY_ALWAYS_INLINE void setProcessSignals() { processSignals_ = true; }
 
   static void processSignalReadIoCb(
       PollIoBackend* backend,
@@ -384,9 +366,7 @@ class PollIoBackend : public EventBaseBackendBase {
 
   IoCb* FOLLY_NULLABLE allocIoCb(const EventCallback& cb);
   void releaseIoCb(IoCb* aioIoCb);
-  void incNumIoCbInUse() {
-    numIoCbInUse_++;
-  }
+  void incNumIoCbInUse() { numIoCbInUse_++; }
 
   virtual IoCb* allocNewIoCb(const EventCallback& cb) = 0;
 
@@ -415,9 +395,7 @@ class PollIoBackend : public EventBaseBackendBase {
 
   int eb_event_modify_inserted(Event& event, IoCb* ioCb);
 
-  FOLLY_ALWAYS_INLINE size_t numIoCbInUse() const {
-    return numIoCbInUse_;
-  }
+  FOLLY_ALWAYS_INLINE size_t numIoCbInUse() const { return numIoCbInUse_; }
 
   Options options_;
   size_t numEntries_;

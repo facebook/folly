@@ -54,13 +54,9 @@ class FOLLY_EXPORT AsyncSocketException : public std::runtime_error {
         type_(type),
         errno_(errnoCopy) {}
 
-  AsyncSocketExceptionType getType() const noexcept {
-    return type_;
-  }
+  AsyncSocketExceptionType getType() const noexcept { return type_; }
 
-  int getErrno() const noexcept {
-    return errno_;
-  }
+  int getErrno() const noexcept { return errno_; }
 
  protected:
   /** get the string of exception type */

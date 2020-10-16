@@ -72,9 +72,7 @@ class SettingCoreBase {
   /**
    * Hashable key uniquely identifying this setting in this process
    */
-  Key getKey() const {
-    return reinterpret_cast<Key>(this);
-  }
+  Key getKey() const { return reinterpret_cast<Key>(this); }
 };
 
 void registerSetting(SettingCoreBase& core);
@@ -270,9 +268,7 @@ class SettingCore : public SettingCoreBase {
     set(defaultValue_, "default", snapshot);
   }
 
-  const SettingMetadata& meta() const override {
-    return meta_;
-  }
+  const SettingMetadata& meta() const override { return meta_; }
 
   /**
    * @param trivialStorage must refer to the same location
@@ -284,9 +280,7 @@ class SettingCore : public SettingCoreBase {
       std::atomic<uint64_t>& trivialStorage) const {
     return getImpl(IsSmallPOD<T>(), trivialStorage);
   }
-  const SettingContents<T>& getSlow() const {
-    return *tlValue();
-  }
+  const SettingContents<T>& getSlow() const { return *tlValue(); }
   /***
    * SmallPOD version: just read the global atomic
    */
@@ -329,9 +323,7 @@ class SettingCore : public SettingCoreBase {
     *settingVersion_ = nextGlobalVersion();
   }
 
-  const T& defaultValue() const {
-    return defaultValue_;
-  }
+  const T& defaultValue() const { return defaultValue_; }
 
   SettingCore(
       SettingMetadata meta,

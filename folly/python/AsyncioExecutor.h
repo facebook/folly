@@ -43,13 +43,9 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
     }
   }
 
-  void add(Func func) override {
-    queue_.putMessage(std::move(func));
-  }
+  void add(Func func) override { queue_.putMessage(std::move(func)); }
 
-  int fileno() const {
-    return consumer_.getFd();
-  }
+  int fileno() const { return consumer_.getFd(); }
 
   void drive() noexcept override {
     consumer_.consumeUntilDrained([](Func&& func) {

@@ -185,12 +185,8 @@ class CheckResult {
  public:
   explicit CheckResult(bool s) noexcept : success_(s) {}
 
-  explicit operator bool() const noexcept {
-    return success_;
-  }
-  const char* what() const noexcept {
-    return message_.c_str();
-  }
+  explicit operator bool() const noexcept { return success_; }
+  const char* what() const noexcept { return message_.c_str(); }
 
   /**
    * Support the << operator for building up the error message.

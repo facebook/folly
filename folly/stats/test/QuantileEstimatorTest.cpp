@@ -26,9 +26,7 @@ struct MockClock {
   using time_point = std::chrono::steady_clock::time_point;
   static constexpr auto is_steady = true;
 
-  static time_point now() {
-    return Now;
-  }
+  static time_point now() { return Now; }
 
   static time_point Now;
 };

@@ -83,9 +83,7 @@ struct MoveFlag {
   MoveFlag() = default;
   MoveFlag& operator=(const MoveFlag&) = delete;
   MoveFlag(const MoveFlag&) = delete;
-  MoveFlag(MoveFlag&& other) noexcept {
-    other.moved = true;
-  }
+  MoveFlag(MoveFlag&& other) noexcept { other.moved = true; }
   bool moved{false};
 };
 

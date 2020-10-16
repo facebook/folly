@@ -120,23 +120,17 @@ struct LockTraitsImpl<Mutex, MutexLevel::UNIQUE, false> {
   /**
    * Acquire the lock exclusively.
    */
-  static void lock(Mutex& mutex) {
-    mutex.lock();
-  }
+  static void lock(Mutex& mutex) { mutex.lock(); }
 
   /**
    * Release an exclusively-held lock.
    */
-  static void unlock(Mutex& mutex) {
-    mutex.unlock();
-  }
+  static void unlock(Mutex& mutex) { mutex.unlock(); }
 
   /**
    * Try to acquire the mutex
    */
-  static bool try_lock(Mutex& mutex) {
-    return mutex.try_lock();
-  }
+  static bool try_lock(Mutex& mutex) { return mutex.try_lock(); }
 };
 
 /**
@@ -153,23 +147,17 @@ struct LockTraitsImpl<Mutex, MutexLevel::SHARED, false>
   /**
    * Acquire the lock in shared (read) mode.
    */
-  static void lock_shared(Mutex& mutex) {
-    mutex.lock_shared();
-  }
+  static void lock_shared(Mutex& mutex) { mutex.lock_shared(); }
 
   /**
    * Release a lock held in shared mode.
    */
-  static void unlock_shared(Mutex& mutex) {
-    mutex.unlock_shared();
-  }
+  static void unlock_shared(Mutex& mutex) { mutex.unlock_shared(); }
 
   /**
    * Try to acquire the mutex in shared mode
    */
-  static bool try_lock_shared(Mutex& mutex) {
-    return mutex.try_lock_shared();
-  }
+  static bool try_lock_shared(Mutex& mutex) { return mutex.try_lock_shared(); }
 };
 
 /**
@@ -210,16 +198,12 @@ struct LockTraitsImpl<Mutex, MutexLevel::UPGRADE, false>
   /**
    * Acquire the lock in upgradable mode.
    */
-  static void lock_upgrade(Mutex& mutex) {
-    mutex.lock_upgrade();
-  }
+  static void lock_upgrade(Mutex& mutex) { mutex.lock_upgrade(); }
 
   /**
    * Release the lock in upgrade mode
    */
-  static void unlock_upgrade(Mutex& mutex) {
-    mutex.unlock_upgrade();
-  }
+  static void unlock_upgrade(Mutex& mutex) { mutex.unlock_upgrade(); }
 
   /**
    * Try and acquire the lock in upgrade mode

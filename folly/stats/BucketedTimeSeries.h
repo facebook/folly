@@ -148,9 +148,7 @@ class BucketedTimeSeries {
    *
    * If no data has ever been added to this timeseries, 0 will be returned.
    */
-  TimePoint getLatestTime() const {
-    return latestTime_;
-  }
+  TimePoint getLatestTime() const { return latestTime_; }
 
   /*
    * Get the time of the earliest data point stored in this timeseries.
@@ -171,25 +169,19 @@ class BucketedTimeSeries {
   /*
    * Return the number of buckets.
    */
-  size_t numBuckets() const {
-    return buckets_.size();
-  }
+  size_t numBuckets() const { return buckets_.size(); }
 
   /*
    * Return the maximum duration of data that can be tracked by this
    * BucketedTimeSeries.
    */
-  Duration duration() const {
-    return duration_;
-  }
+  Duration duration() const { return duration_; }
 
   /*
    * Returns true if this BucketedTimeSeries stores data for all-time, without
    * ever rolling over into new buckets.
    */
-  bool isAllTime() const {
-    return (duration_ == Duration(0));
-  }
+  bool isAllTime() const { return (duration_ == Duration(0)); }
 
   /*
    * Returns true if no calls to update() have been made since the last call to
@@ -208,24 +200,18 @@ class BucketedTimeSeries {
    * Returns time of first update() since clear()/constructor.
    * Note that the returned value is only meaningful when empty() is false.
    */
-  TimePoint firstTime() const {
-    return firstTime_;
-  }
+  TimePoint firstTime() const { return firstTime_; }
 
   /*
    * Returns time of last update().
    * Note that the returned value is only meaningful when empty() is false.
    */
-  TimePoint latestTime() const {
-    return latestTime_;
-  }
+  TimePoint latestTime() const { return latestTime_; }
 
   /*
    * Returns actual buckets of values
    */
-  const std::vector<Bucket>& buckets() const {
-    return buckets_;
-  }
+  const std::vector<Bucket>& buckets() const { return buckets_; }
 
   /*
    * Get the amount of time tracked by this timeseries.
@@ -269,9 +255,7 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling sum(), to
    * make sure you are not reading stale data.
    */
-  const ValueType& sum() const {
-    return total_.sum;
-  }
+  const ValueType& sum() const { return total_.sum; }
 
   /*
    * Return the number of data points currently tracked by this
@@ -280,9 +264,7 @@ class BucketedTimeSeries {
    * Note that you generally should call update() before calling count(), to
    * make sure you are not reading stale data.
    */
-  uint64_t count() const {
-    return total_.count;
-  }
+  uint64_t count() const { return total_.count; }
 
   /*
    * Return the average value (sum / count).
@@ -422,9 +404,7 @@ class BucketedTimeSeries {
    *
    * This method may not be called for all-time data.
    */
-  const Bucket& getBucketByIndex(size_t idx) const {
-    return buckets_[idx];
-  }
+  const Bucket& getBucketByIndex(size_t idx) const { return buckets_[idx]; }
 
   /*
    * Compute the bucket index that the specified time falls into,
@@ -455,9 +435,7 @@ class BucketedTimeSeries {
   addValueAggregated(Duration now, const ValueType& total, uint64_t nsamples) {
     return addValueAggregated(TimePoint(now), total, nsamples);
   }
-  size_t update(Duration now) {
-    return update(TimePoint(now));
-  }
+  size_t update(Duration now) { return update(TimePoint(now)); }
 
  private:
   template <typename ReturnType = double, typename Interval = Duration>

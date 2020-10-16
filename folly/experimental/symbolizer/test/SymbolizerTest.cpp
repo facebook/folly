@@ -197,9 +197,7 @@ class ClassWithInlineFunctions {
   }
 
   // Dummy non-inline function.
-  size_t dummy() const {
-    return dummy_;
-  }
+  size_t dummy() const { return dummy_; }
 
   size_t dummy_ = 0;
 };

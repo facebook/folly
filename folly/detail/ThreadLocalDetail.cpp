@@ -87,9 +87,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
       PthreadKeyUnregister::registerKey(pthreadKey_);
     }
 
-    FOLLY_ALWAYS_INLINE pthread_key_t get() const {
-      return pthreadKey_;
-    }
+    FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
 
    private:
     pthread_key_t pthreadKey_;

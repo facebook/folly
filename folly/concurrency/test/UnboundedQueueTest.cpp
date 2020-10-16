@@ -500,13 +500,9 @@ class MPMC {
     q_.blockingWrite(std::forward<Args>(args)...);
   }
 
-  void dequeue(T& item) {
-    q_.blockingRead(item);
-  }
+  void dequeue(T& item) { q_.blockingRead(item); }
 
-  bool try_dequeue(T& item) {
-    return q_.read(item);
-  }
+  bool try_dequeue(T& item) { return q_.read(item); }
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(
@@ -534,13 +530,9 @@ class PCQ {
     }
   }
 
-  void dequeue(T&) {
-    ASSERT_TRUE(false);
-  }
+  void dequeue(T&) { ASSERT_TRUE(false); }
 
-  bool try_dequeue(T& item) {
-    return q_.read(item);
-  }
+  bool try_dequeue(T& item) { return q_.read(item); }
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(T&, const std::chrono::duration<Rep, Period>&) noexcept {
@@ -560,9 +552,7 @@ struct IntArray {
       a[i] = v;
     }
   }
-  operator int() {
-    return a[0];
-  }
+  operator int() { return a[0]; }
 };
 
 void dottedLine() {

@@ -45,9 +45,7 @@ class InlineTask;
 
 class InlineTaskPromiseBase {
   struct FinalAwaiter {
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
 
     template <typename Promise>
     std::experimental::coroutine_handle<> await_suspend(
@@ -76,13 +74,9 @@ class InlineTaskPromiseBase {
     ::folly_coro_async_free(ptr, size);
   }
 
-  std::experimental::suspend_always initial_suspend() noexcept {
-    return {};
-  }
+  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
-  auto final_suspend() noexcept {
-    return FinalAwaiter{};
-  }
+  auto final_suspend() noexcept { return FinalAwaiter{}; }
 
   void set_continuation(
       std::experimental::coroutine_handle<> continuation) noexcept {
@@ -130,9 +124,7 @@ class InlineTaskPromise : public InlineTaskPromiseBase {
         folly::exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  T result() {
-    return std::move(result_).value();
-  }
+  T result() { return std::move(result_).value(); }
 
  private:
   // folly::Try<T> doesn't support storing reference types so we store a
@@ -159,9 +151,7 @@ class InlineTaskPromise<void> : public InlineTaskPromiseBase {
         folly::exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  void result() {
-    return result_.value();
-  }
+  void result() { return result_.value(); }
 
  private:
   folly::Try<void> result_;
@@ -193,9 +183,7 @@ class InlineTask {
       }
     }
 
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
 
     handle_t await_suspend(
         std::experimental::coroutine_handle<> awaitingCoroutine) noexcept {
@@ -254,23 +242,15 @@ inline InlineTask<void> InlineTaskPromise<void>::get_return_object() noexcept {
 struct InlineTaskDetached {
   class promise_type {
    public:
-    InlineTaskDetached get_return_object() noexcept {
-      return {};
-    }
+    InlineTaskDetached get_return_object() noexcept { return {}; }
 
-    std::experimental::suspend_never initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_never final_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_never final_suspend() noexcept { return {}; }
 
     void return_void() noexcept {}
 
-    [[noreturn]] void unhandled_exception() noexcept {
-      std::terminate();
-    }
+    [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
   };
 };
 

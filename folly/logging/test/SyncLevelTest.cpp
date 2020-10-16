@@ -43,9 +43,7 @@ class TestLogWriter : public LogWriter {
   int flushed_messages_count{0};
   int unflushed_messages_count{0};
 
-  bool ttyOutput() const override {
-    return false;
-  }
+  bool ttyOutput() const override { return false; }
 };
 
 class TestHandlerFactory : public LogHandlerFactory {
@@ -53,9 +51,7 @@ class TestHandlerFactory : public LogHandlerFactory {
   TestHandlerFactory(const std::shared_ptr<TestLogWriter> writer)
       : writer_(writer) {}
 
-  StringPiece getType() const override {
-    return "test";
-  }
+  StringPiece getType() const override { return "test"; }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override {
     TestWriterFactory writerFactory{writer_};
@@ -75,9 +71,7 @@ class TestHandlerFactory : public LogHandlerFactory {
       return false;
     }
 
-    std::shared_ptr<LogWriter> createWriter() override {
-      return writer_;
-    }
+    std::shared_ptr<LogWriter> createWriter() override { return writer_; }
 
    private:
     std::shared_ptr<TestLogWriter> writer_;

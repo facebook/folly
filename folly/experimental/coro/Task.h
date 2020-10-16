@@ -59,13 +59,9 @@ class co_result final {
       std::is_nothrow_move_constructible<T>::value)
       : result_(std::move(result)) {}
 
-  const Try<T>& result() const {
-    return result_;
-  }
+  const Try<T>& result() const { return result_; }
 
-  Try<T>& result() {
-    return result_;
-  }
+  Try<T>& result() { return result_; }
 
  private:
   Try<T> result_;
@@ -79,9 +75,7 @@ namespace detail {
 class TaskPromiseBase {
   class FinalAwaiter {
    public:
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
 
     template <typename Promise>
     auto await_suspend(
@@ -91,9 +85,7 @@ class TaskPromiseBase {
           promise.continuation_, promise.executor_);
     }
 
-    [[noreturn]] void await_resume() noexcept {
-      folly::assume_unreachable();
-    }
+    [[noreturn]] void await_resume() noexcept { folly::assume_unreachable(); }
   };
 
   friend class FinalAwaiter;
@@ -110,13 +102,9 @@ class TaskPromiseBase {
     ::folly_coro_async_free(ptr, size);
   }
 
-  std::experimental::suspend_always initial_suspend() noexcept {
-    return {};
-  }
+  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
-  FinalAwaiter final_suspend() noexcept {
-    return {};
-  }
+  FinalAwaiter final_suspend() noexcept { return {}; }
 
   template <typename Awaitable>
   auto await_transform(Awaitable&& awaitable) {
@@ -173,9 +161,7 @@ class TaskPromise : public TaskPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  void return_value(T&& t) {
-    result_.emplace(static_cast<T&&>(t));
-  }
+  void return_value(T&& t) { result_.emplace(static_cast<T&&>(t)); }
 
   template <typename U>
   void return_value(U&& value) {
@@ -196,9 +182,7 @@ class TaskPromise : public TaskPromiseBase {
     }
   }
 
-  Try<StorageType>& result() {
-    return result_;
-  }
+  Try<StorageType>& result() { return result_; }
 
   auto yield_value(co_error ex) {
     result_.emplaceException(std::move(ex.exception()));
@@ -228,13 +212,9 @@ class TaskPromise<void> : public TaskPromiseBase {
         exception_wrapper::from_exception_ptr(std::current_exception()));
   }
 
-  void return_void() noexcept {
-    result_.emplace();
-  }
+  void return_void() noexcept { result_.emplace(); }
 
-  Try<void>& result() {
-    return result_;
-  }
+  Try<void>& result() { return result_; }
 
   auto yield_value(co_error ex) {
     result_.emplaceException(std::move(ex.exception()));
@@ -286,9 +266,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return coro_.promise().executor_.get();
   }
 
-  void swap(TaskWithExecutor& t) noexcept {
-    std::swap(coro_, t.coro_);
-  }
+  void swap(TaskWithExecutor& t) noexcept { std::swap(coro_, t.coro_); }
 
   // Start execution of this task eagerly and return a folly::SemiFuture<T>
   // that will complete with the result.
@@ -372,9 +350,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       }
     }
 
-    bool await_ready() const {
-      return false;
-    }
+    bool await_ready() const { return false; }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
@@ -401,9 +377,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
     decltype(auto) await_resume() {
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
-      SCOPE_EXIT {
-        std::exchange(coro_, {}).destroy();
-      };
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       ResultCreator resultCreator;
       return resultCreator(std::move(coro_.promise().result()));
     }
@@ -422,9 +396,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
       }
     }
 
-    bool await_ready() {
-      return false;
-    }
+    bool await_ready() { return false; }
 
     auto await_suspend(std::experimental::coroutine_handle<> continuation) {
       auto& promise = coro_.promise();
@@ -437,9 +409,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
     folly::Try<StorageType> await_resume() {
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
-      SCOPE_EXIT {
-        std::exchange(coro_, {}).destroy();
-      };
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
 
@@ -448,9 +418,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
   };
 
   struct ValueCreator {
-    T operator()(Try<StorageType>&& t) const {
-      return std::move(t).value();
-    }
+    T operator()(Try<StorageType>&& t) const { return std::move(t).value(); }
   };
 
   struct TryCreator {
@@ -535,9 +503,7 @@ class FOLLY_NODISCARD Task {
     return *this;
   }
 
-  void swap(Task& t) noexcept {
-    std::swap(coro_, t.coro_);
-  }
+  void swap(Task& t) noexcept { std::swap(coro_, t.coro_); }
 
   /// Specify the executor that this task should execute on.
   ///
@@ -595,9 +561,7 @@ class FOLLY_NODISCARD Task {
       }
     }
 
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
 
     auto await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {
@@ -605,14 +569,10 @@ class FOLLY_NODISCARD Task {
       return symmetricTransferMaybeReschedule(coro_, coro_.promise().executor_);
     }
 
-    T await_resume() {
-      return await_resume_try().value();
-    }
+    T await_resume() { return await_resume_try().value(); }
 
     auto await_resume_try() {
-      SCOPE_EXIT {
-        std::exchange(coro_, {}).destroy();
-      };
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
 

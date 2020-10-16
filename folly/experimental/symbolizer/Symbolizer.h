@@ -221,9 +221,7 @@ class SafeStackTracePrinter {
    */
   FOLLY_NOINLINE void printStackTrace(bool symbolize);
 
-  void print(StringPiece sp) {
-    printer_.print(sp);
-  }
+  void print(StringPiece sp) { printer_.print(sp); }
 
   // Flush printer_, also fsync, in case we're about to crash again...
   void flush();

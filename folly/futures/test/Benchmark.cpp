@@ -342,12 +342,8 @@ BENCHMARK_DRAW_LINE();
 namespace {
 struct Bulky {
   explicit Bulky(std::string message) : message_(message) {}
-  std::string message() & {
-    return message_;
-  }
-  std::string&& message() && {
-    return std::move(message_);
-  }
+  std::string message() & { return message_; }
+  std::string&& message() && { return std::move(message_); }
 
  private:
   std::string message_;

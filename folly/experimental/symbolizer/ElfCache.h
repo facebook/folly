@@ -72,13 +72,9 @@ class SignalSafeElfCache : public ElfCacheBase {
     Path(Path const&) = delete;
     void operator=(Path const&) = delete;
 
-    /* implicit */ operator StringPiece() const noexcept {
-      return data_;
-    }
+    /* implicit */ operator StringPiece() const noexcept { return data_; }
 
-    char const* c_str() const noexcept {
-      return data_.data();
-    }
+    char const* c_str() const noexcept { return data_.data(); }
 
     friend bool operator<(Path const& a, Path const& b) noexcept {
       return a.data_ < b.data_;

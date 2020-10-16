@@ -32,9 +32,7 @@ template <typename T, template <typename> class Atom = std::atomic>
 class HazptrSWMRSet {
   template <typename Node>
   struct Reclaimer {
-    void operator()(Node* p) {
-      delete p;
-    }
+    void operator()(Node* p) { delete p; }
   };
 
   struct Node : public hazptr_obj_base<Node, Atom, Reclaimer<Node>> {

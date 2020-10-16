@@ -27,9 +27,7 @@ class Exception : public std::exception {
   explicit Exception(const std::string& value) : value_(value) {}
   ~Exception() noexcept override {}
 
-  const char* what() const noexcept override {
-    return value_.c_str();
-  }
+  const char* what() const noexcept override { return value_.c_str(); }
 
  private:
   std::string value_;

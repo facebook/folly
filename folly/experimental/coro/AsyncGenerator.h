@@ -48,9 +48,7 @@ template <typename Reference, typename Value>
 class AsyncGeneratorPromise {
   class YieldAwaiter {
    public:
-    bool await_ready() noexcept {
-      return false;
-    }
+    bool await_ready() noexcept { return false; }
     auto await_suspend(
         std::experimental::coroutine_handle<AsyncGeneratorPromise> h) noexcept {
       return symmetricTransferMaybeReschedule(
@@ -89,9 +87,7 @@ class AsyncGeneratorPromise {
 
   AsyncGenerator<Reference, Value> get_return_object() noexcept;
 
-  std::experimental::suspend_always initial_suspend() noexcept {
-    return {};
-  }
+  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
   YieldAwaiter final_suspend() noexcept {
     DCHECK(!hasValue());
@@ -212,9 +208,7 @@ class AsyncGeneratorPromise {
     }
   }
 
-  bool hasValue() const noexcept {
-    return state_ == State::VALUE;
-  }
+  bool hasValue() const noexcept { return state_ == State::VALUE; }
 
  private:
   folly::Executor::KeepAlive<> clearContext() noexcept {
@@ -372,9 +366,7 @@ class FOLLY_NODISCARD AsyncGenerator {
     return *this;
   }
 
-  void swap(AsyncGenerator& other) noexcept {
-    std::swap(coro_, other.coro_);
-  }
+  void swap(AsyncGenerator& other) noexcept { std::swap(coro_, other.coro_); }
 
   class NextAwaitable;
   class NextSemiAwaitable;
@@ -410,13 +402,9 @@ class FOLLY_NODISCARD AsyncGenerator {
       return *this;
     }
 
-    bool has_value() const noexcept {
-      return hasValue_;
-    }
+    bool has_value() const noexcept { return hasValue_; }
 
-    explicit operator bool() const noexcept {
-      return has_value();
-    }
+    explicit operator bool() const noexcept { return has_value(); }
 
     decltype(auto) value() & {
       DCHECK(has_value());
@@ -438,21 +426,13 @@ class FOLLY_NODISCARD AsyncGenerator {
       return std::move(value_).get();
     }
 
-    decltype(auto) operator*() & {
-      return value();
-    }
+    decltype(auto) operator*() & { return value(); }
 
-    decltype(auto) operator*() && {
-      return std::move(*this).value();
-    }
+    decltype(auto) operator*() && { return std::move(*this).value(); }
 
-    decltype(auto) operator*() const& {
-      return value();
-    }
+    decltype(auto) operator*() const& { return value(); }
 
-    decltype(auto) operator*() const&& {
-      return std::move(*this).value();
-    }
+    decltype(auto) operator*() const&& { return std::move(*this).value(); }
 
     decltype(auto) operator-> () {
       DCHECK(has_value());
@@ -478,9 +458,7 @@ class FOLLY_NODISCARD AsyncGenerator {
 
   class NextAwaitable {
    public:
-    bool await_ready() {
-      return !coro_;
-    }
+    bool await_ready() { return !coro_; }
 
     handle_t await_suspend(
         std::experimental::coroutine_handle<> continuation) noexcept {

@@ -99,9 +99,7 @@ struct Primed : folly::Cleanup, folly::EnablePrimaryFromThis<Primed> {
         folly::makeSemiFuture().defer([this](auto&&) { this->pool_.join(); }));
   }
   using folly::Cleanup::addCleanup;
-  std::shared_ptr<Primed> get_shared() {
-    return masterLockFromThis();
-  }
+  std::shared_ptr<Primed> get_shared() { return masterLockFromThis(); }
 };
 
 TEST(PrimaryPtrTest, BasicCleanup) {

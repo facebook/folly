@@ -29,30 +29,18 @@ struct from_any {
 };
 
 struct Fn {
-  char operator()(int, int) noexcept {
-    return 'a';
-  }
-  int volatile&& operator()(int, char const*) {
-    return std::move(x_);
-  }
-  float operator()(float, float) {
-    return 3.14;
-  }
+  char operator()(int, int) noexcept { return 'a'; }
+  int volatile&& operator()(int, char const*) { return std::move(x_); }
+  float operator()(float, float) { return 3.14; }
   int volatile x_ = 17;
 };
 
 FOLLY_CREATE_MEMBER_INVOKER(test_invoker, test);
 
 struct Obj {
-  char test(int, int) noexcept {
-    return 'a';
-  }
-  int volatile&& test(int, char const*) {
-    return std::move(x_);
-  }
-  float test(float, float) {
-    return 3.14;
-  }
+  char test(int, int) noexcept { return 'a'; }
+  int volatile&& test(int, char const*) { return std::move(x_); }
+  float test(float, float) { return 3.14; }
   int volatile x_ = 17;
 };
 
@@ -283,16 +271,12 @@ FOLLY_CREATE_STATIC_MEMBER_INVOKER(stat_invoker, stat);
 
 TEST_F(InvokeTest, static_member_invoke) {
   struct HasStat {
-    static char stat(int, int) noexcept {
-      return 'a';
-    }
+    static char stat(int, int) noexcept { return 'a'; }
     static int volatile&& stat(int, char const*) {
       static int volatile x_ = 17;
       return std::move(x_);
     }
-    static float stat(float, float) {
-      return 3.14;
-    }
+    static float stat(float, float) { return 3.14; }
   };
   using traits = folly::invoke_traits<stat_invoker<HasStat>>;
 

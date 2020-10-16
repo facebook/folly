@@ -76,13 +76,9 @@ class TestRequestData : public RequestData {
  public:
   explicit TestRequestData(std::string key) noexcept : key_(std::move(key)) {}
 
-  bool hasCallback() override {
-    return false;
-  }
+  bool hasCallback() override { return false; }
 
-  const std::string& key() const noexcept {
-    return key_;
-  }
+  const std::string& key() const noexcept { return key_; }
 
  private:
   std::string key_;

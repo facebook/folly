@@ -120,9 +120,7 @@ class ReadCallback : public folly::AsyncTransport::ReadCallback {
     }
   }
 
-  void readEOF() noexcept override {
-    state = STATE_SUCCEEDED;
-  }
+  void readEOF() noexcept override { state = STATE_SUCCEEDED; }
 
   void readErr(const folly::AsyncSocketException& ex) noexcept override {
     state = STATE_FAILED;
@@ -204,13 +202,9 @@ class BufferCallback : public folly::AsyncTransport::BufferCallback {
     bufferCleared_ = true;
   }
 
-  bool hasBuffered() const {
-    return buffered_;
-  }
+  bool hasBuffered() const { return buffered_; }
 
-  bool hasBufferCleared() const {
-    return bufferCleared_;
-  }
+  bool hasBufferCleared() const { return bufferCleared_; }
 
  private:
   folly::AsyncSocket* socket_{nullptr};
@@ -319,9 +313,7 @@ class TestServer {
           errno);
     }
 
-    SCOPE_EXIT {
-      freeaddrinfo(res);
-    };
+    SCOPE_EXIT { freeaddrinfo(res); };
 
     if (bufSize > 0) {
       folly::netops::setsockopt(
@@ -357,9 +349,7 @@ class TestServer {
   }
 
   // Get the address for connecting to the server
-  const folly::SocketAddress& getAddress() const {
-    return address_;
-  }
+  const folly::SocketAddress& getAddress() const { return address_; }
 
   folly::NetworkSocket acceptFD(int timeout = 50) {
     folly::netops::PollDescriptor pfd;

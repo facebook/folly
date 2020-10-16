@@ -250,9 +250,7 @@ struct hash<TestEnum> {
 
 template <>
 struct hash<TestStruct> {
-  std::size_t operator()(TestStruct const&) const noexcept {
-    return 0;
-  }
+  std::size_t operator()(TestStruct const&) const noexcept { return 0; }
 };
 } // namespace std
 
@@ -295,13 +293,9 @@ class TestAlloc {
     return *this;
   }
 
-  static size_t getAllocatedMemorySize() {
-    return allocatedMemorySize;
-  }
+  static size_t getAllocatedMemorySize() { return allocatedMemorySize; }
 
-  static void resetTracking() {
-    allocatedMemorySize = 0;
-  }
+  static void resetTracking() { allocatedMemorySize = 0; }
 
   T* allocate(size_t n) {
     allocatedMemorySize += n * sizeof(T);

@@ -51,21 +51,11 @@ std::size_t gConvertOpCnt;
  * been constructed or assigned to, to verify iterator behavior.
  */
 struct Object {
-  Object() {
-    ++gDefaultCtrCnt;
-  }
-  Object(const Object&) {
-    ++gCopyCtrCnt;
-  }
-  Object(Object&&) noexcept {
-    ++gMoveCtrCnt;
-  }
-  explicit Object(int) {
-    ++gExplicitCtrCnt;
-  }
-  explicit Object(int, int) {
-    ++gMultiargCtrCnt;
-  }
+  Object() { ++gDefaultCtrCnt; }
+  Object(const Object&) { ++gCopyCtrCnt; }
+  Object(Object&&) noexcept { ++gMoveCtrCnt; }
+  explicit Object(int) { ++gExplicitCtrCnt; }
+  explicit Object(int, int) { ++gMultiargCtrCnt; }
   Object& operator=(const Object&) {
     ++gCopyOpCnt;
     return *this;
@@ -255,12 +245,8 @@ TEST(EmplaceIterator, HintEmplacerTest) {
   {
     struct O {
       explicit O(int i_) : i(i_) {}
-      bool operator<(const O& other) const {
-        return i < other.i;
-      }
-      bool operator==(const O& other) const {
-        return i == other.i;
-      }
+      bool operator<(const O& other) const { return i < other.i; }
+      bool operator==(const O& other) const { return i == other.i; }
       int i;
     };
     std::vector<int> v1 = {0, 1, 2, 3, 4};
@@ -508,15 +494,9 @@ TEST(EmplaceIterator, ImplicitUnpack) {
   static std::size_t tupleCtrCnt;
 
   struct Object2 {
-    Object2(int, int) {
-      ++multiCtrCnt;
-    }
-    explicit Object2(const std::pair<int, int>&) {
-      ++pairCtrCnt;
-    }
-    explicit Object2(const std::tuple<int, int>&) {
-      ++tupleCtrCnt;
-    }
+    Object2(int, int) { ++multiCtrCnt; }
+    explicit Object2(const std::pair<int, int>&) { ++pairCtrCnt; }
+    explicit Object2(const std::tuple<int, int>&) { ++tupleCtrCnt; }
   };
 
   auto test = [](auto&& it, bool expectUnpack) {

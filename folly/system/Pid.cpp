@@ -61,9 +61,7 @@ class PidCache {
   }
 
  private:
-  bool valid() {
-    return state_.load() == State::VALID;
-  }
+  bool valid() { return state_.load() == State::VALID; }
 
   FOLLY_COLD pid_t init() {
     pid_t pid = getpid();

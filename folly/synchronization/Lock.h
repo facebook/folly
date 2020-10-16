@@ -122,26 +122,18 @@ class upgrade_lock {
     std::swap(owns_, that.owns_);
   }
 
-  friend void swap(upgrade_lock& a, upgrade_lock& b) noexcept {
-    a.swap(b);
-  }
+  friend void swap(upgrade_lock& a, upgrade_lock& b) noexcept { a.swap(b); }
 
   mutex_type* release() noexcept {
     owns_ = false;
     return std::exchange(mutex_, nullptr);
   }
 
-  mutex_type* mutex() const noexcept {
-    return mutex_;
-  }
+  mutex_type* mutex() const noexcept { return mutex_; }
 
-  bool owns_lock() const noexcept {
-    return owns_;
-  }
+  bool owns_lock() const noexcept { return owns_; }
 
-  explicit operator bool() const noexcept {
-    return owns_;
-  }
+  explicit operator bool() const noexcept { return owns_; }
 
  private:
   template <bool Owns>

@@ -64,9 +64,7 @@ class SerialExecutor : public SequencedExecutor {
    public:
     Deleter() {}
 
-    void operator()(SerialExecutor* executor) {
-      executor->keepAliveRelease();
-    }
+    void operator()(SerialExecutor* executor) { executor->keepAliveRelease(); }
 
    private:
     friend class SerialExecutor;

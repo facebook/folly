@@ -168,9 +168,7 @@ class hazptr_domain {
     exec_fn_.store(exfn, std::memory_order_release);
   }
 
-  void clear_executor() {
-    exec_fn_.store(nullptr, std::memory_order_release);
-  }
+  void clear_executor() { exec_fn_.store(nullptr, std::memory_order_release); }
 
   /** retire - nonintrusive - allocates memory */
   template <typename T, typename D = std::default_delete<T>>
@@ -238,13 +236,9 @@ class hazptr_domain {
   friend class hazptr_tc<Atom>;
 #endif
 
-  int load_count() {
-    return count_.load(std::memory_order_acquire);
-  }
+  int load_count() { return count_.load(std::memory_order_acquire); }
 
-  void add_count(int val) {
-    count_.fetch_add(val, std::memory_order_release);
-  }
+  void add_count(int val) { count_.fetch_add(val, std::memory_order_release); }
 
   int exchange_count(int val) {
     return count_.exchange(val, std::memory_order_acq_rel);
@@ -255,9 +249,7 @@ class hazptr_domain {
         expected, newval, std::memory_order_acq_rel, std::memory_order_relaxed);
   }
 
-  uint64_t load_due_time() {
-    return due_time_.load(std::memory_order_acquire);
-  }
+  uint64_t load_due_time() { return due_time_.load(std::memory_order_acquire); }
 
   void set_due_time() {
     uint64_t time = std::chrono::duration_cast<std::chrono::nanoseconds>(
@@ -278,9 +270,7 @@ class hazptr_domain {
   }
 
   /** hprec_release */
-  void hprec_release(hazptr_rec<Atom>* hprec) noexcept {
-    hprec->release();
-  }
+  void hprec_release(hazptr_rec<Atom>* hprec) noexcept { hprec->release(); }
 
   /** push_retired */
   void push_retired(hazptr_obj_list<Atom>& l, bool check = true) {

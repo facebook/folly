@@ -235,9 +235,7 @@ class Dwarf::Section {
   bool next(folly::StringPiece& chunk);
 
   /** Is the current chunk 64 bit? */
-  bool is64Bit() const {
-    return is64Bit_;
-  }
+  bool is64Bit() const { return is64Bit_; }
 
  private:
   // Yes, 32- and 64- bit sections may coexist.  Yikes!

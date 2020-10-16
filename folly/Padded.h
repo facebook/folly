@@ -65,19 +65,13 @@ class Node {
   static constexpr size_t kElementCount = NS / sizeof(T);
   static constexpr size_t kPaddingBytes = NS % sizeof(T);
 
-  T* data() {
-    return storage_.data;
-  }
-  const T* data() const {
-    return storage_.data;
-  }
+  T* data() { return storage_.data; }
+  const T* data() const { return storage_.data; }
 
   bool operator==(const Node& other) const {
     return memcmp(data(), other.data(), sizeof(T) * kElementCount) == 0;
   }
-  bool operator!=(const Node& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const Node& other) const { return !(*this == other); }
 
   /**
    * Return the number of nodes needed to represent n values.  Rounds up.
@@ -90,9 +84,7 @@ class Node {
    * Return the total byte size needed to represent n values, rounded up
    * to the nearest full node.
    */
-  static constexpr size_t paddedByteSize(size_t n) {
-    return nodeCount(n) * NS;
-  }
+  static constexpr size_t paddedByteSize(size_t n) { return nodeCount(n) * NS; }
 
   /**
    * Return the number of bytes used for padding n values.
@@ -174,12 +166,8 @@ class Iterator : public detail::IteratorBase<Iterator, Iter> {
   explicit Iterator(Iter base) : Super(base), pos_(0) {}
 
   // Return the current node and the position inside the node
-  const Node& node() const {
-    return *this->base_reference();
-  }
-  size_t pos() const {
-    return pos_;
-  }
+  const Node& node() const { return *this->base_reference(); }
+  size_t pos() const { return pos_; }
 
  private:
   typename Super::reference dereference() const {
@@ -332,9 +320,7 @@ class Adaptor {
   }
 
   // Iterators
-  const_iterator cbegin() const {
-    return const_iterator(c_.begin());
-  }
+  const_iterator cbegin() const { return const_iterator(c_.begin()); }
   const_iterator cend() const {
     auto it = const_iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
@@ -342,15 +328,9 @@ class Adaptor {
     }
     return it;
   }
-  const_iterator begin() const {
-    return cbegin();
-  }
-  const_iterator end() const {
-    return cend();
-  }
-  iterator begin() {
-    return iterator(c_.begin());
-  }
+  const_iterator begin() const { return cbegin(); }
+  const_iterator end() const { return cend(); }
+  iterator begin() { return iterator(c_.begin()); }
   iterator end() {
     auto it = iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
@@ -363,9 +343,7 @@ class Adaptor {
     swap(c_, other.c_);
     swap(lastCount_, other.lastCount_);
   }
-  bool empty() const {
-    return c_.empty();
-  }
+  bool empty() const { return c_.empty(); }
   size_type size() const {
     return (
         c_.empty() ? 0 : (c_.size() - 1) * Node::kElementCount + lastCount_);
@@ -401,9 +379,7 @@ class Adaptor {
     new (allocate_back()) value_type(std::forward<Args>(args)...);
   }
 
-  void push_back(value_type x) {
-    emplace_back(std::move(x));
-  }
+  void push_back(value_type x) { emplace_back(std::move(x)); }
 
   void pop_back() {
     assert(!empty());
@@ -423,9 +399,7 @@ class Adaptor {
     c_.reserve(Node::nodeCount(n));
   }
 
-  size_type capacity() const {
-    return c_.capacity() * Node::kElementCount;
-  }
+  size_type capacity() const { return c_.capacity() * Node::kElementCount; }
 
   const value_type& operator[](size_type idx) const {
     return c_[idx / Node::kElementCount].data()[idx % Node::kElementCount];

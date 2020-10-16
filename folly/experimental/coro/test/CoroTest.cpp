@@ -153,9 +153,7 @@ struct CountingExecutor : public ManualExecutor {
     return true;
   }
 
-  void keepAliveRelease() noexcept override {
-    --keepAliveCounter;
-  }
+  void keepAliveRelease() noexcept override { --keepAliveCounter; }
 
   size_t keepAliveCounter{0};
 };
@@ -358,17 +356,13 @@ TEST_F(CoroTest, TimedWaitKeepAlive) {
 
 template <int value>
 struct AwaitableInt {
-  bool await_ready() const {
-    return true;
-  }
+  bool await_ready() const { return true; }
 
   bool await_suspend(std::experimental::coroutine_handle<>) {
     LOG(FATAL) << "Should never be called.";
   }
 
-  int await_resume() {
-    return value;
-  }
+  int await_resume() { return value; }
 };
 
 struct AwaitableWithOperator {};
@@ -386,9 +380,7 @@ TEST_F(CoroTest, AwaitableWithOperator) {
 }
 
 struct AwaitableWithMemberOperator {
-  AwaitableInt<42> operator co_await() {
-    return {};
-  }
+  AwaitableInt<42> operator co_await() { return {}; }
 };
 
 AwaitableInt<24> operator co_await(const AwaitableWithMemberOperator&) {

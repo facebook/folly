@@ -170,9 +170,7 @@ class IOBufQueue {
     /**
      * Get a pointer to the underlying IOBufQueue object.
      */
-    IOBufQueue* queue() {
-      return queue_;
-    }
+    IOBufQueue* queue() { return queue_; }
 
     /**
      * Return a pointer to the start of cached writable tail.
@@ -215,24 +213,18 @@ class IOBufQueue {
      * The caller must guarantee that the cache is set (e.g. the caller just
      * called fillCache or checked that it's not empty).
      */
-    void appendUnsafe(size_t n) {
-      data_.cachedRange.first += n;
-    }
+    void appendUnsafe(size_t n) { data_.cachedRange.first += n; }
 
     /**
      * Fill the cache of writable tail from the underlying IOBufQueue.
      */
-    void fillCache() {
-      queue_->fillWritableRangeCache(data_);
-    }
+    void fillCache() { queue_->fillWritableRangeCache(data_); }
 
    private:
     WritableRangeCacheData data_;
     IOBufQueue* queue_;
 
-    FOLLY_NOINLINE void appendSlow(size_t n) {
-      queue_->postallocate(n);
-    }
+    FOLLY_NOINLINE void appendSlow(size_t n) { queue_->postallocate(n); }
 
     void dcheckIntegrity() {
       // Tail start should always be less than tail end.
@@ -313,9 +305,7 @@ class IOBufQueue {
    * Copy a string to the end of this queue.
    * The caller retains ownership of the source data.
    */
-  void append(StringPiece sp) {
-    append(sp.data(), sp.size());
-  }
+  void append(StringPiece sp) { append(sp.data(), sp.size()); }
 
   /**
    * Append a chain of IOBuf objects that point to consecutive regions
@@ -418,9 +408,7 @@ class IOBufQueue {
    * @throws std::underflow_error if n exceeds the number of bytes
    *         in the queue.
    */
-  std::unique_ptr<folly::IOBuf> split(size_t n) {
-    return split(n, true);
-  }
+  std::unique_ptr<folly::IOBuf> split(size_t n) { return split(n, true); }
 
   /**
    * Similar to split, but will return the entire queue instead of throwing
@@ -464,9 +452,7 @@ class IOBufQueue {
     return res;
   }
 
-  folly::IOBuf moveAsValue() {
-    return std::move(*move());
-  }
+  folly::IOBuf moveAsValue() { return std::move(*move()); }
 
   /**
    * Access the front IOBuf.
@@ -511,9 +497,7 @@ class IOBufQueue {
         (head_->empty() && cachePtr_->cachedRange.first == tailStart_);
   }
 
-  const Options& options() const {
-    return options_;
-  }
+  const Options& options() const { return options_; }
 
   /**
    * Clear the queue.  Note that this does not release the buffers, it
@@ -630,9 +614,7 @@ class IOBufQueue {
   }
 
   // For WritableRangeCache move assignment/construction.
-  void updateCacheRef(WritableRangeCacheData& newRef) {
-    cachePtr_ = &newRef;
-  }
+  void updateCacheRef(WritableRangeCacheData& newRef) { cachePtr_ = &newRef; }
 
   /**
    * Update cached writable tail range. Called by updateGuard()

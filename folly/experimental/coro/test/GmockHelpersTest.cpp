@@ -116,9 +116,7 @@ TEST(CoroGTestHelpers, CoReturnByMoveWithImplicitConversionTest) {
     ImplicitToStringMoveOnly(ImplicitToStringMoveOnly&&) = default;
     ImplicitToStringMoveOnly& operator=(ImplicitToStringMoveOnly&&) = default;
 
-    operator std::string() {
-      return "abc";
-    }
+    operator std::string() { return "abc"; }
   };
 
   EXPECT_CALL(mock, getString())

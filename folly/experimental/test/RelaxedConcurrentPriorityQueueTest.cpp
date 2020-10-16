@@ -833,9 +833,7 @@ class Queue {
   std::queue<T> q_;
 
  public:
-  void push(const T& val) {
-    q_.push(val);
-  }
+  void push(const T& val) { q_.push(val); }
   void pop(T& val) {
     val = q_.front();
     q_.pop();

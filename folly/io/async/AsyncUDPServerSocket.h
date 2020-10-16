@@ -121,22 +121,16 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     applyEventCallback();
   }
 
-  void setReusePort(bool reusePort) {
-    reusePort_ = reusePort;
-  }
+  void setReusePort(bool reusePort) { reusePort_ = reusePort; }
 
-  void setReuseAddr(bool reuseAddr) {
-    reuseAddr_ = reuseAddr;
-  }
+  void setReuseAddr(bool reuseAddr) { reuseAddr_ = reuseAddr; }
 
   folly::SocketAddress address() const {
     CHECK(socket_);
     return socket_->address();
   }
 
-  void getAddress(SocketAddress* a) const override {
-    *a = address();
-  }
+  void getAddress(SocketAddress* a) const override { *a = address(); }
 
   /**
    * Add a listener to the round robin list
@@ -163,9 +157,7 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     return socket_->getNetworkSocket();
   }
 
-  const std::shared_ptr<AsyncUDPSocket>& getSocket() const {
-    return socket_;
-  }
+  const std::shared_ptr<AsyncUDPSocket>& getSocket() const { return socket_; }
 
   void close() {
     CHECK(socket_) << "Need to bind before closing";
@@ -173,16 +165,12 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     socket_.reset();
   }
 
-  EventBase* getEventBase() const override {
-    return evb_;
-  }
+  EventBase* getEventBase() const override { return evb_; }
 
   /**
    * Indicates if the current socket is accepting.
    */
-  bool isAccepting() const {
-    return socket_->isReading();
-  }
+  bool isAccepting() const { return socket_->isReading(); }
 
   /**
    * Pauses accepting datagrams on the underlying socket.

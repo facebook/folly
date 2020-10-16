@@ -95,9 +95,7 @@ class ManualSchedule {
       (*callback)();
     }
   }
-  static void afterSharedAccess(bool) {
-    beforeSharedAccess();
-  }
+  static void afterSharedAccess(bool) { beforeSharedAccess(); }
 
   /**
    * Set a callback that will be called on every subsequent atomic access.
@@ -1535,9 +1533,7 @@ class TestConstruction {
     moveAssigns().fetch_add(1, std::memory_order_relaxed);
     return *this;
   }
-  ~TestConstruction() {
-    destructs().fetch_add(1, std::memory_order_relaxed);
-  }
+  ~TestConstruction() { destructs().fetch_add(1, std::memory_order_relaxed); }
 
   static std::atomic<std::uint64_t>& defaultConstructs() {
     static auto&& atomic = std::atomic<std::uint64_t>{0};
@@ -1753,9 +1749,7 @@ class ExceptionWithConstructionTrack : public std::exception {
   explicit ExceptionWithConstructionTrack(int id)
       : id_{folly::to<std::string>(id)}, constructionTrack_{id} {}
 
-  const char* what() const noexcept override {
-    return id_.c_str();
-  }
+  const char* what() const noexcept override { return id_.c_str(); }
 
  private:
   std::string id_;

@@ -663,12 +663,8 @@ struct Alloc : AllocTracker, Ticker {
   Alloc(Alloc&& o) noexcept : a(move(o.a)), id(o.id) {}
   Alloc& operator=(const Alloc&) = default;
   Alloc& operator=(Alloc&&) noexcept = default;
-  bool operator==(const Alloc& o) const {
-    return a == o.a && id == o.id;
-  }
-  bool operator!=(const Alloc& o) const {
-    return !(*this == o);
-  }
+  bool operator==(const Alloc& o) const { return a == o.a && id == o.id; }
+  bool operator!=(const Alloc& o) const { return !(*this == o); }
 
   //---------
   // tracking
@@ -1107,16 +1103,12 @@ struct PrettyType<Data<f, pad>> {
 
 template <typename T>
 struct PrettyType<std::allocator<T>> {
-  string operator()() {
-    return "std::allocator<" + PrettyType<T>()() + ">";
-  }
+  string operator()() { return "std::allocator<" + PrettyType<T>()() + ">"; }
 };
 
 template <typename T>
 struct PrettyType<Alloc<T>> {
-  string operator()() {
-    return "Alloc<" + PrettyType<T>()() + ">";
-  }
+  string operator()() { return "Alloc<" + PrettyType<T>()() + ">"; }
 };
 
 //-----------------------------------------------------------------------------
@@ -1248,9 +1240,7 @@ void populate(Vector& v, const pair<int, int>& ss) {
 
 template <typename A>
 struct allocGen {
-  static A get() {
-    return A();
-  }
+  static A get() { return A(); }
 };
 template <typename T>
 struct allocGen<Alloc<T>> {
@@ -1558,9 +1548,7 @@ class DataState {
       data_ = nullptr;
     }
   }
-  ~DataState() {
-    delete[] data_;
-  }
+  ~DataState() { delete[] data_; }
 
   bool operator==(const DataState& o) const {
     if (size_ != o.size_) {
@@ -1582,9 +1570,7 @@ class DataState {
     return data_[i];
   }
 
-  size_type size() {
-    return size_;
-  }
+  size_type size() { return size_; }
 };
 
 // downgrade iterators

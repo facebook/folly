@@ -47,9 +47,7 @@ class SimpleQuantileEstimator {
   void addValue(double value, TimePoint now = ClockT::now());
 
   /// Flush buffered values
-  void flush() {
-    bufferedDigest_.flush();
-  }
+  void flush() { bufferedDigest_.flush(); }
 
  private:
   detail::BufferedDigest<TDigest, ClockT> bufferedDigest_;
@@ -75,9 +73,7 @@ class SlidingWindowQuantileEstimator {
   void addValue(double value, TimePoint now = ClockT::now());
 
   /// Flush buffered values
-  void flush() {
-    bufferedSlidingWindow_.flush();
-  }
+  void flush() { bufferedSlidingWindow_.flush(); }
 
  private:
   detail::BufferedSlidingWindow<TDigest, ClockT> bufferedSlidingWindow_;

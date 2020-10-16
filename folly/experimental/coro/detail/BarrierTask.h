@@ -31,9 +31,7 @@ class BarrierTask {
  public:
   class promise_type {
     struct FinalAwaiter {
-      bool await_ready() noexcept {
-        return false;
-      }
+      bool await_ready() noexcept { return false; }
       std::experimental::coroutine_handle<> await_suspend(
           std::experimental::coroutine_handle<promise_type> h) noexcept {
         auto& promise = h.promise();
@@ -58,19 +56,13 @@ class BarrierTask {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
-    FinalAwaiter final_suspend() noexcept {
-      return {};
-    }
+    FinalAwaiter final_suspend() noexcept { return {}; }
 
     void return_void() noexcept {}
 
-    [[noreturn]] void unhandled_exception() noexcept {
-      std::terminate();
-    }
+    [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
 
     void setBarrier(Barrier* barrier) noexcept {
       assert(barrier_ == nullptr);
@@ -101,9 +93,7 @@ class BarrierTask {
     return *this;
   }
 
-  void swap(BarrierTask& b) noexcept {
-    std::swap(coro_, b.coro_);
-  }
+  void swap(BarrierTask& b) noexcept { std::swap(coro_, b.coro_); }
 
   void start(Barrier* barrier) noexcept {
     assert(coro_);
@@ -116,9 +106,7 @@ class BarrierTask {
      public:
       explicit awaiter(Barrier* barrier, handle_t coro) noexcept
           : barrier_(barrier), coro_(coro) {}
-      bool await_ready() noexcept {
-        return false;
-      }
+      bool await_ready() noexcept { return false; }
       std::experimental::coroutine_handle<> await_suspend(
           std::experimental::coroutine_handle<> continuation) noexcept {
         coro_.promise().setBarrier(barrier_);
@@ -150,15 +138,11 @@ class DetachedBarrierTask {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
     auto final_suspend() noexcept {
       struct awaiter {
-        bool await_ready() noexcept {
-          return false;
-        }
+        bool await_ready() noexcept { return false; }
         auto await_suspend(
             std::experimental::coroutine_handle<promise_type> h) noexcept {
           assert(h.promise().barrier_ != nullptr);
@@ -171,15 +155,11 @@ class DetachedBarrierTask {
       return awaiter{};
     }
 
-    [[noreturn]] void unhandled_exception() noexcept {
-      std::terminate();
-    }
+    [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
 
     void return_void() noexcept {}
 
-    void setBarrier(Barrier* barrier) noexcept {
-      barrier_ = barrier;
-    }
+    void setBarrier(Barrier* barrier) noexcept { barrier_ = barrier; }
 
    private:
     Barrier* barrier_;

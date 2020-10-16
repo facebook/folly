@@ -47,9 +47,7 @@ class TestLogHandler : public LogHandler {
   }
 
   std::vector<std::string> getMessageValues() const;
-  void clearMessages() {
-    messages_.clear();
-  }
+  void clearMessages() { messages_.clear(); }
 
   void handleMessage(
       const LogMessage& message,
@@ -57,21 +55,13 @@ class TestLogHandler : public LogHandler {
     messages_.emplace_back(message, handlerCategory);
   }
 
-  void flush() override {
-    ++flushCount_;
-  }
+  void flush() override { ++flushCount_; }
 
-  uint64_t getFlushCount() const {
-    return flushCount_;
-  }
+  uint64_t getFlushCount() const { return flushCount_; }
 
-  LogHandlerConfig getConfig() const override {
-    return config_;
-  }
+  LogHandlerConfig getConfig() const override { return config_; }
 
-  void setOptions(const Options& options) {
-    config_.options = options;
-  }
+  void setOptions(const Options& options) { config_.options = options; }
 
  protected:
   std::vector<std::pair<LogMessage, const LogCategory*>> messages_;
@@ -87,9 +77,7 @@ class TestLogHandlerFactory : public LogHandlerFactory {
  public:
   explicit TestLogHandlerFactory(StringPiece type) : type_{type.str()} {}
 
-  StringPiece getType() const override {
-    return type_;
-  }
+  StringPiece getType() const override { return type_; }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;
 

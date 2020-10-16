@@ -40,9 +40,7 @@ struct HasRef final {
   HasRef(HasRef&& i) noexcept(false) : i1(i.i1) {}
   HasRef& operator=(HasRef const&) = delete;
   HasRef& operator=(HasRef&&) = delete;
-  ~HasRef() noexcept(false) {
-    ++i1;
-  }
+  ~HasRef() noexcept(false) { ++i1; }
 };
 void swap(HasRef& lhs, HasRef& rhs) noexcept(false) {
   std::swap(lhs.i1, rhs.i1);

@@ -531,12 +531,8 @@ class ContainsExpected {
  public:
   ContainsExpected() {}
   explicit ContainsExpected(int x) : ex_(x) {}
-  bool hasValue() const {
-    return ex_.hasValue();
-  }
-  int value() const {
-    return ex_.value();
-  }
+  bool hasValue() const { return ex_.hasValue(); }
+  int value() const { return ex_.value(); }
 
   ContainsExpected(const ContainsExpected& other) = default;
   ContainsExpected& operator=(const ContainsExpected& other) = default;
@@ -809,16 +805,12 @@ struct LargePODConstructTo {
 struct NonPODConstructTo {
   explicit NonPODConstructTo(Source) {}
   NonPODConstructTo(NonPODConstructTo const&) {}
-  NonPODConstructTo& operator=(NonPODConstructTo const&) {
-    return *this;
-  }
+  NonPODConstructTo& operator=(NonPODConstructTo const&) { return *this; }
 };
 
 struct ConvertTo {
   explicit ConvertTo(Source) {}
-  ConvertTo& operator=(Source) {
-    return *this;
-  }
+  ConvertTo& operator=(Source) { return *this; }
 };
 
 static_assert(

@@ -23,9 +23,7 @@ class LogOnDestruction {
   // The constructor does not copy the message simply so we can
   // keep it constexpr
   constexpr LogOnDestruction(const char* msg) : msg_{msg} {}
-  ~LogOnDestruction() {
-    XLOGF(INFO, "LogOnDestruction({}) destroying", msg_);
-  }
+  ~LogOnDestruction() { XLOGF(INFO, "LogOnDestruction({}) destroying", msg_); }
 
  private:
   const char* msg_{nullptr};

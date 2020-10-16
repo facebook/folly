@@ -152,9 +152,7 @@ class NotificationQueue {
      * messages from.  Returns nullptr if the consumer is not currently
      * consuming events from any queue.
      */
-    NotificationQueue* getCurrentQueue() const {
-      return queue_;
-    }
+    NotificationQueue* getCurrentQueue() const { return queue_; }
 
     /**
      * Set a limit on how many messages this consumer will read each iteration
@@ -166,16 +164,10 @@ class NotificationQueue {
      * A limit of 0 means no limit will be enforced.  If unset, the limit
      * defaults to kDefaultMaxReadAtOnce (defined to 10 above).
      */
-    void setMaxReadAtOnce(uint32_t maxAtOnce) {
-      maxReadAtOnce_ = maxAtOnce;
-    }
-    uint32_t getMaxReadAtOnce() const {
-      return maxReadAtOnce_;
-    }
+    void setMaxReadAtOnce(uint32_t maxAtOnce) { maxReadAtOnce_ = maxAtOnce; }
+    uint32_t getMaxReadAtOnce() const { return maxReadAtOnce_; }
 
-    EventBase* getEventBase() {
-      return base_;
-    }
+    EventBase* getEventBase() { return base_; }
 
     void handlerReady(uint16_t events) noexcept override;
 
@@ -230,9 +222,7 @@ class NotificationQueue {
       ++queue_.numConsumers_;
     }
 
-    ~SimpleConsumer() {
-      --queue_.numConsumers_;
-    }
+    ~SimpleConsumer() { --queue_.numConsumers_; }
 
     int getFd() const {
       return queue_.eventfd_ >= 0 ? queue_.eventfd_ : queue_.pipeFds_[0];
@@ -354,9 +344,7 @@ class NotificationQueue {
    * message on the queue, ignoring the configured maximum queue size.  This
    * can cause the queue size to exceed the configured maximum.
    */
-  void setMaxQueueSize(uint32_t max) {
-    advisoryMaxQueueSize_ = max;
-  }
+  void setMaxQueueSize(uint32_t max) { advisoryMaxQueueSize_ = max; }
 
   /**
    * Attempt to put a message on the queue if the queue is not already full.
@@ -430,9 +418,7 @@ class NotificationQueue {
    * unmodified.
    */
   bool tryConsume(MessageT& result) {
-    SCOPE_EXIT {
-      syncSignalAndQueue();
-    };
+    SCOPE_EXIT { syncSignalAndQueue(); };
 
     checkPid();
     std::unique_ptr<Node> data;
@@ -685,9 +671,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       queue_->syncSignalAndQueue();
     }
   };
-  SCOPE_EXIT {
-    setActive(false, /* shouldLock = */ true);
-  };
+  SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
   SCOPE_EXIT {
     if (numConsumed != nullptr) {
       *numConsumed = numProcessed;
@@ -856,9 +840,7 @@ template <typename MessageT>
 template <typename F>
 void NotificationQueue<MessageT>::SimpleConsumer::consumeUntilDrained(
     F&& foreach) {
-  SCOPE_EXIT {
-    queue_.syncSignalAndQueue();
-  };
+  SCOPE_EXIT { queue_.syncSignalAndQueue(); };
 
   queue_.checkPid();
 

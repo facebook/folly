@@ -84,9 +84,7 @@ TEST(StrandExecutor, ThreadSafetyTest) {
 
   int value = 0;
 
-  auto incrementValue = [&]() noexcept {
-    ++value;
-  };
+  auto incrementValue = [&]() noexcept { ++value; };
 
   auto strandEx1 =
       StrandExecutor::create(strandContext, getKeepAliveToken(ex1));

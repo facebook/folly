@@ -37,9 +37,7 @@ class BitReference {
  public:
   BitReference(Ref r, size_t bit) : ref_(r), bit_(bit) {}
 
-  /* implicit */ operator bool() const {
-    return ref_ & (one_ << bit_);
-  }
+  /* implicit */ operator bool() const { return ref_ & (one_ << bit_); }
 
   BitReference& operator=(bool b) {
     if (b) {
@@ -50,17 +48,11 @@ class BitReference {
     return *this;
   }
 
-  void set() {
-    ref_ |= (one_ << bit_);
-  }
+  void set() { ref_ |= (one_ << bit_); }
 
-  void clear() {
-    ref_ &= ~(one_ << bit_);
-  }
+  void clear() { ref_ &= ~(one_ << bit_); }
 
-  void flip() {
-    ref_ ^= (one_ << bit_);
-  }
+  void flip() { ref_ ^= (one_ << bit_); }
 
  private:
   // shortcut to avoid writing static_cast everywhere

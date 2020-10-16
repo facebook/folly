@@ -63,12 +63,8 @@ namespace folly {
 template <typename Int, typename Tag>
 class SingletonRelaxedCounter {
  public:
-  static void add(Int value) {
-    mutate(+to_signed(value));
-  }
-  static void sub(Int value) {
-    mutate(-to_signed(value));
-  }
+  static void add(Int value) { mutate(+to_signed(value)); }
+  static void sub(Int value) { mutate(-to_signed(value)); }
 
   static Int count() {
     auto const& global = Global::instance();

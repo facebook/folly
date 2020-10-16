@@ -97,9 +97,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
     /// This callback was canceled. The default implementation is to just
     /// proxy to `timeoutExpired` but if you care about the difference between
     /// the timeout finishing or being canceled you can override this.
-    virtual void callbackCanceled() noexcept {
-      timeoutExpired();
-    }
+    virtual void callbackCanceled() noexcept { timeoutExpired(); }
 
     /**
      * Cancel the timeout, if it is running.
@@ -117,9 +115,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
     /**
      * Return true if this timeout is currently scheduled, and false otherwise.
      */
-    bool isScheduled() const {
-      return wheel_ != nullptr;
-    }
+    bool isScheduled() const { return wheel_ != nullptr; }
 
     /**
      * Get the time remaining until this timeout expires. Return 0 if this
@@ -187,25 +183,19 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
    *
    * Returns the tick interval in milliseconds.
    */
-  Duration getTickInterval() const {
-    return interval_;
-  }
+  Duration getTickInterval() const { return interval_; }
 
   /**
    * Get the default timeout interval for this HHWheelTimerBase.
    *
    * Returns the timeout interval in milliseconds.
    */
-  Duration getDefaultTimeout() const {
-    return defaultTimeout_;
-  }
+  Duration getDefaultTimeout() const { return defaultTimeout_; }
 
   /**
    * Set the default timeout interval for this HHWheelTimerBase.
    */
-  void setDefaultTimeout(Duration timeout) {
-    defaultTimeout_ = timeout;
-  }
+  void setDefaultTimeout(Duration timeout) { defaultTimeout_ = timeout; }
 
   /**
    * Schedule the specified Callback to be invoked after the
@@ -253,13 +243,9 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
   /**
    * Return the number of currently pending timeouts
    */
-  std::size_t count() const {
-    return count_;
-  }
+  std::size_t count() const { return count_; }
 
-  bool isDetachable() const {
-    return !folly::AsyncTimeout::isScheduled();
-  }
+  bool isDetachable() const { return !folly::AsyncTimeout::isScheduled(); }
 
   using folly::AsyncTimeout::attachEventBase;
   using folly::AsyncTimeout::detachEventBase;
@@ -295,9 +281,7 @@ class HHWheelTimerBase : private folly::AsyncTimeout,
   CallbackList buckets_[WHEEL_BUCKETS][WHEEL_SIZE];
   std::array<std::size_t, (WHEEL_SIZE / sizeof(std::size_t)) / 8> bitmap_;
 
-  int64_t timeToWheelTicks(Duration t) {
-    return t.count() / interval_.count();
-  }
+  int64_t timeToWheelTicks(Duration t) { return t.count() / interval_.count(); }
 
   bool cascadeTimers(
       int bucket,

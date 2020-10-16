@@ -40,12 +40,8 @@ void simpleTest(std::shared_ptr<folly::Executor> const& parent) {
       return typeid(SerialExecutorContextData).name();
     }
     explicit SerialExecutorContextData(int id) : id_(id) {}
-    bool hasCallback() override {
-      return false;
-    }
-    int getId() const {
-      return id_;
-    }
+    bool hasCallback() override { return false; }
+    int getId() const { return id_; }
 
    private:
     const int id_;

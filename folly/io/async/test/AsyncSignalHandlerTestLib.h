@@ -44,9 +44,7 @@ class TestSignalHandler : public AsyncSignalHandler {
  public:
   using AsyncSignalHandler::AsyncSignalHandler;
 
-  void signalReceived(int /* signum */) noexcept override {
-    called = true;
-  }
+  void signalReceived(int /* signum */) noexcept override { called = true; }
 
   bool called{false};
 };

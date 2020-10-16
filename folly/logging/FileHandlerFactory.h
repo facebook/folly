@@ -34,9 +34,7 @@ namespace folly {
  */
 class FileHandlerFactory : public LogHandlerFactory {
  public:
-  StringPiece getType() const override {
-    return "file";
-  }
+  StringPiece getType() const override { return "file"; }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;
 

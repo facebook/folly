@@ -266,9 +266,7 @@ class IoUringBackend : public PollIoBackend {
 
     ~FileOpIoSqe() override = default;
 
-    void processActive() override {
-      cb_(res_);
-    }
+    void processActive() override { cb_(res_); }
 
     int fd_{-1};
     int res_{-1};
@@ -297,9 +295,7 @@ class IoUringBackend : public PollIoBackend {
 
     ~ReadWriteIoSqe() override = default;
 
-    void processActive() override {
-      cb_(res_);
-    }
+    void processActive() override { cb_(res_); }
 
     static constexpr size_t kNumInlineIoVec = 4;
     folly::small_vector<struct iovec> iov_;

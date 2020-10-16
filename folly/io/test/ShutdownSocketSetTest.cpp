@@ -36,9 +36,7 @@ class Server {
 
   void stop(bool abortive);
   void join();
-  int port() const {
-    return port_;
-  }
+  int port() const { return port_; }
   int closeClients(bool abortive);
 
   void shutdownAll(bool abortive);

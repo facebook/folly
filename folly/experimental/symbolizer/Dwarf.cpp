@@ -70,9 +70,7 @@ struct AttributeSpec {
   uint64_t name = 0;
   uint64_t form = 0;
 
-  explicit operator bool() const {
-    return name != 0 || form != 0;
-  }
+  explicit operator bool() const { return name != 0 || form != 0; }
 };
 
 struct Attribute {

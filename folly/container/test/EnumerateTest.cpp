@@ -171,12 +171,8 @@ class CStringRange {
 
   explicit CStringRange(const char* cstr_) : cstr(cstr_) {}
 
-  const char* begin() const {
-    return cstr;
-  }
-  Sentinel end() const {
-    return Sentinel{};
-  }
+  const char* begin() const { return cstr; }
+  Sentinel end() const { return Sentinel{}; }
 };
 
 bool operator==(const char* c, CStringRange::Sentinel) {

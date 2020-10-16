@@ -59,15 +59,11 @@ class ViaCoroutine {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
     auto final_suspend() noexcept {
       struct Awaiter {
-        bool await_ready() noexcept {
-          return false;
-        }
+        bool await_ready() noexcept { return false; }
         FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
             std::experimental::coroutine_handle<promise_type> coro) noexcept {
           // Schedule resumption of the coroutine on the executor.
@@ -112,18 +108,14 @@ class ViaCoroutine {
   ViaCoroutine(ViaCoroutine&& other) noexcept
       : coro_(std::exchange(other.coro_, {})) {}
 
-  ~ViaCoroutine() {
-    destroy();
-  }
+  ~ViaCoroutine() { destroy(); }
 
   ViaCoroutine& operator=(ViaCoroutine other) noexcept {
     swap(other);
     return *this;
   }
 
-  void swap(ViaCoroutine& other) noexcept {
-    std::swap(coro_, other.coro_);
-  }
+  void swap(ViaCoroutine& other) noexcept { std::swap(coro_, other.coro_); }
 
   std::experimental::coroutine_handle<> getWrappedCoroutine(
       std::experimental::coroutine_handle<> continuation) noexcept {
@@ -410,18 +402,14 @@ class TryAwaiter {
  public:
   TryAwaiter(Awaiter&& awaiter) : awaiter_(std::move(awaiter)) {}
 
-  bool await_ready() {
-    return awaiter_.await_ready();
-  }
+  bool await_ready() { return awaiter_.await_ready(); }
 
   template <typename Promise>
   auto await_suspend(std::experimental::coroutine_handle<Promise> coro) {
     return awaiter_.await_suspend(coro);
   }
 
-  auto await_resume() {
-    return awaiter_.await_resume_try();
-  }
+  auto await_resume() { return awaiter_.await_resume_try(); }
 
  private:
   Awaiter awaiter_;

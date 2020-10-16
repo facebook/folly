@@ -57,19 +57,13 @@ class IoUringOp : public AsyncBaseOp {
 
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
-  AsyncIOOp* getAsyncIOOp() override {
-    return nullptr;
-  }
+  AsyncIOOp* getAsyncIOOp() override { return nullptr; }
 
-  IoUringOp* getIoUringOp() override {
-    return this;
-  }
+  IoUringOp* getIoUringOp() override { return this; }
 
   void toStream(std::ostream& os) const override;
 
-  const struct io_uring_sqe& getSqe() const {
-    return sqe_;
-  }
+  const struct io_uring_sqe& getSqe() const { return sqe_; }
 
  private:
   struct io_uring_sqe sqe_;

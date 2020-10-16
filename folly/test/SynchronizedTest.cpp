@@ -143,13 +143,9 @@ using CountPair = std::pair<int, int>;
 // This class is specialized only to be uesed in SynchronizedLockTest
 class FakeMutex {
  public:
-  void lock() {
-    ++lockCount_;
-  }
+  void lock() { ++lockCount_; }
 
-  void unlock() {
-    ++unlockCount_;
-  }
+  void unlock() { ++unlockCount_; }
 
   static CountPair getLockUnlockCount() {
     return CountPair{lockCount_, unlockCount_};
@@ -174,9 +170,7 @@ FOLLY_TLS int FakeMutex::unlockCount_{0};
 // happens per design
 class SynchronizedLockTest : public testing::Test {
  public:
-  void SetUp() override {
-    FakeMutex::resetLockUnlockCount();
-  }
+  void SetUp() override { FakeMutex::resetLockUnlockCount(); }
 };
 
 /**
@@ -266,24 +260,12 @@ static FakeAllPowerfulAssertingMutexInternal globalAllPowerfulAssertingMutex;
 
 class FakeAllPowerfulAssertingMutex {
  public:
-  void lock() {
-    globalAllPowerfulAssertingMutex.lock();
-  }
-  void unlock() {
-    globalAllPowerfulAssertingMutex.unlock();
-  }
-  void lock_shared() {
-    globalAllPowerfulAssertingMutex.lock_shared();
-  }
-  void unlock_shared() {
-    globalAllPowerfulAssertingMutex.unlock_shared();
-  }
-  void lock_upgrade() {
-    globalAllPowerfulAssertingMutex.lock_upgrade();
-  }
-  void unlock_upgrade() {
-    globalAllPowerfulAssertingMutex.unlock_upgrade();
-  }
+  void lock() { globalAllPowerfulAssertingMutex.lock(); }
+  void unlock() { globalAllPowerfulAssertingMutex.unlock(); }
+  void lock_shared() { globalAllPowerfulAssertingMutex.lock_shared(); }
+  void unlock_shared() { globalAllPowerfulAssertingMutex.unlock_shared(); }
+  void lock_upgrade() { globalAllPowerfulAssertingMutex.lock_upgrade(); }
+  void unlock_upgrade() { globalAllPowerfulAssertingMutex.unlock_upgrade(); }
 
   void unlock_upgrade_and_lock() {
     globalAllPowerfulAssertingMutex.unlock_upgrade_and_lock();
@@ -322,9 +304,7 @@ class FakeAllPowerfulAssertingMutex {
 
 class NonDefaultConstructibleMutex {
  public:
-  explicit NonDefaultConstructibleMutex(int valueIn) {
-    value = valueIn;
-  }
+  explicit NonDefaultConstructibleMutex(int valueIn) { value = valueIn; }
   NonDefaultConstructibleMutex() = delete;
   NonDefaultConstructibleMutex(const NonDefaultConstructibleMutex&) = delete;
   NonDefaultConstructibleMutex(NonDefaultConstructibleMutex&&) = delete;
@@ -579,9 +559,7 @@ class TryLockable {
         onLock{std::move(onLockIn)},
         onUnlock{std::move(onUnlockIn)} {}
 
-  void lock() {
-    EXPECT_TRUE(false);
-  }
+  void lock() { EXPECT_TRUE(false); }
   template <
       int LockableType = kLockableType,
       std::enable_if_t<LockableType != kLockable>* = nullptr>
@@ -620,25 +598,13 @@ class TryLockable {
     EXPECT_TRUE(false);
   }
 
-  bool try_lock() {
-    return tryLockImpl(kLockable | kWLockable);
-  }
-  bool try_lock_shared() {
-    return tryLockImpl(kRLockable);
-  }
-  bool try_lock_upgrade() {
-    return tryLockImpl(kULockable);
-  }
+  bool try_lock() { return tryLockImpl(kLockable | kWLockable); }
+  bool try_lock_shared() { return tryLockImpl(kRLockable); }
+  bool try_lock_upgrade() { return tryLockImpl(kULockable); }
 
-  void unlock() {
-    unlockImpl(kLockable | kWLockable);
-  }
-  void unlock_shared() {
-    unlockImpl(kLockable | kRLockable);
-  }
-  void unlock_upgrade() {
-    unlockImpl(kLockable | kULockable);
-  }
+  void unlock() { unlockImpl(kLockable | kWLockable); }
+  void unlock_shared() { unlockImpl(kLockable | kRLockable); }
+  void unlock_upgrade() { unlockImpl(kLockable | kULockable); }
 
   const bool kShouldSucceed;
   folly::Function<void()> onLock;
@@ -647,18 +613,10 @@ class TryLockable {
 
 struct TestSharedMutex {
  public:
-  void lock() {
-    onLock_();
-  }
-  void unlock() {
-    onUnlock_();
-  }
-  void lock_shared() {
-    onLockShared_();
-  }
-  void unlock_shared() {
-    onUnlockShared_();
-  }
+  void lock() { onLock_(); }
+  void unlock() { onUnlock_(); }
+  void lock_shared() { onLockShared_(); }
+  void unlock_shared() { onUnlockShared_(); }
 
   bool try_lock() {
     onLock_();
@@ -743,9 +701,7 @@ class MutexTrack {
 
   void lock_shared() {}
   void unlock_shared() {}
-  void lock() {
-    order = MutexTrack::gOrder++;
-  }
+  void lock() { order = MutexTrack::gOrder++; }
   void unlock() {
     order = -1;
     --gOrder;

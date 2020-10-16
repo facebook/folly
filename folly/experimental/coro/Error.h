@@ -37,13 +37,9 @@ class co_error final {
     assert(ex_);
   }
 
-  const exception_wrapper& exception() const {
-    return ex_;
-  }
+  const exception_wrapper& exception() const { return ex_; }
 
-  exception_wrapper& exception() {
-    return ex_;
-  }
+  exception_wrapper& exception() { return ex_; }
 
  private:
   exception_wrapper ex_;

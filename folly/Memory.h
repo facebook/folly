@@ -298,9 +298,7 @@ make_unique(Args&&...) = delete;
 
 template <typename T, void (*f)(T*)>
 struct static_function_deleter {
-  void operator()(T* t) const {
-    f(t);
-  }
+  void operator()(T* t) const { f(t); }
 };
 
 /**
@@ -449,16 +447,10 @@ class SysAllocator {
     }
     return static_cast<T*>(p);
   }
-  void deallocate(T* p, size_t count) {
-    sizedFree(p, count * sizeof(T));
-  }
+  void deallocate(T* p, size_t count) { sizedFree(p, count * sizeof(T)); }
 
-  friend bool operator==(Self const&, Self const&) noexcept {
-    return true;
-  }
-  friend bool operator!=(Self const&, Self const&) noexcept {
-    return false;
-  }
+  friend bool operator==(Self const&, Self const&) noexcept { return true; }
+  friend bool operator!=(Self const&, Self const&) noexcept { return false; }
 };
 
 class DefaultAlign {
@@ -471,9 +463,7 @@ class DefaultAlign {
     assert(!(align_ < sizeof(void*)) && bool("bad align: too small"));
     assert(!(align_ & (align_ - 1)) && bool("bad align: not power-of-two"));
   }
-  std::size_t operator()() const noexcept {
-    return align_;
-  }
+  std::size_t operator()() const noexcept { return align_; }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {
     return a.align_ == b.align_;
@@ -491,16 +481,10 @@ class FixedAlign {
   using Self = FixedAlign<Align>;
 
  public:
-  constexpr std::size_t operator()() const noexcept {
-    return Align;
-  }
+  constexpr std::size_t operator()() const noexcept { return Align; }
 
-  friend bool operator==(Self const&, Self const&) noexcept {
-    return true;
-  }
-  friend bool operator!=(Self const&, Self const&) noexcept {
-    return false;
-  }
+  friend bool operator==(Self const&, Self const&) noexcept { return true; }
+  friend bool operator!=(Self const&, Self const&) noexcept { return false; }
 };
 
 /**
@@ -527,9 +511,7 @@ class AlignedSysAllocator : private Align {
   template <typename, typename>
   friend class AlignedSysAllocator;
 
-  constexpr Align const& align() const {
-    return *this;
-  }
+  constexpr Align const& align() const { return *this; }
 
  public:
   static_assert(std::is_nothrow_copy_constructible<Align>::value, "");
@@ -567,9 +549,7 @@ class AlignedSysAllocator : private Align {
     }
     return static_cast<T*>(p);
   }
-  void deallocate(T* p, size_t /* count */) {
-    aligned_free(p);
-  }
+  void deallocate(T* p, size_t /* count */) { aligned_free(p); }
 
   friend bool operator==(Self const& a, Self const& b) noexcept {
     return a.align() == b.align();
@@ -681,9 +661,7 @@ class allocator_delete : private std::remove_reference<Alloc>::type {
   allocator_delete(const allocator_delete<U>& other)
       : allocator_type(other.get_allocator()) {}
 
-  allocator_type const& get_allocator() const {
-    return *this;
-  }
+  allocator_type const& get_allocator() const { return *this; }
 
   void operator()(pointer p) const {
     auto alloc = get_allocator();
@@ -722,9 +700,7 @@ std::unique_ptr<T, allocator_delete<Alloc>> allocate_unique(
 }
 
 struct SysBufferDeleter {
-  void operator()(void* ptr) {
-    std::free(ptr);
-  }
+  void operator()(void* ptr) { std::free(ptr); }
 };
 using SysBufferUniquePtr = std::unique_ptr<void, SysBufferDeleter>;
 

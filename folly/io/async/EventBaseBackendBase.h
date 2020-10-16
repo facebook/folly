@@ -80,9 +80,7 @@ struct EventCallback {
     recvmsgCb_ = cb;
   }
 
-  void reset() {
-    type_ = Type::TYPE_NONE;
-  }
+  void reset() { type_ = Type::TYPE_NONE; }
 };
 
 class EventBaseEvent {
@@ -99,9 +97,7 @@ class EventBaseEvent {
 
   typedef void (*FreeFunction)(void* userData);
 
-  const struct event* getEvent() const {
-    return &event_;
-  }
+  const struct event* getEvent() const { return &event_; }
 
   struct event* getEvent() {
     return &event_;
@@ -111,46 +107,28 @@ class EventBaseEvent {
     return EventUtil::isEventRegistered(&event_);
   }
 
-  libevent_fd_t eb_ev_fd() const {
-    return event_.ev_fd;
-  }
+  libevent_fd_t eb_ev_fd() const { return event_.ev_fd; }
 
-  short eb_ev_events() const {
-    return event_.ev_events;
-  }
+  short eb_ev_events() const { return event_.ev_events; }
 
-  int eb_ev_res() const {
-    return event_.ev_res;
-  }
+  int eb_ev_res() const { return event_.ev_res; }
 
-  void* getUserData() {
-    return userData_;
-  }
+  void* getUserData() { return userData_; }
 
-  void setUserData(void* userData) {
-    userData_ = userData;
-  }
+  void setUserData(void* userData) { userData_ = userData; }
 
   void setUserData(void* userData, FreeFunction freeFn) {
     userData_ = userData;
     freeFn_ = freeFn;
   }
 
-  void setCallback(EventReadCallback* cb) {
-    cb_.set(cb);
-  }
+  void setCallback(EventReadCallback* cb) { cb_.set(cb); }
 
-  void setCallback(EventRecvmsgCallback* cb) {
-    cb_.set(cb);
-  }
+  void setCallback(EventRecvmsgCallback* cb) { cb_.set(cb); }
 
-  void resetCallback() {
-    cb_.reset();
-  }
+  void resetCallback() { cb_.reset(); }
 
-  const EventCallback& getCallback() const {
-    return cb_;
-  }
+  const EventCallback& getCallback() const { return cb_; }
 
   void eb_event_set(
       libevent_fd_t fd,
@@ -172,9 +150,7 @@ class EventBaseEvent {
   }
 
   void eb_ev_base(EventBase* evb);
-  EventBase* eb_ev_base() const {
-    return evb_;
-  }
+  EventBase* eb_ev_base() const { return evb_; }
 
   int eb_event_base_set(EventBase* evb);
 

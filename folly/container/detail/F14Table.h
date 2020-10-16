@@ -115,9 +115,7 @@ struct F14TableStats {
     return m->computeStats();
   }
 
-  static F14TableStats computeHelper(...) {
-    return {};
-  }
+  static F14TableStats computeHelper(...) { return {}; }
 
  public:
   template <typename T>
@@ -248,9 +246,7 @@ class F14HashToken final {
   using HashPair = std::pair<std::size_t, std::size_t>;
 
   explicit F14HashToken(HashPair hp) : hp_(hp) {}
-  explicit operator HashPair() const {
-    return hp_;
-  }
+  explicit operator HashPair() const { return hp_; }
 
   HashPair hp_;
 
@@ -381,21 +377,15 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     outboundOverflowCount_ = rhs.outboundOverflowCount_;
   }
 
-  unsigned hostedOverflowCount() const {
-    return control_ >> 4;
-  }
+  unsigned hostedOverflowCount() const { return control_ >> 4; }
 
   static constexpr uint8_t kIncrHostedOverflowCount = 0x10;
   static constexpr uint8_t kDecrHostedOverflowCount =
       static_cast<uint8_t>(-0x10);
 
-  void adjustHostedOverflowCount(uint8_t op) {
-    control_ += op;
-  }
+  void adjustHostedOverflowCount(uint8_t op) { control_ += op; }
 
-  bool eof() const {
-    return capacityScale() != 0;
-  }
+  bool eof() const { return capacityScale() != 0; }
 
   std::size_t capacityScale() const {
     if (kCapacityScaleBits == 4) {
@@ -425,9 +415,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     setCapacityScale(scale);
   }
 
-  unsigned outboundOverflowCount() const {
-    return outboundOverflowCount_;
-  }
+  unsigned outboundOverflowCount() const { return outboundOverflowCount_; }
 
   void incrOutboundOverflowCount() {
     if (outboundOverflowCount_ != 255) {
@@ -441,9 +429,7 @@ struct alignas(kRequiredVectorAlignment) F14Chunk {
     }
   }
 
-  std::size_t tag(std::size_t index) const {
-    return tags_[index];
-  }
+  std::size_t tag(std::size_t index) const { return tags_[index]; }
 
   void setTag(std::size_t index, std::size_t tag) {
     FOLLY_SAFE_DCHECK(
@@ -581,13 +567,9 @@ class PackedChunkItemPtr {
     FOLLY_SAFE_DCHECK(ptr_ != nullptr || index_ == 0, "");
   }
 
-  Ptr ptr() const {
-    return ptr_;
-  }
+  Ptr ptr() const { return ptr_; }
 
-  std::size_t index() const {
-    return index_;
-  }
+  std::size_t index() const { return index_; }
 
   bool operator<(PackedChunkItemPtr const& rhs) const {
     FOLLY_SAFE_DCHECK(ptr_ != rhs.ptr_ || index_ == rhs.index_, "");
@@ -686,9 +668,7 @@ class PackedChunkItemPtr<T*> {
     FOLLY_SAFE_DCHECK(i == index(), "");
   }
 
-  T* ptr() const {
-    return reinterpret_cast<T*>(raw_ & ~kAlignMask);
-  }
+  T* ptr() const { return reinterpret_cast<T*>(raw_ & ~kAlignMask); }
 
   std::size_t index() const {
     auto encoded = (raw_ & kAlignMask) << (kIndexBits - kAlignBits);
@@ -800,44 +780,26 @@ class F14ItemIter {
     }
   }
 
-  void precheckedAdvance() {
-    advanceImpl(false, false);
-  }
+  void precheckedAdvance() { advanceImpl(false, false); }
 
-  FOLLY_ALWAYS_INLINE void advance() {
-    advanceImpl(true, false);
-  }
+  FOLLY_ALWAYS_INLINE void advance() { advanceImpl(true, false); }
 
-  FOLLY_ALWAYS_INLINE void advanceLikelyDead() {
-    advanceImpl(true, true);
-  }
+  FOLLY_ALWAYS_INLINE void advanceLikelyDead() { advanceImpl(true, true); }
 
   ChunkPtr chunk() const {
     return std::pointer_traits<ChunkPtr>::pointer_to(
         Chunk::owner(*itemPtr_, index_));
   }
 
-  std::size_t index() const {
-    return index_;
-  }
+  std::size_t index() const { return index_; }
 
-  Item* itemAddr() const {
-    return std::addressof(*itemPtr_);
-  }
-  Item& item() const {
-    return *itemPtr_;
-  }
-  Item const& citem() const {
-    return *itemPtr_;
-  }
+  Item* itemAddr() const { return std::addressof(*itemPtr_); }
+  Item& item() const { return *itemPtr_; }
+  Item const& citem() const { return *itemPtr_; }
 
-  bool atEnd() const {
-    return itemPtr_ == nullptr;
-  }
+  bool atEnd() const { return itemPtr_ == nullptr; }
 
-  Packed pack() const {
-    return Packed{itemPtr_, static_cast<uint8_t>(index_)};
-  }
+  Packed pack() const { return Packed{itemPtr_, static_cast<uint8_t>(index_)}; }
 
   bool operator==(F14ItemIter const& rhs) const {
     // this form makes iter == end() into a single null check after inlining
@@ -845,9 +807,7 @@ class F14ItemIter {
     return itemPtr_ == rhs.itemPtr_;
   }
 
-  bool operator!=(F14ItemIter const& rhs) const {
-    return !(*this == rhs);
-  }
+  bool operator!=(F14ItemIter const& rhs) const { return !(*this == rhs); }
 
  private:
   ItemPtr itemPtr_;
@@ -864,13 +824,9 @@ struct SizeAndPackedBegin {
   typename ItemIter::Packed packedBegin_{ItemIter{}.pack()};
 
  public:
-  typename ItemIter::Packed& packedBegin() {
-    return packedBegin_;
-  }
+  typename ItemIter::Packed& packedBegin() { return packedBegin_; }
 
-  typename ItemIter::Packed const& packedBegin() const {
-    return packedBegin_;
-  }
+  typename ItemIter::Packed const& packedBegin() const { return packedBegin_; }
 };
 
 template <typename SizeType, typename ItemIter>
@@ -964,9 +920,7 @@ class F14Table : public Policy {
     }
   }
 
-  F14Table(F14Table const& rhs) : Policy{rhs} {
-    buildFromF14Table(rhs);
-  }
+  F14Table(F14Table const& rhs) : Policy{rhs} { buildFromF14Table(rhs); }
 
   F14Table(F14Table const& rhs, Alloc const& alloc) : Policy{rhs, alloc} {
     buildFromF14Table(rhs);
@@ -1021,9 +975,7 @@ class F14Table : public Policy {
     return *this;
   }
 
-  ~F14Table() {
-    reset();
-  }
+  ~F14Table() { reset(); }
 
   void swap(F14Table& rhs) noexcept(kSwapIsNoexcept) {
     // If propagate_on_container_swap is false and allocators are
@@ -1266,17 +1218,11 @@ class F14Table : public Policy {
     return ItemIter{sizeAndPackedBegin_.packedBegin()};
   }
 
-  ItemIter end() const noexcept {
-    return ItemIter{};
-  }
+  ItemIter end() const noexcept { return ItemIter{}; }
 
-  bool empty() const noexcept {
-    return size() == 0;
-  }
+  bool empty() const noexcept { return size() == 0; }
 
-  InternalSizeType size() const noexcept {
-    return sizeAndPackedBegin_.size_;
-  }
+  InternalSizeType size() const noexcept { return sizeAndPackedBegin_.size_; }
 
   std::size_t max_size() const noexcept {
     auto& a = this->alloc();
@@ -1289,9 +1235,7 @@ class F14Table : public Policy {
     return computeCapacity(chunkMask_ + 1, chunks_->capacityScale());
   }
 
-  std::size_t max_bucket_count() const noexcept {
-    return max_size();
-  }
+  std::size_t max_bucket_count() const noexcept { return max_size(); }
 
   float load_factor() const noexcept {
     return empty()
@@ -1299,9 +1243,7 @@ class F14Table : public Policy {
         : static_cast<float>(size()) / static_cast<float>(bucket_count());
   }
 
-  float max_load_factor() const noexcept {
-    return 1.0f;
-  }
+  float max_load_factor() const noexcept { return 1.0f; }
 
   void max_load_factor(float) noexcept {
     // Probing hash tables can't run load factors >= 1 (unlike chaining
@@ -1354,9 +1296,7 @@ class F14Table : public Policy {
   // in probe lengths (extra work and less branch predictability) in
   // our experiments.
 
-  std::size_t probeDelta(HashPair hp) const {
-    return 2 * hp.second + 1;
-  }
+  std::size_t probeDelta(HashPair hp) const { return 2 * hp.second + 1; }
 
   template <typename K>
   FOLLY_ALWAYS_INLINE ItemIter findImpl(HashPair hp, K const& key) const {
@@ -2025,9 +1965,7 @@ class F14Table : public Policy {
  public:
   // user has no control over max_load_factor
 
-  void rehash(std::size_t capacity) {
-    reserve(capacity);
-  }
+  void rehash(std::size_t capacity) { reserve(capacity); }
 
   void reserve(std::size_t capacity) {
     // We want to support the pattern
@@ -2214,9 +2152,7 @@ class F14Table : public Policy {
 
   // Like clear(), but always frees all dynamic storage allocated
   // by the table.
-  void reset() noexcept {
-    clearImpl<true>();
-  }
+  void reset() noexcept { clearImpl<true>(); }
 
   // Get memory footprint, not including sizeof(*this).
   std::size_t getAllocatedMemorySize() const {

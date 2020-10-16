@@ -56,13 +56,9 @@ class UnboundedQueue {
     return sem_.try_wait() ? queue_.try_dequeue(out) : false;
   }
 
-  bool empty() {
-    return queue_.empty();
-  }
+  bool empty() { return queue_.empty(); }
 
-  size_t size() {
-    return queue_.size();
-  }
+  size_t size() { return queue_.size(); }
 
  private:
   folly::UnboundedQueue<T, SingleProducer, SingleConsumer, false> queue_;

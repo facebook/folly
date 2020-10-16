@@ -48,21 +48,13 @@ class ScopedEventBaseThread : public IOExecutor, public SequencedExecutor {
       StringPiece name);
   ~ScopedEventBaseThread();
 
-  EventBase* getEventBase() const {
-    return &eb_;
-  }
+  EventBase* getEventBase() const { return &eb_; }
 
-  EventBase* getEventBase() override {
-    return &eb_;
-  }
+  EventBase* getEventBase() override { return &eb_; }
 
-  std::thread::id getThreadId() const {
-    return th_.get_id();
-  }
+  std::thread::id getThreadId() const { return th_.get_id(); }
 
-  void add(Func func) override {
-    getEventBase()->add(std::move(func));
-  }
+  void add(Func func) override { getEventBase()->add(std::move(func)); }
 
  protected:
   bool keepAliveAcquire() noexcept override {

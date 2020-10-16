@@ -42,9 +42,7 @@ TEST(TupleOps, Copiable) {
 class MovableInt {
  public:
   explicit MovableInt(int value) : value_(value) {}
-  int value() const {
-    return value_;
-  }
+  int value() const { return value_; }
 
   MovableInt(MovableInt&&) = default;
   MovableInt& operator=(MovableInt&&) = default;

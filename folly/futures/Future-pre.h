@@ -108,9 +108,7 @@ struct argResult {
   using ArgList = ArgType<Args...>;
   using Result = invoke_result_t<F, Args...>;
   using ArgsSize = index_constant<sizeof...(Args)>;
-  static constexpr bool isTry() {
-    return isTry_;
-  }
+  static constexpr bool isTry() { return isTry_; }
 };
 
 template <typename T, typename F>

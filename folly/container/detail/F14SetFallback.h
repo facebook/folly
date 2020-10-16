@@ -226,9 +226,7 @@ class F14BasicSet
     return findImpl<const_iterator>(*this, key);
   }
 
-  bool contains(key_type const& key) const {
-    return find(key) != this->end();
-  }
+  bool contains(key_type const& key) const { return find(key) != this->end(); }
 
   template <typename K>
   EnableHeterogeneousFind<K, bool> contains(K const& key) const {
@@ -276,9 +274,7 @@ class F14BasicSet
 
   // converts const_iterator to iterator when they are the same type
   // such as in libc++
-  iterator citerToIter(iterator it) {
-    return it;
-  }
+  iterator citerToIter(iterator it) { return it; }
 
  public:
   template <typename BeforeDestroy>

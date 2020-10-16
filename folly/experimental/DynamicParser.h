@@ -199,9 +199,7 @@ struct FOLLY_EXPORT DynamicParserParseError : public std::runtime_error {
    * or:
    *   {"nested": {"key1": {"key_errors": {"key3": "err"}, "value": 7}}}
    */
-  const folly::dynamic& error() const {
-    return error_;
-  }
+  const folly::dynamic& error() const { return error_; }
 
  private:
   folly::dynamic error_;
@@ -239,9 +237,7 @@ class DynamicParser {
    * May NOT be called if the parse threw any kind of exception.  Returns an
    * empty object for successful OnError::THROW parsers.
    */
-  folly::dynamic releaseErrors() {
-    return stack_.releaseErrors();
-  }
+  folly::dynamic releaseErrors() { return stack_.releaseErrors(); }
 
   /**
    * Error-wraps fn(auto-converted key & value) if d[key] is set. The
@@ -272,16 +268,12 @@ class DynamicParser {
    * The key currently being parsed (integer if inside an array). Throws if
    * called outside of a parser callback.
    */
-  inline const folly::dynamic& key() const {
-    return stack_.key();
-  }
+  inline const folly::dynamic& key() const { return stack_.key(); }
   /**
    * The value currently being parsed (initially, the input dynamic).
    * Throws if parsing nullptr, or parsing after releaseErrors().
    */
-  inline const folly::dynamic& value() const {
-    return stack_.value();
-  }
+  inline const folly::dynamic& value() const { return stack_.value(); }
 
   /**
    * By default, DynamicParser's "nested" object coerces all keys to
@@ -330,9 +322,7 @@ class DynamicParser {
     };
     struct PopGuard {
       explicit PopGuard(ParserStack* sp) : pop_(in_place, sp) {}
-      ~PopGuard() {
-        pop_ && ((*pop_)(), true);
-      }
+      ~PopGuard() { pop_ && ((*pop_)(), true); }
 
      private:
       Optional<Pop> pop_;

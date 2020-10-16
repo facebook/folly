@@ -34,21 +34,13 @@ class Wait {
       ::folly_coro_async_malloc(ptr, size);
     }
 
-    Wait get_return_object() {
-      return Wait(promise_.get_future());
-    }
+    Wait get_return_object() { return Wait(promise_.get_future()); }
 
-    std::experimental::suspend_never initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_never final_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_never final_suspend() noexcept { return {}; }
 
-    void return_void() {
-      promise_.set_value();
-    }
+    void return_void() { promise_.set_value(); }
 
     void unhandled_exception() {
       promise_.set_exception(std::current_exception());
@@ -62,9 +54,7 @@ class Wait {
 
   Wait(Wait&&) = default;
 
-  void detach() {
-    future_ = {};
-  }
+  void detach() { future_ = {}; }
 
   ~Wait() {
     if (future_.valid()) {

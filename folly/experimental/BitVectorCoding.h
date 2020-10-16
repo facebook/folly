@@ -197,9 +197,7 @@ struct BitVectorEncoder<Value, SkipValue, kSkipQuantum, kForwardQuantum>::
     return layout;
   }
 
-  size_t bytes() const {
-    return bits + skipPointers + forwardPointers;
-  }
+  size_t bytes() const { return bits + skipPointers + forwardPointers; }
 
   template <class Range>
   BitVectorCompressedListBase<typename Range::iterator> openList(
@@ -388,17 +386,13 @@ class BitVectorReader : detail::ForwardPointers<Encoder::forwardQuantum>,
     return true;
   }
 
-  SizeType size() const {
-    return size_;
-  }
+  SizeType size() const { return size_; }
 
   bool valid() const {
     return position() < size(); // Also checks that position() != -1.
   }
 
-  SizeType position() const {
-    return position_;
-  }
+  SizeType position() const { return position_; }
   ValueType value() const {
     DCHECK(valid());
     return value_;

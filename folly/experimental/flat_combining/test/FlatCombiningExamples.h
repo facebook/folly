@@ -85,9 +85,7 @@ class FcSimpleExample
       uint32_t maxOps = 0)
       : FC(dedicated, numRecs, maxOps), data_(size) {}
 
-  uint64_t getVal() {
-    return data_.getVal();
-  }
+  uint64_t getVal() { return data_.getVal(); }
 
   // add
 
@@ -128,29 +126,17 @@ class Req {
  public:
   enum class Type { ADD, FETCHADD };
 
-  void setType(Type type) {
-    type_ = type;
-  }
+  void setType(Type type) { type_ = type; }
 
-  Type getType() {
-    return type_;
-  }
+  Type getType() { return type_; }
 
-  void setVal(uint64_t val) {
-    val_ = val;
-  }
+  void setVal(uint64_t val) { val_ = val; }
 
-  uint64_t getVal() {
-    return val_;
-  }
+  uint64_t getVal() { return val_; }
 
-  void setRes(uint64_t res) {
-    res_ = res;
-  }
+  void setRes(uint64_t res) { res_ = res; }
 
-  uint64_t getRes() {
-    return res_;
-  }
+  uint64_t getRes() { return res_; }
 
  private:
   Type type_;
@@ -178,9 +164,7 @@ class FcCustomExample : public FlatCombining<
       uint32_t maxOps = 0)
       : FC(dedicated, numRecs, maxOps), data_(size) {}
 
-  uint64_t getVal() {
-    return data_.getVal();
-  }
+  uint64_t getVal() { return data_.getVal(); }
 
   // add
 

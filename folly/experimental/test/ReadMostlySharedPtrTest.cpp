@@ -36,9 +36,7 @@ const unsigned int TEST_TIMEOUT = 10;
 
 class ReadMostlySharedPtrTest : public ::testing::Test {
  public:
-  ReadMostlySharedPtrTest() {
-    alarm(TEST_TIMEOUT);
-  }
+  ReadMostlySharedPtrTest() { alarm(TEST_TIMEOUT); }
 };
 
 struct TestObject {
@@ -65,13 +63,9 @@ class Coordinator {
     completeBaton_.wait();
   }
 
-  void waitForRequest() {
-    requestBaton_.wait();
-  }
+  void waitForRequest() { requestBaton_.wait(); }
 
-  void completed() {
-    completeBaton_.post();
-  }
+  void completed() { completeBaton_.post(); }
 
  private:
   folly::Baton<> requestBaton_;
@@ -242,9 +236,7 @@ size_t useGlobalCalls = 0;
 
 class TestRefCount {
  public:
-  ~TestRefCount() noexcept {
-    DCHECK_EQ(count_.load(), 0);
-  }
+  ~TestRefCount() noexcept { DCHECK_EQ(count_.load(), 0); }
 
   int64_t operator++() noexcept {
     auto ret = ++count_;
@@ -258,13 +250,9 @@ class TestRefCount {
     return ret;
   }
 
-  int64_t operator*() noexcept {
-    return count_.load();
-  }
+  int64_t operator*() noexcept { return count_.load(); }
 
-  void useGlobal() {
-    ++useGlobalCalls;
-  }
+  void useGlobal() { ++useGlobalCalls; }
 
   template <typename Container>
   static void useGlobal(const Container&) {
@@ -350,15 +338,11 @@ TEST_F(ReadMostlySharedPtrTest, getStdShared) {
 struct Base {
   virtual ~Base() = default;
 
-  virtual std::string getName() const {
-    return "Base";
-  }
+  virtual std::string getName() const { return "Base"; }
 };
 
 struct Derived : public Base {
-  std::string getName() const override {
-    return "Derived";
-  }
+  std::string getName() const override { return "Derived"; }
 };
 
 TEST_F(ReadMostlySharedPtrTest, casts) {

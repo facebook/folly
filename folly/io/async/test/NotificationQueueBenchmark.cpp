@@ -30,9 +30,7 @@ static size_t constexpr kBusyLoopSize = 0;
 
 class MockConsumer : public NotificationQueue<Func>::Consumer {
  public:
-  void messageAvailable(Func&& message) noexcept override {
-    message();
-  }
+  void messageAvailable(Func&& message) noexcept override { message(); }
 };
 
 static void burn(size_t n) {

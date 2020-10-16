@@ -127,9 +127,7 @@ class UDPServer {
     socket_->listen();
   }
 
-  folly::SocketAddress address() const {
-    return socket_->address();
-  }
+  folly::SocketAddress address() const { return socket_->address(); }
 
   void shutdown() {
     CHECK(evb_->isInEventBaseThread());
@@ -145,17 +143,11 @@ class UDPServer {
     }
   }
 
-  void pauseAccepting() {
-    socket_->pauseAccepting();
-  }
+  void pauseAccepting() { socket_->pauseAccepting(); }
 
-  void resumeAccepting() {
-    socket_->resumeAccepting();
-  }
+  void resumeAccepting() { socket_->resumeAccepting(); }
 
-  bool isAccepting() {
-    return socket_->isAccepting();
-  }
+  bool isAccepting() { return socket_->isAccepting(); }
 
   // Whether writes from the UDP server should change the port for each message.
   void setChangePortForWrites(bool changePortForWrites) {
@@ -283,13 +275,9 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     sendPing();
   }
 
-  int pongRecvd() const {
-    return pongRecvd_;
-  }
+  int pongRecvd() const { return pongRecvd_; }
 
-  AsyncUDPSocket& getSocket() {
-    return *socket_;
-  }
+  AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(
       const folly::SocketAddress& connectAddr,
@@ -298,13 +286,9 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     bindSocket_ = bindSocket;
   }
 
-  bool error() const {
-    return error_;
-  }
+  bool error() const { return error_; }
 
-  void incrementPongCount(int n) {
-    pongRecvd_ += n;
-  }
+  void incrementPongCount(int n) { pongRecvd_ += n; }
 
  protected:
   folly::Optional<folly::SocketAddress> connectAddr_;
@@ -332,9 +316,7 @@ class UDPNotifyClient : public UDPClient {
       unsigned int numMsgs = 1)
       : UDPClient(evb), useRecvmmsg_(useRecvmmsg), numMsgs_(numMsgs) {}
 
-  bool shouldOnlyNotify() override {
-    return true;
-  }
+  bool shouldOnlyNotify() override { return true; }
 
   void onRecvMsg(AsyncUDPSocket& sock) {
     struct msghdr msg;
@@ -665,9 +647,7 @@ class MockErrMessageCallback : public AsyncUDPSocket::ErrMessageCallback {
   ~MockErrMessageCallback() override = default;
 
   MOCK_METHOD1(errMessage_, void(const cmsghdr&));
-  void errMessage(const cmsghdr& cmsg) noexcept override {
-    errMessage_(cmsg);
-  }
+  void errMessage(const cmsghdr& cmsg) noexcept override { errMessage_(cmsg); }
 
   MOCK_METHOD1(errMessageError_, void(const folly::AsyncSocketException&));
   void errMessageError(
@@ -708,9 +688,7 @@ class MockUDPReadCallback : public AsyncUDPSocket::ReadCallback {
   }
 
   MOCK_METHOD0(onReadClosed_, void());
-  void onReadClosed() noexcept override {
-    onReadClosed_();
-  }
+  void onReadClosed() noexcept override { onReadClosed_(); }
 };
 
 class AsyncUDPSocketTest : public Test {

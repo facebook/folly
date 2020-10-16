@@ -131,33 +131,21 @@ class propagate_const {
     detail::propagate_const_adl::adl_swap(pointer_, other.pointer_);
   }
 
-  constexpr element_type* get() {
-    return get_(pointer_);
-  }
+  constexpr element_type* get() { return get_(pointer_); }
 
-  constexpr element_type const* get() const {
-    return get_(pointer_);
-  }
+  constexpr element_type const* get() const { return get_(pointer_); }
 
   constexpr explicit operator bool() const {
     return static_cast<bool>(pointer_);
   }
 
-  constexpr element_type& operator*() {
-    return *get();
-  }
+  constexpr element_type& operator*() { return *get(); }
 
-  constexpr element_type const& operator*() const {
-    return *get();
-  }
+  constexpr element_type const& operator*() const { return *get(); }
 
-  constexpr element_type* operator->() {
-    return get();
-  }
+  constexpr element_type* operator->() { return get(); }
 
-  constexpr element_type const* operator->() const {
-    return get();
-  }
+  constexpr element_type const* operator->() const { return get(); }
 
   template <
       typename OtherPointer = Pointer,

@@ -42,9 +42,7 @@ class EDFThreadPoolExecutor::Task {
   explicit Task(std::vector<Func>&& fs, uint64_t deadline)
       : fs_(std::move(fs)), total_(fs_.size()), deadline_(deadline) {}
 
-  uint64_t getDeadline() const {
-    return deadline_;
-  }
+  uint64_t getDeadline() const { return deadline_; }
 
   bool isDone() const {
     return iter_.load(std::memory_order_relaxed) >= total_;
@@ -183,9 +181,7 @@ class EDFThreadPoolExecutor::TaskQueue {
     }
   }
 
-  std::size_t size() const {
-    return numItems_.load(std::memory_order_seq_cst);
-  }
+  std::size_t size() const { return numItems_.load(std::memory_order_seq_cst); }
 
  private:
   Bucket& getBucket(uint64_t deadline) {
@@ -390,9 +386,7 @@ void EDFThreadPoolExecutor::threadRun(ThreadPtr thread) {
         std::chrono::steady_clock::now(), std::memory_order_relaxed);
     thread->taskStatsCallbacks->callbackList.withRLock([&](auto& callbacks) {
       *thread->taskStatsCallbacks->inCallback = true;
-      SCOPE_EXIT {
-        *thread->taskStatsCallbacks->inCallback = false;
-      };
+      SCOPE_EXIT { *thread->taskStatsCallbacks->inCallback = false; };
       try {
         for (auto& callback : callbacks) {
           callback(stats);
@@ -451,9 +445,7 @@ std::shared_ptr<EDFThreadPoolExecutor::Task> EDFThreadPoolExecutor::take() {
   // No tasks on the horizon, so go sleep
   numIdleThreads_.fetch_add(1, std::memory_order_seq_cst);
 
-  SCOPE_EXIT {
-    numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst);
-  };
+  SCOPE_EXIT { numIdleThreads_.fetch_sub(1, std::memory_order_seq_cst); };
 
   for (;;) {
     if (UNLIKELY(shouldStop())) {

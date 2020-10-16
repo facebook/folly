@@ -44,9 +44,7 @@ class SimpleDigest {
     return *r.begin();
   }
 
-  int64_t getSize() const {
-    return sz_;
-  }
+  int64_t getSize() const { return sz_; }
 
  private:
   int64_t sz_;

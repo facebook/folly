@@ -1327,9 +1327,7 @@ TEST(Conv, allocate_size) {
 namespace my {
 struct Dimensions {
   int w, h;
-  std::tuple<const int&, const int&> tuple_view() const {
-    return tie(w, h);
-  }
+  std::tuple<const int&, const int&> tuple_view() const { return tie(w, h); }
   bool operator==(const Dimensions& other) const {
     return this->tuple_view() == other.tuple_view();
   }

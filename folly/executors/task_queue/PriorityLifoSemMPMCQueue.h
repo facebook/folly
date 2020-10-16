@@ -47,9 +47,7 @@ class PriorityLifoSemMPMCQueue : public BlockingQueue<T> {
     }
   }
 
-  uint8_t getNumPriorities() override {
-    return queues_.size();
-  }
+  uint8_t getNumPriorities() override { return queues_.size(); }
 
   // Add at medium priority by default
   BlockingQueueAddResult add(T item) override {

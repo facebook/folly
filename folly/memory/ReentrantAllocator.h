@@ -32,9 +32,7 @@ class reentrant_allocator_options {
   //
   //  The log2 of the block size, which is the size of the blocks from which
   //  small allocations are returned.
-  std::size_t block_size_lg() const noexcept {
-    return block_size_lg_;
-  }
+  std::size_t block_size_lg() const noexcept { return block_size_lg_; }
   reentrant_allocator_options& block_size_lg(std::size_t const value) noexcept {
     block_size_lg_ = value;
     return *this;
@@ -44,9 +42,7 @@ class reentrant_allocator_options {
   //
   //  The log2 of the large size, which is the size starting at which
   //  allocations are considered large and are returned directly from mmap.
-  std::size_t large_size_lg() const noexcept {
-    return large_size_lg_;
-  }
+  std::size_t large_size_lg() const noexcept { return large_size_lg_; }
   reentrant_allocator_options& large_size_lg(std::size_t const value) noexcept {
     large_size_lg_ = value;
     return *this;

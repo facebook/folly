@@ -119,13 +119,9 @@ class ObserverCreator<Observable, Traits>::ContextPrimaryPtr {
   ContextPrimaryPtr& operator=(const ContextPrimaryPtr&) = delete;
   ContextPrimaryPtr& operator=(ContextPrimaryPtr&&) = default;
 
-  Context* operator->() const {
-    return contextPrimary_.get();
-  }
+  Context* operator->() const { return contextPrimary_.get(); }
 
-  std::weak_ptr<Context> get_weak() {
-    return context_;
-  }
+  std::weak_ptr<Context> get_weak() { return context_; }
 
  private:
   std::shared_ptr<folly::Baton<>> destroyBaton_{

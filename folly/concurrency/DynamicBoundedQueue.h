@@ -339,18 +339,12 @@ class DynamicBoundedQueue {
   /// Enqueue functions
 
   /** enqueue */
-  FOLLY_ALWAYS_INLINE void enqueue(const T& v) {
-    enqueueImpl(v);
-  }
+  FOLLY_ALWAYS_INLINE void enqueue(const T& v) { enqueueImpl(v); }
 
-  FOLLY_ALWAYS_INLINE void enqueue(T&& v) {
-    enqueueImpl(std::move(v));
-  }
+  FOLLY_ALWAYS_INLINE void enqueue(T&& v) { enqueueImpl(std::move(v)); }
 
   /** try_enqueue */
-  FOLLY_ALWAYS_INLINE bool try_enqueue(const T& v) {
-    return tryEnqueueImpl(v);
-  }
+  FOLLY_ALWAYS_INLINE bool try_enqueue(const T& v) { return tryEnqueueImpl(v); }
 
   FOLLY_ALWAYS_INLINE bool try_enqueue(T&& v) {
     return tryEnqueueImpl(std::move(v));
@@ -445,14 +439,10 @@ class DynamicBoundedQueue {
   }
 
   /** size */
-  size_t size() const noexcept {
-    return q_.size();
-  }
+  size_t size() const noexcept { return q_.size(); }
 
   /** empty */
-  bool empty() const noexcept {
-    return q_.empty();
-  }
+  bool empty() const noexcept { return q_.empty(); }
 
  private:
   /// Private functions ///

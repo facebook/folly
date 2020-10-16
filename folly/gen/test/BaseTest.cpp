@@ -111,19 +111,11 @@ TEST(Gen, Member) {
   struct Counter {
     Counter(int start = 0) : c(start) {}
 
-    int count() const {
-      return c;
-    }
-    int incr() {
-      return ++c;
-    }
+    int count() const { return c; }
+    int incr() { return ++c; }
 
-    int& ref() {
-      return c;
-    }
-    const int& ref() const {
-      return c;
-    }
+    int& ref() { return c; }
+    const int& ref() const { return c; }
 
    private:
     int c;
@@ -956,9 +948,7 @@ struct CopyCounter {
   int copies;
   int moves;
 
-  CopyCounter() : copies(0), moves(0) {
-    ++alive;
-  }
+  CopyCounter() : copies(0), moves(0) { ++alive; }
 
   CopyCounter(CopyCounter&& source) noexcept {
     *this = std::move(source);
@@ -970,9 +960,7 @@ struct CopyCounter {
     ++alive;
   }
 
-  ~CopyCounter() {
-    --alive;
-  }
+  ~CopyCounter() { --alive; }
 
   CopyCounter& operator=(const CopyCounter& source) {
     this->copies = source.copies + 1;
@@ -1123,15 +1111,9 @@ TEST(Gen, Dereference) {
 namespace {
 struct DereferenceWrapper {
   string data;
-  string& operator*() & {
-    return data;
-  }
-  string&& operator*() && {
-    return std::move(data);
-  }
-  explicit operator bool() {
-    return true;
-  }
+  string& operator*() & { return data; }
+  string&& operator*() && { return std::move(data); }
+  explicit operator bool() { return true; }
 };
 bool operator==(const DereferenceWrapper& a, const DereferenceWrapper& b) {
   return a.data == b.data;

@@ -150,9 +150,7 @@ class AsyncPipe {
               cancellationSource_->getToken(),
               std::move(onClosedFunc)) {}
 
-    void requestInvoke() {
-      cancellationSource_->requestCancellation();
-    }
+    void requestInvoke() { cancellationSource_->requestCancellation(); }
 
     bool wasInvokeRequested() {
       return cancellationSource_->isCancellationRequested();

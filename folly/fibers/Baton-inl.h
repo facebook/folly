@@ -28,9 +28,7 @@ class Baton::FiberWaiter : public Baton::Waiter {
     fiber_ = &fiber;
   }
 
-  void post() override {
-    fiber_->resume();
-  }
+  void post() override { fiber_->resume(); }
 
  private:
   Fiber* fiber_{nullptr};

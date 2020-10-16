@@ -291,9 +291,7 @@ TEST(Observer, SubscribeCallback) {
   static std::atomic<size_t> getCallsFinish{0};
 
   struct Observable {
-    ~Observable() {
-      EXPECT_EQ(mainThreadId, std::this_thread::get_id());
-    }
+    ~Observable() { EXPECT_EQ(mainThreadId, std::this_thread::get_id()); }
   };
   struct Traits {
     using element_type = int;

@@ -90,9 +90,7 @@ class Baton {
    public:
     explicit WaitOperation(const Baton& baton) noexcept : baton_(baton) {}
 
-    bool await_ready() const noexcept {
-      return baton_.ready();
-    }
+    bool await_ready() const noexcept { return baton_.ready(); }
 
     bool await_suspend(
         std::experimental::coroutine_handle<> awaitingCoroutine) noexcept {

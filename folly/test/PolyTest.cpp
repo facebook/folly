@@ -35,28 +35,16 @@ struct Big_t {
   T t_;
 
  public:
-  Big_t() : data_{}, t_() {
-    ++s_count;
-  }
-  explicit Big_t(T t) : data_{}, t_(t) {
-    ++s_count;
-  }
-  Big_t(Big_t const& that) : data_(that.data_), t_(that.t_) {
-    ++s_count;
-  }
-  ~Big_t() {
-    --s_count;
-  }
+  Big_t() : data_{}, t_() { ++s_count; }
+  explicit Big_t(T t) : data_{}, t_(t) { ++s_count; }
+  Big_t(Big_t const& that) : data_(that.data_), t_(that.t_) { ++s_count; }
+  ~Big_t() { --s_count; }
   Big_t& operator=(Big_t const&) = default;
-  T value() const {
-    return t_;
-  }
+  T value() const { return t_; }
   friend bool operator==(Big_t const& a, Big_t const& b) {
     return a.value() == b.value();
   }
-  friend bool operator!=(Big_t const& a, Big_t const& b) {
-    return !(a == b);
-  }
+  friend bool operator!=(Big_t const& a, Big_t const& b) { return !(a == b); }
   friend bool operator<(Big_t const& a, Big_t const& b) {
     return a.value() < b.value();
   }
@@ -386,9 +374,7 @@ namespace {
 struct Foo {
   template <class Base>
   struct Interface : Base {
-    void foo(int& i) {
-      folly::poly_call<0>(*this, i);
-    }
+    void foo(int& i) { folly::poly_call<0>(*this, i); }
   };
 
   template <class T>
@@ -398,9 +384,7 @@ struct Foo {
 struct foo_ {
   foo_() = default;
   explicit foo_(int i) : j_(i) {}
-  void foo(int& i) {
-    i += j_;
-  }
+  void foo(int& i) { i += j_; }
 
  private:
   int j_ = 0;
@@ -419,9 +403,7 @@ namespace {
 struct FooBar : PolyExtends<Foo> {
   template <class Base>
   struct Interface : Base {
-    std::string bar(int i) const {
-      return folly::poly_call<0>(*this, i);
-    }
+    std::string bar(int i) const { return folly::poly_call<0>(*this, i); }
   };
 
   template <class T>
@@ -431,9 +413,7 @@ struct FooBar : PolyExtends<Foo> {
 struct foo_bar {
   foo_bar() = default;
   explicit foo_bar(int i) : j_(i) {}
-  void foo(int& i) {
-    i += j_;
-  }
+  void foo(int& i) { i += j_; }
   std::string bar(int i) const {
     i += j_;
     return folly::to<std::string>(i);
@@ -483,9 +463,7 @@ struct Baz {
 struct FooBarBazFizz : PolyExtends<FooBar, Baz> {
   template <class Base>
   struct Interface : Base {
-    std::string fizz() const {
-      return folly::poly_call<0>(*this);
-    }
+    std::string fizz() const { return folly::poly_call<0>(*this); }
   };
 
   template <class T>
@@ -495,18 +473,10 @@ struct FooBarBazFizz : PolyExtends<FooBar, Baz> {
 struct foo_bar_baz_fizz {
   foo_bar_baz_fizz() = default;
   explicit foo_bar_baz_fizz(int i) : j_(i) {}
-  void foo(int& i) {
-    i += j_;
-  }
-  std::string bar(int i) const {
-    return folly::to<std::string>(i + j_);
-  }
-  std::string baz(int i, int j) const {
-    return folly::to<std::string>(i + j);
-  }
-  std::string fizz() const {
-    return "fizz";
-  }
+  void foo(int& i) { i += j_; }
+  std::string bar(int i) const { return folly::to<std::string>(i + j_); }
+  std::string baz(int i, int j) const { return folly::to<std::string>(i + j); }
+  std::string fizz() const { return "fizz"; }
 
  private:
   int j_ = 0;
@@ -528,12 +498,8 @@ namespace {
 struct Property {
   template <class Base>
   struct Interface : Base {
-    int prop() const {
-      return folly::poly_call<0>(*this);
-    }
-    void prop(int i) {
-      folly::poly_call<1>(*this, i);
-    }
+    int prop() const { return folly::poly_call<0>(*this); }
+    void prop(int i) { folly::poly_call<1>(*this, i); }
   };
 
   template <class T>
@@ -545,12 +511,8 @@ struct Property {
 struct has_property {
   has_property() = default;
   explicit has_property(int i) : j(i) {}
-  int prop() const {
-    return j;
-  }
-  void prop(int i) {
-    j = i;
-  }
+  int prop() const { return j; }
+  void prop(int i) { j = i; }
 
  private:
   int j = 0;
@@ -698,22 +660,14 @@ TEST(Poly, DiamondInheritance) {
 
 namespace {
 struct Struct {
-  int property() const {
-    return 42;
-  }
+  int property() const { return 42; }
   void property(int) {}
 };
 struct Struct2 : Struct {
-  int meow() {
-    return 42;
-  }
+  int meow() { return 42; }
 
-  int purr() {
-    return 1;
-  }
-  int purr() const {
-    return 2;
-  }
+  int purr() { return 1; }
+  int purr() const { return 2; }
 };
 
 int property(Struct const&) {
@@ -839,13 +793,9 @@ namespace {
 struct ICat {
   template <class Base>
   struct Interface : Base {
-    void pet() {
-      folly::poly_call<0>(*this);
-    }
+    void pet() { folly::poly_call<0>(*this); }
 
-    int meow() const {
-      return folly::poly_call<1>(*this);
-    }
+    int meow() const { return folly::poly_call<1>(*this); }
   };
 
   template <class T>
@@ -853,12 +803,8 @@ struct ICat {
 };
 
 struct cat {
-  void pet() noexcept {
-    ++pet_count;
-  }
-  int meow() const noexcept {
-    return pet_count;
-  }
+  void pet() noexcept { ++pet_count; }
+  int meow() const noexcept { return pet_count; }
   int pet_count = 0;
 };
 } // namespace

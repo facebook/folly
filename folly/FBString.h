@@ -244,9 +244,7 @@ class fbstring_core_model {
 template <class Char>
 class fbstring_core {
  public:
-  fbstring_core() noexcept {
-    reset();
-  }
+  fbstring_core() noexcept { reset(); }
 
   fbstring_core(const fbstring_core& rhs) {
     assert(&rhs != this);
@@ -336,13 +334,9 @@ class fbstring_core {
   }
 
   // In C++11 data() and c_str() are 100% equivalent.
-  const Char* data() const {
-    return c_str();
-  }
+  const Char* data() const { return c_str(); }
 
-  Char* data() {
-    return c_str();
-  }
+  Char* data() { return c_str(); }
 
   Char* mutableData() {
     switch (category()) {
@@ -397,9 +391,7 @@ class fbstring_core {
       bool expGrowth = false,
       bool disableSSO = FBSTRING_DISABLE_SSO);
 
-  void push_back(Char c) {
-    *expandNoinit(1, /* expGrowth = */ true) = c;
-  }
+  void push_back(Char c) { *expandNoinit(1, /* expGrowth = */ true) = c; }
 
   size_t size() const {
     size_t ret = ml_.size_;
@@ -448,9 +440,7 @@ class fbstring_core {
     return ptr;
   }
 
-  void reset() {
-    setSmallSize(0);
-  }
+  void reset() { setSmallSize(0); }
 
   FOLLY_NOINLINE void destroyMediumLarge() noexcept {
     auto const c = category();
@@ -926,15 +916,9 @@ class dummy_fbstring_core {
   dummy_fbstring_core(const dummy_fbstring_core& another)
       : backend_(another.backend_) {}
   dummy_fbstring_core(const Char* s, size_t n) : backend_(s, n) {}
-  void swap(dummy_fbstring_core& rhs) {
-    backend_.swap(rhs.backend_);
-  }
-  const Char* data() const {
-    return backend_.data();
-  }
-  Char* mutableData() {
-    return const_cast<Char*>(backend_.data());
-  }
+  void swap(dummy_fbstring_core& rhs) { backend_.swap(rhs.backend_); }
+  const Char* data() const { return backend_.data(); }
+  Char* mutableData() { return const_cast<Char*>(backend_.data()); }
   void shrink(size_t delta) {
     assert(delta <= size());
     backend_.resize(size() - delta);
@@ -944,21 +928,11 @@ class dummy_fbstring_core {
     backend_.resize(size() + delta);
     return backend_.data() + sz;
   }
-  void push_back(Char c) {
-    backend_.push_back(c);
-  }
-  size_t size() const {
-    return backend_.size();
-  }
-  size_t capacity() const {
-    return backend_.capacity();
-  }
-  bool isShared() const {
-    return false;
-  }
-  void reserve(size_t minCapacity) {
-    backend_.reserve(minCapacity);
-  }
+  void push_back(Char c) { backend_.push_back(c); }
+  size_t size() const { return backend_.size(); }
+  size_t capacity() const { return backend_.capacity(); }
+  bool isShared() const { return false; }
+  void reserve(size_t minCapacity) { backend_.reserve(minCapacity); }
 
  private:
   std::basic_string<Char> backend_;
@@ -998,9 +972,7 @@ class basic_fbstring {
     explicit Invariant(const basic_fbstring& s) noexcept : s_(s) {
       assert(s_.isSane());
     }
-    ~Invariant() noexcept {
-      assert(s_.isSane());
-    }
+    ~Invariant() noexcept { assert(s_.isSane()); }
 
    private:
     const basic_fbstring& s_;
@@ -1136,9 +1108,7 @@ class basic_fbstring {
     return std::basic_string<E, T, A>(data(), size());
   }
 
-  basic_fbstring& operator=(const value_type* s) {
-    return assign(s);
-  }
+  basic_fbstring& operator=(const value_type* s) { return assign(s); }
 
   basic_fbstring& operator=(value_type c);
 
@@ -1172,67 +1142,43 @@ class basic_fbstring {
 #endif
 
   // C++11 21.4.3 iterators:
-  iterator begin() {
-    return store_.mutableData();
-  }
+  iterator begin() { return store_.mutableData(); }
 
-  const_iterator begin() const {
-    return store_.data();
-  }
+  const_iterator begin() const { return store_.data(); }
 
-  const_iterator cbegin() const {
-    return begin();
-  }
+  const_iterator cbegin() const { return begin(); }
 
-  iterator end() {
-    return store_.mutableData() + store_.size();
-  }
+  iterator end() { return store_.mutableData() + store_.size(); }
 
-  const_iterator end() const {
-    return store_.data() + store_.size();
-  }
+  const_iterator end() const { return store_.data() + store_.size(); }
 
-  const_iterator cend() const {
-    return end();
-  }
+  const_iterator cend() const { return end(); }
 
-  reverse_iterator rbegin() {
-    return reverse_iterator(end());
-  }
+  reverse_iterator rbegin() { return reverse_iterator(end()); }
 
   const_reverse_iterator rbegin() const {
     return const_reverse_iterator(end());
   }
 
-  const_reverse_iterator crbegin() const {
-    return rbegin();
-  }
+  const_reverse_iterator crbegin() const { return rbegin(); }
 
-  reverse_iterator rend() {
-    return reverse_iterator(begin());
-  }
+  reverse_iterator rend() { return reverse_iterator(begin()); }
 
   const_reverse_iterator rend() const {
     return const_reverse_iterator(begin());
   }
 
-  const_reverse_iterator crend() const {
-    return rend();
-  }
+  const_reverse_iterator crend() const { return rend(); }
 
   // Added by C++11
   // C++11 21.4.5, element access:
-  const value_type& front() const {
-    return *begin();
-  }
+  const value_type& front() const { return *begin(); }
   const value_type& back() const {
     assert(!empty());
     // Should be begin()[size() - 1], but that branches twice
     return *(end() - 1);
   }
-  value_type& front() {
-    return *begin();
-  }
+  value_type& front() { return *begin(); }
   value_type& back() {
     assert(!empty());
     // Should be begin()[size() - 1], but that branches twice
@@ -1244,23 +1190,15 @@ class basic_fbstring {
   }
 
   // C++11 21.4.4 capacity:
-  size_type size() const {
-    return store_.size();
-  }
+  size_type size() const { return store_.size(); }
 
-  size_type length() const {
-    return size();
-  }
+  size_type length() const { return size(); }
 
-  size_type max_size() const {
-    return std::numeric_limits<size_type>::max();
-  }
+  size_type max_size() const { return std::numeric_limits<size_type>::max(); }
 
   void resize(size_type n, value_type c = value_type());
 
-  size_type capacity() const {
-    return store_.capacity();
-  }
+  size_type capacity() const { return store_.capacity(); }
 
   void reserve(size_type res_arg = 0) {
     enforce<std::length_error>(res_arg <= max_size(), "");
@@ -1275,22 +1213,14 @@ class basic_fbstring {
     basic_fbstring(cbegin(), cend()).swap(*this);
   }
 
-  void clear() {
-    resize(0);
-  }
+  void clear() { resize(0); }
 
-  bool empty() const {
-    return size() == 0;
-  }
+  bool empty() const { return size() == 0; }
 
   // C++11 21.4.5 element access:
-  const_reference operator[](size_type pos) const {
-    return *(begin() + pos);
-  }
+  const_reference operator[](size_type pos) const { return *(begin() + pos); }
 
-  reference operator[](size_type pos) {
-    return *(begin() + pos);
-  }
+  reference operator[](size_type pos) { return *(begin() + pos); }
 
   const_reference at(size_type n) const {
     enforce<std::out_of_range>(n < size(), "");
@@ -1303,13 +1233,9 @@ class basic_fbstring {
   }
 
   // C++11 21.4.6 modifiers:
-  basic_fbstring& operator+=(const basic_fbstring& str) {
-    return append(str);
-  }
+  basic_fbstring& operator+=(const basic_fbstring& str) { return append(str); }
 
-  basic_fbstring& operator+=(const value_type* s) {
-    return append(s);
-  }
+  basic_fbstring& operator+=(const value_type* s) { return append(s); }
 
   basic_fbstring& operator+=(const value_type c) {
     push_back(c);
@@ -1613,25 +1539,15 @@ class basic_fbstring {
     return n;
   }
 
-  void swap(basic_fbstring& rhs) {
-    store_.swap(rhs.store_);
-  }
+  void swap(basic_fbstring& rhs) { store_.swap(rhs.store_); }
 
-  const value_type* c_str() const {
-    return store_.c_str();
-  }
+  const value_type* c_str() const { return store_.c_str(); }
 
-  const value_type* data() const {
-    return c_str();
-  }
+  const value_type* data() const { return c_str(); }
 
-  value_type* data() {
-    return store_.data();
-  }
+  value_type* data() { return store_.data(); }
 
-  allocator_type get_allocator() const {
-    return allocator_type();
-  }
+  allocator_type get_allocator() const { return allocator_type(); }
 
   size_type find(const basic_fbstring& str, size_type pos = 0) const {
     return find(str.data(), pos, str.length());

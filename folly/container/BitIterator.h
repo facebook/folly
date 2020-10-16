@@ -81,9 +81,7 @@ class BitIterator : public bititerator_detail::BitIteratorBase<BaseIter>::type {
     assert(bitOffset_ < bitsPerBlock());
   }
 
-  size_t bitOffset() const {
-    return bitOffset_;
-  }
+  size_t bitOffset() const { return bitOffset_; }
 
   void advanceToNextBlock() {
     bitOffset_ = 0;

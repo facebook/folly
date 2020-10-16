@@ -86,9 +86,7 @@ class AutoTimer final {
     }
   }
 
-  DoubleSeconds log(StringPiece msg = "") {
-    return logImpl(Clock::now(), msg);
-  }
+  DoubleSeconds log(StringPiece msg = "") { return logImpl(Clock::now(), msg); }
 
   template <typename... Args>
   DoubleSeconds log(Args&&... args) {

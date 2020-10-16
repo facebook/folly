@@ -560,9 +560,7 @@ class LZ4Codec final : public Codec {
   uint64_t doMaxUncompressedLength() const override;
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
 
-  bool encodeSize() const {
-    return type() == CodecType::LZ4_VARINT_SIZE;
-  }
+  bool encodeSize() const { return type() == CodecType::LZ4_VARINT_SIZE; }
 
   std::unique_ptr<IOBuf> doCompress(const IOBuf* data) override;
   std::unique_ptr<IOBuf> doUncompress(
@@ -1078,9 +1076,7 @@ class LZMA2StreamCodec final : public StreamCodec {
   uint64_t doMaxUncompressedLength() const override;
   uint64_t doMaxCompressedLength(uint64_t uncompressedLength) const override;
 
-  bool encodeSize() const {
-    return type() == CodecType::LZMA2_VARINT_SIZE;
-  }
+  bool encodeSize() const { return type() == CodecType::LZMA2_VARINT_SIZE; }
 
   void doResetStream() override;
   bool doCompressStream(

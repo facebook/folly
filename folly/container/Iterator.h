@@ -265,15 +265,9 @@ class emplace_iterator_base<Derived, EmplaceImpl, false>
   }
 
   // No-ops.
-  Derived& operator*() {
-    return static_cast<Derived&>(*this);
-  }
-  Derived& operator++() {
-    return static_cast<Derived&>(*this);
-  }
-  Derived& operator++(int) {
-    return static_cast<Derived&>(*this);
-  }
+  Derived& operator*() { return static_cast<Derived&>(*this); }
+  Derived& operator++() { return static_cast<Derived&>(*this); }
+  Derived& operator++(int) { return static_cast<Derived&>(*this); }
 
   // We need all of these explicit defaults because the custom operator=
   // overloads disable implicit generation of these functions.

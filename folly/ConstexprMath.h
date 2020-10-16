@@ -65,9 +65,7 @@ template <typename T>
 struct constexpr_abs_helper<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  static constexpr T go(T t) {
-    return t < static_cast<T>(0) ? -t : t;
-  }
+  static constexpr T go(T t) { return t < static_cast<T>(0) ? -t : t; }
 };
 
 template <typename T>
@@ -76,9 +74,7 @@ struct constexpr_abs_helper<
     typename std::enable_if<
         std::is_integral<T>::value && !std::is_same<T, bool>::value &&
         std::is_unsigned<T>::value>::type> {
-  static constexpr T go(T t) {
-    return t;
-  }
+  static constexpr T go(T t) { return t; }
 };
 
 template <typename T>

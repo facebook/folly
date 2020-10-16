@@ -112,9 +112,7 @@ struct BenchmarkSuspender {
   using TimePoint = Clock::time_point;
   using Duration = Clock::duration;
 
-  BenchmarkSuspender() {
-    start = Clock::now();
-  }
+  BenchmarkSuspender() { start = Clock::now(); }
 
   BenchmarkSuspender(const BenchmarkSuspender&) = delete;
   BenchmarkSuspender(BenchmarkSuspender&& rhs) noexcept {
@@ -151,9 +149,7 @@ struct BenchmarkSuspender {
 
   template <class F>
   auto dismissing(F f) -> invoke_result_t<F> {
-    SCOPE_EXIT {
-      rehire();
-    };
+    SCOPE_EXIT { rehire(); };
     dismiss();
     return f();
   }
@@ -162,9 +158,7 @@ struct BenchmarkSuspender {
    * This is for use inside of if-conditions, used in BENCHMARK macros.
    * If-conditions bypass the explicit on operator bool.
    */
-  explicit operator bool() const {
-    return false;
-  }
+  explicit operator bool() const { return false; }
 
   /**
    * Accumulates time spent outside benchmark.

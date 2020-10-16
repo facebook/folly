@@ -75,9 +75,7 @@ struct GlobalStatic {
   GlobalStatic() {
     real_setsockopt_ = (setsockopt_ptr)dlsym(RTLD_NEXT, "setsockopt");
   }
-  void reset() noexcept {
-    ttlsDisabledSet.clear();
-  }
+  void reset() noexcept { ttlsDisabledSet.clear(); }
   // for each fd, tracks whether TTLS is disabled or not
   std::unordered_set<folly::NetworkSocket /* fd */> ttlsDisabledSet;
 };
@@ -484,9 +482,7 @@ TEST(AsyncSSLSocketTest, SocketWithDelay) {
 class NextProtocolTest : public Test {
   // For matching protos
  public:
-  void SetUp() override {
-    getctx(clientCtx, serverCtx);
-  }
+  void SetUp() override { getctx(clientCtx, serverCtx); }
 
   void connect(bool unset = false) {
     getfds(fds);
@@ -837,9 +833,7 @@ class PerLoopReadCallback : public AsyncTransport::ReadCallback {
 
   void readEOF() noexcept override {}
 
-  void setSocket(AsyncSocket* s) {
-    s_ = s;
-  }
+  void setSocket(AsyncSocket* s) { s_ = s; }
 
  private:
   AsyncSocket* s_;
@@ -1057,9 +1051,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloOnePacket) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT {
-    SSL_free(ssl);
-  };
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -1099,9 +1091,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloTwoPackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT {
-    SSL_free(ssl);
-  };
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -1158,9 +1148,7 @@ TEST(AsyncSSLSocketTest, SSLParseClientHelloMultiplePackets) {
   cursor.write<uint32_t>(0);
 
   SSL* ssl = ctx->createSSL();
-  SCOPE_EXIT {
-    SSL_free(ssl);
-  };
+  SCOPE_EXIT { SSL_free(ssl); };
   AsyncSSLSocket::UniquePtr sock(
       new AsyncSSLSocket(ctx, &eventBase, fds[0], true));
   sock->enableClientHelloParsing();
@@ -2828,9 +2816,7 @@ TEST(AsyncSSLSocketTest, ConnectWriteReadCloseTFOWithTFOServerDisabled) {
 
 class ConnCallback : public AsyncSocket::ConnectCallback {
  public:
-  void connectSuccess() noexcept override {
-    state = State::SUCCESS;
-  }
+  void connectSuccess() noexcept override { state = State::SUCCESS; }
 
   void connectErr(const AsyncSocketException& ex) noexcept override {
     state = State::ERROR;
@@ -3269,9 +3255,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
 ///////////////////////////////////////////////////////////////////////////
 namespace {
 struct Initializer {
-  Initializer() {
-    signal(SIGPIPE, SIG_IGN);
-  }
+  Initializer() { signal(SIGPIPE, SIG_IGN); }
 };
 Initializer initializer;
 } // namespace

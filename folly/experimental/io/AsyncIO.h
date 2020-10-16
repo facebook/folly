@@ -46,13 +46,9 @@ class AsyncIOOp : public AsyncBaseOp {
 
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
-  AsyncIOOp* getAsyncIOOp() override {
-    return this;
-  }
+  AsyncIOOp* getAsyncIOOp() override { return this; }
 
-  IoUringOp* getIoUringOp() override {
-    return nullptr;
-  }
+  IoUringOp* getIoUringOp() override { return nullptr; }
 
   void toStream(std::ostream& os) const override;
 

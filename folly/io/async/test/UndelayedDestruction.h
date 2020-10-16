@@ -94,9 +94,7 @@ class UndelayedDestruction : public TDD {
    * Override our parent's destroy() method to make it protected.
    * Callers should use the normal destructor instead of destroy
    */
-  void destroy() override {
-    this->TDD::destroy();
-  }
+  void destroy() override { this->TDD::destroy(); }
 
  private:
   // Forbidden copy constructor and assignment operator

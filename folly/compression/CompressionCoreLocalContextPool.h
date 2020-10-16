@@ -54,13 +54,9 @@ class CompressionCoreLocalContextPool {
     using Pool =
         CompressionCoreLocalContextPool<T, Creator, Deleter, NumStripes>;
 
-    explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) {
-      DCHECK(pool_);
-    }
+    explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) { DCHECK(pool_); }
 
-    void operator()(T* ptr) {
-      pool_->store(ptr);
-    }
+    void operator()(T* ptr) { pool_->store(ptr); }
 
    private:
     Pool* pool_;
@@ -96,14 +92,10 @@ class CompressionCoreLocalContextPool {
     return Ref(ptr, get_deleter());
   }
 
-  Ref getNull() {
-    return Ref(nullptr, get_deleter());
-  }
+  Ref getNull() { return Ref(nullptr, get_deleter()); }
 
  private:
-  ReturnToPoolDeleter get_deleter() {
-    return ReturnToPoolDeleter(this);
-  }
+  ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
 
   void store(T* ptr) {
     DCHECK(ptr);

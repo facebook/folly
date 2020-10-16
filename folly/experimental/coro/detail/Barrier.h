@@ -75,9 +75,7 @@ class Barrier {
     class Awaiter {
      public:
       explicit Awaiter(Barrier& barrier) noexcept : barrier_(barrier) {}
-      bool await_ready() {
-        return false;
-      }
+      bool await_ready() { return false; }
       std::experimental::coroutine_handle<> await_suspend(
           std::experimental::coroutine_handle<> continuation) noexcept {
         barrier_.setContinuation(continuation);

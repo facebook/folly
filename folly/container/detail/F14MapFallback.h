@@ -335,13 +335,9 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   }
 
  public:
-  mapped_type& at(key_type const& key) {
-    return Super::at(key);
-  }
+  mapped_type& at(key_type const& key) { return Super::at(key); }
 
-  mapped_type const& at(key_type const& key) const {
-    return Super::at(key);
-  }
+  mapped_type const& at(key_type const& key) const { return Super::at(key); }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, mapped_type&> at(K2 const& key) {
@@ -360,18 +356,14 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
     return try_emplace(std::forward<K2>(key)).first->second;
   }
 
-  size_type count(key_type const& key) const {
-    return Super::count(key);
-  }
+  size_type count(key_type const& key) const { return Super::count(key); }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, size_type> count(K2 const& key) const {
     return !findLocal(*this, key) ? 0 : 1;
   }
 
-  bool contains(key_type const& key) const {
-    return count(key) != 0;
-  }
+  bool contains(key_type const& key) const { return count(key) != 0; }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, bool> contains(K2 const& key) const {
@@ -410,13 +402,9 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   }
 
  public:
-  iterator find(key_type const& key) {
-    return Super::find(key);
-  }
+  iterator find(key_type const& key) { return Super::find(key); }
 
-  const_iterator find(key_type const& key) const {
-    return Super::find(key);
-  }
+  const_iterator find(key_type const& key) const { return Super::find(key); }
 
   template <typename K2>
   EnableHeterogeneousFind<K2, iterator> find(K2 const& key) {

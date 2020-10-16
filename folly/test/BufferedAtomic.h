@@ -171,9 +171,7 @@ class RecordBuffer {
  private:
   static constexpr size_t kMaxRecordBufferSize = 64;
 
-  bool isInitialized() const {
-    return !history_.empty();
-  }
+  bool isInitialized() const { return !history_.empty(); }
 };
 
 template <typename T>
@@ -203,9 +201,7 @@ struct BufferedAtomic {
     DeterministicSchedule::afterSharedAccess();
   }
 
-  bool is_lock_free() const noexcept {
-    return false;
-  }
+  bool is_lock_free() const noexcept { return false; }
 
   bool compare_exchange_strong(
       T& v0,

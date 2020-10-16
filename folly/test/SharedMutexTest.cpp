@@ -504,57 +504,33 @@ struct EnterLocker {
 struct PosixRWLock {
   pthread_rwlock_t lock_;
 
-  PosixRWLock() {
-    pthread_rwlock_init(&lock_, nullptr);
-  }
+  PosixRWLock() { pthread_rwlock_init(&lock_, nullptr); }
 
-  ~PosixRWLock() {
-    pthread_rwlock_destroy(&lock_);
-  }
+  ~PosixRWLock() { pthread_rwlock_destroy(&lock_); }
 
-  void lock() {
-    pthread_rwlock_wrlock(&lock_);
-  }
+  void lock() { pthread_rwlock_wrlock(&lock_); }
 
-  void unlock() {
-    pthread_rwlock_unlock(&lock_);
-  }
+  void unlock() { pthread_rwlock_unlock(&lock_); }
 
-  void lock_shared() {
-    pthread_rwlock_rdlock(&lock_);
-  }
+  void lock_shared() { pthread_rwlock_rdlock(&lock_); }
 
-  void unlock_shared() {
-    pthread_rwlock_unlock(&lock_);
-  }
+  void unlock_shared() { pthread_rwlock_unlock(&lock_); }
 };
 
 struct PosixMutex {
   pthread_mutex_t lock_;
 
-  PosixMutex() {
-    pthread_mutex_init(&lock_, nullptr);
-  }
+  PosixMutex() { pthread_mutex_init(&lock_, nullptr); }
 
-  ~PosixMutex() {
-    pthread_mutex_destroy(&lock_);
-  }
+  ~PosixMutex() { pthread_mutex_destroy(&lock_); }
 
-  void lock() {
-    pthread_mutex_lock(&lock_);
-  }
+  void lock() { pthread_mutex_lock(&lock_); }
 
-  void unlock() {
-    pthread_mutex_unlock(&lock_);
-  }
+  void unlock() { pthread_mutex_unlock(&lock_); }
 
-  void lock_shared() {
-    pthread_mutex_lock(&lock_);
-  }
+  void lock_shared() { pthread_mutex_lock(&lock_); }
 
-  void unlock_shared() {
-    pthread_mutex_unlock(&lock_);
-  }
+  void unlock_shared() { pthread_mutex_unlock(&lock_); }
 };
 
 template <template <typename> class Atom, typename Lock, typename Locker>

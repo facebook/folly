@@ -66,9 +66,7 @@ class GFlagInfo {
     return folly::to<T>(str);
   }
 
-  const gflags::CommandLineFlagInfo& info() const {
-    return info_;
-  }
+  const gflags::CommandLineFlagInfo& info() const { return info_; }
 
  private:
   gflags::CommandLineFlagInfo info_;
@@ -81,20 +79,12 @@ class GFlagValueSemanticBase : public po::value_semantic {
   explicit GFlagValueSemanticBase(std::shared_ptr<GFlagInfo<T>> info)
       : info_(std::move(info)) {}
 
-  std::string name() const override {
-    return "arg";
-  }
+  std::string name() const override { return "arg"; }
 #if BOOST_VERSION >= 105900 && BOOST_VERSION <= 106400
-  bool adjacent_tokens_only() const override {
-    return false;
-  }
+  bool adjacent_tokens_only() const override { return false; }
 #endif
-  bool is_composing() const override {
-    return false;
-  }
-  bool is_required() const override {
-    return false;
-  }
+  bool is_composing() const override { return false; }
+  bool is_required() const override { return false; }
   // We handle setting the GFlags from parse(), so notify() does nothing.
   void notify(const boost::any& /* valueStore */) const override {}
   bool apply_default(boost::any& valueStore) const override {
@@ -143,12 +133,8 @@ class GFlagValueSemantic : public GFlagValueSemanticBase<T> {
   explicit GFlagValueSemantic(std::shared_ptr<GFlagInfo<T>> info)
       : GFlagValueSemanticBase<T>(std::move(info)) {}
 
-  unsigned min_tokens() const override {
-    return 1;
-  }
-  unsigned max_tokens() const override {
-    return 1;
-  }
+  unsigned min_tokens() const override { return 1; }
+  unsigned max_tokens() const override { return 1; }
 
   T parseValue(const std::vector<std::string>& tokens) const override {
     DCHECK(tokens.size() == 1);
@@ -161,12 +147,8 @@ class BoolGFlagValueSemantic : public GFlagValueSemanticBase<bool> {
   explicit BoolGFlagValueSemantic(std::shared_ptr<GFlagInfo<bool>> info)
       : GFlagValueSemanticBase<bool>(std::move(info)) {}
 
-  unsigned min_tokens() const override {
-    return 0;
-  }
-  unsigned max_tokens() const override {
-    return 0;
-  }
+  unsigned min_tokens() const override { return 0; }
+  unsigned max_tokens() const override { return 0; }
 
   bool parseValue(const std::vector<std::string>& tokens) const override {
     DCHECK(tokens.empty());
@@ -180,9 +162,7 @@ class NegativeBoolGFlagValueSemantic : public BoolGFlagValueSemantic {
       : BoolGFlagValueSemantic(std::move(info)) {}
 
  private:
-  void transform(bool& val) const override {
-    val = !val;
-  }
+  void transform(bool& val) const override { val = !val; }
 };
 
 const std::string& getName(const std::string& name) {

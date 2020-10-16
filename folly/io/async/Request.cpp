@@ -142,9 +142,7 @@ struct RequestContext::State::Combined : hazptr_obj_base<Combined> {
   Combined& operator=(const Combined&) = delete;
   Combined& operator=(Combined&&) = delete;
 
-  ~Combined() {
-    releaseDataRefs();
-  }
+  ~Combined() { releaseDataRefs(); }
 
   /* acquireDataRefs - Called at most once per Combined instance. */
   void acquireDataRefs() {

@@ -96,20 +96,14 @@ class AsyncBaseOp {
   /**
    * Return the current operation state.
    */
-  State state() const {
-    return state_;
-  }
+  State state() const { return state_; }
 
   /**
    * user data get/set
    */
-  void* getUserData() const {
-    return userData_;
-  }
+  void* getUserData() const { return userData_; }
 
-  void setUserData(void* userData) {
-    userData_ = userData;
-  }
+  void setUserData(void* userData) { userData_ = userData; }
 
   /**
    * Reset the operation for reuse.  It is an error to call reset() on
@@ -117,9 +111,7 @@ class AsyncBaseOp {
    */
   virtual void reset(NotificationCallback cb = NotificationCallback()) = 0;
 
-  void setNotificationCallback(NotificationCallback cb) {
-    cb_ = std::move(cb);
-  }
+  void setNotificationCallback(NotificationCallback cb) { cb_ = std::move(cb); }
 
   /**
    * Get the notification callback from the op.
@@ -128,9 +120,7 @@ class AsyncBaseOp {
    * uninitialized state! You must call setNotificationCallback before
    * submitting the operation!
    */
-  NotificationCallback getNotificationCallback() {
-    return std::move(cb_);
-  }
+  NotificationCallback getNotificationCallback() { return std::move(cb_); }
 
   /**
    * Retrieve the result of this operation.  Returns >=0 on success,
@@ -211,34 +201,26 @@ class AsyncBase {
   /**
    * Return the number of pending requests.
    */
-  size_t pending() const {
-    return pending_;
-  }
+  size_t pending() const { return pending_; }
 
   /**
    * Return the maximum number of requests that can be kept outstanding
    * at any one time.
    */
-  size_t capacity() const {
-    return capacity_;
-  }
+  size_t capacity() const { return capacity_; }
 
   /**
    * Return the accumulative number of submitted I/O, since this object
    * has been created.
    */
-  size_t totalSubmits() const {
-    return submitted_;
-  }
+  size_t totalSubmits() const { return submitted_; }
 
   /**
    * If POLLABLE, return a file descriptor that can be passed to poll / epoll
    * and will become readable when any async IO operations have completed.
    * If NOT_POLLABLE, return -1.
    */
-  int pollFd() const {
-    return pollFd_;
-  }
+  int pollFd() const { return pollFd_; }
 
   /**
    * If POLLABLE, call instead of wait after the file descriptor returned
@@ -258,17 +240,11 @@ class AsyncBase {
   int submit(Range<Op**> ops);
 
  protected:
-  void complete(Op* op, ssize_t result) {
-    op->complete(result);
-  }
+  void complete(Op* op, ssize_t result) { op->complete(result); }
 
-  void cancel(Op* op) {
-    op->cancel();
-  }
+  void cancel(Op* op) { op->cancel(); }
 
-  bool isInit() const {
-    return init_.load(std::memory_order_relaxed);
-  }
+  bool isInit() const { return init_.load(std::memory_order_relaxed); }
 
   void decrementPending(size_t num = 1);
   virtual void initializeContext() = 0;
@@ -308,9 +284,7 @@ class AsyncBaseQueue {
   explicit AsyncBaseQueue(AsyncBase* asyncBase);
   ~AsyncBaseQueue();
 
-  size_t queued() const {
-    return queue_.size();
-  }
+  size_t queued() const { return queue_.size(); }
 
   /**
    * Submit an op to the AsyncBase queue.  The op will be queued until

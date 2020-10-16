@@ -34,9 +34,7 @@ class InlineExecutor : public Executor {
     return value ? *value : instance_slow();
   }
 
-  void add(Func f) override {
-    f();
-  }
+  void add(Func f) override { f(); }
 
  private:
   FOLLY_COLD static InlineExecutor& instance_slow() noexcept;

@@ -99,9 +99,7 @@ template <class T>
 struct PslTest {
   PicoSpinLock<T> lock;
 
-  PslTest() {
-    lock.init();
-  }
+  PslTest() { lock.init(); }
 
   void doTest() {
     using UT = typename std::make_unsigned<T>::type;
@@ -133,9 +131,7 @@ void doPslTest() {
 #endif
 
 struct TestClobber {
-  TestClobber() {
-    lock_.init();
-  }
+  TestClobber() { lock_.init(); }
 
   void go() {
     std::lock_guard<MicroSpinLock> g(lock_);
@@ -389,9 +385,7 @@ class MutexWrapper {
     while (!mutex_.try_lock()) {
     }
   }
-  void unlock() {
-    mutex_.unlock();
-  }
+  void unlock() { mutex_.unlock(); }
 
   Mutex mutex_;
 };

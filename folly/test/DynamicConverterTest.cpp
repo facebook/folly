@@ -214,16 +214,12 @@ TEST(DynamicConverter, nested_containers) {
 
 struct A {
   int i;
-  bool operator==(const A& o) const {
-    return i == o.i;
-  }
+  bool operator==(const A& o) const { return i == o.i; }
 };
 namespace folly {
 template <>
 struct DynamicConverter<A> {
-  static A convert(const dynamic& d) {
-    return {convertTo<int>(d["i"])};
-  }
+  static A convert(const dynamic& d) { return {convertTo<int>(d["i"])}; }
 };
 } // namespace folly
 TEST(DynamicConverter, custom_class) {
@@ -456,20 +452,14 @@ struct B {
     }
     constructB++;
   }
-  B(const B& o) : x_(o.x_) {
-    constructB++;
-  }
-  ~B() {
-    destroyB++;
-  }
+  B(const B& o) : x_(o.x_) { constructB++; }
+  ~B() { destroyB++; }
   int x_;
 };
 namespace folly {
 template <>
 struct DynamicConverter<B> {
-  static B convert(const dynamic& d) {
-    return B(convertTo<int>(d));
-  }
+  static B convert(const dynamic& d) { return B(convertTo<int>(d)); }
 };
 } // namespace folly
 

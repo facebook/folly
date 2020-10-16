@@ -231,9 +231,7 @@ TEST_F(RequestContextTest, deadlockTest) {
           val_, std::make_unique<TestData>(1));
     }
 
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
 
     std::string val_;
   };
@@ -260,9 +258,7 @@ TEST_F(RequestContextTest, sharedGlobalTest) {
       global = false;
     }
 
-    bool hasCallback() override {
-      return true;
-    }
+    bool hasCallback() override { return true; }
   };
 
   intptr_t root = 0;
@@ -415,9 +411,7 @@ TEST_F(RequestContextTest, Clear) {
       EXPECT_TRUE(cleared);
       deleted = true;
     }
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
     void onClear() override {
       EXPECT_FALSE(cleared);
       cleared = true;

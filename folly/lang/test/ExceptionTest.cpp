@@ -78,9 +78,7 @@ class MyException : public std::exception {
   MyException(char const* const what, std::size_t const strip)
       : what_(what + strip) {}
 
-  char const* what() const noexcept override {
-    return what_;
-  }
+  char const* what() const noexcept override { return what_; }
 };
 
 class ExceptionTest : public testing::Test {};
