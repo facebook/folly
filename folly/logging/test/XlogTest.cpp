@@ -484,6 +484,20 @@ TEST(Xlog, xlogStripFilename) {
           xlogStripFilename("/my/project/src/test.cpp", "/my/project"),
           "src/test.cpp") == 0,
       "incorrect xlogStripFilename() behavior");
+
+  if (kIsWindows) {
+    EXPECT_STREQ(
+        "c\\d.txt", xlogStripFilename("Z:\\a\\b\\c\\d.txt", "Z:\\a\\b"));
+    EXPECT_STREQ("c\\d.txt", xlogStripFilename("Z:\\a\\b\\c\\d.txt", "Z:/a/b"));
+
+    EXPECT_STREQ("c/d.txt", xlogStripFilename("Z:/a/b/c/d.txt", "Z:\\a\\b"));
+    EXPECT_STREQ("c/d.txt", xlogStripFilename("Z:/a/b/c/d.txt", "Z:/a/b"));
+
+    EXPECT_STREQ(
+        "c\\d.txt", xlogStripFilename("Z:\\a\\b\\c\\d.txt", "C:/x/y:Z:/a/b"));
+    EXPECT_STREQ(
+        "c\\d.txt", xlogStripFilename("Z:\\a\\b\\c\\d.txt", "Z:/x/y:Z:/a/b"));
+  }
 }
 
 TEST(Xlog, XCheckPrecedence) {
