@@ -394,12 +394,17 @@ TEST(MidpointTest, MidpointTest) {
   EXPECT_EQ(midpoint<size_t>(0, 2), 1);
   EXPECT_EQ(midpoint<size_t>(3, 2), 3);
   EXPECT_EQ(midpoint<size_t>((size_t)0, MY_SIZE_T_MAX), MY_SIZE_T_MAX / 2);
-  EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX, (size_t)0), (MY_SIZE_T_MAX / 2 + 1));
+  EXPECT_EQ(
+      midpoint<size_t>(MY_SIZE_T_MAX, (size_t)0), (MY_SIZE_T_MAX / 2 + 1));
   EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX, MY_SIZE_T_MAX), MY_SIZE_T_MAX);
   EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX, MY_SIZE_T_MAX - 1), MY_SIZE_T_MAX);
-  EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX - 1, MY_SIZE_T_MAX - 1), MY_SIZE_T_MAX - 1);
-  EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX - 1, MY_SIZE_T_MAX), MY_SIZE_T_MAX - 1);
-  EXPECT_EQ(midpoint<size_t>(MY_SIZE_T_MAX, MY_SIZE_T_MAX - 2), MY_SIZE_T_MAX - 1);
+  EXPECT_EQ(
+      midpoint<size_t>(MY_SIZE_T_MAX - 1, MY_SIZE_T_MAX - 1),
+      MY_SIZE_T_MAX - 1);
+  EXPECT_EQ(
+      midpoint<size_t>(MY_SIZE_T_MAX - 1, MY_SIZE_T_MAX), MY_SIZE_T_MAX - 1);
+  EXPECT_EQ(
+      midpoint<size_t>(MY_SIZE_T_MAX, MY_SIZE_T_MAX - 2), MY_SIZE_T_MAX - 1);
 
 #if FOLLY_HAVE_INT128_T
   const auto I128_MIN = std::numeric_limits<__int128_t>::min();
