@@ -744,13 +744,12 @@ void AsyncUDPSocket::handleRead() noexcept {
           [CMSG_SPACE(sizeof(uint16_t)) +
            CMSG_SPACE(sizeof(ReadCallback::OnDataAvailableParams::Timestamp))];
 
-      ::memset(
-          control,
-          0,
-          (use_gro ? CMSG_SPACE(sizeof(uint16_t)) : 0) +
-              (use_ts ? CMSG_SPACE(sizeof(
-                            ReadCallback::OnDataAvailableParams::Timestamp))
-                      : 0));
+      size_t control_size = (use_gro ? CMSG_SPACE(sizeof(uint16_t)) : 0) +
+          (use_ts ? CMSG_SPACE(
+                        sizeof(ReadCallback::OnDataAvailableParams::Timestamp))
+                  : 0);
+
+      ::memset(control, 0, control_size);
 
       struct msghdr msg = {};
       struct iovec iov = {};
@@ -767,7 +766,7 @@ void AsyncUDPSocket::handleRead() noexcept {
       msg.msg_namelen = addrLen;
 
       msg.msg_control = control;
-      msg.msg_controllen = sizeof(control);
+      msg.msg_controllen = control_size;
 
       bytesRead = netops::recvmsg(fd_, &msg, MSG_TRUNC);
 
