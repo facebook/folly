@@ -42,7 +42,7 @@ class AsyncUDPSocket : public EventHandler {
    public:
     struct OnDataAvailableParams {
       int gro_ = -1;
-#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+
       // RX timestamp if available
       using Timestamp = std::array<struct timespec, 3>;
       folly::Optional<Timestamp> ts_;
@@ -53,7 +53,6 @@ class AsyncUDPSocket : public EventHandler {
 
         return std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
       }
-#endif
     };
     /**
      * Invoked when the socket becomes readable and we want buffer
