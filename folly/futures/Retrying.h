@@ -178,6 +178,10 @@ Duration retryingJitteredExponentialBackoffDur(
     Duration backoff_max,
     double jitter_param,
     URNG& rng) {
+  // short-circuit to avoid 0 * inf = nan when computing backoff_rep below
+  if (UNLIKELY(backoff_min == Duration(0))) {
+    return Duration(0);
+  }
   auto dist = std::normal_distribution<double>(0.0, jitter_param);
   auto jitter = std::exp(dist(rng));
   auto backoff_rep = jitter * backoff_min.count() * std::pow(2, n - 1);
