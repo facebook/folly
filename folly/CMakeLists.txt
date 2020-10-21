@@ -16,6 +16,7 @@ add_library(
     follybenchmark
     Benchmark.cpp
 )
+set_property(TARGET follybenchmark PROPERTY VERSION ${PACKAGE_VERSION})
 target_link_libraries(follybenchmark PUBLIC folly)
 apply_folly_compile_options_to_target(follybenchmark)
 install(

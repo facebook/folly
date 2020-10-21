@@ -18,6 +18,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
     ExceptionTracer.cpp
     StackTrace.cpp
   )
+  set_property(TARGET folly_exception_tracer_base PROPERTY VERSION ${PACKAGE_VERSION})
   apply_folly_compile_options_to_target(folly_exception_tracer_base)
   target_link_libraries(
     folly_exception_tracer_base
@@ -29,6 +30,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
     ExceptionStackTraceLib.cpp
     ExceptionTracerLib.cpp
   )
+  set_property(TARGET folly_exception_tracer PROPERTY VERSION ${PACKAGE_VERSION})
   apply_folly_compile_options_to_target(folly_exception_tracer)
   target_link_libraries(
     folly_exception_tracer
@@ -39,6 +41,7 @@ if (FOLLY_HAVE_ELF AND FOLLY_HAVE_DWARF)
     folly_exception_counter
     ExceptionCounterLib.cpp
   )
+  set_property(TARGET folly_exception_counter PROPERTY VERSION ${PACKAGE_VERSION})
   apply_folly_compile_options_to_target(folly_exception_counter)
   target_link_libraries(
     folly_exception_counter
