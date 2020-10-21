@@ -31,6 +31,7 @@
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/LoopController.h>
 #include <folly/fibers/Promise.h>
+#include <folly/tracing/AsyncStack.h>
 
 namespace folly {
 namespace fibers {
@@ -118,6 +119,10 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
   currentFiber_ = fiber;
   // Note: resetting the context is handled by the loop
   RequestContext::setContext(std::move(fiber->rcontext_));
+
+  (void)folly::exchangeCurrentAsyncStackRoot(
+      std::exchange(fiber->asyncRoot_, nullptr));
+
   if (observer_) {
     observer_->starting(reinterpret_cast<uintptr_t>(fiber));
   }
@@ -144,6 +149,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
+    fiber->asyncRoot_ = folly::exchangeCurrentAsyncStackRoot(nullptr);
   } else if (fiber->state_ == Fiber::INVALID) {
     assert(fibersActive_ > 0);
     --fibersActive_;
@@ -166,6 +172,11 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
+    // Async stack roots should have been popped by the time the
+    // func_() call has returned.
+    fiber->asyncRoot_ = folly::exchangeCurrentAsyncStackRoot(nullptr);
+    CHECK(fiber->asyncRoot_ == nullptr);
+
     fiber->localData_.reset();
     fiber->rcontext_.reset();
 
@@ -184,6 +195,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     }
     currentFiber_ = nullptr;
     fiber->rcontext_ = RequestContext::saveContext();
+    fiber->asyncRoot_ = folly::exchangeCurrentAsyncStackRoot(nullptr);
     fiber->state_ = Fiber::READY_TO_RUN;
     yieldedFibers_->push_back(*fiber);
   }
@@ -210,10 +222,17 @@ void FiberManager::runFibersHelper(LoopFunc&& loopFunc) {
   // if the Fibers share the same context
   auto curCtx = RequestContext::saveContext();
 
+  auto* curAsyncRoot = folly::exchangeCurrentAsyncStackRoot(nullptr);
+
   FiberTailQueue yieldedFibers;
   auto prevYieldedFibers = std::exchange(yieldedFibers_, &yieldedFibers);
 
   SCOPE_EXIT {
+    // Restore the previous AsyncStackRoot and make sure that none of
+    // the fibers left any AsyncStackRoot pointers lying around.
+    auto* oldAsyncRoot = folly::exchangeCurrentAsyncStackRoot(curAsyncRoot);
+    CHECK(oldAsyncRoot == nullptr);
+
     yieldedFibers_ = prevYieldedFibers;
     if (observer_) {
       for (auto& yielded : yieldedFibers) {

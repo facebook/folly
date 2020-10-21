@@ -40,6 +40,7 @@
 #include <folly/fibers/WhenN.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
+#include <folly/tracing/AsyncStack.h>
 
 using namespace folly::fibers;
 
@@ -2704,4 +2705,61 @@ TEST(FiberManager, addTaskEagerKeepAlive) {
 
   EXPECT_TRUE(f.isReady());
   EXPECT_EQ(42, std::move(f).get());
+}
+
+TEST(FiberManager, fibersPreserveAsyncStackRoots) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+
+  {
+    folly::detail::ScopedAsyncStackRoot root;
+
+    auto f = [&] {
+      // Should be launched with a no active AsyncStackRoot
+      EXPECT_TRUE(folly::tryGetCurrentAsyncStackRoot() == nullptr);
+
+      folly::detail::ScopedAsyncStackRoot scopedRoot1;
+
+      auto* root1 = folly::tryGetCurrentAsyncStackRoot();
+      EXPECT_TRUE(root1 != nullptr);
+
+      fm.yield();
+
+      EXPECT_EQ(root1, folly::tryGetCurrentAsyncStackRoot());
+
+      {
+        folly::detail::ScopedAsyncStackRoot scopedRoot2;
+
+        auto* root2 = folly::tryGetCurrentAsyncStackRoot();
+
+        folly::AsyncStackFrame frame1;
+
+        folly::AsyncStackFrame frame2;
+        frame2.setParentFrame(frame1);
+
+        scopedRoot2.activateFrame(frame2);
+
+        fm.yield();
+
+        EXPECT_EQ(root2, folly::tryGetCurrentAsyncStackRoot());
+
+        folly::deactivateAsyncStackFrame(frame2);
+      }
+    };
+
+    auto* originalRoot = folly::tryGetCurrentAsyncStackRoot();
+
+    auto task1 = fm.addTaskFuture(f);
+    auto task2 = fm.addTaskFuture(f);
+
+    EXPECT_EQ(originalRoot, folly::tryGetCurrentAsyncStackRoot());
+
+    std::move(task1).getVia(&evb);
+
+    EXPECT_EQ(originalRoot, folly::tryGetCurrentAsyncStackRoot());
+
+    std::move(task2).getVia(&evb);
+
+    EXPECT_EQ(originalRoot, folly::tryGetCurrentAsyncStackRoot());
+  }
 }
