@@ -20,6 +20,7 @@ namespace folly {
 
 inline void checkAsyncStackFrameIsActive(
     FOLLY_MAYBE_UNUSED const folly::AsyncStackFrame& frame) noexcept {
+  (void)frame;
   assert(frame.stackRoot != nullptr);
   assert(tryGetCurrentAsyncStackRoot() == frame.stackRoot);
   assert(frame.stackRoot->topFrame.load(std::memory_order_relaxed) == &frame);
