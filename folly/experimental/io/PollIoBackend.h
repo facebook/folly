@@ -130,6 +130,8 @@ class PollIoBackend : public EventBaseBackendBase {
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(Event& event) override;
 
+  bool eb_event_active(Event&, int) override { return false; }
+
   struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
                                     boost::intrusive::cache_last<false>> {
     int count_{0};

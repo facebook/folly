@@ -54,6 +54,7 @@ namespace folly {
 class EventBaseBackendBase;
 
 using Cob = Func; // defined in folly/Executor.h
+
 template <typename MessageT>
 class NotificationQueue;
 
@@ -469,7 +470,10 @@ class EventBase : public TimeoutManager,
    * Ideally we would not need thisIteration, and instead just use
    * runInLoop with loop() (instead of terminateLoopSoon).
    */
-  void runInLoop(LoopCallback* callback, bool thisIteration = false);
+  void runInLoop(
+      LoopCallback* callback,
+      bool thisIteration = false,
+      std::shared_ptr<RequestContext> rctx = RequestContext::saveContext());
 
   /**
    * Convenience function to call runInLoop() with a folly::Function.

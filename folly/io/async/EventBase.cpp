@@ -52,6 +52,8 @@ class EventBaseBackend : public folly::EventBaseBackendBase {
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(EventBaseBackendBase::Event& event) override;
 
+  bool eb_event_active(Event& event, int res) override;
+
  private:
   event_base* evb_;
 };
@@ -114,6 +116,11 @@ int EventBaseBackend::eb_event_add(
 
 int EventBaseBackend::eb_event_del(EventBaseBackendBase::Event& event) {
   return event_del(event.getEvent());
+}
+
+bool EventBaseBackend::eb_event_active(Event& event, int res) {
+  event_active(event.getEvent(), res, 1);
+  return true;
 }
 
 EventBaseBackend::~EventBaseBackend() {
@@ -551,10 +558,13 @@ void EventBase::terminateLoopSoon() {
   }
 }
 
-void EventBase::runInLoop(LoopCallback* callback, bool thisIteration) {
+void EventBase::runInLoop(
+    LoopCallback* callback,
+    bool thisIteration,
+    std::shared_ptr<RequestContext> rctx) {
   dcheckIsInEventBaseThread();
   callback->cancelLoopCallback();
-  callback->context_ = RequestContext::saveContext();
+  callback->context_ = std::move(rctx);
   if (runOnceCallbacks_ != nullptr && thisIteration) {
     runOnceCallbacks_->push_back(*callback);
   } else {

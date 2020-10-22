@@ -158,6 +158,10 @@ class EventBaseEvent {
 
   int eb_event_del();
 
+  bool eb_event_active(int res);
+
+  bool setEdgeTriggered();
+
  protected:
   struct event event_;
   EventBase* evb_{nullptr};
@@ -184,6 +188,8 @@ class EventBaseBackendBase {
 
   virtual int eb_event_add(Event& event, const struct timeval* timeout) = 0;
   virtual int eb_event_del(Event& event) = 0;
+
+  virtual bool eb_event_active(Event& event, int res) = 0;
 };
 
 } // namespace folly

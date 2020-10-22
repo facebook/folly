@@ -181,6 +181,22 @@ class EventHandler {
 
   void resetEventCallback() { event_.resetCallback(); }
 
+  /*
+   * If supported by the backend updates the event to be edge-triggered.
+   * Returns true iff the update was successful.
+   *
+   * This should only be used for already registered events (e.g. after
+   * registerHandler/registerInternalHandler calls). Calling any other method
+   * on the EventHandler may reset this flag.
+   * This can be useful to avoid read calls with eventfds.
+   */
+  bool setEdgeTriggered() { return event_.setEdgeTriggered(); }
+
+  /*
+   * Make an event active.
+   */
+  bool activateEvent(int res) { return event_.eb_event_active(res); }
+
  private:
   bool registerImpl(uint16_t events, bool internal);
   void ensureNotRegistered(const char* fn);
