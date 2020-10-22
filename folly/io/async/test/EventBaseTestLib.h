@@ -1570,11 +1570,20 @@ TYPED_TEST_P(EventBaseTest, RunInLoopStopLoop) {
   ASSERT_LE(c1.getCount(), 11);
 }
 
+TYPED_TEST_P(EventBaseTest1, pidCheck) {
+  auto evbPtr = getEventBase<TypeParam>();
+  SKIP_IF(!evbPtr) << "Backend not available";
+
+  auto deadManWalking = [&]() { evbPtr->loopForever(); };
+  EXPECT_DEATH(deadManWalking(), "pid");
+}
+
 TYPED_TEST_P(EventBaseTest, messageAvailableException) {
   auto evbPtr = getEventBase<TypeParam>();
   SKIP_IF(!evbPtr) << "Backend not available";
 
-  auto deadManWalking = [evb = std::move(evbPtr)]() mutable {
+  auto deadManWalking = []() {
+    auto evb = getEventBase<TypeParam>();
     std::thread t([&] {
       // Call this from another thread to force use of NotificationQueue in
       // runInEventBaseThread
@@ -1583,7 +1592,7 @@ TYPED_TEST_P(EventBaseTest, messageAvailableException) {
     t.join();
     evb->loopForever();
   };
-  EXPECT_DEATH(deadManWalking(), ".*");
+  EXPECT_DEATH(deadManWalking(), "boom");
 }
 
 TYPED_TEST_P(EventBaseTest, TryRunningAfterTerminate) {
@@ -2455,6 +2464,7 @@ REGISTER_TYPED_TEST_CASE_P(
     RunOnDestructionCancelled,
     RunOnDestructionAfterHandleDestroyed,
     RunOnDestructionAddCallbackWithinCallback,
-    InternalExternalCallbackOrderTest);
+    InternalExternalCallbackOrderTest,
+    pidCheck);
 } // namespace test
 } // namespace folly
