@@ -1578,6 +1578,9 @@ void AsyncSocket::attachEventBase(EventBase* eventBase) {
   if (evbChangeCb_) {
     evbChangeCb_->evbAttached(this);
   }
+  for (const auto& cb : lifecycleObservers_) {
+    cb->evbAttach(this, eventBase_);
+  }
 }
 
 void AsyncSocket::detachEventBase() {
@@ -1587,6 +1590,10 @@ void AsyncSocket::detachEventBase() {
   assert(eventBase_ != nullptr);
   eventBase_->dcheckIsInEventBaseThread();
 
+  // Make a copy of the existing event base, to invoke lifecycle observer
+  // callbacks
+  EventBase* existingEvb = eventBase_;
+
   eventBase_ = nullptr;
 
   ioHandler_.unregisterHandler();
@@ -1595,6 +1602,9 @@ void AsyncSocket::detachEventBase() {
   writeTimeout_.detachEventBase();
   if (evbChangeCb_) {
     evbChangeCb_->evbDetached(this);
+  }
+  for (const auto& cb : lifecycleObservers_) {
+    cb->evbDetach(this, existingEvb);
   }
 }
 

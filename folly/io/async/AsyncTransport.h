@@ -762,6 +762,28 @@ class AsyncTransport : public DelayedDestruction,
      * @param transport   Transport that has connected.
      */
     virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * Called when the socket has been attached to a new EVB
+     * and is called from within the new EVB's thread
+     *
+     * @param socket    The socket on which the new EVB was attached.
+     * @param evb       The new event base that is being attached.
+     */
+    virtual void evbAttach(AsyncTransport* /* socket */, EventBase* /* evb */) {
+      // do nothing
+    }
+
+    /**
+     * Called when the socket is detached from an EVB and
+     * is called from the existing EVB's thread.
+     *
+     * @param socket    The socket from which the EVB was detached.
+     * @param evb       The existing evb that is being detached.
+     */
+    virtual void evbDetach(AsyncTransport* /* socket */, EventBase* /* evb */) {
+      // do nothing
+    }
   };
 
   /**
