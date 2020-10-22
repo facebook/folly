@@ -118,6 +118,38 @@ const Snapshot<T>& TLObserver<T>::getSnapshotRef() const {
   return snapshot;
 }
 
+template <typename T>
+ReadMostlyTLObserver<T>::ReadMostlyTLObserver(Observer<T> observer)
+    : observer_(observer),
+      callback_(
+          observer_.addCallback([this](folly::observer::Snapshot<T> snapshot) {
+            globalData_.lock()->reset(snapshot.getShared());
+            globalVersion_ = snapshot.getVersion();
+          })) {}
+
+template <typename T>
+ReadMostlyTLObserver<T>::ReadMostlyTLObserver(
+    const ReadMostlyTLObserver<T>& other)
+    : ReadMostlyTLObserver(other.observer_) {}
+
+template <typename T>
+folly::ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::getShared() const {
+  if (localSnapshot_->version_ == globalVersion_.load()) {
+    if (auto data = localSnapshot_->data_.lock()) {
+      return data;
+    }
+  }
+  return refresh();
+}
+
+template <typename T>
+folly::ReadMostlySharedPtr<const T> ReadMostlyTLObserver<T>::refresh() const {
+  auto version = globalVersion_.load();
+  auto globalData = globalData_.lock();
+  *localSnapshot_ = LocalSnapshot(*globalData, version);
+  return globalData->getShared();
+}
+
 struct CallbackHandle::Context {
   Optional<Observer<folly::Unit>> observer;
   Synchronized<bool> canceled{false};

@@ -283,6 +283,33 @@ TEST(Observer, TLObserver) {
   EXPECT_EQ(41, ***k);
 }
 
+TEST(ReadMostlyTLObserver, ReadMostlyTLObserver) {
+  auto createReadMostlyTLObserver = [](int value) {
+    return folly::observer::makeReadMostlyTLObserver([=] { return value; });
+  };
+
+  auto k = std::make_unique<folly::observer::ReadMostlyTLObserver<int>>(
+      createReadMostlyTLObserver(42));
+  EXPECT_EQ(42, *k->getShared());
+  k = std::make_unique<folly::observer::ReadMostlyTLObserver<int>>(
+      createReadMostlyTLObserver(41));
+  EXPECT_EQ(41, *k->getShared());
+}
+
+TEST(ReadMostlyTLObserver, Update) {
+  SimpleObservable<int> observable(42);
+  auto observer = observable.getObserver();
+
+  ReadMostlyTLObserver readMostlyObserver(observer);
+  EXPECT_EQ(*readMostlyObserver.getShared(), 42);
+
+  observable.setValue(24);
+
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+
+  EXPECT_EQ(*readMostlyObserver.getShared(), 24);
+}
+
 TEST(Observer, SubscribeCallback) {
   static auto mainThreadId = std::this_thread::get_id();
   static std::function<void()> updatesCob;
