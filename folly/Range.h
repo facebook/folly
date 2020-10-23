@@ -41,6 +41,8 @@
 #include <string_view> // @manual
 #endif
 
+#include <fmt/format.h>
+
 #include <folly/CpuId.h>
 #include <folly/Likely.h>
 #include <folly/Traits.h>
@@ -1523,6 +1525,19 @@ constexpr Range<wchar_t const*> operator"" _sp(
 } // namespace literals
 
 } // namespace folly
+
+// Avoid ambiguity in older fmt versions due to StringPiece's conversions.
+#if FMT_VERSION >= 70000
+template <>
+struct fmt::formatter<folly::StringPiece> : private formatter<string_view> {
+  using formatter<string_view>::parse;
+
+  template <typename Context>
+  auto format(folly::StringPiece s, Context& ctx) {
+    return formatter<string_view>::format({s.data(), s.size()}, ctx);
+  }
+};
+#endif
 
 FOLLY_POP_WARNING
 

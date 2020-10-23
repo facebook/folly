@@ -1638,6 +1638,10 @@ TEST(StringPiece, StringViewConversion) {
   EXPECT_EQ(tt3.which, 1);
 }
 
+TEST(StringPiece, Format) {
+  EXPECT_EQ("  foo", fmt::format("{:>5}", folly::StringPiece("foo")));
+}
+
 namespace {
 
 // Range with non-pod value type should not cause compile errors.
