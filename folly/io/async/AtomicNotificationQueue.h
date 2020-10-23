@@ -174,9 +174,18 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
       return successfulArmCount_ - consumerDisarmCount_;
     }
 
+    /*
+     * Returns how many times push was called.
+     * Can be called from any thread.
+     */
+    ssize_t getPushCount() const {
+      return pushCount_.load(std::memory_order_relaxed);
+    }
+
    private:
-    std::atomic<Queue::Node*> head_{};
-    ssize_t successfulArmCount_{0};
+    alignas(folly::cacheline_align_v) std::atomic<Queue::Node*> head_{};
+    std::atomic<ssize_t> pushCount_{0};
+    alignas(folly::cacheline_align_v) ssize_t successfulArmCount_{0};
     ssize_t consumerDisarmCount_{0};
     static constexpr intptr_t kQueueArmedTag = 1;
   };
@@ -296,7 +305,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
 
   AtomicQueue atomicQueue_;
   Queue queue_;
-  std::atomic<int32_t> queueSize_{0};
+  ssize_t taskExecuteCount_{0};
   int32_t maxReadAtOnce_{10};
   int eventfd_{-1};
   int pipeFds_[2]{-1, -1}; // to fallback to on older/non-linux systems

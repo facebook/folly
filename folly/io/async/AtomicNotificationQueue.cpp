@@ -98,8 +98,9 @@ AtomicNotificationQueue::AtomicQueue::~AtomicQueue() {
 }
 
 bool AtomicNotificationQueue::AtomicQueue::push(Task&& value) {
-  std::unique_ptr<Queue::Node> node(new Queue::Node(std::move(value)));
+  pushCount_.fetch_add(1, std::memory_order_relaxed);
 
+  std::unique_ptr<Queue::Node> node(new Queue::Node(std::move(value)));
   auto head = head_.load(std::memory_order_relaxed);
   while (true) {
     node->next =
@@ -222,7 +223,9 @@ void AtomicNotificationQueue::setMaxReadAtOnce(uint32_t maxAtOnce) {
 }
 
 int32_t AtomicNotificationQueue::size() const {
-  return queueSize_.load(std::memory_order_relaxed);
+  auto queueSize = atomicQueue_.getPushCount() - taskExecuteCount_;
+  DCHECK(queueSize >= 0);
+  return queueSize;
 }
 
 bool AtomicNotificationQueue::empty() const {
@@ -230,7 +233,6 @@ bool AtomicNotificationQueue::empty() const {
 }
 
 void AtomicNotificationQueue::putMessage(Func&& func) {
-  queueSize_.fetch_add(1, std::memory_order_relaxed);
   if (atomicQueue_.push(Task{std::move(func), RequestContext::saveContext()})) {
     notifyFd();
   }
@@ -283,7 +285,7 @@ bool AtomicNotificationQueue::drive() {
         break;
       }
     }
-    queueSize_.fetch_sub(1, std::memory_order_relaxed);
+    ++taskExecuteCount_;
     std::move(queue_.front()).execute();
     queue_.pop();
   }
