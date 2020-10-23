@@ -22,6 +22,17 @@
 
 namespace folly {
 
+void AtomicNotificationQueue::Task::execute() && noexcept {
+  RequestContextScopeGuard rctx(std::move(rctx_));
+  try {
+    func_();
+    func_ = nullptr;
+  } catch (...) {
+    LOG(FATAL) << "Exception thrown by a task in AtomicNotificationQueue: "
+               << exceptionStr(std::current_exception());
+  }
+}
+
 AtomicNotificationQueue::Queue::Queue(Queue&& other) noexcept
     : head_(std::exchange(other.head_, nullptr)),
       size_(std::exchange(other.size_, 0)) {}
@@ -273,13 +284,7 @@ bool AtomicNotificationQueue::drive() {
       }
     }
     queueSize_.fetch_sub(1, std::memory_order_relaxed);
-    RequestContextScopeGuard rctx(std::move(queue_.front().second));
-    try {
-      queue_.front().first();
-    } catch (...) {
-      LOG(FATAL) << "Exception thrown by a task in AtomicNotificationQueue: "
-                 << exceptionStr(std::current_exception());
-    }
+    std::move(queue_.front()).execute();
     queue_.pop();
   }
   return i > 0;

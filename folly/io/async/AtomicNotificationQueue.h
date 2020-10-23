@@ -33,11 +33,21 @@ namespace folly {
  * A producer-consumer queue for passing tasks to EventBase thread.
  *
  * Tasks can be added to the queue from any thread. A single EventBase
- * thread can be listening to the queue. Tasks are processed in the FIFO order.
+ * thread can be listening to the queue. Tasks are processed in FIFO order.
  */
 class AtomicNotificationQueue : private EventBase::LoopCallback,
                                 private EventHandler {
-  using Task = std::pair<Func, std::shared_ptr<RequestContext>>;
+  class Task {
+   public:
+    Task(Func&& func, std::shared_ptr<RequestContext> rctx)
+        : func_(std::move(func)), rctx_(std::move(rctx)) {}
+
+    void execute() && noexcept;
+
+   private:
+    Func func_;
+    std::shared_ptr<RequestContext> rctx_;
+  };
   class AtomicQueue;
   class Queue {
    public:
