@@ -28,8 +28,8 @@
 
 #include <folly/Memory.h>
 #include <folly/String.h>
+#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/EventBaseBackendBase.h>
-#include <folly/io/async/NotificationQueue.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/Baton.h>
@@ -131,15 +131,6 @@ EventBaseBackend::~EventBaseBackend() {
 } // namespace
 
 namespace folly {
-/*
- * EventBase::FunctionRunner
- */
-
-class EventBase::FunctionRunner
-    : public NotificationQueue<EventBase::Func>::Consumer {
- public:
-  void messageAvailable(Func&& msg) noexcept override { msg(); }
-};
 
 /*
  * EventBase methods
@@ -165,7 +156,6 @@ EventBase::EventBase(Options options)
       stop_(false),
       loopThread_(),
       queue_(nullptr),
-      fnRunner_(nullptr),
       maxLatency_(0),
       avgLoopTime_(std::chrono::seconds(2)),
       maxLatencyLoopTime_(avgLoopTime_),
@@ -218,12 +208,10 @@ EventBase::~EventBase() {
 
   (void)runLoopCallbacks();
 
-  if (!fnRunner_->consumeUntilDrained()) {
-    LOG(ERROR) << "~EventBase(): Unable to drain notification queue";
-  }
+  queue_->drain();
 
   // Stop consumer before deleting NotificationQueue
-  fnRunner_->stopConsuming();
+  queue_->stopConsuming();
   evb_.reset();
 
   for (auto storage : localStorageToDtor_) {
@@ -242,7 +230,7 @@ size_t EventBase::getNotificationQueueSize() const {
 }
 
 void EventBase::setMaxReadAtOnce(uint32_t maxAtOnce) {
-  fnRunner_->setMaxReadAtOnce(maxAtOnce);
+  queue_->setMaxReadAtOnce(maxAtOnce);
 }
 
 void EventBase::checkIsInEventBaseThread() const {
@@ -305,8 +293,8 @@ bool EventBase::loopIgnoreKeepAlive() {
   if (loopKeepAliveActive_) {
     // Make sure NotificationQueue is not counted as one of the readers
     // (otherwise loopBody won't return until terminateLoopSoon is called).
-    fnRunner_->stopConsuming();
-    fnRunner_->startConsumingInternal(this, queue_.get());
+    queue_->stopConsuming();
+    queue_->startConsumingInternal(this);
     loopKeepAliveActive_ = false;
   }
   return loopBody(0, true);
@@ -435,8 +423,8 @@ bool EventBase::loopBody(int flags, bool ignoreKeepAlive) {
       // Since Notification Queue is marked 'internal' some events may not have
       // run.  Run them manually if so, and continue looping.
       //
-      if (getNotificationQueueSize() > 0) {
-        fnRunner_->handlerReady(0);
+      if (!queue_->empty()) {
+        queue_->execute();
       } else if (!ranLoopCallbacks) {
         // If there were no more events and we also didn't have any loop
         // callbacks to run, there is nothing left to do.
@@ -493,15 +481,15 @@ void EventBase::applyLoopKeepAlive() {
 
   if (loopKeepAliveActive_ && keepAliveCount == 0) {
     // Restore the notification queue internal flag
-    fnRunner_->stopConsuming();
-    fnRunner_->startConsumingInternal(this, queue_.get());
+    queue_->stopConsuming();
+    queue_->startConsumingInternal(this);
     loopKeepAliveActive_ = false;
   } else if (!loopKeepAliveActive_ && keepAliveCount > 0) {
     // Update the notification queue event to treat it as a normal
     // (non-internal) event.  The notification queue event always remains
     // installed, and the main loop won't exit with it installed.
-    fnRunner_->stopConsuming();
-    fnRunner_->startConsuming(this, queue_.get());
+    queue_->stopConsuming();
+    queue_->startConsuming(this);
     loopKeepAliveActive_ = true;
   }
 }
@@ -692,12 +680,7 @@ bool EventBase::runLoopCallbacks() {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_ = std::make_unique<NotificationQueue<Func>>();
-
-  // We allocate fnRunner_ separately, rather than declaring it directly
-  // as a member of EventBase solely so that we don't need to include
-  // NotificationQueue.h from EventBase.h
-  fnRunner_ = std::make_unique<FunctionRunner>();
+  queue_ = std::make_unique<AtomicNotificationQueue>();
 
   // Mark this as an internal event, so event_base_loop() will return if
   // there are no other events besides this one installed.
@@ -708,7 +691,7 @@ void EventBase::initNotificationQueue() {
   // Users can use loopForever() if they do care about the notification queue.
   // (This is useful for EventBase threads that do nothing but process
   // runInEventBaseThread() notifications.)
-  fnRunner_->startConsumingInternal(this, queue_.get());
+  queue_->startConsumingInternal(this);
 }
 
 void EventBase::SmoothLoopTime::setTimeInterval(
