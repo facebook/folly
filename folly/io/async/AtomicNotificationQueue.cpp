@@ -223,9 +223,10 @@ void AtomicNotificationQueue::setMaxReadAtOnce(uint32_t maxAtOnce) {
 }
 
 int32_t AtomicNotificationQueue::size() const {
-  auto queueSize = atomicQueue_.getPushCount() - taskExecuteCount_;
-  DCHECK(queueSize >= 0);
-  return queueSize;
+  auto queueSize = atomicQueue_.getPushCount() -
+      taskExecuteCount_.load(std::memory_order_relaxed);
+  DCHECK(!evb_ || !evb_->isInEventBaseThread() || queueSize >= 0);
+  return queueSize >= 0 ? queueSize : 0;
 }
 
 bool AtomicNotificationQueue::empty() const {
@@ -285,7 +286,11 @@ bool AtomicNotificationQueue::drive() {
         break;
       }
     }
-    ++taskExecuteCount_;
+    // This is faster than fetch_add and is safe because only consumer thread
+    // writes to taskExecuteCount_.
+    taskExecuteCount_.store(
+        taskExecuteCount_.load(std::memory_order_relaxed) + 1,
+        std::memory_order_relaxed);
     std::move(queue_.front()).execute();
     queue_.pop();
   }

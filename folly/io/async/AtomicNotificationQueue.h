@@ -305,7 +305,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
 
   AtomicQueue atomicQueue_;
   Queue queue_;
-  ssize_t taskExecuteCount_{0};
+  std::atomic<ssize_t> taskExecuteCount_{0};
   int32_t maxReadAtOnce_{10};
   int eventfd_{-1};
   int pipeFds_[2]{-1, -1}; // to fallback to on older/non-linux systems
