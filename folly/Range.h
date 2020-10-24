@@ -1528,8 +1528,9 @@ constexpr Range<wchar_t const*> operator"" _sp(
 
 // Avoid ambiguity in older fmt versions due to StringPiece's conversions.
 #if FMT_VERSION >= 70000
+FMT_BEGIN_NAMESPACE
 template <>
-struct fmt::formatter<folly::StringPiece> : private formatter<string_view> {
+struct formatter<folly::StringPiece> : private formatter<string_view> {
   using formatter<string_view>::parse;
 
   template <typename Context>
@@ -1537,6 +1538,7 @@ struct fmt::formatter<folly::StringPiece> : private formatter<string_view> {
     return formatter<string_view>::format({s.data(), s.size()}, ctx);
   }
 };
+FMT_END_NAMESPACE
 #endif
 
 FOLLY_POP_WARNING
