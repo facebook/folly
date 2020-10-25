@@ -41,7 +41,9 @@
 #include <string_view> // @manual
 #endif
 
+#ifndef __wasm__
 #include <fmt/format.h>
+#endif
 
 #include <folly/CpuId.h>
 #include <folly/Likely.h>
@@ -1527,7 +1529,7 @@ constexpr Range<wchar_t const*> operator"" _sp(
 } // namespace folly
 
 // Avoid ambiguity in older fmt versions due to StringPiece's conversions.
-#if FMT_VERSION >= 70000
+#if FMT_VERSION >= 70000 && !defined(__wasm__)
 FMT_BEGIN_NAMESPACE
 template <>
 struct formatter<folly::StringPiece> : private formatter<string_view> {
