@@ -69,7 +69,7 @@ struct ConstIntervalFunctor {
 
 struct PoissonDistributionFunctor {
   std::default_random_engine generator;
-  std::poisson_distribution<int> poissonRandom;
+  std::poisson_distribution<microseconds::rep> poissonRandom;
 
   explicit PoissonDistributionFunctor(microseconds meanPoissonUsec)
       : poissonRandom(meanPoissonUsec.count()) {

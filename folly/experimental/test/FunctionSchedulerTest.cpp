@@ -567,6 +567,21 @@ TEST(FunctionScheduler, GammaIntervalDistribution) {
   EXPECT_EQ(6, total);
 }
 
+TEST(FunctionScheduler, PoissonDistribution) {
+  auto interval = std::chrono::hours(24 * 365 * 10);
+  atomic<int> total{0};
+  FunctionScheduler fs;
+  fs.addFunction(
+      [&] { total += 2; },
+      interval,
+      folly::FunctionScheduler::LatencyDistribution(true, interval),
+      "PoissonDistribution",
+      std::chrono::milliseconds(0));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+}
+
 TEST(FunctionScheduler, AddWithRunOnce) {
   atomic<int> total{0};
   FunctionScheduler fs;
