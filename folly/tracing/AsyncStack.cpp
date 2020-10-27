@@ -15,6 +15,7 @@
  */
 
 #include <folly/tracing/AsyncStack.h>
+#include <folly/BenchmarkUtil.h>
 #include <folly/Likely.h>
 
 #include <glog/logging.h>
@@ -133,8 +134,21 @@ ScopedAsyncStackRoot::~ScopedAsyncStackRoot() {
 
 namespace folly {
 
-[[noreturn]] static void detached_task() {
-  LOG(FATAL) << "The detached_task() dummy function should never be called";
+FOLLY_NOINLINE static void* get_return_address() noexcept {
+  return FOLLY_ASYNC_STACK_RETURN_ADDRESS();
+}
+
+// This function is a special function that returns an address
+// that can be used as a return-address and that will resolve
+// debug-info to itself.
+FOLLY_NOINLINE static void* detached_task() noexcept {
+  void* p = get_return_address();
+
+  // Add this after the call to prevent the compiler from
+  // turning the call to get_return_address() into a tailcall.
+  folly::doNotOptimizeAway(p);
+
+  return p;
 }
 
 AsyncStackRoot& getCurrentAsyncStackRoot() noexcept {
@@ -145,7 +159,7 @@ AsyncStackRoot& getCurrentAsyncStackRoot() noexcept {
 
 static AsyncStackFrame makeDetachedRootFrame() noexcept {
   AsyncStackFrame frame;
-  frame.setReturnAddress(reinterpret_cast<char*>(&detached_task) + 2);
+  frame.setReturnAddress(detached_task());
   return frame;
 }
 
