@@ -346,23 +346,20 @@ TEST_F(TaskTest, FutureTailCall) {
 }
 
 TEST_F(TaskTest, FutureRoundtrip) {
-  auto task = []() -> folly::coro::Task<void> { co_return; }();
-  auto semi = std::move(task).semi();
-  task = [&]() -> folly::coro::Task<void> {
-    co_yield folly::coro::co_result(
-        co_await folly::coro::co_awaitTry(std::move(semi)));
-  }();
-  folly::coro::blockingWait(std::move(task));
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    co_yield folly::coro::co_result(co_await folly::coro::co_awaitTry(
+        []() -> folly::coro::Task<void> { co_return; }().semi()));
+  }());
 
-  task = []() -> folly::coro::Task<void> {
-    co_yield folly::coro::co_error(std::runtime_error(""));
-  }();
-  semi = std::move(task).semi();
-  task = [&]() -> folly::coro::Task<void> {
-    co_yield folly::coro::co_result(
-        co_await folly::coro::co_awaitTry(std::move(semi)));
-  }();
-  EXPECT_THROW(folly::coro::blockingWait(std::move(task)), std::runtime_error);
+  EXPECT_THROW(
+      folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+        co_yield folly::coro::co_result(co_await folly::coro::co_awaitTry(
+            []() -> folly::coro::Task<void> {
+              co_yield folly::coro::co_error(std::runtime_error(""));
+            }()
+                        .semi()));
+      }()),
+      std::runtime_error);
 }
 
 // NOTE: This function is unused.
@@ -444,13 +441,12 @@ TEST_F(TaskTest, StartInlineUnsafe) {
     auto executor = co_await folly::coro::co_current_executor;
     bool hasStarted = false;
     bool hasFinished = false;
-    auto sf = [&]() -> folly::coro::Task<void> {
+    auto makeTask = [&]() -> folly::coro::Task<void> {
       hasStarted = true;
       co_await folly::coro::co_reschedule_on_current_executor;
       hasFinished = true;
-    }()
-                           .scheduleOn(executor)
-                           .startInlineUnsafe();
+    };
+    auto sf = makeTask().scheduleOn(executor).startInlineUnsafe();
 
     // Check that the task started inline on the current thread.
     // It should not yet have completed, however, since the rest
