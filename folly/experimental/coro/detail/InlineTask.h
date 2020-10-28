@@ -242,6 +242,14 @@ inline InlineTask<void> InlineTaskPromise<void>::get_return_object() noexcept {
 struct InlineTaskDetached {
   class promise_type {
    public:
+    static void* operator new(std::size_t size) {
+      return ::folly_coro_async_malloc(size);
+    }
+
+    static void operator delete(void* ptr, std::size_t size) {
+      ::folly_coro_async_free(ptr, size);
+    }
+
     InlineTaskDetached get_return_object() noexcept { return {}; }
 
     std::experimental::suspend_never initial_suspend() noexcept { return {}; }
