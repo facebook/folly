@@ -56,11 +56,12 @@ inline void pushAsyncStackFrameCallerCallee(
 inline void popAsyncStackFrameCallee(
     folly::AsyncStackFrame& calleeFrame) noexcept {
   checkAsyncStackFrameIsActive(calleeFrame);
-  assert(calleeFrame.parentFrame != nullptr);
-  auto& callerFrame = *calleeFrame.parentFrame;
-  auto& stackRoot = *calleeFrame.stackRoot;
-  callerFrame.stackRoot = &stackRoot;
-  stackRoot.topFrame.store(&callerFrame, std::memory_order_release);
+  auto* callerFrame = calleeFrame.parentFrame;
+  auto* stackRoot = calleeFrame.stackRoot;
+  if (callerFrame != nullptr) {
+    callerFrame->stackRoot = stackRoot;
+  }
+  stackRoot->topFrame.store(callerFrame, std::memory_order_release);
 
   // Clearing out non-top-frame's stackRoot is not strictly necessary
   // but it may help with debugging.

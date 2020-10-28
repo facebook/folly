@@ -241,8 +241,9 @@ void pushAsyncStackFrameCallerCallee(
 // you are about to call/resume the caller. e.g. performing a symmetric
 // transfer to the calling coroutine in final_suspend().
 //
-// Assumes that there is actually a parent frame. If there is no parent
-// frame then use deactivateAsyncStackFrame() instead.
+// If calleeFrame.getParentFrame() is null then this method is equivalent
+// to deactivateAsyncStackFrame(), leaving no active AsyncStackFrame on
+// the current AsyncStackRoot.
 void popAsyncStackFrameCallee(folly::AsyncStackFrame& calleeFrame) noexcept;
 
 // Get a pointer to a special frame that can be used as the root-frame
