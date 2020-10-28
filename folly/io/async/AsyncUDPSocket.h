@@ -41,19 +41,17 @@ class AsyncUDPSocket : public EventHandler {
   class ReadCallback {
    public:
     struct OnDataAvailableParams {
-      int gro_ = -1;
-
+      int gro = -1;
       // RX timestamp if available
       using Timestamp = std::array<struct timespec, 3>;
-      folly::Optional<Timestamp> ts_;
+      folly::Optional<Timestamp> ts;
 
-      static std::chrono::nanoseconds to(const struct timespec& ts) {
-        auto duration = std::chrono::seconds(ts.tv_sec) +
-            std::chrono::nanoseconds(ts.tv_nsec);
-
-        return std::chrono::duration_cast<std::chrono::nanoseconds>(duration);
-      }
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+      static constexpr size_t kCmsgSpace =
+          CMSG_SPACE(sizeof(uint16_t)) + CMSG_SPACE(sizeof(Timestamp));
+#endif
     };
+
     /**
      * Invoked when the socket becomes readable and we want buffer
      * to write to.
@@ -131,6 +129,10 @@ class AsyncUDPSocket : public EventHandler {
      */
     virtual void errMessageError(const AsyncSocketException& ex) noexcept = 0;
   };
+
+  static void fromMsg(
+      FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
+      FOLLY_MAYBE_UNUSED struct msghdr& msg);
 
   /**
    * Create a new UDP socket that will run in the

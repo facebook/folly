@@ -44,6 +44,36 @@ namespace fsp = folly::portability::sockets;
 
 namespace folly {
 
+void AsyncUDPSocket::fromMsg(
+    FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
+    FOLLY_MAYBE_UNUSED struct msghdr& msg) {
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+  struct cmsghdr* cmsg;
+  uint16_t* grosizeptr;
+  for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
+       cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+    if (cmsg->cmsg_level == SOL_UDP) {
+      if (cmsg->cmsg_type == UDP_GRO) {
+        grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
+        params.gro = *grosizeptr;
+      }
+    } else {
+      if (cmsg->cmsg_level == SOL_SOCKET) {
+        if (cmsg->cmsg_type == SO_TIMESTAMPING ||
+            cmsg->cmsg_type == SO_TIMESTAMPNS) {
+          ReadCallback::OnDataAvailableParams::Timestamp ts;
+          memcpy(
+              &ts,
+              reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
+              sizeof(ts));
+          params.ts = ts;
+        }
+      }
+    }
+  }
+#endif
+}
+
 AsyncUDPSocket::AsyncUDPSocket(EventBase* evb)
     : EventHandler(CHECK_NOTNULL(evb)),
       readCallback_(nullptr),
@@ -740,21 +770,10 @@ void AsyncUDPSocket::handleRead() noexcept {
     bool use_gro = gro_.has_value() && (gro_.value() > 0);
     bool use_ts = ts_.has_value() && (ts_.value() > 0);
     if (use_gro || use_ts) {
-      char control
-          [CMSG_SPACE(sizeof(uint16_t)) +
-           CMSG_SPACE(sizeof(ReadCallback::OnDataAvailableParams::Timestamp))];
-
-      size_t control_size = (use_gro ? CMSG_SPACE(sizeof(uint16_t)) : 0) +
-          (use_ts ? CMSG_SPACE(
-                        sizeof(ReadCallback::OnDataAvailableParams::Timestamp))
-                  : 0);
-
-      ::memset(control, 0, control_size);
+      char control[ReadCallback::OnDataAvailableParams::kCmsgSpace] = {};
 
       struct msghdr msg = {};
       struct iovec iov = {};
-      struct cmsghdr* cmsg;
-      uint16_t* grosizeptr;
 
       iov.iov_base = buf;
       iov.iov_len = len;
@@ -766,33 +785,13 @@ void AsyncUDPSocket::handleRead() noexcept {
       msg.msg_namelen = addrLen;
 
       msg.msg_control = control;
-      msg.msg_controllen = control_size;
+      msg.msg_controllen = sizeof(control);
 
       bytesRead = netops::recvmsg(fd_, &msg, MSG_TRUNC);
 
       if (bytesRead >= 0) {
         addrLen = msg.msg_namelen;
-        for (cmsg = CMSG_FIRSTHDR(&msg); cmsg != nullptr;
-             cmsg = CMSG_NXTHDR(&msg, cmsg)) {
-          if (cmsg->cmsg_level == SOL_UDP) {
-            if (cmsg->cmsg_type == UDP_GRO) {
-              grosizeptr = (uint16_t*)CMSG_DATA(cmsg);
-              params.gro_ = *grosizeptr;
-            }
-          } else {
-            if (cmsg->cmsg_level == SOL_SOCKET) {
-              if (cmsg->cmsg_type == SO_TIMESTAMPING ||
-                  cmsg->cmsg_type == SO_TIMESTAMPNS) {
-                ReadCallback::OnDataAvailableParams::Timestamp ts;
-                memcpy(
-                    &ts,
-                    reinterpret_cast<struct timespec*>(CMSG_DATA(cmsg)),
-                    sizeof(ts));
-                params.ts_ = ts;
-              }
-            }
-          }
-        }
+        fromMsg(params, msg);
       }
     } else {
       bytesRead = netops::recvfrom(fd_, buf, len, MSG_TRUNC, rawAddr, &addrLen);

@@ -165,13 +165,13 @@ class UDPAcceptor : public AsyncUDPServerSocket::Callback {
       bool /*unused*/,
       OnDataAvailableParams params) noexcept override {
     // send pong(s)
-    if (params.gro_ == -1) {
+    if (params.gro == -1) {
       socket->write(client, data->clone());
     } else {
       int total = data->length();
       size_t offset = 0;
       while (total > 0) {
-        auto size = (total > params.gro_) ? params.gro_ : total;
+        auto size = (total > params.gro) ? params.gro : total;
         auto sendData = IOBuf::copyBuffer(data->data() + offset, size);
         offset += size;
         total -= size;
@@ -339,7 +339,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
       bool /*unused*/,
       OnDataAvailableParams params) noexcept override {
     // no GRO on the client side
-    CHECK_EQ(params.gro_, -1);
+    CHECK_EQ(params.gro, -1);
     VLOG(0) << "Got " << len << " bytes";
     if (testData_.appendOut(len)) {
       shutdown();
