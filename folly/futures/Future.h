@@ -2604,9 +2604,9 @@ namespace folly {
 namespace detail {
 
 template <typename T>
-class FutureAwaitable {
+class FutureAwaiter {
  public:
-  explicit FutureAwaitable(folly::Future<T>&& future) noexcept
+  explicit FutureAwaiter(folly::Future<T>&& future) noexcept
       : future_(std::move(future)) {}
 
   bool await_ready() {
@@ -2625,7 +2625,7 @@ class FutureAwaitable {
 
   FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
       std::experimental::coroutine_handle<> h) {
-    // FutureAwaitable may get destroyed as soon as the callback is executed.
+    // FutureAwaiter may get destroyed as soon as the callback is executed.
     // Make sure the future object doesn't get destroyed until setCallback_
     // returns.
     auto future = std::move(future_);
@@ -2644,9 +2644,9 @@ class FutureAwaitable {
 } // namespace detail
 
 template <typename T>
-inline detail::FutureAwaitable<T>
+inline detail::FutureAwaiter<T>
 /* implicit */ operator co_await(Future<T>&& future) noexcept {
-  return detail::FutureAwaitable<T>(std::move(future));
+  return detail::FutureAwaiter<T>(std::move(future));
 }
 
 } // namespace folly
