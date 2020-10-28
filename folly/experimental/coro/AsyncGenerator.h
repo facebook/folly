@@ -26,7 +26,6 @@
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithCancellation.h>
-#include <folly/experimental/coro/detail/Helpers.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/ManualLifetime.h>
 
@@ -51,8 +50,9 @@ class AsyncGeneratorPromise {
     bool await_ready() noexcept { return false; }
     auto await_suspend(
         std::experimental::coroutine_handle<AsyncGeneratorPromise> h) noexcept {
-      return symmetricTransferMaybeReschedule(
-          h.promise().continuation_, h.promise().clearContext());
+      auto& promise = h.promise();
+      promise.clearContext();
+      return promise.continuation_;
     }
     void await_resume() noexcept {}
   };
@@ -211,12 +211,10 @@ class AsyncGeneratorPromise {
   bool hasValue() const noexcept { return state_ == State::VALUE; }
 
  private:
-  folly::Executor::KeepAlive<> clearContext() noexcept {
-    auto executor = std::exchange(executor_, {});
+  void clearContext() noexcept {
+    executor_ = {};
     cancelToken_ = {};
     hasCancelTokenOverride_ = false;
-
-    return executor;
   }
 
   enum class State : std::uint8_t {
