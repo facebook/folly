@@ -256,9 +256,9 @@ struct EliasFanoEncoderV2<
 
     // *** Validity checks.
     // Shift by numLowerBits must be valid.
-    CHECK_LT(numLowerBits, 8 * sizeof(Value));
+    CHECK_LT(static_cast<int>(numLowerBits), 8 * sizeof(Value));
     CHECK_LT(size, std::numeric_limits<SkipValueType>::max());
-    CHECK_LT(
+    CHECK_LE(
         upperBound >> numLowerBits, std::numeric_limits<SkipValueType>::max());
 
     return fromInternalSizes(numLowerBits, upper, size);
