@@ -1,7 +1,9 @@
 Folly: Facebook Open-source Library
 -----------------------------------
 
-[![Build Status](https://travis-ci.org/facebook/folly.svg?branch=master)](https://travis-ci.org/facebook/folly)
+[![linux](https://github.com/facebook/folly/workflows/linux/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:linux)
+[![mac](https://github.com/facebook/folly/workflows/mac/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:mac)
+[![windows](https://github.com/facebook/folly/workflows/windows/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:windows)
 
 ### What is `folly`?
 
