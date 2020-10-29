@@ -225,7 +225,6 @@ void AtomicNotificationQueue::setMaxReadAtOnce(uint32_t maxAtOnce) {
 int32_t AtomicNotificationQueue::size() const {
   auto queueSize = atomicQueue_.getPushCount() -
       taskExecuteCount_.load(std::memory_order_relaxed);
-  DCHECK(!evb_ || !evb_->isInEventBaseThread() || queueSize >= 0);
   return queueSize >= 0 ? queueSize : 0;
 }
 
