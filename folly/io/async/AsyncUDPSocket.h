@@ -18,6 +18,7 @@
 
 #include <memory>
 
+#include <folly/Function.h>
 #include <folly/ScopeGuard.h>
 #include <folly/SocketAddress.h>
 #include <folly/io/IOBuf.h>
@@ -134,6 +135,16 @@ class AsyncUDPSocket : public EventHandler {
       FOLLY_MAYBE_UNUSED ReadCallback::OnDataAvailableParams& params,
       FOLLY_MAYBE_UNUSED struct msghdr& msg);
 
+  using IOBufFreeFunc = folly::Function<void(std::unique_ptr<folly::IOBuf>&&)>;
+
+  struct WriteOptions {
+    WriteOptions() = default;
+    WriteOptions(int gsoVal, bool zerocopyVal)
+        : gso(gsoVal), zerocopy(zerocopyVal) {}
+    int gso{1};
+    bool zerocopy{false};
+  };
+
   /**
    * Create a new UDP socket that will run in the
    * given eventbase
@@ -186,6 +197,19 @@ class AsyncUDPSocket : public EventHandler {
    */
   virtual void setFD(NetworkSocket fd, FDOwnership ownership);
 
+  bool setZeroCopy(bool enable);
+  bool getZeroCopy() const { return zeroCopyEnabled_; }
+
+  uint32_t getZeroCopyBufId() const { return zeroCopyBufId_; }
+
+  size_t getZeroCopyReenableThreshold() const {
+    return zeroCopyReenableThreshold_;
+  }
+
+  void setZeroCopyReenableThreshold(size_t threshold) {
+    zeroCopyReenableThreshold_ = threshold;
+  }
+
   /**
    * Send the data in buffer to destination. Returns the return code from
    * ::sendmsg.
@@ -218,6 +242,11 @@ class AsyncUDPSocket : public EventHandler {
       const folly::SocketAddress& address,
       const std::unique_ptr<folly::IOBuf>& buf,
       int gso);
+
+  virtual ssize_t writeChain(
+      const folly::SocketAddress& address,
+      std::unique_ptr<folly::IOBuf>&& buf,
+      WriteOptions options);
 
   /**
    * Send the data in buffers to destination. Returns the return code from
@@ -368,6 +397,10 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGSO(int val);
 
+  void setIOBufFreeFunc(IOBufFreeFunc&& ioBufFreeFunc) {
+    ioBufFreeFunc_ = std::move(ioBufFreeFunc);
+  }
+
   // generic receive offload get/set
   // negative return value means GRO is not available
   int getGRO();
@@ -481,6 +514,26 @@ class AsyncUDPSocket : public EventHandler {
   folly::Optional<int> ts_;
 
   ErrMessageCallback* errMessageCallback_{nullptr};
+
+  bool zeroCopyEnabled_{false};
+  bool zeroCopyVal_{false};
+  // zerocopy re-enable logic
+  size_t zeroCopyReenableThreshold_{0};
+  size_t zeroCopyReenableCounter_{0};
+
+  uint32_t zeroCopyBufId_{0};
+
+  int getZeroCopyFlags();
+  static bool isZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg);
+  void processZeroCopyMsg(FOLLY_MAYBE_UNUSED const cmsghdr& cmsg);
+  void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void releaseZeroCopyBuf(uint32_t id);
+
+  uint32_t getNextZeroCopyBufId() { return zeroCopyBufId_++; }
+
+  std::unordered_map<uint32_t, std::unique_ptr<folly::IOBuf>> idZeroCopyBufMap_;
+
+  IOBufFreeFunc ioBufFreeFunc_;
 };
 
 } // namespace folly
