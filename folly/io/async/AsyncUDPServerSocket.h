@@ -67,6 +67,20 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
     virtual void onListenResumed() noexcept {}
 
     /**
+     * Invoked when the server socket can still read but need to inform the
+     * callback object that it should not process read from new client address.
+     * It is invoked in each acceptors/listeners event base thread.
+     */
+    virtual void onAcceptNewPeerPaused() noexcept {}
+
+    /**
+     * Invoked when need to inform the callback object that it can resume
+     * process read from new client address. It is invoked in each
+     * acceptors/listeners event base thread.
+     */
+    virtual void onAcceptNewPeerResumed() noexcept {}
+
+    /**
      * Invoked when a new packet is received
      */
     virtual void onDataAvailable(
@@ -186,6 +200,19 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
   }
 
   /**
+   * Inform the callback object that it should not process read from new client
+   * address.
+   */
+  void pauseAcceptingNewPeer() {
+    for (auto& listener : listeners_) {
+      auto callback = listener.second;
+
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onAcceptNewPeerPaused(); });
+    }
+  }
+
+  /**
    * Starts accepting datagrams once again.
    */
   void resumeAccepting() {
@@ -195,6 +222,19 @@ class AsyncUDPServerSocket : private AsyncUDPSocket::ReadCallback,
 
       listener.first->runInEventBaseThread(
           [callback]() mutable { callback->onListenResumed(); });
+    }
+  }
+
+  /**
+   * Inform the callback object that it can process read from new client address
+   * now.
+   */
+  void resumeAcceptingNewPeer() {
+    for (auto& listener : listeners_) {
+      auto callback = listener.second;
+
+      listener.first->runInEventBaseThread(
+          [callback]() mutable { callback->onAcceptNewPeerResumed(); });
     }
   }
 
