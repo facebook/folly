@@ -29,29 +29,30 @@ static size_t constexpr kMaxRead = 20;
 static size_t constexpr kProducerWarmup = 1000;
 static size_t constexpr kBusyLoopSize = 0;
 
-using Task = std::pair<Func, std::shared_ptr<RequestContext>>;
-
-class MockConsumer : public NotificationQueue<Task>::Consumer {
- public:
-  void messageAvailable(Task&& message) noexcept override {
-    RequestContextScopeGuard rctx(std::move(message.second));
-    message.first();
+struct FuncRunner {
+  void operator()(Func&& message) noexcept {
+    message();
+    message = nullptr;
   }
 };
 
-void putMessageHelper(NotificationQueue<Task>& q, Func f) {
-  q.putMessage(Task(std::move(f), RequestContext::saveContext()));
-}
+class MockConsumer : public NotificationQueue<Func>::Consumer {
+ public:
+  void messageAvailable(Func&& message) noexcept override {
+    funcRunner_(std::move(message));
+  }
+
+ private:
+  FuncRunner funcRunner_;
+};
 
 struct AtomicNotificationQueueConsumerAdaptor {
-  void startConsuming(EventBase* evb, AtomicNotificationQueue* queue) {
+  void startConsuming(
+      EventBase* evb,
+      AtomicNotificationQueue<Func, FuncRunner>* queue) {
     queue->startConsuming(evb);
   }
 };
-
-void putMessageHelper(AtomicNotificationQueue& q, Func f) {
-  q.putMessage(std::move(f));
-}
 
 static void burn(size_t n) {
   for (size_t i = 0; i < n; ++i) {
@@ -107,7 +108,7 @@ void multiProducerMultiConsumer(
                 producersWarmedUp.fetch_add(1, std::memory_order_relaxed) + 1) {
           warmUpBaton.post();
         }
-        putMessageHelper(queue, [&itemsToProcess, &finishedBaton]() {
+        queue.putMessage([&itemsToProcess, &finishedBaton]() {
           burn(kBusyLoopSize);
           if (itemsToProcess.fetch_sub(1, std::memory_order_relaxed) == 0) {
             finishedBaton.post();
@@ -141,7 +142,7 @@ void multiProducerMultiConsumerNQ(
     int iters,
     size_t numProducers,
     size_t numConsumers) {
-  multiProducerMultiConsumer<NotificationQueue<Task>, MockConsumer>(
+  multiProducerMultiConsumer<NotificationQueue<Func>, MockConsumer>(
       iters, numProducers, numConsumers);
 }
 
@@ -151,7 +152,7 @@ void multiProducerMultiConsumerANQ(
     size_t numConsumers) {
   CHECK(numConsumers == 1);
   multiProducerMultiConsumer<
-      AtomicNotificationQueue,
+      AtomicNotificationQueue<Func, FuncRunner>,
       AtomicNotificationQueueConsumerAdaptor>(
       iters, numProducers, numConsumers);
 }
@@ -168,13 +169,13 @@ BENCHMARK(EnqueueBenchmark, n) {
 
 BENCHMARK(DequeueBenchmark, n) {
   BenchmarkSuspender suspender;
-  NotificationQueue<Task> queue;
+  NotificationQueue<Func> queue;
   EventBase base;
   MockConsumer consumer;
   consumer.setMaxReadAtOnce(kMaxRead);
   consumer.startConsumingInternal(&base, &queue);
   for (unsigned int i = 0; i < n; ++i) {
-    putMessageHelper(queue, []() {});
+    queue.putMessage([]() {});
   }
   suspender.dismiss();
   for (unsigned int i = 0; i <= (n / kMaxRead); ++i) {

@@ -14,30 +14,23 @@
  * limitations under the License.
  */
 
+#pragma once
+
 #include <folly/io/async/AtomicNotificationQueue.h>
 
-#include <folly/ExceptionString.h>
 #include <folly/FileUtil.h>
 #include <folly/system/Pid.h>
 
 namespace folly {
 
-void AtomicNotificationQueue::Task::execute() && noexcept {
-  RequestContextScopeGuard rctx(std::move(rctx_));
-  try {
-    func_();
-    func_ = nullptr;
-  } catch (...) {
-    LOG(FATAL) << "Exception thrown by a task in AtomicNotificationQueue: "
-               << exceptionStr(std::current_exception());
-  }
-}
-
-AtomicNotificationQueue::Queue::Queue(Queue&& other) noexcept
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::Queue::Queue(Queue&& other) noexcept
     : head_(std::exchange(other.head_, nullptr)),
       size_(std::exchange(other.size_, 0)) {}
 
-AtomicNotificationQueue::Queue& AtomicNotificationQueue::Queue::operator=(
+template <typename Task, typename Consumer>
+typename AtomicNotificationQueue<Task, Consumer>::Queue&
+AtomicNotificationQueue<Task, Consumer>::Queue::operator=(
     Queue&& other) noexcept {
   clear();
   std::swap(head_, other.head_);
@@ -45,37 +38,47 @@ AtomicNotificationQueue::Queue& AtomicNotificationQueue::Queue::operator=(
   return *this;
 }
 
-AtomicNotificationQueue::Queue::~Queue() {
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::Queue::~Queue() {
   clear();
 }
 
-bool AtomicNotificationQueue::Queue::empty() const {
+template <typename Task, typename Consumer>
+bool AtomicNotificationQueue<Task, Consumer>::Queue::empty() const {
   return !head_;
 }
 
-ssize_t AtomicNotificationQueue::Queue::size() const {
+template <typename Task, typename Consumer>
+ssize_t AtomicNotificationQueue<Task, Consumer>::Queue::size() const {
   return size_;
 }
 
-AtomicNotificationQueue::Task& AtomicNotificationQueue::Queue::front() {
-  return head_->value;
+template <typename Task, typename Consumer>
+typename AtomicNotificationQueue<Task, Consumer>::Queue::Node&
+AtomicNotificationQueue<Task, Consumer>::Queue::front() {
+  return *head_;
 }
 
-void AtomicNotificationQueue::Queue::pop() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::Queue::pop() {
   std::unique_ptr<Node>(std::exchange(head_, head_->next));
   --size_;
 }
 
-void AtomicNotificationQueue::Queue::clear() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::Queue::clear() {
   while (!empty()) {
     pop();
   }
 }
 
-AtomicNotificationQueue::Queue::Queue(Node* head, ssize_t size)
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::Queue::Queue(Node* head, ssize_t size)
     : head_(head), size_(size) {}
-AtomicNotificationQueue::Queue AtomicNotificationQueue::Queue::fromReversed(
-    Node* tail) {
+
+template <typename Task, typename Consumer>
+typename AtomicNotificationQueue<Task, Consumer>::Queue
+AtomicNotificationQueue<Task, Consumer>::Queue::fromReversed(Node* tail) {
   // Reverse a linked list.
   Node* head{nullptr};
   ssize_t size = 0;
@@ -86,7 +89,8 @@ AtomicNotificationQueue::Queue AtomicNotificationQueue::Queue::fromReversed(
   return Queue(head, size);
 }
 
-AtomicNotificationQueue::AtomicQueue::~AtomicQueue() {
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::AtomicQueue::~AtomicQueue() {
   DCHECK(!head_);
   if (reinterpret_cast<intptr_t>(head_.load(std::memory_order_relaxed)) ==
       kQueueArmedTag) {
@@ -97,17 +101,19 @@ AtomicNotificationQueue::AtomicQueue::~AtomicQueue() {
   }
 }
 
-bool AtomicNotificationQueue::AtomicQueue::push(Task&& value) {
+template <typename Task, typename Consumer>
+template <typename T>
+bool AtomicNotificationQueue<Task, Consumer>::AtomicQueue::push(T&& value) {
   pushCount_.fetch_add(1, std::memory_order_relaxed);
 
-  std::unique_ptr<Queue::Node> node(new Queue::Node(std::move(value)));
+  std::unique_ptr<typename Queue::Node> node(
+      new typename Queue::Node(std::forward<T>(value)));
   auto head = head_.load(std::memory_order_relaxed);
   while (true) {
     node->next =
         reinterpret_cast<intptr_t>(head) == kQueueArmedTag ? nullptr : head;
-    if (atomic_compare_exchange_weak_explicit(
-            &head_,
-            &head,
+    if (head_.compare_exchange_weak(
+            head,
             node.get(),
             std::memory_order_release,
             std::memory_order_relaxed)) {
@@ -117,13 +123,15 @@ bool AtomicNotificationQueue::AtomicQueue::push(Task&& value) {
   }
 }
 
-bool AtomicNotificationQueue::AtomicQueue::hasTasks() const {
+template <typename Task, typename Consumer>
+bool AtomicNotificationQueue<Task, Consumer>::AtomicQueue::hasTasks() const {
   auto head = head_.load(std::memory_order_relaxed);
   return head && reinterpret_cast<intptr_t>(head) != kQueueArmedTag;
 }
 
-AtomicNotificationQueue::Queue
-AtomicNotificationQueue::AtomicQueue::getTasks() {
+template <typename Task, typename Consumer>
+typename AtomicNotificationQueue<Task, Consumer>::Queue
+AtomicNotificationQueue<Task, Consumer>::AtomicQueue::getTasks() {
   auto head = head_.exchange(nullptr, std::memory_order_acquire);
   if (head && reinterpret_cast<intptr_t>(head) != kQueueArmedTag) {
     return Queue::fromReversed(head);
@@ -134,13 +142,14 @@ AtomicNotificationQueue::AtomicQueue::getTasks() {
   return {};
 }
 
-AtomicNotificationQueue::Queue AtomicNotificationQueue::AtomicQueue::arm() {
+template <typename Task, typename Consumer>
+typename AtomicNotificationQueue<Task, Consumer>::Queue
+AtomicNotificationQueue<Task, Consumer>::AtomicQueue::arm() {
   auto head = head_.load(std::memory_order_relaxed);
   if (!head &&
-      atomic_compare_exchange_strong_explicit(
-          &head_,
-          &head,
-          reinterpret_cast<Queue::Node*>(kQueueArmedTag),
+      head_.compare_exchange_strong(
+          head,
+          reinterpret_cast<typename Queue::Node*>(kQueueArmedTag),
           std::memory_order_relaxed,
           std::memory_order_relaxed)) {
     ++successfulArmCount_;
@@ -150,7 +159,10 @@ AtomicNotificationQueue::Queue AtomicNotificationQueue::AtomicQueue::arm() {
   return getTasks();
 }
 
-AtomicNotificationQueue::AtomicNotificationQueue() : pid_(get_cached_pid()) {
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::AtomicNotificationQueue(
+    Consumer&& consumer)
+    : pid_(get_cached_pid()), consumer_(std::move(consumer)) {
 #ifdef FOLLY_HAVE_EVENTFD
   eventfd_ = eventfd(0, EFD_CLOEXEC | EFD_NONBLOCK);
   if (eventfd_ == -1) {
@@ -193,7 +205,8 @@ AtomicNotificationQueue::AtomicNotificationQueue() : pid_(get_cached_pid()) {
   }
 }
 
-AtomicNotificationQueue::~AtomicNotificationQueue() {
+template <typename Task, typename Consumer>
+AtomicNotificationQueue<Task, Consumer>::~AtomicNotificationQueue() {
   // Empty the queue
   atomicQueue_.getTasks();
   // Don't drain fd in the child process.
@@ -218,42 +231,53 @@ AtomicNotificationQueue::~AtomicNotificationQueue() {
   }
 }
 
-void AtomicNotificationQueue::setMaxReadAtOnce(uint32_t maxAtOnce) {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::setMaxReadAtOnce(
+    uint32_t maxAtOnce) {
   maxReadAtOnce_ = maxAtOnce;
 }
 
-int32_t AtomicNotificationQueue::size() const {
+template <typename Task, typename Consumer>
+size_t AtomicNotificationQueue<Task, Consumer>::size() const {
   auto queueSize = atomicQueue_.getPushCount() -
       taskExecuteCount_.load(std::memory_order_relaxed);
   return queueSize >= 0 ? queueSize : 0;
 }
 
-bool AtomicNotificationQueue::empty() const {
+template <typename Task, typename Consumer>
+bool AtomicNotificationQueue<Task, Consumer>::empty() const {
   return queue_.empty() && !atomicQueue_.hasTasks();
 }
 
-void AtomicNotificationQueue::putMessage(Func&& func) {
-  if (atomicQueue_.push(Task{std::move(func), RequestContext::saveContext()})) {
+template <typename Task, typename Consumer>
+template <typename T>
+void AtomicNotificationQueue<Task, Consumer>::putMessage(T&& task) {
+  if (atomicQueue_.push(std::forward<T>(task))) {
     notifyFd();
   }
 }
 
-void AtomicNotificationQueue::stopConsuming() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::stopConsuming() {
   evb_ = nullptr;
   cancelLoopCallback();
   unregisterHandler();
   detachEventBase();
 }
 
-void AtomicNotificationQueue::startConsuming(EventBase* evb) {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::startConsuming(EventBase* evb) {
   startConsumingImpl(evb, false);
 }
 
-void AtomicNotificationQueue::startConsumingInternal(EventBase* evb) {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::startConsumingInternal(
+    EventBase* evb) {
   startConsumingImpl(evb, true);
 }
 
-void AtomicNotificationQueue::startConsumingImpl(
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::startConsumingImpl(
     EventBase* evb,
     bool internal) {
   evb_ = evb;
@@ -272,7 +296,8 @@ void AtomicNotificationQueue::startConsumingImpl(
   }
 }
 
-bool AtomicNotificationQueue::drive() {
+template <typename Task, typename Consumer>
+bool AtomicNotificationQueue<Task, Consumer>::drive() {
   Queue nextQueue;
   if (maxReadAtOnce_ == 0 || queue_.size() < maxReadAtOnce_) {
     nextQueue = atomicQueue_.getTasks();
@@ -290,18 +315,24 @@ bool AtomicNotificationQueue::drive() {
     taskExecuteCount_.store(
         taskExecuteCount_.load(std::memory_order_relaxed) + 1,
         std::memory_order_relaxed);
-    std::move(queue_.front()).execute();
+    {
+      auto& curNode = queue_.front();
+      RequestContextScopeGuard rcsg(std::move(curNode.rctx));
+      consumer_(std::move(curNode.task));
+    }
     queue_.pop();
   }
   return i > 0;
 }
 
-void AtomicNotificationQueue::drain() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::drain() {
   while (drive()) {
   }
 }
 
-void AtomicNotificationQueue::notifyFd() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::notifyFd() {
   checkPid();
 
   ssize_t bytes_written = 0;
@@ -328,7 +359,8 @@ void AtomicNotificationQueue::notifyFd() {
   }
 }
 
-void AtomicNotificationQueue::drainFd() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::drainFd() {
   checkPid();
 
   uint64_t message = 0;
@@ -345,7 +377,8 @@ void AtomicNotificationQueue::drainFd() {
   }
 }
 
-void AtomicNotificationQueue::runLoopCallback() noexcept {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::runLoopCallback() noexcept {
   if (!queue_.empty()) {
     activateEvent();
     return;
@@ -356,11 +389,13 @@ void AtomicNotificationQueue::runLoopCallback() noexcept {
   }
 }
 
-void AtomicNotificationQueue::handlerReady(uint16_t) noexcept {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::handlerReady(uint16_t) noexcept {
   execute();
 }
 
-void AtomicNotificationQueue::execute() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::execute() {
   if (!edgeTriggeredSet_) {
     drainFd();
   }
@@ -368,7 +403,8 @@ void AtomicNotificationQueue::execute() {
   evb_->runInLoop(this, false, nullptr);
 }
 
-void AtomicNotificationQueue::activateEvent() {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::activateEvent() {
   if (!EventHandler::activateEvent(0)) {
     // Fallback for EventBase backends that don't support activateEvent
     ++writesLocal_;
@@ -376,13 +412,16 @@ void AtomicNotificationQueue::activateEvent() {
   }
 }
 
-void AtomicNotificationQueue::checkPid() const {
+template <typename Task, typename Consumer>
+void AtomicNotificationQueue<Task, Consumer>::checkPid() const {
   if (FOLLY_UNLIKELY(pid_ != get_cached_pid())) {
     checkPidFail();
   }
 }
 
-[[noreturn]] FOLLY_NOINLINE void AtomicNotificationQueue::checkPidFail() const {
+template <typename Task, typename Consumer>
+[[noreturn]] FOLLY_NOINLINE void
+AtomicNotificationQueue<Task, Consumer>::checkPidFail() const {
   folly::terminate_with<std::runtime_error>(
       "Pid mismatch. Pid = " + folly::to<std::string>(get_cached_pid()) +
       ". Expecting " + folly::to<std::string>(pid_));

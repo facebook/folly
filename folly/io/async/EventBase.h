@@ -55,6 +55,7 @@ class EventBaseBackendBase;
 
 using Cob = Func; // defined in folly/Executor.h
 
+template <typename Task, typename Consumer>
 class AtomicNotificationQueue;
 template <typename MessageT>
 class NotificationQueue;
@@ -853,6 +854,8 @@ class EventBase : public TimeoutManager,
   }
 
  private:
+  class FuncRunner;
+
   folly::VirtualEventBase* tryGetVirtualEventBase();
 
   void applyLoopKeepAlive();
@@ -900,7 +903,7 @@ class EventBase : public TimeoutManager,
 
   // A notification queue for runInEventBaseThread() to use
   // to send function requests to the EventBase thread.
-  std::unique_ptr<AtomicNotificationQueue> queue_;
+  std::unique_ptr<AtomicNotificationQueue<Func, FuncRunner>> queue_;
   ssize_t loopKeepAliveCount_{0};
   std::atomic<ssize_t> loopKeepAliveCountAtomic_{0};
   bool loopKeepAliveActive_{false};

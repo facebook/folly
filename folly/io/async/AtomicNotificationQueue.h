@@ -35,22 +35,29 @@ namespace folly {
  * Tasks can be added to the queue from any thread. A single EventBase
  * thread can be listening to the queue. Tasks are processed in FIFO order.
  */
+template <typename Task, typename Consumer>
 class AtomicNotificationQueue : private EventBase::LoopCallback,
                                 private EventHandler {
-  class Task {
-   public:
-    Task(Func&& func, std::shared_ptr<RequestContext> rctx)
-        : func_(std::move(func)), rctx_(std::move(rctx)) {}
-
-    void execute() && noexcept;
-
-   private:
-    Func func_;
-    std::shared_ptr<RequestContext> rctx_;
-  };
+  static_assert(
+      noexcept(std::declval<Consumer>()(std::declval<Task&&>())),
+      "Consumer::operator()(Task&&) should be noexcept.");
   class AtomicQueue;
   class Queue {
    public:
+    struct Node {
+      Task task;
+      std::shared_ptr<RequestContext> rctx{RequestContext::saveContext()};
+
+     private:
+      friend class AtomicNotificationQueue::AtomicQueue;
+      friend class Queue;
+
+      template <typename T>
+      explicit Node(T&& t) : task(std::forward<T>(t)) {}
+
+      Node* next{};
+    };
+
     Queue() {}
     Queue(Queue&& other) noexcept;
     Queue& operator=(Queue&& other) noexcept;
@@ -60,22 +67,11 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
 
     ssize_t size() const;
 
-    Task& front();
+    Node& front();
 
     void pop();
 
     void clear();
-
-    struct Node {
-     private:
-      friend class AtomicNotificationQueue::AtomicQueue;
-      friend class Queue;
-
-      explicit Node(Task&& t) : value(std::move(t)) {}
-
-      Task value;
-      Node* next{};
-    };
 
    private:
     friend class AtomicNotificationQueue::AtomicQueue;
@@ -139,7 +135,8 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
      * Pushes a task into the queue. Returns true iff the queue was armed.
      * Can be called from any thread.
      */
-    bool push(Task&& value);
+    template <typename T>
+    bool push(T&& value);
 
     /*
      * Returns true if the queue has tasks.
@@ -183,7 +180,8 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
     }
 
    private:
-    alignas(folly::cacheline_align_v) std::atomic<Queue::Node*> head_{};
+    alignas(
+        folly::cacheline_align_v) std::atomic<typename Queue::Node*> head_{};
     std::atomic<ssize_t> pushCount_{0};
     alignas(folly::cacheline_align_v) ssize_t successfulArmCount_{0};
     ssize_t consumerDisarmCount_{0};
@@ -191,7 +189,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
   };
 
  public:
-  AtomicNotificationQueue();
+  explicit AtomicNotificationQueue(Consumer&& consumer = Consumer());
 
   ~AtomicNotificationQueue() override;
 
@@ -205,7 +203,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
    * Returns the number of tasks in the queue.
    * Can be called from any thread.
    */
-  int32_t size() const;
+  size_t size() const;
 
   /*
    * Checks if the queue is empty.
@@ -217,7 +215,8 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
    * Adds a task into the queue.
    * Can be called from any thread.
    */
-  void putMessage(Func&& func);
+  template <typename T>
+  void putMessage(T&& task);
 
   /*
    * Detaches the queue from an EventBase.
@@ -319,6 +318,9 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
   ssize_t writesObserved_{0};
   ssize_t writesLocal_{0};
   const pid_t pid_;
+  Consumer consumer_;
 };
 
 } // namespace folly
+
+#include <folly/io/async/AtomicNotificationQueue-inl.h>
