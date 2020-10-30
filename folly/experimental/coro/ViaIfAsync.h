@@ -238,10 +238,20 @@ class ViaIfAsyncAwaiter {
         viaCoroutine_.getWrappedCoroutineWithSavedContext(continuation));
   }
 
-  decltype(auto) await_resume() noexcept(
-      noexcept(std::declval<Awaiter&>().await_resume())) {
+  auto await_resume() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume()))
+      -> decltype(std::declval<Awaiter&>().await_resume()) {
     viaCoroutine_.destroy();
     return awaiter_.await_resume();
+  }
+
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result = decltype(std::declval<Awaiter2&>().await_resume_try())>
+  Result await_resume_try() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume_try())) {
+    viaCoroutine_.destroy();
+    return awaiter_.await_resume_try();
   }
 
   detail::ViaCoroutine viaCoroutine_;

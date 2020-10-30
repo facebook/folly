@@ -531,4 +531,47 @@ TEST_F(TaskTest, MakeTask) {
     EXPECT_EQ(s2.i, 0);
   }());
 }
+
+TEST_F(TaskTest, CoAwaitTryWithScheduleOn) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    auto t = []() -> folly::coro::Task<int> { co_return 42; }();
+
+    folly::Try<int> result = co_await folly::coro::co_awaitTry(
+        std::move(t).scheduleOn(folly::getGlobalCPUExecutor()));
+    EXPECT_EQ(42, result.value());
+  }());
+}
+
+TEST_F(TaskTest, CoAwaitTryWithScheduleOnAndCancellation) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    folly::CancellationSource cancelSrc;
+
+    auto makeTask = [&]() -> folly::coro::Task<int> {
+      auto ct = co_await folly::coro::co_current_cancellation_token;
+      EXPECT_FALSE(ct.isCancellationRequested());
+      cancelSrc.requestCancellation();
+      EXPECT_TRUE(ct.isCancellationRequested());
+      co_return 42;
+    };
+
+    {
+      folly::Try<int> result = co_await folly::coro::co_withCancellation(
+          cancelSrc.getToken(),
+          folly::coro::co_awaitTry(
+              makeTask().scheduleOn(folly::getGlobalCPUExecutor())));
+      EXPECT_EQ(42, result.value());
+    }
+
+    cancelSrc = {};
+
+    {
+      folly::Try<int> result =
+          co_await folly::coro::co_awaitTry(folly::coro::co_withCancellation(
+              cancelSrc.getToken(),
+              makeTask().scheduleOn(folly::getGlobalCPUExecutor())));
+      EXPECT_EQ(42, result.value());
+    }
+  }());
+}
+
 #endif
