@@ -208,9 +208,11 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
 
   void shutdown() {
     CHECK(evb_->isInEventBaseThread());
-    socket_->pauseRead();
-    socket_->close();
-    socket_.reset();
+    if (socket_) {
+      socket_->pauseRead();
+      socket_->close();
+      socket_.reset();
+    }
     evb_->terminateLoopSoon();
   }
 
