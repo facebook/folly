@@ -161,12 +161,23 @@ class AsyncUDPSocket : public EventHandler {
   }
 
   /**
+   * Contains options to pass to bind.
+   */
+  struct BindOptions {
+    constexpr BindOptions() noexcept {}
+    // Whether IPV6_ONLY should be set on the socket.
+    bool bindV6Only{true};
+  };
+
+  /**
    * Bind the socket to the following address. If port is not
    * set in the `address` an ephemeral port is chosen and you can
    * use `address()` method above to get it after this method successfully
-   * returns.
+   * returns. The parameter BindOptions contains parameters for the bind.
    */
-  virtual void bind(const folly::SocketAddress& address);
+  virtual void bind(
+      const folly::SocketAddress& address,
+      BindOptions options = BindOptions());
 
   /**
    * Connects the UDP socket to a remote destination address provided in
@@ -475,7 +486,7 @@ class AsyncUDPSocket : public EventHandler {
   AsyncUDPSocket(const AsyncUDPSocket&) = delete;
   AsyncUDPSocket& operator=(const AsyncUDPSocket&) = delete;
 
-  void init(sa_family_t family);
+  void init(sa_family_t family, BindOptions bindOptions);
 
   // EventHandler
   void handlerReady(uint16_t events) noexcept override;

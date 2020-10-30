@@ -94,7 +94,7 @@ AsyncUDPSocket::~AsyncUDPSocket() {
   }
 }
 
-void AsyncUDPSocket::init(sa_family_t family) {
+void AsyncUDPSocket::init(sa_family_t family, BindOptions bindOptions) {
   NetworkSocket socket =
       netops::socket(family, SOCK_DGRAM, family != AF_UNIX ? IPPROTO_UDP : 0);
   if (socket == NetworkSocket()) {
@@ -184,9 +184,8 @@ void AsyncUDPSocket::init(sa_family_t family) {
     }
   }
 
-  // If we're using IPv6, make sure we don't accept V4-mapped connections
   if (family == AF_INET6) {
-    int flag = 1;
+    int flag = static_cast<int>(bindOptions.bindV6Only);
     if (netops::setsockopt(
             socket, IPPROTO_IPV6, IPV6_V6ONLY, &flag, sizeof(flag))) {
       throw AsyncSocketException(
@@ -203,8 +202,10 @@ void AsyncUDPSocket::init(sa_family_t family) {
   EventHandler::changeHandlerFD(fd_);
 }
 
-void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
-  init(address.getFamily());
+void AsyncUDPSocket::bind(
+    const folly::SocketAddress& address,
+    BindOptions bindOptions) {
+  init(address.getFamily(), bindOptions);
 
   // bind to the address
   sockaddr_storage addrStorage;
@@ -227,7 +228,7 @@ void AsyncUDPSocket::bind(const folly::SocketAddress& address) {
 void AsyncUDPSocket::connect(const folly::SocketAddress& address) {
   // not bound yet
   if (fd_ == NetworkSocket()) {
-    init(address.getFamily());
+    init(address.getFamily(), BindOptions());
   }
 
   sockaddr_storage addrStorage;

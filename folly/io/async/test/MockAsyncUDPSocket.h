@@ -27,7 +27,9 @@ struct MockAsyncUDPSocket : public AsyncUDPSocket {
   ~MockAsyncUDPSocket() override {}
 
   MOCK_CONST_METHOD0(address, const SocketAddress&());
-  MOCK_METHOD1(bind, void(const SocketAddress&));
+  MOCK_METHOD2(
+      bind,
+      void(const SocketAddress&, AsyncUDPSocket::BindOptions bindOptions));
   MOCK_METHOD2(setFD, void(NetworkSocket, AsyncUDPSocket::FDOwnership));
   MOCK_METHOD2(
       write,
