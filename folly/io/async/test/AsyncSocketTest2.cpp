@@ -1161,6 +1161,7 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   std::thread senderThread([&]() { senderEvb.loopForever(); });
 
   ConnCallback ccb;
+  WriteCallback wcb;
   std::shared_ptr<AsyncSocket> socket;
 
   senderEvb.runInEventBaseThreadAndWait([&]() {
@@ -1174,8 +1175,6 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
   // Send a big (100KB) write so that it is partially written.
   constexpr size_t kSendSize = 100 * 1024;
   auto const sendBuf = std::vector<char>(kSendSize, 'a');
-
-  WriteCallback wcb;
 
   senderEvb.runInEventBaseThreadAndWait(
       [&]() { socket->write(&wcb, sendBuf.data(), kSendSize); });
@@ -1212,6 +1211,7 @@ TEST(AsyncSocketTest, WriteErrorCallbackBytesWritten) {
 
   senderEvb.terminateLoopSoon();
   senderThread.join();
+  socket.reset();
 
   ASSERT_EQ(STATE_FAILED, wcb.state);
   ASSERT_LE(kMinExpectedBytesWritten, wcb.bytesWritten);
