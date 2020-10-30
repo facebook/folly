@@ -288,7 +288,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     [](TaskWithExecutor task,
        std::decay_t<F> cb) -> detail::InlineTaskDetached {
       try {
-        cb(co_await std::move(task).co_awaitTry());
+        cb(co_await folly::coro::co_awaitTry(std::move(task)));
       } catch (const std::exception& e) {
         cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
       } catch (...) {
@@ -311,7 +311,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     [](TaskWithExecutor task,
        std::decay_t<F> cb) -> detail::InlineTaskDetached {
       try {
-        cb(co_await InlineAwaiter{std::exchange(task.coro_, {})});
+        cb(co_await InlineTryAwaitable{std::exchange(task.coro_, {})});
       } catch (const std::exception& e) {
         cb(Try<StorageType>(exception_wrapper(std::current_exception(), e)));
       } catch (...) {
@@ -336,7 +336,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     return sf;
   }
 
-  template <typename ResultCreator>
+ private:
   class Awaiter {
    public:
     explicit Awaiter(handle_t coro) noexcept : coro_(coro) {}
@@ -372,22 +372,26 @@ class FOLLY_NODISCARD TaskWithExecutor {
           });
     }
 
-    decltype(auto) await_resume() {
+    T await_resume() {
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
-      ResultCreator resultCreator;
-      return resultCreator(std::move(coro_.promise().result()));
+      return std::move(coro_.promise().result()).value();
+    }
+
+    folly::Try<StorageType> await_resume_try() {
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      return std::move(coro_.promise().result());
     }
 
    private:
     handle_t coro_;
   };
 
-  class InlineAwaiter {
+  class InlineTryAwaitable {
    public:
-    InlineAwaiter(handle_t coro) noexcept : coro_(coro) {}
+    InlineTryAwaitable(handle_t coro) noexcept : coro_(coro) {}
 
-    ~InlineAwaiter() {
+    ~InlineTryAwaitable() {
       if (coro_) {
         coro_.destroy();
       }
@@ -414,22 +418,9 @@ class FOLLY_NODISCARD TaskWithExecutor {
     handle_t coro_;
   };
 
-  struct ValueCreator {
-    T operator()(Try<StorageType>&& t) const { return std::move(t).value(); }
-  };
-
-  struct TryCreator {
-    Try<StorageType> operator()(Try<StorageType>&& t) const {
-      return std::move(t);
-    }
-  };
-
-  auto operator co_await() && noexcept {
-    return Awaiter<ValueCreator>{std::exchange(coro_, {})};
-  }
-
-  auto co_awaitTry() && noexcept {
-    return Awaiter<TryCreator>{std::exchange(coro_, {})};
+ public:
+  Awaiter operator co_await() && noexcept {
+    return Awaiter{std::exchange(coro_, {})};
   }
 
   friend TaskWithExecutor co_withCancellation(
@@ -566,9 +557,12 @@ class FOLLY_NODISCARD Task {
       return coro_;
     }
 
-    T await_resume() { return await_resume_try().value(); }
+    T await_resume() {
+      SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
+      return std::move(coro_.promise().result()).value();
+    }
 
-    auto await_resume_try() {
+    folly::Try<StorageType> await_resume_try() {
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
