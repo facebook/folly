@@ -471,10 +471,10 @@ class AsyncSocketIntegrationTest : public Test {
       folly::Optional<folly::SocketAddress> connectedAddress,
       BindSocket bindSocket = BindSocket::YES);
 
-  folly::EventBase sevb;
-  folly::EventBase cevb;
   std::unique_ptr<std::thread> serverThread;
   std::unique_ptr<UDPServer> server;
+  folly::EventBase sevb;
+  folly::EventBase cevb;
 };
 
 std::unique_ptr<UDPClient> AsyncSocketIntegrationTest::performPingPongTest(
