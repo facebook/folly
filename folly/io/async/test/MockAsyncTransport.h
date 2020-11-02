@@ -62,6 +62,8 @@ class MockAsyncTransport : public AsyncTransport {
   MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
   MOCK_CONST_METHOD0(getAppBytesReceived, size_t());
   MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
+  MOCK_CONST_METHOD0(getAppBytesBuffered, size_t());
+  MOCK_CONST_METHOD0(getRawBytesBuffered, size_t());
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
   MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransport*());
