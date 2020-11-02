@@ -500,12 +500,6 @@ TEST(nn, hash) {
 }
 
 TEST(nn, null_deleter) {
-  int* i = new int(5);
-  auto f = [&]() { std::unique_ptr<int, void (*)(int*)> nnui(i, nullptr); };
-  // Error messages are different in build modes, but both die
-  EXPECT_DEATH(f(), "");
-  delete i;
-
   int* j = new int(6);
   try {
     not_null_unique_ptr<int, void (*)(int*)> nnui(j, nullptr);
