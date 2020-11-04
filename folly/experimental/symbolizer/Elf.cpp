@@ -216,6 +216,15 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {
     return {kInvalidElfFile, "invalid ELF magic"};
   }
+  char c;
+  if (::pread(fd_, &c, 1, length_ - 1) != 1) {
+    auto msg =
+        "The last bit of the mmaped memory is no longer valid. This may be "
+        "caused by the original file being resized, "
+        "deleted or otherwise modified.";
+    return {kInvalidElfFile, msg};
+  }
+
   if (::lseek(fd_, 0, SEEK_SET) != 0) {
     return {kInvalidElfFile,
             "unable to reset file descriptor after reading ELF magic number"};
