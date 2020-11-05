@@ -5,9 +5,12 @@ from __future__ import division
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import specs.fmt as fmt
+
 
 def fbcode_builder_spec(builder):
     return {
+        "depends_on": [fmt],
         'steps': [
             # on macOS the filesystem is typically case insensitive.
             # We need to ensure that the CWD is not the folly source
