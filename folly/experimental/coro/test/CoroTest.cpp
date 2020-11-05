@@ -609,19 +609,21 @@ TEST_F(CoroTest, CancellableSleep) {
   CancellationSource cancelSrc;
 
   auto start = steady_clock::now();
-  coro::blockingWait([&]() -> coro::Task<void> {
-    co_await coro::collectAll(
-        [&]() -> coro::Task<void> {
-          co_await coro::co_withCancellation(
-              cancelSrc.getToken(), coro::sleep(10s));
-        }(),
-        [&]() -> coro::Task<void> {
-          co_await coro::co_reschedule_on_current_executor;
-          co_await coro::co_reschedule_on_current_executor;
-          co_await coro::co_reschedule_on_current_executor;
-          cancelSrc.requestCancellation();
-        }());
-  }());
+  EXPECT_THROW(
+      coro::blockingWait([&]() -> coro::Task<void> {
+        co_await coro::collectAll(
+            [&]() -> coro::Task<void> {
+              co_await coro::co_withCancellation(
+                  cancelSrc.getToken(), coro::sleep(10s));
+            }(),
+            [&]() -> coro::Task<void> {
+              co_await coro::co_reschedule_on_current_executor;
+              co_await coro::co_reschedule_on_current_executor;
+              co_await coro::co_reschedule_on_current_executor;
+              cancelSrc.requestCancellation();
+            }());
+      }()),
+      OperationCancelled);
   auto end = steady_clock::now();
   CHECK((end - start) < 1s);
 }

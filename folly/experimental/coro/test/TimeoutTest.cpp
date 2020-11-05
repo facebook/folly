@@ -147,9 +147,8 @@ TEST(Timeout, CancelParent) {
             cancelSource.getToken(),
             coro::timeout(
                 []() -> coro::Task<bool> {
-                  co_await coro::sleep(5s);
-                  co_return(co_await coro::co_current_cancellation_token)
-                      .isCancellationRequested();
+                  auto result = co_await coro::co_awaitTry(coro::sleep(5s));
+                  co_return result.hasException<OperationCancelled>();
                 }(),
                 10s)),
         [&]() -> coro::Task<void> {

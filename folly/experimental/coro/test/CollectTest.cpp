@@ -35,6 +35,11 @@
 #include <string>
 #include <vector>
 
+folly::coro::Task<void> sleepThatShouldBeCancelled(
+    std::chrono::milliseconds dur) {
+  EXPECT_THROW(co_await folly::coro::sleep(dur), folly::OperationCancelled);
+}
+
 class CollectAllTest : public testing::Test {};
 
 TEST_F(CollectAllTest, WithNoArgs) {
@@ -289,11 +294,11 @@ TEST_F(CollectAllTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
         cancelSource.getToken(),
         folly::coro::collectAll(
             [&]() -> folly::coro::Task<int> {
-              co_await folly::coro::sleep(10s);
+              co_await sleepThatShouldBeCancelled(10s);
               co_return 42;
             }(),
             [&]() -> folly::coro::Task<float> {
-              co_await folly::coro::sleep(5s);
+              co_await sleepThatShouldBeCancelled(5s);
               co_return 3.14f;
             }(),
             [&]() -> folly::coro::Task<void> {
@@ -507,11 +512,11 @@ TEST_F(CollectAllTryTest, CollectAllCancelsSubtasksWhenParentTaskCancelled) {
         cancelSource.getToken(),
         folly::coro::collectAllTry(
             [&]() -> folly::coro::Task<int> {
-              co_await folly::coro::sleep(10s);
+              co_await sleepThatShouldBeCancelled(10s);
               co_return 42;
             }(),
             [&]() -> folly::coro::Task<float> {
-              co_await folly::coro::sleep(5s);
+              co_await sleepThatShouldBeCancelled(5s);
               co_return 3.14f;
             }(),
             [&]() -> folly::coro::Task<void> {
@@ -930,7 +935,7 @@ TEST_F(CollectAllTryRangeTest, SubtasksCancelledWhenParentTaskCancelled) {
     auto generateTasks = [&]()
         -> folly::coro::Generator<folly::coro::Task<void>&&> {
       for (int i = 0; i < 10; ++i) {
-        co_yield folly::coro::sleep(10s);
+        co_yield sleepThatShouldBeCancelled(10s);
       }
 
       co_yield[&]()->folly::coro::Task<void> {
@@ -1217,8 +1222,8 @@ TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
     bool consumedAllTasks = false;
     auto generateTasks = [&]()
         -> folly::coro::Generator<folly::coro::Task<void>&&> {
-      co_yield folly::coro::sleep(10s);
-      co_yield folly::coro::sleep(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
 
       co_yield[&]()->folly::coro::Task<void> {
         co_await folly::coro::co_reschedule_on_current_executor;
@@ -1232,8 +1237,8 @@ TEST_F(CollectAllWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
       }
       ();
 
-      co_yield folly::coro::sleep(10s);
-      co_yield folly::coro::sleep(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
 
       consumedAllTasks = true;
     };
@@ -1423,8 +1428,8 @@ TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
     bool consumedAllTasks = false;
     auto generateTasks = [&]()
         -> folly::coro::Generator<folly::coro::Task<void>&&> {
-      co_yield folly::coro::sleep(10s);
-      co_yield folly::coro::sleep(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
 
       co_yield[&]()->folly::coro::Task<void> {
         co_await folly::coro::co_reschedule_on_current_executor;
@@ -1438,8 +1443,8 @@ TEST_F(CollectAllTryWindowedTest, SubtasksCancelledWhenParentTaskCancelled) {
       }
       ();
 
-      co_yield folly::coro::sleep(10s);
-      co_yield folly::coro::sleep(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
+      co_yield sleepThatShouldBeCancelled(10s);
 
       consumedAllTasks = true;
     };

@@ -123,12 +123,11 @@ class AsyncScope {
 
     try {
       co_await std::move(awaitable);
-    } catch (const std::exception& e) {
+    } catch (const OperationCancelled&) {
+    } catch (...) {
       LOG(DFATAL)
           << "Unhandled exception thrown from task added to AsyncScope: "
-          << e.what();
-    } catch (...) {
-      LOG(DFATAL) << "Unhandled exception thrown from task added to AsyncScope";
+          << folly::exceptionStr(std::current_exception());
     }
   }
 
