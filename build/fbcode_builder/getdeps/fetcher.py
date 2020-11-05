@@ -203,7 +203,7 @@ class PreinstalledNopFetcher(SystemPackageFetcher):
 
 
 class GitFetcher(Fetcher):
-    DEFAULT_DEPTH = 100
+    DEFAULT_DEPTH = 1
 
     def __init__(self, build_options, manifest, repo_url, rev, depth):
         # Extract the host/path portions of the URL and generate a flattened
@@ -262,7 +262,7 @@ class GitFetcher(Fetcher):
             return ChangeStatus()
 
         print("Updating %s -> %s" % (self.repo_dir, self.rev))
-        run_cmd(["git", "fetch", "origin"], cwd=self.repo_dir)
+        run_cmd(["git", "fetch", "origin", self.rev], cwd=self.repo_dir)
         run_cmd(["git", "checkout", self.rev], cwd=self.repo_dir)
         run_cmd(["git", "submodule", "update", "--init"], cwd=self.repo_dir)
 
