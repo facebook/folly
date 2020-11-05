@@ -1281,7 +1281,13 @@ incremental = false
                     continue  # filter out commented lines and ones without git deps
                 for name, conf in dep_to_git.items():
                     if 'git = "{}"'.format(conf["repo_url"]) in line:
-                        crate_name, _, _ = line.partition("=")
+                        pkg_template = ' package = "'
+                        if pkg_template in line:
+                            crate_name, _, _ = line.partition(pkg_template)[
+                                2
+                            ].partition('"')
+                        else:
+                            crate_name, _, _ = line.partition("=")
                         deps_to_crates.setdefault(name, set()).add(crate_name.strip())
         return deps_to_crates
 
