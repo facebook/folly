@@ -1,0 +1,57 @@
+# NOTE there must be no spaces before the '-', so put the comma after.
+# When making changes, be sure to verify the output of the following command to ensure
+# the desired checks are enabled (run from the directory containing a .clang-tidy file):
+# clang-tidy -list-checks
+# NOTE: Please don't disable inheritance from the parent to make sure that common checks get propagated.
+---
+InheritParentConfig: true
+Checks: '
+facebook-hte-BadCall-mlock,
+facebook-hte-PortabilityInclude-WinSock2.h,
+facebook-hte-PortabilityInclude-Windows.h,
+facebook-hte-PortabilityInclude-arpa/inet.h,
+facebook-hte-PortabilityInclude-direct.h,
+facebook-hte-PortabilityInclude-dirent.h,
+facebook-hte-PortabilityInclude-gflags/gflags.h,
+facebook-hte-PortabilityInclude-gmock/gmock.h,
+facebook-hte-PortabilityInclude-gtest/gtest.h,
+facebook-hte-PortabilityInclude-io.h,
+facebook-hte-PortabilityInclude-libgen.h,
+facebook-hte-PortabilityInclude-netdb.h,
+facebook-hte-PortabilityInclude-netinet/in.h,
+facebook-hte-PortabilityInclude-netinet/tcp.h,
+facebook-hte-PortabilityInclude-openssl/asn1.h,
+facebook-hte-PortabilityInclude-openssl/bio.h,
+facebook-hte-PortabilityInclude-openssl/crypto.h,
+facebook-hte-PortabilityInclude-openssl/dh.h,
+facebook-hte-PortabilityInclude-openssl/ec.h,
+facebook-hte-PortabilityInclude-openssl/ecdsa.h,
+facebook-hte-PortabilityInclude-openssl/err.h,
+facebook-hte-PortabilityInclude-openssl/evp.h,
+facebook-hte-PortabilityInclude-openssl/hmac.h,
+facebook-hte-PortabilityInclude-openssl/opensslv.h,
+facebook-hte-PortabilityInclude-openssl/rand.h,
+facebook-hte-PortabilityInclude-openssl/rsa.h,
+facebook-hte-PortabilityInclude-openssl/sha.h,
+facebook-hte-PortabilityInclude-openssl/ssl.h,
+facebook-hte-PortabilityInclude-openssl/tls1.h,
+facebook-hte-PortabilityInclude-openssl/x509.h,
+facebook-hte-PortabilityInclude-openssl/x509v3.h,
+facebook-hte-PortabilityInclude-poll.h,
+facebook-hte-PortabilityInclude-pthread.h,
+facebook-hte-PortabilityInclude-sched.h,
+facebook-hte-PortabilityInclude-semaphore.h,
+facebook-hte-PortabilityInclude-strings.h,
+facebook-hte-PortabilityInclude-sys/file.h,
+facebook-hte-PortabilityInclude-sys/mman.h,
+facebook-hte-PortabilityInclude-sys/resource.h,
+facebook-hte-PortabilityInclude-sys/socket.h,
+facebook-hte-PortabilityInclude-sys/syscall.h,
+facebook-hte-PortabilityInclude-sys/time.h,
+facebook-hte-PortabilityInclude-sys/uio.h,
+facebook-hte-PortabilityInclude-sys/un.h,
+facebook-hte-PortabilityInclude-syslog.h,
+facebook-hte-PortabilityInclude-unistd.h,
+facebook-hte-StdToStringUse,
+'
+...
