@@ -88,6 +88,7 @@ TEST(SharedMutex, basic) {
   runBasicTest<SharedMutexReadPriority>();
   runBasicTest<SharedMutexWritePriority>();
   runBasicTest<SharedMutexSuppressTSAN>();
+  runBasicTest<SharedMutexTracked>();
 }
 
 template <typename Lock>
@@ -169,6 +170,7 @@ TEST(SharedMutex, basic_holders) {
   runBasicHoldersTest<SharedMutexReadPriority>();
   runBasicHoldersTest<SharedMutexWritePriority>();
   runBasicHoldersTest<SharedMutexSuppressTSAN>();
+  runBasicHoldersTest<SharedMutexTracked>();
 }
 
 template <typename Lock>
@@ -196,6 +198,7 @@ TEST(SharedMutex, many_read_locks_with_tokens) {
   runManyReadLocksTestWithTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithTokens<SharedMutexWritePriority>();
   runManyReadLocksTestWithTokens<SharedMutexSuppressTSAN>();
+  runManyReadLocksTestWithTokens<SharedMutexTracked>();
 }
 
 template <typename Lock>
@@ -221,6 +224,7 @@ TEST(SharedMutex, many_read_locks_without_tokens) {
   runManyReadLocksTestWithoutTokens<SharedMutexReadPriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexWritePriority>();
   runManyReadLocksTestWithoutTokens<SharedMutexSuppressTSAN>();
+  runManyReadLocksTestWithoutTokens<SharedMutexTracked>();
 }
 
 template <typename Lock>
@@ -251,6 +255,7 @@ TEST(SharedMutex, timeout_in_past) {
   runTimeoutInPastTest<SharedMutexReadPriority>();
   runTimeoutInPastTest<SharedMutexWritePriority>();
   runTimeoutInPastTest<SharedMutexSuppressTSAN>();
+  runTimeoutInPastTest<SharedMutexTracked>();
 }
 
 template <class Func>
@@ -338,6 +343,7 @@ TEST(SharedMutex, failing_try_timeout) {
   runFailingTryTimeoutTest<SharedMutexReadPriority>();
   runFailingTryTimeoutTest<SharedMutexWritePriority>();
   runFailingTryTimeoutTest<SharedMutexSuppressTSAN>();
+  runFailingTryTimeoutTest<SharedMutexTracked>();
 }
 
 template <typename Lock>
@@ -382,6 +388,7 @@ TEST(SharedMutex, basic_upgrade_tests) {
   runBasicUpgradeTest<SharedMutexReadPriority>();
   runBasicUpgradeTest<SharedMutexWritePriority>();
   runBasicUpgradeTest<SharedMutexSuppressTSAN>();
+  runBasicUpgradeTest<SharedMutexTracked>();
 }
 
 TEST(SharedMutex, read_has_prio) {
