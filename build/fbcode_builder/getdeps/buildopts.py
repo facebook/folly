@@ -55,6 +55,7 @@ class BuildOptions(object):
         use_shipit=False,
         vcvars_path=None,
         allow_system_packages=False,
+        lfs_path=None,
     ):
         """fbcode_builder_dir - the path to either the in-fbsource fbcode_builder dir,
                              or for shipit-transformed repos, the build dir that
@@ -109,6 +110,7 @@ class BuildOptions(object):
         self.host_type = host_type
         self.use_shipit = use_shipit
         self.allow_system_packages = allow_system_packages
+        self.lfs_path = lfs_path
         if vcvars_path is None and is_windows():
 
             # On Windows, the compiler is not available in the PATH by
@@ -453,4 +455,5 @@ def setup_build_options(args, host_type=None):
         use_shipit=args.use_shipit,
         vcvars_path=args.vcvars_path,
         allow_system_packages=args.allow_system_packages,
+        lfs_path=args.lfs_path,
     )

@@ -983,6 +983,11 @@ def parse_args():
         action="store_true",
         default=False,
     )
+    add_common_arg(
+        "--lfs-path",
+        help="Provide a parent directory for lfs when fbsource is unavailable",
+        default=None,
+    )
 
     ap = argparse.ArgumentParser(
         description="Get and build dependencies and projects", parents=[common_args]
