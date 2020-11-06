@@ -149,8 +149,8 @@ TEST_F(CompressionContextPoolTest, testExplicitCreatorDeleter) {
 }
 
 TEST_F(CompressionContextPoolTest, testMultithread) {
-  constexpr size_t numThreads = 64;
-  constexpr size_t numIters = 1 << 14;
+  constexpr size_t numThreads = 64 / (folly::kIsSanitizeThread ? 4 : 1);
+  constexpr size_t numIters = (1 << 14) / (folly::kIsSanitizeThread ? 4 : 1);
   std::vector<std::thread> ts;
   for (size_t i = 0; i < numThreads; i++) {
     ts.emplace_back([& pool = *pool_]() {
