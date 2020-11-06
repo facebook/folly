@@ -150,7 +150,7 @@ retrying(size_t k, Policy&& p, FF&& ff) {
           return p(kk, std::move(e)).via(ka);
         };
         auto futureFF = [ff = static_cast<FF&&>(ff), ka = std::move(ka)](
-                            size_t v) { return ff(v).via(ka); };
+                            size_t v) { return ff(std::move(v)).via(ka); };
         return retrying(k, std::move(futureP), std::move(futureFF));
       });
   return sf;
