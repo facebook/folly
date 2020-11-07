@@ -665,7 +665,7 @@ template <bool Dynamic = false>
 void runMtProdConsEmulatedFutex() {
   using QueueType = MPMCQueue<int, EmulatedFutexAtomic, Dynamic>;
 
-  int n = 100000;
+  const int n = 100000 / (folly::kIsSanitizeThread ? 10 : 1);
   vector<unique_ptr<WriteMethodCaller<QueueType>>> callers;
   callers.emplace_back(std::make_unique<BlockingWriteCaller<QueueType>>());
   callers.emplace_back(std::make_unique<WriteIfNotFullCaller<QueueType>>());
