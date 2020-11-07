@@ -34,6 +34,10 @@ class BatchIoUring : public IoUring {
 INSTANTIATE_TYPED_TEST_CASE_P(AsyncBatchTest, AsyncBatchTest, BatchIoUring);
 
 TEST(IoUringTest, RegisteredBuffers) {
+  if (!IoUring::isAvailable()) {
+    SKIP()
+        << "Not running tests since this kernel version does not support io_uring";
+  }
   constexpr size_t kNumEntries = 2;
   constexpr size_t kBufSize = 4096;
   IoUring ioUring(kNumEntries, folly::AsyncBase::NOT_POLLABLE);
@@ -105,17 +109,3 @@ TEST(IoUringTest, RegisteredBuffers) {
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
-
-  bool avail = IoUring::isAvailable();
-  if (!avail) {
-    LOG(INFO)
-        << "Not running tests since this kernel version does not support io_uring";
-    return 0;
-  }
-
-  return RUN_ALL_TESTS();
-}
