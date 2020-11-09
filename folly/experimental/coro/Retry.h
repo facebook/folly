@@ -87,13 +87,18 @@ auto retryWhen(Func func, RetryDelayFunc retryDelay)
 
 namespace detail {
 
+template <typename Decider>
 class RetryImmediatelyWithLimit {
  public:
-  explicit RetryImmediatelyWithLimit(uint32_t maxRetries) noexcept
-      : retriesRemaining_(maxRetries) {}
+  template <typename Decider2>
+  explicit RetryImmediatelyWithLimit(
+      uint32_t maxRetries,
+      Decider2&& decider) noexcept
+      : retriesRemaining_(maxRetries),
+        decider_(static_cast<Decider2&&>(decider)) {}
 
   Task<void> operator()(exception_wrapper&& ew) & {
-    if (retriesRemaining_ == 0) {
+    if (retriesRemaining_ == 0 || !decider_(ew)) {
       co_yield folly::coro::co_error(std::move(ew));
     }
 
@@ -107,41 +112,56 @@ class RetryImmediatelyWithLimit {
 
  private:
   uint32_t retriesRemaining_;
+  Decider decider_;
+};
+
+struct AlwaysRetry {
+  bool operator()(const folly::exception_wrapper&) noexcept { return true; }
 };
 
 } // namespace detail
 
 // Executes the operation returned by func(), retrying it up to
 // 'maxRetries' times on failure with no delay between retries.
+template <typename Func, typename Decider>
+auto retryN(uint32_t maxRetries, Func&& func, Decider&& decider) {
+  return folly::coro::retryWhen(
+      static_cast<Func&&>(func),
+      detail::RetryImmediatelyWithLimit<remove_cvref_t<Decider>>{
+          maxRetries, static_cast<Decider&&>(decider)});
+}
+
 template <typename Func>
 auto retryN(uint32_t maxRetries, Func&& func) {
-  return folly::coro::retryWhen(
-      static_cast<Func&&>(func), detail::RetryImmediatelyWithLimit{maxRetries});
+  return folly::coro::retryN(
+      maxRetries, static_cast<Func&&>(func), detail::AlwaysRetry{});
 }
 
 namespace detail {
 
-template <typename URNG>
+template <typename URNG, typename Decider>
 class ExponentialBackoffWithJitter {
  public:
-  template <typename URNG2>
+  template <typename URNG2, typename Decider2>
   explicit ExponentialBackoffWithJitter(
       Timekeeper* tk,
       uint32_t maxRetries,
       Duration minBackoff,
       Duration maxBackoff,
       double relativeJitterStdDev,
-      URNG2&& rng) noexcept
+      URNG2&& rng,
+      Decider2&& decider) noexcept
       : timeKeeper_(tk),
         maxRetries_(maxRetries),
         retryCount_(0),
         minBackoff_(minBackoff),
         maxBackoff_(maxBackoff),
         relativeJitterStdDev_(relativeJitterStdDev),
-        randomGen_(static_cast<URNG2&&>(rng)) {}
+        randomGen_(static_cast<URNG2&&>(rng)),
+        decider_(static_cast<Decider2&&>(decider)) {}
 
   Task<void> operator()(exception_wrapper&& ew) & {
-    if (retryCount_ == maxRetries_) {
+    if (retryCount_ == maxRetries_ || !decider_(ew)) {
       co_yield folly::coro::co_error(std::move(ew));
     }
 
@@ -179,6 +199,7 @@ class ExponentialBackoffWithJitter {
   const Duration maxBackoff_;
   const double relativeJitterStdDev_;
   URNG randomGen_;
+  Decider decider_;
 };
 
 } // namespace detail
@@ -186,7 +207,31 @@ class ExponentialBackoffWithJitter {
 // Executes the operation returned from 'func()', retrying it on failure
 // up to 'maxRetries' times, with an exponential backoff, doubling the backoff
 // on average for each retry, applying some random jitter, up to the specified
-// maximum backoff.
+// maximum backoff, passing each error to decider to decide whether to retry or
+// not.
+template <typename Func, typename URNG, typename Decider>
+auto retryWithExponentialBackoff(
+    uint32_t maxRetries,
+    Duration minBackoff,
+    Duration maxBackoff,
+    double relativeJitterStdDev,
+    Timekeeper* timeKeeper,
+    URNG&& rng,
+    Func&& func,
+    Decider&& decider) {
+  return folly::coro::retryWhen(
+      static_cast<Func&&>(func),
+      detail::ExponentialBackoffWithJitter<
+          remove_cvref_t<URNG>,
+          remove_cvref_t<Decider>>{timeKeeper,
+                                   maxRetries,
+                                   minBackoff,
+                                   maxBackoff,
+                                   relativeJitterStdDev,
+                                   static_cast<URNG&&>(rng),
+                                   static_cast<Decider&&>(decider)});
+}
+
 template <typename Func, typename URNG>
 auto retryWithExponentialBackoff(
     uint32_t maxRetries,
@@ -196,15 +241,15 @@ auto retryWithExponentialBackoff(
     Timekeeper* timeKeeper,
     URNG&& rng,
     Func&& func) {
-  return folly::coro::retryWhen(
+  return folly::coro::retryWithExponentialBackoff(
+      maxRetries,
+      minBackoff,
+      maxBackoff,
+      relativeJitterStdDev,
+      timeKeeper,
+      static_cast<URNG&&>(rng),
       static_cast<Func&&>(func),
-      detail::ExponentialBackoffWithJitter<remove_cvref_t<URNG>>{
-          timeKeeper,
-          maxRetries,
-          minBackoff,
-          maxBackoff,
-          relativeJitterStdDev,
-          static_cast<URNG&&>(rng)});
+      detail::AlwaysRetry{});
 }
 
 template <typename Func>
@@ -239,6 +284,25 @@ auto retryWithExponentialBackoff(
       relativeJitterStdDev,
       static_cast<Timekeeper*>(nullptr),
       static_cast<Func&&>(func));
+}
+
+template <typename Func, typename Decider>
+auto retryWithExponentialBackoff(
+    uint32_t maxRetries,
+    Duration minBackoff,
+    Duration maxBackoff,
+    double relativeJitterStdDev,
+    Func&& func,
+    Decider&& decider) {
+  return folly::coro::retryWithExponentialBackoff(
+      maxRetries,
+      minBackoff,
+      maxBackoff,
+      relativeJitterStdDev,
+      static_cast<Timekeeper*>(nullptr),
+      ThreadLocalPRNG(),
+      static_cast<Func&&>(func),
+      static_cast<Decider&&>(decider));
 }
 
 } // namespace folly::coro

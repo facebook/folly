@@ -78,6 +78,23 @@ TEST(RetryN, EventualSuccess) {
   }());
 }
 
+TEST(RetryN, NeverRetry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int runCount = 0;
+    folly::Try<void> result =
+        co_await folly::coro::co_awaitTry(folly::coro::retryN(
+            3,
+            [&]() -> folly::coro::Task<void> {
+              ++runCount;
+              if (runCount <= 2) {
+                co_yield folly::coro::co_error(SomeError{runCount});
+              }
+            },
+            [](const folly::exception_wrapper&) { return false; }));
+    EXPECT_EQ(1, runCount);
+  }());
+}
+
 TEST(RetryWithJitter, Success) {
   folly::coro::blockingWait([]() -> folly::coro::Task<void> {
     int runCount = 0;
@@ -142,6 +159,64 @@ TEST(RetryWithJitter, EventualSuccess) {
               co_return;
             }));
     EXPECT_TRUE(result.hasValue());
+    EXPECT_EQ(3, runCount);
+  }());
+}
+
+TEST(RetryWithDecider, AlwaysRetry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int runCount = 0;
+    folly::Try<void> result = co_await folly::coro::co_awaitTry(
+        folly::coro::retryWithExponentialBackoff(
+            5, 0ms, 1ms, 0.0, [&]() -> folly::coro::Task<void> {
+              ++runCount;
+              co_yield folly::coro::co_error(SomeError(1));
+            }));
+    EXPECT_TRUE(result.hasException());
+    EXPECT_EQ(6, runCount);
+  }());
+}
+
+TEST(RetryWithDecider, NeverRetry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int runCount = 0;
+    folly::Try<void> result = co_await folly::coro::co_awaitTry(
+        folly::coro::retryWithExponentialBackoff(
+            5,
+            0ms,
+            1ms,
+            0.0,
+            [&]() -> folly::coro::Task<void> {
+              ++runCount;
+              co_yield folly::coro::co_error(SomeError(1));
+            },
+            [](const folly::exception_wrapper&) { return false; }));
+    EXPECT_TRUE(result.hasException());
+    EXPECT_EQ(1, runCount);
+  }());
+}
+
+TEST(RetryWithDecider, SometimesRetry) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    int runCount = 0;
+    folly::Try<void> result = co_await folly::coro::co_awaitTry(
+        folly::coro::retryWithExponentialBackoff(
+            5,
+            0ms,
+            1ms,
+            0.0,
+            [&]() -> folly::coro::Task<void> {
+              ++runCount;
+              co_yield folly::coro::co_error(SomeError(runCount));
+            },
+            [](const folly::exception_wrapper& ew) {
+              try {
+                ew.throw_exception();
+              } catch (const SomeError& e) {
+                return e.value < 3;
+              }
+            }));
+    EXPECT_TRUE(result.hasException());
     EXPECT_EQ(3, runCount);
   }());
 }
