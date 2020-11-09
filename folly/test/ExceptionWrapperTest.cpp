@@ -589,7 +589,7 @@ TEST(ExceptionWrapper, handle_std_exception) {
   auto expect_runtime_error_yes_catch_all = [&](const exception_wrapper& ew) {
     ew.handle(
         [](const std::logic_error&) { ADD_FAILURE(); },
-        [&](const std::runtime_error&) { handled = true; },
+        [&](const std::runtime_error&) noexcept { handled = true; },
         [](const std::exception&) { ADD_FAILURE(); },
         [](...) { ADD_FAILURE(); });
   };
@@ -606,7 +606,7 @@ TEST(ExceptionWrapper, handle_std_exception) {
 
   auto expect_runtime_error_no_catch_all = [&](const exception_wrapper& ew) {
     ew.handle(
-        [](const std::logic_error&) { ADD_FAILURE(); },
+        [](const std::logic_error&) noexcept { ADD_FAILURE(); },
         [&](const std::runtime_error&) { handled = true; },
         [](const std::exception&) { ADD_FAILURE(); });
   };
