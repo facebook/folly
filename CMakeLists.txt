@@ -166,7 +166,6 @@ list(REMOVE_ITEM files
   ${FOLLY_DIR}/cybld/folly/executor.cpp
 )
 list(REMOVE_ITEM hfiles
-  ${FOLLY_DIR}/python/executor.h
   ${FOLLY_DIR}/python/fibers.h
   ${FOLLY_DIR}/python/GILAwareManualExecutor.h
 )
