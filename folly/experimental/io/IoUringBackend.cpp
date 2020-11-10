@@ -15,6 +15,7 @@
  */
 
 #include <folly/experimental/io/IoUringBackend.h>
+#include <folly/portability/GFlags.h>
 #include <folly/Likely.h>
 #include <folly/String.h>
 #include <folly/container/F14Map.h>

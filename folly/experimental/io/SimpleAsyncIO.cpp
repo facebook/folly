@@ -25,7 +25,7 @@
 #include <folly/experimental/io/IoUring.h>
 #endif
 
-#if !defined(AIO_SUPPORTED) && !defined(IOURING_SUPORTED)
+#if !defined(AIO_SUPPORTED) && !defined(IOURING_SUPPORTED)
 #error "Cannot build without at least one of AsyncIO.h and IoUring.h"
 #endif
 
