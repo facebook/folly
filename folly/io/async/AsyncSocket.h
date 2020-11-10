@@ -895,7 +895,10 @@ class AsyncSocket : public AsyncTransport {
   class WriteRequest {
    public:
     WriteRequest(AsyncSocket* socket, WriteCallback* callback)
-        : socket_(socket), callback_(callback) {}
+        : socket_(socket),
+          callback_(callback),
+          releaseIOBufCallback_(
+              callback ? callback->getReleaseIOBufCallback() : nullptr) {}
 
     virtual void start() {}
 
@@ -934,6 +937,7 @@ class AsyncSocket : public AsyncTransport {
     AsyncSocket* socket_; ///< parent socket
     WriteRequest* next_{nullptr}; ///< pointer to next WriteRequest
     WriteCallback* callback_; ///< completion callback
+    ReleaseIOBufCallback* releaseIOBufCallback_; ///< release IOBuf callback
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
 
@@ -1291,9 +1295,13 @@ class AsyncSocket : public AsyncTransport {
 
   uint32_t getNextZeroCopyBufId() { return zeroCopyBufId_++; }
   void adjustZeroCopyFlags(folly::WriteFlags& flags);
-  void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void addZeroCopyBuf(
+      std::unique_ptr<folly::IOBuf>&& buf,
+      ReleaseIOBufCallback* cb);
   void addZeroCopyBuf(folly::IOBuf* ptr);
-  void setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void setZeroCopyBuf(
+      std::unique_ptr<folly::IOBuf>&& buf,
+      ReleaseIOBufCallback* cb);
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
@@ -1307,6 +1315,7 @@ class AsyncSocket : public AsyncTransport {
 
   struct IOBufInfo {
     uint32_t count_{0};
+    ReleaseIOBufCallback* cb_{nullptr};
     std::unique_ptr<folly::IOBuf> buf_;
   };
 

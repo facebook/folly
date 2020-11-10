@@ -55,12 +55,16 @@ class ConnCallback : public folly::AsyncSocket::ConnectCallback {
   VoidCallback errorCallback;
 };
 
-class WriteCallback : public folly::AsyncTransport::WriteCallback {
+class WriteCallback : public folly::AsyncTransport::WriteCallback,
+                      public folly::AsyncWriter::ReleaseIOBufCallback {
  public:
-  WriteCallback()
+  explicit WriteCallback(bool enableReleaseIOBufCallback = false)
       : state(STATE_WAITING),
         bytesWritten(0),
-        exception(folly::AsyncSocketException::UNKNOWN, "none") {}
+        numIoBufCount(0),
+        numIoBufBytes(0),
+        exception(folly::AsyncSocketException::UNKNOWN, "none"),
+        releaseIOBufCallback(enableReleaseIOBufCallback ? this : nullptr) {}
 
   void writeSuccess() noexcept override {
     state = STATE_SUCCEEDED;
@@ -81,11 +85,24 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback {
     }
   }
 
+  folly::AsyncWriter::ReleaseIOBufCallback*
+  getReleaseIOBufCallback() noexcept override {
+    return releaseIOBufCallback;
+  }
+
+  void releaseIOBuf(std::unique_ptr<folly::IOBuf> ioBuf) noexcept override {
+    numIoBufCount += ioBuf->countChainElements();
+    numIoBufBytes += ioBuf->computeChainDataLength();
+  }
+
   StateEnum state;
   std::atomic<size_t> bytesWritten;
+  std::atomic<size_t> numIoBufCount;
+  std::atomic<size_t> numIoBufBytes;
   folly::AsyncSocketException exception;
   VoidCallback successCallback;
   VoidCallback errorCallback;
+  ReleaseIOBufCallback* releaseIOBufCallback;
 };
 
 class ReadCallback : public folly::AsyncTransport::ReadCallback {

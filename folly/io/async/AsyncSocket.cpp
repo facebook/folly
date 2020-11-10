@@ -120,6 +120,9 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
   }
 
   void destroy() override {
+    if (ioBuf_ && releaseIOBufCallback_) {
+      releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
+    }
     this->~BytesWriteRequest();
     free(this);
   }
@@ -138,7 +141,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
     if (bytesWritten_) {
       if (socket_->isZeroCopyRequest(writeFlags)) {
         if (isComplete()) {
-          socket_->addZeroCopyBuf(std::move(ioBuf_));
+          socket_->addZeroCopyBuf(std::move(ioBuf_), releaseIOBufCallback_);
         } else {
           socket_->addZeroCopyBuf(ioBuf_.get());
         }
@@ -147,7 +150,7 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
         // with zero copy but not the last one
         if (isComplete() && zeroCopyRequest_ &&
             socket_->containsZeroCopyBuf(ioBuf_.get())) {
-          socket_->setZeroCopyBuf(std::move(ioBuf_));
+          socket_->setZeroCopyBuf(std::move(ioBuf_), releaseIOBufCallback_);
         }
       }
     }
@@ -172,7 +175,11 @@ class AsyncSocket::BytesWriteRequest : public AsyncSocket::WriteRequest {
       if (ioBuf_) {
         for (uint32_t i = opsWritten_; i != 0; --i) {
           assert(ioBuf_);
-          ioBuf_ = ioBuf_->pop();
+          auto next = ioBuf_->pop();
+          if (releaseIOBufCallback_) {
+            releaseIOBufCallback_->releaseIOBuf(std::move(ioBuf_));
+          }
+          ioBuf_ = std::move(next);
         }
       }
     }
@@ -968,7 +975,9 @@ void AsyncSocket::adjustZeroCopyFlags(folly::WriteFlags& flags) {
   }
 }
 
-void AsyncSocket::addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
+void AsyncSocket::addZeroCopyBuf(
+    std::unique_ptr<folly::IOBuf>&& buf,
+    ReleaseIOBufCallback* cb) {
   uint32_t id = getNextZeroCopyBufId();
   folly::IOBuf* ptr = buf.get();
 
@@ -977,6 +986,7 @@ void AsyncSocket::addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
   p.count_++;
   CHECK(p.buf_.get() == nullptr);
   p.buf_ = std::move(buf);
+  p.cb_ = cb;
 }
 
 void AsyncSocket::addZeroCopyBuf(folly::IOBuf* ptr) {
@@ -993,18 +1003,24 @@ void AsyncSocket::releaseZeroCopyBuf(uint32_t id) {
   auto iter1 = idZeroCopyBufInfoMap_.find(ptr);
   CHECK(iter1 != idZeroCopyBufInfoMap_.end());
   if (0 == --iter1->second.count_) {
+    if (iter1->second.cb_) {
+      iter1->second.cb_->releaseIOBuf(std::move(iter1->second.buf_));
+    }
     idZeroCopyBufInfoMap_.erase(iter1);
   }
 
   idZeroCopyBufPtrMap_.erase(iter);
 }
 
-void AsyncSocket::setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf) {
+void AsyncSocket::setZeroCopyBuf(
+    std::unique_ptr<folly::IOBuf>&& buf,
+    ReleaseIOBufCallback* cb) {
   folly::IOBuf* ptr = buf.get();
   auto& p = idZeroCopyBufInfoMap_[ptr];
   CHECK(p.buf_.get() == nullptr);
 
   p.buf_ = std::move(buf);
+  p.cb_ = cb;
 }
 
 bool AsyncSocket::containsZeroCopyBuf(folly::IOBuf* ptr) {
@@ -1123,6 +1139,15 @@ void AsyncSocket::writeImpl(
   unique_ptr<IOBuf> ioBuf(std::move(buf));
   eventBase_->dcheckIsInEventBaseThread();
 
+  auto* releaseIOBufCallback =
+      callback ? callback->getReleaseIOBufCallback() : nullptr;
+
+  SCOPE_EXIT {
+    if (ioBuf && releaseIOBufCallback) {
+      releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
+    }
+  };
+
   totalAppBytesScheduledForWrite_ += totalBytes;
 
   if (shutdownFlags_ & (SHUT_WRITE | SHUT_WRITE_PENDING)) {
@@ -1165,9 +1190,13 @@ void AsyncSocket::writeImpl(
       } else if (countWritten == count) {
         // done, add the whole buffer
         if (countWritten && isZeroCopyRequest(flags)) {
-          addZeroCopyBuf(std::move(ioBuf));
+          addZeroCopyBuf(std::move(ioBuf), releaseIOBufCallback);
         } else {
-          ioBuf.reset();
+          if (releaseIOBufCallback) {
+            releaseIOBufCallback->releaseIOBuf(std::move(ioBuf));
+          } else {
+            ioBuf.reset();
+          }
         }
 
         // We successfully wrote everything.

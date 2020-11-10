@@ -272,6 +272,13 @@ class AsyncReader {
 
 class AsyncWriter {
  public:
+  class ReleaseIOBufCallback {
+   public:
+    virtual ~ReleaseIOBufCallback() = default;
+
+    virtual void releaseIOBuf(std::unique_ptr<folly::IOBuf>) noexcept = 0;
+  };
+
   class WriteCallback {
    public:
     virtual ~WriteCallback() = default;
@@ -298,6 +305,10 @@ class AsyncWriter {
     virtual void writeErr(
         size_t bytesWritten,
         const AsyncSocketException& ex) noexcept = 0;
+
+    virtual ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept {
+      return nullptr;
+    }
   };
 
   /**

@@ -219,8 +219,9 @@ TEST_P(AsyncSocketConnectTest, ConnectAndWrite) {
   // write()
   char buf[128];
   memset(buf, 'a', sizeof(buf));
-  WriteCallback wcb;
-  socket->write(&wcb, buf, sizeof(buf));
+  WriteCallback wcb(true /*enableReleaseIOBufCallback*/);
+  // use writeChain so we can pass an IOBuf
+  socket->writeChain(&wcb, IOBuf::copyBuffer(buf, sizeof(buf)));
 
   // Loop.  We don't bother accepting on the server socket yet.
   // The kernel should be able to buffer the write request so it can succeed.
@@ -228,6 +229,8 @@ TEST_P(AsyncSocketConnectTest, ConnectAndWrite) {
 
   ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
   ASSERT_EQ(wcb.state, STATE_SUCCEEDED);
+  ASSERT_EQ(wcb.numIoBufCount, 1);
+  ASSERT_EQ(wcb.numIoBufBytes, sizeof(buf));
 
   // Make sure the server got a connection and received the data
   socket->close();
