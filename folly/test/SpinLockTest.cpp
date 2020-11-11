@@ -33,9 +33,7 @@ struct LockedVal {
   int ar[1024];
   LOCK lock;
 
-  LockedVal() {
-    memset(ar, 0, sizeof ar);
-  }
+  LockedVal() { memset(ar, 0, sizeof ar); }
 };
 
 template <typename LOCK>

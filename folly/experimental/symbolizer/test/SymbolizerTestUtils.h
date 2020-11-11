@@ -58,9 +58,7 @@ class InlineFunctionsWrapper {
   FOLLY_ALWAYS_INLINE static void staticInlineBar(FrameArray<100>& frames);
 
   // Dummy non-inline function.
-  size_t dummy() const {
-    return dummy_;
-  }
+  size_t dummy() const { return dummy_; }
 
   size_t dummy_ = 0;
 };

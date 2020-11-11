@@ -64,9 +64,7 @@ class ZeroCopyTestAsyncSocket {
     }
   }
 
-  ~ZeroCopyTestAsyncSocket() {
-    clearBuffers();
-  }
+  ~ZeroCopyTestAsyncSocket() { clearBuffers(); }
 
   void connect(const folly::SocketAddress& remote) {
     if (sock_) {

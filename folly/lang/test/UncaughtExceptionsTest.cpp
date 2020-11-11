@@ -30,9 +30,7 @@ class Validator {
       : expectedCount_(expectedCount), msg_(msg) {}
 
   // Automatic validation during destruction.
-  ~Validator() {
-    validate();
-  }
+  ~Validator() { validate(); }
 
   // Invoke to validate explicitly.
   void validate() {

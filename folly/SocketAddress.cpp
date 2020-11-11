@@ -44,9 +44,7 @@ namespace {
  */
 struct ScopedAddrInfo {
   explicit ScopedAddrInfo(struct addrinfo* addrinfo) : info(addrinfo) {}
-  ~ScopedAddrInfo() {
-    freeaddrinfo(info);
-  }
+  ~ScopedAddrInfo() { freeaddrinfo(info); }
 
   struct addrinfo* info;
 };
@@ -98,9 +96,7 @@ struct HostAndPort {
     }
   }
 
-  ~HostAndPort() {
-    free(allocated);
-  }
+  ~HostAndPort() { free(allocated); }
 
   const char* host;
   const char* port;

@@ -25,10 +25,6 @@
 #include <strings.h>
 #endif
 
-#if !FOLLY_HAVE_MEMRCHR
-extern "C" void* memrchr(const void* s, int c, size_t n);
-#endif
-
 #if defined(_WIN32) || defined(__FreeBSD__)
 extern "C" char* strndup(const char* a, size_t len);
 #endif

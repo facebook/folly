@@ -68,9 +68,7 @@ class StackTraceStack {
   /**
    * Is the stack empty?
    */
-  bool empty() const {
-    return !state_[kTopIdx];
-  }
+  bool empty() const { return !state_[kTopIdx]; }
 
   /**
    * Return the top stack trace, or nullptr if the stack is empty.
@@ -90,9 +88,7 @@ class StackTraceStack {
 
   // In debug mode, we assert that we're in zero-initialized memory by
   // checking that the two guards around the Node* from top() are zero.
-  void checkGuard() const {
-    assert(state_[0] == 0 && state_[2] == 0);
-  }
+  void checkGuard() const { assert(state_[0] == 0 && state_[2] == 0); }
 
   Node* state_[kIsDebug ? 3 : 1];
 };

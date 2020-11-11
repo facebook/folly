@@ -66,7 +66,9 @@ EventBase* EventBaseManager::getEventBase() const {
   // have one?
   auto* info = localStore_.get();
   if (!info) {
-    info = func_ ? new EventBaseInfo(func_()) : new EventBaseInfo();
+    auto evb = std::make_unique<EventBase>(
+        EventBase::Options().setBackendFactory(func_));
+    info = new EventBaseInfo(evb.release(), true);
     localStore_.reset(info);
 
     if (observer_) {

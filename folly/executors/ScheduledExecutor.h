@@ -37,9 +37,7 @@ class ScheduledExecutor : public virtual Executor {
   void add(Func) override = 0;
 
   /// Alias for add() (for Rx consistency)
-  void schedule(Func&& a) {
-    add(std::move(a));
-  }
+  void schedule(Func&& a) { add(std::move(a)); }
 
   /// Schedule a Func to be executed after dur time has elapsed
   /// Expect millisecond resolution at best.
@@ -54,8 +52,6 @@ class ScheduledExecutor : public virtual Executor {
   }
 
   /// Get this executor's notion of time. Must be threadsafe.
-  virtual TimePoint now() {
-    return std::chrono::steady_clock::now();
-  }
+  virtual TimePoint now() { return std::chrono::steady_clock::now(); }
 };
 } // namespace folly

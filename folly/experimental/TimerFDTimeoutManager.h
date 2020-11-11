@@ -37,9 +37,7 @@ class TimerFDTimeoutManager : public TimerFD {
     virtual ~Callback() = default;
 
     virtual void timeoutExpired() noexcept = 0;
-    virtual void callbackCanceled() noexcept {
-      timeoutExpired();
-    }
+    virtual void callbackCanceled() noexcept { timeoutExpired(); }
 
     const std::chrono::microseconds& getExpirationTime() const {
       return expirationTime_;
@@ -74,9 +72,7 @@ class TimerFDTimeoutManager : public TimerFD {
       }
     }
 
-    bool cancelTimeout() {
-      return mgr_->cancelTimeout(this);
-    }
+    bool cancelTimeout() { return mgr_->cancelTimeout(this); }
 
    private:
     TimerFDTimeoutManager* mgr_{nullptr};

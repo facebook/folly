@@ -78,25 +78,15 @@ class InitLock {
   Lock lock_;
 
  public:
-  InitLock() {
-    lock_.init();
-  }
-  void lock() {
-    lock_.lock();
-  }
-  void unlock() {
-    lock_.unlock();
-  }
+  InitLock() { lock_.init(); }
+  void lock() { lock_.lock(); }
+  void unlock() { lock_.unlock(); }
 };
 
 class GoogleSpinLockAdapter {
  public:
-  void lock() {
-    lock_.Lock();
-  }
-  void unlock() {
-    lock_.Unlock();
-  }
+  void lock() { lock_.Lock(); }
+  void unlock() { lock_.Unlock(); }
 
  private:
   SpinLock lock_;

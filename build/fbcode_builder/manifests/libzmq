@@ -6,7 +6,7 @@ zeromq-devel
 zeromq
 
 [debs]
-libzmq-dev
+libzmq3-dev
 
 [download]
 url = https://github.com/zeromq/libzmq/releases/download/v4.3.1/zeromq-4.3.1.tar.gz

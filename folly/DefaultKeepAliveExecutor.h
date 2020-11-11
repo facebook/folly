@@ -29,9 +29,7 @@ namespace folly {
 /// threadsafe.
 class DefaultKeepAliveExecutor : public virtual Executor {
  public:
-  virtual ~DefaultKeepAliveExecutor() {
-    DCHECK(!keepAlive_);
-  }
+  virtual ~DefaultKeepAliveExecutor() { DCHECK(!keepAlive_); }
 
   folly::Executor::KeepAlive<> weakRef() {
     return WeakRef::create(controlBlock_, this);
@@ -78,9 +76,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
       }
     }
 
-    virtual uint8_t getNumPriorities() const override {
-      return numPriorities_;
-    }
+    virtual uint8_t getNumPriorities() const override { return numPriorities_; }
 
    private:
     WeakRef(std::shared_ptr<ControlBlock> controlBlock, Executor* executor)
@@ -88,7 +84,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
           executor_(executor),
           numPriorities_(executor->getNumPriorities()) {}
 
-    bool keepAliveAcquire() override {
+    bool keepAliveAcquire() noexcept override {
       auto keepAliveCount =
           keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
       // We should never increment from 0
@@ -96,7 +92,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
       return true;
     }
 
-    void keepAliveRelease() override {
+    void keepAliveRelease() noexcept override {
       auto keepAliveCount =
           keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
       DCHECK(keepAliveCount >= 1);
@@ -130,7 +126,7 @@ class DefaultKeepAliveExecutor : public virtual Executor {
     uint8_t numPriorities_;
   };
 
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     auto keepAliveCount =
         controlBlock_->keepAliveCount_.fetch_add(1, std::memory_order_relaxed);
     // We should never increment from 0
@@ -138,9 +134,9 @@ class DefaultKeepAliveExecutor : public virtual Executor {
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     auto keepAliveCount =
-        controlBlock_->keepAliveCount_.fetch_sub(1, std::memory_order_acquire);
+        controlBlock_->keepAliveCount_.fetch_sub(1, std::memory_order_acq_rel);
     DCHECK(keepAliveCount >= 1);
 
     if (keepAliveCount == 1) {

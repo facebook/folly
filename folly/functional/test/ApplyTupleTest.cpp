@@ -33,13 +33,9 @@ void func(int a, int b, double c) {
 }
 
 struct Wat {
-  void func(int a, int b, double c) {
-    ::func(a, b, c);
-  }
+  void func(int a, int b, double c) { ::func(a, b, c); }
 
-  double retVal(int a, double b) {
-    return a + b;
-  }
+  double retVal(int a, double b) { return a + b; }
 
   Wat() {}
   Wat(Wat const&) = delete;
@@ -48,25 +44,17 @@ struct Wat {
 };
 
 struct Overloaded {
-  int func(int) {
-    return 0;
-  }
-  bool func(bool) {
-    return true;
-  }
+  int func(int) { return 0; }
+  bool func(bool) { return true; }
 };
 
 struct Func {
-  int operator()() const {
-    return 1;
-  }
+  int operator()() const { return 1; }
 };
 
 struct CopyCount {
   CopyCount() {}
-  CopyCount(CopyCount const&) {
-    std::cout << "copy count copy ctor\n";
-  }
+  CopyCount(CopyCount const&) { std::cout << "copy count copy ctor\n"; }
 };
 
 void anotherFunc(CopyCount const&) {}
@@ -91,9 +79,7 @@ struct GuardObj : GuardObjBase {
         f_(std::move(g.f_)),
         args_(std::move(g.args_)) {}
 
-  ~GuardObj() {
-    folly::apply(f_, args_);
-  }
+  ~GuardObj() { folly::apply(f_, args_); }
 
   GuardObj(const GuardObj&) = delete;
   GuardObj& operator=(const GuardObj&) = delete;
@@ -176,12 +162,8 @@ TEST(ApplyTuple, Mutable) {
 TEST(ApplyTuple, ConstOverloads) {
   struct ConstOverloaded {
     ConstOverloaded() {}
-    int operator()() {
-      return 101;
-    }
-    int operator()() const {
-      return 102;
-    }
+    int operator()() { return 101; }
+    int operator()() const { return 102; }
   };
 
   ConstOverloaded covl;
@@ -201,15 +183,9 @@ TEST(ApplyTuple, ConstOverloads) {
 TEST(ApplyTuple, RefOverloads) {
   struct RefOverloaded {
     RefOverloaded() {}
-    int operator()() & {
-      return 201;
-    }
-    int operator()() const& {
-      return 202;
-    }
-    int operator()() && {
-      return 203;
-    }
+    int operator()() & { return 201; }
+    int operator()() const& { return 202; }
+    int operator()() && { return 203; }
   };
 
   RefOverloaded rovl;
@@ -230,12 +206,8 @@ TEST(ApplyTuple, RefOverloads) {
 
 struct MemberFunc {
   int x;
-  int getX() const {
-    return x;
-  }
-  void setX(int xx) {
-    x = xx;
-  }
+  int getX() const { return x; }
+  void setX(int xx) { x = xx; }
 };
 
 TEST(ApplyTuple, MemberFunction) {
@@ -530,9 +502,7 @@ TEST(IsApplicableR, Basic) {
 
 TEST(IsNothrowApplicableR, Basic) {
   {
-    auto f = []() noexcept->int {
-      return {};
-    };
+    auto f = []() noexcept->int { return {}; };
     using F = decltype(f);
     EXPECT_TRUE((folly::is_nothrow_applicable_r_v<double, F, std::tuple<>>));
     EXPECT_FALSE(

@@ -22,7 +22,9 @@
 #include <folly/Demangle.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/experimental/symbolizer/ElfCache.h>
 #include <folly/experimental/symbolizer/SymbolizedFrame.h>
+#include <folly/experimental/symbolizer/detail/Debug.h>
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
@@ -30,6 +32,12 @@
 namespace folly {
 namespace symbolizer {
 namespace test {
+
+namespace {
+uintptr_t getBinaryOffset() {
+  return detail::get_r_debug()->r_map->l_addr;
+}
+} // namespace
 
 void foo() {}
 
@@ -159,7 +167,7 @@ void verifyStackTrace(
 
   FrameArray<10> singleAddressFrames;
   singleAddressFrames.frameCount = 1;
-  singleAddressFrames.addresses[0] = frames.frames[7].addr;
+  singleAddressFrames.addresses[0] = frames.frames[7].addr + getBinaryOffset();
   // Two inline function calls are added into frames.
   EXPECT_EQ(3, symbolizer.symbolize(singleAddressFrames));
 }
@@ -189,9 +197,7 @@ class ClassWithInlineFunctions {
   }
 
   // Dummy non-inline function.
-  size_t dummy() const {
-    return dummy_;
-  }
+  size_t dummy() const { return dummy_; }
 
   size_t dummy_ = 0;
 };
@@ -247,7 +253,7 @@ TEST(SymbolizerTest, InlineFunctionWithoutEnoughFrames) {
   symbolizer.symbolize(frames);
 
   // The address of the line where lexicalBlockBar calls inlineBar.
-  uintptr_t address = frames.frames[7].addr;
+  uintptr_t address = frames.frames[7].addr + getBinaryOffset();
   std::array<SymbolizedFrame, 2> limitedFrames;
   symbolizer.symbolize(
       folly::Range<const uintptr_t*>(&address, 1), folly::range(limitedFrames));
@@ -430,6 +436,34 @@ TEST(SymbolizerTest, InlineFunctionWithCache) {
   inlineBar<100>(frames2);
   symbolizer.symbolize(frames2);
   compareFrames(frames, frames2);
+}
+
+int64_t functionWithTwoParameters(size_t a, int32_t b) {
+  return a + b;
+}
+
+TEST(Dwarf, FindParameterNames) {
+  SKIP_IF(!Symbolizer::isAvailable());
+
+  auto address = reinterpret_cast<uintptr_t>(functionWithTwoParameters);
+  Symbolizer symbolizer;
+  SymbolizedFrame frame;
+  ASSERT_TRUE(symbolizer.symbolize(address, frame));
+
+  std::vector<folly::StringPiece> names;
+  Dwarf dwarf(frame.file.get());
+  LocationInfo info;
+  folly::Range<SymbolizedFrame*> extraInlineFrames = {};
+  dwarf.findAddress(
+      frame.addr,
+      LocationInfoMode::FAST,
+      info,
+      extraInlineFrames,
+      [&](const folly::StringPiece name) { names.push_back(name); });
+
+  ASSERT_EQ(2, names.size());
+  ASSERT_EQ("a", names[0]);
+  ASSERT_EQ("b", names[1]);
 }
 
 } // namespace test

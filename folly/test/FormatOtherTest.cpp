@@ -45,9 +45,7 @@ TEST(FormatOther, file) {
     {
       FILE* fp = fdopen(fds[1], "wb");
       PCHECK(fp);
-      SCOPE_EXIT {
-        fclose(fp);
-      };
+      SCOPE_EXIT { fclose(fp); };
       writeTo(fp, format("{} {}", 42, 23)); // <= 512 bytes (PIPE_BUF)
     }
 

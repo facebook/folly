@@ -24,20 +24,88 @@ namespace folly {
 namespace test {
 namespace async_base_test_lib_detail {
 INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, IoUring);
+
+class BatchIoUring : public IoUring {
+ public:
+  static constexpr size_t kMaxSubmit = 64;
+  BatchIoUring()
+      : IoUring(kBatchNumEntries, folly::AsyncBase::NOT_POLLABLE, kMaxSubmit) {}
+};
+INSTANTIATE_TYPED_TEST_CASE_P(AsyncBatchTest, AsyncBatchTest, BatchIoUring);
+
+TEST(IoUringTest, RegisteredBuffers) {
+  if (!IoUring::isAvailable()) {
+    SKIP()
+        << "Not running tests since this kernel version does not support io_uring";
+  }
+  constexpr size_t kNumEntries = 2;
+  constexpr size_t kBufSize = 4096;
+  IoUring ioUring(kNumEntries, folly::AsyncBase::NOT_POLLABLE);
+
+  auto tempFile = folly::test::TempFileUtil::getTempFile(kDefaultFileSize);
+  int fd = ::open(tempFile.path().c_str(), O_DIRECT | O_RDWR);
+  SKIP_IF(fd == -1) << "Tempfile can't be opened with O_DIRECT: "
+                    << folly::errnoStr(errno);
+  SCOPE_EXIT { ::close(fd); };
+
+  folly::test::async_base_test_lib_detail::TestUtil::ManagedBuffer
+      regFdWriteBuf =
+          folly::test::async_base_test_lib_detail::TestUtil::allocateAligned(
+              kBufSize),
+      readBuf =
+          folly::test::async_base_test_lib_detail::TestUtil::allocateAligned(
+              kBufSize),
+      regFdReadBuf =
+          folly::test::async_base_test_lib_detail::TestUtil::allocateAligned(
+              kBufSize);
+
+  ::memset(regFdWriteBuf.get(), '0', kBufSize);
+  ::memset(readBuf.get(), 'A', kBufSize);
+  ::memset(regFdReadBuf.get(), 'Z', kBufSize);
+
+  struct iovec iov[2];
+  iov[0].iov_base = regFdWriteBuf.get();
+  iov[0].iov_len = kBufSize;
+  iov[1].iov_base = regFdReadBuf.get();
+  iov[1].iov_len = kBufSize;
+
+  CHECK_EQ(ioUring.register_buffers(iov, 2), 0);
+
+  IoUring::Op regFdWriteOp, readOp, regFdReadOp;
+  size_t completed = 0;
+
+  regFdWriteOp.setNotificationCallback(
+      [&](folly::AsyncBaseOp*) { ++completed; });
+  regFdWriteOp.pwrite(fd, regFdWriteBuf.get(), kBufSize, 0, 0 /*buf_index*/);
+
+  readOp.setNotificationCallback([&](folly::AsyncBaseOp*) { ++completed; });
+  readOp.pread(fd, readBuf.get(), kBufSize, 0);
+  regFdReadOp.setNotificationCallback(
+      [&](folly::AsyncBaseOp*) { ++completed; });
+  regFdReadOp.pread(fd, regFdReadBuf.get(), kBufSize, 0, 1 /*buf_index*/);
+
+  // write
+  ioUring.submit(&regFdWriteOp);
+  ioUring.wait(1);
+  CHECK_EQ(completed, 1);
+  CHECK_EQ(regFdWriteOp.result(), kBufSize);
+
+  // read - both via regular and registered buffers
+  completed = 0;
+  ioUring.submit(&readOp);
+  ioUring.submit(&regFdReadOp);
+
+  ioUring.wait(kNumEntries);
+
+  CHECK_EQ(completed, kNumEntries);
+  CHECK_EQ(readOp.result(), kBufSize);
+  CHECK_EQ(regFdReadOp.result(), kBufSize);
+
+  // make sure we read the same data
+  CHECK_EQ(::memcmp(readBuf.get(), regFdWriteBuf.get(), kBufSize), 0);
+  CHECK_EQ(::memcmp(regFdReadBuf.get(), regFdWriteBuf.get(), kBufSize), 0);
+}
+
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly
-
-int main(int argc, char** argv) {
-  ::testing::InitGoogleTest(&argc, argv);
-  folly::init(&argc, &argv);
-
-  bool avail = IoUring::isAvailable();
-  if (!avail) {
-    LOG(INFO)
-        << "Not running tests since this kernel version does not support io_uring";
-    return 0;
-  }
-
-  return RUN_ALL_TESTS();
-}

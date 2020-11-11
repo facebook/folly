@@ -68,18 +68,10 @@ TEST(DiscriminatedPtr, Basic) {
 TEST(DiscriminatedPtr, Apply) {
   struct Foo {};
   struct Visitor {
-    std::string operator()(int* /* ptr */) {
-      return "int";
-    }
-    std::string operator()(const int* /* ptr */) {
-      return "const int";
-    }
-    std::string operator()(Foo* /* ptr */) {
-      return "Foo";
-    }
-    std::string operator()(const Foo* /* ptr */) {
-      return "const Foo";
-    }
+    std::string operator()(int* /* ptr */) { return "int"; }
+    std::string operator()(const int* /* ptr */) { return "const int"; }
+    std::string operator()(Foo* /* ptr */) { return "Foo"; }
+    std::string operator()(const Foo* /* ptr */) { return "const Foo"; }
   };
 
   typedef DiscriminatedPtr<int, Foo> Ptr;
@@ -105,18 +97,10 @@ TEST(DiscriminatedPtr, Apply) {
 TEST(DiscriminatedPtr, ApplyVoid) {
   struct Foo {};
   struct Visitor {
-    void operator()(int* /* ptr */) {
-      result = "int";
-    }
-    void operator()(const int* /* ptr */) {
-      result = "const int";
-    }
-    void operator()(Foo* /* ptr */) {
-      result = "Foo";
-    }
-    void operator()(const Foo* /* ptr */) {
-      result = "const Foo";
-    }
+    void operator()(int* /* ptr */) { result = "int"; }
+    void operator()(const int* /* ptr */) { result = "const int"; }
+    void operator()(Foo* /* ptr */) { result = "Foo"; }
+    void operator()(const Foo* /* ptr */) { result = "const Foo"; }
 
     std::string result;
   };

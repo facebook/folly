@@ -26,13 +26,9 @@
 /// Types
 
 struct Global {
-  Global() {
-    CHECK(folly::get_process_phase() == folly::ProcessPhase::Init);
-  }
+  Global() { CHECK(folly::get_process_phase() == folly::ProcessPhase::Init); }
 
-  ~Global() {
-    CHECK(folly::get_process_phase() >= folly::ProcessPhase::Exit);
-  }
+  ~Global() { CHECK(folly::get_process_phase() >= folly::ProcessPhase::Exit); }
 };
 
 /// Variables

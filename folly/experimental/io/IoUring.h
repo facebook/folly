@@ -16,9 +16,7 @@
 
 #pragma once
 
-extern "C" {
 #include <liburing.h>
-}
 
 #include <folly/SharedMutex.h>
 #include <folly/experimental/io/AsyncBase.h>
@@ -46,28 +44,26 @@ class IoUringOp : public AsyncBaseOp {
    */
   void pread(int fd, void* buf, size_t size, off_t start) override;
   void preadv(int fd, const iovec* iov, int iovcnt, off_t start) override;
+  void pread(int fd, void* buf, size_t size, off_t start, int buf_index)
+      override;
 
   /**
    * Initiate a write request.
    */
   void pwrite(int fd, const void* buf, size_t size, off_t start) override;
   void pwritev(int fd, const iovec* iov, int iovcnt, off_t start) override;
+  void pwrite(int fd, const void* buf, size_t size, off_t start, int buf_index)
+      override;
 
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
-  AsyncIOOp* getAsyncIOOp() override {
-    return nullptr;
-  }
+  AsyncIOOp* getAsyncIOOp() override { return nullptr; }
 
-  IoUringOp* getIoUringOp() override {
-    return this;
-  }
+  IoUringOp* getIoUringOp() override { return this; }
 
   void toStream(std::ostream& os) const override;
 
-  const struct io_uring_sqe& getSqe() const {
-    return sqe_;
-  }
+  const struct io_uring_sqe& getSqe() const { return sqe_; }
 
  private:
   struct io_uring_sqe sqe_;
@@ -98,9 +94,14 @@ class IoUring : public AsyncBase {
 
   static bool isAvailable();
 
+  int register_buffers(const struct iovec* iovecs, unsigned int nr_iovecs);
+
+  int unregister_buffers();
+
  private:
   void initializeContext() override;
   int submitOne(AsyncBase::Op* op) override;
+  int submitRange(Range<AsyncBase::Op**> ops) override;
 
   Range<AsyncBase::Op**> doWait(
       WaitType type,

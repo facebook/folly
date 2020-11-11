@@ -110,9 +110,7 @@ class rvalue_reference_wrapper {
   /**
    * Check whether wrapped reference is valid.
    */
-  bool valid() const noexcept {
-    return ptr_ != nullptr;
-  }
+  bool valid() const noexcept { return ptr_ != nullptr; }
 
  private:
   // Disallow copy construction and copy assignment, to make it harder to

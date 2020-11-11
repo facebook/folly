@@ -129,9 +129,7 @@ struct MoveOnly {
       : value_(std::exchange(other.value_, -1)) {}
   ~MoveOnly() {}
   MoveOnly& operator=(MoveOnly&&) = delete;
-  int value() const {
-    return value_;
-  }
+  int value() const { return value_; }
 
  private:
   int value_;

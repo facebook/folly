@@ -413,21 +413,15 @@ TEST(ThreadPoolExecutorTest, PriorityPreemptionTest) {
 
 class TestObserver : public ThreadPoolExecutor::Observer {
  public:
-  void threadStarted(ThreadPoolExecutor::ThreadHandle*) override {
-    threads_++;
-  }
-  void threadStopped(ThreadPoolExecutor::ThreadHandle*) override {
-    threads_--;
-  }
+  void threadStarted(ThreadPoolExecutor::ThreadHandle*) override { threads_++; }
+  void threadStopped(ThreadPoolExecutor::ThreadHandle*) override { threads_--; }
   void threadPreviouslyStarted(ThreadPoolExecutor::ThreadHandle*) override {
     threads_++;
   }
   void threadNotYetStopped(ThreadPoolExecutor::ThreadHandle*) override {
     threads_--;
   }
-  void checkCalls() {
-    ASSERT_EQ(threads_, 0);
-  }
+  void checkCalls() { ASSERT_EQ(threads_, 0); }
 
  private:
   std::atomic<int> threads_{0};
@@ -589,9 +583,7 @@ class TestData : public folly::RequestData {
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
 
-  bool hasCallback() override {
-    return false;
-  }
+  bool hasCallback() override { return false; }
 
   int data_;
 };
@@ -616,9 +608,7 @@ std::atomic<int> g_sequence{};
 
 struct SlowMover {
   explicit SlowMover(bool slow_ = false) : slow(slow_) {}
-  SlowMover(SlowMover&& other) noexcept {
-    *this = std::move(other);
-  }
+  SlowMover(SlowMover&& other) noexcept { *this = std::move(other); }
   SlowMover& operator=(SlowMover&& other) noexcept {
     ++g_sequence;
     slow = other.slow;

@@ -103,9 +103,7 @@ struct MyObjectDirectory {
  */
 TEST(AHMIntStressTest, Test) {
   auto const objs = new MyObjectDirectory();
-  SCOPE_EXIT {
-    delete objs;
-  };
+  SCOPE_EXIT { delete objs; };
 
   std::vector<std::thread> threads;
   for (int threadId = 0; threadId < 64; ++threadId) {

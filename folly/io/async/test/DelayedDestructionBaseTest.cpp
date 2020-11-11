@@ -34,12 +34,8 @@ class DestructionOnCallback : public DelayedDestructionBase {
     state = state_;
   }
 
-  int state() const {
-    return state_;
-  }
-  bool deleted() const {
-    return deleted_;
-  }
+  int state() const { return state_; }
+  bool deleted() const { return deleted_; }
 
  protected:
   void onStackedComplete(int recur) {

@@ -39,9 +39,7 @@ using IOBufVec = std::vector<std::unique_ptr<folly::IOBuf>>;
 struct TestData {
   explicit TestData(const SizeVec& in) : in_(in) {}
 
-  bool checkOut() const {
-    return (outNum_ == in_.size());
-  }
+  bool checkOut() const { return (outNum_ == in_.size()); }
 
   char getCharAt(size_t pos) {
     if (pos < in_.size()) {
@@ -149,9 +147,7 @@ class UDPServer {
     socket_->listen();
   }
 
-  folly::SocketAddress address() const {
-    return socket_->address();
-  }
+  folly::SocketAddress address() const { return socket_->address(); }
 
   void shutdown() {
     CHECK(evb_->isInEventBaseThread());
@@ -167,13 +163,9 @@ class UDPServer {
     }
   }
 
-  void pauseAccepting() {
-    socket_->pauseAccepting();
-  }
+  void pauseAccepting() { socket_->pauseAccepting(); }
 
-  void resumeAccepting() {
-    socket_->resumeAccepting();
-  }
+  void resumeAccepting() { socket_->resumeAccepting(); }
 
  private:
   EventBase* const evb_{nullptr};
@@ -267,9 +259,7 @@ class UDPClient : private AsyncUDPSocket::ReadCallback, private AsyncTimeout {
     shutdown();
   }
 
-  AsyncUDPSocket& getSocket() {
-    return *socket_;
-  }
+  AsyncUDPSocket& getSocket() { return *socket_; }
 
   void setShouldConnect(const folly::SocketAddress& connectAddr) {
     connectAddr_ = connectAddr;

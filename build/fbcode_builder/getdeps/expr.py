@@ -10,7 +10,7 @@ import shlex
 
 
 def parse_expr(expr_text, valid_variables):
-    """ parses the simple criteria expression syntax used in
+    """parses the simple criteria expression syntax used in
     dependency specifications.
     Returns an ExprNode instance that can be evaluated like this:
 

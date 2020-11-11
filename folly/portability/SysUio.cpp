@@ -48,17 +48,59 @@ static int wrapPositional(F f, int fd, off_t offset, Args... args) {
   return res;
 }
 
+namespace {
 #if !FOLLY_HAVE_PREADV
-extern "C" ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
-  return wrapPositional(readv, fd, offset, iov, count);
+ssize_t preadv_fallback(int fd, const iovec* iov, int count, off_t offset) {
+  return static_cast<ssize_t>(wrapPositional(readv, fd, offset, iov, count));
 }
 #endif
 
 #if !FOLLY_HAVE_PWRITEV
-extern "C" ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
-  return wrapPositional(writev, fd, offset, iov, count);
+ssize_t pwritev_fallback(int fd, const iovec* iov, int count, off_t offset) {
+  return static_cast<ssize_t>(wrapPositional(writev, fd, offset, iov, count));
 }
 #endif
+} // namespace
+
+namespace folly {
+#if !FOLLY_HAVE_PREADV
+ssize_t preadv(int fd, const iovec* iov, int count, off_t offset) {
+  using sig = ssize_t(int, const iovec*, int, off_t);
+  static auto the_preadv = []() -> sig* {
+#if defined(__APPLE__) && FOLLY_HAS_BUILTIN(__builtin_available) && \
+    !TARGET_OS_SIMULATOR &&                                         \
+    (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
+     __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
+    if (__builtin_available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)) {
+      return &::preadv;
+    }
+#endif
+    return &preadv_fallback;
+  }();
+
+  return the_preadv(fd, iov, count, offset);
+}
+#endif
+
+#if !FOLLY_HAVE_PWRITEV
+ssize_t pwritev(int fd, const iovec* iov, int count, off_t offset) {
+  using sig = ssize_t(int, const iovec*, int, off_t);
+  static auto the_pwritev = []() -> sig* {
+#if defined(__APPLE__) && FOLLY_HAS_BUILTIN(__builtin_available) && \
+    !TARGET_OS_SIMULATOR &&                                         \
+    (__MAC_OS_X_VERSION_MAX_ALLOWED >= 101600 ||                    \
+     __IPHONE_OS_VERSION_MAX_ALLOWED >= 140000)
+    if (__builtin_available(iOS 14.0, macOS 11.0, watchOS 7.0, tvOS 14.0, *)) {
+      return &::pwritev;
+    }
+#endif
+    return &pwritev_fallback;
+  }();
+
+  return the_pwritev(fd, iov, count, offset);
+}
+#endif
+} // namespace folly
 
 #ifdef _WIN32
 template <bool isRead>

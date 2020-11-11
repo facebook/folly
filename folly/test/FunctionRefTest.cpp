@@ -110,34 +110,22 @@ TEST(FunctionRef, FunctionPtr) {
 TEST(FunctionRef, OverloadedFunctor) {
   struct OverloadedFunctor {
     // variant 1
-    int operator()(int x) {
-      return 100 + 1 * x;
-    }
+    int operator()(int x) { return 100 + 1 * x; }
 
     // variant 2 (const-overload of v1)
-    int operator()(int x) const {
-      return 100 + 2 * x;
-    }
+    int operator()(int x) const { return 100 + 2 * x; }
 
     // variant 3
-    int operator()(int x, int) {
-      return 100 + 3 * x;
-    }
+    int operator()(int x, int) { return 100 + 3 * x; }
 
     // variant 4 (const-overload of v3)
-    int operator()(int x, int) const {
-      return 100 + 4 * x;
-    }
+    int operator()(int x, int) const { return 100 + 4 * x; }
 
     // variant 5 (non-const, has no const-overload)
-    int operator()(int x, char const*) {
-      return 100 + 5 * x;
-    }
+    int operator()(int x, char const*) { return 100 + 5 * x; }
 
     // variant 6 (const only)
-    int operator()(int x, std::vector<int> const&) const {
-      return 100 + 6 * x;
-    }
+    int operator()(int x, std::vector<int> const&) const { return 100 + 6 * x; }
   };
   OverloadedFunctor of;
   auto const& cof = of;
@@ -204,9 +192,7 @@ class ForEach {
           }
         }) {}
 
-  void operator()(FunctionRef<void(ValueType)> f) const {
-    func_(f);
-  }
+  void operator()(FunctionRef<void(ValueType)> f) const { func_(f); }
 
  private:
   Function<void(FunctionRef<void(ValueType)>) const> const func_;

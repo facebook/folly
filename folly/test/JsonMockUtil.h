@@ -24,13 +24,21 @@ namespace folly {
 namespace detail {
 template <typename T>
 class JsonEqMatcher : public ::testing::MatcherInterface<T> {
+ private:
+#if defined(MOCK_METHOD)
+  using Arg = T;
+#else
+  // TODO(sugak): T69712535 remove deprecated googletest API.
+  using Arg = T const&;
+#endif
+
  public:
   explicit JsonEqMatcher(std::string expected, std::string prefixBeforeJson)
       : expected_(std::move(expected)),
         prefixBeforeJson_(std::move(prefixBeforeJson)) {}
 
   virtual bool MatchAndExplain(
-      T const& actual,
+      Arg actual,
       ::testing::MatchResultListener* /*listener*/) const override {
     StringPiece sp{actual};
     if (!sp.startsWith(prefixBeforeJson_)) {

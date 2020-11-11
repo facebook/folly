@@ -70,15 +70,20 @@ class F14BasicMap {
           K>::value,
       T>;
 
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
-          typename Policy::Value,
+          typename Policy::Key,
           typename Policy::Hasher,
           typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value,
+          std::conditional_t<IsIter<K>::value, typename Policy::Key, K>>::
+              value &&
+          !IsIter<K>::value,
       T>;
 
  public:
@@ -105,8 +110,7 @@ class F14BasicMap {
  public:
   //// PUBLIC - Member functions
 
-  F14BasicMap() noexcept(Policy::kDefaultConstructIsNoexcept)
-      : F14BasicMap(0) {}
+  F14BasicMap() noexcept(Policy::kDefaultConstructIsNoexcept) : table_{} {}
 
   explicit F14BasicMap(
       std::size_t initialCapacity,
@@ -208,51 +212,33 @@ class F14BasicMap {
     return *this;
   }
 
-  allocator_type get_allocator() const noexcept {
-    return table_.alloc();
-  }
+  allocator_type get_allocator() const noexcept { return table_.alloc(); }
 
   //// PUBLIC - Iterators
 
-  iterator begin() noexcept {
-    return table_.makeIter(table_.begin());
-  }
-  const_iterator begin() const noexcept {
-    return cbegin();
-  }
+  iterator begin() noexcept { return table_.makeIter(table_.begin()); }
+  const_iterator begin() const noexcept { return cbegin(); }
   const_iterator cbegin() const noexcept {
     return table_.makeConstIter(table_.begin());
   }
 
-  iterator end() noexcept {
-    return table_.makeIter(table_.end());
-  }
-  const_iterator end() const noexcept {
-    return cend();
-  }
+  iterator end() noexcept { return table_.makeIter(table_.end()); }
+  const_iterator end() const noexcept { return cend(); }
   const_iterator cend() const noexcept {
     return table_.makeConstIter(table_.end());
   }
 
   //// PUBLIC - Capacity
 
-  bool empty() const noexcept {
-    return table_.empty();
-  }
+  bool empty() const noexcept { return table_.empty(); }
 
-  std::size_t size() const noexcept {
-    return table_.size();
-  }
+  std::size_t size() const noexcept { return table_.size(); }
 
-  std::size_t max_size() const noexcept {
-    return table_.max_size();
-  }
+  std::size_t max_size() const noexcept { return table_.max_size(); }
 
   //// PUBLIC - Modifiers
 
-  void clear() noexcept {
-    table_.clear();
-  }
+  void clear() noexcept { table_.clear(); }
 
   std::pair<iterator, bool> insert(value_type const& value) {
     return emplace(value);
@@ -388,12 +374,12 @@ class F14BasicMap {
   template <typename M>
   iterator
   insert_or_assign(const_iterator /*hint*/, key_type const& key, M&& obj) {
-    return insert_or_assign(key, std::move(obj)).first;
+    return insert_or_assign(key, std::forward<M>(obj)).first;
   }
 
   template <typename M>
   iterator insert_or_assign(const_iterator /*hint*/, key_type&& key, M&& obj) {
-    return insert_or_assign(std::move(key), std::move(obj)).first;
+    return insert_or_assign(std::move(key), std::forward<M>(obj)).first;
   }
 
   template <typename K, typename M>
@@ -415,13 +401,14 @@ class F14BasicMap {
  public:
   template <typename... Args>
   std::pair<iterator, bool> emplace(Args&&... args) {
-    auto rv = folly::detail::callWithExtractedKey<key_type, UsableAsKey>(
-        table_.alloc(),
-        [&](auto&&... inner) {
-          return table_.tryEmplaceValue(
-              std::forward<decltype(inner)>(inner)...);
-        },
-        std::forward<Args>(args)...);
+    auto rv =
+        folly::detail::callWithExtractedKey<key_type, mapped_type, UsableAsKey>(
+            table_.alloc(),
+            [&](auto&&... inner) {
+              return table_.tryEmplaceValue(
+                  std::forward<decltype(inner)>(inner)...);
+            },
+            std::forward<Args>(args)...);
     return std::make_pair(table_.makeIter(rv.first), rv.second);
   }
 
@@ -730,9 +717,7 @@ class F14BasicMap {
 
   //// PUBLIC - Bucket interface
 
-  std::size_t bucket_count() const noexcept {
-    return table_.bucket_count();
-  }
+  std::size_t bucket_count() const noexcept { return table_.bucket_count(); }
 
   std::size_t max_bucket_count() const noexcept {
     return table_.max_bucket_count();
@@ -740,17 +725,11 @@ class F14BasicMap {
 
   //// PUBLIC - Hash policy
 
-  float load_factor() const noexcept {
-    return table_.load_factor();
-  }
+  float load_factor() const noexcept { return table_.load_factor(); }
 
-  float max_load_factor() const noexcept {
-    return table_.max_load_factor();
-  }
+  float max_load_factor() const noexcept { return table_.max_load_factor(); }
 
-  void max_load_factor(float v) {
-    table_.max_load_factor(v);
-  }
+  void max_load_factor(float v) { table_.max_load_factor(v); }
 
   void rehash(std::size_t bucketCapacity) {
     // The standard's rehash() requires understanding the max load factor,
@@ -759,19 +738,13 @@ class F14BasicMap {
     reserve(bucketCapacity);
   }
 
-  void reserve(std::size_t capacity) {
-    table_.reserve(capacity);
-  }
+  void reserve(std::size_t capacity) { table_.reserve(capacity); }
 
   //// PUBLIC - Observers
 
-  hasher hash_function() const {
-    return table_.hasher();
-  }
+  hasher hash_function() const { return table_.hasher(); }
 
-  key_equal key_eq() const {
-    return table_.keyEqual();
-  }
+  key_equal key_eq() const { return table_.keyEqual(); }
 
   //// PUBLIC - F14 Extensions
 
@@ -812,9 +785,7 @@ class F14BasicMap {
   template <typename V>
   void visitContiguousRanges(V&& visitor) const;
 
-  F14TableStats computeStats() const noexcept {
-    return table_.computeStats();
-  }
+  F14TableStats computeStats() const noexcept { return table_.computeStats(); }
 
  private:
   template <typename Self, typename K>
@@ -973,19 +944,21 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
  private:
   using Super = F14BasicMap<Policy>;
 
+  template <typename K>
+  using IsIter = Disjunction<
+      std::is_same<typename Policy::Iter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>,
+      std::is_same<typename Policy::ConstReverseIter, remove_cvref_t<K>>>;
+
   template <typename K, typename T>
   using EnableHeterogeneousVectorErase = std::enable_if_t<
       EligibleForHeterogeneousFind<
-          typename Policy::Value,
-          typename Policy::Hasher,
-          typename Policy::KeyEqual,
-          K>::value &&
-          !std::is_same<typename Policy::Iter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ConstIter, remove_cvref_t<K>>::value &&
-          !std::is_same<typename Policy::ReverseIter, remove_cvref_t<K>>::
-              value &&
-          !std::is_same<typename Policy::ConstReverseIter, remove_cvref_t<K>>::
-              value,
+          Key,
+          Hasher,
+          KeyEqual,
+          std::conditional_t<IsIter<K>::value, Key, K>>::value &&
+          !IsIter<K>::value,
       T>;
 
  public:
@@ -1005,25 +978,15 @@ class F14VectorMapImpl : public F14BasicMap<MapPolicyWithDefaults<
     return *this;
   }
 
-  iterator begin() {
-    return this->table_.linearBegin(this->size());
-  }
-  const_iterator begin() const {
-    return cbegin();
-  }
+  iterator begin() { return this->table_.linearBegin(this->size()); }
+  const_iterator begin() const { return cbegin(); }
   const_iterator cbegin() const {
     return this->table_.linearBegin(this->size());
   }
 
-  iterator end() {
-    return this->table_.linearEnd();
-  }
-  const_iterator end() const {
-    return cend();
-  }
-  const_iterator cend() const {
-    return this->table_.linearEnd();
-  }
+  iterator end() { return this->table_.linearEnd(); }
+  const_iterator end() const { return cend(); }
+  const_iterator cend() const { return this->table_.linearEnd(); }
 
  private:
   template <typename BeforeDestroy>
@@ -1204,37 +1167,23 @@ class F14VectorMap : public f14::detail::F14VectorMapImpl<
   // reverse-iterating.  You can write that as map.erase(map.iter(riter))
   // if you really need it.
 
-  reverse_iterator rbegin() {
-    return this->table_.values_;
-  }
-  const_reverse_iterator rbegin() const {
-    return crbegin();
-  }
-  const_reverse_iterator crbegin() const {
-    return this->table_.values_;
-  }
+  reverse_iterator rbegin() { return this->table_.values_; }
+  const_reverse_iterator rbegin() const { return crbegin(); }
+  const_reverse_iterator crbegin() const { return this->table_.values_; }
 
-  reverse_iterator rend() {
-    return this->table_.values_ + this->table_.size();
-  }
-  const_reverse_iterator rend() const {
-    return crend();
-  }
+  reverse_iterator rend() { return this->table_.values_ + this->table_.size(); }
+  const_reverse_iterator rend() const { return crend(); }
   const_reverse_iterator crend() const {
     return this->table_.values_ + this->table_.size();
   }
 
   // explicit conversions between iterator and reverse_iterator
-  iterator iter(reverse_iterator riter) {
-    return this->table_.iter(riter);
-  }
+  iterator iter(reverse_iterator riter) { return this->table_.iter(riter); }
   const_iterator iter(const_reverse_iterator riter) const {
     return this->table_.iter(riter);
   }
 
-  reverse_iterator riter(iterator it) {
-    return this->table_.riter(it);
-  }
+  reverse_iterator riter(iterator it) { return this->table_.riter(it); }
   const_reverse_iterator riter(const_iterator it) const {
     return this->table_.riter(it);
   }
@@ -1291,12 +1240,10 @@ class F14FastMap : public std::conditional_t<
 };
 } // namespace folly
 
-#else // !if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
+#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE
 
 //////// Compatibility for unsupported platforms (not x86_64 and not aarch64)
 #include <folly/container/detail/F14MapFallback.h>
-
-#endif // if FOLLY_F14_VECTOR_INTRINSICS_AVAILABLE else
 
 namespace folly {
 namespace f14 {
@@ -1407,8 +1354,8 @@ template <
     typename E,
     typename A,
     typename Pred>
-void erase_if(F14ValueMap<K, M, H, E, A>& c, Pred pred) {
-  f14::detail::erase_if_impl(c, pred);
+std::size_t erase_if(F14ValueMap<K, M, H, E, A>& c, Pred pred) {
+  return f14::detail::erase_if_impl(c, pred);
 }
 
 template <
@@ -1418,8 +1365,8 @@ template <
     typename E,
     typename A,
     typename Pred>
-void erase_if(F14NodeMap<K, M, H, E, A>& c, Pred pred) {
-  f14::detail::erase_if_impl(c, pred);
+std::size_t erase_if(F14NodeMap<K, M, H, E, A>& c, Pred pred) {
+  return f14::detail::erase_if_impl(c, pred);
 }
 
 template <
@@ -1429,8 +1376,8 @@ template <
     typename E,
     typename A,
     typename Pred>
-void erase_if(F14VectorMap<K, M, H, E, A>& c, Pred pred) {
-  f14::detail::erase_if_impl(c, pred);
+std::size_t erase_if(F14VectorMap<K, M, H, E, A>& c, Pred pred) {
+  return f14::detail::erase_if_impl(c, pred);
 }
 
 template <
@@ -1440,8 +1387,8 @@ template <
     typename E,
     typename A,
     typename Pred>
-void erase_if(F14FastMap<K, M, H, E, A>& c, Pred pred) {
-  f14::detail::erase_if_impl(c, pred);
+std::size_t erase_if(F14FastMap<K, M, H, E, A>& c, Pred pred) {
+  return f14::detail::erase_if_impl(c, pred);
 }
 
 } // namespace folly

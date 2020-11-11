@@ -31,7 +31,9 @@
 namespace folly {
 #ifdef FOLLY_HAVE_TIMERFD
 // timerfd wrapper
-class TimerFD : public folly::EventHandler, public DelayedDestruction {
+class TimerFD : public folly::EventHandler,
+                public folly::EventReadCallback,
+                public DelayedDestruction {
  public:
   explicit TimerFD(folly::EventBase* eventBase);
   ~TimerFD() override;
@@ -43,10 +45,40 @@ class TimerFD : public folly::EventHandler, public DelayedDestruction {
   // from folly::EventHandler
   void handlerReady(uint16_t events) noexcept override;
 
+  // from folly::EventReadCallback
+  folly::EventReadCallback::IoVec* allocateData() override {
+    auto* ret = ioVecPtr_.release();
+    return (ret ? ret : new IoVec(this));
+  }
+
  protected:
   void close();
 
  private:
+  struct IoVec : public folly::EventReadCallback::IoVec {
+    IoVec() = delete;
+    ~IoVec() override = default;
+    explicit IoVec(TimerFD* eventFd) {
+      arg_ = eventFd;
+      freeFunc_ = IoVec::free;
+      cbFunc_ = IoVec::cb;
+      data_.iov_base = &timerData_;
+      data_.iov_len = sizeof(timerData_);
+    }
+
+    static void free(EventReadCallback::IoVec* ioVec) { delete ioVec; }
+
+    static void cb(EventReadCallback::IoVec* ioVec, int res) {
+      reinterpret_cast<TimerFD*>(ioVec->arg_)
+          ->eventReadCallback(reinterpret_cast<IoVec*>(ioVec), res);
+    }
+
+    uint64_t timerData_{0};
+  };
+
+  void eventReadCallback(IoVec* ioVec, int res);
+  std::unique_ptr<IoVec> ioVecPtr_;
+
   TimerFD(folly::EventBase* eventBase, int fd);
   static int createTimerFd();
 

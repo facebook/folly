@@ -155,7 +155,7 @@ TEST(FunctionScheduler, AddCancel2) {
 
   // Test a function that schedules another function
   atomic<int> adderCount{0};
-  int fn2Count = 0;
+  atomic<int> fn2Count = 0;
   auto fn2 = [&] { ++fn2Count; };
   auto fnAdder = [&] {
     ++adderCount;
@@ -286,8 +286,8 @@ TEST(FunctionScheduler, ResetFuncWhileRunning) {
     boost::barrier barrier_b{2};
     boost::barrier barrier_c{2};
     boost::barrier barrier_d{2};
-    bool set = false;
-    size_t count = 0;
+    atomic<bool> set = false;
+    atomic<size_t> count = 0;
   };
 
   State state; // held by ref
@@ -567,6 +567,21 @@ TEST(FunctionScheduler, GammaIntervalDistribution) {
   EXPECT_EQ(6, total);
 }
 
+TEST(FunctionScheduler, PoissonDistribution) {
+  auto interval = std::chrono::hours(24 * 365 * 10);
+  atomic<int> total{0};
+  FunctionScheduler fs;
+  fs.addFunction(
+      [&] { total += 2; },
+      interval,
+      folly::FunctionScheduler::LatencyDistribution(true, interval),
+      "PoissonDistribution",
+      std::chrono::milliseconds(0));
+  fs.start();
+  delay(1);
+  EXPECT_EQ(2, total);
+}
+
 TEST(FunctionScheduler, AddWithRunOnce) {
   atomic<int> total{0};
   FunctionScheduler fs;
@@ -607,60 +622,6 @@ TEST(FunctionScheduler, cancelFunctionAndWait) {
   EXPECT_FALSE(fs.cancelFunction("add2")); // add2 has been canceled
   fs.shutdown();
 }
-
-#if defined(__linux__)
-namespace {
-/**
- * A helper class that forces our pthread_create() wrapper to fail when
- * an PThreadCreateFailure object exists.
- */
-class PThreadCreateFailure {
- public:
-  PThreadCreateFailure() {
-    ++forceFailure_;
-  }
-  ~PThreadCreateFailure() {
-    --forceFailure_;
-  }
-
-  static bool shouldFail() {
-    return forceFailure_ > 0;
-  }
-
- private:
-  static std::atomic<int> forceFailure_;
-};
-
-std::atomic<int> PThreadCreateFailure::forceFailure_{0};
-} // namespace
-
-// Replace the system pthread_create() function with our own stub, so we can
-// trigger failures in the StartThrows() test.
-extern "C" int pthread_create(
-    pthread_t* thread,
-    const pthread_attr_t* attr,
-    void* (*start_routine)(void*),
-    void* arg) {
-  static const auto realFunction = reinterpret_cast<decltype(&pthread_create)>(
-      dlsym(RTLD_NEXT, "pthread_create"));
-  // For sanity, make sure we didn't find ourself,
-  // since that would cause infinite recursion.
-  CHECK_NE(realFunction, pthread_create);
-
-  if (PThreadCreateFailure::shouldFail()) {
-    errno = EINVAL;
-    return -1;
-  }
-  return realFunction(thread, attr, start_routine, arg);
-}
-
-TEST(FunctionScheduler, StartThrows) {
-  FunctionScheduler fs;
-  PThreadCreateFailure fail;
-  EXPECT_ANY_THROW(fs.start());
-  EXPECT_NO_THROW(fs.shutdown());
-}
-#endif
 
 TEST(FunctionScheduler, cancelAllFunctionsAndWait) {
   atomic<int> total{0};

@@ -78,12 +78,8 @@ struct INullablePointer : PolyExtends<IEqualityComparable> {
 struct IBooleanTestable : PolyExtends<> {
   template <class Base>
   struct Interface : Base {
-    constexpr bool operator!() const noexcept {
-      return poly_empty(*this);
-    }
-    constexpr explicit operator bool() const noexcept {
-      return !!*this;
-    }
+    constexpr bool operator!() const noexcept { return poly_empty(*this); }
+    constexpr explicit operator bool() const noexcept { return !!*this; }
   };
 };
 } // namespace poly

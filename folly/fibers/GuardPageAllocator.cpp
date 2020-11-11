@@ -74,6 +74,7 @@ class StackCache {
     storage_ = reinterpret_cast<unsigned char*>(p);
 
     /* Protect the bottommost page of every stack allocation */
+    freeList_.reserve(kNumGuarded);
     for (size_t i = 0; i < kNumGuarded; ++i) {
       auto allocBegin = storage_ + allocSize_ * i;
       freeList_.emplace_back(allocBegin, /* protected= */ false);
@@ -276,25 +277,25 @@ class CacheManager {
   std::unique_ptr<StackCacheEntry> getStackCache(
       size_t stackSize,
       size_t guardPagesPerStack) {
-    std::lock_guard<folly::SpinLock> lg(lock_);
-    if (inUse_ < kMaxInUse) {
-      ++inUse_;
-      return std::make_unique<StackCacheEntry>(stackSize, guardPagesPerStack);
-    }
-
-    return nullptr;
+    auto used = inUse_.load(std::memory_order_relaxed);
+    do {
+      if (used >= kMaxInUse) {
+        return nullptr;
+      }
+    } while (!inUse_.compare_exchange_weak(
+        used, used + 1, std::memory_order_acquire, std::memory_order_relaxed));
+    return std::make_unique<StackCacheEntry>(stackSize, guardPagesPerStack);
   }
 
  private:
-  folly::SpinLock lock_;
-  size_t inUse_{0};
+  std::atomic<size_t> inUse_{0};
 
   friend class StackCacheEntry;
 
   void giveBack(std::unique_ptr<StackCache> /* stackCache_ */) {
-    std::lock_guard<folly::SpinLock> lg(lock_);
-    assert(inUse_ > 0);
-    --inUse_;
+    FOLLY_MAYBE_UNUSED auto wasUsed =
+        inUse_.fetch_sub(1, std::memory_order_release);
+    assert(wasUsed > 0);
     /* Note: we can add a free list for each size bucket
        if stack re-use is important.
        In this case this needs to be a folly::Singleton
@@ -315,9 +316,7 @@ class StackCacheEntry {
       : stackCache_(
             std::make_unique<StackCache>(stackSize, guardPagesPerStack)) {}
 
-  StackCache& cache() const noexcept {
-    return *stackCache_;
-  }
+  StackCache& cache() const noexcept { return *stackCache_; }
 
   ~StackCacheEntry() {
     CacheManager::instance().giveBack(std::move(stackCache_));

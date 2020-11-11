@@ -27,7 +27,7 @@ namespace folly {
 namespace threadlocal_detail {
 
 void ThreadEntryNode::initIfZero(bool locked) {
-  if (UNLIKELY(!next)) {
+  if (UNLIKELY(isZero)) {
     if (LIKELY(locked)) {
       parent->meta->pushBackLocked(parent, id);
     } else {
@@ -43,6 +43,7 @@ void ThreadEntryNode::push_back(ThreadEntry* head) {
   // update current
   next = head;
   prev = hnode->prev;
+  isZero = false;
 
   // hprev
   ThreadEntryNode* hprev = &hnode->prev->elements[id].node;
@@ -62,6 +63,7 @@ void ThreadEntryNode::eraseZero() {
 
     // set the prev and next to nullptr
     next = prev = nullptr;
+    isZero = true;
   }
 }
 
@@ -85,9 +87,7 @@ ThreadEntryList* StaticMetaBase::getThreadEntryList() {
       PthreadKeyUnregister::registerKey(pthreadKey_);
     }
 
-    FOLLY_ALWAYS_INLINE pthread_key_t get() const {
-      return pthreadKey_;
-    }
+    FOLLY_ALWAYS_INLINE pthread_key_t get() const { return pthreadKey_; }
 
    private:
     pthread_key_t pthreadKey_;
@@ -227,7 +227,7 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
   auto& meta = *this;
   std::lock_guard<std::mutex> g(meta.lock_);
 
-  id = ent->value.load();
+  id = ent->value.load(std::memory_order_relaxed);
   if (id != kEntryIDInvalid) {
     return id;
   }
@@ -239,7 +239,7 @@ uint32_t StaticMetaBase::allocate(EntryID* ent) {
     id = meta.nextId_++;
   }
 
-  uint32_t old_id = ent->value.exchange(id);
+  uint32_t old_id = ent->value.exchange(id, std::memory_order_release);
   DCHECK_EQ(old_id, kEntryIDInvalid);
 
   reserveHeadUnlocked(id);
@@ -269,7 +269,8 @@ void StaticMetaBase::destroy(EntryID* ent) {
 
       {
         std::lock_guard<std::mutex> g(meta.lock_);
-        uint32_t id = ent->value.exchange(kEntryIDInvalid);
+        uint32_t id =
+            ent->value.exchange(kEntryIDInvalid, std::memory_order_relaxed);
         if (id == kEntryIDInvalid) {
           return;
         }
@@ -366,7 +367,7 @@ ElementWrapper* StaticMetaBase::reallocate(
       assert(newByteSize / sizeof(ElementWrapper) >= newCapacity);
       newCapacity = newByteSize / sizeof(ElementWrapper);
     } else {
-      throw std::bad_alloc();
+      throw_exception<std::bad_alloc>();
     }
   } else { // no jemalloc
     // calloc() is simpler than malloc() followed by memset(), and
@@ -375,7 +376,7 @@ ElementWrapper* StaticMetaBase::reallocate(
     reallocated = static_cast<ElementWrapper*>(
         calloc(newCapacity, sizeof(ElementWrapper)));
     if (!reallocated) {
-      throw std::bad_alloc();
+      throw_exception<std::bad_alloc>();
     }
   }
 

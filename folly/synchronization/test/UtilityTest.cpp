@@ -50,12 +50,8 @@ class MockMutex {
     return try_lock();
   }
 
-  void lock_shared() {
-    lock();
-  }
-  void unlock_shared() {
-    unlock();
-  }
+  void lock_shared() { lock(); }
+  void unlock_shared() { unlock(); }
 
   bool locked_{false};
 };

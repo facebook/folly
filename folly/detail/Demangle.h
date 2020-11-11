@@ -32,5 +32,7 @@ extern int cplus_demangle_v3_callback_wrapper(
     void (*cbref)(char const*, std::size_t, void*),
     void* opaque);
 
+extern char* cplus_demangle_v3_wrapper(const char* mangled);
+
 } // namespace detail
 } // namespace folly

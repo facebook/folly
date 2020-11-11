@@ -76,18 +76,12 @@ class IPAddress {
 
   class IPAddressNone {
    public:
-    bool isZero() const {
-      return true;
-    }
-    size_t bitCount() const {
-      return 0;
-    }
+    bool isZero() const { return true; }
+    size_t bitCount() const { return 0; }
     std::string toJson() const {
       return "{family:'AF_UNSPEC', addr:'', hash:0}";
     }
-    std::size_t hash() const {
-      return std::hash<uint64_t>{}(0);
-    }
+    std::size_t hash() const { return std::hash<uint64_t>{}(0); }
     bool isLoopback() const {
       throw_exception<InvalidAddressFamilyException>("empty address");
     }
@@ -110,22 +104,14 @@ class IPAddress {
       (void)numBits;
       return IPAddress();
     }
-    std::string str() const {
-      return "";
-    }
-    std::string toFullyQualified() const {
-      return "";
-    }
+    std::string str() const { return ""; }
+    std::string toFullyQualified() const { return ""; }
     void toFullyQualifiedAppend(std::string& out) const {
       (void)out;
       return;
     }
-    uint8_t version() const {
-      return 0;
-    }
-    const unsigned char* bytes() const {
-      return nullptr;
-    }
+    uint8_t version() const { return 0; }
+    const unsigned char* bytes() const { return nullptr; }
   };
 
   IPAddressNone const& asNone() const {
@@ -282,9 +268,7 @@ class IPAddress {
   }
 
   // Return sa_family_t of IPAddress
-  sa_family_t family() const {
-    return family_;
-  }
+  sa_family_t family() const { return family_; }
 
   // Populate sockaddr_storage with an appropriate value
   int toSockaddrStorage(sockaddr_storage* dest, uint16_t port = 0) const {
@@ -351,29 +335,19 @@ class IPAddress {
   bool inSubnetWithMask(const IPAddress& subnet, ByteRange mask) const;
 
   // @return true if address is a v4 mapped address
-  bool isIPv4Mapped() const {
-    return isV6() && asV6().isIPv4Mapped();
-  }
+  bool isIPv4Mapped() const { return isV6() && asV6().isIPv4Mapped(); }
 
   // @return true if address is uninitialized
-  bool empty() const {
-    return family_ == AF_UNSPEC;
-  }
+  bool empty() const { return family_ == AF_UNSPEC; }
 
   // @return true if address is initialized
-  explicit operator bool() const {
-    return !empty();
-  }
+  explicit operator bool() const { return !empty(); }
 
   // @return true if this is an IPAddressV4 instance
-  bool isV4() const {
-    return family_ == AF_INET;
-  }
+  bool isV4() const { return family_ == AF_INET; }
 
   // @return true if this is an IPAddressV6 instance
-  bool isV6() const {
-    return family_ == AF_INET6;
-  }
+  bool isV6() const { return family_ == AF_INET6; }
 
   // @return true if this address is all zeros
   bool isZero() const {
@@ -385,9 +359,7 @@ class IPAddress {
     return pick([&](auto& _) { return _.bitCount(); });
   }
   // Number of bytes in the address representation.
-  size_t byteCount() const {
-    return bitCount() / 8;
-  }
+  size_t byteCount() const { return bitCount() / 8; }
   // get nth most significant bit - 0 indexed
   bool getNthMSBit(size_t bitIndex) const {
     return detail::getNthMSBitImpl(*this, bitIndex, family());
@@ -555,8 +527,6 @@ inline bool operator>=(const IPAddress& a, const IPAddress& b) {
 namespace std {
 template <>
 struct hash<folly::IPAddress> {
-  size_t operator()(const folly::IPAddress& addr) const {
-    return addr.hash();
-  }
+  size_t operator()(const folly::IPAddress& addr) const { return addr.hash(); }
 };
 } // namespace std

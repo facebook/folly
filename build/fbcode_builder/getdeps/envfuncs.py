@@ -121,10 +121,10 @@ class Env(object):
 
 
 def add_path_entry(env, name, item, append=True, separator=os.pathsep):
-    """ Cause `item` to be added to the path style env var named
+    """Cause `item` to be added to the path style env var named
     `name` held in the `env` dict.  `append` specifies whether
     the item is added to the end (the default) or should be
-    prepended if `name` already exists. """
+    prepended if `name` already exists."""
     val = env.get(name, "")
     if len(val) > 0:
         val = val.split(separator)
@@ -138,10 +138,10 @@ def add_path_entry(env, name, item, append=True, separator=os.pathsep):
 
 
 def add_flag(env, name, flag, append=True):
-    """ Cause `flag` to be added to the CXXFLAGS-style env var named
+    """Cause `flag` to be added to the CXXFLAGS-style env var named
     `name` held in the `env` dict.  `append` specifies whether the
     flag is added to the end (the default) or should be prepended if
-    `name` already exists. """
+    `name` already exists."""
     val = shlex.split(env.get(name, ""))
     if append:
         val.append(flag)
@@ -155,11 +155,11 @@ _not_found = object()
 
 
 def path_search(env, exename, defval=None):
-    """ Search for exename in the PATH specified in env.
+    """Search for exename in the PATH specified in env.
     exename is eg: `ninja` and this function knows to append a .exe
     to the end on windows.
     Returns the path to the exe if found, or None if either no
-    PATH is set in env or no executable is found. """
+    PATH is set in env or no executable is found."""
 
     path = env.get("PATH", None)
     if path is None:

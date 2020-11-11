@@ -35,16 +35,10 @@ struct SocketFileDescriptorMap {
   static SOCKET fdToSocket(int fd) noexcept;
   static int socketToFd(SOCKET sock) noexcept;
 #else
-  static int close(int fd) noexcept {
-    return ::close(fd);
-  }
+  static int close(int fd) noexcept { return ::close(fd); }
 
-  static int fdToSocket(int fd) noexcept {
-    return fd;
-  }
-  static int socketToFd(int sock) noexcept {
-    return sock;
-  }
+  static int fdToSocket(int fd) noexcept { return fd; }
+  static int socketToFd(int sock) noexcept { return sock; }
 #endif
 };
 } // namespace detail

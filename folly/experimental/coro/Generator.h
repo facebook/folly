@@ -22,6 +22,8 @@
 #include <type_traits>
 #include <utility>
 
+#include <folly/experimental/coro/Invoke.h>
+
 namespace folly {
 namespace coro {
 
@@ -39,17 +41,11 @@ class Generator {
     promise_type(const promise_type&) = delete;
     promise_type(promise_type&&) = delete;
 
-    auto get_return_object() noexcept {
-      return Generator<T>{*this};
-    }
+    auto get_return_object() noexcept { return Generator<T>{*this}; }
 
-    std::experimental::suspend_always initial_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_always final_suspend() noexcept {
-      return {};
-    }
+    std::experimental::suspend_always final_suspend() noexcept { return {}; }
 
     void unhandled_exception() noexcept {
       m_exception = std::current_exception();
@@ -75,9 +71,7 @@ class Generator {
       struct awaitable {
         awaitable(promise_type* childPromise) : m_childPromise(childPromise) {}
 
-        bool await_ready() noexcept {
-          return this->m_childPromise == nullptr;
-        }
+        bool await_ready() noexcept { return this->m_childPromise == nullptr; }
 
         void await_suspend(
             std::experimental::coroutine_handle<promise_type>) noexcept {}
@@ -231,18 +225,14 @@ class Generator {
       return *this;
     }
 
-    void operator++(int) {
-      (void)operator++();
-    }
+    void operator++(int) { (void)operator++(); }
 
     reference operator*() const noexcept {
       assert(m_promise != nullptr);
       return static_cast<reference>(m_promise->value());
     }
 
-    pointer operator->() const noexcept {
-      return std::addressof(operator*());
-    }
+    pointer operator->() const noexcept { return std::addressof(operator*()); }
 
    private:
     promise_type* m_promise;
@@ -261,12 +251,18 @@ class Generator {
     return iterator(nullptr);
   }
 
-  iterator end() noexcept {
-    return iterator(nullptr);
-  }
+  iterator end() noexcept { return iterator(nullptr); }
 
   void swap(Generator& other) noexcept {
     std::swap(m_promise, other.m_promise);
+  }
+
+  template <typename F, typename... A, typename F_, typename... A_>
+  friend Generator folly_co_invoke(tag_t<Generator, F, A...>, F_ f, A_... a) {
+    auto&& r = invoke(static_cast<F&&>(f), static_cast<A&&>(a)...);
+    for (auto&& v : r) {
+      co_yield std::move(v);
+    }
   }
 
  private:

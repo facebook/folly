@@ -24,6 +24,7 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/ssl/Init.h>
+#include <folly/ssl/detail/OpenSSLSession.h>
 
 namespace {
 #ifdef OPENSSL_IS_BORINGSSL
@@ -49,6 +50,21 @@ bool OpenSSLUtils::getTLSMasterKey(
   (void)session;
   (void)keyOut;
 #endif
+  return false;
+}
+
+bool OpenSSLUtils::getTLSMasterKey(
+    const std::shared_ptr<SSLSession> session,
+    MutableByteRange keyOut) {
+  auto openSSLSession =
+      std::dynamic_pointer_cast<folly::ssl::detail::OpenSSLSession>(session);
+  if (openSSLSession) {
+    auto rawSessionPtr = openSSLSession->getActiveSession();
+    SSL_SESSION* rawSession = rawSessionPtr.get();
+    if (rawSession) {
+      return OpenSSLUtils::getTLSMasterKey(rawSession, keyOut);
+    }
+  }
   return false;
 }
 
@@ -158,16 +174,12 @@ static std::unordered_map<uint16_t, std::string> getOpenSSLCipherNames() {
   if ((ctx = SSL_CTX_new(meth)) == nullptr) {
     return ret;
   }
-  SCOPE_EXIT {
-    SSL_CTX_free(ctx);
-  };
+  SCOPE_EXIT { SSL_CTX_free(ctx); };
 
   if ((ssl = SSL_new(ctx)) == nullptr) {
     return ret;
   }
-  SCOPE_EXIT {
-    SSL_free(ssl);
-  };
+  SCOPE_EXIT { SSL_free(ssl); };
 
   STACK_OF(SSL_CIPHER)* sk = SSL_get_ciphers(ssl);
   for (int i = 0; i < sk_SSL_CIPHER_num(sk); i++) {
@@ -312,11 +324,15 @@ std::string OpenSSLUtils::getCommonName(X509* x509) {
     return "";
   }
   X509_NAME* subject = X509_get_subject_name(x509);
-  std::string cn;
-  cn.resize(ub_common_name);
-  X509_NAME_get_text_by_NID(
-      subject, NID_commonName, const_cast<char*>(cn.data()), ub_common_name);
-  return cn;
+  char buf[ub_common_name + 1];
+  int length =
+      X509_NAME_get_text_by_NID(subject, NID_commonName, buf, sizeof(buf));
+  if (length == -1) {
+    // no CN
+    return "";
+  }
+  // length tells us where the name ends
+  return std::string(buf, length);
 }
 
 } // namespace ssl

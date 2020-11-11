@@ -64,14 +64,14 @@ void TimekeeperScheduledExecutor::scheduleAt(
   }
 }
 
-bool TimekeeperScheduledExecutor::keepAliveAcquire() {
+bool TimekeeperScheduledExecutor::keepAliveAcquire() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
   DCHECK(keepAliveCounter > 0);
   return true;
 }
 
-void TimekeeperScheduledExecutor::keepAliveRelease() {
+void TimekeeperScheduledExecutor::keepAliveRelease() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
   DCHECK(keepAliveCounter > 0);

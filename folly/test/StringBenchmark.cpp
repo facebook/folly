@@ -61,9 +61,7 @@ BENCHMARK(folly_toLowerAscii, iters) {
 const size_t kAppendBufSize = 300000;
 void stringPrintfOutputSize(int iters, int param) {
   string buffer;
-  BENCHMARK_SUSPEND {
-    buffer.resize(param, 'x');
-  }
+  BENCHMARK_SUSPEND { buffer.resize(param, 'x'); }
 
   for (int64_t i = 0; i < iters; ++i) {
     string s = stringPrintf("msg: %d, %d, %s", 10, 20, buffer.c_str());
@@ -85,9 +83,7 @@ BENCHMARK_PARAM(stringPrintfOutputSize, 1024)
 BENCHMARK(stringPrintfAppendfBenchmark, iters) {
   for (size_t i = 0; i < iters; ++i) {
     string s;
-    BENCHMARK_SUSPEND {
-      s.reserve(kAppendBufSize);
-    }
+    BENCHMARK_SUSPEND { s.reserve(kAppendBufSize); }
     for (size_t j = 0; j < kAppendBufSize; ++j) {
       stringAppendf(&s, "%d", 1);
     }
@@ -100,9 +96,7 @@ BENCHMARK(stringPrintfAppendfBenchmark, iters) {
 // Intended for comparison with stringPrintf.
 void fmtOutputSize(int iters, int param) {
   string buffer;
-  BENCHMARK_SUSPEND {
-    buffer.resize(param, 'x');
-  }
+  BENCHMARK_SUSPEND { buffer.resize(param, 'x'); }
 
   for (int64_t i = 0; i < iters; ++i) {
     string s = fmt::format("msg: {}, {}, {}", 10, 20, buffer);
@@ -137,9 +131,7 @@ BENCHMARK(fmtAppendfBenchmark, iters) {
 // Intended for comparison with stringPrintf and fmt.
 void follyFmtOutputSize(int iters, int param) {
   string buffer;
-  BENCHMARK_SUSPEND {
-    buffer.resize(param, 'x');
-  }
+  BENCHMARK_SUSPEND { buffer.resize(param, 'x'); }
 
   for (int64_t i = 0; i < iters; ++i) {
     string s = format("msg: {}, {}, {}", 10, 20, buffer).str();
@@ -161,9 +153,7 @@ BENCHMARK_PARAM(follyFmtOutputSize, 1024)
 BENCHMARK(follyFmtAppendfBenchmark, iters) {
   for (size_t i = 0; i < iters; ++i) {
     string s;
-    BENCHMARK_SUSPEND {
-      s.reserve(kAppendBufSize);
-    }
+    BENCHMARK_SUSPEND { s.reserve(kAppendBufSize); }
     for (size_t j = 0; j < kAppendBufSize; ++j) {
       format("{}", 1).appendTo(s);
     }

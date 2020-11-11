@@ -94,6 +94,42 @@ class ObserverCreatorContext {
 
 } // namespace detail
 
+// This master shared_ptr allows grabbing derived weak_ptrs, pointing to the
+// the same Context object, but using a separate reference count. Primary
+// shared_ptr destructor then blocks until all shared_ptrs obtained from
+// derived weak_ptrs are released.
+template <typename Observable, typename Traits>
+class ObserverCreator<Observable, Traits>::ContextPrimaryPtr {
+ public:
+  explicit ContextPrimaryPtr(std::shared_ptr<Context> context)
+      : contextPrimary_(std::move(context)),
+        context_(
+            contextPrimary_.get(),
+            [destroyBaton = destroyBaton_](Context*) {
+              destroyBaton->post();
+            }) {}
+  ~ContextPrimaryPtr() {
+    if (context_) {
+      context_.reset();
+      destroyBaton_->wait();
+    }
+  }
+  ContextPrimaryPtr(const ContextPrimaryPtr&) = delete;
+  ContextPrimaryPtr(ContextPrimaryPtr&&) = default;
+  ContextPrimaryPtr& operator=(const ContextPrimaryPtr&) = delete;
+  ContextPrimaryPtr& operator=(ContextPrimaryPtr&&) = default;
+
+  Context* operator->() const { return contextPrimary_.get(); }
+
+  std::weak_ptr<Context> get_weak() { return context_; }
+
+ private:
+  std::shared_ptr<folly::Baton<>> destroyBaton_{
+      std::make_shared<folly::Baton<>>()};
+  std::shared_ptr<Context> contextPrimary_;
+  std::shared_ptr<Context> context_;
+};
+
 template <typename Observable, typename Traits>
 template <typename... Args>
 ObserverCreator<Observable, Traits>::ObserverCreator(Args&&... args)
@@ -102,53 +138,15 @@ ObserverCreator<Observable, Traits>::ObserverCreator(Args&&... args)
 template <typename Observable, typename Traits>
 Observer<typename ObserverCreator<Observable, Traits>::T>
 ObserverCreator<Observable, Traits>::getObserver() && {
-  // This master shared_ptr allows grabbing derived weak_ptrs, pointing to the
-  // the same Context object, but using a separate reference count. Master
-  // shared_ptr destructor then blocks until all shared_ptrs obtained from
-  // derived weak_ptrs are released.
-  class ContextMasterPointer {
-   public:
-    explicit ContextMasterPointer(std::shared_ptr<Context> context)
-        : contextMaster_(std::move(context)),
-          context_(
-              contextMaster_.get(),
-              [destroyBaton = destroyBaton_](Context*) {
-                destroyBaton->post();
-              }) {}
-    ~ContextMasterPointer() {
-      if (context_) {
-        context_.reset();
-        destroyBaton_->wait();
-      }
-    }
-    ContextMasterPointer(const ContextMasterPointer&) = delete;
-    ContextMasterPointer(ContextMasterPointer&&) = default;
-    ContextMasterPointer& operator=(const ContextMasterPointer&) = delete;
-    ContextMasterPointer& operator=(ContextMasterPointer&&) = default;
-
-    Context* operator->() const {
-      return contextMaster_.get();
-    }
-
-    std::weak_ptr<Context> get_weak() {
-      return context_;
-    }
-
-   private:
-    std::shared_ptr<folly::Baton<>> destroyBaton_{
-        std::make_shared<folly::Baton<>>()};
-    std::shared_ptr<Context> contextMaster_;
-    std::shared_ptr<Context> context_;
-  };
   // We want to make sure that Context can only be destroyed when Core is
   // destroyed. So we have to avoid the situation when subscribe callback is
   // locking Context shared_ptr and remains the last to release it.
   // We solve this by having Core hold the master shared_ptr and subscription
   // callback gets derived weak_ptr.
-  ContextMasterPointer contextMaster(context_);
-  auto contextWeak = contextMaster.get_weak();
+  ContextPrimaryPtr contextPrimary(context_);
+  auto contextWeak = contextPrimary.get_weak();
   auto observer = makeObserver(
-      [context = std::move(contextMaster)]() { return context->get(); });
+      [context = std::move(contextPrimary)]() { return context->get(); });
 
   context_->setCore(observer.core_);
   context_->subscribe([contextWeak = std::move(contextWeak)] {

@@ -168,18 +168,10 @@ class ProcessReturnCode {
   /**
    * Helper wrappers around state().
    */
-  bool notStarted() const {
-    return state() == NOT_STARTED;
-  }
-  bool running() const {
-    return state() == RUNNING;
-  }
-  bool exited() const {
-    return state() == EXITED;
-  }
-  bool killed() const {
-    return state() == KILLED;
-  }
+  bool notStarted() const { return state() == NOT_STARTED; }
+  bool running() const { return state() == RUNNING; }
+  bool exited() const { return state() == EXITED; }
+  bool killed() const { return state() == KILLED; }
 
   /**
    * Exit status.  Only valid if state() == EXITED; throws otherwise.
@@ -237,9 +229,7 @@ class FOLLY_EXPORT CalledProcessError : public SubprocessError {
  public:
   explicit CalledProcessError(ProcessReturnCode rc);
   ~CalledProcessError() throw() override = default;
-  ProcessReturnCode returnCode() const {
-    return returnCode_;
-  }
+  ProcessReturnCode returnCode() const { return returnCode_; }
 
  private:
   ProcessReturnCode returnCode_;
@@ -252,9 +242,7 @@ class FOLLY_EXPORT SubprocessSpawnError : public SubprocessError {
  public:
   SubprocessSpawnError(const char* executable, int errCode, int errnoValue);
   ~SubprocessSpawnError() throw() override = default;
-  int errnoValue() const {
-    return errnoValue_;
-  }
+  int errnoValue() const { return errnoValue_; }
 
  private:
   int errnoValue_;
@@ -320,35 +308,23 @@ class Subprocess {
     /**
      * Shortcut to change the action for standard input.
      */
-    Options& stdinFd(int action) {
-      return fd(STDIN_FILENO, action);
-    }
+    Options& stdinFd(int action) { return fd(STDIN_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard output.
      */
-    Options& stdoutFd(int action) {
-      return fd(STDOUT_FILENO, action);
-    }
+    Options& stdoutFd(int action) { return fd(STDOUT_FILENO, action); }
 
     /**
      * Shortcut to change the action for standard error.
      * Note that stderr(1) will redirect the standard error to the same
      * file descriptor as standard output; the equivalent of bash's "2>&1"
      */
-    Options& stderrFd(int action) {
-      return fd(STDERR_FILENO, action);
-    }
+    Options& stderrFd(int action) { return fd(STDERR_FILENO, action); }
 
-    Options& pipeStdin() {
-      return fd(STDIN_FILENO, PIPE_IN);
-    }
-    Options& pipeStdout() {
-      return fd(STDOUT_FILENO, PIPE_OUT);
-    }
-    Options& pipeStderr() {
-      return fd(STDERR_FILENO, PIPE_OUT);
-    }
+    Options& pipeStdin() { return fd(STDIN_FILENO, PIPE_IN); }
+    Options& pipeStdout() { return fd(STDOUT_FILENO, PIPE_OUT); }
+    Options& pipeStderr() { return fd(STDERR_FILENO, PIPE_OUT); }
 
     /**
      * Close all other fds (other than standard input, output, error,
@@ -578,9 +554,7 @@ class Subprocess {
    * waitpid() or Subprocess::poll(), but simply returns the status stored
    * in the Subprocess object.
    */
-  ProcessReturnCode returnCode() const {
-    return returnCode_;
-  }
+  ProcessReturnCode returnCode() const { return returnCode_; }
 
   /**
    * Poll the child's status and return it. Return the exit status if the
@@ -627,12 +601,8 @@ class Subprocess {
    * signals are below.
    */
   void sendSignal(int signal);
-  void terminate() {
-    sendSignal(SIGTERM);
-  }
-  void kill() {
-    sendSignal(SIGKILL);
-  }
+  void terminate() { sendSignal(SIGTERM); }
+  void kill() { sendSignal(SIGKILL); }
 
   /**
    * Call `waitpid` non-blockingly up to `waitTimeout`. If the process hasn't
@@ -791,9 +761,7 @@ class Subprocess {
     struct StreamSplitterCallback {
       StreamSplitterCallback(Callback& cb, int fd) : cb_(cb), fd_(fd) {}
       // The return value semantics are inverted vs StreamSplitter
-      bool operator()(StringPiece s) {
-        return !cb_(fd_, s);
-      }
+      bool operator()(StringPiece s) { return !cb_(fd_, s); }
       Callback& cb_;
       int fd_;
     };
@@ -908,15 +876,9 @@ class Subprocess {
   int parentFd(int childFd) const {
     return pipes_[findByChildFd(childFd)].pipe.fd();
   }
-  int stdinFd() const {
-    return parentFd(0);
-  }
-  int stdoutFd() const {
-    return parentFd(1);
-  }
-  int stderrFd() const {
-    return parentFd(2);
-  }
+  int stdinFd() const { return parentFd(0); }
+  int stdoutFd() const { return parentFd(1); }
+  int stderrFd() const { return parentFd(2); }
 
   /**
    * The child's pipes are logically separate from the process metadata
@@ -992,9 +954,7 @@ class Subprocess {
     int direction = PIPE_IN; // one of PIPE_IN / PIPE_OUT
     bool enabled = true; // Are notifications enabled in communicate()?
 
-    bool operator<(const Pipe& other) const {
-      return childFd < other.childFd;
-    }
+    bool operator<(const Pipe& other) const { return childFd < other.childFd; }
     bool operator==(const Pipe& other) const {
       return childFd == other.childFd;
     }

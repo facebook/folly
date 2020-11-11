@@ -397,19 +397,17 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNThreadImpl(size_t n) {
 #define XLOG_SET_CATEGORY_CHECK
 #endif
 
-#define XLOG_SET_CATEGORY_NAME(category)                   \
-  namespace xlog_detail {                                  \
-  namespace {                                              \
-  XLOG_SET_CATEGORY_CHECK                                  \
-  constexpr inline folly::StringPiece getXlogCategoryName( \
-      folly::StringPiece,                                  \
-      int) {                                               \
-    return category;                                       \
-  }                                                        \
-  constexpr inline bool isXlogCategoryOverridden(int) {    \
-    return true;                                           \
-  }                                                        \
-  }                                                        \
+#define XLOG_SET_CATEGORY_NAME(category)                               \
+  namespace xlog_detail {                                              \
+  namespace {                                                          \
+  XLOG_SET_CATEGORY_CHECK                                              \
+  constexpr inline folly::StringPiece getXlogCategoryName(             \
+      folly::StringPiece,                                              \
+      int) {                                                           \
+    return category;                                                   \
+  }                                                                    \
+  constexpr inline bool isXlogCategoryOverridden(int) { return true; } \
+  }                                                                    \
   }
 
 /**
@@ -590,17 +588,13 @@ class XlogCategoryInfo {
 
   LogCategory* init(folly::StringPiece categoryName, bool isOverridden);
 
-  LogCategory* getCategory(XlogFileScopeInfo*) {
-    return category_;
-  }
+  LogCategory* getCategory(XlogFileScopeInfo*) { return category_; }
 
   /**
    * Get a pointer to pass into the LogStreamProcessor constructor,
    * so that it is able to look up the LogCategory information.
    */
-  XlogCategoryInfo<IsInHeaderFile>* getInfo(XlogFileScopeInfo*) {
-    return this;
-  }
+  XlogCategoryInfo<IsInHeaderFile>* getInfo(XlogFileScopeInfo*) { return this; }
 
  private:
   // These variables will always be zero-initialized on program start.
@@ -704,7 +698,8 @@ constexpr const char* xlogStripFilenameRecursive(
   // However, in order to maintain compatibility with pre-C++14 compilers we
   // have implemented it recursively to adhere to C++11 restrictions for
   // constexpr functions.
-  return (prefixes[prefixIdx] == ':' || prefixes[prefixIdx] == '\0')
+  return ((prefixes[prefixIdx] == ':' && filename[filenameIdx] != ':') ||
+          prefixes[prefixIdx] == '\0')
       ? ((match && filenameIdx > 0 &&
           (xlogIsDirSeparator(prefixes[filenameIdx - 1]) ||
            xlogIsDirSeparator(filename[filenameIdx])))
@@ -714,7 +709,10 @@ constexpr const char* xlogStripFilenameRecursive(
                     ? filename
                     : xlogStripFilenameRecursive(
                           filename, prefixes, prefixIdx + 1, 0, true)))
-      : ((match && (prefixes[prefixIdx] == filename[filenameIdx]))
+      : ((match &&
+          ((prefixes[prefixIdx] == filename[filenameIdx]) ||
+           (xlogIsDirSeparator(prefixes[prefixIdx]) &&
+            xlogIsDirSeparator(filename[filenameIdx]))))
              ? xlogStripFilenameRecursive(
                    filename, prefixes, prefixIdx + 1, filenameIdx + 1, true)
              : xlogStripFilenameRecursive(

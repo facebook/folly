@@ -104,9 +104,3 @@ TEST(ParallelTest, PSum) {
       from(primes) | map(sleepyWork) | sum,
       from(primes) | parallel(map(sleepyWork) | sub(sum)) | sum);
 }
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

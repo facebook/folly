@@ -60,6 +60,14 @@
   (OPENSSL_VERSION_NUMBER >= 0x1000200fL && \
    OPENSSL_VERSION_NUMBER < 0x10100000L)
 #define FOLLY_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)
+
+// Defined according to version number description in
+// https://www.openssl.org/docs/man1.1.1/man3/OPENSSL_VERSION_NUMBER.html
+// ie. (nibbles) MNNFFPPS: major minor fix patch status
+#define FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix) \
+  (((major << 28) | ((minor << 20) | (fix << 12))))
+#define FOLLY_OPENSSL_PREREQ(major, minor, fix) \
+  (OPENSSL_VERSION_NUMBER >= FOLLY_OPENSSL_CALCULATE_VERSION(major, minor, fix))
 #endif
 
 #if !defined(OPENSSL_IS_BORINGSSL) && !FOLLY_OPENSSL_IS_100 && \

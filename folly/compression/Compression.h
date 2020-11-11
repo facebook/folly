@@ -143,9 +143,7 @@ class Codec {
   /**
    * Return the codec's type.
    */
-  CodecType type() const {
-    return type_;
-  }
+  CodecType type() const { return type_; }
 
   /**
    * Does this codec need the exact uncompressed length on decompression?

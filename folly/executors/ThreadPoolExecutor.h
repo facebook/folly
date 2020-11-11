@@ -157,12 +157,8 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
    public:
     virtual void threadStarted(ThreadHandle*) = 0;
     virtual void threadStopped(ThreadHandle*) = 0;
-    virtual void threadPreviouslyStarted(ThreadHandle* h) {
-      threadStarted(h);
-    }
-    virtual void threadNotYetStopped(ThreadHandle* h) {
-      threadStopped(h);
-    }
+    virtual void threadPreviouslyStarted(ThreadHandle* h) { threadStarted(h); }
+    virtual void threadNotYetStopped(ThreadHandle* h) { threadStopped(h); }
     virtual ~Observer() = default;
   };
 
@@ -235,9 +231,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
   void joinStoppedThreads(size_t n);
 
   // Create a suitable Thread struct
-  virtual ThreadPtr makeThread() {
-    return std::make_shared<Thread>(this);
-  }
+  virtual ThreadPtr makeThread() { return std::make_shared<Thread>(this); }
 
   static void registerThreadPoolExecutor(ThreadPoolExecutor* tpe);
   static void deregisterThreadPoolExecutor(ThreadPoolExecutor* tpe);
@@ -277,9 +271,7 @@ class ThreadPoolExecutor : public DefaultKeepAliveExecutor {
       vec_.erase(itPair.first);
     }
 
-    const std::vector<ThreadPtr>& get() const {
-      return vec_;
-    }
+    const std::vector<ThreadPtr>& get() const { return vec_; }
 
    private:
     static bool compare(const ThreadPtr& ts1, const ThreadPtr& ts2) {

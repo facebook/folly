@@ -16,15 +16,12 @@
 
 #pragma once
 
-#include <folly/python/executor_api.h> // @manual
+#include <folly/Executor.h>
 
 namespace folly {
 namespace python {
 
-inline folly::Executor* getExecutor() {
-  import_folly__executor();
-  return get_executor();
-}
+folly::Executor* getExecutor();
 
 } // namespace python
 } // namespace folly

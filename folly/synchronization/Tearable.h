@@ -60,9 +60,7 @@ class Tearable {
     }
   }
 
-  Tearable(const T& val) : Tearable() {
-    store(val);
-  }
+  Tearable(const T& val) : Tearable() { store(val); }
 
   // Note that while filling dst with invalid data should be fine, *doing
   // anything* with the result may trigger undefined behavior unless you've

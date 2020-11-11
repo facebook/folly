@@ -69,7 +69,7 @@ void BufferedStat<DigestT, ClockT>::doUpdate(
     TimePoint now,
     const std::unique_lock<SharedMutex>& g,
     UpdateMode updateMode) {
-  DCHECK(g.owns_lock());
+  assert(g.owns_lock());
   // Check that no other thread has performed the slide after the check
   auto oldExpiry = expiry_.load(std::memory_order_relaxed).tp;
   if (now > oldExpiry || updateMode == UpdateMode::Now) {

@@ -279,15 +279,9 @@ namespace {
 
 class TestConstruction {
  public:
-  TestConstruction() {
-    EXPECT_TRUE(false);
-  }
-  TestConstruction(TestConstruction&&) {
-    EXPECT_TRUE(false);
-  }
-  TestConstruction(const TestConstruction&) {
-    EXPECT_TRUE(false);
-  }
+  TestConstruction() { EXPECT_TRUE(false); }
+  TestConstruction(TestConstruction&&) { EXPECT_TRUE(false); }
+  TestConstruction(const TestConstruction&) { EXPECT_TRUE(false); }
 
   explicit TestConstruction(std::string&& string)
       : string_{std::move(string)} {}

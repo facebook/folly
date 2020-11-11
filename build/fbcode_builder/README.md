@@ -1,60 +1,43 @@
 # Easy builds for Facebook projects
 
-This is a Python 2.6+ library designed to simplify continuous-integration
-(and other builds) of Facebook projects.
+This directory contains tools designed to simplify continuous-integration
+(and other builds) of Facebook open source projects.  In particular, this helps
+manage builds for cross-project dependencies.
 
-For external Travis builds, the entry point is `travis_docker_build.sh`.
+The main entry point is the `getdeps.py` script.  This script has several
+subcommands, but the most notable is the `build` command.  This will download
+and build all dependencies for a project, and then build the project itself.
 
+## Deployment
 
-## Using Docker to reproduce a CI build
-
-If you are debugging or enhancing a CI build, you will want to do so from
-host or virtual machine that can run a reasonably modern version of Docker:
-
-``` sh
-./make_docker_context.py --help  # See available options for OS & compiler
-# Tiny wrapper that starts a Travis-like build with compile caching:
-os_image=ubuntu:18.04 \
-  gcc_version=7 \
-  make_parallelism=2 \
-  travis_cache_dir=~/travis_ccache \
-    ./travis_docker_build.sh &> build_at_$(date +'%Y%m%d_%H%M%S').log
-```
-
-**IMPORTANT**: Read `fbcode_builder/README.docker` before diving in!
-
-Setting `travis_cache_dir` turns on [ccache](https://ccache.samba.org/),
-saving a fresh copy of `ccache.tgz` after every build.  This will invalidate
-Docker's layer cache, foring it to rebuild starting right after OS package
-setup, but the builds will be fast because all the compiles will be cached.
-To iterate without invalidating the Docker layer cache, just `cd
-/tmp/docker-context-*` and interact with the `Dockerfile` normally.  Note
-that the `docker-context-*` dirs preserve a copy of `ccache.tgz` as they
-first used it.
+This directory is copied literally into a number of different Facebook open
+source repositories.  Any change made to code in this directory will be
+automatically be replicated by our open source tooling into all GitHub hosted
+repositories that use `fbcode_builder`.  Typically this directory is copied
+into the open source repositories as `build/fbcode_builder/`.
 
 
-# What to read next
+# Project Configuration Files
 
-The *.py files are fairly well-documented. You might want to peruse them
-in this order:
- - shell_quoting.py
- - fbcode_builder.py
- - docker_builder.py
- - make_docker_context.py
-
-As far as runs on Travis go, the control flow is:
- - .travis.yml calls
- - travis_docker_build.sh calls
- - docker_build_with_ccache.sh
-
-This library also has an (unpublished) component targeting Facebook's
-internal continuous-integration platform using the same build-step DSL.
+The `manifests` subdirectory contains configuration files for many different
+projects, describing how to build each project.  These files also list
+dependencies between projects, enabling `getdeps.py` to build all dependencies
+for a project before building the project itself.
 
 
-# Contributing
+# Shared CMake utilities
 
-Please follow the ambient style (or PEP-8), and keep the code Python 2.6
-compatible -- since `fbcode_builder`'s only dependency is Docker, we want to
-allow building projects on even fairly ancient base systems.   We also wish
-to be compatible with Python 3, and would appreciate it if you kept that
-in mind while making changes also.
+Since this directory is copied into many Facebook open source repositories,
+it is also used to help share some CMake utility files across projects.  The
+`CMake/` subdirectory contains a number of `.cmake` files that are shared by
+the CMake-based build systems across several different projects.
+
+
+# Older Build Scripts
+
+This directory also still contains a handful of older build scripts that
+pre-date the current `getdeps.py` build system.  Most of the other `.py` files
+in this top directory, apart from `getdeps.py` itself, are from this older
+build system.  This older system is only used by a few remaining projects, and
+new projects should generally use the newer `getdeps.py` script, by adding a
+new configuration file in the `manifests/` subdirectory.

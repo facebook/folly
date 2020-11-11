@@ -28,9 +28,7 @@ namespace folly {
  */
 struct FOLLY_EXPORT BadPolyAccess : std::exception {
   BadPolyAccess() = default;
-  char const* what() const noexcept override {
-    return "BadPolyAccess";
-  }
+  char const* what() const noexcept override { return "BadPolyAccess"; }
 };
 
 /**
@@ -39,9 +37,7 @@ struct FOLLY_EXPORT BadPolyAccess : std::exception {
  */
 struct FOLLY_EXPORT BadPolyCast : std::bad_cast {
   BadPolyCast() = default;
-  char const* what() const noexcept override {
-    return "BadPolyCast";
-  }
+  char const* what() const noexcept override { return "BadPolyCast"; }
 };
 
 } // namespace folly

@@ -40,12 +40,8 @@ namespace {
 static std::atomic<std::size_t> fooCreatedCount{0};
 static std::atomic<std::size_t> fooDeletedCount{0};
 struct Foo {
-  Foo() {
-    ++fooCreatedCount;
-  }
-  ~Foo() {
-    ++fooDeletedCount;
-  }
+  Foo() { ++fooCreatedCount; }
+  ~Foo() { ++fooDeletedCount; }
 };
 using FooSingletonTL = SingletonThreadLocal<Foo>;
 } // namespace
@@ -113,9 +109,7 @@ TEST(SingletonThreadLocalTest, SameTypeMake) {
   };
   struct Tag {};
   struct Make {
-    Foo operator()() const {
-      return Foo(3, 4);
-    }
+    Foo operator()() const { return Foo(3, 4); }
   };
   auto& single = SingletonThreadLocal<Foo, Tag, Make>::get();
   EXPECT_EQ(4, single.b);
@@ -146,9 +140,7 @@ TEST(SingletonThreadLocalTest, AccessAfterFastPathDestruction) {
     int i = 3;
   };
   struct Bar {
-    ~Bar() {
-      counter += SingletonThreadLocal<Foo>::get().i;
-    }
+    ~Bar() { counter += SingletonThreadLocal<Foo>::get().i; }
   };
   auto th = std::thread([] {
     SingletonThreadLocal<Bar>::get();

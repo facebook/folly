@@ -36,9 +36,7 @@ namespace folly {
 class FOLLY_EXPORT ProgramExit : public std::runtime_error {
  public:
   explicit ProgramExit(int status, const std::string& msg = std::string());
-  int status() const {
-    return status_;
-  }
+  int status() const { return status_; }
 
  private:
   int status_;

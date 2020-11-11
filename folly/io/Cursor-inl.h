@@ -28,9 +28,7 @@ class CursorStringAppender {
   void append(ByteRange bytes) {
     str_.append(reinterpret_cast<char const*>(bytes.data()), bytes.size());
   }
-  std::string extractString() {
-    return std::move(str_);
-  }
+  std::string extractString() { return std::move(str_); }
 
  private:
   std::string str_;

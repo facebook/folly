@@ -277,9 +277,7 @@ class ReadStats {
         readSleepUS_{static_cast<uint64_t>(
             std::min(int64_t{0}, FLAGS_async_discard_read_sleep_usec))} {}
 
-  void clearSleepDuration() {
-    readSleepUS_.store(0);
-  }
+  void clearSleepDuration() { readSleepUS_.store(0); }
   std::chrono::microseconds getSleepUS() const {
     return std::chrono::microseconds{readSleepUS_.load()};
   }
@@ -389,9 +387,7 @@ class ReadStats {
     }
   }
 
-  void trailingData(StringPiece data) {
-    trailingData_ = data.str();
-  }
+  void trailingData(StringPiece data) { trailingData_ = data.str(); }
 
  private:
   struct ReaderData {
@@ -625,6 +621,8 @@ TEST(AsyncFileWriter, discard) {
  */
 TEST(AsyncFileWriter, fork) {
 #if FOLLY_HAVE_PTHREAD_ATFORK
+  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+
   TemporaryFile tmpFile{"logging_test"};
 
   // The number of messages to send before the fork and from each process
@@ -727,6 +725,8 @@ TEST(AsyncFileWriter, fork) {
  */
 TEST(AsyncFileWriter, crazyForks) {
 #if FOLLY_HAVE_PTHREAD_ATFORK
+  SKIP_IF(folly::kIsSanitizeThread) << "Not supported for TSAN";
+
   constexpr size_t numAsyncWriterThreads = 10;
   constexpr size_t numForkThreads = 5;
   constexpr size_t numForkIterations = 20;

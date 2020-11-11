@@ -140,7 +140,7 @@ template <
     typename Comp = std::less<T>,
     // All nodes are allocated using provided SysAllocator,
     // it should be thread-safe.
-    typename NodeAlloc = SysAllocator<void>,
+    typename NodeAlloc = SysAllocator<char>,
     int MAX_HEIGHT = 24>
 class ConcurrentSkipList {
   // MAX_HEIGHT needs to be at least 2 to suppress compiler
@@ -248,17 +248,11 @@ class ConcurrentSkipList {
     return foundLayer;
   }
 
-  size_t size() const {
-    return size_.load(std::memory_order_relaxed);
-  }
+  size_t size() const { return size_.load(std::memory_order_relaxed); }
 
-  int height() const {
-    return head_.load(std::memory_order_consume)->height();
-  }
+  int height() const { return head_.load(std::memory_order_consume)->height(); }
 
-  int maxLayer() const {
-    return height() - 1;
-  }
+  int maxLayer() const { return height() - 1; }
 
   size_t incrementSize(int delta) {
     return size_.fetch_add(delta, std::memory_order_relaxed) + delta;
@@ -532,9 +526,7 @@ class ConcurrentSkipList {
     recycle(oldHead);
   }
 
-  void recycle(NodeType* node) {
-    recycler_.add(node);
-  }
+  void recycle(NodeType* node) { recycler_.add(node); }
 
   detail::NodeRecycler<NodeType, NodeAlloc> recycler_;
   std::atomic<NodeType*> head_;
@@ -590,46 +582,28 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
     return *this;
   }
 
-  ~Accessor() {
-    sl_->recycler_.releaseRef();
-  }
+  ~Accessor() { sl_->recycler_.releaseRef(); }
 
-  bool empty() const {
-    return sl_->size() == 0;
-  }
-  size_t size() const {
-    return sl_->size();
-  }
-  size_type max_size() const {
-    return std::numeric_limits<size_type>::max();
-  }
+  bool empty() const { return sl_->size() == 0; }
+  size_t size() const { return sl_->size(); }
+  size_type max_size() const { return std::numeric_limits<size_type>::max(); }
 
   // returns end() if the value is not in the list, otherwise returns an
   // iterator pointing to the data, and it's guaranteed that the data is valid
   // as far as the Accessor is hold.
-  iterator find(const key_type& value) {
-    return iterator(sl_->find(value));
-  }
+  iterator find(const key_type& value) { return iterator(sl_->find(value)); }
   const_iterator find(const key_type& value) const {
     return iterator(sl_->find(value));
   }
-  size_type count(const key_type& data) const {
-    return contains(data);
-  }
+  size_type count(const key_type& data) const { return contains(data); }
 
   iterator begin() const {
     NodeType* head = sl_->head_.load(std::memory_order_consume);
     return iterator(head->next());
   }
-  iterator end() const {
-    return iterator(nullptr);
-  }
-  const_iterator cbegin() const {
-    return begin();
-  }
-  const_iterator cend() const {
-    return end();
-  }
+  iterator end() const { return iterator(nullptr); }
+  const_iterator cbegin() const { return begin(); }
+  const_iterator cend() const { return end(); }
 
   template <
       typename U,
@@ -639,17 +613,13 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
     auto ret = sl_->addOrGetData(std::forward<U>(data));
     return std::make_pair(iterator(ret.first), ret.second);
   }
-  size_t erase(const key_type& data) {
-    return remove(data);
-  }
+  size_t erase(const key_type& data) { return remove(data); }
 
   iterator lower_bound(const key_type& data) const {
     return iterator(sl_->lower_bound(data));
   }
 
-  size_t height() const {
-    return sl_->height();
-  }
+  size_t height() const { return sl_->height(); }
 
   // first() returns pointer to the first element in the skiplist, or
   // nullptr if empty.
@@ -662,12 +632,8 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
   //   last() is not guaranteed to be the max_element(), and both of them can
   //   be invalid (i.e. nullptr), so we name them differently from front() and
   //   tail() here.
-  const key_type* first() const {
-    return sl_->first();
-  }
-  const key_type* last() const {
-    return sl_->last();
-  }
+  const key_type* first() const { return sl_->first(); }
+  const key_type* last() const { return sl_->last(); }
 
   // Try to remove the last element in the skip list.
   //
@@ -684,23 +650,15 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Accessor {
     return std::make_pair(&ret.first->data(), ret.second);
   }
 
-  SkipListType* skiplist() const {
-    return sl_;
-  }
+  SkipListType* skiplist() const { return sl_; }
 
   // legacy interfaces
   // TODO:(xliu) remove these.
   // Returns true if the node is added successfully, false if not, i.e. the
   // node with the same key already existed in the list.
-  bool contains(const key_type& data) const {
-    return sl_->find(data);
-  }
-  bool add(const key_type& data) {
-    return sl_->addOrGetData(data).second;
-  }
-  bool remove(const key_type& data) {
-    return sl_->remove(data);
-  }
+  bool contains(const key_type& data) const { return sl_->find(data); }
+  bool add(const key_type& data) { return sl_->addOrGetData(data).second; }
+  bool remove(const key_type& data) { return sl_->remove(data); }
 
  private:
   SkipListType* sl_;
@@ -733,9 +691,7 @@ class detail::csl_iterator : public detail::IteratorFacade<
                             : node_->height() * sizeof(NodeT*) + sizeof(*this);
   }
 
-  bool good() const {
-    return node_ != nullptr;
-  }
+  bool good() const { return node_ != nullptr; }
 
  private:
   template <class, class>
@@ -743,15 +699,9 @@ class detail::csl_iterator : public detail::IteratorFacade<
   friend class detail::
       IteratorFacade<csl_iterator, ValT, std::forward_iterator_tag>;
 
-  void increment() {
-    node_ = node_->next();
-  }
-  bool equal(const csl_iterator& other) const {
-    return node_ == other.node_;
-  }
-  value_type& dereference() const {
-    return node_->data();
-  }
+  void increment() { node_ = node_->next(); }
+  bool equal(const csl_iterator& other) const { return node_ == other.node_; }
+  value_type& dereference() const { return node_->data(); }
 
   NodeT* node_;
 };
@@ -773,9 +723,7 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
     init();
   }
 
-  Skipper(const Accessor& accessor) : accessor_(accessor) {
-    init();
-  }
+  Skipper(const Accessor& accessor) : accessor_(accessor) { init(); }
 
   void init() {
     // need to cache the head node
@@ -804,13 +752,9 @@ class ConcurrentSkipList<T, Comp, NodeAlloc, MAX_HEIGHT>::Skipper {
     return *this;
   }
 
-  bool good() const {
-    return succs_[0] != nullptr;
-  }
+  bool good() const { return succs_[0] != nullptr; }
 
-  int maxLayer() const {
-    return headHeight_ - 1;
-  }
+  int maxLayer() const { return headHeight_ - 1; }
 
   int curHeight() const {
     // need to cap the height to the cached head height, as the current node

@@ -162,9 +162,7 @@ struct LatencyTest {
     }
   }
 
-  void printHistogram() {
-    hist_.toTSV(std::cout);
-  }
+  void printHistogram() { hist_.toTSV(std::cout); }
 
   QueueType queue_;
   std::atomic<bool> done_;

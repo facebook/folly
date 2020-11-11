@@ -48,9 +48,7 @@ void basic_test() {
   auto deadline = std::chrono::steady_clock::now() + dur;
 
   struct CustomWeightFn {
-    uint64_t operator()(int val) {
-      return val * 100;
-    }
+    uint64_t operator()(int val) { return val * 100; }
   };
 
   Q<int, MayBlock, CustomWeightFn> q(10000);
@@ -109,9 +107,7 @@ void move_test() {
   };
 
   struct CustomWeightFn {
-    uint64_t operator()(Foo&&) {
-      return 10;
-    }
+    uint64_t operator()(Foo&&) { return 10; }
   };
 
   auto dur = std::chrono::microseconds(100);
@@ -142,9 +138,7 @@ TEST(DynamicBoundedQueue, move) {
 template <template <typename, bool, typename> class Q, bool MayBlock>
 void capacity_test() {
   struct CustomWeightFn {
-    uint64_t operator()(int val) {
-      return val;
-    }
+    uint64_t operator()(int val) { return val; }
   };
 
   Q<int, MayBlock, CustomWeightFn> q(1000);
@@ -432,21 +426,13 @@ class MPMC {
  public:
   explicit MPMC(uint64_t capacity) : q_(capacity) {}
 
-  void enqueue(const T& v) {
-    q_.blockingWrite(v);
-  }
+  void enqueue(const T& v) { q_.blockingWrite(v); }
 
-  void enqueue(T&& v) {
-    q_.blockingWrite(std::move(v));
-  }
+  void enqueue(T&& v) { q_.blockingWrite(std::move(v)); }
 
-  bool try_enqueue(const T& v) {
-    return q_.write(v);
-  }
+  bool try_enqueue(const T& v) { return q_.write(v); }
 
-  bool try_enqueue(const T&& v) {
-    return q_.write(std::move(v));
-  }
+  bool try_enqueue(const T&& v) { return q_.write(std::move(v)); }
 
   template <typename Rep, typename Period>
   bool try_enqueue_for(
@@ -455,13 +441,9 @@ class MPMC {
     return q_.tryWriteUntil(std::chrono::steady_clock::now() + duration, v);
   }
 
-  void dequeue(T& item) {
-    q_.blockingRead(item);
-  }
+  void dequeue(T& item) { q_.blockingRead(item); }
 
-  bool try_dequeue(T& item) {
-    return q_.read(item);
-  }
+  bool try_dequeue(T& item) { return q_.read(item); }
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(
@@ -481,30 +463,20 @@ class PCQ {
  public:
   explicit PCQ(uint64_t capacity) : q_(capacity) {}
 
-  void enqueue(const T&) {
-    ASSERT_TRUE(false);
-  }
+  void enqueue(const T&) { ASSERT_TRUE(false); }
 
-  bool try_enqueue(const T& v) {
-    return q_.write(v);
-  }
+  bool try_enqueue(const T& v) { return q_.write(v); }
 
-  bool try_enqueue(T&& v) {
-    return q_.write(std::move(v));
-  }
+  bool try_enqueue(T&& v) { return q_.write(std::move(v)); }
 
   template <typename Rep, typename Period>
   bool try_enqueue_for(const T&, const std::chrono::duration<Rep, Period>&) {
     return false;
   }
 
-  void dequeue(T&) {
-    ASSERT_TRUE(false);
-  }
+  void dequeue(T&) { ASSERT_TRUE(false); }
 
-  bool try_dequeue(T& item) {
-    return q_.read(item);
-  }
+  bool try_dequeue(T& item) { return q_.read(item); }
 
   template <typename Rep, typename Period>
   bool try_dequeue_for(T&, const std::chrono::duration<Rep, Period>&) {
@@ -524,9 +496,7 @@ struct IntArray {
       a[i] = v;
     }
   }
-  operator int() {
-    return a[0];
-  }
+  operator int() { return a[0]; }
 };
 
 void dottedLine() {

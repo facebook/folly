@@ -58,16 +58,10 @@ class TestLogWriter : public LogWriter {
   }
   void flush() override {}
 
-  std::vector<std::string>& getMessages() {
-    return messages_;
-  }
-  const std::vector<std::string>& getMessages() const {
-    return messages_;
-  }
+  std::vector<std::string>& getMessages() { return messages_; }
+  const std::vector<std::string>& getMessages() const { return messages_; }
 
-  bool ttyOutput() const override {
-    return false;
-  }
+  bool ttyOutput() const override { return false; }
 
  private:
   std::vector<std::string> messages_;

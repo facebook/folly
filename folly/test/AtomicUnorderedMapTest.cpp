@@ -47,9 +47,7 @@ struct non_atomic {
   }
 
   /* implicit */
-  operator T() const {
-    return load();
-  }
+  operator T() const { return load(); }
 
   void store(
       T desired,
@@ -93,9 +91,7 @@ struct non_atomic {
     return false;
   }
 
-  bool is_lock_free() const {
-    return true;
-  }
+  bool is_lock_free() const { return true; }
 };
 
 template <
@@ -238,9 +234,7 @@ BENCHMARK(lookup_int_int_hit, iters) {
     EXPECT_EQ(iter->second, k + 1);
   }
 
-  BENCHMARK_SUSPEND {
-    ptr.reset(nullptr);
-  }
+  BENCHMARK_SUSPEND { ptr.reset(nullptr); }
 }
 
 struct PairHash {
@@ -304,9 +298,7 @@ void contendedRW(
     thr.join();
   }
 
-  BENCHMARK_SUSPEND {
-    ptr.reset(nullptr);
-  }
+  BENCHMARK_SUSPEND { ptr.reset(nullptr); }
 }
 
 // clang-format off

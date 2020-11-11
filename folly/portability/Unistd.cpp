@@ -115,12 +115,8 @@ int getdtablesize() {
   return _getmaxstdio();
 }
 
-int getgid() {
+gid_t getgid() {
   return 1;
-}
-
-pid_t getpid() {
-  return (pid_t)uint64_t(GetCurrentProcessId());
 }
 
 // No major need to implement this, and getting a non-potentially
@@ -129,7 +125,7 @@ pid_t getppid() {
   return (pid_t)1;
 }
 
-int getuid() {
+uid_t getuid() {
   return 1;
 }
 

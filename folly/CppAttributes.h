@@ -77,10 +77,10 @@
  *    #endif
  *  }
  */
-#if FOLLY_HAS_CPP_ATTRIBUTE(maybe_unused)
+#if FOLLY_HAS_CPP_ATTRIBUTE(maybe_unused) && __cplusplus >= 201703L
 #define FOLLY_MAYBE_UNUSED [[maybe_unused]]
-#elif FOLLY_HAS_ATTRIBUTE(__unused__) || __GNUC__
-#define FOLLY_MAYBE_UNUSED __attribute__((__unused__))
+#elif FOLLY_HAS_CPP_ATTRIBUTE(gnu::unused) || __GNUC__
+#define FOLLY_MAYBE_UNUSED [[gnu::unused]]
 #else
 #define FOLLY_MAYBE_UNUSED
 #endif

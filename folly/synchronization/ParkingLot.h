@@ -64,9 +64,7 @@ struct WaitNodeBase {
     cond_.notify_one();
   }
 
-  bool signaled() {
-    return signaled_;
-  }
+  bool signaled() { return signaled_; }
 };
 
 extern std::atomic<uint64_t> idallocator;

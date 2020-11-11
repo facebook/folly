@@ -177,9 +177,7 @@ extern template struct SequentialThreadId<std::atomic>;
 #endif
 
 struct HashingThreadId {
-  static unsigned get() {
-    return hash::twang_32from64(getCurrentThreadID());
-  }
+  static unsigned get() { return hash::twang_32from64(getCurrentThreadID()); }
 };
 
 /// A class that lazily binds a unique (for each implementation of Atom)
@@ -270,16 +268,12 @@ struct AccessSpreader {
   }
 #else
   /// Fallback implementation when thread-local storage isn't available.
-  static size_t cachedCurrent(size_t numStripes) {
-    return current(numStripes);
-  }
+  static size_t cachedCurrent(size_t numStripes) { return current(numStripes); }
 #endif
 
   /// Returns the maximum stripe value that can be returned under any
   /// dynamic configuration, based on the current compile-time platform
-  static constexpr size_t maxStripeValue() {
-    return kMaxCpus;
-  }
+  static constexpr size_t maxStripeValue() { return kMaxCpus; }
 
  private:
   /// If there are more cpus than this nothing will crash, but there

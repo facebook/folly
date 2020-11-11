@@ -371,9 +371,7 @@ struct Data {
   Data() = default;
   // Suppress compiler-generated copy ops to not copy anything:
   Data(Data const&) {}
-  Data& operator=(Data const&) {
-    return *this;
-  }
+  Data& operator=(Data const&) { return *this; }
   union {
     void* pobj_ = nullptr;
     std::aligned_storage_t<sizeof(double[2])> buff_;
@@ -456,9 +454,7 @@ struct ThrowThunk {
   template <class R, class... Args>
   constexpr /* implicit */ operator FnPtr<R, Args...>() const noexcept {
     struct _ {
-      static R call(Args...) {
-        throw_exception<BadPolyAccess>();
-      }
+      static R call(Args...) { throw_exception<BadPolyAccess>(); }
     };
     return &_::call;
   }
@@ -858,12 +854,8 @@ struct PolyRoot : private PolyBase, private Data {
   using _polyInterface_ = I;
 
  private:
-  PolyRoot& _polyRoot_() noexcept {
-    return *this;
-  }
-  PolyRoot const& _polyRoot_() const noexcept {
-    return *this;
-  }
+  PolyRoot& _polyRoot_() noexcept { return *this; }
+  PolyRoot const& _polyRoot_() const noexcept { return *this; }
   VTable<std::decay_t<I>> const* vptr_ = vtable<std::decay_t<I>>();
 };
 
@@ -909,9 +901,7 @@ struct SigImpl : Sig<R(As...) const> {
   constexpr Fun T::*operator()(Fun T::*t) const noexcept {
     return t;
   }
-  constexpr Fun* operator()(Fun* t) const noexcept {
-    return t;
-  }
+  constexpr Fun* operator()(Fun* t) const noexcept { return t; }
   template <class F>
   constexpr F* operator()(F* t) const noexcept {
     return t;

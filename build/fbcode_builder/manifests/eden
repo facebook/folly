@@ -17,6 +17,7 @@ fbthrift
 fb303
 cpptoml
 rocksdb
+re2
 libgit2
 lz4
 pexpect
@@ -52,6 +53,7 @@ fbcode/tools/lfs = tools/lfs
 ^fbcode/eden/hg/.*$
 ^fbcode/eden/mononoke/(?!lfs_protocol)
 ^fbcode/eden/scm/build/.*$
+^fbcode/eden/scm/lib/third-party/rust/.*/Cargo.toml$
 ^fbcode/eden/.*/\.cargo/.*$
 /Cargo\.lock$
 \.pyc$

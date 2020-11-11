@@ -36,17 +36,11 @@ struct SynchronizedPtrLockedElement {
   explicit SynchronizedPtrLockedElement(LockHolder&& holder)
       : holder_(std::move(holder)) {}
 
-  Element& operator*() const {
-    return **holder_;
-  }
+  Element& operator*() const { return **holder_; }
 
-  Element* operator->() const {
-    return &**holder_;
-  }
+  Element* operator->() const { return &**holder_; }
 
-  explicit operator bool() const {
-    return static_cast<bool>(*holder_);
-  }
+  explicit operator bool() const { return static_cast<bool>(*holder_); }
 
  private:
   LockHolder holder_;
@@ -91,9 +85,7 @@ class SynchronizedPtr {
     return function(*rlock());
   }
 
-  write_locked_element wlock() {
-    return write_locked_element(inner_.wlock());
-  }
+  write_locked_element wlock() { return write_locked_element(inner_.wlock()); }
 
   template <class Function>
   auto withWLock(Function&& function) {
@@ -104,9 +96,7 @@ class SynchronizedPtr {
   // it difficult to get a read-locked pointer because that provides read-locked
   // non-const access to the element, and the purpose of this class is to
   // discourage that.
-  write_locked_pointer wlockPointer() {
-    return inner_.wlock();
-  }
+  write_locked_pointer wlockPointer() { return inner_.wlock(); }
 
   template <class Function>
   auto withWLockPointer(Function&& function) {

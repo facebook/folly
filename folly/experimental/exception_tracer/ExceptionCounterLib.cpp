@@ -134,9 +134,7 @@ void throwHandler(void*, std::type_info* exType, void (**)(void*)) noexcept {
 }
 
 struct Initializer {
-  Initializer() {
-    registerCxaThrowCallback(throwHandler);
-  }
+  Initializer() { registerCxaThrowCallback(throwHandler); }
 };
 
 Initializer initializer;

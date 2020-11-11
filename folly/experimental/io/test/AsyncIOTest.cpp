@@ -23,6 +23,13 @@ namespace folly {
 namespace test {
 namespace async_base_test_lib_detail {
 INSTANTIATE_TYPED_TEST_CASE_P(AsyncTest, AsyncTest, AsyncIO);
+
+class BatchAsyncIO : public AsyncIO {
+ public:
+  BatchAsyncIO() : AsyncIO(kBatchNumEntries, folly::AsyncBase::NOT_POLLABLE) {}
+};
+INSTANTIATE_TYPED_TEST_CASE_P(AsyncBatchTest, AsyncBatchTest, BatchAsyncIO);
+
 } // namespace async_base_test_lib_detail
 } // namespace test
 } // namespace folly

@@ -396,9 +396,7 @@ class RequestWithReturn {
     // note that the invariant here is that this function is only called if the
     // requesting thread had it's critical section combined, and the value_
     // member constructed through detach()
-    SCOPE_EXIT {
-      value_.~ReturnType();
-    };
+    SCOPE_EXIT { value_.~ReturnType(); };
     return std::move(value_);
   }
 
@@ -500,9 +498,7 @@ class TaskWithoutCoalesce {
   using StorageType = folly::Unit;
   explicit TaskWithoutCoalesce(Func func, Waiter&) : func_{std::move(func)} {}
 
-  void operator()() const {
-    func_();
-  }
+  void operator()() const { func_(); }
 
  private:
   Func func_;
@@ -779,9 +775,7 @@ class DistributedMutex<Atomic, TimePublishing>::DistributedMutexStateProxy {
 
   // The proxy is valid when a mutex acquisition attempt was successful,
   // lock() is guaranteed to return a valid proxy, try_lock() is not
-  explicit operator bool() const {
-    return expected_;
-  }
+  explicit operator bool() const { return expected_; }
 
   // private:
   // friend the mutex class, since that will be accessing state private to
@@ -873,7 +867,8 @@ std::uint64_t publish(
   // passes.  So we defer time publishing to the point when the current thread
   // gets preempted
   auto current = time();
-  if ((current - previous) >= kScheduledAwaySpinThreshold) {
+  if (previous != decltype(time())::zero() &&
+      (current - previous) >= kScheduledAwaySpinThreshold) {
     shouldPublish = true;
   }
   previous = current;
@@ -906,7 +901,7 @@ template <typename Waiter>
 bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
   auto spins = std::uint64_t{0};
   auto waitMode = (mode == kCombineUninitialized) ? kCombineWaiting : kWaiting;
-  auto previous = time();
+  auto previous = decltype(time())::zero();
   auto shouldPublish = false;
   while (true) {
     auto signal = publish(spins++, shouldPublish, previous, waiter, waitMode);
@@ -927,7 +922,7 @@ bool spin(Waiter& waiter, std::uint32_t& sig, std::uint32_t mode) {
     if (spins < kMaxSpins) {
       asm_volatile_pause();
     } else {
-      Sleeper::sleep();
+      std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
     }
   }
 }
@@ -1069,9 +1064,7 @@ auto DistributedMutex<Atomic, TimePublishing>::lock_combine(Func func)
     // to avoid having to play a return-value dance when the combinable
     // returns void, we use a scope exit to perform the unlock after the
     // function return has been processed
-    SCOPE_EXIT {
-      unlock(std::move(state));
-    };
+    SCOPE_EXIT { unlock(std::move(state)); };
     return func();
   }
 
@@ -1105,9 +1098,7 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_for(
     Func func) {
   auto state = try_lock_for(duration);
   if (state) {
-    SCOPE_EXIT {
-      unlock(std::move(state));
-    };
+    SCOPE_EXIT { unlock(std::move(state)); };
     return func();
   }
 
@@ -1122,9 +1113,7 @@ DistributedMutex<Atomic, TimePublishing>::try_lock_combine_until(
     Func func) {
   auto state = try_lock_until(deadline);
   if (state) {
-    SCOPE_EXIT {
-      unlock(std::move(state));
-    };
+    SCOPE_EXIT { unlock(std::move(state)); };
     return func();
   }
 

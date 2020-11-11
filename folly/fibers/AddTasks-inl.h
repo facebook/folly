@@ -73,7 +73,7 @@ inline void TaskIterator<T>::reserve(size_t n) {
   size_t tasksLeft = context_->totalTasks - context_->results.size();
   n = std::min(n, tasksLeft);
 
-  await([this, n](Promise<void> promise) {
+  await_async([this, n](Promise<void> promise) {
     context_->tasksToFulfillPromise = n;
     context_->promise.assign(std::move(promise));
   });

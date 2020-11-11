@@ -27,16 +27,12 @@
 class Base {
  public:
   virtual ~Base() {}
-  virtual int foo() const {
-    return 1;
-  }
+  virtual int foo() const { return 1; }
 };
 
 class Derived : public Base {
  public:
-  int foo() const final {
-    return 2;
-  }
+  int foo() const final { return 2; }
 };
 
 // A compiler that supports final will likely inline the call to p->foo()

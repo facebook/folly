@@ -48,53 +48,35 @@ struct Mutex {
   Clock::time_point now = Clock::now();
   Clock::time_point locked_until = Clock::time_point::min();
 
-  void lock() {
-    op(Held::Unique);
-  }
-  bool try_lock() {
-    return try_op(Held::Unique);
-  }
+  void lock() { op(Held::Unique); }
+  bool try_lock() { return try_op(Held::Unique); }
   bool try_lock_for(Clock::duration timeout) {
     return try_op_for(Held::Unique, timeout);
   }
   bool try_lock_until(Clock::time_point deadline) {
     return try_op_until(Held::Unique, deadline);
   }
-  void unlock() {
-    unop(Held::Unique);
-  }
+  void unlock() { unop(Held::Unique); }
 
-  void lock_shared() {
-    op(Held::Shared);
-  }
-  bool try_lock_shared() {
-    return try_op(Held::Shared);
-  }
+  void lock_shared() { op(Held::Shared); }
+  bool try_lock_shared() { return try_op(Held::Shared); }
   bool try_lock_shared_for(Clock::duration timeout) {
     return try_op_for(Held::Shared, timeout);
   }
   bool try_lock_shared_until(Clock::time_point deadline) {
     return try_op_until(Held::Shared, deadline);
   }
-  void unlock_shared() {
-    unop(Held::Shared);
-  }
+  void unlock_shared() { unop(Held::Shared); }
 
-  void lock_upgrade() {
-    op(Held::Upgrade);
-  }
-  bool try_lock_upgrade() {
-    return try_op(Held::Upgrade);
-  }
+  void lock_upgrade() { op(Held::Upgrade); }
+  bool try_lock_upgrade() { return try_op(Held::Upgrade); }
   bool try_lock_upgrade_for(Clock::duration timeout) {
     return try_op_for(Held::Upgrade, timeout);
   }
   bool try_lock_upgrade_until(Clock::time_point deadline) {
     return try_op_until(Held::Upgrade, deadline);
   }
-  void unlock_upgrade() {
-    unop(Held::Upgrade);
-  }
+  void unlock_upgrade() { unop(Held::Upgrade); }
 
   void unlock_and_lock_shared() {
     unlock();
@@ -126,12 +108,8 @@ struct Mutex {
 
   //  impl ...
 
-  void op(Held h) {
-    try_op(h) || (throw DeadlockError(), 0);
-  }
-  bool try_op(Held h) {
-    return try_op_for(h, Clock::duration::zero());
-  }
+  void op(Held h) { try_op(h) || (throw DeadlockError(), 0); }
+  bool try_op(Held h) { return try_op_for(h, Clock::duration::zero()); }
   bool try_op_for(Held h, Clock::duration timeout) {
     return try_op_until(h, now + timeout);
   }

@@ -74,16 +74,12 @@ TEST(Lazy, Map) {
 
 struct CopyCount {
   CopyCount() {}
-  CopyCount(const CopyCount&) {
-    ++count;
-  }
+  CopyCount(const CopyCount&) { ++count; }
   CopyCount(CopyCount&&) noexcept {}
 
   static int count;
 
-  bool operator()() const {
-    return true;
-  }
+  bool operator()() const { return true; }
 };
 
 int CopyCount::count = 0;

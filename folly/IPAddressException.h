@@ -55,9 +55,7 @@ class FOLLY_EXPORT IPAddressFormatException : public std::exception {
   IPAddressFormatException& operator=(IPAddressFormatException&&) = default;
 
   ~IPAddressFormatException() noexcept override {}
-  const char* what() const noexcept override {
-    return msg_.c_str();
-  }
+  const char* what() const noexcept override { return msg_.c_str(); }
 
  private:
   std::string msg_;

@@ -46,13 +46,9 @@ class AsyncIOOp : public AsyncBaseOp {
 
   void reset(NotificationCallback cb = NotificationCallback()) override;
 
-  AsyncIOOp* getAsyncIOOp() override {
-    return this;
-  }
+  AsyncIOOp* getAsyncIOOp() override { return this; }
 
-  IoUringOp* getIoUringOp() override {
-    return nullptr;
-  }
+  IoUringOp* getIoUringOp() override { return nullptr; }
 
   void toStream(std::ostream& os) const override;
 
@@ -81,6 +77,7 @@ class AsyncIO : public AsyncBase {
  private:
   void initializeContext() override;
   int submitOne(AsyncBase::Op* op) override;
+  int submitRange(Range<AsyncBase::Op**> ops) override;
 
   Range<AsyncBase::Op**> doWait(
       WaitType type,

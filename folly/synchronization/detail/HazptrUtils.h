@@ -52,17 +52,11 @@ class linked_list {
   explicit linked_list(Node* head, Node* tail) noexcept
       : head_(head), tail_(tail) {}
 
-  Node* head() const noexcept {
-    return head_;
-  }
+  Node* head() const noexcept { return head_; }
 
-  Node* tail() const noexcept {
-    return tail_;
-  }
+  Node* tail() const noexcept { return tail_; }
 
-  bool empty() const noexcept {
-    return head() == nullptr;
-  }
+  bool empty() const noexcept { return head() == nullptr; }
 
   void push(Node* node) noexcept {
     node->set_next(nullptr);
@@ -142,18 +136,12 @@ class shared_head_tail_list {
     return linked_list<Node>(h, t);
   }
 
-  bool empty() const noexcept {
-    return head() == nullptr;
-  }
+  bool empty() const noexcept { return head() == nullptr; }
 
  private:
-  Node* head() const noexcept {
-    return head_.load(std::memory_order_acquire);
-  }
+  Node* head() const noexcept { return head_.load(std::memory_order_acquire); }
 
-  Node* tail() const noexcept {
-    return tail_.load(std::memory_order_acquire);
-  }
+  Node* tail() const noexcept { return tail_.load(std::memory_order_acquire); }
 
   void set_head(Node* node) noexcept {
     head_.store(node, std::memory_order_release);
@@ -287,13 +275,9 @@ class shared_head_only_list {
     }
   }
 
-  bool check_lock() const noexcept {
-    return (head() & kLockBit) == kLockBit;
-  }
+  bool check_lock() const noexcept { return (head() & kLockBit) == kLockBit; }
 
-  bool empty() const noexcept {
-    return head() == 0u;
-  }
+  bool empty() const noexcept { return head() == 0u; }
 
  private:
   uintptr_t head() const noexcept {
@@ -311,9 +295,7 @@ class shared_head_only_list {
         oldval, newval, std::memory_order_acq_rel, std::memory_order_acquire);
   }
 
-  std::thread::id owner() {
-    return owner_.load(std::memory_order_relaxed);
-  }
+  std::thread::id owner() { return owner_.load(std::memory_order_relaxed); }
 
   void set_owner() {
     DCHECK(owner() == std::thread::id());
@@ -331,7 +313,6 @@ class shared_head_only_list {
   }
 
   Node* pop_all_lock() noexcept {
-    folly::detail::Sleeper s;
     while (true) {
       auto oldval = head();
       auto lockbit = oldval & kLockBit;
@@ -349,7 +330,7 @@ class shared_head_only_list {
           return reinterpret_cast<Node*>(ptrval);
         }
       }
-      s.sleep();
+      std::this_thread::sleep_for(folly::detail::Sleeper::kMinYieldingSleep);
     }
   }
 }; // shared_head_only_list

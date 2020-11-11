@@ -216,12 +216,8 @@ class AtomicHashMap {
     }
   }
 
-  key_equal key_eq() const {
-    return key_equal();
-  }
-  hasher hash_function() const {
-    return hasher();
-  }
+  key_equal key_eq() const { return key_equal(); }
+  hasher hash_function() const { return hasher(); }
 
   /*
    * insert --
@@ -327,13 +323,9 @@ class AtomicHashMap {
    */
   size_t size() const;
 
-  bool empty() const {
-    return size() == 0;
-  }
+  bool empty() const { return size() == 0; }
 
-  size_type count(key_type k) const {
-    return find(k) == end() ? 0 : 1;
-  }
+  size_type count(key_type k) const { return find(k) == end() ? 0 : 1; }
 
   /*
    * findAt --
@@ -389,13 +381,9 @@ class AtomicHashMap {
     return it;
   }
 
-  iterator end() {
-    return iterator();
-  }
+  iterator end() { return iterator(); }
 
-  const_iterator end() const {
-    return const_iterator();
-  }
+  const_iterator end() const { return const_iterator(); }
 
   /* Advanced functions for direct access: */
 

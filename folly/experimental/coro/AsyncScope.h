@@ -63,6 +63,9 @@ class AsyncScope {
   // completes before calling the destructor.
   ~AsyncScope();
 
+  // Query the number of tasks added to the scope that have not yet completed.
+  std::size_t remaining() const noexcept;
+
   // Start the specified task/awaitable by co_awaiting it.
   //
   // Exceptions
@@ -103,7 +106,7 @@ class AsyncScope {
   ////////
   // Implement the async-cleanup pattern.
 
-  // Implement the async cleanup 'cleanup()' pattern used by MasterPtr.
+  // Implement the async cleanup 'cleanup()' pattern used by PrimaryPtr.
   //
   // If you have previuosly called add() then you must call cleanup()
   // and wait for the retuned future to complete before the AsyncScope
@@ -120,12 +123,11 @@ class AsyncScope {
 
     try {
       co_await std::move(awaitable);
-    } catch (const std::exception& e) {
+    } catch (const OperationCancelled&) {
+    } catch (...) {
       LOG(DFATAL)
           << "Unhandled exception thrown from task added to AsyncScope: "
-          << e.what();
-    } catch (...) {
-      LOG(DFATAL) << "Unhandled exception thrown from task added to AsyncScope";
+          << folly::exceptionStr(std::current_exception());
     }
   }
 
@@ -139,6 +141,11 @@ inline AsyncScope::~AsyncScope() {
   CHECK(
       (!anyTasksStarted_.load(std::memory_order_relaxed) || joined_) &&
       "cleanup() not yet complete");
+}
+
+inline std::size_t AsyncScope::remaining() const noexcept {
+  const std::size_t count = barrier_.remaining();
+  return count > 1 ? (count - 1) : 0;
 }
 
 template <typename Awaitable>

@@ -29,6 +29,7 @@
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
+#include <folly/functional/Invoke.h>
 
 /**
  * Code that aids in storing data aligned on block (possibly cache-line)
@@ -53,45 +54,24 @@ namespace padded {
  * is intentional: Node itself is trivial, which means that it can be
  * serialized / deserialized using a simple memcpy.
  */
-template <class T, size_t NS, class Enable = void>
-class Node;
-
-namespace detail {
-// Shortcut to avoid writing the long enable_if expression every time
-template <class T, size_t NS, class Enable = void>
-struct NodeValid;
 template <class T, size_t NS>
-struct NodeValid<
-    T,
-    NS,
-    typename std::enable_if<(
-        std::is_trivial<T>::value && sizeof(T) <= NS &&
-        NS % alignof(T) == 0)>::type> {
-  typedef void type;
-};
-} // namespace detail
+class Node {
+  static_assert(
+      std::is_trivial_v<T> && sizeof(T) <= NS && NS % alignof(T) == 0);
 
-template <class T, size_t NS>
-class Node<T, NS, typename detail::NodeValid<T, NS>::type> {
  public:
   typedef T value_type;
   static constexpr size_t kNodeSize = NS;
   static constexpr size_t kElementCount = NS / sizeof(T);
   static constexpr size_t kPaddingBytes = NS % sizeof(T);
 
-  T* data() {
-    return storage_.data;
-  }
-  const T* data() const {
-    return storage_.data;
-  }
+  T* data() { return storage_.data; }
+  const T* data() const { return storage_.data; }
 
   bool operator==(const Node& other) const {
     return memcmp(data(), other.data(), sizeof(T) * kElementCount) == 0;
   }
-  bool operator!=(const Node& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const Node& other) const { return !(*this == other); }
 
   /**
    * Return the number of nodes needed to represent n values.  Rounds up.
@@ -104,9 +84,7 @@ class Node<T, NS, typename detail::NodeValid<T, NS>::type> {
    * Return the total byte size needed to represent n values, rounded up
    * to the nearest full node.
    */
-  static constexpr size_t paddedByteSize(size_t n) {
-    return nodeCount(n) * NS;
-  }
+  static constexpr size_t paddedByteSize(size_t n) { return nodeCount(n) * NS; }
 
   /**
    * Return the number of bytes used for padding n values.
@@ -142,94 +120,33 @@ class Node<T, NS, typename detail::NodeValid<T, NS>::type> {
 // We must define kElementCount and kPaddingBytes to work around a bug
 // in gtest that odr-uses them.
 template <class T, size_t NS>
-constexpr size_t
-    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kNodeSize;
+constexpr size_t Node<T, NS>::kNodeSize;
 template <class T, size_t NS>
-constexpr size_t
-    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kElementCount;
+constexpr size_t Node<T, NS>::kElementCount;
 template <class T, size_t NS>
-constexpr size_t
-    Node<T, NS, typename detail::NodeValid<T, NS>::type>::kPaddingBytes;
+constexpr size_t Node<T, NS>::kPaddingBytes;
 
 template <class Iter>
 class Iterator;
 
 namespace detail {
 
-template <typename Void, typename Container, typename... Args>
-struct padded_emplace_back_or_push_back_ {
-  static decltype(auto) go(Container& container, Args&&... args) {
-    using Value = typename Container::value_type;
-    return container.push_back(Value(std::forward<Args>(args)...));
-  }
-};
-
-template <typename Container, typename... Args>
-struct padded_emplace_back_or_push_back_<
-    void_t<decltype(
-        std::declval<Container&>().emplace_back(std::declval<Args>()...))>,
-    Container,
-    Args...> {
-  static decltype(auto) go(Container& container, Args&&... args) {
-    return container.emplace_back(std::forward<Args>(args)...);
-  }
-};
-
-template <typename Container, typename... Args>
-decltype(auto) padded_emplace_back_or_push_back(
-    Container& container,
-    Args&&... args) {
-  using impl = padded_emplace_back_or_push_back_<void, Container, Args...>;
-  return impl::go(container, std::forward<Args>(args)...);
-}
-
-// Helper class to transfer the constness from From (a lvalue reference)
-// and create a lvalue reference to To.
-//
-// TransferReferenceConstness<const string&, int> -> const int&
-// TransferReferenceConstness<string&, int> -> int&
-// TransferReferenceConstness<string&, const int> -> const int&
-template <class From, class To, class Enable = void>
-struct TransferReferenceConstness;
-
-template <class From, class To>
-struct TransferReferenceConstness<
-    From,
-    To,
-    typename std::enable_if<std::is_const<
-        typename std::remove_reference<From>::type>::value>::type> {
-  typedef typename std::add_lvalue_reference<
-      typename std::add_const<To>::type>::type type;
-};
-
-template <class From, class To>
-struct TransferReferenceConstness<
-    From,
-    To,
-    typename std::enable_if<!std::is_const<
-        typename std::remove_reference<From>::type>::value>::type> {
-  typedef typename std::add_lvalue_reference<To>::type type;
-};
+FOLLY_CREATE_MEMBER_INVOKER(emplace_back, emplace_back);
 
 // Helper class template to define a base class for Iterator (below) and save
 // typing.
-template <class Iter>
-struct IteratorBase {
-  typedef boost::iterator_adaptor<
-      // CRTC
-      Iterator<Iter>,
-      // Base iterator type
-      Iter,
-      // Value type
-      typename std::iterator_traits<Iter>::value_type::value_type,
-      // Category or traversal
-      boost::use_default,
-      // Reference type
-      typename detail::TransferReferenceConstness<
-          typename std::iterator_traits<Iter>::reference,
-          typename std::iterator_traits<Iter>::value_type::value_type>::type>
-      type;
-};
+template <
+    template <class> class Class,
+    class Iter,
+    class Traits = std::iterator_traits<Iter>,
+    class Ref = typename Traits::reference,
+    class Val = typename Traits::value_type::value_type>
+using IteratorBase = boost::iterator_adaptor<
+    Class<Iter>, // CRTC
+    Iter, // Base iterator type
+    Val, // Value type
+    boost::use_default, // Category or traversal
+    like_t<Ref, Val>>; // Reference type
 
 } // namespace detail
 
@@ -238,23 +155,19 @@ struct IteratorBase {
  * node elements.
  */
 template <class Iter>
-class Iterator : public detail::IteratorBase<Iter>::type {
-  typedef typename detail::IteratorBase<Iter>::type Super;
+class Iterator : public detail::IteratorBase<Iterator, Iter> {
+  using Super = detail::IteratorBase<Iterator, Iter>;
 
  public:
-  typedef typename std::iterator_traits<Iter>::value_type Node;
+  using Node = typename std::iterator_traits<Iter>::value_type;
 
   Iterator() : pos_(0) {}
 
   explicit Iterator(Iter base) : Super(base), pos_(0) {}
 
   // Return the current node and the position inside the node
-  const Node& node() const {
-    return *this->base_reference();
-  }
-  size_t pos() const {
-    return pos_;
-  }
+  const Node& node() const { return *this->base_reference(); }
+  size_t pos() const { return pos_; }
 
  private:
   typename Super::reference dereference() const {
@@ -407,9 +320,7 @@ class Adaptor {
   }
 
   // Iterators
-  const_iterator cbegin() const {
-    return const_iterator(c_.begin());
-  }
+  const_iterator cbegin() const { return const_iterator(c_.begin()); }
   const_iterator cend() const {
     auto it = const_iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
@@ -417,15 +328,9 @@ class Adaptor {
     }
     return it;
   }
-  const_iterator begin() const {
-    return cbegin();
-  }
-  const_iterator end() const {
-    return cend();
-  }
-  iterator begin() {
-    return iterator(c_.begin());
-  }
+  const_iterator begin() const { return cbegin(); }
+  const_iterator end() const { return cend(); }
+  iterator begin() { return iterator(c_.begin()); }
   iterator end() {
     auto it = iterator(c_.end());
     if (lastCount_ != Node::kElementCount) {
@@ -438,9 +343,7 @@ class Adaptor {
     swap(c_, other.c_);
     swap(lastCount_, other.lastCount_);
   }
-  bool empty() const {
-    return c_.empty();
-  }
+  bool empty() const { return c_.empty(); }
   size_type size() const {
     return (
         c_.empty() ? 0 : (c_.size() - 1) * Node::kElementCount + lastCount_);
@@ -476,9 +379,7 @@ class Adaptor {
     new (allocate_back()) value_type(std::forward<Args>(args)...);
   }
 
-  void push_back(value_type x) {
-    emplace_back(std::move(x));
-  }
+  void push_back(value_type x) { emplace_back(std::move(x)); }
 
   void pop_back() {
     assert(!empty());
@@ -498,9 +399,7 @@ class Adaptor {
     c_.reserve(Node::nodeCount(n));
   }
 
-  size_type capacity() const {
-    return c_.capacity() * Node::kElementCount;
-  }
+  size_type capacity() const { return c_.capacity() * Node::kElementCount; }
 
   const value_type& operator[](size_type idx) const {
     return c_[idx / Node::kElementCount].data()[idx % Node::kElementCount];
@@ -540,7 +439,11 @@ class Adaptor {
  private:
   value_type* allocate_back() {
     if (lastCount_ == Node::kElementCount) {
-      detail::padded_emplace_back_or_push_back(c_);
+      if constexpr (is_invocable_v<detail::emplace_back, Container&>) {
+        c_.emplace_back();
+      } else {
+        c_.push_back(typename Container::value_type());
+      }
       lastCount_ = 0;
     }
     return &c_.back().data()[lastCount_++];

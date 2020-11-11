@@ -68,9 +68,7 @@ std::vector<std::string> OpenSSLCertUtils::getSubjectAltNames(X509& x509) {
   if (!names) {
     return {};
   }
-  SCOPE_EXIT {
-    sk_GENERAL_NAME_pop_free(names, GENERAL_NAME_free);
-  };
+  SCOPE_EXIT { sk_GENERAL_NAME_pop_free(names, GENERAL_NAME_free); };
 
   std::vector<std::string> ret;
   auto count = sk_GENERAL_NAME_num(names);

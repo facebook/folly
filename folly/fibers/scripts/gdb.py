@@ -806,22 +806,31 @@ def get_fiber_managers(only=None):
 
             # we have a value, make sure we have a unique key
             assert mid not in managers
-            value = entry
+            value = gdb.default_visualizer(entry)
 
-            # unfortunately the stl gdb libs don't expose the unique_ptr target address
-            # except through the pretty printer, as the last space-delimited word.
-            # We extract that address using the pretty printer, then create a new
-            # gdb.Value of that address cast to the fibermanager type.
-            address = int(gdb.default_visualizer(value).to_string().split(" ")[-1], 16)
-            manager = (
-                gdb.Value(address)
-                .cast(gdb.lookup_type("folly::fibers::FiberManager").pointer())
-                .dereference()
-            )
+            # Before GCC9, the stl gdb libs don't expose the unique_ptr target
+            # address except through the pretty printer, as the last
+            # space-delimited word. From GCC9 forward, the unique_ptr visualizer
+            # exposes a children iterator with the target address. We extract
+            # that address whicever way we can, then create a new gdb.Value of
+            # that address cast to the fibermanager type.
+            address = None
+            if callable(getattr(value, "children", None)):
+                for _, pointer in value.children():
+                    address = pointer
+            else:
+                address = int(value.to_string().split(" ")[-1], 16)
 
-            # output only if matching filter
-            if not only or str(mid) in only:
-                yield (mid, manager)
+            if address is not None:
+                manager = (
+                    gdb.Value(address)
+                    .cast(gdb.lookup_type("folly::fibers::FiberManager").pointer())
+                    .dereference()
+                )
+
+                # output only if matching filter
+                if not only or str(mid) in only:
+                    yield (mid, manager)
 
         # set cache
         get_fiber_managers.cache = managers

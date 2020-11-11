@@ -31,6 +31,8 @@
 #include <folly/experimental/exception_tracer/StackTrace.h>
 #include <folly/experimental/symbolizer/Symbolizer.h>
 
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 namespace {
 
 using namespace ::folly::exception_tracer;
@@ -66,6 +68,7 @@ void printExceptionInfo(
   }
   out << " (" << info.frames.size()
       << (info.frames.size() == 1 ? " frame" : " frames") << ")\n";
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
   try {
     size_t frameCount = info.frames.size();
 
@@ -92,6 +95,7 @@ void printExceptionInfo(
   } catch (...) {
     out << "\n !!! caught unexpected exception\n";
   }
+#endif
 }
 
 namespace {
@@ -240,7 +244,9 @@ void installHandlers() {
   };
   static Once once;
 }
-#endif
+#endif // FOLLY_USE_LIBSTDCPP
 
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

@@ -17,9 +17,3 @@
 #pragma once
 
 #include <folly/Portability.h>
-
-#if FOLLY_MOBILE || defined(__APPLE__)
-#define FOLLY_FUTURE_USING_FIBER 0
-#else
-#define FOLLY_FUTURE_USING_FIBER 1
-#endif

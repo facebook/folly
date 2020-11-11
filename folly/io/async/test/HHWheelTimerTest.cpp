@@ -92,6 +92,46 @@ TEST_F(HHWheelTimerTest, FireOnce) {
   T_CHECK_TIMEOUT(start, end, milliseconds(10));
 }
 
+TEST_F(HHWheelTimerTest, NoRequestContextLeak) {
+  StackWheelTimer t(&eventBase, milliseconds(1));
+  std::set<int> destructed;
+
+  class TestData : public RequestData {
+   public:
+    TestData(int data, std::set<int>& destructed)
+        : data_(data), destructed_(destructed) {}
+    ~TestData() override { destructed_.insert(data_); }
+
+    bool hasCallback() override { return false; }
+
+   private:
+    int data_;
+    std::set<int>& destructed_;
+  };
+
+  folly::Optional<TestTimeout> t1 = TestTimeout{};
+  folly::Optional<TestTimeout> t2 = TestTimeout{};
+
+  {
+    RequestContextScopeGuard g;
+    RequestContext::get()->setContextData(
+        "k", std::make_unique<TestData>(1, destructed));
+    t.scheduleTimeout(&*t1, milliseconds(5));
+  }
+
+  {
+    RequestContextScopeGuard g;
+    RequestContext::get()->setContextData(
+        "k", std::make_unique<TestData>(2, destructed));
+    t.scheduleTimeout(&*t2, milliseconds(5));
+  }
+
+  EXPECT_EQ(0, destructed.size());
+  t1.reset();
+  EXPECT_EQ(1, destructed.count(1));
+  EXPECT_EQ(0, destructed.count(2));
+}
+
 /*
  * Test scheduling a timeout from another timeout callback.
  */

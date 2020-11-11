@@ -451,9 +451,7 @@ TEST(Singleton, SingletonDependencies) {
 // dependency.
 class Slowpoke : public Watchdog {
  public:
-  Slowpoke() {
-    std::this_thread::sleep_for(std::chrono::milliseconds(10));
-  }
+  Slowpoke() { std::this_thread::sleep_for(std::chrono::milliseconds(10)); }
 };
 
 struct ConcurrencyTag {};
@@ -856,13 +854,9 @@ using SingletonMainThreadDestructor =
     Singleton<T, Tag, MainThreadDestructorTag>;
 
 struct ThreadLoggingSingleton {
-  ThreadLoggingSingleton() {
-    initThread = std::this_thread::get_id();
-  }
+  ThreadLoggingSingleton() { initThread = std::this_thread::get_id(); }
 
-  ~ThreadLoggingSingleton() {
-    destroyThread = std::this_thread::get_id();
-  }
+  ~ThreadLoggingSingleton() { destroyThread = std::this_thread::get_id(); }
 
   static std::thread::id initThread;
   static std::thread::id destroyThread;
@@ -927,12 +921,8 @@ TEST(Singleton, DoubleMakeMockAfterTryGet) {
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
-    explicit Object(Counts& counts) : counts_(counts) {
-      ++counts_.ctor;
-    }
-    ~Object() {
-      ++counts_.dtor;
-    }
+    explicit Object(Counts& counts) : counts_(counts) { ++counts_.ctor; }
+    ~Object() { ++counts_.dtor; }
     Counts& counts_;
   };
   using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
@@ -975,12 +965,8 @@ TEST(Singleton, DoubleMakeMockAfterTryGetWithApply) {
   struct VaultTag {};
   struct PrivateTag {};
   struct Object {
-    explicit Object(Counts& counts) : counts_(counts) {
-      ++counts_.ctor;
-    }
-    ~Object() {
-      ++counts_.dtor;
-    }
+    explicit Object(Counts& counts) : counts_(counts) { ++counts_.ctor; }
+    ~Object() { ++counts_.dtor; }
     Counts& counts_;
   };
   using SingletonObject = Singleton<Object, PrivateTag, VaultTag>;
@@ -1040,7 +1026,7 @@ TEST(Singleton, ShutdownTimer) {
   vault.registrationComplete();
 
   vault.setShutdownTimeout(10ms);
-  SingletonObject::try_get()->shutdownDuration = 1s;
+  SingletonObject::try_get()->shutdownDuration = 10s;
   EXPECT_DEATH(
       [&]() {
         vault.startShutdownTimer();
@@ -1048,7 +1034,7 @@ TEST(Singleton, ShutdownTimer) {
       }(),
       "Failed to complete shutdown within 10ms.");
 
-  vault.setShutdownTimeout(1s);
+  vault.setShutdownTimeout(10s);
   SingletonObject::try_get()->shutdownDuration = 10ms;
   vault.startShutdownTimer();
   vault.destroyInstances();

@@ -69,16 +69,12 @@ class Core : public std::enable_shared_from_this<Core> {
   /**
    * Gets the version of the observed object.
    */
-  size_t getVersion() const {
-    return version_;
-  }
+  size_t getVersion() const { return version_; }
 
   /**
    * Get the last version at which the observed object was actually changed.
    */
-  size_t getVersionLastChange() {
-    return versionLastChange_;
-  }
+  size_t getVersionLastChange() { return versionLastChange_; }
 
   /**
    * Check if the observed object needs to be re-computed. Returns the version

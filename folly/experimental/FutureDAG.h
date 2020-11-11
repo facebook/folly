@@ -213,17 +213,13 @@ class FutureDAGFunctor {
   std::shared_ptr<FutureDAG> dag;
   T state;
   std::vector<T> dep_states;
-  T result() {
-    return state;
-  }
+  T result() { return state; }
   // execReset() runs DAG & clears all nodes except for source
   void execReset() {
     this->dag->go().get();
     this->dag->reset();
   }
-  void exec() {
-    this->dag->go().get();
-  }
+  void exec() { this->dag->go().get(); }
   virtual void operator()() {}
   explicit FutureDAGFunctor(T init_val, Executor::KeepAlive<> defaultExecutor)
       : dag(FutureDAG::create(std::move(defaultExecutor))), state(init_val) {}

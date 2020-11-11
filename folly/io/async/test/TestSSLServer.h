@@ -53,9 +53,7 @@ class SSLServerAcceptCallbackBase : public AsyncServerSocket::AcceptCallback {
   explicit SSLServerAcceptCallbackBase(HandshakeCallback* hcb)
       : state(STATE_WAITING), hcb_(hcb) {}
 
-  ~SSLServerAcceptCallbackBase() override {
-    EXPECT_EQ(STATE_SUCCEEDED, state);
-  }
+  ~SSLServerAcceptCallbackBase() override { EXPECT_EQ(STATE_SUCCEEDED, state); }
 
   void acceptError(const std::exception& ex) noexcept override {
     LOG(WARNING) << "SSLServerAcceptCallbackBase::acceptError " << ex.what();
@@ -115,15 +113,11 @@ class TestSSLServer {
   // Kills the thread.
   virtual ~TestSSLServer();
 
-  EventBase& getEventBase() {
-    return evb_;
-  }
+  EventBase& getEventBase() { return evb_; }
 
   void loadTestCerts();
 
-  const SocketAddress& getAddress() const {
-    return address_;
-  }
+  const SocketAddress& getAddress() const { return address_; }
 
  protected:
   EventBase evb_;

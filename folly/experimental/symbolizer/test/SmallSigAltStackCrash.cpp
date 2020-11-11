@@ -15,6 +15,7 @@
  */
 
 #include <signal.h>
+#include <array>
 
 #include <folly/experimental/symbolizer/SignalHandler.h>
 

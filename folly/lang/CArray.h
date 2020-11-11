@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdlib>
+
 namespace folly {
 
 //  c_array

@@ -37,9 +37,7 @@ struct Watchdog {
   }
 
   const size_t serial_number;
-  size_t livingWatchdogCount() const {
-    return creation_order().size();
-  }
+  size_t livingWatchdogCount() const { return creation_order().size(); }
 
   Watchdog(const Watchdog&) = delete;
   Watchdog& operator=(const Watchdog&) = delete;

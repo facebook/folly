@@ -41,6 +41,16 @@ if (gflags_FOUND)
   # Re-export the config-specified libs with our local names
   set(LIBGFLAGS_LIBRARY ${gflags_LIBRARIES})
   set(LIBGFLAGS_INCLUDE_DIR ${gflags_INCLUDE_DIR})
+  if(NOT EXISTS "${gflags_INCLUDE_DIR}")
+    # The gflags-devel RPM on recent RedHat-based systems is somewhat broken.
+    # RedHat symlinks /lib64 to /usr/lib64, and this breaks some of the
+    # relative path computation performed in gflags-config.cmake.  The package
+    # config file ends up being found via /lib64, but the relative path
+    # computation it does only works if it was found in /usr/lib64.
+    # If gflags_INCLUDE_DIR does not actually exist, simply default it to
+    # /usr/include on these systems.
+    set(LIBGFLAGS_INCLUDE_DIR "/usr/include")
+  endif()
   set(LIBGFLAGS_FOUND ${gflags_FOUND})
   # cmake module compat
   set(GFLAGS_FOUND ${gflags_FOUND})
@@ -76,6 +86,20 @@ endif()
 # Compat with the gflags CONFIG based detection
 if (LIBGFLAGS_FOUND AND NOT TARGET gflags)
   add_library(gflags UNKNOWN IMPORTED)
-  set_target_properties(gflags PROPERTIES INTERFACE_INCLUDE_DIRECTORIES "${LIBGFLAGS_INCLUDE_DIR}")
-  set_target_properties(gflags PROPERTIES IMPORTED_LINK_INTERFACE_LANGUAGES "C" IMPORTED_LOCATION "${LIBGFLAGS_LIBRARY}")
+  if(TARGET gflags-shared)
+    # If the installed gflags CMake package config defines a gflags-shared
+    # target but not gflags, just make the gflags target that we define
+    # depend on the gflags-shared target.
+    target_link_libraries(gflags INTERFACE gflags-shared)
+    # Export LIBGFLAGS_LIBRARY as the gflags-shared target in this case.
+    set(LIBGFLAGS_LIBRARY gflags-shared)
+  else()
+    set_target_properties(
+      gflags
+      PROPERTIES
+        IMPORTED_LINK_INTERFACE_LANGUAGES "C"
+        IMPORTED_LOCATION "${LIBGFLAGS_LIBRARY}"
+        INTERFACE_INCLUDE_DIRECTORIES "${LIBGFLAGS_INCLUDE_DIR}"
+    )
+  endif()
 endif()

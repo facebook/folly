@@ -1,0 +1,68 @@
+on:
+  push:
+    tags:
+      # Only match TagIt tags, which always start with this prefix
+      - 'v20*'
+
+name: TagIt
+
+jobs:
+  build:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      - name: Archive project
+        id: archive_project
+        run: |
+          FILE_NAME=${GITHUB_REPOSITORY#*/}-${GITHUB_REF##*/}
+          git archive ${{ github.ref }} -o ${FILE_NAME}.zip
+          git archive ${{ github.ref }} -o ${FILE_NAME}.tar.gz
+          echo "::set-output name=file_name::${FILE_NAME}"
+      - name: Compute digests
+        id: compute_digests
+        run: |
+          echo "::set-output name=tgz_256::$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.tar.gz)"
+          echo "::set-output name=tgz_512::$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.tar.gz)"
+          echo "::set-output name=zip_256::$(openssl dgst -sha256 ${{ steps.archive_project.outputs.file_name }}.zip)"
+          echo "::set-output name=zip_512::$(openssl dgst -sha512 ${{ steps.archive_project.outputs.file_name }}.zip)"
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: ${{ github.ref }}
+          body: |
+            Automated release from TagIt
+            <details>
+              <summary>File Hashes</summary>
+              <ul>
+                <li>${{ steps.compute_digests.outputs.zip_256 }}</li>
+                <li>${{ steps.compute_digests.outputs.zip_512 }}</li>
+                <li>${{ steps.compute_digests.outputs.tgz_256 }}</li>
+                <li>${{ steps.compute_digests.outputs.tgz_512 }}</li>
+              </ul>
+            </details>
+          draft: false
+          prerelease: false
+      - name: Upload zip
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.archive_project.outputs.file_name }}.zip
+          asset_name: ${{ steps.archive_project.outputs.file_name }}.zip
+          asset_content_type: application/zip
+      - name: Upload tar.gz
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ steps.create_release.outputs.upload_url }}
+          asset_path: ./${{ steps.archive_project.outputs.file_name }}.tar.gz
+          asset_name: ${{ steps.archive_project.outputs.file_name }}.tar.gz
+          asset_content_type: application/gzip

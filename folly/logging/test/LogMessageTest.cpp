@@ -37,10 +37,13 @@ using namespace folly;
     EXPECT_EQ(static_cast<int>(hasNewlines), checkMsg.containsNewlines());    \
     EXPECT_EQ(__FILE__, checkMsg.getFileName());                              \
     EXPECT_EQ(__LINE__, checkMsg.getLineNumber());                            \
+    EXPECT_EQ(" context string", checkMsg.getContextString());                \
   }
 
 TEST(LogMessage, sanitize) {
   LoggerDB db{LoggerDB::TESTING};
+  db.addContextCallback([]() { return "context"; });
+  db.addContextCallback([]() { return "string"; });
   Logger logger{&db, "test"};
   auto* category = logger.getCategory();
 

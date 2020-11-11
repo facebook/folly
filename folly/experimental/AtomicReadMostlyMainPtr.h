@@ -53,13 +53,9 @@ class AtomicReadMostlyMainPtr {
     mainPtrs_[0] = ReadMostlyMainPtr<T>{std::move(ptr)};
   }
 
-  void operator=(std::shared_ptr<T> desired) {
-    store(std::move(desired));
-  }
+  void operator=(std::shared_ptr<T> desired) { store(std::move(desired)); }
 
-  bool is_lock_free() const {
-    return false;
-  }
+  bool is_lock_free() const { return false; }
 
   ReadMostlySharedPtr<T> load(
       std::memory_order order = std::memory_order_seq_cst) const {

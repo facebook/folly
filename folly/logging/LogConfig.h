@@ -46,9 +46,7 @@ class LogConfig {
   const CategoryConfigMap& getCategoryConfigs() const {
     return categoryConfigs_;
   }
-  const HandlerConfigMap& getHandlerConfigs() const {
-    return handlerConfigs_;
-  }
+  const HandlerConfigMap& getHandlerConfigs() const { return handlerConfigs_; }
 
   bool operator==(const LogConfig& other) const;
   bool operator!=(const LogConfig& other) const;

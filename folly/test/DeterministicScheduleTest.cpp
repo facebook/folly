@@ -176,17 +176,11 @@ class AtomicCounter {
  public:
   explicit AtomicCounter(T val) : counter_(val) {}
 
-  void inc() {
-    this->counter_.fetch_add(1);
-  }
+  void inc() { this->counter_.fetch_add(1); }
 
-  void incBug() {
-    this->counter_.store(this->counter_.load() + 1);
-  }
+  void incBug() { this->counter_.store(this->counter_.load() + 1); }
 
-  T load() {
-    return this->counter_.load();
-  }
+  T load() { return this->counter_.load(); }
 
  private:
   Atom<T> counter_ = {0};
@@ -263,9 +257,7 @@ struct AnnotatedAtomicCounter : public Base<T> {
     DeterministicSchedule::setAuxChk(auxfn);
   }
 
-  void clearAuxChk() {
-    DeterministicSchedule::clearAuxChk();
-  }
+  void clearAuxChk() { DeterministicSchedule::clearAuxChk(); }
 
   /** Aux log function */
   void auxLog(uint64_t step) {
@@ -310,9 +302,7 @@ struct AnnotatedAtomicCounter : public Base<T> {
   }
 
   /* Direct access without going through DSched */
-  T loadDirect() {
-    return this->counter_.load_direct();
-  }
+  T loadDirect() { return this->counter_.load_direct(); }
 
   /* Constructor -- calls original constructor */
   explicit AnnotatedAtomicCounter(int val) : Base<T>(val) {}

@@ -33,21 +33,13 @@ class Wait {
  public:
   class promise_type {
    public:
-    Wait get_return_object() {
-      return Wait(promise_.get_future());
-    }
+    Wait get_return_object() { return Wait(promise_.get_future()); }
 
-    std::experimental::suspend_never initial_suspend() {
-      return {};
-    }
+    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_never final_suspend() {
-      return {};
-    }
+    std::experimental::suspend_never final_suspend() noexcept { return {}; }
 
-    void return_void() {
-      promise_.set_value();
-    }
+    void return_void() { promise_.set_value(); }
 
     void unhandled_exception() {
       promise_.set_exception(std::current_exception());
@@ -61,9 +53,7 @@ class Wait {
 
   Wait(Wait&&) = default;
 
-  void detach() {
-    future_ = {};
-  }
+  void detach() { future_ = {}; }
 
   ~Wait() {
     if (future_.valid()) {
@@ -82,13 +72,9 @@ class InlineTask {
   InlineTask(InlineTask&& other)
       : promise_(std::exchange(other.promise_, nullptr)) {}
 
-  ~InlineTask() {
-    DCHECK(!promise_);
-  }
+  ~InlineTask() { DCHECK(!promise_); }
 
-  bool await_ready() const {
-    return false;
-  }
+  bool await_ready() const { return false; }
 
   std::experimental::coroutine_handle<> await_suspend(
       std::experimental::coroutine_handle<> awaiter) {
@@ -108,43 +94,36 @@ class InlineTask {
 
   class promise_type {
    public:
-    InlineTask get_return_object() {
-      return InlineTask(this);
-    }
+    InlineTask get_return_object() { return InlineTask(this); }
 
     template <typename U>
     void return_value(U&& value) {
       *valuePtr_ = std::forward<U>(value);
     }
 
-    void unhandled_exception() {
-      std::terminate();
-    }
+    void unhandled_exception() { std::terminate(); }
 
-    std::experimental::suspend_always initial_suspend() {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() { return {}; }
 
     class FinalSuspender {
      public:
-      explicit FinalSuspender(std::experimental::coroutine_handle<> awaiter)
+      explicit FinalSuspender(
+          std::experimental::coroutine_handle<> awaiter) noexcept
           : awaiter_(std::move(awaiter)) {}
 
-      bool await_ready() {
-        return false;
-      }
+      bool await_ready() noexcept { return false; }
 
-      auto await_suspend(std::experimental::coroutine_handle<>) {
+      auto await_suspend(std::experimental::coroutine_handle<>) noexcept {
         return awaiter_;
       }
 
-      void await_resume() {}
+      void await_resume() noexcept {}
 
      private:
       std::experimental::coroutine_handle<> awaiter_;
     };
 
-    FinalSuspender final_suspend() {
+    FinalSuspender final_suspend() noexcept {
       return FinalSuspender(std::move(awaiter_));
     }
 

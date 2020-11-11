@@ -29,6 +29,7 @@
 
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
+#include <folly/Function.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 
 namespace folly {
@@ -36,6 +37,12 @@ namespace folly {
 class PollIoBackend : public EventBaseBackendBase {
  public:
   struct Options {
+    enum Flags {
+      POLL_SQ = 0x1,
+      POLL_CQ = 0x2,
+      POLL_SQ_IMMEDIATE_IO = 0x4, // do not enqueue I/O operations
+    };
+
     Options() = default;
 
     Options& setCapacity(size_t v) {
@@ -62,25 +69,68 @@ class PollIoBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setFlags(uint32_t v) {
+      flags = v;
+
+      return *this;
+    }
+
+    Options& setSQIdle(std::chrono::milliseconds v) {
+      sqIdle = v;
+
+      return *this;
+    }
+
+    Options& setCQIdle(std::chrono::milliseconds v) {
+      cqIdle = v;
+
+      return *this;
+    }
+
+    Options& setSQCpu(uint32_t v) {
+      sqCpu = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupName(const std::string& v) {
+      sqGroupName = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupNumThreads(size_t v) {
+      sqGroupNumThreads = v;
+
+      return *this;
+    }
+
     size_t capacity{0};
     size_t maxSubmit{128};
     size_t maxGet{static_cast<size_t>(-1)};
     bool useRegisteredFds{false};
+    uint32_t flags{0};
+
+    std::chrono::milliseconds sqIdle{0};
+    std::chrono::milliseconds cqIdle{0};
+    uint32_t sqCpu{0};
+    std::string sqGroupName;
+    size_t sqGroupNumThreads{1};
   };
 
   explicit PollIoBackend(Options options);
   ~PollIoBackend() override;
 
   // from EventBaseBackendBase
-  event_base* getEventBase() override {
-    return nullptr;
-  }
+  event_base* getEventBase() override { return nullptr; }
 
   int eb_event_base_loop(int flags) override;
   int eb_event_base_loopbreak() override;
 
   int eb_event_add(Event& event, const struct timeval* timeout) override;
   int eb_event_del(Event& event) override;
+
+  bool eb_event_active(Event&, int) override { return false; }
 
   struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
                                     boost::intrusive::cache_last<false>> {
@@ -89,13 +139,9 @@ class PollIoBackend : public EventBaseBackendBase {
     size_t idx_{0};
   };
 
-  virtual FdRegistrationRecord* registerFd(int /*fd*/) {
-    return nullptr;
-  }
+  virtual FdRegistrationRecord* registerFd(int /*fd*/) { return nullptr; }
 
-  virtual bool unregisterFd(FdRegistrationRecord* /*rec*/) {
-    return false;
-  }
+  virtual bool unregisterFd(FdRegistrationRecord* /*rec*/) { return false; }
 
  protected:
   enum class WaitForEventsMode { WAIT, DONT_WAIT };
@@ -110,16 +156,13 @@ class PollIoBackend : public EventBaseBackendBase {
         : backend_(backend), poolAlloc_(poolAlloc) {}
     virtual ~IoCb() = default;
 
-    virtual bool processSubmit(void* /*entry*/) {
-      return false;
-    }
+    virtual void processSubmit(void* entry) = 0;
 
     virtual void processActive() {}
 
     PollIoBackend* backend_;
     BackendCb* backendCb_{nullptr};
     const bool poolAlloc_;
-    IoCb* next_{nullptr}; // this is for the free list
     Event* event_{nullptr};
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};
@@ -135,26 +178,6 @@ class PollIoBackend : public EventBaseBackendBase {
 
     virtual void
     prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd) = 0;
-
-    virtual void prepRead(
-        void* /*entry*/,
-        int /*fd*/,
-        const struct iovec* /*iov*/,
-        off_t /*offset*/,
-        bool /*registerFd*/) {}
-
-    virtual void prepWrite(
-        void* /*entry*/,
-        int /*fd*/,
-        const struct iovec* /*iov*/,
-        off_t /*offset*/,
-        bool /*registerFd*/) {}
-
-    virtual void prepRecvmsg(
-        void* /*entry*/,
-        int /*fd*/,
-        struct msghdr* /*msg*/,
-        bool /*registerFd*/) {}
 
     struct EventCallbackData {
       EventCallback::Type type_{EventCallback::Type::TYPE_NONE};
@@ -173,9 +196,7 @@ class PollIoBackend : public EventBaseBackendBase {
         msgHdr_ = msgHdr;
       }
 
-      void reset() {
-        type_ = EventCallback::Type::TYPE_NONE;
-      }
+      void reset() { type_ = EventCallback::Type::TYPE_NONE; }
 
       bool processCb(int res) {
         bool ret = false;
@@ -231,9 +252,7 @@ class PollIoBackend : public EventBaseBackendBase {
     Event* event_{nullptr};
     std::chrono::time_point<std::chrono::steady_clock> expireTime_;
 
-    bool operator==(const TimerEntry& other) {
-      return event_ == other.event_;
-    }
+    bool operator==(const TimerEntry& other) { return event_ == other.event_; }
 
     std::chrono::microseconds getRemainingTime() const {
       auto now = std::chrono::steady_clock::now();
@@ -269,13 +288,9 @@ class PollIoBackend : public EventBaseBackendBase {
 
     ~SocketPair();
 
-    int readFd() const {
-      return fds_[1];
-    }
+    int readFd() const { return fds_[1]; }
 
-    int writeFd() const {
-      return fds_[0];
-    }
+    int writeFd() const { return fds_[0]; }
 
    private:
     std::array<int, 2> fds_{{-1, -1}};
@@ -320,9 +335,7 @@ class PollIoBackend : public EventBaseBackendBase {
   void addTimerEvent(Event& event, const struct timeval* timeout);
   void removeTimerEvent(Event& event);
   size_t processTimers();
-  FOLLY_ALWAYS_INLINE void setProcessTimers() {
-    processTimers_ = true;
-  }
+  FOLLY_ALWAYS_INLINE void setProcessTimers() { processTimers_ = true; }
 
   size_t processActiveEvents();
 
@@ -342,9 +355,7 @@ class PollIoBackend : public EventBaseBackendBase {
   void removeSignalEvent(Event& event);
   bool addSignalFds();
   size_t processSignals();
-  FOLLY_ALWAYS_INLINE void setProcessSignals() {
-    processSignals_ = true;
-  }
+  FOLLY_ALWAYS_INLINE void setProcessSignals() { processSignals_ = true; }
 
   static void processSignalReadIoCb(
       PollIoBackend* backend,
@@ -357,9 +368,7 @@ class PollIoBackend : public EventBaseBackendBase {
 
   IoCb* FOLLY_NULLABLE allocIoCb(const EventCallback& cb);
   void releaseIoCb(IoCb* aioIoCb);
-  void incNumIoCbInUse() {
-    numIoCbInUse_++;
-  }
+  void incNumIoCbInUse() { numIoCbInUse_++; }
 
   virtual IoCb* allocNewIoCb(const EventCallback& cb) = 0;
 
@@ -368,20 +377,33 @@ class PollIoBackend : public EventBaseBackendBase {
   virtual size_t submitList(
       IoCbList& ioCbs,
       WaitForEventsMode waitForEvents) = 0;
+
+  // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
+  void submitImmediateIoCb(IoCb& iocb) {
+    if (options_.flags &
+        (Options::Flags::POLL_SQ | Options::Flags::POLL_SQ_IMMEDIATE_IO)) {
+      IoCbList s;
+      s.push_back(iocb);
+      numInsertedEvents_++;
+      submitList(s, WaitForEventsMode::DONT_WAIT);
+    } else {
+      submitList_.push_back(iocb);
+      numInsertedEvents_++;
+    }
+  }
+
   virtual int submitOne(IoCb* ioCb) = 0;
   virtual int cancelOne(IoCb* ioCb) = 0;
 
   int eb_event_modify_inserted(Event& event, IoCb* ioCb);
 
-  FOLLY_ALWAYS_INLINE size_t numIoCbInUse() const {
-    return numIoCbInUse_;
-  }
+  FOLLY_ALWAYS_INLINE size_t numIoCbInUse() const { return numIoCbInUse_; }
 
   Options options_;
   size_t numEntries_;
-  IoCb* timerEntry_{nullptr};
-  IoCb* signalReadEntry_{nullptr};
-  IoCb* freeHead_{nullptr};
+  std::unique_ptr<IoCb> timerEntry_;
+  std::unique_ptr<IoCb> signalReadEntry_;
+  IoCbList freeList_;
 
   // timer related
   int timerFd_{-1};

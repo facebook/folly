@@ -164,7 +164,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Initializes, but doesn't start FiberManager loop
    *
-   * @param loopController
+   * @param loopController A LoopController object
    * @param options FiberManager options
    */
   explicit FiberManager(
@@ -174,7 +174,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Initializes, but doesn't start FiberManager loop
    *
-   * @param loopController
+   * @param loopController A LoopController object
    * @param options FiberManager options
    * @tparam LocalT only local of this type may be stored on fibers.
    *                Locals of other types will be considered thread-locals.
@@ -223,9 +223,7 @@ class FiberManager : public ::folly::Executor {
    * Does not include the number of remotely enqueued tasks that have not been
    * run yet.
    */
-  size_t numActiveTasks() const noexcept {
-    return fibersActive_;
-  }
+  size_t numActiveTasks() const noexcept { return fibersActive_; }
 
   /**
    * @return true if there are tasks ready to run.
@@ -236,7 +234,7 @@ class FiberManager : public ::folly::Executor {
    * Sets exception callback which will be called if any of the tasks throws an
    * exception.
    *
-   * @param ec
+   * @param ec An ExceptionCallback object.
    */
   void setExceptionCallback(ExceptionCallback ec);
 
@@ -305,9 +303,7 @@ class FiberManager : public ::folly::Executor {
       -> folly::Future<folly::lift_unit_t<invoke_result_t<F>>>;
 
   // Executor interface calls addTaskRemote
-  void add(folly::Func f) override {
-    addTaskRemote(std::move(f));
-  }
+  void add(folly::Func f) override { addTaskRemote(std::move(f)); }
 
   /**
    * Add a new task. When the task is complete, execute finally(Try<Result>&&)
@@ -377,9 +373,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * @return The currently running fiber or null if no fiber is executing.
    */
-  Fiber* currentFiber() const {
-    return currentFiber_;
-  }
+  Fiber* currentFiber() const { return currentFiber_; }
 
   /**
    * @return What was the most observed fiber stack usage (in bytes).
@@ -424,9 +418,7 @@ class FiberManager : public ::folly::Executor {
   static FiberManager& getFiberManager();
   static FiberManager* getFiberManagerUnsafe();
 
-  const Options& getOptions() const {
-    return options_;
-  }
+  const Options& getOptions() const { return options_; }
 
  private:
   friend class Baton;
@@ -465,6 +457,8 @@ class FiberManager : public ::folly::Executor {
   template <typename LoopFunc>
   void runFibersHelper(LoopFunc&& loopFunc);
 
+  size_t recordStackPosition(size_t position);
+
   typedef folly::IntrusiveList<Fiber, &Fiber::listHook_> FiberTailQueue;
   typedef folly::IntrusiveList<Fiber, &Fiber::globalListHook_>
       GlobalFiberTailQueue;
@@ -483,8 +477,10 @@ class FiberManager : public ::folly::Executor {
 
   GlobalFiberTailQueue allFibers_; /**< list of all Fiber objects owned */
 
-  size_t fibersAllocated_{0}; /**< total number of fibers allocated */
-  size_t fibersPoolSize_{0}; /**< total number of fibers in the free pool */
+  // total number of fibers allocated
+  std::atomic<size_t> fibersAllocated_{0};
+  // total number of fibers in the free pool
+  std::atomic<size_t> fibersPoolSize_{0};
   size_t fibersActive_{0}; /**< number of running or blocked fibers */
   size_t fiberId_{0}; /**< id of last fiber used */
 
@@ -514,7 +510,7 @@ class FiberManager : public ::folly::Executor {
   /**
    * Largest observed individual Fiber stack usage in bytes.
    */
-  size_t stackHighWatermark_{0};
+  std::atomic<size_t> stackHighWatermark_{0};
 
   /**
    * Schedules a loop with loopController (unless already scheduled before).
@@ -577,9 +573,7 @@ class FiberManager : public ::folly::Executor {
 
    private:
     FiberManager& fiberManager_;
-    void timeoutExpired() noexcept {
-      run();
-    }
+    void timeoutExpired() noexcept { run(); }
     void callbackCanceled() noexcept {}
   };
 
@@ -614,11 +608,9 @@ class FiberManager : public ::folly::Executor {
 
 #endif // FOLLY_SANITIZE_ADDRESS
 
-#ifndef _WIN32
   bool alternateSignalStackRegistered_{false};
 
-  void registerAlternateSignalStack();
-#endif
+  void maybeRegisterAlternateSignalStack();
 };
 
 /**
@@ -676,7 +668,13 @@ inline void addTaskFinallyEager(F&& func, G&& finally) {
  * @return data which was used to fulfill the promise.
  */
 template <typename F>
-typename FirstArgOf<F>::type::value_type inline await(F&& func);
+typename FirstArgOf<F>::type::value_type inline await_async(F&& func);
+#if !defined(_MSC_VER)
+template <typename F>
+FOLLY_ERASE typename FirstArgOf<F>::type::value_type await(F&& func) {
+  return await_async(static_cast<F&&>(func));
+}
+#endif
 
 /**
  * If called from a fiber, immediately switches to the FiberManager's context

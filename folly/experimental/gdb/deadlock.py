@@ -435,8 +435,8 @@ class Deadlock(gdb.Command):
         # Go through all the blocked threads and see which threads
         # they are blocked on, and build the thread wait graph.
         for thread_lwp, mutex_type in blocked_threads.items():
-            get_owner_and_address_func = MutexType.get_mutex_owner_and_address_func_for_type(
-                mutex_type
+            get_owner_and_address_func = (
+                MutexType.get_mutex_owner_and_address_func_for_type(mutex_type)
             )
             if not get_owner_and_address_func:
                 continue

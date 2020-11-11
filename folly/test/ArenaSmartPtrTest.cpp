@@ -27,17 +27,13 @@ using namespace folly;
 struct global_counter {
   global_counter() : count_(0) {}
 
-  void increase() {
-    ++count_;
-  }
+  void increase() { ++count_; }
   void decrease() {
     EXPECT_GT(count_, 0);
     --count_;
   }
 
-  unsigned count() const {
-    return count_;
-  }
+  unsigned count() const { return count_; }
 
  private:
   unsigned count_;
@@ -48,9 +44,7 @@ struct Foo {
     counter_.increase();
   }
 
-  ~Foo() {
-    counter_.decrease();
-  }
+  ~Foo() { counter_.decrease(); }
 
  private:
   global_counter& counter_;

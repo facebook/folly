@@ -7,12 +7,17 @@
 # GLOG_LIBRARIES - link these to use Glog
 
 include(FindPackageHandleStandardArgs)
+include(SelectLibraryConfigurations)
 
-find_library(GLOG_LIBRARY glog
+find_library(GLOG_LIBRARY_RELEASE glog
+  PATHS ${GLOG_LIBRARYDIR})
+find_library(GLOG_LIBRARY_DEBUG glogd
   PATHS ${GLOG_LIBRARYDIR})
 
 find_path(GLOG_INCLUDE_DIR glog/logging.h
   PATHS ${GLOG_INCLUDEDIR})
+
+select_library_configurations(GLOG)
 
 find_package_handle_standard_args(glog DEFAULT_MSG
   GLOG_LIBRARY

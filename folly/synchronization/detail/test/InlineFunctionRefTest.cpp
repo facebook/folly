@@ -193,12 +193,8 @@ namespace {
 template <typename Data>
 class ConstQualifiedFunctor {
  public:
-  int operator()() {
-    return 0;
-  }
-  int operator()() const {
-    return 1;
-  }
+  int operator()() { return 0; }
+  int operator()() const { return 1; }
 
   Data data_;
 };

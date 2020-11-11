@@ -105,9 +105,7 @@ TEST_F(GeneratorTest, DestroyedBeforeCompletion_DestructsObjectsOnStack) {
   bool destructed = false;
   bool completed = false;
   auto f = [&]() -> Generator<std::uint32_t> {
-    SCOPE_EXIT {
-      destructed = true;
-    };
+    SCOPE_EXIT { destructed = true; };
 
     co_yield 1;
     co_yield 2;
@@ -291,6 +289,20 @@ TEST_F(GeneratorTest, UsageInStandardAlgorithms) {
     auto b = iterate_range(5, 300);
     EXPECT_FALSE(std::equal(a.begin(), a.end(), b.begin(), b.end()));
   }
+}
+
+TEST_F(GeneratorTest, InvokeLambda) {
+  auto ptr = std::make_unique<int>(123);
+  auto gen = folly::coro::co_invoke(
+      [p = std::move(
+           ptr)]() mutable -> folly::coro::Generator<std::unique_ptr<int>&&> {
+        co_yield std::move(p);
+      });
+
+  auto it = gen.begin();
+  auto result = std::move(*it);
+  EXPECT_NE(result, nullptr);
+  EXPECT_EQ(*result, 123);
 }
 } // namespace coro
 } // namespace folly

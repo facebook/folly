@@ -44,9 +44,7 @@ class MacAddress {
   /*
    * Construct a zero-initialized MacAddress.
    */
-  MacAddress() {
-    memset(&bytes_, 0, 8);
-  }
+  MacAddress() { memset(&bytes_, 0, 8); }
 
   /*
    * Parse a MacAddress from a human-readable string.
@@ -98,9 +96,7 @@ class MacAddress {
    * This is a static method rather than a constructor to avoid confusion
    * between host and network byte order constructors.
    */
-  static MacAddress fromNBO(uint64_t value) {
-    return MacAddress(value);
-  }
+  static MacAddress fromNBO(uint64_t value) { return MacAddress(value); }
 
   /*
    * Construct a MacAddress from a uint64_t in host byte order.
@@ -128,9 +124,7 @@ class MacAddress {
    * object.  It is only valid as long as the MacAddress, and its contents may
    * change if the MacAddress is updated.
    */
-  const uint8_t* bytes() const {
-    return bytes_ + 2;
-  }
+  const uint8_t* bytes() const { return bytes_ + 2; }
 
   /*
    * Return the address as a uint64_t, in network byte order.
@@ -138,9 +132,7 @@ class MacAddress {
    * The first two bytes will be 0, and the subsequent 6 bytes will contain
    * the address in network byte order.
    */
-  uint64_t u64NBO() const {
-    return packedBytes();
-  }
+  uint64_t u64NBO() const { return packedBytes(); }
 
   /*
    * Return the address as a uint64_t, in host byte order.
@@ -167,9 +159,7 @@ class MacAddress {
    */
   Expected<Unit, MacAddressFormatError> trySetFromString(StringPiece value);
   void setFromString(StringPiece value);
-  void parse(StringPiece str) {
-    setFromString(str);
-  }
+  void parse(StringPiece str) { setFromString(str); }
 
   /*
    * Update the current MacAddress object from a 6-byte binary representation.
@@ -177,15 +167,9 @@ class MacAddress {
   Expected<Unit, MacAddressFormatError> trySetFromBinary(ByteRange value);
   void setFromBinary(ByteRange value);
 
-  bool isBroadcast() const {
-    return *this == BROADCAST;
-  }
-  bool isMulticast() const {
-    return getByte(0) & 0x1;
-  }
-  bool isUnicast() const {
-    return !isMulticast();
-  }
+  bool isBroadcast() const { return *this == BROADCAST; }
+  bool isMulticast() const { return getByte(0) & 0x1; }
+  bool isUnicast() const { return !isMulticast(); }
 
   /*
    * Return true if this MAC address is locally administered.
@@ -197,9 +181,7 @@ class MacAddress {
    * Note that isLocallyAdministered() will return true for the broadcast
    * address, since it has the locally administered bit set.
    */
-  bool isLocallyAdministered() const {
-    return getByte(0) & 0x2;
-  }
+  bool isLocallyAdministered() const { return getByte(0) & 0x2; }
 
   // Comparison operators.
 
@@ -213,21 +195,13 @@ class MacAddress {
     return u64HBO() < other.u64HBO();
   }
 
-  bool operator!=(const MacAddress& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const MacAddress& other) const { return !(*this == other); }
 
-  bool operator>(const MacAddress& other) const {
-    return other < *this;
-  }
+  bool operator>(const MacAddress& other) const { return other < *this; }
 
-  bool operator>=(const MacAddress& other) const {
-    return !(*this < other);
-  }
+  bool operator>=(const MacAddress& other) const { return !(*this < other); }
 
-  bool operator<=(const MacAddress& other) const {
-    return !(*this > other);
-  }
+  bool operator<=(const MacAddress& other) const { return !(*this > other); }
 
  private:
   explicit MacAddress(uint64_t valueNBO) {
@@ -255,9 +229,7 @@ class MacAddress {
   */
   unsigned char bytes_[8];
 
-  inline uint64_t getByte(size_t index) const {
-    return bytes_[index + 2];
-  }
+  inline uint64_t getByte(size_t index) const { return bytes_[index + 2]; }
 
   uint64_t packedBytes() const {
     uint64_t u64;

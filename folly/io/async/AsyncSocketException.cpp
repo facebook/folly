@@ -54,6 +54,8 @@ namespace folly {
       return "Network error";
     case EARLY_DATA_REJECTED:
       return "Early data rejected";
+    case CANCELED:
+      return "IO operation was canceled";
     default:
       return "(Invalid exception type)";
   }

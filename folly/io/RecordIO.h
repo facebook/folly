@@ -69,9 +69,7 @@ class RecordIOWriter {
    * Return the position in the file where the next byte will be written.
    * Conservative, as stuff can be written at any time from another thread.
    */
-  off_t filePos() const {
-    return filePos_;
-  }
+  off_t filePos() const { return filePos_; }
 
  private:
   File file_;

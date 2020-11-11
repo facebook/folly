@@ -27,14 +27,12 @@ class KeepAliveTestExecutor : public Executor {
     // this executor does nothing
   }
 
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     ++refCount;
     return true;
   }
 
-  void keepAliveRelease() override {
-    --refCount;
-  }
+  void keepAliveRelease() noexcept override { --refCount; }
 
   std::atomic<int> refCount{0};
 };

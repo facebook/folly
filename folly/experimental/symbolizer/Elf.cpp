@@ -17,10 +17,8 @@
 #include <folly/experimental/symbolizer/Elf.h>
 
 #include <fcntl.h>
-#include <folly/portability/SysMman.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 #include <cstring>
 #include <string>
 
@@ -29,10 +27,24 @@
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Config.h>
+#include <folly/portability/SysMman.h>
+
+#if FOLLY_HAVE_ELF
 
 #ifndef STT_GNU_IFUNC
 #define STT_GNU_IFUNC 10
 #endif
+
+#if defined(__ELF_NATIVE_CLASS)
+#define FOLLY_ELF_NATIVE_CLASS __ELF_NATIVE_CLASS
+#elif defined(__FreeBSD__)
+#if defined(__LP64__)
+#define FOLLY_ELF_NATIVE_CLASS 64
+#else
+#define FOLLY_ELF_NATIVE_CLASS 32
+#endif
+#endif // __ELF_NATIVE_CLASS
 
 namespace folly {
 namespace symbolizer {
@@ -204,6 +216,15 @@ ElfFile::OpenResult ElfFile::init() noexcept {
   if (std::strncmp(elfMagBuf.data(), ELFMAG, sizeof(ELFMAG)) != 0) {
     return {kInvalidElfFile, "invalid ELF magic"};
   }
+  char c;
+  if (::pread(fd_, &c, 1, length_ - 1) != 1) {
+    auto msg =
+        "The last bit of the mmaped memory is no longer valid. This may be "
+        "caused by the original file being resized, "
+        "deleted or otherwise modified.";
+    return {kInvalidElfFile, msg};
+  }
+
   if (::lseek(fd_, 0, SEEK_SET) != 0) {
     return {kInvalidElfFile,
             "unable to reset file descriptor after reading ELF magic number"};
@@ -420,3 +441,5 @@ const char* ElfFile::getSymbolName(Symbol symbol) const noexcept {
 
 } // namespace symbolizer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF

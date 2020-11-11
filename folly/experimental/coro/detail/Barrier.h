@@ -46,6 +46,17 @@ class Barrier {
     assert(SIZE_MAX - oldCount >= count);
   }
 
+  // Query the number of remaining tasks that the barrier is waiting
+  // for. This indicates the number of arrive() calls that must be
+  // made before the Barrier will be released.
+  //
+  // Note that this should just be used as an approximate guide
+  // for the number of outstanding tasks. This value may be out
+  // of date immediately upon being returned.
+  std::size_t remaining() const noexcept {
+    return count_.load(std::memory_order_acquire);
+  }
+
   [[nodiscard]] std::experimental::coroutine_handle<> arrive() noexcept {
     const std::size_t oldCount = count_.fetch_sub(1, std::memory_order_acq_rel);
 
@@ -64,9 +75,7 @@ class Barrier {
     class Awaiter {
      public:
       explicit Awaiter(Barrier& barrier) noexcept : barrier_(barrier) {}
-      bool await_ready() {
-        return false;
-      }
+      bool await_ready() { return false; }
       std::experimental::coroutine_handle<> await_suspend(
           std::experimental::coroutine_handle<> continuation) noexcept {
         barrier_.setContinuation(continuation);

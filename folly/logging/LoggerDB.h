@@ -41,6 +41,8 @@ enum class LogLevel : uint32_t;
  * LoggerDB stores the set of LogCategory objects.
  */
 class LoggerDB {
+  using ContextCallback = folly::Function<std::string() const>;
+
  public:
   /**
    * Get the main LoggerDB singleton.
@@ -190,6 +192,23 @@ class LoggerDB {
   explicit LoggerDB(TestConstructorArg);
 
   /**
+   * Add a new context string callback to the list.
+   *
+   * The callbacks will be invoked during the construction of log messages,
+   * and returned strings will be appended in order to the tail of log
+   * log entry prefixes with space prepended to each item.
+   */
+  void addContextCallback(ContextCallback);
+
+  /**
+   * Return a context string to be appended after default log prefixes.
+   *
+   * The context string is cutomized through adding context callbacks to
+   * LoggerDB objects.
+   */
+  std::string getContextString() const;
+
+  /**
    * internalWarning() is used to report a problem when something goes wrong
    * internally in the logging library.
    *
@@ -239,6 +258,18 @@ class LoggerDB {
   struct HandlerInfo {
     HandlerFactoryMap factories;
     HandlerMap handlers;
+  };
+
+  class ContextCallbackList {
+   public:
+    void addCallback(ContextCallback);
+    std::string getContextString() const;
+    ~ContextCallbackList();
+
+   private:
+    class CallbacksObj;
+    std::atomic<CallbacksObj*> callbacks_{nullptr};
+    std::mutex writeMutex_;
   };
 
   // Forbidden copy constructor and assignment operator
@@ -298,6 +329,13 @@ class LoggerDB {
    */
   folly::Synchronized<HandlerInfo> handlerInfo_;
 
+  /**
+   * Callbacks returning context strings.
+   *
+   * Exceptions from the callbacks are catched and reflected in corresponding
+   * position in log entries.
+   */
+  ContextCallbackList contextCallbacks_;
   static std::atomic<InternalWarningHandler> warningHandler_;
 };
 

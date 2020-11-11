@@ -28,6 +28,7 @@
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/portability/Sockets.h>
+#include <folly/small_vector.h>
 
 #include <sys/types.h>
 
@@ -288,49 +289,55 @@ class AsyncSocket : public AsyncTransport {
   explicit AsyncSocket(AsyncSocket::UniquePtr);
 
   /**
-   * Helper function to create a shared_ptr<AsyncSocket>.
+   * Create an AsyncSocket from a different, already connected AsyncSocket.
+   *
+   * Similar to AsyncSocket(evb, fd) when fd was previously owned by an
+   * AsyncSocket. Caller must call destroy on old AsyncSocket unless it is
+   * in a smart pointer with appropriate destructor.
+   */
+  explicit AsyncSocket(AsyncSocket*);
+
+  /**
+   * Helper function to create an AsyncSocket..
    *
    * This passes in the correct destructor object, since AsyncSocket's
    * destructor is protected and cannot be invoked directly.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(EventBase* evb) {
-    return std::shared_ptr<AsyncSocket>(new AsyncSocket(evb), Destructor());
+  static UniquePtr newSocket(EventBase* evb) {
+    return UniquePtr{new AsyncSocket(evb), Destructor()};
   }
 
   /**
-   * Helper function to create a shared_ptr<AsyncSocket>.
+   * Helper function to create an AsyncSocket.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(
+  static UniquePtr newSocket(
       EventBase* evb,
       const folly::SocketAddress& address,
       uint32_t connectTimeout = 0,
       bool useZeroCopy = false) {
-    return std::shared_ptr<AsyncSocket>(
-        new AsyncSocket(evb, address, connectTimeout, useZeroCopy),
-        Destructor());
+    return UniquePtr{new AsyncSocket(evb, address, connectTimeout, useZeroCopy),
+                     Destructor()};
   }
 
   /**
-   * Helper function to create a shared_ptr<AsyncSocket>.
+   * Helper function to create an AsyncSocket.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(
+  static UniquePtr newSocket(
       EventBase* evb,
       const std::string& ip,
       uint16_t port,
       uint32_t connectTimeout = 0,
       bool useZeroCopy = false) {
-    return std::shared_ptr<AsyncSocket>(
+    return UniquePtr{
         new AsyncSocket(evb, ip, port, connectTimeout, useZeroCopy),
-        Destructor());
+        Destructor()};
   }
 
   /**
-   * Helper function to create a shared_ptr<AsyncSocket>.
+   * Helper function to create an AsyncSocket.
    */
-  static std::shared_ptr<AsyncSocket> newSocket(
-      EventBase* evb,
-      NetworkSocket fd) {
-    return std::shared_ptr<AsyncSocket>(new AsyncSocket(evb, fd), Destructor());
+  static UniquePtr newSocket(EventBase* evb, NetworkSocket fd) {
+    return UniquePtr{new AsyncSocket(evb, fd), Destructor()};
   }
 
   /**
@@ -346,16 +353,12 @@ class AsyncSocket : public AsyncTransport {
   /**
    * Get the EventBase used by this socket.
    */
-  EventBase* getEventBase() const override {
-    return eventBase_;
-  }
+  EventBase* getEventBase() const override { return eventBase_; }
 
   /**
    * Get the network socket used by the AsyncSocket.
    */
-  virtual NetworkSocket getNetworkSocket() const {
-    return fd_;
-  }
+  virtual NetworkSocket getNetworkSocket() const { return fd_; }
 
   /**
    * Extract the file descriptor from the AsyncSocket.
@@ -431,9 +434,7 @@ class AsyncSocket : public AsyncTransport {
    * @return Returns the current send timeout, in milliseconds.  A return value
    *         of 0 indicates that no timeout is set.
    */
-  uint32_t getSendTimeout() const override {
-    return sendTimeout_;
-  }
+  uint32_t getSendTimeout() const override { return sendTimeout_; }
 
   /**
    * Set the maximum number of reads to execute from the underlying
@@ -445,9 +446,7 @@ class AsyncSocket : public AsyncTransport {
    * @param maxReads  Maximum number of reads per data-available event;
    *                  a value of zero means unlimited.
    */
-  void setMaxReadsPerEvent(uint16_t maxReads) {
-    maxReadsPerEvent_ = maxReads;
-  }
+  void setMaxReadsPerEvent(uint16_t maxReads) { maxReadsPerEvent_ = maxReads; }
 
   /**
    * Get the maximum number of reads this object will execute from
@@ -457,9 +456,7 @@ class AsyncSocket : public AsyncTransport {
    * @returns Maximum number of reads per data-available event; a value
    *          of zero means unlimited.
    */
-  uint16_t getMaxReadsPerEvent() const {
-    return maxReadsPerEvent_;
-  }
+  uint16_t getMaxReadsPerEvent() const { return maxReadsPerEvent_; }
 
   /**
    * Set a pointer to ErrMessageCallback implementation which will be
@@ -496,15 +493,18 @@ class AsyncSocket : public AsyncTransport {
   // Read and write methods
   void setReadCB(ReadCallback* callback) override;
   ReadCallback* getReadCallback() const override;
+  void setEventCallback(EventRecvmsgCallback* cb) override {
+    if (cb) {
+      ioHandler_.setEventCallback(cb);
+    } else {
+      ioHandler_.resetEventCallback();
+    }
+  }
 
   bool setZeroCopy(bool enable) override;
-  bool getZeroCopy() const override {
-    return zeroCopyEnabled_;
-  }
+  bool getZeroCopy() const override { return zeroCopyEnabled_; }
 
-  uint32_t getZeroCopyBufId() const {
-    return zeroCopyBufId_;
-  }
+  uint32_t getZeroCopyBufId() const { return zeroCopyBufId_; }
 
   size_t getZeroCopyReenableThreshold() const {
     return zeroCopyReenableThreshold_;
@@ -531,9 +531,7 @@ class AsyncSocket : public AsyncTransport {
 
   class WriteRequest;
   virtual void writeRequest(WriteRequest* req);
-  void writeRequestReady() {
-    handleWrite();
-  }
+  void writeRequestReady() { handleWrite(); }
 
   // Methods inherited from AsyncTransport
   void close() override;
@@ -555,17 +553,11 @@ class AsyncSocket : public AsyncTransport {
   void getLocalAddress(folly::SocketAddress* address) const override;
   void getPeerAddress(folly::SocketAddress* address) const override;
 
-  bool isEorTrackingEnabled() const override {
-    return trackEor_;
-  }
+  bool isEorTrackingEnabled() const override { return trackEor_; }
 
-  void setEorTracking(bool track) override {
-    trackEor_ = track;
-  }
+  void setEorTracking(bool track) override { trackEor_ = track; }
 
-  bool connecting() const override {
-    return (state_ == StateEnum::CONNECTING);
-  }
+  bool connecting() const override { return (state_ == StateEnum::CONNECTING); }
 
   virtual bool isClosedByPeer() const {
     return (
@@ -579,28 +571,18 @@ class AsyncSocket : public AsyncTransport {
         (readErr_ != READ_EOF && readErr_ != READ_ERROR));
   }
 
-  size_t getAppBytesWritten() const override {
-    return appBytesWritten_;
-  }
+  size_t getAppBytesWritten() const override { return appBytesWritten_; }
 
-  size_t getRawBytesWritten() const override {
-    return getAppBytesWritten();
-  }
+  size_t getRawBytesWritten() const override { return getAppBytesWritten(); }
 
-  size_t getAppBytesReceived() const override {
-    return appBytesReceived_;
-  }
+  size_t getAppBytesReceived() const override { return appBytesReceived_; }
 
-  size_t getRawBytesReceived() const override {
-    return getAppBytesReceived();
-  }
+  size_t getRawBytesReceived() const override { return getAppBytesReceived(); }
 
   size_t getAppBytesBuffered() const override {
     return totalAppBytesScheduledForWrite_ - appBytesWritten_;
   }
-  size_t getRawBytesBuffered() const override {
-    return getAppBytesBuffered();
-  }
+  size_t getRawBytesBuffered() const override { return getAppBytesBuffered(); }
 
   std::chrono::nanoseconds getConnectTime() const {
     return connectEndTime_ - connectStartTime_;
@@ -618,9 +600,7 @@ class AsyncSocket : public AsyncTransport {
     return connectEndTime_;
   }
 
-  bool getTFOAttempted() const {
-    return tfoAttempted_;
-  }
+  bool getTFOAttempted() const { return tfoAttempted_; }
 
   /**
    * Returns whether or not the attempt to use TFO
@@ -628,9 +608,7 @@ class AsyncSocket : public AsyncTransport {
    * mean TFO worked, just that trying to use TFO
    * succeeded.
    */
-  bool getTFOFinished() const {
-    return tfoFinished_;
-  }
+  bool getTFOFinished() const { return tfoFinished_; }
 
   /**
    * Returns whether or not TFO attempt succeded on this
@@ -812,13 +790,9 @@ class AsyncSocket : public AsyncTransport {
 #endif
   }
 
-  void disableTransparentTls() {
-    noTransparentTls_ = true;
-  }
+  void disableTransparentTls() { noTransparentTls_ = true; }
 
-  void disableTSocks() {
-    noTSocks_ = true;
-  }
+  void disableTSocks() { noTSocks_ = true; }
 
   enum class StateEnum : uint8_t {
     UNINIT,
@@ -921,7 +895,10 @@ class AsyncSocket : public AsyncTransport {
   class WriteRequest {
    public:
     WriteRequest(AsyncSocket* socket, WriteCallback* callback)
-        : socket_(socket), callback_(callback) {}
+        : socket_(socket),
+          callback_(callback),
+          releaseIOBufCallback_(
+              callback ? callback->getReleaseIOBufCallback() : nullptr) {}
 
     virtual void start() {}
 
@@ -933,17 +910,11 @@ class AsyncSocket : public AsyncTransport {
 
     virtual bool isComplete() = 0;
 
-    WriteRequest* getNext() const {
-      return next_;
-    }
+    WriteRequest* getNext() const { return next_; }
 
-    WriteCallback* getCallback() const {
-      return callback_;
-    }
+    WriteCallback* getCallback() const { return callback_; }
 
-    uint32_t getTotalBytesWritten() const {
-      return totalBytesWritten_;
-    }
+    uint32_t getTotalBytesWritten() const { return totalBytesWritten_; }
 
     void append(WriteRequest* next) {
       assert(next_ == nullptr);
@@ -966,8 +937,93 @@ class AsyncSocket : public AsyncTransport {
     AsyncSocket* socket_; ///< parent socket
     WriteRequest* next_{nullptr}; ///< pointer to next WriteRequest
     WriteCallback* callback_; ///< completion callback
+    ReleaseIOBufCallback* releaseIOBufCallback_; ///< release IOBuf callback
     uint32_t totalBytesWritten_{0}; ///< total bytes written
   };
+
+  class LifecycleObserver : public AsyncTransport::LifecycleObserver {
+   public:
+    using AsyncTransport::LifecycleObserver::LifecycleObserver;
+
+    /**
+     * fdDetach() is invoked if the socket file descriptor is detached.
+     *
+     * detachNetworkSocket() will be triggered when a new AsyncSocket is being
+     * constructed from an old one. See the moved() event for details about
+     * this special case.
+     *
+     * @param socket      Socket for which detachNetworkSocket was invoked.
+     */
+    virtual void fdDetach(AsyncSocket* /* socket */) noexcept = 0;
+
+    /**
+     * move() will be invoked when a new AsyncSocket is being constructed via
+     * constructor AsyncSocket(AsyncSocket* oldAsyncSocket) from an AsyncSocket
+     * that has an observer attached.
+     *
+     * This type of construction is common during TLS/SSL accept process.
+     * wangle::Acceptor may transform an AsyncSocket to an AsyncFizzServer, and
+     * then transform the AsyncFizzServer to an AsyncSSLSocket on fallback.
+     * AsyncFizzServer and AsyncSSLSocket derive from AsyncSocket and at each
+     * stage the aforementioned constructor will be called.
+     *
+     * Observers may be attached when the initial AsyncSocket is created, before
+     * TLS/SSL accept handling has completed. As a result, AsyncSocket must
+     * notify the observer during each transformation so that:
+     *   (1) The observer can track these transformations for debugging.
+     *   (2) The observer does not become separated from the underlying
+     *        operating system socket and corresponding file descriptor.
+     *
+     * When a new AsyncSocket is being constructed via the aforementioned
+     * constructor, the following observer events will be triggered:
+     *   (1) fdDetach
+     *   (2) move
+     *
+     * When move is triggered, the observer can CHOOSE to detach the old socket
+     * and attach to the new socket. This process will not happen automatically;
+     * the observer must explicitly perform these steps.
+     *
+     * @param oldSocket   Old socket that fd was detached from.
+     * @param newSocket   New socket being constructed with fd attached.
+     */
+    virtual void move(
+        AsyncSocket* /* oldSocket */,
+        AsyncSocket* /* newSocket */) noexcept = 0;
+  };
+
+  /**
+   * Adds a lifecycle observer.
+   *
+   * Observers can tie their lifetime to aspects of this socket's lifecycle /
+   * lifetime and perform inspection at various states.
+   *
+   * This enables instrumentation to be added without changing / interfering
+   * with how the application uses the socket.
+   *
+   * Observer should implement AsyncTransport::LifecycleObserver to receive
+   * additional lifecycle events specific to AsyncSocket.
+   *
+   * @param observer     Observer to add (implements LifecycleObserver).
+   */
+  void addLifecycleObserver(
+      AsyncTransport::LifecycleObserver* observer) override;
+
+  /**
+   * Removes a lifecycle observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether observer found and removed from list.
+   */
+  bool removeLifecycleObserver(
+      AsyncTransport::LifecycleObserver* observer) override;
+
+  /**
+   * Returns installed lifecycle observers.
+   *
+   * @return             Vector with installed observers.
+   */
+  FOLLY_NODISCARD virtual std::vector<AsyncTransport::LifecycleObserver*>
+  getLifecycleObservers() const override;
 
  protected:
   enum ReadResultEnum {
@@ -1020,9 +1076,7 @@ class AsyncSocket : public AsyncTransport {
     WriteTimeout(AsyncSocket* socket, EventBase* eventBase)
         : AsyncTimeout(eventBase), socket_(socket) {}
 
-    void timeoutExpired() noexcept override {
-      socket_->timeoutExpired();
-    }
+    void timeoutExpired() noexcept override { socket_->timeoutExpired(); }
 
    private:
     AsyncSocket* socket_;
@@ -1172,7 +1226,7 @@ class AsyncSocket : public AsyncTransport {
    * @param msg       Message to send
    * @param msg_flags Flags to pass to sendmsg
    */
-  AsyncSocket::WriteResult
+  virtual AsyncSocket::WriteResult
   sendSocketMessage(NetworkSocket fd, struct msghdr* msg, int msg_flags);
 
   virtual ssize_t
@@ -1239,13 +1293,15 @@ class AsyncSocket : public AsyncTransport {
   bool isZeroCopyMsg(const cmsghdr& cmsg) const;
   void processZeroCopyMsg(const cmsghdr& cmsg);
 
-  uint32_t getNextZeroCopyBufId() {
-    return zeroCopyBufId_++;
-  }
+  uint32_t getNextZeroCopyBufId() { return zeroCopyBufId_++; }
   void adjustZeroCopyFlags(folly::WriteFlags& flags);
-  void addZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void addZeroCopyBuf(
+      std::unique_ptr<folly::IOBuf>&& buf,
+      ReleaseIOBufCallback* cb);
   void addZeroCopyBuf(folly::IOBuf* ptr);
-  void setZeroCopyBuf(std::unique_ptr<folly::IOBuf>&& buf);
+  void setZeroCopyBuf(
+      std::unique_ptr<folly::IOBuf>&& buf,
+      ReleaseIOBufCallback* cb);
   bool containsZeroCopyBuf(folly::IOBuf* ptr);
   void releaseZeroCopyBuf(uint32_t id);
 
@@ -1259,6 +1315,7 @@ class AsyncSocket : public AsyncTransport {
 
   struct IOBufInfo {
     uint32_t count_{0};
+    ReleaseIOBufCallback* cb_{nullptr};
     std::unique_ptr<folly::IOBuf> buf_;
   };
 
@@ -1295,6 +1352,16 @@ class AsyncSocket : public AsyncTransport {
   // The total num of bytes passed to AsyncSocket's write functions. It doesn't
   // include failed writes, but it does include buffered writes.
   size_t totalAppBytesScheduledForWrite_;
+
+  // Lifecycle observers.
+  //
+  // Use small_vector to avoid heap allocation for up to two observers, unless
+  // mobile, in which case we fallback to std::vector to prioritize code size.
+  using LifecycleObserverVecImpl = conditional_t<
+      !kIsMobile,
+      folly::small_vector<AsyncTransport::LifecycleObserver*, 2>,
+      std::vector<AsyncTransport::LifecycleObserver*>>;
+  LifecycleObserverVecImpl lifecycleObservers_;
 
   // Pre-received data, to be returned to read callback before any data from the
   // socket.

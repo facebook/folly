@@ -318,7 +318,7 @@ void testString2Integral() {
         (Uint)4147483648U,
         (Uint)4000000000U,
     };
-    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(uStrings2)) {
+    FOR_EACH_RANGE (i, 0, sizeof(uStrings2) / sizeof(*uStrings2)) {
       EXPECT_EQ(to<Uint>(uStrings2[i]), uValues2[i]);
       if (sizeof(Int) == 4) {
         EXPECT_THROW(to<Sint>(uStrings2[i]), std::range_error);
@@ -969,6 +969,7 @@ TEST(Conv, ConversionErrorStrToFloat) {
   EXPECT_CONV_ERROR_STR_NOVAL(float, StringPiece(), EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR_NOVAL(float, "", EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR(float, "  ", EMPTY_INPUT_STRING);
+  EXPECT_CONV_ERROR_STR(float, "\t", EMPTY_INPUT_STRING);
   EXPECT_CONV_ERROR_STR(float, "  junk", STRING_TO_FLOAT_ERROR);
   EXPECT_CONV_ERROR(to<float>("  1bla"), NON_WHITESPACE_AFTER_END, "bla");
 }
@@ -1201,6 +1202,10 @@ TEST(Conv, TryStringToFloat) {
   auto rv2 = folly::tryTo<float>("3.14");
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-5);
+  // No trailing '\0' to expose 1-byte buffer over-read
+  char x = '-';
+  auto rv3 = folly::tryTo<float>(folly::StringPiece(&x, 1));
+  EXPECT_FALSE(rv3.hasValue());
 }
 
 TEST(Conv, TryStringToDouble) {
@@ -1209,6 +1214,10 @@ TEST(Conv, TryStringToDouble) {
   auto rv2 = folly::tryTo<double>("3.14");
   EXPECT_TRUE(rv2.hasValue());
   EXPECT_NEAR(rv2.value(), 3.14, 1e-10);
+  // No trailing '\0' to expose 1-byte buffer over-read
+  char y = '\t';
+  auto rv4 = folly::tryTo<double>(folly::StringPiece(&y, 1));
+  EXPECT_FALSE(rv4.hasValue());
 }
 
 TEST(Conv, TryIntToInt) {
@@ -1318,9 +1327,7 @@ TEST(Conv, allocate_size) {
 namespace my {
 struct Dimensions {
   int w, h;
-  std::tuple<const int&, const int&> tuple_view() const {
-    return tie(w, h);
-  }
+  std::tuple<const int&, const int&> tuple_view() const { return tie(w, h); }
   bool operator==(const Dimensions& other) const {
     return this->tuple_view() == other.tuple_view();
   }

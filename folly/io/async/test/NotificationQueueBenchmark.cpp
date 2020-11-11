@@ -18,6 +18,7 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
+#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/synchronization/Baton.h>
@@ -28,10 +29,28 @@ static size_t constexpr kMaxRead = 20;
 static size_t constexpr kProducerWarmup = 1000;
 static size_t constexpr kBusyLoopSize = 0;
 
+struct FuncRunner {
+  void operator()(Func&& message) noexcept {
+    message();
+    message = nullptr;
+  }
+};
+
 class MockConsumer : public NotificationQueue<Func>::Consumer {
  public:
   void messageAvailable(Func&& message) noexcept override {
-    message();
+    funcRunner_(std::move(message));
+  }
+
+ private:
+  FuncRunner funcRunner_;
+};
+
+struct AtomicNotificationQueueConsumerAdaptor {
+  void startConsuming(
+      EventBase* evb,
+      AtomicNotificationQueue<Func, FuncRunner>* queue) {
+    queue->startConsuming(evb);
   }
 };
 
@@ -41,12 +60,13 @@ static void burn(size_t n) {
   }
 }
 
+template <typename Queue, typename Consumer>
 void multiProducerMultiConsumer(
     int iters,
     size_t numProducers,
     size_t numConsumers) {
   BenchmarkSuspender susp;
-  NotificationQueue<Func> queue;
+  Queue queue;
   std::vector<std::unique_ptr<EventBase>> consumerEventBases;
   std::vector<std::thread> consumerThreads;
   // Initialize consumers
@@ -56,7 +76,7 @@ void multiProducerMultiConsumer(
     EventBase& base = *consumerEventBases.back();
     consumerThreads.emplace_back([&base, &queue]() mutable {
       base.setMaxReadAtOnce(kMaxRead);
-      MockConsumer consumer;
+      Consumer consumer;
       consumer.startConsuming(&base, &queue);
       base.loopForever();
     });
@@ -118,6 +138,25 @@ void multiProducerMultiConsumer(
   }
 }
 
+void multiProducerMultiConsumerNQ(
+    int iters,
+    size_t numProducers,
+    size_t numConsumers) {
+  multiProducerMultiConsumer<NotificationQueue<Func>, MockConsumer>(
+      iters, numProducers, numConsumers);
+}
+
+void multiProducerMultiConsumerANQ(
+    int iters,
+    size_t numProducers,
+    size_t numConsumers) {
+  CHECK(numConsumers == 1);
+  multiProducerMultiConsumer<
+      AtomicNotificationQueue<Func, FuncRunner>,
+      AtomicNotificationQueueConsumerAdaptor>(
+      iters, numProducers, numConsumers);
+}
+
 BENCHMARK(EnqueueBenchmark, n) {
   BenchmarkSuspender suspender;
   NotificationQueue<Func> queue;
@@ -150,47 +189,54 @@ BENCHMARK(DequeueBenchmark, n) {
 }
 
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p__1c, 1, 1)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p__1c, 2, 1)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p__1c, 4, 1)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p__1c, 8, 1)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p__1c, 16, 1)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p__1c, 32, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, _1p__1c, 1, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, _2p__1c, 2, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, _4p__1c, 4, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, _8p__1c, 8, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, 16p__1c, 16, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerANQ, 32p__1c, 32, 1)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p__2c, 1, 2)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p__2c, 2, 2)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p__2c, 4, 2)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p__2c, 8, 2)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p__2c, 16, 2)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p__2c, 32, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p__1c, 1, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p__1c, 2, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p__1c, 4, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p__1c, 8, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p__1c, 16, 1)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p__1c, 32, 1)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p__4c, 1, 4)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p__4c, 2, 4)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p__4c, 4, 4)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p__4c, 8, 4)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p__4c, 16, 4)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p__4c, 32, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p__2c, 1, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p__2c, 2, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p__2c, 4, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p__2c, 8, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p__2c, 16, 2)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p__2c, 32, 2)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p__8c, 1, 8)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p__8c, 2, 8)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p__8c, 4, 8)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p__8c, 8, 8)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p__8c, 16, 8)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p__8c, 32, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p__4c, 1, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p__4c, 2, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p__4c, 4, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p__4c, 8, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p__4c, 16, 4)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p__4c, 32, 4)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p_16c, 1, 16)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p_16c, 2, 16)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p_16c, 4, 16)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p_16c, 8, 16)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p_16c, 16, 16)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p_16c, 32, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p__8c, 1, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p__8c, 2, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p__8c, 4, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p__8c, 8, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p__8c, 16, 8)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p__8c, 32, 8)
 BENCHMARK_DRAW_LINE();
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _1p_32c, 1, 32)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _2p_32c, 2, 32)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _4p_32c, 4, 32)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, _8p_32c, 8, 32)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 16p_32c, 16, 32)
-BENCHMARK_NAMED_PARAM(multiProducerMultiConsumer, 32p_32c, 32, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p_16c, 1, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p_16c, 2, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p_16c, 4, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p_16c, 8, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p_16c, 16, 16)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p_16c, 32, 16)
+BENCHMARK_DRAW_LINE();
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _1p_32c, 1, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _2p_32c, 2, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _4p_32c, 4, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, _8p_32c, 8, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 16p_32c, 16, 32)
+BENCHMARK_NAMED_PARAM(multiProducerMultiConsumerNQ, 32p_32c, 32, 32)
 BENCHMARK_DRAW_LINE();
 
 int main(int argc, char* argv[]) {

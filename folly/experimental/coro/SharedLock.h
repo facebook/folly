@@ -73,22 +73,16 @@ class FOLLY_NODISCARD SharedLock {
     return *this;
   }
 
-  Mutex* mutex() const noexcept {
-    return mutex_;
-  }
+  Mutex* mutex() const noexcept { return mutex_; }
 
   Mutex* release() noexcept {
     locked_ = false;
     return std::exchange(mutex_, nullptr);
   }
 
-  bool owns_lock() const noexcept {
-    return locked_;
-  }
+  bool owns_lock() const noexcept { return locked_; }
 
-  explicit operator bool() const noexcept {
-    return owns_lock();
-  }
+  explicit operator bool() const noexcept { return owns_lock(); }
 
   bool try_lock() noexcept(noexcept(mutex_->try_lock_shared())) {
     DCHECK(!locked_);

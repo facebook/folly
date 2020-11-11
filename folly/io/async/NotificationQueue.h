@@ -37,6 +37,7 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
+#include <folly/system/Pid.h>
 
 #include <glog/logging.h>
 
@@ -151,9 +152,7 @@ class NotificationQueue {
      * messages from.  Returns nullptr if the consumer is not currently
      * consuming events from any queue.
      */
-    NotificationQueue* getCurrentQueue() const {
-      return queue_;
-    }
+    NotificationQueue* getCurrentQueue() const { return queue_; }
 
     /**
      * Set a limit on how many messages this consumer will read each iteration
@@ -165,16 +164,10 @@ class NotificationQueue {
      * A limit of 0 means no limit will be enforced.  If unset, the limit
      * defaults to kDefaultMaxReadAtOnce (defined to 10 above).
      */
-    void setMaxReadAtOnce(uint32_t maxAtOnce) {
-      maxReadAtOnce_ = maxAtOnce;
-    }
-    uint32_t getMaxReadAtOnce() const {
-      return maxReadAtOnce_;
-    }
+    void setMaxReadAtOnce(uint32_t maxAtOnce) { maxReadAtOnce_ = maxAtOnce; }
+    uint32_t getMaxReadAtOnce() const { return maxReadAtOnce_; }
 
-    EventBase* getEventBase() {
-      return base_;
-    }
+    EventBase* getEventBase() { return base_; }
 
     void handlerReady(uint16_t events) noexcept override;
 
@@ -229,9 +222,7 @@ class NotificationQueue {
       ++queue_.numConsumers_;
     }
 
-    ~SimpleConsumer() {
-      --queue_.numConsumers_;
-    }
+    ~SimpleConsumer() { --queue_.numConsumers_; }
 
     int getFd() const {
       return queue_.eventfd_ >= 0 ? queue_.eventfd_ : queue_.pipeFds_[0];
@@ -276,7 +267,7 @@ class NotificationQueue {
       : eventfd_(-1),
         pipeFds_{-1, -1},
         advisoryMaxQueueSize_(maxSize),
-        pid_(pid_t(getpid())) {
+        pid_(folly::get_cached_pid()) {
 
 #ifdef FOLLY_HAVE_EVENTFD
     if (fdType == FdType::EVENTFD) {
@@ -353,9 +344,7 @@ class NotificationQueue {
    * message on the queue, ignoring the configured maximum queue size.  This
    * can cause the queue size to exceed the configured maximum.
    */
-  void setMaxQueueSize(uint32_t max) {
-    advisoryMaxQueueSize_ = max;
-  }
+  void setMaxQueueSize(uint32_t max) { advisoryMaxQueueSize_ = max; }
 
   /**
    * Attempt to put a message on the queue if the queue is not already full.
@@ -429,9 +418,7 @@ class NotificationQueue {
    * unmodified.
    */
   bool tryConsume(MessageT& result) {
-    SCOPE_EXIT {
-      syncSignalAndQueue();
-    };
+    SCOPE_EXIT { syncSignalAndQueue(); };
 
     checkPid();
     std::unique_ptr<Node> data;
@@ -472,7 +459,9 @@ class NotificationQueue {
    * code, and crash before signalling the parent process.
    */
   void checkPid() const {
-    CHECK_EQ(pid_, pid_t(getpid()));
+    if (FOLLY_UNLIKELY(pid_ != folly::get_cached_pid())) {
+      checkPidFail();
+    }
   }
 
  private:
@@ -632,6 +621,13 @@ class NotificationQueue {
     }
   }
 
+  FOLLY_NOINLINE void checkPidFail() const {
+    folly::terminate_with<std::runtime_error>(
+        "Pid mismatch. Pid = " +
+        folly::to<std::string>(folly::get_cached_pid()) + ". Expecting " +
+        folly::to<std::string>(pid_));
+  }
+
   mutable folly::SpinLock spinlock_;
   mutable bool signal_{false};
   int eventfd_;
@@ -675,9 +671,7 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       queue_->syncSignalAndQueue();
     }
   };
-  SCOPE_EXIT {
-    setActive(false, /* shouldLock = */ true);
-  };
+  SCOPE_EXIT { setActive(false, /* shouldLock = */ true); };
   SCOPE_EXIT {
     if (numConsumed != nullptr) {
       *numConsumed = numProcessed;
@@ -728,6 +722,9 @@ void NotificationQueue<MessageT>::Consumer::consumeMessages(
       destroyedFlagPtr_ = &callbackDestroyed;
       messageAvailable(std::move(data->msg_));
       destroyedFlagPtr_ = nullptr;
+
+      // Make sure message destructor is called with the correct RequestContext.
+      data.reset();
 
       // If the callback was destroyed before it returned, we are done
       if (callbackDestroyed) {
@@ -843,9 +840,7 @@ template <typename MessageT>
 template <typename F>
 void NotificationQueue<MessageT>::SimpleConsumer::consumeUntilDrained(
     F&& foreach) {
-  SCOPE_EXIT {
-    queue_.syncSignalAndQueue();
-  };
+  SCOPE_EXIT { queue_.syncSignalAndQueue(); };
 
   queue_.checkPid();
 

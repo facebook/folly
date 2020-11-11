@@ -82,6 +82,24 @@ ENUMERATE_TEST_BASIC_CONST(const auto&&, BasicConstRRef)
 
 #undef ENUMERATE_TEST_BASIC_CONST
 
+#define ENUMERATE_TEST_BASIC_VECTOR_BOOL(DECL, NAME)  \
+  TEST(Enumerate, NAME) {                             \
+    std::vector<bool> v = {true, false, false, true}; \
+    size_t i = 0;                                     \
+    for (DECL it : folly::enumerate(v)) {             \
+      EXPECT_EQ(it.index, i);                         \
+      EXPECT_EQ(*it, v[i]);                           \
+      ++i;                                            \
+    }                                                 \
+                                                      \
+    EXPECT_EQ(i, v.size());                           \
+  }
+
+ENUMERATE_TEST_BASIC_VECTOR_BOOL(auto, BasicVecBool)
+ENUMERATE_TEST_BASIC_VECTOR_BOOL(auto&&, BasicVecBoolRRef)
+
+#undef ENUMERATE_TEST_BASIC_VECTOR_BOOL
+
 TEST(Enumerate, Temporary) {
   std::vector<std::string> v = {"abc", "a", "ab"};
   size_t i = 0;
@@ -153,12 +171,8 @@ class CStringRange {
 
   explicit CStringRange(const char* cstr_) : cstr(cstr_) {}
 
-  const char* begin() const {
-    return cstr;
-  }
-  Sentinel end() const {
-    return Sentinel{};
-  }
+  const char* begin() const { return cstr; }
+  Sentinel end() const { return Sentinel{}; }
 };
 
 bool operator==(const char* c, CStringRange::Sentinel) {
@@ -167,18 +181,37 @@ bool operator==(const char* c, CStringRange::Sentinel) {
 
 TEST(Enumerate, Cpp17Support) {
   std::array<char, 5> test = {"test"};
-  // Can't use range based for loop until C++17, so test manually
-  // Equivalent to:
-  // for (const auto&& it : folly::enumerate(CStringRange{test.data()})) { ... }
-  {
-    auto&& enumerate = folly::enumerate(CStringRange{test.data()});
-    auto begin = enumerate.begin();
-    auto end = enumerate.end();
-    for (; begin != end; ++begin) {
-      const auto&& it = *begin;
+  for (const auto&& it : folly::enumerate(CStringRange{test.data()})) {
+    ASSERT_LT(it.index, test.size());
+    EXPECT_EQ(*it, test[it.index]);
+  }
+}
 
-      ASSERT_LT(it.index, test.size());
-      EXPECT_EQ(*it, test[it.index]);
-    }
+TEST(Enumerate, Cpp17StructuredBinding) {
+  std::vector<std::string> test = {"abc", "a", "ab"};
+  for (const auto& [index, str] : folly::enumerate(test)) {
+    ASSERT_LT(index, test.size());
+    EXPECT_EQ(str, test[index]);
+  }
+}
+
+TEST(Enumerate, Cpp17StructuredBindingConstVector) {
+  const std::vector<std::string> test = {"abc", "a", "ab"};
+  for (auto&& [index, str] : folly::enumerate(test)) {
+    static_assert(
+        IsConstReference<decltype(str)>::value, "Enumerating const vector");
+    ASSERT_LT(index, test.size());
+    EXPECT_EQ(str, test[index]);
+  }
+}
+
+TEST(Enumerate, Cpp17StructuredBindingModify) {
+  std::vector<int> test = {1, 2, 3, 4, 5};
+  for (auto&& [index, integer] : folly::enumerate(test)) {
+    integer = 0;
+  }
+
+  for (const auto& integer : test) {
+    EXPECT_EQ(integer, 0);
   }
 }

@@ -30,9 +30,7 @@ namespace detail {
 struct DynamicHasher {
   using is_transparent = void;
 
-  size_t operator()(dynamic const& d) const {
-    return d.hash();
-  }
+  size_t operator()(dynamic const& d) const { return d.hash(); }
 
   template <typename T>
   std::enable_if_t<std::is_convertible<T, StringPiece>::value, size_t>
@@ -84,9 +82,7 @@ namespace std {
 
 template <>
 struct hash<::folly::dynamic> {
-  size_t operator()(::folly::dynamic const& d) const {
-    return d.hash();
-  }
+  size_t operator()(::folly::dynamic const& d) const { return d.hash(); }
 };
 
 } // namespace std
@@ -259,9 +255,7 @@ struct dynamic::value_iterator : detail::IteratorAdaptor<
 
   using object_type = dynamic::ObjectImpl;
 
-  dynamic& dereference() const {
-    return base()->second;
-  }
+  dynamic& dereference() const { return base()->second; }
 };
 
 struct dynamic::const_item_iterator
@@ -299,9 +293,7 @@ struct dynamic::const_key_iterator : detail::IteratorAdaptor<
 
   using object_type = dynamic::ObjectImpl const;
 
-  dynamic const& dereference() const {
-    return base()->first;
-  }
+  dynamic const& dereference() const { return base()->first; }
 };
 
 struct dynamic::const_value_iterator : detail::IteratorAdaptor<
@@ -322,9 +314,7 @@ struct dynamic::const_value_iterator : detail::IteratorAdaptor<
 
   using object_type = dynamic::ObjectImpl const;
 
-  dynamic const& dereference() const {
-    return base()->second;
-  }
+  dynamic const& dereference() const { return base()->second; }
 };
 
 //////////////////////////////////////////////////////////////////////
@@ -435,13 +425,9 @@ struct dynamic::IterableProxy {
 
   /* implicit */ IterableProxy(object_type* o) : o_(o) {}
 
-  It begin() const {
-    return o_->begin();
-  }
+  It begin() const { return o_->begin(); }
 
-  It end() const {
-    return o_->end();
-  }
+  It end() const { return o_->end(); }
 
  private:
   object_type* o_;
@@ -563,9 +549,7 @@ inline StringPiece dynamic::stringPiece() const {
 
 template <class T>
 struct dynamic::CompareOp {
-  static bool comp(T const& a, T const& b) {
-    return a < b;
-  }
+  static bool comp(T const& a, T const& b) { return a < b; }
 };
 template <>
 struct dynamic::CompareOp<dynamic::ObjectImpl> {
@@ -1072,39 +1056,27 @@ template <class T>
 struct dynamic::GetAddrImpl {};
 template <>
 struct dynamic::GetAddrImpl<std::nullptr_t> {
-  static std::nullptr_t* get(Data& d) noexcept {
-    return &d.nul;
-  }
+  static std::nullptr_t* get(Data& d) noexcept { return &d.nul; }
 };
 template <>
 struct dynamic::GetAddrImpl<dynamic::Array> {
-  static Array* get(Data& d) noexcept {
-    return &d.array;
-  }
+  static Array* get(Data& d) noexcept { return &d.array; }
 };
 template <>
 struct dynamic::GetAddrImpl<bool> {
-  static bool* get(Data& d) noexcept {
-    return &d.boolean;
-  }
+  static bool* get(Data& d) noexcept { return &d.boolean; }
 };
 template <>
 struct dynamic::GetAddrImpl<int64_t> {
-  static int64_t* get(Data& d) noexcept {
-    return &d.integer;
-  }
+  static int64_t* get(Data& d) noexcept { return &d.integer; }
 };
 template <>
 struct dynamic::GetAddrImpl<double> {
-  static double* get(Data& d) noexcept {
-    return &d.doubl;
-  }
+  static double* get(Data& d) noexcept { return &d.doubl; }
 };
 template <>
 struct dynamic::GetAddrImpl<std::string> {
-  static std::string* get(Data& d) noexcept {
-    return &d.string;
-  }
+  static std::string* get(Data& d) noexcept { return &d.string; }
 };
 template <>
 struct dynamic::GetAddrImpl<dynamic::ObjectImpl> {
@@ -1141,9 +1113,7 @@ T const& dynamic::get() const {
  */
 template <class T>
 struct dynamic::PrintImpl {
-  static void print(dynamic const&, std::ostream& out, T const& t) {
-    out << t;
-  }
+  static void print(dynamic const&, std::ostream& out, T const& t) { out << t; }
 };
 // Otherwise, null, being (void*)0, would print as 0.
 template <>

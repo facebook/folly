@@ -65,7 +65,9 @@ timed_wait(Awaitable awaitable, Duration duration) {
   if (!result.hasValue() && !result.hasException()) {
     co_return folly::none;
   }
+  // clang-format off
   co_return *result;
+  // clang-format on
 }
 
 } // namespace coro

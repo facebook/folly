@@ -55,9 +55,7 @@ struct SimpleObservable<T>::Wrapper {
 
   std::shared_ptr<Context> context;
 
-  std::shared_ptr<const T> get() {
-    return context->value_.copy();
-  }
+  std::shared_ptr<const T> get() { return context->value_.copy(); }
 
   void subscribe(folly::Function<void()> callback) {
     context->callback_.swap(callback);
@@ -70,12 +68,12 @@ struct SimpleObservable<T>::Wrapper {
 };
 
 template <typename T>
-Observer<T> SimpleObservable<T>::getObserver() {
+auto SimpleObservable<T>::getObserver() {
   std::call_once(observerInit_, [&]() {
     SimpleObservable<T>::Wrapper wrapper;
     wrapper.context = context_;
     ObserverCreator<SimpleObservable<T>::Wrapper> creator(std::move(wrapper));
-    observer_ = std::move(creator).getObserver();
+    observer_ = unwrap(std::move(creator).getObserver());
   });
   return *observer_;
 }

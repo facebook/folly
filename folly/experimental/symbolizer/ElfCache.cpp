@@ -19,10 +19,23 @@
 #include <signal.h>
 
 #include <folly/ScopeGuard.h>
+#include <folly/portability/Config.h>
 #include <folly/portability/SysMman.h>
+
+#if FOLLY_HAVE_ELF
 
 namespace folly {
 namespace symbolizer {
+
+SignalSafeElfCache::Path::Path(
+    char const* const data,
+    std::size_t const size,
+    reentrant_allocator<char> const& alloc) noexcept
+    : data_{alloc} {
+  data_.reserve(size + 1);
+  data_.insert(data_.end(), data, data + size);
+  data_.insert(data_.end(), '\0');
+}
 
 std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   struct cmp {
@@ -39,9 +52,7 @@ std::shared_ptr<ElfFile> SignalSafeElfCache::getFile(StringPiece p) {
   sigset_t oldsigs;
   sigemptyset(&oldsigs);
   sigprocmask(SIG_SETMASK, &newsigs, &oldsigs);
-  SCOPE_EXIT {
-    sigprocmask(SIG_SETMASK, &oldsigs, nullptr);
-  };
+  SCOPE_EXIT { sigprocmask(SIG_SETMASK, &oldsigs, nullptr); };
 
   if (!state_) {
     state_.emplace();
@@ -95,3 +106,5 @@ std::shared_ptr<ElfFile> ElfCache::filePtr(const std::shared_ptr<Entry>& e) {
 }
 } // namespace symbolizer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF

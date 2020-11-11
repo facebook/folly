@@ -19,6 +19,7 @@
 #include <exception>
 #include <string>
 #include <type_traits>
+#include <typeinfo>
 
 #include <folly/Demangle.h>
 #include <folly/FBString.h>
@@ -30,29 +31,9 @@ namespace folly {
  * Debug string for an exception: include type and what(), if
  * defined.
  */
-inline fbstring exceptionStr(const std::exception& e) {
-#if FOLLY_HAS_RTTI
-  fbstring rv(demangle(typeid(e)));
-  rv += ": ";
-#else
-  fbstring rv("Exception (no RTTI available): ");
-#endif
-  rv += e.what();
-  return rv;
-}
+fbstring exceptionStr(const std::exception& e);
 
-inline fbstring exceptionStr(std::exception_ptr ep) {
-  if (!kHasExceptions) {
-    return "Exception (catch unavailable)";
-  }
-  return catch_exception(
-      [&]() -> fbstring {
-        return catch_exception<std::exception const&>(
-            [&]() -> fbstring { std::rethrow_exception(ep); },
-            [](auto&& e) { return exceptionStr(e); });
-      },
-      []() -> fbstring { return "<unknown exception>"; });
-}
+fbstring exceptionStr(std::exception_ptr ep);
 
 template <typename E>
 auto exceptionStr(const E& e) -> typename std::

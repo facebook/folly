@@ -72,13 +72,13 @@ void SharedPromise<T>::setInterruptHandler(
 template <class T>
 template <class M>
 void SharedPromise<T>::setValue(M&& v) {
-  setTry(Try<T>(std::forward<M>(v)));
+  setTry(Try<T>(static_cast<M&&>(v)));
 }
 
 template <class T>
 template <class F>
 void SharedPromise<T>::setWith(F&& func) {
-  setTry(makeTryWith(std::forward<F>(func)));
+  setTry(makeTryWith(static_cast<F&&>(func)));
 }
 
 template <class T>
@@ -104,5 +104,10 @@ bool SharedPromise<T>::isFulfilled() const {
   std::lock_guard<std::mutex> g(mutex_);
   return hasResult();
 }
+
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+extern template class SharedPromise<Unit>;
+#endif
 
 } // namespace folly

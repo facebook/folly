@@ -21,6 +21,7 @@
 #include <mutex>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include <boost/intrusive/avl_set.hpp>
 
@@ -28,9 +29,12 @@
 #include <folly/experimental/symbolizer/Elf.h>
 #include <folly/hash/Hash.h>
 #include <folly/memory/ReentrantAllocator.h>
+#include <folly/portability/Config.h>
 
 namespace folly {
 namespace symbolizer {
+
+#if FOLLY_HAVE_ELF
 
 class ElfCacheBase {
  public:
@@ -47,10 +51,38 @@ class SignalSafeElfCache : public ElfCacheBase {
  public:
   std::shared_ptr<ElfFile> getFile(StringPiece path) override;
 
-  using Path = std::basic_string< //
-      char,
-      std::char_traits<char>,
-      reentrant_allocator<char>>;
+  //  Path
+  //
+  //  A minimal implementation of the subset of std::string used below, as if:
+  //
+  //    using Path = std::basic_string<
+  //        char, std::char_traits<char>, reentrant_allocator<char>>;
+  //
+  //  Since some library implementations of std::basic_string, as on CentOS 7,
+  //  do not build when instantiated with a non-default-constructible allocator,
+  //  and since other library replacements, such as folly::basic_fbstring, just
+  //  ignore the allocator parameter.
+  class Path {
+   public:
+    Path(
+        char const* data,
+        std::size_t size,
+        reentrant_allocator<char> const& alloc) noexcept;
+    Path() = delete;
+    Path(Path const&) = delete;
+    void operator=(Path const&) = delete;
+
+    /* implicit */ operator StringPiece() const noexcept { return data_; }
+
+    char const* c_str() const noexcept { return data_.data(); }
+
+    friend bool operator<(Path const& a, Path const& b) noexcept {
+      return a.data_ < b.data_;
+    }
+
+   private:
+    std::vector<char, reentrant_allocator<char>> data_;
+  };
 
   struct Entry : boost::intrusive::avl_set_base_hook<> {
     Path path;
@@ -99,5 +131,8 @@ class ElfCache : public ElfCacheBase {
 
   std::unordered_map<StringPiece, std::shared_ptr<Entry>, Hash> files_;
 };
+
+#endif // FOLLY_HAVE_ELF
+
 } // namespace symbolizer
 } // namespace folly

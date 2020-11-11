@@ -112,9 +112,7 @@ class MPMCPipeline {
           value_(std::exchange(other.value_, 0xdeadbeeffaceb00c)) {}
     explicit TicketBaseDebug(MPMCPipeline* owner, uint64_t value) noexcept
         : owner_(owner), value_(value) {}
-    void check_owner(MPMCPipeline* owner) const {
-      CHECK(owner == owner_);
-    }
+    void check_owner(MPMCPipeline* owner) const { CHECK(owner == owner_); }
 
     MPMCPipeline* owner_;
     uint64_t value_;

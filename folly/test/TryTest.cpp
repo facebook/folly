@@ -30,9 +30,7 @@ class A {
  public:
   explicit A(int x) : x_(x) {}
 
-  int x() const {
-    return x_;
-  }
+  int x() const { return x_; }
 
  private:
   int x_;
@@ -98,9 +96,7 @@ TEST(Try, assignmentWithThrowingCopyConstructor) {
 
     ThrowingCopyConstructor& operator=(const ThrowingCopyConstructor&) = delete;
 
-    ~ThrowingCopyConstructor() {
-      --counter_;
-    }
+    ~ThrowingCopyConstructor() { --counter_; }
   };
 
   int counter = 0;
@@ -143,9 +139,7 @@ TEST(Try, assignmentWithThrowingMoveConstructor) {
 
     ThrowingMoveConstructor& operator=(ThrowingMoveConstructor&&) = delete;
 
-    ~ThrowingMoveConstructor() {
-      --counter_;
-    }
+    ~ThrowingMoveConstructor() { --counter_; }
   };
 
   int counter = 0;
@@ -224,7 +218,6 @@ TEST(Try, tryEmplaceWithThrowingConstructor) {
   struct NonInheritingException {};
   struct ThrowingConstructor {
     [[noreturn]] ThrowingConstructor() noexcept(false) {
-      // @lint-ignore HOWTOEVEN
       throw NonInheritingException{};
     }
 
@@ -371,6 +364,11 @@ TEST(Try, nothrow) {
   EXPECT_TRUE((std::is_nothrow_constructible<Try<Unit>, Try<void>&&>::value));
   EXPECT_TRUE(
       (std::is_nothrow_constructible<Try<Unit>, Try<void> const&>::value));
+
+  // conversion ctor - unit to void
+  EXPECT_TRUE((std::is_nothrow_constructible<Try<void>, Try<Unit>&&>::value));
+  EXPECT_TRUE(
+      (std::is_nothrow_constructible<Try<void>, Try<Unit> const&>::value));
 }
 
 TEST(Try, MoveDereference) {

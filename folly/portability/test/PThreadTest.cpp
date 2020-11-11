@@ -59,6 +59,8 @@ TEST(PThreadTest, pthread_equal) {
   pthread_t thread;
   EXPECT_EQ(pthread_create(&thread, nullptr, mainFunc, nullptr), 0);
   EXPECT_EQ(pthread_equal(thread, self), 0);
+  void* exitCode = nullptr;
+  pthread_join(thread, &exitCode);
 }
 
 TEST(PThreadTest, pthread_self_on_pthread_thread) {

@@ -114,9 +114,7 @@ class AsyncServerSocket::BackoffTimeout : public AsyncTimeout {
   explicit BackoffTimeout(AsyncServerSocket* socket)
       : AsyncTimeout(socket->getEventBase()), socket_(socket) {}
 
-  void timeoutExpired() noexcept override {
-    socket_->backoffTimeoutExpired();
-  }
+  void timeoutExpired() noexcept override { socket_->backoffTimeoutExpired(); }
 
  private:
   AsyncServerSocket* socket_;
@@ -414,9 +412,7 @@ void AsyncServerSocket::bind(uint16_t port) {
         "bad getaddrinfo");
   }
 
-  SCOPE_EXIT {
-    freeaddrinfo(res0);
-  };
+  SCOPE_EXIT { freeaddrinfo(res0); };
 
   auto setupAddress = [&](struct addrinfo* res) {
     auto s = netops::socket(res->ai_family, res->ai_socktype, res->ai_protocol);

@@ -57,13 +57,9 @@ class TDigest {
       assert(weight > 0);
     }
 
-    inline double mean() const {
-      return mean_;
-    }
+    inline double mean() const { return mean_; }
 
-    inline double weight() const {
-      return weight_;
-    }
+    inline double weight() const { return weight_; }
 
     /*
      * Adds the sum/weight to this centroid, and returns the new sum.
@@ -112,37 +108,21 @@ class TDigest {
    */
   double estimateQuantile(double q) const;
 
-  double mean() const {
-    return count_ ? sum_ / count_ : 0;
-  }
+  double mean() const { return count_ > 0 ? sum_ / count_ : 0; }
 
-  double sum() const {
-    return sum_;
-  }
+  double sum() const { return sum_; }
 
-  double count() const {
-    return count_;
-  }
+  double count() const { return count_; }
 
-  double min() const {
-    return min_;
-  }
+  double min() const { return min_; }
 
-  double max() const {
-    return max_;
-  }
+  double max() const { return max_; }
 
-  bool empty() const {
-    return centroids_.empty();
-  }
+  bool empty() const { return centroids_.empty(); }
 
-  const std::vector<Centroid>& getCentroids() const {
-    return centroids_;
-  }
+  const std::vector<Centroid>& getCentroids() const { return centroids_; }
 
-  size_t maxSize() const {
-    return maxSize_;
-  }
+  size_t maxSize() const { return maxSize_; }
 
  private:
   std::vector<Centroid> centroids_;

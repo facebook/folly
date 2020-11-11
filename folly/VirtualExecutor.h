@@ -36,9 +36,7 @@ class VirtualExecutor : public DefaultKeepAliveExecutor {
       FuncAndKeepAlive(Func&& f, VirtualExecutor* executor)
           : keepAlive_(getKeepAliveToken(executor)), f_(std::move(f)) {}
 
-      void operator()() {
-        f_();
-      }
+      void operator()() { f_(); }
 
      private:
       Executor::KeepAlive<VirtualExecutor> keepAlive_;
@@ -67,17 +65,13 @@ class VirtualExecutor : public DefaultKeepAliveExecutor {
     return executor_->getNumPriorities();
   }
 
-  void add(Func f) override {
-    executor_->add(wrapFunc(std::move(f)));
-  }
+  void add(Func f) override { executor_->add(wrapFunc(std::move(f))); }
 
   void addWithPriority(Func f, int8_t priority) override {
     executor_->addWithPriority(wrapFunc(std::move(f)), priority);
   }
 
-  ~VirtualExecutor() override {
-    joinKeepAlive();
-  }
+  ~VirtualExecutor() override { joinKeepAlive(); }
 
  private:
   const KeepAlive<> executor_;

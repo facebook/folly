@@ -31,9 +31,7 @@ namespace {
 class StringAppender {
  public:
   /* implicit */ StringAppender(std::string& s) : s_(s) {}
-  void operator()(StringPiece sp) {
-    s_.append(sp.data(), sp.size());
-  }
+  void operator()(StringPiece sp) { s_.append(sp.data(), sp.size()); }
 
  private:
   std::string& s_;

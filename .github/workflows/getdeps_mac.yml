@@ -37,6 +37,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests googletest
     - name: Fetch libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests libevent
+    - name: Fetch lz4
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests lz4
     - name: Fetch snappy
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages fetch --no-tests snappy
     - name: Fetch zstd
@@ -61,6 +63,8 @@ jobs:
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests googletest
     - name: Build libevent
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests libevent
+    - name: Build lz4
+      run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests lz4
     - name: Build snappy
       run: python3 build/fbcode_builder/getdeps.py --allow-system-packages build --no-tests snappy
     - name: Build zstd

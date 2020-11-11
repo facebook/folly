@@ -37,14 +37,14 @@ class ExecutorWithPriorityImpl : public virtual Executor {
   }
 
  protected:
-  bool keepAliveAcquire() override {
+  bool keepAliveAcquire() noexcept override {
     auto keepAliveCounter =
         keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
     DCHECK(keepAliveCounter > 0);
     return true;
   }
 
-  void keepAliveRelease() override {
+  void keepAliveRelease() noexcept override {
     auto keepAliveCounter =
         keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
     DCHECK(keepAliveCounter > 0);

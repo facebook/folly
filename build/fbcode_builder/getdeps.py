@@ -207,8 +207,8 @@ class ProjectCmdBase(SubCmd):
 
 
 class CachedProject(object):
-    """ A helper that allows calling the cache logic for a project
-    from both the build and the fetch code """
+    """A helper that allows calling the cache logic for a project
+    from both the build and the fetch code"""
 
     def __init__(self, cache, loader, m):
         self.m = m
@@ -696,11 +696,14 @@ class TestCmd(ProjectCmdBase):
                 builder = m.create_builder(
                     loader.build_opts, src_dir, build_dir, inst_dir, ctx, loader
                 )
+
                 builder.run_tests(
                     install_dirs,
                     schedule_type=args.schedule_type,
                     owner=args.test_owner,
                     test_filter=args.filter,
+                    retry=args.retry,
+                    no_testpilot=args.no_testpilot,
                 )
 
             install_dirs.append(inst_dir)
@@ -711,10 +714,31 @@ class TestCmd(ProjectCmdBase):
         )
         parser.add_argument("--test-owner", help="Owner for testpilot")
         parser.add_argument("--filter", help="Only run the tests matching the regex")
+        parser.add_argument(
+            "--retry",
+            type=int,
+            default=3,
+            help="Number of immediate retries for failed tests "
+            "(noop in continuous and testwarden runs)",
+        )
+        parser.add_argument(
+            "--no-testpilot",
+            help="Do not use Test Pilot even when available",
+            action="store_true",
+        )
 
 
 @cmd("generate-github-actions", "generate a GitHub actions configuration")
 class GenerateGitHubActionsCmd(ProjectCmdBase):
+    RUN_ON_ALL = """ [push, pull_request]"""
+    RUN_ON_DEFAULT = """
+  push:
+    branches:
+    - master
+  pull_request:
+    branches:
+    - master"""
+
     def run_project_cmd(self, args, loader, manifest):
         platforms = [
             HostType("linux", "ubuntu", "18"),
@@ -725,15 +749,17 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
         for p in platforms:
             self.write_job_for_platform(p, args)
 
-    def write_job_for_platform(self, platform, args):
+    # TODO: Break up complex function
+    def write_job_for_platform(self, platform, args):  # noqa: C901
         build_opts = setup_build_options(args, platform)
         ctx_gen = build_opts.get_context_generator()
         loader = ManifestLoader(build_opts, ctx_gen)
         manifest = loader.load_manifest(args.project)
         manifest_ctx = loader.ctx_gen.get_context(manifest.name)
+        run_on = self.RUN_ON_ALL if args.run_on_all_branches else self.RUN_ON_DEFAULT
 
         # Some projects don't do anything "useful" as a leaf project, only
-        # as a dep for a leaf project.  Check for those here; we don't want
+        # as a dep for a leaf project. Check for those here; we don't want
         # to waste the effort scheduling them on CI.
         # We do this by looking at the builder type in the manifest file
         # rather than creating a builder and checking its type because we
@@ -750,7 +776,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
         if build_opts.is_linux():
             job_name = "linux"
-            runs_on = "ubuntu-18.04"
+            runs_on = f"ubuntu-{args.ubuntu_version}"
         elif build_opts.is_windows():
             # We're targeting the windows-2016 image because it has
             # Visual Studio 2017 installed, and at the time of writing,
@@ -777,19 +803,15 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
                 f"""
 name: {job_name}
 
-on:
-  push:
-    branches:
-    - master
-  pull_request:
-    branches:
-    - master
+on:{run_on}
 
 jobs:
 """
             )
 
-            getdeps = f"{py3} build/fbcode_builder/getdeps.py --allow-system-packages"
+            getdeps = f"{py3} build/fbcode_builder/getdeps.py"
+            if not args.disallow_system_packages:
+                getdeps += " --allow-system-packages"
 
             out.write("  build:\n")
             out.write("    runs-on: %s\n" % runs_on)
@@ -815,7 +837,7 @@ jobs:
                 # that we want it to use them!
                 out.write("    - name: Fix Git config\n")
                 out.write("      run: git config --system core.longpaths true\n")
-            else:
+            elif not args.disallow_system_packages:
                 out.write("    - name: Install system deps\n")
                 out.write(
                     f"      run: sudo {getdeps} install-system-deps --recursive {manifest.name}\n"
@@ -873,7 +895,21 @@ jobs:
 
     def setup_project_cmd_parser(self, parser):
         parser.add_argument(
+            "--disallow-system-packages",
+            help="Disallow satisfying third party deps from installed system packages",
+            action="store_true",
+            default=False,
+        )
+        parser.add_argument(
             "--output-dir", help="The directory that will contain the yml files"
+        )
+        parser.add_argument(
+            "--run-on-all-branches",
+            action="store_true",
+            help="Allow CI to fire on all branches - Handy for testing",
+        )
+        parser.add_argument(
+            "--ubuntu-version", default="18.04", help="Version of Ubuntu to use"
         )
 
 
@@ -946,6 +982,11 @@ def parse_args():
         help="Allow satisfying third party deps from installed system packages",
         action="store_true",
         default=False,
+    )
+    add_common_arg(
+        "--lfs-path",
+        help="Provide a parent directory for lfs when fbsource is unavailable",
+        default=None,
     )
 
     ap = argparse.ArgumentParser(

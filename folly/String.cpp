@@ -223,9 +223,7 @@ void stringAppendfImpl(std::string& output, const char* format, va_list args) {
 std::string stringPrintf(const char* format, ...) {
   va_list ap;
   va_start(ap, format);
-  SCOPE_EXIT {
-    va_end(ap);
-  };
+  SCOPE_EXIT { va_end(ap); };
   return stringVPrintf(format, ap);
 }
 
@@ -240,9 +238,7 @@ std::string stringVPrintf(const char* format, va_list ap) {
 std::string& stringAppendf(std::string* output, const char* format, ...) {
   va_list ap;
   va_start(ap, format);
-  SCOPE_EXIT {
-    va_end(ap);
-  };
+  SCOPE_EXIT { va_end(ap); };
   return stringVAppendf(output, format, ap);
 }
 
@@ -255,9 +251,7 @@ stringVAppendf(std::string* output, const char* format, va_list ap) {
 void stringPrintf(std::string* output, const char* format, ...) {
   va_list ap;
   va_start(ap, format);
-  SCOPE_EXIT {
-    va_end(ap);
-  };
+  SCOPE_EXIT { va_end(ap); };
   return stringVPrintf(output, format, ap);
 }
 

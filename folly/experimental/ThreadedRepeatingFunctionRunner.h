@@ -135,9 +135,7 @@ class ThreadedRepeatingFunctionRunner final {
       RepeatingFn f,
       std::chrono::milliseconds initialSleep = std::chrono::milliseconds(0));
 
-  size_t size() const {
-    return threads_.size();
-  }
+  size_t size() const { return threads_.size(); }
 
  private:
   // Returns true if this is the first stop().

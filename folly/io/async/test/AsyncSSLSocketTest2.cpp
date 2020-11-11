@@ -42,9 +42,7 @@ struct EvbAndContext {
     return AsyncSSLSocket::newSocket(ctx_, getEventBase());
   }
 
-  EventBase* getEventBase() {
-    return evb_.getEventBase();
-  }
+  EventBase* getEventBase() { return evb_.getEventBase(); }
 
   void attach(AsyncSSLSocket& socket) {
     socket.attachEventBase(getEventBase());
@@ -80,9 +78,7 @@ class AttachDetachClient : public AsyncSocket::ConnectCallback,
   explicit AttachDetachClient(const folly::SocketAddress& address)
       : address_(address), bytesRead_(0) {}
 
-  Future<bool> getFuture() {
-    return promise_.getFuture();
-  }
+  Future<bool> getFuture() { return promise_.getFuture(); }
 
   void connect() {
     // create in one and then move to another
@@ -146,9 +142,7 @@ class AttachDetachClient : public AsyncSocket::ConnectCallback,
     *bufReturn = readbuf_ + bytesRead_;
     *lenReturn = sizeof(readbuf_) - bytesRead_;
   }
-  void readEOF() noexcept override {
-    cerr << "client readEOF" << endl;
-  }
+  void readEOF() noexcept override { cerr << "client readEOF" << endl; }
 
   void readErr(const AsyncSocketException& ex) noexcept override {
     cerr << "client readError: " << ex.what() << endl;
@@ -192,9 +186,7 @@ class ConnectClient : public AsyncSocket::ConnectCallback {
  public:
   ConnectClient() = default;
 
-  Future<bool> getFuture() {
-    return promise_.getFuture();
-  }
+  Future<bool> getFuture() { return promise_.getFuture(); }
 
   void connect(const folly::SocketAddress& addr) {
     t1_.getEventBase()->runInEventBaseThread([&] {
@@ -213,9 +205,7 @@ class ConnectClient : public AsyncSocket::ConnectCallback {
     promise_.setValue(false);
   }
 
-  void setCtx(std::shared_ptr<SSLContext> ctx) {
-    t1_.ctx_ = ctx;
-  }
+  void setCtx(std::shared_ptr<SSLContext> ctx) { t1_.ctx_ = ctx; }
 
  private:
   EvbAndContext t1_;
@@ -226,9 +216,7 @@ class ConnectClient : public AsyncSocket::ConnectCallback {
 
 class NoopReadCallback : public ReadCallbackBase {
  public:
-  NoopReadCallback() : ReadCallbackBase(nullptr) {
-    state = STATE_SUCCEEDED;
-  }
+  NoopReadCallback() : ReadCallbackBase(nullptr) { state = STATE_SUCCEEDED; }
 
   void getReadBuffer(void** buf, size_t* lenReturn) override {
     *buf = &buffer_;

@@ -60,13 +60,9 @@ using BadPool = CompressionContextPool<Foo, BadFooCreator, FooDeleter>;
 
 class CompressionContextPoolTest : public testing::Test {
  protected:
-  void SetUp() override {
-    pool_ = std::make_unique<Pool>();
-  }
+  void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
-  void TearDown() override {
-    pool_.reset();
-  }
+  void TearDown() override { pool_.reset(); }
 
   std::unique_ptr<Pool> pool_;
 };
@@ -153,8 +149,8 @@ TEST_F(CompressionContextPoolTest, testExplicitCreatorDeleter) {
 }
 
 TEST_F(CompressionContextPoolTest, testMultithread) {
-  constexpr size_t numThreads = 64;
-  constexpr size_t numIters = 1 << 14;
+  constexpr size_t numThreads = 64 / (folly::kIsSanitizeThread ? 4 : 1);
+  constexpr size_t numIters = (1 << 14) / (folly::kIsSanitizeThread ? 4 : 1);
   std::vector<std::thread> ts;
   for (size_t i = 0; i < numThreads; i++) {
     ts.emplace_back([& pool = *pool_]() {
@@ -183,13 +179,9 @@ class CompressionCoreLocalContextPoolTest : public testing::Test {
  protected:
   using Pool = CompressionCoreLocalContextPool<Foo, FooCreator, FooDeleter, 8>;
 
-  void SetUp() override {
-    pool_ = std::make_unique<Pool>();
-  }
+  void SetUp() override { pool_ = std::make_unique<Pool>(); }
 
-  void TearDown() override {
-    pool_.reset();
-  }
+  void TearDown() override { pool_.reset(); }
 
   std::unique_ptr<Pool> pool_;
 };

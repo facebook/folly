@@ -167,14 +167,10 @@ class IPAddressV6 {
   IPAddressV4 getIPv4For6To4() const;
 
   // Return true if a 6TO4 address
-  bool is6To4() const {
-    return type() == IPAddressV6::Type::T6TO4;
-  }
+  bool is6To4() const { return type() == IPAddressV6::Type::T6TO4; }
 
   // Return true if a TEREDO address
-  bool isTeredo() const {
-    return type() == IPAddressV6::Type::TEREDO;
-  }
+  bool isTeredo() const { return type() == IPAddressV6::Type::TEREDO; }
 
   // return true if this is v4-to-v6-mapped
   bool isIPv4Mapped() const;
@@ -186,9 +182,7 @@ class IPAddressV6 {
    * @see IPAddress#bitCount
    * @returns 128
    */
-  static constexpr size_t bitCount() {
-    return 128;
-  }
+  static constexpr size_t bitCount() { return 128; }
 
   /**
    * @see IPAddress#toJson
@@ -212,9 +206,7 @@ class IPAddressV6 {
   bool isLoopback() const;
 
   // @see IPAddress#isNonroutable
-  bool isNonroutable() const {
-    return !isRoutable();
-  }
+  bool isNonroutable() const { return !isRoutable(); }
 
   /**
    * Return true if this address is routable.
@@ -283,16 +275,10 @@ class IPAddressV6 {
   IPAddressV6 mask(size_t numBits) const;
 
   // return underlying in6_addr structure
-  in6_addr toAddr() const {
-    return addr_.in6Addr_;
-  }
+  in6_addr toAddr() const { return addr_.in6Addr_; }
 
-  uint16_t getScopeId() const {
-    return scope_;
-  }
-  void setScopeId(uint16_t scope) {
-    scope_ = scope;
-  }
+  uint16_t getScopeId() const { return scope_; }
+  void setScopeId(uint16_t scope) { scope_ = scope; }
 
   sockaddr_in6 toSockAddr() const {
     sockaddr_in6 addr;
@@ -321,9 +307,7 @@ class IPAddressV6 {
   std::string str() const;
 
   // @see IPAddress#version
-  uint8_t version() const {
-    return 6;
-  }
+  uint8_t version() const { return 6; }
 
   /**
    * Return the solicited-node multicast address for this address.
@@ -345,9 +329,7 @@ class IPAddressV6 {
       const CIDRNetworkV6& one,
       const CIDRNetworkV6& two);
   // Number of bytes in the address representation.
-  static constexpr size_t byteCount() {
-    return 16;
-  }
+  static constexpr size_t byteCount() { return 16; }
 
   // get nth most significant bit - 0 indexed
   bool getNthMSBit(size_t bitIndex) const {
@@ -364,9 +346,7 @@ class IPAddressV6 {
     return getNthMSByte(byteCount() - byteIndex - 1);
   }
 
-  const unsigned char* bytes() const {
-    return addr_.in6Addr_.s6_addr;
-  }
+  const unsigned char* bytes() const { return addr_.in6Addr_.s6_addr; }
 
  protected:
   /**
@@ -376,9 +356,7 @@ class IPAddressV6 {
   bool inBinarySubnet(const std::array<uint8_t, 2> addr, size_t numBits) const;
 
  private:
-  auto tie() const {
-    return std::tie(addr_.bytes_, scope_);
-  }
+  auto tie() const { return std::tie(addr_.bytes_, scope_); }
 
  public:
   friend inline bool operator==(const IPAddressV6& a, const IPAddressV6& b) {
@@ -404,9 +382,7 @@ class IPAddressV6 {
   union AddressStorage {
     in6_addr in6Addr_;
     ByteArray16 bytes_;
-    AddressStorage() {
-      std::memset(this, 0, sizeof(AddressStorage));
-    }
+    AddressStorage() { std::memset(this, 0, sizeof(AddressStorage)); }
     explicit AddressStorage(const ByteArray16& bytes) : bytes_(bytes) {}
     explicit AddressStorage(const in6_addr& addr) : in6Addr_(addr) {}
     explicit AddressStorage(MacAddress mac);

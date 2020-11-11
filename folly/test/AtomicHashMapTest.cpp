@@ -139,9 +139,7 @@ struct HashTraits {
     }
     return result;
   }
-  size_t operator()(const char& a) {
-    return static_cast<size_t>(a);
-  }
+  size_t operator()(const char& a) { return static_cast<size_t>(a); }
   size_t operator()(const StringPiece a) {
     size_t result = 0;
     for (const auto& ch : a) {
@@ -339,9 +337,7 @@ class Integer {
     return *this;
   }
 
-  bool operator==(const Integer& a) const {
-    return v_ == a.v_;
-  }
+  bool operator==(const Integer& a) const { return v_ == a.v_; }
 
  private:
   KeyT v_;

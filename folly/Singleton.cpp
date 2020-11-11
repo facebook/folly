@@ -40,8 +40,6 @@
 
 namespace folly {
 
-constexpr std::chrono::seconds SingletonVault::kDefaultShutdownTimeout_;
-
 #if FOLLY_SINGLETON_HAVE_DLSYM
 namespace detail {
 static void singleton_hs_init_weak(int* argc, char** argv[])
@@ -421,10 +419,13 @@ void SingletonVault::startShutdownTimer() {
   for (auto& logMessage : shutdownLog_.copy()) {
     shutdownLog += logMessage + "\n";
   }
-  LOG(FATAL) << "Failed to complete shutdown within "
-             << std::chrono::milliseconds(shutdownTimeout_).count()
-             << "ms. Shutdown log:\n"
-             << shutdownLog;
+
+  auto msg = folly::to<std::string>(
+      "Failed to complete shutdown within ",
+      std::chrono::milliseconds(shutdownTimeout_).count(),
+      "ms. Shutdown log:\n",
+      shutdownLog);
+  folly::terminate_with<std::runtime_error>(msg);
 }
 
 } // namespace folly

@@ -135,9 +135,7 @@ class SSLContext {
    * Make sure that you only call this when there was no intervening operation
    * since the last OpenSSL error that may have changed the current errno value.
    */
-  static std::string getErrors() {
-    return getErrors(errno);
-  }
+  static std::string getErrors() { return getErrors(errno); }
 
   /**
    * Constructor.
@@ -508,9 +506,7 @@ class SSLContext {
   /**
    * Gets the underlying SSL_CTX for advanced usage
    */
-  SSL_CTX* getSSLCtx() const {
-    return ctx_;
-  }
+  SSL_CTX* getSSLCtx() const { return ctx_; }
 
   /**
    * Examine OpenSSL's error stack, and return a string description of the
@@ -520,12 +516,8 @@ class SSLContext {
    */
   static std::string getErrors(int errnoCopy);
 
-  bool checkPeerName() {
-    return checkPeerName_;
-  }
-  std::string peerFixedName() {
-    return peerFixedName_;
-  }
+  bool checkPeerName() { return checkPeerName_; }
+  std::string peerFixedName() { return peerFixedName_; }
 
 #if defined(SSL_MODE_HANDSHAKE_CUTTHROUGH)
   /**
@@ -548,9 +540,7 @@ class SSLContext {
     sslAcceptRunner_ = std::move(runner);
   }
 
-  const SSLAcceptRunner* sslAcceptRunner() {
-    return sslAcceptRunner_.get();
-  }
+  const SSLAcceptRunner* sslAcceptRunner() { return sslAcceptRunner_.get(); }
 
   /**
    * Helper to match a hostname versus a pattern.

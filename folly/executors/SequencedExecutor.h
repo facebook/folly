@@ -24,6 +24,9 @@ namespace folly {
 // if add(A) and add(B) were sequenced (i.e. add(B) was called after add(A) call
 // had returned to the caller) then execution of A and B will be sequenced
 // (i.e. B() can be called only after A() returns) too.
-class SequencedExecutor : public virtual Executor {};
+class SequencedExecutor : public virtual Executor {
+ public:
+  virtual ~SequencedExecutor() {}
+};
 
 } // namespace folly

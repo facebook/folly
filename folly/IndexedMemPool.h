@@ -229,9 +229,7 @@ struct IndexedMemPool {
   /// simultaneously allocated and not yet recycled.  Because of the
   /// local lists it is possible that more elements than this are returned
   /// successfully
-  uint32_t capacity() {
-    return capacityForMaxIndex(actualCapacity_);
-  }
+  uint32_t capacity() { return capacityForMaxIndex(actualCapacity_); }
 
   /// Returns the maximum index of elements ever allocated in this pool
   /// including elements that have been recycled.
@@ -276,14 +274,10 @@ struct IndexedMemPool {
   }
 
   /// Provides access to the pooled element referenced by idx
-  T& operator[](uint32_t idx) {
-    return slot(idx).elem;
-  }
+  T& operator[](uint32_t idx) { return slot(idx).elem; }
 
   /// Provides access to the pooled element referenced by idx
-  const T& operator[](uint32_t idx) const {
-    return slot(idx).elem;
-  }
+  const T& operator[](uint32_t idx) const { return slot(idx).elem; }
 
   /// If elem == &pool[idx], then pool.locateElem(elem) == idx.  Also,
   /// pool.locateElem(nullptr) == 0
@@ -333,9 +327,7 @@ struct IndexedMemPool {
       TagIncr = 1U << SizeBits,
     };
 
-    uint32_t size() const {
-      return tagAndSize & SizeMask;
-    }
+    uint32_t size() const { return tagAndSize & SizeMask; }
 
     TaggedPtr withSize(uint32_t repl) const {
       assert(repl <= LocalListLimit);
@@ -356,9 +348,7 @@ struct IndexedMemPool {
       return TaggedPtr{repl, tagAndSize + TagIncr};
     }
 
-    TaggedPtr withEmpty() const {
-      return withIdx(0).withSize(0);
-    }
+    TaggedPtr withEmpty() const { return withIdx(0).withSize(0); }
   };
 
   struct alignas(hardware_destructive_interference_size) LocalList {
@@ -408,13 +398,9 @@ struct IndexedMemPool {
     return idx;
   }
 
-  Slot& slot(uint32_t idx) {
-    return slots_[slotIndex(idx)];
-  }
+  Slot& slot(uint32_t idx) { return slots_[slotIndex(idx)]; }
 
-  const Slot& slot(uint32_t idx) const {
-    return slots_[slotIndex(idx)];
-  }
+  const Slot& slot(uint32_t idx) const { return slots_[slotIndex(idx)]; }
 
   // localHead references a full list chained by localNext.  s should
   // reference slot(localHead), it is passed as a micro-optimization

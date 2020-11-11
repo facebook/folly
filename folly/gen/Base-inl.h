@@ -65,19 +65,11 @@ class Group : public GenImpl<Value&&, Group<Key, Value>> {
   Group(Key key, VectorType values)
       : key_(std::move(key)), values_(std::move(values)) {}
 
-  const Key& key() const {
-    return key_;
-  }
+  const Key& key() const { return key_; }
 
-  size_t size() const {
-    return values_.size();
-  }
-  const VectorType& values() const {
-    return values_;
-  }
-  VectorType& values() {
-    return values_;
-  }
+  size_t size() const { return values_.size(); }
+  const VectorType& values() const { return values_; }
+  VectorType& values() { return values_; }
 
   VectorType operator|(const detail::Collect<VectorType>&) const {
     return values();
@@ -324,12 +316,8 @@ class RangeImpl {
 
  public:
   explicit RangeImpl(Value end) : end_(std::move(end)) {}
-  bool test(const Value& current) const {
-    return current < end_;
-  }
-  void step(Value& current) const {
-    ++current;
-  }
+  bool test(const Value& current) const { return current < end_; }
+  void step(Value& current) const { ++current; }
   static constexpr bool infinite = false;
 };
 
@@ -341,12 +329,8 @@ class RangeWithStepImpl {
  public:
   explicit RangeWithStepImpl(Value end, Distance step)
       : end_(std::move(end)), step_(std::move(step)) {}
-  bool test(const Value& current) const {
-    return current < end_;
-  }
-  void step(Value& current) const {
-    current += step_;
-  }
+  bool test(const Value& current) const { return current < end_; }
+  void step(Value& current) const { current += step_; }
   static constexpr bool infinite = false;
 };
 
@@ -356,12 +340,8 @@ class SeqImpl {
 
  public:
   explicit SeqImpl(Value end) : end_(std::move(end)) {}
-  bool test(const Value& current) const {
-    return current <= end_;
-  }
-  void step(Value& current) const {
-    ++current;
-  }
+  bool test(const Value& current) const { return current <= end_; }
+  void step(Value& current) const { ++current; }
   static constexpr bool infinite = false;
 };
 
@@ -373,24 +353,16 @@ class SeqWithStepImpl {
  public:
   explicit SeqWithStepImpl(Value end, Distance step)
       : end_(std::move(end)), step_(std::move(step)) {}
-  bool test(const Value& current) const {
-    return current <= end_;
-  }
-  void step(Value& current) const {
-    current += step_;
-  }
+  bool test(const Value& current) const { return current <= end_; }
+  void step(Value& current) const { current += step_; }
   static constexpr bool infinite = false;
 };
 
 template <class Value>
 class InfiniteImpl {
  public:
-  bool test(const Value& /* current */) const {
-    return true;
-  }
-  void step(Value& current) const {
-    ++current;
-  }
+  bool test(const Value& /* current */) const { return true; }
+  void step(Value& current) const { ++current; }
   static constexpr bool infinite = true;
 };
 
@@ -1988,9 +1960,7 @@ class Cycle : public Operator<Cycle<forever>> {
    *
    *  auto tripled = gen | cycle(3);
    */
-  Cycle<false> operator()(off_t limit) const {
-    return Cycle<false>(limit);
-  }
+  Cycle<false> operator()(off_t limit) const { return Cycle<false>(limit); }
 };
 
 /*
@@ -2374,12 +2344,8 @@ class UnwrapOr {
   explicit UnwrapOr(T&& value) : value_(std::move(value)) {}
   explicit UnwrapOr(const T& value) : value_(value) {}
 
-  T& value() {
-    return value_;
-  }
-  const T& value() const {
-    return value_;
-  }
+  T& value() { return value_; }
+  const T& value() const { return value_; }
 
  private:
   T value_;

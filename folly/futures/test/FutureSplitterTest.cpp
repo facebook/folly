@@ -179,9 +179,7 @@ TEST(FutureSplitter, splitFutureFailure) {
 
 TEST(FutureSplitter, lifetime) {
   struct ManualExecutorWithPriority : folly::ManualExecutor {
-    void addWithPriority(Func func, int8_t) override {
-      add(std::move(func));
-    }
+    void addWithPriority(Func func, int8_t) override { add(std::move(func)); }
   };
   ManualExecutorWithPriority ex;
   auto ka = folly::ExecutorWithPriority::create(

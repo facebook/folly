@@ -150,13 +150,17 @@ PollIoBackend::PollIoBackend(Options options)
 }
 
 PollIoBackend::~PollIoBackend() {
+  CHECK(!timerEntry_);
+  CHECK(!signalReadEntry_);
+  CHECK(freeList_.empty());
+
   ::close(timerFd_);
 }
 
 bool PollIoBackend::addTimerFd() {
   auto* entry = allocSubmissionEntry(); // this can be nullptr
   timerEntry_->prepPollAdd(entry, timerFd_, POLLIN, true /*registerFd*/);
-  return (1 == submitOne(timerEntry_));
+  return (1 == submitOne(timerEntry_.get()));
 }
 
 bool PollIoBackend::addSignalFds() {
@@ -164,7 +168,7 @@ bool PollIoBackend::addSignalFds() {
   signalReadEntry_->prepPollAdd(
       entry, signalFds_.readFd(), POLLIN, false /*registerFd*/);
 
-  return (1 == submitOne(signalReadEntry_));
+  return (1 == submitOne(signalReadEntry_.get()));
 }
 
 void PollIoBackend::scheduleTimeout() {
@@ -336,9 +340,9 @@ size_t PollIoBackend::processSignals() {
 
 PollIoBackend::IoCb* PollIoBackend::allocIoCb(const EventCallback& cb) {
   // try to allocate from the pool first
-  if ((cb.type_ == EventCallback::Type::TYPE_NONE) && (freeHead_ != nullptr)) {
-    auto* ret = freeHead_;
-    freeHead_ = freeHead_->next_;
+  if ((cb.type_ == EventCallback::Type::TYPE_NONE) && (!freeList_.empty())) {
+    auto* ret = &freeList_.front();
+    freeList_.pop_front();
     numIoCbInUse_++;
     return ret;
   }
@@ -364,8 +368,7 @@ void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
 
   if (FOLLY_LIKELY(aioIoCb->poolAlloc_)) {
     aioIoCb->event_ = nullptr;
-    aioIoCb->next_ = freeHead_;
-    freeHead_ = aioIoCb;
+    freeList_.push_front(*aioIoCb);
   } else {
     delete aioIoCb;
   }

@@ -62,6 +62,8 @@ class MockAsyncTransport : public AsyncTransport {
   MOCK_CONST_METHOD0(getRawBytesWritten, size_t());
   MOCK_CONST_METHOD0(getAppBytesReceived, size_t());
   MOCK_CONST_METHOD0(getRawBytesReceived, size_t());
+  MOCK_CONST_METHOD0(getAppBytesBuffered, size_t());
+  MOCK_CONST_METHOD0(getRawBytesBuffered, size_t());
   MOCK_CONST_METHOD0(isEorTrackingEnabled, bool());
   MOCK_METHOD1(setEorTracking, void(bool));
   MOCK_CONST_METHOD0(getWrappedTransport, AsyncTransport*());
@@ -75,9 +77,7 @@ class MockAsyncTransport : public AsyncTransport {
 class MockReplaySafetyCallback : public AsyncTransport::ReplaySafetyCallback {
  public:
   MOCK_METHOD0(onReplaySafe_, void());
-  void onReplaySafe() noexcept override {
-    onReplaySafe_();
-  }
+  void onReplaySafe() noexcept override { onReplaySafe_(); }
 };
 
 class MockReadCallback : public AsyncTransport::ReadCallback {
@@ -90,9 +90,7 @@ class MockReadCallback : public AsyncTransport::ReadCallback {
   }
 
   MOCK_METHOD0(isBufferMovable_, bool());
-  bool isBufferMovable() noexcept override {
-    return isBufferMovable_();
-  }
+  bool isBufferMovable() noexcept override { return isBufferMovable_(); }
 
   MOCK_METHOD1(readBufferAvailable_, void(std::unique_ptr<folly::IOBuf>&));
   void readBufferAvailable(
@@ -101,9 +99,7 @@ class MockReadCallback : public AsyncTransport::ReadCallback {
   }
 
   MOCK_METHOD0(readEOF_, void());
-  void readEOF() noexcept override {
-    readEOF_();
-  }
+  void readEOF() noexcept override { readEOF_(); }
 
   MOCK_METHOD1(readErr_, void(const AsyncSocketException&));
   void readErr(const AsyncSocketException& ex) noexcept override {
@@ -114,9 +110,7 @@ class MockReadCallback : public AsyncTransport::ReadCallback {
 class MockWriteCallback : public AsyncTransport::WriteCallback {
  public:
   MOCK_METHOD0(writeSuccess_, void());
-  void writeSuccess() noexcept override {
-    writeSuccess_();
-  }
+  void writeSuccess() noexcept override { writeSuccess_(); }
 
   MOCK_METHOD2(writeErr_, void(size_t, const AsyncSocketException&));
   void writeErr(size_t size, const AsyncSocketException& ex) noexcept override {

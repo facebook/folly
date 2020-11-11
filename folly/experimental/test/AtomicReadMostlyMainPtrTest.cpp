@@ -146,13 +146,9 @@ TEST_F(AtomicReadMostlyMainPtrSimpleTest, CompareExchangeStrongFailure) {
 class AtomicReadMostlyMainPtrCounterTest : public testing::Test {
  protected:
   struct InstanceCounter {
-    explicit InstanceCounter(int* counter_) : counter(counter_) {
-      ++*counter;
-    }
+    explicit InstanceCounter(int* counter_) : counter(counter_) { ++*counter; }
 
-    ~InstanceCounter() {
-      --*counter;
-    }
+    ~InstanceCounter() { --*counter; }
 
     int* counter;
   };
@@ -185,9 +181,7 @@ TEST(AtomicReadMostlyMainPtrTest, HandlesDestructionModifications) {
   struct RunOnDestruction {
     explicit RunOnDestruction(std::function<void()> func) : func_(func) {}
 
-    ~RunOnDestruction() {
-      func_();
-    }
+    ~RunOnDestruction() { func_(); }
     std::function<void()> func_;
   };
 
@@ -326,7 +320,7 @@ TEST(AtomicReadMostlyMainPtrStressTest, ReadOnly) {
   }
 }
 
-TEST(AtomicReadMostlyMainPtrStressTest, ReadWrite) {
+TEST(AtomicReadMostlyMainPtrStressTest, ReadWriteConsistency) {
   const static int kReaders = 4;
   const static int kWriters = 4;
   // This gives a test that runs for about 4 seconds on my machine; that's about
@@ -414,4 +408,47 @@ TEST(AtomicReadMostlyMainPtrStressTest, ReadWrite) {
   // On a test on my machine, we see values in the thousands, so hopefully this
   // is highly unflakey.
   EXPECT_GE(casFailures.load(), 10);
+}
+
+TEST(AtomicReadMostlyMainPtrStressTest, ReadWriteTsan) {
+  // Do purely read and writes - we don't do anything else, to avoid
+  // extra synchronization that interferes with TSAN.
+  AtomicReadMostlyMainPtr<int> ptr(std::make_shared<int>(0));
+  std::atomic<bool> stop{false};
+  const static int kReaders = 4;
+  const static int kWriters = 4;
+
+  std::vector<std::thread> readers(kReaders);
+  std::vector<std::thread> writers(kWriters);
+
+  for (auto& thread : readers) {
+    thread = std::thread([&] {
+      while (!stop.load(std::memory_order_relaxed)) {
+        ptr.load(std::memory_order_relaxed);
+        std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        break;
+      }
+    });
+  }
+
+  for (auto& thread : writers) {
+    thread = std::thread([&] {
+      while (!stop.load(std::memory_order_relaxed)) {
+        auto newValue = std::make_shared<int>(0);
+        ptr.store(newValue, std::memory_order_relaxed);
+        std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        break;
+      }
+    });
+  }
+
+  std::this_thread::sleep_for(std::chrono::milliseconds(500));
+  stop.store(true, std::memory_order_relaxed);
+
+  for (auto& thread : readers) {
+    thread.join();
+  }
+  for (auto& thread : writers) {
+    thread.join();
+  }
 }

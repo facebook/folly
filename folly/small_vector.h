@@ -210,13 +210,9 @@ struct IntegralSizePolicyBase {
     return SizeType(~kExternMask);
   }
 
-  std::size_t doSize() const {
-    return size_ & ~kExternMask;
-  }
+  std::size_t doSize() const { return size_ & ~kExternMask; }
 
-  std::size_t isExtern() const {
-    return kExternMask & size_;
-  }
+  std::size_t isExtern() const { return kExternMask & size_; }
 
   void setExtern(bool b) {
     if (b) {
@@ -231,9 +227,7 @@ struct IntegralSizePolicyBase {
     size_ = (kExternMask & size_) | SizeType(sz);
   }
 
-  void swapSizePolicy(IntegralSizePolicyBase& o) {
-    std::swap(size_, o.size_);
-  }
+  void swapSizePolicy(IntegralSizePolicyBase& o) { std::swap(size_, o.size_); }
 
  protected:
   static bool constexpr kShouldUseHeap = ShouldUseHeap;
@@ -564,42 +558,20 @@ class small_vector : public detail::small_vector_base<
                                      : BaseType::policyMaxSize();
   }
 
-  allocator_type get_allocator() const {
-    return {};
-  }
+  allocator_type get_allocator() const { return {}; }
 
-  size_type size() const {
-    return this->doSize();
-  }
-  bool empty() const {
-    return !size();
-  }
+  size_type size() const { return this->doSize(); }
+  bool empty() const { return !size(); }
 
-  iterator begin() {
-    return data();
-  }
-  iterator end() {
-    return data() + size();
-  }
-  const_iterator begin() const {
-    return data();
-  }
-  const_iterator end() const {
-    return data() + size();
-  }
-  const_iterator cbegin() const {
-    return begin();
-  }
-  const_iterator cend() const {
-    return end();
-  }
+  iterator begin() { return data(); }
+  iterator end() { return data() + size(); }
+  const_iterator begin() const { return data(); }
+  const_iterator end() const { return data() + size(); }
+  const_iterator cbegin() const { return begin(); }
+  const_iterator cend() const { return end(); }
 
-  reverse_iterator rbegin() {
-    return reverse_iterator(end());
-  }
-  reverse_iterator rend() {
-    return reverse_iterator(begin());
-  }
+  reverse_iterator rbegin() { return reverse_iterator(end()); }
+  reverse_iterator rend() { return reverse_iterator(begin()); }
 
   const_reverse_iterator rbegin() const {
     return const_reverse_iterator(end());
@@ -609,12 +581,8 @@ class small_vector : public detail::small_vector_base<
     return const_reverse_iterator(begin());
   }
 
-  const_reverse_iterator crbegin() const {
-    return rbegin();
-  }
-  const_reverse_iterator crend() const {
-    return rend();
-  }
+  const_reverse_iterator crbegin() const { return rbegin(); }
+  const_reverse_iterator crend() const { return rend(); }
 
   /*
    * Usually one of the simplest functions in a Container-like class
@@ -760,15 +728,11 @@ class small_vector : public detail::small_vector_base<
     return insert(p, value_type(std::forward<Args>(args)...));
   }
 
-  void reserve(size_type sz) {
-    makeSize(sz);
-  }
+  void reserve(size_type sz) { makeSize(sz); }
 
   size_type capacity() const {
     struct Unreachable {
-      size_t operator()(void*) const {
-        assume_unreachable();
-      }
+      size_t operator()(void*) const { assume_unreachable(); }
     };
     using AllocationSizeOrUnreachable =
         conditional_t<kMustTrackHeapifiedCapacity, Unreachable, AllocationSize>;
@@ -807,13 +771,9 @@ class small_vector : public detail::small_vector_base<
     return back();
   }
 
-  void push_back(value_type&& t) {
-    emplace_back(std::move(t));
-  }
+  void push_back(value_type&& t) { emplace_back(std::move(t)); }
 
-  void push_back(value_type const& t) {
-    emplace_back(t);
-  }
+  void push_back(value_type const& t) { emplace_back(t); }
 
   void pop_back() {
     // ideally this would be implemented in terms of erase(end() - 1) to reuse
@@ -1189,15 +1149,9 @@ class small_vector : public detail::small_vector_base<
     void* heap_;
     InternalSizeType capacity_;
 
-    InternalSizeType getCapacity() const {
-      return capacity_;
-    }
-    void setCapacity(InternalSizeType c) {
-      capacity_ = c;
-    }
-    size_t allocationExtraBytes() const {
-      return 0;
-    }
+    InternalSizeType getCapacity() const { return capacity_; }
+    void setCapacity(InternalSizeType c) { capacity_ = c; }
+    size_t allocationExtraBytes() const { return 0; }
   } FOLLY_SV_PACK_ATTR;
 
   struct HeapPtr {
@@ -1261,9 +1215,7 @@ class small_vector : public detail::small_vector_base<
           PointerType;
 
   union Data {
-    explicit Data() {
-      pdata_.heap_ = nullptr;
-    }
+    explicit Data() { pdata_.heap_ = nullptr; }
 
     PointerType pdata_;
     InlineStorageType storage_;
@@ -1290,12 +1242,8 @@ class small_vector : public detail::small_vector_base<
     bool hasCapacity() const {
       return kAlwaysHasCapacity || detail::pointerFlagGet(pdata_.heap_);
     }
-    InternalSizeType getCapacity() const {
-      return pdata_.getCapacity();
-    }
-    void setCapacity(InternalSizeType c) {
-      pdata_.setCapacity(c);
-    }
+    InternalSizeType getCapacity() const { return pdata_.getCapacity(); }
+    void setCapacity(InternalSizeType c) { pdata_.setCapacity(c); }
 
     void freeHeap() {
       auto vp = detail::pointerFlagClear(pdata_.heap_);

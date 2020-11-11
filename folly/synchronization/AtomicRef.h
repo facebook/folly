@@ -140,9 +140,6 @@ struct make_atomic_ref_t {
               alignof(T) == alignof(std::atomic<T>),
           int> = 0>
   atomic_ref<T> operator()(T& ref) const {
-#if __cpp_deduction_guides >= 201703
-    return atomic_ref{ref};
-#endif
     return atomic_ref<T>{ref};
   }
 };

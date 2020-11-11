@@ -158,9 +158,3 @@ TEST(Pmap, Exception) {
   std::vector<char const*> input{"a"};
   EXPECT_THROW(from(input) | pmap(To<int>()) | count, std::runtime_error);
 }
-
-int main(int argc, char* argv[]) {
-  testing::InitGoogleTest(&argc, argv);
-  gflags::ParseCommandLineFlags(&argc, &argv, true);
-  return RUN_ALL_TESTS();
-}

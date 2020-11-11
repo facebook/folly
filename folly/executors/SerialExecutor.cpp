@@ -40,14 +40,14 @@ SerialExecutor::UniquePtr SerialExecutor::createUnique(
   return {executor, Deleter{std::move(parent)}};
 }
 
-bool SerialExecutor::keepAliveAcquire() {
+bool SerialExecutor::keepAliveAcquire() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_add(1, std::memory_order_relaxed);
   DCHECK(keepAliveCounter > 0);
   return true;
 }
 
-void SerialExecutor::keepAliveRelease() {
+void SerialExecutor::keepAliveRelease() noexcept {
   auto keepAliveCounter =
       keepAliveCounter_.fetch_sub(1, std::memory_order_acq_rel);
   DCHECK(keepAliveCounter > 0);

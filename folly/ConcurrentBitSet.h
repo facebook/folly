@@ -90,9 +90,7 @@ class ConcurrentBitSet {
   /**
    * Return the size of the bitset.
    */
-  constexpr size_t size() const {
-    return N;
-  }
+  constexpr size_t size() const { return N; }
 
  private:
   // Pick the largest lock-free type available
@@ -109,13 +107,9 @@ class ConcurrentBitSet {
   static constexpr size_t kBitsPerBlock =
       std::numeric_limits<BlockType>::digits;
 
-  static constexpr size_t blockIndex(size_t bit) {
-    return bit / kBitsPerBlock;
-  }
+  static constexpr size_t blockIndex(size_t bit) { return bit / kBitsPerBlock; }
 
-  static constexpr size_t bitOffset(size_t bit) {
-    return bit % kBitsPerBlock;
-  }
+  static constexpr size_t bitOffset(size_t bit) { return bit % kBitsPerBlock; }
 
   // avoid casts
   static constexpr BlockType kOne = 1;

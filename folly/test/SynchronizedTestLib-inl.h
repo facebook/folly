@@ -32,15 +32,10 @@
 namespace folly {
 namespace sync_tests {
 
-inline std::mt19937& getRNG() {
-  static const auto seed = folly::randomNumberSeed();
-  static std::mt19937 rng(seed);
-  return rng;
-}
-
 void randomSleep(std::chrono::milliseconds min, std::chrono::milliseconds max) {
   std::uniform_int_distribution<> range(min.count(), max.count());
-  std::chrono::milliseconds duration(range(getRNG()));
+  folly::ThreadLocalPRNG prng;
+  std::chrono::milliseconds duration(range(prng));
   /* sleep override */
   std::this_thread::sleep_for(duration);
 }
@@ -473,13 +468,9 @@ template <class Mutex>
     EXPECT_EQ(1000, obj2.contextualLock()->size());
   }
 
-  SYNCHRONIZED_CONST(obj) {
-    EXPECT_EQ(1001, obj.size());
-  }
+  SYNCHRONIZED_CONST(obj) { EXPECT_EQ(1001, obj.size()); }
 
-  SYNCHRONIZED(lockedObj, *&obj) {
-    lockedObj.front() = 2;
-  }
+  SYNCHRONIZED(lockedObj, *&obj) { lockedObj.front() = 2; }
 
   EXPECT_EQ(1001, obj.contextualLock()->size());
   EXPECT_EQ(10, obj.contextualLock()->back());

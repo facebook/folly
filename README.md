@@ -1,9 +1,13 @@
 Folly: Facebook Open-source Library
 -----------------------------------
 
-[![Build Status](https://travis-ci.org/facebook/folly.svg?branch=master)](https://travis-ci.org/facebook/folly)
+[![linux](https://github.com/facebook/folly/workflows/linux/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:linux)
+[![mac](https://github.com/facebook/folly/workflows/mac/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:mac)
+[![windows](https://github.com/facebook/folly/workflows/windows/badge.svg)](https://github.com/facebook/folly/actions?query=workflow:windows)
 
 ### What is `folly`?
+
+<img src="static/logo.svg" alt="Logo Folly" width="15%" align="right" />
 
 Folly (acronymed loosely after Facebook Open Source Library) is a
 library of C++14 components designed with practicality and efficiency
@@ -69,6 +73,33 @@ check the [`docs` folder](folly/docs) for documentation, starting with the
 Folly is published on GitHub at https://github.com/facebook/folly
 
 ### Build Notes
+
+Because folly does not provide any ABI compatibility guarantees from commit to
+commit, we generally recommend building folly as a static library.
+
+#### build.sh
+
+The simplest way to build folly is using the `build.sh` script in the top-level
+of the repository.  `build.sh` can be used on Linux and MacOS, on Windows use
+the `build.bat` script instead.
+
+This script will download and build all of the necessary dependencies first,
+and will then build folly.  This will help ensure that you build with recent
+versions of all of the dependent libraries, regardless of what versions are
+installed locally on your system.
+
+By default this script will build and install folly and its dependencies in a
+scratch directory.  You can also specify a `--scratch-path` argument to control
+the location of the scratch directory used for the build.  There are also
+`--install-dir` and `--install-prefix` arguments to provide some more
+fine-grained control of the installation directories.  However, given that
+folly provides no compatibility guarantees between commits we generally
+recommend building and installing the libraries to a temporary location, and
+then pointing your project's build at this temporary location, rather than
+installing folly in the traditional system installation directories.  e.g., if
+you are building with CMake you can use the `CMAKE_PREFIX_PATH` variable to
+allow CMake to find folly in this temporary installation directory when
+building your project.
 
 #### Dependencies
 
@@ -265,8 +296,10 @@ You may also use `vcpkg install folly:x64-windows --head` to build against `mast
     - double-conversion-devel
     - openssl-devel
     - libevent-devel
-
+    - fmt-devel
+    - libsodium-devel
+    
   Optional
-    - libdwarf-dev
-    - libelf-dev
-    - libunwind8-dev
+    - libdwarf-devel
+    - elfutils-libelf-devel
+    - libunwind-devel

@@ -66,9 +66,7 @@ struct MockClock {
     return rv;
   }
 
-  static time_point now() {
-    return s_mockClockInstance.lock()->nowImpl();
-  }
+  static time_point now() { return s_mockClockInstance.lock()->nowImpl(); }
 
   static std::weak_ptr<StrictMock<MockClock>> s_mockClockInstance;
 };

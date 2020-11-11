@@ -76,7 +76,8 @@ class SkipListNode {
     size_t size = sizeof(SkipListNode) +
         node->height_ * sizeof(std::atomic<SkipListNode*>);
     node->~SkipListNode();
-    std::allocator_traits<NodeAlloc>::deallocate(alloc, node, size);
+    std::allocator_traits<NodeAlloc>::deallocate(
+        alloc, typename std::allocator_traits<NodeAlloc>::pointer(node), size);
   }
 
   template <typename NodeAlloc>
@@ -113,39 +114,21 @@ class SkipListNode {
     skip_[h].store(next, std::memory_order_release);
   }
 
-  value_type& data() {
-    return data_;
-  }
-  const value_type& data() const {
-    return data_;
-  }
-  int maxLayer() const {
-    return height_ - 1;
-  }
-  int height() const {
-    return height_;
-  }
+  value_type& data() { return data_; }
+  const value_type& data() const { return data_; }
+  int maxLayer() const { return height_ - 1; }
+  int height() const { return height_; }
 
   std::unique_lock<MicroSpinLock> acquireGuard() {
     return std::unique_lock<MicroSpinLock>(spinLock_);
   }
 
-  bool fullyLinked() const {
-    return getFlags() & FULLY_LINKED;
-  }
-  bool markedForRemoval() const {
-    return getFlags() & MARKED_FOR_REMOVAL;
-  }
-  bool isHeadNode() const {
-    return getFlags() & IS_HEAD_NODE;
-  }
+  bool fullyLinked() const { return getFlags() & FULLY_LINKED; }
+  bool markedForRemoval() const { return getFlags() & MARKED_FOR_REMOVAL; }
+  bool isHeadNode() const { return getFlags() & IS_HEAD_NODE; }
 
-  void setIsHeadNode() {
-    setFlags(uint16_t(getFlags() | IS_HEAD_NODE));
-  }
-  void setFullyLinked() {
-    setFlags(uint16_t(getFlags() | FULLY_LINKED));
-  }
+  void setIsHeadNode() { setFlags(uint16_t(getFlags() | IS_HEAD_NODE)); }
+  void setFullyLinked() { setFlags(uint16_t(getFlags() | FULLY_LINKED)); }
   void setMarkedForRemoval() {
     setFlags(uint16_t(getFlags() | MARKED_FOR_REMOVAL));
   }
@@ -172,9 +155,7 @@ class SkipListNode {
     }
   }
 
-  uint16_t getFlags() const {
-    return flags_.load(std::memory_order_consume);
-  }
+  uint16_t getFlags() const { return flags_.load(std::memory_order_consume); }
   void setFlags(uint16_t flags) {
     flags_.store(flags, std::memory_order_release);
   }
@@ -219,9 +200,7 @@ class SkipListRandomHeight {
   }
 
  private:
-  SkipListRandomHeight() {
-    initLookupTable();
-  }
+  SkipListRandomHeight() { initLookupTable(); }
 
   void initLookupTable() {
     // set skip prob = 1/E
@@ -268,9 +247,7 @@ class NodeRecycler<
     lock_.init();
   }
 
-  explicit NodeRecycler() : refs_(0), dirty_(false) {
-    lock_.init();
-  }
+  explicit NodeRecycler() : refs_(0), dirty_(false) { lock_.init(); }
 
   ~NodeRecycler() {
     CHECK_EQ(refs(), 0);
@@ -292,9 +269,7 @@ class NodeRecycler<
     dirty_.store(true, std::memory_order_relaxed);
   }
 
-  int addRef() {
-    return refs_.fetch_add(1, std::memory_order_relaxed);
-  }
+  int addRef() { return refs_.fetch_add(1, std::memory_order_relaxed); }
 
   int releaseRef() {
     // We don't expect to clean the recycler immediately everytime it is OK
@@ -333,14 +308,10 @@ class NodeRecycler<
     return refs_.fetch_add(-1, std::memory_order_relaxed);
   }
 
-  NodeAlloc& alloc() {
-    return alloc_;
-  }
+  NodeAlloc& alloc() { return alloc_; }
 
  private:
-  int refs() const {
-    return refs_.load(std::memory_order_relaxed);
-  }
+  int refs() const { return refs_.load(std::memory_order_relaxed); }
 
   std::unique_ptr<std::vector<NodeType*>> nodes_;
   std::atomic<int32_t> refs_; // current number of visitors to the list
@@ -365,9 +336,7 @@ class NodeRecycler<
 
   void add(NodeType* /* node */) {}
 
-  NodeAlloc& alloc() {
-    return alloc_;
-  }
+  NodeAlloc& alloc() { return alloc_; }
 
  private:
   NodeAlloc alloc_;

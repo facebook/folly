@@ -159,9 +159,7 @@ class Mutex {
    public:
     explicit LockAwaiter(Mutex& mutex) noexcept : mutex_(mutex) {}
 
-    bool await_ready() noexcept {
-      return mutex_.try_lock();
-    }
+    bool await_ready() noexcept { return mutex_.try_lock(); }
 
     bool await_suspend(
         std::experimental::coroutine_handle<> awaitingCoroutine) noexcept {
@@ -204,9 +202,7 @@ class Mutex {
   };
 
   // Special value for state_ that indicates the mutex is not locked.
-  void* unlockedState() noexcept {
-    return this;
-  }
+  void* unlockedState() noexcept { return this; }
 
   // Try to lock the mutex.
   //

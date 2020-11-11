@@ -120,9 +120,7 @@ struct MoveOnlyType {
     return *this;
   }
 
-  ~MoveOnlyType() {
-    value_ = -2;
-  }
+  ~MoveOnlyType() { value_ = -2; }
 };
 
 struct TypeWithImplicitSingleValueConstructor {

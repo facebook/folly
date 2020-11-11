@@ -44,10 +44,15 @@ enum class WriteFlags : uint32_t {
    */
   CORK = 0x01,
   /*
-   * Used to request timestamping when entire buffer ACKed by remote endpoint.
+   * Set MSG_EOR flag when writing the last byte of the buffer to the socket.
    *
-   * How timestamping is performed is implementation specific and may rely on
-   * software or hardware timestamps
+   * EOR tracking may need to be enabled to ensure that the MSG_EOR flag is only
+   * set when the final byte is being written.
+   *
+   *  - If the MSG_EOR flag is set, it is marked in the corresponding
+   *    tcp_skb_cb; this can be useful when debugging.
+   *  - The kernel uses it to decide whether socket buffers can be collapsed
+   *    together (see tcp_skb_can_collapse_to).
    */
   EOR = 0x02,
   /*
@@ -59,12 +64,23 @@ enum class WriteFlags : uint32_t {
    */
   WRITE_MSG_ZEROCOPY = 0x08,
   /*
-   * Used to request timestamping when entire buffer transmitted by the NIC.
+   * Request timestamp when entire buffer transmitted by the NIC.
    *
    * How timestamping is performed is implementation specific and may rely on
    * software or hardware timestamps
    */
   TIMESTAMP_TX = 0x10,
+  /*
+   * Request timestamp when entire buffer ACKed by remote endpoint.
+   *
+   * How timestamping is performed is implementation specific and may rely on
+   * software or hardware timestamps
+   */
+  TIMESTAMP_ACK = 0x20,
+  /*
+   * Request timestamp when entire buffer has entered packet scheduler.
+   */
+  TIMESTAMP_SCHED = 0x40,
 };
 
 /*
@@ -119,19 +135,6 @@ constexpr WriteFlags unSet(WriteFlags a, WriteFlags b) {
 constexpr bool isSet(WriteFlags a, WriteFlags b) {
   return (a & b) == b;
 }
-
-/**
- * Write flags that are specifically for the final write call of a buffer.
- *
- * In some cases, buffers passed to send may be coalesced or split by the socket
- * write handling logic. For instance, a buffer passed to AsyncSSLSocket may be
- * split across multiple TLS records (and therefore multiple calls to write).
- *
- * When a buffer is split up, these flags will only be applied for the final
- * call to write for that buffer.
- */
-constexpr WriteFlags kEorRelevantWriteFlags =
-    WriteFlags::EOR | WriteFlags::TIMESTAMP_TX;
 
 class AsyncReader {
  public:
@@ -212,9 +215,7 @@ class AsyncReader {
      * buffer, but the available data is always 16KB (max OpenSSL record size).
      */
 
-    virtual bool isBufferMovable() noexcept {
-      return false;
-    }
+    virtual bool isBufferMovable() noexcept { return false; }
 
     /**
      * Suggested buffer size, allocated for read operations,
@@ -263,6 +264,7 @@ class AsyncReader {
   // Read methods that aren't part of AsyncTransport.
   virtual void setReadCB(ReadCallback* callback) = 0;
   virtual ReadCallback* getReadCallback() const = 0;
+  virtual void setEventCallback(EventRecvmsgCallback* /*cb*/) {}
 
  protected:
   virtual ~AsyncReader() = default;
@@ -270,6 +272,13 @@ class AsyncReader {
 
 class AsyncWriter {
  public:
+  class ReleaseIOBufCallback {
+   public:
+    virtual ~ReleaseIOBufCallback() = default;
+
+    virtual void releaseIOBuf(std::unique_ptr<folly::IOBuf>) noexcept = 0;
+  };
+
   class WriteCallback {
    public:
     virtual ~WriteCallback() = default;
@@ -296,6 +305,10 @@ class AsyncWriter {
     virtual void writeErr(
         size_t bytesWritten,
         const AsyncSocketException& ex) noexcept = 0;
+
+    virtual ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept {
+      return nullptr;
+    }
   };
 
   /**
@@ -344,13 +357,9 @@ class AsyncWriter {
 
   /** zero copy related
    * */
-  virtual bool setZeroCopy(bool /*enable*/) {
-    return false;
-  }
+  virtual bool setZeroCopy(bool /*enable*/) { return false; }
 
-  virtual bool getZeroCopy() const {
-    return false;
-  }
+  virtual bool getZeroCopy() const { return false; }
 
   using ZeroCopyEnableFunc =
       std::function<bool(const std::unique_ptr<folly::IOBuf>& buf)>;
@@ -431,9 +440,7 @@ class AsyncTransport : public DelayedDestruction,
    * subclasses may treat reset() the same as closeNow().  Subclasses that use
    * TCP transports should terminate the connection with a TCP reset.
    */
-  virtual void closeWithReset() {
-    closeNow();
-  }
+  virtual void closeWithReset() { closeNow(); }
 
   /**
    * Perform a half-shutdown of the write side of the transport.
@@ -501,9 +508,7 @@ class AsyncTransport : public DelayedDestruction,
    *
    * @return  true iff the if the there is pending data, false otherwise.
    */
-  virtual bool isPending() const {
-    return readable();
-  }
+  virtual bool isPending() const { return readable(); }
 
   /**
    * Determine if transport is connected to the endpoint
@@ -641,16 +646,12 @@ class AsyncTransport : public DelayedDestruction,
    * protocol. This is useful for transports which are used to tunnel other
    * protocols.
    */
-  virtual std::string getApplicationProtocol() const noexcept {
-    return "";
-  }
+  virtual std::string getApplicationProtocol() const noexcept { return ""; }
 
   /**
    * Returns the name of the security protocol being used.
    */
-  virtual std::string getSecurityProtocol() const {
-    return "";
-  }
+  virtual std::string getSecurityProtocol() const { return ""; }
 
   /**
    * @return True iff end of record tracking is enabled
@@ -668,12 +669,8 @@ class AsyncTransport : public DelayedDestruction,
    * Calculates the total number of bytes that are currently buffered in the
    * transport to be written later.
    */
-  virtual size_t getAppBytesBuffered() const {
-    return 0;
-  }
-  virtual size_t getRawBytesBuffered() const {
-    return 0;
-  }
+  virtual size_t getAppBytesBuffered() const { return 0; }
+  virtual size_t getRawBytesBuffered() const { return 0; }
 
   /**
    * Callback class to signal changes in the transport's internal buffers.
@@ -714,9 +711,7 @@ class AsyncTransport : public DelayedDestruction,
    * False if the transport does not have replay protection, but will in the
    * future.
    */
-  virtual bool isReplaySafe() const {
-    return true;
-  }
+  virtual bool isReplaySafe() const { return true; }
 
   /**
    * Set the ReplaySafeCallback on this transport.
@@ -729,14 +724,123 @@ class AsyncTransport : public DelayedDestruction,
     }
   }
 
+  class LifecycleObserver {
+   public:
+    virtual ~LifecycleObserver() = default;
+
+    /**
+     * observerAttach() will be invoked when an observer is added.
+     *
+     * @param transport   Transport where observer was installed.
+     */
+    virtual void observerAttach(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * observerDetached() will be invoked if the observer is uninstalled prior
+     * to transport destruction.
+     *
+     * No further events will be invoked after observerDetach().
+     *
+     * @param transport   Transport where observer was uninstalled.
+     */
+    virtual void observerDetach(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * destroy() will be invoked when the transport's destructor is invoked.
+     *
+     * No further events will be invoked after destroy().
+     *
+     * @param transport   Transport being destroyed.
+     */
+    virtual void destroy(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * close() will be invoked when the transport is being closed.
+     *
+     * Can be called multiple times during shutdown / destruction for the same
+     * transport. Observers may detach after first call or track if event
+     * previously observed.
+     *
+     * @param transport   Transport being closed.
+     */
+    virtual void close(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * connect() will be invoked when connect() returns successfully.
+     *
+     * Triggered before any application connection callback.
+     *
+     * @param transport   Transport that has connected.
+     */
+    virtual void connect(AsyncTransport* /* transport */) noexcept = 0;
+
+    /**
+     * Called when the socket has been attached to a new EVB
+     * and is called from within the new EVB's thread
+     *
+     * @param socket    The socket on which the new EVB was attached.
+     * @param evb       The new event base that is being attached.
+     */
+    virtual void evbAttach(AsyncTransport* /* socket */, EventBase* /* evb */) {
+      // do nothing
+    }
+
+    /**
+     * Called when the socket is detached from an EVB and
+     * is called from the existing EVB's thread.
+     *
+     * @param socket    The socket from which the EVB was detached.
+     * @param evb       The existing evb that is being detached.
+     */
+    virtual void evbDetach(AsyncTransport* /* socket */, EventBase* /* evb */) {
+      // do nothing
+    }
+  };
+
+  /**
+   * Adds a lifecycle observer.
+   *
+   * Observers can tie their lifetime to aspects of this socket's lifecycle /
+   * lifetime and perform inspection at various states.
+   *
+   * This enables instrumentation to be added without changing / interfering
+   * with how the application uses the socket.
+   *
+   * @param observer     Observer to add (implements LifecycleObserver).
+   */
+  virtual void addLifecycleObserver(LifecycleObserver* /* observer */) {
+    folly::terminate_with<std::runtime_error>(
+        "addLifecycleObserver() not supported");
+  }
+
+  /**
+   * Removes a lifecycle observer.
+   *
+   * @param observer     Observer to remove.
+   * @return             Whether observer found and removed from list.
+   */
+  virtual bool removeLifecycleObserver(LifecycleObserver* /* observer */) {
+    folly::terminate_with<std::runtime_error>(
+        "removeLifecycleObserver() not supported");
+  }
+
+  /**
+   * Returns installed lifecycle observers.
+   *
+   * @return             Vector with installed observers.
+   */
+  FOLLY_NODISCARD virtual std::vector<LifecycleObserver*>
+  getLifecycleObservers() const {
+    folly::terminate_with<std::runtime_error>(
+        "getLifecycleObservers() not supported");
+  }
+
   /**
    * AsyncTransports may wrap other AsyncTransport. This returns the
    * transport that is wrapped. It returns nullptr if there is no wrapped
    * transport.
    */
-  virtual const AsyncTransport* getWrappedTransport() const {
-    return nullptr;
-  }
+  virtual const AsyncTransport* getWrappedTransport() const { return nullptr; }
 
   /**
    * In many cases when we need to set socket properties or otherwise access the

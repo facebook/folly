@@ -98,9 +98,7 @@ uint64_t value(const typename LockFreeRingBuffer<T, Atom>::Cursor& rbcursor) {
 
   struct ExposedCursor : RBCursor {
     ExposedCursor(const RBCursor& cursor) : RBCursor(cursor) {}
-    uint64_t value() {
-      return this->ticket;
-    }
+    uint64_t value() { return this->ticket; }
   };
   return ExposedCursor(rbcursor).value();
 }
@@ -257,9 +255,7 @@ TEST(LockFreeRingBuffer, writeReadDifferentType) {
   struct FixedBuffer {
     char data_[1024];
 
-    FixedBuffer() noexcept {
-      data_[0] = '\0';
-    }
+    FixedBuffer() noexcept { data_[0] = '\0'; }
 
     FixedBuffer& operator=(std::string&& data) {
       strncpy(data_, data.c_str(), sizeof(data_) - 1);
@@ -271,9 +267,7 @@ TEST(LockFreeRingBuffer, writeReadDifferentType) {
   struct StringBuffer {
     char data_[1024];
 
-    StringBuffer() noexcept {
-      data_[0] = '\0';
-    }
+    StringBuffer() noexcept { data_[0] = '\0'; }
 
     StringBuffer& operator=(FixedBuffer& data) {
       static_assert(

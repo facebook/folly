@@ -27,26 +27,16 @@ class SocketPair {
   explicit SocketPair(Mode mode = NONBLOCKING);
   ~SocketPair();
 
-  int operator[](int index) const {
-    return fds_[index].toFd();
-  }
+  int operator[](int index) const { return fds_[index].toFd(); }
 
   void closeFD0();
   void closeFD1();
 
-  NetworkSocket extractNetworkSocket0() {
-    return extractNetworkSocket(0);
-  }
-  NetworkSocket extractNetworkSocket1() {
-    return extractNetworkSocket(1);
-  }
+  NetworkSocket extractNetworkSocket0() { return extractNetworkSocket(0); }
+  NetworkSocket extractNetworkSocket1() { return extractNetworkSocket(1); }
 
-  int extractFD0() {
-    return extractNetworkSocket0().toFd();
-  }
-  int extractFD1() {
-    return extractNetworkSocket1().toFd();
-  }
+  int extractFD0() { return extractNetworkSocket0().toFd(); }
+  int extractFD1() { return extractNetworkSocket1().toFd(); }
 
   NetworkSocket extractNetworkSocket(int index) {
     auto fd = fds_[index];
@@ -54,9 +44,7 @@ class SocketPair {
     return fd;
   }
 
-  int extractFD(int index) {
-    return extractNetworkSocket(index).toFd();
-  }
+  int extractFD(int index) { return extractNetworkSocket(index).toFd(); }
 
  private:
   NetworkSocket fds_[2];

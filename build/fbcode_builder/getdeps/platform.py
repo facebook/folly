@@ -11,8 +11,8 @@ import sys
 
 
 def is_windows():
-    """ Returns true if the system we are currently running on
-    is a Windows system """
+    """Returns true if the system we are currently running on
+    is a Windows system"""
     return sys.platform.startswith("win")
 
 

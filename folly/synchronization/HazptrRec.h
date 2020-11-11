@@ -52,9 +52,7 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
     return active_.load(std::memory_order_acquire);
   }
 
-  void set_active() noexcept {
-    active_.store(true, std::memory_order_relaxed);
-  }
+  void set_active() noexcept { active_.store(true, std::memory_order_relaxed); }
 
   bool try_acquire() noexcept {
     bool a = active();
@@ -63,25 +61,15 @@ class alignas(hardware_destructive_interference_size) hazptr_rec {
             a, true, std::memory_order_release, std::memory_order_relaxed);
   }
 
-  void release() noexcept {
-    active_.store(false, std::memory_order_release);
-  }
+  void release() noexcept { active_.store(false, std::memory_order_release); }
 
-  hazptr_rec<Atom>* next() {
-    return next_;
-  }
+  hazptr_rec<Atom>* next() { return next_; }
 
-  void set_next(hazptr_rec<Atom>* rec) {
-    next_ = rec;
-  }
+  void set_next(hazptr_rec<Atom>* rec) { next_ = rec; }
 
-  FOLLY_ALWAYS_INLINE hazptr_domain<Atom>* domain() {
-    return domain_;
-  }
+  FOLLY_ALWAYS_INLINE hazptr_domain<Atom>* domain() { return domain_; }
 
-  void set_domain(hazptr_domain<Atom>* dom) {
-    domain_ = dom;
-  }
+  void set_domain(hazptr_domain<Atom>* dom) { domain_ = dom; }
 }; // hazptr_rec
 
 } // namespace folly

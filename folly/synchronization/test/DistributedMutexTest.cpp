@@ -22,6 +22,7 @@
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
+#include <folly/test/TestUtils.h>
 
 #include <chrono>
 #include <cmath>
@@ -95,9 +96,7 @@ class ManualSchedule {
       (*callback)();
     }
   }
-  static void afterSharedAccess(bool) {
-    beforeSharedAccess();
-  }
+  static void afterSharedAccess(bool) { beforeSharedAccess(); }
 
   /**
    * Set a callback that will be called on every subsequent atomic access.
@@ -151,7 +150,7 @@ template <typename T>
 using ManualAtomic = test::DeterministicAtomicImpl<T, ManualSchedule>;
 template <template <typename> class Atomic>
 using TestDistributedMutex =
-    detail::distributed_mutex::DistributedMutex<Atomic, false>;
+    folly::detail::distributed_mutex::DistributedMutex<Atomic, false>;
 
 /**
  * Futex extensions for ManualAtomic
@@ -159,18 +158,18 @@ using TestDistributedMutex =
  * Note that doing nothing in these should still result in a program that is
  * well defined, since futex wait calls should be tolerant to spurious wakeups
  */
-int futexWakeImpl(const detail::Futex<ManualAtomic>*, int, uint32_t) {
+int futexWakeImpl(const ::folly::detail::Futex<ManualAtomic>*, int, uint32_t) {
   ManualSchedule::beforeSharedAccess();
   return 1;
 }
-detail::FutexResult futexWaitImpl(
-    const detail::Futex<ManualAtomic>*,
+folly::detail::FutexResult futexWaitImpl(
+    const folly::detail::Futex<ManualAtomic>*,
     uint32_t,
     std::chrono::system_clock::time_point const*,
     std::chrono::steady_clock::time_point const*,
     uint32_t) {
   ManualSchedule::beforeSharedAccess();
-  return detail::FutexResult::AWOKEN;
+  return folly::detail::FutexResult::AWOKEN;
 }
 
 template <typename Clock, typename Duration>
@@ -1535,9 +1534,7 @@ class TestConstruction {
     moveAssigns().fetch_add(1, std::memory_order_relaxed);
     return *this;
   }
-  ~TestConstruction() {
-    destructs().fetch_add(1, std::memory_order_relaxed);
-  }
+  ~TestConstruction() { destructs().fetch_add(1, std::memory_order_relaxed); }
 
   static std::atomic<std::uint64_t>& defaultConstructs() {
     static auto&& atomic = std::atomic<std::uint64_t>{0};
@@ -1753,9 +1750,7 @@ class ExceptionWithConstructionTrack : public std::exception {
   explicit ExceptionWithConstructionTrack(int id)
       : id_{folly::to<std::string>(id)}, constructionTrack_{id} {}
 
-  const char* what() const noexcept override {
-    return id_.c_str();
-  }
+  const char* what() const noexcept override { return id_.c_str(); }
 
  private:
   std::string id_;
@@ -1788,11 +1783,22 @@ template <template <typename> class Atom = std::atomic>
 void concurrentExceptionPropagationStress(
     int numThreads,
     std::chrono::milliseconds t) {
-  // this test passes normally and under recent or Clang TSAN, but inexplicably
-  // TSAN-aborts under some older non-Clang TSAN versions
-  if (folly::kIsSanitizeThread && !folly::kIsClang) {
-    return;
-  }
+  // This test inexplicably aborts when ran under TSAN. TSAN reports a
+  // read-write race where the exception is freed by the lock-holder / combiner
+  // thread and read concurrently by the thread that requested the combine
+  // operation.
+  //
+  // TSAN reports a similar read-write race for this code as well
+  // https://gist.github.com/aary/a14ae8d008e1d48a0f2d61582209f217. Which is
+  // easier to verify as being correct. Though this does not conclusively
+  // prove that this test and implementation are race-free, the above repro
+  // combined with error-free stress runs of this test under other modes
+  // (debug and optimized builds with and without both ASAN and UBSAN) give us a
+  // high signal at TSAN's error being a false-positive.
+  //
+  // So we are disabling it for now until some point in the future where TSAN
+  // stops reporting this as a false-positive.
+  SKIP_IF(folly::kIsSanitizeThread);
 
   TestConstruction::reset();
   auto&& mutex = detail::distributed_mutex::DistributedMutex<Atom>{};

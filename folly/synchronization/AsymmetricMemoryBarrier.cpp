@@ -27,9 +27,7 @@ namespace folly {
 namespace {
 
 struct DummyPageCreator {
-  DummyPageCreator() {
-    get();
-  }
+  DummyPageCreator() { get(); }
 
   static void* get() {
     static auto ptr = kIsLinux ? create() : nullptr;

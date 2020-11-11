@@ -17,7 +17,10 @@
 #pragma once
 
 #include <memory>
+#include <new>
 #include <type_traits>
+
+#include <folly/ScopeGuard.h>
 
 namespace folly {
 namespace coro {
@@ -40,26 +43,16 @@ class ManualLifetime {
       std::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
   void construct(Args&&... args) noexcept(
       noexcept(std::is_nothrow_constructible<T, Args...>::value)) {
-    new (static_cast<void*>(std::addressof(value_)))
+    ::new (static_cast<void*>(std::addressof(value_)))
         T(static_cast<Args&&>(args)...);
   }
 
-  void destruct() noexcept {
-    value_.~T();
-  }
+  void destruct() noexcept { value_.~T(); }
 
-  const T& get() const& {
-    return value_;
-  }
-  T& get() & {
-    return value_;
-  }
-  const T&& get() const&& {
-    return static_cast<const T&&>(value_);
-  }
-  T&& get() && {
-    return static_cast<T&&>(value_);
-  }
+  const T& get() const& { return value_; }
+  T& get() & { return value_; }
+  const T&& get() const&& { return static_cast<const T&&>(value_); }
+  T&& get() && { return static_cast<T&&>(value_); }
 
  private:
   union {
@@ -73,17 +66,11 @@ class ManualLifetime<T&> {
   ManualLifetime() noexcept : ptr_(nullptr) {}
   ~ManualLifetime() {}
 
-  void construct(T& value) noexcept {
-    ptr_ = std::addressof(value);
-  }
+  void construct(T& value) noexcept { ptr_ = std::addressof(value); }
 
-  void destruct() noexcept {
-    ptr_ = nullptr;
-  }
+  void destruct() noexcept { ptr_ = nullptr; }
 
-  T& get() const noexcept {
-    return *ptr_;
-  }
+  T& get() const noexcept { return *ptr_; }
 
  private:
   T* ptr_;
@@ -95,17 +82,11 @@ class ManualLifetime<T&&> {
   ManualLifetime() noexcept : ptr_(nullptr) {}
   ~ManualLifetime() {}
 
-  void construct(T&& value) noexcept {
-    ptr_ = std::addressof(value);
-  }
+  void construct(T&& value) noexcept { ptr_ = std::addressof(value); }
 
-  void destruct() noexcept {
-    ptr_ = nullptr;
-  }
+  void destruct() noexcept { ptr_ = nullptr; }
 
-  T&& get() const noexcept {
-    return static_cast<T&&>(*ptr_);
-  }
+  T&& get() const noexcept { return static_cast<T&&>(*ptr_); }
 
  private:
   T* ptr_;
@@ -120,6 +101,33 @@ class ManualLifetime<void> {
 
   void get() const noexcept {}
 };
+
+// For use when the ManualLifetime is a member of a union. First,
+// it in-place constructs the ManualLifetime, making it the active
+// member of the union. Then it calls 'construct' on it to construct
+// the value inside it.
+template <
+    typename T,
+    typename... Args,
+    std::enable_if_t<std::is_constructible<T, Args...>::value, int> = 0>
+void activate(ManualLifetime<T>& box, Args&&... args) noexcept(
+    std::is_nothrow_constructible<T, Args...>::value) {
+  auto* p = ::new (&box) ManualLifetime<T>{};
+  // Use ScopeGuard to destruct the ManualLifetime if the 'construct' throws.
+  auto guard = makeGuard([p]() noexcept { p->~ManualLifetime(); });
+  p->construct(static_cast<Args&&>(args)...);
+  guard.dismiss();
+}
+
+// For use when the ManualLifetime is a member of a union. First,
+// it calls 'destruct' on the ManualLifetime to destroy the value
+// inside it. Then it calls the destructor of the ManualLifetime
+// object itself.
+template <typename T>
+void deactivate(ManualLifetime<T>& box) noexcept {
+  box.destruct();
+  box.~ManualLifetime();
+}
 
 } // namespace detail
 } // namespace coro

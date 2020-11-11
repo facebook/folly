@@ -263,36 +263,22 @@ using IsSmall = Conjunction<
 using SmallTag = std::true_type;
 using HeapTag = std::false_type;
 
-template <typename T>
-struct NotFunction : std::true_type {};
-template <typename T>
-struct NotFunction<Function<T>> : std::false_type {};
-
-template <typename T>
-using EnableIfNotFunction =
-    typename std::enable_if<NotFunction<T>::value>::type;
-
 struct CoerceTag {};
 
-template <typename, typename T>
-struct IsFunctionNullptrTestable : std::false_type {};
-
 template <typename T>
-struct IsFunctionNullptrTestable<
-    void_t<decltype(
-        static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr))>,
-    T> : std::true_type {};
+using FunctionNullptrTest =
+    decltype(static_cast<bool>(static_cast<T const&>(T(nullptr)) == nullptr));
 
-template <typename T>
-constexpr std::enable_if_t< //
-    !IsFunctionNullptrTestable<void, T>::value,
-    std::false_type>
-isEmptyFunction(T const&) {
-  return {};
+template <
+    typename T,
+    std::enable_if_t<!is_detected_v<FunctionNullptrTest, T>, int> = 0>
+constexpr bool isEmptyFunction(T const&) {
+  return false;
 }
-template <typename T>
-constexpr std::enable_if_t<IsFunctionNullptrTestable<void, T>::value, bool>
-isEmptyFunction(T const& t) {
+template <
+    typename T,
+    std::enable_if_t<is_detected_v<FunctionNullptrTest, T>, int> = 0>
+constexpr bool isEmptyFunction(T const& t) {
   return static_cast<bool>(t == nullptr);
 }
 
@@ -337,9 +323,7 @@ class FunctionTraitsSharedProxy {
     return (*sp_)(static_cast<A&&>(args)...);
   }
 
-  explicit operator bool() const noexcept {
-    return sp_ != nullptr;
-  }
+  explicit operator bool() const noexcept { return sp_ != nullptr; }
 
   friend bool operator==(
       FunctionTraitsSharedProxy<F, R, A...> const& proxy,
@@ -739,7 +723,8 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    */
   template <
       typename Fun,
-      typename = detail::function::EnableIfNotFunction<Fun>,
+      typename =
+          std::enable_if_t<!detail::is_similar_instantiation_v<Function, Fun>>,
       typename = typename Traits::template ResultOf<Fun>>
   /* implicit */ Function(Fun fun) noexcept(
       IsSmall<Fun>::value&& noexcept(Fun(std::declval<Fun>())))
@@ -777,9 +762,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
     }
   }
 
-  ~Function() {
-    exec(Op::NUKE, &data_, nullptr);
-  }
+  ~Function() { exec(Op::NUKE, &data_, nullptr); }
 
   Function& operator=(const Function&) = delete;
 
@@ -853,9 +836,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Clears this `Function`.
    */
-  Function& operator=(std::nullptr_t) noexcept {
-    return (*this = Function());
-  }
+  Function& operator=(std::nullptr_t) noexcept { return (*this = Function()); }
 
   /**
    * If `ptr` is null, clears this `Function`. Otherwise, this assignment
@@ -877,17 +858,13 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
   /**
    * Exchanges the callable objects of `*this` and `that`.
    */
-  void swap(Function& that) noexcept {
-    std::swap(*this, that);
-  }
+  void swap(Function& that) noexcept { std::swap(*this, that); }
 
   /**
    * Returns `true` if this `Function` contains a callable, i.e. is
    * non-empty.
    */
-  explicit operator bool() const noexcept {
-    return exec_ != nullptr;
-  }
+  explicit operator bool() const noexcept { return exec_ != nullptr; }
 
   /**
    * Returns the size of the allocation made to store the callable on the
@@ -904,9 +881,7 @@ class Function final : private detail::function::FunctionTraits<FunctionType> {
    * Move this `Function` into a copyable callable object, of which all copies
    * share the state.
    */
-  SharedProxy asSharedProxy() && {
-    return SharedProxy{std::move(*this)};
-  }
+  SharedProxy asSharedProxy() && { return SharedProxy{std::move(*this)}; }
 
   /**
    * Construct a `std::function` by moving in the contents of this `Function`.
@@ -1058,9 +1033,7 @@ class FunctionRef<ReturnType(Args...)> final {
     return call_(static_cast<Args&&>(args)..., object_);
   }
 
-  constexpr explicit operator bool() const noexcept {
-    return object_;
-  }
+  constexpr explicit operator bool() const noexcept { return object_; }
 
   constexpr friend bool operator==(
       FunctionRef<ReturnType(Args...)> ref,

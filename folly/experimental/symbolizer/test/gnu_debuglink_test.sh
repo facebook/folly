@@ -14,13 +14,17 @@
 # limitations under the License.
 
 crash="$1"
-rm -f "$crash."{debuginfo,strip}
-objcopy --only-keep-debug "$crash" "$crash.debuginfo"
-objcopy --strip-debug --add-gnu-debuglink="$crash.debuginfo" "$crash" "$crash.strip"
+
+uuid=$(cat /proc/sys/kernel/random/uuid)
+for sig in 1 2 3 13 15; do eval "trap 'exit $((sig + 128))' $sig"; done
+trap 'rm -f "$crash.debuginfo.$uuid" "$crash.strip.$uuid"' 0
+
+objcopy --only-keep-debug "$crash" "$crash.debuginfo.$uuid"
+objcopy --strip-debug --add-gnu-debuglink="$crash.debuginfo.$uuid" "$crash" "$crash.strip.$uuid"
 
 echo '{"op":"start","test":"gnu_debuglink_test"}';
 start=$(date +%s)
-if "$crash.strip" 2>&1 | grep 'Crash.cpp:[0-9]*$' > /dev/null; then
+if "$crash.strip.$uuid" 2>&1 | grep -q 'Crash.cpp:[0-9]*$'; then
     result='"status":"passed"';
 else
     result='"status":"failed"';

@@ -76,9 +76,7 @@ class JemallocHugePageAllocator {
     hugePagesSupported ? dallocx(p, flags_) : free(p);
   }
 
-  static bool initialized() {
-    return flags_ != 0;
-  }
+  static bool initialized() { return flags_ != 0; }
 
   static size_t freeSpace();
   static bool addressInArena(void* address);
@@ -109,12 +107,8 @@ class CxxHugePageAllocator {
     JemallocHugePageAllocator::deallocate(p, sizeof(T) * n);
   }
 
-  friend bool operator==(Self const&, Self const&) noexcept {
-    return true;
-  }
-  friend bool operator!=(Self const&, Self const&) noexcept {
-    return false;
-  }
+  friend bool operator==(Self const&, Self const&) noexcept { return true; }
+  friend bool operator!=(Self const&, Self const&) noexcept { return false; }
 };
 
 } // namespace folly

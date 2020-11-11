@@ -106,9 +106,7 @@ class CpuId {
   }
 
 #define FOLLY_DETAIL_CPUID_X(name, r, bit) \
-  FOLLY_ALWAYS_INLINE bool name() const {  \
-    return ((r) & (1U << bit)) != 0;       \
-  }
+  FOLLY_ALWAYS_INLINE bool name() const { return ((r) & (1U << bit)) != 0; }
 
 // cpuid(1): Processor Info and Feature Bits.
 #define FOLLY_DETAIL_CPUID_C(name, bit) FOLLY_DETAIL_CPUID_X(name, f1c_, bit)

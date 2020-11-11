@@ -58,9 +58,7 @@ class StandardLogHandler : public LogHandler {
   /**
    * Get the LogWriter used by this handler.
    */
-  const std::shared_ptr<LogWriter>& getWriter() const {
-    return writer_;
-  }
+  const std::shared_ptr<LogWriter>& getWriter() const { return writer_; }
 
   /**
    * Get the handler's current LogLevel.
@@ -68,9 +66,7 @@ class StandardLogHandler : public LogHandler {
    * Messages less than this LogLevel will be ignored.  This defaults to
    * LogLevel::NONE when the handler is constructed.
    */
-  LogLevel getLevel() const {
-    return level_.load(std::memory_order_acquire);
-  }
+  LogLevel getLevel() const { return level_.load(std::memory_order_acquire); }
 
   /**
    * Set the handler's current LogLevel.

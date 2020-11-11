@@ -59,15 +59,11 @@ class ViaCoroutine {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() {
-      return {};
-    }
+    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
 
-    auto final_suspend() {
+    auto final_suspend() noexcept {
       struct Awaiter {
-        bool await_ready() noexcept {
-          return false;
-        }
+        bool await_ready() noexcept { return false; }
         FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
             std::experimental::coroutine_handle<promise_type> coro) noexcept {
           // Schedule resumption of the coroutine on the executor.
@@ -112,18 +108,14 @@ class ViaCoroutine {
   ViaCoroutine(ViaCoroutine&& other) noexcept
       : coro_(std::exchange(other.coro_, {})) {}
 
-  ~ViaCoroutine() {
-    destroy();
-  }
+  ~ViaCoroutine() { destroy(); }
 
   ViaCoroutine& operator=(ViaCoroutine other) noexcept {
     swap(other);
     return *this;
   }
 
-  void swap(ViaCoroutine& other) noexcept {
-    std::swap(coro_, other.coro_);
-  }
+  void swap(ViaCoroutine& other) noexcept { std::swap(coro_, other.coro_); }
 
   std::experimental::coroutine_handle<> getWrappedCoroutine(
       std::experimental::coroutine_handle<> continuation) noexcept {
@@ -246,10 +238,20 @@ class ViaIfAsyncAwaiter {
         viaCoroutine_.getWrappedCoroutineWithSavedContext(continuation));
   }
 
-  decltype(auto) await_resume() noexcept(
-      noexcept(std::declval<Awaiter&>().await_resume())) {
+  auto await_resume() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume()))
+      -> decltype(std::declval<Awaiter&>().await_resume()) {
     viaCoroutine_.destroy();
     return awaiter_.await_resume();
+  }
+
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result = decltype(std::declval<Awaiter2&>().await_resume_try())>
+  Result await_resume_try() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume_try())) {
+    viaCoroutine_.destroy();
+    return awaiter_.await_resume_try();
   }
 
   detail::ViaCoroutine viaCoroutine_;
@@ -405,21 +407,30 @@ using semi_await_result_t = await_result_t<decltype(folly::coro::co_viaIfAsync(
 
 namespace detail {
 
-template <typename Awaiter>
+template <typename Awaitable>
 class TryAwaiter {
- public:
-  TryAwaiter(Awaiter&& awaiter) : awaiter_(std::move(awaiter)) {}
+  using Awaiter = awaiter_type_t<Awaitable>;
 
-  bool await_ready() {
+ public:
+  explicit TryAwaiter(Awaitable&& awaiter)
+      : awaiter_(folly::coro::get_awaiter(static_cast<Awaitable&&>(awaiter))) {}
+
+  auto await_ready() noexcept(noexcept(std::declval<Awaiter&>().await_ready()))
+      -> decltype(std::declval<Awaiter&>().await_ready()) {
     return awaiter_.await_ready();
   }
 
   template <typename Promise>
-  auto await_suspend(std::experimental::coroutine_handle<Promise> coro) {
+  auto
+  await_suspend(std::experimental::coroutine_handle<Promise> coro) noexcept(
+      noexcept(std::declval<Awaiter&>().await_suspend(coro)))
+      -> decltype(std::declval<Awaiter&>().await_suspend(coro)) {
     return awaiter_.await_suspend(coro);
   }
 
-  auto await_resume() {
+  auto await_resume() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume_try()))
+      -> decltype(std::declval<Awaiter&>().await_resume_try()) {
     return awaiter_.await_resume_try();
   }
 
@@ -427,44 +438,75 @@ class TryAwaiter {
   Awaiter awaiter_;
 };
 
-template <typename Awaiter>
-auto makeTryAwaiter(Awaiter&& awaiter) {
-  return TryAwaiter<std::decay_t<Awaiter>>(std::move(awaiter));
-}
-
-template <typename SemiAwaitable>
-class TrySemiAwaitable {
+template <typename T>
+class TryAwaitable {
  public:
-  explicit TrySemiAwaitable(SemiAwaitable&& semiAwaitable)
-      : semiAwaitable_(std::move(semiAwaitable)) {}
+  template <typename T2>
+  explicit TryAwaitable(T2&& awaitable) noexcept(
+      std::is_nothrow_constructible_v<T, T2>)
+      : inner_(static_cast<T2&&>(awaitable)) {}
 
-  friend auto co_viaIfAsync(
-      Executor::KeepAlive<> executor,
-      TrySemiAwaitable&& self) noexcept {
-    return makeTryAwaiter(get_awaiter(
-        co_viaIfAsync(std::move(executor), std::move(self.semiAwaitable_))));
+  template <typename Factory>
+  explicit TryAwaitable(std::in_place_t, Factory&& factory)
+      : inner_(factory()) {}
+
+  template <
+      typename Self,
+      std::enable_if_t<
+          std::is_same_v<remove_cvref_t<Self>, TryAwaitable>,
+          int> = 0,
+      typename T2 = like_t<Self, T>,
+      std::enable_if_t<is_awaitable_v<T2>, int> = 0>
+  friend TryAwaiter<T2> operator co_await(Self&& self) {
+    return TryAwaiter<T2>{static_cast<Self&&>(self).inner_};
   }
 
-  friend auto co_withCancellation(
-      const CancellationToken& cancelToken,
-      TrySemiAwaitable&& awaitable) {
-    auto cancelAwaitable = folly::coro::co_withCancellation(
-        std::move(cancelToken),
-        static_cast<SemiAwaitable&&>(awaitable.semiAwaitable_));
-    return TrySemiAwaitable<decltype(cancelAwaitable)>(
-        std::move(cancelAwaitable));
+  template <
+      typename T2 = T,
+      typename Result = decltype(folly::coro::co_withCancellation(
+          std::declval<const folly::CancellationToken&>(),
+          std::declval<T2>()))>
+  friend TryAwaitable<Result> co_withCancellation(
+      const folly::CancellationToken& cancelToken,
+      TryAwaitable&& awaitable) {
+    return TryAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                  return folly::coro::co_withCancellation(
+                                      cancelToken,
+                                      static_cast<T&&>(awaitable.inner_));
+                                }};
+  }
+
+  template <
+      typename T2 = T,
+      typename Result = decltype(folly::coro::co_viaIfAsync(
+          std::declval<folly::Executor::KeepAlive<>>(),
+          std::declval<T2>()))>
+  friend TryAwaitable<Result> co_viaIfAsync(
+      folly::Executor::KeepAlive<> executor,
+      TryAwaitable&&
+          awaitable) noexcept(noexcept(folly::coro::
+                                           co_viaIfAsync(
+                                               std::declval<folly::Executor::
+                                                                KeepAlive<>>(),
+                                               std::declval<T2>()))) {
+    return TryAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                  return folly::coro::co_viaIfAsync(
+                                      std::move(executor),
+                                      static_cast<T&&>(awaitable.inner_));
+                                }};
   }
 
  private:
-  SemiAwaitable semiAwaitable_;
+  T inner_;
 };
+
 } // namespace detail
 
-template <
-    typename SemiAwaitable,
-    typename = std::enable_if_t<is_semi_awaitable_v<SemiAwaitable>>>
-auto co_awaitTry(SemiAwaitable&& semiAwaitable) {
-  return detail::TrySemiAwaitable<SemiAwaitable>(std::move(semiAwaitable));
+template <typename Awaitable>
+detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
+    Awaitable&& awaitable) {
+  return detail::TryAwaitable<remove_cvref_t<Awaitable>>{
+      static_cast<Awaitable&&>(awaitable)};
 }
 
 } // namespace coro

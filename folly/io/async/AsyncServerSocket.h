@@ -272,9 +272,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get the EventBase used by this socket.
    */
-  EventBase* getEventBase() const override {
-    return eventBase_;
-  }
+  EventBase* getEventBase() const override { return eventBase_; }
 
   /**
    * Create a AsyncServerSocket from an existing socket file descriptor.
@@ -524,9 +522,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * Get the maximum number of connections that will be accepted each time
    * around the event loop.
    */
-  uint32_t getMaxAcceptAtOnce() const {
-    return maxAcceptAtOnce_;
-  }
+  uint32_t getMaxAcceptAtOnce() const { return maxAcceptAtOnce_; }
 
   /**
    * Set the maximum number of connections that will be accepted each time
@@ -542,17 +538,13 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * pauseAccepting() to temporarily pause accepting when your server is
    * overloaded, and then use startAccepting() later to resume accepting.
    */
-  void setMaxAcceptAtOnce(uint32_t numConns) {
-    maxAcceptAtOnce_ = numConns;
-  }
+  void setMaxAcceptAtOnce(uint32_t numConns) { maxAcceptAtOnce_ = numConns; }
 
   /**
    * Get the maximum number of unprocessed messages which a NotificationQueue
    * can hold.
    */
-  uint32_t getMaxNumMessagesInQueue() const {
-    return maxNumMsgsInQueue_;
-  }
+  uint32_t getMaxNumMessagesInQueue() const { return maxNumMsgsInQueue_; }
 
   /**
    * Set the maximum number of unprocessed messages in NotificationQueue.
@@ -561,16 +553,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * Only works if called before addAcceptCallback.
    */
-  void setMaxNumMessagesInQueue(uint32_t num) {
-    maxNumMsgsInQueue_ = num;
-  }
+  void setMaxNumMessagesInQueue(uint32_t num) { maxNumMsgsInQueue_ = num; }
 
   /**
    * Get the speed of adjusting connection accept rate.
    */
-  double getAcceptRateAdjustSpeed() const {
-    return acceptRateAdjustSpeed_;
-  }
+  double getAcceptRateAdjustSpeed() const { return acceptRateAdjustSpeed_; }
 
   /**
    * Set the speed of adjusting connection accept rate.
@@ -584,9 +572,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    */
   void setTosReflect(bool enable);
 
-  bool getTosReflect() {
-    return tosReflect_;
-  }
+  bool getTosReflect() { return tosReflect_; }
 
   /**
    * Get the number of connections dropped by the AsyncServerSocket
@@ -646,9 +632,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get whether or not SO_KEEPALIVE is enabled on the server socket.
    */
-  bool getKeepAliveEnabled() const {
-    return keepAliveEnabled_;
-  }
+  bool getKeepAliveEnabled() const { return keepAliveEnabled_; }
 
   /**
    * Set whether or not SO_REUSEPORT should be enabled on the server socket,
@@ -678,24 +662,18 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Get whether or not SO_REUSEPORT is enabled on the server socket.
    */
-  bool getReusePortEnabled_() const {
-    return reusePortEnabled_;
-  }
+  bool getReusePortEnabled_() const { return reusePortEnabled_; }
 
   /**
    * Set whether or not the socket should close during exec() (FD_CLOEXEC). By
    * default, this is enabled
    */
-  void setCloseOnExec(bool closeOnExec) {
-    closeOnExec_ = closeOnExec;
-  }
+  void setCloseOnExec(bool closeOnExec) { closeOnExec_ = closeOnExec; }
 
   /**
    * Get whether or not FD_CLOEXEC is enabled on the server socket.
    */
-  bool getCloseOnExec() const {
-    return closeOnExec_;
-  }
+  bool getCloseOnExec() const { return closeOnExec_; }
 
   /**
    * Tries to enable TFO if the machine supports it.
@@ -708,16 +686,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   /**
    * Do not attempt the transparent TLS handshake
    */
-  void disableTransparentTls() {
-    noTransparentTls_ = true;
-  }
+  void disableTransparentTls() { noTransparentTls_ = true; }
 
   /**
    * Get whether or not the socket is accepting new connections
    */
-  bool getAccepting() const {
-    return accepting_;
-  }
+  bool getAccepting() const { return accepting_; }
 
   /**
    * Set the ConnectionEventCallback
@@ -777,9 +751,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
 
     void messageAvailable(QueueMessage&& msg) noexcept override;
 
-    NotificationQueue<QueueMessage>* getQueue() {
-      return &queue_;
-    }
+    NotificationQueue<QueueMessage>* getQueue() { return &queue_; }
 
    private:
     AcceptCallback* callback_;

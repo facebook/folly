@@ -65,9 +65,7 @@ template <typename T>
 struct constexpr_abs_helper<
     T,
     typename std::enable_if<std::is_floating_point<T>::value>::type> {
-  static constexpr T go(T t) {
-    return t < static_cast<T>(0) ? -t : t;
-  }
+  static constexpr T go(T t) { return t < static_cast<T>(0) ? -t : t; }
 };
 
 template <typename T>
@@ -76,9 +74,7 @@ struct constexpr_abs_helper<
     typename std::enable_if<
         std::is_integral<T>::value && !std::is_same<T, bool>::value &&
         std::is_unsigned<T>::value>::type> {
-  static constexpr T go(T t) {
-    return t;
-  }
+  static constexpr T go(T t) { return t; }
 };
 
 template <typename T>
@@ -188,7 +184,10 @@ constexpr T constexpr_add_overflow_clamped(T a, T b) {
     !std::is_integral<T>::value ? a + b :
     // for narrow integral types, just convert to intmax_t.
     sizeof(T) < sizeof(M)
-      ? T(constexpr_clamp(M(a) + M(b), M(L::min()), M(L::max()))) :
+      ? T(constexpr_clamp(
+          static_cast<M>(a) + static_cast<M>(b),
+          static_cast<M>(L::min()),
+          static_cast<M>(L::max()))) :
     // when a >= 0, cannot add more than `MAX - a` onto a.
     !(a < 0) ? a + constexpr_min(b, T(L::max() - a)) :
     // a < 0 && b >= 0, `a + b` will always be in valid range of type T.
@@ -213,7 +212,10 @@ constexpr T constexpr_sub_overflow_clamped(T a, T b) {
     std::is_unsigned<T>::value ? (a < b ? 0 : a - b) :
     // for narrow signed integral types, just convert to intmax_t.
     sizeof(T) < sizeof(M)
-      ? T(constexpr_clamp(M(a) - M(b), M(L::min()), M(L::max()))) :
+      ? T(constexpr_clamp(
+          static_cast<M>(a) - static_cast<M>(b),
+          static_cast<M>(L::min()),
+          static_cast<M>(L::max()))) :
     // (a >= 0 && b >= 0) || (a < 0 && b < 0), `a - b` will always be valid.
     (a < 0) == (b < 0) ? a - b :
     // MIN < b, so `-b` should be in valid range (-MAX <= -b <= MAX),

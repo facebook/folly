@@ -219,8 +219,10 @@ struct PolyExtends : virtual I... {
  *     struct IAddable {
  *       template <class Base>
  *       struct Interface : Base {
- *         friend PolySelf<Base, Decay>
- *         operator+(PolySelf<Base> const& a, PolySelf<Base> const& b) {
+ *         friend folly::PolySelf<Base, folly::PolyDecay>
+ *         operator+(
+ *             folly::PolySelf<Base> const& a,
+ *             folly::PolySelf<Base> const& b) {
  *           return folly::poly_call<0, IAddable>(a, b);
  *         }
  *       };
@@ -473,19 +475,11 @@ struct PolyVal : PolyImpl<I> {
 
   using PolyRoot<I>::vptr_;
 
-  PolyRoot<I>& _polyRoot_() noexcept {
-    return *this;
-  }
-  PolyRoot<I> const& _polyRoot_() const noexcept {
-    return *this;
-  }
+  PolyRoot<I>& _polyRoot_() noexcept { return *this; }
+  PolyRoot<I> const& _polyRoot_() const noexcept { return *this; }
 
-  Data* _data_() noexcept {
-    return PolyAccess::data(*this);
-  }
-  Data const* _data_() const noexcept {
-    return PolyAccess::data(*this);
-  }
+  Data* _data_() noexcept { return PolyAccess::data(*this); }
+  Data const* _data_() const noexcept { return PolyAccess::data(*this); }
 
  public:
   /**
@@ -562,12 +556,8 @@ struct PolyRef : private PolyImpl<I> {
 
   AddCvrefOf<PolyRoot<I>, I>& _polyRoot_() const noexcept;
 
-  Data* _data_() noexcept {
-    return PolyAccess::data(*this);
-  }
-  Data const* _data_() const noexcept {
-    return PolyAccess::data(*this);
-  }
+  Data* _data_() noexcept { return PolyAccess::data(*this); }
+  Data const* _data_() const noexcept { return PolyAccess::data(*this); }
 
   static constexpr RefType refType() noexcept;
 
@@ -664,16 +654,12 @@ struct PolyRef : private PolyImpl<I> {
   /**
    * Get a reference to the interface, with correct `const`-ness applied.
    */
-  AddCvrefOf<PolyImpl<I>, I>& operator*() const noexcept {
-    return get();
-  }
+  AddCvrefOf<PolyImpl<I>, I>& operator*() const noexcept { return get(); }
 
   /**
    * Get a pointer to the interface, with correct `const`-ness applied.
    */
-  auto operator-> () const noexcept {
-    return &get();
-  }
+  auto operator-> () const noexcept { return &get(); }
 };
 
 template <class I>

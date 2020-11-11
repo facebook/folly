@@ -126,7 +126,7 @@ class Baton {
    * Puts active fiber to sleep. Returns when post is called or the deadline
    * expires.
    *
-   * @param timeout Baton will be automatically awaken if deadline expires
+   * @param deadline Baton will be automatically awaken if deadline expires
    *
    * @return true if was posted, false if timeout expired
    */
@@ -140,7 +140,7 @@ class Baton {
    * Puts active fiber to sleep. Returns when post is called or the deadline
    * expires.
    *
-   * @param timeout Baton will be automatically awaken if deadline expires
+   * @param deadline Baton will be automatically awaken if deadline expires
    * @param mainContextFunc this function is immediately executed on the main
    *        context.
    *
@@ -155,7 +155,7 @@ class Baton {
    * Puts active fiber to sleep. Returns when post is called or the deadline
    * expires.
    *
-   * @param timeout Baton will be automatically awaken if deadline expires
+   * @param deadline Baton will be automatically awaken if deadline expires
    * @param mainContextFunc this function is immediately executed on the main
    *        context.
    *
@@ -275,9 +275,7 @@ class BatonAwaitableWaiter : public Baton::Waiter {
     h_();
   }
 
-  bool await_ready() const {
-    return baton_.ready();
-  }
+  bool await_ready() const { return baton_.ready(); }
 
   void await_resume() {}
 

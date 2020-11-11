@@ -28,6 +28,8 @@
 namespace folly {
 namespace symbolizer {
 
+#if FOLLY_HAVE_DWARF
+
 namespace detail {
 
 // A top level chunk in the .debug_info that contains a compilation unit.
@@ -87,12 +89,18 @@ class Dwarf {
    */
   static const uint32_t kMaxInlineLocationInfoPerFrame = 10;
 
-  /** Find the file and line number information corresponding to address. */
+  /**
+   * Find the file and line number information corresponding to address.
+   * If `eachParameterName` is provided, the callback will be invoked once
+   * for each parameter of the function.
+   */
   bool findAddress(
       uintptr_t address,
       LocationInfoMode mode,
       LocationInfo& info,
-      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {},
+      folly::FunctionRef<void(const folly::StringPiece name)>
+          eachParameterName = {}) const;
 
  private:
   using AttributeValue = boost::variant<uint64_t, folly::StringPiece>;
@@ -110,14 +118,17 @@ class Dwarf {
 
   /**
    * Finds location info (file and line) for a given address in the given
-   * compilation unit.
+   * compilation unit. Invokes `eachParameterName`, if set, for each parameter
+   * of the given function.
    */
   bool findLocation(
       uintptr_t address,
       const LocationInfoMode mode,
       detail::CompilationUnit& cu,
       LocationInfo& info,
-      folly::Range<SymbolizedFrame*> inlineFrames = {}) const;
+      folly::Range<SymbolizedFrame*> inlineFrames = {},
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName = {})
+      const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among
@@ -127,6 +138,7 @@ class Dwarf {
       const detail::CompilationUnit& cu,
       const detail::Die& die,
       uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
       detail::Die& subprogram) const;
 
   /**
@@ -138,6 +150,7 @@ class Dwarf {
       const detail::Die& die,
       const LineNumberVM& lineVM,
       uint64_t address,
+      folly::Optional<uint64_t> baseAddrCU,
       folly::Range<detail::CallLocation*> locations,
       size_t& numFound) const;
 
@@ -194,8 +207,11 @@ class Dwarf {
    * Check if the given address is in the range list at the given offset in
    * .debug_ranges.
    */
-  bool isAddrInRangeList(uint64_t address, size_t offset, uint8_t addrSize)
-      const;
+  bool isAddrInRangeList(
+      uint64_t address,
+      folly::Optional<uint64_t> baseAddr,
+      size_t offset,
+      uint8_t addrSize) const;
 
   const ElfFile* elf_;
   const folly::StringPiece debugInfo_; // .debug_info
@@ -219,9 +235,7 @@ class Dwarf::Section {
   bool next(folly::StringPiece& chunk);
 
   /** Is the current chunk 64 bit? */
-  bool is64Bit() const {
-    return is64Bit_;
-  }
+  bool is64Bit() const { return is64Bit_; }
 
  private:
   // Yes, 32- and 64- bit sections may coexist.  Yikes!
@@ -316,6 +330,8 @@ class Dwarf::LineNumberVM {
   uint64_t isa_;
   uint64_t discriminator_;
 };
+
+#endif
 
 } // namespace symbolizer
 } // namespace folly

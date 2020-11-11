@@ -41,15 +41,9 @@ namespace folly {
 
 class SpinLock {
  public:
-  FOLLY_ALWAYS_INLINE SpinLock() noexcept {
-    lock_.init();
-  }
-  FOLLY_ALWAYS_INLINE void lock() const noexcept {
-    lock_.lock();
-  }
-  FOLLY_ALWAYS_INLINE void unlock() const noexcept {
-    lock_.unlock();
-  }
+  FOLLY_ALWAYS_INLINE SpinLock() noexcept { lock_.init(); }
+  FOLLY_ALWAYS_INLINE void lock() const noexcept { lock_.lock(); }
+  FOLLY_ALWAYS_INLINE void unlock() const noexcept { lock_.unlock(); }
   FOLLY_ALWAYS_INLINE bool try_lock() const noexcept {
     return lock_.try_lock();
   }
@@ -70,9 +64,7 @@ class SpinLockGuardImpl {
   SpinLockGuardImpl(const SpinLockGuardImpl&) = delete;
   SpinLockGuardImpl& operator=(const SpinLockGuardImpl&) = delete;
 
-  FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() {
-    lock_.unlock();
-  }
+  FOLLY_ALWAYS_INLINE ~SpinLockGuardImpl() { lock_.unlock(); }
 
  private:
   LOCK& lock_;

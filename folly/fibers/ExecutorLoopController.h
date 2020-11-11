@@ -78,9 +78,7 @@ class ExecutorLoopController : public fibers::ExecutorBasedLoopController {
   explicit ExecutorLoopController(folly::Executor* executor);
   ~ExecutorLoopController() override;
 
-  folly::Executor* executor() const override {
-    return executor_;
-  }
+  folly::Executor* executor() const override { return executor_; }
 
  private:
   folly::Executor* executor_;

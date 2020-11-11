@@ -1,0 +1,15 @@
+[manifest]
+name = fb303-source
+fbsource_path = fbcode/fb303
+shipit_project = fb303
+shipit_fbcode_builder = false
+
+[git]
+repo_url = https://github.com/facebook/fb303.git
+
+[build]
+builder = nop
+
+[shipit.pathmap]
+fbcode/fb303/github = .
+fbcode/fb303 = fb303

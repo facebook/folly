@@ -79,21 +79,11 @@ struct AddressFlags {
   AddressFlags(const std::string& addr, uint8_t version_, uint8_t flags_)
       : address(addr), flags(flags_), version(version_) {}
 
-  bool isLoopback() const {
-    return (flags & IS_LOCAL);
-  }
-  bool isNonroutable() const {
-    return (flags & IS_NONROUTABLE);
-  }
-  bool isPrivate() const {
-    return (flags & IS_PRIVATE);
-  }
-  bool isZero() const {
-    return (flags & IS_ZERO);
-  }
-  bool isLinkLocal() const {
-    return (flags & IS_LINK_LOCAL);
-  }
+  bool isLoopback() const { return (flags & IS_LOCAL); }
+  bool isNonroutable() const { return (flags & IS_NONROUTABLE); }
+  bool isPrivate() const { return (flags & IS_PRIVATE); }
+  bool isZero() const { return (flags & IS_ZERO); }
+  bool isLinkLocal() const { return (flags & IS_LINK_LOCAL); }
   bool isLinkLocalBroadcast() const {
     return (flags & IS_LINK_LOCAL_BROADCAST);
   }

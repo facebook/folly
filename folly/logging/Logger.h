@@ -179,9 +179,7 @@ class Logger {
   /**
    * Get the LogCategory that this Logger refers to.
    */
-  LogCategory* getCategory() const {
-    return category_;
-  }
+  LogCategory* getCategory() const { return category_; }
 
  private:
   LogCategory* const category_{nullptr};

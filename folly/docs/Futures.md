@@ -206,23 +206,7 @@ std::move(aFuture)
   .via(e2).thenValue(z);
 ```
 
-`x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the context of `e1`, and `z` will execute in the context of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor. Another way to express this is using an overload of `then` that takes an Executor:
-
-```cpp
-std::move(aFuture)
-  .thenValue(x)
-  .thenValue(e1, y1, y2)
-  .thenValue(e2, z);
-```
-
-Either way, there is no ambiguity about which executor will run `y1`, `y2`, or `z`.
-
-You can still have a race after `via` if you break it into multiple statements, e.g. in this counterexample:
-
-```cpp
-f2 = std::move(f).via(e1).thenValue(y1).thenValue(y2); // nothing racy here
-std::move(f2).thenValue(y3); // racy
-```
+`x` will execute in the context of the executor associated with `aFuture`. `y1` and `y2` will execute in the context of `e1`, and `z` will execute in the context of `e2`. If after `z` you want to get back to the original context, you need to get there with a call to `via` passing the original executor.
 
 # You make me Promises, Promises
 

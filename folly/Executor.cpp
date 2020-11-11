@@ -30,11 +30,11 @@ void Executor::addWithPriority(Func, int8_t /* priority */) {
       "addWithPriority() is not implemented for this Executor");
 }
 
-bool Executor::keepAliveAcquire() {
+bool Executor::keepAliveAcquire() noexcept {
   return false;
 }
 
-void Executor::keepAliveRelease() {
+void Executor::keepAliveRelease() noexcept {
   LOG(FATAL) << __func__ << "() should not be called for folly::Executor types "
              << "which do not override keepAliveAcquire()";
 }

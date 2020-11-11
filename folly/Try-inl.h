@@ -29,7 +29,7 @@ template <class T>
 Try<T>::Try(Try<T>&& t) noexcept(std::is_nothrow_move_constructible<T>::value)
     : contains_(t.contains_) {
   if (contains_ == Contains::VALUE) {
-    new (&value_) T(std::move(t.value_));
+    ::new (static_cast<void*>(std::addressof(value_))) T(std::move(t.value_));
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(std::move(t.e_));
   }
@@ -43,9 +43,15 @@ Try<T>::Try(typename std::enable_if<
     : contains_(Contains::NOTHING) {
   if (t.hasValue()) {
     contains_ = Contains::VALUE;
-    new (&value_) T();
+    ::new (static_cast<void*>(std::addressof(value_))) T();
   } else if (t.hasException()) {
     contains_ = Contains::EXCEPTION;
+    new (&e_) exception_wrapper(t.exception());
+  }
+}
+
+Try<void>::Try(const Try<Unit>& t) noexcept : hasValue_(!t.hasException()) {
+  if (t.hasException()) {
     new (&e_) exception_wrapper(t.exception());
   }
 }
@@ -60,7 +66,7 @@ Try<T>& Try<T>::operator=(Try<T>&& t) noexcept(
   destroy();
 
   if (t.contains_ == Contains::VALUE) {
-    new (&value_) T(std::move(t.value_));
+    ::new (static_cast<void*>(std::addressof(value_))) T(std::move(t.value_));
   } else if (t.contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(std::move(t.e_));
   }
@@ -78,7 +84,7 @@ Try<T>::Try(const Try<T>& t) noexcept(
       "T must be copyable for Try<T> to be copyable");
   contains_ = t.contains_;
   if (contains_ == Contains::VALUE) {
-    new (&value_) T(t.value_);
+    ::new (static_cast<void*>(std::addressof(value_))) T(t.value_);
   } else if (contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(t.e_);
   }
@@ -98,7 +104,7 @@ Try<T>& Try<T>::operator=(const Try<T>& t) noexcept(
   destroy();
 
   if (t.contains_ == Contains::VALUE) {
-    new (&value_) T(t.value_);
+    ::new (static_cast<void*>(std::addressof(value_))) T(t.value_);
   } else if (t.contains_ == Contains::EXCEPTION) {
     new (&e_) exception_wrapper(t.e_);
   }
@@ -122,7 +128,8 @@ template <typename... Args>
 T& Try<T>::emplace(Args&&... args) noexcept(
     std::is_nothrow_constructible<T, Args&&...>::value) {
   this->destroy();
-  new (&value_) T(static_cast<Args&&>(args)...);
+  ::new (static_cast<void*>(std::addressof(value_)))
+      T(static_cast<Args&&>(args)...);
   contains_ = Contains::VALUE;
   return value_;
 }
@@ -345,5 +352,19 @@ auto unwrapTryTuple(Tuple&& instance) {
   using Seq = std::make_index_sequence<std::tuple_size<TupleDecayed>::value>;
   return try_detail::unwrapTryTupleImpl(Seq{}, std::forward<Tuple>(instance));
 }
+
+template <typename T>
+void tryAssign(Try<T>& t, Try<T>&& other) noexcept {
+  try {
+    t = std::move(other);
+  } catch (const std::exception& ex) {
+    t.emplaceException(std::current_exception(), ex);
+  } catch (...) {
+    t.emplaceException(std::current_exception());
+  }
+}
+
+// limited to the instances unconditionally forced by the futures library
+extern template class Try<Unit>;
 
 } // namespace folly

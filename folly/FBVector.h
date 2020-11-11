@@ -111,9 +111,7 @@ class fbvector {
     }
 
     // destructor
-    ~Impl() {
-      destroy();
-    }
+    ~Impl() { destroy(); }
 
     // allocation
     // note that 'allocate' and 'deallocate' are inherited from Allocator
@@ -230,16 +228,12 @@ class fbvector {
   //---------------------------------------------------------------------------
   // allocate
 
-  T* M_allocate(size_type n) {
-    return impl_.D_allocate(n);
-  }
+  T* M_allocate(size_type n) { return impl_.D_allocate(n); }
 
   //---------------------------------------------------------------------------
   // deallocate
 
-  void M_deallocate(T* p, size_type n) noexcept {
-    impl_.D_deallocate(p, n);
-  }
+  void M_deallocate(T* p, size_type n) noexcept { impl_.D_deallocate(p, n); }
 
   //---------------------------------------------------------------------------
   // construct
@@ -800,13 +794,9 @@ class fbvector {
     }
   }
 
-  void assign(std::initializer_list<T> il) {
-    assign(il.begin(), il.end());
-  }
+  void assign(std::initializer_list<T> il) { assign(il.begin(), il.end()); }
 
-  allocator_type get_allocator() const noexcept {
-    return impl_;
-  }
+  allocator_type get_allocator() const noexcept { return impl_; }
 
  private:
   // contract dispatch for iterator types fbvector(It first, It last)
@@ -833,9 +823,7 @@ class fbvector {
   }
 
   // contract dispatch for allocator movement in operator=(fbvector&&)
-  void moveFrom(fbvector&& other, std::true_type) {
-    swap(impl_, other.impl_);
-  }
+  void moveFrom(fbvector&& other, std::true_type) { swap(impl_, other.impl_); }
   void moveFrom(fbvector&& other, std::false_type) {
     if (impl_ == other.impl_) {
       impl_.swapData(other.impl_);
@@ -896,37 +884,21 @@ class fbvector {
   //---------------------------------------------------------------------------
   // iterators
  public:
-  iterator begin() noexcept {
-    return impl_.b_;
-  }
-  const_iterator begin() const noexcept {
-    return impl_.b_;
-  }
-  iterator end() noexcept {
-    return impl_.e_;
-  }
-  const_iterator end() const noexcept {
-    return impl_.e_;
-  }
-  reverse_iterator rbegin() noexcept {
-    return reverse_iterator(end());
-  }
+  iterator begin() noexcept { return impl_.b_; }
+  const_iterator begin() const noexcept { return impl_.b_; }
+  iterator end() noexcept { return impl_.e_; }
+  const_iterator end() const noexcept { return impl_.e_; }
+  reverse_iterator rbegin() noexcept { return reverse_iterator(end()); }
   const_reverse_iterator rbegin() const noexcept {
     return const_reverse_iterator(end());
   }
-  reverse_iterator rend() noexcept {
-    return reverse_iterator(begin());
-  }
+  reverse_iterator rend() noexcept { return reverse_iterator(begin()); }
   const_reverse_iterator rend() const noexcept {
     return const_reverse_iterator(begin());
   }
 
-  const_iterator cbegin() const noexcept {
-    return impl_.b_;
-  }
-  const_iterator cend() const noexcept {
-    return impl_.e_;
-  }
+  const_iterator cbegin() const noexcept { return impl_.b_; }
+  const_iterator cend() const noexcept { return impl_.e_; }
   const_reverse_iterator crbegin() const noexcept {
     return const_reverse_iterator(end());
   }
@@ -938,9 +910,7 @@ class fbvector {
   //---------------------------------------------------------------------------
   // capacity
  public:
-  size_type size() const noexcept {
-    return size_type(impl_.e_ - impl_.b_);
-  }
+  size_type size() const noexcept { return size_type(impl_.e_ - impl_.b_); }
 
   size_type max_size() const noexcept {
     // good luck gettin' there
@@ -969,13 +939,9 @@ class fbvector {
     }
   }
 
-  size_type capacity() const noexcept {
-    return size_type(impl_.z_ - impl_.b_);
-  }
+  size_type capacity() const noexcept { return size_type(impl_.z_ - impl_.b_); }
 
-  bool empty() const noexcept {
-    return impl_.b_ == impl_.e_;
-  }
+  bool empty() const noexcept { return impl_.b_ == impl_.e_; }
 
   void reserve(size_type n) {
     if (n <= capacity()) {
@@ -1118,12 +1084,8 @@ class fbvector {
   //---------------------------------------------------------------------------
   // data access
  public:
-  T* data() noexcept {
-    return impl_.b_;
-  }
-  const T* data() const noexcept {
-    return impl_.b_;
-  }
+  T* data() noexcept { return impl_.b_; }
+  const T* data() const noexcept { return impl_.b_; }
 
   //===========================================================================
   //---------------------------------------------------------------------------
@@ -1172,9 +1134,7 @@ class fbvector {
     }
   }
 
-  void clear() noexcept {
-    M_destroy_range_e(impl_.b_);
-  }
+  void clear() noexcept { M_destroy_range_e(impl_.b_); }
 
  private:
   // std::vector implements a similar function with a different growth
@@ -1314,9 +1274,7 @@ class fbvector {
   //---------------------------------------------------------------------------
   // modifiers (insert)
  private: // we have the private section first because it defines some macros
-  bool isValid(const_iterator it) {
-    return cbegin() <= it && it <= cend();
-  }
+  bool isValid(const_iterator it) { return cbegin() <= it && it <= cend(); }
 
   size_type computeInsertCapacity(size_type n) {
     size_type nc = std::max(computePushBackCapacity(), size() + n);
@@ -1638,26 +1596,18 @@ class fbvector {
     return size() == other.size() && std::equal(begin(), end(), other.begin());
   }
 
-  bool operator!=(const fbvector& other) const {
-    return !(*this == other);
-  }
+  bool operator!=(const fbvector& other) const { return !(*this == other); }
 
   bool operator<(const fbvector& other) const {
     return std::lexicographical_compare(
         begin(), end(), other.begin(), other.end());
   }
 
-  bool operator>(const fbvector& other) const {
-    return other < *this;
-  }
+  bool operator>(const fbvector& other) const { return other < *this; }
 
-  bool operator<=(const fbvector& other) const {
-    return !(*this > other);
-  }
+  bool operator<=(const fbvector& other) const { return !(*this > other); }
 
-  bool operator>=(const fbvector& other) const {
-    return !(*this < other);
-  }
+  bool operator>=(const fbvector& other) const { return !(*this < other); }
 
   //===========================================================================
   //---------------------------------------------------------------------------

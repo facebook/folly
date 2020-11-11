@@ -29,6 +29,13 @@
  *
  * For example:
  *
+ * for (const auto& [index, element] : folly::enumerate(vec)) {
+ *   // index is a reference to a size_t
+ *   // element is a reference to the type contained within vec
+ * }
+ *
+ * It can also be used as follows:
+ *
  * for (auto&& it : folly::enumerate(vec)) {
  *   // *it is a reference to the current element. Const if vec is const.
  *   // it->member can be used as well.
@@ -61,20 +68,6 @@ struct MakeConst<T*> {
   using type = const T*;
 };
 
-// Raw pointers don't have an operator->() member function, so the
-// second overload will be SFINAEd out in that case. Otherwise, the
-// second is preferred in the partial order for getPointer(_, 0).
-template <class Iterator>
-FOLLY_ALWAYS_INLINE auto getPointer(const Iterator& it, long)
-    -> decltype(std::addressof(*it)) {
-  return std::addressof(*it);
-}
-template <class Iterator>
-FOLLY_ALWAYS_INLINE auto getPointer(const Iterator& it, int)
-    -> decltype(it.operator->()) {
-  return it.operator->();
-}
-
 template <class Iterator>
 class Enumerator {
  public:
@@ -89,34 +82,26 @@ class Enumerator {
     using iterator_category = std::input_iterator_tag;
 
     FOLLY_ALWAYS_INLINE explicit Proxy(const Enumerator& e)
-        : it_(e.it_), index(e.idx_) {}
+        : index(e.idx_), element(*e.it_) {}
 
     // Non-const Proxy: Forward constness from Iterator.
-    FOLLY_ALWAYS_INLINE reference operator*() {
-      return *it_;
-    }
-    FOLLY_ALWAYS_INLINE pointer operator->() {
-      return getPointer(it_, 0);
-    }
+    FOLLY_ALWAYS_INLINE reference operator*() { return element; }
+    FOLLY_ALWAYS_INLINE pointer operator->() { return std::addressof(element); }
 
     // Const Proxy: Force const references.
     FOLLY_ALWAYS_INLINE typename MakeConst<reference>::type operator*() const {
-      return *it_;
+      return element;
     }
     FOLLY_ALWAYS_INLINE typename MakeConst<pointer>::type operator->() const {
-      return getPointer(it_, 0);
+      return std::addressof(element);
     }
-
-   private:
-    const Iterator& it_;
 
    public:
     const size_t index;
+    reference element;
   };
 
-  FOLLY_ALWAYS_INLINE Proxy operator*() const {
-    return Proxy(*this);
-  }
+  FOLLY_ALWAYS_INLINE Proxy operator*() const { return Proxy(*this); }
 
   FOLLY_ALWAYS_INLINE Enumerator& operator++() {
     ++it_;

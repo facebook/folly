@@ -29,9 +29,7 @@ class AwaitableReady {
       std::is_nothrow_move_constructible<T>::value)
       : value_(static_cast<T&&>(value)) {}
 
-  bool await_ready() noexcept {
-    return true;
-  }
+  bool await_ready() noexcept { return true; }
 
   void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
 
@@ -47,9 +45,7 @@ template <>
 class AwaitableReady<void> {
  public:
   AwaitableReady() noexcept = default;
-  bool await_ready() noexcept {
-    return true;
-  }
+  bool await_ready() noexcept { return true; }
   void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
   void await_resume() noexcept {}
 };

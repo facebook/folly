@@ -32,6 +32,7 @@
 #include <arpa/inet.h>
 #include <netinet/in.h>
 #include <netinet/tcp.h>
+#include <netinet/udp.h>
 #include <sys/socket.h>
 #include <sys/un.h>
 
@@ -63,6 +64,14 @@
 
 #ifndef ETH_MAX_MTU
 #define ETH_MAX_MTU 0xFFFFU
+#endif
+
+#ifndef UDP_NO_CHECK6_TX
+#define UDP_NO_CHECK6_TX 101 /* Disable sending checksum for UDP6X */
+#endif
+
+#ifndef UDP_NO_CHECK6_RX
+#define UDP_NO_CHECK6_RX 102 /* Disable accpeting checksum for UDP6 */
 #endif
 
 #ifndef UDP_SEGMENT

@@ -17,6 +17,8 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/SingletonThreadLocal.h>
+#include <folly/io/async/Request.h>
 
 namespace folly {
 namespace coro {
@@ -39,6 +41,7 @@ class UnsafeResumeInlineSemiAwaitable {
  private:
   Awaitable awaitable_;
 };
+
 } // namespace detail
 } // namespace coro
 } // namespace folly

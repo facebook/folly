@@ -97,7 +97,7 @@ TEST(RetryingTest, future_factory_throws) {
                       }
                     })
                     .wait()
-                    .getTry();
+                    .result();
   EXPECT_THROW(result.throwIfFailed(), ThrownException);
 }
 
@@ -207,6 +207,30 @@ TEST(RetryingTest, policy_capped_jittered_exponential_backoff_many_retries) {
   EXPECT_EQ(backoff, max_backoff);
 }
 
+TEST(RetryingTest, policy_capped_jittered_exponential_backoff_min_zero) {
+  using namespace futures::detail;
+  mt19937_64 rng(0);
+
+  Duration min_backoff(0);
+  Duration max_backoff(2000);
+
+  EXPECT_EQ(
+      retryingJitteredExponentialBackoffDur(5, min_backoff, max_backoff, 0, rng)
+          .count(),
+      0);
+
+  EXPECT_EQ(
+      retryingJitteredExponentialBackoffDur(5, min_backoff, max_backoff, 1, rng)
+          .count(),
+      0);
+
+  EXPECT_EQ(
+      retryingJitteredExponentialBackoffDur(
+          1025, min_backoff, max_backoff, 0, rng)
+          .count(),
+      0);
+}
+
 TEST(RetryingTest, policy_sleep_defaults) {
   multiAttemptExpectDurationWithin(5, milliseconds(200), milliseconds(400), [] {
     //  To ensure that this compiles with default params.
@@ -232,12 +256,10 @@ TEST(RetryingTest, large_retries) {
   newMemLimit.rlim_cur =
       std::min(static_cast<rlim_t>(1UL << 30), oldMemLimit.rlim_max);
   newMemLimit.rlim_max = oldMemLimit.rlim_max;
-  if (!folly::kIsSanitizeAddress) { // ASAN reserves outside of the rlimit
+  if (!folly::kIsSanitize) { // sanitizers reserve outside of the rlimit
     PCHECK(setrlimit(RLIMIT_AS, &newMemLimit) == 0);
   }
-  SCOPE_EXIT {
-    PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0);
-  };
+  SCOPE_EXIT { PCHECK(setrlimit(RLIMIT_AS, &oldMemLimit) == 0); };
 #endif
 
   TestExecutor executor(4);

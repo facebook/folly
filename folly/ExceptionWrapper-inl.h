@@ -59,6 +59,41 @@ struct exception_wrapper::arg_type_<Ret (*)(...)> {
   using type = AnyException;
 };
 
+#ifdef FOLLY_HAVE_NOEXCEPT_FUNCTION_TYPE
+template <class Ret, class Class, class Arg>
+struct exception_wrapper::arg_type_<Ret (Class::*)(Arg) noexcept> {
+  using type = Arg;
+};
+template <class Ret, class Class, class Arg>
+struct exception_wrapper::arg_type_<Ret (Class::*)(Arg) const noexcept> {
+  using type = Arg;
+};
+template <class Ret, class Arg>
+struct exception_wrapper::arg_type_<Ret(Arg) noexcept> {
+  using type = Arg;
+};
+template <class Ret, class Arg>
+struct exception_wrapper::arg_type_<Ret (*)(Arg) noexcept> {
+  using type = Arg;
+};
+template <class Ret, class Class>
+struct exception_wrapper::arg_type_<Ret (Class::*)(...) noexcept> {
+  using type = AnyException;
+};
+template <class Ret, class Class>
+struct exception_wrapper::arg_type_<Ret (Class::*)(...) const noexcept> {
+  using type = AnyException;
+};
+template <class Ret>
+struct exception_wrapper::arg_type_<Ret(...) noexcept> {
+  using type = AnyException;
+};
+template <class Ret>
+struct exception_wrapper::arg_type_<Ret (*)(...) noexcept> {
+  using type = AnyException;
+};
+#endif
+
 template <class Ret, class... Args>
 inline Ret exception_wrapper::noop_(Args...) {
   return Ret();
@@ -621,9 +656,7 @@ namespace exception_wrapper_detail {
 template <class Ex, class Fn>
 struct catch_fn {
   Fn fn_;
-  auto operator()(Ex& ex) {
-    return fn_(ex);
-  }
+  auto operator()(Ex& ex) { return fn_(ex); }
 };
 
 template <class Ex, class Fn>

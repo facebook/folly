@@ -1498,16 +1498,9 @@ struct TestStructDefaultAllocator {
   folly::basic_fbstring<char> stringMember;
 };
 
-template <class A>
-struct TestStructWithAllocator {
-  folly::basic_fbstring<char, std::char_traits<char>, A> stringMember;
-};
-
 std::atomic<size_t> allocatorConstructedCount(0);
 struct TestStructStringAllocator : std::allocator<char> {
-  TestStructStringAllocator() {
-    ++allocatorConstructedCount;
-  }
+  TestStructStringAllocator() { ++allocatorConstructedCount; }
 };
 
 } // namespace
@@ -1515,13 +1508,6 @@ struct TestStructStringAllocator : std::allocator<char> {
 TEST(FBStringCtorTest, DefaultInitStructDefaultAlloc) {
   TestStructDefaultAllocator t1{};
   EXPECT_TRUE(t1.stringMember.empty());
-}
-
-TEST(FBStringCtorTest, DefaultInitStructAlloc) {
-  EXPECT_EQ(allocatorConstructedCount.load(), 0);
-  TestStructWithAllocator<TestStructStringAllocator> t2;
-  EXPECT_TRUE(t2.stringMember.empty());
-  EXPECT_EQ(allocatorConstructedCount.load(), 1);
 }
 
 TEST(FBStringCtorTest, NullZeroConstruction) {

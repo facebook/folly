@@ -46,9 +46,7 @@ class Concatenator {
   void cat(const std::string& name);
   void cat(FILE* file);
 
-  bool printLineNumbers() const {
-    return printLineNumbers_;
-  }
+  bool printLineNumbers() const { return printLineNumbers_; }
 
  private:
   bool printLineNumbers_;
@@ -68,9 +66,7 @@ class Concatenator {
 void Concatenator::cat(FILE* file) {
   char* lineBuf = nullptr;
   size_t lineBufSize = 0;
-  SCOPE_EXIT {
-    free(lineBuf);
-  };
+  SCOPE_EXIT { free(lineBuf); };
 
   ssize_t n;
   while ((n = getline(&lineBuf, &lineBufSize, file)) >= 0) {

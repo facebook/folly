@@ -19,10 +19,24 @@
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
 
-#define FOLLY_SKIP_IF_NULLPTR_BACKEND(evb)      \
-  auto backend = TypeParam::getBackend();       \
-  SKIP_IF(!backend) << "Backend not available"; \
-  EventBase evb(std::move(backend))
+#define FOLLY_SKIP_IF_NULLPTR_BACKEND(evb)                           \
+  std::unique_ptr<EventBase> evb##Ptr;                               \
+  try {                                                              \
+    auto factory = [] {                                              \
+      auto backend = TypeParam::getBackend();                        \
+      if (!backend) {                                                \
+        throw std::runtime_error("backend not available");           \
+      }                                                              \
+      return backend;                                                \
+    };                                                               \
+    evb##Ptr = std::make_unique<EventBase>(                          \
+        EventBase::Options().setBackendFactory(std::move(factory))); \
+  } catch (const std::runtime_error& e) {                            \
+    if (std::string("backend not available") == e.what()) {          \
+      SKIP() << "Backend not available";                             \
+    }                                                                \
+  }                                                                  \
+  EventBase& evb = *evb##Ptr.get()
 
 namespace folly {
 namespace test {
@@ -30,9 +44,7 @@ class TestSignalHandler : public AsyncSignalHandler {
  public:
   using AsyncSignalHandler::AsyncSignalHandler;
 
-  void signalReceived(int /* signum */) noexcept override {
-    called = true;
-  }
+  void signalReceived(int /* signum */) noexcept override { called = true; }
 
   bool called{false};
 };

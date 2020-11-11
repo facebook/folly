@@ -33,9 +33,7 @@ class CompressionContextPool {
    public:
     using Pool = CompressionContextPool<T, Creator, Deleter>;
 
-    explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) {
-      DCHECK(pool);
-    }
+    explicit ReturnToPoolDeleter(Pool* pool) : pool_(pool) { DCHECK(pool); }
 
     void operator()(T* t) {
       InternalRef ptr(t, pool_->deleter_);
@@ -73,13 +71,9 @@ class CompressionContextPool {
     return Ref(ptr.release(), get_deleter());
   }
 
-  size_t size() {
-    return stack_.rlock()->size();
-  }
+  size_t size() { return stack_.rlock()->size(); }
 
-  ReturnToPoolDeleter get_deleter() {
-    return ReturnToPoolDeleter(this);
-  }
+  ReturnToPoolDeleter get_deleter() { return ReturnToPoolDeleter(this); }
 
  private:
   void add(InternalRef ptr) {

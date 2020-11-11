@@ -17,12 +17,18 @@
 #pragma once
 
 #include <folly/Traits.h>
+#include <folly/Unit.h>
+#include <folly/functional/Invoke.h>
+#include <folly/lang/CustomizationPoint.h>
 #include <glog/logging.h>
 #include <utility>
 
 namespace folly {
 namespace fibers {
 namespace async {
+
+template <typename T>
+class Async;
 
 namespace detail {
 /**
@@ -32,11 +38,24 @@ namespace detail {
 bool onFiber();
 } // namespace detail
 
-template <typename T>
-class Async;
-
-template <typename T>
-T&& await(Async<T>&&);
+struct await_fn {
+  template <typename T>
+  auto operator()(Async<T>&& async) const
+      noexcept(is_nothrow_tag_invocable<await_fn, Async<T>&&>::value)
+          -> tag_invoke_result_t<await_fn, Async<T>&&> {
+    return tag_invoke(*this, static_cast<Async<T>&&>(async));
+  }
+};
+/**
+ * Function to retrieve the result from the Async wrapper
+ * A function calling await must return an Async wrapper itself
+ * for the wrapper to serve its intended purpose (the best way to enforce this
+ * is static analysis)
+ */
+FOLLY_DEFINE_CPO(await_fn, await_async)
+#if !defined(_MSC_VER)
+static constexpr auto& await = await_async;
+#endif
 
 /**
  * Asynchronous fiber result wrapper
@@ -75,16 +94,23 @@ class [[nodiscard]] Async {
   // Move constructor to allow eager-return of async without using await
   template <typename U>
   /* implicit */ Async(Async<U> && async) noexcept
-      : val_(await(std::move(async))) {}
+      : val_(static_cast<U&&>(async.val_)) {}
 
   Async(const Async&) = delete;
   Async(Async && other) = default;
   Async& operator=(const Async&) = delete;
   Async& operator=(Async&&) = delete;
 
+  friend T&& tag_invoke(await_fn, Async && async) noexcept {
+    DCHECK(detail::onFiber());
+    return static_cast<T&&>(async.val_);
+  }
+
  private:
   T val_;
-  friend T&& await<T>(Async<T> &&);
+
+  template <typename U>
+  friend class Async;
 };
 
 template <>
@@ -93,10 +119,17 @@ class [[nodiscard]] Async<void> {
   typedef void inner_type;
 
   /* implicit */ Async() {}
+  /* implicit */ Async(Unit) {}
+  /* implicit */ Async(Async<Unit> &&) {}
+
   Async(const Async&) = delete;
   Async(Async && other) = default;
   Async& operator=(const Async&) = delete;
   Async operator=(Async&&) = delete;
+
+  friend void tag_invoke(await_fn, Async &&) noexcept {
+    DCHECK(detail::onFiber());
+  }
 };
 
 #if __cpp_deduction_guides >= 201703
@@ -109,33 +142,17 @@ explicit Async(T)->Async<T>;
 #endif
 
 /**
- * Function to retrieve the result from the Async wrapper
- * A function calling await must return an Async wrapper itself
- * for the wrapper to serve its intended purpose (the best way to enforce this
- * is static analysis)
- */
-template <typename T>
-T&& await(Async<T>&& async) {
-  DCHECK(detail::onFiber());
-  return static_cast<T&&>(async.val_);
-}
-
-inline void await(Async<void>&&) {
-  DCHECK(detail::onFiber());
-}
-
-/**
  * A utility to start annotating at top of stack (eg. the task which is added to
  * fiber manager) A function must not return an Async wrapper if it uses
  * `init_await` instead of `await` (again, enforce via static analysis)
  */
 template <typename T>
 T&& init_await(Async<T>&& async) {
-  return await(std::move(async));
+  return await_async(std::move(async));
 }
 
 inline void init_await(Async<void>&& async) {
-  await(std::move(async));
+  await_async(std::move(async));
 }
 
 // is_async
@@ -144,9 +161,7 @@ constexpr bool is_async_v = folly::detail::is_instantiation_of_v<Async, T>;
 
 // async_inner_type
 template <typename T>
-struct async_inner_type {
-  using type = T;
-};
+struct async_inner_type;
 
 template <typename T>
 struct async_inner_type<Async<T>> {
@@ -155,6 +170,14 @@ struct async_inner_type<Async<T>> {
 
 template <typename T>
 using async_inner_type_t = typename async_inner_type<T>::type;
+
+// async_invocable_inner_type
+template <typename F>
+using async_invocable_inner_type = async_inner_type<invoke_result_t<F>>;
+
+template <typename F>
+using async_invocable_inner_type_t =
+    typename async_invocable_inner_type<F>::type;
 
 } // namespace async
 } // namespace fibers

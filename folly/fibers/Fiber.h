@@ -29,6 +29,8 @@
 #include <folly/io/async/Request.h>
 
 namespace folly {
+struct AsyncStackRoot;
+
 namespace fibers {
 
 class Baton;
@@ -112,6 +114,7 @@ class Fiber {
   unsigned char* fiberStackLimit_;
   FiberImpl fiberImpl_; /**< underlying fiber implementation */
   std::shared_ptr<RequestContext> rcontext_; /**< current RequestContext */
+  folly::AsyncStackRoot* asyncRoot_ = nullptr;
   folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};
   bool stackFilledWithMagic_{false};

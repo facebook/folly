@@ -12,6 +12,7 @@ builder = cargo
 
 [cargo]
 build_doc = true
+workspace_dir =
 
 [shipit.pathmap]
 fbcode/common/rust/shed = shed

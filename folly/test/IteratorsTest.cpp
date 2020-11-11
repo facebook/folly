@@ -27,15 +27,9 @@ namespace {
 struct IntArrayIterator
     : IteratorFacade<IntArrayIterator, int const, std::forward_iterator_tag> {
   explicit IntArrayIterator(int const* a) : a_(a) {}
-  void increment() {
-    ++a_;
-  }
-  int const& dereference() const {
-    return *a_;
-  }
-  bool equal(IntArrayIterator const& rhs) const {
-    return rhs.a_ == a_;
-  }
+  void increment() { ++a_; }
+  int const& dereference() const { return *a_; }
+  bool equal(IntArrayIterator const& rhs) const { return rhs.a_ == a_; }
   int const* a_;
 };
 } // namespace
@@ -124,9 +118,7 @@ struct IntMapKeyIter : IteratorAdaptor<
       int const,
       std::forward_iterator_tag>;
   explicit IntMapKeyIter(std::map<int, int>::iterator iter) : Super(iter) {}
-  int const& dereference() const {
-    return base()->first;
-  }
+  int const& dereference() const { return base()->first; }
 };
 
 struct IntMapValueIter : IteratorAdaptor<
@@ -140,9 +132,7 @@ struct IntMapValueIter : IteratorAdaptor<
       int,
       std::forward_iterator_tag>;
   explicit IntMapValueIter(std::map<int, int>::iterator iter) : Super(iter) {}
-  int& dereference() const {
-    return base()->second;
-  }
+  int& dereference() const { return base()->second; }
 };
 
 } // namespace
@@ -192,9 +182,7 @@ struct IntMapValueIterConst : IteratorAdaptor<
       : Super(iter) {}
   /* implicit */ IntMapValueIterConst(IntMapValueIter const& rhs)
       : IntMapValueIterConst(rhs.base()) {}
-  int const& dereference() const {
-    return base()->second;
-  }
+  int const& dereference() const { return base()->second; }
 };
 } // namespace
 

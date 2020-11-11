@@ -427,9 +427,7 @@ class FormatValue<
  public:
   explicit FormatValue(T val) : val_(val) {}
 
-  T getValue() const {
-    return val_;
-  }
+  T getValue() const { return val_; }
 
   template <class FormatCallback>
   void format(FormatArg& arg, FormatCallback& cb) const {
@@ -932,9 +930,7 @@ struct KeyFromStringPiece;
 template <>
 struct KeyFromStringPiece<std::string> : public FormatTraitsBase {
   typedef std::string key_type;
-  static std::string convert(StringPiece s) {
-    return s.toString();
-  }
+  static std::string convert(StringPiece s) { return s.toString(); }
   typedef void enabled;
 };
 
@@ -942,18 +938,14 @@ struct KeyFromStringPiece<std::string> : public FormatTraitsBase {
 template <>
 struct KeyFromStringPiece<fbstring> : public FormatTraitsBase {
   typedef fbstring key_type;
-  static fbstring convert(StringPiece s) {
-    return s.to<fbstring>();
-  }
+  static fbstring convert(StringPiece s) { return s.to<fbstring>(); }
 };
 
 // StringPiece
 template <>
 struct KeyFromStringPiece<StringPiece> : public FormatTraitsBase {
   typedef StringPiece key_type;
-  static StringPiece convert(StringPiece s) {
-    return s;
-  }
+  static StringPiece convert(StringPiece s) { return s; }
 };
 
 // Base class for associative types keyed by strings

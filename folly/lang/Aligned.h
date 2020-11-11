@@ -73,24 +73,12 @@ class aligned {
     return *this;
   }
 
-  T* get() noexcept {
-    return &value_;
-  }
-  T const* get() const noexcept {
-    return &value_;
-  }
-  T* operator->() noexcept {
-    return &value_;
-  }
-  T const* operator->() const noexcept {
-    return &value_;
-  }
-  T& operator*() noexcept {
-    return value_;
-  }
-  T const& operator*() const noexcept {
-    return value_;
-  }
+  T* get() noexcept { return &value_; }
+  T const* get() const noexcept { return &value_; }
+  T* operator->() noexcept { return &value_; }
+  T const* operator->() const noexcept { return &value_; }
+  T& operator*() noexcept { return value_; }
+  T const& operator*() const noexcept { return value_; }
 
  private:
   alignas(Align) T value_;

@@ -26,9 +26,7 @@ using namespace folly;
 namespace {
 
 struct Data {
-  Data(unsigned char value) {
-    setValue(value);
-  }
+  Data(unsigned char value) { setValue(value); }
 
   void setValue(unsigned char value) {
     for (auto& item : contents) {

@@ -132,9 +132,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, MoveTest) {
 struct foo {
   static int moved;
   static int copied;
-  foo(foo&&) noexcept {
-    moved++;
-  }
+  foo(foo&&) noexcept { moved++; }
   foo& operator=(foo&&) {
     moved++;
     return *this;
@@ -143,9 +141,7 @@ struct foo {
     copied++;
     return *this;
   }
-  foo(const foo&) {
-    copied++;
-  }
+  foo(const foo&) { copied++; }
   foo() {}
 };
 int foo::moved{0};
@@ -201,18 +197,12 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapResizeTest) {
 TYPED_TEST_P(ConcurrentHashMapTest, MapNoCopiesTest) {
   struct Uncopyable {
     int i_;
-    Uncopyable(int i) {
-      i_ = i;
-    }
+    Uncopyable(int i) { i_ = i; }
     Uncopyable(const Uncopyable& that) = delete;
-    bool operator==(const Uncopyable& o) const {
-      return i_ == o.i_;
-    }
+    bool operator==(const Uncopyable& o) const { return i_ == o.i_; }
   };
   struct Hasher {
-    size_t operator()(const Uncopyable&) const {
-      return 0;
-    }
+    size_t operator()(const Uncopyable&) const { return 0; }
   };
   CHM<Uncopyable, Uncopyable, Hasher> foomap(2);
   EXPECT_TRUE(foomap.try_emplace(1, 1).second);
@@ -230,22 +220,16 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapNoCopiesTest) {
 TYPED_TEST_P(ConcurrentHashMapTest, MapMovableKeysTest) {
   struct Movable {
     int i_;
-    Movable(int i) {
-      i_ = i;
-    }
+    Movable(int i) { i_ = i; }
     Movable(const Movable&) = delete;
     Movable(Movable&& o) {
       i_ = o.i_;
       o.i_ = 0;
     }
-    bool operator==(const Movable& o) const {
-      return i_ == o.i_;
-    }
+    bool operator==(const Movable& o) const { return i_ == o.i_; }
   };
   struct Hasher {
-    size_t operator()(const Movable&) const {
-      return 0;
-    }
+    size_t operator()(const Movable&) const { return 0; }
   };
   CHM<Movable, Movable, Hasher> foomap(2);
   EXPECT_TRUE(foomap.insert(std::make_pair(Movable(10), Movable(1))).second);
@@ -326,6 +310,31 @@ TYPED_TEST_P(ConcurrentHashMapTest, EraseIfEqualTest) {
   EXPECT_EQ(0, f1->second);
   EXPECT_TRUE(foomap.erase_if_equal(1, 0));
   EXPECT_EQ(foomap.find(1), foomap.cend());
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, EraseIfTest) {
+  CHM<uint64_t, uint64_t> foomap(3);
+  foomap.insert(1, 0);
+  EXPECT_FALSE(
+      foomap.erase_key_if(1, [](const uint64_t& value) { return value == 1; }));
+  auto f1 = foomap.find(1);
+  EXPECT_EQ(0, f1->second);
+  EXPECT_TRUE(
+      foomap.erase_key_if(1, [](const uint64_t& value) { return value == 0; }));
+  EXPECT_EQ(foomap.find(1), foomap.cend());
+
+  CHM<std::string, std::weak_ptr<uint64_t>> barmap(3);
+  auto shared = std::make_shared<uint64_t>(123);
+  barmap.insert("test", shared);
+  EXPECT_FALSE(barmap.erase_key_if(
+      "test",
+      [](const std::weak_ptr<uint64_t>& ptr) { return ptr.expired(); }));
+  EXPECT_EQ(*barmap.find("test")->second.lock(), 123);
+  shared.reset();
+  EXPECT_TRUE(barmap.erase_key_if(
+      "test",
+      [](const std::weak_ptr<uint64_t>& ptr) { return ptr.expired(); }));
+  EXPECT_EQ(barmap.find("test"), barmap.cend());
 }
 
 TYPED_TEST_P(ConcurrentHashMapTest, CopyIterator) {
@@ -588,9 +597,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, assignStressTest) {
     uint64_t v6;
     uint64_t v7;
     uint64_t v8;
-    void set(uint64_t v) {
-      v1 = v2 = v3 = v4 = v5 = v6 = v7 = v8 = v;
-    }
+    void set(uint64_t v) { v1 = v2 = v3 = v4 = v5 = v6 = v7 = v8 = v; }
     void check() const {
       auto v = v1;
       EXPECT_EQ(v, v8);
@@ -639,9 +646,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, assignStressTest) {
 
 TYPED_TEST_P(ConcurrentHashMapTest, RefcountTest) {
   struct badhash {
-    size_t operator()(uint64_t) const {
-      return 0;
-    }
+    size_t operator()(uint64_t) const { return 0; }
   };
   CHM<uint64_t,
       uint64_t,
@@ -660,9 +665,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, RefcountTest) {
 
 struct Wrapper {
   explicit Wrapper(bool& del_) : del(del_) {}
-  ~Wrapper() {
-    del = true;
-  }
+  ~Wrapper() { del = true; }
 
   bool& del;
 };
@@ -850,6 +853,7 @@ REGISTER_TYPED_TEST_CASE_P(
     DeletionWithForLoop,
     DeletionWithIterator,
     EraseIfEqualTest,
+    EraseIfTest,
     EraseInIterateTest,
     EraseStressTest,
     EraseTest,

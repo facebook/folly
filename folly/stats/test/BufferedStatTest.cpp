@@ -29,18 +29,14 @@ struct MockClock {
   using duration = std::chrono::steady_clock::duration;
   using time_point = std::chrono::steady_clock::time_point;
 
-  static time_point now() {
-    return Now;
-  }
+  static time_point now() { return Now; }
 
   static time_point Now;
 };
 
 class SimpleDigest {
  public:
-  explicit SimpleDigest(size_t sz) {
-    EXPECT_EQ(kDigestSize, sz);
-  }
+  explicit SimpleDigest(size_t sz) { EXPECT_EQ(kDigestSize, sz); }
 
   SimpleDigest merge(Range<const double*> r) const {
     SimpleDigest digest(100);
@@ -62,13 +58,9 @@ class SimpleDigest {
     return digest;
   }
 
-  std::vector<double> getValues() const {
-    return values_;
-  }
+  std::vector<double> getValues() const { return values_; }
 
-  bool empty() const {
-    return values_.empty();
-  }
+  bool empty() const { return values_.empty(); }
 
  private:
   std::vector<double> values_;

@@ -34,9 +34,7 @@ namespace folly {
  */
 class StreamHandlerFactory : public LogHandlerFactory {
  public:
-  StringPiece getType() const override {
-    return "stream";
-  }
+  StringPiece getType() const override { return "stream"; }
 
   std::shared_ptr<LogHandler> createHandler(const Options& options) override;
 

@@ -513,9 +513,7 @@ class IOBuf {
   /**
    * Get the pointer to the start of the data.
    */
-  const uint8_t* data() const {
-    return data_;
-  }
+  const uint8_t* data() const { return data_; }
 
   /**
    * Get a writable pointer to the start of the data.
@@ -523,16 +521,12 @@ class IOBuf {
    * The caller is responsible for calling unshare() first to ensure that it is
    * actually safe to write to the buffer.
    */
-  uint8_t* writableData() {
-    return data_;
-  }
+  uint8_t* writableData() { return data_; }
 
   /**
    * Get the pointer to the end of the data.
    */
-  const uint8_t* tail() const {
-    return data_ + length_;
-  }
+  const uint8_t* tail() const { return data_ + length_; }
 
   /**
    * Get a writable pointer to the end of the data.
@@ -540,35 +534,27 @@ class IOBuf {
    * The caller is responsible for calling unshare() first to ensure that it is
    * actually safe to write to the buffer.
    */
-  uint8_t* writableTail() {
-    return data_ + length_;
-  }
+  uint8_t* writableTail() { return data_ + length_; }
 
   /**
    * Get the length of the data for this individual IOBuf in the chain. See
    * computeChainDataLength() for the sum of data length for the full chain.
    */
-  std::size_t length() const {
-    return length_;
-  }
+  std::size_t length() const { return length_; }
 
   /**
    * Get the amount of head room.
    *
    * Returns the number of bytes in the buffer before the start of the data.
    */
-  std::size_t headroom() const {
-    return std::size_t(data_ - buffer());
-  }
+  std::size_t headroom() const { return std::size_t(data_ - buffer()); }
 
   /**
    * Get the amount of tail room.
    *
    * Returns the number of bytes in the buffer after the end of the data.
    */
-  std::size_t tailroom() const {
-    return std::size_t(bufferEnd() - tail());
-  }
+  std::size_t tailroom() const { return std::size_t(bufferEnd() - tail()); }
 
   /**
    * Get the pointer to the start of the buffer.
@@ -577,9 +563,7 @@ class IOBuf {
    * not the start of valid data within the buffer.  Use the data() method to
    * get a pointer to the start of the data within the buffer.
    */
-  const uint8_t* buffer() const {
-    return buf_;
-  }
+  const uint8_t* buffer() const { return buf_; }
 
   /**
    * Get a writable pointer to the start of the buffer.
@@ -587,9 +571,7 @@ class IOBuf {
    * The caller is responsible for calling unshare() first to ensure that it is
    * actually safe to write to the buffer.
    */
-  uint8_t* writableBuffer() {
-    return buf_;
-  }
+  uint8_t* writableBuffer() { return buf_; }
 
   /**
    * Get the pointer to the end of the buffer.
@@ -598,9 +580,7 @@ class IOBuf {
    * not the end of valid data within the buffer.  Use the tail() method to
    * get a pointer to the end of the data within the buffer.
    */
-  const uint8_t* bufferEnd() const {
-    return buf_ + capacity_;
-  }
+  const uint8_t* bufferEnd() const { return buf_ + capacity_; }
 
   /**
    * Get the total size of the buffer.
@@ -608,29 +588,19 @@ class IOBuf {
    * This returns the total usable length of the buffer.  Use the length()
    * method to get the length of the actual valid data in this IOBuf.
    */
-  std::size_t capacity() const {
-    return capacity_;
-  }
+  std::size_t capacity() const { return capacity_; }
 
   /**
    * Get a pointer to the next IOBuf in this chain.
    */
-  IOBuf* next() {
-    return next_;
-  }
-  const IOBuf* next() const {
-    return next_;
-  }
+  IOBuf* next() { return next_; }
+  const IOBuf* next() const { return next_; }
 
   /**
    * Get a pointer to the previous IOBuf in this chain.
    */
-  IOBuf* prev() {
-    return prev_;
-  }
-  const IOBuf* prev() const {
-    return prev_;
-  }
+  IOBuf* prev() { return prev_; }
+  const IOBuf* prev() const { return prev_; }
 
   /**
    * Shift the data forwards in the buffer.
@@ -997,9 +967,7 @@ class IOBuf {
    * (and so the lifetime of the underlying memory can be extended by
    * cloneOne()).
    */
-  bool isManagedOne() const noexcept {
-    return sharedInfo();
-  }
+  bool isManagedOne() const noexcept { return sharedInfo(); }
 
   /**
    * For most of the use-cases where it seems like a good idea to call this
@@ -1275,17 +1243,13 @@ class IOBuf {
    * Similar to Clone(). But use other as the head node. Other nodes in the
    * chain (if any) will be allocted on heap.
    */
-  void cloneInto(IOBuf& other) const {
-    other = cloneAsValue();
-  }
+  void cloneInto(IOBuf& other) const { other = cloneAsValue(); }
 
   /**
    * Similar to CloneOne(). But to fill an existing IOBuf instead of a new
    * IOBuf.
    */
-  void cloneOneInto(IOBuf& other) const {
-    other = cloneOneAsValue();
-  }
+  void cloneOneInto(IOBuf& other) const { other = cloneOneAsValue(); }
 
   /**
    * Return an iovector suitable for e.g. writev()
@@ -1753,9 +1717,7 @@ class IOBuf::Iterator : public detail::IteratorFacade<
     return *this;
   }
 
-  const ByteRange& dereference() const {
-    return val_;
-  }
+  const ByteRange& dereference() const { return val_; }
 
   bool equal(const Iterator& other) const {
     // We must compare end_ in addition to pos_, because forward traversal
@@ -1770,9 +1732,7 @@ class IOBuf::Iterator : public detail::IteratorFacade<
   }
 
  private:
-  void setVal() {
-    val_ = ByteRange(pos_->data(), pos_->tail());
-  }
+  void setVal() { val_ = ByteRange(pos_->data(), pos_->tail()); }
 
   void adjustForEnd() {
     if (pos_ == end_) {

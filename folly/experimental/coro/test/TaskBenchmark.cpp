@@ -64,9 +64,7 @@ template <int Tag>
 class Derived : public Base {
  public:
   FOLLY_NOINLINE
-  folly::coro::Task<int> virtualMethod() override {
-    co_return Tag;
-  }
+  folly::coro::Task<int> virtualMethod() override { co_return Tag; }
 };
 
 FOLLY_NOINLINE

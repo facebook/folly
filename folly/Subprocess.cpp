@@ -39,6 +39,7 @@
 #include <folly/Exception.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
+#include <folly/detail/AtFork.h>
 #include <folly/io/Cursor.h>
 #include <folly/lang/Assume.h>
 #include <folly/portability/Sockets.h>
@@ -444,9 +445,15 @@ void Subprocess::spawnInternal(
     if (options.detach_) {
       // If we are detaching we must use fork() instead of vfork() for the first
       // fork, since we aren't going to simply call exec() in the child.
-      pid = fork();
+      pid = detail::AtFork::forkInstrumented(fork);
     } else {
-      pid = vfork();
+      if (kIsSanitizeThread) {
+        // TSAN treats vfork as fork, so use the instrumented version
+        // instead
+        pid = detail::AtFork::forkInstrumented(fork);
+      } else {
+        pid = vfork();
+      }
     }
 #ifdef __linux__
   }
@@ -461,7 +468,13 @@ void Subprocess::spawnInternal(
         pid = syscall(SYS_clone, *options.cloneFlags_, 0, nullptr, nullptr);
       } else {
 #endif
-        pid = vfork();
+        if (kIsSanitizeThread) {
+          // TSAN treats vfork as fork, so use the instrumented version
+          // instead
+          pid = detail::AtFork::forkInstrumented(fork);
+        } else {
+          pid = vfork();
+        }
 #ifdef __linux__
       }
 #endif

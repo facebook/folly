@@ -48,9 +48,7 @@ class TimePoint {
         timeEnd_.time_since_epoch().count() == 0 && timeWaiting_.count() == 0);
   }
 
-  std::chrono::steady_clock::time_point getTime() const {
-    return timeStart_;
-  }
+  std::chrono::steady_clock::time_point getTime() const { return timeStart_; }
 
   std::chrono::steady_clock::time_point getTimeStart() const {
     return timeStart_;
@@ -60,13 +58,9 @@ class TimePoint {
     return timeStart_;
   }
 
-  std::chrono::nanoseconds getTimeWaiting() const {
-    return timeWaiting_;
-  }
+  std::chrono::nanoseconds getTimeWaiting() const { return timeWaiting_; }
 
-  pid_t getTid() const {
-    return tid_;
-  }
+  pid_t getTid() const { return tid_; }
 
  private:
   std::chrono::steady_clock::time_point timeStart_;

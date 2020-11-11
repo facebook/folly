@@ -190,6 +190,7 @@ TEST_F(RequestContextTest, testSetUnset) {
 
   // onSet called in setContextData
   EXPECT_EQ(1, testData1->set_);
+  EXPECT_EQ(ctx1.get(), testData1->onSetRctx);
 
   // Override RequestContext
   RequestContext::create();
@@ -199,14 +200,19 @@ TEST_F(RequestContextTest, testSetUnset) {
 
   // onSet called in setContextData
   EXPECT_EQ(1, testData2->set_);
+  EXPECT_EQ(ctx2.get(), testData2->onSetRctx);
 
   // Check ctx1->onUnset was called
   EXPECT_EQ(1, testData1->unset_);
+  EXPECT_EQ(ctx1.get(), testData1->onUnSetRctx);
 
   RequestContext::setContext(ctx1);
   EXPECT_EQ(2, testData1->set_);
   EXPECT_EQ(1, testData1->unset_);
   EXPECT_EQ(1, testData2->unset_);
+  EXPECT_EQ(ctx1.get(), testData1->onSetRctx);
+  EXPECT_EQ(ctx1.get(), testData1->onUnSetRctx);
+  EXPECT_EQ(ctx2.get(), testData2->onUnSetRctx);
 
   RequestContext::setContext(ctx2);
   EXPECT_EQ(2, testData1->set_);
@@ -225,9 +231,7 @@ TEST_F(RequestContextTest, deadlockTest) {
           val_, std::make_unique<TestData>(1));
     }
 
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
 
     std::string val_;
   };
@@ -254,9 +258,7 @@ TEST_F(RequestContextTest, sharedGlobalTest) {
       global = false;
     }
 
-    bool hasCallback() override {
-      return true;
-    }
+    bool hasCallback() override { return true; }
   };
 
   intptr_t root = 0;
@@ -409,9 +411,7 @@ TEST_F(RequestContextTest, Clear) {
       EXPECT_TRUE(cleared);
       deleted = true;
     }
-    bool hasCallback() override {
-      return false;
-    }
+    bool hasCallback() override { return false; }
     void onClear() override {
       EXPECT_FALSE(cleared);
       cleared = true;

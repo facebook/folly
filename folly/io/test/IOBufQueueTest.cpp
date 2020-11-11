@@ -37,9 +37,7 @@ namespace {
 
 IOBufQueue::Options clOptions;
 struct Initializer {
-  Initializer() {
-    clOptions.cacheChainLength = true;
-  }
+  Initializer() { clOptions.cacheChainLength = true; }
 };
 Initializer initializer;
 

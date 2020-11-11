@@ -52,12 +52,8 @@ struct Widget {
   static int totalVal_;
   static int totalMade_;
   int val_;
-  Widget() : val_(0) {
-    totalMade_++;
-  }
-  ~Widget() {
-    totalVal_ += val_;
-  }
+  Widget() : val_(0) { totalMade_++; }
+  ~Widget() { totalVal_ += val_; }
 
   static void customDeleter(Widget* w, TLPDestructionMode mode) {
     totalVal_ += (mode == TLPDestructionMode::ALL_THREADS) ? 1000 : 1;
@@ -358,9 +354,7 @@ class SimpleThreadCachedInt {
   ThreadLocal<int, NewTag> val_;
 
  public:
-  void add(int val) {
-    *val_ += val;
-  }
+  void add(int val) { *val_ += val; }
 
   int read() {
     int ret = 0;
@@ -462,9 +456,7 @@ class ThreadCachedIntWidget {
     }
   }
 
-  void set(detail::ThreadCachedInts<void>* ints) {
-    ints_ = ints;
-  }
+  void set(detail::ThreadCachedInts<void>* ints) { ints_ = ints; }
 
  private:
   detail::ThreadCachedInts<void>* ints_{nullptr};
@@ -512,14 +504,10 @@ class FillObject {
     }
   }
 
-  ~FillObject() {
-    ++gDestroyed;
-  }
+  ~FillObject() { ++gDestroyed; }
 
  private:
-  uint64_t val() const {
-    return (idx_ << 40) | folly::getCurrentThreadID();
-  }
+  uint64_t val() const { return (idx_ << 40) | folly::getCurrentThreadID(); }
 
   uint64_t idx_;
   uint64_t data_[kFillObjectSize];
@@ -639,9 +627,7 @@ class HoldsOne {
  public:
   HoldsOne() : value_(1) {}
   // Do an actual access to catch the buggy case where this == nullptr
-  int value() const {
-    return value_;
-  }
+  int value() const { return value_; }
 
  private:
   int value_;

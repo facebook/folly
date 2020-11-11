@@ -76,9 +76,7 @@ class Random {
         std::is_integral<T>::value && !std::is_same<T, bool>::value,
         T>::type;
 
-    result_type operator()() {
-      return Random::secureRandom<result_type>();
-    }
+    result_type operator()() { return Random::secureRandom<result_type>(); }
 
     static constexpr result_type min() {
       return std::numeric_limits<result_type>::min();
@@ -118,9 +116,7 @@ class Random {
   /**
    * Returns a secure random uint32_t
    */
-  static uint32_t secureRand32() {
-    return secureRandom<uint32_t>();
-  }
+  static uint32_t secureRand32() { return secureRandom<uint32_t>(); }
 
   /**
    * Returns a secure random uint32_t in [0, max). If max == 0, returns 0.
@@ -141,9 +137,7 @@ class Random {
   /**
    * Returns a secure random uint64_t
    */
-  static uint64_t secureRand64() {
-    return secureRandom<uint64_t>();
-  }
+  static uint64_t secureRand64() { return secureRandom<uint64_t>(); }
 
   /**
    * Returns a secure random uint64_t in [0, max). If max == 0, returns 0.
@@ -210,9 +204,7 @@ class Random {
   /**
    * Returns a random uint32_t
    */
-  static uint32_t rand32() {
-    return rand32(ThreadLocalPRNG());
-  }
+  static uint32_t rand32() { return rand32(ThreadLocalPRNG()); }
 
   /**
    * Returns a random uint32_t given a specific RNG
@@ -260,9 +252,7 @@ class Random {
   /**
    * Returns a random uint64_t
    */
-  static uint64_t rand64() {
-    return rand64(ThreadLocalPRNG());
-  }
+  static uint64_t rand64() { return rand64(ThreadLocalPRNG()); }
 
   /**
    * Returns a random uint64_t
@@ -308,9 +298,7 @@ class Random {
   /**
    * Returns true 1/n of the time. If n == 0, always returns false
    */
-  static bool oneIn(uint32_t n) {
-    return oneIn(n, ThreadLocalPRNG());
-  }
+  static bool oneIn(uint32_t n) { return oneIn(n, ThreadLocalPRNG()); }
 
   /**
    * Returns true 1/n of the time. If n == 0, always returns false
@@ -326,9 +314,7 @@ class Random {
   /**
    * Returns a double in [0, 1)
    */
-  static double randDouble01() {
-    return randDouble01(ThreadLocalPRNG());
-  }
+  static double randDouble01() { return randDouble01(ThreadLocalPRNG()); }
 
   /**
    * Returns a double in [0, 1)

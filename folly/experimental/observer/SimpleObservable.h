@@ -32,7 +32,7 @@ class SimpleObservable {
   void setValue(T value);
   void setValue(std::shared_ptr<const T> value);
 
-  Observer<T> getObserver();
+  auto getObserver();
 
  private:
   struct Context {
@@ -43,7 +43,8 @@ class SimpleObservable {
   std::shared_ptr<Context> context_;
 
   std::once_flag observerInit_;
-  folly::Optional<Observer<T>> observer_;
+  folly::Optional<Observer<typename observer_detail::Unwrap<T>::type>>
+      observer_;
 };
 } // namespace observer
 } // namespace folly

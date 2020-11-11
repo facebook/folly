@@ -41,9 +41,7 @@ class des {
 
  public:
   des(bool* d) : d_(d) {}
-  ~des() {
-    *d_ = true;
-  }
+  ~des() { *d_ = true; }
 };
 
 TEST(RcuTest, Guard) {
@@ -279,13 +277,34 @@ TEST(RcuTest, RcuObjBase) {
   struct base_test : rcu_obj_base<base_test> {
     bool* ret_;
     base_test(bool* ret) : ret_(ret) {}
-    ~base_test() {
-      (*ret_) = true;
-    }
+    ~base_test() { (*ret_) = true; }
   };
 
   auto foo = new base_test(&retired);
   foo->retire();
   synchronize_rcu();
   EXPECT_TRUE(retired);
+}
+
+TEST(RcuTest, Tsan) {
+  int data = 0;
+  std::thread t1([&] {
+    auto epoch = rcu_default_domain()->lock_shared();
+    data = 1;
+    rcu_default_domain()->unlock_shared(std::move(epoch));
+    // Delay before exiting so the thread is still alive for TSAN detection.
+    std::this_thread::sleep_for(std::chrono::milliseconds(200));
+  });
+
+  std::thread t2([&] {
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    // This should establish a happens-before relationship between the earlier
+    // write (data = 1) and this write below (data = 2).
+    rcu_default_domain()->synchronize();
+    data = 2;
+  });
+
+  t1.join();
+  t2.join();
+  EXPECT_EQ(data, 2);
 }

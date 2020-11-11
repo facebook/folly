@@ -21,8 +21,8 @@ namespace folly {
 template class SharedMutexImpl<true>;
 template class SharedMutexImpl<false>;
 
-namespace detail {
-std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr) {
+namespace shared_mutex_detail {
+std::unique_lock<std::mutex> annotationGuard(void* ptr) {
   if (folly::kIsSanitizeThread) {
     // On TSAN builds, we have an array of mutexes and index into them based on
     // the address. If the array is of prime size things will work out okay
@@ -35,6 +35,16 @@ std::unique_lock<std::mutex> sharedMutexAnnotationGuard(void* ptr) {
     return std::unique_lock<std::mutex>();
   }
 }
-} // namespace detail
 
+uint32_t getMaxDeferredReadersSlow(std::atomic<uint32_t>& cache) {
+  uint32_t maxDeferredReaders = std::min(
+      static_cast<uint32_t>(
+          folly::nextPowTwo(CacheLocality::system().numCpus) << 1),
+      shared_mutex_detail::kMaxDeferredReadersAllocated);
+  // maxDeferredReaders must be a power of 2
+  assert(!(maxDeferredReaders & (maxDeferredReaders - 1)));
+  cache.store(maxDeferredReaders, std::memory_order_release);
+  return maxDeferredReaders;
+}
+} // namespace shared_mutex_detail
 } // namespace folly

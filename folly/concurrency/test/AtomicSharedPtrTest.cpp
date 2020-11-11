@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/portability/Config.h>
+
 // AtomicSharedPtr-detail.h only works with libstdc++, so skip these tests for
 // other vendors
 #ifdef FOLLY_USE_LIBSTDCPP
@@ -40,12 +42,8 @@ DEFINE_int64(seed, 0, "Seed for random number generators");
 DEFINE_int32(num_threads, 32, "Number of threads");
 
 struct foo {
-  foo() {
-    c_count++;
-  }
-  ~foo() {
-    d_count++;
-  }
+  foo() { c_count++; }
+  ~foo() { d_count++; }
 };
 
 TEST(AtomicSharedPtr, operators) {

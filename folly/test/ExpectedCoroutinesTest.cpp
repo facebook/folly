@@ -41,22 +41,12 @@ class Err {
   Err& operator=(Err const&) = default;
   Err& operator=(Err&&) = default;
 
-  friend bool operator==(Err a, Err b) {
-    return a.type_ == b.type_;
-  }
-  friend bool operator!=(Err a, Err b) {
-    return a.type_ != b.type_;
-  }
+  friend bool operator==(Err a, Err b) { return a.type_ == b.type_; }
+  friend bool operator!=(Err a, Err b) { return a.type_ != b.type_; }
 
-  static constexpr Err bad() {
-    return Type::Bad;
-  }
-  static constexpr Err badder() {
-    return Type::Badder;
-  }
-  static constexpr Err baddest() {
-    return Type::Baddest;
-  }
+  static constexpr Err bad() { return Type::Bad; }
+  static constexpr Err badder() { return Type::Badder; }
+  static constexpr Err baddest() { return Type::Baddest; }
 };
 
 Expected<int, Err> f1() {
@@ -128,9 +118,7 @@ TEST(Expected, CoroutineException) {
 TEST(Expected, CoroutineCleanedUp) {
   int count_dest = 0;
   auto r = [&]() -> Expected<int, Err> {
-    SCOPE_EXIT {
-      ++count_dest;
-    };
+    SCOPE_EXIT { ++count_dest; };
     auto x = co_await Expected<int, Err>(makeUnexpected(Err::badder()));
     ADD_FAILURE() << "Should not be resuming";
     co_return x;

@@ -139,23 +139,13 @@ class Indestructible final {
     check();
     return &storage_.value;
   }
-  T& operator*() noexcept {
-    return *get();
-  }
-  T const& operator*() const noexcept {
-    return *get();
-  }
-  T* operator->() noexcept {
-    return get();
-  }
-  T const* operator->() const noexcept {
-    return get();
-  }
+  T& operator*() noexcept { return *get(); }
+  T const& operator*() const noexcept { return *get(); }
+  T* operator->() noexcept { return get(); }
+  T const* operator->() const noexcept { return get(); }
 
  private:
-  void check() const noexcept {
-    assert(!erased_);
-  }
+  void check() const noexcept { assert(!erased_); }
 
   union Storage {
     T value;

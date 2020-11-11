@@ -508,9 +508,7 @@ struct AtomicHashArray<
   // Returns unique index that can be used with findAt().
   // WARNING: The following function will fail silently for hashtable
   // with capacity > 2^32
-  uint32_t getIndex() const {
-    return offset_;
-  }
+  uint32_t getIndex() const { return offset_; }
 
   void advancePastEmpty() {
     while (offset_ < aha_->capacity_ && !isValid()) {
@@ -532,9 +530,7 @@ struct AtomicHashArray<
     return aha_ == o.aha_ && offset_ == o.offset_;
   }
 
-  IterVal& dereference() const {
-    return aha_->cells_[offset_];
-  }
+  IterVal& dereference() const { return aha_->cells_[offset_]; }
 
   bool isValid() const {
     KeyT key = acquireLoadKey(aha_->cells_[offset_]);

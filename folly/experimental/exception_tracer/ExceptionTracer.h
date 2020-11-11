@@ -24,6 +24,10 @@
 #include <typeinfo>
 #include <vector>
 
+#include <folly/portability/Config.h>
+
+#if FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF
+
 namespace folly {
 namespace exception_tracer {
 
@@ -54,3 +58,5 @@ void installHandlers();
 
 } // namespace exception_tracer
 } // namespace folly
+
+#endif // FOLLY_HAVE_ELF && FOLLY_HAVE_DWARF

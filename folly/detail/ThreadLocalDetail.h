@@ -34,6 +34,7 @@
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/AtFork.h>
+#include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
@@ -73,7 +74,8 @@ struct ThreadEntry;
  * StaticMetaBase::lock_
  */
 struct ThreadEntryNode {
-  uint32_t id;
+  uint32_t id : 31; // Note: this will never be kEntryIDInvalid.
+  bool isZero : 1; // equivalent to !next, but used only in one thread
   ThreadEntry* parent;
   ThreadEntry* prev;
   ThreadEntry* next;
@@ -82,27 +84,23 @@ struct ThreadEntryNode {
 
   void init(ThreadEntry* entry, uint32_t newId) {
     id = newId;
+    isZero = false;
     parent = prev = next = entry;
   }
 
   void initZero(ThreadEntry* entry, uint32_t newId) {
     id = newId;
+    isZero = true;
     parent = entry;
     prev = next = nullptr;
   }
 
   // if the list this node is part of is empty
-  FOLLY_ALWAYS_INLINE bool empty() const {
-    return (next == parent);
-  }
+  FOLLY_ALWAYS_INLINE bool empty() const { return (next == parent); }
 
-  FOLLY_ALWAYS_INLINE bool zero() const {
-    return (!prev);
-  }
+  FOLLY_ALWAYS_INLINE bool zero() const { return isZero; }
 
-  FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() {
-    return parent;
-  }
+  FOLLY_ALWAYS_INLINE ThreadEntry* getThreadEntry() { return parent; }
 
   FOLLY_ALWAYS_INLINE ThreadEntryNode* getPrev();
 
@@ -274,9 +272,7 @@ class PthreadKeyUnregister {
 #endif
   }
 
-  static void registerKey(pthread_key_t key) {
-    instance_.registerKeyImpl(key);
-  }
+  static void registerKey(pthread_key_t key) { instance_.registerKeyImpl(key); }
 
  private:
   /**
@@ -290,7 +286,8 @@ class PthreadKeyUnregister {
   void registerKeyImpl(pthread_key_t key) {
     MSLGuard lg(lock_);
     if (size_ == kMaxKeys) {
-      throw std::logic_error("pthread_key limit has already been reached");
+      throw_exception<std::logic_error>(
+          "pthread_key limit has already been reached");
     }
     keys_[size_++] = key;
   }
@@ -327,13 +324,7 @@ struct StaticMetaBase {
     EntryID(const EntryID& other) = delete;
     EntryID& operator=(const EntryID& other) = delete;
 
-    uint32_t getOrInvalid() {
-      // It's OK for this to be relaxed, even though we're effectively doing
-      // double checked locking in using this value. We only care about the
-      // uniqueness of IDs, getOrAllocate does not modify any other memory
-      // this thread will use.
-      return value.load(std::memory_order_relaxed);
-    }
+    uint32_t getOrInvalid() { return value.load(std::memory_order_acquire); }
 
     uint32_t getOrAllocate(StaticMetaBase& meta) {
       uint32_t id = getOrInvalid();
@@ -495,9 +486,7 @@ struct StaticMeta final : StaticMetaBase {
     return instance().lock_.try_lock(); // Make sure it's created
   }
 
-  static void onForkParent() {
-    instance().lock_.unlock();
-  }
+  static void onForkParent() { instance().lock_.unlock(); }
 
   static void onForkChild() {
     // only the current thread survives

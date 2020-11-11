@@ -20,13 +20,13 @@ html: $(HTML)
 	$(PANDOC) -f markdown -o $*.pdf $*.md
 
 %.html: %.md style.css
-	$(PANDOC) $(PANDOCARGS) -H style.css -f markdown -t html --toc -o $*.html $*.md
+	$(PANDOC) $(PANDOCARGS) -H style.css -f markdown -t html --toc -o $*.html $*.md --metadata title="$(shell head -n1 $*.md | sed -e 's|`||g')"
 
 docs.md: $(SOURCES) style.css
 	$(PANDOC) $(PANDOCARGS) -H style.css -f markdown -t markdown --toc -o $@ *.md
 
 index.html: $(SOURCES) style.css
-	$(PANDOC) $(PANDOCARGS) -H style.css -f markdown -t html --toc -o $@ *.md
+	$(PANDOC) $(PANDOCARGS) -H style.css -f markdown -t html --toc -o $@ *.md --metadata title="Folly API Documentation"
 
 
 clean:

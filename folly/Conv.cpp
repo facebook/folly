@@ -397,9 +397,9 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
   auto* e = src->end();
   auto* b =
       std::find_if_not(src->begin(), e, [](char c) { return std::isspace(c); });
-
-  // There must be non-whitespace, otherwise we would have caught this above
-  assert(b < e);
+  if (b == e) {
+    return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
+  }
   auto size = size_t(e - b);
 
   bool negative = false;
@@ -407,7 +407,11 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
     negative = true;
     ++b;
     --size;
+    if (size == 0) {
+      return makeUnexpected(ConversionCode::STRING_TO_FLOAT_ERROR);
+    }
   }
+  assert(size > 0);
 
   result = 0.0;
 
@@ -517,17 +521,11 @@ class SignedValueHandler<T, true> {
 template <typename T>
 class SignedValueHandler<T, false> {
  public:
-  ConversionCode init(const char*&) {
-    return ConversionCode::SUCCESS;
-  }
+  ConversionCode init(const char*&) { return ConversionCode::SUCCESS; }
 
-  ConversionCode overflow() {
-    return ConversionCode::POSITIVE_OVERFLOW;
-  }
+  ConversionCode overflow() { return ConversionCode::POSITIVE_OVERFLOW; }
 
-  Expected<T, ConversionCode> finalize(T value) {
-    return value;
-  }
+  Expected<T, ConversionCode> finalize(T value) { return value; }
 };
 
 /**

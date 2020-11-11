@@ -383,11 +383,6 @@ using namespace FOLLY_GFLAGS_NAMESPACE;
 } // namespace gflags
 #endif
 
-// for TARGET_OS_IPHONE
-#ifdef __APPLE__
-#include <TargetConditionals.h> // @manual
-#endif
-
 // RTTI may not be enabled for this compilation unit.
 #if defined(__GXX_RTTI) || defined(__cpp_rtti) || \
     (defined(_MSC_VER) && defined(_CPPRTTI))
@@ -407,6 +402,30 @@ constexpr bool const kHasRtti = FOLLY_HAS_RTTI;
 // This priority is already used by JEMalloc and other memory allocators so
 // we will take the next one.
 #define FOLLY_STATIC_CTOR_PRIORITY_MAX __attribute__((__init_priority__(102)))
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_IOS
+#define FOLLY_APPLE_IOS 1
+#else
+#define FOLLY_APPLE_IOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_OSX
+#define FOLLY_APPLE_MACOS 1
+#else
+#define FOLLY_APPLE_MACOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_TV
+#define FOLLY_APPLE_TVOS 1
+#else
+#define FOLLY_APPLE_TVOS 0
+#endif
+
+#if defined(__APPLE__) && TARGET_OS_WATCH
+#define FOLLY_APPLE_WATCHOS 1
+#else
+#define FOLLY_APPLE_WATCHOS 0
 #endif
 
 namespace folly {
@@ -434,6 +453,17 @@ constexpr auto kIsWindows = true;
 #else
 constexpr auto kIsWindows = false;
 #endif
+
+#if defined(__APPLE__)
+constexpr auto kIsApple = true;
+#else
+constexpr auto kIsApple = false;
+#endif
+
+constexpr bool kIsAppleIOS = FOLLY_APPLE_IOS == 1;
+constexpr bool kIsAppleMacOS = FOLLY_APPLE_MACOS == 1;
+constexpr bool kIsAppleTVOS = FOLLY_APPLE_TVOS == 1;
+constexpr bool kIsAppleWatchOS = FOLLY_APPLE_WATCHOS == 1;
 
 #if __GLIBCXX__
 constexpr auto kIsGlibcxx = true;
@@ -473,8 +503,10 @@ constexpr auto kGnuc = 0;
 
 #if __clang__
 constexpr auto kIsClang = true;
+constexpr auto kClangVerMajor = __clang_major__;
 #else
 constexpr auto kIsClang = false;
+constexpr auto kClangVerMajor = 0;
 #endif
 
 #if FOLLY_MICROSOFT_ABI_VER
@@ -511,7 +543,15 @@ constexpr auto kCpplibVer = 0;
 
 #if __cplusplus >= 201703L
 // folly::coro requires C++17 support
-#if __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
+#if defined(_WIN32) && defined(__clang__)
+// LLVM and MSVC coroutines are ABI incompatible and <experimental/coroutine>
+// is the MSVC implementation on windows, so we *don't* have coroutines.
+//
+// Worse, if we define FOLLY_HAS_COROUTINES 1 we will include
+// <experimental/coroutine> which will conflict with anyone who wants to load
+// the LLVM implementation of coroutines on Windows.
+#define FOLLY_HAS_COROUTINES 0
+#elif __cpp_coroutines >= 201703L && __has_include(<experimental/coroutine>)
 #define FOLLY_HAS_COROUTINES 1
 // This is mainly to workaround bugs triggered by LTO, when stack allocated
 // variables in await_suspend end up on a coroutine frame.
@@ -557,13 +597,3 @@ constexpr auto kCpplibVer = 0;
 #define FOLLY_HAS_STRING_VIEW 0
 #endif
 #endif // __has_include
-
-#if defined(__linux__)
-#define FOLLY_ELF_NATIVE_CLASS __ELF_NATIVE_CLASS
-#elif defined(__FreeBSD__)
-#if defined(__LP64__)
-#define FOLLY_ELF_NATIVE_CLASS 64
-#else // __linux__
-#define FOLLY_ELF_NATIVE_CLASS 32
-#endif
-#endif // __linux__

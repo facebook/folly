@@ -37,12 +37,6 @@ namespace folly {
  *      need erase().  If you don't know the size in advance or
  *      your workload needs erase(), this is the better choice.
  *
- * [Note on performance under frequent removal: Sustained frequent
- * removal from this map may lead to high contention (on the hazptr
- * domain list of tagged objects which include structures used in this
- * map). Planned redesign of the reclamation algorithm for such
- * objects will eliminate this potential bottleneck.]
- *
  * The interface is as close to std::unordered_map as possible, but there
  * are a handful of changes:
  *
@@ -255,21 +249,13 @@ class ConcurrentHashMap {
     return res;
   }
 
-  ConstIterator cend() const noexcept {
-    return ConstIterator(NumShards);
-  }
+  ConstIterator cend() const noexcept { return ConstIterator(NumShards); }
 
-  ConstIterator cbegin() const noexcept {
-    return ConstIterator(this);
-  }
+  ConstIterator cbegin() const noexcept { return ConstIterator(this); }
 
-  ConstIterator end() const noexcept {
-    return cend();
-  }
+  ConstIterator end() const noexcept { return cend(); }
 
-  ConstIterator begin() const noexcept {
-    return cbegin();
-  }
+  ConstIterator begin() const noexcept { return cbegin(); }
 
   std::pair<ConstIterator, bool> insert(
       std::pair<key_type, mapped_type>&& foo) {
@@ -391,7 +377,7 @@ class ConcurrentHashMap {
   const ValueType at(const KeyType& key) const {
     auto item = find(key);
     if (item == cend()) {
-      throw std::out_of_range("at(): value out of range");
+      throw_exception<std::out_of_range>("at(): value out of range");
     }
     return item->second;
   }
@@ -419,12 +405,19 @@ class ConcurrentHashMap {
 
   // Erase if and only if key k is equal to expected
   size_type erase_if_equal(const key_type& k, const ValueType& expected) {
+    return erase_key_if(
+        k, [&expected](const ValueType& v) { return v == expected; });
+  }
+
+  // Erase if predicate evaluates to true on the existing value
+  template <typename Predicate>
+  size_type erase_key_if(const key_type& k, Predicate&& predicate) {
     auto segment = pickSegment(k);
     auto seg = segments_[segment].load(std::memory_order_acquire);
     if (!seg) {
       return 0;
     }
-    return seg->erase_if_equal(k, expected);
+    return seg->erase_key_if(k, std::forward<Predicate>(predicate));
   }
 
   // NOT noexcept, initializes new shard segments vs.
@@ -459,9 +452,7 @@ class ConcurrentHashMap {
     return res;
   }
 
-  float max_load_factor() const {
-    return load_factor_;
-  }
+  float max_load_factor() const { return load_factor_; }
 
   void max_load_factor(float factor) {
     for (uint64_t i = 0; i < NumShards; i++) {
@@ -476,13 +467,9 @@ class ConcurrentHashMap {
    public:
     friend class ConcurrentHashMap;
 
-    const value_type& operator*() const {
-      return *it_;
-    }
+    const value_type& operator*() const { return *it_; }
 
-    const value_type* operator->() const {
-      return &*it_;
-    }
+    const value_type* operator->() const { return &*it_; }
 
     ConstIterator& operator++() {
       ++it_;
@@ -494,9 +481,7 @@ class ConcurrentHashMap {
       return it_ == o.it_ && segment_ == o.segment_;
     }
 
-    bool operator!=(const ConstIterator& o) const {
-      return !(*this == o);
-    }
+    bool operator!=(const ConstIterator& o) const { return !(*this == o); }
 
     ConstIterator& operator=(const ConstIterator& o) = delete;
 

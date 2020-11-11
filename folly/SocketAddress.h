@@ -130,9 +130,7 @@ class SocketAddress {
     }
   }
 
-  bool isInitialized() const {
-    return (getFamily() != AF_UNSPEC);
-  }
+  bool isInitialized() const { return (getFamily() != AF_UNSPEC); }
 
   /**
    * Return whether this address is within private network.
@@ -409,9 +407,7 @@ class SocketAddress {
     return external_ ? sa_family_t(AF_UNIX) : storage_.addr.family();
   }
 
-  bool empty() const {
-    return getFamily() == AF_UNSPEC;
-  }
+  bool empty() const { return getFamily() == AF_UNSPEC; }
 
   /**
    * Get a string representation of the IPv4 or IPv6 address.
@@ -574,9 +570,7 @@ class SocketAddress {
       len = other.len;
       memcpy(addr, other.addr, size_t(len));
     }
-    void free() {
-      delete addr;
-    }
+    void free() { delete addr; }
   };
 
   struct addrinfo* getAddrInfo(const char* host, uint16_t port, int flags);

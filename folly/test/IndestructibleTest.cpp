@@ -37,18 +37,14 @@ struct Magic {
       : dtor_(std::move(dtor)), move_(std::move(move)) {
     ctor();
   }
-  Magic(Magic&& other) /* may throw */ {
-    *this = std::move(other);
-  }
+  Magic(Magic&& other) /* may throw */ { *this = std::move(other); }
   Magic& operator=(Magic&& other) {
     dtor_ = std::move(other.dtor_);
     move_ = std::move(other.move_);
     move_();
     return *this;
   }
-  ~Magic() {
-    dtor_();
-  }
+  ~Magic() { dtor_(); }
 };
 
 class IndestructibleTest : public testing::Test {};

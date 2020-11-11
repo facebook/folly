@@ -64,9 +64,7 @@ class Blake2xbTestBase : public ::testing::Test {
 
 class Blake2xbTest : public Blake2xbTestBase {
  protected:
-  folly::ByteRange getHashKey() const override {
-    return {};
-  }
+  folly::ByteRange getHashKey() const override { return {}; }
 
   static const std::vector<std::string>& getTestVector() {
     static const std::vector<std::string> testVector = []() {

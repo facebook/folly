@@ -36,9 +36,7 @@ BENCHMARK_PARAM(BENCHFUN(defaultCtor), 0)
 
 void BENCHFUN(copyCtor)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND {
-    randomString(&s, arg);
-  }
+  BENCHMARK_SUSPEND { randomString(&s, arg); }
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s1 = s;
     doNotOptimizeAway(&s1);
@@ -89,9 +87,7 @@ BENCHMARK_PARAM(BENCHFUN(ctorFromChar), 1048576)
 
 void BENCHFUN(assignmentOp)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND {
-    randomString(&s, arg);
-  }
+  BENCHMARK_SUSPEND { randomString(&s, arg); }
   FOR_EACH_RANGE (i, 0, iters) {
     STRING s1;
     BENCHMARK_SUSPEND {
@@ -210,9 +206,7 @@ BENCHMARK_PARAM(BENCHFUN(equality), 65536)
 
 void BENCHFUN(replace)(size_t iters, size_t arg) {
   STRING s;
-  BENCHMARK_SUSPEND {
-    randomString(&s, arg);
-  }
+  BENCHMARK_SUSPEND { randomString(&s, arg); }
   FOR_EACH_RANGE (i, 0, iters) {
     BenchmarkSuspender susp;
     doNotOptimizeAway(&s);

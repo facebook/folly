@@ -17,6 +17,7 @@
 #pragma once
 
 #include <folly/container/detail/F14Mask.h>
+#include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
 #include <folly/synchronization/Hazptr.h>
 #include <algorithm>
@@ -59,9 +60,7 @@ class ValueHolder {
             std::piecewise_construct,
             std::forward_as_tuple(std::forward<Arg>(k)),
             std::forward_as_tuple(std::forward<Args>(args)...)) {}
-  value_type& getItem() {
-    return item_;
-  }
+  value_type& getItem() { return item_; }
 
  private:
   value_type item_;
@@ -102,9 +101,7 @@ class ValueHolder<
     }
   }
 
-  value_type& getItem() {
-    return *item_;
-  }
+  value_type& getItem() { return *item_; }
 
  private:
   value_type* item_;
@@ -162,13 +159,9 @@ class NodeT : public hazptr_obj_base_linked<
     init(cohort);
   }
 
-  void release() {
-    this->unlink();
-  }
+  void release() { this->unlink(); }
 
-  value_type& getItem() {
-    return item_.getItem();
-  }
+  value_type& getItem() { return item_.getItem(); }
 
   template <typename S>
   void push_links(bool m, S& s) {
@@ -243,13 +236,9 @@ class alignas(64) BucketTable {
     buckets->destroy(count);
   }
 
-  size_t size() {
-    return size_.load(std::memory_order_acquire);
-  }
+  size_t size() { return size_.load(std::memory_order_acquire); }
 
-  void clearSize() {
-    size_.store(0, std::memory_order_release);
-  }
+  void clearSize() { size_.store(0, std::memory_order_release); }
 
   void incSize() {
     auto sz = size_.load(std::memory_order_relaxed);
@@ -262,9 +251,7 @@ class alignas(64) BucketTable {
     size_.store(sz - 1, std::memory_order_release);
   }
 
-  bool empty() {
-    return size() == 0;
-  }
+  bool empty() { return size() == 0; }
 
   template <typename MatchFunc, typename... Args>
   bool insert(
@@ -452,9 +439,7 @@ class alignas(64) BucketTable {
     return res;
   }
 
-  Iterator cend() {
-    return Iterator(nullptr);
-  }
+  Iterator cend() { return Iterator(nullptr); }
 
  private:
   // Could be optimized to avoid an extra pointer dereference by
@@ -560,13 +545,9 @@ class alignas(64) BucketTable {
       }
     }
 
-    bool operator==(const Iterator& o) const {
-      return node_ == o.node_;
-    }
+    bool operator==(const Iterator& o) const { return node_ == o.node_; }
 
-    bool operator!=(const Iterator& o) const {
-      return !(*this == o);
-    }
+    bool operator!=(const Iterator& o) const { return !(*this == o); }
 
     Iterator& operator=(const Iterator& o) = delete;
 
@@ -640,7 +621,7 @@ class alignas(64) BucketTable {
     if (size() >= load_factor_nodes_ && type == InsertType::DOES_NOT_EXIST) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash(bcount << 1, cohort);
       buckets = buckets_.load(std::memory_order_relaxed);
@@ -697,7 +678,7 @@ class alignas(64) BucketTable {
     if (size() >= load_factor_nodes_ && type == InsertType::ANY) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash(bcount << 1, cohort);
 
@@ -773,9 +754,7 @@ class NodeT : public hazptr_obj_base<
     init(cohort);
   }
 
-  value_type& getItem() {
-    return item_;
-  }
+  value_type& getItem() { return item_; }
 
  private:
   void init(hazptr_obj_cohort<Atom>* cohort) {
@@ -865,7 +844,7 @@ class alignas(64) SIMDTable {
       FOLLY_SAFE_DCHECK(
           index < kCapacity && (tag == 0x0 || (tag >= 0x80 && tag <= 0xff)),
           "");
-      item(index).store(node, std::memory_order_relaxed);
+      item(index).store(node, std::memory_order_release);
       setTag(index, tag);
     }
 
@@ -908,9 +887,7 @@ class alignas(64) SIMDTable {
           const_cast<void*>(static_cast<void const*>(&rawItems_[i])));
     }
 
-    Atom<Node*>& item(size_t i) {
-      return *launder(itemAddr(i));
-    }
+    Atom<Node*>& item(size_t i) { return *launder(itemAddr(i)); }
 
     static constexpr uint64_t kOutboundOverflowIndex = 7 * 8;
     static constexpr uint64_t kSaturatedOutboundOverflowCount = 0xffUL
@@ -1061,13 +1038,9 @@ class alignas(64) SIMDTable {
       findNextNode();
     }
 
-    bool operator==(const Iterator& o) const {
-      return node_ == o.node_;
-    }
+    bool operator==(const Iterator& o) const { return node_ == o.node_; }
 
-    bool operator!=(const Iterator& o) const {
-      return !(*this == o);
-    }
+    bool operator!=(const Iterator& o) const { return !(*this == o); }
 
     Iterator& operator=(const Iterator& o) = delete;
 
@@ -1153,13 +1126,9 @@ class alignas(64) SIMDTable {
     chunks->destroy(count);
   }
 
-  size_t size() {
-    return size_.load(std::memory_order_acquire);
-  }
+  size_t size() { return size_.load(std::memory_order_acquire); }
 
-  void clearSize() {
-    size_.store(0, std::memory_order_release);
-  }
+  void clearSize() { size_.store(0, std::memory_order_release); }
 
   void incSize() {
     auto sz = size_.load(std::memory_order_relaxed);
@@ -1172,9 +1141,7 @@ class alignas(64) SIMDTable {
     size_.store(sz - 1, std::memory_order_release);
   }
 
-  bool empty() {
-    return size() == 0;
-  }
+  bool empty() { return size() == 0; }
 
   template <typename MatchFunc, typename... Args>
   bool insert(
@@ -1390,7 +1357,7 @@ class alignas(64) SIMDTable {
   void max_load_factor(float factor) {
     DCHECK(factor > 0.0);
     if (factor > 1.0) {
-      throw std::invalid_argument("load factor must be <= 1.0");
+      throw_exception<std::invalid_argument>("load factor must be <= 1.0");
     }
     std::lock_guard<Mutex> g(m_);
     load_factor_ = factor;
@@ -1408,9 +1375,7 @@ class alignas(64) SIMDTable {
     return res;
   }
 
-  Iterator cend() {
-    return Iterator(nullptr);
-  }
+  Iterator cend() { return Iterator(nullptr); }
 
  private:
   static HashPair splitHash(std::size_t hash) {
@@ -1420,9 +1385,7 @@ class alignas(64) SIMDTable {
     return std::make_pair(hash, tag);
   }
 
-  static size_t probeDelta(HashPair hp) {
-    return 2 * hp.second + 1;
-  }
+  static size_t probeDelta(HashPair hp) { return 2 * hp.second + 1; }
 
   // Must hold lock.
   Node* find_internal(
@@ -1441,7 +1404,7 @@ class alignas(64) SIMDTable {
       auto hits = chunk->tagMatchIter(hp.second);
       while (hits.hasNext()) {
         tag_idx = hits.next();
-        Node* node = chunk->item(tag_idx).load(std::memory_order_relaxed);
+        Node* node = chunk->item(tag_idx).load(std::memory_order_acquire);
         if (LIKELY(node && KeyEqual()(k, node->getItem().first))) {
           chunk_idx = (chunk_idx & (ccount - 1));
           return node;
@@ -1474,7 +1437,7 @@ class alignas(64) SIMDTable {
     if (size() >= grow_threshold_ && type == InsertType::DOES_NOT_EXIST) {
       if (max_size_ && size() << 1 > max_size_) {
         // Would exceed max size.
-        throw std::bad_alloc();
+        throw_exception<std::bad_alloc>();
       }
       rehash_internal(ccount << 1, cohort);
       ccount = chunk_count_.load(std::memory_order_relaxed);
@@ -1503,7 +1466,7 @@ class alignas(64) SIMDTable {
       if (size() >= grow_threshold_ && type == InsertType::ANY) {
         if (max_size_ && size() << 1 > max_size_) {
           // Would exceed max size.
-          throw std::bad_alloc();
+          throw_exception<std::bad_alloc>();
         }
         rehash_internal(ccount << 1, cohort);
         ccount = chunk_count_.load(std::memory_order_relaxed);
@@ -1679,13 +1642,9 @@ class alignas(64) ConcurrentHashMapSegment {
 
   ~ConcurrentHashMapSegment() = default;
 
-  size_t size() {
-    return impl_.size();
-  }
+  size_t size() { return impl_.size(); }
 
-  bool empty() {
-    return impl_.empty();
-  }
+  bool empty() { return impl_.empty(); }
 
   bool insert(Iterator& it, std::pair<key_type, mapped_type>&& foo) {
     return insert(it, std::move(foo.first), std::move(foo.second));
@@ -1809,23 +1768,18 @@ class alignas(64) ConcurrentHashMapSegment {
   }
 
   // Must hold lock.
-  void rehash(size_t bucket_count) {
-    impl_.rehash(bucket_count, cohort_);
-  }
+  void rehash(size_t bucket_count) { impl_.rehash(bucket_count, cohort_); }
 
-  bool find(Iterator& res, const KeyType& k) {
-    return impl_.find(res, k);
-  }
+  bool find(Iterator& res, const KeyType& k) { return impl_.find(res, k); }
 
   // Listed separately because we need a prev pointer.
   size_type erase(const key_type& key) {
     return erase_internal(key, nullptr, [](const ValueType&) { return true; });
   }
 
-  size_type erase_if_equal(const key_type& key, const ValueType& expected) {
-    return erase_internal(key, nullptr, [&expected](const ValueType& v) {
-      return v == expected;
-    });
+  template <typename Predicate>
+  size_type erase_key_if(const key_type& key, Predicate&& predicate) {
+    return erase_internal(key, nullptr, std::forward<Predicate>(predicate));
   }
 
   template <typename MatchFunc>
@@ -1846,21 +1800,13 @@ class alignas(64) ConcurrentHashMapSegment {
     pos = cend();
   }
 
-  void clear() {
-    impl_.clear(cohort_);
-  }
+  void clear() { impl_.clear(cohort_); }
 
-  void max_load_factor(float factor) {
-    impl_.max_load_factor(factor);
-  }
+  void max_load_factor(float factor) { impl_.max_load_factor(factor); }
 
-  Iterator cbegin() {
-    return impl_.cbegin();
-  }
+  Iterator cbegin() { return impl_.cbegin(); }
 
-  Iterator cend() {
-    return impl_.cend();
-  }
+  Iterator cend() { return impl_.cend(); }
 
  private:
   ImplT impl_;

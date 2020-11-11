@@ -106,13 +106,9 @@ class MicroLockCore {
 
  public:
   FOLLY_DISABLE_ADDRESS_SANITIZER inline void unlock(unsigned slot);
-  inline void unlock() {
-    unlock(0);
-  }
+  inline void unlock() { unlock(0); }
   // Initializes all the slots.
-  inline void init() {
-    lock_ = 0;
-  }
+  inline void init() { lock_ = 0; }
 };
 
 inline detail::Futex<>* MicroLockCore::word() const {
@@ -159,13 +155,9 @@ template <unsigned MaxSpins = 1000, unsigned MaxYields = 0>
 class MicroLockBase : public MicroLockCore {
  public:
   FOLLY_DISABLE_ADDRESS_SANITIZER inline void lock(unsigned slot);
-  inline void lock() {
-    lock(0);
-  }
+  inline void lock() { lock(0); }
   FOLLY_DISABLE_ADDRESS_SANITIZER inline bool try_lock(unsigned slot);
-  inline bool try_lock() {
-    return try_lock(0);
-  }
+  inline bool try_lock() { return try_lock(0); }
 };
 
 template <unsigned MaxSpins, unsigned MaxYields>

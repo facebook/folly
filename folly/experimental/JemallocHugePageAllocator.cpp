@@ -79,13 +79,9 @@ class HugePageArena {
     return addr >= start_ && addr < end_;
   }
 
-  size_t freeSpace() {
-    return end_ - freePtr_;
-  }
+  size_t freeSpace() { return end_ - freePtr_; }
 
-  unsigned arenaIndex() {
-    return arenaIndex_;
-  }
+  unsigned arenaIndex() { return arenaIndex_; }
 
  private:
   static void* allocHook(

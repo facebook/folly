@@ -195,9 +195,7 @@ struct Printer {
     }
   }
 
-  void mapColon() const {
-    out_ += indentLevel_ ? ": " : ":";
-  }
+  void mapColon() const { out_ += indentLevel_ ? ": " : ":"; }
 
  private:
   std::string& out_;
@@ -217,13 +215,9 @@ struct Input {
   Input(Input const&) = delete;
   Input& operator=(Input const&) = delete;
 
-  char const* begin() const {
-    return range_.begin();
-  }
+  char const* begin() const { return range_.begin(); }
 
-  unsigned getLineNum() const {
-    return lineNum_;
-  }
+  unsigned getLineNum() const { return lineNum_; }
 
   // Parse ahead for as long as the supplied predicate is satisfied,
   // returning a range of what was skipped.
@@ -288,13 +282,9 @@ struct Input {
     ++*this;
   }
 
-  std::size_t size() const {
-    return range_.size();
-  }
+  std::size_t size() const { return range_.size(); }
 
-  int operator*() const {
-    return current_;
-  }
+  int operator*() const { return current_; }
 
   void operator++() {
     range_.pop_front();
@@ -327,9 +317,7 @@ struct Input {
     throw json::make_parse_error(lineNum_, context(), what);
   }
 
-  json::serialization_opts const& getOpts() {
-    return opts_;
-  }
+  json::serialization_opts const& getOpts() { return opts_; }
 
   void incrementRecursionLevel() {
     if (currentRecursionLevel_ > opts_.recursion_limit) {
@@ -338,14 +326,10 @@ struct Input {
     currentRecursionLevel_++;
   }
 
-  void decrementRecursionLevel() {
-    currentRecursionLevel_--;
-  }
+  void decrementRecursionLevel() { currentRecursionLevel_--; }
 
  private:
-  void storeCurrent() {
-    current_ = range_.empty() ? EOF : range_.front();
-  }
+  void storeCurrent() { current_ = range_.empty() ? EOF : range_.front(); }
 
  private:
   StringPiece range_;
@@ -361,9 +345,7 @@ class RecursionGuard {
     in_.incrementRecursionLevel();
   }
 
-  ~RecursionGuard() {
-    in_.decrementRecursionLevel();
-  }
+  ~RecursionGuard() { in_.decrementRecursionLevel(); }
 
  private:
   Input& in_;

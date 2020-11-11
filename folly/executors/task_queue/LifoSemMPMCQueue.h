@@ -60,13 +60,9 @@ class LifoSemMPMCQueue : public BlockingQueue<T> {
     return item;
   }
 
-  size_t capacity() {
-    return queue_.capacity();
-  }
+  size_t capacity() { return queue_.capacity(); }
 
-  size_t size() override {
-    return queue_.size();
-  }
+  size_t size() override { return queue_.size(); }
 
  private:
   folly::LifoSem sem_;

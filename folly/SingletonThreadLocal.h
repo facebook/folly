@@ -103,9 +103,7 @@ class SingletonThreadLocal {
     // per-lifetime cache tracking; 1-M lifetimes may track 1-N caches
     std::unordered_map<LocalLifetime*, LocalCacheSet> lifetimes;
 
-    /* implicit */ operator T&() {
-      return object;
-    }
+    /* implicit */ operator T&() { return object; }
 
     ~Wrapper() {
       for (auto& kvp : caches) {
@@ -198,13 +196,9 @@ class SingletonThreadLocal {
         return const_cast<Iterator*>(this)->base()->object;
       }
 
-      std::thread::id getThreadId() const {
-        return this->base().getThreadId();
-      }
+      std::thread::id getThreadId() const { return this->base().getThreadId(); }
 
-      uint64_t getOSThreadId() const {
-        return this->base().getOSThreadId();
-      }
+      uint64_t getOSThreadId() const { return this->base().getOSThreadId(); }
     };
 
     Accessor(const Accessor&) = delete;
@@ -212,13 +206,9 @@ class SingletonThreadLocal {
     Accessor(Accessor&&) = default;
     Accessor& operator=(Accessor&&) = default;
 
-    Iterator begin() const {
-      return Iterator(inner_.begin());
-    }
+    Iterator begin() const { return Iterator(inner_.begin()); }
 
-    Iterator end() const {
-      return Iterator(inner_.end());
-    }
+    Iterator end() const { return Iterator(inner_.end()); }
   };
 
   // Must use a unique Tag, takes a lock that is one per Tag

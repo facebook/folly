@@ -52,14 +52,12 @@ struct ParanoidArenaAlloc {
     return result;
   }
 
-  void deallocate(void* ptr, size_t n) {
+  void deallocate(char* ptr, size_t n) {
     EXPECT_EQ(1, allocated_.erase(ptr));
     arena_.get().deallocate(ptr, n);
   }
 
-  bool isEmpty() const {
-    return allocated_.empty();
-  }
+  bool isEmpty() const { return allocated_.empty(); }
 
   std::reference_wrapper<ParentAlloc> arena_;
   std::set<void*> allocated_;
@@ -328,7 +326,9 @@ void testConcurrentAdd(int numThreads) {
 
 TEST(ConcurrentSkipList, ConcurrentAdd) {
   // test it many times
-  for (int numThreads = 10; numThreads < 10000; numThreads += 1000) {
+  // TSAN has a thread limit around 8k.
+  auto maxNumThreads = folly::kIsSanitizeThread ? 8000 : 10000;
+  for (int numThreads = 10; numThreads < maxNumThreads; numThreads += 1000) {
     testConcurrentAdd(numThreads);
   }
 }
@@ -422,9 +422,7 @@ struct NonTrivialValue {
   static std::atomic<int> InstanceCounter;
   static const int kBadPayLoad;
 
-  NonTrivialValue() : payload_(kBadPayLoad) {
-    ++InstanceCounter;
-  }
+  NonTrivialValue() : payload_(kBadPayLoad) { ++InstanceCounter; }
 
   explicit NonTrivialValue(int payload) : payload_(payload) {
     ++InstanceCounter;
@@ -439,9 +437,7 @@ struct NonTrivialValue {
     return *this;
   }
 
-  ~NonTrivialValue() {
-    --InstanceCounter;
-  }
+  ~NonTrivialValue() { --InstanceCounter; }
 
   bool operator<(const NonTrivialValue& rhs) const {
     EXPECT_NE(kBadPayLoad, payload_);
@@ -472,7 +468,7 @@ void TestNonTrivialDeallocation(SkipListPtrType& list) {
 template <typename ParentAlloc>
 void NonTrivialDeallocationWithParanoid(ParentAlloc& parentAlloc) {
   using ParanoidAlloc = ParanoidArenaAlloc<ParentAlloc>;
-  using Alloc = CxxAllocatorAdaptor<void, ParanoidAlloc>;
+  using Alloc = CxxAllocatorAdaptor<char, ParanoidAlloc>;
   using ParanoidSkipListType =
       ConcurrentSkipList<NonTrivialValue, std::less<NonTrivialValue>, Alloc>;
   ParanoidAlloc paranoidAlloc(parentAlloc);
@@ -483,13 +479,13 @@ void NonTrivialDeallocationWithParanoid(ParentAlloc& parentAlloc) {
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysAlloc) {
-  SysAllocator<void> alloc;
+  SysAllocator<char> alloc;
   NonTrivialDeallocationWithParanoid(alloc);
 }
 
 TEST(ConcurrentSkipList, NonTrivialDeallocationWithParanoidSysArena) {
   SysArena arena;
-  SysArenaAllocator<void> alloc(arena);
+  SysArenaAllocator<char> alloc(arena);
   NonTrivialDeallocationWithParanoid(alloc);
 }
 
@@ -497,9 +493,9 @@ TEST(ConcurrentSkipList, NonTrivialDeallocationWithSysArena) {
   using SysArenaSkipListType = ConcurrentSkipList<
       NonTrivialValue,
       std::less<NonTrivialValue>,
-      SysArenaAllocator<void>>;
+      SysArenaAllocator<char>>;
   SysArena arena;
-  SysArenaAllocator<void> alloc(arena);
+  SysArenaAllocator<char> alloc(arena);
   auto list = SysArenaSkipListType::createInstance(10, alloc);
   TestNonTrivialDeallocation(list);
 }

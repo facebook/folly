@@ -24,17 +24,36 @@ namespace folly {
 namespace coro {
 
 inline Task<void> sleep(Duration d, Timekeeper* tk) {
+  bool cancelled{false};
   folly::coro::Baton baton;
-  auto future =
-      folly::futures::sleep(d, tk).toUnsafeFuture().ensure([&]() noexcept {
+  Try<Unit> result;
+  auto future = folly::futures::sleep(d, tk).toUnsafeFuture();
+  future.setCallback_(
+      [&result, &baton](Executor::KeepAlive<>&&, Try<Unit>&& t) {
+        result = std::move(t);
         baton.post();
       });
 
-  CancellationCallback cancelCallback(
-      co_await co_current_cancellation_token, [&]() noexcept {
-        future.cancel();
-      });
-  co_await baton;
+  {
+    CancellationCallback cancelCallback(
+        co_await co_current_cancellation_token, [&]() noexcept {
+          cancelled = true;
+          future.cancel();
+        });
+    co_await baton;
+  }
+  if (cancelled) {
+    co_yield co_error(OperationCancelled());
+  }
+  co_yield co_result(std::move(result));
+}
+
+inline Task<void> sleepReturnEarlyOnCancel(Duration d, Timekeeper* tk) {
+  auto result = co_await co_awaitTry(sleep(d, tk));
+  if (result.hasException<OperationCancelled>()) {
+    co_return;
+  }
+  co_yield co_result(std::move(result));
 }
 
 } // namespace coro

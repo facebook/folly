@@ -25,20 +25,22 @@ class TestData : public RequestData {
   explicit TestData(int data) : data_(data) {}
   ~TestData() override {}
 
-  bool hasCallback() override {
-    return true;
-  }
+  bool hasCallback() override { return true; }
 
   void onSet() override {
     set_++;
+    onSetRctx = RequestContext::get();
   }
 
   void onUnset() override {
     unset_++;
+    onUnSetRctx = RequestContext::get();
   }
 
   int set_ = 0, unset_ = 0;
   int data_;
+  RequestContext* onSetRctx = nullptr;
+  RequestContext* onUnSetRctx = nullptr;
 };
 
 } // namespace folly

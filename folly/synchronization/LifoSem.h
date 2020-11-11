@@ -135,9 +135,7 @@ struct LifoSemRawNode {
   bool isShutdownNotice() const {
     return next.load(std::memory_order_relaxed) == uint32_t(-1);
   }
-  void clearShutdownNotice() {
-    next.store(0, std::memory_order_relaxed);
-  }
+  void clearShutdownNotice() { next.store(0, std::memory_order_relaxed); }
   void setShutdownNotice() {
     next.store(uint32_t(-1), std::memory_order_relaxed);
   }
@@ -151,9 +149,7 @@ struct LifoSemRawNode {
       Pool;
 
   /// Storage for all of the waiter nodes for LifoSem-s that use Atom
-  static Pool& pool() {
-    return detail::createGlobal<PoolImpl, void>();
-  }
+  static Pool& pool() { return detail::createGlobal<PoolImpl, void>(); }
 
  private:
   struct PoolImpl : Pool {
@@ -268,12 +264,8 @@ class LifoSemHead {
   inline constexpr bool isShutdown() const {
     return (bits & IsShutdownMask) != 0;
   }
-  inline constexpr bool isLocked() const {
-    return (bits & IsLockedMask) != 0;
-  }
-  inline constexpr uint32_t seq() const {
-    return uint32_t(bits >> SeqShift);
-  }
+  inline constexpr bool isLocked() const { return (bits & IsLockedMask) != 0; }
+  inline constexpr uint32_t seq() const { return uint32_t(bits >> SeqShift); }
 
   //////// setter-like things return a new struct
 
@@ -489,9 +481,7 @@ struct LifoSemBase {
     FOLLY_SAFE_DCHECK(res, "infinity time has passed");
   }
 
-  bool try_wait() {
-    return tryWait();
-  }
+  bool try_wait() { return tryWait(); }
 
   template <typename Rep, typename Period>
   bool try_wait_for(const std::chrono::duration<Rep, Period>& timeout) {

@@ -50,14 +50,7 @@ void TimerFDTimeoutManager::scheduleTimeout(
 
   // now add the callback
   // handle entries that expire at the same time
-  auto iter = callbacks_.find(expirationTimeUsec);
-  if (iter != callbacks_.end()) {
-    iter->second.push_back(*callback);
-  } else {
-    CallbackList list;
-    list.push_back(*callback);
-    callbacks_.emplace(expirationTimeUsec, std::move(list));
-  }
+  callbacks_[expirationTimeUsec].push_back(*callback);
 
   callback->setExpirationTime(this, expirationTimeUsec);
 }

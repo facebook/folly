@@ -137,9 +137,7 @@ class LockFreeRingBuffer {
   }
 
   /// Returns a Cursor pointing to the first write that has not occurred yet.
-  Cursor currentHead() noexcept {
-    return Cursor(ticket_.load());
-  }
+  Cursor currentHead() noexcept { return Cursor(ticket_.load()); }
 
   /// Returns a Cursor pointing to a currently readable write.
   /// skipFraction is a value in the [0, 1] range indicating how far into the
@@ -169,9 +167,7 @@ class LockFreeRingBuffer {
 
   Atom<uint64_t> ticket_;
 
-  uint32_t idx(uint64_t ticket) noexcept {
-    return ticket % capacity_;
-  }
+  uint32_t idx(uint64_t ticket) noexcept { return ticket % capacity_; }
 
   uint32_t turn(uint64_t ticket) noexcept {
     return (uint32_t)(ticket / capacity_);

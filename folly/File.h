@@ -82,16 +82,12 @@ class File {
   /**
    * Return the file descriptor, or -1 if the file was closed.
    */
-  int fd() const {
-    return fd_;
-  }
+  int fd() const { return fd_; }
 
   /**
    * Returns 'true' iff the file was successfully opened.
    */
-  explicit operator bool() const {
-    return fd_ != -1;
-  }
+  explicit operator bool() const { return fd_ != -1; }
 
   /**
    * Duplicate file descriptor and return File that owns it.

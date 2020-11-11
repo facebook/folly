@@ -70,9 +70,7 @@ struct MicroSpinLock {
 
   // Initialize this MSL.  It is unnecessary to call this if you
   // zero-initialize the MicroSpinLock.
-  void init() noexcept {
-    payload()->store(FREE);
-  }
+  void init() noexcept { payload()->store(FREE); }
 
   bool try_lock() noexcept {
     bool ret = cas(FREE, LOCKED);
@@ -128,17 +126,11 @@ static_assert(
 
 template <class T, size_t N>
 struct alignas(max_align_v) SpinLockArray {
-  T& operator[](size_t i) noexcept {
-    return data_[i].lock;
-  }
+  T& operator[](size_t i) noexcept { return data_[i].lock; }
 
-  const T& operator[](size_t i) const noexcept {
-    return data_[i].lock;
-  }
+  const T& operator[](size_t i) const noexcept { return data_[i].lock; }
 
-  constexpr size_t size() const noexcept {
-    return N;
-  }
+  constexpr size_t size() const noexcept { return N; }
 
  private:
   struct PaddedSpinLock {

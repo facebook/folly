@@ -66,9 +66,7 @@ class HazptrLockFreeLIFO {
   }
 
  private:
-  Node* head() {
-    return head_.load(std::memory_order_acquire);
-  }
+  Node* head() { return head_.load(std::memory_order_acquire); }
 
   bool cas_head(Node*& expected, Node* newval) {
     return head_.compare_exchange_weak(
@@ -81,13 +79,9 @@ class HazptrLockFreeLIFO {
 
     Node(T v, Node* n) : value_(v), next_(n) {}
 
-    Node* next() {
-      return next_;
-    }
+    Node* next() { return next_; }
 
-    T value() {
-      return value_;
-    }
+    T value() { return value_; }
   };
 };
 

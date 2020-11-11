@@ -25,7 +25,7 @@
 #include <folly/String.h>
 #include <folly/system/ThreadName.h>
 
-using std::chrono::milliseconds;
+using std::chrono::microseconds;
 using std::chrono::steady_clock;
 
 namespace folly {
@@ -33,11 +33,11 @@ namespace folly {
 namespace {
 
 struct ConsistentDelayFunctor {
-  const milliseconds constInterval;
+  const microseconds constInterval;
 
-  explicit ConsistentDelayFunctor(milliseconds interval)
+  explicit ConsistentDelayFunctor(microseconds interval)
       : constInterval(interval) {
-    if (interval < milliseconds::zero()) {
+    if (interval < microseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
@@ -53,45 +53,41 @@ struct ConsistentDelayFunctor {
 };
 
 struct ConstIntervalFunctor {
-  const milliseconds constInterval;
+  const microseconds constInterval;
 
-  explicit ConstIntervalFunctor(milliseconds interval)
+  explicit ConstIntervalFunctor(microseconds interval)
       : constInterval(interval) {
-    if (interval < milliseconds::zero()) {
+    if (interval < microseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
     }
   }
 
-  milliseconds operator()() const {
-    return constInterval;
-  }
+  microseconds operator()() const { return constInterval; }
 };
 
 struct PoissonDistributionFunctor {
   std::default_random_engine generator;
-  std::poisson_distribution<int> poissonRandom;
+  std::poisson_distribution<microseconds::rep> poissonRandom;
 
-  explicit PoissonDistributionFunctor(double meanPoissonMs)
-      : poissonRandom(meanPoissonMs) {
-    if (meanPoissonMs < 0.0) {
+  explicit PoissonDistributionFunctor(microseconds meanPoissonUsec)
+      : poissonRandom(meanPoissonUsec.count()) {
+    if (meanPoissonUsec.count() < 0) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "Poisson mean interval must be non-negative");
     }
   }
 
-  milliseconds operator()() {
-    return milliseconds(poissonRandom(generator));
-  }
+  microseconds operator()() { return microseconds(poissonRandom(generator)); }
 };
 
 struct UniformDistributionFunctor {
   std::default_random_engine generator;
-  std::uniform_int_distribution<milliseconds::rep> dist;
+  std::uniform_int_distribution<microseconds::rep> dist;
 
-  UniformDistributionFunctor(milliseconds minInterval, milliseconds maxInterval)
+  UniformDistributionFunctor(microseconds minInterval, microseconds maxInterval)
       : generator(Random::rand32()),
         dist(minInterval.count(), maxInterval.count()) {
     if (minInterval > maxInterval) {
@@ -99,16 +95,14 @@ struct UniformDistributionFunctor {
           "FunctionScheduler: "
           "min time interval must be less or equal than max interval");
     }
-    if (minInterval < milliseconds::zero()) {
+    if (minInterval < microseconds::zero()) {
       throw std::invalid_argument(
           "FunctionScheduler: "
           "time interval must be non-negative");
     }
   }
 
-  milliseconds operator()() {
-    return milliseconds(dist(generator));
-  }
+  microseconds operator()() { return microseconds(dist(generator)); }
 };
 
 } // namespace
@@ -122,30 +116,30 @@ FunctionScheduler::~FunctionScheduler() {
 
 void FunctionScheduler::addFunction(
     Function<void()>&& cb,
-    milliseconds interval,
+    microseconds interval,
     StringPiece nameID,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       ConstIntervalFunctor(interval),
       nameID.str(),
-      to<std::string>(interval.count(), "ms"),
+      to<std::string>(interval.count(), "us"),
       startDelay,
       false /*runOnce*/);
 }
 
 void FunctionScheduler::addFunction(
     Function<void()>&& cb,
-    milliseconds interval,
+    microseconds interval,
     const LatencyDistribution& latencyDistr,
     StringPiece nameID,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   if (latencyDistr.isPoisson) {
     addFunctionInternal(
         std::move(cb),
         PoissonDistributionFunctor(latencyDistr.poissonMean),
         nameID.str(),
-        to<std::string>(latencyDistr.poissonMean, "ms (Poisson mean)"),
+        to<std::string>(latencyDistr.poissonMean.count(), "us (Poisson mean)"),
         startDelay,
         false /*runOnce*/);
   } else {
@@ -156,10 +150,10 @@ void FunctionScheduler::addFunction(
 void FunctionScheduler::addFunctionOnce(
     Function<void()>&& cb,
     StringPiece nameID,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
-      ConstIntervalFunctor(milliseconds::zero()),
+      ConstIntervalFunctor(microseconds::zero()),
       nameID.str(),
       "once",
       startDelay,
@@ -168,30 +162,30 @@ void FunctionScheduler::addFunctionOnce(
 
 void FunctionScheduler::addFunctionUniformDistribution(
     Function<void()>&& cb,
-    milliseconds minInterval,
-    milliseconds maxInterval,
+    microseconds minInterval,
+    microseconds maxInterval,
     StringPiece nameID,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       UniformDistributionFunctor(minInterval, maxInterval),
       nameID.str(),
       to<std::string>(
-          "[", minInterval.count(), " , ", maxInterval.count(), "] ms"),
+          "[", minInterval.count(), " , ", maxInterval.count(), "] us"),
       startDelay,
       false /*runOnce*/);
 }
 
 void FunctionScheduler::addFunctionConsistentDelay(
     Function<void()>&& cb,
-    milliseconds interval,
+    microseconds interval,
     StringPiece nameID,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       ConsistentDelayFunctor(interval),
       nameID.str(),
-      to<std::string>(interval.count(), "ms"),
+      to<std::string>(interval.count(), "us"),
       startDelay,
       false /*runOnce*/);
 }
@@ -201,7 +195,7 @@ void FunctionScheduler::addFunctionGenericDistribution(
     IntervalDistributionFunc&& intervalFunc,
     const std::string& nameID,
     const std::string& intervalDescr,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       std::move(intervalFunc),
@@ -216,7 +210,7 @@ void FunctionScheduler::addFunctionGenericNextRunTimeFunctor(
     NextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    milliseconds startDelay) {
+    microseconds startDelay) {
   addFunctionInternal(
       std::move(cb),
       std::move(fn),
@@ -232,7 +226,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
     RepeatFuncNextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    milliseconds startDelay,
+    microseconds startDelay,
     bool runOnce) {
   if (!cb) {
     throw std::invalid_argument(
@@ -243,7 +237,7 @@ void FunctionScheduler::addFunctionToHeapChecked(
         "FunctionScheduler: "
         "interval distribution or next run time function must be set");
   }
-  if (startDelay < milliseconds::zero()) {
+  if (startDelay < microseconds::zero()) {
     throw std::invalid_argument(
         "FunctionScheduler: start delay must be non-negative");
   }
@@ -277,7 +271,7 @@ void FunctionScheduler::addFunctionInternal(
     NextRunTimeFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    milliseconds startDelay,
+    microseconds startDelay,
     bool runOnce) {
   return addFunctionToHeapChecked(
       std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
@@ -288,7 +282,7 @@ void FunctionScheduler::addFunctionInternal(
     IntervalDistributionFunc&& fn,
     const std::string& nameID,
     const std::string& intervalDescr,
-    milliseconds startDelay,
+    microseconds startDelay,
     bool runOnce) {
   return addFunctionToHeapChecked(
       std::move(cb), std::move(fn), nameID, intervalDescr, startDelay, runOnce);
@@ -465,7 +459,7 @@ void FunctionScheduler::run() {
     }
 
     auto sleepTime = functions_.back()->getNextRunTime() - now;
-    if (sleepTime < milliseconds::zero()) {
+    if (sleepTime < microseconds::zero()) {
       // We need to run this function now
       runOneFunction(lock, now);
       runningCondvar_.notify_all();

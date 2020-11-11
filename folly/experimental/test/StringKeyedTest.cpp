@@ -69,18 +69,14 @@ struct MemoryLeakCheckerAllocator {
     freed += n * sizeof(value_type);
   }
 
-  size_t max_size() const {
-    return alloc_.max_size();
-  }
+  size_t max_size() const { return alloc_.max_size(); }
 
   template <class... Args>
   void construct(value_type* p, Args&&... args) {
     alloc_.construct(p, std::forward<Args>(args)...);
   }
 
-  void destroy(value_type* p) {
-    alloc_.destroy(p);
-  }
+  void destroy(value_type* p) { alloc_.destroy(p); }
 
   template <class U>
   struct rebind {
@@ -89,9 +85,7 @@ struct MemoryLeakCheckerAllocator {
         other;
   };
 
-  const Alloc& allocator() const {
-    return alloc_;
-  }
+  const Alloc& allocator() const { return alloc_; }
 
   bool operator!=(const MemoryLeakCheckerAllocator& other) const {
     return alloc_ != other.alloc_;

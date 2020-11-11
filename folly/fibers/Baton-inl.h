@@ -14,6 +14,7 @@
  * limitations under the License.
  */
 
+#include <folly/detail/AsyncTrace.h>
 #include <folly/fibers/Fiber.h>
 #include <folly/fibers/FiberManagerInternal.h>
 
@@ -27,9 +28,7 @@ class Baton::FiberWaiter : public Baton::Waiter {
     fiber_ = &fiber;
   }
 
-  void post() override {
-    fiber_->resume();
-  }
+  void post() override { fiber_->resume(); }
 
  private:
   Fiber* fiber_{nullptr};
@@ -77,6 +76,10 @@ bool Baton::timedWaitThread(
     const std::chrono::time_point<Clock, Duration>& deadline) {
   auto waiter = waiter_.load();
 
+  folly::async_tracing::logBlockingOperation(
+      std::chrono::duration_cast<std::chrono::milliseconds>(
+          deadline - Clock::now()));
+
   if (LIKELY(
           waiter == NO_WAITER &&
           waiter_.compare_exchange_strong(waiter, THREAD_WAITING))) {
@@ -87,7 +90,7 @@ bool Baton::timedWaitThread(
       if (wait_rv == folly::detail::FutexResult::TIMEDOUT) {
         return false;
       }
-      waiter = waiter_.load(std::memory_order_relaxed);
+      waiter = waiter_.load(std::memory_order_acquire);
     } while (waiter == THREAD_WAITING);
   }
 

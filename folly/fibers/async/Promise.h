@@ -16,7 +16,9 @@
 
 #pragma once
 
+#include <folly/fibers/FiberManager.h>
 #include <folly/fibers/async/Async.h>
+#include <folly/fibers/traits.h>
 
 namespace folly {
 namespace fibers {
@@ -26,9 +28,9 @@ namespace async {
  * Async annotated wrapper around fibers::await
  */
 template <typename F>
-auto promiseWait(F&& func) {
+Async<typename FirstArgOf<F>::type::value_type> promiseWait(F&& func) {
   // Call into blocking API
-  return Async{folly::fibers::await(std::forward<F>(func))};
+  return fibers::await_async(std::forward<F>(func));
 }
 
 } // namespace async

@@ -42,18 +42,14 @@ class BitSetWrapper {
     }
     return r;
   }
-  inline bool contains(uint8_t i) {
-    return rep_[i];
-  }
+  inline bool contains(uint8_t i) { return rep_[i]; }
 
  private:
   bitset<256> rep_;
 };
 class BoolArraySet {
  public:
-  BoolArraySet() {
-    memset(rep_, 0, sizeof(rep_));
-  }
+  BoolArraySet() { memset(rep_, 0, sizeof(rep_)); }
   inline bool add(uint8_t i) {
     auto r = !contains(i);
     if (r) {
@@ -61,9 +57,7 @@ class BoolArraySet {
     }
     return r;
   }
-  inline bool contains(uint8_t i) {
-    return rep_[i];
-  }
+  inline bool contains(uint8_t i) { return rep_[i]; }
 
  private:
   bool rep_[256];

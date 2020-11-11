@@ -21,7 +21,7 @@
 #include <chrono>
 #include <cstdint>
 
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
 extern "C" std::uint64_t __rdtsc();
 #pragma intrinsic(__rdtsc)
 #endif
@@ -29,7 +29,7 @@ extern "C" std::uint64_t __rdtsc();
 namespace folly {
 
 inline std::uint64_t hardware_timestamp() {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && (defined(_M_IX86) || defined(_M_X64))
   return __rdtsc();
 #elif defined(__GNUC__) && (defined(__i386__) || FOLLY_X64)
   return __builtin_ia32_rdtsc();

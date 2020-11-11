@@ -121,7 +121,7 @@ void Promise<T>::setException(exception_wrapper ew) {
 template <class T>
 template <typename F>
 void Promise<T>::setInterruptHandler(F&& fn) {
-  getCore().setInterruptHandler(std::forward<F>(fn));
+  getCore().setInterruptHandler(static_cast<F&&>(fn));
 }
 
 template <class T>
@@ -141,14 +141,14 @@ template <class M>
 void Promise<T>::setValue(M&& v) {
   static_assert(!std::is_same<T, void>::value, "Use setValue() instead");
 
-  setTry(Try<T>(std::forward<M>(v)));
+  setTry(Try<T>(static_cast<M&&>(v)));
 }
 
 template <class T>
 template <class F>
 void Promise<T>::setWith(F&& func) {
   throwIfFulfilled();
-  setTry(makeTryWith(std::forward<F>(func)));
+  setTry(makeTryWith(static_cast<F&&>(func)));
 }
 
 template <class T>
@@ -158,5 +158,10 @@ bool Promise<T>::isFulfilled() const noexcept {
   }
   return true;
 }
+
+#if FOLLY_USE_EXTERN_FUTURE_UNIT
+// limited to the instances unconditionally forced by the futures library
+extern template class Promise<Unit>;
+#endif
 
 } // namespace folly

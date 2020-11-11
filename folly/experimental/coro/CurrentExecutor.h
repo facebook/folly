@@ -60,9 +60,7 @@ class co_reschedule_on_current_executor_ {
     explicit Awaiter(folly::Executor::KeepAlive<> executor) noexcept
         : executor_(std::move(executor)) {}
 
-    bool await_ready() {
-      return false;
-    }
+    bool await_ready() { return false; }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
         std::experimental::coroutine_handle<> coro) {
