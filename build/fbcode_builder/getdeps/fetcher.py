@@ -28,8 +28,8 @@ from .runcmd import run_cmd
 
 
 try:
-    from urlparse import urlparse
     from urllib import urlretrieve
+    from urlparse import urlparse
 except ImportError:
     from urllib.parse import urlparse
     from urllib.request import urlretrieve
