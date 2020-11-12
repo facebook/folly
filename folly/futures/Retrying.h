@@ -67,6 +67,9 @@ namespace futures {
  *  overflow due to the recursive nature of the retry implementation
  */
 template <class Policy, class FF>
+Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+retryingUnsafe(Policy&& p, FF&& ff);
+template <class Policy, class FF>
 auto retrying(Policy&& p, FF&& ff);
 
 namespace detail {
@@ -268,6 +271,14 @@ retryingPolicyCappedJitteredExponentialBackoff(
 }
 
 } // namespace detail
+
+template <class Policy, class FF>
+Future<typename isFutureOrSemiFuture<invoke_result_t<FF, size_t>>::Inner>
+retryingUnsafe(Policy&& p, FF&& ff) {
+  using tag = typename detail::retrying_policy_traits<Policy>::tag;
+  return detail::retrying(
+      static_cast<Policy&&>(p), static_cast<FF&&>(ff), tag());
+}
 
 template <class Policy, class FF>
 auto retrying(Policy&& p, FF&& ff) {
