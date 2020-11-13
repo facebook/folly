@@ -15,6 +15,7 @@
  */
 
 #include <folly/io/async/AtomicNotificationQueue.h>
+#include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 
 #include <functional>
@@ -62,4 +63,69 @@ TEST(AtomicNotificationQueueTest, TryPutMessage) {
   queue.drain();
   EXPECT_TRUE(queue.tryPutMessage(0, kMaxSize));
   EXPECT_EQ(queue.size(), 1);
+}
+
+TEST(AtomicNotificationQueueTest, DiscardDequeuedTasks) {
+  struct TaskWithExpiry {
+    int datum;
+    bool isExpired;
+  };
+
+  struct Consumer {
+    explicit Consumer(std::vector<int>& data) : data(data) {}
+    AtomicNotificationQueueTaskStatus operator()(
+        TaskWithExpiry&& task) noexcept {
+      if (task.isExpired) {
+        return AtomicNotificationQueueTaskStatus::DISCARD;
+      }
+      data.push_back(task.datum);
+      return AtomicNotificationQueueTaskStatus::CONSUMED;
+    }
+    vector<int>& data;
+  };
+  vector<int> data;
+  Consumer consumer{data};
+
+  AtomicNotificationQueue<TaskWithExpiry, Consumer> queue{std::move(consumer)};
+  queue.setMaxReadAtOnce(10);
+
+  vector<TaskWithExpiry> tasks = {
+      {0, false},
+      {1, true},
+      {2, true},
+      {3, false},
+      {4, false},
+      {5, false},
+      {6, false},
+      {7, true},
+      {8, false},
+      {9, false},
+      {10, false},
+      {11, false},
+      {12, true},
+      {13, false},
+      {14, true},
+      {15, false},
+  };
+
+  EventBase eventBase;
+  queue.startConsuming(&eventBase);
+
+  for (auto& t : tasks) {
+    queue.putMessage(t);
+  }
+
+  eventBase.loopOnce();
+
+  vector<int> expectedMessages = {0, 3, 4, 5, 6, 8, 9, 10, 11, 13};
+  EXPECT_EQ(data.size(), expectedMessages.size());
+  for (unsigned i = 0; i < expectedMessages.size(); ++i) {
+    EXPECT_EQ(data.at(i), expectedMessages[i]);
+  }
+
+  data.clear();
+  eventBase.loopOnce();
+
+  EXPECT_EQ(data.size(), 1);
+  EXPECT_EQ(data.at(0), 15);
 }

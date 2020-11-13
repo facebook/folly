@@ -278,7 +278,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
   void drainFd();
 
   /*
-   * Executes one round of tasks. Returns true iff tasks were run.
+   * Executes one round of tasks. Returns true iff tasks were processed.
    * Can be called from consumer thread only.
    */
   bool drive();
@@ -332,6 +332,19 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
   ssize_t writesLocal_{0};
   const pid_t pid_;
   Consumer consumer_;
+};
+
+/**
+ * Consumer::operator() can optionally return AtomicNotificationQueueTaskStatus
+ * to indicate if the provided task should be considered consumed or
+ * discarded. Discarded tasks are not counted towards maxReadAtOnce_.
+ */
+enum class AtomicNotificationQueueTaskStatus : bool {
+  // The dequeued task was consumed and should be counted as such
+  CONSUMED = true,
+  // The dequeued task should be discarded and the queue not count it as
+  // consumed
+  DISCARD = false
 };
 
 } // namespace folly

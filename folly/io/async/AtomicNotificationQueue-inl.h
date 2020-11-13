@@ -324,14 +324,54 @@ void AtomicNotificationQueue<Task, Consumer>::startConsumingImpl(
   }
 }
 
+namespace detail {
+template <
+    typename Task,
+    typename Consumer,
+    typename = std::enable_if_t<std::is_same<
+        invoke_result_t<Consumer, Task&&>,
+        AtomicNotificationQueueTaskStatus>::value>>
+AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
+    Consumer& consumer,
+    Task&& task) {
+  return consumer(std::forward<Task>(task));
+}
+
+template <
+    typename Task,
+    typename Consumer,
+    typename = std::enable_if_t<
+        std::is_same<invoke_result_t<Consumer, Task&&>, void>::value>,
+    typename = void>
+AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
+    Consumer& consumer,
+    Task&& task) {
+  consumer(std::forward<Task>(task));
+  return AtomicNotificationQueueTaskStatus::CONSUMED;
+}
+
+} // namespace detail
+
 template <typename Task, typename Consumer>
 bool AtomicNotificationQueue<Task, Consumer>::drive() {
   Queue nextQueue;
+  // Since we cannot know if a task will be discarded before trying to execute
+  // it, this check may cause this function to return early. That is, even
+  // though:
+  //   1. numConsumed < maxReadAtOnce_
+  //   2. atomicQueue_ is not empty
+  // This is not an issue in practice because these tasks will be executed in
+  // the next round.
+  //
+  // In short, if `size() > maxReadAtOnce_`:
+  //   * at least maxReadAtOnce_ tasks will be "processed"
+  //   * at most maxReadAtOnce_ tasks will be "executed" (rest being discarded)
   if (maxReadAtOnce_ == 0 || queue_.size() < maxReadAtOnce_) {
     nextQueue = atomicQueue_.getTasks();
   }
-  int32_t i;
-  for (i = 0; maxReadAtOnce_ == 0 || i < maxReadAtOnce_; ++i) {
+  const bool wasAnyProcessed = !queue_.empty() || !nextQueue.empty();
+  for (int32_t numConsumed = 0;
+       maxReadAtOnce_ == 0 || numConsumed < maxReadAtOnce_;) {
     if (queue_.empty()) {
       queue_ = std::move(nextQueue);
       if (queue_.empty()) {
@@ -346,11 +386,15 @@ bool AtomicNotificationQueue<Task, Consumer>::drive() {
     {
       auto& curNode = queue_.front();
       RequestContextScopeGuard rcsg(std::move(curNode.rctx));
-      consumer_(std::move(curNode.task));
+      AtomicNotificationQueueTaskStatus consumeTaskStatus =
+          detail::invokeConsumerWithTask(consumer_, std::move(curNode.task));
+      if (consumeTaskStatus == AtomicNotificationQueueTaskStatus::CONSUMED) {
+        ++numConsumed;
+      }
     }
     queue_.pop();
   }
-  return i > 0;
+  return wasAnyProcessed;
 }
 
 template <typename Task, typename Consumer>
