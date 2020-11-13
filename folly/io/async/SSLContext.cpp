@@ -216,6 +216,15 @@ void SSLContext::setCiphersOrThrow(const std::string& ciphers) {
   providedCiphersString_ = ciphers;
 }
 
+void SSLContext::setSigAlgsOrThrow(const std::string& sigalgs) {
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
+  int rc = SSL_CTX_set1_sigalgs_list(ctx_, sigalgs.c_str());
+  if (rc == 0) {
+    throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
+  }
+#endif
+}
+
 void SSLContext::setVerificationOption(
     const SSLContext::SSLVerifyPeerEnum& verifyPeer) {
   CHECK(verifyPeer != SSLVerifyPeerEnum::USE_CTX); // dont recurse

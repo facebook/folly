@@ -190,4 +190,19 @@ TEST_F(SSLContextTest, TestGetFromSSLCtx) {
   SSL_CTX_free(randomCtx);
 }
 
+#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
+TEST_F(SSLContextTest, TestInvalidSigAlgThrows) {
+  {
+    SSLContext tmpCtx;
+    EXPECT_THROW(tmpCtx.setSigAlgsOrThrow(""), std::runtime_error);
+  }
+
+  {
+    SSLContext tmpCtx;
+    EXPECT_THROW(
+        tmpCtx.setSigAlgsOrThrow("rsa_pss_rsae_sha512:ECDSA+SHA256:RSA+HA256"),
+        std::runtime_error);
+  }
+}
+#endif
 } // namespace folly

@@ -166,7 +166,6 @@ class SSLContext {
   /**
    * Set default ciphers to be used in SSL handshake process.
    */
-
   template <typename Iterator>
   void setCipherList(Iterator ibegin, Iterator iend) {
     if (ibegin != iend) {
@@ -188,20 +187,18 @@ class SSLContext {
   }
 
   /**
-   * Sets the signature algorithms to be used during SSL negotiation
-   * for TLS1.2+.
+   * Low-level method that attempts to set the provided signature
+   * algorithms on the SSL_CTX object for TLS1.2+,
+   * and throws if something goes wrong.
    */
+  virtual void setSigAlgsOrThrow(const std::string& sigAlgs);
 
   template <typename Iterator>
   void setSignatureAlgorithms(Iterator ibegin, Iterator iend) {
     if (ibegin != iend) {
-#if OPENSSL_VERSION_NUMBER >= 0x1000200fL
       std::string opensslSigAlgsList;
       join(":", ibegin, iend, opensslSigAlgsList);
-      if (!SSL_CTX_set1_sigalgs_list(ctx_, opensslSigAlgsList.c_str())) {
-        throw std::runtime_error("SSL_CTX_set1_sigalgs_list " + getErrors());
-      }
-#endif
+      setSigAlgsOrThrow(opensslSigAlgsList);
     }
   }
 
