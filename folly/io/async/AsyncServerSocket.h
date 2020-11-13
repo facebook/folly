@@ -21,10 +21,10 @@
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
+#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
-#include <folly/io/async/NotificationQueue.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
@@ -550,8 +550,6 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * Set the maximum number of unprocessed messages in NotificationQueue.
    * No new message will be sent to that NotificationQueue if there are more
    * than such number of unprocessed messages in that queue.
-   *
-   * Only works if called before addAcceptCallback.
    */
   void setMaxNumMessagesInQueue(uint32_t num) { maxNumMsgsInQueue_ = num; }
 
@@ -596,7 +594,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     int64_t numMsgs = 0;
     for (const auto& callback : callbacks_) {
       if (callback.consumer) {
-        numMsgs += callback.consumer->getQueue()->size();
+        numMsgs += callback.consumer->getQueue().size();
       }
     }
     return numMsgs;
@@ -736,28 +734,33 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * receives notification of new sockets via a NotificationQueue,
    * and then invokes the AcceptCallback.
    */
-  class RemoteAcceptor : private NotificationQueue<QueueMessage>::Consumer {
+  class RemoteAcceptor {
+    struct Consumer {
+      void operator()(QueueMessage&& msg) noexcept;
+
+      explicit Consumer(RemoteAcceptor& acceptor) : acceptor_(acceptor) {}
+      RemoteAcceptor& acceptor_;
+    };
+
    public:
+    using Queue = AtomicNotificationQueue<QueueMessage, Consumer>;
+
     explicit RemoteAcceptor(
         AcceptCallback* callback,
         ConnectionEventCallback* connectionEventCallback)
         : callback_(callback),
-          connectionEventCallback_(connectionEventCallback) {}
+          connectionEventCallback_(connectionEventCallback),
+          queue_(Consumer(*this)) {}
 
-    ~RemoteAcceptor() override = default;
-
-    void start(EventBase* eventBase, uint32_t maxAtOnce, uint32_t maxInQueue);
+    void start(EventBase* eventBase, uint32_t maxAtOnce);
     void stop(EventBase* eventBase, AcceptCallback* callback);
 
-    void messageAvailable(QueueMessage&& msg) noexcept override;
-
-    NotificationQueue<QueueMessage>* getQueue() { return &queue_; }
+    Queue& getQueue() { return queue_; }
 
    private:
     AcceptCallback* callback_;
     ConnectionEventCallback* connectionEventCallback_;
-
-    NotificationQueue<QueueMessage> queue_;
+    Queue queue_;
   };
 
   /**
