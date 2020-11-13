@@ -27,6 +27,8 @@
 #include <folly/io/async/EventFDWrapper.h>
 #endif
 
+#include <type_traits>
+
 namespace folly {
 
 /**
@@ -171,25 +173,21 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
       return successfulArmCount_ - consumerDisarmCount_;
     }
 
-    /*
-     * Returns how many times push was called.
-     * Can be called from any thread.
-     */
-    ssize_t getPushCount() const {
-      return pushCount_.load(std::memory_order_relaxed);
-    }
-
    private:
     alignas(
         folly::cacheline_align_v) std::atomic<typename Queue::Node*> head_{};
-    std::atomic<ssize_t> pushCount_{0};
     alignas(folly::cacheline_align_v) ssize_t successfulArmCount_{0};
     ssize_t consumerDisarmCount_{0};
     static constexpr intptr_t kQueueArmedTag = 1;
   };
 
  public:
-  explicit AtomicNotificationQueue(Consumer&& consumer = Consumer());
+  explicit AtomicNotificationQueue(Consumer&& consumer);
+
+  template <
+      typename C = Consumer,
+      typename = std::enable_if_t<std::is_default_constructible<C>::value>>
+  AtomicNotificationQueue() : AtomicNotificationQueue(Consumer()) {}
 
   ~AtomicNotificationQueue() override;
 
@@ -217,6 +215,14 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
    */
   template <typename T>
   void putMessage(T&& task);
+
+  /**
+   * Adds a task into the queue unless the max queue size is reached.
+   * Returns true iff the task was queued.
+   * Can be called from any thread.
+   */
+  template <typename T>
+  FOLLY_NODISCARD bool tryPutMessage(T&& task, uint32_t maxSize);
 
   /*
    * Detaches the queue from an EventBase.
@@ -255,6 +261,12 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
   void execute();
 
  private:
+  /*
+   * Adds a task to the queue without incrementing the push count.
+   */
+  template <typename T>
+  void putMessageImpl(T&& task);
+
   /*
    * Write into the signal fd to wake up the consumer thread.
    */
@@ -302,6 +314,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
 
   [[noreturn]] FOLLY_NOINLINE void checkPidFail() const;
 
+  alignas(folly::cacheline_align_v) std::atomic<ssize_t> pushCount_{0};
   AtomicQueue atomicQueue_;
   Queue queue_;
   std::atomic<ssize_t> taskExecuteCount_{0};

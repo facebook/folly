@@ -104,8 +104,6 @@ AtomicNotificationQueue<Task, Consumer>::AtomicQueue::~AtomicQueue() {
 template <typename Task, typename Consumer>
 template <typename T>
 bool AtomicNotificationQueue<Task, Consumer>::AtomicQueue::push(T&& value) {
-  pushCount_.fetch_add(1, std::memory_order_relaxed);
-
   std::unique_ptr<typename Queue::Node> node(
       new typename Queue::Node(std::forward<T>(value)));
   auto head = head_.load(std::memory_order_relaxed);
@@ -239,7 +237,7 @@ void AtomicNotificationQueue<Task, Consumer>::setMaxReadAtOnce(
 
 template <typename Task, typename Consumer>
 size_t AtomicNotificationQueue<Task, Consumer>::size() const {
-  auto queueSize = atomicQueue_.getPushCount() -
+  auto queueSize = pushCount_.load(std::memory_order_relaxed) -
       taskExecuteCount_.load(std::memory_order_relaxed);
   return queueSize >= 0 ? queueSize : 0;
 }
@@ -252,6 +250,36 @@ bool AtomicNotificationQueue<Task, Consumer>::empty() const {
 template <typename Task, typename Consumer>
 template <typename T>
 void AtomicNotificationQueue<Task, Consumer>::putMessage(T&& task) {
+  pushCount_.fetch_add(1, std::memory_order_relaxed);
+  putMessageImpl(std::forward<T>(task));
+}
+
+template <typename Task, typename Consumer>
+template <typename T>
+bool AtomicNotificationQueue<Task, Consumer>::tryPutMessage(
+    T&& task,
+    uint32_t maxSize) {
+  auto pushed = pushCount_.load(std::memory_order_relaxed);
+  while (true) {
+    auto executed = taskExecuteCount_.load(std::memory_order_relaxed);
+    if (pushed - executed >= maxSize) {
+      return false;
+    }
+    if (pushCount_.compare_exchange_weak(
+            pushed,
+            pushed + 1,
+            std::memory_order_relaxed,
+            std::memory_order_relaxed)) {
+      break;
+    }
+  }
+  putMessageImpl(std::forward<T>(task));
+  return true;
+}
+
+template <typename Task, typename Consumer>
+template <typename T>
+void AtomicNotificationQueue<Task, Consumer>::putMessageImpl(T&& task) {
   if (atomicQueue_.push(std::forward<T>(task))) {
     notifyFd();
   }
