@@ -403,6 +403,19 @@ class Subprocess {
     }
 
     /**
+     * By default, if Subprocess is destroyed while the child process is
+     * still RUNNING, the destructor will log a fatal.  You can skip this
+     * behavior by setting it to true here.
+     *
+     * Note that detach()ed processes are never in RUNNING state, so this
+     * setting does not impact such processes.
+     */
+    Options& allowDestructionWhileProcessRunning(bool val) {
+      allowDestructionWhileProcessRunning_ = val;
+      return *this;
+    }
+
+    /**
      * *** READ THIS WHOLE DOCBLOCK BEFORE USING ***
      *
      * Run this callback in the child after the fork, just before the
@@ -469,6 +482,7 @@ class Subprocess {
     bool usePath_{false};
     bool processGroupLeader_{false};
     bool detach_{false};
+    bool allowDestructionWhileProcessRunning_{false};
     std::string childDir_; // "" keeps the parent's working directory
 #if defined(__linux__)
     int parentDeathSignal_{0};
@@ -941,6 +955,7 @@ class Subprocess {
 
   pid_t pid_{-1};
   ProcessReturnCode returnCode_;
+  bool destroyOkWhileRunning_{false};
 
   /**
    * Represents a pipe between this process, and the child process (or its

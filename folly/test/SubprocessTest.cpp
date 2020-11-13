@@ -188,6 +188,15 @@ TEST(SimpleSubprocessTest, waitOrTerminateOrKill_terminates_if_timeout) {
   EXPECT_EQ(SIGTERM, retCode.killSignal());
 }
 
+TEST(
+    SimpleSubprocessTest,
+    destructor_doesNotFail_ifOkToDestroyWhileProcessRunning) {
+  Subprocess proc(
+      std::vector<std::string>{"/bin/sleep", "10"},
+      Subprocess::Options().allowDestructionWhileProcessRunning(true));
+  proc.~Subprocess();
+}
+
 // This method verifies terminateOrKill shouldn't affect the exit
 // status if the process has exitted already.
 TEST(SimpleSubprocessTest, TerminateAfterProcessExit) {
