@@ -4196,3 +4196,55 @@ TEST(AsyncSocketTest, getBufInUse) {
   EXPECT_GT(sendBufSize, 0);
 }
 #endif
+
+TEST(AsyncSocketTest, ConnectionExpiry) {
+  // Create a new AsyncServerSocket
+  EventBase eventBase;
+  std::shared_ptr<AsyncServerSocket> serverSocket(
+      AsyncServerSocket::newSocket(&eventBase));
+  serverSocket->bind(0);
+  serverSocket->listen(16);
+  folly::SocketAddress serverAddress;
+  serverSocket->getAddress(&serverAddress);
+
+  constexpr auto kConnectionExpiryDuration = milliseconds(10);
+  serverSocket->setQueueTimeout(kConnectionExpiryDuration);
+
+  ScopedEventBaseThread acceptThread("ioworker_test");
+  TestAcceptCallback acceptCb;
+  acceptCb.setConnectionAcceptedFn(
+      [&, called = false](auto&&...) mutable {
+        ASSERT_FALSE(called)
+            << "Only the first connection should have been dequeued";
+        called = true;
+        // Allow plenty of time for the AsyncSocketServer's event loop to run.
+        // This should leave no doubt that the acceptor thread has enough time
+        // to dequeue. If the dequeue succeeds, then our expiry code is broken.
+        constexpr auto kEventLoopTime = kConnectionExpiryDuration * 5;
+        eventBase.runInEventBaseThread([&]() {
+          eventBase.tryRunAfterDelay(
+              [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },
+              milliseconds(kEventLoopTime).count());
+        });
+        // After the first message is enqueued, sleep long enough so that the
+        // second message expires before it has a chance to dequeue.
+        std::this_thread::sleep_for(kConnectionExpiryDuration);
+      });
+
+  TestConnectionEventCallback connectionEventCb;
+  serverSocket->setConnectionEventCallback(&connectionEventCb);
+  serverSocket->addAcceptCallback(&acceptCb, acceptThread.getEventBase());
+  serverSocket->startAccepting();
+
+  std::shared_ptr<AsyncSocket> clientSocket1(
+      AsyncSocket::newSocket(&eventBase, serverAddress));
+  std::shared_ptr<AsyncSocket> clientSocket2(
+      AsyncSocket::newSocket(&eventBase, serverAddress));
+
+  // Loop until we are stopped
+  eventBase.loop();
+
+  EXPECT_EQ(connectionEventCb.getConnectionEnqueuedForAcceptCallback(), 2);
+  // Since the second message is expired, it should NOT be dequeued
+  EXPECT_EQ(connectionEventCb.getConnectionDequeuedByAcceptCallback(), 1);
+}

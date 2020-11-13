@@ -31,6 +31,7 @@
 
 #include <limits.h>
 #include <stddef.h>
+#include <chrono>
 #include <exception>
 #include <memory>
 #include <vector>
@@ -541,6 +542,26 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   void setMaxAcceptAtOnce(uint32_t numConns) { maxAcceptAtOnce_ = numConns; }
 
   /**
+   * Get the duration after which new connection messages will be dropped from
+   * the NotificationQueue if it has not started processing yet.
+   */
+  std::chrono::nanoseconds getQueueTimeout() const { return queueTimeout_; }
+
+  /**
+   * Set the duration after which new connection messages will be dropped from
+   * the NotificationQueue if it has not started processing yet.
+   *
+   * This avoids the NotificationQueue from processing messages where the client
+   * socket has probably timed out already, or will time out before a response
+   * can be sent.
+   *
+   * The default value (of 0) means that messages will never expire.
+   */
+  void setQueueTimeout(std::chrono::nanoseconds duration) {
+    queueTimeout_ = duration;
+  }
+
+  /**
    * Get the maximum number of unprocessed messages which a NotificationQueue
    * can hold.
    */
@@ -723,6 +744,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     int err;
     SocketAddress address;
     std::string msg;
+    std::chrono::steady_clock::time_point deadline;
+
+    bool isExpired() const {
+      return deadline.time_since_epoch().count() != 0 &&
+          std::chrono::steady_clock::now() > deadline;
+    }
   };
 
   /**
@@ -736,7 +763,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    */
   class RemoteAcceptor {
     struct Consumer {
-      void operator()(QueueMessage&& msg) noexcept;
+      AtomicNotificationQueueTaskStatus operator()(QueueMessage&& msg) noexcept;
 
       explicit Consumer(RemoteAcceptor& acceptor) : acceptor_(acceptor) {}
       RemoteAcceptor& acceptor_;
@@ -871,6 +898,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   ConnectionEventCallback* connectionEventCallback_{nullptr};
   bool tosReflect_{false};
   bool zeroCopyVal_{false};
+  std::chrono::nanoseconds queueTimeout_{0};
 };
 
 } // namespace folly

@@ -76,8 +76,16 @@ void AsyncServerSocket::RemoteAcceptor::stop(
   });
 }
 
-void AsyncServerSocket::RemoteAcceptor::Consumer::operator()(
-    QueueMessage&& msg) noexcept {
+AtomicNotificationQueueTaskStatus AsyncServerSocket::RemoteAcceptor::Consumer::
+operator()(QueueMessage&& msg) noexcept {
+  if (msg.isExpired()) {
+    closeNoInt(msg.fd);
+    if (acceptor_.connectionEventCallback_) {
+      acceptor_.connectionEventCallback_->onConnectionDropped(
+          msg.fd, msg.address);
+    }
+    return AtomicNotificationQueueTaskStatus::DISCARD;
+  }
   switch (msg.type) {
     case MessageType::MSG_NEW_CONN: {
       if (acceptor_.connectionEventCallback_) {
@@ -100,6 +108,7 @@ void AsyncServerSocket::RemoteAcceptor::Consumer::operator()(
       acceptor_.callback_->acceptError(ex);
     }
   }
+  return AtomicNotificationQueueTaskStatus::CONSUMED;
 }
 
 /*
@@ -1012,6 +1021,9 @@ void AsyncServerSocket::dispatchSocket(
   msg.type = MessageType::MSG_NEW_CONN;
   msg.address = std::move(address);
   msg.fd = socket;
+  if (queueTimeout_.count() != 0) {
+    msg.deadline = std::chrono::steady_clock::now() + queueTimeout_;
+  }
 
   // Loop until we find a free queue to write to
   while (true) {
