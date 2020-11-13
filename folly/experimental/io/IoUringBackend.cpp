@@ -19,6 +19,7 @@
 #include <folly/String.h>
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
+#include <folly/portability/GFlags.h>
 #include <folly/portability/Sockets.h>
 #include <folly/synchronization/CallOnce.h>
 
