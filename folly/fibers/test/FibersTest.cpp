@@ -190,6 +190,27 @@ TEST(FiberManager, batonTimedWaitPostEvb) {
   EXPECT_EQ(1, tasksComplete);
 }
 
+TEST(FiberManager, fiberTimeLogged) {
+  FiberManager manager(std::make_unique<SimpleLoopController>());
+  TaskOptions tOpt;
+  tOpt.logRunningTime = true;
+  manager.addTask(
+      [&]() {
+        LOG(INFO) << "logging time.";
+        EXPECT_LT(-1, manager.getCurrentTaskRunningTime()->count());
+      },
+      tOpt /*logRunningTime = true*/);
+  EXPECT_FALSE(manager.getCurrentTaskRunningTime());
+  tOpt.logRunningTime = false;
+  manager.addTask(
+      [&]() {
+        LOG(INFO) << "Not logging time.";
+        EXPECT_FALSE(manager.getCurrentTaskRunningTime());
+      },
+      tOpt /*logRunningTime = false*/);
+  manager.loopUntilNoReady();
+}
+
 TEST(FiberManager, batonTryWait) {
   FiberManager manager(std::make_unique<SimpleLoopController>());
 

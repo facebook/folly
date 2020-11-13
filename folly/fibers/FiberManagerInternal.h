@@ -53,6 +53,8 @@ namespace fibers {
 class Baton;
 class Fiber;
 
+struct TaskOptions;
+
 template <typename T>
 class LocalType {};
 
@@ -243,9 +245,10 @@ class FiberManager : public ::folly::Executor {
    *
    * @param func Task functor; must have a signature of `void func()`.
    *             The object will be destroyed once task execution is complete.
+   * @param taskOptions Task specific configs.
    */
   template <typename F>
-  void addTask(F&& func);
+  void addTask(F&& func, TaskOptions taskOptions = TaskOptions());
 
   /**
    * Add a new task to be executed and return a future that will be set on
@@ -366,9 +369,17 @@ class FiberManager : public ::folly::Executor {
   size_t fibersPoolSize() const;
 
   /**
-   * return     true if running activeFiber_ is not nullptr.
+   * @return true if running activeFiber_ is not nullptr.
    */
   bool hasActiveFiber() const;
+
+  /**
+   * @return How long has the currently running task on the fiber ran, in
+   * terms of wallclock time. This excludes the time spent in preempted or
+   * waiting stages. This only works if TaskOptions.logRunningTime is true
+   * during addTask().
+   */
+  folly::Optional<std::chrono::nanoseconds> getCurrentTaskRunningTime() const;
 
   /**
    * @return The currently running fiber or null if no fiber is executing.
@@ -444,7 +455,7 @@ class FiberManager : public ::folly::Executor {
   };
 
   template <typename F>
-  Fiber* createTask(F&& func);
+  Fiber* createTask(F&& func, TaskOptions taskOptions);
 
   template <typename F, typename G>
   Fiber* createTaskFinally(F&& func, G&& finally);

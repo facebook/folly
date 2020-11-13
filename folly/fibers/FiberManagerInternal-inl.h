@@ -158,6 +158,7 @@ inline void FiberManager::runReadyFiber(Fiber* fiber) {
     // running at this point.
     fiber->func_ = nullptr;
     fiber->resultFunc_ = nullptr;
+    fiber->taskOptions_ = TaskOptions();
     if (fiber->finallyFunc_) {
       try {
         fiber->finallyFunc_();
@@ -285,7 +286,7 @@ inline void FiberManager::loopUntilNoReadyImpl() {
             }
             fiber->rcontext_ = std::move(task->rcontext);
 
-            fiber->setFunction(std::move(task->func));
+            fiber->setFunction(std::move(task->func), TaskOptions());
             if (observer_) {
               observer_->runnable(reinterpret_cast<uintptr_t>(fiber));
             }
@@ -357,7 +358,7 @@ struct FiberManager::AddTaskHelper {
 };
 
 template <typename F>
-Fiber* FiberManager::createTask(F&& func) {
+Fiber* FiberManager::createTask(F&& func, TaskOptions taskOptions) {
   typedef AddTaskHelper<F> Helper;
 
   auto fiber = getFiber();
@@ -367,11 +368,11 @@ Fiber* FiberManager::createTask(F&& func) {
     auto funcLoc = static_cast<typename Helper::Func*>(fiber->getUserBuffer());
     new (funcLoc) typename Helper::Func(std::forward<F>(func), *this);
 
-    fiber->setFunction(std::ref(*funcLoc));
+    fiber->setFunction(std::ref(*funcLoc), std::move(taskOptions));
   } else {
     auto funcLoc = new typename Helper::Func(std::forward<F>(func), *this);
 
-    fiber->setFunction(std::ref(*funcLoc));
+    fiber->setFunction(std::ref(*funcLoc), std::move(taskOptions));
   }
 
   if (observer_) {
@@ -382,14 +383,15 @@ Fiber* FiberManager::createTask(F&& func) {
 }
 
 template <typename F>
-void FiberManager::addTask(F&& func) {
-  readyFibers_.push_back(*createTask(std::forward<F>(func)));
+void FiberManager::addTask(F&& func, TaskOptions taskOptions) {
+  readyFibers_.push_back(
+      *createTask(std::forward<F>(func), std::move(taskOptions)));
   ensureLoopScheduled();
 }
 
 template <typename F>
 void FiberManager::addTaskEager(F&& func) {
-  runEagerFiber(createTask(std::forward<F>(func)));
+  runEagerFiber(createTask(std::forward<F>(func), TaskOptions()));
 }
 
 template <typename F>
@@ -567,6 +569,16 @@ inline FiberManager* FiberManager::getFiberManagerUnsafe() {
 
 inline bool FiberManager::hasActiveFiber() const {
   return activeFiber_ != nullptr;
+}
+
+inline folly::Optional<std::chrono::nanoseconds>
+FiberManager::getCurrentTaskRunningTime() const {
+  if (activeFiber_ && activeFiber_->taskOptions_.logRunningTime &&
+      activeFiber_->state_ == Fiber::RUNNING) {
+    return activeFiber_->prevDuration_ + std::chrono::steady_clock::now() -
+        activeFiber_->currStartTime_;
+  }
+  return folly::none;
 }
 
 inline void FiberManager::yield() {

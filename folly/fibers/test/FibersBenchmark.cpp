@@ -28,7 +28,7 @@ using namespace folly::fibers;
 
 static size_t sNumAwaits;
 
-void runBenchmark(size_t numAwaits, size_t toSend) {
+void runBenchmark(size_t numAwaits, size_t toSend, bool logRunningTime) {
   sNumAwaits = numAwaits;
 
   FiberManager fiberManager(std::make_unique<SimpleLoopController>());
@@ -38,7 +38,13 @@ void runBenchmark(size_t numAwaits, size_t toSend) {
   std::queue<Promise<int>> pendingRequests;
   static const size_t maxOutstanding = 5;
 
-  auto loop = [&fiberManager, &loopController, &pendingRequests, &toSend]() {
+  auto loop = [&fiberManager,
+               &loopController,
+               &pendingRequests,
+               &toSend,
+               logRunningTime]() {
+    TaskOptions tOpt;
+    tOpt.logRunningTime = logRunningTime;
     if (pendingRequests.size() == maxOutstanding || toSend == 0) {
       if (pendingRequests.empty()) {
         return;
@@ -46,14 +52,16 @@ void runBenchmark(size_t numAwaits, size_t toSend) {
       pendingRequests.front().setValue(0);
       pendingRequests.pop();
     } else {
-      fiberManager.addTask([&pendingRequests]() {
-        for (size_t i = 0; i < sNumAwaits; ++i) {
-          auto result = await([&pendingRequests](Promise<int> promise) {
-            pendingRequests.push(std::move(promise));
-          });
-          DCHECK_EQ(result, 0);
-        }
-      });
+      fiberManager.addTask(
+          [&pendingRequests]() {
+            for (size_t i = 0; i < sNumAwaits; ++i) {
+              auto result = await([&pendingRequests](Promise<int> promise) {
+                pendingRequests.push(std::move(promise));
+              });
+              DCHECK_EQ(result, 0);
+            }
+          },
+          std::move(tOpt));
 
       if (--toSend == 0) {
         loopController.stop();
@@ -65,11 +73,19 @@ void runBenchmark(size_t numAwaits, size_t toSend) {
 }
 
 BENCHMARK(FiberManagerBasicOneAwait, iters) {
-  runBenchmark(1, iters);
+  runBenchmark(1, iters, false);
+}
+
+BENCHMARK(FiberManagerBasicOneAwaitLogged, iters) {
+  runBenchmark(1, iters, true);
 }
 
 BENCHMARK(FiberManagerBasicFiveAwaits, iters) {
-  runBenchmark(5, iters);
+  runBenchmark(5, iters, false);
+}
+
+BENCHMARK(FiberManagerBasicFiveAwaitsLogged, iters) {
+  runBenchmark(5, iters, true);
 }
 
 BENCHMARK(FiberManagerCreateDestroy, iters) {

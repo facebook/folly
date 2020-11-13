@@ -22,10 +22,11 @@ namespace folly {
 namespace fibers {
 
 template <typename F>
-void Fiber::setFunction(F&& func) {
+void Fiber::setFunction(F&& func, TaskOptions taskOptions) {
   assert(state_ == INVALID);
   func_ = std::forward<F>(func);
   state_ = NOT_STARTED;
+  taskOptions_ = std::move(taskOptions);
 }
 
 template <typename F, typename G>
@@ -34,6 +35,7 @@ void Fiber::setFunctionFinally(F&& resultFunc, G&& finallyFunc) {
   resultFunc_ = std::forward<F>(resultFunc);
   finallyFunc_ = std::forward<G>(finallyFunc);
   state_ = NOT_STARTED;
+  taskOptions_ = TaskOptions();
 }
 
 inline void* Fiber::getUserBuffer() {

@@ -36,6 +36,15 @@ namespace fibers {
 class Baton;
 class FiberManager;
 
+struct TaskOptions {
+  TaskOptions() {}
+  /**
+   * Should log the running time of the task? Refer to
+   * getCurrentTaskRunningTime() for details.
+   */
+  bool logRunningTime = false;
+};
+
 /**
  * @class Fiber
  * @brief Fiber object used by FiberManager to execute tasks.
@@ -88,7 +97,7 @@ class Fiber {
   void init(bool recordStackUsed);
 
   template <typename F>
-  void setFunction(F&& func);
+  void setFunction(F&& func, TaskOptions taskOptions);
 
   template <typename F, typename G>
   void setFunctionFinally(F&& func, G&& finally);
@@ -118,6 +127,8 @@ class Fiber {
   folly::Function<void()> func_; /**< task function */
   bool recordStackUsed_{false};
   bool stackFilledWithMagic_{false};
+  std::chrono::steady_clock::time_point currStartTime_;
+  std::chrono::steady_clock::duration prevDuration_{0};
 
   /**
    * Points to next fiber in remote ready list
@@ -131,6 +142,7 @@ class Fiber {
 
   folly::Function<void()> resultFunc_;
   folly::Function<void()> finallyFunc_;
+  TaskOptions taskOptions_;
 
   class LocalData {
    public:
