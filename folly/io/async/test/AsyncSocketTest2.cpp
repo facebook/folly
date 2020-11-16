@@ -4210,7 +4210,6 @@ TEST(AsyncSocketTest, ConnectionExpiry) {
   constexpr auto kConnectionExpiryDuration = milliseconds(10);
   serverSocket->setQueueTimeout(kConnectionExpiryDuration);
 
-  ScopedEventBaseThread acceptThread("ioworker_test");
   TestAcceptCallback acceptCb;
   acceptCb.setConnectionAcceptedFn(
       [&, called = false](auto&&...) mutable {
@@ -4230,6 +4229,7 @@ TEST(AsyncSocketTest, ConnectionExpiry) {
         // second message expires before it has a chance to dequeue.
         std::this_thread::sleep_for(kConnectionExpiryDuration);
       });
+  ScopedEventBaseThread acceptThread("ioworker_test");
 
   TestConnectionEventCallback connectionEventCb;
   serverSocket->setConnectionEventCallback(&connectionEventCb);
