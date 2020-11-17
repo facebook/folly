@@ -310,11 +310,11 @@ IoUringBackend::IoUringBackend(Options options)
   numEntries_ *= 2;
 
   // timer entry
-  timerEntry_ = std::make_unique<IoSqe>(this, false);
+  timerEntry_ = std::make_unique<IoSqe>(this, false, true /*persist*/);
   timerEntry_->backendCb_ = PollIoBackend::processTimerIoCb;
 
   // signal entry
-  signalReadEntry_ = std::make_unique<IoSqe>(this, false);
+  signalReadEntry_ = std::make_unique<IoSqe>(this, false, true /*persist*/);
   signalReadEntry_->backendCb_ = PollIoBackend::processSignalReadIoCb;
 
   // we need to call the init before adding the timer fd

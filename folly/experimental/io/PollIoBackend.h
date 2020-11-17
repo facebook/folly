@@ -152,8 +152,13 @@ class PollIoBackend : public EventBaseBackendBase {
             boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
     using BackendCb = void(PollIoBackend*, IoCb*, int64_t);
 
-    explicit IoCb(PollIoBackend* backend, bool poolAlloc = true)
-        : backend_(backend), poolAlloc_(poolAlloc) {}
+    // persist are entries that do not go through the normal delete path if
+    // not allocated from a pool
+    explicit IoCb(
+        PollIoBackend* backend,
+        bool poolAlloc = true,
+        bool persist = false)
+        : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
     virtual ~IoCb() = default;
 
     virtual void processSubmit(void* entry) = 0;
@@ -163,6 +168,7 @@ class PollIoBackend : public EventBaseBackendBase {
     PollIoBackend* backend_;
     BackendCb* backendCb_{nullptr};
     const bool poolAlloc_;
+    const bool persist_;
     Event* event_{nullptr};
     FdRegistrationRecord* fdRecord_{nullptr};
     size_t useCount_{0};

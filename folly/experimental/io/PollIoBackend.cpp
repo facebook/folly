@@ -358,7 +358,6 @@ PollIoBackend::IoCb* PollIoBackend::allocIoCb(const EventCallback& cb) {
 
 void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
   CHECK_GT(numIoCbInUse_, 0);
-  numIoCbInUse_--;
   aioIoCb->cbData_.releaseData();
   // unregister the file descriptor record
   if (aioIoCb->fdRecord_) {
@@ -367,10 +366,14 @@ void PollIoBackend::releaseIoCb(PollIoBackend::IoCb* aioIoCb) {
   }
 
   if (FOLLY_LIKELY(aioIoCb->poolAlloc_)) {
+    numIoCbInUse_--;
     aioIoCb->event_ = nullptr;
     freeList_.push_front(*aioIoCb);
   } else {
-    delete aioIoCb;
+    if (!aioIoCb->persist_) {
+      numIoCbInUse_--;
+      delete aioIoCb;
+    }
   }
 }
 

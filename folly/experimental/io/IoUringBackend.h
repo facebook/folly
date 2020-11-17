@@ -128,8 +128,11 @@ class IoUringBackend : public PollIoBackend {
   int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
 
   struct IoSqe : public PollIoBackend::IoCb {
-    explicit IoSqe(PollIoBackend* backend = nullptr, bool poolAlloc = false)
-        : PollIoBackend::IoCb(backend, poolAlloc) {}
+    explicit IoSqe(
+        PollIoBackend* backend = nullptr,
+        bool poolAlloc = false,
+        bool persist = false)
+        : PollIoBackend::IoCb(backend, poolAlloc, persist) {}
     ~IoSqe() override = default;
 
     void processSubmit(void* entry) override {
