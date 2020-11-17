@@ -29,6 +29,7 @@ struct event_base {
 
 struct epollop {
   void* fds;
+  int nfds;
   void* events;
   int nevents;
   int epfd;
