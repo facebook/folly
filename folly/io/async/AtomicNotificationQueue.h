@@ -44,22 +44,21 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
       noexcept(std::declval<Consumer>()(std::declval<Task&&>())),
       "Consumer::operator()(Task&&) should be noexcept.");
   class AtomicQueue;
+  struct Node {
+    Task task;
+    std::shared_ptr<RequestContext> rctx{RequestContext::saveContext()};
+
+   private:
+    friend class AtomicNotificationQueue;
+
+    template <typename T>
+    explicit Node(T&& t) : task(std::forward<T>(t)) {}
+
+    Node* next{};
+  };
+
   class Queue {
    public:
-    struct Node {
-      Task task;
-      std::shared_ptr<RequestContext> rctx{RequestContext::saveContext()};
-
-     private:
-      friend class AtomicNotificationQueue::AtomicQueue;
-      friend class Queue;
-
-      template <typename T>
-      explicit Node(T&& t) : task(std::forward<T>(t)) {}
-
-      Node* next{};
-    };
-
     Queue() {}
     Queue(Queue&& other) noexcept;
     Queue& operator=(Queue&& other) noexcept;
@@ -174,8 +173,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
     }
 
    private:
-    alignas(
-        folly::cacheline_align_v) std::atomic<typename Queue::Node*> head_{};
+    alignas(folly::cacheline_align_v) std::atomic<Node*> head_{};
     alignas(folly::cacheline_align_v) ssize_t successfulArmCount_{0};
     ssize_t consumerDisarmCount_{0};
     static constexpr intptr_t kQueueArmedTag = 1;

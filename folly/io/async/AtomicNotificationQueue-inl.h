@@ -54,7 +54,7 @@ ssize_t AtomicNotificationQueue<Task, Consumer>::Queue::size() const {
 }
 
 template <typename Task, typename Consumer>
-typename AtomicNotificationQueue<Task, Consumer>::Queue::Node&
+typename AtomicNotificationQueue<Task, Consumer>::Node&
 AtomicNotificationQueue<Task, Consumer>::Queue::front() {
   return *head_;
 }
@@ -104,8 +104,7 @@ AtomicNotificationQueue<Task, Consumer>::AtomicQueue::~AtomicQueue() {
 template <typename Task, typename Consumer>
 template <typename T>
 bool AtomicNotificationQueue<Task, Consumer>::AtomicQueue::push(T&& value) {
-  std::unique_ptr<typename Queue::Node> node(
-      new typename Queue::Node(std::forward<T>(value)));
+  std::unique_ptr<Node> node(new Node(std::forward<T>(value)));
   auto head = head_.load(std::memory_order_relaxed);
   while (true) {
     node->next =
@@ -147,7 +146,7 @@ AtomicNotificationQueue<Task, Consumer>::AtomicQueue::arm() {
   if (!head &&
       head_.compare_exchange_strong(
           head,
-          reinterpret_cast<typename Queue::Node*>(kQueueArmedTag),
+          reinterpret_cast<Node*>(kQueueArmedTag),
           std::memory_order_relaxed,
           std::memory_order_relaxed)) {
     ++successfulArmCount_;
