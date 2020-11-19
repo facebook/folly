@@ -206,6 +206,10 @@ struct WithAsyncStackFunction {
 
 } // namespace detail
 
+template <typename Awaitable>
+inline constexpr bool is_awaitable_async_stack_aware_v =
+    folly::is_tag_invocable_v<detail::WithAsyncStackFunction, Awaitable>;
+
 // Coroutines that support the AsyncStack protocol will apply the
 // co_withAsyncStack() customisation-point to an awaitable inside its
 // await_transform() to ensure that the current coroutine's AsyncStackFrame
