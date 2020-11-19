@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 
@@ -32,12 +33,14 @@ class BarrierTask {
   class promise_type {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
+
       std::experimental::coroutine_handle<> await_suspend(
           std::experimental::coroutine_handle<promise_type> h) noexcept {
         auto& promise = h.promise();
         assert(promise.barrier_ != nullptr);
-        return promise.barrier_->arrive();
+        return promise.barrier_->arrive(promise.asyncFrame_);
       }
+
       void await_resume() noexcept {}
     };
 
@@ -60,6 +63,12 @@ class BarrierTask {
 
     FinalAwaiter final_suspend() noexcept { return {}; }
 
+    template <typename Awaitable>
+    auto await_transform(Awaitable&& awaitable) {
+      return folly::coro::co_withAsyncStack(
+          static_cast<Awaitable&&>(awaitable));
+    }
+
     void return_void() noexcept {}
 
     [[noreturn]] void unhandled_exception() noexcept { std::terminate(); }
@@ -69,7 +78,10 @@ class BarrierTask {
       barrier_ = barrier;
     }
 
+    folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
+
    private:
+    folly::AsyncStackFrame asyncFrame_;
     Barrier* barrier_ = nullptr;
   };
 
@@ -95,33 +107,20 @@ class BarrierTask {
 
   void swap(BarrierTask& b) noexcept { std::swap(coro_, b.coro_); }
 
-  void start(Barrier* barrier) noexcept {
-    assert(coro_);
-    coro_.promise().setBarrier(barrier);
-    coro_.resume();
+  FOLLY_NOINLINE void start(Barrier* barrier) noexcept {
+    start(barrier, folly::getDetachedRootAsyncStackFrame());
   }
 
-  auto startAndWaitForBarrier(Barrier* barrier) noexcept {
-    class awaiter {
-     public:
-      explicit awaiter(Barrier* barrier, handle_t coro) noexcept
-          : barrier_(barrier), coro_(coro) {}
-      bool await_ready() noexcept { return false; }
-      std::experimental::coroutine_handle<> await_suspend(
-          std::experimental::coroutine_handle<> continuation) noexcept {
-        coro_.promise().setBarrier(barrier_);
-        barrier_->setContinuation(continuation);
-        return coro_;
-      }
-      void await_resume() noexcept {}
-
-     private:
-      Barrier* barrier_;
-      handle_t coro_;
-    };
-
+  FOLLY_NOINLINE void start(
+      Barrier* barrier,
+      folly::AsyncStackFrame& parentFrame) noexcept {
     assert(coro_);
-    return awaiter{barrier, coro_};
+    auto& calleeFrame = coro_.promise().getAsyncFrame();
+    calleeFrame.setParentFrame(parentFrame);
+    calleeFrame.setReturnAddress();
+    coro_.promise().setBarrier(barrier);
+
+    folly::resumeCoroutineWithNewAsyncStackRoot(coro_);
   }
 
  private:
@@ -132,6 +131,10 @@ class DetachedBarrierTask {
  public:
   class promise_type {
    public:
+    promise_type() noexcept {
+      asyncFrame_.setParentFrame(folly::getDetachedRootAsyncStackFrame());
+    }
+
     DetachedBarrierTask get_return_object() noexcept {
       return DetachedBarrierTask{
           std::experimental::coroutine_handle<promise_type>::from_promise(
@@ -146,7 +149,8 @@ class DetachedBarrierTask {
         auto await_suspend(
             std::experimental::coroutine_handle<promise_type> h) noexcept {
           assert(h.promise().barrier_ != nullptr);
-          auto continuation = h.promise().barrier_->arrive();
+          auto continuation =
+              h.promise().barrier_->arrive(h.promise().getAsyncFrame());
           h.destroy();
           return continuation;
         }
@@ -159,9 +163,18 @@ class DetachedBarrierTask {
 
     void return_void() noexcept {}
 
+    template <typename Awaitable>
+    auto await_transform(Awaitable&& awaitable) {
+      return folly::coro::co_withAsyncStack(
+          static_cast<Awaitable&&>(awaitable));
+    }
+
     void setBarrier(Barrier* barrier) noexcept { barrier_ = barrier; }
 
+    AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
+
    private:
+    AsyncStackFrame asyncFrame_;
     Barrier* barrier_;
   };
 
@@ -180,13 +193,14 @@ class DetachedBarrierTask {
     }
   }
 
-  void start(Barrier* barrier) && noexcept {
+  FOLLY_NOINLINE void start(Barrier* barrier) && noexcept {
     assert(coro_);
     assert(barrier != nullptr);
     barrier->add(1);
     auto coro = std::exchange(coro_, {});
     coro.promise().setBarrier(barrier);
-    coro.resume();
+    coro.promise().getAsyncFrame().setReturnAddress();
+    folly::resumeCoroutineWithNewAsyncStackRoot(coro);
   }
 
  private:
