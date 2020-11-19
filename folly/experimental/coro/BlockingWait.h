@@ -21,10 +21,12 @@
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/experimental/coro/detail/Traits.h>
 #include <folly/fibers/Baton.h>
 #include <folly/synchronization/Baton.h>
+#include <folly/tracing/AsyncStack.h>
 
 #include <cassert>
 #include <exception>
@@ -47,6 +49,7 @@ class BlockingWaitPromiseBase {
     void await_suspend(
         std::experimental::coroutine_handle<Promise> coro) noexcept {
       BlockingWaitPromiseBase& promise = coro.promise();
+      folly::deactivateAsyncStackFrame(promise.getAsyncFrame());
       promise.baton_.post();
     }
     void await_resume() noexcept {}
@@ -67,12 +70,20 @@ class BlockingWaitPromiseBase {
 
   FinalAwaiter final_suspend() noexcept { return {}; }
 
+  template <typename Awaitable>
+  decltype(auto) await_transform(Awaitable&& awaitable) {
+    return folly::coro::co_withAsyncStack(static_cast<Awaitable&&>(awaitable));
+  }
+
   bool done() const noexcept { return baton_.ready(); }
 
   void wait() noexcept { baton_.wait(); }
 
+  folly::AsyncStackFrame& getAsyncFrame() noexcept { return asyncFrame_; }
+
  private:
   folly::fibers::Baton baton_;
+  folly::AsyncStackFrame asyncFrame_;
 };
 
 template <typename T>
@@ -188,28 +199,37 @@ class BlockingWaitTask {
     }
   }
 
-  folly::Try<detail::lift_lvalue_reference_t<T>> getAsTry() && {
+  FOLLY_NOINLINE T get(folly::AsyncStackFrame& parentFrame) && {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;
     auto& promise = coro_.promise();
     promise.setTry(&result);
+
+    auto& asyncFrame = promise.getAsyncFrame();
+    asyncFrame.setParentFrame(parentFrame);
+    asyncFrame.setReturnAddress();
     {
       RequestContextScopeGuard guard{RequestContext::saveContext()};
-      coro_.resume();
+      folly::resumeCoroutineWithNewAsyncStackRoot(coro_);
     }
     promise.wait();
-    return result;
+    return std::move(result).value();
   }
 
-  T get() && { return std::move(*this).getAsTry().value(); }
-
-  T getVia(folly::DrivableExecutor* executor) && {
+  FOLLY_NOINLINE T getVia(
+      folly::DrivableExecutor* executor,
+      folly::AsyncStackFrame& parentFrame) && {
     folly::Try<detail::lift_lvalue_reference_t<T>> result;
     auto& promise = coro_.promise();
     promise.setTry(&result);
+
+    auto& asyncFrame = promise.getAsyncFrame();
+    asyncFrame.setReturnAddress();
+    asyncFrame.setParentFrame(parentFrame);
+
     executor->add(
         [coro = coro_, rctx = RequestContext::saveContext()]() mutable {
           RequestContextScopeGuard guard{std::move(rctx)};
-          coro.resume();
+          folly::resumeCoroutineWithNewAsyncStackRoot(coro);
         });
     while (!promise.done()) {
       executor->drive();
@@ -358,21 +378,39 @@ class BlockingWaitExecutor final : public folly::DrivableExecutor {
 template <typename Awaitable>
 auto blockingWait(Awaitable&& awaitable)
     -> detail::decay_rvalue_reference_t<await_result_t<Awaitable>> {
+  folly::AsyncStackFrame frame;
+  frame.setReturnAddress();
+
+  folly::AsyncStackRoot stackRoot;
+  stackRoot.setNextRoot(folly::tryGetCurrentAsyncStackRoot());
+  stackRoot.setStackFrameContext();
+  stackRoot.setTopFrame(frame);
+
   return static_cast<std::add_rvalue_reference_t<await_result_t<Awaitable>>>(
       detail::makeRefBlockingWaitTask(static_cast<Awaitable&&>(awaitable))
-          .get());
+          .get(frame));
 }
 
 template <typename SemiAwaitable>
-auto blockingWait(SemiAwaitable&& awaitable, folly::DrivableExecutor* executor)
+FOLLY_NOINLINE auto blockingWait(
+    SemiAwaitable&& awaitable,
+    folly::DrivableExecutor* executor)
     -> detail::decay_rvalue_reference_t<semi_await_result_t<SemiAwaitable>> {
+  folly::AsyncStackFrame frame;
+  frame.setReturnAddress();
+
+  folly::AsyncStackRoot stackRoot;
+  stackRoot.setNextRoot(folly::tryGetCurrentAsyncStackRoot());
+  stackRoot.setStackFrameContext();
+  stackRoot.setTopFrame(frame);
+
   return static_cast<
       std::add_rvalue_reference_t<semi_await_result_t<SemiAwaitable>>>(
       detail::makeRefBlockingWaitTask(
           folly::coro::co_viaIfAsync(
               folly::getKeepAliveToken(executor),
               static_cast<SemiAwaitable&&>(awaitable)))
-          .getVia(executor));
+          .getVia(executor, frame));
 }
 
 template <
