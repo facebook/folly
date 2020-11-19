@@ -18,6 +18,7 @@
 #include <folly/experimental/coro/Mutex.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
+#include <folly/experimental/coro/detail/CurrentAsyncFrame.h>
 #include <folly/experimental/coro/detail/Helpers.h>
 
 namespace folly {
@@ -87,6 +88,8 @@ auto collectAllTryImpl(
 
     folly::coro::detail::Barrier barrier{sizeof...(SemiAwaitables) + 1};
 
+    auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
 
@@ -96,7 +99,7 @@ auto collectAllTryImpl(
     // context.
     const auto context = RequestContext::saveContext();
     (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier),
+        (tasks[Indices].start(&barrier, asyncFrame),
          RequestContext::setContext(context),
          0)...};
 
@@ -179,10 +182,12 @@ auto collectAllImpl(
     // context.
     const auto context = RequestContext::saveContext();
 
+    auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
     // Use std::initializer_list to ensure that the sub-tasks are launched
     // in the order they appear in the parameter pack.
     (void)std::initializer_list<int>{
-        (tasks[Indices].start(&barrier),
+        (tasks[Indices].start(&barrier, asyncFrame),
          RequestContext::setContext(context),
          0)...};
 
@@ -295,11 +300,13 @@ auto collectAllRange(InputRange awaitables)
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   // Launch the tasks and wait for them all to finish.
   {
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
-      task.start(&barrier);
+      task.start(&barrier, asyncFrame);
       RequestContext::setContext(context);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
@@ -382,11 +389,13 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   // Launch the tasks and wait for them all to finish.
   {
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
-      task.start(&barrier);
+      task.start(&barrier, asyncFrame);
       RequestContext::setContext(context);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
@@ -462,11 +471,13 @@ auto collectAllTryRange(InputRange awaitables)
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   // Launch the tasks and wait for them all to finish.
   {
     detail::Barrier barrier{tasks.size() + 1};
     for (auto&& task : tasks) {
-      task.start(&barrier);
+      task.start(&barrier, asyncFrame);
       RequestContext::setContext(context);
     }
     co_await detail::UnsafeResumeInlineSemiAwaitable{barrier.arriveAndWait()};
@@ -564,6 +575,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   try {
     auto lock = co_await mutex.co_scoped_lock();
 
@@ -578,7 +591,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
       workerTasks.push_back(makeWorker());
       barrier.add(1);
-      workerTasks.back().start(&barrier);
+      workerTasks.back().start(&barrier, asyncFrame);
 
       RequestContext::setContext(context);
 
@@ -720,6 +733,8 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   try {
     auto lock = co_await mutex.co_scoped_lock();
 
@@ -734,7 +749,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
       workerTasks.push_back(makeWorker());
       barrier.add(1);
-      workerTasks.back().start(&barrier);
+      workerTasks.back().start(&barrier, asyncFrame);
 
       RequestContext::setContext(context);
 
@@ -873,6 +888,8 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
   // context.
   const auto context = RequestContext::saveContext();
 
+  auto& asyncFrame = co_await detail::co_current_async_stack_frame;
+
   try {
     auto lock = co_await mutex.co_scoped_lock();
     while (!iterationException && iter != iterEnd &&
@@ -886,7 +903,7 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
       workerTasks.push_back(makeWorker());
       barrier.add(1);
-      workerTasks.back().start(&barrier);
+      workerTasks.back().start(&barrier, asyncFrame);
 
       RequestContext::setContext(context);
 
