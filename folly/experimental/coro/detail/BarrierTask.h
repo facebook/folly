@@ -197,6 +197,15 @@ class DetachedBarrierTask {
     std::move(*this).start(barrier, FOLLY_ASYNC_STACK_RETURN_ADDRESS());
   }
 
+  FOLLY_NOINLINE void start(
+      Barrier* barrier,
+      folly::AsyncStackFrame& parentFrame) &&
+      noexcept {
+    assert(coro_);
+    coro_.promise().getAsyncFrame().setParentFrame(parentFrame);
+    std::move(*this).start(barrier, FOLLY_ASYNC_STACK_RETURN_ADDRESS());
+  }
+
   void start(Barrier* barrier, void* returnAddress) && noexcept {
     assert(coro_);
     assert(barrier != nullptr);
