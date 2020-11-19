@@ -205,5 +205,17 @@ struct await_result<Awaitable, std::enable_if_t<is_awaitable_v<Awaitable>>> {
 template <typename Awaitable>
 using await_result_t = typename await_result<Awaitable>::type;
 
+namespace detail {
+
+template <typename Promise, typename = void>
+constexpr bool promiseHasAsyncFrame_v = false;
+
+template <typename Promise>
+constexpr bool promiseHasAsyncFrame_v<
+    Promise,
+    std::void_t<decltype(std::declval<Promise&>().getAsyncFrame())>> = true;
+
+} // namespace detail
+
 } // namespace coro
 } // namespace folly

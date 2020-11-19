@@ -19,6 +19,7 @@
 #include <folly/Executor.h>
 #include <folly/SingletonThreadLocal.h>
 #include <folly/io/async/Request.h>
+#include <folly/tracing/AsyncStack.h>
 
 namespace folly {
 namespace coro {
