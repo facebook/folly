@@ -20,6 +20,7 @@
 
 #include <folly/Executor.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+#include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/io/async/Request.h>
 
 namespace folly {
@@ -53,14 +54,51 @@ inline constexpr co_current_executor_t co_current_executor{
 namespace detail {
 
 class co_reschedule_on_current_executor_ {
-  class Awaiter {
-    folly::Executor::KeepAlive<> executor_;
-
+  class AwaiterBase {
    public:
-    explicit Awaiter(folly::Executor::KeepAlive<> executor) noexcept
+    explicit AwaiterBase(folly::Executor::KeepAlive<> executor) noexcept
         : executor_(std::move(executor)) {}
 
-    bool await_ready() { return false; }
+    bool await_ready() noexcept { return false; }
+
+    void await_resume() noexcept {}
+
+   protected:
+    folly::Executor::KeepAlive<> executor_;
+  };
+
+  class StackAwareAwaiter : public AwaiterBase {
+   public:
+    using AwaiterBase::AwaiterBase;
+
+    template <typename Promise>
+    void await_suspend(
+        std::experimental::coroutine_handle<Promise> coro) noexcept {
+      await_suspend_impl(coro, coro.promise().getAsyncFrame());
+    }
+
+   private:
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend_impl(
+        std::experimental::coroutine_handle<> coro,
+        AsyncStackFrame& frame) {
+      auto& stackRoot = *frame.getStackRoot();
+      folly::deactivateAsyncStackFrame(frame);
+      try {
+        executor_->add(
+            [coro, &frame, ctx = RequestContext::saveContext()]() mutable {
+              RequestContextScopeGuard contextScope{std::move(ctx)};
+              folly::resumeCoroutineWithNewAsyncStackRoot(coro, frame);
+            });
+      } catch (...) {
+        folly::activateAsyncStackFrame(stackRoot, frame);
+        throw;
+      }
+    }
+  };
+
+  class Awaiter : public AwaiterBase {
+   public:
+    using AwaiterBase::AwaiterBase;
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
         std::experimental::coroutine_handle<> coro) {
@@ -70,7 +108,11 @@ class co_reschedule_on_current_executor_ {
       });
     }
 
-    void await_resume() {}
+    friend StackAwareAwaiter tag_invoke(
+        cpo_t<co_withAsyncStack>,
+        Awaiter awaiter) {
+      return StackAwareAwaiter{std::move(awaiter.executor_)};
+    }
   };
 
   friend Awaiter co_viaIfAsync(
