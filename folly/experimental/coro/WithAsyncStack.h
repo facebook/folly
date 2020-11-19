@@ -106,17 +106,20 @@ class WithAsyncStackCoroutine {
 
 template <typename Awaitable>
 class WithAsyncStackAwaiter {
+  using Awaiter = awaiter_type_t<Awaitable>;
+
  public:
   explicit WithAsyncStackAwaiter(Awaitable&& awaitable)
       : awaiter_(folly::coro::get_awaiter(static_cast<Awaitable&&>(awaitable))),
         coroWrapper_(WithAsyncStackCoroutine::create()) {}
 
-  decltype(auto) await_ready() noexcept(noexcept(awaiter_.await_ready())) {
+  auto await_ready() noexcept(noexcept(std::declval<Awaiter&>().await_ready()))
+      -> decltype(std::declval<Awaiter&>().await_ready()) {
     return awaiter_.await_ready();
   }
 
   template <typename Promise>
-  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES decltype(auto) await_suspend(
+  FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES auto await_suspend(
       std::experimental::coroutine_handle<Promise> h) {
     AsyncStackFrame& callerFrame = h.promise().getAsyncFrame();
     AsyncStackRoot* stackRoot = callerFrame.getStackRoot();
@@ -145,9 +148,19 @@ class WithAsyncStackAwaiter {
     }
   }
 
-  decltype(auto) await_resume() noexcept(noexcept(awaiter_.await_resume())) {
+  auto await_resume() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume()))
+      -> decltype(std::declval<Awaiter&>().await_resume()) {
     coroWrapper_ = {};
     return awaiter_.await_resume();
+  }
+
+  template <typename Awaiter2 = Awaiter>
+  auto await_resume_try() noexcept(
+      noexcept(std::declval<Awaiter2&>().await_resume_try()))
+      -> decltype(std::declval<Awaiter2&>().await_resume_try()) {
+    coroWrapper_ = {};
+    return awaiter_.await_resume_try();
   }
 
  private:

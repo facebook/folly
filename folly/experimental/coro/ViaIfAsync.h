@@ -242,6 +242,15 @@ class StackAwareViaIfAsyncAwaiter {
     return awaiter_.await_resume();
   }
 
+  template <
+      typename Awaiter2 = Awaiter,
+      typename Result = decltype(std::declval<Awaiter2&>().await_resume_try())>
+  Result await_resume_try() noexcept(
+      noexcept(std::declval<Awaiter&>().await_resume_try())) {
+    viaCoroutine_.destroy();
+    return awaiter_.await_resume_try();
+  }
+
  private:
   CoroutineType viaCoroutine_;
   WithAsyncStackAwaitable awaitable_;
@@ -562,6 +571,19 @@ class TryAwaitable {
     return TryAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
                                   return folly::coro::co_withCancellation(
                                       cancelToken,
+                                      static_cast<T&&>(awaitable.inner_));
+                                }};
+  }
+
+  template <
+      typename T2 = T,
+      typename Result =
+          decltype(folly::coro::co_withAsyncStack(std::declval<T2>()))>
+  friend TryAwaitable<Result>
+  tag_invoke(cpo_t<co_withAsyncStack>, TryAwaitable&& awaitable) noexcept(
+      noexcept(folly::coro::co_withAsyncStack(std::declval<T2>()))) {
+    return TryAwaitable<Result>{std::in_place, [&]() -> decltype(auto) {
+                                  return folly::coro::co_withAsyncStack(
                                       static_cast<T&&>(awaitable.inner_));
                                 }};
   }
