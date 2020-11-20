@@ -3037,8 +3037,11 @@ std::string AsyncSocket::withAddr(folly::StringPiece s) {
     // ignore
   }
 
-  return folly::to<std::string>(
-      s, " (peer=", peer.describe(), ", local=", local.describe(), ")");
+  return fmt::format(
+      "{} (peer={}{})",
+      s,
+      peer.describe(),
+      kIsMobile ? "" : fmt::format(", local={}", local.describe()));
 }
 
 void AsyncSocket::setBufferCallback(BufferCallback* cb) {

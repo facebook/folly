@@ -1101,8 +1101,9 @@ TEST(AsyncSocketTest, WritePipeError) {
   ASSERT_THAT(
       wcb.exception.what(),
       MatchesRegex(
-          "AsyncSocketException: writev\\(\\) failed \\(peer=.+, local=.+\\), "
-          "type = Internal error, errno = .+ \\(Broken pipe\\)"));
+          kIsMobile
+              ? "AsyncSocketException: writev\\(\\) failed \\(peer=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"
+              : "AsyncSocketException: writev\\(\\) failed \\(peer=.+, local=.+\\), type = Internal error, errno = .+ \\(Broken pipe\\)"));
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
 }
