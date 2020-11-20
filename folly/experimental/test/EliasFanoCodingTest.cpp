@@ -93,14 +93,13 @@ class EliasFanoCodingTest : public ::testing::Test {
   template <
       size_t kSkipQuantum,
       size_t kForwardQuantum,
-      class ValueType,
+      typename ValueType,
+      typename SkipValueType,
       bool kUpperFirst>
-  void doTestAll() {
-    // SkipValueType and SizeType could both be narrower than ValueType, but
-    // testing all combinations would be slow, so assume they are all the same.
+  void doTest() {
     typedef EliasFanoEncoderV2<
         ValueType,
-        ValueType,
+        SkipValueType,
         kSkipQuantum,
         kForwardQuantum,
         kUpperFirst>
@@ -115,6 +114,21 @@ class EliasFanoCodingTest : public ::testing::Test {
     // TODO(ott): It should be possible to lift this constraint.
     testAll<Reader, Encoder>({0, 1, std::numeric_limits<uint32_t>::max() - 1});
   }
+
+  template <size_t kSkipQuantum, size_t kForwardQuantum, typename ValueType>
+  void doTestAll() {
+    // Note: SkipValue of uint8/16 aren't well-supported. For now we only test
+    // ValueType for uint32/64.
+    static_assert(
+        std::is_same<ValueType, uint32_t>::value ||
+        std::is_same<ValueType, uint64_t>::value);
+    // TODO(ott): improve test coverage for SkipValue of uint8/16 once such
+    // types are well supported.
+    doTest<kSkipQuantum, kForwardQuantum, ValueType, uint32_t, true>();
+    doTest<kSkipQuantum, kForwardQuantum, ValueType, uint32_t, false>();
+    doTest<kSkipQuantum, kForwardQuantum, ValueType, uint64_t, true>();
+    doTest<kSkipQuantum, kForwardQuantum, ValueType, uint64_t, false>();
+  }
 };
 
 TEST_F(EliasFanoCodingTest, Empty) {
@@ -122,31 +136,23 @@ TEST_F(EliasFanoCodingTest, Empty) {
 }
 
 TEST_F(EliasFanoCodingTest, Simple) {
-  doTestAll<0, 0, uint32_t, false>();
-  doTestAll<0, 0, uint32_t, true>();
-  doTestAll<0, 0, uint64_t, false>();
-  doTestAll<0, 0, uint64_t, true>();
+  doTestAll<0, 0, uint32_t>();
+  doTestAll<0, 0, uint64_t>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipPointers) {
-  doTestAll<128, 0, uint32_t, false>();
-  doTestAll<128, 0, uint32_t, true>();
-  doTestAll<128, 0, uint64_t, false>();
-  doTestAll<128, 0, uint64_t, true>();
+  doTestAll<128, 0, uint32_t>();
+  doTestAll<128, 0, uint64_t>();
 }
 
 TEST_F(EliasFanoCodingTest, ForwardPointers) {
-  doTestAll<0, 128, uint32_t, false>();
-  doTestAll<0, 128, uint32_t, true>();
-  doTestAll<0, 128, uint64_t, false>();
-  doTestAll<0, 128, uint64_t, true>();
+  doTestAll<0, 128, uint32_t>();
+  doTestAll<0, 128, uint64_t>();
 }
 
 TEST_F(EliasFanoCodingTest, SkipForwardPointers) {
-  doTestAll<128, 128, uint32_t, false>();
-  doTestAll<128, 128, uint32_t, true>();
-  doTestAll<128, 128, uint64_t, false>();
-  doTestAll<128, 128, uint64_t, true>();
+  doTestAll<128, 128, uint32_t>();
+  doTestAll<128, 128, uint64_t>();
 }
 
 TEST_F(EliasFanoCodingTest, BugLargeGapInUpperBits) { // t16274876

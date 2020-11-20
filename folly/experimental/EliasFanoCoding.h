@@ -460,7 +460,10 @@ class UpperBitsReader : ForwardPointers<Encoder::forwardQuantum>,
 
     // Skip by blocks.
     size_t cnt;
-    size_t skip = v - (8 * outer_ - position_ - 1);
+    // outer_ and position_ rely on negative sentinel values. We enforce the
+    // overflown bits are dropped by explicitly casting the final value to
+    // SizeType first, followed by a potential implicit cast to size_t.
+    size_t skip = static_cast<SizeType>(v - (8 * outer_ - position_ - 1));
 
     constexpr size_t kBitsPerBlock = 8 * sizeof(block_t);
     while ((cnt = Instructions::popcount(~block_)) < skip) {
