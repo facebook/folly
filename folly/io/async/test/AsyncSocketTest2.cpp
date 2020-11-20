@@ -46,6 +46,7 @@ using std::string;
 using std::unique_ptr;
 using std::vector;
 using std::chrono::milliseconds;
+using testing::MatchesRegex;
 
 using namespace folly;
 using namespace folly::test;
@@ -1097,7 +1098,11 @@ TEST(AsyncSocketTest, WritePipeError) {
   // so that we could check for EPIPE
   ASSERT_EQ(wcb.state, STATE_FAILED);
   ASSERT_EQ(wcb.exception.getType(), AsyncSocketException::INTERNAL_ERROR);
-
+  ASSERT_THAT(
+      wcb.exception.what(),
+      MatchesRegex(
+          "AsyncSocketException: writev\\(\\) failed \\(peer=.+, local=.+\\), "
+          "type = Internal error, errno = .+ \\(Broken pipe\\)"));
   ASSERT_FALSE(socket->isClosedBySelf());
   ASSERT_FALSE(socket->isClosedByPeer());
 }
