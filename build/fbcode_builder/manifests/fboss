@@ -32,6 +32,7 @@ libsai
 OpenNSA
 re2
 python
+yaml-cpp
 
 [shipit.pathmap]
 fbcode/fboss/github = .
