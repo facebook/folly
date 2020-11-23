@@ -41,7 +41,7 @@ class LoopController {
 
   /**
    * Called by FiberManager to schedule the loop function run
-   * at some point in the futufre.
+   * at some point in the future.
    */
   virtual void schedule() = 0;
 
