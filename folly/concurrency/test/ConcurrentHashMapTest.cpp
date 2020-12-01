@@ -20,8 +20,6 @@
 #include <memory>
 #include <thread>
 
-#include <folly/Traits.h>
-#include <folly/container/test/TrackingTypes.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -832,110 +830,6 @@ TYPED_TEST_P(ConcurrentHashMapTest, IteratorLoop) {
   EXPECT_EQ(count, kNum);
 }
 
-namespace {
-template <typename T, typename Arg>
-using detector_find = decltype(std::declval<T>().find(std::declval<Arg>()));
-
-template <typename T, typename Arg>
-using detector_erase = decltype(std::declval<T>().erase(std::declval<Arg>()));
-} // namespace
-
-TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousLookup) {
-  using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
-  using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
-  using M = ConcurrentHashMap<std::string, bool, Hasher, KeyEqual>;
-
-  constexpr auto hello = "hello"_sp;
-  constexpr auto buddy = "buddy"_sp;
-  constexpr auto world = "world"_sp;
-
-  M map;
-  map.emplace(hello, true);
-  map.emplace(world, false);
-
-  auto checks = [hello, buddy](auto& ref) {
-    // find
-    EXPECT_TRUE(ref.end() == ref.find(buddy));
-    EXPECT_EQ(hello, ref.find(hello)->first);
-
-    // at
-    EXPECT_TRUE(ref.at(hello));
-    EXPECT_THROW(ref.at(buddy), std::out_of_range);
-
-    // invocability checks
-    static_assert(
-        !is_detected_v<detector_find, decltype(ref), int>,
-        "there shouldn't be a find() overload for this string map with an int param");
-  };
-
-  checks(map);
-  checks(folly::as_const(map));
-}
-
-TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousInsert) {
-  using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
-  using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
-  using P = std::pair<StringPiece, std::string>;
-  using CP = std::pair<const StringPiece, std::string>;
-
-  ConcurrentHashMap<std::string, std::string, Hasher, KeyEqual> map;
-  P p{"foo", "hello"};
-  StringPiece foo{"foo"};
-  StringPiece bar{"bar"};
-
-  map.insert("foo", "hello");
-  map.insert(foo, "hello");
-  // TODO(T31574848): the list-initialization below does not work on libstdc++
-  // versions (e.g., GCC < 6) with no implementation of N4387 ("perfect
-  // initialization" for pairs and tuples).
-  //   StringPiece sp{"foo"};
-  //   map.insert({sp, "hello"});
-  map.insert({"foo", "hello"});
-  map.insert(P("foo", "hello"));
-  map.insert(CP("foo", "hello"));
-  map.insert(std::move(p));
-  map.insert_or_assign("foo", "hello");
-  map.insert_or_assign(StringPiece{"foo"}, "hello");
-
-  map.erase(StringPiece{"foo"});
-  map.erase(foo);
-  map.erase("");
-  EXPECT_TRUE(map.empty());
-
-  map.insert("foo", "hello");
-  map.insert("bar", "world");
-  map.erase_if_equal(StringPiece{"foo"}, "hello");
-  map.erase_key_if(bar, [](const std::string& s) { return s == "world"; });
-  map.erase("");
-  EXPECT_TRUE(map.empty());
-
-  map.insert("foo", "baz");
-  EXPECT_TRUE(map.assign(foo, "hello2"));
-  EXPECT_TRUE(map.assign_if_equal("foo", "hello2", "hello"));
-  EXPECT_EQ(map[foo], "hello");
-  auto it = map.find(foo);
-  map.erase(it);
-  EXPECT_TRUE(map.empty());
-
-  map.try_emplace(foo);
-  map.try_emplace(foo, "hello");
-  map.try_emplace(StringPiece{"foo"}, "hello");
-  map.try_emplace(foo, "hello");
-  map.try_emplace(foo);
-  map.try_emplace("foo");
-  map.try_emplace("foo", "hello");
-  map.try_emplace("bar", /* count */ 20, 'x');
-  EXPECT_EQ(map[bar], std::string(20, 'x'));
-
-  map.emplace(StringPiece{"foo"}, "hello");
-  map.emplace("foo", "hello");
-
-  // invocability checks
-  static_assert(
-      !is_detected_v<detector_erase, decltype(map), int>,
-      "there shouldn't be an erase() overload for this string map with an int param");
-}
-
 REGISTER_TYPED_TEST_CASE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -970,9 +864,7 @@ REGISTER_TYPED_TEST_CASE_P(
     assignStressTest,
     insertStressTest,
     IteratorMove,
-    IteratorLoop,
-    HeterogeneousLookup,
-    HeterogeneousInsert);
+    IteratorLoop);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 
