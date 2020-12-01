@@ -73,15 +73,7 @@ class BuildOptions(object):
         if not num_jobs:
             import multiprocessing
 
-            num_jobs = multiprocessing.cpu_count()
-            if is_windows():
-                # On Windows the cpu count tends to be the HT count.
-                # Running with that level of concurrency tends to
-                # swamp the system and make hard to perform other
-                # light work.  Let's halve the number of cores here
-                # to win that back. The user can still specify a
-                # larger number if desired.
-                num_jobs = int(num_jobs / 2)
+            num_jobs = multiprocessing.cpu_count() // 2
 
         if not install_dir:
             install_dir = os.path.join(scratch_dir, "installed")

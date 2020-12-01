@@ -288,9 +288,7 @@ def get_jobs_argument(num_jobs_arg: int) -> str:
         return "-j" + str(num_jobs_arg)
 
     import multiprocessing
-    num_jobs = multiprocessing.cpu_count()
-    if sys.platform == "win32":
-        num_jobs //= 2
+    num_jobs = multiprocessing.cpu_count() // 2
     return "-j" + str(num_jobs)
 
 
