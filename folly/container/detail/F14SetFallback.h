@@ -54,12 +54,14 @@ class F14BasicSet
  private:
   template <typename K, typename T>
   using EnableHeterogeneousFind = std::enable_if_t<
-      EligibleForHeterogeneousFind<key_type, hasher, key_equal, K>::value,
+      ::folly::detail::
+          EligibleForHeterogeneousFind<key_type, hasher, key_equal, K>::value,
       T>;
 
   template <typename K, typename T>
   using EnableHeterogeneousInsert = std::enable_if_t<
-      EligibleForHeterogeneousInsert<key_type, hasher, key_equal, K>::value,
+      ::folly::detail::
+          EligibleForHeterogeneousInsert<key_type, hasher, key_equal, K>::value,
       T>;
 
   template <typename K>
@@ -69,7 +71,7 @@ class F14BasicSet
 
   template <typename K, typename T>
   using EnableHeterogeneousErase = std::enable_if_t<
-      EligibleForHeterogeneousFind<
+      ::folly::detail::EligibleForHeterogeneousFind<
           key_type,
           hasher,
           key_equal,
@@ -101,7 +103,7 @@ class F14BasicSet
 
  private:
   template <typename Arg>
-  using UsableAsKey =
+  using UsableAsKey = ::folly::detail::
       EligibleForHeterogeneousFind<key_type, hasher, key_equal, Arg>;
 
  public:

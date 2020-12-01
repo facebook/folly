@@ -143,6 +143,27 @@ struct TransparentRangeHash {
   }
 };
 
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+struct EligibleForHeterogeneousFind
+    : Conjunction<
+          is_transparent<Hasher>,
+          is_transparent<KeyEqual>,
+          is_invocable<Hasher, ArgKey const&>,
+          is_invocable<KeyEqual, ArgKey const&, TableKey const&>> {};
+
+template <
+    typename TableKey,
+    typename Hasher,
+    typename KeyEqual,
+    typename ArgKey>
+using EligibleForHeterogeneousInsert = Conjunction<
+    EligibleForHeterogeneousFind<TableKey, Hasher, KeyEqual, ArgKey>,
+    std::is_constructible<TableKey, ArgKey>>;
+
 } // namespace detail
 
 template <typename T>

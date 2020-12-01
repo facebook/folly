@@ -43,12 +43,14 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
   using Super = std::unordered_map<K, M, H, E, A>;
 
   template <typename K2, typename T>
-  using EnableHeterogeneousFind =
-      std::enable_if_t<EligibleForHeterogeneousFind<K, H, E, K2>::value, T>;
+  using EnableHeterogeneousFind = std::enable_if_t<
+      ::folly::detail::EligibleForHeterogeneousFind<K, H, E, K2>::value,
+      T>;
 
   template <typename K2, typename T>
-  using EnableHeterogeneousInsert =
-      std::enable_if_t<EligibleForHeterogeneousInsert<K, H, E, K2>::value, T>;
+  using EnableHeterogeneousInsert = std::enable_if_t<
+      ::folly::detail::EligibleForHeterogeneousInsert<K, H, E, K2>::value,
+      T>;
 
   template <typename K2>
   using IsIter = Disjunction<
@@ -57,7 +59,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
 
   template <typename K2, typename T>
   using EnableHeterogeneousErase = std::enable_if_t<
-      EligibleForHeterogeneousFind<
+      ::folly::detail::EligibleForHeterogeneousFind<
           K,
           H,
           E,
@@ -192,7 +194,7 @@ class F14BasicMap : public std::unordered_map<K, M, H, E, A> {
 
  private:
   template <typename Arg>
-  using UsableAsKey =
+  using UsableAsKey = ::folly::detail::
       EligibleForHeterogeneousFind<key_type, hasher, key_equal, Arg>;
 
  public:

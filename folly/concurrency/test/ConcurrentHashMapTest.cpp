@@ -20,6 +20,7 @@
 #include <memory>
 #include <thread>
 
+#include <folly/Traits.h>
 #include <folly/hash/Hash.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
@@ -830,6 +831,43 @@ TYPED_TEST_P(ConcurrentHashMapTest, IteratorLoop) {
   EXPECT_EQ(count, kNum);
 }
 
+namespace {
+template <typename T, typename Arg>
+using detector_find = decltype(std::declval<T>().find(std::declval<Arg>()));
+}
+
+TYPED_TEST_P(ConcurrentHashMapTest, HeterogeneousLookup) {
+  using Hasher = folly::transparent<folly::hasher<folly::StringPiece>>;
+  using KeyEqual = folly::transparent<std::equal_to<folly::StringPiece>>;
+  using M = ConcurrentHashMap<std::string, bool, Hasher, KeyEqual>;
+
+  constexpr auto hello = "hello"_sp;
+  constexpr auto buddy = "buddy"_sp;
+  constexpr auto world = "world"_sp;
+
+  M map;
+  map.emplace(hello, true);
+  map.emplace(world, false);
+
+  auto checks = [hello, buddy](auto& ref) {
+    // find
+    EXPECT_TRUE(ref.end() == ref.find(buddy));
+    EXPECT_EQ(hello, ref.find(hello)->first);
+
+    // at
+    EXPECT_TRUE(ref.at(hello));
+    EXPECT_THROW(ref.at(buddy), std::out_of_range);
+
+    // invocability checks
+    static_assert(
+        !is_detected_v<detector_find, decltype(ref), int>,
+        "there shouldn't be a find() overload for this string map with an int param");
+  };
+
+  checks(map);
+  checks(folly::as_const(map));
+}
+
 REGISTER_TYPED_TEST_CASE_P(
     ConcurrentHashMapTest,
     MapTest,
@@ -864,7 +902,8 @@ REGISTER_TYPED_TEST_CASE_P(
     assignStressTest,
     insertStressTest,
     IteratorMove,
-    IteratorLoop);
+    IteratorLoop,
+    HeterogeneousLookup);
 
 using folly::detail::concurrenthashmap::bucket::BucketTable;
 

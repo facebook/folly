@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/container/HeterogeneousAccess.h>
 #include <folly/container/detail/F14Mask.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/Launder.h>
@@ -333,7 +334,8 @@ class alignas(64) BucketTable {
     oldbuckets->retire(concurrenthashmap::HazptrTableDeleter(oldcount));
   }
 
-  bool find(Iterator& res, const KeyType& k) {
+  template <typename K>
+  bool find(Iterator& res, const K& k) {
     auto& hazcurr = res.hazptrs_[1];
     auto& haznext = res.hazptrs_[2];
     auto h = HashFn()(k);
@@ -1252,7 +1254,8 @@ class alignas(64) SIMDTable {
     rehash_internal(folly::nextPowTwo(new_chunk_count), cohort);
   }
 
-  bool find(Iterator& res, const KeyType& k) {
+  template <typename K>
+  bool find(Iterator& res, const K& k) {
     auto& hazz = res.hazptrs_[1];
     auto h = HashFn()(k);
     auto hp = splitHash(h);
@@ -1770,7 +1773,10 @@ class alignas(64) ConcurrentHashMapSegment {
   // Must hold lock.
   void rehash(size_t bucket_count) { impl_.rehash(bucket_count, cohort_); }
 
-  bool find(Iterator& res, const KeyType& k) { return impl_.find(res, k); }
+  template <typename K>
+  bool find(Iterator& res, const K& k) {
+    return impl_.find(res, k);
+  }
 
   // Listed separately because we need a prev pointer.
   size_type erase(const key_type& key) {
