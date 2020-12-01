@@ -354,6 +354,19 @@ TEST_F(CoroTest, TimedWaitKeepAlive) {
   EXPECT_LE(duration, std::chrono::seconds{30});
 }
 
+TEST_F(CoroTest, TimedWaitNonCopyable) {
+  auto task = []() -> coro::Task<std::unique_ptr<int>> {
+    co_return std::make_unique<int>(42);
+  }();
+  EXPECT_EQ(
+      42,
+      **coro::blockingWait(
+          [&]() -> coro::Task<folly::Optional<std::unique_ptr<int>>> {
+            co_return co_await coro::timed_wait(
+                std::move(task), std::chrono::seconds{60});
+          }()));
+}
+
 template <int value>
 struct AwaitableInt {
   bool await_ready() const { return true; }
