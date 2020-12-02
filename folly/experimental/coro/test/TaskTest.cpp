@@ -574,4 +574,16 @@ TEST_F(TaskTest, CoAwaitTryWithScheduleOnAndCancellation) {
   }());
 }
 
+TEST_F(TaskTest, Moved) {
+  if (folly::kIsDebug) {
+    ASSERT_DEATH_IF_SUPPORTED(
+        folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+          folly::coro::Task<int> task = folly::coro::makeTask(1);
+          co_await std::move(task);
+          co_await std::move(task);
+        }()),
+        "task\\.coro_");
+  }
+}
+
 #endif

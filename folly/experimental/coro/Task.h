@@ -395,6 +395,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     template <typename Promise>
     FOLLY_NOINLINE void await_suspend(
         std::experimental::coroutine_handle<Promise> continuation) noexcept {
+      DCHECK(coro_);
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);
       DCHECK(promise.executor_);
@@ -426,6 +427,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     }
 
     T await_resume() {
+      DCHECK(coro_);
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result()).value();
@@ -458,6 +460,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     template <typename Promise>
     FOLLY_NOINLINE std::experimental::coroutine_handle<> await_suspend(
         std::experimental::coroutine_handle<Promise> continuation) {
+      DCHECK(coro_);
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);
       DCHECK(promise.executor_);
@@ -478,6 +481,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
     }
 
     folly::Try<StorageType> await_resume() {
+      DCHECK(coro_);
       // Eagerly destroy the coroutine-frame once we have retrieved the result.
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
@@ -495,12 +499,14 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
  public:
   Awaiter operator co_await() && noexcept {
+    DCHECK(coro_);
     return Awaiter{std::exchange(coro_, {})};
   }
 
   friend TaskWithExecutor co_withCancellation(
       const folly::CancellationToken& cancelToken,
       TaskWithExecutor&& task) noexcept {
+    DCHECK(task.coro_);
     task.coro_.promise().setCancelToken(cancelToken);
     return std::move(task);
   }
@@ -553,6 +559,7 @@ class FOLLY_NODISCARD Task {
   using handle_t = std::experimental::coroutine_handle<promise_type>;
 
   void setExecutor(folly::Executor::KeepAlive<>&& e) noexcept {
+    DCHECK(coro_);
     coro_.promise().executor_ = std::move(e);
   }
 
@@ -581,6 +588,7 @@ class FOLLY_NODISCARD Task {
   FOLLY_NODISCARD
   TaskWithExecutor<T> scheduleOn(Executor::KeepAlive<> executor) && noexcept {
     setExecutor(std::move(executor));
+    DCHECK(coro_);
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
@@ -595,6 +603,7 @@ class FOLLY_NODISCARD Task {
   friend auto co_viaIfAsync(
       Executor::KeepAlive<> executor,
       Task<T>&& t) noexcept {
+    DCHECK(t.coro_);
     // Child task inherits the awaiting task's executor
     t.setExecutor(std::move(executor));
     return Awaiter{std::exchange(t.coro_, {})};
@@ -603,6 +612,7 @@ class FOLLY_NODISCARD Task {
   friend Task co_withCancellation(
       const folly::CancellationToken& cancelToken,
       Task&& task) noexcept {
+    DCHECK(task.coro_);
     task.coro_.promise().setCancelToken(cancelToken);
     return std::move(task);
   }
@@ -635,6 +645,7 @@ class FOLLY_NODISCARD Task {
     template <typename Promise>
     FOLLY_NOINLINE auto await_suspend(
         std::experimental::coroutine_handle<Promise> continuation) noexcept {
+      DCHECK(coro_);
       auto& promise = coro_.promise();
 
       promise.continuation_ = continuation;
@@ -653,11 +664,13 @@ class FOLLY_NODISCARD Task {
     }
 
     T await_resume() {
+      DCHECK(coro_);
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result()).value();
     }
 
     folly::Try<StorageType> await_resume_try() {
+      DCHECK(coro_);
       SCOPE_EXIT { std::exchange(coro_, {}).destroy(); };
       return std::move(coro_.promise().result());
     }
