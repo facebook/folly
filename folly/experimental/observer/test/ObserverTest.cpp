@@ -563,6 +563,21 @@ TEST(Observer, MakeValueObserver) {
   EXPECT_EQ(observedValues2, std::vector<int>({1, 2, 3}));
 }
 
+TEST(Observer, MakeStaticObserver) {
+  auto explicitStringObserver = makeStaticObserver<std::string>("hello");
+  EXPECT_EQ(**explicitStringObserver, "hello");
+
+  auto implicitIntObserver = makeStaticObserver(5);
+  EXPECT_EQ(**implicitIntObserver, 5);
+
+  auto explicitSharedPtrObserver =
+      makeStaticObserver<std::shared_ptr<int>>(std::make_shared<int>(5));
+  EXPECT_EQ(***explicitSharedPtrObserver, 5);
+
+  auto implicitSharedPtrObserver = makeStaticObserver(std::make_shared<int>(5));
+  EXPECT_EQ(**implicitSharedPtrObserver, 5);
+}
+
 TEST(Observer, Unwrap) {
   SimpleObservable<bool> selectorObservable{true};
   SimpleObservable<int> trueObservable{1};

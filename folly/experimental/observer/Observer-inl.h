@@ -99,6 +99,16 @@ Observer<observer_detail::ResultOfUnwrapObserver<F>> makeObserver(F&& creator) {
 }
 
 template <typename T>
+Observer<T> makeStaticObserver(T value) {
+  return makeStaticObserver<T>(std::make_shared<T>(std::move(value)));
+}
+
+template <typename T>
+Observer<T> makeStaticObserver(std::shared_ptr<T> value) {
+  return makeObserver([value = std::move(value)] { return value; });
+}
+
+template <typename T>
 TLObserver<T>::TLObserver(Observer<T> observer)
     : observer_(observer),
       snapshot_([&] { return new Snapshot<T>(observer_.getSnapshot()); }) {}

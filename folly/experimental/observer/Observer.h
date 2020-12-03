@@ -213,6 +213,15 @@ template <typename F>
 Observer<observer_detail::ResultOfUnwrapSharedPtr<F>> makeValueObserver(
     F&& creator);
 
+/**
+ * The returned Observer will never update and always return the passed value.
+ */
+template <typename T>
+Observer<T> makeStaticObserver(T value);
+
+template <typename T>
+Observer<T> makeStaticObserver(std::shared_ptr<T> value);
+
 template <typename T>
 class TLObserver {
  public:
