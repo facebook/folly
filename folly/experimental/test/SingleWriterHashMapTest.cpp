@@ -151,6 +151,23 @@ TEST(SingleWriterFixedHashMap, drf) {
   drf_test();
 }
 
+void copy_tombstones_test() {
+  SWFHM* m = new SWFHM(4);
+  for (int i = 0; i < 100; ++i) {
+    SWFHM* m2 = new SWFHM(4, *m);
+    delete m;
+    ASSERT_LT(m2->used(), m2->capacity());
+    m2->insert(i, i);
+    m2->erase(i);
+    m = m2;
+  }
+  delete m;
+}
+
+TEST(SingleWriterFixedHashMap, copy_tombstones) {
+  copy_tombstones_test();
+}
+
 // Benchmarks
 
 template <typename Func>

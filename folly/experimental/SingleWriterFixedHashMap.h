@@ -48,6 +48,9 @@ namespace folly {
 /// - used()
 /// - available()
 ///
+/// This implementation guarantees that a copy from a map with
+/// tombstones will have at least one available empty element.
+///
 template <typename Key, typename Value>
 class SingleWriterFixedHashMap {
 #if __cpp_lib_atomic_is_always_lock_free
@@ -86,7 +89,8 @@ class SingleWriterFixedHashMap {
       return;
     }
     elem_ = std::make_unique<Elem[]>(capacity_);
-    if (capacity_ == o.capacity_) {
+    if (capacity_ == o.capacity_ &&
+        (o.used_ < o.capacity_ || o.size() == o.capacity_)) {
       memcpy(elem_.get(), o.elem_.get(), capacity_ * sizeof(Elem));
       used_ = o.used_;
       setSize(o.size());
