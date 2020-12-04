@@ -239,6 +239,13 @@ class Executor {
     return keepAlive.storage_ & KeepAlive<ExecutorT>::kDummyFlag;
   }
 
+  static bool keepAliveAcquire(Executor* executor) {
+    return executor->keepAliveAcquire();
+  }
+  static void keepAliveRelease(Executor* executor) {
+    return executor->keepAliveRelease();
+  }
+
   // Acquire a keep alive token. Should return false if keep-alive mechanism
   // is not supported.
   virtual bool keepAliveAcquire() noexcept;
