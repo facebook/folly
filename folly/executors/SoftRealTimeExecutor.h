@@ -33,7 +33,7 @@ class SoftRealTimeExecutor : public virtual Executor {
   // for flexbility. While the deadline for a task may be a time point,
   // it could also be a duration or the size of the task, which emulates
   // rate-monotonic scheduling that prioritizes small tasks. It also enables
-  // for exmaple, tiered scheduling (strictly prioritizing a category of tasks)
+  // for example, tiered scheduling (strictly prioritizing a category of tasks)
   // by assigning the high-bit of the deadline.
   virtual void add(Func, uint64_t deadline) = 0;
 };
