@@ -141,7 +141,7 @@ class AsyncUDPSocket : public EventHandler {
     WriteOptions() = default;
     WriteOptions(int gsoVal, bool zerocopyVal)
         : gso(gsoVal), zerocopy(zerocopyVal) {}
-    int gso{1};
+    int gso{0};
     bool zerocopy{false};
   };
 
