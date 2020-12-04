@@ -348,7 +348,7 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
           StringToDoubleConverter::ALLOW_LEADING_SPACES,
       0.0,
       // return this for junk input string
-      std::numeric_limits<double>::quiet_NaN(),
+      std::numeric_limits<Tgt>::quiet_NaN(),
       nullptr,
       nullptr);
 
@@ -356,11 +356,11 @@ Expected<Tgt, ConversionCode> str_to_floating(StringPiece* src) noexcept {
     return makeUnexpected(ConversionCode::EMPTY_INPUT_STRING);
   }
 
-  int length;
-  auto result = conv.StringToDouble(
-      src->data(),
-      static_cast<int>(src->size()),
-      &length); // processed char count
+  int length; // processed char count
+  auto result = std::is_same<Tgt, float>::value
+      ? conv.StringToFloat(src->data(), static_cast<int>(src->size()), &length)
+      : static_cast<Tgt>(conv.StringToDouble(
+            src->data(), static_cast<int>(src->size()), &length));
 
   if (!std::isnan(result)) {
     // If we get here with length = 0, the input string is empty.
