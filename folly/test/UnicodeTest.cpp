@@ -106,6 +106,10 @@ void testInvalid(std::initializer_list<unsigned char> data) {
   }
 }
 
+TEST(InvalidUtf8ToCodePoint, UnicodeOutOfRangeTest) {
+  testInvalid({0xF4, 0x90, 0x80, 0x80}); // u8"\U0010FFFF" + 1
+}
+
 TEST(InvalidUtf8ToCodePoint, rfc3629Overlong) {
   // https://tools.ietf.org/html/rfc3629
   // Implementations of the decoding algorithm above MUST protect against

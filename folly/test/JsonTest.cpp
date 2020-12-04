@@ -573,6 +573,8 @@ TEST(Json, UTF8Validation) {
   // test validate_utf8 with invalid utf8
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xc0\x80", opts));
   EXPECT_ANY_THROW(folly::json::serialize("a\xe0\xa0\x80z\xe0\x80\x80", opts));
+  // not a valid unicode because it is larger than the max 0x10FFFF code-point
+  EXPECT_ANY_THROW(folly::json::serialize("\xF6\x8D\x9B\xBC", opts));
 
   opts.skip_invalid_utf8 = true;
   EXPECT_EQ(
@@ -584,6 +586,12 @@ TEST(Json, UTF8Validation) {
   EXPECT_EQ(
       folly::json::serialize("z\xc0\x80z\xe0\xa0\x80", opts),
       u8"\"z\ufffd\ufffdz\xe0\xa0\x80\"");
+  EXPECT_EQ(
+      folly::json::serialize("\xF6\x8D\x9B\xBC", opts),
+      u8"\"\ufffd\ufffd\ufffd\ufffd\"");
+  EXPECT_EQ(
+      folly::json::serialize("invalid\xF6\x8D\x9B\xBCinbetween", opts),
+      u8"\"invalid\ufffd\ufffd\ufffd\ufffdinbetween\"");
 
   opts.encode_non_ascii = true;
   EXPECT_EQ(
