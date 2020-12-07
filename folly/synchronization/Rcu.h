@@ -308,10 +308,10 @@ class rcu_token {
   rcu_token& operator=(rcu_token&& other) = default;
 
  private:
-  explicit rcu_token(uint64_t epoch) : epoch_(epoch) {}
+  explicit rcu_token(uint8_t epoch) : epoch_(epoch) {}
 
   friend class rcu_domain<Tag>;
-  uint64_t epoch_;
+  uint8_t epoch_;
 };
 
 // Defines an RCU domain.  RCU readers within a given domain block updaters
