@@ -27,8 +27,8 @@
  * test case written as a coroutine using folly::coro::Task. It will be called
  * using folly::coro::blockingWait().
  *
- * Note that you cannot use ASSERT macros in coro tests. We'll need to add a
- * CO_ASSERT macro if it's needed. EXPECT macros work fine.
+ * Note that you cannot use ASSERT macros in coro tests. See below for
+ * CO_ASSERT_*.
  */
 // clang-format off
 #define CO_TEST_(test_case_name, test_name, parent_class, parent_id)\
@@ -79,3 +79,34 @@ folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(test_case_name, test_name)::co_Te
       test_name,                           \
       test_fixture,                        \
       ::testing::internal::GetTypeId<test_fixture>())
+
+/**
+ * Coroutine versions of GTests's Assertion predicate macros. Use these in place
+ * of ASSERT_* in CO_TEST or coroutine functions.
+ */
+#define CO_GTEST_FATAL_FAILURE_(message) \
+  co_return GTEST_MESSAGE_(message, ::testing::TestPartResult::kFatalFailure)
+#define CO_ASSERT_PRED_FORMAT2(pred_format, v1, v2) \
+  GTEST_PRED_FORMAT2_(pred_format, v1, v2, CO_GTEST_FATAL_FAILURE_)
+
+#define CO_ASSERT_TRUE(condition) \
+  GTEST_TEST_BOOLEAN_(            \
+      (condition), #condition, false, true, CO_GTEST_FATAL_FAILURE_)
+#define CO_ASSERT_FALSE(condition) \
+  GTEST_TEST_BOOLEAN_(             \
+      !(condition), #condition, true, false, CO_GTEST_FATAL_FAILURE_)
+#define CO_ASSERT_EQ(val1, val2)                                            \
+  ASSERT_PRED_FORMAT2(                                                      \
+      ::testing::internal::EqHelper<GTEST_IS_NULL_LITERAL_(val1)>::Compare, \
+      val1,                                                                 \
+      val2)
+#define CO_ASSERT_NE(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperNE, val1, val2)
+#define CO_ASSERT_LE(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperLE, val1, val2)
+#define CO_ASSERT_LT(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperLT, val1, val2)
+#define CO_ASSERT_GE(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperGE, val1, val2)
+#define CO_ASSERT_GT(val1, val2) \
+  CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
