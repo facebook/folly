@@ -149,6 +149,10 @@ class ConcurrentHashMap {
       Atom,
       Mutex,
       Impl>;
+  template <typename K, typename T>
+  using EnableHeterogeneousFind = std::enable_if_t<
+      detail::EligibleForHeterogeneousFind<KeyType, HashFn, KeyEqual, K>::value,
+      T>;
 
   float load_factor_ = SegmentT::kDefaultLoadFactor;
 
@@ -239,14 +243,11 @@ class ConcurrentHashMap {
     return true;
   }
 
-  ConstIterator find(const KeyType& k) const {
-    auto segment = pickSegment(k);
-    ConstIterator res(this, segment);
-    auto seg = segments_[segment].load(std::memory_order_acquire);
-    if (!seg || !seg->find(res.it_, k)) {
-      res.segment_ = NumShards;
-    }
-    return res;
+  ConstIterator find(const KeyType& k) const { return findImpl(k); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  ConstIterator find(const K& k) const {
+    return findImpl(k);
   }
 
   ConstIterator cend() const noexcept { return ConstIterator(NumShards); }
@@ -374,12 +375,11 @@ class ConcurrentHashMap {
     return item.first->second;
   }
 
-  const ValueType at(const KeyType& key) const {
-    auto item = find(key);
-    if (item == cend()) {
-      throw_exception<std::out_of_range>("at(): value out of range");
-    }
-    return item->second;
+  const ValueType at(const KeyType& key) const { return atImpl(key); }
+
+  template <typename K, EnableHeterogeneousFind<K, int> = 0>
+  const ValueType at(const K& key) const {
+    return atImpl(key);
   }
 
   // TODO update assign interface, operator[], at
@@ -541,7 +541,28 @@ class ConcurrentHashMap {
   };
 
  private:
-  uint64_t pickSegment(const KeyType& k) const {
+  template <typename K>
+  ConstIterator findImpl(const K& k) const {
+    auto segment = pickSegment(k);
+    ConstIterator res(this, segment);
+    auto seg = segments_[segment].load(std::memory_order_acquire);
+    if (!seg || !seg->find(res.it_, k)) {
+      res.segment_ = NumShards;
+    }
+    return res;
+  }
+
+  template <typename K>
+  const ValueType atImpl(const K& k) const {
+    auto item = find(k);
+    if (item == cend()) {
+      throw_exception<std::out_of_range>("at(): key not in map");
+    }
+    return item->second;
+  }
+
+  template <typename K>
+  uint64_t pickSegment(const K& k) const {
     auto h = HashFn()(k);
     // Use the lowest bits for our shard bits.
     //
