@@ -193,6 +193,7 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapResizeTest) {
   if (res != foomap.cend()) {
     EXPECT_EQ(0, res->second);
   }
+  foomap.reserve(0);
 }
 
 // Ensure we can insert objects without copy constructors.

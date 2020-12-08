@@ -464,6 +464,8 @@ class ConcurrentHashMap {
 
   void reserve(size_t count) {
     count = count >> ShardBits;
+    if (!count)
+      return;
     for (uint64_t i = 0; i < NumShards; i++) {
       auto seg = segments_[i].load(std::memory_order_acquire);
       if (seg) {
