@@ -17,45 +17,152 @@
 #pragma once
 
 #include <liburing.h>
+#include <poll.h>
+#include <sys/types.h>
 
-#include <folly/Function.h>
-#include <folly/Range.h>
-#include <folly/experimental/io/PollIoBackend.h>
-#include <folly/portability/Asm.h>
-#include <folly/small_vector.h>
+#include <chrono>
+#include <map>
+#include <set>
+#include <vector>
+
+#include <boost/intrusive/list.hpp>
+#include <boost/intrusive/slist.hpp>
 
 #include <glog/logging.h>
 
+#include <folly/CPortability.h>
+#include <folly/CppAttributes.h>
+#include <folly/Function.h>
+#include <folly/Range.h>
+#include <folly/io/async/EventBaseBackendBase.h>
+#include <folly/portability/Asm.h>
+#include <folly/small_vector.h>
+
 namespace folly {
 
-class IoUringBackend : public PollIoBackend {
+class IoUringBackend : public EventBaseBackendBase {
  public:
   class FOLLY_EXPORT NotAvailable : public std::runtime_error {
    public:
     using std::runtime_error::runtime_error;
   };
 
+  struct Options {
+    enum Flags {
+      POLL_SQ = 0x1,
+      POLL_CQ = 0x2,
+      POLL_SQ_IMMEDIATE_IO = 0x4, // do not enqueue I/O operations
+    };
+
+    Options() = default;
+
+    Options& setCapacity(size_t v) {
+      capacity = v;
+
+      return *this;
+    }
+
+    Options& setMaxSubmit(size_t v) {
+      maxSubmit = v;
+
+      return *this;
+    }
+
+    Options& setMaxGet(size_t v) {
+      maxGet = v;
+
+      return *this;
+    }
+
+    Options& setUseRegisteredFds(bool v) {
+      useRegisteredFds = v;
+
+      return *this;
+    }
+
+    Options& setFlags(uint32_t v) {
+      flags = v;
+
+      return *this;
+    }
+
+    Options& setSQIdle(std::chrono::milliseconds v) {
+      sqIdle = v;
+
+      return *this;
+    }
+
+    Options& setCQIdle(std::chrono::milliseconds v) {
+      cqIdle = v;
+
+      return *this;
+    }
+
+    Options& setSQCpu(uint32_t v) {
+      sqCpu = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupName(const std::string& v) {
+      sqGroupName = v;
+
+      return *this;
+    }
+
+    Options& setSQGroupNumThreads(size_t v) {
+      sqGroupNumThreads = v;
+
+      return *this;
+    }
+
+    size_t capacity{0};
+    size_t maxSubmit{128};
+    size_t maxGet{std::numeric_limits<size_t>::max()};
+    bool useRegisteredFds{false};
+    uint32_t flags{0};
+
+    std::chrono::milliseconds sqIdle{0};
+    std::chrono::milliseconds cqIdle{0};
+    uint32_t sqCpu{0};
+    std::string sqGroupName;
+    size_t sqGroupNumThreads{1};
+  };
+
   explicit IoUringBackend(Options options);
   ~IoUringBackend() override;
+
+  // from EventBaseBackendBase
+  event_base* getEventBase() override { return nullptr; }
+
+  int eb_event_base_loop(int flags) override;
+  int eb_event_base_loopbreak() override;
+
+  int eb_event_add(Event& event, const struct timeval* timeout) override;
+  int eb_event_del(Event& event) override;
+
+  bool eb_event_active(Event&, int) override { return false; }
 
   // returns true if the current Linux kernel version
   // supports the io_uring backend
   static bool isAvailable();
+
+  struct FdRegistrationRecord : public boost::intrusive::slist_base_hook<
+                                    boost::intrusive::cache_last<false>> {
+    int count_{0};
+    int fd_{-1};
+    size_t idx_{0};
+  };
+
+  FdRegistrationRecord* registerFd(int fd) { return fdRegistry_.alloc(fd); }
+
+  bool unregisterFd(FdRegistrationRecord* rec) { return fdRegistry_.free(rec); }
 
   // CQ poll mode loop callback
   using CQPollLoopCallback = folly::Function<void()>;
 
   void setCQPollLoopCallback(CQPollLoopCallback&& cb) {
     cqPollLoopCallback_ = std::move(cb);
-  }
-
-  // from PollIoBackend
-  FdRegistrationRecord* registerFd(int fd) override {
-    return fdRegistry_.alloc(fd);
-  }
-
-  bool unregisterFd(FdRegistrationRecord* rec) override {
-    return fdRegistry_.free(rec);
   }
 
   // read/write/fsync/fdatasync file operation callback
@@ -98,6 +205,153 @@ class IoUringBackend : public PollIoBackend {
   void queueFdatasync(int fd, FileOpCallback&& cb);
 
  protected:
+  enum class WaitForEventsMode { WAIT, DONT_WAIT };
+
+  struct TimerEntry {
+    explicit TimerEntry(Event* event) : event_(event) {}
+    TimerEntry(Event* event, const struct timeval& timeout);
+    Event* event_{nullptr};
+    std::chrono::time_point<std::chrono::steady_clock> expireTime_;
+
+    bool operator==(const TimerEntry& other) { return event_ == other.event_; }
+
+    std::chrono::microseconds getRemainingTime(
+        std::chrono::steady_clock::time_point now) const {
+      if (expireTime_ > now) {
+        return std::chrono::duration_cast<std::chrono::microseconds>(
+            expireTime_ - now);
+      }
+
+      return std::chrono::microseconds(0);
+    }
+
+    static bool isExpired(
+        const std::chrono::time_point<std::chrono::steady_clock>& timestamp,
+        std::chrono::steady_clock::time_point now) {
+      return (now >= timestamp);
+    }
+
+    void setExpireTime(
+        const struct timeval& timeout,
+        std::chrono::steady_clock::time_point now) {
+      uint64_t us = static_cast<uint64_t>(timeout.tv_sec) *
+              static_cast<uint64_t>(1000000) +
+          static_cast<uint64_t>(timeout.tv_usec);
+
+      expireTime_ = now + std::chrono::microseconds(us);
+    }
+  };
+
+  class SocketPair {
+   public:
+    SocketPair();
+
+    SocketPair(const SocketPair&) = delete;
+    SocketPair& operator=(const SocketPair&) = delete;
+
+    ~SocketPair();
+
+    int readFd() const { return fds_[1]; }
+
+    int writeFd() const { return fds_[0]; }
+
+   private:
+    std::array<int, 2> fds_{{-1, -1}};
+  };
+
+  static uint32_t getPollFlags(short events) {
+    uint32_t ret = 0;
+    if (events & EV_READ) {
+      ret |= POLLIN;
+    }
+
+    if (events & EV_WRITE) {
+      ret |= POLLOUT;
+    }
+
+    return ret;
+  }
+
+  static short getPollEvents(uint32_t flags, short events) {
+    short ret = 0;
+    if (flags & POLLIN) {
+      ret |= EV_READ;
+    }
+
+    if (flags & POLLOUT) {
+      ret |= EV_WRITE;
+    }
+
+    if (flags & (POLLERR | POLLHUP)) {
+      ret |= (EV_READ | EV_WRITE);
+    }
+
+    ret &= events;
+
+    return ret;
+  }
+
+  // timer processing
+  bool addTimerFd();
+  void scheduleTimeout();
+  void scheduleTimeout(const std::chrono::microseconds& us);
+  void addTimerEvent(Event& event, const struct timeval* timeout);
+  void removeTimerEvent(Event& event);
+  size_t processTimers();
+  void setProcessTimers() { processTimers_ = true; }
+
+  size_t processActiveEvents();
+
+  struct IoSqe;
+
+  static void
+  processPollIoSqe(IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
+    backend->processPollIo(ioSqe, res);
+  }
+
+  static void
+  processTimerIoSqe(IoUringBackend* backend, IoSqe* /*sqe*/, int64_t /*res*/) {
+    backend->setProcessTimers();
+  }
+
+  // signal handling
+  void addSignalEvent(Event& event);
+  void removeSignalEvent(Event& event);
+  bool addSignalFds();
+  size_t processSignals();
+  FOLLY_ALWAYS_INLINE void setProcessSignals() { processSignals_ = true; }
+
+  static void processSignalReadIoSqe(
+      IoUringBackend* backend,
+      IoSqe* /*sqe*/,
+      int64_t /*res*/) {
+    backend->setProcessSignals();
+  }
+
+  void processPollIo(IoSqe* ioSqe, int64_t res) noexcept;
+
+  IoSqe* FOLLY_NULLABLE allocIoSqe(const EventCallback& cb);
+  void releaseIoSqe(IoSqe* aioIoSqe);
+  void incNumIoSqeInUse() { numIoSqeInUse_++; }
+
+  // submit immediate if POLL_SQ | POLL_SQ_IMMEDIATE_IO flags are set
+  void submitImmediateIoSqe(IoSqe& ioSqe) {
+    if (options_.flags &
+        (Options::Flags::POLL_SQ | Options::Flags::POLL_SQ_IMMEDIATE_IO)) {
+      IoSqeList s;
+      s.push_back(ioSqe);
+      numInsertedEvents_++;
+      submitList(s, WaitForEventsMode::DONT_WAIT);
+    } else {
+      submitList_.push_back(ioSqe);
+      numInsertedEvents_++;
+    }
+  }
+
+  int eb_event_modify_inserted(Event& event, IoSqe* ioSqe);
+
+  FOLLY_ALWAYS_INLINE size_t numIoSqeInUse() const { return numIoSqeInUse_; }
+
   struct FdRegistry {
     FdRegistry() = delete;
     FdRegistry(struct io_uring& ioRing, size_t n);
@@ -118,28 +372,41 @@ class IoUringBackend : public PollIoBackend {
             free_;
   };
 
-  // from PollIoBackend
-  void* allocSubmissionEntry() override;
-  int getActiveEvents(WaitForEventsMode waitForEvents) override;
-  size_t submitList(IoCbList& ioCbs, WaitForEventsMode waitForEvents) override;
-  int submitOne(IoCb* ioCb) override;
-  int cancelOne(IoCb* ioCb) override;
+  struct io_uring_sqe* allocSubmissionEntry() {
+    return get_sqe();
+  }
 
-  int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
-
-  struct IoSqe : public PollIoBackend::IoCb {
+  struct IoSqe
+      : public boost::intrusive::list_base_hook<
+            boost::intrusive::link_mode<boost::intrusive::auto_unlink>> {
+    using BackendCb = void(IoUringBackend*, IoSqe*, int64_t);
     explicit IoSqe(
-        PollIoBackend* backend = nullptr,
+        IoUringBackend* backend = nullptr,
         bool poolAlloc = false,
         bool persist = false)
-        : PollIoBackend::IoCb(backend, poolAlloc, persist) {}
-    ~IoSqe() override = default;
+        : backend_(backend), poolAlloc_(poolAlloc), persist_(persist) {}
+    virtual ~IoSqe() = default;
 
-    void processSubmit(void* entry) override {
+    IoUringBackend* backend_;
+    BackendCb* backendCb_{nullptr};
+    const bool poolAlloc_;
+    const bool persist_;
+    Event* event_{nullptr};
+    FdRegistrationRecord* fdRecord_{nullptr};
+    size_t useCount_{0};
+
+    FOLLY_ALWAYS_INLINE void resetEvent() {
+      // remove it from the list
+      unlink();
+      if (event_) {
+        event_->setUserData(nullptr);
+        event_ = nullptr;
+      }
+    }
+
+    virtual void processSubmit(struct io_uring_sqe* sqe) {
       auto* ev = event_->getEvent();
       if (ev) {
-        struct io_uring_sqe* sqe =
-            reinterpret_cast<struct io_uring_sqe*>(entry);
         const auto& cb = event_->getCallback();
         switch (cb.type_) {
           case EventCallback::Type::TYPE_NONE:
@@ -177,10 +444,77 @@ class IoUringBackend : public PollIoBackend {
       }
     }
 
-    void prepPollAdd(void* entry, int fd, uint32_t events, bool registerFd)
-        override {
-      CHECK(entry);
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+    virtual void processActive() {}
+
+    struct EventCallbackData {
+      EventCallback::Type type_{EventCallback::Type::TYPE_NONE};
+      union {
+        EventReadCallback::IoVec* ioVec_;
+        EventRecvmsgCallback::MsgHdr* msgHdr_;
+      };
+
+      void set(EventReadCallback::IoVec* ioVec) {
+        type_ = EventCallback::Type::TYPE_READ;
+        ioVec_ = ioVec;
+      }
+
+      void set(EventRecvmsgCallback::MsgHdr* msgHdr) {
+        type_ = EventCallback::Type::TYPE_RECVMSG;
+        msgHdr_ = msgHdr;
+      }
+
+      void reset() { type_ = EventCallback::Type::TYPE_NONE; }
+
+      bool processCb(int res) {
+        bool ret = false;
+        switch (type_) {
+          case EventCallback::Type::TYPE_READ: {
+            ret = true;
+            auto cbFunc = ioVec_->cbFunc_;
+            cbFunc(ioVec_, res);
+            break;
+          }
+          case EventCallback::Type::TYPE_RECVMSG: {
+            ret = true;
+            auto cbFunc = msgHdr_->cbFunc_;
+            cbFunc(msgHdr_, res);
+            break;
+          }
+          case EventCallback::Type::TYPE_NONE:
+            break;
+        }
+        type_ = EventCallback::Type::TYPE_NONE;
+
+        return ret;
+      }
+
+      void releaseData() {
+        switch (type_) {
+          case EventCallback::Type::TYPE_READ: {
+            auto freeFunc = ioVec_->freeFunc_;
+            freeFunc(ioVec_);
+            break;
+          }
+          case EventCallback::Type::TYPE_RECVMSG: {
+            auto freeFunc = msgHdr_->freeFunc_;
+            freeFunc(msgHdr_);
+            break;
+          }
+          case EventCallback::Type::TYPE_NONE:
+            break;
+        }
+        type_ = EventCallback::Type::TYPE_NONE;
+      }
+    };
+
+    EventCallbackData cbData_;
+
+    void prepPollAdd(
+        struct io_uring_sqe* sqe,
+        int fd,
+        uint32_t events,
+        bool registerFd) {
+      CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
       }
@@ -195,13 +529,12 @@ class IoUringBackend : public PollIoBackend {
     }
 
     void prepRead(
-        void* entry,
+        struct io_uring_sqe* sqe,
         int fd,
         const struct iovec* iov,
         off_t offset,
         bool registerFd) {
-      CHECK(entry);
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
       }
@@ -217,13 +550,12 @@ class IoUringBackend : public PollIoBackend {
     }
 
     void prepWrite(
-        void* entry,
+        struct io_uring_sqe* sqe,
         int fd,
         const struct iovec* iov,
         off_t offset,
         bool registerFd) {
-      CHECK(entry);
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+      CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
       }
@@ -238,9 +570,12 @@ class IoUringBackend : public PollIoBackend {
       ::io_uring_sqe_set_data(sqe, this);
     }
 
-    void prepRecvmsg(void* entry, int fd, struct msghdr* msg, bool registerFd) {
-      CHECK(entry);
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+    void prepRecvmsg(
+        struct io_uring_sqe* sqe,
+        int fd,
+        struct msghdr* msg,
+        bool registerFd) {
+      CHECK(sqe);
       if (registerFd && !fdRecord_) {
         fdRecord_ = backend_->registerFd(fd);
       }
@@ -263,8 +598,11 @@ class IoUringBackend : public PollIoBackend {
     }
   };
 
+  using IoSqeList = boost::intrusive::
+      list<IoSqe, boost::intrusive::constant_time_size<false>>;
+
   struct FileOpIoSqe : public IoSqe {
-    FileOpIoSqe(PollIoBackend* backend, int fd, FileOpCallback&& cb)
+    FileOpIoSqe(IoUringBackend* backend, int fd, FileOpCallback&& cb)
         : IoSqe(backend, false), fd_(fd), cb_(std::move(cb)) {}
 
     ~FileOpIoSqe() override = default;
@@ -279,7 +617,7 @@ class IoUringBackend : public PollIoBackend {
 
   struct ReadWriteIoSqe : public FileOpIoSqe {
     ReadWriteIoSqe(
-        PollIoBackend* backend,
+        IoUringBackend* backend,
         int fd,
         const struct iovec* iov,
         off_t offset,
@@ -289,7 +627,7 @@ class IoUringBackend : public PollIoBackend {
           offset_(offset) {}
 
     ReadWriteIoSqe(
-        PollIoBackend* backend,
+        IoUringBackend* backend,
         int fd,
         Range<const struct iovec*> iov,
         off_t offset,
@@ -310,8 +648,8 @@ class IoUringBackend : public PollIoBackend {
 
     ~ReadIoSqe() override = default;
 
-    void processSubmit(void* entry) override {
-      prepRead(entry, fd_, iov_.data(), offset_, false);
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      prepRead(sqe, fd_, iov_.data(), offset_, false);
     }
   };
 
@@ -319,8 +657,8 @@ class IoUringBackend : public PollIoBackend {
     using ReadWriteIoSqe::ReadWriteIoSqe;
     ~WriteIoSqe() override = default;
 
-    void processSubmit(void* entry) override {
-      prepWrite(entry, fd_, iov_.data(), offset_, false);
+    void processSubmit(struct io_uring_sqe* sqe) override {
+      prepWrite(sqe, fd_, iov_.data(), offset_, false);
     }
   };
 
@@ -329,8 +667,7 @@ class IoUringBackend : public PollIoBackend {
 
     ~ReadvIoSqe() override = default;
 
-    void processSubmit(void* entry) override {
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+    void processSubmit(struct io_uring_sqe* sqe) override {
       ::io_uring_prep_readv(sqe, fd_, iov_.data(), iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -340,8 +677,7 @@ class IoUringBackend : public PollIoBackend {
     using ReadWriteIoSqe::ReadWriteIoSqe;
     ~WritevIoSqe() override = default;
 
-    void processSubmit(void* entry) override {
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
+    void processSubmit(struct io_uring_sqe* sqe) override {
       ::io_uring_prep_writev(sqe, fd_, iov_.data(), iov_.size(), offset_);
       ::io_uring_sqe_set_data(sqe, this);
     }
@@ -354,7 +690,7 @@ class IoUringBackend : public PollIoBackend {
 
   struct FSyncIoSqe : public FileOpIoSqe {
     FSyncIoSqe(
-        PollIoBackend* backend,
+        IoUringBackend* backend,
         int fd,
         FSyncFlags flags,
         FileOpCallback&& cb)
@@ -362,9 +698,7 @@ class IoUringBackend : public PollIoBackend {
 
     ~FSyncIoSqe() override = default;
 
-    void processSubmit(void* entry) override {
-      struct io_uring_sqe* sqe = reinterpret_cast<struct io_uring_sqe*>(entry);
-
+    void processSubmit(struct io_uring_sqe* sqe) override {
       unsigned int fsyncFlags = 0;
       switch (flags_) {
         case FSyncFlags::FLAGS_FSYNC:
@@ -382,18 +716,26 @@ class IoUringBackend : public PollIoBackend {
     FSyncFlags flags_;
   };
 
+  int getActiveEvents(WaitForEventsMode waitForEvents);
+  size_t submitList(IoSqeList& ioSqes, WaitForEventsMode waitForEvents);
+  int submitOne();
+  int cancelOne(IoSqe* ioSqe);
+
+  int submitBusyCheck(int num, WaitForEventsMode waitForEvents);
+
   void queueFsync(int fd, FSyncFlags flags, FileOpCallback&& cb);
 
-  void processFileOp(IoCb* ioCb, int64_t res) noexcept;
+  void processFileOp(IoSqe* ioSqe, int64_t res) noexcept;
 
-  static void processFileOpCB(PollIoBackend* backend, IoCb* ioCb, int64_t res) {
-    static_cast<IoUringBackend*>(backend)->processFileOp(ioCb, res);
+  static void
+  processFileOpCB(IoUringBackend* backend, IoSqe* ioSqe, int64_t res) {
+    static_cast<IoUringBackend*>(backend)->processFileOp(ioSqe, res);
   }
 
-  PollIoBackend::IoCb* allocNewIoCb(const EventCallback& /*cb*/) override {
-    // allow pool alloc if numIoCbInUse_ < numEntries_
-    auto* ret = new IoSqe(this, numIoCbInUse_ < numEntries_);
-    ret->backendCb_ = PollIoBackend::processPollIoCb;
+  IoUringBackend::IoSqe* allocNewIoSqe(const EventCallback& /*cb*/) {
+    // allow pool alloc if numIoSqeInUse_ < numEntries_
+    auto* ret = new IoSqe(this, numIoSqeInUse_ < numEntries_);
+    ret->backendCb_ = IoUringBackend::processPollIoSqe;
 
     return ret;
   }
@@ -415,6 +757,36 @@ class IoUringBackend : public PollIoBackend {
 
   size_t submit_internal();
 
+  Options options_;
+  size_t numEntries_;
+  std::unique_ptr<IoSqe> timerEntry_;
+  std::unique_ptr<IoSqe> signalReadEntry_;
+  IoSqeList freeList_;
+
+  // timer related
+  int timerFd_{-1};
+  bool timerChanged_{false};
+  std::map<std::chrono::steady_clock::time_point, std::vector<TimerEntry>>
+      timers_;
+  std::map<Event*, std::chrono::steady_clock::time_point> eventToTimers_;
+
+  // signal related
+  SocketPair signalFds_;
+  std::map<int, std::set<Event*>> signals_;
+
+  // submit
+  IoSqeList submitList_;
+
+  // loop related
+  bool loopBreak_{false};
+  bool shuttingDown_{false};
+  bool processTimers_{false};
+  bool processSignals_{false};
+  size_t numInsertedEvents_{0};
+  IoSqeList activeEvents_;
+  // number of IoSqe instances in use
+  size_t numIoSqeInUse_{0};
+
   // io_uring related
   struct io_uring_params params_;
   struct io_uring ioRing_;
@@ -425,4 +797,6 @@ class IoUringBackend : public PollIoBackend {
   // every time we poll for a CQE
   CQPollLoopCallback cqPollLoopCallback_;
 };
+
+using PollIoBackend = IoUringBackend;
 } // namespace folly
