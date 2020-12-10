@@ -170,7 +170,7 @@ class ObserverManager {
     Dependencies dependencies_;
     Dependencies* previousDepedencies_;
 
-    static FOLLY_TLS Dependencies* currentDependencies_;
+    static thread_local Dependencies* currentDependencies_;
   };
 
  private:
@@ -195,7 +195,7 @@ class ObserverManager {
 
   static ObserverManager& getInstance();
   static std::shared_ptr<UpdatesManager> getUpdatesManager();
-  static FOLLY_TLS bool inManagerThread_;
+  static thread_local bool inManagerThread_;
 
   /**
    * Version mutex is used to make sure all updates are processed from the

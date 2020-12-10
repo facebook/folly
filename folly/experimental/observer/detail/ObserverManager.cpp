@@ -29,8 +29,8 @@
 namespace folly {
 namespace observer_detail {
 
-FOLLY_TLS bool ObserverManager::inManagerThread_{false};
-FOLLY_TLS ObserverManager::DependencyRecorder::Dependencies*
+thread_local bool ObserverManager::inManagerThread_{false};
+thread_local ObserverManager::DependencyRecorder::Dependencies*
     ObserverManager::DependencyRecorder::currentDependencies_{nullptr};
 
 DEFINE_int32(
