@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/portability/GTest.h>
 
 #include <functional>
@@ -44,7 +44,8 @@ struct AtomicNotificationQueueConsumer {
 TEST(AtomicNotificationQueueTest, TryPutMessage) {
   vector<int> data;
   AtomicNotificationQueueConsumer<int> consumer{data};
-  AtomicNotificationQueue<int, decltype(consumer)> queue{std::move(consumer)};
+  EventBaseAtomicNotificationQueue<int, decltype(consumer)> queue{
+      std::move(consumer)};
 
   constexpr uint32_t kMaxSize = 10;
 
@@ -86,7 +87,8 @@ TEST(AtomicNotificationQueueTest, DiscardDequeuedTasks) {
   vector<int> data;
   Consumer consumer{data};
 
-  AtomicNotificationQueue<TaskWithExpiry, Consumer> queue{std::move(consumer)};
+  EventBaseAtomicNotificationQueue<TaskWithExpiry, Consumer> queue{
+      std::move(consumer)};
   queue.setMaxReadAtOnce(10);
 
   vector<TaskWithExpiry> tasks = {

@@ -29,7 +29,7 @@
 #include <folly/ExceptionString.h>
 #include <folly/Memory.h>
 #include <folly/String.h>
-#include <folly/io/async/AtomicNotificationQueue.h>
+#include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/EventBaseBackendBase.h>
 #include <folly/io/async/VirtualEventBase.h>
 #include <folly/portability/Unistd.h>
@@ -689,7 +689,8 @@ bool EventBase::runLoopCallbacks() {
 
 void EventBase::initNotificationQueue() {
   // Infinite size queue
-  queue_ = std::make_unique<AtomicNotificationQueue<Func, FuncRunner>>();
+  queue_ =
+      std::make_unique<EventBaseAtomicNotificationQueue<Func, FuncRunner>>();
 
   // Mark this as an internal event, so event_base_loop() will return if
   // there are no other events besides this one installed.

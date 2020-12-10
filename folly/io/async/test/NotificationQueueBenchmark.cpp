@@ -18,8 +18,8 @@
 #include <thread>
 
 #include <folly/Benchmark.h>
-#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/NotificationQueue.h>
 #include <folly/synchronization/Baton.h>
 
@@ -49,7 +49,7 @@ class MockConsumer : public NotificationQueue<Func>::Consumer {
 struct AtomicNotificationQueueConsumerAdaptor {
   void startConsuming(
       EventBase* evb,
-      AtomicNotificationQueue<Func, FuncRunner>* queue) {
+      EventBaseAtomicNotificationQueue<Func, FuncRunner>* queue) {
     queue->startConsuming(evb);
   }
 };
@@ -152,7 +152,7 @@ void multiProducerMultiConsumerANQ(
     size_t numConsumers) {
   CHECK(numConsumers == 1);
   multiProducerMultiConsumer<
-      AtomicNotificationQueue<Func, FuncRunner>,
+      EventBaseAtomicNotificationQueue<Func, FuncRunner>,
       AtomicNotificationQueueConsumerAdaptor>(
       iters, numProducers, numConsumers);
 }

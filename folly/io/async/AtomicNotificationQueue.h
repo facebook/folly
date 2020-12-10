@@ -16,34 +16,77 @@
 
 #pragma once
 
-#include <folly/io/async/EventBase.h>
-#include <folly/io/async/EventHandler.h>
-#include <folly/portability/Fcntl.h>
-#include <folly/portability/Sockets.h>
-#include <folly/portability/Unistd.h>
-
-#if defined(__linux__) && !defined(__ANDROID__)
-#define FOLLY_HAVE_EVENTFD
-#include <folly/io/async/EventFDWrapper.h>
-#endif
-
+#include <folly/io/async/Request.h>
+#include <folly/lang/Align.h>
 #include <type_traits>
 
 namespace folly {
 
 /**
- * A producer-consumer queue for passing tasks to EventBase thread.
+ * A producer-consumer queue for passing tasks to consumer thread.
  *
- * Tasks can be added to the queue from any thread. A single EventBase
- * thread can be listening to the queue. Tasks are processed in FIFO order.
+ * Users of this class are expected to implement functionality to wakeup
+ * consumer thread.
  */
-template <typename Task, typename Consumer>
-class AtomicNotificationQueue : private EventBase::LoopCallback,
-                                private EventHandler {
-  static_assert(
-      noexcept(std::declval<Consumer>()(std::declval<Task&&>())),
-      "Consumer::operator()(Task&&) should be noexcept.");
-  class AtomicQueue;
+template <typename Task>
+class AtomicNotificationQueue {
+ public:
+  explicit AtomicNotificationQueue();
+  ~AtomicNotificationQueue();
+
+  /*
+   * Set the maximum number of tasks processed in a single round.
+   * Can be called from consumer thread only.
+   */
+  void setMaxReadAtOnce(uint32_t maxAtOnce);
+
+  /*
+   * Returns the number of tasks in the queue.
+   * Can be called from any thread.
+   */
+  size_t size() const;
+
+  /*
+   * Checks if the queue is empty.
+   * Can be called from consumer thread only.
+   */
+  bool empty() const;
+
+  /*
+   * Tries to arm the queue.
+   * 1) If the queue was empty: the queue becomes armed and true is returned.
+   * 2) Otherwise returns false.
+   * Can be called from consumer thread only.
+   */
+  bool arm();
+
+  /*
+   * Executes one round of tasks. Returns true iff tasks were run.
+   * Can be called from consumer thread only.
+   */
+  template <typename Consumer>
+  bool drive(Consumer&& consumer);
+
+  /*
+   * Adds a task into the queue.
+   * Can be called from any thread.
+   * Returns true iff the queue was armed, in which case
+   * producers are expected to notify consumer thread.
+   */
+  template <typename T>
+  bool push(T&& task);
+
+  /*
+   * Attempts adding a task into the queue.
+   * Can be called from any thread.
+   * Similarly to push(), producers are expected to notify
+   * consumer iff SUCCESS_AND_ARMED is returned.
+   */
+  enum class TryPushResult { FAILED_LIMIT_REACHED, SUCCESS, SUCCESS_AND_ARMED };
+  template <typename T>
+  TryPushResult tryPush(T&& task, uint32_t maxSize);
+
+ private:
   struct Node {
     Task task;
     std::shared_ptr<RequestContext> rctx{RequestContext::saveContext()};
@@ -57,6 +100,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
     Node* next{};
   };
 
+  class AtomicQueue;
   class Queue {
    public:
     Queue() {}
@@ -65,13 +109,9 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
     ~Queue();
 
     bool empty() const;
-
     ssize_t size() const;
-
     Node& front();
-
     void pop();
-
     void clear();
 
    private:
@@ -120,7 +160,7 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
    * getTasks() can be called in any state. It always transitions the queue into
    * Empty.
    *
-   * arm() can be can't be called if the queue is already in Armed state:
+   * arm() can't be called if the queue is already in Armed state:
    *   When Empty - arm() returns an empty queue and transitions into Armed
    *   When Non-Empty: equivalent to getTasks()
    *
@@ -161,175 +201,17 @@ class AtomicNotificationQueue : private EventBase::LoopCallback,
      */
     Queue arm();
 
-    /*
-     * Returns how many armed push happened.
-     * Can be called from consumer thread only. And only when queue state is
-     * Empty.
-     */
-    ssize_t getArmedPushCount() const {
-      DCHECK(!head_) << "AtomicQueue state has to be Empty";
-      DCHECK(successfulArmCount_ >= consumerDisarmCount_);
-      return successfulArmCount_ - consumerDisarmCount_;
-    }
-
    private:
     alignas(folly::cacheline_align_v) std::atomic<Node*> head_{};
-    alignas(folly::cacheline_align_v) ssize_t successfulArmCount_{0};
-    ssize_t consumerDisarmCount_{0};
     static constexpr intptr_t kQueueArmedTag = 1;
   };
 
- public:
-  explicit AtomicNotificationQueue(Consumer&& consumer);
-
-  template <
-      typename C = Consumer,
-      typename = std::enable_if_t<std::is_default_constructible<C>::value>>
-  AtomicNotificationQueue() : AtomicNotificationQueue(Consumer()) {}
-
-  ~AtomicNotificationQueue() override;
-
-  /*
-   * Set the maximum number of tasks processed in a single round.
-   * Can be called from consumer thread only.
-   */
-  void setMaxReadAtOnce(uint32_t maxAtOnce);
-
-  /*
-   * Returns the number of tasks in the queue.
-   * Can be called from any thread.
-   */
-  size_t size() const;
-
-  /*
-   * Checks if the queue is empty.
-   * Can be called from consumer thread only.
-   */
-  bool empty() const;
-
-  /*
-   * Adds a task into the queue.
-   * Can be called from any thread.
-   */
-  template <typename T>
-  void putMessage(T&& task);
-
-  /**
-   * Adds a task into the queue unless the max queue size is reached.
-   * Returns true iff the task was queued.
-   * Can be called from any thread.
-   */
-  template <typename T>
-  FOLLY_NODISCARD bool tryPutMessage(T&& task, uint32_t maxSize);
-
-  /*
-   * Detaches the queue from an EventBase.
-   * Can be called from consumer thread only.
-   */
-  void stopConsuming();
-
-  /*
-   * Attaches the queue to an EventBase.
-   * Can be called from consumer thread only.
-   */
-  void startConsuming(EventBase* evb);
-
-  /*
-   * Attaches the queue to an EventBase.
-   * Can be called from consumer thread only.
-   *
-   * Unlike startConsuming, startConsumingInternal registers this queue as
-   * an internal event. This means that this event may be skipped if
-   * EventBase doesn't have any other registered events. This generally should
-   * only be used for queues managed by an EventBase itself.
-   */
-  void startConsumingInternal(EventBase* evb);
-
-  /*
-   * Executes all tasks until the queue is empty.
-   * Can be called from consumer thread only.
-   */
-  void drain();
-
-  /*
-   * Executes one round of tasks. Re-activates the event if more tasks are
-   * available.
-   * Can be called from consumer thread only.
-   */
-  void execute();
-
  private:
-  /*
-   * Adds a task to the queue without incrementing the push count.
-   */
-  template <typename T>
-  void putMessageImpl(T&& task);
-
-  /*
-   * Write into the signal fd to wake up the consumer thread.
-   */
-  void notifyFd();
-
-  /*
-   * Read all messages from the signal fd.
-   */
-  void drainFd();
-
-  /*
-   * Executes one round of tasks. Returns true iff tasks were processed.
-   * Can be called from consumer thread only.
-   */
-  bool drive();
-
-  /*
-   * Either arm the queue or reactivate the EventBase event.
-   * This has to be a loop callback because the event can't be activated from
-   * within the event callback. It also allows delayed re-arming the queue.
-   */
-  void runLoopCallback() noexcept override;
-
-  void startConsumingImpl(EventBase* evb, bool internal);
-
-  void handlerReady(uint16_t) noexcept override;
-
-  void activateEvent();
-
-  /**
-   * Check that the AtomicNotificationQueue is being used from the correct
-   * process.
-   *
-   * If you create a AtomicNotificationQueue in one process, then fork, and try
-   * to send messages to the queue from the child process, you're going to have
-   * a bad time.  Unfortunately users have (accidentally) run into this.
-   *
-   * Because we use an eventfd/pipe, the child process can actually signal the
-   * parent process that an event is ready.  However, it can't put anything on
-   * the parent's queue, so the parent wakes up and finds an empty queue.  This
-   * check ensures that we catch the problem in the misbehaving child process
-   * code, and crash before signalling the parent process.
-   */
-  void checkPid() const;
-
-  [[noreturn]] FOLLY_NOINLINE void checkPidFail() const;
-
   alignas(folly::cacheline_align_v) std::atomic<ssize_t> pushCount_{0};
   AtomicQueue atomicQueue_;
   Queue queue_;
   std::atomic<ssize_t> taskExecuteCount_{0};
   int32_t maxReadAtOnce_{10};
-  int eventfd_{-1};
-  int pipeFds_[2]{-1, -1}; // to fallback to on older/non-linux systems
-  /*
-   * If event is registered with the EventBase, this describes whether
-   * edge-triggered flag was set for it. For edge-triggered events we don't
-   * need to drain the fd to deactivate them.
-   */
-  bool edgeTriggeredSet_{false};
-  EventBase* evb_{nullptr};
-  ssize_t writesObserved_{0};
-  ssize_t writesLocal_{0};
-  const pid_t pid_;
-  Consumer consumer_;
 };
 
 /**

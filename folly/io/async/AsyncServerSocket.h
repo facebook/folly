@@ -21,9 +21,9 @@
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
-#include <folly/io/async/AtomicNotificationQueue.h>
 #include <folly/io/async/DelayedDestruction.h>
 #include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseAtomicNotificationQueue.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -770,7 +770,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
     };
 
    public:
-    using Queue = AtomicNotificationQueue<QueueMessage, Consumer>;
+    using Queue = EventBaseAtomicNotificationQueue<QueueMessage, Consumer>;
 
     explicit RemoteAcceptor(
         AcceptCallback* callback,
