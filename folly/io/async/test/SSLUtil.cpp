@@ -71,5 +71,18 @@ std::vector<std::string> getNonTLS13CipherList(SSL* s) {
   return ciphers;
 }
 
+std::vector<std::string> getTLS13Ciphersuites(SSL* s) {
+  auto ciphers = getCiphersFromSSL(s);
+  ciphers.erase(
+      std::remove_if(
+          begin(ciphers),
+          end(ciphers),
+          [](const std::string& cipher) {
+            return suitesFor13.count(cipher) == 0;
+          }),
+      end(ciphers));
+  return ciphers;
+}
+
 } // namespace test
 } // namespace folly

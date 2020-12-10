@@ -771,6 +771,15 @@ void SSLContext::setSessionLifecycleCallbacks(
   sessionLifecycleCallbacks_ = std::move(cb);
 }
 
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+void SSLContext::setCiphersuitesOrThrow(const std::string& ciphersuites) {
+  auto rc = SSL_CTX_set_ciphersuites(ctx_, ciphersuites.c_str());
+  if (rc == 0) {
+    throw std::runtime_error("SSL_CTX_set_ciphersuites: " + getErrors());
+  }
+}
+#endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
+
 std::ostream& operator<<(std::ostream& os, const PasswordCollector& collector) {
   os << collector.describe();
   return os;

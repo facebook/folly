@@ -151,20 +151,21 @@ class SSLContext {
   virtual ~SSLContext();
 
   /**
-   * Set default ciphers to be used in SSL handshake process.
+   * Set default TLS 1.2 and below ciphers to be used in SSL handshake process.
    *
    * @param ciphers A list of ciphers to use for TLSv1.0
    */
   virtual void ciphers(const std::string& ciphers);
 
   /**
-   * Low-level method that attempts to set the provided ciphers on the
-   * SSL_CTX object, and throws if something goes wrong.
+   * Low-level method that attempts to set the provided TLS 1.2
+   * and below ciphers on the SSL_CTX object,
+   * and throws if something goes wrong.
    */
   virtual void setCiphersOrThrow(const std::string& ciphers);
 
   /**
-   * Set default ciphers to be used in SSL handshake process.
+   * Set default TLS 1.2 and below ciphers to be used in SSL handshake process.
    */
   template <typename Iterator>
   void setCipherList(Iterator ibegin, Iterator iend) {
@@ -558,6 +559,15 @@ class SSLContext {
 
   void setSessionLifecycleCallbacks(
       std::unique_ptr<SessionLifecycleCallbacks> cb);
+
+#if FOLLY_OPENSSL_PREREQ(1, 1, 1)
+  /**
+   * Set the TLS 1.3 ciphersuites to be used in the SSL handshake, in
+   * order of preference.
+   * Throws if unsuccessful.
+   */
+  void setCiphersuitesOrThrow(const std::string& ciphersuites);
+#endif
 
   [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();
 

@@ -30,5 +30,7 @@ std::vector<std::string> getCiphersFromSSL(SSL* s);
 
 std::vector<std::string> getNonTLS13CipherList(SSL* s);
 
+std::vector<std::string> getTLS13Ciphersuites(SSL* s);
+
 } // namespace test
 } // namespace folly
