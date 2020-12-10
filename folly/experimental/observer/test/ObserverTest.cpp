@@ -578,6 +578,39 @@ TEST(Observer, MakeStaticObserver) {
   EXPECT_EQ(**implicitSharedPtrObserver, 5);
 }
 
+TEST(Observer, AtomicObserver) {
+  SimpleObservable<int> observable{42};
+  SimpleObservable<int> observable2{12};
+
+  AtomicObserver<int> observer{observable.getObserver()};
+  AtomicObserver<int> observerCopy{observer};
+
+  EXPECT_EQ(*observer, 42);
+  EXPECT_EQ(*observerCopy, 42);
+  observable.setValue(24);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(*observer, 24);
+  EXPECT_EQ(*observerCopy, 24);
+
+  observer = observable2.getObserver();
+  EXPECT_EQ(*observer, 12);
+  EXPECT_EQ(*observerCopy, 24);
+  observable2.setValue(15);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(*observer, 15);
+  EXPECT_EQ(*observerCopy, 24);
+
+  observerCopy = observer;
+  EXPECT_EQ(*observerCopy, 15);
+
+  auto dependentObserver =
+      makeAtomicObserver([o = observer] { return *o + 1; });
+  EXPECT_EQ(*dependentObserver, 16);
+  observable2.setValue(20);
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
+  EXPECT_EQ(*dependentObserver, 21);
+}
+
 TEST(Observer, Unwrap) {
   SimpleObservable<bool> selectorObservable{true};
   SimpleObservable<int> trueObservable{1};

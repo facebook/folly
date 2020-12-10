@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/MicroLock.h>
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/experimental/observer/Observer-pre.h>
@@ -63,20 +64,48 @@ namespace observer {
  * Notice that a + b will be only called when either a or b is changed. Getting
  * a snapshot from sumObserver won't trigger any re-computation.
  *
- *
- * TLObserver is very similar to Observer, but it also keeps a thread-local
- * cache for the observed object.
- *
- *   Observer<int> observer = ...;
- *   TLObserver<int> tlObserver(observer);
- *   auto& snapshot = *tlObserver;
- *
+ * See AtomicObserver and TLObserver for optimized reads.
  *
  * See ObserverCreator class if you want to wrap any existing subscription API
  * in an Observer object.
  */
 template <typename T>
 class Observer;
+
+/**
+ * An AtomicObserver provides read-optimized caching for an Observer using
+ * `std::atomic`. Reading only requires atomic loads unless the cached value
+ * is stale. If the cache needs to be refreshed, a mutex is used to
+ * synchronize the update. This avoids creating a shared_ptr for every read.
+ *
+ * AtomicObserver is ideal when there are lots of reads on a trivially-copyable
+ * type. if `std::atomic<T>` is not possible but you still want to optimize
+ * reads, consider a TLObserver.
+ *
+ *   Observer<int> observer = ...;
+ *   AtomicObserver<int> atomicObserver(observer);
+ *   auto value = *atomicObserver;
+ */
+template <typename T>
+class AtomicObserver;
+
+/**
+ * A TLObserver provides read-optimized caching for an Observer using
+ * thread-local storage. This avoids creating a shared_ptr for every read.
+ *
+ * The functionality is similar to that of AtomicObserver except it allows types
+ * that don't support atomics. If possible, use AtomicObserver instead.
+ *
+ * TLObserver can consume significant amounts of memory if accessed from many
+ * threads. The problem is exacerbated if you chain several TLObservers.
+ * Therefore, TLObserver should be used sparingly.
+ *
+ *   Observer<int> observer = ...;
+ *   TLObserver<int> tlObserver(observer);
+ *   auto& snapshot = *tlObserver;
+ */
+template <typename T>
+class TLObserver;
 
 template <typename T>
 class Snapshot {
@@ -151,7 +180,11 @@ class Observer {
    */
   bool needRefresh(const Snapshot<T>& snapshot) const {
     DCHECK_EQ(core_.get(), snapshot.core_);
-    return snapshot.getVersion() < core_->getVersionLastChange();
+    return needRefresh(snapshot.getVersion());
+  }
+
+  bool needRefresh(size_t version) const {
+    return version < core_->getVersionLastChange();
   }
 
   CallbackHandle addCallback(folly::Function<void(Snapshot<T>)> callback) const;
@@ -221,6 +254,26 @@ Observer<T> makeStaticObserver(T value);
 
 template <typename T>
 Observer<T> makeStaticObserver(std::shared_ptr<T> value);
+
+template <typename T>
+class AtomicObserver {
+ public:
+  explicit AtomicObserver(Observer<T> observer);
+  AtomicObserver(const AtomicObserver<T>& other);
+  AtomicObserver(AtomicObserver<T>&& other) noexcept;
+  AtomicObserver<T>& operator=(const AtomicObserver<T>& other);
+  AtomicObserver<T>& operator=(AtomicObserver<T>&& other) noexcept;
+  AtomicObserver<T>& operator=(Observer<T> observer);
+
+  T get() const;
+  T operator*() const { return get(); }
+
+ private:
+  mutable std::atomic<T> cachedValue_{};
+  mutable std::atomic<size_t> cachedVersion_{};
+  mutable folly::MicroLock refreshLock_;
+  Observer<T> observer_;
+};
 
 template <typename T>
 class TLObserver {
@@ -298,6 +351,19 @@ TLObserver<T> makeTLObserver(Observer<T> observer) {
 template <typename F>
 auto makeTLObserver(F&& creator) {
   return makeTLObserver(makeObserver(std::forward<F>(creator)));
+}
+
+/**
+ * Same as makeObserver(...), but creates AtomicObserver.
+ */
+template <typename T>
+AtomicObserver<T> makeAtomicObserver(Observer<T> observer) {
+  return AtomicObserver<T>(std::move(observer));
+}
+
+template <typename F>
+auto makeAtomicObserver(F&& creator) {
+  return makeAtomicObserver(makeObserver(std::forward<F>(creator)));
 }
 
 template <typename T, bool CacheInThreadLocal>
