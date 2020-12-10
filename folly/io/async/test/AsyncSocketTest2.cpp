@@ -4203,7 +4203,7 @@ TEST(AsyncSocketTest, getBufInUse) {
 }
 #endif
 
-TEST(AsyncSocketTest, ConnectionExpiry) {
+TEST(AsyncSocketTest, QueueTimeout) {
   // Create a new AsyncServerSocket
   EventBase eventBase;
   std::shared_ptr<AsyncServerSocket> serverSocket(
@@ -4213,8 +4213,8 @@ TEST(AsyncSocketTest, ConnectionExpiry) {
   folly::SocketAddress serverAddress;
   serverSocket->getAddress(&serverAddress);
 
-  constexpr auto kConnectionExpiryDuration = milliseconds(10);
-  serverSocket->setQueueTimeout(kConnectionExpiryDuration);
+  constexpr auto kConnectionTimeout = milliseconds(10);
+  serverSocket->setQueueTimeout(kConnectionTimeout);
 
   TestAcceptCallback acceptCb;
   acceptCb.setConnectionAcceptedFn(
@@ -4225,7 +4225,7 @@ TEST(AsyncSocketTest, ConnectionExpiry) {
         // Allow plenty of time for the AsyncSocketServer's event loop to run.
         // This should leave no doubt that the acceptor thread has enough time
         // to dequeue. If the dequeue succeeds, then our expiry code is broken.
-        constexpr auto kEventLoopTime = kConnectionExpiryDuration * 5;
+        constexpr auto kEventLoopTime = kConnectionTimeout * 5;
         eventBase.runInEventBaseThread([&]() {
           eventBase.tryRunAfterDelay(
               [&]() { serverSocket->removeAcceptCallback(&acceptCb, nullptr); },
@@ -4233,7 +4233,7 @@ TEST(AsyncSocketTest, ConnectionExpiry) {
         });
         // After the first message is enqueued, sleep long enough so that the
         // second message expires before it has a chance to dequeue.
-        std::this_thread::sleep_for(kConnectionExpiryDuration);
+        std::this_thread::sleep_for(kConnectionTimeout);
       });
   ScopedEventBaseThread acceptThread("ioworker_test");
 

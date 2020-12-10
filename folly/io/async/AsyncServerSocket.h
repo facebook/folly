@@ -18,6 +18,7 @@
 
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
+#include <folly/experimental/observer/Observer.h>
 #include <folly/io/ShutdownSocketSet.h>
 #include <folly/io/async/AsyncSocketBase.h>
 #include <folly/io/async/AsyncTimeout.h>
@@ -210,6 +211,7 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   static const uint32_t kDefaultMaxAcceptAtOnce = 30;
   static const uint32_t kDefaultCallbackAcceptAtOnce = 5;
   static const uint32_t kDefaultMaxMessagesInQueue = 1024;
+
   /**
    * Create a new AsyncServerSocket with the specified EventBase.
    *
@@ -545,7 +547,10 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    * Get the duration after which new connection messages will be dropped from
    * the NotificationQueue if it has not started processing yet.
    */
-  std::chrono::nanoseconds getQueueTimeout() const { return queueTimeout_; }
+  const folly::observer::AtomicObserver<std::chrono::nanoseconds>&
+  getQueueTimeout() const {
+    return queueTimeout_;
+  }
 
   /**
    * Set the duration after which new connection messages will be dropped from
@@ -557,8 +562,12 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
    *
    * The default value (of 0) means that messages will never expire.
    */
-  void setQueueTimeout(std::chrono::nanoseconds duration) {
+  void setQueueTimeout(
+      folly::observer::Observer<std::chrono::nanoseconds> duration) {
     queueTimeout_ = duration;
+  }
+  void setQueueTimeout(std::chrono::nanoseconds duration) {
+    setQueueTimeout(folly::observer::makeStaticObserver(duration));
   }
 
   /**
@@ -898,7 +907,8 @@ class AsyncServerSocket : public DelayedDestruction, public AsyncSocketBase {
   ConnectionEventCallback* connectionEventCallback_{nullptr};
   bool tosReflect_{false};
   bool zeroCopyVal_{false};
-  std::chrono::nanoseconds queueTimeout_{0};
+  folly::observer::AtomicObserver<std::chrono::nanoseconds> queueTimeout_{
+      folly::observer::makeStaticObserver(std::chrono::nanoseconds::zero())};
 };
 
 } // namespace folly

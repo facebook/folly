@@ -1021,8 +1021,9 @@ void AsyncServerSocket::dispatchSocket(
   msg.type = MessageType::MSG_NEW_CONN;
   msg.address = std::move(address);
   msg.fd = socket;
-  if (queueTimeout_.count() != 0) {
-    msg.deadline = std::chrono::steady_clock::now() + queueTimeout_;
+  auto queueTimeout = *queueTimeout_;
+  if (queueTimeout.count() != 0) {
+    msg.deadline = std::chrono::steady_clock::now() + queueTimeout;
   }
 
   // Loop until we find a free queue to write to
