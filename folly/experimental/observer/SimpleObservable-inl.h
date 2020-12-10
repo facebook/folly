@@ -22,6 +22,11 @@ namespace folly {
 namespace observer {
 
 template <typename T>
+template <typename, typename>
+SimpleObservable<T>::SimpleObservable()
+    : context_(std::make_shared<Context>(std::make_shared<T>())) {}
+
+template <typename T>
 SimpleObservable<T>::SimpleObservable(T value)
     : SimpleObservable(std::make_shared<const T>(std::move(value))) {}
 

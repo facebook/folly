@@ -27,6 +27,11 @@ namespace observer {
 template <typename T>
 class SimpleObservable {
  public:
+  template <
+      typename U = T,
+      typename = std::enable_if_t<std::is_default_constructible<U>::value>>
+  SimpleObservable();
+
   explicit SimpleObservable(T value);
   explicit SimpleObservable(std::shared_ptr<const T> value);
 

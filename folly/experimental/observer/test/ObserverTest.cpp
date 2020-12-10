@@ -734,3 +734,14 @@ TEST(Observer, WithJitterNoEarlyRefresh) {
   EXPECT_EQ(0, **laggingObserver);
   EXPECT_EQ(42, **delta);
 }
+
+TEST(SimpleObservable, DefaultConstructible) {
+  struct Data {
+    int i = 42;
+  };
+  static_assert(std::is_default_constructible<Data>::value);
+  static_assert(std::is_default_constructible<SimpleObservable<Data>>::value);
+
+  SimpleObservable<Data> observable;
+  EXPECT_EQ((**observable.getObserver()).i, 42);
+}
