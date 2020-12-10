@@ -815,4 +815,24 @@ TEST(Optional, NoneMatchesNullopt) {
   EXPECT_FALSE(op.has_value());
 }
 
+#if __cplusplus >= 201703L && __has_include(<optional>)
+TEST(Optional, StdOptionalConversions) {
+  folly::Optional<int> f = 42;
+  std::optional<int> s = static_cast<std::optional<int>>(f);
+  EXPECT_EQ(*s, 42);
+  EXPECT_TRUE(f);
+  f = static_cast<folly::Optional<int>>(s);
+  EXPECT_EQ(*f, 42);
+  EXPECT_TRUE(s);
+
+  folly::Optional<std::unique_ptr<int>> fp = std::make_unique<int>(42);
+  std::optional<std::unique_ptr<int>> sp(std::move(fp));
+  EXPECT_EQ(**sp, 42);
+  EXPECT_FALSE(fp);
+  fp = static_cast<folly::Optional<std::unique_ptr<int>>>(std::move(sp));
+  EXPECT_EQ(**fp, 42);
+  EXPECT_FALSE(sp);
+}
+#endif
+
 } // namespace folly

@@ -60,6 +60,9 @@
 #include <stdexcept>
 #include <type_traits>
 #include <utility>
+#if __cplusplus >= 201703L && __has_include(<optional>)
+#include <optional>
+#endif
 
 #include <folly/Portability.h>
 #include <folly/Traits.h>
@@ -155,6 +158,42 @@ class Optional {
       : Optional{} {
     p.promise_->value_ = this;
   }
+
+// Conversions to ease migration to std::optional
+#if __cplusplus >= 201703L && __has_include(<optional>)
+  template <
+      typename U,
+      typename = std::enable_if_t<std::is_same_v<U, std::optional<Value>>>>
+  explicit Optional(U&& newValue) noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
+    if (newValue.has_value()) {
+      construct(std::move(*newValue));
+      newValue.reset();
+    }
+  }
+  template <
+      typename U,
+      typename = std::enable_if_t<std::is_same_v<U, std::optional<Value>>>>
+  explicit Optional(const U& newValue) noexcept(
+      std::is_nothrow_copy_constructible<Value>::value) {
+    if (newValue.has_value()) {
+      construct(*newValue);
+    }
+  }
+  explicit operator std::optional<Value>() &&
+      noexcept(std::is_nothrow_move_constructible<Value>::value) {
+    std::optional<Value> ret = storage_.hasValue
+        ? std::optional<Value>(std::move(storage_.value))
+        : std::nullopt;
+    reset();
+    return ret;
+  }
+  explicit operator std::optional<Value>() &
+      noexcept(std::is_nothrow_copy_constructible<Value>::value) {
+    return storage_.hasValue ? std::optional<Value>(storage_.value)
+                             : std::nullopt;
+  }
+#endif
 
   void assign(const None&) { reset(); }
 
