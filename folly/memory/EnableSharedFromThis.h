@@ -25,7 +25,7 @@ namespace folly {
  *
  * To be removed once C++17 becomes a minimum requirement for folly.
  */
-#if __cplusplus >= 201700L || __cpp_lib_enable_shared_from_this >= 201603L
+#if __cpp_lib_enable_shared_from_this >= 201603L || _MSVC_LANG >= 201703L
 
 // Guaranteed to have std::enable_shared_from_this::weak_from_this(). Prefer
 // type alias over our own class.
