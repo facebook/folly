@@ -19,6 +19,7 @@
 #include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/experimental/observer/Observer.h>
+#include <folly/synchronization/CallOnce.h>
 
 namespace folly {
 namespace observer {
@@ -32,18 +33,21 @@ class SimpleObservable {
   void setValue(T value);
   void setValue(std::shared_ptr<const T> value);
 
-  auto getObserver();
+  auto getObserver() const;
 
  private:
   struct Context {
     folly::Synchronized<std::shared_ptr<const T>> value_;
     folly::Synchronized<folly::Function<void()>> callback_;
+
+    Context() = default;
+    explicit Context(std::shared_ptr<const T> value);
   };
   struct Wrapper;
   std::shared_ptr<Context> context_;
 
-  std::once_flag observerInit_;
-  folly::Optional<Observer<typename observer_detail::Unwrap<T>::type>>
+  mutable folly::once_flag observerInit_;
+  mutable folly::Optional<Observer<typename observer_detail::Unwrap<T>::type>>
       observer_;
 };
 } // namespace observer

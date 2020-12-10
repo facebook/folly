@@ -23,15 +23,11 @@ namespace observer {
 
 template <typename T>
 SimpleObservable<T>::SimpleObservable(T value)
-    : context_(std::make_shared<Context>()) {
-  setValue(std::move(value));
-}
+    : SimpleObservable(std::make_shared<const T>(std::move(value))) {}
 
 template <typename T>
 SimpleObservable<T>::SimpleObservable(std::shared_ptr<const T> value)
-    : context_(std::make_shared<Context>()) {
-  setValue(std::move(value));
-}
+    : context_(std::make_shared<Context>(std::move(value))) {}
 
 template <typename T>
 void SimpleObservable<T>::setValue(T value) {
@@ -48,6 +44,10 @@ void SimpleObservable<T>::setValue(std::shared_ptr<const T> value) {
     }
   });
 }
+
+template <typename T>
+SimpleObservable<T>::Context::Context(std::shared_ptr<const T> value)
+    : value_{std::move(value)} {}
 
 template <typename T>
 struct SimpleObservable<T>::Wrapper {
@@ -68,8 +68,8 @@ struct SimpleObservable<T>::Wrapper {
 };
 
 template <typename T>
-auto SimpleObservable<T>::getObserver() {
-  std::call_once(observerInit_, [&]() {
+auto SimpleObservable<T>::getObserver() const {
+  folly::call_once(observerInit_, [&]() {
     SimpleObservable<T>::Wrapper wrapper;
     wrapper.context = context_;
     ObserverCreator<SimpleObservable<T>::Wrapper> creator(std::move(wrapper));
@@ -77,5 +77,6 @@ auto SimpleObservable<T>::getObserver() {
   });
   return *observer_;
 }
+
 } // namespace observer
 } // namespace folly
