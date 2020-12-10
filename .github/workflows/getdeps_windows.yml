@@ -16,7 +16,7 @@ jobs:
     steps:
     - uses: actions/checkout@v1
     - name: Export boost environment
-      run: "echo ::set-env name=BOOST_ROOT::%BOOST_ROOT_1_69_0%"
+      run: "echo BOOST_ROOT=%BOOST_ROOT_1_69_0% >> %GITHUB_ENV%"
       shell: cmd
     - name: Fix Git config
       run: git config --system core.longpaths true

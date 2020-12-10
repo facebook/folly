@@ -826,10 +826,10 @@ jobs:
                 # coupled with the boost manifest
                 # This is the unusual syntax for setting an env var for the rest of
                 # the steps in a workflow:
-                # https://help.github.com/en/actions/reference/workflow-commands-for-github-actions#setting-an-environment-variable
+                # https://github.blog/changelog/2020-10-01-github-actions-deprecating-set-env-and-add-path-commands/
                 out.write("    - name: Export boost environment\n")
                 out.write(
-                    '      run: "echo ::set-env name=BOOST_ROOT::%BOOST_ROOT_1_69_0%"\n'
+                    '      run: "echo BOOST_ROOT=%BOOST_ROOT_1_69_0% >> %GITHUB_ENV%"\n'
                 )
                 out.write("      shell: cmd\n")
 
