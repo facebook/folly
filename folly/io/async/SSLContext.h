@@ -567,6 +567,13 @@ class SSLContext {
    * Throws if unsuccessful.
    */
   void setCiphersuitesOrThrow(const std::string& ciphersuites);
+
+  /**
+   * Enables/disables non-DHE (Ephemeral Diffie-Hellman) PSK key
+   * exchange for TLS 1.3 resumption. Note that this key exchange
+   * mode gives up forward secrecy on the resumed session.
+   */
+  void setAllowNoDheKex(bool flag);
 #endif
 
   [[deprecated("Use folly::ssl::init")]] static void initializeOpenSSL();

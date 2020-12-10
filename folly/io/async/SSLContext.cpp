@@ -778,6 +778,15 @@ void SSLContext::setCiphersuitesOrThrow(const std::string& ciphersuites) {
     throw std::runtime_error("SSL_CTX_set_ciphersuites: " + getErrors());
   }
 }
+
+void SSLContext::setAllowNoDheKex(bool flag) {
+  auto opt = SSL_OP_ALLOW_NO_DHE_KEX;
+  if (flag) {
+    SSL_CTX_set_options(ctx_, opt);
+  } else {
+    SSL_CTX_clear_options(ctx_, opt);
+  }
+}
 #endif // FOLLY_OPENSSL_PREREQ(1, 1, 1)
 
 std::ostream& operator<<(std::ostream& os, const PasswordCollector& collector) {
