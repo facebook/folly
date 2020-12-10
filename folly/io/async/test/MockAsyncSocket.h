@@ -26,7 +26,7 @@ namespace test {
 
 class MockAsyncSocket : public AsyncSocket {
  public:
-  typedef std::unique_ptr<MockAsyncSocket, Destructor> UniquePtr;
+  typedef std::unique_ptr<MockAsyncSocket, ReleasableDestructor> UniquePtr;
 
   explicit MockAsyncSocket(EventBase* base) : AsyncSocket(base) {}
 

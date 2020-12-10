@@ -76,7 +76,31 @@ namespace folly {
 
 class AsyncSocket : public AsyncTransport {
  public:
-  using UniquePtr = std::unique_ptr<AsyncSocket, Destructor>;
+  /**
+   * Use ReleasableDestructor with AsyncSocket to enable transferring the
+   * ownership of the socket owned by smart pointers.
+   */
+  class ReleasableDestructor : public DelayedDestruction::Destructor {
+   public:
+    void operator()(DelayedDestruction* dd) const {
+      if (!released_) {
+        dd->destroy();
+      }
+    }
+
+    /**
+     * Release the object managed by smart pointers. This is used when the
+     * object ownership is transferred to another smart pointer or manually
+     * managed by the caller. The original object must be properly deleted at
+     * the end of its life cycle to avoid resource leaks.
+     */
+    void release() { released_ = true; }
+
+   private:
+    bool released_{false};
+  };
+
+  using UniquePtr = std::unique_ptr<AsyncSocket, ReleasableDestructor>;
 
   class ConnectCallback {
    public:
@@ -304,7 +328,7 @@ class AsyncSocket : public AsyncTransport {
    * destructor is protected and cannot be invoked directly.
    */
   static UniquePtr newSocket(EventBase* evb) {
-    return UniquePtr{new AsyncSocket(evb), Destructor()};
+    return UniquePtr{new AsyncSocket(evb)};
   }
 
   /**
@@ -315,8 +339,8 @@ class AsyncSocket : public AsyncTransport {
       const folly::SocketAddress& address,
       uint32_t connectTimeout = 0,
       bool useZeroCopy = false) {
-    return UniquePtr{new AsyncSocket(evb, address, connectTimeout, useZeroCopy),
-                     Destructor()};
+    return UniquePtr{
+        new AsyncSocket(evb, address, connectTimeout, useZeroCopy)};
   }
 
   /**
@@ -329,15 +353,14 @@ class AsyncSocket : public AsyncTransport {
       uint32_t connectTimeout = 0,
       bool useZeroCopy = false) {
     return UniquePtr{
-        new AsyncSocket(evb, ip, port, connectTimeout, useZeroCopy),
-        Destructor()};
+        new AsyncSocket(evb, ip, port, connectTimeout, useZeroCopy)};
   }
 
   /**
    * Helper function to create an AsyncSocket.
    */
   static UniquePtr newSocket(EventBase* evb, NetworkSocket fd) {
-    return UniquePtr{new AsyncSocket(evb, fd), Destructor()};
+    return UniquePtr{new AsyncSocket(evb, fd)};
   }
 
   /**

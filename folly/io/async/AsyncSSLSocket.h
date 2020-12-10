@@ -75,7 +75,7 @@ class AsyncSSLSocketConnector;
  */
 class AsyncSSLSocket : public AsyncSocket {
  public:
-  typedef std::unique_ptr<AsyncSSLSocket, Destructor> UniquePtr;
+  typedef std::unique_ptr<AsyncSSLSocket, ReleasableDestructor> UniquePtr;
   using X509_deleter = folly::static_function_deleter<X509, &X509_free>;
 
   class HandshakeCB {
@@ -290,9 +290,8 @@ class AsyncSSLSocket : public AsyncSocket {
       NetworkSocket fd,
       bool server = true,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(
-        new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation),
-        Destructor());
+    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, fd, server, deferSecurityNegotiation)));
   }
 
   /**
@@ -302,8 +301,8 @@ class AsyncSSLSocket : public AsyncSocket {
       const std::shared_ptr<folly::SSLContext>& ctx,
       EventBase* evb,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(
-        new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation), Destructor());
+    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, deferSecurityNegotiation)));
   }
 
 #if FOLLY_OPENSSL_HAS_SNI
@@ -344,9 +343,8 @@ class AsyncSSLSocket : public AsyncSocket {
       EventBase* evb,
       const std::string& serverName,
       bool deferSecurityNegotiation = false) {
-    return std::shared_ptr<AsyncSSLSocket>(
-        new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation),
-        Destructor());
+    return std::shared_ptr<AsyncSSLSocket>(AsyncSSLSocket::UniquePtr(
+        new AsyncSSLSocket(ctx, evb, serverName, deferSecurityNegotiation)));
   }
 #endif // FOLLY_OPENSSL_HAS_SNI
 

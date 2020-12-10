@@ -2694,7 +2694,8 @@ TEST(AsyncSSLSocketTest, TTLSDisabled) {
 
 class MockAsyncTFOSSLSocket : public AsyncSSLSocket {
  public:
-  using UniquePtr = std::unique_ptr<MockAsyncTFOSSLSocket, Destructor>;
+  using UniquePtr =
+      std::unique_ptr<MockAsyncTFOSSLSocket, ReleasableDestructor>;
 
   explicit MockAsyncTFOSSLSocket(
       std::shared_ptr<folly::SSLContext> sslCtx,
