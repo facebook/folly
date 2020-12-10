@@ -592,11 +592,24 @@ class FOLLY_NODISCARD Task {
     return TaskWithExecutor<T>{std::exchange(coro_, {})};
   }
 
+  FOLLY_NOINLINE
   SemiFuture<folly::lift_unit_t<StorageType>> semi() && {
     return makeSemiFuture().deferExTry(
-        [task = std::move(*this)](
+        [task = std::move(*this),
+         returnAddress = FOLLY_ASYNC_STACK_RETURN_ADDRESS()](
             const Executor::KeepAlive<>& executor, Try<Unit>&&) mutable {
-          return std::move(task).scheduleOn(executor.get()).start();
+          Promise<lift_unit_t<StorageType>> p;
+
+          auto sf = p.getSemiFuture();
+
+          std::move(task).scheduleOn(executor).startInlineImpl(
+              [promise = std::move(p)](Try<StorageType>&& result) mutable {
+                promise.setTry(std::move(result));
+              },
+              folly::CancellationToken{},
+              returnAddress);
+
+          return sf;
         });
   }
 
