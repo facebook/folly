@@ -16,7 +16,7 @@
 
 #pragma once
 
-#include <folly/MicroLock.h>
+#include <folly/SharedMutex.h>
 #include <folly/ThreadLocal.h>
 #include <folly/experimental/ReadMostlySharedPtr.h>
 #include <folly/experimental/observer/Observer-pre.h>
@@ -271,7 +271,7 @@ class AtomicObserver {
  private:
   mutable std::atomic<T> cachedValue_{};
   mutable std::atomic<size_t> cachedVersion_{};
-  mutable folly::MicroLock refreshLock_;
+  mutable folly::SharedMutex refreshLock_;
   Observer<T> observer_;
 };
 

@@ -110,9 +110,7 @@ Observer<T> makeStaticObserver(std::shared_ptr<T> value) {
 
 template <typename T>
 AtomicObserver<T>::AtomicObserver(Observer<T> observer)
-    : observer_(std::move(observer)) {
-  refreshLock_.init();
-}
+    : observer_(std::move(observer)) {}
 
 template <typename T>
 AtomicObserver<T>::AtomicObserver(const AtomicObserver<T>& other)
@@ -145,7 +143,7 @@ template <typename T>
 T AtomicObserver<T>::get() const {
   auto version = cachedVersion_.load(std::memory_order_acquire);
   if (UNLIKELY(observer_.needRefresh(version))) {
-    std::lock_guard<folly::MicroLock> guard{refreshLock_};
+    folly::SharedMutex::WriteHolder guard{refreshLock_};
     version = cachedVersion_.load(std::memory_order_acquire);
     if (LIKELY(observer_.needRefresh(version))) {
       auto snapshot = *observer_;
