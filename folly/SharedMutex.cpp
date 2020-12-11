@@ -15,6 +15,7 @@
  */
 
 #include <folly/SharedMutex.h>
+#include <folly/Indestructible.h>
 
 namespace folly {
 // Explicitly instantiate SharedMutex here:
@@ -28,9 +29,10 @@ std::unique_lock<std::mutex> annotationGuard(void* ptr) {
     // the address. If the array is of prime size things will work out okay
     // without a complicated hash function.
     static constexpr std::size_t kNumAnnotationMutexes = 251;
-    static std::array<std::mutex, kNumAnnotationMutexes> kAnnotationMutexes{};
+    static Indestructible<std::array<std::mutex, kNumAnnotationMutexes>>
+        kAnnotationMutexes;
     auto index = reinterpret_cast<uintptr_t>(ptr) % kNumAnnotationMutexes;
-    return std::unique_lock<std::mutex>(kAnnotationMutexes[index]);
+    return std::unique_lock<std::mutex>((*kAnnotationMutexes)[index]);
   } else {
     return std::unique_lock<std::mutex>();
   }
