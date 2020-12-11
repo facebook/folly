@@ -24,6 +24,7 @@
 #include <memory>
 #include <mutex>
 #include <string>
+#include <utility>
 
 namespace folly {
 
@@ -125,6 +126,8 @@ class RequestData {
 
   std::atomic<int> keepAliveCounter_{0};
 };
+
+using RequestDataItem = std::pair<RequestToken, std::unique_ptr<RequestData>>;
 
 // If you do not call create() to create a unique request context,
 // this default request context will always be returned, and is never
@@ -415,6 +418,29 @@ struct ShallowCopyRequestContextScopeGuard {
       std::unique_ptr<RequestData> data)
       : ShallowCopyRequestContextScopeGuard() {
     RequestContext::get()->overwriteContextData(val, std::move(data), true);
+  }
+
+  /**
+   * Shallow copy then overwrite multiple RequestData instances
+   *
+   * Helper constructor which is more efficient than using multiple scope guards
+   * Accepts iterators to a container of <string/RequestToken, RequestData
+   * pointer> pairs
+   */
+  template <typename... TItems>
+  explicit ShallowCopyRequestContextScopeGuard(
+      RequestDataItem&& first,
+      TItems&&... rest)
+      : ShallowCopyRequestContextScopeGuard() {
+    auto rc = RequestContext::get();
+    auto overwriteContextData = [&rc](RequestDataItem&& item) {
+      rc->overwriteContextData(item.first, std::move(item.second), true);
+    };
+
+    overwriteContextData(std::move(first));
+
+    using _ = int[];
+    void(_{0, (void(overwriteContextData(std::forward<TItems>(rest))), 0)...});
   }
 
   ~ShallowCopyRequestContextScopeGuard() {
