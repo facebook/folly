@@ -28,6 +28,7 @@
 namespace folly {
 namespace python {
 
+// Must be called from main context
 folly::fibers::FiberManager* getFiberManager(
     const folly::fibers::FiberManager::Options& opts = {});
 

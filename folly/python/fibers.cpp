@@ -15,27 +15,28 @@
  */
 
 #include <folly/python/fibers.h>
-#include <folly/fibers/CallOnce.h>
+
+#include <stdexcept>
+
+#include <folly/CppAttributes.h>
 #include <folly/python/fiber_manager_api.h>
 
 namespace folly {
 namespace python {
+namespace {
+
+void do_import() {
+  if (0 != import_folly__fiber_manager()) {
+    throw std::runtime_error("import_folly__fiber_manager failed");
+  }
+}
+
+} // namespace
 
 folly::fibers::FiberManager* getFiberManager(
     const folly::fibers::FiberManager::Options& opts) {
-  static folly::fibers::once_flag flag;
-  // Use call_once because Python performance is really poor,
-  // just to check if a module was already imported
-  folly::call_once(flag, [&]() {
-    // Use main context, because import can load arbitrary number of files,
-    // which is incompatible with fiber stack size restrictions
-    folly::fibers::runInMainContext([&]() {
-      import_folly__fiber_manager();
-      if (PyErr_Occurred() != nullptr) {
-        throw std::logic_error("Fail to import cython fiber_manager");
-      }
-    });
-  });
+  DCHECK(!folly::fibers::onFiber());
+  FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
   return get_fiber_manager(opts);
 }
 
