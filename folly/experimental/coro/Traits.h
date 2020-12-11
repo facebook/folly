@@ -206,7 +206,7 @@ constexpr bool promiseHasAsyncFrame_v = false;
 template <typename Promise>
 constexpr bool promiseHasAsyncFrame_v<
     Promise,
-    std::void_t<decltype(std::declval<Promise&>().getAsyncFrame())>> = true;
+    void_t<decltype(std::declval<Promise&>().getAsyncFrame())>> = true;
 
 } // namespace detail
 
