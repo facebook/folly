@@ -63,6 +63,16 @@ class AtomicNotificationQueue {
   /*
    * Executes one round of tasks. Returns true iff tasks were run.
    * Can be called from consumer thread only.
+   *
+   * `Consumer::operator()` must accept `Task&&` as its first parameter.
+   * It may also optionally accept `std::shared_ptr<folly::RequestContext>&&` as
+   * its second parameter, in which case it must manage `folly::RequestContext`
+   * for the consumed task.
+   *
+   * Consumer::operator() can optionally return
+   * AtomicNotificationQueueTaskStatus to indicate if the provided task should
+   * be considered consumed or discarded. Discarded tasks are not counted
+   * towards `maxReadAtOnce`.
    */
   template <typename Consumer>
   bool drive(Consumer&& consumer);

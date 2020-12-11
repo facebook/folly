@@ -225,8 +225,26 @@ template <
         AtomicNotificationQueueTaskStatus>::value>>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer,
-    Task&& task) {
+    Task&& task,
+    std::shared_ptr<RequestContext>&& rctx) {
+  RequestContextScopeGuard rcsg(std::move(rctx));
   return consumer(std::forward<Task>(task));
+}
+
+template <
+    typename Task,
+    typename Consumer,
+    typename = std::enable_if_t<std::is_same<
+        invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
+        AtomicNotificationQueueTaskStatus>::value>,
+    typename = void>
+AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
+    Consumer&& consumer,
+    Task&& task,
+    std::shared_ptr<RequestContext>&& rctx) {
+  return consumer(
+      std::forward<Task>(task),
+      std::forward<std::shared_ptr<RequestContext>>(rctx));
 }
 
 template <
@@ -234,11 +252,33 @@ template <
     typename Consumer,
     typename = std::enable_if_t<
         std::is_same<invoke_result_t<Consumer, Task&&>, void>::value>,
+    typename = void,
     typename = void>
 AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
     Consumer&& consumer,
-    Task&& task) {
+    Task&& task,
+    std::shared_ptr<RequestContext>&& rctx) {
+  RequestContextScopeGuard rcsg(std::move(rctx));
   consumer(std::forward<Task>(task));
+  return AtomicNotificationQueueTaskStatus::CONSUMED;
+}
+
+template <
+    typename Task,
+    typename Consumer,
+    typename = std::enable_if_t<std::is_same<
+        invoke_result_t<Consumer, Task&&, std::shared_ptr<RequestContext>&&>,
+        void>::value>,
+    typename = void,
+    typename = void,
+    typename = void>
+AtomicNotificationQueueTaskStatus invokeConsumerWithTask(
+    Consumer&& consumer,
+    Task&& task,
+    std::shared_ptr<RequestContext>&& rctx) {
+  consumer(
+      std::forward<Task>(task),
+      std::forward<std::shared_ptr<RequestContext>>(rctx));
   return AtomicNotificationQueueTaskStatus::CONSUMED;
 }
 
@@ -278,10 +318,11 @@ bool AtomicNotificationQueue<Task>::drive(Consumer&& consumer) {
         std::memory_order_relaxed);
     {
       auto& curNode = queue_.front();
-      RequestContextScopeGuard rcsg(std::move(curNode.rctx));
       AtomicNotificationQueueTaskStatus consumeTaskStatus =
           detail::invokeConsumerWithTask(
-              std::forward<Consumer>(consumer), std::move(curNode.task));
+              std::forward<Consumer>(consumer),
+              std::move(curNode.task),
+              std::move(curNode.rctx));
       if (consumeTaskStatus == AtomicNotificationQueueTaskStatus::CONSUMED) {
         ++numConsumed;
       }
