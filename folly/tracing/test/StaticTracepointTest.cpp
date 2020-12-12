@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/tracing/StaticTracepoint.h>
+
 #include <algorithm>
 #include <array>
 #include <iterator>
@@ -22,6 +24,7 @@
 #include <vector>
 
 #include <boost/filesystem.hpp>
+
 #include <folly/Conv.h>
 #include <folly/Format.h>
 #include <folly/Random.h>
@@ -31,7 +34,6 @@
 #include <folly/lang/Bits.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
-#include <folly/tracing/StaticTracepoint.h>
 #include <folly/tracing/test/StaticTracepointTestModule.h>
 
 static const std::string kUSDTSubsectionName = FOLLY_SDT_NOTE_NAME;
