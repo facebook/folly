@@ -34,9 +34,10 @@ namespace coro {
 //   pipe.second.write(std::move(val1));
 //   auto val2 = co_await pipe.first.next();
 //
-//  write() returns false if the read end has been destroyed
+//  write() returns false if the read end has been destroyed (unless
+//  SingleProducer is disabled, in which case this behavior is undefined).
 //  The generator is completed when the write end is destroyed or on close()
-//  close() can also be passed an exception, which is thrown when read
+//  close() can also be passed an exception, which is thrown when read.
 //
 //  An optional onClosed callback can be passed to create(). This callback will
 //  be called either when the generator is destroyed by the consumer, or when
@@ -45,8 +46,12 @@ namespace coro {
 //  on the AsyncPipe object inline. If an onClosed callback is specified and the
 //  publisher would like to destroy the pipe outside of the callback, it must
 //  first close the pipe.
+//
+//  If SingleProducer is disabled, AsyncPipe's write() method (but not its
+//  close() method) becomes thread-safe. close() must be sequenced after all
+//  write()s in this mode.
 
-template <typename T>
+template <typename T, bool SingleProducer = true>
 class AsyncPipe {
  public:
   ~AsyncPipe() {
@@ -138,7 +143,8 @@ class AsyncPipe {
   }
 
  private:
-  using Queue = folly::coro::UnboundedQueue<folly::Try<T>, true, true>;
+  using Queue =
+      folly::coro::UnboundedQueue<folly::Try<T>, SingleProducer, true>;
 
   class OnClosedCallback {
    public:
