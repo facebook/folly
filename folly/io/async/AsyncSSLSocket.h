@@ -498,17 +498,13 @@ class AsyncSSLSocket : public AsyncSocket {
   SSLStateEnum getSSLState() const { return sslState_; }
 
   /**
-   * Get a handle to the negotiated SSL session.  This increments the session
-   * refcount and must be deallocated by the caller.
+   * Retrieve the SSL session associated with this established connection.
+   *
+   * The SSL Session object is a copyable, opaque token that can be set on other
+   * unconnected AsyncSSLSockets. If AsyncSSLSocket::connect() is called with a
+   * previous session set, TLS resumption will be attempted.
    */
-  SSL_SESSION* getSSLSession();
-
-  /**
-   * Currently unsupported. Eventually intended to replace getSSLSession()
-   * once TLS 1.3 is enabled by default.
-   * Get an abstracted SSL Session.
-   */
-  std::shared_ptr<ssl::SSLSession> getSSLSessionV2();
+  std::shared_ptr<ssl::SSLSession> getSSLSession();
 
   /**
    * Get a handle to the SSL struct.
@@ -516,25 +512,13 @@ class AsyncSSLSocket : public AsyncSocket {
   const SSL* getSSL() const;
 
   /**
-   * DEPRECATED. Will eventually be removed. Please use setSSLSessionV2.
-   *
-   * Set the SSL session to be used during sslConn.  AsyncSSLSocket will
-   * hold a reference to the session until it is destroyed or released by the
-   * underlying SSL structure.
-   *
-   * @param takeOwnership if true, AsyncSSLSocket will assume the caller's
-   *                      reference count to session.
+   * Sets the SSL session that will be attempted for TLS resumption.
    */
-  void setSSLSession(SSL_SESSION* session, bool takeOwnership = false);
-
-  /**
-   * Set the SSL session to be used during sslConn.
-   */
-  void setSSLSessionV2(std::shared_ptr<ssl::SSLSession> session);
+  void setSSLSession(std::shared_ptr<ssl::SSLSession> session);
 
   /**
    * Note: This function exists for compatibility reasons. It is strongly
-   * recommended to use setSSLSessionV2 instead. After setRawSSLSession is
+   * recommended to use setSSLSession instead. After setRawSSLSession is
    * called, subsequent calls to getSSLSession on the socket will return null.
    *
    * Set the SSL session to be used during sslConn.

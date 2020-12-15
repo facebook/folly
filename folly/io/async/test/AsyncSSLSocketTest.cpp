@@ -3204,7 +3204,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     // create another client, resuming with the prior session, but under a
     // different common name.
     clientSock = std::move(client).moveSocket();
-    resumptionSession = clientSock->getSSLSessionV2();
+    resumptionSession = clientSock->getSSLSession();
   }
 
   {
@@ -3216,7 +3216,7 @@ TEST(AsyncSSLSocketTest, TestSNIClientHelloBehavior) {
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(serverCtx, &eventBase, fds[1], true));
 
-    clientSock->setSSLSessionV2(resumptionSession);
+    clientSock->setSSLSession(resumptionSession);
     clientSock->setServerName("Baz");
     SSLHandshakeServerParseClientHello server(
         std::move(serverSock), true, true);

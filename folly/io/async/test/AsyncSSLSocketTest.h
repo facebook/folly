@@ -1168,7 +1168,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
   void connect(bool writeNow = false) {
     sslSocket_ = AsyncSSLSocket::newSocket(ctx_, eventBase_);
     if (session_ != nullptr) {
-      sslSocket_->setSSLSessionV2(session_);
+      sslSocket_->setSSLSession(session_);
     }
     requests_--;
     sslSocket_->connect(this, address_, timeout_);
@@ -1184,7 +1184,7 @@ class SSLClient : public AsyncSocket::ConnectCallback,
       hit_++;
     } else {
       miss_++;
-      session_ = sslSocket_->getSSLSessionV2();
+      session_ = sslSocket_->getSSLSession();
     }
 
     // write()

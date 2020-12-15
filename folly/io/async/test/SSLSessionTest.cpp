@@ -85,7 +85,7 @@ TEST_F(SSLSessionTest, BasicTest) {
     AsyncSSLSocket::UniquePtr clientSock(
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
-    sslSession = clientPtr->getSSLSessionV2();
+    sslSession = clientPtr->getSSLSession();
     ASSERT_NE(sslSession, nullptr);
     {
       auto opensslSession =
@@ -119,57 +119,6 @@ TEST_F(SSLSessionTest, BasicTest) {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
 
-    clientPtr->setSSLSessionV2(sslSession);
-
-    AsyncSSLSocket::UniquePtr serverSock(
-        new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
-    SSLHandshakeClient client(std::move(clientSock), false, false);
-    SSLHandshakeServerParseClientHello server(
-        std::move(serverSock), false, false);
-
-    eventBase.loop();
-    ASSERT_TRUE(client.handshakeSuccess_);
-    ASSERT_TRUE(clientPtr->getSSLSessionReused());
-  }
-}
-
-/**
- * To be removed when getSSLSessionV2() and setSSLSessionV2()
- * replace getSSLSession() and setSSLSession(),
- * respectively.
- */
-TEST_F(SSLSessionTest, BasicRegressionTest) {
-  SSL_SESSION* sslSession;
-
-  // Full handshake
-  {
-    NetworkSocket fds[2];
-    getfds(fds);
-    AsyncSSLSocket::UniquePtr clientSock(
-        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
-    auto clientPtr = clientSock.get();
-    AsyncSSLSocket::UniquePtr serverSock(
-        new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
-    SSLHandshakeClient client(std::move(clientSock), false, false);
-    SSLHandshakeServerParseClientHello server(
-        std::move(serverSock), false, false);
-
-    eventBase.loop();
-    ASSERT_TRUE(client.handshakeSuccess_);
-    ASSERT_FALSE(clientPtr->getSSLSessionReused());
-
-    sslSession = clientPtr->getSSLSession();
-    ASSERT_NE(sslSession, nullptr);
-  }
-
-  // Session resumption
-  {
-    NetworkSocket fds[2];
-    getfds(fds);
-    AsyncSSLSocket::UniquePtr clientSock(
-        new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
-    auto clientPtr = clientSock.get();
-
     clientPtr->setSSLSession(sslSession);
 
     AsyncSSLSocket::UniquePtr serverSock(
@@ -181,7 +130,6 @@ TEST_F(SSLSessionTest, BasicRegressionTest) {
     eventBase.loop();
     ASSERT_TRUE(client.handshakeSuccess_);
     ASSERT_TRUE(clientPtr->getSSLSessionReused());
-    SSL_SESSION_free(sslSession);
   }
 }
 
@@ -194,7 +142,7 @@ TEST_F(SSLSessionTest, NullSessionResumptionTest) {
         new AsyncSSLSocket(clientCtx, &eventBase, fds[0], serverName));
     auto clientPtr = clientSock.get();
 
-    clientPtr->setSSLSessionV2(nullptr);
+    clientPtr->setSSLSession(nullptr);
 
     AsyncSSLSocket::UniquePtr serverSock(
         new AsyncSSLSocket(dfServerCtx, &eventBase, fds[1], true));
