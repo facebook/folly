@@ -494,6 +494,12 @@ TEST_F(TaskTest, YieldTry) {
           co_await co_awaitTry(std::move(innerTaskInt)));
     }());
     EXPECT_TRUE(retInt.hasValue());
+
+    EXPECT_THROW(
+        co_await[&]()->folly::coro::Task<int> {
+          co_yield folly::coro::co_result(folly::Try<int>());
+        }(),
+        UsingUninitializedTry);
   }());
 }
 

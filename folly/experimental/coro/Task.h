@@ -53,24 +53,6 @@ class Task;
 template <typename T = void>
 class TaskWithExecutor;
 
-template <typename T>
-class co_result final {
- public:
-  explicit co_result(Try<T>&& result) noexcept(
-      std::is_nothrow_move_constructible<T>::value)
-      : result_(std::move(result)) {}
-
-  const Try<T>& result() const { return result_; }
-
-  Try<T>& result() { return result_; }
-
- private:
-  Try<T> result_;
-};
-
-template <class T>
-co_result(Try<T>)->co_result<T>;
-
 namespace detail {
 
 class TaskPromiseBase {

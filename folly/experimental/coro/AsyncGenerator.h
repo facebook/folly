@@ -133,6 +133,17 @@ class AsyncGeneratorPromise {
     return {};
   }
 
+  YieldAwaiter yield_value(co_result<Value>&& res) noexcept {
+    if (res.result().hasValue()) {
+      return yield_value(std::move(res.result().value()));
+    } else if (res.result().hasException()) {
+      return yield_value(co_error(res.result().exception()));
+    } else {
+      return_void();
+      return {};
+    }
+  }
+
   void unhandled_exception() noexcept {
     DCHECK(state_ == State::INVALID);
     folly::coro::detail::activate(exceptionPtr_, std::current_exception());

@@ -20,6 +20,7 @@
 #include <type_traits>
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/Try.h>
 
 namespace folly {
 namespace coro {
@@ -43,6 +44,21 @@ class co_error final {
 
  private:
   exception_wrapper ex_;
+};
+
+template <typename T>
+class co_result final {
+ public:
+  explicit co_result(Try<T>&& result) noexcept(
+      std::is_nothrow_move_constructible<T>::value)
+      : result_(std::move(result)) {}
+
+  const Try<T>& result() const { return result_; }
+
+  Try<T>& result() { return result_; }
+
+ private:
+  Try<T> result_;
 };
 
 } // namespace coro
