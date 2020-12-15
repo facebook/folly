@@ -14,32 +14,17 @@
  * limitations under the License.
  */
 
-#include <folly/python/fibers.h>
+#pragma once
 
-#include <stdexcept>
-
-#include <folly/CppAttributes.h>
-#include <folly/python/error.h>
-#include <folly/python/fiber_manager_api.h>
+#include <folly/Range.h>
 
 namespace folly {
 namespace python {
-namespace {
-
-void do_import() {
-  if (0 != import_folly__fiber_manager()) {
-    handlePythonError("import_folly__fiber_manager failed: ");
-  }
-}
-
-} // namespace
-
-folly::fibers::FiberManager* getFiberManager(
-    const folly::fibers::FiberManager::Options& opts) {
-  DCHECK(!folly::fibers::onFiber());
-  FOLLY_MAYBE_UNUSED static bool done = (do_import(), false);
-  return get_fiber_manager(opts);
-}
+/**
+ * Should be called on C-API call failure to convert the python error into an
+ * informative C++ exception
+ */
+[[noreturn]] void handlePythonError(StringPiece errPrefix);
 
 } // namespace python
 } // namespace folly
