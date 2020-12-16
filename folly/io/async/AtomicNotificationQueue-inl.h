@@ -182,8 +182,13 @@ bool AtomicNotificationQueue<Task>::arm() {
   if (!queue_.empty()) {
     return false;
   }
-  queue_ = atomicQueue_.arm();
-  return queue_.empty();
+  auto queue = atomicQueue_.arm();
+  if (queue.empty()) {
+    return true;
+  } else {
+    queue_ = std::move(queue);
+    return false;
+  }
 }
 
 template <typename Task>
