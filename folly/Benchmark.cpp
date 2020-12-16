@@ -506,11 +506,10 @@ void checkRunMode() {
   }
 }
 
-void runBenchmarks() {
-  CHECK(!benchmarks().empty());
+namespace {
 
-  checkRunMode();
-
+std::pair<std::set<std::string>, std::vector<detail::BenchmarkResult>>
+runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
   vector<detail::BenchmarkResult> results;
   results.reserve(benchmarks().size() - 1);
 
@@ -526,11 +525,6 @@ void runBenchmarks() {
   auto const globalBaseline =
       runBenchmarkGetNSPerIteration(benchmarks()[baselineIndex].func, 0);
 
-  bool useCounter =
-      std::any_of(benchmarks().begin(), benchmarks().end(), [](const auto& bm) {
-        return bm.useCounter;
-      });
-  BenchmarkResultsPrinter printer;
   std::set<std::string> counterNames;
   FOR_EACH_RANGE (i, 0, benchmarks().size()) {
     if (i == baselineIndex) {
@@ -548,8 +542,8 @@ void runBenchmarks() {
     // if customized user counters is used, it cannot print the result in real
     // time as it needs to run all cases first to know the complete set of
     // counters have been used, then the header can be printed out properly
-    if (!FLAGS_json_verbose && !FLAGS_json && !useCounter) {
-      printer.print({{bm.file, bm.name, elapsed.first, elapsed.second}});
+    if (printer != nullptr) {
+      printer->print({{bm.file, bm.name, elapsed.first, elapsed.second}});
     } else {
       results.push_back({bm.file, bm.name, elapsed.first, elapsed.second});
     }
@@ -560,12 +554,43 @@ void runBenchmarks() {
     }
   }
 
+  // MEASUREMENTS DONE.
+
+  return std::make_pair(std::move(counterNames), std::move(results));
+}
+
+} // namespace
+
+namespace detail {
+
+std::vector<BenchmarkResult> runBenchmarksWithResults() {
+  return runBenchmarksWithPrinter(nullptr).second;
+}
+
+} // namespace detail
+
+void runBenchmarks() {
+  CHECK(!benchmarks().empty());
+
+  checkRunMode();
+
+  BenchmarkResultsPrinter printer;
+  bool useCounter =
+      std::any_of(benchmarks().begin(), benchmarks().end(), [](const auto& bm) {
+        return bm.useCounter;
+      });
+  // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
+
+  auto benchmarkResults = runBenchmarksWithPrinter(
+      !FLAGS_json_verbose && !FLAGS_json && !useCounter ? &printer : nullptr);
+
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
+
   if (FLAGS_json_verbose || FLAGS_json) {
-    printBenchmarkResults(results);
+    printBenchmarkResults(benchmarkResults.second);
   } else {
-    printer = BenchmarkResultsPrinter{std::move(counterNames)};
-    printer.print(results);
+    printer = BenchmarkResultsPrinter{std::move(benchmarkResults.first)};
+    printer.print(benchmarkResults.second);
     printer.separator('=');
   }
 

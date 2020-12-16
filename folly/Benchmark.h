@@ -102,6 +102,12 @@ void addBenchmarkImpl(
     BenchmarkFun,
     bool useCounter);
 
+/**
+ * Runs all benchmarks defined in the program, doesn't print by default.
+ * Usually used when customized printing of results is desired.
+ */
+std::vector<BenchmarkResult> runBenchmarksWithResults();
+
 } // namespace detail
 
 /**
