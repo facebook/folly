@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+from builtins import memoryview as py_memoryview
 from folly.executor cimport get_executor
 from cpython cimport Py_buffer
 from weakref import WeakValueDictionary
 from cpython.object cimport Py_LT, Py_LE, Py_EQ, Py_NE, Py_GT, Py_GE
 from cython.operator cimport dereference as deref
-from cython.view cimport memoryview
 
 __cache = WeakValueDictionary()
 __all__ = ['IOBuf']
@@ -135,10 +135,10 @@ cdef class IOBuf:
 
     def __iter__(self):
         "Iterates through the chain of buffers returning a memory view for each"
-        yield memoryview(self, PyBUF_C_CONTIGUOUS)
+        yield py_memoryview(self)
         next = self.next
         while next is not None and next is not self:
-            yield memoryview(next, PyBUF_C_CONTIGUOUS)
+            yield py_memoryview(next)
             next = next.next
 
     def __hash__(self):
