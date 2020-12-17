@@ -1066,30 +1066,6 @@ class Range {
     return process(split_step(delimiter), std::forward<Args>(args)...);
   }
 
-  friend bool operator==(const Range& lhs, const Range& rhs) {
-    return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
-  }
-
-  friend bool operator!=(const Range& lhs, const Range& rhs) {
-    return !(operator==(lhs, rhs));
-  }
-
-  friend bool operator<(const Range& lhs, const Range& rhs) {
-    return lhs.compare(rhs) < 0;
-  }
-
-  friend bool operator<=(const Range& lhs, const Range& rhs) {
-    return lhs.compare(rhs) <= 0;
-  }
-
-  friend bool operator>(const Range& lhs, const Range& rhs) {
-    return lhs.compare(rhs) > 0;
-  }
-
-  friend bool operator>=(const Range& lhs, const Range& rhs) {
-    return lhs.compare(rhs) >= 0;
-  }
-
  private:
   Iter b_;
   Iter e_;
@@ -1173,6 +1149,118 @@ std::basic_ostream<C>& operator<<(std::basic_ostream<C>& os, Range<C*> piece) {
   using StreamSize = decltype(os.width());
   os.write(piece.start(), static_cast<StreamSize>(piece.size()));
   return os;
+}
+
+/**
+ * Templated comparison operators
+ */
+
+template <class Iter>
+inline bool operator==(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.size() == rhs.size() && lhs.compare(rhs) == 0;
+}
+
+template <class Iter>
+inline bool operator!=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return !(operator==(lhs, rhs));
+}
+
+template <class Iter>
+inline bool operator<(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) < 0;
+}
+
+template <class Iter>
+inline bool operator<=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) <= 0;
+}
+
+template <class Iter>
+inline bool operator>(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) > 0;
+}
+
+template <class Iter>
+inline bool operator>=(const Range<Iter>& lhs, const Range<Iter>& rhs) {
+  return lhs.compare(rhs) >= 0;
+}
+
+/**
+ * Specializations of comparison operators for StringPiece
+ */
+
+namespace detail {
+
+template <class A, class B>
+struct ComparableAsStringPiece {
+  enum {
+    value = (std::is_convertible<A, StringPiece>::value &&
+             std::is_same<B, StringPiece>::value) ||
+        (std::is_convertible<B, StringPiece>::value &&
+         std::is_same<A, StringPiece>::value)
+  };
+};
+
+} // namespace detail
+
+/**
+ * operator== through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator==(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) == StringPiece(rhs);
+}
+
+/**
+ * operator!= through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator!=(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) != StringPiece(rhs);
+}
+
+/**
+ * operator< through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) < StringPiece(rhs);
+}
+
+/**
+ * operator> through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) > StringPiece(rhs);
+}
+
+/**
+ * operator< through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator<=(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) <= StringPiece(rhs);
+}
+
+/**
+ * operator> through conversion for Range<const char*>
+ */
+template <class T, class U>
+std::enable_if_t<detail::ComparableAsStringPiece<T, U>::value, bool> operator>=(
+    const T& lhs,
+    const U& rhs) {
+  return StringPiece(lhs) >= StringPiece(rhs);
 }
 
 /**
