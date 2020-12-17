@@ -2769,7 +2769,7 @@ void AsyncSocket::fail(const char* fn, const AsyncSocketException& ex) {
           << ", state=" << state_ << " host=" << addr_.describe()
           << "): failed in " << fn << "(): " << ex.what();
   startFail();
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSocket::failConnect(const char* fn, const AsyncSocketException& ex) {
@@ -2794,7 +2794,7 @@ void AsyncSocket::failRead(const char* fn, const AsyncSocketException& ex) {
     callback->readErr(ex);
   }
 
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSocket::failErrMessageRead(
@@ -2811,7 +2811,7 @@ void AsyncSocket::failErrMessageRead(
     callback->errMessageError(ex);
   }
 
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSocket::failWrite(const char* fn, const AsyncSocketException& ex) {
@@ -2834,7 +2834,7 @@ void AsyncSocket::failWrite(const char* fn, const AsyncSocketException& ex) {
     }
   }
 
-  finishFail();
+  finishFail(ex);
 }
 
 void AsyncSocket::failWrite(
@@ -2856,7 +2856,7 @@ void AsyncSocket::failWrite(
   }
 
   if (closeOnFailedWrite_) {
-    finishFail();
+    finishFail(ex);
   }
 }
 
@@ -2905,7 +2905,7 @@ void AsyncSocket::invalidState(ConnectCallback* callback) {
     if (callback) {
       callback->connectErr(ex);
     }
-    finishFail();
+    finishFail(ex);
   }
 }
 
@@ -2928,7 +2928,7 @@ void AsyncSocket::invalidState(ErrMessageCallback* callback) {
     if (callback) {
       callback->errMessageError(ex);
     }
-    finishFail();
+    finishFail(ex);
   }
 }
 
@@ -2971,7 +2971,7 @@ void AsyncSocket::invalidState(ReadCallback* callback) {
     if (callback) {
       callback->readErr(ex);
     }
-    finishFail();
+    finishFail(ex);
   }
 }
 
@@ -2991,7 +2991,7 @@ void AsyncSocket::invalidState(WriteCallback* callback) {
     if (callback) {
       callback->writeErr(0, ex);
     }
-    finishFail();
+    finishFail(ex);
   }
 }
 
