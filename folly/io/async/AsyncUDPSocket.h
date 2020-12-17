@@ -143,6 +143,12 @@ class AsyncUDPSocket : public EventHandler {
         : gso(gsoVal), zerocopy(zerocopyVal) {}
     int gso{0};
     bool zerocopy{false};
+    std::chrono::microseconds txTime{0};
+  };
+
+  struct TXTime {
+    int clockid{-1};
+    bool deadline{false};
   };
 
   /**
@@ -418,6 +424,11 @@ class AsyncUDPSocket : public EventHandler {
 
   bool setGRO(bool bVal);
 
+  // TX time
+  TXTime getTXTime();
+
+  bool setTXTime(TXTime txTime);
+
   // packet timestamping
   int getTimestamping();
   bool setTimestamping(int val);
@@ -520,6 +531,10 @@ class AsyncUDPSocket : public EventHandler {
   // generic receive offload value, if available
   // See https://lwn.net/Articles/770978/ for more details
   folly::Optional<int> gro_;
+
+  // multi release pacing for UDP GSO
+  // See https://lwn.net/Articles/822726/ for more details
+  folly::Optional<TXTime> txTime_;
 
   // packet timestamping
   folly::Optional<int> ts_;

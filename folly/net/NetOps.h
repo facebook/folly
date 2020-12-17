@@ -54,6 +54,26 @@
 #define SO_ZEROCOPY 60
 #endif
 
+#ifndef SO_TXTIME
+#define SO_TXTIME 61
+#define SCM_TXTIME SO_TXTIME
+#endif
+
+#ifdef FOLLY_HAVE_MSG_ERRQUEUE
+enum txtime_flags {
+  SOF_TXTIME_DEADLINE_MODE = (1 << 0),
+  SOF_TXTIME_REPORT_ERRORS = (1 << 1),
+
+  SOF_TXTIME_FLAGS_LAST = SOF_TXTIME_REPORT_ERRORS,
+  SOF_TXTIME_FLAGS_MASK = (SOF_TXTIME_FLAGS_LAST - 1) | SOF_TXTIME_FLAGS_LAST
+};
+
+struct sock_txtime {
+  __kernel_clockid_t clockid; /* reference clockid */
+  __u32 flags; /* as defined by enum txtime_flags */
+};
+#endif
+
 #ifndef MSG_ZEROCOPY
 #define MSG_ZEROCOPY 0x4000000
 #endif
@@ -106,6 +126,7 @@ using sa_family_t = ADDRESS_FAMILY;
 // these are not supported
 #define SO_EE_ORIGIN_ZEROCOPY 0
 #define SO_ZEROCOPY 0
+#define SO_TXTIME 0
 #define MSG_ZEROCOPY 0x0
 #define SOL_UDP 0x0
 #define UDP_SEGMENT 0x0
