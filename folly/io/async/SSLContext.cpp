@@ -709,8 +709,14 @@ std::string SSLContext::getErrors(int errnoCopy) {
 }
 
 void SSLContext::enableTLS13() {
-#if FOLLY_OPENSSL_IS_110
+#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
   SSL_CTX_set_max_proto_version(ctx_, 0);
+#endif
+}
+
+void SSLContext::disableTLS13() {
+#if FOLLY_OPENSSL_PREREQ(1, 1, 0)
+  SSL_CTX_set_max_proto_version(ctx_, TLS1_2_VERSION);
 #endif
 }
 

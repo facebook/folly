@@ -553,6 +553,11 @@ class SSLContext {
   void enableTLS13();
 
   /**
+   * Disable TLS 1.3 in OpenSSL versions that support it.
+   */
+  void disableTLS13();
+
+  /**
    * Get SSLContext from the ex data of a SSL_CTX.
    */
   static SSLContext* getFromSSLCtx(const SSL_CTX* ctx);
