@@ -16,12 +16,12 @@
 
 #pragma once
 
-#include <folly/Optional.h>
-#include <folly/functional/Invoke.h>
-
 #include <atomic>
 #include <chrono>
 #include <cstdint>
+
+#include <folly/Optional.h>
+#include <folly/functional/Invoke.h>
 
 namespace folly {
 namespace detail {

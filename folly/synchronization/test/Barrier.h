@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <stdint.h>
+
 #include <condition_variable>
 #include <mutex>
-
-#include <stdint.h>
 
 namespace folly {
 

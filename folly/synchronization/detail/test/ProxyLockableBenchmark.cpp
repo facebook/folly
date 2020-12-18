@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
 #include <folly/synchronization/detail/ProxyLockable.h>
 
 #include <mutex>
 #include <tuple>
+
+#include <folly/Benchmark.h>
 
 namespace folly {
 namespace detail {

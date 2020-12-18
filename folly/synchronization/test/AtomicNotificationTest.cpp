@@ -16,10 +16,10 @@
 
 #include <folly/synchronization/AtomicNotification.h>
 
+#include <thread>
+
 #include <folly/Optional.h>
 #include <folly/portability/GTest.h>
-
-#include <thread>
 
 using namespace std::literals;
 

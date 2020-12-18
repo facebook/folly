@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <folly/detail/Futex.h>
-#include <folly/synchronization/ParkingLot.h>
-
 #include <condition_variable>
 #include <cstdint>
+
+#include <folly/detail/Futex.h>
+#include <folly/synchronization/ParkingLot.h>
 
 namespace folly {
 namespace detail {

@@ -16,14 +16,14 @@
 
 #pragma once
 
-#include <folly/Optional.h>
-#include <folly/Portability.h>
-
 #include <cassert>
 #include <memory>
 #include <mutex>
 #include <stdexcept>
 #include <utility>
+
+#include <folly/Optional.h>
+#include <folly/Portability.h>
 
 namespace folly {
 namespace detail {

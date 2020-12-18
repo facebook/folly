@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/synchronization/Hazptr.h>
-
 #include <atomic>
+
+#include <folly/synchronization/Hazptr.h>
 
 namespace folly {
 

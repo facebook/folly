@@ -16,10 +16,11 @@
 
 #pragma once
 
-#include <folly/ConstexprMath.h>
 #include <chrono>
 #include <cstdint>
 #include <type_traits>
+
+#include <folly/ConstexprMath.h>
 
 namespace folly {
 namespace detail {

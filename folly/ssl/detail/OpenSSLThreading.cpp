@@ -19,17 +19,19 @@
 #include <memory>
 #include <mutex>
 
+#include <glog/logging.h>
+
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/SpinLock.h>
 
-#include <glog/logging.h>
-
 // We cannot directly use portability/openssl because it also depends on us.
 // Therefore we directly use openssl includes. Order of includes is important
 // here. See portability/openssl.h.
+// clang-format off
 #include <folly/portability/Windows.h>
 #include <openssl/crypto.h>
+// clang-format on
 
 #if !defined(OPENSSL_IS_BORINGSSL)
 #define FOLLY_SSL_DETAIL_OPENSSL_IS_110 (OPENSSL_VERSION_NUMBER >= 0x10100000L)

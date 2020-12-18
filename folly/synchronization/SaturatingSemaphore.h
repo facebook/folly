@@ -16,6 +16,10 @@
 
 #pragma once
 
+#include <atomic>
+
+#include <glog/logging.h>
+
 #include <folly/Likely.h>
 #include <folly/detail/Futex.h>
 #include <folly/detail/MemoryIdler.h>
@@ -23,10 +27,6 @@
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/WaitOptions.h>
 #include <folly/synchronization/detail/Spin.h>
-
-#include <glog/logging.h>
-
-#include <atomic>
 
 namespace folly {
 

@@ -16,12 +16,12 @@
 
 #include <folly/synchronization/AtomicUtil.h>
 
+#include <utility>
+
 #include <folly/Benchmark.h>
 #include <folly/Portability.h>
 #include <folly/Utility.h>
 #include <folly/portability/GTest.h>
-
-#include <utility>
 
 namespace folly {
 

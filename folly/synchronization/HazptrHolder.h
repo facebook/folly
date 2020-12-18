@@ -17,13 +17,11 @@
 #pragma once
 
 #include <folly/Traits.h>
-
+#include <folly/synchronization/AsymmetricMemoryBarrier.h>
 #include <folly/synchronization/Hazptr-fwd.h>
 #include <folly/synchronization/HazptrDomain.h>
 #include <folly/synchronization/HazptrRec.h>
 #include <folly/synchronization/HazptrThrLocal.h>
-
-#include <folly/synchronization/AsymmetricMemoryBarrier.h>
 
 namespace folly {
 

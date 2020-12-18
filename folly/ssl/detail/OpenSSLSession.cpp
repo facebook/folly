@@ -15,9 +15,11 @@
  */
 
 #include <folly/ssl/detail/OpenSSLSession.h>
+
+#include <atomic>
+
 #include <folly/portability/OpenSSL.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
-#include <atomic>
 
 namespace folly {
 namespace ssl {

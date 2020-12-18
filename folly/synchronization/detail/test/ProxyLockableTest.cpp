@@ -15,10 +15,6 @@
  */
 
 #include <folly/synchronization/detail/ProxyLockable.h>
-#include <folly/Benchmark.h>
-#include <folly/Random.h>
-#include <folly/portability/GTest.h>
-#include <folly/synchronization/DistributedMutex.h>
 
 #include <atomic>
 #include <chrono>
@@ -26,6 +22,11 @@
 #include <thread>
 #include <tuple>
 #include <vector>
+
+#include <folly/Benchmark.h>
+#include <folly/Random.h>
+#include <folly/portability/GTest.h>
+#include <folly/synchronization/DistributedMutex.h>
 
 using namespace std::literals;
 

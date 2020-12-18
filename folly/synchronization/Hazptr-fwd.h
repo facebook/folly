@@ -16,10 +16,10 @@
 
 #pragma once
 
-#include <folly/portability/GFlags.h>
-
 #include <atomic>
 #include <memory>
+
+#include <folly/portability/GFlags.h>
 
 ///
 /// Forward declatations and implicit documentation of all hazptr

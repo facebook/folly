@@ -16,14 +16,14 @@
 
 #pragma once
 
-#include <folly/Portability.h>
-#include <folly/Traits.h>
-
 #include <atomic>
 #include <cassert>
 #include <cstdint>
 #include <tuple>
 #include <type_traits>
+
+#include <folly/Portability.h>
+#include <folly/Traits.h>
 
 #ifdef _WIN32
 #include <intrin.h>

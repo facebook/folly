@@ -14,9 +14,8 @@
  * limitations under the License.
  */
 
-#include <folly/portability/GTest.h>
-
 #include <folly/Random.h>
+#include <folly/portability/GTest.h>
 #include <folly/stats/detail/DoubleRadixSort.h>
 
 using namespace folly::detail;

@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <folly/synchronization/Hazptr-fwd.h>
+#include <atomic>
 
 #include <folly/concurrency/CacheLocality.h>
-
-#include <atomic>
+#include <folly/synchronization/Hazptr-fwd.h>
 
 namespace folly {
 

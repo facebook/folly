@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <folly/Portability.h>
-#include <folly/synchronization/detail/Sleeper.h>
+#include <atomic>
+#include <thread>
 
 #include <glog/logging.h>
 
-#include <atomic>
-#include <thread>
+#include <folly/Portability.h>
+#include <folly/synchronization/detail/Sleeper.h>
 
 /// Linked list class templates used in the hazard pointer library:
 /// - linked_list: Sequential linked list that uses a pre-existing

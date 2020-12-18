@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/Optional.h>
-
 #include <mutex>
+
+#include <folly/Optional.h>
 
 namespace folly {
 namespace detail {

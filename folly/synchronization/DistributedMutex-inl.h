@@ -14,7 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/synchronization/DistributedMutex.h>
+#include <array>
+#include <atomic>
+#include <cstdint>
+#include <limits>
+#include <stdexcept>
+#include <thread>
+#include <utility>
+
+#include <glog/logging.h>
 
 #include <folly/ConstexprMath.h>
 #include <folly/Likely.h>
@@ -29,18 +37,9 @@
 #include <folly/portability/Asm.h>
 #include <folly/synchronization/AtomicNotification.h>
 #include <folly/synchronization/AtomicUtil.h>
+#include <folly/synchronization/DistributedMutex.h>
 #include <folly/synchronization/detail/InlineFunctionRef.h>
 #include <folly/synchronization/detail/Sleeper.h>
-
-#include <glog/logging.h>
-
-#include <array>
-#include <atomic>
-#include <cstdint>
-#include <limits>
-#include <stdexcept>
-#include <thread>
-#include <utility>
 
 namespace folly {
 namespace detail {

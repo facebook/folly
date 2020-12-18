@@ -16,13 +16,13 @@
 
 #pragma once
 
-#include <folly/synchronization/Hazptr-fwd.h>
-#include <folly/synchronization/HazptrObj.h>
+#include <atomic>
+#include <stack>
 
 #include <glog/logging.h>
 
-#include <atomic>
-#include <stack>
+#include <folly/synchronization/Hazptr-fwd.h>
+#include <folly/synchronization/HazptrObj.h>
 
 ///
 /// Classes related to link counted objects and automatic retirement.

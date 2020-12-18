@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <folly/ConstexprMath.h>
 #include <glog/logging.h>
+
+#include <folly/ConstexprMath.h>
 
 namespace folly {
 

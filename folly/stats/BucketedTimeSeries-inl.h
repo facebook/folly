@@ -16,10 +16,12 @@
 
 #pragma once
 
-#include <folly/Likely.h>
-#include <glog/logging.h>
 #include <algorithm>
 #include <stdexcept>
+
+#include <glog/logging.h>
+
+#include <folly/Likely.h>
 
 namespace folly {
 

@@ -20,14 +20,13 @@
 
 #if FOLLY_HAZPTR_THR_LOCAL
 
-#include <folly/synchronization/HazptrObj.h>
-#include <folly/synchronization/HazptrRec.h>
-
-#include <folly/SingletonThreadLocal.h>
+#include <atomic>
 
 #include <glog/logging.h>
 
-#include <atomic>
+#include <folly/SingletonThreadLocal.h>
+#include <folly/synchronization/HazptrObj.h>
+#include <folly/synchronization/HazptrRec.h>
 
 /**
  *  Thread local classes and singletons

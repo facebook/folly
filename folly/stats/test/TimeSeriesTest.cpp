@@ -14,16 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/stats/BucketedTimeSeries.h>
-#include <folly/stats/MultiLevelTimeSeries.h>
-#include <folly/stats/detail/Bucket.h>
-
 #include <array>
 
 #include <glog/logging.h>
 
 #include <folly/container/Foreach.h>
 #include <folly/portability/GTest.h>
+#include <folly/stats/BucketedTimeSeries.h>
+#include <folly/stats/MultiLevelTimeSeries.h>
+#include <folly/stats/detail/Bucket.h>
 
 using folly::BucketedTimeSeries;
 using std::string;

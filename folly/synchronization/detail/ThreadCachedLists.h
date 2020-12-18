@@ -18,10 +18,11 @@
 
 #include <atomic>
 
+#include <glog/logging.h>
+
 #include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/ThreadLocal.h>
-#include <glog/logging.h>
 
 namespace folly {
 

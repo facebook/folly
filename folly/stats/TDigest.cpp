@@ -16,12 +16,12 @@
 
 #include <folly/stats/TDigest.h>
 
+#include <algorithm>
+#include <limits>
+
 #include <glog/logging.h>
 
 #include <folly/stats/detail/DoubleRadixSort.h>
-
-#include <algorithm>
-#include <limits>
 
 namespace folly {
 
