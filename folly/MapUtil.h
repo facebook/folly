@@ -98,15 +98,18 @@ typename Map::mapped_type& get_or_throw(
  * Given a map and a key, return a Optional<V> if the key exists and None if the
  * key does not exist in the map.
  */
-template <class Map, typename Key = typename Map::key_type>
-folly::Optional<typename Map::mapped_type> get_optional(
+template <
+    template <typename> class Optional = folly::Optional,
+    class Map,
+    typename Key = typename Map::key_type>
+Optional<typename Map::mapped_type> get_optional(
     const Map& map,
     const Key& key) {
   auto pos = map.find(key);
   if (pos != map.end()) {
-    return folly::Optional<typename Map::mapped_type>(pos->second);
+    return Optional<typename Map::mapped_type>(pos->second);
   } else {
-    return folly::none;
+    return {};
   }
 }
 

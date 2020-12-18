@@ -98,6 +98,14 @@ TEST(MapUtil, get_optional_path_mixed) {
   EXPECT_TRUE(get_optional(m, "a"));
 }
 
+TEST(MapUtil, get_optional_std) {
+  std::map<int, int> m;
+  m[1] = 2;
+  EXPECT_TRUE(get_optional<std::optional>(m, 1).has_value());
+  EXPECT_EQ(2, get_optional<std::optional>(m, 1).value());
+  EXPECT_FALSE(get_optional<std::optional>(m, 2).has_value());
+}
+
 TEST(MapUtil, get_ref_default) {
   std::map<int, int> m;
   m[1] = 2;
