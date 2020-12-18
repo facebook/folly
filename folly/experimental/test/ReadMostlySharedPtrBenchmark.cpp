@@ -14,8 +14,6 @@
  * limitations under the License.
  */
 
-/* -*- Mode: C++; tab-width: 2; c-basic-offset: 2; indent-tabs-mode: nil -*- */
-
 #include <folly/experimental/ReadMostlySharedPtr.h>
 
 #include <iostream>
