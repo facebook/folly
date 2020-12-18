@@ -729,21 +729,37 @@ class hazptr_domain {
   void invoke_reclamation_in_executor(int rcount) {
     auto fn = exec_fn_.load(std::memory_order_acquire);
     auto ex = fn ? fn() : get_default_executor();
-    if (ex == get_default_executor()) {
-      hazptr_warning_using_inline_executor();
-    }
     auto backlog = exec_backlog_.fetch_add(1, std::memory_order_relaxed);
     if (ex) {
-      ex->add([this, rcount] {
+      auto recl_fn = [this, rcount] {
         exec_backlog_.store(0, std::memory_order_relaxed);
         do_reclamation(rcount);
-      });
+      };
+      if (ex == get_default_executor()) {
+        invoke_reclamation_may_deadlock(ex, recl_fn);
+      } else {
+        ex->add(recl_fn);
+      }
     } else {
-      LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
+      if (kIsDebug) {
+        LOG(INFO) << "Skip asynchronous reclamation by hazptr executor";
+      }
     }
     if (backlog >= 10) {
       hazptr_warning_executor_backlog(backlog);
     }
+  }
+
+  template <typename Func>
+  void invoke_reclamation_may_deadlock(folly::Executor* ex, Func recl_fn) {
+    ex->add(recl_fn);
+    // This program is using the default inline executor, which is an
+    // inline executor. This is not necessarily a problem. But if this
+    // program encounters deadlock, then this may be the cause. Most
+    // likely this program did not call
+    // folly::enable_hazptr_thread_pool_executor (which is normally
+    // called by folly::init). If this is a problem check if your
+    // program is missing a call to folly::init or an alternative.
   }
 
   FOLLY_EXPORT FOLLY_NOINLINE void
@@ -763,21 +779,6 @@ class hazptr_domain {
       LOG(WARNING) << backlog
                    << " request backlog for hazptr asynchronous "
                       "reclamation executor";
-    }
-  }
-
-  FOLLY_EXPORT FOLLY_NOINLINE void hazptr_warning_using_inline_executor() {
-    static std::atomic<uint64_t> warning_count{0};
-    if ((warning_count++ % 10000) == 0) {
-      LOG(INFO) << "Using the default inline executor. "
-                   "This is not necessarily a problem. "
-                   "But if this program encounters deadlock, "
-                   "then this may be the cause. "
-                   "Most likely this program did not call "
-                   "folly::enable_hazptr_thread_pool_executor "
-                   "(which is normally called by folly::init). "
-                   "If this is a problem check if your program is missing "
-                   "a call to folly::init or an alternative.";
     }
   }
 }; // hazptr_domain
