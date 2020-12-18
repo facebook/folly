@@ -41,16 +41,16 @@ TEST(Arena, SizeSanity) {
   allocatedItems.insert(ptr);
   minimum_size += requestedBlockSize;
   maximum_size += goodMallocSize(requestedBlockSize + SysArena::kBlockOverhead);
-  EXPECT_TRUE(arena.totalSize() >= minimum_size);
-  EXPECT_TRUE(arena.totalSize() <= maximum_size);
+  EXPECT_GE(arena.totalSize(), minimum_size);
+  EXPECT_LE(arena.totalSize(), maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
           << maximum_size;
 
   // Insert a larger element, size should be the same
   ptr = static_cast<size_t*>(arena.allocate(requestedBlockSize / 2));
   allocatedItems.insert(ptr);
-  EXPECT_TRUE(arena.totalSize() >= minimum_size);
-  EXPECT_TRUE(arena.totalSize() <= maximum_size);
+  EXPECT_GE(arena.totalSize(), minimum_size);
+  EXPECT_LE(arena.totalSize(), maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
           << maximum_size;
 
@@ -62,8 +62,8 @@ TEST(Arena, SizeSanity) {
   minimum_size += 10 * requestedBlockSize;
   maximum_size +=
       10 * goodMallocSize(requestedBlockSize + SysArena::kBlockOverhead);
-  EXPECT_TRUE(arena.totalSize() >= minimum_size);
-  EXPECT_TRUE(arena.totalSize() <= maximum_size);
+  EXPECT_GE(arena.totalSize(), minimum_size);
+  EXPECT_LE(arena.totalSize(), maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
           << maximum_size;
 
@@ -73,8 +73,8 @@ TEST(Arena, SizeSanity) {
   minimum_size += 10 * requestedBlockSize;
   maximum_size +=
       goodMallocSize(10 * requestedBlockSize + SysArena::kBlockOverhead);
-  EXPECT_TRUE(arena.totalSize() >= minimum_size);
-  EXPECT_TRUE(arena.totalSize() <= maximum_size);
+  EXPECT_GE(arena.totalSize(), minimum_size);
+  EXPECT_LE(arena.totalSize(), maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
           << maximum_size;
 
@@ -83,8 +83,8 @@ TEST(Arena, SizeSanity) {
     arena.deallocate(item, 0 /* unused */);
   }
   // The total size should be the same
-  EXPECT_TRUE(arena.totalSize() >= minimum_size);
-  EXPECT_TRUE(arena.totalSize() <= maximum_size);
+  EXPECT_GE(arena.totalSize(), minimum_size);
+  EXPECT_LE(arena.totalSize(), maximum_size);
   VLOG(4) << minimum_size << " < " << arena.totalSize() << " < "
           << maximum_size;
 }
@@ -104,27 +104,27 @@ TEST(Arena, BytesUsedSanity) {
   arena.allocate(smallChunkSize);
   bytesUsed += 2 * smallChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
-  EXPECT_TRUE(arena.totalSize() >= blockSize);
-  EXPECT_TRUE(arena.totalSize() <= 2 * blockSize);
+  EXPECT_GE(arena.totalSize(), blockSize);
+  EXPECT_LE(arena.totalSize(), 2 * blockSize);
 
   // Insert big chunk, should still fit in one block
   arena.allocate(bigChunkSize);
   bytesUsed += bigChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
-  EXPECT_TRUE(arena.totalSize() >= blockSize);
-  EXPECT_TRUE(arena.totalSize() <= 2 * blockSize);
+  EXPECT_GE(arena.totalSize(), blockSize);
+  EXPECT_LE(arena.totalSize(), 2 * blockSize);
 
   // Insert big chunk once more, should trigger new block allocation
   arena.allocate(bigChunkSize);
   bytesUsed += bigChunkSize;
   EXPECT_EQ(arena.bytesUsed(), bytesUsed);
-  EXPECT_TRUE(arena.totalSize() >= 2 * blockSize);
-  EXPECT_TRUE(arena.totalSize() <= 3 * blockSize);
+  EXPECT_GE(arena.totalSize(), 2 * blockSize);
+  EXPECT_LE(arena.totalSize(), 3 * blockSize);
 
   // Test that bytesUsed() accounts for alignment
   static const size_t tinyChunkSize = 7;
   arena.allocate(tinyChunkSize);
-  EXPECT_TRUE(arena.bytesUsed() >= bytesUsed + tinyChunkSize);
+  EXPECT_GE(arena.bytesUsed(), bytesUsed + tinyChunkSize);
   size_t delta = arena.bytesUsed() - bytesUsed;
   EXPECT_EQ(delta & (delta - 1), 0);
 }
