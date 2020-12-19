@@ -15,11 +15,9 @@
  */
 
 #include <folly/FileUtil.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/io/async/SSLContext.h>
-#include <gtest/gtest.h>
-#include "common/files/FileUtil.h"
-
-using namespace facebook::files;
+#include <folly/portability/GTest.h>
 
 /*
  * This test is meant to verify that SSLContext correctly sets its minimum
@@ -44,7 +42,7 @@ const std::string kOpenSSLConf = folly::stripLeftMargin(R"(
 class SSLContextRegressionTest : public testing::Test {
  public:
   void SetUp() override {
-    TemporaryFile confFile(nullptr, "", true);
+    TemporaryFile confFile{};
     FileUtil::writeStringToFile(StringPiece(kOpenSSLConf), confFile.filename());
 
     // simulate the system environment by loading a config file that should
