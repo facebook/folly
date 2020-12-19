@@ -16,6 +16,12 @@
 
 #pragma once
 
+#include <sys/types.h>
+
+#include <chrono>
+#include <map>
+#include <memory>
+
 #include <folly/Optional.h>
 #include <folly/SocketAddress.h>
 #include <folly/detail/SocketFastOpen.h>
@@ -29,12 +35,6 @@
 #include <folly/io/async/EventHandler.h>
 #include <folly/portability/Sockets.h>
 #include <folly/small_vector.h>
-
-#include <sys/types.h>
-
-#include <chrono>
-#include <map>
-#include <memory>
 
 namespace folly {
 

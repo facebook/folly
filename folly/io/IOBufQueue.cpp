@@ -17,7 +17,6 @@
 #include <folly/io/IOBufQueue.h>
 
 #include <cstring>
-
 #include <stdexcept>
 
 using std::make_pair;

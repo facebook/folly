@@ -17,13 +17,15 @@
 #pragma once
 
 #include <assert.h>
-#include <folly/Portability.h>
+
 #include <cstddef>
 #include <cstdint>
 #include <functional>
 #include <memory>
 #include <type_traits>
 #include <utility>
+
+#include <folly/Portability.h>
 
 namespace folly {
 

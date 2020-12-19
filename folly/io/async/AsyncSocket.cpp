@@ -16,6 +16,15 @@
 
 #include <folly/io/async/AsyncSocket.h>
 
+#include <sys/types.h>
+
+#include <cerrno>
+#include <climits>
+#include <sstream>
+#include <thread>
+
+#include <boost/preprocessor/control/if.hpp>
+
 #include <folly/ExceptionWrapper.h>
 #include <folly/Format.h>
 #include <folly/Portability.h>
@@ -29,13 +38,6 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/SysUio.h>
 #include <folly/portability/Unistd.h>
-
-#include <boost/preprocessor/control/if.hpp>
-#include <sys/types.h>
-#include <cerrno>
-#include <climits>
-#include <sstream>
-#include <thread>
 
 #if defined(__linux__)
 #include <linux/sockios.h>

@@ -15,9 +15,11 @@
  */
 
 #include <folly/io/async/EventBaseLocal.h>
-#include <folly/MapUtil.h>
+
 #include <atomic>
 #include <thread>
+
+#include <folly/MapUtil.h>
 
 namespace folly {
 namespace detail {

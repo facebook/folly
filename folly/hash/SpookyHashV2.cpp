@@ -28,10 +28,10 @@
 
 #include <folly/hash/SpookyHashV2.h>
 
+#include <cstring>
+
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
-
-#include <cstring>
 
 namespace folly {
 namespace hash {

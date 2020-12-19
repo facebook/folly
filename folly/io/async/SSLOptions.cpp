@@ -15,8 +15,10 @@
  */
 
 #include <folly/io/async/SSLOptions.h>
-#include <folly/Format.h>
+
 #include <glog/logging.h>
+
+#include <folly/Format.h>
 
 namespace folly {
 namespace ssl {

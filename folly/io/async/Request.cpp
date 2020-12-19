@@ -15,14 +15,14 @@
  */
 
 #include <folly/io/async/Request.h>
-#include <folly/experimental/SingleWriterFixedHashMap.h>
-#include <folly/synchronization/Hazptr.h>
-#include <folly/tracing/StaticTracepoint.h>
 
 #include <glog/logging.h>
 
 #include <folly/MapUtil.h>
 #include <folly/SingletonThreadLocal.h>
+#include <folly/experimental/SingleWriterFixedHashMap.h>
+#include <folly/synchronization/Hazptr.h>
+#include <folly/tracing/StaticTracepoint.h>
 
 namespace folly {
 

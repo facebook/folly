@@ -25,6 +25,8 @@
 #include <utility>
 
 #include <boost/intrusive/slist.hpp>
+#include <glog/logging.h>
+
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/Likely.h>
@@ -38,8 +40,6 @@
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/Pid.h>
-
-#include <glog/logging.h>
 
 #if defined(__linux__) && !defined(__ANDROID__)
 #define FOLLY_HAVE_EVENTFD

@@ -15,9 +15,10 @@
  */
 
 #include <folly/io/SocketOptionMap.h>
-#include <folly/net/NetworkSocket.h>
 
 #include <errno.h>
+
+#include <folly/net/NetworkSocket.h>
 
 namespace folly {
 

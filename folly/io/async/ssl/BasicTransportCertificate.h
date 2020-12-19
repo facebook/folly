@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <folly/io/async/AsyncTransportCertificate.h>
 #include <memory>
+
+#include <folly/io/async/AsyncTransportCertificate.h>
 
 namespace folly {
 namespace ssl {

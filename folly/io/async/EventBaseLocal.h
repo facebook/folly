@@ -16,12 +16,13 @@
 
 #pragma once
 
-#include <folly/Synchronized.h>
-#include <folly/io/async/EventBase.h>
 #include <memory>
 #include <mutex>
 #include <unordered_set>
 #include <utility>
+
+#include <folly/Synchronized.h>
+#include <folly/io/async/EventBase.h>
 
 namespace folly {
 

@@ -17,13 +17,12 @@
 #include <folly/io/async/TimeoutManager.h>
 
 #include <boost/intrusive/list.hpp>
+#include <glog/logging.h>
 
 #include <folly/Chrono.h>
 #include <folly/Exception.h>
 #include <folly/Memory.h>
 #include <folly/io/async/AsyncTimeout.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 

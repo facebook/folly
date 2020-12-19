@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
+#include <string>
+#include <vector>
+
 #include <folly/io/Cursor.h>
 #include <folly/io/async/AsyncSSLSocket.h>
 #include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
-
-#include <string>
-#include <vector>
 
 using namespace testing;
 

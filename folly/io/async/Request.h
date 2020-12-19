@@ -16,15 +16,15 @@
 
 #pragma once
 
-#include <folly/Synchronized.h>
-#include <folly/container/F14Map.h>
-#include <folly/synchronization/Hazptr.h>
-
 #include <atomic>
 #include <memory>
 #include <mutex>
 #include <string>
 #include <utility>
+
+#include <folly/Synchronized.h>
+#include <folly/container/F14Map.h>
+#include <folly/synchronization/Hazptr.h>
 
 namespace folly {
 

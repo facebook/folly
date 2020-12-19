@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <type_traits>
+
 #include <folly/io/async/Request.h>
 #include <folly/lang/Align.h>
-#include <type_traits>
 
 namespace folly {
 

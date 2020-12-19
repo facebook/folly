@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <map>
+
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
-
-#include <map>
 
 namespace folly {
 

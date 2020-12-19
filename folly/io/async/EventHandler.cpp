@@ -15,10 +15,11 @@
  */
 
 #include <folly/io/async/EventHandler.h>
-#include <folly/String.h>
-#include <folly/io/async/EventBase.h>
 
 #include <cassert>
+
+#include <folly/String.h>
+#include <folly/io/async/EventBase.h>
 
 namespace folly {
 

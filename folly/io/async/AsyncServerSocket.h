@@ -16,6 +16,14 @@
 
 #pragma once
 
+#include <limits.h>
+#include <stddef.h>
+
+#include <chrono>
+#include <exception>
+#include <memory>
+#include <vector>
+
 #include <folly/SocketAddress.h>
 #include <folly/String.h>
 #include <folly/experimental/observer/Observer.h>
@@ -29,13 +37,6 @@
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
 #include <folly/portability/Sockets.h>
-
-#include <limits.h>
-#include <stddef.h>
-#include <chrono>
-#include <exception>
-#include <memory>
-#include <vector>
 
 // Due to the way kernel headers are included, this may or may not be defined.
 // Number pulled from 3.10 kernel headers.

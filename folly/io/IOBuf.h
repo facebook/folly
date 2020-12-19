@@ -16,7 +16,6 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include <atomic>
 #include <cassert>
 #include <cinttypes>
@@ -26,6 +25,8 @@
 #include <limits>
 #include <memory>
 #include <type_traits>
+
+#include <glog/logging.h>
 
 #include <folly/FBString.h>
 #include <folly/FBVector.h>

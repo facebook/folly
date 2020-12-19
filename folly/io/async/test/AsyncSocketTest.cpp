@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/io/async/AsyncSocket.h>
+
 #include <iostream>
 
 #include <folly/io/async/AsyncServerSocket.h>
-#include <folly/io/async/AsyncSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 

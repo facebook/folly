@@ -16,24 +16,6 @@
 
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 
-#include <folly/SocketAddress.h>
-#include <folly/String.h>
-#include <folly/io/Cursor.h>
-#include <folly/io/async/AsyncPipe.h>
-#include <folly/io/async/AsyncSSLSocket.h>
-#include <folly/io/async/EventBase.h>
-#include <folly/io/async/EventBaseThread.h>
-#include <folly/io/async/ScopedEventBaseThread.h>
-#include <folly/net/NetOps.h>
-#include <folly/net/NetworkSocket.h>
-#include <folly/portability/GMock.h>
-#include <folly/portability/GTest.h>
-#include <folly/portability/OpenSSL.h>
-#include <folly/portability/Unistd.h>
-#include <folly/ssl/Init.h>
-
-#include <folly/io/async/test/BlockingSocket.h>
-
 #include <fcntl.h>
 #include <signal.h>
 #include <sys/types.h>
@@ -43,6 +25,23 @@
 #include <list>
 #include <set>
 #include <thread>
+
+#include <folly/SocketAddress.h>
+#include <folly/String.h>
+#include <folly/io/Cursor.h>
+#include <folly/io/async/AsyncPipe.h>
+#include <folly/io/async/AsyncSSLSocket.h>
+#include <folly/io/async/EventBase.h>
+#include <folly/io/async/EventBaseThread.h>
+#include <folly/io/async/ScopedEventBaseThread.h>
+#include <folly/io/async/test/BlockingSocket.h>
+#include <folly/net/NetOps.h>
+#include <folly/net/NetworkSocket.h>
+#include <folly/portability/GMock.h>
+#include <folly/portability/GTest.h>
+#include <folly/portability/OpenSSL.h>
+#include <folly/portability/Unistd.h>
+#include <folly/ssl/Init.h>
 
 #ifdef __linux__
 #include <dlfcn.h>

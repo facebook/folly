@@ -31,13 +31,12 @@
 
 #include <stdexcept>
 
-#include <folly/hash/detail/ChecksumDetail.h>
-
-#include <folly/CppAttributes.h>
-
 #include <boost/preprocessor/arithmetic/add.hpp>
 #include <boost/preprocessor/arithmetic/sub.hpp>
 #include <boost/preprocessor/repetition/repeat_from_to.hpp>
+
+#include <folly/CppAttributes.h>
+#include <folly/hash/detail/ChecksumDetail.h>
 
 namespace folly {
 namespace detail {

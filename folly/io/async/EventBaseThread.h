@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <memory>
+
 #include <folly/Range.h>
 #include <folly/io/async/EventBase.h>
-#include <memory>
 
 namespace folly {
 

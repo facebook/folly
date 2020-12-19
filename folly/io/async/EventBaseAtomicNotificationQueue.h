@@ -17,7 +17,6 @@
 #pragma once
 
 #include <folly/io/async/AtomicNotificationQueue.h>
-
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/EventHandler.h>
 #include <folly/portability/Fcntl.h>

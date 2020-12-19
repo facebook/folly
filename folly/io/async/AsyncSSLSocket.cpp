@@ -16,11 +16,9 @@
 
 #include <folly/io/async/AsyncSSLSocket.h>
 
-#include <folly/io/async/EventBase.h>
-#include <folly/portability/Sockets.h>
-
 #include <fcntl.h>
 #include <sys/types.h>
+
 #include <cerrno>
 #include <chrono>
 #include <memory>
@@ -33,9 +31,11 @@
 #include <folly/io/Cursor.h>
 #include <folly/io/IOBuf.h>
 #include <folly/io/SocketOptionMap.h>
+#include <folly/io/async/EventBase.h>
 #include <folly/io/async/ssl/BasicTransportCertificate.h>
 #include <folly/lang/Bits.h>
 #include <folly/portability/OpenSSL.h>
+#include <folly/portability/Sockets.h>
 #include <folly/ssl/SSLSession.h>
 #include <folly/ssl/SSLSessionManager.h>
 

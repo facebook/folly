@@ -20,6 +20,11 @@
 
 #include <folly/io/async/AsyncServerSocket.h>
 
+#include <sys/types.h>
+
+#include <cerrno>
+#include <cstring>
+
 #include <folly/FileUtil.h>
 #include <folly/Portability.h>
 #include <folly/SocketAddress.h>
@@ -30,10 +35,6 @@
 #include <folly/portability/Fcntl.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
-
-#include <sys/types.h>
-#include <cerrno>
-#include <cstring>
 
 namespace folly {
 

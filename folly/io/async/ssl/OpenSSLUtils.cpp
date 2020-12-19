@@ -16,9 +16,9 @@
 
 #include <folly/io/async/ssl/OpenSSLUtils.h>
 
-#include <glog/logging.h>
-
 #include <unordered_map>
+
+#include <glog/logging.h>
 
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Sockets.h>
