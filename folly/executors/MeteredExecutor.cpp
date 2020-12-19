@@ -44,10 +44,6 @@ void MeteredExecutor::add(Func func) {
 }
 
 void MeteredExecutor::loopCallback() {
-  if (UNLIKELY(draining_)) {
-    return drain();
-  }
-
   Consumer consumer(*this);
   if (queue_.drive(consumer) || !queue_.arm()) {
     scheduleCallback();
@@ -57,27 +53,11 @@ void MeteredExecutor::loopCallback() {
 
 void MeteredExecutor::scheduleCallback() {
   folly::RequestContextScopeGuard g{std::shared_ptr<RequestContext>()};
-  kaInner_->add([this] { loopCallback(); });
-}
-
-void MeteredExecutor::drain() {
-  bool keepDriving = true;
-  while (keepDriving) {
-    Consumer consumer(*this);
-    keepDriving = queue_.drive(consumer);
-    consumer.executeIfNotEmpty();
-  }
-  drained_.post();
+  kaInner_->add([self = getKeepAliveToken(this)] { self->loopCallback(); });
 }
 
 MeteredExecutor::~MeteredExecutor() {
   joinKeepAlive();
-  // Shutdown sequence deserves explanation.
-  // After below task is consumed, consumer transitions into "draining"
-  // state and a loopcallback is rescheduled. Once loopback is executed again,
-  // it drains the queue and signals the baton.
-  add([&] { draining_ = true; });
-  drained_.wait();
 }
 
 MeteredExecutor::Consumer::~Consumer() {

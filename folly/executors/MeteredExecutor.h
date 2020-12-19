@@ -54,7 +54,6 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
  private:
   void loopCallback();
   void scheduleCallback();
-  void drain();
 
   class Consumer {
     Func first_;
@@ -70,8 +69,6 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
   folly::AtomicNotificationQueue<Func> queue_;
   std::unique_ptr<Executor> ownedExecutor_;
   KeepAlive kaInner_;
-  bool draining_{false};
-  folly::Baton<> drained_;
 };
 
 } // namespace folly

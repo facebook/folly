@@ -14,8 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/executors/MeteredExecutor.h>
+#include <list>
+
 #include <folly/executors/CPUThreadPoolExecutor.h>
+#include <folly/executors/MeteredExecutor.h>
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
@@ -24,10 +26,12 @@ using namespace folly;
 
 class MeteredExecutorTest : public testing::Test {
  protected:
-  void createAdapter(int numLevels, int maxReadAtOnce = 1) {
+  void createAdapter(
+      int numLevels,
+      int maxReadAtOnce = 1,
+      std::unique_ptr<Executor> exc =
+          std::make_unique<CPUThreadPoolExecutor>(1)) {
     executors_.resize(numLevels + 1);
-    std::unique_ptr<folly::Executor> exc =
-        std::make_unique<CPUThreadPoolExecutor>(1);
     executors_[0] = exc.get();
     for (int i = 0; i < numLevels; i++) {
       auto mlsa = std::make_unique<MeteredExecutor>(std::move(exc));
@@ -250,6 +254,76 @@ TEST_F(MeteredExecutorTest, ResetJoins) {
   baton.post();
   owning_.reset();
   EXPECT_EQ(v, 5);
+}
+
+TEST_F(MeteredExecutorTest, ConcurrentShutdown) {
+  // ensure no data races on shutdown when executor has 2 threads
+  createAdapter(2, 1, std::make_unique<CPUThreadPoolExecutor>(2));
+}
+
+TEST_F(MeteredExecutorTest, CostOfMeteredExecutors) {
+  // This test is to demonstrate how many tasks are scheduled
+  // on the primarty executor when it is wrapped by MeteredExecutors
+  class MyExecutor : public folly::Executor {
+   public:
+    int count{0};
+    bool driveWhenAdded{false};
+    std::list<folly::Func> queue;
+    void add(folly::Func f) override {
+      ++count;
+      queue.push_back(std::move(f));
+      if (driveWhenAdded) {
+        drive();
+      }
+    }
+    void drive() {
+      while (!queue.empty()) {
+        auto ff = std::move(queue.front());
+        queue.pop_front();
+        ff();
+      }
+    }
+  };
+
+  auto exc = std::make_unique<MyExecutor>();
+  auto drive = [exc = exc.get()] { exc->drive(); };
+  auto getCount = [exc = exc.get()] { return std::exchange(exc->count, 0); };
+  auto driveOnAdd = [exc = exc.get()] { exc->driveWhenAdded = true; };
+  createAdapter(3, 1, std::move(exc));
+
+  // When queues are empty, we will schedule as many tasks on the main
+  // executor as there are executors in the chain.
+  add([&] {}, 0);
+  drive();
+  EXPECT_EQ(1, getCount());
+
+  add([&] {}, 1);
+  drive();
+  EXPECT_EQ(2, getCount());
+
+  add([&] {}, 2);
+  drive();
+  EXPECT_EQ(3, getCount());
+
+  add([&] {}, 3);
+  drive();
+  EXPECT_EQ(4, getCount());
+
+  add([&] {}, 3);
+  drive();
+  EXPECT_EQ(4, getCount());
+
+  // However, when queues are not empty, each additional task
+  // scheduled on any MeteredExecutor, results in a only one more
+  // task scheduled onto the main executor.
+  add([&] {}, 3);
+  add([&] {}, 3);
+  add([&] {}, 3);
+  drive();
+  EXPECT_EQ(6, getCount());
+
+  // To allow shutting down properly
+  driveOnAdd();
 }
 
 TEST_F(MeteredExecutorTest, ExceptionHandling) {
