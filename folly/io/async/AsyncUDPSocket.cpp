@@ -1172,7 +1172,7 @@ AsyncUDPSocket::TXTime AsyncUDPSocket::getTXTime() {
   if (FOLLY_UNLIKELY(!txTime_.has_value())) {
     TXTime txTime;
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-    struct sock_txtime val = {};
+    struct net_sock_txtime val = {};
     socklen_t optlen = sizeof(val);
     if (!netops::getsockopt(fd_, SOL_SOCKET, SO_TXTIME, &val, &optlen)) {
       txTime.clockid = val.clockid;
@@ -1187,7 +1187,7 @@ AsyncUDPSocket::TXTime AsyncUDPSocket::getTXTime() {
 
 bool AsyncUDPSocket::setTXTime(TXTime txTime) {
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-  struct sock_txtime val;
+  struct net_sock_txtime val;
   val.clockid = txTime.clockid;
   val.flags = txTime.deadline ? SOF_TXTIME_DEADLINE_MODE : 0;
   int ret =

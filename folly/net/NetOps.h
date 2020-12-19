@@ -60,7 +60,7 @@
 #endif
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-enum txtime_flags {
+enum net_txtime_flags {
   SOF_TXTIME_DEADLINE_MODE = (1 << 0),
   SOF_TXTIME_REPORT_ERRORS = (1 << 1),
 
@@ -68,7 +68,7 @@ enum txtime_flags {
   SOF_TXTIME_FLAGS_MASK = (SOF_TXTIME_FLAGS_LAST - 1) | SOF_TXTIME_FLAGS_LAST
 };
 
-struct sock_txtime {
+struct net_sock_txtime {
   __kernel_clockid_t clockid; /* reference clockid */
   __u32 flags; /* as defined by enum txtime_flags */
 };
