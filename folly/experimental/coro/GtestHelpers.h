@@ -16,10 +16,9 @@
 
 #pragma once
 
-#include <gtest/gtest.h>
-
 #include <folly/experimental/coro/BlockingWait.h>
 #include <folly/experimental/coro/Task.h>
+#include <folly/portability/GTest.h>
 
 /**
  * This is based on the GTEST_TEST_ macro from gtest-internal.h. It seems that
