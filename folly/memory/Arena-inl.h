@@ -34,7 +34,7 @@ void* Arena<Alloc>::allocateSlow(size_t size) {
   }
   if (sizeLimit_ != kNoSizeLimit &&
       allocSize > sizeLimit_ - totalAllocatedSize_) {
-    throw_exception(std::bad_alloc());
+    throw_exception<std::bad_alloc>();
   }
 
   if (size > minBlockSize()) {

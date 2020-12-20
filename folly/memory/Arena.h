@@ -74,8 +74,8 @@ class Arena {
         sizeLimit_(sizeLimit),
         maxAlign_(maxAlign) {
     if ((maxAlign_ & (maxAlign_ - 1)) || maxAlign_ > alignof(Block)) {
-      throw_exception(std::invalid_argument(
-          folly::to<std::string>("Invalid maxAlign: ", maxAlign_)));
+      throw_exception<std::invalid_argument>(
+          folly::to<std::string>("Invalid maxAlign: ", maxAlign_));
     }
   }
 
