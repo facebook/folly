@@ -216,7 +216,7 @@ TEST(Arena, Clear) {
     }
 
     EXPECT_EQ(arena.bytesUsed(), bytesUsed);
-    EXPECT_GT(arena.totalSize(), totalSize);
+    EXPECT_EQ(arena.totalSize(), totalSize);
 
     arena.clear();
   }

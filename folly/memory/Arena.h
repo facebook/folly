@@ -200,6 +200,7 @@ class Arena {
   void freeLargeBlocks() {
     largeBlocks_.clear_and_dispose([this](LargeBlock* b) {
       auto size = b->allocSize;
+      totalAllocatedSize_ -= size;
       b->~LargeBlock();
       AllocTraits::deallocate(alloc(), reinterpret_cast<char*>(b), size);
     });
