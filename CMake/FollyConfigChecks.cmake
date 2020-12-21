@@ -85,9 +85,6 @@ string(REGEX REPLACE
 
 check_symbol_exists(pthread_atfork pthread.h FOLLY_HAVE_PTHREAD_ATFORK)
 
-# Unfortunately check_symbol_exists() does not work for memrchr():
-# it fails complaining that there are multiple overloaded versions of memrchr()
-check_function_exists(memrchr FOLLY_HAVE_MEMRCHR)
 check_symbol_exists(accept4 sys/socket.h FOLLY_HAVE_ACCEPT4)
 check_symbol_exists(getrandom sys/random.h FOLLY_HAVE_GETRANDOM)
 check_symbol_exists(preadv sys/uio.h FOLLY_HAVE_PREADV)

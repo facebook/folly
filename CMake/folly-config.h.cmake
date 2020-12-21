@@ -42,7 +42,6 @@
 #include <features.h>
 #endif
 
-#cmakedefine FOLLY_HAVE_MEMRCHR 1
 #cmakedefine FOLLY_HAVE_ACCEPT4 1
 #cmakedefine01 FOLLY_HAVE_GETRANDOM
 #cmakedefine FOLLY_HAVE_PREADV 1
