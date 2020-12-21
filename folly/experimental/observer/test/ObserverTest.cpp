@@ -266,7 +266,7 @@ TEST(Observer, StressMultipleUpdates) {
   for (size_t i = 1; i <= numIters; ++i) {
     observable1.setValue(i);
     observable2.setValue(i);
-    folly::observer::waitForAllUpdates();
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
     EXPECT_EQ(i * i, **observer);
   }
 }
@@ -305,7 +305,7 @@ TEST(ReadMostlyTLObserver, Update) {
 
   observable.setValue(24);
 
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(*readMostlyObserver.getShared(), 24);
 }
@@ -352,7 +352,7 @@ TEST(Observer, SubscribeCallback) {
     EXPECT_EQ(3, getCallsStart);
     EXPECT_EQ(3, getCallsFinish);
 
-    folly::observer::waitForAllUpdates();
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
 
     slowGet = true;
     cobThread = std::thread([] { updatesCob(); });
@@ -432,11 +432,11 @@ TEST(Observer, WaitForAllUpdates) {
   EXPECT_EQ(42, **observer);
 
   observable.setValue(43);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(43, **observer);
 
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 }
 
 TEST(Observer, IgnoreUpdates) {
@@ -455,15 +455,15 @@ TEST(Observer, IgnoreUpdates) {
   EXPECT_EQ(1, callbackCalled);
 
   observable.setValue(43);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(2, callbackCalled);
 
   observable.setValue(45);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(2, callbackCalled);
 
   observable.setValue(46);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(3, callbackCalled);
 }
 
@@ -499,7 +499,7 @@ TEST(Observer, GetSnapshotOnManagerThread) {
     startBaton.reset();
     finishBaton.post();
     observable.setValue(2);
-    folly::observer::waitForAllUpdates();
+    folly::observer_detail::ObserverManager::waitForAllUpdates();
     EXPECT_EQ(2, **slowObserver);
 
     startBaton.reset();
@@ -544,19 +544,19 @@ TEST(Observer, MakeValueObserver) {
                  .addCallback([&](auto snapshot) {
                    observedValues2.push_back(snapshot->value_);
                  });
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   observable.setValue(ValueStruct(1, 2));
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   observable.setValue(ValueStruct(2, 3));
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   observable.setValue(ValueStruct(2, 4));
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   observable.setValue(ValueStruct(3, 5));
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(observedIds, std::vector<int>({1, 2, 3, 4, 5}));
   EXPECT_EQ(observedValues, std::vector<int>({1, 2, 3}));
@@ -588,7 +588,7 @@ TEST(Observer, AtomicObserver) {
   EXPECT_EQ(*observer, 42);
   EXPECT_EQ(*observerCopy, 42);
   observable.setValue(24);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(*observer, 24);
   EXPECT_EQ(*observerCopy, 24);
 
@@ -596,7 +596,7 @@ TEST(Observer, AtomicObserver) {
   EXPECT_EQ(*observer, 12);
   EXPECT_EQ(*observerCopy, 24);
   observable2.setValue(15);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(*observer, 15);
   EXPECT_EQ(*observerCopy, 24);
 
@@ -607,7 +607,7 @@ TEST(Observer, AtomicObserver) {
       makeAtomicObserver([o = observer] { return *o + 1; });
   EXPECT_EQ(*dependentObserver, 16);
   observable2.setValue(20);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(*dependentObserver, 21);
 }
 
@@ -628,18 +628,18 @@ TEST(Observer, Unwrap) {
   EXPECT_EQ(**observer, 1);
 
   selectorObservable.setValue(false);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(**observer, 2);
 
   falseObservable.setValue(3);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(**observer, 3);
 
   trueObservable.setValue(4);
   selectorObservable.setValue(true);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
   EXPECT_EQ(**observer, 4);
 }
 
@@ -652,17 +652,17 @@ TEST(Observer, UnwrapSimpleObservable) {
   EXPECT_EQ(1, **o);
 
   a.setValue(3);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(3, **o);
 
   observable.setValue(b.getObserver());
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(2, **o);
 
   b.setValue(4);
-  folly::observer::waitForAllUpdates();
+  folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   EXPECT_EQ(4, **o);
 }

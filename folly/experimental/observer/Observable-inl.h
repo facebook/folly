@@ -162,9 +162,5 @@ ObserverCreator<Observable, Traits>::getObserver() && {
 
   return observer;
 }
-
-inline void waitForAllUpdates() {
-  observer_detail::ObserverManager::waitForAllUpdates();
-}
 } // namespace observer
 } // namespace folly

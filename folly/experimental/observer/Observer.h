@@ -366,26 +366,6 @@ auto makeAtomicObserver(F&& creator) {
   return makeAtomicObserver(makeObserver(std::forward<F>(creator)));
 }
 
-/**
- * Blocks the current thread until all Observer updates have propagated through
- * observer dependency chains. Since Observers are updated asynchronously on a
- * background thread, updated values may not be visible immediately after the
- * value is set. i.e. the following code does not work as expected.
- *
- *   SimpleObservable<int> observable{0};
- *   auto observer = observable.getObserver();
- *   observable.setValue(42);
- *   EXPECT_EQ(**observer, 42); // fails
- *
- * If you want to read the observer after setting a value, you need to block
- * until the update is propagated. Therefore, you should only call this function
- * sparingly and definitely NOT in hot paths.
- *
- * If possible, prefer creating a dependent observer using
- * `folly::observer::makeObserver` rather than blocking.
- */
-inline void waitForAllUpdates();
-
 template <typename T, bool CacheInThreadLocal>
 struct ObserverTraits {};
 
