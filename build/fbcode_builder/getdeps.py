@@ -114,6 +114,10 @@ class ProjectCmdBase(SubCmd):
             elif len(parts) == 1:
                 project = args.project
                 path = parts[0]
+            # On Windows path contains colon, e.g. C:\open
+            elif os.name == "nt" and len(parts) == 3:
+                project = parts[0]
+                path = parts[1] + ":" + parts[2]
             else:
                 raise UsageError(
                     "invalid %s argument; too many ':' characters: %s" % (arg_type, arg)

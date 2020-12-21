@@ -19,6 +19,9 @@ folly
 pcre
 googletest
 
+[dependencies.fb=on]
+rust
+
 [shipit.pathmap]
 fbcode/watchman = .
 fbcode/eden/fs = eden/fs
