@@ -222,6 +222,17 @@ TEST(Arena, Clear) {
   }
 }
 
+TEST(Arena, ClearAfterLarge) {
+  constexpr size_t blockSize = 1024;
+  constexpr size_t mult = 10;
+  SysArena arena(blockSize);
+  EXPECT_EQ(0, arena.bytesUsed());
+  arena.allocate(blockSize * mult);
+  EXPECT_EQ(blockSize * mult, arena.bytesUsed());
+  arena.clear();
+  EXPECT_EQ(0, arena.bytesUsed());
+}
+
 int main(int argc, char* argv[]) {
   testing::InitGoogleTest(&argc, argv);
   gflags::ParseCommandLineFlags(&argc, &argv, true);

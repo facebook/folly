@@ -121,11 +121,11 @@ class Arena {
   void merge(Arena&& other);
 
   void clear() {
+    bytesUsed_ = 0;
     freeLargeBlocks(); // We don't reuse large blocks
     if (blocks_.empty()) {
       return;
     }
-    bytesUsed_ = 0;
     currentBlock_ = blocks_.begin();
     char* start = currentBlock_->start();
     ptr_ = start;
