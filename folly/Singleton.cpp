@@ -204,7 +204,34 @@ FatalHelper __attribute__((__init_priority__(101))) fatalHelper;
 
 } // namespace
 
+SingletonVault::SingletonVault(Type type) noexcept : type_(type) {
+  detail::AtFork::registerHandler(
+      this,
+      /*prepare*/
+      [this]() {
+        const auto& singletons = singletons_.unsafeGetUnlocked();
+        const auto& creationOrder = creationOrder_.unsafeGetUnlocked();
+
+        CHECK_GE(singletons.size(), creationOrder.size());
+
+        for (const auto& singletonType : creationOrder) {
+          liveSingletonsPreFork_.insert(singletons.at(singletonType));
+        }
+
+        return true;
+      },
+      /*parent*/ [this]() { liveSingletonsPreFork_.clear(); },
+      /*child*/
+      [this]() {
+        for (auto singleton : liveSingletonsPreFork_) {
+          singleton->inChildAfterFork();
+        }
+        liveSingletonsPreFork_.clear();
+      });
+}
+
 SingletonVault::~SingletonVault() {
+  detail::AtFork::unregisterHandler(this);
   destroyInstances();
 }
 

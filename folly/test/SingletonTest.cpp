@@ -1061,3 +1061,38 @@ TEST(Singleton, ShutdownTimerDisable) {
   vault.startShutdownTimer();
   vault.destroyInstances();
 }
+
+TEST(Singleton, ForkInChild) {
+  struct VaultTag {};
+  struct PrivateTag {};
+  struct ForkObject {};
+  using SingletonObject = Singleton<ForkObject, PrivateTag, VaultTag>;
+
+  auto& vault = *SingletonVault::singleton<VaultTag>();
+  SingletonObject object;
+  vault.registrationComplete();
+
+  // We use EXPECT_DEATH here to run code in the child process.
+  EXPECT_DEATH(
+      [&]() {
+        object.try_get();
+        vault.destroyInstances();
+
+        LOG(FATAL) << "Finished successfully";
+      }(),
+      "Finished successfully");
+
+  object.try_get();
+
+  if (!folly::kIsDebug) {
+    return;
+  }
+
+  EXPECT_DEATH(
+      [&]() { object.try_get(); }(),
+      "Attempting to use singleton .*ForkObject.* in child process");
+
+  EXPECT_DEATH(
+      [&]() { vault.destroyInstances(); }(),
+      "Attempting to destroy singleton .*ForkObject.* in child process");
+}

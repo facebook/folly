@@ -74,7 +74,8 @@ void SingletonHolder<T>::registerSingletonMock(CreateFunc c, TeardownFunc t) {
   if (state_ == SingletonHolderState::NotRegistered) {
     detail::singletonWarnRegisterMockEarlyAndAbort(type());
   }
-  if (state_ == SingletonHolderState::Living) {
+  if (state_ == SingletonHolderState::Living ||
+      state_ == SingletonHolderState::LivingInChildAfterFork) {
     destroyInstance();
   }
 
@@ -171,6 +172,11 @@ void SingletonHolder<T>::preDestroyInstance(
 
 template <typename T>
 void SingletonHolder<T>::destroyInstance() {
+  if (state_.load(std::memory_order_relaxed) ==
+      SingletonHolderState::LivingInChildAfterFork) {
+    LOG(DFATAL) << "Attempting to destroy singleton " << type().name()
+                << " in child process after fork";
+  }
   state_ = SingletonHolderState::Dead;
   instance_.reset();
   instance_copy_.reset();
@@ -189,6 +195,16 @@ void SingletonHolder<T>::destroyInstance() {
       detail::singletonWarnDestroyInstanceLeak(type(), instance_ptr_);
     }
   }
+}
+
+template <typename T>
+void SingletonHolder<T>::inChildAfterFork() {
+  auto expected = SingletonHolderState::Living;
+  state_.compare_exchange_strong(
+      expected,
+      SingletonHolderState::LivingInChildAfterFork,
+      std::memory_order_relaxed,
+      std::memory_order_relaxed);
 }
 
 template <typename T>
@@ -222,6 +238,18 @@ void SingletonHolder<T>::createInstance() {
 
   std::lock_guard<std::mutex> entry_lock(mutex_);
   if (state_.load(std::memory_order_acquire) == SingletonHolderState::Living) {
+    return;
+  }
+  if (state_.load(std::memory_order_relaxed) ==
+      SingletonHolderState::LivingInChildAfterFork) {
+    LOG(DFATAL) << "Attempting to use singleton " << type().name()
+                << " in child process after fork";
+    auto expected = SingletonHolderState::LivingInChildAfterFork;
+    state_.compare_exchange_strong(
+        expected,
+        SingletonHolderState::Living,
+        std::memory_order_relaxed,
+        std::memory_order_relaxed);
     return;
   }
   if (state_.load(std::memory_order_acquire) ==
