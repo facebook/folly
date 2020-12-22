@@ -19,7 +19,7 @@
 #include <atomic>
 #include <type_traits>
 
-#include <folly/experimental/coro/Error.h>
+#include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GMock.h>
 

@@ -29,8 +29,8 @@
 #include <folly/Traits.h>
 #include <folly/Try.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
-#include <folly/experimental/coro/Error.h>
 #include <folly/experimental/coro/Invoke.h>
+#include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/Utils.h>
 #include <folly/experimental/coro/ViaIfAsync.h>

@@ -18,7 +18,7 @@
 
 #if FOLLY_HAS_COROUTINES
 
-#include <folly/experimental/coro/Error.h>
+#include <folly/experimental/coro/Result.h>
 
 #include <type_traits>
 
