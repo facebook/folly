@@ -77,5 +77,7 @@ void Arena<Alloc>::merge(Arena<Alloc>&& other) {
   other.ptr_ = other.end_ = nullptr;
   totalAllocatedSize_ += other.totalAllocatedSize_;
   other.totalAllocatedSize_ = 0;
+  bytesUsed_ += other.bytesUsed_;
+  other.bytesUsed_ = 0;
 }
 } // namespace folly

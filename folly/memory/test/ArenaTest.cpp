@@ -15,14 +15,16 @@
  */
 
 #include <folly/memory/Arena.h>
-#include <folly/Memory.h>
-#include <folly/portability/GFlags.h>
-#include <folly/portability/GTest.h>
 
 #include <set>
 #include <vector>
 
 #include <glog/logging.h>
+
+#include <folly/Memory.h>
+#include <folly/memory/Malloc.h>
+#include <folly/portability/GFlags.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 
@@ -231,6 +233,29 @@ TEST(Arena, ClearAfterLarge) {
   EXPECT_EQ(blockSize * mult, arena.bytesUsed());
   arena.clear();
   EXPECT_EQ(0, arena.bytesUsed());
+}
+
+TEST(Arena, Merge) {
+  constexpr size_t blockSize = 1024;
+  size_t blockAllocSize = goodMallocSize(blockSize + SysArena::kBlockOverhead);
+
+  SysArena arena1(blockSize);
+  SysArena arena2(blockSize);
+
+  arena1.allocate(16);
+  arena2.allocate(32);
+
+  EXPECT_EQ(blockAllocSize + sizeof(SysArena), arena1.totalSize());
+  EXPECT_EQ(blockAllocSize + sizeof(SysArena), arena2.totalSize());
+  EXPECT_EQ(16, arena1.bytesUsed());
+  EXPECT_EQ(32, arena2.bytesUsed());
+
+  arena1.merge(std::move(arena2));
+
+  EXPECT_EQ(blockAllocSize * 2 + sizeof(SysArena), arena1.totalSize());
+  EXPECT_EQ(blockAllocSize * 0 + sizeof(SysArena), arena2.totalSize());
+  EXPECT_EQ(48, arena1.bytesUsed());
+  EXPECT_EQ(0, arena2.bytesUsed());
 }
 
 int main(int argc, char* argv[]) {
