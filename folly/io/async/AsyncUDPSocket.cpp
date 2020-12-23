@@ -479,23 +479,27 @@ ssize_t AsyncUDPSocket::writeChain(
       [CMSG_SPACE(sizeof(uint16_t)) + /*gro*/
        CMSG_SPACE(sizeof(uint64_t)) /*txtime*/
   ] = {};
-  struct cmsghdr* cm = CMSG_FIRSTHDR(&msg);
+  msg.msg_control = control;
+  struct cmsghdr* cm = nullptr;
   if (options.gso > 0) {
-    msg.msg_control = control;
     msg.msg_controllen = CMSG_SPACE(sizeof(uint16_t));
+    cm = CMSG_FIRSTHDR(&msg);
 
     cm->cmsg_level = SOL_UDP;
     cm->cmsg_type = UDP_SEGMENT;
     cm->cmsg_len = CMSG_LEN(sizeof(uint16_t));
     auto gso_len = static_cast<uint16_t>(options.gso);
     memcpy(CMSG_DATA(cm), &gso_len, sizeof(gso_len));
-    cm = CMSG_NXTHDR(&msg, cm);
   }
 
   if (options.txTime.count() > 0 && txTime_.has_value() &&
       (txTime_.value().clockid >= 0)) {
-    msg.msg_control = control;
     msg.msg_controllen += CMSG_SPACE(sizeof(uint64_t));
+    if (cm) {
+      cm = CMSG_NXTHDR(&msg, cm);
+    } else {
+      cm = CMSG_FIRSTHDR(&msg);
+    }
     cm->cmsg_level = SOL_SOCKET;
     cm->cmsg_type = SCM_TXTIME;
     cm->cmsg_len = CMSG_LEN(sizeof(uint64_t));
@@ -534,7 +538,7 @@ ssize_t AsyncUDPSocket::writeChain(
   }
 
   return ret;
-}
+} // namespace folly
 
 ssize_t AsyncUDPSocket::write(
     const folly::SocketAddress& address,
