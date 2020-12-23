@@ -43,7 +43,7 @@ inline Task<void> sleep(Duration d, Timekeeper* tk) {
     co_await baton;
   }
   if (cancelled) {
-    co_yield co_error(OperationCancelled());
+    co_yield co_cancelled;
   }
   co_yield co_result(std::move(result));
 }

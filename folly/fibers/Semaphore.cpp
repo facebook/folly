@@ -171,7 +171,7 @@ coro::Task<void> Semaphore::co_wait() {
         // sure that we aren't reading it concurrently with a potential write
         // from a thread requesting cancellation.
         if (cancelled) {
-          co_yield folly::coro::co_error(folly::OperationCancelled{});
+          co_yield folly::coro::co_cancelled;
         }
 
         co_return;

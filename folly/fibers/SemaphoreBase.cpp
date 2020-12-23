@@ -147,7 +147,7 @@ coro::Task<void> SemaphoreBase::co_wait_common(int64_t tokens) {
         // sure that we aren't reading it concurrently with a potential write
         // from a thread requesting cancellation.
         if (cancelled) {
-          co_yield folly::coro::co_error(folly::OperationCancelled{});
+          co_yield folly::coro::co_cancelled;
         }
 
         co_return;

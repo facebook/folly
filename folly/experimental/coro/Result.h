@@ -19,6 +19,7 @@
 #include <cassert>
 #include <type_traits>
 
+#include <folly/CancellationToken.h>
 #include <folly/ExceptionWrapper.h>
 #include <folly/Try.h>
 
@@ -60,6 +61,15 @@ class co_result final {
  private:
   Try<T> result_;
 };
+
+class co_cancelled_t final {
+ public:
+  /* implicit */ operator co_error() const {
+    return co_error(OperationCancelled{});
+  }
+};
+
+FOLLY_INLINE_VARIABLE constexpr co_cancelled_t co_cancelled{};
 
 } // namespace coro
 } // namespace folly

@@ -206,7 +206,7 @@ auto collectAllImpl(
       // Parent task was cancelled before any child tasks failed.
       // Complete with the OperationCancelled error instead of the
       // child task's errors.
-      co_yield co_error(OperationCancelled{});
+      co_yield co_cancelled;
     }
 
     co_return std::tuple<collect_all_component_t<SemiAwaitables>...>{
@@ -320,7 +320,7 @@ auto collectAllRange(InputRange awaitables)
 
     // Cancellation was requested of the parent Task before any of the
     // child tasks failed.
-    co_yield co_error(OperationCancelled{});
+    co_yield co_cancelled;
   }
 
   std::vector<detail::collect_all_range_component_t<
@@ -617,7 +617,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
       co_yield co_error(std::move(firstException));
     }
 
-    co_yield co_error(OperationCancelled{});
+    co_yield co_cancelled;
   }
 }
 
@@ -778,7 +778,7 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
     // Otherwise, cancellation was requested before any of the child tasks
     // failed so complete with the OperationCancelled error.
-    co_yield co_error(OperationCancelled{});
+    co_yield co_cancelled;
   }
 
   std::vector<detail::collect_all_range_component_t<
