@@ -522,6 +522,10 @@ class SingletonVault {
 
   [[noreturn]] void fireShutdownTimer();
 
+  void setFailOnUseAfterFork(bool failOnUseAfterFork) {
+    failOnUseAfterFork_ = failOnUseAfterFork;
+  }
+
  private:
   template <typename T>
   friend struct detail::SingletonHolder;
@@ -567,6 +571,7 @@ class SingletonVault {
   std::atomic<bool> shutdownTimerStarted_{false};
   std::chrono::milliseconds shutdownTimeout_{std::chrono::minutes{5}};
   Synchronized<std::vector<std::string>> shutdownLog_;
+  bool failOnUseAfterFork_{false};
 };
 
 // This is the wrapper class that most users actually interact with.

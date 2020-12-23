@@ -174,8 +174,13 @@ template <typename T>
 void SingletonHolder<T>::destroyInstance() {
   if (state_.load(std::memory_order_relaxed) ==
       SingletonHolderState::LivingInChildAfterFork) {
-    LOG(DFATAL) << "Attempting to destroy singleton " << type().name()
-                << " in child process after fork";
+    if (vault_.failOnUseAfterFork_) {
+      LOG(DFATAL) << "Attempting to destroy singleton " << type().name()
+                  << " in child process after fork";
+    } else {
+      LOG(ERROR) << "Attempting to destroy singleton " << type().name()
+                 << " in child process after fork";
+    }
   }
   state_ = SingletonHolderState::Dead;
   instance_.reset();
@@ -242,8 +247,13 @@ void SingletonHolder<T>::createInstance() {
   }
   if (state_.load(std::memory_order_relaxed) ==
       SingletonHolderState::LivingInChildAfterFork) {
-    LOG(DFATAL) << "Attempting to use singleton " << type().name()
-                << " in child process after fork";
+    if (vault_.failOnUseAfterFork_) {
+      LOG(DFATAL) << "Attempting to use singleton " << type().name()
+                  << " in child process after fork";
+    } else {
+      LOG(ERROR) << "Attempting to use singleton " << type().name()
+                 << " in child process after fork";
+    }
     auto expected = SingletonHolderState::LivingInChildAfterFork;
     state_.compare_exchange_strong(
         expected,

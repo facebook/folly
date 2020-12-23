@@ -1069,6 +1069,7 @@ TEST(Singleton, ForkInChild) {
   using SingletonObject = Singleton<ForkObject, PrivateTag, VaultTag>;
 
   auto& vault = *SingletonVault::singleton<VaultTag>();
+  vault.setFailOnUseAfterFork(true);
   SingletonObject object;
   vault.registrationComplete();
 
