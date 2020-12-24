@@ -476,7 +476,7 @@ ssize_t AsyncUDPSocket::writeChain(
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
   char control
-      [CMSG_SPACE(sizeof(uint16_t)) + /*gro*/
+      [CMSG_SPACE(sizeof(uint16_t)) + /*gso*/
        CMSG_SPACE(sizeof(uint64_t)) /*txtime*/
   ] = {};
   msg.msg_control = control;
