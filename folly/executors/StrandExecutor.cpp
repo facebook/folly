@@ -16,10 +16,10 @@
 
 #include <folly/executors/StrandExecutor.h>
 
+#include <glog/logging.h>
+
 #include <folly/ExceptionString.h>
 #include <folly/executors/GlobalExecutor.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 

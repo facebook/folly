@@ -19,13 +19,13 @@
 #include <algorithm>
 #include <limits>
 
+#include <glog/logging.h>
+
 #include <folly/Portability.h>
 #include <folly/chrono/Hardware.h>
 #include <folly/detail/Futex.h>
 #include <folly/portability/Asm.h>
 #include <folly/portability/Unistd.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 

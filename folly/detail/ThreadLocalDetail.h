@@ -34,13 +34,12 @@
 #include <folly/SharedMutex.h>
 #include <folly/container/Foreach.h>
 #include <folly/detail/AtFork.h>
+#include <folly/detail/StaticSingletonManager.h>
 #include <folly/lang/Exception.h>
 #include <folly/memory/Malloc.h>
 #include <folly/portability/PThread.h>
 #include <folly/synchronization/MicroSpinLock.h>
 #include <folly/system/ThreadId.h>
-
-#include <folly/detail/StaticSingletonManager.h>
 
 // In general, emutls cleanup is not guaranteed to play nice with the way
 // StaticMeta mixes direct pthread calls and the use of __thread. This has

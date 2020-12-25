@@ -16,13 +16,15 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include <sys/types.h>
+
 #include <algorithm>
 #include <array>
 #include <cstring>
 #include <string>
 #include <type_traits>
+
+#include <glog/logging.h>
 
 #include <folly/Format.h>
 #include <folly/detail/IPAddress.h>

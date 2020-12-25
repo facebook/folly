@@ -16,10 +16,10 @@
 
 #include <folly/detail/SocketFastOpen.h>
 
-#include <folly/portability/Sockets.h>
-
 #include <cerrno>
 #include <cstdio>
+
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 namespace detail {

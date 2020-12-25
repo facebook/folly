@@ -15,10 +15,11 @@
  */
 
 #include <folly/detail/ThreadLocalDetail.h>
-#include <folly/synchronization/CallOnce.h>
 
 #include <list>
 #include <mutex>
+
+#include <folly/synchronization/CallOnce.h>
 
 constexpr auto kSmallGrowthFactor = 1.1;
 constexpr auto kBigGrowthFactor = 1.7;

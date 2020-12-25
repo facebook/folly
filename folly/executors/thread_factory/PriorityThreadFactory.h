@@ -16,11 +16,10 @@
 
 #pragma once
 
-#include <folly/executors/thread_factory/ThreadFactory.h>
-
 #include <glog/logging.h>
 
 #include <folly/String.h>
+#include <folly/executors/thread_factory/ThreadFactory.h>
 #include <folly/portability/SysResource.h>
 #include <folly/portability/SysTime.h>
 

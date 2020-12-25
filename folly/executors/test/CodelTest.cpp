@@ -15,9 +15,11 @@
  */
 
 #include <folly/executors/Codel.h>
-#include <folly/portability/GTest.h>
+
 #include <chrono>
 #include <thread>
+
+#include <folly/portability/GTest.h>
 
 using std::chrono::milliseconds;
 using std::this_thread::sleep_for;

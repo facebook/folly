@@ -15,6 +15,7 @@
  */
 
 #include <folly/detail/AsyncTrace.h>
+
 #include <folly/portability/GTest.h>
 
 TEST(FollyCountersTest, Trivial) {

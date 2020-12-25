@@ -16,18 +16,17 @@
 
 #include <folly/executors/StrandExecutor.h>
 
-#include <folly/CancellationToken.h>
-#include <folly/executors/GlobalExecutor.h>
-#include <folly/executors/ManualExecutor.h>
-#include <folly/synchronization/Baton.h>
-
 #include <atomic>
 #include <chrono>
 #include <stdexcept>
 #include <thread>
 #include <vector>
 
+#include <folly/CancellationToken.h>
+#include <folly/executors/GlobalExecutor.h>
+#include <folly/executors/ManualExecutor.h>
 #include <folly/portability/GTest.h>
+#include <folly/synchronization/Baton.h>
 
 using namespace folly;
 using namespace std::chrono_literals;

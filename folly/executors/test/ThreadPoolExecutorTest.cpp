@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/executors/ThreadPoolExecutor.h>
+
 #include <atomic>
 #include <memory>
 #include <thread>
@@ -26,7 +28,6 @@
 #include <folly/executors/EDFThreadPoolExecutor.h>
 #include <folly/executors/FutureExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
-#include <folly/executors/ThreadPoolExecutor.h>
 #include <folly/executors/task_queue/LifoSemMPMCQueue.h>
 #include <folly/executors/task_queue/UnboundedBlockingQueue.h>
 #include <folly/executors/thread_factory/InitThreadFactory.h>

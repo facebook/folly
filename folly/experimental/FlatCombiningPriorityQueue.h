@@ -22,10 +22,11 @@
 #include <mutex>
 #include <queue>
 
+#include <glog/logging.h>
+
 #include <folly/Optional.h>
 #include <folly/detail/Futex.h>
 #include <folly/experimental/flat_combining/FlatCombining.h>
-#include <glog/logging.h>
 
 namespace folly {
 

@@ -16,6 +16,11 @@
 
 #include <folly/detail/MemoryIdler.h>
 
+#include <climits>
+#include <cstdio>
+#include <cstring>
+#include <utility>
+
 #include <folly/GLog.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -26,11 +31,6 @@
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/CallOnce.h>
-
-#include <climits>
-#include <cstdio>
-#include <cstring>
-#include <utility>
 
 namespace folly {
 namespace detail {

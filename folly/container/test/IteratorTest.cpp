@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/container/Iterator.h>
+
 #include <algorithm>
 #include <cassert>
 #include <cstddef>
@@ -26,7 +28,6 @@
 #include <utility>
 #include <vector>
 
-#include <folly/container/Iterator.h>
 #include <folly/portability/GTest.h>
 
 namespace {

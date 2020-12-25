@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <folly/Executor.h>
 #include <atomic>
+
+#include <folly/Executor.h>
 
 namespace folly {
 class ExecutorWithPriority {

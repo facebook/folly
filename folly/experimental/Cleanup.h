@@ -19,9 +19,9 @@
 #include <memory>
 #include <mutex>
 
-#include <folly/futures/Future.h>
-
 #include <glog/logging.h>
+
+#include <folly/futures/Future.h>
 
 namespace folly {
 

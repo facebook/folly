@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/JSONSchema.h>
-#include <folly/json.h>
 #include <fstream>
 #include <sstream>
 #include <string>
+
+#include <folly/experimental/JSONSchema.h>
+#include <folly/json.h>
 
 /**
  * A binary that supports testing against the official tests from:

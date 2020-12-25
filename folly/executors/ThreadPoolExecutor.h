@@ -20,6 +20,8 @@
 #include <mutex>
 #include <queue>
 
+#include <glog/logging.h>
+
 #include <folly/DefaultKeepAliveExecutor.h>
 #include <folly/Memory.h>
 #include <folly/SharedMutex.h>
@@ -30,8 +32,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/synchronization/AtomicStruct.h>
 #include <folly/synchronization/Baton.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 

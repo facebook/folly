@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <atomic>
+#include <memory>
+
 #include <folly/Optional.h>
 #include <folly/concurrency/UnboundedQueue.h>
 #include <folly/executors/SequencedExecutor.h>
-
-#include <atomic>
-#include <memory>
 
 namespace folly {
 class StrandExecutor;

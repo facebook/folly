@@ -16,9 +16,10 @@
 
 #include <folly/executors/Codel.h>
 
-#include <folly/portability/GFlags.h>
 #include <algorithm>
 #include <stdexcept>
+
+#include <folly/portability/GFlags.h>
 
 DEFINE_int32(codel_interval, 100, "Codel default interval time in ms");
 DEFINE_int32(codel_target_delay, 5, "Target codel queueing delay in ms");

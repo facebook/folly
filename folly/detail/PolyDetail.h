@@ -23,6 +23,7 @@
 #include <typeinfo>
 #include <utility>
 
+#include <folly/PolyException.h>
 #include <folly/Portability.h>
 #include <folly/Traits.h>
 #include <folly/Utility.h>
@@ -30,8 +31,6 @@
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Exception.h>
 #include <folly/lang/StaticConst.h>
-
-#include <folly/PolyException.h>
 
 #if defined(__cpp_template_auto) || \
     defined(__cpp_nontype_template_parameter_auto)

@@ -20,6 +20,8 @@
 #include <limits>
 #include <type_traits>
 
+#include <glog/logging.h>
+
 #include <folly/Likely.h>
 #include <folly/Portability.h>
 #include <folly/Range.h>
@@ -28,7 +30,6 @@
 #include <folly/experimental/Instructions.h>
 #include <folly/experimental/Select64.h>
 #include <folly/lang/Bits.h>
-#include <glog/logging.h>
 
 #if !FOLLY_X64
 #error BitVectorCoding.h requires x86_64

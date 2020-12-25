@@ -16,8 +16,9 @@
 
 #pragma once
 
-#include <glog/logging.h>
 #include <atomic>
+
+#include <glog/logging.h>
 
 #include <folly/executors/ScheduledExecutor.h>
 #include <folly/futures/Future.h>

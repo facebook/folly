@@ -15,12 +15,15 @@
  */
 
 #include <folly/Portability.h>
+
 // Allow tests for keys that throw in copy/move constructors. This
 // warning has to be disabled before the templates are defined in the
 // header to have any effect.
 FOLLY_GNU_DISABLE_WARNING("-Wdeprecated-declarations")
 
+// clang-format off:
 #include <folly/container/F14Set.h>
+// clang-format on
 
 #include <chrono>
 #include <random>

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
+
 #include <vector>
 
 #include <folly/container/Enumerate.h>
-#include <folly/executors/task_queue/PriorityUnboundedBlockingQueue.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
 

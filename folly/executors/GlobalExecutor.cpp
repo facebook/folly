@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/executors/GlobalExecutor.h>
+
 #include <memory>
 #include <thread>
 
@@ -22,7 +24,6 @@
 #include <folly/Singleton.h>
 #include <folly/detail/AsyncTrace.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
-#include <folly/executors/GlobalExecutor.h>
 #include <folly/executors/IOExecutor.h>
 #include <folly/executors/IOThreadPoolExecutor.h>
 #include <folly/system/HardwareConcurrency.h>
