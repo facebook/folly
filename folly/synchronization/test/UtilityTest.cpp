@@ -15,10 +15,11 @@
  */
 
 #include <folly/synchronization/Utility.h>
-#include <folly/Utility.h>
-#include <folly/portability/GTest.h>
 
 #include <type_traits>
+
+#include <folly/Utility.h>
+#include <folly/portability/GTest.h>
 
 class UtilityTest : public testing::Test {};
 

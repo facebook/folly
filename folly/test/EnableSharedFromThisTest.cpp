@@ -15,6 +15,7 @@
  */
 
 #include <folly/memory/EnableSharedFromThis.h>
+
 #include <folly/portability/GTest.h>
 
 using namespace folly;

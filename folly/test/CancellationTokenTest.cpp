@@ -16,11 +16,12 @@
 
 #include <folly/CancellationToken.h>
 
+#include <chrono>
+#include <thread>
+
 #include <folly/Optional.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
-#include <chrono>
-#include <thread>
 
 using namespace folly;
 using namespace std::literals::chrono_literals;

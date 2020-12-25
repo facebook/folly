@@ -15,13 +15,16 @@
  */
 
 #include <folly/Benchmark.h>
-#include <folly/String.h>
-#include <folly/container/Foreach.h>
+
 #include <algorithm>
 #include <iostream>
 #include <numeric>
 #include <random>
 #include <vector>
+
+#include <folly/String.h>
+#include <folly/container/Foreach.h>
+
 using namespace folly;
 using namespace std;
 

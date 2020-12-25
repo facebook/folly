@@ -15,10 +15,11 @@
  */
 
 #include <folly/Format.h>
-#include <folly/Utility.h>
-#include <folly/portability/GTest.h>
 
 #include <string>
+
+#include <folly/Utility.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

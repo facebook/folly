@@ -16,6 +16,8 @@
 
 #include <folly/Format.h>
 
+#include <utility>
+
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
@@ -24,8 +26,6 @@
 #include <folly/dynamic.h>
 #include <folly/init/Init.h>
 #include <folly/json.h>
-
-#include <utility>
 
 using namespace folly;
 

@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <thread>
-
 #include <folly/synchronization/ParkingLot.h>
+
+#include <thread>
 
 #include <folly/Benchmark.h>
 #include <folly/detail/Futex.h>

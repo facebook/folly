@@ -15,13 +15,12 @@
  */
 
 #include <folly/FileUtil.h>
-#include <folly/detail/FileUtilDetail.h>
-#include <folly/experimental/TestUtil.h>
 
-#include <deque>
 #if defined(__linux__)
 #include <dlfcn.h>
 #endif
+
+#include <deque>
 
 #include <glog/logging.h>
 
@@ -29,6 +28,8 @@
 #include <folly/File.h>
 #include <folly/Range.h>
 #include <folly/String.h>
+#include <folly/detail/FileUtilDetail.h>
+#include <folly/experimental/TestUtil.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

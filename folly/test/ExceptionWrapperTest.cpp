@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/ExceptionWrapper.h>
+
 #include <stdexcept>
 
 #include <folly/Conv.h>
-#include <folly/ExceptionWrapper.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 

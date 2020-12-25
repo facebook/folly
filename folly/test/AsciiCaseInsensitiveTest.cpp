@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/Range.h>
+#include <algorithm>
 
+#include <folly/Range.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <algorithm>
 
 using namespace std;
 using namespace folly;

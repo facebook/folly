@@ -16,10 +16,10 @@
 
 #include <folly/ConcurrentBitSet.h>
 
+#include <glog/logging.h>
+
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-
-#include <glog/logging.h>
 
 namespace folly {
 namespace test {

@@ -16,12 +16,13 @@
 
 #include <folly/detail/AtFork.h>
 
-#include <folly/portability/GTest.h>
-#include <glog/logging.h>
-
 #include <atomic>
 #include <mutex>
 #include <thread>
+
+#include <glog/logging.h>
+
+#include <folly/portability/GTest.h>
 
 TEST(ThreadLocal, AtFork) {
   int foo;

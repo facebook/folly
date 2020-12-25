@@ -14,11 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
 #include <folly/ConstexprMath.h>
-#include <glog/logging.h>
+
 #include <limits>
 #include <type_traits>
+
+#include <glog/logging.h>
+
+#include <folly/Benchmark.h>
 
 template <typename ValueT>
 constexpr ValueT UBSafeAdd(ValueT a, ValueT b) {

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+
 #include <folly/Benchmark.h>
 #include <folly/Range.h>
-
-#include <algorithm>
 
 using namespace std;
 using namespace folly;

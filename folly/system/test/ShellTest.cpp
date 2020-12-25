@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/system/Shell.h>
+
 #include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
-#include <folly/system/Shell.h>
 
 using namespace folly;
 

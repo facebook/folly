@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/system/MemoryMapping.h>
+
 #include <cstdlib>
 
 #include <glog/logging.h>
@@ -22,7 +24,6 @@
 #include <folly/Random.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/SysMman.h>
-#include <folly/system/MemoryMapping.h>
 
 static constexpr double kSomeDouble = 3.14;
 

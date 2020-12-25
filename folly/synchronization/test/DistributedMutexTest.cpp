@@ -15,6 +15,11 @@
  */
 
 #include <folly/synchronization/DistributedMutex.h>
+
+#include <chrono>
+#include <cmath>
+#include <thread>
+
 #include <folly/MapUtil.h>
 #include <folly/Synchronized.h>
 #include <folly/container/Array.h>
@@ -23,10 +28,6 @@
 #include <folly/synchronization/Baton.h>
 #include <folly/test/DeterministicSchedule.h>
 #include <folly/test/TestUtils.h>
-
-#include <chrono>
-#include <cmath>
-#include <thread>
 
 using namespace std::literals;
 

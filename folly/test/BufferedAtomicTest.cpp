@@ -15,11 +15,12 @@
  */
 
 #include <folly/test/BufferedAtomic.h>
-#include <folly/SingletonThreadLocal.h>
 
+#include <random>
+
+#include <folly/SingletonThreadLocal.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-#include <random>
 
 using namespace folly::test;
 using DSched = DeterministicSchedule;

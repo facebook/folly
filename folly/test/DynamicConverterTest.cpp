@@ -18,12 +18,12 @@
 
 #include <folly/DynamicConverter.h>
 
-#include <folly/FBVector.h>
-#include <folly/portability/GTest.h>
-
 #include <algorithm>
 #include <map>
 #include <vector>
+
+#include <folly/FBVector.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::dynamicconverter_detail;

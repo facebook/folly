@@ -18,7 +18,7 @@
 
 #include <assert.h>
 #include <errno.h>
-#include <glog/logging.h>
+
 #include <atomic>
 #include <functional>
 #include <list>
@@ -27,6 +27,8 @@
 #include <thread>
 #include <unordered_set>
 #include <vector>
+
+#include <glog/logging.h>
 
 #include <folly/ScopeGuard.h>
 #include <folly/concurrency/CacheLocality.h>

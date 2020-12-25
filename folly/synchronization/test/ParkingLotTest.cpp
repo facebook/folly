@@ -14,9 +14,9 @@
  * limitations under the License.
  */
 
-#include <thread>
-
 #include <folly/synchronization/ParkingLot.h>
+
+#include <thread>
 
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>

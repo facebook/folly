@@ -14,13 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/File.h>
-
 #include <mutex>
 
 #include <boost/thread/locks.hpp>
 #include <glog/logging.h>
 
+#include <folly/File.h>
 #include <folly/String.h>
 #include <folly/Subprocess.h>
 #include <folly/experimental/TestUtil.h>

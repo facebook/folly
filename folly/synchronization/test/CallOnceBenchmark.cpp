@@ -20,9 +20,9 @@
 #include <mutex>
 #include <thread>
 
-#include <folly/Benchmark.h>
-
 #include <glog/logging.h>
+
+#include <folly/Benchmark.h>
 
 DEFINE_int32(threads, 16, "benchmark concurrency");
 

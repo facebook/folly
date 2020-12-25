@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/dynamic.h>
+#include <iostream>
 
+#include <folly/dynamic.h>
 #include <folly/gen/Base.h>
 #include <folly/json.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
-
-#include <iostream>
 
 using folly::dynamic;
 using folly::TypeError;

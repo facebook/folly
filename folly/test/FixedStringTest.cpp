@@ -18,6 +18,7 @@
 // Author: eniebler@fb.com
 
 #include <folly/FixedString.h>
+
 #include <folly/portability/GTest.h>
 
 #define FS(x) ::folly::makeFixedString(x)

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+#include <folly/AtomicHashArray.h>
+
 #include <cstddef>
 #include <map>
 #include <memory>
 #include <stdexcept>
 
-#include <folly/AtomicHashArray.h>
 #include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/hash/Hash.h>

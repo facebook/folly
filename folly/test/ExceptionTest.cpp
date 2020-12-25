@@ -16,11 +16,11 @@
 
 #include <folly/Exception.h>
 
-#include <folly/experimental/TestUtil.h>
-#include <folly/portability/GTest.h>
-
 #include <cstdio>
 #include <memory>
+
+#include <folly/experimental/TestUtil.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 namespace test {

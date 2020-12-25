@@ -15,6 +15,7 @@
  */
 
 #include <folly/synchronization/SaturatingSemaphore.h>
+
 #include <folly/portability/GTest.h>
 #include <folly/test/DeterministicSchedule.h>
 

@@ -16,13 +16,13 @@
 
 #include <folly/dynamic.h>
 
+#include <iterator>
+
 #include <glog/logging.h>
 
 #include <folly/Range.h>
 #include <folly/json.h>
 #include <folly/portability/GTest.h>
-
-#include <iterator>
 
 using folly::dynamic;
 using folly::StringPiece;

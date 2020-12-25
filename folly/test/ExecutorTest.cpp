@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/Executor.h>
+
 #include <atomic>
 
-#include <folly/Executor.h>
 #include <folly/portability/GTest.h>
 
 namespace folly {

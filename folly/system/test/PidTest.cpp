@@ -16,9 +16,9 @@
 
 #include <folly/system/Pid.h>
 
-#include <folly/portability/GTest.h>
-
 #include <glog/logging.h>
+
+#include <folly/portability/GTest.h>
 
 TEST(PidTest, basic) {
   pid_t mypid = getpid();

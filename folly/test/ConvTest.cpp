@@ -18,12 +18,7 @@
 #define __STDC_FORMAT_MACROS 1
 #endif
 
-#include <boost/lexical_cast.hpp>
-#include <glog/logging.h>
-
 #include <folly/Conv.h>
-#include <folly/container/Foreach.h>
-#include <folly/portability/GTest.h>
 
 #include <algorithm>
 #include <cinttypes>
@@ -31,6 +26,12 @@
 #include <sstream>
 #include <stdexcept>
 #include <tuple>
+
+#include <boost/lexical_cast.hpp>
+#include <glog/logging.h>
+
+#include <folly/container/Foreach.h>
+#include <folly/portability/GTest.h>
 
 using namespace std;
 using namespace folly;
