@@ -16,9 +16,9 @@
 
 #include <folly/futures/ManualTimekeeper.h>
 
-#include <folly/portability/GTest.h>
-
 #include <chrono>
+
+#include <folly/portability/GTest.h>
 
 using namespace std::literals;
 

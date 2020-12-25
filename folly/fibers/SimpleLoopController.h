@@ -20,7 +20,6 @@
 
 #include <folly/Function.h>
 #include <folly/Likely.h>
-
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/LoopController.h>
 

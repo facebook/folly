@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <chrono>
+#include <map>
+
 #include <folly/Synchronized.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
-
-#include <chrono>
-#include <map>
 
 namespace folly {
 

@@ -15,12 +15,13 @@
  */
 
 #include <folly/futures/ThreadWheelTimekeeper.h>
-#include <folly/futures/WTCallback.h>
+
+#include <future>
 
 #include <folly/Chrono.h>
 #include <folly/Singleton.h>
 #include <folly/futures/Future.h>
-#include <future>
+#include <folly/futures/WTCallback.h>
 
 namespace folly {
 

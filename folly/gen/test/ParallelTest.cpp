@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/gen/Parallel.h>
+
 #include <array>
 #include <iostream>
 #include <memory>
@@ -22,7 +24,6 @@
 #include <glog/logging.h>
 
 #include <folly/gen/Base.h>
-#include <folly/gen/Parallel.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

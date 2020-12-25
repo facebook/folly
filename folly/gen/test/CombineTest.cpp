@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/gen/Combine.h>
+
 #include <memory>
 #include <string>
 #include <tuple>
@@ -24,7 +26,6 @@
 #include <folly/FBVector.h>
 #include <folly/Range.h>
 #include <folly/gen/Base.h>
-#include <folly/gen/Combine.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

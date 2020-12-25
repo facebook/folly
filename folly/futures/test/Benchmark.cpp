@@ -15,6 +15,9 @@
  */
 
 #include <folly/Benchmark.h>
+
+#include <vector>
+
 #include <folly/executors/InlineExecutor.h>
 #include <folly/futures/Future.h>
 #include <folly/futures/Promise.h>
@@ -22,8 +25,6 @@
 #include <folly/portability/GFlags.h>
 #include <folly/portability/Semaphore.h>
 #include <folly/synchronization/Baton.h>
-
-#include <vector>
 
 using namespace folly;
 

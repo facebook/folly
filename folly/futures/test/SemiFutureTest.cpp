@@ -14,6 +14,15 @@
  * limitations under the License.
  */
 
+#include <algorithm>
+#include <atomic>
+#include <future>
+#include <memory>
+#include <numeric>
+#include <string>
+#include <thread>
+#include <type_traits>
+
 #include <folly/Executor.h>
 #include <folly/Memory.h>
 #include <folly/Unit.h>
@@ -23,15 +32,6 @@
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GTest.h>
 #include <folly/synchronization/Baton.h>
-
-#include <algorithm>
-#include <atomic>
-#include <future>
-#include <memory>
-#include <numeric>
-#include <string>
-#include <thread>
-#include <type_traits>
 
 using namespace folly;
 

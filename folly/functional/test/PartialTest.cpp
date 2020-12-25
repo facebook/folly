@@ -14,11 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/functional/Partial.h>
+
 #include <memory>
 
 #include <folly/Function.h>
-#include <folly/functional/Partial.h>
-
 #include <folly/portability/GTest.h>
 
 using folly::partial;

@@ -15,11 +15,14 @@
  */
 
 #include <folly/hash/Checksum.h>
-#include <boost/crc.hpp>
-#include <folly/CpuId.h>
-#include <folly/hash/detail/ChecksumDetail.h>
+
 #include <algorithm>
 #include <stdexcept>
+
+#include <boost/crc.hpp>
+
+#include <folly/CpuId.h>
+#include <folly/hash/detail/ChecksumDetail.h>
 
 #if FOLLY_SSE_PREREQ(4, 2)
 #include <emmintrin.h>

@@ -15,6 +15,7 @@
  */
 
 #include <folly/futures/detail/Core.h>
+
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
 

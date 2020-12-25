@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <memory>
+
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
-
-#include <memory>
 
 using namespace folly;
 

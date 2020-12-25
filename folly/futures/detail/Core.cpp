@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/futures/detail/Core.h>
+
 #include <new>
 
-#include <folly/futures/detail/Core.h>
 #include <folly/lang/Assume.h>
 
 namespace folly {

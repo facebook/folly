@@ -18,12 +18,13 @@
 #error This file may only be included from folly/gen/Parallel.h
 #endif
 
-#include <folly/MPMCQueue.h>
-#include <folly/ScopeGuard.h>
-#include <folly/experimental/EventCount.h>
 #include <atomic>
 #include <thread>
 #include <vector>
+
+#include <folly/MPMCQueue.h>
+#include <folly/ScopeGuard.h>
+#include <folly/experimental/EventCount.h>
 
 namespace folly {
 namespace gen {

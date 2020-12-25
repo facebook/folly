@@ -14,10 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/futures/Future.h>
-
 #include <thread>
 
+#include <folly/futures/Future.h>
 #include <folly/futures/test/TestExecutor.h>
 #include <folly/portability/GTest.h>
 

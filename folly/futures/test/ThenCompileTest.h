@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <memory>
+
 #include <folly/futures/Future.h>
 #include <folly/portability/GTest.h>
-
-#include <memory>
 
 namespace folly {
 

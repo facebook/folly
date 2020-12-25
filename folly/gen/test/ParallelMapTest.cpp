@@ -14,13 +14,14 @@
  * limitations under the License.
  */
 
+#include <folly/gen/ParallelMap.h>
+
 #include <vector>
 
 #include <glog/logging.h>
 
 #include <folly/Memory.h>
 #include <folly/gen/Base.h>
-#include <folly/gen/ParallelMap.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

@@ -22,6 +22,8 @@
 #include <utility>
 #include <vector>
 
+#include <glog/logging.h>
+
 #include <folly/Executor.h>
 #include <folly/Function.h>
 #include <folly/Optional.h>
@@ -29,13 +31,11 @@
 #include <folly/Try.h>
 #include <folly/Utility.h>
 #include <folly/futures/detail/Types.h>
+#include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
 #include <folly/lang/Exception.h>
 #include <folly/synchronization/AtomicUtil.h>
 #include <folly/synchronization/MicroSpinLock.h>
-#include <glog/logging.h>
-
-#include <folly/io/async/Request.h>
 
 namespace folly {
 namespace futures {

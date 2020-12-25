@@ -19,11 +19,9 @@
 #include <thread>
 #include <vector>
 
+#include <folly/Conv.h>
 #include <folly/Memory.h>
 #include <folly/Random.h>
-#include <folly/futures/Future.h>
-
-#include <folly/Conv.h>
 #include <folly/executors/CPUThreadPoolExecutor.h>
 #include <folly/fibers/AddTasks.h>
 #include <folly/fibers/AtomicBatchDispatcher.h>
@@ -38,6 +36,7 @@
 #include <folly/fibers/SimpleLoopController.h>
 #include <folly/fibers/TimedMutex.h>
 #include <folly/fibers/WhenN.h>
+#include <folly/futures/Future.h>
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <folly/portability/GTest.h>
 #include <folly/tracing/AsyncStack.h>

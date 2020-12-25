@@ -26,9 +26,9 @@
 
 #include <folly/hash/SpookyHashV1.h>
 
-#include <folly/CppAttributes.h>
-
 #include <cstring>
+
+#include <folly/CppAttributes.h>
 
 #define ALLOW_UNALIGNED_READS 1
 

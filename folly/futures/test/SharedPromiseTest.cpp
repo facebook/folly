@@ -15,6 +15,7 @@
  */
 
 #include <folly/futures/SharedPromise.h>
+
 #include <folly/portability/GTest.h>
 
 using namespace folly;

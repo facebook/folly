@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include <iostream>
-
-#include <folly/Overload.h>
 #include <folly/functional/ApplyTuple.h>
-#include <folly/portability/GTest.h>
 
 #include <array>
+#include <iostream>
 #include <memory>
 #include <utility>
+
+#include <folly/Overload.h>
+#include <folly/portability/GTest.h>
 
 namespace {
 

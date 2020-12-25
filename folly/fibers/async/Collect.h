@@ -14,6 +14,11 @@
  * limitations under the License.
  */
 
+#pragma once
+
+#include <algorithm>
+#include <vector>
+
 #include <folly/Traits.h>
 #include <folly/Try.h>
 #include <folly/fibers/FiberManager.h>
@@ -22,10 +27,6 @@
 #include <folly/fibers/async/FiberManager.h>
 #include <folly/fibers/async/Future.h>
 #include <folly/functional/Invoke.h>
-
-#include <algorithm>
-#include <vector>
-#pragma once
 
 namespace folly {
 namespace fibers {

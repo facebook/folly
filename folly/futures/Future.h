@@ -40,8 +40,9 @@
 #include <folly/lang/Exception.h>
 
 #if FOLLY_HAS_COROUTINES
-#include <folly/experimental/coro/Traits.h>
 #include <experimental/coroutine>
+
+#include <folly/experimental/coro/Traits.h>
 #endif
 
 // boring predeclarations and details

@@ -16,12 +16,14 @@
 
 #pragma once
 
+#include <utility>
+
+#include <glog/logging.h>
+
 #include <folly/Traits.h>
 #include <folly/Unit.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/CustomizationPoint.h>
-#include <glog/logging.h>
-#include <utility>
 
 namespace folly {
 namespace fibers {

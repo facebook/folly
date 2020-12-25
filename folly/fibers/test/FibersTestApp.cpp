@@ -18,7 +18,6 @@
 #include <queue>
 
 #include <folly/Memory.h>
-
 #include <folly/fibers/FiberManager.h>
 #include <folly/fibers/SimpleLoopController.h>
 
