@@ -20,12 +20,13 @@
 // other vendors
 #ifdef FOLLY_USE_LIBSTDCPP
 
+#include <folly/concurrency/test/AtomicSharedPtrCounted.h>
+
 #include <atomic>
 #include <memory>
 #include <thread>
 
 #include <folly/concurrency/AtomicSharedPtr.h>
-#include <folly/concurrency/test/AtomicSharedPtrCounted.h>
 #include <folly/portability/GTest.h>
 
 #include <folly/test/DeterministicSchedule.h>

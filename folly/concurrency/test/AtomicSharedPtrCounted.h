@@ -16,6 +16,13 @@
 
 #pragma once
 
+#include <atomic>
+#include <cstdint>
+#include <stdexcept>
+#include <type_traits>
+
+#include <glog/logging.h>
+
 struct counted_shared_tag {};
 template <template <typename> class Atom = std::atomic>
 struct intrusive_shared_count {
