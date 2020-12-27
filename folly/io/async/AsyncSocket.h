@@ -169,6 +169,28 @@ class AsyncSocket : public AsyncTransport {
     virtual void errMessageError(const AsyncSocketException& ex) noexcept = 0;
   };
 
+  class ReadAncillaryDataCallback {
+   public:
+    virtual ~ReadAncillaryDataCallback() = default;
+
+    /**
+     * ancillaryData() will be invoked when we read a buffer
+     * from the socket together with the ancillary data.
+     *
+     * @param msgh      Reference to msghdr structure describing
+     *                  a message read together with the data buffer associated
+     *                  with the socket.
+     */
+    virtual void ancillaryData(struct msghdr& msgh) noexcept = 0;
+
+    /**
+     * getAncillaryDataCtrlBuffer() will be invoked in order to fill the
+     * ancillary data buffer when it is received.
+     * getAncillaryDataCtrlBuffer will never return nullptr.
+     */
+    virtual folly::MutableByteRange getAncillaryDataCtrlBuffer() = 0;
+  };
+
   class SendMsgParamsCallback {
    public:
     virtual ~SendMsgParamsCallback() = default;
@@ -498,6 +520,23 @@ class AsyncSocket : public AsyncTransport {
    *
    */
   virtual ErrMessageCallback* getErrMessageCallback() const;
+
+  /**
+   * Set a pointer to ReadAncillaryDataCallback implementation which will
+   * be invoked with the ancillary data when we read a buffer from the
+   * associated socket.
+   * ReadAncillaryDataCallback is implemented only for platforms with
+   * kernel timestamp support.
+   *
+   */
+  virtual void setReadAncillaryDataCB(ReadAncillaryDataCallback* callback);
+
+  /**
+   * Get a pointer to ReadAncillaryDataCallback implementation currently
+   * registered with this socket.
+   *
+   */
+  virtual ReadAncillaryDataCallback* getReadAncillaryDataCallback() const;
 
   /**
    * Set a pointer to SendMsgParamsCallback implementation which
@@ -1364,6 +1403,8 @@ class AsyncSocket : public AsyncTransport {
 
   ConnectCallback* connectCallback_; ///< ConnectCallback
   ErrMessageCallback* errMessageCallback_; ///< TimestampCallback
+  ReadAncillaryDataCallback*
+      readAncillaryDataCallback_; ///< AncillaryDataCallback
   SendMsgParamsCallback* ///< Callback for retrieving
       sendMsgParamCallback_; ///< ::sendmsg() parameters
   ReadCallback* readCallback_; ///< ReadCallback

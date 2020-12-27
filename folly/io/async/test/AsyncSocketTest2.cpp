@@ -19,6 +19,7 @@
 #include <fcntl.h>
 #include <sys/types.h>
 
+#include <time.h>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -3036,6 +3037,9 @@ TEST(AsyncSocketTest, TestEvbDetachThenClose) {
 /* copied from include/uapi/linux/net_tstamp.h */
 /* SO_TIMESTAMPING gets an integer bit field comprised of these values */
 enum SOF_TIMESTAMPING {
+  SOF_TIMESTAMPING_TX_SOFTWARE = (1 << 1),
+  SOF_TIMESTAMPING_RX_HARDWARE = (1 << 2),
+  SOF_TIMESTAMPING_RX_SOFTWARE = (1 << 3),
   SOF_TIMESTAMPING_SOFTWARE = (1 << 4),
   SOF_TIMESTAMPING_OPT_ID = (1 << 7),
   SOF_TIMESTAMPING_TX_SCHED = (1 << 8),
@@ -4253,4 +4257,106 @@ TEST(AsyncSocketTest, QueueTimeout) {
   EXPECT_EQ(connectionEventCb.getConnectionEnqueuedForAcceptCallback(), 2);
   // Since the second message is expired, it should NOT be dequeued
   EXPECT_EQ(connectionEventCb.getConnectionDequeuedByAcceptCallback(), 1);
+}
+
+class TestRXTimestampsCallback
+    : public folly::AsyncSocket::ReadAncillaryDataCallback {
+ public:
+  TestRXTimestampsCallback() {}
+  void ancillaryData(struct msghdr& msgh) noexcept override {
+    struct cmsghdr* cmsg;
+    for (cmsg = CMSG_FIRSTHDR(&msgh); cmsg != nullptr;
+         cmsg = CMSG_NXTHDR(&msgh, cmsg)) {
+      if (cmsg->cmsg_level != SOL_SOCKET ||
+          cmsg->cmsg_type != SO_TIMESTAMPING) {
+        continue;
+      }
+      callCount_++;
+      timespec* ts = (struct timespec*)CMSG_DATA(cmsg);
+      actualRxTimestampSec_ = ts[0].tv_sec;
+    }
+  }
+  folly::MutableByteRange getAncillaryDataCtrlBuffer() override {
+    return folly::MutableByteRange(ancillaryDataCtrlBuffer_);
+  }
+
+  uint32_t callCount_{0};
+  long actualRxTimestampSec_{0};
+
+ private:
+  std::array<uint8_t, 1024> ancillaryDataCtrlBuffer_;
+};
+
+/**
+ * Test read ancillary data callback
+ */
+TEST(AsyncSocketTest, readAncillaryData) {
+  TestServer server;
+
+  // connect()
+  EventBase evb;
+  std::shared_ptr<AsyncSocket> socket = AsyncSocket::newSocket(&evb);
+
+  ConnCallback ccb;
+  socket->connect(&ccb, server.getAddress(), 1);
+  LOG(INFO) << "Client socket fd=" << socket->getNetworkSocket();
+
+  // Enable rx timestamp notifications
+  ASSERT_NE(socket->getNetworkSocket(), NetworkSocket());
+  int flags = SOF_TIMESTAMPING_SOFTWARE | SOF_TIMESTAMPING_RX_SOFTWARE |
+      SOF_TIMESTAMPING_RX_HARDWARE;
+  SocketOptionKey tstampingOpt = {SOL_SOCKET, SO_TIMESTAMPING};
+  EXPECT_EQ(tstampingOpt.apply(socket->getNetworkSocket(), flags), 0);
+
+  // Accept the connection.
+  std::shared_ptr<BlockingSocket> acceptedSocket = server.accept();
+  LOG(INFO) << "Server socket fd=" << acceptedSocket->getNetworkSocket();
+
+  // Wait for connection
+  evb.loop();
+  ASSERT_EQ(ccb.state, STATE_SUCCEEDED);
+
+  TestRXTimestampsCallback rxcb;
+
+  // Set read callback
+  ReadCallback rcb(100);
+  socket->setReadCB(&rcb);
+
+  // Get the timestamp when the message was write
+  struct timespec currentTime;
+  clock_gettime(CLOCK_REALTIME, &currentTime);
+  long writeTimestampSec = currentTime.tv_sec;
+
+  // write bytes from server (acceptedSocket) to client (socket).
+  std::vector<uint8_t> wbuf(128, 'a');
+  acceptedSocket->write(wbuf.data(), wbuf.size());
+
+  // Wait for reading to complete.
+  evb.loopOnce();
+  ASSERT_NE(rcb.buffers.size(), 0);
+
+  // Verify that if the callback is not set, it will not be called
+  ASSERT_EQ(rxcb.callCount_, 0);
+
+  // Set up rx timestamp callbacks
+  socket->setReadAncillaryDataCB(&rxcb);
+  acceptedSocket->write(wbuf.data(), wbuf.size());
+
+  // Wait for reading to complete.
+  evb.loopOnce();
+  ASSERT_NE(rcb.buffers.size(), 0);
+
+  // Verify that after setting callback, the callback was called
+  ASSERT_NE(rxcb.callCount_, 0);
+  // Compare the received timestamp is within an expected range
+  clock_gettime(CLOCK_REALTIME, &currentTime);
+  ASSERT_TRUE(rxcb.actualRxTimestampSec_ <= currentTime.tv_sec);
+  ASSERT_TRUE(rxcb.actualRxTimestampSec_ >= writeTimestampSec);
+
+  // Close both sockets
+  acceptedSocket->close();
+  socket->close();
+
+  ASSERT_TRUE(socket->isClosedBySelf());
+  ASSERT_FALSE(socket->isClosedByPeer());
 }

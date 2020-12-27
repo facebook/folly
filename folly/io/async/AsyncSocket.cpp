@@ -395,6 +395,7 @@ void AsyncSocket::init() {
   maxReadsPerEvent_ = 16;
   connectCallback_ = nullptr;
   errMessageCallback_ = nullptr;
+  readAncillaryDataCallback_ = nullptr;
   readCallback_ = nullptr;
   writeReqHead_ = nullptr;
   writeReqTail_ = nullptr;
@@ -640,6 +641,7 @@ void AsyncSocket::connect(
   // yet, so we don't have to register for any events at the moment.
   VLOG(8) << "AsyncSocket::connect succeeded immediately; this=" << this;
   assert(errMessageCallback_ == nullptr);
+  assert(readAncillaryDataCallback_ == nullptr);
   assert(readCallback_ == nullptr);
   assert(writeReqHead_ == nullptr);
   if (state_ != StateEnum::FAST_OPEN) {
@@ -806,6 +808,19 @@ void AsyncSocket::setErrMessageCB(ErrMessageCallback* callback) {
 
 AsyncSocket::ErrMessageCallback* AsyncSocket::getErrMessageCallback() const {
   return errMessageCallback_;
+}
+
+void AsyncSocket::setReadAncillaryDataCB(ReadAncillaryDataCallback* callback) {
+  VLOG(6) << "AsyncSocket::setReadAncillaryDataCB() this=" << this
+          << ", fd=" << fd_ << ", callback=" << callback
+          << ", state=" << state_;
+
+  readAncillaryDataCallback_ = callback;
+}
+
+AsyncSocket::ReadAncillaryDataCallback*
+AsyncSocket::getReadAncillaryDataCallback() const {
+  return readAncillaryDataCallback_;
 }
 
 void AsyncSocket::setSendMsgParamCB(SendMsgParamsCallback* callback) {
@@ -1951,7 +1966,40 @@ AsyncSocket::performRead(void** buf, size_t* buflen, size_t* /* offset */) {
     return ReadResult(len);
   }
 
-  ssize_t bytes = netops::recv(fd_, *buf, *buflen, MSG_DONTWAIT);
+  ssize_t bytes = 0;
+
+  // No callback to read ancillary data was set
+  if (readAncillaryDataCallback_ == nullptr) {
+    bytes = netops::recv(fd_, *buf, *buflen, MSG_DONTWAIT);
+  } else {
+    struct msghdr msg;
+    struct iovec iov;
+
+    // Ancillary data buffer and length
+    msg.msg_control =
+        readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().data();
+    msg.msg_controllen =
+        readAncillaryDataCallback_->getAncillaryDataCtrlBuffer().size();
+
+    // Dest address info
+    msg.msg_name = nullptr;
+    msg.msg_namelen = 0;
+
+    // Array of data buffers (scatter/gather)
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+
+    // Data buffer pointer and length
+    iov.iov_base = *buf;
+    iov.iov_len = *buflen;
+
+    bytes = netops::recvmsg(fd_, &msg, 0);
+
+    if (bytes > 0) {
+      readAncillaryDataCallback_->ancillaryData(msg);
+    }
+  }
+
   if (bytes < 0) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
       // No more data to read right now.
