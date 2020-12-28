@@ -80,7 +80,7 @@ class AsyncPipe {
     return *this;
   }
 
-  static std::pair<folly::coro::AsyncGenerator<T&&>, AsyncPipe<T>> create(
+  static std::pair<folly::coro::AsyncGenerator<T&&>, AsyncPipe> create(
       folly::Function<void()> onClosed = nullptr) {
     auto queue = std::make_shared<Queue>();
     auto cancellationSource = std::shared_ptr<folly::CancellationSource>();
