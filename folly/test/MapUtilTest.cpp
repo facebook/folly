@@ -18,6 +18,7 @@
 
 #include <cstddef>
 #include <map>
+#include <optional>
 #include <unordered_map>
 
 #include <folly/Traits.h>
