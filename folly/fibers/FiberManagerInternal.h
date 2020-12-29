@@ -601,7 +601,7 @@ class FiberManager : public ::folly::Executor {
   void runReadyFiber(Fiber* fiber);
   void remoteReadyInsert(Fiber* fiber);
 
-#ifdef FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_LIBRARY_SANITIZE_ADDRESS
 
   // These methods notify ASAN when a fiber is entered/exited so that ASAN can
   // find the right stack extents when it needs to poison/unpoison the stack.
@@ -617,7 +617,7 @@ class FiberManager : public ::folly::Executor {
   void freeFakeStack(void* fakeStack);
   void unpoisonFiberStack(const Fiber* fiber);
 
-#endif // FOLLY_SANITIZE_ADDRESS
+#endif // FOLLY_LIBRARY_SANITIZE_ADDRESS
 
   bool alternateSignalStackRegistered_{false};
 

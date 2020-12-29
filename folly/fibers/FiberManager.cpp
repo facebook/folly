@@ -33,7 +33,7 @@
 #include <folly/portability/Unistd.h>
 #include <folly/synchronization/SanitizeThread.h>
 
-#ifdef FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_LIBRARY_SANITIZE_ADDRESS
 
 #ifndef _WIN32
 #include <dlfcn.h>
@@ -217,7 +217,7 @@ void FiberManager::FibersPoolResizer::run() {
   }
 }
 
-#ifdef FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_LIBRARY_SANITIZE_ADDRESS
 
 void FiberManager::registerStartSwitchStackWithAsan(
     void** saveFakeStack,
@@ -336,7 +336,7 @@ static AsanUnpoisonMemoryRegionFuncPtr getUnpoisonMemoryRegionFunc() {
   return nullptr;
 }
 
-#endif // FOLLY_SANITIZE_ADDRESS
+#endif // FOLLY_LIBRARY_SANITIZE_ADDRESS
 
 // TVOS and WatchOS platforms have SIGSTKSZ but not sigaltstack
 #if defined(SIGSTKSZ) && !FOLLY_APPLE_TVOS && !FOLLY_APPLE_WATCHOS
