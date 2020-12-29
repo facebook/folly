@@ -69,7 +69,7 @@ inline void FiberManager::ensureLoopScheduled() {
 inline void FiberManager::activateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, (Fiber*)nullptr);
 
-#ifdef FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_LIBRARY_SANITIZE_ADDRESS
   DCHECK(!fiber->asanMainStackBase_);
   DCHECK(!fiber->asanMainStackSize_);
   auto stack = fiber->getStack();
@@ -99,7 +99,7 @@ inline void FiberManager::activateFiber(Fiber* fiber) {
 inline void FiberManager::deactivateFiber(Fiber* fiber) {
   DCHECK_EQ(activeFiber_, fiber);
 
-#ifdef FOLLY_SANITIZE_ADDRESS
+#ifdef FOLLY_LIBRARY_SANITIZE_ADDRESS
   DCHECK(fiber->asanMainStackBase_);
   DCHECK(fiber->asanMainStackSize_);
 
