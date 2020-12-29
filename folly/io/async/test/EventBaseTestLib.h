@@ -1396,6 +1396,13 @@ TYPED_TEST_P(EventBaseTest, RunInThread) {
 //  whether any of the race conditions happened.
 TYPED_TEST_P(EventBaseTest, RunInEventBaseThreadAndWait) {
   const size_t c = 256;
+  std::vector<std::unique_ptr<EventBase>> evbs;
+  for (size_t i = 0; i < c; ++i) {
+    auto evbPtr = getEventBase<TypeParam>();
+    SKIP_IF(!evbPtr) << "Backend not available";
+    evbs.push_back(std::move(evbPtr));
+  }
+
   std::vector<std::unique_ptr<std::atomic<size_t>>> atoms(c);
   for (size_t i = 0; i < c; ++i) {
     auto& atom = atoms.at(i);
@@ -1403,9 +1410,7 @@ TYPED_TEST_P(EventBaseTest, RunInEventBaseThreadAndWait) {
   }
   std::vector<std::thread> threads;
   for (size_t i = 0; i < c; ++i) {
-    auto evbPtr = getEventBase<TypeParam>();
-    SKIP_IF(!evbPtr) << "Backend not available";
-    threads.emplace_back([&atoms, i, evb = std::move(evbPtr)] {
+    threads.emplace_back([&atoms, i, evb = std::move(evbs[i])] {
       folly::EventBase& eb = *evb;
       auto& atom = *atoms.at(i);
       auto ebth = std::thread([&] { eb.loopForever(); });
