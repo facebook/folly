@@ -65,7 +65,10 @@ struct TestUtil {
 template <typename TAsync>
 std::unique_ptr<TAsync> getAIO(size_t capacity, AsyncBase::PollMode pollMode) {
   try {
-    return std::make_unique<TAsync>(capacity, pollMode);
+    auto ret = std::make_unique<TAsync>(capacity, pollMode);
+    ret->initializeContext();
+
+    return ret;
   } catch (const std::runtime_error&) {
   }
 

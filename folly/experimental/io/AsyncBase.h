@@ -186,6 +186,11 @@ class AsyncBase {
   virtual ~AsyncBase();
 
   /**
+   * Initialize context
+   */
+  virtual void initializeContext() = 0;
+
+  /**
    * Wait for at least minRequests to complete.  Returns the requests that
    * have completed; the returned range is valid until the next call to
    * wait().  minRequests may be 0 to not block.
@@ -247,7 +252,6 @@ class AsyncBase {
   bool isInit() const { return init_.load(std::memory_order_relaxed); }
 
   void decrementPending(size_t num = 1);
-  virtual void initializeContext() = 0;
   virtual int submitOne(AsyncBase::Op* op) = 0;
   virtual int submitRange(Range<AsyncBase::Op**> ops) = 0;
 

@@ -98,8 +98,9 @@ class IoUring : public AsyncBase {
 
   int unregister_buffers();
 
- private:
   void initializeContext() override;
+
+ private:
   int submitOne(AsyncBase::Op* op) override;
   int submitRange(Range<AsyncBase::Op**> ops) override;
 

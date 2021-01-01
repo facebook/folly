@@ -74,8 +74,9 @@ class AsyncIO : public AsyncBase {
   AsyncIO& operator=(const AsyncIO&) = delete;
   ~AsyncIO() override;
 
- private:
   void initializeContext() override;
+
+ private:
   int submitOne(AsyncBase::Op* op) override;
   int submitRange(Range<AsyncBase::Op**> ops) override;
 
