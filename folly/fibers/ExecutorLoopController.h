@@ -31,8 +31,6 @@ class ExecutorTimeoutManager : public TimeoutManager {
   explicit ExecutorTimeoutManager(folly::Executor* executor)
       : executor_(executor) {}
 
-  ExecutorTimeoutManager(ExecutorTimeoutManager&&) = default;
-  ExecutorTimeoutManager& operator=(ExecutorTimeoutManager&&) = default;
   ExecutorTimeoutManager(const ExecutorTimeoutManager&) = delete;
   ExecutorTimeoutManager& operator=(const ExecutorTimeoutManager&) = delete;
 
