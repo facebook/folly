@@ -274,6 +274,7 @@ TEST_F(XlogTest, perFileCategoryHandling) {
 }
 
 TEST_F(XlogTest, rateLimiting) {
+  auto SEVEN = 7;
   auto handler = make_shared<TestLogHandler>();
   LoggerDB::get().getCategory("xlog_test")->addHandler(handler);
   LoggerDB::get().setLevel("xlog_test", LogLevel::DBG1);
@@ -295,6 +296,15 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 49"));
   handler->clearMessages();
 
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N(DBG1, SEVEN + 1, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0", "msg 8", "msg 16", "msg 24", "msg 32", "msg 40", "msg 48"));
+  handler->clearMessages();
+
   // Test XLOG_EVERY_N_EXACT
   for (size_t n = 0; n < 50; ++n) {
     XLOG_EVERY_N_EXACT(DBG1, 7, "msg ", n);
@@ -312,6 +322,15 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 49"));
   handler->clearMessages();
 
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N_EXACT(DBG1, SEVEN + 1, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0", "msg 8", "msg 16", "msg 24", "msg 32", "msg 40", "msg 48"));
+  handler->clearMessages();
+
   // Test XLOG_EVERY_N_THREAD
   for (size_t n = 0; n < 50; ++n) {
     XLOG_EVERY_N_THREAD(DBG1, 7, "msg ", n);
@@ -327,6 +346,15 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 35",
           "msg 42",
           "msg 49"));
+  handler->clearMessages();
+
+  for (size_t n = 0; n < 50; ++n) {
+    XLOG_EVERY_N_THREAD(DBG1, SEVEN + 1, "msg ", n);
+  }
+  EXPECT_THAT(
+      handler->getMessageValues(),
+      ElementsAre(
+          "msg 0", "msg 8", "msg 16", "msg 24", "msg 32", "msg 40", "msg 48"));
   handler->clearMessages();
 
   // Test XLOG_EVERY_MS and XLOG_N_PER_MS

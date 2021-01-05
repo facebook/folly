@@ -141,7 +141,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNImpl(size_t n) {
 #define XLOG_EVERY_N(level, n, ...)                                       \
   XLOG_IF(                                                                \
       level,                                                              \
-      [] {                                                                \
+      [&] {                                                               \
         struct folly_detail_xlog_tag {};                                  \
         return ::folly::detail::xlogEveryNImpl<folly_detail_xlog_tag>(n); \
       }(),                                                                \
@@ -172,7 +172,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNExactImpl(size_t n) {
 #define XLOG_EVERY_N_EXACT(level, n, ...)                                      \
   XLOG_IF(                                                                     \
       level,                                                                   \
-      [] {                                                                     \
+      [&] {                                                                    \
         struct folly_detail_xlog_tag {};                                       \
         return ::folly::detail::xlogEveryNExactImpl<folly_detail_xlog_tag>(n); \
       }(),                                                                     \
@@ -212,7 +212,7 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNThreadImpl(size_t n) {
 #define XLOG_EVERY_N_THREAD(level, n, ...)                                   \
   XLOG_IF(                                                                   \
       level,                                                                 \
-      [] {                                                                   \
+      [&] {                                                                  \
         struct folly_detail_xlog_tag {};                                     \
         return ::folly::detail::xlogEveryNThreadImpl<folly_detail_xlog_tag>( \
             n);                                                              \
