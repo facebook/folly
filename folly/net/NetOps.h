@@ -60,7 +60,9 @@
 #endif
 
 #ifdef FOLLY_HAVE_MSG_ERRQUEUE
-enum net_txtime_flags {
+namespace folly {
+namespace netops {
+enum txtime_flags {
   SOF_TXTIME_DEADLINE_MODE = (1 << 0),
   SOF_TXTIME_REPORT_ERRORS = (1 << 1),
 
@@ -68,10 +70,12 @@ enum net_txtime_flags {
   SOF_TXTIME_FLAGS_MASK = (SOF_TXTIME_FLAGS_LAST - 1) | SOF_TXTIME_FLAGS_LAST
 };
 
-struct net_sock_txtime {
+struct sock_txtime {
   __kernel_clockid_t clockid; /* reference clockid */
   __u32 flags; /* as defined by enum txtime_flags */
 };
+} // namespace netops
+} // namespace folly
 #endif
 
 #ifndef MSG_ZEROCOPY
