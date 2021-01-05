@@ -447,3 +447,49 @@ TEST(Settings, snapshot) {
         123);
   }
 }
+
+TEST(SettingsTest, callback) {
+  size_t callbackInvocations = 0;
+  std::string lastCallbackValue;
+
+  EXPECT_EQ(*some_ns::FOLLY_SETTING(follytest, some_flag), "default");
+  {
+    auto handle = some_ns::FOLLY_SETTING(follytest, some_flag)
+                      .addCallback([&](const auto& contents) {
+                        ++callbackInvocations;
+                        lastCallbackValue = contents.value;
+                      });
+
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("a");
+    EXPECT_EQ(callbackInvocations, 1);
+    EXPECT_EQ(lastCallbackValue, "a");
+
+    size_t secondCallbackInvocations = 0;
+    // Test adding multiple callbacks and letting the handle go out of scope
+    {
+      auto secondHandle = some_ns::FOLLY_SETTING(follytest, some_flag)
+                              .addCallback([&](const auto& /* contents */) {
+                                ++secondCallbackInvocations;
+                              });
+      some_ns::FOLLY_SETTING(follytest, some_flag).set("b");
+      EXPECT_EQ(callbackInvocations, 2);
+      EXPECT_EQ(lastCallbackValue, "b");
+      EXPECT_EQ(secondCallbackInvocations, 1);
+    }
+
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("c");
+    EXPECT_EQ(callbackInvocations, 3);
+    EXPECT_EQ(lastCallbackValue, "c");
+    // Second callback no longer invoked
+    EXPECT_EQ(secondCallbackInvocations, 1);
+
+    auto movedHandle = std::move(handle);
+    some_ns::FOLLY_SETTING(follytest, some_flag).set("d");
+    EXPECT_EQ(callbackInvocations, 4);
+    EXPECT_EQ(lastCallbackValue, "d");
+  }
+  // Main callback no longer invoked
+  some_ns::FOLLY_SETTING(follytest, some_flag).set("e");
+  EXPECT_EQ(callbackInvocations, 4);
+  EXPECT_EQ(lastCallbackValue, "d");
+}
