@@ -16,25 +16,91 @@
 
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
 
+// NOTE: To simplify generated DWARF keep #includes to a minimum.
+
 namespace folly {
 namespace symbolizer {
 namespace test {
 
-void* framesToFill = {nullptr};
+bool (*gComparatorGetStackTrace)(void* arg) = nullptr;
+void* gComparatorGetStackTraceArg = nullptr;
 
-size_t kQsortCallLineNo = 0;
-size_t kFooCallByStandaloneBarLineNo = 0;
-size_t kFooCallByStandaloneBazLineNo = 0;
-size_t kFooCallByClassBarLineNo = 0;
-size_t kFooCallByClassStaticBarLineNo = 0;
-size_t kFooCallByClassInDifferentFileBarLineNo = 0;
-size_t kFooCallByClassInDifferentFileStaticBarLineNo = 0;
-size_t kInlineBarCallByLexicalBarLineNo = 0;
-size_t kInlineBazCallByLexicalBazLineNo = 0;
+int testComparator(const void* ap, const void* bp) {
+  // This comparator is called for the side effect of capturing the stack trace.
+  // The function that calls it: qsort usually lives in a separate library -
+  // which exercises cross-ELF file support.
+  (*gComparatorGetStackTrace)(gComparatorGetStackTraceArg);
 
-void inlineBaz(FrameArray<100>& frames) {
-  kFooCallByStandaloneBazLineNo = __LINE__ + 1;
-  inlineFoo(frames);
+  int a = *static_cast<const int*>(ap);
+  int b = *static_cast<const int*>(bp);
+  return a < b ? -1 : a > b ? 1 : 0;
+}
+
+int kLineno_qsort = 0;
+int kLineno_inlineA_qsort = 0;
+int kLineno_inlineB_inlineA_qsort = 0;
+
+// NOTE: inlineLTO_inlineA_qsort is only inlined with LTO/ThinLTO.
+void inlineLTO_inlineA_qsort() {
+  kLineno_inlineA_qsort = __LINE__ + 1;
+  inlineA_qsort();
+}
+
+void call_inlineA_qsort() {
+  inlineA_qsort();
+}
+
+void call_inlineB_inlineA_qsort() {
+  inlineB_inlineA_qsort();
+}
+
+void call_inlineLTO_inlineA_qsort() {
+  inlineLTO_inlineA_qsort();
+}
+
+class ClassSameFile {
+ public:
+  __attribute__((__always_inline__)) void memberInline_inlineA_qsort() const {
+    kLineno_inlineA_qsort = __LINE__ + 1;
+    inlineA_qsort();
+  }
+
+  __attribute__((__always_inline__)) static void
+  staticMemberInline_inlineA_qsort() {
+    kLineno_inlineA_qsort = __LINE__ + 1;
+    inlineA_qsort();
+  }
+
+  int dummy() const { return dummy_; }
+  int dummy_ = 0;
+};
+
+void call_same_file_memberInline_inlineA_qsort() {
+  ClassSameFile obj;
+  obj.memberInline_inlineA_qsort();
+}
+
+void call_same_file_staticMemberInline_inlineA_qsort() {
+  ClassSameFile::staticMemberInline_inlineA_qsort();
+}
+
+void call_different_file_memberInline_inlineA_qsort() {
+  ClassDifferentFile obj;
+  obj.memberInline_inlineA_qsort();
+}
+
+void call_different_file_staticMemberInline_inlineA_qsort() {
+  ClassDifferentFile::staticMemberInline_inlineA_qsort();
+}
+
+void lexicalBlock_inlineB_inlineA_qsort() try {
+  kLineno_inlineB_inlineA_qsort = __LINE__ + 1;
+  inlineB_inlineA_qsort();
+} catch (...) {
+}
+
+void call_lexicalBlock_inlineB_inlineA_qsort() {
+  lexicalBlock_inlineB_inlineA_qsort();
 }
 
 } // namespace test

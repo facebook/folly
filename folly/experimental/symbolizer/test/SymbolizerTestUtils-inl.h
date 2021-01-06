@@ -14,7 +14,20 @@
  * limitations under the License.
  */
 
+// NOTE: To simplify generated DWARF keep #includes to a minimum.
+
+#pragma once
+
 #include <folly/experimental/symbolizer/test/SymbolizerTestUtils.h>
+
+extern "C" {
+// Fwd declare instead of #include <stdlib.h> to minimize generated DWARF.
+void qsort(
+    void* base,
+    unsigned long nmemb,
+    unsigned long size,
+    int (*compar)(const void*, const void*));
+} // "C"
 
 namespace folly {
 namespace symbolizer {
@@ -25,32 +38,28 @@ namespace test {
  * cases that define and declare inline functions in different files.
  */
 
-template <size_t kNumFrames>
-FOLLY_ALWAYS_INLINE void inlineFoo(FrameArray<kNumFrames>& frames) {
-  framesToFill = &frames;
-  std::array<int, 2> a = {1, 2};
+__attribute__((__always_inline__)) inline void inlineA_qsort() {
+  int a[2] = {1, 2};
   // Use qsort, which is in a different library
-  kQsortCallLineNo = __LINE__ + 1;
-  qsort(a.data(), 2, sizeof(int), comparator<kNumFrames>);
-  framesToFill = nullptr;
+  kLineno_qsort = __LINE__ + 1;
+  qsort(a, 2, sizeof(int), testComparator);
 }
 
-template <size_t kNumFrames>
-FOLLY_ALWAYS_INLINE void inlineBar(FrameArray<kNumFrames>& frames) {
-  kFooCallByStandaloneBarLineNo = __LINE__ + 1;
-  inlineFoo(frames);
+__attribute__((__always_inline__)) inline void inlineB_inlineA_qsort() {
+  kLineno_inlineA_qsort = __LINE__ + 1;
+  inlineA_qsort();
 }
 
-FOLLY_ALWAYS_INLINE void InlineFunctionsWrapper::inlineBar(
-    FrameArray<100>& frames) const {
-  kFooCallByClassInDifferentFileBarLineNo = __LINE__ + 1;
-  inlineFoo(frames);
+__attribute__((__always_inline__)) inline void
+ClassDifferentFile::memberInline_inlineA_qsort() const {
+  kLineno_inlineA_qsort = __LINE__ + 1;
+  inlineA_qsort();
 }
 
-/* static */ FOLLY_ALWAYS_INLINE void InlineFunctionsWrapper::staticInlineBar(
-    FrameArray<100>& frames) {
-  kFooCallByClassInDifferentFileStaticBarLineNo = __LINE__ + 1;
-  inlineFoo(frames);
+/* static */ __attribute__((__always_inline__)) inline void
+ClassDifferentFile::staticMemberInline_inlineA_qsort() {
+  kLineno_inlineA_qsort = __LINE__ + 1;
+  inlineA_qsort();
 }
 
 } // namespace test
