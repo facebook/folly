@@ -2983,6 +2983,8 @@ void AsyncSocket::invalidState(ErrMessageCallback* callback) {
 }
 
 void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
+  VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
+          << "): connect err invoked with ex: " << ex;
   connectEndTime_ = std::chrono::steady_clock::now();
   if (connectCallback_) {
     ConnectCallback* callback = connectCallback_;
@@ -2992,6 +2994,8 @@ void AsyncSocket::invokeConnectErr(const AsyncSocketException& ex) {
 }
 
 void AsyncSocket::invokeConnectSuccess() {
+  VLOG(5) << "AsyncSocket(this=" << this << ", fd=" << fd_
+          << "): connect success invoked";
   connectEndTime_ = std::chrono::steady_clock::now();
   for (const auto& cb : lifecycleObservers_) {
     cb->connect(this);
