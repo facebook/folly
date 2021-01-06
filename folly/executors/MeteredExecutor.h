@@ -51,6 +51,8 @@ class MeteredExecutor : public DefaultKeepAliveExecutor {
 
   void add(Func func) override;
 
+  size_t pendingTasks() const { return queue_.size(); }
+
  private:
   void loopCallback();
   void scheduleCallback();
