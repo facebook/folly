@@ -128,10 +128,11 @@ check_cxx_source_compiles("
   }"
   FOLLY_HAVE_VLA
 )
-check_cxx_source_compiles("
-  extern \"C\" void configure_link_extern_weak_test() __attribute__((weak));
+check_cxx_source_runs("
+  extern \"C\" int folly_example_undefined_weak_symbol() __attribute__((weak));
   int main(int argc, char** argv) {
-    return configure_link_extern_weak_test == nullptr;
+    auto f = folly_example_undefined_weak_symbol; // null pointer
+    return f ? f() : 0; // must compile, link, and run with null pointer
   }"
   FOLLY_HAVE_WEAK_SYMBOLS
 )
