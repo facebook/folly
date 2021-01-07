@@ -170,7 +170,8 @@ void CPUThreadPoolExecutor::add(
     Func expireCallback) {
   CPUTask task{std::move(func), expiration, std::move(expireCallback), 0};
   if (auto queueObserver = getQueueObserver(0)) {
-    task.queueObserverPayload() = queueObserver->onEnqueued();
+    task.queueObserverPayload() =
+        queueObserver->onEnqueued(task.context_.get());
   }
   auto result = taskQueue_->add(std::move(task));
   if (!result.reusedThread) {
@@ -191,7 +192,8 @@ void CPUThreadPoolExecutor::add(
   CPUTask task(
       std::move(func), expiration, std::move(expireCallback), priority);
   if (auto queueObserver = getQueueObserver(priority)) {
-    task.queueObserverPayload() = queueObserver->onEnqueued();
+    task.queueObserverPayload() =
+        queueObserver->onEnqueued(task.context_.get());
   }
   auto result = taskQueue_->addWithPriority(std::move(task), priority);
   if (!result.reusedThread) {

@@ -24,11 +24,13 @@
 
 namespace folly {
 
+class RequestContext;
+
 class QueueObserver {
  public:
   virtual ~QueueObserver() {}
 
-  virtual intptr_t onEnqueued() = 0;
+  virtual intptr_t onEnqueued(const RequestContext*) = 0;
   virtual void onDequeued(intptr_t) = 0;
 };
 
