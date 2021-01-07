@@ -1260,6 +1260,7 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
   bool handshakeVerify_;
   bool handshakeSuccess_;
   bool handshakeError_;
+  int handshakeVerifyInvocations_{};
   std::chrono::nanoseconds handshakeTime;
 
  protected:
@@ -1272,9 +1273,12 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
       AsyncSSLSocket* /* sock */,
       bool preverifyOk,
       X509_STORE_CTX* /* ctx */) noexcept override {
-    handshakeVerify_ = true;
+    auto invocation = handshakeVerifyInvocations_++;
 
-    EXPECT_EQ(preverifyResult_, preverifyOk);
+    if (invocation == 0) {
+      handshakeVerify_ = true;
+      EXPECT_EQ(preverifyResult_, preverifyOk);
+    }
     return verifyResult_;
   }
 
