@@ -117,24 +117,25 @@ class Dwarf {
   class LineNumberVM;
 
   /**
-   * Finds location info (file and line) for a given address in the given
-   * compilation unit. Invokes `eachParameterName`, if set, for each parameter
-   * of the given function.
+   * Find the @locationInfo for @address in the compilation unit @cu.
+   *
+   * Best effort:
+   * - fills @inlineFrames if mode == FULL_WITH_INLINE,
+   * - calls @eachParameterName on the function parameters.
    */
   bool findLocation(
       uintptr_t address,
       const LocationInfoMode mode,
       detail::CompilationUnit& cu,
       LocationInfo& info,
-      folly::Range<SymbolizedFrame*> inlineFrames = {},
-      folly::FunctionRef<void(folly::StringPiece)> eachParameterName = {})
-      const;
+      folly::Range<SymbolizedFrame*> inlineFrames,
+      folly::FunctionRef<void(folly::StringPiece)> eachParameterName) const;
 
   /**
    * Finds a subprogram debugging info entry that contains a given address among
    * children of given die. Depth first search.
    */
-  void findSubProgramDieForAddress(
+  bool findSubProgramDieForAddress(
       const detail::CompilationUnit& cu,
       const detail::Die& die,
       uint64_t address,

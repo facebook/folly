@@ -33,36 +33,34 @@ namespace detail {
 
 // Abbreviation for a Debugging Information Entry.
 struct DIEAbbreviation {
-  uint64_t code;
-  uint64_t tag;
+  uint64_t code = 0;
+  uint64_t tag = 0;
   bool hasChildren = false;
-
   folly::StringPiece attributes;
 };
 
 struct CompilationUnit {
-  bool is64Bit;
-  uint8_t version;
-  uint8_t addrSize;
+  bool is64Bit = false;
+  uint8_t version = 0;
+  uint8_t addrSize = 0;
   // Offset in .debug_info of this compilation unit.
-  uint32_t offset;
-  uint32_t size;
+  uint32_t offset = 0;
+  uint32_t size = 0;
   // Offset in .debug_info for the first DIE in this compilation unit.
-  uint32_t firstDie;
-  uint64_t abbrevOffset;
-  // Only the CompilationUnit that contains the caller functions needs this
-  // cache.
+  uint32_t firstDie = 0;
+  uint64_t abbrevOffset = 0;
+  // Only the CompilationUnit that contains the caller functions needs this.
   // Indexed by (abbr.code - 1) if (abbr.code - 1) < abbrCache.size();
   folly::Range<DIEAbbreviation*> abbrCache;
 };
 
 struct Die {
-  bool is64Bit;
+  bool is64Bit = false;
   // Offset from start to first attribute
-  uint8_t attrOffset;
+  uint8_t attrOffset = 0;
   // Offset within debug info.
-  uint32_t offset;
-  uint64_t code;
+  uint32_t offset = 0;
+  uint64_t code = 0;
   DIEAbbreviation abbr;
 };
 
@@ -82,7 +80,7 @@ struct Attribute {
 // Indicates inline funtion `name` is called  at `line@file`.
 struct CallLocation {
   Path file = {};
-  uint64_t line;
+  uint64_t line = 0;
   folly::StringPiece name;
 };
 
@@ -454,10 +452,11 @@ bool Dwarf::findDebugInfoOffset(
 }
 
 /**
- * Find the @locationInfo for @address in the compilation unit represented
- * by the @sp .debug_info entry.
- * Returns whether the address was found.
- * Advances @sp to the next entry in .debug_info.
+ * Find the @locationInfo for @address in the compilation unit @cu.
+ *
+ * Best effort:
+ * - fills @inlineFrames if mode == FULL_WITH_INLINE,
+ * - calls @eachParameterName on the function parameters.
  */
 bool Dwarf::findLocation(
     uintptr_t address,
@@ -500,8 +499,7 @@ bool Dwarf::findLocation(
         baseAddrCU = boost::get<uint64_t>(attr.attrValue);
         break;
     }
-    // Iterate through all attributes until find all above.
-    return true;
+    return true; // continue forEachAttribute
   });
 
   if (mainFileName) {
@@ -520,116 +518,122 @@ bool Dwarf::findLocation(
   // Execute line number VM program to find file and line
   locationInfo.hasFileAndLine =
       lineVM.findAddress(address, locationInfo.file, locationInfo.line);
-
-  // Look up whether inline function.
-  bool checkInline =
-      (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty());
-
-  if (locationInfo.hasFileAndLine && (checkInline || eachParameterName)) {
-    // Re-get the compilation unit with abbreviation cached.
-    std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
-    cu.abbrCache = folly::range(abbrs);
-    readCompilationUnitAbbrs(debugAbbrev_, cu);
-
-    // Find the subprogram that matches the given address.
-    detail::Die subprogram;
-    findSubProgramDieForAddress(cu, die, address, baseAddrCU, subprogram);
-
-    if (eachParameterName) {
-      forEachChild(cu, subprogram, [&](const detail::Die& child) {
-        if (child.abbr.tag == DW_TAG_formal_parameter) {
-          forEachAttribute(cu, child, [&](const detail::Attribute& attribute) {
-            if (attribute.spec.name == DW_AT_name) {
-              eachParameterName(
-                  boost::get<folly::StringPiece>(attribute.attrValue));
-            }
-            return true;
-          });
-        }
-        return true;
-      });
-    }
-
-    // Subprogram is the DIE of caller function.
-    if (checkInline && subprogram.abbr.hasChildren) {
-      // Use an extra location and get its call file and call line, so that
-      // they can be used for the second last location when we don't have
-      // enough inline frames for all inline functions call stack.
-      size_t size =
-          std::min<size_t>(
-              Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size()) +
-          1;
-      detail::CallLocation
-          callLocations[Dwarf::kMaxInlineLocationInfoPerFrame + 1];
-      size_t numFound = 0;
-      findInlinedSubroutineDieForAddress(
-          cu,
-          subprogram,
-          lineVM,
-          address,
-          baseAddrCU,
-          folly::Range<detail::CallLocation*>(callLocations, size),
-          numFound);
-
-      if (numFound > 0) {
-        folly::Range<detail::CallLocation*> inlineLocations(
-            callLocations, numFound);
-
-        const auto innerMostFile = locationInfo.file;
-        const auto innerMostLine = locationInfo.line;
-
-        // Earlier we filled in locationInfo:
-        // - mainFile: the path to the CU -- the file where the non-inlined
-        //   call is made from.
-        // - file + line: the location of the inner-most inlined call.
-        // Here we already find inlined info so mainFile would be redundant.
-        locationInfo.hasMainFile = false;
-        locationInfo.mainFile = Path{};
-        // @findInlinedSubroutineDieForAddress fills inlineLocations[0] with the
-        // file+line of the non-inlined outer function making the call.
-        // locationInfo.name is already set by the caller by looking up the
-        // non-inlined function @address belongs to.
-        locationInfo.hasFileAndLine = true;
-        locationInfo.file = inlineLocations[0].file;
-        locationInfo.line = inlineLocations[0].line;
-
-        // The next inlined subroutine's call file and call line is the current
-        // caller's location.
-        for (size_t i = 0; i < numFound - 1; i++) {
-          inlineLocations[i].file = inlineLocations[i + 1].file;
-          inlineLocations[i].line = inlineLocations[i + 1].line;
-        }
-        // CallLocation for the inner-most inlined function:
-        // - will be computed if enough space was available in the passed
-        //   buffer.
-        // - will have a .name, but no !.file && !.line
-        // - its corresponding file+line is the one returned by LineVM based
-        //   on @address.
-        // Use the inner-most inlined file+line info we got from the LineVM.
-        inlineLocations[numFound - 1].file = innerMostFile;
-        inlineLocations[numFound - 1].line = innerMostLine;
-
-        // Skip the extra location when actual inline function calls are more
-        // than provided frames.
-        inlineLocations = inlineLocations.subpiece(
-            0, std::min(numFound, inlineFrames.size()));
-
-        // Fill in inline frames in reverse order (as
-        // expected by the caller).
-        std::reverse(inlineLocations.begin(), inlineLocations.end());
-        for (size_t i = 0; i < inlineLocations.size(); i++) {
-          inlineFrames[i].found = true;
-          inlineFrames[i].addr = address;
-          inlineFrames[i].name = inlineLocations[i].name.data();
-          inlineFrames[i].location.hasFileAndLine = true;
-          inlineFrames[i].location.file = inlineLocations[i].file;
-          inlineFrames[i].location.line = inlineLocations[i].line;
-        }
-      }
-    }
+  if (!locationInfo.hasFileAndLine) {
+    return false;
   }
 
-  return locationInfo.hasFileAndLine;
+  // NOTE: locationInfo was found, so findLocation returns success bellow.
+  // Missing inline function / parameter name is not a failure (best effort).
+  bool checkInline =
+      (mode == LocationInfoMode::FULL_WITH_INLINE && !inlineFrames.empty());
+  if (!checkInline && !eachParameterName) {
+    return true;
+  }
+
+  // Re-get the compilation unit with abbreviation cached.
+  std::array<detail::DIEAbbreviation, kMaxAbbreviationEntries> abbrs;
+  cu.abbrCache = folly::range(abbrs);
+  readCompilationUnitAbbrs(debugAbbrev_, cu);
+
+  // Find the subprogram that matches the given address.
+  detail::Die subprogram;
+  if (!findSubProgramDieForAddress(cu, die, address, baseAddrCU, subprogram)) {
+    // Even though @cu contains @address, it's possible
+    // that the corresponding DW_TAG_subprogram DIE is missing.
+    return true;
+  }
+
+  if (eachParameterName) {
+    forEachChild(cu, subprogram, [&](const detail::Die& child) {
+      if (child.abbr.tag == DW_TAG_formal_parameter) {
+        if (auto name =
+                getAttribute<folly::StringPiece>(cu, child, DW_AT_name)) {
+          eachParameterName(*name);
+        }
+      }
+      return true; // continue forEachChild
+    });
+  }
+
+  if (!checkInline || !subprogram.abbr.hasChildren) {
+    return true;
+  }
+
+  // NOTE: @subprogram is the DIE of caller function.
+
+  // Use an extra location and get its call file and call line, so that
+  // they can be used for the second last location when we don't have
+  // enough inline frames for all inline functions call stack.
+  size_t size =
+      std::min<size_t>(
+          Dwarf::kMaxInlineLocationInfoPerFrame, inlineFrames.size()) +
+      1;
+  detail::CallLocation callLocations[Dwarf::kMaxInlineLocationInfoPerFrame + 1];
+  size_t numFound = 0;
+  findInlinedSubroutineDieForAddress(
+      cu,
+      subprogram,
+      lineVM,
+      address,
+      baseAddrCU,
+      folly::Range<detail::CallLocation*>(callLocations, size),
+      numFound);
+  if (numFound == 0) {
+    return true;
+  }
+
+  folly::Range<detail::CallLocation*> inlineLocations(callLocations, numFound);
+  const auto innerMostFile = locationInfo.file;
+  const auto innerMostLine = locationInfo.line;
+
+  // Earlier we filled in locationInfo:
+  // - mainFile: the path to the CU -- the file where the non-inlined
+  //   call is made from.
+  // - file + line: the location of the inner-most inlined call.
+  // Here we already find inlined info so mainFile would be redundant.
+  locationInfo.hasMainFile = false;
+  locationInfo.mainFile = Path{};
+  // @findInlinedSubroutineDieForAddress fills inlineLocations[0] with the
+  // file+line of the non-inlined outer function making the call.
+  // locationInfo.name is already set by the caller by looking up the
+  // non-inlined function @address belongs to.
+  locationInfo.hasFileAndLine = true;
+  locationInfo.file = inlineLocations[0].file;
+  locationInfo.line = inlineLocations[0].line;
+
+  // The next inlined subroutine's call file and call line is the current
+  // caller's location.
+  for (size_t i = 0; i < numFound - 1; i++) {
+    inlineLocations[i].file = inlineLocations[i + 1].file;
+    inlineLocations[i].line = inlineLocations[i + 1].line;
+  }
+  // CallLocation for the inner-most inlined function:
+  // - will be computed if enough space was available in the passed
+  //   buffer.
+  // - will have a .name, but no !.file && !.line
+  // - its corresponding file+line is the one returned by LineVM based
+  //   on @address.
+  // Use the inner-most inlined file+line info we got from the LineVM.
+  inlineLocations[numFound - 1].file = innerMostFile;
+  inlineLocations[numFound - 1].line = innerMostLine;
+
+  // Skip the extra location when actual inline function calls are more
+  // than provided frames.
+  inlineLocations =
+      inlineLocations.subpiece(0, std::min(numFound, inlineFrames.size()));
+
+  // Fill in inline frames in reverse order (as
+  // expected by the caller).
+  std::reverse(inlineLocations.begin(), inlineLocations.end());
+  for (size_t i = 0; i < inlineLocations.size(); i++) {
+    inlineFrames[i].found = true;
+    inlineFrames[i].addr = address;
+    inlineFrames[i].name = inlineLocations[i].name.data();
+    inlineFrames[i].location.hasFileAndLine = true;
+    inlineFrames[i].location.file = inlineLocations[i].file;
+    inlineFrames[i].location.line = inlineLocations[i].line;
+  }
+  return true;
 }
 
 bool Dwarf::findAddress(
@@ -654,9 +658,8 @@ bool Dwarf::findAddress(
     if (findDebugInfoOffset(address, debugAranges_, offset)) {
       // Read compilation unit header from .debug_info
       auto unit = getCompilationUnit(debugInfo_, offset);
-      findLocation(
+      return findLocation(
           address, mode, unit, locationInfo, inlineFrames, eachParameterName);
-      return locationInfo.hasFileAndLine;
     } else if (mode == LocationInfoMode::FAST) {
       // NOTE: Clang (when using -gdwarf-aranges) doesn't generate entries
       // in .debug_aranges for some functions, but always generates
@@ -675,13 +678,20 @@ bool Dwarf::findAddress(
   // Slow path (linear scan): Iterate over all .debug_info entries
   // and look for the address in each compilation unit.
   uint64_t offset = 0;
-  while (offset < debugInfo_.size() && !locationInfo.hasFileAndLine) {
+  while (offset < debugInfo_.size()) {
     auto unit = getCompilationUnit(debugInfo_, offset);
     offset += unit.size;
-    findLocation(
-        address, mode, unit, locationInfo, inlineFrames, eachParameterName);
+    if (findLocation(
+            address,
+            mode,
+            unit,
+            locationInfo,
+            inlineFrames,
+            eachParameterName)) {
+      return true;
+    }
   }
-  return locationInfo.hasFileAndLine;
+  return false;
 }
 
 detail::Die Dwarf::getDieAtOffset(
@@ -824,7 +834,7 @@ bool Dwarf::isAddrInRangeList(
   return false;
 }
 
-void Dwarf::findSubProgramDieForAddress(
+bool Dwarf::findSubProgramDieForAddress(
     const detail::CompilationUnit& cu,
     const detail::Die& die,
     uint64_t address,
@@ -851,26 +861,31 @@ void Dwarf::findSubProgramDieForAddress(
             highPc = boost::get<uint64_t>(attr.attrValue);
             break;
         }
-        // Iterate through all attributes until find all above.
-        return true;
+        return true; // continue forEachAttribute
       });
+
       bool pcMatch = lowPc && highPc && isHighPcAddr && address >= *lowPc &&
           (address < (*isHighPcAddr ? *highPc : *lowPc + *highPc));
+      if (pcMatch) {
+        subprogram = childDie;
+        return false; // stop forEachChild
+      }
+
       bool rangeMatch =
           rangeOffset &&
           isAddrInRangeList(
               address, baseAddrCU, rangeOffset.value(), cu.addrSize);
-      if (pcMatch || rangeMatch) {
+      if (rangeMatch) {
         subprogram = childDie;
-        return false;
+        return false; // stop forEachChild
       }
     }
 
-    findSubProgramDieForAddress(cu, childDie, address, baseAddrCU, subprogram);
-
-    // Iterates through children until find the inline subprogram.
-    return true;
+    // Continue forEachChild to next sibling DIE only if not already found.
+    return !findSubProgramDieForAddress(
+        cu, childDie, address, baseAddrCU, subprogram);
   });
+  return subprogram.abbr.tag == DW_TAG_subprogram;
 }
 
 /**
@@ -947,8 +962,7 @@ void Dwarf::findInlinedSubroutineDieForAddress(
           callFile = boost::get<uint64_t>(attr.attrValue);
           break;
       }
-      // Iterate through all until find all above attributes.
-      return true;
+      return true; // continue forEachAttribute
     });
 
     // 2.17 Code Addresses and Ranges
@@ -1008,7 +1022,7 @@ void Dwarf::findInlinedSubroutineDieForAddress(
             }
             break;
         }
-        return true;
+        return true; // continue forEachAttribute
       });
       return name;
     };
