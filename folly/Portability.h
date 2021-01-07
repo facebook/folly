@@ -334,6 +334,15 @@ constexpr auto kIsLittleEndian = __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__;
 constexpr auto kIsBigEndian = !kIsLittleEndian;
 } // namespace folly
 
+// Weak
+namespace folly {
+#if FOLLY_HAVE_WEAK_SYMBOLS
+constexpr auto kHasWeakSymbols = true;
+#else
+constexpr auto kHasWeakSymbols = false;
+#endif
+} // namespace folly
+
 #ifndef FOLLY_SSE
 #if defined(__SSE4_2__)
 #define FOLLY_SSE 4
