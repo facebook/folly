@@ -23,7 +23,6 @@
 #include <folly/portability/GTest.h>
 
 using folly::Function;
-using folly::FunctionRef;
 
 namespace {
 int func_int_int_add_25(int x) {
@@ -269,7 +268,7 @@ TEST(Function, Emptiness_T) {
   // models std::function
   struct NullptrTestableInSitu {
     int res;
-    explicit NullptrTestableInSitu(std::nullptr_t) : res(1) {}
+    FOLLY_MAYBE_UNUSED explicit NullptrTestableInSitu(std::nullptr_t);
     explicit NullptrTestableInSitu(int i) : res(i) {}
     CastableToBool operator==(std::nullptr_t) const { return res % 3 != 1; }
     int operator()(int in) const { return res * in; }
@@ -298,12 +297,6 @@ TEST(Function, Emptiness_T) {
   EXPECT_NE(nullptr, m);
   EXPECT_TRUE(m);
   EXPECT_EQ(428, m(107));
-
-  auto noopfun = [] {};
-  EXPECT_EQ(nullptr, FunctionRef<void()>(nullptr));
-  EXPECT_NE(nullptr, FunctionRef<void()>(noopfun));
-  EXPECT_EQ(FunctionRef<void()>(nullptr), nullptr);
-  EXPECT_NE(FunctionRef<void()>(noopfun), nullptr);
 }
 
 // TEST =====================================================================

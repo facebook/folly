@@ -19,6 +19,12 @@
 #include <folly/Function.h>
 #include <folly/portability/GTest.h>
 
+namespace {
+int func_int_int_add_25(int x) {
+  return x + 25;
+}
+} // namespace
+
 namespace folly {
 
 TEST(FunctionRef, Traits) {
@@ -208,6 +214,90 @@ TEST(FunctionRef, ForEach) {
   fe([&](int x) { sum += x; });
 
   EXPECT_EQ(55, sum);
+}
+
+TEST(FunctionRef, Emptiness) {
+  FunctionRef<int(int)> f;
+  EXPECT_EQ(f, nullptr);
+  EXPECT_EQ(nullptr, f);
+  EXPECT_FALSE(f);
+  EXPECT_THROW(f(98), std::bad_function_call);
+
+  auto g_ = [](int x) { return x + 1; };
+  FunctionRef<int(int)> g(g_);
+  EXPECT_NE(g, nullptr);
+  EXPECT_NE(nullptr, g);
+  // Explicitly convert to bool to work around
+  // https://github.com/google/googletest/issues/429
+  EXPECT_TRUE(bool(g));
+  EXPECT_EQ(100, g(99));
+
+  FunctionRef<int(int)> h(&func_int_int_add_25);
+  EXPECT_NE(h, nullptr);
+  EXPECT_NE(nullptr, h);
+  EXPECT_TRUE(bool(h));
+  EXPECT_EQ(125, h(100));
+
+  h = {};
+  EXPECT_EQ(h, nullptr);
+  EXPECT_EQ(nullptr, h);
+  EXPECT_FALSE(h);
+  EXPECT_THROW(h(101), std::bad_function_call);
+
+  auto i_ = Function<int(int)>{};
+  FunctionRef<int(int)> i{i_};
+  EXPECT_EQ(i, nullptr);
+  EXPECT_EQ(nullptr, i);
+  EXPECT_FALSE(i);
+  EXPECT_THROW(i(107), std::bad_function_call);
+
+  struct CastableToBool {
+    bool val;
+    /* implicit */ CastableToBool(bool b) : val(b) {}
+    explicit operator bool() { return val; }
+  };
+  // models std::function
+  struct NullptrTestableInSitu {
+    int res;
+    FOLLY_MAYBE_UNUSED explicit NullptrTestableInSitu(std::nullptr_t);
+    explicit NullptrTestableInSitu(int i) : res(i) {}
+    CastableToBool operator==(std::nullptr_t) const { return res % 3 != 1; }
+    int operator()(int in) const { return res * in; }
+  };
+  struct NullptrTestableOnHeap : NullptrTestableInSitu {
+    unsigned char data[1024 - sizeof(NullptrTestableInSitu)];
+    using NullptrTestableInSitu::NullptrTestableInSitu;
+  };
+  auto j_ = NullptrTestableInSitu(2);
+  FunctionRef<int(int)> j(j_);
+  EXPECT_EQ(j, nullptr);
+  EXPECT_EQ(nullptr, j);
+  EXPECT_FALSE(j);
+  EXPECT_THROW(j(107), std::bad_function_call);
+  auto k_ = NullptrTestableInSitu(4);
+  FunctionRef<int(int)> k(k_);
+  EXPECT_NE(k, nullptr);
+  EXPECT_NE(nullptr, k);
+  EXPECT_TRUE(k);
+  EXPECT_EQ(428, k(107));
+  auto l_ = NullptrTestableOnHeap(2);
+  FunctionRef<int(int)> l(l_);
+  EXPECT_EQ(l, nullptr);
+  EXPECT_EQ(nullptr, l);
+  EXPECT_FALSE(l);
+  EXPECT_THROW(l(107), std::bad_function_call);
+  auto m_ = NullptrTestableOnHeap(4);
+  FunctionRef<int(int)> m(m_);
+  EXPECT_NE(m, nullptr);
+  EXPECT_NE(nullptr, m);
+  EXPECT_TRUE(m);
+  EXPECT_EQ(428, m(107));
+
+  auto noopfun = [] {};
+  EXPECT_EQ(nullptr, FunctionRef<void()>(nullptr));
+  EXPECT_NE(nullptr, FunctionRef<void()>(noopfun));
+  EXPECT_EQ(FunctionRef<void()>(nullptr), nullptr);
+  EXPECT_NE(FunctionRef<void()>(noopfun), nullptr);
 }
 
 } // namespace folly

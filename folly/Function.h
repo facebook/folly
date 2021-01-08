@@ -984,12 +984,21 @@ class FunctionRef<ReturnType(Args...)> final {
     throw_exception<std::bad_function_call>();
   }
 
-  template <typename Fun>
+  template <
+      typename Fun,
+      std::enable_if_t<!std::is_pointer<Fun>::value, int> = 0>
   static ReturnType call(CallArg<Args>... args, void* object) {
     using Pointer = std::add_pointer_t<Fun>;
     return static_cast<ReturnType>(invoke(
         static_cast<Fun&&>(*static_cast<Pointer>(object)),
         static_cast<Args&&>(args)...));
+  }
+  template <
+      typename Fun,
+      std::enable_if_t<std::is_pointer<Fun>::value, int> = 0>
+  static ReturnType call(CallArg<Args>... args, void* object) {
+    return static_cast<ReturnType>(
+        invoke(reinterpret_cast<Fun>(object), static_cast<Args&&>(args)...));
   }
 
   void* object_{nullptr};
@@ -1011,23 +1020,44 @@ class FunctionRef<ReturnType(Args...)> final {
   constexpr explicit FunctionRef(std::nullptr_t) noexcept {}
 
   /**
-   * Construct a FunctionRef from a reference to a callable object.
+   * Construct a FunctionRef from a reference to a callable object. If the
+   * callable is considered to be an empty callable, the FunctionRef will be
+   * empty.
    */
   template <
       typename Fun,
-      typename std::enable_if<
+      std::enable_if_t<
           Conjunction<
               Negation<std::is_same<FunctionRef, std::decay_t<Fun>>>,
               is_invocable_r<ReturnType, Fun&&, Args&&...>>::value,
-          int>::type = 0>
-  constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept
-      // `Fun` may be a const type, in which case we have to do a const_cast
-      // to store the address in a `void*`. This is safe because the `void*`
-      // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
-      // is a const type) inside `FunctionRef::call`
-      : object_(
-            const_cast<void*>(static_cast<void const*>(std::addressof(fun)))),
-        call_(&FunctionRef::template call<Fun>) {}
+          int> = 0>
+  constexpr /* implicit */ FunctionRef(Fun&& fun) noexcept {
+    // `Fun` may be a const type, in which case we have to do a const_cast
+    // to store the address in a `void*`. This is safe because the `void*`
+    // will be cast back to `Fun*` (which is a const pointer whenever `Fun`
+    // is a const type) inside `FunctionRef::call`
+    auto& ref = fun; // work around forwarding lint advice
+    if (!detail::function::isEmptyFunction(ref)) {
+      auto ptr = std::addressof(ref);
+      object_ = const_cast<void*>(static_cast<void const*>(ptr));
+      call_ = &FunctionRef::template call<Fun>;
+    }
+  }
+
+  /**
+   * Constructs a FunctionRef from a pointer to a function. If the
+   * pointer is nullptr, the FunctionRef will be empty.
+   */
+  template <
+      typename Fun,
+      std::enable_if_t<std::is_function<Fun>::value, int> = 0,
+      std::enable_if_t<is_invocable_r_v<ReturnType, Fun&, Args&&...>, int> = 0>
+  constexpr /* implicit */ FunctionRef(Fun* fun) noexcept {
+    if (fun) {
+      object_ = const_cast<void*>(reinterpret_cast<void const*>(fun));
+      call_ = &FunctionRef::template call<Fun*>;
+    }
+  }
 
   ReturnType operator()(Args... args) const {
     return call_(static_cast<Args&&>(args)..., object_);
