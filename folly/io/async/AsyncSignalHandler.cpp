@@ -31,7 +31,10 @@ AsyncSignalHandler::AsyncSignalHandler(EventBase* eventBase)
 AsyncSignalHandler::~AsyncSignalHandler() {
   // Unregister any outstanding events
   for (auto& signalEvent : signalEvents_) {
-    signalEvent.second->eb_event_del();
+    // isEventRegistered() may be false if the EventBase was destroyed before us
+    if (signalEvent.second->isEventRegistered()) {
+      signalEvent.second->eb_event_del();
+    }
   }
 }
 

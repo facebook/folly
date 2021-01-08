@@ -28,5 +28,18 @@ INSTANTIATE_TYPED_TEST_CASE_P(
     AsyncSignalHandlerTest,
     AsyncSignalHandlerTest,
     DefaultBackendProvider);
+
+TEST(AsyncSignalHandler, destructionOrder) {
+  auto evb = std::make_unique<EventBase>();
+  TestSignalHandler handler(evb.get());
+  handler.registerSignalHandler(SIGHUP);
+
+  // Test a situation where the EventBase is destroyed with an
+  // AsyncSignalHandler still installed.  Destroying the AsyncSignalHandler
+  // after the EventBase should work normally and should not crash or access
+  // invalid memory.
+  evb.reset();
+}
+
 } // namespace test
 } // namespace folly
