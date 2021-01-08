@@ -478,12 +478,15 @@ FutureBase<T>::thenImplementation(
 class WaitExecutor final : public folly::Executor {
  public:
   void add(Func func) override {
-    auto wQueue = queue_.wlock();
-    if (wQueue->detached) {
-      return;
+    bool empty;
+    {
+      auto wQueue = queue_.wlock();
+      if (wQueue->detached) {
+        return;
+      }
+      empty = wQueue->funcs.empty();
+      wQueue->funcs.push_back(std::move(func));
     }
-    bool empty = wQueue->funcs.empty();
-    wQueue->funcs.push_back(std::move(func));
     if (empty) {
       baton_.post();
     }

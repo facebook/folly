@@ -306,9 +306,12 @@ class BlockingWaitExecutor final : public folly::DrivableExecutor {
   }
 
   void add(Func func) override {
-    auto wQueue = queue_.wlock();
-    bool empty = wQueue->empty();
-    wQueue->push_back(std::move(func));
+    bool empty;
+    {
+      auto wQueue = queue_.wlock();
+      empty = wQueue->empty();
+      wQueue->push_back(std::move(func));
+    }
     if (empty) {
       baton_.post();
     }
