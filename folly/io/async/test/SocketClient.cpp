@@ -14,11 +14,10 @@
  * limitations under the License.
  */
 
-#include <folly/io/async/test/BlockingSocket.h>
-
 #include <iostream>
 
 #include <folly/ExceptionWrapper.h>
+#include <folly/io/async/test/BlockingSocket.h>
 #include <folly/portability/GFlags.h>
 
 using namespace folly;

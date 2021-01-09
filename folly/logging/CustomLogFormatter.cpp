@@ -16,11 +16,12 @@
 
 #include <folly/logging/CustomLogFormatter.h>
 
+#include <algorithm>
+
 #include <folly/Format.h>
 #include <folly/logging/LogLevel.h>
 #include <folly/logging/LogMessage.h>
 #include <folly/portability/Time.h>
-#include <algorithm>
 
 namespace {
 using folly::LogLevel;

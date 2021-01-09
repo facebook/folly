@@ -15,11 +15,11 @@
  */
 
 #include <folly/io/async/SSLOptions.h>
+
 #include <folly/io/async/SSLContext.h>
+#include <folly/io/async/test/SSLUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/ssl/OpenSSLPtrTypes.h>
-
-#include <folly/io/async/test/SSLUtil.h>
 
 using namespace std;
 

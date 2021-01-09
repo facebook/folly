@@ -14,14 +14,14 @@
  * limitations under the License.
  */
 
-#include <folly/io/IOBuf.h>
+#include <numeric>
+#include <vector>
 
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
+#include <folly/io/IOBuf.h>
 #include <folly/portability/GTest.h>
-#include <numeric>
-#include <vector>
 
 using folly::ByteRange;
 using folly::format;

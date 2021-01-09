@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
+#include <thread>
+#include <vector>
+
 #include <folly/Random.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/io/async/HHWheelTimer.h>
 #include <folly/io/async/test/UndelayedDestruction.h>
 #include <folly/io/async/test/Util.h>
 #include <folly/portability/GTest.h>
-
-#include <thread>
-#include <vector>
 
 using namespace folly;
 using std::chrono::milliseconds;

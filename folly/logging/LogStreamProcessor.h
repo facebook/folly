@@ -16,6 +16,8 @@
 
 #pragma once
 
+#include <cstdlib>
+
 #include <fmt/core.h>
 #include <folly/CPortability.h>
 #include <folly/Conv.h>
@@ -26,7 +28,6 @@
 #include <folly/logging/LogMessage.h>
 #include <folly/logging/LogStream.h>
 #include <folly/logging/ObjectToString.h>
-#include <cstdlib>
 
 namespace folly {
 

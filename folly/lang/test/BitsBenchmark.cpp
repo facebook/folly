@@ -16,15 +16,15 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
+#include <folly/lang/Bits.h>
+
 #include <algorithm>
 #include <vector>
 
+#include <folly/Benchmark.h>
 #include <folly/CppAttributes.h>
 #include <folly/Random.h>
 #include <folly/lang/Assume.h>
-#include <folly/lang/Bits.h>
-
-#include <folly/Benchmark.h>
 
 BENCHMARK(nextPowTwoClz, iters) {
   for (unsigned long i = 0; i < iters; ++i) {

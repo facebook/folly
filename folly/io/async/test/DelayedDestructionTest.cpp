@@ -16,8 +16,9 @@
 
 #include <folly/io/async/DelayedDestruction.h>
 
-#include <folly/portability/GTest.h>
 #include <glog/logging.h>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

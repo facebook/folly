@@ -16,10 +16,10 @@
 
 #pragma once
 
+#include <chrono>
+
 #include <folly/io/async/TimeoutManager.h>
 #include <folly/portability/GMock.h>
-
-#include <chrono>
 
 namespace folly {
 namespace test {

@@ -16,11 +16,12 @@
 
 #include <folly/logging/AsyncLogWriter.h>
 
+#include <iostream>
+
 #include <folly/logging/LoggerDB.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
-#include <iostream>
 
 using namespace folly;
 

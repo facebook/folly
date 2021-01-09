@@ -16,13 +16,13 @@
 
 // @author Tudor Bosman (tudorb@fb.com)
 
+#include <folly/lang/Bits.h>
+
 #include <algorithm>
 #include <random>
 #include <vector>
 
 #include <folly/Random.h>
-#include <folly/lang/Bits.h>
-
 #include <folly/portability/GTest.h>
 
 namespace folly {

@@ -15,6 +15,7 @@
  */
 
 #include <folly/lang/Launder.h>
+
 #include <folly/portability/GTest.h>
 
 using namespace folly;

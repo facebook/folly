@@ -15,6 +15,9 @@
  */
 
 #include <folly/ssl/SSLSession.h>
+
+#include <memory>
+
 #include <folly/io/async/test/AsyncSSLSocketTest.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -22,8 +25,6 @@
 #include <folly/portability/OpenSSL.h>
 #include <folly/portability/Sockets.h>
 #include <folly/ssl/detail/OpenSSLSession.h>
-
-#include <memory>
 
 using folly::ssl::SSLSession;
 using folly::ssl::detail::OpenSSLSession;

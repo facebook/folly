@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/io/async/AsyncUDPSocket.h>
+
 #include <thread>
 
 #include <folly/Conv.h>
@@ -23,7 +25,6 @@
 #include <folly/io/IOBuf.h>
 #include <folly/io/async/AsyncTimeout.h>
 #include <folly/io/async/AsyncUDPServerSocket.h>
-#include <folly/io/async/AsyncUDPSocket.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>

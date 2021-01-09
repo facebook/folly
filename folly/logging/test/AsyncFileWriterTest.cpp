@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#include <folly/logging/AsyncFileWriter.h>
+
 #include <thread>
 
 #include <folly/Conv.h>
@@ -27,7 +29,6 @@
 #include <folly/futures/Promise.h>
 #include <folly/init/Init.h>
 #include <folly/lang/SafeAssert.h>
-#include <folly/logging/AsyncFileWriter.h>
 #include <folly/logging/Init.h>
 #include <folly/logging/LoggerDB.h>
 #include <folly/logging/xlog.h>

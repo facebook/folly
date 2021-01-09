@@ -15,6 +15,7 @@
  */
 
 #include <folly/io/async/EventBaseLocal.h>
+
 #include <folly/portability/GTest.h>
 
 struct Foo {

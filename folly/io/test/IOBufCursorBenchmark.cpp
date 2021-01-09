@@ -14,12 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/io/IOBuf.h>
-
 #include <folly/Benchmark.h>
 #include <folly/Format.h>
 #include <folly/Range.h>
 #include <folly/io/Cursor.h>
+#include <folly/io/IOBuf.h>
 
 DECLARE_bool(benchmark);
 

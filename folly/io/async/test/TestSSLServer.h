@@ -16,6 +16,11 @@
 
 #pragma once
 
+#include <fcntl.h>
+#include <sys/types.h>
+
+#include <list>
+
 #include <folly/SocketAddress.h>
 #include <folly/experimental/TestUtil.h>
 #include <folly/io/async/AsyncSSLSocket.h>
@@ -28,10 +33,6 @@
 #include <folly/portability/GTest.h>
 #include <folly/portability/Sockets.h>
 #include <folly/portability/Unistd.h>
-
-#include <fcntl.h>
-#include <sys/types.h>
-#include <list>
 
 namespace folly {
 

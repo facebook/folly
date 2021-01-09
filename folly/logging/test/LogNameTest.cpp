@@ -15,6 +15,7 @@
  */
 
 #include <folly/logging/LogName.h>
+
 #include <folly/portability/GTest.h>
 
 using namespace folly;

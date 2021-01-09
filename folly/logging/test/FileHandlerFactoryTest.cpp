@@ -15,7 +15,6 @@
  */
 
 #include <folly/logging/FileHandlerFactory.h>
-#include <folly/logging/StreamHandlerFactory.h>
 
 #include <folly/Exception.h>
 #include <folly/experimental/TestUtil.h>
@@ -23,6 +22,7 @@
 #include <folly/logging/GlogStyleFormatter.h>
 #include <folly/logging/ImmediateFileWriter.h>
 #include <folly/logging/StandardLogHandler.h>
+#include <folly/logging/StreamHandlerFactory.h>
 #include <folly/portability/GTest.h>
 #include <folly/test/TestUtils.h>
 

@@ -16,9 +16,10 @@
 
 #pragma once
 
+#include <memory>
+
 #include <folly/Optional.h>
 #include <folly/Range.h>
-#include <memory>
 
 namespace folly {
 

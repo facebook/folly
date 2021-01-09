@@ -23,6 +23,7 @@
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+
 #include <cerrno>
 #ifdef __linux__
 #include <sys/utsname.h>
@@ -32,14 +33,14 @@
 #include <ostream>
 #include <stdexcept>
 
+#include <glog/logging.h>
+
 #include <folly/Conv.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
 #include <folly/String.h>
 #include <folly/portability/Unistd.h>
 #include <folly/system/ThreadId.h>
-
-#include <glog/logging.h>
 
 using std::string;
 using namespace std::chrono;

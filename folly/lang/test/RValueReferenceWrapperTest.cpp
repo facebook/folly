@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/lang/RValueReferenceWrapper.h>
+
 #include <utility>
 
-#include <folly/lang/RValueReferenceWrapper.h>
 #include <folly/portability/GTest.h>
 
 TEST(RvalueReferenceWrapper, MoveAndConvert) {

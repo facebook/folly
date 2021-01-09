@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
+#include <folly/io/async/test/TimeUtil.h>
+
 #include <thread>
 
 #include <glog/logging.h>
 
-#include <folly/io/async/test/TimeUtil.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Unistd.h>
 

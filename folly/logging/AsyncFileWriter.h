@@ -16,9 +16,9 @@
 
 #pragma once
 
-#include <folly/logging/AsyncLogWriter.h>
-
 #include <vector>
+
+#include <folly/logging/AsyncLogWriter.h>
 
 namespace folly {
 /**
