@@ -20,6 +20,7 @@
  */
 
 #include <folly/Portability.h>
+#include <folly/Traits.h>
 
 namespace folly {
 
@@ -693,8 +694,7 @@ inline bool exception_wrapper::with_exception(Fn fn) const {
 
 template <class... CatchFns>
 inline void exception_wrapper::handle(CatchFns... fns) {
-  using AllStdEx =
-      exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
+  using AllStdEx = StrictConjunction<IsStdException<arg_type<CatchFns>>...>;
   if (!*this) {
     onNoExceptionError(__func__);
   }
@@ -702,8 +702,7 @@ inline void exception_wrapper::handle(CatchFns... fns) {
 }
 template <class... CatchFns>
 inline void exception_wrapper::handle(CatchFns... fns) const {
-  using AllStdEx =
-      exception_wrapper_detail::AllOf<IsStdException, arg_type<CatchFns>...>;
+  using AllStdEx = StrictConjunction<IsStdException<arg_type<CatchFns>>...>;
   if (!*this) {
     onNoExceptionError(__func__);
   }
