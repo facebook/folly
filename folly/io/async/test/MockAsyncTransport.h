@@ -25,6 +25,7 @@ namespace test {
 
 class MockAsyncTransport : public AsyncTransport {
  public:
+  MOCK_METHOD1(setEventCallback, void(EventRecvmsgCallback*));
   MOCK_METHOD1(setReadCB, void(ReadCallback*));
   MOCK_CONST_METHOD0(getReadCallback, ReadCallback*());
   MOCK_CONST_METHOD0(getReadCB, ReadCallback*());
