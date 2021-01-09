@@ -145,7 +145,9 @@ TEST(Random, sanity) {
 TEST(Random, oneIn) {
   for (auto i = 0; i < 10; ++i) {
     EXPECT_FALSE(folly::Random::oneIn(0));
+    EXPECT_FALSE(folly::Random::secureOneIn(0));
     EXPECT_TRUE(folly::Random::oneIn(1));
+    EXPECT_TRUE(folly::Random::secureOneIn(1));
   }
 
   // When using higher sampling rates, we'll just ensure that we see both

@@ -159,6 +159,9 @@ class Random {
    * Returns true 1/n of the time. If n == 0, always returns false
    */
   static bool secureOneIn(uint32_t n) {
+    if (n < 2) {
+      return n;
+    }
     SecureRNG<uint32_t> srng;
     return rand32(0, n, srng) == 0;
   }
