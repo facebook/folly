@@ -196,6 +196,26 @@ TYPED_TEST_P(ConcurrentHashMapTest, MapResizeTest) {
   foomap.reserve(0);
 }
 
+TYPED_TEST_P(ConcurrentHashMapTest, ReserveTest) {
+  CHM<uint64_t, uint64_t> foomap;
+  int64_t insert_count = 0;
+  int64_t actual_count = 0;
+
+  for (int64_t i = 0; i < 1000; i++) {
+    if (i % 100 == 0) {
+      foomap.reserve(i + 100);
+    }
+    foomap.insert(std::make_pair(i, i));
+    insert_count++;
+  }
+
+  for (auto it = foomap.begin(); it != foomap.cend(); ++it) {
+    actual_count++;
+  }
+
+  EXPECT_EQ(insert_count, actual_count);
+}
+
 // Ensure we can insert objects without copy constructors.
 TYPED_TEST_P(ConcurrentHashMapTest, MapNoCopiesTest) {
   struct Uncopyable {
@@ -944,6 +964,7 @@ REGISTER_TYPED_TEST_CASE_P(
     MoveTest,
     EmplaceTest,
     MapResizeTest,
+    ReserveTest,
     MapNoCopiesTest,
     MapMovableKeysTest,
     MapUpdateTest,
