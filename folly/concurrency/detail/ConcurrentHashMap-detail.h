@@ -279,12 +279,15 @@ class alignas(64) BucketTable {
 
   // Must hold lock.
   void rehash(size_t bucket_count, hazptr_obj_cohort<Atom>* cohort) {
+    auto oldcount = bucket_count_.load(std::memory_order_relaxed);
+    // bucket_count must be a power of 2
+    DCHECK_EQ(bucket_count & (bucket_count - 1), 0);
+    if (bucket_count <= oldcount) {
+      return; // Rehash only if expanding.
+    }
     auto buckets = buckets_.load(std::memory_order_relaxed);
     auto newbuckets = Buckets::create(bucket_count, cohort);
-
     load_factor_nodes_ = bucket_count * load_factor_;
-
-    auto oldcount = bucket_count_.load(std::memory_order_relaxed);
     for (size_t i = 0; i < oldcount; i++) {
       auto bucket = &buckets->buckets_[i]();
       auto node = bucket->load(std::memory_order_relaxed);
@@ -1773,7 +1776,9 @@ class alignas(64) ConcurrentHashMapSegment {
   }
 
   // Must hold lock.
-  void rehash(size_t bucket_count) { impl_.rehash(bucket_count, cohort_); }
+  void rehash(size_t bucket_count) {
+    impl_.rehash(folly::nextPowTwo(bucket_count), cohort_);
+  }
 
   template <typename K>
   bool find(Iterator& res, const K& k) {
