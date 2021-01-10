@@ -15,6 +15,7 @@
  */
 
 #include <folly/experimental/SingleWriterFixedHashMap.h>
+
 #include <folly/Benchmark.h>
 #include <folly/container/Array.h>
 #include <folly/portability/GFlags.h>

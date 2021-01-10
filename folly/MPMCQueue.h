@@ -639,7 +639,8 @@ template <
     template <typename T, template <typename> class Atom, bool Dynamic>
     class Derived,
     typename T,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool Dynamic>
 class MPMCQueueBase<Derived<T, Atom, Dynamic>> {
   // Note: Using CRTP static casts in several functions of this base

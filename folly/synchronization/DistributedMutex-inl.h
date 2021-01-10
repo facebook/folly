@@ -879,9 +879,9 @@ std::uint64_t publish(
   // then if we are under the maximum number of spins allowed before sleeping,
   // we publish the exact timestamp, otherwise we publish the minimum possible
   // timestamp to force the waking thread to skip us
-  auto now = ((waitMode == kCombineWaiting) && !spins)
-      ? decltype(time())::max()
-      : (spins < kMaxSpins) ? previous : decltype(time())::zero();
+  auto now = ((waitMode == kCombineWaiting) && !spins) ? decltype(time())::max()
+      : (spins < kMaxSpins)                            ? previous
+                            : decltype(time())::zero();
 
   // the wait mode information is published in the bottom 8 bits of the futex
   // word, the rest contains time information as computed above.  Overflows are
@@ -1154,7 +1154,8 @@ DistributedMutex<Atomic, TimePublishing>::try_lock() {
 }
 
 template <
-    template <typename> class Atomic,
+    template <typename>
+    class Atomic,
     bool TimePublishing,
     typename State,
     typename Request>
@@ -1213,13 +1214,14 @@ lockImplementation(
     recordTimedWaiterAndClearTimedBit(timedWaiter, previous);
     state.next_.store(previous, std::memory_order_relaxed);
     if (previous == kUnlocked) {
-      return {/* next */ nullptr,
-              /* expected */ address,
-              /* timedWaiter */ timedWaiter,
-              /* combined */ false,
-              /* waker */ 0,
-              /* waiters */ nullptr,
-              /* ready */ nextSleeper};
+      return {
+          /* next */ nullptr,
+          /* expected */ address,
+          /* timedWaiter */ timedWaiter,
+          /* combined */ false,
+          /* waker */ 0,
+          /* waiters */ nullptr,
+          /* ready */ nextSleeper};
     }
     DCHECK(previous & kLocked);
 
@@ -1269,13 +1271,14 @@ lockImplementation(
     // waiter we are responsible for is also a waiter waiting on a futex, so
     // we return that list in the list of ready threads.  We wlil be waking up
     // the ready threads on unlock no matter what
-    return {/* next */ extractPtr<Waiter<Atomic>>(next),
-            /* expected */ expected,
-            /* timedWaiter */ timedWaiter,
-            /* combined */ combineRequested && (combined || exceptionOccurred),
-            /* waker */ state.metadata_.waker_,
-            /* waiters */ extractPtr<Waiter<Atomic>>(state.metadata_.waiters_),
-            /* ready */ nextSleeper};
+    return {
+        /* next */ extractPtr<Waiter<Atomic>>(next),
+        /* expected */ expected,
+        /* timedWaiter */ timedWaiter,
+        /* combined */ combineRequested && (combined || exceptionOccurred),
+        /* waker */ state.metadata_.waker_,
+        /* waiters */ extractPtr<Waiter<Atomic>>(state.metadata_.waiters_),
+        /* ready */ nextSleeper};
   }
 }
 

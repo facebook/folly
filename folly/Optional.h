@@ -180,16 +180,16 @@ class Optional {
       construct(*newValue);
     }
   }
-  explicit operator std::optional<Value>() &&
-      noexcept(std::is_nothrow_move_constructible<Value>::value) {
+  explicit operator std::optional<Value>() && noexcept(
+      std::is_nothrow_move_constructible<Value>::value) {
     std::optional<Value> ret = storage_.hasValue
         ? std::optional<Value>(std::move(storage_.value))
         : std::nullopt;
     reset();
     return ret;
   }
-  explicit operator std::optional<Value>() &
-      noexcept(std::is_nothrow_copy_constructible<Value>::value) {
+  explicit operator std::optional<Value>() & noexcept(
+      std::is_nothrow_copy_constructible<Value>::value) {
     return storage_.hasValue ? std::optional<Value>(storage_.value)
                              : std::nullopt;
   }

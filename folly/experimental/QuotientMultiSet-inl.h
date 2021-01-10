@@ -274,9 +274,10 @@ auto QuotientMultiSet<Instructions>::findRunend(
     runendWord = block->runends;
   }
 
-  return {slotBlockIndex * kBlockSize +
-              select64<Instructions>(runendWord, occupiedRank),
-          block};
+  return {
+      slotBlockIndex * kBlockSize +
+          select64<Instructions>(runendWord, occupiedRank),
+      block};
 }
 
 template <class Instructions>

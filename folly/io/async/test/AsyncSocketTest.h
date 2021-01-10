@@ -85,8 +85,8 @@ class WriteCallback : public folly::AsyncTransport::WriteCallback,
     }
   }
 
-  folly::AsyncWriter::ReleaseIOBufCallback*
-  getReleaseIOBufCallback() noexcept override {
+  folly::AsyncWriter::ReleaseIOBufCallback* getReleaseIOBufCallback() noexcept
+      override {
     return releaseIOBufCallback;
   }
 
@@ -250,9 +250,8 @@ class TestSendMsgParamsCallback
     queriedData_ = false;
   }
 
-  int getFlagsImpl(
-      folly::WriteFlags flags,
-      int /*defaultFlags*/) noexcept override {
+  int getFlagsImpl(folly::WriteFlags flags, int /*defaultFlags*/) noexcept
+      override {
     queriedFlags_ = true;
     if (writeFlags_ == folly::WriteFlags::NONE) {
       writeFlags_ = flags;

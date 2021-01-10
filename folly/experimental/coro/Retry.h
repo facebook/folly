@@ -223,13 +223,14 @@ auto retryWithExponentialBackoff(
       static_cast<Func&&>(func),
       detail::ExponentialBackoffWithJitter<
           remove_cvref_t<URNG>,
-          remove_cvref_t<Decider>>{timeKeeper,
-                                   maxRetries,
-                                   minBackoff,
-                                   maxBackoff,
-                                   relativeJitterStdDev,
-                                   static_cast<URNG&&>(rng),
-                                   static_cast<Decider&&>(decider)});
+          remove_cvref_t<Decider>>{
+          timeKeeper,
+          maxRetries,
+          minBackoff,
+          maxBackoff,
+          relativeJitterStdDev,
+          static_cast<URNG&&>(rng),
+          static_cast<Decider&&>(decider)});
 }
 
 template <typename Func, typename URNG>

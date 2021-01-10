@@ -77,8 +77,9 @@ void AsyncServerSocket::RemoteAcceptor::stop(
   });
 }
 
-AtomicNotificationQueueTaskStatus AsyncServerSocket::RemoteAcceptor::Consumer::
-operator()(QueueMessage&& msg) noexcept {
+AtomicNotificationQueueTaskStatus
+AsyncServerSocket::RemoteAcceptor::Consumer::operator()(
+    QueueMessage&& msg) noexcept {
   if (msg.isExpired()) {
     closeNoInt(msg.fd);
     if (acceptor_.connectionEventCallback_) {

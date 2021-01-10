@@ -276,8 +276,7 @@ TEST_F(BlockingWaitTest, WaitTaskInFiberException) {
           } catch (const ExpectedException&) {
             return true;
           }
-        })
-          .getVia(&evb));
+        }).getVia(&evb));
 }
 
 TEST_F(BlockingWaitTest, WaitOnSemiFuture) {

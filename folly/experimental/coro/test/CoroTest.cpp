@@ -44,7 +44,7 @@ struct S {
 };
 
 coro::Task<S> taskS() {
-  co_return{};
+  co_return {};
 }
 
 coro::Task<int> task42() {

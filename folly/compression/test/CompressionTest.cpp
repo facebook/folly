@@ -627,8 +627,8 @@ TEST_P(StreamingUnitTest, noForwardProgress) {
       codec_->resetStream();
     }
     auto input = inBuffer->coalesce();
-    MutableByteRange output = {outBuffer->writableTail(),
-                               outBuffer->tailroom()};
+    MutableByteRange output = {
+        outBuffer->writableTail(), outBuffer->tailroom()};
     // Compress some data to avoid empty data special casing
     while (!input.empty()) {
       codec_->compressStream(input, output);

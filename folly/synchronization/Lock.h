@@ -157,8 +157,10 @@ class upgrade_lock {
 namespace detail {
 
 template <
-    template <typename> class To,
-    template <typename> class From,
+    template <typename>
+    class To,
+    template <typename>
+    class From,
     typename Mutex,
     typename Transition>
 To<Mutex> try_transition_lock_(From<Mutex>& lock, Transition transition) {
@@ -176,8 +178,10 @@ To<Mutex> try_transition_lock_(From<Mutex>& lock, Transition transition) {
 }
 
 template <
-    template <typename> class To,
-    template <typename> class From,
+    template <typename>
+    class To,
+    template <typename>
+    class From,
     typename Mutex,
     typename Transition>
 To<Mutex> transition_lock_(From<Mutex>& lock, Transition transition) {

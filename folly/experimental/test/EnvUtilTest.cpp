@@ -150,10 +150,11 @@ TEST(EnvironmentStateTest, forSubprocess) {
   std::vector<std::string> expected = {"spork=foon"};
   auto vec = env.toVector();
   EXPECT_EQ(expected, vec);
-  Subprocess subProcess{{fLS::FLAGS_env_util_subprocess_binary},
-                        {},
-                        fLS::FLAGS_env_util_subprocess_binary.c_str(),
-                        &vec};
+  Subprocess subProcess{
+      {fLS::FLAGS_env_util_subprocess_binary},
+      {},
+      fLS::FLAGS_env_util_subprocess_binary.c_str(),
+      &vec};
   EXPECT_EQ(0, subProcess.wait().exitStatus());
 }
 

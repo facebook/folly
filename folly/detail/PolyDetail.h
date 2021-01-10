@@ -310,7 +310,7 @@ using SubsumptionsOf = TypeReverseUnique<_t<SubsumptionsOf_<I>>>;
 
 struct Bottom {
   template <class T>
-  [[noreturn]] /* implicit */ operator T &&() const {
+  [[noreturn]] /* implicit */ operator T&&() const {
     std::terminate();
   }
 };

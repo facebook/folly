@@ -204,35 +204,26 @@ TEST(RetryingTest, policy_semi_future) {
 }
 
 TEST(RetryingTest, policy_basic) {
-  auto r = futures::retrying(
-               futures::retryingPolicyBasic(3),
-               [](size_t n) {
-                 return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
-                              : makeFuture(n);
-               })
-               .wait();
+  auto r =
+      futures::retrying(futures::retryingPolicyBasic(3), [](size_t n) {
+        return n < 2 ? makeFuture<size_t>(runtime_error("ha")) : makeFuture(n);
+      }).wait();
   EXPECT_EQ(2, r.value());
 }
 
 TEST(RetryingTest, policy_basic_unsafe) {
-  auto r = futures::retryingUnsafe(
-               futures::retryingPolicyBasic(3),
-               [](size_t n) {
-                 return n < 2 ? makeFuture<size_t>(runtime_error("ha"))
-                              : makeFuture(n);
-               })
-               .wait();
+  auto r =
+      futures::retryingUnsafe(futures::retryingPolicyBasic(3), [](size_t n) {
+        return n < 2 ? makeFuture<size_t>(runtime_error("ha")) : makeFuture(n);
+      }).wait();
   EXPECT_EQ(2, r.value());
 }
 
 TEST(RetryingTest, semifuture_policy_basic) {
-  auto r = futures::retrying(
-               futures::retryingPolicyBasic(3),
-               [](size_t n) {
-                 return n < 2 ? makeSemiFuture<size_t>(runtime_error("ha"))
-                              : makeSemiFuture(n);
-               })
-               .wait();
+  auto r = futures::retrying(futures::retryingPolicyBasic(3), [](size_t n) {
+             return n < 2 ? makeSemiFuture<size_t>(runtime_error("ha"))
+                          : makeSemiFuture(n);
+           }).wait();
   EXPECT_EQ(2, r.value());
 }
 

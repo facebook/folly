@@ -143,9 +143,9 @@ constexpr Char char_at_(
     const Right& right,
     std::size_t right_count,
     std::size_t i) noexcept {
-  return i < left_count
-      ? left[i]
-      : i < (left_count + right_count) ? right[i - left_count] : Char(0);
+  return i < left_count                ? left[i]
+      : i < (left_count + right_count) ? right[i - left_count]
+                                       : Char(0);
 }
 
 template <class Char, class Left, class Right>
@@ -192,9 +192,9 @@ constexpr std::size_t find_(
     std::size_t pos,
     std::size_t count) noexcept {
   return find_at_(left, right, pos, count) ? pos
-                                           : left_size <= pos + count
-          ? FixedStringBase::npos
-          : find_(left, left_size, right, pos + 1u, count);
+      : left_size <= pos + count
+      ? FixedStringBase::npos
+      : find_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
@@ -203,9 +203,8 @@ constexpr std::size_t rfind_(
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return find_at_(left, right, pos, count)
-      ? pos
-      : 0u == pos ? FixedStringBase::npos
+  return find_at_(left, right, pos, count) ? pos
+      : 0u == pos                          ? FixedStringBase::npos
                   : rfind_(left, right, pos - 1u, count);
 }
 
@@ -217,9 +216,9 @@ constexpr std::size_t find_first_of_(
     std::size_t pos,
     std::size_t count) noexcept {
   return find_one_of_at_(left[pos], right, count) ? pos
-                                                  : left_size <= pos + 1u
-          ? FixedStringBase::npos
-          : find_first_of_(left, left_size, right, pos + 1u, count);
+      : left_size <= pos + 1u
+      ? FixedStringBase::npos
+      : find_first_of_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
@@ -230,9 +229,9 @@ constexpr std::size_t find_first_not_of_(
     std::size_t pos,
     std::size_t count) noexcept {
   return !find_one_of_at_(left[pos], right, count) ? pos
-                                                   : left_size <= pos + 1u
-          ? FixedStringBase::npos
-          : find_first_not_of_(left, left_size, right, pos + 1u, count);
+      : left_size <= pos + 1u
+      ? FixedStringBase::npos
+      : find_first_not_of_(left, left_size, right, pos + 1u, count);
 }
 
 template <class Left, class Right>
@@ -241,9 +240,8 @@ constexpr std::size_t find_last_of_(
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return find_one_of_at_(left[pos], right, count)
-      ? pos
-      : 0u == pos ? FixedStringBase::npos
+  return find_one_of_at_(left[pos], right, count) ? pos
+      : 0u == pos                                 ? FixedStringBase::npos
                   : find_last_of_(left, right, pos - 1u, count);
 }
 
@@ -253,9 +251,8 @@ constexpr std::size_t find_last_not_of_(
     const Right& right,
     std::size_t pos,
     std::size_t count) noexcept {
-  return !find_one_of_at_(left[pos], right, count)
-      ? pos
-      : 0u == pos ? FixedStringBase::npos
+  return !find_one_of_at_(left[pos], right, count) ? pos
+      : 0u == pos                                  ? FixedStringBase::npos
                   : find_last_not_of_(left, right, pos - 1u, count);
 }
 
@@ -280,14 +277,15 @@ struct Helper {
       std::size_t right_pos,
       std::size_t right_count,
       std::index_sequence<Is...> is) noexcept {
-    return {left,
-            left_size,
-            left_pos,
-            left_count,
-            right,
-            right_pos,
-            right_count,
-            is};
+    return {
+        left,
+        left_size,
+        left_pos,
+        left_count,
+        right,
+        right_pos,
+        right_count,
+        is};
   }
 
   template <class Char, std::size_t N>
@@ -525,8 +523,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::index_sequence<Is...>,
       std::size_t pos = 0,
       std::size_t count = npos) noexcept
-      : data_{(Is < (size - pos) && Is < count ? that[Is + pos] : Char(0))...,
-              Char(0)},
+      : data_{(Is < (size - pos) && Is < count ? that[Is + pos] : Char(0))..., Char(0)},
         size_{folly::constexpr_min(size - pos, count)} {}
 
   template <std::size_t... Is>
@@ -544,13 +541,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       const Right& right,
       std::size_t right_size,
       std::index_sequence<Is...>) noexcept
-      : data_{detail::fixedstring::char_at_<Char>(
-                  left,
-                  left_size,
-                  right,
-                  right_size,
-                  Is)...,
-              Char(0)},
+      : data_{detail::fixedstring::char_at_<Char>(left, left_size, right, right_size, Is)..., Char(0)},
         size_{left_size + right_size} {}
 
   // Replace constructor
@@ -564,16 +555,7 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
       std::size_t right_pos,
       std::size_t right_count,
       std::index_sequence<Is...>) noexcept
-      : data_{detail::fixedstring::char_at_<Char>(
-                  left,
-                  left_size,
-                  left_pos,
-                  left_count,
-                  right,
-                  right_pos,
-                  right_count,
-                  Is)...,
-              Char(0)},
+      : data_{detail::fixedstring::char_at_<Char>(left, left_size, left_pos, left_count, right, right_pos, right_count, Is)..., Char(0)},
         size_{left_size - left_count + right_count} {}
 
  public:
@@ -671,9 +653,10 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    */
   template <std::size_t M, class = typename std::enable_if<(M - 1u <= N)>::type>
   constexpr /* implicit */ BasicFixedString(const Char (&that)[M]) noexcept
-      : BasicFixedString{detail::fixedstring::checkNullTerminated(that),
-                         M - 1u,
-                         std::make_index_sequence<M - 1u>{}} {}
+      : BasicFixedString{
+            detail::fixedstring::checkNullTerminated(that),
+            M - 1u,
+            std::make_index_sequence<M - 1u>{}} {}
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Construct from a `const Char*` and count
@@ -686,9 +669,10 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    */
   constexpr BasicFixedString(const Char* that, std::size_t count) noexcept(
       false)
-      : BasicFixedString{that,
-                         detail::fixedstring::checkOverflow(count, N),
-                         Indices{}} {}
+      : BasicFixedString{
+            that,
+            detail::fixedstring::checkOverflow(count, N),
+            Indices{}} {}
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Construct an BasicFixedString that contains `count` characters, all
@@ -700,9 +684,10 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \throw std::out_of_range when count > N
    */
   constexpr BasicFixedString(std::size_t count, Char ch) noexcept(false)
-      : BasicFixedString{detail::fixedstring::checkOverflow(count, N),
-                         ch,
-                         Indices{}} {}
+      : BasicFixedString{
+            detail::fixedstring::checkOverflow(count, N),
+            ch,
+            Indices{}} {}
 
   /** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** ** **
    * Construct an BasicFixedString from a `std::initializer_list` of
@@ -1991,8 +1976,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `find(that.data(), 0, that.size())`
    */
   template <std::size_t M>
-  constexpr std::size_t find(const BasicFixedString<Char, M>& that) const
-      noexcept {
+  constexpr std::size_t find(
+      const BasicFixedString<Char, M>& that) const noexcept {
     return find(that, 0u);
   }
 
@@ -2075,8 +2060,8 @@ class BasicFixedString : private detail::fixedstring::FixedStringBase {
    * \note Equivalent to `rfind(that.data(), size(), that.size())`
    */
   template <std::size_t M>
-  constexpr std::size_t rfind(const BasicFixedString<Char, M>& that) const
-      noexcept {
+  constexpr std::size_t rfind(
+      const BasicFixedString<Char, M>& that) const noexcept {
     return rfind(that, size_);
   }
 

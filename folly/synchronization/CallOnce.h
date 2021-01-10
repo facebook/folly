@@ -49,7 +49,8 @@ class basic_once_flag;
 //  mimic: std::call_once
 template <
     typename Mutex,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     typename F,
     typename... Args>
 FOLLY_ALWAYS_INLINE void
@@ -70,7 +71,8 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
 //  Note: This has no parallel in the std::once_flag interface.
 template <
     typename Mutex,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     typename F,
     typename... Args>
 FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
@@ -110,7 +112,8 @@ class basic_once_flag {
  private:
   template <
       typename Mutex_,
-      template <typename> class Atom_,
+      template <typename>
+      class Atom_,
       typename F,
       typename... Args>
   friend void call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...);
@@ -138,7 +141,8 @@ class basic_once_flag {
 
   template <
       typename Mutex_,
-      template <typename> class Atom_,
+      template <typename>
+      class Atom_,
       typename F,
       typename... Args>
   friend bool

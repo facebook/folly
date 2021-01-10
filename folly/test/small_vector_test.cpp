@@ -921,15 +921,15 @@ TEST(small_vector, InputIterator) {
   std::istringstream is1(values);
   std::istringstream is2(values);
 
-  std::vector<int> stdV{std::istream_iterator<int>(is1),
-                        std::istream_iterator<int>()};
+  std::vector<int> stdV{
+      std::istream_iterator<int>(is1), std::istream_iterator<int>()};
   ASSERT_EQ(stdV.size(), expected.size());
   for (size_t i = 0; i < expected.size(); i++) {
     ASSERT_EQ(stdV[i], expected[i]);
   }
 
-  small_vector<int> smallV{std::istream_iterator<int>(is2),
-                           std::istream_iterator<int>()};
+  small_vector<int> smallV{
+      std::istream_iterator<int>(is2), std::istream_iterator<int>()};
   ASSERT_EQ(smallV.size(), expected.size());
   for (size_t i = 0; i < expected.size(); i++) {
     ASSERT_EQ(smallV[i], expected[i]);

@@ -55,8 +55,8 @@ struct Validator {
    * Check whether the given value passes the schema. Returns an
    * exception_wrapper indicating success or what the failure was.
    */
-  virtual exception_wrapper try_validate(const dynamic& value) const
-      noexcept = 0;
+  virtual exception_wrapper try_validate(
+      const dynamic& value) const noexcept = 0;
 };
 
 /**

@@ -52,9 +52,10 @@ static const dynamic* getTemplate(
 static void bserEncodeInt(int64_t ival, QueueAppender& appender) {
   /* Return the smallest size int that can store the value */
   auto size =
-      ((ival == ((int8_t)ival))
-           ? 1
-           : (ival == ((int16_t)ival)) ? 2 : (ival == ((int32_t)ival)) ? 4 : 8);
+      ((ival == ((int8_t)ival))        ? 1
+           : (ival == ((int16_t)ival)) ? 2
+           : (ival == ((int32_t)ival)) ? 4
+                                       : 8);
 
   switch (size) {
     case 1:

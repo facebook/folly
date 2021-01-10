@@ -286,8 +286,9 @@ class LifoSemHead {
     } else {
       // preserve sequence bits (incremented with wraparound okay) and
       // isNodeIdx bit, replace all data bits
-      return LifoSemHead{(bits & (SeqMask | IsShutdownMask | IsNodeIdxMask)) +
-                         SeqIncr + idxNext};
+      return LifoSemHead{
+          (bits & (SeqMask | IsShutdownMask | IsNodeIdxMask)) + SeqIncr +
+          idxNext};
     }
   }
 

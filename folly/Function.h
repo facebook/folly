@@ -925,8 +925,8 @@ bool operator!=(std::nullptr_t, const Function<FunctionType>& fn) {
 template <typename ReturnType, typename... Args>
 Function<ReturnType(Args...) const> constCastFunction(
     Function<ReturnType(Args...)>&& that) noexcept {
-  return Function<ReturnType(Args...) const>{std::move(that),
-                                             detail::function::CoerceTag{}};
+  return Function<ReturnType(Args...) const>{
+      std::move(that), detail::function::CoerceTag{}};
 }
 
 template <typename ReturnType, typename... Args>

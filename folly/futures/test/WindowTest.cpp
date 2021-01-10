@@ -31,12 +31,12 @@ static eggs_t eggs("eggs");
 TEST(Window, basic) {
   // int -> Future<int>
   auto fn = [](std::vector<int> input, size_t window_size, size_t expect) {
-    auto res =
-        reduce(
-            window(input, [](int i) { return makeFuture(i); }, window_size),
-            0,
-            [](int sum, const Try<int>& b) { return sum + *b; })
-            .get();
+    auto res = reduce(
+                   window(
+                       input, [](int i) { return makeFuture(i); }, window_size),
+                   0,
+                   [](int sum, const Try<int>& b) { return sum + *b; })
+                   .get();
     EXPECT_EQ(expect, res);
   };
   {
@@ -180,7 +180,8 @@ TEST(Window, parallel) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collect(window(
+      input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -209,7 +210,8 @@ TEST(Window, parallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collect(window(
+      input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -240,8 +242,8 @@ TEST(Window, allParallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f =
-      collectAll(window(input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collectAll(window(
+      input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -341,8 +343,8 @@ TEST(WindowExecutor, parallel) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(
-      window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collect(window(
+      &executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -374,8 +376,8 @@ TEST(WindowExecutor, parallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collect(
-      window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collect(window(
+      &executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);
@@ -409,8 +411,8 @@ TEST(WindowExecutor, allParallelWithError) {
   for (size_t i = 0; i < ps.size(); i++) {
     input.emplace_back(i);
   }
-  auto f = collectAll(
-      window(&executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
+  auto f = collectAll(window(
+      &executor, input, [&](int i) { return ps[i].getFuture(); }, 3));
 
   std::vector<std::thread> ts;
   boost::barrier barrier(ps.size() + 1);

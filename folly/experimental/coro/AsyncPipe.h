@@ -97,8 +97,8 @@ class AsyncPipe {
     });
     return {
         folly::coro::co_invoke(
-            [ queue,
-              guard = std::move(guard) ]() -> folly::coro::AsyncGenerator<T&&> {
+            [queue,
+             guard = std::move(guard)]() -> folly::coro::AsyncGenerator<T&&> {
               while (true) {
                 auto val = co_await queue->dequeue();
                 if (val.hasValue() || val.hasException()) {

@@ -162,10 +162,11 @@ TEST(ThreadCachedArena, ThreadCachedArenaAllocator) {
   static const size_t requestedBlockSize = 64;
   ThreadCachedArena arena(requestedBlockSize);
 
-  Map map{0,
-          std::hash<int>(),
-          std::equal_to<int>(),
-          ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
+  Map map{
+      0,
+      std::hash<int>(),
+      std::equal_to<int>(),
+      ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
 
   for (int i = 0; i < 1000; i++) {
     map[i] = i;
@@ -202,10 +203,11 @@ BENCHMARK(bmUMArena, iters) {
   while (iters--) {
     ThreadCachedArena arena;
 
-    Map map{0,
-            std::hash<int>(),
-            std::equal_to<int>(),
-            ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
+    Map map{
+        0,
+        std::hash<int>(),
+        std::equal_to<int>(),
+        ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
 
     for (int i = 0; i < kNumValues; i++) {
       map[i] = i;
@@ -238,8 +240,9 @@ BENCHMARK(bmMArena, iters) {
   while (iters--) {
     ThreadCachedArena arena;
 
-    Map map{std::less<int>(),
-            ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
+    Map map{
+        std::less<int>(),
+        ThreadCachedArenaAllocator<std::pair<const int, int>>(arena)};
 
     for (int i = 0; i < kNumValues; i++) {
       map[i] = i;

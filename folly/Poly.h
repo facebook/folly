@@ -659,7 +659,7 @@ struct PolyRef : private PolyImpl<I> {
   /**
    * Get a pointer to the interface, with correct `const`-ness applied.
    */
-  auto operator-> () const noexcept { return &get(); }
+  auto operator->() const noexcept { return &get(); }
 };
 
 template <class I>

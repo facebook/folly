@@ -37,8 +37,9 @@ void collectAllFuture(size_t batchSize) {
 void collectAllFutureInline(size_t batchSize) {
   std::vector<folly::Future<folly::Unit>> futures;
   for (size_t i = 0; i < batchSize; ++i) {
-    futures.emplace_back(folly::via(&executor, [] { doWork(); })
-                             .via(&folly::InlineExecutor::instance()));
+    futures.emplace_back(folly::via(&executor, [] {
+                           doWork();
+                         }).via(&folly::InlineExecutor::instance()));
   }
   folly::collectAll(std::move(futures)).get();
 }

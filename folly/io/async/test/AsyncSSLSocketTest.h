@@ -69,9 +69,8 @@ class SendMsgParamsCallbackBase
     trackEor_ = track;
   }
 
-  int getFlagsImpl(
-      folly::WriteFlags flags,
-      int /*defaultFlags*/) noexcept override {
+  int getFlagsImpl(folly::WriteFlags flags, int /*defaultFlags*/) noexcept
+      override {
     return oldCallback_->getFlags(flags, false /*zeroCopyEnabled*/);
   }
 
@@ -94,9 +93,8 @@ class SendMsgFlagsCallback : public SendMsgParamsCallbackBase {
 
   void resetFlags(int flags) { flags_ = flags; }
 
-  int getFlagsImpl(
-      folly::WriteFlags flags,
-      int /*defaultFlags*/) noexcept override {
+  int getFlagsImpl(folly::WriteFlags flags, int /*defaultFlags*/) noexcept
+      override {
     if (flags_) {
       return flags_;
     } else {
@@ -169,9 +167,8 @@ class WriteCallbackBase : public AsyncTransport::WriteCallback {
     state = STATE_SUCCEEDED;
   }
 
-  void writeErr(
-      size_t nBytesWritten,
-      const AsyncSocketException& ex) noexcept override {
+  void writeErr(size_t nBytesWritten, const AsyncSocketException& ex) noexcept
+      override {
     std::cerr << "writeError: bytesWritten " << nBytesWritten << ", exception "
               << ex.what() << std::endl;
 
@@ -823,15 +820,13 @@ class BlockingWriteClient : private AsyncSSLSocket::HandshakeCB,
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     socket_->writev(this, iov_.get(), iovCount_);
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client handshake error: " << ex.what();
   }
   void writeSuccess() noexcept override { socket_->close(); }
-  void writeErr(
-      size_t bytesWritten,
-      const AsyncSocketException& ex) noexcept override {
+  void writeErr(size_t bytesWritten, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client write error after " << bytesWritten
                   << " bytes: " << ex.what();
   }
@@ -884,9 +879,8 @@ class BlockingWriteServer : private AsyncSSLSocket::HandshakeCB,
     socket_->getEventBase()->tryRunAfterDelay(
         [this] { socket_->setReadCB(this); }, 10);
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "server handshake error: " << ex.what();
   }
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
@@ -926,15 +920,13 @@ class AlpnClient : private AsyncSSLSocket::HandshakeCB,
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     socket_->getSelectedNextProtocol(&nextProto, &nextProtoLength);
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     except = ex;
   }
   void writeSuccess() noexcept override { socket_->close(); }
-  void writeErr(
-      size_t bytesWritten,
-      const AsyncSocketException& ex) noexcept override {
+  void writeErr(size_t bytesWritten, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client write error after " << bytesWritten
                   << " bytes: " << ex.what();
   }
@@ -958,9 +950,8 @@ class AlpnServer : private AsyncSSLSocket::HandshakeCB,
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     socket_->getSelectedNextProtocol(&nextProto, &nextProtoLength);
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     except = ex;
   }
   void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
@@ -989,9 +980,8 @@ class RenegotiatingServer : public AsyncSSLSocket::HandshakeCB,
     LOG(INFO) << "Renegotiating server handshake success";
     socket_->setReadCB(this);
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "Renegotiating server handshake error: " << ex.what();
   }
   void getReadBuffer(void** bufReturn, size_t* lenReturn) override {
@@ -1030,15 +1020,13 @@ class SNIClient : private AsyncSSLSocket::HandshakeCB,
   void handshakeSuc(AsyncSSLSocket*) noexcept override {
     serverNameMatch = socket_->isServerNameMatch();
   }
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client handshake error: " << ex.what();
   }
   void writeSuccess() noexcept override { socket_->close(); }
-  void writeErr(
-      size_t bytesWritten,
-      const AsyncSocketException& ex) noexcept override {
+  void writeErr(size_t bytesWritten, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client write error after " << bytesWritten
                   << " bytes: " << ex.what();
   }
@@ -1067,9 +1055,8 @@ class SNIServer : private AsyncSSLSocket::HandshakeCB,
 
  private:
   void handshakeSuc(AsyncSSLSocket* /* ssl */) noexcept override {}
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "server handshake error: " << ex.what();
   }
   void getReadBuffer(void** /* bufReturn */, size_t* lenReturn) override {
@@ -1290,9 +1277,8 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
     }
   }
 
-  void handshakeErr(
-      AsyncSSLSocket*,
-      const AsyncSocketException& ex) noexcept override {
+  void handshakeErr(AsyncSSLSocket*, const AsyncSocketException& ex) noexcept
+      override {
     LOG(INFO) << "Handshake error " << ex.what();
     handshakeError_ = true;
     if (socket_) {
@@ -1307,9 +1293,8 @@ class SSLHandshakeBase : public AsyncSSLSocket::HandshakeCB,
     }
   }
 
-  void writeErr(
-      size_t bytesWritten,
-      const AsyncSocketException& ex) noexcept override {
+  void writeErr(size_t bytesWritten, const AsyncSocketException& ex) noexcept
+      override {
     ADD_FAILURE() << "client write error after " << bytesWritten
                   << " bytes: " << ex.what();
   }

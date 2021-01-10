@@ -138,8 +138,8 @@ class ElfFile {
   folly::StringPiece getSectionBody(const ElfShdr& section) const noexcept;
 
   /** Retrieve a string from a string table section */
-  const char* getString(const ElfShdr& stringTable, size_t offset) const
-      noexcept;
+  const char* getString(const ElfShdr& stringTable, size_t offset)
+      const noexcept;
 
   /**
    * Iterate over all strings in a string table section for as long as

@@ -365,7 +365,7 @@ TEST_F(AsyncGeneratorTest, ExplicitValueType) {
                                  std::tuple<const std::string&, std::string&>,
                                  std::tuple<std::string, std::string>> {
     for (auto& [k, v] : items) {
-      co_yield{k, v};
+      co_yield {k, v};
     }
   };
 

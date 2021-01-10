@@ -434,7 +434,7 @@ class LogStreamVoidify {
    * eliminated by the compiler, leaving only the LogStreamProcessor destructor
    * invocation, which cannot be eliminated.
    */
-  void operator&(std::ostream&)noexcept {}
+  void operator&(std::ostream&) noexcept {}
 };
 
 template <>

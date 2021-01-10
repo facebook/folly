@@ -267,9 +267,10 @@ RequestContext::State::doSetContextDataHelper(
   bool found = it != cur->requestData_.end();
   if (found) {
     if (behaviour == DoSetBehaviour::SET_IF_ABSENT) {
-      return {false /* no changes made */,
-              false /* nothing unexpected */,
-              nullptr /* combined not replaced */};
+      return {
+          false /* no changes made */,
+          false /* nothing unexpected */,
+          nullptr /* combined not replaced */};
     }
     RequestData* oldData = it.value();
     // Always erase old data (and run onUnset callback, if any).
@@ -303,9 +304,10 @@ RequestContext::State::doSetContextDataHelper(
     // Now the new Combined is consistent. Safe to publish.
     setCombined(cur);
   }
-  return {true, /* changes were made */
-          unexpected,
-          replaced};
+  return {
+      true, /* changes were made */
+      unexpected,
+      replaced};
 }
 
 FOLLY_ALWAYS_INLINE
@@ -627,9 +629,10 @@ RequestContext::getRootIdsFromAllThreads() {
   std::vector<RootIdInfo> result;
   auto accessor = SingletonT::accessAllThreads();
   for (auto it = accessor.begin(); it != accessor.end(); ++it) {
-    result.push_back({it->second.load(std::memory_order_relaxed),
-                      it.getThreadId(),
-                      it.getOSThreadId()});
+    result.push_back(
+        {it->second.load(std::memory_order_relaxed),
+         it.getThreadId(),
+         it.getOSThreadId()});
   }
   return result;
 }

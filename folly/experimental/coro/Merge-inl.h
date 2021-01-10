@@ -74,8 +74,8 @@ AsyncGenerator<Reference, Value> merge(
             }
 
             // Publish the value.
-            state_->record = CallbackRecord<Reference>{callback_record_value,
-                                                       *std::move(item)};
+            state_->record = CallbackRecord<Reference>{
+                callback_record_value, *std::move(item)};
             state_->recordPublished.post();
 
             // Wait until the consumer is finished with it.

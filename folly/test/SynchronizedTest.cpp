@@ -19,6 +19,7 @@
 // Test bed for folly/Synchronized.h
 
 #include <folly/Synchronized.h>
+
 #include <folly/Function.h>
 #include <folly/Portability.h>
 #include <folly/ScopeGuard.h>
@@ -666,7 +667,8 @@ void testTryLock(Func func) {
     folly::Synchronized<int, TryLockable<kLockable>> synchronized{
         std::piecewise_construct,
         std::make_tuple(),
-        std::make_tuple(true, [&] { ++locked; }, [&] { ++unlocked; })};
+        std::make_tuple(
+            true, [&] { ++locked; }, [&] { ++unlocked; })};
 
     {
       auto lock = func(synchronized);
@@ -682,7 +684,8 @@ void testTryLock(Func func) {
     folly::Synchronized<int, TryLockable<kLockable>> synchronized{
         std::piecewise_construct,
         std::make_tuple(),
-        std::make_tuple(false, [&] { ++locked; }, [&] { ++unlocked; })};
+        std::make_tuple(
+            false, [&] { ++locked; }, [&] { ++unlocked; })};
 
     {
       auto lock = func(synchronized);

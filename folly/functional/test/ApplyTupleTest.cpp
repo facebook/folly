@@ -502,7 +502,7 @@ TEST(IsApplicableR, Basic) {
 
 TEST(IsNothrowApplicableR, Basic) {
   {
-    auto f = []() noexcept->int { return {}; };
+    auto f = []() noexcept -> int { return {}; };
     using F = decltype(f);
     EXPECT_TRUE((folly::is_nothrow_applicable_r_v<double, F, std::tuple<>>));
     EXPECT_FALSE(

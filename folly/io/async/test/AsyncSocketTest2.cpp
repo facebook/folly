@@ -173,8 +173,8 @@ TEST(AsyncSocketTest, ConnectTimeout) {
   auto host = SocketAddressTestHelper::isIPv6Enabled()
       ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6
       : SocketAddressTestHelper::isIPv4Enabled()
-          ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
-          : nullptr;
+      ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
+      : nullptr;
   SocketAddress addr(host, 65535);
   ConnCallback cb;
   socket->connect(&cb, addr, 1); // also set a ridiculously small timeout
@@ -2749,8 +2749,8 @@ TEST(AsyncSocketTest, TestTFOUnsupportedTimeout) {
   auto host = SocketAddressTestHelper::isIPv6Enabled()
       ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6
       : SocketAddressTestHelper::isIPv4Enabled()
-          ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
-          : nullptr;
+      ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
+      : nullptr;
   SocketAddress addr(host, 65535);
 
   // Connect using a AsyncSocket
@@ -2839,8 +2839,8 @@ TEST(AsyncSocketTest, TestTFOFallbackTimeout) {
   auto host = SocketAddressTestHelper::isIPv6Enabled()
       ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv6
       : SocketAddressTestHelper::isIPv4Enabled()
-          ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
-          : nullptr;
+      ? SocketAddressTestHelper::kGooglePublicDnsAAddrIPv4
+      : nullptr;
   SocketAddress addr(host, 65535);
 
   // Connect using a AsyncSocket

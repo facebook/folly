@@ -451,13 +451,13 @@ class FOLLY_NODISCARD AsyncGenerator {
 
     decltype(auto) operator*() const&& { return std::move(*this).value(); }
 
-    decltype(auto) operator-> () {
+    decltype(auto) operator->() {
       DCHECK(has_value());
       auto&& x = value_.get();
       return std::addressof(x);
     }
 
-    decltype(auto) operator-> () const {
+    decltype(auto) operator->() const {
       DCHECK(has_value());
       auto&& x = value_.get();
       return std::addressof(x);

@@ -57,10 +57,11 @@ int64_t TimeoutQueue::runInternal(int64_t now, bool onceOnly) {
       // Reinsert if repeating, do this before executing callbacks
       // so the callbacks have a chance to call erase
       if (event.repeatInterval >= 0) {
-        timeouts_.insert({event.id,
-                          now + event.repeatInterval,
-                          event.repeatInterval,
-                          event.callback});
+        timeouts_.insert(
+            {event.id,
+             now + event.repeatInterval,
+             event.repeatInterval,
+             event.callback});
       }
     }
 

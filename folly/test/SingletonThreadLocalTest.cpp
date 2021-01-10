@@ -170,8 +170,7 @@ TEST(ThreadLocal, DependencyTest) {
     data.reset(new int(0));
     SingletonInt::get();
     BarSingleton::get();
-  })
-      .join();
+  }).join();
 }
 
 TEST(SingletonThreadLocalTest, Reused) {

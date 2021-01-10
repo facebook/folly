@@ -159,7 +159,7 @@ not_null_base<PtrT>::operator const PtrT&() const& noexcept {
 }
 
 template <typename PtrT>
-    not_null_base<PtrT>::operator PtrT &&() && noexcept {
+not_null_base<PtrT>::operator PtrT&&() && noexcept {
   return std::move(*this).unwrap();
 }
 
@@ -174,9 +174,9 @@ not_null_base<PtrT>::operator U() const& noexcept(
 }
 
 template <typename PtrT>
-    template <typename U, typename>
-    not_null_base<PtrT>::operator U() &&
-    noexcept(std::is_nothrow_constructible_v<U, PtrT&&>) {
+template <typename U, typename>
+not_null_base<PtrT>::operator U() && noexcept(
+    std::is_nothrow_constructible_v<U, PtrT&&>) {
   if constexpr (detail::is_not_null_v<U>) {
     return U(std::move(*this));
   }
@@ -197,7 +197,7 @@ const PtrT& not_null_base<PtrT>::unwrap() const& noexcept {
 }
 
 template <typename PtrT>
-    PtrT&& not_null_base<PtrT>::unwrap() && noexcept {
+PtrT&& not_null_base<PtrT>::unwrap() && noexcept {
   if constexpr (folly::kIsDebug) {
     terminate_if_null(ptr_);
   }
@@ -281,8 +281,8 @@ Deleter& not_null<std::unique_ptr<T, Deleter>>::get_deleter() noexcept {
 }
 
 template <typename T, typename Deleter>
-const Deleter& not_null<std::unique_ptr<T, Deleter>>::get_deleter() const
-    noexcept {
+const Deleter& not_null<std::unique_ptr<T, Deleter>>::get_deleter()
+    const noexcept {
   return this->unwrap().get_deleter();
 }
 

@@ -64,7 +64,8 @@ void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer expected) {
 }
 
 template <
-    template <typename...> class Atom,
+    template <typename...>
+    class Atom,
     typename... Args,
     typename Clock,
     typename Duration>
@@ -76,7 +77,8 @@ std::cv_status atomic_wait_until_impl(
 }
 
 template <
-    template <typename...> class Atom,
+    template <typename...>
+    class Atom,
     typename Integer,
     typename... Args,
     typename Clock,

@@ -1614,8 +1614,10 @@ template <
         typename,
         typename,
         typename,
-        template <typename> class,
-        class> class Impl = concurrenthashmap::bucket::BucketTable>
+        template <typename>
+        class,
+        class>
+    class Impl = concurrenthashmap::bucket::BucketTable>
 class alignas(64) ConcurrentHashMapSegment {
   using ImplT = Impl<
       KeyType,

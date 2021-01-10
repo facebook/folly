@@ -191,12 +191,13 @@ void LogStreamProcessor::logNow() noexcept {
   //
   // Any other error here is unexpected and we also want to fail hard
   // in that situation too.
-  category_->admitMessage(LogMessage{category_,
-                                     level_,
-                                     filename_,
-                                     lineNumber_,
-                                     functionName_,
-                                     extractMessageString(stream_)});
+  category_->admitMessage(LogMessage{
+      category_,
+      level_,
+      filename_,
+      lineNumber_,
+      functionName_,
+      extractMessageString(stream_)});
 }
 
 std::string LogStreamProcessor::extractMessageString(

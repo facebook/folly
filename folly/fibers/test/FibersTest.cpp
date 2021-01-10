@@ -2018,7 +2018,7 @@ TEST(FiberManager, doubleBatchDispatchTest) {
 template <typename ExecutorT>
 void batchDispatchExceptionHandling(ExecutorT& executor, int i) {
   thread_local BatchDispatcher<int, int, ExecutorT> batchDispatcher(
-      executor, [](std::vector<int> &&) -> std::vector<int> {
+      executor, [](std::vector<int>&&) -> std::vector<int> {
         throw std::runtime_error("Surprise!!");
       });
 

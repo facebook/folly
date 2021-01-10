@@ -58,8 +58,8 @@ class AsyncStackTraceAwaitable {
   };
 
  public:
-  AsyncStackTraceAwaitable viaIfAsync(const folly::Executor::KeepAlive<>&) const
-      noexcept {
+  AsyncStackTraceAwaitable viaIfAsync(
+      const folly::Executor::KeepAlive<>&) const noexcept {
     return {};
   }
 

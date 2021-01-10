@@ -1602,7 +1602,8 @@ extern template class SharedMutexImpl<false>;
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool BlockImmediately,
     bool AnnotateForThreadSanitizer,
     bool TrackThreadId>
@@ -1626,7 +1627,8 @@ alignas(hardware_destructive_interference_size) typename SharedMutexImpl<
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool BlockImmediately,
     bool AnnotateForThreadSanitizer,
     bool TrackThreadId>
@@ -1641,7 +1643,8 @@ FOLLY_SHAREDMUTEX_TLS uint32_t SharedMutexImpl<
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool BlockImmediately,
     bool AnnotateForThreadSanitizer,
     bool TrackThreadId>
@@ -1656,7 +1659,8 @@ FOLLY_SHAREDMUTEX_TLS uint32_t SharedMutexImpl<
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool BlockImmediately,
     bool AnnotateForThreadSanitizer,
     bool TrackThreadId>
@@ -1689,7 +1693,8 @@ bool SharedMutexImpl<
 template <
     bool ReaderPriority,
     typename Tag_,
-    template <typename> class Atom,
+    template <typename>
+    class Atom,
     bool BlockImmediately,
     bool AnnotateForThreadSanitizer,
     bool TrackThreadId>

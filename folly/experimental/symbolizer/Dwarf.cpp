@@ -262,9 +262,10 @@ detail::Attribute readAttribute(
     case DW_FORM_string:
       return {spec, die, readNullTerminated(info)};
     case DW_FORM_strp:
-      return {spec,
-              die,
-              getStringFromStringSection(str, readOffset(info, die.is64Bit))};
+      return {
+          spec,
+          die,
+          getStringFromStringSection(str, readOffset(info, die.is64Bit))};
     case DW_FORM_indirect: // form is explicitly specified
       // Update spec with the actual FORM.
       spec.form = readULEB(info);
@@ -765,9 +766,9 @@ size_t Dwarf::forEachAttribute(
     const detail::Die& die,
     folly::FunctionRef<bool(const detail::Attribute& die)> f) const {
   auto attrs = die.abbr.attributes;
-  auto values =
-      folly::StringPiece{debugInfo_.data() + die.offset + die.attrOffset,
-                         debugInfo_.data() + cu.offset + cu.size};
+  auto values = folly::StringPiece{
+      debugInfo_.data() + die.offset + die.attrOffset,
+      debugInfo_.data() + cu.offset + cu.size};
   while (auto spec = readAttributeSpec(attrs)) {
     auto attr = readAttribute(die, spec, values, debugStr_);
     if (!f(attr)) {

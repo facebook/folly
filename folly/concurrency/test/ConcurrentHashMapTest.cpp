@@ -44,8 +44,10 @@ template <template <
     typename,
     typename,
     typename,
-    template <typename> class,
-    class> class Impl>
+    template <typename>
+    class,
+    class>
+          class Impl>
 struct MapFactory {
   template <
       typename KeyType,

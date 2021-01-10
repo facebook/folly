@@ -136,7 +136,8 @@ FOLLY_CREATE_MEMBER_INVOKER(emplace_back, emplace_back);
 // Helper class template to define a base class for Iterator (below) and save
 // typing.
 template <
-    template <class> class Class,
+    template <class>
+    class Class,
     class Iter,
     class Traits = std::iterator_traits<Iter>,
     class Ref = typename Traits::reference,

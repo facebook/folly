@@ -349,11 +349,12 @@ static void futureExecutor() {
     c++;
     EXPECT_NO_THROW(t.value());
   });
-  fe.addFuture([]() { throw std::runtime_error("oops"); })
-      .then([&](Try<Unit>&& t) {
-        c++;
-        EXPECT_THROW(t.value(), std::runtime_error);
-      });
+  fe.addFuture([]() {
+      throw std::runtime_error("oops");
+    }).then([&](Try<Unit>&& t) {
+    c++;
+    EXPECT_THROW(t.value(), std::runtime_error);
+  });
   // Test doing actual async work
   folly::Baton<> baton;
   fe.addFuture([&]() {
@@ -364,12 +365,11 @@ static void futureExecutor() {
       });
       t.detach();
       return p->getFuture();
-    })
-      .then([&](Try<int>&& t) {
-        EXPECT_EQ(42, t.value());
-        c++;
-        baton.post();
-      });
+    }).then([&](Try<int>&& t) {
+    EXPECT_EQ(42, t.value());
+    c++;
+    baton.post();
+  });
   baton.wait();
   fe.join();
   EXPECT_EQ(6, c);

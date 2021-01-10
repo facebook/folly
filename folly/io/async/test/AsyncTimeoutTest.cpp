@@ -27,7 +27,7 @@ TEST(AsyncTimeout, make) {
   EventBase manager;
 
   auto observer = AsyncTimeout::make(
-      manager, [&value, expected ]() noexcept { value = expected; });
+      manager, [&value, expected]() noexcept { value = expected; });
 
   observer->scheduleTimeout(std::chrono::milliseconds(100));
 
@@ -42,7 +42,7 @@ TEST(AsyncTimeout, schedule) {
   EventBase manager;
 
   auto observer = AsyncTimeout::schedule(
-      std::chrono::milliseconds(100), manager, [&value, expected ]() noexcept {
+      std::chrono::milliseconds(100), manager, [&value, expected]() noexcept {
         value = expected;
       });
 
@@ -57,7 +57,7 @@ TEST(AsyncTimeout, schedule_immediate) {
   EventBase manager;
 
   auto observer = AsyncTimeout::schedule(
-      std::chrono::milliseconds(0), manager, [&value, expected ]() noexcept {
+      std::chrono::milliseconds(0), manager, [&value, expected]() noexcept {
         value = expected;
       });
 
@@ -71,7 +71,7 @@ TEST(AsyncTimeout, cancel_make) {
   EventBase manager;
 
   auto observer = AsyncTimeout::make(
-      manager, [&value, expected ]() noexcept { value = expected; });
+      manager, [&value, expected]() noexcept { value = expected; });
 
   std::weak_ptr<RequestContext> rctx_weak_ptr;
 
@@ -103,9 +103,9 @@ TEST(AsyncTimeout, cancel_schedule) {
     rctx_weak_ptr = RequestContext::saveContext();
 
     observer = AsyncTimeout::schedule(
-        std::chrono::milliseconds(100),
-        manager,
-        [&value, expected ]() noexcept { value = expected; });
+        std::chrono::milliseconds(100), manager, [&value, expected]() noexcept {
+          value = expected;
+        });
 
     observer->cancelTimeout();
   }

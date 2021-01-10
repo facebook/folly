@@ -2305,8 +2305,10 @@ class Collect : public Operator<Collect<Collection>> {
  *   set<string> uniqueNames = from(names) | as<set>();
  */
 template <
-    template <class, class> class Container,
-    template <class> class Allocator>
+    template <class, class>
+    class Container,
+    template <class>
+    class Allocator>
 class CollectTemplate : public Operator<CollectTemplate<Container, Allocator>> {
  public:
   CollectTemplate() = default;

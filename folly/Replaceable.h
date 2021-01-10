@@ -632,6 +632,6 @@ class alignas(T) Replaceable
 
 #if __cpp_deduction_guides >= 201703
 template <class T>
-Replaceable(T)->Replaceable<T>;
+Replaceable(T) -> Replaceable<T>;
 #endif
 } // namespace folly

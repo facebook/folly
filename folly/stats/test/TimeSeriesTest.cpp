@@ -1256,18 +1256,19 @@ TEST(MultiLevelTimeSeries, QueryByInterval) {
       {curTime - seconds(7200), curTime - seconds(3600)},
   }};
 
-  std::array<int, 12> expectedSums = {{6000,
-                                       41400,
-                                       32400,
-                                       35400,
-                                       32130,
-                                       16200,
-                                       3000,
-                                       33600,
-                                       32310,
-                                       20000,
-                                       27900,
-                                       16200}};
+  std::array<int, 12> expectedSums = {
+      {6000,
+       41400,
+       32400,
+       35400,
+       32130,
+       16200,
+       3000,
+       33600,
+       32310,
+       20000,
+       27900,
+       16200}};
 
   std::array<int, 12> expectedCounts = {
       {60, 3600, 7200, 3540, 7140, 3600, 30, 3000, 7180, 2000, 6200, 3600}};

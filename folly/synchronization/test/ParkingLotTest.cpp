@@ -32,10 +32,12 @@ TEST(ParkingLot, multilot) {
   folly::Baton<> lb;
 
   std::thread small([&]() {
-    smalllot.park(0, false, [] { return true; }, [&]() { sb.post(); });
+    smalllot.park(
+        0, false, [] { return true; }, [&]() { sb.post(); });
   });
   std::thread large([&]() {
-    largelot.park(0, true, [] { return true; }, [&]() { lb.post(); });
+    largelot.park(
+        0, true, [] { return true; }, [&]() { lb.post(); });
   });
   sb.wait();
   lb.wait();
@@ -65,7 +67,8 @@ TEST(ParkingLot, LargeWord) {
   ParkingLot<uint64_t> lot;
   std::atomic<uint64_t> w{0};
 
-  lot.park(0, false, [&]() { return w == 1; }, []() {});
+  lot.park(
+      0, false, [&]() { return w == 1; }, []() {});
 
   // Validate should return false, will hang otherwise.
 }

@@ -1501,8 +1501,8 @@ class F14Table : public Policy {
       if (kEnableItemIteration) {
         auto srcBegin = src.begin();
         sizeAndPackedBegin_.packedBegin() =
-            ItemIter{chunks_ + (srcBegin.chunk() - src.chunks_),
-                     srcBegin.index()}
+            ItemIter{
+                chunks_ + (srcBegin.chunk() - src.chunks_), srcBegin.index()}
                 .pack();
       }
       if (kContinuousCapacity) {
@@ -1546,8 +1546,9 @@ class F14Table : public Policy {
       if (kEnableItemIteration) {
         std::size_t maxChunkIndex = src.lastOccupiedChunk() - src.chunks_;
         sizeAndPackedBegin_.packedBegin() =
-            ItemIter{chunks_ + maxChunkIndex,
-                     chunks_[maxChunkIndex].lastOccupied().index()}
+            ItemIter{
+                chunks_ + maxChunkIndex,
+                chunks_[maxChunkIndex].lastOccupied().index()}
                 .pack();
       }
     }

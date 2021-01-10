@@ -79,8 +79,9 @@ class LogCategory {
    */
   std::pair<LogLevel, bool> getLevelInfo() const {
     auto value = level_.load(std::memory_order_acquire);
-    return {static_cast<LogLevel>(value & ~FLAG_INHERIT),
-            bool(value & FLAG_INHERIT)};
+    return {
+        static_cast<LogLevel>(value & ~FLAG_INHERIT),
+        bool(value & FLAG_INHERIT)};
   }
 
   /**

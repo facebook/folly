@@ -77,12 +77,13 @@ TEST(StandardLogHandler, simple) {
   auto logCategory = db.getCategory("log_cat");
   auto handlerCategory = db.getCategory("handler_cat");
 
-  LogMessage msg{logCategory,
-                 LogLevel::DBG8,
-                 "src/test.cpp",
-                 1234,
-                 "testMethod",
-                 std::string{"hello world"}};
+  LogMessage msg{
+      logCategory,
+      LogLevel::DBG8,
+      "src/test.cpp",
+      1234,
+      "testMethod",
+      std::string{"hello world"}};
   handler.handleMessage(msg, handlerCategory);
   ASSERT_EQ(1, writer->getMessages().size());
   EXPECT_EQ(

@@ -539,11 +539,11 @@ TEST(Observer, MakeValueObserver) {
                  .addCallback([&](auto snapshot) {
                    observedValues.push_back(snapshot->value_);
                  });
-  auto ch3 = makeValueObserver(
-                 [observer = observable.getObserver()] { return **observer; })
-                 .addCallback([&](auto snapshot) {
-                   observedValues2.push_back(snapshot->value_);
-                 });
+  auto ch3 = makeValueObserver([observer = observable.getObserver()] {
+               return **observer;
+             }).addCallback([&](auto snapshot) {
+    observedValues2.push_back(snapshot->value_);
+  });
   folly::observer_detail::ObserverManager::waitForAllUpdates();
 
   observable.setValue(ValueStruct(1, 2));

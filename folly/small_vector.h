@@ -1057,7 +1057,8 @@ class small_vector : public detail::small_vector_base<
     if (newSize <= capacity()) {
       return;
     }
-    makeSizeInternal(newSize, false, [](void*) { assume_unreachable(); }, 0);
+    makeSizeInternal(
+        newSize, false, [](void*) { assume_unreachable(); }, 0);
   }
 
   template <typename EmplaceFunc>

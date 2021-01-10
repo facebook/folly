@@ -131,11 +131,10 @@ constexpr T constexpr_ceil(T t, T round) {
 
 template <typename T>
 constexpr T constexpr_pow(T base, std::size_t exp) {
-  return exp == 0
-      ? T(1)
-      : exp == 1 ? base
-                 : detail::constexpr_square_(constexpr_pow(base, exp / 2)) *
-              (exp % 2 ? base : T(1));
+  return exp == 0 ? T(1)
+      : exp == 1  ? base
+                  : detail::constexpr_square_(constexpr_pow(base, exp / 2)) *
+          (exp % 2 ? base : T(1));
 }
 
 /// constexpr_find_last_set

@@ -26,8 +26,8 @@ TEST(AsyncStack, ScopedAsyncStackRoot) {
   CHECK(folly::tryGetCurrentAsyncStackRoot() == nullptr);
 
   {
-    folly::detail::ScopedAsyncStackRoot scopedRoot{stackFramePtr,
-                                                   returnAddress};
+    folly::detail::ScopedAsyncStackRoot scopedRoot{
+        stackFramePtr, returnAddress};
     auto* root = folly::tryGetCurrentAsyncStackRoot();
     CHECK_NOTNULL(root);
 

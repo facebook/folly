@@ -706,11 +706,9 @@ inline size_t hash_combine_generic(const Hasher&) noexcept {
 }
 
 template <class Hasher, typename T, typename... Ts>
-size_t hash_combine_generic(
-    const Hasher& h,
-    const T& t,
-    const Ts&... ts) noexcept(noexcept(detail::c_array_size_t{h(t),
-                                                              h(ts)...})) {
+size_t
+hash_combine_generic(const Hasher& h, const T& t, const Ts&... ts) noexcept(
+    noexcept(detail::c_array_size_t{h(t), h(ts)...})) {
   size_t seed = h(t);
   if (sizeof...(ts) == 0) {
     return seed;

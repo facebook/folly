@@ -268,8 +268,8 @@ runContended(size_t numOps, size_t numThreads, size_t work = FLAGS_work) {
       lockstruct* mutex = &locks[t % threadgroups];
       runbarrier.wait();
       for (size_t op = 0; op < numOps; op += 1) {
-        auto val = lock_and(
-            mutex->mutex, t, [& value = mutex->value, work ]() noexcept {
+        auto val =
+            lock_and(mutex->mutex, t, [&value = mutex->value, work]() noexcept {
               burn(work);
               return write(value);
             });

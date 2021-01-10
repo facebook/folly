@@ -456,8 +456,8 @@ template <
         int> = 0>
 auto co_viaIfAsync(folly::Executor::KeepAlive<> executor, Awaitable&& awaitable)
     -> ViaIfAsyncAwaitable<Awaitable> {
-  return ViaIfAsyncAwaitable<Awaitable>{std::move(executor),
-                                        static_cast<Awaitable&&>(awaitable)};
+  return ViaIfAsyncAwaitable<Awaitable>{
+      std::move(executor), static_cast<Awaitable&&>(awaitable)};
 }
 
 struct ViaIfAsyncFunction {

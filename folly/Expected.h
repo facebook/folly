@@ -153,7 +153,7 @@ enum class StorageType { ePODStruct, ePODUnion, eUnion };
 template <class Value, class Error>
 constexpr StorageType getStorageType() {
   return StrictAllOf<is_trivially_copyable, Value, Error>::value
-      ? (sizeof(std::pair<Value, Error>) <= sizeof(void * [2]) &&
+      ? (sizeof(std::pair<Value, Error>) <= sizeof(void* [2]) &&
                  StrictAllOf<std::is_trivial, Value, Error>::value
              ? StorageType::ePODStruct
              : StorageType::ePODUnion)

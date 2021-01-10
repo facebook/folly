@@ -513,9 +513,9 @@ TEST(StringKeyed, memory_balance) {
 
   LOG(INFO) << "allocated: " << allocated << " freed: " << freed
             << " balance: " << balance
-            << (allocated < freed
-                    ? " negative (huh?)"
-                    : freed < allocated ? " positive (leak)" : "");
+            << (allocated < freed       ? " negative (huh?)"
+                    : freed < allocated ? " positive (leak)"
+                                        : "");
 
   EXPECT_EQ(allocated, freed);
 }

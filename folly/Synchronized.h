@@ -565,11 +565,12 @@ struct Synchronized : public SynchronizedBase<
       std::piecewise_construct_t,
       std::tuple<DatumArgs...> datumArgs,
       std::tuple<MutexArgs...> mutexArgs)
-      : Synchronized{std::piecewise_construct,
-                     std::move(datumArgs),
-                     std::move(mutexArgs),
-                     std::make_index_sequence<sizeof...(DatumArgs)>{},
-                     std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
+      : Synchronized{
+            std::piecewise_construct,
+            std::move(datumArgs),
+            std::move(mutexArgs),
+            std::make_index_sequence<sizeof...(DatumArgs)>{},
+            std::make_index_sequence<sizeof...(MutexArgs)>{}} {}
 
   /**
    * Copy assignment operator; deprecated
@@ -896,10 +897,11 @@ auto makeSynchronizedLocker(
       Synchronized,
       LockFuncType,
       TryLockFuncType,
-      std::decay_t<Args>...>{synchronized,
-                             std::forward<LockFunc>(lockFunc),
-                             std::forward<TryLockFunc>(tryLockFunc),
-                             std::forward<Args>(args)...};
+      std::decay_t<Args>...>{
+      synchronized,
+      std::forward<LockFunc>(lockFunc),
+      std::forward<TryLockFunc>(tryLockFunc),
+      std::forward<Args>(args)...};
 }
 
 /**
@@ -1719,8 +1721,8 @@ template <class Sync1, class Sync2>
 std::pair<detail::LockedPtrType<Sync1>, detail::LockedPtrType<Sync2>>
 acquireLockedPair(Sync1& l1, Sync2& l2) {
   auto lockedPtrs = acquireLocked(l1, l2);
-  return {std::move(std::get<0>(lockedPtrs)),
-          std::move(std::get<1>(lockedPtrs))};
+  return {
+      std::move(std::get<0>(lockedPtrs)), std::move(std::get<1>(lockedPtrs))};
 }
 
 /************************************************************************

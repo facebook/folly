@@ -24,8 +24,10 @@
 #include <folly/portability/GFlags.h>
 
 template <
-    template <typename> class MainPtr,
-    template <typename> class WeakPtr,
+    template <typename>
+    class MainPtr,
+    template <typename>
+    class WeakPtr,
     size_t threadCount>
 void benchmark(size_t n) {
   MainPtr<int> mainPtr(std::make_unique<int>(42));

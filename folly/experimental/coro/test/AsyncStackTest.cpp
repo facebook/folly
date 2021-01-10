@@ -53,8 +53,8 @@ TEST_F(AsyncStackTest, SimpleStackTrace) {
 
 TEST_F(AsyncStackTest, NestedStackTrace) {
   blockingWait([]() -> Task<void> { // Coroutine 1
-    co_await[]()->Task<void> { // Coroutine 2
-      co_await[]()->Task<void> { // Coroutine 3
+    co_await []() -> Task<void> { // Coroutine 2
+      co_await []() -> Task<void> { // Coroutine 3
         auto trace = co_await co_current_async_stack_trace;
         // [0] - Coroutine 3 IP
         // [1] - Coroutine 2 IP
@@ -69,10 +69,8 @@ TEST_F(AsyncStackTest, NestedStackTrace) {
         CHECK(trace[3] != 0);
         CHECK(trace[4] != 0);
         CHECK(trace[5] != 0);
-      }
-      ();
-    }
-    ();
+      }();
+    }();
   }());
 }
 

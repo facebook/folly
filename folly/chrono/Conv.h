@@ -252,9 +252,9 @@ Expected<std::pair<time_t, long>, ConversionCode> durationToPosixTime(
   if (duration.count() < minInput) {
     return makeUnexpected(ConversionCode::NEGATIVE_OVERFLOW);
   }
-  auto intermediate =
-      IntermediateType{static_cast<IntermediateRep>(duration.count()) *
-                       static_cast<IntermediateRep>(Period::num)};
+  auto intermediate = IntermediateType{
+      static_cast<IntermediateRep>(duration.count()) *
+      static_cast<IntermediateRep>(Period::num)};
 
   return durationToPosixTime<SubsecondRatio>(intermediate);
 }
@@ -396,8 +396,9 @@ auto posixTimeToDuration(
   }
 
   if (std::is_floating_point<typename Tgt::rep>::value) {
-    return Tgt{typename Tgt::rep(seconds) +
-               (typename Tgt::rep(subseconds) / SubsecondRatio::den)};
+    return Tgt{
+        typename Tgt::rep(seconds) +
+        (typename Tgt::rep(subseconds) / SubsecondRatio::den)};
   }
 
   // If the value is negative, we have to round up a non-zero subseconds value

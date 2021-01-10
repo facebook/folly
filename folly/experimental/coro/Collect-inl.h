@@ -246,9 +246,8 @@ auto collectAllRange(InputRange awaitables)
 
   const CancellationSource cancelSource;
   CancellationCallback cancelCallback(
-      co_await co_current_cancellation_token, [&]() noexcept {
-        cancelSource.requestCancellation();
-      });
+      co_await co_current_cancellation_token,
+      [&]() noexcept { cancelSource.requestCancellation(); });
   const CancellationToken cancelToken = cancelSource.getToken();
 
   std::vector<detail::collect_all_try_range_component_t<
@@ -345,9 +344,8 @@ auto collectAllRange(InputRange awaitables) -> folly::coro::Task<void> {
 
   CancellationSource cancelSource;
   CancellationCallback cancelCallback(
-      co_await co_current_cancellation_token, [&]() noexcept {
-        cancelSource.requestCancellation();
-      });
+      co_await co_current_cancellation_token,
+      [&]() noexcept { cancelSource.requestCancellation(); });
   const CancellationToken cancelToken = cancelSource.getToken();
 
   exception_wrapper firstException;
@@ -499,15 +497,14 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
   const folly::Executor::KeepAlive<> executor = co_await co_current_executor;
   const folly::CancellationSource cancelSource;
   folly::CancellationCallback cancelCallback(
-      co_await folly::coro::co_current_cancellation_token, [&]() noexcept {
-        cancelSource.requestCancellation();
-      });
+      co_await folly::coro::co_current_cancellation_token,
+      [&]() noexcept { cancelSource.requestCancellation(); });
   const folly::CancellationToken cancelToken = cancelSource.getToken();
 
   exception_wrapper firstException;
   std::atomic<bool> anyFailures = false;
 
-  const auto trySetFirstException = [&](exception_wrapper && e) noexcept {
+  const auto trySetFirstException = [&](exception_wrapper&& e) noexcept {
     anyFailures.store(true, std::memory_order_relaxed);
     if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.
@@ -636,15 +633,14 @@ auto collectAllWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
   const folly::CancellationSource cancelSource;
   folly::CancellationCallback cancelCallback(
-      co_await folly::coro::co_current_cancellation_token, [&]() noexcept {
-        cancelSource.requestCancellation();
-      });
+      co_await folly::coro::co_current_cancellation_token,
+      [&]() noexcept { cancelSource.requestCancellation(); });
   const folly::CancellationToken cancelToken = cancelSource.getToken();
 
   exception_wrapper firstException;
   std::atomic<bool> anyFailures = false;
 
-  auto trySetFirstException = [&](exception_wrapper && e) noexcept {
+  auto trySetFirstException = [&](exception_wrapper&& e) noexcept {
     anyFailures.store(true, std::memory_order_relaxed);
     if (!cancelSource.requestCancellation()) {
       // This is first entity to request cancellation.

@@ -243,9 +243,10 @@ class exception_wrapper final {
       ThrownTag,
       std::conditional_t<
           sizeof(T) <= sizeof(Buffer::Storage) &&
-              alignof(T) <= alignof(Buffer::Storage) &&
-              noexcept(T(std::declval<T&&>())) &&
-              noexcept(T(std::declval<T const&>())),
+              alignof(T) <=
+                  alignof(Buffer::Storage)&& noexcept(
+                      T(std::declval<
+                          T&&>()))&& noexcept(T(std::declval<T const&>())),
           InSituTag,
           OnHeapTag>>;
 
@@ -289,13 +290,14 @@ class exception_wrapper final {
     static std::type_info const* type_(exception_wrapper const*);
     static std::exception const* get_exception_(exception_wrapper const* that);
     static exception_wrapper get_exception_ptr_(exception_wrapper const* that);
-    static constexpr VTable const ops_{copy_,
-                                       move_,
-                                       delete_,
-                                       throw_,
-                                       type_,
-                                       get_exception_,
-                                       get_exception_ptr_};
+    static constexpr VTable const ops_{
+        copy_,
+        move_,
+        delete_,
+        throw_,
+        type_,
+        get_exception_,
+        get_exception_ptr_};
   };
 
   struct SharedPtr {

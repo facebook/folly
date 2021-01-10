@@ -28,16 +28,16 @@ timeout(SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
   exception_wrapper timeoutResult;
   auto sleepFuture =
       folly::futures::sleep(timeoutDuration, tk).toUnsafeFuture();
-  sleepFuture.setCallback_([&](
-      Executor::KeepAlive<>&&, Try<Unit> && result) noexcept {
-    if (result.hasException()) {
-      timeoutResult = std::move(result.exception());
-    } else {
-      timeoutResult = folly::make_exception_wrapper<FutureTimeout>();
-    }
-    cancelSource.requestCancellation();
-    baton.post();
-  });
+  sleepFuture.setCallback_(
+      [&](Executor::KeepAlive<>&&, Try<Unit>&& result) noexcept {
+        if (result.hasException()) {
+          timeoutResult = std::move(result.exception());
+        } else {
+          timeoutResult = folly::make_exception_wrapper<FutureTimeout>();
+        }
+        cancelSource.requestCancellation();
+        baton.post();
+      });
 
   bool isSleepCancelled = false;
   auto tryCancelSleep = [&]() noexcept {

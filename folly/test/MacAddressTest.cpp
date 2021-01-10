@@ -15,6 +15,7 @@
  */
 
 #include <folly/MacAddress.h>
+
 #include <folly/Format.h>
 #include <folly/IPAddressV6.h>
 #include <folly/portability/GTest.h>

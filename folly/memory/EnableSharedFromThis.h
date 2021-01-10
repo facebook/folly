@@ -75,8 +75,8 @@ class enable_shared_from_this : public std::enable_shared_from_this<T> {
   }
 
   template <typename U>
-  auto weak_from_this_(std::enable_shared_from_this<U> const* base_ptr) const
-      noexcept -> decltype(base_ptr->weak_from_this()) {
+  auto weak_from_this_(std::enable_shared_from_this<U> const* base_ptr)
+      const noexcept -> decltype(base_ptr->weak_from_this()) {
     return base_ptr->weak_from_this();
   }
 

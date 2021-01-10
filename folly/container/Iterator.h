@@ -367,7 +367,8 @@ class emplace_iterator_base<Derived, EmplaceImpl, true>
  * aliases cannot be used for CRTP.
  */
 template <
-    template <typename> class EmplaceImplT,
+    template <typename>
+    class EmplaceImplT,
     typename Container,
     bool implicit_unpack>
 class emplace_iterator_impl

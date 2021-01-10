@@ -410,13 +410,12 @@ TEST_F(TaskTest, CancellationPropagation) {
 
           // The cancellation token should implicitly propagate into the
           //
-          co_await[&]()->folly::coro::Task<void> {
+          co_await [&]() -> folly::coro::Task<void> {
             auto token3 = co_await folly::coro::co_current_cancellation_token;
             CHECK(token3 == token2);
             cancelSource.requestCancellation();
             CHECK(token3.isCancellationRequested());
-          }
-          ();
+          }();
           CHECK(token2.isCancellationRequested());
         }());
   }());
@@ -496,7 +495,7 @@ TEST_F(TaskTest, YieldTry) {
     EXPECT_TRUE(retInt.hasValue());
 
     EXPECT_THROW(
-        co_await[&]()->folly::coro::Task<int> {
+        co_await [&]() -> folly::coro::Task<int> {
           co_yield folly::coro::co_result(folly::Try<int>());
         }(),
         UsingUninitializedTry);

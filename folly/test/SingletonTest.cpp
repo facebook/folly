@@ -560,8 +560,7 @@ TEST(Singleton, SingletonEagerInitSync) {
   auto sing = SingletonEagerInitSync<std::string>([&] {
                 didEagerInit = true;
                 return new std::string("foo");
-              })
-                  .shouldEagerInit();
+              }).shouldEagerInit();
   vault.registrationComplete();
   EXPECT_FALSE(didEagerInit);
   vault.doEagerInit();
@@ -580,8 +579,7 @@ TEST(Singleton, SingletonEagerInitAsync) {
   auto sing = SingletonEagerInitAsync<std::string>([&] {
                 didEagerInit = true;
                 return new std::string("foo");
-              })
-                  .shouldEagerInit();
+              }).shouldEagerInit();
   folly::EventBase eb;
   folly::Baton<> done;
   vault.registrationComplete();
@@ -644,8 +642,7 @@ TEST(Singleton, SingletonEagerInitParallel) {
   auto sing = SingletonEagerInitParallel<std::string>([&] {
                 ++initCounter;
                 return new std::string("");
-              })
-                  .shouldEagerInit();
+              }).shouldEagerInit();
 
   for (size_t i = 0; i < kIters; i++) {
     SCOPE_EXIT {

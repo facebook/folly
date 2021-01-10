@@ -53,13 +53,14 @@ std::string formatMsg(
   std::chrono::system_clock::time_point logTimePoint{
       std::chrono::duration_cast<std::chrono::system_clock::duration>(
           std::chrono::nanoseconds{timestampNS})};
-  LogMessage logMessage{category,
-                        level,
-                        logTimePoint,
-                        filename,
-                        lineNumber,
-                        functionName,
-                        msg.str()};
+  LogMessage logMessage{
+      category,
+      level,
+      logTimePoint,
+      filename,
+      lineNumber,
+      functionName,
+      msg.str()};
 
   return formatter.formatMessage(logMessage, category);
 }

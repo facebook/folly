@@ -835,8 +835,8 @@ void SchemaValidator::validate(const dynamic& value) const {
   }
 }
 
-exception_wrapper SchemaValidator::try_validate(const dynamic& value) const
-    noexcept {
+exception_wrapper SchemaValidator::try_validate(
+    const dynamic& value) const noexcept {
   try {
     ValidationContext vc;
     if (auto se = validate(vc, value)) {

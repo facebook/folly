@@ -142,7 +142,7 @@ class not_null_base : protected guaranteed_not_null_provider {
    *  - Boolean cast is always true.
    */
   operator const PtrT&() const& noexcept;
-  operator PtrT &&() && noexcept;
+  operator PtrT&&() && noexcept;
 
   template <
       typename U,
@@ -153,7 +153,7 @@ class not_null_base : protected guaranteed_not_null_provider {
       typename U,
       typename =
           std::enable_if_t<detail::is_not_null_move_castable<PtrT, U>::value>>
-      operator U() && noexcept(std::is_nothrow_constructible_v<U, PtrT&&>);
+  operator U() && noexcept(std::is_nothrow_constructible_v<U, PtrT&&>);
 
   explicit inline operator bool() const noexcept { return true; }
 

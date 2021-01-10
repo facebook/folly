@@ -361,8 +361,9 @@ TYPED_TEST_P(AsyncTest, ManyAsyncDataNotPollable) {
   {
     std::vector<test::async_base_test_lib_detail::TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({off_t(test::async_base_test_lib_detail::kODirectAlign * i),
-                   test::async_base_test_lib_detail::kODirectAlign});
+      v.push_back(
+          {off_t(test::async_base_test_lib_detail::kODirectAlign * i),
+           test::async_base_test_lib_detail::kODirectAlign});
     }
     test::async_base_test_lib_detail::testReads<TypeParam>(
         v, folly::AsyncBase::NOT_POLLABLE);
@@ -373,8 +374,9 @@ TYPED_TEST_P(AsyncTest, ManyAsyncDataPollable) {
   {
     std::vector<test::async_base_test_lib_detail::TestSpec> v;
     for (int i = 0; i < 1000; i++) {
-      v.push_back({off_t(test::async_base_test_lib_detail::kODirectAlign * i),
-                   test::async_base_test_lib_detail::kODirectAlign});
+      v.push_back(
+          {off_t(test::async_base_test_lib_detail::kODirectAlign * i),
+           test::async_base_test_lib_detail::kODirectAlign});
     }
     test::async_base_test_lib_detail::testReads<TypeParam>(
         v, folly::AsyncBase::POLLABLE);

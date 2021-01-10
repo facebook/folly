@@ -76,7 +76,8 @@ TEST(F14Map, customSwap) {
 }
 
 template <
-    template <typename, typename, typename, typename, typename> class TMap,
+    template <typename, typename, typename, typename, typename>
+    class TMap,
     typename K,
     typename V>
 void runAllocatedMemorySizeTest() {

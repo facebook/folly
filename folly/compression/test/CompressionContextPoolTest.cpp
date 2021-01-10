@@ -153,7 +153,7 @@ TEST_F(CompressionContextPoolTest, testMultithread) {
   constexpr size_t numIters = (1 << 14) / (folly::kIsSanitizeThread ? 4 : 1);
   std::vector<std::thread> ts;
   for (size_t i = 0; i < numThreads; i++) {
-    ts.emplace_back([& pool = *pool_]() {
+    ts.emplace_back([&pool = *pool_]() {
       for (size_t n = 0; n < numIters; n++) {
         auto ref = pool.get();
         ref.get();
@@ -234,7 +234,7 @@ TEST_F(CompressionCoreLocalContextPoolTest, testMultithread) {
   constexpr size_t numIters = 1 << 14;
   std::vector<std::thread> ts;
   for (size_t i = 0; i < numThreads; i++) {
-    ts.emplace_back([& pool = *pool_]() {
+    ts.emplace_back([&pool = *pool_]() {
       for (size_t n = 0; n < numIters; n++) {
         auto ref = pool.get();
         CHECK(ref);

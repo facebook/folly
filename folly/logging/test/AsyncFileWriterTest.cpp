@@ -273,8 +273,7 @@ static constexpr StringPiece kMsgSuffix{
 class ReadStats {
  public:
   ReadStats()
-      : deadline_{steady_clock::now() +
-                  milliseconds{FLAGS_async_discard_timeout_msec}},
+      : deadline_{steady_clock::now() + milliseconds{FLAGS_async_discard_timeout_msec}},
         readSleepUS_{static_cast<uint64_t>(
             std::min(int64_t{0}, FLAGS_async_discard_read_sleep_usec))} {}
 
