@@ -745,7 +745,7 @@ class GenerateGitHubActionsCmd(ProjectCmdBase):
 
     def run_project_cmd(self, args, loader, manifest):
         platforms = [
-            HostType("linux", "ubuntu", "18"),
+            HostType("linux", None, None),
             HostType("darwin", None, None),
             HostType("windows", None, None),
         ]
