@@ -545,7 +545,7 @@ class F14BasicSet {
 
   // containsEqualValue returns true iff there is an element in the set
   // that compares equal to key using operator==.  It is undefined
-  // behjavior to call this function if operator== on key_type can ever
+  // behavior to call this function if operator== on key_type can ever
   // return true when the same keys passed to key_eq() would return false
   // (the opposite is allowed).  When using the default key_eq this function
   // is equivalent to contains().
