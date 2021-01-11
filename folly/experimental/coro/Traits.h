@@ -41,14 +41,11 @@ using remove_reference_wrapper_t = typename remove_reference_wrapper<T>::type;
 namespace detail {
 
 template <typename T>
-using _is_coroutine_handle =
-    folly::detail::is_instantiation_of<std::experimental::coroutine_handle, T>;
+inline constexpr bool is_coroutine_handle_v =
+    folly::detail::is_instantiation_of_v< //
+        std::experimental::coroutine_handle,
+        T>;
 
-template <typename T>
-struct _is_valid_await_suspend_return_type : folly::Disjunction<
-                                                 std::is_void<T>,
-                                                 std::is_same<bool, T>,
-                                                 _is_coroutine_handle<T>> {};
 } // namespace detail
 
 /// is_awaiter<T>::value

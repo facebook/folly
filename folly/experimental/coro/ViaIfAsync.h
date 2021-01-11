@@ -229,8 +229,7 @@ class StackAwareViaIfAsyncAwaiter {
     viaCoroutine_.setContinuation(h);
     viaCoroutine_.setAsyncFrame(asyncFrame);
 
-    if constexpr (!detail::_is_coroutine_handle<
-                      await_suspend_result_t>::value) {
+    if constexpr (!detail::is_coroutine_handle_v<await_suspend_result_t>) {
       viaCoroutine_.saveContext();
     }
 
@@ -316,8 +315,7 @@ class ViaIfAsyncAwaiter {
       -> await_suspend_result_t {
     viaCoroutine_.setContinuation(continuation);
 
-    if constexpr (!detail::_is_coroutine_handle<
-                      await_suspend_result_t>::value) {
+    if constexpr (!detail::is_coroutine_handle_v<await_suspend_result_t>) {
       viaCoroutine_.saveContext();
     }
 
