@@ -963,7 +963,7 @@ TEST(SemiFuture, semiFutureWithinNoValueReferenceWhenTimeOut) {
 
   auto f = promise.getSemiFuture().within(veryShort).toUnsafeFuture().thenTry(
       [](folly::Try<std::shared_ptr<int>>&& callbackInput) {
-        EXPECT_THROW(callbackInput.throwIfFailed(), FutureTimeout);
+        EXPECT_THROW(callbackInput.throwUnlessValue(), FutureTimeout);
       });
   std::move(f).get();
 }

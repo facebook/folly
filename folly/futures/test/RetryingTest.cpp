@@ -110,7 +110,7 @@ TEST(RetryingTest, future_factory_throws) {
                     })
                     .wait()
                     .result();
-  EXPECT_THROW(result.throwIfFailed(), ThrownException);
+  EXPECT_THROW(result.throwUnlessValue(), ThrownException);
 }
 
 TEST(RetryingTest, future_factory_throws_unsafe) {
@@ -131,7 +131,7 @@ TEST(RetryingTest, future_factory_throws_unsafe) {
                     })
                     .wait()
                     .result();
-  EXPECT_THROW(result.throwIfFailed(), ThrownException);
+  EXPECT_THROW(result.throwUnlessValue(), ThrownException);
 }
 
 TEST(RetryingTest, policy_throws) {

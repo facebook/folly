@@ -1049,13 +1049,14 @@ TEST(Future, throwCaughtInImmediateThen) {
 
 TEST(Future, throwIfFailed) {
   makeFuture<Unit>(eggs).then(
-      [=](Try<Unit>&& t) { EXPECT_THROW(t.throwIfFailed(), eggs_t); });
-  makeFuture().then([=](Try<Unit>&& t) { EXPECT_NO_THROW(t.throwIfFailed()); });
+      [=](Try<Unit>&& t) { EXPECT_THROW(t.throwUnlessValue(), eggs_t); });
+  makeFuture().then(
+      [=](Try<Unit>&& t) { EXPECT_NO_THROW(t.throwUnlessValue()); });
 
   makeFuture<int>(eggs).then(
-      [=](Try<int>&& t) { EXPECT_THROW(t.throwIfFailed(), eggs_t); });
+      [=](Try<int>&& t) { EXPECT_THROW(t.throwUnlessValue(), eggs_t); });
   makeFuture<int>(42).then(
-      [=](Try<int>&& t) { EXPECT_NO_THROW(t.throwIfFailed()); });
+      [=](Try<int>&& t) { EXPECT_NO_THROW(t.throwUnlessValue()); });
 }
 
 TEST(Future, getFutureAfterSetValue) {

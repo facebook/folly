@@ -150,42 +150,44 @@ class Try {
       std::is_nothrow_constructible<exception_wrapper, Args&&...>::value);
 
   /*
-   * Get a mutable reference to the contained value. If the Try contains an
-   * exception it will be rethrown.
+   * Get a mutable reference to the contained value.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns mutable reference to the contained value
    */
   T& value() &;
   /*
-   * Get a rvalue reference to the contained value. If the Try contains an
-   * exception it will be rethrown.
+   * Get a rvalue reference to the contained value.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns rvalue reference to the contained value
    */
   T&& value() &&;
   /*
-   * Get a const reference to the contained value. If the Try contains an
-   * exception it will be rethrown.
+   * Get a const reference to the contained value.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns const reference to the contained value
    */
   const T& value() const&;
   /*
-   * Get a const rvalue reference to the contained value. If the Try contains an
-   * exception it will be rethrown.
+   * Get a const rvalue reference to the contained value.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns const rvalue reference to the contained value
    */
   const T&& value() const&&;
 
   /*
-   * If the Try contains an exception, rethrow it. Otherwise do nothing.
+   * [Re]throw if the Try contains an exception or is empty. Otherwise do
+   * nothing.
    */
-  void throwIfFailed() const;
+  void throwUnlessValue() const;
+  [[deprecated("Replaced by throwUnlessValue")]] void throwIfFailed() const;
 
   /*
-   * Const dereference operator. If the Try contains an exception it will be
-   * rethrown.
+   * Const dereference operator.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns const reference to the contained value
    */
@@ -212,8 +214,8 @@ class Try {
   const T&& operator*() const&& { return std::move(value()); }
 
   /*
-   * Const arrow operator. If the Try contains an exception it will be
-   * rethrown.
+   * Const arrow operator.
+   * [Re]throws if the Try contains an exception or is empty.
    *
    * @returns const reference to the contained value
    */
@@ -438,6 +440,7 @@ class Try<void> {
 
   // If the Try contains an exception, throws it
   inline void throwIfFailed() const;
+  inline void throwUnlessValue() const;
 
   // @returns False if the Try contains an exception, true otherwise
   bool hasValue() const { return hasValue_; }

@@ -146,30 +146,30 @@ exception_wrapper& Try<T>::emplaceException(Args&&... args) noexcept(
 
 template <class T>
 T& Try<T>::value() & {
-  throwIfFailed();
+  throwUnlessValue();
   return value_;
 }
 
 template <class T>
 T&& Try<T>::value() && {
-  throwIfFailed();
+  throwUnlessValue();
   return std::move(value_);
 }
 
 template <class T>
 const T& Try<T>::value() const& {
-  throwIfFailed();
+  throwUnlessValue();
   return value_;
 }
 
 template <class T>
 const T&& Try<T>::value() const&& {
-  throwIfFailed();
+  throwUnlessValue();
   return std::move(value_);
 }
 
 template <class T>
-void Try<T>::throwIfFailed() const {
+void Try<T>::throwUnlessValue() const {
   switch (contains_) {
     case Contains::VALUE:
       return;
@@ -179,6 +179,11 @@ void Try<T>::throwIfFailed() const {
     default:
       throw_exception<UsingUninitializedTry>();
   }
+}
+
+template <class T>
+void Try<T>::throwIfFailed() const {
+  throwUnlessValue();
 }
 
 template <class T>
@@ -223,6 +228,10 @@ void Try<void>::throwIfFailed() const {
   if (hasException()) {
     e_.throw_exception();
   }
+}
+
+void Try<void>::throwUnlessValue() const {
+  throwIfFailed();
 }
 
 template <typename F>
