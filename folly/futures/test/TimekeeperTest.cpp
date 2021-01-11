@@ -426,23 +426,39 @@ TEST(Timekeeper, semiFutureWithinChainedInterruptTest) {
 TEST(Timekeeper, executor) {
   class ExecutorTester : public DefaultKeepAliveExecutor {
    public:
-    ~ExecutorTester() override { joinKeepAlive(); }
     virtual void add(Func f) override {
       count++;
       f();
     }
+    void join() { joinKeepAlive(); }
     std::atomic<int> count{0};
   };
 
-  Promise<Unit> p;
-  ExecutorTester tester;
-  auto f = p.getFuture()
-               .via(&tester)
-               .within(milliseconds(100))
-               .thenValue([&](auto&&) {});
-  p.setValue();
-  f.wait();
-  EXPECT_EQ(2, tester.count);
+  {
+    Promise<Unit> p;
+    ExecutorTester tester;
+    auto f = p.getFuture()
+                 .via(&tester)
+                 .within(std::chrono::seconds(10))
+                 .thenValue([&](auto&&) {});
+    p.setValue();
+    std::move(f).get();
+    tester.join();
+    EXPECT_EQ(3, tester.count);
+  }
+
+  {
+    Promise<Unit> p;
+    ExecutorTester tester;
+    auto f = p.getFuture()
+                 .via(&tester)
+                 .within(std::chrono::milliseconds(10))
+                 .thenValue([&](auto&&) {});
+    EXPECT_THROW(std::move(f).get(), FutureTimeout);
+    p.setValue();
+    tester.join();
+    EXPECT_EQ(3, tester.count);
+  }
 }
 
 // TODO(5921764)
