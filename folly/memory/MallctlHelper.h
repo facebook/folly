@@ -18,27 +18,27 @@
 
 #pragma once
 
-#include <folly/Likely.h>
 #include <folly/memory/Malloc.h>
 
 #include <stdexcept>
+#include <type_traits>
 
 namespace folly {
 
 namespace detail {
 
-[[noreturn]] void handleMallctlError(const char* cmd, int err);
+[[noreturn]] void handleMallctlError(const char* fn, const char* cmd, int err);
 
 template <typename T>
 void mallctlHelper(const char* cmd, T* out, T* in) {
-  if (UNLIKELY(!usingJEMalloc())) {
-    throw std::logic_error("Calling mallctl when not using jemalloc.");
+  if (!usingJEMalloc()) {
+    throw_exception<std::logic_error>("mallctl: not using jemalloc");
   }
 
   size_t outLen = sizeof(T);
   int err = mallctl(cmd, out, out ? &outLen : nullptr, in, in ? sizeof(T) : 0);
-  if (UNLIKELY(err != 0)) {
-    handleMallctlError(cmd, err);
+  if (err != 0) {
+    handleMallctlError("mallctl", cmd, err);
   }
 }
 
@@ -63,5 +63,105 @@ inline void mallctlCall(const char* cmd) {
   // Use <unsigned> rather than <void> to avoid sizeof(void).
   mallctlRead<unsigned>(cmd, nullptr);
 }
+
+/*
+ * The following implements a caching utility for usage cases where:
+ * - the same mallctl command is called many times, and
+ * - performance is important.
+ */
+
+namespace detail {
+
+class MallctlMibCache {
+ protected:
+  explicit MallctlMibCache(const char* cmd) {
+    if (!usingJEMalloc()) {
+      throw_exception<std::logic_error>("mallctlnametomib: not using jemalloc");
+    }
+    int err = mallctlnametomib(cmd, mib, &miblen);
+    if (err != 0) {
+      handleMallctlError("mallctlnametomib", cmd, err);
+    }
+  }
+
+  template <typename ReadType, typename WriteType>
+  void mallctlbymibHelper(ReadType* out, WriteType* in) const {
+    assert((out == nullptr) == std::is_void<ReadType>::value);
+    assert((in == nullptr) == std::is_void<WriteType>::value);
+    size_t outLen = sizeofHelper<ReadType>();
+    int err = mallctlbymib(
+        mib,
+        miblen,
+        out,
+        out ? &outLen : nullptr,
+        in,
+        in ? sizeofHelper<WriteType>() : 0);
+    if (err != 0) {
+      handleMallctlError("mallctlbymib", nullptr, err);
+    }
+  }
+
+ private:
+  static constexpr size_t kMaxMibLen = 8;
+  size_t mib[kMaxMibLen];
+  size_t miblen = kMaxMibLen;
+
+  template <typename T>
+  constexpr size_t sizeofHelper() const {
+    constexpr bool v = std::is_void<T>::value;
+    using not_used = char;
+    using S = std::conditional_t<v, not_used, T>;
+    return v ? 0 : sizeof(S);
+  }
+};
+
+} // namespace detail
+
+class MallctlMibCallCache : private detail::MallctlMibCache {
+ public:
+  explicit MallctlMibCallCache(const char* cmd) : MallctlMibCache(cmd) {}
+
+  void operator()() const {
+    mallctlbymibHelper((void*)nullptr, (void*)nullptr);
+  }
+};
+
+template <typename ReadType>
+class MallctlMibReadCache : private detail::MallctlMibCache {
+ public:
+  explicit MallctlMibReadCache(const char* cmd) : MallctlMibCache(cmd) {}
+
+  ReadType operator()() const {
+    ReadType out;
+    mallctlbymibHelper(&out, (void*)nullptr);
+    return out;
+  }
+};
+
+template <typename WriteType>
+class MallctlMibWriteCache : private detail::MallctlMibCache {
+ public:
+  explicit MallctlMibWriteCache(const char* cmd) : MallctlMibCache(cmd) {}
+
+  void operator()(WriteType in) const {
+    mallctlbymibHelper((void*)nullptr, &in);
+  }
+};
+
+template <typename ReadType, typename WriteType>
+class MallctlMibReadWriteCache : private detail::MallctlMibCache {
+ public:
+  explicit MallctlMibReadWriteCache(const char* cmd) : MallctlMibCache(cmd) {}
+
+  ReadType operator()(WriteType in) const {
+    ReadType out;
+    mallctlbymibHelper(&out, &in);
+    return out;
+  }
+};
+
+template <typename ExchangeType>
+using MallctlMibExchangeCache =
+    MallctlMibReadWriteCache<ExchangeType, ExchangeType>;
 
 } // namespace folly
