@@ -15,11 +15,13 @@
  */
 
 #include <folly/Uri.h>
-#include <folly/portability/GTest.h>
+
+#include <map>
 
 #include <boost/algorithm/string.hpp>
 #include <glog/logging.h>
-#include <map>
+
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 

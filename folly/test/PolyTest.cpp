@@ -16,13 +16,13 @@
 
 #include <folly/Poly.h>
 
+#include <array>
+
 #include <folly/Conv.h>
 #include <folly/CppAttributes.h>
 #include <folly/poly/Nullable.h>
 #include <folly/poly/Regular.h>
 #include <folly/portability/GTest.h>
-
-#include <array>
 
 using namespace folly;
 using namespace folly::poly;

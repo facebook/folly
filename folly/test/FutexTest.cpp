@@ -15,7 +15,6 @@
  */
 
 #include <folly/detail/Futex.h>
-#include <folly/test/DeterministicSchedule.h>
 
 #include <chrono>
 #include <condition_variable>
@@ -28,6 +27,7 @@
 #include <folly/Chrono.h>
 #include <folly/portability/GTest.h>
 #include <folly/portability/Time.h>
+#include <folly/test/DeterministicSchedule.h>
 
 using namespace folly::detail;
 using namespace folly::test;

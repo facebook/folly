@@ -15,7 +15,6 @@
  */
 
 #include <folly/small_vector.h>
-#include <folly/sorted_vector_types.h>
 
 #include <iostream>
 #include <iterator>
@@ -31,6 +30,7 @@
 #include <folly/Conv.h>
 #include <folly/Traits.h>
 #include <folly/portability/GTest.h>
+#include <folly/sorted_vector_types.h>
 
 using folly::small_vector;
 using namespace folly::small_vector_policy;

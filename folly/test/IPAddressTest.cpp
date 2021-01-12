@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+#include <folly/IPAddress.h>
+
 #include <sys/types.h>
 
 #include <string>
 
 #include <folly/Format.h>
-#include <folly/IPAddress.h>
 #include <folly/MacAddress.h>
 #include <folly/String.h>
 #include <folly/container/BitIterator.h>

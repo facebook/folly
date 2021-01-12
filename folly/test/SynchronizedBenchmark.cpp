@@ -16,9 +16,6 @@
 
 #include <folly/Synchronized.h>
 
-#include <folly/Benchmark.h>
-#include <folly/portability/GTest.h>
-
 #include <algorithm>
 #include <condition_variable>
 #include <map>
@@ -26,6 +23,9 @@
 #include <mutex>
 #include <shared_mutex>
 #include <thread>
+
+#include <folly/Benchmark.h>
+#include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace folly::detail;

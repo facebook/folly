@@ -15,6 +15,7 @@
  */
 
 #include <folly/detail/TypeList.h>
+
 #include <folly/portability/GTest.h>
 
 using namespace folly;

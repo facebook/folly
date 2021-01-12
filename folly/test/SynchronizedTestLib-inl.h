@@ -16,11 +16,6 @@
 
 #pragma once
 
-#include <folly/Random.h>
-#include <folly/Synchronized.h>
-#include <folly/container/Foreach.h>
-#include <folly/portability/GTest.h>
-#include <glog/logging.h>
 #include <algorithm>
 #include <condition_variable>
 #include <functional>
@@ -28,6 +23,13 @@
 #include <random>
 #include <thread>
 #include <vector>
+
+#include <glog/logging.h>
+
+#include <folly/Random.h>
+#include <folly/Synchronized.h>
+#include <folly/container/Foreach.h>
+#include <folly/portability/GTest.h>
 
 namespace folly {
 namespace sync_tests {

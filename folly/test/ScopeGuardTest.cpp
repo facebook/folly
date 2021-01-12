@@ -16,12 +16,12 @@
 
 #include <folly/ScopeGuard.h>
 
-#include <glog/logging.h>
-
 #include <condition_variable>
 #include <functional>
 #include <stdexcept>
 #include <thread>
+
+#include <glog/logging.h>
 
 #include <folly/portability/GTest.h>
 

@@ -14,10 +14,11 @@
  * limitations under the License.
  */
 
+#include <folly/detail/Iterators.h>
+
 #include <map>
 
 #include <folly/container/Array.h>
-#include <folly/detail/Iterators.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly::detail;

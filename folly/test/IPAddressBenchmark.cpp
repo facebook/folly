@@ -14,12 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/Format.h>
 #include <folly/IPAddress.h>
 
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
+#include <folly/Format.h>
 
 using namespace folly;
 using std::string;

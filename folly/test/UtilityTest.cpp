@@ -14,9 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/Utility.h>
+
 #include <type_traits>
 
-#include <folly/Utility.h>
 #include <folly/portability/GTest.h>
 
 namespace {

@@ -16,8 +16,9 @@
 
 #include <folly/test/SocketAddressTestHelper.h>
 
-#include <folly/portability/Sockets.h>
 #include <glog/logging.h>
+
+#include <folly/portability/Sockets.h>
 
 namespace folly {
 

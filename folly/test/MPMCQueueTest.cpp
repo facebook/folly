@@ -16,6 +16,15 @@
 
 #include <folly/MPMCQueue.h>
 
+#include <functional>
+#include <memory>
+#include <string>
+#include <thread>
+#include <utility>
+
+#include <boost/intrusive_ptr.hpp>
+#include <boost/thread/barrier.hpp>
+
 #include <folly/Format.h>
 #include <folly/Memory.h>
 #include <folly/portability/GTest.h>
@@ -24,13 +33,6 @@
 #include <folly/portability/Unistd.h>
 #include <folly/stop_watch.h>
 #include <folly/test/DeterministicSchedule.h>
-
-#include <boost/intrusive_ptr.hpp>
-#include <boost/thread/barrier.hpp>
-#include <functional>
-#include <memory>
-#include <thread>
-#include <utility>
 
 FOLLY_ASSUME_FBVECTOR_COMPATIBLE_1(boost::intrusive_ptr)
 

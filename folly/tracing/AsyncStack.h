@@ -16,12 +16,12 @@
 
 #pragma once
 
+#include <atomic>
+#include <cassert>
+
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
-
-#include <atomic>
-#include <cassert>
 
 #if FOLLY_HAS_COROUTINES
 #include <experimental/coroutine>

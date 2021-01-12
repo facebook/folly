@@ -14,14 +14,13 @@
  * limitations under the License.
  */
 
-#include <folly/Range.h>
-
 #include <algorithm>
 #include <iostream>
 #include <random>
 #include <string>
 
 #include <folly/Benchmark.h>
+#include <folly/Range.h>
 #include <folly/container/Foreach.h>
 
 using namespace folly;

@@ -16,14 +16,14 @@
 
 #include <folly/tracing/AsyncStack.h>
 
-#include <folly/BenchmarkUtil.h>
-#include <folly/Likely.h>
-
-#include <glog/logging.h>
-
 #include <atomic>
 #include <cassert>
 #include <mutex>
+
+#include <glog/logging.h>
+
+#include <folly/BenchmarkUtil.h>
+#include <folly/Likely.h>
 
 #if defined(__linux__)
 #define FOLLY_ASYNC_STACK_ROOT_USE_PTHREAD 1

@@ -16,9 +16,8 @@
 
 #include <glog/logging.h>
 
-#include <folly/init/Init.h>
-
 #include <folly/Portability.h>
+#include <folly/init/Init.h>
 #include <folly/portability/GFlags.h>
 #include <folly/portability/GTest.h>
 

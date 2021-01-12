@@ -15,7 +15,6 @@
  */
 
 #include <folly/Math.h>
-#include <folly/functional/Invoke.h>
 
 #include <algorithm>
 #include <array>
@@ -26,6 +25,7 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/functional/Invoke.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;

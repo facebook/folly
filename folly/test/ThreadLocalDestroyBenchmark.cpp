@@ -14,11 +14,12 @@
  * limitations under the License.
  */
 
-#include <folly/Benchmark.h>
-#include <folly/ThreadLocal.h>
 #include <condition_variable>
 #include <mutex>
 #include <thread>
+
+#include <folly/Benchmark.h>
+#include <folly/ThreadLocal.h>
 
 using namespace folly;
 

@@ -14,10 +14,10 @@
  * limitations under the License.
  */
 
+#include <folly/Function.h>
+
 #include <array>
 #include <cstdarg>
-
-#include <folly/Function.h>
 
 #include <folly/Memory.h>
 #include <folly/portability/GTest.h>

@@ -14,12 +14,13 @@
  * limitations under the License.
  */
 
+#include <folly/Singleton.h>
+
 #include <thread>
 
 #include <boost/thread/barrier.hpp>
 #include <glog/logging.h>
 
-#include <folly/Singleton.h>
 #include <folly/experimental/io/FsUtil.h>
 #include <folly/io/async/EventBase.h>
 #include <folly/portability/GMock.h>

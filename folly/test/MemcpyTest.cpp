@@ -15,7 +15,6 @@
  */
 
 #include <folly/Portability.h>
-
 #include <folly/portability/GTest.h>
 
 namespace {
