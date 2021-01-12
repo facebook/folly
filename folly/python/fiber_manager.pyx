@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import asyncio
+from cython.operator cimport dereference as deref
 from libcpp.memory cimport unique_ptr
 from folly.executor cimport get_executor
 from folly.fiber_manager cimport (
@@ -35,6 +36,14 @@ cdef class FiberManager:
             unique_ptr[cLoopController](new cAsyncioLoopController(
                 get_executor())),
             opts));
+
+    def __dealloc__(FiberManager self):
+        # drive one last time
+        deref(self.cManager).loopUntilNoReady()
+        # Explicitly reset here, otherwise it is possible
+        # that self.cManager dstor runs after python finalizes
+        # Cython deletes these after __dealloc__ returns.
+        self.cManager.reset()
 
 
 cdef cFiberManager* get_fiber_manager(const cFiberManagerOptions& opts):
