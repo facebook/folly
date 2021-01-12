@@ -22,10 +22,11 @@
 #endif
 #include <fstream>
 
+#include <fmt/core.h>
+
 #include <folly/Conv.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
-#include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 
 namespace folly {
@@ -108,8 +109,8 @@ CacheLocality CacheLocality::readFromSysfsTree(
     auto cpu = cpus.size();
     std::vector<size_t> levels;
     for (size_t index = 0;; ++index) {
-      auto dir =
-          sformat("/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
+      auto dir = fmt::format(
+          "/sys/devices/system/cpu/cpu{}/cache/index{}/", cpu, index);
       auto cacheType = mapping(dir + "type");
       auto equivStr = mapping(dir + "shared_cpu_list");
       if (cacheType.empty() || equivStr.empty()) {

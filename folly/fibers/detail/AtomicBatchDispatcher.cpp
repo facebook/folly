@@ -16,7 +16,8 @@
 
 #include <folly/fibers/detail/AtomicBatchDispatcher.h>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
+#include <cassert>
 
 namespace folly {
 namespace fibers {
@@ -28,15 +29,14 @@ std::string createABDTokenNotDispatchedExMsg(
   assert(numTokensNotDispatched > 0);
   size_t numSeqNumToPrint =
       (numTokensNotDispatched > 10 ? 10 : numTokensNotDispatched);
-  std::string strInputsNotFound =
-      folly::sformat("{}", vecTokensNotDispatched[0]);
+  std::string strInputsNotFound = fmt::format("{}", vecTokensNotDispatched[0]);
   for (size_t i = 1; i < numSeqNumToPrint; ++i) {
-    strInputsNotFound += folly::sformat(", {}", vecTokensNotDispatched[i]);
+    strInputsNotFound += fmt::format(", {}", vecTokensNotDispatched[i]);
   }
   if (numSeqNumToPrint < numTokensNotDispatched) {
     strInputsNotFound += "...";
   }
-  return folly::sformat(
+  return fmt::format(
       "{} input tokens (seq nums: {}) destroyed before calling dispatch",
       numTokensNotDispatched,
       strInputsNotFound);
@@ -45,7 +45,7 @@ std::string createABDTokenNotDispatchedExMsg(
 std::string createUnexpectedNumResultsABDUsageExMsg(
     size_t numExpectedResults,
     size_t numActualResults) {
-  return folly::sformat(
+  return fmt::format(
       "Unexpected number of results ({}) returned from dispatch function, "
       "expected ({})",
       numActualResults,

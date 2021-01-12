@@ -27,12 +27,14 @@
 #include <sstream>
 #include <string>
 #include <system_error>
+#include <type_traits>
 
 #include <boost/functional/hash.hpp>
 
+#include <fmt/core.h>
+
 #include <folly/CppAttributes.h>
 #include <folly/Exception.h>
-#include <folly/Format.h>
 #include <folly/hash/Hash.h>
 #include <folly/net/NetOps.h>
 #include <folly/net/NetworkSocket.h>
@@ -101,6 +103,22 @@ struct HostAndPort {
   const char* host;
   const char* port;
   char* allocated;
+};
+
+struct GetAddrInfoError {
+#ifdef _WIN32
+  std::string error;
+  const char* str() const { return error.c_str(); }
+  explicit GetAddrInfoError(int errorCode) {
+    auto s = gai_strerror(errorCode);
+    using Char = std::remove_reference_t<decltype(*s)>;
+    error.assign(s, s + std::char_traits<Char>::length(s));
+  }
+#else
+  const char* error;
+  const char* str() const { return error; }
+  explicit GetAddrInfoError(int errorCode) : error(gai_strerror(errorCode)) {}
+#endif
 };
 
 } // namespace
@@ -617,10 +635,10 @@ SocketAddress::getAddrInfo(const char* host, const char* port, int flags) {
   struct addrinfo* results;
   int error = getaddrinfo(host, port, &hints, &results);
   if (error != 0) {
-    auto os = folly::sformat(
+    auto os = fmt::format(
         "Failed to resolve address for '{}': {} (error={})",
         host,
-        gai_strerror(error),
+        GetAddrInfoError(error).str(),
         error);
     throw std::system_error(error, std::generic_category(), os);
   }
@@ -684,8 +702,9 @@ void SocketAddress::getIpString(char* buf, size_t buflen, int flags) const {
       0,
       flags);
   if (rc != 0) {
-    auto os = sformat(
-        "getnameinfo() failed in getIpString() error = {}", gai_strerror(rc));
+    auto os = fmt::format(
+        "getnameinfo() failed in getIpString() error = {}",
+        GetAddrInfoError(rc).str());
     throw std::system_error(rc, std::generic_category(), os);
   }
 }

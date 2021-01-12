@@ -16,17 +16,18 @@
 
 #include <folly/detail/IPAddress.h>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
+#include <stdexcept>
 
 namespace folly {
 namespace detail {
 
 std::string familyNameStrDefault(sa_family_t family) {
-  return sformat("sa_family_t({})", family);
+  return fmt::format("sa_family_t({})", family);
 }
 
 [[noreturn]] void getNthMSBitImplThrow(size_t bitCount, sa_family_t family) {
-  throw std::invalid_argument(sformat(
+  throw std::invalid_argument(fmt::format(
       "Bit index must be < {} for addresses of type: {}",
       bitCount,
       familyNameStr(family)));

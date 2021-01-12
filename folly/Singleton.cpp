@@ -28,8 +28,9 @@
 #include <iostream>
 #include <string>
 
+#include <fmt/core.h>
+
 #include <folly/Demangle.h>
-#include <folly/Format.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/SingletonStackTrace.h>
 #include <folly/portability/Config.h>
@@ -158,9 +159,9 @@ void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
 }
 
 [[noreturn]] void singletonThrowNullCreator(const std::type_info& type) {
-  auto const msg = sformat(
+  auto const msg = fmt::format(
       "nullptr_t should be passed if you want {} to be default constructed",
-      demangle(type));
+      folly::StringPiece(demangle(type)));
   throw std::logic_error(msg);
 }
 

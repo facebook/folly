@@ -16,7 +16,8 @@
 
 #include <folly/MacAddress.h>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
+
 #include <folly/IPAddressV6.h>
 #include <folly/portability/GTest.h>
 
@@ -141,7 +142,7 @@ TEST(MacAddress, createMulticast) {
 }
 
 void testCmp(const char* str1, const char* str2) {
-  SCOPED_TRACE(folly::sformat("{} < {}", str1, str2));
+  SCOPED_TRACE(fmt::format("{} < {}", str1, str2));
   MacAddress m1(str1);
   MacAddress m2(str2);
 

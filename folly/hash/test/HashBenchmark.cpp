@@ -23,10 +23,10 @@
 #include <string>
 #include <vector>
 
+#include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Format.h>
 #include <folly/Preprocessor.h>
 #include <folly/portability/GFlags.h>
 
@@ -59,7 +59,7 @@ void addHashBenchmark(const std::string& name) {
 
   for (size_t i = 0; i < 16; ++i) {
     auto k = size_t(1) << i;
-    names.emplace_back(folly::sformat("{}: k=2^{}", name, i));
+    names.emplace_back(fmt::format("{}: k=2^{}", name, i));
     folly::addBenchmark(__FILE__, names.back().c_str(), [=](unsigned iters) {
       Hasher hasher;
       bmHasher(hasher, k, iters);

@@ -16,10 +16,11 @@
 
 #include <folly/IPAddress.h>
 
+#include <fmt/core.h>
 #include <glog/logging.h>
 
 #include <folly/Benchmark.h>
-#include <folly/Format.h>
+#include <folly/Conv.h>
 
 using namespace folly;
 using std::string;
@@ -50,7 +51,7 @@ BENCHMARK_DRAW_LINE();
 BENCHMARK(ipv4_to_fully_qualified_port, iters) {
   IPAddressV4 ip("255.255.255.255");
   while (iters--) {
-    string outputString = folly::sformat("{}:{}", ip.toFullyQualified(), 65535);
+    string outputString = fmt::format("{}:{}", ip.toFullyQualified(), 65535);
     folly::doNotOptimizeAway(outputString);
     folly::doNotOptimizeAway(outputString.data());
   }
@@ -97,7 +98,7 @@ BENCHMARK_DRAW_LINE();
 BENCHMARK(ipv6_to_fully_qualified_port, iters) {
   IPAddressV6 ip("F1E0:0ACE:FB94:7ADF:22E8:6DE6:9672:3725");
   while (iters--) {
-    string outputString = folly::sformat("{}:{}", ip.toFullyQualified(), 65535);
+    string outputString = fmt::format("{}:{}", ip.toFullyQualified(), 65535);
     folly::doNotOptimizeAway(outputString);
     folly::doNotOptimizeAway(outputString.data());
   }

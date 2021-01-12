@@ -21,7 +21,8 @@
 #include <string>
 #include <vector>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
+
 #include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
 
@@ -93,7 +94,7 @@ CIDRNetwork IPAddress::createNetwork(
   }
 
   if (ret.error() == CIDRNetworkError::INVALID_IP_SLASH_CIDR) {
-    throw IPAddressFormatException(sformat(
+    throw IPAddressFormatException(fmt::format(
         "Invalid ipSlashCidr specified. Expected IP/CIDR format, got '{}'",
         ipSlashCidr));
   }
@@ -106,17 +107,17 @@ CIDRNetwork IPAddress::createNetwork(
     case CIDRNetworkError::INVALID_IP:
       CHECK_GE(vec.size(), 1);
       throw IPAddressFormatException(
-          sformat("Invalid IP address {}", vec.at(0)));
+          fmt::format("Invalid IP address {}", vec.at(0)));
     case CIDRNetworkError::INVALID_CIDR:
       CHECK_GE(vec.size(), 2);
       throw IPAddressFormatException(
-          sformat("Mask value '{}' not a valid mask", vec.at(1)));
+          fmt::format("Mask value '{}' not a valid mask", vec.at(1)));
     case CIDRNetworkError::CIDR_MISMATCH: {
       auto const subnet = IPAddress::tryFromString(vec.at(0)).value();
       auto cidr = static_cast<uint8_t>(
           (defaultCidr > -1) ? defaultCidr : (subnet.isV4() ? 32 : 128));
 
-      throw IPAddressFormatException(sformat(
+      throw IPAddressFormatException(fmt::format(
           "CIDR value '{}' is > network bit count '{}'",
           vec.size() == 2 ? vec.at(1) : to<string>(cidr),
           subnet.bitCount()));
@@ -176,7 +177,7 @@ Expected<CIDRNetwork, CIDRNetworkError> IPAddress::tryCreateNetwork(
 
 // public static
 std::string IPAddress::networkToString(const CIDRNetwork& network) {
-  return sformat("{}/{}", network.first.str(), network.second);
+  return fmt::format("{}/{}", network.first.str(), network.second);
 }
 
 // public static
@@ -188,7 +189,7 @@ IPAddress IPAddress::fromBinary(ByteRange bytes) {
   } else {
     string hexval = detail::Bytes::toHex(bytes.data(), bytes.size());
     throw IPAddressFormatException(
-        sformat("Invalid address with hex value '{}'", hexval));
+        fmt::format("Invalid address with hex value '{}'", hexval));
   }
 }
 
@@ -363,7 +364,7 @@ bool IPAddress::inSubnetWithMask(const IPAddress& subnet, ByteRange mask)
 uint8_t IPAddress::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(sformat(
+    throw std::invalid_argument(fmt::format(
         "Byte index must be <= {} for addresses of type: {}",
         highestIndex,
         detail::familyNameStr(family())));
@@ -440,7 +441,7 @@ CIDRNetwork IPAddress::longestCommonPrefix(
     const CIDRNetwork& one,
     const CIDRNetwork& two) {
   if (one.first.family() != two.first.family()) {
-    throw std::invalid_argument(sformat(
+    throw std::invalid_argument(fmt::format(
         "Can't compute longest common prefix between addresses of different"
         "families. Passed: {} and {}",
         detail::familyNameStr(one.first.family()),
@@ -463,13 +464,13 @@ CIDRNetwork IPAddress::longestCommonPrefix(
 [[noreturn]] void IPAddress::asV4Throw() const {
   auto fam = detail::familyNameStr(family());
   throw InvalidAddressFamilyException(
-      sformat("Can't convert address with family {} to AF_INET address", fam));
+      fmt::format("Can't convert address with family {} to AF_INET address", fam));
 }
 
 [[noreturn]] void IPAddress::asV6Throw() const {
   auto fam = detail::familyNameStr(family());
   throw InvalidAddressFamilyException(
-      sformat("Can't convert address with family {} to AF_INET6 address", fam));
+      fmt::format("Can't convert address with family {} to AF_INET6 address", fam));
 }
 // clang-format on
 

@@ -20,10 +20,13 @@
 #include <ostream>
 #include <string>
 
-#include <folly/Format.h>
+#include <fmt/core.h>
+
 #include <folly/IPAddress.h>
 #include <folly/IPAddressV4.h>
 #include <folly/MacAddress.h>
+#include <folly/ScopeGuard.h>
+#include <folly/String.h>
 #include <folly/detail/IPAddressSource.h>
 
 #ifndef _WIN32
@@ -203,13 +206,14 @@ Expected<Unit, IPAddressFormatError> IPAddressV6::trySetFromBinary(
 IPAddressV6 IPAddressV6::fromInverseArpaName(const std::string& arpaname) {
   auto piece = StringPiece(arpaname);
   if (!piece.removeSuffix(".ip6.arpa")) {
-    throw IPAddressFormatException(sformat(
+    throw IPAddressFormatException(fmt::format(
         "Invalid input. Should end with 'ip6.arpa'. Got '{}'", arpaname));
   }
   std::vector<StringPiece> pieces;
   split(".", piece, pieces);
   if (pieces.size() != 32) {
-    throw IPAddressFormatException(sformat("Invalid input. Got '{}'", piece));
+    throw IPAddressFormatException(
+        fmt::format("Invalid input. Got '{}'", piece));
   }
   std::array<char, IPAddressV6::kToFullyQualifiedSize> ip;
   size_t pos = 0;
@@ -256,7 +260,7 @@ unpackInto(const unsigned char* src, uint16_t* dest, size_t count) {
 IPAddressV4 IPAddressV6::getIPv4For6To4() const {
   if (!is6To4()) {
     throw IPAddressV6::TypeError(
-        sformat("Invalid IP '{}': not a 6to4 address", str()));
+        fmt::format("Invalid IP '{}': not a 6to4 address", str()));
   }
   // convert 16x8 bytes into first 4x16 bytes
   uint16_t ints[4] = {0, 0, 0, 0};
@@ -308,7 +312,8 @@ IPAddressV6::Type IPAddressV6::type() const {
 
 // public
 string IPAddressV6::toJson() const {
-  return sformat("{{family:'AF_INET6', addr:'{}', hash:{}}}", str(), hash());
+  return fmt::format(
+      "{{family:'AF_INET6', addr:'{}', hash:{}}}", str(), hash());
 }
 
 // public
@@ -332,7 +337,7 @@ bool IPAddressV6::inSubnet(StringPiece cidrNetwork) const {
   auto addr = subnetInfo.first;
   if (!addr.isV6()) {
     throw IPAddressFormatException(
-        sformat("Address '{}' is not a V6 address", addr.toJson()));
+        fmt::format("Address '{}' is not a V6 address", addr.toJson()));
   }
   return inSubnetWithMask(addr.asV6(), fetchMask(subnetInfo.second));
 }
@@ -429,7 +434,7 @@ IPAddressV6 IPAddressV6::mask(size_t numBits) const {
   static const auto bits = bitCount();
   if (numBits > bits) {
     throw IPAddressFormatException(
-        sformat("numBits({}) > bitCount({})", numBits, bits));
+        fmt::format("numBits({}) > bitCount({})", numBits, bits));
   }
   ByteArray16 ba = detail::Bytes::mask(fetchMask(numBits), addr_.bytes_);
   return IPAddressV6(ba);
@@ -440,7 +445,7 @@ string IPAddressV6::str() const {
   char buffer[INET6_ADDRSTRLEN + IFNAMSIZ + 1];
 
   if (!inet_ntop(AF_INET6, toAddr().s6_addr, buffer, INET6_ADDRSTRLEN)) {
-    throw IPAddressFormatException(sformat(
+    throw IPAddressFormatException(fmt::format(
         "Invalid address with hex '{}' with error {}",
         detail::Bytes::toHex(bytes(), 16),
         errnoStr(errno)));
@@ -483,14 +488,14 @@ string IPAddressV6::toInverseArpaName() const {
     a[j + 1] = (lut[bytes()[i] >> 4]);
     j += 2;
   }
-  return sformat("{}.ip6.arpa", join(".", a));
+  return fmt::format("{}.ip6.arpa", join(".", a));
 }
 
 // public
 uint8_t IPAddressV6::getNthMSByte(size_t byteIndex) const {
   const auto highestIndex = byteCount() - 1;
   if (byteIndex > highestIndex) {
-    throw std::invalid_argument(sformat(
+    throw std::invalid_argument(fmt::format(
         "Byte index must be <= {} for addresses of type: {}",
         highestIndex,
         detail::familyNameStr(AF_INET6)));
