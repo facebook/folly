@@ -19,7 +19,7 @@
 #include <folly/Function.h>
 #include <folly/Synchronized.h>
 #include <folly/experimental/observer/Observer.h>
-#include <folly/synchronization/CallOnce.h>
+#include <folly/synchronization/DelayedInit.h>
 
 namespace folly {
 namespace observer {
@@ -51,8 +51,7 @@ class SimpleObservable {
   struct Wrapper;
   std::shared_ptr<Context> context_;
 
-  mutable folly::once_flag observerInit_;
-  mutable folly::Optional<Observer<typename observer_detail::Unwrap<T>::type>>
+  folly::DelayedInit<Observer<typename observer_detail::Unwrap<T>::type>>
       observer_;
 };
 } // namespace observer
