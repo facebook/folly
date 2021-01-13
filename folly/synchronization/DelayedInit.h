@@ -40,7 +40,7 @@ namespace folly {
  *   struct Foo {
  *     Bar& bar() {
  *       LargeState state;
- *       return bar_.fetch_or_construct(
+ *       return bar_.try_emplace_with(
  *           [this, &state] { return computeBar(state); });
  *     }
  *    private:
