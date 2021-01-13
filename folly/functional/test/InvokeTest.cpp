@@ -298,6 +298,24 @@ TEST_F(InvokeTest, static_member_invoke) {
   EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
 }
 
+TEST_F(InvokeTest, static_member_no_invoke) {
+  struct HasNoStat {};
+
+  using traits = folly::invoke_traits<stat_invoker<HasNoStat>>;
+
+  EXPECT_FALSE((traits::is_invocable_v<>));
+  EXPECT_FALSE((traits::is_invocable_v<int>));
+
+  EXPECT_FALSE((traits::is_invocable_r_v<int>));
+  EXPECT_FALSE((traits::is_invocable_r_v<int, int>));
+
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_v<int>));
+
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int>));
+  EXPECT_FALSE((traits::is_nothrow_invocable_r_v<int, int>));
+}
+
 namespace {
 
 struct TestCustomisationPointFn {

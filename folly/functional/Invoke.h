@@ -476,11 +476,11 @@ struct invoke_traits : detail::invoke_traits_base<I> {
 #define FOLLY_CREATE_STATIC_MEMBER_INVOKER(classname, membername)             \
   template <typename T>                                                       \
   struct classname {                                                          \
-    template <typename... Args>                                               \
+    template <typename... Args, typename U = T>                               \
     FOLLY_MAYBE_UNUSED FOLLY_ERASE constexpr auto operator()(Args&&... args)  \
-        const noexcept(noexcept(T::membername(static_cast<Args&&>(args)...))) \
-            -> decltype(T::membername(static_cast<Args&&>(args)...)) {        \
-      return T::membername(static_cast<Args&&>(args)...);                     \
+        const noexcept(noexcept(U::membername(static_cast<Args&&>(args)...))) \
+            -> decltype(U::membername(static_cast<Args&&>(args)...)) {        \
+      return U::membername(static_cast<Args&&>(args)...);                     \
     }                                                                         \
   }
 
