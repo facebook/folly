@@ -7,6 +7,7 @@
 from __future__ import absolute_import, division, print_function, unicode_literals
 
 import argparse
+import json
 import os
 import shutil
 import subprocess
@@ -500,6 +501,12 @@ class BuildCmd(ProjectCmdBase):
                     if dep_build:
                         sources_changed = True
 
+                extra_cmake_defines = (
+                    json.loads(args.extra_cmake_defines)
+                    if args.extra_cmake_defines
+                    else {}
+                )
+
                 if sources_changed or reconfigure or not os.path.exists(built_marker):
                     if os.path.exists(built_marker):
                         os.unlink(built_marker)
@@ -512,6 +519,7 @@ class BuildCmd(ProjectCmdBase):
                         ctx,
                         loader,
                         final_install_prefix=loader.get_project_install_prefix(m),
+                        extra_cmake_defines=extra_cmake_defines,
                     )
                     builder.build(install_dirs, reconfigure=reconfigure)
 
@@ -638,6 +646,14 @@ class BuildCmd(ProjectCmdBase):
         )
         parser.add_argument(
             "--schedule-type", help="Indicates how the build was activated"
+        )
+        parser.add_argument(
+            "--extra-cmake-defines",
+            help=(
+                "Input json map that contains extra cmake defines to be used "
+                "when compiling the current project and all its deps. "
+                'e.g: \'{"CMAKE_CXX_FLAGS": "--bla"}\''
+            ),
         )
 
 

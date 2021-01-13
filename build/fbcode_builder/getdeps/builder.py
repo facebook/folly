@@ -387,6 +387,7 @@ if __name__ == "__main__":
         inst_dir,
         defines,
         final_install_prefix=None,
+        extra_cmake_defines=None,
     ):
         super(CMakeBuilder, self).__init__(
             build_opts,
@@ -398,6 +399,8 @@ if __name__ == "__main__":
             final_install_prefix=final_install_prefix,
         )
         self.defines = defines or {}
+        if extra_cmake_defines:
+            self.defines.update(extra_cmake_defines)
 
     def _invalidate_cache(self):
         for name in [

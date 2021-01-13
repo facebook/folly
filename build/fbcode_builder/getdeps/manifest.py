@@ -420,6 +420,7 @@ class ManifestParser(object):
         ctx,
         loader,
         final_install_prefix=None,
+        extra_cmake_defines=None,
     ):
         builder = self.get("build", "builder", ctx=ctx)
         if not builder:
@@ -472,6 +473,7 @@ class ManifestParser(object):
                 inst_dir,
                 defines,
                 final_install_prefix,
+                extra_cmake_defines,
             )
 
         if builder == "python-wheel":

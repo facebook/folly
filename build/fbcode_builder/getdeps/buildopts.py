@@ -436,6 +436,10 @@ def setup_build_options(args, host_type=None):
     if not is_windows():
         scratch_dir = os.path.realpath(scratch_dir)
 
+    # Save any extra cmake defines passed by the user in an env variable, so it
+    # can be used while hashing this build.
+    os.environ["GETDEPS_CMAKE_DEFINES"] = getattr(args, "extra_cmake_defines", "") or ""
+
     host_type = _check_host_type(args, host_type)
 
     return BuildOptions(

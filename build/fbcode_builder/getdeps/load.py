@@ -275,7 +275,14 @@ class ManifestLoader(object):
         env["os"] = self.build_opts.host_type.ostype
         env["distro"] = self.build_opts.host_type.distro
         env["distro_vers"] = self.build_opts.host_type.distrovers
-        for name in ["CXXFLAGS", "CPPFLAGS", "LDFLAGS", "CXX", "CC"]:
+        for name in [
+            "CXXFLAGS",
+            "CPPFLAGS",
+            "LDFLAGS",
+            "CXX",
+            "CC",
+            "GETDEPS_CMAKE_DEFINES",
+        ]:
             env[name] = os.environ.get(name)
         for tool in ["cc", "c++", "gcc", "g++", "clang", "clang++"]:
             env["tool-%s" % tool] = path_search(os.environ, tool)
