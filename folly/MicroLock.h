@@ -19,7 +19,9 @@
 #include <cassert>
 #include <climits>
 #include <cstdint>
+#include <utility>
 
+#include <folly/Optional.h>
 #include <folly/Portability.h>
 #include <folly/detail/Futex.h>
 
@@ -47,6 +49,9 @@ namespace folly {
  * (Note that such a union is safe only because MicroLock is based on
  * a character type, and even under a strict interpretation of C++'s
  * aliasing rules, character types may alias anything.)
+ *
+ * Unused slots in the lock can be used to store user data via
+ * lockAndLoad() and unlockAndStore(), or LockGuardWithDataSlots.
  *
  * MicroLock uses a dirty trick: it actually operates on the full
  * 32-bit, four-byte-aligned bit of memory into which it is embedded.
@@ -97,16 +102,54 @@ class MicroLockCore {
   inline uint32_t baseShift(unsigned slot) const;
   inline uint32_t heldBit(unsigned slot) const;
   inline uint32_t waitBit(unsigned slot) const;
-  static void lockSlowPath(
+  static uint8_t lockSlowPath(
       uint32_t oldWord,
       detail::Futex<>* wordPtr,
       uint32_t slotHeldBit,
       unsigned maxSpins,
       unsigned maxYields);
 
+  FOLLY_ALWAYS_INLINE constexpr static uint8_t byteFromWord(uint32_t word);
+
+  template <typename Func>
+  FOLLY_DISABLE_ADDRESS_SANITIZER inline void unlockAndStoreWithModifier(
+      unsigned slot,
+      Func modifier);
+
  public:
-  FOLLY_DISABLE_ADDRESS_SANITIZER inline void unlock(unsigned slot);
+  static constexpr unsigned kBitsPerSlot = 2;
+
+  template <unsigned Slot>
+  static constexpr uint8_t slotMask() {
+    static_assert(
+        Slot < CHAR_BIT / kBitsPerSlot, "slot is out of range of uint8_t");
+    return 0b11 << (Slot * kBitsPerSlot);
+  }
+
+  /**
+   * Loads the state of this lock atomically. This is useful for introspecting
+   * any user data that may be placed in unused slots.
+   */
+  FOLLY_DISABLE_ADDRESS_SANITIZER inline uint8_t load(
+      std::memory_order order = std::memory_order_seq_cst) const {
+    return byteFromWord(word()->load(order));
+  }
+
+  inline void unlock(unsigned slot);
+  /**
+   * Unlocks the selected slot and stores the bits of the provided value in the
+   * other slots. The two bits of the selected slot will be automatically masked
+   * out from the provided value.
+   *
+   * For example, the following usage unlocks slot1 preserves the state of
+   * slot3. This indicates that slot1 and slot3 are used for locking while slot0
+   * and slot2 are used as data:
+   *
+   *    lock.unlockAndStore(1, ~MicroLock::slotMask<3>(), value);
+   */
+  inline void unlockAndStore(unsigned slot, uint8_t dataMask, uint8_t value);
   inline void unlock() { unlock(0); }
+
   // Initializes all the slots.
   inline void init() { lock_ = 0; }
 };
@@ -118,12 +161,14 @@ inline detail::Futex<>* MicroLockCore::word() const {
 }
 
 inline unsigned MicroLockCore::baseShift(unsigned slot) const {
-  assert(slot < CHAR_BIT / 2);
+  assert(slot < CHAR_BIT / kBitsPerSlot);
 
   unsigned offset_bytes = (unsigned)((uintptr_t)&lock_ - (uintptr_t)word());
 
-  return (
-      unsigned)(kIsLittleEndian ? offset_bytes * CHAR_BIT + slot * 2 : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) + slot * 2);
+  return static_cast<unsigned>(
+      kIsLittleEndian ? offset_bytes * CHAR_BIT + slot * kBitsPerSlot
+                      : CHAR_BIT * (sizeof(uint32_t) - offset_bytes - 1) +
+              slot * kBitsPerSlot);
 }
 
 inline uint32_t MicroLockCore::heldBit(unsigned slot) const {
@@ -134,7 +179,13 @@ inline uint32_t MicroLockCore::waitBit(unsigned slot) const {
   return 1U << (baseShift(slot) + 1);
 }
 
-void MicroLockCore::unlock(unsigned slot) {
+constexpr inline uint8_t MicroLockCore::byteFromWord(uint32_t word) {
+  return kIsLittleEndian ? static_cast<uint8_t>(word & 0xff)
+                         : static_cast<uint8_t>((word >> 24) & 0xff);
+}
+
+template <typename Func>
+void MicroLockCore::unlockAndStoreWithModifier(unsigned slot, Func modifier) {
   detail::Futex<>* wordPtr = word();
   uint32_t oldWord;
   uint32_t newWord;
@@ -142,7 +193,7 @@ void MicroLockCore::unlock(unsigned slot) {
   oldWord = wordPtr->load(std::memory_order_relaxed);
   do {
     assert(oldWord & heldBit(slot));
-    newWord = oldWord & ~(heldBit(slot) | waitBit(slot));
+    newWord = modifier(oldWord) & ~(heldBit(slot) | waitBit(slot));
   } while (!wordPtr->compare_exchange_weak(
       oldWord, newWord, std::memory_order_release, std::memory_order_relaxed));
 
@@ -151,13 +202,93 @@ void MicroLockCore::unlock(unsigned slot) {
   }
 }
 
+inline void
+MicroLockCore::unlockAndStore(unsigned slot, uint8_t dataMask, uint8_t value) {
+  unlockAndStoreWithModifier(
+      slot, [dataMask, value, shiftToByte = baseShift(0)](uint32_t oldWord) {
+        const uint32_t preservedBits = oldWord & ~(dataMask << shiftToByte);
+        const uint32_t newBits = (value & dataMask) << shiftToByte;
+        return preservedBits | newBits;
+      });
+}
+
+inline void MicroLockCore::unlock(unsigned slot) {
+  unlockAndStoreWithModifier(slot, [](uint32_t oldWord) { return oldWord; });
+}
+
 template <unsigned MaxSpins = 1000, unsigned MaxYields = 0>
 class MicroLockBase : public MicroLockCore {
  public:
-  FOLLY_DISABLE_ADDRESS_SANITIZER inline void lock(unsigned slot);
+  /**
+   * Locks the selected slot and returns the entire byte that represents the
+   * state of this lock. This is useful when you want to use some of the slots
+   * to store data, in which case reading and locking should be done in one
+   * atomic operation.
+   */
+  FOLLY_DISABLE_ADDRESS_SANITIZER inline uint8_t lockAndLoad(unsigned slot);
+  inline void lock(unsigned slot) { lockAndLoad(slot); }
   inline void lock() { lock(0); }
   FOLLY_DISABLE_ADDRESS_SANITIZER inline bool try_lock(unsigned slot);
   inline bool try_lock() { return try_lock(0); }
+
+  /**
+   * A lock guard which allows reading and writing to the unused slots as data.
+   * The template parameters are used to select the slot indices which represent
+   * data slots. The bits representing all other slots will be masked out when
+   * storing the user data.
+   *
+   * Example:
+   *
+   *   LockGuardWithDataSlots<1, 2> guard(lock, 0);
+   *   guard.loadedValue(); // bits of slot1 and slot2 (lock_ & 0b00111100)
+   *   guard.storeValue(0b10101010); // stored as 0bxx1010xx (x means unchanged)
+   */
+  template <unsigned... Slots>
+  struct LockGuardWithDataSlots {
+    explicit LockGuardWithDataSlots(
+        MicroLockBase<MaxSpins, MaxYields>& lock,
+        unsigned slot = 0)
+        : lock_(lock), slot_(slot) {
+      loadedValue_ = lock_.lockAndLoad(slot_) & dataMask();
+    }
+
+    ~LockGuardWithDataSlots() noexcept {
+      if (storedValue_) {
+        lock_.unlockAndStore(slot_, dataMask(), *storedValue_);
+      } else {
+        lock_.unlock(slot_);
+      }
+    }
+
+    /**
+     * The stored data with the non-data slot bits masked out (which will be 0).
+     */
+    uint8_t loadedValue() const { return loadedValue_; }
+
+    /**
+     * The value that will be stored back into data lock slots when it is
+     * unlocked. The non-data slot bits in the provided value will be ignored.
+     */
+    void storeValue(uint8_t value) { storedValue_ = value; }
+
+   private:
+    // C++17 fold expressions would be handy here
+    FOLLY_ALWAYS_INLINE constexpr static uint8_t bitOr(uint8_t value) {
+      return value;
+    }
+    template <typename... Others>
+    FOLLY_ALWAYS_INLINE constexpr static uint8_t bitOr(
+        uint8_t value,
+        Others... others) {
+      return value | bitOr(others...);
+    }
+    constexpr static uint8_t dataMask() { return bitOr(slotMask<Slots>()...); }
+
+    MicroLockBase<MaxSpins, MaxYields>& lock_;
+    unsigned slot_;
+    uint8_t loadedValue_;
+    folly::Optional<uint8_t> storedValue_;
+  };
 };
 
 template <unsigned MaxSpins, unsigned MaxYields>
@@ -188,7 +319,7 @@ bool MicroLockBase<MaxSpins, MaxYields>::try_lock(unsigned slot) {
 }
 
 template <unsigned MaxSpins, unsigned MaxYields>
-void MicroLockBase<MaxSpins, MaxYields>::lock(unsigned slot) {
+uint8_t MicroLockBase<MaxSpins, MaxYields>::lockAndLoad(unsigned slot) {
   static_assert(MaxSpins + MaxYields < (unsigned)-1, "overflow");
 
   detail::Futex<>* wordPtr = word();
@@ -201,13 +332,14 @@ void MicroLockBase<MaxSpins, MaxYields>::lock(unsigned slot) {
           std::memory_order_acquire,
           std::memory_order_relaxed)) {
     // Fast uncontended case: memory_order_acquire above is our barrier
+    return byteFromWord(oldWord | heldBit(slot));
   } else {
     // lockSlowPath doesn't have any slot-dependent computation; it
     // just shifts the input bit.  Make sure its shifting produces the
     // same result a call to waitBit for our slot would.
     assert(heldBit(slot) << 1 == waitBit(slot));
     // lockSlowPath emits its own memory barrier
-    lockSlowPath(oldWord, wordPtr, heldBit(slot), MaxSpins, MaxYields);
+    return lockSlowPath(oldWord, wordPtr, heldBit(slot), MaxSpins, MaxYields);
   }
 }
 

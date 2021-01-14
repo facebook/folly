@@ -21,7 +21,7 @@
 
 namespace folly {
 
-void MicroLockCore::lockSlowPath(
+uint8_t MicroLockCore::lockSlowPath(
     uint32_t oldWord,
     detail::Futex<>* wordPtr,
     uint32_t slotHeldBit,
@@ -69,5 +69,6 @@ retry:
           std::memory_order_relaxed)) {
     goto retry;
   }
+  return byteFromWord(newWord);
 }
 } // namespace folly
