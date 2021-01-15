@@ -76,7 +76,14 @@ void ThreadedExecutor::controlWait() {
 }
 
 void ThreadedExecutor::work(Func& func) {
-  func();
+  try {
+    func();
+  } catch (const std::exception& e) {
+    LOG(ERROR) << "ThreadedExecutor: func threw unhandled " << typeid(e).name()
+               << " exception: " << e.what();
+  } catch (...) {
+    LOG(ERROR) << "ThreadedExecutor: func threw unhandled non-exception object";
+  }
   auto id = std::this_thread::get_id();
   with_unique_lock(finishedm_, [&] { finished_.push_back(id); });
   notify();

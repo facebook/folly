@@ -16,6 +16,8 @@
 
 #include <folly/executors/ThreadedExecutor.h>
 
+#include <stdexcept>
+
 #include <folly/Conv.h>
 #include <folly/futures/Future.h>
 #include <folly/gen/Base.h>
@@ -34,6 +36,11 @@ TEST_F(ThreadedExecutorTest, example) {
                  .get();
 
   EXPECT_EQ("42", ret);
+}
+
+TEST_F(ThreadedExecutorTest, exception) {
+  folly::ThreadedExecutor x;
+  x.add([] { throw std::runtime_error("This should not crash the program"); });
 }
 
 TEST_F(ThreadedExecutorTest, dtor_waits) {
