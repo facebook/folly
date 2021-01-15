@@ -1,0 +1,24 @@
+[manifest]
+name = bistro
+fbsource_path = fbcode/bistro
+shipit_project = bistro
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebook/bistro.git
+
+[build]
+builder = bistro
+
+[dependencies]
+fmt
+folly
+proxygen
+fbthrift
+libsodium
+googletest_1_8
+sqlite3
+
+[shipit.pathmap]
+fbcode/bistro/public_tld = .
+fbcode/bistro = bistro
