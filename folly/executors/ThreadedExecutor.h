@@ -17,14 +17,12 @@
 #pragma once
 
 #include <atomic>
-#include <condition_variable>
-#include <deque>
-#include <map>
 #include <memory>
-#include <mutex>
 #include <thread>
 
 #include <folly/Executor.h>
+#include <folly/concurrency/UnboundedQueue.h>
+#include <folly/container/F14Map.h>
 #include <folly/executors/thread_factory/ThreadFactory.h>
 
 namespace folly {
@@ -67,33 +65,28 @@ class ThreadedExecutor : public virtual folly::Executor {
   void add(Func func) override;
 
  private:
+  // TODO(ott): Switch to std::variant when available everywhere.
+  struct Message {
+    enum class Type { Start, Join, StopControl };
+    Type type;
+    Func startFunc;
+    std::thread::id joinTid;
+  };
+
   static std::shared_ptr<ThreadFactory> newDefaultThreadFactory();
 
-  void notify();
-  void control();
-  void controlWait();
-  bool controlPerformAll();
-  void controlJoinFinishedThreads();
-  void controlLaunchEnqueuedTasks();
-
   void work(Func& func);
+  void control();
 
   std::shared_ptr<ThreadFactory> threadFactory_;
 
   std::atomic<bool> stopping_{false};
 
-  std::mutex controlm_;
-  std::condition_variable controlc_;
-  bool controls_ = false;
-  std::thread controlt_;
+  UMPSCQueue<Message, /* MayBlock */ true> controlMessages_;
+  std::thread controlThread_;
 
-  std::mutex enqueuedm_;
-  std::deque<Func> enqueued_;
-
-  //  Accessed only by the control thread, so no synchronization.
-  std::map<std::thread::id, std::thread> running_;
-
-  std::mutex finishedm_;
-  std::deque<std::thread::id> finished_;
+  // Accessed only by the control thread, so no synchronization.
+  F14FastMap<std::thread::id, std::thread> running_;
 };
+
 } // namespace folly
