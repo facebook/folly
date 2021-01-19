@@ -2619,6 +2619,27 @@ TEST(FiberManager, addTaskEagerNested) {
   EXPECT_TRUE(secondTaskDone);
 }
 
+TEST(FiberManager, addTaskEagerNestedFiberManager) {
+  folly::EventBase evb;
+  auto& fm = getFiberManager(evb);
+  FiberManager::Options opts;
+  opts.stackSize *= 2;
+  auto& fm2 = getFiberManager(evb, FiberManager::FrozenOptions(opts));
+
+  bool eagerTaskDone{false};
+
+  fm.addTask([&] {
+    fm2.addTaskEager([&] {
+      EXPECT_FALSE(fm.hasActiveFiber());
+      eagerTaskDone = true;
+    });
+  });
+
+  evb.loop();
+
+  EXPECT_TRUE(eagerTaskDone);
+}
+
 TEST(FiberManager, swapWithException) {
   folly::EventBase evb;
   auto& fm = getFiberManager(evb);

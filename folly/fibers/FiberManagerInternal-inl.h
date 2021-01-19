@@ -307,7 +307,7 @@ inline void FiberManager::runEagerFiber(Fiber* fiber) {
 }
 
 inline void FiberManager::runEagerFiberImpl(Fiber* fiber) {
-  runInMainContext([&] {
+  folly::fibers::runInMainContext([&] {
     auto prevCurrentFiber = std::exchange(currentFiber_, fiber);
     SCOPE_EXIT { currentFiber_ = prevCurrentFiber; };
     runFibersHelper([&] { runReadyFiber(fiber); });
