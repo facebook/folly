@@ -1,0 +1,17 @@
+[manifest]
+name = protobuf
+
+[rpms]
+protobuf-devel
+
+[debs]
+libprotobuf-dev
+
+[git]
+repo_url = https://github.com/protocolbuffers/protobuf.git
+
+[build.not(os=windows)]
+builder = autoconf
+
+[build.os=windows]
+builder = nop
