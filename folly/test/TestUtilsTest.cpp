@@ -16,10 +16,12 @@
 
 #include <folly/test/TestUtils.h>
 
+#include <folly/portability/GMock.h>
 #include <folly/portability/GTest.h>
 
 using namespace folly;
 using namespace std::string_literals;
+using ::testing::MatchesRegex;
 using ::testing::PrintToString;
 
 TEST(TestUtilsFbStringTest, Ascii) {
@@ -92,4 +94,50 @@ TEST(TestUtilsRangeTest, Utf32) {
   constexpr auto kHelloStringPiece = U"hello"_sp;
   const auto kHelloString = U"hello"s;
   EXPECT_EQ(PrintToString(kHelloString), PrintToString(kHelloStringPiece));
+}
+
+TEST(ExpectThrowRegex, SuccessCases) {
+  EXPECT_THROW_RE(throw std::runtime_error("test"), std::runtime_error, "test");
+  EXPECT_THROW_RE(
+      throw std::invalid_argument("test 123"), std::invalid_argument, ".*123");
+  EXPECT_THROW_RE(
+      throw std::invalid_argument("test 123"),
+      std::invalid_argument,
+      std::string("t.*123"));
+}
+
+TEST(ExpectThrowRegex, FailureCases) {
+  std::string failureMsg;
+  auto recordFailure = [&](const char* msg) { failureMsg = msg; };
+
+  TEST_THROW_RE_(
+      throw std::runtime_error("test"),
+      std::invalid_argument,
+      "test",
+      recordFailure);
+  EXPECT_THAT(
+      failureMsg,
+      MatchesRegex(".*Actual: it throws a different exception type.*"));
+
+  failureMsg = "";
+  TEST_THROW_RE_(
+      throw std::runtime_error("test"),
+      std::runtime_error,
+      "xest",
+      recordFailure);
+  EXPECT_THAT(
+      failureMsg,
+      MatchesRegex("Expected:.* throws a std::runtime_error with message "
+                   "matching \"xest\".*Actual: message is: test"));
+
+  failureMsg = "";
+  TEST_THROW_RE_(
+      throw std::runtime_error("abc"),
+      std::runtime_error,
+      std::string("xyz"),
+      recordFailure);
+  EXPECT_THAT(
+      failureMsg,
+      MatchesRegex("Expected:.* throws a std::runtime_error with message "
+                   "matching \"xyz\".*Actual: message is: abc"));
 }

@@ -31,6 +31,7 @@
 
 #include <chrono>
 #include <regex>
+#include <string_view>
 #include <system_error>
 #include <type_traits>
 
@@ -211,7 +212,8 @@ class CheckResult {
  * Helper function for implementing EXPECT_THROW
  */
 template <typename Fn>
-CheckResult checkThrowErrno(Fn&& fn, int errnoValue, const char* statementStr) {
+CheckResult
+checkThrowErrno(Fn&& fn, int errnoValue, std::string_view statementStr) {
   try {
     fn();
   } catch (const std::system_error& ex) {
@@ -259,9 +261,9 @@ CheckResult checkThrowErrno(Fn&& fn, int errnoValue, const char* statementStr) {
 template <typename ExType, typename Fn>
 CheckResult checkThrowRegex(
     Fn&& fn,
-    const char* pattern,
-    const char* statementStr,
-    const char* excTypeStr) {
+    std::string_view pattern,
+    std::string_view statementStr,
+    std::string_view excTypeStr) {
   static_assert(
       std::is_base_of<std::exception, ExType>::value,
       "EXPECT_THROW_RE() exception type must derive from std::exception");
@@ -277,7 +279,7 @@ CheckResult checkThrowRegex(
           << exceptionStr(ex);
     }
 
-    std::regex re(pattern);
+    std::regex re(pattern.data(), pattern.size());
     if (!std::regex_search(derived->what(), re)) {
       return CheckResult(false)
           << "Expected: " << statementStr << " throws a " << excTypeStr
