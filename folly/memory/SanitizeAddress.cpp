@@ -21,13 +21,15 @@
 extern "C" FOLLY_ATTR_WEAK void* __asan_region_is_poisoned(void*, std::size_t);
 
 namespace folly {
-
 namespace detail {
 
 void* asan_region_is_poisoned_(void* const ptr, std::size_t len) {
-  return __asan_region_is_poisoned(ptr, len);
+  if (kIsLibrarySanitizeAddress) {
+    return __asan_region_is_poisoned(ptr, len);
+  } else {
+    return nullptr;
+  }
 }
 
 } // namespace detail
-
 } // namespace folly
