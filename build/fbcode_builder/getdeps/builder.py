@@ -294,11 +294,23 @@ class BistroBuilder(BuilderBase):
     ):
         env = self._compute_env(install_dirs)
         build_dir = os.path.join(self.src_dir, "bistro", "bistro", "cmake", "Release")
-        self._run_cmd(
-            ["ctest", build_dir],
-            cwd=build_dir,
-            env=env,
-        )
+        NUM_RETRIES = 5
+        for i in range(NUM_RETRIES):
+            cmd = ["ctest", "--output-on-failure"]
+            if i > 0:
+                cmd.append("--rerun-failed")
+            cmd.append(build_dir)
+            try:
+                self._run_cmd(
+                    cmd,
+                    cwd=build_dir,
+                    env=env,
+                )
+            except Exception:
+                print(f"Tests failed... retrying ({i+1}/{NUM_RETRIES})")
+            else:
+                return
+        raise Exception(f"Tests failed even after {NUM_RETRIES} retries")
 
 
 class CMakeBuilder(BuilderBase):
