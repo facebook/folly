@@ -22,6 +22,7 @@
 #include <folly/container/F14Map.h>
 #include <folly/container/F14Set.h>
 #include <folly/dynamic.h>
+#include <folly/support/test/GdbUtil.h>
 
 #pragma GCC diagnostic ignored "-Wunused-variable"
 
@@ -95,6 +96,7 @@ int main() {
 
   const F14FastSet<int>& const_ref = s_fval;
 
-  __asm__ volatile("int $3"); // Auto breakpoint in gdb.
+  asm_gdb_breakpoint();
+
   return 0;
 }
