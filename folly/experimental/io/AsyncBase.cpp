@@ -199,10 +199,9 @@ Range<AsyncBase::Op**> AsyncBase::pollCompleted() {
   DCHECK_EQ(rc, 8);
 
   DCHECK_GT(numEvents, 0);
-  DCHECK_LE(numEvents, pending_);
 
-  // Don't reap more than numEvents, as we've just reset the counter to 0.
-  return doWait(WaitType::COMPLETE, numEvents, numEvents, completed_);
+  // Don't reap more than pending_, as we've just reset the counter to 0.
+  return doWait(WaitType::COMPLETE, 0, pending_.load(), completed_);
 }
 
 AsyncBaseQueue::AsyncBaseQueue(AsyncBase* asyncBase) : asyncBase_(asyncBase) {}

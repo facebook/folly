@@ -156,7 +156,6 @@ void testReadsParallel(
     auto completed =
         test::async_base_test_lib_detail::TestUtil::readerWait(aioReader.get());
     size_t nrRead = completed.size();
-    EXPECT_NE(nrRead, 0);
     remaining -= nrRead;
 
     for (size_t i = 0; i < nrRead; i++) {
@@ -217,7 +216,6 @@ void testReadsQueued(
     auto completed =
         test::async_base_test_lib_detail::TestUtil::readerWait(aioReader.get());
     size_t nrRead = completed.size();
-    EXPECT_NE(nrRead, 0);
     remaining -= nrRead;
 
     for (size_t i = 0; i < nrRead; i++) {
