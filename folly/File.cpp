@@ -16,8 +16,7 @@
 
 #include <folly/File.h>
 
-#include <fmt/core.h>
-
+#include <folly/CompiledFormat.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
@@ -41,8 +40,8 @@ File::File(int fd, bool ownsFd) noexcept : fd_(fd), ownsFd_(ownsFd) {
 File::File(const char* name, int flags, mode_t mode)
     : fd_(::open(name, flags, mode)), ownsFd_(false) {
   if (fd_ == -1) {
-    throwSystemError(
-        fmt::format("open(\"{}\", {:#o}, 0{:#o}) failed", name, flags, mode));
+    throwSystemError(fmt::format(
+        FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"), name, flags, mode));
   }
   ownsFd_ = true;
 }

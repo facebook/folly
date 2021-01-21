@@ -14,24 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/detail/IPAddress.h>
+#pragma once
 
-#include <stdexcept>
+#include <fmt/compile.h>
 
-#include <folly/CompiledFormat.h>
-
-namespace folly {
-namespace detail {
-
-std::string familyNameStrDefault(sa_family_t family) {
-  return fmt::format(FMT_COMPILE("sa_family_t({})"), family);
-}
-
-[[noreturn]] void getNthMSBitImplThrow(size_t bitCount, sa_family_t family) {
-  throw std::invalid_argument(fmt::format(
-      FMT_COMPILE("Bit index must be < {} for addresses of type: {}"),
-      bitCount,
-      familyNameStr(family)));
-}
-} // namespace detail
-} // namespace folly
+// Fallback to runtime format string processing for compatibility with fmt 6.x.
+#ifndef FMT_COMPILE
+#define FMT_COMPILE(format_str) format_str
+#endif
