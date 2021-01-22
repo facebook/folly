@@ -16,6 +16,7 @@
 
 #include <folly/detail/MemoryIdler.h>
 
+#include <atomic>
 #include <climits>
 #include <cstdio>
 #include <cstring>
@@ -30,7 +31,6 @@
 #include <folly/portability/PThread.h>
 #include <folly/portability/SysMman.h>
 #include <folly/portability/Unistd.h>
-#include <folly/synchronization/CallOnce.h>
 
 namespace folly {
 namespace detail {
@@ -97,10 +97,10 @@ static void fetchStackLimits() {
   pthread_attr_t attr;
   if ((err = pthread_getattr_np(pthread_self(), &attr))) {
     // some restricted environments can't access /proc
-    static folly::once_flag flag;
-    folly::call_once(flag, [err]() {
+    static std::atomic<bool> flag{false};
+    if (!flag.exchange(true, std::memory_order_relaxed)) {
       LOG(WARNING) << "pthread_getaddr_np failed errno=" << err;
-    });
+    }
 
     tls_stackSize = 1;
     return;
