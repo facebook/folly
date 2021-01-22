@@ -18,6 +18,12 @@
 
 #include <fmt/compile.h>
 
+#if defined(__GNUC__) && !defined(__clang__) && __GNUC__ <= 8
+// Forcefully disable compiled format strings for GCC 8 & below until fmt is
+// updated to do this automatically.
+#undef FMT_COMPILE
+#endif
+
 // Fallback to runtime format string processing for compatibility with fmt 6.x.
 #ifndef FMT_COMPILE
 #define FMT_COMPILE(format_str) format_str
