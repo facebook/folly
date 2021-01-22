@@ -24,6 +24,11 @@
 #undef FMT_COMPILE
 #endif
 
+#ifdef _MSC_VER
+// Workaround broken constexpr in MSVC.
+#undef FMT_COMPILE
+#endif
+
 // Fallback to runtime format string processing for compatibility with fmt 6.x.
 #ifndef FMT_COMPILE
 #define FMT_COMPILE(format_str) format_str
