@@ -17,18 +17,31 @@
 #pragma once
 
 #include <atomic>
-#include <mutex>
+#include <limits>
 #include <utility>
 
 #include <folly/Likely.h>
+#include <folly/MicroLock.h>
 #include <folly/Portability.h>
 #include <folly/SharedMutex.h>
 #include <folly/functional/Invoke.h>
 
 namespace folly {
 
+//  basic_once_flag
+//
+//  The flag template to be used with call_once. Parameterizable by the mutex
+//  type and atomic template. The mutex type is required to mimic std::mutex and
+//  the atomic type is required to mimic std::atomic.
 template <typename Mutex, template <typename> class Atom = std::atomic>
 class basic_once_flag;
+
+//  compact_once_flag
+//
+//  An alternative flag template that can be used with call_once that uses only
+//  1 byte. Internally, compact_once_flag uses folly::MicroLock and its data
+//  slots.
+class compact_once_flag;
 
 //  call_once
 //
@@ -42,20 +55,18 @@ class basic_once_flag;
 //  This implementation corrects both flaws.
 //
 //  The tradeoff is a slightly larger once_flag struct at 8 bytes, vs 4 bytes
-//  with libstdc++ on Linux/x64.
+//  with libstdc++ on Linux/x64. However, you may use folly::compact_once_flag
+//  which is 1 byte.
 //
 //  Does not work with std::once_flag.
 //
 //  mimic: std::call_once
-template <
-    typename Mutex,
-    template <typename>
-    class Atom,
-    typename F,
-    typename... Args>
-FOLLY_ALWAYS_INLINE void
-call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
-  flag.call_once(std::forward<F>(f), std::forward<Args>(args)...);
+template <typename OnceFlag, typename F, typename... Args>
+FOLLY_ALWAYS_INLINE void call_once(OnceFlag& flag, F&& f, Args&&... args) {
+  if (LIKELY(flag.test_once())) {
+    return;
+  }
+  flag.call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 //  try_call_once
@@ -69,18 +80,15 @@ call_once(basic_once_flag<Mutex, Atom>& flag, F&& f, Args&&... args) {
 //  passed as an argument returns true; otherwise returns false.
 //
 //  Note: This has no parallel in the std::once_flag interface.
-template <
-    typename Mutex,
-    template <typename>
-    class Atom,
-    typename F,
-    typename... Args>
-FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
-    basic_once_flag<Mutex, Atom>& flag,
-    F&& f,
-    Args&&... args) noexcept {
+template <typename OnceFlag, typename F, typename... Args>
+FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool
+try_call_once(OnceFlag& flag, F&& f, Args&&... args) noexcept {
   static_assert(is_nothrow_invocable_v<F, Args...>, "must be noexcept");
-  return flag.try_call_once(std::forward<F>(f), std::forward<Args>(args)...);
+  if (LIKELY(flag.test_once())) {
+    return true;
+  }
+  return flag.try_call_once_slow(
+      std::forward<F>(f), std::forward<Args>(args)...);
 }
 
 //  test_once
@@ -91,17 +99,11 @@ FOLLY_NODISCARD FOLLY_ALWAYS_INLINE bool try_call_once(
 //  code tracking a separate and possibly-padded bool.
 //
 //  Note: This has no parallel in the std::once_flag interface.
-template <typename Mutex, template <typename> class Atom>
-FOLLY_ALWAYS_INLINE bool test_once(
-    basic_once_flag<Mutex, Atom> const& flag) noexcept {
-  return flag.called_.load(std::memory_order_acquire);
+template <typename OnceFlag>
+FOLLY_ALWAYS_INLINE bool test_once(OnceFlag const& flag) noexcept {
+  return flag.test_once();
 }
 
-//  basic_once_flag
-//
-//  The flag template to be used with call_once. Parameterizable by the mutex
-//  type and atomic template. The mutex type is required to mimic std::mutex and
-//  the atomic type is required to mimic std::atomic.
 template <typename Mutex, template <typename> class Atom>
 class basic_once_flag {
  public:
@@ -110,24 +112,11 @@ class basic_once_flag {
   basic_once_flag& operator=(const basic_once_flag&) = delete;
 
  private:
-  template <
-      typename Mutex_,
-      template <typename>
-      class Atom_,
-      typename F,
-      typename... Args>
-  friend void call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...);
+  template <typename OnceFlag, typename F, typename... Args>
+  friend void call_once(OnceFlag&, F&&, Args&&...);
 
-  template <typename Mutex_, template <typename> class Atom_>
-  friend bool test_once(basic_once_flag<Mutex_, Atom_> const& flag) noexcept;
-
-  template <typename F, typename... Args>
-  FOLLY_ALWAYS_INLINE void call_once(F&& f, Args&&... args) {
-    if (LIKELY(called_.load(std::memory_order_acquire))) {
-      return;
-    }
-    call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
-  }
+  template <typename OnceFlag>
+  friend bool test_once(OnceFlag const& flag) noexcept;
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
@@ -139,22 +128,8 @@ class basic_once_flag {
     called_.store(true, std::memory_order_release);
   }
 
-  template <
-      typename Mutex_,
-      template <typename>
-      class Atom_,
-      typename F,
-      typename... Args>
-  friend bool
-  try_call_once(basic_once_flag<Mutex_, Atom_>&, F&&, Args&&...) noexcept;
-
-  template <typename F, typename... Args>
-  FOLLY_ALWAYS_INLINE bool try_call_once(F&& f, Args&&... args) noexcept {
-    if (LIKELY(called_.load(std::memory_order_acquire))) {
-      return true;
-    }
-    return try_call_once_slow(std::forward<F>(f), std::forward<Args>(args)...);
-  }
+  template <typename OnceFlag, typename F, typename... Args>
+  friend bool try_call_once(OnceFlag&, F&&, Args&&...) noexcept;
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
@@ -167,15 +142,72 @@ class basic_once_flag {
     return pass;
   }
 
+  FOLLY_ALWAYS_INLINE bool test_once() const noexcept {
+    return called_.load(std::memory_order_acquire);
+  }
+
   Atom<bool> called_{false};
   Mutex mutex_;
 };
+
+class compact_once_flag {
+ public:
+  compact_once_flag() noexcept { mutex_.init(); }
+  compact_once_flag(const compact_once_flag&) = delete;
+  compact_once_flag& operator=(const compact_once_flag&) = delete;
+
+ private:
+  template <typename OnceFlag, typename F, typename... Args>
+  friend void call_once(OnceFlag&, F&&, Args&&...);
+
+  template <typename OnceFlag>
+  friend bool test_once(OnceFlag const& flag) noexcept;
+
+  template <typename F, typename... Args>
+  FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
+    folly::MicroLock::LockGuardWithDataSlots<1> guard(mutex_, 0);
+    if (guard.loadedValue() != 0) {
+      return;
+    }
+    invoke(std::forward<F>(f), std::forward<Args>(args)...);
+    guard.storeValue(std::numeric_limits<uint8_t>::max());
+  }
+
+  template <typename OnceFlag, typename F, typename... Args>
+  friend bool try_call_once(OnceFlag&, F&&, Args&&...) noexcept;
+
+  template <typename F, typename... Args>
+  FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
+    folly::MicroLock::LockGuardWithDataSlots<1> guard(mutex_);
+    if (guard.loadedValue() != 0) {
+      return true;
+    }
+    const auto pass = static_cast<bool>(
+        invoke(std::forward<F>(f), std::forward<Args>(args)...));
+    guard.storeValue(pass ? std::numeric_limits<uint8_t>::max() : 0);
+    return pass;
+  }
+
+  FOLLY_ALWAYS_INLINE bool test_once() const noexcept {
+    const uint8_t storedValue = mutex_.load(std::memory_order_acquire) &
+        folly::MicroLock::slotMask<1>();
+    return (storedValue != 0);
+  }
+
+  // We're only using slot0 of the MicroLock as a mutex, slot1 stores a bool
+  // indicating whether this flag has been already called.
+  folly::MicroLock mutex_;
+};
+
+static_assert(
+    sizeof(compact_once_flag) == 1,
+    "compact_once_flag should be 1 byte");
 
 //  once_flag
 //
 //  The flag type to be used with call_once. An instance of basic_once_flag.
 //
-//  Does not work with sd::call_once.
+//  Does not work with std::call_once.
 //
 //  mimic: std::once_flag
 using once_flag = basic_once_flag<SharedMutex>;
