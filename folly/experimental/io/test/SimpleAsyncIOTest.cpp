@@ -17,6 +17,8 @@
 #include <folly/experimental/io/SimpleAsyncIO.h>
 
 #include <folly/File.h>
+#include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Collect.h>
 #include <folly/synchronization/Baton.h>
 
 #include <glog/logging.h>
@@ -157,6 +159,61 @@ TEST_P(SimpleAsyncIOTest, DestroyWithPendingIO) {
   // Destructor should have blocked until all IO was done.
   ASSERT_EQ(completed, numWrites);
 }
+
+#if FOLLY_HAS_COROUTINES
+static folly::coro::Task<folly::Unit> doCoAsyncWrites(
+    SimpleAsyncIO& aio,
+    int fd,
+    std::string const& data,
+    int copies) {
+  std::vector<folly::coro::Task<int>> writes;
+
+  for (int i = 0; i < copies; ++i) {
+    writes.emplace_back(
+        aio.co_pwrite(fd, data.data(), data.length(), data.length() * i));
+  }
+
+  auto results = co_await folly::coro::collectAllRange(std::move(writes));
+
+  for (int result : results) {
+    EXPECT_EQ(result, data.length());
+  }
+  co_return Unit{};
+}
+
+static folly::coro::Task<folly::Unit> doCoAsyncReads(
+    SimpleAsyncIO& aio,
+    int fd,
+    std::string const& data,
+    int copies) {
+  std::vector<std::unique_ptr<char[]>> buffers;
+  std::vector<folly::coro::Task<int>> reads;
+
+  for (int i = 0; i < copies; ++i) {
+    buffers.emplace_back(std::make_unique<char[]>(data.length()));
+
+    reads.emplace_back(
+        aio.co_pread(fd, buffers[i].get(), data.length(), data.length() * i));
+  }
+
+  auto results = co_await folly::coro::collectAllRange(std::move(reads));
+
+  for (int i = 0; i < copies; ++i) {
+    EXPECT_EQ(results[i], data.length());
+    EXPECT_EQ(::memcmp(data.data(), buffers[i].get(), data.length()), 0);
+  }
+  co_return Unit{};
+}
+
+TEST_P(SimpleAsyncIOTest, CoroutineReadWrite) {
+  auto tmpfile = File::temporary();
+  int fd = tmpfile.fd();
+  SimpleAsyncIO aio(config_);
+  std::string testStr = "Uncle Touchy goes to college";
+  folly::coro::blockingWait(doCoAsyncWrites(aio, fd, testStr, 10));
+  folly::coro::blockingWait(doCoAsyncReads(aio, fd, testStr, 10));
+}
+#endif // FOLLY_HAS_COROUTINES
 
 INSTANTIATE_TEST_CASE_P(
     SimpleAsyncIOTests,

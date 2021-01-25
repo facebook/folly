@@ -23,6 +23,10 @@
 #include <folly/io/async/ScopedEventBaseThread.h>
 #include <queue>
 
+#if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Task.h>
+#endif
+
 namespace folly {
 
 class SimpleAsyncIO : public EventHandler {
@@ -106,6 +110,14 @@ class SimpleAsyncIO : public EventHandler {
 
   using SimpleAsyncIOCompletor = Function<void(int rc)>;
 
+  /* Initiate an asynchronous read request.
+   *
+   * Parameters and return value are same as pread(2).
+   *
+   * Completion is indicated by an asynchronous call to the given completor
+   * callback. The sole parameter to the callback is the result of the
+   * operation.
+   */
   void pread(
       int fd,
       void* buf,
@@ -113,12 +125,36 @@ class SimpleAsyncIO : public EventHandler {
       off_t start,
       SimpleAsyncIOCompletor completor);
 
+  /* Initiate an asynchronous write request.
+   *
+   * Parameters and return value are same as pwrite(2).
+   *
+   * Completion is indicated by an asynchronous call to the given completor
+   * callback. The sole parameter to the callback is the result of the
+   * operation.
+   */
   void pwrite(
       int fd,
       const void* data,
       size_t size,
       off_t offset,
       SimpleAsyncIOCompletor completor);
+
+#if FOLLY_HAS_COROUTINES
+  /* Coroutine version of pread().
+   *
+   * Identical to pread() except that result is obtained by co_await instead of
+   * callback.
+   */
+  folly::coro::Task<int> co_pread(int fd, void* buf, size_t size, off_t start);
+  /* Coroutine version of pwrite().
+   *
+   * Identical to pwrite() except that result is obtained by co_await instead of
+   * callback.
+   */
+  folly::coro::Task<int>
+  co_pwrite(int fd, const void* buf, size_t size, off_t start);
+#endif
 
  private:
   std::unique_ptr<AsyncBaseOp> getOp();

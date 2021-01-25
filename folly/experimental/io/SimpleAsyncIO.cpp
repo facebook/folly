@@ -30,6 +30,9 @@
 #error "Cannot build without at least one of AsyncIO.h and IoUring.h"
 #endif
 
+#if FOLLY_HAS_COROUTINES
+#include <folly/experimental/coro/Baton.h>
+#endif
 #include <folly/portability/Sockets.h>
 
 namespace folly {
@@ -206,5 +209,31 @@ void SimpleAsyncIO::pwrite(
       [=](AsyncBaseOp* op) { op->pwrite(fd, buf, size, start); },
       std::move(completor));
 }
+
+#if FOLLY_HAS_COROUTINES
+folly::coro::Task<int>
+SimpleAsyncIO::co_pwrite(int fd, const void* buf, size_t size, off_t start) {
+  folly::coro::Baton done;
+  int result;
+  pwrite(fd, buf, size, start, [&done, &result](int rc) {
+    result = rc;
+    done.post();
+  });
+  co_await done;
+  co_return result;
+}
+
+folly::coro::Task<int>
+SimpleAsyncIO::co_pread(int fd, void* buf, size_t size, off_t start) {
+  folly::coro::Baton done;
+  int result;
+  pread(fd, buf, size, start, [&done, &result](int rc) {
+    result = rc;
+    done.post();
+  });
+  co_await done;
+  co_return result;
+}
+#endif // FOLLY_HAS_COROUTINES
 
 } // namespace folly
