@@ -51,7 +51,7 @@ def run_cmd(cmd, env=None, cwd=None, allow_fail=False, log_file=None):
         sys.stdout.buffer.write(msg.encode(errors="surrogateescape"))
 
     if log_file is not None:
-        with open(log_file, "a", errors="surrogateescape") as log:
+        with open(log_file, "a", encoding="utf-8") as log:
 
             def log_function(msg):
                 log.write(msg)
