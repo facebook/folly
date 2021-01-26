@@ -1505,12 +1505,12 @@ class Future : private futures::detail::FutureBase<T> {
   /// Example:
   ///
   ///   makeFuture()
-  ///     .thenValue([] {
+  ///     .thenValue([](folly::Unit&&) {
   ///       throw std::runtime_error("oh no!");
   ///       return 42;
   ///     })
-  ///     .thenError<std::runtime_error>([] (std::runtime_error& e) {
-  ///       LOG(INFO) << "std::runtime_error: " << e.what();
+  ///     .thenError([](folly::exception_wrapper&& e) {
+  ///       LOG(INFO) << "std::runtime_error: " << e.get_exception()->what();
   ///       return -1; // or makeFuture<int>(-1)
   ///     });
   ///
