@@ -153,7 +153,7 @@ struct DelayedInit {
     union {
       std::remove_const_t<T> value;
     };
-    once_flag init;
+    compact_once_flag init;
 
     StorageTriviallyDestructible() {}
   };
@@ -162,7 +162,7 @@ struct DelayedInit {
     union {
       std::remove_const_t<T> value;
     };
-    once_flag init;
+    compact_once_flag init;
 
     StorageNonTriviallyDestructible() {}
     ~StorageNonTriviallyDestructible() {
