@@ -7,8 +7,12 @@ shipit_fbcode_builder = true
 [git]
 repo_url = https://github.com/facebook/bistro.git
 
-[build]
+[build.os=linux]
 builder = bistro
+
+# Bistro is Linux-specific
+[build.not(os=linux)]
+builder = nop
 
 [dependencies]
 fmt
