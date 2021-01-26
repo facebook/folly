@@ -885,7 +885,7 @@ class Range {
    * range. Returns false if 'replacements' does not fit. Example use:
    *
    * char in[] = "buffer";
-   * auto msp = MutablesStringPiece(input);
+   * auto msp = MutableStringPiece(input);
    * EXPECT_TRUE(msp.replaceAt(2, "tt"));
    * EXPECT_EQ(msp, "butter");
    *
@@ -913,7 +913,7 @@ class Range {
    * Example use:
    *
    * char in[] = "buffer";
-   * auto msp = MutablesStringPiece(input);
+   * auto msp = MutableStringPiece(input);
    * EXPECT_EQ(msp.replaceAll("ff","tt"), 1);
    * EXPECT_EQ(msp, "butter");
    */
