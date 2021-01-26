@@ -24,22 +24,22 @@ namespace folly {
 uint8_t MicroLockCore::lockSlowPath(
     uint32_t oldWord,
     detail::Futex<>* wordPtr,
-    uint32_t slotHeldBit,
+    uint32_t heldBit,
     unsigned maxSpins,
-    unsigned maxYields) {
+    unsigned maxYields) noexcept {
   uint32_t newWord;
   unsigned spins = 0;
-  uint32_t slotWaitBit = slotHeldBit << 1;
+  uint32_t waitBit = heldBit << 1;
   uint32_t needWaitBit = 0;
 
 retry:
-  if ((oldWord & slotHeldBit) != 0) {
+  if ((oldWord & heldBit) != 0) {
     ++spins;
     if (spins > maxSpins + maxYields) {
       // Somebody appears to have the lock.  Block waiting for the
       // holder to unlock the lock.  We set heldbit(slot) so that the
       // lock holder knows to FUTEX_WAKE us.
-      newWord = oldWord | slotWaitBit;
+      newWord = oldWord | waitBit;
       if (newWord != oldWord) {
         if (!wordPtr->compare_exchange_weak(
                 oldWord,
@@ -49,8 +49,8 @@ retry:
           goto retry;
         }
       }
-      detail::futexWait(wordPtr, newWord, slotHeldBit);
-      needWaitBit = slotWaitBit;
+      detail::futexWait(wordPtr, newWord, heldBit);
+      needWaitBit = waitBit;
     } else if (spins > maxSpins) {
       // sched_yield(), but more portable
       std::this_thread::yield();
@@ -61,7 +61,7 @@ retry:
     goto retry;
   }
 
-  newWord = oldWord | slotHeldBit | needWaitBit;
+  newWord = oldWord | heldBit | needWaitBit;
   if (!wordPtr->compare_exchange_weak(
           oldWord,
           newWord,
@@ -69,6 +69,6 @@ retry:
           std::memory_order_relaxed)) {
     goto retry;
   }
-  return byteFromWord(newWord);
+  return decodeDataFromWord(newWord);
 }
 } // namespace folly

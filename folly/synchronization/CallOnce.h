@@ -17,7 +17,6 @@
 #pragma once
 
 #include <atomic>
-#include <limits>
 #include <utility>
 
 #include <folly/Likely.h>
@@ -40,7 +39,7 @@ class basic_once_flag;
 //
 //  An alternative flag template that can be used with call_once that uses only
 //  1 byte. Internally, compact_once_flag uses folly::MicroLock and its data
-//  slots.
+//  storage API.
 class compact_once_flag;
 
 //  call_once
@@ -165,12 +164,12 @@ class compact_once_flag {
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE void call_once_slow(F&& f, Args&&... args) {
-    folly::MicroLock::LockGuardWithDataSlots<1> guard(mutex_, 0);
+    folly::MicroLock::LockGuardWithData guard(mutex_);
     if (guard.loadedValue() != 0) {
       return;
     }
     invoke(std::forward<F>(f), std::forward<Args>(args)...);
-    guard.storeValue(std::numeric_limits<uint8_t>::max());
+    guard.storeValue(1);
   }
 
   template <typename OnceFlag, typename F, typename... Args>
@@ -178,24 +177,20 @@ class compact_once_flag {
 
   template <typename F, typename... Args>
   FOLLY_NOINLINE bool try_call_once_slow(F&& f, Args&&... args) noexcept {
-    folly::MicroLock::LockGuardWithDataSlots<1> guard(mutex_);
+    folly::MicroLock::LockGuardWithData guard(mutex_);
     if (guard.loadedValue() != 0) {
       return true;
     }
     const auto pass = static_cast<bool>(
         invoke(std::forward<F>(f), std::forward<Args>(args)...));
-    guard.storeValue(pass ? std::numeric_limits<uint8_t>::max() : 0);
+    guard.storeValue(pass ? 1 : 0);
     return pass;
   }
 
   FOLLY_ALWAYS_INLINE bool test_once() const noexcept {
-    const uint8_t storedValue = mutex_.load(std::memory_order_acquire) &
-        folly::MicroLock::slotMask<1>();
-    return (storedValue != 0);
+    return mutex_.load(std::memory_order_acquire) != 0;
   }
 
-  // We're only using slot0 of the MicroLock as a mutex, slot1 stores a bool
-  // indicating whether this flag has been already called.
   folly::MicroLock mutex_;
 };
 

@@ -249,13 +249,11 @@ struct SimpleBarrier {
 } // namespace
 
 TEST(SmallLocks, MicroLock) {
-  volatile uint64_t counters[4] = {0, 0, 0, 0};
+  volatile uint64_t counter = 0;
   std::vector<std::thread> threads;
   static const unsigned nrThreads = 20;
   static const unsigned iterPerThread = 10000;
   SimpleBarrier startBarrier;
-
-  assert(iterPerThread % 4 == 0);
 
   // Embed the lock in a larger structure to ensure that we do not
   // affect bits outside the ones MicroLock is defined to affect.
@@ -292,16 +290,15 @@ TEST(SmallLocks, MicroLock) {
     threads.emplace_back([&] {
       startBarrier.wait();
       for (unsigned iter = 0; iter < iterPerThread; ++iter) {
-        unsigned slotNo = iter % 4;
-        x.alock.lock(slotNo);
-        counters[slotNo] += 1;
+        x.alock.lock();
+        counter += 1;
         // The occasional sleep makes it more likely that we'll
         // exercise the futex-wait path inside MicroLock.
         if (iter % 1000 == 0) {
           struct timespec ts = {0, 10000};
           (void)nanosleep(&ts, nullptr);
         }
-        x.alock.unlock(slotNo);
+        x.alock.unlock();
       }
     });
   }
@@ -317,9 +314,7 @@ TEST(SmallLocks, MicroLock) {
   EXPECT_EQ(x.a, 'a');
   EXPECT_EQ(x.b, (uint8_t)(origB + iterPerThread / 2));
   EXPECT_EQ(x.d, (uint8_t)(origD + iterPerThread / 2));
-  for (unsigned i = 0; i < 4; ++i) {
-    EXPECT_EQ(counters[i], ((uint64_t)nrThreads * iterPerThread) / 4);
-  }
+  EXPECT_EQ(counter, ((uint64_t)nrThreads * iterPerThread));
 }
 
 TEST(SmallLocks, MicroLockTryLock) {
@@ -330,50 +325,37 @@ TEST(SmallLocks, MicroLockTryLock) {
   lock.unlock();
 }
 
-TEST(SmallLocks, MicroLockSlotsAsData) {
+TEST(SmallLocks, MicroLockWithData) {
   MicroLock lock;
   lock.init();
   EXPECT_EQ(lock.load(std::memory_order_relaxed), 0);
 
-  lock.lock(0);
-  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00000001);
+  EXPECT_EQ(lock.lockAndLoad(), 0);
+  lock.unlockAndStore(42);
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 42);
 
-  EXPECT_EQ(lock.lockAndLoad(1), 0b00000101);
+  EXPECT_EQ(lock.lockAndLoad(), 42);
+  lock.unlock();
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 42);
 
-  // Mask out only the slot that is being unlocked
-  lock.unlockAndStore(
-      1, ~MicroLock::slotMask<0>(), std::numeric_limits<uint8_t>::max());
-  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11110001);
-
-  lock.init();
-  lock.lock(0);
+  lock.store(12, std::memory_order_relaxed);
   {
-    MicroLock::LockGuardWithDataSlots<2, 3> guard(lock, 1);
-    EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00000101);
-    EXPECT_EQ(guard.loadedValue(), 0);
-    guard.storeValue(std::numeric_limits<uint8_t>::max());
-    EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00000101);
+    MicroLock::LockGuardWithData guard{lock};
+    EXPECT_EQ(guard.loadedValue(), 12);
+    EXPECT_EQ(lock.load(std::memory_order_relaxed), 12);
+    guard.storeValue(24);
+    // Should not have immediate effect
+    EXPECT_EQ(guard.loadedValue(), 12);
+    EXPECT_EQ(lock.load(std::memory_order_relaxed), 12);
   }
-  // Only slots 2 and 3 should be set
-  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11110001);
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 24);
 
-  {
-    MicroLock::LockGuardWithDataSlots<2> guard(lock, 1);
-    EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11110101);
-    EXPECT_EQ(guard.loadedValue(), 0b00110000);
-    guard.storeValue(0);
-    EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11110101);
-  }
-  // Only slot 2 should be unset
-  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11000001);
-
-  {
-    MicroLock::LockGuardWithDataSlots<3> guard(lock, 1);
-    EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11000101);
-    EXPECT_EQ(guard.loadedValue(), 0b11000000);
-  }
-  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b11000001);
-  // Do not modify unless something is stored
+  // Drop the two most significant bits
+  lock.lock();
+  lock.unlockAndStore(0b10011001);
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00011001);
+  lock.store(0b11101110, std::memory_order_relaxed);
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00101110);
 }
 
 namespace {
