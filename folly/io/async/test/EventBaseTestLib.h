@@ -2236,15 +2236,19 @@ TYPED_TEST_P(EventBaseTest1, DrivableExecutorTest) {
   folly::EventBase& base = *eventBasePtr;
   bool finished = false;
 
+  Baton baton;
+
   std::thread t([&] {
+    baton.wait();
     /* sleep override */
-    std::this_thread::sleep_for(std::chrono::microseconds(10));
+    std::this_thread::sleep_for(std::chrono::milliseconds(500));
     finished = true;
     base.runInEventBaseThread([&]() { p.setValue(true); });
   });
 
   // Ensure drive does not busy wait
   base.drive(); // TODO: fix notification queue init() extra wakeup
+  baton.post();
   base.drive();
   EXPECT_TRUE(finished);
 
