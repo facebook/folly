@@ -51,16 +51,16 @@ extern ParkingLot<std::uint32_t> parkingLot;
 template <template <typename...> class Atom, typename... Args>
 void atomic_wait_impl(
     const Atom<std::uint32_t, Args...>* atomic,
-    std::uint32_t expected) {
-  futexWait(atomic, expected);
+    std::uint32_t old) {
+  futexWait(atomic, old);
   return;
 }
 
 template <template <typename...> class Atom, typename Integer, typename... Args>
-void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer expected) {
+void atomic_wait_impl(const Atom<Integer, Args...>* atomic, Integer old) {
   static_assert(!std::is_same<Integer, std::uint32_t>{}, "");
   parkingLot.park(
-      atomic, -1, [&] { return atomic->load() == expected; }, [] {});
+      atomic, -1, [&] { return atomic->load() == old; }, [] {});
 }
 
 template <

@@ -46,11 +46,11 @@ namespace folly {
  */
 //  mimic: std::atomic_wait, p1135r0
 template <typename Integer>
-void atomic_wait(const std::atomic<Integer>* atomic, Integer expected);
+void atomic_wait(const std::atomic<Integer>* atomic, Integer old);
 template <typename Integer, typename Clock, typename Duration>
 std::cv_status atomic_wait_until(
     const std::atomic<Integer>* atomic,
-    Integer expected,
+    Integer old,
     const std::chrono::time_point<Clock, Duration>& deadline);
 
 //  mimic: std::atomic_notify_one, p1135r0
