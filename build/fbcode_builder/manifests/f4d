@@ -1,0 +1,28 @@
+[manifest]
+name = f4d
+fbsource_path = fbcode/f4d
+shipit_project = f4d
+shipit_fbcode_builder = true
+
+[git]
+repo_url = https://github.com/facebookexternal/f4d.git
+
+# Skip non-linux builds for now.
+[build.not(os=linux)]
+builder = nop
+
+[build.os=linux]
+builder = cmake
+
+[dependencies]
+double-conversion
+folly
+glog
+googletest
+boost
+protobuf
+lzo
+
+[shipit.pathmap]
+fbcode/f4d/public_tld = .
+fbcode/f4d = f4d
