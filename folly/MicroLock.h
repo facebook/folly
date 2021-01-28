@@ -111,7 +111,7 @@ class MicroLockCore {
   static uint8_t lockSlowPath(
       uint32_t oldWord,
       detail::Futex<>* wordPtr,
-      uint32_t heldBit,
+      unsigned baseShift,
       unsigned maxSpins,
       unsigned maxYields) noexcept;
 
@@ -121,13 +121,6 @@ class MicroLockCore {
    * the lock will be modified.
    */
   detail::Futex<>* word() const noexcept;
-  /**
-   * Extract the lock byte from word() value.
-   */
-  static constexpr uint8_t byteFromWord(uint32_t word) noexcept {
-    return kIsLittleEndian ? static_cast<uint8_t>(word & 0xff)
-                           : static_cast<uint8_t>((word >> 24) & 0xff);
-  }
 
   static constexpr unsigned kNumLockBits = 2;
   static constexpr uint8_t kLockBits =
@@ -146,8 +139,14 @@ class MicroLockCore {
     return static_cast<uint8_t>(data << kNumLockBits);
   }
 
-  static constexpr uint8_t decodeDataFromWord(uint32_t word) noexcept {
-    return decodeDataFromByte(byteFromWord(word));
+  static constexpr uint8_t decodeDataFromWord(
+      uint32_t word,
+      unsigned baseShift) noexcept {
+    return static_cast<uint8_t>(
+        static_cast<uint8_t>(word >> baseShift) >> kNumLockBits);
+  }
+  uint8_t decodeDataFromWord(uint32_t word) const noexcept {
+    return decodeDataFromWord(word, baseShift());
   }
   static constexpr uint32_t encodeDataToWord(
       uint32_t word,
@@ -358,7 +357,7 @@ uint8_t MicroLockBase<MaxSpins, MaxYields>::lockAndLoad() noexcept {
     // sure its shifting produces the same result a call to waitBit would.
     assert(heldBit() << 1 == waitBit());
     // lockSlowPath emits its own memory barrier
-    return lockSlowPath(oldWord, wordPtr, heldBit(), MaxSpins, MaxYields);
+    return lockSlowPath(oldWord, wordPtr, baseShift(), MaxSpins, MaxYields);
   }
 }
 

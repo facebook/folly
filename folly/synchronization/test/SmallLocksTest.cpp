@@ -358,6 +358,20 @@ TEST(SmallLocks, MicroLockWithData) {
   EXPECT_EQ(lock.load(std::memory_order_relaxed), 0b00101110);
 }
 
+TEST(SmallLocks, MicroLockDataAlignment) {
+  struct alignas(uint32_t) Thing {
+    uint8_t padding1[2];
+    MicroLock lock;
+    uint8_t padding2;
+  } thing;
+  auto& lock = thing.lock;
+  lock.init();
+
+  EXPECT_EQ(lock.lockAndLoad(), 0);
+  lock.unlockAndStore(60);
+  EXPECT_EQ(lock.load(std::memory_order_relaxed), 60);
+}
+
 namespace {
 template <typename Mutex, typename Duration>
 void simpleStressTest(Duration duration, int numThreads) {

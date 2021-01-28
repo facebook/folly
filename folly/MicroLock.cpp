@@ -24,11 +24,12 @@ namespace folly {
 uint8_t MicroLockCore::lockSlowPath(
     uint32_t oldWord,
     detail::Futex<>* wordPtr,
-    uint32_t heldBit,
+    unsigned baseShift,
     unsigned maxSpins,
     unsigned maxYields) noexcept {
   uint32_t newWord;
   unsigned spins = 0;
+  uint32_t heldBit = 1 << baseShift;
   uint32_t waitBit = heldBit << 1;
   uint32_t needWaitBit = 0;
 
@@ -69,6 +70,6 @@ retry:
           std::memory_order_relaxed)) {
     goto retry;
   }
-  return decodeDataFromWord(newWord);
+  return decodeDataFromWord(newWord, baseShift);
 }
 } // namespace folly
