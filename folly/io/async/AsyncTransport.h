@@ -635,6 +635,26 @@ class AsyncTransport : public DelayedDestruction,
   }
 
   /**
+   * Hints to transport implementations that the associated certificate is no
+   * longer required by the application. The transport implementation may
+   * choose to free up resources associated with the peer certificate.
+   *
+   * After this call, `getPeerCertificate()` may return nullptr, even if it
+   * previously returned non-null
+   */
+  virtual void dropPeerCertificate() noexcept {}
+
+  /**
+   * Hints to transport implementations that the associated certificate is no
+   * longer required by the application. The transport implementation may
+   * choose to free up resources associated with the self certificate.
+   *
+   * After this call, `getPeerCertificate()` may return nullptr, even if it
+   * previously returned non-null
+   */
+  virtual void dropSelfCertificate() noexcept {}
+
+  /**
    * Get the certificate information of this transport, if any
    */
   virtual const AsyncTransportCertificate* getSelfCertificate() const {

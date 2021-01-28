@@ -900,10 +900,14 @@ class AsyncSocket : public AsyncTransport {
     return peerCertData_.get();
   }
 
+  void dropPeerCertificate() noexcept override { peerCertData_.reset(); }
+
   void setSelfCertificate(
       std::unique_ptr<const AsyncTransportCertificate> cert) {
     selfCertData_ = std::move(cert);
   }
+
+  void dropSelfCertificate() noexcept override { selfCertData_.reset(); }
 
   const AsyncTransportCertificate* getSelfCertificate() const override {
     return selfCertData_.get();

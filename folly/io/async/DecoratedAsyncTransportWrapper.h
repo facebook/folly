@@ -165,8 +165,16 @@ class DecoratedAsyncTransportWrapper : public folly::AsyncTransport {
     return transport_->getPeerCertificate();
   }
 
+  void dropPeerCertificate() noexcept override {
+    transport_->dropPeerCertificate();
+  }
+
   const AsyncTransportCertificate* getSelfCertificate() const override {
     return transport_->getSelfCertificate();
+  }
+
+  void dropSelfCertificate() noexcept override {
+    transport_->dropSelfCertificate();
   }
 
   bool setZeroCopy(bool enable) override {
