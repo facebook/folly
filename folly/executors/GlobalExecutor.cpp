@@ -138,6 +138,9 @@ namespace detail {
 std::shared_ptr<Executor> tryGetImmutableCPUPtr() {
   return getImmutable<Executor>();
 }
+bool isDefaultExecutor(Executor* ex) {
+  return dynamic_cast<DefaultCPUExecutor*>(ex);
+}
 } // namespace detail
 
 Executor::KeepAlive<> getGlobalCPUExecutor() {

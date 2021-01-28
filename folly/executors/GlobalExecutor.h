@@ -25,7 +25,8 @@ namespace folly {
 
 namespace detail {
 std::shared_ptr<Executor> tryGetImmutableCPUPtr();
-}
+bool isDefaultExecutor(Executor*);
+} // namespace detail
 
 /**
  * Return the global executor.
