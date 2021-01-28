@@ -1013,8 +1013,8 @@ TEST(Dynamic, MergePatchRemoveNonExistent) {
 }
 
 TEST(Dynamic, MergeDiffFlatObjects) {
-  dynamic source = dynamic::object("a", 0)("b", 1)("c", 2);
-  dynamic target = dynamic::object("a", 1)("b", 2);
+  dynamic source = dynamic::object("a", 0)("b", 1)("c", 2)("d", 3);
+  dynamic target = dynamic::object("a", 1)("b", 2)("d", 3);
   auto patch = dynamic::merge_diff(source, target);
 
   EXPECT_EQ(3, patch.size());
@@ -1027,10 +1027,16 @@ TEST(Dynamic, MergeDiffFlatObjects) {
 }
 
 TEST(Dynamic, MergeDiffNestedObjects) {
-  dynamic source = dynamic::object("a", dynamic::object("b", 1)("c", 2))(
-      "d", dynamic::array(1, 2, 3));
-  dynamic target = dynamic::object("a", dynamic::object("b", 2))(
-      "d", dynamic::array(2, 3, 4));
+  // clang-format off
+  dynamic source = dynamic::object
+    ("a", dynamic::object("b", 1)("c", 2)("d", 3))
+    ("e", dynamic::array(1, 2, 3))
+    ("f", dynamic::array(4, 5, 6));
+  dynamic target = dynamic::object
+    ("a", dynamic::object("b", 2)("d", 3))
+    ("e", dynamic::array(2, 3, 4))
+    ("f", dynamic::array(4, 5, 6));
+  // clang-format on
 
   auto patch = dynamic::merge_diff(source, target);
 
@@ -1040,11 +1046,11 @@ TEST(Dynamic, MergeDiffNestedObjects) {
   EXPECT_EQ(2, patch["a"]["b"].getInt());
   EXPECT_TRUE(patch["a"]["c"].isNull());
 
-  EXPECT_TRUE(patch["d"].isArray());
-  EXPECT_EQ(3, patch["d"].size());
-  EXPECT_EQ(2, patch["d"][0].getInt());
-  EXPECT_EQ(3, patch["d"][1].getInt());
-  EXPECT_EQ(4, patch["d"][2].getInt());
+  EXPECT_TRUE(patch["e"].isArray());
+  EXPECT_EQ(3, patch["e"].size());
+  EXPECT_EQ(2, patch["e"][0].getInt());
+  EXPECT_EQ(3, patch["e"][1].getInt());
+  EXPECT_EQ(4, patch["e"][2].getInt());
 
   source.merge_patch(patch);
   EXPECT_EQ(source, target);

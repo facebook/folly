@@ -333,7 +333,7 @@ void dynamic::destroy() noexcept {
 }
 
 dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
-  if (!source.isObject() || source.type() != target.type()) {
+  if (!source.isObject() || !target.isObject()) {
     return target;
   }
 
@@ -345,7 +345,16 @@ dynamic dynamic::merge_diff(const dynamic& source, const dynamic& target) {
     if (it == source.items().end()) {
       diff[pair.first] = pair.second;
     } else {
-      diff[pair.first] = merge_diff(source[pair.first], target[pair.first]);
+      const auto& ssource = it->second;
+      const auto& starget = pair.second;
+      if (ssource.isObject() && starget.isObject()) {
+        auto sdiff = merge_diff(ssource, starget);
+        if (!sdiff.empty()) {
+          diff[pair.first] = std::move(sdiff);
+        }
+      } else if (ssource != starget) {
+        diff[pair.first] = merge_diff(ssource, starget);
+      }
     }
   }
 
