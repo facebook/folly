@@ -72,7 +72,7 @@ struct Obj {
 void swap(Obj&, Obj&) noexcept {} // no-op
 } // namespace swappable
 
-struct AltSwappable;
+struct AltSwappable {};
 struct AltSwappableRet {};
 namespace unswappable {
 FOLLY_MAYBE_UNUSED AltSwappableRet swap(AltSwappable&, AltSwappable&);
