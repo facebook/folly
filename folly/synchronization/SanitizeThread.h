@@ -196,7 +196,6 @@ class annotate_ignore_thread_sanitizer_guard {
       : file_(file), line_(line) {
     annotate_ignore_reads_begin(file_, line_);
     annotate_ignore_writes_begin(file_, line_);
-    annotate_ignore_sync_begin(file_, line_);
   }
 
   annotate_ignore_thread_sanitizer_guard(
@@ -207,7 +206,6 @@ class annotate_ignore_thread_sanitizer_guard {
   ~annotate_ignore_thread_sanitizer_guard() {
     annotate_ignore_reads_end(file_, line_);
     annotate_ignore_writes_end(file_, line_);
-    annotate_ignore_sync_end(file_, line_);
   }
 
  private:
