@@ -826,6 +826,10 @@ TEST(Optional, StdOptionalConversions) {
   EXPECT_EQ(*f, 42);
   EXPECT_TRUE(s);
 
+  const folly::Optional<int> fc = 12;
+  s = static_cast<std::optional<int>>(fc);
+  EXPECT_EQ(*s, 12);
+
   folly::Optional<std::unique_ptr<int>> fp = std::make_unique<int>(42);
   std::optional<std::unique_ptr<int>> sp(std::move(fp));
   EXPECT_EQ(**sp, 42);

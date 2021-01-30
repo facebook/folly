@@ -188,7 +188,7 @@ class Optional {
     reset();
     return ret;
   }
-  explicit operator std::optional<Value>() & noexcept(
+  explicit operator std::optional<Value>() const& noexcept(
       std::is_nothrow_copy_constructible<Value>::value) {
     return storage_.hasValue ? std::optional<Value>(storage_.value)
                              : std::nullopt;
