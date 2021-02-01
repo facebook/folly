@@ -48,7 +48,7 @@ class AsyncioExecutor : public DrivableExecutor, public SequencedExecutor {
   int fileno() const { return consumer_.getFd(); }
 
   void drive() noexcept override {
-    consumer_.consume([](Func&& func) {
+    consumer_.consumeUntilDrained([](Func&& func) {
       if (FOLLY_DETAIL_PY_ISFINALIZING()) {
         // if Python is finalizing calling scheduled functions MAY segfault.
         // any code that could have been called is now inconsequential.
