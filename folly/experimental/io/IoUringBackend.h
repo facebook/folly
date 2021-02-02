@@ -796,6 +796,8 @@ class IoUringBackend : public EventBaseBackendBase {
   // poll callback to be invoked if POLL_CQ flag is set
   // every time we poll for a CQE
   CQPollLoopCallback cqPollLoopCallback_;
+
+  bool registerDefaultFds_{true};
 };
 
 using PollIoBackend = IoUringBackend;

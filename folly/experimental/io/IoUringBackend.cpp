@@ -448,11 +448,7 @@ IoUringBackend::IoUringBackend(Options options)
     fdRegistry_.init();
   }
 
-  // add the timer fd
-  if (!addTimerFd() || !addSignalFds()) {
-    cleanup();
-    throw NotAvailable("io_uring_submit error");
-  }
+  // delay adding the timer and signal fds until running the loop first time
 }
 
 IoUringBackend::~IoUringBackend() {
@@ -828,6 +824,14 @@ size_t IoUringBackend::processActiveEvents() {
 }
 
 int IoUringBackend::eb_event_base_loop(int flags) {
+  if (FOLLY_UNLIKELY(registerDefaultFds_)) {
+    registerDefaultFds_ = false;
+    if (!addTimerFd() || !addSignalFds()) {
+      cleanup();
+      throw NotAvailable("io_uring_submit error");
+    }
+  }
+
   // schedule the timers
   bool done = false;
   auto waitForEvents = (flags & EVLOOP_NONBLOCK) ? WaitForEventsMode::DONT_WAIT

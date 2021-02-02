@@ -554,10 +554,10 @@ TEST(IoUringBackend, RegisteredFds) {
   CHECK(!record);
 
   std::vector<folly::IoUringBackend::FdRegistrationRecord*> records;
-  // we use kBackendCapacity -1 since we can have the timerFd
-  // already using one fd
-  records.reserve(kBackendCapacity - 1);
-  for (size_t i = 0; i < kBackendCapacity - 1; i++) {
+  // we use kBackendCapacity since the timerFd
+  // allocates it only on the first loop
+  records.reserve(kBackendCapacity);
+  for (size_t i = 0; i < kBackendCapacity; i++) {
     record = backendReg->registerFd(eventFd);
     CHECK(record);
     records.emplace_back(record);
