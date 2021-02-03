@@ -16,7 +16,6 @@
 
 #include <folly/detail/MemoryIdler.h>
 
-#include <atomic>
 #include <climits>
 #include <cstdio>
 #include <cstring>
@@ -97,11 +96,7 @@ static void fetchStackLimits() {
   pthread_attr_t attr;
   if ((err = pthread_getattr_np(pthread_self(), &attr))) {
     // some restricted environments can't access /proc
-    static std::atomic<bool> flag{false};
-    if (!flag.exchange(true, std::memory_order_relaxed)) {
-      LOG(WARNING) << "pthread_getaddr_np failed errno=" << err;
-    }
-
+    LOG_FIRST_N(WARNING, 1) << "pthread_getaddr_np failed errno=" << err;
     tls_stackSize = 1;
     return;
   }
