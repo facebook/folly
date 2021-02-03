@@ -232,6 +232,26 @@ TEST(DelayedInit, ConstType) {
   EXPECT_EQ(lazy->value, 12);
 }
 
+namespace {
+template <typename T>
+class DelayedInitSizeTest : public testing::Test {};
+
+template <typename T>
+struct WithOneByte {
+  T t;
+  char c;
+};
+} // namespace
+
+using DelayedInitSizeTestTypes =
+    testing::Types<char, short, int, long, long long, char[3], short[2]>;
+TYPED_TEST_CASE(DelayedInitSizeTest, DelayedInitSizeTestTypes);
+
+TYPED_TEST(DelayedInitSizeTest, Size) {
+  // DelayedInit should not add more than 1-byte size overhead (modulo padding)
+  EXPECT_EQ(sizeof(DelayedInit<TypeParam>), sizeof(WithOneByte<TypeParam>));
+}
+
 TEST(DelayedInit, Concurrent) {
   CtorCounts counts;
   DelayedInit<CtorCounts::Tracker> lazy;
