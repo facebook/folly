@@ -73,6 +73,7 @@ inline long double nextafter(long double x, long double y) {
  * Implement it using builtin versions
  */
 #ifdef __UCLIBC__
+
 constexpr float remainder(float x, float y) {
   return __builtin_remainderf(x, y);
 }
@@ -84,6 +85,13 @@ constexpr double remainder(double x, double y) {
 constexpr long double remainder(long double x, long double y) {
   return __builtin_remainderl(x, y);
 }
+
+#else
+
+// Fallback to STL if not uclibc.
+
+/* using override */ using std::remainder;
+
 #endif // __UCLIBC__
 
 #endif // !__ANDROID__ && !__UCLIBC__
