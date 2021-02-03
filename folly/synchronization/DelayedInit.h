@@ -80,7 +80,7 @@ struct DelayedInit {
    * then the provided function is not called.
    */
   template <typename Func>
-  T& try_emplace_with(Func&& func) const {
+  T& try_emplace_with(Func func) const {
     call_once(storage_.init, [&]() mutable {
       new (std::addressof(storage_.value)) T(func());
     });

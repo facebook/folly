@@ -54,10 +54,10 @@ struct ConcurrentLazy {
   explicit ConcurrentLazy(const Func& f) : func_(f) {}
 
   const result_type& operator()() const {
-    return value_.try_emplace_with(func_);
+    return value_.try_emplace_with(std::ref(func_));
   }
 
-  result_type& operator()() { return value_.try_emplace_with(func_); }
+  result_type& operator()() { return value_.try_emplace_with(std::ref(func_)); }
 
  private:
   folly::DelayedInit<result_type> value_;
