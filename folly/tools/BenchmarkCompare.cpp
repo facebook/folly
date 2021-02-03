@@ -19,14 +19,27 @@
 #include <folly/init/Init.h>
 #include <folly/json.h>
 
-using namespace std;
-
+/**
+ * Utility to produce a relative benchmark result from JSON result dumps
+ * generated earlier.
+ *
+ * This can be useful in cases where you are changing the code you wish to
+ * benchmark, by preserving a version of the previous result you can readily
+ * output the relative change by your changes.
+ *
+ * Usage:
+ * - generate a benchmark JSON dump, use //folly::benchmark's "--json_verbose"
+ *      $ your_benchmark_binary --benchmark --json_verbose > old-json
+ * - compare two benchmarks & output a human-readable comparison:
+ *      $ benchmark_compare old-json new-json
+ */
 namespace folly {
 
-vector<detail::BenchmarkResult> resultsFromFile(const std::string& filename) {
-  string content;
+std::vector<detail::BenchmarkResult> resultsFromFile(
+    const std::string& filename) {
+  std::string content;
   readFile(filename.c_str(), content);
-  vector<detail::BenchmarkResult> ret;
+  std::vector<detail::BenchmarkResult> ret;
   benchmarkResultsFromDynamic(parseJson(content), ret);
   return ret;
 }

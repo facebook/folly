@@ -40,7 +40,10 @@ using namespace std;
 
 DEFINE_bool(benchmark, false, "Run benchmarks.");
 DEFINE_bool(json, false, "Output in JSON format.");
-DEFINE_bool(json_verbose, false, "Output in verbose JSON format.");
+DEFINE_bool(
+    json_verbose,
+    false,
+    "Output in verbose JSON format for BenchmarkCompare");
 
 DEFINE_string(
     bm_regex,
