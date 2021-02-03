@@ -159,5 +159,37 @@ using co_current_cancellation_token_t = detail::co_current_cancellation_token_;
 inline constexpr co_current_cancellation_token_t co_current_cancellation_token{
     co_current_cancellation_token_t::secret_::token_};
 
+//  co_safe_point_t
+//  co_safe_point
+//
+//  A semi-awaitable type and value which, when awaited in an async coroutine
+//  supporting safe-points, causes a safe-point to be reached.
+//
+//  Example:
+//
+//    co_await co_safe_point; // a safe-point is reached
+//
+//  At this safe-point:
+//  - If cancellation has been requested then the coroutine is terminated with
+//    cancellation.
+//  - To aid overall system concurrency, the coroutine may be rescheduled onto
+//    the current executor.
+//  - Otherwise, the coroutine is resumed.
+//
+//  Recommended for use wherever cancellation is checked and handled via early
+//  termination.
+//
+//  Technical note: behavior is typically implemented in some overload
+//  of await_transform in the coroutine's promise type, or in the awaitable
+//  or awaiter it returns. Example:
+//
+//      struct /* some coroutine type */ {
+//        struct promise_type {
+//          /* some awaiter */ await_transform(co_safe_point_t) noexcept;
+//        };
+//      };
+class co_safe_point_t final {};
+FOLLY_INLINE_VARIABLE constexpr co_safe_point_t co_safe_point{};
+
 } // namespace coro
 } // namespace folly

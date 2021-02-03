@@ -144,6 +144,14 @@ class AsyncGeneratorPromise {
     }
   }
 
+  AwaitableVariant<YieldAwaiter, AwaitableReady<void>> await_transform(
+      co_safe_point_t) noexcept {
+    if (cancelToken_.isCancellationRequested()) {
+      return yield_value(co_cancelled);
+    }
+    return AwaitableReady<void>{};
+  }
+
   void unhandled_exception() noexcept {
     DCHECK(state_ == State::INVALID);
     folly::coro::detail::activate(exceptionPtr_, std::current_exception());

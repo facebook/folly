@@ -591,4 +591,35 @@ TEST_F(TaskTest, Moved) {
   }
 }
 
+TEST_F(TaskTest, SafePoint) {
+  folly::coro::blockingWait([]() -> folly::coro::Task<void> {
+    enum class step_type {
+      init,
+      before_continue_sp,
+      after_continue_sp,
+      before_cancel_sp,
+      after_cancel_sp,
+    };
+    step_type step = step_type::init;
+
+    folly::CancellationSource cancelSrc;
+    auto makeTask = [&]() -> folly::coro::Task<void> {
+      step = step_type::before_continue_sp;
+      co_await folly::coro::co_safe_point;
+      step = step_type::after_continue_sp;
+
+      cancelSrc.requestCancellation();
+
+      step = step_type::before_cancel_sp;
+      co_await folly::coro::co_safe_point;
+      step = step_type::after_cancel_sp;
+    };
+
+    auto result = co_await folly::coro::co_awaitTry( //
+        folly::coro::co_withCancellation(cancelSrc.getToken(), makeTask()));
+    EXPECT_THROW(result.value(), folly::OperationCancelled);
+    EXPECT_EQ(step_type::before_cancel_sp, step);
+  }());
+}
+
 #endif

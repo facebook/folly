@@ -78,6 +78,15 @@ class TaskPromiseBase {
  protected:
   TaskPromiseBase() noexcept {}
 
+  template <typename Promise>
+  AwaitableVariant<FinalAwaiter, AwaitableReady<void>> do_safe_point(
+      Promise& promise) noexcept {
+    if (cancelToken_.isCancellationRequested()) {
+      return promise.yield_value(co_cancelled);
+    }
+    return AwaitableReady<void>{};
+  }
+
  public:
   static void* operator new(std::size_t size) {
     return ::folly_coro_async_malloc(size);
@@ -137,6 +146,7 @@ class TaskPromise : public TaskPromiseBase {
       !std::is_rvalue_reference_v<T>,
       "Task<T&&> is not supported. "
       "Consider using Task<T> or Task<std::unique_ptr<T>> instead.");
+  friend class TaskPromiseBase;
 
   using StorageType = detail::lift_lvalue_reference_t<T>;
 
@@ -182,6 +192,12 @@ class TaskPromise : public TaskPromiseBase {
     return final_suspend();
   }
 
+  using TaskPromiseBase::await_transform;
+
+  auto await_transform(co_safe_point_t) noexcept {
+    return do_safe_point(*this);
+  }
+
  private:
   Try<StorageType> result_;
 };
@@ -189,6 +205,8 @@ class TaskPromise : public TaskPromiseBase {
 template <>
 class TaskPromise<void> : public TaskPromiseBase {
  public:
+  friend class TaskPromiseBase;
+
   using StorageType = void;
 
   TaskPromise() noexcept = default;
@@ -216,6 +234,12 @@ class TaskPromise<void> : public TaskPromiseBase {
   auto yield_value(co_result<Unit>&& result) {
     result_ = std::move(result.result());
     return final_suspend();
+  }
+
+  using TaskPromiseBase::await_transform;
+
+  auto await_transform(co_safe_point_t) noexcept {
+    return do_safe_point(*this);
   }
 
  private:
