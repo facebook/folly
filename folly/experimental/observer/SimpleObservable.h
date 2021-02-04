@@ -51,7 +51,8 @@ class SimpleObservable {
   struct Wrapper;
   std::shared_ptr<Context> context_;
 
-  folly::DelayedInit<Observer<typename observer_detail::Unwrap<T>::type>>
+  mutable folly::DelayedInit<
+      Observer<typename observer_detail::Unwrap<T>::type>>
       observer_;
 };
 } // namespace observer

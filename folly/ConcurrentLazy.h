@@ -39,34 +39,38 @@ namespace folly {
  * Otherwise, all design considerations from `folly::Lazy` are reflected here.
  */
 
-template <class Func>
+template <class Ctor>
 struct ConcurrentLazy {
-  using result_type = invoke_result_t<Func>;
+  using result_type = invoke_result_t<Ctor>;
 
   static_assert(
-      !std::is_const<Func>::value,
+      !std::is_const<Ctor>::value,
       "Func should not be a const-qualified type");
   static_assert(
-      !std::is_reference<Func>::value,
+      !std::is_reference<Ctor>::value,
       "Func should not be a reference type");
 
-  explicit ConcurrentLazy(Func&& f) : func_(std::move(f)) {}
-  explicit ConcurrentLazy(const Func& f) : func_(f) {}
+  template <
+      typename F,
+      std::enable_if_t<std::is_constructible_v<Ctor, F>, int> = 0>
+  explicit ConcurrentLazy(F&& f) noexcept(
+      std::is_nothrow_constructible_v<Ctor, F>)
+      : ctor_(static_cast<F&&>(f)) {}
 
   const result_type& operator()() const {
-    return value_.try_emplace_with(std::ref(func_));
+    return value_.try_emplace_with(std::ref(ctor_));
   }
 
-  result_type& operator()() { return value_.try_emplace_with(std::ref(func_)); }
+  result_type& operator()() { return value_.try_emplace_with(std::ref(ctor_)); }
 
  private:
-  folly::DelayedInit<result_type> value_;
-  mutable Func func_;
+  mutable folly::DelayedInit<result_type> value_;
+  mutable Ctor ctor_;
 };
 
 template <class Func>
-auto concurrent_lazy(Func&& fun) {
-  return ConcurrentLazy<remove_cvref_t<Func>>(std::forward<Func>(fun));
+ConcurrentLazy<remove_cvref_t<Func>> concurrent_lazy(Func&& func) {
+  return ConcurrentLazy<remove_cvref_t<Func>>(static_cast<Func&&>(func));
 }
 
 } // namespace folly
