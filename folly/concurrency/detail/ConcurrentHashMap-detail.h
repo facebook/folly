@@ -230,6 +230,8 @@ class alignas(64) BucketTable {
 
   ~BucketTable() {
     auto buckets = buckets_.load(std::memory_order_relaxed);
+    // To catch use-after-destruction bugs in user code.
+    buckets_.store(nullptr, std::memory_order_release);
     // We can delete and not retire() here, since users must have
     // their own synchronization around destruction.
     auto count = bucket_count_.load(std::memory_order_relaxed);
@@ -286,6 +288,7 @@ class alignas(64) BucketTable {
       return; // Rehash only if expanding.
     }
     auto buckets = buckets_.load(std::memory_order_relaxed);
+    DCHECK(buckets); // Use-after-destruction by user.
     auto newbuckets = Buckets::create(bucket_count, cohort);
     load_factor_nodes_ = bucket_count * load_factor_;
     for (size_t i = 0; i < oldcount; i++) {
@@ -330,6 +333,7 @@ class alignas(64) BucketTable {
     }
 
     auto oldbuckets = buckets_.load(std::memory_order_relaxed);
+    DCHECK(oldbuckets); // Use-after-destruction by user.
     seqlock_.fetch_add(1, std::memory_order_release);
     bucket_count_.store(bucket_count, std::memory_order_release);
     buckets_.store(newbuckets, std::memory_order_release);
@@ -369,6 +373,7 @@ class alignas(64) BucketTable {
 
       size_t bcount = bucket_count_.load(std::memory_order_relaxed);
       auto buckets = buckets_.load(std::memory_order_relaxed);
+      DCHECK(buckets); // Use-after-destruction by user.
       auto idx = getIdx(bcount, h);
       auto head = &buckets->buckets_[idx]();
       node = head->load(std::memory_order_relaxed);
@@ -424,6 +429,7 @@ class alignas(64) BucketTable {
       buckets_.store(newbuckets, std::memory_order_release);
       clearSize();
     }
+    DCHECK(buckets); // Use-after-destruction by user.
     buckets->retire(concurrenthashmap::HazptrTableDeleter(bcount));
   }
 
@@ -633,6 +639,7 @@ class alignas(64) BucketTable {
       bcount = bucket_count_.load(std::memory_order_relaxed);
     }
 
+    DCHECK(buckets); // Use-after-destruction by user.
     auto idx = getIdx(bcount, h);
     auto head = &buckets->buckets_[idx]();
     auto node = head->load(std::memory_order_relaxed);
@@ -689,6 +696,7 @@ class alignas(64) BucketTable {
 
       // Reload correct bucket.
       buckets = buckets_.load(std::memory_order_relaxed);
+      DCHECK(buckets); // Use-after-destruction by user.
       bcount <<= 1;
       hazbuckets.reset(buckets);
       idx = getIdx(bcount, h);
@@ -1124,6 +1132,8 @@ class alignas(64) SIMDTable {
 
   ~SIMDTable() {
     auto chunks = chunks_.load(std::memory_order_relaxed);
+    // To catch use-after-destruction bugs in user code.
+    chunks_.store(nullptr, std::memory_order_release);
     // We can delete and not retire() here, since users must have
     // their own synchronization around destruction.
     auto count = chunk_count_.load(std::memory_order_relaxed);
@@ -1299,6 +1309,7 @@ class alignas(64) SIMDTable {
 
     size_t ccount = chunk_count_.load(std::memory_order_relaxed);
     auto chunks = chunks_.load(std::memory_order_relaxed);
+    DCHECK(chunks); // Use-after-destruction by user.
     size_t chunk_idx, tag_idx;
 
     Node* node = find_internal(key, hp, chunks, ccount, chunk_idx, tag_idx);
@@ -1356,6 +1367,7 @@ class alignas(64) SIMDTable {
       chunks_.store(newchunks, std::memory_order_release);
       clearSize();
     }
+    DCHECK(chunks); // Use-after-destruction by user.
     chunks->reclaim_nodes(ccount);
     chunks->retire(HazptrTableDeleter(ccount));
   }
@@ -1451,6 +1463,7 @@ class alignas(64) SIMDTable {
       chunks = chunks_.load(std::memory_order_relaxed);
     }
 
+    DCHECK(chunks); // Use-after-destruction by user.
     node = find_internal(k, hp, chunks, ccount, chunk_idx, tag_idx);
 
     it.hazptrs_[0].reset(chunks);
@@ -1478,6 +1491,7 @@ class alignas(64) SIMDTable {
         rehash_internal(ccount << 1, cohort);
         ccount = chunk_count_.load(std::memory_order_relaxed);
         chunks = chunks_.load(std::memory_order_relaxed);
+        DCHECK(chunks); // Use-after-destruction by user.
         it.hazptrs_[0].reset(chunks);
       }
     }
@@ -1497,6 +1511,7 @@ class alignas(64) SIMDTable {
     grow_threshold_ = new_chunk_count * Chunk::kCapacity * load_factor_;
 
     for (size_t i = 0; i < old_chunk_count; i++) {
+      DCHECK(old_chunks); // Use-after-destruction by user.
       Chunk* oldchunk = old_chunks->getChunk(i, old_chunk_count);
       auto occupied = oldchunk->occupiedIter();
       while (occupied.hasNext()) {
