@@ -229,7 +229,7 @@ class NotificationQueue {
     }
 
     template <typename F>
-    void consumeUntilDrained(F&& foreach);
+    void consume(F&& f);
 
    private:
     NotificationQueue& queue_;
@@ -838,30 +838,27 @@ bool NotificationQueue<MessageT>::Consumer::consumeUntilDrained(
 
 template <typename MessageT>
 template <typename F>
-void NotificationQueue<MessageT>::SimpleConsumer::consumeUntilDrained(
-    F&& foreach) {
+void NotificationQueue<MessageT>::SimpleConsumer::consume(F&& foreach) {
   SCOPE_EXIT { queue_.syncSignalAndQueue(); };
 
   queue_.checkPid();
 
-  while (true) {
-    std::unique_ptr<Node> data;
-    {
-      folly::SpinLockGuard g(queue_.spinlock_);
+  std::unique_ptr<Node> data;
+  {
+    folly::SpinLockGuard g(queue_.spinlock_);
 
-      if (UNLIKELY(queue_.queue_.empty())) {
-        return;
-      }
-
-      data.reset(&queue_.queue_.front());
-      queue_.queue_.pop_front();
+    if (UNLIKELY(queue_.queue_.empty())) {
+      return;
     }
 
-    RequestContextScopeGuard rctx(std::move(data->ctx_));
-    foreach(std::move(data->msg_));
-    // Make sure message destructor is called with the correct RequestContext.
-    data.reset();
+    data.reset(&queue_.queue_.front());
+    queue_.queue_.pop_front();
   }
+
+  RequestContextScopeGuard rctx(std::move(data->ctx_));
+  foreach(std::move(data->msg_));
+  // Make sure message destructor is called with the correct RequestContext.
+  data.reset();
 }
 
 /**
