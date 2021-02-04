@@ -28,10 +28,10 @@
  * output the relative change by your changes.
  *
  * Usage:
- * - generate a benchmark JSON dump, use //folly::benchmark's "--json_verbose"
- *      $ your_benchmark_binary --benchmark --json_verbose > old-json
+ * - generate a benchmark JSON dump, use folly::benchmark's --bm_json_verbose
+ *     $ your_benchmark_binary --benchmark --bm_json_verbose old-json
  * - compare two benchmarks & output a human-readable comparison:
- *      $ benchmark_compare old-json new-json
+ *     $ benchmark_compare old-json new-json
  */
 namespace folly {
 

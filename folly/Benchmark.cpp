@@ -31,6 +31,7 @@
 
 #include <boost/regex.hpp>
 
+#include <folly/FileUtil.h>
 #include <folly/MapUtil.h>
 #include <folly/String.h>
 #include <folly/container/Foreach.h>
@@ -39,11 +40,18 @@
 using namespace std;
 
 DEFINE_bool(benchmark, false, "Run benchmarks.");
+
 DEFINE_bool(json, false, "Output in JSON format.");
-DEFINE_bool(
-    json_verbose,
-    false,
-    "Output in verbose JSON format for BenchmarkCompare");
+DEFINE_string(
+    bm_relative_to,
+    "",
+    "Print benchmark results relative to an earlier dump (via --bm_json_verbose)");
+
+DEFINE_string(
+    bm_json_verbose,
+    "",
+    "File to write verbose JSON format (for BenchmarkCompare / --bm_relative_to). "
+    "NOTE: this is written independent of the above --json / --bm_relative_to.");
 
 DEFINE_string(
     bm_regex,
@@ -368,25 +376,6 @@ static void printBenchmarkResultsAsJson(
   printf("%s\n", toPrettyJson(d).c_str());
 }
 
-static void printBenchmarkResultsAsVerboseJson(
-    const vector<detail::BenchmarkResult>& data) {
-  dynamic d;
-  benchmarkResultsToDynamic(data, d);
-  printf("%s\n", toPrettyJson(d).c_str());
-}
-
-static void printBenchmarkResults(const vector<detail::BenchmarkResult>& data) {
-  if (FLAGS_json_verbose) {
-    printBenchmarkResultsAsVerboseJson(data);
-    return;
-  } else if (FLAGS_json) {
-    printBenchmarkResultsAsJson(data);
-    return;
-  }
-
-  CHECK(FLAGS_json_verbose || FLAGS_json) << "Cannot print benchmark results";
-}
-
 void benchmarkResultsToDynamic(
     const vector<detail::BenchmarkResult>& data,
     dynamic& out) {
@@ -563,6 +552,25 @@ runBenchmarksWithPrinter(BenchmarkResultsPrinter* FOLLY_NULLABLE printer) {
   return std::make_pair(std::move(counterNames), std::move(results));
 }
 
+std::vector<detail::BenchmarkResult> resultsFromFile(
+    const std::string& filename) {
+  std::string content;
+  readFile(filename.c_str(), content);
+  std::vector<detail::BenchmarkResult> ret;
+  if (!content.empty()) {
+    benchmarkResultsFromDynamic(parseJson(content), ret);
+  }
+  return ret;
+}
+
+bool writeResultsToFile(
+    const std::vector<detail::BenchmarkResult>& results,
+    const std::string& filename) {
+  dynamic d;
+  benchmarkResultsToDynamic(results, d);
+  return writeFile(toPrettyJson(d), filename.c_str());
+}
+
 } // namespace
 
 namespace detail {
@@ -586,16 +594,24 @@ void runBenchmarks() {
   // PLEASE KEEP QUIET. MEASUREMENTS IN PROGRESS.
 
   auto benchmarkResults = runBenchmarksWithPrinter(
-      !FLAGS_json_verbose && !FLAGS_json && !useCounter ? &printer : nullptr);
+      FLAGS_bm_relative_to.empty() && !FLAGS_json && !useCounter ? &printer
+                                                                 : nullptr);
 
   // PLEASE MAKE NOISE. MEASUREMENTS DONE.
 
-  if (FLAGS_json_verbose || FLAGS_json) {
-    printBenchmarkResults(benchmarkResults.second);
+  if (FLAGS_json) {
+    printBenchmarkResultsAsJson(benchmarkResults.second);
+  } else if (!FLAGS_bm_relative_to.empty()) {
+    printResultComparison(
+        resultsFromFile(FLAGS_bm_relative_to), benchmarkResults.second);
   } else {
     printer = BenchmarkResultsPrinter{std::move(benchmarkResults.first)};
     printer.print(benchmarkResults.second);
     printer.separator('=');
+  }
+
+  if (!FLAGS_bm_json_verbose.empty()) {
+    writeResultsToFile(benchmarkResults.second, FLAGS_bm_json_verbose);
   }
 
   checkRunMode();
