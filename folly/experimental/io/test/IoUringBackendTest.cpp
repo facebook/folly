@@ -477,6 +477,32 @@ void testAsyncUDPRecvmsg(bool useRegisteredFds) {
 }
 } // namespace
 
+TEST(IoUringBackend, FailCreateNoRetry) {
+  bool bSuccess = true;
+  try {
+    folly::IoUringBackend::Options options;
+    options.setCapacity(256 * 1024);
+    options.setMinCapacity(0);
+    folly::IoUringBackend backend(options);
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+    bSuccess = false;
+  }
+  CHECK(!bSuccess);
+}
+
+TEST(IoUringBackend, SuccessCreateRetry) {
+  bool bSuccess = true;
+  try {
+    folly::IoUringBackend::Options options;
+    options.setCapacity(256 * 1024);
+    options.setMinCapacity(1024);
+    folly::IoUringBackend backend(options);
+  } catch (const folly::IoUringBackend::NotAvailable&) {
+    bSuccess = false;
+  }
+  CHECK(bSuccess);
+}
+
 TEST(IoUringBackend, AsyncUDPRecvmsgNoRegisterFd) {
   testAsyncUDPRecvmsg(false);
 }

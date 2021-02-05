@@ -408,14 +408,32 @@ IoUringBackend::IoUringBackend(Options options)
   }
 
   SQGroupInfoRegistry::FDCreateFunc func = [&](struct io_uring_params& params) {
-    // allocate entries both for poll add and cancel
-    if (::io_uring_queue_init_params(
-            2 * options_.maxSubmit, &ioRing_, &params)) {
-      LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
-                 << "," << params.cq_entries << ") "
-                 << "failed errno = " << errno << ":\""
-                 << folly::errnoStr(errno) << "\" " << this;
-      throw NotAvailable("io_uring_queue_init error");
+    while (true) {
+      // allocate entries both for poll add and cancel
+      if (::io_uring_queue_init_params(
+              2 * options_.maxSubmit, &ioRing_, &params)) {
+        options.capacity /= 2;
+        if (options.minCapacity && (options.capacity >= options.minCapacity)) {
+          LOG(INFO) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
+                    << "," << params.cq_entries << ") "
+                    << "failed errno = " << errno << ":\""
+                    << folly::errnoStr(errno) << "\" " << this
+                    << " retrying with capacity = " << options.capacity;
+
+          params_.cq_entries = options.capacity;
+          numEntries_ = options.capacity;
+        } else {
+          LOG(ERROR) << "io_uring_queue_init_params(" << 2 * options_.maxSubmit
+                     << "," << params.cq_entries << ") "
+                     << "failed errno = " << errno << ":\""
+                     << folly::errnoStr(errno) << "\" " << this;
+
+          throw NotAvailable("io_uring_queue_init error");
+        }
+      } else {
+        // success - break
+        break;
+      }
     }
 
     return ioRing_.ring_fd;

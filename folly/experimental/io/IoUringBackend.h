@@ -62,6 +62,12 @@ class IoUringBackend : public EventBaseBackendBase {
       return *this;
     }
 
+    Options& setMinCapacity(size_t v) {
+      minCapacity = v;
+
+      return *this;
+    }
+
     Options& setMaxSubmit(size_t v) {
       maxSubmit = v;
 
@@ -117,6 +123,7 @@ class IoUringBackend : public EventBaseBackendBase {
     }
 
     size_t capacity{0};
+    size_t minCapacity{0};
     size_t maxSubmit{128};
     size_t maxGet{std::numeric_limits<size_t>::max()};
     bool useRegisteredFds{false};
