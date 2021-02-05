@@ -81,7 +81,8 @@ struct DelayedInit {
    */
   template <typename Func>
   T& try_emplace_with(Func func) {
-    call_once(storage_.init, [&] { ::new (slot()) T(func()); });
+    auto addr = static_cast<void*>(std::addressof(storage_.value));
+    call_once(storage_.init, [&] { ::new (addr) T(func()); });
     return storage_.value;
   }
 
@@ -91,8 +92,7 @@ struct DelayedInit {
    */
   template <typename... A>
   T& try_emplace(A&&... a) {
-    call_once(storage_.init, [&] { store(static_cast<A&&>(a)...); });
-    return storage_.value;
+    return try_emplace_with([&] { return T(static_cast<A&&>(a)...); });
   }
   template <
       typename U,
@@ -100,8 +100,7 @@ struct DelayedInit {
       typename = std::enable_if_t<
           std::is_constructible<T, std::initializer_list<U>, A...>::value>>
   T& try_emplace(std::initializer_list<U> ilist, A&&... a) {
-    call_once(storage_.init, [&] { store(ilist, static_cast<A&&>(a)...); });
-    return storage_.value;
+    return try_emplace_with([&] { return T(ilist, static_cast<A&&>(a)...); });
   }
 
   bool has_value() const { return test_once(storage_.init); }
@@ -173,13 +172,6 @@ struct DelayedInit {
       std::is_trivially_destructible<T>::value,
       StorageTriviallyDestructible,
       StorageNonTriviallyDestructible>;
-
-  void* slot() { return static_cast<void*>(std::addressof(storage_.value)); }
-
-  template <typename... A>
-  void store(A&&... a) {
-    ::new (slot()) T(static_cast<A&&>(a)...);
-  }
 
   Storage storage_;
 };
