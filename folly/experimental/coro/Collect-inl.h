@@ -21,6 +21,8 @@
 #include <folly/experimental/coro/detail/CurrentAsyncFrame.h>
 #include <folly/experimental/coro/detail/Helpers.h>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 namespace detail {
@@ -929,3 +931,5 @@ auto collectAllTryWindowed(InputRange awaitables, std::size_t maxConcurrency)
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

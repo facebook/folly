@@ -18,9 +18,12 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Materialize.h>
 
 #include <variant>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -56,5 +59,7 @@ AsyncGenerator<Reference, Value> dematerialize(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Dematerialize-inl.h>

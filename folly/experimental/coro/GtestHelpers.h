@@ -17,8 +17,11 @@
 #pragma once
 
 #include <folly/experimental/coro/BlockingWait.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/portability/GTest.h>
+
+#if FOLLY_HAS_COROUTINES
 
 /**
  * This is based on the GTEST_TEST_ macro from gtest-internal.h. It seems that
@@ -109,3 +112,5 @@ folly::coro::Task<void> GTEST_TEST_CLASS_NAME_(test_case_name, test_name)::co_Te
   CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperGE, val1, val2)
 #define CO_ASSERT_GT(val1, val2) \
   CO_ASSERT_PRED_FORMAT2(::testing::internal::CmpHelperGT, val1, val2)
+
+#endif // FOLLY_HAS_COROUTINES

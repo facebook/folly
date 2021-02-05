@@ -18,8 +18,11 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/Coroutine.h>
 
 #include <variant>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -216,5 +219,7 @@ AsyncGenerator<CallbackRecord<Reference>, CallbackRecord<Value>> materialize(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Materialize-inl.h>

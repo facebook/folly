@@ -16,16 +16,18 @@
 
 #pragma once
 
-#include <experimental/coroutine>
 #include <type_traits>
 
 #include <folly/Optional.h>
 #include <folly/experimental/coro/Baton.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/detail/Helpers.h>
 #include <folly/futures/Future.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -70,3 +72,5 @@ timed_wait(Awaitable awaitable, Duration duration) {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -16,8 +16,11 @@
 
 #pragma once
 
-#include <experimental/coroutine>
 #include <future>
+
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -67,3 +70,5 @@ class Wait {
 };
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

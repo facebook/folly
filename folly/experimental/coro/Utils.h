@@ -16,11 +16,14 @@
 
 #pragma once
 
-#include <experimental/coroutine>
 #include <type_traits>
 #include <variant>
 
 #include <folly/Utility.h>
+
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -112,3 +115,5 @@ class AwaitableVariant : private std::variant<A...> {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

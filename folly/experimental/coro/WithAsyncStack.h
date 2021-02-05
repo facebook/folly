@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/functional/Invoke.h>
 #include <folly/lang/Assume.h>
@@ -25,6 +26,8 @@
 #include <cassert>
 #include <type_traits>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly::coro {
 
@@ -258,3 +261,5 @@ inline constexpr bool is_awaitable_async_stack_aware_v =
 FOLLY_DEFINE_CPO(detail::WithAsyncStackFunction, co_withAsyncStack)
 
 } // namespace folly::coro
+
+#endif // FOLLY_HAS_COROUTINES

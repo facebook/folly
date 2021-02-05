@@ -16,11 +16,11 @@
 
 #pragma once
 
-#include <experimental/coroutine>
 #include <memory>
 
 #include <folly/Executor.h>
 #include <folly/Traits.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/WithCancellation.h>
@@ -30,6 +30,8 @@
 #include <folly/tracing/AsyncStack.h>
 
 #include <glog/logging.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 
@@ -621,3 +623,5 @@ detail::TryAwaitable<remove_cvref_t<Awaitable>> co_awaitTry(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -18,6 +18,8 @@
 #include <folly/experimental/coro/Merge.h>
 #include <folly/experimental/coro/Transform.h>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -71,3 +73,5 @@ multiplex(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -24,10 +24,11 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/tracing/AsyncStack.h>
 
-#include <experimental/coroutine>
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -73,3 +74,5 @@ inline constexpr CurrentAsyncStackFrameAwaitable co_current_async_stack_frame{};
 } // namespace detail
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -17,6 +17,9 @@
 #pragma once
 
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -53,5 +56,7 @@ AsyncGenerator<HReference, HValue> concat(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Concat-inl.h>

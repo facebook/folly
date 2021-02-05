@@ -18,17 +18,19 @@
 
 #include <folly/Try.h>
 #include <folly/Unit.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/detail/Traits.h>
 
 #include <range/v3/view/move.hpp>
 
-#include <experimental/coroutine>
 #include <functional>
 #include <iterator>
 #include <tuple>
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -312,5 +314,7 @@ auto collectAllTryWindowed(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Collect-inl.h>

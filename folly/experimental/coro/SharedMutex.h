@@ -18,7 +18,6 @@
 
 #include <atomic>
 #include <cassert>
-#include <experimental/coroutine>
 #include <limits>
 #include <mutex>
 #include <utility>
@@ -26,8 +25,11 @@
 #include <folly/Executor.h>
 #include <folly/SpinLock.h>
 #include <folly/Synchronized.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/SharedLock.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -351,3 +353,5 @@ using SharedMutex = SharedMutexFair;
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

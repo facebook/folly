@@ -17,9 +17,11 @@
 #pragma once
 
 #include <folly/Traits.h>
+#include <folly/experimental/coro/Coroutine.h>
 
-#include <experimental/coroutine>
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -209,3 +211,5 @@ constexpr bool promiseHasAsyncFrame_v<
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

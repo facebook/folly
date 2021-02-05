@@ -30,6 +30,8 @@
 #include <exception>
 #include <memory>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -191,3 +193,5 @@ AsyncGenerator<Reference, Value> merge(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

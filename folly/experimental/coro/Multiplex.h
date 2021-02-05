@@ -18,10 +18,13 @@
 
 #include <folly/ExceptionWrapper.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Materialize.h>
 
 #include <tuple>
 #include <variant>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -83,5 +86,7 @@ multiplex(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Multiplex-inl.h>

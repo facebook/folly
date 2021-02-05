@@ -17,8 +17,11 @@
 #pragma once
 
 #include <folly/concurrency/UnboundedQueue.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/fibers/Semaphore.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -67,3 +70,5 @@ class UnboundedQueue {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

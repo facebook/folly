@@ -30,9 +30,7 @@
 #error "Cannot build without at least one of AsyncIO.h and IoUring.h"
 #endif
 
-#if FOLLY_HAS_COROUTINES
 #include <folly/experimental/coro/Baton.h>
-#endif
 #include <folly/portability/Sockets.h>
 
 namespace folly {

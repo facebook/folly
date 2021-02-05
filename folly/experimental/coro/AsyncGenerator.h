@@ -20,6 +20,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
@@ -33,9 +34,10 @@
 
 #include <glog/logging.h>
 
-#include <experimental/coroutine>
 #include <iterator>
 #include <type_traits>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -604,3 +606,5 @@ AsyncGeneratorPromise<Reference, Value>::get_return_object() noexcept {
 
 } // namespace coro
 } // namespace folly
+
+#endif

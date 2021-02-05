@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/tracing/AsyncStack.h>
@@ -24,8 +25,9 @@
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
-#include <experimental/coroutine>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -154,3 +156,5 @@ class Barrier {
 } // namespace detail
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -16,9 +16,12 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/futures/Future.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly::coro {
 
@@ -46,5 +49,7 @@ Task<semi_await_result_t<SemiAwaitable>> timeout(
     Timekeeper* tk = nullptr);
 
 } // namespace folly::coro
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Timeout-inl.h>

@@ -15,12 +15,14 @@
  */
 
 #include <folly/Executor.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/tracing/AsyncStack.h>
 
-#include <experimental/coroutine>
 #include <utility>
 #include <vector>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -76,3 +78,5 @@ inline constexpr AsyncStackTraceAwaitable co_current_async_stack_trace = {};
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

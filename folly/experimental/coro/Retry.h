@@ -20,6 +20,7 @@
 #include <folly/ExceptionWrapper.h>
 #include <folly/Random.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Result.h>
 #include <folly/experimental/coro/Sleep.h>
 #include <folly/experimental/coro/Task.h>
@@ -28,6 +29,8 @@
 #include <cstdint>
 #include <random>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly::coro {
 
@@ -307,3 +310,5 @@ auto retryWithExponentialBackoff(
 }
 
 } // namespace folly::coro
+
+#endif // FOLLY_HAS_COROUTINES

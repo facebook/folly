@@ -32,18 +32,13 @@
 #include <folly/Utility.h>
 #include <folly/executors/DrivableExecutor.h>
 #include <folly/executors/TimedDrivableExecutor.h>
+#include <folly/experimental/coro/Traits.h>
 #include <folly/fibers/Baton.h>
 #include <folly/functional/Invoke.h>
 #include <folly/futures/Portability.h>
 #include <folly/futures/Promise.h>
 #include <folly/futures/detail/Types.h>
 #include <folly/lang/Exception.h>
-
-#if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
-
-#include <folly/experimental/coro/Traits.h>
-#endif
 
 // boring predeclarations and details
 #include <folly/futures/Future-pre.h>

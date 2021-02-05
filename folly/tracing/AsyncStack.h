@@ -22,10 +22,7 @@
 #include <folly/CPortability.h>
 #include <folly/CppAttributes.h>
 #include <folly/Portability.h>
-
-#if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
-#endif
+#include <folly/experimental/coro/Coroutine.h>
 
 namespace folly {
 

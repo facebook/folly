@@ -17,7 +17,10 @@
 #pragma once
 
 #include <atomic>
-#include <experimental/coroutine>
+
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -140,3 +143,5 @@ inline void Baton::reset() noexcept {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

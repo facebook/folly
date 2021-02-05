@@ -19,9 +19,12 @@
 #include <utility>
 
 #include <folly/Executor.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/io/async/Request.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -193,3 +196,5 @@ FOLLY_INLINE_VARIABLE constexpr co_safe_point_t co_safe_point{};
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

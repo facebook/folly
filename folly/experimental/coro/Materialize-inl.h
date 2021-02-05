@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -42,3 +44,5 @@ AsyncGenerator<CallbackRecord<Reference>, CallbackRecord<Value>> materialize(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

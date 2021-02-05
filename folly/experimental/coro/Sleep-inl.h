@@ -20,6 +20,8 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -58,3 +60,5 @@ inline Task<void> sleepReturnEarlyOnCancel(Duration d, Timekeeper* tk) {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -18,6 +18,7 @@
 
 #include <folly/Try.h>
 #include <folly/executors/ManualExecutor.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/Traits.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
@@ -30,9 +31,10 @@
 
 #include <cassert>
 #include <exception>
-#include <experimental/coroutine>
 #include <type_traits>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -435,3 +437,5 @@ auto blockingWait(SemiAwaitable&& awaitable)
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

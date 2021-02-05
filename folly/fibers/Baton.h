@@ -20,11 +20,8 @@
 
 #include <folly/Portability.h>
 #include <folly/detail/Futex.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/io/async/HHWheelTimer.h>
-
-#if FOLLY_HAS_COROUTINES
-#include <experimental/coroutine>
-#endif
 
 namespace folly {
 namespace fibers {

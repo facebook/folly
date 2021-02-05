@@ -14,6 +14,8 @@
  * limitations under the License.
  */
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -30,3 +32,5 @@ AsyncGenerator<Reference, Value> filter(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

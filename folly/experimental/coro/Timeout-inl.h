@@ -18,6 +18,8 @@
 #include <folly/experimental/coro/Baton.h>
 #include <folly/experimental/coro/WithCancellation.h>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly::coro {
 
 template <typename SemiAwaitable, typename Duration>
@@ -102,3 +104,5 @@ timeout(SemiAwaitable semiAwaitable, Duration timeoutDuration, Timekeeper* tk) {
 }
 
 } // namespace folly::coro
+
+#endif // FOLLY_HAS_COROUTINES

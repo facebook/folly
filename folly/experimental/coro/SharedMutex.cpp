@@ -14,11 +14,9 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
+#include <folly/experimental/coro/SharedMutex.h>
 
 #if FOLLY_HAS_COROUTINES
-
-#include <folly/experimental/coro/SharedMutex.h>
 
 using namespace folly::coro;
 

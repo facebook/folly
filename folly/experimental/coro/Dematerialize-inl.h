@@ -16,6 +16,8 @@
 
 #include <folly/experimental/coro/Materialize.h>
 
+#if FOLLY_HAS_COROUTINES
+
 namespace folly {
 namespace coro {
 
@@ -41,3 +43,5 @@ AsyncGenerator<Reference, Value> dematerialize(
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

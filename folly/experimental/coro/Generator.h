@@ -18,11 +18,13 @@
 
 #include <cassert>
 #include <exception>
-#include <experimental/coroutine>
 #include <type_traits>
 #include <utility>
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -277,3 +279,5 @@ void swap(Generator<T>& a, Generator<T>& b) noexcept {
 }
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

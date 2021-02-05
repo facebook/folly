@@ -17,7 +17,10 @@
 #pragma once
 
 #include <folly/CancellationToken.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/lang/CustomizationPoint.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -65,3 +68,5 @@ FOLLY_DEFINE_CPO(detail::adl::WithCancellationFunction, co_withCancellation)
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

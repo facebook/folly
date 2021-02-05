@@ -18,8 +18,11 @@
 
 #include <folly/Executor.h>
 #include <folly/SingletonThreadLocal.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/io/async/Request.h>
 #include <folly/tracing/AsyncStack.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -46,3 +49,5 @@ class UnsafeResumeInlineSemiAwaitable {
 } // namespace detail
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

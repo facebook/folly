@@ -16,8 +16,11 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/futures/Future.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -36,5 +39,7 @@ Task<void> sleepReturnEarlyOnCancel(Duration d, Timekeeper* tk = nullptr);
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
 
 #include <folly/experimental/coro/Sleep-inl.h>

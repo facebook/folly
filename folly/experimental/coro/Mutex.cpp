@@ -14,13 +14,11 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
-
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/Mutex.h>
 
 #include <cassert>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace folly::coro;
 

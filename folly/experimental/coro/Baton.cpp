@@ -14,15 +14,15 @@
  * limitations under the License.
  */
 
-#include <folly/Portability.h>
-
-#if FOLLY_HAS_COROUTINES
-
 #include <folly/experimental/coro/Baton.h>
+
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/synchronization/AtomicUtil.h>
 
 #include <cassert>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 using namespace folly::coro;
 

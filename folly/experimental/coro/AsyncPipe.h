@@ -18,11 +18,14 @@
 
 #include <folly/Try.h>
 #include <folly/experimental/coro/AsyncGenerator.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/UnboundedQueue.h>
 
 #include <memory>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -178,3 +181,5 @@ class AsyncPipe {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

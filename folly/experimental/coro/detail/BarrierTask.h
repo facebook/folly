@@ -16,13 +16,15 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 
 #include <cassert>
-#include <experimental/coroutine>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -222,3 +224,5 @@ class DetachedBarrierTask {
 } // namespace detail
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

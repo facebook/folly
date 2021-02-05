@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Accumulate.h>
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -42,3 +42,5 @@ Task<Output> accumulate(
 }
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

@@ -17,11 +17,13 @@
 #pragma once
 
 #include <folly/Executor.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/ViaIfAsync.h>
 
 #include <atomic>
-#include <experimental/coroutine>
 #include <mutex>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -236,3 +238,5 @@ inline Mutex::LockOperation<Mutex::LockAwaiter> Mutex::co_lock() noexcept {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

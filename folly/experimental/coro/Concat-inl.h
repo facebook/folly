@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-#include <folly/experimental/coro/Concat.h>
+#include <folly/experimental/coro/Coroutine.h>
 
 namespace folly {
 namespace coro {

@@ -18,14 +18,16 @@
 
 #include <folly/ScopeGuard.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/WithAsyncStack.h>
 #include <folly/experimental/coro/detail/Malloc.h>
 #include <folly/lang/Assume.h>
 #include <folly/tracing/AsyncStack.h>
 
 #include <cassert>
-#include <experimental/coroutine>
 #include <utility>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -322,3 +324,5 @@ struct InlineTaskDetached {
 } // namespace detail
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

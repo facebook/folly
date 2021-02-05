@@ -17,7 +17,6 @@
 #pragma once
 
 #include <exception>
-#include <experimental/coroutine>
 #include <type_traits>
 
 #include <glog/logging.h>
@@ -28,6 +27,7 @@
 #include <folly/ScopeGuard.h>
 #include <folly/Traits.h>
 #include <folly/Try.h>
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/CurrentExecutor.h>
 #include <folly/experimental/coro/Invoke.h>
 #include <folly/experimental/coro/Result.h>
@@ -43,6 +43,8 @@
 #include <folly/io/async/Request.h>
 #include <folly/lang/Assume.h>
 #include <folly/tracing/AsyncStack.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -752,3 +754,5 @@ inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

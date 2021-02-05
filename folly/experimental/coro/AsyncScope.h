@@ -16,6 +16,7 @@
 
 #pragma once
 
+#include <folly/experimental/coro/Coroutine.h>
 #include <folly/experimental/coro/Task.h>
 #include <folly/experimental/coro/detail/Barrier.h>
 #include <folly/experimental/coro/detail/BarrierTask.h>
@@ -25,6 +26,8 @@
 
 #include <atomic>
 #include <cassert>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -171,3 +174,5 @@ inline folly::SemiFuture<folly::Unit> AsyncScope::cleanup() noexcept {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES

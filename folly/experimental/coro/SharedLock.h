@@ -23,6 +23,9 @@
 #include <glog/logging.h>
 
 #include <folly/Portability.h>
+#include <folly/experimental/coro/Coroutine.h>
+
+#if FOLLY_HAS_COROUTINES
 
 namespace folly {
 namespace coro {
@@ -109,3 +112,5 @@ class FOLLY_NODISCARD SharedLock {
 
 } // namespace coro
 } // namespace folly
+
+#endif // FOLLY_HAS_COROUTINES
