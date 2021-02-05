@@ -824,7 +824,7 @@ size_t IoUringBackend::processActiveEvents() {
 }
 
 int IoUringBackend::eb_event_base_loop(int flags) {
-  if (FOLLY_UNLIKELY(registerDefaultFds_)) {
+  if (registerDefaultFds_) {
     registerDefaultFds_ = false;
     if (!addTimerFd() || !addSignalFds()) {
       cleanup();
