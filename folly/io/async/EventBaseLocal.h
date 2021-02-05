@@ -80,6 +80,7 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
   T* get(EventBase& evb) { return static_cast<T*>(getVoid(evb)); }
 
   void emplace(EventBase& evb, T* ptr) {
+    DCHECK(ptr != nullptr);
     std::shared_ptr<T> smartPtr(ptr);
     setVoid(evb, std::move(smartPtr));
   }
@@ -110,6 +111,7 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
       return *static_cast<T*>(ptr);
     }
     std::shared_ptr<T> smartPtr(fn());
+    DCHECK(smartPtr.get() != nullptr);
     auto& ref = *smartPtr;
     setVoid(evb, std::move(smartPtr));
     return ref;
