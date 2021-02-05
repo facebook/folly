@@ -16,11 +16,11 @@
 
 #include <folly/File.h>
 
-#include <folly/CompiledFormat.h>
 #include <folly/Exception.h>
 #include <folly/FileUtil.h>
 #include <folly/ScopeGuard.h>
 #include <folly/portability/Fcntl.h>
+#include <folly/portability/FmtCompile.h>
 #include <folly/portability/SysFile.h>
 #include <folly/portability/Unistd.h>
 
@@ -41,7 +41,10 @@ File::File(const char* name, int flags, mode_t mode)
     : fd_(::open(name, flags, mode)), ownsFd_(false) {
   if (fd_ == -1) {
     throwSystemError(fmt::format(
-        FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"), name, flags, mode));
+        FOLLY_FMT_COMPILE("open(\"{}\", {:#o}, 0{:#o}) failed"),
+        name,
+        flags,
+        mode));
   }
   ownsFd_ = true;
 }

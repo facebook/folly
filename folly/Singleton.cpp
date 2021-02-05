@@ -28,11 +28,11 @@
 #include <iostream>
 #include <string>
 
-#include <folly/CompiledFormat.h>
 #include <folly/Demangle.h>
 #include <folly/ScopeGuard.h>
 #include <folly/detail/SingletonStackTrace.h>
 #include <folly/portability/Config.h>
+#include <folly/portability/FmtCompile.h>
 
 #if !defined(_WIN32) && !defined(__APPLE__) && !defined(__ANDROID__)
 #define FOLLY_SINGLETON_HAVE_DLSYM 1
@@ -158,7 +158,7 @@ void singletonPrintDestructionStackTrace(const TypeDescriptor& type) {
 }
 
 [[noreturn]] void singletonThrowNullCreator(const std::type_info& type) {
-  auto const msg = fmt::format(FMT_COMPILE(
+  auto const msg = fmt::format(FOLLY_FMT_COMPILE(
       "nullptr_t should be passed if you want {} to be default constructed"),
       folly::StringPiece(demangle(type)));
   throw std::logic_error(msg);
