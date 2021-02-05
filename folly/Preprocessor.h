@@ -110,9 +110,46 @@
  */
 #define FOLLY_PP_STRINGIZE(x) #x
 
-#define FOLLY_PP_DETAIL_NARGS_1(dummy, _7, _6, _5, _4, _3, _2, _1, _0, ...) _0
+#define FOLLY_PP_DETAIL_NARGS_1( \
+    dummy,                       \
+    _15,                         \
+    _14,                         \
+    _13,                         \
+    _12,                         \
+    _11,                         \
+    _10,                         \
+    _9,                          \
+    _8,                          \
+    _7,                          \
+    _6,                          \
+    _5,                          \
+    _4,                          \
+    _3,                          \
+    _2,                          \
+    _1,                          \
+    _0,                          \
+    ...)                         \
+  _0
 #define FOLLY_PP_DETAIL_NARGS(...) \
-  FOLLY_PP_DETAIL_NARGS_1(dummy, ##__VA_ARGS__, 7, 6, 5, 4, 3, 2, 1, 0)
+  FOLLY_PP_DETAIL_NARGS_1(         \
+      dummy,                       \
+      ##__VA_ARGS__,               \
+      15,                          \
+      14,                          \
+      13,                          \
+      12,                          \
+      11,                          \
+      10,                          \
+      9,                           \
+      8,                           \
+      7,                           \
+      6,                           \
+      5,                           \
+      4,                           \
+      3,                           \
+      2,                           \
+      1,                           \
+      0)
 
 #define FOLLY_PP_DETAIL_FOR_EACH_REC_0(fn, ...)
 #define FOLLY_PP_DETAIL_FOR_EACH_REC_1(fn, a, ...) \
@@ -129,6 +166,22 @@
   fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_5(fn, __VA_ARGS__)
 #define FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, a, ...) \
   fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_6(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_7(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_8(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_9(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_10(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_11(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_12(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_13(fn, __VA_ARGS__)
+#define FOLLY_PP_DETAIL_FOR_EACH_REC_15(fn, a, ...) \
+  fn(a) FOLLY_PP_DETAIL_FOR_EACH_REC_14(fn, __VA_ARGS__)
 
 #define FOLLY_PP_DETAIL_FOR_EACH_2(fn, n, ...) \
   FOLLY_PP_DETAIL_FOR_EACH_REC_##n(fn, __VA_ARGS__)
@@ -141,7 +194,7 @@
  *  Used to invoke a preprocessor macro, the name of which is passed as the
  *  first argument, once for each subsequent variadic argument.
  *
- *  At present, supports [0, 8) arguments.
+ *  At present, supports [0, 16) arguments.
  *
  *  This input:
  *
