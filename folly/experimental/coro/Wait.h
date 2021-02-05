@@ -39,9 +39,9 @@ class Wait {
 
     Wait get_return_object() { return Wait(promise_.get_future()); }
 
-    std::experimental::suspend_never initial_suspend() noexcept { return {}; }
+    suspend_never initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_never final_suspend() noexcept { return {}; }
+    suspend_never final_suspend() noexcept { return {}; }
 
     void return_void() { promise_.set_value(); }
 

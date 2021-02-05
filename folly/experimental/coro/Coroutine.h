@@ -23,3 +23,14 @@
 #include <experimental/coroutine>
 
 #endif // FOLLY_HAS_COROUTINES
+
+#if FOLLY_HAS_COROUTINES
+
+namespace folly::coro {
+
+using std::experimental::suspend_always;
+using std::experimental::suspend_never;
+
+} // namespace folly::coro
+
+#endif

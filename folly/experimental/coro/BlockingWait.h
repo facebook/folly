@@ -68,7 +68,7 @@ class BlockingWaitPromiseBase {
     ::folly_coro_async_free(ptr, size);
   }
 
-  std::experimental::suspend_always initial_suspend() { return {}; }
+  suspend_always initial_suspend() { return {}; }
 
   FinalAwaiter final_suspend() noexcept { return {}; }
 

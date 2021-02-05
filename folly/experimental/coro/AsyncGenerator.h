@@ -93,7 +93,7 @@ class AsyncGeneratorPromise {
 
   AsyncGenerator<Reference, Value> get_return_object() noexcept;
 
-  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+  suspend_always initial_suspend() noexcept { return {}; }
 
   YieldAwaiter final_suspend() noexcept {
     DCHECK(!hasValue());

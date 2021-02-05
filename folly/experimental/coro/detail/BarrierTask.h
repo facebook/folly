@@ -61,7 +61,7 @@ class BarrierTask {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    suspend_always initial_suspend() noexcept { return {}; }
 
     FinalAwaiter final_suspend() noexcept { return {}; }
 
@@ -143,7 +143,7 @@ class DetachedBarrierTask {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    suspend_always initial_suspend() noexcept { return {}; }
 
     auto final_suspend() noexcept {
       struct awaiter {

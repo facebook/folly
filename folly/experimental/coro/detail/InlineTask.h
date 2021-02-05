@@ -79,7 +79,7 @@ class InlineTaskPromiseBase {
     ::folly_coro_async_free(ptr, size);
   }
 
-  std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+  suspend_always initial_suspend() noexcept { return {}; }
 
   auto final_suspend() noexcept { return FinalAwaiter{}; }
 
@@ -275,7 +275,7 @@ struct InlineTaskDetached {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    suspend_always initial_suspend() noexcept { return {}; }
 
     FinalAwaiter final_suspend() noexcept { return {}; }
 

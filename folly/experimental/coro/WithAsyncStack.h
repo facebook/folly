@@ -43,7 +43,7 @@ class WithAsyncStackCoroutine {
               *this)};
     }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    suspend_always initial_suspend() noexcept { return {}; }
 
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }

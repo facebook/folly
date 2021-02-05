@@ -45,9 +45,9 @@ class Generator {
 
     auto get_return_object() noexcept { return Generator<T>{*this}; }
 
-    std::experimental::suspend_always initial_suspend() noexcept { return {}; }
+    suspend_always initial_suspend() noexcept { return {}; }
 
-    std::experimental::suspend_always final_suspend() noexcept { return {}; }
+    suspend_always final_suspend() noexcept { return {}; }
 
     void unhandled_exception() noexcept {
       m_exception = std::current_exception();
@@ -55,12 +55,12 @@ class Generator {
 
     void return_void() noexcept {}
 
-    std::experimental::suspend_always yield_value(T& value) noexcept {
+    suspend_always yield_value(T& value) noexcept {
       m_value = std::addressof(value);
       return {};
     }
 
-    std::experimental::suspend_always yield_value(T&& value) noexcept {
+    suspend_always yield_value(T&& value) noexcept {
       m_value = std::addressof(value);
       return {};
     }
@@ -107,7 +107,7 @@ class Generator {
     // Don't allow any use of 'co_await' inside the Generator
     // coroutine.
     template <typename U>
-    std::experimental::suspend_never await_transform(U&& value) = delete;
+    void await_transform(U&& value) = delete;
 
     void destroy() noexcept {
       std::experimental::coroutine_handle<promise_type>::from_promise(*this)
