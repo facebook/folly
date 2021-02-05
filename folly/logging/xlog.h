@@ -234,6 +234,35 @@ FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogEveryNThreadImpl(size_t n) {
         return folly_detail_xlog_limiter.check();                              \
       }(),                                                                     \
       ##__VA_ARGS__)
+
+namespace folly {
+namespace detail {
+
+template <typename Tag>
+FOLLY_EXPORT FOLLY_ALWAYS_INLINE bool xlogFirstNExactImpl(std::size_t n) {
+  static std::atomic<std::size_t> counter{0};
+  auto const value = counter.load(std::memory_order_relaxed);
+  return value < n && counter.fetch_add(1, std::memory_order_relaxed) < n;
+}
+
+} // namespace detail
+} // namespace folly
+
+/**
+ * Similar to XLOG(...) except only log a message the first n times, exactly.
+ *
+ * The internal counter is process-global and threadsafe and exchanges are
+ * atomic.
+ */
+#define XLOG_FIRST_N(level, n, ...)                                            \
+  XLOG_IF(                                                                     \
+      level,                                                                   \
+      [&] {                                                                    \
+        struct folly_detail_xlog_tag {};                                       \
+        return ::folly::detail::xlogFirstNExactImpl<folly_detail_xlog_tag>(n); \
+      }(),                                                                     \
+      ##__VA_ARGS__)
+
 /**
  * FOLLY_XLOG_STRIP_PREFIXES can be defined to a string containing a
  * colon-separated list of directory prefixes to strip off from the filename
