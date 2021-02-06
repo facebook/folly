@@ -114,6 +114,24 @@
       }(),                                                               \
       ##__VA_ARGS__)
 
+/**
+ * Similar to XLOGF(...) except only log a message every @param ms
+ * milliseconds.
+ *
+ * Note that this is threadsafe.
+ */
+#define XLOGF_EVERY_MS(level, ms, fmt, arg1, ...)                        \
+  XLOGF_IF(                                                              \
+      level,                                                             \
+      [] {                                                               \
+        static ::folly::logging::IntervalRateLimiter                     \
+            folly_detail_xlog_limiter(1, std::chrono::milliseconds(ms)); \
+        return folly_detail_xlog_limiter.check();                        \
+      }(),                                                               \
+      fmt,                                                               \
+      arg1,                                                              \
+      ##__VA_ARGS__)
+
 namespace folly {
 namespace detail {
 
