@@ -86,9 +86,11 @@ class EventBaseLocal : public detail::EventBaseLocalBase {
   }
 
   template <typename... Args>
-  void emplace(EventBase& evb, Args&&... args) {
+  T& emplace(EventBase& evb, Args&&... args) {
     auto smartPtr = std::make_shared<T>(std::forward<Args>(args)...);
-    setVoid(evb, smartPtr);
+    auto& ref = *smartPtr;
+    setVoid(evb, std::move(smartPtr));
+    return ref;
   }
 
   template <typename... Args>
