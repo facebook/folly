@@ -357,7 +357,7 @@ TEST_F(XlogTest, rateLimiting) {
           "msg 0", "msg 8", "msg 16", "msg 24", "msg 32", "msg 40", "msg 48"));
   handler->clearMessages();
 
-  // Test XLOG_EVERY_MS and XLOG_N_PER_MS
+  // Test XLOG_EVERY_MS, XLOGF_EVERY_MS and XLOG_N_PER_MS
   // We test these together to minimize the number of sleep operations.
   for (size_t n = 0; n < 10; ++n) {
     // Integer arguments are treated as millisecond
@@ -366,6 +366,10 @@ TEST_F(XlogTest, rateLimiting) {
     // coarser than milliseconds
     XLOG_EVERY_MS(DBG1, 100ms, "ms arg ", n);
     XLOG_EVERY_MS(DBG1, 1s, "s arg ", n);
+
+    // Use XLOGF_EVERY_MS
+    XLOGF_EVERY_MS(DBG1, 100, "fmt arg {}", n);
+    XLOGF_EVERY_MS(DBG1, 100ms, "fmt ms arg {}", n);
 
     // Use XLOG_N_PER_MS() too
     XLOG_N_PER_MS(DBG1, 2, 100, "2x int arg ", n);
@@ -383,6 +387,8 @@ TEST_F(XlogTest, rateLimiting) {
           "int arg 0",
           "ms arg 0",
           "s arg 0",
+          "fmt arg 0",
+          "fmt ms arg 0",
           "2x int arg 0",
           "1x ms arg 0",
           "3x s arg 0",
@@ -391,6 +397,8 @@ TEST_F(XlogTest, rateLimiting) {
           "3x s arg 2",
           "int arg 6",
           "ms arg 6",
+          "fmt arg 6",
+          "fmt ms arg 6",
           "2x int arg 6",
           "1x ms arg 6",
           "2x int arg 7",
