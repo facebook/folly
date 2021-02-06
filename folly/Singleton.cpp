@@ -239,7 +239,7 @@ void SingletonVault::registerSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete)) {
+  if (UNLIKELY(state->registrationComplete) && type_ == Type::Strict) {
     LOG(ERROR) << "Registering singleton after registrationComplete().";
   }
 
@@ -252,7 +252,7 @@ void SingletonVault::addEagerInitSingleton(detail::SingletonHolderBase* entry) {
   auto state = state_.rlock();
   state->check(detail::SingletonVaultState::Type::Running);
 
-  if (UNLIKELY(state->registrationComplete)) {
+  if (UNLIKELY(state->registrationComplete) && type_ == Type::Strict) {
     LOG(ERROR) << "Registering for eager-load after registrationComplete().";
   }
 
