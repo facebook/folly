@@ -53,8 +53,7 @@ class InlineTaskPromiseBase {
     bool await_ready() noexcept { return false; }
 
     template <typename Promise>
-    std::experimental::coroutine_handle<> await_suspend(
-        std::experimental::coroutine_handle<Promise> h) noexcept {
+    coroutine_handle<> await_suspend(coroutine_handle<Promise> h) noexcept {
       InlineTaskPromiseBase& promise = h.promise();
       return promise.continuation_;
     }
@@ -83,14 +82,13 @@ class InlineTaskPromiseBase {
 
   auto final_suspend() noexcept { return FinalAwaiter{}; }
 
-  void set_continuation(
-      std::experimental::coroutine_handle<> continuation) noexcept {
+  void set_continuation(coroutine_handle<> continuation) noexcept {
     assert(!continuation_);
     continuation_ = continuation;
   }
 
  private:
-  std::experimental::coroutine_handle<> continuation_;
+  coroutine_handle<> continuation_;
 };
 
 template <typename T>
@@ -168,7 +166,7 @@ class InlineTask {
   using promise_type = detail::InlineTaskPromise<T>;
 
  private:
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
  public:
   InlineTask(InlineTask&& other) noexcept
@@ -190,8 +188,7 @@ class InlineTask {
 
     bool await_ready() noexcept { return false; }
 
-    handle_t await_suspend(
-        std::experimental::coroutine_handle<> awaitingCoroutine) noexcept {
+    handle_t await_suspend(coroutine_handle<> awaitingCoroutine) noexcept {
       assert(coro_ && !coro_.done());
       coro_.promise().set_continuation(awaitingCoroutine);
       return coro_;
@@ -223,13 +220,12 @@ class InlineTask {
 template <typename T>
 inline InlineTask<T> InlineTaskPromise<T>::get_return_object() noexcept {
   return InlineTask<T>{
-      std::experimental::coroutine_handle<InlineTaskPromise<T>>::from_promise(
-          *this)};
+      coroutine_handle<InlineTaskPromise<T>>::from_promise(*this)};
 }
 
 inline InlineTask<void> InlineTaskPromise<void>::get_return_object() noexcept {
-  return InlineTask<void>{std::experimental::coroutine_handle<
-      InlineTaskPromise<void>>::from_promise(*this)};
+  return InlineTask<void>{
+      coroutine_handle<InlineTaskPromise<void>>::from_promise(*this)};
 }
 
 /// InlineTaskDetached is a coroutine-return type where the coroutine is
@@ -248,8 +244,7 @@ struct InlineTaskDetached {
   class promise_type {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
-      void await_suspend(
-          std::experimental::coroutine_handle<promise_type> h) noexcept {
+      void await_suspend(coroutine_handle<promise_type> h) noexcept {
         folly::deactivateAsyncStackFrame(h.promise().getAsyncFrame());
         h.destroy();
       }
@@ -271,8 +266,7 @@ struct InlineTaskDetached {
 
     InlineTaskDetached get_return_object() noexcept {
       return InlineTaskDetached{
-          std::experimental::coroutine_handle<promise_type>::from_promise(
-              *this)};
+          coroutine_handle<promise_type>::from_promise(*this)};
     }
 
     suspend_always initial_suspend() noexcept { return {}; }
@@ -314,11 +308,10 @@ struct InlineTaskDetached {
   }
 
  private:
-  explicit InlineTaskDetached(
-      std::experimental::coroutine_handle<promise_type> h) noexcept
+  explicit InlineTaskDetached(coroutine_handle<promise_type> h) noexcept
       : coro_(h) {}
 
-  std::experimental::coroutine_handle<promise_type> coro_;
+  coroutine_handle<promise_type> coro_;
 };
 
 } // namespace detail

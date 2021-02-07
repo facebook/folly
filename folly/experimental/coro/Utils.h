@@ -37,7 +37,7 @@ class AwaitableReady {
 
   bool await_ready() noexcept { return true; }
 
-  void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
+  void await_suspend(coroutine_handle<>) noexcept {}
 
   T await_resume() noexcept(std::is_nothrow_move_constructible<T>::value) {
     return static_cast<T&&>(value_);
@@ -52,7 +52,7 @@ class AwaitableReady<void> {
  public:
   AwaitableReady() noexcept = default;
   bool await_ready() noexcept { return true; }
-  void await_suspend(std::experimental::coroutine_handle<>) noexcept {}
+  void await_suspend(coroutine_handle<>) noexcept {}
   void await_resume() noexcept {}
 };
 
@@ -60,9 +60,7 @@ namespace detail {
 
 struct await_suspend_return_coroutine_fn {
   template <typename A, typename P>
-  std::experimental::coroutine_handle<> operator()(
-      A& a,
-      std::experimental::coroutine_handle<P> coro) const
+  coroutine_handle<> operator()(A& a, coroutine_handle<P> coro) const
       noexcept(noexcept(a.await_suspend(coro))) {
     using result = decltype(a.await_suspend(coro));
     auto noop = std::experimental::noop_coroutine();
@@ -84,9 +82,6 @@ class AwaitableVariant : private std::variant<A...> {
  private:
   using base = std::variant<A...>;
 
-  template <typename P = void>
-  using handle = std::experimental::coroutine_handle<P>;
-
   template <typename Visitor>
   auto visit(Visitor v) {
     return std::visit(v, static_cast<base&>(*this));
@@ -100,7 +95,7 @@ class AwaitableVariant : private std::variant<A...> {
     return visit([&](auto& a) { return a.await_ready(); });
   }
   template <typename P>
-  auto await_suspend(handle<P> coro) noexcept(
+  auto await_suspend(coroutine_handle<P> coro) noexcept(
       (noexcept(FOLLY_DECLVAL(A&).await_suspend(coro)) && ...)) {
     auto impl = await_suspend_return_coroutine;
     return visit([&](auto& a) { return impl(a, coro); });

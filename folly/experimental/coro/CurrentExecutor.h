@@ -75,14 +75,13 @@ class co_reschedule_on_current_executor_ {
     using AwaiterBase::AwaiterBase;
 
     template <typename Promise>
-    void await_suspend(
-        std::experimental::coroutine_handle<Promise> coro) noexcept {
+    void await_suspend(coroutine_handle<Promise> coro) noexcept {
       await_suspend_impl(coro, coro.promise().getAsyncFrame());
     }
 
    private:
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend_impl(
-        std::experimental::coroutine_handle<> coro,
+        coroutine_handle<> coro,
         AsyncStackFrame& frame) {
       auto& stackRoot = *frame.getStackRoot();
       folly::deactivateAsyncStackFrame(frame);
@@ -104,7 +103,7 @@ class co_reschedule_on_current_executor_ {
     using AwaiterBase::AwaiterBase;
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
-        std::experimental::coroutine_handle<> coro) {
+        coroutine_handle<> coro) {
       executor_->add([coro, ctx = RequestContext::saveContext()]() mutable {
         RequestContextScopeGuard contextScope{std::move(ctx)};
         coro.resume();

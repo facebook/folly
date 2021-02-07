@@ -163,8 +163,7 @@ class Mutex {
 
     bool await_ready() noexcept { return mutex_.try_lock(); }
 
-    bool await_suspend(
-        std::experimental::coroutine_handle<> awaitingCoroutine) noexcept {
+    bool await_suspend(coroutine_handle<> awaitingCoroutine) noexcept {
       awaitingCoroutine_ = awaitingCoroutine;
       return mutex_.lockAsyncImpl(this);
     }
@@ -177,7 +176,7 @@ class Mutex {
    private:
     friend Mutex;
 
-    std::experimental::coroutine_handle<> awaitingCoroutine_;
+    coroutine_handle<> awaitingCoroutine_;
     LockAwaiter* next_;
   };
 

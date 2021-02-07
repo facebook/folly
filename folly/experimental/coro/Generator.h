@@ -75,8 +75,7 @@ class Generator {
 
         bool await_ready() noexcept { return this->m_childPromise == nullptr; }
 
-        void await_suspend(
-            std::experimental::coroutine_handle<promise_type>) noexcept {}
+        void await_suspend(coroutine_handle<promise_type>) noexcept {}
 
         void await_resume() {
           if (this->m_childPromise != nullptr) {
@@ -110,8 +109,7 @@ class Generator {
     void await_transform(U&& value) = delete;
 
     void destroy() noexcept {
-      std::experimental::coroutine_handle<promise_type>::from_promise(*this)
-          .destroy();
+      coroutine_handle<promise_type>::from_promise(*this).destroy();
     }
 
     void throw_if_exception() {
@@ -121,9 +119,7 @@ class Generator {
     }
 
     bool is_complete() noexcept {
-      return std::experimental::coroutine_handle<promise_type>::from_promise(
-                 *this)
-          .done();
+      return coroutine_handle<promise_type>::from_promise(*this).done();
     }
 
     T& value() noexcept {
@@ -146,8 +142,7 @@ class Generator {
 
    private:
     void resume() noexcept {
-      std::experimental::coroutine_handle<promise_type>::from_promise(*this)
-          .resume();
+      coroutine_handle<promise_type>::from_promise(*this).resume();
     }
 
     std::add_pointer_t<T> m_value;

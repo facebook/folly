@@ -36,8 +36,8 @@ class BarrierTask {
     struct FinalAwaiter {
       bool await_ready() noexcept { return false; }
 
-      std::experimental::coroutine_handle<> await_suspend(
-          std::experimental::coroutine_handle<promise_type> h) noexcept {
+      coroutine_handle<> await_suspend(
+          coroutine_handle<promise_type> h) noexcept {
         auto& promise = h.promise();
         assert(promise.barrier_ != nullptr);
         return promise.barrier_->arrive(promise.asyncFrame_);
@@ -56,9 +56,7 @@ class BarrierTask {
     }
 
     BarrierTask get_return_object() noexcept {
-      return BarrierTask{
-          std::experimental::coroutine_handle<promise_type>::from_promise(
-              *this)};
+      return BarrierTask{coroutine_handle<promise_type>::from_promise(*this)};
     }
 
     suspend_always initial_suspend() noexcept { return {}; }
@@ -88,7 +86,7 @@ class BarrierTask {
   };
 
  private:
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
   explicit BarrierTask(handle_t coro) noexcept : coro_(coro) {}
 
@@ -139,8 +137,7 @@ class DetachedBarrierTask {
 
     DetachedBarrierTask get_return_object() noexcept {
       return DetachedBarrierTask{
-          std::experimental::coroutine_handle<promise_type>::from_promise(
-              *this)};
+          coroutine_handle<promise_type>::from_promise(*this)};
     }
 
     suspend_always initial_suspend() noexcept { return {}; }
@@ -148,8 +145,7 @@ class DetachedBarrierTask {
     auto final_suspend() noexcept {
       struct awaiter {
         bool await_ready() noexcept { return false; }
-        auto await_suspend(
-            std::experimental::coroutine_handle<promise_type> h) noexcept {
+        auto await_suspend(coroutine_handle<promise_type> h) noexcept {
           assert(h.promise().barrier_ != nullptr);
           auto continuation =
               h.promise().barrier_->arrive(h.promise().getAsyncFrame());
@@ -181,7 +177,7 @@ class DetachedBarrierTask {
   };
 
  private:
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
   explicit DetachedBarrierTask(handle_t coro) : coro_(coro) {}
 

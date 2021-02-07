@@ -41,8 +41,7 @@ class CurrentAsyncStackFrameAwaitable {
     bool await_ready() noexcept { return false; }
 
     template <typename Promise>
-    bool await_suspend(
-        std::experimental::coroutine_handle<Promise> h) noexcept {
+    bool await_suspend(coroutine_handle<Promise> h) noexcept {
       asyncFrame_ = &h.promise().getAsyncFrame();
       return false;
     }

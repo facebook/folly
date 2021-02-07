@@ -206,7 +206,7 @@ class SharedMutexFair {
     SharedMutexFair* mutex_;
     LockAwaiterBase* nextAwaiter_;
     LockAwaiterBase* nextReader_;
-    std::experimental::coroutine_handle<> continuation_;
+    coroutine_handle<> continuation_;
     LockType lockType_;
   };
 
@@ -218,7 +218,7 @@ class SharedMutexFair {
     bool await_ready() noexcept { return mutex_->try_lock(); }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
-        std::experimental::coroutine_handle<> continuation) noexcept {
+        coroutine_handle<> continuation) noexcept {
       auto lock = mutex_->state_.contextualLock();
 
       // Exclusive lock can only be acquired if it's currently unlocked.
@@ -245,7 +245,7 @@ class SharedMutexFair {
     bool await_ready() noexcept { return mutex_->try_lock_shared(); }
 
     FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES bool await_suspend(
-        std::experimental::coroutine_handle<> continuation) noexcept {
+        coroutine_handle<> continuation) noexcept {
       auto lock = mutex_->state_.contextualLock();
 
       // shared-lock can be acquired if it's either unlocked or it is

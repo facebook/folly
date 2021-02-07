@@ -48,8 +48,7 @@ class BlockingWaitPromiseBase {
   struct FinalAwaiter {
     bool await_ready() noexcept { return false; }
     template <typename Promise>
-    void await_suspend(
-        std::experimental::coroutine_handle<Promise> coro) noexcept {
+    void await_suspend(coroutine_handle<Promise> coro) noexcept {
       BlockingWaitPromiseBase& promise = coro.promise();
       folly::deactivateAsyncStackFrame(promise.getAsyncFrame());
       promise.baton_.post();
@@ -186,7 +185,7 @@ template <typename T>
 class BlockingWaitTask {
  public:
   using promise_type = BlockingWaitPromise<T>;
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
   explicit BlockingWaitTask(handle_t coro) noexcept : coro_(coro) {}
 
@@ -247,21 +246,20 @@ template <typename T>
 inline BlockingWaitTask<T>
 BlockingWaitPromise<T>::get_return_object() noexcept {
   return BlockingWaitTask<T>{
-      std::experimental::coroutine_handle<BlockingWaitPromise<T>>::from_promise(
-          *this)};
+      coroutine_handle<BlockingWaitPromise<T>>::from_promise(*this)};
 }
 
 template <typename T>
 inline BlockingWaitTask<T&>
 BlockingWaitPromise<T&>::get_return_object() noexcept {
-  return BlockingWaitTask<T&>{std::experimental::coroutine_handle<
-      BlockingWaitPromise<T&>>::from_promise(*this)};
+  return BlockingWaitTask<T&>{
+      coroutine_handle<BlockingWaitPromise<T&>>::from_promise(*this)};
 }
 
 inline BlockingWaitTask<void>
 BlockingWaitPromise<void>::get_return_object() noexcept {
-  return BlockingWaitTask<void>{std::experimental::coroutine_handle<
-      BlockingWaitPromise<void>>::from_promise(*this)};
+  return BlockingWaitTask<void>{
+      coroutine_handle<BlockingWaitPromise<void>>::from_promise(*this)};
 }
 
 template <

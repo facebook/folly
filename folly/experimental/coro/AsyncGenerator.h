@@ -52,8 +52,8 @@ class AsyncGeneratorPromise {
   class YieldAwaiter {
    public:
     bool await_ready() noexcept { return false; }
-    std::experimental::coroutine_handle<> await_suspend(
-        std::experimental::coroutine_handle<AsyncGeneratorPromise> h) noexcept {
+    coroutine_handle<> await_suspend(
+        coroutine_handle<AsyncGeneratorPromise> h) noexcept {
       AsyncGeneratorPromise& promise = h.promise();
       // Pop AsyncStackFrame first as clearContext() clears the frame state.
       folly::popAsyncStackFrameCallee(promise.getAsyncFrame());
@@ -194,8 +194,7 @@ class AsyncGeneratorPromise {
     executor_ = std::move(executor);
   }
 
-  void setContinuation(
-      std::experimental::coroutine_handle<> continuation) noexcept {
+  void setContinuation(coroutine_handle<> continuation) noexcept {
     continuation_ = continuation;
   }
 
@@ -253,7 +252,7 @@ class AsyncGeneratorPromise {
     DONE,
   };
 
-  std::experimental::coroutine_handle<> continuation_;
+  coroutine_handle<> continuation_;
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
@@ -366,7 +365,7 @@ class FOLLY_NODISCARD AsyncGenerator {
   using promise_type = detail::AsyncGeneratorPromise<Reference, Value>;
 
  private:
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
  public:
   using value_type = Value;
@@ -489,7 +488,7 @@ class FOLLY_NODISCARD AsyncGenerator {
 
     template <typename Promise>
     FOLLY_NOINLINE auto await_suspend(
-        std::experimental::coroutine_handle<Promise> continuation) noexcept {
+        coroutine_handle<Promise> continuation) noexcept {
       auto& promise = coro_.promise();
 
       promise.setContinuation(continuation);
@@ -586,11 +585,10 @@ class FOLLY_NODISCARD AsyncGenerator {
  private:
   friend class detail::AsyncGeneratorPromise<Reference, Value>;
 
-  explicit AsyncGenerator(
-      std::experimental::coroutine_handle<promise_type> coro) noexcept
+  explicit AsyncGenerator(coroutine_handle<promise_type> coro) noexcept
       : coro_(coro) {}
 
-  std::experimental::coroutine_handle<promise_type> coro_;
+  coroutine_handle<promise_type> coro_;
 };
 
 namespace detail {
@@ -598,8 +596,9 @@ namespace detail {
 template <typename Reference, typename Value>
 AsyncGenerator<Reference, Value>
 AsyncGeneratorPromise<Reference, Value>::get_return_object() noexcept {
-  return AsyncGenerator<Reference, Value>{std::experimental::coroutine_handle<
-      AsyncGeneratorPromise<Reference, Value>>::from_promise(*this)};
+  return AsyncGenerator<Reference, Value>{
+      coroutine_handle<AsyncGeneratorPromise<Reference, Value>>::from_promise(
+          *this)};
 }
 
 } // namespace detail

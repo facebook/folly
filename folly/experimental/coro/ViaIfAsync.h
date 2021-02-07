@@ -63,8 +63,7 @@ class ViaCoroutinePromiseBase {
     executor_ = std::move(executor);
   }
 
-  void setContinuation(
-      std::experimental::coroutine_handle<> continuation) noexcept {
+  void setContinuation(coroutine_handle<> continuation) noexcept {
     continuation_ = continuation;
   }
 
@@ -94,7 +93,7 @@ class ViaCoroutinePromiseBase {
 
  protected:
   folly::Executor::KeepAlive<> executor_;
-  std::experimental::coroutine_handle<> continuation_;
+  coroutine_handle<> continuation_;
   folly::AsyncStackFrame* asyncFrame_ = nullptr;
   std::shared_ptr<RequestContext> context_;
 };
@@ -107,7 +106,7 @@ class ViaCoroutine {
       bool await_ready() noexcept { return false; }
 
       FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES void await_suspend(
-          std::experimental::coroutine_handle<promise_type> h) noexcept {
+          coroutine_handle<promise_type> h) noexcept {
         auto& promise = h.promise();
         if (!promise.context_) {
           promise.setRequestContext(RequestContext::saveContext());
@@ -125,9 +124,7 @@ class ViaCoroutine {
 
    public:
     ViaCoroutine get_return_object() noexcept {
-      return ViaCoroutine{
-          std::experimental::coroutine_handle<promise_type>::from_promise(
-              *this)};
+      return ViaCoroutine{coroutine_handle<promise_type>::from_promise(*this)};
     }
 
     FinalAwaiter final_suspend() noexcept { return {}; }
@@ -160,8 +157,7 @@ class ViaCoroutine {
     coro_.promise().setExecutor(std::move(executor));
   }
 
-  void setContinuation(
-      std::experimental::coroutine_handle<> continuation) noexcept {
+  void setContinuation(coroutine_handle<> continuation) noexcept {
     coro_.promise().setContinuation(continuation);
   }
 
@@ -179,18 +175,15 @@ class ViaCoroutine {
     coro_.promise().setRequestContext(folly::RequestContext::saveContext());
   }
 
-  std::experimental::coroutine_handle<promise_type> getHandle() noexcept {
-    return coro_;
-  }
+  coroutine_handle<promise_type> getHandle() noexcept { return coro_; }
 
  private:
-  explicit ViaCoroutine(
-      std::experimental::coroutine_handle<promise_type> coro) noexcept
+  explicit ViaCoroutine(coroutine_handle<promise_type> coro) noexcept
       : coro_(coro) {}
 
   static ViaCoroutine createImpl() { co_return; }
 
-  std::experimental::coroutine_handle<promise_type> coro_;
+  coroutine_handle<promise_type> coro_;
 };
 
 } // namespace detail
@@ -202,7 +195,7 @@ class StackAwareViaIfAsyncAwaiter {
   using Awaiter = folly::coro::awaiter_type_t<WithAsyncStackAwaitable>;
   using CoroutineType = detail::ViaCoroutine<true>;
   using CoroutinePromise = typename CoroutineType::promise_type;
-  using WrapperHandle = std::experimental::coroutine_handle<CoroutinePromise>;
+  using WrapperHandle = coroutine_handle<CoroutinePromise>;
 
   using await_suspend_result_t = decltype(
       std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>()));
@@ -222,9 +215,9 @@ class StackAwareViaIfAsyncAwaiter {
   }
 
   template <typename Promise>
-  auto await_suspend(std::experimental::coroutine_handle<Promise> h) noexcept(
-      noexcept(std::declval<Awaiter&>().await_suspend(
-          std::declval<WrapperHandle>()))) -> await_suspend_result_t {
+  auto await_suspend(coroutine_handle<Promise> h) noexcept(noexcept(
+      std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>())))
+      -> await_suspend_result_t {
     auto& promise = h.promise();
     auto& asyncFrame = promise.getAsyncFrame();
 
@@ -263,7 +256,7 @@ class ViaIfAsyncAwaiter {
   using Awaiter = folly::coro::awaiter_type_t<Awaitable>;
   using CoroutineType = detail::ViaCoroutine<false>;
   using CoroutinePromise = typename CoroutineType::promise_type;
-  using WrapperHandle = std::experimental::coroutine_handle<CoroutinePromise>;
+  using WrapperHandle = coroutine_handle<CoroutinePromise>;
 
   using await_suspend_result_t = decltype(
       std::declval<Awaiter&>().await_suspend(std::declval<WrapperHandle>()));
@@ -309,11 +302,8 @@ class ViaIfAsyncAwaiter {
   // case.
 
   template <typename Promise>
-  auto await_suspend(
-      std::experimental::coroutine_handle<Promise>
-          continuation) noexcept(noexcept(awaiter_
-                                              .await_suspend(std::declval<
-                                                             WrapperHandle>())))
+  auto await_suspend(coroutine_handle<Promise> continuation) noexcept(
+      noexcept(awaiter_.await_suspend(std::declval<WrapperHandle>())))
       -> await_suspend_result_t {
     viaCoroutine_.setContinuation(continuation);
 
@@ -520,8 +510,7 @@ class TryAwaiter {
   }
 
   template <typename Promise>
-  auto
-  await_suspend(std::experimental::coroutine_handle<Promise> coro) noexcept(
+  auto await_suspend(coroutine_handle<Promise> coro) noexcept(
       noexcept(std::declval<Awaiter&>().await_suspend(coro)))
       -> decltype(std::declval<Awaiter&>().await_suspend(coro)) {
     return awaiter_.await_suspend(coro);

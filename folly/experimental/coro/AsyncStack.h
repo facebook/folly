@@ -33,8 +33,7 @@ class AsyncStackTraceAwaitable {
     bool await_ready() const { return false; }
 
     template <typename Promise>
-    bool await_suspend(
-        std::experimental::coroutine_handle<Promise> h) noexcept {
+    bool await_suspend(coroutine_handle<Promise> h) noexcept {
       initialFrame_ = &h.promise().getAsyncFrame();
       return false;
     }

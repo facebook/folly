@@ -63,7 +63,7 @@ class Barrier {
     return count_.load(std::memory_order_acquire);
   }
 
-  [[nodiscard]] std::experimental::coroutine_handle<> arrive(
+  [[nodiscard]] coroutine_handle<> arrive(
       folly::AsyncStackFrame& currentFrame) noexcept {
     auto& stackRoot = *currentFrame.getStackRoot();
     folly::deactivateAsyncStackFrame(currentFrame);
@@ -84,7 +84,7 @@ class Barrier {
     }
   }
 
-  [[nodiscard]] std::experimental::coroutine_handle<> arrive() noexcept {
+  [[nodiscard]] coroutine_handle<> arrive() noexcept {
     const std::size_t oldCount = count_.fetch_sub(1, std::memory_order_acq_rel);
 
     // Invalid to call arrive() if you haven't previously incremented the
@@ -112,8 +112,8 @@ class Barrier {
     bool await_ready() { return false; }
 
     template <typename Promise>
-    std::experimental::coroutine_handle<> await_suspend(
-        std::experimental::coroutine_handle<Promise> continuation) noexcept {
+    coroutine_handle<> await_suspend(
+        coroutine_handle<Promise> continuation) noexcept {
       if constexpr (detail::promiseHasAsyncFrame_v<Promise>) {
         barrier_.setContinuation(
             continuation, &continuation.promise().getAsyncFrame());
@@ -140,7 +140,7 @@ class Barrier {
   auto arriveAndWait() noexcept { return Awaiter{*this}; }
 
   void setContinuation(
-      std::experimental::coroutine_handle<> continuation,
+      coroutine_handle<> continuation,
       folly::AsyncStackFrame* parentFrame) noexcept {
     assert(!continuation_);
     continuation_ = continuation;
@@ -149,7 +149,7 @@ class Barrier {
 
  private:
   std::atomic<std::size_t> count_;
-  std::experimental::coroutine_handle<> continuation_;
+  coroutine_handle<> continuation_;
   folly::AsyncStackFrame* asyncFrame_ = nullptr;
 };
 

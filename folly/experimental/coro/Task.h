@@ -63,10 +63,8 @@ class TaskPromiseBase {
     bool await_ready() noexcept { return false; }
 
     template <typename Promise>
-    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES
-        std::experimental::coroutine_handle<>
-        await_suspend(
-            std::experimental::coroutine_handle<Promise> coro) noexcept {
+    FOLLY_CORO_AWAIT_SUSPEND_NONTRIVIAL_ATTRIBUTES coroutine_handle<>
+    await_suspend(coroutine_handle<Promise> coro) noexcept {
       TaskPromiseBase& promise = coro.promise();
       folly::popAsyncStackFrameCallee(promise.asyncFrame_);
       return promise.continuation_;
@@ -134,7 +132,7 @@ class TaskPromiseBase {
   template <typename T>
   friend class folly::coro::Task;
 
-  std::experimental::coroutine_handle<> continuation_;
+  coroutine_handle<> continuation_;
   folly::AsyncStackFrame asyncFrame_;
   folly::Executor::KeepAlive<> executor_;
   folly::CancellationToken cancelToken_;
@@ -258,7 +256,7 @@ class TaskPromise<void> : public TaskPromiseBase {
 /// completes.
 template <typename T>
 class FOLLY_NODISCARD TaskWithExecutor {
-  using handle_t = std::experimental::coroutine_handle<detail::TaskPromise<T>>;
+  using handle_t = coroutine_handle<detail::TaskPromise<T>>;
   using StorageType = typename detail::TaskPromise<T>::StorageType;
 
  public:
@@ -402,7 +400,7 @@ class FOLLY_NODISCARD TaskWithExecutor {
 
     template <typename Promise>
     FOLLY_NOINLINE void await_suspend(
-        std::experimental::coroutine_handle<Promise> continuation) noexcept {
+        coroutine_handle<Promise> continuation) noexcept {
       DCHECK(coro_);
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);
@@ -466,8 +464,8 @@ class FOLLY_NODISCARD TaskWithExecutor {
     bool await_ready() { return false; }
 
     template <typename Promise>
-    FOLLY_NOINLINE std::experimental::coroutine_handle<> await_suspend(
-        std::experimental::coroutine_handle<Promise> continuation) {
+    FOLLY_NOINLINE coroutine_handle<> await_suspend(
+        coroutine_handle<Promise> continuation) {
       DCHECK(coro_);
       auto& promise = coro_.promise();
       DCHECK(!promise.continuation_);
@@ -564,7 +562,7 @@ class FOLLY_NODISCARD Task {
 
  private:
   class Awaiter;
-  using handle_t = std::experimental::coroutine_handle<promise_type>;
+  using handle_t = coroutine_handle<promise_type>;
 
   void setExecutor(folly::Executor::KeepAlive<>&& e) noexcept {
     DCHECK(coro_);
@@ -665,7 +663,7 @@ class FOLLY_NODISCARD Task {
 
     template <typename Promise>
     FOLLY_NOINLINE auto await_suspend(
-        std::experimental::coroutine_handle<Promise> continuation) noexcept {
+        coroutine_handle<Promise> continuation) noexcept {
       DCHECK(coro_);
       auto& promise = coro_.promise();
 
@@ -742,14 +740,12 @@ Task<drop_unit_t<T>> makeResultTask(Try<T> t) {
 
 template <typename T>
 Task<T> detail::TaskPromise<T>::get_return_object() noexcept {
-  return Task<T>{
-      std::experimental::coroutine_handle<detail::TaskPromise<T>>::from_promise(
-          *this)};
+  return Task<T>{coroutine_handle<detail::TaskPromise<T>>::from_promise(*this)};
 }
 
 inline Task<void> detail::TaskPromise<void>::get_return_object() noexcept {
-  return Task<void>{std::experimental::coroutine_handle<
-      detail::TaskPromise<void>>::from_promise(*this)};
+  return Task<void>{
+      coroutine_handle<detail::TaskPromise<void>>::from_promise(*this)};
 }
 
 } // namespace coro
