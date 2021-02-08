@@ -202,7 +202,7 @@ locked. This technique avoids the need to lock both mutexes at
 the same time. Mutexes are not copied or moved.
 
 The move assignment operator assumes the source object is a true
-rvalue and does lock lock the source mutex. It moves the source
+rvalue and does lock the source mutex. It moves the source
 data into the destination data with the destination mutex locked.
 
 `swap` acquires locks on both mutexes in increasing order of
