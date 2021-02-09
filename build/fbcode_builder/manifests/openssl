@@ -9,12 +9,12 @@ openssl
 libssl-dev
 
 [download]
-url = https://www.openssl.org/source/openssl-1.1.1f.tar.gz
-sha256 = 186c6bfe6ecfba7a5b48c47f8a1673d0f3b0e5ba2e25602dd23b629975da3f35
+url = https://www.openssl.org/source/openssl-1.1.1i.tar.gz
+sha256 = e8be6a35fe41d10603c3cc635e93289ed00bf34b79671a3a4de64fcee00d5242
 
 [build]
 builder = openssl
-subdir = openssl-1.1.1f
+subdir = openssl-1.1.1i
 
 [dependencies.os=windows]
 perl
