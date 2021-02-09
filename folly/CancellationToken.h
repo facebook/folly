@@ -95,6 +95,16 @@ class CancellationToken {
   // if they know they can never be cancelled.
   bool canBeCancelled() const noexcept;
 
+  // Obtain a CancellationToken linked to any number of other
+  // CancellationTokens.
+  //
+  // This token will have cancellation requested when any of the passed-in
+  // tokens do.
+  // This token is cancellable if any of the passed-in tokens are at the time of
+  // construction.
+  template <typename... Ts>
+  static CancellationToken merge(Ts&&... tokens);
+
   void swap(CancellationToken& other) noexcept;
 
   friend bool operator==(
