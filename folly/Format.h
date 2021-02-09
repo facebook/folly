@@ -458,37 +458,6 @@ struct IsFormatter<
         type> : public std::true_type {};
 } // namespace detail
 
-// Deprecated API. formatChecked() et. al. now behave identically to their
-// non-Checked counterparts.
-template <class... Args>
-Formatter<false, Args...> formatChecked(StringPiece fmt, Args&&... args) {
-  return format(fmt, std::forward<Args>(args)...);
-}
-template <class... Args>
-inline std::string sformatChecked(StringPiece fmt, Args&&... args) {
-  return formatChecked(fmt, std::forward<Args>(args)...).str();
-}
-template <class Container>
-Formatter<true, Container> vformatChecked(
-    StringPiece fmt,
-    Container&& container) {
-  return vformat(fmt, std::forward<Container>(container));
-}
-template <class Container>
-inline std::string svformatChecked(StringPiece fmt, Container&& container) {
-  return vformatChecked(fmt, std::forward<Container>(container)).str();
-}
-template <class Str, class... Args>
-typename std::enable_if<IsSomeString<Str>::value>::type
-formatChecked(Str* out, StringPiece fmt, Args&&... args) {
-  formatChecked(fmt, std::forward<Args>(args)...).appendTo(*out);
-}
-template <class Str, class Container>
-typename std::enable_if<IsSomeString<Str>::value>::type
-vformatChecked(Str* out, StringPiece fmt, Container&& container) {
-  vformatChecked(fmt, std::forward<Container>(container)).appendTo(*out);
-}
-
 } // namespace folly
 
 #include <folly/Format-inl.h>
